@@ -1,0 +1,9 @@
+{
+  "target": "CompositorMessage",
+  "description": "the compositor copied frame 41 and gives its texture back",
+  "instance": {
+    "type": "release",
+    "surface": "s-7",
+    "frame": 41
+  }
+}

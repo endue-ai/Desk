@@ -1,0 +1,16 @@
+{
+  "target": "CompositorMessage",
+  "description": "the owner is a plugin id (with a dot) or desk",
+  "instance": {
+    "type": "create",
+    "surface": "s-7",
+    "plugin": "notes",
+    "view": "main",
+    "size": {
+      "width": 800,
+      "height": 600
+    },
+    "scale": 2,
+    "format": "bgra8"
+  }
+}

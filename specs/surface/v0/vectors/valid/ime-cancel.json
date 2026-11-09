@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "Escape drops the composition",
+  "instance": {
+    "type": "ime.cancel",
+    "surface": "s-7"
+  }
+}

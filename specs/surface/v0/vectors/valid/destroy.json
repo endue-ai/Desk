@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "the window was closed",
+  "instance": {
+    "type": "destroy",
+    "surface": "s-7"
+  }
+}

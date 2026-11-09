@@ -1,0 +1,16 @@
+{
+  "target": "SurfaceTextureHandle",
+  "description": "a modifier needs 64 bits, so it is a hexadecimal string, never a JSON number",
+  "instance": {
+    "kind": "dmabuf",
+    "fourcc": "AR24",
+    "modifier": 72057594037927935,
+    "planes": [
+      {
+        "fdIndex": 0,
+        "stride": 6400,
+        "offset": 0
+      }
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "target": "CompositorMessage",
+  "description": "the source hears its files were moved into the notes plugin",
+  "instance": {
+    "type": "drag.ended",
+    "surface": "s-7",
+    "effect": "move",
+    "to": "endue.notes"
+  }
+}

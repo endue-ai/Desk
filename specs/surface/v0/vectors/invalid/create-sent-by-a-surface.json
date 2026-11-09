@@ -1,0 +1,16 @@
+{
+  "target": "SurfaceMessage",
+  "description": "create is the compositor's message",
+  "instance": {
+    "type": "create",
+    "surface": "s-7",
+    "plugin": "endue.notes",
+    "view": "main",
+    "size": {
+      "width": 800,
+      "height": 600
+    },
+    "scale": 2,
+    "format": "bgra8"
+  }
+}

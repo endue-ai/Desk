@@ -1,0 +1,11 @@
+{
+  "target": "CompositorMessage",
+  "description": "a screen reader types into a text field",
+  "instance": {
+    "type": "a11y.action",
+    "surface": "s-7",
+    "node": 4,
+    "action": "set-value",
+    "value": "Buy milk"
+  }
+}

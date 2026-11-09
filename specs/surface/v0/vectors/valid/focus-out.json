@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "the person clicked another window",
+  "instance": {
+    "type": "focus.out",
+    "surface": "s-7"
+  }
+}

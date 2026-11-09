@@ -1,0 +1,16 @@
+{
+  "target": "SurfaceTextureHandle",
+  "description": "a modifier is lowercase hexadecimal with 0x",
+  "instance": {
+    "kind": "dmabuf",
+    "fourcc": "AR24",
+    "modifier": "0xFFFFFFFFFFFFFF",
+    "planes": [
+      {
+        "fdIndex": 0,
+        "stride": 6400,
+        "offset": 0
+      }
+    ]
+  }
+}

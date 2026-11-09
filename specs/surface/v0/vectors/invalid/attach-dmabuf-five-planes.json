@@ -1,0 +1,57 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a DMA-BUF has four planes at most",
+  "instance": {
+    "type": "attach",
+    "surface": "s-7",
+    "frame": 0,
+    "texture": {
+      "id": 0,
+      "generation": 0,
+      "width": 1600,
+      "height": 1200,
+      "format": "bgra8",
+      "handle": {
+        "kind": "dmabuf",
+        "fourcc": "AR24",
+        "modifier": "0x0",
+        "planes": [
+          {
+            "fdIndex": 0,
+            "stride": 6400,
+            "offset": 0
+          },
+          {
+            "fdIndex": 1,
+            "stride": 6400,
+            "offset": 0
+          },
+          {
+            "fdIndex": 2,
+            "stride": 6400,
+            "offset": 0
+          },
+          {
+            "fdIndex": 3,
+            "stride": 6400,
+            "offset": 0
+          },
+          {
+            "fdIndex": 4,
+            "stride": 6400,
+            "offset": 0
+          }
+        ]
+      }
+    },
+    "damage": [
+      {
+        "x": 0,
+        "y": 0,
+        "width": 1600,
+        "height": 1200
+      }
+    ],
+    "release": "after-copy"
+  }
+}

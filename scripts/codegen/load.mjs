@@ -75,6 +75,7 @@ export function loadAll(root = ROOT) {
     market: plugin,
     init,
     update: loadSchemas(root, "update/v0"),
+    surface: loadSchemas(root, "surface/v0"),
     brain: [loadBrain(root).bundle],
   };
 }

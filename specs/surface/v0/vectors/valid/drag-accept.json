@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "the notes window takes paths, every kind of desk JSON and text",
+  "instance": {
+    "type": "drag.accept",
+    "surface": "s-7",
+    "types": ["desk/paths", "desk/json", "text/plain"]
+  }
+}

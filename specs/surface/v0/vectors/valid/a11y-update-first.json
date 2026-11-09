@@ -1,0 +1,65 @@
+{
+  "target": "SurfaceMessage",
+  "description": "the first tree after a11y.enable: the root, a heading, a text field, a checkbox and a button",
+  "instance": {
+    "type": "a11y.update",
+    "surface": "s-7",
+    "tree": {
+      "root": 1
+    },
+    "nodes": [
+      {
+        "id": 1,
+        "role": "root-web-area",
+        "name": "Notes",
+        "children": [2, 3, 6, 5],
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 800,
+          "height": 600
+        }
+      },
+      {
+        "id": 2,
+        "role": "heading",
+        "name": "Shopping",
+        "level": 1,
+        "bounds": {
+          "x": 16,
+          "y": 16,
+          "width": 300,
+          "height": 28
+        }
+      },
+      {
+        "id": 3,
+        "role": "text-input",
+        "name": "New item",
+        "placeholder": "Add an item",
+        "value": "",
+        "actions": ["focus", "set-value"]
+      },
+      {
+        "id": 6,
+        "role": "check-box",
+        "name": "Milk",
+        "toggled": "true",
+        "actions": ["click", "focus"]
+      },
+      {
+        "id": 5,
+        "role": "button",
+        "name": "Add",
+        "actions": ["click", "focus"],
+        "bounds": {
+          "x": 700,
+          "y": 60,
+          "width": 84,
+          "height": 28
+        }
+      }
+    ],
+    "focus": 3
+  }
+}

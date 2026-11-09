@@ -1,0 +1,9 @@
+{
+  "target": "CompositorMessage",
+  "description": "Escape cancelled the drag",
+  "instance": {
+    "type": "drag.ended",
+    "surface": "s-7",
+    "effect": "none"
+  }
+}

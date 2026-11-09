@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/surface/v0/accessibility.schema.json",
+  "title": "Desk surface protocol v0: accessibility",
+  "description": "Each surface exports its accessibility tree in the shape of AccessKit's TreeUpdate; the compositor grafts every surface's tree under its window's node and feeds AccessKit, so the OS sees one tree. Actions a screen reader asks for come back to the surface. See accessibility.md.",
+  "$defs": {
+    "SurfaceA11yNodeId": {
+      "description": "A node's id, unique within its surface and stable while the node lives (AccessKit's NodeId). The compositor makes it unique across surfaces.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "SurfaceA11yRole": {
+      "description": "The node's role: AccessKit's Role in kebab-case (button, text-input, list-item, root-web-area, generic-container). A reader maps a role it does not know to unknown.",
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "SurfaceA11yActionName": {
+      "description": "Something a screen reader can ask a node to do (AccessKit's Action, kebab-case).",
+      "type": "string",
+      "enum": [
+        "click",
+        "focus",
+        "blur",
+        "collapse",
+        "expand",
+        "increment",
+        "decrement",
+        "scroll-into-view",
+        "set-value",
+        "show-context-menu"
+      ]
+    },
+    "SurfaceA11yToggled": {
+      "description": "A checkbox's, switch's or toggle button's state, as ARIA's aria-checked and aria-pressed.",
+      "type": "string",
+      "enum": ["true", "false", "mixed"]
+    },
+    "SurfaceA11yNode": {
+      "description": "One node: its role and words, where it is in the surface's logical pixels, its children in order, and the actions it supports. name is AccessKit's label.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/SurfaceA11yNodeId" },
+        "role": { "$ref": "#/$defs/SurfaceA11yRole" },
+        "name": { "type": "string", "maxLength": 4096 },
+        "description": { "type": "string", "maxLength": 4096 },
+        "value": {
+          "description": "A text field's text, a link's or a combo box's value.",
+          "type": "string",
+          "maxLength": 65536
+        },
+        "placeholder": { "type": "string", "maxLength": 1024 },
+        "url": { "description": "A link's target.", "type": "string", "maxLength": 8192 },
+        "bounds": { "$ref": "surface.schema.json#/$defs/SurfaceRect" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SurfaceA11yNodeId" },
+          "maxItems": 10000,
+          "uniqueItems": true
+        },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SurfaceA11yActionName" },
+          "maxItems": 10,
+          "uniqueItems": true
+        },
+        "toggled": { "$ref": "#/$defs/SurfaceA11yToggled" },
+        "expanded": { "type": "boolean" },
+        "selected": { "type": "boolean" },
+        "disabled": { "type": "boolean" },
+        "level": {
+          "description": "A heading's level, or a tree item's depth from 1.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 255
+        },
+        "numericValue": {
+          "description": "A slider's, progress bar's or spin button's value, between its min and max.",
+          "type": "number"
+        },
+        "minNumericValue": { "type": "number" },
+        "maxNumericValue": { "type": "number" }
+      },
+      "required": ["id", "role"],
+      "additionalProperties": false
+    },
+    "SurfaceA11yTree": {
+      "description": "The tree itself: its root node. Present in the first update and whenever the root changes.",
+      "type": "object",
+      "properties": {
+        "root": { "$ref": "#/$defs/SurfaceA11yNodeId" }
+      },
+      "required": ["root"],
+      "additionalProperties": false
+    },
+    "SurfaceA11yUpdate": {
+      "description": "Nodes that are new or changed, each whole; nodes left out stay as they were, and a node no longer reachable from the root is gone. focus is the focused node, the root when nothing inside has focus. The first update after a11y.enable carries tree and every node.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "a11y.update" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "tree": { "$ref": "#/$defs/SurfaceA11yTree" },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SurfaceA11yNode" },
+          "maxItems": 100000
+        },
+        "focus": { "$ref": "#/$defs/SurfaceA11yNodeId" }
+      },
+      "required": ["type", "surface", "nodes", "focus"],
+      "additionalProperties": false
+    },
+    "SurfaceA11yEnable": {
+      "description": "Start or stop exporting the tree. The compositor enables it while an assistive technology (VoiceOver, Narrator, Orca) is active, so surfaces pay nothing otherwise.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "a11y.enable" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "enabled": { "type": "boolean" }
+      },
+      "required": ["type", "surface", "enabled"],
+      "additionalProperties": false
+    },
+    "SurfaceA11yAction": {
+      "description": "A screen reader asks a node to do something; value is the text for set-value. The surface does it as a person's input would, and its next update shows the result.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "a11y.action" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "node": { "$ref": "#/$defs/SurfaceA11yNodeId" },
+        "action": { "$ref": "#/$defs/SurfaceA11yActionName" },
+        "value": { "type": "string", "maxLength": 65536 }
+      },
+      "required": ["type", "surface", "node", "action"],
+      "additionalProperties": false
+    }
+  }
+}

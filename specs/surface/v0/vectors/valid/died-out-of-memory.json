@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "the renderer ran out of memory",
+  "instance": {
+    "type": "died",
+    "surface": "s-7",
+    "reason": "out-of-memory"
+  }
+}

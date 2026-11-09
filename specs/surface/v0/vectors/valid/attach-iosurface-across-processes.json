@@ -1,0 +1,36 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a native plugin's frame on macOS: the send right travels out of band, and the compositor samples the texture until a later frame replaces it",
+  "instance": {
+    "type": "attach",
+    "surface": "s-7",
+    "frame": 9,
+    "texture": {
+      "id": 2,
+      "generation": 1,
+      "width": 1600,
+      "height": 1200,
+      "format": "bgra8",
+      "handle": {
+        "kind": "iosurface",
+        "id": 812,
+        "portIndex": 0
+      }
+    },
+    "damage": [
+      {
+        "x": 0,
+        "y": 0,
+        "width": 640,
+        "height": 48
+      },
+      {
+        "x": 0,
+        "y": 1100,
+        "width": 1600,
+        "height": 100
+      }
+    ],
+    "release": "when-replaced"
+  }
+}

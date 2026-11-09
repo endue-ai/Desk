@@ -1,0 +1,16 @@
+{
+  "target": "SurfaceTextureHandle",
+  "description": "a linear DMA-BUF in one plane",
+  "instance": {
+    "kind": "dmabuf",
+    "fourcc": "XB24",
+    "modifier": "0x0",
+    "planes": [
+      {
+        "fdIndex": 0,
+        "stride": 3200,
+        "offset": 0
+      }
+    ]
+  }
+}

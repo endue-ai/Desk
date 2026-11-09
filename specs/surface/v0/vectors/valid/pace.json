@@ -1,0 +1,9 @@
+{
+  "target": "CompositorMessage",
+  "description": "a surface in the background may paint 30 frames a second at most",
+  "instance": {
+    "type": "pace",
+    "surface": "s-7",
+    "fps": 30
+  }
+}

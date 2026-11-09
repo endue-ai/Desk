@@ -1,0 +1,12 @@
+{
+  "target": "CompositorMessage",
+  "description": "the left arrow held down repeats",
+  "instance": {
+    "type": "key.down",
+    "surface": "s-7",
+    "key": "ArrowLeft",
+    "code": "ArrowLeft",
+    "modifiers": [],
+    "repeat": true
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a hang is the desk's ping to find, not a death a host reports",
+  "instance": {
+    "type": "died",
+    "surface": "s-7",
+    "reason": "hung"
+  }
+}

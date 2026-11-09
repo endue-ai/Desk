@@ -1,0 +1,11 @@
+{
+  "target": "CompositorMessage",
+  "description": "the drag moves with Alt held",
+  "instance": {
+    "type": "drag.over",
+    "surface": "s-7",
+    "x": 140.5,
+    "y": 80,
+    "modifiers": ["alt"]
+  }
+}

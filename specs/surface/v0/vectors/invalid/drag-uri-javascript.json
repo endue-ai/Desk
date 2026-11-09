@@ -1,0 +1,8 @@
+{
+  "target": "SurfaceDragItem",
+  "description": "a dragged URI is never javascript:",
+  "instance": {
+    "type": "desk/uri",
+    "uri": "JavaScript:alert(1)"
+  }
+}

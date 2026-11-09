@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "wake says the size to wake at",
+  "instance": {
+    "type": "wake",
+    "surface": "s-7"
+  }
+}

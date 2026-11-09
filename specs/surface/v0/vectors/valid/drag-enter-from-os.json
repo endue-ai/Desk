@@ -1,0 +1,14 @@
+{
+  "target": "CompositorMessage",
+  "description": "a drop from Finder never moves the person's files: copy or link",
+  "instance": {
+    "type": "drag.enter",
+    "surface": "s-7",
+    "x": 8,
+    "y": 8,
+    "types": ["desk/paths"],
+    "effectAllowed": ["copy", "link"],
+    "modifiers": ["alt"],
+    "from": "os"
+  }
+}

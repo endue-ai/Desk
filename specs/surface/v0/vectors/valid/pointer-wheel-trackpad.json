@@ -1,0 +1,14 @@
+{
+  "target": "CompositorMessage",
+  "description": "a trackpad scroll down and a little right, in logical pixels",
+  "instance": {
+    "type": "pointer.wheel",
+    "surface": "s-7",
+    "x": 400,
+    "y": 300,
+    "deltaX": 1.5,
+    "deltaY": 37.25,
+    "unit": "pixel",
+    "modifiers": []
+  }
+}

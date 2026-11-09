@@ -42,5 +42,6 @@ export {
   universalProblems,
 } from "./stub-universal";
 export { viewProblems } from "./stub-views";
+export * from "./surface.generated";
 
 export const NAME = "@endue-ai/bridge";

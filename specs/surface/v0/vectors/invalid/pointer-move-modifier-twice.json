@@ -1,0 +1,12 @@
+{
+  "target": "CompositorMessage",
+  "description": "each modifier is held once",
+  "instance": {
+    "type": "pointer.move",
+    "surface": "s-7",
+    "x": 1,
+    "y": 1,
+    "buttons": [],
+    "modifiers": ["shift", "shift"]
+  }
+}

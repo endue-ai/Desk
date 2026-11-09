@@ -1,0 +1,12 @@
+{
+  "target": "SurfaceMessage",
+  "description": "cursor names are CSS keywords: pointer, not hand",
+  "instance": {
+    "type": "cursor",
+    "surface": "s-7",
+    "cursor": {
+      "kind": "named",
+      "name": "hand"
+    }
+  }
+}

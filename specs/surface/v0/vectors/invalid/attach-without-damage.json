@@ -1,0 +1,22 @@
+{
+  "target": "SurfaceMessage",
+  "description": "an attach always changes something; a whole-texture change is one rectangle",
+  "instance": {
+    "type": "attach",
+    "surface": "s-7",
+    "frame": 0,
+    "texture": {
+      "id": 0,
+      "generation": 0,
+      "width": 1600,
+      "height": 1200,
+      "format": "bgra8",
+      "handle": {
+        "kind": "iosurface",
+        "id": 4711
+      }
+    },
+    "damage": [],
+    "release": "after-copy"
+  }
+}

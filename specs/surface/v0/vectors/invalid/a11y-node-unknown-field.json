@@ -1,0 +1,10 @@
+{
+  "target": "SurfaceA11yNode",
+  "description": "a node holds only the protocol's properties",
+  "instance": {
+    "id": 1,
+    "role": "button",
+    "name": "Save",
+    "cefNodeId": 88
+  }
+}

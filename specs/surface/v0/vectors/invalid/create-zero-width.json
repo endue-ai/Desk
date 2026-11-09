@@ -1,0 +1,16 @@
+{
+  "target": "CompositorMessage",
+  "description": "a surface is at least one logical pixel wide",
+  "instance": {
+    "type": "create",
+    "surface": "s-7",
+    "plugin": "endue.notes",
+    "view": "main",
+    "size": {
+      "width": 0,
+      "height": 600
+    },
+    "scale": 2,
+    "format": "bgra8"
+  }
+}

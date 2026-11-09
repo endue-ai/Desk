@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "the page's title changed",
+  "instance": {
+    "type": "title",
+    "surface": "s-7",
+    "title": "메모 — plan.md"
+  }
+}

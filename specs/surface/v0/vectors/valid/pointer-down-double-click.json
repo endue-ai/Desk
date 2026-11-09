@@ -1,0 +1,14 @@
+{
+  "target": "CompositorMessage",
+  "description": "the second press of a double click on a word",
+  "instance": {
+    "type": "pointer.down",
+    "surface": "s-7",
+    "x": 312,
+    "y": 88,
+    "button": "left",
+    "buttons": ["left"],
+    "clicks": 2,
+    "modifiers": []
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "target": "CompositorMessage",
+  "description": "rows from the database plugin land on a sheet",
+  "instance": {
+    "type": "drag.drop",
+    "surface": "s-7",
+    "x": 20,
+    "y": 30,
+    "effect": "copy",
+    "items": [
+      {
+        "type": "desk/json",
+        "kind": "db/rows",
+        "value": [
+          {
+            "id": 1,
+            "name": "Ada"
+          },
+          {
+            "id": 2,
+            "name": "Grace"
+          }
+        ]
+      }
+    ]
+  }
+}

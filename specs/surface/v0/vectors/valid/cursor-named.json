@@ -1,0 +1,12 @@
+{
+  "target": "SurfaceMessage",
+  "description": "the pointer is over a link",
+  "instance": {
+    "type": "cursor",
+    "surface": "s-7",
+    "cursor": {
+      "kind": "named",
+      "name": "pointer"
+    }
+  }
+}

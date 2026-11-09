@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a drop here would copy",
+  "instance": {
+    "type": "drag.status",
+    "surface": "s-7",
+    "effect": "copy"
+  }
+}

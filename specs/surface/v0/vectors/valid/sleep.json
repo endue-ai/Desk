@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "the surface left the live budget",
+  "instance": {
+    "type": "sleep",
+    "surface": "s-7"
+  }
+}

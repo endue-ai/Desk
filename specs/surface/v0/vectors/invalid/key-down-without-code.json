@@ -1,0 +1,11 @@
+{
+  "target": "CompositorMessage",
+  "description": "a key event names the physical key too",
+  "instance": {
+    "type": "key.down",
+    "surface": "s-7",
+    "key": "a",
+    "modifiers": [],
+    "repeat": false
+  }
+}

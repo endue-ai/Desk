@@ -1,0 +1,27 @@
+{
+  "target": "CompositorMessage",
+  "description": "the Japanese IME reconverts a word already in the field",
+  "instance": {
+    "type": "ime.composition",
+    "surface": "s-7",
+    "text": "変換",
+    "underlines": [
+      {
+        "range": {
+          "start": 0,
+          "end": 2
+        },
+        "style": "dotted",
+        "thick": false
+      }
+    ],
+    "selection": {
+      "start": 0,
+      "end": 2
+    },
+    "replacement": {
+      "start": 12,
+      "end": 14
+    }
+  }
+}

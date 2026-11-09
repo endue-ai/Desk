@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "the window was brought to the front",
+  "instance": {
+    "type": "focus.in",
+    "surface": "s-7"
+  }
+}

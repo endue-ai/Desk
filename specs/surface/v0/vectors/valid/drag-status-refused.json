@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "this spot refuses the drop",
+  "instance": {
+    "type": "drag.status",
+    "surface": "s-7",
+    "effect": "none"
+  }
+}

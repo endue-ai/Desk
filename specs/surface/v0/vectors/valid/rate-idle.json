@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a document that paints only when it changes",
+  "instance": {
+    "type": "rate",
+    "surface": "s-7",
+    "fps": 0
+  }
+}

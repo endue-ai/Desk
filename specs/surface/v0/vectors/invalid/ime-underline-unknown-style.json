@@ -1,0 +1,23 @@
+{
+  "target": "CompositorMessage",
+  "description": "underlines are solid, dotted, dashed or none",
+  "instance": {
+    "type": "ime.composition",
+    "surface": "s-7",
+    "text": "한",
+    "underlines": [
+      {
+        "range": {
+          "start": 0,
+          "end": 1
+        },
+        "style": "wavy",
+        "thick": false
+      }
+    ],
+    "selection": {
+      "start": 1,
+      "end": 1
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "target": "CompositorMessage",
+  "description": "on Linux the compositor's reads finish when the sync_file it sends signals",
+  "instance": {
+    "type": "release",
+    "surface": "s-7",
+    "frame": 42,
+    "fenceFdIndex": 0
+  }
+}

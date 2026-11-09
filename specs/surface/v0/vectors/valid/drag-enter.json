@@ -1,0 +1,14 @@
+{
+  "target": "CompositorMessage",
+  "description": "files from the Explorer come over a notes window that takes paths and text",
+  "instance": {
+    "type": "drag.enter",
+    "surface": "s-7",
+    "x": 120,
+    "y": 64,
+    "types": ["desk/paths", "text/plain"],
+    "effectAllowed": ["copy", "move"],
+    "modifiers": [],
+    "from": "endue.explorer"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "target": "CompositorMessage",
+  "description": "create names the plugin and view; a URL is the web host's business, not the protocol's",
+  "instance": {
+    "type": "create",
+    "surface": "s-7",
+    "plugin": "endue.notes",
+    "view": "main",
+    "size": {
+      "width": 800,
+      "height": 600
+    },
+    "scale": 2,
+    "format": "bgra8",
+    "url": "desk-plugin://endue.notes.s-7/ui/index.html"
+  }
+}

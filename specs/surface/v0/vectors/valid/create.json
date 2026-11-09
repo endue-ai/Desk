@@ -1,0 +1,16 @@
+{
+  "target": "CompositorMessage",
+  "description": "a notes window opens at 800 by 600 logical pixels on a 2x display",
+  "instance": {
+    "type": "create",
+    "surface": "s-7",
+    "plugin": "endue.notes",
+    "view": "main",
+    "size": {
+      "width": 800,
+      "height": 600
+    },
+    "scale": 2,
+    "format": "bgra8"
+  }
+}

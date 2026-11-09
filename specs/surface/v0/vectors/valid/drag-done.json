@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "the target copied what it received",
+  "instance": {
+    "type": "drag.done",
+    "surface": "s-7",
+    "effect": "copy"
+  }
+}
