@@ -1558,17 +1558,10 @@ dependencies = [
 name = "desk-app"
 version = "0.0.0"
 dependencies = [
- "desk-brain",
- "desk-brain-endue",
- "desk-brain-local",
+ "desk-boot",
  "desk-bridge",
  "desk-computer",
  "desk-core",
- "desk-crash",
- "desk-index",
- "desk-ipc",
- "desk-mcp-client",
- "desk-sys",
  "desk-trace",
  "desk-update",
  "objc2-app-kit 0.3.2",
@@ -1580,6 +1573,24 @@ dependencies = [
  "tauri-plugin-global-shortcut",
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
+]
+
+[[package]]
+name = "desk-boot"
+version = "0.0.0"
+dependencies = [
+ "desk-brain",
+ "desk-brain-endue",
+ "desk-brain-local",
+ "desk-bridge",
+ "desk-core",
+ "desk-crash",
+ "desk-ipc",
+ "desk-mcp-client",
+ "desk-sys",
+ "desk-trace",
+ "desk-update",
+ "serde_json",
 ]
 
 [[package]]
@@ -1773,12 +1784,18 @@ name = "desk-shell"
 version = "0.0.0"
 dependencies = [
  "cef",
+ "desk-boot",
+ "desk-bridge",
+ "desk-computer",
+ "desk-core",
+ "desk-trace",
  "desk-web",
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
  "raw-window-handle",
  "semver",
+ "serde_json",
  "windows-sys 0.59.0",
  "winit",
 ]
@@ -1847,6 +1864,8 @@ version = "0.0.0"
 name = "desk-web"
 version = "0.0.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "tempfile",
 ]
 

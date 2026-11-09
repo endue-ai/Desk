@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 pub const IDENTIFIER: &str = "ai.endue.desk";
 
 /// The page the main window opens unless `DESK_SHELL_URL` names another.
-pub const START_URL: &str = "desk-app://app/_desk/hello.html";
+pub const START_URL: &str = "desk-app://app/index.html";
 
 /// The built web runtime the `desk-app` scheme serves: `DESK_SHELL_DIST`, else the bundle's copy
 /// (`Contents/Resources/shell` on macOS, `shell/` beside the binary elsewhere), else the repository's

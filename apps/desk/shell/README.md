@@ -2,9 +2,10 @@
 
 The endue Desk shell on winit and CEF (ADR 0143), Stage 1 of #32: a window holding a CEF browser,
 the desk's URL schemes and CEF's message pump, driven from winit's event loop when CEF asks
-(`OnScheduleMessagePumpWork`). It replaces the Tauri shell (`../src-tauri`) when Stage 1 ends; until
-then its binary is `endue-desk-cef` and the window shows the built-in page `desk-app://app/_desk/hello.html`.
-The core, the bridge and the shell's services arrive with #42–#45.
+(`OnScheduleMessagePumpWork`). The desk starts through `desk-boot`; the page reaches it through
+`window.__deskNative` and CEF process messages, the caller taken from the frame's URL (#43). It
+replaces the Tauri shell (`../src-tauri`) when Stage 1 ends; until then its binary is `endue-desk-cef`.
+The plugin scheme and the shell's services (tray, palette, Eris) arrive with #42 and #45.
 
 ## Public API
 
@@ -12,6 +13,8 @@ The core, the bridge and the shell's services arrive with #42–#45.
 - `pump::Pump`: when CEF's message loop work is due; wakes the event loop.
 - `scheme::answer(dist, url)`: what `desk-app://app/...` returns (files via `desk_web::assets`).
 - `window::Shell`: the winit application with the windowed browser.
+- `renderer::ShellRenderer`: `__deskNative.send` / `onMessage` in every frame (renderer process).
+- `host::{Desk, receive, forward_events}`: the browser side; commands named as the Tauri shell's.
 - `paths`: the shell's files (`DESK_SHELL_DIST`), its data folder and the start URL (`DESK_SHELL_URL`).
 
 ## Run and test

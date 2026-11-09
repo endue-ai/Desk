@@ -1,9 +1,14 @@
-//! The main browser's client: it tells the event loop when the browser closed and, in development
-//! builds, prints the page's console to the terminal (CSP reports land there too).
+//! The main browser's client: it answers the page's bridge calls (`host`), tells the event loop when
+//! the browser closed and, in development builds, prints the page's console to the terminal (CSP
+//! reports land there too).
+
+use std::sync::Arc;
 
 use cef::*;
 
+use crate::host::{self, Desk};
 use crate::pump::{Pump, Wake};
+use crate::renderer::CALL;
 
 wrap_life_span_handler! {
     pub struct MainLifeSpan {
@@ -44,9 +49,29 @@ wrap_client! {
     pub struct MainClient {
         life_span: LifeSpanHandler,
         display: DisplayHandler,
+        desk: Arc<Desk>,
     }
 
     impl Client {
+        fn on_process_message_received(
+            &self,
+            _browser: Option<&mut Browser>,
+            frame: Option<&mut Frame>,
+            _source_process: ProcessId,
+            message: Option<&mut ProcessMessage>,
+        ) -> ::std::os::raw::c_int {
+            let (Some(frame), Some(message)) = (frame, message) else { return 0 };
+            if CefString::from(&message.name()).to_string() != CALL {
+                return 0;
+            }
+            let text = message
+                .argument_list()
+                .map(|list| CefString::from(&list.string(0)).to_string())
+                .unwrap_or_default();
+            host::receive(&self.desk, frame.clone(), text);
+            1
+        }
+
         fn life_span_handler(&self) -> Option<LifeSpanHandler> {
             Some(self.life_span.clone())
         }
@@ -58,6 +83,6 @@ wrap_client! {
 }
 
 /// The client of the main window's browser.
-pub fn main_client(pump: Pump) -> Client {
-    MainClient::new(MainLifeSpan::new(pump), MainDisplay::new())
+pub fn main_client(pump: Pump, desk: Arc<Desk>) -> Client {
+    MainClient::new(MainLifeSpan::new(pump), MainDisplay::new(), desk)
 }

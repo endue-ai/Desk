@@ -9,6 +9,7 @@ and `src/` mounts the desk shell (`mountDesk`) and connects the bridge.
 | `src/eris-window.ts`, `src-tauri/src/eris_window/` | Eris floating over the OS while the desk is inactive, and `Alt+Enter` (⌥↩) from anywhere (ADR 0121): a tested state machine (`endue.eris.float` auto/always/never), her spot per display, the window calling the core as `desk` for `brain.say` only, `DESK_ERIS_SHORTCUT`, the tray's Talk to Eris |
 | `src/native-files.ts` | Native single-file picker and queued native drops, routed through `desk.files.open` |
 | `src/open-files.ts`, `src-tauri/src/open_files.rs` | Startup and running OS file-open queue, consumed after runtime readiness |
+| `src/host.ts` | Which shell hosts the page: the CEF shell (`window.__deskNative`, #43) or Tauri; `invoke`, `listen` and the bridge adapter from either |
 | `src/shell-bridge.ts` | The shell's `ShellBridge` over the core: store, perm, `brain.*` and the agent directory |
 | `src/startup.ts`, `src-tauri/src/trace.rs` | `DESK_TRACE=1`: the start-up trace in the data folder (`trace.json`, `crates/desk-trace`), the runtime's phases sent with `desk_trace` |
 | `src/crashes.ts`, `src-tauri/src/crash.rs` | Local crash reports (#322, `crates/desk-crash`): the panic hook and the window's uncaught errors (`desk_crash`) write `crashes/*.json`, redacted; the next start's card shows the newest once (`take_last_crash`); `DESK_E2E_PANIC=1` panics after the ready line |

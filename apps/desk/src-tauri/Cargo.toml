@@ -19,21 +19,13 @@ path = "src/main.rs"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-desk-brain.workspace = true
-desk-brain-endue.workspace = true
-desk-brain-local.workspace = true
+desk-boot.workspace = true
 desk-bridge.workspace = true
 desk-core.workspace = true
 # Computer use (ADR 0120, ADR 0123): the OS driver the core serves computer.* through.
 desk-computer = { path = "../../../crates/desk-computer" }
-desk-crash.workspace = true
-desk-index.workspace = true
-desk-sys = { workspace = true, features = ["calendar"] }
 desk-trace.workspace = true
 desk-update = { workspace = true, features = ["https"] }
-# Not in [workspace.dependencies] yet: a later chore moves it there.
-desk-ipc = { path = "../../../crates/desk-ipc" }
-desk-mcp-client = { path = "../../../crates/desk-mcp-client" }
 serde.workspace = true
 serde_json.workspace = true
 # macos-private-api: the floating Eris window is transparent around her (ADR 0121).

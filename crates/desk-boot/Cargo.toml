@@ -1,0 +1,26 @@
+[package]
+name = "desk-boot"
+description = "The desk's composition root apart from any shell: the core, its files, grants, plugins and services."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+desk-brain.workspace = true
+desk-brain-endue.workspace = true
+desk-brain-local.workspace = true
+desk-bridge.workspace = true
+desk-core.workspace = true
+desk-crash.workspace = true
+desk-ipc = { path = "../desk-ipc" }
+desk-mcp-client = { path = "../desk-mcp-client" }
+desk-sys = { workspace = true, features = ["calendar"] }
+desk-trace.workspace = true
+desk-update.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

@@ -3,10 +3,14 @@
 use std::process::ExitCode;
 
 use cef::{CefString, ImplCommandLine};
+use desk_boot::BootInput;
+use desk_shell::host::{self, Desk, EventTarget};
 use desk_shell::{app::ShellApp, paths, pump::Pump, window::Shell};
 use winit::event_loop::EventLoop;
 
 fn main() -> ExitCode {
+    // Process start for the start-up trace (DESK_TRACE=1): its clock reads 0 here.
+    let origin = desk_trace::Origin::now();
     #[cfg(target_os = "macos")]
     let _framework = {
         let exe = std::env::current_exe().unwrap_or_default();
@@ -75,7 +79,11 @@ fn main() -> ExitCode {
         );
         return ExitCode::FAILURE;
     }
-    let mut shell = Shell::new(pump, paths::start_url());
+    let desk = boot(origin);
+    let (desk, events) = desk;
+    let target = EventTarget::default();
+    host::forward_events(events, target.clone());
+    let mut shell = Shell::new(pump, desk, target, paths::start_url());
     let outcome = event_loop.run_app(&mut shell);
     drop(shell);
     cef::shutdown();
@@ -86,4 +94,36 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// Start the desk through desk-boot, as the Tauri shell's `setup` does.
+fn boot(
+    origin: desk_trace::Origin,
+) -> (
+    std::sync::Arc<Desk>,
+    std::sync::mpsc::Receiver<desk_core::Delivery>,
+) {
+    let data = paths::data_dir();
+    let _ = std::fs::create_dir_all(&data);
+    let computer = data.join("computer");
+    let booted = desk_boot::boot(BootInput {
+        data,
+        home: paths::home_dir(),
+        version: env!("CARGO_PKG_VERSION").to_owned(),
+        origin,
+        // The CEF build's own updater comes with #47.
+        updater: None,
+        // Computer use (ADR 0120): the core serves computer.* through the OS driver; the overlay
+        // window the Tauri shell shows comes with #45.
+        attach: Some(Box::new(move |core: &std::sync::Arc<desk_core::Core>| {
+            core.serve_computer(desk_computer::os(), Some(computer));
+        })),
+        plugin_dirs: desk_boot::boot::env_paths("DESK_PLUGIN_DIRS"),
+        dev_plugins: desk_boot::boot::env_paths("DESK_DEV_PLUGINS"),
+    });
+    let opened = std::env::args()
+        .skip(1)
+        .filter(|arg| !arg.starts_with('-') && std::path::Path::new(arg).is_file())
+        .collect();
+    Desk::new(booted, opened)
 }

@@ -11,6 +11,10 @@ to CEF's resource handlers.
   for `/`; `404` for anything missing or outside `root`; HTML carries the shell's CSP.
 - `assets::SHELL_CSP`: the shell page's Content-Security-Policy.
 - `mime::for_path(path)`: the MIME type by extension.
+- `plugin_host::PluginHost`: a `desk-plugin` host, shared or one plugin's surface (#36).
+- `sender::Sender::of(url)`: who a frame is (the runtime, a plugin, nobody) and the caller its bridge
+  calls run as (#43).
+- `wire`: the text of calls, replies and events between `__deskNative` and the shell.
 
 ## Test
 

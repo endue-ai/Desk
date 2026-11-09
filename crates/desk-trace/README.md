@@ -17,7 +17,7 @@ Layer: Rust core (see `docs/architecture.md`). Status: used by the app and the C
   `first interactive frame`), totals per category, the five longest; `Display` and `to_json`.
 - `ENV`, `FILE`, `READY_LINE`, `FIRST_FRAME`, `WEBVIEW_START`, `MOUNT`, `enabled(value)`.
 
-Phases the app writes: core `tauri start`, `core init`, `plugin registry`, `connectors and views`,
+Phases the app writes: core `shell start`, `core init`, `plugin registry`, `connectors and views`,
 `app services`; `webview start`; runtime `webview load`, `desk mount`, `plugin list`,
 `mount <id>`, `session restore`, `agent directory`, `first interactive frame`; the `ready line`.
 

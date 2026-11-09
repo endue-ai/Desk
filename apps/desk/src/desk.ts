@@ -1,13 +1,12 @@
 // Bootstrap: mount the desk shell on the Rust core through the Tauri bridge. The runtime under it
 // hosts the core's UI plugins; the shell reaches the brain and its agent directory through the core.
-import { BridgeClient, tauriAdapter } from "@endue-ai/bridge";
+import { BridgeClient } from "@endue-ai/bridge";
 import { deskPluginUrl, mountDesk, phase, realClock } from "@endue-ai/runtime";
 import "@endue-ai/runtime/desk.css";
 import "@endue-ai/runtime/shell.css";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { reportCrashes, showLastCrash } from "./crashes";
 import "./crashes.css";
+import { adapter, invoke, shell } from "./host";
 import { installNativeFileDrops, pickNativeFile } from "./native-files";
 import { installOpenedFiles } from "./open-files";
 import { sendThemeToPalette } from "./palette-theme";
@@ -31,7 +30,7 @@ if (!root) throw new Error("index.html has no #desk element");
 // surface loads on a host of its own (#36).
 const pluginUrl = deskPluginUrl(navigator.userAgent.includes("Windows"));
 
-const core = new BridgeClient(tauriAdapter((command, args) => invoke(command, args), listen));
+const core = new BridgeClient(adapter());
 // Safe mode and the state files kept broken (ADR 0061), known before the shell mounts.
 const start = await readStart(invoke);
 const lang = navigator.language.startsWith("ko") ? "ko" : "en";
@@ -43,7 +42,8 @@ const desk = mountDesk({
   clock: realClock(),
   platform: navigator.userAgent.includes("Macintosh") ? "mac" : "other",
   lang,
-  pickFile: pickNativeFile,
+  // The CEF shell's native file picker arrives with its dialogs (#45).
+  ...(shell === "tauri" ? { pickFile: pickNativeFile } : {}),
   start,
   relaunch: relauncher(invoke),
   onSurfaceShown: (id) => {
@@ -52,17 +52,21 @@ const desk = mountDesk({
 });
 void desk.runtime.ready.then(() => phase("desk mount", booted));
 
-const disposeDrops = installNativeFileDrops({
-  ready: desk.ready,
-  commands: desk.runtime.commands,
-  report: (error) =>
-    desk.runtime.notify({
-      caller: "desk",
-      title: "Could not open the dropped file",
-      body: error instanceof Error ? error.message : String(error),
-      level: "error",
-    }),
-});
+// Native file drops hand over paths through Tauri's window; the CEF shell's arrive with #45.
+const disposeDrops =
+  shell !== "tauri"
+    ? () => {}
+    : installNativeFileDrops({
+        ready: desk.ready,
+        commands: desk.runtime.commands,
+        report: (error) =>
+          desk.runtime.notify({
+            caller: "desk",
+            title: "Could not open the dropped file",
+            body: error instanceof Error ? error.message : String(error),
+            level: "error",
+          }),
+      });
 window.addEventListener("pagehide", disposeDrops, { once: true });
 
 const disposeOpened = installOpenedFiles({

@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use cef::*;
 
 use crate::pump::Pump;
+use crate::renderer::ShellRenderer;
 use crate::scheme;
 
 /// The scheme plugin files load from (ADR 0012); its handler comes with #42.
@@ -84,6 +85,10 @@ wrap_app! {
             for name in [scheme::APP_SCHEME, PLUGIN_SCHEME] {
                 registrar.add_custom_scheme(Some(&name.into()), scheme_options());
             }
+        }
+
+        fn render_process_handler(&self) -> Option<RenderProcessHandler> {
+            Some(ShellRenderer::new())
         }
 
         fn browser_process_handler(&self) -> Option<BrowserProcessHandler> {

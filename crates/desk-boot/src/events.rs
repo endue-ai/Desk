@@ -1,4 +1,4 @@
-//! Core events for the web runtime: one Tauri event per delivery, with the callers it is for riding
+//! Core events for the web runtime: one shell event (`bridge://event`) per delivery, with the callers it is for riding
 //! along as `to`, so the runtime can hand an addressed event (a perm.prompt, a subscribed event) to
 //! the plugin it names.
 

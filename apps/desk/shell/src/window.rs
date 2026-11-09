@@ -12,20 +12,25 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow};
 use winit::window::{Window, WindowId};
 
 use crate::client;
+use crate::host::{Desk, EventTarget};
 use crate::pump::{Pump, Wake};
 
 /// The shell's application state for winit.
 pub struct Shell {
     pump: Pump,
+    desk: Arc<Desk>,
+    events: EventTarget,
     url: String,
     window: Option<Arc<Window>>,
     browser: Option<Browser>,
 }
 
 impl Shell {
-    pub fn new(pump: Pump, url: String) -> Self {
+    pub fn new(pump: Pump, desk: Arc<Desk>, events: EventTarget, url: String) -> Self {
         Self {
             pump,
+            desk,
+            events,
             url,
             window: None,
             browser: None,
@@ -51,7 +56,7 @@ impl Shell {
             return;
         };
         let info = WindowInfo::default().set_as_child(parent, &bounds(&window));
-        let mut client = client::main_client(self.pump.clone());
+        let mut client = client::main_client(self.pump.clone(), Arc::clone(&self.desk));
         let browser = browser_host_create_browser_sync(
             Some(&info),
             Some(&mut client),
@@ -64,6 +69,7 @@ impl Shell {
         if let Some(host) = browser.as_ref().and_then(|b| b.host()) {
             crate::mac::follow_parent_size(host.window_handle());
         }
+        self.events.set(browser.clone());
         self.browser = browser;
         self.window = Some(window);
     }
@@ -78,6 +84,7 @@ impl ApplicationHandler<Wake> for Shell {
 
     fn user_event(&mut self, event_loop: &ActiveEventLoop, wake: Wake) {
         if wake == Wake::BrowserClosed {
+            self.events.set(None);
             self.browser = None;
             event_loop.exit();
         }

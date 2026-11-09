@@ -8,6 +8,7 @@ export {
   tauriAdapter,
 } from "./adapters";
 export * from "./brain.generated";
+export { type CefHost, cefAdapter, cefHost, type DeskNative, deskNative } from "./cef";
 export {
   type BridgeAdapter,
   BridgeCallError,

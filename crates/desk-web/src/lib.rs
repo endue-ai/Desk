@@ -2,6 +2,9 @@
 
 pub mod assets;
 pub mod mime;
+pub mod plugin_host;
+pub mod sender;
+pub mod wire;
 
 /// One answer to a scheme request: status, MIME type, extra headers and body.
 #[derive(Clone, Debug, PartialEq, Eq)]
