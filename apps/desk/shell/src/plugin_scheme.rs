@@ -13,7 +13,7 @@ use http::header;
 use crate::scheme::{ReplyHandler, Sending};
 
 /// The SDK, the UI bundle and the shared sheets (`just build-sdk build-ui`, which `just build-shell`
-/// runs first). The palette's own files come with the palette (#45).
+/// runs first), and the palette's own files (`palette_assets.rs`).
 static BUNDLED: Bundled = Bundled {
     sdk: include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -31,7 +31,7 @@ static BUNDLED: Bundled = Bundled {
         env!("CARGO_MANIFEST_DIR"),
         "/../../../packages/ui/dist/base.css"
     )),
-    extra: |_| None,
+    extra: crate::palette_assets::file,
 };
 
 /// Serve `desk-plugin` from `core`; call once the desk has booted.

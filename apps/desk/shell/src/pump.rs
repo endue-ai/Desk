@@ -7,18 +7,25 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use winit::event_loop::EventLoopProxy;
+use desk_web::sender::Role;
+use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
+
+use crate::window::Shell;
 
 /// The longest wait between two pump calls, as cefclient's `kMaxTimerDelay`.
 pub const MAX_DELAY: Duration = Duration::from_millis(1000 / 30);
 
+/// Work for the event loop's thread, from any other: window calls, the shell's services.
+pub type Job = Box<dyn FnOnce(&mut Shell, &ActiveEventLoop) + Send>;
+
 /// What wakes the shell's event loop besides the OS.
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Wake {
     /// CEF asked for message loop work.
     Pump,
-    /// The main browser closed: the shell can quit.
-    BrowserClosed,
+    /// The browser of a window closed.
+    Closed(Role),
+    /// Run this on the event loop's thread.
+    Run(Job),
 }
 
 /// The pump schedule, shared between CEF's threads and the event loop.
@@ -59,6 +66,11 @@ impl Pump {
         {
             let _ = proxy.send_event(what);
         }
+    }
+
+    /// Run `job` on the event loop's thread, soon.
+    pub fn run(&self, job: impl FnOnce(&mut Shell, &ActiveEventLoop) + Send + 'static) {
+        self.wake(Wake::Run(Box::new(job)));
     }
 
     /// When the next work is due.

@@ -43,16 +43,25 @@ desk-computer = { path = "../../../crates/desk-computer" }
 desk-core.workspace = true
 desk-trace.workspace = true
 desk-web.workspace = true
+getrandom = "0.3"
+# The shell's services (#45): global shortcuts, the tray and the menus, the file dialog.
+global-hotkey = "0.8"
 http = "1"
-serde_json.workspace = true
+png.workspace = true
+pollster.workspace = true
 raw-window-handle = "0.6"
+rfd = { version = "0.17", default-features = false, features = ["gtk3"] }
 semver = { version = "1", optional = true }
+serde.workspace = true
+serde_json.workspace = true
+tray-icon = "0.25"
+url = "2.5"
 winit = "0.30"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSView"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["std"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSEvent", "NSGraphics", "NSResponder", "NSScreen", "NSView", "NSWindow"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSDictionary", "NSEnumerator", "NSGeometry", "NSString", "NSURL", "NSValue"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }

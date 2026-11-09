@@ -1,7 +1,13 @@
 //! The browser process's own check on every load (#42, `desk_web::guard`): a desk page that slips
-//! past its CSP still reaches nothing but the desk's schemes.
+//! past its CSP still reaches nothing but the desk's schemes. In the computer-use banner's browser it
+//! also answers Stop and Resume, which come as a navigation the banner never makes (`computer.rs`).
+
+use std::sync::Arc;
 
 use cef::*;
+use desk_core::Core;
+
+use crate::computer::{Ask, asked};
 
 wrap_resource_request_handler! {
     pub struct Guard;
@@ -28,9 +34,34 @@ wrap_resource_request_handler! {
 }
 
 wrap_request_handler! {
-    pub struct Requests;
+    pub struct Requests {
+        banner: Option<Arc<Core>>,
+    }
 
     impl RequestHandler {
+        fn on_before_browse(
+            &self,
+            _browser: Option<&mut Browser>,
+            _frame: Option<&mut Frame>,
+            request: Option<&mut Request>,
+            _user_gesture: ::std::os::raw::c_int,
+            _is_redirect: ::std::os::raw::c_int,
+        ) -> ::std::os::raw::c_int {
+            let Some(core) = &self.banner else { return 0 };
+            let url = request.map(|r| CefString::from(&r.url()).to_string()).unwrap_or_default();
+            match asked(&url) {
+                Some(Ask::Stop) => {
+                    core.stop_computer();
+                    1
+                }
+                Some(Ask::Resume) => {
+                    core.resume_computer();
+                    1
+                }
+                None => 0,
+            }
+        }
+
         fn resource_request_handler(
             &self,
             _browser: Option<&mut Browser>,

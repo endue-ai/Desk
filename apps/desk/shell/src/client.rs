@@ -1,29 +1,35 @@
-//! The main browser's client: it answers the page's bridge calls (`host`), tells the event loop when
-//! the browser closed and, in development builds, prints the page's console to the terminal (CSP
-//! reports land there too).
+//! The browsers' client, one per window: it answers the pages' bridge calls (`host`) knowing which
+//! window the browser is for (`Role`, which no page can change), tells the event loop when the
+//! browser closed and, in development builds, prints the page's console to the terminal (CSP reports
+//! land there too). The main window's also hears files dragged in from the OS (`drops.rs`); the
+//! Eris window's clears the page's base colour so she stands on nothing (macOS, ADR 0121).
 
 use std::sync::Arc;
 
 use cef::*;
+use desk_web::sender::Role;
 
 use crate::host::{self, Desk};
 use crate::pump::{Pump, Wake};
 use crate::renderer::CALL;
 
 wrap_life_span_handler! {
-    pub struct MainLifeSpan {
+    pub struct ShellLifeSpan {
+        role: Role,
         pump: Pump,
     }
 
     impl LifeSpanHandler {
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
-            self.pump.wake(Wake::BrowserClosed);
+            self.pump.wake(Wake::Closed(self.role));
         }
     }
 }
 
 wrap_display_handler! {
-    pub struct MainDisplay;
+    pub struct ShellDisplay {
+        role: Role,
+    }
 
     impl DisplayHandler {
         fn on_console_message(
@@ -38,18 +44,44 @@ wrap_display_handler! {
                 && let Some(message) = message
             {
                 let source = source.map(|s| s.to_string()).unwrap_or_default();
-                eprintln!("shell console: {message} ({source}:{line})");
+                eprintln!("shell console ({:?}): {message} ({source}:{line})", self.role);
             }
             0
         }
     }
 }
 
+/// Chromium paints a windowed browser's page on an opaque base colour; the DevTools protocol's
+/// override makes it transparent, so the transparent window around Eris shows only her.
+const CLEAR_BASE: &[u8] = br#"{"id":1,"method":"Emulation.setDefaultBackgroundColorOverride","params":{"color":{"r":0,"g":0,"b":0,"a":0}}}"#;
+
+wrap_load_handler! {
+    pub struct ClearBase;
+
+    impl LoadHandler {
+        fn on_load_end(
+            &self,
+            browser: Option<&mut Browser>,
+            frame: Option<&mut Frame>,
+            _http_status_code: ::std::os::raw::c_int,
+        ) {
+            if frame.is_some_and(|f| f.is_main() == 1)
+                && let Some(host) = browser.and_then(|b| b.host())
+            {
+                host.send_dev_tools_message(Some(CLEAR_BASE));
+            }
+        }
+    }
+}
+
 wrap_client! {
-    pub struct MainClient {
+    pub struct ShellClient {
+        role: Role,
         life_span: LifeSpanHandler,
         display: DisplayHandler,
         requests: RequestHandler,
+        drag: Option<DragHandler>,
+        load: Option<LoadHandler>,
         desk: Arc<Desk>,
     }
 
@@ -73,7 +105,7 @@ wrap_client! {
                 .argument_list()
                 .map(|list| CefString::from(&list.string(0)).to_string())
                 .unwrap_or_default();
-            host::receive(&self.desk, frame.clone(), text);
+            host::receive(&self.desk, self.role, frame.clone(), text);
             1
         }
 
@@ -84,15 +116,29 @@ wrap_client! {
         fn display_handler(&self) -> Option<DisplayHandler> {
             Some(self.display.clone())
         }
+
+        fn drag_handler(&self) -> Option<DragHandler> {
+            self.drag.clone()
+        }
+
+        fn load_handler(&self) -> Option<LoadHandler> {
+            self.load.clone()
+        }
     }
 }
 
-/// The client of the main window's browser.
-pub fn main_client(pump: Pump, desk: Arc<Desk>) -> Client {
-    MainClient::new(
-        MainLifeSpan::new(pump),
-        MainDisplay::new(),
-        crate::guard::Requests::new(),
+/// The client of the browser in the window of `role`.
+pub fn client(role: Role, pump: Pump, desk: Arc<Desk>) -> Client {
+    let banner = (role == Role::Banner).then(|| Arc::clone(&desk.core));
+    let drag = (role == Role::Main).then(|| crate::drops::Drops::new(desk.pages.clone()));
+    let load = (cfg!(target_os = "macos") && role == Role::Eris).then(ClearBase::new);
+    ShellClient::new(
+        role,
+        ShellLifeSpan::new(role, pump),
+        ShellDisplay::new(role),
+        crate::guard::Requests::new(banner),
+        drag,
+        load,
         desk,
     )
 }

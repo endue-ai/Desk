@@ -4,8 +4,9 @@ use std::process::ExitCode;
 
 use cef::{CefString, ImplCommandLine};
 use desk_boot::BootInput;
-use desk_shell::host::{self, Desk, EventTarget};
-use desk_shell::{app::ShellApp, paths, pump::Pump, window::Shell};
+use desk_shell::host::{self, Desk};
+use desk_shell::instance::{self, Claim, Handoff, Instance};
+use desk_shell::{app::ShellApp, computer, open_files, paths, pump::Pump, window::Shell};
 use winit::event_loop::EventLoop;
 
 fn main() -> ExitCode {
@@ -38,7 +39,11 @@ fn main() -> ExitCode {
         return ExitCode::from(code.clamp(0, 255) as u8);
     }
 
-    let event_loop = match EventLoop::with_user_event().build() {
+    let mut builder = EventLoop::with_user_event();
+    // The shell sets its own menu bar (`menu.rs`), with Edit and its own Quit.
+    #[cfg(target_os = "macos")]
+    winit::platform::macos::EventLoopBuilderExtMacOS::with_default_menu(&mut builder, false);
+    let event_loop = match builder.build() {
         Ok(event_loop) => event_loop,
         Err(why) => {
             eprintln!("endue Desk: no event loop ({why})");
@@ -50,6 +55,17 @@ fn main() -> ExitCode {
         desk_shell::mac::adopt_cef_protocols(mtm);
     }
     let pump = Pump::new(Some(event_loop.create_proxy()));
+    // One desk per data folder: a second start hands its files to this one and quits, before CEF,
+    // whose profile only one process can hold.
+    let instance = match claim(&pump) {
+        Ok(Some(instance)) => Some(instance),
+        Ok(None) => return ExitCode::SUCCESS,
+        Err(why) => {
+            eprintln!("endue Desk: {why}; starting anyway");
+            None
+        }
+    };
+    desk_shell::run_event::listen(&pump);
     let mut app = ShellApp::browser(pump.clone(), paths::dist());
     let _ = cef::execute_process(
         Some(args.as_main_args()),
@@ -79,12 +95,10 @@ fn main() -> ExitCode {
         );
         return ExitCode::FAILURE;
     }
-    let desk = boot(origin);
-    let (desk, events) = desk;
+    let (desk, events, watch) = boot(origin, pump, instance);
     desk_shell::plugin_scheme::register(std::sync::Arc::clone(&desk.core));
-    let target = EventTarget::default();
-    host::forward_events(events, target.clone());
-    let mut shell = Shell::new(pump, desk, target, paths::start_url());
+    host::forward_events(events, desk.pages.clone());
+    let mut shell = Shell::new(desk, paths::start_url(), watch);
     let outcome = event_loop.run_app(&mut shell);
     drop(shell);
     cef::shutdown();
@@ -97,16 +111,40 @@ fn main() -> ExitCode {
     }
 }
 
+/// Be the desk for the data folder, or hand this start's arguments to the one that is (`None`).
+fn claim(pump: &Pump) -> std::io::Result<Option<Instance>> {
+    let pump = pump.clone();
+    let claimed = instance::claim(
+        &paths::data_dir(),
+        &Handoff::this_process(),
+        move |handed| {
+            pump.run(move |shell, _| shell.handed(handed.args));
+        },
+    )?;
+    match claimed {
+        Claim::First(instance) => Ok(Some(instance)),
+        Claim::HandedOff => {
+            eprintln!("endue Desk: the desk already running took this start's files");
+            Ok(None)
+        }
+    }
+}
+
 /// Start the desk through desk-boot, as the Tauri shell's `setup` does.
 fn boot(
     origin: desk_trace::Origin,
+    pump: Pump,
+    instance: Option<Instance>,
 ) -> (
     std::sync::Arc<Desk>,
     std::sync::mpsc::Receiver<desk_core::Delivery>,
+    std::sync::Arc<std::sync::Mutex<computer::Watch>>,
 ) {
     let data = paths::data_dir();
     let _ = std::fs::create_dir_all(&data);
-    let computer = data.join("computer");
+    let watch = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let (attached, computer_data, computer_pump) =
+        (std::sync::Arc::clone(&watch), data.clone(), pump.clone());
     let booted = desk_boot::boot(BootInput {
         data,
         home: paths::home_dir(),
@@ -114,17 +152,20 @@ fn boot(
         origin,
         // The CEF build's own updater comes with #47.
         updater: None,
-        // Computer use (ADR 0120): the core serves computer.* through the OS driver; the overlay
-        // window the Tauri shell shows comes with #45.
+        // Computer use (ADR 0120, ADR 0123): the OS driver, and the banner while agents act.
         attach: Some(Box::new(move |core: &std::sync::Arc<desk_core::Core>| {
-            core.serve_computer(desk_computer::os(), Some(computer));
+            let watching = computer::attach(core, &computer_pump, &computer_data);
+            *attached.lock().unwrap_or_else(|e| e.into_inner()) = Some(watching);
         })),
         plugin_dirs: desk_boot::boot::env_paths("DESK_PLUGIN_DIRS"),
         dev_plugins: desk_boot::boot::env_paths("DESK_DEV_PLUGINS"),
     });
-    let opened = std::env::args()
-        .skip(1)
-        .filter(|arg| !arg.starts_with('-') && std::path::Path::new(arg).is_file())
-        .collect();
-    Desk::new(booted, opened)
+    let opened = open_files::argument_paths(std::env::args());
+    let (desk, events) = Desk::new(booted, opened, pump, instance);
+    let watching = watch
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take()
+        .unwrap_or_default();
+    (desk, events, watching)
 }

@@ -1,9 +1,11 @@
 //! The browser side of the bridge (#43): a page's call arrives as a process message, is answered on a
-//! thread of its own (a call may wait: a `perm.request`, the OS calendar prompt), and the reply goes
-//! back to the frame it came from on CEF's UI thread. The caller comes from the frame's URL
-//! (`desk_web::sender`), never from the call. Core events go to the main window's page.
+//! thread of its own (a call may wait: a `perm.request`, the OS calendar prompt, a file dialog), and
+//! the reply goes back to the frame it came from on CEF's UI thread. The caller comes from the
+//! window the browser is for and the frame's URL (`desk_web::sender`), never from the call (#45).
+//! Core events go to the pages of the main, palette and Eris windows, as Tauri's `emit` did.
 
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use cef::*;
 use desk_boot::Booted;
@@ -12,23 +14,34 @@ use desk_boot::crash::Crash;
 use desk_boot::mcp::McpServers;
 use desk_boot::start::Start;
 use desk_boot::trace::Tracing;
-use desk_bridge::BridgeRequest;
 use desk_core::{Core, Delivery};
-use desk_web::sender::Sender;
+use desk_web::sender::{Role, Sender};
 use desk_web::wire::{self, Call};
-use serde_json::{Value, json};
+use serde_json::Value;
 
+use crate::eris_window::ErisWindow;
+use crate::instance::Instance;
+use crate::open_files::OpenFiles;
+use crate::pump::Pump;
 use crate::renderer::MESSAGE;
 
-/// The started desk and what the runtime's own commands need.
+/// The started desk and what the shell's own commands need.
 pub struct Desk {
     pub core: Arc<Core>,
     pub start: Start,
     pub crash: Crash,
     pub tracing: Tracing,
     pub mcp: McpServers,
-    /// Files the desk was opened with, until the runtime takes them (`take_open_files`).
-    pub opened: Mutex<Vec<String>>,
+    /// Files the desk was opened with or handed since, until the runtime takes them.
+    pub opened: OpenFiles,
+    /// Wakes the event loop and runs window work on its thread.
+    pub pump: Pump,
+    /// The pages that hear events.
+    pub pages: Pages,
+    /// The floating Eris, once its window exists.
+    pub eris: OnceLock<Arc<ErisWindow>>,
+    /// This desk's hold on being the only one; let go before it starts again.
+    pub instance: Mutex<Option<Instance>>,
     _keep: Keep,
 }
 
@@ -37,6 +50,8 @@ impl Desk {
     pub fn new(
         booted: Booted,
         opened: Vec<String>,
+        pump: Pump,
+        instance: Option<Instance>,
     ) -> (Arc<Self>, std::sync::mpsc::Receiver<Delivery>) {
         let Booted {
             core,
@@ -47,100 +62,41 @@ impl Desk {
             events,
             keep,
         } = booted;
+        let queue = OpenFiles::default();
+        queue.push(opened);
         let desk = Self {
             core,
             start,
             crash,
             tracing,
             mcp,
-            opened: Mutex::new(opened),
+            opened: queue,
+            pump,
+            pages: Pages::default(),
+            eris: OnceLock::new(),
+            instance: Mutex::new(instance),
             _keep: keep,
         };
         (Arc::new(desk), events)
     }
 }
 
-/// Answer the call `text` that `frame` sent, then reply to it.
-pub fn receive(desk: &Arc<Desk>, frame: Frame, text: String) {
+/// Answer the call `text` that `frame`, in a browser of `role`, sent; then reply to it.
+pub fn receive(desk: &Arc<Desk>, role: Role, frame: Frame, text: String) {
     let url = CefString::from(&frame.url()).to_string();
-    let sender = Sender::of(&url);
+    let sender = Sender::in_role(role, &url);
     let desk = Arc::clone(desk);
     let spawned = std::thread::Builder::new()
         .name("desk-bridge".to_owned())
         .spawn(move || {
             let (id, outcome) = match Call::parse(&text) {
-                Ok(call) => (call.id, answer(&desk, &sender, call)),
+                Ok(call) => (call.id, crate::commands::answer(&desk, &sender, call)),
                 Err(why) => (0, Err(why)),
             };
             send(frame, wire::reply(id, outcome));
         });
     if let Err(why) = spawned {
         eprintln!("endue Desk: no thread for a bridge call ({why})");
-    }
-}
-
-/// What a call answers, by its command (the names the Tauri shell's commands have).
-fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String> {
-    let Desk {
-        core,
-        start,
-        crash,
-        tracing,
-        mcp,
-        ..
-    } = desk;
-    if call.cmd == "bridge_call" {
-        let named = call.args.get("caller").and_then(Value::as_str);
-        let caller = sender
-            .caller(named)
-            .ok_or("this page may not use the bridge")?;
-        let request: BridgeRequest =
-            serde_json::from_value(call.args.get("request").cloned().unwrap_or(Value::Null))
-                .map_err(|why| format!("not a bridge request: {why}"))?;
-        let response = core.handle(&caller, request);
-        return serde_json::to_value(response).map_err(|why| why.to_string());
-    }
-    if !sender.may_command() {
-        return Err(format!("{} is the shell's own command", call.cmd));
-    }
-    let text = |name: &str| {
-        call.args
-            .get(name)
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_owned()
-    };
-    match call.cmd.as_str() {
-        "desk_ready" => Ok(json!(desk_boot::ready::ready(
-            &text("status"),
-            tracing,
-            start,
-            mcp
-        ))),
-        "desk_start" => Ok(start.info()),
-        "desk_relaunch" => {
-            desk_boot::start::relaunch(|| {});
-            Ok(Value::Null)
-        }
-        "desk_trace" => {
-            let origin = call
-                .args
-                .get("origin")
-                .and_then(Value::as_f64)
-                .unwrap_or_default();
-            let phases: Vec<desk_trace::RuntimePhase> =
-                serde_json::from_value(call.args.get("phases").cloned().unwrap_or(Value::Null))
-                    .map_err(|why| format!("not start-up phases: {why}"))?;
-            tracing.runtime(origin, &phases);
-            Ok(Value::Null)
-        }
-        "take_open_files" => {
-            let mut opened = desk.opened.lock().unwrap_or_else(|e| e.into_inner());
-            Ok(json!(std::mem::take(&mut *opened)))
-        }
-        "desk_crash" => Ok(json!(crash.record(&text("message"), &text("stack")))),
-        "take_last_crash" => Ok(crash.take_last().unwrap_or(Value::Null)),
-        other => Err(format!("the CEF shell has no command {other} yet")),
     }
 }
 
@@ -171,35 +127,44 @@ wrap_task! {
     }
 }
 
-/// The page that hears core events: the main window's main frame, once it exists.
+/// The windows' browsers, by role, once they exist: where events go.
 #[derive(Clone, Default)]
-pub struct EventTarget(Arc<Mutex<Option<Browser>>>);
+pub struct Pages(Arc<Mutex<HashMap<Role, Browser>>>);
 
-impl EventTarget {
-    pub fn set(&self, browser: Option<Browser>) {
-        *self.0.lock().unwrap_or_else(|e| e.into_inner()) = browser;
+impl Pages {
+    pub fn set(&self, role: Role, browser: Option<Browser>) {
+        let mut pages = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        match browser {
+            Some(browser) => pages.insert(role, browser),
+            None => pages.remove(&role),
+        };
     }
 
-    fn frame(&self) -> Option<Frame> {
-        self.0
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .as_ref()
-            .and_then(|b| b.main_frame())
+    fn frame(&self, role: Role) -> Option<Frame> {
+        let pages = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        pages.get(&role).and_then(|b| b.main_frame())
+    }
+
+    /// Tell `role`'s page `event` with `payload` (Tauri's `emit_to`).
+    pub fn emit(&self, role: Role, event: &str, payload: Value) {
+        if let Some(frame) = self.frame(role) {
+            send(frame, wire::event(event, payload));
+        }
     }
 }
 
-/// Forward every core event to `target` as `bridge://event`, on a thread of its own.
-pub fn forward_events(events: std::sync::mpsc::Receiver<Delivery>, target: EventTarget) {
+/// The windows that hear core events: the banner is a plugin page without the bridge.
+const HEARING: [Role; 3] = [Role::Main, Role::Palette, Role::Eris];
+
+/// Forward every core event to the pages as `bridge://event`, on a thread of its own.
+pub fn forward_events(events: std::sync::mpsc::Receiver<Delivery>, pages: Pages) {
     let spawned = std::thread::Builder::new()
         .name("desk-events".to_owned())
         .spawn(move || {
             for delivery in events {
-                if let Some(frame) = target.frame() {
-                    send(
-                        frame,
-                        wire::event("bridge://event", desk_boot::events::payload(delivery)),
-                    );
+                let payload = desk_boot::events::payload(delivery);
+                for role in HEARING {
+                    pages.emit(role, "bridge://event", payload.clone());
                 }
             }
         });
