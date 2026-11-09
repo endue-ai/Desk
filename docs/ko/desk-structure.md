@@ -6,6 +6,8 @@
 
 Desk 는 Tauri 셸과 작은 Rust 코어 위에 웹 런타임을 얹고, 그 위의 모든 기능을 런타임 플러그인으로 만드는 하나의 OS 입니다. Emacs 처럼 코어는 원시 기능만 갖고, 나머지는 앱을 켠 채 바꿉니다.
 
+셸과 화면은 바뀌는 중입니다. Tauri 와 OS 웹뷰를 걷어 내고 Chromium(CEF) 위의 Rust 셸로, 그다음 창마다 자기 프로세스가 그린 것을 Desk 의 컴포지터가 합성하는 구조로 갑니다 (ADR 0140). 1단계가 진행 중이고, 그것이 나오기 전까지 도는 것은 이 문서가 그리는 Tauri 셸입니다. 단계는 "기술 스택 장단점" 의 "화면 합성과 플러그인 스킴" 에 있습니다.
+
 ## 한눈에
 
 ```text
@@ -62,18 +64,39 @@ Emacs 는 작은 C 코어 위에서 거의 모든 기능이 Elisp 로 돌고, �
 
 ## 기술 스택 장단점
 
-Rust 가 맡는 일이 무거울수록 Tauri 가 유리하고, 위험은 OS 마다 다른 웹뷰에 몰려 있습니다. 모든 OS 에서 Chromium 이 꼭 필요해지면 브리지 구현만 바꿔 Electron 이나 CEF 로 옮깁니다.
+위험은 OS 마다 다른 웹뷰와, 셸과 모든 플러그인이 한 페이지 · 한 프로세스 · 한 메인 스레드를 나눠 쓰는 데 몰려 있었습니다. 그래서 Desk 는 CEF(Chromium) 로 옮기고, 창마다 자기 프로세스가 그린 텍스처를 wgpu 컴포지터가 합성합니다 (ADR 0140). 표의 셸 · 화면 · UI 플러그인 줄은 지금의 모습과 가는 방향을 같이 적습니다.
 
 | 층 | 기술 | 장점 | 단점 | 대응 |
 | --- | --- | --- | --- | --- |
-| 셸 | Tauri 2 | 앱이 작고 상주 메모리가 가벼움. Rust 와 같은 프로세스. 창·웹뷰 단위 권한 | OS 마다 웹뷰가 다름. 리눅스 WebKitGTK 가 약함 | Safari 기준으로 개발, 리눅스는 2D 모드부터, 브리지로 셸 교체 길을 열어 둠 |
+| 셸 | 지금은 Tauri 2. 1단계부터 winit 과 CEF 위의 Rust 바이너리 `apps/desk/shell` (ADR 0143) | Rust 코어와 같은 프로세스. 쓰지 않는 웹뷰 런타임이 없음. 트레이 · 메뉴 · 단축키 · 대화상자는 독립 crate(tray-icon · muda · global-hotkey · rfd), 번들러 cargo-packager 가 CEF 도우미 앱을 앎 | Tauri 가 공짜로 주던 창 · 트레이 · 메뉴 연결 코드를 세 OS 에서 직접 지킴. CEF 내려받기와 빌드가 큼. macOS 는 도우미 번들 다섯 개를 서명 · 공증 | CEF 를 빌드하는 셸 crate 는 워크스페이스 기본 멤버에서 빼고, 엔진과 무관한 로직은 `crates/desk-web` 에 둬서 평소 명령은 CEF 를 빌드하지 않음. CEF 는 `OnScheduleMessagePumpWork` 일정대로 winit 이벤트 루프 안에서 돌림 (때 없이 돌리면 macOS 에서 한 번에 ~60 ms 막힘). Tauri crate 는 1단계가 끝날 때 지움 |
 | 커널 | Rust | 오디오·PTY·파일 감시 같은 상주 작업에 강하고 메모리 안전. 한 crate 를 다른 셸에도 재사용 | 컴파일이 느림. 바꾸면 재빌드·서명·공증 | 코어는 원시 기능만 두고 작게, 기능은 플러그인으로 |
-| 화면 | OS 웹뷰 + React | AI 가 가장 잘 만드는 UI. endue 웹 디자인 시스템 재사용. 브라우저판과 코드 공유 | 엔진 차이(WKWebView · WebView2 · WebKitGTK) | Chromium 전용 API 금지, 엔진별 화면 회귀 테스트 |
+| 화면 | 지금은 OS 웹뷰(WKWebView · WebView2 · WebKitGTK) 한 페이지. 1단계는 CEF 하나, 2단계부터 wgpu 컴포지터 `crates/desk-compositor` 가 창마다 다른 프로세스가 그린 텍스처를 합성 (ADR 0140) | 웹 기술은 AI 가 가장 잘 만드는 UI 이고 endue 웹 디자인 시스템을 다시 씀. 모든 OS 에 엔진 하나라 화면 회귀 기준선도 하나, 어디서나 WebGPU. 크롬과 효과는 셰이더로. 창 스냅샷이 공짜 (텍스처가 우리 것) | Chromium 을 같이 실어 내려받기가 150–200 MB 늘고, macOS 에서 기본 메모리가 ~0.9 GiB. 4주마다 Chromium 보안 업데이트. 창 관리자를 2단계에서 Rust 로 다시 씀. 접근성은 AccessKit 로 새로 맞춤 | Chromium 보안 stable 뒤 2주 안에 CEF 를 beta 줄로 (ADR 0092 · 0054). 살아 있는 표면 예산 (ADR 0142). 접근성은 VoiceOver · Narrator 로 재고 나서 2단계를 끝냄. 1단계가 끝날 때까지는 지금처럼 Chromium 전용 API 금지와 엔진별 화면 회귀 테스트 |
 | 3D | Three.js (WebGL2) | 모든 웹뷰에서 동작, 생태계가 큼 | WebGPU 보다 느림. 글자별 블러 같은 연출은 WebKit 에서 무거움 | 변화가 있을 때만 렌더, WebGPU 는 되는 곳에서만, 소울 텍스트는 셰이더로 |
-| UI 플러그인 | 샌드박스 iframe | 런타임에 바로 설치·교체. 웹 개발자 누구나 만듦 | iframe 이 많으면 메모리가 늘고 화면 간 통신 비용이 생김 | 안 보이는 표면은 내리고, 브리지 메시지는 묶어서 처리 |
+| UI 플러그인 | 지금은 샌드박스 iframe (모두 한 WebContent 프로세스). 1단계부터 표면마다 자기 origin 과 자기 Chromium 렌더러, 2단계부터 표면마다 off-screen CEF 브라우저 | 런타임에 바로 설치·교체. 웹 개발자 누구나 만듦. 플러그인 코드는 그대로 (HTML · JS · SDK · 브리지). 한 창이 멈추거나 죽어도 그 창만, 창 N 개가 코어 N 개를 씀 | 렌더러마다 메모리 (가벼운 페이지 ~40 MiB, 무거운 페이지 ~500 MiB). 움직이는 표면마다 CEF 의 GPU 프로세스가 ~50 MiB 늘어남 | 보이는 표면과 최근 포커스한 8개만 프로세스를 살리고, 나머지는 상태를 두고 잠듦 (ADR 0142). 숨은 표면은 그리지 않음. 브리지 메시지는 묶어서 처리 |
 | 로직 플러그인 | Wasmtime (+ QuickJS 로 JS) | 격리되고 허락한 기능만 씀. 언어 자유. 즉시 교체 | Wasm 생태계가 아직 작고, 브리지 바인딩(WIT)을 직접 정의해야 함 | endue 가 플러그인 SDK 와 템플릿을 제공 |
 | 도구 플러그인 | MCP 프로세스 | 아무 언어. 기존 MCP 서버를 그대로 씀. endue AI 에이전트도 같이 씀 | 프로세스마다 메모리. VM 경유라 호출 지연이 생기고 VM 이미지만큼 메모리를 더 씀 | 가벼운 Linux VM 하나에서 실행(결정). 허락한 폴더만 virtiofs 로 넣고 vsock 으로 통신, 쉬면 VM 째로 멈춤 |
 | 클라우드 | endue AI | 에이전틱 루프·모델·크레딧을 서버에서 바꿔 즉시 반영 | 오프라인이면 생각을 못 함 | 오프라인 안내, 로컬 작업은 쌓아 두었다 재연결 때 처리 |
+
+### 화면 합성과 플러그인 스킴 (ADR 0140–0144)
+
+화면의 모든 것은 표면입니다. 어떤 프로세스가 그린 텍스처를 컴포지터가 제자리에 놓습니다. 웹 플러그인은 표면의 한 구현(뒤에 CEF 렌더러)이고, 플러그인 저자에게는 지금과 같은 HTML · JS · `@endue-ai/plugin-sdk` 입니다. Wayland 컴포지터의 모델이라, 나중에 Linux 에서 OS 데스크톱 없이 DRM/KMS 위의 세션으로 설 길도 열립니다. 긴 설계는 epic #32 에 있습니다.
+
+| 단계 | 들어오는 것 | 끝나는 조건 |
+| --- | --- | --- |
+| 0 (Tauri 위) | 표면마다 origin (#36) · 살아 있는 표면 예산 (#37) · 무거운 일은 worker 로 (#38) · 응답 없는 창에만 "기다리기 · 멈추기" (#39) | 지금 앱에 하나씩 들어감 |
+| 1 (선택지 A) | winit 과 창 모드 CEF 의 Rust 셸이 지금 셸 페이지를 띄우고 Tauri 를 지움 (ADR 0143) · `desk-web` 이 스킴을 서빙하고 브리지를 CEF 프로세스 메시지로 나름 · 앱 e2e 는 원격 디버깅으로 (ADR 0144) | iframe 마다 렌더러 하나, 하나를 죽여도 나머지는 동작, 세 OS 에서 플러그인 WebGPU, beta 가 업데이터로 설치됨 |
+| 2 (선택지 D) | 표면 프로토콜 `specs/surface` (ADR 0141) · `desk-compositor` · 표면마다 off-screen CEF · 창 관리자가 Rust 로 · 팔레트 · Eris · 바 · 설정은 시스템 표면 | DOM 이 플러그인 표면을 합성하지 않음, 살아 있는 표면 15개에서 합성 4 ms 이하, 지금 셸 e2e 통과 |
+| 3 | `native` 플러그인 종류 (`specs/surface` 와 `desk.sock`) · Linux DRM/KMS 세션 스파이크 | — |
+
+플러그인 스킴 `desk-plugin` 은 이렇게 바뀝니다 (ADR 0012 · 0048 을 고침).
+
+- 표면마다 자기 origin. 호스트가 표면과 플러그인을 가리키고 (정확한 문법은 #36), 경로는 지금처럼 `/<id>/<path>` 입니다. `--site-per-process` 와 함께 이것이 창마다 렌더러를 따로 둡니다.
+- CSP 의 출처는 호스트 하나가 아니라 스킴 전체 (`desk-plugin:`, Windows 가 WebView2 인 동안은 `http://*.desk-plugin.localhost` 도) 입니다. CEF 가 스킴을 서빙하면 모든 OS 에 `desk-plugin:` 한 형태만 남습니다.
+- 플러그인 파일 · `fs.url` 범위 읽기 · `/_desk/plugin-sdk.js` · CSP 는 그대로이고, 엔진과 무관한 요청 → 응답 로직은 `crates/desk-web` 으로 옮깁니다 (ADR 0143).
+- 브리지 호출의 호출자는 런타임이 넘기는 이름이 아니라, 브라우저 프로세스가 아는 그 표면의 신원입니다 (#43).
+- `sandbox` 속성은 2단계에서 iframe 과 함께 사라집니다. 그 뒤 격리는 Chromium 의 프로세스 샌드박스 · 표면마다 origin · CSP, 그리고 desk 의 스킴이 아닌 origin 으로 가는 요청을 브라우저 프로세스에서 거절하는 핸들러가 맡습니다. 밖으로 나가는 길은 지금처럼 `net.fetch` 하나입니다.
+
+PoC (macOS · Apple M4 Max, `spikes/compositor/README.md`): 공유 텍스처 가져오기 (첫 그림 137–248 ms, 1080p 에서 57–59 fps) · 표면 안 WebGPU · 30 표면 · 렌더러 하나 죽이기 · 한글 IME 가 모두 통과했습니다. 가벼운 렌더러는 ~40 MiB 입니다. Windows · Linux 확인은 #61 에 남아 있습니다.
 
 ## 바뀌는 범위
 
@@ -432,24 +455,24 @@ MCP 도구는 가벼운 VM 으로 격리하고, 나머지는 데스크톱 오픈
 
 | 질문 | 결정 | 따른 관례 | ADR |
 | --- | --- | --- | --- |
-| 앱 셸 | Tauri 2. 앱이 작고 Rust 코어가 같은 프로세스에서 돎. 위험은 OS 마다 다른 웹뷰 | Tauri 앱 일반 | 0001 |
+| 앱 셸 | Tauri 2 였으나 ADR 0140 이 대체함. 1단계부터 winit 과 CEF 위의 Rust 바이너리 `apps/desk/shell` (기본 멤버 아님), 엔진과 무관한 로직은 `crates/desk-web`, Tauri crate 는 1단계가 끝날 때 지움 |  | 0001 (대체됨) · 0143 |
 | MCP 도구 격리 | 가벼운 Linux VM 하나에서 실행. 허락한 폴더만 virtiofs 로 넣고, 통신은 vsock, 쉬면 VM 째로 멈춤. VM 을 못 띄우는 기기는 설치 때 "격리 없음"을 고지하고 사용자 권한으로 | Claude Cowork · Docker Desktop (macOS Virtualization.framework · Windows WSL2 · Linux KVM) | 0002 |
 | 웹 런타임 번들 배포 | 앱과 함께. 따로 배포하지 않음. 플러그인만 따로 갱신 | VS Code · Electron 앱 일반 | 0003 |
 | 플러그인 API 하위 호환 | v0 는 마이너마다 깨질 수 있음을 명시. v1 부터 직전 메이저를 6개월 지원하고, 제거 한 버전 전에 경고 | semver · VS Code 확장 API | 0004 |
 | 마켓 심사 · 서명 | 자동 검증(매니페스트 · 권한 · 정적 스캔) + 게시 때 마켓이 서명. proc · net 광역 권한만 수동 심사 | VS Code Marketplace · Obsidian 커뮤니티 플러그인 | 0005 |
-| macOS 앱 e2e | 런타임 Playwright + 설치 스모크 + stable 전 10분 수동. tauri-driver 가 macOS 를 지원하면 전환 | Tauri 프로젝트 일반 | 0006 |
+| macOS 앱 e2e | 런타임 Playwright + 설치 스모크 + stable 전 10분 수동. tauri-driver 가 macOS 를 지원하면 전환. CEF 데스크가 나오면 Chromium 원격 디버깅으로 macOS 도 앱 e2e 에 들어감 | Tauri 프로젝트 일반 | 0006 · 0144 |
 | 크래시 리포트 | Sentry, opt-in, 기본은 꺼짐. 서명별 신규 크래시가 beta 승격 조건에 들어감 | Tauri 앱 일반 | 0007 |
 | 자동 병합 범위 | 봇 PR(의존성 패치 · 마이너)만. 작업 PR 은 사람이 승인 |  | 0008 |
 | 명세에서 타입 | `specs/` 에서 Rust · TS 타입을 자체 생성기로 만들고 커밋. 모르는 스키마 모양은 실패 |  | 0009 |
 | 웹 런타임의 UI 프레임워크 | 없음. 평범한 TypeScript 와 DOM. 플러그인은 자기 프레임 안에서 자유 |  | 0010 |
 | 런타임 스냅샷 | 픽셀이 아니라 직렬화한 렌더 트리 |  | 0011 |
-| UI 플러그인 로드 | `desk-plugin` 스킴 · `sandbox="allow-scripts"` iframe · import map 의 SDK. 런타임이 프레임으로 호출자를 가림 |  | 0012 |
+| UI 플러그인 로드 | `desk-plugin` 스킴 · `sandbox="allow-scripts"` iframe · import map 의 SDK. 런타임이 프레임으로 호출자를 가림. ADR 0140 이 고침: 표면마다 origin, CSP 출처는 스킴 전체, 호출자는 브라우저 프로세스가 앎, `sandbox` 는 2단계에서 iframe 과 함께 끝남 |  | 0012 · 0140 |
 | 플러그인 애니메이션 | 주입된 시계에 맞춘 멈춘 Web Animations |  | 0013 |
 | 두뇌 대화의 자리 | 코어가 세션 · 임대 · 전사를 갖고, 플러그인은 `brain.say` 와 `brain.turn` 으로만 |  | 0014 |
 | 여러 AI 의 병렬 작업 | 한 trunk · Scope 레인 · 작업마다 worktree · 머지 큐 |  | 0015 |
 | 사람의 설정 | `~/.desk/init.yaml`, endue 로 파일째 3-way 동기화 | Emacs `init.el` | 0016 |
 | 기본 정책 | 데이터만 가진 `policy` 플러그인 `desk.*`, 정해진 순서로 겹침. 커맨드 레지스트리는 코어 하나(`cmd.*`) | Emacs `window.el` · `bindings.el` · `init.el` | 0017 |
-| 로컬 e2e | macOS 에서는 Linux 컨테이너 안에서, 기계당 두 개까지 |  | 0018 |
+| 로컬 e2e | macOS 에서는 Linux 컨테이너 안에서, 기계당 두 개까지. 엔진이 Chromium 이 되면 원격 디버깅으로 몰고, Docker WebKit 실행기와 두 슬롯은 끝남 |  | 0018 · 0144 |
 | 로직 플러그인 | Wasmtime 위 `desk:host` 컴포넌트, 빈 WASI 0.2. 플러그인마다 store 와 메모리 · 시간 상한 |  | 0019 |
 | `@endue-ai/ui` 컴포넌트 | 프레임워크 없는 custom element, 테마 토큰만 읽음 |  | 0022 |
 | 프로필이 못 바꾸는 것 | 시스템 레이어: 프로필 전환 · 데스크톱 전환 · 에이전트 바 |  | 0023 |
@@ -463,6 +486,10 @@ MCP 도구는 가벼운 VM 으로 격리하고, 나머지는 데스크톱 오픈
 | Wasm 커넥터 | 제안: `desk:connector` world 의 컴포넌트를 플러그인 호스트가 돌림. 항목의 출처는 호스트가 찍고, 인스턴스와 커서는 커넥터 자기 저장소에 |  | 0034 (제안) |
 | 캘린더 파일 | `endue.calendar` 가 자기 iCalendar 엔진을 갖고, 읽은 것은 모르는 속성까지 그대로 다시 씀 | RFC 5545 · RFC 5546 · RFC 7986 | 0035 |
 | 통합 계층의 자리 | 제안: 코어가 `data.*` · `connector.*` · `view.*` · `catalog.get` 을 제공. 내장 커넥터 `desk.calendar` · `desk.reminders` 는 코어 안, 비밀 설정은 키체인 전까지 0600 파일 |  | 0036 (제안) |
+| 화면 합성 | 창마다 자기 프로세스가 그린 텍스처를 Rust · wgpu 컴포지터가 합성. 웹 플러그인은 CEF off-screen 표면. 0 에서 3 까지 단계로, 1단계는 CEF 를 지금 셸 밑에 | Wayland 컴포지터 | 0140 |
+| 표면 프로토콜 | `specs/surface/v0`: 수명 주기 · OS 별 텍스처 핸들 · 입력 · IME · 프레임 페이싱 · 접근성. 3단계의 native 플러그인도 같은 프로토콜 | Wayland 프로토콜 | 0141 |
+| 살아 있는 표면 예산 | 보이는 표면과 최근 포커스한 8개만 프로세스를 가짐. 나머지는 상태를 두고 잠듦. Chromium 의 렌더러 상한도 같은 예산에서 |  | 0142 |
+| 앱 e2e 엔진 | CEF 데스크를 Chromium 원격 디버깅으로 몰고, 런타임 스위트도 Chromium 에서 |  | 0144 |
 
 ## 열린 질문
 

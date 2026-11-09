@@ -167,6 +167,23 @@ Das Vokabular (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`
 `ui:notify`, `plugin:manage`, `brain:converse`, `cmd:invoke`, `cmd:advise`, `settings:read`, `log:read`,
 `events:subscribe`, `perm:manage`, `data:read`, `connector:manage`, `view:manage`) steht in `specs/plugin/v0/README.md`.
 
+## Ein eigener Prozess und ein eigener Origin
+
+Heute teilen sich alle Plugin-Frames die eine Seite von Desk und ihren einen Prozess. Desk wechselt zu
+Chromium, wo jede Oberfläche in einem eigenen Prozess läuft (ADR 0140). Am Code des Plugins ändert sich
+nichts: Manifest, Import-Map, `@endue-ai/plugin-sdk`, Bridge und CSP bleiben, wie diese Seite sie beschreibt.
+
+* Jede Oberfläche bekommt einen eigenen Origin auf dem Schema `desk-plugin`, einen pro Oberfläche statt pro
+  Plugin. Eigene Dateien mit relativen URLs laden, nie mit einem fest eingetragenen Host, und was bleiben
+  soll, in `state` oder `store.*` ablegen, nicht in `localStorage` oder IndexedDB, die zwei Fenster
+  desselben Plugins nicht teilen.
+* Eine Endlosschleife, ein Speicherleck oder ein Absturz im Plugin kostet nur sein eigenes Fenster. Ein
+  Fenster, das eine Weile nicht zu sehen war, kann schlafen und kommt mit dem zurück, was
+  `surface.onUnload` behalten hat (ADR 0142).
+* WebGPU (`navigator.gpu`) steht auf jedem OS zur Verfügung, sobald die Engine Chromium ist. Heute hat
+  WebKitGTK unter Linux keins und macOS braucht Version 26, also vorher prüfen und einen Ersatzweg vorsehen.
+* Worker, WebAssembly und `fetch` mit `Range` auf `fs.url`-URLs funktionieren wie bisher (ADR 0048).
+
 ## Beiträge
 
 Ein Plugin kann die Standardrichtlinien des Desks ohne Code ergänzen, in `contributes` von `plugin.json`

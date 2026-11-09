@@ -166,6 +166,24 @@ Le vocabulaire (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture
 `ui:notify`, `plugin:manage`, `brain:converse`, `cmd:invoke`, `cmd:advise`, `settings:read`, `log:read`,
 `events:subscribe`, `perm:manage`, `data:read`, `connector:manage`, `view:manage`) se trouve dans `specs/plugin/v0/README.md`.
 
+## Votre propre processus et votre propre origine
+
+Aujourd'hui, tous les cadres de plugin partagent la seule page de Desk et son seul processus. Desk passe à
+Chromium, où chaque surface tourne dans un processus à elle (ADR 0140). Rien ne change pour votre code : le
+manifeste, l'import map, `@endue-ai/plugin-sdk`, le pont et la CSP restent tels que cette page les décrit.
+
+* Chaque surface reçoit une origine à elle sur le schéma `desk-plugin`, une par surface et non par plugin.
+  Chargez vos fichiers par des URL relatives, jamais avec un hôte écrit en dur, et gardez ce qui doit durer
+  dans `state` ou `store.*`, pas dans `localStorage` ni IndexedDB, que deux fenêtres d'un même plugin ne
+  partagent pas.
+* Une boucle, une fuite ou un plantage dans votre plugin ne coûte que sa propre fenêtre. Une fenêtre restée
+  hors de vue peut s'endormir et revenir avec ce que `surface.onUnload` a gardé (ADR 0142).
+* WebGPU (`navigator.gpu`) devient disponible sur tous les OS une fois que le moteur est Chromium.
+  Aujourd'hui, WebKitGTK sous Linux n'en a pas et macOS demande la version 26 : vérifiez sa présence et
+  prévoyez un repli.
+* Les workers, WebAssembly et `fetch` avec `Range` sur les URL de `fs.url` fonctionnent comme avant
+  (ADR 0048).
+
 ## Contributions
 
 Un plugin peut compléter les politiques par défaut du bureau sans code, dans `contributes` de

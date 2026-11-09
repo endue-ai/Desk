@@ -158,6 +158,21 @@ defineUiPlugin({
 `ui:notify`, `plugin:manage`, `brain:converse`, `cmd:invoke`, `cmd:advise`, `settings:read`, `log:read`,
 `events:subscribe`, `perm:manage`, `data:read`, `connector:manage`, `view:manage`)는 `specs/plugin/v0/README.md`에 있습니다.
 
+## 자기 프로세스와 자기 origin
+
+지금은 모든 플러그인 프레임이 Desk의 한 페이지와 한 프로세스를 나눠 씁니다. Desk는 Chromium으로 옮겨 가는
+중이며, 거기서는 표면마다 자기 프로세스에서 돕니다(ADR 0140). 플러그인 코드는 바뀌지 않습니다. 매니페스트,
+import map, `@endue-ai/plugin-sdk`, 브리지와 CSP는 이 문서가 설명하는 그대로입니다.
+
+* 표면마다 `desk-plugin` 스킴 위에 자기 origin을 갖습니다. 플러그인마다가 아니라 표면마다입니다. 자기 파일은
+  상대 URL로 불러오고 호스트를 박아 넣지 마세요. 남겨야 할 것은 `localStorage`나 IndexedDB가 아니라
+  `state`나 `store.*`에 둡니다. 한 플러그인의 두 창은 그것들을 나눠 쓰지 않습니다.
+* 플러그인의 무한 루프, 메모리 누수, 크래시는 그 창 하나에만 영향을 줍니다. 한동안 보이지 않던 창은 잠들 수
+  있고, `surface.onUnload`가 남긴 것을 들고 돌아옵니다(ADR 0142).
+* 엔진이 Chromium이 되면 WebGPU(`navigator.gpu`)를 모든 OS에서 쓸 수 있습니다. 지금은 Linux의 WebKitGTK에는
+  없고 macOS는 26 이상이 필요하니, 있는지 확인하고 대안을 두세요.
+* worker, WebAssembly, `fs.url` URL에 `Range`를 붙인 `fetch`는 그대로 동작합니다(ADR 0048).
+
 ## 기여 항목
 
 플러그인은 `plugin.json` 의 `contributes` 로 코드 없이 데스크의 기본 정책에 더할 수 있습니다(ADR 0017).

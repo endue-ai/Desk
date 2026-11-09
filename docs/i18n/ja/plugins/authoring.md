@@ -122,6 +122,15 @@ defineUiPlugin({
 
 語彙（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`、`brain:converse`、`cmd:invoke`、`cmd:advise`、`settings:read`、`log:read`、`events:subscribe`、`perm:manage`、`data:read`、`connector:manage`、`view:manage`）は `specs/plugin/v0/README.md` にあります。
 
+## 自分のプロセスと自分のオリジン
+
+いまはすべてのプラグインのフレームが、Desk のひとつのページとひとつのプロセスを共有しています。Desk は Chromium への移行を進めており、そこでは各サーフェスが自分のプロセスで動きます（ADR 0140）。プラグインのコードは何も変わりません。マニフェスト、インポートマップ、`@endue-ai/plugin-sdk`、ブリッジ、CSP はこのページの説明どおりです。
+
+* 各サーフェスは `desk-plugin` スキーム上に自分のオリジンを持ちます。プラグインごとではなく、サーフェスごとです。自分のファイルは相対 URL で読み込み、ホストを決め打ちしないでください。残したいものは `localStorage` や IndexedDB ではなく `state` か `store.*` に置きます。ひとつのプラグインの 2 つのウィンドウは、それらを共有しません。
+* プラグインのループ、リーク、クラッシュが影響するのは、そのウィンドウだけです。しばらく見えていなかったウィンドウはスリープすることがあり、`surface.onUnload` が残したものと一緒に戻ります（ADR 0142）。
+* WebGPU（`navigator.gpu`）は、エンジンが Chromium になればすべての OS で使えます。いまは Linux の WebKitGTK にはなく、macOS ではバージョン 26 が必要なので、有無を確かめてフォールバックしてください。
+* ワーカー、WebAssembly、`fs.url` の URL に対する `Range` 付きの `fetch` は、これまでどおり動きます（ADR 0048）。
+
 ## コントリビューション
 
 プラグインは `plugin.json` の `contributes` で、コードなしにデスクの既定ポリシーへ追加できます（ADR

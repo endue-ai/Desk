@@ -8,6 +8,8 @@ Desk はひとつのアプリとして作られたひとつの OS です。Tauri
 
 設定 UI、既定のキーバインド、個人設定の保存はプラグインではなくランタイムのコア機能です。すべてのプラグインを無効にしても利用でき、プラグインは追加のキー割り当てを提供できます。 [ADR 0055](../../adr/0055-core-settings-and-keybindings.md).
 
+シェルと画面は変わりつつあります。Desk は Tauri と OS の Web ビューから Chromium（CEF）の上の Rust シェルへ、さらにどのウィンドウも自分のプロセスで描画する Desk 独自のコンポジターへ移行します（[ADR 0140](../../adr/0140-a-wgpu-compositor-over-cef-off-screen-surfaces.md)）。ステージ 1 が進行中で、それが出るまで動いているのは以下で説明する Tauri シェルです。ステージはレイヤー表の下の「シェルと画面の行き先」にあります。
+
 ## 全体像
 
 ```text
@@ -48,6 +50,27 @@ Desk はひとつのアプリとして作られたひとつの OS です。Tauri
 | Rust コア | `crates/desk-core`（統合レイヤーの `data.*`、`connector.*`、`view.*`、`catalog.get` も提供し、OS のカレンダーの上に組み込みコネクター `desk.calendar` と `desk.reminders` を定義、ADR 0036、提案中。http コネクターはマニフェストどおりにコア自身が実行し、トークンもコアだけが読む、ADR 0106） · `crates/desk-index`（ひとつの SQLite ファイルに置くアイテムのインデックス、ADR 0033） · `crates/desk-plugin-host`（ロジックプラグインと Wasm コネクターを Wasmtime で実行、ADR 0019、ADR 0034 は提案中） · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri シェル | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`（macOS でのコンピューター操作：スクリーンショット、アクセシビリティツリー、入力、アプリ）。コアはこれを `computer:see` と `computer:control` のもとで `computer.*` として提供し、エージェントの操作はどれも本人の承認を待ちます（ADR 0120、ADR 0123） |
 | OS | `apps/desk/src-tauri/capabilities` · リリースワークフロー（署名、公証） |
+
+## シェルと画面の行き先
+
+いまの Desk は、OS の Web ビューをひとつ持つひとつの Tauri ウィンドウで、プラグインのウィンドウはどれもそのひとつのページの中にあるサンドボックス化された iframe です。シェルとすべてのプラグインがひとつのプロセスとひとつのメインスレッドを共有するため、ループするプラグインひとつでデスク全体が止まり、Linux では WebGPU が使えません。ADR 0140 はこれを変えます。どのウィンドウも自分のプロセスで描画し、wgpu の上に作った Desk 独自のコンポジターがその結果を配置します。
+
+```text
+ desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
+        │ surface             │ surface             │ surface              │ no surface
+ web plugin             web plugin            native plugin          logic plugin
+ (CEF renderer)         (WebGPU, 3D)          (its own process)      (Wasm, unchanged)
+ each: its own process · its own main thread · its own GPU queue · a crash empties one window
+```
+
+| ステージ | 変わること | 状況 |
+| --- | --- | --- |
+| 0 | Tauri アプリの上で：サーフェスごとに `desk-plugin` スキームの自分のオリジンを持つ。ライブなフレームを持つのは見えているウィンドウと直近にフォーカスした 8 つだけ。重い処理はワーカーへ移る。応答しなくなったフレームは、そのウィンドウでだけ「待つ」か「停止」を示す | 進行中 |
+| 1 | シェルが winit と CEF の上の Rust バイナリ（`apps/desk/shell`、ADR 0143）になっていまのシェルページを表示し、Tauri はなくなる。プラグインの iframe はそれぞれ自分の Chromium レンダラーになる。アプリ単位の e2e は Chromium のリモートデバッグで動かす（ADR 0144） | 進行中 |
+| 2 | コンポジター（`crates/desk-compositor`）がデスクを描き、各サーフェスのテクスチャを配置する。サーフェスはひとつのプロトコルで話す（`specs/surface`、ADR 0141）。CEF は各プラグインをオフスクリーンで描画する。ウィンドウマネージャーは `packages/runtime` から Rust へ移る | 予定 |
+| 3 | ネイティブプラグイン：サーフェスプロトコルとブリッジを `desk.sock` 越しに話すプロセス | 予定 |
+
+プラグインのコードはどのステージでも変わりません。マニフェスト、SDK、ブリッジのワイヤーフォーマットはそのままです。プラグインが得るのは、自分のプロセスと自分のオリジン、そしてすべての OS での WebGPU です。ライブなプロセスを持つのは見えているウィンドウと直近にフォーカスした 8 つだけで、残りは状態を保ったままスリープします（ADR 0142）。macOS での概念実証では、30 個のオフスクリーン CEF サーフェスを wgpu で合成し、その中で WebGPU を動かし、レンダラーをひとつ強制終了しても他のサーフェスは描画を続けました。軽いレンダラーは約 40 MiB でした（`spikes/compositor/README.md`）。Windows と Linux はこれからです。
 
 ## Emacs のように、OS のように
 

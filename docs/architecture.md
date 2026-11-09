@@ -10,6 +10,12 @@ Desk is one OS built as one app: a Tauri shell and a small Rust core carry a web
 owns settings, keyboard bindings and their persistence. Other features on top are plugins. Like Emacs,
 the Rust core keeps primitives while plugins can be changed while the app is running.
 
+The shell and the screen are changing: Desk is moving from Tauri and the OS webviews to a Rust shell on
+Chromium (CEF), and then to a compositor of its own in which every window renders in its own process
+([ADR 0140](adr/0140-a-wgpu-compositor-over-cef-off-screen-surfaces.md)). Stage 1 is in progress; until
+it ships, the Tauri shell described below is what runs. "Where the shell and the screen are going",
+below the layer table, has the stages.
+
 ## At a glance
 
 ```text
@@ -51,6 +57,35 @@ device. Everything else runs on the user's computer.
 | Rust core | `crates/desk-core`, which also serves the integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) and defines the built-in connectors `desk.calendar` and `desk.reminders` over the OS calendar (ADR 0036, proposed), and runs http connectors from their manifests, reading their tokens itself (ADR 0106) · `crates/desk-index`, the item index in one SQLite file (ADR 0033) · `crates/desk-plugin-host`, which runs logic plugins (ADR 0019) and Wasm connectors (ADR 0034, proposed) on Wasmtime · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri shell | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`, computer use on macOS (screenshots, the accessibility tree, input, apps), which the core serves as `computer.*` under `computer:see` and `computer:control`, each act of an agent waiting for the person's approval (ADR 0120, ADR 0123) |
 | OS | `apps/desk/src-tauri/capabilities` · release workflow (signing, notarisation) |
+
+## Where the shell and the screen are going
+
+Today the desk is one Tauri window with one OS webview, and every plugin window is a sandboxed iframe in
+that one page. The shell and all plugins share one process and one main thread, so a plugin that loops
+stalls the whole desk, and WebGPU is missing on Linux. ADR 0140 changes that: every window renders in its
+own process, and a compositor of Desk's own, on wgpu, places what they render.
+
+```text
+ desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
+        │ surface             │ surface             │ surface              │ no surface
+ web plugin             web plugin            native plugin          logic plugin
+ (CEF renderer)         (WebGPU, 3D)          (its own process)      (Wasm, unchanged)
+ each: its own process · its own main thread · its own GPU queue · a crash empties one window
+```
+
+| Stage | What changes | State |
+| --- | --- | --- |
+| 0 | On the Tauri app: each surface gets its own origin on the `desk-plugin` scheme; only the windows in sight and the 8 most recently focused keep a live frame; heavy work moves to workers; a frame that stops answering offers Wait or Stop on its window | in progress |
+| 1 | The shell becomes a Rust binary on winit and CEF (`apps/desk/shell`, ADR 0143) showing today's shell page, and Tauri is removed; every plugin iframe is its own Chromium renderer; app-level e2e drives it over Chromium's remote debugging (ADR 0144) | in progress |
+| 2 | The compositor (`crates/desk-compositor`) draws the desk and places each surface's texture; surfaces speak one protocol (`specs/surface`, ADR 0141); CEF renders each plugin off-screen; the window manager moves from `packages/runtime` to Rust | planned |
+| 3 | Native plugins: a process that speaks the surface protocol and the bridge over `desk.sock` | planned |
+
+Plugin code does not change at any stage: the manifest, the SDK and the bridge's wire format stay. A
+plugin gains its own process and origin, and WebGPU on every OS. Only the windows in sight and the 8 most
+recently focused keep a live process; the rest sleep with their state (ADR 0142). A proof of concept on
+macOS composited 30 off-screen CEF surfaces with wgpu, ran WebGPU inside them, and kept the others
+painting while one renderer was killed; a light renderer cost about 40 MiB
+(`spikes/compositor/README.md`). Windows and Linux are still to run.
 
 ## Like Emacs, like an OS
 

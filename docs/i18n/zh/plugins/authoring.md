@@ -122,6 +122,15 @@ defineUiPlugin({
 
 词汇表（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`、`brain:converse`、`cmd:invoke`、`cmd:advise`、`settings:read`、`log:read`、`events:subscribe`、`perm:manage`、`data:read`、`connector:manage`、`view:manage`）见 `specs/plugin/v0/README.md`。
 
+## 自己的进程和自己的源
+
+目前所有插件的框架共用 Desk 的一个页面和一个进程。Desk 正在迁移到 Chromium，在那里每个表面都运行在自己的进程中（ADR 0140）。插件代码无需任何改动：清单、导入映射、`@endue-ai/plugin-sdk`、桥接层和 CSP 都保持本页所述的样子。
+
+* 每个表面在 `desk-plugin` 协议上都有自己的源：按表面划分，而不是按插件。请用相对 URL 加载自己的文件，不要写死主机名；需要保留的内容放在 `state` 或 `store.*` 中，而不是 `localStorage` 或 IndexedDB，因为同一插件的两个窗口并不共享它们。
+* 插件中的死循环、内存泄漏或崩溃只影响它自己的窗口。一段时间不在视野中的窗口可能会休眠，醒来时带回 `surface.onUnload` 保留的内容（ADR 0142）。
+* 引擎换成 Chromium 后，WebGPU（`navigator.gpu`）在所有操作系统上都可用。目前 Linux 上的 WebKitGTK 没有 WebGPU，macOS 需要 26 版，所以请先检测，并准备回退方案。
+* Worker、WebAssembly 以及对 `fs.url` URL 带 `Range` 的 `fetch` 照常工作（ADR 0048）。
+
 ## 贡献项
 
 插件可以在 `plugin.json` 的 `contributes` 中，不写代码就为桌面的默认策略添加内容（ADR 0017）：命令面板

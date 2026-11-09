@@ -9,6 +9,8 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
 
 设置界面、默认键绑定和个人设置持久化属于运行时核心，而非插件。禁用所有插件后仍可使用；插件可以添加快捷键。 [ADR 0055](../../adr/0055-core-settings-and-keybindings.md).
 
+外壳和屏幕正在改变：Desk 正从 Tauri 和操作系统 Web 视图迁移到基于 Chromium（CEF）的 Rust 外壳，然后迁移到 Desk 自己的合成器，在其中每个窗口都在自己的进程中渲染（[ADR 0140](../../adr/0140-a-wgpu-compositor-over-cef-off-screen-surfaces.md)）。第 1 阶段正在进行；在它发布之前，运行的仍是下文描述的 Tauri 外壳。各阶段见层表下方的“外壳与屏幕的去向”。
+
 ## 概览
 
 ```text
@@ -49,6 +51,27 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
 | Rust 核心 | `crates/desk-core`（还提供集成层的 `data.*`、`connector.*`、`view.*`、`catalog.get`，并基于操作系统日历定义内置连接器 `desk.calendar` 和 `desk.reminders`，ADR 0036，仍处于提议阶段；http 连接器按清单由核心自己运行，令牌也只由核心读取，ADR 0106） · `crates/desk-index`（存放在一个 SQLite 文件中的条目索引，ADR 0033） · `crates/desk-plugin-host`（在 Wasmtime 上运行逻辑插件和 Wasm 连接器，ADR 0019；ADR 0034 仍处于提议阶段） · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri 外壳 | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`（macOS 上的电脑操作：截图、辅助功能树、输入、应用），核心在 `computer:see` 和 `computer:control` 之下以 `computer.*` 提供；智能体的每个操作都要等用户批准（ADR 0120、ADR 0123） |
 | 操作系统 | `apps/desk/src-tauri/capabilities` · 发布工作流（签名、公证） |
+
+## 外壳与屏幕的去向
+
+目前 Desk 是一个只带一个操作系统 Web 视图的 Tauri 窗口，每个插件窗口都是这一个页面里的沙箱 iframe。外壳和所有插件共用一个进程和一个主线程，所以一个陷入死循环的插件会卡住整个桌面，而且 Linux 上没有 WebGPU。ADR 0140 改变了这一点：每个窗口都在自己的进程中渲染，由 Desk 自己基于 wgpu 的合成器摆放它们渲染的结果。
+
+```text
+ desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
+        │ surface             │ surface             │ surface              │ no surface
+ web plugin             web plugin            native plugin          logic plugin
+ (CEF renderer)         (WebGPU, 3D)          (its own process)      (Wasm, unchanged)
+ each: its own process · its own main thread · its own GPU queue · a crash empties one window
+```
+
+| 阶段 | 变化 | 状态 |
+| --- | --- | --- |
+| 0 | 在 Tauri 应用上：每个表面在 `desk-plugin` 协议上有自己的源；只有可见窗口和最近获得焦点的 8 个保留活动框架；繁重的工作移到 Worker；停止响应的框架只在自己的窗口上提供“等待”或“停止” | 进行中 |
+| 1 | 外壳成为基于 winit 和 CEF 的 Rust 二进制程序（`apps/desk/shell`，ADR 0143），显示现在的外壳页面，并移除 Tauri；每个插件 iframe 都是自己的 Chromium 渲染进程；应用级 e2e 通过 Chromium 的远程调试驱动它（ADR 0144） | 进行中 |
+| 2 | 合成器（`crates/desk-compositor`）绘制桌面并摆放每个表面的纹理；表面使用同一个协议（`specs/surface`，ADR 0141）；CEF 在屏幕外渲染每个插件；窗口管理器从 `packages/runtime` 移到 Rust | 计划中 |
+| 3 | 原生插件：通过 `desk.sock` 使用表面协议和桥接层的进程 | 计划中 |
+
+插件代码在任何阶段都无需改动：清单、SDK 和桥接层的传输格式保持不变。插件获得的是自己的进程和源，以及所有操作系统上的 WebGPU。只有可见窗口和最近获得焦点的 8 个保留活动进程，其余带着状态休眠（ADR 0142）。在 macOS 上的概念验证用 wgpu 合成了 30 个屏幕外 CEF 表面，在其中运行了 WebGPU，并且在杀掉一个渲染进程时其他表面仍在继续绘制；一个轻量的渲染进程约占 40 MiB（`spikes/compositor/README.md`）。Windows 和 Linux 尚待验证。
 
 ## 像 Emacs，也像操作系统
 

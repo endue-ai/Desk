@@ -11,6 +11,12 @@ alles andere lässt sich im laufenden Betrieb ändern.
 
 Die Einstellungsoberfläche, Standardtastenkürzel und das Speichern persönlicher Einstellungen gehören zum Runtime-Kern, nicht zu Plugins. Sie bleiben ohne Plugins verfügbar; Plugins können weitere Tastenkürzel beitragen. [ADR 0055](../../adr/0055-core-settings-and-keybindings.md).
 
+Shell und Bildschirm ändern sich: Desk wechselt von Tauri und den Webviews des OS zu einer Rust-Shell auf
+Chromium (CEF) und danach zu einem eigenen Compositor, in dem jedes Fenster in seinem eigenen Prozess
+rendert ([ADR 0140](../../adr/0140-a-wgpu-compositor-over-cef-off-screen-surfaces.md)). Stufe 1 ist in
+Arbeit; bis sie erscheint, läuft die unten beschriebene Tauri-Shell. „Wohin Shell und Bildschirm gehen“
+unter der Tabelle der Schichten nennt die Stufen.
+
 ## Auf einen Blick
 
 ```text
@@ -52,6 +58,36 @@ endue AI liegt außerhalb des Geräts. Alles andere läuft auf dem Computer des 
 | Rust-Kern | `crates/desk-core`, der auch die Integrationsschicht bereitstellt (`data.*`, `connector.*`, `view.*`, `catalog.get`) und die eingebauten Konnektoren `desk.calendar` und `desk.reminders` auf Basis des OS-Kalenders definiert (ADR 0036, vorgeschlagen) und http-Konnektoren nach ihrem Manifest selbst ausführt, wobei nur er ihre Tokens liest (ADR 0106) · `crates/desk-index`, der Index der Einträge in einer einzigen SQLite-Datei (ADR 0033) · `crates/desk-plugin-host`, der Logik-Plugins (ADR 0019) und Wasm-Konnektoren (ADR 0034, vorgeschlagen) auf Wasmtime ausführt · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri-Shell | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`, Computer Use unter macOS (Bildschirmfotos, der Bedienungshilfen-Baum, Eingaben, Apps), den der Kern als `computer.*` unter `computer:see` und `computer:control` anbietet; jede Handlung eines Agenten wartet auf die Zustimmung der Person (ADR 0120, ADR 0123) |
 | OS | `apps/desk/src-tauri/capabilities` · Release-Workflow (Signierung, Notarisierung) |
+
+## Wohin Shell und Bildschirm gehen
+
+Heute ist Desk ein Tauri-Fenster mit einer einzigen Webview des OS, und jedes Plugin-Fenster ist ein
+iframe in einer Sandbox auf dieser einen Seite. Shell und alle Plugins teilen sich einen Prozess und einen
+Hauptthread: Ein Plugin in einer Endlosschleife hält den ganzen Desk an, und unter Linux fehlt WebGPU.
+ADR 0140 ändert das: Jedes Fenster rendert in seinem eigenen Prozess, und ein eigener Compositor von Desk
+auf wgpu platziert, was sie rendern.
+
+```text
+ desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
+        │ surface             │ surface             │ surface              │ no surface
+ web plugin             web plugin            native plugin          logic plugin
+ (CEF renderer)         (WebGPU, 3D)          (its own process)      (Wasm, unchanged)
+ each: its own process · its own main thread · its own GPU queue · a crash empties one window
+```
+
+| Stufe | Was sich ändert | Stand |
+| --- | --- | --- |
+| 0 | Auf der Tauri-App: Jede Oberfläche bekommt einen eigenen Origin auf dem Schema `desk-plugin`; nur die sichtbaren Fenster und die 8 zuletzt fokussierten behalten einen lebenden Frame; schwere Arbeit wandert in Worker; ein Frame, der nicht mehr antwortet, bietet nur in seinem Fenster „Warten“ oder „Beenden“ an | in Arbeit |
+| 1 | Die Shell wird ein Rust-Binary auf winit und CEF (`apps/desk/shell`, ADR 0143), das die heutige Shell-Seite zeigt, und Tauri fällt weg; jedes Plugin-iframe ist ein eigener Chromium-Renderer; die App-E2E-Tests steuern es über das Remote-Debugging von Chromium (ADR 0144) | in Arbeit |
+| 2 | Der Compositor (`crates/desk-compositor`) zeichnet den Desk und platziert die Textur jeder Oberfläche; Oberflächen sprechen ein Protokoll (`specs/surface`, ADR 0141); CEF rendert jedes Plugin off-screen; der Fenstermanager wandert von `packages/runtime` nach Rust | geplant |
+| 3 | Native Plugins: ein Prozess, der das Oberflächenprotokoll und die Bridge über `desk.sock` spricht | geplant |
+
+Am Code der Plugins ändert sich in keiner Stufe etwas: Manifest, SDK und das Wire-Format der Bridge bleiben.
+Ein Plugin gewinnt einen eigenen Prozess und Origin sowie WebGPU auf jedem OS. Nur die sichtbaren Fenster
+und die 8 zuletzt fokussierten behalten einen lebenden Prozess; die übrigen schlafen mit ihrem Zustand
+(ADR 0142). Ein Proof of Concept auf macOS hat 30 Off-screen-Oberflächen von CEF mit wgpu zusammengesetzt,
+WebGPU darin ausgeführt, und die übrigen zeichneten weiter, während ein Renderer beendet wurde; ein leichter
+Renderer kostete etwa 40 MiB (`spikes/compositor/README.md`). Windows und Linux stehen noch aus.
 
 ## Wie Emacs, wie ein OS
 

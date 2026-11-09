@@ -164,6 +164,22 @@ The vocabulary (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture
 `events:subscribe`, `perm:manage`, `data:read`, `connector:manage`, `view:manage`) is in
 `specs/plugin/v0/README.md`.
 
+## Your own process and origin
+
+Today every plugin frame shares the desk's one page and its one process. Desk is moving to Chromium,
+where each surface runs in a process of its own (ADR 0140). Nothing changes for your code: the
+manifest, the import map, `@endue-ai/plugin-sdk`, the bridge and the CSP stay as this page describes.
+
+* Each surface gets an origin of its own on the `desk-plugin` scheme, one per surface rather than per
+  plugin. Load your files with relative URLs, never a hard-coded host, and keep what must last in
+  `state` or `store.*`, not in `localStorage` or IndexedDB, which two windows of one plugin do not
+  share.
+* A loop, a leak or a crash in your plugin costs its own window only. A window that has been out of
+  sight may sleep and come back with what `surface.onUnload` kept (ADR 0142).
+* WebGPU (`navigator.gpu`) becomes available on every OS once the engine is Chromium. Today WebKitGTK
+  on Linux has none and macOS needs version 26, so check for it and fall back.
+* Workers, WebAssembly and `fetch` with `Range` on `fs.url` URLs work as before (ADR 0048).
+
 ## Contributions
 
 A plugin can add to the desk's default policies without code, in `plugin.json` `contributes` (ADR

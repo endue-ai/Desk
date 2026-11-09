@@ -19,6 +19,7 @@ English summary is `docs/architecture.md`.
 | `brand/` | endue and Eris brand assets. Not Apache-2.0: see `brand/LICENSE` |
 | `market/` | `themes/` and `design-systems/`: the look markets' indexes and `.desk-theme` / `.desk-design` bundles; a pull request publishes one (ADR 0060, ADR 0091) |
 | `scripts/` | Scripts that `justfile` recipes call |
+| `spikes/` | Throwaway spikes with their own Cargo workspace; the gates skip them |
 | `.github/` | Workflows, issue and PR templates, CODEOWNERS |
 
 ## Commands
