@@ -47,6 +47,7 @@ export {
   saveLayout,
 } from "./layout";
 export type { Mode } from "./modes/types";
+export { deskPluginUrl, pluginLabel, surfaceHost } from "./plugin-origins";
 export { PluginHost, type PluginHostDeps, type PluginHostOptions } from "./plugins";
 export {
   createRuntime,

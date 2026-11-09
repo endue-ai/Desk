@@ -7,8 +7,8 @@ use super::*;
 
 const TOKEN: &str = "0123456789abcdef0123456789abcdef";
 
-/// The plugin files of `example.hello` (each one's id and path as its content), and one file
-/// URL, `TOKEN`, for `file`.
+/// The plugin files of `example.hello` and of the library `example.lib` (each one's id and path as
+/// its content), and one file URL, `TOKEN`, for `file`.
 struct Fake {
     file: PathBuf,
 }
@@ -33,7 +33,8 @@ impl Drop for Fake {
 
 impl Source for Fake {
     fn plugin_file(&self, id: &str, file: &str) -> io::Result<Vec<u8>> {
-        let found = (id == "example.hello").then(|| format!("{id} {file}").into_bytes());
+        let found = ["example.hello", "example.lib"].contains(&id);
+        let found = found.then(|| format!("{id} {file}").into_bytes());
         found.ok_or_else(|| io::ErrorKind::NotFound.into())
     }
 
@@ -43,12 +44,21 @@ impl Source for Fake {
             media_type: "video/mp4",
         })
     }
+
+    fn library(&self, id: &str) -> bool {
+        id == "example.lib"
+    }
 }
 
 fn request(method: &str, path: &str, range: Option<&str>) -> Request<Vec<u8>> {
+    request_on("localhost", method, path, range)
+}
+
+/// A request to `host`, as a frame whose page is on that host makes it.
+fn request_on(host: &str, method: &str, path: &str, range: Option<&str>) -> Request<Vec<u8>> {
     let mut builder = Request::builder()
         .method(method)
-        .uri(format!("desk-plugin://localhost{path}"));
+        .uri(format!("desk-plugin://{host}{path}"));
     if let Some(range) = range {
         builder = builder.header(header::RANGE, range);
     }
@@ -57,6 +67,10 @@ fn request(method: &str, path: &str, range: Option<&str>) -> Request<Vec<u8>> {
 
 fn get(path: &str, range: Option<&str>) -> Response<Vec<u8>> {
     respond(&request("GET", path, range), &Fake::new("get"))
+}
+
+fn get_on(host: &str, path: &str) -> Response<Vec<u8>> {
+    respond(&request_on(host, "GET", path, None), &Fake::new("on"))
 }
 
 fn film(range: Option<&str>) -> Response<Vec<u8>> {
@@ -91,7 +105,7 @@ fn plugin_files_come_from_the_core_and_missing_ones_are_404() {
     assert_eq!(served.body().as_slice(), b"example.hello ui/index.html");
     assert_eq!(
         header_of(&served, header::CONTENT_SECURITY_POLICY),
-        plugin_csp()
+        plugin_csp(&Host::Shared)
     );
     assert_eq!(get("/_desk/other.js", None).status(), StatusCode::NOT_FOUND);
     assert_eq!(
@@ -212,7 +226,7 @@ const SCHEME_FORMS: [&str; 2] = ["desk-plugin:", "http://desk-plugin.localhost"]
 
 #[test]
 fn the_plugin_csp_allows_media_and_blob_images() {
-    let csp = plugin_csp();
+    let csp = plugin_csp(&Host::Shared);
     for name in ["media-src", "img-src"] {
         let sources = directive(&csp, name);
         for source in SCHEME_FORMS.iter().copied().chain(["blob:", "data:"]) {
@@ -229,7 +243,7 @@ fn the_plugin_csp_allows_media_and_blob_images() {
 
 #[test]
 fn the_plugin_csp_runs_workers_and_webassembly_and_fetches_only_the_desk() {
-    let csp = plugin_csp();
+    let csp = plugin_csp(&Host::Shared);
     // A module worker starts from a blob: trampoline that imports the plugin's file: WebKit checks a
     // module worker's whole import graph against worker-src, so the scheme is there too.
     let workers = directive(&csp, "worker-src");
@@ -314,4 +328,91 @@ fn file_url_answers_expose_their_range_headers() {
     let unknown = get("/_desk/file/fedcba9876543210fedcba9876543210/a.mp4", None);
     assert_eq!(unknown.status(), StatusCode::NOT_FOUND);
     assert_exposes_ranges(&unknown, "unknown token");
+}
+
+// #36: every surface on a host of its own (`hosts.rs`); macOS and Linux send the host as it is,
+// Windows' form arrives with `.localhost`.
+const HELLO: [&str; 3] = [
+    "main.example-hello",
+    "side.example-hello",
+    "main.example-hello.localhost",
+];
+
+#[test]
+fn a_surface_host_serves_its_plugin_with_its_own_origin_in_the_csp() {
+    for host in HELLO {
+        let page = get_on(host, "/example.hello/ui/index.html");
+        assert_eq!(page.status(), StatusCode::OK, "{host}");
+        assert_eq!(page.body().as_slice(), b"example.hello ui/index.html");
+        let csp = header_of(&page, header::CONTENT_SECURITY_POLICY).to_owned();
+        let own = format!(
+            "http://desk-plugin.{}.localhost",
+            host.trim_end_matches(".localhost")
+        );
+        for name in [
+            "script-src",
+            "connect-src",
+            "worker-src",
+            "img-src",
+            "media-src",
+            "font-src",
+        ] {
+            let sources = directive(&csp, name);
+            for source in SCHEME_FORMS.iter().copied().chain([own.as_str()]) {
+                assert!(
+                    sources.iter().any(|s| s == source),
+                    "{host} {name} {source}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_path_under_another_plugin_is_refused_with_403_unless_it_is_a_library() {
+    for (host, path) in [
+        ("main.example-hello", "/example.other/ui/index.html"),
+        ("main.example-other", "/example.hello/ui/index.html"),
+        ("main.example-hello--ui", "/example.hello/ui/index.html"),
+        ("main.example-hello.localhost", "/example.none/a.js"),
+    ] {
+        let refused = get_on(host, path);
+        assert_eq!(refused.status(), StatusCode::FORBIDDEN, "{host}{path}");
+        assert!(refused.body().is_empty(), "{host}{path}");
+    }
+    // A library's modules run in the frame that imports them; the shared host serves any plugin.
+    for host in HELLO.iter().copied().chain(["localhost"]) {
+        let lib = get_on(host, "/example.lib/lib/zip.js");
+        assert_eq!(lib.body().as_slice(), b"example.lib lib/zip.js", "{host}");
+    }
+    let shared = get_on("localhost", "/example.hello/ui/index.html");
+    assert_eq!(shared.status(), StatusCode::OK);
+}
+
+#[test]
+fn the_desk_files_load_on_every_host_and_a_host_naming_no_surface_is_refused() {
+    let film = format!("/_desk/file/{TOKEN}/a.mp4");
+    let paths = [
+        "/_desk/plugin-sdk.js",
+        "/_desk/tokens.css",
+        "/_desk/palette/index.html",
+        film.as_str(),
+    ];
+    for host in HELLO.iter().copied().chain(["localhost"]) {
+        for path in paths {
+            assert_eq!(get_on(host, path).status(), StatusCode::OK, "{host}{path}");
+        }
+    }
+    for host in [
+        "evil",
+        "example.hello",
+        "a.b.c",
+        "Main.example-hello",
+        "main.example-hello.lan",
+    ] {
+        let refused = get_on(host, "/_desk/plugin-sdk.js");
+        assert_eq!(refused.status(), StatusCode::FORBIDDEN, "{host}");
+        let preflight = respond(&request_on(host, "OPTIONS", "/a", None), &Fake::new("pre"));
+        assert_eq!(preflight.status(), StatusCode::FORBIDDEN, "{host}");
+    }
 }

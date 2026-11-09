@@ -1,7 +1,7 @@
 // Bootstrap: mount the desk shell on the Rust core through the Tauri bridge. The runtime under it
 // hosts the core's UI plugins; the shell reaches the brain and its agent directory through the core.
 import { BridgeClient, tauriAdapter } from "@endue-ai/bridge";
-import { mountDesk, phase, realClock } from "@endue-ai/runtime";
+import { deskPluginUrl, mountDesk, phase, realClock } from "@endue-ai/runtime";
 import "@endue-ai/runtime/desk.css";
 import "@endue-ai/runtime/shell.css";
 import { invoke } from "@tauri-apps/api/core";
@@ -27,10 +27,9 @@ phase("webview load", 0, booted);
 const root = document.getElementById("desk");
 if (!root) throw new Error("index.html has no #desk element");
 
-// Custom URL schemes look different on Windows (WebView2) than on macOS and Linux.
-const pluginBase = navigator.userAgent.includes("Windows")
-  ? "http://desk-plugin.localhost"
-  : "desk-plugin://localhost";
+// Custom URL schemes look different on Windows (WebView2) than on macOS and Linux. Each plugin
+// surface loads on a host of its own (#36).
+const pluginUrl = deskPluginUrl(navigator.userAgent.includes("Windows"));
 
 const core = new BridgeClient(tauriAdapter((command, args) => invoke(command, args), listen));
 // Safe mode and the state files kept broken (ADR 0061), known before the shell mounts.
@@ -40,7 +39,7 @@ const desk = mountDesk({
   root,
   bridge: shellBridge(core),
   core,
-  plugins: { url: (id, path, revision) => `${pluginBase}/${id}/${path}?v=${revision}` },
+  plugins: { url: pluginUrl },
   clock: realClock(),
   platform: navigator.userAgent.includes("Macintosh") ? "mac" : "other",
   lang,

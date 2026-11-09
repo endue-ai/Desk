@@ -12,6 +12,7 @@ import { eventKey, Owners } from "./owners";
 import { PluginCommands } from "./plugin-commands";
 import type { PluginHostDeps, PluginHostOptions } from "./plugin-host-deps";
 import { type PluginMessage, recipientsOf } from "./plugin-messages";
+import { surfaceUrl } from "./plugin-origins";
 import { now, phase } from "./timing";
 
 export type { PluginHostDeps, PluginHostOptions } from "./plugin-host-deps";
@@ -187,13 +188,12 @@ export class PluginHost {
     const surface = manifest.surfaces?.[0];
     this.#mounted.set(info.id, info);
     const open = () => {
-      // The revision as it is when the surface opens: an update may come while it sleeps.
-      const { revision } = this.#mounted.get(info.id) ?? info;
       this.#mounting.set(info.id, now());
       this.#deps.open({
         id: info.id,
         title: surface?.title ?? manifest.name ?? info.id,
-        src: this.#options.url(info.id, manifest.entry ?? "", revision),
+        // The revision as it is when the surface opens: an update may come while it sleeps.
+        src: surfaceUrl(this.#options, this.#mounted.get(info.id) ?? info),
         ...(surface ? { surface: surface.id, placement: surface.placement } : {}),
         ...(surface?.hidden ? { hidden: true } : {}),
       });
@@ -271,7 +271,7 @@ export class PluginHost {
           const next = { ...info, revision };
           this.#mounted.set(plugin, next);
           if (!this.#sleepers.dozing(plugin))
-            this.#deps.reload(plugin, this.#options.url(plugin, info.manifest.entry, revision));
+            this.#deps.reload(plugin, surfaceUrl(this.#options, next));
         } else if (!info && this.#unready.has(plugin)) {
           // A dev folder filled or fixed while the desk runs: the plugin turns ready on its update.
           // One the person or the plugin put away stays away; #mount takes only a ready, enabled UI plugin.

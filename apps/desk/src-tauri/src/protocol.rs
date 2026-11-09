@@ -2,22 +2,31 @@
 //! (`/_desk/plugin-sdk.js`), the UI bundle and shared sheets (`/_desk/ui.js`, `tokens.css`, `base.css`), and the
 //! files fs.url hands out (`/_desk/file/<token>/<file name>`), with HTTP ranges (ADR 0041).
 //!
-//! macOS and Linux see `desk-plugin://localhost/<id>/<path>`; Windows sees
-//! `http://desk-plugin.localhost/<id>/<path>`. Plugin frames are sandboxed (opaque origin), so
-//! responses allow any origin, preflights are answered (`Range` may be sent; `Content-Range` and
-//! its kin may be read), and HTML gets a CSP that blocks network access: plugins reach the network
-//! only through the bridge's net.fetch, under its permission check, while `fetch` reaches the scheme
-//! itself (file URLs). Scripts, media, images and fonts load from the scheme, media and images also
-//! from `blob:` and `data:`; workers start from `blob:` and WebAssembly may compile (ADR 0048).
+//! Every plugin surface loads from a host of its own (#36, `protocol/hosts.rs`):
+//! `desk-plugin://<surface>.<plugin label>/<id>/<path>` on macOS and Linux,
+//! `http://desk-plugin.<surface>.<plugin label>.localhost/<id>/<path>` on Windows. A path under
+//! another plugin's id is refused there with 403, unless that plugin is a library (ADR 0049); the
+//! `/_desk/` files load on every host. The shared host, `desk-plugin://localhost` and
+//! `http://desk-plugin.localhost`, serves the desk's own pages and the files it loads itself (theme
+//! fonts). Plugin frames are sandboxed (opaque origin), so responses allow any origin, preflights
+//! are answered (`Range` may be sent; `Content-Range` and its kin may be read), and HTML gets a CSP
+//! that blocks network access: plugins reach the network only through the bridge's net.fetch, under
+//! its permission check, while `fetch` reaches the scheme itself (file URLs). Scripts, media, images
+//! and fonts load from the scheme, media and images also from `blob:` and `data:`; workers start
+//! from `blob:` and WebAssembly may compile (ADR 0048).
 
 use std::io;
 use std::sync::Arc;
 
+use desk_bridge::PluginKind;
 use desk_core::{Core, FileUrl, media_type};
 use tauri::http::{Method, Request, Response, StatusCode, header};
 use tauri::{AppHandle, Manager};
 
 use crate::file_urls;
+use hosts::Host;
+
+mod hosts;
 
 pub const SCHEME: &str = "desk-plugin";
 
@@ -43,15 +52,18 @@ const BASE: &str = include_str!(concat!(
 ));
 const FILE_PREFIX: &str = "_desk/file/";
 
-const SOURCES: &str = "desk-plugin: http://desk-plugin.localhost";
-/// The plugin frames' CSP with `{sources}` for the scheme in both forms; the runtime's e2e server
-/// serves its plugin frames under the same file, with its own origin as the sources.
+/// The plugin frames' CSP with `{sources}` for the scheme in both forms and a surface's own origin
+/// (`Host::sources`); the runtime's e2e server serves its plugin frames under the same file, with its
+/// own origins as the sources.
 const PLUGIN_CSP: &str = include_str!("plugin-csp.txt");
 
 /// What the scheme serves from the core: plugin files, and the file a URL token names.
 pub trait Source {
     fn plugin_file(&self, id: &str, path: &str) -> io::Result<Vec<u8>>;
     fn file_url(&self, token: &str) -> Option<FileUrl>;
+    /// Whether `id` is a library: its modules run in the frame of the plugin that imports them, so
+    /// every surface's host serves them (ADR 0049).
+    fn library(&self, id: &str) -> bool;
 }
 
 impl Source for Core {
@@ -61,6 +73,13 @@ impl Source for Core {
 
     fn file_url(&self, token: &str) -> Option<FileUrl> {
         Core::file_url(self, token)
+    }
+
+    fn library(&self, id: &str) -> bool {
+        let kind = |info: &desk_bridge::PluginInfo| info.manifest.as_ref().map(|m| m.kind);
+        let plugins = self.plugins();
+        let found = plugins.iter().find(|info| info.id == id);
+        found.and_then(kind) == Some(PluginKind::Library)
     }
 }
 
@@ -81,8 +100,17 @@ pub fn serve(app: &AppHandle, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     response
 }
 
-/// The response for a request: a file URL, one of the embedded bundles, or a plugin's file.
+/// The response for a request: a file URL, one of the embedded bundles, or a plugin's file. A host
+/// that is neither the shared one nor a surface's is refused, and so is a plugin's path on another
+/// plugin's surface.
 fn respond(request: &Request<Vec<u8>>, source: &impl Source) -> Response<Vec<u8>> {
+    let Some(host) = Host::parse(request.uri().host()) else {
+        return Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .body(Vec::new())
+            .unwrap_or_default();
+    };
     if request.method() == Method::OPTIONS {
         return preflight();
     }
@@ -105,7 +133,10 @@ fn respond(request: &Request<Vec<u8>>, source: &impl Source) -> Response<Vec<u8>
             Ok(crate::palette_assets::file(&path).unwrap().to_vec())
         }
         _ => match path.split_once('/') {
-            Some((id, file)) => source.plugin_file(id, file),
+            Some((id, file)) if host.serves(id) || source.library(id) => {
+                source.plugin_file(id, file)
+            }
+            Some(_) => Err(io::Error::from(io::ErrorKind::PermissionDenied)),
             None => Err(io::Error::from(io::ErrorKind::NotFound)),
         },
     };
@@ -116,7 +147,7 @@ fn respond(request: &Request<Vec<u8>>, source: &impl Source) -> Response<Vec<u8>
         Ok(bytes) => {
             let mime = mime_type(&path);
             if mime.starts_with("text/html") {
-                response = response.header(header::CONTENT_SECURITY_POLICY, plugin_csp());
+                response = response.header(header::CONTENT_SECURITY_POLICY, plugin_csp(&host));
             }
             response
                 .header(header::CONTENT_TYPE, mime)
@@ -133,8 +164,8 @@ fn respond(request: &Request<Vec<u8>>, source: &impl Source) -> Response<Vec<u8>
     }
 }
 
-fn plugin_csp() -> String {
-    PLUGIN_CSP.trim().replace("{sources}", SOURCES)
+fn plugin_csp(host: &Host) -> String {
+    PLUGIN_CSP.trim().replace("{sources}", &host.sources())
 }
 
 /// The answer to a CORS preflight, for any path: a frame's `fetch` with a `Range` header asks first.
@@ -199,13 +230,16 @@ mod shared_sheets_tests {
         fn file_url(&self, _: &str) -> Option<FileUrl> {
             None
         }
+        fn library(&self, _: &str) -> bool {
+            false
+        }
     }
 
     #[test]
     fn shared_sheets_are_embedded_css_with_frame_cors() {
         for (path, content) in [(TOKENS_PATH, TOKENS), (BASE_PATH, BASE)] {
             let request = Request::builder()
-                .uri(format!("/{path}"))
+                .uri(format!("desk-plugin://localhost/{path}"))
                 .body(vec![])
                 .unwrap();
             let response = respond(&request, &NoFiles);

@@ -140,6 +140,15 @@ describe("the helpers", () => {
     expect(assetUrl("example.board", "b.yaml", "http://127.0.0.1:5173/plugins/x/index.html")).toBe(
       "http://127.0.0.1:5173/plugins/x/b.yaml",
     );
+    // On the surface's own host (#36), in both forms of the scheme, the asset stays on it.
+    for (const origin of [
+      "desk-plugin://main.example-board",
+      "http://desk-plugin.main.example-board.localhost",
+    ]) {
+      expect(
+        assetUrl("example.board", "data/b.yaml", `${origin}/example.board/ui/index.html`),
+      ).toBe(`${origin}/example.board/data/b.yaml`);
+    }
   });
 
   it("give an all-day event its date and a message its sender", () => {

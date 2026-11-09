@@ -110,3 +110,36 @@ describe("PluginHost hot reload", () => {
     expect(host.mounted()).toEqual([]);
   });
 });
+
+describe("PluginHost surface URLs (#36)", () => {
+  it("asks for each frame's URL with its surface, on mount and on every reload", async () => {
+    const [one, bare] = [plugin("a.one"), plugin("b.two")];
+    const board = [{ id: "board", title: "Board", placement: "center" as const }];
+    const plugins = [
+      { ...one, manifest: { ...one.manifest, surfaces: board } },
+      { ...bare, manifest: { ...bare.manifest, surfaces: [] } },
+    ];
+    const stub = browserStub({ "plugin.list": () => ({ plugins: plugins as PluginInfo[] }) });
+    const opened = new Map<string, string | undefined>();
+    const reloaded: string[] = [];
+    const host = new PluginHost(
+      {
+        bridge: new BridgeClient(stub),
+        win: { addEventListener() {}, removeEventListener() {} } as unknown as Window,
+        open: (spec) => opened.set(spec.id, spec.src),
+        close() {},
+        reload: (_id, src) => reloaded.push(src),
+        frame: () => null,
+      },
+      { url: (id, path, revision, surface) => `${surface}|${id}|${path}|${revision}` },
+    );
+    await host.start();
+    expect(opened.get("a.one")).toBe("board|a.one|ui/index.html|1");
+    // A plugin that declares no surface still gets one of its own.
+    expect(opened.get("b.two")).toBe("main|b.two|ui/index.html|1");
+
+    const data = { plugin: "a.one", change: "updated", revision: 2 };
+    stub.emit({ event: "plugin.changed", data } as BridgeEvent);
+    expect(reloaded).toEqual(["board|a.one|ui/index.html|2"]);
+  });
+});

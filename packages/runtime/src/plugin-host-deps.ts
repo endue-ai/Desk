@@ -4,8 +4,12 @@ import type { KeyLike } from "./input";
 import type { SurfaceSpec } from "./surfaces";
 
 export interface PluginHostOptions {
-  /** The URL of a plugin file: desk-plugin:// in the app, a dev-server path in tests. */
-  url(id: string, path: string, revision: number): string;
+  /**
+   * The URL of a plugin file: desk-plugin:// in the app (`deskPluginUrl`), a dev-server path in tests.
+   * A mounted plugin's frame names its `surface`, so it loads on that surface's own host (#36,
+   * `surfaceHost`); the files the desk loads itself (a theme's fonts) name none.
+   */
+  url(id: string, path: string, revision: number, surface?: string): string;
 }
 
 /** What the host needs from the runtime. */
