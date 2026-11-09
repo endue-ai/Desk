@@ -11,6 +11,7 @@ import {
   snapTo,
   toggleFloating,
   toggleMaximize,
+  unfilled,
 } from "./windows";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
@@ -65,13 +66,13 @@ describe("maximize", () => {
     expect(back?.fill).toBeUndefined();
   });
 
-  it("a half snapped window fills its half between the bars, and comes back to it", () => {
+  it("a half snapped window fills its half between the bars; maximized from there, it comes back to the half", () => {
     const c = ctx();
     openSurface(c, "calendar");
+    const before = layoutOf(c.store.get()).surfaces[0];
     snapTo(c, "calendar", "left");
     const half = layoutOf(c.store.get()).surfaces[0];
     expect(half).toMatchObject({ x: FREE.x, y: FREE.y, w: 610, h: FREE.h, fill: "left" });
-    expect(half?.restore).toBeUndefined();
     snapTo(c, "calendar", "right");
     expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({
       x: FREE.x + FREE.w - 610,
@@ -84,12 +85,14 @@ describe("maximize", () => {
     toggleMaximize(c, "calendar");
     expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...FREE, fill: "full" });
     toggleMaximize(c, "calendar");
-    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({
-      x: FREE.x,
-      y: FREE.y,
-      w: 610,
-      h: FREE.h,
-    });
+    const again = layoutOf(c.store.get()).surfaces[0];
+    if (!again || !before) throw new Error("no window");
+    expect(again).toMatchObject({ x: FREE.x, y: FREE.y, w: 610, h: FREE.h, fill: "left" });
+    // Its own place is still the one a drag out of the half comes back to.
+    const own = { x: before.x, y: before.y, w: before.w, h: before.h };
+    expect(again.restore).toEqual({ ...own, floating: false });
+    expect(unfilled(again)).toMatchObject(own);
+    expect(unfilled(again).fill).toBeUndefined();
   });
 
   it("dropping at the top fills the app between the bars and can be restored like a maximize", () => {
@@ -128,6 +131,106 @@ describe("maximize", () => {
     expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...FREE_ERIS_MOVED, fill: "full" });
     snapTo(c, "calendar", "right");
     expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ x: 726, y: 72, w: 610, h: 740 });
+  });
+});
+
+describe("snapping to halves and quarters", () => {
+  const top = { x: FREE.x, y: FREE.y, w: FREE.w, h: 305 };
+  const parts = {
+    top,
+    bottom: { ...top, y: 507 },
+    "top-left": { x: 104, y: 190, w: 610, h: 305 },
+    "top-right": { x: 726, y: 190, w: 610, h: 305 },
+    "bottom-left": { x: 104, y: 507, w: 610, h: 305 },
+    "bottom-right": { x: 726, y: 507, w: 610, h: 305 },
+  } as const;
+
+  for (const [fill, rect] of Object.entries(parts)) {
+    it(`${fill} takes its part of the free area, at any app size`, () => {
+      const c = ctx();
+      openSurface(c, "calendar");
+      snapTo(c, "calendar", fill as keyof typeof parts);
+      const p = layoutOf(c.store.get()).surfaces[0];
+      if (!p) throw new Error("no window");
+      expect(p).toMatchObject({ ...rect, fill, floating: true });
+      expect(screenRect(p, { x: 0, y: 0 }, 1440, 900)).toEqual(rect);
+      // A taller and wider app: the part grows with the free area, from the same top.
+      const big = screenRect(p, { x: 0, y: 0 }, 2000, 1200);
+      expect(big.y).toBe(fill.startsWith("bottom") ? 190 + 455 + 12 : 190);
+      expect(big.h).toBe(455);
+      expect(big.w).toBe(fill.includes("-") ? 890 : 1792);
+    });
+  }
+
+  it("a snapped normal window floats, so a pan leaves it where it was snapped", () => {
+    const c = ctx();
+    openSurface(c, "calendar");
+    expect(layoutOf(c.store.get()).surfaces[0]?.floating).not.toBe(true);
+    snapTo(c, "calendar", "top-left");
+    const p = layoutOf(c.store.get()).surfaces[0];
+    if (!p) throw new Error("no window");
+    expect(p.floating).toBe(true);
+    expect(screenRect(p, { x: -400, y: 250 }, 1440, 900)).toEqual(parts["top-left"]);
+    expect(screenRect(p, { x: 0, y: 0 }, 1440, 900)).toEqual(parts["top-left"]);
+  });
+
+  it("keeps the place and the mode to come back to through every later snap", () => {
+    const c = ctx();
+    openSurface(c, "calendar");
+    const before = layoutOf(c.store.get()).surfaces[0];
+    snapTo(c, "calendar", "bottom");
+    snapTo(c, "calendar", "top-right");
+    snapTo(c, "calendar", "left");
+    expect(layoutOf(c.store.get()).surfaces[0]?.restore).toEqual({
+      x: before?.x,
+      y: before?.y,
+      w: before?.w,
+      h: before?.h,
+      floating: false,
+    });
+  });
+
+  it("out of its fill, a window is back at its place in the mode it had; a floating one stays floating", () => {
+    const c = ctx();
+    openSurface(c, "calendar");
+    const before = layoutOf(c.store.get()).surfaces[0];
+    snapTo(c, "calendar", "right");
+    const snapped = layoutOf(c.store.get()).surfaces[0];
+    if (!snapped || !before) throw new Error("no window");
+    const back = unfilled(snapped);
+    expect(back).toMatchObject({ x: before.x, y: before.y, w: before.w, h: before.h });
+    expect(back.floating).toBeUndefined();
+    expect(back.fill).toBeUndefined();
+    expect(back.restore).toBeUndefined();
+    // Dropped elsewhere, it takes the drop's place in that mode.
+    expect(unfilled(snapped, { x: 9, y: 8, w: 300, h: 200 })).toMatchObject({ x: 9, w: 300 });
+    // The title bar's Floating button takes it out of the snap as a normal window; again, it floats.
+    toggleFloating(c, "calendar", { vw: 1440, vh: 900 });
+    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ floating: false });
+    expect(layoutOf(c.store.get()).surfaces[0]?.fill).toBeUndefined();
+    toggleFloating(c, "calendar", { vw: 1440, vh: 900 });
+    snapTo(c, "calendar", "bottom-left");
+    const floating = layoutOf(c.store.get()).surfaces[0];
+    if (!floating) throw new Error("no window");
+    expect(unfilled(floating).floating).toBe(true);
+  });
+
+  it("a window maximized before snaps floated keeps its own mode when it comes back", () => {
+    const c = ctx();
+    openSurface(c, "calendar");
+    edit(c, (l) => ({
+      ...l,
+      surfaces: l.surfaces.map((p) => ({
+        ...p,
+        ...FREE,
+        fill: "full" as const,
+        restore: { x: 400, y: 300, w: 480, h: 320 },
+      })),
+    }));
+    toggleMaximize(c, "calendar");
+    const back = layoutOf(c.store.get()).surfaces[0];
+    expect(back).toMatchObject({ x: 400, y: 300, w: 480, h: 320 });
+    expect(back?.floating).toBeUndefined();
   });
 });
 

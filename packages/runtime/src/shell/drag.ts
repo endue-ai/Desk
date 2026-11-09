@@ -12,7 +12,8 @@ export interface DragHandlers {
     | "nesw-resize"
     | "ns-resize"
     | "ew-resize";
-  start?(): void;
+  /** The drag begins: the pointer has moved past the threshold from `down`, where it was pressed. */
+  start?(down: PointerEvent): void;
   move(dx: number, dy: number, event: PointerEvent): void;
   /** `event` is the pointer's last place, for snapping on a successful drop. */
   end(dx: number, dy: number, event: PointerEvent): void;
@@ -85,7 +86,7 @@ export function draggable(handle: HTMLElement, handlers: DragHandlers): () => vo
         doc.getSelection()?.removeAllRanges();
         root.style.setProperty("--desk-drag-cursor", handlers.cursor ?? "grabbing");
         root.classList.add("is-grabbing");
-        handlers.start?.();
+        handlers.start?.(e);
       }
       m.preventDefault();
       handlers.move(dx, dy, m);

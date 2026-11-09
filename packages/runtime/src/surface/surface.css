@@ -141,3 +141,15 @@
   line-height: 1.5;
 }
 .notes-body:focus-visible { outline-offset: -2px; }
+
+/* Where a dragged window will snap (ADR 0128): the part of the free area, under the window, while
+   the pointer aims at an edge or a corner. It moves from one part to the next as the pointer does. */
+.surface-snap {
+  position: absolute;
+  border: 2px solid var(--desk-primary-border);
+  border-radius: var(--radius-lg);
+  background: var(--desk-primary-soft);
+  pointer-events: none;
+  transition: left var(--motion-fast) ease, top var(--motion-fast) ease,
+    width var(--motion-fast) ease, height var(--motion-fast) ease;
+}

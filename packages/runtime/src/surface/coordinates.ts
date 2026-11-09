@@ -1,6 +1,6 @@
 import type { SurfacePlacement } from "../modes/types";
 import { freeArea, fromScreen, REF, type Rect, SAFE, toScreen } from "./geometry";
-import { fillRect } from "./snap";
+import { fillRect, fillTop } from "./snap";
 
 export interface Offset {
   x: number;
@@ -25,7 +25,8 @@ export function appSize() {
  */
 export function screenRect(p: SurfacePlacement, pan: Offset, vw: number, vh: number): Rect {
   if (!isFloating(p)) return { x: p.x + pan.x, y: p.y + pan.y, w: p.w, h: p.h };
-  return p.fill ? fillRect(p.fill, freeArea(vw, vh, Math.max(SAFE.top, p.y))) : toScreen(p, vw, vh);
+  if (!p.fill) return toScreen(p, vw, vh);
+  return fillRect(p.fill, freeArea(vw, vh, Math.max(SAFE.top, fillTop(p.fill, p))));
 }
 
 export function storedRect(r: Rect, floating: boolean, pan: Offset, vw: number, vh: number): Rect {
