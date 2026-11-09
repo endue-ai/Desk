@@ -4,6 +4,9 @@ date: 2026-10-27
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0140: every surface gets an origin of its own, the scheme has one form on every
+OS once CEF serves it, and the `sandbox` attribute ends with the iframes in Stage 2.
+
 # UI plugins load over a desk-plugin URL scheme, sandboxed, with the SDK from an import map
 
 ## Context and Problem Statement

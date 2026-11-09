@@ -1,8 +1,11 @@
 ---
-status: accepted
+status: superseded by 0140
 date: 2026-10-27
 decision-makers: Team endue
 ---
+
+Status: superseded by ADR 0140 (a wgpu compositor over CEF off-screen surfaces); the app shell
+without Tauri is ADR 0143.
 
 # Use Tauri 2 as the shell instead of Electron
 

@@ -4,6 +4,9 @@ date: 2026-10-29
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0144: once the engine is Chromium, e2e drives the desk over remote debugging,
+and the Docker WebKit runner and its two slots per machine end.
+
 # Local e2e runs in a Linux container on macOS, two runs per machine
 
 ## Context and Problem Statement

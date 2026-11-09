@@ -4,6 +4,9 @@ date: 2026-11-01
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0140: the CSP's sources become scheme-wide (`desk-plugin:`), since every
+surface has an origin of its own.
+
 # Plugin frames run workers and WebAssembly, and fetch the desk's file URLs
 
 ## Context and Problem Statement

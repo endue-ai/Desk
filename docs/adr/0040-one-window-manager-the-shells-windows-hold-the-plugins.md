@@ -4,6 +4,9 @@ date: 2026-10-31
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0140: in Stage 2 the window manager moves from the web runtime to the
+compositor in Rust.
+
 # One window manager: the shell's windows hold the plugin surfaces
 
 ## Context and Problem Statement

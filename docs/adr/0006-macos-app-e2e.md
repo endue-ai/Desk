@@ -4,6 +4,9 @@ date: 2026-10-27
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0144: once the desk runs on CEF, macOS joins the app suite over Chromium's
+remote debugging instead of waiting for tauri-driver.
+
 # macOS app testing without tauri-driver
 
 ## Context and Problem Statement
