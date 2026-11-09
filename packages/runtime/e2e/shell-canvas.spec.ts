@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { barsOver, DESK, openShell } from "./shell-helpers";
+import { chipsOverTitle, DESK, openShell } from "./shell-helpers";
 
 test.use({ viewport: DESK });
 const surface = (page: Page, id = 1) => page.locator(`[data-surface="window-${id}"]`);
@@ -155,7 +155,7 @@ test("wheel over a pane does not pan, background wheel does", async ({ page }) =
     .toBe(-120);
 });
 
-test("maximize and restore use the free area in sight of a panned canvas, under no bar", async ({
+test("maximize and restore take the whole app in sight of a panned canvas, the title clear of the chips", async ({
   page,
 }) => {
   await openShell(page, "?lang=en");
@@ -164,10 +164,10 @@ test("maximize and restore use the free area in sight of a panned canvas, under 
   await pan(page, -100, -50);
   const before = await canvas.boundingBox();
   await canvas.locator(".surface-name").dblclick();
-  expect(await canvas.boundingBox()).toEqual({ x: 104, y: 190, width: 1232, height: 622 });
-  expect(await barsOver(page, '[data-surface="window-1"]')).toEqual([]);
+  await expect.poll(() => canvas.boundingBox()).toEqual({ x: 0, y: 0, width: 1440, height: 900 });
+  expect(await chipsOverTitle(page, '[data-surface="window-1"]')).toEqual([]);
   await canvas.locator(".surface-name").dblclick();
-  expect(await canvas.boundingBox()).toEqual(before);
+  await expect.poll(() => canvas.boundingBox()).toEqual(before);
 });
 
 test("Shift + drag on a title bar pans the canvas instead of moving the window", async ({

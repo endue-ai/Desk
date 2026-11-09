@@ -48,7 +48,7 @@ export interface SurfacePlacement {
   /** How the surface is split into panes. Absent: one pane showing the view named by `id`. */
   panes?: PaneNode;
   /**
-   * Where it was before it filled the free area, in the coordinates of the mode it had then, and
+   * Where it was before it filled the app or a part of it, in the coordinates of the mode it had then, and
    * that mode (`floating`; absent in layouts saved before snaps floated). Present only while it
    * fills it. A window maximized from a half or a quarter also keeps that part (`fill`), to come
    * back to it.
@@ -62,7 +62,8 @@ export interface SurfacePlacement {
     fill?: Exclude<SurfacePlacement["fill"], "full" | undefined>;
   };
   /**
-   * Fills the free area, a half of it (an edge's) or a quarter (a corner's) until moved or resized.
+   * Fills the whole app (ADR 0132), a half of it (an edge's) or a quarter (a corner's) until moved
+   * or resized.
    * A fill floats the window, so it keeps its part at any pan and any app size; a normal window
    * filled before fills floated keeps the world rect it was filled to.
    */

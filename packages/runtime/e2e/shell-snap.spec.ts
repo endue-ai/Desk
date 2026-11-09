@@ -1,26 +1,27 @@
 // Snapping (ADR 0128): a window dragged by its title bar to one of the app's edges takes that half
-// of the free area, to a corner that quarter, a preview showing where while the pointer is there.
-// A snapped window floats, so Shift + drag (the canvas pan) leaves it where it was snapped, and
-// dragging it out brings back its own size and mode.
+// of the whole app (ADR 0132), to a corner that quarter, a preview showing where while the pointer
+// is there; the bars float above it, its title clear of the top chips. A snapped window floats, so
+// Shift + drag (the canvas pan) leaves it where it was snapped, and dragging it out brings back its
+// own size and mode. Windows glide into place, so their boxes are polled.
 import { expect, type Page, test } from "@playwright/test";
-import { barsOver, DESK, openShell } from "./shell-helpers";
+import { chipsOverTitle, DESK, openShell } from "./shell-helpers";
 
 test.use({ viewport: DESK });
 const surface = (page: Page, id = 1) => page.locator(`[data-surface="window-${id}"]`);
 const preview = (page: Page) => page.locator(".surface-snap");
 
-// The free area at 1440 × 900, under Eris in her default place: 104, 190, 1232 × 622.
-const W = 610;
-const H = 305;
+// The whole app at 1440 × 900: halves and quarters 12 px apart.
+const W = 714;
+const H = 444;
 const TARGETS = [
-  { snap: "left", to: [3, 450], rect: { x: 104, y: 190, width: W, height: 622 } },
-  { snap: "right", to: [1437, 450], rect: { x: 726, y: 190, width: W, height: 622 } },
-  { snap: "top", to: [720, 2], rect: { x: 104, y: 190, width: 1232, height: H } },
-  { snap: "bottom", to: [720, 897], rect: { x: 104, y: 507, width: 1232, height: H } },
-  { snap: "top-left", to: [3, 3], rect: { x: 104, y: 190, width: W, height: H } },
-  { snap: "top-right", to: [1437, 3], rect: { x: 726, y: 190, width: W, height: H } },
-  { snap: "bottom-left", to: [3, 897], rect: { x: 104, y: 507, width: W, height: H } },
-  { snap: "bottom-right", to: [1437, 897], rect: { x: 726, y: 507, width: W, height: H } },
+  { snap: "left", to: [3, 450], rect: { x: 0, y: 0, width: W, height: 900 } },
+  { snap: "right", to: [1437, 450], rect: { x: 726, y: 0, width: W, height: 900 } },
+  { snap: "top", to: [720, 2], rect: { x: 0, y: 0, width: 1440, height: H } },
+  { snap: "bottom", to: [720, 897], rect: { x: 0, y: 456, width: 1440, height: H } },
+  { snap: "top-left", to: [3, 3], rect: { x: 0, y: 0, width: W, height: H } },
+  { snap: "top-right", to: [1437, 3], rect: { x: 726, y: 0, width: W, height: H } },
+  { snap: "bottom-left", to: [3, 897], rect: { x: 0, y: 456, width: W, height: H } },
+  { snap: "bottom-right", to: [1437, 897], rect: { x: 726, y: 456, width: W, height: H } },
 ] as const;
 
 /** Press on a window's title, move to (x, y) in steps, and leave the button down. */
@@ -61,15 +62,16 @@ for (const { snap, to, rect } of TARGETS) {
     await expect(preview(page)).toHaveCSS("height", `${rect.height}px`);
     await page.mouse.up();
     await expect(preview(page)).toHaveCount(0);
-    expect(await win.boundingBox()).toEqual(rect);
+    await expect.poll(() => win.boundingBox()).toEqual(rect);
     await expect(win).toHaveAttribute("data-floating", "true");
     await expect(win).toHaveAttribute("data-fill", snap);
-    expect(await barsOver(page, '[data-surface="window-2"]')).toEqual([]);
-    // Shift + drag on its own title bar pans the canvas: the normal window moves, it does not.
+    expect(await chipsOverTitle(page, '[data-surface="window-2"]')).toEqual([]);
+    // Shift + drag on its own title bar pans the canvas: the normal window moves, it does not. Just
+    // past its title: the bar's start may lie under the side bar, which floats above it.
     const before = await other.boundingBox();
     const title = await win.locator(".surface-name").boundingBox();
     if (!before || !title) throw new Error("no window");
-    await pan(page, title.x + 5, title.y + 5, -90, 40);
+    await pan(page, title.x + title.width + 16, title.y + 5, -90, 40);
     expect(await page.evaluate(() => window.__shell.desk.store.get().pan[1])).toEqual({
       x: -90,
       y: 40,
@@ -78,6 +80,34 @@ for (const { snap, to, rect } of TARGETS) {
     expect(await win.boundingBox()).toEqual(rect);
   });
 }
+
+test("the preview grows out of the window, and the window glides into it", async ({ page }) => {
+  // The container's WebKit may ask for reduced motion, and the fixture stops every transition so
+  // the other specs read final boxes: lift both for this page.
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await openShell(page, "?lang=en");
+  await page.evaluate(() => {
+    for (const style of document.querySelectorAll("head style"))
+      style.textContent = (style.textContent ?? "").replace(/^.*transition: none.*$/mu, "");
+  });
+  await page.keyboard.press("Meta+n");
+  const win = surface(page);
+  await grab(page, 1, 3, 450);
+  // Shown where the window is, then moving to the half: a transition, not a jump.
+  await expect(preview(page)).toHaveAttribute("data-snap", "left");
+  const motion = (sel: string) =>
+    page.evaluate((s) => {
+      const el = document.querySelector(s);
+      return el ? getComputedStyle(el).transitionProperty : "";
+    }, sel);
+  expect(await motion(".surface-snap")).toContain("width");
+  await expect(preview(page)).toHaveCSS("width", `${W}px`);
+  await page.mouse.up();
+  await expect(win).toHaveClass(/is-settling/);
+  expect(await motion('[data-surface="window-1"]')).toContain("left");
+  await expect(win).not.toHaveClass(/is-settling/);
+  expect(await win.boundingBox()).toEqual(TARGETS[0].rect);
+});
 
 test("the preview follows the pointer from zone to zone, and Escape leaves the window where it was", async ({
   page,
@@ -122,13 +152,18 @@ test("dragged out of its snap, a window takes back its size and its mode, under 
   if (!before) throw new Error("no window");
   await grab(page, 1, 3, 3);
   await page.mouse.up();
-  expect(await win.boundingBox()).toEqual(TARGETS[4].rect);
+  await expect.poll(() => win.boundingBox()).toEqual(TARGETS[4].rect);
   // Grabbed by its title and dropped in the middle of the desk: its own size, its title bar still
   // under the pointer.
   await grab(page, 1, 700, 500);
   await page.mouse.up();
+  await expect
+    .poll(async () => {
+      const box = await win.boundingBox();
+      return box && { width: box.width, height: box.height };
+    })
+    .toEqual({ width: before.width, height: before.height });
   const back = await win.boundingBox();
-  expect(back).toMatchObject({ width: before.width, height: before.height });
   if (!back) throw new Error("no window");
   expect(back.x).toBeLessThan(700);
   expect(back.x + back.width).toBeGreaterThan(700);

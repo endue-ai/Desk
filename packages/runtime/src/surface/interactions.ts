@@ -17,7 +17,34 @@ export function place(el: HTMLElement, r: Rect): void {
   el.style.height = `${r.h}px`;
 }
 
-/** The rect a drop will snap to, under the window being dragged, while the pointer aims at it. */
+/** How long a window takes to glide into its part, or out of it, at most: then it stops gliding. */
+const SETTLE_MS = 400;
+
+/**
+ * Let the window glide to the next place it is given (a snap, a fill, a restore) instead of jumping
+ * there; `kind` "size" glides its size only, as a filled window takes its own size back under the
+ * pointer. Reduced motion zeroes the transition (`--motion-*`).
+ */
+export function settle(el: HTMLElement, kind: "place" | "size" = "place"): void {
+  const name = kind === "place" ? "is-settling" : "is-unsnapping";
+  el.classList.add(name);
+  const win = el.ownerDocument.defaultView ?? window;
+  const done = () => {
+    el.classList.remove(name);
+    el.removeEventListener("transitionend", ended);
+  };
+  const ended = (e: TransitionEvent) => {
+    if (e.target === el && (e.propertyName === "width" || e.propertyName === "height")) done();
+  };
+  el.addEventListener("transitionend", ended);
+  win.setTimeout(done, SETTLE_MS);
+}
+
+/**
+ * The rect a drop will snap to, under the window being dragged, while the pointer aims at it. It
+ * grows out of the window's own box when it shows, and glides from part to part as the pointer
+ * moves (surface.css).
+ */
 function snapPreview(el: HTMLElement, rectOf: (snap: Snap) => Rect) {
   let shown: HTMLElement | null = null;
   const hide = () => {
@@ -28,7 +55,13 @@ function snapPreview(el: HTMLElement, rectOf: (snap: Snap) => Rect) {
     hide,
     show(snap: Snap | null) {
       if (!snap) return hide();
-      shown ??= h("div", { class: "surface-snap", "aria-hidden": "true" });
+      if (!shown) {
+        shown = h("div", { class: "surface-snap", "aria-hidden": "true" });
+        place(shown, { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight });
+        el.parentElement?.insertBefore(shown, el);
+        // Drawn once where the window is, so the move to the part is a transition.
+        void shown.offsetWidth;
+      }
       shown.dataset.snap = snap;
       shown.style.zIndex = el.style.zIndex;
       place(shown, rectOf(snap));
@@ -54,7 +87,7 @@ export function surfaceInteractions(
   /** The window as a move drops it off its fill: its own size and mode. Null for one not filled. */
   let own: SurfacePlacement | null = null;
   let aim: (pointer: { x: number; y: number }, area: Rect) => Snap | null = () => null;
-  const preview = snapPreview(el, (snap) => snapRect(ctx, snap, size()));
+  const preview = snapPreview(el, (snap) => snapRect(snap, size()));
   const begin = () => {
     start = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
     own = null;
@@ -69,6 +102,7 @@ export function surfaceInteractions(
     // A filled window comes off its fill as the drag starts: its own size again, the pointer at the
     // same share of its width, so the title bar stays under it.
     own = unfilled(p);
+    settle(el, "size");
     const back = screenRect(own, panOf(ctx.store.get()), vw, vh);
     const share = start.w > 0 ? (down.clientX - start.x) / start.w : 0;
     start = { x: Math.round(down.clientX - share * back.w), y: start.y, w: back.w, h: back.h };
@@ -116,6 +150,7 @@ export function surfaceInteractions(
         if (!snap) commit(moved(dx, dy));
         else {
           el.classList.remove("is-dragging");
+          // From where the drop left it into its part (Surface.ts glides every fill that changes).
           snapTo(ctx, placement().id, snap);
         }
       },

@@ -37,74 +37,74 @@
   },
   "half": {
     "pane": {
-      "width": 608,
-      "height": 580
+      "width": 712,
+      "height": 858
     },
     "section": {
       "x": 0,
       "y": 0,
-      "width": 608,
-      "height": 580
+      "width": 712,
+      "height": 858
     },
     "frame": {
       "x": 0,
       "y": 0,
-      "width": 608,
-      "height": 580
+      "width": 712,
+      "height": 858
     }
   },
   "maximized": {
     "pane": {
-      "width": 1230,
-      "height": 580
+      "width": 1438,
+      "height": 858
     },
     "section": {
       "x": 0,
       "y": 0,
-      "width": 1230,
-      "height": 580
+      "width": 1438,
+      "height": 858
     },
     "frame": {
       "x": 0,
       "y": 0,
-      "width": 1230,
-      "height": 580
+      "width": 1438,
+      "height": 858
     }
   },
   "restored": {
     "pane": {
-      "width": 608,
-      "height": 580
+      "width": 712,
+      "height": 858
     },
     "section": {
       "x": 0,
       "y": 0,
-      "width": 608,
-      "height": 580
+      "width": 712,
+      "height": 858
     },
     "frame": {
       "x": 0,
       "y": 0,
-      "width": 608,
-      "height": 580
+      "width": 712,
+      "height": 858
     }
   },
   "raised": {
     "pane": {
-      "width": 608,
-      "height": 580
+      "width": 712,
+      "height": 858
     },
     "section": {
       "x": 0,
       "y": 0,
-      "width": 608,
-      "height": 580
+      "width": 712,
+      "height": 858
     },
     "frame": {
       "x": 0,
       "y": 0,
-      "width": 608,
-      "height": 580
+      "width": 712,
+      "height": 858
     }
   }
 }

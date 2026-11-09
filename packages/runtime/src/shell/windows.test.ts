@@ -16,11 +16,12 @@ import {
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 /**
- * The free area at 1440×900, what a filled window takes: between the side bars, the rail and the
- * bottom line, and under Eris in her default place. Once she is moved it reaches up to the chips.
+ * What a filled window takes at 1440×900 (ADR 0132): the whole app, the bars floating above it as
+ * they do above every window. Halves and quarters keep a 12 px gap between them.
  */
-const FREE = { x: 104, y: 190, w: 1232, h: 622 };
-const FREE_ERIS_MOVED = { x: 104, y: 72, w: 1232, h: 740 };
+const APP = { x: 0, y: 0, w: 1440, h: 900 };
+const HALF_W = 714;
+const HALF_H = 444;
 
 function ctx() {
   const store = new Store(sampleState("en", epoch));
@@ -48,14 +49,14 @@ const rectOf = (c: ReturnType<typeof ctx>, id: string) => {
 };
 
 describe("maximize", () => {
-  it("fills the app between the bars and keeps the place to restore; a second call restores it", () => {
+  it("fills the whole app and keeps the place to restore; a second call restores it", () => {
     const c = ctx();
     openSurface(c, "calendar");
     const before = layoutOf(c.store.get()).surfaces[0];
     toggleMaximize(c, "calendar");
     const full = layoutOf(c.store.get()).surfaces[0];
     expect(full).toMatchObject({
-      ...FREE,
+      ...APP,
       fill: "full",
       restore: { x: before?.x, y: before?.y, w: before?.w, h: before?.h },
     });
@@ -66,28 +67,28 @@ describe("maximize", () => {
     expect(back?.fill).toBeUndefined();
   });
 
-  it("a half snapped window fills its half between the bars; maximized from there, it comes back to the half", () => {
+  it("a half snapped window fills its half of the app; maximized from there, it comes back to the half", () => {
     const c = ctx();
     openSurface(c, "calendar");
     const before = layoutOf(c.store.get()).surfaces[0];
     snapTo(c, "calendar", "left");
     const half = layoutOf(c.store.get()).surfaces[0];
-    expect(half).toMatchObject({ x: FREE.x, y: FREE.y, w: 610, h: FREE.h, fill: "left" });
+    expect(half).toMatchObject({ x: 0, y: 0, w: HALF_W, h: APP.h, fill: "left" });
     snapTo(c, "calendar", "right");
     expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({
-      x: FREE.x + FREE.w - 610,
-      y: FREE.y,
-      w: 610,
-      h: FREE.h,
+      x: APP.w - HALF_W,
+      y: 0,
+      w: HALF_W,
+      h: APP.h,
       fill: "right",
     });
     snapTo(c, "calendar", "left");
     toggleMaximize(c, "calendar");
-    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...FREE, fill: "full" });
+    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...APP, fill: "full" });
     toggleMaximize(c, "calendar");
     const again = layoutOf(c.store.get()).surfaces[0];
     if (!again || !before) throw new Error("no window");
-    expect(again).toMatchObject({ x: FREE.x, y: FREE.y, w: 610, h: FREE.h, fill: "left" });
+    expect(again).toMatchObject({ x: 0, y: 0, w: HALF_W, h: APP.h, fill: "left" });
     // Its own place is still the one a drag out of the half comes back to.
     const own = { x: before.x, y: before.y, w: before.w, h: before.h };
     expect(again.restore).toEqual({ ...own, floating: false });
@@ -95,12 +96,12 @@ describe("maximize", () => {
     expect(unfilled(again).fill).toBeUndefined();
   });
 
-  it("dropping at the top fills the app between the bars and can be restored like a maximize", () => {
+  it("filling the whole app by a snap can be restored like a maximize", () => {
     const c = ctx();
     openSurface(c, "calendar");
     const before = layoutOf(c.store.get()).surfaces[0];
     snapTo(c, "calendar", "full");
-    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...FREE, fill: "full" });
+    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...APP, fill: "full" });
     toggleMaximize(c, "calendar");
     expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ x: before?.x, w: before?.w });
   });
@@ -113,40 +114,57 @@ describe("maximize", () => {
     toggleMaximize(c, "calendar");
     const normal = layoutOf(c.store.get()).surfaces[0];
     if (!normal) throw new Error("no window");
-    expect(screenRect(normal, pan, 1440, 900)).toEqual(FREE);
+    expect(screenRect(normal, pan, 1440, 900)).toEqual(APP);
     toggleMaximize(c, "calendar");
     toggleFloating(c, "calendar", { vw: 1440, vh: 900 });
     toggleMaximize(c, "calendar");
     const floating = layoutOf(c.store.get()).surfaces[0];
     if (!floating) throw new Error("no window");
-    expect(screenRect(floating, pan, 1440, 900)).toEqual(FREE);
-    expect(screenRect(floating, pan, 1280, 800)).toEqual({ x: 104, y: 190, w: 1072, h: 522 });
+    expect(screenRect(floating, pan, 1440, 900)).toEqual(APP);
+    expect(screenRect(floating, pan, 1280, 800)).toEqual({ x: 0, y: 0, w: 1280, h: 800 });
   });
 
-  it("reaches up to the chips once Eris has left her default place", () => {
-    const c = ctx();
-    openSurface(c, "calendar");
-    edit(c, (l) => ({ ...l, eris: { x: 600, y: 700 } }));
-    toggleMaximize(c, "calendar");
-    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...FREE_ERIS_MOVED, fill: "full" });
-    snapTo(c, "calendar", "right");
-    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ x: 726, y: 72, w: 610, h: 740 });
+  it("takes the whole app wherever Eris sits, under the bars as every window is", () => {
+    for (const eris of [null, { x: 600, y: 700 }]) {
+      const c = ctx();
+      openSurface(c, "calendar");
+      edit(c, (l) => ({ ...l, eris }));
+      toggleMaximize(c, "calendar");
+      expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...APP, fill: "full" });
+      snapTo(c, "calendar", "right");
+      expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({
+        x: 726,
+        y: 0,
+        w: HALF_W,
+        h: 900,
+      });
+    }
+  });
+
+  it("a fill kept from when fills stayed between the bars draws over the whole app", () => {
+    const old = { id: "a", plugin: "p", x: 104, y: 507, w: 1232, h: 305, pinned: false };
+    for (const [fill, rect] of [
+      ["full", APP],
+      ["bottom", { x: 0, y: 456, w: 1440, h: HALF_H }],
+    ] as const) {
+      expect(screenRect({ ...old, floating: true, fill }, { x: 0, y: 0 }, 1440, 900)).toEqual(rect);
+    }
   });
 });
 
 describe("snapping to halves and quarters", () => {
-  const top = { x: FREE.x, y: FREE.y, w: FREE.w, h: 305 };
+  const top = { x: 0, y: 0, w: APP.w, h: HALF_H };
   const parts = {
     top,
-    bottom: { ...top, y: 507 },
-    "top-left": { x: 104, y: 190, w: 610, h: 305 },
-    "top-right": { x: 726, y: 190, w: 610, h: 305 },
-    "bottom-left": { x: 104, y: 507, w: 610, h: 305 },
-    "bottom-right": { x: 726, y: 507, w: 610, h: 305 },
+    bottom: { ...top, y: 456 },
+    "top-left": { x: 0, y: 0, w: HALF_W, h: HALF_H },
+    "top-right": { x: 726, y: 0, w: HALF_W, h: HALF_H },
+    "bottom-left": { x: 0, y: 456, w: HALF_W, h: HALF_H },
+    "bottom-right": { x: 726, y: 456, w: HALF_W, h: HALF_H },
   } as const;
 
   for (const [fill, rect] of Object.entries(parts)) {
-    it(`${fill} takes its part of the free area, at any app size`, () => {
+    it(`${fill} takes its part of the whole app, at any app size`, () => {
       const c = ctx();
       openSurface(c, "calendar");
       snapTo(c, "calendar", fill as keyof typeof parts);
@@ -154,11 +172,11 @@ describe("snapping to halves and quarters", () => {
       if (!p) throw new Error("no window");
       expect(p).toMatchObject({ ...rect, fill, floating: true });
       expect(screenRect(p, { x: 0, y: 0 }, 1440, 900)).toEqual(rect);
-      // A taller and wider app: the part grows with the free area, from the same top.
+      // A taller and wider app: the part grows with it.
       const big = screenRect(p, { x: 0, y: 0 }, 2000, 1200);
-      expect(big.y).toBe(fill.startsWith("bottom") ? 190 + 455 + 12 : 190);
-      expect(big.h).toBe(455);
-      expect(big.w).toBe(fill.includes("-") ? 890 : 1792);
+      expect(big.y).toBe(fill.startsWith("bottom") ? 594 + 12 : 0);
+      expect(big.h).toBe(594);
+      expect(big.w).toBe(fill.includes("-") ? 994 : 2000);
     });
   }
 
@@ -222,7 +240,7 @@ describe("snapping to halves and quarters", () => {
       ...l,
       surfaces: l.surfaces.map((p) => ({
         ...p,
-        ...FREE,
+        ...APP,
         fill: "full" as const,
         restore: { x: 400, y: 300, w: 480, h: 320 },
       })),

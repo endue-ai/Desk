@@ -1,14 +1,15 @@
 /**
- * Snapping: a window dragged to one of the app's four edges takes that half of the free area
- * (between the bars, `freeArea`), one dragged to a corner takes that quarter. Pure over rects;
- * interactions.ts asks with the pointer's place, shows the rect while the pointer is there, and the
- * window keeps the fill (`SurfacePlacement.fill`) so it still fills after the app is resized.
+ * Snapping: a window dragged to one of the app's four edges takes that half of the app, one dragged
+ * to a corner takes that quarter (ADR 0128); every fill takes the whole app, the bars floating above
+ * it (ADR 0132). Pure over rects; interactions.ts asks with the pointer's place, shows the rect while
+ * the pointer is there, and the window keeps the fill (`SurfacePlacement.fill`) so it still fills
+ * after the app is resized.
  */
 import type { SurfacePlacement } from "../modes/types";
 import type { Rect } from "./geometry";
 
 export type Fill = NonNullable<SurfacePlacement["fill"]>;
-/** The parts of the free area a drag can snap to: every fill but the whole of it. */
+/** The parts of the app a drag can snap to: every fill but the whole of it. */
 export type Snap = Exclude<Fill, "full">;
 
 interface Point {
@@ -37,10 +38,7 @@ export function halves(area: Rect): { left: Rect; right: Rect } {
   };
 }
 
-/**
- * The two halves of an area one above the other. The bottom one sits exactly a gap below the top
- * one, both one height, so a bottom fill tells the top of its area (`fillTop`).
- */
+/** The two halves of an area one above the other, a gap between them. */
 export function rows(area: Rect): { top: Rect; bottom: Rect } {
   const h = Math.floor((area.h - GAP) / 2);
   return {
@@ -71,11 +69,6 @@ export function fillRect(fill: Fill, area: Rect): Rect {
       return { x: column.x, y: row.y, w: column.w, h: row.h };
     }
   }
-}
-
-/** The top of the free area a fill's rect `r` was taken from: its own, or a bottom one's top half's. */
-export function fillTop(fill: Fill, r: Rect): number {
-  return isBottom(fill) ? r.y - GAP - r.h : r.y;
 }
 
 /** Which part a window dragged with the pointer at `pointer` snaps to, or null when it stays put. */

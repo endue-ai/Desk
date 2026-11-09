@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aimSnap, CORNER, fillRect, fillTop, halves, rows, SNAP, SNAP_TOP, snapFor } from "./snap";
+import { aimSnap, CORNER, fillRect, halves, rows, SNAP, SNAP_TOP, snapFor } from "./snap";
 
 const area = { x: 0, y: 0, w: 1440, h: 900 };
 const right = area.x + area.w;
@@ -111,21 +111,5 @@ describe("fill rects", () => {
     expect(fillRect("top-right", free)).toEqual({ x: 726, y: 190, w: 610, h: 305 });
     expect(fillRect("bottom-left", free)).toEqual({ x: 104, y: 507, w: 610, h: 305 });
     expect(fillRect("bottom-right", free)).toEqual({ x: 726, y: 507, w: 610, h: 305 });
-  });
-
-  it("every fill's rect tells the top of the area it was taken from", () => {
-    for (const top of [72, 190, 191]) {
-      const free = { x: 104, y: top, w: 1232, h: 812 - top };
-      for (const fill of [
-        "full",
-        "left",
-        "top",
-        "bottom",
-        "bottom-left",
-        "bottom-right",
-      ] as const) {
-        expect(fillTop(fill, fillRect(fill, free))).toBe(top);
-      }
-    }
   });
 });

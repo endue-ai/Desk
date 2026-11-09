@@ -17,9 +17,10 @@ import {
   toggleFloating,
   toggleMaximize,
 } from "../shell/windows";
+import { trackTopChrome } from "./clearance";
 import { isFloating, screenRect } from "./coordinates";
 import { zOf } from "./cover";
-import { place, surfaceInteractions } from "./interactions";
+import { place, settle, surfaceInteractions } from "./interactions";
 import { renderPanes } from "./PaneView";
 import { findLeaf, leaves, panesOf } from "./tree";
 import { type Mounted, resolveView, viewOf } from "./views";
@@ -255,13 +256,16 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       entry.el.dataset.floating = String(isFloating(p));
       // A window maximized before fills has a restore but no fill.
       const fill = p.fill ?? (p.restore ? "full" : undefined);
+      const dragging = entry.el.classList.contains("is-dragging");
+      // Into a fill, from one to the next, or back out (not from a drag's own drop): it glides there.
+      if (fill !== entry.el.dataset.fill && entry.el.style.left !== "" && !dragging)
+        settle(entry.el);
       if (fill) entry.el.dataset.fill = fill;
       else delete entry.el.dataset.fill;
       entry.relabel();
       drawTitle(entry, p);
       // Status/focus updates must not overwrite an in-progress pointer preview.
-      if (!entry.el.classList.contains("is-dragging"))
-        place(entry.el, screenRect(p, panOf(s), vw, vh));
+      if (!dragging) place(entry.el, screenRect(p, panOf(s), vw, vh));
       entry.el.style.zIndex = String(zOf(p, i, s.focused));
       entry.el.classList.toggle("is-focused", p.id === s.focused);
     });
@@ -288,6 +292,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       for (const entry of live.values()) entry.relabel();
     }),
     listen(window, "resize", draw),
+    trackTopChrome(layer, root.closest(".shell") ?? root),
     // Tile, cascade and spread, with the strip on the right edge (ADR 0116).
     mountArrange(root, ctx, { layer, element: (id) => live.get(id)?.el, size }),
   ];

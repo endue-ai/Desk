@@ -2,7 +2,7 @@
 // whose centre surfaces open inside the shell's windows (ADR 0040). One window manager: slots,
 // drag, resize, snap, maximize, the drawer and the plugin's on/off all go through it.
 import { expect, type Page, test } from "@playwright/test";
-import { barsOver, DESK, openShell, step } from "./shell-helpers";
+import { chipsOverTitle, DESK, openShell, step } from "./shell-helpers";
 
 test.use({ viewport: DESK });
 
@@ -85,27 +85,27 @@ test.describe("plugin surfaces as shell windows", () => {
     await expect(window_(page, HELLO)).toHaveCSS("width", "402px");
   });
 
-  test("dropping it at the left edge snaps it to the left half; double-clicking the title bar fills the free area and restores", async ({
+  test("dropping it at the left edge snaps it to the left half; double-clicking the title bar fills the whole app and restores", async ({
     page,
   }) => {
     const before = await box(page, HELLO);
     const hello = `section.surface[data-surface="${HELLO}"]`;
     // The pointer, not the window, decides: it ends 10 px inside the app's left edge.
     await dragTitle(page, HELLO, -(before.x + 120 - 10), 0);
-    // The half of the free area: right of the side bars, under Eris's place, above the bottom line.
-    await expect(window_(page, HELLO)).toHaveCSS("left", "104px");
-    await expect(window_(page, HELLO)).toHaveCSS("top", "190px");
-    await expect(window_(page, HELLO)).toHaveCSS("width", "610px");
-    await expect(window_(page, HELLO)).toHaveCSS("height", "622px");
-    expect(await barsOver(page, hello)).toEqual([]);
+    // The left half of the whole app (ADR 0132): the bars float above it as above every window.
+    await expect(window_(page, HELLO)).toHaveCSS("left", "0px");
+    await expect(window_(page, HELLO)).toHaveCSS("top", "0px");
+    await expect(window_(page, HELLO)).toHaveCSS("width", "714px");
+    await expect(window_(page, HELLO)).toHaveCSS("height", "900px");
+    expect(await chipsOverTitle(page, hello)).toEqual([]);
     await window_(page, HELLO).locator(".surface-title").dblclick();
-    await expect(window_(page, HELLO)).toHaveCSS("width", "1232px");
-    await expect(window_(page, HELLO)).toHaveCSS("height", "622px");
-    // The bars and Eris float above every window, and a filled one lies under none of them.
-    expect(await barsOver(page, hello)).toEqual([]);
+    await expect(window_(page, HELLO)).toHaveCSS("width", "1440px");
+    await expect(window_(page, HELLO)).toHaveCSS("height", "900px");
+    // Its title and tools keep clear of the profile switcher and the desktops.
+    expect(await chipsOverTitle(page, hello)).toEqual([]);
     await window_(page, HELLO).locator(".surface-name").dblclick();
-    await expect(window_(page, HELLO)).toHaveCSS("width", "610px");
-    await expect(window_(page, HELLO)).toHaveCSS("left", "104px");
+    await expect(window_(page, HELLO)).toHaveCSS("width", "714px");
+    await expect(window_(page, HELLO)).toHaveCSS("left", "0px");
   });
 
   test("putting it in the drawer takes the frame away and raising it brings the plugin back", async ({

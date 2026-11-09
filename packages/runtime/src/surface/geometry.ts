@@ -2,7 +2,8 @@
  * Surfaces are stored in the 1440×900 reference frame and mapped onto the app's window. Smaller
  * windows move them inwards and shrink them, each axis on its own: a shorter app takes height, a
  * narrower one width. They never shrink below the minimum size, and a surface may be dragged to
- * every edge of the window: the bars float above it. A fill stays in the free area (`freeArea`).
+ * every edge of the window: the bars float above it. Windows open and tile in the free area
+ * (`freeArea`); a fill takes the whole app (ADR 0132).
  */
 import type { SurfacePlacement } from "../modes/types";
 
@@ -46,8 +47,8 @@ export function freeTop(erisAtHome: boolean): number {
 }
 
 /**
- * The part of a `vw`×`vh` app no bar covers, from `top` down: what a maximized or snapped window
- * fills, so no bar lies over its contents, and what arranging tiles (ADR 0040's free area).
+ * The part of a `vw`×`vh` app no bar covers, from `top` down: where windows open and what arranging
+ * tiles (ADR 0040's free area). A maximized or snapped window takes the whole app (ADR 0132).
  */
 export function freeArea(vw: number, vh: number, top: number = SAFE.top): Rect {
   return {

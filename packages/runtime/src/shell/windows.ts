@@ -4,7 +4,7 @@
  */
 import type { PaneSplit, SurfacePlacement } from "../modes/types";
 import { appSize, isFloating, screenRect, storedRect } from "../surface/coordinates";
-import { clampRect, freeArea, freeTop, REF, type Rect } from "../surface/geometry";
+import { clampRect, REF, type Rect, screenArea } from "../surface/geometry";
 import { type Fill, fillRect } from "../surface/snap";
 import {
   close,
@@ -111,20 +111,18 @@ export function toggleFloating(ctx: Ctx, id: string, size = appSize()): void {
 }
 
 /**
- * The free area, or a half or quarter of it, in the reference frame: between the bars, and under
- * Eris while she sits in her default place, so nothing of the desk's own lies over a filled window
- * (ADR 0040). A fill floats the window (ADR 0128): it stays in its part whatever the pan, and keeps
- * filling it after the app is resized.
+ * The whole app, or a half or quarter of it, in the reference frame (ADR 0132): the bars float above
+ * a filled window as they do above every window, and its title keeps clear of the top ones
+ * (`surface/clearance.ts`). A fill floats the window (ADR 0128): it stays in its part whatever the
+ * pan, and keeps filling it after the app is resized.
  */
-function filled(ctx: Ctx, fill: Fill): Partial<SurfacePlacement> {
-  const top = freeTop(layoutOf(ctx.store.get()).eris === null);
-  return { ...fillRect(fill, freeArea(REF.width, REF.height, top)), floating: true, fill };
+function filled(fill: Fill): Partial<SurfacePlacement> {
+  return { ...fillRect(fill, screenArea(REF.width, REF.height)), floating: true, fill };
 }
 
 /** Where a fill puts a window on an app of `size`: what a drag's snap preview shows. */
-export function snapRect(ctx: Ctx, fill: Fill, size = appSize()): Rect {
-  const top = freeTop(layoutOf(ctx.store.get()).eris === null);
-  return fillRect(fill, freeArea(size.vw, size.vh, top));
+export function snapRect(fill: Fill, size = appSize()): Rect {
+  return fillRect(fill, screenArea(size.vw, size.vh));
 }
 
 type Restore = NonNullable<SurfacePlacement["restore"]>;
@@ -152,33 +150,33 @@ export function unfilled(p: SurfacePlacement, back: Rect = p.restore ?? p): Surf
  * The window filling `where`. Its own place and mode stay the one to come back to; filling the
  * whole area from a half or a quarter also keeps that part, which the next restore comes back to.
  */
-function fillWith(ctx: Ctx, p: SurfacePlacement, where: Fill): SurfacePlacement {
+function fillWith(p: SurfacePlacement, where: Fill): SurfacePlacement {
   const { fill: _part, ...own } = p.restore ?? placeOf(p);
   const part = where === "full" && p.fill && p.fill !== "full" ? p.fill : undefined;
-  return { ...p, restore: part ? { ...own, fill: part } : own, ...filled(ctx, where) };
+  return { ...p, restore: part ? { ...own, fill: part } : own, ...filled(where) };
 }
 
 /**
- * Fill the free area, keeping the place to come back to; a second call comes back: to the half or
+ * Fill the whole app, keeping the place to come back to; a second call comes back: to the half or
  * quarter it filled from, or to its own place and mode.
  */
 export function toggleMaximize(ctx: Ctx, id: string): void {
   update(ctx, id, (p) => {
     // Filled (one saved before fills has a restore but no fill): come back.
     if (p.restore && (p.fill === "full" || p.fill === undefined)) {
-      return p.restore.fill ? fillWith(ctx, p, p.restore.fill) : unfilled(p);
+      return p.restore.fill ? fillWith(p, p.restore.fill) : unfilled(p);
     }
-    return fillWith(ctx, p, "full");
+    return fillWith(p, "full");
   });
 }
 
 /**
- * Snap a window to a half or a quarter of the free area, or fill it. Every fill keeps the place and
+ * Snap a window to a half or a quarter of the app, or fill it. Every fill keeps the place and
  * the mode to come back to: the title bar's double-click comes back from the whole area, and
  * dragging a snapped window out brings back its size and mode.
  */
 export function snapTo(ctx: Ctx, id: string, where: Fill): void {
-  update(ctx, id, (p) => fillWith(ctx, p, where));
+  update(ctx, id, (p) => fillWith(p, where));
 }
 
 /** The focused window, for the palette's window commands; nothing happens with none. */

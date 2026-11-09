@@ -22,6 +22,15 @@
 .surface.is-focused { border-color: var(--desk-input); }
 .surface.is-eris.is-focused { border-color: var(--desk-accent); }
 .surface.is-dragging { user-select: none; }
+/* Into a fill or out of it the window glides (interactions.ts `settle`); coming off a fill under the
+   pointer only its size does, so it never lags the pointer. Reduced motion zeroes --motion-*. */
+.surface.is-settling {
+  transition: left var(--motion-base) var(--ease-out-expo), top var(--motion-base) var(--ease-out-expo),
+    width var(--motion-base) var(--ease-out-expo), height var(--motion-base) var(--ease-out-expo);
+}
+.surface.is-unsnapping {
+  transition: width var(--motion-fast) ease-out, height var(--motion-fast) ease-out;
+}
 /* A frame would swallow the pointer mid-drag; while anything is dragged, frames get none. */
 .is-grabbing iframe { pointer-events: none; }
 /* A plugin's surface in a pane fills it; its own section has no border of its own there. One cell
@@ -59,6 +68,17 @@
   white-space: nowrap;
 }
 .surface.is-pinned .surface-title { cursor: default; }
+/* A filled window whose title bar runs along the app's top lies under the profile switcher and the
+   desktops, which float above it: its title and tools keep clear of them (surface/clearance.ts
+   measures how far). */
+.surface:is([data-fill="full"], [data-fill="left"], [data-fill="top"], [data-fill="top-left"])
+  .surface-title {
+  padding-left: max(var(--space-3), var(--chrome-left, 0px));
+}
+.surface:is([data-fill="full"], [data-fill="right"], [data-fill="top"], [data-fill="top-right"])
+  .surface-title {
+  padding-right: max(var(--space-2), var(--chrome-right, 0px));
+}
 .surface-name { font-size: var(--text-sm); font-weight: 500; }
 .surface-sub { overflow: hidden; color: var(--desk-text-muted); font-size: var(--text-xs); text-overflow: ellipsis; }
 .eris-badge {
@@ -142,14 +162,15 @@
 }
 .notes-body:focus-visible { outline-offset: -2px; }
 
-/* Where a dragged window will snap (ADR 0128): the part of the free area, under the window, while
-   the pointer aims at an edge or a corner. It moves from one part to the next as the pointer does. */
+/* Where a dragged window will snap (ADR 0128): the part of the app, under the window, while the
+   pointer aims at an edge or a corner. It grows out of the window's box and moves from one part to
+   the next as the pointer does. */
 .surface-snap {
   position: absolute;
   border: 2px solid var(--desk-primary-border);
   border-radius: var(--radius-lg);
   background: var(--desk-primary-soft);
   pointer-events: none;
-  transition: left var(--motion-fast) ease, top var(--motion-fast) ease,
-    width var(--motion-fast) ease, height var(--motion-fast) ease;
+  transition: left var(--motion-base) var(--ease-out-expo), top var(--motion-base) var(--ease-out-expo),
+    width var(--motion-base) var(--ease-out-expo), height var(--motion-base) var(--ease-out-expo);
 }
