@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "a name holds more than spaces",
+  "instance": {
+    "id": 46,
+    "method": "account.settings.update",
+    "params": {
+      "scope": { "permission": "account:manage" },
+      "displayName": "   "
+    }
+  }
+}

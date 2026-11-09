@@ -1,0 +1,8 @@
+{
+  "target": "UserUpdateRequest",
+  "description": "the public username is endue's to issue; Desk never sends it",
+  "instance": {
+    "display_name": "Ada",
+    "public_username": "ada"
+  }
+}

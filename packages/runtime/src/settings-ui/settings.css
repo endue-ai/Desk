@@ -24,6 +24,9 @@
 .desk-settings *, .desk-settings *::before, .desk-settings *::after { box-sizing: border-box; }
 .desk-settings button, .desk-settings input, .desk-settings select { font: inherit; color: inherit; }
 .desk-settings button { cursor: pointer; }
+/* The reset above must not take the kit's primary text colour (Connections, Market, endue account). */
+.desk-settings .btn-primary { color: var(--desk-button-primary-fg); }
+.desk-settings .btn-primary:hover:not(:disabled) { color: var(--desk-button-primary-hover-fg); }
 .desk-settings button:disabled { opacity: .45; cursor: default; }
 .desk-settings :focus-visible, .desk-settings-launcher:focus-visible { outline: 3px solid var(--desk-ring); outline-offset: 2px; }
 .desk-settings [hidden] { display: none !important; }
@@ -57,6 +60,11 @@
 .settings-category-icon.connections { background: var(--desk-chart-2); }
 .settings-category-icon.market { background: var(--desk-chart-4); }
 .settings-category-icon.plugins { background: var(--desk-chart-6); }
+.settings-category-icon.account { background: var(--desk-primary); }
+/* The design system's row (.menu-item), as tall as the identity it holds. */
+.settings-identity .settings-identity-button { gap: 10px; height: auto; min-width: 0; padding: 4px; }
+.settings-identity-button > div { min-width: 0; }
+.settings-identity-button strong, .settings-identity-button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .settings-detail { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .settings-heading { padding: 27px 28px 20px; }
 .settings-heading h1 { font-size: var(--desk-text-2xl); font-weight: 700; letter-spacing: -.04em; }
@@ -126,6 +134,23 @@
 .settings-conflict p { margin-bottom: 9px; }
 .settings-conflict button + button { margin-left: 7px; }
 .settings-empty { padding: 40px 10px; color: var(--settings-muted); text-align: center; }
+.settings-empty .btn { margin-top: 12px; }
+/* endue account (ADR 0130): the person on endue, and the settings endue.ai shows. */
+.settings-account-avatar { display: inline-grid; place-items: center; flex-shrink: 0; overflow: hidden; border-radius: 50%; background: var(--desk-primary); color: var(--desk-primary-foreground); font-weight: 650; }
+.settings-account-header .settings-account-avatar { font-size: var(--desk-text-2xl); box-shadow: var(--desk-shadow-md); margin-bottom: 8px; }
+.settings-account-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.settings-account-value { color: var(--settings-muted); text-align: right; overflow-wrap: anywhere; }
+.settings-account-field .settings-input { max-width: 55%; }
+.settings-account-actions { justify-content: flex-end; min-height: 48px; }
+.settings-account-actions .settings-row-error { margin-right: auto; color: var(--desk-danger); font-size: var(--desk-text-2xs); }
+.settings-account-status:not(:empty) { margin: 0 2px 12px; color: var(--settings-muted); font-size: var(--desk-text-xs); }
+.settings-account-code { display: grid; justify-items: center; gap: 6px; margin: 0 auto 16px; padding: 16px; max-width: 360px; background: var(--settings-card); border: 1px solid var(--settings-line); border-radius: var(--desk-radius-lg); text-align: center; }
+.settings-account-code strong { font: 650 var(--desk-text-2xl)/1.2 var(--desk-font-mono); letter-spacing: .08em; }
+.settings-account-code small { color: var(--settings-muted); }
+.settings-account-buttons { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
+.settings-account > .settings-row-error { margin: 0 0 12px; text-align: center; color: var(--desk-danger); }
+.settings-account-zone { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.settings-row select.input, .settings-account-field .input { height: var(--desk-field-height); font-size: var(--desk-text-xs); }
 /* Connections: a group per connector, a row per instance, a form to connect another. */
 .connection h2 { margin: 0 2px 2px; font-size: var(--desk-text-sm); font-weight: 650; }
 .connection > .settings-footnote { margin-bottom: 8px; }

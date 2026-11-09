@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/account.schema.json",
   "title": "Desk bridge v0: account",
-  "description": "The person's endue ID on this desk (ADR 0089, ADR 0111). Signing in follows the OAuth 2.0 device authorization grant (RFC 8628) with PKCE (RFC 7636, S256) through the endue AI platform's auth endpoints: the desk asks for a code, opens the endue ID page at auth.endue.ai where the person signs in or creates an account and confirms the code, and waits for the session in the background. The core keeps the session, renews it and sends the access token to the brain as its bearer token; no token crosses the bridge. Every call needs account:manage and answers the same AccountStatus; changes arrive as account.changed.",
+  "description": "The person's endue ID on this desk (ADR 0089, ADR 0111). Signing in follows the OAuth 2.0 device authorization grant (RFC 8628) with PKCE (RFC 7636, S256) through the endue AI platform's auth endpoints: the desk asks for a code, opens the endue ID page at auth.endue.ai where the person signs in or creates an account and confirms the code, and waits for the session in the background. The core keeps the session, renews it and sends the access token to the brain as its bearer token; no token crosses the bridge. Every call needs account:manage. account.status, account.signIn and account.signOut answer the same AccountStatus, and changes arrive as account.changed. account.settings.get and account.settings.update read and change the signed-in account's own settings on endue, the ones endue.ai's Account and General settings show (ADR 0130): the name and the picture's address, the display language and the time zone, and which notifications reach the person in endue's inbox. Signed out they are signed_out; endue out of reach is offline.",
   "$defs": {
     "AccountState": {
       "description": "signed-out: no endue ID on this desk. signing-in: a code waits for the person in the browser. signed-in: the desk holds a session and the brain gets its token.",
@@ -96,7 +96,7 @@
       "additionalProperties": false
     },
     "AccountParams": {
-      "description": "Parameters of account.status and account.signOut: the scope alone.",
+      "description": "Parameters of account.status, account.signOut and account.settings.get: the scope alone.",
       "type": "object",
       "properties": {
         "scope": {
@@ -163,8 +163,164 @@
       "description": "Result of account.signOut: signed-out.",
       "$ref": "#/$defs/AccountStatus"
     },
+    "AccountUserStatus": {
+      "description": "The account's standing on endue: active, inactive, or suspended.",
+      "type": "string",
+      "enum": ["active", "inactive", "suspended"]
+    },
+    "AccountUser": {
+      "description": "Who the person is on endue, from GET /api/v1/users/me, as endue.ai's Account settings show it. displayName and avatarUrl are absent while never set. avatarUrl is the picture's address as endue keeps it, text to edit: the desk shows account.status's picture and never loads this address.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The user id people quote to endue's support.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "email": { "type": "string", "minLength": 1, "maxLength": 320 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "avatarUrl": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "status": { "$ref": "#/$defs/AccountUserStatus" },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "status", "joinedAt"],
+      "additionalProperties": false
+    },
+    "AccountLanguage": {
+      "description": "A display language as an IETF BCP 47 tag: en-US, ja-JP, de-DE, fr-FR, ko-KR.",
+      "type": "string",
+      "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+      "maxLength": 35
+    },
+    "AccountTimeZone": {
+      "description": "An IANA time zone name: Asia/Seoul, America/New_York, UTC.",
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_+-]*(/[A-Za-z0-9_+-]+){0,2}$",
+      "maxLength": 64
+    },
+    "AccountNotificationKind": {
+      "description": "The kinds of endue notification endue.ai's settings let the person turn off: conversation-reply (an agent finished answering while they were away), routine-completed, routine-failed and routine-skipped (a scheduled run finished, failed, or was skipped at a usage limit), agent-notice (an agent decided they need to know something during a scheduled run).",
+      "type": "string",
+      "enum": [
+        "conversation-reply",
+        "routine-completed",
+        "routine-failed",
+        "routine-skipped",
+        "agent-notice"
+      ]
+    },
+    "AccountNotification": {
+      "description": "Whether one kind of notification reaches the person in endue's inbox (in-app).",
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "#/$defs/AccountNotificationKind" },
+        "inApp": { "type": "boolean" }
+      },
+      "required": ["kind", "inApp"],
+      "additionalProperties": false
+    },
+    "AccountSettingsPart": {
+      "description": "A part of the account's settings endue keeps apart from the account itself: preferences (the language and the time zone) and notifications.",
+      "type": "string",
+      "enum": ["preferences", "notifications"]
+    },
+    "AccountSettingsProblem": {
+      "description": "A part endue did not answer for: the bridge error code it would have been, and a sentence for people.",
+      "type": "object",
+      "properties": {
+        "part": { "$ref": "#/$defs/AccountSettingsPart" },
+        "code": { "$ref": "bridge.schema.json#/$defs/ErrorCode" },
+        "message": { "type": "string", "maxLength": 2000 }
+      },
+      "required": ["part", "code", "message"],
+      "additionalProperties": false
+    },
+    "AccountSettings": {
+      "description": "The signed-in account's settings on endue, read at once. The account itself must answer; a part that does not is left out (language and timeZone) or empty (notifications) and named in problems. language is absent while the person never chose one, and so is a stored value that is not a BCP 47 tag; notifications lists the five kinds in endue.ai's order.",
+      "type": "object",
+      "properties": {
+        "user": { "$ref": "#/$defs/AccountUser" },
+        "language": { "$ref": "#/$defs/AccountLanguage" },
+        "timeZone": { "$ref": "#/$defs/AccountTimeZone" },
+        "notifications": {
+          "type": "array",
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/AccountNotification" }
+        },
+        "problems": {
+          "type": "array",
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/AccountSettingsProblem" }
+        }
+      },
+      "required": ["user", "notifications", "problems"],
+      "additionalProperties": false
+    },
+    "AccountSettingsUpdateParams": {
+      "description": "Parameters of account.settings.update: the scope and what to change, at least one of them. displayName is trimmed; an empty avatarUrl clears the picture.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/AccountManagePermission"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "\\S"
+        },
+        "avatarUrl": {
+          "description": "An http or https address, or empty to clear the picture.",
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^(https?://\\S+)?$"
+        },
+        "language": { "$ref": "#/$defs/AccountLanguage" },
+        "timeZone": { "$ref": "#/$defs/AccountTimeZone" },
+        "notifications": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/AccountNotification" }
+        }
+      },
+      "required": ["scope"],
+      "minProperties": 2,
+      "additionalProperties": false
+    },
+    "AccountSettingsGetRequest": {
+      "description": "The signed-in account's settings: the account, its language and time zone, and its notifications, read side by side.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "account.settings.get" },
+        "params": { "$ref": "#/$defs/AccountParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AccountSettingsUpdateRequest": {
+      "description": "Change some settings on endue, so endue.ai and the desk show the same: the name and the picture's address, then the language and the time zone, then the notifications, each only when given. A change endue refuses stops there with its error; what was saved before it stays saved. A changed name or picture reaches account.status's profile and goes out as account.changed.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "account.settings.update" },
+        "params": { "$ref": "#/$defs/AccountSettingsUpdateParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AccountSettingsGetResult": {
+      "description": "Result of account.settings.get.",
+      "$ref": "#/$defs/AccountSettings"
+    },
+    "AccountSettingsUpdateResult": {
+      "description": "Result of account.settings.update: the settings now.",
+      "$ref": "#/$defs/AccountSettings"
+    },
     "AccountChangedEvent": {
-      "description": "The account changed: a sign-in began, finished or failed, the session was renewed with a problem or ended, the profile arrived, or the desk signed out. Sent to holders of account:manage.",
+      "description": "The account changed: a sign-in began, finished or failed, the session was renewed with a problem or ended, the profile arrived or changed, or the desk signed out. Sent to holders of account:manage.",
       "type": "object",
       "properties": {
         "event": { "const": "account.changed" },

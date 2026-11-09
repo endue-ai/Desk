@@ -1,6 +1,6 @@
 [package]
 name = "desk-platform"
-description = "Client of endue AI's platform API subset (specs/platform/v0): the person's endue AI agents, the agent catalog and conversations."
+description = "Client of endue AI's platform API subset (specs/platform/v0): the person's endue AI agents, the agent catalog, conversations and account settings."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -1,0 +1,15 @@
+{
+  "target": "AccountSettingsGetResult",
+  "description": "no token crosses the bridge, in the settings either",
+  "instance": {
+    "user": {
+      "id": "usr_00000000-0000-4000-8000-000000000001",
+      "email": "ada@example.com",
+      "status": "active",
+      "joinedAt": "2026-03-14T09:00:00Z",
+      "accessToken": "eyJhbGciOi"
+    },
+    "notifications": [],
+    "problems": []
+  }
+}

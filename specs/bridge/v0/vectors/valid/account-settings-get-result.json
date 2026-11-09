@@ -1,0 +1,24 @@
+{
+  "target": "AccountSettingsGetResult",
+  "description": "the account, its language and time zone, and the five kinds of notification; no token",
+  "instance": {
+    "user": {
+      "id": "usr_00000000-0000-4000-8000-000000000001",
+      "email": "ada@example.com",
+      "displayName": "Ada",
+      "avatarUrl": "https://cdn.example.com/avatars/ada.png",
+      "status": "active",
+      "joinedAt": "2026-03-14T09:00:00Z"
+    },
+    "language": "en-US",
+    "timeZone": "Asia/Seoul",
+    "notifications": [
+      { "kind": "conversation-reply", "inApp": true },
+      { "kind": "routine-completed", "inApp": false },
+      { "kind": "routine-failed", "inApp": true },
+      { "kind": "routine-skipped", "inApp": true },
+      { "kind": "agent-notice", "inApp": true }
+    ],
+    "problems": []
+  }
+}

@@ -2,8 +2,8 @@
 
 The client of endue AI's platform API subset that Desk calls (`specs/platform/v0`, ADR 0122): the
 person's endue AI agents, what Studio shows of one, the agent catalog, the Home board's
-conversations and the spaces the person can open (ADR 0129). desk-core serves it on the bridge as
-`studio.*`.
+conversations, the spaces the person can open (ADR 0129) and the person's own account settings (ADR
+0130). desk-core serves it on the bridge as `studio.*` and `account.settings.*`.
 
 ## Public API
 
@@ -16,6 +16,8 @@ conversations and the spaces the person can open (ADR 0129). desk-core serves it
   `prompt_revisions`, `skills`, `connectors`, `traits`.
 - Catalog and conversations: `catalog`, `recommend`, `use_catalog` (30 s), `conversations`.
 - Spaces, read only: `spaces(archived)` (with summaries), `space`, `space_overview`, `space_rooms`.
+- Account: `me`, `update_me`, `preferences`, `update_preferences`, `notifications`,
+  `update_notifications` (`wire_account`).
 - `PlatformError { kind, status, code, message }` with `ErrorKind`: `SignedOut`, `Offline`,
   `Forbidden`, `NotFound`, `Invalid`, `Conflict`, `Failed`.
 - `wire`, `wire_catalog`, `wire_spaces`: the platform's bodies, snake_case, read tolerantly (unknown

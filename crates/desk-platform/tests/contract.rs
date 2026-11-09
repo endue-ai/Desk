@@ -9,6 +9,9 @@ use desk_platform::wire::{
     AgentPage, AgentPatch, ConnectorBinding, Identity, Nature, NatureRole, NewAgent, Personality,
     Profile, PromptRevision, Settings, SettingsPatch, SkillBinding,
 };
+use desk_platform::wire_account::{
+    Channel, NotificationUpdate, Notifications, Preferences, PreferencesPatch, User, UserPatch,
+};
 use desk_platform::wire_catalog::{CatalogAgent, ConversationPage, Recommended, Used};
 use desk_platform::wire_spaces::{Room, Space, SpaceOverview};
 use desk_platform::{ErrorKind, PlatformError};
@@ -124,6 +127,9 @@ fn valid_answers_read_into_the_client_types() {
             "SpaceListResponse" => reads::<Vec<Space>>(vector),
             "SpaceOverviewEnvelope" => reads::<Envelope<SpaceOverview>>(vector),
             "SpaceRoomListEnvelope" => reads::<Envelope<Vec<Room>>>(vector),
+            "UserGetResponse" => reads::<User>(vector),
+            "UserPreferenceResponse" => reads::<Preferences>(vector),
+            "NotificationPreferencesEnvelope" => reads::<Envelope<Notifications>>(vector),
             "ErrorEnvelope" => {
                 let bytes = serde_json::to_vec(&vector.instance).unwrap();
                 let error = PlatformError::from_response(404, &bytes);
@@ -134,7 +140,11 @@ fn valid_answers_read_into_the_client_types() {
                 );
             }
             // Requests: the client's own bodies are checked below.
-            "CreateAgentRequest" | "UpdateAgentRequest" => {}
+            "CreateAgentRequest"
+            | "UpdateAgentRequest"
+            | "UserUpdateRequest"
+            | "UserPreferenceUpdateRequest"
+            | "NotificationPreferencesUpdateRequest" => {}
             other => panic!("{}: no client type mapped for {other}", vector.file),
         }
     }
@@ -171,6 +181,30 @@ fn the_bodies_the_client_sends_are_the_contracts() {
         ),
         ("UpdateAgentRequest", serde_json::to_value(&patch).unwrap()),
         ("AgentSettingsUpdateRequest", settings.body()),
+        (
+            "UserUpdateRequest",
+            serde_json::to_value(UserPatch {
+                display_name: Some("Ada".to_owned()),
+                avatar_url: Some(String::new()),
+            })
+            .unwrap(),
+        ),
+        (
+            "UserPreferenceUpdateRequest",
+            serde_json::to_value(PreferencesPatch {
+                locale: Some("fr-FR".to_owned()),
+                timezone: Some("Etc/GMT+5".to_owned()),
+            })
+            .unwrap(),
+        ),
+        (
+            "NotificationPreferencesUpdateRequest",
+            json!({ "updates": [NotificationUpdate {
+                notification_type: "agent_notice".to_owned(),
+                channel: Channel::InApp,
+                enabled: true,
+            }] }),
+        ),
     ];
     for (target, body) in bodies {
         assert!(validator(target).is_valid(&body), "{target}: {body}");

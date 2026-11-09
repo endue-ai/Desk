@@ -7,6 +7,7 @@
  * profile; the core keeps the session.
  */
 import type { AccountStatus } from "../bridge/types";
+import { runGesture } from "../gesture";
 import type { ShellCtx } from "../shell/context";
 import { type Child, h } from "../shell/dom";
 import { type AccountKey, accountText, problemText } from "./account-copy";
@@ -75,6 +76,11 @@ export function mountEndueId(ctx: ShellCtx, redraw: () => void): EndueId {
     if (!account) return;
     changed(await account.signOut().catch(() => status), false);
   };
+  // The account's own settings on endue, as endue.ai shows them (ADR 0130).
+  const openSettings = async () => {
+    ctx.store.set({ popover: null });
+    await runGesture(ctx.runtime, "desk.settings.open", { section: "account" });
+  };
 
   const offs = account
     ? [
@@ -121,7 +127,10 @@ export function mountEndueId(ctx: ShellCtx, redraw: () => void): EndueId {
     const { state, reason } = status;
     const buttons =
       state === "signed-in"
-        ? [button("account-sign-out", "signOut", signOut)]
+        ? [
+            button("account-settings-open", "accountSettings", openSettings, true),
+            button("account-sign-out", "signOut", signOut),
+          ]
         : state === "signing-in"
           ? [
               button("account-open-again", "openAgain", openAgain, true),

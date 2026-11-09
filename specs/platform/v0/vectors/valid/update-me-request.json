@@ -1,0 +1,8 @@
+{
+  "target": "UserUpdateRequest",
+  "description": "a new name, and the picture cleared with an empty address",
+  "instance": {
+    "display_name": "Ada Lovelace",
+    "avatar_url": ""
+  }
+}

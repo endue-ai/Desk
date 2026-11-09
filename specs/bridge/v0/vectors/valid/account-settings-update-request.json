@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "a new name with the picture cleared, a time zone, and one kind turned off",
+  "instance": {
+    "id": 42,
+    "method": "account.settings.update",
+    "params": {
+      "scope": { "permission": "account:manage" },
+      "displayName": "Ada Lovelace",
+      "avatarUrl": "",
+      "timeZone": "Europe/London",
+      "notifications": [{ "kind": "routine-completed", "inApp": false }]
+    }
+  }
+}

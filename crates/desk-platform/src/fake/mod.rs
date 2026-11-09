@@ -1,6 +1,7 @@
 //! An in-process fake of endue AI's platform subset (specs/platform/v0), for tests only (feature
-//! `fake`): a small HTTP/1.1 server on 127.0.0.1 that keeps agents, their facets, one catalog agent
-//! and conversations in memory, checks the bearer token, answers the platform's envelopes and error
+//! `fake`): a small HTTP/1.1 server on 127.0.0.1 that keeps agents, their facets, one catalog agent,
+//! conversations and the person's own account in memory, checks the bearer token, answers the
+//! platform's envelopes and error
 //! envelopes, and records every request it saw. Nothing leaves this machine.
 
 use std::collections::BTreeMap;
@@ -12,10 +13,12 @@ use std::time::Duration;
 
 use serde_json::Value;
 
+mod account;
 mod routes;
 mod spaces;
 mod state;
 
+pub use account::FakeAccount;
 pub use spaces::FakeSpace;
 pub use state::State;
 

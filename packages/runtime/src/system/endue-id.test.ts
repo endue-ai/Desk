@@ -13,6 +13,7 @@ function setup(lang: "en" | "ko" = "en") {
   const signIn = vi.spyOn(bridge.account, "signIn");
   const commands = new Map<string, () => unknown>();
   const say = vi.fn();
+  const run = vi.fn(async (_id: string, _args?: unknown) => undefined);
   const ctx = {
     store: new Store(sampleState(lang, 0)),
     bridge,
@@ -23,6 +24,8 @@ function setup(lang: "en" | "ko" = "en") {
           commands.set(id, spec.run);
           return () => commands.delete(id);
         },
+        run,
+        list: () => [],
       },
     },
   } as unknown as ShellCtx;
@@ -37,14 +40,14 @@ function setup(lang: "en" | "ko" = "en") {
     );
   };
   const keys = () => [...el.querySelectorAll("button")].map((b) => b.dataset.key);
-  return { bridge, commands, say, el, endue, signIn, press, keys };
+  return { bridge, commands, say, el, endue, signIn, press, keys, run };
 }
 
 const PROBLEM = "core sentence";
 
 describe("the desk's endue ID (ADR 0089, ADR 0111)", () => {
   it("signs in: the code to confirm, said once, then the profile from endue", async () => {
-    const { bridge, commands, say, el, endue, keys } = setup();
+    const { bridge, commands, say, el, endue, keys, run } = setup();
     await vi.waitFor(() => expect(el.textContent).toContain("Not signed in"));
     expect(keys()).toEqual(["account-sign-in", "account-create"]);
     expect(el.querySelector("[data-key=account-sign-in]")?.textContent).toBe(
@@ -67,7 +70,12 @@ describe("the desk's endue ID (ADR 0089, ADR 0111)", () => {
     expect(say).toHaveBeenLastCalledWith("You're signed in. I'll think with endue from now on.");
     expect(endue.profile()).toEqual({ displayName: "Ada Lovelace", email: "ada@example.com" });
     expect(endue.where()).toBe("ada@example.com");
-    expect(keys()).toEqual(["account-sign-out"]);
+    expect(keys()).toEqual(["account-settings-open", "account-sign-out"]);
+    // The account's own settings on endue open in Settings, endue account (ADR 0130).
+    el.querySelector<HTMLButtonElement>("[data-key=account-settings-open]")?.click();
+    await vi.waitFor(() =>
+      expect(run).toHaveBeenCalledWith("desk.settings.open", { section: "account" }),
+    );
 
     await commands.get("desk.account.sign-out")?.();
     expect(el.textContent).toContain("Not signed in");
@@ -134,7 +142,7 @@ describe("the desk's endue ID (ADR 0089, ADR 0111)", () => {
     expect(el.querySelector(".account-problem.is-notice")?.textContent).toContain(
       "세션 연장을 거절했어요",
     );
-    expect(keys()).toEqual(["account-sign-out"]);
+    expect(keys()).toEqual(["account-settings-open", "account-sign-out"]);
 
     bridge.fake.setAccount({ state: "signed-out", problem: PROBLEM, reason: "session-expired" });
     expect(say).toHaveBeenLastCalledWith("다시 로그인이 필요해요.");

@@ -9,6 +9,7 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 pub mod account;
 mod account_client;
+mod account_settings;
 mod agent_registry;
 mod agent_runs;
 mod agent_tools;
@@ -24,6 +25,7 @@ mod conversation;
 mod conversation_sink;
 mod conversation_tools;
 mod core_account;
+mod core_account_settings;
 mod core_agents;
 mod desk_context;
 pub mod lock;

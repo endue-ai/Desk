@@ -75,6 +75,16 @@
    "children": [
     {
      "tag": "button",
+     "class": "btn btn-primary",
+     "style": {
+      "background": "rgb(182, 163, 245)",
+      "color": "rgb(30, 24, 51)",
+      "border": "solid rgb(182, 163, 245)"
+     },
+     "text": "Account settings"
+    },
+    {
+     "tag": "button",
      "class": "btn btn-outline",
      "style": {
       "background": "rgb(55, 49, 63)",

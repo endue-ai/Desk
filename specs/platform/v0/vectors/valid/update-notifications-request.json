@@ -1,0 +1,10 @@
+{
+  "target": "NotificationPreferencesUpdateRequest",
+  "description": "two kinds' inbox channel turned off and on",
+  "instance": {
+    "updates": [
+      { "notification_type": "routine_completed", "channel": "in_app", "enabled": false },
+      { "notification_type": "agent_notice", "channel": "in_app", "enabled": true }
+    ]
+  }
+}

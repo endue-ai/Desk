@@ -1,0 +1,7 @@
+{
+  "target": "UserUpdateRequest",
+  "description": "the picture's address is http or https",
+  "instance": {
+    "avatar_url": "javascript:alert(1)"
+  }
+}

@@ -345,7 +345,7 @@
       "additionalProperties": false
     },
     "AccountManagePermission": {
-      "description": "Sign the desk in to endue ID and out again with account.*, and see whether it is signed in. Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime and to the built-in first run, whose manifest declares it (ADR 0089, ADR 0111).",
+      "description": "Sign the desk in to endue ID and out again with account.*, see whether it is signed in, and read and change the signed-in account's own settings on endue with account.settings.* (ADR 0130). Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime and to the built-in first run, whose manifest declares it (ADR 0089, ADR 0111).",
       "type": "object",
       "properties": { "permission": { "const": "account:manage" } },
       "required": ["permission"],

@@ -677,7 +677,7 @@ export interface ThemeManagePermission {
   permission: "theme:manage";
 }
 
-/** Sign the desk in to endue ID and out again with account.*, and see whether it is signed in. Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime and to the built-in first run, whose manifest declares it (ADR 0089, ADR 0111). */
+/** Sign the desk in to endue ID and out again with account.*, see whether it is signed in, and read and change the signed-in account's own settings on endue with account.settings.* (ADR 0130). Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime and to the built-in first run, whose manifest declares it (ADR 0089, ADR 0111). */
 export interface AccountManagePermission {
   permission: "account:manage";
 }
@@ -2121,7 +2121,7 @@ export interface AccountStatus {
   reason?: AccountProblem;
 }
 
-/** Parameters of account.status and account.signOut: the scope alone. */
+/** Parameters of account.status, account.signOut and account.settings.get: the scope alone. */
 export interface AccountParams {
   scope: AccountManagePermission;
 }
@@ -2162,7 +2162,91 @@ export type AccountSignInResult = AccountStatus;
 /** Result of account.signOut: signed-out. */
 export type AccountSignOutResult = AccountStatus;
 
-/** The account changed: a sign-in began, finished or failed, the session was renewed with a problem or ended, the profile arrived, or the desk signed out. Sent to holders of account:manage. */
+/** The account's standing on endue: active, inactive, or suspended. */
+export type AccountUserStatus = "active" | "inactive" | "suspended";
+
+/** Who the person is on endue, from GET /api/v1/users/me, as endue.ai's Account settings show it. displayName and avatarUrl are absent while never set. avatarUrl is the picture's address as endue keeps it, text to edit: the desk shows account.status's picture and never loads this address. */
+export interface AccountUser {
+  /** The user id people quote to endue's support. */
+  id: string;
+  email: string;
+  displayName?: string;
+  avatarUrl?: string;
+  status: AccountUserStatus;
+  joinedAt: string;
+}
+
+/** A display language as an IETF BCP 47 tag: en-US, ja-JP, de-DE, fr-FR, ko-KR. */
+export type AccountLanguage = string;
+
+/** An IANA time zone name: Asia/Seoul, America/New_York, UTC. */
+export type AccountTimeZone = string;
+
+/** The kinds of endue notification endue.ai's settings let the person turn off: conversation-reply (an agent finished answering while they were away), routine-completed, routine-failed and routine-skipped (a scheduled run finished, failed, or was skipped at a usage limit), agent-notice (an agent decided they need to know something during a scheduled run). */
+export type AccountNotificationKind =
+  | "conversation-reply"
+  | "routine-completed"
+  | "routine-failed"
+  | "routine-skipped"
+  | "agent-notice";
+
+/** Whether one kind of notification reaches the person in endue's inbox (in-app). */
+export interface AccountNotification {
+  kind: AccountNotificationKind;
+  inApp: boolean;
+}
+
+/** A part of the account's settings endue keeps apart from the account itself: preferences (the language and the time zone) and notifications. */
+export type AccountSettingsPart = "preferences" | "notifications";
+
+/** A part endue did not answer for: the bridge error code it would have been, and a sentence for people. */
+export interface AccountSettingsProblem {
+  part: AccountSettingsPart;
+  code: ErrorCode;
+  message: string;
+}
+
+/** The signed-in account's settings on endue, read at once. The account itself must answer; a part that does not is left out (language and timeZone) or empty (notifications) and named in problems. language is absent while the person never chose one, and so is a stored value that is not a BCP 47 tag; notifications lists the five kinds in endue.ai's order. */
+export interface AccountSettings {
+  user: AccountUser;
+  language?: AccountLanguage;
+  timeZone?: AccountTimeZone;
+  notifications: AccountNotification[];
+  problems: AccountSettingsProblem[];
+}
+
+/** Parameters of account.settings.update: the scope and what to change, at least one of them. displayName is trimmed; an empty avatarUrl clears the picture. */
+export interface AccountSettingsUpdateParams {
+  scope: AccountManagePermission;
+  displayName?: string;
+  /** An http or https address, or empty to clear the picture. */
+  avatarUrl?: string;
+  language?: AccountLanguage;
+  timeZone?: AccountTimeZone;
+  notifications?: AccountNotification[];
+}
+
+/** The signed-in account's settings: the account, its language and time zone, and its notifications, read side by side. */
+export interface AccountSettingsGetRequest {
+  id: RequestId;
+  method: "account.settings.get";
+  params: AccountParams;
+}
+
+/** Change some settings on endue, so endue.ai and the desk show the same: the name and the picture's address, then the language and the time zone, then the notifications, each only when given. A change endue refuses stops there with its error; what was saved before it stays saved. A changed name or picture reaches account.status's profile and goes out as account.changed. */
+export interface AccountSettingsUpdateRequest {
+  id: RequestId;
+  method: "account.settings.update";
+  params: AccountSettingsUpdateParams;
+}
+
+/** Result of account.settings.get. */
+export type AccountSettingsGetResult = AccountSettings;
+
+/** Result of account.settings.update: the settings now. */
+export type AccountSettingsUpdateResult = AccountSettings;
+
+/** The account changed: a sign-in began, finished or failed, the session was renewed with a problem or ended, the profile arrived or changed, or the desk signed out. Sent to holders of account:manage. */
 export interface AccountChangedEvent {
   event: "account.changed";
   data: AccountStatus;
@@ -2951,6 +3035,8 @@ export type BridgeRequest =
   | AccountStatusRequest
   | AccountSignInRequest
   | AccountSignOutRequest
+  | AccountSettingsGetRequest
+  | AccountSettingsUpdateRequest
   | AgentsListRequest
   | AgentsSessionsRequest
   | AgentsTranscriptRequest
@@ -6830,6 +6916,11 @@ export interface BridgeMethodMap {
   "account.status": { params: AccountParams; result: AccountStatusResult };
   "account.signIn": { params: AccountSignInParams; result: AccountSignInResult };
   "account.signOut": { params: AccountParams; result: AccountSignOutResult };
+  "account.settings.get": { params: AccountParams; result: AccountSettingsGetResult };
+  "account.settings.update": {
+    params: AccountSettingsUpdateParams;
+    result: AccountSettingsUpdateResult;
+  };
   "agents.list": { params: AgentsParams; result: AgentsListResult };
   "agents.sessions": { params: AgentsSessionsParams; result: AgentsSessionsResult };
   "agents.transcript": { params: AgentsTranscriptParams; result: AgentsTranscriptResult };
@@ -7002,6 +7093,8 @@ export const BRIDGE_METHODS = [
   "account.status",
   "account.signIn",
   "account.signOut",
+  "account.settings.get",
+  "account.settings.update",
   "agents.list",
   "agents.sessions",
   "agents.transcript",

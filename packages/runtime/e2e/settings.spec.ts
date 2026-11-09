@@ -189,3 +189,50 @@ test.describe("core settings", () => {
     await expect(dialog(page).getByRole("checkbox", { name: "Confirm unsaved" })).not.toBeChecked();
   });
 });
+
+// Settings, endue account (ADR 0130): the signed-in account's settings as endue keeps them, from
+// account.* on the browser stub (src/bridge/account-stub.ts), as the core serves them.
+test.describe("endue account settings", () => {
+  test("shows the account from endue, saves a change there and follows the new name", async ({
+    page,
+  }, info) => {
+    await open(page, "?core=1&platform=mac&account=1");
+    await page.keyboard.press("Meta+,");
+    const identity = dialog(page).locator('[data-key="settings-identity"]');
+    await expect(identity).toContainText("Ada Lovelace");
+    await expect(identity).toContainText("ada@example.com");
+    await identity.click();
+    await expect(
+      dialog(page).getByRole("heading", { name: "endue 계정", exact: true, level: 1 }),
+    ).toBeVisible();
+    await expect(dialog(page).getByRole("textbox", { name: "이름" })).toHaveValue("Ada Lovelace");
+    await expect(dialog(page).getByRole("combobox", { name: "표시 언어" })).toHaveValue("en-US");
+    await expect(dialog(page).getByRole("combobox", { name: "시간대" })).toHaveValue("Asia/Seoul");
+    await page.screenshot({ path: info.outputPath("settings-account.png") });
+
+    const done = dialog(page).getByRole("switch", { name: "예약 완료" });
+    await expect(done).not.toBeChecked();
+    await done.check();
+    const said = dialog(page).locator(".settings-account-status");
+    await expect(said).toHaveText("endue 계정에 저장했습니다.");
+    await expect(dialog(page).getByRole("switch", { name: "예약 완료" })).toBeChecked();
+
+    await dialog(page).getByRole("textbox", { name: "이름" }).fill("Ada King");
+    await dialog(page).getByRole("button", { name: "저장", exact: true }).click();
+    await expect(dialog(page).locator('[data-key="account-shown-name"]')).toHaveText("Ada King");
+    // account.changed carries the new name to the sidebar.
+    await expect(identity).toContainText("Ada King");
+  });
+
+  test("signed out, it offers endue ID and shows the code to confirm", async ({ page }) => {
+    await open(page, "?core=1&platform=mac&account=signedout");
+    await page.keyboard.press("Meta+,");
+    await dialog(page).getByRole("searchbox", { name: "설정 검색" }).fill("시간대");
+    await expect(
+      dialog(page).getByRole("heading", { name: "endue 계정", exact: true, level: 1 }),
+    ).toBeVisible();
+    await dialog(page).getByRole("button", { name: "endue ID 로 로그인", exact: true }).click();
+    await expect(dialog(page).locator('[data-key="account-code"]')).toHaveText("WDJB-MJHT");
+    await expect(dialog(page).getByRole("button", { name: "브라우저 다시 열기" })).toBeVisible();
+  });
+});

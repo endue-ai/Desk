@@ -1,0 +1,15 @@
+{
+  "target": "UserPreferenceResponse",
+  "description": "preferences with a language and a time zone, and endue.ai's own keys Desk ignores",
+  "instance": {
+    "window_layout": null,
+    "locale": "en-US",
+    "timezone": "Asia/Seoul",
+    "favorite_models": ["anthropic/claude-sonnet-4.5"],
+    "list_prefs": {},
+    "last_chat_model": null,
+    "agent_route": null,
+    "last_approval_mode": null,
+    "updated_at": "2026-11-01T09:00:00.000Z"
+  }
+}

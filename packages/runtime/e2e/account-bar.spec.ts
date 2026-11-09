@@ -95,8 +95,19 @@ test("signed in with endue ID, the bar and the popover show the profile (ADR 011
   await expect(account.locator(".account-identity strong")).toHaveText("Ada Lovelace");
   await expect(account.locator(".account-identity small")).toHaveText("ada@example.com");
   await expect(page.locator(".account-profile .account-avatar")).toHaveText("A");
-  await expect(account.getByRole("button")).toHaveText(["Sign out"]);
+  await expect(account.getByRole("button")).toHaveText(["Account settings", "Sign out"]);
   expect(await shellTree(page, ".account-popover")).toMatchSnapshot("signed-in.json");
+
+  // The account's own settings on endue open in Settings, endue account (ADR 0130).
+  await account.getByRole("button", { name: "Account settings" }).click();
+  const settings = page.locator(".desk-settings");
+  await expect(
+    settings.getByRole("heading", { name: "endue account", exact: true, level: 1 }),
+  ).toBeVisible();
+  await expect(account).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(settings).toHaveCount(0);
+  await profile.click();
 
   await page.evaluate(() =>
     window.__shell.bridge.fake.setAccount({

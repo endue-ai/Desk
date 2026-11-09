@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "only the five kinds endue.ai's settings show can be changed",
+  "instance": {
+    "id": 47,
+    "method": "account.settings.update",
+    "params": {
+      "scope": { "permission": "account:manage" },
+      "notifications": [{ "kind": "approval-required", "inApp": false }]
+    }
+  }
+}

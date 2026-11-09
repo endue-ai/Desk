@@ -1,7 +1,7 @@
 //! endue AI's platform API (`/api/v1`), the subset specs/platform/v0 writes down: the person's endue
 //! AI agents, what Studio shows of them, the agent catalog, the conversations of the Home board
-//! (ADR 0122) and the spaces the person can open (ADR 0129). Every call carries the endue ID access
-//! token `Tokens` hands out, sends no Origin
+//! (ADR 0122), the spaces the person can open (ADR 0129) and the person's own account settings (ADR
+//! 0130). Every call carries the endue ID access token `Tokens` hands out, sends no Origin
 //! header, waits 15 s at most and, after a 401, refreshes the token once and tries once more. The
 //! error envelope `{ error: { code, message } }` becomes a typed `PlatformError`.
 
@@ -15,8 +15,10 @@ mod facets;
 #[cfg(feature = "fake")]
 pub mod fake;
 mod http;
+mod me;
 mod spaces;
 pub mod wire;
+pub mod wire_account;
 pub mod wire_catalog;
 pub mod wire_spaces;
 

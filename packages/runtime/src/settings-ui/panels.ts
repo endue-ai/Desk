@@ -4,6 +4,7 @@ import { type SettingsCopy, type SettingsLanguage, settingsText } from "./copy";
 import { settingsIcon } from "./icons";
 
 export const SECTIONS = [
+  "account",
   "general",
   "appearance",
   "keyboard",
@@ -16,6 +17,8 @@ export const SECTIONS = [
 export type SettingsSection = (typeof SECTIONS)[number];
 export const description = (section: SettingsSection): SettingsCopy => `${section}Description`;
 const TERMS: Record<SettingsSection, string> = {
+  account:
+    "account endue id profile name avatar picture email user language region time zone timezone notifications inbox sign in sign out login logout 계정 프로필 이름 아바타 사진 이메일 사용자 언어 지역 시간대 알림 인박스 로그인 로그아웃 회원가입",
   general: "general desk preferences 일반 설정 정보",
   appearance:
     "appearance theme light dark system dark mode wallpaper live pond aurora 화면 테마 라이트 다크 자동 배경화면 라이브 연못 오로라",
@@ -28,6 +31,7 @@ const TERMS: Record<SettingsSection, string> = {
   market: "market install views packs plugins themes store 마켓 설치 뷰 팩 플러그인 테마",
 };
 const SECTION_COPY: Record<SettingsSection, readonly SettingsCopy[]> = {
+  account: ["account", "accountDescription"],
   general: [
     "general",
     "generalDescription",

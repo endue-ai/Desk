@@ -1,0 +1,15 @@
+{
+  "target": "UserPreferenceResponse",
+  "description": "a person who never saved a preference: no language, endue's default time zone",
+  "instance": {
+    "locale": null,
+    "timezone": "America/New_York",
+    "favorite_models": [],
+    "list_prefs": {},
+    "last_chat_model": null,
+    "agent_route": null,
+    "last_approval_mode": null,
+    "window_layout": null,
+    "updated_at": "2026-11-09T09:00:00.000Z"
+  }
+}

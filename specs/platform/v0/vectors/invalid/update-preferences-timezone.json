@@ -1,0 +1,7 @@
+{
+  "target": "UserPreferenceUpdateRequest",
+  "description": "a time zone is an IANA name, not an offset",
+  "instance": {
+    "timezone": "+09:00"
+  }
+}

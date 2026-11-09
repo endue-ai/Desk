@@ -23,6 +23,7 @@ const copy = {
   signIn: ["endue ID 로 로그인", "Sign in with endue ID"],
   createAccount: ["회원가입", "Create account"],
   signOut: ["로그아웃", "Sign out"],
+  accountSettings: ["계정 설정", "Account settings"],
   retry: ["다시 시도", "Try again"],
   openAgain: ["브라우저 다시 열기", "Open browser again"],
   cancel: ["취소", "Cancel"],

@@ -119,6 +119,8 @@
         { "$ref": "account.schema.json#/$defs/AccountStatusRequest" },
         { "$ref": "account.schema.json#/$defs/AccountSignInRequest" },
         { "$ref": "account.schema.json#/$defs/AccountSignOutRequest" },
+        { "$ref": "account.schema.json#/$defs/AccountSettingsGetRequest" },
+        { "$ref": "account.schema.json#/$defs/AccountSettingsUpdateRequest" },
         { "$ref": "agents.schema.json#/$defs/AgentsListRequest" },
         { "$ref": "agents.schema.json#/$defs/AgentsSessionsRequest" },
         { "$ref": "agents.schema.json#/$defs/AgentsTranscriptRequest" },

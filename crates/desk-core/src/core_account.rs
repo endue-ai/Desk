@@ -65,7 +65,7 @@ impl Core {
         json(bridge_status(&account.sign_out()))
     }
 
-    fn account_for(
+    pub(crate) fn account_for(
         &self,
         caller: &str,
         scope: AccountManagePermission,

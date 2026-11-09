@@ -5,10 +5,11 @@ info:
   description: >-
     The part of endue AI's own platform API (/api/v1, the API endue.ai's web calls) that Desk uses to
     create and manage the person's endue AI agents: agents and what Studio shows of them, the agent
-    catalog, the conversation list of the Home board, and the spaces the person can open (ADR 0129).
-    endue AI serves it; Desk is a client (crates/desk-platform) and writes down only what it reads
-    and sends (ADR 0122). Bodies are snake_case. Readers ignore fields this document does not name,
-    and read null as absent.
+    catalog, the conversation list of the Home board, the spaces the person can open (ADR 0129), and
+    the person's own account settings, as endue.ai's Account and General settings show them (ADR
+    0130). endue AI serves it; Desk is a client (crates/desk-platform) and writes down only what it
+    reads and sends (ADR 0122). Bodies are snake_case. Readers ignore fields this document does not
+    name, and read null as absent.
   contact:
     name: endue Desk maintainers
     url: https://github.com/endue-ai/Desk
@@ -32,6 +33,10 @@ tags:
     description: >-
       Under /api/v1/spaces, read only. The list and one space answer the bare body; the overview and
       the rooms answer an envelope.
+  - name: users
+    description: user-service. The account and its preferences answer the bare body.
+  - name: notifications
+    description: notification-service. Every answer is an envelope.
 paths:
   /api/v1/agents:
     get:
@@ -469,6 +474,109 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SpaceRoomListEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/users/me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: The signed-in person's account
+      description: >-
+        The signed-in person's account, as endue.ai's Account settings show it: the name, the
+        picture's address, the email, the user id, the status and when they joined.
+      responses:
+        "200":
+          description: The account, bare.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserGetResponse" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateMe
+      tags: [users]
+      summary: Change the name or the picture's address; only the keys sent change
+      description: >-
+        Change the name or the picture's address; only the keys sent change. An empty avatar_url
+        clears the picture, as endue.ai's web does. A body naming public_username or username is
+        refused with 400.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserUpdateRequest" }
+      responses:
+        "200":
+          description: The account now, bare.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserGetResponse" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/users/me/preferences:
+    get:
+      operationId: getMyPreferences
+      tags: [users]
+      summary: The person's preferences
+      description: >-
+        The person's preferences, the display language and the time zone among them. A person who
+        never saved one gets the defaults (locale null, timezone America/New_York).
+      responses:
+        "200":
+          description: The preferences, bare.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPreferenceResponse" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateMyPreferences
+      tags: [users]
+      summary: Change some preferences; only the keys sent change
+      description: >-
+        Change some preferences; only the keys sent change. endue AI stores locale and timezone as
+        given, so Desk checks their shape before it sends them.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserPreferenceUpdateRequest" }
+      responses:
+        "200":
+          description: The preferences now, bare.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPreferenceResponse" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/notifications/preferences:
+    get:
+      operationId: getNotificationPreferences
+      tags: [notifications]
+      summary: Every kind of notification and its channels
+      description: >-
+        Every kind of notification endue sends, by type, and whether each channel is on; a kind the
+        person never set carries its default.
+      responses:
+        "200":
+          description: The preferences, in an envelope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPreferencesEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      operationId: updateNotificationPreferences
+      tags: [notifications]
+      summary: Turn channels of some kinds on or off
+      description: >-
+        Turn channels of some kinds on or off. endue AI drops an update whose type or channel it
+        does not know, without an error.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotificationPreferencesUpdateRequest" }
+      responses:
+        "200":
+          description: Every kind's channels now, in an envelope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPreferencesEnvelope" }
         default: { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
@@ -1237,3 +1345,101 @@ components:
           items: { $ref: "#/components/schemas/SpaceRoomView" }
         meta: { $ref: "#/components/schemas/Meta" }
       required: [data]
+    UserStatus:
+      description: active, inactive, or suspended.
+      type: string
+      enum: [active, inactive, suspended]
+    UserGetResponse:
+      description: >-
+        The person's account. display_name and avatar_url are absent (or null) when never set;
+        avatar_url is an address, not a picture.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        email: { type: string, minLength: 1 }
+        display_name: { type: [string, "null"] }
+        avatar_url: { type: [string, "null"] }
+        public_username: { type: [string, "null"] }
+        status: { $ref: "#/components/schemas/UserStatus" }
+        created_at: { type: string }
+        updated_at: { type: string }
+      required: [id, email, status, created_at, updated_at]
+    UserUpdateRequest:
+      description: >-
+        What Desk changes of the account: the name (1 to 200 characters) and the picture's address
+        (http or https, at most 2048 characters, or empty to clear it).
+      type: object
+      properties:
+        display_name: { type: string, minLength: 1, maxLength: 200 }
+        avatar_url:
+          anyOf:
+            - { type: string, maxLength: 0 }
+            - { type: string, pattern: "^https?://[^ ]+$", maxLength: 2048 }
+      minProperties: 1
+      additionalProperties: false
+    UserPreferenceResponse:
+      description: >-
+        The person's preferences. locale is a BCP 47 tag, or null while the person never chose a
+        language. timezone is an IANA name. The other preferences (models, lists, the window
+        layout, agent routing) are endue.ai's own; Desk ignores them.
+      type: object
+      properties:
+        locale: { type: [string, "null"] }
+        timezone: { type: string, minLength: 1 }
+        updated_at: { type: string }
+      required: [timezone]
+    UserPreferenceUpdateRequest:
+      description: >-
+        The preferences Desk changes: the display language (a BCP 47 tag) and the time zone (an IANA
+        name). Only the keys sent change.
+      type: object
+      properties:
+        locale: { type: string, pattern: "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$", maxLength: 35 }
+        timezone:
+          type: string
+          pattern: "^[A-Za-z][A-Za-z0-9_+-]*(/[A-Za-z0-9_+-]+){0,2}$"
+          maxLength: 64
+      minProperties: 1
+      additionalProperties: false
+    NotificationChannels:
+      description: Whether endue tells the person of one kind in its inbox (in_app), by email and by push.
+      type: object
+      properties:
+        in_app: { type: boolean }
+        email: { type: boolean }
+        push: { type: boolean }
+    NotificationPreferences:
+      description: >-
+        Every kind of notification endue sends, by its type (conversation_reply, routine_completed,
+        routine_failed, routine_skipped, agent_notice and more), with its channels.
+      type: object
+      additionalProperties: { $ref: "#/components/schemas/NotificationChannels" }
+    NotificationPreferencesEnvelope:
+      description: The preferences in notification-service's envelope.
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/NotificationPreferences" }
+        meta: { $ref: "#/components/schemas/Meta" }
+      required: [data]
+    NotificationPreferenceUpdate:
+      description: One channel of one kind, on or off.
+      type: object
+      properties:
+        notification_type: { type: string, pattern: "^[a-z][a-z0-9_]{0,63}$" }
+        channel:
+          type: string
+          enum: [in_app, email, push]
+        enabled: { type: boolean }
+      required: [notification_type, channel, enabled]
+      additionalProperties: false
+    NotificationPreferencesUpdateRequest:
+      description: The channels to change.
+      type: object
+      properties:
+        updates:
+          type: array
+          minItems: 1
+          maxItems: 64
+          items: { $ref: "#/components/schemas/NotificationPreferenceUpdate" }
+      required: [updates]
+      additionalProperties: false

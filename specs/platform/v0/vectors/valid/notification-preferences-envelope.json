@@ -1,0 +1,18 @@
+{
+  "target": "NotificationPreferencesEnvelope",
+  "description": "every kind's channels in notification-service's envelope, kinds Desk does not show among them",
+  "instance": {
+    "data": {
+      "conversation_reply": { "in_app": true, "email": false, "push": false },
+      "routine_completed": { "in_app": false, "email": false, "push": false },
+      "routine_failed": { "in_app": true, "email": false, "push": false },
+      "routine_skipped": { "in_app": true, "email": false, "push": false },
+      "agent_notice": { "in_app": true, "email": false, "push": true },
+      "system_announcement": { "in_app": true, "email": true, "push": false }
+    },
+    "meta": {
+      "request_id": "req_1",
+      "timestamp": "2026-11-01T09:00:00.000Z"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "the signed-in account's settings, under account:manage",
+  "instance": {
+    "id": 41,
+    "method": "account.settings.get",
+    "params": { "scope": { "permission": "account:manage" } }
+  }
+}

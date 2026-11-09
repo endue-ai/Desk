@@ -4,6 +4,7 @@
 use serde_json::{Value, json};
 
 use super::Seen;
+use super::account;
 use super::state::{FakeAgent, State, slug_of};
 
 pub(super) type Answer = (u16, Option<Value>);
@@ -38,6 +39,9 @@ pub(super) fn answer(state: &mut State, seen: &Seen) -> Answer {
         return error(401, "UNAUTHORIZED", "Invalid or expired token");
     }
     let parts: Vec<&str> = seen.path.trim_start_matches('/').split('/').collect();
+    if let Some(answer) = account::answer(state, seen, &parts) {
+        return answer;
+    }
     match (seen.method.as_str(), parts.as_slice()) {
         ("GET", ["api", "v1", "agents"]) => list(state, seen),
         ("POST", ["api", "v1", "agents"]) => create(state, &seen.body, None),

@@ -119,6 +119,8 @@ impl Core {
             R::AccountStatus(r) => (r.id, self.account_status(caller, r.params)),
             R::AccountSignIn(r) => (r.id, self.account_sign_in(caller, r.params)),
             R::AccountSignOut(r) => (r.id, self.account_sign_out(caller, r.params)),
+            R::AccountSettingsGet(r) => (r.id, self.account_settings_get(caller, r.params)),
+            R::AccountSettingsUpdate(r) => (r.id, self.account_settings_update(caller, r.params)),
             R::AgentsList(r) => (r.id, self.agents_list(caller, r.params)),
             R::AgentsSessions(r) => (r.id, self.agents_sessions(caller, r.params)),
             R::AgentsTranscript(r) => (r.id, self.agents_transcript(caller, r.params)),

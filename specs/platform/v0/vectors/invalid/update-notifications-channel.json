@@ -1,0 +1,7 @@
+{
+  "target": "NotificationPreferencesUpdateRequest",
+  "description": "a channel is in_app, email or push",
+  "instance": {
+    "updates": [{ "notification_type": "agent_notice", "channel": "sms", "enabled": true }]
+  }
+}

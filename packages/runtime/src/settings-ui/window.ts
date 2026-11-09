@@ -4,6 +4,8 @@ import { canonical, comboOf } from "../input";
 import type { DeskContext } from "../policies/context";
 import type { KeysPolicy } from "../policies/keys";
 import { h, render } from "../shell/dom";
+import { mountAccount } from "./account";
+import { mountAccountIdentity } from "./account-identity";
 import { type ConnectionsFocus, mountConnections } from "./connections";
 import { type SettingsLanguage, settingsText } from "./copy";
 import { coreSettings, declaredSearch, pluginSettings } from "./declared";
@@ -34,7 +36,20 @@ export function installSettingsWindow(
   let keyboard: ReturnType<typeof mountKeyboard> | undefined;
   let connections: ReturnType<typeof mountConnections> | undefined;
   let market: ReturnType<typeof mountMarket> | undefined;
+  let account: ReturnType<typeof mountAccount> | undefined;
   let focus: ConnectionsFocus = {};
+  // Who is signed in to endue, at the top of the sidebar; it leads to the account's settings.
+  const identity = mountAccountIdentity(ctx.bridge, language, () => navigate("account"));
+  const panels = () => {
+    keyboard?.dispose();
+    keyboard = undefined;
+    connections?.dispose();
+    connections = undefined;
+    market?.dispose();
+    market = undefined;
+    account?.dispose();
+    account = undefined;
+  };
   const close = () => {
     if (dialog.open) dialog.close();
   };
@@ -91,12 +106,7 @@ export function installSettingsWindow(
     ),
     h("div", { class: "settings-sidebar-title" }, tr("title")),
     h("div", { class: "settings-search" }, settingsIcon("search", 15), search),
-    h(
-      "div",
-      { class: "settings-identity" },
-      h("span", { class: "settings-identity-icon" }, settingsIcon("general", 24)),
-      h("div", {}, h("strong", {}, "endue Desk"), h("small", {}, tr("device"))),
-    ),
+    identity.el,
     nav,
   );
   const dialog = h(
@@ -123,12 +133,7 @@ export function installSettingsWindow(
     draw();
   };
   function draw() {
-    keyboard?.dispose();
-    keyboard = undefined;
-    connections?.dispose();
-    connections = undefined;
-    market?.dispose();
-    market = undefined;
+    panels();
     const sections = findSections(search.value, declaredSearch(hub));
     render(nav, () =>
       sections.map((section) =>
@@ -177,6 +182,10 @@ export function installSettingsWindow(
         market = mountMarket({ bridge: ctx.bridge, language });
         return [market.el];
       }
+      if (selected === "account") {
+        account = mountAccount({ bridge: ctx.bridge, language });
+        return [account.el];
+      }
       const declared = { hub, preferences, language };
       if (selected === "plugins") return [pluginSettings({ ...declared, query: search.value })];
       const general =
@@ -195,6 +204,7 @@ export function installSettingsWindow(
     }
     draw();
     if (!dialog.open) {
+      void identity.refresh();
       ctx.root.append(dialog);
       dialog.showModal();
     }
@@ -207,12 +217,7 @@ export function installSettingsWindow(
   const offSave = preferences.onChange(saved);
   saved();
   dialog.addEventListener("close", () => {
-    keyboard?.dispose();
-    keyboard = undefined;
-    connections?.dispose();
-    connections = undefined;
-    market?.dispose();
-    market = undefined;
+    panels();
     dialog.remove();
     lastFocus?.isConnected && lastFocus.focus();
   });
@@ -286,9 +291,8 @@ export function installSettingsWindow(
     close,
     dispose: () => {
       close();
-      keyboard?.dispose();
-      connections?.dispose();
-      market?.dispose();
+      panels();
+      identity.dispose();
       for (const off of offs) off();
       launcher.remove();
       dialog.remove();

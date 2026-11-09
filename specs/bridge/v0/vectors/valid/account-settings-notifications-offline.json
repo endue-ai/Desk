@@ -1,0 +1,21 @@
+{
+  "target": "AccountSettingsGetResult",
+  "description": "a person who never chose a language, with the notifications out of reach",
+  "instance": {
+    "user": {
+      "id": "usr_00000000-0000-4000-8000-000000000002",
+      "email": "grace@example.com",
+      "status": "active",
+      "joinedAt": "2026-10-01T09:00:00Z"
+    },
+    "timeZone": "America/New_York",
+    "notifications": [],
+    "problems": [
+      {
+        "part": "notifications",
+        "code": "offline",
+        "message": "endue AI did not answer within 15 s"
+      }
+    ]
+  }
+}

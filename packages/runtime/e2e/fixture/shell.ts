@@ -13,11 +13,13 @@
 // src/propose/fixtures.ts scripts them. ?apps=1 installs
 // endue.notes and a terminal stand-in, for the profile and key bindings Eris proposes. ?endue=1 gives
 // the shell the studio stub's sample endue agents and spaces (ADR 0129), shown once it signs in;
-// ?endue=signed-in starts signed in. Never shipped.
+// ?endue=signed-in starts signed in. ?account=1 serves account.* from src/bridge/account-stub.ts,
+// signed in with the sample account (ADR 0130); ?account=signedout starts signed out. Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
 import { proposeTheme } from "../../../../examples/brain-echo/theme.mjs";
+import { accountStub } from "../../src/bridge/account-stub";
 import { browserBridge, type Envelope, SAMPLE_PROFILE } from "../../src/bridge/browser";
 import { browserCore, localStore, memoryStore } from "../../src/bridge/core";
 import erisReply from "../../src/bridge/envelopes/eris-reply.json";
@@ -80,6 +82,12 @@ const terminal: PluginManifest = {
   },
 };
 const apps = Object.values(manifests).filter((m) => m.id === "endue.notes");
+// The account's events go out on the core stub, as the core's account.changed does.
+const account = params.has("account")
+  ? accountStub((event) => core.stub.emit(event), {
+      signedIn: params.get("account") !== "signedout",
+    })
+  : undefined;
 const core = browserCore({
   manifests: [
     ...Object.values(manifests).filter(
@@ -104,7 +112,10 @@ const core = browserCore({
       ? Object.values(manifests).filter((m) => ["endue.images", "endue.explorer"].includes(m.id))
       : []),
   ],
-  ...(params.has("files") ? { handlers: fileHandlers } : {}),
+  handlers: {
+    ...(params.has("files") ? fileHandlers : {}),
+    ...(account ? account.handlers : {}),
+  },
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
   // The desk folder (~/.desk: keys.yaml, saved profiles) survives a reload with ?persist=1 too.
   ...(params.has("persist")

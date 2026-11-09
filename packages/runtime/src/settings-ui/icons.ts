@@ -1,5 +1,6 @@
 /** Small system-setting glyphs, drawn as vectors so they remain crisp at every scale. */
 const paths: Record<string, string> = {
+  account: "M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM4.5 20a7.5 7.5 0 0 1 15 0",
   general: "M9 3h6l1 3 3 1v6l-3 1-1 3H9l-1-3-3-1V7l3-1 1-3Zm3 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
   appearance: "M12 2a10 10 0 1 0 0 20V2Zm0 0a10 10 0 0 1 0 20",
   keyboard: "M3 5h18v14H3V5Zm3 4h1m3 0h1m3 0h1m3 0h1M6 12h1m3 0h1m3 0h1m3 0h1M7 16h10",

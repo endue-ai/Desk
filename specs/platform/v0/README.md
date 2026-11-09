@@ -4,7 +4,8 @@
 endue.ai's web calls) that Desk uses to create and manage the person's endue AI agents (ADR 0122)
 and to read the spaces they can open (ADR 0129). endue AI serves it; `crates/desk-platform` is Desk's
 client, and the core serves it on the bridge as `studio.*` (`specs/bridge/v0/studio.schema.json`,
-`studio-spaces.schema.json`) under `studio:manage`.
+`studio-spaces.schema.json`) under `studio:manage`. The person's own account settings (ADR 0130) are
+served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `account:manage`.
 
 | Area | Operations |
 | --- | --- |
@@ -13,6 +14,7 @@ client, and the core serves it on the bridge as `studio.*` (`specs/bridge/v0/stu
 | Catalog | `listCatalogAgents`, `recommendCatalogAgents`, `useCatalogAgent` |
 | Conversations | `listConversations` (the Home board) |
 | Spaces (read only) | `listSpaces` (with summaries), `getSpace`, `getSpaceOverview`, `listSpaceRooms` |
+| Account | `getMe`, `updateMe`, `getMyPreferences`, `updateMyPreferences` (language, time zone), `getNotificationPreferences`, `updateNotificationPreferences` |
 
 ## Base, token and envelopes
 
@@ -23,7 +25,8 @@ client, and the core serves it on the bridge as `studio.*` (`specs/bridge/v0/stu
   after a 401 refreshes the token once and tries once more.
 - agent-service answers the bare body for agents, identity, prompt, skills, connectors and traits, and
   `{ data, meta }` for settings. The catalog answers `{ data, meta }`; ai-agent-service (`/api/v1/ai`)
-  answers `{ success: true, data }`. Errors are `{ error: { code, message, details?, suggest? }, meta }`.
+  answers `{ success: true, data }`. user-service answers the bare body; notification-service answers
+  `{ data, meta }`. Errors are `{ error: { code, message, details?, suggest? }, meta }`.
   The space list and one space answer the bare body; a space's overview and rooms `{ data, meta }`.
 - Bodies are snake_case. Readers ignore fields this document does not name and read `null` as absent,
   so endue AI can add fields without breaking Desk.

@@ -1141,7 +1141,7 @@ pub struct ThemeManagePermission {
     pub permission: ThemeManagePermissionPermission,
 }
 
-/// Sign the desk in to endue ID and out again with account.*, and see whether it is signed in. Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime and to the built-in first run, whose manifest declares it (ADR 0089, ADR 0111).
+/// Sign the desk in to endue ID and out again with account.*, see whether it is signed in, and read and change the signed-in account's own settings on endue with account.settings.* (ADR 0130). Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime and to the built-in first run, whose manifest declares it (ADR 0089, ADR 0111).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AccountManagePermission {
@@ -3487,7 +3487,7 @@ pub struct AccountStatus {
     pub reason: Option<AccountProblem>,
 }
 
-/// Parameters of account.status and account.signOut: the scope alone.
+/// Parameters of account.status, account.signOut and account.settings.get: the scope alone.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AccountParams {
@@ -3539,7 +3539,145 @@ pub type AccountSignInResult = AccountStatus;
 /// Result of account.signOut: signed-out.
 pub type AccountSignOutResult = AccountStatus;
 
-/// The account changed: a sign-in began, finished or failed, the session was renewed with a problem or ended, the profile arrived, or the desk signed out. Sent to holders of account:manage.
+/// The account's standing on endue: active, inactive, or suspended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AccountUserStatus {
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "inactive")]
+    Inactive,
+    #[serde(rename = "suspended")]
+    Suspended,
+}
+
+/// Who the person is on endue, from GET /api/v1/users/me, as endue.ai's Account settings show it. displayName and avatarUrl are absent while never set. avatarUrl is the picture's address as endue keeps it, text to edit: the desk shows account.status's picture and never loads this address.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountUser {
+    /// The user id people quote to endue's support.
+    pub id: String,
+    pub email: String,
+    #[serde(
+        rename = "displayName",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub display_name: Option<String>,
+    #[serde(rename = "avatarUrl", default, skip_serializing_if = "Option::is_none")]
+    pub avatar_url: Option<String>,
+    pub status: AccountUserStatus,
+    #[serde(rename = "joinedAt")]
+    pub joined_at: String,
+}
+
+/// A display language as an IETF BCP 47 tag: en-US, ja-JP, de-DE, fr-FR, ko-KR.
+pub type AccountLanguage = String;
+
+/// An IANA time zone name: Asia/Seoul, America/New_York, UTC.
+pub type AccountTimeZone = String;
+
+/// The kinds of endue notification endue.ai's settings let the person turn off: conversation-reply (an agent finished answering while they were away), routine-completed, routine-failed and routine-skipped (a scheduled run finished, failed, or was skipped at a usage limit), agent-notice (an agent decided they need to know something during a scheduled run).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AccountNotificationKind {
+    #[serde(rename = "conversation-reply")]
+    ConversationReply,
+    #[serde(rename = "routine-completed")]
+    RoutineCompleted,
+    #[serde(rename = "routine-failed")]
+    RoutineFailed,
+    #[serde(rename = "routine-skipped")]
+    RoutineSkipped,
+    #[serde(rename = "agent-notice")]
+    AgentNotice,
+}
+
+/// Whether one kind of notification reaches the person in endue's inbox (in-app).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountNotification {
+    pub kind: AccountNotificationKind,
+    #[serde(rename = "inApp")]
+    pub in_app: bool,
+}
+
+/// A part of the account's settings endue keeps apart from the account itself: preferences (the language and the time zone) and notifications.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AccountSettingsPart {
+    #[serde(rename = "preferences")]
+    Preferences,
+    #[serde(rename = "notifications")]
+    Notifications,
+}
+
+/// A part endue did not answer for: the bridge error code it would have been, and a sentence for people.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountSettingsProblem {
+    pub part: AccountSettingsPart,
+    pub code: ErrorCode,
+    pub message: String,
+}
+
+/// The signed-in account's settings on endue, read at once. The account itself must answer; a part that does not is left out (language and timeZone) or empty (notifications) and named in problems. language is absent while the person never chose one, and so is a stored value that is not a BCP 47 tag; notifications lists the five kinds in endue.ai's order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountSettings {
+    pub user: AccountUser,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<AccountLanguage>,
+    #[serde(rename = "timeZone", default, skip_serializing_if = "Option::is_none")]
+    pub time_zone: Option<AccountTimeZone>,
+    pub notifications: Vec<AccountNotification>,
+    pub problems: Vec<AccountSettingsProblem>,
+}
+
+/// Parameters of account.settings.update: the scope and what to change, at least one of them. displayName is trimmed; an empty avatarUrl clears the picture.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountSettingsUpdateParams {
+    pub scope: AccountManagePermission,
+    #[serde(
+        rename = "displayName",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub display_name: Option<String>,
+    /// An http or https address, or empty to clear the picture.
+    #[serde(rename = "avatarUrl", default, skip_serializing_if = "Option::is_none")]
+    pub avatar_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<AccountLanguage>,
+    #[serde(rename = "timeZone", default, skip_serializing_if = "Option::is_none")]
+    pub time_zone: Option<AccountTimeZone>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notifications: Option<Vec<AccountNotification>>,
+}
+
+/// The signed-in account's settings: the account, its language and time zone, and its notifications, read side by side.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountSettingsGetRequest {
+    pub id: RequestId,
+    pub method: AccountSettingsGetRequestMethod,
+    pub params: AccountParams,
+}
+
+/// Change some settings on endue, so endue.ai and the desk show the same: the name and the picture's address, then the language and the time zone, then the notifications, each only when given. A change endue refuses stops there with its error; what was saved before it stays saved. A changed name or picture reaches account.status's profile and goes out as account.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountSettingsUpdateRequest {
+    pub id: RequestId,
+    pub method: AccountSettingsUpdateRequestMethod,
+    pub params: AccountSettingsUpdateParams,
+}
+
+/// Result of account.settings.get.
+pub type AccountSettingsGetResult = AccountSettings;
+
+/// Result of account.settings.update: the settings now.
+pub type AccountSettingsUpdateResult = AccountSettings;
+
+/// The account changed: a sign-in began, finished or failed, the session was renewed with a problem or ended, the profile arrived or changed, or the desk signed out. Sent to holders of account:manage.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AccountChangedEvent {
@@ -4685,6 +4823,8 @@ pub enum BridgeRequest {
     AccountStatus(AccountStatusRequest),
     AccountSignIn(AccountSignInRequest),
     AccountSignOut(AccountSignOutRequest),
+    AccountSettingsGet(AccountSettingsGetRequest),
+    AccountSettingsUpdate(AccountSettingsUpdateRequest),
     AgentsList(AgentsListRequest),
     AgentsSessions(AgentsSessionsRequest),
     AgentsTranscript(AgentsTranscriptRequest),
@@ -10912,6 +11052,22 @@ pub enum AccountSignOutRequestMethod {
     #[default]
     #[serde(rename = "account.signOut")]
     AccountSignOut,
+}
+
+/// The `method` of [`AccountSettingsGetRequest`]: always `"account.settings.get"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AccountSettingsGetRequestMethod {
+    #[default]
+    #[serde(rename = "account.settings.get")]
+    AccountSettingsGet,
+}
+
+/// The `method` of [`AccountSettingsUpdateRequest`]: always `"account.settings.update"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AccountSettingsUpdateRequestMethod {
+    #[default]
+    #[serde(rename = "account.settings.update")]
+    AccountSettingsUpdate,
 }
 
 /// The `event` of [`AccountChangedEvent`]: always `"account.changed"`.

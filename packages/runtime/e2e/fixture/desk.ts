@@ -6,8 +6,10 @@
 //   ?rules=[{"match":{...},"area":...}]  display rules test.echo contributes
 //   ?store={"session":{...}}             what the core's store holds for the runtime at start
 //   ?initProblem=why                     init.get reports init.yaml as not in force
+//   ?account=1 | ?account=signedout      account.* from the sample endue account, or signed out
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
+import { accountStub } from "../../src/bridge/account-stub";
 import { browserCore, memoryStore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
 
@@ -56,6 +58,10 @@ let notices = 0;
 const store: Record<string, unknown> = JSON.parse(params.get("store") ?? "{}");
 const written: Array<{ path: string; content: string }> = [];
 const clock = new ManualClock();
+// ?account=1: account.* answers from the sample endue account (ADR 0130); ?account=signedout.
+const account = params.has("account")
+  ? accountStub((event) => stub.emit(event), { signedIn: params.get("account") !== "signedout" })
+  : undefined;
 const { client, stub, folder } = browserCore({
   // The bare desk: every desk.* policy but the shell's own (views.html has the view engine and the
   // view plugins).
@@ -103,6 +109,7 @@ const { client, stub, folder } = browserCore({
       );
       return { notificationId };
     },
+    ...account?.handlers,
   },
 });
 const runtime = createRuntime({

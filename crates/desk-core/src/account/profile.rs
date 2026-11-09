@@ -8,9 +8,28 @@ use base64::Engine as _;
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use serde_json::Value;
 
-use super::Profile;
 use super::bff::Bff;
+use super::{Account, Profile};
 use crate::account_client::origin_of;
+
+impl Account {
+    /// Read who is signed in again, after the person changed their name or picture on endue
+    /// (account.settings.update, ADR 0130), and tell the listener when it changed. Nothing happens
+    /// while signed out, or when endue does not answer.
+    pub fn refresh_profile(&self) {
+        let Some(token) = self.token() else {
+            return;
+        };
+        let cookie = self
+            .lock()
+            .session
+            .as_ref()
+            .map(|s| s.refresh_cookie.clone());
+        if let Some(cookie) = cookie {
+            self.fill_profile(&cookie, &token);
+        }
+    }
+}
 
 /// The largest picture kept; a larger one leaves the initial in its place.
 const MAX_PICTURE: usize = 64 * 1024;

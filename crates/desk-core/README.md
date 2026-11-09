@@ -30,7 +30,8 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
   endue, local, echo or claude; an unreachable remote falls back to local, ADR 0094), `route_tools()`
   (calls as their agent, or as Eris; each hand-off is a `tool` step, ADR 0089; brain.say's `desk` goes
   first, in words, ADR 0109), `open_session`. endue ID:
-  `account::Account` (device grant, token file 0600), `with_account`, `start_account` (account.*).
+  `account::Account` (device grant, token file 0600), `with_account`, `start_account` (account.*;
+  account.settings.* goes to endue through desk-platform, ADR 0130).
   Local agents (ADR 0110): `with_local_agents(LocalAgents::new(LocalAgentsOptions::new(home, data)))`
   serves agents.* (`agents:manage`): Claude Code's and Codex's sessions, copies, runs (`agents.run`).
 - Start (ADR 0061): every state file is screened as it loads; an unreadable one is kept as

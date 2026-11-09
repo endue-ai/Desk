@@ -1,0 +1,8 @@
+{
+  "target": "UserPreferenceUpdateRequest",
+  "description": "a display language and a time zone",
+  "instance": {
+    "locale": "ja-JP",
+    "timezone": "America/Argentina/Buenos_Aires"
+  }
+}

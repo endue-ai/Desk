@@ -2,6 +2,11 @@ export type SettingsLanguage = "ko" | "en";
 const copy = {
   title: ["설정", "Settings"],
   search: ["설정 검색", "Search settings"],
+  account: ["endue 계정", "endue account"],
+  accountDescription: [
+    "endue.ai 의 계정 설정을 Desk 에서 보고 바꾸세요. 바꾼 값은 endue.ai 에도 그대로 적용됩니다.",
+    "See and change your endue.ai account settings. What you change applies on endue.ai too.",
+  ],
   general: ["일반", "General"],
   appearance: ["화면 모드", "Appearance"],
   keyboard: ["키보드", "Keyboard"],

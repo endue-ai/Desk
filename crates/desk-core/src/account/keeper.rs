@@ -198,8 +198,9 @@ impl Account {
         Renewal::Kept
     }
 
-    /// A session without a profile (users/me was down at sign-in) gets one once it renews.
-    fn fill_profile(&self, cookie: &str, access_token: &str) {
+    /// A session without a profile (users/me was down at sign-in) gets one once it renews; one
+    /// whose name or picture the person changed gets the new one (`refresh_profile`).
+    pub(super) fn fill_profile(&self, cookie: &str, access_token: &str) {
         let Some(found) = profile::fetch(&self.bff(), access_token) else {
             return;
         };
