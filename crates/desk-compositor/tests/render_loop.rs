@@ -222,3 +222,54 @@ fn many_items_grow_the_uniform_buffer() {
         "the last item drew from its own slot"
     );
 }
+
+#[test]
+fn one_compositor_keeps_track_of_each_scene_it_draws() {
+    let Some(gpu) = gpu("one_compositor_keeps_track_of_each_scene_it_draws") else {
+        return;
+    };
+    let mut compositor = Compositor::new(&gpu.device, &gpu.queue, FORMAT);
+    let texture = upload_rgba(
+        &gpu.device,
+        &gpu.queue,
+        (4, 4),
+        &checker((4, 4), 4, RED, RED),
+    );
+    compositor.register_texture(TextureId(1), &texture);
+    let targets = [
+        Target::new(&gpu.device, (100, 100), FORMAT),
+        Target::new(&gpu.device, (100, 100), FORMAT),
+    ];
+    let mut scenes = [Scene::new(100, 100), Scene::new(100, 100)];
+    for scene in &mut scenes {
+        let shown = SurfaceNode::new(Rect::new(10.0, 10.0, 20.0, 20.0), TextureId(1));
+        scene.insert(scene.root(), shown).unwrap();
+    }
+    let both = |compositor: &mut Compositor, scenes: &[Scene; 2]| {
+        targets
+            .iter()
+            .zip(scenes)
+            .map(|(target, scene)| compositor.render(scene, &target.view, target.size).drawn)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(both(&mut compositor, &scenes), [true, true], "first frames");
+    assert_eq!(
+        both(&mut compositor, &scenes),
+        [false, false],
+        "neither changed"
+    );
+    compositor.update_texture(TextureId(1), &texture);
+    assert_eq!(
+        both(&mut compositor, &scenes),
+        [true, true],
+        "both show the repainted texture"
+    );
+    let root = scenes[1].root();
+    let extra = RectNode::new(Rect::new(0.0, 0.0, 5.0, 5.0), Color::WHITE);
+    scenes[1].insert(root, extra).unwrap();
+    assert_eq!(
+        both(&mut compositor, &scenes),
+        [false, true],
+        "only the second changed"
+    );
+}
