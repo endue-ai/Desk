@@ -150,6 +150,79 @@ startup readiness without advancing timers. Existing keyboard, invitation and re
 test timeouts and the general follow-up settle helper remain. This removes observed fixed startup
 waiting; it does not establish the cause of the earlier Windows 5-second timeout.
 
+## Main-thread work in plugins
+
+The audit of #38 (ADR 0048): every plugin under `plugins/`, for synchronous work on its frame's main
+thread that can pass 16 ms on a realistic input. In WebKit every frame shares the shell's main thread,
+so such work stalls the whole desk. "Now" is before #38, "after" is with it. Times marked Node are V8
+on a laptop (a lower bound for WebKit); e2e times are the runtime e2e's WebKit in its Linux container.
+`scripts/plugin-workers.test.mjs` holds the table to the code: it fails when a plugin folder has no
+row, when a parser or decoder listed in its `OFF_MAIN` (database, notes, player, sheets) is loaded on
+the main thread from `ui/main.js`, or when a worker module imports a bare specifier (import maps do
+not reach workers). `packages/runtime/e2e/perf/heavy-open.spec.ts` times the shell's thread while
+Notes opens a 4 MiB note and types in it and while Explorer previews a 7.1 MiB image (`?heavy=1`).
+
+| Plugin | Heavy path | Where it runs now | After | Fixture size tested |
+| --- | --- | --- | --- | --- |
+| `agents` | Chat transcript (≤ 200 turns × 8000 chars); every turn redrawn with its markdown on each streamed step | Frame (DOM) | Stays: bounded input; the redraw is DOM work, not a worker's (follow-up: redraw the streaming turn only) | Read, not run |
+| `archives` | Listings and extraction (ZIP, 7z, RAR, disk images) through `endue.formats` | Library worker; the frame only when no worker starts | Unchanged (confirmed) | PR #261 fixtures |
+| `buffers` | None: a policy, no frame | — | — | — |
+| `calendar` | `.ics` parse, the model (VTIMEZONE expansion), recurrence expansion on every render and each minute, save | Frame: 50 MB parse 295 ms, model 933 ms, one render's occurrences 1.2 s (Node) | Stays for now: a worker parse alone would not help, the model holds closures and every render expands it; follow-up: the model in a worker | 1, 10, 50 MB `.ics` (Node) |
+| `chat` | Messages (≤ 500 a page), markup cached per message | Frame | Stays: a 2 KB message parses in 0.1 ms; an `Intl.DateTimeFormat` per message per render costs 32 ms at 500 (follow-up) | 500 messages (Node) |
+| `chat-digest` | None: a data-only view plugin | — | — | — |
+| `computer` | Accessibility tree ≤ 300 nodes; screenshots passed on as base64, never decoded | Frame | Stays: bounded | Read, not run |
+| `data` | JSON, YAML, TOML, XML and nine more parsed; tree, raw, search | Worker over 1 MiB, frame below | Unchanged (confirmed; out of scope) | 50 MiB JSON (PR #229) |
+| `database` | Client output (psql CSV, mysql XML, sqlite3 quote mode) decoded and parsed, up to 64 MiB | Frame | `ui/output-worker.js`: the runner's bytes go there, sets come back cut to the row limit; bar after 300 ms with Cancel; Cancel stops the worker | 50 MiB psql output: frame 0.1 ms, worker 0.9 s (Node) |
+| `design` | None: a policy, no frame | — | — | — |
+| `design-blueprint` | None: a design system, data only | — | — | — |
+| `design-compact` | None: a design system, data only | — | — | — |
+| `design-soft` | None: a design system, data only | — | — | — |
+| `display` | None: a policy, no frame | — | — | — |
+| `dock` | One button per plugin | Frame | None | — |
+| `docker` | Lists (NDJSON ≤ 8 MiB), log lines per chunk, inspect tree ≤ 4000 rows | Frame | Stays: bounded; the log pane's full redraw per search key is DOM (follow-up) | Read, not run |
+| `docs` | DOCX, ODT, RTF, HWP, DOC and more parsed | Worker over 8 MiB, frame below | Unchanged (confirmed; out of scope; follow-up: a lower threshold) | PR #253 fixtures |
+| `eris` | Attachments ≤ 16 KiB decoded in < 1 ms; each character of an answer animated | Frame | Stays: bounded; long answers' animations are DOM (follow-up) | Read, not run |
+| `explorer` | Image preview read as base64 (≤ 8 MiB) and decoded with `atob` in the frame (0.3 s in Node) | Frame | The frame loads it from its `fs.url` URL; the engine decodes it (`img.decode()` before it shows); text previews stay (≤ 64 KiB, < 2 ms) | 7.1 MiB PNG (e2e, warm: longest 57–139 ms now, 13–24 ms after) |
+| `files` | None: a policy, no frame | — | — | — |
+| `fleet` | None: a policy, no frame | — | — | — |
+| `formats` | Decoders of `endue.formats` (RAR, 7z, DjVu, disk images) | In the library workers of `archives` and `reader` | Unchanged: a library, no frame of its own | PR #201, #257, #261 |
+| `git` | Status, log and diff parsed (the runner stops git at 8 MiB) | Frame | Stays: a 7.8 MB diff parses in 5 ms and a 60k-file status in 8 ms (Node); a worker's reply would cost more to clone (33 ms); the cost is the diff's DOM (follow-up: draw only the rows in view) | 1.5 and 7.8 MB diff, 60k-entry status (Node) |
+| `github` | None: an http connector the core runs | — | — | — |
+| `images` | TIFF, EXR, DDS, DICOM and more decoded | Worker over 8 MiB, frame below | Unchanged (confirmed; out of scope) | `image-files.spec.ts` |
+| `inspector` | Tables ≤ 2000 rows redrawn every 2–5 s; export JSON once | Frame | Stays: bounded | Golden export |
+| `item` | None: a data-only view plugin | — | — | — |
+| `local-agents` | stream-json lines ≤ 256 KiB, `JSON.parse` per line; the answer's markdown redrawn every 40 ms | Frame | Stays: per line; the redraw is DOM (follow-up) | Read, not run |
+| `mail` | Invitation (iTIP) parse; list rows | Frame | Stays: an invitation parses in 0.13 ms; a render per changed item and an `Intl` format per row are not parsing (follow-up) | 1000-event invitation (Node) |
+| `market` | None: a policy, no frame | — | — | — |
+| `memory` | ≤ 200 entries | Frame | Stays: bounded | — |
+| `notes` | Word and character count (`Intl.Segmenter`) over the whole note on open and on every key | Frame: 4 MiB about 200 ms a key | `ui/count-worker.js` after a 200 ms pause in typing; "Counting…" after 300 ms; a newer text cancels the count. The text area stays the engine's; at 4 MiB a key still costs about 130 ms more than a bare text area, Notes keeping its text, not counting (follow-up) | 4 MiB note (e2e: open 560–814 ms now, 277–390 ms after; a key 450–665 ms now, 229–275 ms after) |
+| `notify` | None: a policy, no frame | — | — | — |
+| `onboarding` | Scripted lines, one second of noise samples | Frame | None | — |
+| `pack-github` | None: a pack, data only | — | — | — |
+| `palette` | About 300 commands scored per key | Frame | Stays: 3–8 ms; a caller's pick list is uncapped (DOM, follow-up) | Read, not run |
+| `permissions` | Approval previews, capped by the core (1 MiB, 200 lines) | Frame | Stays: bounded | — |
+| `player` | FFmpeg (WebAssembly) software decoding | Worker (`ui/software/worker.js`) | Unchanged (confirmed); the lint keeps it there | PR #235 fixtures |
+| `profiles` | None: a policy, no frame | — | — | — |
+| `projects` | ≤ 2000 tasks; no parsing | Frame | Stays: the board's full redraw per key is DOM (follow-up) | 2000 tasks (Node) |
+| `reader` | PDF (pdf.js), DjVu, comics | pdf.js worker; DjVu and comics in the library worker, the frame as fallback yielding every 25 ms | Unchanged (confirmed) | 300 MiB PDF (PR #240) |
+| `screens` | VNC: noVNC's ZRLE, Tight, zlib and Hextile decoders, JPEG rectangles as base64 in JS | Frame (vendored noVNC: its RFB and Display need the DOM); H.264 decodes in WebCodecs | Stays for now; follow-up: the decoders in a worker drawing to an OffscreenCanvas | Read, not run |
+| `session` | None: a policy, no frame | — | — | — |
+| `sheets` | XLSX, ODS, CSV parsed | Worker (`ui/worker.js`), always | Unchanged (confirmed); the lint keeps `book.js`, SheetJS and the ODS reader there | 45.5 MB XLSX (PR #224) |
+| `shell` | None: a policy, no frame | — | — | — |
+| `sidebar` | One row per plugin | Frame | None | — |
+| `slides` | PPTX, PPT, ODP parsed | Worker over 8 MiB, frame below | Unchanged (confirmed; out of scope) | PR #253 fixtures |
+| `terminal` | PTY output (≤ 8 KiB an event) | Frame (xterm.js parses in 12 ms slices) | Stays: xterm yields; reflow and highlight-all search at 100k lines of scrollback are xterm's (follow-up) | Read, not run |
+| `theme` | None: a policy, no frame | — | — | — |
+| `theme-amber` | None: a theme, data only | — | — | — |
+| `theme-fjord` | None: a theme, data only | — | — | — |
+| `theme-glass` | None: a theme, data only | — | — | — |
+| `theme-paper` | None: a theme, data only | — | — | — |
+| `today` | None: a data-only view plugin | — | — | — |
+| `toolbar` | Drawers from the plugin list | Frame | None | — |
+| `universal` | `desk.universal.open { file }` parses the whole file as YAML; data files through the SDK's loader (≤ 8 MiB) | Frame (the parsers are the SDK's: `yaml.ts`, `universal-load.ts`) | Stays for now; follow-up: the SDK's loader in a worker; view files are small | Read, not run |
+| `views` | ≤ 500 items a component; templates | Frame | Stays: bounded (formatters built per placeholder, follow-up) | 500 items (Node) |
+| `web` | Web archives, feeds, pages | Worker over 8 MiB; pages over 2 MB in slices | Unchanged (confirmed; out of scope) | PR #253 fixtures |
+
 ## Which change runs what
 
 | You change | Runs on the PR |
