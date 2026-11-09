@@ -48,7 +48,7 @@ Desk はひとつのアプリとして作られたひとつの OS です。Tauri
 | Web ランタイム | `packages/runtime`：コンポジター、UI プラグインのホスト（ADR 0012）、そして ADR 0026 が決まるまではデスクシェル（ADR 0025） · `packages/ui` |
 | Desk ブリッジ | `specs/bridge` · 統合レイヤーの契約である `specs/item`、`specs/view`、`specs/connector`（ADR 0032） · `packages/bridge` · `crates/desk-bridge`（これらと `specs/plugin` から生成した型） |
 | Rust コア | `crates/desk-core`（統合レイヤーの `data.*`、`connector.*`、`view.*`、`catalog.get` も提供し、OS のカレンダーの上に組み込みコネクター `desk.calendar` と `desk.reminders` を定義、ADR 0036、提案中。http コネクターはマニフェストどおりにコア自身が実行し、トークンもコアだけが読む、ADR 0106） · `crates/desk-index`（ひとつの SQLite ファイルに置くアイテムのインデックス、ADR 0033） · `crates/desk-plugin-host`（ロジックプラグインと Wasm コネクターを Wasmtime で実行、ADR 0019、ADR 0034 は提案中） · `crates/desk-vm` · `crates/desk-brain*` |
-| Tauri シェル | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`（macOS でのコンピューター操作：スクリーンショット、アクセシビリティツリー、入力、アプリ）。コアはこれを `computer:see` と `computer:control` のもとで `computer.*` として提供し、エージェントの操作はどれも本人の承認を待ちます（ADR 0120、ADR 0123） |
+| Tauri シェル | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`（macOS でのコンピューター操作：スクリーンショット、アクセシビリティツリー、入力、アプリ）。コアはこれを `computer:see` と `computer:control` のもとで `computer.*` として提供し、エージェントの操作はどれも本人の承認を待ちます（ADR 0120、ADR 0123） · `apps/desk/shell` と `crates/desk-web`：ステージ 1 の終わりにこれを置き換える CEF シェル（ADR 0143） |
 | OS | `apps/desk/src-tauri/capabilities` · リリースワークフロー（署名、公証） |
 
 ## シェルと画面の行き先
@@ -66,7 +66,7 @@ Desk はひとつのアプリとして作られたひとつの OS です。Tauri
 | ステージ | 変わること | 状況 |
 | --- | --- | --- |
 | 0 | Tauri アプリの上で：サーフェスごとに `desk-plugin` スキームの自分のオリジンを持つ。ライブなフレームを持つのは見えているウィンドウと直近にフォーカスした 8 つだけ。重い処理はワーカーへ移る。応答しなくなったフレームは、そのウィンドウでだけ「待つ」か「停止」を示す | 進行中 |
-| 1 | シェルが winit と CEF の上の Rust バイナリ（`apps/desk/shell`、ADR 0143）になっていまのシェルページを表示し、Tauri はなくなる。プラグインの iframe はそれぞれ自分の Chromium レンダラーになる。アプリ単位の e2e は Chromium のリモートデバッグで動かす（ADR 0144） | 進行中 |
+| 1 | シェルが winit と CEF の上の Rust バイナリ（`apps/desk/shell`、ADR 0143）になっていまのシェルページを表示し、Tauri はなくなる。プラグインの iframe はそれぞれ自分の Chromium レンダラーになる。アプリ単位の e2e は Chromium のリモートデバッグで動かす（ADR 0144） | 進行中：シェルが CEF でウィンドウを開く（#41） |
 | 2 | コンポジター（`crates/desk-compositor`）がデスクを描き、各サーフェスのテクスチャを配置する。サーフェスはひとつのプロトコルで話す（`specs/surface`、ADR 0141）。CEF は各プラグインをオフスクリーンで描画する。ウィンドウマネージャーは `packages/runtime` から Rust へ移る | 予定 |
 | 3 | ネイティブプラグイン：サーフェスプロトコルとブリッジを `desk.sock` 越しに話すプロセス | 予定 |
 

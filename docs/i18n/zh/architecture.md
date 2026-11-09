@@ -49,7 +49,7 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
 | Web 运行时 | `packages/runtime`：合成器、UI 插件宿主（ADR 0012），以及在 ADR 0026 决定之前的桌面外壳（ADR 0025） · `packages/ui` |
 | Desk 桥接层 | `specs/bridge` · 集成层的契约 `specs/item`、`specs/view` 和 `specs/connector`（ADR 0032） · `packages/bridge` · `crates/desk-bridge`（由这些契约和 `specs/plugin` 生成的类型） |
 | Rust 核心 | `crates/desk-core`（还提供集成层的 `data.*`、`connector.*`、`view.*`、`catalog.get`，并基于操作系统日历定义内置连接器 `desk.calendar` 和 `desk.reminders`，ADR 0036，仍处于提议阶段；http 连接器按清单由核心自己运行，令牌也只由核心读取，ADR 0106） · `crates/desk-index`（存放在一个 SQLite 文件中的条目索引，ADR 0033） · `crates/desk-plugin-host`（在 Wasmtime 上运行逻辑插件和 Wasm 连接器，ADR 0019；ADR 0034 仍处于提议阶段） · `crates/desk-vm` · `crates/desk-brain*` |
-| Tauri 外壳 | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`（macOS 上的电脑操作：截图、辅助功能树、输入、应用），核心在 `computer:see` 和 `computer:control` 之下以 `computer.*` 提供；智能体的每个操作都要等用户批准（ADR 0120、ADR 0123） |
+| Tauri 外壳 | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`（macOS 上的电脑操作：截图、辅助功能树、输入、应用），核心在 `computer:see` 和 `computer:control` 之下以 `computer.*` 提供；智能体的每个操作都要等用户批准（ADR 0120、ADR 0123） · `apps/desk/shell` 和 `crates/desk-web`：第 1 阶段结束时取代它的 CEF 外壳（ADR 0143） |
 | 操作系统 | `apps/desk/src-tauri/capabilities` · 发布工作流（签名、公证） |
 
 ## 外壳与屏幕的去向
@@ -67,7 +67,7 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
 | 阶段 | 变化 | 状态 |
 | --- | --- | --- |
 | 0 | 在 Tauri 应用上：每个表面在 `desk-plugin` 协议上有自己的源；只有可见窗口和最近获得焦点的 8 个保留活动框架；繁重的工作移到 Worker；停止响应的框架只在自己的窗口上提供“等待”或“停止” | 进行中 |
-| 1 | 外壳成为基于 winit 和 CEF 的 Rust 二进制程序（`apps/desk/shell`，ADR 0143），显示现在的外壳页面，并移除 Tauri；每个插件 iframe 都是自己的 Chromium 渲染进程；应用级 e2e 通过 Chromium 的远程调试驱动它（ADR 0144） | 进行中 |
+| 1 | 外壳成为基于 winit 和 CEF 的 Rust 二进制程序（`apps/desk/shell`，ADR 0143），显示现在的外壳页面，并移除 Tauri；每个插件 iframe 都是自己的 Chromium 渲染进程；应用级 e2e 通过 Chromium 的远程调试驱动它（ADR 0144） | 进行中：外壳已能用 CEF 打开窗口（#41） |
 | 2 | 合成器（`crates/desk-compositor`）绘制桌面并摆放每个表面的纹理；表面使用同一个协议（`specs/surface`，ADR 0141）；CEF 在屏幕外渲染每个插件；窗口管理器从 `packages/runtime` 移到 Rust | 计划中 |
 | 3 | 原生插件：通过 `desk.sock` 使用表面协议和桥接层的进程 | 计划中 |
 

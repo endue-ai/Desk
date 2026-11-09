@@ -54,7 +54,7 @@ Desk는 하나의 앱으로 만든 하나의 OS입니다. Tauri 셸과 작은 Ru
 | 웹 런타임 | `packages/runtime`: 컴포지터, UI 플러그인 호스트(ADR 0012), 그리고 ADR 0026이 정해질 때까지 데스크 셸(ADR 0025) · `packages/ui` |
 | Desk 브리지 | `specs/bridge` · 통합 계층의 계약인 `specs/item`, `specs/view`, `specs/connector`(ADR 0032) · `packages/bridge` · `crates/desk-bridge` (이 계약들과 `specs/plugin`에서 생성한 타입) |
 | Rust 코어 | `crates/desk-core`(통합 계층의 `data.*`, `connector.*`, `view.*`, `catalog.get`도 제공하고 OS 캘린더 위에 내장 커넥터 `desk.calendar`와 `desk.reminders`를 정의, 아직 제안 상태인 ADR 0036. http 커넥터는 매니페스트대로 코어가 직접 실행하고 토큰도 코어만 읽는다, ADR 0106) · `crates/desk-index`(SQLite 파일 하나에 두는 아이템 색인, ADR 0033) · `crates/desk-plugin-host`(로직 플러그인과 Wasm 커넥터를 Wasmtime에서 실행, ADR 0019 · 아직 제안 상태인 ADR 0034) · `crates/desk-vm` · `crates/desk-brain*` |
-| Tauri 셸 | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`(macOS의 컴퓨터 사용: 스크린샷, 접근성 트리, 입력, 앱). 코어가 이를 `computer:see`와 `computer:control` 아래 `computer.*`로 제공하며, 에이전트의 모든 동작은 사람의 승인을 기다립니다(ADR 0120, ADR 0123) |
+| Tauri 셸 | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`(macOS의 컴퓨터 사용: 스크린샷, 접근성 트리, 입력, 앱). 코어가 이를 `computer:see`와 `computer:control` 아래 `computer.*`로 제공하며, 에이전트의 모든 동작은 사람의 승인을 기다립니다(ADR 0120, ADR 0123) · `apps/desk/shell`과 `crates/desk-web`: 1단계가 끝나면 이것을 대신하는 CEF 셸(ADR 0143) |
 | OS | `apps/desk/src-tauri/capabilities` · 릴리스 워크플로 (서명, 공증) |
 
 ## 셸과 화면이 가는 곳
@@ -75,7 +75,7 @@ Desk 자체 컴포지터가 그 결과를 배치합니다.
 | 단계 | 바뀌는 것 | 상태 |
 | --- | --- | --- |
 | 0 | Tauri 앱 위에서: 표면마다 `desk-plugin` 스킴의 자기 origin. 살아 있는 프레임은 보이는 창과 최근 포커스한 8개만. 무거운 작업은 worker로. 응답하지 않는 프레임은 그 창에서만 "기다리기" 또는 "멈추기"를 제안 | 진행 중 |
-| 1 | 셸이 winit과 CEF 위의 Rust 바이너리(`apps/desk/shell`, ADR 0143)가 되어 지금의 셸 페이지를 띄우고, Tauri는 없어짐. 플러그인 iframe은 각각 자기 Chromium 렌더러. 앱 단위 e2e는 Chromium 원격 디버깅으로 구동(ADR 0144) | 진행 중 |
+| 1 | 셸이 winit과 CEF 위의 Rust 바이너리(`apps/desk/shell`, ADR 0143)가 되어 지금의 셸 페이지를 띄우고, Tauri는 없어짐. 플러그인 iframe은 각각 자기 Chromium 렌더러. 앱 단위 e2e는 Chromium 원격 디버깅으로 구동(ADR 0144) | 진행 중: 셸이 CEF로 창을 엶(#41) |
 | 2 | 컴포지터(`crates/desk-compositor`)가 데스크를 그리고 표면마다 텍스처를 배치. 표면은 하나의 프로토콜로 말함(`specs/surface`, ADR 0141). CEF는 플러그인마다 화면 밖에서 렌더링. 창 관리자는 `packages/runtime`에서 Rust로 옮겨 감 | 예정 |
 | 3 | 네이티브 플러그인: 표면 프로토콜과 브리지를 `desk.sock`으로 말하는 프로세스 | 예정 |
 

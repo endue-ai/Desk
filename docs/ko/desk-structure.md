@@ -247,7 +247,7 @@ desk/
 | 웹 런타임 | `packages/runtime` (컴포지터, UI 플러그인 호스트 ADR 0012, ADR 0026 이 정할 때까지 데스크 셸 ADR 0025) · `packages/ui` |
 | Desk 브리지 | `specs/bridge` · 통합 계층의 계약 `specs/item` · `specs/view` · `specs/connector` (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (이 명세들과 `specs/plugin` 에서 생성된 타입) |
 | Rust 코어 | `crates/desk-core` (통합 계층 `data.*` · `connector.*` · `view.*` · `catalog.get` 과 내장 커넥터 `desk.calendar` · `desk.reminders`, ADR 0036 제안) · `crates/desk-index` (항목 색인, SQLite, ADR 0033) · `crates/desk-plugin-host` (로직 플러그인 ADR 0019 · Wasm 커넥터 ADR 0034 제안, Wasmtime) · `crates/desk-vm` · `crates/desk-brain*` |
-| Tauri 셸 | `apps/desk/src-tauri` · `crates/desk-sys` |
+| Tauri 셸 | `apps/desk/src-tauri` · `crates/desk-sys` · 1단계가 끝나면 이것을 대신하는 CEF 셸 `apps/desk/shell` 과 엔진과 무관한 스킴 응답 `crates/desk-web` (ADR 0143) |
 | 운영체제 | `apps/desk/src-tauri/capabilities` · `.github/workflows/release.yml` (서명 · 공증) |
 
 사람과 AI 가 같이 쓰는 규칙

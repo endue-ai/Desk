@@ -41,12 +41,13 @@ first, and splitting the engine-independent logic out keeps CEF out of the defau
 
 * **`apps/desk/shell`** is the shell: a Rust binary crate. `apps/desk` keeps the web frontend it
   serves (today's shell page, built with Vite). The crate is a workspace member but not a default
-  member: it downloads and builds CEF, as the Tauri crate needs the platform webview SDKs today, so
-  the app's own checks and CI job cover it.
-* **`crates/desk-web`** holds what does not need the engine: the `desk-plugin` scheme's
-  request → response (plugin files, `fs.url` ranges, preflights, the SDK), the CSP, parsing a
-  surface's origin, and the caller's identity taken from a frame's origin. It is a default member, so
-  `just test` runs its tests; the CEF handlers in the shell are thin adapters over it.
+  member: it downloads and builds CEF, as the Tauri crate needs the platform webview SDKs, so
+  `just check-shell` and the `shell-build` CI job cover it, and `just dev-shell` runs it.
+* **`crates/desk-web`** holds what does not need the engine: the `desk-app` scheme's shell files,
+  the `desk-plugin` scheme's request → response (plugin files, `fs.url` ranges, preflights, the
+  SDK), the CSP, parsing a surface's origin, and the caller's identity taken from a frame's origin.
+  It is a default member, so `just test` runs its tests; the CEF handlers in the shell are thin
+  adapters over it.
 * **`crates/desk-compositor`** and **`crates/desk-surface`** follow in Stage 2 (ADR 0140, ADR 0141).
 * **The pump**: CEF runs with an external message pump driven from `OnScheduleMessagePumpWork` inside
   winit's event loop. CEF names a delay, the shell wakes the loop at that time through an event-loop

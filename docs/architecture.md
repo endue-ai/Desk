@@ -55,7 +55,7 @@ device. Everything else runs on the user's computer.
 | Web runtime | `packages/runtime`: the compositor, the UI plugin host (ADR 0012) and, until ADR 0026 is decided, the desk shell (ADR 0025) · `packages/ui` |
 | Desk bridge | `specs/bridge` · `specs/item`, `specs/view` and `specs/connector`, the integration layer's contracts (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (types generated from these and `specs/plugin`) |
 | Rust core | `crates/desk-core`, which also serves the integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) and defines the built-in connectors `desk.calendar` and `desk.reminders` over the OS calendar (ADR 0036, proposed), and runs http connectors from their manifests, reading their tokens itself (ADR 0106) · `crates/desk-index`, the item index in one SQLite file (ADR 0033) · `crates/desk-plugin-host`, which runs logic plugins (ADR 0019) and Wasm connectors (ADR 0034, proposed) on Wasmtime · `crates/desk-vm` · `crates/desk-brain*` |
-| Tauri shell | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`, computer use on macOS (screenshots, the accessibility tree, input, apps), which the core serves as `computer.*` under `computer:see` and `computer:control`, each act of an agent waiting for the person's approval (ADR 0120, ADR 0123) |
+| Tauri shell | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`, computer use on macOS (screenshots, the accessibility tree, input, apps), which the core serves as `computer.*` under `computer:see` and `computer:control`, each act of an agent waiting for the person's approval (ADR 0120, ADR 0123) · `apps/desk/shell` and `crates/desk-web`, the CEF shell that replaces it when Stage 1 ends (ADR 0143) |
 | OS | `apps/desk/src-tauri/capabilities` · release workflow (signing, notarisation) |
 
 ## Where the shell and the screen are going
@@ -76,7 +76,7 @@ own process, and a compositor of Desk's own, on wgpu, places what they render.
 | Stage | What changes | State |
 | --- | --- | --- |
 | 0 | On the Tauri app: each surface gets its own origin on the `desk-plugin` scheme; only the windows in sight and the 8 most recently focused keep a live frame; heavy work moves to workers; a frame that stops answering offers Wait or Stop on its window | in progress |
-| 1 | The shell becomes a Rust binary on winit and CEF (`apps/desk/shell`, ADR 0143) showing today's shell page, and Tauri is removed; every plugin iframe is its own Chromium renderer; app-level e2e drives it over Chromium's remote debugging (ADR 0144) | in progress |
+| 1 | The shell becomes a Rust binary on winit and CEF (`apps/desk/shell`, ADR 0143) showing today's shell page, and Tauri is removed; every plugin iframe is its own Chromium renderer; app-level e2e drives it over Chromium's remote debugging (ADR 0144) | in progress: the shell opens its window with CEF (#41) |
 | 2 | The compositor (`crates/desk-compositor`) draws the desk and places each surface's texture; surfaces speak one protocol (`specs/surface`, ADR 0141); CEF renders each plugin off-screen; the window manager moves from `packages/runtime` to Rust | planned |
 | 3 | Native plugins: a process that speaks the surface protocol and the bridge over `desk.sock` | planned |
 

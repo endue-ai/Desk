@@ -9,7 +9,7 @@ English summary is `docs/architecture.md`.
 | Path | What lives there |
 | --- | --- |
 | `apps/` | `desk/`: the app's web frontend; `src-tauri/` the Tauri 2 shell, being replaced by `shell/`, the CEF shell (ADR 0143) |
-| `crates/` | Rust workspace, prefix `desk-`: core, sys, bridge, plugin host, VM, brain adapters, CLI, MCP server |
+| `crates/` | Rust workspace, prefix `desk-`: core, sys, bridge, plugin host, VM, brain adapters, CLI, MCP server, web (what the desk's URL schemes answer, without an engine) |
 | `packages/` | TypeScript workspace, scope `@endue-ai/`: runtime, bridge, plugin-sdk, ui, create-plugin |
 | `plugins/` | Built-in features written as plugins, in the same format as community plugins |
 | `examples/` | The smallest working examples; each one runs with one command |
