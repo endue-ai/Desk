@@ -45,7 +45,7 @@ jobs:
           else
             files="apps/desk/src-tauri/"
           fi
-          if grep -qE '^(apps/desk/src-tauri/|crates/desk-sys/|vendor/tauri-plugin-single-instance/)' <<<"$files"; then app=true; else app=false; fi
+          if grep -qE '^(apps/desk/src-tauri/|apps/desk/shell/|crates/desk-web/|crates/desk-sys/|vendor/tauri-plugin-single-instance/)' <<<"$files"; then app=true; else app=false; fi
           # The files the release dry run proves (its own pull_request paths).
           if grep -qE '^(\.github/workflows/(release|release-build|release-dry-run|release-final|canary)\.yml|scripts/release-[^/]*\.mjs|e2e/smoke/verify-signature\.sh|apps/desk/src-tauri/tauri\.conf\.json)$' <<<"$files"; then release=true; else release=false; fi
           echo "app=$app" | tee -a "$GITHUB_OUTPUT"
@@ -192,6 +192,39 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: just check-app
       - run: just build-app
+
+  # The CEF shell (ADR 0143, Stage 1 of #32) on every OS: CEF downloads in its build script and
+  # cmake builds its C++ wrapper. Not yet among the ci gate's needs: it joins them once it has run
+  # green on all three runners.
+  shell-build:
+    name: shell-build (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - name: Install cmake and ninja
+        if: runner.os != 'Windows'
+        run: ${{ runner.os == 'macOS' && 'brew install cmake ninja' || 'sudo apt-get update && sudo apt-get install -y cmake ninja-build' }}
+      - run: pnpm install --frozen-lockfile
+      - run: just check-shell
+      - run: just build-shell
 
   codegen-check:
     name: codegen-check

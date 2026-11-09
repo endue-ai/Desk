@@ -1,0 +1,17 @@
+[package]
+name = "desk-web"
+description = "What the desk's URL schemes answer, apart from any browser engine (ADR 0143)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

@@ -1,0 +1,53 @@
+[package]
+name = "desk-shell"
+description = "The endue Desk shell on winit and CEF (ADR 0143); replaces the Tauri shell when Stage 1 of #32 ends."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+name = "desk_shell"
+
+# Until the Tauri shell goes, the CEF one is endue-desk-cef so the two binaries never collide.
+[[bin]]
+name = "endue-desk-cef"
+path = "src/main.rs"
+
+# Every CEF subprocess on macOS (renderer, GPU, utility) starts here; on Linux and Windows the
+# main binary is its own subprocess.
+[[bin]]
+name = "endue-desk-cef-helper"
+path = "src/bin/helper.rs"
+
+# Assembles the macOS .app: the CEF framework, the five helper apps and the shell's files.
+[[bin]]
+name = "desk-shell-bundle"
+path = "src/bin/bundle.rs"
+required-features = ["bundle"]
+
+[features]
+bundle = ["cef/build-util", "dep:semver"]
+
+[package.metadata.cef.bundle]
+helper_name = "endue-desk-cef-helper"
+
+[dependencies]
+cef.workspace = true
+desk-web.workspace = true
+raw-window-handle = "0.6"
+semver = { version = "1", optional = true }
+winit = "0.30"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSView"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+
+[lints]
+workspace = true

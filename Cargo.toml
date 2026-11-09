@@ -1,8 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "apps/desk/src-tauri", "vendor/tauri-plugin-single-instance"]
-# The Tauri app needs the system webview SDKs to build, so day-to-day commands skip it.
-# `just check-app` and the app-build CI job cover it.
+members = ["crates/*", "apps/desk/src-tauri", "apps/desk/shell", "vendor/tauri-plugin-single-instance"]
+# The Tauri app needs the system webview SDKs and the CEF shell downloads and builds CEF, so
+# day-to-day commands skip both. `just check-app` and `just check-shell` cover them.
 default-members = ["crates/*"]
 
 [workspace.package]
@@ -26,6 +26,9 @@ desk-plugin-host = { path = "crates/desk-plugin-host" }
 desk-sys = { path = "crates/desk-sys" }
 desk-trace = { path = "crates/desk-trace" }
 desk-update = { path = "crates/desk-update" }
+desk-web = { path = "crates/desk-web" }
+# The CEF shell (ADR 0143): pinned exactly, because CEF binaries and bindings move together.
+cef = { version = "=156.4.0", default-features = false }
 base64 = "0.23"
 notify = { version = "8", default-features = false, features = ["macos_fsevent"] }
 serde = { version = "1", features = ["derive"] }

@@ -59,6 +59,27 @@ check-app: build-sdk build-ui
     cargo check -p tauri-plugin-single-instance --all-targets --all-features
     @if [ "$(uname -s)" = Linux ]; then dbus-run-session -- cargo test -p tauri-plugin-single-instance --lib --tests -- --include-ignored; else cargo test -p tauri-plugin-single-instance --lib --tests; fi
 
+# Build the CEF shell (ADR 0143, Stage 1 of #32) with the web runtime it serves; on macOS also
+# assemble target/bundle/endue-desk-cef.app (the CEF framework and its helper apps)
+build-shell: build-sdk build-ui
+    pnpm --filter @endue-ai/desk-app build
+    cargo build -p desk-shell --bins
+    @if [ "$(uname -s)" = Darwin ]; then cargo run -q -p desk-shell --features bundle --bin desk-shell-bundle -- target/bundle debug; fi
+
+# Run the desk on the CEF shell; `just dev` stays the Tauri shell until Stage 1 of #32 ends
+dev-shell: build-shell
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins"
+    export DESK_DEV_PLUGINS={{quote(env("DESK_DEV_PLUGINS", dev_examples))}}
+    if [ "$(uname -s)" = Darwin ]; then exec target/bundle/endue-desk-cef.app/Contents/MacOS/endue-desk-cef; fi
+    exec target/debug/endue-desk-cef
+
+# Lint and test the CEF shell crate, which downloads and builds CEF (so `just check` leaves it out)
+check-shell:
+    cargo clippy -p desk-shell --all-targets --all-features -- -D warnings
+    cargo test -p desk-shell
+
 # Build the Tauri app binary
 build-app: build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
