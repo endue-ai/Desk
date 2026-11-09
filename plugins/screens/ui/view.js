@@ -157,7 +157,8 @@ export function createView(doc, actions) {
         signin.hidden = true;
         trust.hidden = true;
       }
-      status.textContent = state.detail;
+      // While a screen is shown the toolbar says how it goes; the status line keeps the last word.
+      status.textContent = live ? "" : state.detail;
     },
 
     /** The toggles as a new session starts. */

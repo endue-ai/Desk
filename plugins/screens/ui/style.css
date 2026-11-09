@@ -97,8 +97,15 @@ body {
 
 .pair {
   display: grid;
-  grid-template-columns: 1fr 9ch;
+  grid-template-columns: minmax(0, 1fr) 11ch;
   gap: var(--desk-space-2);
+}
+
+.add .desk-field,
+.question .desk-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
 }
 
 .actions {
