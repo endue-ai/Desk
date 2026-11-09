@@ -1,8 +1,11 @@
 /* Every colour, font, size and radius is a --desk-* token: /_desk/tokens.css declares the defaults and
    the desk applies the theme in force over them. xterm draws the terminal itself from theme.js. */
+/* The page never scrolls: a scroll bar of its own would take room from the panes, the terminal would
+   refit to the smaller box, the bar would go and the terminal refit back, over and over. */
 html,
 body {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -103,17 +106,21 @@ body {
   position: relative;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 .pane {
   position: absolute;
   inset: 0;
-  padding: 4px 0 0 6px;
-  box-sizing: border-box;
+  overflow: hidden;
 }
 
+/* The gap sits on xterm's own element, which the fit addon subtracts; on the pane it counted as room
+   for cells, and the last column and row hung over the edge. */
 .pane .xterm {
+  box-sizing: border-box;
   height: 100%;
+  padding: 4px 0 0 6px;
 }
 
 /* The visual bell: the pane's edge lights for a moment (no motion, so reduced motion keeps it). */
