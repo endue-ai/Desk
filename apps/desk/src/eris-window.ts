@@ -1,6 +1,6 @@
 // The floating Eris window (ADR 0121), index.html?view=eris: her figure, her status and a compact
 // composer over the OS while the desk is inactive. The view is the runtime's (mountErisFloat); this
-// host gives it the core as the desk (src-tauri pins this window's caller and lets it talk to Eris
+// host gives it the core as the desk (both shells pin this window's caller and let it talk to Eris
 // only, so it is the desk's one conversation), the window's own commands, the summons of the
 // shortcut and the theme the main window keeps (palette-theme.ts).
 import { BridgeClient, tauriAdapter } from "@endue-ai/bridge";
@@ -15,13 +15,14 @@ import "@endue-ai/runtime/shell.css";
 import "./eris-window.css";
 import { followDeskTheme, KEPT_THEME } from "./palette-theme";
 
-/** Tauri's `invoke` and `listen`, injected so tests drive the window without Tauri. */
+/** The shell's `invoke` and `listen` (`host.ts`), injected so tests drive the window without one. */
 export interface NativeWindow {
   invoke(command: string, args?: Record<string, unknown>): Promise<unknown>;
   listen<T>(event: string, handler: (event: { payload: T }) => void): Promise<() => void>;
 }
 
-/** The window's own commands: the app's inline plugin `eris-window` (src-tauri/src/eris_window). */
+/** The window's own commands, as the Tauri shell's inline plugin `eris-window` named them; the CEF
+ * shell answers the same names (apps/desk/shell/src/eris_window/commands.rs). */
 export const PLUGIN = "plugin:eris-window|";
 
 /** What `state` and `eris://shortcut` say of the shortcut. */

@@ -42,8 +42,7 @@ const desk = mountDesk({
   clock: realClock(),
   platform: navigator.userAgent.includes("Macintosh") ? "mac" : "other",
   lang,
-  // The CEF shell's native file picker arrives with its dialogs (#45).
-  ...(shell === "tauri" ? { pickFile: pickNativeFile } : {}),
+  pickFile: pickNativeFile,
   start,
   relaunch: relauncher(invoke),
   onSurfaceShown: (id) => {
@@ -52,21 +51,18 @@ const desk = mountDesk({
 });
 void desk.runtime.ready.then(() => phase("desk mount", booted));
 
-// Native file drops hand over paths through Tauri's window; the CEF shell's arrive with #45.
-const disposeDrops =
-  shell !== "tauri"
-    ? () => {}
-    : installNativeFileDrops({
-        ready: desk.ready,
-        commands: desk.runtime.commands,
-        report: (error) =>
-          desk.runtime.notify({
-            caller: "desk",
-            title: "Could not open the dropped file",
-            body: error instanceof Error ? error.message : String(error),
-            level: "error",
-          }),
-      });
+// Files dragged in from the OS: Tauri's window events, or the CEF shell's word and the page's drag.
+const disposeDrops = installNativeFileDrops({
+  ready: desk.ready,
+  commands: desk.runtime.commands,
+  report: (error) =>
+    desk.runtime.notify({
+      caller: "desk",
+      title: "Could not open the dropped file",
+      body: error instanceof Error ? error.message : String(error),
+      level: "error",
+    }),
+});
 window.addEventListener("pagehide", disposeDrops, { once: true });
 
 const disposeOpened = installOpenedFiles({
