@@ -1,5 +1,7 @@
-// The desk shell across a relaunch. browser.reloadSession() makes tauri-driver quit the app and launch
-// it again with the same HOME; the spec polls the data files before each relaunch instead of sleeping.
+// The desk shell across a relaunch. browser.reloadSession() quits the app and launches it again with
+// the same HOME (support/driver.ts); the spec polls the data files before each relaunch instead of
+// sleeping. The dock's tiles are pressed with their own click (support/desk.ts, press): the canvas map
+// sits over the dock's end at 1280x800.
 //
 // A surface put away from the dock stays away: the flag is in plugins.json. One opened and in use
 // comes back focused: the desk.session record in store.json. The dock is endue.dock, the runtime's
@@ -15,6 +17,7 @@ import { $, browser, expect } from "@wdio/globals";
 import {
   focusedSurface,
   inFrame,
+  press,
   SYSTEM,
   shellReady,
   surface,
@@ -24,7 +27,8 @@ import {
 
 const HELLO = "e2e.hello";
 const DOCK = "endue.dock";
-const tile = () => $(`button.tile[data-plugin="${HELLO}"]`);
+const TILE = `button.tile[data-plugin="${HELLO}"]`;
+const tile = () => $(TILE);
 const desktop = (n: number) => $(`${SYSTEM} [data-desktop="${n}"]`);
 
 type Plugins = { enabled?: Record<string, boolean> };
@@ -41,7 +45,7 @@ describe("session: the shell across a relaunch", () => {
     // Put it away from the dock.
     await inFrame(DOCK, async () => {
       await expect(tile()).toHaveAttribute("aria-pressed", "true");
-      await tile().click();
+      await press(TILE);
       await expect(tile()).toHaveAttribute("aria-pressed", "false");
     });
     await expect(surface(HELLO)).not.toExist();
@@ -58,7 +62,7 @@ describe("session: the shell across a relaunch", () => {
     await expect(surface(HELLO)).not.toExist();
 
     // Open it from the dock and put it in use (center surfaces open without the focus).
-    await inFrame(DOCK, () => tile().click());
+    await inFrame(DOCK, () => press(TILE));
     await expect(surface(HELLO)).toExist();
     // Under the shell a centre surface sits in a shell window (ADR 0040): its title bar is the window's.
     await windowOf(HELLO).$(".surface-title").click();

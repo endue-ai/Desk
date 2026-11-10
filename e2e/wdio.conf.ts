@@ -1,26 +1,34 @@
-// App e2e: WebdriverIO + tauri-driver on the packaged app (`just bundle-app`). Linux first; macOS has
-// no tauri-driver (ADR 0006), Windows comes later. Run it with `just test-app-e2e`; Playwright is not
-// involved (ADR 0018). Spec files run one after another, each in its own WebDriver session and app
-// process with a fresh HOME (support/driver.ts). A display comes from outside (`xvfb-run` in CI).
+// App e2e: WebdriverIO on the desk app, one app process per spec file with a fresh HOME
+// (support/driver.ts). Run it with `just test-app-e2e`; Playwright is not involved (ADR 0018).
+// DESK_E2E_SHELL picks the shell:
+// - `cef` (default, ADR 0144): the CEF desk's debug build (`just build-shell`), driven by chromedriver
+//   attached to its remote debugging port. macOS, Linux (under a display: `xvfb-run` in CI), Windows.
+// - `tauri`: the release build `just bundle-app` writes, through tauri-driver; Linux only (ADR 0006),
+//   until the Tauri shell is deleted at the end of Stage 1.
 import { existsSync, mkdirSync } from "node:fs";
 import { basename, delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { browser } from "@wdio/globals";
-import { PORT, saveData, startDriver, stopDriver } from "./support/driver";
+import { cefBinary } from "./support/cef";
+import { PORT, relaunchApp, SHELL, saveData, startDriver, stopDriver } from "./support/driver";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 const results = join(here, "test-results");
-/** The release binary `just bundle-app` writes; DESK_APP points elsewhere (a --debug build). */
-const app = resolve(process.env.DESK_APP ?? join(root, "target/release/endue-desk"));
+/** The app: DESK_APP, else the CEF debug build or the Tauri release build `just bundle-app` writes. */
+const app =
+  SHELL === "cef"
+    ? cefBinary(root)
+    : resolve(process.env.DESK_APP ?? join(root, "target/release/endue-desk"));
 
-if (process.platform === "darwin") {
+if (SHELL === "tauri" && process.platform === "darwin") {
   throw new Error(
-    "tauri-driver does not run on macOS (ADR 0006); the e2e workflow runs it on Linux",
+    "tauri-driver does not run on macOS (ADR 0006); the CEF desk does (DESK_E2E_SHELL=cef, ADR 0144)",
   );
 }
 if (!existsSync(app)) {
-  throw new Error(`no app at ${app}: run \`just bundle-app\` first, or set DESK_APP`);
+  const build = SHELL === "cef" ? "just build-shell" : "just bundle-app";
+  throw new Error(`no app at ${app}: run \`${build}\` first, or set DESK_APP`);
 }
 mkdirSync(results, { recursive: true });
 
@@ -53,6 +61,17 @@ declare global {
   }
 }
 
+/**
+ * End the desk's page as a quit does: its pagehide, on which the session policy saves what is open,
+ * then a moment for that save to reach the core's store.
+ */
+async function leavePage(): Promise<void> {
+  await browser.execute(() => {
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }));
+  });
+  await browser.pause(1_000);
+}
+
 /** The spec file this worker runs (wdio starts one worker per spec file). */
 let spec = "spec";
 
@@ -60,19 +79,22 @@ const specName = (file: string | undefined) =>
   basename(file?.startsWith("file:") ? fileURLToPath(file) : (file ?? "spec"));
 const slug = (title: string) => title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
 
+/**
+ * The session's capabilities. Both drivers speak classic WebDriver here: chromedriver attached to a
+ * running browser leaves its windows alone, and tauri-driver knows no BiDi.
+ */
+const capabilities: WebdriverIO.Capabilities =
+  SHELL === "cef"
+    ? { browserName: "chrome", "wdio:enforceWebDriverClassic": true }
+    : { "wdio:enforceWebDriverClassic": true, "tauri:options": { application: app } };
+
 export const config: WebdriverIO.Config = {
   runner: "local",
   specs: ["./specs/**/*.spec.ts"],
   maxInstances: 1,
   hostname: "127.0.0.1",
   port: PORT,
-  capabilities: [
-    {
-      // tauri-driver speaks classic WebDriver only.
-      "wdio:enforceWebDriverClassic": true,
-      "tauri:options": { application: app },
-    },
-  ],
+  capabilities: [capabilities],
   logLevel: "warn",
   outputDir: results,
   waitforTimeout: 15_000,
@@ -84,9 +106,25 @@ export const config: WebdriverIO.Config = {
   reporters: ["spec"],
   mochaOpts: { ui: "bdd", timeout: 60_000 },
 
-  async beforeSession(_config, _capabilities, specs) {
+  async beforeSession(_config, caps, specs) {
     spec = specName(specs[0]);
-    await startDriver({ root, results, spec, init: INIT[spec] ?? DEFAULT_INIT, env: ENV[spec] });
+    const extra = await startDriver({
+      root,
+      results,
+      spec,
+      init: INIT[spec] ?? DEFAULT_INIT,
+      env: ENV[spec],
+    });
+    Object.assign(caps, extra);
+  },
+  before() {
+    // On CEF the app is this worker's process, not the driver's: a relaunch ends its page, quits it
+    // and starts it again (support/driver.ts).
+    if (SHELL !== "cef") return;
+    browser.overwriteCommand("reloadSession", async (reload, ...args) => {
+      await relaunchApp(() => leavePage());
+      return reload(...args);
+    });
   },
   async afterTest(test, _context, { passed }) {
     if (passed) return;

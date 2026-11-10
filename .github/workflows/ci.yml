@@ -103,8 +103,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Configure Ubuntu package downloads
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
-      - name: Install WebKit
-        run: pnpm --filter @endue-ai/runtime exec playwright install --with-deps webkit
+      - name: Install Chromium
+        run: pnpm --filter @endue-ai/runtime exec playwright install --with-deps chromium
       - run: just test-e2e
       - if: failure()
         uses: actions/upload-artifact@v7

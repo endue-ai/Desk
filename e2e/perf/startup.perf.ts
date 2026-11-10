@@ -7,7 +7,7 @@ import { cpSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { browser, expect } from "@wdio/globals";
-import { shellReady, waitForData } from "../support/desk";
+import { appData, shellReady, waitForData } from "../support/desk";
 import { HOME_VAR } from "../support/driver";
 import { median } from "./lib/stats";
 import { phaseNames, type StartupTimes, startedAt, startupTimes } from "./lib/trace";
@@ -30,8 +30,8 @@ type Store = { desk?: { session?: { files?: Array<{ path: string }> } } };
 const savedFiles = (value: unknown) => (value as Store | undefined)?.desk?.session?.files ?? [];
 
 /** The trace of the start launched after `launched` (ms since the epoch), once it is complete. */
-async function traceSince(home: string, launched: number): Promise<unknown> {
-  const file = join(home, ".local/share/ai.endue.desk/trace.json");
+async function traceSince(launched: number): Promise<unknown> {
+  const file = join(appData(), "trace.json");
   let trace: unknown;
   await browser.waitUntil(
     async () => {
@@ -75,7 +75,7 @@ describe("start-up: a second start with a saved session of six surfaces", () => 
       try {
         await browser.reloadSession();
         await shellReady();
-        const trace = await traceSince(home, launched);
+        const trace = await traceSince(launched);
         keep(`startup-${run}.trace.json`, trace);
         const mounts = Object.values(FILES).map((plugin) => `mount ${plugin}`);
         expect(phaseNames(trace)).toEqual(

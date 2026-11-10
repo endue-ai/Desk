@@ -5,6 +5,7 @@
 import { createConnection, type Socket } from "node:net";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { dataDir } from "../../support/cef";
 
 type Line = {
   id?: number;
@@ -15,8 +16,8 @@ type Line = {
   data?: Record<string, unknown>;
 };
 
-/** Where the app under `home` serves its socket on Linux (XDG_* are cleared for the app). */
-export const socketPath = (home: string) => join(home, ".local/share/ai.endue.desk/desk.sock");
+/** Where the app under `home` serves its socket (XDG_* are cleared for the app). */
+export const socketPath = (home: string) => join(dataDir(home), "desk.sock");
 
 export class DeskSocket {
   readonly closed: Promise<void>;

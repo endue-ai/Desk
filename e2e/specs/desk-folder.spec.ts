@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { browser, expect } from "@wdio/globals";
 import { desk, deskCli, deskOk } from "../support/cli";
-import { shellReady, waitForData } from "../support/desk";
+import { appData, shellReady, waitForData } from "../support/desk";
 import { HOME_VAR } from "../support/driver";
 
 const HELLO = "e2e.hello";
@@ -20,7 +20,7 @@ const MINE = "desk.palette.open person";
 type Plugins = { enabled?: Record<string, boolean> };
 const home = () => process.env[HOME_VAR] ?? "";
 const deskFolder = () => join(home(), ".desk");
-const dataFolder = () => join(home(), ".local/share/ai.endue.desk");
+const dataFolder = () => appData();
 
 function put(rel: string, text: string): void {
   const path = join(deskFolder(), rel);

@@ -106,7 +106,7 @@ function configuredBefore(job, install) {
 test("runtime and app build install with configured APT while retaining commands, deadlines and gates", async () => {
   const { jobs } = await workflow("ci");
   const runtime = jobs["runtime-e2e"];
-  configuredBefore(runtime, "playwright install --with-deps webkit");
+  configuredBefore(runtime, "playwright install --with-deps chromium");
   assert.equal(runtime["timeout-minutes"], 15);
   assert.ok(runtime.steps.some((step) => step.run === "just test-e2e"));
   const build = jobs["app-build"];
@@ -134,22 +134,34 @@ test("runtime and app build install with configured APT while retaining commands
 
 test("app e2e configures APT and changes to the helper exercise the existing packaged-app gates", async () => {
   const config = await workflow("e2e");
-  const job = config.jobs["app-e2e"];
-  configuredBefore(job, "sudo apt-get update");
-  assert.equal(job["timeout-minutes"], 45);
   assert.ok(config.on.pull_request.paths.includes("scripts/ci-apt.mjs"));
   assert.ok(config.on.pull_request.paths.includes("scripts/ci-apt.test.mjs"));
+  const xvfb = (recipe) => `xvfb-run -a --server-args="-screen 0 1280x800x24" just ${recipe}`;
+
+  // The CEF desk on three OSes (ADR 0144): APT on Linux only, before its packages.
+  const cef = config.jobs["app-e2e"];
+  assert.deepEqual(cef.strategy.matrix.os, ["ubuntu-latest", "macos-latest", "windows-latest"]);
+  const apt = configuredBefore(cef, "sudo apt-get update");
+  assert.equal(apt.if, "runner.os == 'Linux'");
+  assert.equal(cef["timeout-minutes"], 60);
+  assert.ok(cef.steps.some((step) => step.run === "just build-shell"));
+  for (const recipe of ["test-app-e2e", "smoke"]) {
+    assert.ok(
+      cef.steps.some(
+        (step) => step.run?.includes(xvfb(recipe)) && step.run.includes(`'just ${recipe}'`),
+      ),
+      recipe,
+    );
+  }
+
+  // The Tauri app's run, kept until the CEF desk replaces it.
+  const job = config.jobs["app-e2e-tauri"];
+  assert.equal(job.env.DESK_E2E_SHELL, "tauri");
+  configuredBefore(job, "sudo apt-get update");
+  assert.equal(job["timeout-minutes"], 45);
   assert.ok(job.steps.some((step) => step.run === "just bundle-app"));
-  assert.ok(
-    job.steps.some(
-      (step) => step.run === 'xvfb-run -a --server-args="-screen 0 1280x800x24" just test-app-e2e',
-    ),
-  );
-  assert.ok(
-    job.steps.some(
-      (step) => step.run === 'xvfb-run -a --server-args="-screen 0 1280x800x24" just smoke',
-    ),
-  );
+  assert.ok(job.steps.some((step) => step.run === xvfb("test-app-e2e")));
+  assert.ok(job.steps.some((step) => step.run === xvfb("smoke")));
   assert.match(
     job.steps.find((step) => step.run?.includes("apt-get install")).run,
     /sudo apt-get install -y libwebkit2gtk-4\.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev webkit2gtk-driver xvfb/,

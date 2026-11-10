@@ -1,12 +1,12 @@
 // Local crash reports (#322). An uncaught error in the shell's window goes to the app's desk_crash
 // command, which writes a redacted report under the data folder's crashes/: the spec's HOME, which
 // the error's message names, is `~` there. The next start shows one card for it ("Desk crashed last
-// time."), and the start after that shows none. browser.reloadSession() makes tauri-driver quit the
-// app and launch it again with the same HOME.
+// time."), and the start after that shows none. browser.reloadSession() quits the app and launches it
+// again with the same HOME (support/driver.ts).
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { $, $$, browser, expect } from "@wdio/globals";
-import { shellReady } from "../support/desk";
+import { appData, shellReady } from "../support/desk";
 import { HOME_VAR } from "../support/driver";
 
 const home = () => {
@@ -14,7 +14,7 @@ const home = () => {
   if (!value) throw new Error(`${HOME_VAR} is not set: run the specs through just test-app-e2e`);
   return value;
 };
-const crashes = () => join(home(), ".local/share/ai.endue.desk/crashes");
+const crashes = () => join(appData(), "crashes");
 
 /** The reports written so far, as text, oldest first. */
 function reports(): string[] {
@@ -32,10 +32,12 @@ describe("crash: a webview error writes a redacted report, and the next start sh
   it("an uncaught error in the shell writes a report without the HOME path", async () => {
     await shellReady();
     const secret = `${home()}/Notes/secret.md`;
+    // The error event the engine fires at the window for an uncaught error in the shell's own script.
+    // A script thrown from WebDriver's execute is not the page's own: Chromium mutes its error ("Script
+    // error.", no error object), as it does for any script from another origin.
     await browser.execute((path: string) => {
-      setTimeout(() => {
-        throw new Error(`cannot read ${path}`);
-      });
+      const error = new Error(`cannot read ${path}`);
+      window.dispatchEvent(new ErrorEvent("error", { error, message: `Uncaught ${error}` }));
     }, secret);
     await browser.waitUntil(async () => reports().length === 1, {
       timeout: 10_000,

@@ -1,6 +1,7 @@
 // What the person decides outlives a quit (#351): the app hands the core grants.json, settings.json and
-// the logs folder in its data folder (ADR 0029, ADR 0031). browser.reloadSession() makes tauri-driver
-// quit the app and launch it again with the same HOME; the spec polls the data files before relaunching.
+// the logs folder in its data folder (ADR 0029, ADR 0031). browser.reloadSession() quits the app and
+// launches it again with the same HOME (support/driver.ts); the spec polls the data files before
+// relaunching.
 //
 // The grant: e2e.ask (a dev plugin for this spec only, wdio.conf.ts) asks for ~/Pictures/2024 and the
 // person answers "Always allow" in endue.permissions' prompt; after the relaunch the same request is
@@ -8,7 +9,7 @@
 // runtime's own setting brain.use (ADR 0094); after the relaunch it is still the one picked. The logs
 // folder is covered by apps/desk/src-tauri/src/core_files.rs's unit test.
 import { $, browser, expect } from "@wdio/globals";
-import { inFrame, MODE, shellReady, waitForData } from "../support/desk";
+import { inFrame, MODE, press, shellReady, waitForData } from "../support/desk";
 
 const ASK = "e2e.ask";
 const PERMISSIONS = "endue.permissions";
@@ -18,18 +19,6 @@ type Settings = { desk?: Record<string, unknown> };
 
 /** Whether grants.json holds a grant naming FOLDER (only lasting grants are written there). */
 const granted = (value: unknown) => JSON.stringify(value ?? "").includes(FOLDER);
-
-/**
- * Press a button by its selector in the current frame. The desk lays every plugin of the Default
- * profile out at once, so windows overlap: a pointer click can land on the window on top. The
- * element's own click reaches the button wherever it is drawn.
- */
-async function press(selector: string): Promise<void> {
-  await $(selector).waitForExist();
-  await browser.execute((s: string) => {
-    (document.querySelector(s) as HTMLElement | null)?.click();
-  }, selector);
-}
 
 /** Ask for FOLDER from e2e.ask. */
 async function ask(): Promise<void> {

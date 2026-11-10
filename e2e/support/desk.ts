@@ -6,10 +6,11 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { $, browser, expect } from "@wdio/globals";
-import { HOME_VAR, LOG_VAR } from "./driver";
+import { dataDir } from "./cef";
+import { HOME_VAR, LOG_VAR, SHELL } from "./driver";
 
 /** The status line the runtime shows and `desk_ready` prints once the bridge answered. */
-export const READY = "desk ready · bridge: tauri";
+export const READY = `desk ready · bridge: ${SHELL}`;
 
 /** The shell's layers: the desk's own controls, and what a profile lays out over the runtime. */
 export const SYSTEM = '#desk.shell [data-layer="system"]';
@@ -62,6 +63,19 @@ export async function inFrame<T>(plugin: string, body: () => Promise<T>): Promis
   }
 }
 
+/**
+ * Press a button by its selector in the current frame. The desk lays every plugin of the Default
+ * profile out at once, so windows overlap, and the canvas map sits over the dock's end at 1280x800:
+ * a pointer click can land on what is on top (chromedriver refuses it as intercepted). The element's
+ * own click reaches the button wherever it is drawn.
+ */
+export async function press(selector: string): Promise<void> {
+  await $(selector).waitForExist();
+  await browser.execute((s: string) => {
+    (document.querySelector(s) as HTMLElement | null)?.click();
+  }, selector);
+}
+
 /** The plugin whose surface holds the keyboard focus, if any. */
 export function focusedSurface(): Promise<string | null> {
   return browser.execute(
@@ -76,12 +90,18 @@ export function appLog(): string[] {
   return readFileSync(log, "utf8").split("\n");
 }
 
-/** A JSON file in the app's data folder (Tauri's app_data_dir under HOME), or undefined. */
-export function dataFile(name: string): unknown {
+/** The app's data folder under the spec's HOME (both shells use Tauri's app_data_dir). */
+export function appData(): string {
   const home = process.env[HOME_VAR];
   if (!home) throw new Error(`${HOME_VAR} is not set: run the specs through just test-app-e2e`);
+  return dataDir(home);
+}
+
+/** A JSON file in the app's data folder, or undefined. */
+export function dataFile(name: string): unknown {
+  const folder = appData();
   try {
-    return JSON.parse(readFileSync(join(home, ".local/share/ai.endue.desk", name), "utf8"));
+    return JSON.parse(readFileSync(join(folder, name), "utf8"));
   } catch {
     return undefined;
   }
@@ -89,9 +109,7 @@ export function dataFile(name: string): unknown {
 
 /** Write a JSON file in the app's data folder, as if the app had left it so. */
 export function writeDataFile(name: string, value: unknown): void {
-  const home = process.env[HOME_VAR];
-  if (!home) throw new Error(`${HOME_VAR} is not set: run the specs through just test-app-e2e`);
-  writeFileSync(join(home, ".local/share/ai.endue.desk", name), JSON.stringify(value));
+  writeFileSync(join(appData(), name), JSON.stringify(value));
 }
 
 /** Poll a data file until `test` holds, so a relaunch never races the app's own saving. */

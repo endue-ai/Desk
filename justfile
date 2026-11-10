@@ -33,8 +33,8 @@ test-unit:
     pnpm exec vitest run
     node --test scripts/*.test.mjs
 
-# Runtime tests in WebKit on the browser bridge stub; Playwright arguments pass through (`just test-e2e
-# --update-snapshots`). macOS runs them in a Linux container, two runs per machine at most (ADR 0018)
+# Runtime tests in headless Chromium on the browser bridge stub, four workers at most; Playwright
+# arguments pass through (`just test-e2e e2e/shell.spec.ts --update-snapshots`; ADR 0018, ADR 0144)
 test-e2e *args:
     node scripts/e2e.mjs test {{args}}
 
@@ -64,7 +64,8 @@ check-app: build-sdk build-ui
 build-shell: build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
     cargo build -p desk-shell --bins
-    @if [ "$(uname -s)" = Darwin ]; then cargo run -q -p desk-shell --features bundle --bin desk-shell-bundle -- target/bundle debug; fi
+    @# A fresh bundle each time: macOS kills a signed binary that was rewritten in place (SIGKILL at launch).
+    @if [ "$(uname -s)" = Darwin ]; then rm -rf target/bundle/endue-desk-cef.app && cargo run -q -p desk-shell --features bundle --bin desk-shell-bundle -- target/bundle debug; fi
 
 # Run the desk on the CEF shell; `just dev` stays the Tauri shell until Stage 1 of #32 ends
 dev-shell: build-shell
@@ -90,14 +91,17 @@ build-app: build-sdk build-ui
 bundle-app: (_not-macos "bundle-app" "builds the Linux .deb only; the e2e workflow runs it on Linux")
     pnpm --filter @endue-ai/desk-app tauri build --bundles deb
 
-# App e2e: WebdriverIO + tauri-driver on the bundled app (`just bundle-app` first), one app and
-# fresh HOME per spec file, under a display (`xvfb-run`); arguments pass to wdio. Linux (ADR 0006)
-test-app-e2e *args: (_not-macos "test-app-e2e" "tauri-driver does not run on macOS (ADR 0006); the e2e workflow runs it on Linux")
+# App e2e: WebdriverIO on the CEF desk (`just build-shell` first) through chromedriver on its remote
+# debugging port, one app and fresh HOME per spec file; arguments pass to wdio. macOS, Linux under a
+# display (`xvfb-run`), Windows (ADR 0144). DESK_E2E_SHELL=tauri drives `just bundle-app`'s Tauri app
+# through tauri-driver instead, on Linux only (ADR 0006), until the Tauri shell is deleted
+test-app-e2e *args:
     pnpm exec wdio run e2e/wdio.conf.ts {{args}}
 
-# Install smoke: build and install the .deb (apt, sudo), launch it with a temp HOME, wait 60 s for
-# the ready line, quit it with SIGTERM. Linux, under a display
-smoke: (_not-macos "smoke" "the install smoke covers the Linux .deb only; the e2e workflow runs it on Linux")
+# Install smoke: launch the CEF desk's build with a temp HOME, wait 60 s for the ready line, quit it
+# with SIGTERM (it has no package to install until #46). DESK_E2E_SHELL=tauri builds and installs the
+# Tauri .deb (apt, sudo) first, on Linux only. Linux under a display, macOS
+smoke:
     e2e/smoke/install-and-launch.sh
 
 # Refuse with one line and exit 2 on macOS, where the recipe's tools do not run
@@ -134,14 +138,14 @@ vendor-novnc:
     node scripts/vendor-novnc.mjs
 
 # Measure the opening frame time (pass "record" to make it the new baseline in e2e/perf/budgets.json).
-# Native WebKit with the machine to itself; on macOS for people only (ADR 0018)
+# Headless Chromium, one worker (ADR 0144); record on a quiet machine
 perf-opening mode="check":
     node scripts/e2e.mjs perf {{mode}}
 
-# WebdriverIO + tauri-driver on the bundled app (`just bundle-app` first) under a display, results in
-# e2e/test-results/perf, baselines in e2e/perf/budgets.json; nightly in the e2e workflow's perf job.
-# Measure the app's start-up, idle memory and input latency ("record" sets the baselines). Linux
-perf-app mode="check": (_not-macos "perf-app" "tauri-driver does not run on macOS (ADR 0006); the e2e workflow's perf job runs it on Linux")
+# WebdriverIO on the app as in `just test-app-e2e` (the CEF desk; DESK_E2E_SHELL=tauri for the Tauri
+# one), results in e2e/test-results/perf, baselines in e2e/perf/budgets.json; nightly in the e2e
+# workflow's perf job. Measure the app's start-up, idle memory and input latency ("record" sets the baselines)
+perf-app mode="check":
     PERF_MODE={{mode}} pnpm exec wdio run e2e/perf/wdio.conf.ts
 
 # Check that this session still has its macOS login session (a WindowServer crash ends it; ADR 0018)
