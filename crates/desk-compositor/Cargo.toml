@@ -34,6 +34,8 @@ objc2-io-surface = { version = "0.3", default-features = false, features = ["std
 [dev-dependencies]
 png.workspace = true
 serde_json.workspace = true
+# Hit-testing properties (#58): no forking or timeouts, a fixed seed, no regression files.
+proptest = { version = "1.12", default-features = false, features = ["std"] }
 
 [[bench]]
 name = "compose"
