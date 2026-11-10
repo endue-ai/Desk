@@ -17,6 +17,10 @@
 //! (ADR 0157, `app.rs`): a begin frame the renderer cannot use yet ends at once, where Chromium's
 //! display held it for a whole frame and CEF sends no begin frame while one is out, the frame #111
 //! saw one press in ten wait for (#117). Engine free: `clock.rs` sends the begin frames.
+//!
+//! Each paint is a GPU copy, and the GPU's first copy after a second or more without one takes
+//! milliseconds more: input to a desk that painted nothing for `COLD` (`Copies`, kept by
+//! `copy_wake.rs` from the paints the clock sees) wakes the GPU's copies at once (#133).
 
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -39,6 +43,10 @@ pub const IDLE: Duration = Duration::from_micros(33_333);
 pub const LONG_IDLE: Duration = Duration::from_secs(1);
 /// The most desk frames a second a long-idle surface takes.
 pub const IDLE_RATE: u32 = 10;
+/// The GPU's first copy after about a second without one takes milliseconds more, in the desk's
+/// process and in Chromium's GPU process alike (#133): input to a desk that painted nothing for
+/// this long wakes the GPU's copies first (`clock.rs`).
+pub const COLD: Duration = Duration::from_millis(500);
 
 /// Whether a surface in `state` is on the clock: a visible, awake one with its renderer.
 pub fn on_clock(state: State) -> bool {
@@ -103,6 +111,33 @@ pub fn take_heard() -> Vec<(i32, Instant, bool)> {
 pub struct Clock {
     epoch: Option<Instant>,
     last: u64,
+}
+
+/// When the desk's GPU last copied: each paint the host takes is a copy into the compositor's own
+/// texture (`desk-compositor`'s attach), and so is the wake-up input brings to a desk whose copies
+/// are cold (#133, `copy_wake.rs`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Copies {
+    last: Option<Instant>,
+}
+
+impl Copies {
+    /// A surface painted at `at`.
+    pub fn copied(&mut self, at: Instant) {
+        self.last = Some(self.last.map_or(at, |t| t.max(at)));
+    }
+
+    /// Input came at `now`: whether the GPU's copies need waking (none for `COLD`), which counts
+    /// as a copy.
+    pub fn wake(&mut self, now: Instant) -> bool {
+        let cold = self
+            .last
+            .is_none_or(|t| now.saturating_duration_since(t) >= COLD);
+        if cold {
+            self.copied(now);
+        }
+        cold
+    }
 }
 
 /// Desk frame `k` after `epoch`.
@@ -189,6 +224,11 @@ impl Pacing {
 
     pub fn pace(&self) -> u32 {
         self.pace
+    }
+
+    /// When a look last saw it paint.
+    pub fn painted(&self) -> Option<Instant> {
+        self.painted
     }
 
     /// The compositor's hint: at most `fps` frames a second from the next desk frame on.

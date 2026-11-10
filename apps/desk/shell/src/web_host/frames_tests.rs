@@ -1,6 +1,6 @@
 use super::{
-    Clock, FRAME, IDLE, IDLE_RATE, LONG_IDLE, PROMPT, PROMPT_FOR, Pacing, heard, on_clock, prompts,
-    take_heard,
+    COLD, Clock, Copies, FRAME, IDLE, IDLE_RATE, LONG_IDLE, PROMPT, PROMPT_FOR, Pacing, heard,
+    on_clock, prompts, take_heard,
 };
 use crate::web_host::lifecycle::State;
 use std::time::{Duration, Instant};
@@ -250,4 +250,38 @@ fn only_visible_awake_surfaces_are_on_the_clock_presses_prompt_and_the_clock_hea
         .map(|(id, _, prompt)| (id, prompt))
         .collect();
     assert_eq!(got, [(-117, true), (-118, false)]);
+}
+
+#[test]
+fn input_to_a_desk_that_painted_nothing_for_a_while_wakes_the_gpus_copies_once() {
+    let t0 = Instant::now();
+    let mut copies = Copies::default();
+    assert!(copies.wake(t0), "nothing painted yet: cold");
+    assert!(!copies.wake(t0 + COLD / 2), "the wake-up counts as a copy");
+    assert!(copies.wake(t0 + COLD), "cold again {COLD:?} later");
+    let painted = t0 + COLD * 3;
+    copies.copied(painted);
+    copies.copied(painted - FRAME);
+    assert!(
+        !copies.wake(painted + COLD - FRAME),
+        "a paint is a copy, and the latest counts"
+    );
+    assert!(copies.wake(painted + COLD));
+    assert!(COLD < LONG_IDLE, "woken well before a second without one");
+}
+
+#[test]
+fn the_clock_notes_when_a_surface_painted() {
+    let t0 = Instant::now();
+    let mut pacing = Pacing::new(60);
+    pacing.due(t0, Some(0), 0);
+    assert_eq!(pacing.painted(), None, "no paint yet");
+    pacing.due(t0 + FRAME, Some(1), 1);
+    assert_eq!(pacing.painted(), Some(t0 + FRAME));
+    pacing.due(t0 + FRAME * 2, Some(2), 1);
+    assert_eq!(
+        pacing.painted(),
+        Some(t0 + FRAME),
+        "only when its count moves"
+    );
 }

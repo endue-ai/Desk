@@ -104,10 +104,12 @@ pub fn is_input(message: &M) -> bool {
 /// composes now, kept by the caller; `view_height` scales `page` wheel deltas.
 pub fn deliver(host: &BrowserHost, message: &M, composing: &mut Option<String>, view_height: f64) {
     // A press or a key is followed by begin frames at once, and any input wakes a long-idle surface
-    // onto every desk frame (`frames.rs`).
+    // onto every desk frame (`frames.rs`); on a desk that painted nothing for a while, it wakes the
+    // GPU's copies first (#133, `copy_wake.rs`).
     if is_input(message)
         && let Some(browser) = host.browser()
     {
+        super::copy_wake::input();
         super::frames::heard(browser.identifier(), super::frames::prompts(message));
     }
     match message {
@@ -214,6 +216,7 @@ pub fn deliver(host: &BrowserHost, message: &M, composing: &mut Option<String>, 
 pub fn press_tab(host: &BrowserHost, back: bool) {
     // A key: its paint follows at once, as `deliver`'s do (#117).
     if let Some(browser) = host.browser() {
+        super::copy_wake::input();
         super::frames::heard(browser.identifier(), true);
     }
     let mods: &[SurfaceModifier] = if back { &[SurfaceModifier::Shift] } else { &[] };
