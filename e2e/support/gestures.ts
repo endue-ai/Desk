@@ -6,7 +6,7 @@
 // drawing while they run (frames.ts), or a locked screen would hold each move for seconds.
 import { browser } from "@wdio/globals";
 import { drawing, filming } from "./frames";
-import type { Rect } from "./windows";
+import { type Desk, onScreen, type Rect, rectOf } from "./windows";
 
 export type Point = { x: number; y: number };
 
@@ -220,4 +220,41 @@ export async function wheel(p: Point, dx: number, dy: number): Promise<void> {
   await drawing(() =>
     browser.performActions([{ type: "wheel", id: "wheel", actions: [scroll] }] as never),
   );
+}
+
+/** Eris's figure, top centre: drawn above the windows, as the bars are along the edges. */
+export const ERIS: Rect = { x: 560, y: 30, w: 160, h: 160 };
+
+const overlaps = (a: Rect, b: Rect) =>
+  a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const within = (outer: Rect, r: Rect) =>
+  r.x >= outer.x &&
+  r.y >= outer.y &&
+  r.x + r.w <= outer.x + outer.w &&
+  r.y + r.h <= outer.y + outer.h;
+
+/**
+ * A 40 px square of the screen to look at, 130 px clear of its edges (the bars) and of Eris: inside
+ * `part` (or outside it, with `out`), on none of `avoid` (the dragged window, where it was).
+ */
+export function spot(
+  part: Rect,
+  avoid: Rect[],
+  screen: { w: number; h: number },
+  out = false,
+): Rect {
+  for (let y = 130; y + 40 <= screen.h - 130; y += 20) {
+    for (let x = 130; x + 40 <= screen.w - 130; x += 20) {
+      const r = { x, y, w: 40, h: 40 };
+      const placed = out ? !overlaps(part, r) : within(part, r);
+      if (placed && !overlaps(ERIS, r) && !avoid.some((a) => overlaps(a, r))) return r;
+    }
+  }
+  throw new Error(`no quiet spot ${out ? "outside" : "inside"} ${JSON.stringify(part)}`);
+}
+
+/** A point of the empty canvas: in no window, clear of the bars and of Eris. */
+export function emptyAt(desk: Desk): Point {
+  const r = spot({ x: 0, y: 0, ...desk.screen }, onScreen(desk).map(rectOf), desk.screen);
+  return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }

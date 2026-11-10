@@ -1,9 +1,10 @@
 // Keep the desk drawing while a gesture runs (#82). A desk whose window the OS does not show (a
 // locked screen, a covered window) draws no frames, and Chromium hands a pointer move to the page
 // at the next frame: chromedriver then waits seconds for each move it sends. While a gesture's
-// actions run, this asks the desk's main page for a one-pixel screenshot again and again over its
+// actions run, this asks the desk's main page for a coarse screenshot again and again over its
 // own DevTools connection (the address chromedriver attached to), and each one draws a frame. It
-// reads nothing of the page: the specs still learn everything from desk.windows.list.
+// reads nothing of the page's DOM: the specs learn the windows from desk.windows.list, and from
+// the screen what a rect cannot say.
 import { browser } from "@wdio/globals";
 
 type Pending = Map<number, () => void>;
@@ -47,14 +48,16 @@ async function connect(at: string): Promise<{ ws: WebSocket; pending: Pending }>
   return { ws, pending };
 }
 
-/** One frame drawn: a screenshot of one pixel, or of the whole page with `whole` (its PNG). */
+/** One frame drawn: a coarse screenshot, or with `whole` a PNG of the page kept for the spec. */
 async function frame(whole = false): Promise<Buffer | undefined> {
   const at = address();
   if (!at) return undefined;
   open ??= connect(at);
   const { ws, pending } = await open;
   const id = ++next;
-  const params = whole ? {} : { clip: { x: 0, y: 0, width: 1, height: 1, scale: 1 } };
+  // Never a clip: a clipped capture changes the page's metrics while it runs, and a WebDriver
+  // screenshot taken meanwhile would come out clipped too. A coarse JPEG is quick to make.
+  const params = whole ? {} : { format: "jpeg", quality: 1, optimizeForSpeed: true };
   let png: Buffer | undefined;
   await new Promise<void>((resolve) => {
     pending.set(id, resolve);
@@ -69,7 +72,7 @@ async function frame(whole = false): Promise<Buffer | undefined> {
     };
     ws.addEventListener("message", listen);
     ws.send(JSON.stringify({ id, method: "Page.captureScreenshot", params }));
-    setTimeout(resolve, 2_000);
+    setTimeout(resolve, 5_000);
   });
   return png;
 }
