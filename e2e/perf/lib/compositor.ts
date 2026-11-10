@@ -2,8 +2,9 @@
 // budget and the compositor's own start from the compose bench; the desk's start to its first
 // composed web surface (the median of ten starts, and the slowest of them against the same
 // allowance: #112), the memory per live surface, a press to its paint and to the composed frame
-// holding it (on #56's input path), a press CEF's busy-wait caught, and the desk's wake-ups and
-// CPU at rest (#129) from the shell's surface probe. Three kinds of gate: a
+// holding it (on #56's input path), a press CEF's busy-wait caught, a press on a desk at rest
+// (#133), and the desk's wake-ups and CPU at rest (#129) from the shell's surface probe. Three
+// kinds of gate: a
 // budget the value stays under, a baseline it may regress past by `allowedRegression`, and a
 // baseline it stays within `band` of, either way. A budget on a software adapter, and a baseline
 // recorded on another platform or with another tool, are reported and never failed. Pure:
@@ -85,6 +86,13 @@ export const GATES: readonly Gate[] = [
     budgetKey: "caughtWaitBudgetMs",
   },
   {
+    section: "inputFromRest",
+    key: "p95Ms",
+    label: "a press on a desk at rest 2 s or more, p95",
+    unit: "ms",
+    kind: "budget",
+  },
+  {
     section: "deskAtRest",
     key: "wakeupsPerSecond",
     label: "desk at rest, its loop's wake-ups",
@@ -109,7 +117,8 @@ const RECORDED: Record<string, readonly string[]> = {
   surfaceStartup: ["platform"],
   surfaceMemory: ["tool", "platform"],
   inputToPaint: ["p50Ms", "frameP95Ms", "caughtPaintP50Ms", "adapter", "platform"],
-  deskAtRest: ["osWakeupsPerSecond", "cefWorksPerSecond", "pressPaintP50Ms", "platform"],
+  inputFromRest: ["p50Ms", "maxMs", "frameP50Ms", "adapter", "platform"],
+  deskAtRest: ["osWakeupsPerSecond", "cefWorksPerSecond", "platform"],
 };
 
 export type Status = "ok" | "over" | "under" | "reported" | "no-baseline" | "missing" | "waiting";
