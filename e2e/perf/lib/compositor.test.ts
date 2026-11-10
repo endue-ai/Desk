@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { type Budgets, compare, failed, GATES, report, withBaselines } from "./compositor.ts";
 
-/** The compositor sections as committed: the compose budget, #35's memory baseline, the rest open. */
+/** The compositor sections as committed: the budgets, #35's memory baseline, the starts open. */
 function budgets(): Budgets {
   return {
     compose: { budgetMs: 4, p95Ms: null, platform: null, recorded: null },
@@ -15,7 +15,7 @@ function budgets(): Budgets {
       platform: "darwin-arm64",
       recorded: "2026-11-10",
     },
-    inputToPaint: { p95Ms: null, budgetMs: 16, waitsFor: "#56" },
+    inputToPaint: { p95Ms: null, budgetMs: 16, frameP50Ms: null, frameBudgetMs: 16 },
   };
 }
 
@@ -31,35 +31,44 @@ const measured = {
   composeStartup: { firstComposeMs: 180, adapter: "Apple M4 Max (Metal)", ...reference },
   surfaceStartup: { firstComposeMs: 200, ...reference },
   surfaceMemory: { perSurfaceMb: 125, tool: "footprint", ...reference },
+  inputToPaint: {
+    p95Ms: 8.5,
+    p50Ms: 6.3,
+    frameP50Ms: 14.8,
+    frameP95Ms: 24,
+    software: false,
+    ...reference,
+  },
 };
 
 const status = (verdicts: ReturnType<typeof compare>) =>
   Object.fromEntries(verdicts.map((v) => [`${v.section}.${v.key}`, v.status]));
 
 describe("compositor budgets", () => {
-  it("gates five values: compose, both starts, memory per surface and input to paint", () => {
+  it("gates compose, both starts, memory per surface, and a press to its paint and its frame", () => {
     expect(GATES.map((g) => `${g.section}.${g.key}:${g.kind}`)).toEqual([
       "compose.p95Ms:budget",
       "composeStartup.firstComposeMs:regression",
       "surfaceStartup.firstComposeMs:regression",
       "surfaceMemory.perSurfaceMb:band",
       "inputToPaint.p95Ms:budget",
+      "inputToPaint.frameP50Ms:budget",
     ]);
   });
 
-  it("passes within the budget and the band, and waits for input to paint", () => {
+  it("passes within the budgets and the band", () => {
     const verdicts = compare(budgets(), measured);
     expect(status(verdicts)).toEqual({
       "compose.p95Ms": "ok",
       "composeStartup.firstComposeMs": "no-baseline",
       "surfaceStartup.firstComposeMs": "no-baseline",
       "surfaceMemory.perSurfaceMb": "ok",
-      "inputToPaint.p95Ms": "waiting",
+      "inputToPaint.p95Ms": "ok",
+      "inputToPaint.frameP50Ms": "ok",
     });
     expect(failed(verdicts)).toBe(false);
     const memory = verdicts.find((v) => v.section === "surfaceMemory");
     expect(memory).toMatchObject({ low: 96.6, high: 144.8 });
-    expect(report(verdicts)).toMatch(/waits for #56/);
   });
 
   it("fails a compose frame over 4 ms on a GPU and only reports it on a software adapter", () => {
@@ -74,6 +83,22 @@ describe("compositor budgets", () => {
     expect(status(verdicts)["compose.p95Ms"]).toBe("reported");
     expect(failed(verdicts)).toBe(false);
     expect(report(verdicts)).toMatch(/software adapter llvmpipe/);
+  });
+
+  it("fails a press whose paint p95 or whose frame's median is past 16 ms, each on its own", () => {
+    const slowPaint = { ...measured, inputToPaint: { ...measured.inputToPaint, p95Ms: 17 } };
+    expect(status(compare(budgets(), slowPaint))).toMatchObject({
+      "inputToPaint.p95Ms": "over",
+      "inputToPaint.frameP50Ms": "ok",
+    });
+    const slowFrame = { ...measured, inputToPaint: { ...measured.inputToPaint, frameP50Ms: 18 } };
+    const verdicts = compare(budgets(), slowFrame);
+    expect(status(verdicts)).toMatchObject({
+      "inputToPaint.p95Ms": "ok",
+      "inputToPaint.frameP50Ms": "over",
+    });
+    expect(verdicts.find((v) => v.key === "frameP50Ms")).toMatchObject({ high: 16 });
+    expect(failed(verdicts)).toBe(true);
   });
 
   it("fails memory per surface out of #35's band either way", () => {
@@ -101,6 +126,15 @@ describe("compositor budgets", () => {
     expect(failed(verdicts)).toBe(false);
   });
 
+  it("a section that waits for another issue says so until it is measured", () => {
+    const waiting = { ...budgets(), inputToPaint: { p95Ms: null, budgetMs: 16, waitsFor: "#99" } };
+    const { inputToPaint: _, ...without } = measured;
+    const verdicts = compare(waiting, without);
+    expect(status(verdicts)["inputToPaint.p95Ms"]).toBe("waiting");
+    expect(failed(verdicts)).toBe(false);
+    expect(report(verdicts)).toMatch(/waits for #99/);
+  });
+
   it("records a run as the baselines, keeps the budgets, and then gates the starts", () => {
     const before = budgets();
     const after = withBaselines(before, measured, { recorded: "2026-11-10" });
@@ -112,7 +146,14 @@ describe("compositor budgets", () => {
       recorded: "2026-11-10",
     });
     expect(after.surfaceMemory).toMatchObject({ perSurfaceMb: 125, band: 0.2 });
-    expect(after.inputToPaint).toEqual(before.inputToPaint);
+    expect(after.inputToPaint).toMatchObject({
+      p95Ms: 8.5,
+      budgetMs: 16,
+      frameP50Ms: 14.8,
+      frameBudgetMs: 16,
+      frameP95Ms: 24,
+      p50Ms: 6.3,
+    });
     expect(before.composeStartup?.firstComposeMs).toBeNull();
     const later = {
       ...measured,
@@ -152,6 +193,6 @@ describe("compositor budgets", () => {
       band: 0.2,
       tool: "footprint",
     });
-    expect(committed.inputToPaint).toMatchObject({ budgetMs: 16, waitsFor: "#56" });
+    expect(committed.inputToPaint).toMatchObject({ budgetMs: 16, frameBudgetMs: 16, tries: 20 });
   });
 });

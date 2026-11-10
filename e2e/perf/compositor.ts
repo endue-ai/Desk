@@ -1,6 +1,7 @@
 // The compositor's performance (`just perf-compositor [check|record]`, #58): the compose bench
 // (15 surfaces at 2560x1440, and the compositor's own start), then the shell's surface probe on the
-// CEF desk (memory per live surface, the start to the first composed web surface). Each writes what
+// CEF desk (memory per live surface, the start to the first composed web surface, a press to its
+// paint and to the composed frame holding it). Each writes what
 // it measured into e2e/test-results/perf-compositor; this merges it, judges it against
 // e2e/perf/budgets.json (lib/compositor.ts), prints the verdicts and writes results.json. "record"
 // makes this run's values the baselines instead. Needs `just build-shell` once (the web runtime the
@@ -62,18 +63,7 @@ if (process.platform === "darwin") {
 steps.push(
   run(
     "cargo",
-    [
-      "test",
-      "-p",
-      "desk-shell",
-      "--test",
-      "budgets",
-      "--",
-      "--ignored",
-      "--test-threads=1",
-      "--skip",
-      "input_to_paint",
-    ],
+    ["test", "-p", "desk-shell", "--test", "budgets", "--", "--ignored", "--test-threads=1"],
     { DESK_SHELL_REQUIRE_PROBE: "1" },
   ),
 );

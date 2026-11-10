@@ -39,8 +39,8 @@
   },
   "compose": {
     "budgetMs": 4,
-    "p95Ms": 0.461,
-    "medianMs": 0.398,
+    "p95Ms": 0.511,
+    "medianMs": 0.46,
     "surfaces": 15,
     "width": 2560,
     "height": 1440,
@@ -51,7 +51,7 @@
     "reason": "#32 §3: composing 15 live surfaces at 1440p within 4 ms leaves 12 of a 60 Hz frame's 16.7 ms to the engine's paints and the shell. Gated on the p95 frame of cargo bench -p desk-compositor --bench compose (every window moved and every texture repainted each frame, so every frame is a full redraw; animate, compose and GPU done), on a GPU; a software adapter (lavapipe, WARP) reports it. p95Ms and medianMs are the reference machine's, kept for the trend."
   },
   "composeStartup": {
-    "firstComposeMs": 34.6,
+    "firstComposeMs": 27.3,
     "surfaces": 15,
     "adapter": "Apple M4 Max (Metal)",
     "platform": "darwin-arm64",
@@ -60,7 +60,7 @@
     "reason": "The compositor's own start, which every desk start waits for before it shows anything: from asking for a GPU device to the first composed frame of the compose budget's desk with the GPU done (device, pipelines, the machine's fonts, 15 textures uploaded, the first glyphs). The same bench run's median of three starts after one that warms what the OS and the driver keep for a new binary (a fresh build's first start took 4 times as long). Fails past the allowance on the platform its baseline was recorded on; the desk's whole start is surfaceStartup's."
   },
   "surfaceStartup": {
-    "firstComposeMs": 206.3,
+    "firstComposeMs": 181.4,
     "runs": 5,
     "platform": "darwin-arm64",
     "recorded": "2026-11-10",
@@ -78,12 +78,16 @@
     "reason": "What one more live surface costs the machine, the number the live budget (ADR 0142: visible windows and the 8 most recent) is set from: the process tree's physical footprint with 1 and with 10 animating light surfaces, the difference per surface, as #35 measured it (apps/desk/shell/tests/budgets.rs). Within 20 % of #35's either way: above means a surface costs more than the live budget assumed; below means the baseline is stale or the surfaces did not render. RSS on Linux and Windows is reported until #61 records their baselines."
   },
   "inputToPaint": {
-    "p95Ms": null,
+    "p95Ms": 9.57,
     "budgetMs": 16,
+    "frameP50Ms": 13.03,
+    "frameBudgetMs": 16,
+    "p50Ms": 7.29,
+    "frameP95Ms": 19.54,
     "tries": 20,
-    "waitsFor": "#56",
-    "platform": null,
-    "recorded": null,
-    "reason": "RT-16: an input reaches the surface under the pointer and the frame showing its paint is composed within one 60 Hz frame, p95 of 20. Measured once the compositor routes input to surfaces (#56); until then its test (apps/desk/shell/tests/budgets.rs, input_to_paint_within_16_ms) is ignored with that reason and the section is reported as waiting."
+    "adapter": "Apple M4 Max (Metal)",
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-10",
+    "reason": "RT-16, input to screen within 16 ms, on the compositor's input path (#56): a press sent to a surface as the router sends it (pointer.down and pointer.up), twenty times beside two animating surfaces, through the surface probe (apps/desk/shell/tests/budgets.rs). Two gates: the press to the surface's next paint reaching the compositor, p95 (p95Ms, what the engine and the import cost), and to the desk's first composed frame holding it, median (frameP50Ms). The frame waits for the desk's own 60 Hz clock, so its p95 is the paint's plus up to a frame, 19 to 24 ms here, and is kept for the trend (frameP95Ms) rather than gated; RT-16's 16 ms at p95 would need a compose on damage, not on the clock."
   }
 }

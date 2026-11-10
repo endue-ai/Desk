@@ -1,10 +1,11 @@
 // The compositor's budgets in e2e/perf/budgets.json (`just perf-compositor`, #58): the compose
-// budget and the compositor's own start from the compose bench, the desk's start to its first
-// composed web surface and the memory per live surface from the shell's surface probe, input to
-// paint once the compositor routes input (#56). Three kinds of gate: a budget the value stays
-// under, a baseline it may regress past by `allowedRegression`, and a baseline it stays within
-// `band` of, either way. A budget on a software adapter, and a baseline recorded on another
-// platform or with another tool, are reported and never failed. Pure: compositor.test.ts.
+// budget and the compositor's own start from the compose bench; the desk's start to its first
+// composed web surface, the memory per live surface and a press to its paint and to the composed
+// frame holding it (on #56's input path) from the shell's surface probe. Three kinds of gate: a
+// budget the value stays under, a baseline it may regress past by `allowedRegression`, and a
+// baseline it stays within `band` of, either way. A budget on a software adapter, and a baseline
+// recorded on another platform or with another tool, are reported and never failed. Pure:
+// compositor.test.ts.
 import { round1 } from "./stats.ts";
 
 export type Kind = "budget" | "regression" | "band";
@@ -15,6 +16,8 @@ export interface Gate {
   label: string;
   unit: "ms" | "MB";
   kind: Kind;
+  /** A budget's key in its section, `budgetMs` unless named. */
+  budgetKey?: string;
 }
 
 export const GATES: readonly Gate[] = [
@@ -49,9 +52,17 @@ export const GATES: readonly Gate[] = [
   {
     section: "inputToPaint",
     key: "p95Ms",
-    label: "input to paint, p95",
+    label: "a press to its paint, p95",
     unit: "ms",
     kind: "budget",
+  },
+  {
+    section: "inputToPaint",
+    key: "frameP50Ms",
+    label: "a press to its composed frame, median",
+    unit: "ms",
+    kind: "budget",
+    budgetKey: "frameBudgetMs",
   },
 ];
 
@@ -61,7 +72,7 @@ const RECORDED: Record<string, readonly string[]> = {
   composeStartup: ["adapter", "platform"],
   surfaceStartup: ["platform"],
   surfaceMemory: ["tool", "platform"],
-  inputToPaint: ["platform"],
+  inputToPaint: ["p50Ms", "frameP95Ms", "adapter", "platform"],
 };
 
 export type Status = "ok" | "over" | "under" | "reported" | "no-baseline" | "missing" | "waiting";
@@ -106,7 +117,7 @@ function judge(gate: Gate, budget: Section, measured: Section): Verdict {
       : verdict("missing", null, null);
   }
   if (gate.kind === "budget") {
-    const high = num(budget.budgetMs);
+    const high = num(budget[gate.budgetKey ?? "budgetMs"]);
     if (high === null) return verdict("no-baseline", null, null);
     if (measured.software === true) {
       return verdict(

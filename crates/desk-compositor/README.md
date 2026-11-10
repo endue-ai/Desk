@@ -31,11 +31,10 @@ group opacity as a layer, a theme's `.woff2` fonts and backdrops in chrome.
 
 ```bash
 cargo test -p desk-compositor   # unit, hit cases and properties, snapshots, text, looks, attach, input
-UPDATE_SNAPSHOTS=1 cargo test -p desk-compositor --test snapshots --test theme_snapshots --test desk_snapshot
 cargo run -p desk-compositor --release --example demo  # 15 titled windows, endue → amber live
 just perf-compositor            # 15 surfaces at 1440p within 4 ms, the starts (cargo bench --bench compose)
 ```
 
 Text tests use `tests/fonts` (OFL); looks the bridge's `theme-tokens-request*.json`. Snapshots match per
-platform and adapter (`tests/support/tolerance.rs`); GPU tests share a device and skip without one
-(`DESK_COMPOSITOR_REQUIRE_GPU=1` fails); `DESK_COMPOSITOR_ADAPTER=software` takes lavapipe or WARP alone.
+platform and adapter (`tests/support/tolerance.rs`, `UPDATE_SNAPSHOTS=1` rewrites); GPU tests share a device
+and skip without one (`DESK_COMPOSITOR_REQUIRE_GPU=1` fails; `DESK_COMPOSITOR_ADAPTER=software`: lavapipe, WARP).
