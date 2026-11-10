@@ -108,28 +108,30 @@
     "reason": "#133 (ADR 0162): RT-16 on a desk at rest, through the surface probe's idle-input run (apps/desk/shell/tests/budgets.rs): three still surfaces, two of them the click page, pressed in turn twelve times, each press after the desk rested 2, 2.5 or 3 s (the probe's loop run as the window's at rest), so every pressed surface is long idle on the slow clock (ADR 0157) and nothing on the desk has painted for seconds. Gated: the press to its paint reaching the compositor, p95 (the second slowest of twelve), within budgetMs. Kept for the trend: the median, the slowest, and the composed frame's median, which waits for the desk's next frame (16.7 ms after the press: the desk composed nothing at rest). After a second or more with nothing painted the GPU sleeps, and the first copy after (Chromium's capture in its GPU process, the desk's attach in its own) took 3 to 12 ms to finish where a busy desk's takes a fraction of one; neither the slow clock, the renderer nor CEF's pump was the wait. Main painted 10.0 to 16.9 ms after the press at the median and 10.2 to 23.3 at p95 in six runs at a load average of 2.5 to 6, over the budget in four; with input to a cold desk waking the GPU's copies at once (apps/desk/shell/src/web_host/copy_wake.rs) 8.3 to 14.7 and 12.9 to 16.1 in nine runs, within it in eight (16.07 once, at a load average of 2.5). Its floor is the GPU's own wake-up, which starts at the press: a copy of a few pixels took 4 to 13 ms to finish on a quiet machine. The values are the median run of six at a load average of 5 to 8."
   },
   "deskAtRest": {
-    "wakeupsPerSecond": 35.4,
+    "wakeupsPerSecond": 10.2,
     "wakeupsBudget": 15,
-    "cpuPercent": 0.9,
+    "cpuPercent": 0.5,
     "cpuBudgetPercent": 4,
-    "osWakeupsPerSecond": 31,
-    "cefWorksPerSecond": 35.2,
+    "osWakeupsPerSecond": 30.7,
+    "cefWorksPerSecond": 10.2,
     "surfaces": 3,
     "seconds": 10,
     "platform": "darwin-arm64",
     "recorded": "2026-11-11",
-    "reason": "#129 (ADR 0159): what a desk at rest costs, through the surface probe's rest run (apps/desk/shell/tests/budgets.rs): three still surfaces, shown and awake, each long idle (ADR 0157), and the probe's loop run for ten seconds as the compositor window's event loop runs (a turn, then a wait for CEF's next work, the clock's next look or CEF's ask). Gated: the loop's wake-ups a second (each turn of the event loop) within wakeupsBudget, where main's pump woke 54.6 to 57.7 times (its poll every 33 ms whatever the clock did) and this change 33.2 to 38.3; and the browser process's CPU within cpuBudgetPercent of a core (0.8 to 1.9 % here, 1.2 to 2.1 with main's pump). Kept for the trend: the browser process's OS wake-ups (macOS proc_pid_rusage: 30.7 to 31.0 a second, 50.5 to 50.8 with main's pump) and CEF's work calls a second; a press from rest is inputFromRest's since #133. Most of what still wakes a desk at rest is CEF's answers to the slow clock's begin frames, ten a second a long-idle surface. The values are #129's median run of five at a load average of 8 to 13.",
-    "ownChangeMs": null,
-    "ownChangeBudgetMs": 100
+    "reason": "#129 (ADR 0159), #134 (ADR 0164): what a desk at rest costs, through the surface probe's rest run (apps/desk/shell/tests/budgets.rs): three still surfaces, shown and awake, each long idle, which since #134 take no begin frames, and the probe's loop run for ten seconds as the compositor window's event loop runs (a turn, then a wait for CEF's next work, the clock's next look or CEF's ask). Gated: the loop's wake-ups a second (each turn of the event loop) within wakeupsBudget, where main's pump woke 54.6 to 57.7 times (its poll every 33 ms whatever the clock did), #129's 33.2 to 38.3 (CEF's answers to the slow clock's ten begin frames a second a surface) and #134's 10.1 to 10.3 (CEF's poll every 100 ms, ADR 0159); the browser process's CPU within cpuBudgetPercent of a core (0.5 to 0.7 %); and after the rest a fourth page that changes itself by a timer, three times, each once it is long idle: from each change to its paint, the median within ownChangeBudgetMs (49.6 to 51.6 ms: its page asks for frames, frame_asks.js; the slow clock read 107). Kept for the trend: the browser process's OS wake-ups (macOS proc_pid_rusage: 30.6 to 30.7 a second, CEF's own threads), CEF's work calls a second, the begin frames a second (none) and the slowest own change; a press from rest is inputFromRest's since #133. The values are #134's median run of five at a load average of 5 to 8.",
+    "ownChangeMs": 51.6,
+    "ownChangeBudgetMs": 100,
+    "beginFramesPerSecond": 0,
+    "ownChangeMaxMs": 52.3
   },
   "freshDeskAtRest": {
-    "cpuPercent": null,
+    "cpuPercent": 3.4,
     "budgetPercent": 5,
-    "treePercent": null,
+    "treePercent": 5.6,
     "settleMs": 20000,
     "windowMs": 10000,
-    "platform": null,
-    "recorded": null,
-    "reason": "PLACEHOLDER"
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-11",
+    "reason": "#134 (ADR 0164): a fresh desk left alone, through just perf-app (e2e/perf/rest.perf.ts): the Default profile with its first run, gone through as a person in a hurry does (Skip for now, Later, Not now, a name, the first suggested task), then twenty seconds alone and ten measured with ps: the app's own process's CPU as a share of one core, within budgetPercent, a budget that fails from the first run (no baseline needed), and its whole tree's kept beside it. Before #134 it read 59.2 % (its tree 124.9 %): the first run's animation, Eris's idle motion drawn on a canvas at every frame in the shell page and in her floating window, the runtime's ticker and the page's report asking for a frame at every frame, messages waking every surface for a second, and on the reference machine's locked screen the compositor composing at every desk frame for a window that withheld its frames. After: 3.1 to 3.4 % in three runs at a load average of 5 to 9 (its tree 5.3 to 5.7 %). Left: the windowed panes (the palette, the floating Eris) take Chromium's 60 Hz begin frames with idle pages, about 60 of CEF's work calls a second, and endue.docker spawns a process every two seconds. The values are the median run."
   }
 }
