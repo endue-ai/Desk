@@ -1,0 +1,20 @@
+[package]
+name = "desk-wm"
+description = "The desk's window manager as a model: geometry and coordinate spaces, 8-way snap, tiling and cascade, the spread, the canvas pan and the minimap. Plain serde data in and out; no clock, no I/O, no rendering."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+# The spread's filter folds titles as the runtime does (NFKC, then lower case).
+unicode-normalization = "0.1"
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

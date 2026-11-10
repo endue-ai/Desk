@@ -28,6 +28,7 @@ desk-sys = { path = "crates/desk-sys" }
 desk-trace = { path = "crates/desk-trace" }
 desk-update = { path = "crates/desk-update" }
 desk-web = { path = "crates/desk-web" }
+desk-wm = { path = "crates/desk-wm" }
 # The CEF shell (ADR 0143): pinned exactly, because CEF binaries and bindings move together.
 cef = { version = "=156.4.0", default-features = false }
 base64 = "0.23"
