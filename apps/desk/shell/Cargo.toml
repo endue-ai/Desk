@@ -45,7 +45,7 @@ desk-compositor.workspace = true
 desk-surface.workspace = true
 desk-core.workspace = true
 desk-trace.workspace = true
-# The desk's own updates (ADR 0054, ADR 0146): the updater, its HTTPS origin and the installer.
+# The desk's own updates (ADR 0054, ADR 0147): the updater, its HTTPS origin and the installer.
 desk-update = { workspace = true, features = ["https", "install"] }
 desk-web.workspace = true
 getrandom = "0.3"

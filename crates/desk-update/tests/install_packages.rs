@@ -1,4 +1,4 @@
-//! What each layout takes and refuses before anything changes (ADR 0146): the app inside an
+//! What each layout takes and refuses before anything changes (ADR 0147): the app inside an
 //! `.app.tar.gz`, an AppImage, the Windows installers; how a running desk finds its layout and the
 //! targets it updates as; the restart starting detached.
 

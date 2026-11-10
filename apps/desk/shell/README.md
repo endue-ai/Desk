@@ -16,8 +16,7 @@ draws the main window with `desk-compositor` instead: the page and every plugin 
 - `window::Shell`, `pane::Pane`: the winit application and each window with its browser.
 - `host`, `commands`: the bridge (`Desk`, `receive`, `Pages`) and the commands, named as Tauri's.
 - `instance::claim`: an OS lock on `desk-instance.lock`; a second start hands its arguments over (`desk-instance.json`).
-- `tray`, `menu`, `hotkeys`, `dialog` (`tray-icon`, `muda`, `global-hotkey`, `rfd`); `palette`,
-  `eris_window`, `computer`, `float`, `displays`: the other windows and their placement.
+- `tray`, `menu`, `hotkeys`, `dialog`; `palette`, `eris_window`, `computer`, `float`, `displays`: the other windows.
 - `open_files`, `run_event`, `drops`: files from the command line, Finder, the Dock and drags.
 - `scheme`, `plugin_scheme`, `guard`, `paths`, `renderer`: schemes, loads, files, `__deskNative`;
   `crashes::watch` names a plugin frame whose renderer died (`desk://frame-crashed`).

@@ -1,4 +1,4 @@
-//! The CEF desk's own updates (ADR 0054, ADR 0146): the same `desk_update::Updater` the Tauri desk
+//! The CEF desk's own updates (ADR 0054, ADR 0147): the same `desk_update::Updater` the Tauri desk
 //! runs, over HTTPS, installing through `desk_update::install` instead of `tauri-plugin-updater`. The
 //! core serves `update.*` from it, so the runtime's update row and `desk.update.*` commands work as
 //! on the Tauri desk, and the tray offers "Restart to update (<version>)" while a build is staged.

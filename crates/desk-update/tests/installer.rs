@@ -1,4 +1,4 @@
-//! The installer a desk without Tauri supplies (ADR 0146), driven by the updater over a fake origin:
+//! The installer a desk without Tauri supplies (ADR 0147), driven by the updater over a fake origin:
 //! an `.app.tar.gz` swapped in for the installed app, and the failure paths that must leave the
 //! running desk as it was: a bad signature, a partial download, no permission to write.
 

@@ -2,7 +2,7 @@
 
 The decisions of Desk's updater (ADR 0054), apart from Tauri: read the channel's signed index from
 the release origin, choose the next build on the device, download and verify it at once, keep it on
-disk, and install it only when asked; and, without Tauri, the install itself (ADR 0146).
+disk, and install it only when asked; and, without Tauri, the install itself (ADR 0147).
 
 ## Public API
 

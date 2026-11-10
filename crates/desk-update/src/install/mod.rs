@@ -1,4 +1,4 @@
-//! Installing a verified build without `tauri-plugin-updater` (feature `install`, ADR 0146): how a
+//! Installing a verified build without `tauri-plugin-updater` (feature `install`, ADR 0147): how a
 //! desk is installed (`Layout`), what an update puts in its place, and what starts it again
 //! (`Relaunch`). macOS swaps the `.app` for the one in the `.app.tar.gz` in one step; an AppImage is
 //! rewritten beside itself and renamed over; a `.deb` goes through `pkexec dpkg -i`; on Windows the

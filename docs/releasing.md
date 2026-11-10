@@ -69,8 +69,29 @@ Until Stage 1 of #32 ends, two desks build side by side: the Tauri desk and the 
 (`apps/desk/shell`, ADR 0143). `release-build.yml` builds either (`shell: tauri | cef`); a line
 builds what `.github/release-shell` names at its commit, its final what the candidate's commit names,
 and canary always the Tauri desk. The file says `tauri`. To ship the CEF desk, change it to `cef` on
-`main` once #47 updates a Tauri desk into the CEF one, then cut the next line: its candidates reach
-beta, its final stable (ADR 0145). Rehearse first with **release-dry-run**, `shell: cef`.
+`main`, then cut the next line: its candidates reach beta, its final stable (ADR 0145). Rehearse
+first with **release-dry-run**, `shell: cef`, and the update smoke below on every OS.
+
+The CEF desk installs its own updates (#47, ADR 0147) from the same artifacts, so a Tauri desk on
+beta installs the line's first CEF candidate as it installs any build, restarts into it, and from
+then on updates as a CEF desk: the `.app.tar.gz` swapped in on macOS, the NSIS `-setup.exe` or the
+`.msi` run silently once the desk has quit on Windows, the AppImage rewritten or the `.deb` installed
+with `pkexec` on Linux. The `.msi` is an updater artifact too (`windows-x86_64-msi`), for desks
+installed from it. The CEF `.deb` carries `/usr/bin/endue-desk`, where a Tauri desk restarts after
+installing it. Packages carry the built-in plugins beside the shell. Desks find their channel in
+their settings: a candidate without `desk.update.channel` follows canary, which lists Tauri builds,
+so beta testers keep `desk.update.channel: beta`.
+
+The update smoke, two hops: `e2e/smoke/update-two-hops.sh <dist> <dist> <dist>`, the last Tauri
+build and two CEF builds, each a release folder (`release-collect.mjs`), all three built with a
+throwaway key's public half (`DESK_UPDATER_PUBKEY`) and `DESK_UPDATE_URL=http://127.0.0.1:19846/desk`.
+With the private half in `TAURI_SIGNING_PRIVATE_KEY` it writes and serves the R2 tree on
+127.0.0.1, installs the first build with a temp HOME that follows beta, and drives `desk update
+check` and `apply` until the desk on the socket reports the second, then the third version. A Tauri
+debug build reads the key and the origin at run time and needs the updater plugin's
+`dangerousInsecureTransportProtocol`; give it an identifier of its own where another Tauri desk runs,
+since Tauri's single-instance lock is machine-wide. macOS and Linux; Windows waits for the desk
+socket's Windows transport, so its hops are made from the update row by hand.
 
 | Step | What runs | Where |
 | --- | --- | --- |
@@ -79,6 +100,7 @@ beta, its final stable (ADR 0145). Rehearse first with **release-dry-run**, `she
 | Package | cargo-packager 0.11.8: `.app` + `.dmg`, NSIS + MSI, `.deb` + AppImage | `node scripts/cef-package.mjs` |
 | Sign | macOS: framework, five helpers (each its own entitlements), app; hardened runtime; notarised and stapled; Windows: every unsigned PE file, the installers | `scripts/cef-sign-macos.sh`, `DESK_WINDOWS_SIGN_COMMAND` |
 | Smoke | each package installed, its signatures checked, launched to `desk ready`, quit | `e2e/smoke/install-and-launch.sh <package>` |
+| Update | the last Tauri build into a CEF build into a newer one, through `update.check` and `update.apply` | `e2e/smoke/update-two-hops.sh` (below), the signing runner (#61) |
 
 To bump CEF: change the `cef` crate (its version names the CEF build), then every field of
 `cef.json` from the CDN's `index.json` (name, size, sha1) and a SHA-256 of each archive you
@@ -109,7 +131,7 @@ Sizes (CEF 156.0.26), MiB:
 
 | Target | Download | Installed | Of which CEF | Measured |
 | --- | --- | --- | --- | --- |
-| darwin-aarch64 | 162 (`.dmg`, `.app.tar.gz`) | 405 | 326 (the framework) | 2026-11-10, an ad-hoc build on macOS 26.5 |
+| darwin-aarch64 | 168 (`.app.tar.gz`; 162 before the built-in plugins, 6 compressed) | 423 (the plugins 16) | 326 (the framework) | 2026-11-10, an ad-hoc build on macOS 26.5 |
 | darwin-x86_64 | not measured | not measured | 135 (the archive) | #61 |
 | windows-x86_64 | not measured | not measured | 405 beside the exe | #61 |
 | linux-x86_64 | not measured | not measured | 366 (`libcef.so` 265 stripped, 1,412 as shipped by CEF) | #61 |

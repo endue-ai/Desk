@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Update smoke, two hops (#47, ADR 0146): a desk installed from the first build updates into the
+# Update smoke, two hops (#47, ADR 0147): a desk installed from the first build updates into the
 # second through the normal updater flow, then the second into the third. The transition release
 # rehearsed: the first is the last Tauri build on beta, the second and third CEF builds.
 #   e2e/smoke/update-two-hops.sh <dist 1> <dist 2> <dist 3>
