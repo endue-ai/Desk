@@ -86,7 +86,8 @@ impl WebHost {
                             it.pacing.press(at, painted);
                         }
                         Heard::Woken => it.pacing.heard(at),
-                        Heard::Asked => it.pacing.ask(at),
+                        // From the look on: an ask that waited (the clock held, a hidden surface) still counts.
+                        Heard::Asked => it.pacing.ask(now),
                     }
                 }
             }

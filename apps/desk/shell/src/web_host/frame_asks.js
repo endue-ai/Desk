@@ -3,7 +3,8 @@
 // makes on its own (a timer, a fetch, an animation it starts) would wait for one. Whatever may need
 // a frame here (a requestAnimationFrame, a change to the document, an animation, media playing, a
 // load, a font, a draw on a canvas) looks whether a frame comes within two of the desk's frames;
-// when none does, the page asks the desk once, and again only after a frame came.
+// when none does, the page asks the desk once, and again only after a frame came, or a second on if
+// none did (an ask lost while its surface was hidden or the desk's clock held).
 (() => {
   const native = globalThis.__deskNative;
   const raf = globalThis.requestAnimationFrame;
@@ -12,7 +13,10 @@
   const later = globalThis.setTimeout;
   // Two desk frames and a little: a surface on the desk's clock gets one within 17 ms.
   const WAIT_MS = 40;
+  // How long an ask waits for its frame before the page asks again.
+  const AGAIN_MS = 1000;
   let looking = false;
+  // Asked, and no frame came since.
   let asked = false;
   const look = () => {
     if (looking) return;
@@ -26,10 +30,18 @@
       globalThis,
       () => {
         looking = false;
-        if (!came && !asked) {
-          asked = true;
-          wake();
-        }
+        if (came || asked) return;
+        asked = true;
+        wake();
+        later.call(
+          globalThis,
+          () => {
+            if (!asked) return;
+            asked = false;
+            look();
+          },
+          AGAIN_MS,
+        );
       },
       WAIT_MS,
     );
