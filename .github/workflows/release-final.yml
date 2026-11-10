@@ -37,6 +37,7 @@ jobs:
       commit: ${{ steps.pick.outputs.commit }}
       candidate: ${{ steps.pick.outputs.candidate }}
       notes-start: ${{ steps.pick.outputs.notes-start }}
+      shell: ${{ steps.pick.outputs.shell }}
     env:
       LINE: ${{ github.ref_name }}
       SOAK_DAYS: ${{ inputs.soak-days }}
@@ -93,11 +94,14 @@ jobs:
             echo "::error::Open release-blocker issues on $milestone: $blockers"
             exit 1
           fi
+          # The desk its candidates were: what the candidate's own commit names (#46).
+          shell="$(git show "$commit:.github/release-shell" 2>/dev/null | tr -d '[:space:]' || true)"
           {
             echo "candidate=$candidate"
             echo "commit=$commit"
             echo "version=$version"
             echo "notes-start=$(node scripts/release-version.mjs --notes-start "$version")"
+            echo "shell=${shell:-tauri}"
           } | tee -a "$GITHUB_OUTPUT"
 
   build:
@@ -106,6 +110,7 @@ jobs:
     with:
       version: ${{ needs.gate.outputs.version }}
       ref: ${{ needs.gate.outputs.commit }}
+      shell: ${{ needs.gate.outputs.shell }}
     secrets: inherit
 
   publish:

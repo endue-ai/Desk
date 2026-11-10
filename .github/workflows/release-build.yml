@@ -11,6 +11,10 @@ name: release-build
 # desk-<target>, canonical names from scripts/release-collect.mjs. A dry run (release-dry-run.yml)
 # stays out of the signing environment, signs with the run's throwaway key, embeds no key in the
 # binary and labels its artifacts desk-<target>-unsigned.
+# With shell: cef it builds the CEF desk instead (#46, ADR 0145): CEF fetched by its pin and hash,
+# cargo-packager's .app (helpers signed one by one) and .dmg, NSIS and MSI, .deb and AppImage, the
+# updater artifacts signed as Tauri's are, the install smoke run on every package, and the same
+# canonical names; Windows is signed when DESK_WINDOWS_SIGN_COMMAND is set.
 on:
   workflow_call:
     inputs:
@@ -18,6 +22,11 @@ on:
         description: The version to build, without a leading v.
         required: true
         type: string
+      shell:
+        description: The desk to build, tauri or cef (.github/release-shell names a line's).
+        required: false
+        type: string
+        default: tauri
       ref:
         description: The commit to build (empty for the commit that started the run).
         required: false
@@ -86,7 +95,7 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
       - name: Install the WebKitGTK SDK and the AppImage tools
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && inputs.shell != 'cef'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libfuse2
@@ -139,6 +148,7 @@ jobs:
             done
           fi
       - name: Build ${{ matrix.target }} ${{ inputs.version }}
+        if: inputs.shell != 'cef'
         # A dry run signs with the run's key and embeds none (empty is none), so its binary never
         # updates itself.
         env:
@@ -159,9 +169,78 @@ jobs:
           pnpm --filter @endue-ai/desk-app tauri build \
             --target "${{ matrix.rust }}" --bundles "$bundles" --config "$config"
       - name: Collect the bundles under canonical names
+        if: inputs.shell != 'cef'
         run: |
           node scripts/release-collect.mjs --bundle "target/${{ matrix.rust }}/release/bundle" \
             --version "$VERSION" --target "${{ matrix.target }}" --out dist
+      - name: Install the CEF desk's build tools
+        if: inputs.shell == 'cef' && runner.os != 'Windows'
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then brew install cmake ninja; exit 0; fi
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libgtk-3-dev libxdo-dev libayatana-appindicator3-dev libasound2-dev libfuse2 file xvfb
+      # The archive only, keyed by its pin: every run checks its hashes and unpacks it afresh.
+      - uses: actions/cache/restore@v4
+        if: inputs.shell == 'cef'
+        with:
+          path: ${{ runner.temp }}/cef/*/*.tar.bz2
+          key: cef-${{ matrix.rust }}-${{ hashFiles('apps/desk/shell/packager/cef.json') }}
+      - name: Fetch the pinned CEF
+        if: inputs.shell == 'cef'
+        run: echo "CEF_PATH=$(node scripts/cef-fetch.mjs --target "${{ matrix.rust }}" --out "$RUNNER_TEMP/cef")" >> "$GITHUB_ENV"
+      - uses: actions/cache/save@v4
+        if: inputs.shell == 'cef' && inputs.dry-run
+        with:
+          path: ${{ runner.temp }}/cef/*/*.tar.bz2
+          key: cef-${{ matrix.rust }}-${{ hashFiles('apps/desk/shell/packager/cef.json') }}
+      - name: Build the CEF desk ${{ inputs.version }} for ${{ matrix.target }}
+        if: inputs.shell == 'cef'
+        env:
+          # Linux: the desk finds libcef.so beside itself in /usr/lib/endue-desk-cef.
+          RUSTFLAGS: ${{ runner.os == 'Linux' && '-C link-arg=-Wl,-rpath,$ORIGIN' || '' }}
+          DESK_UPDATER_PUBKEY: ${{ !inputs.dry-run && vars.DESK_UPDATER_PUBKEY || '' }}
+          DESK_UPDATE_URL: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
+          DESK_BUILD_COMMIT: ${{ inputs.ref || github.sha }}
+          DESK_VERSION: ${{ inputs.version }}
+        run: |
+          pnpm --filter @endue-ai/plugin-sdk --filter @endue-ai/ui build
+          pnpm --filter @endue-ai/desk-app build
+          cargo build -p desk-shell --bins --release --target "${{ matrix.rust }}"
+      - name: Package the CEF desk with cargo-packager
+        if: inputs.shell == 'cef'
+        env:
+          DESK_WINDOWS_SIGN_COMMAND: ${{ !inputs.dry-run && vars.DESK_WINDOWS_SIGN_COMMAND || '' }}
+        run: |
+          cargo install cargo-packager --version 0.11.8 --locked
+          # With the Apple identity the .app and the .dmg must come out notarised.
+          if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then export DESK_REQUIRE_NOTARISATION=1; fi
+          node scripts/cef-package.mjs --target "${{ matrix.rust }}" --version "$VERSION" --out target/packager
+      - name: Sign the CEF desk's updater artifacts
+        if: inputs.shell == 'cef'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          shopt -s nullglob
+          for file in target/packager/bundle/{macos,nsis,appimage,deb}/*; do
+            pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/$file"
+          done
+      - name: Install smoke on every CEF desk package
+        if: inputs.shell == 'cef'
+        env:
+          DESK_UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY }}
+          WINDOWS_SIGNED: ${{ !inputs.dry-run && vars.DESK_WINDOWS_SIGN_COMMAND || '' }}
+        run: |
+          shopt -s nullglob
+          if [ -n "${APPLE_SIGNING_IDENTITY:-}" ] || [ -n "$WINDOWS_SIGNED" ]; then export DESK_REQUIRE_SIGNED=1; fi
+          display() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args="-screen 0 1280x800x24" "$@"; else "$@"; fi; }
+          for package in target/packager/bundle/*/*; do
+            if [[ "$package" == *.sig ]]; then continue; fi
+            display e2e/smoke/install-and-launch.sh "$package"
+          done
+      - name: Collect the CEF desk's packages under canonical names
+        if: inputs.shell == 'cef'
+        run: node scripts/release-collect.mjs --bundle target/packager/bundle --version "$VERSION" --target "${{ matrix.target }}" --out dist --shell cef
       - name: Check the .deb against the updater key
         if: runner.os == 'Linux'
         env:

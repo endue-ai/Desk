@@ -27,6 +27,7 @@ jobs:
     environment: signing
     outputs:
       version: ${{ steps.version.outputs.version }}
+      shell: ${{ steps.shell.outputs.shell }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -34,6 +35,12 @@ jobs:
       - id: version
         name: The candidate's version
         run: echo "version=$(node scripts/release-version.mjs --line "$GITHUB_REF_NAME" --run "$GITHUB_RUN_NUMBER")" >> "$GITHUB_OUTPUT"
+      - id: shell
+        name: The desk the line builds (.github/release-shell, #46)
+        run: |
+          shell="$(tr -d '[:space:]' < .github/release-shell)"
+          case "$shell" in tauri | cef) ;; *) echo "::error::.github/release-shell names $shell, not tauri or cef"; exit 1 ;; esac
+          echo "shell=$shell" >> "$GITHUB_OUTPUT"
       - name: The updater key, its public key and the R2 credentials are set
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -92,6 +99,7 @@ jobs:
     uses: ./.github/workflows/release-build.yml
     with:
       version: ${{ needs.gate.outputs.version }}
+      shell: ${{ needs.gate.outputs.shell }}
     secrets: inherit
 
   publish:

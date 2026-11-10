@@ -47,7 +47,7 @@ jobs:
           fi
           if grep -qE '^(apps/desk/src-tauri/|apps/desk/shell/|crates/desk-web/|crates/desk-sys/|vendor/tauri-plugin-single-instance/)' <<<"$files"; then app=true; else app=false; fi
           # The files the release dry run proves (its own pull_request paths).
-          if grep -qE '^(\.github/workflows/(release|release-build|release-dry-run|release-final|canary)\.yml|scripts/release-[^/]*\.mjs|e2e/smoke/verify-signature\.sh|apps/desk/src-tauri/tauri\.conf\.json)$' <<<"$files"; then release=true; else release=false; fi
+          if grep -qE '^(\.github/workflows/(release|release-build|release-dry-run|release-final|canary)\.yml|\.github/release-shell|scripts/release-[^/]*\.mjs|scripts/cef-.*|e2e/smoke/(verify-signature|install-and-launch)\.sh|apps/desk/src-tauri/tauri\.conf\.json|apps/desk/shell/packager/.*)$' <<<"$files"; then release=true; else release=false; fi
           echo "app=$app" | tee -a "$GITHUB_OUTPUT"
           echo "release=$release" | tee -a "$GITHUB_OUTPUT"
 
