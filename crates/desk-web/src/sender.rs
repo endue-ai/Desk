@@ -37,6 +37,9 @@ const MAIN_COMMANDS: &[&str] = &[
     // The window manager (#80): a press the page found starts a gesture, a window command.
     "compositor_grab",
     "compositor_wm",
+    // Accessibility (#57): the tree the platform adapter has, and a screen reader's request, for
+    // checks in development builds.
+    "compositor_a11y",
 ];
 const PALETTE_COMMANDS: &[&str] = &[
     "palette_hide",
@@ -260,6 +263,7 @@ mod tests {
             "compositor_input_state",
             "compositor_grab",
             "compositor_wm",
+            "compositor_a11y",
         ] {
             assert!(runtime.may(cmd), "{cmd}");
             assert!(!Sender::Plugin("endue.notes".into()).may(cmd), "{cmd}");

@@ -6,8 +6,9 @@
 //! maximize, snap, a step); in development builds
 //! `compositor_capture { path }` (the composed frame as a PNG), `compositor_stats` (what every surface
 //! painted), `compositor_input { events, logical? }` (events fed to the window's own input entry,
-//! `harness.rs`) and `compositor_input_state` (where input goes). They run on the event loop's
-//! thread, where the compositor is.
+//! `harness.rs`), `compositor_input_state` (where input goes) and `compositor_a11y` (the
+//! accessibility tree the adapter has, and a screen reader's request, `a11y_check.rs`). They run on
+//! the event loop's thread, where the compositor is.
 
 use std::sync::mpsc;
 use std::time::Duration;
@@ -95,6 +96,7 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
         | "compositor_stats"
         | "compositor_input"
         | "compositor_input_state"
+        | "compositor_a11y"
             if cfg!(debug_assertions) =>
         {
             let (sent, answered) = mpsc::channel();
@@ -122,6 +124,7 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
                         })
                     }
                     ("compositor_input_state", _) => Ok(c.input_state()),
+                    ("compositor_a11y", _) => c.a11y_check(event_loop, &args),
                     _ => Ok(c.stats()),
                 };
                 let _ = sent.send(answer);

@@ -109,11 +109,12 @@ impl Shell {
         url: &str,
     ) -> Option<&Pane> {
         let opened = event_loop
-            .create_window(attributes)
+            .create_window(attributes.with_visible(false))
             .map_err(|why| why.to_string())
             .and_then(|window| {
                 let window = Arc::new(window);
                 crate::compositor_window::CompositorWindow::open(
+                    event_loop,
                     window,
                     url,
                     Arc::clone(&self.desk),
@@ -310,12 +311,11 @@ impl ApplicationHandler<Wake> for Shell {
         let Some(&role) = self.roles.get(&id) else {
             return;
         };
-        // Compositor mode (#56): the window's input goes through the compositor's router.
+        // Compositor mode (#56, #57): its events reach the accessibility adapter, then the router.
         if role == Role::Main
             && let Some(compositor) = self.compositor.as_mut()
-            && let Some(input) = crate::compositor_window::winit_input::input_of(&event)
         {
-            compositor.input(event_loop, input);
+            compositor.window_event(event_loop, &event);
         }
         match (role, event) {
             (Role::Main, WindowEvent::CloseRequested) => {

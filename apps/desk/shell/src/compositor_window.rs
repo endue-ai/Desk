@@ -8,8 +8,12 @@
 //! windowed one, unchanged. Input (#56) goes through the compositor's router to the surface it is
 //! for (`input.rs`), and first through `desk-wm`'s window manager, which drags, resizes, snaps and
 //! pans (`wm.rs`, #80, ADR 0153); the runtime keeps the window manager's state until #83. Every
-//! surface and the page render on the desk's frame clock (`clock.rs`, ADR 0152).
+//! surface and the page render on the desk's frame clock (`clock.rs`, ADR 0152). Screen readers see
+//! the desk as one tree through an AccessKit adapter on the window (`a11y.rs`, #57).
 
+pub mod a11y;
+pub mod a11y_check;
+mod a11y_chrome;
 pub mod checks;
 mod clock;
 pub mod commands;
@@ -101,11 +105,15 @@ pub struct CompositorWindow {
     pub follow_os_pointer: bool,
     /// What the window manager keeps between events (#80).
     gestures: wm::Gestures,
+    /// The window's accessibility (#57).
+    a11y: a11y::A11y,
 }
 
 impl CompositorWindow {
-    /// Open the compositor window: `window` and the shell page at `url` as its first surface.
+    /// Open the compositor window: `window` (made unseen, shown once its accessibility adapter is
+    /// on, as AccessKit asks) and the shell page at `url` as its first surface.
     pub fn open(
+        event_loop: &ActiveEventLoop,
         window: Arc<Window>,
         url: &str,
         desk: Arc<Desk>,
@@ -173,7 +181,7 @@ impl CompositorWindow {
         let theme = look(&table);
         let mut hosted = Hosted::new(window.scale_factor());
         hosted.wm.set_motion(motion(&table));
-        Ok(CompositorWindow {
+        let mut opened = CompositorWindow {
             hosted,
             window,
             gpu,
@@ -197,7 +205,11 @@ impl CompositorWindow {
             page_composing: None,
             follow_os_pointer: true,
             gestures: wm::Gestures::default(),
-        })
+            a11y: a11y::A11y::default(),
+        };
+        opened.attach_a11y(event_loop);
+        opened.window.set_visible(true);
+        Ok(opened)
     }
 
     /// The shell page published its desk.
@@ -247,6 +259,10 @@ impl CompositorWindow {
     pub fn tick(&mut self, now: Instant, event_loop: &ActiveEventLoop) {
         let messages = std::mem::take(&mut self.shared.lock().messages);
         for message in messages {
+            if let SurfaceMessage::SurfaceA11yUpdate(update) = message {
+                self.a11y_update(update);
+                continue;
+            }
             if !matches!(
                 message,
                 SurfaceMessage::SurfaceDied(_)
@@ -289,6 +305,7 @@ impl CompositorWindow {
             self.shared.lock().dirty = true;
         }
         self.input_tick(event_loop);
+        self.a11y_tick();
         self.begin_frames(now);
         if !self.shared.lock().dirty || now < self.last_frame + FRAME || self.occluded {
             return;
@@ -347,6 +364,7 @@ impl CompositorWindow {
         if !self.gpu.presents() {
             self.shared.lock().dirty = false;
         }
+        self.a11y_drawn(&drawn);
         self.gestures.buttons = drawn.buttons;
         self.register(drawn.shown);
     }
