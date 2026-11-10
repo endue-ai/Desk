@@ -8,6 +8,8 @@ Status: amended by ADR 0153: in compositor mode `desk-wm` runs the window gestur
 compositor's input and publishes each change, which the runtime takes as the truth for geometry.
 Amended by ADR 0156: compositor mode is the only desk; the page always publishes its desk, and the
 runtime has no window manager of its own for gestures and commands.
+Amended by ADR 0158: `desk-wm` holds the desk; the page's report carries no desk any more, and the
+live set reaches the runtime through its window manager host (`WindowManagerHost.live`).
 
 # The compositor places windows from desk-wm, fed by the desk the runtime keeps, and keeps the live budget
 

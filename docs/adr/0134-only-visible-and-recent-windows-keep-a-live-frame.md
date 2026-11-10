@@ -4,6 +4,9 @@ date: 2026-11-10
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0158: `desk-wm`'s `LiveBudget` makes the decision (ADR 0151); the runtime's
+frame policy only carries out the set, and a desk without the compositor keeps every window's frame.
+
 # Only the windows in sight and the N most recently focused keep a live frame
 
 ## Context and Problem Statement

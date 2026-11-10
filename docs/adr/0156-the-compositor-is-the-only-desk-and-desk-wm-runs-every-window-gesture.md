@@ -4,6 +4,10 @@ date: 2026-11-10
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0158: `desk-wm` holds the window manager's state too; the runtime sends it
+edits and keeps only the desk it publishes, and a desk without the compositor runs `desk-wm` as
+WebAssembly.
+
 # The compositor is the only desk, and desk-wm runs every window gesture and command
 
 ## Context and Problem Statement

@@ -4,6 +4,10 @@ date: 2026-11-08
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0158: `desk-wm` tiles, cascades and restores; the spread, which the page drew
+over windows the compositor now draws, waits for the compositor to draw it (#54), its command, key
+and strip button with it.
+
 # Windows tile, cascade and spread from the right edge
 
 ## Context and Problem Statement
