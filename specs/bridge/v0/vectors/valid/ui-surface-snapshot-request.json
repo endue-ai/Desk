@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "ui.surface.snapshot of a plugin's main surface, at most 640 pixels wide",
+  "instance": {
+    "id": 31,
+    "method": "ui.surface.snapshot",
+    "params": {
+      "plugin": "example.hello-ui",
+      "maxWidth": 640,
+      "scope": {
+        "permission": "ui:surface"
+      }
+    }
+  }
+}

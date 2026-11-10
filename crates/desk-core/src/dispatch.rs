@@ -81,6 +81,7 @@ impl Core {
             R::AudioCaptureStop(r) => (r.id, unsupported("audio.capture.stop")),
             R::UiSurfaceOpen(r) => (r.id, self.surface_open(caller, r.params)),
             R::UiSurfaceClose(r) => (r.id, self.surface_close(caller, r.params)),
+            R::UiSurfaceSnapshot(r) => (r.id, self.surface_snapshot(caller, r.params)),
             R::CmdRegister(r) => (r.id, self.cmd_register(caller, r.params)),
             R::CmdUnregister(r) => (r.id, self.cmd_unregister(caller, r.params)),
             R::CmdList(r) => (r.id, self.cmd_list(caller, r.params)),

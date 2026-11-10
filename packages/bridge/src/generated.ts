@@ -578,7 +578,7 @@ export interface AudioCapturePermission {
   wakeWord?: boolean;
 }
 
-/** Open and close the surfaces the plugin manifest declares. */
+/** Open and close the surfaces the plugin manifest declares, and take snapshots of them (ui.surface.snapshot); a caller without a manifest snapshots any surface. */
 export interface UiSurfacePermission {
   permission: "ui:surface";
 }
@@ -3074,6 +3074,7 @@ export type BridgeRequest =
   | AudioCaptureStopRequest
   | UiSurfaceOpenRequest
   | UiSurfaceCloseRequest
+  | UiSurfaceSnapshotRequest
   | UiNotifyRequest
   | PermRequestRequest
   | PermQueryRequest
@@ -6664,6 +6665,33 @@ export interface UiSurfaceStateResult {
   state?: unknown;
 }
 
+/** A PNG of a surface's last frame as the compositor holds it, for Eris, agents and tests. A plugin snapshots only its own surfaces; a caller without a manifest (the desk, an agent, the CLI) any surface. */
+export interface UiSurfaceSnapshotRequest {
+  id: RequestId;
+  method: "ui.surface.snapshot";
+  params: UiSurfaceSnapshotParams;
+}
+
+/** Parameters of ui.surface.snapshot: the plugin whose surface it is and the surface id from its manifest (main when absent). maxWidth and maxHeight bound the image in pixels, keeping its aspect ratio; it is never enlarged. */
+export interface UiSurfaceSnapshotParams {
+  plugin: PluginId;
+  /** A surface id from the plugin's manifest. */
+  surface?: string;
+  maxWidth?: number;
+  maxHeight?: number;
+  scope: UiSurfacePermission;
+}
+
+/** Result of ui.surface.snapshot: the PNG as base64 (straight alpha), its size in pixels and the scale from the surface's CSS pixels to them, and whether the surface sleeps (its last frame before it slept). */
+export interface UiSurfaceSnapshotResult {
+  image: string;
+  mediaType: "image/png";
+  width: number;
+  height: number;
+  scale: number;
+  asleep: boolean;
+}
+
 /** Show a notification. */
 export interface UiNotifyRequest {
   id: RequestId;
@@ -6991,6 +7019,7 @@ export interface BridgeMethodMap {
   "audio.capture.stop": { params: AudioCaptureStopParams; result: AudioCaptureStopResult };
   "ui.surface.open": { params: UiSurfaceOpenParams; result: UiSurfaceOpenResult };
   "ui.surface.close": { params: UiSurfaceCloseParams; result: UiSurfaceCloseResult };
+  "ui.surface.snapshot": { params: UiSurfaceSnapshotParams; result: UiSurfaceSnapshotResult };
   "ui.notify": { params: UiNotifyParams; result: UiNotifyResult };
   "perm.request": { params: PermRequestParams; result: PermRequestResult };
   "perm.query": { params: PermQueryParams; result: PermQueryResult };
@@ -7169,6 +7198,7 @@ export const BRIDGE_METHODS = [
   "audio.capture.stop",
   "ui.surface.open",
   "ui.surface.close",
+  "ui.surface.snapshot",
   "ui.notify",
   "perm.request",
   "perm.query",

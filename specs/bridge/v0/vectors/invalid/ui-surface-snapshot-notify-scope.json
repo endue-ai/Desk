@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "ui.surface.snapshot under ui:notify, which does not cover it",
+  "instance": {
+    "id": 33,
+    "method": "ui.surface.snapshot",
+    "params": {
+      "plugin": "example.hello-ui",
+      "scope": {
+        "permission": "ui:notify"
+      }
+    }
+  }
+}

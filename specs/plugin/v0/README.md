@@ -116,7 +116,7 @@ eight `actions` (`{ command, title, args? }`): Enter runs the first, Mod+Enter t
 | `net:fetch` | `hosts` | `net.fetch` |
 | `net:connect` | `hosts` | `net.connect`, `net.send`, `net.close` and their `net.data` and `net.closed` events; a host with a port covers that port only, one without every port |
 | `audio:capture` | `wakeWord` | `audio.capture.start`, `audio.capture.stop`, `audio.wake` events |
-| `ui:surface` | none | `ui.surface.open`, `ui.surface.close` |
+| `ui:surface` | none | `ui.surface.open`, `ui.surface.close`, `ui.surface.snapshot` (its own surfaces) |
 | `ui:notify` | none | `ui.notify` |
 | `plugin:manage` | none | `plugin.list`, `plugin.setEnabled`, `plugin.changed` events |
 | `brain:converse` | none | `brain.say`, `brain.turn` events for the caller's own turns |

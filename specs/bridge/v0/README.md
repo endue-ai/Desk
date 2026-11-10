@@ -193,6 +193,15 @@ handle.
 handle the caller does not hold is `not_found`. A caller that unloads has its surfaces closed, each with
 its `ui.surface.closed`; losing `ui:surface` leaves them open.
 
+**ui.surface.snapshot** answers a PNG of a surface's last frame as the compositor holds it, for Eris,
+agents and tests (ADR 0161): `plugin` and its manifest's `surface` (`main` when absent), at most
+`maxWidth` by `maxHeight` pixels with its aspect ratio kept and never enlarged. The image is the
+surface's own pixels, straight alpha, with its size and `scale`, its pixels per CSS pixel; `asleep`
+says it is the frame from before the surface slept. It needs `ui:surface`. A plugin snapshots only its
+own surfaces: another plugin's is `permission_denied`. A caller without a manifest (`desk`, an agent,
+`cli`) snapshots any surface. A surface that has shown no frame yet is `not_found`; a desk without a
+compositor answers `unsupported`.
+
 **ui.surface.state** is the one request that goes the other way: the runtime sends it to a plugin's
 frame, as it sends `desk.files.visit`, never to the core, and it is not a `BridgeRequest`. Before the
 runtime unloads a surface that has not been visible for `desk.display.unload-after`, or one out of

@@ -57,6 +57,7 @@
         { "$ref": "audio.schema.json#/$defs/AudioCaptureStopRequest" },
         { "$ref": "ui.schema.json#/$defs/UiSurfaceOpenRequest" },
         { "$ref": "ui.schema.json#/$defs/UiSurfaceCloseRequest" },
+        { "$ref": "ui.schema.json#/$defs/UiSurfaceSnapshotRequest" },
         { "$ref": "ui.schema.json#/$defs/UiNotifyRequest" },
         { "$ref": "perm.schema.json#/$defs/PermRequestRequest" },
         { "$ref": "perm.schema.json#/$defs/PermQueryRequest" },

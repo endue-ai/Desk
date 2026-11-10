@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "ui.surface.snapshot names no plugin",
+  "instance": {
+    "id": 32,
+    "method": "ui.surface.snapshot",
+    "params": {
+      "surface": "main",
+      "scope": {
+        "permission": "ui:surface"
+      }
+    }
+  }
+}

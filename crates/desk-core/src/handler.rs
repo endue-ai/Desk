@@ -111,6 +111,8 @@ pub struct Core {
     pub(crate) themes: crate::core_themes::Themes,
     /// The look in force for the compositor (theme.tokens, ADR 0146).
     pub(crate) theme_tokens: crate::theme::ThemeTokens,
+    /// What takes surfaces' snapshots: the shell's compositor, once it is up (ADR 0161).
+    pub(crate) snapshots: crate::core_snapshots::Snapshots,
     pub(crate) start: Mutex<crate::core_state::StartState>,
 }
 
@@ -165,6 +167,7 @@ impl Core {
             computer: Default::default(),
             themes: Default::default(),
             theme_tokens: Default::default(),
+            snapshots: Default::default(),
             start: Mutex::default(),
         }
     }

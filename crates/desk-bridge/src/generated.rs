@@ -1004,7 +1004,7 @@ pub struct AudioCapturePermission {
     pub wake_word: Option<bool>,
 }
 
-/// Open and close the surfaces the plugin manifest declares.
+/// Open and close the surfaces the plugin manifest declares, and take snapshots of them (ui.surface.snapshot); a caller without a manifest snapshots any surface.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UiSurfacePermission {
@@ -4960,6 +4960,7 @@ pub enum BridgeRequest {
     AudioCaptureStop(AudioCaptureStopRequest),
     UiSurfaceOpen(UiSurfaceOpenRequest),
     UiSurfaceClose(UiSurfaceCloseRequest),
+    UiSurfaceSnapshot(UiSurfaceSnapshotRequest),
     UiNotify(UiNotifyRequest),
     PermRequest(PermRequestRequest),
     PermQuery(PermQueryRequest),
@@ -10401,6 +10402,43 @@ pub struct UiSurfaceStateResult {
     pub state: Option<serde_json::Value>,
 }
 
+/// A PNG of a surface's last frame as the compositor holds it, for Eris, agents and tests. A plugin snapshots only its own surfaces; a caller without a manifest (the desk, an agent, the CLI) any surface.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceSnapshotRequest {
+    pub id: RequestId,
+    pub method: UiSurfaceSnapshotRequestMethod,
+    pub params: UiSurfaceSnapshotParams,
+}
+
+/// Parameters of ui.surface.snapshot: the plugin whose surface it is and the surface id from its manifest (main when absent). maxWidth and maxHeight bound the image in pixels, keeping its aspect ratio; it is never enlarged.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceSnapshotParams {
+    pub plugin: PluginId,
+    /// A surface id from the plugin's manifest.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub surface: Option<String>,
+    #[serde(rename = "maxWidth", default, skip_serializing_if = "Option::is_none")]
+    pub max_width: Option<u64>,
+    #[serde(rename = "maxHeight", default, skip_serializing_if = "Option::is_none")]
+    pub max_height: Option<u64>,
+    pub scope: UiSurfacePermission,
+}
+
+/// Result of ui.surface.snapshot: the PNG as base64 (straight alpha), its size in pixels and the scale from the surface's CSS pixels to them, and whether the surface sleeps (its last frame before it slept).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceSnapshotResult {
+    pub image: String,
+    #[serde(rename = "mediaType")]
+    pub media_type: UiSurfaceSnapshotResultMediaType,
+    pub width: u64,
+    pub height: u64,
+    pub scale: f64,
+    pub asleep: bool,
+}
+
 /// Show a notification.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -12626,6 +12664,22 @@ pub enum UiSurfaceStateRequestMethod {
     #[default]
     #[serde(rename = "ui.surface.state")]
     UiSurfaceState,
+}
+
+/// The `method` of [`UiSurfaceSnapshotRequest`]: always `"ui.surface.snapshot"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UiSurfaceSnapshotRequestMethod {
+    #[default]
+    #[serde(rename = "ui.surface.snapshot")]
+    UiSurfaceSnapshot,
+}
+
+/// The `mediaType` of [`UiSurfaceSnapshotResult`]: always `"image/png"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UiSurfaceSnapshotResultMediaType {
+    #[default]
+    #[serde(rename = "image/png")]
+    ImagePng,
 }
 
 /// The `method` of [`UiNotifyRequest`]: always `"ui.notify"`.

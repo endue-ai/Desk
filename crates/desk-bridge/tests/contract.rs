@@ -24,9 +24,9 @@ use desk_bridge::{
     StudioCatalogRecommendResult, StudioCatalogUseResult, StudioConversationsListResult,
     StudioSpacesGetResult, StudioSpacesListResult, ThemeBundle, ThemeExportResult, ThemeIndex,
     ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeTokensResult, ThemeType,
-    ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalPage,
-    UniversalSource, UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
-    manifest_problems, view_problems,
+    ThemeVariant, UiSurfaceSnapshotResult, UiSurfaceStateRequest, UiSurfaceStateResult,
+    UniversalData, UniversalPage, UniversalSource, UniversalView, View, ViewGetResult,
+    ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -398,6 +398,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                     roundtrip::<ComputerPermissionsStatusResult>(vector)
                 }
                 "ComputerScreenshotResult" => roundtrip::<ComputerScreenshotResult>(vector),
+                "UiSurfaceSnapshotResult" => roundtrip::<UiSurfaceSnapshotResult>(vector),
                 "ComputerAxTreeResult" => roundtrip::<ComputerAxTreeResult>(vector),
                 "ComputerInputClickResult" => roundtrip::<ComputerInputClickResult>(vector),
                 "NetConnectResult" => roundtrip::<NetConnectResult>(vector),

@@ -7,7 +7,7 @@ use desk_bridge::{
     CmdInvokePermission, ConnectorManagePermission, FsReadPermission, FsWritePermission,
     MemoryReadPermission, MemoryWritePermission, PermManagePermission, Permission,
     PluginManagePermission, ShellOpenPermission, ShellScheme, StudioManagePermission,
-    ThemeManagePermission, UpdateManagePermission, ViewManagePermission,
+    ThemeManagePermission, UiSurfacePermission, UpdateManagePermission, ViewManagePermission,
 };
 use desk_core::Core;
 
@@ -142,6 +142,13 @@ pub fn grant_runtime(core: &Core, data: &Path, home: &Path) {
     core.grant(
         RUNTIME_CALLER,
         Permission::ThemeManage(ThemeManagePermission {
+            permission: Default::default(),
+        }),
+    );
+    // Eris and the desk's own checks see any window's last frame (ui.surface.snapshot, ADR 0161).
+    core.grant(
+        RUNTIME_CALLER,
+        Permission::UiSurface(UiSurfacePermission {
             permission: Default::default(),
         }),
     );

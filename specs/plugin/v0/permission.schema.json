@@ -148,7 +148,7 @@
       "additionalProperties": false
     },
     "UiSurfacePermission": {
-      "description": "Open and close the surfaces the plugin manifest declares.",
+      "description": "Open and close the surfaces the plugin manifest declares, and take snapshots of them (ui.surface.snapshot); a caller without a manifest snapshots any surface.",
       "type": "object",
       "properties": {
         "permission": { "const": "ui:surface" }
