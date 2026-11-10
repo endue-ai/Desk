@@ -4,6 +4,7 @@ import { BridgeClient } from "@endue-ai/bridge";
 import { deskPluginUrl, mountDesk, phase, realClock } from "@endue-ai/runtime";
 import "@endue-ai/runtime/desk.css";
 import "@endue-ai/runtime/shell.css";
+import { startCompositorLayout } from "./compositor-layout";
 import { reportCrashes, showLastCrash } from "./crashes";
 import "./crashes.css";
 import { adapter, invoke, listen, shell } from "./host";
@@ -77,6 +78,14 @@ const disposeOpened = installOpenedFiles({
     }),
 });
 window.addEventListener("pagehide", disposeOpened, { once: true });
+
+// Compositor mode (#52): the CEF shell draws each plugin surface where its frame is here.
+if (shell === "cef" && new URLSearchParams(location.search).has("compositor")) {
+  const stopLayout = startCompositorLayout(window, (report) => {
+    void invoke("compositor_layout", report as unknown as Record<string, unknown>);
+  });
+  window.addEventListener("pagehide", stopLayout, { once: true });
+}
 
 // A plugin frame whose renderer died (#44): the CEF shell names it, and the window recovers by itself.
 const offCrashes = listen<{ plugin?: string }>("desk://frame-crashed", ({ payload }) => {

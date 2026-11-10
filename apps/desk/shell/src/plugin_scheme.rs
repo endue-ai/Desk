@@ -1,6 +1,8 @@
 //! The `desk-plugin` scheme in the CEF shell (#42): `desk_web::plugin_scheme` answers, with the
 //! bundles this binary embeds; this adapts CEF's requests and resource handlers to it. Requests run
-//! on CEF's IO thread; a file URL reads at most one 2 MiB part (ADR 0048).
+//! on CEF's IO thread; a file URL reads at most one 2 MiB part (ADR 0048). A plugin surface's
+//! document at the top of a browser keeps its frame's sandbox, and in compositor mode a plugin frame
+//! of the shell page is a stand-in (`web_host::stand_in`, #52).
 
 use std::sync::{Arc, Mutex};
 
@@ -11,6 +13,12 @@ use desk_web::plugin_scheme::{self, Bundled};
 use http::header;
 
 use crate::scheme::{ReplyHandler, Sending};
+use crate::web_host::{relay, stand_in};
+
+/// Whether `url` is on a plugin surface's own host.
+fn stand_in_surface(url: &str) -> bool {
+    relay::surface_host(url).is_some()
+}
 
 /// The SDK, the UI bundle and the shared sheets (`just build-sdk build-ui`, which `just build-shell`
 /// runs first), and the palette's own files (`palette_assets.rs`).
@@ -34,9 +42,21 @@ static BUNDLED: Bundled = Bundled {
     extra: crate::palette_assets::file,
 };
 
+/// Where the scheme's plugin files come from: the booted desk's core, or the surface probe's pages.
+#[derive(Clone)]
+pub enum Files {
+    Core(Arc<Core>),
+    Probe,
+}
+
 /// Serve `desk-plugin` from `core`; call once the desk has booted.
 pub fn register(core: Arc<Core>) {
-    let mut factory = PluginSchemeFactory::new(core);
+    register_files(Files::Core(core));
+}
+
+/// Serve `desk-plugin` from `files`.
+pub fn register_files(files: Files) {
+    let mut factory = PluginSchemeFactory::new(files);
     register_scheme_handler_factory(
         Some(&plugin_scheme::SCHEME.into()),
         None,
@@ -45,7 +65,7 @@ pub fn register(core: Arc<Core>) {
 }
 
 /// The answer to one request, as `desk_web` gives it, in the shell's reply shape.
-fn answer(core: &Core, method: &str, url: &str, range: Option<&str>) -> Reply {
+fn answer(files: &Files, method: &str, url: &str, range: Option<&str>) -> Reply {
     let mut request = http::Request::builder().method(method).uri(url);
     if let Some(range) = range {
         request = request.header(header::RANGE, range);
@@ -53,7 +73,10 @@ fn answer(core: &Core, method: &str, url: &str, range: Option<&str>) -> Reply {
     let Ok(request) = request.body(Vec::new()) else {
         return Reply::status(400);
     };
-    let response = plugin_scheme::respond(&request, core, &BUNDLED);
+    let response = match files {
+        Files::Core(core) => plugin_scheme::respond(&request, &**core, &BUNDLED),
+        Files::Probe => plugin_scheme::respond(&request, &crate::probe::pages::Pages, &BUNDLED),
+    };
     if cfg!(debug_assertions) {
         eprintln!(
             "desk-plugin: {} {url} {}",
@@ -87,23 +110,36 @@ fn reply(response: http::Response<Vec<u8>>) -> Reply {
 
 wrap_scheme_handler_factory! {
     struct PluginSchemeFactory {
-        core: Arc<Core>,
+        files: Files,
     }
 
     impl SchemeHandlerFactory {
         fn create(
             &self,
-            _browser: Option<&mut Browser>,
-            _frame: Option<&mut Frame>,
+            browser: Option<&mut Browser>,
+            frame: Option<&mut Frame>,
             _scheme_name: Option<&CefString>,
             request: Option<&mut Request>,
         ) -> Option<ResourceHandler> {
             let request = request?;
             let url = CefString::from(&request.url()).to_string();
-            let method = CefString::from(&request.method()).to_string();
-            let range = CefString::from(&request.header_by_name(Some(&"Range".into()))).to_string();
-            let range = (!range.is_empty()).then_some(range);
-            let reply = answer(&self.core, &method, &url, range.as_deref());
+            let kind = request.resource_type();
+            let main = frame.is_some_and(|f| f.is_main() == 1);
+            let surface = stand_in_surface(&url);
+            let browser = browser.map(|b| b.identifier()).unwrap_or(-1);
+            let reply = if stand_in::is_stand_in(browser, main, kind == ResourceType::SUB_FRAME, surface) {
+                stand_in::reply()
+            } else {
+                let method = CefString::from(&request.method()).to_string();
+                let range = CefString::from(&request.header_by_name(Some(&"Range".into()))).to_string();
+                let range = (!range.is_empty()).then_some(range);
+                let mut reply = answer(&self.files, &method, &url, range.as_deref());
+                // A plugin surface's document at the top of a browser keeps its frame's sandbox (#52).
+                if surface && main && kind == ResourceType::MAIN_FRAME {
+                    stand_in::sandbox_top(&mut reply);
+                }
+                reply
+            };
             Some(ReplyHandler::new(Arc::new(Mutex::new(Sending { reply, sent: 0 }))))
         }
     }

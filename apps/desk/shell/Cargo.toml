@@ -40,6 +40,9 @@ desk-boot.workspace = true
 desk-bridge.workspace = true
 # Computer use (ADR 0120, ADR 0123): the OS driver the core serves computer.* through.
 desk-computer = { path = "../../../crates/desk-computer" }
+# Compositor mode (#52): off-screen surfaces composited by desk-compositor over specs/surface.
+desk-compositor.workspace = true
+desk-surface.workspace = true
 desk-core.workspace = true
 desk-trace.workspace = true
 desk-web.workspace = true
@@ -57,11 +60,19 @@ serde_json.workspace = true
 tray-icon = "0.25"
 url = "2.5"
 winit = "0.30"
+wgpu.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSEvent", "NSGraphics", "NSResponder", "NSScreen", "NSView", "NSWindow"] }
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSDictionary", "NSEnumerator", "NSGeometry", "NSString", "NSURL", "NSValue"] }
+# A paint's IOSurface, named by its IOSurfaceID in the surface protocol's attach (#52).
+objc2-io-surface = { version = "0.3", default-features = false, features = ["std", "IOSurfaceRef", "IOSurfaceTypes", "objc2"] }
+
+# Windows and Linux import CEF's shared textures with the `cef` crate's importer until the compositor
+# imports D3D11 handles and DMA-BUFs itself (#61); macOS needs no importer of the engine's.
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+cef = { workspace = true, features = ["accelerated_osr"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }

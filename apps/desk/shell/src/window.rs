@@ -42,6 +42,8 @@ pub struct Shell {
     menu_bar: Option<tray_icon::menu::Menu>,
     /// Hears the main browser's frames crash (#44), as long as it is kept.
     crash_watch: Option<Registration>,
+    /// Compositor mode (#52): the main window's scene and its off-screen surfaces.
+    pub compositor: Option<crate::compositor_window::CompositorWindow>,
     started: bool,
     quitting: bool,
 }
@@ -62,6 +64,7 @@ impl Shell {
             tray: None,
             menu_bar: None,
             crash_watch: None,
+            compositor: None,
             started: false,
             quitting: false,
         }
@@ -95,6 +98,42 @@ impl Shell {
         }
     }
 
+    /// Compositor mode (#52): the main window is a wgpu scene, its page an off-screen surface.
+    fn open_compositor(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        attributes: WindowAttributes,
+        url: &str,
+    ) -> Option<&Pane> {
+        let opened = event_loop
+            .create_window(attributes)
+            .map_err(|why| why.to_string())
+            .and_then(|window| {
+                let window = Arc::new(window);
+                crate::compositor_window::CompositorWindow::open(
+                    window,
+                    url,
+                    Arc::clone(&self.desk),
+                )
+            });
+        let compositor = match opened {
+            Ok(compositor) => compositor,
+            Err(why) => {
+                eprintln!("endue Desk: the compositor window did not open ({why})");
+                return None;
+            }
+        };
+        let pane = Pane {
+            window: Arc::clone(&compositor.window),
+            browser: compositor.browser.clone(),
+        };
+        self.desk.pages.set(Role::Main, pane.browser.clone());
+        self.roles.insert(pane.window.id(), Role::Main);
+        self.panes.insert(Role::Main, pane);
+        self.compositor = Some(compositor);
+        self.panes.get(&Role::Main)
+    }
+
     /// The main window, its services and the other windows, once the loop runs.
     fn start(&mut self, event_loop: &ActiveEventLoop) {
         self.started = true;
@@ -103,11 +142,22 @@ impl Shell {
             .with_inner_size(LogicalSize::new(1280.0, 800.0))
             .with_min_inner_size(LogicalSize::new(1024.0, 500.0));
         let url = self.url.clone();
-        let Some(main) = self.open_pane(event_loop, Role::Main, attributes, &url) else {
+        let opened = if crate::compositor_window::enabled() {
+            self.open_compositor(event_loop, attributes, &url)
+        } else {
+            self.open_pane(event_loop, Role::Main, attributes, &url)
+        };
+        let Some(main) = opened else {
             event_loop.exit();
             return;
         };
-        self.crash_watch = main.browser.as_ref().and_then(crate::crashes::watch);
+        // In compositor mode each surface's own browser reports its renderer's death (#52); the
+        // target watch would report it a second time, which the runtime counts as a second death.
+        let watched = main
+            .browser
+            .as_ref()
+            .filter(|_| !crate::compositor_window::enabled());
+        self.crash_watch = watched.and_then(crate::crashes::watch);
         menu::listen(&self.pump);
         self.menu_bar = menu::app_menu();
         palette::setup(self, event_loop);
@@ -178,7 +228,10 @@ impl Shell {
         for action in [Action::Palette, Action::Eris, Action::StopComputer] {
             self.hotkeys.unregister(action);
         }
-        if self.panes.is_empty() && self.closing.is_empty() {
+        if let Some(compositor) = &self.compositor {
+            compositor.close();
+        }
+        if self.done_quitting() {
             event_loop.exit();
         }
         for pane in self.panes.values() {
@@ -209,9 +262,15 @@ impl Shell {
             // The page closed its own window: the desk goes with it.
             self.quit(event_loop);
         }
-        if self.quitting && self.panes.is_empty() && self.closing.is_empty() {
+        if self.done_quitting() {
             event_loop.exit();
         }
+    }
+
+    /// Whether every browser has closed, the compositor's surfaces' too.
+    fn done_quitting(&self) -> bool {
+        let surfaces = self.compositor.as_ref().map_or(0, |c| c.host.browsers());
+        self.quitting && self.panes.is_empty() && self.closing.is_empty() && surfaces == 0
     }
 }
 
@@ -250,6 +309,20 @@ impl ApplicationHandler<Wake> for Shell {
                 }
             }
             (Role::Eris, WindowEvent::CloseRequested) => eris_window::dismiss(self),
+            (Role::Main, WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. })
+                if self.compositor.is_some() =>
+            {
+                if let Some(compositor) = self.compositor.as_mut() {
+                    compositor.resized();
+                }
+                eris_window::main_changed(self);
+            }
+            (Role::Main, WindowEvent::Occluded(occluded)) if self.compositor.is_some() => {
+                if let Some(compositor) = self.compositor.as_mut() {
+                    compositor.occluded(occluded);
+                }
+                eris_window::main_changed(self);
+            }
             (_, WindowEvent::Resized(size)) => {
                 if let Some(pane) = self.pane(role) {
                     pane.resized(size);
@@ -263,6 +336,11 @@ impl ApplicationHandler<Wake> for Shell {
             (_, WindowEvent::Focused(focused)) => {
                 if focused && let Some(host) = self.pane(role).and_then(Pane::host) {
                     host.set_focus(1);
+                }
+                if role == Role::Main
+                    && let Some(compositor) = &self.compositor
+                {
+                    compositor.focused(focused);
                 }
                 if role == Role::Palette
                     && !focused
@@ -281,6 +359,16 @@ impl ApplicationHandler<Wake> for Shell {
         if self.pump.take_due(Instant::now()) {
             do_message_loop_work();
         }
-        event_loop.set_control_flow(ControlFlow::WaitUntil(self.pump.due()));
+        let mut wake = self.pump.due();
+        if let Some(compositor) = self.compositor.as_mut() {
+            compositor.tick(Instant::now());
+            if let Some(frame) = compositor.next_frame() {
+                wake = wake.min(frame);
+            }
+        }
+        if self.done_quitting() {
+            event_loop.exit();
+        }
+        event_loop.set_control_flow(ControlFlow::WaitUntil(wake));
     }
 }

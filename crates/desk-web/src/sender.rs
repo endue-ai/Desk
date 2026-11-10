@@ -24,6 +24,11 @@ const MAIN_COMMANDS: &[&str] = &[
     "take_last_crash",
     "palette_reveal_main",
     "plugin:dialog|open",
+    // Compositor mode (#52): where the runtime placed its plugin frames; captures and counts for
+    // checks in development builds.
+    "compositor_layout",
+    "compositor_capture",
+    "compositor_stats",
 ];
 const PALETTE_COMMANDS: &[&str] = &[
     "palette_hide",
@@ -232,6 +237,16 @@ mod tests {
         }
         assert!(!runtime.may("palette_hide"));
         assert!(!runtime.may("plugin:eris-window|drag"));
+        // Compositor mode (#52): the shell page reports its frames' places; nobody else does.
+        for cmd in [
+            "compositor_layout",
+            "compositor_capture",
+            "compositor_stats",
+        ] {
+            assert!(runtime.may(cmd), "{cmd}");
+            assert!(!Sender::Plugin("endue.notes".into()).may(cmd), "{cmd}");
+            assert!(!Sender::Palette.may(cmd), "{cmd}");
+        }
         let palette = Sender::Palette;
         for cmd in [
             "palette_hide",

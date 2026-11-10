@@ -74,6 +74,9 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
             Ok(Value::Null)
         }
         cmd if cmd.starts_with(eris::PREFIX) => eris::answer(desk, cmd, &call.args),
+        cmd if cmd.starts_with("compositor_") => {
+            crate::compositor_window::commands::answer(desk, cmd, &call.args)
+        }
         other => Err(format!("the CEF shell has no command {other}")),
     }
 }

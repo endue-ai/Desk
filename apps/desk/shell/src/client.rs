@@ -4,6 +4,9 @@
 //! land there too). The main window's also hears files dragged in from the OS (`drops.rs`); the
 //! Eris window's clears the page's base colour so she stands on nothing (macOS, ADR 0121).
 
+// `wrap_client!` makes a constructor with one argument per field.
+#![allow(clippy::too_many_arguments)]
+
 use std::sync::Arc;
 
 use cef::*;
@@ -11,21 +14,24 @@ use desk_web::sender::Role;
 
 use crate::host::{self, Desk};
 use crate::pump::{Pump, Wake};
-use crate::renderer::CALL;
+use crate::renderer::{CALL, POST};
+use crate::web_host::relay::Relay;
 
 wrap_life_span_handler! {
     pub struct ShellLifeSpan {
         role: Role,
         pump: Pump,
+        windowless: bool,
     }
 
     impl LifeSpanHandler {
         // CEF's own close would ask the browser's top-level window to close (`performClose:`,
         // `WM_CLOSE`, `delete_event`), and a winit window only reports that: the main one would
         // merely hide, and no browser would ever finish closing. The shell drops the window itself.
+        // An off-screen browser (compositor mode) has no window: CEF destroys it when told to go on.
         fn do_close(&self, _browser: Option<&mut Browser>) -> ::std::os::raw::c_int {
             self.pump.wake(Wake::Closing(self.role));
-            1
+            i32::from(!self.windowless)
         }
 
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
@@ -91,11 +97,18 @@ wrap_client! {
         drag: Option<DragHandler>,
         load: Option<LoadHandler>,
         desk: Arc<Desk>,
+        // Compositor mode (#52): the page renders off screen, and its plugin frames are stand-ins.
+        render: Option<RenderHandler>,
+        relay: Option<Relay>,
     }
 
     impl Client {
         fn request_handler(&self) -> Option<RequestHandler> {
             Some(self.requests.clone())
+        }
+
+        fn render_handler(&self) -> Option<RenderHandler> {
+            self.render.clone()
         }
 
         fn on_process_message_received(
@@ -106,14 +119,17 @@ wrap_client! {
             message: Option<&mut ProcessMessage>,
         ) -> ::std::os::raw::c_int {
             let (Some(frame), Some(message)) = (frame, message) else { return 0 };
-            if CefString::from(&message.name()).to_string() != CALL {
-                return 0;
-            }
+            let name = CefString::from(&message.name()).to_string();
             let text = message
                 .argument_list()
                 .map(|list| CefString::from(&list.string(0)).to_string())
                 .unwrap_or_default();
-            host::receive(&self.desk, self.role, frame.clone(), text);
+            match (name.as_str(), &self.relay) {
+                (CALL, _) => host::receive(&self.desk, self.role, frame.clone(), text),
+                // What the runtime posted to a plugin's stand-in, for the plugin's own browser.
+                (POST, Some(relay)) if frame.is_main() != 1 => relay.down(frame, text),
+                _ => return 0,
+            }
             1
         }
 
@@ -142,11 +158,30 @@ pub fn client(role: Role, pump: Pump, desk: Arc<Desk>) -> Client {
     let load = (cfg!(target_os = "macos") && role == Role::Eris).then(ClearBase::new);
     ShellClient::new(
         role,
-        ShellLifeSpan::new(role, pump),
+        ShellLifeSpan::new(role, pump, false),
         ShellDisplay::new(role),
         crate::guard::Requests::new(banner),
         drag,
         load,
         desk,
+        None,
+        None,
+    )
+}
+
+/// The client of the main window's page in compositor mode (#52): it renders off screen through
+/// `render`, and its plugin frames' stand-ins relay through `relay`. Files dragged in from the OS
+/// wait for input (#56).
+pub fn compositor_page(pump: Pump, desk: Arc<Desk>, render: RenderHandler, relay: Relay) -> Client {
+    ShellClient::new(
+        Role::Main,
+        ShellLifeSpan::new(Role::Main, pump, true),
+        ShellDisplay::new(Role::Main),
+        crate::guard::Requests::new(None),
+        None,
+        Some(crate::web_host::relay::StandInLoads::new(relay.clone())),
+        desk,
+        Some(render),
+        Some(relay),
     )
 }

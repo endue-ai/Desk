@@ -38,6 +38,10 @@ fn main() -> ExitCode {
         );
         return ExitCode::from(code.clamp(0, 255) as u8);
     }
+    // The surface probe (#52): the web host and the compositor's import without a desk or a window.
+    if let Some(scenario) = desk_shell::probe::requested() {
+        return desk_shell::probe::run(&args, &scenario);
+    }
 
     let mut builder = EventLoop::with_user_event();
     // The shell sets its own menu bar (`menu.rs`), with Edit and its own Quit.
@@ -75,6 +79,8 @@ fn main() -> ExitCode {
     let root = paths::cef_root();
     let _ = std::fs::create_dir_all(&root);
     let settings = cef::Settings {
+        // Compositor mode (#52) renders every page off screen.
+        windowless_rendering_enabled: i32::from(desk_shell::compositor_window::enabled()),
         external_message_pump: 1,
         // The sandbox needs the bundle's helpers signed for it; it comes with packaging (#46).
         no_sandbox: 1,

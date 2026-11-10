@@ -1,6 +1,9 @@
 //! The renderer side of the bridge (#43): every frame's script context gets `window.__deskNative`,
 //! whose `send(text)` hands a call to the browser process, and whose `onMessage(text)` the page sets
 //! to hear replies and events. The texts are `desk_web::wire`'s; this side never reads them.
+//! `post(text)` hands a postMessage to the relay between the runtime and off-screen plugin surfaces
+//! (#52, `web_host::relay`), whose pages also get `window.parent` as the desk (`web_host::shim`).
+//! Development builds add `pid`, the renderer's process id, so a check can kill one surface's.
 
 use cef::*;
 
@@ -8,6 +11,8 @@ use cef::*;
 pub const CALL: &str = "desk.call";
 /// The process message carrying a reply or an event to the page.
 pub const MESSAGE: &str = "desk.message";
+/// The process message carrying a postMessage for the relay.
+pub const POST: &str = "desk.post";
 
 /// The global the page sees.
 const NATIVE: &str = "__deskNative";
@@ -29,9 +34,11 @@ wrap_v8_handler! {
             _retval: Option<&mut Option<V8Value>>,
             exception: Option<&mut CefString>,
         ) -> ::std::os::raw::c_int {
-            if name.map(|n| n.to_string()).as_deref() != Some("send") {
-                return 0;
-            }
+            let kind = match name.map(|n| n.to_string()).as_deref() {
+                Some("send") => CALL,
+                Some("post") => POST,
+                _ => return 0,
+            };
             let text = arguments
                 .and_then(|args| args.first())
                 .and_then(|arg| arg.as_ref())
@@ -39,11 +46,11 @@ wrap_v8_handler! {
                 .map(|arg| CefString::from(&arg.string_value()).to_string());
             let (Some(text), Some(frame)) = (text, v8_context_get_current_context().and_then(|c| c.frame())) else {
                 if let Some(exception) = exception {
-                    *exception = "__deskNative.send takes one string".into();
+                    *exception = "__deskNative.send and post take one string".into();
                 }
                 return 1;
             };
-            if let Some(mut message) = process_message_create(Some(&CALL.into())) {
+            if let Some(mut message) = process_message_create(Some(&kind.into())) {
                 if let Some(list) = message.argument_list() {
                     list.set_string(0, Some(&text.as_str().into()));
                 }
@@ -61,16 +68,30 @@ wrap_render_process_handler! {
         fn on_context_created(
             &self,
             _browser: Option<&mut Browser>,
-            _frame: Option<&mut Frame>,
+            frame: Option<&mut Frame>,
             context: Option<&mut V8Context>,
         ) {
-            let Some(global) = context.and_then(|c| c.global()) else { return };
+            let Some(context) = context else { return };
+            let Some(global) = context.global() else { return };
             let Some(mut native) = v8_value_create_object(None, None) else { return };
-            let mut handler = SendHandler::new();
-            if let Some(mut send) = v8_value_create_function(Some(&"send".into()), Some(&mut handler)) {
-                native.set_value_bykey(Some(&"send".into()), Some(&mut send), read_only());
+            for name in ["send", "post"] {
+                let mut handler = SendHandler::new();
+                if let Some(mut function) = v8_value_create_function(Some(&name.into()), Some(&mut handler)) {
+                    native.set_value_bykey(Some(&name.into()), Some(&mut function), read_only());
+                }
+            }
+            if cfg!(debug_assertions)
+                && let Some(mut pid) = v8_value_create_uint(std::process::id())
+            {
+                native.set_value_bykey(Some(&"pid".into()), Some(&mut pid), read_only());
             }
             global.set_value_bykey(Some(&NATIVE.into()), Some(&mut native), read_only());
+            let (main, url) = frame
+                .map(|f| (f.is_main() == 1, CefString::from(&f.url()).to_string()))
+                .unwrap_or_default();
+            if crate::web_host::shim::wanted(main, &url) {
+                crate::web_host::shim::install(context);
+            }
         }
 
         fn on_process_message_received(
