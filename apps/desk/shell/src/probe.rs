@@ -1,10 +1,15 @@
-//! The surface probe (#52): `endue-desk-cef --surface-probe=<import|lifecycle>` runs the web host
+//! The surface probe (#52): `endue-desk-cef --surface-probe=<scenario>` runs the web host
 //! and the compositor's import entry on the probe's pages (`probe/pages.rs`) without a window or a
 //! desk, prints one `SURFACE-PROBE {json}` line and exits. `tests/osr_import.rs` and
 //! `tests/lifecycle.rs` run it: a known colour and WebGPU through the shared texture (or the software
 //! path), a hidden surface that paints nothing, a sleeping one without a renderer, a killed renderer
-//! that is the only one to die. Development use only; it never opens the person's data folder.
+//! that is the only one to die. The compositor's gates (#58, `gates.rs`) run a desk loop over the
+//! surfaces (`desk_loop.rs`): a busy or killed renderer beside others, a surface at a memory cap, the
+//! memory per live surface and the start to the first composed web surface; `tests/isolation.rs`
+//! and `tests/budgets.rs` judge them. Development use only; it never opens the person's data folder.
 
+mod desk_loop;
+mod gates;
 pub mod pages;
 mod scenarios;
 
@@ -39,6 +44,17 @@ pub struct Probe {
     pub shared: Shared,
     titles: std::collections::HashMap<String, String>,
     deaths: Vec<Value>,
+    /// When CEF was up and when the compositor was, in ms since the Unix epoch (the start gate
+    /// compares them with when its test started the probe).
+    pub cef_ready: f64,
+    pub gpu_ready: f64,
+}
+
+/// Now, in ms since the Unix epoch: a clock another process can compare with.
+pub fn epoch_ms() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0.0, |d| d.as_secs_f64() * 1000.0)
 }
 
 /// Run `scenario` in this (browser) process; CEF is not initialised yet.
@@ -65,6 +81,7 @@ pub fn run(args: &cef::args::Args, scenario: &str) -> ExitCode {
         return ExitCode::FAILURE;
     }
     plugin_scheme::register_files(Files::Probe);
+    let cef_ready = epoch_ms();
     let report = match desk_compositor::headless::headless_device() {
         Ok(gpu) => {
             let compositor =
@@ -77,11 +94,17 @@ pub fn run(args: &cef::args::Args, scenario: &str) -> ExitCode {
                 shared,
                 titles: Default::default(),
                 deaths: Vec::new(),
+                cef_ready,
+                gpu_ready: epoch_ms(),
             };
             let mut report = match scenario {
                 "import" => scenarios::import(&mut probe),
                 "lifecycle" => scenarios::lifecycle(&mut probe),
                 "many" => scenarios::many(&mut probe),
+                "isolation" => gates::isolation(&mut probe),
+                "cap" => gates::cap(&mut probe),
+                "memory" => gates::memory(&mut probe),
+                "startup" => gates::startup(&mut probe),
                 other => json!({ "error": format!("no scenario {other}") }),
             };
             report["adapter"] = json!(format!("{} ({:?})", gpu.adapter.name, gpu.adapter.backend));

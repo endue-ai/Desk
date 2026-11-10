@@ -13,13 +13,55 @@ use desk_web::plugin_scheme::Source;
 pub const COLOUR: [u8; 3] = [0x33, 0x66, 0xcc];
 pub const WEBGPU: [u8; 3] = [0xcc, 0x33, 0x66];
 
-/// The probe's plugins, by id: (id, page).
-pub const PAGES: [(&str, &str); 4] = [
+/// The probe's plugins, by id: (id, page). The last three are the isolation and budget gates' (#58,
+/// `gates.rs`).
+pub const PAGES: [(&str, &str); 7] = [
     ("probe.colour", COLOUR_PAGE),
     ("probe.anim", ANIM_PAGE),
     ("probe.webgpu", WEBGPU_PAGE),
     ("probe.dot", DOT_PAGE),
+    ("probe.light", LIGHT_PAGE),
+    ("probe.busy", BUSY_PAGE),
+    ("probe.hog", HOG_PAGE),
 ];
+
+/// The PoC's light page (`spikes/compositor/pages/light.html`), which #35 measured memory with: a
+/// card, a spinning square and a canvas redrawn every frame.
+const LIGHT_PAGE: &str = concat!(
+    r#"<!doctype html><meta charset="utf-8"><title>light</title><style>"#,
+    r#"html,body{margin:0;height:100%;font:28px/1.3 system-ui,sans-serif;color:#f5f5f7}"#,
+    r#"body{background:linear-gradient(135deg,#1d2b64,#f8cdda);display:grid;place-items:center}"#,
+    r#".card{padding:32px 40px;border-radius:20px;background:rgba(0,0,0,.35);text-align:center}"#,
+    r#".spin{width:80px;height:80px;margin:16px auto;border-radius:16px;background:#ffd166;animation:spin 2s linear infinite}"#,
+    r#"@keyframes spin{to{transform:rotate(360deg)}}canvas{display:block;margin:0 auto;border-radius:12px;background:#0b132b}"#,
+    r#"</style><div class="card"><div>Off-screen CEF surface · 데스크 합성기</div><div class="spin"></div>"#,
+    r#"<canvas id="c" width="360" height="120"></canvas><small id="t">frame 0</small></div><script>"#,
+    r#"const ctx = document.getElementById("c").getContext("2d"); const label = document.getElementById("t"); let n = 0;"#,
+    r##"const tick = (now) => { n += 1; ctx.fillStyle = "#0b132b"; ctx.fillRect(0, 0, 360, 120); ctx.fillStyle = "#06d6a0";"##,
+    r#"ctx.beginPath(); ctx.arc(60 + ((now / 5) % 240), 60, 26, 0, Math.PI * 2); ctx.fill(); label.textContent = `frame ${n}`; requestAnimationFrame(tick); };"#,
+    r#"requestAnimationFrame(tick);</script>"#
+);
+
+/// A page that animates until told `spin()`, then never returns from its main thread again.
+const BUSY_PAGE: &str = concat!(
+    r#"<!doctype html><meta charset="utf-8"><title>busy</title>"#,
+    r#"<style>html,body{margin:0;height:100%;background:#66cc33}</style><body><script>"#,
+    r#"globalThis.spin = () => { for (;;) {} };"#,
+    r#"let n = 0; const tick = () => { n = (n + 5) % 256; document.body.style.background = `rgb(102, 204, ${n})`; requestAnimationFrame(tick); }; requestAnimationFrame(tick);"#,
+    r#"</script>"#
+);
+
+/// A page that keeps allocating (16 MiB every fourth frame, each byte written so it is resident)
+/// and holds it all, up to 1.5 GiB, naming the MiB it holds in its title.
+const HOG_PAGE: &str = concat!(
+    r#"<!doctype html><meta charset="utf-8"><title>hog</title>"#,
+    r#"<style>html,body{margin:0;height:100%;background:#cc6633}</style><body><script>"#,
+    r#"const held = []; let frame = 0; let mb = 0;"#,
+    r#"const tick = () => { frame += 1; if (frame % 4 === 0 && mb < 1536) { const block = new Uint8Array(16 << 20); block.fill(frame & 255); held.push(block); mb += 16;"#,
+    r#"if (typeof say === "function") say(`mb:${mb}`); } document.body.style.background = `rgb(204, ${frame % 256}, 51)`; requestAnimationFrame(tick); };"#,
+    r#"requestAnimationFrame(tick);"#,
+    r#"</script>"#
+);
 
 /// The URL of a probe plugin's page on its own surface host.
 pub fn url(id: &str) -> String {
