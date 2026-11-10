@@ -10,7 +10,7 @@ use cef::*;
 
 use super::frames::{self, Pacing};
 use super::view::SharedView;
-use super::{Inner, WebHost};
+use super::{Inner, WebHost, copy_wake};
 
 /// The compositor's shell page on the clock.
 pub struct Page {
@@ -102,6 +102,10 @@ impl WebHost {
                 hosts.extend(it.browser.host());
             }
             let next = on.iter().filter_map(|it| it.pacing.next(clock, now)).min();
+            // Each paint is a copy: input soon after finds the GPU's copies awake (#133).
+            if let Some(at) = on.iter().filter_map(|it| it.pacing.painted()).max() {
+                copy_wake::painted(at);
+            }
             (hosts, next)
         };
         for host in hosts {
