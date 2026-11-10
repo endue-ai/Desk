@@ -47,6 +47,7 @@ function bundle(helpers = 5) {
   );
   copyFileSync("/usr/bin/true", join(cef, "Chromium Embedded Framework"));
   copyFileSync("/usr/bin/true", join(cef, "Libraries/libvulkan.dylib"));
+  copyFileSync("/usr/bin/true", join(cef, "Libraries/libcef_sandbox.dylib"));
   const template = readFileSync(join(ROOT, "apps/desk/shell/packager/macos/helper.plist"), "utf8");
   for (const helper of helperApps("ai.endue.desk.test").slice(0, helpers)) {
     const own = join(contents, "Frameworks", `${helper.name}.app`, "Contents");
@@ -96,7 +97,7 @@ describe("cef-sign-macos", { skip }, () => {
     assert.match(
       entitlements(helper("")),
       /cs\.allow-jit/u,
-      "the GPU process while the sandbox is off",
+      "the GPU process, which CEF 156 starts from the base Helper (ADR 0148)",
     );
     assert.doesNotMatch(entitlements(helper(" (Alerts)")), /allow-jit|unsigned-executable/u);
     assert.doesNotMatch(entitlements(helper(" (Plugin)")), /allow-jit|unsigned-executable/u);
@@ -109,6 +110,11 @@ describe("cef-sign-macos", { skip }, () => {
       app,
       helper(" (Renderer)"),
       join(app, "Contents/Frameworks/Chromium Embedded Framework.framework"),
+      // Each helper opens it to enter Chromium's sandbox before the framework loads (ADR 0148).
+      join(
+        app,
+        "Contents/Frameworks/Chromium Embedded Framework.framework/Libraries/libcef_sandbox.dylib",
+      ),
     ]) {
       assert.match(flags(path), /flags=0x10002\(adhoc,runtime\)/u, path);
     }
