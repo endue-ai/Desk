@@ -5,7 +5,7 @@
 //! inside them. The rest sleep: their state is kept and a placeholder stands in until they show.
 //! Recency is focus order: a window that opens, takes the keys or is woken for an answer is the
 //! most recent. Decisions only, times passed in: whoever holds the surfaces carries them out (the
-//! runtime asks for `desk:state` and takes the frame away until #83) and says what became of them.
+//! runtime asks for `desk:state` and takes the frame away, ADR 0156) and says what became of them.
 
 use std::collections::{BTreeMap, BTreeSet};
 

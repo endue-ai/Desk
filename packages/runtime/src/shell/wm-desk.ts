@@ -1,7 +1,7 @@
 /**
  * The window manager's part of the shell's store as crates/desk-wm reads it (its `Desk`, in its
  * JSON), for compositor mode (#81, ADR 0151): the CEF shell mirrors it into desk-wm, which places
- * every window the compositor draws, until #83 moves the window manager there. The profile in force
+ * every window the compositor draws, while the runtime keeps the state (ADR 0156). The profile in force
  * comes layered (`layoutOf`), so desk-wm reads each desktop's layout as this desk draws it, and the
  * session is in it already; the titles of the shell's own views come with it.
  */

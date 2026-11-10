@@ -4,7 +4,7 @@
 //! the surfaces' lifecycle. Each report from the page, and each change of the window manager's,
 //! gives a new plan; the budget decides who keeps a renderer from it, and the runtime
 //! hears that set (`desk://compositor-live`) and carries it out: it asks a window for its
-//! `desk:state`, takes its frame away and puts it back (until #83). The surfaces follow the frames
+//! `desk:state`, takes its frame away and puts it back (ADR 0156). The surfaces follow the frames
 //! the runtime reports, never where a frame sits in the page, so nothing loads again when a window
 //! is split, put away or shown on another desktop.
 

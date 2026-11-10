@@ -16,7 +16,7 @@
 //!   for: never a reload for a split, the drawer or a desktop switch (ADR 0040's reload goes).
 //!
 //! Plain data again: the compositor's shell turns a plan into a scene and the steps into protocol
-//! messages; the runtime publishes the state it keeps until #83 (ADR 0151).
+//! messages; the runtime publishes the state it keeps (ADR 0151, ADR 0156).
 
 mod bars;
 mod budget;

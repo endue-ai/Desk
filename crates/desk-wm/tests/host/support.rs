@@ -1,6 +1,6 @@
 //! What `tests/host.rs` builds its looks from: the plan of a 1440×900 app, a plugin's frame as
 //! the runtime reports it, the steps' kinds, and a holder that carries the budget's decisions
-//! out as the runtime does until #83.
+//! out as the runtime does (ADR 0156).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -51,7 +51,7 @@ pub fn look(surfaces: &mut Surfaces, desk: &Desk, frames: &[FrameDoc]) -> Vec<St
     surfaces.apply(frames, |plugin| p.seat(plugin), 2.0)
 }
 
-/// The runtime carrying out the budget's decisions until #83: it asks a plugin for its
+/// The runtime carrying out the budget's decisions (ADR 0156): it asks a plugin for its
 /// `desk:state` before taking its frame away, and hands it back on the next hello.
 #[derive(Default)]
 pub struct Holder {

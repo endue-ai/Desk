@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
-/// What a plugin's frame is doing, as its holder (the runtime, until #83) says.
+/// What a plugin's frame is doing, as its holder (the runtime, ADR 0156) says.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FrameState {

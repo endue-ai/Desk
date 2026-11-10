@@ -1,5 +1,5 @@
 // Compositor mode (#81, ADR 0151): the CEF shell's compositor draws every window from the window
-// manager's model (crates/desk-wm), which this page feeds until #83 moves the window manager there.
+// manager's model (crates/desk-wm), which this page feeds while the runtime keeps the window manager's state (ADR 0156).
 // Whenever the desk changed it sends `compositor_desk`: the desk the runtime keeps (`wmDesk`), each
 // plugin frame's document and state with what its window says while it has no live frame, the
 // titles of the shell's own views, the top chips' edges and the live budget's settings, and the

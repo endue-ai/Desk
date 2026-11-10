@@ -28,7 +28,7 @@ desktops, the drawer and the focus read and write the runtime's saved JSON uncha
 - `host` (#81, ADR 0151): `Desk::host_plan` and `host_plan_at` with `Places` (windows back to front,
   panes' boxes, bars, what the page draws), `LiveBudget` (ADR 0134) and `Surfaces`, the protocol steps.
 - `interact` (#80, ADR 0153): `Wm` on the compositor's input (`pressed`, `grab`, `moved`, `released`,
-  `escape`, `run` an `Op`, `frame`, `mirror`, `Published`); `Gesture`, `Grip`, `Motion`; the only one (#83).
+  `escape`, `run` an `Op`, `frame`, `mirror`, `Published`); `Gesture`, `Grip`, `Motion`; no TS copy since #83.
 
 ## Test
 

@@ -3,7 +3,7 @@
 //! knows: each plugin frame's document and state, the titles of its own views, the top chips'
 //! edges, the live budget's two settings, what a window without a live frame says (the page's
 //! copy, in the desk's language), the last of `desk-wm`'s changes it took and where it lays a
-//! held window out. The runtime keeps the window manager's state until #83; the shell mirrors it
+//! held window out. The runtime keeps the window manager's state (ADR 0156); the shell mirrors it
 //! into `desk-wm`, which changes it on the compositor's input (ADR 0153) and places everything
 //! the compositor draws.
 
