@@ -1,13 +1,25 @@
-//! The macOS helper executable: every CEF subprocess (renderer, GPU, utility) of the shell.
+//! The macOS helper executable: every CEF subprocess (renderer, GPU, utility) of the shell. It
+//! enters Chromium's sandbox before anything else, the CEF framework included (`sandbox.rs`).
 
-fn main() {
+use std::process::ExitCode;
+
+fn main() -> ExitCode {
     let args = cef::args::Args::new();
+    // Dropped last, after the framework: CEF destroys the sandbox context just before the end.
+    #[cfg(target_os = "macos")]
+    let _sandbox = match desk_shell::sandbox::enter(&args) {
+        Ok(sandbox) => sandbox,
+        Err(why) => {
+            eprintln!("endue Desk helper: Chromium's sandbox did not start: {why}");
+            return ExitCode::FAILURE;
+        }
+    };
     #[cfg(target_os = "macos")]
     let _framework = {
         let exe = std::env::current_exe().unwrap_or_default();
         let loader = cef::library_loader::LibraryLoader::new(&exe, true);
         if !loader.load() {
-            std::process::exit(1);
+            return ExitCode::FAILURE;
         }
         loader
     };
@@ -18,5 +30,5 @@ fn main() {
         Some(&mut app),
         std::ptr::null_mut(),
     );
-    std::process::exit(code.max(0));
+    ExitCode::from(code.clamp(0, 255) as u8)
 }

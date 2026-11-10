@@ -82,8 +82,9 @@ fn main() -> ExitCode {
         // Compositor mode (#52) renders every page off screen.
         windowless_rendering_enabled: i32::from(desk_shell::compositor_window::enabled()),
         external_message_pump: 1,
-        // The sandbox needs the bundle's helpers signed for it; it comes with packaging (#46).
-        no_sandbox: 1,
+        // Chromium's sandbox: on for every subprocess on macOS, off on Linux and Windows until
+        // #61 proves them there (`sandbox.rs`, ADR 0148).
+        no_sandbox: desk_shell::sandbox::no_sandbox(),
         root_cache_path: root.to_string_lossy().as_ref().into(),
         log_severity: cef::LogSeverity::WARNING,
         ..Default::default()

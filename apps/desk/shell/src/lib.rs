@@ -32,6 +32,7 @@ pub mod probe;
 pub mod pump;
 pub mod renderer;
 pub mod run_event;
+pub mod sandbox;
 pub mod scheme;
 pub mod tray;
 pub mod web_host;
