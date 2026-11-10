@@ -148,11 +148,11 @@ pub(crate) fn check_nested_code(
     }
 }
 
-/// Whether a plugin runs code of its own: ui, logic and tool plugins, and connectors that are not
-/// http blocks.
+/// Whether a plugin runs code of its own: ui, logic, tool and native plugins, and connectors that
+/// are not http blocks.
 fn runs_code(manifest: &PluginManifest) -> bool {
     match manifest.kind {
-        PluginKind::Ui | PluginKind::Logic | PluginKind::Tool => true,
+        PluginKind::Ui | PluginKind::Logic | PluginKind::Tool | PluginKind::Native => true,
         PluginKind::Connector => manifest
             .connector
             .as_ref()

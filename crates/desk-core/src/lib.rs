@@ -93,6 +93,7 @@ mod log;
 mod manifest;
 mod marketplace;
 mod media_types;
+pub mod native;
 mod paths;
 mod perm;
 mod perm_log;

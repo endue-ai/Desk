@@ -20,6 +20,8 @@ desk-memory.workspace = true
 desk-platform = { path = "../desk-platform" }
 desk-plugin-host.workspace = true
 desk-sys = { workspace = true, features = ["fs", "calendar", "proc", "net", "shell"] }
+# Native plugins (#59): the environment their processes start with (no features: serde only).
+desk-surface.workspace = true
 desk-update.workspace = true
 # fs.url tokens (ADR 0041); jsonschema already brings it in.
 getrandom = "0.4"
@@ -31,6 +33,10 @@ serde_json.workspace = true
 # The history's content addresses (ADR 0076); already in the tree through the Wasm host.
 sha2 = "0.11"
 yaml_serde.workspace = true
+
+# Native plugins (#59): the child keeps its two connections across exec (`native/process.rs`).
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 desk-brain-endue.workspace = true

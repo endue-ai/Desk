@@ -36,7 +36,8 @@ fn validator() -> &'static jsonschema::Validator {
 }
 
 /// Validate the plugin folder `dir`: plugin.json must match the schema, its entry, when it has one
-/// (policy plugins have none), must exist, and so must a theme's font and image files.
+/// (policy plugins have none), must exist, and so must a theme's font and image files and a native
+/// plugin's program for this platform.
 /// Returns every problem found, each prefixed with where it is.
 pub fn validate_dir(dir: &Path) -> Result<PluginManifest, Vec<String>> {
     let text = fs::read_to_string(dir.join("plugin.json"))
@@ -57,6 +58,12 @@ pub fn validate_dir(dir: &Path) -> Result<PluginManifest, Vec<String>> {
     })?;
     if let Some(theme) = &manifest.theme {
         let problems = theme_assets(dir, theme);
+        if !problems.is_empty() {
+            return Err(problems);
+        }
+    }
+    if let Some(native) = &manifest.native {
+        let problems = crate::native::problems(dir, native);
         if !problems.is_empty() {
             return Err(problems);
         }
