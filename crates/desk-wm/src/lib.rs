@@ -19,6 +19,9 @@
 //! - `desk`: one `Desk` state holding all of it, its operations, and the `Arranger` (tile and
 //!   cascade, ADR 0116); `snapshot`: what `desk.windows.list` answers, as the contract's
 //!   `BrainDesk` (specs/bridge/v0, #82).
+//! - `host`: what the compositor draws for the desktop in front (#81): the bars' bands and the free
+//!   area, each window at its rectangle with its panes, the live budget, and the surfaces'
+//!   lifecycle steps.
 
 pub mod arrange;
 pub mod buffers;
@@ -30,6 +33,7 @@ pub mod desktops;
 pub mod drawer;
 pub mod fill;
 pub mod geometry;
+pub mod host;
 pub mod layout;
 mod math;
 pub mod migrate;
@@ -61,6 +65,10 @@ pub use fill::{fill_with, snap_rect, toggle_floating, toggle_maximize, unfilled,
 pub use geometry::{
     BELOW_ERIS, FREE, MIN, REF, SAFE, clamp_rect, free_area, free_top, from_screen, screen_area,
     to_screen,
+};
+pub use host::{
+    Bars, Decision, FrameDoc, FrameState, HostPane, HostWindow, LiveBudget, Plan, Seat, Step,
+    Surfaces,
 };
 pub use layout::{DesktopLayout, Saved, Visible};
 pub use minimap::{
