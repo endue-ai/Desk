@@ -66,6 +66,17 @@ the clients that exist work, and keep a slow bridge call from delaying a frame.
   global IOSurface, named by its id alone, would work across processes too (macOS 26 still looks
   them up), but any process could read it, and an id the desk looked up could be one of the desk's own
   surfaces: a plugin could show another window's pixels as its own.
+* **Tab** (#128). A native plugin has no engine to hand the focus back at its ends (CEF's
+  `OnTakeFocus`), so `specs/surface/v0` says it in two messages (`input.md`, Tab through a surface):
+  `focus.enter` with the `edge` Tab came in at (`first`, or `last` for Shift+Tab), and `focus.leave`
+  with the edge the focus went out past. The native host maps them onto ADR 0150's Tab through
+  stand-ins: the stand-in's `desk:stand-in-enter` reaches the process as `focus.enter`, never as a
+  page message, and `focus.leave` is the relay's `leave`, so the stand-in puts the page's focus on
+  that edge and Tab is pressed in the page once more. The stand-in takes it only while it has the
+  page's focus, so a plugin in the background cannot move the desk's focus. `desk-surface`'s
+  `FocusOrder` is a plugin's parts in Tab's order, and the example has two (Colour, Pause) with an
+  accessibility tree that names them. A web surface keeps its own path inside the desk's process
+  (the shim and `OnTakeFocus`), which means the same.
 * **Stop.** On `sleep`, `destroy`, the plugin turned off and the desk quitting, the desk sends the
   message, closes both connections and kills the process `graceMs` (2 s) later if it still runs; that
   end is no death. A hot reload (the plugin's files changed) stops the process and starts the new
@@ -99,4 +110,7 @@ stand-in frames), ADR 0151 and ADR 0153 (the window manager). Code: `crates/desk
 `crates/desk-surface/src/native/**`, `apps/desk/shell/src/native_host/**`,
 `examples/plugin-native-wgpu`. Tests: `crates/desk-core/tests/native_plugin.rs`,
 `examples/plugin-native-wgpu/tests/desk.rs`, `e2e/specs/native-plugin.spec.ts`. No section of
-`docs/ko/desk-structure.md` changes.
+`docs/ko/desk-structure.md` changes. Tab (#128): `specs/surface/v0/input.{md,schema.json}`,
+`crates/desk-surface/src/native/{focus,plugin}.rs`, `apps/desk/shell/src/native_host/{page,
+connection}.rs`, `examples/plugin-native-wgpu/src/parts.rs`, tested by the same three and
+`native_host/page.rs`'s own.
