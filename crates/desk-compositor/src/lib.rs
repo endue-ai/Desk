@@ -16,6 +16,8 @@
 //! - The look comes from the flat token table `theme.tokens` carries ([`Tokens`]): [`ChromeTheme`]
 //!   reads it, and [`Chrome`] builds window frames, title bars, bars, snap previews, toasts and
 //!   placeholders, and restyles them all in one pass when the look changes.
+//! - [`a11y`] keeps the desk's one accessibility tree in AccessKit's shape: the chrome's nodes and
+//!   every surface's tree grafted where it is drawn (#57).
 //!
 //! ```no_run
 //! use desk_compositor::*;
@@ -32,6 +34,7 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
+pub mod a11y;
 pub mod attach;
 mod camera;
 mod chrome;

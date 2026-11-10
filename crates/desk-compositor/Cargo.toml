@@ -20,6 +20,8 @@ etagere.workspace = true
 # Input (#56): the keymap's entries come from the runtime as JSON, a binding's args with them.
 serde.workspace = true
 serde_json.workspace = true
+# Accessibility (#57): the chrome's nodes and every surface's tree, grafted, as AccessKit updates.
+accesskit.workspace = true
 
 # macOS: an IOSurface a surface attached, wrapped as a Metal texture (`attach/iosurface.rs`).
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -32,6 +34,8 @@ objc2-core-foundation = { version = "0.3", default-features = false, features = 
 objc2-io-surface = { version = "0.3", default-features = false, features = ["std", "IOSurface", "IOSurfaceRef", "IOSurfaceTypes", "bitflags", "libc", "objc2", "objc2-core-foundation"] }
 
 [dev-dependencies]
+# The tree tests walk the updates as the platform adapters do (`tests/a11y_tree.rs`).
+accesskit_consumer.workspace = true
 png.workspace = true
 serde_json.workspace = true
 # Hit-testing properties (#58): no forking or timeouts, a fixed seed, no regression files.

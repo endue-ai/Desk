@@ -50,6 +50,12 @@ png = "0.18"
 # desk-compositor chrome text (ADR 0146): shaping, fallback and system fonts; the atlas packer.
 cosmic-text = "0.19"
 etagere = "0.3"
+# Accessibility (#57): the desk's one tree in AccessKit's shape, its consumer to walk it in checks,
+# and the winit adapter that speaks NSAccessibility, UI Automation and AT-SPI.
+# serde: a role crosses the surface protocol by name (kebab-case there, camelCase in AccessKit's).
+accesskit = { version = "0.25", features = ["serde"] }
+accesskit_consumer = "0.39"
+accesskit_winit = "0.34"
 
 [workspace.lints.rust]
 unsafe_code = "deny"
