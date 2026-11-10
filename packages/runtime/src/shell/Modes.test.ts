@@ -97,6 +97,24 @@ describe("the profile switcher", () => {
     expect(document.activeElement).toBe(chip("night"));
   });
 
+  it("stays open when a draw takes the focused chip away, and folds when the focus leaves", async () => {
+    store.set({ modesOpen: true });
+    const morning = chip("morning") as HTMLElement;
+    morning.focus();
+    // What Chromium says when a draw replaces the focused chip (jsdom and WebKit say nothing).
+    morning.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
+    morning.remove();
+    await Promise.resolve();
+    expect(store.get().modesOpen).toBe(true);
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    chip("night")?.focus();
+    outside.focus();
+    await Promise.resolve();
+    expect(store.get().modesOpen).toBe(false);
+    outside.remove();
+  });
+
   it("renames a profile as it is saved, its settings and plugins, not this setup", async () => {
     chip("scratch")?.click();
     root.querySelector<HTMLElement>("[data-key=menu-rename]")?.click();
