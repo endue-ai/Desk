@@ -61,7 +61,18 @@ test("a plugin that fails shows up in the Plugins drawer with a warning", async 
 
 test("the open drawer survives a reload of the toolbar", async ({ page }) => {
   const bar = await open(page);
+  // The open drawer goes to the desk as the toolbar's state (desk:state), a message from the frame's
+  // own process on Chromium: the update reloads the frame once the desk has it, as one a person makes
+  // later would. Sent at once, it navigated the frame first and the state came with no source the
+  // desk could tell (frames.spec.ts has the same).
+  await page.evaluate(() =>
+    window.addEventListener("message", (event) => {
+      if (event.data?.type === "desk:state")
+        document.body.dataset.kept = JSON.stringify(event.data.state);
+    }),
+  );
   await bar.getByRole("button", { name: /^Access/ }).click();
+  await expect(page.locator("body")).toHaveAttribute("data-kept", '{"open":"access"}');
   await page.evaluate(() =>
     window.__desk.stub.emit({
       event: "plugin.changed",
