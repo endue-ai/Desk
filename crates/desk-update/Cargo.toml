@@ -46,6 +46,14 @@ required-features = ["install"]
 name = "install_packages"
 required-features = ["install"]
 
+[[test]]
+name = "read_only"
+required-features = ["install"]
+
+[[test]]
+name = "admin_swap"
+required-features = ["install"]
+
 [dev-dependencies]
 # Judges the specs/update/v0 vectors by their schemas (tests/vectors.rs).
 jsonschema.workspace = true

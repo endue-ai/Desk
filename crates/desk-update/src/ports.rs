@@ -26,6 +26,13 @@ pub trait Installer: Send + Sync {
     /// Install `bytes`, the verified artifact of `chosen`, and restart into it. Returns `Ok` only
     /// when the restart is under way.
     fn install(&self, chosen: &Chosen, bytes: &[u8]) -> Result<(), String>;
+
+    /// Why the last install of `chosen` did not go in, when it ran after the desk had quit (a
+    /// Windows installer whose elevation prompt was declined) and left word. Asked once, as the
+    /// updater starts with `chosen` still staged; the answer shows as `failed` with the build staged.
+    fn last_attempt(&self, _chosen: &Chosen) -> Option<String> {
+        None
+    }
 }
 
 /// What the app tells the updater about itself.

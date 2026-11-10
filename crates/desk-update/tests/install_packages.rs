@@ -10,6 +10,7 @@ use std::path::Path;
 use desk_update::install::{Layout, Running, install};
 use support::bundle::{Entry, ID, app_tar_gz, chosen, info_plist, installed, names, tar_gz};
 use support::dir;
+use support::prompt::Never;
 
 const APP: &str = "darwin-aarch64-app";
 
@@ -19,6 +20,7 @@ fn refused(layout: &Layout, target: &str, file: &str, bytes: &[u8], scratch: &Pa
         &chosen("0.6.0", target, file, bytes),
         bytes,
         scratch,
+        &Never,
     )
     .unwrap_err()
 }
@@ -79,6 +81,7 @@ fn an_appimage_is_renamed_over_the_installed_one_and_keeps_its_mode() {
         &chosen("0.6.0", target, "d.AppImage", &bytes),
         &bytes,
         &root,
+        &Never,
     );
     assert_eq!(relaunch.unwrap().program, file);
     assert_eq!(fs::read(&file).unwrap(), bytes);
@@ -101,7 +104,7 @@ fn a_windows_installer_waits_in_the_updates_folder_for_the_desk_to_quit() {
     assert!(why.contains("is not an NSIS installer"), "{why}");
     let setup = b"MZ setup".to_vec();
     let staged = chosen("0.6.0", "windows-x86_64-nsis", "s-setup.exe", &setup);
-    let relaunch = install(&layout, &staged, &setup, &scratch).unwrap();
+    let relaunch = install(&layout, &staged, &setup, &scratch, &Never).unwrap();
     assert!(relaunch.program.ends_with("powershell.exe"), "{relaunch:?}");
     assert_eq!(relaunch.args[4], "-EncodedCommand");
     assert_eq!(fs::read(scratch.join("0.6.0/install.exe")).unwrap(), setup);

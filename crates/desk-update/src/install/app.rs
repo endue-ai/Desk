@@ -1,17 +1,35 @@
 //! macOS: the `.app.tar.gz` unpacked beside the installed app, checked whole, then swapped with it in
 //! one step (`swap::exchange`). The archive's top folder is the app, whatever its name, as Tauri's
-//! updater reads it. The old app ends in the unpack folder, which goes once the swap is done.
+//! updater reads it. The old app ends in the unpack folder, which goes once the swap is done. Where
+//! the desk may not write beside its app or move it, macOS asks for an administrator once and its
+//! step swaps the app in (`admin.rs`, #99).
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use flate2::read::GzDecoder;
 
-use super::{Relaunch, beside, io_error, quarantine, swap};
+use super::elevate::Elevate;
+use super::{Relaunch, admin, beside, io_error, quarantine, swap};
 use crate::status::Chosen;
 
-/// Install the app in `bytes` in place of `app`; answers its executable to start again.
-pub fn install(app: &Path, chosen: &Chosen, bytes: &[u8]) -> Result<Relaunch, String> {
+/// How the install in place ended.
+enum Placed {
+    /// The new app is in, with this executable.
+    Done(String),
+    /// The desk may not write beside the app or move it: nothing changed.
+    Denied,
+}
+
+/// Install the app in `bytes` in place of `app`, through `elevate` when the desk may not write
+/// there; answers its executable to start again.
+pub fn install(
+    app: &Path,
+    chosen: &Chosen,
+    bytes: &[u8],
+    scratch: &Path,
+    elevate: &dyn Elevate,
+) -> Result<Relaunch, String> {
     if !bytes.starts_with(&[0x1f, 0x8b]) {
         return Err(format!(
             "the update for {} is not an .app.tar.gz",
@@ -19,25 +37,54 @@ pub fn install(app: &Path, chosen: &Chosen, bytes: &[u8]) -> Result<Relaunch, St
         ));
     }
     let current = bundle_id(app);
-    let folder =
-        beside(app, &chosen.version).ok_or_else(|| format!("{} is not an app", app.display()))?;
-    let _ = fs::remove_dir_all(&folder);
-    fs::create_dir(&folder).map_err(|e| io_error("write to", parent(app), &e))?;
-    let installed = unpack(bytes, &folder).and_then(|new| {
-        let executable = check(&new, current.as_deref())?;
-        quarantine::lift(&new, &new.join("Contents/MacOS").join(&executable))?;
-        swap::exchange(app, &new, &folder.join("previous.app"))
-            .map_err(|e| io_error("replace", app, &e))?;
-        Ok(executable)
-    });
-    // The unpack folder holds the old app now, or what failed to become the new one.
-    let _ = fs::remove_dir_all(&folder);
-    let executable = installed?;
+    let executable = match in_place(app, chosen, bytes, current.as_deref())? {
+        Placed::Done(executable) => executable,
+        Placed::Denied => admin::install(app, chosen, bytes, scratch, current.as_deref(), elevate)?,
+    };
     // A new modification time makes Launch Services read the new Info.plist.
     let _ = fs::File::open(app).and_then(|dir| dir.set_modified(std::time::SystemTime::now()));
     Ok(Relaunch::program(
         app.join("Contents/MacOS").join(executable),
     ))
+}
+
+/// Unpack beside `app`, check, swap; `Denied` when the folder or the app may not be written.
+fn in_place(
+    app: &Path,
+    chosen: &Chosen,
+    bytes: &[u8],
+    current: Option<&str>,
+) -> Result<Placed, String> {
+    let folder =
+        beside(app, &chosen.version).ok_or_else(|| format!("{} is not an app", app.display()))?;
+    let _ = fs::remove_dir_all(&folder);
+    match fs::create_dir(&folder) {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => return Ok(Placed::Denied),
+        Err(e) => return Err(io_error("write to", parent(app), &e)),
+    }
+    let installed = unpack_checked(bytes, &folder, current).and_then(|(new, executable)| {
+        quarantine::lift(&new, &new.join("Contents/MacOS").join(&executable))?;
+        match swap::exchange(app, &new, &folder.join("previous.app")) {
+            Ok(()) => Ok(Placed::Done(executable)),
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => Ok(Placed::Denied),
+            Err(e) => Err(io_error("replace", app, &e)),
+        }
+    });
+    // The unpack folder holds the old app now, or what failed to become the new one.
+    let _ = fs::remove_dir_all(&folder);
+    installed
+}
+
+/// Unpack `bytes` into `folder` and check the app it holds; answers the app and its executable.
+pub fn unpack_checked(
+    bytes: &[u8],
+    folder: &Path,
+    current: Option<&str>,
+) -> Result<(PathBuf, String), String> {
+    let new = unpack(bytes, folder)?;
+    let executable = check(&new, current)?;
+    Ok((new, executable))
 }
 
 fn parent(app: &Path) -> &Path {

@@ -4,6 +4,10 @@
 
 #[cfg(feature = "install")]
 pub mod bundle;
+#[cfg(feature = "install")]
+pub mod mac;
+#[cfg(feature = "install")]
+pub mod prompt;
 
 use std::collections::BTreeMap;
 use std::io::Cursor;

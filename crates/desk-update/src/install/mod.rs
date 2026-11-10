@@ -6,9 +6,14 @@
 //! the ones Tauri's updater reads, so one release serves a Tauri desk and a CEF desk.
 //!
 //! Every step checks before it changes anything: the bytes are the package the layout takes, the
-//! folder can be written, the new app is whole. A failed install leaves the running desk as it was.
+//! new app is whole. Where the desk may not write, the OS asks the person once (#99, ADR 0163): an
+//! administrator's step swaps the app in on macOS, `pkexec` installs a `.deb`, UAC runs the Windows
+//! installer; an AppImage says how to update it by hand. A failed or declined install leaves the
+//! running desk as it was and the build staged.
 
+mod admin;
 mod app;
+mod elevate;
 mod file;
 mod quarantine;
 mod relaunch;
@@ -16,10 +21,12 @@ mod swap;
 mod windows;
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use crate::ports::Installer;
 use crate::status::Chosen;
 
+pub use elevate::{Elevate, Refusal, Step, SystemPrompt};
 pub use relaunch::Relaunch;
 
 /// How the running desk is installed: what an update replaces and starts again.
@@ -131,18 +138,20 @@ pub fn base_target() -> Option<String> {
 }
 
 /// Put `bytes`, the verified artifact of `chosen`, in place of the desk installed as `layout`, using
-/// `scratch` (the updates folder) for files the OS installer reads. Answers what starts the desk again
-/// once it has quit. On Windows nothing changes until then: the installer waits for the desk to end.
+/// `scratch` (the updates folder) for files the OS installer reads and `elevate` for what needs an
+/// administrator. Answers what starts the desk again once it has quit. On Windows nothing changes
+/// until then: the installer waits for the desk to end.
 pub fn install(
     layout: &Layout,
     chosen: &Chosen,
     bytes: &[u8],
     scratch: &Path,
+    elevate: &dyn Elevate,
 ) -> Result<Relaunch, String> {
     match layout {
-        Layout::App { app } => app::install(app, chosen, bytes),
+        Layout::App { app } => app::install(app, chosen, bytes, scratch, elevate),
         Layout::AppImage { file } => file::install_appimage(file, chosen, bytes),
-        Layout::Deb { exe } => file::install_deb(exe, chosen, bytes, scratch),
+        Layout::Deb { exe } => file::install_deb(exe, chosen, bytes, scratch, elevate),
         Layout::Nsis { exe } => windows::stage(exe, windows::Kind::Nsis, chosen, bytes, scratch),
         Layout::Msi { exe } => windows::stage(exe, windows::Kind::Msi, chosen, bytes, scratch),
     }
@@ -151,18 +160,32 @@ pub fn install(
 /// The app's restart: told what starts the desk again, it quits the desk and starts that once it has.
 pub type Restart = Box<dyn Fn(Relaunch) -> Result<(), String> + Send + Sync>;
 
-/// The `Installer` a desk without Tauri supplies: [`install`] into its layout, then its restart.
+/// What became of the last install of `chosen` that ran once the desk had quit (Windows), told once:
+/// why it did not go in, when its script said so. The note is removed as it is read.
+pub fn last_attempt(scratch: &Path, chosen: &Chosen) -> Option<String> {
+    windows::last_attempt(scratch, chosen)
+}
+
+/// The `Installer` a desk without Tauri supplies: [`install`] into its layout through `elevate`
+/// (the app's [`SystemPrompt`]), then its restart.
 pub struct PackageInstaller {
     layout: Layout,
     scratch: PathBuf,
+    elevate: Arc<dyn Elevate>,
     restart: Restart,
 }
 
 impl PackageInstaller {
-    pub fn new(layout: Layout, scratch: impl Into<PathBuf>, restart: Restart) -> Self {
+    pub fn new(
+        layout: Layout,
+        scratch: impl Into<PathBuf>,
+        elevate: Arc<dyn Elevate>,
+        restart: Restart,
+    ) -> Self {
         Self {
             layout,
             scratch: scratch.into(),
+            elevate,
             restart,
         }
     }
@@ -174,20 +197,29 @@ impl PackageInstaller {
 
 impl Installer for PackageInstaller {
     fn install(&self, chosen: &Chosen, bytes: &[u8]) -> Result<(), String> {
-        let relaunch = install(&self.layout, chosen, bytes, &self.scratch)?;
+        let relaunch = install(&self.layout, chosen, bytes, &self.scratch, &*self.elevate)?;
         (self.restart)(relaunch)
+    }
+
+    fn last_attempt(&self, chosen: &Chosen) -> Option<String> {
+        last_attempt(&self.scratch, chosen)
     }
 }
 
-/// `what` failed at `path`, in words that say when it is the folder's permissions.
+/// `what` failed at `path`, in words that say when it is the folder's permissions or a read-only
+/// volume.
 fn io_error(what: &str, path: &Path, error: &std::io::Error) -> String {
-    if error.kind() == std::io::ErrorKind::PermissionDenied {
-        format!(
-            "Desk has no permission to {what} {}: install the update by hand",
-            path.display()
-        )
-    } else {
-        format!("Desk could not {what} {}: {error}", path.display())
+    match error.kind() {
+        std::io::ErrorKind::PermissionDenied => {
+            format!("Desk has no permission to {what} {}", path.display())
+        }
+        std::io::ErrorKind::ReadOnlyFilesystem => {
+            format!(
+                "Desk cannot {what} {}: it is on a read-only volume",
+                path.display()
+            )
+        }
+        _ => format!("Desk could not {what} {}: {error}", path.display()),
     }
 }
 

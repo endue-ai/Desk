@@ -3,17 +3,19 @@
 //! core serves `update.*` from it, so the runtime's update row and `desk.update.*` commands work as
 //! on the Tauri desk, and the tray offers "Restart to update (<version>)" while a build is staged.
 //!
-//! Applying swaps the installed app (or AppImage, or runs the package or installer), then quits the
-//! desk the way the menu's Quit does; once CEF has shut down, `relaunch_if_asked` lets go of what one
-//! desk holds (the single-instance lock, the desk socket) and starts the updated desk, its output in
-//! `<data>/updates/restart.log`. Made only when this build carries an updater key and was installed
-//! from a package; a development build answers `update.*` with `unsupported`.
+//! Applying swaps the installed app (or AppImage, or runs the package or installer), asking the OS
+//! once for an administrator where the desk may not write (macOS's prompt, `pkexec`, UAC; ADR
+//! 0163), then quits the desk the way the menu's Quit does; once CEF has shut down,
+//! `relaunch_if_asked` lets go of what one desk holds (the single-instance lock, the desk socket) and
+//! starts the updated desk, its output in `<data>/updates/restart.log`. Made only when this build
+//! carries an updater key and was installed from a package; a development build answers `update.*`
+//! with `unsupported`.
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use desk_update::https::Https;
-use desk_update::install::{self, Layout, PackageInstaller, Relaunch, Running};
+use desk_update::install::{self, Layout, PackageInstaller, Relaunch, Running, SystemPrompt};
 use desk_update::{Config, Prefs, State, Status, Updater};
 
 use crate::menu::Choice;
@@ -41,9 +43,11 @@ pub fn updater(data: &Path, pump: &Pump) -> Option<Updater> {
         dir: updates.clone(),
     };
     let pump = pump.clone();
+    // Where the desk may not write its app, the OS asks the person once (#99, ADR 0163).
     let installer = PackageInstaller::new(
         layout,
         updates,
+        Arc::new(SystemPrompt),
         Box::new(move |relaunch| restart(&pump, relaunch)),
     );
     let transport = Arc::new(Https::new(release::allows_http(&base)));

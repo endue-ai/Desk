@@ -39,8 +39,9 @@ struct Inner {
 }
 
 impl Updater {
-    /// An updater for the running build. A build staged by an earlier run comes back as `staged`;
-    /// one that is not newer than the running build (the update went in) is removed.
+    /// An updater for the running build. A build staged by an earlier run comes back as `staged`,
+    /// or `failed` with the installer's word when its last install did not go in; one that is not
+    /// newer than the running build (the update went in) is removed.
     pub fn new(
         config: Config,
         transport: Arc<dyn Transport>,
@@ -55,7 +56,14 @@ impl Updater {
         let mut status = Status::new(&config.version, config.commit.clone(), prefs.channel);
         match stage.staged() {
             Some(chosen) if newer(&chosen, &current) => {
-                status = status.at(State::Staged, Some(chosen), true);
+                let reason = installer.last_attempt(&chosen);
+                let state = if reason.is_some() {
+                    State::Failed
+                } else {
+                    State::Staged
+                };
+                status = status.at(state, Some(chosen), true);
+                status.reason = reason;
             }
             Some(_) => stage.discard(),
             None => {}
