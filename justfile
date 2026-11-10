@@ -35,8 +35,9 @@ test-unit:
 
 # Runtime tests in headless Chromium on the browser bridge stub, four workers at most; Playwright
 # arguments pass through (`just test-e2e e2e/shell.spec.ts --update-snapshots`; ADR 0018, ADR 0144)
+[positional-arguments]
 test-e2e *args:
-    node scripts/e2e.mjs test {{args}}
+    node scripts/e2e.mjs test "$@"
 
 # Static checks: formatting, lints, types, workflows, specs and the theme market (not the Tauri app)
 check:
@@ -95,8 +96,9 @@ bundle-app: (_not-macos "bundle-app" "builds the Linux .deb only; the e2e workfl
 # debugging port, one app and fresh HOME per spec file; arguments pass to wdio. macOS, Linux under a
 # display (`xvfb-run`), Windows (ADR 0144). DESK_E2E_SHELL=tauri drives `just bundle-app`'s Tauri app
 # through tauri-driver instead, on Linux only (ADR 0006), until the Tauri shell is deleted
+[positional-arguments]
 test-app-e2e *args:
-    pnpm exec wdio run e2e/wdio.conf.ts {{args}}
+    pnpm exec wdio run e2e/wdio.conf.ts "$@"
 
 # Install smoke: launch the CEF desk's build with a temp HOME, wait 60 s for the ready line, quit it
 # with SIGTERM (it has no package to install until #46). DESK_E2E_SHELL=tauri builds and installs the
