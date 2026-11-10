@@ -41,6 +41,11 @@ three OSes, and the runtime suites then test the engine the app ships.
 * `--remote-debugging-port` is on in debug and test builds only; a release build never opens it.
 * The runtime suites run on Chromium: one engine and one visual baseline for app, runtime and plugin
   tests. WebKit baselines are regenerated once, and a person reviews the differences.
+* That Chromium is the CEF desk's own build: Chrome for Testing's headless shell of the version CEF
+  ships, pinned by SHA-256 beside its chromedriver (`e2e/driver/chrome-for-testing.json`), not
+  Playwright's bundled browser. #48 found Playwright's (156.0.8078.4, early on the same branch) killing
+  a plugin frame's renderer when a just-created field took the focus, which CEF's 156.0.8078.88 and the
+  headless shell of that build do not.
 * Once the engine is Chromium, the Docker WebKit runner and its two slots per machine end for e2e:
   they existed because native WebKit's windows crashed WindowServer on macOS. `just test-e2e` stays
   the only entry, and the guard and the agent hook stay.

@@ -1,5 +1,6 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig } from "@playwright/test";
 import { e2eGuard } from "../../scripts/e2e/guard.mjs";
+import { chromium, chromiumSetup } from "./e2e/chromium";
 import { baseURL, webServer } from "./e2e/port";
 
 const ci = Boolean(process.env.CI);
@@ -20,16 +21,13 @@ export default defineConfig({
     baseURL,
     trace: "retain-on-failure",
   },
-  // The engine the desk ships on every OS (ADR 0140), headless (ADR 0144).
+  // The engine the desk ships on every OS (ADR 0140), its own build, headless (ADR 0144).
   projects: [
     {
       name: "chromium",
-      use: {
-        ...devices["Desktop Chrome"],
-        viewport: { width: 1280, height: 800 },
-        deviceScaleFactor: 1,
-      },
+      use: chromium,
     },
   ],
+  globalSetup: chromiumSetup,
   webServer,
 });

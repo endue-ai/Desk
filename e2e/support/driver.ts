@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { type CefDesk, cefBinary, dataDir, freePort, launchCef } from "./cef";
-import { ensureChromedriver } from "./chromedriver";
+import { ensureChromedriver } from "./chrome-for-testing";
 
 /** The shell the specs drive. */
 export const SHELL: "cef" | "tauri" = process.env.DESK_E2E_SHELL === "tauri" ? "tauri" : "cef";

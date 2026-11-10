@@ -288,7 +288,7 @@ On main:
 - The runtime e2e runs headless Chromium natively (ADR 0144, which ended ADR 0018's Linux container);
   its fixture server binds to `127.0.0.1`. The app e2e opens the CEF desk's remote debugging port on
   `127.0.0.1` for a debug build only; its chromedriver is pinned by SHA-256
-  (`e2e/driver/chromedriver.json`) and accepts local connections only.
+  (`e2e/driver/chrome-for-testing.json`) and accepts local connections only.
 - Development servers bind to loopback: the e2e fixture server and `examples/brain-echo` on
   `127.0.0.1`, the app's dev server on `localhost`. brain-echo accepts any token, which is fine only
   because it is local.

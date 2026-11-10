@@ -1,5 +1,6 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig } from "@playwright/test";
 import { e2eGuard } from "../../scripts/e2e/guard.mjs";
+import { chromium, chromiumSetup } from "./e2e/chromium";
 import { baseURL, webServer } from "./e2e/port";
 
 // Performance runs: real time, one worker, headless Chromium (ADR 0144). `just perf-opening` checks;
@@ -16,12 +17,9 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: {
-        ...devices["Desktop Chrome"],
-        viewport: { width: 1280, height: 800 },
-        deviceScaleFactor: 1,
-      },
+      use: chromium,
     },
   ],
+  globalSetup: chromiumSetup,
   webServer,
 });

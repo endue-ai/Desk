@@ -1,22 +1,42 @@
 {
-  "$comment": "The chromedriver the app e2e attaches to the CEF desk with (ADR 0144): Chrome for Testing's build for the app's Chromium, by platform, with the SHA-256 of each zip. e2e/support/chromedriver.ts downloads and checks them. chromium follows the cef crate (Cargo.toml) and its cef_version.h; Chrome for Testing has no Linux build of 156.0.8078.88, so linux64 takes the build's latest one there (chromedriver checks the major version only). A CEF bump updates this file in the same change.",
+  "$comment": "Chrome for Testing's builds for the app's Chromium (ADR 0144), by platform, with the SHA-256 of each zip; e2e/support/chrome-for-testing.ts downloads and checks them. chromedriver: the app e2e attaches to the CEF desk with it. chrome-headless-shell: the runtime e2e and perf run on it (packages/runtime/e2e/chromium.ts), the same build as the CEF desk's engine rather than Playwright's own, an earlier build of the branch whose renderer is killed when a just-created field takes the focus. chromium follows the cef crate (Cargo.toml) and its cef_version.h; Chrome for Testing has no Linux build of 156.0.8078.88, so linux64 takes the branch's latest one there (chromedriver checks the major version only). A CEF bump updates this file in the same change.",
   "chromium": "156.0.8078.88",
-  "downloads": {
-    "mac-arm64": {
-      "version": "156.0.8078.88",
-      "sha256": "43925a22ae922db5a2713971f84efc79be2ac171d059c1bf5c21614962f46b62"
+  "builds": {
+    "chromedriver": {
+      "mac-arm64": {
+        "version": "156.0.8078.88",
+        "sha256": "43925a22ae922db5a2713971f84efc79be2ac171d059c1bf5c21614962f46b62"
+      },
+      "mac-x64": {
+        "version": "156.0.8078.88",
+        "sha256": "428e387a65237cac999ac5e222b18ea0d179b04e2969d4ee0e1f9cbb60581876"
+      },
+      "linux64": {
+        "version": "156.0.8078.80",
+        "sha256": "cae58bbd262ba5c8a0ce2540f44254b6e789efc4fe9b18bbb4a00487a9f5859e"
+      },
+      "win64": {
+        "version": "156.0.8078.88",
+        "sha256": "dac8ff8da8c3023c2cceb5251326ec70c1edd619627f2f7b99b143cd3aa51bb3"
+      }
     },
-    "mac-x64": {
-      "version": "156.0.8078.88",
-      "sha256": "428e387a65237cac999ac5e222b18ea0d179b04e2969d4ee0e1f9cbb60581876"
-    },
-    "linux64": {
-      "version": "156.0.8078.80",
-      "sha256": "cae58bbd262ba5c8a0ce2540f44254b6e789efc4fe9b18bbb4a00487a9f5859e"
-    },
-    "win64": {
-      "version": "156.0.8078.88",
-      "sha256": "dac8ff8da8c3023c2cceb5251326ec70c1edd619627f2f7b99b143cd3aa51bb3"
+    "chrome-headless-shell": {
+      "mac-arm64": {
+        "version": "156.0.8078.88",
+        "sha256": "eefaaf82d8dd20a1529835eb544d3f83ee5bfd093836233e3364c0dcfd5394c4"
+      },
+      "mac-x64": {
+        "version": "156.0.8078.88",
+        "sha256": "c5bfba1d87c2d7f919219cbef55b1914cd0680e9d999c25afba15a7277828f13"
+      },
+      "linux64": {
+        "version": "156.0.8078.80",
+        "sha256": "547dcd374e02961bf998f6046a267644f8502225c36bb78ca307dab32a0b3eb4"
+      },
+      "win64": {
+        "version": "156.0.8078.88",
+        "sha256": "b58d049cf4a3b22293ed221101715babcd934ffb887e0e4b542afe9cce34ce35"
+      }
     }
   }
 }
