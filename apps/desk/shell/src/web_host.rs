@@ -11,6 +11,7 @@
 
 pub mod client;
 pub mod clock;
+mod copy_wake;
 pub mod cursor;
 pub mod drag;
 pub mod frames;
@@ -89,7 +90,9 @@ pub struct WebHost {
 
 impl WebHost {
     /// A host whose surfaces' messages go to `sink`; `desk` answers their pages' bridge calls.
+    /// Input to a cold desk wakes the GPU's copies on `sink`'s device (#133, `copy_wake.rs`).
     pub fn new(sink: Arc<dyn SurfaceSink>, relay: Relay, desk: Option<Arc<Desk>>) -> WebHost {
+        copy_wake::start(Arc::clone(&sink));
         WebHost {
             inner: Arc::default(),
             sink,
