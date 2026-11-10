@@ -123,6 +123,8 @@ export function installFrames(
     host?.unloaded(id, kept);
     return true;
   };
+  /** The looks due when a frame's grace after loading again ends. */
+  const graces: (() => void)[] = [];
   /** A frame loading again for what waits on it stays while the host hears that it woke. */
   const loading = (id: string) => {
     const since = loaded.get(id);
@@ -143,6 +145,8 @@ export function installFrames(
     remount: (id) => {
       loaded.set(id, timers.now());
       surfaces.remount(id);
+      // With a host's set, look again once the grace ends: the set may have left the frame out.
+      if (windows?.kept) graces.push(timers.after(LOADING_MS, () => changed()));
     },
     timers,
   });
@@ -222,6 +226,7 @@ export function installFrames(
     responses,
     dispose() {
       for (const off of offs) off?.();
+      for (const cancel of graces) cancel();
       win.removeEventListener("resize", changed);
       reloads.dispose();
       watch.dispose();

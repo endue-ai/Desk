@@ -108,5 +108,12 @@ describe("a live budget kept by the window host", () => {
     expect(b?.heard.find((m) => m.type === "desk:init")).toMatchObject({
       restored: { count: 3 },
     });
+    // Left out again just after loading: it stays for its grace (what waits for it), then goes,
+    // with nothing else happening.
+    await decide(["a.one"]);
+    await flush(2_000);
+    expect(runtime.frames.asleep("b.two")).toBe(false);
+    await flush(10_000);
+    expect(runtime.frames.asleep("b.two")).toBe(true);
   });
 });
