@@ -9,7 +9,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { inflateSync } from "node:zlib";
 import { browser } from "@wdio/globals";
-import { composited } from "./desk";
 import type { Rect } from "./windows";
 
 export interface Image {
@@ -123,8 +122,7 @@ export async function composedFrame(): Promise<Buffer> {
 
 /** The desk's viewport now, `cssWidth` CSS pixels wide (desk.windows.list's screen). */
 export async function screenshot(cssWidth: number): Promise<Image> {
-  if (await composited()) return decodePng(await composedFrame(), cssWidth);
-  return decodePng(Buffer.from(await browser.takeScreenshot(), "base64"), cssWidth);
+  return decodePng(await composedFrame(), cssWidth);
 }
 
 /**

@@ -56,8 +56,7 @@ export function appEnv(
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(process.env)) {
-    // DESK_COMPOSITOR=1 runs the specs on the compositor's desk (#81, ADR 0151).
-    if (!/^(XDG_|DESK_)/.test(key) || key === "DESK_COMPOSITOR") env[key] = value;
+    if (!/^(XDG_|DESK_)/.test(key)) env[key] = value;
   }
   const spec: NodeJS.ProcessEnv = {
     ...env,

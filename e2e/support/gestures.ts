@@ -1,16 +1,14 @@
 // The person's pointer and keys on the desk, as WebDriver actions in the desk's viewport (CSS
 // pixels), for the windows-* specs (#82). Points come from desk.windows.list's rects and the
-// chrome's metrics below, never from the page. On the compositor's desk (`DESK_COMPOSITOR=1`)
-// drags, their release and Escape go through the compositor's own input instead
-// (`compositor_input`, support/compositor.ts), where desk-wm moves, resizes, snaps and pans the
-// windows (#80, ADR 0153); the composed frames are the screen. A drag can be held (`hold`) so a
+// chrome's metrics below, never from the page. Drags, their release and Escape go through the
+// compositor's own input (`compositor_input`, support/compositor.ts), where desk-wm moves,
+// resizes, snaps and pans the windows (#80, ADR 0153); the composed frames are the screen. A drag can be held (`hold`) so a
 // spec looks at the desk mid-drag, then `release`d. Keys go as their own action so a held button
 // stays down (browser.keys would release it). The desk keeps drawing while they run (frames.ts),
 // or a locked screen would hold each move for seconds.
 import { browser } from "@wdio/globals";
 import { feed } from "./compositor";
-import { composited } from "./desk";
-import { drawing, filming } from "./frames";
+import { drawing } from "./frames";
 import { composedFrame } from "./pixels";
 import { type Desk, onScreen, type Rect, rectOf } from "./windows";
 
@@ -114,20 +112,6 @@ async function perform(pointer: PointerAction[], held: string[] = []): Promise<v
   await drawing(() => browser.performActions(sequences as never));
 }
 
-/**
- * The straight path from `from` to `to` in `steps` moves. Each move is one event: chromedriver
- * spreads a move with a duration over ticks it waits a frame for, and a desk behind a locked
- * screen draws no frames, so a 16 ms move takes seconds there.
- */
-function path(from: Point, to: Point, steps: number): PointerAction[] {
-  return Array.from({ length: steps }, (_, i) =>
-    at({
-      x: from.x + ((to.x - from.x) * (i + 1)) / steps,
-      y: from.y + ((to.y - from.y) * (i + 1)) / steps,
-    }),
-  );
-}
-
 /** The compositor's input events (`compositor_input`): moves, the primary button, Shift, keys. */
 const toward = (p: Point) => ({ type: "pointerMoved", x: Math.round(p.x), y: Math.round(p.y) });
 const button = (pressed: boolean) => ({ type: "pointerButton", button: "left", pressed });
@@ -157,73 +141,28 @@ export interface DragOptions {
 
 /** Press at `from`, move to `to` and let go (unless `hold`). */
 export async function drag(from: Point, to: Point, options: DragOptions = {}): Promise<void> {
-  if (await composited()) {
-    const { steps: n = 8, keys = [], hold = false } = options;
-    const held = keys.includes(KEY.shift);
-    const events = [
-      toward(from),
-      ...(held ? [shift(true)] : []),
-      button(true),
-      ...line(from, to, n),
-      ...(hold ? [] : [button(false)]),
-      ...(held && !hold ? [shift(false)] : []),
-    ];
-    await feed(events);
-    return;
-  }
-  const { steps = 8, keys = [], hold = false } = options;
-  const actions: PointerAction[] = [
-    at(from),
-    { type: "pointerDown", button: 0 },
-    ...path(from, to, steps),
+  const { steps: n = 8, keys = [], hold = false } = options;
+  const held = keys.includes(KEY.shift);
+  const events = [
+    toward(from),
+    ...(held ? [shift(true)] : []),
+    button(true),
+    ...line(from, to, n),
+    ...(hold ? [] : [button(false)]),
+    ...(held && !hold ? [shift(false)] : []),
   ];
-  if (!hold) actions.push({ type: "pointerUp", button: 0 });
-  await perform(actions, keys);
+  await feed(events);
 }
 
 /**
- * One drag through `stops`, resting `rest` ms at each, then `last` pressed (Escape, say) before the
- * button lets go: all in one WebDriver call, since chromedriver does not keep a button held from
- * one call to the next for moves. The screen is filmed meanwhile (frames.ts); the frames come back
- * in order, PNGs, for the spec to find the states the desk went through.
+ * One drag through `stops`, resting `rest` ms at each, then `last` pressed (Escape) before the
+ * button lets go. The composed frame is read again and again while the pointer rests at each stop;
+ * the frames come back in order, PNGs, for the spec to find the states the desk went through.
  */
 export async function walk(
   from: Point,
   stops: Point[],
   { rest = 700, last }: { rest?: number; last?: string } = {},
-): Promise<Buffer[]> {
-  if (await composited()) return walkComposited(from, stops, rest, last);
-  const pointer: PointerAction[] = [at(from), { type: "pointerDown", button: 0 }];
-  let here = from;
-  for (const stop of stops) {
-    pointer.push(...path(here, stop, 6), { type: "pause", duration: rest });
-    here = stop;
-  }
-  const keys: KeyAction[] = pointer.map((): KeyAction => ({ type: "pause", duration: 0 }));
-  if (last) {
-    pointer.push({ type: "pause", duration: 0 }, { type: "pause", duration: 0 });
-    keys.push({ type: "keyDown", value: last }, { type: "keyUp", value: last });
-  }
-  pointer.push({ type: "pointerUp", button: 0 });
-  keys.push({ type: "pause", duration: 0 });
-  const sequences = [
-    { type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: pointer },
-    { type: "key", id: "keyboard", actions: keys },
-  ];
-  const { frames } = await filming(() => browser.performActions(sequences as never));
-  await browser.releaseActions();
-  return frames;
-}
-
-/**
- * `walk` on the compositor's desk: the composed frame read again and again while the pointer rests
- * at each stop, the frames in order.
- */
-async function walkComposited(
-  from: Point,
-  stops: Point[],
-  rest: number,
-  last?: string,
 ): Promise<Buffer[]> {
   const frames: Buffer[] = [];
   const film = async (ms: number) => {
@@ -248,7 +187,7 @@ async function walkComposited(
 
 /** Let go of a held drag where the pointer is, and forget every held input. */
 export async function release(): Promise<void> {
-  if (await composited()) await feed([button(false), shift(false)]);
+  await feed([button(false), shift(false)]);
   await perform([{ type: "pointerUp", button: 0 }]);
   await browser.releaseActions();
 }
@@ -265,8 +204,8 @@ export async function click(p: Point, count = 1): Promise<void> {
 
 /** Press keys together, as a chord (`chord(MOD, "n")`), without letting go of a held button. */
 export async function chord(...keys: string[]): Promise<void> {
-  // On the compositor's desk Escape is the compositor's first: it cancels desk-wm's drag.
-  if (keys.length === 1 && keys[0] === KEY.escape && (await composited())) {
+  // Escape is the compositor's first: it cancels desk-wm's drag.
+  if (keys.length === 1 && keys[0] === KEY.escape) {
     await feed(ESCAPE);
     return;
   }

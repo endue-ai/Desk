@@ -1,15 +1,15 @@
-//! Compositor mode (#52, `DESK_COMPOSITOR=1` or `--compositor`): the main window is a wgpu scene
-//! that `desk-compositor` draws. The window manager's model (`desk-wm`) places it (#81, ADR 0151):
-//! the shell page publishes the desk the runtime keeps (`compositor_desk`), `hosted.rs` mirrors it
-//! into a plan, the live budget and the surfaces' lifecycle, and `draw.rs` draws every window with
-//! the compositor's own chrome in the theme in force, each plugin pane an off-screen browser of its
-//! own (`web_host`), and the page's system layer above them. The page renders off screen too, see
-//! through, its windows' chrome left to the compositor. Without the mode the desk is Stage 1's
-//! windowed one, unchanged. Input (#56) goes through the compositor's router to the surface it is
-//! for (`input.rs`), and first through `desk-wm`'s window manager, which drags, resizes, snaps and
-//! pans (`wm.rs`, #80, ADR 0153); the runtime keeps the window manager's state until #83. Every
-//! surface and the page render on the desk's frame clock (`clock.rs`, ADR 0152). Screen readers see
-//! the desk as one tree through an AccessKit adapter on the window (`a11y.rs`, #57).
+//! The desk's main window (#52, #83): a wgpu scene that `desk-compositor` draws, the only desk
+//! there is since Stage 1's windowed one, whose page drew the plugins' frames itself, went (ADR
+//! 0156). The window manager (`desk-wm`) places it (#81, ADR 0151): the shell page publishes the
+//! desk the runtime keeps (`compositor_desk`), `hosted.rs` mirrors it into a plan, the live budget
+//! and the surfaces' lifecycle, and `draw.rs` draws every window with the compositor's own chrome
+//! in the theme in force, each plugin pane an off-screen browser of its own (`web_host`), and the
+//! page's system layer above them. The page renders off screen too, see through, its windows'
+//! chrome left to the compositor. Input (#56) goes through the compositor's router to the surface
+//! it is for (`input.rs`), and first through `desk-wm`'s window manager, which drags, resizes,
+//! snaps and pans (`wm.rs`, #80, ADR 0153). Every surface and the page render on the desk's frame
+//! clock (`clock.rs`, ADR 0152). Screen readers see the desk as one tree through an AccessKit
+//! adapter on the window (`a11y.rs`, #57).
 
 pub mod a11y;
 pub mod a11y_check;
@@ -61,18 +61,6 @@ use report::DeskReport;
 pub const PAGE: &str = "desk";
 /// What the runtime hears: the windows that keep a renderer (ADR 0151).
 pub const LIVE: &str = "desk://compositor-live";
-
-/// Whether this start asks for compositor mode.
-pub fn enabled() -> bool {
-    std::env::var("DESK_COMPOSITOR").is_ok_and(|v| v == "1")
-        || std::env::args().any(|a| a == "--compositor")
-}
-
-/// The URL of the shell page in compositor mode: the page publishes its desk.
-pub fn page_url(url: &str) -> String {
-    let joiner = if url.contains('?') { '&' } else { '?' };
-    format!("{url}{joiner}compositor=1")
-}
 
 /// The compositor window and everything it draws.
 pub struct CompositorWindow {
@@ -162,7 +150,7 @@ impl CompositorWindow {
         let browser = browser_host_create_browser_sync(
             Some(&info),
             Some(&mut client),
-            Some(&page_url(url).as_str().into()),
+            Some(&url.into()),
             Some(&settings),
             None,
             None,

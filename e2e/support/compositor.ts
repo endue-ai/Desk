@@ -1,6 +1,5 @@
-// Compositor mode for the app e2e (#56): the desk runs with DESK_COMPOSITOR=1, so every plugin
-// surface is an off-screen browser the compositor draws, and input reaches it only through the
-// compositor's router. The machine running the specs may have its screen locked, so a spec feeds
+// The compositor's input for the app e2e (#56): every plugin surface is an off-screen browser the
+// compositor draws, and input reaches it only through the compositor's router. The machine running the specs may have its screen locked, so a spec feeds
 // the compositor window winit's events through the CEF shell's development command
 // `compositor_input` (the same entry the event loop uses, `compositor_window/harness.rs`) and reads
 // the result in the surface's own page: each surface is a DevTools page target, a window handle
@@ -8,13 +7,12 @@
 import { join } from "node:path";
 import { browser } from "@wdio/globals";
 
-/** The app's environment for a compositor spec: the mode, and the input and drag fixtures. */
+/** The app's environment for an input spec: the input and drag fixtures. */
 export function compositorEnv(root: string): Record<string, string> {
   const fixtures = ["plugin-e2e-input", "plugin-e2e-drag"].map((f) =>
     join(root, "e2e/fixtures", f),
   );
   return {
-    DESK_COMPOSITOR: "1",
     DESK_DEV_PLUGINS: fixtures.join(process.platform === "win32" ? ";" : ":"),
   };
 }

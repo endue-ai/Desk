@@ -34,15 +34,14 @@ const DEFAULT_INIT = "init-no-first-run.yaml";
 
 /**
  * The app's environment a spec adds: persist.spec.ts asks for permissions from e2e.ask too,
- * sandbox.spec.ts runs e2e.sandbox's checks in its renderer, the input specs run the desk in
- * compositor mode with the input and drag fixtures (#56), the native plugin spec with the native
- * example (#59), and the accessibility spec with its own fixture (#57).
+ * sandbox.spec.ts runs e2e.sandbox's checks in its renderer, the input specs run with the input and
+ * drag fixtures (#56), the native plugin spec with the native example (#59), and the accessibility
+ * spec with its own fixture (#57).
  */
 const ENV: Record<string, Record<string, string>> = {
   "ime.spec.ts": compositorEnv(root),
   "dnd.spec.ts": compositorEnv(root),
   "a11y.spec.ts": {
-    DESK_COMPOSITOR: "1",
     DESK_DEV_PLUGINS: join(root, "e2e/fixtures/plugin-e2e-a11y"),
   },
   "persist.spec.ts": {
@@ -53,7 +52,6 @@ const ENV: Record<string, Record<string, string>> = {
   },
   "sandbox.spec.ts": { DESK_DEV_PLUGINS: join(root, "e2e/fixtures/plugin-e2e-sandbox") },
   "native-plugin.spec.ts": {
-    DESK_COMPOSITOR: "1",
     DESK_DEV_PLUGINS: join(root, "examples/plugin-native-wgpu"),
   },
 };

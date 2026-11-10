@@ -9,7 +9,9 @@
 //
 // The checkbox is reached and toggled from the keyboard, the way a keyboard user does it: the desk's
 // focus cycling (Control+Tab, desk.display.focus-next) to the list's surface, Tab through the list in
-// its frame, then Space. Keyboard navigation reaches rows scrolled out of a compact window.
+// its frame, then Space. Keyboard navigation reaches rows scrolled out of a compact window. The list
+// is an off-screen browser of its own (#52): Tab and Space go to its page, as WebDriver sent them
+// into its frame on Stage 1's windowed desk.
 // Not Element Send Keys:
 // WebKitWebDriver answers "element not interactable" for the checkbox, since the focus it moves by
 // script does not land inside the plugin's cross-origin frame. The drawer button staying closed shows
@@ -68,7 +70,7 @@ describe("plugins: the Plugins list in a normal window (endue.sidebar, Default p
 
     // Off: Space on the checked box.
     await tabToHello();
-    await browser.keys("Space");
+    await inFrame(SIDEBAR, () => browser.keys("Space"));
     await inFrame(SIDEBAR, () => expect(toggle()).not.toBeChecked());
     await expect(surface(HELLO)).not.toExist();
     await expect(drawerButton()).toHaveAttribute("aria-expanded", "false");
@@ -80,7 +82,7 @@ describe("plugins: the Plugins list in a normal window (endue.sidebar, Default p
 
     // On again: the list re-rendered, so Tab to the new row's box and press Space.
     await tabToHello();
-    await browser.keys("Space");
+    await inFrame(SIDEBAR, () => browser.keys("Space"));
     await inFrame(SIDEBAR, () => expect(toggle()).toBeChecked());
     await expect(surface(HELLO)).toExist();
     // Mounted again: its page loaded and its bridge answered.

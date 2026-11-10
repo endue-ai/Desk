@@ -1,10 +1,9 @@
-// Drag and drop for the plugin host (ADR 0119): the broker over the desk's page, its drag layer, and
-// drags from the OS. The page's DOM is touched on the first drag only, so a host without a document
-// (unit tests) still routes the messages.
+// Drag and drop for the plugin host (ADR 0119): the broker over the desk's page and its drag layer.
+// The page's DOM is touched on the first drag only, so a host without a document (unit tests) still
+// routes the messages. Drags from the OS reach the desk through the compositor's input (#56, #83).
 import { DragBroker } from "./broker";
 import { frameGeometry } from "./frames";
 import { dragLayer } from "./layer";
-import { listenNative } from "./native";
 import type { DndHostMessage } from "./types";
 
 export interface Dnd {
@@ -44,13 +43,9 @@ export function installDnd(
       hide: () => page?.layer.hide(),
     },
   });
-  const offNative = listenNative(deps.win, () => broker);
   return {
     message: (id, message) => broker.message(id, message),
     gone: (id) => broker.gone(id),
-    stop: () => {
-      broker.cancel();
-      offNative();
-    },
+    stop: () => broker.cancel(),
   };
 }

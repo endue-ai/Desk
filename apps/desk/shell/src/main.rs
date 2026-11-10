@@ -79,8 +79,8 @@ fn main() -> ExitCode {
     let root = paths::cef_root();
     let _ = std::fs::create_dir_all(&root);
     let settings = cef::Settings {
-        // Compositor mode (#52) renders every page off screen.
-        windowless_rendering_enabled: i32::from(desk_shell::compositor_window::enabled()),
+        // The desk's main window renders every page off screen (#52, #83).
+        windowless_rendering_enabled: 1,
         external_message_pump: 1,
         // Chromium's sandbox: on for every subprocess on macOS, off on Linux and Windows until
         // #61 proves them there (`sandbox.rs`, ADR 0148).

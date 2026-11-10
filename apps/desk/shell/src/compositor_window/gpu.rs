@@ -41,13 +41,22 @@ impl Gpu {
                     .map_err(|e| e.to_string())?,
             )
         };
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            compatible_surface: surface.as_ref(),
-            force_fallback_adapter: false,
-            ..Default::default()
-        }))
-        .map_err(|e| e.to_string())?;
+        let request = |force_fallback_adapter| {
+            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: surface.as_ref(),
+                force_fallback_adapter,
+                ..Default::default()
+            }))
+        };
+        // The compositor is the only desk (#83): without a GPU adapter it takes the backend's
+        // software one (WARP, lavapipe) rather than open no desk at all.
+        let adapter = request(false)
+            .or_else(|first| {
+                eprintln!("endue Desk: no GPU adapter ({first}); trying a software one");
+                request(true)
+            })
+            .map_err(|e| e.to_string())?;
         // Windows and Linux import CEF's shared textures through these when the backend is Vulkan.
         let wanted = wgpu::Features::VULKAN_EXTERNAL_MEMORY_DMA_BUF
             | wgpu::Features::VULKAN_EXTERNAL_MEMORY_WIN32;

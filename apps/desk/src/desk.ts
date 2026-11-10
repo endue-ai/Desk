@@ -13,7 +13,7 @@ import "./compositor.css";
 import { reportCrashes, showLastCrash } from "./crashes";
 import "./crashes.css";
 import { adapter, invoke, listen } from "./host";
-import { installNativeFileDrops, pickNativeFile } from "./native-files";
+import { pickNativeFile } from "./native-files";
 import { installOpenedFiles } from "./open-files";
 import { sendThemeToPalette } from "./palette-theme";
 import { shellBridge } from "./shell-bridge";
@@ -40,21 +40,19 @@ const core = new BridgeClient(adapter());
 // Safe mode and the state files kept broken (ADR 0061), known before the shell mounts.
 const start = await readStart(invoke);
 const lang = navigator.language.startsWith("ko") ? "ko" : "en";
-// Compositor mode (#52, #81, #80): the CEF shell draws the windows from desk-wm, which drags,
-// resizes, snaps and pans them on the compositor's input, and keeps the live budget.
-const composited = new URLSearchParams(location.search).has("compositor");
-const kept = composited ? keptWindows() : undefined;
-const seam = composited
-  ? wmSeam((command, args) => void invoke(command, args).catch(() => undefined))
-  : undefined;
+// The CEF shell's compositor draws the windows from desk-wm, which drags, resizes, snaps and pans
+// them on the compositor's input and keeps the live budget (#52, #81, #80); it is the only desk
+// (#83).
+const kept = keptWindows();
+const seam = wmSeam((command, args) => void invoke(command, args).catch(() => undefined));
 const desk = mountDesk({
-  ...(kept ? { liveBudget: kept } : {}),
-  ...(seam ? { windowManager: seam.host } : {}),
+  liveBudget: kept,
+  windowManager: seam.host,
   root,
   bridge: shellBridge(core),
   core,
-  // Native plugins draw only through the compositor (#59).
-  plugins: { url: pluginUrl, native: composited },
+  // Native plugins draw only through the compositor (#59), which is the desk (#83).
+  plugins: { url: pluginUrl, native: true },
   clock: realClock(),
   platform: navigator.userAgent.includes("Macintosh") ? "mac" : "other",
   lang,
@@ -67,20 +65,8 @@ const desk = mountDesk({
 });
 void desk.runtime.ready.then(() => phase("desk mount", booted));
 
-// Files dragged in from the OS: the CEF shell's word when they enter, then the page's own drag.
-const disposeDrops = installNativeFileDrops({
-  ready: desk.ready,
-  commands: desk.runtime.commands,
-  report: (error) =>
-    desk.runtime.notify({
-      caller: "desk",
-      title: "Could not open the dropped file",
-      body: error instanceof Error ? error.message : String(error),
-      level: "error",
-    }),
-});
-window.addEventListener("pagehide", disposeDrops, { once: true });
-
+// Files opened from the OS (the command line, Finder, the Dock) and files dragged in from it and
+// dropped where no plugin takes them (the compositor's broker, #56): one queue, drained in order.
 const disposeOpened = installOpenedFiles({
   ready: desk.ready,
   commands: desk.runtime.commands,
@@ -94,52 +80,49 @@ const disposeOpened = installOpenedFiles({
 });
 window.addEventListener("pagehide", disposeOpened, { once: true });
 
-// Compositor mode (ADR 0151): the page publishes the desk the runtime keeps; the CEF shell answers
-// with the windows that keep a live frame, which the runtime carries out, and with what desk-wm
-// changed, which the runtime takes as the truth (ADR 0153). Its input (#56) decides by the keymap
-// whose a key is, and follows the focus this page moves.
-if (kept && seam) {
-  const stopDesk = startCompositorDesk(
-    window,
-    desk,
-    (report) => {
-      void invoke("compositor_desk", report as unknown as Record<string, unknown>);
-    },
-    seam.state,
-  );
-  seam.flushWith(stopDesk.flush);
-  const offLive = listen<{ live?: string[] }>("desk://compositor-live", ({ payload }) => {
-    if (Array.isArray(payload?.live)) kept.set(payload.live);
-  });
-  const offWm = listen<WmPublished>("desk://compositor-wm", ({ payload }) => {
-    if (payload && typeof payload.rev === "number") seam.took(payload, desk);
-  });
-  const offHeld = listen<HeldPayload>("desk://compositor-held", ({ payload }) => {
-    if (payload) seam.held(payload, desk);
-  });
-  const offRun = listen<RunPayload>("desk://compositor-run", ({ payload }) => {
-    const run = payload && cardCommand(payload);
-    if (run) void desk.runtime.commands.run(run.command, run.args).catch(() => undefined);
-  });
-  const { runtime } = desk;
-  const keys = {
-    platform: runtime.shortcuts.platform,
-    keymap: runtime.keymap,
-    commands: runtime.commands,
-    settings: runtime.settings,
-  };
-  const stopKeys = startCompositorKeys(keys, (report) => {
-    void invoke("compositor_keys", report as unknown as Record<string, unknown>);
-  });
-  const stopFocus = startCompositorFocus(window, (surface) => {
-    void invoke("compositor_focus", { surface });
-  });
-  const stop = () => {
-    for (const off of [stopDesk, stopKeys, stopFocus]) off();
-    for (const listening of [offLive, offWm, offHeld, offRun]) void listening.then((off) => off());
-  };
-  window.addEventListener("pagehide", stop, { once: true });
-}
+// The page publishes the desk the runtime keeps (ADR 0151); the CEF shell answers with the windows
+// that keep a live frame, which the runtime carries out, and with what desk-wm changed, which the
+// runtime takes as the truth (ADR 0153). Its input (#56) decides by the keymap whose a key is, and
+// follows the focus this page moves.
+const stopDesk = startCompositorDesk(
+  window,
+  desk,
+  (report) => {
+    void invoke("compositor_desk", report as unknown as Record<string, unknown>);
+  },
+  seam.state,
+);
+seam.flushWith(stopDesk.flush);
+const offLive = listen<{ live?: string[] }>("desk://compositor-live", ({ payload }) => {
+  if (Array.isArray(payload?.live)) kept.set(payload.live);
+});
+const offWm = listen<WmPublished>("desk://compositor-wm", ({ payload }) => {
+  if (payload && typeof payload.rev === "number") seam.took(payload, desk);
+});
+const offHeld = listen<HeldPayload>("desk://compositor-held", ({ payload }) => {
+  if (payload) seam.held(payload, desk);
+});
+const offRun = listen<RunPayload>("desk://compositor-run", ({ payload }) => {
+  const run = payload && cardCommand(payload);
+  if (run) void desk.runtime.commands.run(run.command, run.args).catch(() => undefined);
+});
+const keys = {
+  platform: desk.runtime.shortcuts.platform,
+  keymap: desk.runtime.keymap,
+  commands: desk.runtime.commands,
+  settings: desk.runtime.settings,
+};
+const stopKeys = startCompositorKeys(keys, (report) => {
+  void invoke("compositor_keys", report as unknown as Record<string, unknown>);
+});
+const stopFocus = startCompositorFocus(window, (surface) => {
+  void invoke("compositor_focus", { surface });
+});
+const stopCompositor = () => {
+  for (const off of [stopDesk, stopKeys, stopFocus]) off();
+  for (const listening of [offLive, offWm, offHeld, offRun]) void listening.then((off) => off());
+};
+window.addEventListener("pagehide", stopCompositor, { once: true });
 
 // A plugin frame whose renderer died (#44): the CEF shell names it, and the window recovers by itself.
 const offCrashes = listen<{ plugin?: string }>("desk://frame-crashed", ({ payload }) => {

@@ -42,9 +42,7 @@ pub struct Shell {
     /// The staged build the tray offers to restart into (#47).
     offered: Option<String>,
     menu_bar: Option<tray_icon::menu::Menu>,
-    /// Hears the main browser's frames crash (#44), as long as it is kept.
-    crash_watch: Option<Registration>,
-    /// Compositor mode (#52): the main window's scene and its off-screen surfaces.
+    /// The main window's scene and its off-screen surfaces (#52, #83).
     pub compositor: Option<crate::compositor_window::CompositorWindow>,
     started: bool,
     quitting: bool,
@@ -66,7 +64,6 @@ impl Shell {
             tray: None,
             offered: None,
             menu_bar: None,
-            crash_watch: None,
             compositor: None,
             started: false,
             quitting: false,
@@ -101,7 +98,7 @@ impl Shell {
         }
     }
 
-    /// Compositor mode (#52): the main window is a wgpu scene, its page an off-screen surface.
+    /// The main window is a wgpu scene, its page an off-screen surface (#52, #83).
     fn open_compositor(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -146,22 +143,11 @@ impl Shell {
             .with_inner_size(LogicalSize::new(1280.0, 800.0))
             .with_min_inner_size(LogicalSize::new(1024.0, 500.0));
         let url = self.url.clone();
-        let opened = if crate::compositor_window::enabled() {
-            self.open_compositor(event_loop, attributes, &url)
-        } else {
-            self.open_pane(event_loop, Role::Main, attributes, &url)
-        };
-        let Some(main) = opened else {
+        // Each surface's own browser reports its renderer's death (#52, `crashes.rs`).
+        if self.open_compositor(event_loop, attributes, &url).is_none() {
             event_loop.exit();
             return;
-        };
-        // In compositor mode each surface's own browser reports its renderer's death (#52); the
-        // target watch would report it a second time, which the runtime counts as a second death.
-        let watched = main
-            .browser
-            .as_ref()
-            .filter(|_| !crate::compositor_window::enabled());
-        self.crash_watch = watched.and_then(crate::crashes::watch);
+        }
         menu::listen(&self.pump);
         self.menu_bar = menu::app_menu();
         palette::setup(self, event_loop);
@@ -269,9 +255,6 @@ impl Shell {
     fn closed(&mut self, event_loop: &ActiveEventLoop, role: Role) {
         self.closing.remove(&role);
         self.desk.pages.set(role, None);
-        if role == Role::Main {
-            self.crash_watch = None;
-        }
         if let Some(pane) = self.panes.remove(&role) {
             self.roles.remove(&pane.window.id());
         }

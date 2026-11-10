@@ -1,8 +1,9 @@
 //! The browsers' client, one per window: it answers the pages' bridge calls (`host`) knowing which
 //! window the browser is for (`Role`, which no page can change), tells the event loop when the
 //! browser closed and, in development builds, prints the page's console to the terminal (CSP reports
-//! land there too). The main window's also hears files dragged in from the OS (`drops.rs`); the
-//! Eris window's clears the page's base colour so she stands on nothing (macOS, ADR 0121).
+//! land there too). The main window's page renders off screen and relays its plugins' stand-ins
+//! (`compositor_page`); the Eris window's clears the page's base colour so she stands on nothing
+//! (macOS, ADR 0121).
 
 // `wrap_client!` makes a constructor with one argument per field.
 #![allow(clippy::too_many_arguments)]
@@ -94,10 +95,9 @@ wrap_client! {
         life_span: LifeSpanHandler,
         display: DisplayHandler,
         requests: RequestHandler,
-        drag: Option<DragHandler>,
         load: Option<LoadHandler>,
         desk: Arc<Desk>,
-        // Compositor mode (#52): the page renders off screen, and its plugin frames are stand-ins.
+        // The main window's page (#52): it renders off screen, and its plugin frames are stand-ins.
         render: Option<RenderHandler>,
         relay: Option<Relay>,
     }
@@ -141,27 +141,22 @@ wrap_client! {
             Some(self.display.clone())
         }
 
-        fn drag_handler(&self) -> Option<DragHandler> {
-            self.drag.clone()
-        }
-
         fn load_handler(&self) -> Option<LoadHandler> {
             self.load.clone()
         }
     }
 }
 
-/// The client of the browser in the window of `role`.
+/// The client of the browser in the window of `role`: the palette, Eris and the banner (the main
+/// window's page is `compositor_page`'s).
 pub fn client(role: Role, pump: Pump, desk: Arc<Desk>) -> Client {
     let banner = (role == Role::Banner).then(|| Arc::clone(&desk.core));
-    let drag = (role == Role::Main).then(|| crate::drops::Drops::new(desk.pages.clone()));
     let load = (cfg!(target_os = "macos") && role == Role::Eris).then(ClearBase::new);
     ShellClient::new(
         role,
         ShellLifeSpan::new(role, pump, false),
         ShellDisplay::new(role),
         crate::guard::Requests::new(banner),
-        drag,
         load,
         desk,
         None,
@@ -169,16 +164,15 @@ pub fn client(role: Role, pump: Pump, desk: Arc<Desk>) -> Client {
     )
 }
 
-/// The client of the main window's page in compositor mode (#52): it renders off screen through
-/// `render`, and its plugin frames' stand-ins relay through `relay`. Files dragged in from the OS
-/// wait for input (#56).
+/// The client of the main window's page (#52): it renders off screen through `render`, and its
+/// plugin frames' stand-ins relay through `relay`. Files dragged in from the OS come through the
+/// compositor's input (#56).
 pub fn compositor_page(pump: Pump, desk: Arc<Desk>, render: RenderHandler, relay: Relay) -> Client {
     ShellClient::new(
         Role::Main,
         ShellLifeSpan::new(Role::Main, pump, true),
         ShellDisplay::new(Role::Main),
         crate::guard::Requests::new(None),
-        None,
         Some(crate::web_host::relay::StandInLoads::new(relay.clone())),
         desk,
         Some(render),

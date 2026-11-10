@@ -49,16 +49,12 @@ export async function shellReady(): Promise<void> {
 }
 
 /**
- * Whether the desk runs on the compositor (`DESK_COMPOSITOR=1`, #81, ADR 0151): its plugin frames
- * are stand-ins, each plugin's page an off-screen browser of its own, and the compositor draws the
- * windows the page leaves unpainted.
+ * Run `body` inside a plugin's page, then return to the shell. The desk's plugin frames are
+ * stand-ins (#52, ADR 0149): each plugin's page is an off-screen browser of its own, a DevTools page
+ * target here. The stand-in is looked up in any layer: endue.permissions' prompt is an overlay
+ * surface.
  */
-export async function composited(): Promise<boolean> {
-  return (await browser.getUrl()).includes("compositor=1");
-}
-
-/** Run `body` in a plugin's own off-screen browser (compositor mode), then return to the shell. */
-async function inSurface<T>(plugin: string, body: () => Promise<T>): Promise<T> {
+export async function inFrame<T>(plugin: string, body: () => Promise<T>): Promise<T> {
   const frame = $(`#desk.shell .desk-surface[data-surface="${plugin}"] iframe`);
   await frame.waitForExist();
   const host = /^desk-plugin:\/\/([^/?#]+)/.exec((await frame.getAttribute("src")) ?? "")?.[1];
@@ -79,23 +75,6 @@ async function inSurface<T>(plugin: string, body: () => Promise<T>): Promise<T> 
     return await body();
   } finally {
     await browser.switchToWindow(shell);
-  }
-}
-
-/**
- * Run `body` inside a plugin's sandboxed frame, then return to the shell. The frame is looked up in
- * any layer: endue.permissions' prompt is an overlay surface. On the compositor's desk, inside the
- * plugin's own browser.
- */
-export async function inFrame<T>(plugin: string, body: () => Promise<T>): Promise<T> {
-  if (await composited()) return inSurface(plugin, body);
-  const frame = $(`#desk.shell .desk-surface[data-surface="${plugin}"] iframe`);
-  await frame.waitForExist();
-  await browser.switchFrame(frame);
-  try {
-    return await body();
-  } finally {
-    await browser.switchFrame(null);
   }
 }
 
