@@ -119,7 +119,7 @@ fn chrome_in_the_endue_theme() {
         at(14, 30)
     );
     assert!(front.content.y == theme.window.title_height);
-    assert_snapshot("chrome_endue_dark", SIZE, &rgba);
+    assert_snapshot(&gpu, "chrome_endue_dark", SIZE, &rgba);
 }
 
 #[test]
@@ -146,7 +146,7 @@ fn chrome_in_the_amber_theme() {
         "a square corner: {:?}",
         at(14, 30)
     );
-    assert_snapshot("chrome_amber", SIZE, &rgba);
+    assert_snapshot(&gpu, "chrome_amber", SIZE, &rgba);
 }
 
 #[test]

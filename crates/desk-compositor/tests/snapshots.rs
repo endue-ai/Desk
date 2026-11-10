@@ -110,7 +110,7 @@ fn wallpaper_and_rects() {
         near(at(200, 115), at(200, 118)),
         "the frame's middle shows the wallpaper"
     );
-    assert_snapshot("wallpaper_and_rects", SIZE, &rgba);
+    assert_snapshot(&gpu, "wallpaper_and_rects", SIZE, &rgba);
 }
 
 #[test]
@@ -184,7 +184,7 @@ fn surfaces() {
         near(at(180, 120), [32, 32, 32, 255]),
         "an unregistered texture draws nothing"
     );
-    assert_snapshot("surfaces", SIZE, &rgba);
+    assert_snapshot(&gpu, "surfaces", SIZE, &rgba);
 }
 
 #[test]
@@ -282,7 +282,7 @@ fn groups() {
         (quarter[0] as i32 - 76).abs() <= 8,
         "white at 0.5 x 0.5 over the wallpaper: {quarter:?}"
     );
-    assert_snapshot("groups", SIZE, &rgba);
+    assert_snapshot(&gpu, "groups", SIZE, &rgba);
 }
 
 #[test]
@@ -346,5 +346,5 @@ fn perspective_over_a_texture_wallpaper() {
         "{:?}",
         hit.local_point
     );
-    assert_snapshot("perspective_over_a_texture_wallpaper", SIZE, &rgba);
+    assert_snapshot(&gpu, "perspective_over_a_texture_wallpaper", SIZE, &rgba);
 }
