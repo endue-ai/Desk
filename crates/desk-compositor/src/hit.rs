@@ -44,7 +44,7 @@ fn visit(scene: &Scene, id: NodeId, parent_world: &Mat4, ray: &Ray) -> Option<Hi
                 .rev()
                 .find_map(|child| visit(scene, *child, &world, ray))
         }
-        NodeKind::Rect(_) | NodeKind::Surface(_) => {
+        NodeKind::Rect(_) | NodeKind::Surface(_) | NodeKind::Text(_) => {
             let rect = entry.node.rect()?;
             let local = local_point(parent_world, ray)?;
             rect.contains(local).then(|| Hit {

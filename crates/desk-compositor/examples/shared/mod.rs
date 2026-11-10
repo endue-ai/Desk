@@ -1,16 +1,28 @@
-//! A desk of moving windows for the demo and the compose benchmark: each window is a group (frame
-//! with a shadow, title bar, and a surface showing a generated texture) that drifts, turns a
-//! little and, every third one, tilts in 3D. Every frame moves every window and repaints every
-//! texture, the worst case for damage tracking.
+//! A desk of moving windows for the demo and the compose benchmark: each window is a group holding
+//! its chrome (frame with a shadow, title bar with a title in Latin, Hangul or CJK, all from the
+//! look in force) and a surface showing a generated texture; it drifts, turns a little and, every
+//! third one, tilts in 3D. Every frame moves every window and repaints every texture, the worst
+//! case for damage tracking.
 #![allow(dead_code)]
 
 use desk_compositor::glam::{Mat4, Vec2, Vec3};
 use desk_compositor::headless::upload_rgba;
 use desk_compositor::*;
+use std::path::PathBuf;
 use std::time::Duration;
 
 pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8Unorm;
-const TITLE: f32 = 28.0;
+
+/// Titles the windows take in turn: Latin, Hangul, CJK and kana, through font fallback.
+const TITLES: &[&str] = &[
+    "Notes — today",
+    "설정",
+    "터미널 · zsh",
+    "设置 · 日本語",
+    "Files — Documents",
+    "メモ",
+    "한글 제목이 아주 긴 창은 줄임표로 끝납니다",
+];
 
 pub struct Window {
     group: NodeId,
@@ -21,19 +33,39 @@ pub struct Window {
 
 pub struct Desk {
     pub scene: Scene,
+    pub chrome: Chrome,
     pub windows: Vec<Window>,
     pub textures: Vec<wgpu::Texture>,
 }
 
-/// `count` windows in a grid over a gradient wallpaper, their textures registered with `compositor`.
-pub fn build(size: (u32, u32), count: usize, compositor: &mut Compositor) -> Desk {
+/// A look as the runtime sends it to the core for the compositor: the bridge vector
+/// `theme-tokens-request<suffix>.json` (`""` the endue theme dark, `-light`, `-amber`).
+pub fn look(suffix: &str) -> Tokens {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../specs/bridge/v0/vectors/valid")
+        .join(format!("theme-tokens-request{suffix}.json"));
+    let text = std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let doc: serde_json::Value = serde_json::from_slice(&text).expect("a theme.tokens vector");
+    let tokens = doc["instance"]["params"]["tokens"]
+        .as_object()
+        .expect("tokens");
+    let value = |v: &serde_json::Value| v.as_str().unwrap_or_default().to_owned();
+    tokens.iter().map(|(k, v)| (k.clone(), value(v))).collect()
+}
+
+/// `count` windows in a grid, their textures registered with `compositor`, in `theme`.
+pub fn build(
+    size: (u32, u32),
+    count: usize,
+    compositor: &mut Compositor,
+    theme: ChromeTheme,
+) -> Desk {
     let (device, queue) = (compositor.device().clone(), compositor.queue().clone());
     let mut scene = Scene::new(size.0, size.1);
     scene.set_projection(Projection::perspective());
-    scene.set_wallpaper(Wallpaper::Gradient {
-        top: Color::hex(0x1b2440),
-        bottom: Color::hex(0x5a3a6e),
-    });
+    let mut chrome = Chrome::new(theme);
+    scene.set_wallpaper(Wallpaper::Solid(chrome.theme().wallpaper));
+    let title = chrome.theme().window.title_height;
     let columns = (count as f32).sqrt().ceil().max(1.0) as usize;
     let rows = count.div_ceil(columns).max(1);
     let cell = Vec2::new(size.0 as f32 / columns as f32, size.1 as f32 / rows as f32);
@@ -43,56 +75,27 @@ pub fn build(size: (u32, u32), count: usize, compositor: &mut Compositor) -> Des
     let mut textures = Vec::new();
     for i in 0..count {
         let texture = TextureId(i as u64 + 1);
-        let pixels = pattern((w, h), i);
-        let uploaded = upload_rgba(&device, &queue, (w, h), &pixels);
+        let uploaded = upload_rgba(&device, &queue, (w, h), &pattern((w, h), i));
         compositor.register_texture(texture, &uploaded);
         textures.push(uploaded);
         let group = scene.insert(scene.root(), GroupNode::default()).unwrap();
         let outer = Rect::new(
             -content.x / 2.0,
-            -content.y / 2.0 - TITLE,
+            -(content.y + title) / 2.0,
             content.x,
-            content.y + TITLE,
+            content.y + title,
         );
-        let frame = RectNode {
-            radius: 10.0,
-            stroke: Some(Stroke {
-                width: 1.0,
-                color: Color::WHITE.fade(0.25),
-            }),
-            shadow: Some(Shadow {
-                offset: Vec2::new(0.0, 10.0),
-                blur: 24.0,
-                spread: 0.0,
-                color: Color::BLACK.fade(0.45),
-            }),
-            ..RectNode::new(outer.inflate(1.0), Color::hex(0x23263a))
-        };
-        scene.insert(group, frame).unwrap();
-        let bar = Rect::new(outer.x + 8.0, outer.y + 9.0, 10.0, 10.0);
-        for (k, c) in [0xff5f57, 0xfebc2e, 0x28c840].into_iter().enumerate() {
-            let dot = RectNode {
-                radius: 5.0,
-                ..RectNode::new(
-                    bar.translate(Vec2::new(16.0 * k as f32, 0.0)),
-                    Color::hex(c),
-                )
-            };
-            scene.insert(group, dot).unwrap();
-        }
+        let name = TITLES[i % TITLES.len()];
+        let parts = chrome
+            .window(&mut scene, group, outer, name, None, i == 0)
+            .unwrap();
         let surface = SurfaceNode {
             radius: 8.0,
-            ..SurfaceNode::new(
-                Rect::new(-content.x / 2.0, -content.y / 2.0, content.x, content.y),
-                texture,
-            )
+            ..SurfaceNode::new(parts.content, texture)
         };
-        scene.insert(group, surface).unwrap();
+        scene.insert(parts.group, surface).unwrap();
         let (col, row) = (i % columns, i / columns);
-        let home = Vec2::new(
-            cell.x * (col as f32 + 0.5),
-            cell.y * (row as f32 + 0.5) + TITLE / 2.0,
-        );
+        let home = Vec2::new(cell.x * (col as f32 + 0.5), cell.y * (row as f32 + 0.5));
         windows.push(Window {
             group,
             home,
@@ -102,6 +105,7 @@ pub fn build(size: (u32, u32), count: usize, compositor: &mut Compositor) -> Des
     }
     Desk {
         scene,
+        chrome,
         windows,
         textures,
     }
@@ -120,15 +124,11 @@ pub fn animate(desk: &mut Desk, compositor: &mut Compositor, t: f32) {
             Mat4::IDENTITY
         };
         let transform = Mat4::from_translation(Vec3::new(at.x, at.y, 0.0)) * tilt * turn;
-        desk.scene
-            .set(
-                window.group,
-                GroupNode {
-                    transform,
-                    ..GroupNode::default()
-                },
-            )
-            .unwrap();
+        let group = GroupNode {
+            transform,
+            ..GroupNode::default()
+        };
+        desk.scene.set(window.group, group).unwrap();
         compositor.update_texture(window.texture, &desk.textures[i]);
     }
 }

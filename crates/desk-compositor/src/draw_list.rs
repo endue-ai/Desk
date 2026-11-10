@@ -4,6 +4,7 @@
 use crate::camera::Camera;
 use crate::node::{NodeId, NodeKind, RectNode, SurfaceNode};
 use crate::scene::{Scene, Wallpaper};
+use crate::text::{TextNode, TextSystem};
 use crate::types::{Color, Rect, TextureId};
 use glam::Mat4;
 
@@ -34,6 +35,7 @@ pub(crate) const MODE_SHAPE: u32 = 0;
 pub(crate) const MODE_SHADOW: u32 = 1;
 pub(crate) const MODE_GRADIENT: u32 = 2;
 pub(crate) const MODE_SURFACE: u32 = 3;
+pub(crate) const MODE_TEXT: u32 = 4;
 
 const NO_CLIP: [f32; 4] = [-1e9, -1e9, 1e9, 1e9];
 
@@ -41,6 +43,11 @@ const NO_CLIP: [f32; 4] = [-1e9, -1e9, 1e9, 1e9];
 pub(crate) enum ItemKind {
     Shape,
     Surface(TextureId),
+    /// Glyph instances `first..first + count` of the frame's text.
+    Text {
+        first: u32,
+        count: u32,
+    },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -74,10 +81,12 @@ struct State {
     scissor: Option<Rect>,
 }
 
-/// Flatten `scene` into `out` (cleared first). `texture_size` answers for registered textures.
+/// Flatten `scene` into `out` (cleared first). `texture_size` answers for registered textures;
+/// `text` lays out text nodes and queues their glyphs.
 pub(crate) fn build(
     scene: &Scene,
     texture_size: &dyn Fn(TextureId) -> Option<(u32, u32)>,
+    text: &mut TextSystem,
     out: &mut Vec<DrawItem>,
 ) -> BuildCounts {
     out.clear();
@@ -94,6 +103,7 @@ pub(crate) fn build(
         scene,
         camera: &camera,
         texture_size,
+        text,
         out,
         counts: &mut counts,
     };
@@ -150,6 +160,7 @@ struct Walk<'a> {
     scene: &'a Scene,
     camera: &'a Camera,
     texture_size: &'a dyn Fn(TextureId) -> Option<(u32, u32)>,
+    text: &'a mut TextSystem,
     out: &'a mut Vec<DrawItem>,
     counts: &'a mut BuildCounts,
 }
@@ -200,6 +211,7 @@ impl Walk<'_> {
             }
             NodeKind::Rect(rect) => self.rect(rect, &state),
             NodeKind::Surface(surface) => self.surface(surface, &state),
+            NodeKind::Text(text) => self.text(text, &state),
         }
     }
 
@@ -273,6 +285,34 @@ impl Walk<'_> {
             ..self.base(state, node.rect.inflate(aa), node.rect)
         };
         self.push(ItemKind::Surface(node.texture), uniform, state);
+        self.counts.nodes_drawn += 1;
+    }
+
+    fn text(&mut self, node: &TextNode, state: &State) {
+        if state.opacity <= 0.0 {
+            return;
+        }
+        // Text no camera shows is neither laid out nor rasterised.
+        if self
+            .camera
+            .screen_bounds(&state.world, &node.rect)
+            .is_none()
+        {
+            return;
+        }
+        let Some(glyphs) = self.text.queue(node, &state.world) else {
+            return;
+        };
+        let uniform = ItemUniform {
+            params: [0.0, 0.0, state.opacity, 0.0],
+            mode: [MODE_TEXT, 0, 0, 0],
+            ..self.base(state, node.rect, node.rect)
+        };
+        let kind = ItemKind::Text {
+            first: glyphs.start,
+            count: glyphs.end - glyphs.start,
+        };
+        self.push(kind, uniform, state);
         self.counts.nodes_drawn += 1;
     }
 }

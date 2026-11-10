@@ -292,9 +292,9 @@ impl Scene {
         while let Some(a) = ancestor {
             if let Some(NodeKind::Group(GroupNode {
                 clip: Some(clip), ..
-            })) = self.node(a).map(|n| n.kind)
+            })) = self.node(a).map(|n| &n.kind)
             {
-                let clip = camera.screen_bounds(&self.world_transform(a)?, &clip)?;
+                let clip = camera.screen_bounds(&self.world_transform(a)?, clip)?;
                 bounds = bounds.intersect(&clip)?;
             }
             ancestor = self.parent(a);

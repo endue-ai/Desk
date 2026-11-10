@@ -52,7 +52,7 @@ fn items_follow_paint_order_and_skip_what_cannot_show() {
         .unwrap();
     let known = |id: TextureId| (id == TextureId(7)).then_some((4, 4));
     let mut items = Vec::new();
-    let counts = build(&scene, &known, &mut items);
+    let counts = build(&scene, &known, &mut TextSystem::default(), &mut items);
     let modes: Vec<u32> = items.iter().map(|i| i.uniform.mode[0]).collect();
     assert_eq!(
         modes,
@@ -80,7 +80,7 @@ fn a_clip_sets_a_scissor_and_reaches_nested_children() {
         )
         .unwrap();
     let mut items = Vec::new();
-    build(&scene, &|_| None, &mut items);
+    build(&scene, &|_| None, &mut TextSystem::default(), &mut items);
     assert_eq!(items[0].scissor, Some(Rect::new(15.0, 10.0, 20.0, 20.0)));
     assert_eq!(items[0].uniform.clip, [10.0, 10.0, 30.0, 30.0]);
     assert_eq!(

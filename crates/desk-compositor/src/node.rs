@@ -1,5 +1,6 @@
 //! Scene nodes: plain data the window manager and system surfaces fill in without knowing wgpu.
 
+use crate::text::TextNode;
 use crate::types::{Color, Rect, Shadow, Stroke, TextureId};
 use glam::Mat4;
 
@@ -93,16 +94,19 @@ impl GroupNode {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// What a node is. Leaves are data the window manager fills in; text carries its string, so a
+/// node is `Clone`, not `Copy`.
+#[derive(Clone, Debug, PartialEq)]
 pub enum NodeKind {
     Rect(RectNode),
     Surface(SurfaceNode),
     Group(GroupNode),
+    Text(TextNode),
 }
 
 /// One node: what it is, and whether hit testing sees it. `hit: false` lets the pointer through the
 /// node and, for a group, through its whole subtree (an overlay that is not active).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Node {
     pub kind: NodeKind,
     pub hit: bool,
@@ -124,6 +128,7 @@ impl Node {
         match &self.kind {
             NodeKind::Rect(r) => Some(r.rect),
             NodeKind::Surface(s) => Some(s.rect),
+            NodeKind::Text(t) => Some(t.rect),
             NodeKind::Group(_) => None,
         }
     }
@@ -139,6 +144,7 @@ impl Node {
                 })
             }
             NodeKind::Surface(s) => Some(s.rect),
+            NodeKind::Text(t) => Some(t.rect),
             NodeKind::Group(_) => None,
         }
     }
@@ -160,3 +166,4 @@ macro_rules! node_from {
 node_from!(RectNode, Rect);
 node_from!(SurfaceNode, Surface);
 node_from!(GroupNode, Group);
+node_from!(TextNode, Text);

@@ -100,6 +100,55 @@ fn premultiply(c: vec4f) -> vec4f {
   return colour * coverage * opacity;
 }
 
+// Glyphs: instanced quads in the text node's units, sampled from the atlas's mask page (coverage,
+// tinted by the instance's colour) or its colour page (emoji, straight alpha). The item's `shape`
+// is the text box; nothing is drawn outside it.
+@group(1) @binding(0) var glyph_masks: texture_2d<f32>;
+@group(1) @binding(1) var glyph_colours: texture_2d<f32>;
+@group(1) @binding(2) var glyph_sampler: sampler;
+
+struct GlyphIn {
+  @location(0) rect: vec4f,
+  @location(1) uv: vec4f,
+  @location(2) colour: vec4f,
+  @location(3) kind: vec4u,
+};
+
+struct GlyphVaryings {
+  @builtin(position) position: vec4f,
+  @location(0) local: vec2f,
+  @location(1) clip_space: vec2f,
+  @location(2) uv: vec2f,
+  @location(3) colour: vec4f,
+  @location(4) @interpolate(flat) kind: u32,
+};
+
+@vertex fn vs_glyph(@builtin(vertex_index) i: u32, glyph: GlyphIn) -> GlyphVaryings {
+  var corners = array<vec2f, 6>(
+    vec2f(0.0, 0.0), vec2f(1.0, 0.0), vec2f(1.0, 1.0),
+    vec2f(0.0, 0.0), vec2f(1.0, 1.0), vec2f(0.0, 1.0));
+  let t = corners[i];
+  let local = mix(glyph.rect.xy, glyph.rect.zw, t);
+  var out: GlyphVaryings;
+  out.position = item.mvp * vec4f(local, 0.0, 1.0);
+  out.local = local;
+  out.clip_space = (item.clip_from_local * vec4f(local, 0.0, 1.0)).xy;
+  out.uv = mix(glyph.uv.xy, glyph.uv.zw, t);
+  out.colour = glyph.colour;
+  out.kind = glyph.kind.x;
+  return out;
+}
+
+@fragment fn fs_glyph(v: GlyphVaryings) -> @location(0) vec4f {
+  let clip = clip_coverage(v.clip_space, pixel_size(v.clip_space));
+  let inside = all(v.local >= item.shape.xy) && all(v.local <= item.shape.zw);
+  let opacity = item.params.z * clip * select(0.0, 1.0, inside);
+  let coverage = textureSample(glyph_masks, glyph_sampler, v.uv).r;
+  let colour = textureSample(glyph_colours, glyph_sampler, v.uv);
+  let mask = premultiply(v.colour) * coverage;
+  return select(mask, premultiply(colour), v.kind == 1u) * opacity;
+}
+
 @fragment fn fs_surface(v: Varyings) -> @location(0) vec4f {
   let px = pixel_size(v.local);
   let clip = clip_coverage(v.clip_space, pixel_size(v.clip_space));

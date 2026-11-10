@@ -5,6 +5,7 @@ use crate::draw_list::{self, DrawItem, ItemKind};
 use crate::node::NodeKind;
 use crate::pipelines::{ITEM_SIZE, Pipelines};
 use crate::scene::{Scene, Wallpaper};
+use crate::text::{Fonts, TextSystem};
 use crate::types::{Rect, TextureId, union};
 use std::collections::{BTreeSet, HashMap};
 use std::time::{Duration, Instant};
@@ -19,12 +20,15 @@ pub struct FrameStats {
     pub damage: Option<Rect>,
     /// CPU time spent walking the scene, encoding and submitting (the GPU runs after).
     pub compose_time: Duration,
-    /// Leaf nodes that produced pixels (rects and surfaces; the wallpaper is not counted).
+    /// Leaf nodes that produced pixels (rects, surfaces, text; the wallpaper is not counted).
     pub nodes_drawn: usize,
     pub draw_calls: usize,
     pub textures_resident: usize,
     /// Surfaces skipped because their texture is not registered.
     pub missing_textures: usize,
+    /// Glyphs the frame's text nodes drew, and how many of them no font had.
+    pub glyphs: usize,
+    pub missing_glyphs: usize,
     /// Some node animates: schedule the next frame.
     pub animating: bool,
 }
@@ -56,6 +60,7 @@ pub struct Compositor {
     seen: HashMap<u64, Seen>,
     items: Vec<DrawItem>,
     staging: Vec<u8>,
+    text: TextSystem,
 }
 
 impl Compositor {
@@ -80,6 +85,7 @@ impl Compositor {
             seen: HashMap::new(),
             items: Vec::new(),
             staging: Vec::new(),
+            text: TextSystem::default(),
         }
     }
 
@@ -138,6 +144,29 @@ impl Compositor {
         self.seen.clear();
     }
 
+    /// Set text in `fonts` from now on; without, the machine's fonts load with the first text.
+    /// Every scene draws again.
+    pub fn set_fonts(&mut self, fonts: Fonts) {
+        self.text.set_fonts(fonts);
+        self.invalidate();
+    }
+
+    /// The fonts text is set in (the machine's, loaded now, when none were set).
+    pub fn fonts(&mut self) -> &mut Fonts {
+        self.text.fonts()
+    }
+
+    /// Glyphs the atlas holds.
+    pub fn glyphs_resident(&self) -> usize {
+        self.text.atlas_glyphs()
+    }
+
+    /// The side of the glyph atlas's larger page in texels: 512 to start, doubling as glyphs need
+    /// room, up to the device's limit.
+    pub fn atlas_side(&self) -> u32 {
+        self.text.atlas_side()
+    }
+
     /// Draw `scene` into `target` (`size` pixels, the compositor's format) if anything changed
     /// since the last drawn frame or something animates; otherwise do nothing. Keep the scene's
     /// viewport equal to `size` ([`Scene::resize`]): the camera follows the scene, the scissor the
@@ -175,7 +204,13 @@ impl Compositor {
             let t = &textures.get(&id)?.texture;
             Some((t.width(), t.height()))
         };
-        let counts = draw_list::build(scene, &size_of, &mut self.items);
+        self.text.begin();
+        let counts = draw_list::build(scene, &size_of, &mut self.text, &mut self.items);
+        self.text.finish(&self.device, &self.queue);
+        let pipelines = &self.pipelines;
+        self.text.refresh_group(&self.device, |d, mask, color| {
+            pipelines.atlas_group(d, mask, color)
+        });
         self.upload();
         let draw_calls = self.encode(scene, target, size);
         let seen = Seen {
@@ -192,6 +227,8 @@ impl Compositor {
             draw_calls,
             textures_resident: self.textures.len(),
             missing_textures: counts.missing_textures,
+            glyphs: self.text.queued(),
+            missing_glyphs: self.text.missing,
             animating,
         }
     }
@@ -244,28 +281,29 @@ impl Compositor {
                 ..Default::default()
             });
             let target_rect = Rect::new(0.0, 0.0, size.0 as f32, size.1 as f32);
-            let mut current: Option<bool> = None;
+            if let Some(glyphs) = self.text.buffer() {
+                pass.set_vertex_buffer(0, glyphs.slice(..));
+            }
+            let mut current: Option<&wgpu::RenderPipeline> = None;
             for (index, item) in self.items.iter().enumerate() {
                 let scissor = item.scissor.unwrap_or(target_rect).intersect(&target_rect);
                 let Some(scissor) = scissor.map(|s| s.round_out()) else {
                     continue;
                 };
-                let group = match item.kind {
-                    ItemKind::Shape => None,
+                let (pipeline, group, instances) = match item.kind {
+                    ItemKind::Shape => (&self.pipelines.shape, None, 0..1),
                     ItemKind::Surface(id) => match self.textures.get(&id) {
-                        Some(t) => Some(&t.group),
+                        Some(t) => (&self.pipelines.surface, Some(&t.group), 0..1),
+                        None => continue,
+                    },
+                    ItemKind::Text { first, count } => match self.text.group() {
+                        Some(atlas) => (&self.pipelines.glyph, Some(atlas), first..first + count),
                         None => continue,
                     },
                 };
-                let is_surface = group.is_some();
-                if current != Some(is_surface) {
-                    let pipeline = if is_surface {
-                        &self.pipelines.surface
-                    } else {
-                        &self.pipelines.shape
-                    };
+                if current != Some(pipeline) {
                     pass.set_pipeline(pipeline);
-                    current = Some(is_surface);
+                    current = Some(pipeline);
                 }
                 pass.set_scissor_rect(
                     scissor.x as u32,
@@ -278,7 +316,7 @@ impl Compositor {
                 if let Some(group) = group {
                     pass.set_bind_group(1, group, &[]);
                 }
-                pass.draw(0..6, 0..1);
+                pass.draw(0..6, instances);
                 draws += 1;
             }
         }

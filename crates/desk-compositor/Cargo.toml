@@ -1,6 +1,6 @@
 [package]
 name = "desk-compositor"
-description = "The desk's compositor: a retained wgpu scene of wallpaper, chrome rectangles and surface quads, drawn on damage, with hit testing; renders into any texture view, headless in tests."
+description = "The desk's compositor: a retained wgpu scene of wallpaper, chrome, text and surface quads, styled from the theme's token table, drawn on damage, with hit testing; renders into any texture view, headless in tests."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,9 +13,12 @@ wgpu.workspace = true
 glam.workspace = true
 bytemuck.workspace = true
 pollster.workspace = true
+cosmic-text.workspace = true
+etagere.workspace = true
 
 [dev-dependencies]
 png.workspace = true
+serde_json.workspace = true
 
 [[bench]]
 name = "compose"

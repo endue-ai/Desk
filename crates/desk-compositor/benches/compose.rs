@@ -1,4 +1,4 @@
-//! Compose budget (#32 §3): 15 live surfaces at 2560x1440 within 4 ms a frame. Every frame moves
+//! Compose budget (#32 §3): 15 live, titled surfaces at 2560x1440 within 4 ms a frame. Every frame moves
 //! every window and repaints every texture, so every frame is a full redraw.
 //!
 //! `cargo bench -p desk-compositor --bench compose` measures 300 frames after 30 of warm-up and
@@ -28,7 +28,8 @@ fn main() {
     };
     let mut compositor = Compositor::new(&gpu.device, &gpu.queue, shared::FORMAT);
     let target = Target::new(&gpu.device, SIZE, shared::FORMAT);
-    let mut desk = shared::build(SIZE, SURFACES, &mut compositor);
+    let theme = desk_compositor::ChromeTheme::from_tokens(&shared::look(""));
+    let mut desk = shared::build(SIZE, SURFACES, &mut compositor, theme);
     let (mut compose, mut frame) = (Vec::new(), Vec::new());
     for n in 0..warmup + frames {
         let start = Instant::now();
@@ -36,7 +37,7 @@ fn main() {
         let stats = compositor.render(&desk.scene, &target.view, target.size);
         shared::wait(&gpu.device);
         assert!(
-            stats.drawn && stats.nodes_drawn == SURFACES * 5,
+            stats.drawn && stats.nodes_drawn == SURFACES * 4 && stats.missing_glyphs == 0,
             "{stats:?}"
         );
         if n >= warmup {

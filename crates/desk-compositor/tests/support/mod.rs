@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use desk_compositor::headless::{Headless, Target, headless_device};
-use desk_compositor::{Compositor, Scene, TextureId};
+use desk_compositor::{Compositor, Fonts, Scene, TextureId, Tokens};
 use std::path::PathBuf;
 
 pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -30,9 +30,42 @@ pub fn gpu(test: &str) -> Option<Headless> {
     }
 }
 
+/// The fonts in `tests/fonts` (Inter, and Noto Sans KR and SC cut down to the tests' strings),
+/// nothing of the machine's: text sets the same on every OS.
+pub fn test_fonts() -> Fonts {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fonts");
+    let files = ["inter.ttf", "noto-sans-kr.ttf", "noto-sans-sc.ttf"];
+    Fonts::from_data(files.map(|f| std::fs::read(dir.join(f)).expect("test font")))
+}
+
+/// A look as the runtime sends it for the compositor: the bridge vector
+/// `theme-tokens-request<suffix>.json` (`""` the endue theme dark, `-light`, `-amber`), the same
+/// tables the runtime's test says it sends.
+pub fn look(suffix: &str) -> Tokens {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../specs/bridge/v0/vectors/valid")
+        .join(format!("theme-tokens-request{suffix}.json"));
+    let doc: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).expect("theme vector")).expect("json");
+    let tokens = doc["instance"]["params"]["tokens"]
+        .as_object()
+        .expect("tokens");
+    tokens
+        .iter()
+        .map(|(name, value)| (name.clone(), value.as_str().unwrap_or_default().to_owned()))
+        .collect()
+}
+
+/// A compositor that sets text in [`test_fonts`].
+pub fn compositor(gpu: &Headless) -> Compositor {
+    let mut compositor = Compositor::new(&gpu.device, &gpu.queue, FORMAT);
+    compositor.set_fonts(test_fonts());
+    compositor
+}
+
 /// Render `scene` with a fresh compositor and read the frame back.
 pub fn render(gpu: &Headless, scene: &Scene, textures: &[(TextureId, &wgpu::Texture)]) -> Vec<u8> {
-    let mut compositor = Compositor::new(&gpu.device, &gpu.queue, FORMAT);
+    let mut compositor = compositor(gpu);
     for (id, texture) in textures {
         compositor.register_texture(*id, texture);
     }
