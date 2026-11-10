@@ -8,6 +8,8 @@ import { DESK, openShell } from "../shell-helpers";
 // headless WebKit draws only a few per second.) The files are fixture/heavy-files.ts's.
 /** A frame budget with room for a loaded machine. */
 const FRAME_MS = 100;
+/** What an open may take beyond the engine's fill: the drawing of the text area it shows, too. */
+const OPEN_MS = 150;
 
 test.use({ viewport: DESK });
 
@@ -112,8 +114,12 @@ test("Notes counts a 4 MiB note off the shell's thread, on open and while typing
   // Counting 4 MiB took the thread for about 200 ms on open and on each key before #38 (here an open
   // 560–814 ms, a key 450–665 ms). Now the open waits for the engine filling the text area, and a
   // key for the engine and Notes keeping its text (about 130 ms more than the twin at this size, not
-  // counting; see the audit in docs/qa/TESTING.md).
-  expect(opening.longest).toBeLessThan(engine.fill + FRAME_MS);
+  // counting; see the audit in docs/qa/TESTING.md). On the CEF desk's Chromium the open's longest
+  // task is the text area's first layout as it is shown and focused (about 270 ms in a CPU profile)
+  // and its drawing (about 45 ms), more than the twin's fill, which leaves the drawing out: alone an
+  // open is 325–346 ms against a fill of 215–229 ms, with Notes' own script about 11 ms of it.
+  // Counting on the thread would add about 200 ms (198 ms measured), so OPEN_MS still catches it.
+  expect(opening.longest).toBeLessThan(engine.fill + OPEN_MS);
   expect(typing.longest).toBeLessThan(engine.typing + 2 * FRAME_MS);
 });
 

@@ -197,7 +197,7 @@ Notes opens a 4 MiB note and types in it and while Explorer previews a 7.1 MiB i
 | `mail` | Invitation (iTIP) parse; list rows | Frame | Stays: an invitation parses in 0.13 ms; a render per changed item and an `Intl` format per row are not parsing (follow-up) | 1000-event invitation (Node) |
 | `market` | None: a policy, no frame | — | — | — |
 | `memory` | ≤ 200 entries | Frame | Stays: bounded | — |
-| `notes` | Word and character count (`Intl.Segmenter`) over the whole note on open and on every key | Frame: 4 MiB about 200 ms a key | `ui/count-worker.js` after a 200 ms pause in typing; "Counting…" after 300 ms; a newer text cancels the count. The text area stays the engine's; at 4 MiB a key still costs about 130 ms more than a bare text area, Notes keeping its text, not counting (follow-up) | 4 MiB note (e2e: open 560–814 ms now, 277–390 ms after; a key 450–665 ms now, 229–275 ms after) |
+| `notes` | Word and character count (`Intl.Segmenter`) over the whole note on open and on every key | Frame: 4 MiB about 200 ms a key | `ui/count-worker.js` after a 200 ms pause in typing; "Counting…" after 300 ms; a newer text cancels the count. The text area stays the engine's; at 4 MiB a key still costs about 130 ms more than a bare text area, Notes keeping its text, not counting (follow-up) | 4 MiB note (e2e: open 560–814 ms now, 277–390 ms after; a key 450–665 ms now, 229–275 ms after; on the CEF desk's Chromium alone an open 325–346 ms against the twin's fill of 215–229 ms, the text area's first layout and drawing, so the open's budget is the fill + 150 ms, #75) |
 | `notify` | None: a policy, no frame | — | — | — |
 | `onboarding` | Scripted lines, one second of noise samples | Frame | None | — |
 | `pack-github` | None: a pack, data only | — | — | — |
