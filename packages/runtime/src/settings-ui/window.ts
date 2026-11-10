@@ -51,7 +51,12 @@ export function installSettingsWindow(
     account = undefined;
   };
   const close = () => {
-    if (dialog.open) dialog.close();
+    if (!dialog.open) return;
+    dialog.close();
+    // The focus leaves the window now: when nothing had it before, Chromium keeps it on the hidden
+    // search field until the next frame, and a key pressed at once (Esc, then ⌘/) would land there.
+    const active = dialog.ownerDocument.activeElement;
+    if (active instanceof HTMLElement && dialog.contains(active)) active.blur();
   };
   const launcher = h(
     "button",
@@ -217,6 +222,9 @@ export function installSettingsWindow(
   const offSave = preferences.onChange(saved);
   saved();
   dialog.addEventListener("close", () => {
+    // The event comes a task after close(): a key that opened the window again in between (Esc,
+    // then ⌘/ at once) keeps it open.
+    if (dialog.open) return;
     panels();
     dialog.remove();
     lastFocus?.isConnected && lastFocus.focus();
