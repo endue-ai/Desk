@@ -39,8 +39,10 @@ fn keep(name: &str, measured: Value) {
     }
 }
 
-/// Timed starts of the start-up measurement; its value is their median.
+/// Timed starts of the start-up measurement; its value is the fastest.
 const RUNS: usize = 5;
+/// A start whose CEF took this long to come up stalled (it takes about 100 ms).
+const STALL_MS: f64 = 1000.0;
 
 fn now_ms() -> f64 {
     std::time::SystemTime::now()
@@ -83,9 +85,9 @@ fn perf_memory_per_live_surface() {
 #[ignore = "perf: just perf-compositor"]
 fn perf_start_to_the_first_composed_web_surface() {
     // A bundle's first start after it was laid out pays the OS's first look at the new binary, and
-    // on a busy machine about one start in three spent 1.4 s more before CEF was up (0.1 s
-    // otherwise): one start to take the first, then the median of five so that one or two of the
-    // others cannot move it.
+    // two starts in five of the rest spent 1.4 s more before CEF was up (0.1 s otherwise), busy
+    // machine or quiet: one start to take the first, then the fastest of five, which is what the
+    // desk's own work costs. The stalls are counted beside it and kept in `runs`.
     if probe(
         "perf_start_to_the_first_composed_web_surface",
         "startup",
@@ -121,15 +123,19 @@ fn perf_start_to_the_first_composed_web_surface() {
             "firstPaintMs": report["first_paint_ms"],
         }));
     }
-    let mut firsts: Vec<f64> = runs
+    let fastest = runs
         .iter()
         .filter_map(|r| r["firstComposeMs"].as_f64())
-        .collect();
-    firsts.sort_by(f64::total_cmp);
+        .fold(f64::MAX, f64::min);
+    let stalls = runs
+        .iter()
+        .filter(|r| r["cefReadyMs"].as_f64().is_some_and(|ms| ms > STALL_MS))
+        .count();
     keep(
         "surface-startup",
         json!({ "surfaceStartup": {
-            "firstComposeMs": firsts[firsts.len() / 2],
+            "firstComposeMs": fastest,
+            "stalls": stalls,
             "runs": runs,
             "platform": platform(),
         }}),

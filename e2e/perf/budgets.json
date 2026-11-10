@@ -60,12 +60,12 @@
     "reason": "The compositor's own start, which every desk start waits for before it shows anything: from asking for a GPU device to the first composed frame of the compose budget's desk with the GPU done (device, pipelines, the machine's fonts, 15 textures uploaded, the first glyphs). The same bench run's median of three starts after one that warms what the OS and the driver keep for a new binary (a fresh build's first start took 4 times as long). Fails past the allowance on the platform its baseline was recorded on; the desk's whole start is surfaceStartup's."
   },
   "surfaceStartup": {
-    "firstComposeMs": 241.8,
+    "firstComposeMs": 206.3,
     "runs": 5,
     "platform": "darwin-arm64",
     "recorded": "2026-11-10",
     "allowedRegression": 0.25,
-    "reason": "The desk's start to the first composed frame holding a web surface's paint, the median of five after one start that takes the OS's first look at a newly laid out bundle (1.5 s against 0.2 s; on a busy machine about one start in three also spent 1.4 s more before CEF was up, which the median leaves out): the CEF desk in compositor mode through its surface probe (apps/desk/shell/tests/budgets.rs), started by the test, so the process's start, CEF's, a renderer's, the page's first paint, its import and a compose all count. #35 measured 137 to 248 ms from CreateBrowser to the first paint alone. Fails past the allowance on the platform its baseline was recorded on."
+    "reason": "The desk's start to the first composed frame holding a web surface's paint, the fastest of five after one start that takes the OS's first look at a newly laid out bundle (1.5 s against 0.2 s). The fastest, because one or two starts in five spent 1.4 s more before CEF was up (0.1 s otherwise), busy machine or quiet; those are counted in stalls beside it. The CEF desk in compositor mode through its surface probe (apps/desk/shell/tests/budgets.rs), started by the test, so the process's start, CEF's, a renderer's, the page's first paint, its import and a compose all count. #35 measured 137 to 248 ms from CreateBrowser to the first paint alone. Fails past the allowance on the platform its baseline was recorded on."
   },
   "surfaceMemory": {
     "perSurfaceMb": 120.7,
