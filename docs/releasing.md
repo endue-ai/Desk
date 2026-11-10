@@ -63,6 +63,45 @@ Suggested pace: 10% on the day of the final, 50% two days later, 100% two days a
 after reading the issues filed against the version. Desks send nothing (no telemetry), so the issue
 tracker is the signal.
 
+## The CEF desk
+
+Until Stage 1 of #32 ends, two desks build side by side: the Tauri desk and the CEF desk
+(`apps/desk/shell`, ADR 0143). `release-build.yml` builds either (`shell: tauri | cef`); a line
+builds what `.github/release-shell` names at its commit, its final what the candidate's commit names,
+and canary always the Tauri desk. The file says `tauri`. To ship the CEF desk, change it to `cef` on
+`main` once #47 updates a Tauri desk into the CEF one, then cut the next line: its candidates reach
+beta, its final stable (ADR 0145). Rehearse first with **release-dry-run**, `shell: cef`.
+
+| Step | What runs | Where |
+| --- | --- | --- |
+| CEF | the archive `apps/desk/shell/packager/cef.json` pins, refused unless size, SHA-256 and the CDN's SHA-1 match | `node scripts/cef-fetch.mjs --target <triple>` |
+| Build | `cargo build -p desk-shell --bins --release` with `CEF_PATH`; on Linux `-rpath $ORIGIN` | the workflow, `just package-shell` |
+| Package | cargo-packager 0.11.8: `.app` + `.dmg`, NSIS + MSI, `.deb` + AppImage | `node scripts/cef-package.mjs` |
+| Sign | macOS: framework, five helpers (each its own entitlements), app; hardened runtime; notarised and stapled; Windows: every unsigned PE file, the installers | `scripts/cef-sign-macos.sh`, `DESK_WINDOWS_SIGN_COMMAND` |
+| Smoke | each package installed, its signatures checked, launched to `desk ready`, quit | `e2e/smoke/install-and-launch.sh <package>` |
+
+To bump CEF: change the `cef` crate (its version names the CEF build), then every field of
+`cef.json` from the CDN's `index.json` (name, size, sha1) and a SHA-256 of each archive you
+downloaded; `scripts/cef-fetch.test.mjs` fails until the two agree. A CEF bump with Chromium security
+fixes reaches beta within two weeks (ADR 0140).
+
+On Linux the desk runs with Chromium's sandbox off, as on every OS today. When it turns on,
+`chrome-sandbox` (shipped beside `libcef.so`) needs root and the set-uid bit, which neither a
+cargo-packager `.deb` nor an AppImage can carry, or user namespaces, which Ubuntu 23.10 and later
+grant only through an AppArmor profile. The plan: the `.deb` installs such a profile for
+`/usr/lib/endue-desk-cef/endue-desk-cef`; the AppImage relies on user namespaces.
+
+Sizes (CEF 156.0.26), MiB:
+
+| Target | Download | Installed | Of which CEF | Measured |
+| --- | --- | --- | --- | --- |
+| darwin-aarch64 | 162 (`.dmg`, `.app.tar.gz`) | 405 | 326 (the framework) | 2026-11-10, an ad-hoc build on macOS 26.5 |
+| darwin-x86_64 | not measured | not measured | 142 archive | #61 |
+| windows-x86_64 | not measured | not measured | 405 beside the exe | #61 |
+| linux-x86_64 | not measured | not measured | 366 (`libcef.so` 265 stripped, 1,412 as shipped by CEF) | #61 |
+
+The release workflow adds each run's numbers to its summary (`smoke-sizes.txt`).
+
 ## Settings outside the repository
 
 Nothing below is in git, and nothing checks it; set it once, and keep it in step with the workflows.
@@ -73,7 +112,7 @@ Nothing below is in git, and nothing checks it; set it once, and keep it in step
 | Environment `stable` | deployment branches: custom, `main` and `release/v*`; required reviewers (maintainers), prevent self-review |
 | `signing` secrets | `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`; for macOS `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` and either `APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_P8` (preferred) or `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` |
 | `stable` secrets | the updater key and its password, the R2 secrets (a token of its own), `RELEASE_APP_KEY` |
-| Variables | `DESK_UPDATER_PUBKEY` (repository), `RELEASE_APP_ID` (repository or `stable`); `R2_BUCKET` and `DESK_RELEASES_URL` only to change the defaults |
+| Variables | `DESK_UPDATER_PUBKEY` (repository), `RELEASE_APP_ID` (repository or `stable`); `R2_BUCKET` and `DESK_RELEASES_URL` only to change the defaults; `DESK_WINDOWS_SIGN_COMMAND` (`signing`) once Windows signing is chosen: the command that signs one file, `%1` the file, no spaces inside an argument; its credentials go in `signing` secrets and the packaging step's `env` in `release-build.yml` |
 | Release GitHub App | owned by the organisation, installed on this repository only; permissions Contents read and write, Issues read and write, Metadata read; its private key is `RELEASE_APP_KEY` |
 | Rulesets | `RELEASE_APP_ID=<id> scripts/sync-rulesets.sh` applies `.github/rulesets/`: `main`, `release` (who creates lines, review and checks on them) and `protect-release-tags` (who creates `v*`) |
 | Labels | `scripts/sync-labels.sh` adds `release-blocker` |
