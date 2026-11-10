@@ -117,12 +117,17 @@ export async function startDriver(options: DriverOptions): Promise<Record<string
  * window close times out and DevTools' Browser.close makes it panic on macOS (reported with #48).
  */
 export async function relaunchApp(leave: () => Promise<unknown>): Promise<void> {
-  if (!app) return;
+  const current = app;
+  if (!current) return;
   await leave().catch(() => {});
-  await app.desk?.stop();
+  await current.desk?.stop();
+  current.desk = undefined;
   const started = Date.now();
-  app.desk = await app.start();
-  setAppPid(app.desk.pid, started);
+  const desk = await current.start();
+  // A test that timed out while this ran has had its session ended: no desk outlives it.
+  if (app !== current) return desk.stop();
+  current.desk = desk;
+  setAppPid(desk.pid, started);
 }
 
 function setAppPid(pid: number | undefined, started = Date.now()): void {
