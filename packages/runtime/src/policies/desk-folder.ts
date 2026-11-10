@@ -56,12 +56,20 @@ export function deskFolder(bridge: BridgeClient): DeskFolder {
       }
     },
     write: async (path, text) => {
-      const scope: FsWritePermission = { permission: "fs:write", paths: [path] };
+      // The core makes only folders the scope covers (#102): a file in a folder of the desk folder
+      // (profiles/) names that folder in its scope too. One at the top (keys.yaml) asks for no
+      // folder, which the runtime's grant could not cover: the core makes ~/.desk itself.
+      const dir = path.slice(0, path.lastIndexOf("/"));
+      const nested = dir !== DESK_DIR;
+      const scope: FsWritePermission = {
+        permission: "fs:write",
+        paths: nested ? [path, dir] : [path],
+      };
       await bridge.call("fs.write", {
         path,
         content: text,
         encoding: "utf8",
-        createDirs: true,
+        ...(nested ? { createDirs: true } : {}),
         scope,
       });
     },

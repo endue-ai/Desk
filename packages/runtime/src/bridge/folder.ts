@@ -1,13 +1,23 @@
 /**
  * The desk folder on the browser stub: the runtime's own fs.read, fs.write, fs.list and fs.watch under
  * `~/.desk`, over text files held in memory, as desk-core answers the runtime (which holds fs:read on
- * `~/.desk/**` and fs:write on its profiles and keys.yaml). Every write is an fs.changed for the
- * watches that cover it, the runtime's own included, as the OS reports it. Calls a plugin makes, and
- * paths outside the folder, go to `fallback` (the page's own handlers).
+ * `~/.desk/**` and fs:write on its profiles and keys.yaml): a write is refused as the core refuses it
+ * (`checkWrite`), so a scope that fails there fails here too (#102). Every write is an fs.changed for
+ * the watches that cover it, the runtime's own included, as the OS reports it. Calls a plugin makes,
+ * and paths outside the folder, go to `fallback` (the page's own handlers).
  */
-import { type BridgeEvent, StubError, type StubHandlers } from "@endue-ai/bridge";
+import {
+  type BridgeEvent,
+  type FsWriteParams,
+  type FsWritePermission,
+  pathMatch,
+  StubError,
+  type StubHandlers,
+} from "@endue-ai/bridge";
 
 export const DESK_ROOT = "~/.desk";
+/** What desk-boot grants the runtime to write here (grants.rs, ADR 0079). */
+const RUNTIME_WRITE = [`${DESK_ROOT}/profiles/**`, `${DESK_ROOT}/keys.yaml`];
 
 /** The desk folder's files as a test or a dev page sees them. */
 export interface StubFolder {
@@ -68,6 +78,10 @@ export function stubFolder(
     "fs.write": (params, caller) => {
       if (caller !== undefined || !inFolder(params.path))
         return passOn(fallback, "fs.write")(params, caller);
+      checkWrite(
+        params,
+        (dir) => dir === DESK_ROOT || [...files.keys()].some((p) => under(p, dir)),
+      );
       put(params.path, params.content);
       return { bytesWritten: new TextEncoder().encode(params.content).length };
     },
@@ -93,6 +107,35 @@ export function stubFolder(
     },
   };
   return { folder, handlers };
+}
+
+const under = (path: string, dir: string) => path.startsWith(`${dir}/`);
+const denied = (reason: string, scope: FsWritePermission) =>
+  new StubError("permission_denied", reason, scope);
+
+/** A grant pattern covers a scope's path as desk-core's `pattern_covers` judges it (paths.rs). */
+function patternCovers(grant: string, asked: string): boolean {
+  if (!asked.includes("*") && !asked.includes("?")) return pathMatch(grant, asked);
+  const prefix = grant.endsWith("/**") ? grant.slice(0, -3) : undefined;
+  return grant === asked || (prefix !== undefined && under(asked, prefix));
+}
+
+/**
+ * The runtime's fs.write in the folder, refused as desk-core refuses it (core_fs.rs, perm.rs): the
+ * scope covers the path and RUNTIME_WRITE covers the scope; a folder createDirs would make is
+ * inside the scope; without createDirs, the folder the file goes in is there (`exists`).
+ */
+function checkWrite(params: FsWriteParams, exists: (dir: string) => boolean): void {
+  const { path, scope } = params;
+  if (!scope.paths.some((pattern) => pathMatch(pattern, path)))
+    throw denied(`the scope does not cover ${path}`, scope);
+  if (!scope.paths.every((asked) => RUNTIME_WRITE.some((grant) => patternCovers(grant, asked))))
+    throw denied("no grant covers the scope", scope);
+  const dir = path.slice(0, path.lastIndexOf("/"));
+  if (params.createDirs === true) {
+    if (dir !== "~" && !scope.paths.some((pattern) => pathMatch(pattern, dir)))
+      throw denied(`the scope does not cover ${dir}`, scope);
+  } else if (!exists(dir)) throw missing(dir);
 }
 
 /** The page's own handler for `method`, or an answer that nobody serves it. */
