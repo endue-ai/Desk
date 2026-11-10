@@ -1,0 +1,29 @@
+{
+  "id": "example.native-wgpu",
+  "name": "Native wgpu",
+  "version": "0.1.0",
+  "kind": "native",
+  "description": "The smallest native plugin: a program that draws a wgpu scene into its surface and reads one setting of its own over the bridge.",
+  "native": {
+    "binaries": {
+      "macos-aarch64": "bin/macos-aarch64/plugin-native-wgpu",
+      "macos-x86_64": "bin/macos-x86_64/plugin-native-wgpu",
+      "linux-aarch64": "bin/linux-aarch64/plugin-native-wgpu",
+      "linux-x86_64": "bin/linux-x86_64/plugin-native-wgpu",
+      "windows-x86_64": "bin/windows-x86_64/plugin-native-wgpu.exe"
+    },
+    "graceMs": 1000
+  },
+  "surfaces": [{ "id": "main", "title": "Native wgpu", "placement": "center" }],
+  "contributes": {
+    "settings": {
+      "example.native-wgpu.speed": {
+        "kind": "number",
+        "default": 1,
+        "minimum": 0,
+        "maximum": 10,
+        "description": "Turns per ten seconds."
+      }
+    }
+  }
+}

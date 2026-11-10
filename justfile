@@ -26,6 +26,18 @@ dev: build-shell
 # `just dev`, by the name it had while the Tauri shell was the default (Stage 1 of #32)
 alias dev-shell := dev
 
+# Run examples/<name> inside the desk in compositor mode, with the built-in plugins: a native plugin
+# (`just example plugin-native-wgpu`, #59) is built for this machine first
+example name: build-shell
+    #!/usr/bin/env bash
+    set -euo pipefail
+    node scripts/example.mjs build {{quote(name)}}
+    export DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins"
+    export DESK_DEV_PLUGINS={{quote(justfile_directory() / "examples" / name)}}
+    export DESK_COMPOSITOR=1
+    if [ "$(uname -s)" = Darwin ]; then exec target/bundle/endue-desk.app/Contents/MacOS/endue-desk; fi
+    exec target/debug/endue-desk
+
 # Run examples/brain-echo, the smallest brain, where the app's echo brain looks (http://127.0.0.1:8787/v0)
 brain-echo port="8787":
     node examples/brain-echo/server.mjs --port {{port}}

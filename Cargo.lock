@@ -1472,10 +1472,12 @@ dependencies = [
  "desk-memory",
  "desk-platform",
  "desk-plugin-host",
+ "desk-surface",
  "desk-sys",
  "desk-update",
  "getrandom 0.4.3",
  "jsonschema",
+ "libc",
  "ruzstd",
  "serde",
  "serde_json",
@@ -1612,8 +1614,14 @@ name = "desk-surface"
 version = "0.0.0"
 dependencies = [
  "jsonschema",
+ "libc",
+ "mach2",
+ "objc2-core-foundation",
+ "objc2-io-surface",
+ "objc2-metal 0.3.2",
  "serde",
  "serde_json",
+ "wgpu",
 ]
 
 [[package]]
@@ -4454,6 +4462,19 @@ dependencies = [
  "quick-xml 0.42.0",
  "serde",
  "time",
+]
+
+[[package]]
+name = "plugin-native-wgpu"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "desk-surface",
+ "libc",
+ "objc2-io-surface",
+ "pollster",
+ "serde_json",
+ "wgpu",
 ]
 
 [[package]]

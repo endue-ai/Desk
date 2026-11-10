@@ -69,3 +69,18 @@ test("just dev builds the CEF desk first, and dev-shell is the same recipe", { s
   assert.doesNotMatch(all, /tauri/iu, "no Tauri left in the recipe (#97)");
   assert.equal(dryRun({}, "dev-shell"), dryRun({}, "dev"));
 });
+
+test("just example runs an example on the compositor desk, a native one first", { skip }, () => {
+  const args = ["--justfile", join(root, "justfile"), "--dry-run", "--no-deps"];
+  const run = spawnSync("just", [...args, "example", "plugin-native-wgpu"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  assert.equal(run.status, 0, run.stderr);
+  const script = `${run.stdout}${run.stderr}`.trim();
+  assert.match(script, /^node scripts\/example\.mjs build 'plugin-native-wgpu'$/mu);
+  const env = appEnv(script);
+  assert.equal(env.DESK_COMPOSITOR, "1");
+  assert.equal(resolve(env.DESK_DEV_PLUGINS), join(root, "examples/plugin-native-wgpu"));
+  assert.equal(resolve(env.DESK_PLUGIN_DIRS), join(root, "plugins"));
+});

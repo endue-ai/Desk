@@ -1,0 +1,31 @@
+[package]
+name = "plugin-native-wgpu"
+description = "The smallest native plugin (#59): a program that draws a wgpu scene into its surface and reads one setting of its own over the bridge."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "plugin-native-wgpu"
+path = "src/main.rs"
+
+[dependencies]
+# The plugin's side of the native transport and its frames on wgpu (specs/surface/v0/native.md).
+desk-surface = { workspace = true, features = ["native-wgpu"] }
+bytemuck.workspace = true
+pollster.workspace = true
+serde_json.workspace = true
+wgpu.workspace = true
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+# The test reads the frame's pixels.
+objc2-io-surface = { version = "0.3", default-features = false, features = ["std", "IOSurfaceRef", "IOSurfaceTypes", "bitflags", "libc", "objc2", "objc2-core-foundation"] }
+
+[lints]
+workspace = true
