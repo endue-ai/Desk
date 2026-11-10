@@ -60,9 +60,8 @@ tried, and run `gh issue edit <N> --add-label ai:needs-human` (and the same on t
 - No secrets, no new network endpoints, no widened permissions or capabilities unless the contract says so.
 - Files stay under 400 lines; generated files are exempt.
 - Never run Playwright directly (`playwright test`, `npx playwright`, a one-off config or a script
-  that imports it), never set `DESK_E2E_NATIVE`, never run `just perf-opening`: native WebKit on
-  macOS crashed WindowServer for every agent on the machine (ADR 0018). If `just test-e2e` waits for a
-  slot, let it wait.
+  that imports it), and never pass `--headed`, `--ui` or `--debug`: `just test-e2e` runs headless
+  Chromium with four workers at most (ADR 0018, ADR 0144). Run one e2e invocation at a time.
 - Other agents work in parallel (ADR 0015). Do not rebase or merge `main` just because it moved: the
   merge queue tests the PR on top of it. Update the branch (`git merge origin/main`) only for a
   conflict, a failing gate or a queue ejection. In a conflicting `Cargo.lock` or `pnpm-lock.yaml`, take

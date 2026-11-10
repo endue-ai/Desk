@@ -14,7 +14,7 @@ English summary is `docs/architecture.md`.
 | `plugins/` | Built-in features written as plugins, in the same format as community plugins |
 | `examples/` | The smallest working examples; each one runs with one command |
 | `specs/` | Language-neutral contracts (bridge, brain, plugin, init, wit): the single source of truth for types |
-| `e2e/` | App-level tests (tauri-driver), install smoke tests and performance budgets |
+| `e2e/` | App-level tests (WebdriverIO on the CEF desk over chromedriver), install smoke tests and performance budgets |
 | `docs/` | Architecture, ADRs and guides; `docs/ko/` holds the Korean design documents, `docs/i18n/` the translations |
 | `brand/` | endue and Eris brand assets. Not Apache-2.0: see `brand/LICENSE` |
 | `market/` | `themes/` and `design-systems/`: the look markets' indexes and `.desk-theme` / `.desk-design` bundles; a pull request publishes one (ADR 0060, ADR 0091) |
@@ -104,10 +104,12 @@ Several agents work at once on one trunk (ADR 0015).
 - Don't rebase because `main` moved; the merge queue tests each PR on top of it. Update a branch only
   for a conflict, a failing gate or a queue ejection, and never rerun CI to turn it green.
 - People approve PRs and add them to the merge queue. Agents never merge or enqueue.
-- Playwright runs only through `just test-e2e` (and `just perf-opening`, which only people run on
-  macOS). Never call `playwright test` or write a one-off Playwright config or script. On macOS the
-  runner uses a Linux container and at most two e2e runs share a machine: dozens of native WebKit
-  processes crashed WindowServer and ended the login session for every agent (ADR 0018).
+- Playwright runs only through `just test-e2e` (and `just perf-opening`). Never call `playwright test`
+  or write a one-off Playwright config or script. The runner runs headless Chromium natively, four
+  workers at most, and refuses an agent's `--headed`, `--ui` or `--debug` on macOS: those open windows
+  on WindowServer, which dozens of native WebKit processes once crashed, ending the login session for
+  every agent (ADR 0018, ADR 0144). Run one e2e invocation at a time per task. The app e2e
+  (`just test-app-e2e`, WebdriverIO) drives the CEF desk through chromedriver; `just build-shell` first.
 - If `curl`, `gh` or `git` fail with "Could not resolve host" while the network is up, run
   `just doctor`. When it reports an ended login session, stop and tell the person; retrying won't help.
 
