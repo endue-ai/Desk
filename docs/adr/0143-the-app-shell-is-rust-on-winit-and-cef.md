@@ -51,8 +51,9 @@ first, and splitting the engine-independent logic out keeps CEF out of the defau
 * **`crates/desk-compositor`** and **`crates/desk-surface`** follow in Stage 2 (ADR 0140, ADR 0141).
 * **The pump**: CEF runs with an external message pump driven from `OnScheduleMessagePumpWork` inside
   winit's event loop. CEF names a delay, the shell wakes the loop at that time through an event-loop
-  proxy (at most 33 ms apart) and calls `do_message_loop_work` once. The PoC showed that calling it
-  when CEF did not ask blocks about 60 ms per call on macOS (13 fps); the schedule gives 57–59 fps.
+  proxy (at most 33 ms apart; 100 ms at rest since ADR 0159) and calls `do_message_loop_work` once.
+  The PoC showed that calling it when CEF did not ask blocks about 60 ms per call on macOS (13 fps);
+  the schedule gives 57–59 fps.
 
 | Tauri gave | Replaced by |
 | --- | --- |

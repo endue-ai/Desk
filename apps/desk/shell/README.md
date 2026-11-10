@@ -12,8 +12,9 @@ name, when Stage 1 of #32 ended (#97). Its main window is the compositor's, the 
 ## Public API
 
 - `app::ShellApp`, `features`: the CEF application object of every process (switches, schemes, features off).
-- `pump::{Pump, Wake}`: when CEF's work is due; jobs from other threads for the event loop's thread.
-- `window::Shell`, `pane::Pane`: the winit application and each window with its browser.
+- `pump::{Pump, Wake}`, `window::Shell`, `pane::Pane`: when CEF's work is due (its poll rides the desk's
+  wake-ups at rest; a stand-in clock covers CEF's busy-wait, ADR 0159) and jobs for the event loop's
+  thread; the winit application; each window with its browser.
 - `host`, `commands`: the bridge (`Desk`, `receive`, `Pages`) and the commands, named as Tauri's were.
 - `instance::claim`: an OS lock on `desk-instance.lock`; a second start hands its arguments over (`desk-instance.json`).
 - `tray`, `menu`, `hotkeys`, `dialog`; `palette`, `eris_window`, `computer`, `float`, `displays`: the other
@@ -22,9 +23,8 @@ name, when Stage 1 of #32 ended (#97). Its main window is the compositor's, the 
 - `native_host`: native plugins, each a process (#59, ADR 0154); `web_host`: web content, a windowless browser per
   surface on the frame clock (`frames`, `clock`), input (`input`, `key_codes`, `routes`, `drag`), its tree (`view::a11y`);
   `compositor_window`: `desk-wm`'s desk (`report`, `hosted`), `wm`, `draw`, AccessKit (`a11y`, ADR 0155); `harness`, `probe`.
-- `sandbox`: each macOS helper enters Chromium's sandbox first (ADR 0148); off elsewhere until #61.
-- `release`, `update`: the build's version, key, origin and commit; the updater over `desk_update::install`,
-  the tray's "Restart to update", the restart once CEF has shut down (#47).
+- `sandbox`: each macOS helper enters Chromium's sandbox first (ADR 0148; elsewhere after #61); `release`, `update`:
+  the build's version, key, origin, commit; `desk_update::install`, "Restart to update", the restart (#47).
 
 Packages (`packager/`, #46; icons in `icons/`) carry the built-in plugins; `DESK_PLUGIN_DIRS` names
 others. Gaps: no Linux tray (it needs a GTK loop); the pointer's display and work area are macOS-only.

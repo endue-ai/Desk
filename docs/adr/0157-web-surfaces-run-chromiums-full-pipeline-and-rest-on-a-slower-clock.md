@@ -4,6 +4,9 @@ date: 2026-11-11
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0159: CEF's poll rides the desk's own wake-ups at rest (at most 100 ms apart),
+and while CEF's work busy-waits a stand-in thread sends the frame clock's begin frames.
+
 # Web surfaces run Chromium's full pipeline, and long-idle ones rest on a slower clock
 
 ## Context and Problem Statement
