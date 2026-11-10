@@ -2,8 +2,8 @@
  * Plugins whose frame the runtime unloaded (ADR 0070), or whose first frame still loads, until the
  * next frame says hello: what they kept for it (ui.surface.state), and the messages that wait for
  * it. A request, a command invocation, a permission prompt or an agent's approval needs the
- * plugin's answer, so it waits and wakes the frame; anything else is dropped, since the plugin reads
- * what it needs again when it loads.
+ * plugin's answer, so it waits and wakes the frame; anything else is dropped, since the plugin
+ * reads what it needs again when it loads.
  * A plugin can also start asleep (#590): it has no surface yet, and waking it opens one. When no
  * frame can load, a command invocation is not kept: the host answers it (#1). A prompt or a desk
  * command still waits, since the person may open the plugin's window later.
