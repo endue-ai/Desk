@@ -780,16 +780,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f48d6e78916f115e21933b44c39bd20de0bd25c753fb86b61fb4e2b84b001877"
 dependencies = [
  "anyhow",
+ "ash",
  "cargo_metadata 0.23.1",
  "cef-dll-sys",
  "clap",
+ "libc",
  "libloading 0.9.0",
  "objc2 0.6.5",
+ "objc2-foundation 0.3.2",
+ "objc2-io-surface",
+ "objc2-metal 0.3.2",
  "plist",
  "semver",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
+ "tracing",
+ "wgpu",
+ "windows",
  "windows-sys 0.61.2",
 ]
 
@@ -1873,8 +1881,10 @@ dependencies = [
  "cef",
  "desk-boot",
  "desk-bridge",
+ "desk-compositor",
  "desk-computer",
  "desk-core",
+ "desk-surface",
  "desk-trace",
  "desk-web",
  "getrandom 0.3.4",
@@ -1883,6 +1893,7 @@ dependencies = [
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
+ "objc2-io-surface",
  "png",
  "pollster",
  "raw-window-handle",
@@ -1892,6 +1903,7 @@ dependencies = [
  "serde_json",
  "tray-icon",
  "url",
+ "wgpu",
  "windows-sys 0.59.0",
  "winit",
 ]
@@ -4838,6 +4850,7 @@ dependencies = [
  "libc",
  "objc2 0.6.5",
  "objc2-core-foundation",
+ "objc2-foundation 0.3.2",
 ]
 
 [[package]]
@@ -4872,7 +4885,9 @@ checksum = "a0125f776a10d00af4152d74616409f0d4a2053a6f57fa5b7d6aa2854ac04794"
 dependencies = [
  "bitflags 2.13.2",
  "block2 0.6.2",
+ "dispatch2",
  "objc2 0.6.5",
+ "objc2-core-foundation",
  "objc2-foundation 0.3.2",
  "objc2-io-surface",
 ]
