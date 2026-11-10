@@ -30,7 +30,7 @@
             "display": "block",
             "visibility": "visible",
             "opacity": "0.5",
-            "transform": "matrix3d(1, 0, 0, 0, 0, 0.173648, 0.984808, 0, 0, -0.984808, 0.173648, 0, 0, 0, 0, 1)",
+            "transform": "matrix3d(1, 0, 0, 0, 0, 0.174, 0.985, 0, 0, -0.985, 0.174, 0, 0, 0, 0, 1)",
             "filter": "none",
             "color": "rgb(242, 240, 245)"
           }
@@ -257,7 +257,7 @@
                 "display": "block",
                 "visibility": "visible",
                 "opacity": "1",
-                "transform": "matrix(1, 0, 0, 1, 0, -0.324201)",
+                "transform": "matrix(1, 0, 0, 1, 0, -0.324)",
                 "filter": "none",
                 "color": "rgb(242, 240, 245)"
               },
@@ -282,7 +282,7 @@
                         "visibility": "visible",
                         "opacity": "1",
                         "transform": "matrix(1, 0, 0, 1, 0, 0)",
-                        "filter": "brightness(0.819807)",
+                        "filter": "brightness(0.82)",
                         "color": "rgb(242, 240, 245)"
                       }
                     }
@@ -295,7 +295,7 @@
                     "display": "block",
                     "visibility": "visible",
                     "opacity": "1",
-                    "transform": "matrix(0.987688, -0.156434, 0.156434, 0.987688, 0, 0)",
+                    "transform": "matrix(0.988, -0.156, 0.156, 0.988, 0, 0)",
                     "filter": "blur(0px)",
                     "color": "rgb(242, 240, 245)"
                   }
@@ -321,7 +321,7 @@
                     "display": "inline",
                     "visibility": "visible",
                     "opacity": "1",
-                    "transform": "matrix(1, 0, 0, 1, 0, -2.81188)",
+                    "transform": "matrix(1, 0, 0, 1, 0, -2.812)",
                     "filter": "none",
                     "color": "rgb(242, 240, 245)"
                   }
@@ -490,8 +490,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.000029, 0, 0, 1.000029, 0, 0.001957)",
-                            "filter": "blur(0.003425px)",
+                            "transform": "matrix(1, 0, 0, 1, 0, 0.002)",
+                            "filter": "blur(0.003px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "o"
@@ -517,8 +517,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.000378, 0, 0, 1.000378, 0, 0.02518)",
-                            "filter": "blur(0.044065px)",
+                            "transform": "matrix(1, 0, 0, 1, 0, 0.025)",
+                            "filter": "blur(0.044px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "m"
@@ -530,8 +530,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.000656, 0, 0, 1.000656, 0, 0.043712)",
-                            "filter": "blur(0.076497px)",
+                            "transform": "matrix(1.001, 0, 0, 1.001, 0, 0.044)",
+                            "filter": "blur(0.076px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "e"
@@ -543,8 +543,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.001027, 0, 0, 1.001027, 0, 0.068461)",
-                            "filter": "blur(0.119806px)",
+                            "transform": "matrix(1.001, 0, 0, 1.001, 0, 0.068)",
+                            "filter": "blur(0.12px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "e"
@@ -556,8 +556,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.001504, 0, 0, 1.001504, 0, 0.100256)",
-                            "filter": "blur(0.175447px)",
+                            "transform": "matrix(1.002, 0, 0, 1.002, 0, 0.1)",
+                            "filter": "blur(0.175px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "t"
@@ -583,8 +583,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.002955, 0, 0, 1.002955, 0, 0.196998)",
-                            "filter": "blur(0.344746px)",
+                            "transform": "matrix(1.003, 0, 0, 1.003, 0, 0.197)",
+                            "filter": "blur(0.345px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "y"
@@ -596,8 +596,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.003876, 0, 0, 1.003876, 0, 0.258408)",
-                            "filter": "blur(0.452214px)",
+                            "transform": "matrix(1.004, 0, 0, 1.004, 0, 0.258)",
+                            "filter": "blur(0.452px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "o"
@@ -609,8 +609,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.004989, 0, 0, 1.004989, 0, 0.332572)",
-                            "filter": "blur(0.582002px)",
+                            "transform": "matrix(1.005, 0, 0, 1.005, 0, 0.333)",
+                            "filter": "blur(0.582px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "u"
@@ -622,8 +622,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.006327, 0, 0, 1.006327, 0, 0.421787)",
-                            "filter": "blur(0.738127px)",
+                            "transform": "matrix(1.006, 0, 0, 1.006, 0, 0.422)",
+                            "filter": "blur(0.738px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": ","
@@ -649,8 +649,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.015477, 0, 0, 1.015477, 0, 1.031783)",
-                            "filter": "blur(1.80562px)",
+                            "transform": "matrix(1.015, 0, 0, 1.015, 0, 1.032)",
+                            "filter": "blur(1.806px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "A"
@@ -662,8 +662,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.019034, 0, 0, 1.019034, 0, 1.268958)",
-                            "filter": "blur(2.220676px)",
+                            "transform": "matrix(1.019, 0, 0, 1.019, 0, 1.269)",
+                            "filter": "blur(2.221px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "d"
@@ -675,8 +675,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.023433, 0, 0, 1.023433, 0, 1.562174)",
-                            "filter": "blur(2.733804px)",
+                            "transform": "matrix(1.023, 0, 0, 1.023, 0, 1.562)",
+                            "filter": "blur(2.734px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "a"
@@ -688,8 +688,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.028937, 0, 0, 1.028937, 0, 1.929134)",
-                            "filter": "blur(3.375985px)",
+                            "transform": "matrix(1.029, 0, 0, 1.029, 0, 1.929)",
+                            "filter": "blur(3.376px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "."

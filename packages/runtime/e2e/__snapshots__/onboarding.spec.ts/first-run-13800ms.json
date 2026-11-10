@@ -30,7 +30,7 @@
             "display": "block",
             "visibility": "visible",
             "opacity": "0.5",
-            "transform": "matrix3d(1, 0, 0, 0, 0, 0.173648, 0.984808, 0, 0, -0.984808, 0.173648, 0, 0, 0, 0, 1)",
+            "transform": "matrix3d(1, 0, 0, 0, 0, 0.174, 0.985, 0, 0, -0.985, 0.174, 0, 0, 0, 0, 1)",
             "filter": "none",
             "color": "rgb(242, 240, 245)"
           }
@@ -173,7 +173,7 @@
                 "display": "block",
                 "visibility": "visible",
                 "opacity": "1",
-                "transform": "matrix(1, 0, 0, 1, 0, -0.031406)",
+                "transform": "matrix(1, 0, 0, 1, 0, -0.031)",
                 "filter": "none",
                 "color": "rgb(242, 240, 245)"
               },
@@ -198,7 +198,7 @@
                         "visibility": "visible",
                         "opacity": "1",
                         "transform": "matrix(1, 0, 0, 1, 0, 0)",
-                        "filter": "brightness(0.887137)",
+                        "filter": "brightness(0.887)",
                         "color": "rgb(242, 240, 245)"
                       }
                     }
@@ -211,7 +211,7 @@
                     "display": "block",
                     "visibility": "visible",
                     "opacity": "1",
-                    "transform": "matrix(0.997938, -0.064183, 0.064183, 0.997938, 0, 0)",
+                    "transform": "matrix(0.998, -0.064, 0.064, 0.998, 0, 0)",
                     "filter": "blur(0px)",
                     "color": "rgb(242, 240, 245)"
                   }
@@ -237,7 +237,7 @@
                     "display": "inline",
                     "visibility": "visible",
                     "opacity": "1",
-                    "transform": "matrix(1, 0, 0, 1, 0, -0.404171)",
+                    "transform": "matrix(1, 0, 0, 1, 0, -0.404)",
                     "filter": "none",
                     "color": "rgb(242, 240, 245)"
                   }
@@ -326,9 +326,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.542879",
-                            "transform": "matrix(0.981434, -0.023495, 0.023495, 0.981434, 5.485458, -13.713644)",
-                            "filter": "blur(4.571215px)",
+                            "opacity": "0.543",
+                            "transform": "matrix(0.981, -0.023, 0.023, 0.981, 5.485, -13.714)",
+                            "filter": "blur(4.571px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "I"
@@ -339,9 +339,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.428451",
-                            "transform": "matrix(0.975923, 0.048717, -0.048717, 0.975923, -5.143944, -11.430987)",
-                            "filter": "blur(5.715494px)",
+                            "opacity": "0.428",
+                            "transform": "matrix(0.976, 0.049, -0.049, 0.976, -5.144, -11.431)",
+                            "filter": "blur(5.715px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "'"
@@ -352,9 +352,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.66614",
-                            "transform": "matrix(0.986227, -0.028742, 0.028742, 0.986227, 1.669299, -12.686673)",
-                            "filter": "blur(3.338598px)",
+                            "opacity": "0.666",
+                            "transform": "matrix(0.986, -0.029, 0.029, 0.986, 1.669, -12.687)",
+                            "filter": "blur(3.339px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "m"
@@ -379,9 +379,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.777537",
-                            "transform": "matrix(0.990833, -0.023087, 0.023087, 0.990833, -2.669561, -7.563756)",
-                            "filter": "blur(2.224634px)",
+                            "opacity": "0.778",
+                            "transform": "matrix(0.991, -0.023, 0.023, 0.991, -2.67, -7.564)",
+                            "filter": "blur(2.225px)",
                             "color": "rgb(232, 201, 138)"
                           },
                           "text": "E"
@@ -392,9 +392,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.472411",
-                            "transform": "matrix(0.978233, 0.036047, -0.036047, 0.978233, 4.220712, -12.662137)",
-                            "filter": "blur(5.27589px)",
+                            "opacity": "0.472",
+                            "transform": "matrix(0.978, 0.036, -0.036, 0.978, 4.221, -12.662)",
+                            "filter": "blur(5.276px)",
                             "color": "rgb(232, 201, 138)"
                           },
                           "text": "."
@@ -419,9 +419,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.389338",
-                            "transform": "matrix(0.975352, 0.020794, -0.020794, 0.975352, -2.442648, -24.426483)",
-                            "filter": "blur(6.106621px)",
+                            "opacity": "0.389",
+                            "transform": "matrix(0.975, 0.021, -0.021, 0.975, -2.443, -24.426)",
+                            "filter": "blur(6.107px)",
                             "color": "rgb(232, 201, 138)"
                           },
                           "text": "R"
@@ -432,9 +432,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.705983",
-                            "transform": "matrix(0.988122, -0.015213, 0.015213, 0.988122, 3.528203, -8.820508)",
-                            "filter": "blur(2.940169px)",
+                            "opacity": "0.706",
+                            "transform": "matrix(0.988, -0.015, 0.015, 0.988, 3.528, -8.821)",
+                            "filter": "blur(2.94px)",
                             "color": "rgb(232, 201, 138)"
                           },
                           "text": "."
@@ -459,9 +459,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.687362",
-                            "transform": "matrix(0.987127, 0.026938, -0.026938, 0.987127, -2.813745, -6.252767)",
-                            "filter": "blur(3.126384px)",
+                            "opacity": "0.687",
+                            "transform": "matrix(0.987, 0.027, -0.027, 0.987, -2.814, -6.253)",
+                            "filter": "blur(3.126px)",
                             "color": "rgb(232, 201, 138)"
                           },
                           "text": "I"
@@ -472,9 +472,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.656318",
-                            "transform": "matrix(0.985809, -0.029575, 0.029575, 0.985809, 1.718408, -13.059899)",
-                            "filter": "blur(3.436816px)",
+                            "opacity": "0.656",
+                            "transform": "matrix(0.986, -0.03, 0.03, 0.986, 1.718, -13.06)",
+                            "filter": "blur(3.437px)",
                             "color": "rgb(232, 201, 138)"
                           },
                           "text": "."
@@ -499,9 +499,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.718812",
-                            "transform": "matrix(0.988324, -0.029111, 0.029111, 0.988324, -3.374261, -9.560405)",
-                            "filter": "blur(2.811884px)",
+                            "opacity": "0.719",
+                            "transform": "matrix(0.988, -0.029, 0.029, 0.988, -3.374, -9.56)",
+                            "filter": "blur(2.812px)",
                             "color": "rgb(232, 201, 138)"
                           },
                           "text": "S"
@@ -512,9 +512,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.39938",
-                            "transform": "matrix(0.975117, 0.040912, -0.040912, 0.975117, 4.80496, -14.41488)",
-                            "filter": "blur(6.0062px)",
+                            "opacity": "0.399",
+                            "transform": "matrix(0.975, 0.041, -0.041, 0.975, 4.805, -14.415)",
+                            "filter": "blur(6.006px)",
                             "color": "rgb(232, 201, 138)"
                           },
                           "text": "."
@@ -582,8 +582,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.000542, 0, 0, 1.000542, 0, 0.036143)",
-                            "filter": "blur(0.063251px)",
+                            "transform": "matrix(1.001, 0, 0, 1.001, 0, 0.036)",
+                            "filter": "blur(0.063px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "n"
@@ -595,8 +595,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.000877, 0, 0, 1.000877, 0, 0.058493)",
-                            "filter": "blur(0.102363px)",
+                            "transform": "matrix(1.001, 0, 0, 1.001, 0, 0.058)",
+                            "filter": "blur(0.102px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "d"
@@ -608,8 +608,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.001313, 0, 0, 1.001313, 0, 0.087565)",
-                            "filter": "blur(0.153238px)",
+                            "transform": "matrix(1.001, 0, 0, 1.001, 0, 0.088)",
+                            "filter": "blur(0.153px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "u"
@@ -621,8 +621,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.001864, 0, 0, 1.001864, 0, 0.124285)",
-                            "filter": "blur(0.217499px)",
+                            "transform": "matrix(1.002, 0, 0, 1.002, 0, 0.124)",
+                            "filter": "blur(0.217px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "e"
@@ -634,8 +634,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.002547, 0, 0, 1.002547, 0, 0.169767)",
-                            "filter": "blur(0.297092px)",
+                            "transform": "matrix(1.003, 0, 0, 1.003, 0, 0.17)",
+                            "filter": "blur(0.297px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "'"
@@ -647,8 +647,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.00338, 0, 0, 1.00338, 0, 0.225358)",
-                            "filter": "blur(0.394376px)",
+                            "transform": "matrix(1.003, 0, 0, 1.003, 0, 0.225)",
+                            "filter": "blur(0.394px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "s"
@@ -687,8 +687,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.014761, 0, 0, 1.014761, 0, 0.984036)",
-                            "filter": "blur(1.722062px)",
+                            "transform": "matrix(1.015, 0, 0, 1.015, 0, 0.984)",
+                            "filter": "blur(1.722px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "i"
@@ -700,8 +700,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.018155, 0, 0, 1.018155, 0, 1.210332)",
-                            "filter": "blur(2.118081px)",
+                            "transform": "matrix(1.018, 0, 0, 1.018, 0, 1.21)",
+                            "filter": "blur(2.118px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "d"
@@ -713,8 +713,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.022341, 0, 0, 1.022341, 0, 1.489386)",
-                            "filter": "blur(2.606426px)",
+                            "transform": "matrix(1.022, 0, 0, 1.022, 0, 1.489)",
+                            "filter": "blur(2.606px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "i"
@@ -726,8 +726,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.027564, 0, 0, 1.027564, 0, 1.837606)",
-                            "filter": "blur(3.21581px)",
+                            "transform": "matrix(1.028, 0, 0, 1.028, 0, 1.838)",
+                            "filter": "blur(3.216px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "c"
@@ -739,8 +739,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.034166, 0, 0, 1.034166, 0, 2.277733)",
-                            "filter": "blur(3.986033px)",
+                            "transform": "matrix(1.034, 0, 0, 1.034, 0, 2.278)",
+                            "filter": "blur(3.986px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "u"
@@ -752,8 +752,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.042597, 0, 0, 1.042597, 0, 2.839828)",
-                            "filter": "blur(4.969698px)",
+                            "transform": "matrix(1.043, 0, 0, 1.043, 0, 2.84)",
+                            "filter": "blur(4.97px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "l"
@@ -764,9 +764,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.925492",
-                            "transform": "matrix(1.053365, 0, 0, 1.053365, 0, 3.557637)",
-                            "filter": "blur(6.225864px)",
+                            "opacity": "0.925",
+                            "transform": "matrix(1.053, 0, 0, 1.053, 0, 3.558)",
+                            "filter": "blur(6.226px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "o"
@@ -777,9 +777,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.73919",
-                            "transform": "matrix(1.066778, 0, 0, 1.066778, 0, 4.451888)",
-                            "filter": "blur(7.790804px)",
+                            "opacity": "0.739",
+                            "transform": "matrix(1.067, 0, 0, 1.067, 0, 4.452)",
+                            "filter": "blur(7.791px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "u"
@@ -790,9 +790,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.520903",
-                            "transform": "matrix(1.082495, 0, 0, 1.082495, 0, 5.499663)",
-                            "filter": "blur(9.624411px)",
+                            "opacity": "0.521",
+                            "transform": "matrix(1.082, 0, 0, 1.082, 0, 5.5)",
+                            "filter": "blur(9.624px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "s"
@@ -803,9 +803,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.286188",
-                            "transform": "matrix(1.099394, 0, 0, 1.099394, 0, 6.626297)",
-                            "filter": "blur(11.59602px)",
+                            "opacity": "0.286",
+                            "transform": "matrix(1.099, 0, 0, 1.099, 0, 6.626)",
+                            "filter": "blur(11.596px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "l"
@@ -816,9 +816,9 @@
                           "style": {
                             "display": "block",
                             "visibility": "visible",
-                            "opacity": "0.052172",
-                            "transform": "matrix(1.116244, 0, 0, 1.116244, 0, 7.749576)",
-                            "filter": "blur(13.561758px)",
+                            "opacity": "0.052",
+                            "transform": "matrix(1.116, 0, 0, 1.116, 0, 7.75)",
+                            "filter": "blur(13.562px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "y"

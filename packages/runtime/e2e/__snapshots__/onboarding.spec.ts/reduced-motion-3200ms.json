@@ -173,7 +173,7 @@
                     "display": "block",
                     "visibility": "visible",
                     "opacity": "1",
-                    "transform": "matrix(0.987688, -0.156434, 0.156434, 0.987688, 0, 0)",
+                    "transform": "matrix(0.988, -0.156, 0.156, 0.988, 0, 0)",
                     "filter": "none",
                     "color": "rgb(242, 240, 245)"
                   }

@@ -3,11 +3,16 @@ import type { Frame } from "@playwright/test";
 /**
  * Serialise a plugin frame's `#root` as a render tree without layout boxes: glyph positions depend on
  * fonts, but their opacity, transform, filter and visibility depend only on the clock, so this tree
- * is the same on every OS (ADR 0011).
+ * is the same on every OS (ADR 0011). Numbers in those values are kept to three decimals: engines
+ * print them to different precisions (WebKit to six places, Chromium to six significant digits), and
+ * a thousandth of a pixel or of opacity never shows.
  */
 export async function frameTree(frame: Frame): Promise<string> {
   const tree = await frame.evaluate(() => {
     const styles = ["display", "visibility", "opacity", "transform", "filter", "color"];
+    const number = /(?<![\w.])-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi;
+    const rounded = (value: string) =>
+      value.replace(number, (n) => String(Math.round(Number(n) * 1000) / 1000 || 0));
     const attributes = ["role", "aria-live", "aria-hidden", "data-scene", "data-state", "hidden"];
     const walk = (el: Element): Record<string, unknown> => {
       const computed = getComputedStyle(el);
@@ -20,7 +25,7 @@ export async function frameTree(frame: Frame): Promise<string> {
         if (value !== null) node[name] = value;
       }
       node.style = Object.fromEntries(
-        styles.map((name) => [name, computed.getPropertyValue(name)]),
+        styles.map((name) => [name, rounded(computed.getPropertyValue(name))]),
       );
       const text = [...el.childNodes]
         .filter((child) => child.nodeType === Node.TEXT_NODE)

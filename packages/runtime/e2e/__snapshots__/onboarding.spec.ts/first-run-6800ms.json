@@ -30,7 +30,7 @@
             "display": "block",
             "visibility": "visible",
             "opacity": "0.5",
-            "transform": "matrix3d(1, 0, 0, 0, 0, 0.173648, 0.984808, 0, 0, -0.984808, 0.173648, 0, 0, 0, 0, 1)",
+            "transform": "matrix3d(1, 0, 0, 0, 0, 0.174, 0.985, 0, 0, -0.985, 0.174, 0, 0, 0, 0, 1)",
             "filter": "none",
             "color": "rgb(242, 240, 245)"
           }
@@ -159,7 +159,7 @@
                         "display": "block",
                         "visibility": "visible",
                         "opacity": "1",
-                        "transform": "matrix(0.996117, 0, 0, 0.996117, 0, 0)",
+                        "transform": "matrix(0.996, 0, 0, 0.996, 0, 0)",
                         "filter": "none",
                         "color": "rgb(242, 240, 245)"
                       }
@@ -172,9 +172,9 @@
                   "style": {
                     "display": "block",
                     "visibility": "visible",
-                    "opacity": "0.696364",
-                    "transform": "matrix(1.048582, 0, 0, 1.048582, 0, 0)",
-                    "filter": "blur(5.46544px)",
+                    "opacity": "0.696",
+                    "transform": "matrix(1.049, 0, 0, 1.049, 0, 0)",
+                    "filter": "blur(5.465px)",
                     "color": "rgb(242, 240, 245)"
                   }
                 }
@@ -320,8 +320,8 @@
               "style": {
                 "display": "block",
                 "visibility": "visible",
-                "opacity": "0.999992",
-                "transform": "matrix(1.000005, -0.00002, 0.00002, 1.000005, -0.003057, 0.005086)",
+                "opacity": "1",
+                "transform": "matrix(1, 0, 0, 1, -0.003, 0.005)",
                 "filter": "none",
                 "color": "rgb(242, 240, 245)"
               }
@@ -332,8 +332,8 @@
               "style": {
                 "display": "block",
                 "visibility": "visible",
-                "opacity": "0.994591",
-                "transform": "matrix(1.003039, -0.020363, 0.020363, 1.003039, -3.889302, 2.277325)",
+                "opacity": "0.995",
+                "transform": "matrix(1.003, -0.02, 0.02, 1.003, -3.889, 2.277)",
                 "filter": "none",
                 "color": "rgb(242, 240, 245)"
               }
@@ -344,8 +344,8 @@
               "style": {
                 "display": "block",
                 "visibility": "visible",
-                "opacity": "0.974947",
-                "transform": "matrix(1.008479, 0.115149, -0.115149, 1.008479, -22.422781, 1.828897)",
+                "opacity": "0.975",
+                "transform": "matrix(1.008, 0.115, -0.115, 1.008, -22.423, 1.829)",
                 "filter": "none",
                 "color": "rgb(242, 240, 245)"
               }
@@ -356,8 +356,8 @@
               "style": {
                 "display": "block",
                 "visibility": "visible",
-                "opacity": "0.929579",
-                "transform": "matrix(1.004382, -0.278401, 0.278401, 1.004382, -58.942528, -18.168665)",
+                "opacity": "0.93",
+                "transform": "matrix(1.004, -0.278, 0.278, 1.004, -58.942, -18.169)",
                 "filter": "none",
                 "color": "rgb(242, 240, 245)"
               }
@@ -368,8 +368,8 @@
               "style": {
                 "display": "block",
                 "visibility": "visible",
-                "opacity": "0.828832",
-                "transform": "matrix(1.034891, -0.380722, 0.380722, 1.034891, -69.323143, -106.980156)",
+                "opacity": "0.829",
+                "transform": "matrix(1.035, -0.381, 0.381, 1.035, -69.323, -106.98)",
                 "filter": "none",
                 "color": "rgb(242, 240, 245)"
               }
@@ -381,7 +381,7 @@
                 "display": "block",
                 "visibility": "visible",
                 "opacity": "0",
-                "transform": "matrix(-1.584429, -0.222677, 0.222677, -1.584429, 559, -548)",
+                "transform": "matrix(-1.584, -0.223, 0.223, -1.584, 559, -548)",
                 "filter": "none",
                 "color": "rgb(242, 240, 245)"
               }
