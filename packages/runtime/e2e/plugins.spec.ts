@@ -47,12 +47,14 @@ test("a plugin's last state survives an update that reloads it right after it se
   await expect(helloFrame.getByTestId("bridge")).toHaveText("bridge: ok, 0 grants");
   const plugin = page.frames().find((f) => f.url().includes("/plugins/example.hello-ui/"));
   if (!plugin) throw new Error("Hello has no frame");
+  // Its page's context is known now, so the click below goes out right behind the update.
   await plugin.evaluate(() => document.readyState);
 
   // The update comes while the desk's thread is busy for 300 ms, as on a loaded machine, and Hello
-  // counts in that time, on the page still on screen, without anything waiting for its desk:state.
-  // Before, the frame's page went at once and that message came after it, with no source the desk
-  // could tell: the reloaded Hello counted from 0. Now the reload waits for the frame's pong.
+  // counts in that time, on its page still on screen; nothing waits for its desk:state. Reloading at
+  // once, the desk navigated the frame first and the message came after the page had gone, with no
+  // source the desk could tell, so the reloaded Hello counted from 0. The reload now waits for the
+  // frame's answer to a ping (`frames/reload.ts`).
   const update = page.evaluate(() => {
     window.__desk.stub.emit({
       event: "plugin.changed",
