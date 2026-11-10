@@ -70,7 +70,7 @@ export class PluginHost {
   /** Launch an installed UI plugin, including one put away or disabled by the person. */
   async launch(id: string, waitForReady = false): Promise<void> {
     let info = (await this.#list()).find((p) => p.id === id);
-    if (info?.status !== "ready" || info.manifest?.kind !== "ui")
+    if (info?.status !== "ready" || !this.#mounts(info.manifest))
       throw new Error(`No launchable plugin ${id}`);
     if (!info.enabled) {
       ({ plugin: info } = await this.#deps.bridge.call("plugin.setEnabled", {
@@ -182,7 +182,7 @@ export class PluginHost {
   /** Mount a plugin: its surface opens now, or on its first use when it starts `asleep` (#590). */
   #mount(info: PluginInfo, asleep = false): void {
     const manifest = info.manifest;
-    if (info.status !== "ready" || !info.enabled || manifest?.kind !== "ui") return;
+    if (info.status !== "ready" || !info.enabled || !this.#mounts(manifest)) return;
     if (this.#mounted.has(info.id)) return;
     if (this.#deps.mayMount?.(info) === false) return;
     const surface = manifest.surfaces?.[0];
@@ -201,6 +201,16 @@ export class PluginHost {
     if (asleep) this.#sleepers.doze(info.id, open);
     else open();
     this.#commands.mounted(info);
+  }
+
+  /**
+   * Whether plugins of this manifest's kind get a surface: UI plugins, and native plugins on a
+   * desk whose compositor hosts their processes (#59, ADR 0154).
+   */
+  #mounts(manifest: PluginInfo["manifest"]): manifest is NonNullable<PluginInfo["manifest"]> {
+    return (
+      manifest?.kind === "ui" || (manifest?.kind === "native" && this.#options.native === true)
+    );
   }
 
   #unmount(id: string): void {
@@ -267,7 +277,8 @@ export class PluginHost {
     const info = this.#mounted.get(plugin);
     switch (change) {
       case "updated":
-        if (info?.manifest?.entry) {
+        // A native plugin has no entry: its frame loads again, and the desk starts its new program.
+        if (info?.manifest?.entry || info?.manifest?.native) {
           const next = { ...info, revision };
           this.#mounted.set(plugin, next);
           if (!this.#sleepers.dozing(plugin))

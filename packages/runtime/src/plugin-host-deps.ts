@@ -10,6 +10,11 @@ export interface PluginHostOptions {
    * `surfaceHost`); the files the desk loads itself (a theme's fonts) name none.
    */
   url(id: string, path: string, revision: number, surface?: string): string;
+  /**
+   * Native plugins (kind `native`) mount too: the compositor draws them from processes of their
+   * own (#59). A desk without it (the windowed desk, tests) leaves them out.
+   */
+  native?: boolean;
 }
 
 /** What the host needs from the runtime. */

@@ -53,7 +53,8 @@ const desk = mountDesk({
   root,
   bridge: shellBridge(core),
   core,
-  plugins: { url: pluginUrl },
+  // Native plugins draw only through the compositor (#59).
+  plugins: { url: pluginUrl, native: composited },
   clock: realClock(),
   platform: navigator.userAgent.includes("Macintosh") ? "mac" : "other",
   lang,
