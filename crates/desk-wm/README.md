@@ -25,9 +25,10 @@ desktops, the drawer and the focus read and write the runtime's saved JSON uncha
   `move_to_desktop`, `move_back`. `Desk::set` keeps the drawer to what is away (#4).
 - `Arranger` (tile, cascade, restore, ADR 0116); `Desk::snapshot` and `snapshot_seen` (titles and
   frames through `Seen`): what `desk.windows.list` answers, as the contract's `BrainDesk` (#82).
+- `host` (#81, ADR 0151): `Desk::host_plan` (windows back to front, panes' boxes, bars, what the page
+  draws), `LiveBudget` (ADR 0134) and `Surfaces`, the protocol steps keyed by surface host.
 
-Pointer and key input arrive with #80. The TS modules stay until the compositor desk runs on this
-crate (#83).
+Pointer and key input arrive with #80; the TS modules stay until the compositor desk runs on it (#83).
 
 ## Test
 
@@ -35,6 +36,5 @@ crate (#83).
 cargo test -p desk-wm
 ```
 
-`tests/*.rs` port the TS tests case by case, by name (`describe` → module, `it` → function); each
-file's header names its source and the cases left to the wiring children. `tests/scene.rs` and the
-runtime's `desk-view.scene.test.ts` must both give `specs/bridge/v0`'s scene vector.
+`tests/*.rs` port the TS tests case by case, by name (`describe` → module, `it` → function), each
+header naming its source; `tests/scene.rs` and `desk-view.scene.test.ts` give one scene vector.

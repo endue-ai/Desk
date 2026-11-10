@@ -127,4 +127,6 @@ deleted whole when #53 moves the window manager to Rust.
 
 Issue #52 (epic #32 §4, §8, §9); ADR 0140 (the direction), ADR 0141 (the protocol), ADR 0142 (the live
 budget whose sleeps this carries out), ADR 0143 (the shell), ADR 0040 (the frames' sandbox). Replaced
-by the window manager in Rust (#53) and system surfaces (#55); input is #56.
+by the window manager in Rust (#53) and system surfaces (#55); input is #56. Its **Places** are
+replaced by ADR 0151 (#81): the compositor places windows from `desk-wm`, and the page's report of its
+frames' rectangles and their covers is gone.

@@ -6,8 +6,8 @@ desk's URL schemes and CEF's message pump, driven from winit's event loop when C
 `window.__deskNative`, the caller taken from the browser's window and the frame's URL (#43, #45).
 It has the Tauri shell's services (#45): tray, menu bar, shortcuts, file dialog, one desk per data folder,
 opened files, the palette, the floating Eris, the computer-use banner; it replaces `../src-tauri` after
-Stage 1 (`endue-desk-cef`). Compositor mode (`DESK_COMPOSITOR=1`, ADR 0149, 0150) draws every surface
-off screen with `desk-compositor` and routes their input.
+Stage 1 (`endue-desk-cef`). Compositor mode (`DESK_COMPOSITOR=1`, ADR 0149–0151) draws every surface
+off screen with `desk-compositor`, places the windows from `desk-wm` and routes their input.
 
 ## Public API
 
@@ -20,8 +20,8 @@ off screen with `desk-compositor` and routes their input.
   windows; `open_files`, `run_event`, `drops`: files from the command line, Finder, the Dock and drags.
 - `scheme`, `plugin_scheme`, `guard`, `paths`, `renderer`, `crashes`: schemes, loads, files, crashes.
 - `web_host`: `specs/surface` for web content, a windowless browser per surface and its input (`input`,
-  `key_codes`, `routes`, `drag`); `compositor_window`: the scene, frames' places, winit's input, the
-  focus ring and drag image (`input`, `winit_input`, `overlay`); `harness`, `probe`: their checks.
+  `key_codes`, `routes`, `drag`); `compositor_window`: the runtime's desk in `desk-wm` (`report`, `hosted`),
+  its scene (`draw`), winit's input, the focus ring and drag image; `harness`, `probe`: their checks.
 - `sandbox`: each macOS helper enters Chromium's sandbox first (ADR 0148); off elsewhere until #61.
 - `release`, `update`: the build's version, key, origin and commit; the updater over `desk_update::install`,
   the tray's "Restart to update", the restart once CEF has shut down (#47).

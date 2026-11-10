@@ -47,12 +47,16 @@ one small, whole message, and #83 only changes who writes the state.
 * **Plan.** The shell mirrors it (`compositor_window/hosted.rs`) and `Desk::host_plan` gives the
   windows of the desktop in front back to front, each at its rectangle with its panes' boxes, the
   plugins in sight (ADR 0070's cover), the bars' bands and the free area (`desk_wm::host`).
-* **Drawing.** The compositor draws the wallpaper (the theme's background colour), then each window:
-  frame and title bar from `Chrome` in the look `Core::watch_theme_tokens` brings, each plugin pane its
-  surface's texture, each pane of the shell's own views (the launcher, sample views) the page's pixels
-  there; then the page's system layer above every window. The page renders see-through: its
-  wallpaper is not drawn, its windows' chrome and placeholders keep their place for the pointer but
-  paint nothing (`compositor.css`). The DOM report and its grid of hit tests are deleted.
+* **Drawing.** The compositor draws the wallpaper (the theme's background colour), then each window
+  back to front: its frame, border, shadow and title from `Chrome` in the look
+  `Core::watch_theme_tokens` brings, each plugin pane its surface's texture at the pane's body, and
+  what the page draws of the window at its place in the stack (the title bar's icon and tools, the
+  shell's own views such as the launcher, the headers of split panes), in the window's fill so what
+  lies under it in the page stays hidden; then the plugin surfaces the page lays out itself (overlays,
+  edge bars) and the page's system layer above every window, but for what the page draws of a window
+  under another and the titles' text. The page renders see-through: its wallpaper is not drawn, its
+  windows' frames, titles and placeholders keep their place for the pointer but paint nothing
+  (`compositor.css`). The DOM report and its grid of hit tests are deleted.
 * **Surfaces.** `desk_wm::host::Surfaces` turns the frames into protocol steps keyed by surface host:
   `create`, `resize` with the pane's size and the window's scale, `hide` and `show` for sight, `sleep`
   and `wake` as the runtime takes a frame away and puts it back, `destroy` when it lets the plugin go.
@@ -70,6 +74,11 @@ one small, whole message, and #83 only changes who writes the state.
 * **Placeholders.** Asleep, stopped, crashed and not yet painted windows show a card the compositor
   draws (`Chrome::card`): the page's own words for it, read from its placeholder, and Not responding
   over the last frame with Wait and Stop.
+* **Input (#56, ADR 0150).** Every node that shows a surface is the input router's target for it: a
+  plugin's quad, and each piece of the page (an unseen one under everything, the parts it draws of a
+  window, its layer above them, which takes the pointer only outside windows). The compositor's own
+  chrome and cards let the pointer through to the page, whose window manager still moves, resizes and
+  focuses windows from it until #80; the focus ring goes round the focused plugin's pane.
 
 ### Consequences
 
@@ -83,9 +92,12 @@ one small, whole message, and #83 only changes who writes the state.
 * Bad, because the state crosses as JSON on every change, and the page and `desk-wm` must lay a
   window out alike for a shell view's pixels to land in its pane (both follow the same CSS numbers;
   `tests/host.rs` and the runtime's tests pin them).
-* Bad, because until #56 and #80 input still goes to the page's unpainted windows: a drag moves the
-  window only when the runtime writes the store, and spread visuals (#54) and the snap preview are not
-  drawn by the compositor yet.
+* Bad, because until #80 the pointer still works the page's unpainted windows: a drag moves the
+  window only when the runtime writes the store, the cards' buttons are drawn where the page's are
+  not, and spread visuals (#54) and the snap preview are not drawn by the compositor yet.
+* Bad, because the page is one picture: a bar or a menu over a window that lies over another
+  window's part the page draws is hidden by the upper window there, until system surfaces (#55) give
+  the system layer a surface of its own.
 * Bad, because the theme's backdrop image, its `.woff2` fonts and the wallpaper effects are not in
   the compositor's look yet (ADR 0146), so compositor mode shows the theme's background colour.
 

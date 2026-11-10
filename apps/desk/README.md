@@ -18,7 +18,7 @@ and `src/` mounts the desk shell (`mountDesk`) and connects the bridge.
 | `src-tauri/capabilities/` | Main-window bridge/readiness/start-up phases, event listeners and native file picker; `palette.json` and `eris.json` for their windows |
 | `src-tauri/tauri.conf.json` | Window, strict CSP, bundle, `macOSPrivateApi` (her transparent window); identifier `ai.endue.desk` |
 | `src-tauri/icons/` | Placeholder icons generated from a flat accent square |
-| `shell/`, `src/compositor-layout.ts` | The CEF shell that replaces `src-tauri/` (ADR 0143, Stage 1 of #32): winit window, windowed CEF browser, the `desk-app` scheme over `dist/` and CEF's message pump; `just dev-shell`. Its own README. In its compositor mode (`?compositor=1`, #52, ADR 0149) the page reports where its plugin frames are and what covers them (`compositor-visible.ts`) |
+| `shell/`, `src/compositor-desk.ts` | The CEF shell that replaces `src-tauri/` (ADR 0143, Stage 1 of #32): winit window, windowed CEF browser, the `desk-app` scheme over `dist/` and CEF's message pump; `just dev-shell`. Its own README. In its compositor mode (`?compositor=1`, #52, ADR 0149, ADR 0151) the page publishes the desk the runtime keeps and hears the live budget's set (`compositor-desk.ts`), and draws only its system layer and its own views (`compositor.css`) |
 
 Mod+O (⌘O on macOS, Ctrl+O elsewhere) opens the native file picker. Dropping local files opens
 them in order once the desk is ready; duplicate paths reuse their buffers. Cancelling does nothing.

@@ -17,8 +17,8 @@ input too. No windowing, no CEF: it runs inside any shell and headless.
 - `Frames::attach(&mut compositor, id, &SurfaceAttach, Source)`: a `specs/surface` frame into its texture.
 - Text (ADR 0146): cosmic-text, falling back across Latin, Hangul, CJK and emoji, glyphs in an atlas.
 - Look (ADR 0146): `Tokens` is the flat table `theme.tokens` carries (follows `var()`); `ChromeTheme::
-  from_tokens` maps it to parts; `Chrome` builds windows, bars, snap previews, toasts and placeholders
-  and `set_theme` restyles them all in one pass.
+  from_tokens` maps it to parts; `Chrome` builds windows, bars, snap previews, toasts and placeholder
+  cards (`card`: title, line, actions), `clear_title` keeps a title clear, `set_theme` restyles all.
 - `hit_test(&scene, point) -> Option<Hit { node, local_point }>`; `headless`: `headless_device()`,
   `Target`, `read_rgba`, `upload_rgba`.
 - `input` (ADR 0150): `InputRouter::handle(&scene, &Input, now) -> Vec<Out>`, winit-like events to the
