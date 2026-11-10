@@ -24,9 +24,8 @@ drawn into a `wgpu::TextureView` the caller owns. No windowing, no CEF: it runs 
 - `hit_test(&scene, point) -> Option<Hit { node, local_point }>`; `headless`: `headless_device()`,
   `Target`, `read_rgba`, `upload_rgba`.
 
-Colours are straight alpha in the target's encoding (BGRA8 or RGBA8 Unorm); textures are premultiplied.
-Not yet: D3D11 and DMA-BUF import (#61), shadow knockout, group opacity as a layer, theme `.woff2` fonts
-and backdrop images in chrome.
+Colours: straight alpha (BGRA8 or RGBA8 Unorm), textures premultiplied. Not yet: D3D11 and DMA-BUF import
+(#61), shadow knockout, group opacity as a layer, a theme's `.woff2` fonts and backdrops in chrome.
 
 ## Test
 
