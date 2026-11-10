@@ -85,11 +85,25 @@ To bump CEF: change the `cef` crate (its version names the CEF build), then ever
 downloaded; `scripts/cef-fetch.test.mjs` fails until the two agree. A CEF bump with Chromium security
 fixes reaches beta within two weeks (ADR 0140).
 
-On Linux the desk runs with Chromium's sandbox off, as on every OS today. When it turns on,
-`chrome-sandbox` (shipped beside `libcef.so`) needs root and the set-uid bit, which neither a
-cargo-packager `.deb` nor an AppImage can carry, or user namespaces, which Ubuntu 23.10 and later
-grant only through an AppArmor profile. The plan: the `.deb` installs such a profile for
-`/usr/lib/endue-desk-cef/endue-desk-cef`; the AppImage relies on user namespaces.
+Chromium's sandbox (ADR 0148) is on for the macOS desk: every helper enters it before it loads the
+framework, through `libcef_sandbox.dylib` in the framework's `Libraries`, which the signing step signs
+with the framework; `e2e/specs/sandbox.spec.ts` proves it on the development bundle. Linux and Windows
+run without it (`apps/desk/shell/src/sandbox.rs`) until #61 proves each on its OS:
+
+- **Linux.** `chrome-sandbox` (shipped beside `libcef.so`) needs root and the set-uid bit, which
+  neither a cargo-packager `.deb` nor an AppImage can carry, so the desk uses the namespace sandbox,
+  which needs unprivileged user namespaces; Ubuntu 23.10 and later grant them only through an
+  AppArmor profile. The `.deb` installs such a profile for `/usr/lib/endue-desk-cef/endue-desk-cef`
+  (`abi <abi/4.0>`, `userns`, `flags=(unconfined)`, as Ubuntu's own profile for Chrome) and loads it in
+  `postinst`; the AppImage relies on user namespaces being open. A desk that finds neither stops
+  with Chromium's "No usable sandbox" instead of running without. #61 turns `no_sandbox` to 0 on Linux
+  and runs the sandbox spec there (on Linux it checks `Seccomp: 2` in `/proc/<pid>/status` and a user
+  namespace apart from the desk's).
+- **Windows.** CEF 156 sandboxes only an app built as a client DLL that its `bootstrap.exe` loads
+  (`CEF_USE_BOOTSTRAP`): the desk becomes `endue-desk-cef.dll` (a `cdylib`) beside `bootstrap.exe`
+  renamed `endue-desk-cef.exe`, the layout the `cef` crate's `sandbox` feature makes. NSIS and the
+  MSI install both, `DESK_WINDOWS_SIGN_COMMAND` signs both, and the spec checks each renderer's
+  token (restricted, at untrusted integrity) on Windows.
 
 Sizes (CEF 156.0.26), MiB:
 

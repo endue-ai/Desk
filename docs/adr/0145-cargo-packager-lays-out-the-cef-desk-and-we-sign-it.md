@@ -47,8 +47,9 @@ app's identifier.
   `.dmg`, then notarises and staples the app and the `.dmg`. Entitlements: the app
   `allow-unsigned-executable-memory` (wasmtime's Cranelift maps code without `MAP_JIT`; without it the
   hardened runtime kills the process, `allow-jit` alone too), `device.audio-input`, `device.camera`,
-  `personal-information.calendars`; Renderer, GPU and the base Helper `allow-jit` (V8, SwiftShader; the
-  GPU process runs in the base Helper while the sandbox is off); Alerts and Plugin none, since no
+  `personal-information.calendars`; Renderer, GPU and the base Helper `allow-jit` (V8, SwiftShader;
+  CEF 156 starts the GPU process from the base Helper, in Chromium's sandbox or not, ADR 0148);
+  Alerts and Plugin none, since no
   Pepper plugin exists. An ad-hoc build alone adds `disable-library-validation`: ad-hoc code has no Team
   ID, so library validation would refuse the framework. Windows signs every unsigned PE file through
   `DESK_WINDOWS_SIGN_COMMAND`.
@@ -72,8 +73,9 @@ app's identifier.
   identities and those OSes (#61); this page records the entitlement set they must confirm.
 * Bad, because a desk installed from a Tauri `.rpm` gets no CEF update, and the main executable keeps its
   Stage 1 name `endue-desk-cef` beside the Tauri desk's `endue-desk` (#47's transition).
-* Bad, because the desk still runs with Chromium's sandbox off; turning it on (the macOS sandbox library
-  in the helpers, `chrome-sandbox` set-uid or user namespaces on Linux) is its own change.
+* Bad, because only the macOS desk runs in Chromium's sandbox (ADR 0148: the helpers open the
+  framework's `libcef_sandbox.dylib`, signed with its other libraries); Linux (user namespaces under an
+  AppArmor profile) and Windows (CEF's bootstrap and a client DLL) wait for #61.
 
 ## More Information
 

@@ -11,7 +11,8 @@
 //! profile for `/usr/lib/endue-desk-cef/endue-desk-cef`, the AppImage relies on user namespaces, and
 //! a desk that finds neither refuses to start rather than fall back (`docs/releasing.md`).
 //! Windows: CEF 156 sandboxes only an app built as a client DLL that its `bootstrap.exe` loads
-//! (`cef_sandbox_win.h`), so the desk becomes `libendue_desk_cef.dll` behind a renamed bootstrap.
+//! (`CEF_USE_BOOTSTRAP`), so the desk becomes `endue-desk-cef.dll` beside the bootstrap renamed
+//! `endue-desk-cef.exe`, which loads the DLL of its own name.
 
 /// CEF's `no_sandbox`: 0 where the sandbox is on (macOS), 1 where it waits for #61.
 pub const fn no_sandbox() -> i32 {

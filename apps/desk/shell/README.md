@@ -25,6 +25,8 @@ draws the main window with `desk-compositor` instead: the page and every plugin 
 - `crashes::watch`: Chromium's target discovery names a plugin frame whose renderer died (`desk://frame-crashed`).
 - `web_host`: `specs/surface` for web content, one windowless browser per surface, stand-ins, relay.
 - `compositor_window`: the wgpu scene, the frames' places (`layout`, `scene`); `probe`: its checks.
+- `sandbox`: Chromium's sandbox (ADR 0148), entered by each macOS helper before the framework loads;
+  `no_sandbox()` keeps it off on Linux and Windows until #61.
 
 Gaps: no tray on Linux yet (it needs a GTK loop); the pointer's display and the work area come from
 AppKit on macOS only; "Restart to update" waits for #47. Release bundles (Finder's document types
