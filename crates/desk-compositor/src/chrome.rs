@@ -13,9 +13,13 @@ use std::sync::Arc;
 /// What a part is, which decides the tokens it takes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Role {
-    WindowFrame { focused: bool },
+    WindowFrame {
+        focused: bool,
+    },
     TitleDivider,
-    Title { subtitled: bool },
+    Title {
+        subtitled: bool,
+    },
     Subtitle,
     Bar,
     BarLabel,
@@ -24,7 +28,18 @@ pub enum Role {
     ToastText,
     Placeholder,
     PlaceholderLabel,
+    /// A placeholder's line under its title, wrapped.
+    PlaceholderLine,
+    /// Over a window's last frame while it does not answer.
+    Scrim,
+    /// A button a placeholder offers (Reload, Wait, Stop) and its label.
+    Action,
+    ActionLabel,
 }
+
+mod card;
+
+use card::ACTION_H;
 
 /// A part: its node, its role, the box it was made for (a window's own outer box, in its group's
 /// units, for every part of a window) and its text.
@@ -157,6 +172,34 @@ impl Chrome {
         let fill = self.add(scene, parent, Role::Placeholder, rect, "")?;
         let text = self.add(scene, parent, Role::PlaceholderLabel, rect, label)?;
         Ok((fill, text))
+    }
+
+    /// Keep a window's title clear of what floats over its title bar: at least `start` px from its
+    /// left edge and `end` from its right (a filled window under the top chips, ADR 0132).
+    pub fn clear_title(
+        &mut self,
+        scene: &mut Scene,
+        window: &WindowChrome,
+        start: f32,
+        end: f32,
+    ) -> Result<(), SceneError> {
+        let pad = self.theme.window.padding;
+        let whole = self.part_mut(window.frame)?.base;
+        let left = (start - pad).max(0.0);
+        let right = (end - pad).max(0.0);
+        let base = Rect::new(
+            whole.x + left,
+            whole.y,
+            (whole.width - left - right).max(0.0),
+            whole.height,
+        );
+        for node in std::iter::once(window.title).chain(window.subtitle) {
+            let part = self.part_mut(node)?;
+            part.base = base;
+            let part = part.clone();
+            self.restyle(scene, &part)?;
+        }
+        Ok(())
     }
 
     /// Change a part's text (a title, a message, a label).
@@ -306,6 +349,25 @@ impl Chrome {
                 .into(),
             Role::Placeholder => RectNode::new(base, t.placeholder.fill).into(),
             Role::PlaceholderLabel => line(&t.placeholder.text, inset(base, w.padding)).into(),
+            Role::PlaceholderLine => line(&t.placeholder.line, base).wrapped().into(),
+            Role::Scrim => RectNode::new(base, t.placeholder.scrim).into(),
+            Role::Action => RectNode {
+                stroke: Some(Stroke {
+                    width: w.border_width,
+                    color: t.bar.border,
+                }),
+                radius: ACTION_H / 4.0,
+                ..RectNode::new(base, t.bar.fill)
+            }
+            .into(),
+            Role::ActionLabel => line(
+                &crate::TextStyle {
+                    align: crate::TextAlign::Center,
+                    ..w.title.clone()
+                },
+                base,
+            )
+            .into(),
         }
     }
 }
@@ -315,3 +377,7 @@ fn inset(rect: Rect, padding: f32) -> Rect {
     let width = (rect.width - 2.0 * padding).max(0.0);
     Rect::new(rect.x + padding, rect.y, width, rect.height)
 }
+
+#[cfg(test)]
+#[path = "chrome_tests.rs"]
+mod tests;

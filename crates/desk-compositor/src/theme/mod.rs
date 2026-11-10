@@ -59,11 +59,14 @@ pub struct ToastStyle {
     pub text: TextStyle,
 }
 
-/// What a window without live content shows (asleep, gone, loading) and its label.
+/// What a window without live content shows (asleep, gone, loading): its title, a line under it
+/// and the actions it offers, and the scrim over a window that stopped answering.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PlaceholderStyle {
     pub fill: Color,
     pub text: TextStyle,
+    pub line: TextStyle,
+    pub scrim: Color,
 }
 
 /// Everything the compositor draws of its own, styled by one look.
@@ -161,12 +164,18 @@ impl ChromeTheme {
             padding: length("space3", 12.0),
             text: text("textSm", 14.0, 400, color("toastFg", ink)),
         };
+        let muted = color("muted", hex(endue::MUTED));
         let placeholder = PlaceholderStyle {
-            fill: color("muted", hex(endue::MUTED)),
+            fill: muted,
             text: TextStyle {
                 align: TextAlign::Center,
                 ..text("textSm", 14.0, 400, muted_ink)
             },
+            line: TextStyle {
+                align: TextAlign::Center,
+                ..text("textXs", 12.0, 400, muted_ink)
+            },
+            scrim: muted.fade(0.92),
         };
         ChromeTheme {
             wallpaper: color("background", hex(endue::BACKGROUND)),
