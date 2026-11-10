@@ -9,9 +9,12 @@
 //   signed through DESK_WINDOWS_SIGN_COMMAND (cargo-packager's signCommand, `%1` the file) when set.
 // - Linux: the executable and CEF's files in /usr/lib/endue-desk-cef, a launcher in /usr/bin; a .deb
 //   and an AppImage. libcef.so ships stripped.
+// Every package carries the built-in plugins (git's plugins/ without tests) beside the shell (#47).
 // Outputs land in <out>/bundle/{macos,dmg,nsis,msi,deb,appimage}/, the layout
-// scripts/release-collect.mjs reads. `--dry-run` prints the config and touches nothing.
-//   node scripts/cef-package.mjs --target T --version V [--out DIR] [--binaries DIR] [--cef CEF_PATH] [--dry-run]
+// scripts/release-collect.mjs reads. `--dry-run` prints the config and touches nothing; `--formats`
+// makes some of the target's formats only (`app`: the .app and .app.tar.gz without a disk image).
+//   node scripts/cef-package.mjs --target T --version V [--out DIR] [--binaries DIR] [--cef CEF_PATH]
+//     [--formats a,b] [--dry-run]
 import { spawnSync } from "node:child_process";
 import {
   chmodSync,
@@ -27,7 +30,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { plan, readPin } from "./cef-fetch.mjs";
 import {
@@ -39,6 +42,7 @@ import {
   osOf,
   PACKAGER,
   packagerConfig,
+  pluginFiles,
   ROOT,
 } from "./cef-package/config.mjs";
 
@@ -85,6 +89,8 @@ export function resolveRun(args, env = process.env) {
   const signCommand = os === "windows" ? env.DESK_WINDOWS_SIGN_COMMAND || undefined : undefined;
   const base = JSON.parse(readFileSync(join(PACKAGER, "packager.json"), "utf8"));
   const config = packagerConfig({ base, pin, target, version, paths, hook, signCommand });
+  const formats = value("--formats");
+  if (formats) config.formats = pickFormats(config.formats, formats);
   return {
     target,
     version,
@@ -96,6 +102,19 @@ export function resolveRun(args, env = process.env) {
     signCommand,
     dryRun: args.includes("--dry-run"),
   };
+}
+
+/**
+ * `--formats a,b`: some of the target's formats only. macOS without `dmg` (an update rehearsal,
+ * #47) makes the .app and its .app.tar.gz, and never mounts a disk image under /Volumes.
+ */
+export function pickFormats(all, asked) {
+  const picked = asked.split(",").filter(Boolean);
+  const unknown = picked.filter((format) => !all.includes(format));
+  if (picked.length === 0 || unknown.length > 0) {
+    throw new Error(`--formats takes some of ${all.join(", ")}, not ${asked}`);
+  }
+  return all.filter((format) => picked.includes(format));
 }
 
 function need(path, what) {
@@ -116,6 +135,26 @@ function stageHelpers(r) {
     copyFileSync(join(r.paths.binaries, HELPER), join(contents, "MacOS", helper.name));
     chmodSync(join(contents, "MacOS", helper.name), 0o755);
   }
+}
+
+/** A copy of the built-in plugins the package carries (`pluginFiles`): what git tracks, no tests. */
+export function stagePlugins(stage, root = ROOT) {
+  const listed = spawnSync("git", ["ls-files", "-z", "--", "plugins"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  if (listed.status !== 0)
+    throw new Error(`git ls-files plugins: ${listed.stderr || listed.error}`);
+  const files = pluginFiles(listed.stdout.split("\0").filter(Boolean));
+  if (files.length === 0) throw new Error("no built-in plugins to package");
+  const into = join(stage, "plugins");
+  rmSync(into, { recursive: true, force: true });
+  for (const file of files) {
+    const to = join(stage, file);
+    mkdirSync(dirname(to), { recursive: true });
+    copyFileSync(join(root, file), to);
+  }
+  return files.length;
 }
 
 /** Is a PE file without an Authenticode signature (Microsoft's own DLLs keep theirs)? */
@@ -192,6 +231,7 @@ export function packageCef(r) {
   for (const dir of [r.paths.out, r.paths.stage, r.paths.bundle])
     rmSync(dir, { recursive: true, force: true });
   mkdirSync(r.paths.stage, { recursive: true });
+  stagePlugins(r.paths.stage);
   if (r.os === "macos") {
     need(join(r.paths.binaries, HELPER), "the helper's release build");
     stageHelpers(r);
@@ -204,11 +244,16 @@ export function packageCef(r) {
     ? [process.env.CARGO_PACKAGER, []]
     : ["cargo", ["packager"]];
   run(packager[0], [...packager[1], "--config", configFile, "-v"], { cwd: ROOT });
-  if (r.os === "macos") {
+  if (r.os === "macos" && r.config.formats.includes("dmg")) {
     // The hook signed the app before the .dmg was made; the .dmg is signed and notarised after it.
     const dmg = readdirSync(r.paths.out).find((name) => name.endsWith(".dmg"));
     if (!dmg) throw new Error(`cargo-packager left no .dmg in ${r.paths.out}`);
     run("bash", [SIGN_MACOS, "dmg", join(r.paths.out, dmg)]);
+  } else if (r.os === "macos") {
+    // No .dmg, so no hook ran before it: sign the app here.
+    run("bash", [SIGN_MACOS, "app", r.app]);
+  }
+  if (r.os === "macos") {
     const app = basename(r.app);
     // COPYFILE_DISABLE: no AppleDouble ._ entries for the updater to unpack.
     run("tar", ["-czf", `${app}.tar.gz`, app], {

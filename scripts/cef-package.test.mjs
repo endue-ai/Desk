@@ -1,9 +1,10 @@
 // The CEF desk's cargo-packager config per OS (#46): the helper apps CEF needs on macOS, CEF's files
-// beside the executable on Windows and Linux, nothing that would make cargo-packager sign, and the
-// bundle layout scripts/release-collect.mjs reads.
+// beside the executable on Windows and Linux, nothing that would make cargo-packager sign, the
+// bundle layout scripts/release-collect.mjs reads, and the built-in plugins every package carries (#47).
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, it } from "node:test";
 import { readPin } from "./cef-fetch.mjs";
@@ -13,7 +14,9 @@ import {
   helperPlist,
   numericVersion,
   packagerConfig,
+  pluginFiles,
 } from "./cef-package/config.mjs";
+import { pickFormats, stagePlugins } from "./cef-package.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const PACKAGER = join(ROOT, "apps/desk/shell/packager");
@@ -123,6 +126,11 @@ describe("cef-package", () => {
     );
     const launcher = readFileSync(join(PACKAGER, "linux/launcher.sh"), "utf8");
     assert.match(launcher, /exec "\$here\/\.\.\/lib\/endue-desk-cef\/endue-desk-cef" "\$@"/u);
+    assert.deepEqual(
+      config.deb.files,
+      { "/o/stage/bin/endue-desk-cef": "/usr/bin/endue-desk" },
+      "a Tauri desk restarting from /usr/bin/endue-desk after this .deb went in finds the CEF desk (#47)",
+    );
   });
 
   it("writes each helper's Info.plist with Apple's numeric version", () => {
@@ -149,6 +157,45 @@ describe("cef-package", () => {
       () => helperPlist("@NOPE@", { ...gpu, version: "1.0.0", minimum: "12.0" }),
       /unknown placeholder/u,
     );
+  });
+
+  it("carries the built-in plugins beside the shell on every OS, without their tests (#47)", () => {
+    for (const target of [
+      "aarch64-apple-darwin",
+      "x86_64-pc-windows-msvc",
+      "x86_64-unknown-linux-gnu",
+    ]) {
+      assert.equal(targets(render(target)).plugins, "/o/stage/plugins", target);
+    }
+    const picked = pluginFiles([
+      "plugins/README.md",
+      "plugins/dock/plugin.json",
+      "plugins/dock/ui/main.js",
+      "plugins/dock/tests/dock.test.ts",
+      "plugins/draft/ui/main.js",
+    ]);
+    assert.deepEqual(picked, ["plugins/dock/plugin.json", "plugins/dock/ui/main.js"]);
+  });
+
+  it("stages the repository's built-in plugins: the dock, the explorer and Eris among them", () => {
+    const stage = mkdtempSync(join(tmpdir(), "cef-plugins-"));
+    try {
+      assert.ok(stagePlugins(stage) > 100);
+      for (const id of ["dock", "explorer", "eris"]) {
+        assert.ok(existsSync(join(stage, "plugins", id, "plugin.json")), id);
+      }
+      assert.equal(existsSync(join(stage, "plugins/dock/tests")), false, "no tests ship");
+      assert.equal(existsSync(join(stage, "plugins/terminal/node_modules")), false);
+    } finally {
+      rmSync(stage, { recursive: true, force: true });
+    }
+  });
+
+  it("makes some of a target's formats when asked, and refuses others", () => {
+    assert.deepEqual(pickFormats(["app", "dmg"], "app"), ["app"]);
+    assert.deepEqual(pickFormats(["deb", "appimage"], "appimage,deb"), ["deb", "appimage"]);
+    assert.throws(() => pickFormats(["app", "dmg"], "nsis"), /some of app, dmg/u);
+    assert.throws(() => pickFormats(["app", "dmg"], ","), /some of app, dmg/u);
   });
 
   it("files every output where release-collect looks for it", () => {

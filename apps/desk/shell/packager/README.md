@@ -2,7 +2,8 @@
 
 What the CEF desk's bundles are made of (#46, ADR 0145): cargo-packager's shared config, the CEF pin,
 and the macOS and Linux files the bundles carry. `scripts/cef-package.mjs` turns them into one config
-per target; nothing here is read at run time.
+per target, with the built-in plugins (git's `plugins/` without tests) beside the shell (#47);
+nothing here is read at run time.
 
 | File | Purpose |
 | --- | --- |
@@ -18,8 +19,9 @@ per target; nothing here is read at run time.
 
 - `node scripts/cef-fetch.mjs --target <triple> [--out dir] [--dry-run]`: the pinned CEF, hash-checked,
   where `cef-dll-sys` reads `CEF_PATH`; prints that folder.
-- `node scripts/cef-package.mjs --target <triple> --version <v> [--dry-run]`: the packages, in
-  `target/packager/<triple>/bundle/{macos,dmg,nsis,msi,deb,appimage}`.
+- `node scripts/cef-package.mjs --target <triple> --version <v> [--formats a,b] [--dry-run]`: the
+  packages, in `target/packager/<triple>/bundle/{macos,dmg,nsis,msi,deb,appimage}`; `--formats app`
+  makes the `.app.tar.gz` without mounting a `.dmg`.
 - `scripts/cef-sign-macos.sh app|dmg <path>`: sign (ad-hoc without `APPLE_SIGNING_IDENTITY`), notarise
   and staple when the Apple credentials are set.
 - `just package-shell [version]` runs all three for this machine.

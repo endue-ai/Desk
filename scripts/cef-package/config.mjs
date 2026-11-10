@@ -8,6 +8,8 @@ export const PACKAGER = join(ROOT, "apps/desk/shell/packager");
 /** The shell's binaries (apps/desk/shell/Cargo.toml) until the Tauri one goes and takes its name. */
 export const MAIN = "endue-desk-cef";
 export const HELPER = "endue-desk-cef-helper";
+/** The Tauri desk's binary (apps/desk/src-tauri/tauri.conf.json `mainBinaryName`). */
+export const TAURI_MAIN = "endue-desk";
 
 /** The five helper apps CEF needs on macOS: name and identifier suffixes. Which entitlements each
  * one is signed with is scripts/cef-sign-macos.sh's to say. */
@@ -89,6 +91,21 @@ export const licences = (pin, cefFiles) => [
   })),
 ];
 
+/**
+ * The built-in plugins a package carries (#47): of `tracked` (the repository's files under
+ * `plugins/`, as `git ls-files` lists them), every file of a folder with a plugin.json, without its
+ * tests. The shell installs them from `plugins/` among its resources when DESK_PLUGIN_DIRS is unset.
+ */
+export function pluginFiles(tracked) {
+  const plugins = new Set(
+    tracked.map((path) => /^plugins\/([^/]+)\/plugin\.json$/u.exec(path)?.[1]).filter(Boolean),
+  );
+  return tracked.filter((path) => {
+    const [top, id, ...rest] = path.split("/");
+    return top === "plugins" && plugins.has(id) && rest.length > 0 && !rest.includes("tests");
+  });
+}
+
 /** The CEF files a Windows or Linux build carries beside its executable. */
 export const runtimeResources = (pin, os, cefFiles) =>
   pin.runtime[os].map((name) => {
@@ -98,8 +115,9 @@ export const runtimeResources = (pin, os, cefFiles) =>
 
 /**
  * The whole config for `target`. `paths`: `binaries` (the cargo build's folder), `out`, `stage`
- * (where the helpers, the CEF copies and the Linux launcher were put), `cef` (the CEF folder),
- * `dist` (the built shell). `hook`: the command cargo-packager runs before each format.
+ * (where the helpers, the CEF copies, the built-in plugins and the Linux launcher were put), `cef`
+ * (the CEF folder), `dist` (the built shell). `hook`: the command cargo-packager runs before each
+ * format.
  */
 export function packagerConfig({ base, pin, target, version, paths, hook, signCommand }) {
   const os = osOf(target);
@@ -114,7 +132,11 @@ export function packagerConfig({ base, pin, target, version, paths, hook, signCo
     binaries: [{ path: MAIN, main: true }],
     binariesDir: os === "linux" ? join(paths.stage, "bin") : paths.binaries,
   };
-  const shell = { src: paths.dist, target: "shell" };
+  // The built-in plugins sit beside the shell, where the desk looks when DESK_PLUGIN_DIRS is unset.
+  const runtime = [
+    { src: paths.dist, target: "shell" },
+    { src: join(paths.stage, "plugins"), target: "plugins" },
+  ];
   if (os === "macos") {
     const helpers = helperApps(config.identifier).map((h) =>
       join(paths.stage, "helpers", `${h.name}.app`),
@@ -123,14 +145,25 @@ export function packagerConfig({ base, pin, target, version, paths, hook, signCo
       ...config.macos,
       frameworks: [join(paths.cef, "Chromium Embedded Framework.framework"), ...helpers],
     };
-    config.resources = [shell, ...licences(pin, paths.cef)];
+    config.resources = [...runtime, ...licences(pin, paths.cef)];
     if (hook) config.beforeEachPackageCommand = hook;
   } else {
     const cefFiles = join(paths.stage, "cef");
-    config.resources = [...runtimeResources(pin, os, cefFiles), shell, ...licences(pin, cefFiles)];
+    config.resources = [
+      ...runtimeResources(pin, os, cefFiles),
+      ...runtime,
+      ...licences(pin, cefFiles),
+    ];
     if (os === "linux") {
       // The real executable lives in /usr/lib/endue-desk-cef beside libcef.so; /usr/bin has the launcher.
       config.resources.unshift({ src: join(paths.binaries, MAIN), target: MAIN });
+      // A Tauri desk that installed this .deb as its update restarts what it started as,
+      // /usr/bin/endue-desk, which dpkg just removed: the same launcher answers there (#47) until the
+      // desk's binary takes that name at the end of Stage 1.
+      config.deb = {
+        ...config.deb,
+        files: { [join(paths.stage, "bin", MAIN)]: `/usr/bin/${TAURI_MAIN}` },
+      };
     }
     if (os === "windows" && signCommand) {
       config.windows = { ...config.windows, signCommand };
