@@ -172,7 +172,8 @@ test.describe("branches", () => {
     const frame = await open(page);
     await submitName(page, frame, "Ada");
     await startSignIn(page, frame);
-    await run(page, 1000);
+    // 1.25 s from the press: Eris is up and the entry's line has scattered.
+    await run(page, 1250);
     expect(await frameTree(frame)).toMatchSnapshot("sign-in-waiting.json");
     await frame.getByRole("button", { name: "Open browser again" }).click();
     await run(page, 300);
