@@ -66,8 +66,11 @@ iframe in einer Sandbox auf dieser einen Seite. Shell und alle Plugins teilten s
 Hauptthread: Ein Plugin in einer Endlosschleife hielt den ganzen Desk an, und unter Linux fehlte WebGPU.
 ADR 0140 ändert das: Jedes Fenster rendert in seinem eigenen Prozess, und ein eigener Compositor von Desk
 auf wgpu platziert, was sie rendern. Seit Stufe 1 ist jede Plugin-Oberfläche ein eigener Chromium-Renderer,
-ein abgestürzter Renderer kostet also nur sein Fenster; die Fenster bleiben Frames auf der Seite der Shell,
-bis Stufe 2 sie zusammensetzt.
+ein abgestürzter Renderer kostet also nur sein Fenster. Seit #83 ist der Compositor der einzige Desk
+(ADR 0156): Jede Plugin-Oberfläche rendert off-screen in einem eigenen Browser, der Compositor zeichnet sie
+dort, wo `crates/desk-wm` ihr Fenster platziert, und desk-wm führt die Fenstergesten, die Fensterbefehle
+und das Live-Budget. Die Seite der Shell behält, was Web bleibt (die Leisten, Menüs, die Palette, Eris,
+Mitteilungen, Einstellungen und die eigenen Ansichten der Shell), bis daraus Systemoberflächen werden.
 
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
@@ -81,7 +84,7 @@ bis Stufe 2 sie zusammensetzt.
 | --- | --- | --- |
 | 0 | Auf der Tauri-App: Jede Oberfläche bekommt einen eigenen Origin auf dem Schema `desk-plugin`; nur die sichtbaren Fenster und die 8 zuletzt fokussierten behalten einen lebenden Frame; schwere Arbeit wandert in Worker; ein Frame, der nicht mehr antwortet, bietet nur in seinem Fenster „Warten“ oder „Beenden“ an | erledigt |
 | 1 | Die Shell wird ein Rust-Binary auf winit und CEF (`apps/desk/shell`, ADR 0143), das die heutige Shell-Seite zeigt, und Tauri fällt weg; jedes Plugin-iframe ist ein eigener Chromium-Renderer; die App-E2E-Tests steuern es über das Remote-Debugging von Chromium (ADR 0144) | erledigt (#97): der CEF-Desk hat die Tauri-App unter ihrem Namen `endue-desk` ersetzt, und Canary baut ihn; WebGPU unter Windows und Linux wird auf diesen OS geprüft (#61), und die erste Beta, die sich über den Updater installiert, kommt mit der nächsten Release-Linie |
-| 2 | Der Compositor (`crates/desk-compositor`) zeichnet den Desk und platziert die Textur jeder Oberfläche; Oberflächen sprechen ein Protokoll (`specs/surface`, ADR 0141); CEF rendert jedes Plugin off-screen; der Fenstermanager wandert von `packages/runtime` nach Rust | in Arbeit |
+| 2 | Der Compositor (`crates/desk-compositor`) zeichnet den Desk und platziert die Textur jeder Oberfläche; Oberflächen sprechen ein Protokoll (`specs/surface`, ADR 0141); CEF rendert jedes Plugin off-screen; der Fenstermanager wandert von `packages/runtime` nach Rust | in Arbeit: Der Compositor ist der einzige Desk, und desk-wm platziert jedes Fenster und führt seine Gesten, Befehle und das Live-Budget (#83); als Nächstes kommen das Aussehen der Ausbreitung und Systemoberflächen |
 | 3 | Native Plugins: ein Prozess, der das Oberflächenprotokoll und die Bridge über `desk.sock` spricht | geplant |
 
 Am Code der Plugins ändert sich in keiner Stufe etwas: Manifest, SDK und das Wire-Format der Bridge bleiben.

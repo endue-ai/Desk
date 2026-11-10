@@ -20,8 +20,8 @@ animations use an injected clock (ADR 0013). Shell decisions not in the brief: `
   `rebind.ts`), `decide`, `resolveTheme`, `Notifications`, `Buffers`; `src/policies/*` applies them.
   Keys are always on. `HostViews` (`views.ts`) connects host-drawn views to focus and buffers.
 - `mountDesk({ root, bridge, core, plugins, clock?, lang?, platform?, epoch?, seed? })`: the shell over
-  its runtime, holding centre and floating plugin surfaces as windows (ADR 0040); returns `{ store,
-  ticker, eris, runtime, ready, refresh, dispose }` (`plugins/shell`). Its desktops are a named list
+  its runtime, holding plugin surfaces as windows (ADR 0040), its `windowManager` (desk-wm, ADR 0156)
+  running their gestures and commands; returns `{ store, eris, runtime, ready, takeWm, … }` (`plugins/shell`). Its desktops are a named list
   of up to 32 with a switcher, an overview and windows moved between them (`src/desktops/`, ADR 0117).
   A click on Eris (or `eris.talk()`) is a spoken turn: listen, think, speak (`eris/talk.ts`). Its `desk.propose` (ADR 0073, 0102)
   turns a sentence into a universal view, a profile or key bindings by `brain.ask` (ADR 0059), then previews it.

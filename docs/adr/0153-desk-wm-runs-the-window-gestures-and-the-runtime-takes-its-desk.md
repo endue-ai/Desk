@@ -4,6 +4,10 @@ date: 2026-11-10
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0156: the compositor is the only desk, so `desk-wm` runs every window gesture
+and command; the windowed desk and the runtime's own drag, resize, snap, glide and window commands are
+gone, and a desk without the compositor (the runtime's tests) moves no window.
+
 # desk-wm runs the window gestures on the compositor's input, and the runtime takes its desk
 
 ## Context and Problem Statement

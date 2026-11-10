@@ -4,6 +4,9 @@ date: 2026-11-10
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0156: compositor mode is the only desk (no `DESK_COMPOSITOR`, no Stage 1
+windowed desk), and the target watch of Stage 1 went with the windowed desk.
+
 # Web surfaces render off screen, and the runtime's frames stand in for them until the window manager moves
 
 ## Context and Problem Statement

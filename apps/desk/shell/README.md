@@ -6,8 +6,8 @@ desk's URL schemes and CEF's message pump, driven from winit's event loop when C
 `window.__deskNative`, the caller taken from the browser's window and the frame's URL (#43, #45).
 Its services (#45): tray, menus, shortcuts, file dialog, one desk per data folder, opened files, the
 palette, the floating Eris, the computer-use banner. It replaced the Tauri shell, and took its binary's
-name, when Stage 1 of #32 ended (#97). Compositor mode (`DESK_COMPOSITOR=1`, ADR 0149–0155) draws
-every surface off screen with `desk-compositor`, places windows from `desk-wm`, routes their input.
+name, when Stage 1 of #32 ended (#97). Its main window is the compositor's, the only desk since #83
+(ADR 0149–0156): every surface off screen, drawn by `desk-compositor`, windows placed and moved by `desk-wm`.
 
 ## Public API
 
@@ -37,4 +37,4 @@ just check-shell    # clippy -D warnings and the crate's tests (downloads CEF on
 ```
 
 `tests/{osr_import,lifecycle,a11y}.rs` run `--surface-probe` on `just build-shell`'s bundle; `e2e/specs/{ime,dnd,a11y}`
-drive compositor mode; dev builds open DevTools when `DESK_REMOTE_DEBUGGING_PORT` is set.
+drive the compositor's input; dev builds open DevTools when `DESK_REMOTE_DEBUGGING_PORT` is set.

@@ -64,8 +64,11 @@ Until Stage 1 the desk was one Tauri window with one OS webview, and every plugi
 iframe in that one page. The shell and all plugins shared one process and one main thread, so a plugin
 that looped stalled the whole desk, and WebGPU was missing on Linux. ADR 0140 changes that: every window
 renders in its own process, and a compositor of Desk's own, on wgpu, places what they render. Since Stage
-1 every plugin surface is its own Chromium renderer, so a dead renderer costs its window only; the
-windows are still frames in the shell's page until Stage 2 composites them.
+1 every plugin surface is its own Chromium renderer, so a dead renderer costs its window only. Since #83
+the compositor is the only desk (ADR 0156): every plugin surface renders off screen in a browser of its
+own, the compositor draws it where `crates/desk-wm` places its window, and desk-wm runs the window
+gestures, the window commands and the live budget. The shell's page keeps what stays web (the bars,
+menus, the palette, Eris, notices, settings and the shell's own views) until they become system surfaces.
 
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
@@ -79,7 +82,7 @@ windows are still frames in the shell's page until Stage 2 composites them.
 | --- | --- | --- |
 | 0 | On the Tauri app: each surface gets its own origin on the `desk-plugin` scheme; only the windows in sight and the 8 most recently focused keep a live frame; heavy work moves to workers; a frame that stops answering offers Wait or Stop on its window | done |
 | 1 | The shell becomes a Rust binary on winit and CEF (`apps/desk/shell`, ADR 0143) showing today's shell page, and Tauri is removed; every plugin iframe is its own Chromium renderer; app-level e2e drives it over Chromium's remote debugging (ADR 0144) | done (#97): the CEF desk replaced the Tauri app under its name, `endue-desk`, and canary builds it; WebGPU on Windows and Linux is checked on those OSes (#61), and the first beta that installs through the updater comes with the next release line |
-| 2 | The compositor (`crates/desk-compositor`) draws the desk and places each surface's texture; surfaces speak one protocol (`specs/surface`, ADR 0141); CEF renders each plugin off-screen; the window manager moves from `packages/runtime` to Rust | in progress |
+| 2 | The compositor (`crates/desk-compositor`) draws the desk and places each surface's texture; surfaces speak one protocol (`specs/surface`, ADR 0141); CEF renders each plugin off-screen; the window manager moves from `packages/runtime` to Rust | in progress: the compositor is the only desk, and desk-wm places every window and runs its gestures, commands and the live budget (#83); the spread's visuals and system surfaces are next |
 | 3 | Native plugins: a process that speaks the surface protocol and the bridge over `desk.sock` | planned |
 
 Plugin code does not change at any stage: the manifest, the SDK and the bridge's wire format stay. A

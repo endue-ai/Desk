@@ -5,7 +5,9 @@ decision-makers: Team endue
 ---
 
 Status: amended by ADR 0140: in Stage 2 the window manager moves from the web runtime to the
-compositor in Rust.
+compositor in Rust. Amended by ADR 0156: the compositor is the only desk, `desk-wm` runs every window
+gesture and command, and the bad consequence below is gone: a split, the drawer and a profile or
+desktop switch only resize, hide and show a plugin's own surface, which never reloads (ADR 0151).
 
 # One window manager: the shell's windows hold the plugin surfaces
 
@@ -70,7 +72,8 @@ a web runtime concern, not a core one.
 * Bad, because the grid and the windows still coexist in the code, the grid for the fixture pages;
   folding the fixtures onto the shell would let it go.
 * Bad, because a pane re-render reloads a plugin's frame; a frame that keeps no state through
-  `desk:state` loses it on a split.
+  `desk:state` loses it on a split. Gone since #83 (ADR 0156): the frame in the page is a stand-in,
+  and the plugin's own surface is only resized, hidden and shown (ADR 0151).
 
 ## More Information
 
