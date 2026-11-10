@@ -140,16 +140,32 @@ fn check_reads_the_channel_from_init_yaml() {
 }
 
 #[test]
-fn a_pre_release_follows_canary_by_default() {
+fn without_a_channel_a_desk_follows_the_channel_its_build_came_from() {
     let (canary, _) = desk(&home("update-canary"), "0.2.1-pre.4", None);
     assert_eq!(
         update(&canary, "update.status").unwrap()["channel"],
         "canary"
     );
+    // A line's candidate follows beta, never canary, which lists Tauri builds (#98).
+    let (candidate, _) = desk(&home("update-candidate"), "0.2.0-rc.7", None);
+    assert_eq!(
+        update(&candidate, "update.status").unwrap()["channel"],
+        "beta"
+    );
     let (stable, _) = desk(&home("update-stable"), "0.2.0", None);
     assert_eq!(
         update(&stable, "update.status").unwrap()["channel"],
         "stable"
+    );
+    // The person's setting wins over the version.
+    let (chosen, _) = desk(
+        &home("update-candidate-canary"),
+        "0.2.0-rc.7",
+        Some("settings:\n  desk.update.channel: canary\n"),
+    );
+    assert_eq!(
+        update(&chosen, "update.status").unwrap()["channel"],
+        "canary"
     );
 }
 

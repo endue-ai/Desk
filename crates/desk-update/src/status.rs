@@ -29,6 +29,27 @@ impl Channel {
             _ => None,
         }
     }
+
+    /// The channel `version` came from (ADR 0092): a final (`0.4.0`) from stable, a line's
+    /// candidate (`0.4.0-rc.31`) from beta, a canary build (`0.5.0-pre.212`) or any other
+    /// pre-release from canary. Build metadata (`+…`) is not looked at.
+    pub fn of_version(version: &str) -> Self {
+        let version = version.split_once('+').map_or(version, |(v, _)| v);
+        match version.split_once('-') {
+            None => Self::Stable,
+            Some((_, pre)) if pre.split('.').next() == Some("rc") => Self::Beta,
+            Some(_) => Self::Canary,
+        }
+    }
+
+    /// The channel a desk running `version` follows: the one `setting` (`desk.update.channel`)
+    /// names, else the one its build came from, so a candidate never follows canary, which
+    /// lists Tauri builds (#98).
+    pub fn followed(setting: Option<&str>, version: &str) -> Self {
+        setting
+            .and_then(Self::parse)
+            .unwrap_or_else(|| Self::of_version(version))
+    }
 }
 
 /// What the updater is doing.

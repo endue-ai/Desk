@@ -20,6 +20,12 @@ already on `main`.
 Versions live in no file: the workflows write them into the build (`scripts/release-version.mjs`).
 Desks never move down, so a desk that switches from canary to stable waits for a newer stable build.
 
+A desk follows the channel its `desk.update.channel` names. Without it, a desk follows the channel
+its build came from (`Channel::of_version` in `crates/desk-update`): a `-pre.<run>` build canary, an
+`-rc.<run>` candidate beta, a final stable. A desk that installs its line's final from beta follows
+stable from then on; a beta tester who wants the next line's candidates keeps
+`desk.update.channel: beta`.
+
 ## Cut a line
 
 1. Run **release-cut** on `main` (Actions → release-cut → Run workflow). Leave both inputs empty to cut
@@ -78,9 +84,10 @@ then on updates as a CEF desk: the `.app.tar.gz` swapped in on macOS, the NSIS `
 `.msi` run silently once the desk has quit on Windows, the AppImage rewritten or the `.deb` installed
 with `pkexec` on Linux. The `.msi` is an updater artifact too (`windows-x86_64-msi`), for desks
 installed from it. The CEF `.deb` carries `/usr/bin/endue-desk`, where a Tauri desk restarts after
-installing it. Packages carry the built-in plugins beside the shell. Desks find their channel in
-their settings: a candidate without `desk.update.channel` follows canary, which lists Tauri builds,
-so beta testers keep `desk.update.channel: beta`.
+installing it. Packages carry the built-in plugins beside the shell. A CEF candidate without
+`desk.update.channel` follows beta, as every `-rc` build does (above), so it never reads canary,
+which lists Tauri builds until canary builds the CEF desk; a desk set to canary can install a Tauri
+build again.
 
 The update smoke, two hops: `e2e/smoke/update-two-hops.sh <dist> <dist> <dist>`, the last Tauri
 build and two CEF builds, each a release folder (`release-collect.mjs`), all three built with a

@@ -82,6 +82,9 @@ on beta installs the CEF build as it installs any other.
   newer build of `ai.endue.desk`, Tauri's too, and canary still lists Tauri builds. A pre-release desk
   without a channel set follows canary (the core's default for any `-` version, `-rc` included), so a
   CEF beta desk must follow beta, as the smoke sets it.
+* Update (2026-11-10, #98): a desk without a channel set now follows its build's channel
+  (`Channel::of_version`): an `-rc` candidate beta, a `-pre` build canary, so a CEF beta desk reads
+  beta unless the person picks canary.
 
 ## More Information
 

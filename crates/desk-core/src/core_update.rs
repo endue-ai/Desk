@@ -98,23 +98,17 @@ impl Core {
         json(bridge_status(&updater.status()))
     }
 
-    /// The person's update settings. Without a channel, a release build follows stable and a
-    /// pre-release (`-pre.<run>`) follows canary, where it came from.
+    /// The person's update settings. Without a channel, a desk follows the channel its build came
+    /// from (`Channel::of_version`): a final stable, a candidate (`-rc.<run>`) beta, a canary build
+    /// (`-pre.<run>`) canary.
     pub(crate) fn update_prefs(&self) -> Prefs {
-        let pre_release = self
+        let version = self
             .updater
             .as_ref()
-            .is_some_and(|updater| updater.status().version.contains('-'));
-        let channel = self
-            .update_setting("channel")
-            .as_ref()
-            .and_then(Value::as_str)
-            .and_then(Channel::parse)
-            .unwrap_or(if pre_release {
-                Channel::Canary
-            } else {
-                Channel::Stable
-            });
+            .map(|updater| updater.status().version)
+            .unwrap_or_default();
+        let setting = self.update_setting("channel");
+        let channel = Channel::followed(setting.as_ref().and_then(Value::as_str), &version);
         let flag = |key| self.update_setting(key).and_then(|v| v.as_bool());
         Prefs {
             channel,

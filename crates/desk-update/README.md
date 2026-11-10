@@ -12,6 +12,8 @@ disk, and install it only when asked; and, without Tauri, the install itself (AD
   `listen` hears every `Status`.
 - `Transport` (fetch documents, download artifacts with progress) and `Installer` (install the staged
   bytes and restart) are what the app supplies.
+- `Channel::followed`: the channel `desk.update.channel` names, else the build's own
+  (`Channel::of_version`: a final stable, an `-rc` candidate beta, a canary build canary).
 - `policy::choose`: newer, for this target, `minFrom` met, inside the rollout, never a downgrade.
 - `verify::verify`: minisign in the Tauri encoding, with the version an artifact was signed for.
 - `stage::Stage`: `<data>/updates`, one staged build, the rollout salt and the index serials seen.
