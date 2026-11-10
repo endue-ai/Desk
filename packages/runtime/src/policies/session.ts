@@ -1,7 +1,7 @@
 /**
  * desk.session (desktop.el, savehist): keep the desk as it was across restarts. The layout, the
  * files open in buffers, the surface in use, the notification history and the parts a host keeps
- * (the shell's desktops) are kept with store.set whenever they change,
+ * (the shell's desktops and windows) are kept with store.set whenever they change,
  * and put back after the plugins have mounted. A record that cannot be put back is kept as
  * `session.broken` and the desk starts empty (ADR 0061); in safe mode the record waits untouched.
  */
@@ -28,6 +28,10 @@ export interface SavedSession {
 
 /** A piece of state kept in the session record beside the desk's own. */
 export interface SessionPart {
+  /**
+   * What the part keeps. A `shows` list of surface ids in it names the surfaces it shows (the
+   * shell's open windows, #76): they mount at the next start instead of starting asleep (`shows`).
+   */
   save(): unknown;
   restore(value: unknown): void;
   /** Hear when the part changed, so the session is saved soon. */
@@ -49,8 +53,9 @@ export interface SessionPolicy extends Installed {
   /** Put the saved session back (once, after the plugins mounted), if desk.session says so. */
   restore(): Promise<void>;
   /**
-   * The surfaces a restore would put back (#590): the grid's cells, the plugins of the saved files
-   * and the surface in use; undefined when no saved session would be put back.
+   * The surfaces a restore would put back (#590): the grid's cells, the plugins of the saved files,
+   * the surface in use and those the saved parts name in their `shows` (#76); undefined when no
+   * saved session would be put back.
    */
   shows(): Promise<ReadonlySet<string> | undefined>;
   save(): Promise<void>;
@@ -74,6 +79,15 @@ function restorable(value: Partial<SavedSession>): value is SavedSession {
     (value.files === undefined || Array.isArray(value.files)) &&
     (value.notices === undefined || Array.isArray(value.notices))
   );
+}
+
+/** The surfaces the saved parts name in their `shows`, read as data: the session knows no part. */
+function partsShow(parts: unknown): unknown[] {
+  if (typeof parts !== "object" || parts === null) return [];
+  return Object.values(parts).flatMap((part) => {
+    const shows = (part as { shows?: unknown } | null)?.shows;
+    return Array.isArray(shows) ? shows : [];
+  });
 }
 
 export function installSession(
@@ -165,7 +179,12 @@ export function installSession(
     const saved = (stored as { value?: Partial<SavedSession> | null }).value;
     if (!saved || !restorable(saved)) return undefined;
     const files = (saved.files ?? []).map((file) => file?.plugin);
-    const ids = [...Object.keys(saved.layout.cells), ...files, saved.focused];
+    const ids = [
+      ...Object.keys(saved.layout.cells),
+      ...files,
+      saved.focused,
+      ...partsShow(saved.parts),
+    ];
     return new Set(ids.filter((id): id is string => typeof id === "string"));
   };
 

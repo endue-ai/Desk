@@ -2,13 +2,15 @@
  * The shell's state where the runtime keeps it: the profiles and the one in force (desk.profiles),
  * the moved desktops and Eris's mesh and soul text (settings), and the rest of the desk as it was
  * (desk.session, as the part "shell"). Desktops are kept as a list (ADR 0117): what a four-desktop
- * session saved, by desktop number, comes back on the four named 1 to 4.
+ * session saved, by desktop number, comes back on the four named 1 to 4. The plugin windows open
+ * are kept too (#76), so they mount at the next start and come back on their slots.
  */
 import { readCurrent, readPan, writeMoved } from "../desktops/migrate";
 import { positionOf } from "../desktops/model";
 import { baseMode, LAYOUTS, MODE, profileMode } from "../modes/profiles";
 import type { Mode } from "../modes/types";
 import type { Runtime } from "../runtime";
+import { freeSlot } from "../surface/tiling";
 import { desktopId, desktopsOf, modeOf, movedOf, switched } from "./actions";
 import type { ShellCtx } from "./context";
 import type { DeskState } from "./state";
@@ -95,6 +97,24 @@ interface SavedShell {
   talkPlace?: TalkPlace;
   /** The canvas map is folded to its button; absent while it is open (shell/Minimap.ts). */
   mapFolded?: true;
+  /**
+   * The plugin windows open and not in the drawer, by surface id (#76): desk.session counts a part's
+   * `shows`, so they mount at the next start instead of starting asleep (ADR 0070).
+   */
+  shows?: string[];
+  /** Each one's slot and the pan it arrived at (`DeskState.adopted`), so it comes back there. */
+  slots?: Record<string, Slot>;
+}
+
+type Slot = { slot: number; at?: { x: number; y: number } };
+
+/** The plugin windows open and not put away in the drawer, with their slots. */
+function openWindows(s: DeskState): Required<Pick<SavedShell, "shows" | "slots">> {
+  const away = new Set(s.drawer.map((d) => d.placement?.plugin));
+  const open = s.adopted.flatMap((a, i): [string, Slot][] =>
+    away.has(a.id) ? [] : [[a.id, { slot: a.slot ?? i, ...(a.at ? { at: a.at } : {}) }]],
+  );
+  return { shows: open.map(([id]) => id), slots: Object.fromEntries(open) };
 }
 
 /** Keep the shell in the session record; `done` resolves once a restore has finished. */
@@ -117,6 +137,7 @@ export function keepShell(ctx: ShellCtx): { off(): void; done(): Promise<void> }
         ...(typeof layer[SOUL] === "string" ? { soul: layer[SOUL] } : {}),
         ...(placeOf(layer[PLACE]) ? { talkPlace: placeOf(layer[PLACE]) as TalkPlace } : {}),
         ...(s.mapFolded ? { mapFolded: true as const } : {}),
+        ...openWindows(s),
       };
     },
     restore: (value) => {
@@ -134,6 +155,7 @@ export function keepShell(ctx: ShellCtx): { off(): void; done(): Promise<void> }
             s.spaceId,
             s.pan,
             s.mapFolded,
+            openWindows(s),
           ],
           listener,
         ),
@@ -180,6 +202,41 @@ async function restore(ctx: ShellCtx, saved: Partial<SavedShell> | null): Promis
         : s.drawer,
       spaceId: typeof saved.spaceId === "string" ? saved.spaceId : s.spaceId,
       mapFolded: saved.mapFolded === true,
+      adopted: slotted(s.adopted, slotsOf(saved.slots)),
     };
+  });
+}
+
+/** The saved slots that can be read: a whole slot from 0, and a pan of two numbers if any. */
+function slotsOf(value: unknown): Map<string, Slot> {
+  const slots = new Map<string, Slot>();
+  if (typeof value !== "object" || value === null) return slots;
+  for (const [id, saved] of Object.entries(value)) {
+    const { slot, at } = (saved ?? {}) as Partial<Slot>;
+    if (typeof slot !== "number" || !Number.isInteger(slot) || slot < 0) continue;
+    const pan = at && Number.isFinite(at.x) && Number.isFinite(at.y);
+    slots.set(id, { slot, ...(pan ? { at: { x: at.x, y: at.y } } : {}) });
+  }
+  return slots;
+}
+
+/**
+ * The windows back on the slot and at the pan they had (#76): at start the plugins mount in their
+ * own order, each on the first slot left free. A window the save did not hold keeps its slot, or
+ * takes a free one when a window that came back had it.
+ */
+function slotted(adopted: DeskState["adopted"], slots: Map<string, Slot>): DeskState["adopted"] {
+  if (slots.size === 0) return adopted;
+  const taken = new Set(adopted.flatMap((a) => slots.get(a.id)?.slot ?? []));
+  return adopted.map((a, i) => {
+    const kept = slots.get(a.id);
+    if (kept) {
+      const { at: _arrived, ...rest } = a;
+      return { ...rest, ...kept };
+    }
+    const slot = a.slot ?? i;
+    const free = taken.has(slot) ? freeSlot(taken) : slot;
+    taken.add(free);
+    return free === slot ? a : { ...a, slot: free };
   });
 }

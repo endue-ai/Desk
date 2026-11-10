@@ -70,8 +70,10 @@ iframe frees its page, and asking at that moment costs a plugin nothing while it
   hello as above. The shell opens the ones a window of the desktop in front places, after its own
   part is restored and whenever that layout changes (`surface/placed.ts`). Edge bars and overlays
   always mount, and with no session to put back every plugin mounts, so a first start is unchanged.
-  A plugin's tile in the shell (ADR 0040) is not saved, so it is not counted: such a window comes
-  back on first use. `PluginHost.asleep` tells a sleeping frame from one that stopped answering.
+  A part of the session names what it shows in a `shows` list: the shell's part names the plugin
+  windows open and not in the drawer (#76), so they mount too and come back on their slots and at
+  their pans; one put away in the drawer starts asleep and wakes when it is raised.
+  `PluginHost.asleep` tells a sleeping frame from one that stopped answering.
 
 ### Consequences
 
@@ -88,8 +90,9 @@ iframe frees its page, and asking at that moment costs a plugin nothing while it
 `packages/runtime/src/frames/`, `packages/plugin-sdk/src/surface-state.ts`,
 `specs/bridge/v0/ui.schema.json` and its `ui-surface-state-*` vectors, `plugins/display/plugin.json`,
 `plugins/notes/ui/keep.js`; starting asleep: `frames/start-asleep.ts`, `policies/session.ts`
-(`shows`). Tests: `frames/unload.test.ts`, `frames/policy.test.ts`, `frames/start-asleep.test.ts`,
-`frames/start-asleep-desk.test.ts`, `surface/placed.test.ts`,
+(`shows`), `shell/link.ts` (the shell's `shows`). Tests: `frames/unload.test.ts`,
+`frames/policy.test.ts`, `frames/start-asleep.test.ts`, `frames/start-asleep-desk.test.ts`,
+`policies/session-shows.test.ts`, `shell/link.test.ts`, `surface/placed.test.ts`,
 `surface/cover.test.ts`, `plugin-sdk/src/surface-state.test.ts`, `plugins/notes/tests/unload.test.ts`,
 `packages/runtime/e2e/unload.spec.ts`. A watchdog for frames that stop answering (#272) will share this
 lifecycle.
