@@ -9,9 +9,9 @@ import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
 import { icon } from "../shell/icons";
 import type { DeskState } from "../shell/state";
-import { appSize, ORIGIN, screenRect } from "../surface/coordinates";
 import { leaves, panesOf } from "../surface/tree";
 import { resolveView, viewOf } from "../surface/views";
+import { rectIn } from "../wm/view";
 
 const percent = (n: number) => `${Math.round(n * 10000) / 100}%`;
 
@@ -40,10 +40,10 @@ export function deskMap(
   desktop: DesktopId,
   options: MapOptions = {},
 ): HTMLElement {
-  const { vw, vh } = appSize();
-  const pan = s.pan[desktop] ?? ORIGIN;
+  // The app's size and each window where the window manager places it with this desktop in front.
+  const { w: vw, h: vh } = s.wm.screen;
   const windows = windowsOf(s, desktop).map((p) => {
-    const r = screenRect(p, pan, vw, vh);
+    const r = rectIn(s.wm, p.id, desktop) ?? p;
     const x = Math.max(0, Math.min(1, r.x / vw));
     const y = Math.max(0, Math.min(1, r.y / vh));
     const w = Math.max(0, Math.min(1 - x, (r.x + r.w) / vw - x));

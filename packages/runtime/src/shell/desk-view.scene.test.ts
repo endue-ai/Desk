@@ -1,32 +1,22 @@
-// One scene, two window managers (#82): the runtime's (this one, over the shell's store) and
-// crates/desk-wm's (`tests/scene.rs`, over its `Desk`) build the same desk with the same steps, and
-// both snapshots must equal the contract's vector `desk-windows-list-scene.json` (specs/bridge/v0,
-// target BrainDesk): every window's rect in whole pixels, its stacking rank, state, fill, pin, focus,
-// desktop and panes, and the desktops with their pans. Change a step here and in scene.rs together.
-// A snap and a maximize are desk-wm's (ADR 0153): here the runtime takes them as it takes desk-wm's
-// published change (`takeWm`), since it runs neither itself any more (#83).
+// One scene, two sides of the seam (#82, #83): crates/desk-wm builds it from its `Desk`
+// (`tests/scene.rs`), and the runtime (this one) builds it with the shell's actions and the edits
+// they send to desk-wm as WebAssembly, telling it the titles of its own views and how each frame
+// is doing. Both snapshots must equal the contract's vector `desk-windows-list-scene.json`
+// (specs/bridge/v0, target BrainDesk): every window's rect in whole pixels, its stacking rank,
+// state, fill, pin, focus, desktop and panes, and the desktops with their pans. Change a step here
+// and in scene.rs together. A snap and a maximize are window commands (ADR 0153), which desk-wm
+// runs itself.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { SurfacePlacement } from "../modes/types";
-import { fillRect } from "../surface/snap";
-import {
-  type Ctx,
-  desktopId,
-  moveSurface,
-  openSurface,
-  setDesktop,
-  stash,
-  togglePin,
-  windowsOf,
-} from "./actions";
+import { testWindowManager } from "../wm/testing";
+import { takeDesk } from "../wm/view";
+import { edit, openSurface, setDesktop, stash, togglePin } from "./actions";
 import { deskSnapshot } from "./desk-view";
 import { Store, sampleState } from "./state";
 import { focusPane, newWindow, splitPane, toggleFloating } from "./windows";
-import { takeWm } from "./wm-host";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
-const SIZE = { vw: 1440, vh: 900 };
 const VECTOR = join(
   import.meta.dirname,
   "../../../../specs/bridge/v0/vectors/valid/desk-windows-list-scene.json",
@@ -39,25 +29,17 @@ const STATES: Record<string, "late" | "stopped"> = {
 };
 const ASLEEP = new Set(["endue.mail", "endue.git"]);
 
-/** desk-wm fills window `id` (a snap, a maximize): the runtime takes the geometry it publishes. */
-function fill(c: Ctx, id: string, where: NonNullable<SurfacePlacement["fill"]>) {
-  const p = windowsOf(c.store.get()).find((w) => w.id === id);
-  if (!p) throw new Error(`no window ${id}`);
-  const restore = { x: p.x, y: p.y, w: p.w, h: p.h, floating: p.floating === true };
-  const rect = fillRect(where, { x: 0, y: 0, w: SIZE.vw, h: SIZE.vh });
-  const desktop = desktopId(c.store.get());
-  const windows = [{ id, ...rect, floating: true, fill: where, restore }];
-  takeWm(c as never, { rev: 1, desktop, windows });
-}
-
-function scene() {
+async function scene() {
   const store = new Store({ ...sampleState("en", epoch), drawer: [] });
+  const wm = testWindowManager({ w: 1440, h: 900 });
+  wm.connect((published) => takeDesk(store, published));
   const frames = {
     state: (id: string) => STATES[id] ?? "responding",
     asleep: (id: string) => ASLEEP.has(id),
   };
   const c = {
     store,
+    wm,
     runtime: {
       shortcuts: { focused: null },
       focusSurface() {},
@@ -76,35 +58,42 @@ function scene() {
     ["endue.mail", "Mail"],
     ["e2e.hello", "Hello"],
   ];
-  store.set({ adopted: plugins.map(([id = "", title = ""], slot) => ({ id, title, slot })) });
-  moveSurface(c, "endue.notes", { x: 40, y: 60, w: 600, h: 400 });
-  moveSurface(c, "endue.git", { x: 700, y: 60, w: 680, h: 760 });
-  toggleFloating(c, "endue.notes", SIZE);
-  fill(c, "endue.mail", "right");
-  togglePin(c, "endue.git");
-  const one = newWindow(c);
-  splitPane(c, "row");
-  const two = newWindow(c);
-  fill(c, two, "full");
-  stash(c, "e2e.hello", "Hello");
+  await edit(c, ...plugins.map(([id = "", title = ""]) => ({ op: "adopt" as const, id, title })));
+  await edit(
+    c,
+    { op: "set-geometry", geometry: { id: "endue.notes", x: 40, y: 60, w: 600, h: 400 } },
+    { op: "set-geometry", geometry: { id: "endue.git", x: 700, y: 60, w: 680, h: 760 } },
+  );
+  await toggleFloating(c, "endue.notes");
+  wm.run({ op: "snap", fill: "right" }, "endue.mail");
+  await togglePin(c, "endue.git");
+  const one = await newWindow(c);
+  await splitPane(c, "row");
+  const two = await newWindow(c);
+  wm.run({ op: "maximize" }, two);
+  await stash(c, "e2e.hello", "Hello");
   // A shell view on desktop 2, its canvas panned; then back to desktop 1, panned too.
-  setDesktop(c, "2");
-  openSurface(c, "calendar");
-  store.set((s) => ({ pan: { ...s.pan, "2": { x: -100, y: 50 } } }));
-  setDesktop(c, "1");
-  store.set((s) => ({ pan: { ...s.pan, "1": { x: 30.5, y: -20.4 } } }));
-  focusPane(c, one, "p1");
+  await setDesktop(c, "2");
+  await openSurface(c, "calendar");
+  await edit(c, { op: "pan", to: { x: -100, y: 50 } });
+  await setDesktop(c, "1");
+  await edit(c, { op: "pan", to: { x: 30.5, y: -20.4 } });
+  await focusPane(c, one, "p1");
   return c;
 }
 
-describe("the scene both window managers answer (#82)", () => {
-  it("is the contract's vector, window for window", () => {
+describe("the scene both sides answer (#82)", () => {
+  it("is the contract's vector, window for window", async () => {
     const vector = JSON.parse(readFileSync(VECTOR, "utf8")) as {
       target: string;
-      instance: unknown;
+      instance: { windows: unknown[] };
     };
     expect(vector.target).toBe("BrainDesk");
-    const { screen, windows, desktops } = deskSnapshot(scene(), SIZE);
+    const { screen, windows, desktops } = await deskSnapshot(await scene());
+    // One window at a time first, so a difference names its window.
+    windows.forEach((w, i) => {
+      expect(w).toEqual(vector.instance.windows[i]);
+    });
     expect({ screen, windows, desktops }).toEqual(vector.instance);
   });
 });

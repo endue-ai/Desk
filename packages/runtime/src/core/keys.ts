@@ -160,11 +160,6 @@ export const DEFAULT_KEYS: Array<KeyBinding & { owner: string }> = [
     owner: "desk",
   },
   {
-    key: "Mod+Alt+S",
-    command: "desk.windows.spread",
-    owner: "desk",
-  },
-  {
     key: "Mod+Alt+Z",
     command: "desk.windows.restore-arrangement",
     owner: "desk",

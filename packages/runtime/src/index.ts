@@ -60,13 +60,21 @@ export type { SettingsLanguage } from "./settings-ui/copy";
 export type { SettingsSection } from "./settings-ui/panels";
 export type { SettingsWindow } from "./settings-ui/window";
 export { type Desk, type DeskOptions, mountDesk } from "./shell/Desk";
-export { type WmDesk, wmDesk, wmTitles } from "./shell/wm-desk";
-export type { Grab, WindowManagerHost, WindowOp, WmPublished } from "./shell/wm-host";
+export { viewTitles } from "./shell/titles";
 export type { BrokenStateFile, StartInfo } from "./start";
-export type { KeptWindows } from "./surface/host";
 export { SurfaceHost, type SurfaceSpec } from "./surfaces";
 export { applyTheme } from "./theme";
 export { PHASE_PREFIX, type Phase, phase, phases, timed } from "./timing";
 export type { HostViews } from "./views";
+export {
+  answers,
+  type Grab,
+  heldWindows,
+  noWindowManager,
+  type WindowManagerHost,
+  type WindowOp,
+} from "./wm/host";
+export { type LocalWindowManager, localWindowManager } from "./wm/local";
+export type { Edit, Published, Told, WmDesk, WmView } from "./wm/types";
 
 export const NAME = "@endue-ai/runtime";

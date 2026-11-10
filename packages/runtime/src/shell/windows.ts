@@ -1,225 +1,122 @@
 /**
  * Surfaces as windows: ⌘N opens a new one with a launcher, and any pane splits right or down,
- * closes, or takes another view. Every change is a session edit of the current desktop's layout.
- * Maximizing, snapping and moving or resizing by a step are the window manager's (crates/desk-wm,
- * `window-commands.ts`, ADR 0153): the runtime's own went with the windowed desk (#83).
+ * closes, or takes another view. Each is an edit the window manager makes (crates/desk-wm, #83),
+ * as are maximizing, snapping and moving or resizing by a step (`window-commands.ts`, ADR 0153).
+ * What stays the runtime's: the plugin surface in use takes the keys once the desk that made it is
+ * in, and closing a window unmounts the plugins it showed for the session (ADR 0040).
  */
-import type { PaneSplit, SurfacePlacement } from "../modes/types";
-import { appSize, isFloating, screenRect, storedRect } from "../surface/coordinates";
-import { clampRect } from "../surface/geometry";
-import {
-  close,
-  findLeaf,
-  LAUNCHER,
-  leaves,
-  panesOf,
-  setRatio,
-  setView,
-  split,
-} from "../surface/tree";
-import { resolveView } from "../surface/views";
-import {
-  type Ctx,
-  closeSurface,
-  desktopsOf,
-  edit,
-  ensurePlaced,
-  inView,
-  layoutOf,
-  openSurface,
-  raise,
-  setDesktop,
-  windowsOf,
-} from "./actions";
-import { panOf } from "./Pan";
-import { freeWindowId, windowIds } from "./window-ids";
+import type { PaneSplit } from "../modes/types";
+import type { Edit } from "../wm/types";
+import { type Ctx, edit, windowsOf } from "./actions";
 
-const SIZE = { w: 480, h: 320 };
-
-/** Reveal a plugin's existing pane before considering a new window or an empty launcher. */
-export function showPlugin(ctx: Ctx, id: string): void {
-  const paneIn = (p: SurfacePlacement) =>
-    leaves(panesOf(p)).find(
-      (leaf) => resolveView(ctx.store.get(), p, leaf.view) === `plugin:${id}`,
-    );
-  const shown = windowsOf(ctx.store.get()).find((p) => paneIn(p));
-  if (shown) {
-    focusPane(ctx, shown.id, paneIn(shown)?.id);
-    return;
-  }
-  // A window on another desktop shows it (ADR 0117): the desk goes there.
+/**
+ * The runtime's surfaces follow the pane in use: a plugin's takes the keys, a pane of the shell's
+ * own takes them from the plugins. Only after a focus the person or a command asked for.
+ */
+function follow(ctx: Ctx): void {
   const s = ctx.store.get();
-  const there = desktopsOf(s).find((d) => windowsOf(s, d.id).some((p) => paneIn(p)));
-  const away = there && windowsOf(s, there.id).find((p) => paneIn(p));
-  if (there && away) {
-    setDesktop(ctx, there.id);
-    focusPane(ctx, away.id, paneIn(away)?.id);
-    return;
+  if (s.focused === null) return;
+  const plugin = s.wm.focusedPlugin;
+  if (plugin) {
+    if (ctx.runtime.shortcuts.focused !== plugin) ctx.runtime.focusSurface(plugin);
+  } else if (ctx.runtime.shortcuts.focused) {
+    ctx.runtime.focusSurface(null);
   }
-  const item = ctx.store.get().drawer.find((d) => d.placement && paneIn(d.placement));
-  if (item?.placement) {
-    raise(ctx, item.id);
-    focusPane(ctx, item.placement.id, paneIn(item.placement)?.id);
-  } else openView(ctx, `plugin:${id}`);
 }
 
-function update(ctx: Ctx, id: string, change: (p: SurfacePlacement) => SurfacePlacement): void {
-  ensurePlaced(ctx, id);
-  edit(ctx, (l) => ({ ...l, surfaces: l.surfaces.map((p) => (p.id === id ? change(p) : p)) }));
+/** `edits` that move the focus, then the runtime's surfaces follow it. */
+async function focusing(ctx: Ctx, ...edits: Edit[]): Promise<unknown[]> {
+  const answers = await edit(ctx, ...edits);
+  follow(ctx);
+  return answers;
+}
+
+/** The plugins a close answered: they unmount for the session (ADR 0040). */
+function unmount(ctx: Ctx, answer: unknown): void {
+  if (!Array.isArray(answer)) return;
+  for (const plugin of answer) {
+    if (typeof plugin === "string") ctx.runtime.plugins?.unmount(plugin);
+  }
+}
+
+/** Reveal a plugin's pane, wherever it is (another desktop, the drawer), else in a new window. */
+export function showPlugin(ctx: Ctx, id: string): Promise<unknown[]> {
+  return focusing(ctx, { op: "show-plugin", id });
 }
 
 /** Focus a surface and one of its panes (its first when none is named). */
-export function focusPane(ctx: Ctx, surface: string, pane?: string): void {
+export function focusPane(ctx: Ctx, surface: string, pane?: string): Promise<unknown[]> {
   const s = ctx.store.get();
-  const p = windowsOf(s).find((w) => w.id === surface);
-  if (!p) return;
-  const all = leaves(panesOf(p));
-  const target = all.find((l) => l.id === pane) ?? all[0];
-  const plugin = target ? resolveView(s, p, target.view) : "";
-  if (plugin.startsWith("plugin:")) {
-    // The pane shows a runtime surface: it is the one in use, for keys and buffers. One already in
-    // use keeps the focus where it is (inside its frame, say).
-    const id = plugin.slice("plugin:".length);
-    if (ctx.runtime.shortcuts.focused !== id) ctx.runtime.focusSurface(id);
-  } else if (ctx.runtime.shortcuts.focused) {
-    // A pane of the shell's own in use: the runtime's surfaces give the focus up.
-    ctx.runtime.focusSurface(null);
+  if (s.focused === surface && (pane === undefined || s.pane === pane)) {
+    follow(ctx);
+    return Promise.resolve([null]);
   }
-  if (s.focused !== surface || s.pane !== (target?.id ?? null)) {
-    ctx.store.set({ focused: surface, pane: target?.id ?? null });
-  }
+  return focusing(ctx, { op: "focus", window: surface, ...(pane ? { pane } : {}) });
 }
 
-function focusedPlacement(ctx: Ctx): SurfacePlacement | undefined {
-  const s = ctx.store.get();
-  return windowsOf(s).find((p) => p.id === s.focused);
-}
-
-/** Switch coordinate systems while preserving the visible rectangle. */
-export function toggleFloating(ctx: Ctx, id: string, size = appSize()): void {
-  const pan = panOf(ctx.store.get());
-  update(ctx, id, (p) => {
-    const floating = !isFloating(p);
-    const screen = screenRect(p, pan, size.vw, size.vh);
-    const rect = floating ? clampRect(screen, size.vw, size.vh) : screen;
-    return {
-      ...p,
-      ...storedRect(rect, floating, pan, size.vw, size.vh),
-      floating,
-      restore: undefined,
-      fill: undefined,
-    };
-  });
+/** Switch a window between normal and floating, keeping where it is on screen. */
+export function toggleFloating(ctx: Ctx, id: string): Promise<unknown[]> {
+  return edit(ctx, { op: "toggle-floating", id });
 }
 
 /** The focused window, for the palette's window commands; nothing happens with none. */
 export function focusedWindow(ctx: Ctx): string | undefined {
-  return focusedPlacement(ctx)?.id;
+  const s = ctx.store.get();
+  return windowsOf(s).find((p) => p.id === s.focused)?.id;
 }
 
 /**
- * A new surface with one launcher pane, cascading from the middle of what is in sight. Its id is
- * the first `window-<n>` no window on any desktop or in the drawer has (issue 101).
+ * A new surface with one launcher pane, cascading from the middle of what is in sight: its id, the
+ * first `window-<n>` no window on any desktop or in the drawer has (issue 101).
  */
-export function newWindow(ctx: Ctx): string {
-  const s = ctx.store.get();
-  const id = freeWindowId(windowIds(s));
-  const k = layoutOf(s).surfaces.length % 6;
-  const placement: SurfacePlacement = {
-    id,
-    plugin: "endue.window",
-    x: 480 + 32 * k,
-    y: 240 + 32 * k,
-    ...SIZE,
-    pinned: false,
-    panes: { kind: "view", id: "p1", view: LAUNCHER },
-  };
-  openSurface(ctx, id, inView(s, placement));
-  focusPane(ctx, id, "p1");
-  return id;
+export async function newWindow(ctx: Ctx): Promise<string> {
+  const [id] = await focusing(ctx, { op: "new-window" });
+  return typeof id === "string" ? id : "";
 }
 
 /** Split the focused pane; the new pane opens the launcher and takes focus. */
-export function splitPane(ctx: Ctx, dir: PaneSplit["dir"]): void {
-  const p = focusedPlacement(ctx);
-  if (!p) return;
-  const tree = panesOf(p);
-  const target = ctx.store.get().pane ?? leaves(tree)[0]?.id ?? "p1";
-  const { node, added } = split(tree, target, dir);
-  update(ctx, p.id, (q) => ({ ...q, panes: node }));
-  focusPane(ctx, p.id, added);
+export function splitPane(ctx: Ctx, dir: PaneSplit["dir"]): Promise<unknown[]> {
+  return focusing(ctx, { op: "split", dir });
 }
 
-/**
- * Close a window: it leaves the layout, and the plugins it shows unmount for the session (ADR 0040),
- * so none of them comes back as a window of its own or leaves an empty one behind.
- */
-export function closeWindow(ctx: Ctx, id: string): void {
-  const s = ctx.store.get();
-  const p = windowsOf(s).find((w) => w.id === id);
-  if (!p) return;
-  const plugins = leaves(panesOf(p))
-    .map((leaf) => resolveView(s, p, leaf.view))
-    .filter((view) => view.startsWith("plugin:"))
-    .map((view) => view.slice("plugin:".length));
-  closeSurface(ctx, id);
-  if (s.focused === id) ctx.store.set({ focused: null, pane: null });
-  for (const plugin of new Set(plugins)) ctx.runtime.plugins?.unmount(plugin);
+/** Close a window: the plugins it shows unmount for the session (ADR 0040). */
+export async function closeWindow(ctx: Ctx, id: string): Promise<void> {
+  const [plugins] = await edit(ctx, { op: "close-window", id });
+  unmount(ctx, plugins);
 }
 
 /** Close a pane (the focused one unless named); the last pane closes its window. */
-export function closePane(ctx: Ctx, surface?: string, pane?: string): void {
-  const p = surface
-    ? windowsOf(ctx.store.get()).find((q) => q.id === surface)
-    : focusedPlacement(ctx);
-  if (!p) return;
-  const tree = panesOf(p);
-  const target = pane ?? ctx.store.get().pane ?? leaves(tree)[0]?.id ?? "p1";
-  const next = close(tree, target);
-  if (!next) {
-    closeWindow(ctx, p.id);
-    return;
-  }
-  update(ctx, p.id, (q) => ({ ...q, panes: next }));
-  focusPane(ctx, p.id, leaves(next)[0]?.id);
+export async function closePane(ctx: Ctx, surface?: string, pane?: string): Promise<void> {
+  const [plugins] = await focusing(ctx, {
+    op: "close-pane",
+    ...(surface ? { window: surface } : {}),
+    ...(pane ? { pane } : {}),
+  });
+  unmount(ctx, plugins);
 }
 
-export function showInPane(ctx: Ctx, surface: string, pane: string, view: string): void {
-  const p = windowsOf(ctx.store.get()).find((s) => s.id === surface);
-  if (!p) return;
-  update(ctx, surface, (q) => ({ ...q, panes: setView(panesOf(q), pane, view) }));
-  focusPane(ctx, surface, pane);
+export function showInPane(
+  ctx: Ctx,
+  surface: string,
+  pane: string,
+  view: string,
+): Promise<unknown[]> {
+  return focusing(ctx, { op: "show-in-pane", window: surface, pane, view });
 }
 
-export function resizeSplit(ctx: Ctx, surface: string, splitId: string, ratio: number): void {
-  update(ctx, surface, (q) => ({ ...q, panes: setRatio(panesOf(q), splitId, ratio) }));
+export function resizeSplit(
+  ctx: Ctx,
+  surface: string,
+  splitId: string,
+  ratio: number,
+): Promise<unknown[]> {
+  return edit(ctx, { op: "resize-split", window: surface, split: splitId, ratio });
 }
 
 /**
  * Bring a view up: into the focused launcher pane if there is one, else focus a pane that already
  * shows it, else open it as its own surface.
  */
-export function openView(ctx: Ctx, view: string): void {
-  const s = ctx.store.get();
-  const surfaces = windowsOf(s);
-  const focused = surfaces.find((p) => p.id === s.focused);
-  const pane = focused && s.pane ? findLeaf(panesOf(focused), s.pane) : undefined;
-  if (focused && pane?.view === LAUNCHER) {
-    showInPane(ctx, focused.id, pane.id, view);
-    return;
-  }
-  for (const p of surfaces) {
-    const found = leaves(panesOf(p)).find((l) => l.view === view);
-    if (found) {
-      focusPane(ctx, p.id, found.id);
-      return;
-    }
-  }
-  if (surfaces.some((p) => p.id === view)) {
-    // A surface named after this view now shows something else: give the view a new surface.
-    showInPane(ctx, newWindow(ctx), "p1", view);
-    return;
-  }
-  openSurface(ctx, view);
-  focusPane(ctx, view);
+export function openView(ctx: Ctx, view: string): Promise<unknown[]> {
+  return focusing(ctx, { op: "open-view", view });
 }

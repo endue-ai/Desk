@@ -1,22 +1,20 @@
 /**
- * desk.windows.*: tile, cascade, spread and restore as the desk's own commands (ADR 0017, 0116), so
- * keys, the palette, the right-edge strip and Eris run the same thing. Tile and cascade name
- * restore-arrangement as their undo: each is one step on the desk's undo stack (ADR 0077).
+ * desk.windows.*: tile, cascade and restore as the desk's own commands (ADR 0017, 0116), so keys,
+ * the palette, the right-edge strip and Eris run the same thing. The window manager arranges and
+ * keeps what each arrangement replaced (crates/desk-wm `Arranger`, #83); tile and cascade name
+ * restore-arrangement as their undo: each is one step on the desk's undo stack (ADR 0077). The
+ * spread waits for the compositor to draw it (#54).
  */
 import { CommandError } from "../commands";
-import type { Ctx } from "../shell/actions";
-import type { Arranged, Arranger, Kind } from "./arranger";
+import { type Ctx, edit } from "../shell/actions";
+import type { Arranged } from "../wm/types";
 import { type ArrangeCopyKey, arrangeText } from "./copy";
 
 export const TILE = "desk.windows.tile";
 export const CASCADE = "desk.windows.cascade";
-export const SPREAD = "desk.windows.spread";
 export const RESTORE = "desk.windows.restore-arrangement";
 
-/** The spread overlay as the commands see it. */
-export interface SpreadToggle {
-  toggle(): void;
-}
+type Kind = Arranged["kind"];
 
 const NO_ARGS = { type: "object", properties: {}, additionalProperties: false };
 const KEPT = {
@@ -59,11 +57,10 @@ const ARRANGE: Record<Kind, { id: string; title: ArrangeCopyKey; words: string[]
     },
   };
 
-export function defineArrangeCommands(
-  ctx: Ctx,
-  arranger: Arranger,
-  spread?: SpreadToggle,
-): () => void {
+const isArranged = (value: unknown): value is Arranged =>
+  typeof value === "object" && value !== null && typeof (value as Arranged).entry === "string";
+
+export function defineArrangeCommands(ctx: Ctx): () => void {
   const { commands } = ctx.runtime;
   const say = (key: ArrangeCopyKey) => arrangeText(ctx.store.get().lang, key);
   const offs = (Object.keys(ARRANGE) as Kind[]).map((kind) => {
@@ -73,9 +70,9 @@ export function defineArrangeCommands(
       keywords: spec.words,
       owner: "desk",
       undo: RESTORE,
-      run: (): Arranged => {
-        const done = arranger.arrange(kind);
-        if (!done) throw new CommandError("failed", say("nothingToArrange"));
+      run: async (): Promise<Arranged> => {
+        const [done] = await edit(ctx, { op: "arrange", kind, now: Math.round(ctx.wall()) });
+        if (!isArranged(done)) throw new CommandError("failed", say("nothingToArrange"));
         return done;
       },
       agent: {
@@ -90,11 +87,14 @@ export function defineArrangeCommands(
       title: say("restore"),
       keywords: ["restore", "undo", "previous", "layout", "windows", "되돌리기", "이전", "배치"],
       owner: "desk",
-      run: (args) => {
+      run: async (args) => {
         // cmd.undo hands the inverse { args, result } of the arrangement it undoes.
-        const result = (args as { result?: Partial<Arranged> } | undefined)?.result;
-        const named = result && typeof result === "object" && typeof result.entry === "string";
-        const done = arranger.restore(named ? result : undefined);
+        const result = (args as { result?: unknown } | undefined)?.result;
+        const named = isArranged(result);
+        const [done] = await edit(ctx, {
+          op: "restore-arrangement",
+          ...(named ? { from: result } : {}),
+        });
         if (done) return done;
         if (named) return { windows: 0 };
         throw new CommandError("failed", say("nothingToRestore"));
@@ -106,21 +106,6 @@ export function defineArrangeCommands(
       },
     }),
   );
-  if (spread) {
-    offs.push(
-      commands.define(SPREAD, {
-        title: say("spread"),
-        keywords: ["spread", "expose", "overview", "mission control", "windows", "펼치기", "창"],
-        owner: "desk",
-        run: () => spread.toggle(),
-        agent: {
-          description:
-            "Spread every window on the current desktop out so the person can pick one; running it again closes the spread.",
-          args: NO_ARGS,
-        },
-      }),
-    );
-  }
   return () => {
     for (const off of offs) off();
   };

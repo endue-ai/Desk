@@ -11,12 +11,10 @@ import { stash, togglePin, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen, render } from "../shell/dom";
 import { icon } from "../shell/icons";
-import { panOf } from "../shell/Pan";
 import { closeWindow, focusPane, splitPane, toggleFloating } from "../shell/windows";
+import type { Rect } from "../wm/types";
 import { trackTopChrome } from "./clearance";
-import { isFloating, screenRect } from "./coordinates";
-import { zOf } from "./cover";
-import type { Rect } from "./geometry";
+import { isFloating } from "./coordinates";
 import { hostGestures } from "./host-gestures";
 import { renderPanes } from "./PaneView";
 import { findLeaf, leaves, panesOf } from "./tree";
@@ -79,10 +77,6 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
   const layer = h("div", { class: "surfaces" });
   root.append(layer);
   const live = new Map<string, Entry>();
-  const size = () => ({
-    vw: root.clientWidth || window.innerWidth,
-    vh: root.clientHeight || window.innerHeight,
-  });
   const hint = (label: string, command: string) => {
     const key = ctx.keyOf(command);
     return key ? `${label} (${key})` : label;
@@ -126,7 +120,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
     const floatTool = tool(
       ctx.tr("floating"),
       "floating",
-      () => toggleFloating(ctx, p.id, size()),
+      () => void toggleFloating(ctx, p.id),
       isFloating(p),
     );
     const relabel = () => {
@@ -205,7 +199,8 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
 
   const draw = () => {
     const s = ctx.store.get();
-    const { vw, vh } = size();
+    // Where the window manager drew each window and at what level (#83).
+    const shown = new Map(s.wm.front.map((w) => [w.id, w]));
     const surfaces = windowsOf(s);
     const keep = new Set(surfaces.map((p) => p.id));
     for (const [id, entry] of live) {
@@ -214,7 +209,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       entry.el.remove();
       live.delete(id);
     }
-    surfaces.forEach((p, i) => {
+    surfaces.forEach((p) => {
       // Only the language rebuilds a window: a rebuild would reload a plugin's frame inside it.
       const key = JSON.stringify([s.lang]);
       let entry = live.get(p.id);
@@ -267,8 +262,10 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       else delete entry.el.dataset.fill;
       entry.relabel();
       drawTitle(entry, p);
-      place(entry.el, held ?? screenRect(p, panOf(s), vw, vh));
-      entry.el.style.zIndex = String(zOf(p, i, s.focused));
+      const at = shown.get(p.id);
+      const rect = held ?? at?.rect;
+      if (rect) place(entry.el, rect);
+      entry.el.style.zIndex = String(at?.z ?? 1);
       entry.el.classList.toggle("is-focused", p.id === s.focused);
     });
   };
@@ -297,7 +294,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
     ctx.held.onChange(draw),
     trackTopChrome(layer, root.closest(".shell") ?? root),
     // Tile, cascade and spread, with the strip on the right edge (ADR 0116).
-    mountArrange(root, ctx, { layer, element: (id) => live.get(id)?.el, size }),
+    mountArrange(root, ctx),
   ];
   return () => {
     for (const off of offs) off();

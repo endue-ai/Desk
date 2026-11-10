@@ -1,4 +1,5 @@
 /** The bottom edge, the person's place: drawer, the line you talk on, what is running, the drop zone. */
+import { edit } from "./actions";
 import { mountComposer } from "./Composer";
 import type { ShellCtx } from "./context";
 import { mountDrawer } from "./Drawer";
@@ -39,18 +40,15 @@ export function mountBottom(root: HTMLElement, ctx: ShellCtx): () => void {
       drop.hidden = true;
       if (!wasShown) return;
       const files = [...(d.dataTransfer?.files ?? [])];
-      const now = ctx.now();
-      ctx.store.set((s) => ({
-        drawer: [
-          ...files.map((f, i) => ({
-            id: `file-${now}-${i}`,
-            kind: "file" as const,
-            name: f.name,
-            at: now,
-          })),
-          ...s.drawer,
-        ],
+      const now = Math.round(ctx.now());
+      const items = files.map((f, i) => ({
+        id: `file-${now}-${i}`,
+        kind: "file" as const,
+        name: f.name,
+        at: now,
       }));
+      // The drawer is the window manager's (#83): it holds them first.
+      void edit(ctx, { op: "drawer", items: [...items, ...ctx.store.get().drawer] });
       ctx.eris.say(ctx.tr("received", { n: files.length }));
     }),
   ];

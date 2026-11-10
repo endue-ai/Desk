@@ -1,11 +1,14 @@
 /**
- * A shell context for the tests of what Eris knows (ADR 0124): the sample desk with an empty drawer,
- * a clock the test moves, a plugin host that hands a plugin's surface over when desk.plugins.open
- * runs and takes it back when its window closes, and the commands the module defines.
+ * A shell context for the tests of what Eris knows (ADR 0124): the sample desk with an empty drawer
+ * and desk-wm under it (#83), a clock the test moves, a plugin host that hands a plugin's surface
+ * over when desk.plugins.open runs and takes it back when its window closes, and the commands the
+ * module defines.
  */
 import type { CommandInfo, CommandSpec } from "../commands";
 import type { ShellCtx } from "../shell/context";
 import { Store, sampleState } from "../shell/state";
+import { testWindowManager } from "../wm/testing";
+import { takeDesk } from "../wm/view";
 
 export const EPOCH = Date.parse("2026-11-08T09:00:00.000Z");
 
@@ -34,13 +37,13 @@ export interface FakeOptions {
 
 export function fakeDesk(options: FakeOptions = {}) {
   const store = new Store({ ...sampleState("en", EPOCH), drawer: [] });
+  const wm = testWindowManager();
+  wm.connect((published) => takeDesk(store, published));
   let clock = 1000;
   const specs = new Map<string, CommandSpec>();
   const ran: Array<{ id: string; args: unknown }> = [];
-  const adopt = (id: string) =>
-    store.set((s) => ({
-      adopted: [...s.adopted.filter((a) => a.id !== id), { id, title: id, slot: s.adopted.length }],
-    }));
+  // desk-wm applies an edit at once: the surface is handed over when this returns.
+  const adopt = (id: string) => void wm.edit([{ op: "adopt", id, title: id }]);
   const runtime = {
     ready: Promise.resolve(),
     shortcuts: { focused: null },
@@ -49,8 +52,7 @@ export function fakeDesk(options: FakeOptions = {}) {
     plugins: {
       ready: Promise.resolve(),
       mounted: () => store.get().adopted.map((a) => a.id),
-      unmount: (id: string) =>
-        store.set((s) => ({ adopted: s.adopted.filter((a) => a.id !== id) })),
+      unmount: (id: string) => void wm.edit([{ op: "release", id }]),
     },
     commands: {
       define(id: string, spec: CommandSpec) {
@@ -77,6 +79,7 @@ export function fakeDesk(options: FakeOptions = {}) {
   };
   const ctx = {
     store,
+    wm,
     runtime,
     bridge: { storage: options.storage ?? memoryStorage() },
     now: () => clock,
@@ -87,6 +90,7 @@ export function fakeDesk(options: FakeOptions = {}) {
   return {
     ctx,
     store,
+    wm,
     specs,
     ran,
     adopt,

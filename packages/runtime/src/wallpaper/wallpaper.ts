@@ -4,7 +4,7 @@ import { windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen } from "../shell/dom";
 import { panOf } from "../shell/Pan";
-import { appSize, screenRect } from "../surface/coordinates";
+import { rectIn } from "../wm/view";
 
 export const WALLPAPER = "desk.wallpaper.scene";
 export const SCENES = ["theme", "grid", "pond", "aurora"] as const;
@@ -121,10 +121,10 @@ export function mountWallpaper(root: HTMLElement, ctx: ShellCtx): () => void {
       known = new Set(windows.map((p) => p.id));
     }
     if (scene === "pond" && !ctx.reduced() && !root.ownerDocument.hidden) {
-      const { vw, vh } = appSize();
       for (const window of windows) {
         if (known.has(window.id)) continue;
-        const rect = screenRect(window, pan, vw, vh);
+        // Where the window manager placed it (#83).
+        const rect = rectIn(state.wm, window.id) ?? window;
         const ripple = h("div", { class: "wallpaper-ripple" });
         ripple.style.setProperty("--ripple-x", `${rect.x + rect.w / 2 - pan.x}px`);
         ripple.style.setProperty("--ripple-y", `${rect.y + rect.h / 2 - pan.y}px`);

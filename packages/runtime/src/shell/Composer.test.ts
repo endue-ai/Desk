@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SAY_TO_ERIS } from "../eris/look";
+import type { LocalWindowManager } from "../wm/local";
+import { testWindowManager } from "../wm/testing";
+import { takeDesk } from "../wm/view";
 import { mountComposer } from "./Composer";
 import type { ShellCtx } from "./context";
 import { Store, sampleState } from "./state";
@@ -13,6 +16,7 @@ describe("the talk line", () => {
   let input: HTMLInputElement;
   let dispose: () => void;
   let store: Store;
+  let wm: LocalWindowManager;
   const brainSay = vi.fn();
   const notify = vi.fn();
   const erisSay = vi.fn();
@@ -23,11 +27,14 @@ describe("the talk line", () => {
     brainSay.mockReset().mockResolvedValue({ text: "Hello" });
     commands.mockReset().mockReturnValue([]);
     store = new Store(sampleState("en", 0));
+    wm = testWindowManager();
+    wm.connect((published) => takeDesk(store, published));
     root = document.createElement("div");
     root.className = "shell";
     document.body.append(root);
     const ctx = {
       store,
+      wm,
       runtime: { commands: { list: commands, has: () => false }, notify },
       bridge: { brain: { say: brainSay } },
       eris: {
@@ -102,17 +109,21 @@ describe("the talk line", () => {
     });
   }
 
-  it("sends the line on a plain Enter", () => {
+  it("sends the line on a plain Enter", async () => {
     type("hello");
     expect(key("Enter").defaultPrevented).toBe(true);
-    expect(brainSay).toHaveBeenCalledExactlyOnceWith("hello", expect.any(Function), DESK);
     expect(input.value).toBe("");
+    // Once desk-wm has answered the snapshot the line goes with.
+    await vi.waitFor(() =>
+      expect(brainSay).toHaveBeenCalledExactlyOnceWith("hello", expect.any(Function), DESK),
+    );
   });
 
-  it("sends the desk the person sees with the line: its screen and its windows (ADR 0109)", () => {
-    store.set({ adopted: [{ id: "endue.notes", title: "Notes", slot: 0 }] });
+  it("sends the desk the person sees with the line: its screen and its windows (ADR 0109)", async () => {
+    await wm.edit([{ op: "adopt", id: "endue.notes", title: "Notes" }]);
     type("what is in here?");
     key("Enter");
+    await vi.waitFor(() => expect(brainSay).toHaveBeenCalledOnce());
     const desk = brainSay.mock.calls[0]?.[2];
     expect(desk.screen).toEqual({ w: expect.any(Number), h: expect.any(Number) });
     const notes = desk.windows.find((w: { id: string }) => w.id === "endue.notes");

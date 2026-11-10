@@ -7,9 +7,9 @@
  * brings that window up instead.
  */
 import type { DesktopId, SurfacePlacement } from "../modes/types";
-import { desktopId, desktopsOf, editAt, raise, setDesktop, windowsOf } from "../shell/actions";
+import { desktopId, desktopsOf, edit, raise, setDesktop, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
-import { freeWindowId, windowIds } from "../shell/window-ids";
+import { freeWindowId } from "../shell/window-ids";
 import { focusPane } from "../shell/windows";
 import { leaves, panesOf } from "../surface/tree";
 import type { ClosedLog } from "./closed";
@@ -32,14 +32,14 @@ function renamed(p: SurfacePlacement, ids: Set<string>): SurfacePlacement | unde
 }
 
 /** Bring up the window that holds `id` now, wherever it is. */
-function bringUp(ctx: ShellCtx, id: string): DesktopId {
+async function bringUp(ctx: ShellCtx, id: string): Promise<DesktopId> {
   const s = ctx.store.get();
   const holder = desktopsOf(s).find((d) => windowsOf(s, d.id).some((p) => p.id === id));
   const drawn = s.drawer.find((d) => d.placement?.id === id);
   if (holder) {
-    if (holder.id !== desktopId(s)) setDesktop(ctx, holder.id);
-    focusPane(ctx, id);
-  } else if (drawn) raise(ctx, drawn.id);
+    if (holder.id !== desktopId(s)) await setDesktop(ctx, holder.id);
+    await focusPane(ctx, id);
+  } else if (drawn) await raise(ctx, drawn.id);
   return desktopId(ctx.store.get());
 }
 
@@ -51,34 +51,28 @@ export async function reopenWindow(ctx: ShellCtx, log: ClosedLog, id?: string): 
   if (!entry)
     throw new Error(id === undefined ? ec(lang, "noneClosed") : ec(lang, "notClosed", { id }));
   const s = ctx.store.get();
-  const ids = windowIds(s);
+  const ids = new Set(s.wm.ids);
   const placement = ids.has(entry.id) ? renamed(entry.placement, ids) : entry.placement;
   const { x, y, w, h } = entry.placement;
   log.forget(entry.id);
-  if (!placement)
-    return { id: entry.id, title: entry.title, desktop: bringUp(ctx, entry.id), x, y, w, h };
+  if (!placement) {
+    const desktop = await bringUp(ctx, entry.id);
+    return { id: entry.id, title: entry.title, desktop, x, y, w, h };
+  }
   const list = desktopsOf(s);
   const desktop = list.find((d) => d.id === entry.desktop)?.id ?? desktopId(s);
-  if (desktop !== desktopId(s)) setDesktop(ctx, desktop);
-  const place = (keep: boolean) =>
-    editAt(ctx, desktop, (l) => ({
-      ...l,
-      surfaces: [
-        ...l.surfaces.filter((p) => p.id !== placement.id),
-        ...(keep ? [structuredClone(placement)] : []),
-      ],
-    }));
-  place(true);
+  if (desktop !== desktopId(s)) await setDesktop(ctx, desktop);
+  await edit(ctx, { op: "place", desktop, placement: structuredClone(placement) });
   try {
     for (const plugin of entry.plugins) {
       if (ctx.store.get().adopted.some((a) => a.id === plugin)) continue;
       await ctx.runtime.commands.run("desk.plugins.open", { plugin });
     }
   } catch (error) {
-    place(false);
+    await edit(ctx, { op: "unplace", desktop, id: placement.id });
     log.put(entry);
     throw error;
   }
-  focusPane(ctx, placement.id);
+  await focusPane(ctx, placement.id);
   return { id: placement.id, title: entry.title, desktop, x, y, w, h };
 }

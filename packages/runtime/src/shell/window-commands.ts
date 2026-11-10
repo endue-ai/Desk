@@ -5,11 +5,11 @@
  * ADR 0153) runs them, and they come back as its changes (#83: the runtime runs none itself).
  */
 
-import type { Fill } from "../surface/snap";
+import type { WindowOp } from "../wm/host";
+import type { Fill } from "../wm/types";
 import type { ShellCtx } from "./context";
 import type { CopyKey } from "./copy";
 import { focusedWindow } from "./windows";
-import type { WindowOp } from "./wm-host";
 
 /** How far one step moves or resizes a window: the cascade's step. */
 export const STEP = 32;

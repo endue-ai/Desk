@@ -1,15 +1,10 @@
 // @vitest-environment jsdom
-// Compositor mode (#81, ADR 0151): the shell page publishes the desk the runtime keeps, each plugin
-// frame's document and state with what its window says without a live frame, and hears back the
-// windows that keep one. A frame moved in the page is the same surface; one released is not named.
+// Compositor mode (#81, ADR 0151): the shell page publishes each plugin frame's document and state
+// with what its window says without a live frame, and the titles of the shell's own views; desk-wm
+// holds the desk itself (#83), and the live set it sends back is the seam's (compositor-wm.test.ts).
+// A frame moved in the page is the same surface; one released is not named.
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  cardOf,
-  type DeskReport,
-  keptWindows,
-  startCompositorDesk,
-  surfaceHostOf,
-} from "./compositor-desk";
+import { cardOf, type DeskReport, startCompositorDesk, surfaceHostOf } from "./compositor-desk";
 
 const NOTES = "desk-plugin://main.endue-notes/endue.notes/ui/index.html?v=1";
 
@@ -17,25 +12,13 @@ const NOTES = "desk-plugin://main.endue-notes/endue.notes/ui/index.html?v=1";
 function runtime(adopted: string[]) {
   const asleep = new Set<string>();
   const states = new Map<string, "late" | "stopped">();
-  const base = {
-    manifest: { id: "base", extends: null },
-    desktop: {},
-    list: [{ id: "1", name: "1" }],
-    desktops: {},
-  };
+  // What desk-wm published last: one launcher window on the desktop in front.
+  const launcher = { id: "window-1", panes: { id: "p1", kind: "view", view: "launcher" } };
   let state = {
     lang: "en",
-    modes: [base],
-    modeId: "base",
-    desktop: "1",
-    session: {},
-    desktops: null,
-    pan: {},
-    focusBy: {},
     adopted: adopted.map((id, slot) => ({ id, title: id, slot })),
     drawer: [],
-    focused: null,
-    pane: null,
+    wm: { here: "1", windows: { "1": [launcher] } },
   };
   const desk = {
     store: { get: () => state, set: (s: Partial<typeof state>) => (state = { ...state, ...s }) },
@@ -90,7 +73,7 @@ describe("the desk the page publishes", () => {
     expect(reports).toHaveLength(1);
     expect(reports[0]).toMatchObject({
       seq: 1,
-      desk: { desktop: "1", adopted: [{ id: "endue.notes" }], session: {} },
+      titles: { launcher: "New surface" },
       frames: [{ plugin: "endue.notes", host: "main.endue-notes", src: NOTES, state: "live" }],
       budget: { live: 4, afterMs: 300_000 },
     });
@@ -156,17 +139,5 @@ describe("the desk the page publishes", () => {
       line: "Hello has not answered.",
       actions: ["Wait", "Stop"],
     });
-  });
-
-  it("keeps the live set the shell sends and tells the runtime it changed", () => {
-    const kept = keptWindows();
-    expect(kept.kept()).toBeUndefined();
-    let heard = 0;
-    const off = kept.onChange(() => heard++);
-    kept.set(["endue.notes"]);
-    expect([...(kept.kept() ?? [])]).toEqual(["endue.notes"]);
-    off();
-    kept.set([]);
-    expect(heard).toBe(1);
   });
 });

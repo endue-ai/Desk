@@ -6,6 +6,8 @@ import { DEFAULT_KEYS } from "../core/keys";
 import { listenForShortcuts, ShortcutRouter } from "../input";
 import { Keymap } from "../keymap";
 import { Settings } from "../settings";
+import { testWindowManager } from "../wm/testing";
+import { takeDesk } from "../wm/view";
 import { mountComposer } from "./Composer";
 import type { ShellCtx } from "./context";
 import { t } from "./copy";
@@ -29,6 +31,8 @@ function setup() {
   const clock = new ManualClock();
   const ticker = new Ticker(clock);
   const store = new Store(emptyState("en"));
+  const wm = testWindowManager();
+  wm.connect((published) => takeDesk(store, published));
   const defined = new Map<string, CommandSpec>();
   const commands = {
     list: () => [],
@@ -45,6 +49,7 @@ function setup() {
   cleanups.push(listenForShortcuts(window, shortcuts));
   const ctx = {
     store,
+    wm,
     ticker,
     reduced: () => false,
     platform: "mac",

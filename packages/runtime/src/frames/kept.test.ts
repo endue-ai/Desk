@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-// A window host that keeps the live budget itself (the CEF shell's compositor, ADR 0151): until it
-// has decided, the runtime's own budget is in force; once it has, the runtime decides nothing and
-// carries its set out: a window left out is asked for its state and its frame taken away, one let
-// back in gets its frame back and its state with its next init.
+// A window host that keeps the live budget (the window manager, ADR 0151, #83): until it has
+// decided, every window keeps its frame; once it has, the runtime decides nothing and carries its
+// set out: a window left out is asked for its state and its frame taken away, one let back in gets
+// its frame back and its state with its next init.
 import type { PluginManifest } from "@endue-ai/bridge";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import display from "../../../../plugins/display/plugin.json";
@@ -56,19 +56,19 @@ describe("a live budget kept by the window host", () => {
     const root = document.createElement("div");
     const windows = document.createElement("div");
     document.body.replaceChildren(root, windows);
-    let kept: Set<string> | undefined;
+    let live: Set<string> | undefined;
     const listeners = new Set<() => void>();
     const host: WindowHost = {
       adopt: (_spec, section) => windows.append(section),
       release: () => {},
-      kept: () => kept,
+      live: () => live,
       onChange: (listener) => {
         listeners.add(listener);
         return () => listeners.delete(listener);
       },
     };
     const decide = async (ids: string[]) => {
-      kept = new Set(ids);
+      live = new Set(ids);
       for (const listener of listeners) listener();
       await flush();
     };
@@ -89,7 +89,9 @@ describe("a live budget kept by the window host", () => {
     a?.connect();
     b?.connect();
     await flush();
-    // Undecided: the runtime's own budget, which keeps both (both in sight).
+    // Undecided: every window keeps its frame, however long it waits.
+    await flush(10 * 60_000);
+    expect(runtime.frames.asleep("a.one")).toBe(false);
     expect(runtime.frames.asleep("b.two")).toBe(false);
 
     await decide(["a.one"]);

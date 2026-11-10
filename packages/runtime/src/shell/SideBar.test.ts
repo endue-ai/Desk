@@ -2,6 +2,8 @@
 import type { LocalAgentRun } from "@endue-ai/bridge";
 import { afterEach, describe, expect, it } from "vitest";
 import { localAgentsStub } from "../bridge/local-agents";
+import { testWindowManager } from "../wm/testing";
+import { takeDesk } from "../wm/view";
 import type { ShellCtx } from "./context";
 import { t } from "./copy";
 import { mountSideBar } from "./SideBar";
@@ -15,12 +17,15 @@ afterEach(() => {
 
 async function setup() {
   const store = new Store(emptyState("en"));
+  const wm = testWindowManager();
+  wm.connect((published) => takeDesk(store, published));
   const local = localAgentsStub({ epoch: 0, stepMs: 0 });
   store.set({ localAgents: await local.list() });
   const root = document.createElement("div");
   document.body.append(root);
   const ctx = {
     store,
+    wm,
     bridge: { localAgents: local },
     runtime: { shortcuts: { focused: null }, focusSurface: () => undefined },
     tr: (key: Parameters<typeof t>[1], vars?: Record<string, string | number>) =>

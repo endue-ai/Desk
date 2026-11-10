@@ -4,6 +4,8 @@ import { describe, expect, test } from "vitest";
 import type { CommandInfo, CommandSpec } from "../commands";
 import { DEFAULT_KEYS } from "../core/keys";
 import { resolveKeymap } from "../keymap";
+import { testWindowManager } from "../wm/testing";
+import { takeDesk } from "../wm/view";
 import { desktopsOf, layoutOf } from "./actions";
 import { defineCommands, match, segment } from "./commands";
 import type { ShellCtx } from "./context";
@@ -122,7 +124,10 @@ describe("desktops' commands and keys (ADR 0117)", () => {
       "4",
     ]);
     // The window in use goes to desktop 2 and is the one in use there.
-    c.store.set({ session: { "5": layoutWith("notes") }, focused: "notes" });
+    await c.ctx.wm.edit([
+      { op: "place", desktop: "5", placement: notes },
+      { op: "focus", window: "notes" },
+    ]);
     await c.run("desk.shell.move-to-desktop-2");
     expect(layoutOf(c.store.get(), "2").surfaces.map((p) => p.id)).toEqual(["notes"]);
     expect(layoutOf(c.store.get(), "5").surfaces).toEqual([]);
@@ -135,18 +140,16 @@ describe("desktops' commands and keys (ADR 0117)", () => {
   });
 });
 
-function layoutWith(id: string) {
-  return {
-    surfaces: [{ id, plugin: "endue.notes", x: 100, y: 100, w: 300, h: 200, pinned: false }],
-    eris: null,
-    rail: { visible: true },
-    drawer: { visible: true },
-  };
-}
+const notes = { id: "notes", plugin: "endue.notes", x: 100, y: 100, w: 300, h: 200, pinned: false };
 
-/** The shell's commands over a store, with a registry that runs them at once and no core behind. */
+/**
+ * The shell's commands over a store and desk-wm, with a registry that runs them at once and no
+ * core behind.
+ */
 function fakeShell() {
   const store = new Store(emptyState("en"));
+  const wm = testWindowManager();
+  wm.connect((published) => takeDesk(store, published));
   const specs = new Map<string, CommandSpec>();
   const commands = {
     define: (id: string, spec: CommandSpec) => {
@@ -160,6 +163,7 @@ function fakeShell() {
   };
   const ctx = {
     store,
+    wm,
     runtime: {
       commands,
       settings: { set: () => {} },

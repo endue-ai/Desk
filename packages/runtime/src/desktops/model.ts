@@ -1,7 +1,8 @@
 /**
  * Desktops as a named, open-ended list (ADR 0117): each has a stable string id and a name, and its
- * position in the list is its index. These are the list's own operations, on plain arrays; the
- * desk's state applies them in `ops.ts`.
+ * position in the list is its index. Reading a list (the profiles' records, the one the window
+ * manager publishes); adding, renaming, removing and reordering desktops are the window manager's
+ * (crates/desk-wm `desktops.rs`, #83).
  */
 import type { Desktop, DesktopId, DesktopIndex, DesktopRef } from "../modes/types";
 
@@ -29,72 +30,11 @@ export function cleanName(name: string): string {
   return [...name.replace(/\s+/g, " ").trim()].slice(0, NAME_LIMIT).join("").trim();
 }
 
-/**
- * An id no desktop has had: one more than the highest number among `taken` (the list's ids and any
- * a saved layout still uses), so a new desktop never inherits a removed one's windows.
- */
-export function nextId(taken: Iterable<string>): DesktopId {
-  let highest = 0;
-  for (const id of taken) if (/^\d+$/.test(id)) highest = Math.max(highest, Number(id));
-  return String(highest + 1);
-}
-
-/** The first number no desktop in the list is named. */
-export function nextName(list: readonly Desktop[]): string {
-  const names = new Set(list.map((d) => d.name));
-  let n = 1;
-  while (names.has(String(n))) n++;
-  return String(n);
-}
-
-/** The list with a new desktop at the end, or undefined at the cap. */
-export function added(
-  list: readonly Desktop[],
-  taken: Iterable<string>,
-  name?: string,
-): { list: Desktop[]; id: DesktopId } | undefined {
-  if (list.length >= MAX_DESKTOPS) return undefined;
-  const id = nextId([...list.map((d) => d.id), ...taken]);
-  const clean = name === undefined ? "" : cleanName(name);
-  return { list: [...list, { id, name: clean || nextName(list) }], id };
-}
-
-/** The list with one desktop renamed; an empty name leaves it as it was. */
-export function renamed(list: readonly Desktop[], id: DesktopId, name: string): Desktop[] {
-  const clean = cleanName(name);
-  return list.map((d) => (d.id === id && clean ? { ...d, name: clean } : d));
-}
-
-/** The list without one desktop; the last one stays. */
-export function removed(list: readonly Desktop[], id: DesktopId): Desktop[] {
-  if (list.length <= 1) return [...list];
-  return list.filter((d) => d.id !== id);
-}
-
-/** The list with one desktop moved to position `to` (from 1), clamped to the list. */
-export function moved(list: readonly Desktop[], id: DesktopId, to: DesktopIndex): Desktop[] {
-  const from = list.findIndex((d) => d.id === id);
-  if (from < 0) return [...list];
-  const rest = list.filter((d) => d.id !== id);
-  const at = Math.max(0, Math.min(rest.length, Math.round(to) - 1));
-  return [...rest.slice(0, at), list[from] as Desktop, ...rest.slice(at)];
-}
-
 /** Where a removed desktop's windows go: the desktop before it, or after it when it is first. */
 export function neighbourOf(list: readonly Desktop[], id: DesktopId): DesktopId | undefined {
   const at = list.findIndex((d) => d.id === id);
   if (at < 0) return undefined;
   return (list[at - 1] ?? list[at + 1])?.id;
-}
-
-/** The desktop `step` places after (or before, when negative) `id`, round the list. */
-export function stepFrom(list: readonly Desktop[], id: DesktopId, step: number): DesktopId {
-  const at = Math.max(
-    0,
-    list.findIndex((d) => d.id === id),
-  );
-  const n = list.length;
-  return (list[(((at + step) % n) + n) % n] ?? list[0])?.id ?? id;
 }
 
 export const sameList = (a: readonly Desktop[], b: readonly Desktop[]): boolean =>

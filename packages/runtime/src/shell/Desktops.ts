@@ -163,7 +163,10 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
   };
   draw();
   const offs = [
-    ctx.store.watch((s) => [s.desktop, s.desktops, s.modeId, s.session, s.modes, s.lang], draw),
+    ctx.store.watch(
+      (s) => [s.desktop, s.wm.desktops, s.wm.layouts, s.modeId, s.modes, s.lang],
+      draw,
+    ),
     ctx.runtime.keymap.onChange(draw),
     // A wheel scrolls a long list sideways.
     listen(

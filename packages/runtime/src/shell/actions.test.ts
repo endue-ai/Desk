@@ -1,15 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { layoutOf, openSurface, stash } from "./actions";
+import { testWindowManager } from "../wm/testing";
+import { takeDesk } from "../wm/view";
+import { openSurface, stash } from "./actions";
 import { Store, sampleState } from "./state";
 import { surfaceTitle } from "./titles";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 
-/** A store over the sample state and the copy keys as titles, with no runtime behind it. */
+/** A store over the sample state, desk-wm under it and the copy keys as titles, no runtime. */
 function ctx() {
   const store = new Store(sampleState("en", epoch));
+  const wm = testWindowManager();
+  wm.connect((published) => takeDesk(store, published));
   return {
     store,
+    wm,
     runtime: undefined as never,
     bridge: undefined as never,
     now: () => 1000,
@@ -30,25 +35,16 @@ describe("surfaceTitle", () => {
 });
 
 describe("the drawer", () => {
-  it("names a put-away surface after its title and dates it from the wall clock", () => {
+  // Where it goes and how long it stays is desk-wm's (crates/desk-wm/tests/drawer.rs); the name
+  // and the wall clock it is dated from are the runtime's.
+  it("names a put-away surface after its title and dates it from the wall clock", async () => {
     const c = ctx();
-    openSurface(c, "calendar");
-    stash(c, "calendar");
+    await openSurface(c, "calendar");
+    await stash(c, "calendar");
     expect(c.store.get().drawer[0]).toMatchObject({
       kind: "surface",
       name: "surfaceCalendar",
       at: epoch + 1000,
     });
-  });
-});
-
-describe("agent screens", () => {
-  it("open the second one offset from the first instead of on top of it", () => {
-    const c = ctx();
-    openSurface(c, "agent:ag_1");
-    openSurface(c, "agent:ag_2");
-    const [first, second] = layoutOf(c.store.get()).surfaces;
-    expect(second?.x).toBe((first?.x ?? 0) + 24);
-    expect(second?.y).toBe((first?.y ?? 0) + 24);
   });
 });

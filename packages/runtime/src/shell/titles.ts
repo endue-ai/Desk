@@ -2,8 +2,9 @@
  * What a surface is called where people read it: the drawer, the title bar, the launcher. One
  * place for the sample views, the launcher windows, the agent screens and the drawer's own items.
  */
+import { leaves, panesOf } from "../surface/tree";
 import { LOCAL_VIEW, localName } from "../system/local-ids";
-import type { CopyKey } from "./copy";
+import { type CopyKey, t } from "./copy";
 import type { Store } from "./state";
 
 export interface Titled {
@@ -32,4 +33,24 @@ export function surfaceTitle(ctx: Titled, id: string): string {
   }
   const name = id.replace(/^(file|recent):/, "");
   return s.drawer.find((d) => d.id === name)?.name ?? name.replace(/^recent-/, "");
+}
+
+/**
+ * The titles of the shell's own views the windows of the desktop in front show, by view, in the
+ * desk's language (`tr`: the shell's copy): what the window manager's chrome and
+ * `desk.windows.list` name them.
+ */
+export function viewTitles(
+  store: Store,
+  tr: NonNullable<Titled["tr"]> = (key, vars) => t(store.get().lang, key, vars),
+): Record<string, string> {
+  const ctx: Titled = { store, tr };
+  const titles: Record<string, string> = {};
+  const { wm } = store.get();
+  for (const p of wm.windows[wm.here] ?? []) {
+    for (const leaf of leaves(panesOf(p))) {
+      if (!leaf.view.startsWith("plugin:")) titles[leaf.view] = surfaceTitle(ctx, leaf.view);
+    }
+  }
+  return titles;
 }

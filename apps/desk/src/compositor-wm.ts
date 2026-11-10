@@ -1,31 +1,30 @@
-// Compositor mode's window manager (#80, ADR 0153): crates/desk-wm drags, resizes, snaps and pans
-// windows on the compositor's input, and runs the desk's window commands. This page tells it what a
-// press lands on (`compositor_grab`, from the runtime's gesture handlers) and forwards the window
-// commands (`compositor_wm`), sending what changed of the desk before either, so desk-wm acts on
-// the same windows.
-// It hears back each change desk-wm made (`desk://compositor-wm`), which the runtime takes as the
-// truth, the window it lays out where a gesture holds it (`desk://compositor-held`), and the
+// The window manager in the app (#80, #83, ADR 0153): crates/desk-wm in the CEF shell holds the
+// windows, panes, desktops, the drawer and the pan. This page is its host for the runtime: it sends
+// the runtime's edits (`compositor_edit`, numbered, which the shell applies in order), what a press
+// lands on (`compositor_grab`, from the runtime's gesture handlers) and the window commands
+// (`compositor_wm`), each call naming the last edit it follows, and asks what desk.windows.list
+// answers (`compositor_snapshot`). It hears back each desk desk-wm publishes (`desk://compositor-wm`),
+// which the runtime takes whole, the window it lays out where a gesture holds it
+// (`desk://compositor-held`), the windows that keep a live frame (`desk://compositor-live`) and the
 // commands a placeholder card's buttons run (`desk://compositor-run`); the next report says which
-// change it took and where it laid the held window out.
-import type { Desk, Grab, WindowManagerHost, WindowOp, WmPublished } from "@endue-ai/runtime";
+// desk it took and where it laid the held window out.
+import { answers, type Desk, type Published, type WindowManagerHost } from "@endue-ai/runtime";
 import type { Held, WmState } from "./compositor-desk";
 
 type Send = (command: string, args: Record<string, unknown>) => void;
+type Ask = <T>(command: string, args: Record<string, unknown>) => Promise<T>;
 
-/** The seam: the host the runtime runs its gestures and window commands through, and its state. */
+/** The seam: the host the runtime works through, and what the page's report adds. */
 export interface WmSeam {
   host: WindowManagerHost;
   /** What the next report adds. */
   state(): WmState;
-  /**
-   * Send what changed of the desk before a grab or a window command (the desk's report, once it
-   * runs), answering the last report's sequence number.
-   */
-  flushWith(flush: () => number): void;
-  /** desk-wm changed the desk: the runtime takes it. */
-  took(published: WmPublished, desk: Pick<Desk, "takeWm">): void;
+  /** desk-wm published a desk: the runtime takes it. */
+  took(published: Published): void;
   /** desk-wm holds `window` at `rect`, or lets it go. */
   held(payload: HeldPayload, desk: Pick<Desk, "hold">): void;
+  /** The windows that keep a live frame, as desk-wm's budget decided. */
+  live(ids: readonly string[]): void;
 }
 
 export interface HeldPayload {
@@ -33,35 +32,50 @@ export interface HeldPayload {
   rect?: { x: number; y: number; w: number; h: number };
 }
 
-export function wmSeam(send: Send): WmSeam {
+export function wmSeam(send: Send, ask: Ask): WmSeam {
   let applied = 0;
   let held: Held | undefined;
-  let flush: () => number = () => 0;
+  let take: (published: Published) => void = () => undefined;
+  let kept: Set<string> | undefined;
+  const listening = new Set<() => void>();
+  const pending = answers();
   return {
     host: {
-      // The desk goes first, and the shell holds each call until it has that desk (`after`): the
-      // page's calls run on threads of their own there, so one may overtake another.
-      grab: (gesture: Grab, at) => {
-        const after = flush();
-        send("compositor_grab", { gesture, x: at.x, y: at.y, after });
+      connect(next) {
+        take = next;
       },
-      run: (op: WindowOp, window?: string) => {
-        const after = flush();
-        send("compositor_wm", { op, ...(window ? { window } : {}), after });
+      // Numbered: the shell runs each page call on a thread of its own, so one may overtake
+      // another; it applies them in order, and holds a call until the edit it follows (`after`).
+      edit(edits) {
+        const { seq, done } = pending.next();
+        send("compositor_edit", { seq, edits });
+        return done;
+      },
+      snapshot: (told) => ask("compositor_snapshot", { told, after: pending.last() }),
+      grab: (gesture, at) =>
+        send("compositor_grab", { gesture, x: at.x, y: at.y, after: pending.last() }),
+      run: (op, window) =>
+        send("compositor_wm", { op, ...(window ? { window } : {}), after: pending.last() }),
+      live: () => kept,
+      onLive(listener) {
+        listening.add(listener);
+        return () => listening.delete(listener);
       },
     },
     state: () => ({ applied, ...(held ? { held } : {}) }),
-    flushWith(next) {
-      flush = next;
-    },
-    took(published, desk) {
-      desk.takeWm(published);
+    took(published) {
       applied = Math.max(applied, published.rev);
+      take(published);
+      pending.settle(published);
     },
     held(payload, desk) {
       const { window, rect } = payload;
       held = window && rect ? { window, ...rect } : undefined;
       desk.hold(window, rect);
+    },
+    live(ids) {
+      kept = new Set(ids);
+      for (const listener of [...listening]) listener();
     },
   };
 }

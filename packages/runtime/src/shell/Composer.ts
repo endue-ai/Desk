@@ -189,7 +189,7 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
     ctx.eris.setState("thinking");
     let reply: Awaited<ReturnType<typeof ctx.bridge.brain.say>>;
     try {
-      const desk = deskSnapshot(ctx);
+      const desk = await deskSnapshot(ctx);
       reply = await ctx.bridge.brain.say(text, (step) => errands.step(step), desk);
     } catch {
       ctx.eris.setState("idle");

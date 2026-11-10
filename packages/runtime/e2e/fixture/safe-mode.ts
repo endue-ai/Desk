@@ -14,6 +14,7 @@ import { ManualClock } from "../../src/clock";
 import { mountDesk } from "../../src/shell/Desk";
 import { sampleState } from "../../src/shell/state";
 import type { StartInfo } from "../../src/start";
+import { pageWindowManager } from "./wm-host";
 
 const root = document.getElementById("desk");
 if (!root) throw new Error("no #desk element");
@@ -70,6 +71,8 @@ const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 const lang = params.get("lang") === "en" ? "en" : "ko";
 const page = { relaunched: 0 };
 const desk = mountDesk({
+  // desk-wm as WebAssembly: this page has no compositor (#83).
+  windowManager: await pageWindowManager(),
   root,
   bridge: browserBridge({ now: () => clock.now(), epoch }),
   core: core.client,

@@ -1,27 +1,54 @@
 import { describe, expect, it } from "vitest";
-import { moveWindow } from "../desktops/move";
-import { desktopId, layoutOf, moveSurface, openSurface, setDesktop, stash } from "../shell/actions";
+import { moveWindowTo } from "../desktops/actions";
+import { desktopId, layoutOf, openSurface, setDesktop, stash } from "../shell/actions";
 import { closeWindow, newWindow, showInPane } from "../shell/windows";
 import { CLOSED_KEY, CLOSED_MAX, closedOf, watchClosed } from "./closed";
 import { EPOCH, fakeDesk, memoryStorage, settle } from "./fixtures";
 import { mountErisContext } from "./mount";
 
+type Desk = ReturnType<typeof fakeDesk>;
+
+/** Window `id` of the desktop in front at `rect`, as a drag leaves it in desk-wm. */
+const move = (desk: Desk, id: string, rect: { x: number; y: number; w: number; h: number }) =>
+  desk.wm.edit([{ op: "set-geometry", geometry: { id, ...rect } }]);
+
 describe("the windows closed recently (ADR 0124)", () => {
-  it("logs a window as it closes: its plugin, title, last place, desktop and when", async () => {
+  it("logs a window as it closes: its title, last place, desktop and when", async () => {
     const desk = fakeDesk();
     const log = watchClosed(desk.ctx);
     await log.ready;
-    setDesktop(desk.ctx, "2");
-    openSurface(desk.ctx, "calendar");
-    moveSurface(desk.ctx, "calendar", { x: 300, y: 200, w: 700, h: 500 });
-    desk.adopt("endue.git");
-    moveSurface(desk.ctx, "endue.git", { x: 40, y: 60, w: 600, h: 400 });
+    await setDesktop(desk.ctx, "2");
+    await openSurface(desk.ctx, "calendar");
+    await move(desk, "calendar", { x: 300, y: 200, w: 700, h: 500 });
     desk.tick(5000);
-    closeWindow(desk.ctx, "calendar");
+    await closeWindow(desk.ctx, "calendar");
     desk.tick(1000);
-    closeWindow(desk.ctx, "endue.git");
-    const [git, calendar] = log.list();
-    expect(git).toMatchObject({
+    await openSurface(desk.ctx, "notes");
+    await closeWindow(desk.ctx, "notes");
+    const [notes, calendar] = log.list();
+    expect(notes).toMatchObject({ id: "notes", desktop: "2", at: EPOCH + 7000 });
+    expect(calendar).toMatchObject({
+      id: "calendar",
+      title: "surfaceCalendar",
+      plugins: [],
+      desktop: "2",
+      at: EPOCH + 6000,
+      placement: { id: "calendar", x: 300, y: 200, w: 700, h: 500 },
+    });
+    expect(calendar).not.toHaveProperty("plugin");
+  });
+
+  it("logs a plugin's window at the place it had in its layout, not the slot it falls back to", async () => {
+    const desk = fakeDesk();
+    const log = watchClosed(desk.ctx);
+    await log.ready;
+    await setDesktop(desk.ctx, "2");
+    desk.adopt("endue.git");
+    await move(desk, "endue.git", { x: 40, y: 60, w: 600, h: 400 });
+    desk.tick(6000);
+    // desk-wm closes it (it shows in its slot again) and the runtime then unmounts its plugin.
+    await closeWindow(desk.ctx, "endue.git");
+    expect(log.list()[0]).toMatchObject({
       id: "endue.git",
       plugin: "endue.git",
       plugins: ["endue.git"],
@@ -30,14 +57,6 @@ describe("the windows closed recently (ADR 0124)", () => {
       at: EPOCH + 7000,
       placement: { x: 40, y: 60, w: 600, h: 400 },
     });
-    expect(calendar).toMatchObject({
-      id: "calendar",
-      title: "surfaceCalendar",
-      desktop: "2",
-      at: EPOCH + 6000,
-      placement: { id: "calendar", x: 300, y: 200, w: 700, h: 500 },
-    });
-    expect(calendar).not.toHaveProperty("plugin");
   });
 
   it("keeps the last CLOSED_MAX, the last closed first", async () => {
@@ -45,8 +64,8 @@ describe("the windows closed recently (ADR 0124)", () => {
     const log = watchClosed(desk.ctx);
     await log.ready;
     for (let n = 0; n < 25; n++) {
-      openSurface(desk.ctx, `agent:a${n}`);
-      closeWindow(desk.ctx, `agent:a${n}`);
+      await openSurface(desk.ctx, `agent:a${n}`);
+      await closeWindow(desk.ctx, `agent:a${n}`);
     }
     expect(CLOSED_MAX).toBe(20);
     expect(log.list()).toHaveLength(CLOSED_MAX);
@@ -58,15 +77,14 @@ describe("the windows closed recently (ADR 0124)", () => {
     const desk = fakeDesk();
     const log = watchClosed(desk.ctx);
     await log.ready;
-    openSurface(desk.ctx, "calendar");
-    openSurface(desk.ctx, "notes");
-    stash(desk.ctx, "notes");
-    const moved = moveWindow(desk.store.get(), "calendar", "3");
-    desk.store.set(moved?.patch ?? {});
-    setDesktop(desk.ctx, "2");
+    await openSurface(desk.ctx, "calendar");
+    await openSurface(desk.ctx, "notes");
+    await stash(desk.ctx, "notes");
+    expect(await moveWindowTo(desk.ctx, "calendar", "3")).toBe(true);
+    await setDesktop(desk.ctx, "2");
     expect(log.list()).toEqual([]);
     // Taking it out of the drawer for good closes it.
-    desk.store.set({ drawer: [] });
+    await desk.wm.edit([{ op: "drawer", items: [] }]);
     expect(log.list().map((w) => w.id)).toEqual(["notes"]);
   });
 
@@ -77,15 +95,15 @@ describe("the windows closed recently (ADR 0124)", () => {
     });
     const desk = fakeDesk();
     const log = watchClosed(desk.ctx, { ready });
-    openSurface(desk.ctx, "calendar");
-    closeWindow(desk.ctx, "calendar");
+    await openSurface(desk.ctx, "calendar");
+    await closeWindow(desk.ctx, "calendar");
     expect(log.list()).toEqual([]);
     start();
     await log.ready;
-    openSurface(desk.ctx, "notes");
-    closeWindow(desk.ctx, "notes");
+    await openSurface(desk.ctx, "notes");
+    await closeWindow(desk.ctx, "notes");
     expect(log.list().map((w) => w.id)).toEqual(["notes"]);
-    openSurface(desk.ctx, "notes");
+    await openSurface(desk.ctx, "notes");
     expect(log.list()).toEqual([]);
   });
 
@@ -94,8 +112,8 @@ describe("the windows closed recently (ADR 0124)", () => {
     const first = fakeDesk({ storage });
     const log = watchClosed(first.ctx, { storage });
     await log.ready;
-    openSurface(first.ctx, "calendar");
-    closeWindow(first.ctx, "calendar");
+    await openSurface(first.ctx, "calendar");
+    await closeWindow(first.ctx, "calendar");
     await settle();
     expect(storage.saved.get(CLOSED_KEY)).toMatchObject({
       version: 1,
@@ -131,11 +149,11 @@ describe("desk.windows.closed and desk.windows.reopen", () => {
 
   it("reopens a window where it was: its geometry, its desktop, in use", async () => {
     const { desk, log } = await mounted();
-    setDesktop(desk.ctx, "2");
-    openSurface(desk.ctx, "calendar");
-    moveSurface(desk.ctx, "calendar", { x: 300, y: 200, w: 700, h: 500 });
-    closeWindow(desk.ctx, "calendar");
-    setDesktop(desk.ctx, "1");
+    await setDesktop(desk.ctx, "2");
+    await openSurface(desk.ctx, "calendar");
+    await move(desk, "calendar", { x: 300, y: 200, w: 700, h: 500 });
+    await closeWindow(desk.ctx, "calendar");
+    await setDesktop(desk.ctx, "1");
     const answer = await desk.run("desk.windows.reopen", { id: "calendar" }, "eris");
     const s = desk.store.get();
     expect(desktopId(s)).toBe("2");
@@ -153,25 +171,25 @@ describe("desk.windows.closed and desk.windows.reopen", () => {
   it("starts the plugin a reopened window shows, and reopens the last closed when none is named", async () => {
     const { desk } = await mounted();
     desk.adopt("endue.git");
-    moveSurface(desk.ctx, "endue.git", { x: 100, y: 120, w: 500, h: 400 });
-    closeWindow(desk.ctx, "endue.git");
+    await move(desk, "endue.git", { x: 100, y: 120, w: 500, h: 400 });
+    await closeWindow(desk.ctx, "endue.git");
     expect(desk.store.get().adopted).toEqual([]);
     await desk.run("desk.windows.reopen");
     expect(desk.ran).toContainEqual({ id: "desk.plugins.open", args: { plugin: "endue.git" } });
     const s = desk.store.get();
+    expect(s.focused).toBe("endue.git");
     expect(layoutOf(s).surfaces.find((p) => p.id === "endue.git")).toMatchObject({
       x: 100,
       y: 120,
       w: 500,
       h: 400,
     });
-    expect(s.focused).toBe("endue.git");
   });
 
   it("lists the closed windows for an agent, and refuses one that is not there", async () => {
     const { desk, log } = await mounted();
-    openSurface(desk.ctx, "notes");
-    closeWindow(desk.ctx, "notes");
+    await openSurface(desk.ctx, "notes");
+    await closeWindow(desk.ctx, "notes");
     expect(desk.specs.get("desk.windows.closed")?.agent?.readOnly).toBe(true);
     expect(desk.specs.get("desk.windows.reopen")?.agent?.readOnly).toBeFalsy();
     const listed = (await desk.run("desk.windows.closed", {}, "eris")) as { closed: unknown[] };
@@ -193,12 +211,12 @@ describe("desk.windows.closed and desk.windows.reopen", () => {
 
   it("comes back under a new id when another window took its id and its panes allow it", async () => {
     const { desk } = await mounted();
-    const id = newWindow(desk.ctx);
-    showInPane(desk.ctx, id, "p1", "notes");
-    closeWindow(desk.ctx, id);
+    const id = await newWindow(desk.ctx);
+    await showInPane(desk.ctx, id, "p1", "notes");
+    await closeWindow(desk.ctx, id);
     // Later, as the person does: a new window takes the first free id.
     await settle();
-    expect(newWindow(desk.ctx)).toBe(id);
+    expect(await newWindow(desk.ctx)).toBe(id);
     const answer = (await desk.run("desk.windows.reopen", { id })) as { id: string };
     expect(answer.id).toBe("window-2");
     const surfaces = layoutOf(desk.store.get()).surfaces;
@@ -209,8 +227,8 @@ describe("desk.windows.closed and desk.windows.reopen", () => {
   it("puts a window back in the log when its plugin cannot start", async () => {
     const { desk, log } = await mounted();
     desk.adopt("endue.gone");
-    moveSurface(desk.ctx, "endue.gone", { x: 10, y: 10, w: 300, h: 200 });
-    closeWindow(desk.ctx, "endue.gone");
+    await move(desk, "endue.gone", { x: 10, y: 10, w: 300, h: 200 });
+    await closeWindow(desk.ctx, "endue.gone");
     await expect(desk.run("desk.windows.reopen", { id: "endue.gone" })).rejects.toThrow();
     expect(layoutOf(desk.store.get()).surfaces.some((p) => p.id === "endue.gone")).toBe(false);
     expect(log?.list().map((w) => w.id)).toEqual(["endue.gone"]);

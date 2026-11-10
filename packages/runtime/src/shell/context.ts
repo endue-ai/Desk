@@ -1,10 +1,10 @@
 import type { ErisState } from "../eris/states";
 import type { Platform } from "../input";
 import type { PluginWindows } from "../surface/host";
+import type { HeldWindows, WindowManagerHost } from "../wm/host";
 import type { Ctx } from "./actions";
 import type { CopyKey } from "./copy";
 import type { Ticker } from "./ticker";
-import type { HeldWindows, WindowManagerHost } from "./wm-host";
 
 /** What every shell part gets: the store, the bridges, the runtime, the frame loop, copy and keys. */
 export interface ShellCtx extends Ctx {

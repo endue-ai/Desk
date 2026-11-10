@@ -4,6 +4,8 @@ import type { BrainStep } from "../bridge/types";
 import { mountComposer } from "../shell/Composer";
 import type { ShellCtx } from "../shell/context";
 import { Store, sampleState } from "../shell/state";
+import { testWindowManager } from "../wm/testing";
+import { takeDesk } from "../wm/view";
 import { labelOf, mountErrands, nameOf, targetOf, windowOf } from "./errand";
 
 const TOOL: BrainStep = {
@@ -161,7 +163,10 @@ describe("Eris's errands", () => {
       onStep?.(BACK);
       return { text: "Two new messages." };
     });
+    const wm = testWindowManager();
+    wm.connect((published) => takeDesk(store, published));
     const talk = Object.assign(ctx, {
+      wm,
       runtime: { commands: { list: () => [], has: () => false }, notify: vi.fn() },
       bridge: { brain: { say } },
       keyOf: () => undefined,

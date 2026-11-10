@@ -3,15 +3,15 @@
  * the moved desktops and Eris's mesh and soul text (settings), and the rest of the desk as it was
  * (desk.session, as the part "shell"). Desktops are kept as a list (ADR 0117): what a four-desktop
  * session saved, by desktop number, comes back on the four named 1 to 4. The plugin windows open
- * are kept too (#76), so they mount at the next start and come back on their slots.
+ * are kept too (#76), so they mount at the next start and come back on their slots. The window
+ * manager reads and writes the desk's part of these records (crates/desk-wm, #83): the runtime
+ * hands it what was kept and keeps what it publishes.
  */
-import { readCurrent, readPan, writeMoved } from "../desktops/migrate";
-import { positionOf } from "../desktops/model";
 import { baseMode, LAYOUTS, MODE, profileMode } from "../modes/profiles";
 import type { Mode } from "../modes/types";
 import type { Runtime } from "../runtime";
-import { freeSlot } from "../surface/tiling";
-import { desktopId, desktopsOf, modeOf, movedOf, switched } from "./actions";
+import { positionOf } from "../wm/view";
+import { desktopId, desktopsOf, edit, movedValue, switched } from "./actions";
 import type { ShellCtx } from "./context";
 import type { DeskState } from "./state";
 import { PLACE, placeOf, type TalkPlace } from "./talk-place";
@@ -28,12 +28,12 @@ export function modesOf(runtime: Runtime): Mode[] {
 }
 
 /**
- * What desk.shell.layouts keeps for the store's session: the desktops (the profile's own when the
- * person changed none) with the layouts moved on them, or nothing when nothing changed.
+ * What desk.shell.layouts keeps for the session: the desktops (the profile's own when the person
+ * changed none) with the layouts moved on them, or nothing when nothing changed, as the window
+ * manager writes it.
  */
-export function layoutsOf(s: DeskState): ReturnType<typeof writeMoved> | undefined {
-  if (s.desktops === null && Object.keys(s.session).length === 0) return undefined;
-  return writeMoved(desktopsOf(s), s.session);
+export function layoutsOf(s: DeskState): DeskState["wm"]["moved"] | undefined {
+  return s.wm.moved ?? undefined;
 }
 
 /** Keep the store in step with desk.profiles and the shell's settings, and the settings with the store. */
@@ -41,7 +41,7 @@ export function syncProfiles(ctx: ShellCtx): () => void {
   const { runtime, store } = ctx;
   const { settings } = runtime;
   const refresh = () =>
-    switched(ctx, modesOf(runtime), runtime.profiles.active() ?? store.get().modeId);
+    void switched(ctx, modesOf(runtime), runtime.profiles.active() ?? store.get().modeId);
   const eris = () =>
     store.set((s) => ({
       eris: {
@@ -57,14 +57,9 @@ export function syncProfiles(ctx: ShellCtx): () => void {
     runtime.profiles.onChange(refresh),
     settings.onChange((keys) => {
       if (keys.includes(MODE)) refresh();
-      if (keys.includes(LAYOUTS)) {
-        const moved = movedOf(ctx);
-        const s = store.get();
-        if (!same(moved, { session: s.session, desktops: s.desktops })) {
-          const list = moved.desktops ?? modeOf(s).list;
-          const here = desktopId({ ...s, ...moved });
-          store.set({ ...moved, desktop: list.some((d) => d.id === here) ? here : s.desktop });
-        }
+      // Changed by someone else than the window manager's own write below: it takes the moves.
+      if (keys.includes(LAYOUTS) && !same(kept() ?? null, layoutsOf(store.get()) ?? null)) {
+        void edit(ctx, { op: "moved", value: movedValue(ctx) });
       }
       if (keys.includes(DENSITY) || keys.includes(SOUL)) eris();
     }),
@@ -190,53 +185,18 @@ async function restore(ctx: ShellCtx, saved: Partial<SavedShell> | null): Promis
   if (typeof saved.soul === "string") runtime.settings.set(SOUL, saved.soul);
   const talkPlace = placeOf(saved.talkPlace);
   if (talkPlace) runtime.settings.set(PLACE, talkPlace);
-  store.set((s) => {
-    const list = desktopsOf(s);
-    const pan = readPan(saved.pan);
-    return {
-      desktop: readCurrent(saved.desktop, list) ?? s.desktop,
-      pan: Object.fromEntries(list.flatMap((d) => (pan[d.id] ? [[d.id, pan[d.id]]] : []))),
-      // Items a session saved with clock times (before wall-clock ages) are dated now.
-      drawer: Array.isArray(saved.drawer)
-        ? saved.drawer.map((d) => (d.at < 1e12 ? { ...d, at: ctx.wall() } : d))
-        : s.drawer,
-      spaceId: typeof saved.spaceId === "string" ? saved.spaceId : s.spaceId,
-      mapFolded: saved.mapFolded === true,
-      adopted: slotted(s.adopted, slotsOf(saved.slots)),
-    };
-  });
-}
-
-/** The saved slots that can be read: a whole slot from 0, and a pan of two numbers if any. */
-function slotsOf(value: unknown): Map<string, Slot> {
-  const slots = new Map<string, Slot>();
-  if (typeof value !== "object" || value === null) return slots;
-  for (const [id, saved] of Object.entries(value)) {
-    const { slot, at } = (saved ?? {}) as Partial<Slot>;
-    if (typeof slot !== "number" || !Number.isInteger(slot) || slot < 0) continue;
-    const pan = at && Number.isFinite(at.x) && Number.isFinite(at.y);
-    slots.set(id, { slot, ...(pan ? { at: { x: at.x, y: at.y } } : {}) });
-  }
-  return slots;
-}
-
-/**
- * The windows back on the slot and at the pan they had (#76): at start the plugins mount in their
- * own order, each on the first slot left free. A window the save did not hold keeps its slot, or
- * takes a free one when a window that came back had it.
- */
-function slotted(adopted: DeskState["adopted"], slots: Map<string, Slot>): DeskState["adopted"] {
-  if (slots.size === 0) return adopted;
-  const taken = new Set(adopted.flatMap((a) => slots.get(a.id)?.slot ?? []));
-  return adopted.map((a, i) => {
-    const kept = slots.get(a.id);
-    if (kept) {
-      const { at: _arrived, ...rest } = a;
-      return { ...rest, ...kept };
-    }
-    const slot = a.slot ?? i;
-    const free = taken.has(slot) ? freeSlot(taken) : slot;
-    taken.add(free);
-    return free === slot ? a : { ...a, slot: free };
+  store.set((s) => ({
+    spaceId: typeof saved.spaceId === "string" ? saved.spaceId : s.spaceId,
+    mapFolded: saved.mapFolded === true,
+  }));
+  // The desktop in front, the pans, the drawer and the windows' slots: the window manager reads
+  // them as they were kept, a session dated by the clock (before wall-clock ages) dated now.
+  await edit(ctx, {
+    op: "restore",
+    desktop: saved.desktop ?? null,
+    pan: saved.pan ?? null,
+    ...(Array.isArray(saved.drawer) ? { drawer: saved.drawer } : {}),
+    slots: saved.slots ?? null,
+    now: Math.round(ctx.wall()),
   });
 }

@@ -16,8 +16,7 @@ import type { PluginHostOptions } from "../plugins";
 import { installProposals } from "../propose/install";
 import { createRuntime, type Runtime } from "../runtime";
 import type { StartInfo } from "../start";
-import type { Rect } from "../surface/geometry";
-import { type KeptWindows, pluginWindows } from "../surface/host";
+import { pluginWindows } from "../surface/host";
 import { wakePlaced } from "../surface/placed";
 import { mountSurfaces } from "../surface/Surface";
 import { loadDirectory } from "../system/agents";
@@ -27,6 +26,9 @@ import { defineLocalAgentCommands } from "../system/local-agent-commands";
 import { loadLocalAgents, watchLocalAgents } from "../system/local-agents";
 import { timed } from "../timing";
 import { mountWallpaper } from "../wallpaper/wallpaper";
+import { heldWindows, noWindowManager, type WindowManagerHost } from "../wm/host";
+import type { Rect } from "../wm/types";
+import { takeDesk } from "../wm/view";
 import { layoutOf } from "./actions";
 import { mountBottom } from "./Bottom";
 import { defineCommands, dismiss } from "./commands";
@@ -43,13 +45,6 @@ import { byRole } from "./roles";
 import { type DeskState, emptyState, Store } from "./state";
 import { Ticker } from "./ticker";
 import { showPlugin } from "./windows";
-import {
-  heldWindows,
-  noWindowManager,
-  takeWm,
-  type WindowManagerHost,
-  type WmPublished,
-} from "./wm-host";
 
 export interface DeskOptions {
   root: HTMLElement;
@@ -75,12 +70,12 @@ export interface DeskOptions {
   start?: StartInfo;
   /** Start the desk again without safe mode ("Start normally"); only a native host can. */
   relaunch?: () => void | Promise<void>;
-  /** The live budget, when the host keeps it (the CEF shell's compositor, ADR 0151). */
-  liveBudget?: KeptWindows;
   /**
-   * The window manager that runs the gestures and window commands: the CEF shell's compositor
-   * (ADR 0153), whose changes come back through `takeWm`. Without one (the runtime's tests and
-   * fixture pages) no window moves by gesture or command (#83).
+   * The window manager (crates/desk-wm, #83): it holds the windows, the panes, the desktops, the
+   * drawer and the pan, takes every change as an edit and publishes the desk, runs the gestures
+   * and window commands and keeps the live budget. The CEF shell's compositor in the app (ADR 0153);
+   * the same window manager as WebAssembly on a desk without it (`wm/local.ts`, the runtime's tests
+   * and fixture pages). Without one the desk holds no window.
    */
   windowManager?: WindowManagerHost;
 }
@@ -94,8 +89,6 @@ export interface Desk {
   ready: Promise<void>;
   /** Read the agent directory again. */
   refresh(): Promise<void>;
-  /** Take what the host's window manager changed as the truth (ADR 0153). */
-  takeWm(published: WmPublished): void;
   /** Lay window `id` out at `rect` while the host's gesture holds it; `null` lets it go. */
   hold(id: string | null, rect?: Rect): void;
   dispose(): void;
@@ -115,7 +108,19 @@ export function mountDesk(options: DeskOptions): Desk {
     say: () => undefined,
     setState: () => undefined,
   };
-  const windows = pluginWindows(store, (id) => showPlugin(ctx, id), options.liveBudget);
+  const wm = options.windowManager ?? noWindowManager();
+  // Every desk the window manager publishes is the store's, whole.
+  wm.connect((published) => takeDesk(store, published));
+  // A seeded drawer (the dev page's and the fixtures' sample desk) is the window manager's too.
+  const seeded = options.seed?.drawer;
+  if (seeded?.length) {
+    void wm.edit([{ op: "drawer", items: seeded.map((d) => ({ ...d, at: Math.round(d.at) })) }]);
+  }
+  const windows = pluginWindows(
+    store,
+    () => wm,
+    (id) => void showPlugin(ctx, id),
+  );
   // The runtime is created below; nothing reads it before then.
   const ctx: ShellCtx = {
     store,
@@ -129,7 +134,7 @@ export function mountDesk(options: DeskOptions): Desk {
     wall: () => epoch + ticker.now(),
     platform,
     keyOf: (command) => ctx.runtime.keymap.keysFor(command)[0],
-    wm: options.windowManager ?? noWindowManager(),
+    wm,
     held: heldWindows(),
     eris: { say: (text, words) => pending.say(text, words), setState: (s) => pending.setState(s) },
   };
@@ -239,7 +244,6 @@ export function mountDesk(options: DeskOptions): Desk {
     runtime,
     ready,
     refresh,
-    takeWm: (published) => takeWm(ctx, published),
     hold: (id, rect) => ctx.held.hold(id, rect),
     dispose() {
       for (const off of offs) off();

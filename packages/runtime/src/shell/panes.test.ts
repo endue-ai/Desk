@@ -1,33 +1,31 @@
 import { describe, expect, it } from "vitest";
+import { testWindowManager } from "../wm/testing";
+import { takeDesk } from "../wm/view";
 import { paneViews } from "./panes";
 import { Store, sampleState } from "./state";
 
-function ctx() {
+/** A desk whose desktop in front has a notes window and a plugin's window, as desk-wm holds it. */
+async function ctx() {
   const store = new Store(sampleState("en", 0));
-  store.set({
-    session: {
-      1: {
-        surfaces: [
-          { id: "notes", plugin: "endue.notes", x: 120, y: 120, w: 400, h: 300, pinned: false },
-          {
-            id: "test.counter",
-            plugin: "test.counter",
-            x: 600,
-            y: 120,
-            w: 400,
-            h: 300,
-            pinned: false,
-            panes: { kind: "view", id: "p1", view: "plugin:test.counter" },
-          },
-        ],
-        eris: null,
-        rail: { visible: true },
-        drawer: { visible: true },
+  const wm = testWindowManager();
+  wm.connect((published) => takeDesk(store, published));
+  const at = { y: 120, w: 400, h: 300, pinned: false };
+  await wm.edit([
+    { op: "place", placement: { id: "notes", plugin: "endue.notes", x: 120, ...at } },
+    {
+      op: "place",
+      placement: {
+        id: "test.counter",
+        plugin: "test.counter",
+        x: 600,
+        ...at,
+        panes: { kind: "view", id: "p1", view: "plugin:test.counter" },
       },
     },
-  });
+  ]);
   return {
     store,
+    wm,
     runtime: undefined as never,
     bridge: undefined as never,
     now: () => 0,
@@ -37,8 +35,8 @@ function ctx() {
 }
 
 describe("paneViews", () => {
-  it("a pane showing a plugin's surface is not a host view: the runtime's surface counts once", () => {
-    const views = paneViews(ctx());
+  it("a pane showing a plugin's surface is not a host view: the runtime's surface counts once", async () => {
+    const views = paneViews(await ctx());
     expect(views.ids()).toEqual(["notes/p1"]);
   });
 });

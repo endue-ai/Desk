@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
-// Hidden surfaces are unloaded and their state kept (ADR 0070), on the runtime itself: the browser
-// stub's core, plugin frames played by the test (they say hello and answer as the SDK would), and
-// fake timers for desk.display.unload-after. Past the live budget (desk.surfaces.live, ADR 0134) the
-// least recently focused out of sight sleep at once.
+// Windows out of the live set are unloaded and their state kept (ADR 0070), on the runtime itself:
+// the browser stub's core, plugin frames played by the test (they say hello and answer as the SDK
+// would), fake timers, and a window host whose live set the test decides. Which windows the set
+// keeps (desk.surfaces.live, desk.display.unload-after, the least recently focused first) is the
+// window manager's budget (crates/desk-wm `host/budget.rs`, tests/host.rs, ADR 0134, #83); the
+// runtime carries the set out.
 import type { PluginManifest } from "@endue-ai/bridge";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import display from "../../../../plugins/display/plugin.json";
 import { browserCore } from "../bridge/core";
-import { createRuntime } from "../runtime";
+import { createRuntime, type WindowHost } from "../runtime";
+import { LOADING_MS } from "./install";
 
-const UNLOAD = "desk.display.unload-after";
-const LIVE = "desk.surfaces.live";
 const STATE = "ui.surface.state";
 
 type Message = { type: string; name?: string; call?: number; [field: string]: unknown };
@@ -31,13 +32,10 @@ class Plugin {
   answer: Answer = "state";
   kept: unknown = { count: 3 };
 
-  constructor(
-    readonly id: string,
-    readonly root: HTMLElement,
-  ) {}
+  constructor(readonly id: string) {}
 
   section(): HTMLElement | null {
-    return this.root.querySelector(`[data-surface="${this.id}"]`);
+    return document.querySelector(`[data-surface="${this.id}"]`);
   }
 
   frame(): HTMLIFrameElement | null {
@@ -87,40 +85,58 @@ async function flush(ms = 0): Promise<void> {
   for (let i = 0; i < 5; i++) await vi.advanceTimersByTimeAsync(0);
 }
 
-async function desk(ids: string[], settings: Record<string, unknown> = {}) {
+/** The runtime over plugins `ids`, in the windows of a host that decides a live set unless `bare`. */
+async function desk(ids: string[], bare = false) {
   vi.useFakeTimers({
     toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "performance"],
   });
   const root = document.createElement("div");
-  document.body.replaceChildren(root);
-  // desk.display brings desk.display.show and the two settings' defaults.
+  const windows = document.createElement("div");
+  document.body.replaceChildren(root, windows);
+  let live: Set<string> | undefined;
+  const listeners = new Set<() => void>();
+  const host: WindowHost = {
+    adopt: (_spec, section) => windows.append(section),
+    release: () => {},
+    live: () => live,
+    onChange: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+  // desk.display brings desk.display.show and the settings' defaults.
   const manifests = [display as PluginManifest, ...ids.map(centre)];
-  const core = browserCore({ manifests, init: { settings } });
+  const core = browserCore({ manifests });
   const runtime = createRuntime({
     root,
     bridge: core.client,
     plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
+    ...(bare ? {} : { windows: host }),
   });
   let started = false;
   void runtime.plugins?.ready.then(() => {
     started = true;
   });
   for (let i = 0; i < 50 && !started; i++) await flush(10);
-  const plugins = Object.fromEntries(ids.map((id) => [id, new Plugin(id, root)]));
+  const plugins = Object.fromEntries(ids.map((id) => [id, new Plugin(id)]));
   for (const plugin of Object.values(plugins)) plugin.connect();
   await flush();
-  const hide = async (id: string) => {
-    plugins[id]?.send({ type: "desk:visible", visible: false });
+  /** The window host's live set is `next` now. */
+  const keep = async (...next: string[]) => {
+    live = new Set(next);
+    for (const listener of [...listeners]) listener();
     await flush();
   };
-  const show = async (id: string) => {
-    await runtime.commands.run("desk.display.show", { plugin: id });
+  const leaveOut = (id: string) => keep(...[...(live ?? ids)].filter((other) => other !== id));
+  const letIn = (id: string) => keep(...(live ?? []), id);
+  const hide = async (id: string) => {
+    plugins[id]?.send({ type: "desk:visible", visible: false });
     await flush();
   };
   const unloaded = (id: string) =>
     plugins[id]?.frame() === null &&
     plugins[id]?.section()?.querySelector(".desk-surface-placeholder") !== null;
-  return { runtime, core, plugins, hide, show, unloaded };
+  return { runtime, core, plugins, keep, leaveOut, letIn, hide, unloaded };
 }
 
 /** What a browser does when a frame's page focuses one of its elements (jsdom leaves the events out). */
@@ -135,38 +151,32 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe("hidden surfaces are unloaded and their state kept", () => {
-  it("a centre surface hidden longer than unload-after is asked for its state and unloaded to a placeholder; its cell, the focus and the buffer list stay", async () => {
-    const d = await desk(["a.one", "b.two"], { [UNLOAD]: 60 });
+describe("windows out of the live set are unloaded and their state kept", () => {
+  it("a window left out is asked for its state and unloaded to a placeholder; the focus and the buffer list stay", async () => {
+    const d = await desk(["a.one", "b.two"]);
     d.runtime.focusSurface("a.one");
-    await d.hide("b.two");
-    const layout = d.runtime.layout();
     const buffers = d.runtime.buffers.list().map((b) => b.id);
-    await flush(59_000);
     expect(d.plugins["b.two"]?.asked()).toEqual([]);
-    expect(d.unloaded("b.two")).toBe(false);
 
-    await flush(1_000);
+    await d.leaveOut("b.two");
     expect(d.plugins["b.two"]?.asked()).toMatchObject([{ args: { surface: "main" } }]);
     expect(d.unloaded("b.two")).toBe(true);
     expect(d.plugins["b.two"]?.section()?.textContent).toContain("B.TWO");
     expect(d.unloaded("a.one")).toBe(false);
-    expect(d.runtime.layout()).toEqual(layout);
     expect(d.runtime.shortcuts.focused).toBe("a.one");
     expect(d.runtime.buffers.list().map((b) => b.id)).toEqual(buffers);
     expect(d.runtime.plugins?.mounted()).toEqual(["a.one", "b.two"]);
   });
 
-  it("shown again it remounts, and its init hands back the kept state; ctx.state still comes back", async () => {
-    const d = await desk(["a.one", "b.two"], { [UNLOAD]: 60 });
+  it("let back in it remounts, and its init hands back the kept state; ctx.state still comes back", async () => {
+    const d = await desk(["a.one", "b.two"]);
     const b = d.plugins["b.two"];
     if (!b) throw new Error("no b.two");
     b.send({ type: "desk:state", state: { saved: true } });
-    await d.hide("b.two");
-    await flush(60_000);
+    await d.leaveOut("b.two");
     expect(d.unloaded("b.two")).toBe(true);
 
-    await d.show("b.two");
+    await d.letIn("b.two");
     expect(d.unloaded("b.two")).toBe(false);
     expect(b.frame()).not.toBeNull();
     b.messages = [];
@@ -179,21 +189,20 @@ describe("hidden surfaces are unloaded and their state kept", () => {
 
   it("a plugin that does not answer, answers unknown_command or more than 64 KiB comes back cold", async () => {
     const ids = ["a.silent", "b.refuse", "c.big"];
-    const d = await desk(ids, { [UNLOAD]: 60 });
+    const d = await desk(ids);
     const answers: Answer[] = ["silent", "refuse", "big"];
     ids.forEach((id, i) => {
       const plugin = d.plugins[id];
       if (plugin) plugin.answer = answers[i] ?? "state";
     });
-    for (const id of ids) await d.hide(id);
-    await flush(60_000);
+    await d.keep();
     // The silent one is given two seconds to answer, then unloaded all the same.
     expect(d.unloaded("a.silent")).toBe(false);
     await flush(2_000);
     for (const id of ids) expect(d.unloaded(id)).toBe(true);
 
     for (const id of ids) {
-      await d.show(id);
+      await d.letIn(id);
       const plugin = d.plugins[id];
       if (!plugin) throw new Error(`no ${id}`);
       plugin.messages = [];
@@ -203,28 +212,14 @@ describe("hidden surfaces are unloaded and their state kept", () => {
     }
   });
 
-  it("past desk.surfaces.live the least recently focused surface out of sight sleeps at once, and visible ones never do; focusing one wakes it", async () => {
-    const d = await desk(["a.one", "b.two", "c.three"], { [UNLOAD]: 3600, [LIVE]: 1 });
-    // Opened a, b, c; then b and a focused: most recent first, a b c.
-    d.runtime.focusSurface("b.two");
+  it("the surface the keys go to keeps its frame whatever the set says; focusing a sleeping one wakes it with its state", async () => {
+    const d = await desk(["a.one", "b.two", "c.three"]);
     d.runtime.focusSurface("a.one");
     await flush();
-    await d.hide("c.three");
-    // One out of sight is the budget.
-    expect(["a.one", "b.two", "c.three"].map(d.unloaded)).toEqual([false, false, false]);
-    await d.hide("b.two");
-    await flush();
-    expect(d.unloaded("c.three")).toBe(true);
-    expect(d.unloaded("b.two")).toBe(false);
-    expect(d.unloaded("a.one")).toBe(false);
+    await d.keep();
+    expect(["a.one", "b.two", "c.three"].map(d.unloaded)).toEqual([false, true, true]);
 
-    // A tighter budget at run time takes effect at once; the visible one stays whatever it is.
-    d.runtime.settings.set(LIVE, 0);
-    await flush();
-    expect(d.unloaded("b.two")).toBe(true);
-    expect(d.unloaded("a.one")).toBe(false);
-
-    // Focusing a sleeping surface wakes it, out of sight as it is, with the state it kept.
+    // Focusing a sleeping surface wakes it, left out as it is, with the state it kept.
     d.runtime.focusSurface("c.three");
     await flush();
     expect(d.unloaded("c.three")).toBe(false);
@@ -234,16 +229,17 @@ describe("hidden surfaces are unloaded and their state kept", () => {
     c.connect();
     await flush();
     expect(c.inits()).toEqual([{ type: "desk:init", pluginId: "c.three", restored: { count: 3 } }]);
+    // The one the keys left is left out of the set: it goes.
+    expect(d.unloaded("a.one")).toBe(true);
   });
 
   it("a frame loading again for a request is not put back to sleep before its hello", async () => {
-    const d = await desk(["a.one", "b.two"], { [UNLOAD]: 3600, [LIVE]: 0 });
+    const d = await desk(["a.one", "b.two"]);
     d.runtime.focusSurface("a.one");
-    await d.hide("b.two");
-    await flush();
+    await d.leaveOut("b.two");
     expect(d.unloaded("b.two")).toBe(true);
 
-    // A request loads it out of sight, past a budget of none: it waits for its hello, not asleep again.
+    // A request loads it, left out as it is: it waits for its hello, not asleep again.
     d.runtime.plugins?.command("b.two", "desk.buffers.show", { buffer: "x" });
     await flush(3_000);
     expect(d.unloaded("b.two")).toBe(false);
@@ -252,21 +248,21 @@ describe("hidden surfaces are unloaded and their state kept", () => {
     b.messages = [];
     b.connect();
     await flush();
-    // Its kept state and what waited for it arrive; then, answered, it sleeps again.
+    // Its kept state and what waited for it arrive; then, answered, it sleeps again once its
+    // grace ends.
     expect(b.inits()).toEqual([{ type: "desk:init", pluginId: "b.two", restored: { count: 3 } }]);
     expect(b.messages.map((m) => m.name).filter(Boolean)).toContain("desk.buffers.show");
     const call = b.messages.find((m) => m.name === "desk.buffers.show")?.call;
     b.send({ type: "desk:reply", call, ok: true, result: {} });
-    await flush(2_000);
+    await flush(LOADING_MS);
     expect(d.unloaded("b.two")).toBe(true);
   });
 
   it("a frame that focuses itself as it loads again does not take the focus from where it is", async () => {
-    const d = await desk(["a.one", "b.two"], { [UNLOAD]: 60 });
+    const d = await desk(["a.one", "b.two"]);
     d.runtime.focusSurface("a.one");
     const before = document.activeElement;
-    await d.hide("b.two");
-    await flush(60_000);
+    await d.leaveOut("b.two");
     expect(d.unloaded("b.two")).toBe(true);
 
     // A request loads it again out of sight; as it mounts it focuses its view, as many plugins do.
@@ -283,7 +279,9 @@ describe("hidden surfaces are unloaded and their state kept", () => {
     expect(document.activeElement).toBe(before);
 
     // In a window in the background no event says so at all (WKWebView): it is looked at often,
-    // also when the plugin focuses itself late, after waiting for something.
+    // also when the plugin focuses itself late, after waiting for something (the set has let it
+    // in meanwhile, so it stays past its grace).
+    await d.letIn("b.two");
     await flush(20_000);
     d.plugins["b.two"]?.frame()?.focus();
     await flush(300);
@@ -297,10 +295,10 @@ describe("hidden surfaces are unloaded and their state kept", () => {
   });
 
   it("with nothing focused, a frame loading again that focuses itself gives the focus back to the desk", async () => {
-    const d = await desk(["a.one", "b.two"], { [UNLOAD]: 60 });
+    const d = await desk(["a.one", "b.two"]);
     (document.activeElement as HTMLElement | null)?.blur();
-    await d.hide("b.two");
-    await flush(60_000);
+    await d.leaveOut("b.two");
+    expect(d.unloaded("b.two")).toBe(true);
     d.runtime.plugins?.command("b.two", "desk.buffers.show", { buffer: "x" });
     await flush();
     d.plugins["b.two"]?.frame()?.focus();
@@ -310,10 +308,10 @@ describe("hidden surfaces are unloaded and their state kept", () => {
   });
 
   it("Tab through the desk lets the focus into a frame loading again", async () => {
-    const d = await desk(["a.one", "b.two"], { [UNLOAD]: 60 });
+    const d = await desk(["a.one", "b.two"]);
     d.runtime.focusSurface("a.one");
-    await d.hide("b.two");
-    await flush(60_000);
+    await d.leaveOut("b.two");
+    expect(d.unloaded("b.two")).toBe(true);
     d.runtime.plugins?.command("b.two", "desk.buffers.show", { buffer: "x" });
     await flush();
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
@@ -322,8 +320,8 @@ describe("hidden surfaces are unloaded and their state kept", () => {
     expect(document.activeElement).toBe(d.plugins["b.two"]?.frame());
   });
 
-  it("unload-after 0 keeps hidden surfaces within the budget loaded", async () => {
-    const d = await desk(["a.one", "b.two"], { [UNLOAD]: 0 });
+  it("without a window host that decides a live set, hidden surfaces keep their frames", async () => {
+    const d = await desk(["a.one", "b.two"], true);
     await d.hide("a.one");
     await d.hide("b.two");
     await flush(24 * 3_600_000);
@@ -332,9 +330,8 @@ describe("hidden surfaces are unloaded and their state kept", () => {
   });
 
   it("a request to an unloaded plugin loads its frame again and arrives after its hello; the plugin stays mounted and on", async () => {
-    const d = await desk(["a.one", "b.two"], { [UNLOAD]: 60 });
-    await d.hide("b.two");
-    await flush(60_000);
+    const d = await desk(["a.one", "b.two"]);
+    await d.leaveOut("b.two");
     expect(d.unloaded("b.two")).toBe(true);
 
     d.runtime.plugins?.command("b.two", "desk.buffers.show", { buffer: "x" });

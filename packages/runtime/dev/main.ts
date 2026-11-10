@@ -4,6 +4,7 @@
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../src/desk.css";
 import "../src/shell/styles";
+import { pageWindowManager } from "../e2e/fixture/wm-host";
 import { browserBridge } from "../src/bridge/browser";
 import { browserCore, localStore } from "../src/bridge/core";
 import erisReply from "../src/bridge/envelopes/eris-reply.json";
@@ -28,6 +29,8 @@ const core = browserCore({
 });
 const lang = params.get("lang") === "en" ? "en" : "ko";
 const desk = mountDesk({
+  // desk-wm as WebAssembly: this page has no compositor (#83).
+  windowManager: await pageWindowManager(),
   root,
   bridge,
   core: core.client,

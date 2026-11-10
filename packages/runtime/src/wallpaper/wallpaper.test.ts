@@ -6,6 +6,9 @@ import { Settings } from "../settings";
 import type { ShellCtx } from "../shell/context";
 import { emptyState, Store } from "../shell/state";
 import { Ticker } from "../shell/ticker";
+import { testWindowManager } from "../wm/testing";
+import type { Edit } from "../wm/types";
+import { takeDesk } from "../wm/view";
 import { mountWallpaper } from "./wallpaper";
 
 const cleanups: (() => void)[] = [];
@@ -19,6 +22,8 @@ function setup() {
   const clock = new ManualClock();
   const ticker = new Ticker(clock);
   const store = new Store(emptyState("en"));
+  const wm = testWindowManager();
+  wm.connect((published) => takeDesk(store, published));
   const settings = new Settings();
   settings.setDefaults(CORE_SETTINGS);
   settings.set("desk.wallpaper.scene", "pond");
@@ -40,13 +45,16 @@ function setup() {
   } as unknown as ShellCtx;
   const off = mountWallpaper(root, ctx);
   cleanups.push(off, () => ticker.dispose());
-  const open = (id: string) => store.set((s) => ({ adopted: [...s.adopted, { id, title: id }] }));
+  // A plugin surface handed over opens its window in a slot; desk-wm publishes it at once.
+  const open = (id: string) => void wm.edit([{ op: "adopt", id, title: id }]);
+  const edit = (...edits: Edit[]) => void wm.edit(edits);
   return {
     root,
     clock,
     store,
     settings,
     open,
+    edit,
     off,
     reduce: () => {
       reduced = true;
@@ -55,8 +63,8 @@ function setup() {
   };
 }
 it("follows pan on an empty desk and restores the theme without replacing it with a grid", () => {
-  const { root, store, settings } = setup();
-  store.set({ pan: { 1: { x: -2200, y: 1400 } } });
+  const { root, edit, settings } = setup();
+  edit({ op: "pan", to: { x: -2200, y: 1400 } });
   const scene = root.querySelector<HTMLElement>(".wallpaper");
   expect(scene?.style.getPropertyValue("--wallpaper-x")).toBe("-2200px");
   expect(scene?.style.getPropertyValue("--wallpaper-y")).toBe("1400px");
@@ -65,12 +73,12 @@ it("follows pan on an empty desk and restores the theme without replacing it wit
   expect(scene?.dataset.scene).toBe("theme");
 });
 it("makes one world-space ripple for a new window, keeps it attached while panning, and bounds bursts", () => {
-  const { root, store, open, clock } = setup();
+  const { root, edit, open, clock } = setup();
   open("endue.sidebar");
   const ripple = root.querySelector<HTMLElement>(".wallpaper-ripple");
   expect(ripple).not.toBeNull();
   const x = ripple?.style.getPropertyValue("--ripple-x");
-  store.set({ pan: { 1: { x: 150, y: -80 } }, focused: "endue.sidebar" });
+  edit({ op: "pan", to: { x: 150, y: -80 } }, { op: "focus", window: "endue.sidebar" });
   expect(root.querySelectorAll(".wallpaper-ripple")).toHaveLength(1);
   expect(ripple?.style.getPropertyValue("--ripple-x")).toBe(x);
   for (let n = 0; n < 30; n++) open(`plugin-${n}`);
@@ -79,9 +87,10 @@ it("makes one world-space ripple for a new window, keeps it attached while panni
   expect(root.querySelectorAll(".wallpaper-ripple")).toHaveLength(0);
 });
 it("clears transient effects on desktop/scene switches and suppresses motion when requested", () => {
-  const { root, open, store, settings, reduce, clock } = setup();
+  const { root, open, edit, settings, reduce, clock } = setup();
   open("first");
-  store.set({ desktop: 2 });
+  expect(root.querySelectorAll(".wallpaper-ripple")).toHaveLength(1);
+  edit({ op: "set-desktop", desktop: 2 });
   expect(root.querySelectorAll(".wallpaper-ripple")).toHaveLength(0);
   open("second");
   settings.set("desk.wallpaper.scene", "aurora");

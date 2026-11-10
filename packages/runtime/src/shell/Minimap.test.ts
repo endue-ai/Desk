@@ -1,45 +1,57 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DesktopLayout, SurfacePlacement } from "../modes/types";
+import type { SurfacePlacement } from "../modes/types";
+import type { LocalWindowManager } from "../wm/local";
+import { testWindowManager } from "../wm/testing";
+import type { Edit } from "../wm/types";
+import { takeDesk } from "../wm/view";
+import { windowsOf } from "./actions";
 import type { ShellCtx } from "./context";
 import { mountMinimap } from "./Minimap";
 import { fitWorld, toMap, viewRect, worldOf } from "./minimap-model";
 import { emptyState, Store } from "./state";
 
-const win = (id: string, x: number, y: number, extra: Partial<SurfacePlacement> = {}) =>
-  ({
-    id,
-    plugin: id,
-    x,
-    y,
-    w: 400,
-    h: 300,
-    panes: { kind: "view", id: `${id}-pane`, view: `plugin:${id}` },
-    ...extra,
-  }) as SurfacePlacement;
-const layout = (...surfaces: SurfacePlacement[]): DesktopLayout => ({
-  surfaces,
-  eris: null,
-  rail: { visible: true },
-  drawer: { visible: true },
+const win = (
+  id: string,
+  x: number,
+  y: number,
+  extra: Partial<SurfacePlacement> = {},
+): SurfacePlacement => ({
+  id,
+  plugin: id,
+  x,
+  y,
+  w: 400,
+  h: 300,
+  pinned: false,
+  panes: { kind: "view", id: `${id}-pane`, view: `plugin:${id}` },
+  ...extra,
 });
-const adopted = (...ids: string[]) => ids.map((id) => ({ id, title: id.toUpperCase() }));
+const adopt = (...ids: string[]): Edit[] =>
+  ids.map((id) => ({ op: "adopt", id, title: id.toUpperCase() }));
 
 describe("the canvas map", () => {
   let root: HTMLDivElement;
   let store: Store;
+  let wm: LocalWindowManager;
   let dispose: () => void;
 
+  /** An empty desk, with desk-wm under it on an app the size of jsdom's window. */
+  const fresh = () => {
+    store = new Store(emptyState("en"));
+    wm = testWindowManager({ w: window.innerWidth, h: window.innerHeight });
+    wm.connect((published) => takeDesk(store, published));
+  };
+  const edit = (...edits: Edit[]) => void wm.edit(edits);
   const mount = () => {
-    const ctx = { store, tr: (key: string) => key } as unknown as ShellCtx;
+    const ctx = { store, wm, tr: (key: string) => key } as unknown as ShellCtx;
     dispose = mountMinimap(root, ctx);
   };
   const map = () => root.querySelector<HTMLElement>(".minimap-map");
   const pan = () => store.get().pan["1"] ?? { x: 0, y: 0 };
   /** The fit the map draws with, from the same world it draws. */
   const fitNow = () => {
-    const s = store.get();
-    const windows = (s.session["1"]?.surfaces ?? []).filter((p) => !p.floating);
+    const windows = windowsOf(store.get()).filter((p) => !p.floating);
     return fitWorld(worldOf(windows, viewRect(pan(), window.innerWidth, window.innerHeight)));
   };
   const pointer = (type: string, x: number, y: number, target: Element | null = map()) => {
@@ -61,12 +73,13 @@ describe("the canvas map", () => {
     document.body.append(root);
     HTMLElement.prototype.setPointerCapture = vi.fn();
     HTMLElement.prototype.releasePointerCapture = vi.fn();
-    store = new Store({
-      ...emptyState("en"),
-      adopted: adopted("mail", "notes", "player"),
-      session: { "1": layout(win("mail", 100, 100), win("notes", 3000, 1600)) },
-      focused: "notes",
-    });
+    fresh();
+    edit(
+      ...adopt("mail", "notes", "player"),
+      { op: "place", placement: win("mail", 100, 100) },
+      { op: "place", placement: win("notes", 3000, 1600) },
+      { op: "focus", window: "notes" },
+    );
   });
 
   afterEach(() => {
@@ -75,19 +88,15 @@ describe("the canvas map", () => {
   });
 
   it("is not there while the canvas holds nothing to find", () => {
-    store = new Store(emptyState("en"));
+    fresh();
     mount();
     expect(root.querySelector(".minimap")).toBeNull();
-    store.set({ pan: { "1": { x: -200, y: 0 } } });
+    edit({ op: "pan", to: { x: -200, y: 0 } });
     expect(root.querySelector(".minimap")).not.toBeNull();
   });
 
   it("draws every normal window to scale, the focused one marked, and leaves floating ones out", () => {
-    store.set((s) => ({
-      session: {
-        "1": layout(...(s.session["1"]?.surfaces ?? []), win("player", 0, 0, { floating: true })),
-      },
-    }));
+    edit({ op: "place", placement: win("player", 0, 0, { floating: true }) });
     mount();
     const drawn = [...root.querySelectorAll<HTMLElement>(".minimap-window")];
     expect(
@@ -154,14 +163,12 @@ describe("the canvas map", () => {
   it("folds by itself while a filled window is in sight, and opens over it when asked (#3)", () => {
     mount();
     const fold = () => root.querySelector<HTMLButtonElement>(".minimap-fold");
+    // Mail where it is, filled (or no more): what the map reads is where desk-wm draws it.
     const fillMail = (fill: SurfacePlacement["fill"]) =>
-      store.set((s) => ({
-        session: {
-          "1": layout(
-            ...(s.session["1"]?.surfaces ?? []).map((p) => (p.id === "mail" ? { ...p, fill } : p)),
-          ),
-        },
-      }));
+      edit({
+        op: "set-geometry",
+        geometry: { id: "mail", x: 100, y: 100, w: 400, h: 300, ...(fill ? { fill } : {}) },
+      });
     fillMail("full");
     expect(map()?.hidden).toBe(true);
     // The person's choice is still an open map: it comes back once nothing fills the view.
@@ -175,7 +182,7 @@ describe("the canvas map", () => {
     expect(map()?.hidden).toBe(false);
     // A filled window out of sight leaves the map open.
     fillMail("right");
-    store.set({ pan: { "1": { x: -5000, y: 0 } } });
+    edit({ op: "pan", to: { x: -5000, y: 0 } });
     expect(map()?.hidden).toBe(false);
   });
 });

@@ -2,6 +2,7 @@
 channel = "1.99.0"
 components = ["rustfmt", "clippy"]
 # Wasm plugins (logic plugins and connectors) build for wasm32-wasip2; the plugin templates' test
-# builds them in `just test-unit` (crates/desk-cli/tests/templates.rs).
-targets = ["wasm32-wasip2"]
+# builds them in `just test-unit` (crates/desk-cli/tests/templates.rs). The runtime's tests and
+# fixture pages run desk-wm built for wasm32-unknown-unknown (crates/desk-wm-wasm, #83).
+targets = ["wasm32-wasip2", "wasm32-unknown-unknown"]
 profile = "minimal"

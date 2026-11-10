@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { isDirty, savedLayout } from "../modes/model";
 import { baseMode, LAYOUTS, MODE, profileMode, recipeOf } from "../modes/profiles";
 import type { DesktopLayout } from "../modes/types";
-import { readCurrent, readMoved, readPan, readRecipe, writeMoved } from "./migrate";
+import { readMoved, readRecipe, writeList } from "./migrate";
 import { defaultDesktops } from "./model";
 
 const shell = JSON.parse(
@@ -62,15 +62,10 @@ describe("four-desktop data loads as four named desktops", () => {
     expect(savedLayout(morning, base, "3").surfaces.map((s) => s.id)).toEqual(["notes"]);
   });
 
-  it("a session saved by the four-desktop desk: its moved desktops by number, its pan, its desktop", () => {
+  // The session's pan and desktop are the window manager's to read (crates/desk-wm tests/migrate.rs).
+  it("a profile's moves saved by the four-desktop desk, by number", () => {
     const session = readMoved({ "2": moved, "9": "not a layout" });
     expect(session).toEqual({ layouts: { "2": moved } });
-    expect(readPan({ "1": { x: -40, y: 8 }, "2": { x: Number.NaN, y: 0 }, "3": "x" })).toEqual({
-      "1": { x: -40, y: 8 },
-    });
-    expect(readCurrent(3, defaultDesktops())).toBe("3");
-    expect(readCurrent(7, defaultDesktops())).toBeUndefined();
-    expect(readCurrent("2", defaultDesktops())).toBe("2");
   });
 
   it("saving writes the list, and the list loads the same desk again", () => {
@@ -93,7 +88,7 @@ describe("four-desktop data loads as four named desktops", () => {
       { id: "1", name: "1" },
       { id: "5", name: "Research" },
     ];
-    const stored = writeMoved(list, { "5": moved });
+    const stored = { desktops: writeList(list, { "5": moved }) };
     expect(stored.desktops[2]).toEqual({ id: "5", name: "Research", layout: moved });
     expect(readMoved(JSON.parse(JSON.stringify(stored)))).toEqual({
       list,

@@ -7,11 +7,13 @@ import type { ShellCtx } from "../shell/context";
 import { h, listen } from "../shell/dom";
 import { draggable } from "../shell/drag";
 import { icon } from "../shell/icons";
-import { closePane, focusPane, resizeSplit } from "../shell/windows";
-import { leaves, MIN_RATIO, panesOf } from "./tree";
+import { closePane, resizeSplit } from "../shell/windows";
+import { leaves, panesOf } from "./tree";
 import { type Mounted, resolveView, viewOf } from "./views";
 
 const STEP = 0.05;
+/** A divider stops this far from either edge, as the window manager keeps it (desk-wm `panes.rs`). */
+const MIN_RATIO = 0.15;
 
 export function renderPanes(ctx: ShellCtx, surface: SurfacePlacement): Mounted {
   const offs: (() => void)[] = [];
@@ -47,8 +49,7 @@ export function renderPanes(ctx: ShellCtx, surface: SurfacePlacement): Mounted {
                 title: ctx.tr("closePane"),
                 onClick: (e: Event) => {
                   e.stopPropagation();
-                  focusPane(ctx, surface.id, node.id);
-                  closePane(ctx);
+                  void closePane(ctx, surface.id, node.id);
                 },
               },
               icon("close", 12),

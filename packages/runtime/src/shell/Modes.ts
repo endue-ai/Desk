@@ -174,7 +174,7 @@ export function mountModes(root: HTMLElement, ctx: ShellCtx): () => void {
   draw();
   const offs = [
     ctx.store.watch(
-      (s) => [s.modes, s.modeId, s.session, s.desktops, s.popover === "mode-menu", s.lang],
+      (s) => [s.modes, s.modeId, s.wm.dirty, s.popover === "mode-menu", s.lang],
       draw,
     ),
     ctx.store.watch(

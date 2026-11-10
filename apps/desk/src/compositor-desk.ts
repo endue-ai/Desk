@@ -1,15 +1,13 @@
-// Compositor mode (#81, ADR 0151): the CEF shell's compositor draws every window from the window
-// manager's model (crates/desk-wm), which this page feeds while the runtime keeps the window manager's state (ADR 0156).
-// Whenever the desk changed it sends `compositor_desk`: the desk the runtime keeps (`wmDesk`), each
-// plugin frame's document and state with what its window says while it has no live frame, the
-// titles of the shell's own views, the top chips' edges and the live budget's settings, and the
-// window manager's seam (ADR 0153): the last of desk-wm's changes the runtime took and the window
-// the page lays out where a gesture holds it (`compositor-wm.ts`). It hears back the windows that
-// keep a live frame (`desk://compositor-live`), which the runtime's frame policy then carries out
-// (`keptWindows`). The page itself draws only its system layer and its own views;
-// `compositor.css` leaves the rest to the compositor.
-import type { Desk, KeptWindows } from "@endue-ai/runtime";
-import { wmDesk, wmTitles } from "@endue-ai/runtime";
+// The page's report (#81, ADR 0151): the CEF shell's compositor draws every window from the window
+// manager (crates/desk-wm), which holds the desk (#83). Whenever what only the page knows changed it
+// sends `compositor_desk`: each plugin frame's document and state with what its window says while
+// it has no live frame, the titles of the shell's own views, the top chips' edges and the live
+// budget's settings, and the window manager's seam (ADR 0153): the last desk desk-wm published that
+// the page took and the window the page lays out where a gesture holds it (`compositor-wm.ts`). The
+// page itself draws only its system layer and its own views; `compositor.css` leaves the rest to the
+// compositor.
+import type { Desk } from "@endue-ai/runtime";
+import { viewTitles } from "@endue-ai/runtime";
 
 export type FrameState = "live" | "asleep" | "late" | "stopped";
 
@@ -45,13 +43,12 @@ export interface DeskReport {
   seq: number;
   width: number;
   height: number;
-  desk: unknown;
   frames: FrameReport[];
   titles: Record<string, string>;
   top: { left?: number; right?: number };
   budget: { live: number; afterMs: number };
   copy: { crashed: string; loading: string };
-  /** The last of desk-wm's changes the runtime took. */
+  /** The last desk desk-wm published that the page took. */
   applied: number;
   /** The window the page lays out where desk-wm's gesture holds it. */
   held?: Held;
@@ -72,10 +69,7 @@ export interface WmState {
   held?: Held;
 }
 
-/**
- * A running report: stop it, or send what changed now (before a window command, say) and answer
- * the sequence number of the last report sent.
- */
+/** A running report: stop it, or send what changed now. */
 export type CompositorDesk = (() => void) & { flush(): number };
 
 /** The compositor's own placeholders, in the desk's language. */
@@ -89,23 +83,6 @@ export function surfaceHostOf(src: string): string | undefined {
   const match = /^desk-plugin:\/\/([^/?#:]+)/.exec(src);
   const host = match?.[1];
   return host && host !== "localhost" && host.includes(".") ? host : undefined;
-}
-
-/** The set the shell sends, as the runtime's window host reads it; undefined until the first. */
-export function keptWindows(): KeptWindows & { set(ids: readonly string[]): void } {
-  let kept: Set<string> | undefined;
-  const listeners = new Set<() => void>();
-  return {
-    kept: () => kept,
-    onChange(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    set(ids) {
-      kept = new Set(ids);
-      for (const listener of [...listeners]) listener();
-    },
-  };
 }
 
 const texts = (root: Element | null, selector: string) =>
@@ -206,9 +183,8 @@ export function startCompositorDesk(
     const body = {
       width: win.innerWidth,
       height: win.innerHeight,
-      desk: wmDesk(s),
       frames: reports,
-      titles: wmTitles(desk.store),
+      titles: viewTitles(desk.store),
       top: { ...(left === undefined ? {} : { left }), ...(right === undefined ? {} : { right }) },
       budget: {
         live: typeof live === "number" && live >= 0 ? Math.floor(live) : 8,

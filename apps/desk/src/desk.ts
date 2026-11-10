@@ -2,10 +2,10 @@
 // under it hosts the core's UI plugins; the shell reaches the brain and its agent directory through
 // the core.
 import { BridgeClient } from "@endue-ai/bridge";
-import { deskPluginUrl, mountDesk, phase, realClock, type WmPublished } from "@endue-ai/runtime";
+import { deskPluginUrl, mountDesk, type Published, phase, realClock } from "@endue-ai/runtime";
 import "@endue-ai/runtime/desk.css";
 import "@endue-ai/runtime/shell.css";
-import { keptWindows, startCompositorDesk } from "./compositor-desk";
+import { startCompositorDesk } from "./compositor-desk";
 import { startCompositorFocus } from "./compositor-focus";
 import { startCompositorKeys } from "./compositor-keys";
 import { cardCommand, type HeldPayload, type RunPayload, wmSeam } from "./compositor-wm";
@@ -40,13 +40,14 @@ const core = new BridgeClient(adapter());
 // Safe mode and the state files kept broken (ADR 0061), known before the shell mounts.
 const start = await readStart(invoke);
 const lang = navigator.language.startsWith("ko") ? "ko" : "en";
-// The CEF shell's compositor draws the windows from desk-wm, which drags, resizes, snaps and pans
-// them on the compositor's input and keeps the live budget (#52, #81, #80); it is the only desk
-// (#83).
-const kept = keptWindows();
-const seam = wmSeam((command, args) => void invoke(command, args).catch(() => undefined));
+// The CEF shell's compositor draws the windows from desk-wm, which holds them, drags, resizes,
+// snaps and pans them on the compositor's input and keeps the live budget (#52, #81, #80, #83); it
+// is the only desk.
+const seam = wmSeam(
+  (command, args) => void invoke(command, args).catch(() => undefined),
+  (command, args) => invoke(command, args),
+);
 const desk = mountDesk({
-  liveBudget: kept,
   windowManager: seam.host,
   root,
   bridge: shellBridge(core),
@@ -80,9 +81,9 @@ const disposeOpened = installOpenedFiles({
 });
 window.addEventListener("pagehide", disposeOpened, { once: true });
 
-// The page publishes the desk the runtime keeps (ADR 0151); the CEF shell answers with the windows
-// that keep a live frame, which the runtime carries out, and with what desk-wm changed, which the
-// runtime takes as the truth (ADR 0153). Its input (#56) decides by the keymap whose a key is, and
+// The page reports what only it knows (ADR 0151); the CEF shell answers with the windows that keep
+// a live frame, which the runtime carries out, and with each desk desk-wm publishes, which the
+// runtime takes whole (ADR 0153, #83). Its input (#56) decides by the keymap whose a key is, and
 // follows the focus this page moves.
 const stopDesk = startCompositorDesk(
   window,
@@ -92,12 +93,11 @@ const stopDesk = startCompositorDesk(
   },
   seam.state,
 );
-seam.flushWith(stopDesk.flush);
 const offLive = listen<{ live?: string[] }>("desk://compositor-live", ({ payload }) => {
-  if (Array.isArray(payload?.live)) kept.set(payload.live);
+  if (Array.isArray(payload?.live)) seam.live(payload.live);
 });
-const offWm = listen<WmPublished>("desk://compositor-wm", ({ payload }) => {
-  if (payload && typeof payload.rev === "number") seam.took(payload, desk);
+const offWm = listen<Published>("desk://compositor-wm", ({ payload }) => {
+  if (payload && typeof payload.rev === "number" && payload.desk) seam.took(payload);
 });
 const offHeld = listen<HeldPayload>("desk://compositor-held", ({ payload }) => {
   if (payload) seam.held(payload, desk);

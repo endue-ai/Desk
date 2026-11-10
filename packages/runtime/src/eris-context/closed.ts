@@ -34,6 +34,8 @@ export interface ClosedWindow {
   /** The desktop it was on; absent when it was in the drawer. */
   desktop?: DesktopId;
   placement: SurfacePlacement;
+  /** Where it was on screen with its desktop in front, as the window manager placed it. */
+  rect?: { x: number; y: number; w: number; h: number };
   /** Wall-clock milliseconds when it closed. */
   at: number;
 }
@@ -83,6 +85,7 @@ function seenOf(
     name ??
     (plugin ? (s.adopted.find((a) => a.id === plugin)?.title ?? plugin) : undefined) ??
     surfaceTitle(ctx, views[0] ?? p.id);
+  const rect = desktop ? s.wm.rects[desktop]?.[p.id] : undefined;
   const window = {
     id: p.id,
     title,
@@ -91,6 +94,7 @@ function seenOf(
     views,
     ...(desktop ? { desktop } : {}),
     placement: p,
+    ...(rect ? { rect } : {}),
   };
   return { window, placed };
 }

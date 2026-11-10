@@ -39,6 +39,7 @@ import testTheme from "../themes/test-theme/plugin.json";
 import { fileHandlers, grantFilePlugins } from "./file-viewers";
 import { heavyHandlers } from "./heavy-files";
 import { fixtureWm } from "./wm";
+import { pageWindowManager } from "./wm-host";
 
 const root = document.getElementById("desk");
 if (!root) throw new Error("no #desk element");
@@ -185,7 +186,10 @@ const bridge = browserBridge({
 if (params.get("endue") === "signed-in")
   bridge.fake.setAccount({ state: "signed-in", profile: { ...SAMPLE_PROFILE } });
 const lang = params.get("lang") === "en" ? "en" : "ko";
+// desk-wm as WebAssembly: this page has no compositor (#83).
+const windowManager = await pageWindowManager();
 const desk = mountDesk({
+  windowManager,
   root,
   bridge,
   core: core.client,
@@ -216,7 +220,7 @@ function step(ms: number): void {
 
 window.__shell = {
   desk,
-  wm: fixtureWm(desk),
+  wm: fixtureWm(desk, windowManager),
   clock,
   bridge,
   stub: core.stub,

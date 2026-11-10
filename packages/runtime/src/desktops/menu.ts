@@ -7,9 +7,16 @@ import type { DesktopId } from "../modes/types";
 import { desktopsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen, render } from "../shell/dom";
+import type { DeskState } from "../shell/state";
 import { moveToNew, moveWindowTo, newDesktop, reorder, tx } from "./actions";
 import { MAX_DESKTOPS } from "./model";
-import { holderOf } from "./move";
+
+/** The desktop that shows `window`: the one in front first, then those whose layout places it. */
+function holderOf(s: DeskState, window: string): DesktopId | undefined {
+  if ((s.wm.windows[s.wm.here] ?? []).some((p) => p.id === window)) return s.wm.here;
+  return desktopsOf(s).find((d) => s.wm.layouts[d.id]?.surfaces.some((p) => p.id === window))?.id;
+}
+
 import { uiOf } from "./ui";
 
 type Open =

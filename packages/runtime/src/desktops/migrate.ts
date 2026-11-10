@@ -1,10 +1,10 @@
 /**
- * The desktops as profiles and sessions keep them (ADR 0117): a `desktops` list, each entry with
+ * The desktops as profiles keep them (ADR 0117): a `desktops` list, each entry with
  * its `id`, `name` and `layout`. What the four-desktop desk saved loads unchanged: it kept layouts by
  * desktop number, and the numbers are the ids of the four a desk starts with.
  */
 import type { Desktop, DesktopId, DesktopLayout } from "../modes/types";
-import { idAt, readList } from "./model";
+import { readList } from "./model";
 
 /** One desktop as it is stored. */
 export interface StoredDesktop {
@@ -67,29 +67,4 @@ export function writeList<L extends Partial<DesktopLayout>>(
     const layout = layouts[d.id];
     return layout ? { id: d.id, name: d.name, layout: structuredClone(layout) } : { ...d };
   });
-}
-
-/** What `desk.shell.layouts` holds for a changed list and the layouts moved on it. */
-export function writeMoved(
-  list: readonly Desktop[],
-  layouts: Partial<Record<DesktopId, DesktopLayout>>,
-): { desktops: StoredDesktop[] } {
-  return { desktops: writeList(list, layouts) };
-}
-
-/** A saved pan per desktop, by id; four-desktop sessions keyed it by number, the same ids. */
-export function readPan(value: unknown): Record<DesktopId, { x: number; y: number }> {
-  if (!isNode(value)) return {};
-  const out: Record<DesktopId, { x: number; y: number }> = {};
-  for (const [id, pan] of Object.entries(value)) {
-    const { x, y } = (isNode(pan) ? pan : {}) as { x?: unknown; y?: unknown };
-    if (typeof x === "number" && typeof y === "number" && Number.isFinite(x) && Number.isFinite(y))
-      out[id] = { x, y };
-  }
-  return out;
-}
-
-/** The desktop a session was on: its id, or (before ADR 0117) its number, a position. */
-export function readCurrent(value: unknown, list: readonly Desktop[]): DesktopId | undefined {
-  return typeof value === "string" || typeof value === "number" ? idAt(list, value) : undefined;
 }

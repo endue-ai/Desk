@@ -1,7 +1,9 @@
 /**
  * The shell's state in one store, the empty desk the app starts with and the sample desk the dev
- * page and the fixtures start with. Profiles, the
- * moved desktops and Eris's settings mirror the runtime's (link.ts); the theme is desk.theme's.
+ * page and the fixtures start with. Profiles and Eris's settings mirror the runtime's (link.ts);
+ * the theme is desk.theme's. The windows, panes, desktops, the drawer and the pan are the window
+ * manager's (crates/desk-wm, #83): the store holds the last desk it published (`wm/take.ts`) and
+ * nothing else writes them.
  */
 import type { A2ATask, Agent, AgentCard, LocalAgent, LocalAgentRun, Space } from "@endue-ai/bridge";
 import type { BrainStatus } from "../bridge/types";
@@ -10,19 +12,13 @@ import type { SoulStyle } from "../eris/soul";
 import type { ErisState } from "../eris/states";
 import type { Session } from "../modes/model";
 import { baseMode } from "../modes/profiles";
-import type { Desktop, DesktopId, DesktopRef, Mode, SurfacePlacement } from "../modes/types";
+import type { Desktop, DesktopId, DesktopRef, Mode } from "../modes/types";
 import { type EndueState, emptyEndue } from "../system/endue-ids";
-import { keepAway } from "./away";
+import type { Adopted, DrawerItem, WmView } from "../wm/types";
+import { emptyView } from "../wm/view";
 import type { Lang } from "./copy";
 
-export interface DrawerItem {
-  id: string;
-  kind: "surface" | "file" | "recent";
-  name: string;
-  /** Wall-clock milliseconds it entered the drawer; recent items fade after 12 h and leave after 24 h. */
-  at: number;
-  placement?: SurfacePlacement;
-}
+export type { DrawerItem };
 
 export type RailId = "brain" | "sees" | "tasks" | "desks" | "vm" | "listen";
 
@@ -51,7 +47,10 @@ export interface DeskState {
   modes: Mode[];
   /** The profile in force. */
   modeId: string;
-  /** The desktop in front, by id (ADR 0117); a number, from older callers, is its position. */
+  /** The last desk the window manager published, its revision, and what the runtime reads of it. */
+  rev: number;
+  wm: WmView;
+  /** The desktop in front, by id (ADR 0117). */
   desktop: DesktopRef;
   /** The desktops' layouts moved since the profile was saved, by id. */
   session: Session;
@@ -83,14 +82,13 @@ export interface DeskState {
   localRuns: LocalAgentRun[];
   /** The runs Eris handed out with her desk.agents.* tools, so their screens say so. */
   erisRuns: string[];
-  /** What is put away: never a surface that a desktop places (away.ts, #4). */
+  /** What is put away: never a surface that a desktop places (#4). */
   drawer: DrawerItem[];
   /**
    * Plugin surfaces the runtime handed to the shell's windows (ADR 0040), in mount order, each with
-   * the slot its window takes while no layout places it (`surface/tiling.ts`; absent: its index)
-   * and the canvas's pan when it arrived, so the slot is in sight then (absent: none).
+   * the slot its window takes while no layout places it and the canvas's pan when it arrived.
    */
-  adopted: { id: string; title: string; slot?: number; at?: { x: number; y: number } }[];
+  adopted: Adopted[];
   attention: AttentionItem[];
   desks: { id: string; name: string; busy: boolean; here: boolean }[];
   brain: BrainStatus;
@@ -109,13 +107,13 @@ export interface DeskState {
 
 type Listener = (state: DeskState, previous: DeskState) => void;
 
-/** The shell's state; every change keeps the drawer to what is away (away.ts). */
+/** The shell's state. */
 export class Store {
   #state: DeskState;
   #listeners = new Set<Listener>();
 
   constructor(initial: DeskState) {
-    this.#state = keepAway(initial);
+    this.#state = initial;
   }
 
   get(): DeskState {
@@ -125,7 +123,7 @@ export class Store {
   set(patch: Partial<DeskState> | ((s: DeskState) => Partial<DeskState>)): void {
     const previous = this.#state;
     const change = typeof patch === "function" ? patch(previous) : patch;
-    this.#state = keepAway({ ...previous, ...change }, previous);
+    this.#state = { ...previous, ...change };
     for (const listener of [...this.#listeners]) listener(this.#state, previous);
   }
 
@@ -153,6 +151,8 @@ export function emptyState(lang: Lang): DeskState {
     // The base until desk.profiles lists the profiles.
     modes: [baseMode(undefined)],
     modeId: "default",
+    rev: 0,
+    wm: emptyView(),
     desktop: "1",
     session: {},
     desktops: null,

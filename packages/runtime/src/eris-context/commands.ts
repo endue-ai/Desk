@@ -5,7 +5,6 @@
  */
 import type { AgentSpec } from "../commands";
 import type { ShellCtx } from "../shell/context";
-import { appSize } from "../surface/coordinates";
 import { closedForBrain } from "./brain";
 import { type CatalogueQuery, catalogue, LIMIT, query, sourceOf } from "./capabilities";
 import type { ClosedLog } from "./closed";
@@ -75,7 +74,7 @@ export function defineContextCommands(ctx: ShellCtx, log: ClosedLog): () => void
       title: ec(lang, "cmdClosed"),
       keywords: ["closed", "windows", "recent", "history", "닫은", "창"],
       owner: "desk.display",
-      run: () => ({ closed: closedForBrain(ctx.store.get(), log.list(), appSize()) }),
+      run: () => ({ closed: closedForBrain(ctx.store.get(), log.list()) }),
       agent: CLOSED,
     }),
     commands.define("desk.windows.reopen", {

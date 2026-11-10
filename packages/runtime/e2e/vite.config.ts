@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
+import { deskWmWasm } from "../../../scripts/desk-wm-wasm.mjs";
 import { largePng } from "./perf/large-png.mjs";
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
@@ -178,9 +179,28 @@ export function pluginFiles(): Plugin {
   };
 }
 
+/**
+ * The window manager the fixture pages and the dev page run (#83), served at /desk-wm.wasm: desk-wm
+ * as WebAssembly, built when it is stale as the server starts, since these pages have no compositor.
+ */
+export function deskWm(): Plugin {
+  return {
+    name: "desk-wm-wasm",
+    configureServer(server) {
+      const wasm = deskWmWasm();
+      server.middlewares.use((req, res, next) => {
+        if (new URL(req.url ?? "/", "http://fixture").pathname !== "/desk-wm.wasm") return next();
+        res.setHeader("Content-Type", "application/wasm");
+        res.setHeader("Cache-Control", "no-store");
+        res.end(readFileSync(wasm));
+      });
+    },
+  };
+}
+
 export default defineConfig({
   root: here("./fixture"),
-  plugins: [pluginFiles()],
+  plugins: [pluginFiles(), deskWm()],
   server: {
     host: "127.0.0.1",
     // Set by the Playwright configs (e2e/port.ts); 4173 when the fixture is served by hand.

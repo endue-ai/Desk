@@ -1,16 +1,20 @@
 /**
- * The right-edge strip (ADR 0116): Tile, Cascade and Spread, then Restore, in a column under the
- * status rail. Each button runs its desk.windows.* command, so a click lands on the desk's undo stack
- * as a key or the palette would. A toolbar: one Tab stop, the arrow keys move between its buttons,
- * and each button's tooltip names its key.
+ * The right-edge strip (ADR 0116): Tile and Cascade, then Restore, in a column under the status
+ * rail. Each button runs its desk.windows.* command, so a click lands on the desk's undo stack as a
+ * key or the palette would. A toolbar: one Tab stop, the arrow keys move between its buttons, and
+ * each button's tooltip names its key. What can be arranged and restored is the window manager's
+ * to say (#83).
  */
 import { windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen } from "../shell/dom";
-import { type Arranger, arrangeable } from "./arranger";
-import { CASCADE, RESTORE, SPREAD, TILE } from "./commands";
+import type { DeskState } from "../shell/state";
+import { CASCADE, RESTORE, TILE } from "./commands";
 import { type ArrangeCopyKey, arrangeText } from "./copy";
 import { type ArrangeIcon, arrangeIcon } from "./icons";
+
+/** Whether the desktop in front has a normal, unpinned window to arrange. */
+const arrangeable = (s: DeskState) => windowsOf(s).some((p) => p.floating !== true && !p.pinned);
 
 interface Item {
   key: ArrangeIcon;
@@ -21,7 +25,6 @@ interface Item {
 const ITEMS: Item[] = [
   { key: "tile", command: TILE, label: "tile" },
   { key: "cascade", command: CASCADE, label: "cascade" },
-  { key: "spread", command: SPREAD, label: "spread" },
   { key: "restore", command: RESTORE, label: "restore" },
 ];
 
@@ -37,7 +40,6 @@ const MOVES: Record<string, (at: number, n: number) => number> = {
 export function mountStrip(
   root: HTMLElement,
   ctx: ShellCtx,
-  arranger: Arranger,
   run: (command: string) => void,
 ): () => void {
   const say = (key: ArrangeCopyKey) => arrangeText(ctx.store.get().lang, key);
@@ -69,7 +71,7 @@ export function mountStrip(
     );
     return button;
   });
-  el.append(...buttons.slice(0, 3), h("span", { class: "arrange-divider" }), ...buttons.slice(3));
+  el.append(...buttons.slice(0, 2), h("span", { class: "arrange-divider" }), ...buttons.slice(2));
   root.append(el, tip);
 
   const label = (item: Item) => {
@@ -78,12 +80,11 @@ export function mountStrip(
   };
   const draw = () => {
     const s = ctx.store.get();
-    const some = arrangeable(s).length > 0;
+    const some = arrangeable(s);
     const off: Record<string, boolean> = {
       tile: !some,
       cascade: !some,
-      spread: windowsOf(s).length === 0,
-      restore: !arranger.canRestore(),
+      restore: !s.wm.restorable,
     };
     el.setAttribute("aria-label", say("strip"));
     const combos = ctx.runtime.keymap.bindings();
@@ -125,10 +126,14 @@ export function mountStrip(
   draw();
   const offs = [
     ctx.store.watch(
-      (s) => [s.lang, s.desktop, windowsOf(s).map((p) => [p.id, p.floating === true, p.pinned])],
+      (s) => [
+        s.lang,
+        s.desktop,
+        s.wm.restorable,
+        windowsOf(s).map((p) => [p.id, p.floating === true, p.pinned]),
+      ],
       draw,
     ),
-    arranger.onChange(draw),
     ctx.runtime.keymap.onChange(draw),
     listen(el, "pointerover", (e) => showTip(target(e))),
     listen(el, "pointerleave", () => showTip(null)),

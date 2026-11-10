@@ -6,7 +6,7 @@
  */
 
 import { LAYOUTS } from "../modes/profiles";
-import { movedOf } from "../shell/actions";
+import { movedValue } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { catalogue, sourceOf, summarise } from "./capabilities";
 import { watchClosed } from "./closed";
@@ -25,8 +25,8 @@ function layoutsAhead(ctx: ShellCtx): { restoring(): boolean; off(): void } {
   if (!settings?.onChange) return { restoring: () => false, off: () => {} };
   const off = settings.onChange((keys) => {
     if (!keys.includes(LAYOUTS)) return;
-    const s = ctx.store.get();
-    if (!same(movedOf(ctx), { session: s.session, desktops: s.desktops })) ahead = true;
+    // Not what the window manager last published for it: someone else put the layouts there.
+    if (!same(movedValue(ctx), ctx.store.get().wm.moved)) ahead = true;
   });
   return {
     restoring() {

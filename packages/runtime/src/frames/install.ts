@@ -1,11 +1,12 @@
 /**
  * Hidden surfaces are unloaded and their state kept (ADR 0070), over the runtime's surfaces and
- * plugin host: which surfaces count (centre and floating ones, the windows), when one is visible (on
- * the page, shown, and not hidden by a window host's windows), the order they were focused in (the
- * live budget's, ADR 0134), the two settings, asking the plugin for its state and the placeholder
- * that stands in for the frame. Every surface's frame is also watched for answers (#39,
- * `watch.ts`); one the person stopped stays unloaded, in sight or not, until they reload it. A
- * plugin's reload waits for what its frame already sent, its last desk:state with it (`reload.ts`).
+ * plugin host: which surfaces count (centre and floating ones, the windows), which keep a live frame
+ * (the window manager's live budget decides, ADR 0134, ADR 0151, #83: the runtime only carries its
+ * set out), asking the plugin for its state and the placeholder that stands in for the frame. On a
+ * desk without a window manager host that decides (the runtime's tests and fixture pages) every
+ * window keeps its frame. Every surface's frame is also watched for answers (#39, `watch.ts`); one
+ * the person stopped stays unloaded until they reload it. A plugin's reload waits for what its
+ * frame already sent, its last desk:state with it (`reload.ts`).
  */
 import { LIVE_SURFACES } from "../core/defaults";
 import type { DeskContext } from "../policies/context";
@@ -19,9 +20,6 @@ import { askState, SURFACE_STATE } from "./state";
 import { type FrameResponses, watchFrames } from "./watch";
 
 export { LIVE_SURFACES };
-export const UNLOAD_AFTER = "desk.display.unload-after";
-/** The defaults, in case desk.display's manifest is not installed: five minutes, 8 frames. */
-const DEFAULTS = { [UNLOAD_AFTER]: 300, [LIVE_SURFACES]: 8 };
 /**
  * How long a frame loading again for a plugin that still sleeps (no hello yet) is not put back to
  * sleep: what waits for its hello, and the state it is to be handed, would go with it.
@@ -30,16 +28,12 @@ export const LOADING_MS = 10_000;
 
 /** What a window host tells the runtime about the surfaces it holds (the shell's windows). */
 export interface WindowVisibility {
-  /** Whether its windows hide surface `id`: wholly covered by windows above, or off screen. */
-  covered?(id: string): boolean;
   /**
-   * The windows that keep a live frame when the host keeps the live budget itself (the
-   * compositor's, ADR 0151); undefined until it has decided. The runtime then decides nothing: it
-   * carries the set out, asking a window left out for its state and taking its frame away, and
-   * putting back the frame of one let in.
+   * The windows that keep a live frame, as the window manager's live budget decided; undefined
+   * until it has, or on a desk whose host decides none: then every window keeps its frame.
    */
-  kept?(): ReadonlySet<string> | undefined;
-  /** Hear changes that may show or hide surfaces; returns a function that stops. */
+  live?(): ReadonlySet<string> | undefined;
+  /** Hear changes that may let a frame in or leave it out; returns a function that stops. */
   onChange?(listener: () => void): () => void;
 }
 
@@ -93,12 +87,10 @@ export function installFrames(
   const loaded = new Map<string, number>();
   /** The surfaces the unload policy counts: the windows. */
   const windowed = new Set<string>();
-  /** A setting's value when it is a number of 0 or more, else desk.display's default. */
-  const setting = (key: keyof typeof DEFAULTS) => {
-    const value = settings.get<unknown>(key, DEFAULTS[key]);
-    return typeof value === "number" && Number.isFinite(value) && value >= 0
-      ? value
-      : DEFAULTS[key];
+  /** desk.surfaces.live, for the inspector: the window manager's budget reads it. */
+  const budget = () => {
+    const value = settings.get<unknown>(LIVE_SURFACES, 8);
+    return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 8;
   };
   const unload = async (id: string, still: () => boolean) => {
     const host = deps.host();
@@ -131,22 +123,19 @@ export function installFrames(
     return since !== undefined && timers.now() - since < LOADING_MS;
   };
   const policy = new FramePolicy({
-    visible: (id) => {
-      const kept = windows?.kept?.();
-      if (kept) return kept.has(id) || loading(id);
-      return surfaces.visible(id) && !windows?.covered?.(id);
+    // The window manager's set; with none decided, every window keeps its frame.
+    live: (id) => {
+      const live = windows?.live?.();
+      return live ? live.has(id) || loading(id) : true;
     },
     // The surface the keys go to is never unloaded.
     focused: () => shortcuts.focused,
-    // A host that keeps the budget counts the time out of sight itself.
-    afterMs: () => (windows?.kept?.() ? 0 : setting(UNLOAD_AFTER) * 1000),
-    budget: () => (windows?.kept?.() ? 0 : Math.floor(setting(LIVE_SURFACES))),
     unload,
     remount: (id) => {
       loaded.set(id, timers.now());
       surfaces.remount(id);
-      // With a host's set, look again once the grace ends: the set may have left the frame out.
-      if (windows?.kept) graces.push(timers.after(LOADING_MS, () => changed()));
+      // Look again once the grace ends: the set may have left the frame out.
+      graces.push(timers.after(LOADING_MS, () => changed()));
     },
     timers,
   });
@@ -160,14 +149,7 @@ export function installFrames(
       policy.check();
     });
   };
-  const offs = [
-    surfaces.onChange(changed),
-    settings.onChange((keys) => {
-      if (keys.includes(UNLOAD_AFTER) || keys.includes(LIVE_SURFACES)) changed();
-    }),
-    windows?.onChange?.(changed),
-  ];
-  win.addEventListener("resize", changed);
+  const offs = [surfaces.onChange(changed), windows?.onChange?.(changed)];
   const watch = watchFrames(ctx, {
     host: deps.host,
     timers,
@@ -215,19 +197,17 @@ export function installFrames(
       changed();
     },
     changed,
-    focused(id) {
-      if (id !== null) policy.focused(id);
+    focused(_id) {
       changed();
     },
     // A stopped frame loads only from its Reload: what waits on it waits for that.
     wake: (id) => watch.responses.state(id) !== "stopped" && policy.wake(id),
     reload: (id, src) => reloads.reload(id, src),
-    counts: () => ({ ...policy.counts(), budget: Math.floor(setting(LIVE_SURFACES)) }),
+    counts: () => ({ ...policy.counts(), budget: Math.floor(budget()) }),
     responses,
     dispose() {
       for (const off of offs) off?.();
       for (const cancel of graces) cancel();
-      win.removeEventListener("resize", changed);
       reloads.dispose();
       watch.dispose();
       policy.dispose();

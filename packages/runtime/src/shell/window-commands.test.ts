@@ -1,21 +1,31 @@
 // The window commands (desk.display.*, ADR 0153): maximize, the eight snaps and moving and resizing
-// by a step act on the window in use, through the window manager (crates/desk-wm on the compositor,
-// whose tests/interactions/wm.rs runs them; the runtime's own went with the windowed desk, #83).
-// What it publishes back is taken as the truth for geometry (`takeWm`), and the page lays a held
-// window out where it holds it (`heldWindows`).
+// by a step act on the window in use, through the window manager (crates/desk-wm, whose
+// tests/interactions/wm.rs runs them and tests/fill.rs checks what they do; the runtime runs none
+// itself, #83). The desk it publishes back is the runtime's whole (`takeDesk`), and the page lays a
+// held window out where the gesture holds it (`heldWindows`).
 import { describe, expect, it, vi } from "vitest";
-import { desktopId, layoutOf, windowsOf } from "./actions";
+import { heldWindows } from "../wm/host";
+import type { LocalWindowManager } from "../wm/local";
+import { testWindowManager } from "../wm/testing";
+import type { Published } from "../wm/types";
+import { takeDesk } from "../wm/view";
+import { windowsOf } from "./actions";
 import type { ShellCtx } from "./context";
 import { Store, sampleState } from "./state";
 import { defineWindowCommands, STEP, WINDOW_COMMANDS } from "./window-commands";
 import { newWindow } from "./windows";
-import { heldWindows, noWindowManager, takeWm, type WindowManagerHost } from "./wm-host";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 
-function ctx(wm: WindowManagerHost = noWindowManager()) {
+/** The shell over desk-wm; every desk desk-wm publishes is also kept in `published`. */
+function ctx(wm: LocalWindowManager = testWindowManager()) {
   const store = new Store(sampleState("en", epoch));
-  return {
+  const published: Published[] = [];
+  wm.connect((p) => {
+    published.push(p);
+    takeDesk(store, p);
+  });
+  const c = {
     store,
     runtime: { shortcuts: { focused: null }, focusSurface() {}, plugins: {} } as never,
     bridge: undefined as never,
@@ -24,12 +34,8 @@ function ctx(wm: WindowManagerHost = noWindowManager()) {
     tr: (key: string) => key,
     wm,
   } as unknown as ShellCtx;
+  return { c, wm, published };
 }
-
-const rectOf = (c: ShellCtx, id: string) => {
-  const p = windowsOf(c.store.get()).find((w) => w.id === id);
-  return p && { x: p.x, y: p.y, w: p.w, h: p.h, fill: p.fill, floating: p.floating };
-};
 
 /** The commands as `display` defines them, by id. */
 function commands(c: ShellCtx): Map<string, () => unknown> {
@@ -61,64 +67,56 @@ describe("window commands", () => {
     ]);
   });
 
-  it("go to the window manager, named for the window in use, and move nothing here", () => {
-    const host = { grab: vi.fn(), run: vi.fn() };
-    const c = ctx(host);
-    const id = newWindow(c);
-    const before = rectOf(c, id);
-    const run = commands(c);
-    run.get("snap-top-left")?.();
-    run.get("maximize")?.();
-    run.get("move-left")?.();
-    expect(host.run.mock.calls).toEqual([
+  it("go to the window manager, named for the window in use", async () => {
+    const { c, wm } = ctx();
+    const run = vi.spyOn(wm, "run");
+    const id = await newWindow(c);
+    const all = commands(c);
+    all.get("snap-top-left")?.();
+    all.get("maximize")?.();
+    all.get("move-left")?.();
+    expect(run.mock.calls).toEqual([
       [{ op: "snap", fill: "top-left" }, id],
       [{ op: "maximize" }, id],
       [{ op: "move", dx: -STEP, dy: 0 }, id],
     ]);
-    expect(rectOf(c, id)).toEqual(before);
+  });
+
+  it("come back as the desk desk-wm publishes", async () => {
+    const { c } = ctx();
+    const id = await newWindow(c);
+    commands(c).get("maximize")?.();
+    expect(windowsOf(c.store.get()).find((p) => p.id === id)).toMatchObject({
+      x: 0,
+      y: 0,
+      w: 1440,
+      h: 900,
+      fill: "full",
+    });
   });
 
   it("do nothing without a window in use", () => {
-    const host = { grab: vi.fn(), run: vi.fn() };
-    const run = commands(ctx(host));
-    run.get("maximize")?.();
-    expect(host.run).not.toHaveBeenCalled();
-  });
-
-  it("without a window manager (the runtime's own tests and pages) move no window", () => {
-    const c = ctx();
-    const id = newWindow(c);
-    const before = rectOf(c, id);
-    for (const run of commands(c).values()) run();
-    expect(rectOf(c, id)).toEqual(before);
+    const { c, wm } = ctx();
+    const run = vi.spyOn(wm, "run");
+    commands(c).get("maximize")?.();
+    expect(run).not.toHaveBeenCalled();
   });
 });
 
 describe("the host's changes", () => {
-  it("are the truth for each window's geometry and the canvas's pan, as session edits", () => {
-    const c = ctx({ grab: vi.fn(), run: vi.fn() });
-    const id = newWindow(c);
-    const desktop = desktopId(c.store.get());
-    const restore = { x: 480, y: 240, w: 480, h: 320, floating: false };
-    takeWm(c, {
-      rev: 1,
-      desktop,
-      windows: [{ id, x: 0, y: 0, w: 714, h: 900, floating: true, fill: "left", restore }],
-    });
-    const p = layoutOf(c.store.get()).surfaces.find((w) => w.id === id);
-    expect(p).toMatchObject({ x: 0, y: 0, w: 714, h: 900, floating: true, fill: "left", restore });
-    // Dropped out of the fill: no fill, no restore, no floating.
-    takeWm(c, { rev: 2, desktop, windows: [{ id, x: 600, y: 300, w: 480, h: 320 }] });
-    const back = layoutOf(c.store.get()).surfaces.find((w) => w.id === id);
-    expect([back?.x, back?.y, back?.fill, back?.restore, back?.floating]).toEqual([
-      600,
-      300,
-      undefined,
-      undefined,
-      undefined,
-    ]);
-    takeWm(c, { rev: 3, desktop, pan: { x: -90, y: 40 } });
-    expect(c.store.get().pan[desktop]).toEqual({ x: -90, y: 40 });
+  it("are the runtime's whole, and an older desk arriving late is not", async () => {
+    const { c, wm, published } = ctx();
+    const id = await newWindow(c);
+    await wm.edit([{ op: "pan", to: { x: -90, y: 40 } }]);
+    const now = c.store.get();
+    expect(now.rev).toBe(published.at(-1)?.rev);
+    expect(now.pan["1"]).toEqual({ x: -90, y: 40 });
+    expect(now.focused).toBe(id);
+    // The desk before the pan, delivered late: the store keeps the newer one.
+    const late = published.at(-2);
+    if (!late) throw new Error("nothing published");
+    takeDesk(c.store, late);
+    expect(c.store.get()).toBe(now);
   });
 
   it("hold one window where the gesture holds it, until it lets go", () => {

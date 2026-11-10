@@ -1,16 +1,16 @@
 /**
  * The shell as the runtime's window host (ADR 0040): a plugin's centre or floating surface arrives
  * as a detached section and goes into a shell window's pane, where it stays while the window does.
- * The sections are kept here, not in the store; the store only knows which surfaces arrived.
+ * The sections are kept here; the window manager (crates/desk-wm, #83) is told which surfaces
+ * arrived and went, and gives each window its slot. Which windows keep a live frame is the window
+ * manager host's to say (`WindowManagerHost.live`, ADR 0151); a desk without one keeps them all.
  */
 import type { WindowHost } from "../runtime";
 import { windowsOf } from "../shell/actions";
 import { h } from "../shell/dom";
-import type { DeskState, Store } from "../shell/state";
+import type { Store } from "../shell/state";
 import { unplace } from "../surfaces";
-import { appSize } from "./coordinates";
-import { coveredPlugins } from "./cover";
-import { freeSlot } from "./tiling";
+import type { WindowManagerHost } from "../wm/host";
 
 export interface PluginWindows extends WindowHost {
   /** The element a pane shows for plugin surface `id`: the runtime's section, once it arrived. */
@@ -19,24 +19,13 @@ export interface PluginWindows extends WindowHost {
   has(id: string): boolean;
 }
 
-/**
- * A live budget kept outside the runtime (the compositor's, ADR 0151): the windows that keep a live
- * frame, undefined until it has decided, and a way to hear the set change.
- */
-export interface KeptWindows {
-  kept(): ReadonlySet<string> | undefined;
-  onChange(listener: () => void): () => void;
-}
-
 export function pluginWindows(
   store: Store,
+  wm: () => WindowManagerHost,
   show?: (id: string) => void,
-  budget?: KeptWindows,
 ): PluginWindows {
   const sections = new Map<string, HTMLElement>();
   const containers = new Map<string, HTMLElement>();
-  // Covered windows, worked out once per state and screen size (ADR 0070).
-  let hidden: { state: DeskState; size: string; ids: Set<string> } | undefined;
   return {
     show: (id) => {
       if (sections.has(id)) show?.(id);
@@ -48,21 +37,13 @@ export function pluginWindows(
       // A pane already waiting for it (a profile placed the plugin before it mounted) takes it now.
       const container = containers.get(spec.id);
       if (container && section.parentElement !== container) container.append(section);
-      store.set((s) => {
-        // A surface handed over again keeps its slot; a new one takes the first slot left free.
-        const kept = s.adopted.find((a) => a.id === spec.id)?.slot;
-        const others = s.adopted.filter((a) => a.id !== spec.id);
-        const slot = kept ?? freeSlot(others.map((a, i) => a.slot ?? i));
-        const at = s.adopted.find((a) => a.id === spec.id)?.at ?? s.pan[s.desktop];
-        return {
-          adopted: [...others, { id: spec.id, title: spec.title, slot, ...(at ? { at } : {}) }],
-        };
-      });
+      // A surface handed over again keeps its slot; a new one takes the first slot left free.
+      void wm().edit([{ op: "adopt", id: spec.id, title: spec.title }]);
     },
     release(id) {
       sections.delete(id);
       containers.delete(id);
-      store.set((s) => ({ adopted: s.adopted.filter((a) => a.id !== id) }));
+      void wm().edit([{ op: "release", id }]);
     },
     body(id) {
       const el = h("div", { class: "plugin-pane" });
@@ -72,15 +53,7 @@ export function pluginWindows(
       return el;
     },
     has: (id) => sections.has(id),
-    covered(id) {
-      const state = store.get();
-      const { vw, vh } = appSize();
-      const size = `${vw}x${vh}`;
-      if (hidden?.state !== state || hidden.size !== size)
-        hidden = { state, size, ids: coveredPlugins(state, vw, vh) };
-      return hidden.ids.has(id);
-    },
-    ...(budget ? { kept: () => budget.kept() } : {}),
+    live: () => wm().live?.(),
     // After the store's change is drawn: the shell draws its windows as the store changes.
     onChange: (listener) => {
       const offs = [
@@ -88,7 +61,7 @@ export function pluginWindows(
           (s) => [windowsOf(s), s.focused, s.desktop, s.pan, s.adopted, s.drawer],
           () => queueMicrotask(listener),
         ),
-        budget?.onChange(listener),
+        wm().onLive?.(listener),
       ];
       return () => {
         for (const off of offs) off?.();

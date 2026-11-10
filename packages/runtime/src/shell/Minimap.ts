@@ -10,8 +10,9 @@
  * window keeps all of itself (#3); the button opens it over that window when the person asks.
  */
 import { windowTitle } from "../desktops/map";
-import { appSize, isFloating, ORIGIN, screenRect } from "../surface/coordinates";
+import { appSize, isFloating, ORIGIN } from "../surface/coordinates";
 import type { Rect } from "../surface/geometry";
+import { rectIn } from "../wm/view";
 import { windowsOf } from "./actions";
 import type { ShellCtx } from "./context";
 import { h, listen } from "./dom";
@@ -46,11 +47,10 @@ export function mapShows(s: DeskState): boolean {
 
 /** Whether a filled window (maximized or snapped, ADR 0040's free area) is in sight. */
 export function fillInSight(s: DeskState, vw: number, vh: number): boolean {
-  const pan = panOf(s);
   return windowsOf(s).some((p) => {
     if (!p.fill && !p.restore) return false;
-    const r = screenRect(p, pan, vw, vh);
-    return r.x < vw && r.x + r.w > 0 && r.y < vh && r.y + r.h > 0;
+    const r = rectIn(s.wm, p.id);
+    return r !== undefined && r.x < vw && r.x + r.w > 0 && r.y < vh && r.y + r.h > 0;
   });
 }
 

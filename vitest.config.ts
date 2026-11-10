@@ -13,6 +13,8 @@ export default defineConfig({
     ],
   },
   test: {
+    // The window manager the runtime's tests run, built as WebAssembly when it is stale (#83).
+    globalSetup: ["./scripts/desk-wm-wasm.mjs"],
     include: [
       "packages/*/src/**/*.test.ts",
       "apps/*/src/**/*.test.ts",

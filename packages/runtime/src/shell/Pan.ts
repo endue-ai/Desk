@@ -1,16 +1,19 @@
-import { type Offset, ORIGIN } from "../surface/coordinates";
-import { desktopId } from "./actions";
+import type { Offset } from "../wm/types";
+import { desktopId, edit } from "./actions";
 import type { ShellCtx } from "./context";
 import { h, listen } from "./dom";
 import { draggable } from "./drag";
 import { icon } from "./icons";
 import type { DeskState } from "./state";
 
+const ORIGIN: Offset = { x: 0, y: 0 };
+
 /** The canvas offset of the desktop in front (by id, ADR 0117). */
 export const panOf = (s: DeskState): Offset => s.pan[desktopId(s)] ?? ORIGIN;
 
-export function setPan(ctx: ShellCtx, pan: Offset): void {
-  ctx.store.set((s) => ({ pan: { ...s.pan, [desktopId(s)]: pan } }));
+/** The window manager pans the canvas of the desktop in front to `pan` (#83). */
+export function setPan(ctx: Pick<ShellCtx, "wm">, pan: Offset): Promise<unknown[]> {
+  return edit(ctx, { op: "pan", to: pan });
 }
 
 /** The wheel moves the canvas as it would scroll a page `page` pixels high: lines are 16 pixels. */

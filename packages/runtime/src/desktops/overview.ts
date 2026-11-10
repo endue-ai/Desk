@@ -126,7 +126,7 @@ export function mountOverview(root: HTMLElement, ctx: ShellCtx, dialogs: Dialogs
     const fallback = root.querySelector<HTMLElement>(".desktops .desktop-button.is-active") ?? root;
     release = containModal(panel, close, fallback);
     watching = ctx.store.watch(
-      (s) => [desktopsOf(s), s.desktop, s.session, s.pan, s.adopted, s.focused, s.lang],
+      (s) => [desktopsOf(s), s.desktop, s.wm.windows, s.pan, s.adopted, s.focused, s.lang],
       draw,
     );
     grid.querySelector<HTMLElement>(".overview-card.is-current")?.focus();
