@@ -53,12 +53,6 @@
         },
         {
           "tag": "span",
-          "box": [
-            417,
-            594,
-            39,
-            20
-          ],
           "style": {
             "display": "block",
             "background-color": "rgba(0, 0, 0, 0)",

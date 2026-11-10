@@ -68,7 +68,9 @@ export async function shellTree(page: Page, selector = "#desk"): Promise<string>
       if (c.transform !== "none") style.transform = c.transform;
       if (c.filter !== "none") style.filter = c.filter;
       if (el.classList.contains("soul-line")) style.letterSpacing = c.letterSpacing;
-      if (el.classList.contains("modes-more")) style.maxWidth = c.maxWidth;
+      // Folded, the row of profiles is 0 wide; unfolded, as wide as its chips' words, which the OS's
+      // font sets, so only the fold is recorded (shell.spec.ts checks the open row fits its chips).
+      if (el.classList.contains("modes-more") && c.maxWidth === "0px") style.maxWidth = c.maxWidth;
       if (el.classList.contains("composer-field")) style.height = c.height;
       if (Object.keys(style).length) node.style = style;
       const text = [...el.childNodes]

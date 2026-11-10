@@ -42,9 +42,6 @@
     {
      "tag": "div",
      "class": "modes-more",
-     "style": {
-      "maxWidth": "554px"
-     },
      "children": [
       {
        "tag": "button",

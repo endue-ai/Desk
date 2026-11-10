@@ -16,6 +16,20 @@ async function open(page: Page) {
   });
 }
 
+type TreeNode = { tag: string; class?: string; box?: number[]; children?: TreeNode[] };
+
+/**
+ * The title's words ("Next key") are as wide as the OS's font draws them: their box is left out, so
+ * one snapshot serves every OS. Every other box in the overlay is sized by its CSS.
+ */
+function fontFree(node: TreeNode): TreeNode {
+  for (const child of node.children ?? []) {
+    if (node.class === "desk-which-key-title" && child.tag === "span") child.box = undefined;
+    fontFree(child);
+  }
+  return node;
+}
+
 const overlay = (page: Page) => page.locator(".desk-which-key");
 const pending = (page: Page) => page.locator(".desk-keys-pending");
 const settings = (page: Page) => page.locator(".desk-settings");
@@ -29,7 +43,7 @@ test("after a prefix the which-key overlay lists every continuation, and the nex
   await expect(pending(page)).toContainText("⌘K");
   await expect(overlay(page).getByRole("combobox")).toBeFocused();
   await expect(overlay(page).getByRole("option")).toHaveCount(2);
-  const tree = await page.evaluate(renderTree, ".desk-which-key");
+  const tree = fontFree((await page.evaluate(renderTree, ".desk-which-key")) as TreeNode);
   expect(`${JSON.stringify(tree, null, 2)}\n`).toMatchSnapshot("which-key-after-mod-k.json");
 
   await page.keyboard.press("Meta+S");
