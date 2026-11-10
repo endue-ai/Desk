@@ -11,6 +11,11 @@ ignore = [
   # Unmaintained, not vulnerable. Pulled in by glib-macros and gtk3-macros, the Linux GTK stack under
   # the shell's tray, menus and file dialog (tray-icon, muda, rfd). Remove when they move off gtk3-rs.
   { id = "RUSTSEC-2024-0370", reason = "transitive via the shell's Linux GTK stack; no maintained alternative yet" },
+  # Unmaintained, not vulnerable: merged into zbus 6. Pulled in by accesskit_unix (AT-SPI, the
+  # compositor window's accessibility on Linux, #57), which is still on zbus 5. Remove when it moves.
+  { id = "RUSTSEC-2026-0370", reason = "zvariant, transitive via accesskit_unix on zbus 5; no release on zbus 6 yet" },
+  { id = "RUSTSEC-2026-0371", reason = "zbus_names, transitive via accesskit_unix on zbus 5; no release on zbus 6 yet" },
+  { id = "RUSTSEC-2026-0372", reason = "zvariant_derive, transitive via accesskit_unix on zbus 5; no release on zbus 6 yet" },
 ]
 
 [licenses]
