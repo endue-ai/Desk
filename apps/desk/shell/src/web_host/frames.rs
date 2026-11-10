@@ -224,8 +224,9 @@ pub struct Pacing {
     /// The paints seen so far and when the count last moved.
     paints: u64,
     painted: Option<Instant>,
-    /// Its page has painted since it loaded: until then it never rests, so a page whose start-up
-    /// script holds its thread past `LONG_IDLE` (and with it the ask's timers) still gets frames.
+    /// Its page has painted since it loaded. Until then it counts as asking for frames, so a page
+    /// whose start-up script holds its thread past `LONG_IDLE` (and with it the ask's timers) still
+    /// gets them once it rests.
     shown_since_load: bool,
     /// When it last painted or heard something (`None`: not looked at yet).
     active: Option<Instant>,
@@ -268,8 +269,8 @@ impl Pacing {
         self.active = Some(self.active.map_or(at, |t| t.max(at)));
     }
 
-    /// Its page started loading at `at` (a first load, a restart, a reload in place): it takes every
-    /// desk frame its pace takes until the new page paints.
+    /// Its page started loading at `at` (a first load, a restart, a reload in place): until the new
+    /// page paints, it counts as asking for frames.
     pub fn loading(&mut self, at: Instant) {
         self.shown_since_load = false;
         self.heard(at);
@@ -327,18 +328,16 @@ impl Pacing {
         }
     }
 
-    /// Whether its page painted since it loaded, and since then painted nothing and heard nothing for
-    /// `LONG_IDLE` by `now`.
+    /// Whether it painted nothing and heard nothing for `LONG_IDLE` by `now`.
     pub fn long_idle(&self, now: Instant) -> bool {
-        self.shown_since_load
-            && self
-                .active
-                .is_some_and(|t| now.saturating_duration_since(t) >= LONG_IDLE)
+        self.active
+            .is_some_and(|t| now.saturating_duration_since(t) >= LONG_IDLE)
     }
 
-    /// Whether its page's ask still holds at `now`.
+    /// Whether its page's ask still holds at `now`, or its page has not painted since it loaded (its
+    /// asks may not have run yet).
     fn asked_at(&self, now: Instant) -> bool {
-        self.asked.is_some_and(|until| now <= until)
+        !self.shown_since_load || self.asked.is_some_and(|until| now <= until)
     }
 
     /// Whether desk frame `k` is one its pace takes, counted from its base.

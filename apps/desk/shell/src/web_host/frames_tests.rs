@@ -101,22 +101,19 @@ fn a_long_idle_surface_rests_until_it_hears_something_paints_or_its_page_asks() 
 }
 
 #[test]
-fn a_page_that_has_not_painted_since_it_loaded_never_rests() {
+fn a_page_that_has_not_painted_since_it_loaded_keeps_its_frames_while_it_rests() {
     let t0 = Instant::now();
     let mut slow = Pacing::new(60);
     // A start-up script holds the page's thread: no paint, no ask, for longer than LONG_IDLE.
     assert!(slow.due(t0, Some(0), 0));
     let late = t0 + LONG_IDLE * 3;
-    assert!(
-        !slow.long_idle(late),
-        "not painted since it loaded: not resting"
-    );
+    assert!(slow.long_idle(late), "it rests");
     assert_eq!(
         taken(&mut slow, late, 180..183, 0),
         "xxx",
-        "it keeps its desk frames"
+        "but counts as asking: it keeps its desk frames"
     );
-    // Its first paint comes; once idle after it, it rests.
+    // Its first paint comes; once idle after it, it rests without frames.
     assert!(slow.due(late, Some(183), 1));
     let rest = late + LONG_IDLE;
     assert!(slow.long_idle(rest));
@@ -124,8 +121,11 @@ fn a_page_that_has_not_painted_since_it_loaded_never_rests() {
     // A reload in place (or a restart) starts over: frames until the new page paints.
     slow.loading(rest);
     let again = rest + LONG_IDLE * 2;
-    assert!(!slow.long_idle(again), "a new page, not painted yet");
-    assert_eq!(taken(&mut slow, again, 300..303, 1), "xxx");
+    assert_eq!(
+        taken(&mut slow, again, 300..303, 1),
+        "xxx",
+        "a new page, not painted yet"
+    );
 }
 
 #[test]
