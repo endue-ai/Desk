@@ -4,7 +4,7 @@
 // a panned canvas. desk.windows.list gives every rect and each desktop's pan. Left with their
 // runtime twins: the cursors and the text selection (windows-selection covers the selection), the
 // app's own size changing, the shell never scrolling, the session's stored coordinates across a
-// relaunch (session.spec.ts), and the canvas map and its Reset button (drawn by #54).
+// relaunch (session.spec.ts), and the Reset button. The canvas map is windows-map.spec.ts's (#54).
 import { browser, expect } from "@wdio/globals";
 import { shellReady } from "../support/desk";
 import {
