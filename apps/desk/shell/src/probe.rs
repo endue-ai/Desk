@@ -8,7 +8,8 @@
 //! memory per live surface and the start to the first composed web surface; `tests/isolation.rs`
 //! and `tests/budgets.rs` judge them. The `a11y` run (#57, `a11y.rs`) exports a page's tree, merged
 //! as the compositor merges it, and does a screen reader's actions on it; `tests/a11y.rs` judges it.
-//! The `rest` run (#129, `rest.rs`) counts what a desk at rest costs, its loop run as the window's.
+//! The `rest` run (#129, `rest.rs`) counts what a desk at rest costs, its loop run as the window's,
+//! and the `idle-input` run (#133, `idle_input.rs`) presses surfaces on a desk at rest.
 //! `DESK_PROBE_TRACE=<file>` writes Chromium's trace of any run (#117, `trace.rs`). Development use
 //! only; it never opens the person's data folder.
 

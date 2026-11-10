@@ -4,6 +4,9 @@ date: 2026-11-11
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0162: a press on a desk at rest waited for the GPU's first copies after a
+second or more without one, and input to a cold desk now wakes them first.
+
 # CEF's poll rides the desk's own wake-ups, and a stand-in clock covers CEF's busy-wait
 
 ## Context and Problem Statement
