@@ -2,6 +2,10 @@
 // the folder is the root, its `tests/*.test.{js,ts}` the tests, in a jsdom page.
 // `@endue-ai/plugin-sdk` and `@endue-ai/plugin-sdk/testing` resolve to this package, so a plugin
 // anywhere imports them as its page does. Caches stay in this checkout, not in the plugin's folder.
+// No module cache on disk: vitest keys it by the lockfile nearest the root, the checkout's for a
+// plugin inside it and none for one outside, so each change of key cleared the folder runs share,
+// and a run clearing it while another wrote there failed with ENOTEMPTY (#139). Without it a run
+// takes about 0.1 s longer and nothing grows with each new folder tested.
 //
 //   DESK_PLUGIN_DIR=<folder> node node_modules/vitest/vitest.mjs run --config <this file>
 
@@ -28,6 +32,6 @@ export default defineConfig({
   test: {
     include: ["tests/**/*.test.{js,ts}"],
     environment: "jsdom",
-    fsModuleCachePath: here("../../node_modules/.vitest-cache/plugin-test"),
+    fsModuleCache: false,
   },
 });

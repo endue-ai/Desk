@@ -3,7 +3,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 fn repo() -> PathBuf {
@@ -26,9 +26,14 @@ struct Folder(PathBuf);
 
 impl Folder {
     fn new(name: &str) -> Self {
+        Self::under(&std::env::temp_dir(), name)
+    }
+
+    /// A folder in `base`: the system's temporary folder, or one inside the checkout.
+    fn under(base: &Path, name: &str) -> Self {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let n = NEXT.fetch_add(1, Ordering::Relaxed);
-        let dir = std::env::temp_dir().join(format!(
+        let dir = base.join(format!(
             "desk-cli-plugin-test-{}-{n}/{name}",
             std::process::id()
         ));
@@ -146,7 +151,10 @@ it("counts into plugin state", async () => {
 "#;
 
 fn ui_plugin(expected: u32) -> Folder {
-    let folder = Folder::new("counter");
+    ui_plugin_in(Folder::new("counter"), expected)
+}
+
+fn ui_plugin_in(folder: Folder, expected: u32) -> Folder {
     folder.write("plugin.json", UI_MANIFEST.as_bytes());
     folder.write("ui/index.html", b"<!doctype html><p>0</p>");
     let test = UI_TEST.replace("EXPECTED", &expected.to_string());
@@ -178,6 +186,43 @@ fn plugin_test_fails_when_a_ui_test_fails() {
     assert_eq!(out.status.code(), Some(1), "{stdout}\n{stderr}");
     // It fails on the expectation, not because the test did not load.
     assert!(stderr.contains("to deeply equal"), "{stdout}\n{stderr}");
+}
+
+/// Runs at once share nothing one of them clears. vitest keyed its module cache in the checkout
+/// by the lockfile nearest the plugin's folder: the checkout's for a folder inside it, none for one
+/// outside. Each change of key cleared the shared folder, and a run clearing it while another wrote
+/// there failed with `ENOTEMPTY` (#139).
+#[test]
+fn plugin_test_runs_at_once_inside_and_outside_the_checkout() {
+    let inside = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
+    for _ in 0..3 {
+        let folders: Vec<Folder> = (0..4)
+            .map(|i| {
+                let base = if i % 2 == 0 {
+                    inside.clone()
+                } else {
+                    std::env::temp_dir()
+                };
+                ui_plugin_in(Folder::under(&base, "counter"), 2)
+            })
+            .collect();
+        let runs: Vec<_> = folders
+            .iter()
+            .map(|folder| {
+                Command::new(env!("CARGO_BIN_EXE_desk"))
+                    .args(["plugin", "test", folder.arg()])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .expect("desk runs")
+            })
+            .collect();
+        for run in runs {
+            let out = run.wait_with_output().expect("desk ends");
+            let (stdout, stderr) = (text(&out.stdout), text(&out.stderr));
+            assert!(out.status.success(), "{stdout}\n{stderr}");
+        }
+    }
 }
 
 #[test]
