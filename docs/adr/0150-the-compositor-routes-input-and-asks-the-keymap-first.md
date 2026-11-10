@@ -48,6 +48,15 @@ owns the pointer, the focus, the IME and drags, so a drag or a prefix never spli
   SDK still forwards what the plugin leaves.
 * **Focus**: a press moves it; the runtime's own moves (a window it opens, Ctrl+Tab, the which-key
   overlay) come from the page, which says which stand-in has its focus.
+* **Tab** (#123): the page's own focus order moves through its stand-ins as through frames. Tab enters
+  a stand-in at a first edge (Shift+Tab at a last one), and the plugin's page focuses its first (or
+  last) control, its text selected as Tab selects it; a page with none is passed by. A plugin's page
+  that tabs past an end (CEF's `OnTakeFocus`) has its stand-in put the page's focus on that edge and
+  Tab pressed in the page once more, so the focus goes on from the frame in the page's own order.
+  Ctrl+Tab still focuses the window's section, the frame's place in that order, as the windowed desk
+  did. The keys follow the page's focus, and AccessKit's follows the keys (ADR 0155). A stand-in is a
+  frame of another process, which takes the focus after the page's element has let it go and with no
+  focus event in the page: the page reports its focus on its window's blur too.
 * **IME**: compositions and commits to the focused surface; the OS input method on only while that
   surface says an editable element has the focus; its composition's boxes place the candidate window.
 * **Drag and drop**: ADR 0119's broker in Rust, on the protocol's `drag.*`; the web host turns the SDK's
@@ -74,3 +83,6 @@ web_host/{input,key_codes,cursor,drag,routes}.rs`, `apps/desk/src/compositor-{ke
 `crates/desk-compositor/tests/{input_routing,input_ime,input_dnd,keymap,keymap_conflicts}.rs`,
 `e2e/specs/{ime,dnd}.spec.ts`. Amends ADR 0118 (who decides first) and ADR 0119 (who runs the broker)
 in compositor mode. `docs/ko/desk-structure.md` changes with #53, when the window manager moves.
+Tab (#123): `apps/desk/shell/src/web_host/{stand_in.html,shim.js,relay.rs,client.rs,input.rs}` and
+`apps/desk/src/compositor-focus.ts`, tested by `e2e/specs/a11y.spec.ts` and
+`compositor-focus.test.ts`.

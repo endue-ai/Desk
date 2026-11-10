@@ -1,7 +1,8 @@
 //! The client of one off-screen plugin surface's browser: its render handler (`render.rs`); its
 //! title, its cursor, its load (`ready`) and its renderer's death (`died`) for the host; no popups; the
 //! browser-process guard on every load (`guard.rs`); its page's bridge calls, as the plugin its URL
-//! names (`desk_web::sender`, #43); and its postMessages for the relay.
+//! names (`desk_web::sender`, #43); its postMessages for the relay; and a Tab past its page's end
+//! (#123), for the relay too.
 
 // `wrap_client!` makes a constructor with one argument per field.
 #![allow(clippy::too_many_arguments)]
@@ -52,6 +53,21 @@ wrap_display_handler! {
                 eprintln!("surface console ({}): {message} ({source}:{line})", self.surface);
             }
             0
+        }
+    }
+}
+
+wrap_focus_handler! {
+    // The page tabbed past its last control (`next`) or before its first (#123): the shell page's
+    // focus order goes on from the surface's stand-in (`relay.rs`).
+    pub struct SurfaceFocus {
+        host: WebHost,
+        surface: String,
+    }
+
+    impl FocusHandler {
+        fn on_take_focus(&self, _browser: Option<&mut Browser>, next: ::std::os::raw::c_int) {
+            self.host.relay().leave(&self.surface, next != 0);
         }
     }
 }
@@ -159,6 +175,7 @@ wrap_client! {
         life_span: LifeSpanHandler,
         load: LoadHandler,
         requests: RequestHandler,
+        focus: FocusHandler,
         host: WebHost,
         surface: String,
         desk: Option<Arc<Desk>>,
@@ -167,6 +184,10 @@ wrap_client! {
     impl Client {
         fn render_handler(&self) -> Option<RenderHandler> {
             Some(self.render.clone())
+        }
+
+        fn focus_handler(&self) -> Option<FocusHandler> {
+            Some(self.focus.clone())
         }
 
         fn display_handler(&self) -> Option<DisplayHandler> {
@@ -232,6 +253,7 @@ pub fn client(
         SurfaceLifeSpan::new(h.clone(), s.clone()),
         SurfaceLoad::new(h.clone(), s.clone()),
         SurfaceRequests::new(h.clone(), s.clone()),
+        SurfaceFocus::new(h.clone(), s.clone()),
         h,
         s,
         desk,

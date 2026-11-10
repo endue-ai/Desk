@@ -4,10 +4,12 @@
 // the tree the platform adapter has, as a screen reader walks it: the window list, the plugin's
 // window with its title bar and the plugin's own content inside it, each box in the window's
 // pixels. A screen reader's click reaches the plugin's button, its focus the field (the keys follow,
-// and so does the tree's focus), and a value it sets is typed into the field.
+// and so does the tree's focus), and a value it sets is typed into the field. A keyboard reaches the
+// plugin's content from its window as through a frame (#123): Control+Tab brings the window forward,
+// Tab enters the plugin at its first control and Shift+Tab at its last, and each leaves it at its end.
 import { browser, expect } from "@wdio/globals";
-import { feed, inputState, inSurface, shellCommand } from "../support/compositor";
-import { shellReady } from "../support/desk";
+import { feed, inputState, inSurface, keyPress, shellCommand } from "../support/compositor";
+import { focusedSurface, shellReady } from "../support/desk";
 
 const A11Y = "main.e2e-a11y";
 
@@ -48,6 +50,21 @@ const inside = (inner: Node["bounds"], outer: Node["bounds"]) =>
 
 const seen = () =>
   inSurface<{ clicks: number; value: string; focused: boolean }>(A11Y, "window.e2eA11y");
+
+/** A press of Tab through the compositor, with these modifiers held. */
+const tab = (mods: Record<string, boolean> = {}) =>
+  feed([{ type: "modifiers", ...mods }, ...keyPress("Tab", "Tab", "\t"), { type: "modifiers" }]);
+
+/** What has the keyboard in the plugin's own page: the active element's tag and type. */
+const inPlugin = () =>
+  inSurface<string>(
+    A11Y,
+    "document.hasFocus() ? `${document.activeElement?.tagName}:${document.activeElement?.type ?? ''}` : 'none'",
+  );
+
+/** The page's focus is in the desk's own chrome, not in a plugin's stand-in frame. */
+const inChrome = () =>
+  browser.execute(() => !!document.activeElement && document.activeElement.tagName !== "IFRAME");
 
 describe("a11y: the desk is one accessibility tree a screen reader walks and acts through", () => {
   let tree: Tree;
@@ -137,5 +154,85 @@ describe("a11y: the desk is one accessibility tree a screen reader walks and act
       async () => find((await a11y()).tree, "text-input", "New item")?.value === "Buy milk",
       { timeoutMsg: "the tree never showed the value" },
     );
+  });
+
+  it("Control+Tab to the plugin's window, Tab types into its field, Shift+Tab leaves it", async () => {
+    // Round the windows with the desk's focus cycling until the plugin's window has the focus again.
+    for (let presses = 0; presses < 40; presses++) {
+      const before = await focusedSurface();
+      await tab({ ctrl: true });
+      // Each press moves the focus on before the next is pressed.
+      await browser
+        .waitUntil(async () => (await focusedSurface()) !== before, { timeout: 5_000 })
+        .catch(() => undefined);
+      if ((await focusedSurface()) === "e2e.a11y" && (await inChrome())) break;
+    }
+    expect(await focusedSurface()).toBe("e2e.a11y");
+    expect(await inChrome()).toBe(true);
+    await browser.waitUntil(async () => (await inputState()).focused !== A11Y, {
+      timeoutMsg: "the window's section has the page's focus, yet the plugin kept the keys",
+    });
+
+    // Tab: into the plugin, at its first control; the keys and the tree's focus follow.
+    await tab();
+    await browser.waitUntil(async () => (await seen()).focused, {
+      timeoutMsg: "Tab never reached the plugin's field",
+    });
+    await browser.waitUntil(async () => (await inputState()).focused === A11Y, {
+      timeoutMsg: "the plugin's surface never had the keys",
+    });
+    await browser.waitUntil(async () => (await a11y()).focus?.label === "New item", {
+      timeoutMsg: "the tree's focus never moved to the field",
+    });
+    // Tab selected the field's text, as a Tab into a frame does: the keys replace it.
+    await feed([...keyPress("o", "KeyO", "o"), ...keyPress("k", "KeyK", "k")]);
+    await browser.waitUntil(async () => (await seen()).value === "ok", {
+      timeoutMsg: "the keys never typed into the field",
+    });
+
+    // Shift+Tab at the plugin's first control: out of it, back to the window's chrome.
+    await tab({ shift: true });
+    await browser.waitUntil(async () => !(await seen()).focused, {
+      timeoutMsg: "Shift+Tab never left the field",
+    });
+    await browser.waitUntil(async () => (await inputState()).focused !== A11Y, {
+      timeoutMsg: "the plugin kept the keys",
+    });
+    await browser.waitUntil(inChrome, { timeoutMsg: "the page's focus stayed in the stand-in" });
+    await browser.waitUntil(async () => (await a11y()).focus?.label !== "New item", {
+      timeoutMsg: "the tree's focus stayed on the field",
+    });
+  });
+
+  it("Tab past the plugin's last control leaves it, and Shift+Tab comes back to it", async () => {
+    await tab();
+    await browser.waitUntil(async () => (await seen()).focused, {
+      timeoutMsg: "Tab never reached the plugin's field",
+    });
+    await tab();
+    await browser.waitUntil(async () => (await inPlugin()) === "BUTTON:button", {
+      timeoutMsg: "Tab never moved on to the button",
+    });
+    await tab();
+    await browser.waitUntil(async () => (await inPlugin()) === "INPUT:checkbox", {
+      timeoutMsg: "Tab never moved on to the checkbox",
+    });
+    // Past the checkbox: out of the plugin, on into the desk's chrome.
+    await tab();
+    await browser.waitUntil(async () => (await inputState()).focused !== A11Y, {
+      timeoutMsg: "Tab past the last control kept the plugin's keys",
+    });
+    await browser.waitUntil(inChrome, { timeoutMsg: "the page's focus stayed in the stand-in" });
+    // Shift+Tab from there: into the plugin again, at its last control.
+    await tab({ shift: true });
+    await browser.waitUntil(async () => (await inPlugin()) === "INPUT:checkbox", {
+      timeoutMsg: "Shift+Tab never came back to the plugin's last control",
+    });
+    await browser.waitUntil(async () => (await inputState()).focused === A11Y, {
+      timeoutMsg: "the plugin's surface never had the keys again",
+    });
+    await browser.waitUntil(async () => (await a11y()).focus?.label === "Milk", {
+      timeoutMsg: "the tree's focus never moved to the checkbox",
+    });
   });
 });

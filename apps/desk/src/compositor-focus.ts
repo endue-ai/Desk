@@ -15,7 +15,9 @@ export function focusedSurface(doc: Document): string | null {
 /**
  * Report the page's focus when it changes, after a focus move settles (the focus leaves one
  * element before it reaches the next); returns the function that stops. Nothing is said while the
- * window is in the background: its focus did not move, the app's did.
+ * window is in the background: its focus did not move, the app's did. A stand-in is a frame of
+ * another process: Tab into it (#123) takes the focus from the page's element first and gives it
+ * to the frame later, which the page hears only as its window's blur.
  */
 export function startCompositorFocus(
   win: Window,
@@ -36,9 +38,11 @@ export function startCompositorFocus(
   };
   win.addEventListener("focusin", schedule, true);
   win.addEventListener("focusout", schedule, true);
+  win.addEventListener("blur", schedule);
   return () => {
     if (timer !== undefined) clearTimeout(timer);
     win.removeEventListener("focusin", schedule, true);
     win.removeEventListener("focusout", schedule, true);
+    win.removeEventListener("blur", schedule);
   };
 }

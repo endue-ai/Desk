@@ -12,6 +12,12 @@
 //! page has already said hello says it again on the page's behalf: the runtime greets the moved
 //! frame as it would a reloaded one, and the plugin, which never reloaded, is not handed a second
 //! `desk:init`.
+//!
+//! Tab crosses here too (#123): a stand-in the shell page's Tab entered tells its surface's page
+//! (`desk:stand-in-enter`), which focuses its first or last control (`shim.js`); a surface's page
+//! that tabs past an end is its browser's `OnTakeFocus` (`client.rs`), and the stand-in is told
+//! (`desk:stand-in-leave`); it puts the page's focus on that edge and asks for one more Tab in the
+//! shell page (`desk:stand-in-tab`), which leaves the frame by the page's own focus order.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -86,10 +92,23 @@ pub type NativeDown = Arc<dyn Fn(String) + Send + Sync>;
 /// The SDK's hello, said again for a page whose stand-in moved.
 pub const HELLO: &str = r#"{"type":"desk:hello"}"#;
 
+/// What the shell tells a stand-in when its plugin's page tabbed past an end (#123).
+const LEAVE: &str = "desk:stand-in-leave";
+
 /// The message type a relayed text carries, when it is a JSON object with one.
 fn kind(text: &str) -> Option<String> {
     let value: serde_json::Value = serde_json::from_str(text).ok()?;
     value.get("type")?.as_str().map(str::to_owned)
+}
+
+/// A stand-in's own `desk:stand-in-tab`: the Tab it wants pressed, `Some(true)` for Shift+Tab.
+fn stand_in_tab(text: &str) -> Option<bool> {
+    if !text.contains("desk:stand-in-tab") {
+        return None;
+    }
+    let value: serde_json::Value = serde_json::from_str(text).ok()?;
+    (value.get("type")?.as_str()? == "desk:stand-in-tab")
+        .then(|| value.get("back").and_then(serde_json::Value::as_bool) == Some(true))
 }
 
 /// The surface host of a `desk-plugin` URL, when it names one.
@@ -152,12 +171,19 @@ impl Relay {
         }
     }
 
-    /// The runtime posted `text` to the stand-in `frame`: to the surface's page.
+    /// The runtime posted `text` to the stand-in `frame`: to the surface's page. The stand-in's own
+    /// Tab (`stand_in.html`, #123) is pressed in the shell page instead, whose focus it has.
     pub fn down(&self, frame: &Frame, text: String) {
         let url = CefString::from(&frame.url()).to_string();
         let Some(host) = surface_host(&url) else {
             return;
         };
+        if let Some(back) = stand_in_tab(&text) {
+            if let Some(page) = frame.browser().and_then(|b| b.host()) {
+                super::input::press_tab(&page, back);
+            }
+            return;
+        }
         let (target, native) = {
             let mut tables = self.tables();
             if tables.greetings.kept(&host, kind(&text).as_deref()) {
@@ -205,6 +231,21 @@ impl Relay {
         }
     }
 
+    /// The page of surface `host` tabbed past its last control (`next`) or before its first: its
+    /// stand-in leaves the shell page's focus at that edge and has Tab pressed there (#123).
+    pub fn leave(&self, host: &str, next: bool) {
+        let frame = self
+            .tables()
+            .stand_ins
+            .get(host)
+            .filter(|f| f.is_valid() == 1)
+            .cloned();
+        if let Some(frame) = frame {
+            let text = serde_json::json!({ "type": LEAVE, "next": next });
+            crate::host::send(frame, text.to_string());
+        }
+    }
+
     /// Messages relayed so far: (down to plugins, up to the runtime).
     pub fn counts(&self) -> (u64, u64) {
         let tables = self.tables();
@@ -245,9 +286,29 @@ wrap_load_handler! {
 
 #[cfg(test)]
 mod tests {
-    use super::{Greetings, kind, surface_host};
+    use super::{Greetings, kind, stand_in_tab, surface_host};
 
     const NOTES: &str = "main.endue-notes";
+
+    #[test]
+    fn only_a_stand_ins_own_tab_is_pressed_in_the_page() {
+        let tab = |text: &str| stand_in_tab(text);
+        assert_eq!(
+            tab(r#"{"type":"desk:stand-in-tab","back":true}"#),
+            Some(true)
+        );
+        assert_eq!(
+            tab(r#"{"type":"desk:stand-in-tab","back":false}"#),
+            Some(false)
+        );
+        assert_eq!(tab(r#"{"type":"desk:stand-in-tab"}"#), Some(false));
+        assert_eq!(
+            tab(r#"{"type":"desk:state","note":"desk:stand-in-tab"}"#),
+            None,
+            "a runtime message for the plugin that names it"
+        );
+        assert_eq!(tab("desk:stand-in-tab"), None);
+    }
 
     #[test]
     fn a_moved_stand_in_greets_the_runtime_again_and_its_init_stays_here() {

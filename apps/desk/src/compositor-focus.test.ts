@@ -59,4 +59,23 @@ describe("the page's focus report (#56)", () => {
     await tick();
     expect(sent).toHaveLength(3);
   });
+
+  it("hears Tab put the focus in a stand-in of another process, which says so only by a blur (#123)", async () => {
+    const notes = frame("desk-plugin://main.endue-notes/endue.notes/ui/index.html");
+    const input = document.createElement("input");
+    document.body.append(input);
+    const sent: Array<string | null> = [];
+    const stop = startCompositorFocus(window, (surface) => sent.push(surface));
+    focus(input);
+    await tick();
+    // The page's element lets the focus go, and the frame takes it once its process answers.
+    input.blur();
+    input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    await tick();
+    notes.focus();
+    window.dispatchEvent(new FocusEvent("blur"));
+    await tick();
+    expect(sent).toEqual([null, "main.endue-notes"]);
+    stop();
+  });
 });
