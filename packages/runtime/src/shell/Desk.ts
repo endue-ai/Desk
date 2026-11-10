@@ -16,7 +16,7 @@ import type { PluginHostOptions } from "../plugins";
 import { installProposals } from "../propose/install";
 import { createRuntime, type Runtime } from "../runtime";
 import type { StartInfo } from "../start";
-import { pluginWindows } from "../surface/host";
+import { type KeptWindows, pluginWindows } from "../surface/host";
 import { wakePlaced } from "../surface/placed";
 import { mountSurfaces } from "../surface/Surface";
 import { loadDirectory } from "../system/agents";
@@ -67,6 +67,8 @@ export interface DeskOptions {
   start?: StartInfo;
   /** Start the desk again without safe mode ("Start normally"); only a native host can. */
   relaunch?: () => void | Promise<void>;
+  /** The live budget, when the host keeps it (the CEF shell's compositor, ADR 0151). */
+  liveBudget?: KeptWindows;
 }
 
 export interface Desk {
@@ -95,7 +97,7 @@ export function mountDesk(options: DeskOptions): Desk {
     say: () => undefined,
     setState: () => undefined,
   };
-  const windows = pluginWindows(store, (id) => showPlugin(ctx, id));
+  const windows = pluginWindows(store, (id) => showPlugin(ctx, id), options.liveBudget);
   // The runtime is created below; nothing reads it before then.
   const ctx: ShellCtx = {
     store,

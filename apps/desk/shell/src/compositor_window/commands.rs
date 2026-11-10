@@ -1,5 +1,5 @@
-//! The shell page's compositor commands (#52, #56), the runtime's only (`desk_web::sender`):
-//! `compositor_layout` (where its plugin frames are, `layout.rs`), `compositor_keys` (the keymap's
+//! The shell page's compositor commands (#52, #56, #81), the runtime's only (`desk_web::sender`):
+//! `compositor_desk` (the desk the runtime keeps, `report.rs`), `compositor_keys` (the keymap's
 //! entries, which the compositor resolves to decide before delivery whose a key is) and
 //! `compositor_focus` (the surface whose stand-in has the page's focus); in development builds
 //! `compositor_capture { path }` (the composed frame as a PNG), `compositor_stats` (what every surface
@@ -13,15 +13,15 @@ use std::time::Duration;
 use serde_json::Value;
 
 use super::input::KeysReport;
-use super::layout::Report;
+use super::report::DeskReport;
 use crate::host::Desk;
 
 /// The answer to `cmd` with `args`.
 pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
     match cmd {
-        "compositor_layout" => {
-            let report: Report = serde_json::from_value(args.clone())
-                .map_err(|why| format!("not a layout: {why}"))?;
+        "compositor_desk" => {
+            let report: DeskReport =
+                serde_json::from_value(args.clone()).map_err(|why| format!("not a desk: {why}"))?;
             desk.pump.run(move |shell, _| {
                 if let Some(compositor) = shell.compositor.as_mut() {
                     compositor.report(report);

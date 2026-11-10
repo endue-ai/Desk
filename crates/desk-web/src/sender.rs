@@ -24,10 +24,10 @@ const MAIN_COMMANDS: &[&str] = &[
     "take_last_crash",
     "palette_reveal_main",
     "plugin:dialog|open",
-    // Compositor mode (#52): where the runtime placed its plugin frames; captures and counts for
-    // checks in development builds. Input (#56): the keymap's entries and the page's focus; events
-    // fed to the window's input and where input goes, for checks in development builds.
-    "compositor_layout",
+    // Compositor mode (#52, #81): the desk the runtime keeps; captures and counts for checks in
+    // development builds. Input (#56): the keymap's entries and the page's focus; events fed to the
+    // window's input and where input goes, for checks in development builds.
+    "compositor_desk",
     "compositor_capture",
     "compositor_stats",
     "compositor_keys",
@@ -242,9 +242,13 @@ mod tests {
         }
         assert!(!runtime.may("palette_hide"));
         assert!(!runtime.may("plugin:eris-window|drag"));
-        // Compositor mode (#52): the shell page reports its frames' places; nobody else does.
+        // Compositor mode (#52, #81): the shell page publishes its desk; nobody else does.
+        assert!(
+            !runtime.may("compositor_layout"),
+            "the frames' report is gone"
+        );
         for cmd in [
-            "compositor_layout",
+            "compositor_desk",
             "compositor_capture",
             "compositor_stats",
             "compositor_keys",

@@ -32,6 +32,13 @@ export const LOADING_MS = 10_000;
 export interface WindowVisibility {
   /** Whether its windows hide surface `id`: wholly covered by windows above, or off screen. */
   covered?(id: string): boolean;
+  /**
+   * The windows that keep a live frame when the host keeps the live budget itself (the
+   * compositor's, ADR 0151); undefined until it has decided. The runtime then decides nothing: it
+   * carries the set out, asking a window left out for its state and taking its frame away, and
+   * putting back the frame of one let in.
+   */
+  kept?(): ReadonlySet<string> | undefined;
   /** Hear changes that may show or hide surfaces; returns a function that stops. */
   onChange?(listener: () => void): () => void;
 }
@@ -116,12 +123,22 @@ export function installFrames(
     host?.unloaded(id, kept);
     return true;
   };
+  /** A frame loading again for what waits on it stays while the host hears that it woke. */
+  const loading = (id: string) => {
+    const since = loaded.get(id);
+    return since !== undefined && timers.now() - since < LOADING_MS;
+  };
   const policy = new FramePolicy({
-    visible: (id) => surfaces.visible(id) && !windows?.covered?.(id),
+    visible: (id) => {
+      const kept = windows?.kept?.();
+      if (kept) return kept.has(id) || loading(id);
+      return surfaces.visible(id) && !windows?.covered?.(id);
+    },
     // The surface the keys go to is never unloaded.
     focused: () => shortcuts.focused,
-    afterMs: () => setting(UNLOAD_AFTER) * 1000,
-    budget: () => Math.floor(setting(LIVE_SURFACES)),
+    // A host that keeps the budget counts the time out of sight itself.
+    afterMs: () => (windows?.kept?.() ? 0 : setting(UNLOAD_AFTER) * 1000),
+    budget: () => (windows?.kept?.() ? 0 : Math.floor(setting(LIVE_SURFACES))),
     unload,
     remount: (id) => {
       loaded.set(id, timers.now());

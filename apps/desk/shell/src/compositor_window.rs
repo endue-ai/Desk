@@ -1,33 +1,39 @@
 //! Compositor mode (#52, `DESK_COMPOSITOR=1` or `--compositor`): the main window is a wgpu scene
-//! that `desk-compositor` draws. The shell page renders off screen as one surface over the whole
-//! window; every plugin surface is an off-screen browser of its own (`web_host`), drawn as quads at
-//! the rectangles the runtime places its frames (`layout.rs`, `scene.rs`), whose stand-ins relay the
-//! runtime's messages. Without the mode the desk is Stage 1's windowed one, unchanged. Input (#56)
-//! goes through the compositor's router to the surface it is for (`input.rs`); the window manager
-//! stays in the runtime until #53.
+//! that `desk-compositor` draws. The window manager's model (`desk-wm`) places it (#81, ADR 0151):
+//! the shell page publishes the desk the runtime keeps (`compositor_desk`), `hosted.rs` mirrors it
+//! into a plan, the live budget and the surfaces' lifecycle, and `draw.rs` draws every window with
+//! the compositor's own chrome in the theme in force, each plugin pane an off-screen browser of its
+//! own (`web_host`), and the page's system layer above them. The page renders off screen too, see
+//! through, its windows' chrome left to the compositor. Without the mode the desk is Stage 1's
+//! windowed one, unchanged. Input (#56) goes through the compositor's router to the surface it is
+//! for (`input.rs`); the runtime's window manager stays in the page until #83.
 
 pub mod checks;
 pub mod commands;
 pub mod composed;
 pub mod cursor;
+pub mod draw;
 mod gpu;
 pub mod harness;
+pub mod hosted;
 pub mod input;
-pub mod layout;
 mod os_pointer;
 pub mod overlay;
-pub mod scene;
+pub mod report;
 pub mod winit_input;
 
 use std::sync::Arc;
+use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
 use cef::*;
 use desk_compositor::input::keymap::Platform;
 use desk_compositor::input::{InputRouter, PointerSettings};
-use desk_compositor::{Compositor, Scene};
+use desk_compositor::{ChromeTheme, Compositor, Scene};
+use desk_core::TokenTable;
 use desk_surface::generated::SurfaceMessage;
 use desk_web::sender::Role;
+use desk_wm::Step;
 use serde_json::json;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
@@ -38,10 +44,13 @@ use crate::web_host::render::SurfaceRender;
 use crate::web_host::view::{SharedView, View};
 use crate::web_host::{WebHost, stand_in};
 use composed::Shared;
-use layout::{Layout, Report, Step};
+use hosted::{Hosted, Outcome, look, message, owner};
+use report::DeskReport;
 
 /// The shell page's id as a surface.
 pub const PAGE: &str = "desk";
+/// What the runtime hears: the windows that keep a renderer (ADR 0151).
+pub const LIVE: &str = "desk://compositor-live";
 /// The longest a frame waits for the next one: the display's rate, at most.
 const FRAME: Duration = Duration::from_micros(16_667);
 
@@ -51,7 +60,7 @@ pub fn enabled() -> bool {
         || std::env::args().any(|a| a == "--compositor")
 }
 
-/// The URL of the shell page in compositor mode: the page reports its plugin frames' places.
+/// The URL of the shell page in compositor mode: the page publishes its desk.
 pub fn page_url(url: &str) -> String {
     let joiner = if url.contains('?') { '&' } else { '?' };
     format!("{url}{joiner}compositor=1")
@@ -66,7 +75,9 @@ pub struct CompositorWindow {
     relay: Relay,
     page: SharedView,
     pub browser: Option<Browser>,
-    layout: Layout,
+    hosted: Hosted,
+    theme: ChromeTheme,
+    themes: Receiver<Arc<TokenTable>>,
     scene: Scene,
     desk: Arc<Desk>,
     occluded: bool,
@@ -122,8 +133,10 @@ impl CompositorWindow {
             shared_texture_enabled: i32::from(std::env::var_os("DESK_SURFACE_SOFTWARE").is_none()),
             ..Default::default()
         };
+        // See through: the compositor draws the wallpaper and the windows under the page.
         let settings = BrowserSettings {
             windowless_frame_rate: 60,
+            background_color: 0,
             ..Default::default()
         };
         let browser = browser_host_create_browser_sync(
@@ -142,7 +155,10 @@ impl CompositorWindow {
         };
         let mut router = InputRouter::new(Platform::current(), settings);
         router.targets.set_owner(PAGE, "desk");
+        let themes = desk.core.watch_theme_tokens();
+        let theme = look(&desk.core.theme_tokens());
         Ok(CompositorWindow {
+            hosted: Hosted::new(window.scale_factor()),
             window,
             gpu,
             shared,
@@ -150,7 +166,8 @@ impl CompositorWindow {
             relay,
             page,
             browser,
-            layout: Layout::default(),
+            theme,
+            themes,
             scene: Scene::new(physical.width, physical.height),
             desk,
             occluded: false,
@@ -164,39 +181,46 @@ impl CompositorWindow {
         })
     }
 
-    /// The shell page reported where its plugin frames are.
-    pub fn report(&mut self, report: Report) {
-        let steps = self.layout.apply(report);
-        self.run(steps);
-        self.shared.lock().dirty = true;
+    /// The shell page published its desk.
+    pub fn report(&mut self, report: DeskReport) {
+        let outcome = self.hosted.apply(report, Instant::now());
+        self.carry(outcome);
     }
 
-    fn run(&mut self, steps: Vec<Step>) {
-        for step in steps {
-            match step {
-                Step::Load { surface, url } => self.host.load(&surface, &url),
-                Step::Send(message) => {
-                    use desk_surface::generated::CompositorMessage as M;
-                    match &message {
-                        M::SurfaceDestroy(d) => {
-                            self.shared.lock().destroy(&d.surface);
-                            self.forget(&d.surface);
-                        }
-                        // Its process goes: its imports with it, its last frame (a copy) stays.
-                        M::SurfaceSleep(s) => {
-                            let mut composed = self.shared.lock();
-                            if let Some(id) = composed.texture_of(&s.surface) {
-                                composed.frames.ended(id);
-                            }
-                            drop(composed);
-                            self.forget(&s.surface);
-                        }
-                        _ => {}
-                    }
-                    self.host.send(&message);
-                }
+    /// Do what a look called for: the surfaces' steps, and the live set for the runtime.
+    fn carry(&mut self, outcome: Outcome) {
+        for step in &outcome.steps {
+            if let Step::Load { surface, url } = step {
+                self.host.load(surface, url);
+                continue;
             }
+            let Some(message) = message(step) else {
+                continue;
+            };
+            match step {
+                Step::Destroy { surface } => {
+                    self.shared.lock().destroy(surface);
+                    self.forget(surface);
+                }
+                // Its process goes: its imports with it, its last frame (a copy) stays.
+                Step::Sleep { surface } => {
+                    let mut composed = self.shared.lock();
+                    if let Some(id) = composed.texture_of(surface) {
+                        composed.frames.ended(id);
+                    }
+                    drop(composed);
+                    self.forget(surface);
+                }
+                _ => {}
+            }
+            self.host.send(&message);
         }
+        if let Some(live) = outcome.live {
+            self.desk
+                .pages
+                .emit(Role::Main, LIVE, json!({ "live": live }));
+        }
+        self.shared.lock().dirty = true;
     }
 
     /// The window has a new size or scale: the page lays out again.
@@ -204,17 +228,19 @@ impl CompositorWindow {
         let physical = self.window.inner_size();
         self.gpu.resize(physical.width, physical.height);
         self.scene.resize(physical.width, physical.height);
-        let size = physical.to_logical::<f64>(self.window.scale_factor());
+        let scale = self.window.scale_factor();
+        let size = physical.to_logical::<f64>(scale);
         {
             let mut page = self.page.lock();
             page.size = (size.width.round() as u32, size.height.round() as u32);
-            page.scale = self.window.scale_factor() as f32;
+            page.scale = scale as f32;
         }
         if let Some(host) = self.browser.as_ref().and_then(|b| b.host()) {
             host.notify_screen_info_changed();
             host.was_resized();
         }
-        self.shared.lock().dirty = true;
+        let outcome = self.hosted.rescale(scale, Instant::now());
+        self.carry(outcome);
     }
 
     /// The window went off screen or came back: every surface is hidden, or shown again.
@@ -227,8 +253,8 @@ impl CompositorWindow {
                 host.was_resized();
             }
         }
-        let steps = self.layout.occluded(occluded);
-        self.run(steps);
+        let outcome = self.hosted.occluded(occluded, Instant::now());
+        self.carry(outcome);
     }
 
     /// Surface `surface` takes no input any more (destroyed, asleep, died).
@@ -239,10 +265,17 @@ impl CompositorWindow {
 
     /// The window is in front (the display's rate) or behind (a lower one).
     pub fn focused(&mut self, focused: bool) {
-        self.run(self.layout.pace(if focused { 60 } else { 30 }));
+        let fps = if focused { 60 } else { 30 };
+        for (surface, _, _) in self.hosted.surfaces().made() {
+            let pace = json!({ "type": "pace", "surface": surface, "fps": fps });
+            if let Ok(message) = serde_json::from_value(pace) {
+                self.host.send(&message);
+            }
+        }
     }
 
-    /// After CEF's work: act on what the surfaces said, and draw a frame if one is due.
+    /// After CEF's work: act on what the surfaces said, on a new look and on the budget's time,
+    /// and draw a frame if one is due.
     pub fn tick(&mut self, now: Instant, event_loop: &ActiveEventLoop) {
         let messages = std::mem::take(&mut self.shared.lock().messages);
         for message in messages {
@@ -257,9 +290,10 @@ impl CompositorWindow {
             }
             if let SurfaceMessage::SurfaceDied(died) = message {
                 self.forget(&died.surface);
-                // The direct signal for #44's recovery: the runtime reloads the window's frame.
-                self.layout.died(&died.surface);
-                if let Some((plugin, _)) = layout::owner(&died.surface) {
+                // The direct signal for #44's recovery: the runtime loads the window again.
+                self.hosted.died(&died.surface);
+                self.shared.lock().dirty = true;
+                if let Some((plugin, _)) = owner(&died.surface) {
                     eprintln!(
                         "endue Desk: the renderer of {plugin} stopped ({:?})",
                         died.reason
@@ -270,6 +304,15 @@ impl CompositorWindow {
                         .emit(Role::Main, crate::crashes::CRASHED, event);
                 }
             }
+        }
+        if let Some(table) = self.themes.try_iter().last() {
+            // A new look restyles every window's chrome in the next frame.
+            self.theme = look(&table);
+            self.shared.lock().dirty = true;
+        }
+        let outcome = self.hosted.tick(now);
+        if outcome != Outcome::default() {
+            self.carry(outcome);
         }
         self.input_tick(event_loop);
         if !self.shared.lock().dirty || now < self.last_frame + FRAME || self.occluded {
@@ -306,38 +349,39 @@ impl CompositorWindow {
         self.presented += 1;
     }
 
-    /// When the next frame may be drawn.
+    /// When the next frame may be drawn, or the budget looks again.
     pub fn next_frame(&self) -> Option<Instant> {
-        self.shared.lock().dirty.then_some(self.last_frame + FRAME)
+        let frame = self.shared.lock().dirty.then_some(self.last_frame + FRAME);
+        match (frame, self.hosted.due()) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
+        }
     }
 
-    /// Lay the scene out again from the layout and the frames the surfaces attached.
+    /// Lay the scene out again from the hosted desk and the frames the surfaces attached, and tell
+    /// the input router what each node shows.
     pub(super) fn compose(&mut self) {
-        let mut composed = self.shared.lock();
-        let page = composed
-            .texture_of(PAGE)
-            .filter(|id| composed.frames.size(*id).is_some());
-        let scale = self.layout.scale.max(0.25);
-        let mut quads = Vec::new();
-        let mut targets = Vec::new();
-        for placed in self.layout.placed.iter().filter(|p| !p.asleep) {
-            let Some(id) = composed.texture_of(&placed.host) else {
-                continue;
+        let drawn = {
+            let composed = self.shared.lock();
+            let texture = |surface: &str| {
+                let id = composed.texture_of(surface)?;
+                Some((id, composed.frames.size(id)?))
             };
-            let Some(size) = composed.frames.size(id) else {
-                continue;
+            let sources = draw::Sources {
+                scale: self.window.scale_factor() as f32,
+                page: texture(PAGE),
+                surface: &texture,
             };
-            for quad in scene::pieces(placed, scale, id, size) {
-                targets.push(scene::target(placed, scale, &quad));
-                quads.push(quad);
-            }
-        }
-        let nodes = scene::rebuild(&mut self.scene, page, &quads);
+            draw::draw(&mut self.scene, &self.theme, &self.hosted, &sources)
+        };
+        let shown = drawn.unwrap_or_else(|why| {
+            eprintln!("endue Desk: the compositor's scene did not build ({why:?})");
+            Vec::new()
+        });
         if !self.gpu.presents() {
-            composed.dirty = false;
+            self.shared.lock().dirty = false;
         }
-        drop(composed);
-        self.register(page.is_some(), &nodes, targets);
+        self.register(shown);
     }
 
     /// Close the page's browser and every surface's (the desk quits).

@@ -3,7 +3,7 @@
 // which-key overlay taking it for a prefix and giving it back), by focusing a frame here, which is
 // the surface's stand-in. So this page tells the CEF shell, whenever its focus settles, which
 // surface's stand-in has it, or none (the page's own element has it); the keys go there.
-import { surfaceHostOf } from "./compositor-layout";
+import { surfaceHostOf } from "./compositor-desk";
 
 /** The surface host whose stand-in frame has the page's focus; null when the page itself has it. */
 export function focusedSurface(doc: Document): string | null {

@@ -1,0 +1,49 @@
+/* Compositor mode (#81, ADR 0151): the CEF shell's compositor draws the wallpaper and every window,
+   its frame, its title bar and its plugins' surfaces, under this page, which is see-through. The
+   page draws its system layer (the bars, Eris, menus, the palette, notices) and the panes of its own
+   views, at the places the compositor draws their windows. Every window keeps its parts for the
+   pointer and the keys, unpainted. */
+html.desk-compositor,
+html.desk-compositor body,
+html.desk-compositor .shell {
+  background: transparent;
+}
+/* The compositor draws the whole app at the page's size: the page never scrolls. */
+html.desk-compositor,
+html.desk-compositor body {
+  overflow: hidden;
+}
+html.desk-compositor .shell-glow,
+html.desk-compositor .wallpaper {
+  display: none;
+}
+html.desk-compositor .surface[data-surface] {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.desk-compositor .surface-name,
+html.desk-compositor .surface-sub,
+html.desk-compositor .surface-resize,
+html.desk-compositor .desk-surface-placeholder,
+html.desk-compositor .desk-not-responding {
+  opacity: 0;
+}
+html.desk-compositor .desk-surface {
+  background: transparent;
+}
+/* What the page draws of a window (its title bar's icon and tools, the headers of split panes, its
+   own views) is drawn at the window's place, so it hides what lies under the window in the page,
+   in the window's own fill; a plugin's pane stays clear for its surface. */
+html.desk-compositor .surface-title,
+html.desk-compositor .pane-head,
+html.desk-compositor .pane:not(:has(.plugin-pane)) {
+  background: var(--desk-surface, var(--desk-card));
+}
+/* A plugin's frame here is a stand-in for its own off-screen surface (ADR 0149): it takes the
+   pointer, never paints (not even the backdrop a frame of another colour scheme gets). */
+html.desk-compositor .desk-surface iframe {
+  opacity: 0;
+}

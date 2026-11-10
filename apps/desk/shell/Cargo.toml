@@ -50,6 +50,8 @@ desk-trace.workspace = true
 # The desk's own updates (ADR 0054, ADR 0147): the updater, its HTTPS origin and the installer.
 desk-update = { workspace = true, features = ["https", "install"] }
 desk-web.workspace = true
+# Compositor mode's window host (#81): the runtime's desk mirrored into the window manager's model.
+desk-wm.workspace = true
 getrandom = "0.3"
 # The shell's services (#45): global shortcuts, the tray and the menus, the file dialog.
 global-hotkey = "0.8"

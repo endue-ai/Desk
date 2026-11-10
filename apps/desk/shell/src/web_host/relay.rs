@@ -6,8 +6,14 @@
 //! here and the stand-in posts it to the runtime, which sees it come from that frame as before. The
 //! texts are JSON (structured clones that JSON cannot carry do not cross). Both ends are keyed by the
 //! surface's host, `<surface>.<plugin label>`, which only that surface's frames have.
+//!
+//! The page moves a frame when it splits a window, puts it away or shows another desktop, and a
+//! moved frame loads again; the surface does not (#81). So a stand-in that loads while its surface's
+//! page has already said hello says it again on the page's behalf: the runtime greets the moved
+//! frame as it would a reloaded one, and the plugin, which never reloaded, is not handed a second
+//! `desk:init`.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use cef::*;
@@ -24,14 +30,62 @@ struct Tables {
     surfaces: HashMap<String, Browser>,
     /// The plugin's messages for the runtime while its stand-in loads.
     waiting: HashMap<String, Vec<String>>,
+    greetings: Greetings,
     /// Messages relayed down (to plugins) and up (to the runtime).
     down: u64,
     up: u64,
 }
 
+/// Which surfaces' pages said hello, and which were introduced again for a moved stand-in.
+#[derive(Default)]
+struct Greetings {
+    /// Surfaces whose page said hello in its current browser.
+    greeted: HashSet<String>,
+    /// Surfaces greeted again for a moved stand-in: the runtime's next init is not for the page.
+    reintroduced: HashSet<String>,
+}
+
+impl Greetings {
+    /// The surface has a new page, or none: it says hello itself.
+    fn new_page(&mut self, host: &str) {
+        self.greeted.remove(host);
+        self.reintroduced.remove(host);
+    }
+
+    /// Its page said hello: an init answers it.
+    fn hello(&mut self, host: &str) {
+        self.greeted.insert(host.to_owned());
+        self.reintroduced.remove(host);
+    }
+
+    /// A stand-in loaded: whether to say hello again for a page that said it before (the stand-in
+    /// moved in the shell page).
+    fn stand_in(&mut self, host: &str) -> bool {
+        let again = self.greeted.contains(host);
+        if again {
+            self.reintroduced.insert(host.to_owned());
+        }
+        again
+    }
+
+    /// Whether a message of type `kind` for the page answers the hello said for it, and stays here.
+    fn kept(&mut self, host: &str, kind: Option<&str>) -> bool {
+        kind == Some("desk:init") && self.reintroduced.remove(host)
+    }
+}
+
 /// The relay's tables, shared by the shell page's client and every surface's.
 #[derive(Clone, Default)]
 pub struct Relay(Arc<Mutex<Tables>>);
+
+/// The SDK's hello, said again for a page whose stand-in moved.
+pub const HELLO: &str = r#"{"type":"desk:hello"}"#;
+
+/// The message type a relayed text carries, when it is a JSON object with one.
+fn kind(text: &str) -> Option<String> {
+    let value: serde_json::Value = serde_json::from_str(text).ok()?;
+    value.get("type")?.as_str().map(str::to_owned)
+}
 
 /// The surface host of a `desk-plugin` URL, when it names one.
 pub fn surface_host(url: &str) -> Option<String> {
@@ -48,6 +102,7 @@ impl Relay {
     /// The surface `host` has a browser now (or none: it slept, or is gone).
     pub fn surface(&self, host: &str, browser: Option<Browser>) {
         let mut tables = self.tables();
+        tables.greetings.new_page(host);
         match browser {
             Some(browser) => tables.surfaces.insert(host.to_owned(), browser),
             None => tables.surfaces.remove(host),
@@ -67,11 +122,15 @@ impl Relay {
         let Some(host) = surface_host(&url) else {
             return;
         };
-        let waiting = {
+        let (waiting, again) = {
             let mut tables = self.tables();
             tables.stand_ins.insert(host.clone(), frame.clone());
-            tables.waiting.remove(&host).unwrap_or_default()
+            let again = tables.greetings.stand_in(&host);
+            (tables.waiting.remove(&host).unwrap_or_default(), again)
         };
+        if again {
+            crate::host::send(frame.clone(), HELLO.to_owned());
+        }
         for text in waiting {
             crate::host::send(frame.clone(), text);
         }
@@ -85,6 +144,10 @@ impl Relay {
         };
         let target = {
             let mut tables = self.tables();
+            if tables.greetings.kept(&host, kind(&text).as_deref()) {
+                // The answer to the hello said for it: the page is past its init.
+                return;
+            }
             tables.down += 1;
             tables.surfaces.get(&host).and_then(|b| b.main_frame())
         };
@@ -99,6 +162,9 @@ impl Relay {
         let target = {
             let mut tables = self.tables();
             tables.up += 1;
+            if kind(&text).as_deref() == Some("desk:hello") {
+                tables.greetings.hello(host);
+            }
             match tables.stand_ins.get(host).filter(|f| f.is_valid() == 1) {
                 Some(frame) => Some(frame.clone()),
                 None => {
@@ -155,7 +221,46 @@ wrap_load_handler! {
 
 #[cfg(test)]
 mod tests {
-    use super::surface_host;
+    use super::{Greetings, kind, surface_host};
+
+    const NOTES: &str = "main.endue-notes";
+
+    #[test]
+    fn a_moved_stand_in_greets_the_runtime_again_and_its_init_stays_here() {
+        let mut g = Greetings::default();
+        assert!(
+            !g.stand_in(NOTES),
+            "the first stand-in: the page says hello itself"
+        );
+        g.hello(NOTES);
+        assert!(
+            !g.kept(NOTES, Some("desk:init")),
+            "the init for its own hello goes to it"
+        );
+        // The window was split: the page moved the frame, which loaded again.
+        assert!(g.stand_in(NOTES));
+        assert!(!g.kept(NOTES, Some("desk:theme")));
+        assert!(g.kept(NOTES, Some("desk:init")));
+        assert!(!g.kept(NOTES, Some("desk:init")), "only the one init");
+        // Slept and woken: a new page, which says hello itself.
+        g.new_page(NOTES);
+        assert!(!g.stand_in(NOTES));
+        assert_eq!(
+            kind(r#"{"type":"desk:hello"}"#).as_deref(),
+            Some("desk:hello")
+        );
+        assert_eq!(kind("not json"), None);
+    }
+
+    #[test]
+    fn a_page_that_says_hello_again_itself_takes_the_next_init() {
+        let mut g = Greetings::default();
+        g.hello(NOTES);
+        assert!(g.stand_in(NOTES));
+        // A new revision loaded in the same browser: its own hello comes first.
+        g.hello(NOTES);
+        assert!(!g.kept(NOTES, Some("desk:init")));
+    }
 
     #[test]
     fn only_a_plugin_surfaces_own_host_is_relayed() {

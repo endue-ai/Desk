@@ -9,10 +9,9 @@
 use std::time::Instant;
 
 use cef::ImplBrowser;
-use desk_compositor::glam::Vec2;
+use desk_compositor::Rect;
 use desk_compositor::input::keymap::{KeyEntry, KeyLike, Platform};
-use desk_compositor::input::{Input, Out, Target};
-use desk_compositor::{NodeId, Rect};
+use desk_compositor::input::{Input, Out};
 use desk_surface::generated::{CompositorMessage, SurfaceMessage};
 use desk_web::sender::Role;
 use serde::Deserialize;
@@ -20,7 +19,9 @@ use serde_json::{Value, json};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event_loop::ActiveEventLoop;
 
-use super::{CompositorWindow, PAGE, layout, os_pointer, overlay};
+use super::draw::Shown;
+use super::hosted::owner;
+use super::{CompositorWindow, PAGE, os_pointer, overlay};
 use crate::web_host::input as web_input;
 use crate::web_host::lifecycle::surface_of;
 
@@ -145,49 +146,39 @@ impl CompositorWindow {
 
     /// The page moved the DOM's focus: to a plugin surface's stand-in, or within itself.
     pub fn page_focus(&mut self, event_loop: &ActiveEventLoop, surface: Option<String>) {
-        let surface = surface.filter(|s| self.layout.placed.iter().any(|p| &p.host == s));
+        let made = self.hosted.surfaces().made();
+        let surface = surface.filter(|s| made.iter().any(|(host, _, _)| host == s));
         let outs = self.router.focus(Some(surface.as_deref().unwrap_or(PAGE)));
         self.apply(event_loop, outs);
     }
 
     /// Tell the router what each node shows, and draw the focus ring and the drag image (#56).
-    pub(super) fn register(&mut self, page: bool, nodes: &[NodeId], targets: Vec<Target>) {
+    pub(super) fn register(&mut self, shown: Shown) {
         let router = &mut self.router;
         router.targets.clear();
-        let window_scale = self.window.scale_factor() as f32;
-        let quads = if page {
-            let Some(first) = nodes.first() else {
-                return;
-            };
-            let target = Target {
-                surface: PAGE.to_owned(),
-                origin: Vec2::ZERO,
-                per_unit: Vec2::splat(1.0 / window_scale.max(0.25)),
-            };
-            router.targets.surface(&self.scene, *first, target);
-            &nodes[1..]
-        } else {
-            nodes
-        };
-        for (node, target) in quads.iter().zip(targets) {
-            if let Some((plugin, _)) = layout::owner(&target.surface) {
+        for (node, target) in shown {
+            if let Some((plugin, _)) = owner(&target.surface) {
                 router.targets.set_owner(&target.surface, &plugin);
             }
-            router.targets.surface(&self.scene, *node, target);
+            router.targets.surface(&self.scene, node, target);
         }
-        let scale = self.layout.scale.max(0.25) as f32;
+        let scale = self.window.scale_factor() as f32;
         let focused = router.focused().filter(|s| *s != PAGE).map(str::to_owned);
+        // The ring goes round the pane the focused surface shows in, while it is drawn.
         let ring = focused
-            .filter(|_| router.window_focused())
-            .and_then(|s| self.layout.placed.iter().find(|p| p.host == s && !p.asleep));
-        if let Some(placed) = ring {
-            let r = placed.rect;
-            let rect = Rect::new(r.x as f32, r.y as f32, r.width as f32, r.height as f32);
+            .filter(|s| router.window_focused() && router.targets.shown(s))
+            .and_then(|s| {
+                let plugin = owner(&s)?.0;
+                let plan = self.hosted.plan()?;
+                let pane = plan.panes_of(&plugin).last()?;
+                Some(pane.body)
+            });
+        if let Some(r) = ring {
             let device = Rect::new(
-                rect.x * scale,
-                rect.y * scale,
-                rect.width * scale,
-                rect.height * scale,
+                r.x as f32 * scale,
+                r.y as f32 * scale,
+                r.w as f32 * scale,
+                r.h as f32 * scale,
             );
             overlay::focus_ring(&mut self.scene, device.round_out(), scale);
         }

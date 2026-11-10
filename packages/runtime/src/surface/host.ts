@@ -19,7 +19,20 @@ export interface PluginWindows extends WindowHost {
   has(id: string): boolean;
 }
 
-export function pluginWindows(store: Store, show?: (id: string) => void): PluginWindows {
+/**
+ * A live budget kept outside the runtime (the compositor's, ADR 0151): the windows that keep a live
+ * frame, undefined until it has decided, and a way to hear the set change.
+ */
+export interface KeptWindows {
+  kept(): ReadonlySet<string> | undefined;
+  onChange(listener: () => void): () => void;
+}
+
+export function pluginWindows(
+  store: Store,
+  show?: (id: string) => void,
+  budget?: KeptWindows,
+): PluginWindows {
   const sections = new Map<string, HTMLElement>();
   const containers = new Map<string, HTMLElement>();
   // Covered windows, worked out once per state and screen size (ADR 0070).
@@ -67,11 +80,19 @@ export function pluginWindows(store: Store, show?: (id: string) => void): Plugin
         hidden = { state, size, ids: coveredPlugins(state, vw, vh) };
       return hidden.ids.has(id);
     },
+    ...(budget ? { kept: () => budget.kept() } : {}),
     // After the store's change is drawn: the shell draws its windows as the store changes.
-    onChange: (listener) =>
-      store.watch(
-        (s) => [windowsOf(s), s.focused, s.desktop, s.pan, s.adopted, s.drawer],
-        () => queueMicrotask(listener),
-      ),
+    onChange: (listener) => {
+      const offs = [
+        store.watch(
+          (s) => [windowsOf(s), s.focused, s.desktop, s.pan, s.adopted, s.drawer],
+          () => queueMicrotask(listener),
+        ),
+        budget?.onChange(listener),
+      ];
+      return () => {
+        for (const off of offs) off?.();
+      };
+    },
   };
 }
