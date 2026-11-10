@@ -61,11 +61,12 @@
   },
   "surfaceStartup": {
     "firstComposeMs": 181.4,
-    "runs": 5,
+    "slowestMs": null,
+    "runs": 10,
     "platform": "darwin-arm64",
     "recorded": "2026-11-10",
     "allowedRegression": 0.25,
-    "reason": "The desk's start to the first composed frame holding a web surface's paint, the fastest of five after one start that takes the OS's first look at a newly laid out bundle (1.5 s against 0.2 s). The fastest, because one or two starts in five spent 1.4 s more before CEF was up (0.1 s otherwise), busy machine or quiet; those are counted in stalls beside it. The CEF desk in compositor mode through its surface probe (apps/desk/shell/tests/budgets.rs), started by the test, so the process's start, CEF's, a renderer's, the page's first paint, its import and a compose all count. #35 measured 137 to 248 ms from CreateBrowser to the first paint alone. Fails past the allowance on the platform its baseline was recorded on."
+    "reason": "The desk's start to the first composed frame holding a web surface's paint, the median of ten starts in a row after one that takes the OS's first look at a newly laid out bundle (3.6 s against 0.2 s); the slowest of the ten is judged against the same baseline and allowance, so one stalled start fails, and is kept beside it (slowestMs). Until #112 two starts in five spent 1.4 s more before the desk's main ran, busy machine or quiet: Chromium's code-sign clone hard-linked the executable at every start, so macOS's exec policy took it for a new binary and scanned it again; the shell turns the clone off, and #58 had taken the fastest of five. Starts whose CEF took over a second are counted in stalls. The CEF desk in compositor mode through its surface probe (apps/desk/shell/tests/budgets.rs), started by the test, so the process's start, CEF's, a renderer's, the page's first paint, its import and a compose all count. #35 measured 137 to 248 ms from CreateBrowser to the first paint alone. Fails past the allowance on the platform its baseline was recorded on."
   },
   "surfaceMemory": {
     "perSurfaceMb": 120.7,

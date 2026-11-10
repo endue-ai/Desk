@@ -29,7 +29,7 @@ const measured = {
     ...reference,
   },
   composeStartup: { firstComposeMs: 180, adapter: "Apple M4 Max (Metal)", ...reference },
-  surfaceStartup: { firstComposeMs: 200, ...reference },
+  surfaceStartup: { firstComposeMs: 200, slowestMs: 230, ...reference },
   surfaceMemory: { perSurfaceMb: 125, tool: "footprint", ...reference },
   inputToPaint: {
     p95Ms: 8.5,
@@ -50,6 +50,7 @@ describe("compositor budgets", () => {
       "compose.p95Ms:budget",
       "composeStartup.firstComposeMs:regression",
       "surfaceStartup.firstComposeMs:regression",
+      "surfaceStartup.slowestMs:regression",
       "surfaceMemory.perSurfaceMb:band",
       "inputToPaint.p95Ms:budget",
       "inputToPaint.frameP50Ms:budget",
@@ -62,6 +63,7 @@ describe("compositor budgets", () => {
       "compose.p95Ms": "ok",
       "composeStartup.firstComposeMs": "no-baseline",
       "surfaceStartup.firstComposeMs": "no-baseline",
+      "surfaceStartup.slowestMs": "no-baseline",
       "surfaceMemory.perSurfaceMb": "ok",
       "inputToPaint.p95Ms": "ok",
       "inputToPaint.frameP50Ms": "ok",
@@ -166,6 +168,25 @@ describe("compositor budgets", () => {
     });
   });
 
+  it("judges the slowest of the desk's starts against the median's baseline and allowance", () => {
+    const recorded = withBaselines(budgets(), measured, { recorded: "2026-11-10" });
+    // The median's baseline; the slowest is kept beside it for the trend.
+    expect(recorded.surfaceStartup).toMatchObject({ firstComposeMs: 200, slowestMs: 230 });
+    const run = (slowestMs: number) => ({
+      ...measured,
+      surfaceStartup: { ...measured.surfaceStartup, slowestMs },
+    });
+    const slowest = (slowestMs: number) =>
+      compare(recorded, run(slowestMs)).find((v) => v.key === "slowestMs");
+    expect(slowest(250)).toMatchObject({ status: "ok", high: 250 });
+    // A start that stalls 1.4 s before CEF is up (#112) fails, though the median holds.
+    expect(slowest(1610)).toMatchObject({ status: "over", value: 1610, high: 250 });
+    const verdicts = compare(recorded, run(1610));
+    expect(status(verdicts)["surfaceStartup.firstComposeMs"]).toBe("ok");
+    expect(failed(verdicts)).toBe(true);
+    expect(report(verdicts)).toMatch(/slowest +1610 ms +pass <= 250 ms +OVER/);
+  });
+
   it("a measurement that did not finish is missing", () => {
     const verdicts = compare(budgets(), { compose: measured.compose });
     expect(status(verdicts)["surfaceMemory.perSurfaceMb"]).toBe("missing");
@@ -194,5 +215,8 @@ describe("compositor budgets", () => {
       tool: "footprint",
     });
     expect(committed.inputToPaint).toMatchObject({ budgetMs: 16, frameBudgetMs: 16, tries: 20 });
+    // The desk's start is the median of ten starts again (#112), not the fastest of five.
+    expect(committed.surfaceStartup).toMatchObject({ runs: 10, allowedRegression: 0.25 });
+    expect(committed.surfaceStartup?.reason).toMatch(/median of ten/);
   });
 });

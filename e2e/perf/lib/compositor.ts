@@ -1,6 +1,7 @@
 // The compositor's budgets in e2e/perf/budgets.json (`just perf-compositor`, #58): the compose
 // budget and the compositor's own start from the compose bench; the desk's start to its first
-// composed web surface, the memory per live surface and a press to its paint and to the composed
+// composed web surface (the median of ten starts, and the slowest of them against the same
+// allowance: #112), the memory per live surface and a press to its paint and to the composed
 // frame holding it (on #56's input path) from the shell's surface probe. Three kinds of gate: a
 // budget the value stays under, a baseline it may regress past by `allowedRegression`, and a
 // baseline it stays within `band` of, either way. A budget on a software adapter, and a baseline
@@ -18,6 +19,8 @@ export interface Gate {
   kind: Kind;
   /** A budget's key in its section, `budgetMs` unless named. */
   budgetKey?: string;
+  /** The key of the baseline a regression or band gate is judged against, its own unless named. */
+  baselineKey?: string;
 }
 
 export const GATES: readonly Gate[] = [
@@ -38,9 +41,17 @@ export const GATES: readonly Gate[] = [
   {
     section: "surfaceStartup",
     key: "firstComposeMs",
-    label: "desk start to a web surface composed",
+    label: "desk start to a web surface, median",
     unit: "ms",
     kind: "regression",
+  },
+  {
+    section: "surfaceStartup",
+    key: "slowestMs",
+    label: "desk start to a web surface, slowest",
+    unit: "ms",
+    kind: "regression",
+    baselineKey: "firstComposeMs",
   },
   {
     section: "surfaceMemory",
@@ -129,7 +140,7 @@ function judge(gate: Gate, budget: Section, measured: Section): Verdict {
     }
     return verdict(value > high ? "over" : "ok", null, high);
   }
-  const baseline = num(budget[gate.key]);
+  const baseline = num(budget[gate.baselineKey ?? gate.key]);
   if (baseline === null) return verdict("no-baseline", null, null);
   const elsewhere = [
     ["platform", text(budget.platform), text(measured.platform)],

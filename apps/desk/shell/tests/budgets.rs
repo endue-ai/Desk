@@ -40,10 +40,30 @@ fn keep(name: &str, measured: Value) {
     }
 }
 
-/// Timed starts of the start-up measurement; its value is the fastest.
-const RUNS: usize = 5;
-/// A start whose CEF took this long to come up stalled (it takes about 100 ms).
+/// Timed starts of the start-up measurement; its value is their median, and the slowest is judged
+/// against the same allowance (`e2e/perf/lib/compositor.ts`).
+const RUNS: usize = 10;
+/// A start whose CEF took this long to come up stalled (it takes about 100 ms): counted beside them.
 const STALL_MS: f64 = 1000.0;
+
+/// The middle value of `values`, or the mean of the two middle ones, as `e2e/perf/lib/stats.ts`.
+fn median(values: &[f64]) -> Option<f64> {
+    let mut sorted = values.to_vec();
+    sorted.sort_by(f64::total_cmp);
+    let middle = sorted.len() / 2;
+    match sorted.len() {
+        0 => None,
+        n if n % 2 == 0 => Some((sorted[middle - 1] + sorted[middle]) / 2.0),
+        _ => Some(sorted[middle]),
+    }
+}
+
+#[test]
+fn the_median_of_an_even_count_is_the_mean_of_the_middle_two() {
+    assert_eq!(median(&[3.0, 1.0, 2.0]), Some(2.0));
+    assert_eq!(median(&[4.0, 1.0, 3.0, 2.0]), Some(2.5));
+    assert_eq!(median(&[]), None);
+}
 
 fn now_ms() -> f64 {
     std::time::SystemTime::now()
@@ -85,10 +105,11 @@ fn perf_memory_per_live_surface() {
 #[test]
 #[ignore = "perf: just perf-compositor"]
 fn perf_start_to_the_first_composed_web_surface() {
-    // A bundle's first start after it was laid out pays the OS's first look at the new binary, and
-    // two starts in five of the rest spent 1.4 s more before CEF was up (0.1 s otherwise), busy
-    // machine or quiet: one start to take the first, then the fastest of five, which is what the
-    // desk's own work costs. The stalls are counted beside it and kept in `runs`.
+    // A bundle's first start after it was laid out pays the OS's first look at the new binary: one
+    // start to take it, then ten in a row, whose median is the value and whose slowest is judged
+    // too. Until #112 two starts in five spent 1.4 s more before `main` (Chromium's code-sign clone
+    // made macOS assess the executable again), so the measure was the fastest of five; a start
+    // that stalls like that again fails the slowest. Stalls are counted beside them.
     if probe(
         "perf_start_to_the_first_composed_web_surface",
         "startup",
@@ -124,10 +145,11 @@ fn perf_start_to_the_first_composed_web_surface() {
             "firstPaintMs": report["first_paint_ms"],
         }));
     }
-    let fastest = runs
+    let firsts: Vec<f64> = runs
         .iter()
         .filter_map(|r| r["firstComposeMs"].as_f64())
-        .fold(f64::MAX, f64::min);
+        .collect();
+    let slowest = firsts.iter().copied().fold(f64::MIN, f64::max);
     let stalls = runs
         .iter()
         .filter(|r| r["cefReadyMs"].as_f64().is_some_and(|ms| ms > STALL_MS))
@@ -135,7 +157,8 @@ fn perf_start_to_the_first_composed_web_surface() {
     keep(
         "surface-startup",
         json!({ "surfaceStartup": {
-            "firstComposeMs": fastest,
+            "firstComposeMs": median(&firsts).map(|ms| (ms * 10.0).round() / 10.0),
+            "slowestMs": slowest,
             "stalls": stalls,
             "runs": runs,
             "platform": platform(),
