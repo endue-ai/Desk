@@ -4,6 +4,8 @@ import { BridgeClient } from "@endue-ai/bridge";
 import { deskPluginUrl, mountDesk, phase, realClock } from "@endue-ai/runtime";
 import "@endue-ai/runtime/desk.css";
 import "@endue-ai/runtime/shell.css";
+import { startCompositorFocus } from "./compositor-focus";
+import { startCompositorKeys } from "./compositor-keys";
 import { startCompositorLayout } from "./compositor-layout";
 import { reportCrashes, showLastCrash } from "./crashes";
 import "./crashes.css";
@@ -79,12 +81,29 @@ const disposeOpened = installOpenedFiles({
 });
 window.addEventListener("pagehide", disposeOpened, { once: true });
 
-// Compositor mode (#52): the CEF shell draws each plugin surface where its frame is here.
+// Compositor mode (#52): the CEF shell draws each plugin surface where its frame is here. Its
+// input (#56) decides by the keymap whose a key is, and follows the focus this page moves.
 if (shell === "cef" && new URLSearchParams(location.search).has("compositor")) {
   const stopLayout = startCompositorLayout(window, (report) => {
     void invoke("compositor_layout", report as unknown as Record<string, unknown>);
   });
-  window.addEventListener("pagehide", stopLayout, { once: true });
+  const { runtime } = desk;
+  const keys = {
+    platform: runtime.shortcuts.platform,
+    keymap: runtime.keymap,
+    commands: runtime.commands,
+    settings: runtime.settings,
+  };
+  const stopKeys = startCompositorKeys(keys, (report) => {
+    void invoke("compositor_keys", report as unknown as Record<string, unknown>);
+  });
+  const stopFocus = startCompositorFocus(window, (surface) => {
+    void invoke("compositor_focus", { surface });
+  });
+  const stop = () => {
+    for (const off of [stopLayout, stopKeys, stopFocus]) off();
+  };
+  window.addEventListener("pagehide", stop, { once: true });
 }
 
 // A plugin frame whose renderer died (#44): the CEF shell names it, and the window recovers by itself.

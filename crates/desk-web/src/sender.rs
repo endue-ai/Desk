@@ -25,10 +25,15 @@ const MAIN_COMMANDS: &[&str] = &[
     "palette_reveal_main",
     "plugin:dialog|open",
     // Compositor mode (#52): where the runtime placed its plugin frames; captures and counts for
-    // checks in development builds.
+    // checks in development builds. Input (#56): the keymap's entries and the page's focus; events
+    // fed to the window's input and where input goes, for checks in development builds.
     "compositor_layout",
     "compositor_capture",
     "compositor_stats",
+    "compositor_keys",
+    "compositor_focus",
+    "compositor_input",
+    "compositor_input_state",
 ];
 const PALETTE_COMMANDS: &[&str] = &[
     "palette_hide",
@@ -242,6 +247,10 @@ mod tests {
             "compositor_layout",
             "compositor_capture",
             "compositor_stats",
+            "compositor_keys",
+            "compositor_focus",
+            "compositor_input",
+            "compositor_input_state",
         ] {
             assert!(runtime.may(cmd), "{cmd}");
             assert!(!Sender::Plugin("endue.notes".into()).may(cmd), "{cmd}");

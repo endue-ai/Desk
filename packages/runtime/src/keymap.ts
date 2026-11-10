@@ -44,6 +44,7 @@ export class Keymap {
   readonly #commands: Commands;
   readonly #desk: GestureDesk;
   #resolution: Resolution = { bindings: [], conflicts: [], removed: [] };
+  #entries: KeyEntry[] = [];
   #unbind: Array<() => void> = [];
   readonly #listeners = new Set<() => void>();
 
@@ -56,6 +57,7 @@ export class Keymap {
 
   apply(keys: KeyEntry[]): void {
     for (const off of this.#unbind) off();
+    this.#entries = [...keys];
     this.#resolution = resolveBindings(keys, this.#router.platform);
     this.#unbind = this.#resolution.bindings.map((resolved) =>
       this.#router.bind(resolved.combo, () => {
@@ -74,6 +76,12 @@ export class Keymap {
 
   bindings(): Binding[] {
     return this.#resolution.bindings.map(binding);
+  }
+
+  /** Every layer's entries as applied last: the compositor resolves them itself to decide, before
+   * it delivers a key, whether the desk takes it (#56). */
+  entries(): KeyEntry[] {
+    return [...this.#entries];
   }
 
   /** The bindings in force with their layer and where each is written. */

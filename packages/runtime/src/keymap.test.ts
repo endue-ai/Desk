@@ -69,7 +69,12 @@ describe("Keymap", () => {
     expect(router.handle(press("k", { meta: true }))).toBe(true);
     await expect.poll(() => ran).toEqual([{ n: 1 }]);
     expect(keymap.keysFor("desk.palette.open")).toEqual(["⌘K"]);
+    // The compositor gets every layer's entries as applied, to resolve them itself (#56).
+    expect(keymap.entries()).toEqual([
+      { key: "Mod+K", command: "desk.palette.open", args: { n: 1 }, owner: "desk.keys" },
+    ]);
     keymap.apply([]);
+    expect(keymap.entries()).toEqual([]);
     expect(router.handle(press("k", { meta: true }))).toBe(false);
   });
 
