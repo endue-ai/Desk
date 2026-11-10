@@ -226,9 +226,9 @@ test.describe("the desk shell", () => {
   });
 
   test("the light theme", async ({ page }) => {
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
       window.__shell.desk.runtime.settings.set("desk.theme.scheme", "light");
-      window.__shell.desk.store.set({ desktop: 2 });
+      await window.__shell.wm.desktop(2);
     });
     await step(page, 1000);
     await expect(page.locator("html")).toHaveAttribute("data-scheme", "light");

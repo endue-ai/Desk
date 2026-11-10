@@ -2285,9 +2285,9 @@
      "aria-label": "창 정리",
      "box": [
       1374,
-      677,
+      713,
       42,
-      159
+      123
      ],
      "style": {
       "background": "rgb(30, 29, 33)",
@@ -2300,7 +2300,7 @@
        "aria-label": "창 바둑판 배열",
        "box": [
         1379,
-        682,
+        718,
         32,
         32
        ],
@@ -2320,26 +2320,6 @@
        "aria-label": "창 계단식 배열",
        "box": [
         1379,
-        718,
-        32,
-        32
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "arrange-cascade"
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "icon-button arrange-button",
-       "aria-label": "창 펼쳐 보기",
-       "box": [
-        1379,
         754,
         32,
         32
@@ -2350,7 +2330,7 @@
        "children": [
         {
          "tag": "svg",
-         "icon": "arrange-spread"
+         "icon": "arrange-cascade"
         }
        ]
       },

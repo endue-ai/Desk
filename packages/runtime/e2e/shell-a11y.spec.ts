@@ -43,9 +43,9 @@ test.describe("at 1440×900", () => {
   for (const theme of ["dark", "light"] as const) {
     test(`every visible text is at least 4.5:1 in the ${theme} theme`, async ({ page }) => {
       await openShell(page);
-      await page.evaluate((t) => {
+      await page.evaluate(async (t) => {
         window.__shell.desk.runtime.settings.set("desk.theme.scheme", t);
-        window.__shell.desk.store.set({ desktop: 2 });
+        await window.__shell.wm.desktop(2);
       }, theme);
       for (const popover of [null, "tasks", "drawer"] as const) {
         await page.evaluate((p) => window.__shell.desk.store.set({ popover: p }), popover);
@@ -122,7 +122,7 @@ test.describe("at 1024 wide", () => {
 
   test("bars stay and nothing overlaps them", async ({ page }) => {
     await openShell(page);
-    await page.evaluate(() => window.__shell.desk.store.set({ desktop: 2 }));
+    await page.evaluate(() => window.__shell.wm.desktop(2));
     await step(page, 100);
     const boxes = await page.evaluate(() =>
       [

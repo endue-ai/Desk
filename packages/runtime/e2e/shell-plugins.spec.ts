@@ -1,9 +1,10 @@
 // Plugin surfaces as shell windows: the shell fixture with ?plugins=1 installs two UI test plugins,
 // whose centre surfaces open inside the shell's windows (ADR 0040): slots, the drawer and the
-// plugin's on/off. With ?many=18 there are twenty, and past the live budget the windows out of sight
-// sleep (ADR 0134). Dragging, resizing, snapping and maximizing are the window manager's (desk-wm on
-// the compositor, ADR 0153): e2e/specs/windows-plugins.spec.ts drives them on the desk, and here the
-// page takes what desk-wm would publish (`fixture/wm.ts`).
+// plugin's on/off. With ?many=18 there are twenty, and the windows the live budget leaves out sleep
+// (ADR 0134). Dragging, resizing, snapping and maximizing are the window manager's (desk-wm on the
+// compositor, ADR 0153): e2e/specs/windows-plugins.spec.ts drives them on the desk, and here the
+// page asks its desk-wm for them (`fixture/wm.ts`). Which windows the budget keeps is desk-wm's to
+// decide too (crates/desk-wm tests/host.rs, #83): this page names the set, the runtime carries it out.
 import { expect, type Page, test } from "@playwright/test";
 import { DESK, openShell, step } from "./shell-helpers";
 
@@ -126,6 +127,9 @@ test.describe("the live budget (#37)", () => {
   const MANY = 18;
   const many = Array.from({ length: MANY }, (_, i) => `test.many-${i + 1}`);
   const init = encodeURIComponent(JSON.stringify({ "desk.surfaces.live": 8 }));
+  /** The windows the compositor's live budget would keep. */
+  const keep = (page: Page, ids: string[]) =>
+    page.evaluate((kept) => window.__shell.wm.keep(kept), ids);
   /** The plugin windows whose frame is on the page, sorted: an asleep one has a placeholder. */
   const live = (page: Page) =>
     page.evaluate(() =>
@@ -143,7 +147,7 @@ test.describe("the live budget (#37)", () => {
     await page.evaluate(() => window.__shell.desk.runtime.plugins?.ready);
   });
 
-  test("with 20 windows and N = 8 only the visible ones and the 8 most recent hidden ones keep a frame; one woken gets its count back", async ({
+  test("with 20 windows the ones the budget leaves out sleep, and one woken gets its count back", async ({
     page,
   }) => {
     await expect(page.locator(".desk-surface--windowed")).toHaveCount(20);
@@ -159,7 +163,8 @@ test.describe("the live budget (#37)", () => {
     const top = recent[8] ?? "";
     await page.evaluate((id) => window.__shell.wm.fill(id, "full"), top);
     await expect(window_(page, top)).toHaveCSS("width", "1440px");
-    // The one in sight and the eight most recent out of sight keep a frame; the rest sleep.
+    // The budget keeps the one in sight and the eight most recent out of sight; the rest sleep.
+    await keep(page, recent);
     await expect.poll(() => live(page)).toEqual([...recent].sort());
     await expect(asleep(page, HELLO)).toHaveCount(1);
     await expect(asleep(page, COUNTER)).toHaveCount(1);
@@ -169,10 +174,5 @@ test.describe("the live budget (#37)", () => {
     await focus(page, HELLO);
     await expect(asleep(page, HELLO)).toHaveCount(0);
     await expect(hello.getByTestId("count")).toHaveText("3");
-    // Hello gives the keys to another sleeping window: nine out of sight would be live, so the least
-    // recent of them sleeps.
-    await focus(page, "test.many-10");
-    await expect.poll(() => live(page)).toEqual([HELLO, "test.many-10", ...recent.slice(1)].sort());
-    await expect(asleep(page, "test.many-1")).toHaveCount(1);
   });
 });

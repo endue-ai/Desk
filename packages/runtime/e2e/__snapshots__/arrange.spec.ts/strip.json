@@ -5,9 +5,9 @@
  "aria-label": "Arrange windows",
  "box": [
   1374,
-  677,
+  713,
   42,
-  159
+  123
  ],
  "style": {
   "background": "rgb(30, 29, 33)",
@@ -20,7 +20,7 @@
    "aria-label": "Tile windows",
    "box": [
     1379,
-    682,
+    718,
     32,
     32
    ],
@@ -40,26 +40,6 @@
    "aria-label": "Cascade windows",
    "box": [
     1379,
-    718,
-    32,
-    32
-   ],
-   "style": {
-    "border": "solid rgba(0, 0, 0, 0)"
-   },
-   "children": [
-    {
-     "tag": "svg",
-     "icon": "arrange-cascade"
-    }
-   ]
-  },
-  {
-   "tag": "button",
-   "class": "icon-button arrange-button",
-   "aria-label": "Spread windows out",
-   "box": [
-    1379,
     754,
     32,
     32
@@ -70,7 +50,7 @@
    "children": [
     {
      "tag": "svg",
-     "icon": "arrange-spread"
+     "icon": "arrange-cascade"
     }
    ]
   },
