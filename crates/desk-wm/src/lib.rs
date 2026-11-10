@@ -1,7 +1,8 @@
 //! The desk's window manager as a model (#53, ADR 0140): ported from the web runtime
-//! (`packages/runtime/src/surface`, `arrange`, `shell`) with the same behaviour and numbers. Plain
-//! data in, plain data out (`serde` types); no clock, no I/O and no rendering, so the compositor,
-//! the core and the tests drive it alike. Each module names the TS module it ports.
+//! (`packages/runtime/src/surface`, `arrange`, `shell`, `desktops`, `buffers.ts`) with the same
+//! behaviour and numbers. Plain data in, plain data out (`serde` types); no clock, no I/O and no
+//! rendering, so the compositor, the core and the tests drive it alike. Each module names the TS
+//! module it ports.
 //!
 //! - `types`: the shared data (rects, placements, fills, panes' shape, keys).
 //! - `geometry`, `coordinates`, `clearance`: the reference frame, the free area, normal and
@@ -12,19 +13,32 @@
 //! - `spread`: the spread's places, poses and model (ADR 0116).
 //! - `cover`, `placed`: which plugins are out of sight (ADR 0070) and which a layout places.
 //! - `pan`, `minimap`: the canvas pan and the canvas map (ADR 0082).
+//! - `panes`: the pane tree and its dividers; `desktops`, `migrate`: the named list of desktops
+//!   (ADR 0117) and what profiles and sessions stored; `layout`: a desktop's layout and the
+//!   profile's saved ones; `drawer`, `buffers`: the drawer's items and the buffer list.
+//! - `desk`: one `Desk` state holding all of it, its operations, and the `Arranger` (tile and
+//!   cascade, ADR 0116); `snapshot`: what `desk.windows.list` answers.
 
 pub mod arrange;
+pub mod buffers;
 pub mod clearance;
 pub mod coordinates;
 pub mod cover;
+pub mod desk;
+pub mod desktops;
+pub mod drawer;
 pub mod fill;
 pub mod geometry;
+pub mod layout;
 mod math;
+pub mod migrate;
 pub mod minimap;
 pub mod pan;
+pub mod panes;
 pub mod placed;
 pub mod settle;
 pub mod snap;
+pub mod snapshot;
 pub mod spread;
 pub mod tiling;
 pub mod types;
@@ -36,11 +50,18 @@ pub use arrange::{
 pub use clearance::{TitleClearance, TopChrome, title_clearance};
 pub use coordinates::{ORIGIN, is_floating, screen_rect, stored_rect};
 pub use cover::{covered_plugins, z_of};
+pub use desk::{
+    ArrangeKind, Arranged, Arranger, Desk, InUse, Kept, Moved, OnRemove, Removal, Restored,
+    default_placement,
+};
+pub use desktops::{Desktop, DesktopId, DesktopRef};
+pub use drawer::{DrawerItem, DrawerKind};
 pub use fill::{fill_with, snap_rect, toggle_floating, toggle_maximize, unfilled, unfilled_at};
 pub use geometry::{
     BELOW_ERIS, FREE, MIN, REF, SAFE, clamp_rect, free_area, free_top, from_screen, screen_area,
     to_screen,
 };
+pub use layout::{DesktopLayout, Saved, Visible};
 pub use minimap::{
     Fit, MAP, fit_world, pan_by_key, pan_centred_on, pan_moved_by, to_map, to_world, view_rect,
     world_of,
@@ -51,6 +72,7 @@ pub use pan::{
 pub use placed::{PLUGIN_VIEW, placed_plugins, resolve_view, shown_plugins};
 pub use settle::{Glided, SETTLE_MS, Settle, SettleKind};
 pub use snap::{Aim, CORNER, Halves, Rows, SNAP, SNAP_TOP, fill_rect, halves, rows, snap_for};
+pub use snapshot::{DesktopSnapshot, PaneSnapshot, Snapshot, WindowSnapshot};
 pub use spread::model::{Move, SpreadAction, SpreadModel};
 pub use spread::pose::{Camera, IDENTITY, Pose, ZOOM_MAX, ZOOM_MIN, mix};
 pub use spread::slots::{

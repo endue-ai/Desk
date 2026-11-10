@@ -1,6 +1,6 @@
 [package]
 name = "desk-wm"
-description = "The desk's window manager as a model: geometry and coordinate spaces, 8-way snap, tiling and cascade, the spread, the canvas pan and the minimap. Plain serde data in and out; no clock, no I/O, no rendering."
+description = "The desk's window manager as a model: geometry and coordinate spaces, 8-way snap, tiling and cascade, the spread, the canvas pan and the minimap, panes, desktops, focus, the drawer and one Desk state with its snapshot. Plain serde data in and out; no clock, no I/O, no rendering."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,11 +10,10 @@ publish.workspace = true
 
 [dependencies]
 serde.workspace = true
+# Stored desktops and layouts are read leniently from JSON, as the runtime reads them.
+serde_json.workspace = true
 # The spread's filter folds titles as the runtime does (NFKC, then lower case).
 unicode-normalization = "0.1"
-
-[dev-dependencies]
-serde_json.workspace = true
 
 [lints]
 workspace = true
