@@ -59,6 +59,10 @@ test.describe("desktops are a named, open-ended list", () => {
     expect(sizes[0]).toBeGreaterThan(sizes[1] ?? 0);
     await expect(desktop(page, 20)).toBeInViewport({ ratio: 1 });
     await expect(page.locator(".desktop-add")).toBeInViewport({ ratio: 1 });
+    // The "+" sticks to the end of the list: the desktop in front stays clear of it.
+    const front = await desktop(page, 20).boundingBox();
+    const add = await page.locator(".desktop-add").boundingBox();
+    expect((front?.x ?? 0) + (front?.width ?? 0)).toBeLessThanOrEqual(add?.x ?? 0);
     await run(page, "desk.shell.desktop-1");
     await expect(desktop(page, 1)).toBeInViewport({ ratio: 1 });
     // The cap: 32 desktops; one more says so instead.

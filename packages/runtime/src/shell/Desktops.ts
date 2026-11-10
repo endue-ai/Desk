@@ -37,6 +37,28 @@ export function desktopLabel(ctx: ShellCtx, d: Desktop, n: number, empty: boolea
   return `${ctx.tr(empty ? "desktopEmpty" : "desktop", { n: named })}${key ? ` (${key})` : ""}`;
 }
 
+/**
+ * Scroll a long list so the desktop in front is whole in sight: inside the ring's padding and clear of
+ * the "+" that sticks to the right end. The boxes are measured as drawn, since the list's width is a
+ * fraction of the window's and `clientWidth` rounds it; the scroll moves by whole pixels, rounded up.
+ */
+function keepInSight(el: HTMLElement, front: HTMLElement): void {
+  if (el.scrollWidth <= el.clientWidth) return;
+  const style = getComputedStyle(el);
+  const px = (value: string) => Number.parseFloat(value) || 0;
+  const view = el.getBoundingClientRect();
+  const add = el.querySelector<HTMLElement>(".desktop-add");
+  const start = view.left + px(style.borderLeftWidth) + px(style.paddingLeft);
+  const end =
+    view.right -
+    px(style.borderRightWidth) -
+    px(style.paddingRight) -
+    (add ? add.getBoundingClientRect().width + px(style.columnGap) : 0);
+  const chip = front.getBoundingClientRect();
+  if (chip.left < start) el.scrollLeft -= Math.ceil(start - chip.left);
+  else if (chip.right > end) el.scrollLeft += Math.ceil(chip.right - end);
+}
+
 export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
   const el = h("nav", { class: "desktops", "aria-label": ctx.tr("desktop", { n: "" }).trim() });
   root.append(el);
@@ -136,14 +158,8 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
       ),
     ]);
     reorders = buttons.map((b, i) => reorderable(b, list[i]?.id ?? ""));
-    // The desktop in front stays in sight when the list scrolls.
     const front = buttons[list.findIndex((d) => d.id === here)];
-    if (front && el.scrollWidth > el.clientWidth) {
-      const left = front.offsetLeft;
-      if (left < el.scrollLeft) el.scrollLeft = left;
-      else if (left + front.offsetWidth > el.scrollLeft + el.clientWidth)
-        el.scrollLeft = left + front.offsetWidth - el.clientWidth;
-    }
+    if (front) keepInSight(el, front);
   };
   draw();
   const offs = [
