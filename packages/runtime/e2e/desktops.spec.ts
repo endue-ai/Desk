@@ -144,6 +144,8 @@ test.describe("desktops are a named, open-ended list", () => {
     expect(await calendar.boundingBox()).toEqual(before);
   });
 
+  // The window manager drags the window (desk-wm on the compositor, ADR 0153) and says it holds it
+  // (`desk://compositor-held`); this page has none, so the spec holds it as desk-wm would.
   test("a window dropped on a desktop in the switcher moves there", async ({ page }) => {
     await desktop(page, 2).click();
     const tomorrow = page.locator('[data-surface="tomorrow"]');
@@ -153,9 +155,13 @@ test.describe("desktops are a named, open-ended list", () => {
     if (!before || !title || !target) throw new Error("no window or desktop");
     await page.mouse.move(title.x + 5, title.y + 5);
     await page.mouse.down();
+    await page.mouse.move(title.x + 25, title.y + 5, { steps: 2 });
+    const held = { x: before.x + 20, y: before.y, w: before.width, h: before.height };
+    await page.evaluate((rect) => window.__shell.desk.hold("tomorrow", rect), held);
     await page.mouse.move(target.x + 10, target.y + 12, { steps: 8 });
     await expect(desktop(page, 4)).toHaveClass(/is-drop-target/);
     await page.mouse.up();
+    await page.evaluate(() => window.__shell.desk.hold(null));
     await expect(tomorrow).toHaveCount(0);
     await run(page, "desk.shell.desktop-4");
     await expect(tomorrow).toBeVisible();

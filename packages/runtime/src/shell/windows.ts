@@ -1,12 +1,12 @@
 /**
  * Surfaces as windows: ⌘N opens a new one with a launcher, and any pane splits right or down,
  * closes, or takes another view. Every change is a session edit of the current desktop's layout.
+ * Maximizing, snapping and moving or resizing by a step are the window manager's (crates/desk-wm,
+ * `window-commands.ts`, ADR 0153): the runtime's own went with the windowed desk (#83).
  */
 import type { PaneSplit, SurfacePlacement } from "../modes/types";
 import { appSize, isFloating, screenRect, storedRect } from "../surface/coordinates";
-import { clampRect, REF, type Rect, screenArea } from "../surface/geometry";
-import { resizeRect } from "../surface/resize";
-import { type Fill, fillRect } from "../surface/snap";
+import { clampRect } from "../surface/geometry";
 import {
   close,
   findLeaf,
@@ -110,117 +110,6 @@ export function toggleFloating(ctx: Ctx, id: string, size = appSize()): void {
       fill: undefined,
     };
   });
-}
-
-/**
- * The whole app, or a half or quarter of it, in the reference frame (ADR 0132): the bars float above
- * a filled window as they do above every window, and its title keeps clear of the top ones
- * (`surface/clearance.ts`). A fill floats the window (ADR 0128): it stays in its part whatever the
- * pan, and keeps filling it after the app is resized.
- */
-function filled(fill: Fill): Partial<SurfacePlacement> {
-  return { ...fillRect(fill, screenArea(REF.width, REF.height)), floating: true, fill };
-}
-
-/** Where a fill puts a window on an app of `size`: what a drag's snap preview shows. */
-export function snapRect(fill: Fill, size = appSize()): Rect {
-  return fillRect(fill, screenArea(size.vw, size.vh));
-}
-
-type Restore = NonNullable<SurfacePlacement["restore"]>;
-
-/** The place to come back to: where the window is now, and in which mode. */
-const placeOf = (p: SurfacePlacement): Restore => ({
-  x: p.x,
-  y: p.y,
-  w: p.w,
-  h: p.h,
-  floating: isFloating(p),
-});
-
-/**
- * The window out of its fill: back at `back` (its restore, unless a drag moved it), in the mode it
- * had before it filled. A restore saved before fills floated names no mode: the window keeps its own.
- */
-export function unfilled(p: SurfacePlacement, back: Rect = p.restore ?? p): SurfacePlacement {
-  const { restore: _restore, fill: _fill, floating: _floating, ...rest } = p;
-  const floating = p.restore?.floating ?? isFloating(p);
-  return { ...rest, x: back.x, y: back.y, w: back.w, h: back.h, ...(floating ? { floating } : {}) };
-}
-
-/**
- * The window filling `where`. Its own place and mode stay the one to come back to; filling the
- * whole area from a half or a quarter also keeps that part, which the next restore comes back to.
- */
-function fillWith(p: SurfacePlacement, where: Fill): SurfacePlacement {
-  const { fill: _part, ...own } = p.restore ?? placeOf(p);
-  const part = where === "full" && p.fill && p.fill !== "full" ? p.fill : undefined;
-  return { ...p, restore: part ? { ...own, fill: part } : own, ...filled(where) };
-}
-
-/**
- * Fill the whole app, keeping the place to come back to; a second call comes back: to the half or
- * quarter it filled from, or to its own place and mode.
- */
-export function toggleMaximize(ctx: Ctx, id: string): void {
-  update(ctx, id, (p) => {
-    // Filled (one saved before fills has a restore but no fill): come back.
-    if (p.restore && (p.fill === "full" || p.fill === undefined)) {
-      return p.restore.fill ? fillWith(p, p.restore.fill) : unfilled(p);
-    }
-    return fillWith(p, "full");
-  });
-}
-
-/**
- * Snap a window to a half or a quarter of the app, or fill it. Every fill keeps the place and
- * the mode to come back to: the title bar's double-click comes back from the whole area, and
- * dragging a snapped window out brings back its size and mode.
- */
-export function snapTo(ctx: Ctx, id: string, where: Fill): void {
-  update(ctx, id, (p) => fillWith(p, where));
-}
-
-type Size = { vw: number; vh: number };
-
-/**
- * Change window `id` where it is on screen (`change` gets its rect there and whether it floats):
- * the result is stored in its mode, out of any fill, as a drag's drop or a resize stores it.
- */
-function reshape(ctx: Ctx, id: string, size: Size, change: (r: Rect, floating: boolean) => Rect) {
-  const pan = panOf(ctx.store.get());
-  update(ctx, id, (p) => {
-    const floating = isFloating(p);
-    const r = change(screenRect(p, pan, size.vw, size.vh), floating);
-    return {
-      ...p,
-      ...storedRect(r, floating, pan, size.vw, size.vh),
-      floating: floating || undefined,
-      restore: undefined,
-      fill: undefined,
-    };
-  });
-}
-
-/**
- * Move a window by `dx`, `dy` pixels (desk.display.move-*): a floating one stays inside the app; a
- * filled one ends its fill where it is, floating, as resizing it does (ADR 0128).
- */
-export function moveBy(ctx: Ctx, id: string, dx: number, dy: number, size = appSize()): void {
-  reshape(ctx, id, size, (r, floating) => {
-    const moved = { ...r, x: r.x + dx, y: r.y + dy };
-    return floating ? clampRect(moved, size.vw, size.vh) : moved;
-  });
-}
-
-/**
- * Grow or shrink a window by `dw`, `dh` pixels from its right and bottom edges
- * (desk.display.grow-* and shrink-*), never below the minimum, a floating one inside the app.
- */
-export function resizeBy(ctx: Ctx, id: string, dw: number, dh: number, size = appSize()): void {
-  reshape(ctx, id, size, (r, floating) =>
-    resizeRect(r, "se", dw, dh, floating ? screenArea(size.vw, size.vh) : undefined),
-  );
 }
 
 /** The focused window, for the palette's window commands; nothing happens with none. */

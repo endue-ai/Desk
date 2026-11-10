@@ -63,15 +63,9 @@ test.describe("the desk shell", () => {
 
   test("a changed layout shows the dot and offers save, save as new, revert", async ({ page }) => {
     await page.click('[data-desktop="2"]');
-    const title = page.locator('[data-surface="calendar"] .surface-title');
-    const dragBy = async (dx: number) => {
-      const box = await title.boundingBox();
-      if (!box) throw new Error("no title bar");
-      await page.mouse.move(box.x + 60, box.y + 20);
-      await page.mouse.down();
-      await page.mouse.move(box.x + 60 + dx, box.y + 20, { steps: 4 });
-      await page.mouse.up();
-    };
+    // The window manager moves it (desk-wm on the compositor, ADR 0153): the runtime takes it.
+    const dragBy = (dx: number) =>
+      page.evaluate((by) => window.__shell.wm.move("calendar", by), dx);
     await dragBy(100);
     const dot = page.locator(".mode-chip.is-current .mode-dirty");
     await expect(dot).toBeVisible();
@@ -202,26 +196,20 @@ test.describe("the desk shell", () => {
     await expect(page.locator(".composer-field")).toHaveCSS("height", "2px");
   });
 
-  test("surfaces drag, resize and go into the drawer", async ({ page }) => {
+  // Dragging and resizing are desk-wm's (e2e/specs/windows-plugins.spec.ts, ADR 0153): the page lays
+  // a window out where the window manager publishes it.
+  test("surfaces are laid out where the window manager moves and resizes them, and go into the drawer", async ({
+    page,
+  }) => {
     await page.click('[data-desktop="2"]');
     const calendar = page.locator('[data-surface="calendar"]');
-    const title = calendar.locator(".surface-title");
-    const box = await title.boundingBox();
-    if (!box) throw new Error("no title");
-    await page.mouse.move(box.x + 60, box.y + 20);
-    await page.mouse.down();
-    await page.mouse.move(box.x + 64, box.y + 22);
     await expect(calendar).toHaveCSS("left", "120px");
-    await page.mouse.move(box.x + 110, box.y + 60, { steps: 4 });
-    await page.mouse.up();
+    await page.evaluate(() => window.__shell.wm.move("calendar", 50, 40));
     await expect(calendar).toHaveCSS("left", "170px");
     await expect(calendar).toHaveCSS("top", "280px");
-    const grip = await calendar.locator('[data-resize="se"]').boundingBox();
-    if (!grip) throw new Error("no grip");
-    await page.mouse.move(grip.x + 8, grip.y + 8);
-    await page.mouse.down();
-    await page.mouse.move(grip.x + 48, grip.y + 28, { steps: 4 });
-    await page.mouse.up();
+    await page.evaluate(() =>
+      window.__shell.wm.place("calendar", { x: 170, y: 280, w: 600, h: 420 }),
+    );
     await expect(calendar).toHaveCSS("width", "600px");
     await expect(calendar).toHaveCSS("height", "420px");
     await calendar.getByRole("button", { name: "서랍에 넣기" }).click();

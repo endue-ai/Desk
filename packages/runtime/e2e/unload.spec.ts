@@ -1,6 +1,8 @@
 // Hidden surfaces are unloaded and their state kept (ADR 0070), in the shell: a plugin window wholly
 // under another one for desk.display.unload-after loses its frame to a placeholder and gets it back
-// when it shows again. Real time here, with the setting at one second.
+// when it shows again. Real time here, with the setting at one second. The window manager fills
+// Hello (desk-wm on the compositor, ADR 0153); this page has none, so it takes what desk-wm would
+// publish (`fixture/wm.ts`).
 import { expect, type Page, test } from "@playwright/test";
 import { DESK, openShell } from "./shell-helpers";
 import { shellTree } from "./shell-tree";
@@ -14,6 +16,9 @@ const inner = (page: Page, id: string) => page.locator(`.desk-surface[data-surfa
 const frame = (page: Page, id: string) =>
   page.frameLocator(`.desk-surface[data-surface="${id}"] iframe`);
 const init = encodeURIComponent(JSON.stringify({ "desk.display.unload-after": 1 }));
+const maximize = (page: Page, id: string) =>
+  page.evaluate((w) => window.__shell.wm.fill(w, "full"), id);
+const restore = (page: Page, id: string) => page.evaluate((w) => window.__shell.wm.unfill(w), id);
 
 test.beforeEach(async ({ page }) => {
   await openShell(page, `?plugins=1&lang=en&init=${init}`);
@@ -25,7 +30,8 @@ test("a window wholly under a maximized one is unloaded to a placeholder and loa
 }) => {
   await expect(frame(page, COUNTER).getByRole("button")).toBeVisible();
   // Filled and focused, Hello is drawn over the whole app, Counter's slot included.
-  await window_(page, HELLO).locator(".surface-title").dblclick();
+  await window_(page, HELLO).locator(".surface-name").click();
+  await maximize(page, HELLO);
   await expect(window_(page, HELLO)).toHaveCSS("width", "1440px");
   await expect(inner(page, COUNTER).locator(".desk-surface-placeholder")).toHaveCount(1);
   await expect(inner(page, COUNTER).locator("iframe")).toHaveCount(0);
@@ -36,7 +42,7 @@ test("a window wholly under a maximized one is unloaded to a placeholder and loa
   );
 
   // Restored to its slot, Hello no longer covers it: the Counter frame loads again.
-  await window_(page, HELLO).locator(".surface-title").dblclick();
+  await restore(page, HELLO);
   await expect(inner(page, COUNTER).locator(".desk-surface-placeholder")).toHaveCount(0);
   await expect(frame(page, COUNTER).getByRole("button")).toBeVisible();
 });
@@ -44,9 +50,10 @@ test("a window wholly under a maximized one is unloaded to a placeholder and loa
 test("a window that loads again does not take the focus when its page focuses itself", async ({
   page,
 }) => {
-  await window_(page, HELLO).locator(".surface-title").dblclick();
+  await window_(page, HELLO).locator(".surface-name").click();
+  await maximize(page, HELLO);
   await expect(inner(page, COUNTER).locator(".desk-surface-placeholder")).toHaveCount(1);
-  await window_(page, HELLO).locator(".surface-title").dblclick();
+  await restore(page, HELLO);
   await expect(frame(page, COUNTER).getByRole("button")).toBeVisible();
   // The person is in the desk's own page; the Counter page focuses its button as it shows, as many
   // plugins do when they mount.

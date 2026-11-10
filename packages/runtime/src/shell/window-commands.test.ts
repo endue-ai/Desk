@@ -1,20 +1,19 @@
 // The window commands (desk.display.*, ADR 0153): maximize, the eight snaps and moving and resizing
-// by a step act on the window in use, with the runtime's own window manager on the windowed desk,
-// and through the host that runs the window manager when there is one (the compositor). What the
-// host publishes back is taken as the truth for geometry (`takeWm`), and the page lays a held
-// window out where the host holds it (`heldWindows`).
+// by a step act on the window in use, through the window manager (crates/desk-wm on the compositor,
+// whose tests/interactions/wm.rs runs them; the runtime's own went with the windowed desk, #83).
+// What it publishes back is taken as the truth for geometry (`takeWm`), and the page lays a held
+// window out where it holds it (`heldWindows`).
 import { describe, expect, it, vi } from "vitest";
-import { MIN } from "../surface/geometry";
 import { desktopId, layoutOf, windowsOf } from "./actions";
 import type { ShellCtx } from "./context";
 import { Store, sampleState } from "./state";
-import { defineWindowCommands, runWindowOp, STEP, WINDOW_COMMANDS } from "./window-commands";
+import { defineWindowCommands, STEP, WINDOW_COMMANDS } from "./window-commands";
 import { newWindow } from "./windows";
-import { heldWindows, takeWm, type WindowManagerHost } from "./wm-host";
+import { heldWindows, noWindowManager, takeWm, type WindowManagerHost } from "./wm-host";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 
-function ctx(wm?: WindowManagerHost) {
+function ctx(wm: WindowManagerHost = noWindowManager()) {
   const store = new Store(sampleState("en", epoch));
   return {
     store,
@@ -23,7 +22,7 @@ function ctx(wm?: WindowManagerHost) {
     now: () => 1000,
     wall: () => epoch + 1000,
     tr: (key: string) => key,
-    ...(wm ? { wm } : {}),
+    wm,
   } as unknown as ShellCtx;
 }
 
@@ -62,34 +61,7 @@ describe("window commands", () => {
     ]);
   });
 
-  it("move and resize the window in use by a step on the windowed desk", () => {
-    const c = ctx();
-    const id = newWindow(c);
-    const start = rectOf(c, id);
-    if (!start) throw new Error("no window");
-    const run = commands(c);
-    run.get("move-right")?.();
-    run.get("move-down")?.();
-    expect(rectOf(c, id)).toMatchObject({ x: start.x + STEP, y: start.y + STEP });
-    run.get("grow-width")?.();
-    run.get("shrink-height")?.();
-    expect(rectOf(c, id)).toMatchObject({ w: start.w + STEP, h: start.h - STEP });
-    for (let i = 0; i < 40; i++) run.get("shrink-width")?.();
-    expect(rectOf(c, id)?.w).toBe(MIN.w);
-  });
-
-  it("move a filled window out of its fill where it is, floating", () => {
-    const c = ctx();
-    const id = newWindow(c);
-    const run = commands(c);
-    run.get("snap-bottom-right")?.();
-    expect(rectOf(c, id)).toMatchObject({ x: 726, y: 456, w: 714, h: 444, fill: "bottom-right" });
-    run.get("move-up")?.();
-    expect(rectOf(c, id)).toEqual({ x: 726, y: 456 - STEP, w: 714, h: 444, floating: true });
-    expect(layoutOf(c.store.get()).surfaces[0]?.restore).toBeUndefined();
-  });
-
-  it("go to the host that runs the window manager, named for the window in use", () => {
+  it("go to the window manager, named for the window in use, and move nothing here", () => {
     const host = { grab: vi.fn(), run: vi.fn() };
     const c = ctx(host);
     const id = newWindow(c);
@@ -111,7 +83,14 @@ describe("window commands", () => {
     const run = commands(ctx(host));
     run.get("maximize")?.();
     expect(host.run).not.toHaveBeenCalled();
-    expect(() => runWindowOp(ctx(), "nowhere", { op: "move", dx: 1, dy: 1 })).not.toThrow();
+  });
+
+  it("without a window manager (the runtime's own tests and pages) move no window", () => {
+    const c = ctx();
+    const id = newWindow(c);
+    const before = rectOf(c, id);
+    for (const run of commands(c).values()) run();
+    expect(rectOf(c, id)).toEqual(before);
   });
 });
 

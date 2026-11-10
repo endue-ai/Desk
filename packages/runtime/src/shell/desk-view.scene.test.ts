@@ -3,13 +3,27 @@
 // both snapshots must equal the contract's vector `desk-windows-list-scene.json` (specs/bridge/v0,
 // target BrainDesk): every window's rect in whole pixels, its stacking rank, state, fill, pin, focus,
 // desktop and panes, and the desktops with their pans. Change a step here and in scene.rs together.
+// A snap and a maximize are desk-wm's (ADR 0153): here the runtime takes them as it takes desk-wm's
+// published change (`takeWm`), since it runs neither itself any more (#83).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { moveSurface, openSurface, setDesktop, stash, togglePin } from "./actions";
+import type { SurfacePlacement } from "../modes/types";
+import { fillRect } from "../surface/snap";
+import {
+  type Ctx,
+  desktopId,
+  moveSurface,
+  openSurface,
+  setDesktop,
+  stash,
+  togglePin,
+  windowsOf,
+} from "./actions";
 import { deskSnapshot } from "./desk-view";
 import { Store, sampleState } from "./state";
-import { focusPane, newWindow, snapTo, splitPane, toggleFloating, toggleMaximize } from "./windows";
+import { focusPane, newWindow, splitPane, toggleFloating } from "./windows";
+import { takeWm } from "./wm-host";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 const SIZE = { vw: 1440, vh: 900 };
@@ -24,6 +38,17 @@ const STATES: Record<string, "late" | "stopped"> = {
   "endue.git": "stopped",
 };
 const ASLEEP = new Set(["endue.mail", "endue.git"]);
+
+/** desk-wm fills window `id` (a snap, a maximize): the runtime takes the geometry it publishes. */
+function fill(c: Ctx, id: string, where: NonNullable<SurfacePlacement["fill"]>) {
+  const p = windowsOf(c.store.get()).find((w) => w.id === id);
+  if (!p) throw new Error(`no window ${id}`);
+  const restore = { x: p.x, y: p.y, w: p.w, h: p.h, floating: p.floating === true };
+  const rect = fillRect(where, { x: 0, y: 0, w: SIZE.vw, h: SIZE.vh });
+  const desktop = desktopId(c.store.get());
+  const windows = [{ id, ...rect, floating: true, fill: where, restore }];
+  takeWm(c as never, { rev: 1, desktop, windows });
+}
 
 function scene() {
   const store = new Store({ ...sampleState("en", epoch), drawer: [] });
@@ -55,12 +80,12 @@ function scene() {
   moveSurface(c, "endue.notes", { x: 40, y: 60, w: 600, h: 400 });
   moveSurface(c, "endue.git", { x: 700, y: 60, w: 680, h: 760 });
   toggleFloating(c, "endue.notes", SIZE);
-  snapTo(c, "endue.mail", "right");
+  fill(c, "endue.mail", "right");
   togglePin(c, "endue.git");
   const one = newWindow(c);
   splitPane(c, "row");
   const two = newWindow(c);
-  toggleMaximize(c, two);
+  fill(c, two, "full");
   stash(c, "e2e.hello", "Hello");
   // A shell view on desktop 2, its canvas panned; then back to desktop 1, panned too.
   setDesktop(c, "2");

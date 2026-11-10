@@ -8,26 +8,6 @@ test.beforeEach(async ({ page }) => {
   await page.keyboard.press("Meta+n");
 });
 
-test("a drag survives status redraws and Escape restores the saved position", async ({ page }) => {
-  const surface = page.locator('[data-surface="window-1"]');
-  const before = await surface.boundingBox();
-  if (!before) throw new Error("no window");
-  await page.mouse.move(before.x + 80, before.y + 20);
-  await page.mouse.down();
-  await page.mouse.move(before.x + 160, before.y + 70, { steps: 3 });
-  const preview = await surface.boundingBox();
-  expect(preview?.x).toBe(before.x + 80);
-  await page.evaluate(() => window.__shell.desk.store.set({ tasks: [] }));
-  expect(await surface.boundingBox()).toEqual(preview);
-  await expect(surface).toHaveCSS("cursor", "grabbing");
-  await page.keyboard.press("Escape");
-  await expect(page.locator("html")).not.toHaveClass(/is-grabbing/);
-  await expect(surface).not.toHaveClass(/is-dragging/);
-  expect(await surface.boundingBox()).toEqual(before);
-  await page.mouse.up();
-  expect(await surface.boundingBox()).toEqual(before);
-});
-
 test("resize keeps its diagonal cursor and losing app focus cancels it", async ({ page }) => {
   const surface = page.locator('[data-surface="window-1"]');
   const before = await surface.boundingBox();

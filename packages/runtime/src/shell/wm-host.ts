@@ -1,11 +1,12 @@
 /**
- * A host that runs the window manager's gestures and window commands itself: the CEF shell's
+ * The host that runs the window manager's gestures and window commands: the CEF shell's
  * compositor, where crates/desk-wm drags, resizes, snaps and pans windows on the compositor's input
  * (#80, ADR 0153). The page's DOM still finds what a press lands on, as the gestures' handlers
  * accept it, and says so (`grab`); the host runs the gesture and publishes each change it makes,
  * which the runtime takes as the truth for geometry (`takeWm`). While a gesture holds a window, the
  * page lays the window out where it is held (`HeldWindows`), so what the page draws of it follows.
- * The windowed desk has no host: the runtime's own window manager does all of it.
+ * The runtime has no window manager of its own for these any more (#83, ADR 0156): a desk without
+ * the compositor (the runtime's own tests and fixture pages) runs them nowhere (`noWindowManager`).
  */
 import type { SurfacePlacement } from "../modes/types";
 import type { Rect } from "../surface/geometry";
@@ -32,6 +33,11 @@ export interface WindowManagerHost {
   grab(grab: Grab, at: { x: number; y: number }): void;
   /** Run `op` on window `window`, or on the one in use. */
   run(op: WindowOp, window?: string): void;
+}
+
+/** No window manager: the desk without the compositor moves no window by gesture or command. */
+export function noWindowManager(): WindowManagerHost {
+  return { grab: () => undefined, run: () => undefined };
 }
 
 /** A window's geometry as the host leaves it. */

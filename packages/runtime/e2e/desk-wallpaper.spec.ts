@@ -2,15 +2,12 @@ import { expect, type Page, test } from "@playwright/test";
 import { DESK, openShell, step } from "./shell-helpers";
 
 test.use({ viewport: DESK });
-/** Shift + drag from the empty background, left of the canvas map in the bottom right. */
-const pan = async (page: Page, dx: number, dy: number) => {
-  await page.keyboard.down("Shift");
-  await page.mouse.move(1100, 720);
-  await page.mouse.down();
-  await page.mouse.move(1100 + dx, 720 + dy, { steps: 6 });
-  await page.mouse.up();
-  await page.keyboard.up("Shift");
-};
+/**
+ * The canvas panned by `dx`, `dy`, as the window manager publishes a Shift + drag's pan (desk-wm on
+ * the compositor, ADR 0153; this page has none, `fixture/wm.ts`).
+ */
+const pan = (page: Page, dx: number, dy: number) =>
+  page.evaluate(([x, y]) => window.__shell.wm.panBy(x, y), [dx, dy] as const);
 
 test("Eris has idle, hover and editing states with keyboard and pointer input", async ({
   page,

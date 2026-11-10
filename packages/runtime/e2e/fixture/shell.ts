@@ -38,6 +38,7 @@ import { sampleState } from "../../src/shell/state";
 import testTheme from "../themes/test-theme/plugin.json";
 import { fileHandlers, grantFilePlugins } from "./file-viewers";
 import { heavyHandlers } from "./heavy-files";
+import { fixtureWm } from "./wm";
 
 const root = document.getElementById("desk");
 if (!root) throw new Error("no #desk element");
@@ -215,6 +216,7 @@ function step(ms: number): void {
 
 window.__shell = {
   desk,
+  wm: fixtureWm(desk),
   clock,
   bridge,
   stub: core.stub,

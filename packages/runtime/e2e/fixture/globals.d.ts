@@ -3,6 +3,7 @@ import type { BrowserBridge, Envelope } from "../../src/bridge/browser";
 import type { StubFolder } from "../../src/bridge/folder";
 import type { ManualClock, Runtime } from "../../src/index";
 import type { Desk } from "../../src/shell/Desk";
+import type { FixtureWm } from "./wm";
 
 declare global {
   interface Window {
@@ -13,6 +14,8 @@ declare global {
     /** The shell fixture's handle (shell.html). */
     __shell: {
       desk: Desk;
+      /** What the window manager (desk-wm, absent here) would publish, taken by the runtime. */
+      wm: FixtureWm;
       clock: ManualClock;
       bridge: BrowserBridge;
       /** The core's stub, to emit plugin.changed and the like. */

@@ -22,15 +22,6 @@
 .surface.is-focused { border-color: var(--desk-input); }
 .surface.is-eris.is-focused { border-color: var(--desk-accent); }
 .surface.is-dragging { user-select: none; }
-/* Into a fill or out of it the window glides (interactions.ts `settle`); coming off a fill under the
-   pointer only its size does, so it never lags the pointer. Reduced motion zeroes --motion-*. */
-.surface.is-settling {
-  transition: left var(--motion-base) var(--ease-out-expo), top var(--motion-base) var(--ease-out-expo),
-    width var(--motion-base) var(--ease-out-expo), height var(--motion-base) var(--ease-out-expo);
-}
-.surface.is-unsnapping {
-  transition: width var(--motion-fast) ease-out, height var(--motion-fast) ease-out;
-}
 /* A frame would swallow the pointer mid-drag; while anything is dragged, frames get none. */
 .is-grabbing iframe { pointer-events: none; }
 /* A plugin's surface in a pane fills it; its own section has no border of its own there. One cell
@@ -131,15 +122,3 @@
 .list-body { margin: 0; padding: var(--space-2) var(--space-3); list-style: none; }
 .list-row { display: flex; gap: var(--space-3); margin: 0; padding: var(--space-2) 0; border-bottom: 1px solid var(--desk-border); }
 
-/* Where a dragged window will snap (ADR 0128): the part of the app, under the window, while the
-   pointer aims at an edge or a corner. It grows out of the window's box and moves from one part to
-   the next as the pointer does. */
-.surface-snap {
-  position: absolute;
-  border: 2px solid var(--desk-primary-border);
-  border-radius: var(--radius-lg);
-  background: var(--desk-primary-soft);
-  pointer-events: none;
-  transition: left var(--motion-base) var(--ease-out-expo), top var(--motion-base) var(--ease-out-expo),
-    width var(--motion-base) var(--ease-out-expo), height var(--motion-base) var(--ease-out-expo);
-}

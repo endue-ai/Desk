@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// A window's gestures when a host runs the window manager (the compositor, ADR 0153): the page still
+// A window's gestures, which the window manager runs (the compositor, ADR 0153): the page still
 // finds what a press lands on, as the runtime's handles accept it (the title bar away from its
 // buttons, one of the eight grips, Shift on the canvas or a title bar), and tells the host with the
 // press's point; it moves nothing itself, not even under a drag.
@@ -8,7 +8,7 @@ import type { SurfacePlacement } from "../modes/types";
 import type { ShellCtx } from "../shell/context";
 import { mountPan } from "../shell/Pan";
 import { Store, sampleState } from "../shell/state";
-import { surfaceInteractions } from "./interactions";
+import { hostGestures } from "./host-gestures";
 
 const placement: SurfacePlacement = {
   id: "window-1",
@@ -65,8 +65,7 @@ describe("gestures a host runs", () => {
       tr: (key: string) => key,
       wm: host,
     } as unknown as ShellCtx;
-    const size = () => ({ vw: 1440, vh: 900 });
-    const off = [surfaceInteractions(el, bar, () => p, size, ctx), mountPan(root, ctx)];
+    const off = [hostGestures(el, bar, () => p, ctx), mountPan(root, ctx)];
     dispose = () => {
       for (const o of off) o();
     };

@@ -43,7 +43,13 @@ import { byRole } from "./roles";
 import { type DeskState, emptyState, Store } from "./state";
 import { Ticker } from "./ticker";
 import { showPlugin } from "./windows";
-import { heldWindows, takeWm, type WindowManagerHost, type WmPublished } from "./wm-host";
+import {
+  heldWindows,
+  noWindowManager,
+  takeWm,
+  type WindowManagerHost,
+  type WmPublished,
+} from "./wm-host";
 
 export interface DeskOptions {
   root: HTMLElement;
@@ -72,8 +78,9 @@ export interface DeskOptions {
   /** The live budget, when the host keeps it (the CEF shell's compositor, ADR 0151). */
   liveBudget?: KeptWindows;
   /**
-   * The window manager's gestures and window commands, when the host runs them (the CEF shell's
-   * compositor, ADR 0153): its changes come back through `takeWm`.
+   * The window manager that runs the gestures and window commands: the CEF shell's compositor
+   * (ADR 0153), whose changes come back through `takeWm`. Without one (the runtime's tests and
+   * fixture pages) no window moves by gesture or command (#83).
    */
   windowManager?: WindowManagerHost;
 }
@@ -122,7 +129,8 @@ export function mountDesk(options: DeskOptions): Desk {
     wall: () => epoch + ticker.now(),
     platform,
     keyOf: (command) => ctx.runtime.keymap.keysFor(command)[0],
-    ...(options.windowManager ? { wm: options.windowManager, held: heldWindows() } : {}),
+    wm: options.windowManager ?? noWindowManager(),
+    held: heldWindows(),
     eris: { say: (text, words) => pending.say(text, words), setState: (s) => pending.setState(s) },
   };
 
@@ -232,7 +240,7 @@ export function mountDesk(options: DeskOptions): Desk {
     ready,
     refresh,
     takeWm: (published) => takeWm(ctx, published),
-    hold: (id, rect) => ctx.held?.hold(id, rect),
+    hold: (id, rect) => ctx.held.hold(id, rect),
     dispose() {
       for (const off of offs) off();
       for (const off of parts) off();

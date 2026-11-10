@@ -1,6 +1,8 @@
 /**
- * Surfaces: windows on the desk. Card face, 1 px border, no shadow; Eris's own carry the lavender
- * border and a badge. Drag the title bar to move, the corner to resize; both save to the session layout.
+ * Surfaces: windows on the desk, as the page lays them out for what it draws of them (the title
+ * bar's icon and tools, the shell's own views, the panes' headers) and for the plugins' stand-in
+ * frames; the compositor draws their chrome (ADR 0151). The title bar and the grips tell the window
+ * manager what a press starts (`host-gestures.ts`): it moves and resizes the window (ADR 0153).
  */
 
 import { mountArrange } from "../arrange";
@@ -10,20 +12,22 @@ import type { ShellCtx } from "../shell/context";
 import { h, listen, render } from "../shell/dom";
 import { icon } from "../shell/icons";
 import { panOf } from "../shell/Pan";
-import {
-  closeWindow,
-  focusPane,
-  splitPane,
-  toggleFloating,
-  toggleMaximize,
-} from "../shell/windows";
+import { closeWindow, focusPane, splitPane, toggleFloating } from "../shell/windows";
 import { trackTopChrome } from "./clearance";
 import { isFloating, screenRect } from "./coordinates";
 import { zOf } from "./cover";
-import { place, settle, surfaceInteractions } from "./interactions";
+import type { Rect } from "./geometry";
+import { hostGestures } from "./host-gestures";
 import { renderPanes } from "./PaneView";
 import { findLeaf, leaves, panesOf } from "./tree";
 import { type Mounted, resolveView, viewOf } from "./views";
+
+function place(el: HTMLElement, r: Rect): void {
+  el.style.left = `${r.x}px`;
+  el.style.top = `${r.y}px`;
+  el.style.width = `${r.w}px`;
+  el.style.height = `${r.h}px`;
+}
 
 /** The pane whose view the title bar names: the focused one, else the first. */
 function activeLeaf(ctx: ShellCtx, p: SurfacePlacement) {
@@ -178,11 +182,9 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       listen(el, "pointerdown", (e) => focusFrom(e.target)),
       listen(el, "focusin", (e) => focusFrom(e.target)),
       listen(bar, "dblclick", (e) => {
-        if ((e.target as Element).closest("button")) return;
-        if (ctx.wm) ctx.wm.run({ op: "maximize" }, p.id);
-        else toggleMaximize(ctx, p.id);
+        if (!(e.target as Element).closest("button")) ctx.wm.run({ op: "maximize" }, p.id);
       }),
-      surfaceInteractions(el, bar, () => entry.placement, size, ctx),
+      hostGestures(el, bar, () => entry.placement, ctx),
     ];
     const entry: Entry = {
       el,
@@ -257,21 +259,15 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       entry.el.dataset.floating = String(isFloating(p));
       // A window maximized before fills has a restore but no fill.
       const fill = p.fill ?? (p.restore ? "full" : undefined);
-      // A host's gesture holds it (ADR 0153): laid out where it is held, so what the page draws of
-      // it follows the pointer; the host draws the glides.
-      const held = ctx.wm ? ctx.held?.rect(p.id) : undefined;
-      if (ctx.wm) entry.el.classList.toggle("is-dragging", held !== undefined);
-      const dragging = entry.el.classList.contains("is-dragging");
-      // Into a fill, from one to the next, or back out (not from a drag's own drop): it glides there.
-      if (fill !== entry.el.dataset.fill && entry.el.style.left !== "" && !dragging && !ctx.wm)
-        settle(entry.el);
+      // The window manager's gesture holds it (ADR 0153): laid out where it is held, so what the
+      // page draws of it follows the pointer; the compositor draws the glides.
+      const held = ctx.held.rect(p.id);
+      entry.el.classList.toggle("is-dragging", held !== undefined);
       if (fill) entry.el.dataset.fill = fill;
       else delete entry.el.dataset.fill;
       entry.relabel();
       drawTitle(entry, p);
-      // Status/focus updates must not overwrite an in-progress pointer preview.
-      if (held) place(entry.el, held);
-      else if (!dragging) place(entry.el, screenRect(p, panOf(s), vw, vh));
+      place(entry.el, held ?? screenRect(p, panOf(s), vw, vh));
       entry.el.style.zIndex = String(zOf(p, i, s.focused));
       entry.el.classList.toggle("is-focused", p.id === s.focused);
     });
@@ -298,7 +294,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       for (const entry of live.values()) entry.relabel();
     }),
     listen(window, "resize", draw),
-    ctx.held?.onChange(draw) ?? (() => undefined),
+    ctx.held.onChange(draw),
     trackTopChrome(layer, root.closest(".shell") ?? root),
     // Tile, cascade and spread, with the strip on the right edge (ADR 0116).
     mountArrange(root, ctx, { layer, element: (id) => live.get(id)?.el, size }),

@@ -2,7 +2,7 @@ import { type Offset, ORIGIN } from "../surface/coordinates";
 import { desktopId } from "./actions";
 import type { ShellCtx } from "./context";
 import { h, listen } from "./dom";
-import { type DragHandlers, draggable } from "./drag";
+import { draggable } from "./drag";
 import { icon } from "./icons";
 import type { DeskState } from "./state";
 
@@ -25,12 +25,10 @@ export function wheelPan(ctx: ShellCtx, e: WheelEvent, page: number): void {
  * bar moves it, and the normal windows with it; floating windows stay where they are. A wheel over
  * the empty background moves it too. Windows' contents, inputs and plugin scroll areas keep their
  * input, and a plain drag never pans. Over the empty canvas the pointer shows how (the root's title,
- * only there). A host that runs the window manager (the compositor, ADR 0153) pans from the press
- * the page found, and publishes the pan.
+ * only there). The window manager (crates/desk-wm on the compositor, ADR 0153) pans from the press
+ * the page found, and publishes the pan; the wheel's pan is the page's.
  */
 export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
-  let start = ORIGIN;
-  let desktop = ctx.store.get().desktop;
   const background = (target: EventTarget | null) =>
     target === root || (target instanceof Element && target.classList.contains("shell-glow"));
   const titleBar = (target: EventTarget | null) =>
@@ -60,32 +58,13 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
       if (reset.parentElement !== root) root.append(reset);
     } else reset.remove();
   };
-  const move = (dx: number, dy: number) => {
-    if (ctx.store.get().desktop === desktop) setPan(ctx, { x: start.x + dx, y: start.y + dy });
-  };
-  const accept = (e: PointerEvent) => e.shiftKey && (background(e.target) || titleBar(e.target));
-  const host = ctx.wm;
-  const pans: DragHandlers = host
-    ? {
-        accept,
-        press: (e) => host.grab({ kind: "pan" }, { x: e.clientX, y: e.clientY }),
-        move: () => undefined,
-        end: () => undefined,
-      }
-    : {
-        accept,
-        start: () => {
-          start = panOf(ctx.store.get());
-          desktop = ctx.store.get().desktop;
-        },
-        move,
-        end: move,
-        cancel: () => {
-          if (ctx.store.get().desktop === desktop) setPan(ctx, start);
-        },
-      };
   const off = [
-    draggable(root, pans),
+    draggable(root, {
+      accept: (e) => e.shiftKey && (background(e.target) || titleBar(e.target)),
+      press: (e) => ctx.wm.grab({ kind: "pan" }, { x: e.clientX, y: e.clientY }),
+      move: () => undefined,
+      end: () => undefined,
+    }),
     listen(
       root,
       "wheel",

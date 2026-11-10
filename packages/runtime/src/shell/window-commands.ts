@@ -1,14 +1,14 @@
 /**
  * The window commands (desk.display.*): maximize and restore, the eight snaps (ADR 0128), and moving
  * and resizing the window in use by a step, for keys, the palette and agents. Each acts on the
- * focused window; nothing happens with none. A host that runs the window manager (the compositor,
- * ADR 0153) runs them there, and they come back as its changes; else the runtime's own does.
+ * focused window; nothing happens with none. The window manager (crates/desk-wm on the compositor,
+ * ADR 0153) runs them, and they come back as its changes (#83: the runtime runs none itself).
  */
 
 import type { Fill } from "../surface/snap";
 import type { ShellCtx } from "./context";
 import type { CopyKey } from "./copy";
-import { focusedWindow, moveBy, resizeBy, snapTo, toggleMaximize } from "./windows";
+import { focusedWindow } from "./windows";
 import type { WindowOp } from "./wm-host";
 
 /** How far one step moves or resizes a window: the cascade's step. */
@@ -64,14 +64,6 @@ export const WINDOW_COMMANDS: Spec[] = [
   ],
 ];
 
-/** Run `op` on window `id` with the runtime's own window manager. */
-export function runWindowOp(ctx: ShellCtx, id: string, op: WindowOp): void {
-  if (op.op === "maximize") toggleMaximize(ctx, id);
-  else if (op.op === "snap") snapTo(ctx, id, op.fill);
-  else if (op.op === "move") moveBy(ctx, id, op.dx, op.dy);
-  else resizeBy(ctx, id, op.dw, op.dh);
-}
-
 /** Define the window commands through `display` (desk.display.<id>). */
 export function defineWindowCommands(
   ctx: ShellCtx,
@@ -80,9 +72,7 @@ export function defineWindowCommands(
   for (const [id, title, words, op] of WINDOW_COMMANDS) {
     display(id, ctx.tr(title), words, () => {
       const window = focusedWindow(ctx);
-      if (!window) return;
-      if (ctx.wm) ctx.wm.run(op, window);
-      else runWindowOp(ctx, window, op);
+      if (window) ctx.wm.run(op, window);
     });
   }
 }

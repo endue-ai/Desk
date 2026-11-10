@@ -1,9 +1,11 @@
 // Plugin surfaces as shell windows: the shell fixture with ?plugins=1 installs two UI test plugins,
-// whose centre surfaces open inside the shell's windows (ADR 0040). One window manager: slots,
-// drag, resize, snap, maximize, the drawer and the plugin's on/off all go through it. With ?many=18
-// there are twenty, and past the live budget the windows out of sight sleep (ADR 0134).
+// whose centre surfaces open inside the shell's windows (ADR 0040): slots, the drawer and the
+// plugin's on/off. With ?many=18 there are twenty, and past the live budget the windows out of sight
+// sleep (ADR 0134). Dragging, resizing, snapping and maximizing are the window manager's (desk-wm on
+// the compositor, ADR 0153): e2e/specs/windows-plugins.spec.ts drives them on the desk, and here the
+// page takes what desk-wm would publish (`fixture/wm.ts`).
 import { expect, type Page, test } from "@playwright/test";
-import { chipsOverTitle, DESK, openShell, step } from "./shell-helpers";
+import { DESK, openShell, step } from "./shell-helpers";
 
 test.use({ viewport: DESK });
 
@@ -13,21 +15,6 @@ const window_ = (page: Page, id = COUNTER) => page.locator(`section.surface[data
 const inner = (page: Page, id = COUNTER) => page.locator(`.desk-surface[data-surface="${id}"]`);
 const frame = (page: Page, id = COUNTER) =>
   page.frameLocator(`.desk-surface[data-surface="${id}"] iframe`);
-const box = async (page: Page, id = COUNTER) => {
-  const b = await window_(page, id).boundingBox();
-  if (!b) throw new Error(`no window ${id}`);
-  return b;
-};
-
-/** Drag a window by its title bar, grabbing 120 px in from its left edge. */
-async function dragTitle(page: Page, id: string, dx: number, dy: number) {
-  const b = await box(page, id);
-  await page.mouse.move(b.x + 120, b.y + 20);
-  await page.mouse.down();
-  await page.mouse.move(b.x + 120 + dx / 2, b.y + 20 + dy / 2, { steps: 4 });
-  await page.mouse.move(b.x + 120 + dx, b.y + 20 + dy, { steps: 4 });
-  await page.mouse.up();
-}
 
 test.describe("plugin surfaces as shell windows", () => {
   test.beforeEach(async ({ page }) => {
@@ -55,58 +42,6 @@ test.describe("plugin surfaces as shell windows", () => {
     await expect(
       page.locator(".desk-compositor > .desk-surface:not(.desk-surface--overlay)"),
     ).toHaveCount(0);
-  });
-
-  test("the resize grip resizes it and dragging the title bar moves it, as session edits; the frame keeps its state", async ({
-    page,
-  }) => {
-    await frame(page).getByRole("button").click();
-    await expect(frame(page).getByTestId("count")).toHaveText("1");
-    const before = await box(page);
-    const grip = window_(page).locator('[data-resize="se"]');
-    const g = await grip.boundingBox();
-    if (!g) throw new Error("no grip");
-    await page.mouse.move(g.x + 8, g.y + 8);
-    await page.mouse.down();
-    // Narrower than this, the title bar's tools would sit where dragTitle grabs it.
-    await page.mouse.move(g.x + 8 - 60, g.y + 8 - 100, { steps: 4 });
-    await page.mouse.up();
-    const resized = await box(page);
-    expect(Math.round(before.width - resized.width)).toBe(60);
-    expect(Math.round(before.height - resized.height)).toBe(100);
-    await expect(page.locator(".mode-chip.is-current .mode-dirty")).toBeVisible();
-    await dragTitle(page, COUNTER, 160, 90);
-    const moved = await box(page);
-    expect(Math.round(moved.x - resized.x)).toBe(160);
-    expect(Math.round(moved.y - resized.y)).toBe(90);
-    // Never reloaded: the count lives in the frame's DOM.
-    await expect(frame(page).getByTestId("count")).toHaveText("1");
-    // Moving and resizing one window leaves the other where it was, at its size.
-    await expect(window_(page, HELLO)).toHaveCSS("left", "518px");
-    await expect(window_(page, HELLO)).toHaveCSS("width", "402px");
-  });
-
-  test("dropping it at the left edge snaps it to the left half; double-clicking the title bar fills the whole app and restores", async ({
-    page,
-  }) => {
-    const before = await box(page, HELLO);
-    const hello = `section.surface[data-surface="${HELLO}"]`;
-    // The pointer, not the window, decides: it ends 10 px inside the app's left edge.
-    await dragTitle(page, HELLO, -(before.x + 120 - 10), 0);
-    // The left half of the whole app (ADR 0132): the bars float above it as above every window.
-    await expect(window_(page, HELLO)).toHaveCSS("left", "0px");
-    await expect(window_(page, HELLO)).toHaveCSS("top", "0px");
-    await expect(window_(page, HELLO)).toHaveCSS("width", "714px");
-    await expect(window_(page, HELLO)).toHaveCSS("height", "900px");
-    expect(await chipsOverTitle(page, hello)).toEqual([]);
-    await window_(page, HELLO).locator(".surface-title").dblclick();
-    await expect(window_(page, HELLO)).toHaveCSS("width", "1440px");
-    await expect(window_(page, HELLO)).toHaveCSS("height", "900px");
-    // Its title and tools keep clear of the profile switcher and the desktops.
-    expect(await chipsOverTitle(page, hello)).toEqual([]);
-    await window_(page, HELLO).locator(".surface-name").dblclick();
-    await expect(window_(page, HELLO)).toHaveCSS("width", "714px");
-    await expect(window_(page, HELLO)).toHaveCSS("left", "0px");
   });
 
   test("putting it in the drawer takes the frame away and raising it brings the plugin back", async ({
@@ -222,7 +157,7 @@ test.describe("the live budget (#37)", () => {
     const recent = many.slice(0, 9);
     for (const id of recent) await focus(page, id);
     const top = recent[8] ?? "";
-    await window_(page, top).locator(".surface-name").dblclick();
+    await page.evaluate((id) => window.__shell.wm.fill(id, "full"), top);
     await expect(window_(page, top)).toHaveCSS("width", "1440px");
     // The one in sight and the eight most recent out of sight keep a frame; the rest sleep.
     await expect.poll(() => live(page)).toEqual([...recent].sort());

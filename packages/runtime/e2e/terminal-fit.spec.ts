@@ -59,13 +59,22 @@ const staleCell = (page: Page, col: number, row: number) =>
     [ID, col, row] as const,
   );
 
-async function dragBy(page: Page, from: Box, dx: number, dy: number) {
-  await page.mouse.move(from.x, from.y);
-  await page.mouse.down();
-  await page.mouse.move(from.x + dx / 2, from.y + dy / 2, { steps: 4 });
-  await page.mouse.move(from.x + dx, from.y + dy, { steps: 4 });
-  await page.mouse.up();
-}
+/** What the window manager publishes (desk-wm on the compositor, ADR 0153; `fixture/wm.ts`). */
+const wm = {
+  resize: (page: Page, dw: number, dh: number) =>
+    page.evaluate(
+      ([id, dw, dh]) => {
+        const el = document.querySelector<HTMLElement>(`section.surface[data-surface="${id}"]`);
+        const [x, y] = [el?.offsetLeft ?? 0, el?.offsetTop ?? 0];
+        const [w, h] = [(el?.offsetWidth ?? 0) + dw, (el?.offsetHeight ?? 0) + dh];
+        window.__shell.wm.place(id, { x, y, w, h });
+      },
+      [ID, dw, dh] as const,
+    ),
+  fill: (page: Page, where: "left" | "full") =>
+    page.evaluate(([id, where]) => window.__shell.wm.fill(id, where), [ID, where] as const),
+  unfill: (page: Page) => page.evaluate((id) => window.__shell.wm.unfill(id), ID),
+};
 
 test("a terminal window fills its pane at every size, whatever grid cell the layout kept for it", async ({
   page,
@@ -78,26 +87,22 @@ test("a terminal window fills its pane at every size, whatever grid cell the lay
   const sizes: Record<string, Awaited<ReturnType<typeof geometry>>> = {};
   sizes.open = await expectFilled(page, "open");
 
-  // Smaller, from the resize grip.
-  const grip = await window_(page).locator('[data-resize="se"]').boundingBox();
-  if (!grip) throw new Error("no grip");
-  await dragBy(page, { ...grip, x: grip.x + 8, y: grip.y + 8 }, -80, -60);
+  // Smaller, as from the resize grip.
+  await wm.resize(page, -80, -60);
   await staleCell(page, 3, 1);
   sizes.resized = await expectFilled(page, "resized");
 
-  // Snapped to the left half: the pointer ends 10 px inside the app's left edge.
-  const title = await window_(page).locator(".surface-title").boundingBox();
-  if (!title) throw new Error("no title bar");
-  await dragBy(page, { ...title, x: title.x + 120, y: title.y + 20 }, -(title.x + 110), 0);
+  // Snapped to the left half.
+  await wm.fill(page, "left");
   await expect(window_(page)).toHaveCSS("left", "0px");
   sizes.half = await expectFilled(page, "left half");
 
   // Maximized, and back.
-  await window_(page).locator(".surface-title").dblclick();
+  await wm.fill(page, "full");
   await expect(window_(page)).toHaveCSS("width", "1440px");
   await staleCell(page, 2, 1);
   sizes.maximized = await expectFilled(page, "maximized");
-  await window_(page).locator(".surface-name").dblclick();
+  await wm.unfill(page);
   sizes.restored = await expectFilled(page, "restored");
 
   // Put away and raised again: the frame comes back into the same pane.
