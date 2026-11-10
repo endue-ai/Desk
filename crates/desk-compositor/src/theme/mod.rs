@@ -1,6 +1,6 @@
 //! The look of the desk's chrome, read from the flat token table (ADR 0146): which token each part
-//! of a window frame, a title bar, a bar, a snap preview, a toast and a placeholder takes, the
-//! same tokens the web shell's CSS reads today. A token the table lacks, or holds in a form this
+//! of a window frame, a title bar, a bar, a snap preview, a toast, a placeholder, the spread and the
+//! canvas map takes, the same tokens the web shell's CSS reads today. A token the table lacks, or holds in a form this
 //! does not read, keeps the endue dark theme's value.
 
 mod css;
@@ -67,6 +67,57 @@ pub struct PlaceholderStyle {
     pub text: TextStyle,
     pub line: TextStyle,
     pub scrim: Color,
+    /// Over a sleeping window's greyed last frame.
+    pub veil: Color,
+}
+
+/// The spread (ADR 0116, `arrange.css`): the scrim over the desk, the filter field and the bar under
+/// it with the count and the hint, the message when nothing matches, and the selected card's ring.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SpreadStyle {
+    pub scrim: Color,
+    pub field: Color,
+    pub field_border: Color,
+    pub field_radius: f32,
+    pub field_height: f32,
+    pub field_padding: f32,
+    pub field_shadow: Option<Shadow>,
+    pub text: TextStyle,
+    /// The field's placeholder while nothing is typed.
+    pub placeholder: TextStyle,
+    pub meta: Color,
+    pub meta_border: Color,
+    pub meta_radius: f32,
+    pub meta_text: TextStyle,
+    pub count: TextStyle,
+    /// Round the selected card, and its width.
+    pub ring: Color,
+    pub ring_width: f32,
+    /// Under every card.
+    pub card_shadow: Option<Shadow>,
+}
+
+/// The canvas map (ADR 0082, `shell/minimap.css`): its box, the canvas in it, each normal window
+/// (the focused one marked), the part in sight and the button that folds it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MapStyle {
+    pub fill: Color,
+    pub border: Color,
+    pub radius: f32,
+    pub shadow: Option<Shadow>,
+    pub padding: f32,
+    pub canvas: Color,
+    pub canvas_radius: f32,
+    pub window: Color,
+    pub window_border: Color,
+    pub focused: Color,
+    pub focused_border: Color,
+    pub small_radius: f32,
+    pub view: Color,
+    pub view_border: Color,
+    /// The fold button folded (on its own), and the icon on it.
+    pub button_size: f32,
+    pub icon: Color,
 }
 
 /// Everything the compositor draws of its own, styled by one look.
@@ -78,6 +129,8 @@ pub struct ChromeTheme {
     pub snap: SnapStyle,
     pub toast: ToastStyle,
     pub placeholder: PlaceholderStyle,
+    pub spread: SpreadStyle,
+    pub map: MapStyle,
 }
 
 impl Default for ChromeTheme {
@@ -97,6 +150,7 @@ mod endue {
     pub const TEXT: u32 = 0xf2f0f5;
     pub const TEXT_MUTED: u32 = 0xb0adb7;
     pub const PRIMARY: u32 = 0xb6a3f5;
+    pub const POPOVER: u32 = 0x2b2731;
     pub const FONT: &str = r#""Inter", "SUIT Variable", "SUIT", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif"#;
 }
 
@@ -176,6 +230,48 @@ impl ChromeTheme {
                 ..text("textXs", 12.0, 400, muted_ink)
             },
             scrim: muted.fade(0.92),
+            veil: muted.fade(0.8),
+        };
+        let accent = color("accent", primary);
+        let popover = color("popover", hex(endue::POPOVER));
+        let small = length("radiusSm", 4.0);
+        let medium = length("radiusMd", 8.0);
+        let spread = SpreadStyle {
+            scrim: color("dialogScrim", Color::BLACK.fade(0.6)),
+            field: color("fieldBg", card),
+            field_border: color("fieldFocusBorder", window.border_focused),
+            field_radius: length("fieldRadius", medium),
+            field_height: length("fieldHeight", 40.0),
+            field_padding: length("fieldPaddingX", 12.0),
+            field_shadow: window.shadow,
+            text: text("textSm", 14.0, 400, ink),
+            placeholder: text("textSm", 14.0, 400, muted_ink),
+            meta: popover,
+            meta_border: border,
+            meta_radius: medium,
+            meta_text: text("textXs", 12.0, 400, ink),
+            count: text("textXs", 12.0, 600, ink),
+            ring: accent,
+            ring_width: length("focusWidth", 2.0),
+            card_shadow: window.shadow,
+        };
+        let map = MapStyle {
+            fill: card,
+            border,
+            radius,
+            shadow: window.shadow,
+            padding: length("space1", 4.0),
+            canvas: muted,
+            canvas_radius: medium,
+            window: muted_ink.fade(0.22),
+            window_border: muted_ink.fade(0.45),
+            focused: accent.fade(0.35),
+            focused_border: accent,
+            small_radius: small,
+            view: color("primarySoft", primary.fade(0.12)),
+            view_border: accent,
+            button_size: length("controlSm", 32.0),
+            icon: color("iconButtonFg", ink),
         };
         ChromeTheme {
             wallpaper: color("background", hex(endue::BACKGROUND)),
@@ -184,6 +280,8 @@ impl ChromeTheme {
             snap,
             toast,
             placeholder,
+            spread,
+            map,
         }
     }
 }

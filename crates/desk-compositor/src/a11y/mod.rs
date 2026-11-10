@@ -11,6 +11,7 @@
 //! - `roles`: the wire's kebab-case roles and action names, AccessKit's `Role` and `Action`.
 //! - `surface`: one surface's tree, merged and cut to what its root reaches.
 //! - `chrome`: the chrome's description and the root tree's nodes, grafts included.
+//! - `spread`: the spread's dialog, its combobox over the windows' titles (#54).
 //! - `emit`: what the adapter has, and the next valid updates.
 //! - `actions`: an assistive technology's request, as protocol messages, wheels and presses.
 
@@ -18,6 +19,7 @@ mod actions;
 mod chrome;
 mod emit;
 mod roles;
+mod spread;
 mod surface;
 
 use std::collections::{BTreeMap, HashMap};
@@ -33,6 +35,7 @@ pub use chrome::{
 };
 pub use emit::Wanted;
 pub use roles::{action_of, name_of, role_name, role_of};
+pub use spread::{ChromeOption, ChromeSpread};
 pub use surface::{MAX_NODES, Nodes, SurfaceTree, node_of};
 
 /// The desk's accessibility: the chrome, every surface's tree, and what the adapter has.
@@ -199,6 +202,9 @@ impl DeskA11y {
     /// that subtree is there, its window, else the root.
     fn focus(&self) -> (NodeId, NodeId) {
         let root = self.built.root;
+        if let Some(own) = self.built.focus {
+            return (own, own);
+        }
         let Some(surface) = &self.chrome.focus else {
             return (root, root);
         };

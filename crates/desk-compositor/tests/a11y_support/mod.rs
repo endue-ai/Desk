@@ -200,5 +200,6 @@ pub fn desk(windows: Vec<ChromeWindow>, focus: Option<&str>) -> DeskChrome {
         windows,
         overlays: Vec::new(),
         focus: focus.map(str::to_owned),
+        spread: None,
     }
 }

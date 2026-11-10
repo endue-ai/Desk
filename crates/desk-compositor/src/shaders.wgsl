@@ -10,7 +10,7 @@ struct Item {
   fill: vec4f,
   stroke: vec4f,
   uv: vec4f,
-  // radius, stroke width, opacity, shadow sigma
+  // radius, stroke width, opacity, shadow sigma (a surface: how grey it is drawn)
   params: vec4f,
   mode: vec4u,
 };
@@ -155,7 +155,10 @@ struct GlyphVaryings {
   let size = max(item.shape.zw - item.shape.xy, vec2f(1e-5));
   let along = (v.local - item.shape.xy) / size;
   let uv = mix(item.uv.xy, item.uv.zw, along);
-  let texel = textureSample(surface_texture, surface_sampler, uv);
+  let sampled = textureSample(surface_texture, surface_sampler, uv);
+  // Greyed towards its luminance (Rec. 709); premultiplied stays premultiplied.
+  let luma = dot(sampled.rgb, vec3f(0.2126, 0.7152, 0.0722));
+  let texel = vec4f(mix(sampled.rgb, vec3f(luma), item.params.w), sampled.a);
   let d = rounded_box(v.local, item.shape, item.params.x);
   let coverage = clamp(0.5 - d / px, 0.0, 1.0);
   return texel * coverage * item.params.z * clip;

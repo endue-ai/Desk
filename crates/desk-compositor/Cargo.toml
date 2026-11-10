@@ -36,6 +36,8 @@ objc2-io-surface = { version = "0.3", default-features = false, features = ["std
 [dev-dependencies]
 # The tree tests walk the updates as the platform adapters do (`tests/a11y_tree.rs`).
 accesskit_consumer.workspace = true
+# The spread's snapshots pose windows as the window manager runs the spread (`tests/spread_snapshots.rs`).
+desk-wm.workspace = true
 png.workspace = true
 serde_json.workspace = true
 # Hit-testing properties (#58): no forking or timeouts, a fixed seed, no regression files.

@@ -1,5 +1,6 @@
-//! A placeholder's card: what a window shows while its plugin has no live frame, or over its last
-//! frame while it does not answer (ADR 0134, #39, #44): its title, a line and its actions.
+//! A placeholder's card: what a window shows while its plugin has no live frame, over its last
+//! frame while it does not answer (ADR 0134, #39, #44), or over the greyed last frame of a window
+//! whose frame sleeps (#54): its title, a line and its actions.
 
 use super::{Chrome, Role};
 use crate::node::NodeId;
@@ -27,8 +28,34 @@ impl Chrome {
         actions: &[&str],
         over: bool,
     ) -> Result<Vec<NodeId>, SceneError> {
-        let mut made = Vec::new();
         let fill = if over { Role::Scrim } else { Role::Placeholder };
+        self.card_on(scene, parent, rect, (title, line), actions, fill)
+    }
+
+    /// The card of a window whose frame sleeps, over its last frame drawn grey: a lighter veil
+    /// than Not responding's scrim, so the frame shows through. Answers every part made.
+    pub fn sleeping_card(
+        &mut self,
+        scene: &mut Scene,
+        parent: NodeId,
+        rect: Rect,
+        title: &str,
+        line: &str,
+        actions: &[&str],
+    ) -> Result<Vec<NodeId>, SceneError> {
+        self.card_on(scene, parent, rect, (title, line), actions, Role::Veil)
+    }
+
+    fn card_on(
+        &mut self,
+        scene: &mut Scene,
+        parent: NodeId,
+        rect: Rect,
+        (title, line): (&str, &str),
+        actions: &[&str],
+        fill: Role,
+    ) -> Result<Vec<NodeId>, SceneError> {
+        let mut made = Vec::new();
         made.push(self.add(scene, parent, fill, rect, "")?);
         let pad = self.theme.window.padding;
         let middle = rect.y + rect.height / 2.0;

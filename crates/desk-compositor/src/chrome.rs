@@ -1,5 +1,5 @@
 //! The desk's own chrome as scene nodes: window frames with title bars, edge bars, snap previews,
-//! toasts and placeholders, styled by a [`ChromeTheme`]. [`Chrome`] remembers every part it made,
+//! toasts, placeholders, the spread's and the canvas map's (#54), styled by a [`ChromeTheme`]. [`Chrome`] remembers every part it made,
 //! so [`Chrome::set_theme`] restyles them all in one pass and the next frame shows the new look
 //! whole. Geometry stays the window manager's: it moves groups; the parts keep their boxes.
 
@@ -30,14 +30,23 @@ pub enum Role {
     PlaceholderLabel,
     /// A placeholder's line under its title, wrapped.
     PlaceholderLine,
-    /// Over a window's last frame while it does not answer.
+    /// Over a window's last frame while it does not answer; lighter over a sleeping one's.
     Scrim,
+    Veil,
     /// A button a placeholder offers (Reload, Wait, Stop) and its label.
     Action,
     ActionLabel,
+    /// The spread's chrome (ADR 0116) and the canvas map's (ADR 0082), #54.
+    Spread(SpreadPart),
+    Map(MapPart),
 }
 
 mod card;
+mod map;
+mod spread;
+
+pub use map::{MapChrome, MapPart};
+pub use spread::{SpreadChrome, SpreadPart, SpreadText};
 
 use card::ACTION_H;
 
@@ -351,6 +360,7 @@ impl Chrome {
             Role::PlaceholderLabel => line(&t.placeholder.text, inset(base, w.padding)).into(),
             Role::PlaceholderLine => line(&t.placeholder.line, base).wrapped().into(),
             Role::Scrim => RectNode::new(base, t.placeholder.scrim).into(),
+            Role::Veil => RectNode::new(base, t.placeholder.veil).into(),
             Role::Action => RectNode {
                 stroke: Some(Stroke {
                     width: w.border_width,
@@ -368,6 +378,8 @@ impl Chrome {
                 base,
             )
             .into(),
+            Role::Spread(part) => self.spread_node(part, base, text),
+            Role::Map(part) => self.map_node(part, base),
         }
     }
 }

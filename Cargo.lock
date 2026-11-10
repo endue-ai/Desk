@@ -1697,6 +1697,7 @@ dependencies = [
  "bytemuck",
  "cosmic-text",
  "desk-surface",
+ "desk-wm",
  "etagere",
  "glam",
  "objc2-core-foundation",

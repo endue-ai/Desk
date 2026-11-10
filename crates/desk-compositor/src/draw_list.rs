@@ -25,7 +25,7 @@ pub(crate) struct ItemUniform {
     /// The stroke's colour, or the gradient's bottom colour.
     stroke: [f32; 4],
     uv: [f32; 4],
-    /// Corner radius, stroke width, opacity, shadow sigma.
+    /// Corner radius, stroke width, opacity, shadow sigma (a surface's greying).
     params: [f32; 4],
     /// Mode (see `MODE_*`), then padding.
     mode: [u32; 4],
@@ -280,7 +280,13 @@ impl Walk<'_> {
         let aa = antialias_margin(&state.world);
         let uniform = ItemUniform {
             uv: corners(&node.uv),
-            params: [node.radius.max(0.0), 0.0, opacity, 0.0],
+            // A surface has no shadow: the last slot is how grey it is drawn.
+            params: [
+                node.radius.max(0.0),
+                0.0,
+                opacity,
+                node.grey.clamp(0.0, 1.0),
+            ],
             mode: [MODE_SURFACE, 0, 0, 0],
             ..self.base(state, node.rect.inflate(aa), node.rect)
         };

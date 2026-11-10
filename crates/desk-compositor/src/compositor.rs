@@ -144,6 +144,12 @@ impl Compositor {
         self.seen.clear();
     }
 
+    /// Forget what was last drawn of `scene`, a scene that is going (a thumbnail's pass, a
+    /// snapshot's): its next frame, if any, is drawn whole.
+    pub fn forget(&mut self, scene: &Scene) {
+        self.seen.remove(&scene.id());
+    }
+
     /// Set text in `fonts` from now on; without, the machine's fonts load with the first text.
     /// Every scene draws again.
     pub fn set_fonts(&mut self, fonts: Fonts) {

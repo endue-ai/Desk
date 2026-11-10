@@ -106,6 +106,8 @@ pub struct DeskChrome {
     pub overlays: Vec<(String, Placed)>,
     /// The surface with the keyboard focus.
     pub focus: Option<String>,
+    /// The spread while it is open (#54): its field has the keyboard.
+    pub spread: Option<super::spread::ChromeSpread>,
 }
 
 /// The subtree of surface `surface` while its tree has root number `generation`: the same id for
@@ -152,6 +154,8 @@ pub struct Built {
     /// Every grafted surface.
     pub grafts: HashMap<String, Graft>,
     pub does: HashMap<NodeId, Does>,
+    /// A node of the root tree's own with the keyboard (the spread's field), over any surface's.
+    pub focus: Option<NodeId>,
 }
 
 impl Default for Built {
@@ -161,6 +165,7 @@ impl Default for Built {
             nodes: HashMap::new(),
             grafts: HashMap::new(),
             does: HashMap::new(),
+            focus: None,
         }
     }
 }
@@ -191,21 +196,21 @@ impl Ids {
     }
 }
 
-fn bounds(r: Rect) -> AkRect {
+pub(super) fn bounds(r: Rect) -> AkRect {
     let (x, y) = (f64::from(r.x), f64::from(r.y));
     let (w, h) = (f64::from(r.width.max(0.0)), f64::from(r.height.max(0.0)));
     AkRect::new(x, y, x + w, y + h)
 }
 
-struct Builder<'a> {
+pub(super) struct Builder<'a> {
     ids: &'a mut Ids,
-    out: Built,
+    pub(super) out: Built,
     /// The subtree of each surface with a tree to graft.
     tree: &'a dyn Fn(&str) -> Option<TreeId>,
 }
 
 impl Builder<'_> {
-    fn put(&mut self, key: String, node: Node) -> NodeId {
+    pub(super) fn put(&mut self, key: String, node: Node) -> NodeId {
         let id = self.ids.id(key);
         self.out.nodes.insert(id, node);
         id
@@ -338,6 +343,11 @@ pub fn build(chrome: &DeskChrome, ids: &mut Ids, tree: &dyn Fn(&str) -> Option<T
             group.set_children(vec![graft]);
             top.push(b.put(format!("overlay/{}", placed.surface), group));
         }
+    }
+    if let Some(spread) = &chrome.spread {
+        let (dialog, field) = super::spread::build(&mut b, spread);
+        top.push(dialog);
+        b.out.focus = Some(field);
     }
     let mut root = Node::new(Role::Window);
     root.set_label(chrome.label.as_str());

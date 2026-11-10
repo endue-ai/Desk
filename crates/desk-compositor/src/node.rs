@@ -48,6 +48,9 @@ pub struct SurfaceNode {
     pub opacity: f32,
     /// Rounded corners, as a window's content has under a rounded frame.
     pub radius: f32,
+    /// How far its colours are drawn towards grey, 0 (as they are) to 1 (luminance only): a sleeping
+    /// window's last frame (#54).
+    pub grey: f32,
 }
 
 impl SurfaceNode {
@@ -59,6 +62,7 @@ impl SurfaceNode {
             uv: Rect::UNIT,
             opacity: 1.0,
             radius: 0.0,
+            grey: 0.0,
         }
     }
 }

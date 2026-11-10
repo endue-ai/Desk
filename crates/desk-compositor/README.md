@@ -9,7 +9,7 @@ input too. No windowing, no CEF: it runs inside any shell and headless.
 - `Scene::new(w, h)` (target pixels, origin top-left): `insert(parent, node)`, `set`, `remove`, `reorder`,
   `set_wallpaper`, `set_projection` (or perspective for 3D), `set_animating`, `to_screen`, `damage_since(rev)`.
 - Nodes are data: `RectNode { rect, fill, stroke, radius, shadow }`, `SurfaceNode { rect, texture, uv,
-  opacity, radius }`, `GroupNode { transform: Mat4, opacity, clip }`, `TextNode { rect, text, style, wrap }`
+  opacity, radius, grey }`, `GroupNode { transform: Mat4, opacity, clip }`, `TextNode { rect, text, style, wrap }`
   (one line with an ellipsis, or wrapped); `Node::with_hit(false)` lets the pointer through a subtree.
 - `Compositor::new(&device, &queue, format)`; `register_texture` / `update_texture` / `remove_texture`;
   `set_fonts(Fonts::system() | Fonts::from_data(..))`; `render(&scene, &view, size) -> FrameStats` draws

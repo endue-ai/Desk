@@ -47,21 +47,27 @@ pub mod input;
 mod node;
 mod pipelines;
 mod scene;
+pub mod stage;
 mod text;
 mod theme;
+pub mod thumbnails;
 mod types;
 
 pub use attach::{AttachError, Attached, Frames, Source};
 pub use camera::{DEFAULT_FOV_Y, Projection};
-pub use chrome::{Chrome, Role, WindowChrome};
+pub use chrome::{
+    Chrome, MapChrome, MapPart, Role, SpreadChrome, SpreadPart, SpreadText, WindowChrome,
+};
 pub use compositor::{Compositor, FrameStats};
 pub use hit::{Hit, hit_test};
 pub use node::{GroupNode, Node, NodeId, NodeKind, RectNode, SurfaceNode};
 pub use scene::{Scene, SceneError, Wallpaper};
 pub use text::{FontStack, Fonts, TextAlign, TextNode, TextStyle};
 pub use theme::{
-    BarStyle, ChromeTheme, PlaceholderStyle, SnapStyle, ToastStyle, Tokens, WindowStyle,
+    BarStyle, ChromeTheme, MapStyle, PlaceholderStyle, SnapStyle, SpreadStyle, ToastStyle, Tokens,
+    WindowStyle,
 };
+pub use thumbnails::{THUMBNAIL_IDS, Thumbnails, read_texture};
 pub use types::{Color, Rect, Shadow, Stroke, TextureId};
 
 pub use glam;
