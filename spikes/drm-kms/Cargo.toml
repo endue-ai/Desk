@@ -1,0 +1,49 @@
+[package]
+name = "desk-drm-kms-spike"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+description = "Throwaway spike for #60: desk-compositor as a Linux session on DRM/KMS, no X11 or Wayland"
+
+# Its own workspace, so the repository's cargo commands and gates never build it.
+[workspace]
+
+[[bin]]
+name = "desk-kms"
+path = "src/main.rs"
+
+[features]
+default = []
+# libinput's udev backend (seat assignment, input hotplug); needs libudev.
+udev = ["input/udev"]
+# The seat through libseat (seatd, logind or builtin) instead of logind over D-Bus.
+libseat = ["dep:libseat"]
+# One CEF windowless browser as a plugin window (downloads and builds CEF's Linux distribution).
+cef = ["dep:cef"]
+# Type-check only: skip libseat's pkg-config probe and CEF's download, so
+# `cargo check --target x86_64-unknown-linux-gnu --all-features` runs on any host. Never run.
+typecheck-only = ["libseat?/docs_rs", "cef?/dox"]
+
+[dependencies]
+desk-compositor = { path = "../../crates/desk-compositor" }
+desk-surface = { path = "../../crates/desk-surface" }
+wgpu = { version = "30", features = ["drm"] }
+pollster = "0.4"
+png = "0.18"
+serde_json = "1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Pure Rust KMS ioctls (no libdrm); the version wgpu-hal's `drm` feature uses.
+drm = "0.15"
+# The ash wgpu-hal 30 is built on, for the Vulkan display probe.
+ash = "0.38"
+# libinput (links libinput.so); udev is a feature.
+input = { version = "0.10", default-features = false, features = ["libinput_1_21"] }
+# The keyboard layout (links libxkbcommon.so).
+xkbcommon = { version = "0.9", default-features = false }
+# logind over D-Bus, pure Rust.
+zbus = { version = "5", default-features = false, features = ["blocking-api", "async-io"] }
+rustix = { version = "1", features = ["fs", "event", "std"] }
+libseat = { version = "0.2", default-features = false, optional = true }
+cef = { version = "=156.4.0", default-features = false, features = ["accelerated_osr"], optional = true }
