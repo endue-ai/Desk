@@ -42,7 +42,10 @@ const INIT: Record<string, string> = {
 };
 const DEFAULT_INIT = "init-no-first-run.yaml";
 
-/** The app's environment a spec adds: persist.spec.ts asks for permissions from e2e.ask too. */
+/**
+ * The app's environment a spec adds: persist.spec.ts asks for permissions from e2e.ask too, and
+ * sandbox.spec.ts runs e2e.sandbox's checks in its renderer.
+ */
 const ENV: Record<string, Record<string, string>> = {
   "persist.spec.ts": {
     DESK_DEV_PLUGINS: [
@@ -50,6 +53,7 @@ const ENV: Record<string, Record<string, string>> = {
       join(root, "e2e/fixtures/plugin-e2e-ask"),
     ].join(delimiter),
   },
+  "sandbox.spec.ts": { DESK_DEV_PLUGINS: join(root, "e2e/fixtures/plugin-e2e-sandbox") },
 };
 
 declare global {

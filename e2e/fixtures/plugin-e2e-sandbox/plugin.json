@@ -1,0 +1,10 @@
+{
+  "id": "e2e.sandbox",
+  "name": "E2E Sandbox",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The app e2e's sandbox fixture (e2e/specs/sandbox.spec.ts): in its renderer, under Chromium's sandbox, a bridge call, a file of its own over desk-plugin, a worker, WebAssembly, a WebGPU compute pass and a Range read of a file through fs.url, each reported as ok or failed.",
+  "surfaces": [{ "id": "main", "title": "E2E Sandbox", "placement": "center" }],
+  "permissions": [{ "permission": "fs:read", "paths": ["~/sandbox-fixture/**"] }]
+}

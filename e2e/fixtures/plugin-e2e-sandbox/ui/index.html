@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>E2E Sandbox</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+  </head>
+  <body>
+    <h1>E2E Sandbox</h1>
+    <ul>
+      <li data-testid="bridge">bridge: waiting</li>
+      <li data-testid="scheme">scheme: waiting</li>
+      <li data-testid="wasm">wasm: waiting</li>
+      <li data-testid="worker">worker: waiting</li>
+      <li data-testid="webgpu">webgpu: waiting</li>
+      <li data-testid="range">range: waiting</li>
+    </ul>
+    <button type="button" id="range">Read a range of ~/sandbox-fixture/range.bin</button>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
