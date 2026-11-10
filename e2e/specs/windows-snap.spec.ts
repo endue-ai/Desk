@@ -1,10 +1,12 @@
 // Snapping (ADR 0128, ADR 0132; #82), the twin of packages/runtime/e2e/shell-snap.spec.ts on the
 // CEF desk: a window dragged by its title bar to one of the app's edges takes that half of the
 // whole app, to a corner that quarter; it floats then, so a pan (Shift + drag) leaves it where it
-// is, and dragging it out brings back its own size and mode. Windows are read through
-// desk.windows.list; the pointer is WebDriver's (support/gestures.ts). The preview's place, which
-// no rect lists, is read off the screen: inside the part it is drawn over what was there, outside
-// nothing changed. The glide's own frames are not checked (#80 draws it on the compositor).
+// is, and dragging it out brings back its own size and mode; the desk.display.* window commands
+// snap, move and resize the window in use the same way (#80). Windows are read through
+// desk.windows.list; the pointer is WebDriver's, or the compositor's own input on its desk, where
+// desk-wm runs the drag (support/gestures.ts). The preview's place, which no rect lists, is read
+// off the screen: inside the part it is drawn over what was there, outside nothing changed. The
+// glide's own frames are not checked (desk-wm's tests check its motion).
 import { expect } from "@wdio/globals";
 import type { BrainDeskFill } from "../../packages/bridge/src/generated";
 import { shellReady } from "../support/desk";
@@ -19,6 +21,7 @@ import {
   partOf,
   type Rect,
   rectOf,
+  run,
   windowNow,
   windowUntil,
 } from "../support/windows";
@@ -135,6 +138,35 @@ describe("snap: windows dragged to the app's edges and corners (#82)", () => {
     expect(rectOf(back)).toEqual(rectOf(win));
     expect(back.state).toBe("normal");
     expect(back.fill).toBeUndefined();
+  });
+
+  it("the window commands snap, move and resize the window in use from the keys and the palette", async () => {
+    const id = await openWindow();
+    const win = await windowNow(id);
+    const desk = await deskNow();
+    await run("desk.display.snap-bottom-right");
+    const part = partOf("bottom-right", desk.screen);
+    const snapped = await windowUntil(id, (x) => x.fill === "bottom-right", "the bottom right");
+    expect(rectOf(snapped)).toEqual(part);
+    // A step left ends the fill where it is, floating.
+    await run("desk.display.move-left");
+    const moved = await windowUntil(id, (x) => x.fill === undefined, "out of its fill");
+    expect({ ...rectOf(moved), floating: moved.floating }).toEqual({
+      ...part,
+      x: part.x - 32,
+      floating: true,
+    });
+    await run("desk.display.shrink-width");
+    await run("desk.display.shrink-height");
+    const resized = await windowUntil(id, (x) => x.h !== moved.h, "resized");
+    expect(rectOf(resized)).toEqual({ ...rectOf(moved), w: moved.w - 32, h: moved.h - 32 });
+    // Maximize and restore come back to it.
+    await run("desk.display.maximize");
+    await windowUntil(id, (x) => x.state === "filled", "filling the app");
+    await run("desk.display.maximize");
+    const back = await windowUntil(id, (x) => x.state !== "filled", "back");
+    expect(rectOf(back)).toEqual(rectOf(resized));
+    expect(win.state).toBe("normal");
   });
 
   it("dropped short of an edge, a window stays where it was dropped", async () => {

@@ -1,11 +1,17 @@
 // The person's pointer and keys on the desk, as WebDriver actions in the desk's viewport (CSS
 // pixels), for the windows-* specs (#82). Points come from desk.windows.list's rects and the
-// chrome's metrics below, never from the page; #80 moves the same gestures to the compositor's
-// input. A drag can be held (`hold`) so a spec looks at the desk mid-drag, then `release`d. Keys go
-// as their own action so a held button stays down (browser.keys would release it). The desk keeps
-// drawing while they run (frames.ts), or a locked screen would hold each move for seconds.
+// chrome's metrics below, never from the page. On the compositor's desk (`DESK_COMPOSITOR=1`)
+// drags, their release and Escape go through the compositor's own input instead
+// (`compositor_input`, support/compositor.ts), where desk-wm moves, resizes, snaps and pans the
+// windows (#80, ADR 0153); the composed frames are the screen. A drag can be held (`hold`) so a
+// spec looks at the desk mid-drag, then `release`d. Keys go as their own action so a held button
+// stays down (browser.keys would release it). The desk keeps drawing while they run (frames.ts),
+// or a locked screen would hold each move for seconds.
 import { browser } from "@wdio/globals";
+import { feed } from "./compositor";
+import { composited } from "./desk";
 import { drawing, filming } from "./frames";
+import { composedFrame } from "./pixels";
 import { type Desk, onScreen, type Rect, rectOf } from "./windows";
 
 export type Point = { x: number; y: number };
@@ -122,6 +128,24 @@ function path(from: Point, to: Point, steps: number): PointerAction[] {
   );
 }
 
+/** The compositor's input events (`compositor_input`): moves, the primary button, Shift, keys. */
+const toward = (p: Point) => ({ type: "pointerMoved", x: Math.round(p.x), y: Math.round(p.y) });
+const button = (pressed: boolean) => ({ type: "pointerButton", button: "left", pressed });
+const shift = (on: boolean) => ({ type: "modifiers", shift: on });
+const ESCAPE = [
+  { type: "key", key: "Escape", code: "Escape", pressed: true },
+  { type: "key", key: "Escape", code: "Escape", pressed: false },
+];
+
+/** The same straight path as compositor events. */
+const line = (from: Point, to: Point, n: number) =>
+  Array.from({ length: n }, (_, i) =>
+    toward({
+      x: from.x + ((to.x - from.x) * (i + 1)) / n,
+      y: from.y + ((to.y - from.y) * (i + 1)) / n,
+    }),
+  );
+
 export interface DragOptions {
   /** Moves between the two points (8 by default). */
   steps?: number;
@@ -133,6 +157,20 @@ export interface DragOptions {
 
 /** Press at `from`, move to `to` and let go (unless `hold`). */
 export async function drag(from: Point, to: Point, options: DragOptions = {}): Promise<void> {
+  if (await composited()) {
+    const { steps: n = 8, keys = [], hold = false } = options;
+    const held = keys.includes(KEY.shift);
+    const events = [
+      toward(from),
+      ...(held ? [shift(true)] : []),
+      button(true),
+      ...line(from, to, n),
+      ...(hold ? [] : [button(false)]),
+      ...(held && !hold ? [shift(false)] : []),
+    ];
+    await feed(events);
+    return;
+  }
   const { steps = 8, keys = [], hold = false } = options;
   const actions: PointerAction[] = [
     at(from),
@@ -154,6 +192,7 @@ export async function walk(
   stops: Point[],
   { rest = 700, last }: { rest?: number; last?: string } = {},
 ): Promise<Buffer[]> {
+  if (await composited()) return walkComposited(from, stops, rest, last);
   const pointer: PointerAction[] = [at(from), { type: "pointerDown", button: 0 }];
   let here = from;
   for (const stop of stops) {
@@ -176,8 +215,40 @@ export async function walk(
   return frames;
 }
 
+/**
+ * `walk` on the compositor's desk: the composed frame read again and again while the pointer rests
+ * at each stop, the frames in order.
+ */
+async function walkComposited(
+  from: Point,
+  stops: Point[],
+  rest: number,
+  last?: string,
+): Promise<Buffer[]> {
+  const frames: Buffer[] = [];
+  const film = async (ms: number) => {
+    const until = Date.now() + ms;
+    do frames.push(await composedFrame());
+    while (Date.now() < until);
+  };
+  await feed([toward(from), button(true)]);
+  let here = from;
+  for (const stop of stops) {
+    await feed(line(here, stop, 6));
+    here = stop;
+    await film(rest);
+  }
+  if (last === KEY.escape) {
+    await feed(ESCAPE);
+    await film(200);
+  }
+  await feed([button(false)]);
+  return frames;
+}
+
 /** Let go of a held drag where the pointer is, and forget every held input. */
 export async function release(): Promise<void> {
+  if (await composited()) await feed([button(false), shift(false)]);
   await perform([{ type: "pointerUp", button: 0 }]);
   await browser.releaseActions();
 }
@@ -194,6 +265,11 @@ export async function click(p: Point, count = 1): Promise<void> {
 
 /** Press keys together, as a chord (`chord(MOD, "n")`), without letting go of a held button. */
 export async function chord(...keys: string[]): Promise<void> {
+  // On the compositor's desk Escape is the compositor's first: it cancels desk-wm's drag.
+  if (keys.length === 1 && keys[0] === KEY.escape && (await composited())) {
+    await feed(ESCAPE);
+    return;
+  }
   const actions: KeyAction[] = [
     ...keys.map((value): KeyAction => ({ type: "keyDown", value })),
     ...[...keys].reverse().map((value): KeyAction => ({ type: "keyUp", value })),

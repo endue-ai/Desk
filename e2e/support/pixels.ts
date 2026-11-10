@@ -95,7 +95,7 @@ let captures = 0;
  * The compositor's frame (compositor mode, #81): the page alone leaves the windows unpainted, so the
  * desk's development build reads its composed frame back (`compositor_capture`) into a file.
  */
-async function composedFrame(): Promise<Buffer> {
+export async function composedFrame(): Promise<Buffer> {
   const path = join(tmpdir(), `desk-e2e-frame-${process.pid}-${++captures}.png`);
   const error = await browser.execute(
     (file: string) =>
