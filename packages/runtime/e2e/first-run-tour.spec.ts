@@ -1,6 +1,7 @@
 import { expect, type Frame, type Page, test } from "@playwright/test";
 import {
   answer,
+  brainCalls,
   open,
   run,
   scene,
@@ -125,6 +126,8 @@ test.describe("first run, scenes 6-10", () => {
     const frame = await open(page, "?resume=task&name=Ada");
     await untilScene(page, frame, "task");
     await answer(page, frame, "Type a task", "find a quiet hour");
+    // The question reaches the stub brain in real time; its answer runs on the clock from then on.
+    await expect.poll(() => brainCalls(page)).toBe(1);
     await run(page, 3000);
     await expect(frame.locator("#canvas .answer h2")).toHaveText("find a quiet hour");
     await expect(frame.locator("#canvas .answer .body")).toHaveText("find a quiet hour");

@@ -29,17 +29,32 @@ test.describe("talking to Eris", () => {
     return frame;
   }
 
-  async function send(frame: FrameLocator, text: string) {
+  const said = (page: Page) =>
+    page.evaluate(
+      () => window.__desk.stub.log.filter((entry) => entry.request.method === "brain.say").length,
+    );
+
+  /**
+   * Type a line and send it, then wait until brain.say reached the stub brain. The plugin SDK fires
+   * the form's submit a timer of 0 ms later (forms.ts: the frame's sandbox has no allow-forms), so a
+   * run of 0 ms fires it on the paused clock; the bridge's round trip then takes real time (Eris'
+   * frame is on its own origin, in another process on Chromium), and the stub brain's answer runs on
+   * the page clock from its arrival: the clock waits for it.
+   */
+  async function send(page: Page, frame: FrameLocator, text: string) {
+    const before = await said(page);
     const input = frame.getByLabel("Talk to Eris");
     await input.fill(text);
     await input.press("Enter");
+    await page.clock.runFor(0);
+    await expect.poll(() => said(page)).toBe(before + 1);
   }
 
   test("a typed line rises into her centre and the echo streams back as soul text", async ({
     page,
   }) => {
     const frame = await open(page, "echo");
-    await send(frame, "hello there");
+    await send(page, frame, "hello there");
     await expect(frame.locator(".user-rise")).toHaveText("hello there");
     await page.clock.runFor(60);
     await expect(frame.locator("#pose")).toHaveAttribute("data-state", "thinking");
@@ -65,7 +80,7 @@ test.describe("talking to Eris", () => {
     page,
   }) => {
     const frame = await open(page, "offline");
-    await send(frame, "hello");
+    await send(page, frame, "hello");
     await page.clock.runFor(100);
     await expect(frame.locator("#pose")).toHaveAttribute("data-state", "heads-up");
     await expect(frame.locator("#live p").last()).toHaveText(
@@ -105,7 +120,7 @@ test.describe("talking to Eris", () => {
   test("both exchanges stay readable while the composer keeps keyboard focus", async ({ page }) => {
     const frame = await open(page, "echo");
     for (const question of ["first question", "second question"]) {
-      await send(frame, question);
+      await send(page, frame, question);
       await page.clock.runFor(1600);
     }
     const history = frame.getByRole("region", { name: "Conversation history" });
