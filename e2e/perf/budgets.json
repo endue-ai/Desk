@@ -75,19 +75,19 @@
     "platform": "darwin-arm64",
     "recorded": "2026-11-10",
     "source": "#35 (spikes/compositor/README.md): 916 MiB for the whole process tree with 1 light surface, 2,002 MiB with 10, so (2,002 - 916) / 9 a surface",
-    "reason": "What one more live surface costs the machine, the number the live budget (ADR 0142: visible windows and the 8 most recent) is set from: the process tree's physical footprint with 1 and with 10 animating light surfaces, the difference per surface, as #35 measured it (apps/desk/shell/tests/budgets.rs). Within 20 % of #35's either way: above means a surface costs more than the live budget assumed; below means the baseline is stale or the surfaces did not render. RSS on Linux and Windows is reported until #61 records their baselines."
+    "reason": "What one more live surface costs the machine, the number the live budget (ADR 0142: visible windows and the 8 most recent) is set from: the process tree's physical footprint with 1 and with 10 animating light surfaces, the difference per surface, as #35 measured it (apps/desk/shell/tests/budgets.rs). Within 20 % of #35's either way: above means a surface costs more than the live budget assumed; below means the baseline is stale or the surfaces did not render. RSS on Linux and Windows is reported until #61 records their baselines. Since #111 (ADR 0152) every surface renders on the desk's frame clock (external begin frames): 121.1 to 130 MiB a surface on the reference machine, where #52's internal begin frames read 162 to 191 (179.5 on main the same day), the GPU process holding about 60 MiB a surface more. #35's baseline stays: this is the number the live budget was set from."
   },
   "inputToPaint": {
-    "p95Ms": 9.57,
+    "p95Ms": 16.95,
     "budgetMs": 16,
-    "frameP50Ms": 13.03,
+    "frameP50Ms": 14.9,
     "frameBudgetMs": 16,
-    "p50Ms": 7.29,
-    "frameP95Ms": 19.54,
+    "p50Ms": 7.65,
+    "frameP95Ms": 32.19,
     "tries": 20,
     "adapter": "Apple M4 Max (Metal)",
     "platform": "darwin-arm64",
     "recorded": "2026-11-10",
-    "reason": "RT-16, input to screen within 16 ms, on the compositor's input path (#56): a press sent to a surface as the router sends it (pointer.down and pointer.up), twenty times beside two animating surfaces, through the surface probe (apps/desk/shell/tests/budgets.rs). Two gates: the press to the surface's next paint reaching the compositor, p95 (p95Ms, what the engine and the import cost), and to the desk's first composed frame holding it, median (frameP50Ms). The frame waits for the desk's own 60 Hz clock, so its p95 is the paint's plus up to a frame, 19 to 24 ms here, and is kept for the trend (frameP95Ms) rather than gated; RT-16's 16 ms at p95 would need a compose on damage, not on the clock."
+    "reason": "RT-16, input to screen within 16 ms, on the compositor's input path (#56): a press sent to a surface as the router sends it (pointer.down and pointer.up), twenty times beside two animating surfaces, through the surface probe (apps/desk/shell/tests/budgets.rs). Two gates: the press to the surface's next paint reaching the compositor, p95 (p95Ms, what the engine and the import cost), and to the desk's first composed frame holding it, median (frameP50Ms). The frame waits for the desk's own 60 Hz clock, so its p95 is the paint's plus up to a frame, 19 to 24 ms here, and is kept for the trend (frameP95Ms) rather than gated; RT-16's 16 ms at p95 would need a compose on damage, not on the clock. Since #111 (ADR 0152) a surface renders only on the desk's begin frames, and each step of a paint (the renderer's frame, the display's draw, the capture) waits for one: a press on an idle surface brings begin frames every 1 ms from 3 ms on for two frames. The values are #111's median run of seven at a load average of 3 to 7: the paint's p95 read 12.1 to 22.3 ms (three runs in seven within 16) and the frame's median 13.9 to 17.9, where #52's internal begin frames read 9.5 and 17.2 on main the same day; about one press in ten waits a frame more, for a reason not yet known (ADR 0152)."
   }
 }
