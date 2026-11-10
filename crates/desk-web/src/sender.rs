@@ -3,9 +3,14 @@
 //! shell takes a bridge call's caller from this, never from the call (#43). The palette and Eris
 //! pages load from the same `desk-app://app/` as the runtime, so their identity comes from the
 //! window the browser process made the frame's browser for ([`Role`]), which no page can claim
-//! (#45); the URL only says whether the frame is the desk's own page there.
+//! (#45); the URL only says whether the frame is the desk's own page there. Those three are the
+//! desk's system surfaces ([`System`], #55, ADR 0160), and the parts of the desk's page that the
+//! compositor places in its system layer have stable ids too ([`PARTS`]).
 
 use crate::plugin_scheme::hosts::Host;
+
+mod system;
+pub use system::{PARTS, System, SystemPart, part};
 
 /// The runtime's caller id (desk-boot's `RUNTIME_CALLER`).
 pub const RUNTIME: &str = "desk";
