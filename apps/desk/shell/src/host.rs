@@ -136,6 +136,11 @@ wrap_task! {
             if self.frame.is_valid() != 1 {
                 return;
             }
+            // What a page hears may change what it shows: a long-idle surface is back on every desk
+            // frame (#117, `web_host/frames.rs`).
+            if let Some(browser) = self.frame.browser() {
+                crate::web_host::frames::heard(browser.identifier(), false);
+            }
             if let Some(mut message) = process_message_create(Some(&MESSAGE.into())) {
                 if let Some(list) = message.argument_list() {
                     list.set_string(0, Some(&self.text.as_str().into()));

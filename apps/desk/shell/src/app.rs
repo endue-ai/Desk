@@ -75,6 +75,10 @@ wrap_app! {
             // One renderer per site: every plugin surface has a site of its own (#36), so each runs
             // in its own process (ADR 0140).
             command_line.append_switch(Some(&"site-per-process".into()));
+            // Chromium's full pipeline (#117, ADR 0157): each stage of a frame waits for the one
+            // before it, so a begin frame from the desk's clock that a page has nothing to draw
+            // for ends at once, where the display held it a whole frame and CEF sent no other.
+            command_line.append_switch(Some(&"run-all-compositor-stages-before-draw".into()));
             // Chromium merges renderers once it counts more than its own memory-based limit; the live
             // budget (#37, ADR 0142) is what bounds them here, so the limit only keeps Chromium from
             // putting two plugins in one process (#44).

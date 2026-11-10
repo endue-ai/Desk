@@ -103,11 +103,12 @@ pub fn is_input(message: &M) -> bool {
 /// Deliver an input message to `host`, the surface's browser. `composing` is the text the surface
 /// composes now, kept by the caller; `view_height` scales `page` wheel deltas.
 pub fn deliver(host: &BrowserHost, message: &M, composing: &mut Option<String>, view_height: f64) {
-    // A press or a key is followed by begin frames at once (`frames.rs`).
-    if super::frames::prompts(message)
+    // A press or a key is followed by begin frames at once, and any input wakes a long-idle surface
+    // onto every desk frame (`frames.rs`).
+    if is_input(message)
         && let Some(browser) = host.browser()
     {
-        super::frames::pressed(browser.identifier());
+        super::frames::heard(browser.identifier(), super::frames::prompts(message));
     }
     match message {
         M::SurfacePointerMove(m) => {

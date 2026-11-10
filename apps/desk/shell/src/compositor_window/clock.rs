@@ -1,7 +1,8 @@
-//! The desk's frame clock in compositor mode (#111): the plugin surfaces and the shell page render
-//! only on its begin frames (external begin frames, `web_host/frames.rs`), one a desk frame for each
-//! one shown and awake, at most at its pace; the window composes what they paint at most once a
-//! frame. The window wakes for its next frame, the live budget's next look or the clock's.
+//! The desk's frame clock in compositor mode (#111, #117): the plugin surfaces and the shell page
+//! render only on its begin frames (external begin frames, `web_host/frames.rs`), at most one a desk
+//! frame for each one shown and awake, at its pace, and fewer for one long idle; the window composes
+//! what they paint at most once a frame. The window wakes for its next frame, the live budget's next
+//! look or the clock's, which is ten times a second when every surface on it is long idle.
 
 use std::time::Instant;
 

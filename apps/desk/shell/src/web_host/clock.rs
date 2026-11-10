@@ -1,7 +1,8 @@
-//! The web host's side of the desk's frame clock (#111, `frames.rs`): each look sends a begin frame
-//! (`SendExternalBeginFrame`) to every browser the clock takes at that moment: the surfaces on it,
-//! and the compositor's own shell page while it is shown, which the host does not make but paints on
-//! the same clock. Presses the browsers heard since the last look start their prompt frames.
+//! The web host's side of the desk's frame clock (#111, #117, `frames.rs`): each look sends a begin
+//! frame (`SendExternalBeginFrame`) to every browser the clock takes at that moment: the surfaces on
+//! it, and the compositor's own shell page while it is shown, which the host does not make but
+//! paints on the same clock. What the browsers heard since the last look starts their prompt frames
+//! or wakes them, and the next look is the soonest any of them wants.
 
 use std::time::Instant;
 
@@ -41,6 +42,9 @@ impl WebHost {
     /// The shell page is shown (its window on screen) or hidden.
     pub fn page_shown(&self, shown: bool) {
         if let Some(page) = self.inner().page.as_mut() {
+            if shown && !page.shown {
+                page.pacing.heard(Instant::now());
+            }
             page.shown = shown;
         }
     }
@@ -48,7 +52,7 @@ impl WebHost {
     /// A look of the clock at `now`: a begin frame to each browser due. When it wants its next look
     /// (`None`: nothing is on the clock, so it sleeps until a surface is shown or woken).
     pub fn begin_frames(&self, now: Instant) -> Option<Instant> {
-        let pressed = frames::take_pressed();
+        let heard = frames::take_heard();
         let (hosts, next) = {
             let mut inner = self.inner();
             let Inner {
@@ -73,31 +77,31 @@ impl WebHost {
                     view: &p.view,
                 }))
                 .collect();
-            for (id, at) in pressed {
+            for (id, at, prompt) in heard {
                 if let Some(it) = on.iter_mut().find(|it| it.browser.identifier() == id) {
-                    let painted = paints(it.view);
-                    it.pacing.press(at, painted);
+                    if prompt {
+                        let painted = paints(it.view);
+                        it.pacing.press(at, painted);
+                    } else {
+                        it.pacing.heard(at);
+                    }
                 }
             }
-            let desk_frame = if on.is_empty() {
+            let frame = if on.is_empty() {
                 clock.stop();
-                false
+                None
             } else {
                 clock.frame(now)
             };
             let mut hosts = Vec::new();
             for it in &mut on {
-                if !it.pacing.due(now, desk_frame, paints(it.view)) {
+                if !it.pacing.due(now, frame, paints(it.view)) {
                     continue;
                 }
                 it.view.lock().counts.begin_frames += 1;
                 hosts.extend(it.browser.host());
             }
-            let next = on
-                .iter()
-                .filter_map(|it| it.pacing.next())
-                .chain(clock.next())
-                .min();
+            let next = on.iter().filter_map(|it| it.pacing.next(clock, now)).min();
             (hosts, next)
         };
         for host in hosts {

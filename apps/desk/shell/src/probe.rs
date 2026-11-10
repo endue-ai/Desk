@@ -8,7 +8,8 @@
 //! memory per live surface and the start to the first composed web surface; `tests/isolation.rs`
 //! and `tests/budgets.rs` judge them. The `a11y` run (#57, `a11y.rs`) exports a page's tree, merged
 //! as the compositor merges it, and does a screen reader's actions on it; `tests/a11y.rs` judges it.
-//! Development use only; it never opens the person's data folder.
+//! `DESK_PROBE_TRACE=<file>` writes Chromium's trace of any run (#117, `trace.rs`). Development use
+//! only; it never opens the person's data folder.
 
 mod a11y;
 mod desk_loop;
@@ -16,6 +17,7 @@ mod gates;
 mod input_gate;
 pub mod pages;
 mod scenarios;
+mod trace;
 
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -115,6 +117,7 @@ pub fn run(args: &cef::args::Args, scenario: &str) -> ExitCode {
                 a11y: Default::default(),
                 a11y_updates: 0,
             };
+            let tracing = trace::begin(&mut probe);
             let mut report = match scenario {
                 "import" => scenarios::import(&mut probe),
                 "lifecycle" => scenarios::lifecycle(&mut probe),
@@ -127,6 +130,9 @@ pub fn run(args: &cef::args::Args, scenario: &str) -> ExitCode {
                 "a11y" => a11y::a11y(&mut probe),
                 other => json!({ "error": format!("no scenario {other}") }),
             };
+            if let Some(file) = tracing {
+                trace::end(&mut probe, &file);
+            }
             report["adapter"] = json!(format!("{} ({:?})", gpu.adapter.name, gpu.adapter.backend));
             report["adapter_type"] = json!(format!("{:?}", gpu.adapter.device_type));
             probe.host.close_all();
@@ -165,6 +171,17 @@ impl Probe {
     /// CEF's work when it is due and the frame clock's begin frames, as the compositor window runs
     /// them (#111), then a wait until either is due again or CEF asks, at most `STEP`.
     fn step(&mut self) {
+        let until = self.work();
+        Probe::wait(until);
+    }
+
+    /// Wait until `until`, or until CEF asks for its work.
+    fn wait(until: Instant) {
+        std::thread::park_timeout(until.saturating_duration_since(Instant::now()));
+    }
+
+    /// CEF's work when it is due and the frame clock's begin frames; when to look again.
+    fn work(&mut self) -> Instant {
         if self.pump.take_due(Instant::now()) {
             do_message_loop_work();
         }
@@ -186,12 +203,11 @@ impl Probe {
             }
         }
         let now = Instant::now();
-        let until = [Some(self.pump.due()), clock, Some(now + STEP)]
+        [Some(self.pump.due()), clock, Some(now + STEP)]
             .into_iter()
             .flatten()
             .min()
-            .unwrap_or(now);
-        std::thread::park_timeout(until.saturating_duration_since(now));
+            .unwrap_or(now)
     }
 
     /// Tell the host `message`, given as JSON.

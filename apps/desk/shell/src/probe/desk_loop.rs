@@ -105,7 +105,8 @@ impl Probe {
     }
 
     /// Run the desk until `painted` holds and a frame has been composed after it, for at most
-    /// `timeout`: when `painted` first held, and when that frame was done (GPU included).
+    /// `timeout`: when `painted` first held, and when that frame was done (GPU included). `painted`
+    /// is asked right after CEF's work, before the wait, as the compositor window composes then.
     pub fn run_desk_until(
         &mut self,
         desk: &DeskLoop,
@@ -124,10 +125,11 @@ impl Probe {
                     return (painted_at, Some(Instant::now()));
                 }
             }
-            self.step();
+            let until = self.work();
             if painted_at.is_none() && painted(self) {
                 painted_at = Some(Instant::now());
             }
+            Probe::wait(until);
         }
         (painted_at, None)
     }
