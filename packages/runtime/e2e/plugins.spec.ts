@@ -40,6 +40,33 @@ test("a changed plugin reloads alone, within a second, and keeps its state", asy
   await expect(counterFrame.getByTestId("count")).toHaveText("1");
 });
 
+test("a plugin's last state survives an update that reloads it right after it set it", async ({
+  page,
+}) => {
+  const helloFrame = page.frameLocator(`${hello} iframe`);
+  await expect(helloFrame.getByTestId("bridge")).toHaveText("bridge: ok, 0 grants");
+  const plugin = page.frames().find((f) => f.url().includes("/plugins/example.hello-ui/"));
+  if (!plugin) throw new Error("Hello has no frame");
+  await plugin.evaluate(() => document.readyState);
+
+  // The update comes while the desk's thread is busy for 300 ms, as on a loaded machine, and Hello
+  // counts in that time, on the page still on screen, without anything waiting for its desk:state.
+  // Before, the frame's page went at once and that message came after it, with no source the desk
+  // could tell: the reloaded Hello counted from 0. Now the reload waits for the frame's pong.
+  const update = page.evaluate(() => {
+    window.__desk.stub.emit({
+      event: "plugin.changed",
+      data: { plugin: "example.hello-ui", change: "updated", revision: 2 },
+    });
+    const until = performance.now() + 300;
+    while (performance.now() < until);
+  });
+  await plugin.evaluate(() => document.querySelector<HTMLElement>("desk-button")?.click());
+  await update;
+  await expect(helloFrame.getByTestId("revision")).toHaveText("revision 2");
+  await expect(helloFrame.getByTestId("count")).toHaveText("1");
+});
+
 test("disabling a plugin unmounts its surface and enabling mounts it again", async ({ page }) => {
   await page.evaluate(() =>
     window.__desk.stub.emit({
