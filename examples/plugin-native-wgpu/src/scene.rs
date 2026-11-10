@@ -1,5 +1,5 @@
-//! The wgpu scene: one pipeline that draws a gradient and a turning triangle (`scene.wgsl`) into
-//! whatever texture the frame is.
+//! The wgpu scene: one pipeline that draws a gradient, a turning triangle and the two parts under it
+//! with the focused one's ring (`scene.wgsl`) into whatever texture the frame is.
 
 use std::io;
 
@@ -12,7 +12,24 @@ struct Uniforms {
     angle: f32,
     aspect: f32,
     hue: f32,
+    ring: f32,
+    size: [f32; 2],
+    paused: f32,
     _pad: f32,
+    parts: [[f32; 4]; 2],
+}
+
+/// What one frame shows.
+pub struct Look {
+    /// How far the triangle turned, in radians, and its hue.
+    pub angle: f32,
+    pub hue: f32,
+    /// Each part's box in the texture's pixels: x, y, width, height (`parts.rs`).
+    pub parts: [[f32; 4]; 2],
+    /// The part whose focus ring shows, -1 for none.
+    pub ring: f32,
+    /// 1 while the triangle stands still.
+    pub paused: f32,
 }
 
 /// The GPU and the scene's pipeline.
@@ -108,14 +125,18 @@ impl Gpu {
         })
     }
 
-    /// Draw the scene turned by `angle` into `target`, of `size` pixels, and wait until the GPU is
-    /// done: the desk reads the frame as soon as it is attached.
-    pub fn draw(&self, target: &wgpu::Texture, size: (u32, u32), angle: f32, hue: f32) {
+    /// Draw `look` into `target`, of `size` pixels, and wait until the GPU is done: the desk reads
+    /// the frame as soon as it is attached.
+    pub fn draw(&self, target: &wgpu::Texture, size: (u32, u32), look: &Look) {
         let uniforms = Uniforms {
-            angle,
+            angle: look.angle,
             aspect: size.0 as f32 / size.1.max(1) as f32,
-            hue,
+            hue: look.hue,
+            ring: look.ring,
+            size: [size.0 as f32, size.1 as f32],
+            paused: look.paused,
             _pad: 0.0,
+            parts: look.parts,
         };
         self.queue
             .write_buffer(&self.uniforms, 0, bytemuck::bytes_of(&uniforms));

@@ -1,11 +1,20 @@
-// The example's scene: a gradient and a soft triangle that turns, drawn by one full-screen
-// triangle. Colours are premultiplied, as the desk composites them.
+// The example's scene: a gradient, a soft triangle that turns, and two parts under it (Colour, a
+// swatch of the triangle's colour, and Pause, whose bars become a play mark while it stands still),
+// the focused one ringed while the surface has the keys; all drawn by one full-screen triangle.
+// Colours are premultiplied, as the desk composites them.
 
 struct Scene {
     angle: f32,
     aspect: f32,
     hue: f32,
+    // The part whose ring shows, -1 for none.
+    ring: f32,
+    // The texture's size in pixels.
+    size: vec2<f32>,
+    paused: f32,
     _pad: f32,
+    // Each part's box in pixels: x, y, width, height.
+    parts: array<vec4<f32>, 2>,
 };
 
 @group(0) @binding(0) var<uniform> scene: Scene;
@@ -36,8 +45,43 @@ fn triangle(p_in: vec2<f32>, r: f32) -> f32 {
     return -length(p) * sign(p.y);
 }
 
+// The signed distance to a box of half size b with corners of radius r, around the origin.
+fn rounded(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
+    let q = abs(p) - b + vec2<f32>(r, r);
+    return length(max(q, vec2<f32>(0.0, 0.0))) + min(max(q.x, q.y), 0.0) - r;
+}
+
 fn tint(h: f32) -> vec3<f32> {
     return 0.5 + 0.5 * cos(6.28318 * (h + vec3<f32>(0.0, 0.33, 0.67)));
+}
+
+// How much of a pixel lies inside a shape whose signed distance there is d pixels.
+fn inside(d: f32) -> f32 {
+    return smoothstep(0.75, -0.75, d);
+}
+
+// Part `index` over `colour` at pixel `px`: its box `r` (44 logical pixels wide, so r.z / 44 is the
+// scale), filled with `fill`, its mark, and its ring when it is the focused part.
+fn part(colour: vec3<f32>, px: vec2<f32>, r: vec4<f32>, index: f32, fill: vec3<f32>) -> vec3<f32> {
+    let unit = r.z / 44.0;
+    let p = px - (r.xy + r.zw * 0.5);
+    let d = rounded(p, r.zw * 0.5, 10.0 * unit);
+    var out = mix(colour, fill, inside(d));
+    if (index == 1.0) {
+        let q = p / unit;
+        var mark: f32;
+        if (scene.paused > 0.5) {
+            mark = triangle(vec2<f32>(q.y, q.x - 1.5), 8.0);
+        } else {
+            let bar = vec2<f32>(2.5, 9.0);
+            mark = min(rounded(q - vec2<f32>(-5.0, 0.0), bar, 1.0), rounded(q - vec2<f32>(5.0, 0.0), bar, 1.0));
+        }
+        out = mix(out, vec3<f32>(0.92, 0.93, 0.97), inside(mark * unit));
+    }
+    if (index == scene.ring) {
+        out = mix(out, vec3<f32>(0.98, 0.98, 1.0), inside(abs(d - 3.5 * unit) - 1.25 * unit));
+    }
+    return out;
 }
 
 @fragment
@@ -54,5 +98,8 @@ fn fs(in: Out) -> @location(0) vec4<f32> {
     let shape = tint(scene.hue + scene.angle / 6.28318);
     let glow = exp(-max(d, 0.0) * 9.0) * 0.45;
     colour = mix(colour + shape * glow, shape, smoothstep(0.01, -0.01, d));
+    let px = in.uv * scene.size;
+    colour = part(colour, px, scene.parts[0], 0.0, shape);
+    colour = part(colour, px, scene.parts[1], 1.0, vec3<f32>(0.22, 0.23, 0.33));
     return vec4<f32>(colour, 1.0);
 }

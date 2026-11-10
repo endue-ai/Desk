@@ -1,17 +1,19 @@
 //! The plugin's loop on macOS: the desk's messages in, frames out. Each frame is drawn into an
 //! IOSurface of the plugin's own; the first frame of each texture sends the IOSurface's Mach right
 //! with it (`portIndex` 0), and the desk copies the frame (`after-copy`) and releases it at once.
+//! Its two parts take Tab and hand the focus back past either end (`parts.rs`, #128).
 
 use std::io;
 use std::time::Instant;
 
-use desk_surface::CompositorMessage;
 use desk_surface::generated::SurfaceAttach;
 use desk_surface::native::iosurface::{FORMAT, SharedTexture};
 use desk_surface::native::plugin::{Heard, Plugin};
+use desk_surface::{CompositorMessage, SurfaceMessage};
 use serde_json::{Value, json};
 
-use crate::scene::Gpu;
+use crate::parts::{Act, Controls};
+use crate::scene::{Gpu, Look};
 use crate::shown::Shown;
 
 /// The surface and what draws it.
@@ -21,6 +23,7 @@ struct Drawing {
     texture: Option<(SharedTexture, bool)>,
     hue: f32,
     last: Instant,
+    controls: Controls,
 }
 
 pub fn run() -> io::Result<()> {
@@ -98,18 +101,14 @@ fn heard(
             if let Some(d) = drawing.as_mut() {
                 d.shown
                     .resize((m.size.width as u32, m.size.height as u32), m.scale);
+                // The parts moved with the bottom edge.
+                tell(plugin, d)?;
             }
         }
         CompositorMessage::SurfaceShow(_) => set(drawing, |s| s.hidden = false),
         CompositorMessage::SurfaceHide(_) => set(drawing, |s| s.hidden = true),
         CompositorMessage::SurfacePace(m) => set(drawing, |s| s.fps = m.fps as u32),
         CompositorMessage::SurfaceRelease(m) => set(drawing, |s| s.released(m.frame)),
-        // A click changes the colour.
-        CompositorMessage::SurfacePointerDown(_) => {
-            if let Some(d) = drawing.as_mut() {
-                d.hue = (d.hue + 0.17) % 1.0;
-            }
-        }
         CompositorMessage::SurfaceDesk(m) => page(plugin, drawing, &m.surface, &m.message)?,
         // Out of the live budget: keep the angle for the next wake, and exit.
         CompositorMessage::SurfaceSleep(m) => {
@@ -118,9 +117,63 @@ fn heard(
             return Ok(false);
         }
         CompositorMessage::SurfaceDestroy(_) => return Ok(false),
-        _ => {}
+        other => {
+            if let Some(d) = drawing.as_mut() {
+                input(plugin, d, other)?;
+            }
+        }
     }
     Ok(true)
+}
+
+/// Input, the focus and the accessibility tree: what the parts (`parts.rs`) and the scene do.
+fn input(plugin: &Plugin, d: &mut Drawing, message: CompositorMessage) -> io::Result<()> {
+    let act = match message {
+        // Tab or Shift+Tab came in; past either end the focus goes back (`act.leave`).
+        CompositorMessage::SurfaceFocusEnter(m) => d.controls.enter(m.edge),
+        CompositorMessage::SurfaceFocusIn(_) => {
+            d.controls.keys = true;
+            Act::default()
+        }
+        CompositorMessage::SurfaceFocusOut(_) => {
+            d.controls.keys = false;
+            Act::default()
+        }
+        CompositorMessage::SurfaceKeyDown(m) => d.controls.key(&m),
+        // A click on a part presses it; anywhere else it changes the colour.
+        CompositorMessage::SurfacePointerDown(m) => {
+            (d.controls).click(d.shown.size, m.x, m.y).unwrap_or(Act {
+                colour: true,
+                ..Act::default()
+            })
+        }
+        CompositorMessage::SurfaceA11yEnable(m) => {
+            d.controls.enable(m.enabled);
+            Act::changed()
+        }
+        CompositorMessage::SurfaceA11yAction(m) => d.controls.action(m.node, m.action),
+        _ => Act::default(),
+    };
+    if act.colour {
+        d.hue = (d.hue + 0.17) % 1.0;
+    }
+    if act.changed {
+        tell(plugin, d)?;
+    }
+    if let Some(edge) = act.leave {
+        plugin.leave_focus(&d.shown.surface, edge)?;
+    }
+    Ok(())
+}
+
+/// The parts' accessibility update, while the desk asks for the tree.
+fn tell(plugin: &Plugin, d: &mut Drawing) -> io::Result<()> {
+    let Some(update) = d.controls.update(&d.shown.surface, d.shown.size) else {
+        return Ok(());
+    };
+    let update: SurfaceMessage = serde_json::from_value(update)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    plugin.send(&update)
 }
 
 /// The desk's page messages: `desk:init` hands back the angle the plugin kept (`restored`, what it
@@ -166,6 +219,7 @@ fn start(plugin: &Plugin, drawing: &mut Option<Drawing>, shown: Shown) -> io::Re
         texture: None,
         hue: 0.58,
         last: Instant::now(),
+        controls: Controls::new(),
     });
     Ok(())
 }
@@ -173,8 +227,10 @@ fn start(plugin: &Plugin, drawing: &mut Option<Drawing>, shown: Shown) -> io::Re
 /// Draw a frame and attach it.
 fn draw(plugin: &Plugin, gpu: &Gpu, d: &mut Drawing, speed: f32) -> io::Result<()> {
     let now = Instant::now();
-    d.shown
-        .turn(now.duration_since(d.last).as_secs_f32(), speed);
+    if !d.controls.paused {
+        d.shown
+            .turn(now.duration_since(d.last).as_secs_f32(), speed);
+    }
     d.last = now;
     let pixels = d.shown.pixels();
     if d.texture.as_ref().is_none_or(|(t, _)| t.size() != pixels) {
@@ -184,7 +240,15 @@ fn draw(plugin: &Plugin, gpu: &Gpu, d: &mut Drawing, speed: f32) -> io::Result<(
     let Some((texture, sent)) = d.texture.as_mut() else {
         return Ok(());
     };
-    gpu.draw(texture.texture(), pixels, d.shown.angle, d.hue);
+    let (parts, ring, paused) = d.controls.drawn(d.shown.size, d.shown.scale);
+    let look = Look {
+        angle: d.shown.angle,
+        hue: d.hue,
+        parts,
+        ring,
+        paused,
+    };
+    gpu.draw(texture.texture(), pixels, &look);
     let first = d.shown.frame == 0;
     let frame = d.shown.drew(now);
     let mut handle = json!({ "kind": "iosurface", "id": texture.id() });

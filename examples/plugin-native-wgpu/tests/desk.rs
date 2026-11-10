@@ -1,14 +1,15 @@
 //! The example against a desk played by this test (macOS): it is started as the desk starts a
 //! native plugin (two inherited sockets and the desk's Mach service), reads its setting over the
 //! bridge, says hello, draws its scene into an IOSurface whose right reaches the desk with the first
-//! frame, answers pings, and keeps its angle and exits when it sleeps.
+//! frame, answers pings, and keeps its angle and exits when it sleeps. Its two parts take Tab and
+//! hand the focus back past either end, and its tree names them and follows the focus (#128).
 #![cfg(target_os = "macos")]
 
 use std::io::{BufRead, BufReader, Write};
 use std::os::fd::AsRawFd;
 use std::os::unix::net::UnixStream;
 use std::os::unix::process::CommandExt;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 use desk_surface::env;
@@ -64,9 +65,16 @@ fn pixel(surface: &IoSurface, x: usize, y: usize) -> [u8; 4] {
     out
 }
 
-#[test]
+/// The example as the desk starts it, and the desk's ends of its connections.
+struct Started {
+    child: Child,
+    desk: Desk,
+    bridge: UnixStream,
+    ports: PortService,
+}
+
 #[allow(unsafe_code)]
-fn the_example_draws_into_its_surface_answers_the_desk_and_sleeps_with_its_state() {
+fn start() -> Started {
     let (surface, surface_child) = UnixStream::pair().unwrap();
     let (bridge, bridge_child) = UnixStream::pair().unwrap();
     let ports = PortService::check_in().unwrap();
@@ -89,28 +97,49 @@ fn the_example_draws_into_its_surface_answers_the_desk_and_sleeps_with_its_state
             Ok(())
         });
     }
-    let mut child = command.spawn().expect("the example is built");
+    let child = command.spawn().expect("the example is built");
     drop((surface_child, bridge_child));
-    let pid = child.id();
+    let desk = Desk {
+        lines: BufReader::new(surface.try_clone().unwrap()),
+        surface,
+    };
+    Started {
+        child,
+        desk,
+        bridge,
+        ports,
+    }
+}
 
-    // Its one bridge call: its own setting.
+/// Its one bridge call, answered with `speed`: the call as it came.
+fn answer_speed(bridge: &UnixStream, speed: f64) -> Value {
     let mut calls = BufReader::new(bridge.try_clone().unwrap());
     let mut call = String::new();
     calls.read_line(&mut call).unwrap();
     let call: Value = serde_json::from_str(&call).unwrap();
+    let answer = json!({ "id": call["id"], "ok": true, "result": { "value": speed } });
+    let mut bridge = bridge;
+    bridge.write_all(format!("{answer}\n").as_bytes()).unwrap();
+    call
+}
+
+#[test]
+fn the_example_draws_into_its_surface_answers_the_desk_and_sleeps_with_its_state() {
+    let Started {
+        mut child,
+        mut desk,
+        bridge,
+        ports,
+    } = start();
+    let pid = child.id();
+
+    // Its one bridge call: its own setting.
+    let call = answer_speed(&bridge, 2.0);
     assert_eq!(
         (call["method"].as_str(), &call["params"]),
         (Some("settings.get"), &json!({ "key": "speed" }))
     );
-    let answer = json!({ "id": call["id"], "ok": true, "result": { "value": 2.0 } });
-    (&bridge)
-        .write_all(format!("{answer}\n").as_bytes())
-        .unwrap();
 
-    let mut desk = Desk {
-        lines: BufReader::new(surface.try_clone().unwrap()),
-        surface,
-    };
     desk.send(
         json!({ "type": "create", "surface": SURFACE, "plugin": "example.native-wgpu",
         "view": "main", "size": { "width": 160, "height": 100 }, "scale": 2, "format": "bgra8" }),
@@ -152,6 +181,64 @@ fn the_example_draws_into_its_surface_answers_the_desk_and_sleeps_with_its_state
     desk.send(json!({ "type": "sleep", "surface": SURFACE }));
     let kept = desk.until("desk:state");
     assert!(kept["message"]["state"]["angle"].as_f64().is_some());
+    let status = child.wait().unwrap();
+    assert!(status.success(), "{status:?}");
+}
+
+#[test]
+fn tab_goes_through_its_two_parts_and_it_hands_the_focus_back_past_either_end() {
+    let Started {
+        mut child,
+        mut desk,
+        bridge,
+        ports: _ports,
+    } = start();
+    answer_speed(&bridge, 1.0);
+    desk.send(
+        json!({ "type": "create", "surface": SURFACE, "plugin": "example.native-wgpu",
+        "view": "main", "size": { "width": 400, "height": 300 }, "scale": 1, "format": "bgra8" }),
+    );
+    desk.until("desk:hello");
+    // A screen reader is on: the tree names both parts, and nothing has the focus yet.
+    desk.send(json!({ "type": "a11y.enable", "surface": SURFACE, "enabled": true }));
+    let tree = desk.until("a11y.update");
+    let names: Vec<&str> = (tree["nodes"].as_array().unwrap().iter())
+        .filter_map(|n| n["name"].as_str())
+        .collect();
+    assert_eq!(names, ["Native wgpu", "Colour", "Pause"]);
+    assert_eq!(tree["focus"], tree["tree"]["root"]);
+    let focus = |update: Value| update["focus"].as_u64();
+    let tab = |back: bool| {
+        let modifiers: &[&str] = if back { &["shift"] } else { &[] };
+        json!({ "type": "key.down", "surface": SURFACE, "key": "Tab", "code": "Tab",
+            "modifiers": modifiers, "repeat": false })
+    };
+
+    // Tab came in: its first part, then its second, then the focus goes back past its last.
+    desk.send(json!({ "type": "focus.enter", "surface": SURFACE, "edge": "first" }));
+    desk.send(json!({ "type": "focus.in", "surface": SURFACE }));
+    assert_eq!(focus(desk.until("a11y.update")), Some(2));
+    desk.send(tab(false));
+    assert_eq!(focus(desk.until("a11y.update")), Some(3));
+    desk.send(tab(false));
+    assert_eq!(
+        focus(desk.until("a11y.update")),
+        Some(1),
+        "no part keeps it"
+    );
+    assert_eq!(desk.until("focus.leave")["edge"], "last");
+    desk.send(json!({ "type": "focus.out", "surface": SURFACE }));
+
+    // Shift+Tab came in: its last part, then its first, then back past its first.
+    desk.send(json!({ "type": "focus.enter", "surface": SURFACE, "edge": "last" }));
+    desk.send(json!({ "type": "focus.in", "surface": SURFACE }));
+    assert_eq!(focus(desk.until("a11y.update")), Some(3));
+    desk.send(tab(true));
+    assert_eq!(focus(desk.until("a11y.update")), Some(2));
+    desk.send(tab(true));
+    assert_eq!(desk.until("focus.leave")["edge"], "first");
+
+    desk.send(json!({ "type": "destroy", "surface": SURFACE }));
     let status = child.wait().unwrap();
     assert!(status.success(), "{status:?}");
 }

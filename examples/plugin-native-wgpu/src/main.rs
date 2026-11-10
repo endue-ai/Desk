@@ -1,10 +1,13 @@
 //! examples/plugin-native-wgpu: the smallest native plugin (#59, ADR 0154). The desk starts this
 //! program when its window opens or wakes (`plugin.json`, kind `native`). It reads one setting of its
 //! own over the bridge (`settings.get`), says hello, and draws a turning triangle with wgpu into an
-//! IOSurface it attaches to its surface, at the desk's pace, while the window is shown. Before it
-//! sleeps it keeps its angle with the desk, which hands it back when it wakes. It exits when the
-//! desk closes its connection.
+//! IOSurface it attaches to its surface, at the desk's pace, while the window is shown. Two parts
+//! under the triangle, Colour and Pause, take Tab and hand the focus back to the desk past either
+//! end (#128). Before it sleeps it keeps its angle with the desk, which hands it back when it wakes.
+//! It exits when the desk closes its connection.
 
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+mod parts;
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod scene;
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]

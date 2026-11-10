@@ -4,8 +4,9 @@ The smallest native plugin (kind `native`, #59, ADR 0154): a Rust program that t
 process of its own. It reads one setting of its own over the bridge (`settings.get` of `speed`, which
 needs no permission), says hello, and draws a turning triangle with wgpu into an IOSurface that it
 attaches to its surface, at the desk's pace, while its window is shown. A click changes the colour.
-It answers the desk's pings from the loop that draws, keeps its angle when it sleeps and gets it back
-when it wakes, and exits when the desk closes its connection.
+Tab goes through two parts under the triangle, Colour and Pause, and past either end back to the desk
+(`focus.enter`, `focus.leave`, #128); its accessibility tree names them. It answers pings from the
+loop that draws, keeps its angle across a sleep, and exits when the desk closes its connection.
 
 ## Run it
 
@@ -26,7 +27,8 @@ desk runs (`node scripts/example.mjs build plugin-native-wgpu`) and the desk sta
 | `src/main.rs` | Start and exit; frames reach the desk on macOS until #61 |
 | `src/mac.rs` | The loop: the desk's messages in, frames out, its page messages, its one bridge call |
 | `src/shown.rs` | When to draw: shown, at the desk's pace, after the last frame came back |
-| `src/scene.rs`, `src/scene.wgsl` | The wgpu scene |
+| `src/parts.rs` | The two parts: Tab's order through them, presses, their accessibility tree |
+| `src/scene.rs`, `src/scene.wgsl` | The wgpu scene, the parts and the focused one's ring |
 | `tests/desk.rs` | The built program against a desk the test plays (macOS) |
 
 ## Check it
@@ -35,5 +37,4 @@ desk runs (`node scripts/example.mjs build plugin-native-wgpu`) and the desk sta
 cargo test -p plugin-native-wgpu
 ```
 
-On Linux and Windows the program builds and says that frames from another process reach the desk on
-macOS only until #61 imports DMA-BUFs and D3D11 handles.
+On Linux and Windows it builds and says frames from another process reach the desk on macOS only (#61).
