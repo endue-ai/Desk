@@ -167,7 +167,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     focusMoved(id);
     if (id) {
       options.windows?.show?.(id);
-      surfaces.get(id)?.focus();
+      surfaces.focus(id);
     }
   };
   const { views, windows, language } = options;
@@ -306,7 +306,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         wake: (id) => frames.wake(id),
         // A role named in desk.roles is its provider's alone (ADR 0104).
         mayMount: (info) => mayMount(info, chosenOf(hub.settings.get(ROLES_SETTING))),
-        startAsleep: async (all) => startsAsleep(all, await session.shows()),
+        startAsleep: async (all) => startsAsleep(all, surfaces.returning(await session.shows())),
       },
       options.plugins,
     );

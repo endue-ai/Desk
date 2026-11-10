@@ -58,6 +58,11 @@ export class Settling {
     return true;
   }
 
+  /** The desk gave `el` the focus: a settling frame gives it back there, focus events or not. */
+  moved(el: Element): void {
+    this.#before = el;
+  }
+
   forget(id: string): void {
     this.#held.get(id)?.end();
     this.#held.delete(id);

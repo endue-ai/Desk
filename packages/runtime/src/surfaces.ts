@@ -37,6 +37,8 @@ export class SurfaceHost {
   /** The frames of unloaded surfaces, out of the page until they show again (ADR 0070). */
   readonly #parked = new Map<string, HTMLIFrameElement>();
   readonly #settling = new Settling();
+  /** The surfaces a saved session puts back that have not opened yet (`returning`). */
+  readonly #returning = new Set<string>();
   readonly #listeners = new Set<() => void>();
 
   /** Without `edges`, edge surfaces sit in `container` like the rest. */
@@ -90,6 +92,7 @@ export class SurfaceHost {
 
     if (overlay || edge || windowed) section.append(frame);
     else section.append(title, frame);
+    if (this.#returning.delete(spec.id)) this.#settling.start(spec.id, frame);
     if (into) into.append(section);
     else if (into === undefined)
       (edges && edge ? edges.bar(edge) : this.#container).append(section);
@@ -145,6 +148,17 @@ export class SurfaceHost {
     return this.#parked.has(id);
   }
 
+  /**
+   * The surfaces a saved session puts back (#76; undefined: none) come back as an unloaded frame
+   * does: as each opens, its frame may not take the focus while it loads (`frames/settle.ts`), so
+   * the surface in use keeps it when every window comes back. Returns `ids`.
+   */
+  returning(ids: ReadonlySet<string> | undefined): ReadonlySet<string> | undefined {
+    this.#returning.clear();
+    for (const id of ids ?? []) this.#returning.add(id);
+    return ids;
+  }
+
   /** Hear surfaces open, close, show and hide. */
   onChange(listener: () => void): () => void {
     this.#listeners.add(listener);
@@ -177,6 +191,18 @@ export class SurfaceHost {
   /** The window inside a surface's frame, to tell plugin messages apart. */
   frame(id: string): Window | null {
     return this.#surfaces.get(id)?.querySelector("iframe")?.contentWindow ?? null;
+  }
+
+  /**
+   * The desk gives surface `id` the focus. That ends its frame's settling, and a frame settling
+   * gives the focus back here, also in a window in the background, where no focus event comes.
+   */
+  focus(id: string): void {
+    const section = this.#surfaces.get(id);
+    if (!section) return;
+    this.#settling.forget(id);
+    section.focus();
+    this.#settling.moved(section);
   }
 
   get(id: string): HTMLElement | undefined {

@@ -60,7 +60,9 @@ iframe frees its page, and asking at that moment costs a plugin nothing while it
   presses Tab or the desk focuses it (a minute at most): plugins that focus their view as they mount,
   some late (Docker waits for its engine), would otherwise pull the keyboard to every window that
   comes back (`frames/settle.ts`; a window in the background gets no focus events in WKWebView, so
-  the focus is also looked at every 250 ms).
+  the focus is also looked at every 250 ms). The windows a saved session puts back at start settle
+  the same way (#76), so the surface in use keeps the focus; where the desk focuses a surface is
+  told to the settling directly, as a window in the background (Chromium's too) hears no focus event.
 * Notes is the first to keep its state: open notes, unsaved text, watches, caret and scroll.
 * Asleep from the start (#590): with a saved session to put back, an enabled UI plugin that is not
   autoload (ADR 0046), whose surface is a window (centre or floating) and that the session does not

@@ -66,7 +66,8 @@ async function desk(saved?: unknown) {
     plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
   });
   const section = (id: string) => root.querySelector(`[data-surface="${id}"]`);
-  const frame = (id: string) => section(id)?.querySelector("iframe")?.contentWindow ?? null;
+  const frameElement = (id: string) => section(id)?.querySelector("iframe") ?? null;
+  const frame = (id: string) => frameElement(id)?.contentWindow ?? null;
   const send = (id: string, data: Message) =>
     window.dispatchEvent(new MessageEvent("message", { data, source: frame(id) }));
   // The frames that load at start say hello and answer the desk (desk.files.visit, say).
@@ -91,7 +92,14 @@ async function desk(saved?: unknown) {
     for (const manifest of MANIFESTS) connect(manifest.id);
   }
   expect(started).toBe(true);
-  return { runtime, section, frame, send };
+  return { runtime, section, frame, frameElement, send };
+}
+
+/** What a browser does when a frame's page focuses one of its elements (jsdom leaves the events out). */
+function takeFocus(frame: HTMLIFrameElement | null): void {
+  if (!frame) throw new Error("no frame");
+  frame.focus();
+  frame.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
 }
 
 afterEach(() => {
@@ -134,6 +142,39 @@ describe("enabled UI plugins without a surface in the restored layout start asle
     await flush();
     expect(heard.map((m) => m.type)).toContain("desk:init");
     await expect(answer).resolves.toEqual({ said: "hello" });
+  });
+
+  it("a window the session puts back that focuses itself as it mounts leaves the focus on the one in use (#76)", async () => {
+    const d = await desk({ ...SAVED, focused: "test.shown" });
+    const inUse = d.section("test.shown");
+    expect(document.activeElement).toBe(inUse);
+
+    // As it mounts it focuses its view, as many plugins do (Docker, late, once its engine answers).
+    takeFocus(d.frameElement("test.file"));
+    expect(document.activeElement).toBe(inUse);
+    expect(d.runtime.shortcuts.focused).toBe("test.shown");
+
+    // A plugin that started asleep and opens on its first use is not one coming back.
+    void d.runtime.commands.run("test.asleep.hello").catch(() => {});
+    await flush();
+    takeFocus(d.frameElement("test.asleep"));
+    expect(document.activeElement).toBe(d.frameElement("test.asleep"));
+  });
+
+  it("in a window in the background, where no focus event comes, the focus still goes back to the one in use", async () => {
+    // No focus event reaches the desk's page: a window in the background (a locked Mac, WKWebView).
+    const mute = (event: Event) => event.stopImmediatePropagation();
+    window.addEventListener("focusin", mute, true);
+    try {
+      const d = await desk({ ...SAVED, focused: "test.shown" });
+      const inUse = d.section("test.shown");
+      expect(document.activeElement).toBe(inUse);
+      d.frameElement("test.file")?.focus();
+      await flush(300);
+      expect(document.activeElement).toBe(inUse);
+    } finally {
+      window.removeEventListener("focusin", mute, true);
+    }
   });
 
   it("without a saved session every enabled plugin mounts as before", async () => {
