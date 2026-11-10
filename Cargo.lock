@@ -1725,8 +1725,12 @@ version = "0.0.0"
 dependencies = [
  "bytemuck",
  "cosmic-text",
+ "desk-surface",
  "etagere",
  "glam",
+ "objc2-core-foundation",
+ "objc2-io-surface",
+ "objc2-metal 0.3.2",
  "png",
  "pollster",
  "serde_json",
@@ -4831,6 +4835,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "180788110936d59bab6bd83b6060ffdfffb3b922ba1396b312ae795e1de9d81d"
 dependencies = [
  "bitflags 2.13.2",
+ "libc",
  "objc2 0.6.5",
  "objc2-core-foundation",
 ]
@@ -4869,6 +4874,7 @@ dependencies = [
  "block2 0.6.2",
  "objc2 0.6.5",
  "objc2-foundation 0.3.2",
+ "objc2-io-surface",
 ]
 
 [[package]]

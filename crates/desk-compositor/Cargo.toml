@@ -9,12 +9,24 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+# The frames surfaces attach (specs/surface/v0) through the texture import entry (#52).
+desk-surface.workspace = true
 wgpu.workspace = true
 glam.workspace = true
 bytemuck.workspace = true
 pollster.workspace = true
 cosmic-text.workspace = true
 etagere.workspace = true
+
+# macOS: an IOSurface a surface attached, wrapped as a Metal texture (`attach/iosurface.rs`).
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-io-surface = { version = "0.3", default-features = false, features = ["std", "IOSurfaceRef", "IOSurfaceTypes", "objc2", "objc2-core-foundation"] }
+objc2-metal = { version = "0.3", default-features = false, features = ["std", "MTLDevice", "MTLPixelFormat", "MTLResource", "MTLTexture", "MTLTypes", "objc2-io-surface"] }
+
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+# The import tests make an IOSurface of a known colour.
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFDictionary", "CFNumber", "CFString"] }
+objc2-io-surface = { version = "0.3", default-features = false, features = ["std", "IOSurface", "IOSurfaceRef", "IOSurfaceTypes", "bitflags", "libc", "objc2", "objc2-core-foundation"] }
 
 [dev-dependencies]
 png.workspace = true

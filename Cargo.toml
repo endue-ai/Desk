@@ -24,6 +24,8 @@ desk-crash = { path = "crates/desk-crash" }
 desk-index = { path = "crates/desk-index" }
 desk-memory = { path = "crates/desk-memory" }
 desk-plugin-host = { path = "crates/desk-plugin-host" }
+desk-compositor = { path = "crates/desk-compositor" }
+desk-surface = { path = "crates/desk-surface" }
 desk-sys = { path = "crates/desk-sys" }
 desk-trace = { path = "crates/desk-trace" }
 desk-update = { path = "crates/desk-update" }

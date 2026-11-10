@@ -32,6 +32,7 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
+pub mod attach;
 mod camera;
 mod chrome;
 mod compositor;
@@ -46,6 +47,7 @@ mod text;
 mod theme;
 mod types;
 
+pub use attach::{AttachError, Attached, Frames, Source};
 pub use camera::{DEFAULT_FOV_Y, Projection};
 pub use chrome::{Chrome, Role, WindowChrome};
 pub use compositor::{Compositor, FrameStats};
