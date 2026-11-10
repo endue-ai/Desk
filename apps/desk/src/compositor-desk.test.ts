@@ -64,7 +64,7 @@ function frames() {
   const win = window as Window & typeof globalThis;
   win.requestAnimationFrame = (cb) => callbacks.push(cb);
   win.cancelAnimationFrame = () => {};
-  return { win, tick: () => callbacks.shift()?.(0) };
+  return { win, tick: () => callbacks.shift()?.(0), pending: () => callbacks.length };
 }
 
 describe("the desk the page publishes", () => {
@@ -117,6 +117,28 @@ describe("the desk the page publishes", () => {
     expect(reports[3]?.frames).toEqual([]);
     stop();
     expect(document.documentElement.classList.contains("desk-compositor")).toBe(false);
+  });
+
+  it("stops looking every frame once the desk is still, and a change or the compositor's word starts it again", async () => {
+    const { win, tick, pending } = frames();
+    const r = runtime(["endue.notes"]);
+    const p = pages();
+    const notes = p.add("endue.notes");
+    const reports: DeskReport[] = [];
+    const desk = startCompositorDesk(win, r.desk, p, (report) => reports.push(report));
+    for (let i = 0; i < 40; i++) tick();
+    expect(reports).toHaveLength(1);
+    expect(pending(), "no frame asked for while nothing changes").toBe(0);
+    document.body.append(document.createElement("aside"));
+    await Promise.resolve();
+    expect(pending(), "a change to the page: looking again").toBe(1);
+    for (let i = 0; i < 40; i++) tick();
+    expect(pending()).toBe(0);
+    notes.loads = 2;
+    desk.wake();
+    tick();
+    expect(reports.at(-1)?.frames[0]).toMatchObject({ loads: 2 });
+    desk();
   });
 
   it("places a surface of its own system layer where the page lays it out, in its layer", () => {

@@ -1,11 +1,13 @@
 /**
  * Bottom right: what is happening now. One chip per working A2A task: the agent doing it, the goal,
- * the time since it started and its progress. Nothing at all when nothing runs.
+ * the time since it started and its progress. Nothing at all when nothing runs, and then it asks
+ * the ticker for no frames (ADR 0164).
  */
 import { agentName, selectAgent } from "../system/agents";
 import type { ShellCtx } from "./context";
 import { h, render } from "./dom";
 import { initial } from "./state";
+import { IDLE } from "./ticker";
 
 export function elapsed(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -63,13 +65,21 @@ export function mountRunning(root: HTMLElement, ctx: ShellCtx): () => void {
   draw();
   let second = -1;
   const offs = [
-    ctx.store.watch((s) => [s.tasks, s.agents], draw),
+    ctx.store.watch(
+      (s) => [s.tasks, s.agents],
+      () => {
+        draw();
+        ctx.ticker.wake();
+      },
+    ),
     ctx.ticker.add(() => {
+      const spans = el.querySelectorAll<HTMLElement>(".run-time");
+      if (spans.length === 0) return IDLE;
       const now = ctx.wall();
       const sec = Math.floor(now / 1000);
       if (sec === second) return;
       second = sec;
-      for (const span of el.querySelectorAll<HTMLElement>(".run-time")) {
+      for (const span of spans) {
         span.textContent = elapsed(now - Number(span.dataset.started));
       }
     }),

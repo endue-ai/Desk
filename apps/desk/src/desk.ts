@@ -106,14 +106,18 @@ const stopDesk = startCompositorDesk(
   },
   seam.state,
 );
+// What the compositor says changes what the page reports: it looks on every frame again (ADR 0164).
 const offLive = listen<{ live?: string[] }>("desk://compositor-live", ({ payload }) => {
   if (Array.isArray(payload?.live)) seam.live(payload.live);
+  stopDesk.wake();
 });
 const offWm = listen<Published>("desk://compositor-wm", ({ payload }) => {
   if (payload && typeof payload.rev === "number" && payload.desk) seam.took(payload);
+  stopDesk.wake();
 });
 const offHeld = listen<HeldPayload>("desk://compositor-held", ({ payload }) => {
   if (payload) seam.held(payload, desk);
+  stopDesk.wake();
 });
 const offRun = listen<RunPayload>("desk://compositor-run", ({ payload }) => {
   const run = payload && cardCommand(payload);
@@ -122,6 +126,7 @@ const offRun = listen<RunPayload>("desk://compositor-run", ({ payload }) => {
 // The person folded the canvas map the compositor draws, or opened it: the session keeps that.
 const offMap = listen<{ folded?: unknown }>("desk://compositor-map", ({ payload }) => {
   if (typeof payload?.folded === "boolean") desk.store.set({ mapFolded: payload.folded });
+  stopDesk.wake();
 });
 const keys = {
   platform: desk.runtime.shortcuts.platform,

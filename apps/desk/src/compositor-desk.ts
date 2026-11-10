@@ -8,7 +8,9 @@
 // (#54), and the window manager's seam (ADR 0153): the last desk desk-wm published that the page
 // took and the window the page lays out where a gesture holds it (`compositor-wm.ts`). The page
 // itself draws only its system layer and its own views; `compositor.css` leaves the rest to the
-// compositor.
+// compositor. It looks on every frame while the desk changes, and stops after `QUIET` frames that
+// changed nothing (ADR 0164): a change to the page, a new size, the compositor's word (`wake`) or a
+// look every `SAFETY_MS` start it again, so a desk at rest runs no frame loop here.
 import type { Desk, RemotePages, RemoteSurface } from "@endue-ai/runtime";
 import { spreadCopy, viewTitles } from "@endue-ai/runtime";
 import { type PartReport, systemParts } from "./compositor-system";
@@ -88,7 +90,11 @@ export interface WmState {
 }
 
 /** A running report: stop it, or send what changed now. */
-export type CompositorDesk = (() => void) & { flush(): number };
+export type CompositorDesk = (() => void) & {
+  flush(): number;
+  /** Something the report reads changed outside the page: look on every frame again. */
+  wake(): void;
+};
 
 /** The compositor's own placeholders and the canvas map's labels, in the desk's language. */
 const COPY = {
@@ -144,6 +150,11 @@ function inset(layer: HTMLElement | null, name: string): number | undefined {
   const value = Number.parseFloat(layer?.style.getPropertyValue(name) ?? "");
   return Number.isFinite(value) ? value : undefined;
 }
+
+/** Frames in a row that changed nothing, after which the page stops looking every frame. */
+const QUIET = 30;
+/** How often the page looks while it does not look every frame: for what no event says. */
+const SAFETY_MS = 1000;
 
 /** Send the desk through `send` whenever it changes; returns the function that stops. */
 export function startCompositorDesk(
@@ -214,14 +225,39 @@ export function startCompositorDesk(
     send({ seq: ++seq, ...body });
     return seq;
   };
+  // Frames looked at in a row that changed nothing.
+  let quiet = 0;
   const look = () => {
-    frame = win.requestAnimationFrame(look);
+    frame = 0;
+    const before = seq;
     report();
+    quiet = seq === before ? quiet + 1 : 0;
+    if (quiet < QUIET) frame = win.requestAnimationFrame(look);
+  };
+  const wake = () => {
+    quiet = 0;
+    if (!frame) frame = win.requestAnimationFrame(look);
   };
   frame = win.requestAnimationFrame(look);
+  const changes = new MutationObserver(wake);
+  changes.observe(doc.documentElement, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    characterData: true,
+  });
+  win.addEventListener("resize", wake);
+  const safety = win.setInterval(() => {
+    const before = seq;
+    report();
+    if (seq !== before) wake();
+  }, SAFETY_MS);
   const stop = () => {
     win.cancelAnimationFrame(frame);
+    changes.disconnect();
+    win.removeEventListener("resize", wake);
+    win.clearInterval(safety);
     doc.documentElement.classList.remove("desk-compositor");
   };
-  return Object.assign(stop, { flush: report });
+  return Object.assign(stop, { flush: report, wake });
 }

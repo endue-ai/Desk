@@ -74,6 +74,8 @@ export const LOOKS: Record<ErisState, Look> = {
 
 /** Moving from one state's look to the next takes this long; reduced motion jumps. */
 export const LOOK_MS = 420;
+/** How long she stays idle, silent and settled before her idle motion rests (ADR 0164). */
+export const REST_MS = 10_000;
 const glide = cubicBezier(0.2, 0.7, 0.2, 1);
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
