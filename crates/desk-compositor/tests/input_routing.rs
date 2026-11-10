@@ -266,6 +266,16 @@ fn the_desks_keymap_takes_its_chords_first_and_every_key_while_a_prefix_waits() 
 }
 
 #[test]
+fn keys_before_anything_has_the_focus_go_to_the_underlay() {
+    let mut d = desk();
+    assert_eq!(d.router.focused(), None);
+    assert_eq!(
+        kinds(&d.key("a", "KeyA", Some("a"), NO_MODS)),
+        ["key.down@desk", "key.char@desk", "key.up@desk"]
+    );
+}
+
+#[test]
 fn the_underlay_runs_the_keymap_itself_so_its_keys_reach_it() {
     let mut d = desk();
     d.router

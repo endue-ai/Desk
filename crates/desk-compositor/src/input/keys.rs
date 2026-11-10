@@ -27,7 +27,12 @@ fn typed(text: &str, ctrl_or_meta: bool) -> bool {
 
 impl InputRouter {
     pub(super) fn key(&mut self, key: &KeyInput, now: Instant) -> Vec<Out> {
-        let Some(focus) = self.focus.clone() else {
+        // Before anything had the focus, the keys are the underlay's: the page that holds the rest.
+        let Some(focus) = self
+            .focus
+            .clone()
+            .or_else(|| self.settings.underlay.clone())
+        else {
             return Vec::new();
         };
         let mods = self.mods;
