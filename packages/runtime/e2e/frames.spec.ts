@@ -69,8 +69,19 @@ test("two surfaces of one plugin have their own origins, and each loads, calls t
     );
     expect(log).toContainEqual(["example.hello-ui", "perm.query"]);
 
+    // The count goes to the desk as the plugin's state (desk:state), a message from the frame's own
+    // process on Chromium. The update reloads the frame once the desk has it, as one a person makes
+    // seconds later would: sent at once, it navigated the frame first, and the state then came with no
+    // source the desk could tell, so the reloaded frame counted from 0.
+    await desk.evaluate(() =>
+      window.addEventListener("message", (event) => {
+        if (event.data?.type === "desk:state")
+          document.body.dataset.kept = JSON.stringify(event.data.state);
+      }),
+    );
     await frame.getByRole("button", { name: "Count" }).click();
     await expect(frame.getByTestId("count")).toHaveText("1");
+    await expect(desk.locator("body")).toHaveAttribute("data-kept", '{"count":1}');
     await desk.evaluate(() =>
       window.__desk.stub.emit({
         event: "plugin.changed",
