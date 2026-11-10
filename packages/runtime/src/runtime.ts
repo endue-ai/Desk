@@ -2,14 +2,14 @@ import type { BridgeClient } from "@endue-ai/bridge";
 import { type Clock, realClock, tween } from "./clock";
 import { Preferences } from "./core/preferences";
 import { installDescribe } from "./describe/install";
-import { Edges, takesCell } from "./edges";
+import { Edges, edgeOf } from "./edges";
 import { installFrames } from "./frames/install";
 import { startsAsleep } from "./frames/start-asleep";
 import { PolicyHub } from "./hub";
 import { listenForShortcuts, type Platform, ShortcutRouter } from "./input";
 import { installInspect } from "./inspect/install";
-import { type Layout, type LayoutStorage, loadLayout, move, place, saveLayout } from "./layout";
 import type { Notice } from "./notify";
+import type { SurfacePages } from "./pages/types";
 import { PluginHost, type PluginHostOptions } from "./plugins";
 import { defineOpenPlugin } from "./plugins-open";
 import { installAliases } from "./policies/aliases";
@@ -45,8 +45,6 @@ export interface RuntimeOptions {
   bridge: BridgeClient;
   /** Inject a ManualClock in tests; defaults to the browser clock. */
   clock?: Clock;
-  /** Where the layout is saved; defaults to an in-memory store. */
-  storage?: LayoutStorage;
   platform?: Platform;
   language?: SettingsLanguage;
   /** Mount the core's UI plugins; without it the desk shows only what callers open. */
@@ -59,6 +57,11 @@ export interface RuntimeOptions {
   views?: HostViews;
   /** Where normal content and side panels go: the shell's movable windows. */
   windows?: WindowHost;
+  /**
+   * How each surface's page is reached: in the app a browser of its own that the compositor draws
+   * (`remotePages`); without it, sandboxed frames of this page (ADR 0160).
+   */
+  pages?: SurfacePages;
   /** Native hosts may pick a file; null means the person cancelled. */
   pickFile?: () => Promise<string | null>;
   /** What the host found at start (ADR 0061), and how it starts the desk again without safe mode. */
@@ -69,11 +72,15 @@ export interface RuntimeOptions {
 export type { WindowHost } from "./window-host";
 
 const FADE_MS = 240;
-/** Mount the 2D desk: a compositor grid of sandboxed surfaces, edge bars and a status line. */
+/**
+ * Mount the desk's system surface (ADR 0160): its policies, the plugin host, settings and the status
+ * line, and the sections of the surfaces it shows, for the window host and its edge bars. It moves no
+ * window and lays none out: the compositor draws every surface where desk-wm places it, and a desk
+ * without a window host shows its surfaces side by side in the order they opened.
+ */
 export function createRuntime(options: RuntimeOptions): Runtime {
   const { root, bridge } = options;
   const clock = options.clock ?? realClock();
-  const storage = options.storage ?? memoryStorage();
   const doc = root.ownerDocument;
   const win = doc.defaultView ?? window;
 
@@ -82,16 +89,15 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   // The built-in tokens until desk.theme applies the theme in force, where it will apply it.
   applyTheme(options.themeRoot ?? root);
 
-  const compositor = doc.createElement("main");
-  compositor.className = "desk-compositor";
+  const container = doc.createElement("main");
+  container.className = "desk-surfaces";
   const statusLine = doc.createElement("footer");
   statusLine.className = "desk-status";
   statusLine.setAttribute("role", "status");
   statusLine.setAttribute("aria-live", "polite");
   statusLine.style.opacity = "0";
-  root.append(compositor, statusLine);
+  root.append(container, statusLine);
 
-  let layout = loadLayout(storage);
   const hub = new PolicyHub(bridge);
   const { commands } = hub;
   const shortcuts = new ShortcutRouter({ platform: options.platform ?? "other" });
@@ -100,32 +106,16 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   // Set once the frames are installed: the focus order decides which frames stay live (ADR 0134).
   let focusMoved: (id: string | null) => void = () => {};
   const surfaces = new SurfaceHost(
-    compositor,
+    container,
     (id) => {
       shortcuts.focus(id);
       focusMoved(id);
       onSurfaceFocus(id);
     },
-    new Edges(compositor),
+    new Edges(container),
+    options.pages,
   );
 
-  const applyGrid = () => {
-    compositor.style.gridTemplateColumns = `repeat(${layout.columns}, minmax(0, 1fr))`;
-    compositor.style.gridTemplateRows = `repeat(${layout.rows}, minmax(0, 1fr))`;
-    for (const id of surfaces.ids()) {
-      const cell = layout.cells[id];
-      if (cell) surfaces.position(id, cell);
-    }
-  };
-  // Set once desk.session is installed: a new layout is worth keeping.
-  let onLayout: () => void = () => {};
-  const commit = (next: Layout) => {
-    layout = next;
-    saveLayout(storage, layout);
-    applyGrid();
-    onLayout();
-  };
-  applyGrid();
   const offKeys = listenForShortcuts(win, shortcuts);
 
   // Built before the policies so they can share messages with plugins and ask them things.
@@ -195,8 +185,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const broken = (key: string) => notify.notify(brokenRecordNotice(key, options.start?.dataDir));
   const files = installFiles(ctx, buffers, notify.notify, options.pickFile, broken);
   const actions = {
-    layout: () => structuredClone(layout),
-    setLayout: (next: Layout) => commit(next),
     focus: focusSurface,
     focused: () => shortcuts.focused,
     notices: () => notify.notifications.history(),
@@ -212,7 +200,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const about = installDescribe(ctx, { keys, profile: profiles.active, notify: notify.notify });
   const inspect = installInspect(ctx, { buffers: buffers.buffers, views, frames });
   notify.notifications.onPush(() => session.changed());
-  onLayout = () => session.changed();
   onSurfaceFocus = (id) => {
     buffers.focused(id);
     session.changed();
@@ -255,12 +242,9 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     const placed = { ...spec, placement: decision.area };
     const section = surfaces.open(placed, windowed ? null : undefined);
     if (windowed) options.windows?.adopt(placed, section);
-    // Overlays cover the desk and edge surfaces sit around it; only grid surfaces take cells.
-    else if (takesCell(decision.area)) {
-      commit(place(layout, spec.id, { colSpan: decision.columns, rowSpan: decision.rows }));
-    }
     display.sizeEdge(section, decision);
-    if ((windowed || takesCell(decision.area)) && !spec.hidden) {
+    // Overlays cover the desk and edge surfaces sit around it; the rest are buffers.
+    if ((windowed || takesBuffer(decision.area)) && !spec.hidden) {
       buffers.surfaceOpened(spec.id, spec.title);
     }
     // A visible overlay is modal: a surface that mounts under it does not take the focus from it.
@@ -361,11 +345,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     designs: theme.designs,
     openSurface,
     closeSurface,
-    moveSurface(id, cell) {
-      commit(move(layout, id, cell));
-    },
     focusSurface,
-    layout: () => structuredClone(layout),
     status: () => notify.text(),
     dispose() {
       settingsWindow.dispose();
@@ -394,7 +374,5 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     },
   };
 }
-const memoryStorage = (data = new Map<string, string>()): LayoutStorage => ({
-  getItem: (key) => data.get(key) ?? null,
-  setItem: (key, value) => void data.set(key, value),
-});
+/** Overlays and edge surfaces are the desk's chrome; every other surface is a buffer. */
+const takesBuffer = (area: string) => area !== "overlay" && edgeOf(area) === undefined;

@@ -12,7 +12,6 @@ const runtime = createRuntime({
   root,
   bridge: new BridgeClient(stub),
   clock,
-  storage: window.localStorage,
   platform: "other",
 });
 

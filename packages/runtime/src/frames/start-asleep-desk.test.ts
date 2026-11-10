@@ -30,18 +30,13 @@ const MANIFESTS = [
   ui("test.auto", "center", { autoload: true }),
 ];
 
-/** What the last start saved: test.shown has a cell, test.file a file, nothing is in use. */
+/** What the last start saved: a part shows test.shown, test.file has a file, nothing is in use. */
 const SAVED = {
   version: 1,
-  layout: {
-    version: 1,
-    columns: 3,
-    rows: 2,
-    cells: { "test.shown": { col: 1, row: 1, colSpan: 1, rowSpan: 1 } },
-  },
   files: [{ path: "~/a.txt", plugin: "test.file" }],
   focused: null,
   notices: [],
+  parts: { shell: { shows: ["test.shown"] } },
 };
 
 async function flush(ms = 0): Promise<void> {
@@ -107,7 +102,7 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe("enabled UI plugins without a surface in the restored layout start asleep (#590)", () => {
+describe("enabled UI plugins the restored session does not show start asleep (#590)", () => {
   it("with a saved session the desk mounts what it shows, edge bars and autoload plugins, and starts the rest asleep with their commands listed", async () => {
     const d = await desk(SAVED);
     for (const id of ["test.shown", "test.file", "test.edge", "test.auto"])

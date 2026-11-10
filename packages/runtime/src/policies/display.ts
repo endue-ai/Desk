@@ -1,5 +1,5 @@
 /**
- * desk.display: where a new surface goes (its area, grid span or edge size, and whether it takes the
+ * desk.display: where a new surface goes (its area or edge size, and whether it takes the
  * focus), the commands that move the focus between surfaces and bring one back, and bringing back
  * the surface of a plugin that opens one (ui.surface.opened).
  */

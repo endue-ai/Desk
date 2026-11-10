@@ -15,7 +15,7 @@ const box = async (page: Page, id: string) => {
   return rect;
 };
 
-test("the built-in plugins sit on the desk's edges and the rest on the grid", async ({ page }) => {
+test("the built-in plugins sit on the desk's edges and the rest side by side", async ({ page }) => {
   await open(page);
   const sidebar = await box(page, "endue.sidebar");
   const eris = await box(page, "endue.eris");
@@ -32,20 +32,22 @@ test("the built-in plugins sit on the desk's edges and the rest on the grid", as
   expect(dock.x).toBeGreaterThan(sidebar.x + sidebar.width);
   expect(dock.x + dock.width).toBeLessThan(eris.x);
 
-  // Edge surfaces are chrome: no title bar and no grid cell.
+  // Edge surfaces are chrome: no title bar, and not among the surfaces between the edges.
   await expect(page.locator('[data-surface="endue.dock"] .desk-surface-title')).toHaveCount(0);
-  expect(Object.keys(await page.evaluate(() => window.__desk.runtime.layout().cells))).toEqual([
-    "example.hello-ui",
-    "test.counter",
-  ]);
+  const between = await page.evaluate(() =>
+    [
+      ...document.querySelectorAll(".desk-surfaces > .desk-surface:not(.desk-surface--overlay)"),
+    ].map((s) => (s as HTMLElement).dataset.surface),
+  );
+  expect(between).toEqual(["example.hello-ui", "test.counter"]);
   expect(await renderTree(page)).toMatchSnapshot("edges.json");
 });
 
-test("an edge goes away with its last surface, and the grid takes the room back", async ({
+test("an edge goes away with its last surface, and the surfaces take the room back", async ({
   page,
 }) => {
   await open(page);
-  const before = await page.locator(".desk-compositor").boundingBox();
+  const before = await page.locator(".desk-surfaces").boundingBox();
   await page.evaluate(() =>
     window.__desk.stub.emit({
       event: "plugin.changed",
@@ -54,7 +56,7 @@ test("an edge goes away with its last surface, and the grid takes the room back"
   );
   await expect(page.locator('[data-surface="endue.dock"]')).toHaveCount(0);
   await expect(page.locator(".desk-edge--bottom")).toHaveCount(0);
-  const after = await page.locator(".desk-compositor").boundingBox();
+  const after = await page.locator(".desk-surfaces").boundingBox();
   expect(after?.height).toBeGreaterThan(before?.height ?? Number.POSITIVE_INFINITY);
   await expect(page.locator(".desk-edge--right .desk-surface")).toHaveCount(2);
 });

@@ -12,6 +12,7 @@ import type { ShellBridge } from "../bridge/types";
 import { type Clock, realClock } from "../clock";
 import { type ErisHandle, mountEris } from "../eris/Eris";
 import { detectPlatform, type Platform } from "../input";
+import type { SurfacePages } from "../pages/types";
 import type { PluginHostOptions } from "../plugins";
 import { installProposals } from "../propose/install";
 import { createRuntime, type Runtime } from "../runtime";
@@ -78,6 +79,11 @@ export interface DeskOptions {
    * and fixture pages). Without one the desk holds no window.
    */
   windowManager?: WindowManagerHost;
+  /**
+   * How the runtime reaches each plugin surface's page: in the app a browser of its own the
+   * compositor draws (`remotePages`, ADR 0160); without it, frames of this page.
+   */
+  pages?: SurfacePages;
 }
 
 export interface Desk {
@@ -159,6 +165,7 @@ export function mountDesk(options: DeskOptions): Desk {
     views: paneViews(ctx),
     // One window manager: the plugins' centre and floating surfaces are the shell's windows.
     windows,
+    ...(options.pages ? { pages: options.pages } : {}),
   });
   const { runtime } = ctx;
 

@@ -47,7 +47,7 @@ describe("PluginHost native plugins (#59)", () => {
   it("mounts a native plugin's first surface where the compositor hosts native plugins", async () => {
     const { host, specs } = await opened(true);
     expect(host.mounted()).toEqual(["example.native-wgpu"]);
-    // No entry: the frame is the surface's stand-in, on the surface's own host, at its revision.
+    // No entry: the surface's document names the surface's own host, at its revision.
     expect(specs).toEqual([
       expect.objectContaining({
         id: "example.native-wgpu",

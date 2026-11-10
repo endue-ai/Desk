@@ -88,7 +88,6 @@ const runtime = createRuntime({
   root: document.getElementById("desk") as HTMLElement,
   bridge: core.client,
   clock,
-  storage: window.localStorage,
   platform: "other",
   plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
 });

@@ -46,19 +46,6 @@ async function expectFilled(page: Page, label: string) {
   return g;
 }
 
-/** Give the terminal a grid cell, as a layout from before the window host would. */
-const staleCell = (page: Page, col: number, row: number) =>
-  page.evaluate(
-    ([id, c, r]) =>
-      window.__shell.desk.runtime.moveSurface(id as string, {
-        col: c as number,
-        row: r as number,
-        colSpan: 1,
-        rowSpan: 1,
-      }),
-    [ID, col, row] as const,
-  );
-
 /** What the window manager publishes (desk-wm on the compositor, ADR 0153; `fixture/wm.ts`). */
 const wm = {
   resize: (page: Page, dw: number, dh: number) =>
@@ -76,20 +63,16 @@ const wm = {
   unfill: (page: Page) => page.evaluate((id) => window.__shell.wm.unfill(id), ID),
 };
 
-test("a terminal window fills its pane at every size, whatever grid cell the layout kept for it", async ({
-  page,
-}) => {
+test("a terminal window fills its pane at every size", async ({ page }) => {
   await openShell(page, "?apps=1&lang=en");
   await page.evaluate(() => window.__shell.desk.runtime.plugins?.ready);
   await expect(window_(page)).toBeVisible();
   await expect(inner(page)).toBeVisible();
-  await staleCell(page, 2, 2);
   const sizes: Record<string, Awaited<ReturnType<typeof geometry>>> = {};
   sizes.open = await expectFilled(page, "open");
 
   // Smaller, as from the resize grip.
   await wm.resize(page, -80, -60);
-  await staleCell(page, 3, 1);
   sizes.resized = await expectFilled(page, "resized");
 
   // Snapped to the left half.
@@ -100,7 +83,6 @@ test("a terminal window fills its pane at every size, whatever grid cell the lay
   // Maximized, and back.
   await wm.fill(page, "full");
   await expect(window_(page)).toHaveCSS("width", "1440px");
-  await staleCell(page, 2, 1);
   sizes.maximized = await expectFilled(page, "maximized");
   await wm.unfill(page);
   sizes.restored = await expectFilled(page, "restored");

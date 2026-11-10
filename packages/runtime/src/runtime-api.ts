@@ -6,7 +6,6 @@ import type { Preferences } from "./core/preferences";
 import type { FrameResponses } from "./frames/watch";
 import type { ShortcutRouter } from "./input";
 import type { Keymap } from "./keymap";
-import type { Cell, Layout } from "./layout";
 import type { Notice, NoticeInput } from "./notify";
 import type { RuntimeDesigns } from "./policies/design";
 import type { SessionPart } from "./policies/session";
@@ -73,9 +72,7 @@ export interface Runtime {
   readonly designs: RuntimeDesigns;
   openSurface(spec: SurfaceSpec): void;
   closeSurface(id: string): void;
-  moveSurface(id: string, cell: Cell): void;
   focusSurface(id: string | null): void;
-  layout(): Layout;
   /** The status line text. */
   status(): string;
   dispose(): void;

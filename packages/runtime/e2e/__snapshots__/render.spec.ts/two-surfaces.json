@@ -18,7 +18,7 @@
   "children": [
     {
       "tag": "main",
-      "class": "desk-compositor",
+      "class": "desk-surfaces",
       "box": [
         0,
         0,
@@ -26,7 +26,7 @@
         772
       ],
       "style": {
-        "display": "grid",
+        "display": "flex",
         "background-color": "rgba(0, 0, 0, 0)",
         "color": "rgb(242, 240, 245)",
         "border-top-color": "rgb(242, 240, 245)",
@@ -99,8 +99,8 @@
           "box": [
             435,
             12,
-            833,
-            748
+            411,
+            368
           ],
           "style": {
             "display": "grid",
@@ -116,7 +116,7 @@
               "box": [
                 436,
                 13,
-                831,
+                409,
                 28
               ],
               "style": {
@@ -136,8 +136,8 @@
               "box": [
                 436,
                 41,
-                831,
-                718
+                409,
+                338
               ],
               "style": {
                 "display": "block",

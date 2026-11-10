@@ -9,7 +9,6 @@ import type { WindowHost } from "../runtime";
 import { windowsOf } from "../shell/actions";
 import { h } from "../shell/dom";
 import type { Store } from "../shell/state";
-import { unplace } from "../surfaces";
 import type { WindowManagerHost } from "../wm/host";
 
 export interface PluginWindows extends WindowHost {
@@ -31,8 +30,6 @@ export function pluginWindows(
       if (sections.has(id)) show?.(id);
     },
     adopt(spec, section) {
-      // The pane's one cell is the section's: no compositor cell comes along (issue 538).
-      unplace(section);
       sections.set(spec.id, section);
       // A pane already waiting for it (a profile placed the plugin before it mounted) takes it now.
       const container = containers.get(spec.id);

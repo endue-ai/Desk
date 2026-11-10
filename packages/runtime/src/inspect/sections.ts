@@ -120,5 +120,5 @@ function placementOf(section: HTMLElement | undefined): string {
   if (section?.classList.contains("desk-surface--overlay")) return "overlay";
   // A section the runtime left detached for the shell's window host (ADR 0040).
   if (section?.classList.contains("desk-surface--windowed")) return "window";
-  return /desk-edge--(\w+)/.exec(section?.parentElement?.className ?? "")?.[1] ?? "grid";
+  return /desk-edge--(\w+)/.exec(section?.parentElement?.className ?? "")?.[1] ?? "center";
 }

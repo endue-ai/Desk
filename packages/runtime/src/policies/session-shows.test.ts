@@ -1,12 +1,11 @@
 // @vitest-environment jsdom
-// What a saved session shows (#590, #76): the grid's cells, the plugins of the saved files, the
+// What a saved session shows (#590, #76): the plugins of the saved files, the
 // surface in use, and the surfaces each saved part names in its `shows` (the shell's open windows),
 // read before the plugins mount. desk.session reads the parts' values as data, without the shell.
 import type { PluginManifest } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { browserCore, memoryStore } from "../bridge/core";
 import { PolicyHub } from "../hub";
-import { defaultLayout } from "../layout";
 import type { BuffersPolicy } from "./buffers";
 import type { DeskContext } from "./context";
 import { installSession, SESSION_KEY } from "./session";
@@ -18,7 +17,6 @@ const policy = (id: string): PluginManifest => ({ id, version: "0.1.0", kind: "p
 async function shows(parts: unknown) {
   const saved = {
     version: 1,
-    layout: defaultLayout(),
     files: [{ path: "~/a.md", plugin: "test.notes" }],
     focused: "test.focused",
     notices: [],
@@ -36,8 +34,6 @@ async function shows(parts: unknown) {
     ctx as unknown as DeskContext,
     buffers as unknown as BuffersPolicy,
     {
-      layout: defaultLayout,
-      setLayout: () => {},
       focus: () => {},
       focused: () => null,
       notices: () => [],

@@ -64,7 +64,7 @@ async function desk(frames?: InspectDeps["frames"]) {
   root.id = "desk";
   document.body.append(root);
   const compositor = document.createElement("main");
-  compositor.className = "desk-compositor";
+  compositor.className = "desk-surfaces";
   const status = document.createElement("footer");
   status.className = "desk-status";
   status.setAttribute("role", "status");
@@ -186,7 +186,7 @@ describe("desk.inspect.open", () => {
           id: "desk.inspector",
           plugin: "desk.inspector",
           title: "Inspector",
-          placement: "grid",
+          placement: "center",
           visible: true,
           focused: true,
           asleep: false,
@@ -221,7 +221,7 @@ describe("desk.inspect.open", () => {
         {
           id: "scratch",
           title: "Scratch",
-          placement: "grid",
+          placement: "center",
           visible: true,
           focused: false,
           asleep: false,

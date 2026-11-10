@@ -1,8 +1,9 @@
 /**
  * Surfaces: windows on the desk, as the page lays them out for what it draws of them (the title
- * bar's icon and tools, the shell's own views, the panes' headers) and for the plugins' stand-in
- * frames; the compositor draws their chrome (ADR 0151). The title bar and the grips tell the window
- * manager what a press starts (`host-gestures.ts`): it moves and resizes the window (ADR 0153).
+ * bar's icon and tools, the shell's own views, the panes' headers) and for the plugin surfaces'
+ * places (ADR 0160); the compositor draws their chrome (ADR 0151). The title bar and the grips tell
+ * the window manager what a press starts (`host-gestures.ts`): it moves and resizes the window (ADR
+ * 0153).
  */
 
 import { mountArrange } from "../arrange";

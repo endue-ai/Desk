@@ -116,7 +116,6 @@ const runtime = createRuntime({
   root: document.getElementById("desk") as HTMLElement,
   bridge: client,
   clock,
-  storage: window.localStorage,
   platform: params.get("platform") === "mac" ? "mac" : "other",
   plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
 });

@@ -1,11 +1,11 @@
 import { type Edges, edgeOf } from "./edges";
-import { Settling } from "./frames/settle";
-import type { Cell } from "./layout";
+import { framePages } from "./pages/frames";
+import type { SurfacePages } from "./pages/types";
 
 /** The stacking level of overlays in desk.css; one shown later is raised above it. */
 const OVERLAY_Z = 10;
 
-/** A surface to show: a sandboxed iframe with a title. */
+/** A surface to show: a plugin's page with a title. */
 export interface SurfaceSpec {
   id: string;
   title: string;
@@ -16,7 +16,7 @@ export interface SurfaceSpec {
   srcdoc?: string;
   /**
    * `overlay` covers the whole desk; `left`, `right` and `bottom` sit on that edge of the desk. Both
-   * have no title bar. Everything else sits on the grid.
+   * have no title bar. Everything else goes to the window host, or, without one, side by side.
    */
   placement?: string;
   /** Mounted but not shown until `show` (a palette waits for its command). */
@@ -24,33 +24,41 @@ export interface SurfaceSpec {
 }
 
 /**
- * Sandboxed iframe containers. Frames get `allow-scripts` only: no same-origin access to the desk,
- * no top navigation, no forms or popups. Plugins talk to the desk through the bridge alone.
+ * The sections of the surfaces the desk shows: each holds its surface's page as `pages` shows it, a
+ * place the compositor draws a browser of its own at in the app, or a sandboxed frame without the
+ * compositor (ADR 0160). Plugins talk to the desk through the bridge alone.
  */
 export class SurfaceHost {
   readonly #container: HTMLElement;
   readonly #surfaces = new Map<string, HTMLElement>();
   readonly #onFocus: (id: string) => void;
   readonly #edges: Edges | undefined;
+  readonly #pages: SurfacePages;
   /** How many times an overlay was shown: each one shown goes above those shown before it. */
   #raised = 0;
-  /** The frames of unloaded surfaces, out of the page until they show again (ADR 0070). */
-  readonly #parked = new Map<string, HTMLIFrameElement>();
-  readonly #settling = new Settling();
+  /** Each surface's page view, in its section or out of the page while unloaded (ADR 0070). */
+  readonly #views = new Map<string, HTMLElement>();
+  readonly #parked = new Set<string>();
   /** The surfaces a saved session puts back that have not opened yet (`returning`). */
   readonly #returning = new Set<string>();
   readonly #listeners = new Set<() => void>();
 
-  /** Without `edges`, edge surfaces sit in `container` like the rest. */
-  constructor(container: HTMLElement, onFocus: (id: string) => void, edges?: Edges) {
+  /** Without `edges`, edge surfaces sit in `container` like the rest; without `pages`, frames. */
+  constructor(
+    container: HTMLElement,
+    onFocus: (id: string) => void,
+    edges?: Edges,
+    pages: SurfacePages = framePages(),
+  ) {
     this.#container = container;
     this.#onFocus = onFocus;
     this.#edges = edges;
+    this.#pages = pages;
   }
 
   /**
-   * Make a surface's section. By default it goes on the grid (or its edge bar); `into: null` leaves
-   * it detached, with no title bar of its own, for a window host that places it (ADR 0040).
+   * Make a surface's section. By default it goes in the container (or its edge bar); `into: null`
+   * leaves it detached, with no title bar of its own, for a window host that places it (ADR 0040).
    */
   open(spec: SurfaceSpec, into?: HTMLElement | null): HTMLElement {
     const existing = this.#surfaces.get(spec.id);
@@ -73,9 +81,7 @@ export class SurfaceHost {
     section.tabIndex = -1;
     section.hidden = spec.hidden === true;
     section.addEventListener("focusin", (event) => {
-      // The desk focusing the surface itself ends a frame's settling; the frame taking it does not.
-      if (event.target === section) this.#settling.forget(spec.id);
-      else if (this.#settling.refocus(spec.id, doc)) return;
+      if (this.#pages.focusin(spec.id, event, section)) return;
       this.#onFocus(spec.id);
     });
 
@@ -83,16 +89,10 @@ export class SurfaceHost {
     title.className = "desk-surface-title";
     title.textContent = spec.title;
 
-    const frame = doc.createElement("iframe");
-    frame.className = "desk-surface-frame";
-    frame.title = spec.title;
-    frame.setAttribute("sandbox", "allow-scripts");
-    if (spec.srcdoc !== undefined) frame.srcdoc = spec.srcdoc;
-    else if (spec.src !== undefined) frame.src = spec.src;
-
-    if (overlay || edge || windowed) section.append(frame);
-    else section.append(title, frame);
-    if (this.#returning.delete(spec.id)) this.#settling.start(spec.id, frame);
+    const view = this.#pages.make(spec, doc, this.#returning.delete(spec.id));
+    this.#views.set(spec.id, view);
+    if (overlay || edge || windowed) section.append(view);
+    else section.append(title, view);
     if (into) into.append(section);
     else if (into === undefined)
       (edges && edge ? edges.bar(edge) : this.#container).append(section);
@@ -104,43 +104,44 @@ export class SurfaceHost {
   close(id: string): void {
     this.#surfaces.get(id)?.remove();
     this.#surfaces.delete(id);
+    this.#views.delete(id);
     this.#parked.delete(id);
-    this.#settling.forget(id);
+    this.#pages.close(id);
     this.#edges?.prune();
     this.#changed();
   }
 
-  /** Load a new URL in one surface's frame (an unloaded one loads it when it shows again). */
+  /** Load a new URL in one surface's page (an unloaded one loads it when it shows again). */
   reload(id: string, src: string): void {
-    const frame = this.#surfaces.get(id)?.querySelector("iframe") ?? this.#parked.get(id);
-    if (frame) frame.src = src;
+    const view = this.#views.get(id);
+    if (view) this.#pages.load(id, view, src);
   }
 
-  /** Take a surface's frame out of the page, which frees it; `placeholder` stands in (ADR 0070). */
+  /** Take a surface's page out of the page, which frees it; `placeholder` stands in (ADR 0070). */
   unload(id: string, placeholder: HTMLElement): boolean {
     const section = this.#surfaces.get(id);
-    const frame = section?.querySelector("iframe");
-    if (!section || !frame) return false;
-    frame.replaceWith(placeholder);
-    this.#parked.set(id, frame);
+    const view = this.#views.get(id);
+    if (!section || !view || this.#parked.has(id) || !section.contains(view)) return false;
+    view.replaceWith(placeholder);
+    this.#parked.add(id);
+    this.#pages.away(id, view);
     return true;
   }
 
   /**
-   * Put an unloaded surface's frame back: it loads its page again. A surface with the focus gives it
-   * to the frame; otherwise the frame may not take it while it settles (`frames/settle.ts`).
+   * Put an unloaded surface's page back: it loads again. A surface with the focus gives it to its
+   * page; otherwise a frame may not take it while it settles (`frames/settle.ts`).
    */
   remount(id: string): boolean {
     const section = this.#surfaces.get(id);
-    const frame = this.#parked.get(id);
-    if (!section || !frame) return false;
+    const view = this.#views.get(id);
+    if (!section || !view || !this.#parked.has(id)) return false;
     this.#parked.delete(id);
     const focused = section.contains(section.ownerDocument.activeElement);
     const placeholder = section.querySelector(".desk-surface-placeholder");
-    if (placeholder) placeholder.replaceWith(frame);
-    else section.append(frame);
-    if (focused) frame.focus();
-    else this.#settling.start(id, frame);
+    if (placeholder) placeholder.replaceWith(view);
+    else section.append(view);
+    this.#pages.back(id, view, focused);
     return true;
   }
 
@@ -149,7 +150,7 @@ export class SurfaceHost {
   }
 
   /**
-   * The surfaces a saved session puts back (#76; undefined: none) come back as an unloaded frame
+   * The surfaces a saved session puts back (#76; undefined: none) come back as an unloaded page
    * does: as each opens, its frame may not take the focus while it loads (`frames/settle.ts`), so
    * the surface in use keeps it when every window comes back. Returns `ids`.
    */
@@ -179,7 +180,8 @@ export class SurfaceHost {
     // An overlay shown over another (the palette over a view) is drawn above it.
     if (section.classList.contains("desk-surface--overlay"))
       section.style.zIndex = String(OVERLAY_Z + ++this.#raised);
-    section.querySelector("iframe")?.focus();
+    const view = this.#views.get(id);
+    if (view && !this.#parked.has(id)) view.focus();
   }
 
   /** Shown and on the page: a section a window host put away is not one to cycle to. */
@@ -188,9 +190,10 @@ export class SurfaceHost {
     return section !== undefined && !section.hidden && section.isConnected;
   }
 
-  /** The window inside a surface's frame, to tell plugin messages apart. */
+  /** The window a surface's messages go to and come from, to tell plugin messages apart. */
   frame(id: string): Window | null {
-    return this.#surfaces.get(id)?.querySelector("iframe")?.contentWindow ?? null;
+    const view = this.#views.get(id);
+    return view && !this.#parked.has(id) ? this.#pages.port(id, view) : null;
   }
 
   /**
@@ -200,9 +203,8 @@ export class SurfaceHost {
   focus(id: string): void {
     const section = this.#surfaces.get(id);
     if (!section) return;
-    this.#settling.forget(id);
     section.focus();
-    this.#settling.moved(section);
+    this.#pages.focused(id, section);
   }
 
   get(id: string): HTMLElement | undefined {
@@ -212,26 +214,4 @@ export class SurfaceHost {
   ids(): string[] {
     return [...this.#surfaces.keys()];
   }
-
-  /**
-   * Put a surface on its grid cell. Only a section on the compositor's grid takes one: a layout's
-   * cell for a surface a window host holds (kept from before the windows, a session restore, a move)
-   * would drop it into the implicit tracks of its pane's one-cell grid, offset and clipped (#538).
-   */
-  position(id: string, cell: Cell): void {
-    const section = this.#surfaces.get(id);
-    if (!section) return;
-    if (section.parentElement !== this.#container) {
-      unplace(section);
-      return;
-    }
-    section.style.gridColumn = `${cell.col} / span ${cell.colSpan}`;
-    section.style.gridRow = `${cell.row} / span ${cell.rowSpan}`;
-  }
-}
-
-/** Take the compositor's grid placement off a section that sits somewhere else (a window's pane). */
-export function unplace(section: HTMLElement): void {
-  section.style.gridColumn = "";
-  section.style.gridRow = "";
 }

@@ -33,12 +33,22 @@ body {
   font: 13px/27px -apple-system, "SUIT", "Inter", system-ui, sans-serif;
 }
 
-.desk-compositor {
+/* The surfaces of a desk without a window host (its tests and fixture pages, ADR 0160): side by side
+   in the order they opened, three to a row. In the app every one of them is a window. */
+.desk-surfaces {
   grid-area: center;
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
   gap: 12px;
   padding: 12px;
   min-height: 0;
+  overflow: hidden;
+}
+
+.desk-surfaces > .desk-surface:not(.desk-surface--overlay) {
+  flex: 0 0 calc((100% - 24px) / 3);
+  height: calc((100% - 12px) / 2);
 }
 
 .desk-surface {
@@ -74,6 +84,24 @@ body {
   height: 100%;
   border: 0;
   background: transparent;
+}
+
+/* A surface's place, where the compositor draws its own browser (ADR 0160): it never paints, and its
+   two edges hold its spot in the page's focus order (#123). */
+div.desk-surface-frame {
+  position: relative;
+  outline: none;
+}
+
+.desk-surface-edge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  outline: none;
+  pointer-events: none;
 }
 
 .desk-status {

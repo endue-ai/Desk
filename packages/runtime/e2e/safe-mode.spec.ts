@@ -73,9 +73,9 @@ test("each state file kept broken gets one notice, and Show in file manager reve
 test("a session that fails to restore starts an empty desk and says so", async ({ page }) => {
   await open(page, "session=torn");
   await expect(status(page)).toContainText("The saved session could not be read");
-  expect(await stored(page, "session.broken")).toEqual({ version: 1, layout: "torn" });
+  expect(await stored(page, "session.broken")).toEqual({ version: 1, files: "torn" });
   // The torn record is gone from `session`: the empty desk may have saved its own by now.
-  expect(await stored(page, "session")).not.toEqual({ version: 1, layout: "torn" });
+  expect(await stored(page, "session")).not.toEqual({ version: 1, files: "torn" });
   await action(page, "Show in file manager").click();
   expect(await reveals(page)).toEqual(["/data/store.json"]);
 });

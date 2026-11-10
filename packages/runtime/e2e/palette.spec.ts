@@ -85,7 +85,7 @@ test.describe("desk.palette", () => {
 });
 
 test.describe("desk.display", () => {
-  test("a plugin's rule sizes its surface on the grid and gives it the focus", async ({ page }) => {
+  test("a plugin's rule puts its surface in its area and gives it the focus", async ({ page }) => {
     const rules = [
       {
         match: { plugin: "test.echo" },
@@ -95,16 +95,15 @@ test.describe("desk.display", () => {
       },
     ];
     await open(page, `?rules=${encodeURIComponent(JSON.stringify(rules))}`);
+    // No desk lays a grid out (ADR 0160): the rule's size is a window host's to take.
     const state = await page.evaluate(() => ({
-      echo: window.__desk.runtime.layout().cells["test.echo"],
-      counter: window.__desk.runtime.layout().cells["test.counter"],
+      surfaces: [...document.querySelectorAll(".desk-surfaces > .desk-surface")].map(
+        (s) => (s as HTMLElement).dataset.surface,
+      ),
       focused: window.__desk.runtime.shortcuts.focused,
     }));
-    expect(state).toEqual({
-      echo: { col: 1, row: 1, colSpan: 2, rowSpan: 2 },
-      counter: { col: 3, row: 1, colSpan: 1, rowSpan: 1 },
-      focused: "test.echo",
-    });
+    expect(state.surfaces).toEqual(expect.arrayContaining(["test.echo", "test.counter"]));
+    expect(state.focused).toBe("test.echo");
   });
 
   test("Control+Tab moves the focus between surfaces; the hidden palette is skipped", async ({

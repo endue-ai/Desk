@@ -2,7 +2,6 @@ import type { PluginManifest } from "@endue-ai/bridge";
 import { describe, expect, it, vi } from "vitest";
 import { browserCore, memoryStore } from "../bridge/core";
 import { PolicyHub } from "../hub";
-import { defaultLayout } from "../layout";
 import { installBuffers } from "./buffers";
 import type { DeskContext } from "./context";
 import { installFiles } from "./files";
@@ -37,7 +36,7 @@ type Release = (ok: boolean) => void;
  * three viewers, all mounted. The test holds a viewer's readiness or a file's visit and lets it go.
  */
 async function desk() {
-  const saved = { version: 1, layout: defaultLayout(), files: FILES, focused: NOTES, notices: [] };
+  const saved = { version: 1, files: FILES, focused: NOTES, notices: [] };
   const core = browserCore({
     manifests: [
       policy("desk.session"),
@@ -94,8 +93,6 @@ async function desk() {
   const buffers = installBuffers(ctx, { focus });
   const files = installFiles(ctx, buffers, vi.fn());
   const session = installSession(ctx, buffers, {
-    layout: () => saved.layout,
-    setLayout: () => {},
     focus,
     focused: () => focused,
     notices: () => [],

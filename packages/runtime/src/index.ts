@@ -34,19 +34,16 @@ export {
 } from "./eris/float";
 export { type ErisFloat, type FloatHost, mountErisFloat } from "./eris/float-view";
 export { comboOf, type KeyLike, type Platform, ShortcutRouter } from "./input";
-export {
-  type Cell,
-  defaultLayout,
-  LAYOUT_KEY,
-  type Layout,
-  type LayoutStorage,
-  loadLayout,
-  move,
-  place,
-  remove,
-  saveLayout,
-} from "./layout";
 export type { Mode } from "./modes/types";
+export { framePages } from "./pages/frames";
+export {
+  type RemotePages,
+  type RemoteSurface,
+  remotePages,
+  type SurfaceTransport,
+  surfaceHostOf,
+} from "./pages/remote";
+export type { SurfacePages } from "./pages/types";
 export { deskPluginUrl, pluginLabel, surfaceHost } from "./plugin-origins";
 export { PluginHost, type PluginHostDeps, type PluginHostOptions } from "./plugins";
 export {

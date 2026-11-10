@@ -189,7 +189,6 @@ const runtime = createRuntime({
   root,
   bridge: client,
   clock,
-  storage: window.localStorage,
   platform: "other",
   plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
 });

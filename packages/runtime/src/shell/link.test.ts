@@ -8,7 +8,6 @@ import type { PluginManifest } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { browserCore, memoryStore } from "../bridge/core";
 import { PolicyHub } from "../hub";
-import { defaultLayout } from "../layout";
 import type { BuffersPolicy } from "../policies/buffers";
 import type { DeskContext } from "../policies/context";
 import { installSession, SESSION_KEY, type SessionPart } from "../policies/session";
@@ -60,7 +59,6 @@ const adopted = (store: Store) =>
 async function nextStartShows(shellPart: unknown) {
   const saved = {
     version: 1,
-    layout: defaultLayout(),
     files: [],
     focused: null,
     notices: [],
@@ -76,8 +74,6 @@ async function nextStartShows(shellPart: unknown) {
     ctx as unknown as DeskContext,
     buffers as unknown as BuffersPolicy,
     {
-      layout: defaultLayout,
-      setLayout: () => {},
       focus: () => {},
       focused: () => null,
       notices: () => [],

@@ -3,37 +3,33 @@ export type Edge = "left" | "right" | "bottom";
 
 const EDGES: ReadonlySet<string> = new Set<Edge>(["left", "right", "bottom"]);
 
-/** The edge a placement puts its surface on; undefined for grid surfaces and overlays. */
+/** The edge a placement puts its surface on; undefined for windows and overlays. */
 export function edgeOf(placement: string | undefined): Edge | undefined {
   return placement !== undefined && EDGES.has(placement) ? (placement as Edge) : undefined;
 }
 
-/** Only grid surfaces take a layout cell; edges and overlays sit outside the grid. */
-export function takesCell(placement: string | undefined): boolean {
-  return placement !== "overlay" && edgeOf(placement) === undefined;
-}
-
 /**
- * The edge bars around the compositor. A bar exists only while a surface sits on it, so a desk
- * without edge surfaces keeps the whole window for its grid.
+ * The edge bars of the desk's system surface (ADR 0028, ADR 0160): the dock's at the bottom, and
+ * without a window host the left and right ones too. A bar exists only while a surface sits on it,
+ * so a desk without edge surfaces keeps the whole window for its surfaces.
  */
 export class Edges {
-  readonly #compositor: HTMLElement;
+  readonly #surfaces: HTMLElement;
   readonly #bars = new Map<Edge, HTMLElement>();
 
-  constructor(compositor: HTMLElement) {
-    this.#compositor = compositor;
+  constructor(surfaces: HTMLElement) {
+    this.#surfaces = surfaces;
   }
 
-  /** The bar for `edge`, created on first use, in reading order: left, grid, right, bottom. */
+  /** The bar for `edge`, created on first use, in reading order: left, surfaces, right, bottom. */
   bar(edge: Edge): HTMLElement {
     const existing = this.#bars.get(edge);
     if (existing) return existing;
-    const bar = this.#compositor.ownerDocument.createElement("aside");
+    const bar = this.#surfaces.ownerDocument.createElement("aside");
     bar.className = `desk-edge desk-edge--${edge}`;
-    if (edge === "left") this.#compositor.before(bar);
-    else if (edge === "right") this.#compositor.after(bar);
-    else (this.#bars.get("right") ?? this.#compositor).after(bar);
+    if (edge === "left") this.#surfaces.before(bar);
+    else if (edge === "right") this.#surfaces.after(bar);
+    else (this.#bars.get("right") ?? this.#surfaces).after(bar);
     this.#bars.set(edge, bar);
     return bar;
   }

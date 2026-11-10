@@ -1,11 +1,10 @@
 /**
- * desk.session (desktop.el, savehist): keep the desk as it was across restarts. The layout, the
- * files open in buffers, the surface in use, the notification history and the parts a host keeps
- * (the shell's desktops and windows) are kept with store.set whenever they change,
- * and put back after the plugins have mounted. A record that cannot be put back is kept as
+ * desk.session (desktop.el, savehist): keep the desk as it was across restarts. The files open in
+ * buffers, the surface in use, the notification history and the parts a host keeps (the shell's
+ * desktops and windows) are kept with store.set whenever they change, and put back after the
+ * plugins have mounted. The grid layout older records keep is read as nothing (ADR 0160). A record that cannot be put back is kept as
  * `session.broken` and the desk starts empty (ADR 0061); in safe mode the record waits untouched.
  */
-import { type Layout, loadLayout } from "../layout";
 import type { Notice } from "../notify";
 import { now, phase } from "../timing";
 import type { BuffersPolicy } from "./buffers";
@@ -17,7 +16,6 @@ const SAVE_DELAY_MS = 250;
 
 export interface SavedSession {
   version: 1;
-  layout: Layout;
   /** File buffers, least recently used first, so reopening them in order ends on the last one. */
   files: Array<{ path: string; plugin: string }>;
   focused: string | null;
@@ -39,8 +37,6 @@ export interface SessionPart {
 }
 
 export interface SessionActions {
-  layout(): Layout;
-  setLayout(layout: Layout): void;
   focus(id: string): void;
   focused(): string | null;
   notices(): Notice[];
@@ -53,7 +49,7 @@ export interface SessionPolicy extends Installed {
   /** Put the saved session back (once, after the plugins mounted), if desk.session says so. */
   restore(): Promise<void>;
   /**
-   * The surfaces a restore would put back (#590): the grid's cells, the plugins of the saved files,
+   * The surfaces a restore would put back (#590): the plugins of the saved files,
    * the surface in use and those the saved parts name in their `shows` (#76); undefined when no
    * saved session would be put back.
    */
@@ -73,9 +69,7 @@ export interface SessionOptions {
 /** Whether a stored record is a session this desk can put back. */
 function restorable(value: Partial<SavedSession>): value is SavedSession {
   if (value.version !== 1) return false;
-  const layout = loadLayout({ getItem: () => JSON.stringify(value.layout), setItem: () => {} });
   return (
-    JSON.stringify(layout) === JSON.stringify(value.layout) &&
     (value.files === undefined || Array.isArray(value.files)) &&
     (value.notices === undefined || Array.isArray(value.notices))
   );
@@ -107,7 +101,6 @@ export function installSession(
   const on = () => hub.enabled("desk.session");
   const snapshot = (): SavedSession => ({
     version: 1,
-    layout: actions.layout(),
     files: buffers.buffers
       .list()
       .filter((buffer) => buffer.path !== undefined)
@@ -145,9 +138,6 @@ export function installSession(
     const start = now();
     const saved = on() && settings.get("desk.session.restore", true) ? await read() : undefined;
     if (saved) {
-      actions.setLayout(
-        loadLayout({ getItem: () => JSON.stringify(saved.layout), setItem: () => {} }),
-      );
       if (Array.isArray(saved.notices)) actions.restoreNotices(saved.notices);
       // Every file opens at once without showing, as each viewer may take a while to be ready; then
       // each shows in the saved order, once it and the files before it are open, so the last one
@@ -179,12 +169,7 @@ export function installSession(
     const saved = (stored as { value?: Partial<SavedSession> | null }).value;
     if (!saved || !restorable(saved)) return undefined;
     const files = (saved.files ?? []).map((file) => file?.plugin);
-    const ids = [
-      ...Object.keys(saved.layout.cells),
-      ...files,
-      saved.focused,
-      ...partsShow(saved.parts),
-    ];
+    const ids = [...files, saved.focused, ...partsShow(saved.parts)];
     return new Set(ids.filter((id): id is string => typeof id === "string"));
   };
 

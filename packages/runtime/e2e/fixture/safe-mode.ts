@@ -41,7 +41,7 @@ const throws: PluginManifest = {
 const installed = [...manifests, ...(params.has("throws") ? [throws] : [])];
 
 const store = localStore("desk.safe.");
-if (params.get("session") === "torn") store.set("session", { version: 1, layout: "torn" });
+if (params.get("session") === "torn") store.set("session", { version: 1, files: "torn" });
 // ?failed=2: test.throws already failed two starts in a row, so this one quarantines it.
 const failed = Number(params.get("failed") ?? 0);
 if (failed > 0)

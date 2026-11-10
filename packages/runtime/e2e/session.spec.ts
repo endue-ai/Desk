@@ -9,12 +9,11 @@ async function open(page: Page, query = "") {
   await expect(echo(page).getByTestId("scheme")).not.toHaveText("none");
 }
 
-/** Change the desk: a file open, the counter moved and in use, one notice. */
+/** Change the desk: a file open, the counter in use, one notice. */
 async function work(page: Page) {
   await page.evaluate(async () => {
     const { runtime } = window.__desk;
     await runtime.commands.run("desk.files.open", { path: "~/notes/a.txt" });
-    runtime.moveSurface("test.counter", { col: 3, row: 2, colSpan: 1, rowSpan: 1 });
     runtime.notify({ caller: "desk", title: "Before the restart" });
     runtime.focusSurface("test.counter");
   });
@@ -34,16 +33,14 @@ test.describe("desk.session", () => {
         focused: "test.counter",
       });
     const session = await saved(page);
-    expect(
-      (session as { layout: { cells: Record<string, unknown> } }).layout.cells["test.counter"],
-    ).toEqual({ col: 3, row: 2, colSpan: 1, rowSpan: 1 });
+    // No grid is kept: the windows' places are the shell's part of the record (ADR 0160).
+    expect(session).not.toHaveProperty("layout");
 
     // A restart: the core's store keeps the session; the window's own storage does not.
     await page.evaluate(() => localStorage.clear());
     await open(page, `?store=${encodeURIComponent(JSON.stringify({ session }))}`);
     await expect(echo(page).getByTestId("file")).toHaveText("file:~/notes/a.txt: ~/notes/a.txt");
     const state = await page.evaluate(async () => ({
-      cell: window.__desk.runtime.layout().cells["test.counter"],
       focused: window.__desk.runtime.shortcuts.focused,
       notices: (
         (await window.__desk.runtime.commands.run("desk.notify.history", {
@@ -54,7 +51,6 @@ test.describe("desk.session", () => {
       ).map((n) => n.title),
     }));
     expect(state).toEqual({
-      cell: { col: 3, row: 2, colSpan: 1, rowSpan: 1 },
       focused: "test.counter",
       notices: ["Before the restart"],
     });
@@ -67,7 +63,6 @@ test.describe("desk.session", () => {
     expect(await saved(page)).toBeNull();
     const session = {
       version: 1,
-      layout: { version: 1, columns: 3, rows: 2, cells: {} },
       files: [{ path: "~/notes/a.txt", plugin: "test.echo" }],
       focused: null,
       notices: [],

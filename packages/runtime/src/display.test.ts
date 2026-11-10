@@ -3,7 +3,6 @@ import { join } from "node:path";
 import type { PluginManifest } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { decide } from "./display";
-import { defaultLayout, place } from "./layout";
 
 const defaults =
   (
@@ -63,27 +62,5 @@ describe("decide", () => {
     expect(decide([], { plugin: "example.p", surface: "main", placement: undefined }).area).toBe(
       "center",
     );
-  });
-});
-
-describe("place with a size", () => {
-  it("finds the first free region that fits, row by row", () => {
-    let layout = place(defaultLayout(), "a");
-    layout = place(layout, "b", { colSpan: 2, rowSpan: 2 });
-    layout = place(layout, "c");
-    expect(layout.cells).toEqual({
-      a: { col: 1, row: 1, colSpan: 1, rowSpan: 1 },
-      b: { col: 2, row: 1, colSpan: 2, rowSpan: 2 },
-      c: { col: 1, row: 2, colSpan: 1, rowSpan: 1 },
-    });
-  });
-
-  it("cuts a size larger than the grid to fit", () => {
-    expect(place(defaultLayout(), "big", { colSpan: 9, rowSpan: 9 }).cells.big).toEqual({
-      col: 1,
-      row: 1,
-      colSpan: 3,
-      rowSpan: 2,
-    });
   });
 });

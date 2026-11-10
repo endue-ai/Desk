@@ -18,12 +18,11 @@ test("the status line fades in on the injected clock", async ({ page }) => {
   expect(await renderTree(page)).toMatchSnapshot("status-fade-120ms.json");
 });
 
-test("two surfaces placed on the grid", async ({ page }) => {
+test("two surfaces side by side, in the order they opened", async ({ page }) => {
   await page.evaluate(() => {
     const { runtime, clock } = window.__desk;
     runtime.openSurface({ id: "notes", title: "Notes", srcdoc: "<p>notes</p>" });
     runtime.openSurface({ id: "terminal", title: "Terminal", srcdoc: "<p>terminal</p>" });
-    runtime.moveSurface("terminal", { col: 2, row: 1, colSpan: 2, rowSpan: 2 });
     clock.advance(1000);
   });
   expect(await renderTree(page)).toMatchSnapshot("two-surfaces.json");

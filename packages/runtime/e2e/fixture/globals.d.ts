@@ -1,7 +1,7 @@
 import type { BrowserStub, Item, ItemSource, PluginInfo } from "@endue-ai/bridge";
 import type { BrowserBridge, Envelope } from "../../src/bridge/browser";
 import type { StubFolder } from "../../src/bridge/folder";
-import type { ManualClock, Runtime } from "../../src/index";
+import type { ManualClock, RemotePages, Runtime } from "../../src/index";
 import type { Desk } from "../../src/shell/Desk";
 import type { FixtureWm } from "./wm";
 
@@ -22,6 +22,11 @@ declare global {
       stub: BrowserStub;
       step(ms: number): void;
       envelopes: { user: Envelope; eris: Envelope };
+    };
+    /** The system surface fixture (system.html): the messages it carried, and the runtime's pages. */
+    __system: {
+      posted: Array<{ host: string; type: unknown; to: "page" | "desk" }>;
+      pages: RemotePages;
     };
     /** The desk fixture's desk folder (~/.desk) in memory: saved profiles, keys.yaml. */
     __deskFolder: StubFolder;

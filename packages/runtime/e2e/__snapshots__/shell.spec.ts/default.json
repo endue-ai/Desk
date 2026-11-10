@@ -872,7 +872,7 @@
      "children": [
       {
        "tag": "main",
-       "class": "desk-compositor",
+       "class": "desk-surfaces",
        "children": [
         {
          "tag": "section",

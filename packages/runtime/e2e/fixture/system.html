@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>desk runtime fixture: the desk's system surface</title>
+    <style>
+      /* The compositor's layer: every plugin surface's page, over its place. */
+      #surfaces iframe { position: fixed; border: 0; z-index: 5; }
+    </style>
+  </head>
+  <body>
+    <div id="desk"></div>
+    <div id="surfaces"></div>
+    <script type="module" src="./system.ts"></script>
+  </body>
+</html>

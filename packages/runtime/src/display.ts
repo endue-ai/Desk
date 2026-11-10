@@ -16,7 +16,10 @@ export interface DisplayRequest {
 
 export interface DisplayDecision {
   area: SurfacePlacement;
-  /** Grid cells, for center and floating surfaces. */
+  /**
+   * The span a rule asks for a center or floating surface, in the grid cells an older desk laid out;
+   * no desk lays a grid out any more (ADR 0160): desk-wm opens the window in its slot.
+   */
   columns: number;
   rows: number;
   /** The edge's width or height, for left, right and bottom surfaces. */

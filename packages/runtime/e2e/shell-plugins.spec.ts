@@ -39,9 +39,9 @@ test.describe("plugin surfaces as shell windows", () => {
     await expect(window_(page, HELLO)).toHaveCSS("left", "518px");
     await expect(window_(page)).toHaveCSS("width", "402px");
     await expect(window_(page)).toHaveCSS("height", "305px");
-    // The runtime's grid holds nothing but overlays: the window manager placed them.
+    // The runtime's surfaces layer holds nothing but overlays: the window manager placed them.
     await expect(
-      page.locator(".desk-compositor > .desk-surface:not(.desk-surface--overlay)"),
+      page.locator(".desk-surfaces > .desk-surface:not(.desk-surface--overlay)"),
     ).toHaveCount(0);
   });
 

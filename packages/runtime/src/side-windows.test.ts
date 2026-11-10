@@ -30,7 +30,6 @@ it("left and right surfaces become ordinary hosted windows, with buffers and no 
       runtime.openSurface({ id: placement, title: placement, placement });
       expect(adopted.get(placement)?.classList.contains("desk-surface--windowed")).toBe(true);
       expect(runtime.buffers.list().some((b) => b.plugin === placement && b.surface)).toBe(true);
-      expect(runtime.layout().cells[placement]).toBeUndefined();
     }
     expect(root.querySelector(".desk-edge")).toBeNull();
     for (const placement of ["overlay", "bottom"]) {

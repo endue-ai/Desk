@@ -77,7 +77,7 @@
     },
     {
       "tag": "main",
-      "class": "desk-compositor",
+      "class": "desk-surfaces",
       "box": [
         240,
         0,
@@ -85,7 +85,7 @@
         700
       ],
       "style": {
-        "display": "grid",
+        "display": "flex",
         "background-color": "rgba(0, 0, 0, 0)",
         "color": "rgb(242, 240, 245)",
         "border-top-color": "rgb(242, 240, 245)",
