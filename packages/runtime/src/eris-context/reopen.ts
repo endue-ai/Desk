@@ -9,7 +9,7 @@
 import type { DesktopId, SurfacePlacement } from "../modes/types";
 import { desktopId, desktopsOf, editAt, raise, setDesktop, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
-import type { DeskState } from "../shell/state";
+import { freeWindowId, windowIds } from "../shell/window-ids";
 import { focusPane } from "../shell/windows";
 import { leaves, panesOf } from "../surface/tree";
 import type { ClosedLog } from "./closed";
@@ -25,20 +25,10 @@ export interface Reopened {
   h: number;
 }
 
-/** Every window id on the desk: on any desktop or in the drawer. */
-function taken(s: DeskState): Set<string> {
-  return new Set([
-    ...desktopsOf(s).flatMap((d) => windowsOf(s, d.id).map((p) => p.id)),
-    ...s.drawer.flatMap((d) => (d.placement ? [d.placement.id] : [])),
-  ]);
-}
-
 /** The placement under an id no window has, when its panes do not depend on its id. */
 function renamed(p: SurfacePlacement, ids: Set<string>): SurfacePlacement | undefined {
   if (!p.panes || leaves(panesOf(p)).some((leaf) => leaf.view === p.id)) return undefined;
-  let n = 1;
-  while (ids.has(`window-${n}`)) n++;
-  return { ...p, id: `window-${n}` };
+  return { ...p, id: freeWindowId(ids) };
 }
 
 /** Bring up the window that holds `id` now, wherever it is. */
@@ -61,7 +51,7 @@ export async function reopenWindow(ctx: ShellCtx, log: ClosedLog, id?: string): 
   if (!entry)
     throw new Error(id === undefined ? ec(lang, "noneClosed") : ec(lang, "notClosed", { id }));
   const s = ctx.store.get();
-  const ids = taken(s);
+  const ids = windowIds(s);
   const placement = ids.has(entry.id) ? renamed(entry.placement, ids) : entry.placement;
   const { x, y, w, h } = entry.placement;
   log.forget(entry.id);

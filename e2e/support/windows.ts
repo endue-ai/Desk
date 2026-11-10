@@ -152,9 +152,8 @@ const shellWindow = (w: Window) => !w.panes.some((p) => p.plugin);
 
 /**
  * Close the shell's windows on the desktop in front, as the person does with ⌘W: the pane in use,
- * and the focus moved on (⌘]) when it is not in one of them. Each case ends with this: a new
- * window's id is the first `window-<n>` free on its desktop, so one left on another desktop would
- * share it, and the drawer lets go of a window any desktop places by that id (#4).
+ * and the focus moved on (⌘]) when it is not in one of them. Each case ends with this, so the next
+ * one's new windows start from `window-1` again and the desktops it leaves behind stay empty.
  */
 export async function closeShellWindows(): Promise<void> {
   for (let step = 0; step < 40; step++) {

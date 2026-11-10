@@ -31,6 +31,7 @@ import {
   windowsOf,
 } from "./actions";
 import { panOf } from "./Pan";
+import { freeWindowId, windowIds } from "./window-ids";
 
 const SIZE = { w: 480, h: 320 };
 
@@ -184,16 +185,13 @@ export function focusedWindow(ctx: Ctx): string | undefined {
   return focusedPlacement(ctx)?.id;
 }
 
-/** A new surface with one launcher pane, cascading from the middle of what is in sight. */
+/**
+ * A new surface with one launcher pane, cascading from the middle of what is in sight. Its id is
+ * the first `window-<n>` no window on any desktop or in the drawer has (issue 101).
+ */
 export function newWindow(ctx: Ctx): string {
   const s = ctx.store.get();
-  const taken = new Set([
-    ...windowsOf(s).map((p) => p.id),
-    ...s.drawer.flatMap((d) => (d.placement ? [d.placement.id] : [])),
-  ]);
-  let n = 1;
-  while (taken.has(`window-${n}`)) n++;
-  const id = `window-${n}`;
+  const id = freeWindowId(windowIds(s));
   const k = layoutOf(s).surfaces.length % 6;
   const placement: SurfacePlacement = {
     id,
