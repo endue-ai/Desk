@@ -18,7 +18,7 @@ Messages about one surface keep their order; nothing is answered by id.
 | --- | --- | --- | --- |
 | [lifecycle](lifecycle.md) | `lifecycle.schema.json` | `create`, `resize`, `show`, `hide`, `sleep`, `wake`, `destroy` | `ready`, `died`, `title` |
 | [texture](texture.md) | `texture.schema.json` | `release`, `pace` | `attach`, `rate` |
-| [input](input.md) | `input.schema.json`, `drag.schema.json` | `pointer.*`, `key.*`, `focus.*`, `drag.enter`, `drag.over`, `drag.leave`, `drag.drop`, `drag.ended` | `cursor`, `drag.accept`, `drag.start`, `drag.status`, `drag.done` |
+| [input](input.md) | `input.schema.json`, `drag.schema.json` | `pointer.*`, `key.*`, `focus.in`, `focus.out`, `focus.enter`, `drag.enter`, `drag.over`, `drag.leave`, `drag.drop`, `drag.ended` | `cursor`, `focus.leave`, `drag.accept`, `drag.start`, `drag.status`, `drag.done` |
 | [ime](ime.md) | `ime.schema.json` | `ime.composition`, `ime.commit`, `ime.cancel` | `ime.enabled`, `ime.caret` |
 | [accessibility](accessibility.md) | `accessibility.schema.json` | `a11y.enable`, `a11y.action` | `a11y.update` |
 | [native](native.md) | `native.schema.json` | `desk.message` | `plugin.message` |

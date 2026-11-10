@@ -1,0 +1,9 @@
+{
+  "target": "CompositorMessage",
+  "description": "Tab in the desk's focus order reached the window's content: the surface focuses its first element",
+  "instance": {
+    "type": "focus.enter",
+    "surface": "s-7",
+    "edge": "first"
+  }
+}

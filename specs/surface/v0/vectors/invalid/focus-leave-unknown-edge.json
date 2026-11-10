@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a focus order has two ends, first and last; forward is a direction, not an end",
+  "instance": {
+    "type": "focus.leave",
+    "surface": "s-7",
+    "edge": "forward"
+  }
+}

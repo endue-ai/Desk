@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "Shift+Tab went before the surface's first element: the desk moves its focus on backward",
+  "instance": {
+    "type": "focus.leave",
+    "surface": "s-7",
+    "edge": "first"
+  }
+}

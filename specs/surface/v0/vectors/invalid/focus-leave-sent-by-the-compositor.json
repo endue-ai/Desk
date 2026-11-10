@@ -1,0 +1,9 @@
+{
+  "target": "CompositorMessage",
+  "description": "focus.leave is the surface's: the compositor never hands a surface the focus back",
+  "instance": {
+    "type": "focus.leave",
+    "surface": "s-7",
+    "edge": "last"
+  }
+}

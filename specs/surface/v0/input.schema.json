@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/surface/v0/input.schema.json",
   "title": "Desk surface protocol v0: pointer, keyboard, focus and cursor",
-  "description": "Input the compositor routes to a surface after its own hit test, in the surface's logical pixels; and the cursor the surface asks for back. See input.md.",
+  "description": "Input the compositor routes to a surface after its own hit test, in the surface's logical pixels; the focus coming in by Tab and handed back past an end; and the cursor the surface asks for. See input.md.",
   "$defs": {
     "SurfacePointerButton": {
       "description": "A pointer button: the primary (left), the wheel (middle), the secondary (right), and the side buttons back and forward.",
@@ -161,6 +161,33 @@
         "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" }
       },
       "required": ["type", "surface"],
+      "additionalProperties": false
+    },
+    "SurfaceFocusEdge": {
+      "description": "An end of a surface's own focus order: first is where Tab comes in and Shift+Tab goes out, last is where Shift+Tab comes in and Tab goes out.",
+      "type": "string",
+      "enum": ["first", "last"]
+    },
+    "SurfaceFocusEnter": {
+      "description": "The desk's focus order reached the surface: Tab entered it at its first end, Shift+Tab at its last. The surface focuses its first (or last) focusable element, as Tab into a frame focuses the frame's; a surface with none hands the focus straight on past its other end (focus.leave). focus.in says when the keys go to it, before or after this.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "focus.enter" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "edge": { "$ref": "#/$defs/SurfaceFocusEdge" }
+      },
+      "required": ["type", "surface", "edge"],
+      "additionalProperties": false
+    },
+    "SurfaceFocusLeave": {
+      "description": "The surface hands the focus back: Tab went past its last focusable element (edge last) or Shift+Tab before its first (edge first). The desk moves its focus on from the surface's place in its own order, forward after last and backward before first, as Tab moves on past a frame; it takes this only while that place has the desk's focus.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "focus.leave" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "edge": { "$ref": "#/$defs/SurfaceFocusEdge" }
+      },
+      "required": ["type", "surface", "edge"],
       "additionalProperties": false
     },
     "SurfaceCursorName": {

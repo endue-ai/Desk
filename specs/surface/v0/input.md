@@ -1,4 +1,4 @@
-# Input, cursor, and drag and drop
+# Input, focus, cursor, and drag and drop
 
 `input.schema.json` and `drag.schema.json`. The compositor owns the OS window, so it hears every
 input event first. It hit-tests its scene top down, through each window's transform, and sends the
@@ -43,6 +43,30 @@ pixels. Its own chrome and overlays take the pointer only while they are active 
 - Keys the compositor keeps for itself (its own shortcuts) never reach a surface.
 - Modifiers are `shift`, `ctrl`, `alt`, `meta` (Command on macOS, Windows or Super elsewhere) and
   `caps-lock` (the lock being on), each at most once.
+
+## Tab through a surface
+
+The desk has a focus order of its own (its chrome, its windows and each window's content), and a
+surface's focusable elements are a stretch of it, as a frame's are in a page.
+
+| Message | Way | Holds | Means |
+| --- | --- | --- | --- |
+| `focus.enter` | compositor → surface | `edge` | Tab reached the surface at its `first` end, Shift+Tab at its `last`: focus that end's element. |
+| `focus.leave` | surface → compositor | `edge` | Tab went past the `last` element, Shift+Tab before the `first`: the desk takes the focus on. |
+
+- **In.** On `focus.enter` the surface focuses its first focusable element (`first`) or its last
+  (`last`), as Tab into a frame does; a text field's text is selected, as Tab selects it. A surface
+  with nothing focusable answers at once with `focus.leave` at the other end, so Tab passes it by.
+  `focus.in` still says when the keys go to the surface, before or after `focus.enter`.
+- **Through.** While it has the keys, the surface hears Tab and Shift+Tab as `key.down` and moves its
+  own focus from element to element. Control+Tab is the desk's and never arrives.
+- **Out.** Tab on the last element, or Shift+Tab on the first, does not wrap: the surface sends
+  `focus.leave` with that end, and the desk moves its focus on from the surface's place, forward
+  after `last` and backward before `first`. The surface hears `focus.out` when the keys have gone.
+  The desk takes `focus.leave` only while the surface's place has its focus, so a surface in the
+  background cannot move it.
+- A web surface's host does the same in the desk's own process, with the engine's own focus order
+  (CEF's `OnTakeFocus`); a native plugin says it on its connection (`native.md`).
 
 ## Cursor
 

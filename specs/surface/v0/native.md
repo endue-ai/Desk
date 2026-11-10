@@ -28,8 +28,8 @@ duplicates with the process handle it holds).
 
 | Way | Messages |
 | --- | --- |
-| desk → plugin | every `CompositorMessage`: `create` and `wake` first, then `resize`, `show`, `hide`, `pace`, `release`, input, `sleep`, `destroy`; and `desk.message` |
-| plugin → desk | every `SurfaceMessage` but `died`: `attach`, `ready`, `title`, `rate`, `cursor`, IME, drags, accessibility; and `plugin.message` |
+| desk → plugin | every `CompositorMessage`: `create` and `wake` first, then `resize`, `show`, `hide`, `pace`, `release`, input and `focus.enter`, `sleep`, `destroy`; and `desk.message` |
+| plugin → desk | every `SurfaceMessage` but `died`: `attach`, `ready`, `title`, `rate`, `cursor`, `focus.leave`, IME, drags, accessibility; and `plugin.message` |
 
 - **Lines.** One JSON text per `\n`-terminated UTF-8 line, at most 1 MiB. A line that is not a message
   of its direction is dropped, and so is a message about a surface the desk did not create on that
@@ -58,6 +58,15 @@ last `desk:state` kept, and `restored`, what it answered the desk's `ui.surface.
 `desk:ping` with a `desk:pong` of the same `n` from the loop that draws: a plugin that does not answer
 for 5 seconds shows Not responding, as a web plugin does (#32 §9). `desk:ready` says it is up
 (ADR 0061).
+
+## Tab
+
+A native plugin has no engine that hands the focus back at its ends, so it says so itself
+(`input.md`, Tab through a surface): the desk sends `focus.enter` when Tab or Shift+Tab reaches the
+plugin's window content, the plugin moves its own focus on Tab and Shift+Tab while it has the keys,
+and past its last element or before its first it sends `focus.leave`, after which the desk's focus
+goes on in its own order as it does past a web plugin's frame. A plugin that never sends it keeps the
+keys until a click or Control+Tab moves them.
 
 ## The bridge connection
 

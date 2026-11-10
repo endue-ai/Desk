@@ -120,6 +120,9 @@ const REFUSED_BY_THE_TYPES: &[&str] = &[
     "message-unknown-type.json",
     "plugin-message-sent-by-the-compositor.json",
     "desk-message-without-message.json",
+    "focus-enter-without-edge.json",
+    "focus-leave-sent-by-the-compositor.json",
+    "focus-leave-unknown-edge.json",
 ];
 
 #[test]

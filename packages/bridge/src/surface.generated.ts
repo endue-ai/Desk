@@ -379,6 +379,23 @@ export interface SurfaceFocusOut {
   surface: SurfaceId;
 }
 
+/** An end of a surface's own focus order: first is where Tab comes in and Shift+Tab goes out, last is where Shift+Tab comes in and Tab goes out. */
+export type SurfaceFocusEdge = "first" | "last";
+
+/** The desk's focus order reached the surface: Tab entered it at its first end, Shift+Tab at its last. The surface focuses its first (or last) focusable element, as Tab into a frame focuses the frame's; a surface with none hands the focus straight on past its other end (focus.leave). focus.in says when the keys go to it, before or after this. */
+export interface SurfaceFocusEnter {
+  type: "focus.enter";
+  surface: SurfaceId;
+  edge: SurfaceFocusEdge;
+}
+
+/** The surface hands the focus back: Tab went past its last focusable element (edge last) or Shift+Tab before its first (edge first). The desk moves its focus on from the surface's place in its own order, forward after last and backward before first, as Tab moves on past a frame; it takes this only while that place has the desk's focus. */
+export interface SurfaceFocusLeave {
+  type: "focus.leave";
+  surface: SurfaceId;
+  edge: SurfaceFocusEdge;
+}
+
 /** A cursor by its CSS cursor keyword; none hides it. */
 export type SurfaceCursorName =
   | "default"
@@ -570,6 +587,7 @@ export type CompositorMessage =
   | SurfaceKeyChar
   | SurfaceFocusIn
   | SurfaceFocusOut
+  | SurfaceFocusEnter
   | SurfaceImeComposition
   | SurfaceImeCommit
   | SurfaceImeCancel
@@ -582,7 +600,7 @@ export type CompositorMessage =
   | SurfaceA11yAction
   | SurfaceDeskMessage;
 
-/** A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, its IME state, its drags, its accessibility tree, and a native plugin's page messages. */
+/** A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, the focus it hands back, its IME state, its drags, its accessibility tree, and a native plugin's page messages. */
 export type SurfaceMessage =
   | SurfaceReady
   | SurfaceDied
@@ -590,6 +608,7 @@ export type SurfaceMessage =
   | SurfaceAttach
   | SurfaceRate
   | SurfaceCursorChange
+  | SurfaceFocusLeave
   | SurfaceImeEnabled
   | SurfaceImeCaret
   | SurfaceDragAccept

@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "focus.enter names the end the focus came in at",
+  "instance": {
+    "type": "focus.enter",
+    "surface": "s-7"
+  }
+}

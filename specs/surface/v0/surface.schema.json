@@ -26,6 +26,7 @@
         { "$ref": "input.schema.json#/$defs/SurfaceKeyChar" },
         { "$ref": "input.schema.json#/$defs/SurfaceFocusIn" },
         { "$ref": "input.schema.json#/$defs/SurfaceFocusOut" },
+        { "$ref": "input.schema.json#/$defs/SurfaceFocusEnter" },
         { "$ref": "ime.schema.json#/$defs/SurfaceImeComposition" },
         { "$ref": "ime.schema.json#/$defs/SurfaceImeCommit" },
         { "$ref": "ime.schema.json#/$defs/SurfaceImeCancel" },
@@ -40,7 +41,7 @@
       ]
     },
     "SurfaceMessage": {
-      "description": "A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, its IME state, its drags, its accessibility tree, and a native plugin's page messages.",
+      "description": "A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, the focus it hands back, its IME state, its drags, its accessibility tree, and a native plugin's page messages.",
       "oneOf": [
         { "$ref": "lifecycle.schema.json#/$defs/SurfaceReady" },
         { "$ref": "lifecycle.schema.json#/$defs/SurfaceDied" },
@@ -48,6 +49,7 @@
         { "$ref": "texture.schema.json#/$defs/SurfaceAttach" },
         { "$ref": "texture.schema.json#/$defs/SurfaceRate" },
         { "$ref": "input.schema.json#/$defs/SurfaceCursorChange" },
+        { "$ref": "input.schema.json#/$defs/SurfaceFocusLeave" },
         { "$ref": "ime.schema.json#/$defs/SurfaceImeEnabled" },
         { "$ref": "ime.schema.json#/$defs/SurfaceImeCaret" },
         { "$ref": "drag.schema.json#/$defs/SurfaceDragAccept" },

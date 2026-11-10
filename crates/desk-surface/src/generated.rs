@@ -578,6 +578,33 @@ pub struct SurfaceFocusOut {
     pub surface: SurfaceId,
 }
 
+/// An end of a surface's own focus order: first is where Tab comes in and Shift+Tab goes out, last is where Shift+Tab comes in and Tab goes out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SurfaceFocusEdge {
+    #[serde(rename = "first")]
+    First,
+    #[serde(rename = "last")]
+    Last,
+}
+
+/// The desk's focus order reached the surface: Tab entered it at its first end, Shift+Tab at its last. The surface focuses its first (or last) focusable element, as Tab into a frame focuses the frame's; a surface with none hands the focus straight on past its other end (focus.leave). focus.in says when the keys go to it, before or after this.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SurfaceFocusEnter {
+    pub r#type: SurfaceFocusEnterType,
+    pub surface: SurfaceId,
+    pub edge: SurfaceFocusEdge,
+}
+
+/// The surface hands the focus back: Tab went past its last focusable element (edge last) or Shift+Tab before its first (edge first). The desk moves its focus on from the surface's place in its own order, forward after last and backward before first, as Tab moves on past a frame; it takes this only while that place has the desk's focus.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SurfaceFocusLeave {
+    pub r#type: SurfaceFocusLeaveType,
+    pub surface: SurfaceId,
+    pub edge: SurfaceFocusEdge,
+}
+
 /// A cursor by its CSS cursor keyword; none hides it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SurfaceCursorName {
@@ -854,6 +881,7 @@ pub enum CompositorMessage {
     SurfaceKeyChar(SurfaceKeyChar),
     SurfaceFocusIn(SurfaceFocusIn),
     SurfaceFocusOut(SurfaceFocusOut),
+    SurfaceFocusEnter(SurfaceFocusEnter),
     SurfaceImeComposition(SurfaceImeComposition),
     SurfaceImeCommit(SurfaceImeCommit),
     SurfaceImeCancel(SurfaceImeCancel),
@@ -867,7 +895,7 @@ pub enum CompositorMessage {
     SurfaceDesk(SurfaceDeskMessage),
 }
 
-/// A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, its IME state, its drags, its accessibility tree, and a native plugin's page messages.
+/// A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, the focus it hands back, its IME state, its drags, its accessibility tree, and a native plugin's page messages.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum SurfaceMessage {
@@ -877,6 +905,7 @@ pub enum SurfaceMessage {
     SurfaceAttach(SurfaceAttach),
     SurfaceRate(SurfaceRate),
     SurfaceCursorChange(SurfaceCursorChange),
+    SurfaceFocusLeave(SurfaceFocusLeave),
     SurfaceImeEnabled(SurfaceImeEnabled),
     SurfaceImeCaret(SurfaceImeCaret),
     SurfaceDragAccept(SurfaceDragAccept),
@@ -1343,6 +1372,22 @@ pub enum SurfaceFocusOutType {
     #[default]
     #[serde(rename = "focus.out")]
     FocusOut,
+}
+
+/// The `type` of [`SurfaceFocusEnter`]: always `"focus.enter"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SurfaceFocusEnterType {
+    #[default]
+    #[serde(rename = "focus.enter")]
+    FocusEnter,
+}
+
+/// The `type` of [`SurfaceFocusLeave`]: always `"focus.leave"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SurfaceFocusLeaveType {
+    #[default]
+    #[serde(rename = "focus.leave")]
+    FocusLeave,
 }
 
 /// The `kind` of [`SurfaceNamedCursor`]: always `"named"`.

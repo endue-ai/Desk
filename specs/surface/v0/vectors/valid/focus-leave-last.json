@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "Tab went past the surface's last element: the desk moves its focus on forward",
+  "instance": {
+    "type": "focus.leave",
+    "surface": "s-7",
+    "edge": "last"
+  }
+}

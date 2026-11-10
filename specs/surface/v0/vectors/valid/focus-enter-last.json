@@ -1,0 +1,9 @@
+{
+  "target": "CompositorMessage",
+  "description": "Shift+Tab came back into the window's content: the surface focuses its last element",
+  "instance": {
+    "type": "focus.enter",
+    "surface": "s-7",
+    "edge": "last"
+  }
+}
