@@ -39,9 +39,9 @@
     const own = owner?.[name];
     if (typeof own !== "function") return;
     const wrapped = {
-      [name]() {
+      [name](...args) {
         if (!looking) look();
-        return Reflect.apply(own, this, arguments);
+        return Reflect.apply(own, this, args);
       },
     }[name];
     Object.defineProperty(owner, name, { value: wrapped, writable: true, configurable: true });
@@ -50,13 +50,24 @@
   wrap(globalThis.Element?.prototype, "animate");
   const draws = {
     CanvasRenderingContext2D: [
-      "clearRect", "fillRect", "strokeRect", "fill", "stroke", "fillText", "strokeText",
-      "drawImage", "putImageData",
+      "clearRect",
+      "fillRect",
+      "strokeRect",
+      "fill",
+      "stroke",
+      "fillText",
+      "strokeText",
+      "drawImage",
+      "putImageData",
     ],
     OffscreenCanvasRenderingContext2D: ["fillRect", "fill", "stroke", "fillText", "drawImage"],
     WebGLRenderingContext: ["clear", "drawArrays", "drawElements"],
     WebGL2RenderingContext: [
-      "clear", "drawArrays", "drawElements", "drawArraysInstanced", "drawElementsInstanced",
+      "clear",
+      "drawArrays",
+      "drawElements",
+      "drawArraysInstanced",
+      "drawElementsInstanced",
       "drawRangeElements",
     ],
     GPUQueue: ["submit"],
