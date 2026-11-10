@@ -4,7 +4,7 @@
 //! Closing the main window hides it, as in the Tauri shell; the desk quits from the tray or the
 //! menu, closing every browser before CEF shuts down.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -35,6 +35,8 @@ pub struct Shell {
     pump: Pump,
     panes: HashMap<Role, Pane>,
     roles: HashMap<WindowId, Role>,
+    /// Windows dropped for a closing browser whose `OnBeforeClose` has not come yet.
+    closing: HashSet<Role>,
     computer: Arc<Mutex<computer::Watch>>,
     tray: Option<tray_icon::TrayIcon>,
     menu_bar: Option<tray_icon::menu::Menu>,
@@ -55,6 +57,7 @@ impl Shell {
             pump,
             panes: HashMap::new(),
             roles: HashMap::new(),
+            closing: HashSet::new(),
             computer,
             tray: None,
             menu_bar: None,
@@ -167,11 +170,15 @@ impl Shell {
 
     /// Close every browser; the loop ends when the last one has.
     fn quit(&mut self, event_loop: &ActiveEventLoop) {
+        // Asked again (the menu, then the Dock's Quit): the browsers are closing already.
+        if self.quitting {
+            return;
+        }
         self.quitting = true;
         for action in [Action::Palette, Action::Eris, Action::StopComputer] {
             self.hotkeys.unregister(action);
         }
-        if self.panes.is_empty() {
+        if self.panes.is_empty() && self.closing.is_empty() {
             event_loop.exit();
         }
         for pane in self.panes.values() {
@@ -179,7 +186,18 @@ impl Shell {
         }
     }
 
+    /// The browser of `role` agreed to close: drop its window, which takes the browser's view and
+    /// so the browser with it (`OnBeforeClose` follows).
+    fn closing(&mut self, role: Role) {
+        if let Some(pane) = self.panes.remove(&role) {
+            pane.let_go();
+            self.roles.remove(&pane.window.id());
+            self.closing.insert(role);
+        }
+    }
+
     fn closed(&mut self, event_loop: &ActiveEventLoop, role: Role) {
+        self.closing.remove(&role);
         self.desk.pages.set(role, None);
         if role == Role::Main {
             self.crash_watch = None;
@@ -191,7 +209,7 @@ impl Shell {
             // The page closed its own window: the desk goes with it.
             self.quit(event_loop);
         }
-        if self.quitting && self.panes.is_empty() {
+        if self.quitting && self.panes.is_empty() && self.closing.is_empty() {
             event_loop.exit();
         }
     }
@@ -207,6 +225,7 @@ impl ApplicationHandler<Wake> for Shell {
     fn user_event(&mut self, event_loop: &ActiveEventLoop, wake: Wake) {
         match wake {
             Wake::Pump => {}
+            Wake::Closing(role) => self.closing(role),
             Wake::Closed(role) => self.closed(event_loop, role),
             Wake::Run(job) => job(self, event_loop),
         }

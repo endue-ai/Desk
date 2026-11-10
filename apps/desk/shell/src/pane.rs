@@ -77,6 +77,22 @@ impl Pane {
         let _ = size;
     }
 
+    /// The browser agreed to close (`DoClose`): take its native view out of the window, which
+    /// destroys the browser (`OnBeforeClose` follows). macOS keeps the view alive while the window
+    /// holds it, and a dropped winit window did not let it go; on Windows the child HWND goes the
+    /// same way; on Linux the browser's X window goes with the window it is a child of.
+    pub fn let_go(&self) {
+        let Some(host) = self.host() else {
+            return;
+        };
+        #[cfg(target_os = "macos")]
+        crate::mac::detach(host.window_handle());
+        #[cfg(target_os = "windows")]
+        destroy_child(host.window_handle());
+        #[cfg(target_os = "linux")]
+        let _ = host;
+    }
+
     /// Close the browser; the window goes when it has (`Wake::Closed`).
     pub fn close(&self, force: bool) {
         if let Some(host) = self.host() {
@@ -114,6 +130,17 @@ pub fn parent_handle(window: &Window) -> Option<sys::cef_window_handle_t> {
         #[cfg(target_os = "linux")]
         RawWindowHandle::Xlib(handle) => Some(handle.window as sys::cef_window_handle_t),
         _ => None,
+    }
+}
+
+/// Destroy the browser's child HWND, as closing its top-level window would.
+#[cfg(target_os = "windows")]
+#[allow(unsafe_code)]
+fn destroy_child(child: sys::cef_window_handle_t) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::DestroyWindow;
+    // SAFETY: `child` is the browser's HWND, alive until this destroys it, on the UI thread.
+    unsafe {
+        DestroyWindow(child as _);
     }
 }
 

@@ -22,6 +22,8 @@ pub type Job = Box<dyn FnOnce(&mut Shell, &ActiveEventLoop) + Send>;
 pub enum Wake {
     /// CEF asked for message loop work.
     Pump,
+    /// The browser of a window agreed to close (`DoClose`): its window goes, and the browser with it.
+    Closing(Role),
     /// The browser of a window closed.
     Closed(Role),
     /// Run this on the event loop's thread.

@@ -3,6 +3,12 @@
 //! on the Dock icon (`applicationShouldHandleReopen:hasVisibleWindows:`) shows the main window again,
 //! since closing it only hides it. winit's application delegate answers neither, so the shell adds
 //! the two methods to its class before the app finishes launching, the way `mac.rs` adds Chromium's.
+//! A request to terminate (`terminate:`: the Dock's Quit, the quit event at logout, DevTools'
+//! `Browser.close`, which Chromium ends with it from inside the CEF pump) goes the desk's own way out,
+//! as the menu's Quit does: every browser closes before CEF shuts down. AppKit's own `terminate:`
+//! would run winit's `applicationWillTerminate:` at once, inside whatever winit was handling, and
+//! winit aborts the process on that ("tried to handle event while another event is currently being
+//! handled"). Chrome overrides `terminate:` on its application class the same way.
 //! Windows and Linux bring the desk back through a second start (`instance.rs`).
 
 /// Whether a click on the Dock icon brings the main window back: when it is hidden (closed,
@@ -57,6 +63,12 @@ mod mac {
         Bool::YES
     }
 
+    extern "C-unwind" fn terminate(_: &AnyObject, _: Sel, _sender: Option<&AnyObject>) {
+        if let Some(pump) = PUMP.get() {
+            pump.run(|shell, event_loop| shell.menu(event_loop, crate::menu::Choice::Quit));
+        }
+    }
+
     /// Answer Finder's and the Dock's events. Call on the main thread after winit's event loop
     /// exists (it sets the application's delegate) and before it runs.
     pub fn listen(pump: &Pump) {
@@ -73,8 +85,10 @@ mod mac {
         };
         let class: &AnyClass = AnyObject::class(delegate.as_ref());
         let class = class as *const AnyClass as *mut AnyClass;
-        // SAFETY: the implementations match the selectors' signatures (`v@:@@`, `B@:@B`), the class
-        // is the live delegate's, and this runs once on the main thread before the app launches.
+        let app_class = AnyObject::class(app.as_ref()) as *const AnyClass as *mut AnyClass;
+        // SAFETY: the implementations match the selectors' signatures (`v@:@@`, `B@:@B`, `v@:@`),
+        // the classes are the live delegate's and application's, and this runs once on the main
+        // thread before the app launches.
         unsafe {
             let open = std::mem::transmute::<
                 extern "C-unwind" fn(&AnyObject, Sel, &AnyObject, &NSArray<NSURL>),
@@ -91,6 +105,17 @@ mod mac {
                 reopen,
                 c"B@:@B".as_ptr(),
             );
+            let quit = std::mem::transmute::<
+                extern "C-unwind" fn(&AnyObject, Sel, Option<&AnyObject>),
+                Imp,
+            >(terminate);
+            // winit swizzles `sendEvent:` on AppKit's own class rather than subclassing it, so the
+            // class answers `terminate:` itself: take its place there (only this process's).
+            if !ffi::class_addMethod(app_class, sel!(terminate:), quit, c"v@:@".as_ptr()).as_bool()
+                && let Some(method) = (*app_class).instance_method(sel!(terminate:))
+            {
+                method.set_implementation(quit);
+            }
         }
     }
 }

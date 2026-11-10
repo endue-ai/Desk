@@ -20,6 +20,14 @@ wrap_life_span_handler! {
     }
 
     impl LifeSpanHandler {
+        // CEF's own close would ask the browser's top-level window to close (`performClose:`,
+        // `WM_CLOSE`, `delete_event`), and a winit window only reports that: the main one would
+        // merely hide, and no browser would ever finish closing. The shell drops the window itself.
+        fn do_close(&self, _browser: Option<&mut Browser>) -> ::std::os::raw::c_int {
+            self.pump.wake(Wake::Closing(self.role));
+            1
+        }
+
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
             self.pump.wake(Wake::Closed(self.role));
         }

@@ -88,6 +88,19 @@ pub fn adopt_cef_protocols(mtm: MainThreadMarker) {
     }
 }
 
+/// Take the browser's view out of its window: CEF destroys a browser when its view goes.
+pub fn detach(view: *mut c_void) {
+    if view.is_null() {
+        return;
+    }
+    // SAFETY: `view` is the `NSView` CEF created for the browser (`GetWindowHandle`), alive until it
+    // leaves its superview, which this asks for on the main thread.
+    unsafe {
+        let view = &*view.cast::<NSView>();
+        view.removeFromSuperview();
+    }
+}
+
 /// Let the browser's view follow its parent's size, so a window resize needs no call.
 pub fn follow_parent_size(view: *mut c_void) {
     if view.is_null() {
