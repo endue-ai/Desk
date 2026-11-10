@@ -12,6 +12,8 @@ export interface DragHandlers {
     | "nesw-resize"
     | "ns-resize"
     | "ew-resize";
+  /** The press was accepted: a host that runs the drag itself hears of it here (ADR 0153). */
+  press?(down: PointerEvent): void;
   /** The drag begins: the pointer has moved past the threshold from `down`, where it was pressed. */
   start?(down: PointerEvent): void;
   move(dx: number, dy: number, event: PointerEvent): void;
@@ -33,6 +35,7 @@ export function draggable(handle: HTMLElement, handlers: DragHandlers): () => vo
     // is too late, especially when focusing the window redraws the title under the pointer.
     e.preventDefault();
     clearClick?.();
+    handlers.press?.(e);
     const x0 = e.clientX;
     const y0 = e.clientY;
     let dragging = false;

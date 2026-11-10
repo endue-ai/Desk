@@ -179,7 +179,8 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       listen(el, "focusin", (e) => focusFrom(e.target)),
       listen(bar, "dblclick", (e) => {
         if ((e.target as Element).closest("button")) return;
-        toggleMaximize(ctx, p.id);
+        if (ctx.wm) ctx.wm.run({ op: "maximize" }, p.id);
+        else toggleMaximize(ctx, p.id);
       }),
       surfaceInteractions(el, bar, () => entry.placement, size, ctx),
     ];
@@ -256,16 +257,21 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       entry.el.dataset.floating = String(isFloating(p));
       // A window maximized before fills has a restore but no fill.
       const fill = p.fill ?? (p.restore ? "full" : undefined);
+      // A host's gesture holds it (ADR 0153): laid out where it is held, so what the page draws of
+      // it follows the pointer; the host draws the glides.
+      const held = ctx.wm ? ctx.held?.rect(p.id) : undefined;
+      if (ctx.wm) entry.el.classList.toggle("is-dragging", held !== undefined);
       const dragging = entry.el.classList.contains("is-dragging");
       // Into a fill, from one to the next, or back out (not from a drag's own drop): it glides there.
-      if (fill !== entry.el.dataset.fill && entry.el.style.left !== "" && !dragging)
+      if (fill !== entry.el.dataset.fill && entry.el.style.left !== "" && !dragging && !ctx.wm)
         settle(entry.el);
       if (fill) entry.el.dataset.fill = fill;
       else delete entry.el.dataset.fill;
       entry.relabel();
       drawTitle(entry, p);
       // Status/focus updates must not overwrite an in-progress pointer preview.
-      if (!dragging) place(entry.el, screenRect(p, panOf(s), vw, vh));
+      if (held) place(entry.el, held);
+      else if (!dragging) place(entry.el, screenRect(p, panOf(s), vw, vh));
       entry.el.style.zIndex = String(zOf(p, i, s.focused));
       entry.el.classList.toggle("is-focused", p.id === s.focused);
     });
@@ -292,6 +298,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       for (const entry of live.values()) entry.relabel();
     }),
     listen(window, "resize", draw),
+    ctx.held?.onChange(draw) ?? (() => undefined),
     trackTopChrome(layer, root.closest(".shell") ?? root),
     // Tile, cascade and spread, with the strip on the right edge (ADR 0116).
     mountArrange(root, ctx, { layer, element: (id) => live.get(id)?.el, size }),

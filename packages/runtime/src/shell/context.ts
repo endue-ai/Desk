@@ -4,6 +4,7 @@ import type { PluginWindows } from "../surface/host";
 import type { Ctx } from "./actions";
 import type { CopyKey } from "./copy";
 import type { Ticker } from "./ticker";
+import type { HeldWindows, WindowManagerHost } from "./wm-host";
 
 /** What every shell part gets: the store, the bridges, the runtime, the frame loop, copy and keys. */
 export interface ShellCtx extends Ctx {
@@ -18,6 +19,10 @@ export interface ShellCtx extends Ctx {
   keyOf(command: string): string | undefined;
   /** The plugin surfaces the runtime handed to the shell's windows (ADR 0040). */
   windows: PluginWindows;
+  /** A host that runs the window manager's gestures and commands (the compositor, ADR 0153). */
+  wm?: WindowManagerHost;
+  /** Where the page lays out the window the host's gesture holds. */
+  held?: HeldWindows;
   /** Eris's controls for parts that make her react (the composer, the rail). */
   eris: {
     say(text: string, words?: { word: string; at: number }[]): void;

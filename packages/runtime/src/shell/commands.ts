@@ -9,15 +9,8 @@ import { selectAgent, spaceAgents } from "../system/agents";
 import { desktopsOf } from "./actions";
 import type { ShellCtx } from "./context";
 import type { CopyKey } from "./copy";
-import {
-  closePane,
-  focusedWindow,
-  newWindow,
-  openView,
-  snapTo,
-  splitPane,
-  toggleMaximize,
-} from "./windows";
+import { defineWindowCommands } from "./window-commands";
+import { closePane, newWindow, openView, splitPane } from "./windows";
 
 const VIEWS: [string, CopyKey, string[]][] = [
   ["calendar", "surfaceCalendar", ["calendar", "캘린더", "일정"]],
@@ -84,23 +77,8 @@ export function defineCommands(ctx: ShellCtx): () => void {
   display("close-pane", ctx.tr("cmdClosePane"), ["close", "pane", "닫기", "칸"], () =>
     closePane(ctx),
   );
-  display(
-    "maximize",
-    ctx.tr("cmdMaximize"),
-    ["maximize", "restore", "fill", "최대화", "복원"],
-    () => {
-      const id = focusedWindow(ctx);
-      if (id) toggleMaximize(ctx, id);
-    },
-  );
-  display("snap-left", ctx.tr("cmdSnapLeft"), ["snap", "left", "half", "왼쪽", "절반"], () => {
-    const id = focusedWindow(ctx);
-    if (id) snapTo(ctx, id, "left");
-  });
-  display("snap-right", ctx.tr("cmdSnapRight"), ["snap", "right", "half", "오른쪽", "절반"], () => {
-    const id = focusedWindow(ctx);
-    if (id) snapTo(ctx, id, "right");
-  });
+  // Maximize, the eight snaps, and moving and resizing by a step (ADR 0128, ADR 0153).
+  defineWindowCommands(ctx, display);
   // Desktops (ADR 0117): new, next, rename, remove, reorder, the overview, moving a window across.
   fixed.push(
     defineDesktopCommands(ctx, (id, title, words, run) => shell(id, title, words, run, [])),

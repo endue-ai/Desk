@@ -61,6 +61,7 @@ export type { SettingsSection } from "./settings-ui/panels";
 export type { SettingsWindow } from "./settings-ui/window";
 export { type Desk, type DeskOptions, mountDesk } from "./shell/Desk";
 export { type WmDesk, wmDesk, wmTitles } from "./shell/wm-desk";
+export type { Grab, WindowManagerHost, WindowOp, WmPublished } from "./shell/wm-host";
 export type { BrokenStateFile, StartInfo } from "./start";
 export type { KeptWindows } from "./surface/host";
 export { SurfaceHost, type SurfaceSpec } from "./surfaces";

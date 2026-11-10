@@ -2,10 +2,12 @@
 // manager's model (crates/desk-wm), which this page feeds until #83 moves the window manager there.
 // Whenever the desk changed it sends `compositor_desk`: the desk the runtime keeps (`wmDesk`), each
 // plugin frame's document and state with what its window says while it has no live frame, the
-// titles of the shell's own views, the top chips' edges and the live budget's settings. It hears
-// back the windows that keep a live frame (`desk://compositor-live`), which the runtime's frame
-// policy then carries out (`keptWindows`). The page itself draws only its system layer and its own
-// views; `compositor.css` leaves the rest to the compositor.
+// titles of the shell's own views, the top chips' edges and the live budget's settings, and the
+// window manager's seam (ADR 0153): the last of desk-wm's changes the runtime took and the window
+// the page lays out where a gesture holds it (`compositor-wm.ts`). It hears back the windows that
+// keep a live frame (`desk://compositor-live`), which the runtime's frame policy then carries out
+// (`keptWindows`). The page itself draws only its system layer and its own views;
+// `compositor.css` leaves the rest to the compositor.
 import type { Desk, KeptWindows } from "@endue-ai/runtime";
 import { wmDesk, wmTitles } from "@endue-ai/runtime";
 
@@ -49,7 +51,32 @@ export interface DeskReport {
   top: { left?: number; right?: number };
   budget: { live: number; afterMs: number };
   copy: { crashed: string; loading: string };
+  /** The last of desk-wm's changes the runtime took. */
+  applied: number;
+  /** The window the page lays out where desk-wm's gesture holds it. */
+  held?: Held;
 }
+
+/** Where the page lays a held window out, in CSS pixels. */
+export interface Held {
+  window: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** What the window manager's seam adds to each report. */
+export interface WmState {
+  applied: number;
+  held?: Held;
+}
+
+/**
+ * A running report: stop it, or send what changed now (before a window command, say) and answer
+ * the sequence number of the last report sent.
+ */
+export type CompositorDesk = (() => void) & { flush(): number };
 
 /** The compositor's own placeholders, in the desk's language. */
 const COPY = {
@@ -110,7 +137,8 @@ export function startCompositorDesk(
   win: Window,
   desk: Pick<Desk, "store" | "runtime">,
   send: (report: DeskReport) => void,
-): () => void {
+  wm: () => WmState = () => ({ applied: 0 }),
+): CompositorDesk {
   const doc = win.document;
   doc.documentElement.classList.add("desk-compositor");
   const loads = new WeakMap<HTMLIFrameElement, number>();
@@ -127,8 +155,7 @@ export function startCompositorDesk(
     if (frames.asleep(id)) return "asleep";
     return said === "late" ? "late" : "live";
   };
-  const look = () => {
-    frame = win.requestAnimationFrame(look);
+  const report = () => {
     /** The surfaces the page lays out itself, outside every window. */
     const own: FrameReport[] = [];
     for (const iframe of doc.querySelectorAll<HTMLIFrameElement>(".desk-surface iframe")) {
@@ -188,15 +215,22 @@ export function startCompositorDesk(
         afterMs: typeof after === "number" && after >= 0 ? after * 1000 : 0,
       },
       copy: COPY[lang],
+      ...wm(),
     };
     const json = JSON.stringify(body);
-    if (json === sent) return;
+    if (json === sent) return seq;
     sent = json;
     send({ seq: ++seq, ...body });
+    return seq;
+  };
+  const look = () => {
+    frame = win.requestAnimationFrame(look);
+    report();
   };
   frame = win.requestAnimationFrame(look);
-  return () => {
+  const stop = () => {
     win.cancelAnimationFrame(frame);
     doc.documentElement.classList.remove("desk-compositor");
   };
+  return Object.assign(stop, { flush: report });
 }

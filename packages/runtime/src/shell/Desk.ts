@@ -16,6 +16,7 @@ import type { PluginHostOptions } from "../plugins";
 import { installProposals } from "../propose/install";
 import { createRuntime, type Runtime } from "../runtime";
 import type { StartInfo } from "../start";
+import type { Rect } from "../surface/geometry";
 import { type KeptWindows, pluginWindows } from "../surface/host";
 import { wakePlaced } from "../surface/placed";
 import { mountSurfaces } from "../surface/Surface";
@@ -42,6 +43,7 @@ import { byRole } from "./roles";
 import { type DeskState, emptyState, Store } from "./state";
 import { Ticker } from "./ticker";
 import { showPlugin } from "./windows";
+import { heldWindows, takeWm, type WindowManagerHost, type WmPublished } from "./wm-host";
 
 export interface DeskOptions {
   root: HTMLElement;
@@ -69,6 +71,11 @@ export interface DeskOptions {
   relaunch?: () => void | Promise<void>;
   /** The live budget, when the host keeps it (the CEF shell's compositor, ADR 0151). */
   liveBudget?: KeptWindows;
+  /**
+   * The window manager's gestures and window commands, when the host runs them (the CEF shell's
+   * compositor, ADR 0153): its changes come back through `takeWm`.
+   */
+  windowManager?: WindowManagerHost;
 }
 
 export interface Desk {
@@ -80,6 +87,10 @@ export interface Desk {
   ready: Promise<void>;
   /** Read the agent directory again. */
   refresh(): Promise<void>;
+  /** Take what the host's window manager changed as the truth (ADR 0153). */
+  takeWm(published: WmPublished): void;
+  /** Lay window `id` out at `rect` while the host's gesture holds it; `null` lets it go. */
+  hold(id: string | null, rect?: Rect): void;
   dispose(): void;
 }
 
@@ -111,6 +122,7 @@ export function mountDesk(options: DeskOptions): Desk {
     wall: () => epoch + ticker.now(),
     platform,
     keyOf: (command) => ctx.runtime.keymap.keysFor(command)[0],
+    ...(options.windowManager ? { wm: options.windowManager, held: heldWindows() } : {}),
     eris: { say: (text, words) => pending.say(text, words), setState: (s) => pending.setState(s) },
   };
 
@@ -219,6 +231,8 @@ export function mountDesk(options: DeskOptions): Desk {
     runtime,
     ready,
     refresh,
+    takeWm: (published) => takeWm(ctx, published),
+    hold: (id, rect) => ctx.held?.hold(id, rect),
     dispose() {
       for (const off of offs) off();
       for (const off of parts) off();

@@ -2,12 +2,13 @@
 // under it hosts the core's UI plugins; the shell reaches the brain and its agent directory through
 // the core.
 import { BridgeClient } from "@endue-ai/bridge";
-import { deskPluginUrl, mountDesk, phase, realClock } from "@endue-ai/runtime";
+import { deskPluginUrl, mountDesk, phase, realClock, type WmPublished } from "@endue-ai/runtime";
 import "@endue-ai/runtime/desk.css";
 import "@endue-ai/runtime/shell.css";
 import { keptWindows, startCompositorDesk } from "./compositor-desk";
 import { startCompositorFocus } from "./compositor-focus";
 import { startCompositorKeys } from "./compositor-keys";
+import { cardCommand, type HeldPayload, type RunPayload, wmSeam } from "./compositor-wm";
 import "./compositor.css";
 import { reportCrashes, showLastCrash } from "./crashes";
 import "./crashes.css";
@@ -39,11 +40,16 @@ const core = new BridgeClient(adapter());
 // Safe mode and the state files kept broken (ADR 0061), known before the shell mounts.
 const start = await readStart(invoke);
 const lang = navigator.language.startsWith("ko") ? "ko" : "en";
-// Compositor mode (#52, #81): the CEF shell draws the windows from desk-wm and keeps the live budget.
+// Compositor mode (#52, #81, #80): the CEF shell draws the windows from desk-wm, which drags,
+// resizes, snaps and pans them on the compositor's input, and keeps the live budget.
 const composited = new URLSearchParams(location.search).has("compositor");
 const kept = composited ? keptWindows() : undefined;
+const seam = composited
+  ? wmSeam((command, args) => void invoke(command, args).catch(() => undefined))
+  : undefined;
 const desk = mountDesk({
   ...(kept ? { liveBudget: kept } : {}),
+  ...(seam ? { windowManager: seam.host } : {}),
   root,
   bridge: shellBridge(core),
   core,
@@ -88,14 +94,31 @@ const disposeOpened = installOpenedFiles({
 window.addEventListener("pagehide", disposeOpened, { once: true });
 
 // Compositor mode (ADR 0151): the page publishes the desk the runtime keeps; the CEF shell answers
-// with the windows that keep a live frame, which the runtime carries out. Its input (#56) decides
-// by the keymap whose a key is, and follows the focus this page moves.
-if (kept) {
-  const stopDesk = startCompositorDesk(window, desk, (report) => {
-    void invoke("compositor_desk", report as unknown as Record<string, unknown>);
-  });
+// with the windows that keep a live frame, which the runtime carries out, and with what desk-wm
+// changed, which the runtime takes as the truth (ADR 0153). Its input (#56) decides by the keymap
+// whose a key is, and follows the focus this page moves.
+if (kept && seam) {
+  const stopDesk = startCompositorDesk(
+    window,
+    desk,
+    (report) => {
+      void invoke("compositor_desk", report as unknown as Record<string, unknown>);
+    },
+    seam.state,
+  );
+  seam.flushWith(stopDesk.flush);
   const offLive = listen<{ live?: string[] }>("desk://compositor-live", ({ payload }) => {
     if (Array.isArray(payload?.live)) kept.set(payload.live);
+  });
+  const offWm = listen<WmPublished>("desk://compositor-wm", ({ payload }) => {
+    if (payload && typeof payload.rev === "number") seam.took(payload, desk);
+  });
+  const offHeld = listen<HeldPayload>("desk://compositor-held", ({ payload }) => {
+    if (payload) seam.held(payload, desk);
+  });
+  const offRun = listen<RunPayload>("desk://compositor-run", ({ payload }) => {
+    const run = payload && cardCommand(payload);
+    if (run) void desk.runtime.commands.run(run.command, run.args).catch(() => undefined);
   });
   const { runtime } = desk;
   const keys = {
@@ -112,7 +135,7 @@ if (kept) {
   });
   const stop = () => {
     for (const off of [stopDesk, stopKeys, stopFocus]) off();
-    void offLive.then((off) => off());
+    for (const listening of [offLive, offWm, offHeld, offRun]) void listening.then((off) => off());
   };
   window.addEventListener("pagehide", stop, { once: true });
 }

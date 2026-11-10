@@ -7,6 +7,7 @@ import { panOf } from "../shell/Pan";
 import { snapRect, snapTo, unfilled } from "../shell/windows";
 import { isFloating, screenRect, storedRect } from "./coordinates";
 import { clampRect, type Rect, screenArea } from "./geometry";
+import { hostGestures } from "./host-gestures";
 import { RESIZE_DIRECTIONS, resizeCursor, resizeRect } from "./resize";
 import { aimSnap, type Snap } from "./snap";
 
@@ -74,7 +75,8 @@ function snapPreview(el: HTMLElement, rectOf: (snap: Snap) => Rect) {
  * One pointer lifecycle for moving and all eight resize handles. A floating window moves and grows
  * over the whole app, under the bars. Dragging a window to an edge or a corner snaps it (ADR 0128),
  * a preview showing where while the pointer is there; dragging a filled one away brings back its
- * own size and mode, and resizing one ends the fill where it is.
+ * own size and mode, and resizing one ends the fill where it is. A host that runs the window
+ * manager (the compositor, ADR 0153) runs them all itself from the press the page found.
  */
 export function surfaceInteractions(
   el: HTMLElement,
@@ -83,6 +85,7 @@ export function surfaceInteractions(
   size: () => { vw: number; vh: number },
   ctx: ShellCtx,
 ): () => void {
+  if (ctx.wm) return hostGestures(el, bar, placement, ctx, ctx.wm);
   let start: Rect = { x: 0, y: 0, w: 0, h: 0 };
   /** The window as a move drops it off its fill: its own size and mode. Null for one not filled. */
   let own: SurfacePlacement | null = null;

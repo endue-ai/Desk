@@ -5,6 +5,7 @@
 import type { PaneSplit, SurfacePlacement } from "../modes/types";
 import { appSize, isFloating, screenRect, storedRect } from "../surface/coordinates";
 import { clampRect, REF, type Rect, screenArea } from "../surface/geometry";
+import { resizeRect } from "../surface/resize";
 import { type Fill, fillRect } from "../surface/snap";
 import {
   close,
@@ -178,6 +179,48 @@ export function toggleMaximize(ctx: Ctx, id: string): void {
  */
 export function snapTo(ctx: Ctx, id: string, where: Fill): void {
   update(ctx, id, (p) => fillWith(p, where));
+}
+
+type Size = { vw: number; vh: number };
+
+/**
+ * Change window `id` where it is on screen (`change` gets its rect there and whether it floats):
+ * the result is stored in its mode, out of any fill, as a drag's drop or a resize stores it.
+ */
+function reshape(ctx: Ctx, id: string, size: Size, change: (r: Rect, floating: boolean) => Rect) {
+  const pan = panOf(ctx.store.get());
+  update(ctx, id, (p) => {
+    const floating = isFloating(p);
+    const r = change(screenRect(p, pan, size.vw, size.vh), floating);
+    return {
+      ...p,
+      ...storedRect(r, floating, pan, size.vw, size.vh),
+      floating: floating || undefined,
+      restore: undefined,
+      fill: undefined,
+    };
+  });
+}
+
+/**
+ * Move a window by `dx`, `dy` pixels (desk.display.move-*): a floating one stays inside the app; a
+ * filled one ends its fill where it is, floating, as resizing it does (ADR 0128).
+ */
+export function moveBy(ctx: Ctx, id: string, dx: number, dy: number, size = appSize()): void {
+  reshape(ctx, id, size, (r, floating) => {
+    const moved = { ...r, x: r.x + dx, y: r.y + dy };
+    return floating ? clampRect(moved, size.vw, size.vh) : moved;
+  });
+}
+
+/**
+ * Grow or shrink a window by `dw`, `dh` pixels from its right and bottom edges
+ * (desk.display.grow-* and shrink-*), never below the minimum, a floating one inside the app.
+ */
+export function resizeBy(ctx: Ctx, id: string, dw: number, dh: number, size = appSize()): void {
+  reshape(ctx, id, size, (r, floating) =>
+    resizeRect(r, "se", dw, dh, floating ? screenArea(size.vw, size.vh) : undefined),
+  );
 }
 
 /** The focused window, for the palette's window commands; nothing happens with none. */
