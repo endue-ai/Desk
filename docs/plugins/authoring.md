@@ -404,9 +404,9 @@ Before you publish, `desk plugin validate <folder>` must pass; CI runs it for ev
 
 A native plugin (kind `native`) is a program of your own, in any language, that Desk starts as a
 process of its own (ADR 0154). It draws its window on the GPU with the API you choose, into a texture
-it shares with the desk, and calls the same bridge a UI plugin calls. Native plugins run on the
-compositor's desk (`DESK_COMPOSITOR=1`); `just example plugin-native-wgpu` builds the example and runs
-it there.
+it shares with the desk, and calls the same bridge a UI plugin calls. The desk's compositor draws
+its window like any other (ADR 0156); `just example plugin-native-wgpu` builds the example and runs it
+in a desk.
 
 ```json
 {
@@ -437,6 +437,10 @@ it there.
   plugin says `desk:hello`, draws into an IOSurface (macOS) and `attach`es each frame with what
   changed, and draws again once the desk sent that frame's `release`. `resize`, `show` and `hide`,
   `pace`, the pointer and the keys arrive in the window's own coordinates.
+* **Focus.** Tab moves through a plugin as through a web page. When Tab or Shift+Tab reaches its
+  window, the desk sends `focus.enter` with `edge: first` or `last`. When Tab leaves the plugin's
+  first or last part, the plugin sends `focus.leave` with that edge, and the keys go back to the desk.
+  In Rust, `native::focus::FocusOrder` keeps the parts in Tab order and `Plugin::leave_focus` sends it.
 * **The bridge.** Every call is checked against the manifest's permissions and the person's grants,
   as for any plugin. The desk knows the plugin by the connection it gave it, never by what it says.
 * **Hangs, deaths and sleep.** Answer each `desk:ping` with a `desk:pong` from the loop that draws: a

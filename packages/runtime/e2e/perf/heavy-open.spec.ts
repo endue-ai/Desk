@@ -115,10 +115,13 @@ test("Notes counts a 4 MiB note off the shell's thread, on open and while typing
   // 560–814 ms, a key 450–665 ms). Now the open waits for the engine filling the text area, and a
   // key for the engine and Notes keeping its text (about 130 ms more than the twin at this size, not
   // counting; see the audit in docs/qa/TESTING.md). On the CEF desk's Chromium the open's longest
-  // task is the text area's first layout as it is shown and focused (about 270 ms in a CPU profile)
-  // and its drawing (about 45 ms), more than the twin's fill, which leaves the drawing out: alone an
-  // open is 325–346 ms against a fill of 215–229 ms, with Notes' own script about 11 ms of it.
-  // Counting on the thread would add about 200 ms (198 ms measured), so OPEN_MS still catches it.
+  // task is the engine laying out 4 MiB of text, which it does whenever the text changes, not only
+  // the first time (#100: setting the value 10 ms, then the layout `focus()` forces 273–282 ms; a
+  // text area already laid out costs as much, 258–265 ms), and its drawing (about 45 ms), more than
+  // the twin's fill, which leaves the drawing out: alone an open is 325–346 ms against a fill of
+  // 215–229 ms, with Notes' own script about 11 ms of it. Only drawing fewer lines (a virtualized
+  // view) would cut it. Counting on the thread would add about 200 ms (198 ms measured), so OPEN_MS
+  // still catches it.
   expect(opening.longest).toBeLessThan(engine.fill + OPEN_MS);
   expect(typing.longest).toBeLessThan(engine.typing + 2 * FRAME_MS);
 });

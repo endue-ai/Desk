@@ -393,8 +393,8 @@ await host.settle();
 
 네이티브 플러그인(종류 `native`)은 어떤 언어로든 직접 만든 프로그램으로, Desk가 별도의 프로세스로 실행합니다
 (ADR 0154). 원하는 GPU API로 창을 그려 데스크와 공유하는 텍스처에 담고, UI 플러그인과 똑같은 브리지를
-호출합니다. 네이티브 플러그인은 컴포지터 데스크(`DESK_COMPOSITOR=1`)에서 실행되며,
-`just example plugin-native-wgpu`가 예제를 빌드해 그곳에서 실행합니다.
+호출합니다. 데스크의 컴포지터가 다른 창과 똑같이 그 창을
+그리며(ADR 0156), `just example plugin-native-wgpu`가 예제를 빌드해 데스크에서 실행합니다.
 
 ```json
 {
@@ -425,6 +425,10 @@ await host.settle();
   `desk:hello`를 보내고, IOSurface(macOS)에 그린 뒤 바뀐 영역과 함께 프레임마다 `attach`하며, 데스크가 그
   프레임의 `release`를 보낸 다음에 다시 그립니다. `resize`, `show`와 `hide`, `pace`, 포인터와 키는 창 자신의
   좌표로 도착합니다.
+* **포커스.** Tab은 웹 페이지에서처럼 플러그인 안을 이동합니다. Tab이나 Shift+Tab이 창에 닿으면 데스크가
+  `edge: first` 또는 `last`를 담아 `focus.enter`를 보냅니다. Tab이 플러그인의 첫 부분이나 마지막 부분을
+  벗어나면 플러그인이 그 가장자리를 담아 `focus.leave`를 보내고, 키는 데스크로 돌아갑니다. Rust에서는
+  `native::focus::FocusOrder`가 부분들을 Tab 순서로 지니고 `Plugin::leave_focus`가 그것을 보냅니다.
 * **브리지.** 모든 호출은 다른 플러그인과 마찬가지로 매니페스트의 권한과 사용자의 허락으로 검사됩니다.
   데스크는 플러그인이 무엇이라고 말하든 상관없이, 자신이 건넨 연결로 플러그인을 알아봅니다.
 * **멈춤, 종료, 잠들기.** 그리기 루프에서 `desk:ping`마다 `desk:pong`으로 답하세요. 5초 동안 답이 없는

@@ -1,6 +1,6 @@
 # Accessibility in compositor mode
 
-How screen readers see the desk when the compositor draws it (`DESK_COMPOSITOR=1`, #57, ADR 0155),
+How screen readers see the desk as the compositor draws it (#57, ADR 0155; the only desk since ADR 0156),
 what is checked automatically, what was seen on a real desk, and the manual screen-reader passes #61
 runs on each OS. Stage 1's windowed desk is unchanged: CEF's windowed views give the OS each page's
 tree there, as before.
@@ -49,7 +49,7 @@ screen was locked, so what VoiceOver says and does is #61's below.
 
 ## Manual passes for #61
 
-Run on the built desk (`DESK_COMPOSITOR=1`, a fresh `HOME`) with the screen unlocked, on the shell and
+Run on the built desk (a fresh `HOME`) with the screen unlocked, on the shell and
 three plugins: Notes, Git and Terminal. Record each step as passed, failed (what was heard or done) or
 not possible, per OS, in the table under the steps.
 

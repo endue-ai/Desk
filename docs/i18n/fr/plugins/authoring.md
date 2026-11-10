@@ -418,9 +418,9 @@ Avant de publier, `desk plugin validate <folder>` doit réussir ; la CI l'exécu
 
 Un plugin natif (type `native`) est un programme à vous, écrit dans n'importe quel langage, que Desk
 lance dans un processus à lui (ADR 0154). Il dessine sa fenêtre sur le GPU avec l'API de votre choix,
-dans une texture qu'il partage avec le bureau, et appelle le même pont qu'un plugin UI. Les
-plugins natifs tournent sur le bureau du compositeur (`DESK_COMPOSITOR=1`) ;
-`just example plugin-native-wgpu` compile l'exemple et l'y lance.
+dans une texture qu'il partage avec le bureau, et appelle le même pont qu'un plugin UI. Le
+compositeur du bureau dessine sa fenêtre comme les autres (ADR 0156) ;
+`just example plugin-native-wgpu` compile l'exemple et le lance dans un bureau.
 
 ```json
 {
@@ -453,6 +453,11 @@ plugins natifs tournent sur le bureau du compositeur (`DESK_COMPOSITOR=1`) ;
   plugin répond `desk:hello`, dessine dans une IOSurface (macOS), envoie chaque image par `attach` avec
   ce qui a changé, et redessine une fois que le bureau a envoyé le `release` de cette image. `resize`,
   `show` et `hide`, `pace`, le pointeur et les touches arrivent dans les coordonnées de la fenêtre.
+* **Le focus.** Tab parcourt un plugin comme une page web. Quand Tab ou Maj+Tab atteint sa fenêtre,
+  le bureau envoie `focus.enter` avec `edge: first` ou `last`. Quand Tab quitte la première ou la
+  dernière partie du plugin, celui-ci envoie `focus.leave` avec ce bord, et les touches reviennent au
+  bureau. En Rust, `native::focus::FocusOrder` garde les parties dans l'ordre de Tab et
+  `Plugin::leave_focus` l'envoie.
 * **Le pont.** Chaque appel est vérifié contre les permissions du manifeste et les autorisations de la
   personne, comme pour tout plugin. Le bureau reconnaît le plugin à la connexion qu'il lui a donnée,
   jamais à ce qu'il déclare.

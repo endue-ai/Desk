@@ -420,9 +420,9 @@ für jeden Ordner in `plugins/` und `examples/` aus.
 
 Ein natives Plugin (Art `native`) ist ein eigenes Programm in einer beliebigen Sprache, das Desk als
 eigenen Prozess startet (ADR 0154). Es zeichnet sein Fenster mit der GPU-API Ihrer Wahl in eine
-Textur, die es mit dem Desk teilt, und ruft dieselbe Bridge auf wie ein UI-Plugin. Native Plugins
-laufen auf dem Desk des Compositors (`DESK_COMPOSITOR=1`); `just example plugin-native-wgpu` baut das
-Beispiel und führt es dort aus.
+Textur, die es mit dem Desk teilt, und ruft dieselbe Bridge auf wie ein UI-Plugin. Der
+Compositor des Desks zeichnet sein Fenster wie jedes andere (ADR 0156); `just example plugin-native-wgpu`
+baut das Beispiel und führt es in einem Desk aus.
 
 ```json
 {
@@ -456,6 +456,11 @@ Beispiel und führt es dort aus.
   Frame mit `attach` samt dem, was sich geändert hat, und zeichnet erneut, sobald der Desk das
   `release` dieses Frames gesendet hat. `resize`, `show` und `hide`, `pace`, Zeiger und Tasten kommen
   in den Koordinaten des Fensters an.
+* **Fokus.** Tab bewegt sich durch ein Plugin wie durch eine Webseite. Erreicht Tab oder Umschalt+Tab
+  sein Fenster, sendet der Desk `focus.enter` mit `edge: first` oder `last`. Verlässt Tab den ersten
+  oder letzten Teil des Plugins, sendet das Plugin `focus.leave` mit diesem Rand, und die Tasten gehen
+  an den Desk zurück. In Rust hält `native::focus::FocusOrder` die Teile in Tab-Reihenfolge, und
+  `Plugin::leave_focus` sendet es.
 * **Die Bridge.** Jeder Aufruf wird wie bei jedem Plugin gegen die Berechtigungen des Manifests und
   die Freigaben der Person geprüft. Der Desk erkennt das Plugin an der Verbindung, die er ihm gegeben
   hat, nie an dem, was es von sich behauptet.
