@@ -2,6 +2,7 @@
 // (support/driver.ts). Run it with `just test-app-e2e`; Playwright is not involved (ADR 0018).
 // The app is the desk's debug build (`just build-shell`), driven by chromedriver attached to its
 // remote debugging port (ADR 0144). macOS, Linux (under a display: `xvfb-run` in CI), Windows.
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { basename, delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,7 +35,8 @@ const DEFAULT_INIT = "init-no-first-run.yaml";
 /**
  * The app's environment a spec adds: persist.spec.ts asks for permissions from e2e.ask too,
  * sandbox.spec.ts runs e2e.sandbox's checks in its renderer, and the input specs run the desk in
- * compositor mode with the input and drag fixtures (#56).
+ * compositor mode with the input and drag fixtures (#56), and the native plugin spec with the native
+ * example (#59).
  */
 const ENV: Record<string, Record<string, string>> = {
   "ime.spec.ts": compositorEnv(root),
@@ -46,6 +48,15 @@ const ENV: Record<string, Record<string, string>> = {
     ].join(delimiter),
   },
   "sandbox.spec.ts": { DESK_DEV_PLUGINS: join(root, "e2e/fixtures/plugin-e2e-sandbox") },
+  "native-plugin.spec.ts": {
+    DESK_COMPOSITOR: "1",
+    DESK_DEV_PLUGINS: join(root, "examples/plugin-native-wgpu"),
+  },
+};
+
+/** What a spec builds before its app starts: the native example's program (#59). */
+const BUILD: Record<string, string[]> = {
+  "native-plugin.spec.ts": ["scripts/example.mjs", "build", "plugin-native-wgpu"],
 };
 
 /**
@@ -100,6 +111,8 @@ export const config: WebdriverIO.Config = {
 
   async beforeSession(_config, caps, specs) {
     spec = specName(specs[0]);
+    const build = BUILD[spec];
+    if (build) execFileSync(process.execPath, build, { cwd: root, stdio: "inherit" });
     const extra = await startDriver({
       root,
       results,
