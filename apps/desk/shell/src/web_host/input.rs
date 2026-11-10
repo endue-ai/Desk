@@ -212,6 +212,10 @@ pub fn deliver(host: &BrowserHost, message: &M, composing: &mut Option<String>, 
 /// A press of Tab (Shift+Tab with `back`) in `host`'s page, whose own focus order moves on from the
 /// plugin stand-in that has its focus (#123, `relay.rs`).
 pub fn press_tab(host: &BrowserHost, back: bool) {
+    // A key: its paint follows at once, as `deliver`'s do (#117).
+    if let Some(browser) = host.browser() {
+        super::frames::heard(browser.identifier(), true);
+    }
     let mods: &[SurfaceModifier] = if back { &[SurfaceModifier::Shift] } else { &[] };
     let down = key_event(KeyEventType::RAWKEYDOWN, "Tab", "Tab", mods, false);
     host.send_key_event(Some(&down));
