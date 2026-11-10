@@ -111,15 +111,12 @@ export async function startDriver(options: DriverOptions): Promise<Record<string
 }
 
 /**
- * CEF: quit the app and start it again with the same HOME and port, for browser.reloadSession.
- * `leave` ends the page as a quit does before the process goes (its pagehide, when the session policy
- * saves); then the app gets SIGTERM. The shell cannot be closed from outside yet: chromedriver's
- * window close times out and DevTools' Browser.close makes it panic on macOS (reported with #48).
+ * CEF: quit the app as the person does and start it again with the same HOME and port, for
+ * browser.reloadSession. The quit ends every page, so the session policy saves on its pagehide.
  */
-export async function relaunchApp(leave: () => Promise<unknown>): Promise<void> {
+export async function relaunchApp(): Promise<void> {
   const current = app;
   if (!current) return;
-  await leave().catch(() => {});
   await current.desk?.stop();
   current.desk = undefined;
   const started = Date.now();

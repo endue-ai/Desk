@@ -26,8 +26,9 @@ just smoke                      # build, launch, ready line, quit
 macOS, Windows and Linux; Linux needs a display (`xvfb-run -a just test-app-e2e`, as the `e2e` workflow
 does). The first run downloads chromedriver into `~/.cache/desk/chromedriver` and checks its SHA-256;
 `DESK_CHROMEDRIVER` names another binary, `DESK_APP` another app. Only debug builds open the debugging
-port. A relaunch (`browser.reloadSession()`) ends the page, quits the app and starts it again with the
-same HOME and port. With `DESK_E2E_SHELL=tauri` the recipes drive `just bundle-app`'s release build
+port. A relaunch (`browser.reloadSession()`) quits the app as the person does (DevTools'
+`Browser.close`, so every page ends and the session saves) and starts it again with the same HOME and
+port. With `DESK_E2E_SHELL=tauri` the recipes drive `just bundle-app`'s release build
 through tauri-driver 2.1.0 and `webkit2gtk-driver`, on Linux only (ADR 0006). Logs, the chromedriver's
 log and failure screenshots go to `test-results/`.
 

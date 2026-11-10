@@ -62,14 +62,19 @@ declare global {
 }
 
 /**
- * End the desk's page as a quit does: its pagehide, on which the session policy saves what is open,
- * then a moment for that save to reach the core's store.
+ * Point the session at the desk's main page. The CEF desk has a page per window (the main one, the
+ * palette's `?view=palette`, the floating Eris's `?view=eris`), and chromedriver attaches to whichever
+ * DevTools lists first, which after a relaunch is often not the main one.
  */
-async function leavePage(): Promise<void> {
-  await browser.execute(() => {
-    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }));
-  });
-  await browser.pause(1_000);
+async function toMainPage(): Promise<void> {
+  for (const handle of await browser.getWindowHandles()) {
+    await browser.switchToWindow(handle);
+    if (/^desk-app:\/\/app\/index\.html(?:[?#]|$)/.test(await browser.getUrl())) {
+      const url = new URL(await browser.getUrl());
+      if (!url.searchParams.has("view")) return;
+    }
+  }
+  throw new Error("the desk's main page is not among the session's windows");
 }
 
 /** The spec file this worker runs (wdio starts one worker per spec file). */
@@ -117,14 +122,17 @@ export const config: WebdriverIO.Config = {
     });
     Object.assign(caps, extra);
   },
-  before() {
-    // On CEF the app is this worker's process, not the driver's: a relaunch ends its page, quits it
-    // and starts it again (support/driver.ts).
+  async before() {
+    // On CEF the app is this worker's process, not the driver's: a relaunch quits it and starts it
+    // again (support/driver.ts).
     if (SHELL !== "cef") return;
     browser.overwriteCommand("reloadSession", async (reload, ...args) => {
-      await relaunchApp(() => leavePage());
-      return reload(...args);
+      await relaunchApp();
+      const session = await reload(...args);
+      await toMainPage();
+      return session;
     });
+    await toMainPage();
   },
   async afterTest(test, _context, { passed }) {
     if (passed) return;

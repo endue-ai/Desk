@@ -58,7 +58,11 @@ export interface CefDesk {
   readonly pid: number | undefined;
   /** Whether the process is gone within `ms` (the shell quits once its browser closed). */
   exits(ms: number): Promise<boolean>;
-  /** SIGTERM, then SIGKILL after 10 s; resolves once the process is gone. */
+  /**
+   * Quit as the person does (DevTools' Browser.close: every page ends, its pagehide saves, and the
+   * shell's own Quit runs), then SIGTERM after 10 s and SIGKILL after 10 more; resolves once the
+   * process is gone.
+   */
   stop(): Promise<void>;
 }
 
@@ -75,6 +79,32 @@ function readJson(file: string): unknown {
     return JSON.parse(readFileSync(file, "utf8"));
   } catch {
     return undefined;
+  }
+}
+
+/** Ask the browser on `port` to close over DevTools; false when it did not take the message. */
+export async function closeBrowser(port: number): Promise<boolean> {
+  try {
+    const version = await fetch(`http://127.0.0.1:${port}/json/version`);
+    const { webSocketDebuggerUrl: url } = (await version.json()) as {
+      webSocketDebuggerUrl?: string;
+    };
+    if (!url) return false;
+    const socket = new WebSocket(url);
+    return await new Promise<boolean>((done) => {
+      const timer = setTimeout(() => done(false), 5_000);
+      socket.onopen = () => socket.send(JSON.stringify({ id: 1, method: "Browser.close" }));
+      socket.onmessage = () => {
+        clearTimeout(timer);
+        done(true);
+      };
+      socket.onerror = () => {
+        clearTimeout(timer);
+        done(false);
+      };
+    }).finally(() => socket.close());
+  } catch {
+    return false;
   }
 }
 
@@ -117,6 +147,7 @@ export async function launchCef(options: CefOptions): Promise<CefDesk> {
     exits,
     async stop() {
       if (gone) return;
+      if ((await closeBrowser(port)) && (await exits(10_000))) return;
       child.kill("SIGTERM");
       if (!(await exits(10_000))) {
         child.kill("SIGKILL");
