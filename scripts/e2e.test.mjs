@@ -151,10 +151,15 @@ test("both Playwright configs run Chromium only, and the container runner is gon
   for (const config of ["playwright.config.ts", "playwright.perf.config.ts"]) {
     const text = read(`packages/runtime/${config}`);
     assert.match(text, /name: "chromium"/, config);
-    assert.match(text, /devices\["Desktop Chrome"\]/, config);
+    assert.match(text, /use: chromium/, config);
+    assert.match(text, /globalSetup: chromiumSetup/, config);
     assert.doesNotMatch(text, /webkit|Safari/i, config);
     assert.match(text, /e2eGuard\(\)/, config);
   }
+  // The engine is the CEF desk's own build, not Playwright's bundled one (e2e/chromium.ts).
+  const engine = read("packages/runtime/e2e/chromium.ts");
+  assert.match(engine, /devices\["Desktop Chrome"\]/);
+  assert.match(engine, /executablePath: headlessShellPath\(\)/);
   for (const gone of [
     "scripts/e2e/container.mjs",
     "scripts/e2e/Dockerfile",

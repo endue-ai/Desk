@@ -56,7 +56,12 @@ describe("forms in a frame whose engine blocks submission", () => {
     const area = document.querySelector("textarea") as HTMLTextAreaElement;
     const enter = (target: Element, isComposing = false) =>
       target.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", isComposing, bubbles: true, cancelable: true }),
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          isComposing,
+          bubbles: true,
+          cancelable: true,
+        }),
       );
     enter(input, true);
     enter(area);
