@@ -37,7 +37,7 @@ function setup() {
     Object.entries(handlers).map(([method, handler]) => [
       method,
       (params: unknown, caller: string | undefined) => {
-        // The look in force goes to the core on every change (theme.tokens, ADR 0145).
+        // The look in force goes to the core on every change (theme.tokens, ADR 0146).
         if (method === "theme.tokens") looks.push(params as ThemeTokensParams);
         else calls.push({ method, params });
         return (handler as (p: unknown, c: string | undefined) => unknown)(params, caller);

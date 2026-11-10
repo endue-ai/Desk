@@ -147,7 +147,7 @@ export function installTheme(
       designs.state(),
     );
   let state = resolveTheme(hub.policy.themes, read(), media.read(), installed(), designs.state());
-  // The compositor draws the chrome from the same look (theme.tokens, ADR 0145).
+  // The compositor draws the chrome from the same look (theme.tokens, ADR 0146).
   const tokens = tokenPublisher(ctx.bridge);
   tokens.send(state);
 

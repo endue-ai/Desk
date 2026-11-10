@@ -1,4 +1,4 @@
-//! The flat token table the compositor reads (ADR 0145): every token of the look in force by its
+//! The flat token table the compositor reads (ADR 0146): every token of the look in force by its
 //! camelCase name with its CSS value, as `theme.tokens` carries it from the runtime through the
 //! core. Values may reference other tokens (`var(--desk-radius-lg)`, the design system's component
 //! tokens do); reading one follows them. The compositor never reads a theme file.

@@ -1,5 +1,5 @@
 /**
- * theme.tokens (ADR 0145): the look in force as the flat token table the compositor draws the desk's
+ * theme.tokens (ADR 0146): the look in force as the flat token table the compositor draws the desk's
  * chrome from. The runtime resolves themes while it still does (ADR 0056), so it hands the core the
  * table each time the look changes: the theme's six layers with the design system's component tokens
  * over them, as the shell applies them. Tokens flow one way, theme → table → compositor.

@@ -143,5 +143,8 @@ winit's event loop (ADR 0143).
 Epic #32 is the long form (Decision, Options, Architecture, §1–§13, the staged plan); this page is
 the decision. The PoC: #33, #34, #35 and `spikes/compositor/README.md` (PR #62). Supersedes ADR 0001;
 amends ADR 0012, ADR 0040 and ADR 0048. The surface protocol is ADR 0141, the live budget ADR 0142,
-the shell ADR 0143, app-level e2e ADR 0144. `docs/ko/desk-structure.md` ("기술 스택 장단점", "결정")
+the shell ADR 0143, app-level e2e ADR 0144. Chrome text, decided in Stage 2 (#51): cosmic-text shapes
+and falls back across scripts, and the compositor keeps its own glyph atlas and draws text as nodes;
+chrome takes its colours, radii and shadows from the flat token table `theme.tokens` hands the core
+(ADR 0146). `docs/ko/desk-structure.md` ("기술 스택 장단점", "결정")
 and `docs/architecture.md` describe the stages.

@@ -3,7 +3,7 @@
  * memory beside plugin.list, as the native core keeps them in <data>/themes (#302, ADR 0091). Saves and
  * imports install a theme or design-system plugin and announce it; exports return a .desk-theme bundle
  * (.desk-design for a design system); removes take user ones only. theme.tokens answers the look's
- * revision, as the native core does for the compositor (ADR 0145).
+ * revision, as the native core does for the compositor (ADR 0146).
  */
 import type {
   BridgeEvent,
@@ -93,7 +93,7 @@ export function themeHandlers(
       );
       return {};
     },
-    // The look in force, kept as the native core keeps it for the compositor (ADR 0145).
+    // The look in force, kept as the native core keeps it for the compositor (ADR 0146).
     "theme.tokens": (table) => {
       const key = JSON.stringify({ ...table, scope: undefined });
       if (key !== lastTable) revision += 1;

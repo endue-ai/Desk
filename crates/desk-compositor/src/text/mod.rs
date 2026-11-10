@@ -1,4 +1,4 @@
-//! Chrome text (ADR 0145): cosmic-text shapes and lays out (system font discovery, fallback across
+//! Chrome text (ADR 0146): cosmic-text shapes and lays out (system font discovery, fallback across
 //! Latin, Hangul, CJK and emoji), swash rasterises with subpixel positioning, and the compositor
 //! packs the glyphs into its own atlas and draws them as instanced quads in paint order, through
 //! the node's transform, opacity and clips like any other node.

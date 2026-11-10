@@ -10165,7 +10165,7 @@ pub type ThemeTokenName = String;
 /// Every token of the look in force, by name, with its CSS value as the shell applies it: colours (#hex, rgb(), rgba(), hsl(), oklch()), lengths in px, box shadows, font stacks, durations, and var(--desk-<token>) references to other tokens (a design system's component tokens are such references).
 pub type ThemeTokenMap = BTreeMap<String, String>;
 
-/// The runtime, which resolves the look while it still does (ADR 0056, ADR 0090), hands the core the look in force each time it changes (a setting, the OS, a preview, an installed theme or design system): the theme's six layers and the design system's component tokens in one flat table. The core keeps the latest table, whole and in memory only, for the compositor, which draws the desk's chrome from it and follows its var() references (ADR 0145). The same table again changes nothing.
+/// The runtime, which resolves the look while it still does (ADR 0056, ADR 0090), hands the core the look in force each time it changes (a setting, the OS, a preview, an installed theme or design system): the theme's six layers and the design system's component tokens in one flat table. The core keeps the latest table, whole and in memory only, for the compositor, which draws the desk's chrome from it and follows its var() references (ADR 0146). The same table again changes nothing.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ThemeTokensRequest {

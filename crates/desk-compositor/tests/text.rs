@@ -1,4 +1,4 @@
-//! Chrome text (ADR 0145): Latin, Hangul and CJK through fallback, an ellipsis where a title would
+//! Chrome text (ADR 0146): Latin, Hangul and CJK through fallback, an ellipsis where a title would
 //! overflow, wrapping, subpixel positioning, the node's transform, opacity and clip, damage, and
 //! the compositor's atlas. The bundled fonts (`tests/fonts`) make it the same on every OS; the
 //! machine's fonts and emoji are checked where the machine has them.

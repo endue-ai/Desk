@@ -673,7 +673,7 @@ ADR 0090), sends the result each time it changes (a setting, the OS's preference
 installed theme or design system), with the `scheme`, `contrast`, `reducedMotion`, the `theme` and
 `design` in force and every token by its camelCase name with its CSS value, `var(--desk-<token>)`
 references included. The core keeps the latest table in memory, whole, as the flat table the
-compositor draws the desk's chrome from (ADR 0145); the compositor reads each value it needs, and
+compositor draws the desk's chrome from (ADR 0146); the compositor reads each value it needs, and
 follows a reference to the token it names. The answer is the table's `revision`, which moves only when
 the table changed, and how many `tokens` it holds. Nothing else reads the table over the bridge.
 

@@ -1,4 +1,4 @@
-//! The look of the desk's chrome, read from the flat token table (ADR 0145): which token each part
+//! The look of the desk's chrome, read from the flat token table (ADR 0146): which token each part
 //! of a window frame, a title bar, a bar, a snap preview, a toast and a placeholder takes, the
 //! same tokens the web shell's CSS reads today. A token the table lacks, or holds in a form this
 //! does not read, keeps the endue dark theme's value.

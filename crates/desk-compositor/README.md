@@ -15,9 +15,9 @@ drawn into a `wgpu::TextureView` the caller owns. No windowing, no CEF: it runs 
 - `Compositor::new(&device, &queue, format)`; `register_texture` / `update_texture` / `remove_texture`;
   `set_fonts(Fonts::system() | Fonts::from_data(..))` (the machine's load with the first text otherwise);
   `render(&scene, &view, size) -> FrameStats` draws only when something was damaged or animates.
-- Text (ADR 0145): cosmic-text shapes and falls back across Latin, Hangul, CJK and emoji; glyphs keep
+- Text (ADR 0146): cosmic-text shapes and falls back across Latin, Hangul, CJK and emoji; glyphs keep
   their subpixel bin and live in the compositor's atlas (`glyphs_resident`, `atlas_side`).
-- Look (ADR 0145): `Tokens` is the flat table `theme.tokens` carries (follows `var()`); `ChromeTheme::
+- Look (ADR 0146): `Tokens` is the flat table `theme.tokens` carries (follows `var()`); `ChromeTheme::
   from_tokens` maps it to parts; `Chrome` builds windows, bars, snap previews, toasts and placeholders
   and `set_theme` restyles them all in one pass, so the next frame shows the new look.
 - `hit_test(&scene, point) -> Option<Hit>`; `headless`: `headless_device()`, `Target`, `read_rgba`.

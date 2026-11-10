@@ -1,4 +1,4 @@
-//! theme.tokens (ADR 0145): the runtime hands the core the look in force, and the core keeps it as the
+//! theme.tokens (ADR 0146): the runtime hands the core the look in force, and the core keeps it as the
 //! flat token table the compositor draws the desk's chrome from. The tables are the bridge's vectors,
 //! the ones the runtime's own test says it sends for the endue theme.
 

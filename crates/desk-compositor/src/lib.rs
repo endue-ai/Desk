@@ -12,7 +12,7 @@
 //!   [`FrameStats`].
 //! - [`hit_test`] finds the topmost node under a point through the same transforms.
 //! - [`TextNode`]s are set with cosmic-text in [`Fonts`] and drawn from the compositor's own glyph
-//!   atlas, through their group like any node (ADR 0145).
+//!   atlas, through their group like any node (ADR 0146).
 //! - The look comes from the flat token table `theme.tokens` carries ([`Tokens`]): [`ChromeTheme`]
 //!   reads it, and [`Chrome`] builds window frames, title bars, bars, snap previews, toasts and
 //!   placeholders, and restyles them all in one pass when the look changes.

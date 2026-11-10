@@ -46,7 +46,7 @@ glam = "0.30"
 bytemuck = { version = "1", features = ["derive"] }
 pollster = "0.4"
 png = "0.18"
-# desk-compositor chrome text (ADR 0145): shaping, fallback and system fonts; the atlas packer.
+# desk-compositor chrome text (ADR 0146): shaping, fallback and system fonts; the atlas packer.
 cosmic-text = "0.19"
 etagere = "0.3"
 
