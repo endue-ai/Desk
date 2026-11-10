@@ -1,6 +1,6 @@
 [package]
 name = "desk-surface"
-description = "The surface protocol (specs/surface/v0) as Rust types: the messages between the compositor and anything that draws a surface. serde only; no GPU, engine or OS dependency."
+description = "The surface protocol (specs/surface/v0) as Rust types: the messages between the compositor and anything that draws a surface. serde only by default; the native feature adds the native plugins' transport (lines, Mach rights) for both sides."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,9 +8,26 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[features]
+# A native plugin's transport (specs/surface/v0/native.md, #59): the desk's side and the plugin's.
+native = ["dep:libc", "dep:mach2", "dep:objc2-io-surface", "dep:objc2-core-foundation"]
+# A native plugin's frames on wgpu: an IOSurface as a texture it renders into (macOS).
+native-wgpu = ["native", "dep:wgpu", "dep:objc2-metal"]
+
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
+wgpu = { workspace = true, optional = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = { version = "0.2", optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Mach send rights between the desk and a native plugin's process (`native/mach.rs`).
+mach2 = { version = "0.6", optional = true }
+objc2-core-foundation = { version = "0.3", optional = true, default-features = false, features = ["std", "CFDictionary", "CFNumber", "CFString"] }
+objc2-io-surface = { version = "0.3", optional = true, default-features = false, features = ["std", "IOSurface", "IOSurfaceRef", "IOSurfaceTypes", "bitflags", "libc", "objc2", "objc2-core-foundation"] }
+objc2-metal = { version = "0.3", optional = true, default-features = false, features = ["std", "MTLDevice", "MTLPixelFormat", "MTLResource", "MTLTexture", "MTLTypes", "objc2-io-surface"] }
 
 [dev-dependencies]
 # Judges the specs/surface/v0 vectors by their schemas (tests/vectors.rs).

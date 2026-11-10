@@ -6,6 +6,9 @@
 //! one JSON object; file descriptors and Mach rights travel beside it, named by index.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
+pub mod env;
 pub mod generated;
+#[cfg(feature = "native")]
+pub mod native;
 
 pub use generated::{CompositorMessage, SurfaceMessage};
