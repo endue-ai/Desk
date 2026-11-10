@@ -35,6 +35,8 @@ bundle = ["cef/build-util", "dep:semver"]
 helper_name = "endue-desk-cef-helper"
 
 [dependencies]
+# A surface's custom cursor travels as a base64 PNG (specs/surface, #56).
+base64.workspace = true
 cef.workspace = true
 desk-boot.workspace = true
 desk-bridge.workspace = true

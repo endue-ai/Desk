@@ -119,6 +119,23 @@ pub fn death_reason(status: TerminationStatus) -> SurfaceDeathReason {
     }
 }
 
+/// The surface a compositor message is about.
+pub fn surface_of(message: &CompositorMessage) -> Option<String> {
+    let value = serde_json::to_value(message).ok()?;
+    value.get("surface")?.as_str().map(str::to_owned)
+}
+
+/// The size and scale a lifecycle message brings.
+pub fn size_of(message: &CompositorMessage) -> Option<((u32, u32), f32)> {
+    let (size, scale) = match message {
+        CompositorMessage::SurfaceCreate(m) => (&m.size, m.scale),
+        CompositorMessage::SurfaceResize(m) => (&m.size, m.scale),
+        CompositorMessage::SurfaceWake(m) => (&m.size, m.scale),
+        _ => return None,
+    };
+    Some(((size.width as u32, size.height as u32), scale as f32))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Action, State, death_reason, step};

@@ -9,10 +9,15 @@
 //! port in development builds (ADR 0144).
 
 pub mod client;
+pub mod cursor;
+pub mod drag;
+pub mod input;
+pub mod key_codes;
 pub mod lifecycle;
 pub mod paint;
 pub mod relay;
 pub mod render;
+pub mod routes;
 pub mod shim;
 pub mod stand_in;
 pub mod view;
@@ -28,7 +33,7 @@ use desk_surface::generated::{
 };
 
 use crate::host::Desk;
-use lifecycle::{Action, State};
+use lifecycle::{Action, State, size_of, surface_of};
 use relay::Relay;
 use view::{Counts, SharedView, View};
 
@@ -51,6 +56,10 @@ struct Record {
     view: SharedView,
     browser: Option<Browser>,
     pace: u32,
+    /// The ids that join the page's drag messages to the broker's (#56).
+    drag: drag::DragIds,
+    /// The text the surface's IME composes now.
+    composing: Option<String>,
 }
 
 #[derive(Default)]
@@ -116,6 +125,9 @@ impl WebHost {
         let Some(surface) = surface_of(message) else {
             return;
         };
+        if self.route(&surface, message) {
+            return;
+        }
         let (actions, view, browser, pace) = {
             let mut inner = self.inner();
             let state = inner.records.get(&surface).map(|r| r.state);
@@ -138,6 +150,8 @@ impl WebHost {
                     view: SharedView::new(view),
                     browser: None,
                     pace: DEFAULT_PACE,
+                    drag: drag::DragIds::default(),
+                    composing: None,
                 };
                 inner.records.insert(surface.clone(), record);
             }
@@ -375,21 +389,4 @@ impl WebHost {
     pub fn browser(&self, surface: &str) -> Option<Browser> {
         self.inner().records.get(surface)?.browser.clone()
     }
-}
-
-/// The surface a compositor message is about.
-fn surface_of(message: &CompositorMessage) -> Option<String> {
-    let value = serde_json::to_value(message).ok()?;
-    value.get("surface")?.as_str().map(str::to_owned)
-}
-
-/// The size and scale a lifecycle message brings.
-fn size_of(message: &CompositorMessage) -> Option<((u32, u32), f32)> {
-    let (size, scale) = match message {
-        CompositorMessage::SurfaceCreate(m) => (&m.size, m.scale),
-        CompositorMessage::SurfaceResize(m) => (&m.size, m.scale),
-        CompositorMessage::SurfaceWake(m) => (&m.size, m.scale),
-        _ => return None,
-    };
-    Some(((size.width as u32, size.height as u32), scale as f32))
 }

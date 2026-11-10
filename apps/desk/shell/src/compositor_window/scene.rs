@@ -3,7 +3,9 @@
 //! the surface's texture. The shell page draws the windows' chrome around the frames; a frame's
 //! covered parts (windows above it, menus) are left out, so the page shows there.
 
-use desk_compositor::{Rect, Scene, SurfaceNode, TextureId};
+use desk_compositor::glam::Vec2;
+use desk_compositor::input::Target;
+use desk_compositor::{NodeId, Rect, Scene, SurfaceNode, TextureId};
 
 use super::layout::{Box, Placed};
 
@@ -85,26 +87,47 @@ fn intersect(a: &Box, b: &Box) -> Option<Box> {
     })
 }
 
-/// Fill `scene` again: the page `page` over the whole viewport, then `quads`.
-pub fn rebuild(scene: &mut Scene, page: Option<TextureId>, quads: &[SurfaceNode]) {
+/// What a quad of `placed` shows for input (#56): the surface's logical point at the quad's top left,
+/// and its pixels per device pixel of the quad.
+pub fn target(placed: &Placed, scale: f64, quad: &SurfaceNode) -> Target {
+    let zoom = |shown: f64, laid: f64| if laid > 0.0 { shown / laid } else { 1.0 };
+    let (zx, zy) = (
+        zoom(placed.rect.width, placed.size.width),
+        zoom(placed.rect.height, placed.size.height),
+    );
+    let x = (f64::from(quad.rect.x) / scale - placed.rect.x) / zx;
+    let y = (f64::from(quad.rect.y) / scale - placed.rect.y) / zy;
+    Target {
+        surface: placed.host.clone(),
+        origin: Vec2::new(x as f32, y as f32),
+        per_unit: Vec2::new((1.0 / (scale * zx)) as f32, (1.0 / (scale * zy)) as f32),
+    }
+}
+
+/// Fill `scene` again: the page `page` over the whole viewport, then `quads`; the nodes made, the
+/// page's first when there is one.
+pub fn rebuild(scene: &mut Scene, page: Option<TextureId>, quads: &[SurfaceNode]) -> Vec<NodeId> {
     let root = scene.root();
     for child in scene.children(root).to_vec() {
         let _ = scene.remove(child);
     }
     let (w, h) = scene.viewport();
+    let mut made = Vec::new();
     if let Some(page) = page {
         let whole = Rect::new(0.0, 0.0, w as f32, h as f32);
-        let _ = scene.insert(root, SurfaceNode::new(whole, page));
+        made.extend(scene.insert(root, SurfaceNode::new(whole, page)).ok());
     }
     for quad in quads {
-        let _ = scene.insert(root, *quad);
+        made.extend(scene.insert(root, *quad).ok());
     }
+    made
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Box, Placed, pieces, rebuild};
+    use super::{Box, Placed, pieces, rebuild, target};
     use crate::compositor_window::layout::Size;
+    use desk_compositor::glam::Vec2;
     use desk_compositor::{Rect, Scene, TextureId};
 
     fn frame(pieces: Vec<Box>, rect: Box, size: Size) -> Placed {
@@ -196,6 +219,38 @@ mod tests {
         let quads = pieces(&placed, 1.0, TextureId(1), (400, 300));
         assert_eq!(quads[0].uv, Rect::new(0.0, 0.0, 1.0, 1.0));
         assert_eq!(quads[0].rect, Rect::new(10.0, 10.0, 200.0, 150.0));
+    }
+
+    #[test]
+    fn a_quad_maps_the_device_pixels_it_covers_to_the_surfaces_own() {
+        let rect = Box {
+            x: 100.0,
+            y: 50.0,
+            width: 200.0,
+            height: 150.0,
+        };
+        let right = Box {
+            x: 200.0,
+            y: 50.0,
+            width: 100.0,
+            height: 150.0,
+        };
+        let placed = frame(
+            vec![right],
+            rect,
+            Size {
+                width: 400.0,
+                height: 300.0,
+            },
+        );
+        let quads = pieces(&placed, 2.0, TextureId(1), (800, 600));
+        let target = target(&placed, 2.0, &quads[0]);
+        assert_eq!(
+            target.origin,
+            Vec2::new(200.0, 0.0),
+            "the right half, shown at half size"
+        );
+        assert_eq!(target.per_unit, Vec2::new(1.0, 1.0), "half size at scale 2");
     }
 
     #[test]

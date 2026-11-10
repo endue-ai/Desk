@@ -1879,6 +1879,7 @@ dependencies = [
 name = "desk-shell"
 version = "0.0.0"
 dependencies = [
+ "base64 0.23.1",
  "cef",
  "desk-boot",
  "desk-bridge",

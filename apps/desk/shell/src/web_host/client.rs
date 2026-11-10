@@ -1,5 +1,5 @@
 //! The client of one off-screen plugin surface's browser: its render handler (`render.rs`); its
-//! title, its load (`ready`) and its renderer's death (`died`) for the host; no popups; the
+//! title, its cursor, its load (`ready`) and its renderer's death (`died`) for the host; no popups; the
 //! browser-process guard on every load (`guard.rs`); its page's bridge calls, as the plugin its URL
 //! names (`desk_web::sender`, #43); and its postMessages for the relay.
 
@@ -25,6 +25,18 @@ wrap_display_handler! {
         fn on_title_change(&self, _browser: Option<&mut Browser>, title: Option<&CefString>) {
             let title = title.map(|t| t.to_string()).unwrap_or_default();
             self.host.titled(&self.surface, title);
+        }
+
+        // A windowless browser has no view to set a cursor on: the compositor sets the window's.
+        fn on_cursor_change(
+            &self,
+            _browser: Option<&mut Browser>,
+            _cursor: *mut u8,
+            type_: CursorType,
+            custom_cursor_info: Option<&CursorInfo>,
+        ) -> ::std::os::raw::c_int {
+            self.host.cursor(&self.surface, type_, custom_cursor_info);
+            1
         }
 
         fn on_console_message(
@@ -185,8 +197,13 @@ wrap_client! {
                     Some(desk) => host::receive(desk, Role::Main, frame.clone(), text),
                     None => return 0,
                 },
-                // Only the surface's page itself speaks for it to the runtime.
-                POST if frame.is_main() == 1 => self.host.relay().up(&self.surface, text),
+                // Only the surface's page itself speaks for it; its drags go to the compositor's
+                // broker (#56), the rest to the runtime.
+                POST if frame.is_main() == 1 => {
+                    if !self.host.drag_up(&self.surface, &text) {
+                        self.host.relay().up(&self.surface, text);
+                    }
+                }
                 _ => return 0,
             }
             1

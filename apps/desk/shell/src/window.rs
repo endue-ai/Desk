@@ -306,10 +306,17 @@ impl ApplicationHandler<Wake> for Shell {
         }
     }
 
-    fn window_event(&mut self, _event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
         let Some(&role) = self.roles.get(&id) else {
             return;
         };
+        // Compositor mode (#56): the window's input goes through the compositor's router.
+        if role == Role::Main
+            && let Some(compositor) = self.compositor.as_mut()
+            && let Some(input) = crate::compositor_window::winit_input::input_of(&event)
+        {
+            compositor.input(event_loop, input);
+        }
         match (role, event) {
             (Role::Main, WindowEvent::CloseRequested) => {
                 // Closing the window only hides it: the tray, the Dock and a second start bring it
@@ -354,7 +361,7 @@ impl ApplicationHandler<Wake> for Shell {
                     host.set_focus(1);
                 }
                 if role == Role::Main
-                    && let Some(compositor) = &self.compositor
+                    && let Some(compositor) = self.compositor.as_mut()
                 {
                     compositor.focused(focused);
                 }
@@ -377,7 +384,7 @@ impl ApplicationHandler<Wake> for Shell {
         }
         let mut wake = self.pump.due();
         if let Some(compositor) = self.compositor.as_mut() {
-            compositor.tick(Instant::now());
+            compositor.tick(Instant::now(), event_loop);
             if let Some(frame) = compositor.next_frame() {
                 wake = wake.min(frame);
             }

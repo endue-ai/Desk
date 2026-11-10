@@ -2,23 +2,34 @@
 //! that `desk-compositor` draws. The shell page renders off screen as one surface over the whole
 //! window; every plugin surface is an off-screen browser of its own (`web_host`), drawn as quads at
 //! the rectangles the runtime places its frames (`layout.rs`, `scene.rs`), whose stand-ins relay the
-//! runtime's messages. Without the mode the desk is Stage 1's windowed one, unchanged. Input reaches
-//! nothing yet (#56); the window manager stays in the runtime until #53.
+//! runtime's messages. Without the mode the desk is Stage 1's windowed one, unchanged. Input (#56)
+//! goes through the compositor's router to the surface it is for (`input.rs`); the window manager
+//! stays in the runtime until #53.
 
+pub mod checks;
 pub mod commands;
 pub mod composed;
+pub mod cursor;
 mod gpu;
+pub mod harness;
+pub mod input;
 pub mod layout;
+mod os_pointer;
+pub mod overlay;
 pub mod scene;
+pub mod winit_input;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use cef::*;
+use desk_compositor::input::keymap::Platform;
+use desk_compositor::input::{InputRouter, PointerSettings};
 use desk_compositor::{Compositor, Scene};
 use desk_surface::generated::SurfaceMessage;
 use desk_web::sender::Role;
-use serde_json::{Value, json};
+use serde_json::json;
+use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
 use crate::host::Desk;
@@ -62,6 +73,13 @@ pub struct CompositorWindow {
     last_frame: Instant,
     presented: u64,
     slow_presents: u32,
+    /// Where input goes (#56).
+    router: InputRouter,
+    cursors: cursor::Cursors,
+    /// The text the page's IME composes now.
+    page_composing: Option<String>,
+    /// An OS drag follows the OS pointer; a check that places the pointer itself turns it off.
+    pub follow_os_pointer: bool,
 }
 
 impl CompositorWindow {
@@ -118,6 +136,12 @@ impl CompositorWindow {
         );
         stand_in::set_shell_page(browser.as_ref().map(|b| b.identifier()));
         let physical = window.inner_size();
+        let settings = PointerSettings {
+            underlay: Some(PAGE.to_owned()),
+            ..PointerSettings::default()
+        };
+        let mut router = InputRouter::new(Platform::current(), settings);
+        router.targets.set_owner(PAGE, "desk");
         Ok(CompositorWindow {
             window,
             gpu,
@@ -133,6 +157,10 @@ impl CompositorWindow {
             last_frame: Instant::now() - FRAME,
             presented: 0,
             slow_presents: 0,
+            router,
+            cursors: cursor::Cursors::default(),
+            page_composing: None,
+            follow_os_pointer: true,
         })
     }
 
@@ -143,20 +171,25 @@ impl CompositorWindow {
         self.shared.lock().dirty = true;
     }
 
-    fn run(&self, steps: Vec<Step>) {
+    fn run(&mut self, steps: Vec<Step>) {
         for step in steps {
             match step {
                 Step::Load { surface, url } => self.host.load(&surface, &url),
                 Step::Send(message) => {
                     use desk_surface::generated::CompositorMessage as M;
                     match &message {
-                        M::SurfaceDestroy(d) => self.shared.lock().destroy(&d.surface),
+                        M::SurfaceDestroy(d) => {
+                            self.shared.lock().destroy(&d.surface);
+                            self.forget(&d.surface);
+                        }
                         // Its process goes: its imports with it, its last frame (a copy) stays.
                         M::SurfaceSleep(s) => {
                             let mut composed = self.shared.lock();
                             if let Some(id) = composed.texture_of(&s.surface) {
                                 composed.frames.ended(id);
                             }
+                            drop(composed);
+                            self.forget(&s.surface);
                         }
                         _ => {}
                     }
@@ -198,16 +231,32 @@ impl CompositorWindow {
         self.run(steps);
     }
 
+    /// Surface `surface` takes no input any more (destroyed, asleep, died).
+    fn forget(&mut self, surface: &str) {
+        let _ = self.router.forget(surface);
+        self.router.targets.forget(surface);
+    }
+
     /// The window is in front (the display's rate) or behind (a lower one).
-    pub fn focused(&self, focused: bool) {
+    pub fn focused(&mut self, focused: bool) {
         self.run(self.layout.pace(if focused { 60 } else { 30 }));
     }
 
     /// After CEF's work: act on what the surfaces said, and draw a frame if one is due.
-    pub fn tick(&mut self, now: Instant) {
+    pub fn tick(&mut self, now: Instant, event_loop: &ActiveEventLoop) {
         let messages = std::mem::take(&mut self.shared.lock().messages);
         for message in messages {
+            if !matches!(
+                message,
+                SurfaceMessage::SurfaceDied(_)
+                    | SurfaceMessage::SurfaceReady(_)
+                    | SurfaceMessage::SurfaceTitle(_)
+            ) {
+                self.surface_said(event_loop, &message);
+                continue;
+            }
             if let SurfaceMessage::SurfaceDied(died) = message {
+                self.forget(&died.surface);
                 // The direct signal for #44's recovery: the runtime reloads the window's frame.
                 self.layout.died(&died.surface);
                 if let Some((plugin, _)) = layout::owner(&died.surface) {
@@ -222,6 +271,7 @@ impl CompositorWindow {
                 }
             }
         }
+        self.input_tick(event_loop);
         if !self.shared.lock().dirty || now < self.last_frame + FRAME || self.occluded {
             return;
         }
@@ -262,13 +312,14 @@ impl CompositorWindow {
     }
 
     /// Lay the scene out again from the layout and the frames the surfaces attached.
-    fn compose(&mut self) {
+    pub(super) fn compose(&mut self) {
         let mut composed = self.shared.lock();
         let page = composed
             .texture_of(PAGE)
             .filter(|id| composed.frames.size(*id).is_some());
         let scale = self.layout.scale.max(0.25);
         let mut quads = Vec::new();
+        let mut targets = Vec::new();
         for placed in self.layout.placed.iter().filter(|p| !p.asleep) {
             let Some(id) = composed.texture_of(&placed.host) else {
                 continue;
@@ -276,69 +327,17 @@ impl CompositorWindow {
             let Some(size) = composed.frames.size(id) else {
                 continue;
             };
-            quads.extend(scene::pieces(placed, scale, id, size));
+            for quad in scene::pieces(placed, scale, id, size) {
+                targets.push(scene::target(placed, scale, &quad));
+                quads.push(quad);
+            }
         }
-        scene::rebuild(&mut self.scene, page, &quads);
+        let nodes = scene::rebuild(&mut self.scene, page, &quads);
         if !self.gpu.presents() {
             composed.dirty = false;
         }
-    }
-
-    /// The composed frame as a PNG at `path` (development builds: checks and screenshots).
-    pub fn capture(&mut self, path: &str) -> Result<Value, String> {
-        self.compose();
-        let rgba = self.shared.lock().read(&self.scene).ok_or("no readback")?;
-        let (w, h) = self.scene.viewport();
-        let file = std::fs::File::create(path).map_err(|e| e.to_string())?;
-        let mut encoder = png::Encoder::new(std::io::BufWriter::new(file), w, h);
-        encoder.set_color(png::ColorType::Rgba);
-        encoder.set_depth(png::BitDepth::Eight);
-        let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
-        writer.write_image_data(&rgba).map_err(|e| e.to_string())?;
-        Ok(json!({ "path": path, "width": w, "height": h, "quads": self.scene.len() }))
-    }
-
-    /// What each surface did, for checks (development builds).
-    pub fn stats(&self) -> Value {
-        let composed = self.shared.lock();
-        let mut surfaces = serde_json::Map::new();
-        for (surface, asleep) in self.layout.surfaces() {
-            let (counts, state, plugin) = self
-                .host
-                .counts(&surface)
-                .map_or((json!(null), json!("none"), json!(null)), |(c, s, p)| {
-                    (json!(c), json!(format!("{s:?}")), json!(p))
-                });
-            let attached = composed.attached.get(&surface).copied().unwrap_or_default();
-            let texture = composed
-                .texture_of(&surface)
-                .and_then(|id| composed.frames.size(id));
-            let placed = self.layout.placed.iter().find(|p| p.host == surface);
-            let pieces: Vec<[f64; 4]> = placed
-                .map(|p| {
-                    p.pieces
-                        .iter()
-                        .map(|b| [b.x, b.y, b.width, b.height])
-                        .collect()
-                })
-                .unwrap_or_default();
-            surfaces.insert(
-                surface,
-                json!({ "plugin": plugin, "state": state, "asleep": asleep,
-                "counts": counts, "attached": attached.0, "refused": attached.1, "texture": texture,
-                "pieces": pieces, "loads": placed.map(|p| p.loads) }),
-            );
-        }
-        let page = self.page.lock().counts.clone();
-        json!({
-            "page": page,
-            "surfaces": surfaces,
-            "browsers": self.host.browsers(),
-            "relayed": self.relay.counts(),
-            "presented": self.presented,
-            "slow_presents": self.slow_presents,
-            "adapter": format!("{} ({:?})", self.gpu.adapter.name, self.gpu.adapter.backend),
-        })
+        drop(composed);
+        self.register(page.is_some(), &nodes, targets);
     }
 
     /// Close the page's browser and every surface's (the desk quits).

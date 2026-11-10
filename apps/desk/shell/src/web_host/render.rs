@@ -2,7 +2,9 @@
 //! the compositor as an `attach` inside CEF's paint callback (the shared texture is CEF's again when
 //! the callback returns). macOS names the IOSurface and the compositor imports it; on Windows and
 //! Linux the `cef` crate's importer copies the frame into a texture of the compositor's device first.
-//! Software paints (no GPU: CI's path) are uploaded and attached the same way.
+//! Software paints (no GPU: CI's path) are uploaded and attached the same way. For input (#56) it
+//! says the composition's character boxes (`ime.caret`), whether an editable element has the focus
+//! (`ime.enabled`), and hands the drags the page's engine starts to the compositor's broker.
 
 use std::sync::Arc;
 
@@ -67,6 +69,43 @@ wrap_render_handler! {
                 }
                 Err(why) => self.failed(why),
             }
+        }
+
+        // The composition's characters, in the view's pixels: the caret for the OS candidate window.
+        fn on_ime_composition_range_changed(
+            &self,
+            _browser: Option<&mut Browser>,
+            _selected_range: Option<&Range>,
+            character_bounds: Option<&[Rect]>,
+        ) {
+            let surface = self.view.lock().surface.clone();
+            if let Some(caret) = super::routes::caret(&surface, character_bounds.unwrap_or(&[])) {
+                self.sink.message(caret);
+            }
+        }
+
+        // An editable element took the focus (a text mode) or none has it: the OS IME on or off.
+        fn on_virtual_keyboard_requested(&self, _browser: Option<&mut Browser>, input_mode: TextInputMode) {
+            let surface = self.view.lock().surface.clone();
+            self.sink.message(super::routes::enabled(&surface, input_mode));
+        }
+
+        // The page's engine starts a drag (a link, a selection, files): the broker takes it as desk
+        // data, from this surface, while the press that started it is held.
+        fn start_dragging(
+            &self,
+            _browser: Option<&mut Browser>,
+            drag_data: Option<&mut DragData>,
+            allowed_ops: DragOperationsMask,
+            _x: ::std::os::raw::c_int,
+            _y: ::std::os::raw::c_int,
+        ) -> ::std::os::raw::c_int {
+            let surface = self.view.lock().surface.clone();
+            let Some(start) = drag_data.and_then(|d| super::routes::started(&surface, d, allowed_ops)) else {
+                return 0;
+            };
+            self.sink.message(desk_surface::generated::SurfaceMessage::SurfaceDragStart(start));
+            1
         }
 
         // CEF's C signature hands a raw buffer; it holds `width` x `height` BGRA pixels.
