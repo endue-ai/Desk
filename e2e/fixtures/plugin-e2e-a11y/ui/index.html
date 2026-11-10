@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>E2E A11y</title>
+    <!-- Desk serves the SDK at /_desk/plugin-sdk.js; the import map lets plugins import it by name. -->
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <h1>Checklist</h1>
+    <input data-testid="field" aria-label="New item" placeholder="Add an item" autocomplete="off" />
+    <button data-testid="add" type="button">Add</button>
+    <label class="milk"><input type="checkbox" checked /> Milk</label>
+    <p data-testid="ready">mounting</p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

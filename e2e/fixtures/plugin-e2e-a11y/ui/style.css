@@ -1,0 +1,47 @@
+/* Fixed places, so a spec can compare the tree's boxes with the surface's own. */
+body {
+  margin: 0;
+  padding: 0;
+  background: #1e1d21;
+  color: #f2f0f5;
+  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+body > * {
+  position: absolute;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+h1 {
+  left: 16px;
+  top: 8px;
+  height: 28px;
+  font-size: 20px;
+}
+
+[data-testid="field"] {
+  left: 16px;
+  top: 60px;
+  width: 160px;
+  height: 28px;
+  font: inherit;
+}
+
+[data-testid="add"] {
+  left: 200px;
+  top: 60px;
+  width: 80px;
+  height: 28px;
+  font: inherit;
+}
+
+.milk {
+  left: 16px;
+  top: 110px;
+}
+
+[data-testid="ready"] {
+  left: 16px;
+  top: 150px;
+}

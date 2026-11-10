@@ -13,9 +13,9 @@ use desk_web::plugin_scheme::Source;
 pub const COLOUR: [u8; 3] = [0x33, 0x66, 0xcc];
 pub const WEBGPU: [u8; 3] = [0xcc, 0x33, 0x66];
 
-/// The probe's plugins, by id: (id, page). The last four are the isolation and budget gates' (#58,
-/// `gates.rs`, `input_gate.rs`).
-pub const PAGES: [(&str, &str); 8] = [
+/// The probe's plugins, by id: (id, page). Four are the isolation and budget gates' (#58,
+/// `gates.rs`, `input_gate.rs`), the last the accessibility run's (#57, `a11y.rs`).
+pub const PAGES: [(&str, &str); 9] = [
     ("probe.colour", COLOUR_PAGE),
     ("probe.anim", ANIM_PAGE),
     ("probe.webgpu", WEBGPU_PAGE),
@@ -24,7 +24,25 @@ pub const PAGES: [(&str, &str); 8] = [
     ("probe.busy", BUSY_PAGE),
     ("probe.hog", HOG_PAGE),
     ("probe.click", CLICK_PAGE),
+    ("probe.a11y", A11Y_PAGE),
 ];
+
+/// A plugin's ordinary controls at known places (logical pixels): a heading, a text field, a
+/// button that counts its clicks in the title, a checkbox and a scrolled list of twenty items.
+const A11Y_PAGE: &str = concat!(
+    r#"<!doctype html><html lang="en"><meta charset="utf-8"><title>a11y</title><style>"#,
+    r#"html,body{margin:0;font:16px/1 system-ui,sans-serif}body>*{position:absolute;margin:0;box-sizing:border-box}"#,
+    r#"h1{left:16px;top:8px;height:28px;font-size:20px}#field{left:16px;top:60px;width:160px;height:28px}"#,
+    r#"#add{left:200px;top:60px;width:80px;height:28px}#milk{left:16px;top:110px}"#,
+    r#"#list{left:16px;top:150px;width:200px;height:100px;overflow:auto}#list div{height:30px}"#,
+    r#"</style><h1>Shopping</h1><input id="field" aria-label="New item" placeholder="Add an item">"#,
+    r#"<button id="add">Add</button><label id="milk"><input type="checkbox" checked> Milk</label>"#,
+    r#"<div id="list" role="list" aria-label="Items" tabindex="0"></div><script>"#,
+    r#"const list = document.getElementById("list"); for (let i = 1; i <= 20; i++) { const item = document.createElement("div");"#,
+    r#"item.setAttribute("role", "listitem"); item.textContent = `Item ${i}`; list.append(item); }"#,
+    r#"let clicks = 0; document.getElementById("add").addEventListener("click", () => { clicks += 1; say(`clicks:${clicks}`); });"#,
+    r#"</script>"#
+);
 
 /// A still page that changes colour on every pointer press and names the presses in its title.
 const CLICK_PAGE: &str = concat!(

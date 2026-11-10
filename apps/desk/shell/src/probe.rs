@@ -6,8 +6,11 @@
 //! that is the only one to die. The compositor's gates (#58, `gates.rs`) run a desk loop over the
 //! surfaces (`desk_loop.rs`): a busy or killed renderer beside others, a surface at a memory cap, the
 //! memory per live surface and the start to the first composed web surface; `tests/isolation.rs`
-//! and `tests/budgets.rs` judge them. Development use only; it never opens the person's data folder.
+//! and `tests/budgets.rs` judge them. The `a11y` run (#57, `a11y.rs`) exports a page's tree, merged
+//! as the compositor merges it, and does a screen reader's actions on it; `tests/a11y.rs` judges it.
+//! Development use only; it never opens the person's data folder.
 
+mod a11y;
 mod desk_loop;
 mod gates;
 mod input_gate;
@@ -55,6 +58,10 @@ pub struct Probe {
     /// The desk's frame clock is held: no begin frame goes out (the `lifecycle` run's check that
     /// surfaces render only on it).
     pub held: bool,
+    /// Each surface's accessibility tree, merged from its `a11y.update`s (#57).
+    pub a11y: std::collections::HashMap<String, desk_compositor::a11y::SurfaceTree>,
+    /// How many `a11y.update`s came.
+    pub a11y_updates: u64,
 }
 
 /// Now, in ms since the Unix epoch: a clock another process can compare with.
@@ -105,6 +112,8 @@ pub fn run(args: &cef::args::Args, scenario: &str) -> ExitCode {
                 cef_ready,
                 gpu_ready: epoch_ms(),
                 held: false,
+                a11y: Default::default(),
+                a11y_updates: 0,
             };
             let mut report = match scenario {
                 "import" => scenarios::import(&mut probe),
@@ -115,6 +124,7 @@ pub fn run(args: &cef::args::Args, scenario: &str) -> ExitCode {
                 "memory" => gates::memory(&mut probe),
                 "startup" => gates::startup(&mut probe),
                 "input" => input_gate::input(&mut probe),
+                "a11y" => a11y::a11y(&mut probe),
                 other => json!({ "error": format!("no scenario {other}") }),
             };
             report["adapter"] = json!(format!("{} ({:?})", gpu.adapter.name, gpu.adapter.backend));
@@ -168,6 +178,10 @@ impl Probe {
                     self.titles.insert(t.surface, t.title);
                 }
                 SurfaceMessage::SurfaceDied(d) => self.deaths.push(json!(d)),
+                SurfaceMessage::SurfaceA11yUpdate(u) => {
+                    self.a11y_updates += 1;
+                    self.a11y.entry(u.surface.clone()).or_default().apply(u);
+                }
                 _ => {}
             }
         }

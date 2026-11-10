@@ -1,0 +1,9 @@
+{
+  "id": "e2e.a11y",
+  "name": "E2E A11y",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The app e2e's accessibility plugin (#57): a heading, a text field, a button that counts its clicks and a checkbox, for a screen reader's walk and actions through the compositor.",
+  "surfaces": [{ "id": "main", "title": "E2E A11y", "placement": "center" }]
+}
