@@ -96,7 +96,7 @@ Sizes (CEF 156.0.26), MiB:
 | Target | Download | Installed | Of which CEF | Measured |
 | --- | --- | --- | --- | --- |
 | darwin-aarch64 | 162 (`.dmg`, `.app.tar.gz`) | 405 | 326 (the framework) | 2026-11-10, an ad-hoc build on macOS 26.5 |
-| darwin-x86_64 | not measured | not measured | 142 archive | #61 |
+| darwin-x86_64 | not measured | not measured | 135 (the archive) | #61 |
 | windows-x86_64 | not measured | not measured | 405 beside the exe | #61 |
 | linux-x86_64 | not measured | not measured | 366 (`libcef.so` 265 stripped, 1,412 as shipped by CEF) | #61 |
 
