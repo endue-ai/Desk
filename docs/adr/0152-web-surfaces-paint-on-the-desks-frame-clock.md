@@ -4,6 +4,9 @@ date: 2026-11-10
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0157: Chromium runs its full pipeline, prompt frames come from the press until
+its paint, and a surface long idle takes at most 10 desk frames a second.
+
 # Web surfaces paint on the desk's frame clock, with external begin frames
 
 ## Context and Problem Statement
