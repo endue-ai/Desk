@@ -77,4 +77,21 @@ describe("the SDK in a frame", () => {
     from(parent, { type: "desk:ping", n: 8 });
     expect(posted).toContainEqual({ type: "desk:pong", n: 8 });
   });
+
+  it("posts a state set before a ping ahead of its pong, which a reload waits for", async () => {
+    const { win, parent, posted, from } = frame();
+    vi.stubGlobal("window", win);
+    vi.resetModules();
+    const sdk = await import("./sdk");
+    const ready = sdk.connect();
+    from(parent, { type: "desk:init", pluginId: "example.count", state: undefined });
+    const ctx = await ready;
+    posted.length = 0;
+    ctx.state.set({ count: 2 });
+    from(parent, { type: "desk:ping", n: -1 });
+    expect(posted).toEqual([
+      { type: "desk:state", state: { count: 2 } },
+      { type: "desk:pong", n: -1 },
+    ]);
+  });
 });

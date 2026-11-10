@@ -4,7 +4,8 @@
  * the page, shown, and not hidden by a window host's windows), the order they were focused in (the
  * live budget's, ADR 0134), the two settings, asking the plugin for its state and the placeholder
  * that stands in for the frame. Every surface's frame is also watched for answers (#39,
- * `watch.ts`); one the person stopped stays unloaded, in sight or not, until they reload it.
+ * `watch.ts`); one the person stopped stays unloaded, in sight or not, until they reload it. A
+ * plugin's reload waits for what its frame already sent, its last desk:state with it (`reload.ts`).
  */
 import { LIVE_SURFACES } from "../core/defaults";
 import type { DeskContext } from "../policies/context";
@@ -13,6 +14,7 @@ import type { SurfaceSpec } from "../surfaces";
 import { defineFrameCommands } from "./commands";
 import { placeholder } from "./placeholder";
 import { type FrameCounts, FramePolicy, type FrameTimers, realTimers } from "./policy";
+import { frameReloads } from "./reload";
 import { askState, SURFACE_STATE } from "./state";
 import { type FrameResponses, watchFrames } from "./watch";
 
@@ -62,6 +64,8 @@ export interface Frames {
   focused(id: string | null): void;
   /** Load an unloaded frame again (the plugin host's `wake`); true when its frame is live after. */
   wake(id: string): boolean;
+  /** Load `src` in a plugin's frame (a hot reload) once what the frame already sent has arrived. */
+  reload(id: string, src: string): void;
   /** The windows' frames loaded in sight and out of it and asleep, and the budget in force. */
   counts(): FrameCounts & { budget: number };
   /** Whether each frame answers the desk, with Wait, Stop and Reload (#39). */
@@ -156,6 +160,16 @@ export function installFrames(
     },
   });
   offs.push(defineFrameCommands(ctx.hub.commands, watch.responses, deps.lang ?? "ko"));
+  const reloads = frameReloads({
+    win,
+    timers,
+    // A frame that said hello and is on the page may still have a desk:state on its way.
+    live: (id) => {
+      const host = deps.host();
+      return host?.greeted(id) && !host.asleep?.(id) ? surfaces.frame(id) : null;
+    },
+    load: (id, src) => surfaces.reload(id, src),
+  });
   const frames: Frames = {
     opened(spec, inWindow) {
       specs.set(spec.id, spec);
@@ -169,6 +183,7 @@ export function installFrames(
       specs.delete(id);
       loaded.delete(id);
       windowed.delete(id);
+      reloads.forget(id);
       watch.untrack(id);
       policy.untrack(id);
       changed();
@@ -180,11 +195,13 @@ export function installFrames(
     },
     // A stopped frame loads only from its Reload: what waits on it waits for that.
     wake: (id) => watch.responses.state(id) !== "stopped" && policy.wake(id),
+    reload: (id, src) => reloads.reload(id, src),
     counts: () => ({ ...policy.counts(), budget: Math.floor(setting(LIVE_SURFACES)) }),
     responses: watch.responses,
     dispose() {
       for (const off of offs) off?.();
       win.removeEventListener("resize", changed);
+      reloads.dispose();
       watch.dispose();
       policy.dispose();
     },

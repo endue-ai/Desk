@@ -288,7 +288,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         win,
         open: openSurface,
         close: closeSurface,
-        reload: (id, src) => surfaces.reload(id, src),
+        reload: (id, src) => frames.reload(id, src),
         frame: (id) => surfaces.frame(id),
         show: (id, visible) => {
           surfaces.show(id, visible);
