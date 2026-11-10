@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>E2E Drag</title>
+    <!-- Desk serves the SDK at /_desk/plugin-sdk.js; the import map lets plugins import it by name. -->
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <style>
+      body {
+        margin: 0;
+        background: #1e1d21;
+        color: #f2f0f5;
+        font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+      }
+      [data-testid="row"] {
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        width: 200px;
+        height: 40px;
+        background: #2a2930;
+        user-select: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div data-testid="row">Drag me</div>
+    <p data-testid="ended" style="position: absolute; left: 10px; top: 60px; margin: 0">none yet</p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

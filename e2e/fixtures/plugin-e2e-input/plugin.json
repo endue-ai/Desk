@@ -1,0 +1,9 @@
+{
+  "id": "e2e.input",
+  "name": "E2E Input",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The app e2e's input plugin (#56): a text field that records the keys and compositions reaching it, a drop zone that records what lands, and two cursors.",
+  "surfaces": [{ "id": "main", "title": "E2E Input", "placement": "center" }]
+}

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>E2E Input</title>
+    <!-- Desk serves the SDK at /_desk/plugin-sdk.js; the import map lets plugins import it by name. -->
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <input data-testid="field" type="text" placeholder="Type here" autocomplete="off" />
+    <div data-testid="drop" class="zone">Drop here</div>
+    <div data-testid="resize" class="resize">col-resize</div>
+    <div data-testid="custom" class="custom">custom cursor</div>
+    <p data-testid="ready">mounting</p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

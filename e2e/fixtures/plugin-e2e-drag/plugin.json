@@ -1,0 +1,9 @@
+{
+  "id": "e2e.drag",
+  "name": "E2E Drag",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The app e2e's drag source (#56): one row that drags desk text, and how its drags ended.",
+  "surfaces": [{ "id": "main", "title": "E2E Drag", "placement": "center" }]
+}

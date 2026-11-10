@@ -10,6 +10,7 @@ import { basename, delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { browser } from "@wdio/globals";
 import { cefBinary } from "./support/cef";
+import { compositorEnv } from "./support/compositor";
 import { PORT, relaunchApp, SHELL, saveData, startDriver, stopDriver } from "./support/driver";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -43,10 +44,13 @@ const INIT: Record<string, string> = {
 const DEFAULT_INIT = "init-no-first-run.yaml";
 
 /**
- * The app's environment a spec adds: persist.spec.ts asks for permissions from e2e.ask too, and
- * sandbox.spec.ts runs e2e.sandbox's checks in its renderer.
+ * The app's environment a spec adds: persist.spec.ts asks for permissions from e2e.ask too,
+ * sandbox.spec.ts runs e2e.sandbox's checks in its renderer, and the input specs run the desk in
+ * compositor mode with the input and drag fixtures (#56).
  */
 const ENV: Record<string, Record<string, string>> = {
+  "ime.spec.ts": compositorEnv(root),
+  "dnd.spec.ts": compositorEnv(root),
   "persist.spec.ts": {
     DESK_DEV_PLUGINS: [
       join(root, "e2e/fixtures/plugin-e2e-hello"),

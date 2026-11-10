@@ -1,0 +1,56 @@
+/* Fixed places, so a spec can point at each part from the surface's top left. */
+body {
+  margin: 0;
+  padding: 0;
+  background: #1e1d21;
+  color: #f2f0f5;
+  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+[data-testid="field"] {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  width: 200px;
+  height: 24px;
+  font: inherit;
+}
+
+.zone,
+.resize,
+.custom {
+  position: absolute;
+  left: 10px;
+  width: 200px;
+  height: 40px;
+  border: 1px dashed #b0adb7;
+}
+
+.zone {
+  top: 50px;
+}
+
+.zone[data-desk-drop] {
+  border-color: #b6a3f5;
+}
+
+.resize {
+  top: 100px;
+  cursor: col-resize;
+}
+
+/* A 4 x 4 red square drawn by the page: CEF hands its pixels, the compositor makes it the cursor. */
+.custom {
+  top: 150px;
+  cursor:
+    url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAEklEQVR4nGP4z8DwHxkzkC4AADxAH+HggXe0AAAAAElFTkSuQmCC")
+      1 2,
+    auto;
+}
+
+[data-testid="ready"] {
+  position: absolute;
+  left: 10px;
+  top: 200px;
+  margin: 0;
+}
