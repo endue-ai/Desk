@@ -112,12 +112,12 @@ pub fn lifecycle(probe: &mut Probe) -> Value {
     // The desk's frame clock (#111): held, no begin frame goes out and an animating page paints
     // nothing once what was on its way has come; let go, it paints again.
     probe.pump_for(Duration::from_millis(300));
-    probe.held = true;
+    probe.hold(true);
     probe.pump_for(Duration::from_millis(300));
     let a4 = probe.paints("a");
     probe.pump_for(Duration::from_millis(1000));
     let held_paints = probe.paints("a") - a4;
-    probe.held = false;
+    probe.hold(false);
     let a5 = probe.paints("a");
     probe.pump_for(Duration::from_millis(500));
     let clock = json!({ "held_paints": held_paints, "paints_after": probe.paints("a") - a5 });

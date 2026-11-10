@@ -2,19 +2,31 @@
 //! render only on its begin frames (external begin frames, `web_host/frames.rs`), at most one a desk
 //! frame for each one shown and awake, at its pace, and fewer for one long idle; the window composes
 //! what they paint at most once a frame. The window wakes for its next frame, the live budget's next
-//! look or the clock's, which is ten times a second when every surface on it is long idle.
+//! look or the clock's, which is ten times a second when every surface on it is long idle; CEF's
+//! poll rides those wake-ups (#129, `pump.rs`). While CEF's work runs long the pump's stand-in looks
+//! at the clock from its own thread (`pump/stand_in.rs`).
 
+use std::sync::Arc;
 use std::time::Instant;
 
 use serde_json::json;
 
 use super::CompositorWindow;
-use crate::web_host::frames::FRAME;
+use crate::web_host::frames::{self, FRAME};
 
 impl CompositorWindow {
-    /// The clock's look at `now`: the begin frames due, and when it looks next.
+    /// The clock's look at `now`: the begin frames due, and when it looks next. The pump's
+    /// stand-in looks too while CEF's work runs long (#129, `pump/stand_in.rs`).
     pub(super) fn begin_frames(&mut self, now: Instant) {
         self.begin_due = self.host.begin_frames(now);
+        self.desk.pump.looked(now, self.begin_due);
+    }
+
+    /// The pump's stand-in looks at the same clock from its own thread (#129).
+    pub(super) fn stand_in(&self) {
+        let host = self.host.clone();
+        let look = Arc::new(move |now| host.begin_frames(now));
+        self.desk.pump.stand_in(look, Arc::new(frames::prompted));
     }
 
     /// The window is in front (the display's rate) or behind (a lower one).

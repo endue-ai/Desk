@@ -1,7 +1,8 @@
 //! The compositor's budgets on the CEF desk (#58), measured through the surface probe and judged by
 //! `just perf-compositor` against `e2e/perf/budgets.json` (`e2e/perf/lib/compositor.ts`): memory
 //! per live surface against #35's baseline, the start to the first composed frame holding a web
-//! surface, and a press to the composed frame holding its paint (RT-16, on #56's input path). They
+//! surface, a press to the composed frame holding its paint (RT-16, on #56's input path), with
+//! presses CEF's busy-wait catches, and what a desk at rest costs (#129: its wake-ups, CPU). They
 //! take a quiet machine and a minute, so they are `#[ignore]`d in `cargo test`; the runner runs
 //! them with `--ignored` and `DESK_PERF_OUT`, where each writes what it measured
 //! (`<name>.measured.json`).
@@ -179,8 +180,13 @@ fn perf_input_to_paint() {
         "every press reached a composed frame: {report}"
     );
     assert_eq!(
-        report["presses"], 20,
-        "the page counted every press: {report}"
+        report["presses"], 25,
+        "the page counted every press, the five a busy-wait caught too: {report}"
+    );
+    let busy = &report["busy"];
+    assert_eq!(
+        busy["spun"], 5,
+        "each caught press met a busy-wait: {report}"
     );
     keep(
         "input-to-paint",
@@ -189,9 +195,56 @@ fn perf_input_to_paint() {
             "p50Ms": report["paint_p50_ms"],
             "frameP50Ms": report["frame_p50_ms"],
             "frameP95Ms": report["frame_p95_ms"],
+            "caughtWaitMs": busy["after_p50_ms"],
+            "caughtWaitMaxMs": busy["after_max_ms"],
+            "caughtPaintP50Ms": busy["paint_p50_ms"],
+            "caughtPaintMaxMs": busy["paint_max_ms"],
+            "caughtFrameP50Ms": busy["frame_p50_ms"],
+            "caughtByChance": report["caught"],
             "tries": report["tries"].as_array().map_or(0, Vec::len),
             "adapter": report["adapter"],
             "software": report["adapter_type"] == "Cpu",
+            "platform": platform(),
+        }}),
+    );
+}
+
+#[test]
+#[ignore = "perf: just perf-compositor"]
+fn perf_desk_at_rest() {
+    let Some(report) = probe("perf_desk_at_rest", "rest", &[]) else {
+        return;
+    };
+    eprintln!("rest: {report}");
+    assert_eq!(report["started"], true, "{report}");
+    assert_eq!(
+        report["clicks"], 5,
+        "every press from rest counted: {report}"
+    );
+    let rest = &report["rest"];
+    assert_eq!(
+        rest["paints_per_s"], 0.0,
+        "nothing painted at rest: {report}"
+    );
+    let paints: Vec<f64> = report["presses"]
+        .as_array()
+        .map(|p| p.iter().filter_map(|t| t["paint_ms"].as_f64()).collect())
+        .unwrap_or_default();
+    assert_eq!(paints.len(), 5, "every press from rest painted: {report}");
+    keep(
+        "desk-at-rest",
+        json!({ "deskAtRest": {
+            "wakeupsPerSecond": rest["turns_per_s"],
+            "osWakeupsPerSecond": rest["os_wakeups_per_s"],
+            "cefWorksPerSecond": rest["works_per_s"],
+            "cefWorkMsPerSecond": rest["work_ms_per_s"],
+            "longWorks": rest["long_works"],
+            "cpuPercent": rest["cpu_percent"],
+            "gpuCpuPercent": rest["gpu_cpu_percent"],
+            "renderersCpuPercent": rest["renderers_cpu_percent"],
+            "beginFramesPerSecond": rest["begin_frames_per_s"],
+            "pressPaintP50Ms": median(&paints),
+            "seconds": rest["seconds"],
             "platform": platform(),
         }}),
     );

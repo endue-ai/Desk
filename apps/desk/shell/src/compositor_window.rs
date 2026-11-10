@@ -195,6 +195,7 @@ impl CompositorWindow {
             gestures: wm::Gestures::default(),
             a11y: a11y::A11y::default(),
         };
+        opened.stand_in();
         opened.attach_a11y(event_loop);
         opened.window.set_visible(true);
         Ok(opened)

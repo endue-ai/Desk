@@ -81,6 +81,16 @@ pub fn heard(browser: i32, prompt: bool) {
     heard.push((browser, Instant::now(), prompt));
 }
 
+/// Whether a browser heard input whose paint should follow at once since the clock last looked:
+/// the clock wants a look now (the pump's stand-in asks, #129).
+pub fn prompted() -> bool {
+    HEARD
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .iter()
+        .any(|(_, _, prompt)| *prompt)
+}
+
 /// What the browsers heard since the last call.
 pub fn take_heard() -> Vec<(i32, Instant, bool)> {
     std::mem::take(&mut *HEARD.lock().unwrap_or_else(|e| e.into_inner()))

@@ -74,6 +74,12 @@ impl DeskLoop {
         let due = self.next.get() + FRAME;
         self.next.set(if due > start { due } else { start + FRAME });
     }
+
+    /// The desk composed nothing for a while (at rest, as the window composes only what changed):
+    /// its next frame is a frame from now, not at once (#129).
+    pub fn rested(&self) {
+        self.next.set(Instant::now() + FRAME);
+    }
 }
 
 impl Probe {

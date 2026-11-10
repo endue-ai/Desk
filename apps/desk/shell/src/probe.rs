@@ -8,6 +8,7 @@
 //! memory per live surface and the start to the first composed web surface; `tests/isolation.rs`
 //! and `tests/budgets.rs` judge them. The `a11y` run (#57, `a11y.rs`) exports a page's tree, merged
 //! as the compositor merges it, and does a screen reader's actions on it; `tests/a11y.rs` judges it.
+//! The `rest` run (#129, `rest.rs`) counts what a desk at rest costs, its loop run as the window's.
 //! `DESK_PROBE_TRACE=<file>` writes Chromium's trace of any run (#117, `trace.rs`). Development use
 //! only; it never opens the person's data folder.
 
@@ -16,14 +17,15 @@ mod desk_loop;
 mod gates;
 mod input_gate;
 pub mod pages;
+mod rest;
 mod scenarios;
 mod trace;
 
 use std::process::ExitCode;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use cef::*;
 use desk_compositor::{Compositor, Rect, Scene, SurfaceNode};
 use desk_surface::generated::{CompositorMessage, SurfaceMessage};
 use serde_json::{Value, json};
@@ -58,8 +60,8 @@ pub struct Probe {
     pub cef_ready: f64,
     pub gpu_ready: f64,
     /// The desk's frame clock is held: no begin frame goes out (the `lifecycle` run's check that
-    /// surfaces render only on it).
-    pub held: bool,
+    /// surfaces render only on it), from the probe's loop or the pump's stand-in (#129).
+    held: Arc<AtomicBool>,
     /// Each surface's accessibility tree, merged from its `a11y.update`s (#57).
     pub a11y: std::collections::HashMap<String, desk_compositor::a11y::SurfaceTree>,
     /// How many `a11y.update`s came.
@@ -113,10 +115,11 @@ pub fn run(args: &cef::args::Args, scenario: &str) -> ExitCode {
                 deaths: Vec::new(),
                 cef_ready,
                 gpu_ready: epoch_ms(),
-                held: false,
+                held: Arc::default(),
                 a11y: Default::default(),
                 a11y_updates: 0,
             };
+            probe.stand_in();
             let tracing = trace::begin(&mut probe);
             let mut report = match scenario {
                 "import" => scenarios::import(&mut probe),
@@ -128,6 +131,7 @@ pub fn run(args: &cef::args::Args, scenario: &str) -> ExitCode {
                 "startup" => gates::startup(&mut probe),
                 "input" => input_gate::input(&mut probe),
                 "a11y" => a11y::a11y(&mut probe),
+                "rest" => rest::rest(&mut probe),
                 other => json!({ "error": format!("no scenario {other}") }),
             };
             if let Some(file) = tracing {
@@ -180,14 +184,49 @@ impl Probe {
         std::thread::park_timeout(until.saturating_duration_since(Instant::now()));
     }
 
-    /// CEF's work when it is due and the frame clock's begin frames; when to look again.
+    /// CEF's work when it is due and the frame clock's begin frames; when to look again, at most
+    /// `STEP` from now.
     fn work(&mut self) -> Instant {
-        if self.pump.take_due(Instant::now()) {
-            do_message_loop_work();
+        self.look().min(Instant::now() + STEP)
+    }
+
+    /// Run the desk as the compositor window's event loop does at rest, for `time`: a turn, then a
+    /// wait until CEF's work or the clock's next look is due, or CEF asks (#129, `rest.rs`).
+    pub fn rest_for(&mut self, time: Duration) {
+        let end = Instant::now() + time;
+        while Instant::now() < end {
+            let until = self.look();
+            Probe::wait(until.min(end));
         }
-        let clock = (!self.held)
-            .then(|| self.host.begin_frames(Instant::now()))
+    }
+
+    /// Hold the desk's frame clock, or let it go.
+    pub fn hold(&self, held: bool) {
+        self.held.store(held, Ordering::SeqCst);
+    }
+
+    /// The pump's stand-in looks at the probe's clock while CEF's work runs long, as the
+    /// compositor window's does (#129, `pump/stand_in.rs`).
+    fn stand_in(&self) {
+        let (host, held) = (self.host.clone(), Arc::clone(&self.held));
+        let look = move |now| {
+            (!held.load(Ordering::SeqCst))
+                .then(|| host.begin_frames(now))
+                .flatten()
+        };
+        self.pump
+            .stand_in(Arc::new(look), Arc::new(crate::web_host::frames::prompted));
+    }
+
+    /// One turn of the desk's loop: CEF's work when it is due and the frame clock's begin frames;
+    /// when either is due next, CEF's poll riding the clock's next look (`pump.rs`).
+    fn look(&mut self) -> Instant {
+        self.pump.turn(Instant::now());
+        let now = Instant::now();
+        let clock = (!self.held.load(Ordering::SeqCst))
+            .then(|| self.host.begin_frames(now))
             .flatten();
+        self.pump.looked(now, clock);
         let messages = std::mem::take(&mut self.shared.lock().messages);
         for message in messages {
             match message {
@@ -202,12 +241,7 @@ impl Probe {
                 _ => {}
             }
         }
-        let now = Instant::now();
-        [Some(self.pump.due()), clock, Some(now + STEP)]
-            .into_iter()
-            .flatten()
-            .min()
-            .unwrap_or(now)
+        self.pump.wake_at(clock)
     }
 
     /// Tell the host `message`, given as JSON.

@@ -1,8 +1,9 @@
 // The compositor's budgets in e2e/perf/budgets.json (`just perf-compositor`, #58): the compose
 // budget and the compositor's own start from the compose bench; the desk's start to its first
 // composed web surface (the median of ten starts, and the slowest of them against the same
-// allowance: #112), the memory per live surface and a press to its paint and to the composed
-// frame holding it (on #56's input path) from the shell's surface probe. Three kinds of gate: a
+// allowance: #112), the memory per live surface, a press to its paint and to the composed frame
+// holding it (on #56's input path), a press CEF's busy-wait caught, and the desk's wake-ups and
+// CPU at rest (#129) from the shell's surface probe. Three kinds of gate: a
 // budget the value stays under, a baseline it may regress past by `allowedRegression`, and a
 // baseline it stays within `band` of, either way. A budget on a software adapter, and a baseline
 // recorded on another platform or with another tool, are reported and never failed. Pure:
@@ -15,7 +16,7 @@ export interface Gate {
   section: string;
   key: string;
   label: string;
-  unit: "ms" | "MB";
+  unit: "ms" | "MB" | "/s" | "%";
   kind: Kind;
   /** A budget's key in its section, `budgetMs` unless named. */
   budgetKey?: string;
@@ -75,6 +76,30 @@ export const GATES: readonly Gate[] = [
     kind: "budget",
     budgetKey: "frameBudgetMs",
   },
+  {
+    section: "inputToPaint",
+    key: "caughtWaitMs",
+    label: "a caught press's paint after the busy-wait",
+    unit: "ms",
+    kind: "budget",
+    budgetKey: "caughtWaitBudgetMs",
+  },
+  {
+    section: "deskAtRest",
+    key: "wakeupsPerSecond",
+    label: "desk at rest, its loop's wake-ups",
+    unit: "/s",
+    kind: "budget",
+    budgetKey: "wakeupsBudget",
+  },
+  {
+    section: "deskAtRest",
+    key: "cpuPercent",
+    label: "desk at rest, the browser process's CPU",
+    unit: "%",
+    kind: "budget",
+    budgetKey: "cpuBudgetPercent",
+  },
 ];
 
 /** What a gate's section keeps besides its value when a run is recorded as the baseline. */
@@ -83,7 +108,8 @@ const RECORDED: Record<string, readonly string[]> = {
   composeStartup: ["adapter", "platform"],
   surfaceStartup: ["platform"],
   surfaceMemory: ["tool", "platform"],
-  inputToPaint: ["p50Ms", "frameP95Ms", "adapter", "platform"],
+  inputToPaint: ["p50Ms", "frameP95Ms", "caughtPaintP50Ms", "adapter", "platform"],
+  deskAtRest: ["osWakeupsPerSecond", "cefWorksPerSecond", "pressPaintP50Ms", "platform"],
 };
 
 export type Status = "ok" | "over" | "under" | "reported" | "no-baseline" | "missing" | "waiting";

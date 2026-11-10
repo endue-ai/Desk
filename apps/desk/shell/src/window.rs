@@ -362,19 +362,16 @@ impl ApplicationHandler<Wake> for Shell {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        if self.pump.take_due(Instant::now()) {
-            do_message_loop_work();
-        }
-        let mut wake = self.pump.due();
+        self.pump.turn(Instant::now());
+        let mut next = None;
         if let Some(compositor) = self.compositor.as_mut() {
             compositor.tick(Instant::now(), event_loop);
-            if let Some(frame) = compositor.next_frame() {
-                wake = wake.min(frame);
-            }
+            next = compositor.next_frame();
         }
         if self.done_quitting() {
             event_loop.exit();
         }
-        event_loop.set_control_flow(ControlFlow::WaitUntil(wake));
+        // CEF's work when it asks, and its poll on the desk's own next wake-up (#129, `pump.rs`).
+        event_loop.set_control_flow(ControlFlow::WaitUntil(self.pump.wake_at(next)));
     }
 }
