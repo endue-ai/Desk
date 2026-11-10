@@ -1,8 +1,8 @@
 //! The runtime's writes in the desk folder against the real core with the runtime's own grants
 //! (#102, ADR 0079): `packages/runtime/src/policies/desk-folder.ts` names the folder a profile goes
 //! in, which the core's `createDirs` rule asks for (core_fs.rs), and writes keys.yaml without making
-//! a folder. Another caller (the CLI over desk.sock, an agent) holds no such grant: it saves a
-//! profile by running desk.profiles.save, and the runtime writes as itself.
+//! a folder. An agent (ADR 0086) holds no such grant: it saves a profile by running
+//! desk.profiles.save, as the CLI does, and the runtime writes as itself.
 
 use std::fs;
 use std::path::PathBuf;
@@ -87,11 +87,12 @@ fn keys_yaml_is_written_into_the_desk_folder_without_making_one() {
 }
 
 #[test]
-fn another_caller_holds_no_grant_on_the_desk_folder() {
-    let (core, home) = desk("cli");
+fn an_agent_holds_no_grant_on_the_desk_folder() {
+    let (core, home) = desk("agent");
     let scope = [PROFILE, "~/.desk/profiles"];
-    let (code, message) = write(&core, "cli", PROFILE, &scope, true).unwrap_err();
+    let (code, message) = write(&core, "agent:helper", PROFILE, &scope, true).unwrap_err();
     assert_eq!(code, ErrorCode::PermissionDenied);
-    assert!(message.contains("no grant covers the scope"), "{message}");
+    // An agent's call meets init.yaml's allowlist first (ADR 0086), which names no desk folder.
+    assert!(message.contains("did not allow agent:helper"), "{message}");
     assert!(!home.join(".desk/profiles/quiet.yaml").exists());
 }
