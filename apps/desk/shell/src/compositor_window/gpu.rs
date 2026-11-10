@@ -1,9 +1,12 @@
 //! The compositor window's GPU: Metal, DX12 or Vulkan as #32 §10 says, a device on the adapter that
 //! presents to the window (the one CEF renders with), and the window's swapchain. Headless
 //! (`DESK_COMPOSITOR_HEADLESS=1`, or a locked screen that never hands out a drawable) composes only
-//! on request, for a capture.
+//! on request, for a capture. A frame the OS withholds (`Occluded`: a locked screen, out of sight
+//! without winit saying so) is not asked for again for `WITHHELD` (#134): the window composed it
+//! for nothing at every desk frame.
 
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use winit::window::Window;
 
@@ -13,7 +16,12 @@ pub struct Gpu {
     pub format: wgpu::TextureFormat,
     pub adapter: wgpu::AdapterInfo,
     surface: Option<(wgpu::Surface<'static>, wgpu::SurfaceConfiguration)>,
+    /// The OS withheld the last frame asked for: when to ask again.
+    withheld: Option<Instant>,
 }
+
+/// How long the window waits before it asks again for a frame the OS withheld.
+pub const WITHHELD: Duration = Duration::from_secs(1);
 
 fn backends() -> wgpu::Backends {
     if cfg!(target_os = "macos") {
@@ -100,6 +108,7 @@ impl Gpu {
             format,
             adapter: adapter.get_info(),
             surface,
+            withheld: None,
         })
     }
 
@@ -115,9 +124,14 @@ impl Gpu {
     /// The next swapchain image, when the window can present one.
     pub fn frame(&mut self) -> Option<wgpu::SurfaceTexture> {
         let (surface, config) = self.surface.as_ref()?;
+        self.withheld = None;
         match surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(frame)
             | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => Some(frame),
+            wgpu::CurrentSurfaceTexture::Occluded => {
+                self.withheld = Some(Instant::now() + WITHHELD);
+                None
+            }
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
                 surface.configure(&self.device, config);
                 None
@@ -128,6 +142,11 @@ impl Gpu {
 
     pub fn presents(&self) -> bool {
         self.surface.is_some()
+    }
+
+    /// When to ask again for a frame the OS withheld (`None`: it did not).
+    pub fn withheld(&self) -> Option<Instant> {
+        self.withheld
     }
 
     /// Present no more (the window never hands out an image in time).

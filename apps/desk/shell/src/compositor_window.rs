@@ -292,6 +292,10 @@ impl CompositorWindow {
         self.input_tick(event_loop);
         self.a11y_tick();
         self.begin_frames(now);
+        // The OS withheld the last frame (a locked screen): one now means the window shows again.
+        if self.gpu.withheld().is_some_and(|until| now >= until) && self.gpu.frame().is_some() {
+            self.shared.lock().dirty = true;
+        }
         if !self.shared.lock().dirty || now < self.last_frame + FRAME || self.occluded {
             return;
         }
@@ -302,6 +306,11 @@ impl CompositorWindow {
         self.last_frame = now;
         let started = Instant::now();
         let Some(frame) = self.gpu.frame() else {
+            if self.gpu.withheld().is_some() {
+                // Composed for the router and captures, shown nowhere: not again until a change,
+                // where it composed every desk frame for nothing (#134).
+                self.shared.lock().dirty = false;
+            }
             return;
         };
         if started.elapsed() > Duration::from_millis(250) {

@@ -2,9 +2,9 @@
 //! render only on its begin frames (external begin frames, `web_host/frames.rs`), at most one a desk
 //! frame for each one shown and awake, at its pace, and fewer for one long idle; the window composes
 //! what they paint at most once a frame. The window wakes for its next frame, the live budget's next
-//! look or the clock's, which is ten times a second when every surface on it is long idle; CEF's
-//! poll rides those wake-ups (#129, `pump.rs`). While CEF's work runs long the pump's stand-in looks
-//! at the clock from its own thread (`pump/stand_in.rs`).
+//! look or the clock's, which wants none while every surface on it rests (#134); CEF's poll rides
+//! those wake-ups (#129, `pump.rs`). While CEF's work runs long the pump's stand-in looks at the
+//! clock from its own thread (`pump/stand_in.rs`).
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -40,12 +40,18 @@ impl CompositorWindow {
         }
     }
 
-    /// When the window should wake next: a frame to draw, the budget's look or the clock's.
+    /// When the window should wake next: a frame to draw, the budget's look, the clock's, or a look
+    /// for a frame the OS withheld.
     pub fn next_frame(&self) -> Option<Instant> {
         let frame = self.shared.lock().dirty.then_some(self.last_frame + FRAME);
-        [frame, self.hosted.due(), self.begin_due]
-            .into_iter()
-            .flatten()
-            .min()
+        [
+            frame,
+            self.hosted.due(),
+            self.begin_due,
+            self.gpu.withheld(),
+        ]
+        .into_iter()
+        .flatten()
+        .min()
     }
 }
