@@ -57,20 +57,20 @@ fn a_surfaces_pace_takes_every_desk_frame_or_skips_evenly() {
 fn a_long_idle_surface_rests_until_it_hears_something_paints_or_its_page_asks() {
     let t0 = Instant::now();
     let (mut a, mut b) = (Pacing::new(60), Pacing::new(60));
-    assert!(a.due(t0, Some(0), 0));
-    assert!(b.due(t0, Some(3), 0), "b's first frame is its own");
+    assert!(a.due(t0, Some(0), 1), "a's page painted");
+    assert!(b.due(t0, Some(3), 1), "b's first frame is its own");
     let rest = t0 + LONG_IDLE;
     assert!(a.long_idle(rest) && b.long_idle(rest));
     assert_eq!(
-        taken(&mut a, rest, 60..73, 0),
+        taken(&mut a, rest, 60..73, 1),
         ".............",
         "no frame at rest"
     );
-    assert_eq!(taken(&mut b, rest, 60..73, 0), ".............");
+    assert_eq!(taken(&mut b, rest, 60..73, 1), ".............");
     // Input or a message puts it back on every frame.
     a.heard(rest);
     assert!(!a.long_idle(rest));
-    assert_eq!(taken(&mut a, rest, 73..76, 0), "xxx");
+    assert_eq!(taken(&mut a, rest, 73..76, 1), "xxx");
     // Its page asks: the desk frames within ASKED_FOR, then none again, unless they brought a paint.
     let asked = rest + FRAME / 2;
     b.ask(asked);
@@ -78,7 +78,7 @@ fn a_long_idle_surface_rests_until_it_hears_something_paints_or_its_page_asks() 
     let got: Vec<bool> = looks
         .iter()
         .zip(80u64..)
-        .map(|(at, k)| b.due(*at, Some(k), 0))
+        .map(|(at, k)| b.due(*at, Some(k), 1))
         .collect();
     assert_eq!(
         got,
@@ -90,14 +90,42 @@ fn a_long_idle_surface_rests_until_it_hears_something_paints_or_its_page_asks() 
         "nothing came of them: it rests again"
     );
     b.ask(looks[3]);
-    assert!(b.due(looks[3], Some(84), 0));
+    assert!(b.due(looks[3], Some(84), 1));
     let painted = looks[3] + FRAME;
-    assert!(b.due(painted, Some(85), 1), "a paint came");
+    assert!(b.due(painted, Some(85), 2), "a paint came");
     assert!(
         !b.long_idle(painted + LONG_IDLE / 2),
         "awake: it takes its pace's frames"
     );
-    assert_eq!(taken(&mut b, painted + FRAME, 86..89, 1), "xxx");
+    assert_eq!(taken(&mut b, painted + FRAME, 86..89, 2), "xxx");
+}
+
+#[test]
+fn a_page_that_has_not_painted_since_it_loaded_never_rests() {
+    let t0 = Instant::now();
+    let mut slow = Pacing::new(60);
+    // A start-up script holds the page's thread: no paint, no ask, for longer than LONG_IDLE.
+    assert!(slow.due(t0, Some(0), 0));
+    let late = t0 + LONG_IDLE * 3;
+    assert!(
+        !slow.long_idle(late),
+        "not painted since it loaded: not resting"
+    );
+    assert_eq!(
+        taken(&mut slow, late, 180..183, 0),
+        "xxx",
+        "it keeps its desk frames"
+    );
+    // Its first paint comes; once idle after it, it rests.
+    assert!(slow.due(late, Some(183), 1));
+    let rest = late + LONG_IDLE;
+    assert!(slow.long_idle(rest));
+    assert_eq!(taken(&mut slow, rest, 240..243, 1), "...");
+    // A reload in place (or a restart) starts over: frames until the new page paints.
+    slow.loading(rest);
+    let again = rest + LONG_IDLE * 2;
+    assert!(!slow.long_idle(again), "a new page, not painted yet");
+    assert_eq!(taken(&mut slow, again, 300..303, 1), "xxx");
 }
 
 #[test]

@@ -224,6 +224,9 @@ pub struct Pacing {
     /// The paints seen so far and when the count last moved.
     paints: u64,
     painted: Option<Instant>,
+    /// Its page has painted since it loaded: until then it never rests, so a page whose start-up
+    /// script holds its thread past `LONG_IDLE` (and with it the ask's timers) still gets frames.
+    shown_since_load: bool,
     /// When it last painted or heard something (`None`: not looked at yet).
     active: Option<Instant>,
     press: Option<Press>,
@@ -238,6 +241,7 @@ impl Pacing {
             base: None,
             paints: 0,
             painted: None,
+            shown_since_load: false,
             active: None,
             press: None,
             asked: None,
@@ -262,6 +266,13 @@ impl Pacing {
     /// The surface heard something at `at` (input, a message, a lifecycle change): it is awake.
     pub fn heard(&mut self, at: Instant) {
         self.active = Some(self.active.map_or(at, |t| t.max(at)));
+    }
+
+    /// Its page started loading at `at` (a first load, a restart, a reload in place): it takes every
+    /// desk frame its pace takes until the new page paints.
+    pub fn loading(&mut self, at: Instant) {
+        self.shown_since_load = false;
+        self.heard(at);
     }
 
     /// Its page asked for frames at `at` (`frame_asks.js`): resting, it takes the desk frames within
@@ -311,14 +322,18 @@ impl Pacing {
         if paints != self.paints {
             self.paints = paints;
             self.painted = Some(now);
+            self.shown_since_load = true;
             self.heard(now);
         }
     }
 
-    /// Whether it painted nothing and heard nothing for `LONG_IDLE` by `now`.
+    /// Whether its page painted since it loaded, and since then painted nothing and heard nothing for
+    /// `LONG_IDLE` by `now`.
     pub fn long_idle(&self, now: Instant) -> bool {
-        self.active
-            .is_some_and(|t| now.saturating_duration_since(t) >= LONG_IDLE)
+        self.shown_since_load
+            && self
+                .active
+                .is_some_and(|t| now.saturating_duration_since(t) >= LONG_IDLE)
     }
 
     /// Whether its page's ask still holds at `now`.

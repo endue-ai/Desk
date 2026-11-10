@@ -122,6 +122,17 @@ wrap_load_handler! {
     }
 
     impl LoadHandler {
+        fn on_load_start(
+            &self,
+            _browser: Option<&mut Browser>,
+            frame: Option<&mut Frame>,
+            _transition_type: TransitionType,
+        ) {
+            if frame.is_some_and(|f| f.is_main() == 1) {
+                self.host.loading(&self.surface);
+            }
+        }
+
         fn on_load_end(
             &self,
             _browser: Option<&mut Browser>,

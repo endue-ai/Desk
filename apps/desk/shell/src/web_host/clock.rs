@@ -40,6 +40,14 @@ impl WebHost {
         });
     }
 
+    /// `surface`'s page started loading (a first load, a restart, a reload in place): it keeps its
+    /// desk frames until the new page paints, however long its start-up holds its thread.
+    pub fn loading(&self, surface: &str) {
+        if let Some(record) = self.inner().records.get_mut(surface) {
+            record.pacing.loading(Instant::now());
+        }
+    }
+
     /// The shell page is shown (its window on screen) or hidden.
     pub fn page_shown(&self, shown: bool) {
         if let Some(page) = self.inner().page.as_mut() {
