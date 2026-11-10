@@ -42,6 +42,14 @@ impl CompositorWindow {
     /// One input event of the window, routed and applied; the window manager hears it first and
     /// may take it whole (Escape cancelling a drag, a card's button).
     pub fn input(&mut self, event_loop: &ActiveEventLoop, input: Input) {
+        // A press lands on the desk as it is now. When the desk changed since the scene was last
+        // laid out (the page took a desk, a window glided on), the scene the router hit-tests, and
+        // where the window manager learns the page hears the press, is laid out first. Else a
+        // press right after the page took a desk went where the page had laid the window out
+        // before: onto nothing, or onto a grip (#139).
+        if matches!(input, Input::PointerButton { pressed: true, .. }) && self.shared.lock().dirty {
+            self.compose();
+        }
         if self.wm_input(&input) {
             return;
         }
