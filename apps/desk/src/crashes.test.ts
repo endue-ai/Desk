@@ -33,6 +33,15 @@ describe("crash reports from the shell's window (#322)", () => {
     stop();
   });
 
+  it("a_muted_error_without_an_error_object_reports_its_message_not_null", async () => {
+    const invoke = vi.fn(async (_command: string, _args?: Record<string, unknown>) => null);
+    const stop = reportCrashes(window, invoke);
+    // Chromium's muted cross-origin error: `error` is null, only the message is left.
+    window.dispatchEvent(new ErrorEvent("error", { error: null, message: "Script error." }));
+    expect(invoke.mock.calls).toEqual([["desk_crash", { message: "Script error.", stack: "" }]]);
+    stop();
+  });
+
   it("a_report_from_last_time_shows_one_notice", async () => {
     const invoke = vi.fn(async (command: string) =>
       command === "take_last_crash" ? REPORT : null,

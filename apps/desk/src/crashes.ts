@@ -25,7 +25,7 @@ export function reportCrashes(win: Window, invoke: Invoke): () => void {
     void invoke("desk_crash", { message, stack }).catch(() => {});
   };
   const onError = (event: ErrorEvent) => {
-    const { message, stack } = event.error === undefined ? text(event.message) : text(event.error);
+    const { message, stack } = event.error == null ? text(event.message) : text(event.error);
     send(message || event.message, stack);
   };
   const onRejection = (event: PromiseRejectionEvent) => {
