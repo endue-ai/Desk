@@ -1,9 +1,10 @@
-// The app's performance (`just perf-app`): start-up, idle memory and input latency on the app,
-// WebdriverIO as in the app e2e (../wdio.conf.ts): the desk over chromedriver.
-// Each spec file starts the app with a fresh HOME, the Default profile without the first run and
-// without the e2e dev plugin, and keeps what it measured in e2e/test-results/perf. Once all ran,
-// onComplete writes results.json there, prints the verdicts against budgets.json beside the RT-16
-// targets, and fails when a value is past its baseline's allowance. Without a baseline nothing
+// The app's performance (`just perf-app`): start-up, idle memory, input latency and a fresh desk at
+// rest on the app, WebdriverIO as in the app e2e (../wdio.conf.ts): the desk over chromedriver.
+// Each spec file starts the app with a fresh HOME, the Default profile without the first run (the
+// rest spec's with it, #134) and without the e2e dev plugin, and keeps what it measured in
+// e2e/test-results/perf. Once all ran, onComplete writes results.json there, prints the verdicts
+// against budgets.json beside the RT-16 targets, and fails when a value is past its baseline's
+// allowance or its budget. Without a baseline nothing
 // fails and a budgets.json holding this run's values is left beside results.json for a person to
 // commit; PERF_MODE=record writes it into e2e/perf/budgets.json instead.
 import {
@@ -32,6 +33,8 @@ const ENV: Record<string, Record<string, string | undefined>> = {
   "startup.perf.ts": { DESK_DEV_PLUGINS: undefined, DESK_TRACE: "1" },
 };
 const DEFAULT_ENV = { DESK_DEV_PLUGINS: undefined };
+/** The init.yaml in e2e/fixtures per spec file: the rest spec goes through the first run. */
+const INIT: Record<string, string> = { "rest.perf.ts": "init.yaml" };
 
 let spec = "spec";
 const specName = (file: string | undefined) =>
@@ -90,7 +93,8 @@ export const config: WebdriverIO.Config = {
     spec = specName(specs[0]);
     const results = join(root, "e2e/test-results");
     const env = ENV[spec] ?? DEFAULT_ENV;
-    const extra = await startDriver({ root, results, spec, init: "init-no-first-run.yaml", env });
+    const init = INIT[spec] ?? "init-no-first-run.yaml";
+    const extra = await startDriver({ root, results, spec, init, env });
     Object.assign(capabilities, extra);
   },
   async afterTest(test, _context, { passed }) {

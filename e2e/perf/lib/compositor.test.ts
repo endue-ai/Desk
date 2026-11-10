@@ -26,9 +26,11 @@ function budgets(): Budgets {
     inputFromRest: { p95Ms: null, budgetMs: 16 },
     deskAtRest: {
       wakeupsPerSecond: null,
-      wakeupsBudget: 45,
+      wakeupsBudget: 15,
       cpuPercent: null,
       cpuBudgetPercent: 4,
+      ownChangeMs: null,
+      ownChangeBudgetMs: 100,
     },
   };
 }
@@ -64,10 +66,13 @@ const measured = {
     ...reference,
   },
   deskAtRest: {
-    wakeupsPerSecond: 36.6,
-    osWakeupsPerSecond: 30.9,
-    cefWorksPerSecond: 36.6,
-    cpuPercent: 1.7,
+    wakeupsPerSecond: 11.2,
+    osWakeupsPerSecond: 10.9,
+    cefWorksPerSecond: 11.1,
+    cpuPercent: 0.6,
+    beginFramesPerSecond: 0,
+    ownChangeMs: 61.4,
+    ownChangeMaxMs: 70.2,
     ...reference,
   },
 };
@@ -89,6 +94,7 @@ describe("compositor budgets", () => {
       "inputFromRest.p95Ms:budget",
       "deskAtRest.wakeupsPerSecond:budget",
       "deskAtRest.cpuPercent:budget",
+      "deskAtRest.ownChangeMs:budget",
     ]);
   });
 
@@ -106,6 +112,7 @@ describe("compositor budgets", () => {
       "inputFromRest.p95Ms": "ok",
       "deskAtRest.wakeupsPerSecond": "ok",
       "deskAtRest.cpuPercent": "ok",
+      "deskAtRest.ownChangeMs": "ok",
     });
     expect(failed(verdicts)).toBe(false);
     const memory = verdicts.find((v) => v.section === "surfaceMemory");
@@ -163,11 +170,15 @@ describe("compositor budgets", () => {
   });
 
   it("fails a desk at rest that wakes or spends more than its budget, and a caught press past its", () => {
-    const awake = { ...measured, deskAtRest: { ...measured.deskAtRest, wakeupsPerSecond: 57.7 } };
+    // #129's desk at rest, on the slow clock's begin frames (#134).
+    const awake = { ...measured, deskAtRest: { ...measured.deskAtRest, wakeupsPerSecond: 36.2 } };
     expect(status(compare(budgets(), awake))).toMatchObject({
       "deskAtRest.wakeupsPerSecond": "over",
       "deskAtRest.cpuPercent": "ok",
     });
+    // A page's own change that waits for a heartbeat, or never paints, is not at rest either.
+    const late = { ...measured, deskAtRest: { ...measured.deskAtRest, ownChangeMs: 1012 } };
+    expect(status(compare(budgets(), late))["deskAtRest.ownChangeMs"]).toBe("over");
     const busy = { ...measured, deskAtRest: { ...measured.deskAtRest, cpuPercent: 4.5 } };
     expect(status(compare(budgets(), busy))["deskAtRest.cpuPercent"]).toBe("over");
     const caught = {
@@ -180,7 +191,7 @@ describe("compositor budgets", () => {
       "inputToPaint.p95Ms": "ok",
     });
     expect(failed(verdicts)).toBe(true);
-    expect(report(compare(budgets(), measured))).toMatch(/wake-ups +36.6 \/s +pass <= 45 \/s +ok/);
+    expect(report(compare(budgets(), measured))).toMatch(/wake-ups +11.2 \/s +pass <= 15 \/s +ok/);
   });
 
   it("fails memory per surface out of #35's band either way", () => {
@@ -300,7 +311,11 @@ describe("compositor budgets", () => {
       caughtWaitBudgetMs: 2,
       tries: 20,
     });
-    expect(committed.deskAtRest).toMatchObject({ wakeupsBudget: 45, cpuBudgetPercent: 4 });
+    expect(committed.deskAtRest).toMatchObject({
+      wakeupsBudget: 15,
+      cpuBudgetPercent: 4,
+      ownChangeBudgetMs: 100,
+    });
     expect(committed.inputFromRest).toMatchObject({ budgetMs: 16, tries: 12 });
     // The desk's start is the median of ten starts again (#112), not the fastest of five.
     expect(committed.surfaceStartup).toMatchObject({ runs: 10, allowedRegression: 0.25 });

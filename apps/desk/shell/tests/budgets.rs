@@ -223,6 +223,16 @@ fn perf_desk_at_rest() {
         rest["paints_per_s"], 0.0,
         "nothing painted at rest: {report}"
     );
+    // A page's own change on a desk at rest still shows (#134).
+    let changes: Vec<f64> = report["own_changes"]["ms"]
+        .as_array()
+        .map(|c| c.iter().filter_map(Value::as_f64).collect())
+        .unwrap_or_default();
+    assert_eq!(
+        changes.len(),
+        3,
+        "each change a long-idle page made painted: {report}"
+    );
     keep(
         "desk-at-rest",
         json!({ "deskAtRest": {
@@ -235,6 +245,8 @@ fn perf_desk_at_rest() {
             "gpuCpuPercent": rest["gpu_cpu_percent"],
             "renderersCpuPercent": rest["renderers_cpu_percent"],
             "beginFramesPerSecond": rest["begin_frames_per_s"],
+            "ownChangeMs": median(&changes),
+            "ownChangeMaxMs": changes.iter().copied().fold(f64::MIN, f64::max),
             "seconds": rest["seconds"],
             "platform": platform(),
         }}),
