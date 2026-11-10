@@ -11,14 +11,14 @@ every surface off screen with `desk-compositor`, places windows from `desk-wm`, 
 
 ## Public API
 
-- `app::ShellApp`: the CEF application object of every process (switches, custom schemes).
+- `app::ShellApp`, `features`: the CEF application object of every process (switches, schemes, features off).
 - `pump::{Pump, Wake}`: when CEF's work is due; jobs from other threads for the event loop's thread.
 - `window::Shell`, `pane::Pane`: the winit application and each window with its browser.
 - `host`, `commands`: the bridge (`Desk`, `receive`, `Pages`) and the commands, named as Tauri's were.
 - `instance::claim`: an OS lock on `desk-instance.lock`; a second start hands its arguments over (`desk-instance.json`).
 - `tray`, `menu`, `hotkeys`, `dialog`; `palette`, `eris_window`, `computer`, `float`, `displays`: the other
   windows; `open_files`, `run_event`, `drops`: files from the command line, Finder, the Dock and drags.
-- `scheme`, `plugin_scheme`, `guard`, `paths`, `renderer`, `crashes`: schemes, loads, files, crashes.
+- `scheme`, `plugin_scheme`, `guard`, `paths`, `process_start`, `renderer`, `crashes`: schemes, loads, files, start, crashes.
 - `web_host`: `specs/surface` web content, a windowless browser per surface on the frame clock (`frames`,
   `clock`), its input (`input`, `key_codes`, `routes`, `drag`); `compositor_window`: the runtime's desk in `desk-wm`
   (`report`, `hosted`), its gestures (`wm`, ADR 0153), scene (`draw`), focus ring, drag image; `harness`, `probe`.

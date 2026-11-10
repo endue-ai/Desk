@@ -60,8 +60,8 @@
     "reason": "The compositor's own start, which every desk start waits for before it shows anything: from asking for a GPU device to the first composed frame of the compose budget's desk with the GPU done (device, pipelines, the machine's fonts, 15 textures uploaded, the first glyphs). The same bench run's median of three starts after one that warms what the OS and the driver keep for a new binary (a fresh build's first start took 4 times as long). Fails past the allowance on the platform its baseline was recorded on; the desk's whole start is surfaceStartup's."
   },
   "surfaceStartup": {
-    "firstComposeMs": 181.4,
-    "slowestMs": null,
+    "firstComposeMs": 187.5,
+    "slowestMs": 196.3,
     "runs": 10,
     "platform": "darwin-arm64",
     "recorded": "2026-11-10",
