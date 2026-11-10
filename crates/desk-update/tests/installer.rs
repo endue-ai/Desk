@@ -117,15 +117,15 @@ fn a_tauri_app_is_swapped_for_the_cef_app_and_restarts_into_it() {
     let apps = root.join("Applications");
     let app = installed(&apps, "endue-desk", "tauri 0.5.0-rc.1");
     let origin = shared(Origin::default());
-    let bytes = app_tar_gz("endue-desk-cef", ID, "cef 0.5.0-rc.2");
+    let bytes = app_tar_gz("endue-desk", ID, "cef 0.5.0-rc.2");
     publish(&origin, &key, &key, "0.5.0-rc.2", "0.5.0-rc.2", &bytes);
     let desk = desk(&root, &app, &key, origin);
     assert_eq!(desk.updater.check_now(BETA).state, State::Staged);
     assert_eq!(desk.updater.apply_now().unwrap().state, State::Applying);
     assert_eq!(
         running(&app),
-        [("endue-desk-cef".to_owned(), "cef 0.5.0-rc.2".to_owned())],
-        "the old executable went with the old app"
+        [("endue-desk".to_owned(), "cef 0.5.0-rc.2".to_owned())],
+        "the CEF app took the Tauri app's place"
     );
     let framework = app.join("Contents/Frameworks/Chromium Embedded Framework.framework");
     assert!(framework.join("Resources/icudtl.dat").is_file());
@@ -137,7 +137,32 @@ fn a_tauri_app_is_swapped_for_the_cef_app_and_restarts_into_it() {
     let restarts = desk.restarts.lock().unwrap();
     assert_eq!(
         *restarts,
-        [Relaunch::program(app.join("Contents/MacOS/endue-desk-cef"))]
+        [Relaunch::program(app.join("Contents/MacOS/endue-desk"))]
+    );
+    let _ = fs::remove_dir_all(root);
+}
+
+/// The executable the desk starts again is the one the new app's Info.plist names: a CEF build from
+/// before Stage 1 ended ran `endue-desk-cef`, and its update runs `endue-desk` (#97).
+#[test]
+fn a_renamed_executable_restarts_under_the_new_apps_name() {
+    let (root, key) = (dir("installer-rename"), Key::new());
+    let apps = root.join("Applications");
+    let app = installed(&apps, "endue-desk-cef", "cef 0.5.0-rc.1");
+    let origin = shared(Origin::default());
+    let bytes = app_tar_gz("endue-desk", ID, "cef 0.5.0-rc.2");
+    publish(&origin, &key, &key, "0.5.0-rc.2", "0.5.0-rc.2", &bytes);
+    let desk = desk(&root, &app, &key, origin);
+    assert_eq!(desk.updater.check_now(BETA).state, State::Staged);
+    assert_eq!(desk.updater.apply_now().unwrap().state, State::Applying);
+    assert_eq!(
+        running(&app),
+        [("endue-desk".to_owned(), "cef 0.5.0-rc.2".to_owned())],
+        "the old executable went with the old app"
+    );
+    assert_eq!(
+        *desk.restarts.lock().unwrap(),
+        [Relaunch::program(app.join("Contents/MacOS/endue-desk"))]
     );
     let _ = fs::remove_dir_all(root);
 }
@@ -145,8 +170,8 @@ fn a_tauri_app_is_swapped_for_the_cef_app_and_restarts_into_it() {
 #[test]
 fn a_bad_signature_never_reaches_the_app() {
     let (root, key) = (dir("installer-signature"), Key::new());
-    let app = installed(&root.join("Applications"), "endue-desk-cef", "0.5.0-rc.1");
-    let bytes = app_tar_gz("endue-desk-cef", ID, "forged");
+    let app = installed(&root.join("Applications"), "endue-desk", "0.5.0-rc.1");
+    let bytes = app_tar_gz("endue-desk", ID, "forged");
     let forger = Key::new();
     // Another key's signature, and the updater key's on an older build passed off as this one.
     for (signer, signed_for, says) in [
@@ -165,10 +190,7 @@ fn a_bad_signature_never_reaches_the_app() {
         assert!(!status.staged);
         assert!(desk.updater.apply_now().is_err(), "nothing to apply");
         assert!(desk.restarts.lock().unwrap().is_empty());
-        assert_eq!(
-            running(&app),
-            [("endue-desk-cef".into(), "0.5.0-rc.1".into())]
-        );
+        assert_eq!(running(&app), [("endue-desk".into(), "0.5.0-rc.1".into())]);
     }
     let _ = fs::remove_dir_all(root);
 }
@@ -195,9 +217,9 @@ impl Transport for HalfWay {
 #[test]
 fn a_partial_download_is_never_staged_or_installed() {
     let (root, key) = (dir("installer-partial"), Key::new());
-    let app = installed(&root.join("Applications"), "endue-desk-cef", "0.5.0-rc.1");
+    let app = installed(&root.join("Applications"), "endue-desk", "0.5.0-rc.1");
     let origin = shared(Origin::default());
-    let bytes = app_tar_gz("endue-desk-cef", ID, "0.5.0-rc.2");
+    let bytes = app_tar_gz("endue-desk", ID, "0.5.0-rc.2");
     publish(&origin, &key, &key, "0.5.0-rc.2", "0.5.0-rc.2", &bytes);
     let desk = desk(&root, &app, &key, shared(HalfWay(origin.clone())));
     let status = desk.updater.check_now(BETA);
@@ -214,10 +236,7 @@ fn a_partial_download_is_never_staged_or_installed() {
         "a short file is not staged"
     );
     assert!(desk.restarts.lock().unwrap().is_empty());
-    assert_eq!(
-        running(&app),
-        [("endue-desk-cef".into(), "0.5.0-rc.1".into())]
-    );
+    assert_eq!(running(&app), [("endue-desk".into(), "0.5.0-rc.1".into())]);
     let _ = fs::remove_dir_all(root);
 }
 
@@ -227,9 +246,9 @@ fn no_permission_to_write_keeps_the_app_and_the_build_staged() {
     use std::os::unix::fs::PermissionsExt;
     let (root, key) = (dir("installer-permission"), Key::new());
     let apps = root.join("Applications");
-    let app = installed(&apps, "endue-desk-cef", "0.5.0-rc.1");
+    let app = installed(&apps, "endue-desk", "0.5.0-rc.1");
     let origin = shared(Origin::default());
-    let bytes = app_tar_gz("endue-desk-cef", ID, "0.5.0-rc.2");
+    let bytes = app_tar_gz("endue-desk", ID, "0.5.0-rc.2");
     publish(&origin, &key, &key, "0.5.0-rc.2", "0.5.0-rc.2", &bytes);
     let desk = desk(&root, &app, &key, origin);
     assert_eq!(desk.updater.check_now(BETA).state, State::Staged);
@@ -247,16 +266,10 @@ fn no_permission_to_write_keeps_the_app_and_the_build_staged() {
     assert!(reason.contains(&apps.display().to_string()), "{reason}");
     assert!(status.staged, "the build stays for another try");
     assert!(desk.restarts.lock().unwrap().is_empty());
-    assert_eq!(
-        running(&app),
-        [("endue-desk-cef".into(), "0.5.0-rc.1".into())]
-    );
+    assert_eq!(running(&app), [("endue-desk".into(), "0.5.0-rc.1".into())]);
     assert_eq!(names(&apps), ["endue Desk.app"]);
     // With the permission back, the same staged build goes in.
     assert_eq!(desk.updater.apply_now().unwrap().state, State::Applying);
-    assert_eq!(
-        running(&app),
-        [("endue-desk-cef".into(), "0.5.0-rc.2".into())]
-    );
+    assert_eq!(running(&app), [("endue-desk".into(), "0.5.0-rc.2".into())]);
     let _ = fs::remove_dir_all(root);
 }

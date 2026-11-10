@@ -1,6 +1,6 @@
 [package]
 name = "desk-shell"
-description = "The endue Desk shell on winit and CEF (ADR 0143); replaces the Tauri shell when Stage 1 of #32 ends."
+description = "The endue Desk app: its shell on winit and CEF (ADR 0143), which replaced the Tauri shell when Stage 1 of #32 ended."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,15 +11,15 @@ publish.workspace = true
 [lib]
 name = "desk_shell"
 
-# Until the Tauri shell goes, the CEF one is endue-desk-cef so the two binaries never collide.
+# The Tauri desk's name (#97): its installs, shortcuts and login items start this one once updated.
 [[bin]]
-name = "endue-desk-cef"
+name = "endue-desk"
 path = "src/main.rs"
 
 # Every CEF subprocess on macOS (renderer, GPU, utility) starts here; on Linux and Windows the
 # main binary is its own subprocess.
 [[bin]]
-name = "endue-desk-cef-helper"
+name = "endue-desk-helper"
 path = "src/bin/helper.rs"
 
 # Assembles the macOS .app: the CEF framework, the five helper apps and the shell's files.
@@ -32,7 +32,7 @@ required-features = ["bundle"]
 bundle = ["cef/build-util", "dep:semver"]
 
 [package.metadata.cef.bundle]
-helper_name = "endue-desk-cef-helper"
+helper_name = "endue-desk-helper"
 
 [dependencies]
 # A surface's custom cursor travels as a base64 PNG (specs/surface, #56).

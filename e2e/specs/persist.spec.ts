@@ -7,7 +7,7 @@
 // person answers "Always allow" in endue.permissions' prompt; after the relaunch the same request is
 // granted without a prompt. The setting: the brain the person picks in the rail's brain popover is the
 // runtime's own setting brain.use (ADR 0094); after the relaunch it is still the one picked. The logs
-// folder is covered by apps/desk/src-tauri/src/core_files.rs's unit test.
+// folder is covered by crates/desk-boot/src/core_files.rs's unit test.
 import { $, browser, expect } from "@wdio/globals";
 import { inFrame, MODE, press, shellReady, waitForData } from "../support/desk";
 

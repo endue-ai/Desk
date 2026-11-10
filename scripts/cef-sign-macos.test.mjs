@@ -28,12 +28,12 @@ function bundle(helpers = 5) {
   writeFileSync(
     join(contents, "Info.plist"),
     plist({
-      CFBundleExecutable: "endue-desk-cef",
+      CFBundleExecutable: "endue-desk",
       CFBundleIdentifier: "ai.endue.desk.test",
       CFBundlePackageType: "APPL",
     }),
   );
-  copyFileSync("/usr/bin/true", join(contents, "MacOS/endue-desk-cef"));
+  copyFileSync("/usr/bin/true", join(contents, "MacOS/endue-desk"));
   const cef = join(contents, "Frameworks/Chromium Embedded Framework.framework");
   mkdirSync(join(cef, "Resources"), { recursive: true });
   mkdirSync(join(cef, "Libraries"), { recursive: true });
@@ -83,8 +83,7 @@ describe("cef-sign-macos", { skip }, () => {
     assert.match(signed.out, /signed endue Desk\.app as ad-hoc/u);
     assert.match(signed.out, /not notarised: ad-hoc signed/u);
     assert.equal(verify(app).status, 0, verify(app).stderr);
-    const helper = (suffix) =>
-      join(app, "Contents/Frameworks", `endue-desk-cef Helper${suffix}.app`);
+    const helper = (suffix) => join(app, "Contents/Frameworks", `endue-desk Helper${suffix}.app`);
     const main = entitlements(app);
     assert.match(
       main,

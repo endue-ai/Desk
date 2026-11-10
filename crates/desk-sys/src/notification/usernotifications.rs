@@ -202,7 +202,7 @@ fn center() -> Retained<UNUserNotificationCenter> {
 }
 
 /// Whether the process runs from an `.app` bundle with an identifier. A bare executable has neither,
-/// or an identifier from an embedded Info.plist (`tauri dev`) but no bundle.
+/// or an identifier from an embedded Info.plist (as `tauri dev` had) but no bundle.
 fn in_app_bundle() -> bool {
     autoreleasepool(|_| {
         let bundle = NSBundle::mainBundle();

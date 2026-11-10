@@ -1,9 +1,8 @@
-// Which desk the release workflows build (#46): release-build builds the Tauri desk or the CEF desk;
-// a release line builds what .github/release-shell names at its commit, so the switch to the CEF desk
-// is one reviewed commit on main that the next line carries to beta and then stable (ADR 0092);
-// canary stays on the Tauri desk until Stage 1 of #32 ends. The CEF path fetches CEF by its pin,
-// packages with cargo-packager, signs, runs the install smoke on every package and collects them in
-// the shape the updater reads.
+// Which desk the release workflows build (#46, #97): since Stage 1 of #32 ended, the CEF desk only.
+// .github/release-shell says `cef`, so the next line carries the CEF desk to beta and then stable
+// (ADR 0092), and canary builds it too; release-build refuses any other desk. It fetches CEF by its
+// pin, packages with cargo-packager, signs, runs the install smoke on every package and collects them
+// in the shape the updater reads.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
@@ -15,18 +14,28 @@ const expr = (body) => `\${{ ${body} }}`;
 const scripts = (job) => (job.steps ?? []).map((step) => step.run ?? "").join("\n");
 const CEF = "inputs.shell == 'cef'";
 
-test("release-shell names the desk a release line builds", () => {
-  assert.match(read(".github/release-shell"), /^(tauri|cef)\n$/u);
+test("release-shell names the CEF desk", () => {
+  assert.equal(read(".github/release-shell"), "cef\n");
 });
 
-test("release-build builds the Tauri desk unless asked for the CEF desk", () => {
+test("release-build builds the CEF desk and refuses any other", () => {
   const build = workflow("release-build");
   const input = build.on.workflow_call.inputs.shell;
   assert.equal(input.type, "string");
-  assert.equal(input.default, "tauri");
+  assert.equal(input.default, "cef");
   const steps = build.jobs.build.steps;
-  const tauri = steps.find((step) => /tauri build/u.test(step.run ?? ""));
-  assert.equal(tauri.if, "inputs.shell != 'cef'", "the Tauri build is skipped for the CEF desk");
+  assert.equal(
+    steps.find((step) => /tauri build/u.test(step.run ?? "")),
+    undefined,
+    "no Tauri build (#97)",
+  );
+  assert.doesNotMatch(
+    JSON.stringify(build),
+    /webkit2gtk|matrix\.bundles/u,
+    "nor its SDK or bundles",
+  );
+  assert.equal(steps[0].if, "inputs.shell != 'cef'", "another desk stops before anything runs");
+  assert.match(steps[0].run, /exit 1/u);
   const cef = steps.filter((step) => (step.if ?? "").includes(CEF));
   const runs = cef.map((step) => step.run ?? "").join("\n");
   assert.match(
@@ -64,7 +73,7 @@ test("release-build builds the Tauri desk unless asked for the CEF desk", () => 
   );
 });
 
-test("a line's candidate and its final build the desk the line's commit names; canary stays on Tauri", () => {
+test("a line's candidate and its final build the desk the line's commit names; canary the default, CEF", () => {
   const release = workflow("release");
   assert.match(scripts(release.jobs.gate), /\.github\/release-shell/u);
   assert.equal(release.jobs.build.with.shell, expr("needs.gate.outputs.shell"));
@@ -78,14 +87,14 @@ test("a line's candidate and its final build the desk the line's commit names; c
   assert.equal(
     workflow("canary").jobs.build.with.shell,
     undefined,
-    "canary builds the default, Tauri",
+    "canary builds the default, the CEF desk",
   );
 });
 
-test("the release dry run rehearses either desk, and runs when packaging changes", () => {
+test("the release dry run rehearses the CEF desk, and runs when packaging changes", () => {
   const dry = workflow("release-dry-run");
   const input = dry.on.workflow_dispatch.inputs.shell;
-  assert.deepEqual(input.options, ["release-shell", "tauri", "cef"]);
+  assert.deepEqual(input.options, ["release-shell", "cef"]);
   assert.equal(dry.jobs.build.with.shell, expr("needs.key.outputs.shell"));
   for (const path of [
     ".github/release-shell",

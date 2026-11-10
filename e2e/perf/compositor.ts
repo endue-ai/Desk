@@ -43,7 +43,7 @@ const steps = [
   run("cargo", ["test", "-p", "desk-shell", "--test", "budgets", "--no-run"]),
 ];
 if (process.platform === "darwin") {
-  rmSync(join(root, "target/bundle/endue-desk-cef.app"), { recursive: true, force: true });
+  rmSync(join(root, "target/bundle/endue-desk.app"), { recursive: true, force: true });
   steps.push(
     run("cargo", [
       "run",

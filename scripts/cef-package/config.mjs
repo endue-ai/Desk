@@ -5,11 +5,9 @@ import { isAbsolute, join, resolve } from "node:path";
 
 export const ROOT = resolve(import.meta.dirname, "../..");
 export const PACKAGER = join(ROOT, "apps/desk/shell/packager");
-/** The shell's binaries (apps/desk/shell/Cargo.toml) until the Tauri one goes and takes its name. */
-export const MAIN = "endue-desk-cef";
-export const HELPER = "endue-desk-cef-helper";
-/** The Tauri desk's binary (apps/desk/src-tauri/tauri.conf.json `mainBinaryName`). */
-export const TAURI_MAIN = "endue-desk";
+/** The shell's binaries (apps/desk/shell/Cargo.toml): the main one has the Tauri desk's name (#97). */
+export const MAIN = "endue-desk";
+export const HELPER = "endue-desk-helper";
 
 /** The five helper apps CEF needs on macOS: name and identifier suffixes. Which entitlements each
  * one is signed with is scripts/cef-sign-macos.sh's to say. */
@@ -155,15 +153,9 @@ export function packagerConfig({ base, pin, target, version, paths, hook, signCo
       ...licences(pin, cefFiles),
     ];
     if (os === "linux") {
-      // The real executable lives in /usr/lib/endue-desk-cef beside libcef.so; /usr/bin has the launcher.
+      // The real executable lives in /usr/lib/endue-desk beside libcef.so; /usr/bin has the launcher,
+      // where a Tauri desk that installed this .deb as its update restarts (#47).
       config.resources.unshift({ src: join(paths.binaries, MAIN), target: MAIN });
-      // A Tauri desk that installed this .deb as its update restarts what it started as,
-      // /usr/bin/endue-desk, which dpkg just removed: the same launcher answers there (#47) until the
-      // desk's binary takes that name at the end of Stage 1.
-      config.deb = {
-        ...config.deb,
-        files: { [join(paths.stage, "bin", MAIN)]: `/usr/bin/${TAURI_MAIN}` },
-      };
     }
     if (os === "windows" && signCommand) {
       config.windows = { ...config.windows, signCommand };

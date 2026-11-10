@@ -32,14 +32,14 @@ describe("cef-package", () => {
     const config = render("aarch64-apple-darwin", { hook: "bash sign.sh hook app" });
     assert.deepEqual(config.formats, ["app", "dmg"]);
     assert.equal(config.productName, "endue Desk");
-    assert.deepEqual(config.binaries, [{ path: "endue-desk-cef", main: true }]);
+    assert.deepEqual(config.binaries, [{ path: "endue-desk", main: true }]);
     assert.deepEqual(config.macos.frameworks, [
       "/cef/Chromium Embedded Framework.framework",
-      "/o/stage/helpers/endue-desk-cef Helper.app",
-      "/o/stage/helpers/endue-desk-cef Helper (Alerts).app",
-      "/o/stage/helpers/endue-desk-cef Helper (GPU).app",
-      "/o/stage/helpers/endue-desk-cef Helper (Plugin).app",
-      "/o/stage/helpers/endue-desk-cef Helper (Renderer).app",
+      "/o/stage/helpers/endue-desk Helper.app",
+      "/o/stage/helpers/endue-desk Helper (Alerts).app",
+      "/o/stage/helpers/endue-desk Helper (GPU).app",
+      "/o/stage/helpers/endue-desk Helper (Plugin).app",
+      "/o/stage/helpers/endue-desk Helper (Renderer).app",
     ]);
     const ids = helperApps("ai.endue.desk").map((h) => h.identifier);
     assert.equal(new Set(ids).size, 5, "every helper has an identifier of its own");
@@ -111,7 +111,8 @@ describe("cef-package", () => {
     assert.deepEqual(config.formats, ["deb", "appimage"]);
     assert.equal(config.binariesDir, "/o/stage/bin", "the launcher is what lands in /usr/bin");
     const t = targets(config);
-    assert.equal(t["endue-desk-cef"], "/b/endue-desk-cef", "the real executable is a resource");
+    assert.deepEqual(config.binaries, [{ path: "endue-desk", main: true }], "/usr/bin/endue-desk");
+    assert.equal(t["endue-desk"], "/b/endue-desk", "the real executable is a resource");
     for (const name of ["libcef.so", "chrome-sandbox", "libvulkan.so.1", "locales"]) {
       assert.equal(t[name], `/o/stage/cef/${name}`, name);
     }
@@ -125,11 +126,11 @@ describe("cef-package", () => {
       "linuxdeploy does not copy libcef.so twice",
     );
     const launcher = readFileSync(join(PACKAGER, "linux/launcher.sh"), "utf8");
-    assert.match(launcher, /exec "\$here\/\.\.\/lib\/endue-desk-cef\/endue-desk-cef" "\$@"/u);
-    assert.deepEqual(
+    assert.match(launcher, /exec "\$here\/\.\.\/lib\/endue-desk\/endue-desk" "\$@"/u);
+    assert.equal(
       config.deb.files,
-      { "/o/stage/bin/endue-desk-cef": "/usr/bin/endue-desk" },
-      "a Tauri desk restarting from /usr/bin/endue-desk after this .deb went in finds the CEF desk (#47)",
+      undefined,
+      "the launcher is /usr/bin/endue-desk itself, where a Tauri desk restarts after this .deb went in (#47)",
     );
   });
 
@@ -139,7 +140,7 @@ describe("cef-package", () => {
     const plist = helperPlist(template, { ...gpu, version: "0.5.0-pre.212", minimum: "12.0" });
     assert.match(
       plist,
-      /<key>CFBundleExecutable<\/key>\s*<string>endue-desk-cef Helper \(GPU\)<\/string>/u,
+      /<key>CFBundleExecutable<\/key>\s*<string>endue-desk Helper \(GPU\)<\/string>/u,
     );
     assert.match(
       plist,
@@ -203,8 +204,8 @@ describe("cef-package", () => {
     assert.equal(bundleFolder("endue Desk_0.5.0_aarch64.dmg"), "dmg");
     assert.equal(bundleFolder("endue Desk_0.5.0_x64-setup.exe"), "nsis");
     assert.equal(bundleFolder("endue Desk_0.5.0_x64_en-US.msi"), "msi");
-    assert.equal(bundleFolder("endue-desk-cef_0.5.0_x86_64.AppImage"), "appimage");
-    assert.equal(bundleFolder("endue-desk-cef_0.5.0_amd64.deb"), "deb");
+    assert.equal(bundleFolder("endue-desk_0.5.0_x86_64.AppImage"), "appimage");
+    assert.equal(bundleFolder("endue-desk_0.5.0_amd64.deb"), "deb");
     assert.equal(
       bundleFolder("endue Desk.app"),
       undefined,

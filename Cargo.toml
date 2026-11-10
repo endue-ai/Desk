@@ -1,8 +1,7 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "apps/desk/src-tauri", "apps/desk/shell", "vendor/tauri-plugin-single-instance"]
-# The Tauri app needs the system webview SDKs and the CEF shell downloads and builds CEF, so
-# day-to-day commands skip both. `just check-app` and `just check-shell` cover them.
+members = ["crates/*", "apps/desk/shell"]
+# The shell downloads and builds CEF, so day-to-day commands skip it; `just check-shell` covers it.
 default-members = ["crates/*"]
 
 [workspace.package]

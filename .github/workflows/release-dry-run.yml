@@ -6,14 +6,14 @@ name: release-dry-run
 # artifacts are labelled unsigned and the tree is the artifact release-dry-run. It never enters the
 # signing environment, so it runs on any branch (workflow_dispatch) and on pull requests that change
 # the release files, which GitHub cannot dispatch before they are on main.
-# It builds the desk .github/release-shell names, as a line would; by hand, either one (#46).
+# It builds the desk .github/release-shell names, as a line would (#46): the CEF desk since #97.
 on:
   workflow_dispatch:
     inputs:
       shell:
         description: The desk to build (release-shell is the one .github/release-shell names)
         type: choice
-        options: ["release-shell", "tauri", "cef"]
+        options: ["release-shell", "cef"]
         default: release-shell
   # ci.yml runs it for a pull request into a release line that changes these files (ADR 0092).
   workflow_call:
@@ -29,7 +29,6 @@ on:
       - "scripts/cef-**"
       - "e2e/smoke/verify-signature.sh"
       - "e2e/smoke/install-and-launch.sh"
-      - "apps/desk/src-tauri/tauri.conf.json"
       - "apps/desk/shell/packager/**"
 
 permissions:

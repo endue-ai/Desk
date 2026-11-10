@@ -1,6 +1,6 @@
 # desk-sys
 
-Primitives behind cargo features (on Linux, `audio` needs `libasound2-dev`). Layer: Tauri shell. No
+Primitives behind cargo features (on Linux, `audio` needs `libasound2-dev`). Layer: the shell. No
 permission checks: desk-core authorizes every call first. Calls return `Error { code, message }` (bridge
 `ErrorCode`); `Error::from` maps fs `io::Error`s, OS permission ones to `io_error`. `NAME`: crate name.
 

@@ -1,7 +1,7 @@
 //! The files fs.url hands out, served on `desk-plugin` with HTTP ranges (ADR 0041): which part of
 //! the file a request asks for, and a response with only that part read from disk. One range per
 //! request; several, or one this server does not understand, get the whole file (RFC 9110 lets a
-//! server ignore Range). Tauri's response bodies live in memory, so no response carries more than
+//! server ignore Range). Response bodies live in memory, so no response carries more than
 //! `MAX_PART` of a range; media elements ask again from where it ended.
 
 use std::fs::File;

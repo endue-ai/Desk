@@ -1,7 +1,8 @@
 // Which workflows run when (ADR 0081, ADR 0092): pull requests into main and the merge queue run the
-// Linux gates; a pull request into a release line release/vX.Y also runs macOS, Windows and the app on
-// every OS; a push to a line builds a candidate for beta; a final, by hand, tags it and lists it on
-// stable for a tenth of the desks; canary builds nightly or by hand, with macOS and Windows checks.
+// Linux gates; a pull request into a release line release/vX.Y also runs macOS, Windows and the CEF
+// shell on every OS; a push to a line builds a candidate for beta; a final, by hand, tags it and
+// lists it on stable for a tenth of the desks; canary builds nightly or by hand, with macOS and
+// Windows checks.
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -29,16 +30,19 @@ test("macOS and Windows checks run only for a pull request into release/**", asy
   }
 });
 
-test("the app is built on Linux for an app change and on every OS for a release", async () => {
+test("the CEF shell is built on every OS for an app change and for a release", async () => {
   const { jobs } = await workflow("ci");
-  const build = jobs["app-build"];
+  assert.equal(jobs["app-build"], undefined, "the Tauri app's build went with it (#97)");
+  const build = jobs["shell-build"];
   assert.match(build.if, /needs\.changes\.outputs\.app == 'true'/u);
   assert.ok(build.if.includes(RELEASE_PR), build.if);
-  const matrix = build.strategy.matrix.os;
-  assert.equal(typeof matrix, "string", "the matrix is chosen by the base branch");
-  assert.ok(matrix.includes(RELEASE_PR), matrix);
-  const lists = [...matrix.matchAll(/'(\[[^\]]*\])'/gu)].map((m) => JSON.parse(m[1]));
-  assert.deepEqual(lists, [["ubuntu-latest", "macos-latest", "windows-latest"], ["ubuntu-latest"]]);
+  assert.deepEqual(build.strategy.matrix.os, ["ubuntu-latest", "macos-latest", "windows-latest"]);
+  for (const recipe of ["just check-shell", "just build-shell"]) {
+    assert.ok(
+      build.steps.some((step) => step.run === recipe),
+      recipe,
+    );
+  }
 });
 
 test("a release pull request runs the release dry run inside ci when it changes the release files", async () => {

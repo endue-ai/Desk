@@ -1,12 +1,12 @@
 name: ci
 
 # Every pull request and the merge queue run on Linux: check and unit tests, the runtime e2e, codegen,
-# red-on-base, and the Tauri app's build when the shell or the primitives change. A pull request into
-# a release line release/vX.Y (ADR 0081, ADR 0092), a cherry-pick of main commits, also runs check and
-# unit tests on macOS and Windows and the app on all three, and the release dry run when it changes
-# the release files; merging it builds the line's next candidate (release.yml). The final `ci` job is
-# the required check. The merge queue runs it again on each PR combined with main and the PRs ahead of it
-# (ADR 0015).
+# red-on-base, and the CEF shell's build on three OSes when the shell or the primitives change. A pull
+# request into a release line release/vX.Y (ADR 0081, ADR 0092), a cherry-pick of main commits, also
+# runs check and unit tests on macOS and Windows, the shell's build, and the release dry run when it
+# changes the release files; merging it builds the line's next candidate (release.yml). The final `ci`
+# job is the required check. The merge queue runs it again on each PR combined with main and the PRs
+# ahead of it (ADR 0015).
 on:
   pull_request:
   merge_group:
@@ -43,11 +43,11 @@ jobs:
           if git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
             files="$(git diff --name-only "$BASE" HEAD)"
           else
-            files="apps/desk/src-tauri/"
+            files="apps/desk/shell/"
           fi
-          if grep -qE '^(apps/desk/src-tauri/|apps/desk/shell/|crates/desk-web/|crates/desk-sys/|vendor/tauri-plugin-single-instance/)' <<<"$files"; then app=true; else app=false; fi
+          if grep -qE '^(apps/desk/shell/|crates/desk-web/|crates/desk-sys/)' <<<"$files"; then app=true; else app=false; fi
           # The files the release dry run proves (its own pull_request paths).
-          if grep -qE '^(\.github/workflows/(release|release-build|release-dry-run|release-final|canary)\.yml|\.github/release-shell|scripts/release-[^/]*\.mjs|scripts/cef-.*|e2e/smoke/(verify-signature|install-and-launch)\.sh|apps/desk/src-tauri/tauri\.conf\.json|apps/desk/shell/packager/.*)$' <<<"$files"; then release=true; else release=false; fi
+          if grep -qE '^(\.github/workflows/(release|release-build|release-dry-run|release-final|canary)\.yml|\.github/release-shell|scripts/release-[^/]*\.mjs|scripts/cef-.*|e2e/smoke/(verify-signature|install-and-launch)\.sh|apps/desk/shell/packager/.*)$' <<<"$files"; then release=true; else release=false; fi
           echo "app=$app" | tee -a "$GITHUB_OUTPUT"
           echo "release=$release" | tee -a "$GITHUB_OUTPUT"
 
@@ -157,49 +157,13 @@ jobs:
       - run: just check
       - run: just test-unit
 
-  app-build:
-    name: app-build (${{ matrix.os }})
-    needs: changes
-    if: needs.changes.outputs.app == 'true' || startsWith(github.base_ref, 'release/')
-    strategy:
-      fail-fast: false
-      matrix:
-        # Linux for an app change; every OS for a release pull request.
-        os: ${{ fromJSON(startsWith(github.base_ref, 'release/') && '["ubuntu-latest","macos-latest","windows-latest"]' || '["ubuntu-latest"]') }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: pnpm
-      - name: Install Rust toolchain (rust-toolchain.toml)
-        run: rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: just
-      - name: Configure Ubuntu package downloads
-        if: runner.os == 'Linux'
-        run: sudo "$(command -v node)" scripts/ci-apt.mjs
-      - name: Install the WebKitGTK SDK
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-      - run: pnpm install --frozen-lockfile
-      - run: just check-app
-      - run: just build-app
-
-  # The CEF shell (ADR 0143, Stage 1 of #32) on every OS: CEF downloads in its build script and
-  # cmake builds its C++ wrapper. Not yet among the ci gate's needs: it joins them once it has run
-  # green on all three runners.
+  # The CEF shell (ADR 0143) on every OS, for an app change and for every release pull request: CEF
+  # downloads in its build script and cmake builds its C++ wrapper. Not yet among the ci gate's needs:
+  # it joins them once it has run green on all three runners.
   shell-build:
     name: shell-build (${{ matrix.os }})
     needs: changes
-    if: needs.changes.outputs.app == 'true'
+    if: needs.changes.outputs.app == 'true' || startsWith(github.base_ref, 'release/')
     strategy:
       fail-fast: false
       matrix:
@@ -315,7 +279,6 @@ jobs:
       - runtime-e2e
       - check-macos
       - check-windows
-      - app-build
       - codegen-check
       - red-on-base
       - release-dry-run

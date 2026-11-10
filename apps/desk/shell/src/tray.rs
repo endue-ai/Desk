@@ -9,8 +9,8 @@ use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
 
 use crate::menu::{Choice, item};
 
-/// The app's icon (the Tauri bundle's 32 px PNG until packaging moves it, #46).
-const ICON: &[u8] = include_bytes!("../../src-tauri/icons/32x32.png");
+/// The app's icon: the bundles' 32 px PNG (`apps/desk/shell/icons`).
+const ICON: &[u8] = include_bytes!("../icons/32x32.png");
 
 /// The tray's menu; with a staged build it offers to restart into it.
 pub fn menu(staged: Option<&str>) -> tray_icon::menu::Result<Menu> {

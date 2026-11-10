@@ -1,6 +1,5 @@
-// The app's memory from `ps -A -o pid=,ppid=,rss=,comm=`: the app is found under the tauri-driver
-// that launched it, and its RSS is summed with its descendants' (WebKit's web and network
-// processes). Pure: memory.test.ts.
+// The app's memory from `ps -A -o pid=,ppid=,rss=,comm=`: the app's RSS summed with its
+// descendants' (its CEF helpers: GPU, network, renderers). Pure: memory.test.ts.
 import { round1 } from "./stats";
 
 export interface Proc {
@@ -32,13 +31,6 @@ export function treeOf(procs: readonly Proc[], pid: number): Proc[] {
     tree.push(...procs.filter((p) => p.ppid === parent.pid && p.pid !== parent.pid));
   }
   return tree;
-}
-
-/** The first process named `name` under `root` (not `root` itself), nearest first. */
-export function findUnder(procs: readonly Proc[], root: number, name: string): Proc | undefined {
-  return treeOf(procs, root)
-    .slice(1)
-    .find((p) => p.name === name);
 }
 
 /** The summed RSS of `procs` in MB (MiB), one decimal. */

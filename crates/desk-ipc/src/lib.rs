@@ -40,7 +40,7 @@ pub use unsupported::{Client, Listener};
 /// The caller id of every connection: the person's own scripts and AI agents, through the CLI.
 pub const CALLER: &str = "cli";
 
-/// The app's identifier: Tauri names the data folder after it (`tauri.conf.json`).
+/// The app's identifier: the shell names the data folder after it (`apps/desk/shell/src/paths.rs`).
 pub const APP_ID: &str = "ai.endue.desk";
 
 /// The socket's file name in the data folder.

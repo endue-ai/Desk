@@ -103,29 +103,18 @@ function configuredBefore(job, install) {
   return steps[setupAt];
 }
 
-test("runtime and app build install with configured APT while retaining commands, deadlines and gates", async () => {
+test("the runtime e2e installs with configured APT while retaining commands, deadlines and gates", async () => {
   const { jobs } = await workflow("ci");
   const runtime = jobs["runtime-e2e"];
   configuredBefore(runtime, "playwright install --with-deps chromium");
   assert.equal(runtime["timeout-minutes"], 15);
   assert.ok(runtime.steps.some((step) => step.run === "just test-e2e"));
-  const build = jobs["app-build"];
-  const step = configuredBefore(build, "sudo apt-get update");
-  assert.equal(step.if, "runner.os == 'Linux'");
-  assert.equal(build["timeout-minutes"], 30);
-  assert.ok(build.steps.some((step) => step.run === "just check-app"));
-  assert.ok(build.steps.some((step) => step.run === "just build-app"));
-  assert.match(
-    build.steps.find((item) => item.run?.includes("apt-get install")).run,
-    /sudo apt-get install -y libwebkit2gtk-4\.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev/,
-  );
   assert.deepEqual(jobs.ci.needs, [
     "changes",
     "check-linux",
     "runtime-e2e",
     "check-macos",
     "check-windows",
-    "app-build",
     "codegen-check",
     "red-on-base",
     "release-dry-run",
@@ -154,16 +143,6 @@ test("app e2e configures APT and changes to the helper exercise the existing pac
     );
   }
 
-  // The Tauri app's run, kept until the CEF desk replaces it.
-  const job = config.jobs["app-e2e-tauri"];
-  assert.equal(job.env.DESK_E2E_SHELL, "tauri");
-  configuredBefore(job, "sudo apt-get update");
-  assert.equal(job["timeout-minutes"], 45);
-  assert.ok(job.steps.some((step) => step.run === "just bundle-app"));
-  assert.ok(job.steps.some((step) => step.run === xvfb("test-app-e2e")));
-  assert.ok(job.steps.some((step) => step.run === xvfb("smoke")));
-  assert.match(
-    job.steps.find((step) => step.run?.includes("apt-get install")).run,
-    /sudo apt-get install -y libwebkit2gtk-4\.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev webkit2gtk-driver xvfb/,
-  );
+  // The Tauri app's run went with the Tauri app at the end of Stage 1 (#97).
+  assert.equal(config.jobs["app-e2e-tauri"], undefined);
 });

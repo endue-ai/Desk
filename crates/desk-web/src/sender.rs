@@ -12,8 +12,8 @@ pub const RUNTIME: &str = "desk";
 /// The palette window's fixed caller: one segment, so no installed plugin can have it.
 pub const PALETTE: &str = "palette";
 
-/// The commands of each window, as the Tauri shell's capabilities allowed them
-/// (`apps/desk/src-tauri/capabilities/*.json`).
+/// The commands of each window, as the Tauri shell's capabilities allowed them (its
+/// `capabilities/*.json`, deleted with it when Stage 1 of #32 ended).
 const MAIN_COMMANDS: &[&str] = &[
     "desk_ready",
     "desk_start",

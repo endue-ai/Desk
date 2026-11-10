@@ -46,7 +46,7 @@ pub struct Bundled {
     pub tokens: &'static str,
     /// `packages/ui/dist/base.css`
     pub base: &'static str,
-    /// A shell's own files on the scheme (the Tauri palette's), by path.
+    /// A shell's own files on the scheme (the palette's), by path.
     pub extra: fn(&str) -> Option<&'static [u8]>,
 }
 

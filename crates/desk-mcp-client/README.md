@@ -19,7 +19,7 @@ over stdio, each as the caller `mcp:<name>`, and every tool becomes the agent co
 
 The core makes an `mcp:` provider's commands irreversible unless read-only, and keeps it to its own ids
 (`crates/desk-core/src/core_tools.rs`). The app attaches the servers at the first ready line
-(`apps/desk/src-tauri/src/mcp.rs`).
+(`crates/desk-boot/src/mcp.rs`).
 
 ## Tests
 

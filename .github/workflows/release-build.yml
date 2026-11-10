@@ -4,17 +4,14 @@ name: release-build
 # (which builds a candidate's commit again, given as ref; ADR 0092). No macOS
 # universal build: darwin-aarch64 and darwin-x86_64 ship apart. Updater artifacts are signed with
 # the updater key, the version in each signature; the public key and the commit go into the binary.
-# macOS is signed and notarised when the Apple secrets are set; Windows ships NSIS only, unsigned
-# until the certificate is chosen. Linux builds
-# an AppImage and a .deb, and an .rpm for releases only (RPM takes no hyphen in a version). The .deb
-# is checked against the updater key before it leaves. Each target leaves as the artifact
-# desk-<target>, canonical names from scripts/release-collect.mjs. A dry run (release-dry-run.yml)
-# stays out of the signing environment, signs with the run's throwaway key, embeds no key in the
-# binary and labels its artifacts desk-<target>-unsigned.
-# With shell: cef it builds the CEF desk instead (#46, ADR 0145): CEF fetched by its pin and hash,
-# cargo-packager's .app (helpers signed one by one) and .dmg, NSIS and MSI, .deb and AppImage, the
-# updater artifacts signed as Tauri's are, the install smoke run on every package, and the same
-# canonical names; Windows is signed when DESK_WINDOWS_SIGN_COMMAND is set.
+# It builds the CEF desk (#46, ADR 0145), the only desk since Stage 1 of #32 ended (#97): CEF fetched
+# by its pin and hash, cargo-packager's .app (helpers signed one by one) and .dmg, NSIS and MSI, .deb
+# and AppImage, the updater artifacts signed as Tauri's were, the install smoke run on every package.
+# macOS is signed and notarised when the Apple secrets are set; Windows is signed when
+# DESK_WINDOWS_SIGN_COMMAND is set. The .deb is checked against the updater key before it leaves.
+# Each target leaves as the artifact desk-<target>, canonical names from scripts/release-collect.mjs.
+# A dry run (release-dry-run.yml) stays out of the signing environment, signs with the run's
+# throwaway key, embeds no key in the binary and labels its artifacts desk-<target>-unsigned.
 on:
   workflow_call:
     inputs:
@@ -23,10 +20,10 @@ on:
         required: true
         type: string
       shell:
-        description: The desk to build, tauri or cef (.github/release-shell names a line's).
+        description: The desk to build, cef (.github/release-shell names a line's; the Tauri desk is gone, #97).
         required: false
         type: string
-        default: tauri
+        default: cef
       ref:
         description: The commit to build (empty for the commit that started the run).
         required: false
@@ -53,19 +50,15 @@ jobs:
           - target: darwin-aarch64
             os: macos-latest
             rust: aarch64-apple-darwin
-            bundles: app,dmg
           - target: darwin-x86_64
             os: macos-latest
             rust: x86_64-apple-darwin
-            bundles: app,dmg
           - target: windows-x86_64
             os: windows-latest
             rust: x86_64-pc-windows-msvc
-            bundles: nsis
           - target: linux-x86_64
             os: ubuntu-22.04
             rust: x86_64-unknown-linux-gnu
-            bundles: appimage,deb,rpm
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     defaults:
@@ -74,6 +67,13 @@ jobs:
     env:
       VERSION: ${{ inputs.version }}
     steps:
+      - name: Refuse a desk this workflow no longer builds
+        if: inputs.shell != 'cef'
+        env:
+          SHELL_NAME: ${{ inputs.shell }}
+        run: |
+          echo "::error::release-build builds the CEF desk only (shell: cef), not $SHELL_NAME: the Tauri desk was deleted when Stage 1 of #32 ended (#97)"
+          exit 1
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
@@ -94,11 +94,6 @@ jobs:
       - name: Configure Ubuntu package downloads
         if: runner.os == 'Linux'
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
-      - name: Install the WebKitGTK SDK and the AppImage tools
-        if: runner.os == 'Linux' && inputs.shell != 'cef'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libfuse2
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v8
         if: ${{ inputs.dry-run }}
@@ -127,8 +122,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        # Tauri signs as soon as these are set, even to "", so only set ones reach the build. It
-        # notarises with an App Store Connect API key when one is set (no person's Apple ID or
+        # Only set ones reach the build (scripts/cef-sign-macos.sh signs ad-hoc without an identity).
+        # It notarises with an App Store Connect API key when one is set (no person's Apple ID or
         # two-factor prompt behind it), else with the Apple ID and its app password.
         run: |
           if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_SIGNING_IDENTITY" ]; then
@@ -147,32 +142,6 @@ jobs:
               if [ -n "${!name}" ]; then echo "$name=${!name}" >> "$GITHUB_ENV"; fi
             done
           fi
-      - name: Build ${{ matrix.target }} ${{ inputs.version }}
-        if: inputs.shell != 'cef'
-        # A dry run signs with the run's key and embeds none (empty is none), so its binary never
-        # updates itself.
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY }}
-          DESK_UPDATER_PUBKEY: ${{ !inputs.dry-run && vars.DESK_UPDATER_PUBKEY || '' }}
-          DESK_UPDATE_URL: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
-          DESK_BUILD_COMMIT: ${{ inputs.ref || github.sha }}
-        # createUpdaterArtifacts reads the public key from plugins.updater.pubkey and refuses an empty
-        # one; the plugin's own config needs it too.
-        run: |
-          config="$(printf '{"version":"%s","bundle":{"createUpdaterArtifacts":true},"plugins":{"updater":{"pubkey":"%s"}}}' "$VERSION" "$UPDATER_PUBKEY")"
-          # RPM refuses a hyphen in the version: pre-releases (canary, beta) build no .rpm, and
-          # desks installed from one follow stable.
-          bundles="${{ matrix.bundles }}"
-          if [[ "$VERSION" == *-* ]]; then bundles="${bundles/,rpm/}"; fi
-          pnpm --filter @endue-ai/desk-app tauri build \
-            --target "${{ matrix.rust }}" --bundles "$bundles" --config "$config"
-      - name: Collect the bundles under canonical names
-        if: inputs.shell != 'cef'
-        run: |
-          node scripts/release-collect.mjs --bundle "target/${{ matrix.rust }}/release/bundle" \
-            --version "$VERSION" --target "${{ matrix.target }}" --out dist
       - name: Install the CEF desk's build tools
         if: inputs.shell == 'cef' && runner.os != 'Windows'
         run: |
@@ -195,8 +164,9 @@ jobs:
           key: cef-${{ matrix.rust }}-${{ hashFiles('apps/desk/shell/packager/cef.json') }}
       - name: Build the CEF desk ${{ inputs.version }} for ${{ matrix.target }}
         if: inputs.shell == 'cef'
+        # A dry run embeds no updater key (empty is none), so its binary never updates itself.
         env:
-          # Linux: the desk finds libcef.so beside itself in /usr/lib/endue-desk-cef.
+          # Linux: the desk finds libcef.so beside itself in /usr/lib/endue-desk.
           RUSTFLAGS: ${{ runner.os == 'Linux' && '-C link-arg=-Wl,-rpath,$ORIGIN' || '' }}
           DESK_UPDATER_PUBKEY: ${{ !inputs.dry-run && vars.DESK_UPDATER_PUBKEY || '' }}
           DESK_UPDATE_URL: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}

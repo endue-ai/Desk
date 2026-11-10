@@ -27,14 +27,14 @@ fn refused(layout: &Layout, target: &str, file: &str, bytes: &[u8], scratch: &Pa
 fn an_archive_that_is_not_this_desk_whole_is_refused_and_nothing_moves() {
     let root = dir("packages-app");
     let apps = root.join("Applications");
-    let app = installed(&apps, "endue-desk-cef", "0.5.0");
+    let app = installed(&apps, "endue-desk", "0.5.0");
     let layout = Layout::App { app: app.clone() };
-    let whole = app_tar_gz("endue-desk-cef", ID, "0.6.0");
+    let whole = app_tar_gz("endue-desk", ID, "0.6.0");
     let cases: Vec<(Vec<u8>, &str)> = vec![
         (b"PK\x03\x04 a zip".to_vec(), "is not an .app.tar.gz"),
         (whole[..whole.len() * 2 / 3].to_vec(), "did not unpack"),
         (
-            app_tar_gz("endue-desk-cef", "ai.other.app", "x"),
+            app_tar_gz("endue-desk", "ai.other.app", "x"),
             "not this desk (ai.endue.desk)",
         ),
         (
@@ -44,17 +44,17 @@ fn an_archive_that_is_not_this_desk_whole_is_refused_and_nothing_moves() {
         (
             tar_gz(&[Entry(
                 "endue Desk.app/Contents/Info.plist",
-                info_plist("endue-desk-cef", ID).into_bytes(),
+                info_plist("endue-desk", ID).into_bytes(),
                 0o644,
             )]),
-            "no executable endue-desk-cef",
+            "no executable endue-desk",
         ),
     ];
     for (bytes, says) in cases {
         let why = refused(&layout, APP, "desk.app.tar.gz", &bytes, &root);
         assert!(why.contains(says), "{why} does not say {says}");
         assert_eq!(names(&apps), ["endue Desk.app"], "after: {says}");
-        let program = app.join("Contents/MacOS/endue-desk-cef");
+        let program = app.join("Contents/MacOS/endue-desk");
         assert_eq!(fs::read_to_string(program).unwrap(), "0.5.0");
     }
     let _ = fs::remove_dir_all(root);
@@ -93,7 +93,7 @@ fn a_windows_installer_waits_in_the_updates_folder_for_the_desk_to_quit() {
     let root = dir("packages-windows");
     let folder = root.join("endue Desk");
     fs::create_dir_all(&folder).unwrap();
-    let exe = folder.join("endue-desk-cef.exe");
+    let exe = folder.join("endue-desk.exe");
     let layout = Layout::Nsis { exe: exe.clone() };
     let scratch = root.join("updates");
     let msi = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0, 0];
@@ -117,7 +117,7 @@ fn a_windows_installer_waits_in_the_updates_folder_for_the_desk_to_quit() {
 
 #[test]
 fn a_running_desk_knows_its_layout_and_the_targets_it_updates_as() {
-    let mac = Path::new("/Applications/endue Desk.app/Contents/MacOS/endue-desk-cef");
+    let mac = Path::new("/Applications/endue Desk.app/Contents/MacOS/endue-desk");
     let app = Layout::of("macos", &Running::at(mac));
     assert_eq!(
         app,
@@ -125,10 +125,10 @@ fn a_running_desk_knows_its_layout_and_the_targets_it_updates_as() {
             app: "/Applications/endue Desk.app".into()
         })
     );
-    let dev = Path::new("/repo/target/release/endue-desk-cef");
+    let dev = Path::new("/repo/target/release/endue-desk");
     assert_eq!(Layout::of("macos", &Running::at(dev)), None);
     let image = Path::new("/home/a/Apps/endue.AppImage");
-    let mounted = Path::new("/tmp/.mount_x/usr/lib/endue-desk-cef/endue-desk-cef");
+    let mounted = Path::new("/tmp/.mount_x/usr/lib/endue-desk/endue-desk");
     let running = Running {
         appimage: Some(image),
         ..Running::at(mounted)
@@ -137,7 +137,7 @@ fn a_running_desk_knows_its_layout_and_the_targets_it_updates_as() {
         Layout::of("linux", &running),
         Some(Layout::AppImage { file: image.into() })
     );
-    let deb = Path::new("/usr/lib/endue-desk-cef/endue-desk-cef");
+    let deb = Path::new("/usr/lib/endue-desk/endue-desk");
     let deb = Layout::of("linux", &Running::at(deb)).unwrap();
     assert_eq!(deb.targets("linux-x86_64"), ["linux-x86_64-deb"]);
     assert_eq!(
@@ -146,11 +146,11 @@ fn a_running_desk_knows_its_layout_and_the_targets_it_updates_as() {
     );
     // Windows: NSIS leaves its uninstaller beside the desk; an MSI installs under Program Files.
     let root = dir("packages-layout");
-    let nsis = root.join("Local/endue Desk/endue-desk-cef.exe");
+    let nsis = root.join("Local/endue Desk/endue-desk.exe");
     fs::create_dir_all(nsis.parent().unwrap()).unwrap();
     fs::write(nsis.with_file_name("uninstall.exe"), b"MZ").unwrap();
     let pf = root.join("Program Files");
-    let msi = pf.join("endue Desk/endue-desk-cef.exe");
+    let msi = pf.join("endue Desk/endue-desk.exe");
     let on = |exe: &Path| {
         let running = Running {
             program_files: Some(&pf),
@@ -167,7 +167,7 @@ fn a_running_desk_knows_its_layout_and_the_targets_it_updates_as() {
         on(&msi).unwrap().targets("windows-x86_64"),
         ["windows-x86_64-msi"]
     );
-    assert_eq!(on(&root.join("target/debug/endue-desk-cef.exe")), None);
+    assert_eq!(on(&root.join("target/debug/endue-desk.exe")), None);
     let _ = fs::remove_dir_all(root);
 }
 

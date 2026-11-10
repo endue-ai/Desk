@@ -5,9 +5,9 @@
 // - macOS: `endue Desk.app` with the CEF framework and the five helper apps in Contents/Frameworks,
 //   signed inside out by scripts/cef-sign-macos.sh (ad-hoc without APPLE_SIGNING_IDENTITY) before the
 //   .dmg is made, notarised and stapled when the Apple credentials are set; then the .app.tar.gz.
-// - Windows: CEF's files beside endue-desk-cef.exe, an NSIS installer and an MSI; every PE file
+// - Windows: CEF's files beside endue-desk.exe, an NSIS installer and an MSI; every PE file
 //   signed through DESK_WINDOWS_SIGN_COMMAND (cargo-packager's signCommand, `%1` the file) when set.
-// - Linux: the executable and CEF's files in /usr/lib/endue-desk-cef, a launcher in /usr/bin; a .deb
+// - Linux: the executable and CEF's files in /usr/lib/endue-desk, a launcher in /usr/bin; a .deb
 //   and an AppImage. libcef.so ships stripped.
 // Every package carries the built-in plugins (git's plugins/ without tests) beside the shell (#47).
 // Outputs land in <out>/bundle/{macos,dmg,nsis,msi,deb,appimage}/, the layout

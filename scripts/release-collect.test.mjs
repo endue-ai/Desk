@@ -158,11 +158,8 @@ describe("release-collect", () => {
       /expected one \.msi/u,
     );
     const linux = bundle({
-      appimage: [
-        "endue-desk-cef_0.5.0_x86_64.AppImage",
-        "endue-desk-cef_0.5.0_x86_64.AppImage.sig",
-      ],
-      deb: ["endue-desk-cef_0.5.0_amd64.deb", "endue-desk-cef_0.5.0_amd64.deb.sig"],
+      appimage: ["endue-desk_0.5.0_x86_64.AppImage", "endue-desk_0.5.0_x86_64.AppImage.sig"],
+      deb: ["endue-desk_0.5.0_amd64.deb", "endue-desk_0.5.0_amd64.deb.sig"],
     });
     const names = collect({
       bundle: linux,

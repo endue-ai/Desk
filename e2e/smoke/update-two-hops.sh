@@ -1,23 +1,24 @@
 #!/usr/bin/env bash
 # Update smoke, two hops (#47, ADR 0147): a desk installed from the first build updates into the
-# second through the normal updater flow, then the second into the third. The transition release
-# rehearsed: the first is the last Tauri build on beta, the second and third CEF builds.
+# second through the normal updater flow, then the second into the third. The first is an older
+# build (the last Tauri build, from a commit before Stage 1 of #32 ended, or a CEF one); the second and
+# third are builds of the desk.
 #   e2e/smoke/update-two-hops.sh <dist 1> <dist 2> <dist 3>
 # Each dist is a release folder as scripts/release-collect.mjs leaves it (endue-desk_<v>_<target>.<ext>
 # with its .sig), the version read from the names. The three builds must carry the updater key whose
 # private half is in TAURI_SIGNING_PRIVATE_KEY (and _PASSWORD) and the origin
 # http://127.0.0.1:<DESK_SMOKE_PORT>/desk (19846 unless set): the release workflow's
-# DESK_UPDATER_PUBKEY and DESK_UPDATE_URL at build time. A Tauri debug build reads both at run time
-# (the script passes DESK_UPDATER_PUBKEY on and sets the origin) and needs the updater plugin's
-# dangerousInsecureTransportProtocol for http.
+# DESK_UPDATER_PUBKEY and DESK_UPDATE_URL at build time. A Tauri first build that is a debug build
+# reads both at run time (the script passes DESK_UPDATER_PUBKEY on and sets the origin) and needs the
+# updater plugin's dangerousInsecureTransportProtocol for http.
 # Steps: the R2 tree written under a temp origin (each release's release.json, the beta index
 # listing the second build, all signed with the key) and served on 127.0.0.1; the first build
 # installed into a folder of the run's own (macOS: its .app.tar.gz; Linux: its AppImage, run
 # extracted) and started with a temp HOME and an init.yaml that follows beta; `desk update check`,
 # staged, `desk update apply`, until the desk on the desk socket reports the second version and the
-# installed app is that build (macOS: its seal checked); the third listed (serial 2) and the same;
-# then the desk quits. Windows waits for the desk socket's Windows transport: there the hops are made
-# from the desk's update row by hand (#61). Needs node, curl, lsof and the desk CLI (DESK_CLI, else
+# installed app is that build (macOS: a CEF app, its seal checked); the third listed (serial 2) and
+# the same; then the desk quits. Windows waits for the desk socket's Windows transport: there the hops
+# are made from the desk's update row by hand (#61). Needs node, curl, lsof and the desk CLI (DESK_CLI, else
 # `cargo build -p desk-cli`); the origin is e2e/smoke/serve-origin.mjs. Exits 0 only when both hops
 # passed; otherwise it names the step.
 set -euo pipefail
@@ -85,7 +86,8 @@ if [ -z "$cli" ]; then
   cli="$root/target/debug/desk"
 fi
 # A short folder: the desk socket's path under the data folder must fit in 104 bytes on macOS. Its
-# real path: Tauri's updater refuses to replace an app whose path holds a symlink (/tmp on macOS).
+# real path: Tauri's updater (a Tauri first build's) refuses to replace an app whose path holds a
+# symlink (/tmp on macOS).
 work="$(cd "$(mktemp -d /tmp/desk-2hop-XXXXXX)" && pwd -P)"
 home="$work/home"
 mkdir -p "$home" "$work/origin/desk"
@@ -189,7 +191,9 @@ hop() {
   until_status "^[a-z-]+$tab$now${tab}beta$tab"
   step="hop $from -> $to: installed"
   if [ "$os" = macos ]; then
-    [ "$(executable)" = endue-desk-cef ] || fail "the installed app runs $(executable), not the CEF desk"
+    # The Tauri desk and the CEF desk both run endue-desk: the CEF framework tells them apart.
+    [ -d "$installed/Contents/Frameworks/Chromium Embedded Framework.framework" ] ||
+      fail "the installed app ($(executable)) carries no CEF framework: it is not the CEF desk"
     codesign --verify --deep --strict "$installed" || fail "the installed app's seal after the swap"
   fi
   local left

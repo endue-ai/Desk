@@ -53,7 +53,7 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         let macos = root.join("endue Desk.app/Contents/MacOS");
         fs::create_dir_all(&macos).unwrap();
-        let program = macos.join("endue-desk-cef");
+        let program = macos.join("endue-desk");
         fs::write(&program, b"desk").unwrap();
         let mark = b"0081;6af2cbd5;endue Desk;";
         for path in [&root, &macos, &program] {

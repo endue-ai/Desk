@@ -3,18 +3,18 @@ import { subprocesses } from "./sandbox";
 
 // `ps -axo pid=,ppid=,args=` while a CEF desk (pid 100) runs on macOS: its helpers live in the
 // bundle's Frameworks folder, whose names have spaces; a terminal plugin's shell is its child too.
-const app = "/A/endue-desk-cef.app/Contents/Frameworks";
+const app = "/A/endue-desk.app/Contents/Frameworks";
 const PS = [
-  "  100     1 /A/endue-desk-cef.app/Contents/MacOS/endue-desk-cef",
-  `  101   100 ${app}/endue-desk-cef Helper.app/Contents/MacOS/endue-desk-cef Helper --type=gpu-process --seatbelt-client=27`,
-  `  102   100 ${app}/endue-desk-cef Helper.app/Contents/MacOS/endue-desk-cef Helper --type=utility --utility-sub-type=network.mojom.NetworkService --service-sandbox-type=network`,
-  `  103   100 ${app}/endue-desk-cef Helper (Renderer).app/Contents/MacOS/endue-desk-cef Helper (Renderer) --type=renderer --enable-features=A,B`,
+  "  100     1 /A/endue-desk.app/Contents/MacOS/endue-desk",
+  `  101   100 ${app}/endue-desk Helper.app/Contents/MacOS/endue-desk Helper --type=gpu-process --seatbelt-client=27`,
+  `  102   100 ${app}/endue-desk Helper.app/Contents/MacOS/endue-desk Helper --type=utility --utility-sub-type=network.mojom.NetworkService --service-sandbox-type=network`,
+  `  103   100 ${app}/endue-desk Helper (Renderer).app/Contents/MacOS/endue-desk Helper (Renderer) --type=renderer --enable-features=A,B`,
   "  104   100 /bin/zsh -l",
-  `  105   999 ${app}/endue-desk-cef Helper (Renderer).app/Contents/MacOS/endue-desk-cef Helper (Renderer) --type=renderer`,
+  `  105   999 ${app}/endue-desk Helper (Renderer).app/Contents/MacOS/endue-desk Helper (Renderer) --type=renderer`,
   "not a process line",
 ].join("\n");
 
-const BASE = "endue-desk-cef Helper.app";
+const BASE = "endue-desk Helper.app";
 
 describe("the CEF desk's subprocesses from ps", () => {
   it("lists the children with a --type, their service, its sandbox type and helper app", () => {
@@ -32,7 +32,7 @@ describe("the CEF desk's subprocesses from ps", () => {
         type: "renderer",
         service: undefined,
         sandbox: undefined,
-        helper: "endue-desk-cef Helper (Renderer).app",
+        helper: "endue-desk Helper (Renderer).app",
       },
     ]);
   });

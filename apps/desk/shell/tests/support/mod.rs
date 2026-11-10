@@ -11,14 +11,14 @@ use serde_json::Value;
 
 /// The shell binary that can run CEF here, or why there is none.
 fn binary() -> Result<PathBuf, String> {
-    let built = PathBuf::from(env!("CARGO_BIN_EXE_endue-desk-cef"));
+    let built = PathBuf::from(env!("CARGO_BIN_EXE_endue-desk"));
     if !cfg!(target_os = "macos") {
         return Ok(built);
     }
     let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let target = std::env::var_os("CARGO_TARGET_DIR")
         .map_or_else(|| workspace.join("target"), PathBuf::from);
-    let bundled = target.join("bundle/endue-desk-cef.app/Contents/MacOS/endue-desk-cef");
+    let bundled = target.join("bundle/endue-desk.app/Contents/MacOS/endue-desk");
     let modified = |p: &PathBuf| std::fs::metadata(p).and_then(|m| m.modified()).ok();
     match (modified(&bundled), modified(&built)) {
         (None, _) => Err(format!(

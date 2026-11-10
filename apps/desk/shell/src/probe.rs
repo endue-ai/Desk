@@ -1,4 +1,4 @@
-//! The surface probe (#52): `endue-desk-cef --surface-probe=<scenario>` runs the web host
+//! The surface probe (#52): `endue-desk --surface-probe=<scenario>` runs the web host
 //! and the compositor's import entry on the probe's pages (`probe/pages.rs`) without a window or a
 //! desk, prints one `SURFACE-PROBE {json}` line and exits. `tests/osr_import.rs` and
 //! `tests/lifecycle.rs` run it: a known colour and WebGPU through the shared texture (or the software

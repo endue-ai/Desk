@@ -1,7 +1,7 @@
 # desk-computer
 
 Computer use (ADR 0120): see and operate every app on this computer, and report and request the OS
-permissions it takes. Layer: Tauri shell, beside desk-sys. No Desk grants are checked here: the core
+permissions it takes. Layer: the shell, beside desk-sys. No Desk grants are checked here: the core
 authorizes callers and supplies the guard. Errors are desk-sys's `Error { code, message }`.
 
 ## Public API

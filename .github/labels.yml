@@ -1,7 +1,7 @@
 # Repository labels. scripts/sync-labels.sh creates or updates them; keep one key per line.
 - name: "area:apps"
   color: "1d76db"
-  description: "apps/ (Tauri app)"
+  description: "apps/ (the desk app)"
 - name: "area:crates"
   color: "1d76db"
   description: "crates/ (Rust)"

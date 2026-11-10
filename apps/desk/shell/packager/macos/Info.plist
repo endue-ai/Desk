@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- What cargo-packager merges into the CEF desk's Info.plist (#46): the Tauri app's usage
-     descriptions (apps/desk/src-tauri/Info.plist), the camera that web plugins may ask for, CEF's own
-     keys, and the files Finder offers to open with the desk (the Tauri app's list, as Alternate, so
-     the desk never takes them from their default app). -->
+<!-- What cargo-packager merges into the desk's Info.plist (#46): the usage descriptions (the Tauri
+     app's, which Stage 1 of #32 retired), the camera that web plugins may ask for, CEF's own keys,
+     and the files Finder offers to open with the desk (as Alternate, so the desk never takes them
+     from their default app). -->
 <plist version="1.0">
 <dict>
 	<key>NSCalendarsFullAccessUsageDescription</key>

@@ -18,9 +18,7 @@ fn main() -> ExitCode {
         let exe = std::env::current_exe().unwrap_or_default();
         let loader = cef::library_loader::LibraryLoader::new(&exe, false);
         if !loader.load() {
-            eprintln!(
-                "endue Desk: the CEF framework did not load (run the bundle: just dev-shell)"
-            );
+            eprintln!("endue Desk: the CEF framework did not load (run the bundle: just dev)");
             return ExitCode::FAILURE;
         }
         loader
@@ -146,7 +144,7 @@ fn claim(pump: &Pump) -> std::io::Result<Option<Instance>> {
     }
 }
 
-/// Start the desk through desk-boot, as the Tauri shell's `setup` does.
+/// Start the desk through desk-boot, as the Tauri shell's `setup` did.
 fn boot(
     origin: desk_trace::Origin,
     pump: Pump,

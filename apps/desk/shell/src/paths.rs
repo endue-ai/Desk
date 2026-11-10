@@ -2,7 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
-/// The app identifier: the data folder's name, the same as the Tauri shell's (`tauri.conf.json`).
+/// The app identifier: the data folder's name, the Tauri desk's too, so an updated desk keeps
+/// its data.
 pub const IDENTIFIER: &str = "ai.endue.desk";
 
 /// The page the main window opens unless `DESK_SHELL_URL` names another.
@@ -28,7 +29,7 @@ fn bundled(exe: &Path) -> Option<PathBuf> {
 }
 
 /// `name` among a package's resources around `exe`: `Contents/Resources/<name>` on macOS, beside
-/// the executable elsewhere (the install folder on Windows, `/usr/lib/endue-desk-cef` on Linux).
+/// the executable elsewhere (the install folder on Windows, `/usr/lib/endue-desk` on Linux).
 fn resource(exe: &Path, name: &str) -> Option<PathBuf> {
     let dir = exe.parent()?;
     Some(if cfg!(target_os = "macos") {
@@ -103,11 +104,11 @@ mod tests {
         let (exe, plugins) = if cfg!(target_os = "macos") {
             let contents = dir.join("Desk.app/Contents");
             (
-                contents.join("MacOS/endue-desk-cef"),
+                contents.join("MacOS/endue-desk"),
                 contents.join("Resources/plugins"),
             )
         } else {
-            (dir.join("endue-desk-cef"), dir.join("plugins"))
+            (dir.join("endue-desk"), dir.join("plugins"))
         };
         fs::create_dir_all(exe.parent().unwrap()).unwrap();
         assert_eq!(
@@ -129,9 +130,9 @@ mod tests {
     fn a_bundle_is_used_only_when_it_holds_the_shell() {
         let dir = tempfile_dir();
         let exe = if cfg!(target_os = "macos") {
-            dir.join("Desk.app/Contents/MacOS/endue-desk-cef")
+            dir.join("Desk.app/Contents/MacOS/endue-desk")
         } else {
-            dir.join("endue-desk-cef")
+            dir.join("endue-desk")
         };
         fs::create_dir_all(exe.parent().unwrap()).unwrap();
         assert_eq!(bundled(&exe), None);

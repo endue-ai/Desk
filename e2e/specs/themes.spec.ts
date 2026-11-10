@@ -3,7 +3,7 @@
 // is a folder there, a folder put there by hand is installed, and both are listed by plugin.list as theme
 // plugins, not built in, after a relaunch. browser.reloadSession() quits the app and launches it again
 // with the same HOME (support/driver.ts). The spec asks the core as the runtime does, through the
-// `bridge_call` command, caller `desk`: Tauri's invoke, or the CEF shell's native channel.
+// `bridge_call` command, caller `desk`, over the desk's native channel.
 import { cpSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,12 +19,10 @@ const FIXTURE = resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures/th
 type Plugin = { id: string; status: string; builtIn: boolean; manifest?: { kind?: string } };
 type Answer = { result?: { plugins?: Plugin[]; plugin?: Plugin }; error?: { message: string } };
 /**
- * What the shells put on the window: Tauri's `invoke` (`@tauri-apps/api/core` calls it), or the CEF
- * shell's native channel (packages/bridge/src/cef.ts), which answers a call `{ id, cmd, args }` with
- * `{ id, ok }` or `{ id, error }` through `onMessage`.
+ * What the desk puts on the window: its native channel (packages/bridge/src/cef.ts), which answers a
+ * call `{ id, cmd, args }` with `{ id, ok }` or `{ id, error }` through `onMessage`.
  */
 type Host = {
-  __TAURI_INTERNALS__?: { invoke(command: string, args: unknown): Promise<unknown> };
   __deskNative?: { send(text: string): void; onMessage?: (text: string) => void };
 };
 
@@ -33,17 +31,14 @@ function themesFolder(): string {
   return join(appData(), "themes");
 }
 
-/** One bridge call as the runtime: the command the runtime's Tauri adapter invokes. */
+/** One bridge call as the runtime: the command the runtime's adapter calls. */
 function bridge(method: string, params: Record<string, unknown>): Promise<Answer> {
   return browser.execute(
     async (method: string, params: Record<string, unknown>) => {
       const host = window as unknown as Host;
       const request = { id: 1, method, params };
-      if (host.__TAURI_INTERNALS__) {
-        return (await host.__TAURI_INTERNALS__.invoke("bridge_call", { request })) as Answer;
-      }
       const native = host.__deskNative;
-      if (!native) throw new Error("neither Tauri's invoke nor the CEF shell's channel is here");
+      if (!native) throw new Error("the desk's native channel is not here");
       // An id the page's own calls (counted from 1) never reach; its other replies go on to it.
       const id = 2 ** 31 - 7;
       return await new Promise<Answer>((resolve, reject) => {

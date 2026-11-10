@@ -122,7 +122,7 @@ mod tests {
         assert_eq!(program, "pkexec");
         assert_eq!(args, ["dpkg", "-i", "/u/0.6.0/install.deb"]);
         let scratch = std::env::temp_dir().join(format!("desk-deb-{}", std::process::id()));
-        let exe = Path::new("/usr/lib/endue-desk-cef/endue-desk-cef");
+        let exe = Path::new("/usr/lib/endue-desk/endue-desk");
         let why = install_deb(exe, &chosen(), b"\x7fELF", &scratch).unwrap_err();
         assert!(why.contains("is not a .deb"), "{why}");
         assert!(!package_path(&scratch, &chosen(), "deb").exists());

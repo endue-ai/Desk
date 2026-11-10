@@ -7,10 +7,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { $, browser, expect } from "@wdio/globals";
 import { dataDir } from "./cef";
-import { HOME_VAR, LOG_VAR, SHELL } from "./driver";
+import { HOME_VAR, LOG_VAR } from "./driver";
 
 /** The status line the runtime shows and `desk_ready` prints once the bridge answered. */
-export const READY = `desk ready · bridge: ${SHELL}`;
+export const READY = "desk ready · bridge: cef";
 
 /** The shell's layers: the desk's own controls, and what a profile lays out over the runtime. */
 export const SYSTEM = '#desk.shell [data-layer="system"]';
@@ -126,7 +126,7 @@ export function appLog(): string[] {
   return readFileSync(log, "utf8").split("\n");
 }
 
-/** The app's data folder under the spec's HOME (both shells use Tauri's app_data_dir). */
+/** The app's data folder under the spec's HOME (apps/desk/shell/src/paths.rs names it). */
 export function appData(): string {
   const home = process.env[HOME_VAR];
   if (!home) throw new Error(`${HOME_VAR} is not set: run the specs through just test-app-e2e`);

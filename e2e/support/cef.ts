@@ -1,4 +1,4 @@
-// The CEF desk as the app e2e drives it (ADR 0144): the debug build `just build-shell` writes (on macOS
+// The desk as the app e2e drives it (ADR 0144): the debug build `just build-shell` writes (on macOS
 // its .app bundle; a release build never opens the debugging port), started with the spec's
 // environment and DESK_REMOTE_DEBUGGING_PORT, its stdout and stderr appended to the spec's log.
 // A start is in once it printed the ready line, or marked itself ready in last-start.json (safe mode
@@ -9,16 +9,16 @@ import { createServer } from "node:net";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
-/** The CEF desk's binary: DESK_APP, else the debug build `just build-shell` leaves. */
+/** The desk's binary: DESK_APP, else the debug build `just build-shell` leaves. */
 export function cefBinary(root: string, platform = process.platform): string {
   if (process.env.DESK_APP) return resolve(process.env.DESK_APP);
   if (platform === "darwin") {
-    return join(root, "target/bundle/endue-desk-cef.app/Contents/MacOS/endue-desk-cef");
+    return join(root, "target/bundle/endue-desk.app/Contents/MacOS/endue-desk");
   }
-  return join(root, "target/debug", platform === "win32" ? "endue-desk-cef.exe" : "endue-desk-cef");
+  return join(root, "target/debug", platform === "win32" ? "endue-desk.exe" : "endue-desk");
 }
 
-/** The desk's data folder under `home`, as both shells name it (apps/desk/shell/src/paths.rs). */
+/** The desk's data folder under `home`, as the desk names it (apps/desk/shell/src/paths.rs). */
 export function dataDir(home: string, platform = process.platform): string {
   if (platform === "darwin") return join(home, "Library/Application Support/ai.endue.desk");
   if (platform === "win32") return join(home, "AppData/Roaming/ai.endue.desk");

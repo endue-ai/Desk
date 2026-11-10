@@ -1,6 +1,5 @@
 // The app's performance (`just perf-app`): start-up, idle memory and input latency on the app,
-// WebdriverIO as in the app e2e (../wdio.conf.ts): the CEF desk over chromedriver by default, the
-// Tauri app through tauri-driver (Linux only) with DESK_E2E_SHELL=tauri.
+// WebdriverIO as in the app e2e (../wdio.conf.ts): the desk over chromedriver.
 // Each spec file starts the app with a fresh HOME, the Default profile without the first run and
 // without the e2e dev plugin, and keeps what it measured in e2e/test-results/perf. Once all ran,
 // onComplete writes results.json there, prints the verdicts against budgets.json beside the RT-16

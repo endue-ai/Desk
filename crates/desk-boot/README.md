@@ -2,8 +2,8 @@
 
 The desk's composition root apart from any shell (ADR 0143): the core with its files, the start
 record and safe mode (ADR 0061), crash reports, the start-up trace, the brains, the runtime's grants,
-the plugins, watchers, connectors and views, the desk socket and the MCP servers. The Tauri shell and
-the CEF shell (`apps/desk/shell`) both start the desk through it.
+the plugins, watchers, connectors and views, the desk socket and the MCP servers. The shell
+(`apps/desk/shell`) starts the desk through it, as the Tauri shell did until Stage 1 of #32 ended.
 
 ## Public API
 

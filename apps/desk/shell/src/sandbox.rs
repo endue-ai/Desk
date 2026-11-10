@@ -8,11 +8,11 @@
 //! (#61). Linux: the zygote's namespace sandbox needs unprivileged user namespaces, which Ubuntu
 //! 23.10 and later grant only through an AppArmor profile, or the set-uid `chrome-sandbox` CEF ships,
 //! which neither a cargo-packager `.deb` nor an AppImage can carry; the `.deb` installs an AppArmor
-//! profile for `/usr/lib/endue-desk-cef/endue-desk-cef`, the AppImage relies on user namespaces, and
+//! profile for `/usr/lib/endue-desk/endue-desk`, the AppImage relies on user namespaces, and
 //! a desk that finds neither refuses to start rather than fall back (`docs/releasing.md`).
 //! Windows: CEF 156 sandboxes only an app built as a client DLL that its `bootstrap.exe` loads
-//! (`CEF_USE_BOOTSTRAP`), so the desk becomes `endue-desk-cef.dll` beside the bootstrap renamed
-//! `endue-desk-cef.exe`, which loads the DLL of its own name.
+//! (`CEF_USE_BOOTSTRAP`), so the desk becomes `endue-desk.dll` beside the bootstrap renamed
+//! `endue-desk.exe`, which loads the DLL of its own name.
 //!
 //! A release build drops `--no-sandbox` and the other switches that weaken isolation (`WEAKENING`)
 //! from its own command line before Chromium reads it, so no launcher, shortcut or pasted command
@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn the_library_is_in_the_frameworks_folder_beside_the_helper_apps() {
         let helper = Path::new(
-            "/A/endue Desk.app/Contents/Frameworks/endue-desk-cef Helper (Renderer).app/Contents/MacOS/endue-desk-cef Helper (Renderer)",
+            "/A/endue Desk.app/Contents/Frameworks/endue-desk Helper (Renderer).app/Contents/MacOS/endue-desk Helper (Renderer)",
         );
         assert_eq!(
             library_path(helper).unwrap(),

@@ -17,7 +17,7 @@ export interface Subprocess {
   service?: string;
   /** A utility's `--service-sandbox-type` (network, service, none, ...), else undefined. */
   sandbox?: string;
-  /** The helper app it runs from (`endue-desk-cef Helper (Renderer).app`), else undefined. */
+  /** The helper app it runs from (`endue-desk Helper (Renderer).app`), else undefined. */
   helper?: string;
 }
 

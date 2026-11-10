@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn the_script_waits_installs_silently_and_starts_the_desk() {
-        let exe = Path::new(r"C:\Users\o'neil\AppData\Local\endue Desk\endue-desk-cef.exe");
+        let exe = Path::new(r"C:\Users\o'neil\AppData\Local\endue Desk\endue-desk.exe");
         let setup =
             Path::new(r"C:\Users\o'neil\AppData\Roaming\ai.endue.desk\updates\0.6.0\install.exe");
         let nsis = script(Kind::Nsis, setup, exe, 4242);
@@ -128,7 +128,7 @@ mod tests {
         );
         assert_eq!(
             lines[3],
-            r"Start-Process -FilePath 'C:\Users\o''neil\AppData\Local\endue Desk\endue-desk-cef.exe'"
+            r"Start-Process -FilePath 'C:\Users\o''neil\AppData\Local\endue Desk\endue-desk.exe'"
         );
         let msi = script(Kind::Msi, Path::new(r"C:\u\install.msi"), exe, 7);
         assert!(msi.contains(

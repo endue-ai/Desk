@@ -8,11 +8,11 @@ nothing here is read at run time.
 | File | Purpose |
 | --- | --- |
 | `cef.json` | The CEF build: exact version, each target's minimal archive (size, the CDN's SHA-1, our SHA-256), the files Windows and Linux carry beside the executable |
-| `packager.json` | What every target's cargo-packager config shares: name, identifier, icons, the `.dmg`, NSIS, `.deb` and AppImage options |
+| `packager.json` | What every target's cargo-packager config shares: name, identifier, icons (`../icons`), the `.dmg`, NSIS, `.deb` and AppImage options |
 | `macos/Info.plist` | Keys merged into the app's Info.plist: usage descriptions, CEF's keys, the files Finder opens with the desk |
-| `macos/helper.plist` | The five helper apps' Info.plist (`endue-desk-cef Helper`, `(Alerts)`, `(GPU)`, `(Plugin)`, `(Renderer)`) |
+| `macos/helper.plist` | The five helper apps' Info.plist (`endue-desk Helper`, `(Alerts)`, `(GPU)`, `(Plugin)`, `(Renderer)`) |
 | `macos/entitlements/` | Hardened-runtime entitlements: the app, the base Helper, GPU, Renderer; Alerts and Plugin have none |
-| `linux/launcher.sh` | `/usr/bin/endue-desk-cef`: starts the desk in `/usr/lib/endue-desk-cef`, beside `libcef.so` |
+| `linux/launcher.sh` | `/usr/bin/endue-desk`: starts the desk in `/usr/lib/endue-desk`, beside `libcef.so`; a Tauri desk restarts here after its update |
 | `linux/desk.desktop` | The desktop entry template |
 
 ## Public API

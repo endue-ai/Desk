@@ -12,7 +12,7 @@ Layer: Rust core. Status: Unix sockets on macOS and Linux; Windows answers `Unsu
   the CLI may do: run any command, manage plugins, grants, updates and themes, read the log, and
   read and write files over `/**` and `~/**` for `desk fs` (ADR 0030, 0054, 0058, 0076).
 - `socket_path()`: `DESK_SOCKET`, or `desk.sock` in the data folder (`ai.endue.desk` under
-  `dirs::data_dir()`, the folder Tauri's `app_data_dir()` names).
+  `dirs::data_dir()`, the shell's data folder, `apps/desk/shell/src/paths.rs`).
 - `Listener::bind(&path, Arc<Core>)`: bind (a stale file is replaced; a live desk gives `AddrInUse`),
   mode 0600, serve every connection on its own threads; dropping it removes the file.
 - `Client::connect(&path)`, `call(BridgeRequest)`, `next_event()`, `call_line` / `next_event_line`

@@ -78,7 +78,7 @@ pub trait Notifier: Send + Sync {
 }
 
 /// The OS notifier: UserNotifications on macOS. The bundle's own identifier and name are used, and
-/// a process outside an app bundle (`cargo test`, `tauri dev`) is `unsupported`, because
+/// a process outside an app bundle (`cargo test`, a bare debug build) is `unsupported`, because
 /// UNUserNotificationCenter throws there. Every notifier in the process shares one click handler.
 #[cfg(target_os = "macos")]
 pub fn os(app_id: &str, app_name: &str) -> Result<Box<dyn Notifier>, Error> {
@@ -87,7 +87,7 @@ pub fn os(app_id: &str, app_name: &str) -> Result<Box<dyn Notifier>, Error> {
 }
 
 /// The OS notifier: toasts for the AppUserModelID `app_id` (the Start menu shortcut's, which the
-/// installers set to Tauri's identifier).
+/// installers set to the app's identifier).
 #[cfg(windows)]
 pub fn os(app_id: &str, app_name: &str) -> Result<Box<dyn Notifier>, Error> {
     let _ = app_name;

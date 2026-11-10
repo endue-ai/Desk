@@ -5,7 +5,8 @@ name: canary
 # -pre.<run> (ADR 0092: 0.5.0-pre.212 once release/v0.4 exists), uploaded in the order that keeps
 # listed builds whole (artifacts, then release.json, then the index), listed on the canary index, and
 # canary builds older than two weeks dropped (files kept while beta or stable lists them). Release
-# notes are the commit page. The same night runs check and unit tests on macOS and Windows, which pull
+# notes are the commit page. It builds the CEF desk (release-build's default since #97, as
+# .github/release-shell names). The same night runs check and unit tests on macOS and Windows, which pull
 # requests skip (ADR 0092), even before the secrets exist; a failure fails the run, so the next night
 # runs again. Without the updater key, its public key or the R2 credentials nothing is built.
 on:

@@ -1,6 +1,6 @@
-//! Assembles `target/bundle/endue-desk-cef.app` on macOS from binaries already built
+//! Assembles `target/bundle/endue-desk.app` on macOS from binaries already built
 //! (`cargo build -p desk-shell --bins [--release]`): the CEF framework, the five helper apps and
-//! the built shell (`apps/desk/dist`) in `Contents/Resources/shell`. `just dev-shell` runs it.
+//! the built shell (`apps/desk/dist`) in `Contents/Resources/shell`. `just dev` runs it.
 //! usage: desk-shell-bundle [out-dir] [debug|release]
 
 #[cfg(target_os = "macos")]
@@ -22,20 +22,13 @@ fn main() -> std::process::ExitCode {
         return std::process::ExitCode::FAILURE;
     }
     let info = BundleInfo::new(
-        "endue-desk-cef",
+        "endue-desk",
         "ai.endue.desk",
         "endue Desk",
         "English",
         semver::Version::new(0, 0, 0),
     );
-    let app = match bundle(
-        &out,
-        &target,
-        "endue-desk-cef",
-        "endue-desk-cef-helper",
-        None,
-        info,
-    ) {
+    let app = match bundle(&out, &target, "endue-desk", "endue-desk-helper", None, info) {
         Ok(app) => app,
         Err(why) => {
             eprintln!("desk-shell-bundle: {why}");
@@ -72,7 +65,5 @@ fn copy_dir(from: &std::path::Path, to: &std::path::Path) -> std::io::Result<()>
 
 #[cfg(not(target_os = "macos"))]
 fn main() {
-    eprintln!(
-        "desk-shell-bundle: macOS only; on Linux and Windows run target/debug/endue-desk-cef"
-    );
+    eprintln!("desk-shell-bundle: macOS only; on Linux and Windows run target/debug/endue-desk");
 }

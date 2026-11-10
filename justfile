@@ -12,13 +12,19 @@ dev_examples := (justfile_directory() / "examples/plugin-hello-ui") + path_sep +
 default:
     @just --list
 
-# Run the desktop app in development mode: built-in plugins from plugins/ and, as dev plugins, the
-# folders in DESK_DEV_PLUGINS, else plugin-hello-ui and plugin-hello-view; saving a plugin file
-# reloads only that plugin
-dev:
-    DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins" \
-    DESK_DEV_PLUGINS={{quote(env("DESK_DEV_PLUGINS", dev_examples))}} \
-    pnpm --filter @endue-ai/desk-app tauri dev
+# Build and run the desk (the CEF shell, ADR 0143) in development: built-in plugins from plugins/ and,
+# as dev plugins, the folders in DESK_DEV_PLUGINS, else plugin-hello-ui and plugin-hello-view; saving
+# a plugin file reloads only that plugin
+dev: build-shell
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins"
+    export DESK_DEV_PLUGINS={{quote(env("DESK_DEV_PLUGINS", dev_examples))}}
+    if [ "$(uname -s)" = Darwin ]; then exec target/bundle/endue-desk.app/Contents/MacOS/endue-desk; fi
+    exec target/debug/endue-desk
+
+# `just dev`, by the name it had while the Tauri shell was the default (Stage 1 of #32)
+alias dev-shell := dev
 
 # Run examples/brain-echo, the smallest brain, where the app's echo brain looks (http://127.0.0.1:8787/v0)
 brain-echo port="8787":
@@ -39,7 +45,7 @@ test-unit:
 test-e2e *args:
     node scripts/e2e.mjs test "$@"
 
-# Static checks: formatting, lints, types, workflows, specs and the theme market (not the Tauri app)
+# Static checks: formatting, lints, types, workflows, specs and the theme market (not the CEF shell)
 check:
     cargo fmt --all -- --check
     cargo clippy --all-targets --all-features -- -D warnings
@@ -52,58 +58,29 @@ check:
     node scripts/theme-market.mjs
     pnpm exec spectral lint specs/brain/v0/openapi.yaml --fail-severity=warn --quiet
 
-# Lint the Tauri app crate (needs the platform webview SDK)
-check-app: build-sdk build-ui
-    pnpm --filter @endue-ai/desk-app build
-    cargo clippy -p desk-app --all-targets -- -D warnings
-    cargo test -p desk-app --lib
-    cargo check -p tauri-plugin-single-instance --all-targets --all-features
-    @if [ "$(uname -s)" = Linux ]; then dbus-run-session -- cargo test -p tauri-plugin-single-instance --lib --tests -- --include-ignored; else cargo test -p tauri-plugin-single-instance --lib --tests; fi
-
-# Build the CEF shell (ADR 0143, Stage 1 of #32) with the web runtime it serves; on macOS also
-# assemble target/bundle/endue-desk-cef.app (the CEF framework and its helper apps)
+# Build the CEF shell (ADR 0143) with the web runtime it serves; on macOS also assemble
+# target/bundle/endue-desk.app (the CEF framework and its helper apps)
 build-shell: build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
     cargo build -p desk-shell --bins
     @# A fresh bundle each time: macOS kills a signed binary that was rewritten in place (SIGKILL at launch).
-    @if [ "$(uname -s)" = Darwin ]; then rm -rf target/bundle/endue-desk-cef.app && cargo run -q -p desk-shell --features bundle --bin desk-shell-bundle -- target/bundle debug; fi
-
-# Run the desk on the CEF shell; `just dev` stays the Tauri shell until Stage 1 of #32 ends
-dev-shell: build-shell
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins"
-    export DESK_DEV_PLUGINS={{quote(env("DESK_DEV_PLUGINS", dev_examples))}}
-    if [ "$(uname -s)" = Darwin ]; then exec target/bundle/endue-desk-cef.app/Contents/MacOS/endue-desk-cef; fi
-    exec target/debug/endue-desk-cef
+    @if [ "$(uname -s)" = Darwin ]; then rm -rf target/bundle/endue-desk.app && cargo run -q -p desk-shell --features bundle --bin desk-shell-bundle -- target/bundle debug; fi
 
 # Lint and test the CEF shell crate, which downloads and builds CEF (so `just check` leaves it out)
 check-shell:
     cargo clippy -p desk-shell --all-targets --all-features -- -D warnings
     cargo test -p desk-shell
 
-# Build the Tauri app binary
-build-app: build-sdk build-ui
-    pnpm --filter @endue-ai/desk-app build
-    cargo build -p desk-app
-
-# The release build the app e2e and the install smoke drive: target/release/endue-desk and
-# the Linux .deb in target/release/bundle/deb/ (Linux only)
-bundle-app: (_not-macos "bundle-app" "builds the Linux .deb only; the e2e workflow runs it on Linux")
-    pnpm --filter @endue-ai/desk-app tauri build --bundles deb
-
 # App e2e: WebdriverIO on the CEF desk (`just build-shell` first) through chromedriver on its remote
 # debugging port, one app and fresh HOME per spec file; arguments pass to wdio. macOS, Linux under a
-# display (`xvfb-run`), Windows (ADR 0144). DESK_E2E_SHELL=tauri drives `just bundle-app`'s Tauri app
-# through tauri-driver instead, on Linux only (ADR 0006), until the Tauri shell is deleted
+# display (`xvfb-run`), Windows (ADR 0144)
 [positional-arguments]
 test-app-e2e *args:
     pnpm exec wdio run e2e/wdio.conf.ts "$@"
 
 # Install smoke: launch the CEF desk's build with a temp HOME, wait 60 s for the ready line, quit it
 # with SIGTERM. Given a package (`just package-shell` makes them), install that and check its
-# signatures and sizes first. DESK_E2E_SHELL=tauri builds and installs the Tauri .deb (apt, sudo)
-# first, on Linux only. Linux under a display, macOS, Windows
+# signatures and sizes first. Linux under a display, macOS, Windows
 [positional-arguments]
 smoke *package:
     e2e/smoke/install-and-launch.sh "$@"
@@ -123,11 +100,6 @@ package-shell version="0.0.0": build-sdk build-ui
     if [ "$(uname -s)" = Linux ]; then export RUSTFLAGS='-C link-arg=-Wl,-rpath,$ORIGIN'; fi
     cargo build -p desk-shell --bins --release
     node scripts/cef-package.mjs --target "$triple" --version "{{version}}"
-
-# Refuse with one line and exit 2 on macOS, where the recipe's tools do not run
-[no-exit-message]
-_not-macos recipe reason:
-    @if [ "$(uname -s)" = Darwin ]; then echo "{{recipe}}: {{reason}}" >&2; exit 2; fi
 
 # Generate Rust and TypeScript types from specs/ (deterministic; CI checks for drift)
 codegen:
@@ -162,9 +134,9 @@ vendor-novnc:
 perf-opening mode="check":
     node scripts/e2e.mjs perf {{mode}}
 
-# WebdriverIO on the app as in `just test-app-e2e` (the CEF desk; DESK_E2E_SHELL=tauri for the Tauri
-# one), results in e2e/test-results/perf, baselines in e2e/perf/budgets.json; nightly in the e2e
-# workflow's perf job. Measure the app's start-up, idle memory and input latency ("record" sets the baselines)
+# WebdriverIO on the CEF desk as in `just test-app-e2e`, results in e2e/test-results/perf, baselines in
+# e2e/perf/budgets.json; nightly in the e2e workflow's perf job. Measure the app's start-up, idle
+# memory and input latency ("record" sets the baselines)
 perf-app mode="check":
     PERF_MODE={{mode}} pnpm exec wdio run e2e/perf/wdio.conf.ts
 

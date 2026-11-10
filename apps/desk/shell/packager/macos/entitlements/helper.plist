@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- "endue-desk-cef Helper": CEF's utility processes, and its GPU process too: CEF 156 starts the GPU
+<!-- "endue-desk Helper": CEF's utility processes, and its GPU process too: CEF 156 starts the GPU
      process from this helper, in Chromium's sandbox or not (seen on macOS 26, ADR 0148), and its
      SwiftShader fallback compiles shaders into MAP_JIT memory. Chromium gives only its GPU helper
      this; the desk gives both. -->

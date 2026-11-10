@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- The Info.plist of each CEF helper app (#46), as CEF's own helper-Info.plist: scripts/cef-package.mjs
-     fills in @EXECUTABLE@ ("endue-desk-cef Helper (GPU)"), @IDENTIFIER@ ("ai.endue.desk.helper.gpu"),
+     fills in @EXECUTABLE@ ("endue-desk Helper (GPU)"), @IDENTIFIER@ ("ai.endue.desk.helper.gpu"),
      @VERSION@ and @MINIMUM@. CEF finds the helpers by the main executable's name plus " Helper". -->
 <plist version="1.0">
 <dict>
