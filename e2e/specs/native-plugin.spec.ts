@@ -3,10 +3,14 @@
 // into its window, which moves and snaps like any other window, and a kill of its process costs
 // that window only: the desk keeps drawing every other surface, says the plugin died, and starts it
 // again. The windows and the process are read through compositor_stats; the pointer is the
-// compositor's own input (support/compositor.ts), since the screen may be locked.
+// compositor's own input (support/compositor.ts), since the screen may be locked. A keyboard goes
+// through its window as through a web plugin's (#128): Tab enters it at its first part and Shift+Tab
+// at its last, its own Tab moves between its two parts, and past either end it hands the focus back
+// to the desk, which goes on in the page's own order; the keys and the desk's accessibility tree
+// (what a screen reader reads, `compositor_a11y`) follow each move.
 import { browser, expect } from "@wdio/globals";
-import { feed, shellCommand } from "../support/compositor";
-import { shellReady } from "../support/desk";
+import { feed, inputState, keyPress, shellCommand } from "../support/compositor";
+import { focusedSurface, shellReady } from "../support/desk";
 import { partOf } from "../support/windows";
 
 const PLUGIN = "example.native-wgpu";
@@ -29,6 +33,11 @@ interface Stats {
   windows: Array<{ id: string; rect: Quad; panes: Array<{ plugin: string | null; rect: Quad }> }>;
 }
 
+interface A11y {
+  focus: { role: string; label: string | null } | null;
+  tree: unknown;
+}
+
 const stats = () => shellCommand<Stats>("compositor_stats");
 const running = async () => (await stats()).native[PLUGIN];
 const frames = async () => (await stats()).surfaces[SURFACE]?.attached ?? 0;
@@ -46,6 +55,24 @@ async function nativeWindow(): Promise<Stats["windows"][number]> {
   if (!found) throw new Error("unreachable");
   return found;
 }
+
+/** The desk's accessibility tree, its focus where the keys are (ADR 0155). */
+const a11y = (args: Record<string, unknown> = {}) => shellCommand<A11y>("compositor_a11y", args);
+/** The surface the compositor gives the keys to. */
+const keys = async () => (await inputState()).focused;
+/** The tree's focus: the label of the node a screen reader is on. */
+const focusLabel = async () => (await a11y()).focus?.label;
+
+/** A press of Tab through the compositor, with these modifiers held. */
+const tab = (mods: Record<string, boolean> = {}) =>
+  feed([{ type: "modifiers", ...mods }, ...keyPress("Tab", "Tab", "\t"), { type: "modifiers" }]);
+
+/** The page's focus is in the desk's own chrome, not in a plugin's stand-in frame. */
+const inChrome = () =>
+  browser.execute(() => !!document.activeElement && document.activeElement.tagName !== "IFRAME");
+
+const until = (check: () => Promise<boolean>, timeoutMsg: string) =>
+  browser.waitUntil(check, { timeout: 10_000, timeoutMsg });
 
 /** Drag the window's title bar from where it is by the pointer to `to`, and let go. */
 async function dragTitle(rect: Quad, to: [number, number]) {
@@ -153,5 +180,69 @@ describe("native plugin: a process of its own draws a window like any other (#59
     const after = await stats();
     expect(others(after)).toEqual(others(before));
     expect(after.browsers).toBe(before.browsers);
+  });
+
+  it("Tab enters it at its first part and leaves past its last, and Shift+Tab the other way (#128)", async () => {
+    // The desk's tree, as a screen reader starts it: the plugin's parts and their focus are in it.
+    await feed([{ type: "windowFocused", focused: true }]);
+    await a11y({ activate: true });
+    // Round the windows with the desk's focus cycling until the plugin's window has the focus.
+    for (let presses = 0; presses < 40; presses++) {
+      const before = await focusedSurface();
+      await tab({ ctrl: true });
+      await browser
+        .waitUntil(async () => (await focusedSurface()) !== before, { timeout: 5_000 })
+        .catch(() => undefined);
+      if ((await focusedSurface()) === PLUGIN && (await inChrome())) break;
+    }
+    expect(await focusedSurface()).toBe(PLUGIN);
+    expect(await inChrome()).toBe(true);
+    await until(
+      async () => (await keys()) !== SURFACE,
+      "the window's section has the page's focus, yet the plugin kept the keys",
+    );
+
+    // Tab: into the plugin at its first part, then on to its second; the keys and the tree follow.
+    await tab();
+    await until(async () => (await keys()) === SURFACE, "Tab never gave the plugin the keys");
+    await until(async () => (await focusLabel()) === "Colour", "Tab never reached its first part");
+    await tab();
+    await until(
+      async () => (await focusLabel()) === "Pause",
+      "Tab never moved on to its second part",
+    );
+    // Past its last part: the plugin hands the focus back, and it goes on into the desk's chrome.
+    await tab();
+    await until(
+      async () => (await keys()) !== SURFACE,
+      "Tab past its last part kept the plugin's keys",
+    );
+    await until(inChrome, "the page's focus stayed in the plugin's stand-in");
+    await until(
+      async () => (await focusLabel()) !== "Pause",
+      "the tree's focus stayed on its part",
+    );
+
+    // Shift+Tab: back in at its last part, back to its first, then out before it.
+    await tab({ shift: true });
+    await until(
+      async () => (await keys()) === SURFACE,
+      "Shift+Tab never gave the plugin the keys again",
+    );
+    await until(
+      async () => (await focusLabel()) === "Pause",
+      "Shift+Tab never came back to its last part",
+    );
+    await tab({ shift: true });
+    await until(
+      async () => (await focusLabel()) === "Colour",
+      "Shift+Tab never moved back to its first part",
+    );
+    await tab({ shift: true });
+    await until(
+      async () => (await keys()) !== SURFACE,
+      "Shift+Tab before its first part kept the plugin's keys",
+    );
+    await until(inChrome, "the page's focus stayed in the plugin's stand-in");
   });
 });
