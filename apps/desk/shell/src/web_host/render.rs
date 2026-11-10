@@ -23,6 +23,11 @@ wrap_render_handler! {
     }
 
     impl RenderHandler {
+        // Its tree for screen readers, while an assistive technology is active (#57).
+        fn accessibility_handler(&self) -> Option<AccessibilityHandler> {
+            Some(super::view::a11y::handler(&self.view, &self.sink))
+        }
+
         fn view_rect(&self, _browser: Option<&mut Browser>, rect: Option<&mut Rect>) {
             if let Some(rect) = rect {
                 let (width, height) = self.view.lock().size;

@@ -84,6 +84,13 @@ wrap_life_span_handler! {
             1
         }
 
+        // A new browser for the surface exports its tree if the surface does (#57).
+        fn on_after_created(&self, browser: Option<&mut Browser>) {
+            if let Some(browser) = browser {
+                self.host.a11y_created(&self.surface, browser);
+            }
+        }
+
         fn on_before_close(&self, browser: Option<&mut Browser>) {
             if let Some(browser) = browser {
                 self.host.closed(&self.surface, browser.identifier());

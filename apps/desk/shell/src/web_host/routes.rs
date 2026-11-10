@@ -109,11 +109,11 @@ pub fn started(
 }
 
 impl WebHost {
-    /// An input or drag message for a surface; false when it is neither.
+    /// An input, drag or accessibility message for a surface; false when it is none of them.
     pub fn route(&self, surface: &str, message: &CompositorMessage) -> bool {
         let (is_input, is_drag) = (input::is_input(message), drag::is_drag(message));
         if !is_input && !is_drag {
-            return false;
+            return self.a11y(surface, message);
         }
         let (browser, height, mut composing, down) = {
             let mut inner = self.inner();

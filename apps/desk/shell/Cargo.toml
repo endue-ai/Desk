@@ -35,6 +35,10 @@ bundle = ["cef/build-util", "dep:semver"]
 helper_name = "endue-desk-helper"
 
 [dependencies]
+# Accessibility (#57): the compositor window's adapter, and the tree it was given walked for checks.
+accesskit.workspace = true
+accesskit_consumer.workspace = true
+accesskit_winit.workspace = true
 # A surface's custom cursor travels as a base64 PNG (specs/surface, #56).
 base64.workspace = true
 cef.workspace = true

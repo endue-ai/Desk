@@ -7,7 +7,7 @@
 //! rate and its share of the desk's frames; its renderer's death is `died`, its load `ready`, its
 //! title `title`. The compositor sees only the protocol, never CEF (`SurfaceSink`). Each surface has
 //! an origin of its own (#36), so with `--site-per-process` each is its own renderer; DevTools reach
-//! each one over the remote debugging port in development builds (ADR 0144).
+//! each one over the remote debugging port in development builds (ADR 0144); `view::a11y`: #57.
 
 pub mod client;
 pub mod clock;

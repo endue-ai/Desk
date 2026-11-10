@@ -13,8 +13,8 @@ use super::{Inner, WebHost};
 
 /// The compositor's shell page on the clock.
 pub struct Page {
-    browser: Browser,
-    view: SharedView,
+    pub(super) browser: Browser,
+    pub(super) view: SharedView,
     pacing: Pacing,
     shown: bool,
 }

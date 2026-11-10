@@ -1,6 +1,10 @@
 //! What one off-screen browser lays out and paints at, and what it painted. Its render handler reads
 //! the size and scale and counts every paint; its host changes them on `resize`, `hide` and `show`.
 
+/// A surface's tree for screen readers, the protocol's `a11y.*` (#57), kept with its view.
+#[path = "a11y.rs"]
+pub mod a11y;
+
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
@@ -42,6 +46,8 @@ pub struct View {
     last_size: Option<(u32, u32)>,
     started: Instant,
     pub counts: Counts,
+    /// Its accessibility export (#57), kept across its browsers.
+    pub a11y: a11y::Exports,
 }
 
 impl View {
@@ -56,6 +62,7 @@ impl View {
             last_size: None,
             started: Instant::now(),
             counts: Counts::default(),
+            a11y: Default::default(),
         }
     }
 
