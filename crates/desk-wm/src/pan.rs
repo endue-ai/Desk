@@ -88,6 +88,11 @@ impl PanDrag {
         (desktop == self.desktop).then_some(Offset::new(self.start.x + dx, self.start.y + dy))
     }
 
+    /// The desktop whose canvas it pans.
+    pub fn desktop(&self) -> &str {
+        &self.desktop
+    }
+
     /// Escape: the pan it started from.
     pub fn cancelled(&self, desktop: &str) -> Option<Offset> {
         (desktop == self.desktop).then_some(self.start)

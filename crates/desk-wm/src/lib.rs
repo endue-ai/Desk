@@ -22,6 +22,8 @@
 //! - `host`: what the compositor draws for the desktop in front (#81): the bars' bands and the free
 //!   area, each window at its rectangle with its panes, the live budget, and the surfaces'
 //!   lifecycle steps.
+//! - `interact`: dragging, resizing, snapping, the pan and the window commands on the compositor's
+//!   input (#80), and what the runtime takes back from them.
 
 pub mod arrange;
 pub mod buffers;
@@ -34,6 +36,7 @@ pub mod drawer;
 pub mod fill;
 pub mod geometry;
 pub mod host;
+pub mod interact;
 pub mod layout;
 mod math;
 pub mod migrate;
@@ -67,8 +70,8 @@ pub use geometry::{
     to_screen,
 };
 pub use host::{
-    Bars, Decision, FrameDoc, FrameState, HostPane, HostWindow, LiveBudget, Plan, Seat, Step,
-    Surfaces,
+    Bars, Decision, FrameDoc, FrameState, HostPane, HostWindow, LiveBudget, Places, Plan, Seat,
+    Step, Surfaces,
 };
 pub use layout::{DesktopLayout, Saved, Visible};
 pub use minimap::{

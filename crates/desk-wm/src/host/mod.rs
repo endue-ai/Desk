@@ -22,9 +22,10 @@ mod bars;
 mod budget;
 mod cut;
 mod panes;
+mod parts;
 mod surfaces;
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 pub use bars::{Bars, ERIS_H, ERIS_W, bars};
 pub use budget::{Decision, LiveBudget};
@@ -33,6 +34,7 @@ pub use panes::{
     BORDER, Cell, DIVIDER, PANE_HEAD, TITLE, TITLE_END, TITLE_START, body_of, cells, head_of,
     title_bar_of,
 };
+pub use parts::{PagePart, page_parts};
 pub use surfaces::{FrameDoc, FrameState, Seat, Step, Surfaces};
 
 use crate::clearance::{TitleClearance, TopChrome, title_clearance};
@@ -117,10 +119,15 @@ pub struct HostWindow {
     pub clearance: TitleClearance,
     /// The title bar's text: the pane in use's title (the first pane's in a window not in use).
     pub title: String,
-    /// Its title bar, whose icon and tools the page draws (they take the pointer until #80).
+    /// Its title bar, whose icon and tools the page draws.
     pub title_bar: Rect,
     pub panes: Vec<HostPane>,
     pub dividers: Vec<Rect>,
+    /// Where the page lays it out: where it is drawn, unless the window manager moves it ahead of
+    /// the page (#80).
+    pub page: Rect,
+    /// What the page draws of it, from the page to where it is drawn (`parts.rs`).
+    pub page_parts: Vec<PagePart>,
 }
 
 /// What the compositor draws for the desktop in front, on a `screen`-sized app.
@@ -165,10 +172,31 @@ impl Plan {
     }
 }
 
+/// Where windows are drawn, and laid out by the page, other than where their placements put them
+/// (#80): a window a gesture holds or that glides, and one the page has not moved yet. By id, on
+/// screen.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Places {
+    pub drawn: BTreeMap<String, Rect>,
+    pub page: BTreeMap<String, Rect>,
+}
+
 impl Desk {
     /// The plan of the desktop in front on a `vw`×`vh` app, the top chips' edges `top` measured
     /// by whoever draws them; `seen` names the page's own views.
     pub fn host_plan(&self, vw: f64, vh: f64, top: TopChrome, seen: &dyn Seen) -> Plan {
+        self.host_plan_at(vw, vh, top, seen, &Places::default())
+    }
+
+    /// The same with windows drawn or laid out by the page at `places`.
+    pub fn host_plan_at(
+        &self,
+        vw: f64,
+        vh: f64,
+        top: TopChrome,
+        seen: &dyn Seen,
+        places: &Places,
+    ) -> Plan {
         let here = self.here();
         let pan = self.pan_of(&here);
         let windows = self.windows_of(here.as_str());
@@ -188,17 +216,34 @@ impl Desk {
         // Stable: equal levels keep desk order, as the page's stacking does.
         stack.sort_by_key(|(level, _)| *level);
         let hosted: Vec<HostWindow> = (stack.into_iter())
-            .map(|(level, p)| self.host_window(p, level, screen_rect(p, pan, vw, vh), top, seen))
+            .map(|(level, p)| {
+                let at = screen_rect(p, pan, vw, vh);
+                let drawn = places.drawn.get(&p.id).copied().unwrap_or(at);
+                let mut w = self.host_window(p, level, drawn, top, seen);
+                let page = places.page.get(&p.id).copied().unwrap_or(at);
+                if page != drawn {
+                    let laid = self.host_window(p, level, page, top, seen);
+                    w.page = page;
+                    w.page_parts = page_parts(&laid, &w);
+                }
+                w
+            })
             .collect();
         // The page is one picture: where it draws part of a window under another (its icons,
         // its views), drawing it again above every window would put that part over the other.
-        // Each title's text is the compositor's own, drawn over the page's title bar.
+        // Each title's text is the compositor's own, drawn over the page's title bar. A window
+        // the page lays out elsewhere than it is drawn leaves all of that place to its window.
         let mut under: Vec<Rect> = hosted.iter().map(HostWindow::title_text).collect();
         for (i, w) in hosted.iter().enumerate() {
-            for part in w.drawn_by_page() {
+            let moved = w.page != w.rect;
+            for (part, _) in &w.page_parts {
+                if moved {
+                    under.push(*part);
+                    continue;
+                }
                 let over = hosted[i + 1..]
                     .iter()
-                    .filter_map(|u| intersect(part, u.rect));
+                    .filter_map(|u| intersect(*part, u.rect));
                 under.extend(over);
             }
         }
@@ -266,7 +311,7 @@ impl Desk {
         let title = (panes.iter().find(|pane| pane.focused))
             .or(panes.first())
             .map_or_else(|| p.id.clone(), |pane| pane.title.clone());
-        HostWindow {
+        let mut w = HostWindow {
             id: p.id.clone(),
             rect,
             level,
@@ -279,6 +324,10 @@ impl Desk {
             title_bar: title_bar_of(rect),
             panes,
             dividers,
-        }
+            page: rect,
+            page_parts: Vec::new(),
+        };
+        w.page_parts = parts::in_place(&w);
+        w
     }
 }
