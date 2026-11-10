@@ -80,7 +80,8 @@ pub fn drag_image(scene: &mut Scene, overlay: &DragOverlay, scale: f32) {
     let style = TextStyle {
         size: 13.0 * scale,
         color: Color::WHITE,
-        line_height: 18.0 * scale,
+        // A multiple of the size, as CSS's unitless line-height.
+        line_height: 1.35,
         ..TextStyle::default()
     };
     let inner = Rect::new(
@@ -142,6 +143,29 @@ mod tests {
         assert_eq!(
             desk_compositor::hit_test(&scene, Vec2::new(50.0, 50.0)),
             None
+        );
+    }
+
+    #[test]
+    fn the_drag_images_caption_is_drawn_on_its_pill() {
+        let Ok(gpu) = desk_compositor::headless::headless_device() else {
+            return;
+        };
+        let format = desk_compositor::wgpu::TextureFormat::Rgba8Unorm;
+        let mut compositor = desk_compositor::Compositor::new(&gpu.device, &gpu.queue, format);
+        let mut scene = Scene::new(300, 200);
+        drag_image(&mut scene, &overlay(SurfaceDropAnswer::Copy, 1), 1.0);
+        let target = desk_compositor::headless::Target::new(&gpu.device, (300, 200), format);
+        let stats = compositor.render(&scene, &target.view, target.size);
+        let rgba = target.read_rgba(&gpu.device, &gpu.queue).unwrap();
+        let light = rgba
+            .chunks(4)
+            .filter(|p| p[0] > 180 && p[1] > 180 && p[2] > 180)
+            .count();
+        assert!(stats.glyphs >= 6, "{stats:?}");
+        assert!(
+            light > 20,
+            "the caption's glyphs show white on the pill: {light}"
         );
     }
 }
