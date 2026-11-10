@@ -1,9 +1,10 @@
 //! The compositor's budgets on the CEF desk (#58), measured through the surface probe and judged by
 //! `just perf-compositor` against `e2e/perf/budgets.json` (`e2e/perf/lib/compositor.ts`): memory
-//! per live surface against #35's baseline, and the start to the first composed frame holding a web
-//! surface. They take a quiet machine and half a minute, so they are `#[ignore]`d in `cargo test`;
-//! the runner runs them with `--ignored` and `DESK_PERF_OUT`, where each writes what it measured
-//! (`<name>.measured.json`). Input to paint waits for the compositor's input path (#56).
+//! per live surface against #35's baseline, the start to the first composed frame holding a web
+//! surface, and a press to the composed frame holding its paint (RT-16, on #56's input path). They
+//! take a quiet machine and a minute, so they are `#[ignore]`d in `cargo test`; the runner runs
+//! them with `--ignored` and `DESK_PERF_OUT`, where each writes what it measured
+//! (`<name>.measured.json`).
 
 mod support;
 
@@ -143,9 +144,32 @@ fn perf_start_to_the_first_composed_web_surface() {
 }
 
 #[test]
-#[ignore = "input to paint <= 16 ms (RT-16) needs the compositor's input path (#56): a pointer \
-            event routed to a surface and the frame that shows its paint"]
-fn input_to_paint_within_16_ms() {
-    let report = probe("input_to_paint_within_16_ms", "input", &[]);
-    panic!("the probe has no input scenario until #56: {report:?}");
+#[ignore = "perf: just perf-compositor"]
+fn perf_input_to_paint() {
+    let Some(report) = probe("perf_input_to_paint", "input", &[]) else {
+        return;
+    };
+    eprintln!("input: {report}");
+    assert_eq!(report["started"], true, "{report}");
+    assert_eq!(
+        report["lost"], 0,
+        "every press reached a composed frame: {report}"
+    );
+    assert_eq!(
+        report["presses"], 20,
+        "the page counted every press: {report}"
+    );
+    keep(
+        "input-to-paint",
+        json!({ "inputToPaint": {
+            "p95Ms": report["paint_p95_ms"],
+            "p50Ms": report["paint_p50_ms"],
+            "frameP50Ms": report["frame_p50_ms"],
+            "frameP95Ms": report["frame_p95_ms"],
+            "tries": report["tries"].as_array().map_or(0, Vec::len),
+            "adapter": report["adapter"],
+            "software": report["adapter_type"] == "Cpu",
+            "platform": platform(),
+        }}),
+    );
 }

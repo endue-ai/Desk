@@ -1,9 +1,10 @@
 //! Isolation gates (#58, #32 §9 and §11) on the CEF desk in compositor mode, through the surface
 //! probe's desk (`src/probe/desk_loop.rs`, `gates.rs`): a renderer whose main thread spins forever
 //! leaves the desk's frame time and the other surfaces' paints as they were; a killed renderer is
-//! the one surface that dies while the desk keeps composing and the others keep painting; a surface
-//! at its memory cap goes to sleep, its renderer and memory go, its last frame stays, and the desk
-//! stays up. Each stretch is judged against the same run's own stretch before it, so a loaded
+//! the one surface that dies while the desk keeps composing and the others keep painting and take
+//! a press (#56's input path); a surface at its memory cap goes to sleep, its renderer and memory
+//! go, its last frame stays, and the desk stays up. Each stretch is judged against the same run's
+//! own stretch before it, so a loaded
 //! machine moves both. The process checks need Unix (`ps`, `kill`); Windows waits for #61.
 
 mod support;
@@ -114,11 +115,34 @@ fn a_killed_renderer_dies_alone_while_the_desk_keeps_composing() {
 }
 
 #[test]
-#[ignore = "input reaches surfaces with the compositor's input path (#56): once it does, a killed \
-            renderer's neighbours must take pointer and key input as before"]
-fn a_killed_renderer_leaves_the_others_taking_input() {
-    let report = probe("isolation_input", "isolation-input", &[]);
-    panic!("the probe has no input scenario until #56: {report:?}");
+fn a_killed_renderers_neighbour_still_takes_a_press_and_paints_it() {
+    let Some(report) = isolation() else { return };
+    if !cfg!(unix) {
+        eprintln!(
+            "a_killed_renderers_neighbour_still_takes_a_press_and_paints_it: skipped, needs kill (#61)"
+        );
+        return;
+    }
+    let input = &report["input"];
+    let frame = |when: &str| input[when]["frame_ms"].as_f64();
+    let (before, after) = (frame("before"), frame("after"));
+    assert!(
+        before.is_some(),
+        "a press reached a composed frame: {input}"
+    );
+    assert!(
+        after.is_some(),
+        "and again with a renderer killed and another spinning: {input}"
+    );
+    assert_eq!(
+        input["presses"], 2,
+        "the page counted both presses: {input}"
+    );
+    let (before, after) = (before.unwrap_or(0.0), after.unwrap_or(f64::MAX));
+    assert!(
+        after <= before * 2.0 + 34.0,
+        "the press painted as quickly as before, give or take two frames: {after} ms, {before} before"
+    );
 }
 
 #[test]

@@ -10,6 +10,7 @@
 
 mod desk_loop;
 mod gates;
+mod input_gate;
 pub mod pages;
 mod scenarios;
 
@@ -105,9 +106,11 @@ pub fn run(args: &cef::args::Args, scenario: &str) -> ExitCode {
                 "cap" => gates::cap(&mut probe),
                 "memory" => gates::memory(&mut probe),
                 "startup" => gates::startup(&mut probe),
+                "input" => input_gate::input(&mut probe),
                 other => json!({ "error": format!("no scenario {other}") }),
             };
             report["adapter"] = json!(format!("{} ({:?})", gpu.adapter.name, gpu.adapter.backend));
+            report["adapter_type"] = json!(format!("{:?}", gpu.adapter.device_type));
             probe.host.close_all();
             probe.pump_until(Duration::from_secs(5), |p| p.host.browsers() == 0);
             report

@@ -5,6 +5,7 @@
 //! from outside: the tree's memory (macOS `footprint`, as #35 measured; RSS elsewhere), one
 //! process's RSS and CPU.
 
+use std::cell::Cell;
 use std::time::{Duration, Instant};
 
 use desk_compositor::headless::Target;
@@ -16,9 +17,11 @@ use super::Probe;
 const SIZE: (u32, u32) = (1920, 1080);
 const FRAME: Duration = Duration::from_micros(16_667);
 
-/// The desk's off-screen target.
+/// The desk's off-screen target, and when its next frame is due: the desk keeps its own cadence
+/// across stretches, as a display's vsync would, whatever a gate does between them.
 pub struct DeskLoop {
     target: Target,
+    next: Cell<Instant>,
 }
 
 /// One stretch of the desk's frames.
@@ -59,7 +62,17 @@ impl DeskLoop {
         let composed = probe.shared.lock();
         let device = composed.compositor.device().clone();
         let target = Target::new(&device, SIZE, composed.compositor.format());
-        DeskLoop { target }
+        DeskLoop {
+            target,
+            next: Cell::new(Instant::now()),
+        }
+    }
+
+    /// The frame that started at `start` is drawn: the next is due a frame after this one was,
+    /// or a frame from now when the desk fell behind.
+    fn drawn(&self, start: Instant) {
+        let due = self.next.get() + FRAME;
+        self.next.set(if due > start { due } else { start + FRAME });
     }
 }
 
@@ -69,9 +82,9 @@ impl Probe {
     pub fn run_desk(&mut self, desk: &DeskLoop, surfaces: &[&str], time: Duration) -> Frames {
         let mut frames = Frames::default();
         let until = Instant::now() + time;
-        let (mut next, mut last) = (Instant::now(), None);
+        let mut last = None;
         while Instant::now() < until {
-            if Instant::now() >= next {
+            if Instant::now() >= desk.next.get() {
                 let start = Instant::now();
                 let drew = self.compose(desk, surfaces);
                 frames.work.push(start.elapsed());
@@ -84,11 +97,39 @@ impl Probe {
                     frames.first_with_surface.get_or_insert(now);
                 }
                 last = Some(start);
-                next = start + FRAME;
+                desk.drawn(start);
             }
             self.step();
         }
         frames
+    }
+
+    /// Run the desk until `painted` holds and a frame has been composed after it, for at most
+    /// `timeout`: when `painted` first held, and when that frame was done (GPU included).
+    pub fn run_desk_until(
+        &mut self,
+        desk: &DeskLoop,
+        surfaces: &[&str],
+        timeout: Duration,
+        painted: impl Fn(&Probe) -> bool,
+    ) -> (Option<Instant>, Option<Instant>) {
+        let until = Instant::now() + timeout;
+        let mut painted_at = None;
+        while Instant::now() < until {
+            if Instant::now() >= desk.next.get() {
+                let start = Instant::now();
+                self.compose(desk, surfaces);
+                desk.drawn(start);
+                if painted_at.is_some_and(|at| start >= at) {
+                    return (painted_at, Some(Instant::now()));
+                }
+            }
+            self.step();
+            if painted_at.is_none() && painted(self) {
+                painted_at = Some(Instant::now());
+            }
+        }
+        (painted_at, None)
     }
 
     /// One frame of the desk; whether it drew a surface's texture.

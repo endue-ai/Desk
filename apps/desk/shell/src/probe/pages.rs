@@ -13,9 +13,9 @@ use desk_web::plugin_scheme::Source;
 pub const COLOUR: [u8; 3] = [0x33, 0x66, 0xcc];
 pub const WEBGPU: [u8; 3] = [0xcc, 0x33, 0x66];
 
-/// The probe's plugins, by id: (id, page). The last three are the isolation and budget gates' (#58,
-/// `gates.rs`).
-pub const PAGES: [(&str, &str); 7] = [
+/// The probe's plugins, by id: (id, page). The last four are the isolation and budget gates' (#58,
+/// `gates.rs`, `input_gate.rs`).
+pub const PAGES: [(&str, &str); 8] = [
     ("probe.colour", COLOUR_PAGE),
     ("probe.anim", ANIM_PAGE),
     ("probe.webgpu", WEBGPU_PAGE),
@@ -23,7 +23,17 @@ pub const PAGES: [(&str, &str); 7] = [
     ("probe.light", LIGHT_PAGE),
     ("probe.busy", BUSY_PAGE),
     ("probe.hog", HOG_PAGE),
+    ("probe.click", CLICK_PAGE),
 ];
+
+/// A still page that changes colour on every pointer press and names the presses in its title.
+const CLICK_PAGE: &str = concat!(
+    r#"<!doctype html><meta charset="utf-8"><title>click</title>"#,
+    r#"<style>html,body{margin:0;height:100%;background:#3366cc}</style><body><script>"#,
+    r#"let clicks = 0; addEventListener("pointerdown", () => { clicks += 1;"#,
+    r##"document.body.style.background = clicks % 2 ? "#cc3366" : "#3366cc"; if (typeof say === "function") say(`clicks:${clicks}`); });"##,
+    r#"</script>"#
+);
 
 /// The PoC's light page (`spikes/compositor/pages/light.html`), which #35 measured memory with: a
 /// card, a spinning square and a canvas redrawn every frame.

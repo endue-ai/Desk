@@ -3,7 +3,7 @@
 //!
 //! - `isolation`: two animating surfaces beside one whose main thread is made to spin forever and
 //!   one whose renderer is killed: the desk's frames and the others' paints before, during the spin
-//!   and through the death.
+//!   and through the death, and a press on a fifth that it paints, before and after.
 //! - `cap`: a surface whose page keeps allocating is put to sleep when its renderer passes a memory
 //!   cap. The probe applies the cap itself, as the host's live budget will (ADR 0142, #81): what is
 //!   gated is that the sleep holds under the pressure, the renderer and its memory go, its last
@@ -17,6 +17,7 @@ use cef::{ImplBrowser, ImplFrame};
 use serde_json::{Map, Value, json};
 
 use super::desk_loop::{DeskLoop, cpu_seconds, memory as tree_memory, rss_mb, tree};
+use super::input_gate::{presses, to_paint};
 use super::{Probe, alive, epoch_ms, kill};
 
 const SIZE: (u32, u32) = (320, 200);
@@ -43,20 +44,23 @@ fn stretch(probe: &mut Probe, desk: &DeskLoop, surfaces: &[&str], time: Duration
 }
 
 pub fn isolation(probe: &mut Probe) -> Value {
-    let all = ["a", "b", "busy", "victim"];
+    let all = ["a", "b", "busy", "victim", "click"];
     for (id, plugin) in [
         ("a", "probe.anim"),
         ("b", "probe.anim"),
         ("busy", "probe.busy"),
         ("victim", "probe.anim"),
+        ("click", "probe.click"),
     ] {
         probe.create(id, plugin, SIZE);
     }
     let started = probe.pump_until(START, |p| {
-        all.iter().all(|s| p.pid(s).is_some() && p.paints(s) >= 5)
+        all.iter()
+            .all(|s| p.pid(s).is_some() && (p.paints(s) >= 5 || *s == "click"))
     });
     let desk = DeskLoop::new(probe);
     let before = stretch(probe, &desk, &all, Duration::from_secs(2));
+    let pressed_before = to_paint(probe, &desk, &all, "click");
 
     // Busy: the page's main thread never returns.
     let busy_pid = probe.pid("busy");
@@ -78,6 +82,8 @@ pub fn isolation(probe: &mut Probe) -> Value {
     let victim_pid = probe.pid("victim");
     let killed = victim_pid.is_some_and(kill);
     let death = stretch(probe, &desk, &all, Duration::from_secs(2));
+    // A neighbour of the dead one (and of the spinning one) still takes a press and paints it.
+    let pressed_after = to_paint(probe, &desk, &all, "click");
     let deaths = probe.deaths().to_vec();
     // A renderer that spins never unloads: end it so the probe can close.
     if let Some(pid) = busy_pid {
@@ -89,6 +95,7 @@ pub fn isolation(probe: &mut Probe) -> Value {
         "before": before,
         "busy": { "spun": spun, "cores": cores, "desk": busy },
         "death": { "killed": killed, "deaths": deaths, "desk": death },
+        "input": { "before": pressed_before, "after": pressed_after, "presses": presses(probe, "click") },
     })
 }
 
