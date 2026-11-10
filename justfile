@@ -66,8 +66,9 @@ build-shell: build-sdk build-ui
     @# A fresh bundle each time: macOS kills a signed binary that was rewritten in place (SIGKILL at launch).
     @if [ "$(uname -s)" = Darwin ]; then rm -rf target/bundle/endue-desk.app && cargo run -q -p desk-shell --features bundle --bin desk-shell-bundle -- target/bundle debug; fi
 
-# Lint and test the CEF shell crate, which downloads and builds CEF (so `just check` leaves it out)
-check-shell:
+# Lint and test the CEF shell crate, which downloads and builds CEF (so `just check` leaves it out);
+# it embeds the plugin SDK and the UI bundle, so those build first
+check-shell: build-sdk build-ui
     cargo clippy -p desk-shell --all-targets --all-features -- -D warnings
     cargo test -p desk-shell
 
