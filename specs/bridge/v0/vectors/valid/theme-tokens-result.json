@@ -1,0 +1,8 @@
+{
+  "target": "ThemeTokensResult",
+  "description": "theme.tokens answers the table's revision and how many tokens it holds",
+  "instance": {
+    "revision": 3,
+    "tokens": 215
+  }
+}

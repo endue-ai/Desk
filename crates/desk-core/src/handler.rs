@@ -109,6 +109,8 @@ pub struct Core {
     /// The computer (ADR 0123): the injected driver, its stop flag and the screenshots' folder.
     pub(crate) computer: crate::computer::Seat,
     pub(crate) themes: crate::core_themes::Themes,
+    /// The look in force for the compositor (theme.tokens, ADR 0145).
+    pub(crate) theme_tokens: crate::theme::ThemeTokens,
     pub(crate) start: Mutex<crate::core_state::StartState>,
 }
 
@@ -162,6 +164,7 @@ impl Core {
             studio: Default::default(),
             computer: Default::default(),
             themes: Default::default(),
+            theme_tokens: Default::default(),
             start: Mutex::default(),
         }
     }

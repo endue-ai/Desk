@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/theme.schema.json",
   "title": "Desk bridge v0: theme",
-  "description": "The person's own themes (ADR 0058). A user theme is a theme plugin in the desk's user themes folder, one folder per theme, installed like any plugin but not built in: theme.save writes one, theme.import installs a .desk-theme bundle (specs/plugin ThemeBundle), theme.export writes any installed theme as one, and theme.remove deletes a user theme; theme.market.list and theme.market.fetch read the markets desk.theme.markets lists (ADR 0060). Every call needs theme:manage; each change reaches plugin:manage holders as plugin.changed. Which theme is in force stays with the setting desk.theme.active. The same methods carry design systems (plugins of kind design-system, .desk-design bundles, ADR 0091), which desk.design.active chooses.",
+  "description": "The person's own themes (ADR 0058). A user theme is a theme plugin in the desk's user themes folder, one folder per theme, installed like any plugin but not built in: theme.save writes one, theme.import installs a .desk-theme bundle (specs/plugin ThemeBundle), theme.export writes any installed theme as one, and theme.remove deletes a user theme; theme.market.list and theme.market.fetch read the markets desk.theme.markets lists (ADR 0060). theme.tokens hands the core the look in force as one flat table of tokens, which the compositor draws the desk's chrome from (ADR 0145). Every call needs theme:manage; each change reaches plugin:manage holders as plugin.changed. Which theme is in force stays with the setting desk.theme.active. The same methods carry design systems (plugins of kind design-system, .desk-design bundles, ADR 0091), which desk.design.active chooses.",
   "$defs": {
     "ThemeSaveFile": {
       "description": "One of the theme's font or image files, given inline.",
@@ -286,6 +286,66 @@
         "bundle": { "$ref": "../../plugin/v0/theme.schema.json#/$defs/ThemeBundle" }
       },
       "required": ["bundle"],
+      "additionalProperties": false
+    },
+    "ThemeTokenName": {
+      "description": "A token's name as @endue-ai/ui names it, camelCase: textMuted is the custom property --desk-text-muted, text2xs is --desk-text-2xs.",
+      "type": "string",
+      "pattern": "^[a-z][A-Za-z0-9]*$",
+      "maxLength": 64
+    },
+    "ThemeTokenMap": {
+      "description": "Every token of the look in force, by name, with its CSS value as the shell applies it: colours (#hex, rgb(), rgba(), hsl(), oklch()), lengths in px, box shadows, font stacks, durations, and var(--desk-<token>) references to other tokens (a design system's component tokens are such references).",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/ThemeTokenName" },
+      "additionalProperties": { "type": "string", "maxLength": 1024 },
+      "maxProperties": 1024
+    },
+    "ThemeTokensRequest": {
+      "description": "The runtime, which resolves the look while it still does (ADR 0056, ADR 0090), hands the core the look in force each time it changes (a setting, the OS, a preview, an installed theme or design system): the theme's six layers and the design system's component tokens in one flat table. The core keeps the latest table, whole and in memory only, for the compositor, which draws the desk's chrome from it and follows its var() references (ADR 0145). The same table again changes nothing.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "theme.tokens" },
+        "params": { "$ref": "#/$defs/ThemeTokensParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ThemeTokensParams": {
+      "description": "Parameters of theme.tokens: the look the runtime resolved.",
+      "type": "object",
+      "properties": {
+        "scheme": { "$ref": "../../plugin/v0/contributes.schema.json#/$defs/ThemeScheme" },
+        "contrast": { "$ref": "../../plugin/v0/contributes.schema.json#/$defs/ThemeContrast" },
+        "reducedMotion": {
+          "description": "Whether motion is reduced; the motion tokens are 0ms then.",
+          "type": "boolean"
+        },
+        "theme": {
+          "description": "The theme plugin in force or previewed; empty or absent for the desk's own.",
+          "type": "string",
+          "maxLength": 128
+        },
+        "design": {
+          "description": "The design system in force; empty or absent for the endue design system.",
+          "type": "string",
+          "maxLength": 128
+        },
+        "tokens": { "$ref": "#/$defs/ThemeTokenMap" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ThemeManagePermission" }
+      },
+      "required": ["scheme", "contrast", "reducedMotion", "tokens", "scope"],
+      "additionalProperties": false
+    },
+    "ThemeTokensResult": {
+      "description": "Result of theme.tokens: the table's revision, which moves only when the table changed, and how many tokens it holds.",
+      "type": "object",
+      "properties": {
+        "revision": { "type": "integer", "minimum": 1 },
+        "tokens": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["revision", "tokens"],
       "additionalProperties": false
     }
   }

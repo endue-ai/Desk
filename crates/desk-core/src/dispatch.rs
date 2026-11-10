@@ -142,6 +142,7 @@ impl Core {
             R::ThemeRemove(r) => (r.id, self.theme_remove(caller, r.params)),
             R::ThemeMarketList(r) => (r.id, self.theme_market_list(caller, r.params)),
             R::ThemeMarketFetch(r) => (r.id, self.theme_market_fetch(caller, r.params)),
+            R::ThemeTokens(r) => (r.id, self.theme_tokens_set(caller, r.params)),
             R::StudioAgentsList(r) => (r.id, self.studio_agents_list(caller, r.params)),
             R::StudioAgentsGet(r) => (r.id, self.studio_agents_get(caller, r.params)),
             R::StudioAgentsCreate(r) => (r.id, self.studio_agents_create(caller, r.params)),

@@ -142,6 +142,7 @@
         { "$ref": "theme.schema.json#/$defs/ThemeRemoveRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeMarketListRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeMarketFetchRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeTokensRequest" },
         { "$ref": "studio.schema.json#/$defs/StudioAgentsListRequest" },
         { "$ref": "studio.schema.json#/$defs/StudioAgentsGetRequest" },
         { "$ref": "studio.schema.json#/$defs/StudioAgentsCreateRequest" },

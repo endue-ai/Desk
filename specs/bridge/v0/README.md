@@ -667,6 +667,16 @@ the folder as it landed). A later import of the same id by `url` replaces it onl
 has that hash; a theme the person changed is `already_exists` and stays. `theme.remove` forgets the
 record with the folder.
 
+**theme.tokens** hands the core the look in force, under the same `theme:manage`: the runtime, which
+resolves the theme's six layers and lays the design system's component tokens over them (ADR 0056,
+ADR 0090), sends the result each time it changes (a setting, the OS's preferences, a preview, an
+installed theme or design system), with the `scheme`, `contrast`, `reducedMotion`, the `theme` and
+`design` in force and every token by its camelCase name with its CSS value, `var(--desk-<token>)`
+references included. The core keeps the latest table in memory, whole, as the flat table the
+compositor draws the desk's chrome from (ADR 0145); the compositor reads each value it needs, and
+follows a reference to the token it names. The answer is the table's `revision`, which moves only when
+the table changed, and how many `tokens` it holds. Nothing else reads the table over the bridge.
+
 **market.list**, **plugin.install** and **plugin.remove** are the market for every kind (ADR 0107,
 `specs/market/v0`), under `plugin:manage`. `market.list` reads the indexes `desk.market.indexes` lists and
 the theme markets, and answers every entry once (the first market wins) with its `market`, `verified`

@@ -1,0 +1,21 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.tokens says which scheme is in force",
+  "instance": {
+    "id": 83,
+    "method": "theme.tokens",
+    "params": {
+      "contrast": "normal",
+      "reducedMotion": false,
+      "tokens": {
+        "background": "#141416",
+        "text": "#f2f0f5",
+        "toastRadius": "var(--desk-radius-lg)",
+        "radiusLg": "12px"
+      },
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

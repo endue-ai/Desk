@@ -1,0 +1,22 @@
+{
+  "target": "BridgeRequest",
+  "description": "plugin:manage is not the scope theme.tokens needs",
+  "instance": {
+    "id": 81,
+    "method": "theme.tokens",
+    "params": {
+      "scheme": "dark",
+      "contrast": "normal",
+      "reducedMotion": false,
+      "tokens": {
+        "background": "#141416",
+        "text": "#f2f0f5",
+        "toastRadius": "var(--desk-radius-lg)",
+        "radiusLg": "12px"
+      },
+      "scope": {
+        "permission": "plugin:manage"
+      }
+    }
+  }
+}

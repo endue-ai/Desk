@@ -672,7 +672,7 @@ export interface UpdateManagePermission {
   permission: "update:manage";
 }
 
-/** Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme. The desk grants it to the runtime and the CLI only. */
+/** Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme; and hand the core the look in force (theme.tokens). The desk grants it to the runtime and the CLI only. */
 export interface ThemeManagePermission {
   permission: "theme:manage";
 }
@@ -3105,6 +3105,7 @@ export type BridgeRequest =
   | ThemeRemoveRequest
   | ThemeMarketListRequest
   | ThemeMarketFetchRequest
+  | ThemeTokensRequest
   | StudioAgentsListRequest
   | StudioAgentsGetRequest
   | StudioAgentsCreateRequest
@@ -6519,6 +6520,39 @@ export interface ThemeMarketFetchResult {
   bundle: ThemeBundle;
 }
 
+/** A token's name as @endue-ai/ui names it, camelCase: textMuted is the custom property --desk-text-muted, text2xs is --desk-text-2xs. */
+export type ThemeTokenName = string;
+
+/** Every token of the look in force, by name, with its CSS value as the shell applies it: colours (#hex, rgb(), rgba(), hsl(), oklch()), lengths in px, box shadows, font stacks, durations, and var(--desk-<token>) references to other tokens (a design system's component tokens are such references). */
+export type ThemeTokenMap = Record<string, string>;
+
+/** The runtime, which resolves the look while it still does (ADR 0056, ADR 0090), hands the core the look in force each time it changes (a setting, the OS, a preview, an installed theme or design system): the theme's six layers and the design system's component tokens in one flat table. The core keeps the latest table, whole and in memory only, for the compositor, which draws the desk's chrome from it and follows its var() references (ADR 0145). The same table again changes nothing. */
+export interface ThemeTokensRequest {
+  id: RequestId;
+  method: "theme.tokens";
+  params: ThemeTokensParams;
+}
+
+/** Parameters of theme.tokens: the look the runtime resolved. */
+export interface ThemeTokensParams {
+  scheme: ThemeScheme;
+  contrast: ThemeContrast;
+  /** Whether motion is reduced; the motion tokens are 0ms then. */
+  reducedMotion: boolean;
+  /** The theme plugin in force or previewed; empty or absent for the desk's own. */
+  theme?: string;
+  /** The design system in force; empty or absent for the endue design system. */
+  design?: string;
+  tokens: ThemeTokenMap;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.tokens: the table's revision, which moves only when the table changed, and how many tokens it holds. */
+export interface ThemeTokensResult {
+  revision: number;
+  tokens: number;
+}
+
 /** Open one of the surfaces the caller's manifest declares; the runtime hears ui.surface.opened. */
 export interface UiSurfaceOpenRequest {
   id: RequestId;
@@ -6991,6 +7025,7 @@ export interface BridgeMethodMap {
   "theme.remove": { params: ThemeRemoveParams; result: ThemeRemoveResult };
   "theme.market.list": { params: ThemeMarketListParams; result: ThemeMarketListResult };
   "theme.market.fetch": { params: ThemeMarketFetchParams; result: ThemeMarketFetchResult };
+  "theme.tokens": { params: ThemeTokensParams; result: ThemeTokensResult };
   "studio.agents.list": { params: StudioParams; result: StudioAgentsListResult };
   "studio.agents.get": { params: StudioAgentParams; result: StudioAgentsGetResult };
   "studio.agents.create": { params: StudioAgentsCreateParams; result: StudioAgentsCreateResult };
@@ -7165,6 +7200,7 @@ export const BRIDGE_METHODS = [
   "theme.remove",
   "theme.market.list",
   "theme.market.fetch",
+  "theme.tokens",
   "studio.agents.list",
   "studio.agents.get",
   "studio.agents.create",

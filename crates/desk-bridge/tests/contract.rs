@@ -23,10 +23,10 @@ use desk_bridge::{
     StudioAgentsPromptUpdateResult, StudioAgentsRemoveResult, StudioCatalogListResult,
     StudioCatalogRecommendResult, StudioCatalogUseResult, StudioConversationsListResult,
     StudioSpacesGetResult, StudioSpacesListResult, ThemeBundle, ThemeExportResult, ThemeIndex,
-    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
-    UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalPage, UniversalSource,
-    UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems,
-    view_problems,
+    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeTokensResult, ThemeType,
+    ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalPage,
+    UniversalSource, UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
+    manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -378,6 +378,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "ThemeIndex" => roundtrip::<ThemeIndex>(vector),
                 "ThemeMarketListResult" => roundtrip::<ThemeMarketListResult>(vector),
                 "ThemeMarketFetchResult" => roundtrip::<ThemeMarketFetchResult>(vector),
+                "ThemeTokensResult" => roundtrip::<ThemeTokensResult>(vector),
                 "StudioAgentsListResult" => roundtrip::<StudioAgentsListResult>(vector),
                 "StudioAgentsCreateResult" => roundtrip::<StudioAgentsCreateResult>(vector),
                 "StudioAgentsRemoveResult" => roundtrip::<StudioAgentsRemoveResult>(vector),

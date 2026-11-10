@@ -338,7 +338,7 @@
       "additionalProperties": false
     },
     "ThemeManagePermission": {
-      "description": "Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme. The desk grants it to the runtime and the CLI only.",
+      "description": "Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme; and hand the core the look in force (theme.tokens). The desk grants it to the runtime and the CLI only.",
       "type": "object",
       "properties": { "permission": { "const": "theme:manage" } },
       "required": ["permission"],

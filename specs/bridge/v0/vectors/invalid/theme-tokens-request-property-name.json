@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "a token is named in camelCase, never as its custom property",
+  "instance": {
+    "id": 82,
+    "method": "theme.tokens",
+    "params": {
+      "scheme": "dark",
+      "contrast": "normal",
+      "reducedMotion": false,
+      "tokens": {
+        "--desk-text-muted": "#b0adb7"
+      },
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

@@ -1134,7 +1134,7 @@ pub struct UpdateManagePermission {
     pub permission: UpdateManagePermissionPermission,
 }
 
-/// Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme. The desk grants it to the runtime and the CLI only.
+/// Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme; and hand the core the look in force (theme.tokens). The desk grants it to the runtime and the CLI only.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ThemeManagePermission {
@@ -4923,6 +4923,7 @@ pub enum BridgeRequest {
     ThemeRemove(ThemeRemoveRequest),
     ThemeMarketList(ThemeMarketListRequest),
     ThemeMarketFetch(ThemeMarketFetchRequest),
+    ThemeTokens(ThemeTokensRequest),
     StudioAgentsList(StudioAgentsListRequest),
     StudioAgentsGet(StudioAgentsGetRequest),
     StudioAgentsCreate(StudioAgentsCreateRequest),
@@ -10158,6 +10159,48 @@ pub struct ThemeMarketFetchResult {
     pub bundle: ThemeBundle,
 }
 
+/// A token's name as @endue-ai/ui names it, camelCase: textMuted is the custom property --desk-text-muted, text2xs is --desk-text-2xs.
+pub type ThemeTokenName = String;
+
+/// Every token of the look in force, by name, with its CSS value as the shell applies it: colours (#hex, rgb(), rgba(), hsl(), oklch()), lengths in px, box shadows, font stacks, durations, and var(--desk-<token>) references to other tokens (a design system's component tokens are such references).
+pub type ThemeTokenMap = BTreeMap<String, String>;
+
+/// The runtime, which resolves the look while it still does (ADR 0056, ADR 0090), hands the core the look in force each time it changes (a setting, the OS, a preview, an installed theme or design system): the theme's six layers and the design system's component tokens in one flat table. The core keeps the latest table, whole and in memory only, for the compositor, which draws the desk's chrome from it and follows its var() references (ADR 0145). The same table again changes nothing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeTokensRequest {
+    pub id: RequestId,
+    pub method: ThemeTokensRequestMethod,
+    pub params: ThemeTokensParams,
+}
+
+/// Parameters of theme.tokens: the look the runtime resolved.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeTokensParams {
+    pub scheme: ThemeScheme,
+    pub contrast: ThemeContrast,
+    /// Whether motion is reduced; the motion tokens are 0ms then.
+    #[serde(rename = "reducedMotion")]
+    pub reduced_motion: bool,
+    /// The theme plugin in force or previewed; empty or absent for the desk's own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<String>,
+    /// The design system in force; empty or absent for the endue design system.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub design: Option<String>,
+    pub tokens: ThemeTokenMap,
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.tokens: the table's revision, which moves only when the table changed, and how many tokens it holds.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeTokensResult {
+    pub revision: u64,
+    pub tokens: u64,
+}
+
 /// Open one of the surfaces the caller's manifest declares; the runtime hears ui.surface.opened.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -12429,6 +12472,14 @@ pub enum ThemeMarketFetchRequestMethod {
     #[default]
     #[serde(rename = "theme.market.fetch")]
     ThemeMarketFetch,
+}
+
+/// The `method` of [`ThemeTokensRequest`]: always `"theme.tokens"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeTokensRequestMethod {
+    #[default]
+    #[serde(rename = "theme.tokens")]
+    ThemeTokens,
 }
 
 /// The `method` of [`UiSurfaceOpenRequest`]: always `"ui.surface.open"`.

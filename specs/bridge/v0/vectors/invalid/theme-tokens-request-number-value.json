@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "a token's value is its CSS text, never a number",
+  "instance": {
+    "id": 84,
+    "method": "theme.tokens",
+    "params": {
+      "scheme": "dark",
+      "contrast": "normal",
+      "reducedMotion": false,
+      "tokens": {
+        "radiusLg": 12
+      },
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}
