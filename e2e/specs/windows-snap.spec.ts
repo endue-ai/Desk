@@ -188,7 +188,10 @@ describe("snap: windows dragged to the app's edges and corners (#82)", () => {
     await drag(titleAt(rectOf(win)), { x: 3, y: 3 });
     const snapped = await windowUntil(id, (x) => x.fill === "top-left", "the top-left quarter");
     expect(rectOf(snapped)).toEqual(partOf("top-left", desk.screen));
-    // Grabbed by its title and dropped in the middle of the desk: its own size, under the pointer.
+    // Once it has glided into the quarter (a press while the compositor still draws it gliding is
+    // not what this case is about), grabbed by its title and dropped in the middle of the desk: its
+    // own size, under the pointer.
+    await settled(desk.screen.width);
     const drop = { x: 700, y: 500 };
     await drag(titleAt(rectOf(snapped)), drop);
     const back = await windowUntil(id, (x) => x.state === "normal", "normal again");
