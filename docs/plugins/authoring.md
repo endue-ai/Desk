@@ -6,7 +6,7 @@ English · [日本語](../i18n/ja/plugins/authoring.md) · [中文](../i18n/zh/p
 
 A Desk plugin is a folder. Built-in features use exactly the same format, so anything Desk itself does
 on screen, your plugin can do too. This page starts with the kinds of plugin and their templates, then
-covers UI plugins in depth and, last, themes; tool (MCP) plugins come later.
+covers UI plugins in depth, then native plugins and, last, themes; tool (MCP) plugins come later.
 
 ## Start from a template
 
@@ -399,6 +399,61 @@ await host.settle();
 
 Before you publish, `desk plugin validate <folder>` must pass; CI runs it for every folder in
 `plugins/` and `examples/`.
+
+## Native plugins
+
+A native plugin (kind `native`) is a program of your own, in any language, that Desk starts as a
+process of its own (ADR 0154). It draws its window on the GPU with the API you choose, into a texture
+it shares with the desk, and calls the same bridge a UI plugin calls. Native plugins run on the
+compositor's desk (`DESK_COMPOSITOR=1`); `just example plugin-native-wgpu` builds the example and runs
+it there.
+
+```json
+{
+  "id": "example.my-native",
+  "version": "0.1.0",
+  "kind": "native",
+  "native": {
+    "binaries": {
+      "macos-aarch64": "bin/macos-aarch64/my-native",
+      "linux-x86_64": "bin/linux-x86_64/my-native"
+    },
+    "args": [],
+    "graceMs": 2000
+  },
+  "permissions": [{ "permission": "ui:notify" }],
+  "surfaces": [{ "id": "main", "title": "My native plugin", "placement": "center" }]
+}
+```
+
+* `native.binaries` names the program for each `<os>-<arch>` as Rust names them (`macos-aarch64`,
+  `linux-x86_64`, `windows-x86_64`, ...), inside the folder. A desk without a program for its own
+  platform does not load the plugin, and its plugin list says why. There is no `entry`.
+* **Start.** The desk runs the program in the plugin's folder when its window opens or wakes. Its
+  environment names two connections the desk made for it: `DESK_SURFACE_FD`, where it speaks the
+  surface protocol (`specs/surface/v0`), and `DESK_BRIDGE_FD`, the bridge on the wire of `desk.sock`;
+  on macOS also `DESK_SURFACE_MACH_SERVICE`, where its IOSurfaces' Mach rights go.
+* **Frames.** The desk sends `create` with the size in logical pixels and the display's scale. The
+  plugin says `desk:hello`, draws into an IOSurface (macOS) and `attach`es each frame with what
+  changed, and draws again once the desk sent that frame's `release`. `resize`, `show` and `hide`,
+  `pace`, the pointer and the keys arrive in the window's own coordinates.
+* **The bridge.** Every call is checked against the manifest's permissions and the person's grants,
+  as for any plugin. The desk knows the plugin by the connection it gave it, never by what it says.
+* **Hangs, deaths and sleep.** Answer each `desk:ping` with a `desk:pong` from the loop that draws: a
+  plugin silent for 5 seconds shows Not responding, with Wait and Stop. A process that ends while
+  its window is live died: the window says so and loads again once. `sleep` (the window left the
+  live budget) asks it to keep its state (`desk:state`, or an answer to `ui.surface.state`) and exit;
+  `wake` starts it again and its `desk:init` hands the state back. The desk kills a process that has
+  not exited `graceMs` after it was asked.
+* **No sandbox.** A native plugin runs as the person, with their files and network; only its bridge
+  calls are checked. Install only native plugins you trust.
+
+In Rust, `desk-surface` with its `native-wgpu` feature does the wire for you:
+`native::plugin::Plugin` connects, hears the desk (and answers its pings) and sends frames,
+`native::bridge::Bridge::call` calls the bridge, and `native::iosurface::SharedTexture` is an IOSurface
+as a wgpu texture. `examples/plugin-native-wgpu` is a whole plugin: a wgpu scene, one bridge call
+(`settings.get` of its own setting) and its state kept across sleeps. Frames from a native plugin
+reach the desk on macOS today; Linux (DMA-BUF) and Windows (D3D11 shared handles) follow (#61).
 
 ## Making a theme
 

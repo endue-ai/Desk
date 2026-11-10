@@ -4,7 +4,7 @@
 
 Desk 플러그인은 폴더 하나입니다. 내장 기능도 똑같은 형식을 쓰므로, Desk 자신이 화면에서 하는 일은 무엇이든
 직접 만든 플러그인도 할 수 있습니다. 이 문서는 플러그인의 종류와 템플릿에서 시작해, UI 플러그인을 자세히
-다루고 마지막으로 테마를 다룹니다. 도구(MCP) 플러그인은 나중에 추가됩니다.
+다룬 뒤 네이티브 플러그인을, 마지막으로 테마를 다룹니다. 도구(MCP) 플러그인은 나중에 추가됩니다.
 
 ## 템플릿에서 시작하기
 
@@ -388,6 +388,60 @@ await host.settle();
 
 공개하기 전에 `desk plugin validate <folder>`를 통과해야 합니다. CI는 `plugins/`와 `examples/` 안의 모든 폴더에
 대해 이 명령을 실행합니다.
+
+## 네이티브 플러그인
+
+네이티브 플러그인(종류 `native`)은 어떤 언어로든 직접 만든 프로그램으로, Desk가 별도의 프로세스로 실행합니다
+(ADR 0154). 원하는 GPU API로 창을 그려 데스크와 공유하는 텍스처에 담고, UI 플러그인과 똑같은 브리지를
+호출합니다. 네이티브 플러그인은 컴포지터 데스크(`DESK_COMPOSITOR=1`)에서 실행되며,
+`just example plugin-native-wgpu`가 예제를 빌드해 그곳에서 실행합니다.
+
+```json
+{
+  "id": "example.my-native",
+  "version": "0.1.0",
+  "kind": "native",
+  "native": {
+    "binaries": {
+      "macos-aarch64": "bin/macos-aarch64/my-native",
+      "linux-x86_64": "bin/linux-x86_64/my-native"
+    },
+    "args": [],
+    "graceMs": 2000
+  },
+  "permissions": [{ "permission": "ui:notify" }],
+  "surfaces": [{ "id": "main", "title": "My native plugin", "placement": "center" }]
+}
+```
+
+* `native.binaries`는 Rust가 부르는 이름의 `<os>-<arch>`(`macos-aarch64`, `linux-x86_64`, `windows-x86_64`
+  등)마다 폴더 안의 프로그램을 지정합니다. 자기 플랫폼용 프로그램이 없는 데스크는 플러그인을 불러오지 않고,
+  플러그인 목록에 그 이유를 표시합니다. `entry`는 없습니다.
+* **시작.** 창이 열리거나 깨어날 때 데스크가 플러그인 폴더에서 프로그램을 실행합니다. 환경 변수는 데스크가
+  만들어 준 연결 두 개를 가리킵니다. 표면 프로토콜(`specs/surface/v0`)을 주고받는 `DESK_SURFACE_FD`와,
+  `desk.sock`과 같은 방식으로 브리지를 쓰는 `DESK_BRIDGE_FD`입니다. macOS에서는 IOSurface의 Mach 권한이
+  전달되는 `DESK_SURFACE_MACH_SERVICE`도 있습니다.
+* **프레임.** 데스크는 논리 픽셀 단위의 크기와 디스플레이 배율을 담아 `create`를 보냅니다. 플러그인은
+  `desk:hello`를 보내고, IOSurface(macOS)에 그린 뒤 바뀐 영역과 함께 프레임마다 `attach`하며, 데스크가 그
+  프레임의 `release`를 보낸 다음에 다시 그립니다. `resize`, `show`와 `hide`, `pace`, 포인터와 키는 창 자신의
+  좌표로 도착합니다.
+* **브리지.** 모든 호출은 다른 플러그인과 마찬가지로 매니페스트의 권한과 사용자의 허락으로 검사됩니다.
+  데스크는 플러그인이 무엇이라고 말하든 상관없이, 자신이 건넨 연결로 플러그인을 알아봅니다.
+* **멈춤, 종료, 잠들기.** 그리기 루프에서 `desk:ping`마다 `desk:pong`으로 답하세요. 5초 동안 답이 없는
+  플러그인은 '응답 없음'을 표시하고 기다리기와 중지를 제공합니다. 창이 살아 있는 동안 프로세스가 끝나면
+  종료된 것으로 보고, 창이 그 사실을 알린 뒤 한 번 다시 불러옵니다. `sleep`(창이 활성 예산에서 빠짐)은
+  상태를 남기고(`desk:state`, 또는 `ui.surface.state`에 대한 응답) 종료하라는 요청이며, `wake`는 프로그램을
+  다시 시작하고 `desk:init`이 그 상태를 돌려줍니다. 요청을 받고 `graceMs`가 지나도 끝나지 않은 프로세스는
+  데스크가 강제로 종료합니다.
+* **샌드박스 없음.** 네이티브 플러그인은 사용자의 권한으로, 사용자의 파일과 네트워크에 접근하며 실행됩니다.
+  검사되는 것은 브리지 호출뿐입니다. 신뢰하는 네이티브 플러그인만 설치하세요.
+
+Rust에서는 `native-wgpu` 기능을 켠 `desk-surface`가 통신을 대신 처리합니다. `native::plugin::Plugin`은 연결하고,
+데스크의 메시지를 받고(핑에도 답하고), 프레임을 보냅니다. `native::bridge::Bridge::call`은 브리지를 호출하고,
+`native::iosurface::SharedTexture`는 IOSurface를 wgpu 텍스처로 다룹니다. `examples/plugin-native-wgpu`는
+wgpu 장면, 브리지 호출 하나(자기 설정의 `settings.get`), 잠들었다 깨어나도 유지되는 상태를 갖춘 완전한
+플러그인입니다. 네이티브 플러그인의 프레임은 현재 macOS에서 데스크에 전달되며, Linux(DMA-BUF)와
+Windows(D3D11 공유 핸들)는 뒤이어 지원됩니다(#61).
 
 ## 테마 만들기
 

@@ -2,7 +2,7 @@
 
 # 编写 Desk 插件
 
-Desk 插件就是一个目录。内置功能使用完全相同的格式，因此 Desk 自身能在屏幕上做的任何事，你的插件也都能做到。本文先介绍插件的种类及其模板，再详细介绍 UI 插件，最后介绍主题；工具（MCP）插件将在之后推出。
+Desk 插件就是一个目录。内置功能使用完全相同的格式，因此 Desk 自身能在屏幕上做的任何事，你的插件也都能做到。本文先介绍插件的种类及其模板，再详细介绍 UI 插件，然后是原生插件，最后介绍主题；工具（MCP）插件将在之后推出。
 
 ## 从模板开始
 
@@ -330,6 +330,37 @@ await host.settle();
 ```
 
 发布之前，必须通过 `desk plugin validate <folder>`；CI 会对 `plugins/` 和 `examples/` 中的每个目录运行该命令。
+
+## 原生插件
+
+原生插件（类型 `native`）是你自己用任意语言编写的程序，由 Desk 作为独立进程启动（ADR 0154）。它用你选择的 GPU API 绘制窗口，画进与桌面共享的纹理，并调用与 UI 插件相同的桥接。原生插件运行在合成器桌面上（`DESK_COMPOSITOR=1`）；`just example plugin-native-wgpu` 会构建示例并在其中运行。
+
+```json
+{
+  "id": "example.my-native",
+  "version": "0.1.0",
+  "kind": "native",
+  "native": {
+    "binaries": {
+      "macos-aarch64": "bin/macos-aarch64/my-native",
+      "linux-x86_64": "bin/linux-x86_64/my-native"
+    },
+    "args": [],
+    "graceMs": 2000
+  },
+  "permissions": [{ "permission": "ui:notify" }],
+  "surfaces": [{ "id": "main", "title": "My native plugin", "placement": "center" }]
+}
+```
+
+* `native.binaries` 按 Rust 的命名方式为每个 `<os>-<arch>`（`macos-aarch64`、`linux-x86_64`、`windows-x86_64` 等）指定文件夹内的程序。没有本平台程序的桌面不会加载该插件，并在插件列表中说明原因。原生插件没有 `entry`。
+* **启动。** 窗口打开或唤醒时，桌面在插件文件夹中运行该程序。环境变量指明桌面为它建立的两条连接：用于表面协议（`specs/surface/v0`）的 `DESK_SURFACE_FD`，以及按 `desk.sock` 的线路格式使用桥接的 `DESK_BRIDGE_FD`；在 macOS 上还有 `DESK_SURFACE_MACH_SERVICE`，IOSurface 的 Mach 权限发往这里。
+* **帧。** 桌面发送 `create`，带有逻辑像素尺寸和显示器缩放比例。插件回复 `desk:hello`，画进 IOSurface（macOS），每一帧连同变化区域一起 `attach`，并在桌面发来该帧的 `release` 之后再画下一帧。`resize`、`show` 与 `hide`、`pace`、指针和按键都以窗口自身的坐标到达。
+* **桥接。** 每次调用都和任何插件一样，按清单中的权限和用户的授权进行检查。桌面通过它交给插件的连接识别插件，而不是凭插件自己的说法。
+* **卡住、退出与休眠。** 在绘制循环中对每个 `desk:ping` 回复 `desk:pong`：5 秒没有回应的插件会显示“未响应”，并提供“等待”和“停止”。窗口仍在活动时进程结束即视为退出：窗口会说明情况并重新加载一次。`sleep`（窗口离开活动预算）要求它保存状态（`desk:state`，或对 `ui.surface.state` 的回复）后退出；`wake` 会重新启动程序，`desk:init` 会把状态交还。被要求退出后过了 `graceMs` 仍未结束的进程会被桌面强制结束。
+* **没有沙箱。** 原生插件以用户的身份运行，可以访问用户的文件和网络；受检查的只有它的桥接调用。只安装你信任的原生插件。
+
+在 Rust 中，启用 `native-wgpu` 特性的 `desk-surface` 会替你处理通信：`native::plugin::Plugin` 负责连接、接收桌面的消息（并回应其 ping）以及发送帧，`native::bridge::Bridge::call` 调用桥接，`native::iosurface::SharedTexture` 把 IOSurface 作为 wgpu 纹理使用。`examples/plugin-native-wgpu` 是一个完整的插件：一个 wgpu 场景、一次桥接调用（读取自身设置的 `settings.get`），以及跨休眠保留的状态。目前原生插件的帧在 macOS 上送达桌面；Linux（DMA-BUF）和 Windows（D3D11 共享句柄）随后支持（#61）。
 
 ## 制作主题
 

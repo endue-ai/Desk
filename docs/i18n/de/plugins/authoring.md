@@ -4,7 +4,8 @@
 
 Ein Desk-Plugin ist ein Ordner. Eingebaute Funktionen nutzen genau dasselbe Format; alles, was Desk selbst auf
 dem Bildschirm tut, kann also auch ein eigenes Plugin tun. Diese Seite beginnt mit den Arten von Plugins und
-ihren Vorlagen, behandelt dann UI-Plugins im Detail und zuletzt Themes; Tool-Plugins (MCP) folgen später.
+ihren Vorlagen, behandelt dann UI-Plugins im Detail, danach native Plugins und zuletzt Themes;
+Tool-Plugins (MCP) folgen später.
 
 ## Mit einer Vorlage beginnen
 
@@ -414,6 +415,67 @@ await host.settle();
 
 Vor der Veröffentlichung muss `desk plugin validate <folder>` erfolgreich durchlaufen; die CI führt den Befehl
 für jeden Ordner in `plugins/` und `examples/` aus.
+
+## Native Plugins
+
+Ein natives Plugin (Art `native`) ist ein eigenes Programm in einer beliebigen Sprache, das Desk als
+eigenen Prozess startet (ADR 0154). Es zeichnet sein Fenster mit der GPU-API Ihrer Wahl in eine
+Textur, die es mit dem Desk teilt, und ruft dieselbe Bridge auf wie ein UI-Plugin. Native Plugins
+laufen auf dem Desk des Compositors (`DESK_COMPOSITOR=1`); `just example plugin-native-wgpu` baut das
+Beispiel und führt es dort aus.
+
+```json
+{
+  "id": "example.my-native",
+  "version": "0.1.0",
+  "kind": "native",
+  "native": {
+    "binaries": {
+      "macos-aarch64": "bin/macos-aarch64/my-native",
+      "linux-x86_64": "bin/linux-x86_64/my-native"
+    },
+    "args": [],
+    "graceMs": 2000
+  },
+  "permissions": [{ "permission": "ui:notify" }],
+  "surfaces": [{ "id": "main", "title": "My native plugin", "placement": "center" }]
+}
+```
+
+* `native.binaries` nennt für jedes `<os>-<arch>`, benannt wie in Rust (`macos-aarch64`,
+  `linux-x86_64`, `windows-x86_64`, ...), das Programm im Ordner. Ein Desk ohne Programm für seine
+  eigene Plattform lädt das Plugin nicht, und seine Plugin-Liste sagt, warum. Ein `entry` gibt es
+  nicht.
+* **Start.** Der Desk startet das Programm im Ordner des Plugins, wenn sich sein Fenster öffnet oder
+  aufwacht. Seine Umgebung nennt zwei Verbindungen, die der Desk dafür angelegt hat: `DESK_SURFACE_FD`
+  für das Surface-Protokoll (`specs/surface/v0`) und `DESK_BRIDGE_FD` für die Bridge im Format von
+  `desk.sock`; unter macOS außerdem `DESK_SURFACE_MACH_SERVICE`, wohin die Mach-Rechte seiner
+  IOSurfaces gehen.
+* **Frames.** Der Desk sendet `create` mit der Größe in logischen Pixeln und der Skalierung des
+  Bildschirms. Das Plugin antwortet mit `desk:hello`, zeichnet in eine IOSurface (macOS), meldet jeden
+  Frame mit `attach` samt dem, was sich geändert hat, und zeichnet erneut, sobald der Desk das
+  `release` dieses Frames gesendet hat. `resize`, `show` und `hide`, `pace`, Zeiger und Tasten kommen
+  in den Koordinaten des Fensters an.
+* **Die Bridge.** Jeder Aufruf wird wie bei jedem Plugin gegen die Berechtigungen des Manifests und
+  die Freigaben der Person geprüft. Der Desk erkennt das Plugin an der Verbindung, die er ihm gegeben
+  hat, nie an dem, was es von sich behauptet.
+* **Hänger, Abstürze und Ruhe.** Beantworten Sie jedes `desk:ping` mit einem `desk:pong` aus der
+  Schleife, die zeichnet: Ein Plugin, das 5 Sekunden schweigt, zeigt Reagiert nicht, mit Warten und
+  Beenden. Ein Prozess, der endet, während sein Fenster aktiv ist, ist abgestürzt: Das Fenster sagt es
+  und lädt einmal neu. `sleep` (das Fenster hat das Budget der aktiven Oberflächen verlassen) bittet
+  es, seinen Zustand zu behalten (`desk:state` oder eine Antwort auf `ui.surface.state`) und sich zu
+  beenden; `wake` startet es neu, und sein `desk:init` gibt ihm den Zustand zurück. Ein Prozess, der
+  `graceMs` nach der Aufforderung noch läuft, wird vom Desk beendet.
+* **Keine Sandbox.** Ein natives Plugin läuft als die Person, mit ihren Dateien und ihrem Netzwerk;
+  geprüft werden nur seine Bridge-Aufrufe. Installieren Sie nur native Plugins, denen Sie vertrauen.
+
+In Rust übernimmt `desk-surface` mit dem Feature `native-wgpu` das Protokoll:
+`native::plugin::Plugin` verbindet sich, hört den Desk (und beantwortet seine Pings) und sendet
+Frames, `native::bridge::Bridge::call` ruft die Bridge auf, und `native::iosurface::SharedTexture` ist
+eine IOSurface als wgpu-Textur. `examples/plugin-native-wgpu` ist ein vollständiges Plugin: eine
+wgpu-Szene, ein Bridge-Aufruf (`settings.get` der eigenen Einstellung) und sein Zustand, der eine
+Ruhepause übersteht. Frames eines nativen Plugins erreichen den Desk heute unter macOS; Linux
+(DMA-BUF) und Windows (gemeinsame D3D11-Handles) folgen (#61).
 
 ## Ein Theme erstellen
 
