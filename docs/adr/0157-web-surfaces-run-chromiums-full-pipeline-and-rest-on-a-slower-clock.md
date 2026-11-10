@@ -58,8 +58,8 @@ that asks for frames late takes the one in flight.
 
 ### What the measures found (macOS, M4 Max, `just perf-compositor`, the same hour)
 
-* This change, five runs at a load average of 6 to 13: a press to its paint 4.5 to 4.8 ms at the
-  median, 5.1 to 7.9 at p95; to its composed frame 14.4 to 15.5 at the median; 118.9 to 121.1 MiB a
+* This change, five runs at a load average of 5 to 8: a press to its paint 4.4 to 6.6 ms at the
+  median, 4.9 to 9.2 at p95; to its composed frame 13.5 to 14.7 at the median; 117.5 to 119.7 MiB a
   surface. Main, three runs at 6 to 11: 7.2 to 7.3, 9.4 to 14.2, 15.2 to 15.8, 121.0 to 121.9.
 * An idle surface beside two animating ones got 10 begin frames in a second at rest, where the
   clock sent 60 and about half reached it.
