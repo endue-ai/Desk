@@ -169,8 +169,10 @@ impl CompositorWindow {
         let scale = self.window.scale_factor() as f32;
         let focused = router.focused().filter(|s| *s != PAGE).map(str::to_owned);
         // The ring goes round the pane the focused surface shows in, while it is drawn.
+        // Not while the spread is open: the pane is on a card, not where the ring would go.
+        let spreading = self.spreading.open.is_some();
         let ring = focused
-            .filter(|s| router.window_focused() && router.targets.shown(s))
+            .filter(|s| !spreading && router.window_focused() && router.targets.shown(s))
             .and_then(|s| {
                 let plugin = owner(&s)?.0;
                 let plan = self.hosted.plan()?;
