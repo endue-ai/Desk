@@ -95,6 +95,16 @@ so they update into CEF canary builds. Canary keeps listing its Tauri builds fro
 the two-week pruning drops them, so a desk set to canary can still meet one with a newer version
 until then.
 
+Where the desk may not write its app's folder, the OS asks once (#99, ADR 0163): macOS's
+administrator prompt, then a short step as root that installs its own checked copy of the archive;
+`pkexec` for a `.deb`; UAC for an MSI, and for a per-user NSIS install in a folder the person may
+not write. An AppImage there says how to update it by hand. A declined prompt keeps the build
+staged and the update row says so once. The tests never show a real prompt, so on each OS (#61) try
+it by hand: an app in `/Applications` owned by another user (`sudo chown -R root:wheel`) applied,
+declined, then applied again; a `.deb` with the polkit dialog dismissed, then approved; an NSIS
+install in a folder the person may not write with UAC declined (the next start says so), then
+approved; an MSI with UAC approved.
+
 The update smoke, two hops: `e2e/smoke/update-two-hops.sh <dist> <dist> <dist>`, an older build (the
 last Tauri build, from a commit before Stage 1 ended, or a CEF one) and two CEF builds, each a release
 folder (`release-collect.mjs`), all three built with a

@@ -83,6 +83,10 @@ on beta installs the CEF build as it installs any other.
   a Developer ID signature only on the signing runner; the rehearsal here was ad-hoc signed.
 * Bad, because no administrator prompt replaces an app the person cannot write: they move the app or
   install the update by hand. Tauri's plugin asked for an administrator's password there.
+* Update (2026-11-11, #99): the OS asks once now (ADR 0163): on macOS an administrator's step
+  swaps in the app from its own checked copy of the archive, a `.deb` goes through `pkexec`, a
+  Windows installer for a folder the desk may not write runs through UAC, and an AppImage says how
+  to update it by hand. A declined prompt keeps the build staged and says so once.
 * Bad, because only versions and channels keep the transition one way: the installer takes any
   newer build of `ai.endue.desk`, Tauri's too, and canary still lists Tauri builds. A pre-release desk
   without a channel set follows canary (the core's default for any `-` version, `-rc` included), so a

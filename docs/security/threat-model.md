@@ -283,12 +283,18 @@ provision the R2 bucket, the updater key and the Apple certificate. Applying a b
 person: only the runtime and the CLI hold `update:manage`, and the runtime asks the person when anyone
 else invokes `desk.update.apply`. The updater runs only in builds with a key
 (`apps/desk/shell/src/release.rs`), and no page's commands install anything
-(`crates/desk-web/src/sender.rs`), so a page can only ask the core's `update.apply`.
+(`crates/desk-web/src/sender.rs`), so a page can only ask the core's `update.apply`. Where the desk
+may not write its app, the OS asks the person once (#99, ADR 0163). On macOS root then runs only
+`crates/desk-update/src/install/admin.sh`, handed its inputs as arguments, never as script text: it
+copies the verified archive into a folder only root can enter, checks the copy's SHA-256 again and
+unpacks that copy without owners or set-uid bits, so nothing the person's account can change after
+the check is installed, and the new app belongs to root.
 
 Gaps: Windows Authenticode, since the certificate type is not chosen (SmartScreen warns on a first
 install); `.deb` updates ask for a password through pkexec; the update smoke
-(`e2e/smoke/update-two-hops.sh`) runs on macOS and Linux, Windows by hand (#61); rotating the updater
-key takes two releases.
+(`e2e/smoke/update-two-hops.sh`) runs on macOS and Linux, Windows by hand (#61); the real
+administrator prompts (macOS, pkexec, UAC) are tried by hand only (#61); rotating the updater key
+takes two releases.
 
 ## Local e2e and dev tooling
 

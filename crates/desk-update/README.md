@@ -24,7 +24,8 @@ disk, and install it only when asked; and, without Tauri, the install itself (AD
 - `install` (feature `install`): `Layout::of` (an `.app`, an AppImage, a `.deb`, an NSIS or MSI
   install), its targets, `install` (the `.app.tar.gz` swapped in, the AppImage renamed over, `pkexec
   dpkg -i`, the Windows installer run once the desk quits) and `PackageInstaller`, the `Installer` a
-  desk without Tauri supplies with its own restart (`Relaunch`).
+  desk without Tauri supplies with its own restart (`Relaunch`) and the OS's prompt (`Elevate`,
+  `SystemPrompt`) for what it may not write (ADR 0163).
 
 ## Test
 
@@ -34,6 +35,6 @@ cargo test -p desk-update --all-features
 
 The tests sign their data with keys made at test time (`minisign`, a dev-dependency) and run the
 updater over a fake origin and a fake installer. `tests/vectors.rs` holds the crate to the spec's
-vectors and decision cases; `tests/installer.rs` and `tests/install_packages.rs` install real
-`.app.tar.gz` files made at test time, and refuse bad signatures, partial downloads and folders
-the desk cannot write.
+vectors and decision cases; `tests/installer.rs`, `install_packages.rs`, `read_only.rs` and
+`admin_swap.rs` install real `.app.tar.gz` files made at test time and refuse bad signatures and
+partial downloads; where the desk may not write, a stand-in prompt answers, never the OS's.
