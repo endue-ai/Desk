@@ -7,7 +7,8 @@ desk's URL schemes and CEF's message pump, driven from winit's event loop when C
 It has the Tauri shell's services (#45): the tray, the menu bar, global shortcuts, the file dialog,
 one desk per data folder, files opened with the desk, the palette, the floating Eris and the
 computer-use banner. It replaces the Tauri shell (`../src-tauri`) when Stage 1 ends; until then its
-binary is `endue-desk-cef`.
+binary is `endue-desk-cef`. Compositor mode (`DESK_COMPOSITOR=1` or `--compositor`, #52, ADR 0149)
+draws the main window with `desk-compositor` instead: the page and every plugin surface off screen.
 
 ## Public API
 
@@ -22,6 +23,8 @@ binary is `endue-desk-cef`.
 - `open_files`, `run_event`, `drops`: files from the command line, Finder, the Dock and drags.
 - `scheme`, `plugin_scheme`, `guard`, `paths`, `renderer`: schemes, loads, files, `__deskNative`.
 - `crashes::watch`: Chromium's target discovery names a plugin frame whose renderer died (`desk://frame-crashed`).
+- `web_host`: `specs/surface` for web content, one windowless browser per surface, stand-ins, relay.
+- `compositor_window`: the wgpu scene, the frames' places (`layout`, `scene`); `probe`: its checks.
 
 Gaps: no tray on Linux yet (it needs a GTK loop); the pointer's display and the work area come from
 AppKit on macOS only; "Restart to update" waits for #47. Release bundles (Finder's document types
@@ -34,4 +37,5 @@ just dev-shell      # builds the runtime and the shell; on macOS runs the .app b
 just check-shell    # clippy -D warnings and the crate's tests (downloads CEF on first build)
 ```
 
+`tests/osr_import.rs` and `lifecycle.rs` run `--surface-probe` on the bundle of `just build-shell`.
 Development builds open Chromium's DevTools protocol when `DESK_REMOTE_DEBUGGING_PORT` is set.
