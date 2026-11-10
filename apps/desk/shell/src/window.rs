@@ -39,6 +39,8 @@ pub struct Shell {
     closing: HashSet<Role>,
     computer: Arc<Mutex<computer::Watch>>,
     tray: Option<tray_icon::TrayIcon>,
+    /// The staged build the tray offers to restart into (#47).
+    offered: Option<String>,
     menu_bar: Option<tray_icon::menu::Menu>,
     /// Hears the main browser's frames crash (#44), as long as it is kept.
     crash_watch: Option<Registration>,
@@ -62,6 +64,7 @@ impl Shell {
             closing: HashSet::new(),
             computer,
             tray: None,
+            offered: None,
             menu_bar: None,
             crash_watch: None,
             compositor: None,
@@ -161,8 +164,16 @@ impl Shell {
         menu::listen(&self.pump);
         self.menu_bar = menu::app_menu();
         palette::setup(self, event_loop);
-        self.tray = tray::setup();
+        self.tray = tray::setup(self.offered.as_deref());
         eris_window::setup(self, event_loop);
+    }
+
+    /// The tray offers to restart into `version`, or no longer offers it.
+    pub fn offer_update(&mut self, version: Option<String>) {
+        self.offered = version;
+        if let Some(tray) = &self.tray {
+            tray::offer(tray, self.offered.as_deref());
+        }
     }
 
     /// A global shortcut went down (`pressed`) or up.
@@ -181,7 +192,12 @@ impl Shell {
             Choice::Search => palette::show(self),
             Choice::Eris => eris_window::summon(self),
             Choice::Desk => palette::reveal_main(self),
-            Choice::Update => eprintln!("endue Desk: updates on the CEF shell come with #47"),
+            // The person's own click: it applies without asking (ADR 0054).
+            Choice::Update => {
+                if let Some(Err(why)) = self.desk.updater.as_ref().map(|u| u.apply()) {
+                    eprintln!("endue Desk: no update to restart into ({why})");
+                }
+            }
             Choice::Quit => self.quit(event_loop),
         }
     }

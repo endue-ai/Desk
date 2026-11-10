@@ -1886,6 +1886,7 @@ dependencies = [
  "desk-core",
  "desk-surface",
  "desk-trace",
+ "desk-update",
  "desk-web",
  "getrandom 0.3.4",
  "global-hotkey",

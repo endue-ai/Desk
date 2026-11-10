@@ -7,6 +7,7 @@ use desk_boot::BootInput;
 use desk_shell::host::{self, Desk};
 use desk_shell::instance::{self, Claim, Handoff, Instance};
 use desk_shell::{app::ShellApp, computer, open_files, paths, pump::Pump, window::Shell};
+use desk_shell::{release, update};
 use winit::event_loop::EventLoop;
 
 fn main() -> ExitCode {
@@ -105,10 +106,18 @@ fn main() -> ExitCode {
     let (desk, events, watch) = boot(origin, pump, instance);
     desk_shell::plugin_scheme::register(std::sync::Arc::clone(&desk.core));
     host::forward_events(events, desk.pages.clone());
+    // The desk's own updates (ADR 0054): checks by the schedule, `update.changed`, the tray's item.
+    desk.core.start_updates();
+    if let Some(updater) = &desk.updater {
+        update::follow(updater, &desk.pump);
+    }
+    let kept = std::sync::Arc::clone(&desk);
     let mut shell = Shell::new(desk, paths::start_url(), watch);
     let outcome = event_loop.run_app(&mut shell);
     drop(shell);
     cef::shutdown();
+    // An applied update quit the desk: start the new one once this one has let go.
+    update::relaunch_if_asked(&paths::data_dir(), || kept.let_go());
     match outcome {
         Ok(()) => ExitCode::SUCCESS,
         Err(why) => {
@@ -152,23 +161,25 @@ fn boot(
     let watch = std::sync::Arc::new(std::sync::Mutex::new(None));
     let (attached, computer_data, computer_pump) =
         (std::sync::Arc::clone(&watch), data.clone(), pump.clone());
+    // The desk's own updates (ADR 0054), when this build carries an updater key.
+    let updater = update::updater(&data, &pump);
     let booted = desk_boot::boot(BootInput {
         data,
         home: paths::home_dir(),
-        version: env!("CARGO_PKG_VERSION").to_owned(),
+        version: release::version().to_owned(),
         origin,
-        // The CEF build's own updater comes with #47.
-        updater: None,
+        updater: updater.clone(),
         // Computer use (ADR 0120, ADR 0123): the OS driver, and the banner while agents act.
         attach: Some(Box::new(move |core: &std::sync::Arc<desk_core::Core>| {
             let watching = computer::attach(core, &computer_pump, &computer_data);
             *attached.lock().unwrap_or_else(|e| e.into_inner()) = Some(watching);
         })),
-        plugin_dirs: desk_boot::boot::env_paths("DESK_PLUGIN_DIRS"),
+        // The repository's plugins/ in development (DESK_PLUGIN_DIRS), else the package's copy.
+        plugin_dirs: paths::plugin_dirs(),
         dev_plugins: desk_boot::boot::env_paths("DESK_DEV_PLUGINS"),
     });
     let opened = open_files::argument_paths(std::env::args());
-    let (desk, events) = Desk::new(booted, opened, pump, instance);
+    let (desk, events) = Desk::new(booted, opened, pump, instance, updater);
     let watching = watch
         .lock()
         .unwrap_or_else(|e| e.into_inner())

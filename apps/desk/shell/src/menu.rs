@@ -17,7 +17,7 @@ pub enum Choice {
     Eris,
     /// Open Desk: the main window in front.
     Desk,
-    /// Restart to update (ADR 0054): waits for the CEF build's updater (#47).
+    /// Restart to update (ADR 0054): into the staged build.
     Update,
     /// Quit Desk.
     Quit,

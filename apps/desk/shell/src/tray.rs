@@ -1,8 +1,8 @@
 //! The tray (ADR 0053), on `tray-icon`: Search Desk, Talk to Eris, Open Desk and Quit Desk keep the
 //! app reachable when a shortcut is taken (Talk to Eris summons her as Alt+Enter does, ADR 0121). A
-//! click there is the person's own, so it applies without asking. "Restart to update (<version>)"
-//! waits for the CEF build's updater (#47); `menu` already takes the staged version. On Linux the
-//! tray needs a GTK main loop the shell does not run yet: it is left out there and says so.
+//! click there is the person's own, so it applies without asking, as does "Restart to update
+//! (<version>)", which shows while a build is staged (ADR 0054, `update::follow`). On Linux the tray
+//! needs a GTK main loop the shell does not run yet: it is left out there and says so.
 
 use tray_icon::menu::Menu;
 use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
@@ -28,22 +28,33 @@ pub fn menu(staged: Option<&str>) -> tray_icon::menu::Result<Menu> {
     Ok(menu)
 }
 
-/// Put the desk in the tray. Call on the event loop's thread once it runs; keep what it returns.
-pub fn setup() -> Option<TrayIcon> {
+/// Show the menu that offers `staged`, or none.
+pub fn offer(tray: &TrayIcon, staged: Option<&str>) {
+    match menu(staged) {
+        Ok(menu) => tray.set_menu(Some(Box::new(menu))),
+        Err(why) => eprintln!("endue Desk: the tray's menu did not change ({why})"),
+    }
+}
+
+/// Put the desk in the tray, offering `staged`. Call on the event loop's thread once it runs; keep
+/// what it returns.
+pub fn setup(staged: Option<&str>) -> Option<TrayIcon> {
     if cfg!(target_os = "linux") {
         eprintln!("endue Desk: no tray on Linux yet (it needs a GTK loop); use the shortcuts");
         return None;
     }
-    let built = menu(None).map_err(|why| why.to_string()).and_then(|menu| {
-        let mut tray = TrayIconBuilder::new()
-            .with_id("desk")
-            .with_tooltip("endue Desk")
-            .with_menu(Box::new(menu));
-        if let Some(icon) = icon() {
-            tray = tray.with_icon(icon);
-        }
-        tray.build().map_err(|why| why.to_string())
-    });
+    let built = menu(staged)
+        .map_err(|why| why.to_string())
+        .and_then(|menu| {
+            let mut tray = TrayIconBuilder::new()
+                .with_id("desk")
+                .with_tooltip("endue Desk")
+                .with_menu(Box::new(menu));
+            if let Some(icon) = icon() {
+                tray = tray.with_icon(icon);
+            }
+            tray.build().map_err(|why| why.to_string())
+        });
     match built {
         Ok(tray) => {
             eprintln!(

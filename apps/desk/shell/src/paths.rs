@@ -10,7 +10,7 @@ pub const START_URL: &str = "desk-app://app/index.html";
 
 /// The built web runtime the `desk-app` scheme serves: `DESK_SHELL_DIST`, else the bundle's copy
 /// (`Contents/Resources/shell` on macOS, `shell/` beside the binary elsewhere), else the repository's
-/// `apps/desk/dist` for development builds.
+/// `apps/desk/dist` for development builds. The built-in plugins sit beside it (`plugin_dirs`).
 pub fn dist() -> PathBuf {
     if let Some(dir) = std::env::var_os("DESK_SHELL_DIST") {
         return PathBuf::from(dir);
@@ -23,13 +23,36 @@ pub fn dist() -> PathBuf {
 
 /// The shell's files inside a bundle around `exe`, when they are there.
 fn bundled(exe: &Path) -> Option<PathBuf> {
-    let dir = exe.parent()?;
-    let candidate = if cfg!(target_os = "macos") {
-        dir.parent()?.join("Resources").join("shell")
-    } else {
-        dir.join("shell")
-    };
+    let candidate = resource(exe, "shell")?;
     candidate.join("index.html").is_file().then_some(candidate)
+}
+
+/// `name` among a package's resources around `exe`: `Contents/Resources/<name>` on macOS, beside
+/// the executable elsewhere (the install folder on Windows, `/usr/lib/endue-desk-cef` on Linux).
+fn resource(exe: &Path, name: &str) -> Option<PathBuf> {
+    let dir = exe.parent()?;
+    Some(if cfg!(target_os = "macos") {
+        dir.parent()?.join("Resources").join(name)
+    } else {
+        dir.join(name)
+    })
+}
+
+/// The folders whose plugins install as built in: `DESK_PLUGIN_DIRS` when it is set (development
+/// builds and the e2e point it at the repository's `plugins/`), else the package's own copy of
+/// `plugins/` (#47), else none.
+pub fn plugin_dirs() -> Vec<PathBuf> {
+    if std::env::var_os("DESK_PLUGIN_DIRS").is_some() {
+        return desk_boot::boot::env_paths("DESK_PLUGIN_DIRS");
+    }
+    bundled_plugins(&std::env::current_exe().unwrap_or_default())
+        .into_iter()
+        .collect()
+}
+
+/// The built-in plugins a package around `exe` carries, when it carries them.
+fn bundled_plugins(exe: &Path) -> Option<PathBuf> {
+    resource(exe, "plugins").filter(|dir| dir.is_dir())
 }
 
 /// The URL the main window opens.
@@ -70,8 +93,32 @@ pub fn home_dir() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{IDENTIFIER, bundled, data_dir};
+    use super::{IDENTIFIER, bundled, bundled_plugins, data_dir};
     use std::fs;
+
+    #[test]
+    fn a_package_carries_its_built_in_plugins_beside_the_shell() {
+        let dir = std::env::temp_dir().join(format!("desk-shell-plugins-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let (exe, plugins) = if cfg!(target_os = "macos") {
+            let contents = dir.join("Desk.app/Contents");
+            (
+                contents.join("MacOS/endue-desk-cef"),
+                contents.join("Resources/plugins"),
+            )
+        } else {
+            (dir.join("endue-desk-cef"), dir.join("plugins"))
+        };
+        fs::create_dir_all(exe.parent().unwrap()).unwrap();
+        assert_eq!(
+            bundled_plugins(&exe),
+            None,
+            "a development build carries none"
+        );
+        fs::create_dir_all(plugins.join("dock")).unwrap();
+        assert_eq!(bundled_plugins(&exe), Some(plugins));
+        let _ = fs::remove_dir_all(dir);
+    }
 
     #[test]
     fn the_data_folder_is_named_after_the_identifier() {

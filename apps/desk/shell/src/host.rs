@@ -42,7 +42,10 @@ pub struct Desk {
     pub eris: OnceLock<Arc<ErisWindow>>,
     /// This desk's hold on being the only one; let go before it starts again.
     pub instance: Mutex<Option<Instance>>,
-    _keep: Keep,
+    /// The desk's own updates, when this build updates itself (#47).
+    pub updater: Option<desk_update::Updater>,
+    /// The watchers and the desk socket, until the desk lets go of them.
+    keep: Mutex<Option<Keep>>,
 }
 
 impl Desk {
@@ -52,6 +55,7 @@ impl Desk {
         opened: Vec<String>,
         pump: Pump,
         instance: Option<Instance>,
+        updater: Option<desk_update::Updater>,
     ) -> (Arc<Self>, std::sync::mpsc::Receiver<Delivery>) {
         let Booted {
             core,
@@ -75,9 +79,24 @@ impl Desk {
             pages: Pages::default(),
             eris: OnceLock::new(),
             instance: Mutex::new(instance),
-            _keep: keep,
+            updater,
+            keep: Mutex::new(Some(keep)),
         };
         (Arc::new(desk), events)
+    }
+
+    /// Give up what only one desk may hold, so the next one can start: being the only desk for the
+    /// data folder, the desk socket and the watchers. Dropped here, so nothing of this desk's removes
+    /// the next one's files later.
+    pub fn let_go(&self) {
+        let instance = self
+            .instance
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+        drop(instance);
+        let keep = self.keep.lock().unwrap_or_else(|e| e.into_inner()).take();
+        drop(keep);
     }
 }
 

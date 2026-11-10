@@ -72,7 +72,7 @@ fn path_of(url: &str) -> Option<&str> {
 fn status_json() -> String {
     format!(
         "{{\"shell\":\"desk-shell\",\"version\":\"{}\",\"cef\":\"{}\",\"chromium\":\"{}.{}.{}.{}\",\"pid\":{}}}",
-        env!("CARGO_PKG_VERSION"),
+        crate::release::version(),
         std::str::from_utf8(
             sys::CEF_VERSION
                 .strip_suffix(b"\0")

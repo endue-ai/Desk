@@ -2,7 +2,7 @@
 //! the desk's URL schemes, CEF's message pump, the desk booted through desk-boot, the bridge over
 //! CEF's process messages (#43), the plugin scheme (#42) and the shell's services (#45): the tray,
 //! the menus, global shortcuts, the file dialog, one desk per data folder, files opened with the
-//! desk, the palette, the floating Eris and the computer-use banner.
+//! desk, the palette, the floating Eris and the computer-use banner; and its own updates (#47).
 
 pub mod app;
 pub mod client;
@@ -30,10 +30,12 @@ pub mod paths;
 pub mod plugin_scheme;
 pub mod probe;
 pub mod pump;
+pub mod release;
 pub mod renderer;
 pub mod run_event;
 pub mod sandbox;
 pub mod scheme;
 pub mod tray;
+pub mod update;
 pub mod web_host;
 pub mod window;
