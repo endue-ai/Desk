@@ -10,6 +10,10 @@ Amended by ADR 0156: compositor mode is the only desk; the page always publishes
 runtime has no window manager of its own for gestures and commands.
 Amended by ADR 0158: `desk-wm` holds the desk; the page's report carries no desk any more, and the
 live set reaches the runtime through its window manager host (`WindowManagerHost.live`).
+Amended by ADR 0160: the page's report names each surface's document from the runtime's surface pages
+(no frame in the page), each plugin surface of its own with its layer (an edge bar under the page's
+parts, an overlay above them) and the parts of its system layer, which the compositor draws whole above
+every window; the Bad consequence "the page is one picture" holds now only where a part's box ends.
 
 # The compositor places windows from desk-wm, fed by the desk the runtime keeps, and keeps the live budget
 

@@ -52,7 +52,7 @@ device. Everything else runs on the user's computer.
 | --- | --- |
 | endue AI (cloud) | outside the repository; only `specs/brain` and `crates/desk-brain-endue` live here |
 | Plugins | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
-| Web runtime | `packages/runtime`: the compositor, the UI plugin host (ADR 0012) and, until ADR 0026 is decided, the desk shell (ADR 0025) · `packages/ui` |
+| Web runtime | `packages/runtime`: the desk's system surface (ADR 0160): the UI plugin host (ADR 0012), the policies and, until ADR 0026 is decided, the desk shell's parts (ADR 0025); it lays out no window and holds no plugin frame in the app · `packages/ui` |
 | Desk bridge | `specs/bridge` · `specs/item`, `specs/view` and `specs/connector`, the integration layer's contracts (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (types generated from these and `specs/plugin`) |
 | Rust core | `crates/desk-core`, which also serves the integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) and defines the built-in connectors `desk.calendar` and `desk.reminders` over the OS calendar (ADR 0036, proposed), and runs http connectors from their manifests, reading their tokens itself (ADR 0106) · `crates/desk-index`, the item index in one SQLite file (ADR 0033) · `crates/desk-plugin-host`, which runs logic plugins (ADR 0019) and Wasm connectors (ADR 0034, proposed) on Wasmtime · `crates/desk-vm` · `crates/desk-brain*` |
 | Shell (CEF) | `apps/desk/shell`, the app `endue-desk` on winit and CEF (ADR 0143), and `crates/desk-web`, what its URL schemes answer and which caller each page is, without the engine · `crates/desk-sys` · `crates/desk-computer`, computer use on macOS (screenshots, the accessibility tree, input, apps), which the core serves as `computer.*` under `computer:see` and `computer:control`, each act of an agent waiting for the person's approval (ADR 0120, ADR 0123) |
@@ -67,8 +67,11 @@ renders in its own process, and a compositor of Desk's own, on wgpu, places what
 1 every plugin surface is its own Chromium renderer, so a dead renderer costs its window only. Since #83
 the compositor is the only desk (ADR 0156): every plugin surface renders off screen in a browser of its
 own, the compositor draws it where `crates/desk-wm` places its window, and desk-wm runs the window
-gestures, the window commands and the live budget. The shell's page keeps what stays web (the bars,
-menus, the palette, Eris, notices, settings and the shell's own views) until they become system surfaces.
+gestures, the window commands and the live budget. What stays web runs as system surfaces the
+compositor places above every window (ADR 0160): the desk's own page (the bars, Eris, notices, menus,
+settings and the studios, each part drawn whole), the palette's window and floating Eris's, each calling
+as its window. No plugin runs in the desk's page: its plugin host reaches each plugin's own browser
+through the shell.
 
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
@@ -82,7 +85,7 @@ menus, the palette, Eris, notices, settings and the shell's own views) until the
 | --- | --- | --- |
 | 0 | On the Tauri app: each surface gets its own origin on the `desk-plugin` scheme; only the windows in sight and the 8 most recently focused keep a live frame; heavy work moves to workers; a frame that stops answering offers Wait or Stop on its window | done |
 | 1 | The shell becomes a Rust binary on winit and CEF (`apps/desk/shell`, ADR 0143) showing today's shell page, and Tauri is removed; every plugin iframe is its own Chromium renderer; app-level e2e drives it over Chromium's remote debugging (ADR 0144) | done (#97): the CEF desk replaced the Tauri app under its name, `endue-desk`, and canary builds it; WebGPU on Windows and Linux is checked on those OSes (#61), and the first beta that installs through the updater comes with the next release line |
-| 2 | The compositor (`crates/desk-compositor`) draws the desk and places each surface's texture; surfaces speak one protocol (`specs/surface`, ADR 0141); CEF renders each plugin off-screen; the window manager moves from `packages/runtime` to Rust | in progress: the compositor is the only desk, and desk-wm places every window and runs its gestures, commands and the live budget (#83); the spread's visuals and system surfaces are next |
+| 2 | The compositor (`crates/desk-compositor`) draws the desk and places each surface's texture; surfaces speak one protocol (`specs/surface`, ADR 0141); CEF renders each plugin off-screen; the window manager moves from `packages/runtime` to Rust | in progress: the compositor is the only desk, and desk-wm places every window and runs its gestures, commands and the live budget (#83); what stays web runs as system surfaces, with no plugin in the desk's page (#55); the spread's visuals are next |
 | 3 | Native plugins: a process that speaks the surface protocol and the bridge over `desk.sock` | planned |
 
 Plugin code does not change at any stage: the manifest, the SDK and the bridge's wire format stay. A

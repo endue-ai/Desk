@@ -4,6 +4,10 @@ date: 2026-11-10
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0160: a plugin surface's place in the page, not a stand-in frame, holds its
+spot in the page's focus order; Tab enters and leaves it with `desk:surface-enter`, `desk:surface-leave`
+and `desk:surface-tab`.
+
 # The compositor routes input, asks the desk's keymap first and runs the drag broker
 
 ## Context and Problem Statement

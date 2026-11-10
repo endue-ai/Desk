@@ -51,7 +51,7 @@ Desk는 하나의 앱으로 만든 하나의 OS입니다. Chromium(CEF) 위의 R
 | --- | --- |
 | endue AI (클라우드) | 저장소 밖에 있습니다. 이 저장소에는 `specs/brain`과 `crates/desk-brain-endue`만 있습니다 |
 | 플러그인 | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
-| 웹 런타임 | `packages/runtime`: 컴포지터, UI 플러그인 호스트(ADR 0012), 그리고 ADR 0026이 정해질 때까지 데스크 셸(ADR 0025) · `packages/ui` |
+| 웹 런타임 | `packages/runtime`: 데스크의 시스템 표면(ADR 0160). UI 플러그인 호스트(ADR 0012), 정책, 그리고 ADR 0026이 정해질 때까지 데스크 셸의 각 부분(ADR 0025). 앱에서는 창을 배치하지 않고 플러그인 프레임도 갖지 않음 · `packages/ui` |
 | Desk 브리지 | `specs/bridge` · 통합 계층의 계약인 `specs/item`, `specs/view`, `specs/connector`(ADR 0032) · `packages/bridge` · `crates/desk-bridge` (이 계약들과 `specs/plugin`에서 생성한 타입) |
 | Rust 코어 | `crates/desk-core`(통합 계층의 `data.*`, `connector.*`, `view.*`, `catalog.get`도 제공하고 OS 캘린더 위에 내장 커넥터 `desk.calendar`와 `desk.reminders`를 정의, 아직 제안 상태인 ADR 0036. http 커넥터는 매니페스트대로 코어가 직접 실행하고 토큰도 코어만 읽는다, ADR 0106) · `crates/desk-index`(SQLite 파일 하나에 두는 아이템 색인, ADR 0033) · `crates/desk-plugin-host`(로직 플러그인과 Wasm 커넥터를 Wasmtime에서 실행, ADR 0019 · 아직 제안 상태인 ADR 0034) · `crates/desk-vm` · `crates/desk-brain*` |
 | 셸(CEF) | `apps/desk/shell`: winit과 CEF 위의 앱 `endue-desk`(ADR 0143), 그리고 `crates/desk-web`: 엔진 없이, 그 URL 스킴이 무엇을 답하고 페이지마다 어느 호출자인지를 정하는 부분 · `crates/desk-sys` · `crates/desk-computer`(macOS의 컴퓨터 사용: 스크린샷, 접근성 트리, 입력, 앱). 코어가 이를 `computer:see`와 `computer:control` 아래 `computer.*`로 제공하며, 에이전트의 모든 동작은 사람의 승인을 기다립니다(ADR 0120, ADR 0123) |
@@ -65,8 +65,10 @@ iframe이었습니다. 셸과 모든 플러그인이 한 프로세스와 한 메
 그리고, wgpu 위의 Desk 자체 컴포지터가 그 결과를 배치합니다. 1단계부터 플러그인 표면은 각각 자기 Chromium
 렌더러라서, 렌더러가 죽어도 잃는 것은 그 창 하나뿐입니다. #83부터는 컴포지터가 유일한 데스크입니다(ADR 0156).
 플러그인 표면은 모두 자기 브라우저에서 화면 밖에 그려지고, 컴포지터는 `crates/desk-wm`이 그 창을 놓은 자리에
-그것을 그리며, desk-wm이 창 제스처와 창 명령, 라이브 예산을 맡습니다. 셸 페이지는 웹으로 남는 것(바, 메뉴,
-팔레트, Eris, 알림, 설정, 셸 자신의 뷰)을 그것들이 시스템 표면이 될 때까지 그립니다.
+그것을 그리며, desk-wm이 창 제스처와 창 명령, 라이브 예산을 맡습니다. 웹으로 남는 것은 컴포지터가 모든 창
+위에 놓는 시스템 표면으로 돕니다(ADR 0160). 데스크 자신의 페이지(바, Eris, 알림, 메뉴, 설정, 스튜디오. 각 부분은
+통째로 그려짐), 팔레트의 창, 떠 있는 Eris의 창이며, 각각 자기 창의 호출자로 부릅니다. 데스크 페이지 안에서는
+플러그인이 돌지 않습니다. 그 플러그인 호스트는 셸을 거쳐 플러그인마다 자기 브라우저에 닿습니다.
 
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
@@ -80,7 +82,7 @@ iframe이었습니다. 셸과 모든 플러그인이 한 프로세스와 한 메
 | --- | --- | --- |
 | 0 | Tauri 앱 위에서: 표면마다 `desk-plugin` 스킴의 자기 origin. 살아 있는 프레임은 보이는 창과 최근 포커스한 8개만. 무거운 작업은 worker로. 응답하지 않는 프레임은 그 창에서만 "기다리기" 또는 "멈추기"를 제안 | 완료 |
 | 1 | 셸이 winit과 CEF 위의 Rust 바이너리(`apps/desk/shell`, ADR 0143)가 되어 지금의 셸 페이지를 띄우고, Tauri는 없어짐. 플러그인 iframe은 각각 자기 Chromium 렌더러. 앱 단위 e2e는 Chromium 원격 디버깅으로 구동(ADR 0144) | 완료(#97): CEF 데스크가 Tauri 앱을 그 이름 `endue-desk` 그대로 대신했고, canary가 이것을 빌드함. Windows와 Linux의 WebGPU는 그 OS에서 확인하고(#61), 업데이터로 설치되는 첫 beta는 다음 릴리스 라인과 함께 나옴 |
-| 2 | 컴포지터(`crates/desk-compositor`)가 데스크를 그리고 표면마다 텍스처를 배치. 표면은 하나의 프로토콜로 말함(`specs/surface`, ADR 0141). CEF는 플러그인마다 화면 밖에서 렌더링. 창 관리자는 `packages/runtime`에서 Rust로 옮겨 감 | 진행 중: 컴포지터가 유일한 데스크가 되었고, desk-wm이 모든 창을 놓고 그 제스처와 명령, 라이브 예산을 맡음(#83). 다음은 펼쳐 보기의 시각 효과와 시스템 표면 |
+| 2 | 컴포지터(`crates/desk-compositor`)가 데스크를 그리고 표면마다 텍스처를 배치. 표면은 하나의 프로토콜로 말함(`specs/surface`, ADR 0141). CEF는 플러그인마다 화면 밖에서 렌더링. 창 관리자는 `packages/runtime`에서 Rust로 옮겨 감 | 진행 중: 컴포지터가 유일한 데스크가 되었고, desk-wm이 모든 창을 놓고 그 제스처와 명령, 라이브 예산을 맡음(#83). 웹으로 남는 것은 시스템 표면으로 돌고 데스크 페이지에 플러그인이 없음(#55). 다음은 펼쳐 보기의 시각 효과 |
 | 3 | 네이티브 플러그인: 표면 프로토콜과 브리지를 `desk.sock`으로 말하는 프로세스 | 예정 |
 
 어느 단계에서도 플러그인 코드는 바뀌지 않습니다. 매니페스트, SDK, 브리지의 전송 형식은 그대로입니다. 플러그인은

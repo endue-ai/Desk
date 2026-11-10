@@ -5,7 +5,9 @@ decision-makers: Team endue
 ---
 
 Status: amended by ADR 0140: every surface gets an origin of its own, the scheme has one form on every
-OS once CEF serves it, and the `sandbox` attribute ends with the iframes in Stage 2.
+OS once CEF serves it, and the `sandbox` attribute ends with the iframes in Stage 2. Amended by ADR 0160: a plugin document
+asked for as a frame of the desk's own page is refused; every plugin page is a browser of its own, and
+the runtime still tells plugins apart by the source of a message, each surface's port.
 
 # UI plugins load over a desk-plugin URL scheme, sandboxed, with the SDK from an import map
 

@@ -5,7 +5,9 @@ decision-makers: Team endue
 ---
 
 Status: amended by ADR 0156: compositor mode is the only desk (no `DESK_COMPOSITOR`, no Stage 1
-windowed desk), and the target watch of Stage 1 went with the windowed desk.
+windowed desk), and the target watch of Stage 1 went with the windowed desk. Amended by ADR 0160: the
+stand-in frames, the relay's re-greeting and the stand-in's colour scheme are gone; the runtime's page
+posts to each surface by its host and hears it through `__deskNative.onSurface`.
 
 # Web surfaces render off screen, and the runtime's frames stand in for them until the window manager moves
 

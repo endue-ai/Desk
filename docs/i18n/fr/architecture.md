@@ -53,7 +53,7 @@ jour de l'app. Seul endue AI vit hors de l'appareil. Tout le reste s'exécute su
 | --- | --- |
 | endue AI (cloud) | hors du dépôt ; seuls `specs/brain` et `crates/desk-brain-endue` se trouvent ici |
 | Plugins | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
-| Runtime web | `packages/runtime` : le compositeur, l'hôte des plugins UI (ADR 0012) et, jusqu'à la décision de l'ADR 0026, le shell du bureau (ADR 0025) · `packages/ui` |
+| Runtime web | `packages/runtime` : la surface système du bureau (ADR 0160) : l'hôte des plugins UI (ADR 0012), les politiques et, jusqu'à la décision de l'ADR 0026, les parties du shell du bureau (ADR 0025) ; dans l'app, il ne place aucune fenêtre et ne tient aucun cadre de plugin · `packages/ui` |
 | Pont Desk | `specs/bridge` · `specs/item`, `specs/view` et `specs/connector`, les contrats de la couche d'intégration (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (types générés depuis ces contrats et `specs/plugin`) |
 | Cœur Rust | `crates/desk-core`, qui sert aussi la couche d'intégration (`data.*`, `connector.*`, `view.*`, `catalog.get`) et définit les connecteurs intégrés `desk.calendar` et `desk.reminders` sur le calendrier de l'OS (ADR 0036, à l'état de proposition), et exécute les connecteurs http d'après leur manifeste, en lisant lui-même leurs jetons (ADR 0106) · `crates/desk-index`, l'index des éléments dans un seul fichier SQLite (ADR 0033) · `crates/desk-plugin-host`, qui exécute les plugins logiques (ADR 0019) et les connecteurs Wasm (ADR 0034, à l'état de proposition) sur Wasmtime · `crates/desk-vm` · `crates/desk-brain*` |
 | Shell (CEF) | `apps/desk/shell`, l'app `endue-desk` sur winit et CEF (ADR 0143), et `crates/desk-web`, ce que ses schémas d'URL répondent et quel appelant est chaque page, sans le moteur · `crates/desk-sys` · `crates/desk-computer`, l'usage de l'ordinateur sous macOS (captures d'écran, l'arbre d'accessibilité, saisie, apps), que le cœur sert en `computer.*` sous `computer:see` et `computer:control` ; chaque action d'un agent attend l'accord de la personne (ADR 0120, ADR 0123) |
@@ -69,9 +69,11 @@ ce qu'elles rendent. Depuis l'étape 1, chaque surface de plugin a son propre pr
 un processus de rendu qui meurt ne coûte que sa fenêtre. Depuis #83, le compositeur est le seul bureau
 (ADR 0156) : chaque surface de plugin se rend hors écran dans un navigateur à elle, le compositeur la
 dessine là où `crates/desk-wm` place sa fenêtre, et desk-wm mène les gestes des fenêtres, leurs commandes
-et le budget des cadres actifs. La page du shell garde ce qui reste web (les barres, les menus, la palette,
-Eris, les notifications, les réglages et les vues propres au shell) jusqu'à ce que ce soient des surfaces
-système.
+et le budget des cadres actifs. Ce qui reste web tourne en surfaces système que le compositeur place
+au-dessus de toutes les fenêtres (ADR 0160) : la page du bureau lui-même (les barres, Eris, les
+notifications, les menus, les réglages et les studios, chaque partie dessinée entière), la fenêtre de la
+palette et celle d'Eris flottante, chacune appelant en tant que sa fenêtre. Aucun plugin ne tourne dans la
+page du bureau : son hôte de plugins joint le navigateur propre à chaque plugin par le shell.
 
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
@@ -85,7 +87,7 @@ système.
 | --- | --- | --- |
 | 0 | Sur l'app Tauri : chaque surface reçoit sa propre origine sur le schéma `desk-plugin` ; seules les fenêtres visibles et les 8 qui ont eu le focus le plus récemment gardent un cadre vivant ; le travail lourd passe dans des workers ; un cadre qui ne répond plus propose Attendre ou Arrêter sur sa seule fenêtre | fait |
 | 1 | Le shell devient un binaire Rust sur winit et CEF (`apps/desk/shell`, ADR 0143) qui affiche la page actuelle du shell, et Tauri disparaît ; chaque iframe de plugin a son propre processus de rendu Chromium ; les tests e2e de l'app le pilotent par le débogage à distance de Chromium (ADR 0144) | fait (#97) : le bureau CEF a remplacé l'app Tauri sous son nom, `endue-desk`, et canary le construit ; WebGPU sous Windows et Linux se vérifie sur ces OS (#61), et la première bêta qui s'installe par le système de mise à jour arrive avec la prochaine ligne de publication |
-| 2 | Le compositeur (`crates/desk-compositor`) dessine le bureau et place la texture de chaque surface ; les surfaces parlent un seul protocole (`specs/surface`, ADR 0141) ; CEF rend chaque plugin hors écran ; le gestionnaire de fenêtres passe de `packages/runtime` à Rust | en cours : le compositeur est le seul bureau, et desk-wm place chaque fenêtre et mène ses gestes, ses commandes et le budget des cadres actifs (#83) ; viennent ensuite l'aspect de la vue déployée et les surfaces système |
+| 2 | Le compositeur (`crates/desk-compositor`) dessine le bureau et place la texture de chaque surface ; les surfaces parlent un seul protocole (`specs/surface`, ADR 0141) ; CEF rend chaque plugin hors écran ; le gestionnaire de fenêtres passe de `packages/runtime` à Rust | en cours : le compositeur est le seul bureau, et desk-wm place chaque fenêtre et mène ses gestes, ses commandes et le budget des cadres actifs (#83) ; ce qui reste web tourne en surfaces système, sans plugin dans la page du bureau (#55) ; vient ensuite l'aspect de la vue déployée |
 | 3 | Plugins natifs : un processus qui parle le protocole des surfaces et le pont via `desk.sock` | prévu |
 
 Le code des plugins ne change à aucune étape : le manifeste, le SDK et le format du pont restent. Un plugin

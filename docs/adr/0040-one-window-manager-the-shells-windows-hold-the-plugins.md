@@ -8,6 +8,9 @@ Status: amended by ADR 0140: in Stage 2 the window manager moves from the web ru
 compositor in Rust. Amended by ADR 0156: the compositor is the only desk, `desk-wm` runs every window
 gesture and command, and the bad consequence below is gone: a split, the drawer and a profile or
 desktop switch only resize, hide and show a plugin's own surface, which never reloads (ADR 0151).
+Amended by ADR 0160: the grid is deleted (`layout.ts`, its cells, `moveSurface`, the session's
+`layout`); a runtime without a window host shows its surfaces side by side in the order they opened,
+and the runtime's sections hold each surface's place, not a frame, in the app.
 
 # One window manager: the shell's windows hold the plugin surfaces
 

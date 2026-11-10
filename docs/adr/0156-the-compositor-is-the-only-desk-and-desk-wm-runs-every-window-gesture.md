@@ -6,7 +6,9 @@ decision-makers: Team endue
 
 Status: amended by ADR 0158: `desk-wm` holds the window manager's state too; the runtime sends it
 edits and keeps only the desk it publishes, and a desk without the compositor runs `desk-wm` as
-WebAssembly.
+WebAssembly. Amended by ADR 0160: what stays web runs as system surfaces the compositor places (the
+desk's page, the palette's and Eris's windows), the page keeps no stand-in frame, and the CSS grid
+(`layout.ts`) is deleted; `edges.ts` stays for the dock's bar and a runtime without a window host.
 
 # The compositor is the only desk, and desk-wm runs every window gesture and command
 

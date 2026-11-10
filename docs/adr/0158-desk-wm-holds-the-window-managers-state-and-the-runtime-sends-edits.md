@@ -4,6 +4,9 @@ date: 2026-11-11
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0160: the page keeps no stand-in frame inside its windows and moves none on a
+split, the relay's re-greeting is gone, and `compositor.css` keeps only the windows' unpainted parts.
+
 # desk-wm holds the window manager's state, and the runtime sends it edits
 
 ## Context and Problem Statement

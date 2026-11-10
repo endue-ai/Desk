@@ -46,7 +46,7 @@ Desk 是以一个应用构建的一个操作系统：基于 Chromium（CEF）的
 | --- | --- |
 | endue AI（云端） | 位于仓库之外；本仓库中只有 `specs/brain` 和 `crates/desk-brain-endue` |
 | 插件 | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
-| Web 运行时 | `packages/runtime`：合成器、UI 插件宿主（ADR 0012），以及在 ADR 0026 决定之前的桌面外壳（ADR 0025） · `packages/ui` |
+| Web 运行时 | `packages/runtime`：桌面的系统表面（ADR 0160）：UI 插件宿主（ADR 0012）、各项策略，以及在 ADR 0026 决定之前的桌面外壳各部分（ADR 0025）；在应用中它不摆放窗口，也不持有插件的框架 · `packages/ui` |
 | Desk 桥接层 | `specs/bridge` · 集成层的契约 `specs/item`、`specs/view` 和 `specs/connector`（ADR 0032） · `packages/bridge` · `crates/desk-bridge`（由这些契约和 `specs/plugin` 生成的类型） |
 | Rust 核心 | `crates/desk-core`（还提供集成层的 `data.*`、`connector.*`、`view.*`、`catalog.get`，并基于操作系统日历定义内置连接器 `desk.calendar` 和 `desk.reminders`，ADR 0036，仍处于提议阶段；http 连接器按清单由核心自己运行，令牌也只由核心读取，ADR 0106） · `crates/desk-index`（存放在一个 SQLite 文件中的条目索引，ADR 0033） · `crates/desk-plugin-host`（在 Wasmtime 上运行逻辑插件和 Wasm 连接器，ADR 0019；ADR 0034 仍处于提议阶段） · `crates/desk-vm` · `crates/desk-brain*` |
 | 外壳（CEF） | `apps/desk/shell`：基于 winit 和 CEF 的应用 `endue-desk`（ADR 0143），以及 `crates/desk-web`：不依赖引擎，决定其 URL 协议返回什么、每个页面是哪个调用方 · `crates/desk-sys` · `crates/desk-computer`（macOS 上的电脑操作：截图、辅助功能树、输入、应用），核心在 `computer:see` 和 `computer:control` 之下以 `computer.*` 提供；智能体的每个操作都要等用户批准（ADR 0120、ADR 0123） |
@@ -54,7 +54,7 @@ Desk 是以一个应用构建的一个操作系统：基于 Chromium（CEF）的
 
 ## 外壳与屏幕的去向
 
-在第 1 阶段之前，Desk 是一个只带一个操作系统 Web 视图的 Tauri 窗口，每个插件窗口都是这一个页面里的沙箱 iframe。外壳和所有插件共用一个进程和一个主线程，所以一个陷入死循环的插件会卡住整个桌面，而且 Linux 上没有 WebGPU。ADR 0140 改变了这一点：每个窗口都在自己的进程中渲染，由 Desk 自己基于 wgpu 的合成器摆放它们渲染的结果。从第 1 阶段起，每个插件表面都是自己的 Chromium 渲染进程，一个渲染进程崩溃只会让它自己的窗口变空。从 #83 起，合成器是唯一的桌面（ADR 0156）：每个插件表面都在自己的浏览器中于屏幕外渲染，合成器把它画在 `crates/desk-wm` 摆放其窗口的位置，desk-wm 负责窗口手势、窗口命令和活动预算。外壳页面保留仍是网页的部分（各种栏、菜单、命令面板、Eris、通知、设置和外壳自己的视图），直到它们成为系统表面。
+在第 1 阶段之前，Desk 是一个只带一个操作系统 Web 视图的 Tauri 窗口，每个插件窗口都是这一个页面里的沙箱 iframe。外壳和所有插件共用一个进程和一个主线程，所以一个陷入死循环的插件会卡住整个桌面，而且 Linux 上没有 WebGPU。ADR 0140 改变了这一点：每个窗口都在自己的进程中渲染，由 Desk 自己基于 wgpu 的合成器摆放它们渲染的结果。从第 1 阶段起，每个插件表面都是自己的 Chromium 渲染进程，一个渲染进程崩溃只会让它自己的窗口变空。从 #83 起，合成器是唯一的桌面（ADR 0156）：每个插件表面都在自己的浏览器中于屏幕外渲染，合成器把它画在 `crates/desk-wm` 摆放其窗口的位置，desk-wm 负责窗口手势、窗口命令和活动预算。仍是网页的部分以系统表面运行，由合成器摆放在所有窗口之上（ADR 0160）：桌面自己的页面（各种栏、Eris、通知、菜单、设置和工作室，每个部分整块绘制）、命令面板的窗口和浮动 Eris 的窗口，各自以自己窗口的调用方身份调用。没有插件在桌面的页面里运行：它的插件宿主通过外壳到达每个插件自己的浏览器。
 
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
@@ -68,7 +68,7 @@ Desk 是以一个应用构建的一个操作系统：基于 Chromium（CEF）的
 | --- | --- | --- |
 | 0 | 在 Tauri 应用上：每个表面在 `desk-plugin` 协议上有自己的源；只有可见窗口和最近获得焦点的 8 个保留活动框架；繁重的工作移到 Worker；停止响应的框架只在自己的窗口上提供“等待”或“停止” | 已完成 |
 | 1 | 外壳成为基于 winit 和 CEF 的 Rust 二进制程序（`apps/desk/shell`，ADR 0143），显示现在的外壳页面，并移除 Tauri；每个插件 iframe 都是自己的 Chromium 渲染进程；应用级 e2e 通过 Chromium 的远程调试驱动它（ADR 0144） | 已完成（#97）：CEF 桌面以 Tauri 应用的名字 `endue-desk` 取代了它，canary 构建它；Windows 和 Linux 上的 WebGPU 在这两个系统上检查（#61），第一个通过更新程序安装的 beta 随下一条发布线到来 |
-| 2 | 合成器（`crates/desk-compositor`）绘制桌面并摆放每个表面的纹理；表面使用同一个协议（`specs/surface`，ADR 0141）；CEF 在屏幕外渲染每个插件；窗口管理器从 `packages/runtime` 移到 Rust | 进行中：合成器成为唯一的桌面，desk-wm 摆放每个窗口并负责其手势、命令和活动预算（#83）；接下来是展开视图的视觉效果和系统表面 |
+| 2 | 合成器（`crates/desk-compositor`）绘制桌面并摆放每个表面的纹理；表面使用同一个协议（`specs/surface`，ADR 0141）；CEF 在屏幕外渲染每个插件；窗口管理器从 `packages/runtime` 移到 Rust | 进行中：合成器成为唯一的桌面，desk-wm 摆放每个窗口并负责其手势、命令和活动预算（#83）；仍是网页的部分以系统表面运行，桌面页面中不再有插件（#55）；接下来是展开视图的视觉效果 |
 | 3 | 原生插件：通过 `desk.sock` 使用表面协议和桥接层的进程 | 计划中 |
 
 插件代码在任何阶段都无需改动：清单、SDK 和桥接层的传输格式保持不变。插件获得的是自己的进程和源，以及所有操作系统上的 WebGPU。只有可见窗口和最近获得焦点的 8 个保留活动进程，其余带着状态休眠（ADR 0142）。在 macOS 上的概念验证用 wgpu 合成了 30 个屏幕外 CEF 表面，在其中运行了 WebGPU，并且在杀掉一个渲染进程时其他表面仍在继续绘制；一个轻量的渲染进程约占 40 MiB（`spikes/compositor/README.md`）。Windows 和 Linux 尚待验证。
