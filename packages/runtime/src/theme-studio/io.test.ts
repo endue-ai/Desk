@@ -39,7 +39,8 @@ function setup() {
     Object.entries(handlers).map(([method, handler]) => [
       method,
       (params: unknown, caller: string | undefined) => {
-        calls.push({ method, params });
+        // The look in force goes to the core on every change (theme.tokens); these tests are about io.
+        if (method !== "theme.tokens") calls.push({ method, params });
         return (handler as (p: unknown, c: string | undefined) => unknown)(params, caller);
       },
     ]),

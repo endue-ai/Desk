@@ -2,7 +2,8 @@
  * theme.* on the browser core (the fixtures and the dev page): user themes and design systems kept in
  * memory beside plugin.list, as the native core keeps them in <data>/themes (#302, ADR 0091). Saves and
  * imports install a theme or design-system plugin and announce it; exports return a .desk-theme bundle
- * (.desk-design for a design system); removes take user ones only.
+ * (.desk-design for a design system); removes take user ones only. theme.tokens answers the look's
+ * revision, as the native core does for the compositor (ADR 0145).
  */
 import type {
   BridgeEvent,
@@ -24,6 +25,8 @@ export function themeHandlers(
   emit: (event: BridgeEvent) => void,
 ): StubHandlers {
   const files = new Map<string, Record<string, string>>();
+  let revision = 0;
+  let lastTable = "";
   const install = (manifest: PluginManifest, assets: Record<string, string>) => {
     const look =
       (manifest.kind === "theme" && manifest.theme) ||
@@ -89,6 +92,13 @@ export function themeHandlers(
         }),
       );
       return {};
+    },
+    // The look in force, kept as the native core keeps it for the compositor (ADR 0145).
+    "theme.tokens": (table) => {
+      const key = JSON.stringify({ ...table, scope: undefined });
+      if (key !== lastTable) revision += 1;
+      lastTable = key;
+      return { revision, tokens: Object.keys(table.tokens).length };
     },
   };
 }

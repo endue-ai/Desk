@@ -1,4 +1,10 @@
-import { BridgeClient, type BridgeEvent, browserStub, type PluginInfo } from "@endue-ai/bridge";
+import {
+  BridgeClient,
+  type BridgeEvent,
+  browserStub,
+  type PluginInfo,
+  type ThemeTokensParams,
+} from "@endue-ai/bridge";
 import { componentTokens } from "@endue-ai/ui/design";
 import { describe, expect, it } from "vitest";
 import designManifest from "../../../../plugins/design/plugin.json";
@@ -25,12 +31,15 @@ function setup() {
   const plugins: PluginInfo[] = [themeManifest, designManifest, softManifest].map(plugin);
   const events: BridgeEvent[] = [];
   const calls: Array<{ method: string; params: unknown }> = [];
+  const looks: ThemeTokensParams[] = [];
   const handlers = themeHandlers(plugins, (event) => events.push(event));
   const recorded = Object.fromEntries(
     Object.entries(handlers).map(([method, handler]) => [
       method,
       (params: unknown, caller: string | undefined) => {
-        calls.push({ method, params });
+        // The look in force goes to the core on every change (theme.tokens, ADR 0145).
+        if (method === "theme.tokens") looks.push(params as ThemeTokensParams);
+        else calls.push({ method, params });
         return (handler as (p: unknown, c: string | undefined) => unknown)(params, caller);
       },
     ]),
@@ -59,7 +68,7 @@ function setup() {
     share: (message: unknown) => shared.push(message),
   } as unknown as DeskContext;
   const theme = installTheme(ctx, root);
-  return { theme, designs: theme.designs, hub, calls, plugins, set, shared };
+  return { theme, designs: theme.designs, hub, calls, looks, plugins, set, shared };
 }
 
 describe("desk.design", () => {
@@ -69,6 +78,28 @@ describe("desk.design", () => {
     expect(designs.installed().map((d) => d.id)).toEqual(["endue.design-soft"]);
     expect(theme.state().tokens.buttonRadius).toBe(componentTokens.buttonRadius);
     expect(set.get("--desk-button-radius")).toBe("var(--desk-radius-md)");
+  });
+
+  it("hands the core the look in force at start and on every change, for the compositor", () => {
+    const { designs, hub, looks } = setup();
+    expect(looks).toHaveLength(1);
+    expect(looks[0]).toMatchObject({
+      scheme: "dark",
+      design: "",
+      scope: { permission: "theme:manage" },
+    });
+    expect(looks[0]?.tokens.toastRadius).toBe("var(--desk-radius-lg)");
+    designs.apply("endue.design-soft");
+    expect(looks.at(-1)).toMatchObject({ design: "endue.design-soft" });
+    expect(looks.at(-1)?.tokens.buttonRadius).toBe("var(--desk-radius-full)");
+    designs.preview("endue.design-soft");
+    hub.settings.set("desk.theme.scheme", "light");
+    expect(looks.at(-1)?.scheme).toBe("light");
+    // A preview of the same look, or an unrelated change, sends nothing new.
+    const sent = looks.length;
+    designs.preview(undefined);
+    hub.settings.set("desk.other", true);
+    expect(looks).toHaveLength(sent);
   });
 
   it("applies a design system over the theme on the desk and in every frame, kept in its setting", () => {

@@ -21,6 +21,7 @@ import {
   type ThemeSettings,
   type ThemeState,
 } from "../theme";
+import { tokenPublisher } from "../theme/tokens";
 import { applyThemeFonts, fontHost } from "../theme-fonts";
 import { type DeskContext, disposer, type Installed } from "./context";
 import { installDesign, type RuntimeDesigns } from "./design";
@@ -146,6 +147,9 @@ export function installTheme(
       designs.state(),
     );
   let state = resolveTheme(hub.policy.themes, read(), media.read(), installed(), designs.state());
+  // The compositor draws the chrome from the same look (theme.tokens, ADR 0145).
+  const tokens = tokenPublisher(ctx.bridge);
+  tokens.send(state);
 
   const apply = () => {
     if (previewed !== undefined && !known(previewed)) previewed = undefined;
@@ -154,6 +158,7 @@ export function installTheme(
         ? resolve(read().active ?? "")
         : resolve(previewed, previewed === DRAFT_THEME ? draftScheme : undefined);
     applyThemeState(target, state);
+    tokens.send(state);
     applyThemeFonts(fontHost(target.ownerDocument), state.fonts);
     const { scheme, contrast, reducedMotion, variables, fonts } = state;
     ctx.share({ type: "desk:theme", theme: { scheme, contrast, reducedMotion, variables, fonts } });
