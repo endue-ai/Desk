@@ -54,3 +54,8 @@ path checks, so serving files from it keeps one source of truth in development a
 
 `apps/desk/src-tauri/src/protocol.rs`, `packages/runtime/src/plugins.ts`, `packages/plugin-sdk`,
 `crates/desk-core/src/watch.rs`. Issue #10.
+
+A reload waits up to 500 ms for the frame's answer to a ping before it loads the new revision
+(`packages/runtime/src/frames/reload.ts`, #32): the state the plugin set just before then reaches the
+desk from the frame's own window. Chromium hands a message from a page that has gone no `source`, and
+the runtime still never takes such a message as any plugin's.
