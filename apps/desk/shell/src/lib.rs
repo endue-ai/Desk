@@ -23,6 +23,11 @@ pub mod instance;
 #[cfg(target_os = "macos")]
 pub mod mac;
 pub mod menu;
+#[cfg(unix)]
+pub mod native_host;
+#[cfg(not(unix))]
+#[path = "native_host/unsupported.rs"]
+pub mod native_host;
 pub mod open_files;
 pub mod palette;
 pub mod palette_assets;

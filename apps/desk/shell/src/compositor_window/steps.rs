@@ -1,8 +1,9 @@
 //! What a look at the hosted desk calls for, carried out (#81, #80): the surfaces' lifecycle steps
-//! to the web host, the live set to the runtime (`desk://compositor-live`), the window manager's
-//! changes to the runtime and the page (`wm.rs`), and a surface that goes forgotten by the input
-//! router.
+//! to the web host or the native host (#59), the live set to the runtime (`desk://compositor-live`),
+//! the window manager's changes to the runtime and the page (`wm.rs`), and a surface that goes
+//! forgotten by the input router.
 
+use desk_surface::generated::CompositorMessage;
 use desk_web::sender::Role;
 use desk_wm::Step;
 use serde_json::json;
@@ -17,7 +18,9 @@ impl CompositorWindow {
         self.emit_wm(std::mem::take(&mut outcome.wm));
         for step in &outcome.steps {
             if let Step::Load { surface, url } = step {
-                self.host.load(surface, url);
+                if !self.native.load(surface) {
+                    self.host.load(surface, url);
+                }
                 continue;
             }
             let Some(message) = message(step) else {
@@ -39,7 +42,7 @@ impl CompositorWindow {
                 }
                 _ => {}
             }
-            self.host.send(&message);
+            self.send_to(&message);
         }
         if let Some(live) = outcome.live {
             self.desk
@@ -47,6 +50,13 @@ impl CompositorWindow {
                 .emit(Role::Main, LIVE, json!({ "live": live }));
         }
         self.shared.lock().dirty = true;
+    }
+
+    /// A message to the surface it is about: a native plugin's process, or a web surface's browser.
+    pub(super) fn send_to(&self, message: &CompositorMessage) {
+        if !self.native.send(message) {
+            self.host.send(message);
+        }
     }
 
     /// Surface `surface` takes no input any more (destroyed, asleep, died).

@@ -28,6 +28,8 @@ struct Tables {
     stand_ins: HashMap<String, Frame>,
     /// The surface's own browser, by surface host.
     surfaces: HashMap<String, Browser>,
+    /// A native plugin's surface instead (#59): its host's way to the process.
+    natives: HashMap<String, NativeDown>,
     /// The plugin's messages for the runtime while its stand-in loads.
     waiting: HashMap<String, Vec<String>>,
     greetings: Greetings,
@@ -78,6 +80,9 @@ impl Greetings {
 #[derive(Clone, Default)]
 pub struct Relay(Arc<Mutex<Tables>>);
 
+/// Where the runtime's messages for a native plugin's surface go: its process (`native_host`).
+pub type NativeDown = Arc<dyn Fn(String) + Send + Sync>;
+
 /// The SDK's hello, said again for a page whose stand-in moved.
 pub const HELLO: &str = r#"{"type":"desk:hello"}"#;
 
@@ -106,6 +111,17 @@ impl Relay {
         match browser {
             Some(browser) => tables.surfaces.insert(host.to_owned(), browser),
             None => tables.surfaces.remove(host),
+        };
+    }
+
+    /// The surface `host` is a native plugin's, whose page messages `down` takes (or no longer):
+    /// a new process each time, which says hello itself.
+    pub fn native(&self, host: &str, down: Option<NativeDown>) {
+        let mut tables = self.tables();
+        tables.greetings.new_page(host);
+        match down {
+            Some(down) => tables.natives.insert(host.to_owned(), down),
+            None => tables.natives.remove(host),
         };
     }
 
@@ -142,15 +158,23 @@ impl Relay {
         let Some(host) = surface_host(&url) else {
             return;
         };
-        let target = {
+        let (target, native) = {
             let mut tables = self.tables();
             if tables.greetings.kept(&host, kind(&text).as_deref()) {
                 // The answer to the hello said for it: the page is past its init.
                 return;
             }
             tables.down += 1;
-            tables.surfaces.get(&host).and_then(|b| b.main_frame())
+            let native = tables.natives.get(&host).cloned();
+            (
+                tables.surfaces.get(&host).and_then(|b| b.main_frame()),
+                native,
+            )
         };
+        if let Some(native) = native {
+            native(text);
+            return;
+        }
         // A page still loading misses it, as a frame's page did: the SDK's hello starts it over.
         if let Some(target) = target {
             crate::host::send(target, text);

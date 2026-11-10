@@ -22,7 +22,7 @@ impl CompositorWindow {
         for (surface, _, _) in self.hosted.surfaces().made() {
             let pace = json!({ "type": "pace", "surface": surface, "fps": fps });
             if let Ok(message) = serde_json::from_value(pace) {
-                self.host.send(&message);
+                self.send_to(&message);
             }
         }
     }

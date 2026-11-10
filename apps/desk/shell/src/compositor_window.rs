@@ -43,6 +43,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
 use crate::host::Desk;
+use crate::native_host::NativeHost;
 use crate::web_host::frames::FRAME;
 use crate::web_host::relay::Relay;
 use crate::web_host::render::SurfaceRender;
@@ -75,6 +76,8 @@ pub struct CompositorWindow {
     gpu: gpu::Gpu,
     shared: Shared,
     pub host: WebHost,
+    /// Native plugins' surfaces, each its own process (#59).
+    native: NativeHost,
     relay: Relay,
     page: SharedView,
     pub browser: Option<Browser>,
@@ -120,6 +123,7 @@ impl CompositorWindow {
             relay.clone(),
             Some(Arc::clone(&desk)),
         );
+        let native = NativeHost::new(Arc::new(shared.clone()), relay.clone(), Arc::clone(&desk));
         let size = window.inner_size().to_logical::<f64>(window.scale_factor());
         let logical = (size.width.round() as u32, size.height.round() as u32);
         let page = SharedView::new(View::new(
@@ -175,6 +179,7 @@ impl CompositorWindow {
             gpu,
             shared,
             host,
+            native,
             relay,
             page,
             browser,
@@ -349,6 +354,7 @@ impl CompositorWindow {
     /// Close the page's browser and every surface's (the desk quits).
     pub fn close(&self) {
         self.host.close_all();
+        self.native.close_all();
         stand_in::set_shell_page(None);
     }
 }

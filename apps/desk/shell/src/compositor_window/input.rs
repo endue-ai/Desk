@@ -106,7 +106,7 @@ impl CompositorWindow {
             return;
         };
         if surface != PAGE {
-            self.host.send(message);
+            self.send_to(message);
             return;
         }
         let Some(host) = self.browser.as_ref().and_then(|b| b.host()) else {

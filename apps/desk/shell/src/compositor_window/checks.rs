@@ -96,6 +96,7 @@ impl CompositorWindow {
             "windows": windows,
             "live": self.hosted.live(),
             "browsers": self.host.browsers(),
+            "native": self.native.stats(),
             "relayed": self.relay.counts(),
             "presented": self.presented,
             "slow_presents": self.slow_presents,

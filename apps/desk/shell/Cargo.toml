@@ -44,7 +44,7 @@ desk-bridge.workspace = true
 desk-computer = { path = "../../../crates/desk-computer" }
 # Compositor mode (#52): off-screen surfaces composited by desk-compositor over specs/surface.
 desk-compositor.workspace = true
-desk-surface.workspace = true
+desk-surface = { workspace = true, features = ["native"] }
 desk-core.workspace = true
 desk-trace.workspace = true
 # The desk's own updates (ADR 0054, ADR 0147): the updater, its HTTPS origin and the installer.
