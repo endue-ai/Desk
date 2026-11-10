@@ -6,6 +6,8 @@ decision-makers: Team endue
 
 Status: amended by ADR 0160: the page keeps no stand-in frame inside its windows and moves none on a
 split, the relay's re-greeting is gone, and `compositor.css` keeps only the windows' unpainted parts.
+Amended by ADR 0161: the compositor draws the spread (#54), whose command, key and strip button
+are back.
 
 # desk-wm holds the window manager's state, and the runtime sends it edits
 

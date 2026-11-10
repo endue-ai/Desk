@@ -7,6 +7,10 @@ decision-makers: Team endue
 Status: amended by ADR 0158: `desk-wm` tiles, cascades and restores; the spread, which the page drew
 over windows the compositor now draws, waits for the compositor to draw it (#54), its command, key
 and strip button with it.
+Amended by ADR 0161: the compositor draws the spread from the windows' live textures, its controller is
+`desk-wm`'s (`spread::run`, on the window manager's clock), and its command, key and button are back; a
+covered window shows live on its card, a sleeping one its last frame greyed, and the scrim darkens
+without a blur.
 
 # Windows tile, cascade and spread from the right edge
 
