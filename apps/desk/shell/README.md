@@ -6,7 +6,7 @@ desk's URL schemes and CEF's message pump, driven from winit's event loop when C
 `window.__deskNative`, the caller taken from the browser's window and the frame's URL (#43, #45).
 Its services (#45): tray, menus, shortcuts, file dialog, one desk per data folder, opened files, the
 palette, the floating Eris, the computer-use banner. It replaced the Tauri shell, and took its binary's
-name, when Stage 1 of #32 ended (#97). Compositor mode (`DESK_COMPOSITOR=1`, ADR 0149–0151) draws
+name, when Stage 1 of #32 ended (#97). Compositor mode (`DESK_COMPOSITOR=1`, ADR 0149–0155) draws
 every surface off screen with `desk-compositor`, places windows from `desk-wm`, routes their input.
 
 ## Public API
@@ -20,8 +20,8 @@ every surface off screen with `desk-compositor`, places windows from `desk-wm`, 
   windows; `open_files`, `run_event`, `drops`: files from the command line, Finder, the Dock and drags.
 - `scheme`, `plugin_scheme`, `guard`, `paths`, `process_start`, `renderer`, `crashes`: schemes, loads, files, start, crashes.
 - `native_host`: native plugins, each a process (#59, ADR 0154); `web_host`: web content, a windowless browser per
-  surface on the frame clock (`frames`, `clock`), its input (`input`, `key_codes`, `routes`, `drag`); `compositor_window`:
-  `desk-wm`'s desk (`report`, `hosted`), gestures (`wm`, ADR 0153), scene (`draw`), focus ring, drag image; `harness`, `probe`.
+  surface on the frame clock (`frames`, `clock`), input (`input`, `key_codes`, `routes`, `drag`), its tree (`view::a11y`);
+  `compositor_window`: `desk-wm`'s desk (`report`, `hosted`), `wm`, `draw`, AccessKit (`a11y`, ADR 0155); `harness`, `probe`.
 - `sandbox`: each macOS helper enters Chromium's sandbox first (ADR 0148); off elsewhere until #61.
 - `release`, `update`: the build's version, key, origin and commit; the updater over `desk_update::install`,
   the tray's "Restart to update", the restart once CEF has shut down (#47).
@@ -36,5 +36,5 @@ just dev            # builds the runtime and the shell; on macOS runs target/bun
 just check-shell    # clippy -D warnings and the crate's tests (downloads CEF on first build)
 ```
 
-`tests/{osr_import,lifecycle}.rs` run `--surface-probe` on `just build-shell`'s bundle; `e2e/specs/{ime,dnd}`
-feed compositor mode winit's events; dev builds open DevTools when `DESK_REMOTE_DEBUGGING_PORT` is set.
+`tests/{osr_import,lifecycle,a11y}.rs` run `--surface-probe` on `just build-shell`'s bundle; `e2e/specs/{ime,dnd,a11y}`
+drive compositor mode; dev builds open DevTools when `DESK_REMOTE_DEBUGGING_PORT` is set.
