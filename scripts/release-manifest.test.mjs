@@ -106,6 +106,11 @@ describe("release-manifest", () => {
       0,
       "a disk image is for people",
     );
+    assert.deepEqual(
+      targetsOf("endue-desk_0.2.0_windows-x86_64.msi", "0.2.0"),
+      ["windows-x86_64-msi"],
+      "the CEF desk's MSI updates the desks installed from it, never an NSIS one (#47)",
+    );
     assert.throws(
       () => releaseManifest({ version: "0.2.0", base: BASE, files: [] }),
       /no updater artifacts/u,

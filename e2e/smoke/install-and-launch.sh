@@ -141,9 +141,9 @@ if [ -n "$package" ]; then
       done
       ;;
   esac
-  # The updater's artifacts carry its signature; the first-install images (.dmg, .msi) do not.
+  # The updater's artifacts carry its signature; the first-install image (.dmg) does not.
   case "$package" in
-    *.app.tar.gz | *-setup.exe | *.AppImage | *.deb)
+    *.app.tar.gz | *-setup.exe | *.msi | *.AppImage | *.deb)
       "$root/e2e/smoke/verify-signature.sh" "$package" || fail "the updater signature"
       ;;
   esac

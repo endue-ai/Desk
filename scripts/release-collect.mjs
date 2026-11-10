@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Copy one target's bundles into the release folder under canonical names (ADR 0054):
-// endue-desk_<version>_<target><ext>, each updater artifact with its .sig, the first-install images
-// (.dmg, .msi) without. Tauri names its output after the product ("endue Desk"), with spaces, and so
+// endue-desk_<version>_<target><ext>, each updater artifact with its .sig, the first-install image
+// (.dmg) without. Tauri names its output after the product ("endue Desk"), with spaces, and so
 // does cargo-packager for the CEF desk (scripts/cef-package.mjs, same folder layout); R2 keys and URLs
-// should not have them. The two shells ship slightly different sets: the CEF desk adds an MSI and,
-// with no .rpm in cargo-packager, drops the .rpm (#46).
+// should not have them. The two shells ship slightly different sets: the CEF desk adds an MSI (#46),
+// which updates the desks installed from it (#47), and, with no .rpm in cargo-packager, drops the .rpm.
 //   node scripts/release-collect.mjs --bundle <bundle folder> --version V
 //     --target darwin-aarch64|darwin-x86_64|windows-x86_64|linux-x86_64 --out dist [--shell tauri|cef]
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
@@ -19,7 +19,8 @@ export const KINDS = {
   ],
   windows: [
     { folder: "nsis", match: /-setup\.exe$/u, ext: "-setup.exe", signed: true },
-    { folder: "msi", match: /\.msi$/u, ext: ".msi", signed: false, shells: ["cef"] },
+    // The CEF desk installed from the MSI updates through it (#47), so it is signed too.
+    { folder: "msi", match: /\.msi$/u, ext: ".msi", signed: true, shells: ["cef"] },
   ],
   linux: [
     { folder: "appimage", match: /\.AppImage$/u, ext: ".AppImage", signed: true },

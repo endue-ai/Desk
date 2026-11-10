@@ -27,6 +27,8 @@ export function targetsOf(name, version) {
   const rules = [
     [/^(darwin-(?:aarch64|x86_64))\.app\.tar\.gz$/u, (t) => [t, `${t}-app`]],
     [/^(windows-x86_64)-setup\.exe$/u, (t) => [`${t}-nsis`, t]],
+    // The CEF desk's MSI (#47): only a desk installed from it looks this target up.
+    [/^(windows-x86_64)\.msi$/u, (t) => [`${t}-msi`]],
     [/^(linux-x86_64)\.AppImage$/u, (t) => [`${t}-appimage`, t]],
     [/^(linux-x86_64)\.deb$/u, (t) => [`${t}-deb`]],
     [/^(linux-x86_64)\.rpm$/u, (t) => [`${t}-rpm`]],

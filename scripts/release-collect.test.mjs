@@ -128,7 +128,7 @@ describe("release-collect", () => {
   it("the_cef_desk_adds_an_msi_beside_nsis_and_ships_no_rpm", () => {
     const windows = bundle({
       nsis: ["endue Desk_0.5.0_x64-setup.exe", "endue Desk_0.5.0_x64-setup.exe.sig"],
-      msi: ["endue Desk_0.5.0_x64_en-US.msi"],
+      msi: ["endue Desk_0.5.0_x64_en-US.msi", "endue Desk_0.5.0_x64_en-US.msi.sig"],
     });
     assert.deepEqual(
       collect({
@@ -142,8 +142,9 @@ describe("release-collect", () => {
         "endue-desk_0.5.0_windows-x86_64-setup.exe",
         "endue-desk_0.5.0_windows-x86_64-setup.exe.sig",
         "endue-desk_0.5.0_windows-x86_64.msi",
+        "endue-desk_0.5.0_windows-x86_64.msi.sig",
       ],
-      "the MSI is a first-install image: no updater signature",
+      "an MSI install updates through the MSI, so it carries the updater signature (#47)",
     );
     assert.throws(
       () =>

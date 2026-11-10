@@ -222,7 +222,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           shopt -s nullglob
-          for file in target/packager/bundle/{macos,nsis,appimage,deb}/*; do
+          for file in target/packager/bundle/{macos,nsis,msi,appimage,deb}/*; do
             pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/$file"
           done
       - name: Install smoke on every CEF desk package
