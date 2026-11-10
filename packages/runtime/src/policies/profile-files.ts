@@ -120,14 +120,23 @@ export function profileFiles(
     saved: () => [...profiles.values()],
     save: async (profile) => {
       const text = deskYaml(toFile(profile), HEADER);
+      // Known before the write, so the write's own fs.changed reads as no change.
+      const before = texts.get(profile.id);
+      texts.set(profile.id, text);
+      try {
+        await folder.write(pathOf(profile.id), text);
+      } catch (error) {
+        // A write the core refuses leaves the list, and what was removed, as they were (#102).
+        if (before === undefined) texts.delete(profile.id);
+        else texts.set(profile.id, before);
+        throw error;
+      }
+      profiles.set(profile.id, profile);
       if (profile.id in removed) {
         const { [profile.id]: _gone, ...rest } = removed;
         removed = rest;
         await saveRemoved();
       }
-      texts.set(profile.id, text);
-      profiles.set(profile.id, profile);
-      await folder.write(pathOf(profile.id), text);
     },
     remove: async (id) => {
       profiles.delete(id);

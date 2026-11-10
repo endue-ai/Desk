@@ -157,7 +157,12 @@ export function installProfiles(
         },
         settings: rest.settings ?? { ...inForce, ...session },
       };
-      await files.save(profile);
+      // The file before anything else: a write the core refuses switches nothing and says why
+      // (#102). Whoever runs the command, the runtime writes as itself (ADR 0079's grant).
+      await files.save(profile).catch((error: unknown) => {
+        const why = error instanceof Error ? error.message : String(error);
+        throw new CommandError("failed", `profile ${id} was not saved: ${why}`);
+      });
       // A copy is saved beside the profile in force; saving this setup makes it the one in force,
       // and its changes move from the session into the profile (the values in force stay the same).
       if (!rest.settings) {
