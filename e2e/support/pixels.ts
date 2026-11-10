@@ -4,8 +4,12 @@
 // screenshot is the desk's whole viewport through WebDriver, decoded here (8-bit RGB or RGBA PNG,
 // as Chromium writes it) and scaled to CSS pixels by the screen's width. Taking one also draws a
 // frame, which a desk hidden behind a locked screen otherwise does not (no animation frames run).
+import { readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { inflateSync } from "node:zlib";
 import { browser } from "@wdio/globals";
+import { composited } from "./desk";
 import type { Rect } from "./windows";
 
 export interface Image {
@@ -85,8 +89,41 @@ function paeth(a: number, b: number, c: number): number {
   return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
 }
 
+let captures = 0;
+
+/**
+ * The compositor's frame (compositor mode, #81): the page alone leaves the windows unpainted, so the
+ * desk's development build reads its composed frame back (`compositor_capture`) into a file.
+ */
+async function composedFrame(): Promise<Buffer> {
+  const path = join(tmpdir(), `desk-e2e-frame-${process.pid}-${++captures}.png`);
+  const error = await browser.execute(
+    (file: string) =>
+      new Promise<string | null>((done) => {
+        type Native = { send(text: string): void; onMessage?: (text: string) => void };
+        const native = (globalThis as { __deskNative?: Native }).__deskNative;
+        if (!native) return done("no __deskNative");
+        const before = native.onMessage;
+        const id = 900_000 + Math.floor(Math.random() * 99_999);
+        native.onMessage = (text: string) => {
+          const answer = JSON.parse(text) as { id?: number; error?: string };
+          if (answer.id !== id) return before?.(text);
+          native.onMessage = before;
+          done(answer.error ?? null);
+        };
+        native.send(JSON.stringify({ id, cmd: "compositor_capture", args: { path: file } }));
+      }),
+    path,
+  );
+  if (error) throw new Error(`the compositor did not capture its frame: ${String(error)}`);
+  const png = readFileSync(path);
+  rmSync(path, { force: true });
+  return png;
+}
+
 /** The desk's viewport now, `cssWidth` CSS pixels wide (desk.windows.list's screen). */
 export async function screenshot(cssWidth: number): Promise<Image> {
+  if (await composited()) return decodePng(await composedFrame(), cssWidth);
   return decodePng(Buffer.from(await browser.takeScreenshot(), "base64"), cssWidth);
 }
 

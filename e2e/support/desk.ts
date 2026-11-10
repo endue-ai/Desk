@@ -49,10 +49,46 @@ export async function shellReady(): Promise<void> {
 }
 
 /**
+ * Whether the desk runs on the compositor (`DESK_COMPOSITOR=1`, #81, ADR 0151): its plugin frames
+ * are stand-ins, each plugin's page an off-screen browser of its own, and the compositor draws the
+ * windows the page leaves unpainted.
+ */
+export async function composited(): Promise<boolean> {
+  return (await browser.getUrl()).includes("compositor=1");
+}
+
+/** Run `body` in a plugin's own off-screen browser (compositor mode), then return to the shell. */
+async function inSurface<T>(plugin: string, body: () => Promise<T>): Promise<T> {
+  const frame = $(`#desk.shell .desk-surface[data-surface="${plugin}"] iframe`);
+  await frame.waitForExist();
+  const host = /^desk-plugin:\/\/([^/?#]+)/.exec((await frame.getAttribute("src")) ?? "")?.[1];
+  const shell = await browser.getWindowHandle();
+  await browser.waitUntil(
+    async () => {
+      for (const handle of await browser.getWindowHandles()) {
+        if (handle === shell) continue;
+        await browser.switchToWindow(handle);
+        if ((await browser.getUrl()).startsWith(`desk-plugin://${host}/`)) return true;
+      }
+      await browser.switchToWindow(shell);
+      return false;
+    },
+    { timeout: 15_000, timeoutMsg: `${plugin} has no surface of its own` },
+  );
+  try {
+    return await body();
+  } finally {
+    await browser.switchToWindow(shell);
+  }
+}
+
+/**
  * Run `body` inside a plugin's sandboxed frame, then return to the shell. The frame is looked up in
- * any layer: endue.permissions' prompt is an overlay surface.
+ * any layer: endue.permissions' prompt is an overlay surface. On the compositor's desk, inside the
+ * plugin's own browser.
  */
 export async function inFrame<T>(plugin: string, body: () => Promise<T>): Promise<T> {
+  if (await composited()) return inSurface(plugin, body);
   const frame = $(`#desk.shell .desk-surface[data-surface="${plugin}"] iframe`);
   await frame.waitForExist();
   await browser.switchFrame(frame);
