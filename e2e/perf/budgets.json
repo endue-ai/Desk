@@ -1,5 +1,5 @@
 {
-  "$comment": "Performance budgets. Baselines are first measurements; a check fails when a value regresses past its section's allowedRegression, and a section without a baseline is reported, not failed. openingFrameTime: just perf-opening (record with: just perf-opening record), headless Chromium since #48 (ADR 0144): its frames come on a 60 Hz clock, so p50 and p95 read 16.7 ms while the onboarding frame keeps up, against WebKit's 17 and 18. startup, idleMemory, inputLatency: just perf-app on the CEF desk (DESK_E2E_SHELL=tauri for the Linux .deb), nightly in the e2e workflow's perf job; their baselines come from the CI runner (just perf-app record, or budgets.json from the job's artifact), and none was recorded on the Tauri app, so the CEF desk's first run sets them. targetMs are RT-16's targets, printed beside the values, not gates.",
+  "$comment": "Performance budgets. Baselines are first measurements; a check fails when a value regresses past its section's allowedRegression, and a section without a baseline is reported, not failed. openingFrameTime: just perf-opening (record with: just perf-opening record), headless Chromium since #48 (ADR 0144): its frames come on a 60 Hz clock, so p50 and p95 read 16.7 ms while the onboarding frame keeps up, against WebKit's 17 and 18. startup, idleMemory, inputLatency: just perf-app on the CEF desk (DESK_E2E_SHELL=tauri for the Linux .deb), nightly in the e2e workflow's perf job; their baselines come from the CI runner (just perf-app record, or budgets.json from the job's artifact), and none was recorded on the Tauri app, so the CEF desk's first run sets them. targetMs are RT-16's targets, printed beside the values, not gates. compose, composeStartup, surfaceStartup, surfaceMemory, inputToPaint: just perf-compositor (#58, e2e/perf/lib/compositor.ts) on the reference machine (docs/qa/TESTING.md); each section says why in its reason. budgetMs is a budget the value stays under, allowedRegression an allowance past a baseline, band a share either side of one; a baseline recorded on another platform or with another tool, and a budget on a software adapter, are reported, never failed.",
   "openingFrameTime": {
     "p50Ms": 16.7,
     "p95Ms": 16.7,
@@ -36,5 +36,54 @@
     "platform": null,
     "recorded": null,
     "allowedRegression": 0.25
+  },
+  "compose": {
+    "budgetMs": 4,
+    "p95Ms": 0.461,
+    "medianMs": 0.398,
+    "surfaces": 15,
+    "width": 2560,
+    "height": 1440,
+    "frames": 300,
+    "adapter": "Apple M4 Max (Metal)",
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-10",
+    "reason": "#32 §3: composing 15 live surfaces at 1440p within 4 ms leaves 12 of a 60 Hz frame's 16.7 ms to the engine's paints and the shell. Gated on the p95 frame of cargo bench -p desk-compositor --bench compose (every window moved and every texture repainted each frame, so every frame is a full redraw; animate, compose and GPU done), on a GPU; a software adapter (lavapipe, WARP) reports it. p95Ms and medianMs are the reference machine's, kept for the trend."
+  },
+  "composeStartup": {
+    "firstComposeMs": 34.6,
+    "surfaces": 15,
+    "adapter": "Apple M4 Max (Metal)",
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-10",
+    "allowedRegression": 0.25,
+    "reason": "The compositor's own start, which every desk start waits for before it shows anything: from asking for a GPU device to the first composed frame of the compose budget's desk with the GPU done (device, pipelines, the machine's fonts, 15 textures uploaded, the first glyphs). The same bench run's median of three starts after one that warms what the OS and the driver keep for a new binary (a fresh build's first start took 4 times as long). Fails past the allowance on the platform its baseline was recorded on; the desk's whole start is surfaceStartup's."
+  },
+  "surfaceStartup": {
+    "firstComposeMs": 241.8,
+    "runs": 5,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-10",
+    "allowedRegression": 0.25,
+    "reason": "The desk's start to the first composed frame holding a web surface's paint, the median of five after one start that takes the OS's first look at a newly laid out bundle (1.5 s against 0.2 s; on a busy machine about one start in three also spent 1.4 s more before CEF was up, which the median leaves out): the CEF desk in compositor mode through its surface probe (apps/desk/shell/tests/budgets.rs), started by the test, so the process's start, CEF's, a renderer's, the page's first paint, its import and a compose all count. #35 measured 137 to 248 ms from CreateBrowser to the first paint alone. Fails past the allowance on the platform its baseline was recorded on."
+  },
+  "surfaceMemory": {
+    "perSurfaceMb": 120.7,
+    "band": 0.2,
+    "page": "the PoC's light page, animating, 800x600 at scale 2, composed at 1920x1080",
+    "tool": "footprint",
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-10",
+    "source": "#35 (spikes/compositor/README.md): 916 MiB for the whole process tree with 1 light surface, 2,002 MiB with 10, so (2,002 - 916) / 9 a surface",
+    "reason": "What one more live surface costs the machine, the number the live budget (ADR 0142: visible windows and the 8 most recent) is set from: the process tree's physical footprint with 1 and with 10 animating light surfaces, the difference per surface, as #35 measured it (apps/desk/shell/tests/budgets.rs). Within 20 % of #35's either way: above means a surface costs more than the live budget assumed; below means the baseline is stale or the surfaces did not render. RSS on Linux and Windows is reported until #61 records their baselines."
+  },
+  "inputToPaint": {
+    "p95Ms": null,
+    "budgetMs": 16,
+    "tries": 20,
+    "waitsFor": "#56",
+    "platform": null,
+    "recorded": null,
+    "reason": "RT-16: an input reaches the surface under the pointer and the frame showing its paint is composed within one 60 Hz frame, p95 of 20. Measured once the compositor routes input to surfaces (#56); until then its test (apps/desk/shell/tests/budgets.rs, input_to_paint_within_16_ms) is ignored with that reason and the section is reported as waiting."
   }
 }

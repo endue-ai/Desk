@@ -168,6 +168,13 @@ perf-opening mode="check":
 perf-app mode="check":
     PERF_MODE={{mode}} pnpm exec wdio run e2e/perf/wdio.conf.ts
 
+# The compositor's budgets (#58): the compose bench (15 surfaces at 1440p within 4 ms, the compositor's
+# start) and the CEF desk's surface probe (memory per live surface against #35, the start to the first
+# composed web surface), judged against e2e/perf/budgets.json; results in e2e/test-results/perf-compositor.
+# `just build-shell` once first; a quiet machine ("record" sets the baselines)
+perf-compositor mode="check":
+    node e2e/perf/compositor.ts {{mode}}
+
 # Check that this session still has its macOS login session (a WindowServer crash ends it; ADR 0018)
 doctor:
     node scripts/doctor.mjs
