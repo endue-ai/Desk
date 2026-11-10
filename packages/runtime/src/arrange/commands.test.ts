@@ -2,7 +2,9 @@
 // arranges and keeps what each arrangement replaced (crates/desk-wm/tests/arrange.rs checks the
 // grid, the cascade and every restore). What stays the runtime's is the commands' wiring: each is
 // one undoable step on the core's undo stack (ADR 0077), which hands the arrangement's answer back
-// to restore-arrangement, and a refusal is the command's error.
+// to restore-arrangement, and a refusal is the command's error. desk.windows.spread asks the window
+// manager's host, whose compositor draws it (#54), and desk.windows.focus is its pick: the window
+// comes wholly into sight and takes the keys.
 import { BridgeClient, type BridgeEvent, browserStub, stubCommands } from "@endue-ai/bridge";
 import { describe, expect, it, vi } from "vitest";
 import { Commands } from "../commands";
@@ -12,7 +14,7 @@ import { Store, sampleState } from "../shell/state";
 import { testWindowManager } from "../wm/testing";
 import type { Edit } from "../wm/types";
 import { takeDesk } from "../wm/view";
-import { CASCADE, defineArrangeCommands, RESTORE, TILE } from "./commands";
+import { CASCADE, defineArrangeCommands, FOCUS, RESTORE, SPREAD, TILE } from "./commands";
 
 const ALL = { permission: "cmd:invoke" as const, ids: ["*"] };
 const epoch = Date.parse("2026-11-07T09:00:00.000Z");
@@ -34,7 +36,7 @@ const place = (desktop: DesktopId, placement: SurfacePlacement): Edit => ({
 });
 
 /** The desk's command registry on the bridge stub's core, which keeps the undo stack, over desk-wm. */
-async function desk() {
+async function desk(keys?: (window: string) => void) {
   const registry = stubCommands((event: BridgeEvent) => stub.emit(event));
   const stub = browserStub({ ...registry.handlers });
   const client = new BridgeClient(stub);
@@ -61,7 +63,7 @@ async function desk() {
     now: () => 0,
     wall: () => epoch,
   } as unknown as Ctx;
-  defineArrangeCommands(ctx);
+  defineArrangeCommands(ctx, keys);
   await commands.settled();
   return { store, wm, commands, client, ctx };
 }
@@ -82,8 +84,8 @@ describe("desk.windows.tile and desk.windows.cascade", () => {
     expect(undo[TILE]).toBe(RESTORE);
     expect(undo[CASCADE]).toBe(RESTORE);
     expect(undo[RESTORE]).toBeUndefined();
-    // The spread waits for the compositor to draw it (#54).
-    expect(listed.map((c) => c.id)).not.toContain("desk.windows.spread");
+    // The spread and its pick are no arrangements: nothing to undo.
+    expect([undo[SPREAD], undo[FOCUS]]).toEqual([undefined, undefined]);
   });
 
   it("answer what they replaced, and refuse a desktop with no normal window, leaving nothing to undo", async () => {
@@ -131,5 +133,30 @@ describe("undo and restore", () => {
   it("restore with nothing arranged is the command's error", async () => {
     const { commands } = await desk();
     await expect(commands.run(RESTORE)).rejects.toThrow(/No earlier layout/);
+  });
+});
+
+describe("the spread's commands", () => {
+  it("desk.windows.spread asks the window manager's host, whose compositor opens or closes it", async () => {
+    const { commands, wm } = await desk();
+    const run = vi.spyOn(wm, "run");
+    await commands.run(SPREAD);
+    expect(run).toHaveBeenCalledWith({ op: "spread" });
+  });
+
+  it("desk.windows.focus brings a window wholly into sight and gives it the keys", async () => {
+    const keys = vi.fn();
+    const { commands, store, wm } = await desk(keys);
+    // Panned left, Notes (300, 200, 400 by 300) is out of sight past the app's left edge.
+    await wm.edit([{ op: "pan", to: { x: -1200, y: 0 } }]);
+    expect(await commands.run(FOCUS, { window: "notes" })).toEqual({ window: "notes" });
+    // The canvas came back just far enough: Notes' left edge is on the app's.
+    expect(store.get().pan["1"]).toEqual({ x: -300, y: 0 });
+    expect(store.get().focused).toBe("notes");
+    expect(keys).toHaveBeenCalledWith("notes");
+    await expect(commands.run(FOCUS, { window: "tomorrow" })).rejects.toThrow(
+      /not on this desktop/,
+    );
+    await expect(commands.run(FOCUS, {})).rejects.toThrow(/say which/);
   });
 });

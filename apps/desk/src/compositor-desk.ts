@@ -3,12 +3,14 @@
 // changed it sends `compositor_desk`: each plugin surface's document, load count and state with what
 // its window says while it has no live page (the runtime's surface pages, never a frame here), the
 // places of the system layer's own plugin surfaces (overlays, the dock) and parts, the titles of the
-// shell's own views, the top chips' edges and the live budget's settings, and the window manager's
-// seam (ADR 0153): the last desk desk-wm published that the page took and the window the page lays
-// out where a gesture holds it (`compositor-wm.ts`). The page itself draws only its system layer and
-// its own views; `compositor.css` leaves the rest to the compositor.
+// shell's own views, the top chips' edges and the live budget's settings, the words of what the
+// compositor draws itself (placeholders, the spread, the canvas map) and whether the map is folded
+// (#54), and the window manager's seam (ADR 0153): the last desk desk-wm published that the page
+// took and the window the page lays out where a gesture holds it (`compositor-wm.ts`). The page
+// itself draws only its system layer and its own views; `compositor.css` leaves the rest to the
+// compositor.
 import type { Desk, RemotePages, RemoteSurface } from "@endue-ai/runtime";
-import { viewTitles } from "@endue-ai/runtime";
+import { spreadCopy, viewTitles } from "@endue-ai/runtime";
 import { type PartReport, systemParts } from "./compositor-system";
 
 export type FrameState = "live" | "asleep" | "late" | "stopped";
@@ -55,7 +57,15 @@ export interface DeskReport {
   titles: Record<string, string>;
   top: { left?: number; right?: number };
   budget: { live: number; afterMs: number };
-  copy: { crashed: string; loading: string };
+  copy: {
+    crashed: string;
+    loading: string;
+    /** The spread's words and the canvas map's, which the compositor draws (#54). */
+    spread: Record<string, string>;
+    map: { label: string; show: string; fold: string };
+  };
+  /** The canvas map folded to its button, as the session keeps it. */
+  map: { folded: boolean };
   /** The last desk desk-wm published that the page took. */
   applied: number;
   /** The window the page lays out where desk-wm's gesture holds it. */
@@ -80,10 +90,18 @@ export interface WmState {
 /** A running report: stop it, or send what changed now. */
 export type CompositorDesk = (() => void) & { flush(): number };
 
-/** The compositor's own placeholders, in the desk's language. */
+/** The compositor's own placeholders and the canvas map's labels, in the desk's language. */
 const COPY = {
-  ko: { crashed: "멈춰서 다시 불러오는 중입니다.", loading: "불러오는 중…" },
-  en: { crashed: "It stopped working and is loading again.", loading: "Loading…" },
+  ko: {
+    crashed: "멈춰서 다시 불러오는 중입니다.",
+    loading: "불러오는 중…",
+    map: { label: "캔버스 지도", show: "캔버스 지도 보기", fold: "캔버스 지도 접기" },
+  },
+  en: {
+    crashed: "It stopped working and is loading again.",
+    loading: "Loading…",
+    map: { label: "Canvas map", show: "Show the canvas map", fold: "Fold the canvas map" },
+  },
 } as const;
 
 const texts = (root: Element | null, selector: string) =>
@@ -186,7 +204,8 @@ export function startCompositorDesk(
         live: typeof live === "number" && live >= 0 ? Math.floor(live) : 8,
         afterMs: typeof after === "number" && after >= 0 ? after * 1000 : 0,
       },
-      copy: COPY[lang],
+      copy: { ...COPY[lang], spread: spreadCopy(lang) },
+      map: { folded: s.mapFolded },
       ...wm(),
     };
     const json = JSON.stringify(body);

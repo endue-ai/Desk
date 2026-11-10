@@ -13,6 +13,7 @@ import type { DeskContext } from "../policies/context";
 import type { Lang } from "../shell/copy";
 import type { SurfaceSpec } from "../surfaces";
 import { defineFrameCommands } from "./commands";
+import { framesText } from "./copy";
 import { placeholder } from "./placeholder";
 import { type FrameCounts, FramePolicy, type FrameTimers, realTimers } from "./policy";
 import { frameReloads } from "./reload";
@@ -110,7 +111,8 @@ export function installFrames(
       surfaces.get(id)?.focus();
       frames.wake(id);
     };
-    const stand = doc && placeholder(doc, spec?.title ?? id, use);
+    const reload = framesText(deps.lang ?? "ko", "reload");
+    const stand = doc && placeholder(doc, spec?.title ?? id, use, reload);
     if (!stand || !surfaces.unload(id, stand)) return false;
     host?.unloaded(id, kept);
     return true;
@@ -166,6 +168,8 @@ export function installFrames(
     ...watch.responses,
     // Unloaded and not stopped: the live budget put it to sleep (desk.windows.list says so, #82).
     asleep: (id) => surfaces.unloaded(id) && watch.responses.state(id) !== "stopped",
+    // A stopped frame loads again; a sleeping one wakes now, as a press on it does (#54).
+    reload: (id) => watch.responses.reload(id) || (responses.asleep(id) && frames.wake(id)),
   };
   offs.push(defineFrameCommands(ctx.hub.commands, responses, deps.lang ?? "ko"));
   const reloads = frameReloads({

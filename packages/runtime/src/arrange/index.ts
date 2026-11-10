@@ -1,9 +1,8 @@
 /**
  * Arranging windows (ADR 0116), mounted by the shell's windows (`surface/Surface.ts`): the
  * desk.windows.* commands and the right-edge strip that runs them. The window manager tiles,
- * cascades and puts an arrangement back (crates/desk-wm, #83). The spread is not drawn on the
- * compositor yet (#54): its model is desk-wm's (`spread/`), and its command, key and button come
- * back with it.
+ * cascades and puts an arrangement back (crates/desk-wm, #83); the compositor draws the spread
+ * (#54, ADR 0161).
  */
 import { CommandError } from "../commands";
 import type { ShellCtx } from "../shell/context";
@@ -17,7 +16,15 @@ export function mountArrange(root: HTMLElement, ctx: ShellCtx): () => void {
       if (!(error instanceof CommandError)) throw error;
     });
   };
-  const offs = [defineArrangeCommands(ctx), mountStrip(root, ctx, run)];
+  // A window of the shell's own views holds the keyboard itself once it is focused.
+  const keys = (window: string) => {
+    const shell = root.closest<HTMLElement>(".shell") ?? root;
+    const el = [...shell.querySelectorAll<HTMLElement>(".surface[data-surface]")].find(
+      (e) => e.dataset.surface === window,
+    );
+    el?.focus({ preventScroll: true });
+  };
+  const offs = [defineArrangeCommands(ctx, keys), mountStrip(root, ctx, run)];
   return () => {
     for (const off of offs) off();
   };

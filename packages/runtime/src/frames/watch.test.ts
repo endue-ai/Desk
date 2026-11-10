@@ -201,7 +201,7 @@ describe("a plugin frame that stops answering", () => {
     const [a] = plugins as [Plugin];
     const run = (act: string) => runtime.commands.run(`desk.frames.${act}`, { plugin: "a.one" });
     await expect(run("stop")).rejects.toThrow("a.one is not a window that is not responding");
-    await expect(run("reload")).rejects.toThrow("a.one is not stopped");
+    await expect(run("reload")).rejects.toThrow("a.one is neither stopped nor asleep");
     await expect(
       runtime.commands.run("desk.frames.stop", { plugin: "nobody.here" }),
     ).rejects.toThrow("nobody.here has no window the desk watches");

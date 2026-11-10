@@ -1,17 +1,21 @@
 /**
- * desk.windows.*: tile, cascade and restore as the desk's own commands (ADR 0017, 0116), so keys,
- * the palette, the right-edge strip and Eris run the same thing. The window manager arranges and
- * keeps what each arrangement replaced (crates/desk-wm `Arranger`, #83); tile and cascade name
+ * desk.windows.*: tile, cascade, spread and restore as the desk's own commands (ADR 0017, 0116), so
+ * keys, the palette, the right-edge strip and Eris run the same thing. The window manager arranges
+ * and keeps what each arrangement replaced (crates/desk-wm `Arranger`, #83); tile and cascade name
  * restore-arrangement as their undo: each is one step on the desk's undo stack (ADR 0077). The
- * spread waits for the compositor to draw it (#54).
+ * spread is the compositor's to draw (#54, ADR 0161): its command asks the window manager's host,
+ * and the window picked in it takes the focus through desk.windows.focus.
  */
 import { CommandError } from "../commands";
-import { type Ctx, edit } from "../shell/actions";
+import { type Ctx, edit, windowsOf } from "../shell/actions";
+import { focusPane } from "../shell/windows";
 import type { Arranged } from "../wm/types";
 import { type ArrangeCopyKey, arrangeText } from "./copy";
 
 export const TILE = "desk.windows.tile";
 export const CASCADE = "desk.windows.cascade";
+export const SPREAD = "desk.windows.spread";
+export const FOCUS = "desk.windows.focus";
 export const RESTORE = "desk.windows.restore-arrangement";
 
 type Kind = Arranged["kind"];
@@ -60,7 +64,11 @@ const ARRANGE: Record<Kind, { id: string; title: ArrangeCopyKey; words: string[]
 const isArranged = (value: unknown): value is Arranged =>
   typeof value === "object" && value !== null && typeof (value as Arranged).entry === "string";
 
-export function defineArrangeCommands(ctx: Ctx): () => void {
+/**
+ * The desk's arranging commands. `keys(id)` gives the keyboard to window `id` once it is focused,
+ * when it shows the shell's own view (a plugin's surface takes the keys itself).
+ */
+export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void): () => void {
   const { commands } = ctx.runtime;
   const say = (key: ArrangeCopyKey) => arrangeText(ctx.store.get().lang, key);
   const offs = (Object.keys(ARRANGE) as Kind[]).map((kind) => {
@@ -103,6 +111,43 @@ export function defineArrangeCommands(ctx: Ctx): () => void {
         description:
           "Put the windows of the current desktop back where they were before the last tile or cascade.",
         args: NO_ARGS,
+      },
+    }),
+    commands.define(SPREAD, {
+      title: say("spread"),
+      keywords: ["spread", "expose", "overview", "mission control", "windows", "펼치기", "창"],
+      owner: "desk",
+      run: () => ctx.wm.run({ op: "spread" }),
+      agent: {
+        description:
+          "Spread every window on the current desktop out so the person can pick one; running it again closes the spread.",
+        args: NO_ARGS,
+      },
+    }),
+    commands.define(FOCUS, {
+      title: say("focus"),
+      keywords: ["focus", "switch", "window", "go to", "창", "전환"],
+      owner: "desk",
+      run: async (args) => {
+        const window = (args as { window?: unknown } | undefined)?.window;
+        if (typeof window !== "string") throw new CommandError("failed", "say which: { window }");
+        if (!windowsOf(ctx.store.get()).some((p) => p.id === window))
+          throw new CommandError("failed", say("notHere"));
+        // Wholly in sight first (the canvas pans when it has to), then the keys.
+        await edit(ctx, { op: "reveal", id: window });
+        await focusPane(ctx, window);
+        if (!ctx.runtime.shortcuts.focused) keys?.(window);
+        return { window };
+      },
+      agent: {
+        description:
+          "Bring a window of the current desktop wholly into sight, panning the canvas when it has to, and give it the keys: what picking a window in the spread does.",
+        args: {
+          type: "object",
+          properties: { window: { type: "string", description: "The window, by id." } },
+          required: ["window"],
+          additionalProperties: false,
+        },
       },
     }),
   );

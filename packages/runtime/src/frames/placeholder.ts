@@ -1,11 +1,18 @@
 /**
- * What stands in a surface while its frame is unloaded (ADR 0070): its title and a line saying it
- * loads again when shown. Usually covered or off the page; pressing it loads the surface. A frame the
- * person stopped (#39) stays unloaded in sight: its placeholder says why and offers Reload instead.
+ * What stands in a surface while its frame is unloaded (ADR 0070): its title, a line saying it
+ * loads again when shown, and Reload, which loads it now. Usually covered or off the page; pressing
+ * it loads the surface. On the compositor its window shows its last frame greyed under the same
+ * words, Reload running desk.frames.reload (#54). A frame the person stopped (#39) stays unloaded in
+ * sight: its placeholder says why and offers Reload alone.
  */
 export const PLACEHOLDER = "desk-surface-placeholder";
 
-export function placeholder(doc: Document, title: string, wake: () => void): HTMLElement {
+export function placeholder(
+  doc: Document,
+  title: string,
+  wake: () => void,
+  reload = "Reload",
+): HTMLElement {
   const el = doc.createElement("div");
   el.className = PLACEHOLDER;
   const name = doc.createElement("p");
@@ -13,7 +20,11 @@ export function placeholder(doc: Document, title: string, wake: () => void): HTM
   name.textContent = title;
   const line = doc.createElement("p");
   line.textContent = "Unloaded while out of sight. It loads again when shown.";
-  el.append(name, line);
+  const button = doc.createElement("button");
+  button.type = "button";
+  button.className = "btn desk-surface-reload";
+  button.textContent = reload;
+  el.append(name, line, button);
   el.addEventListener("pointerdown", wake);
   return el;
 }

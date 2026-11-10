@@ -86,9 +86,12 @@ export interface RunPayload {
   args?: unknown;
 }
 
-/** The desk command a card's button runs, if the payload names one of the frames' own. */
+/** The commands the compositor's own chrome runs: a card's buttons and the spread's pick (#54). */
+const CHROME = /^desk\.(frames\.(wait|stop|reload)|windows\.focus)$/;
+
+/** The desk command the compositor's chrome runs, if the payload names one of those. */
 export function cardCommand(payload: RunPayload): { command: string; args: unknown } | undefined {
   const { command, args } = payload;
-  if (typeof command !== "string" || !/^desk\.frames\.(wait|stop|reload)$/.test(command)) return;
+  if (typeof command !== "string" || !CHROME.test(command)) return;
   return { command, args };
 }

@@ -22,7 +22,9 @@ export type WindowOp =
   | { op: "maximize" }
   | { op: "snap"; fill: Fill }
   | { op: "move"; dx: number; dy: number }
-  | { op: "resize"; dw: number; dh: number };
+  | { op: "resize"; dw: number; dh: number }
+  /** Open or close the spread, which the compositor draws (#54); a host without one ignores it. */
+  | { op: "spread" };
 
 export interface WindowManagerHost {
   /** Hear each desk the window manager publishes; the runtime takes it whole. */

@@ -5,7 +5,7 @@
  * is the one desk under both: its commands, keymap, settings, theme, profiles and session are the
  * shell's. The centre stays empty. Tab order follows the DOM:
  * profiles → desktops → agent bar → plugin surfaces → Eris → rail → bottom → surfaces → arrange
- * strip → canvas map.
+ * strip. The canvas map is the compositor's (#54).
  */
 import type { BridgeClient } from "@endue-ai/bridge";
 import type { ShellBridge } from "../bridge/types";
@@ -38,7 +38,6 @@ import { type Lang, t } from "./copy";
 import { defineDeskView } from "./desk-view";
 import { h, listen } from "./dom";
 import { keepShell, syncProfiles } from "./link";
-import { mountMinimap } from "./Minimap";
 import { mountPan } from "./Pan";
 import { paneViews } from "./panes";
 import { mountRail } from "./Rail";
@@ -181,9 +180,8 @@ export function mountDesk(options: DeskOptions): Desk {
   parts.push(
     byRole(modeLayer, "role:rail", settings, (at) => mountRail(at, ctx)),
     byRole(modeLayer, "role:dock", settings, (at) => mountBottom(at, ctx)),
+    // The canvas map beside the arrange strip is the compositor's (#54, ADR 0161).
     mountSurfaces(modeLayer, ctx),
-    // The whole canvas small, beside the arrange strip: press or drag it to move the view.
-    mountMinimap(modeLayer, ctx),
   );
 
   const restored = keepShell(ctx);

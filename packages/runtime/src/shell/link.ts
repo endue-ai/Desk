@@ -90,7 +90,7 @@ interface SavedShell {
   soul?: string;
   /** Where the person moved the talk line (desk.shell.talk-place). */
   talkPlace?: TalkPlace;
-  /** The canvas map is folded to its button; absent while it is open (shell/Minimap.ts). */
+  /** The canvas map is folded to its button; absent while it is open (the compositor's, #54). */
   mapFolded?: true;
   /**
    * The plugin windows open and not in the drawer, by surface id (#76): desk.session counts a part's

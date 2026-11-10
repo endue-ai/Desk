@@ -3,6 +3,7 @@
 const PATHS = {
   tile: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
   cascade: "M3 3h11v3M3 3v9h3M7 7h11v3M7 7v9h3M11 11h10v10H11z",
+  spread: "M3 8.5l5-1.8 2.2 10.6-5 1.8zM9.5 4h5v14h-5zM21 8.5l-5-1.8-2.2 10.6 5 1.8z",
   restore: "M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11",
 } as const;
 

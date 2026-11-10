@@ -119,6 +119,10 @@ const offRun = listen<RunPayload>("desk://compositor-run", ({ payload }) => {
   const run = payload && cardCommand(payload);
   if (run) void desk.runtime.commands.run(run.command, run.args).catch(() => undefined);
 });
+// The person folded the canvas map the compositor draws, or opened it: the session keeps that.
+const offMap = listen<{ folded?: unknown }>("desk://compositor-map", ({ payload }) => {
+  if (typeof payload?.folded === "boolean") desk.store.set({ mapFolded: payload.folded });
+});
 const keys = {
   platform: desk.runtime.shortcuts.platform,
   keymap: desk.runtime.keymap,
@@ -133,7 +137,8 @@ const stopFocus = startCompositorFocus(window, (surface) => {
 });
 const stopCompositor = () => {
   for (const off of [stopDesk, stopKeys, stopFocus, () => pages.dispose()]) off();
-  for (const listening of [offLive, offWm, offHeld, offRun]) void listening.then((off) => off());
+  for (const listening of [offLive, offWm, offHeld, offRun, offMap])
+    void listening.then((off) => off());
 };
 window.addEventListener("pagehide", stopCompositor, { once: true });
 

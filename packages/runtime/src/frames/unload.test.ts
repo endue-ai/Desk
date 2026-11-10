@@ -187,6 +187,30 @@ describe("windows out of the live set are unloaded and their state kept", () => 
     ]);
   });
 
+  it("a sleeping window offers Reload, and desk.frames.reload wakes it with its state (#54)", async () => {
+    const d = await desk(["a.one", "b.two"]);
+    const b = d.plugins["b.two"];
+    if (!b) throw new Error("no b.two");
+    await d.leaveOut("b.two");
+    expect(d.unloaded("b.two")).toBe(true);
+    // The compositor draws its last frame greyed under these words, Reload its button (#54).
+    const button = b.section()?.querySelector(".desk-surface-placeholder button");
+    expect(button?.textContent).toBe("다시 불러오기");
+    expect(await d.runtime.commands.run("desk.frames.reload", { plugin: "b.two" })).toBe(
+      "responding",
+    );
+    await flush();
+    expect(d.unloaded("b.two")).toBe(false);
+    b.messages = [];
+    b.connect();
+    await flush();
+    expect(b.inits()).toMatchObject([{ type: "desk:init", restored: { count: 3 } }]);
+    // A frame neither stopped nor asleep is refused.
+    await expect(d.runtime.commands.run("desk.frames.reload", { plugin: "a.one" })).rejects.toThrow(
+      "neither stopped nor asleep",
+    );
+  });
+
   it("a plugin that does not answer, answers unknown_command or more than 64 KiB comes back cold", async () => {
     const ids = ["a.silent", "b.refuse", "c.big"];
     const d = await desk(ids);

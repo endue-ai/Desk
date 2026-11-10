@@ -35,9 +35,9 @@ const ACTS: Record<Act, { title: FramesCopyKey; words: string[]; does: string; r
     },
     reload: {
       title: "cmdReload",
-      words: ["stopped", "reload", "restart", "멈춘 창", "다시 불러오기"],
-      does: "Load a stopped plugin window again: the plugin starts with its last saved state.",
-      refused: "is not stopped",
+      words: ["stopped", "asleep", "reload", "restart", "멈춘 창", "잠든 창", "다시 불러오기"],
+      does: "Load a stopped or sleeping plugin window again: the plugin starts with its last saved state.",
+      refused: "is neither stopped nor asleep",
     },
   };
 

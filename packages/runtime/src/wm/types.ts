@@ -179,6 +179,7 @@ export type Edit =
   | { op: "move-to-new"; window: string; before?: SurfacePlacement }
   | { op: "undo-desktop" }
   | { op: "pan"; desktop?: DesktopId; to: Offset }
+  | { op: "reveal"; id: string }
   | { op: "arrange"; kind: "tile" | "cascade"; now: number }
   | { op: "restore-arrangement"; from?: Arranged };
 

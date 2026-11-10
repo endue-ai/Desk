@@ -218,6 +218,15 @@
                   "color": "rgb(176, 173, 183)"
                  },
                  "text": "Unloaded while out of sight. It loads again when shown."
+                },
+                {
+                 "tag": "button",
+                 "class": "btn desk-surface-reload",
+                 "style": {
+                  "color": "rgb(242, 240, 245)",
+                  "border": "solid rgba(0, 0, 0, 0)"
+                 },
+                 "text": "Reload"
                 }
                ]
               }

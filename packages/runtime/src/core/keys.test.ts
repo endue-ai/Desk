@@ -53,10 +53,11 @@ describe("the default keymap", () => {
     }
   });
 
-  it("arranges windows with Mod+Alt+G, C and Z, which no other default or plugin binds", () => {
+  it("arranges windows with Mod+Alt+G, C, S and Z, which no other default or plugin binds", () => {
     const arrange = {
       G: "desk.windows.tile",
       C: "desk.windows.cascade",
+      S: "desk.windows.spread",
       Z: "desk.windows.restore-arrangement",
     };
     expect(pluginKeys.length).toBeGreaterThan(0);
@@ -72,8 +73,6 @@ describe("the default keymap", () => {
         expect(keys.filter((k) => canonical(k.key, platform) === combo)).toHaveLength(1);
         expect(taken).not.toContain(combo);
       }
-      // The spread is gone until the compositor draws it (#54): nothing of it is bound.
-      expect([...map.values()]).not.toContain("desk.windows.spread");
     }
   });
 });

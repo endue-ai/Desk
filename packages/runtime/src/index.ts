@@ -1,3 +1,4 @@
+export { spreadCopy } from "./arrange/copy";
 export { type BrowserBridge, browserBridge, type Envelope } from "./bridge/browser";
 export {
   type BrowserCore,

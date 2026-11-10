@@ -1,15 +1,15 @@
 /**
- * The right-edge strip (ADR 0116): Tile and Cascade, then Restore, in a column under the status
- * rail. Each button runs its desk.windows.* command, so a click lands on the desk's undo stack as a
- * key or the palette would. A toolbar: one Tab stop, the arrow keys move between its buttons, and
- * each button's tooltip names its key. What can be arranged and restored is the window manager's
- * to say (#83).
+ * The right-edge strip (ADR 0116): Tile, Cascade and Spread, then Restore, in a column under the
+ * status rail. Each button runs its desk.windows.* command, so a click lands on the desk's undo
+ * stack as a key or the palette would. A toolbar: one Tab stop, the arrow keys move between its
+ * buttons, and each button's tooltip names its key. What can be arranged and restored is the
+ * window manager's to say (#83); the spread is the compositor's to draw (#54).
  */
 import { windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen } from "../shell/dom";
 import type { DeskState } from "../shell/state";
-import { CASCADE, RESTORE, TILE } from "./commands";
+import { CASCADE, RESTORE, SPREAD, TILE } from "./commands";
 import { type ArrangeCopyKey, arrangeText } from "./copy";
 import { type ArrangeIcon, arrangeIcon } from "./icons";
 
@@ -25,6 +25,7 @@ interface Item {
 const ITEMS: Item[] = [
   { key: "tile", command: TILE, label: "tile" },
   { key: "cascade", command: CASCADE, label: "cascade" },
+  { key: "spread", command: SPREAD, label: "spread" },
   { key: "restore", command: RESTORE, label: "restore" },
 ];
 
@@ -71,7 +72,7 @@ export function mountStrip(
     );
     return button;
   });
-  el.append(...buttons.slice(0, 2), h("span", { class: "arrange-divider" }), ...buttons.slice(2));
+  el.append(...buttons.slice(0, 3), h("span", { class: "arrange-divider" }), ...buttons.slice(3));
   root.append(el, tip);
 
   const label = (item: Item) => {
@@ -84,6 +85,7 @@ export function mountStrip(
     const off: Record<string, boolean> = {
       tile: !some,
       cascade: !some,
+      spread: windowsOf(s).length === 0,
       restore: !s.wm.restorable,
     };
     el.setAttribute("aria-label", say("strip"));

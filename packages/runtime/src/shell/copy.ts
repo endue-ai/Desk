@@ -109,11 +109,6 @@ const ko = {
   floating: "플로팅 모드",
   resetPan: "배경 위치 초기화",
   panHint: "Shift + 드래그로 캔버스 이동",
-  canvasMap: "캔버스 지도",
-  canvasMapHint:
-    "눌러서 그곳으로 가고, 끌어서 옮깁니다. 화살표 키로 움직이고 Home 키로 처음 자리로 돌아갑니다",
-  foldMap: "캔버스 지도 접기",
-  showMap: "캔버스 지도 보기",
   overlap: "겹침",
   cmdComposer: "말하는 줄 열기",
   cmdTalkHome: "말하는 줄을 제자리로",
@@ -292,11 +287,6 @@ const en: Copy = {
   floating: "Floating mode",
   resetPan: "Reset canvas position",
   panHint: "Shift-drag to move the canvas",
-  canvasMap: "Canvas map",
-  canvasMapHint:
-    "Press to go there, drag to move. The arrow keys move the view; Home goes back to the start",
-  foldMap: "Fold the canvas map",
-  showMap: "Show the canvas map",
   overlap: "Overlap",
   cmdComposer: "Open the talk line",
   cmdTalkHome: "Put the talk line back in its place",
