@@ -69,6 +69,8 @@ winit = "0.30"
 wgpu.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
+# When the OS started the process (`proc_pidinfo`): the start-up trace's origin (#112).
+libc = "0.2"
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSEvent", "NSGraphics", "NSResponder", "NSScreen", "NSView", "NSWindow"] }
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSDictionary", "NSEnumerator", "NSGeometry", "NSString", "NSURL", "NSValue"] }

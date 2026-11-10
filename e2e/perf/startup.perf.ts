@@ -2,7 +2,9 @@
 // The first start opens six files of six kinds (fixtures/session) through the desk socket, so the
 // session keeps them and brings back the surfaces of notes, sheets, data, images, web and docs.
 // Each relaunch runs with DESK_TRACE=1 (wdio.conf.ts); the times come from its trace: process start
-// to the ready line, and to the end of the first interactive frame. The traces go in the artifact.
+// to the ready line, and to the end of the first interactive frame. On macOS the trace's clock
+// starts when the OS started the process, so a stall before the desk's `main` counts (#112). The
+// traces go in the artifact.
 import { cpSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

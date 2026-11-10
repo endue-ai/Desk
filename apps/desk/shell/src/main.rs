@@ -11,8 +11,9 @@ use desk_shell::{release, update};
 use winit::event_loop::EventLoop;
 
 fn main() -> ExitCode {
-    // Process start for the start-up trace (DESK_TRACE=1): its clock reads 0 here.
-    let origin = desk_trace::Origin::now();
+    // Process start for the start-up trace (DESK_TRACE=1): its clock reads 0 when the OS started
+    // this process, so what comes before `main` counts too (#112).
+    let origin = desk_shell::process_start::origin();
     #[cfg(target_os = "macos")]
     let _framework = {
         let exe = std::env::current_exe().unwrap_or_default();

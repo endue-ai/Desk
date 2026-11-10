@@ -30,6 +30,7 @@ pub mod pane;
 pub mod paths;
 pub mod plugin_scheme;
 pub mod probe;
+pub mod process_start;
 pub mod pump;
 pub mod release;
 pub mod renderer;
