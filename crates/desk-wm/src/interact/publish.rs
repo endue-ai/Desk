@@ -1,4 +1,4 @@
-//! What `desk-wm` hands the runtime when it changed the desk (ADR 0152): each window it moved,
+//! What `desk-wm` hands the runtime when it changed the desk (ADR 0153): each window it moved,
 //! resized, snapped or filled, with its whole geometry (its rect in its mode, the mode, the fill
 //! and where it comes back to), and the pan of a canvas it panned, under a revision. The runtime
 //! takes them as the truth and writes them into its store as session edits; the desk it publishes

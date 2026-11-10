@@ -1,4 +1,4 @@
-//! Interactions on the compositor's input (#80, ADR 0152), ported from the runtime's
+//! Interactions on the compositor's input (#80, ADR 0153), ported from the runtime's
 //! `surface/interactions.ts`, `surface/resize.ts`, `shell/drag.ts` and `shell/Pan.ts` with the same
 //! numbers: the 8 px drag threshold, the eight grips, 24 px snap zones (8 at the top), the snap
 //! preview and the glide into a part over `--motion-base`.

@@ -1,4 +1,4 @@
-//! The window commands the keys, the palette and agents run (`desk.display.*`, ADR 0152): maximize
+//! The window commands the keys, the palette and agents run (`desk.display.*`, ADR 0153): maximize
 //! and restore, snap to any of the eight parts (ADR 0128), and move or resize by a step. Each acts
 //! on one window of the desktop in front (the one in use unless named), changes the desk and
 //! publishes it, and the window glides when its fill changes. Moving or resizing a filled window
@@ -34,6 +34,10 @@ impl Wm {
             .map(str::to_owned)
             .or_else(|| self.drawn.focused_window());
         let Some(p) = id.as_deref().and_then(|id| self.drawn.window(id)) else {
+            // A window named that the desk does not have yet: the desk is on its way.
+            if let Some(window) = window {
+                self.wait_for(op.clone(), window);
+            }
             return Vec::new();
         };
         if self.held() == Some(p.id.as_str()) {

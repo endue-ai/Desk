@@ -1,4 +1,4 @@
-//! The window manager the compositor drives (#80, ADR 0152): one [`Wm`] holds the desk as the
+//! The window manager the compositor drives (#80, ADR 0153): one [`Wm`] holds the desk as the
 //! runtime last published it, the changes it made since that the runtime has not taken yet, the
 //! gesture under way, and what glides. It hears the compositor's pointer and keys (`pointer.rs`)
 //! and the desk's commands (`ops.rs`), changes its desk and publishes each change for the runtime
@@ -14,7 +14,7 @@ use crate::types::{Fill, Rect, Size};
 
 use super::gesture::{Gesture, Live};
 use super::motion::{Glide, Motion, Preview};
-use super::pointer::PressLog;
+use super::pointer::{PressLog, Waiting};
 use super::publish::{Change, Published};
 
 /// What the compositor's shell does after the window manager heard something.
@@ -53,8 +53,15 @@ pub struct Wm {
     pub(super) gesture: Option<Gesture>,
     pub(super) glides: BTreeMap<String, Glide>,
     pub(super) preview: Preview,
+    /// Grabs and commands for a window the runtime has not published yet: the page's calls each
+    /// run on a thread of their own, so one may overtake the desk it follows (`pointer.rs`).
+    pub(super) waiting: Vec<Waiting>,
+    /// The last time it heard, for what waited and runs later.
+    pub(super) clock: f64,
     /// Each window's rect and fill as last drawn, to glide one whose fill changes.
     last: BTreeMap<String, (Rect, Option<Fill>)>,
+    /// The desktop those were drawn on: another desktop's windows glide from nowhere.
+    last_desktop: String,
 }
 
 impl Default for Wm {
@@ -79,7 +86,10 @@ impl Wm {
             gesture: None,
             glides: BTreeMap::new(),
             preview: Preview::default(),
+            waiting: Vec::new(),
+            clock: 0.0,
             last: BTreeMap::new(),
+            last_desktop: String::new(),
         }
     }
 
@@ -111,7 +121,7 @@ impl Wm {
     }
 
     /// The runtime published `desk` on a `screen`-sized app, having taken every change up to
-    /// `applied`. A gesture whose window went is cancelled.
+    /// `applied`. A gesture whose window went is cancelled; what that calls for.
     pub fn mirror(&mut self, desk: Desk, applied: u64, screen: Size) -> Vec<Out> {
         self.page = desk;
         self.screen = screen;
@@ -128,7 +138,7 @@ impl Wm {
         if gone.is_some() {
             out.extend(self.cancel_gesture());
         }
-        out.push(Out::Redraw);
+        out.extend(self.retry());
         out
     }
 
@@ -189,6 +199,12 @@ impl Wm {
     /// since the last frame (a snap, a maximize, a restore, the runtime's own) glides there, unless
     /// a gesture holds it.
     pub fn frame(&mut self, now: f64) -> Frame {
+        self.clock = now;
+        let here = self.drawn.here();
+        if here != self.last_desktop {
+            self.last.clear();
+            self.last_desktop = here;
+        }
         let held = self.held().map(str::to_owned);
         let windows = self.drawn.windows();
         let mut frame = Frame::default();

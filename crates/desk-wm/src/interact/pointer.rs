@@ -1,4 +1,4 @@
-//! The compositor's pointer and keys for the window manager (ADR 0152). The page's DOM still
+//! The compositor's pointer and keys for the window manager (ADR 0153). The page's DOM still
 //! finds what a press lands on (a window's title bar, one of its grips, the canvas with Shift, or a
 //! bar of its system layer floating above them), as the runtime's `draggable` handles accepted it;
 //! it says so with a grab ([`Wm::grab`]). Everything else runs here, on the compositor's input: the
@@ -9,6 +9,7 @@
 use crate::types::Point;
 
 use super::gesture::{Done, Gesture, Kind, Live};
+use super::ops::Op;
 use super::publish::{Change, Geometry};
 use super::wm::{Out, Wm};
 
@@ -25,10 +26,23 @@ pub(super) enum Logged {
     Cancelled,
 }
 
+/// How many of the runtime's desks a grab or a command waits for its window before it is dropped.
+const PATIENCE: u32 = 30;
+
+/// A grab or a window command for a window the desk does not have yet.
+#[derive(Clone, Debug, PartialEq)]
+pub(super) enum Waiting {
+    Grab { kind: Kind, at: Point, seen: u32 },
+    Op { op: Op, window: String, seen: u32 },
+}
+
 /// The last press of the primary button and what followed it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PressLog {
     pub(super) at: Point,
+    /// Where the page heard it: the same point, but for a window drawn ahead of the page (a glide),
+    /// whose parts the page hears where it lays them out.
+    pub(super) page: Point,
     pub(super) events: Vec<Logged>,
     /// A grab took it already.
     pub(super) taken: bool,
@@ -37,9 +51,17 @@ pub struct PressLog {
 impl Wm {
     /// The primary button went down at `at`.
     pub fn pressed(&mut self, at: Point) -> Vec<Out> {
+        self.pressed_at(at, at)
+    }
+
+    /// The primary button went down at `at`, which the page heard at `page`.
+    pub fn pressed_at(&mut self, at: Point, page: Point) -> Vec<Out> {
         let out = self.cancel_gesture();
+        // A grab still waiting is for an earlier press.
+        self.waiting.retain(|w| !matches!(w, Waiting::Grab { .. }));
         self.press = Some(PressLog {
             at,
+            page,
             events: Vec::new(),
             taken: false,
         });
@@ -56,6 +78,7 @@ impl Wm {
 
     /// The pointer moved to `at`.
     pub fn moved(&mut self, at: Point, now: f64) -> Vec<Out> {
+        self.clock = now;
         self.log(Logged::Moved(at));
         self.step(at, now)
     }
@@ -69,10 +92,18 @@ impl Wm {
     /// The page found that the press at `at` starts `kind`: the gesture runs from that press, and
     /// what followed it so far plays into it.
     pub fn grab(&mut self, kind: Kind, at: Point, now: f64) -> Vec<Out> {
+        if let Some(id) = Self::window_of(&kind)
+            && self.drawn.window(id).is_none()
+        {
+            // The desk that has the window is on its way.
+            self.waiting.push(Waiting::Grab { kind, at, seen: 0 });
+            return Vec::new();
+        }
         let Some(log) = self.press.as_mut() else {
             return Vec::new();
         };
-        let near = (log.at.x - at.x).abs() <= SAME_PRESS && (log.at.y - at.y).abs() <= SAME_PRESS;
+        let near = |p: Point| (p.x - at.x).abs() <= SAME_PRESS && (p.y - at.y).abs() <= SAME_PRESS;
+        let near = near(log.at) || near(log.page);
         if log.taken || !near {
             return Vec::new();
         }
@@ -85,6 +116,48 @@ impl Wm {
                 Logged::Moved(to) => out.extend(self.step(to, now)),
                 Logged::Released(to) => out.extend(self.release(to, now)),
                 Logged::Cancelled => out.extend(self.cancel_gesture()),
+            }
+        }
+        out
+    }
+
+    fn window_of(kind: &Kind) -> Option<&str> {
+        match kind {
+            Kind::Move { window } | Kind::Resize { window, .. } => Some(window),
+            Kind::Pan => None,
+        }
+    }
+
+    /// Wait for window `window` to run `op` on it.
+    pub(super) fn wait_for(&mut self, op: Op, window: &str) {
+        let (op, window) = (op, window.to_owned());
+        self.waiting.push(Waiting::Op {
+            op,
+            window,
+            seen: 0,
+        });
+    }
+
+    /// Run what waited for a window the desk now has; drop what waited too long.
+    pub(super) fn retry(&mut self) -> Vec<Out> {
+        let mut out = Vec::new();
+        for waiting in std::mem::take(&mut self.waiting) {
+            let id = match &waiting {
+                Waiting::Grab { kind, .. } => Self::window_of(kind).unwrap_or_default().to_owned(),
+                Waiting::Op { window, .. } => window.clone(),
+            };
+            if self.drawn.window(&id).is_some() {
+                out.extend(match waiting {
+                    Waiting::Grab { kind, at, .. } => self.grab(kind, at, self.clock),
+                    Waiting::Op { op, window, .. } => self.run(&op, Some(&window)),
+                });
+                continue;
+            }
+            let mut later = waiting;
+            let (Waiting::Grab { seen, .. } | Waiting::Op { seen, .. }) = &mut later;
+            *seen += 1;
+            if *seen < PATIENCE {
+                self.waiting.push(later);
             }
         }
         out

@@ -1,4 +1,4 @@
-//! The window manager's seam to the runtime (ADR 0152), the pan (`shell/Pan.ts`, ADR 0082) and the
+//! The window manager's seam to the runtime (ADR 0153), the pan (`shell/Pan.ts`, ADR 0082) and the
 //! window commands (`desk.display.*`): every change is published under a revision and kept until
 //! the runtime has taken it; a grab that arrives late still lands; the page lays a held window out
 //! where it follows and the compositor draws what the page draws of it from there.
@@ -209,6 +209,66 @@ mod the_seam {
         );
         // The same press is not taken twice.
         assert!(wm.grab(moving("window-1"), from, 0.0).is_empty());
+        // A drag to a corner the page answered after the drop snaps there.
+        taken(&mut wm);
+        let from = title_of(rect_of(&wm, "window-1"));
+        wm.pressed(from);
+        for i in 1..=8 {
+            let k = f64::from(i) / 8.0;
+            wm.moved(
+                pt(from.x + (3.0 - from.x) * k, from.y + (3.0 - from.y) * k),
+                0.0,
+            );
+        }
+        wm.released(pt(3.0, 3.0), 0.0);
+        wm.grab(moving("window-1"), from, 0.0);
+        assert_eq!(
+            wm.desk().window("window-1").unwrap().fill,
+            Some(Fill::TopLeft)
+        );
+    }
+
+    #[test]
+    fn a_grab_names_the_press_where_the_page_heard_it_for_a_window_drawn_ahead_of_the_page() {
+        let desk = windows(1);
+        let mut wm = wm_of(&desk);
+        let win = rect_of(&wm, "window-1");
+        // The window glides: drawn 40 px left of where the page lays it out.
+        let at = pt(win.x + 40.0, win.y + 20.0);
+        let page = pt(at.x + 40.0, at.y);
+        wm.pressed_at(at, page);
+        wm.moved(pt(at.x + 100.0, at.y), 0.0);
+        wm.released(pt(at.x + 100.0, at.y), 0.0);
+        assert_eq!(published(&wm.grab(moving("window-1"), page, 0.0)).len(), 1);
+        assert_eq!(rect_of(&wm, "window-1").x, win.x + 100.0);
+    }
+
+    #[test]
+    fn a_grab_or_a_command_ahead_of_the_desk_that_has_its_window_waits_for_it() {
+        // The page's calls run on threads of their own: one may overtake the desk it follows.
+        let mut wm = wm_of(&windows(0));
+        let desk = windows(1);
+        let win = desk.window("window-1").unwrap().rect();
+        let from = title_of(win);
+        wm.pressed(from);
+        wm.moved(pt(from.x + 60.0, from.y), 0.0);
+        wm.released(pt(from.x + 60.0, from.y), 0.0);
+        assert!(wm.grab(moving("window-1"), from, 0.0).is_empty());
+        assert!(wm.run(&Op::Maximize, Some("window-1")).is_empty());
+        let out = wm.mirror(desk.clone(), 0, SCREEN);
+        assert_eq!(published(&out).len(), 2, "the drop, then the maximize");
+        assert_eq!(rect_of(&wm, "window-1"), Rect::new(0.0, 0.0, W, H));
+        // One whose window never comes is let go.
+        wm.run(&Op::Maximize, Some("window-9"));
+        for _ in 0..40 {
+            wm.mirror(desk.clone(), wm.rev(), SCREEN);
+        }
+        let mut later = desk.clone();
+        later.new_window();
+        later.new_window();
+        later.new_window();
+        let out = wm.mirror(later, wm.rev(), SCREEN);
+        assert!(published(&out).is_empty());
     }
 
     #[test]
