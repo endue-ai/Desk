@@ -34,6 +34,7 @@ function budgets(): Budgets {
       recorded: null,
       allowedRegression: 0.25,
     },
+    freshDeskAtRest: { cpuPercent: null, budgetPercent: 5, platform: null, recorded: null },
   };
 }
 
@@ -41,22 +42,24 @@ const measured = {
   startup: { readyMs: 1400, firstFrameMs: 1500, runs: [] },
   idleMemory: { rssMb: 420.5 },
   inputLatency: { paletteP95Ms: 40, focusP95Ms: 20 },
+  freshDeskAtRest: { cpuPercent: 2.4, treePercent: 6.1 },
 };
 
 describe("budgets", () => {
-  it("measures five values in three sections", () => {
+  it("measures six values in four sections", () => {
     expect(MEASURES.map((m) => `${m.section}.${m.key}`)).toEqual([
       "startup.readyMs",
       "startup.firstFrameMs",
       "idleMemory.rssMb",
       "inputLatency.paletteP95Ms",
       "inputLatency.focusP95Ms",
+      "freshDeskAtRest.cpuPercent",
     ]);
   });
 
-  it("without a baseline it reports and does not fail", () => {
+  it("without a baseline it reports and does not fail; a budget gates from the first run", () => {
     const verdicts = compare(budgets(), measured);
-    expect(verdicts.map((v) => v.status)).toEqual(Array(5).fill("no-baseline"));
+    expect(verdicts.map((v) => v.status)).toEqual([...Array(5).fill("no-baseline"), "ok"]);
     expect(failed(verdicts)).toBe(false);
     expect(report(verdicts)).toMatch(/no baseline/);
   });
@@ -87,11 +90,20 @@ describe("budgets", () => {
       recorded: "2026-11-03",
     });
     const verdicts = compare(committed, measured);
-    expect(verdicts.map((v) => v.target)).toEqual([1200, 1200, null, 16, 16]);
+    expect(verdicts.map((v) => v.target)).toEqual([1200, 1200, null, 16, 16, null]);
     expect(failed(verdicts)).toBe(false);
     const text = report(verdicts);
     expect(text).toMatch(/1200/);
     expect(text).toMatch(/16/);
+  });
+
+  it("fails a fresh desk at rest past its CPU budget, whatever a recorded baseline says (#134)", () => {
+    const busy = { ...measured, freshDeskAtRest: { cpuPercent: 55.2 } };
+    const verdict = compare(budgets(), busy).find((v) => v.section === "freshDeskAtRest");
+    expect(verdict).toMatchObject({ status: "over", value: 55.2, limit: 5, baseline: null });
+    const recorded = withBaselines(budgets(), busy, { platform: "darwin-arm64", recorded: "x" });
+    expect(failed(compare(recorded, busy))).toBe(true);
+    expect(report(compare(budgets(), busy))).toMatch(/fresh desk at rest.*55.2 %.*over/);
   });
 
   it("a measurement that is missing is reported as missing", () => {
@@ -121,7 +133,7 @@ describe("budgets", () => {
     expect(before.startup?.readyMs).toBeNull();
   });
 
-  it("the committed budgets.json keeps the opening baseline and gates nothing until recorded", () => {
+  it("the committed budgets.json keeps the opening baseline and gates only the budgets until recorded", () => {
     const committed = JSON.parse(
       readFileSync(new URL("../budgets.json", import.meta.url), "utf8"),
     ) as Budgets;
@@ -131,8 +143,9 @@ describe("budgets", () => {
       engine: "Chromium (Playwright, headless)",
       allowedRegression: 0.25,
     });
+    expect(committed.freshDeskAtRest).toMatchObject({ budgetPercent: 5 });
     const verdicts = compare(committed, measured);
-    expect(verdicts.map((v) => v.status)).toEqual(Array(5).fill("no-baseline"));
-    expect(verdicts.map((v) => v.target)).toEqual([1200, 1200, null, 16, 16]);
+    expect(verdicts.map((v) => v.status)).toEqual([...Array(5).fill("no-baseline"), "ok"]);
+    expect(verdicts.map((v) => v.target)).toEqual([1200, 1200, null, 16, 16, null]);
   });
 });

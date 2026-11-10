@@ -1,17 +1,20 @@
 // The app's performance budgets in e2e/perf/budgets.json: second-start times, idle memory and input
 // latency, each compared with its baseline (recorded on the CI runner) and failing past the
-// section's allowedRegression. Without a baseline a value is reported, never failed. The RT-16
+// section's allowedRegression, and a fresh desk's CPU at rest against a budget it stays under
+// (#134). Without a baseline or a budget a value is reported, never failed. The RT-16
 // targets (`targetMs`) are printed beside the values and are not gates. `openingFrameTime` belongs
 // to `just perf-opening` and is left as it is. Pure: budgets.test.ts.
 import { round1 } from "./stats";
 
-export type Section = "startup" | "idleMemory" | "inputLatency";
+export type Section = "startup" | "idleMemory" | "inputLatency" | "freshDeskAtRest";
 
 export interface Measure {
   section: Section;
   key: string;
   label: string;
-  unit: "ms" | "MB";
+  unit: "ms" | "MB" | "%";
+  /** A budget's key in its section: the value stays under it, whatever a baseline says. */
+  budgetKey?: string;
 }
 
 /** What the runner measures, in budgets.json's sections and keys. */
@@ -31,6 +34,13 @@ export const MEASURES: readonly Measure[] = [
     unit: "ms",
   },
   { section: "inputLatency", key: "focusP95Ms", label: "surface focus switch, p95", unit: "ms" },
+  {
+    section: "freshDeskAtRest",
+    key: "cpuPercent",
+    label: "a fresh desk at rest, its own process's CPU",
+    unit: "%",
+    budgetKey: "budgetPercent",
+  },
 ];
 
 /** budgets.json, by section. */
@@ -59,19 +69,15 @@ export function compare(budgets: Budgets, measured: Measured): Verdict[] {
     const value = num(measured[measure.section]?.[measure.key]);
     const baseline = num(budget[measure.key]);
     const allowance = 1 + (num(budget.allowedRegression) ?? 0);
+    const ceiling = measure.budgetKey ? num(budget[measure.budgetKey]) : null;
+    const limit = ceiling ?? (baseline === null ? null : round1(baseline * allowance));
     const status: Status =
-      value === null
-        ? "missing"
-        : baseline === null
-          ? "no-baseline"
-          : value > baseline * allowance
-            ? "over"
-            : "ok";
+      value === null ? "missing" : limit === null ? "no-baseline" : value > limit ? "over" : "ok";
     return {
       ...measure,
       value,
       baseline,
-      limit: baseline === null ? null : round1(baseline * allowance),
+      limit,
       target: num(budget.targetMs),
       status,
     };

@@ -4,8 +4,10 @@
 //! CEF's ask, nothing else) and counts what a desk at rest costs: its loop's wake-ups and CEF's
 //! work calls among them a second, the time those took and how many took 5 ms or more, the begin
 //! frames and paints, and the CPU and OS wake-ups of the browser process (where the desk's loop
-//! runs), the GPU process and the renderers. What a press from rest takes is the `idle-input`
-//! run's (#133, `idle_input.rs`). `tests/budgets.rs` judges them through `just perf-compositor`.
+//! runs), the GPU process and the renderers. Then a fourth page changes itself by a timer, three
+//! times, each once it is long idle: from each change to its paint, a change the desk hears nothing
+//! of (#134). What a press from rest takes is the `idle-input` run's (#133, `idle_input.rs`).
+//! `tests/budgets.rs` judges them through `just perf-compositor`.
 
 use std::time::{Duration, Instant};
 
@@ -166,5 +168,48 @@ pub fn rest(probe: &mut Probe) -> Value {
         "scenario": "rest",
         "started": started,
         "rest": per_second(&before, &after),
+        "own_changes": own_changes(probe),
     })
+}
+
+/// The changes a long-idle page makes on its own, which the desk hears nothing of.
+const CHANGES: u64 = 3;
+/// The longest a change may wait for its paint before it counts as lost.
+const LOST: Duration = Duration::from_secs(3);
+
+/// The change number and its time (ms since the Unix epoch) the later page names in its title.
+fn changed(probe: &Probe, surface: &str) -> Option<(u64, f64)> {
+    let word = probe
+        .title(surface)?
+        .split_whitespace()
+        .find_map(|w| w.strip_prefix("changed:"))?;
+    let (n, at) = word.split_once(':')?;
+    Some((n.parse().ok()?, at.parse().ok()?))
+}
+
+/// A page that changes itself every 2.5 s by a timer, on a desk at rest: from each change to its
+/// paint, in ms (`null`: it never painted). Each change comes once the surface is long idle again.
+fn own_changes(probe: &mut Probe) -> Value {
+    probe.create("later", "probe.later", SIZE);
+    let started = probe.pump_until(START, |p| {
+        p.pid("later").is_some() && p.paints("later") >= 1
+    });
+    let mut changes = Vec::new();
+    for n in 1..=CHANGES {
+        let paints = probe.paints("later");
+        let came = probe.rest_until(LOST * 2, |p| {
+            changed(p, "later").is_some_and(|(c, _)| c >= n)
+        });
+        let at = changed(probe, "later").map(|(_, at)| at);
+        let painted = if came {
+            probe
+                .rest_until(LOST, |p| p.paints("later") > paints)
+                .then(super::epoch_ms)
+        } else {
+            None
+        };
+        let ms = painted.zip(at).map(|(p, at)| round(p - at, 1));
+        changes.push(json!(ms));
+    }
+    json!({ "started": started, "ms": changes })
 }

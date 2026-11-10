@@ -15,7 +15,7 @@ pub const WEBGPU: [u8; 3] = [0xcc, 0x33, 0x66];
 
 /// The probe's plugins, by id: (id, page). Four are the isolation and budget gates' (#58,
 /// `gates.rs`, `input_gate.rs`), the last the accessibility run's (#57, `a11y.rs`).
-pub const PAGES: [(&str, &str); 9] = [
+pub const PAGES: [(&str, &str); 10] = [
     ("probe.colour", COLOUR_PAGE),
     ("probe.anim", ANIM_PAGE),
     ("probe.webgpu", WEBGPU_PAGE),
@@ -25,7 +25,21 @@ pub const PAGES: [(&str, &str); 9] = [
     ("probe.hog", HOG_PAGE),
     ("probe.click", CLICK_PAGE),
     ("probe.a11y", A11Y_PAGE),
+    ("probe.later", LATER_PAGE),
 ];
+
+/// A still page that changes its colour on its own every 2.5 s, by a timer: nothing the desk sends
+/// it. Its title names each change and when it came (ms since the Unix epoch), for the rest run
+/// (#134) to time the change to its paint.
+const LATER_PAGE: &str = concat!(
+    r#"<!doctype html><meta charset="utf-8"><title>later</title>"#,
+    r#"<style>html,body{margin:0;height:100%;background:#3399cc}</style><body><script>"#,
+    r#"let changes = 0; const change = () => { changes += 1;"#,
+    r##"document.body.style.background = changes % 2 ? "#cc9933" : "#3399cc";"##,
+    r#"if (typeof say === "function") say(`changed:${changes}:${Date.now()}`); setTimeout(change, 2500); };"#,
+    r#"setTimeout(change, 2500);"#,
+    r#"</script>"#
+);
 
 /// A plugin's ordinary controls at known places (logical pixels): a heading, a text field, a
 /// button that counts its clicks in the title, a checkbox and a scrolled list of twenty items.

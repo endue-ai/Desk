@@ -196,11 +196,20 @@ impl Probe {
     /// Run the desk as the compositor window's event loop does at rest, for `time`: a turn, then a
     /// wait until CEF's work or the clock's next look is due, or CEF asks (#129, `rest.rs`).
     pub fn rest_for(&mut self, time: Duration) {
-        let end = Instant::now() + time;
+        self.rest_until(time, |_| false);
+    }
+
+    /// As `rest_for`, until `done` holds after a turn or `timeout`; whether `done` came (#134).
+    pub fn rest_until(&mut self, timeout: Duration, done: impl Fn(&Probe) -> bool) -> bool {
+        let end = Instant::now() + timeout;
         while Instant::now() < end {
             let until = self.look();
+            if done(self) {
+                return true;
+            }
             Probe::wait(until.min(end));
         }
+        done(self)
     }
 
     /// Hold the desk's frame clock, or let it go.
