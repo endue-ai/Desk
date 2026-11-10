@@ -1,15 +1,12 @@
-//! What the shell page publishes in compositor mode (`compositor_desk`, ADR 0151): the window
-//! manager's state as the runtime keeps it, in `desk_wm::Desk`'s own JSON, and what only the page
-//! knows: each plugin frame's document and state, the titles of its own views, the top chips'
-//! edges, the live budget's two settings, what a window without a live frame says (the page's
-//! copy, in the desk's language), the last of `desk-wm`'s changes it took and where it lays a
-//! held window out. The runtime keeps the window manager's state (ADR 0156); the shell mirrors it
-//! into `desk-wm`, which changes it on the compositor's input (ADR 0153) and places everything
-//! the compositor draws.
+//! What the shell page reports (`compositor_desk`, ADR 0151): what only the page knows of the
+//! desk, whose windows `desk-wm` holds (#83) and publishes: each plugin frame's document and
+//! state, the titles of its own views, the top chips' edges, the live budget's two settings, what
+//! a window without a live frame says (the page's copy, in the desk's language), the last desk it
+//! took and laid out, and where it lays a held window out.
 
 use std::collections::BTreeMap;
 
-use desk_wm::{Desk, FrameState, TopChrome};
+use desk_wm::{FrameState, TopChrome};
 use serde::Deserialize;
 
 /// What a window shows where its plugin has no live frame: its title, a line, its actions.
@@ -94,7 +91,6 @@ pub struct DeskReport {
     /// The page's size in CSS pixels.
     pub width: f64,
     pub height: f64,
-    pub desk: Desk,
     #[serde(default)]
     pub frames: Vec<FrameReport>,
     /// The titles of the page's own views, by view.
@@ -106,7 +102,7 @@ pub struct DeskReport {
     pub budget: BudgetSettings,
     #[serde(default)]
     pub copy: Copy,
-    /// The last of `desk-wm`'s changes the runtime took (`desk://compositor-wm`, ADR 0153).
+    /// The last desk `desk-wm` published that the page took and laid out (`desk://compositor-wm`).
     #[serde(default)]
     pub applied: u64,
     /// The window the page lays out where a gesture holds it (`desk://compositor-held`).
@@ -137,11 +133,9 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn a_report_reads_the_runtimes_desk_and_its_frames() {
+    fn a_report_reads_the_pages_frames_and_titles() {
         let report: DeskReport = serde_json::from_value(json!({
-            "seq": 3, "width": 1280, "height": 800,
-            "desk": { "desktop": "1", "adopted": [{ "id": "e2e.hello", "title": "Hello", "slot": 0 }],
-                "focused": "e2e.hello", "pane": "p1" },
+            "seq": 3, "width": 1280, "height": 800, "applied": 2,
             "frames": [{ "plugin": "e2e.hello", "host": "main.e2e-hello",
                 "src": "desk-plugin://main.e2e-hello/index.html", "loads": 2, "state": "late",
                 "card": { "title": "Not responding", "line": "Hello has not answered", "actions": ["Wait", "Stop"] } }],
@@ -150,7 +144,7 @@ mod tests {
             "budget": { "live": 4, "afterMs": 300000 }
         }))
         .unwrap();
-        assert_eq!(report.desk.windows().len(), 1);
+        assert_eq!(report.applied, 2);
         assert_eq!(report.frames[0].state, FrameState::Late);
         assert_eq!(report.frames[0].card.as_ref().unwrap().actions.len(), 2);
         assert_eq!(report.title("launcher").as_deref(), Some("Launcher"));

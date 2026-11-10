@@ -1985,6 +1985,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "desk-wm-wasm"
+version = "0.0.0"
+dependencies = [
+ "desk-wm",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -20,6 +20,7 @@ mod drawer;
 mod edit;
 mod focus;
 mod moves;
+mod session;
 mod windows;
 
 use std::collections::BTreeMap;

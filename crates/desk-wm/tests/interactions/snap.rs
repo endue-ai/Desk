@@ -21,7 +21,7 @@ mod snapping {
             let p = wm.desk().window("window-1").unwrap();
             assert_eq!((p.fill, p.floating), (Some(part), Some(true)), "{part:?}");
             assert_eq!(rect_of(&wm, "window-1"), snap_rect(part, W, H), "{part:?}");
-            assert_eq!(published(&out)[0].windows[0].fill, Some(part));
+            assert_eq!(placed(&published(&out)[0], "window-1").fill, Some(part));
         }
     }
 
@@ -166,7 +166,10 @@ mod the_preview_and_the_glide {
         let win = rect_of(&wm, "window-1");
         wm.frame(0.0);
         let out = wm.run(&Op::Maximize, None);
-        assert_eq!(published(&out)[0].windows[0].fill, Some(Fill::Full));
+        assert_eq!(
+            placed(&published(&out)[0], "window-1").fill,
+            Some(Fill::Full)
+        );
         let start = wm.frame(100.0);
         assert_eq!(start.drawn.get("window-1"), Some(&win));
         assert!(start.moving);

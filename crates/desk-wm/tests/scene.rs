@@ -1,7 +1,8 @@
-//! One scene, two window managers (#82): this crate's `Desk` and the runtime's store
-//! (`packages/runtime/src/shell/desk-view.scene.test.ts`) build the same desk with the same steps,
-//! and both snapshots must equal the contract's vector `desk-windows-list-scene.json`
-//! (specs/bridge/v0, target `BrainDesk`). Change a step here and in the TS test together.
+//! One scene, two ways to it (#82): this crate's `Desk` directly, and the runtime's actions and
+//! edits on desk-wm as WebAssembly (`packages/runtime/src/shell/desk-view.scene.test.ts`, #83)
+//! build the same desk with the same steps, and both snapshots must equal the contract's vector
+//! `desk-windows-list-scene.json` (specs/bridge/v0, target `BrainDesk`). Change a step here and in
+//! the TS test together.
 
 mod common;
 

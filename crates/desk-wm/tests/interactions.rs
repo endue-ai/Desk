@@ -205,7 +205,12 @@ mod pointer_drags {
                     out
                 }
                 "blur" => wm.cancel(),
-                _ => wm.mirror(desk_wm::Desk::default(), 0, SCREEN),
+                _ => wm.edit(
+                    1,
+                    &[desk_wm::edits::Edit::CloseWindow {
+                        id: "window-1".into(),
+                    }],
+                ),
             };
             assert_eq!(last_held(&out), Some(None), "{reason} lets the page go");
             assert!(!wm.holds());
@@ -252,10 +257,8 @@ mod moving_windows {
         assert_eq!(rect_of(&wm, "window-1"), moved);
         let sent = published(&out);
         assert_eq!(sent.len(), 1);
-        assert_eq!(
-            (sent[0].windows[0].x, sent[0].windows[0].y),
-            (moved.x, moved.y)
-        );
+        let p = placed(&sent[0], "window-1");
+        assert_eq!((p.x, p.y), (moved.x, moved.y));
         assert_eq!(last_held(&out), Some(None));
     }
 
@@ -318,8 +321,9 @@ mod moving_windows {
             pt(from.x + 80.0, from.y + 50.0),
             6,
         );
-        // The runtime publishes its desk again meanwhile (a setting changed): the drag holds.
-        wm.mirror(desk.clone(), 0, SCREEN);
+        // The runtime edits the desk meanwhile and the page reports: the drag holds.
+        wm.edit(1, &[desk_wm::edits::Edit::MoveEris { at: None }]);
+        taken(&mut wm);
         let held = Rect::new(win.x + 80.0, win.y + 50.0, win.w, win.h);
         assert_eq!(wm.drawn_rect("window-2", 0.0), Some(held));
         assert_eq!(wm.frame(0.0).drawn.get("window-2"), Some(&held));
@@ -341,14 +345,17 @@ mod moving_windows {
             pt(from.x + 40.0, from.y + 30.0),
             4,
         );
-        let mut closed = desk.clone();
-        closed.close_window("window-1");
-        let out = wm.mirror(closed.clone(), 0, SCREEN);
+        let close = desk_wm::edits::Edit::CloseWindow {
+            id: "window-1".into(),
+        };
+        let out = wm.edit(1, &[close]);
         assert_eq!(last_held(&out), Some(None));
         wm.released(pt(from.x + 40.0, from.y + 30.0), 0.0);
-        let mut next = closed;
-        let id = next.new_window();
-        wm.mirror(next, 0, SCREEN);
+        let out = wm.edit(2, &[desk_wm::edits::Edit::NewWindow]);
+        let id = published(&out)[0].answered.as_ref().unwrap().values[0]
+            .as_str()
+            .unwrap()
+            .to_owned();
         let notes = rect_of(&wm, &id);
         let from = title_of(notes);
         drag(&mut wm, moving(&id), from, pt(from.x + 60.0, from.y + 40.0));

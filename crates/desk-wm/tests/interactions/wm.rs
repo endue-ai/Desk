@@ -3,6 +3,7 @@
 //! the runtime has taken it; a grab that arrives late still lands; the page lays a held window out
 //! where it follows and the compositor draws what the page draws of it from there.
 
+use desk_wm::edits::Edit;
 use desk_wm::interact::{Kind, Op, Published};
 use desk_wm::{Fill, Offset, Places, Rect, TopChrome, Unseen, snap_rect};
 
@@ -19,9 +20,9 @@ mod the_pan {
         let (normal, floating) = (rect_of(&wm, "window-1"), rect_of(&wm, "window-2"));
         let out = drag(&mut wm, Kind::Pan, pt(200.0, 700.0), pt(80.0, 760.0));
         // The canvas follows the pointer as it moves, as the runtime's pan did.
-        let pans: Vec<Option<Offset>> = published(&out).iter().map(|p| p.pan).collect();
+        let pans: Vec<Offset> = published(&out).iter().map(pan_of).collect();
         assert!(pans.len() > 1);
-        assert_eq!(pans.last(), Some(&Some(Offset::new(-120.0, 60.0))));
+        assert_eq!(pans.last(), Some(&Offset::new(-120.0, 60.0)));
         assert_eq!(
             rect_of(&wm, "window-1"),
             Rect {
@@ -42,7 +43,7 @@ mod the_pan {
         assert_eq!(wm.desk().pan_of("1"), Offset::new(-100.0, -50.0));
         let (taken_by_wm, out) = wm.escape();
         assert!(taken_by_wm);
-        assert_eq!(published(&out)[0].pan, Some(Offset::new(0.0, 0.0)));
+        assert_eq!(pan_of(&published(&out)[0]), Offset::new(0.0, 0.0));
         assert_eq!(wm.desk().pan_of("1"), Offset::new(0.0, 0.0));
     }
 
@@ -51,9 +52,12 @@ mod the_pan {
         let desk = windows(1);
         let mut wm = wm_of(&desk);
         hold(&mut wm, Kind::Pan, pt(200.0, 700.0), pt(150.0, 700.0), 3);
-        let mut other = wm.desk().clone();
-        other.switch_to("2");
-        wm.mirror(other, wm.rev(), SCREEN);
+        wm.edit(
+            1,
+            &[Edit::SwitchTo {
+                desktop: "2".into(),
+            }],
+        );
         let out = wm.moved(pt(50.0, 700.0), 0.0);
         assert!(published(&out).is_empty());
         assert_eq!(wm.desk().pan_of("2"), Offset::new(0.0, 0.0));
@@ -168,22 +172,34 @@ mod the_seam {
     use super::*;
 
     #[test]
-    fn every_change_is_published_under_a_revision_and_kept_until_the_runtime_takes_it() {
+    fn every_change_is_published_whole_under_a_revision_and_the_page_lays_out_what_it_took() {
         let desk = windows(1);
         let mut wm = wm_of(&desk);
         let out = wm.run(&Op::Snap { fill: Fill::Left }, None);
         let sent = published(&out);
         assert_eq!(sent.len(), 1);
-        assert_eq!((sent[0].rev, sent[0].desktop.as_str()), (1, "1"));
-        // The runtime publishes a desk it made before taking it: the snap is still drawn.
-        wm.mirror(desk.clone(), 0, SCREEN);
+        assert_eq!(sent[0].rev, 1);
+        assert_eq!(&sent[0].desk, wm.desk());
+        assert_eq!(sent[0].view.front[0].rect, snap_rect(Fill::Left, W, H));
+        // The page has not taken it yet: it still lays the window out where it was.
+        assert_eq!(wm.page(), &desk);
         assert_eq!(rect_of(&wm, "window-1"), snap_rect(Fill::Left, W, H));
-        // It took it but something else moved the window since: its desk is the truth.
-        let mut later = wm.desk().clone();
-        later.place("window-1", Rect::new(200.0, 200.0, 300.0, 300.0));
-        wm.mirror(later.clone(), 1, SCREEN);
-        assert_eq!(wm.desk(), &later);
-        assert_eq!(wm.page(), &later);
+        // An edit of the runtime's publishes again; the page takes the snap, then the edit.
+        let out = wm.edit(
+            4,
+            &[Edit::TogglePin {
+                id: "window-1".into(),
+            }],
+        );
+        let edited = published(&out);
+        assert_eq!(
+            (edited[0].rev, edited[0].answered.as_ref().unwrap().seq),
+            (2, 4)
+        );
+        wm.took(1, SCREEN);
+        assert_eq!(wm.page(), &sent[0].desk);
+        wm.took(2, SCREEN);
+        assert!(wm.page().window("window-1").unwrap().pinned);
     }
 
     #[test]
@@ -244,31 +260,30 @@ mod the_seam {
     }
 
     #[test]
-    fn a_grab_or_a_command_ahead_of_the_desk_that_has_its_window_waits_for_it() {
-        // The page's calls run on threads of their own: one may overtake the desk it follows.
+    fn a_grab_or_a_command_ahead_of_the_edit_that_brings_its_window_waits_for_it() {
+        // The page's calls run on threads of their own: one may overtake the edit it follows.
         let mut wm = wm_of(&windows(0));
-        let desk = windows(1);
-        let win = desk.window("window-1").unwrap().rect();
+        let win = windows(1).window("window-1").unwrap().rect();
         let from = title_of(win);
         wm.pressed(from);
         wm.moved(pt(from.x + 60.0, from.y), 0.0);
         wm.released(pt(from.x + 60.0, from.y), 0.0);
         assert!(wm.grab(moving("window-1"), from, 0.0).is_empty());
         assert!(wm.run(&Op::Maximize, Some("window-1")).is_empty());
-        let out = wm.mirror(desk.clone(), 0, SCREEN);
-        assert_eq!(published(&out).len(), 2, "the drop, then the maximize");
+        let out = wm.edit(1, &[Edit::NewWindow]);
+        assert_eq!(
+            published(&out).len(),
+            3,
+            "the edit, the drop, then the maximize"
+        );
         assert_eq!(rect_of(&wm, "window-1"), Rect::new(0.0, 0.0, W, H));
         // One whose window never comes is let go.
         wm.run(&Op::Maximize, Some("window-9"));
         for _ in 0..40 {
-            wm.mirror(desk.clone(), wm.rev(), SCREEN);
+            taken(&mut wm);
         }
-        let mut later = desk.clone();
-        later.new_window();
-        later.new_window();
-        later.new_window();
-        let out = wm.mirror(later, wm.rev(), SCREEN);
-        assert!(published(&out).is_empty());
+        let out = wm.edit(2, &[Edit::NewWindow, Edit::NewWindow, Edit::NewWindow]);
+        assert_eq!(published(&out).len(), 1);
     }
 
     #[test]
@@ -283,11 +298,15 @@ mod the_seam {
         ));
         let json = serde_json::to_value(&sent[0]).unwrap();
         assert_eq!(json["rev"], 1);
-        assert_eq!(json["windows"][0]["id"], "window-1");
-        assert_eq!(json["windows"][0]["fill"], "top-left");
-        assert_eq!(json["windows"][0]["floating"], true);
-        assert_eq!(json["windows"][0]["restore"]["x"], 480.0);
-        assert!(json.get("pan").is_none());
+        let p = &json["desk"]["session"]["1"]["surfaces"][0];
+        assert_eq!(p["id"], "window-1");
+        assert_eq!(p["fill"], "top-left");
+        assert_eq!(p["floating"], true);
+        assert_eq!(p["restore"]["x"], 480.0);
+        assert_eq!(json["view"]["here"], "1");
+        let part = snap_rect(Fill::TopLeft, W, H);
+        assert_eq!(json["view"]["front"][0]["rect"]["w"], part.w);
+        assert!(json.get("answered").is_none());
         let back: Published = serde_json::from_value(json).unwrap();
         assert_eq!(back, sent[0]);
     }

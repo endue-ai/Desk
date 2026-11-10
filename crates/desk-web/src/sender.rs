@@ -34,9 +34,12 @@ const MAIN_COMMANDS: &[&str] = &[
     "compositor_focus",
     "compositor_input",
     "compositor_input_state",
-    // The window manager (#80): a press the page found starts a gesture, a window command.
+    // The window manager (#80): a press the page found starts a gesture, a window command; the
+    // runtime's edits of its state and what desk.windows.list answers (#83).
     "compositor_grab",
     "compositor_wm",
+    "compositor_edit",
+    "compositor_snapshot",
     // Accessibility (#57): the tree the platform adapter has, and a screen reader's request, for
     // checks in development builds.
     "compositor_a11y",

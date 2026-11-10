@@ -33,6 +33,7 @@ pub mod cover;
 pub mod desk;
 pub mod desktops;
 pub mod drawer;
+pub mod edits;
 pub mod fill;
 pub mod geometry;
 pub mod host;
@@ -50,6 +51,8 @@ pub mod snapshot;
 pub mod spread;
 pub mod tiling;
 pub mod types;
+pub mod undo;
+pub mod view;
 
 pub use arrange::{
     GridShape, TARGET_ASPECT, arrange_area, cascade_rects, cascade_size, grid_shape, row_sizes,
@@ -84,7 +87,7 @@ pub use pan::{
 pub use placed::{PLUGIN_VIEW, placed_plugins, resolve_view, shown_plugins};
 pub use settle::{Glided, SETTLE_MS, Settle, SettleKind};
 pub use snap::{Aim, CORNER, Halves, Rows, SNAP, SNAP_TOP, fill_rect, halves, rows, snap_for};
-pub use snapshot::{Frame, Seen, Unseen};
+pub use snapshot::{Frame, Seen, Told, Unseen};
 pub use spread::model::{Move, SpreadAction, SpreadModel};
 pub use spread::pose::{Camera, IDENTITY, Pose, ZOOM_MAX, ZOOM_MIN, mix};
 pub use spread::slots::{
@@ -93,3 +96,4 @@ pub use spread::slots::{
 pub use spread::windows::{SpreadWindow, asleep, spread_order};
 pub use tiling::{CASCADE, GAP, free_slot, slot_rect, slot_rect_in, slot_windows};
 pub use types::*;
+pub use view::{Shown, View};

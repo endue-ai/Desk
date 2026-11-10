@@ -1,10 +1,8 @@
 # desk-wm
 
-The desk's window manager as a model (#53, ADR 0140), ported from the web runtime
-(`packages/runtime/src/surface`, `arrange`, `shell`, `desktops`) with the same behaviour and
-numbers: snap distance 24 px (8 at the top), corners 120 px, 12 px gaps, the 32 px cascades.
-Plain `serde` data in and out; no clock (times are passed in), no I/O, no rendering. Layouts,
-desktops, the drawer and the focus read and write the runtime's saved JSON unchanged.
+The desk's window manager (#53, ADR 0140, ADR 0158), ported from the web runtime with its behaviour
+and numbers: snap 24 px (8 at the top), corners 120 px, 12 px gaps, 32 px cascades. Plain `serde`
+data; no clock (times are passed in), no I/O, no rendering. It reads and writes the runtime's JSON.
 
 ## Public API
 
@@ -27,8 +25,10 @@ desktops, the drawer and the focus read and write the runtime's saved JSON uncha
   frames through `Seen`): what `desk.windows.list` answers, as the contract's `BrainDesk` (#82).
 - `host` (#81, ADR 0151): `Desk::host_plan` and `host_plan_at` with `Places` (windows back to front,
   panes' boxes, bars, what the page draws), `LiveBudget` (ADR 0134) and `Surfaces`, the protocol steps.
-- `interact` (#80, ADR 0153): `Wm` on the compositor's input (`pressed`, `grab`, `moved`, `released`,
-  `escape`, `run` an `Op`, `frame`, `mirror`, `Published`); `Gesture`, `Grip`, `Motion`; no TS copy since #83.
+- `interact` (#80, ADR 0153): `Wm`, which holds the desk (#83, ADR 0158), on the compositor's input
+  (`pressed`, `grab`, `moved`, `released`, `escape`, `run` an `Op`, `frame`), the runtime's `edit`s
+  (`edits::Edit`, the desktops' `undo`) and `took`; each change publishes the whole `Desk` with its
+  `view::View` and the edits' answers (`Published`). `desk-wm-wasm` runs it where there is no compositor.
 
 ## Test
 

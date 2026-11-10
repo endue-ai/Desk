@@ -5,7 +5,7 @@
 #![allow(dead_code)]
 
 use desk_wm::interact::{Kind, Motion, Out, Published, Wm};
-use desk_wm::{Desk, Fill, Point, Rect, Size};
+use desk_wm::{Desk, Fill, Offset, Placement, Point, Rect, Size};
 
 pub const W: f64 = 1440.0;
 pub const H: f64 = 900.0;
@@ -24,11 +24,11 @@ pub fn windows(n: usize) -> Desk {
     desk
 }
 
-/// The window manager over `desk`, as the runtime published it, with `motion`.
+/// The window manager holding `desk`, with `motion`.
 pub fn wm_over(desk: &Desk, motion: Motion) -> Wm {
     let mut wm = Wm::new();
     wm.set_motion(motion);
-    wm.mirror(desk.clone(), 0, SCREEN);
+    wm.start(desk.clone(), SCREEN);
     wm
 }
 
@@ -74,10 +74,22 @@ pub fn drag(wm: &mut Wm, kind: Kind, from: Point, to: Point) -> Vec<Out> {
 pub fn published(out: &[Out]) -> Vec<Published> {
     out.iter()
         .filter_map(|o| match o {
-            Out::Publish(p) => Some(p.clone()),
+            Out::Publish(p) => Some((**p).clone()),
             _ => None,
         })
         .collect()
+}
+
+/// Window `id` as a published desk places it on the desktop in front.
+pub fn placed(p: &Published, id: &str) -> Placement {
+    p.desk
+        .window(id)
+        .expect("the window is on the published desk")
+}
+
+/// The pan of the desktop in front, as a published desk has it.
+pub fn pan_of(p: &Published) -> Offset {
+    p.desk.pan_of(&p.desk.here())
 }
 
 /// Where the page was last told to lay a held window out (`Some(None)`: let go).
@@ -88,11 +100,10 @@ pub fn last_held(out: &[Out]) -> Option<Option<(String, Rect)>> {
     })
 }
 
-/// The runtime takes everything published so far and publishes its desk again.
+/// The page takes everything published so far.
 pub fn taken(wm: &mut Wm) {
-    let desk = wm.desk().clone();
     let rev = wm.rev();
-    wm.mirror(desk, rev, SCREEN);
+    wm.took(rev, SCREEN);
 }
 
 /// Where each pointer goes for each part, 3 px inside the app's edges (2 at the top), as the

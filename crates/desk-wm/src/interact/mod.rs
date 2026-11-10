@@ -13,9 +13,10 @@
 //! - `wm`, `pointer`, `ops`: [`Wm`], the window manager the compositor drives: the runtime's desk
 //!   with what it changed since, the compositor's pointer and keys, the `desk.display.*` window
 //!   commands, and each frame's places.
-//! - `publish`: what the runtime takes as the truth for geometry.
+//! - `publish`: the whole desk the runtime takes on each change; `edit`: the runtime's edits (#83).
 
 pub mod drag;
+pub mod edit;
 pub mod gesture;
 mod mid_glide;
 pub mod motion;
@@ -30,6 +31,6 @@ pub use gesture::{Done, Gesture, Kind, Live};
 pub use motion::{Easing, Glide, Motion, Preview, mix_rect};
 pub use ops::Op;
 pub use pointer::PressLog;
-pub use publish::{Change, Geometry, Published};
+pub use publish::{Answered, Change, Geometry, Published};
 pub use resize::{GRIPS, Grip, grip_at, resize_rect};
 pub use wm::{Frame, Out, Wm};

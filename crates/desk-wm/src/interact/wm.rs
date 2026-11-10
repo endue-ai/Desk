@@ -1,28 +1,34 @@
-//! The window manager the compositor drives (#80, ADR 0153): one [`Wm`] holds the desk as the
-//! runtime last published it, the changes it made since that the runtime has not taken yet, the
-//! gesture under way, and what glides. It hears the compositor's pointer and keys (`pointer.rs`)
-//! and the desk's commands (`ops.rs`), changes its desk and publishes each change for the runtime
-//! (`publish.rs`), and says each frame where every window is drawn (a held window under the
-//! pointer, a window gliding into its part) and where the snap preview is.
+//! The window manager the compositor drives (#80, ADR 0153): one [`Wm`] holds the desk (#83: the
+//! window manager's state, which the runtime no longer keeps), the desks it published that the page
+//! has not laid out yet, the gesture under way, and what glides. It hears the compositor's pointer
+//! and keys (`pointer.rs`), the desk's commands (`ops.rs`) and the runtime's edits (`edit.rs`),
+//! changes its desk and publishes it whole on each change (`publish.rs`), and says each frame where
+//! every window is drawn (a held window under the pointer, a window gliding into its part) and
+//! where the snap preview is.
 
 use std::collections::BTreeMap;
 
 use crate::clearance::TopChrome;
 use crate::coordinates::screen_rect;
 use crate::desk::Desk;
+use crate::edits::Kept;
 use crate::fill::snap_rect;
 use crate::types::{Fill, Rect, Size};
+use crate::view::View;
 
 use super::gesture::{Gesture, Live};
 use super::motion::{Glide, Motion, Preview};
 use super::pointer::{PressLog, Waiting};
-use super::publish::{Change, Published};
+use super::publish::{Answered, Change, Published};
+
+/// How many published desks wait for the page to take them, at most.
+const UNTAKEN: usize = 64;
 
 /// What the compositor's shell does after the window manager heard something.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Out {
-    /// The runtime takes this as the truth (`desk://compositor-wm`).
-    Publish(Published),
+    /// The runtime takes this as the desk (`desk://compositor-wm`).
+    Publish(Box<Published>),
     /// The page lays window `id` out at `rect` while a gesture holds it (`None`: no longer), so
     /// what it draws of the window follows the pointer.
     Held(Option<(String, Rect)>),
@@ -44,12 +50,18 @@ pub struct Frame {
 /// The window manager on the compositor's input.
 #[derive(Clone, Debug)]
 pub struct Wm {
+    /// The desk the page laid out last: the one published under the revision it took.
     page: Desk,
     pub(super) drawn: Desk,
+    /// The arrangements' history and the desktops' undo, beside the desk.
+    pub(super) kept: Kept,
     pub(super) screen: Size,
     pub(super) motion: Motion,
     rev: u64,
-    pending: Vec<(u64, Change)>,
+    /// The desks published that the page has not taken yet, by revision.
+    published: Vec<(u64, Desk)>,
+    /// The screen of the last desk published: a new size publishes again.
+    published_screen: Size,
     pub(super) press: Option<PressLog>,
     pub(super) gesture: Option<Gesture>,
     pub(super) glides: BTreeMap<String, Glide>,
@@ -77,16 +89,19 @@ impl Default for Wm {
 
 impl Wm {
     pub fn new() -> Wm {
+        let screen = Size {
+            w: 1440.0,
+            h: 900.0,
+        };
         Wm {
             page: Desk::default(),
             drawn: Desk::default(),
-            screen: Size {
-                w: 1440.0,
-                h: 900.0,
-            },
+            kept: Kept::default(),
+            screen,
             motion: Motion::default(),
             rev: 0,
-            pending: Vec::new(),
+            published: Vec::new(),
+            published_screen: screen,
             press: None,
             gesture: None,
             glides: BTreeMap::new(),
@@ -100,14 +115,19 @@ impl Wm {
         }
     }
 
-    /// The desk as `desk-wm` draws it: the runtime's, with what it has not taken yet.
+    /// The desk: the window manager's state, as it draws it.
     pub fn desk(&self) -> &Desk {
         &self.drawn
     }
 
-    /// The desk as the runtime last published it: where the page lays the windows out.
+    /// The desk as the page last took it: where the page lays the windows out.
     pub fn page(&self) -> &Desk {
         &self.page
+    }
+
+    /// What the runtime reads of the desk now.
+    pub fn view(&self) -> View {
+        View::of(&self.drawn, &self.kept.arranger, self.screen)
     }
 
     pub fn screen(&self) -> Size {
@@ -127,35 +147,61 @@ impl Wm {
         self.rev
     }
 
-    /// The runtime published `desk` on a `screen`-sized app, having taken every change up to
-    /// `applied`. A gesture whose window went is cancelled; what that calls for.
-    pub fn mirror(&mut self, desk: Desk, applied: u64, screen: Size) -> Vec<Out> {
-        self.page = desk;
+    /// The runtime started again (its page loaded again): an empty desk, nothing kept beside it,
+    /// no gesture. Revisions go on counting.
+    pub fn reset(&mut self) {
+        let (rev, screen, motion) = (self.rev, self.screen, self.motion);
+        *self = Wm::new();
+        self.rev = rev;
+        self.motion = motion;
+        self.start(Desk::default(), screen);
+    }
+
+    /// Start from `desk` (a test's, a restored one) without publishing it.
+    pub fn start(&mut self, desk: Desk, screen: Size) {
+        self.page = desk.clone();
+        self.drawn = desk;
         self.screen = screen;
-        self.pending.retain(|(rev, _)| *rev > applied);
-        let mut drawn = self.page.clone();
-        for (_, change) in &self.pending {
-            change.apply(&mut drawn);
+        self.published_screen = screen;
+    }
+
+    /// The page laid out every desk published up to revision `applied`, on a `screen`-sized app.
+    /// A new size publishes the desk again, since where each window is on screen changed.
+    pub fn took(&mut self, applied: u64, screen: Size) -> Vec<Out> {
+        if let Some(at) = self.published.iter().rposition(|(rev, _)| *rev <= applied) {
+            self.page = self.published[at].1.clone();
+            self.published.drain(..=at);
         }
-        self.drawn = drawn;
-        let gone = (self.gesture.as_ref())
-            .and_then(|g| g.window_id().map(str::to_owned))
-            .filter(|id| self.drawn.window(id).is_none());
+        self.screen = screen;
         let mut out = Vec::new();
-        if gone.is_some() {
-            out.extend(self.cancel_gesture());
+        if screen != self.published_screen {
+            out.push(self.publish(None));
         }
         out.extend(self.retry());
         out
     }
 
+    /// Publish the desk whole under the next revision, with `answered`.
+    pub(super) fn publish(&mut self, answered: Option<Answered>) -> Out {
+        self.rev += 1;
+        self.published.push((self.rev, self.drawn.clone()));
+        if self.published.len() > UNTAKEN {
+            // A page that never says what it took lays out the oldest kept.
+            self.page = self.published.remove(0).1;
+        }
+        self.published_screen = self.screen;
+        Out::Publish(Box::new(Published {
+            rev: self.rev,
+            desk: self.drawn.clone(),
+            view: self.view(),
+            answered,
+        }))
+    }
+
     /// Make `change` on the desk and publish it.
     pub(super) fn change(&mut self, change: Change) -> Out {
         change.apply(&mut self.drawn);
-        self.rev += 1;
-        let published = Published::of(self.rev, &change);
-        self.pending.push((self.rev, change));
-        Out::Publish(published)
+        self.publish(None)
     }
 
     /// Window `id` of the desktop in front, on screen, as its placement says.

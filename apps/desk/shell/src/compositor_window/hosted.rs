@@ -1,12 +1,12 @@
-//! The windows the compositor hosts (#81, ADR 0151): the runtime's desk mirrored into `desk-wm`'s
-//! window manager (`interact::Wm`, ADR 0153), which changes it on the compositor's input, its plan
-//! for the desktop in front with the windows a gesture holds or that glide, the live budget and
-//! the surfaces' lifecycle. Each report from the page, and each change of the window manager's,
-//! gives a new plan; the budget decides who keeps a renderer from it, and the runtime
-//! hears that set (`desk://compositor-live`) and carries it out: it asks a window for its
-//! `desk:state`, takes its frame away and puts it back (ADR 0156). The surfaces follow the frames
-//! the runtime reports, never where a frame sits in the page, so nothing loads again when a window
-//! is split, put away or shown on another desktop.
+//! The windows the compositor hosts (#81, ADR 0151): `desk-wm`'s window manager
+//! (`interact::Wm`, ADR 0153), which holds the desk (#83), changes it on the compositor's input and
+//! on the runtime's edits and publishes it whole; its plan for the desktop in front with the
+//! windows a gesture holds or that glide, the live budget and the surfaces' lifecycle. Each report
+//! from the page, and each change of the window manager's, gives a new plan; the budget decides
+//! who keeps a renderer from it, and the runtime hears that set (`desk://compositor-live`) and
+//! carries it out: it asks a window for its `desk:state`, takes its frame away and puts it back
+//! (ADR 0156). The surfaces follow the frames the runtime reports, never where a frame sits in the
+//! page, so nothing loads again when a window is split, put away or shown on another desktop.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
@@ -137,13 +137,11 @@ impl Hosted {
             return Outcome::default();
         }
         self.docs = report.frames.iter().filter_map(doc).collect();
-        let adopted: Vec<String> = report.desk.adopted.iter().map(|a| a.id.clone()).collect();
-        self.count(&adopted, &report.frames);
         let screen = Size {
             w: report.width,
             h: report.height,
         };
-        let wm = self.wm.mirror(report.desk.clone(), report.applied, screen);
+        let wm = self.wm.took(report.applied, screen);
         self.report = Some(report);
         let mut outcome = self.replan(now);
         outcome.wm = wm;
@@ -153,6 +151,14 @@ impl Hosted {
     /// Plan again from the window manager's desk at `now`: where each window is drawn (held,
     /// gliding) and where the page lays it out; then look.
     pub fn replan(&mut self, now: Instant) -> Outcome {
+        // The budget counts the windows the desk holds now, as their frames were last reported.
+        let Some(frames) = self.report.as_ref().map(|r| r.frames.clone()) else {
+            return Outcome::default();
+        };
+        let adopted: Vec<String> = (self.wm.desk().adopted.iter())
+            .map(|a| a.id.clone())
+            .collect();
+        self.count(&adopted, &frames);
         let Some(report) = &self.report else {
             return Outcome::default();
         };
@@ -181,6 +187,11 @@ impl Hosted {
     /// The number of the last report taken.
     pub fn seq(&self) -> u64 {
         self.report.as_ref().map_or(0, |r| r.seq)
+    }
+
+    /// Whether the page's last report says it took and laid out the desk published as `rev`.
+    pub fn page_took(&self, rev: u64) -> bool {
+        self.report.as_ref().is_some_and(|r| r.applied >= rev)
     }
 
     /// The snap preview and the window it lies under.

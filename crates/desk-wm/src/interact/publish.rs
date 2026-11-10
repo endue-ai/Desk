@@ -1,13 +1,16 @@
-//! What `desk-wm` hands the runtime when it changed the desk (ADR 0153): each window it moved,
-//! resized, snapped or filled, with its whole geometry (its rect in its mode, the mode, the fill
-//! and where it comes back to), and the pan of a canvas it panned, under a revision. The runtime
-//! takes them as the truth and writes them into its store as session edits; the desk it publishes
-//! next says which revision it took (`applied`), and until then `desk-wm` keeps drawing its own.
+//! What `desk-wm` hands the runtime when it changed the desk (ADR 0153, #83): the whole desk under
+//! a revision, with what the runtime reads of it (`View`) and the answers to its edits. The
+//! runtime keeps no window manager state of its own: it takes each as the desk, and its next
+//! report says which revision it took (`applied`), which is where the page lays the windows out.
+//! A gesture's change is one `Change`: a window's whole geometry (its rect in its mode, the mode,
+//! the fill and where it comes back to), or the pan of a canvas.
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::desk::Desk;
 use crate::types::{Fill, Offset, Placement, Restore};
+use crate::view::View;
 
 /// A window's geometry, as its placement keeps it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -51,7 +54,7 @@ impl Geometry {
     }
 }
 
-/// One change `desk-wm` made.
+/// One change a gesture or a window command made.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Change {
     Window { desktop: String, geometry: Geometry },
@@ -59,7 +62,7 @@ pub enum Change {
 }
 
 impl Change {
-    /// Make it again on `desk`: the runtime has not taken it yet.
+    /// Make it on `desk`.
     pub fn apply(&self, desk: &mut Desk) {
         match self {
             Change::Window { desktop, geometry } => {
@@ -80,33 +83,20 @@ impl Change {
     }
 }
 
-/// What the runtime hears (`desk://compositor-wm`).
+/// The answers to a batch of the runtime's edits, one per edit, for the batch it numbered `seq`.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Answered {
+    pub seq: u64,
+    pub values: Vec<Value>,
+}
+
+/// What the runtime hears (`desk://compositor-wm`): the whole desk under a revision, what it reads
+/// of it, and the answers to the edits it asked for when this change was theirs.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Published {
     pub rev: u64,
-    pub desktop: String,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub windows: Vec<Geometry>,
+    pub desk: Desk,
+    pub view: View,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pan: Option<Offset>,
-}
-
-impl Published {
-    /// `change` under revision `rev`.
-    pub fn of(rev: u64, change: &Change) -> Published {
-        match change {
-            Change::Window { desktop, geometry } => Published {
-                rev,
-                desktop: desktop.clone(),
-                windows: vec![geometry.clone()],
-                pan: None,
-            },
-            Change::Pan { desktop, pan } => Published {
-                rev,
-                desktop: desktop.clone(),
-                windows: Vec::new(),
-                pan: Some(*pan),
-            },
-        }
-    }
+    pub answered: Option<Answered>,
 }

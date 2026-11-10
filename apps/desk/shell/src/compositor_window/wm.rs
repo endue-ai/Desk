@@ -10,14 +10,15 @@
 //! `desk.frames.wait`, `stop` and `reload` in the page (`desk://compositor-run`). The desk's window
 //! commands come as `compositor_wm`.
 
+use std::sync::mpsc;
 use std::time::Instant;
 
 use desk_compositor::NodeId;
 use desk_compositor::glam::Vec2;
 use desk_compositor::input::{Button, Input};
 use desk_web::sender::Role;
-use desk_wm::Point;
 use desk_wm::interact::{Kind, Op, Out, grip_at};
+use desk_wm::{Point, Told};
 use serde_json::{Value, json};
 
 use super::draw::CardButton;
@@ -29,19 +30,39 @@ pub const WM: &str = "desk://compositor-wm";
 pub const HELD: &str = "desk://compositor-held";
 /// A desk command a card's button runs.
 pub const RUN: &str = "desk://compositor-run";
+/// How long `desk.windows.list` waits for the page to lay out the desk it names.
+const SNAPSHOT_WAIT: std::time::Duration = std::time::Duration::from_secs(1);
 
 /// A call of the page's for the window manager.
 #[derive(Debug)]
 pub enum Call {
-    Grab { kind: Kind, x: f64, y: f64 },
-    Command { op: Op, window: Option<String> },
+    Grab {
+        kind: Kind,
+        x: f64,
+        y: f64,
+    },
+    Command {
+        op: Op,
+        window: Option<String>,
+    },
+    /// What `desk.windows.list` answers, with what the runtime told of its frames and titles.
+    Snapshot {
+        told: Told,
+        answer: mpsc::Sender<Value>,
+    },
 }
 
 /// What the shell keeps for the window manager between events.
 #[derive(Debug, Default)]
 pub struct Gestures {
-    /// The page's calls waiting for the desk they follow, by its number.
+    /// The page's calls waiting for the edit they follow, by its number.
     deferred: Vec<(u64, Call)>,
+    /// The runtime's edits that came ahead of one before them, by number.
+    edits: Vec<(u64, Vec<Value>)>,
+    /// The number of the last edit applied.
+    edited: u64,
+    /// `desk.windows.list` asked since, waiting for the page to lay out the desk.
+    snapshots: Vec<(Instant, Told, mpsc::Sender<Value>)>,
     /// The cards' buttons as last drawn.
     pub buttons: Vec<CardButton>,
     /// The button a press holds.
@@ -147,26 +168,74 @@ impl CompositorWindow {
         self.desk.pages.emit(Role::Main, RUN, run);
     }
 
-    /// A call of the page's that follows its desk numbered `after`: run now if that desk is here,
-    /// else once it is (each call of the page's runs on a thread of its own, so a small one may
-    /// overtake the desk it follows).
+    /// A call of the page's that follows its edit numbered `after`: run now if that edit is
+    /// applied, else once it is (each call of the page's runs on a thread of its own, so a small
+    /// one may overtake the edit it follows).
     pub fn page_call(&mut self, call: Call, after: u64) {
-        if self.hosted.seq() < after {
+        if self.gestures.edited < after {
             self.gestures.deferred.push((after, call));
             return;
         }
         self.run_call(call);
     }
 
-    /// Run the calls that waited for a desk now here.
+    /// The runtime's edits numbered `seq` (#83): applied in their order, so one that overtook
+    /// another waits for it; then the calls that followed them run. The first is a runtime that
+    /// started (the page loaded again): its desk starts afresh.
+    pub fn page_edit(&mut self, seq: u64, edits: Vec<Value>) {
+        if seq == 1 && self.gestures.edited > 0 {
+            self.gestures = Gestures::default();
+            self.hosted.wm.reset();
+        }
+        self.gestures.edits.push((seq, edits));
+        self.gestures.edits.sort_by_key(|(seq, _)| *seq);
+        let now = Instant::now();
+        while let Some(at) =
+            (self.gestures.edits.iter()).position(|(seq, _)| *seq <= self.gestures.edited + 1)
+        {
+            let (seq, edits) = self.gestures.edits.remove(at);
+            if seq <= self.gestures.edited {
+                continue;
+            }
+            self.gestures.edited = seq;
+            let outs = self.hosted.wm.edit_json(seq, &edits);
+            self.wm_outs(outs, now);
+        }
+        self.run_deferred();
+    }
+
+    /// Run the calls that waited for an edit now applied.
     pub(super) fn run_deferred(&mut self) {
-        let seq = self.hosted.seq();
+        let seq = self.gestures.edited;
         let (ready, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.gestures.deferred)
             .into_iter()
             .partition(|(after, _)| *after <= seq);
         self.gestures.deferred = later;
         for (_, call) in ready {
             self.run_call(call);
+        }
+        self.answer_snapshots();
+    }
+
+    /// Answer the snapshots that waited for the page to lay out the desk they read: what
+    /// `desk.windows.list` names is then where the page's parts are too, so a press at a window
+    /// it named lands on that window's title bar. One that waited past `SNAPSHOT_WAIT` (a page that
+    /// stopped reporting) is answered as the desk is.
+    fn answer_snapshots(&mut self) {
+        let caught_up = self.hosted.page_took(self.hosted.wm.rev());
+        let now = Instant::now();
+        let (ready, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.gestures.snapshots)
+            .into_iter()
+            .partition(|(since, ..)| caught_up || now.duration_since(*since) >= SNAPSHOT_WAIT);
+        self.gestures.snapshots = later;
+        let screen = self.hosted.wm.screen();
+        for (_, told, answer) in ready {
+            let snapshot = self
+                .hosted
+                .wm
+                .desk()
+                .snapshot_seen(screen.w, screen.h, &told);
+            let _ = answer.send(serde_json::to_value(snapshot).unwrap_or(Value::Null));
         }
     }
 
@@ -180,6 +249,11 @@ impl CompositorWindow {
             }
             // A window command, for window `window` or the one in use.
             Call::Command { op, window } => self.hosted.wm.run(&op, window.as_deref()),
+            Call::Snapshot { told, answer } => {
+                self.gestures.snapshots.push((now, told, answer));
+                self.answer_snapshots();
+                return;
+            }
         };
         self.wm_outs(outs, now);
     }

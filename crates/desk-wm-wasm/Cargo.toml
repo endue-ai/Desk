@@ -1,0 +1,20 @@
+[package]
+name = "desk-wm-wasm"
+description = "desk-wm as WebAssembly for a desk without the compositor: the runtime's tests and fixture pages run the window manager the app runs, through one JSON call."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+desk-wm.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

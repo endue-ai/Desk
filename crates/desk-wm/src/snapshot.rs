@@ -15,10 +15,13 @@
 //! here. `tests/scene.rs` and the runtime's `desk-view.scene.test.ts` build one scene and both
 //! must equal the contract's vector `desk-windows-list-scene.json`.
 
+use std::collections::BTreeMap;
+
 use desk_bridge::{
     BrainDesk, BrainDeskDesktop, BrainDeskFill, BrainDeskOffset, BrainDeskPane,
     BrainDeskResponsiveness, BrainDeskSize, BrainDeskWindow, BrainDeskWindowState,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::coordinates::{is_floating, screen_rect};
 use crate::cover::z_of;
@@ -39,7 +42,8 @@ const TITLE: usize = 200;
 const VIEW: usize = 256;
 
 /// How a plugin's frame is doing, as the runtime knows it (ADR 0134, #39).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Frame {
     /// Loaded and answering.
     #[default]
@@ -71,6 +75,26 @@ pub trait Seen {
 pub struct Unseen;
 
 impl Seen for Unseen {}
+
+/// What the runtime tells a snapshot: the titles of the shell's own views and each plugin frame's
+/// state, by plugin (one not named is live).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Told {
+    #[serde(default)]
+    pub titles: BTreeMap<String, String>,
+    #[serde(default)]
+    pub frames: BTreeMap<String, Frame>,
+}
+
+impl Seen for Told {
+    fn title(&self, view: &str) -> Option<String> {
+        self.titles.get(view).cloned()
+    }
+
+    fn frame(&self, plugin: &str) -> Frame {
+        self.frames.get(plugin).copied().unwrap_or_default()
+    }
+}
 
 /// Where a window is listed: on a desktop at its rank, or in the drawer.
 #[derive(Clone, Copy)]

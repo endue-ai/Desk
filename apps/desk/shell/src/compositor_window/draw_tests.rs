@@ -32,13 +32,17 @@ fn a_frame_fills_its_pane_and_an_older_smaller_one_is_never_stretched() {
 fn hosted(state: &str) -> Hosted {
     let report: DeskReport = serde_json::from_value(json!({
         "seq": 1, "width": 1440, "height": 900,
-        "desk": { "desktop": "1", "adopted": [{ "id": "endue.notes", "title": "Notes", "slot": 0 }] },
         "frames": [{ "plugin": "endue.notes", "host": "main.endue-notes",
             "src": "desk-plugin://main.endue-notes/index.html", "loads": 1, "state": state,
             "card": { "title": "Notes", "line": "Stopped.", "actions": ["Reload"] } }],
     }))
     .unwrap();
     let mut hosted = Hosted::new(1.0);
+    let adopt = desk_wm::edits::Edit::Adopt {
+        id: "endue.notes".into(),
+        title: "Notes".into(),
+    };
+    hosted.wm.edit(1, &[adopt]);
     hosted.apply(report, Instant::now());
     hosted
 }
