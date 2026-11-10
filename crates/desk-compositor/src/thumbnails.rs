@@ -2,8 +2,10 @@
 //! caller at most ten times a second, and a snapshot bounded in size reads one back. A texture is
 //! halved pass after pass until the last pass is within twice the size asked for: every halving
 //! samples between four texels, a box filter, so text and edges shrink without the shimmer one
-//! bilinear pass from full size gives. Each pass is a scene of one quad drawn by the compositor, so a
-//! pass whose source did not change since is not drawn again. A thumbnail is a texture the
+//! bilinear pass from full size gives. While it is more than eight times the size the first passes
+//! quarter it instead (four of each sixteen texels): the passes kept are then about a sixteenth of
+//! the source, not a quarter. Each pass is a scene of one quad drawn by the compositor, so a pass
+//! whose source did not change since is not drawn again. A thumbnail is a texture the
 //! compositor holds under an id of the high range ([`THUMBNAIL_IDS`]), never one a caller names.
 
 use std::collections::HashMap;
@@ -34,14 +36,19 @@ struct Thumbnail {
     passes: Vec<Pass>,
 }
 
-/// The sizes the passes draw at, from `from` down to `to`: halving while still more than twice
-/// as large, then `to`.
+/// The sizes the passes draw at, from `from` down to `to`: quartering while more than eight times
+/// as large on both sides, halving while still more than twice as large, then `to`.
 pub fn pass_sizes(from: (u32, u32), to: (u32, u32)) -> Vec<(u32, u32)> {
     let to = (to.0.max(1), to.1.max(1));
     let mut sizes = Vec::new();
     let mut at = from;
     while at.0 > to.0 * 2 || at.1 > to.1 * 2 {
-        at = (at.0.div_ceil(2).max(to.0), at.1.div_ceil(2).max(to.1));
+        let by = if at.0 > to.0 * 8 && at.1 > to.1 * 8 {
+            4
+        } else {
+            2
+        };
+        at = (at.0.div_ceil(by).max(to.0), at.1.div_ceil(by).max(to.1));
         sizes.push(at);
     }
     sizes.push(to);
@@ -229,10 +236,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn passes_halve_until_the_last_is_within_twice_the_size() {
+    fn passes_quarter_then_halve_until_the_last_is_within_twice_the_size() {
         assert_eq!(
             pass_sizes((2560, 1600), (100, 60)),
-            [(1280, 800), (640, 400), (320, 200), (160, 100), (100, 60)]
+            [(640, 400), (320, 200), (160, 100), (100, 60)]
+        );
+        assert_eq!(
+            pass_sizes((800, 480), (100, 60)),
+            [(400, 240), (200, 120), (100, 60)]
         );
         assert_eq!(pass_sizes((180, 100), (100, 60)), [(100, 60)]);
         assert_eq!(

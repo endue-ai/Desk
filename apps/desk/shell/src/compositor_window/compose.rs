@@ -18,9 +18,16 @@ impl CompositorWindow {
         let at = self.hosted.ms(Instant::now());
         let drawn = {
             let mut composed = self.shared.lock();
-            if let (Some(layout), Some(false)) = (&layout, folded) {
-                self.mapping
-                    .refresh(&mut composed, layout, scale, Instant::now());
+            match (&layout, folded) {
+                (Some(layout), Some(false)) => {
+                    self.mapping
+                        .refresh(&mut composed, layout, scale, Instant::now());
+                }
+                // Folded or gone, the map keeps no copies.
+                _ => self
+                    .mapping
+                    .thumbnails
+                    .retain(&mut composed.compositor, |_| false),
             }
             let texture = |surface: &str| {
                 let id = composed.texture_of(surface)?;
