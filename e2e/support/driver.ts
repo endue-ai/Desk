@@ -18,8 +18,12 @@ import { ensureChromedriver } from "./chrome-for-testing";
 
 /** The shell the specs drive. */
 export const SHELL: "cef" | "tauri" = process.env.DESK_E2E_SHELL === "tauri" ? "tauri" : "cef";
-/** The WebDriver port: chromedriver's, or tauri-driver's (it starts WebKitWebDriver on 4445). */
-export const PORT = 4444;
+/**
+ * The WebDriver port: chromedriver's, or tauri-driver's (it starts WebKitWebDriver on 4445). Two
+ * runs on one machine need two ports: `DESK_E2E_DRIVER_PORT` names another (a second chromedriver
+ * on 4444 cannot bind, and the first one's answers would reach the second run's specs).
+ */
+export const PORT = Number(process.env.DESK_E2E_DRIVER_PORT) || 4444;
 /** Where wdio.conf.ts tells the specs the app's HOME and stdout log are (support/desk.ts reads them). */
 export const HOME_VAR = "E2E_APP_HOME";
 export const LOG_VAR = "E2E_APP_LOG";
