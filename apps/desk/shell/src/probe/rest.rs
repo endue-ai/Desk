@@ -4,17 +4,15 @@
 //! CEF's ask, nothing else) and counts what a desk at rest costs: its loop's wake-ups and CEF's
 //! work calls among them a second, the time those took and how many took 5 ms or more, the begin
 //! frames and paints, and the CPU and OS wake-ups of the browser process (where the desk's loop
-//! runs), the GPU process and the renderers. Then five presses on one of them, each after it is
-//! long idle again: what a press from rest takes. `tests/budgets.rs` judges them through `just
-//! perf-compositor`.
+//! runs), the GPU process and the renderers. What a press from rest takes is the `idle-input`
+//! run's (#133, `idle_input.rs`). `tests/budgets.rs` judges them through `just perf-compositor`.
 
 use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
 
 use super::Probe;
-use super::desk_loop::{DeskLoop, tree};
-use super::input_gate::to_paint;
+use super::desk_loop::tree;
 use crate::pump::Counts;
 
 const SIZE: (u32, u32) = (320, 200);
@@ -23,8 +21,6 @@ const START: Duration = Duration::from_secs(20);
 const SETTLE: Duration = Duration::from_secs(3);
 /// How long the rest is measured.
 const MEASURE: Duration = Duration::from_secs(10);
-/// Presses after the rest, each on a surface long idle again.
-const PRESSES: usize = 5;
 const SURFACES: [(&str, &str); 3] = [
     ("a", "probe.colour"),
     ("b", "probe.colour"),
@@ -166,20 +162,9 @@ pub fn rest(probe: &mut Probe) -> Value {
     let before = Sample::now(probe);
     probe.rest_for(MEASURE);
     let after = Sample::now(probe);
-    // A press from rest paints as soon as one on a desk in use (the poll and the slow clock).
-    let ids = SURFACES.map(|(id, _)| id);
-    let desk = DeskLoop::new(probe);
-    let mut presses = Vec::new();
-    for _ in 0..PRESSES {
-        desk.rested();
-        presses.push(to_paint(probe, &desk, &ids, "click"));
-        probe.rest_for(SETTLE / 2);
-    }
     json!({
         "scenario": "rest",
         "started": started,
         "rest": per_second(&before, &after),
-        "presses": presses,
-        "clicks": super::input_gate::presses(probe, "click"),
     })
 }
