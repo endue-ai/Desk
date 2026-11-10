@@ -3,13 +3,14 @@
 //! title bar, the tools the page draws in it (the page's buttons there, standing in for them), and
 //! each pane: a plugin's surface where the scene drew it (its transform from the scene: through the
 //! window's group, at the window's scale), a card with its buttons where the scene drew those, or
-//! the page's own view; the page under all of it; the surfaces the page lays out over the windows.
+//! the page's own view; the page under all of it; the surfaces the page lays out over the windows;
+//! the spread's dialog while it is open (#54).
 
 use std::collections::HashMap;
 
 use desk_compositor::a11y::{
-    ChromeButton, ChromeCard, ChromePane, ChromeWindow, DeskChrome, PaneShows, Placed, Press,
-    SurfaceTree,
+    ChromeButton, ChromeCard, ChromePane, ChromeSpread, ChromeWindow, DeskChrome, PaneShows,
+    Placed, Press, SurfaceTree,
 };
 use desk_compositor::glam::{DAffine2, DVec2, Mat4};
 use desk_compositor::input::Target;
@@ -26,6 +27,8 @@ use super::hosted::Hosted;
 pub struct Shown {
     pub placed: HashMap<String, [f64; 6]>,
     pub buttons: HashMap<String, Vec<Rect>>,
+    /// The spread while it is open (#54).
+    pub spread: Option<ChromeSpread>,
 }
 
 fn affine(m: Mat4) -> DAffine2 {
@@ -239,6 +242,7 @@ pub fn chrome(
         windows,
         overlays,
         focus: focus.map(str::to_owned),
+        spread: shown.spread.clone(),
     }
 }
 

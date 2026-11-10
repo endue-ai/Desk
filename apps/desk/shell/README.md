@@ -22,12 +22,12 @@ windows placed by `desk-wm`; it starts the compositor, then the system surfaces 
 - `native_host`: native plugins, each a process (#59, ADR 0154); `web_host`: a windowless browser per surface on the
   frame clock (`frames`, `clock`), input (`input`, `key_codes`, `routes`, `drag`), its tree (`view::a11y`), messages by
   host (`relay`; `top`: no plugin frame in the desk's page); `compositor_window`: `desk-wm`'s desk (`report`, `hosted`),
-  `wm`, `draw`, the system layer (`page`, `system`), AccessKit (`a11y`, ADR 0155); `harness`, `probe`.
+  `wm`, `draw`, the system layer (`page`, `system`), AccessKit (`a11y`, ADR 0155), the spread, the canvas map and
+  snapshots for `ui.surface.snapshot` (`spread`, `minimap`, `snapshots`, ADR 0161); `harness`, `probe`.
 - `sandbox`: each macOS helper enters Chromium's sandbox first (ADR 0148; elsewhere after #61); `release`, `update`:
   the build's version, key, origin, commit; `desk_update::install`, "Restart to update", the restart (#47).
 
-Packages (`packager/`, #46; icons in `icons/`) carry the built-in plugins; `DESK_PLUGIN_DIRS` names
-others. Gaps: no Linux tray (it needs a GTK loop); the pointer's display and work area are macOS-only.
+Packages (`packager/`, #46; `icons/`) carry the built-in plugins, `DESK_PLUGIN_DIRS` others. No Linux tray yet.
 
 ## Run and test
 

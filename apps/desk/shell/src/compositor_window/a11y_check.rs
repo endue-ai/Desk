@@ -5,8 +5,8 @@
 //! assistive technology would: the screen may be locked and no screen reader runs.
 //!
 //! `compositor_a11y { activate?, deactivate?, act?: { role, label, action, value? } }` answers
-//! `{ active, acted, focus, tree }`: each node `{ role, label, value, bounds, children }`, roles in
-//! kebab-case and bounds in the window's logical pixels.
+//! `{ active, acted, focus, tree }`: each node `{ role, label, value, selected, bounds, children }`,
+//! roles in kebab-case and bounds in the window's logical pixels.
 
 use accesskit::{Action, ActionData, ActionRequest, NodeId, Role};
 use accesskit_consumer::{NodeRef, common_filter};
@@ -33,7 +33,7 @@ fn seen(node: &NodeRef, scale: f64) -> Value {
         .map(|c| seen(&c, scale))
         .collect();
     json!({ "role": role_name(node.role()), "label": node.label(), "value": node.value(),
-        "bounds": bounds, "children": children })
+        "selected": node.is_selected(), "bounds": bounds, "children": children })
 }
 
 /// The first node a screen reader meets with `role` and `label`.

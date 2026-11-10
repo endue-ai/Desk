@@ -65,6 +65,8 @@ fn reached(palette: bool, at: Vec2) -> (String, Vec<String>, Vec<String>) {
         scale: 1.0,
         page: Some((TextureId(1), (1440, 900))),
         surface: &textures,
+        spread: None,
+        map: None,
     };
     let drawn = draw(&mut scene, &ChromeTheme::default(), &hosted, &sources).unwrap();
     let hit = hit_test(&scene, at).expect("something is under the pointer");

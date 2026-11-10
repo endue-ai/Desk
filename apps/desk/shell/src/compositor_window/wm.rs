@@ -75,6 +75,13 @@ impl CompositorWindow {
     /// What the window manager makes of `input` before the router routes it; whether it took the
     /// event whole (nothing else hears it).
     pub(super) fn wm_input(&mut self, input: &Input) -> bool {
+        // The spread, while it is open, and the canvas map hear it first (#54).
+        if let Some(taken) = self.spread_input(input) {
+            return taken;
+        }
+        if self.map_input(input) {
+            return true;
+        }
         let scale = self.window.scale_factor();
         let now = Instant::now();
         let ms = self.hosted.ms(now);
@@ -247,6 +254,11 @@ impl CompositorWindow {
                 let ms = self.hosted.ms(now);
                 self.hosted.wm.grab(kind, Point::new(x, y), ms)
             }
+            // The spread is the compositor's to draw: it opens or closes here (#54).
+            Call::Command { op: Op::Spread, .. } => {
+                self.spread_toggle();
+                return;
+            }
             // A window command, for window `window` or the one in use.
             Call::Command { op, window } => self.hosted.wm.run(&op, window.as_deref()),
             Call::Snapshot { told, answer } => {
@@ -299,6 +311,7 @@ impl CompositorWindow {
         let preview = (self.hosted.preview())
             .map(|(r, under)| json!({ "rect": [r.x, r.y, r.w, r.h], "under": under }));
         json!({ "held": wm.held(), "holds": wm.holds(), "rev": wm.rev(), "preview": preview,
-            "buttons": self.gestures.buttons.len() })
+            "buttons": self.gestures.buttons.len(), "spread": self.spread_state(),
+            "map": self.map_state() })
     }
 }

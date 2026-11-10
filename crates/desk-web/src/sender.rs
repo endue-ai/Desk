@@ -48,6 +48,8 @@ const MAIN_COMMANDS: &[&str] = &[
     // Accessibility (#57): the tree the platform adapter has, and a screen reader's request, for
     // checks in development builds.
     "compositor_a11y",
+    // The window manager's clock held at a time a check chooses (#54, development builds).
+    "compositor_clock",
 ];
 const PALETTE_COMMANDS: &[&str] = &[
     "palette_hide",
@@ -272,6 +274,7 @@ mod tests {
             "compositor_grab",
             "compositor_wm",
             "compositor_a11y",
+            "compositor_clock",
         ] {
             assert!(runtime.may(cmd), "{cmd}");
             assert!(!Sender::Plugin("endue.notes".into()).may(cmd), "{cmd}");

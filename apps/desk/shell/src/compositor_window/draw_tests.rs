@@ -56,6 +56,8 @@ fn sources(surface: &dyn Fn(&str) -> Option<Texture>) -> Sources<'_> {
         scale: 1.0,
         page: Some((TextureId(1), (1440, 900))),
         surface,
+        spread: None,
+        map: None,
     }
 }
 

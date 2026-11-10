@@ -105,6 +105,10 @@ pub struct Hosted {
     preview: Option<(Rect, String)>,
     /// Something glides: plan again each frame.
     moving: bool,
+    /// The spread is open: every window of the desktop in front is in sight on its card (#54).
+    spreading: bool,
+    /// The window manager's clock held at this many milliseconds, by a check (`compositor_clock`).
+    held_clock: Option<f64>,
 }
 
 impl Hosted {
@@ -123,12 +127,27 @@ impl Hosted {
             wm: Wm::new(),
             preview: None,
             moving: false,
+            spreading: false,
+            held_clock: None,
         }
     }
 
-    /// `now` on the window manager's clock, in milliseconds.
+    /// `now` on the window manager's clock, in milliseconds; where a check holds it, there.
     pub fn ms(&self, now: Instant) -> f64 {
-        now.saturating_duration_since(self.origin).as_secs_f64() * 1000.0
+        let real = now.saturating_duration_since(self.origin).as_secs_f64() * 1000.0;
+        self.held_clock.unwrap_or(real)
+    }
+
+    /// Hold the window manager's clock at `at` milliseconds (`None`: let it run), so a check sees
+    /// a motion at a time of its choosing (ADR 0013). Development builds' checks only.
+    pub fn hold_clock(&mut self, at: Option<f64>) {
+        self.held_clock = at;
+    }
+
+    /// The spread opened or closed: while it is open every window of the desktop in front shows on
+    /// its card, so a covered window's surface paints again (one that sleeps stays asleep).
+    pub fn set_spreading(&mut self, on: bool) {
+        self.spreading = on;
     }
 
     /// Take the page's `report` at `now`, unless an older one; what follows.
@@ -249,6 +268,7 @@ impl Hosted {
         }
         // A window's plugin sits where the plan puts its pane; one of the page's own system layer
         // (an overlay, an edge bar) where the page lays it out.
+        let spreading = self.spreading;
         let seat = |plugin: &str| {
             let placed = (report.frames.iter().find(|f| f.plugin == plugin)).and_then(|f| f.place);
             match placed {
@@ -264,7 +284,11 @@ impl Hosted {
                     },
                     visible: p.shown && p.width > 0.0 && p.height > 0.0,
                 },
-                None => plan.seat(plugin),
+                None => {
+                    let mut seat = plan.seat(plugin);
+                    seat.visible |= spreading && seat.size.is_some();
+                    seat
+                }
             }
         };
         let steps = (self.surfaces).occluded(self.occluded, &self.docs, seat, self.scale);

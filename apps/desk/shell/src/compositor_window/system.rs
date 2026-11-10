@@ -118,8 +118,9 @@ fn unheard(
     pass(scene, seen.into_iter().map(|(node, _)| node))
 }
 
-/// The page's own plugin surfaces of `layer`, where it lays them out.
-fn plugin_surfaces(
+/// The page's own plugin surfaces of `layer`, where it lays them out (the spread draws them under
+/// its scrim too, #54).
+pub(super) fn plugin_surfaces(
     scene: &mut Scene,
     chrome: &mut Chrome,
     desk: NodeId,

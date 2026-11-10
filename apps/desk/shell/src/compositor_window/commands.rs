@@ -7,9 +7,10 @@
 //! #83) and `compositor_snapshot` (what `desk.windows.list` answers); in development builds
 //! `compositor_capture { path }` (the composed frame as a PNG), `compositor_stats` (what every surface
 //! painted), `compositor_input { events, logical? }` (events fed to the window's own input entry,
-//! `harness.rs`), `compositor_input_state` (where input goes) and `compositor_a11y` (the
-//! accessibility tree the adapter has, and a screen reader's request, `a11y_check.rs`). They run on
-//! the event loop's thread, where the compositor is.
+//! `harness.rs`), `compositor_input_state` (where input goes), `compositor_a11y` (the
+//! accessibility tree the adapter has, and a screen reader's request, `a11y_check.rs`) and
+//! `compositor_clock { hold?, at? }` (the window manager's clock held, so a check sees a motion at a
+//! time it chooses, ADR 0013). They run on the event loop's thread, where the compositor is.
 
 use std::sync::mpsc;
 use std::time::Duration;
@@ -127,6 +128,7 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
         | "compositor_input"
         | "compositor_input_state"
         | "compositor_a11y"
+        | "compositor_clock"
             if cfg!(debug_assertions) =>
         {
             let (sent, answered) = mpsc::channel();
@@ -155,6 +157,7 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
                     }
                     ("compositor_input_state", _) => Ok(c.input_state()),
                     ("compositor_a11y", _) => c.a11y_check(event_loop, &args),
+                    ("compositor_clock", _) => Ok(c.clock_check(&args)),
                     _ => Ok(c.stats()),
                 };
                 let _ = sent.send(answer);

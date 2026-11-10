@@ -9,7 +9,9 @@
 //! it is for (`input.rs`), and first through `desk-wm`'s window manager, which drags, resizes,
 //! snaps and pans (`wm.rs`, #80, ADR 0153). Every surface and the page render on the desk's frame
 //! clock (`clock.rs`, ADR 0152). Screen readers see the desk as one tree through an AccessKit
-//! adapter on the window (`a11y.rs`, #57).
+//! adapter on the window (`a11y.rs`, #57). The spread (`spread.rs`), the canvas map (`minimap.rs`)
+//! and every surface's snapshot for the core (`snapshots.rs`) draw on the surfaces' live and last
+//! textures (#54, ADR 0161).
 
 pub mod a11y;
 pub mod a11y_check;
@@ -17,17 +19,24 @@ mod a11y_chrome;
 pub mod checks;
 mod clock;
 pub mod commands;
+mod compose;
 pub mod composed;
 pub mod cursor;
 pub mod draw;
+mod draw_map;
+mod draw_pane;
+mod draw_spread;
 mod gpu;
 pub mod harness;
 pub mod hosted;
 pub mod input;
+mod minimap;
 mod os_pointer;
 pub mod overlay;
 mod page;
 pub mod report;
+mod snapshots;
+mod spread;
 mod steps;
 pub mod system;
 pub mod winit_input;
@@ -99,6 +108,9 @@ pub struct CompositorWindow {
     /// The desk's system parts the last scene drew whole, and its system layer back to front (ADR
     /// 0160).
     parts: (Vec<String>, Vec<String>),
+    /// The spread while it is open, and the canvas map (#54).
+    spreading: spread::Spreading,
+    mapping: minimap::Mapping,
 }
 
 impl CompositorWindow {
@@ -170,9 +182,16 @@ impl CompositorWindow {
             gestures: wm::Gestures::default(),
             a11y: a11y::A11y::default(),
             parts: (Vec::new(), Vec::new()),
+            spreading: spread::Spreading::default(),
+            mapping: minimap::Mapping::default(),
         };
         opened.stand_in();
         opened.attach_a11y(event_loop);
+        let snapshots = snapshots::Snapshots::new(opened.desk.pump.clone());
+        opened
+            .desk
+            .core
+            .set_surface_snapshots(Some(Arc::new(snapshots)));
         opened.window.set_visible(true);
         Ok(opened)
     }
@@ -265,6 +284,7 @@ impl CompositorWindow {
         if outcome != Outcome::default() {
             self.carry(outcome);
         }
+        self.spread_tick(now);
         if self.hosted.moving() {
             // A window glides, or the snap preview: a frame after another until it arrives.
             self.shared.lock().dirty = true;
@@ -306,37 +326,9 @@ impl CompositorWindow {
         self.presented += 1;
     }
 
-    /// Lay the scene out again from the hosted desk and the frames the surfaces attached, and tell
-    /// the input router what each node shows.
-    pub(super) fn compose(&mut self) {
-        let drawn = {
-            let composed = self.shared.lock();
-            let texture = |surface: &str| {
-                let id = composed.texture_of(surface)?;
-                Some((id, composed.frames.size(id)?))
-            };
-            let sources = draw::Sources {
-                scale: self.window.scale_factor() as f32,
-                page: texture(PAGE),
-                surface: &texture,
-            };
-            draw::draw(&mut self.scene, &self.theme, &self.hosted, &sources)
-        };
-        let drawn = drawn.unwrap_or_else(|why| {
-            eprintln!("endue Desk: the compositor's scene did not build ({why:?})");
-            draw::Drawn::default()
-        });
-        if !self.gpu.presents() {
-            self.shared.lock().dirty = false;
-        }
-        self.a11y_drawn(&drawn);
-        self.gestures.buttons = drawn.buttons;
-        self.parts = (drawn.parts, drawn.order);
-        self.register(drawn.shown);
-    }
-
     /// Close the page's browser and every surface's (the desk quits).
     pub fn close(&self) {
+        self.desk.core.set_surface_snapshots(None);
         self.host.close_all();
         self.native.close_all();
         self.relay.page(None);

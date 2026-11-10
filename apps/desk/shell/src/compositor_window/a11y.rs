@@ -142,6 +142,7 @@ impl CompositorWindow {
         if self.a11y.desk.is_active() {
             let scale = self.window.scale_factor() as f32;
             self.a11y.shown = a11y_chrome::shown(&self.scene, &drawn.shown, &drawn.buttons, scale);
+            self.a11y.shown.spread = drawn.spread.clone();
             self.a11y.composed = true;
         }
     }

@@ -50,6 +50,23 @@ impl CompositorWindow {
         Some((pane.body, open))
     }
 
+    /// Hold the window manager's clock (`{ "hold": true }` where it is now, `{ "at": ms }` there,
+    /// `{ "at": null }` lets it run) and draw again; answers where it is now, in milliseconds.
+    pub fn clock_check(&mut self, args: &Value) -> Value {
+        let now = std::time::Instant::now();
+        match args.get("at") {
+            Some(Value::Null) => self.hosted.hold_clock(None),
+            Some(at) => self.hosted.hold_clock(at.as_f64()),
+            None if args.get("hold").and_then(Value::as_bool) == Some(true) => {
+                let at = self.hosted.ms(now);
+                self.hosted.hold_clock(Some(at));
+            }
+            None => {}
+        }
+        self.shared.lock().dirty = true;
+        json!({ "now": self.hosted.ms(now) })
+    }
+
     /// What each surface did, and the hosted desk, for checks (development builds).
     pub fn stats(&self) -> Value {
         let composed = self.shared.lock();

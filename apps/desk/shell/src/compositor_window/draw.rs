@@ -11,20 +11,24 @@
 //! the page's CSS pixels under one group scaled to the window's device pixels, so
 //! text is set at the device's size. Every node that shows a surface is answered with the input
 //! router's target for it (#56); the compositor's own chrome lets the pointer through to the page,
-//! which finds what a press lands on, but for the cards' buttons, which run their commands.
+//! which finds what a press lands on, but for the cards' buttons, which run their commands. While
+//! the spread is open every window is a card at its pose instead (`draw_spread.rs`), and the canvas
+//! map goes over the page's layer when it shows (`draw_map.rs`, #54).
 
+use desk_compositor::a11y::ChromeSpread;
 use desk_compositor::glam::{Mat4, Vec2, Vec3};
 use desk_compositor::input::Target;
+use desk_compositor::stage::stage_projection;
 use desk_compositor::{
-    Chrome, ChromeTheme, GroupNode, Node, NodeId, Rect, RectNode, Scene, SceneError, SurfaceNode,
-    TextureId, Wallpaper,
+    Chrome, ChromeTheme, GroupNode, Node, NodeId, Projection, Rect, RectNode, Scene, SceneError,
+    SurfaceNode, TextureId, Wallpaper,
 };
-
-use desk_wm::{FrameState, HostWindow};
+use desk_wm::HostWindow;
 
 use super::PAGE;
+use super::draw_map::{MapDrawn, MapSource};
+pub(super) use super::draw_pane::{Into, surface};
 use super::hosted::Hosted;
-use super::report::Card;
 
 /// A texture the compositor holds and its size in pixels.
 pub type Texture = (TextureId, (u32, u32));
@@ -36,6 +40,10 @@ pub struct Sources<'a> {
     pub page: Option<Texture>,
     /// A surface's texture, by surface host.
     pub surface: &'a dyn Fn(&str) -> Option<Texture>,
+    /// The spread while it is open, and the window manager's time (#54).
+    pub spread: Option<(&'a desk_wm::Spread, f64)>,
+    /// The canvas map while it shows (#54).
+    pub map: Option<MapSource<'a>>,
 }
 
 /// The nodes that show a surface, each with what it shows for input.
@@ -51,23 +59,21 @@ pub struct CardButton {
 
 /// What a scene was drawn with: the nodes that show surfaces, the cards' buttons, the parts of the
 /// desk's system surface drawn whole above the windows, and the system layer back to front (the
-/// page's own plugin surfaces by plugin, the desk's page as `desk`).
+/// page's own plugin surfaces by plugin, the desk's page as `desk`); and the spread's and the canvas
+/// map's nodes.
 #[derive(Debug, Default)]
 pub struct Drawn {
     pub shown: Shown,
     pub buttons: Vec<CardButton>,
     pub parts: Vec<String>,
     pub order: Vec<String>,
-}
-
-/// The commands a card's buttons run, in the order the page lists them: Not responding's Wait and
-/// Stop, a stopped frame's Reload.
-fn commands(state: FrameState) -> &'static [&'static str] {
-    match state {
-        FrameState::Late => &["desk.frames.wait", "desk.frames.stop"],
-        FrameState::Stopped => &["desk.frames.reload"],
-        _ => &[],
-    }
+    /// Each spread card's node a hit test finds, and its window.
+    pub cards: Vec<(NodeId, String)>,
+    /// The spread's bar.
+    pub bar: Vec<NodeId>,
+    /// The spread for assistive technology.
+    pub spread: Option<ChromeSpread>,
+    pub map: Option<MapDrawn>,
 }
 
 pub(super) fn rect(r: desk_wm::Rect) -> Rect {
@@ -75,7 +81,7 @@ pub(super) fn rect(r: desk_wm::Rect) -> Rect {
 }
 
 /// A surface's own logical pixels from a node's top left at `origin`: one per CSS pixel.
-fn target(surface: &str, origin: Vec2) -> Target {
+pub(super) fn target(surface: &str, origin: Vec2) -> Target {
     Target {
         surface: surface.to_owned(),
         origin,
@@ -156,6 +162,11 @@ pub fn draw(
         return Ok(drawn);
     };
     let s = from.scale;
+    let lens = match from.spread {
+        Some(_) => stage_projection(plan.screen.h as f32),
+        None => Projection::Orthographic,
+    };
+    scene.set_projection(lens);
     let desk = scene.insert(
         root,
         GroupNode {
@@ -175,6 +186,18 @@ pub fn draw(
         drawn.shown.push((node, target(PAGE, Vec2::ZERO)));
     }
     let mut chrome = Chrome::new(theme.clone());
+    if let Some((spread, now)) = from.spread {
+        let mut on = super::draw_spread::Stage {
+            scene,
+            chrome: &mut chrome,
+            desk,
+            hosted,
+            from,
+            drawn: &mut drawn,
+        };
+        on.draw(spread, now)?;
+        return Ok(drawn);
+    }
     for w in &plan.windows {
         // Where a drop would snap: under the window dragged there.
         if let Some((at, _)) = hosted.preview().filter(|(_, under)| *under == w.id) {
@@ -184,10 +207,13 @@ pub fn draw(
         window(scene, &mut chrome, desk, w, hosted, from, &mut drawn)?;
     }
     super::system::draw(scene, &mut chrome, desk, plan, hosted, from, &mut drawn)?;
+    if let Some(map) = &from.map {
+        drawn.map = Some(super::draw_map::draw(scene, &mut chrome, desk, map)?);
+    }
     Ok(drawn)
 }
 
-fn window(
+pub(super) fn window(
     scene: &mut Scene,
     chrome: &mut Chrome,
     desk: NodeId,
@@ -236,75 +262,6 @@ fn window(
     }
     // The title over the page's title bar, which hides what lies under the window in the page.
     scene.reorder(made.title, usize::MAX)?;
-    Ok(())
-}
-
-/// Where a plugin's surface goes: a group, the box in it, and the title a card names.
-pub(super) struct Into<'a> {
-    pub(super) group: NodeId,
-    pub(super) to: Rect,
-    pub(super) title: &'a str,
-}
-
-/// What a plugin pane shows: its surface's last frame, a card over it while it does not answer,
-/// or a card instead of it while it has none.
-pub(super) fn surface(
-    scene: &mut Scene,
-    chrome: &mut Chrome,
-    into: &Into,
-    plugin: &str,
-    hosted: &Hosted,
-    from: &Sources,
-    drawn: &mut Drawn,
-) -> Result<(), SceneError> {
-    let frame = hosted.frame(plugin);
-    let copy = hosted.report().map(|r| r.copy.clone()).unwrap_or_default();
-    let state = frame.map_or(FrameState::Live, |f| f.state);
-    let host = frame.map(|f| f.host.as_str()).unwrap_or_default();
-    let card = |fallback: &str| {
-        let given = frame.and_then(|f| f.card.clone());
-        given.unwrap_or_else(|| Card {
-            title: into.title.to_owned(),
-            line: fallback.to_owned(),
-            actions: Vec::new(),
-        })
-    };
-    // A card lets the pointer through to the page, but for its buttons: each runs its command.
-    let mut shows = |c: &Card, chrome: &mut Chrome, scene: &mut Scene, over: bool| {
-        let actions: Vec<&str> = c.actions.iter().map(String::as_str).collect();
-        let made = chrome.card(
-            scene, into.group, into.to, &c.title, &c.line, &actions, over,
-        )?;
-        let first = made.len().saturating_sub(2 * actions.len());
-        let runs = commands(state);
-        let mut through = made[..first].to_vec();
-        for (i, pair) in made[first..].chunks(2).enumerate() {
-            match runs.get(i) {
-                Some(command) => drawn.buttons.push(CardButton {
-                    node: pair[0],
-                    command,
-                    plugin: plugin.to_owned(),
-                }),
-                None => through.push(pair[0]),
-            }
-            through.extend(pair.get(1));
-        }
-        pass(scene, through)
-    };
-    if state.away() {
-        return shows(&card(""), chrome, scene, false);
-    }
-    if hosted.surfaces().dead(host) {
-        return shows(&card(&copy.crashed), chrome, scene, false);
-    }
-    let Some(texture) = (from.surface)(host) else {
-        return shows(&card(&copy.loading), chrome, scene, false);
-    };
-    let node = scene.insert(into.group, sampled(into.to, texture, from.scale))?;
-    drawn.shown.push((node, target(host, Vec2::ZERO)));
-    if state == FrameState::Late {
-        shows(&card(""), chrome, scene, true)?;
-    }
     Ok(())
 }
 

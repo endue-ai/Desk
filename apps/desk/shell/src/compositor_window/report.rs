@@ -1,8 +1,9 @@
 //! What the shell page reports (`compositor_desk`, ADR 0151): what only the page knows of the
 //! desk, whose windows `desk-wm` holds (#83) and publishes: each plugin frame's document and
 //! state, the titles of its own views, the top chips' edges, the live budget's two settings, what
-//! a window without a live frame says (the page's copy, in the desk's language), the last desk it
-//! took and laid out, and where it lays a held window out.
+//! a window without a live frame says (the page's copy, in the desk's language, with the spread's and
+//! the canvas map's), the last desk it took and laid out, where it lays a held window out, and
+//! whether the canvas map is folded.
 
 use std::collections::BTreeMap;
 
@@ -107,7 +108,7 @@ impl Default for BudgetSettings {
     }
 }
 
-/// Labels for the placeholders the compositor draws itself.
+/// Labels for the placeholders the compositor draws itself, the spread's and the canvas map's.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct Copy {
     /// A frame that died, while it loads again.
@@ -116,6 +117,41 @@ pub struct Copy {
     /// A frame not painted yet.
     #[serde(default)]
     pub loading: String,
+    #[serde(default)]
+    pub spread: SpreadCopy,
+    #[serde(default)]
+    pub map: MapCopy,
+}
+
+/// What the spread says (ADR 0116): `{n}` and `{m}` count windows, `{q}` is what was typed,
+/// `{title}` a window's title.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(default, rename_all = "camelCase")]
+pub struct SpreadCopy {
+    pub label: String,
+    pub filter: String,
+    pub count: String,
+    pub count_of: String,
+    pub hint: String,
+    pub no_match: String,
+    pub option: String,
+    pub option_asleep: String,
+}
+
+/// What the canvas map says (ADR 0082).
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(default, rename_all = "camelCase")]
+pub struct MapCopy {
+    pub label: String,
+    pub show: String,
+    pub fold: String,
+}
+
+/// The canvas map as the person left it: folded to its button (the session keeps it).
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct MapState {
+    pub folded: bool,
 }
 
 /// The shell page's report.
@@ -146,6 +182,9 @@ pub struct DeskReport {
     /// The window the page lays out where a gesture holds it (`desk://compositor-held`).
     #[serde(default)]
     pub held: Option<Held>,
+    /// The canvas map, which the compositor draws (#54).
+    #[serde(default)]
+    pub map: MapState,
 }
 
 /// Where the page lays a held window out, in CSS pixels.
