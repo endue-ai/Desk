@@ -277,6 +277,12 @@ impl InputRouter {
         out
     }
 
+    /// The next press of the pointer goes to `surface`, whatever lies under it, and holds the
+    /// pointer for it until the last button goes up.
+    pub fn press_to(&mut self, surface: &str) {
+        self.pointer.press_to = Some(surface.to_owned());
+    }
+
     /// The surface with the keyboard focus.
     pub fn focused(&self) -> Option<&str> {
         self.focus.as_deref()

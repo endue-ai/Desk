@@ -53,7 +53,13 @@ pub struct Pointer {
     pub capture: Option<String>,
     /// The surfaces that think the pointer is in them now.
     pub hearing: Vec<String>,
+    /// The surface the next press goes to whatever lies under it: the window manager's grips lie
+    /// over the edges of a window's surfaces, and the page finds them (#80).
+    pub press_to: Option<String>,
     last: Option<Press>,
+    /// The press held now went further than a click's slop: it is a drag, and the next press
+    /// starts counting clicks again.
+    dragged: bool,
 }
 
 impl Pointer {
@@ -103,6 +109,9 @@ impl Pointer {
         settings: &PointerSettings,
     ) -> Vec<CompositorMessage> {
         self.at = at;
+        if !self.held.is_empty() && self.last.is_some_and(|p| p.at.distance(at) > settings.slop) {
+            self.dragged = true;
+        }
         let under = self.under(scene, targets);
         let main = self
             .capture
@@ -130,10 +139,14 @@ impl Pointer {
         now: Instant,
         settings: &PointerSettings,
     ) -> (Vec<CompositorMessage>, Option<String>) {
-        let under = self.under(scene, targets);
+        let mut under = self.under(scene, targets);
         if pressed {
             if self.held.contains(&button) {
                 return (Vec::new(), None);
+            }
+            if let Some(surface) = self.press_to.take().filter(|_| self.held.is_empty()) {
+                let at = targets.to_local(&surface, self.at).unwrap_or(Vec2::ZERO);
+                under = Some((surface, at));
             }
             if self.held.is_empty() {
                 self.capture = under.as_ref().map(|(s, _)| s.clone());
@@ -166,6 +179,10 @@ impl Pointer {
                 msg::pointer_button(surface, point, button, false, &self.held, clicks, mods)
             })
             .collect();
+        if self.held.is_empty() && std::mem::take(&mut self.dragged) {
+            // A drag is no click: a press right after it in the same place is a first click.
+            self.last = None;
+        }
         if self.held.is_empty() && self.capture.take().is_some() {
             // Released: the pointer belongs to what is under it again.
             let main = under.as_ref().map(|(s, _)| s.clone());

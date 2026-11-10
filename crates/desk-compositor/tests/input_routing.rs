@@ -95,6 +95,30 @@ fn a_press_captures_the_pointer_until_its_last_button_is_released() {
 }
 
 #[test]
+fn a_press_sent_to_the_underlay_holds_it_and_the_surface_under_it_hears_nothing() {
+    // A window's grip lies over its surface's edge: the window manager sends that press to the
+    // page, whose DOM finds the grip (#80).
+    let mut d = desk();
+    d.to(150.0, 80.0);
+    d.router.press_to(PAGE);
+    let down = d.press(true);
+    assert_eq!(
+        kinds(&down),
+        ["pointer.leave@a.one", "pointer.down@desk", "focus.in@desk"]
+    );
+    assert_eq!(point(&sent(&down)[1]), (150.0, 80.0), "the page's pixels");
+    assert_eq!(kinds(&d.to(160.0, 90.0)), ["pointer.move@desk"]);
+    assert_eq!(kinds(&d.press(false)), ["pointer.up@desk"]);
+    // Once only: the next press goes to what lies under it again.
+    d.to(150.0, 80.0);
+    let next = d.press(true);
+    assert_eq!(
+        kinds(&next)[..2],
+        ["pointer.down@a.one", "pointer.down@desk"]
+    );
+}
+
+#[test]
 fn the_underlay_hears_moves_and_presses_over_the_surfaces_but_never_their_wheels() {
     let mut d = desk();
     assert_eq!(kinds(&d.to(10.0, 10.0)), ["pointer.move@desk"]);
@@ -167,6 +191,15 @@ fn quick_presses_in_one_place_count_as_a_double_click() {
         1,
         "too late for a double click"
     );
+    // A drag is no click: pressed again where it started, a moment later, it is a first click
+    // (a title bar dragged twice is not double-clicked, #80).
+    d.now += Duration::from_secs(1);
+    d.to(150.0, 80.0);
+    d.press(true);
+    d.to(190.0, 80.0);
+    d.press(false);
+    d.to(150.0, 80.0);
+    assert_eq!(clicks(&d.press(true)), 1, "after a drag");
 }
 
 #[test]
