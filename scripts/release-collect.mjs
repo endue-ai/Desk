@@ -1,10 +1,12 @@
 #!/usr/bin/env node
-// Copy one target's Tauri bundles into the release folder under canonical names (ADR 0054):
-// endue-desk_<version>_<target><ext>, each updater artifact with its .sig, the first-install image
-// (.dmg) without. Tauri names its output after the product ("endue Desk"), with spaces; R2 keys
-// and URLs should not have them.
-//   node scripts/release-collect.mjs --bundle target/<triple>/release/bundle --version V
-//     --target darwin-aarch64|darwin-x86_64|windows-x86_64|linux-x86_64 --out dist
+// Copy one target's bundles into the release folder under canonical names (ADR 0054):
+// endue-desk_<version>_<target><ext>, each updater artifact with its .sig, the first-install images
+// (.dmg, .msi) without. Tauri names its output after the product ("endue Desk"), with spaces, and so
+// does cargo-packager for the CEF desk (scripts/cef-package.mjs, same folder layout); R2 keys and URLs
+// should not have them. The two shells ship slightly different sets: the CEF desk adds an MSI and,
+// with no .rpm in cargo-packager, drops the .rpm (#46).
+//   node scripts/release-collect.mjs --bundle <bundle folder> --version V
+//     --target darwin-aarch64|darwin-x86_64|windows-x86_64|linux-x86_64 --out dist [--shell tauri|cef]
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -15,25 +17,38 @@ export const KINDS = {
     { folder: "macos", match: /\.app\.tar\.gz$/u, ext: ".app.tar.gz", signed: true },
     { folder: "dmg", match: /\.dmg$/u, ext: ".dmg", signed: false },
   ],
-  windows: [{ folder: "nsis", match: /-setup\.exe$/u, ext: "-setup.exe", signed: true }],
+  windows: [
+    { folder: "nsis", match: /-setup\.exe$/u, ext: "-setup.exe", signed: true },
+    { folder: "msi", match: /\.msi$/u, ext: ".msi", signed: false, shells: ["cef"] },
+  ],
   linux: [
     { folder: "appimage", match: /\.AppImage$/u, ext: ".AppImage", signed: true },
     { folder: "deb", match: /\.deb$/u, ext: ".deb", signed: true },
     // RPM takes no hyphen in a version, so pre-releases (canary, beta) build no .rpm.
-    { folder: "rpm", match: /\.rpm$/u, ext: ".rpm", signed: true, releasesOnly: true },
+    {
+      folder: "rpm",
+      match: /\.rpm$/u,
+      ext: ".rpm",
+      signed: true,
+      releasesOnly: true,
+      shells: ["tauri"],
+    },
   ],
 };
 
 export const TARGETS = ["darwin-aarch64", "darwin-x86_64", "windows-x86_64", "linux-x86_64"];
+export const SHELLS = ["tauri", "cef"];
 
 /** Copy `target`'s bundles from `bundle` into `out`; answers the names written. */
-export function collect({ bundle, version, target, out }) {
+export function collect({ bundle, version, target, out, shell = "tauri" }) {
   if (!TARGETS.includes(target)) throw new Error(`unknown target ${target}`);
+  if (!SHELLS.includes(shell)) throw new Error(`unknown shell ${shell}`);
   mkdirSync(out, { recursive: true });
   const written = [];
   const preRelease = version.includes("-");
   for (const kind of KINDS[target.split("-")[0]]) {
     if (kind.releasesOnly && preRelease) continue;
+    if (kind.shells && !kind.shells.includes(shell)) continue;
     const folder = join(bundle, kind.folder);
     const found = existsSync(folder)
       ? readdirSync(folder).filter((name) => kind.match.test(name))
@@ -65,6 +80,7 @@ function main(args) {
     version: value("--version"),
     target: value("--target"),
     out: value("--out"),
+    shell: args.includes("--shell") ? value("--shell") : "tauri",
   });
   for (const name of names) console.log(name);
 }

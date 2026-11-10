@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- What cargo-packager merges into the CEF desk's Info.plist (#46): the Tauri app's usage
+     descriptions (apps/desk/src-tauri/Info.plist), the camera that web plugins may ask for, CEF's own
+     keys, and the files Finder offers to open with the desk (the Tauri app's list, as Alternate, so
+     the desk never takes them from their default app). -->
+<plist version="1.0">
+<dict>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>endue Desk shows your calendar events in the views you open. They stay on this Mac.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>endue Desk shows your calendar events in the views you open. They stay on this Mac.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Eris listens when you click her and talk. The sound stays on this Mac.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Eris turns what you say to her into words, so she can answer it.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>endue Desk shows your reminders in the views you open. They stay on this Mac.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>endue Desk shows your reminders in the views you open. They stay on this Mac.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>A plugin you opened asks for the camera. The picture stays on this Mac.</string>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+	<key>LSEnvironment</key>
+	<dict>
+		<key>MallocNanoZone</key>
+		<string>0</string>
+	</dict>
+	<key>LSFileQuarantineEnabled</key>
+	<true/>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict><key>CFBundleTypeName</key><string>Markdown</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>md</string></array><key>CFBundleTypeMIMETypes</key><array><string>text/markdown</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>Plain text</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>txt</string></array><key>CFBundleTypeMIMETypes</key><array><string>text/plain</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>CSV</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>csv</string></array><key>CFBundleTypeMIMETypes</key><array><string>text/csv</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>Excel workbook</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>xlsx</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>Word document</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>docx</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>PowerPoint presentation</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>pptx</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>PDF</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>pdf</string></array><key>CFBundleTypeMIMETypes</key><array><string>application/pdf</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>PNG image</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>png</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>JPEG image</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>jpg</string><string>jpeg</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>GIF image</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>gif</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>WebP image</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>webp</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>MP3 audio</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>mp3</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>MP4 video</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>mp4</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>ZIP archive</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>zip</string></array></dict>
+		<dict><key>CFBundleTypeName</key><string>HTML document</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>CFBundleTypeExtensions</key><array><string>html</string></array></dict>
+	</array>
+</dict>
+</plist>

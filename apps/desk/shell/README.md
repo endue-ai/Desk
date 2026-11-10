@@ -24,7 +24,8 @@ binary is `endue-desk-cef`.
 - `crashes::watch`: Chromium's target discovery names a plugin frame whose renderer died (`desk://frame-crashed`).
 
 Gaps: no tray on Linux yet (it needs a GTK loop); the pointer's display and the work area come from
-AppKit on macOS only; "Restart to update" waits for #47; Finder's document types wait for #46.
+AppKit on macOS only; "Restart to update" waits for #47. Release bundles (Finder's document types
+included) come from `packager/` (#46); `just build-shell` makes the development bundle.
 
 ## Run and test
 

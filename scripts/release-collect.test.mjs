@@ -124,4 +124,63 @@ describe("release-collect", () => {
       /expected one \.AppImage/u,
     );
   });
+
+  it("the_cef_desk_adds_an_msi_beside_nsis_and_ships_no_rpm", () => {
+    const windows = bundle({
+      nsis: ["endue Desk_0.5.0_x64-setup.exe", "endue Desk_0.5.0_x64-setup.exe.sig"],
+      msi: ["endue Desk_0.5.0_x64_en-US.msi"],
+    });
+    assert.deepEqual(
+      collect({
+        bundle: windows,
+        version: "0.5.0",
+        target: "windows-x86_64",
+        out: join(windows, "dist"),
+        shell: "cef",
+      }),
+      [
+        "endue-desk_0.5.0_windows-x86_64-setup.exe",
+        "endue-desk_0.5.0_windows-x86_64-setup.exe.sig",
+        "endue-desk_0.5.0_windows-x86_64.msi",
+      ],
+      "the MSI is a first-install image: no updater signature",
+    );
+    assert.throws(
+      () =>
+        collect({
+          bundle: bundle({ nsis: ["a-setup.exe", "a-setup.exe.sig"] }),
+          version: "0.5.0",
+          target: "windows-x86_64",
+          out: join(windows, "d"),
+          shell: "cef",
+        }),
+      /expected one \.msi/u,
+    );
+    const linux = bundle({
+      appimage: [
+        "endue-desk-cef_0.5.0_x86_64.AppImage",
+        "endue-desk-cef_0.5.0_x86_64.AppImage.sig",
+      ],
+      deb: ["endue-desk-cef_0.5.0_amd64.deb", "endue-desk-cef_0.5.0_amd64.deb.sig"],
+    });
+    const names = collect({
+      bundle: linux,
+      version: "0.5.0",
+      target: "linux-x86_64",
+      out: join(linux, "dist"),
+      shell: "cef",
+    });
+    assert.equal(names.length, 4, "a final of the CEF desk has no .rpm: cargo-packager makes none");
+    assert.throws(
+      () =>
+        collect({
+          bundle: linux,
+          version: "0.5.0",
+          target: "linux-x86_64",
+          out: "d",
+          shell: "electron",
+        }),
+      /unknown shell/u,
+    );
+  });
 });

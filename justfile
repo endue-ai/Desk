@@ -101,10 +101,28 @@ test-app-e2e *args:
     pnpm exec wdio run e2e/wdio.conf.ts "$@"
 
 # Install smoke: launch the CEF desk's build with a temp HOME, wait 60 s for the ready line, quit it
-# with SIGTERM (it has no package to install until #46). DESK_E2E_SHELL=tauri builds and installs the
-# Tauri .deb (apt, sudo) first, on Linux only. Linux under a display, macOS
-smoke:
-    e2e/smoke/install-and-launch.sh
+# with SIGTERM. Given a package (`just package-shell` makes them), install that and check its
+# signatures and sizes first. DESK_E2E_SHELL=tauri builds and installs the Tauri .deb (apt, sudo)
+# first, on Linux only. Linux under a display, macOS, Windows
+[positional-arguments]
+smoke *package:
+    e2e/smoke/install-and-launch.sh "$@"
+
+# Package the CEF desk for this machine with cargo-packager (#46, ADR 0145): the pinned CEF (fetched
+# and hash-checked into ~/.cache/desk/cef), a release build against it, then the .app, .dmg and
+# .app.tar.gz (macOS), NSIS and MSI (Windows) or .deb and AppImage (Linux) in
+# target/packager/<triple>/bundle. Ad-hoc signed on macOS unless APPLE_SIGNING_IDENTITY is set
+package-shell version="0.0.0": build-sdk build-ui
+    #!/usr/bin/env bash
+    set -euo pipefail
+    triple="$(rustc -vV | sed -n 's/^host: //p')"
+    CEF_PATH="$(node scripts/cef-fetch.mjs --target "$triple")"
+    export CEF_PATH
+    pnpm --filter @endue-ai/desk-app build
+    # Linux: the desk finds libcef.so beside itself.
+    if [ "$(uname -s)" = Linux ]; then export RUSTFLAGS='-C link-arg=-Wl,-rpath,$ORIGIN'; fi
+    cargo build -p desk-shell --bins --release
+    node scripts/cef-package.mjs --target "$triple" --version "{{version}}"
 
 # Refuse with one line and exit 2 on macOS, where the recipe's tools do not run
 [no-exit-message]
