@@ -4,6 +4,9 @@ date: 2026-11-10
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0153: in compositor mode `desk-wm` runs the window gestures on the
+compositor's input and publishes each change, which the runtime takes as the truth for geometry.
+
 # The compositor places windows from desk-wm, fed by the desk the runtime keeps, and keeps the live budget
 
 ## Context and Problem Statement
