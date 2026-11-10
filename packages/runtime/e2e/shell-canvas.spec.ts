@@ -75,8 +75,9 @@ test("a normal window follows the pan, a floating one stays anchored, and switch
   expect(await canvas.boundingBox()).toEqual({ ...before, x: before.x - 120, y: before.y + 60 });
   expect(await floating.boundingBox()).toEqual(fixed);
   await page.setViewportSize({ width: 1100, height: 800 });
+  // Chromium sends resize with the next frame: the floating window moves then, the normal one not.
+  await expect.poll(() => floating.boundingBox()).not.toEqual(fixed);
   expect(await canvas.boundingBox()).toEqual({ ...before, x: before.x - 120, y: before.y + 60 });
-  expect(await floating.boundingBox()).not.toEqual(fixed);
   await page.setViewportSize(DESK);
   await floating.getByRole("button", { name: "Close", exact: true }).click();
   const moved = await canvas.boundingBox();
