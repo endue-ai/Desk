@@ -192,7 +192,15 @@ export function mountModes(root: HTMLElement, ctx: ShellCtx): () => void {
     listen(row, "focusin", () => ctx.store.set({ modesOpen: true })),
     listen(el, "focusout", (e) => {
       const next = (e as FocusEvent).relatedTarget as Node | null;
-      if (!next || !el.contains(next)) ctx.store.set({ modesOpen: false });
+      if (next && el.contains(next)) return;
+      // Chromium says focusout too when a draw replaces the focused chip (WebKit says nothing). Once
+      // the draw is done: its new copy may have the focus back, and a chip the draw took away is no
+      // move out of the row either (leaving the row with the pointer folds it then).
+      const left = e.target as Node;
+      queueMicrotask(() => {
+        if (el.contains(document.activeElement) || !left.isConnected) return;
+        ctx.store.set({ modesOpen: false });
+      });
     }),
     // A wheel scrolls a long row sideways, as the desktop switcher's.
     listen(
