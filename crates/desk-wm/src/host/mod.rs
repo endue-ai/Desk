@@ -85,11 +85,17 @@ impl HostWindow {
     /// From its left and right edges, where its title's text starts and ends: past the icon and
     /// before the tools, both moved in by the top chips' clearance of a fill (ADR 0132).
     pub fn title_insets(&self) -> (f64, f64) {
-        let pad = |clear: Option<f64>, own: f64| clear.map_or(own, |c| c.max(own));
-        let start = pad(self.clearance.left, 12.0) - 12.0 + TITLE_START + BORDER;
-        let end = pad(self.clearance.right, 8.0) - 8.0 + TITLE_END + BORDER;
-        (start, end)
+        title_insets_of(self.clearance)
     }
+}
+
+/// The same for a window whose title keeps `clearance`: what the window manager reads of a window
+/// it hit-tests where it is drawn (#124).
+pub fn title_insets_of(clearance: TitleClearance) -> (f64, f64) {
+    let pad = |clear: Option<f64>, own: f64| clear.map_or(own, |c| c.max(own));
+    let start = pad(clearance.left, 12.0) - 12.0 + TITLE_START + BORDER;
+    let end = pad(clearance.right, 8.0) - 8.0 + TITLE_END + BORDER;
+    (start, end)
 }
 
 impl HostPane {

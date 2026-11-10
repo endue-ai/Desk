@@ -2,11 +2,13 @@
 //! the window reach `desk-wm`'s [`desk_wm::interact::Wm`] before the router. The page still finds
 //! what a press lands on: a press on a window's grip goes to the page, not to the plugin surface
 //! the grip lies over, and the page says with `compositor_grab` that the press starts a move, a
-//! resize or a pan. The window manager runs the gesture; the runtime hears each change it makes
-//! (`desk://compositor-wm`) and takes it as the truth, and the page lays a held window out where
-//! it is held (`desk://compositor-held`), so what it draws of the window follows. A card's buttons
-//! are the compositor's own: they run `desk.frames.wait`, `stop` and `reload` in the page
-//! (`desk://compositor-run`). The desk's window commands come as `compositor_wm`.
+//! resize or a pan; on a window still gliding, which the page lays out where the glide ends, the
+//! window manager finds that itself where the window is drawn (#124). The window manager runs the
+//! gesture; the runtime hears each change it makes (`desk://compositor-wm`) and takes it as the
+//! truth, and the page lays a held window out where it is held (`desk://compositor-held`), so what
+//! it draws of the window follows. A card's buttons are the compositor's own: they run
+//! `desk.frames.wait`, `stop` and `reload` in the page (`desk://compositor-run`). The desk's window
+//! commands come as `compositor_wm`.
 
 use std::time::Instant;
 
@@ -86,6 +88,11 @@ impl CompositorWindow {
                         }
                         _ => at,
                     };
+                    // On a window still gliding, desk-wm finds what the press starts where the
+                    // window is drawn (#124), its title clear of the top chips as they are drawn.
+                    if let Some(top) = self.hosted.report().map(|r| r.top) {
+                        self.hosted.wm.set_top_chrome(top);
+                    }
                     (self.hosted.wm.pressed_at(at, page), false)
                 } else if let Some(held) = self.gestures.pressed.take() {
                     if button == Some(held) {

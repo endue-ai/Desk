@@ -5,9 +5,11 @@
 //! rules run on the window manager the compositor drives (`desk_wm::interact::Wm`): a press, the
 //! page's grab (what its DOM found under the press), the pointer's moves and the release, in app
 //! pixels, and what it publishes, draws and holds. `interactions/wm.rs` has the seam to the
-//! runtime and the window commands.
+//! runtime and the window commands, `interactions/mid_glide.rs` a press on a window mid-glide.
 
 mod common;
+#[path = "interactions/mid_glide.rs"]
+mod mid_glide;
 #[path = "interactions/snap.rs"]
 mod snap;
 #[path = "interactions/support.rs"]

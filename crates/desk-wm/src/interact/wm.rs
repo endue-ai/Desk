@@ -7,6 +7,7 @@
 
 use std::collections::BTreeMap;
 
+use crate::clearance::TopChrome;
 use crate::coordinates::screen_rect;
 use crate::desk::Desk;
 use crate::fill::snap_rect;
@@ -52,6 +53,10 @@ pub struct Wm {
     pub(super) press: Option<PressLog>,
     pub(super) gesture: Option<Gesture>,
     pub(super) glides: BTreeMap<String, Glide>,
+    /// A window a press stopped mid-glide, drawn where it stopped until the press ends (#124).
+    pub(super) stopped: Option<(String, Rect)>,
+    /// The top chips' edges, which a fill's title keeps clear of (`mid_glide.rs`).
+    pub(super) top: TopChrome,
     pub(super) preview: Preview,
     /// Grabs and commands for a window the runtime has not published yet: the page's calls each
     /// run on a thread of their own, so one may overtake the desk it follows (`pointer.rs`).
@@ -85,6 +90,8 @@ impl Wm {
             press: None,
             gesture: None,
             glides: BTreeMap::new(),
+            stopped: None,
+            top: TopChrome::default(),
             preview: Preview::default(),
             waiting: Vec::new(),
             clock: 0.0,
@@ -158,7 +165,8 @@ impl Wm {
         Some(screen_rect(&p, pan, self.screen.w, self.screen.h))
     }
 
-    /// Where window `id` is drawn now: under the pointer, gliding, or at its placement.
+    /// Where window `id` is drawn now: under the pointer, where a press stopped its glide, gliding,
+    /// or at its placement.
     pub fn drawn_rect(&self, id: &str, now: f64) -> Option<Rect> {
         if let Some(Live::Window { id: held, rect, .. }) =
             self.gesture.as_ref().and_then(Gesture::live)
@@ -166,6 +174,11 @@ impl Wm {
         {
             let g = self.gesture.as_ref()?;
             return Some(g.sized(*rect, now, self.motion));
+        }
+        if let Some((stopped, rect)) = &self.stopped
+            && stopped == id
+        {
+            return Some(*rect);
         }
         if let Some(glide) = self.glides.get(id) {
             return Some(glide.at(now));

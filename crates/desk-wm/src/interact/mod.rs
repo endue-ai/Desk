@@ -9,6 +9,7 @@
 //! - `gesture`: moving by the title bar (snapping at the edges and corners, coming off a fill),
 //!   resizing from a grip, Shift + drag panning the canvas.
 //! - `motion`: the desk's easing, a rect gliding, the snap preview growing and gliding.
+//! - `mid_glide`: a press on a window mid-glide, found where the window is drawn (#124).
 //! - `wm`, `pointer`, `ops`: [`Wm`], the window manager the compositor drives: the runtime's desk
 //!   with what it changed since, the compositor's pointer and keys, the `desk.display.*` window
 //!   commands, and each frame's places.
@@ -16,6 +17,7 @@
 
 pub mod drag;
 pub mod gesture;
+mod mid_glide;
 pub mod motion;
 pub mod ops;
 pub mod pointer;

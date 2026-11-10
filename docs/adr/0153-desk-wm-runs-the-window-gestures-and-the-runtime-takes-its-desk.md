@@ -76,6 +76,14 @@ which alone knows what floats above a window, still says what a press starts.
   (`desk://compositor-held`, echoed in the report), and what the page draws of a window is taken
   from where the page lays it out to where it is drawn (`host::Places`, `page_parts`), the title
   bar's tools kept to its right end.
+* **A press mid-glide** (#124). The page lays a gliding window out where its glide ends, so what
+  its DOM finds under a press on the window as drawn is not what the person pressed. While the
+  window topmost under a press glides, `desk-wm` hit-tests the press against the rectangle drawn
+  last (`interact/mid_glide.rs`): a grip resizes the window, its title bar away from its tools (and
+  from the top chips over a fill's) moves it, the gesture starting with the press and the page's
+  grab for it unheard. The glide ends at once: the window stays where it was drawn while the press
+  holds it, and a drag takes it from there; a press that never drags, or a cancelled drag, lets it
+  glide on from there. A press elsewhere on it is the page's and the surfaces' as before.
 * **Cards.** A placeholder card's Wait, Stop and Reload are the compositor's own buttons: they run
   `desk.frames.wait`, `stop` and `reload` for their plugin in the page (`desk://compositor-run`).
 * **Window commands.** `desk.display.maximize`, the eight `snap-*`, `move-*` and the four

@@ -54,16 +54,22 @@ impl Wm {
         self.pressed_at(at, at)
     }
 
-    /// The primary button went down at `at`, which the page heard at `page`.
+    /// The primary button went down at `at`, which the page heard at `page`. On a window gliding
+    /// as last drawn, the window manager finds what the press starts itself, and no grab counts
+    /// for it (`mid_glide.rs`).
     pub fn pressed_at(&mut self, at: Point, page: Point) -> Vec<Out> {
-        let out = self.cancel_gesture();
+        let mut out = self.cancel_gesture();
         // A grab still waiting is for an earlier press.
         self.waiting.retain(|w| !matches!(w, Waiting::Grab { .. }));
+        let taken = self.press_mid_glide(at);
+        if taken {
+            out.push(Out::Redraw);
+        }
         self.press = Some(PressLog {
             at,
             page,
             events: Vec::new(),
-            taken: false,
+            taken,
         });
         out
     }
@@ -188,6 +194,8 @@ impl Wm {
             return Vec::new();
         };
         self.preview.hide();
+        // A window the press stopped mid-glide glides on from there.
+        self.resume_glide(self.clock);
         match gesture.cancel() {
             Some(Done::Back { .. }) => vec![Out::Held(None), Out::Redraw],
             Some(Done::Pan { desktop, pan }) => vec![self.change(Change::Pan { desktop, pan })],
@@ -215,7 +223,10 @@ impl Wm {
             }
             _ => {}
         }
-        if !gesture.over() {
+        if gesture.over() {
+            // It could not start (the window went, or is pinned).
+            self.resume_glide(now);
+        } else {
             self.gesture = Some(gesture);
         }
         out
@@ -227,6 +238,12 @@ impl Wm {
         };
         self.preview.hide();
         let done = gesture.released(&self.drawn, at, self.screen);
+        // A window the press stopped mid-glide and never dragged glides on from there; a drop
+        // places it.
+        if done.is_none() {
+            self.resume_glide(now);
+        }
+        self.stopped = None;
         let motion = self.motion;
         let mut out = Vec::new();
         match done {
