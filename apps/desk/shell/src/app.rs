@@ -7,7 +7,7 @@ use cef::*;
 
 use crate::pump::Pump;
 use crate::renderer::ShellRenderer;
-use crate::scheme;
+use crate::{sandbox, scheme};
 
 /// The scheme plugin files load from (ADR 0012, served by `plugin_scheme`).
 pub const PLUGIN_SCHEME: &str = "desk-plugin";
@@ -53,10 +53,16 @@ wrap_app! {
     impl App {
         fn on_before_command_line_processing(
             &self,
-            _process_type: Option<&CefStringUtf16>,
+            process_type: Option<&CefStringUtf16>,
             command_line: Option<&mut CommandLine>,
         ) {
             let Some(command_line) = command_line else { return };
+            // The browser process's own command line: a release build drops the switches that
+            // weaken isolation before Chromium reads them, so its subprocesses never get them
+            // (#104, ADR 0148). A subprocess's command line is the browser's to write.
+            if process_type.is_none_or(|kind| kind.to_string().is_empty()) {
+                sandbox::drop_weakening(command_line);
+            }
             for switch in ["no-startup-window", "noerrdialogs", "hide-crash-restore-bubble"] {
                 command_line.append_switch(Some(&switch.into()));
             }

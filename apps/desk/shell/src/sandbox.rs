@@ -13,10 +13,60 @@
 //! Windows: CEF 156 sandboxes only an app built as a client DLL that its `bootstrap.exe` loads
 //! (`CEF_USE_BOOTSTRAP`), so the desk becomes `endue-desk-cef.dll` beside the bootstrap renamed
 //! `endue-desk-cef.exe`, which loads the DLL of its own name.
+//!
+//! A release build drops `--no-sandbox` and the other switches that weaken isolation (`WEAKENING`)
+//! from its own command line before Chromium reads it, so no launcher, shortcut or pasted command
+//! turns them off (#104); a development build keeps them for debugging.
 
 /// CEF's `no_sandbox`: 0 where the sandbox is on (macOS), 1 where it waits for #61.
 pub const fn no_sandbox() -> i32 {
     if cfg!(target_os = "macos") { 0 } else { 1 }
+}
+
+/// Switches that weaken the desk's isolation as they would Chrome's (#104): the sandbox off for
+/// every subprocess or the GPU process, the web's origin checks or site isolation off, every page
+/// in one process, the GPU in the browser process, or DevTools open to anything on the machine
+/// (the shell opens DevTools only through `DESK_REMOTE_DEBUGGING_PORT`, in a development build).
+pub const WEAKENING: [&str; 8] = [
+    "no-sandbox",
+    "disable-web-security",
+    "remote-debugging-port",
+    "remote-debugging-pipe",
+    "single-process",
+    "disable-site-isolation-trials",
+    "disable-gpu-sandbox",
+    "in-process-gpu",
+];
+
+/// Whether this is a release build, whose own command line cannot weaken its isolation.
+pub const RELEASE: bool = !cfg!(debug_assertions);
+
+/// The switches of a desk's own command line (`switches`, by name as Chromium parsed them) that it
+/// drops before Chromium reads them (#104, ADR 0148). A release build drops every weakening one,
+/// `no-sandbox` only where the sandbox is on (`sandboxed`): where it waits for #61, CEF put it there
+/// itself from `no_sandbox`. A development build keeps them all, for debugging.
+pub fn ignored(switches: &[String], release: bool, sandboxed: bool) -> Vec<&str> {
+    if !release {
+        return Vec::new();
+    }
+    switches
+        .iter()
+        .map(String::as_str)
+        .filter(|name| WEAKENING.contains(name) && (sandboxed || *name != "no-sandbox"))
+        .collect()
+}
+
+/// Drop from the browser process's command line, before Chromium reads it, the switches `ignored`
+/// names, each with a line on stderr. CEF has already added what its settings ask for.
+pub fn drop_weakening(command_line: &mut cef::CommandLine) {
+    use cef::ImplCommandLine;
+    let mut map = cef::CefStringMap::new();
+    command_line.switches(Some(&mut map));
+    let given: Vec<String> = map.into_iter().map(|(name, _)| name).collect();
+    for name in ignored(&given, RELEASE, no_sandbox() == 0) {
+        command_line.remove_switch(Some(&name.into()));
+        eprintln!("endue Desk: a release build ignores --{name} (ADR 0148)");
+    }
 }
 
 /// Where CEF's sandbox library sits from a helper executable
@@ -54,12 +104,86 @@ pub fn enter(args: &cef::args::Args) -> Result<Entered, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{library_path, no_sandbox};
+    use super::{WEAKENING, ignored, library_path, no_sandbox};
     use std::path::Path;
+
+    /// A desk's own command line as Chromium parsed it: its switches by name.
+    fn switches(names: &[&str]) -> Vec<String> {
+        names.iter().map(|name| (*name).to_owned()).collect()
+    }
+
+    /// What the shell itself puts on the browser's command line (`app.rs`), and what CEF adds.
+    const THE_SHELLS: [&str; 8] = [
+        "no-startup-window",
+        "noerrdialogs",
+        "hide-crash-restore-bubble",
+        "use-mock-keychain",
+        "site-per-process",
+        "renderer-process-limit",
+        "enable-features",
+        "lang",
+    ];
 
     #[test]
     fn the_sandbox_is_on_on_macos_and_waits_elsewhere() {
         assert_eq!(no_sandbox(), if cfg!(target_os = "macos") { 0 } else { 1 });
+    }
+
+    #[test]
+    fn a_release_build_ignores_every_switch_that_weakens_isolation() {
+        let given = switches(&[
+            "no-startup-window",
+            "no-sandbox",
+            "disable-web-security",
+            "remote-debugging-port",
+            "remote-debugging-pipe",
+            "single-process",
+            "disable-site-isolation-trials",
+            "disable-gpu-sandbox",
+            "in-process-gpu",
+            "site-per-process",
+        ]);
+        assert_eq!(
+            ignored(&given, true, true),
+            [
+                "no-sandbox",
+                "disable-web-security",
+                "remote-debugging-port",
+                "remote-debugging-pipe",
+                "single-process",
+                "disable-site-isolation-trials",
+                "disable-gpu-sandbox",
+                "in-process-gpu",
+            ]
+        );
+        let all = switches(&WEAKENING);
+        assert_eq!(ignored(&all, true, true), WEAKENING);
+    }
+
+    #[test]
+    fn a_development_build_keeps_them_for_debugging() {
+        let all = switches(&WEAKENING);
+        assert!(ignored(&all, false, true).is_empty());
+        assert!(ignored(&all, false, false).is_empty());
+    }
+
+    #[test]
+    fn no_sandbox_stays_where_the_sandbox_waits_since_cef_set_it_there() {
+        let given = switches(&["no-sandbox", "disable-gpu-sandbox", "remote-debugging-port"]);
+        assert_eq!(
+            ignored(&given, true, false),
+            ["disable-gpu-sandbox", "remote-debugging-port"]
+        );
+    }
+
+    #[test]
+    fn the_shells_own_switches_and_anything_else_pass() {
+        let given = switches(&THE_SHELLS);
+        assert!(ignored(&given, true, true).is_empty());
+        // A switch is matched by its whole name, as Chromium parsed it.
+        let near = switches(&["no-sandbox-x", "remote-debugging-portal", "sandbox", "type"]);
+        assert!(ignored(&near, true, true).is_empty());
+        assert!(ignored(&[], true, true).is_empty());
     }
 
     #[test]

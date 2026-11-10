@@ -54,6 +54,16 @@ surfaces draw, not what a renderer may touch.
   point the bootstrap calls) beside `bootstrap.exe` renamed `endue-desk-cef.exe`, which loads the DLL
   of its own name, as the `cef` crate's `sandbox` feature lays it out; the installers and
   Authenticode signing take both.
+* **Its own command line** (#104). A release build drops the switches that weaken isolation
+  (`sandbox::WEAKENING`: `--no-sandbox`, `--disable-gpu-sandbox`, `--disable-web-security`,
+  `--disable-site-isolation-trials`, `--single-process`, `--in-process-gpu`,
+  `--remote-debugging-port`, `--remote-debugging-pipe`) from the browser process's command line,
+  each with a line on stderr. It drops them in CEF's `on_before_command_line_processing`, which
+  hands over the command line as Chromium parsed it, after CEF has added what its settings ask for
+  and before Chromium reads a switch or copies one to a subprocess: so on every OS, in every form
+  Chromium accepts (`-no-sandbox`, `/no-sandbox` on Windows). Where the sandbox waits for #61, CEF
+  itself sets `--no-sandbox` from `no_sandbox`, and it stays. A development build keeps them all for
+  debugging; the shell opens DevTools only through `DESK_REMOTE_DEBUGGING_PORT`, there.
 * **Proof.** `e2e/specs/sandbox.spec.ts` asks the kernel, with `sandbox_check(3)`, whether each
   renderer, the GPU process and each sandboxed utility has a sandbox and may read or write a file in
   `HOME` and the desk's data folder (no; the desk's own process may), and runs a plugin's bridge call,
@@ -65,8 +75,10 @@ surfaces draw, not what a renderer may touch.
 * Good, because the check is the kernel's answer from outside, and it is red on the build without the sandbox.
 * Bad, because Linux and Windows desks keep their renderers unsandboxed until #61, and Windows' plan
   reshapes the binary (a DLL behind CEF's bootstrap).
-* Bad, because `--no-sandbox` on the desk's command line still turns it off, as in Chrome; whoever can
-  start the desk with arguments already runs code as the person.
+* Good, because no launcher, shortcut or pasted command starts a release desk without its sandbox or
+  its site isolation, or with DevTools open to the machine, as one can start Chrome (#104).
+* Bad, because that stops mistakes and lures, not an attacker: whoever can start the desk with
+  arguments already runs code as the person. A development build still honours every switch.
 * Bad, because the app e2e needs a C compiler (`cc`) on macOS for its probe.
 
 ## More Information
