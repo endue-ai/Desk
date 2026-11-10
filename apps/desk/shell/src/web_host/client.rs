@@ -14,7 +14,7 @@ use desk_web::sender::Role;
 
 use super::WebHost;
 use crate::host::{self, Desk};
-use crate::renderer::{CALL, POST};
+use crate::renderer::{CALL, POST, WAKE};
 
 wrap_display_handler! {
     pub struct SurfaceDisplay {
@@ -208,13 +208,20 @@ wrap_client! {
 
         fn on_process_message_received(
             &self,
-            _browser: Option<&mut Browser>,
+            browser: Option<&mut Browser>,
             frame: Option<&mut Frame>,
             _source_process: ProcessId,
             message: Option<&mut ProcessMessage>,
         ) -> ::std::os::raw::c_int {
             let (Some(frame), Some(message)) = (frame, message) else { return 0 };
             let name = CefString::from(&message.name()).to_string();
+            // Its page, or a frame in it, asks for frames while the surface rests (#134).
+            if name == WAKE {
+                if let Some(browser) = browser {
+                    super::frames::asked(browser.identifier());
+                }
+                return 1;
+            }
             let text = message
                 .argument_list()
                 .map(|list| CefString::from(&list.string(0)).to_string())

@@ -5,10 +5,11 @@
 //! hint as a skip rule: 30 fps takes every other frame, 10 every sixth). Hidden, asleep and dead
 //! surfaces are not on it.
 //!
-//! A surface that painted nothing and heard nothing for `LONG_IDLE` takes at most `IDLE_RATE`
-//! frames a second, on frames every long-idle surface shares, so a desk at rest wakes for its clock
-//! 10 times a second rather than 60. Input, a message for it or to its page and a paint put it back
-//! on every frame its pace takes.
+//! A surface that painted nothing and heard nothing for `LONG_IDLE` rests: it takes no desk frame
+//! until it hears something (input, a compositor message for it), or its page asks for frames
+//! (`frame_asks.js`: a change of its own, or one a message to it made, that no frame came for), so
+//! a desk at rest has nothing on its clock (#134). An ask brings the desk frames within
+//! `ASKED_FOR`; a paint, input or a compositor message put it back on every frame its pace takes.
 //!
 //! A press, a key, a composition or a focus change an idle surface hears (one that painted nothing
 //! for `IDLE`) is followed by a begin frame every `PROMPT` from the press on, until it paints or for
@@ -39,10 +40,11 @@ pub const PROMPT: Duration = Duration::from_millis(1);
 pub const PROMPT_FOR: Duration = Duration::from_micros(33_333);
 /// A surface that painted nothing for this long is idle: a press prompts it.
 pub const IDLE: Duration = Duration::from_micros(33_333);
-/// A surface that painted nothing and heard nothing for this long is long idle: on the slow clock.
+/// A surface that painted nothing and heard nothing for this long is long idle: it rests.
 pub const LONG_IDLE: Duration = Duration::from_secs(1);
-/// The most desk frames a second a long-idle surface takes.
-pub const IDLE_RATE: u32 = 10;
+/// When a resting surface's page asks for frames, it takes the desk frames within this long: two or
+/// three, the renderer's frame and the display's.
+pub const ASKED_FOR: Duration = Duration::from_micros(41_667);
 /// The GPU's first copy after about a second without one takes milliseconds more, in the desk's
 /// process and in Chromium's GPU process alike (#133): input to a desk that painted nothing for
 /// this long wakes the GPU's copies first (`clock.rs`).
@@ -71,22 +73,40 @@ pub fn prompts(message: &M) -> bool {
     )
 }
 
-/// What a browser heard since the clock last looked: (identifier, when, whether it prompts).
-/// Input reaches a browser through `input::deliver` from the web host and from the compositor's
-/// page alike, and messages to its page through `host::send`; the host's clock takes them on its
-/// next look (CEF's UI thread, all of them).
-static HEARD: Mutex<Vec<(i32, Instant, bool)>> = Mutex::new(Vec::new());
+/// What a browser heard: input, which wakes it onto every desk frame; input whose paint should
+/// follow at once (`prompts`); or its page asking for frames while it rests (#134).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Heard {
+    Woken,
+    Prompt,
+    Asked,
+}
+
+/// What a browser heard since the clock last looked: (identifier, when, what). Input reaches a
+/// browser through `input::deliver` from the web host and from the compositor's page alike, and its
+/// page's asks as `desk.wake` messages; the host's clock takes them on its next look (CEF's UI
+/// thread, all of them).
+static HEARD: Mutex<Vec<(i32, Instant, Heard)>> = Mutex::new(Vec::new());
 /// The most kept for the next look: the oldest go first.
 const KEPT: usize = 64;
 
-/// Browser `browser` heard input or a message now; `prompt`: input whose paint should follow at
-/// once (`prompts`), else it only wakes the surface onto every desk frame.
+/// Browser `browser` heard input now; `prompt`: input whose paint should follow at once
+/// (`prompts`), else it only wakes the surface onto every desk frame.
 pub fn heard(browser: i32, prompt: bool) {
+    hear(browser, if prompt { Heard::Prompt } else { Heard::Woken });
+}
+
+/// Browser `browser`'s page asked for frames now (`frame_asks.js`).
+pub fn asked(browser: i32) {
+    hear(browser, Heard::Asked);
+}
+
+fn hear(browser: i32, what: Heard) {
     let mut heard = HEARD.lock().unwrap_or_else(|e| e.into_inner());
     if heard.len() >= KEPT {
         heard.remove(0);
     }
-    heard.push((browser, Instant::now(), prompt));
+    heard.push((browser, Instant::now(), what));
 }
 
 /// Whether a browser heard input whose paint should follow at once since the clock last looked:
@@ -96,11 +116,11 @@ pub fn prompted() -> bool {
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .iter()
-        .any(|(_, _, prompt)| *prompt)
+        .any(|(_, _, what)| *what == Heard::Prompt)
 }
 
 /// What the browsers heard since the last call.
-pub fn take_heard() -> Vec<(i32, Instant, bool)> {
+pub fn take_heard() -> Vec<(i32, Instant, Heard)> {
     std::mem::take(&mut *HEARD.lock().unwrap_or_else(|e| e.into_inner()))
 }
 
@@ -195,7 +215,7 @@ struct Press {
 }
 
 /// One surface's place on the clock: which desk frames its pace takes, when it last painted or
-/// heard something, and the begin frames a press asks for.
+/// heard something, the begin frames a press asks for, and until when its page asked for frames.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pacing {
     pace: u32,
@@ -207,6 +227,7 @@ pub struct Pacing {
     /// When it last painted or heard something (`None`: not looked at yet).
     active: Option<Instant>,
     press: Option<Press>,
+    asked: Option<Instant>,
 }
 
 impl Pacing {
@@ -219,6 +240,7 @@ impl Pacing {
             painted: None,
             active: None,
             press: None,
+            asked: None,
         }
     }
 
@@ -240,6 +262,12 @@ impl Pacing {
     /// The surface heard something at `at` (input, a message, a lifecycle change): it is awake.
     pub fn heard(&mut self, at: Instant) {
         self.active = Some(self.active.map_or(at, |t| t.max(at)));
+    }
+
+    /// Its page asked for frames at `at` (`frame_asks.js`): resting, it takes the desk frames within
+    /// `ASKED_FOR`, and a paint they bring wakes it as any paint does.
+    pub fn ask(&mut self, at: Instant) {
+        self.asked = Some(at + ASKED_FOR);
     }
 
     /// The surface heard a press or a key at `at`, having painted `paints` frames. An idle one
@@ -267,12 +295,13 @@ impl Pacing {
         self.saw(now, paints);
         self.active.get_or_insert(now);
         let paced = frame.is_some_and(|k| {
-            let long_idle = self.long_idle(now);
-            let takes = self.takes(k, long_idle);
-            if !long_idle && self.base.is_none_or(|base| base > k) {
+            if self.long_idle(now) {
+                return self.asked_at(now);
+            }
+            if self.base.is_none_or(|base| base > k) {
                 self.base = Some(k);
             }
-            takes
+            self.takes(k)
         });
         let pressed = self.pressed(now);
         paced || pressed
@@ -292,15 +321,15 @@ impl Pacing {
             .is_some_and(|t| now.saturating_duration_since(t) >= LONG_IDLE)
     }
 
-    /// Whether desk frame `k` is one its pace takes: counted from its base, or, long idle, at most
-    /// `IDLE_RATE` a second on the frames every long-idle surface takes.
-    fn takes(&self, k: u64, long_idle: bool) -> bool {
-        let (rate, from) = if long_idle {
-            (self.pace.min(IDLE_RATE), 0)
-        } else {
-            (self.pace, self.base.filter(|base| *base <= k).unwrap_or(k))
-        };
-        (k - from) * u64::from(rate) % u64::from(RATE) < u64::from(rate)
+    /// Whether its page's ask still holds at `now`.
+    fn asked_at(&self, now: Instant) -> bool {
+        self.asked.is_some_and(|until| now <= until)
+    }
+
+    /// Whether desk frame `k` is one its pace takes, counted from its base.
+    fn takes(&self, k: u64) -> bool {
+        let from = self.base.filter(|base| *base <= k).unwrap_or(k);
+        (k - from) * u64::from(self.pace) % u64::from(RATE) < u64::from(self.pace)
     }
 
     fn pressed(&mut self, now: Instant) -> bool {
@@ -325,14 +354,20 @@ impl Pacing {
     }
 
     /// When it wants its next look on `clock` at `now`: a press's next begin frame, or the next desk
-    /// frame its pace takes (within a second; `None` while the clock is stopped).
+    /// frame its pace takes (within a second; `None` while the clock is stopped), or, resting, the
+    /// next desk frame while its page's ask holds and none otherwise.
     pub fn next(&self, clock: &Clock, now: Instant) -> Option<Instant> {
-        let long_idle = self.long_idle(now);
         let last = clock.last();
-        let paced = (1..=u64::from(RATE))
-            .map(|j| last + j)
-            .find(|k| self.takes(*k, long_idle))
-            .and_then(|k| clock.at(k));
+        let paced = if self.long_idle(now) {
+            clock
+                .next()
+                .filter(|at| self.asked_at(now) && self.asked_at(*at))
+        } else {
+            (1..=u64::from(RATE))
+                .map(|j| last + j)
+                .find(|k| self.takes(*k))
+                .and_then(|k| clock.at(k))
+        };
         [self.press.map(|p| p.next), paced]
             .into_iter()
             .flatten()

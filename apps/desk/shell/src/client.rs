@@ -15,7 +15,7 @@ use desk_web::sender::Role;
 
 use crate::host::{self, Desk};
 use crate::pump::{Pump, Wake};
-use crate::renderer::{CALL, POST};
+use crate::renderer::{CALL, POST, WAKE};
 use crate::web_host::relay::Relay;
 
 wrap_life_span_handler! {
@@ -113,13 +113,20 @@ wrap_client! {
 
         fn on_process_message_received(
             &self,
-            _browser: Option<&mut Browser>,
+            browser: Option<&mut Browser>,
             frame: Option<&mut Frame>,
             _source_process: ProcessId,
             message: Option<&mut ProcessMessage>,
         ) -> ::std::os::raw::c_int {
             let (Some(frame), Some(message)) = (frame, message) else { return 0 };
             let name = CefString::from(&message.name()).to_string();
+            // The compositor's page asks for frames while it rests (#134); a window's never needs to.
+            if name == WAKE {
+                if let Some(browser) = browser {
+                    crate::web_host::frames::asked(browser.identifier());
+                }
+                return 1;
+            }
             let arg = |i| {
                 message
                     .argument_list()
