@@ -6,9 +6,12 @@
 //! then a kill); a process that ends while its surface is live is `died`, which the compositor
 //! recovers as it does a web surface's (#44). Its frames reach the compositor as `attach`es through
 //! the same `SurfaceSink` (`connection.rs`), its page messages reach the runtime through the relay,
-//! so the runtime's pings, kept state and live budget apply to it as to a web plugin.
+//! so the runtime's pings, kept state and live budget apply to it as to a web plugin. Tab crosses
+//! its window's stand-in as it crosses a web plugin's (#128): `focus.enter` in, `focus.leave` out
+//! (`page.rs`).
 
 mod connection;
+mod page;
 
 use std::collections::HashMap;
 use std::sync::mpsc::{self, SyncSender, TrySendError};
@@ -179,16 +182,13 @@ impl NativeHost {
         true
     }
 
-    /// The runtime's messages for `surface`'s page go to its process as `desk.message`.
+    /// The runtime's messages for `surface`'s page go to its process as `desk.message`, and Tab into
+    /// its stand-in as `focus.enter` (`page.rs`, #128).
     fn relay_down(&self, surface: &str) {
         let host = self.clone();
         let target = surface.to_owned();
         let down = move |text: String| {
-            let Ok(message) = serde_json::from_str::<Value>(&text) else {
-                return;
-            };
-            let value = json!({ "type": "desk.message", "surface": target, "message": message });
-            if let Ok(message) = serde_json::from_value::<CompositorMessage>(value) {
+            if let Some(message) = page::down(&target, &text) {
                 host.send(&message);
             }
         };

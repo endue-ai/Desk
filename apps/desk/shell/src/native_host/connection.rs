@@ -1,7 +1,8 @@
 //! One native plugin's surface connection, the desk's end: a writer thread for what the desk sends
 //! (the desk never waits on a plugin), and a reader thread for what the plugin sends. Frames go to
 //! the compositor's `SurfaceSink`, each answered with its `release`s; page messages go up to the
-//! runtime through the relay; `died` is the desk's to say and is dropped; a message about a surface
+//! runtime through the relay, and so does the focus it hands back (`focus.leave`, as a web page's
+//! `OnTakeFocus`); `died` is the desk's to say and is dropped; a message about a surface
 //! of another plugin is dropped. On macOS a frame's IOSurface comes as a Mach send right from the
 //! process the desk started, and only an IOSurface it sent can be named (`desk_surface::native::
 //! mach`): a plugin cannot show another surface's pixels.
@@ -125,6 +126,13 @@ impl Reader {
                 if let Ok(text) = serde_json::to_string(&post.message) {
                     self.host.relay.up(&post.surface, text);
                 }
+            }
+            // Past an end of its focus order: the shell page's focus goes on from its stand-in,
+            // which takes it only while it has that focus (#128).
+            SurfaceMessage::SurfaceFocusLeave(leave) => {
+                self.host
+                    .relay
+                    .leave(&leave.surface, super::page::forward(&leave));
             }
             other => {
                 self.host.sink.message(other);
