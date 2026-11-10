@@ -1,18 +1,21 @@
-//! The windows the compositor hosts (#81, ADR 0151): the runtime's desk mirrored into `desk-wm`,
-//! its plan for the desktop in front, the live budget and the surfaces' lifecycle. Each report
-//! from the page gives a new plan; the budget decides who keeps a renderer from it, and the runtime
+//! The windows the compositor hosts (#81, ADR 0151): the runtime's desk mirrored into `desk-wm`'s
+//! window manager (`interact::Wm`, ADR 0153), which changes it on the compositor's input, its plan
+//! for the desktop in front with the windows a gesture holds or that glide, the live budget and
+//! the surfaces' lifecycle. Each report from the page, and each change of the window manager's,
+//! gives a new plan; the budget decides who keeps a renderer from it, and the runtime
 //! hears that set (`desk://compositor-live`) and carries it out: it asks a window for its
 //! `desk:state`, takes its frame away and puts it back (until #83). The surfaces follow the frames
 //! the runtime reports, never where a frame sits in the page, so nothing loads again when a window
 //! is split, put away or shown on another desktop.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
 
 use desk_compositor::{ChromeTheme, Tokens};
 use desk_core::TokenTable;
 use desk_surface::generated::CompositorMessage;
-use desk_wm::{FrameDoc, FrameState, LiveBudget, Plan, Seat, Step, Surfaces};
+use desk_wm::interact::{Motion, Out, Wm};
+use desk_wm::{FrameDoc, FrameState, LiveBudget, Places, Plan, Rect, Seat, Size, Step, Surfaces};
 use serde_json::json;
 
 use super::report::{DeskReport, FrameReport};
@@ -23,6 +26,8 @@ pub struct Outcome {
     pub steps: Vec<Step>,
     /// The windows that keep a renderer, when the set changed: for the runtime.
     pub live: Option<Vec<String>>,
+    /// What the window manager calls for: the runtime's and the page's.
+    pub wm: Vec<Out>,
 }
 
 /// The chrome's look from the core's token table (ADR 0146).
@@ -33,6 +38,11 @@ pub fn look(table: &TokenTable) -> ChromeTheme {
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
     ChromeTheme::from_tokens(&tokens)
+}
+
+/// The window manager's motion from the core's token table: the glides and the snap preview.
+pub fn motion(table: &TokenTable) -> Motion {
+    Motion::from_tokens(|name| table.tokens.get(name).cloned(), table.reduced_motion)
 }
 
 /// A step as the protocol's message; `None` for a load, which is the web host's own.
@@ -89,6 +99,12 @@ pub struct Hosted {
     sent: Option<Vec<String>>,
     next: Option<f64>,
     origin: Instant,
+    /// The window manager (#80).
+    pub wm: Wm,
+    /// The snap preview and the window it lies under, as last planned.
+    preview: Option<(Rect, String)>,
+    /// Something glides: plan again each frame.
+    moving: bool,
 }
 
 impl Hosted {
@@ -104,7 +120,15 @@ impl Hosted {
             sent: None,
             next: None,
             origin: Instant::now(),
+            wm: Wm::new(),
+            preview: None,
+            moving: false,
         }
+    }
+
+    /// `now` on the window manager's clock, in milliseconds.
+    pub fn ms(&self, now: Instant) -> f64 {
+        now.saturating_duration_since(self.origin).as_secs_f64() * 1000.0
     }
 
     /// Take the page's `report` at `now`, unless an older one; what follows.
@@ -112,13 +136,61 @@ impl Hosted {
         if self.report.as_ref().is_some_and(|r| report.seq < r.seq) {
             return Outcome::default();
         }
-        let plan = (report.desk).host_plan(report.width, report.height, report.top, &report);
         self.docs = report.frames.iter().filter_map(doc).collect();
         let adopted: Vec<String> = report.desk.adopted.iter().map(|a| a.id.clone()).collect();
         self.count(&adopted, &report.frames);
-        self.plan = Some(plan);
+        let screen = Size {
+            w: report.width,
+            h: report.height,
+        };
+        let wm = self.wm.mirror(report.desk.clone(), report.applied, screen);
         self.report = Some(report);
+        let mut outcome = self.replan(now);
+        outcome.wm = wm;
+        outcome
+    }
+
+    /// Plan again from the window manager's desk at `now`: where each window is drawn (held,
+    /// gliding) and where the page lays it out; then look.
+    pub fn replan(&mut self, now: Instant) -> Outcome {
+        let Some(report) = &self.report else {
+            return Outcome::default();
+        };
+        let frame = self.wm.frame(self.ms(now));
+        let page = self.wm.page();
+        let pan = page.pan_of(&page.here());
+        let (vw, vh) = (report.width, report.height);
+        let mut laid: BTreeMap<String, Rect> = (page.windows().iter())
+            .map(|p| (p.id.clone(), desk_wm::screen_rect(p, pan, vw, vh)))
+            .collect();
+        if let Some(h) = &report.held {
+            laid.insert(h.window.clone(), Rect::new(h.x, h.y, h.w, h.h));
+        }
+        let places = Places {
+            drawn: frame.drawn,
+            page: laid,
+        };
+        let desk = self.wm.desk();
+        let plan = desk.host_plan_at(vw, vh, report.top, report, &places);
+        self.plan = Some(plan);
+        self.preview = frame.preview;
+        self.moving = frame.moving;
         self.look(now)
+    }
+
+    /// The number of the last report taken.
+    pub fn seq(&self) -> u64 {
+        self.report.as_ref().map_or(0, |r| r.seq)
+    }
+
+    /// The snap preview and the window it lies under.
+    pub fn preview(&self) -> Option<&(Rect, String)> {
+        self.preview.as_ref()
+    }
+
+    /// Whether something glides, so each frame plans again.
+    pub fn moving(&self) -> bool {
+        self.moving
     }
 
     /// The budget counts every plugin window the runtime handed over, in the order they came, its
@@ -180,6 +252,7 @@ impl Hosted {
         Outcome {
             steps,
             live: changed.then_some(live),
+            wm: Vec::new(),
         }
     }
 
@@ -195,8 +268,11 @@ impl Hosted {
         self.look(now)
     }
 
-    /// A hidden window's time may have run out.
+    /// A hidden window's time may have run out, or a window glides.
     pub fn tick(&mut self, now: Instant) -> Outcome {
+        if self.moving {
+            return self.replan(now);
+        }
         match self.due() {
             Some(due) if now >= due => self.look(now),
             _ => Outcome::default(),

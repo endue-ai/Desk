@@ -39,8 +39,12 @@ pub struct KeysReport {
 }
 
 impl CompositorWindow {
-    /// One input event of the window, routed and applied.
+    /// One input event of the window, routed and applied; the window manager hears it first and
+    /// may take it whole (Escape cancelling a drag, a card's button).
     pub fn input(&mut self, event_loop: &ActiveEventLoop, input: Input) {
+        if self.wm_input(&input) {
+            return;
+        }
         let outs = self.router.handle(&self.scene, &input, Instant::now());
         self.apply(event_loop, outs);
     }

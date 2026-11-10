@@ -1,7 +1,9 @@
 //! The shell page's compositor commands (#52, #56, #81), the runtime's only (`desk_web::sender`):
 //! `compositor_desk` (the desk the runtime keeps, `report.rs`), `compositor_keys` (the keymap's
 //! entries, which the compositor resolves to decide before delivery whose a key is) and
-//! `compositor_focus` (the surface whose stand-in has the page's focus); in development builds
+//! `compositor_focus` (the surface whose stand-in has the page's focus), `compositor_grab` (a press
+//! the page found starts a move, a resize or a pan, #80) and `compositor_wm` (a window command:
+//! maximize, snap, a step); in development builds
 //! `compositor_capture { path }` (the composed frame as a PNG), `compositor_stats` (what every surface
 //! painted), `compositor_input { events, logical? }` (events fed to the window's own input entry,
 //! `harness.rs`) and `compositor_input_state` (where input goes). They run on the event loop's
@@ -10,11 +12,21 @@
 use std::sync::mpsc;
 use std::time::Duration;
 
+use desk_wm::interact::{Kind, Op};
+
+use super::wm::Call;
 use serde_json::Value;
 
 use super::input::KeysReport;
 use super::report::DeskReport;
 use crate::host::Desk;
+
+/// The number of the desk a call of the page's follows (`after`; 0: none).
+fn after(args: &Value) -> u64 {
+    args.get("after")
+        .and_then(Value::as_u64)
+        .unwrap_or_default()
+}
 
 /// The answer to `cmd` with `args`.
 pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
@@ -47,6 +59,34 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
             desk.pump.run(move |shell, event_loop| {
                 if let Some(compositor) = shell.compositor.as_mut() {
                     compositor.page_focus(event_loop, surface);
+                }
+            });
+            Ok(Value::Null)
+        }
+        "compositor_grab" => {
+            let kind: Kind =
+                serde_json::from_value(args.get("gesture").cloned().unwrap_or_default())
+                    .map_err(|why| format!("not a gesture: {why}"))?;
+            let at = |k: &str| args.get(k).and_then(Value::as_f64).unwrap_or_default();
+            let (x, y) = (at("x"), at("y"));
+            let call = Call::Grab { kind, x, y };
+            let after = after(args);
+            desk.pump.run(move |shell, _| {
+                if let Some(compositor) = shell.compositor.as_mut() {
+                    compositor.page_call(call, after);
+                }
+            });
+            Ok(Value::Null)
+        }
+        "compositor_wm" => {
+            let op: Op = serde_json::from_value(args.get("op").cloned().unwrap_or_default())
+                .map_err(|why| format!("not a window command: {why}"))?;
+            let window = (args.get("window").and_then(Value::as_str)).map(str::to_owned);
+            let call = Call::Command { op, window };
+            let after = after(args);
+            desk.pump.run(move |shell, _| {
+                if let Some(compositor) = shell.compositor.as_mut() {
+                    compositor.page_call(call, after);
                 }
             });
             Ok(Value::Null)

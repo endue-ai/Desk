@@ -34,6 +34,9 @@ const MAIN_COMMANDS: &[&str] = &[
     "compositor_focus",
     "compositor_input",
     "compositor_input_state",
+    // The window manager (#80): a press the page found starts a gesture, a window command.
+    "compositor_grab",
+    "compositor_wm",
 ];
 const PALETTE_COMMANDS: &[&str] = &[
     "palette_hide",
@@ -255,6 +258,8 @@ mod tests {
             "compositor_focus",
             "compositor_input",
             "compositor_input_state",
+            "compositor_grab",
+            "compositor_wm",
         ] {
             assert!(runtime.may(cmd), "{cmd}");
             assert!(!Sender::Plugin("endue.notes".into()).may(cmd), "{cmd}");

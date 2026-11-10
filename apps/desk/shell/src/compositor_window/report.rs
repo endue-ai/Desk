@@ -1,9 +1,11 @@
 //! What the shell page publishes in compositor mode (`compositor_desk`, ADR 0151): the window
 //! manager's state as the runtime keeps it, in `desk_wm::Desk`'s own JSON, and what only the page
 //! knows: each plugin frame's document and state, the titles of its own views, the top chips'
-//! edges, the live budget's two settings, and what a window without a live frame says (the
-//! page's copy, in the desk's language). Until #83 the runtime is the window manager; the shell
-//! mirrors it into `desk-wm`, which places everything the compositor draws.
+//! edges, the live budget's two settings, what a window without a live frame says (the page's
+//! copy, in the desk's language), the last of `desk-wm`'s changes it took and where it lays a
+//! held window out. The runtime keeps the window manager's state until #83; the shell mirrors it
+//! into `desk-wm`, which changes it on the compositor's input (ADR 0153) and places everything
+//! the compositor draws.
 
 use std::collections::BTreeMap;
 
@@ -104,6 +106,22 @@ pub struct DeskReport {
     pub budget: BudgetSettings,
     #[serde(default)]
     pub copy: Copy,
+    /// The last of `desk-wm`'s changes the runtime took (`desk://compositor-wm`, ADR 0153).
+    #[serde(default)]
+    pub applied: u64,
+    /// The window the page lays out where a gesture holds it (`desk://compositor-held`).
+    #[serde(default)]
+    pub held: Option<Held>,
+}
+
+/// Where the page lays a held window out, in CSS pixels.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct Held {
+    pub window: String,
+    pub x: f64,
+    pub y: f64,
+    pub w: f64,
+    pub h: f64,
 }
 
 impl desk_wm::Seen for DeskReport {

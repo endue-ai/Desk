@@ -2,12 +2,14 @@
 //! desktop in front, back to front, its frame and title from `Chrome` in the theme in force, each
 //! plugin pane its surface's texture at the pane's body (or a card the compositor draws: asleep,
 //! stopped, crashed, not painted yet; Not responding over its last frame), what the page draws of
-//! the window (its title bar's icon and tools, its own views, split panes' headers) at the window's
-//! place; then the plugin surfaces the page lays out itself (overlays, edge bars) and the page's
-//! system layer (bars, Eris, menus) above every window. Units are the page's CSS pixels under one
-//! group scaled to the window's device pixels, so text is set at the device's size. Every node that
-//! shows a surface is answered with the input router's target for it (#56); the compositor's own
-//! chrome lets the pointer through to the page, whose window manager still takes it (until #80).
+//! the window (its title bar's icon and tools, its own views, split panes' headers), taken from
+//! where the page lays the window out and drawn where the window is (#80: a gesture holds it, it
+//! glides); the snap preview under the window dragged to an edge; then the plugin surfaces the page
+//! lays out itself (overlays, edge bars) and the page's system layer (bars, Eris, menus) above every
+//! window. Units are the page's CSS pixels under one group scaled to the window's device pixels, so
+//! text is set at the device's size. Every node that shows a surface is answered with the input
+//! router's target for it (#56); the compositor's own chrome lets the pointer through to the page,
+//! which finds what a press lands on, but for the cards' buttons, which run their commands.
 
 use desk_compositor::glam::{Mat4, Vec2, Vec3};
 use desk_compositor::input::Target;
@@ -36,6 +38,31 @@ pub struct Sources<'a> {
 
 /// The nodes that show a surface, each with what it shows for input.
 pub type Shown = Vec<(NodeId, Target)>;
+
+/// A card's button: the desk command it runs for its plugin (#39's Wait, Stop and Reload).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CardButton {
+    pub node: NodeId,
+    pub command: &'static str,
+    pub plugin: String,
+}
+
+/// What a scene was drawn with: the nodes that show surfaces, and the cards' buttons.
+#[derive(Debug, Default)]
+pub struct Drawn {
+    pub shown: Shown,
+    pub buttons: Vec<CardButton>,
+}
+
+/// The commands a card's buttons run, in the order the page lists them: Not responding's Wait and
+/// Stop, a stopped frame's Reload.
+fn commands(state: FrameState) -> &'static [&'static str] {
+    match state {
+        FrameState::Late => &["desk.frames.wait", "desk.frames.stop"],
+        FrameState::Stopped => &["desk.frames.reload"],
+        _ => &[],
+    }
+}
 
 fn rect(r: desk_wm::Rect) -> Rect {
     Rect::new(r.x as f32, r.y as f32, r.w as f32, r.h as f32)
@@ -103,21 +130,21 @@ fn pass(scene: &mut Scene, nodes: impl IntoIterator<Item = NodeId>) -> Result<()
     Ok(())
 }
 
-/// Fill `scene` again from `hosted` in `theme`; the nodes that show a surface.
+/// Fill `scene` again from `hosted` in `theme`; the nodes that show a surface and the buttons.
 pub fn draw(
     scene: &mut Scene,
     theme: &ChromeTheme,
     hosted: &Hosted,
     from: &Sources,
-) -> Result<Shown, SceneError> {
+) -> Result<Drawn, SceneError> {
     let root = scene.root();
     for child in scene.children(root).to_vec() {
         scene.remove(child)?;
     }
     scene.set_wallpaper(Wallpaper::Solid(theme.wallpaper));
-    let mut shown = Shown::new();
+    let mut drawn = Drawn::default();
     let Some(plan) = hosted.plan() else {
-        return Ok(shown);
+        return Ok(drawn);
     };
     let s = from.scale;
     let desk = scene.insert(
@@ -136,19 +163,25 @@ pub fn draw(
             ..SurfaceNode::new(whole, id)
         };
         let node = scene.insert(desk, under)?;
-        shown.push((node, target(PAGE, Vec2::ZERO)));
+        drawn.shown.push((node, target(PAGE, Vec2::ZERO)));
     }
     let mut chrome = Chrome::new(theme.clone());
     for w in &plan.windows {
-        window(scene, &mut chrome, desk, w, hosted, from, &mut shown)?;
+        // Where a drop would snap: under the window dragged there.
+        if let Some((at, _)) = hosted.preview().filter(|(_, under)| *under == w.id) {
+            let made = chrome.snap_preview(scene, desk, rect(*at))?;
+            pass(scene, [made])?;
+        }
+        window(scene, &mut chrome, desk, w, hosted, from, &mut drawn)?;
     }
-    page_surfaces(scene, &mut chrome, desk, hosted, from, &mut shown)?;
+    page_surfaces(scene, &mut chrome, desk, hosted, from, &mut drawn)?;
+    let shown = &mut drawn.shown;
     // Above every window the page is seen, but over a window the pointer goes to what the window
     // shows (its surface, or the page's part of it, which hears the press there as well).
     let windows: Vec<desk_wm::Rect> = plan.windows.iter().map(|w| w.rect).collect();
     for piece in &plan.page {
         for open in subtract(*piece, &windows) {
-            page_part(scene, desk, rect(open), rect(open), from, &mut shown)?;
+            page_part(scene, desk, rect(open), rect(open), from, shown)?;
         }
         let over = windows.iter().filter_map(|w| intersect(*piece, *w));
         for part in over.map(rect) {
@@ -157,7 +190,7 @@ pub fn draw(
             pass(scene, seen.into_iter().map(|(node, _)| node))?;
         }
     }
-    Ok(shown)
+    Ok(drawn)
 }
 
 /// The page's own plugin surfaces (overlays, edge bars), where it lays them out: above the windows,
@@ -168,7 +201,7 @@ fn page_surfaces(
     desk: NodeId,
     hosted: &Hosted,
     from: &Sources,
-    shown: &mut Shown,
+    drawn: &mut Drawn,
 ) -> Result<(), SceneError> {
     let placed = (hosted.report().map(|r| r.frames.as_slice())).unwrap_or_default();
     for frame in placed {
@@ -181,7 +214,7 @@ fn page_surfaces(
             to: at,
             title: &frame.plugin,
         };
-        surface(scene, chrome, &into, &frame.plugin, hosted, from, shown)?;
+        surface(scene, chrome, &into, &frame.plugin, hosted, from, drawn)?;
     }
     Ok(())
 }
@@ -193,7 +226,7 @@ fn window(
     w: &HostWindow,
     hosted: &Hosted,
     from: &Sources,
-    shown: &mut Shown,
+    drawn: &mut Drawn,
 ) -> Result<(), SceneError> {
     let at = rect(w.rect);
     let made = chrome.window(scene, desk, at, &w.title, None, w.focused)?;
@@ -207,25 +240,30 @@ fn window(
             .chain(made.subtitle),
     )?;
     let local = |r: desk_wm::Rect| rect(r).translate(-at.min());
-    let bar = w.title_bar;
-    page_part(scene, made.group, rect(bar), local(bar), from, shown)?;
+    // What the page draws of it (its title bar's icon and tools, its own views, the headers of
+    // split panes), from where the page lays it out, at this window's place in the stack.
+    for (src, dst) in &w.page_parts {
+        page_part(
+            scene,
+            made.group,
+            rect(*src),
+            local(*dst),
+            from,
+            &mut drawn.shown,
+        )?;
+    }
     for divider in &w.dividers {
         let line = RectNode::new(local(*divider), chrome.theme().window.divider);
         scene.insert(made.group, Node::from(line).with_hit(false))?;
     }
     for pane in &w.panes {
-        // What the page draws in it (its own view, the header of a split pane), at this window's
-        // place in the stack.
-        for part in pane.drawn_by_page() {
-            page_part(scene, made.group, rect(part), local(part), from, shown)?;
-        }
         if let Some(plugin) = &pane.plugin {
             let into = Into {
                 group: made.group,
                 to: local(pane.body),
                 title: &pane.title,
             };
-            surface(scene, chrome, &into, plugin, hosted, from, shown)?;
+            surface(scene, chrome, &into, plugin, hosted, from, drawn)?;
         }
     }
     // The title over the page's title bar, which hides what lies under the window in the page.
@@ -249,7 +287,7 @@ fn surface(
     plugin: &str,
     hosted: &Hosted,
     from: &Sources,
-    shown: &mut Shown,
+    drawn: &mut Drawn,
 ) -> Result<(), SceneError> {
     let frame = hosted.frame(plugin);
     let copy = hosted.report().map(|r| r.copy.clone()).unwrap_or_default();
@@ -263,12 +301,27 @@ fn surface(
             actions: Vec::new(),
         })
     };
-    let shows = |c: &Card, chrome: &mut Chrome, scene: &mut Scene, over: bool| {
+    // A card lets the pointer through to the page, but for its buttons: each runs its command.
+    let mut shows = |c: &Card, chrome: &mut Chrome, scene: &mut Scene, over: bool| {
         let actions: Vec<&str> = c.actions.iter().map(String::as_str).collect();
         let made = chrome.card(
             scene, into.group, into.to, &c.title, &c.line, &actions, over,
         )?;
-        pass(scene, made)
+        let first = made.len().saturating_sub(2 * actions.len());
+        let runs = commands(state);
+        let mut through = made[..first].to_vec();
+        for (i, pair) in made[first..].chunks(2).enumerate() {
+            match runs.get(i) {
+                Some(command) => drawn.buttons.push(CardButton {
+                    node: pair[0],
+                    command,
+                    plugin: plugin.to_owned(),
+                }),
+                None => through.push(pair[0]),
+            }
+            through.extend(pair.get(1));
+        }
+        pass(scene, through)
     };
     if state.away() {
         return shows(&card(""), chrome, scene, false);
@@ -280,7 +333,7 @@ fn surface(
         return shows(&card(&copy.loading), chrome, scene, false);
     };
     let node = scene.insert(into.group, sampled(into.to, texture, from.scale))?;
-    shown.push((node, target(host, Vec2::ZERO)));
+    drawn.shown.push((node, target(host, Vec2::ZERO)));
     if state == FrameState::Late {
         shows(&card(""), chrome, scene, true)?;
     }

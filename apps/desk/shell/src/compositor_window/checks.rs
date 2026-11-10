@@ -100,6 +100,7 @@ impl CompositorWindow {
             "presented": self.presented,
             "slow_presents": self.slow_presents,
             "adapter": format!("{} ({:?})", self.gpu.adapter.name, self.gpu.adapter.backend),
+            "wm": self.wm_state(),
         })
     }
 }

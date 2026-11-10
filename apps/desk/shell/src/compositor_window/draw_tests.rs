@@ -65,7 +65,8 @@ fn the_pointer_finds_the_plugin_in_its_pane_and_the_page_everywhere_else() {
         &hosted,
         &sources(&textures),
     )
-    .unwrap();
+    .unwrap()
+    .shown;
     let pane = hosted.plan().unwrap().seat("endue.notes");
     assert_eq!(pane.size, Some((400.0, 263.0)));
     let target = |at: Vec2| {
@@ -92,10 +93,10 @@ fn the_pointer_finds_the_plugin_in_its_pane_and_the_page_everywhere_else() {
 }
 
 #[test]
-fn a_window_without_a_live_frame_shows_its_card_and_the_pointer_goes_to_the_page() {
+fn a_window_without_a_live_frame_shows_its_card_whose_button_runs_its_command() {
     let hosted = hosted("stopped");
     let mut scene = Scene::new(1440, 900);
-    let shown = draw(
+    let drawn = draw(
         &mut scene,
         &ChromeTheme::default(),
         &hosted,
@@ -103,10 +104,86 @@ fn a_window_without_a_live_frame_shows_its_card_and_the_pointer_goes_to_the_page
     )
     .unwrap();
     assert!(
-        shown.iter().all(|(_, t)| t.surface == PAGE),
+        drawn.shown.iter().all(|(_, t)| t.surface == PAGE),
         "no quad for a stopped frame"
     );
-    let hit = hit_test(&scene, Vec2::new(305.0, 400.0)).unwrap();
-    let under = shown.iter().find(|(node, _)| *node == hit.node).unwrap();
+    // The card lets the pointer through to the page, but on its Reload button (centred under the
+    // card's line, in the pane's body from 105,231).
+    let hit = hit_test(&scene, Vec2::new(305.0, 300.0)).unwrap();
+    let under = drawn
+        .shown
+        .iter()
+        .find(|(node, _)| *node == hit.node)
+        .unwrap();
     assert_eq!(under.1.surface, PAGE, "the card lets the pointer through");
+    let [button] = drawn.buttons.as_slice() else {
+        panic!("one button: {:?}", drawn.buttons)
+    };
+    assert_eq!(
+        (button.command, button.plugin.as_str()),
+        ("desk.frames.reload", "endue.notes")
+    );
+    let on = hit_test(&scene, Vec2::new(305.0, 408.0)).unwrap();
+    assert_eq!(on.node, button.node, "the button takes the pointer");
+}
+
+#[test]
+fn a_window_that_does_not_answer_offers_wait_and_stop_over_its_last_frame() {
+    let hosted = hosted("late");
+    let mut scene = Scene::new(1440, 900);
+    let drawn = draw(
+        &mut scene,
+        &ChromeTheme::default(),
+        &hosted,
+        &sources(&textures),
+    )
+    .unwrap();
+    let commands: Vec<&str> = drawn.buttons.iter().map(|b| b.command).collect();
+    // The report's card names one action; a second it does not name gets no button.
+    assert_eq!(commands, ["desk.frames.wait"]);
+    assert!(
+        drawn
+            .shown
+            .iter()
+            .any(|(_, t)| t.surface == "main.endue-notes")
+    );
+}
+
+#[test]
+fn the_snap_preview_lies_under_the_window_dragged_to_an_edge_and_takes_no_pointer() {
+    let mut hosted = hosted("live");
+    hosted.wm.set_motion(desk_wm::interact::Motion::none());
+    let notes = hosted.plan().unwrap().window("endue.notes").unwrap().rect;
+    let from = desk_wm::Point::new(notes.x + 80.0, notes.y + 20.0);
+    hosted.wm.pressed(from);
+    let kind = desk_wm::interact::Kind::Move {
+        window: "endue.notes".into(),
+    };
+    hosted.wm.grab(kind, from, 0.0);
+    hosted.wm.moved(desk_wm::Point::new(3.0, 450.0), 0.0);
+    hosted.replan(Instant::now());
+    let (part, under) = hosted.preview().cloned().unwrap();
+    assert_eq!(
+        (part, under.as_str()),
+        (
+            desk_wm::snap_rect(desk_wm::Fill::Left, 1440.0, 900.0),
+            "endue.notes"
+        )
+    );
+    let mut scene = Scene::new(1440, 900);
+    let drawn = draw(
+        &mut scene,
+        &ChromeTheme::default(),
+        &hosted,
+        &sources(&textures),
+    )
+    .unwrap();
+    // Off the window, inside the part: the pointer goes to the page under the preview.
+    let hit = hit_test(&scene, Vec2::new(300.0, 100.0)).unwrap();
+    let under = drawn
+        .shown
+        .iter()
+        .find(|(node, _)| *node == hit.node)
+        .unwrap();
+    assert_eq!(under.1.surface, PAGE);
 }
