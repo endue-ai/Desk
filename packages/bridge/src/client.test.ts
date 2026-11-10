@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BridgeRequest, BridgeResponse, FsReadPermission } from "./index";
-import { BridgeCallError, BridgeClient, browserStub, tauriAdapter } from "./index";
+import { BridgeCallError, BridgeClient, browserStub } from "./index";
 
 const scope: FsReadPermission = { permission: "fs:read", paths: ["~/**"] };
 
@@ -52,37 +52,6 @@ describe("browserStub", () => {
     off();
     stub.emit({ event: "perm.changed", data: { grantId: "g2", change: "revoked" } });
     expect(seen).toEqual(["perm.changed"]);
-  });
-});
-
-describe("tauriAdapter", () => {
-  it("forwards requests to the injected invoke as bridge_call", async () => {
-    const calls: Array<{ command: string; args: unknown }> = [];
-    const adapter = tauriAdapter(async (command, args) => {
-      calls.push({ command, args });
-      return { id: 1, ok: true, result: { grants: [] } } satisfies BridgeResponse;
-    });
-    const client = new BridgeClient(adapter);
-    await expect(client.call("perm.query", {})).resolves.toEqual({ grants: [] });
-    expect(adapter.name).toBe("tauri");
-    expect(calls).toEqual([
-      { command: "bridge_call", args: { request: { id: 1, method: "perm.query", params: {} } } },
-    ]);
-  });
-
-  it("passes the caller on when a call names one", async () => {
-    const calls: unknown[] = [];
-    const adapter = tauriAdapter(async (_command, args) => {
-      calls.push(args);
-      return { id: 1, ok: true, result: { grants: [] } } satisfies BridgeResponse;
-    });
-    await new BridgeClient(adapter).call("perm.query", {}, { caller: "example.hello-ui" });
-    expect(calls).toEqual([
-      {
-        request: { id: 1, method: "perm.query", params: {} },
-        caller: "example.hello-ui",
-      },
-    ]);
   });
 });
 

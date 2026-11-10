@@ -9,7 +9,7 @@ import type {
   Permission,
 } from "./generated";
 
-/** How a client reaches the core: Tauri's invoke in the app, a stub in tests and the browser. */
+/** How a client reaches the core: the CEF shell in the app, a stub in tests and the browser. */
 export interface BridgeAdapter {
   readonly name: string;
   /**

@@ -14,7 +14,7 @@ interface Request {
   params: Record<string, unknown>;
 }
 
-/** Tauri as the floating window sees it: its commands, `bridge_call`, and the events it hears. */
+/** The shell as this window sees it: its commands, `bridge_call`, and the events it hears. */
 function nativeSide() {
   const handlers = new Map<string, Set<Handler>>();
   const invoked: Array<{ command: string; args?: Record<string, unknown> }> = [];

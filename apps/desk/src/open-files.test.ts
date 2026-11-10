@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { installOpenedFiles } from "./open-files";
 
+// The shell's commands and events (host.ts), as the queue sees them.
 const native = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: native.invoke }));
-vi.mock("@tauri-apps/api/event", () => ({ listen: native.listen }));
+vi.mock("./host", () => ({ invoke: native.invoke, listen: native.listen }));
 let signal: () => void;
 const off = vi.fn();
 const deferred = <T>() => {

@@ -1,10 +1,8 @@
-// Files from the OS: the file picker and drags from Finder, Explorer or a file manager. The Tauri
-// shell gives both through its plugins and its window; the CEF shell (#45) answers the dialog's
-// own command (`plugin:dialog|open`, apps/desk/shell/src/dialog.rs) and says which files a drag
-// carries when it enters (`desk://drag-enter`, drops.rs), the page following the rest of the drag.
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { open } from "@tauri-apps/plugin-dialog";
-import { invoke, listen, shell } from "./host";
+// Files from the OS: the file picker and drags from Finder, Explorer or a file manager. The CEF
+// shell (#45) answers the dialog's command (`plugin:dialog|open`, apps/desk/shell/src/dialog.rs) and
+// says which files a drag carries when it enters (`desk://drag-enter`, drops.rs), the page following
+// the rest of the drag.
+import { invoke, listen } from "./host";
 import { followPageDrags, type OsDrag } from "./page-drags";
 
 /** Native paths only: DOM File.name and browser URLs are not filesystem authority. */
@@ -18,10 +16,7 @@ export function localPath(value: string): string | null {
 
 export async function pickNativeFile(): Promise<string | null> {
   const options = { multiple: false, directory: false };
-  const path =
-    shell === "cef"
-      ? await invoke<string | string[] | null>("plugin:dialog|open", { options })
-      : await open(options);
+  const path = await invoke<string | string[] | null>("plugin:dialog|open", { options });
   return typeof path === "string" ? localPath(path) : null;
 }
 
@@ -45,9 +40,7 @@ interface FileDropHost {
   report(error: unknown): void;
   /** The desk's page, which hears drags from the OS; the window by default. */
   page?: EventTarget;
-  /** Physical pixels per CSS pixel (Tauri's positions are physical); devicePixelRatio by default. */
-  scale?(): number;
-  /** The document a drag follows on the CEF shell; the page's own by default. */
+  /** The document a drag follows; the page's own by default. */
   doc?: Document;
 }
 
@@ -100,43 +93,9 @@ export function installNativeFileDrops(host: FileDropHost): () => void {
       })
       .catch(report);
   };
-  const stop =
-    shell === "cef"
-      ? followPageDrags({ doc: host.doc ?? globalThis.document, listen, hear, report })
-      : followTauriDrags(host, hear, report);
+  const stop = followPageDrags({ doc: host.doc ?? globalThis.document, listen, hear, report });
   return () => {
     active = false;
     stop();
-  };
-}
-
-/** Tauri's window drag-drop events, its physical positions as CSS pixels. */
-function followTauriDrags(
-  host: FileDropHost,
-  hear: (drag: OsDrag) => void,
-  report: (error: unknown) => void,
-): () => void {
-  let active = true;
-  let unlisten: (() => void) | undefined;
-  const scale = () => host.scale?.() ?? globalThis.devicePixelRatio ?? 1;
-  const css = (position: { x: number; y: number }) => {
-    const ratio = scale() || 1;
-    return { x: position.x / ratio, y: position.y / ratio };
-  };
-  void getCurrentWindow()
-    .onDragDropEvent(({ payload }) => {
-      if (payload.type === "leave") hear({ type: "leave" });
-      else if (payload.type === "over") hear({ type: "over", position: css(payload.position) });
-      else hear({ type: payload.type, paths: payload.paths, position: css(payload.position) });
-    })
-    .then((off) => {
-      if (active) unlisten = off;
-      else off();
-    })
-    .catch(report);
-  return () => {
-    active = false;
-    unlisten?.();
-    unlisten = undefined;
   };
 }

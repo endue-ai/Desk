@@ -1,47 +1,5 @@
 import type { BridgeAdapter, ParamsOf, ResultOf } from "./client";
-import type {
-  BridgeEvent,
-  BridgeMethod,
-  BridgeRequest,
-  BridgeResponse,
-  ErrorCode,
-  Permission,
-} from "./generated";
-
-/** Tauri's `invoke`, injected so this package does not depend on Tauri. */
-export type Invoke = (command: string, args: Record<string, unknown>) => Promise<unknown>;
-/** Tauri's `listen`, optional until the core emits events. */
-export type Listen = (
-  event: string,
-  handler: (event: { payload: unknown }) => void,
-) => Promise<() => void>;
-
-/** The app adapter: every request goes to the `bridge_call` command; events arrive on `bridge://event`. */
-export function tauriAdapter(invoke: Invoke, listen?: Listen): BridgeAdapter {
-  return {
-    name: "tauri",
-    call: async (request, caller) =>
-      (await invoke(
-        "bridge_call",
-        caller === undefined ? { request } : { request, caller },
-      )) as BridgeResponse,
-    onEvent: (listener) => {
-      if (!listen) return () => {};
-      let unlisten: (() => void) | undefined;
-      let cancelled = false;
-      void listen("bridge://event", (event) => listener(event.payload as BridgeEvent)).then(
-        (off) => {
-          if (cancelled) off();
-          else unlisten = off;
-        },
-      );
-      return () => {
-        cancelled = true;
-        unlisten?.();
-      };
-    },
-  };
-}
+import type { BridgeEvent, BridgeMethod, BridgeRequest, ErrorCode, Permission } from "./generated";
 
 /** Stub answers by method. `caller` is the plugin a call is made for (undefined: the runtime). */
 export type StubHandlers = {

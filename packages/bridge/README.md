@@ -7,7 +7,7 @@ brain and the surface protocol). Layer: Desk bridge (`docs/architecture.md`).
 
 - `BridgeClient`: `call(method, params)` resolves to the method's result type and rejects with a
   `BridgeCallError` (`code`, `permission`) when the core says no. `onEvent(listener)`.
-- `tauriAdapter(invoke, listen?)`: the app adapter; requests go to the `bridge_call` command.
+- `cefAdapter(cefHost(deskNative()))`: the app adapter over the CEF shell's `__deskNative`; `bridge_call`.
 - `browserStub(handlers, observe?)`: answers the methods it is given, any other `unsupported`; `emit`
   sends events; handlers throw `StubError(code, message, permission?)`; `observe` hears calls. For tests.
 - `stubCommands(emit, { grants?, settings?, prompt?, now?, files?, open? })`: the core's rules, per
@@ -37,4 +37,4 @@ pnpm exec vitest run packages/bridge
 
 `src/contract.test.ts` checks the shared vectors with Ajv (and, for views and manifests, the names
 that must resolve) and the init.yaml template; `src/surface.contract.test.ts` the surface protocol's;
-`src/client.test.ts` the client and both adapters; `src/stub-*.test.ts` one method group each.
+`src/client.test.ts` the client; `src/cef.test.ts` the adapter; `src/stub-*.test.ts` one group each.

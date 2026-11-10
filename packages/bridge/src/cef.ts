@@ -1,18 +1,25 @@
-import { type Invoke, type Listen, tauriAdapter } from "./adapters";
 import type { BridgeAdapter } from "./client";
+import type { BridgeEvent, BridgeResponse } from "./generated";
+
+/** Call one of the shell's commands with its arguments; resolves to the shell's answer. */
+export type Invoke = (command: string, args: Record<string, unknown>) => Promise<unknown>;
+/** Hear one of the shell's events until the returned function is called. */
+export type Listen = (
+  event: string,
+  handler: (event: { payload: unknown }) => void,
+) => Promise<() => void>;
 
 /**
  * What the CEF shell puts in every page (#43, ADR 0143): `send` hands a call to the shell, and the
- * shell answers through `onMessage`, which the page sets. The texts are JSON, shaped like Tauri's
- * `invoke` and `listen`: a call `{ id, cmd, args }`, a reply `{ id, ok }` or `{ id, error }`, an
- * event `{ event, payload }`.
+ * shell answers through `onMessage`, which the page sets. The texts are JSON: a call
+ * `{ id, cmd, args }`, a reply `{ id, ok }` or `{ id, error }`, an event `{ event, payload }`.
  */
 export interface DeskNative {
   send(text: string): void;
   onMessage?: (text: string) => void;
 }
 
-/** Tauri's `invoke` and `listen`, over the CEF shell's native channel. */
+/** The shell's commands and events, over the page's native channel. */
 export interface CefHost {
   invoke: Invoke;
   listen: Listen;
@@ -62,7 +69,31 @@ export function cefHost(native: DeskNative): CefHost {
   return { invoke, listen };
 }
 
-/** The bridge adapter of the CEF shell: the Tauri adapter's calls, named `cef`. */
+/**
+ * The bridge adapter of the CEF shell: every request goes to the shell's `bridge_call` command (with
+ * the caller it is made for, when it names one); the core's events arrive as `bridge://event`.
+ */
 export function cefAdapter(host: CefHost): BridgeAdapter {
-  return { ...tauriAdapter(host.invoke, host.listen), name: "cef" };
+  return {
+    name: "cef",
+    call: async (request, caller) =>
+      (await host.invoke(
+        "bridge_call",
+        caller === undefined ? { request } : { request, caller },
+      )) as BridgeResponse,
+    onEvent: (listener) => {
+      let unlisten: (() => void) | undefined;
+      let cancelled = false;
+      void host
+        .listen("bridge://event", (event) => listener(event.payload as BridgeEvent))
+        .then((off) => {
+          if (cancelled) off();
+          else unlisten = off;
+        });
+      return () => {
+        cancelled = true;
+        unlisten?.();
+      };
+    },
+  };
 }

@@ -5,8 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type DeskTheme, sendThemeToPalette } from "./palette-theme";
 
 type Handler = (event: { event: string; id: number; payload: unknown }) => void;
-// The native events the palette window hears (palette://open, bridge://event).
-const tauri = vi.hoisted(() => {
+// The shell's events the palette window hears (palette://open, bridge://event).
+const shell = vi.hoisted(() => {
   const handlers = new Map<string, Set<Handler>>();
   return {
     handlers,
@@ -21,8 +21,7 @@ const tauri = vi.hoisted(() => {
     },
   };
 });
-vi.mock("@tauri-apps/api/event", () => ({ listen: tauri.listen }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => undefined) }));
+vi.mock("./host", () => ({ listen: shell.listen, invoke: vi.fn(async () => undefined) }));
 
 /**
  * The app's storage, which both windows share, as the main window writes it: the browser tells every
@@ -99,7 +98,7 @@ async function paletteWindow() {
 }
 
 beforeEach(() => {
-  tauri.handlers.clear();
+  shell.handlers.clear();
   vi.clearAllMocks();
   localStorage.clear();
   document.documentElement.removeAttribute("style");
@@ -165,10 +164,10 @@ describe("the native palette window follows the desk's theme", () => {
     await Promise.resolve();
     expect(palette.root.dataset.scheme).toBeUndefined();
 
-    tauri.fire("palette://open");
+    shell.fire("palette://open");
     expect(palette.root.dataset.scheme).toBe("light");
     expect(palette.themes()).toEqual([{ type: "desk:theme", theme: LIGHT }]);
-    tauri.fire("palette://open");
+    shell.fire("palette://open");
     expect(palette.themes()).toHaveLength(1);
   });
 

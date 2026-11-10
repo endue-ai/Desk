@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cefAdapter, cefHost, type DeskNative, deskNative } from "./cef";
+import { BridgeClient } from "./client";
+import type { BridgeResponse } from "./generated";
 
 /** A native channel that records what the page sends and lets the test answer. */
 function fakeNative() {
@@ -57,6 +59,47 @@ describe("cefAdapter", () => {
     });
     reply({ id: sent[0]?.id, ok: { ok: true, result: [] } });
     await expect(answer).resolves.toEqual({ ok: true, result: [] });
+  });
+
+  it("forwards a client's requests as bridge_call, without a caller when none is named", async () => {
+    const calls: Array<{ command: string; args: unknown }> = [];
+    const adapter = cefAdapter({
+      invoke: async (command, args) => {
+        calls.push({ command, args });
+        return { id: 1, ok: true, result: { grants: [] } } satisfies BridgeResponse;
+      },
+      listen: async () => () => {},
+    });
+    const client = new BridgeClient(adapter);
+    await expect(client.call("perm.query", {})).resolves.toEqual({ grants: [] });
+    await client.call("perm.query", {}, { caller: "example.hello-ui" });
+    expect(calls).toEqual([
+      { command: "bridge_call", args: { request: { id: 1, method: "perm.query", params: {} } } },
+      {
+        command: "bridge_call",
+        args: { request: { id: 2, method: "perm.query", params: {} }, caller: "example.hello-ui" },
+      },
+    ]);
+  });
+
+  it("hears the core's events on bridge://event until the listener stops, even before it is set", async () => {
+    const { native, reply } = fakeNative();
+    const adapter = cefAdapter(cefHost(native));
+    const seen: string[] = [];
+    const off = adapter.onEvent((event) => seen.push(event.event));
+    // listen resolves in a microtask: let it set the unlisten before the events arrive.
+    await Promise.resolve();
+    reply({ event: "bridge://event", payload: { event: "perm.changed", data: {} } });
+    off();
+    reply({ event: "bridge://event", payload: { event: "cmd.changed", data: {} } });
+    expect(seen).toEqual(["perm.changed"]);
+
+    // Stopping before listen resolved still ends the subscription once it does.
+    const early: string[] = [];
+    adapter.onEvent((event) => early.push(event.event))();
+    await Promise.resolve();
+    reply({ event: "bridge://event", payload: { event: "late", data: {} } });
+    expect(early).toEqual([]);
   });
 });
 

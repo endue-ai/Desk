@@ -1,14 +1,14 @@
+export { type BrowserStub, browserStub, StubError, type StubHandlers } from "./adapters";
+export * from "./brain.generated";
 export {
-  type BrowserStub,
-  browserStub,
+  type CefHost,
+  cefAdapter,
+  cefHost,
+  type DeskNative,
+  deskNative,
   type Invoke,
   type Listen,
-  StubError,
-  type StubHandlers,
-  tauriAdapter,
-} from "./adapters";
-export * from "./brain.generated";
-export { type CefHost, cefAdapter, cefHost, type DeskNative, deskNative } from "./cef";
+} from "./cef";
 export {
   type BridgeAdapter,
   BridgeCallError,

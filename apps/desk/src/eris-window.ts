@@ -1,9 +1,9 @@
 // The floating Eris window (ADR 0121), index.html?view=eris: her figure, her status and a compact
 // composer over the OS while the desk is inactive. The view is the runtime's (mountErisFloat); this
-// host gives it the core as the desk (both shells pin this window's caller and let it talk to Eris
+// host gives it the core as the desk (the shell pins this window's caller and lets it talk to Eris
 // only, so it is the desk's one conversation), the window's own commands, the summons of the
 // shortcut and the theme the main window keeps (palette-theme.ts).
-import { BridgeClient, tauriAdapter } from "@endue-ai/bridge";
+import { BridgeClient, cefAdapter } from "@endue-ai/bridge";
 import {
   type Clock,
   type ErisFloat,
@@ -21,8 +21,7 @@ export interface NativeWindow {
   listen<T>(event: string, handler: (event: { payload: T }) => void): Promise<() => void>;
 }
 
-/** The window's own commands, as the Tauri shell's inline plugin `eris-window` named them; the CEF
- * shell answers the same names (apps/desk/shell/src/eris_window/commands.rs). */
+/** The window's own commands, which the shell answers (apps/desk/shell/src/eris_window/commands.rs). */
 export const PLUGIN = "plugin:eris-window|";
 
 /** What `state` and `eris://shortcut` say of the shortcut. */
@@ -49,7 +48,7 @@ export async function startErisWindow(
   // No runtime here: the theme in force is the one the main window keeps for its other windows.
   const theme = followDeskTheme({ root: doc.documentElement, post: () => {} }, win);
   const core = new BridgeClient(
-    tauriAdapter((command, args) => native.invoke(command, args), native.listen),
+    cefAdapter({ invoke: (command, args) => native.invoke(command, args), listen: native.listen }),
   );
   const run = (command: string, args?: Record<string, unknown>) => {
     native.invoke(command, args).catch((error: unknown) => console.error(`${command}:`, error));

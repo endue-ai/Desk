@@ -3,7 +3,7 @@
 // (`desk://drag-enter`, apps/desk/shell/src/drops.rs). From then on the page follows the drag in its
 // own document: a cover over everything, plugin frames included, catches the drag's moves and its
 // drop, so the files reach the frame under the pointer through the desk's broker as `desk/paths` (or
-// open), as with the Tauri shell's window events, and never land in a frame as a bare File.
+// open), and never land in a frame as a bare File.
 
 /** One drag event from the OS, its position in CSS pixels. */
 export type OsDrag =

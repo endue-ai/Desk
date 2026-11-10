@@ -1,5 +1,6 @@
-// Bootstrap: mount the desk shell on the Rust core through the Tauri bridge. The runtime under it
-// hosts the core's UI plugins; the shell reaches the brain and its agent directory through the core.
+// Bootstrap: mount the desk shell on the Rust core through the CEF shell's bridge. The runtime
+// under it hosts the core's UI plugins; the shell reaches the brain and its agent directory through
+// the core.
 import { BridgeClient } from "@endue-ai/bridge";
 import { deskPluginUrl, mountDesk, phase, realClock } from "@endue-ai/runtime";
 import "@endue-ai/runtime/desk.css";
@@ -10,7 +11,7 @@ import { startCompositorKeys } from "./compositor-keys";
 import "./compositor.css";
 import { reportCrashes, showLastCrash } from "./crashes";
 import "./crashes.css";
-import { adapter, invoke, listen, shell } from "./host";
+import { adapter, invoke, listen } from "./host";
 import { installNativeFileDrops, pickNativeFile } from "./native-files";
 import { installOpenedFiles } from "./open-files";
 import { sendThemeToPalette } from "./palette-theme";
@@ -30,16 +31,16 @@ phase("webview load", 0, booted);
 const root = document.getElementById("desk");
 if (!root) throw new Error("index.html has no #desk element");
 
-// Custom URL schemes look different on Windows' WebView2 than on macOS and Linux; the CEF shell
-// serves `desk-plugin://` on every OS. Each plugin surface loads on a host of its own (#36).
-const pluginUrl = deskPluginUrl(shell === "tauri" && navigator.userAgent.includes("Windows"));
+// The CEF shell serves `desk-plugin://` on every OS. Each plugin surface loads on a host of its
+// own (#36).
+const pluginUrl = deskPluginUrl(false);
 
 const core = new BridgeClient(adapter());
 // Safe mode and the state files kept broken (ADR 0061), known before the shell mounts.
 const start = await readStart(invoke);
 const lang = navigator.language.startsWith("ko") ? "ko" : "en";
 // Compositor mode (#52, #81): the CEF shell draws the windows from desk-wm and keeps the live budget.
-const composited = shell === "cef" && new URLSearchParams(location.search).has("compositor");
+const composited = new URLSearchParams(location.search).has("compositor");
 const kept = composited ? keptWindows() : undefined;
 const desk = mountDesk({
   ...(kept ? { liveBudget: kept } : {}),
@@ -59,7 +60,7 @@ const desk = mountDesk({
 });
 void desk.runtime.ready.then(() => phase("desk mount", booted));
 
-// Files dragged in from the OS: Tauri's window events, or the CEF shell's word and the page's drag.
+// Files dragged in from the OS: the CEF shell's word when they enter, then the page's own drag.
 const disposeDrops = installNativeFileDrops({
   ready: desk.ready,
   commands: desk.runtime.commands,

@@ -1,7 +1,7 @@
 // A small host for the same palette UI. The main runtime alone owns the plugin command registry.
-// Both shells give this window the fixed caller `palette` and answer its `palette_*` commands.
+// The shell gives this window the fixed caller `palette` and answers its `palette_*` commands.
 import type { BridgeEvent, BridgeRequest, BridgeResponse } from "@endue-ai/bridge";
-import { invoke, listen, shell } from "./host";
+import { invoke, listen } from "./host";
 import "./palette.css";
 import { followDeskTheme } from "./palette-theme";
 
@@ -10,11 +10,8 @@ if (!root) throw new Error("No palette root");
 const frame = document.createElement("iframe");
 frame.title = "Search Desk";
 frame.setAttribute("sandbox", "allow-scripts");
-// WebView2 reaches custom schemes as http://<scheme>.localhost; the CEF shell serves desk-plugin://.
-const base =
-  shell === "tauri" && navigator.userAgent.includes("Windows")
-    ? "http://desk-plugin.localhost"
-    : "desk-plugin://localhost";
+// The CEF shell serves desk-plugin:// on every OS.
+const base = "desk-plugin://localhost";
 let ready = false;
 let presented = false;
 let pendingOpen = true;
