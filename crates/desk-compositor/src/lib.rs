@@ -40,6 +40,7 @@ mod damage;
 mod draw_list;
 pub mod headless;
 mod hit;
+pub mod input;
 mod node;
 mod pipelines;
 mod scene;

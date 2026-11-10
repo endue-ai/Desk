@@ -17,6 +17,9 @@ bytemuck.workspace = true
 pollster.workspace = true
 cosmic-text.workspace = true
 etagere.workspace = true
+# Input (#56): the keymap's entries come from the runtime as JSON, a binding's args with them.
+serde.workspace = true
+serde_json.workspace = true
 
 # macOS: an IOSurface a surface attached, wrapped as a Metal texture (`attach/iosurface.rs`).
 [target.'cfg(target_os = "macos")'.dependencies]
