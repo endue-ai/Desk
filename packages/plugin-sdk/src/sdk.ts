@@ -20,6 +20,7 @@ import {
 import { dataFor, type PluginData, type PluginViews } from "./data";
 import { dndFor } from "./dnd";
 import type { PluginDnd } from "./dnd/types";
+import { frameForms } from "./forms";
 import { framePings } from "./ping";
 import { type HostMessage, type ThemeState, type Transport, windowTransport } from "./protocol";
 import { frameStart } from "./ready";
@@ -103,6 +104,8 @@ type Pending = {
 const start = frameStart();
 // The desk's pings are answered from the moment the SDK loads, whatever the plugin does (#39).
 framePings();
+// Forms fire submit in the frame even where the engine blocks sandboxed submission (Chromium).
+frameForms();
 
 /** Tell the desk how the start went: through the frame's watch, or the transport outside a frame. */
 function report(transport: Transport, failure?: unknown): void {
