@@ -60,4 +60,8 @@ path checks, so serving files from it keeps one source of truth in development a
 A reload waits up to 500 ms for the frame's answer to a ping before it loads the new revision
 (`packages/runtime/src/frames/reload.ts`, #32): the state the plugin set just before then reaches the
 desk from the frame's own window. Chromium hands a message from a page that has gone no `source`, and
-the runtime still never takes such a message as any plugin's.
+the runtime still never takes such a message as any plugin's. From the update on, what needs the
+plugin's answer (a request, a command invocation, a permission prompt, an approval) waits for the new
+page's hello, as on a first load, and what the page it left was asked and never answered is cancelled
+at that hello (#142): the frame's window stays the same across the reload, so the plugin host ends the
+greeting itself rather than post to a page that cannot hear.

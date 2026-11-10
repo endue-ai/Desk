@@ -3,7 +3,8 @@
 // plugin frames played by the test, and fake timers. Each frame's messages are in flight until the
 // desk's thread gets to them, in the order the frame posted them, as in a browser; one that answers
 // pings as the SDK does (`plugin-sdk/src/ping.ts`) gets them there first. When a frame's page has gone,
-// what is still in flight arrives with no `source`, as Chromium hands it (#32 Stage 1, #75's finding).
+// what is still in flight arrives with no `source`, as Chromium hands it (#32 Stage 1, #75's finding),
+// and what the desk posts to the frame then reaches no page until the next one connects (#142).
 import type { BridgeEvent, PluginManifest } from "@endue-ai/bridge";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { browserCore } from "../bridge/core";
@@ -17,6 +18,7 @@ const centre = (id: string): PluginManifest => ({
   kind: "ui",
   entry: "ui/index.html",
   surfaces: [{ id: "main", title: id.toUpperCase(), placement: "center" }],
+  contributes: { commands: [{ id: `${id}.count`, title: "Count" }] },
 });
 
 /** One plugin's frame, played by the test. */
@@ -27,6 +29,8 @@ class Plugin {
   /** What its page posted that the desk has not got to yet, in order. */
   readonly #flight: Message[] = [];
   #off: (() => void) | undefined;
+  /** The page that listens: the frame's source when it connected. */
+  #page: string | undefined;
 
   constructor(
     readonly id: string,
@@ -42,7 +46,11 @@ class Plugin {
     const win = this.frame()?.contentWindow;
     if (!win) throw new Error(`${this.id} has no frame`);
     this.#off?.();
-    const heard = (event: MessageEvent) => this.#heard(event.data as Message);
+    this.#page = this.frame()?.src;
+    // A page hears only while it is the frame's: once the frame loads another, it has gone.
+    const heard = (event: MessageEvent) => {
+      if (this.frame()?.src === this.#page) this.#heard(event.data as Message);
+    };
     win.addEventListener("message", heard);
     this.#off = () => win.removeEventListener("message", heard);
     this.send({ type: "desk:hello" });
@@ -69,10 +77,22 @@ class Plugin {
     return this.messages.filter((m) => m.type === "desk:init");
   }
 
+  /** The command invocations its pages heard. */
+  invoked(): Message[] {
+    return this.messages.filter(
+      (m) => (m.event as BridgeEvent | undefined)?.event === "cmd.invoked",
+    );
+  }
+
   #heard(message: Message): void {
     this.messages.push(message);
     if (message.type === "desk:ping" && this.answers)
       this.send({ type: "desk:pong", n: message.n as number });
+    const event = message.event as BridgeEvent | undefined;
+    if (event?.event !== "cmd.invoked") return;
+    // It answers as the SDK does, naming the page that did.
+    const params = { invocationId: event.data.invocationId, result: { from: this.#page } };
+    this.send({ type: "desk:calls", calls: [{ id: 1, method: "cmd.answer", params }] });
   }
 }
 
@@ -108,7 +128,7 @@ async function desk(ids: string[]) {
       event: "plugin.changed",
       data: { plugin: id, change: "updated", revision },
     } as BridgeEvent);
-  return { plugins, update };
+  return { runtime, plugins, update };
 }
 
 afterEach(() => {
@@ -169,5 +189,28 @@ describe("a plugin's last desk:state across a reload", () => {
     await flush();
     expect(a.inits()).toEqual([{ type: "desk:init", pluginId: "a.one", state: { mine: "a" } }]);
     expect(b.inits()).toEqual([{ type: "desk:init", pluginId: "b.two", state: { mine: "b" } }]);
+  });
+
+  it("a command run while it reloads in place reaches its new page after its hello, and is answered (#142)", async () => {
+    const { runtime, plugins, update } = await desk(["a.one"]);
+    const [a] = plugins as [Plugin];
+    a.post({ type: "desk:state", state: { count: 2 } });
+    update("a.one", 2);
+    // Run right behind the update. The page on the frame goes once it has answered the reload's
+    // ping, and the new one hears nothing before the SDK connects: posted then, it was lost.
+    const answer = runtime.commands.run("a.one.count");
+    await flush(1000);
+    expect(a.frame()?.src).toContain("v=2");
+    expect(a.invoked()).toEqual([]);
+    a.messages = [];
+    a.connect();
+    await flush();
+    // Its last desk:state came in before the frame loaded again (#84); the invocation after init.
+    expect(a.inits()).toEqual([{ type: "desk:init", pluginId: "a.one", state: { count: 2 } }]);
+    const [invoked] = a.invoked();
+    expect(invoked).toBeDefined();
+    const init = a.messages.findIndex((m) => m.type === "desk:init");
+    expect(init).toBeLessThan(a.messages.indexOf(invoked as Message));
+    await expect(answer).resolves.toEqual({ from: expect.stringContaining("v=2") });
   });
 });

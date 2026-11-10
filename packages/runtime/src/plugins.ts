@@ -13,12 +13,13 @@ import { PluginCommands } from "./plugin-commands";
 import type { PluginHostDeps, PluginHostOptions } from "./plugin-host-deps";
 import { type PluginMessage, recipientsOf } from "./plugin-messages";
 import { surfaceUrl } from "./plugin-origins";
+import { PluginAsks } from "./plugins-asks";
+import { PluginGreetings } from "./plugins-greetings";
 import { now, phase } from "./timing";
 
 export type { PluginHostDeps, PluginHostOptions } from "./plugin-host-deps";
 
 const MANAGE = { permission: "plugin:manage" } as const;
-type Asked = { plugin: string; name: string; resolve(v: unknown): void; reject(e: unknown): void };
 
 /**
  * Mounts UI plugins on surfaces and carries their bridge calls. Plugins are told apart by the
@@ -31,13 +32,11 @@ export class PluginHost {
   readonly #state = new Map<string, unknown>();
   /** Turns, watches, data subscriptions and processes, by the plugin whose call started them. */
   readonly #owners = new Owners();
-  /** Commands delivered to plugins that wait for their reply, by call id. */
-  readonly #pending = new Map<number, Asked>();
-  #nextCall = 1;
+  /** Commands delivered to plugins that wait for their reply. */
+  readonly #asks = new PluginAsks();
   readonly #shared = new Map<string, unknown>();
-  /** Plugins that said hello since they mounted, and callers waiting for one that has not yet. */
-  readonly #greeted = new Map<string, Window | null>();
-  readonly #waiting = new Map<string, Array<{ resolve(): void; reject(e: unknown): void }>>();
+  /** Plugins whose page said hello since their frame loaded, and callers waiting for one. */
+  readonly #greetings = new PluginGreetings();
   /** When each plugin mounting now got its surface: its `mount <id>` phase ends at its hello. */
   readonly #mounting = new Map<string, number>();
   readonly #commands: PluginCommands;
@@ -109,22 +108,16 @@ export class PluginHost {
     if (!this.#mounted.has(id))
       return Promise.reject(new CommandError("unknown_command", `${id} is not running`));
     if (!this.greeted(id)) return this.whenReady(id).then(() => this.request(id, name, args));
-    const call = this.#nextCall++;
-    return new Promise((resolve, reject) => {
-      this.#pending.set(call, { plugin: id, name, resolve, reject });
-      this.#post(id, { type: "desk:command", name, args, call });
-    });
+    return this.#asks.ask(id, name, (call) =>
+      this.#post(id, { type: "desk:command", name, args, call }),
+    );
   }
 
   /** Resolves once a mounted plugin has connected (said hello); rejects if it stops first. */
   whenReady(id: string): Promise<void> {
     if (this.greeted(id)) return Promise.resolve();
     if (this.#sleepers.asleep(id)) this.#sleepers.rouse(id);
-    return new Promise((resolve, reject) => {
-      const waiting = this.#waiting.get(id) ?? [];
-      waiting.push({ resolve, reject });
-      this.#waiting.set(id, waiting);
-    });
+    return this.#greetings.next(id);
   }
 
   /** Take a plugin's surface away for the rest of this session, as `desk:close` does. */
@@ -134,12 +127,12 @@ export class PluginHost {
 
   /** Whether a plugin's frame said hello since it last loaded, so it can answer the desk. */
   greeted(id: string): boolean {
-    return this.#greeted.has(id) && this.#greeted.get(id) === this.#deps.frame(id);
+    return this.#greetings.greeted(id, this.#deps.frame(id));
   }
 
   /** Whether the desk waits for an answer from a plugin, besides `except`. */
   busy(id: string, except?: string): boolean {
-    return [...this.#pending.values()].some((p) => p.plugin === id && p.name !== except);
+    return this.#asks.busy(id, except);
   }
 
   /**
@@ -148,7 +141,7 @@ export class PluginHost {
    */
   unloaded(id: string, state: unknown): void {
     if (!this.#mounted.has(id)) return;
-    this.#greeted.delete(id);
+    this.#greetings.forget(id);
     this.#sleepers.sleep(id, state);
     this.#cancel(id, "was unloaded before it answered");
   }
@@ -215,12 +208,8 @@ export class PluginHost {
 
   #unmount(id: string): void {
     if (!this.#mounted.delete(id)) return;
-    this.#greeted.delete(id);
+    this.#greetings.stop(id, new CommandError("cancelled", `${id} stopped`));
     this.#mounting.delete(id);
-    for (const waiter of this.#waiting.get(id) ?? []) {
-      waiter.reject(new CommandError("cancelled", `${id} stopped`));
-    }
-    this.#waiting.delete(id);
     this.#commands.unmounted(id);
     this.#owners.drop(id);
     // One that never woke has no surface to close.
@@ -232,11 +221,22 @@ export class PluginHost {
 
   #cancel(id: string, why: string): void {
     this.#dnd.gone(id);
-    for (const [call, pending] of this.#pending) {
-      if (pending.plugin !== id) continue;
-      this.#pending.delete(call);
-      pending.reject(new CommandError("cancelled", `${id} ${why}`));
-    }
+    this.#asks.cancel(id, `${id} ${why}`);
+  }
+
+  /**
+   * Load a plugin's new revision in its frame, in place. The reload pings the page on the frame
+   * first, while it still counts as greeted, so what it sent (its last desk:state) is in before it
+   * goes (#84). From then on what needs the plugin's answer waits for the new page's hello, as on a
+   * first load, and what the page it leaves was asked and has not answered by then is cancelled
+   * then (#142). One asleep or still loading waits for a hello already.
+   */
+  #reload(id: string, src: string): void {
+    this.#deps.reload(id, src);
+    if (this.#sleepers.waits(id)) return;
+    this.#greetings.forget(id);
+    this.#sleepers.reload(id);
+    this.#asks.leaving(id);
   }
 
   #onEvent(event: BridgeEvent): void {
@@ -281,8 +281,7 @@ export class PluginHost {
         if (info?.manifest?.entry || info?.manifest?.native) {
           const next = { ...info, revision };
           this.#mounted.set(plugin, next);
-          if (!this.#sleepers.dozing(plugin))
-            this.#deps.reload(plugin, surfaceUrl(this.#options, next));
+          if (!this.#sleepers.dozing(plugin)) this.#reload(plugin, surfaceUrl(this.#options, next));
         } else if (!info && this.#unready.has(plugin)) {
           // A dev folder filled or fixed while the desk runs: the plugin turns ready on its update.
           // One the person or the plugin put away stays away; #mount takes only a ready, enabled UI plugin.
@@ -349,6 +348,8 @@ export class PluginHost {
           this.#mounting.delete(id);
           phase(`mount ${id}`, mounting);
         }
+        // A new page: what the one it replaced was asked and did not answer, it never will.
+        this.#asks.cancel(id, `${id} reloaded before it answered`, "left");
         const { restored, waited } = this.#sleepers.woke(id);
         this.#post(id, {
           type: "desk:init",
@@ -358,9 +359,7 @@ export class PluginHost {
         });
         for (const shared of this.#shared.values()) this.#post(id, shared);
         for (const held of waited) this.#post(id, held);
-        this.#greeted.set(id, this.#deps.frame(id));
-        for (const waiter of this.#waiting.get(id) ?? []) waiter.resolve();
-        this.#waiting.delete(id);
+        this.#greetings.hello(id, this.#deps.frame(id));
         break;
       }
       case "desk:state":
@@ -380,18 +379,9 @@ export class PluginHost {
       case "desk:failed":
         this.#deps.outcome?.(id, message.type === "desk:ready");
         break;
-      case "desk:reply": {
-        const pending = this.#pending.get(message.call);
-        if (!pending || pending.plugin !== id) break;
-        this.#pending.delete(message.call);
-        if (message.ok) pending.resolve(message.result);
-        else {
-          const code = message.error?.code;
-          const known = code === "cancelled" || code === "unknown_command" ? code : "failed";
-          pending.reject(new CommandError(known, message.error?.message ?? "failed"));
-        }
+      case "desk:reply":
+        this.#asks.reply(id, message);
         break;
-      }
       case "desk:calls":
         void Promise.all(
           message.calls.map(async (request) => ({

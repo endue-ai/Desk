@@ -1,7 +1,7 @@
 /**
- * Plugins whose frame the runtime unloaded (ADR 0070), or whose first frame still loads, until the
- * next frame says hello: what they kept for it (ui.surface.state), and the messages that wait for
- * it. A request, a command invocation, a permission prompt or an agent's approval needs the
+ * Plugins whose frame the runtime unloaded (ADR 0070), whose first frame still loads, or whose frame
+ * loads its page again in place (an update, #142), until the next page says hello: what they kept for
+ * it (ui.surface.state), and the messages that wait for it. A request, a command invocation, a permission prompt or an agent's approval needs the
  * plugin's answer, so it waits and wakes the frame; anything else is dropped, since the plugin
  * reads what it needs again when it loads.
  * A plugin can also start asleep (#590): it has no surface yet, and waking it opens one. When no
@@ -26,7 +26,7 @@ export class Sleepers {
   readonly #dozing = new Map<string, () => void>();
   /** Plugins whose frame loads for what waits, until its hello. */
   readonly #rousing = new Set<string>();
-  /** Plugins that mounted awake and whose first frame has not said hello yet: not asleep. */
+  /** Plugins whose live frame loads a page that has not said hello yet: not asleep. */
   readonly #loading = new Set<string>();
   /** Loads an unloaded frame again (the frame policy's wake); true when its frame is live after. */
   readonly #load: (id: string) => boolean;
@@ -56,10 +56,19 @@ export class Sleepers {
    * command run then was lost: its caller waited for ever (#139).
    */
   load(id: string, open: () => void): void {
+    this.reload(id);
+    open();
+  }
+
+  /**
+   * A live plugin's frame loads its page again in place (its update, #84's hot reload): until the
+   * new page says hello, what needs its answer waits, as on its first load. The page it leaves goes
+   * with what it was posted, and the new one hears nothing before the SDK connects (#142).
+   */
+  reload(id: string): void {
     this.sleep(id, undefined);
     this.#loading.add(id);
     this.#rousing.add(id);
-    open();
   }
 
   /** Open the surface of a plugin that started asleep; false for any other. It sleeps until hello. */
