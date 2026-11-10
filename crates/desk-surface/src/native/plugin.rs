@@ -1,6 +1,7 @@
 //! A native plugin's side of its surface connection: it connects from the environment the desk
 //! started it with, hears the desk's messages (and answers each `desk:ping` itself, as the SDK does
-//! in a frame), and sends its frames, title and page messages. Hearing is the plugin's own loop: a
+//! in a frame), and sends its frames, title, page messages and the focus it hands back past an end
+//! of its focus order (`focus.leave`, #128). Hearing is the plugin's own loop: a
 //! plugin whose loop hangs stops answering pings, and its window says Not responding (#32 §9).
 
 use std::io::{self, Write};
@@ -13,7 +14,7 @@ use serde_json::{Value, json};
 
 use super::bridge::Bridge;
 use super::lines::{LineReader, Next, compositor_message, line};
-use crate::generated::SurfaceAttach;
+use crate::generated::{SurfaceAttach, SurfaceFocusEdge, SurfaceFocusLeave, SurfaceFocusLeaveType};
 use crate::{CompositorMessage, SurfaceMessage, env};
 
 /// What a look at the surface connection heard.
@@ -172,6 +173,16 @@ impl Plugin {
         self.send_value(json!({ "type": "title", "surface": surface, "title": title }))
     }
 
+    /// Hand the focus back to the desk past `edge` of the plugin's focus order (`focus.leave`):
+    /// Tab went past its last element, or Shift+Tab before its first (`focus::FocusOrder`).
+    pub fn leave_focus(&self, surface: &str, edge: SurfaceFocusEdge) -> io::Result<()> {
+        self.send(&SurfaceMessage::SurfaceFocusLeave(SurfaceFocusLeave {
+            r#type: SurfaceFocusLeaveType::FocusLeave,
+            surface: surface.to_owned(),
+            edge,
+        }))
+    }
+
     /// A frame. On macOS, `right` is the IOSurface whose Mach send right goes first, for the first
     /// frame of a texture id and generation (the attach then names `portIndex` 0).
     #[cfg(target_os = "macos")]
@@ -205,6 +216,7 @@ impl Plugin {
 mod tests {
     use super::{Heard, Plugin};
     use crate::CompositorMessage;
+    use crate::generated::SurfaceFocusEdge;
     use crate::native::lines::{LineReader, Next};
     use std::io::Write;
     use std::os::unix::net::UnixStream;
@@ -244,5 +256,40 @@ mod tests {
         ));
         drop((desk, reader));
         assert!(matches!(plugin.next(None).unwrap(), Heard::Closed));
+    }
+
+    #[test]
+    fn focus_enter_reaches_the_plugin_and_it_hands_the_focus_back_past_an_end() {
+        let (desk, mine) = UnixStream::pair().unwrap();
+        let mut plugin = Plugin::over("example.native".into(), mine, None).unwrap();
+        let surface = "main.example-native";
+        (&desk)
+            .write_all(
+                format!(
+                    "{{\"type\":\"focus.enter\",\"surface\":\"{surface}\",\"edge\":\"last\"}}\n"
+                )
+                .as_bytes(),
+            )
+            .unwrap();
+        let heard = plugin.next(Some(Duration::from_secs(2))).unwrap();
+        let Heard::Message(message) = heard else {
+            panic!("{heard:?}")
+        };
+        let CompositorMessage::SurfaceFocusEnter(enter) = *message else {
+            panic!("{message:?}")
+        };
+        assert_eq!(enter.edge, SurfaceFocusEdge::Last);
+        plugin
+            .leave_focus(surface, SurfaceFocusEdge::First)
+            .unwrap();
+        let mut reader = LineReader::new(desk.try_clone().unwrap());
+        let Next::Line(line) = reader.next_line().unwrap() else {
+            panic!()
+        };
+        let line: serde_json::Value = serde_json::from_str(&line).unwrap();
+        assert_eq!(
+            line,
+            serde_json::json!({ "type": "focus.leave", "surface": surface, "edge": "first" })
+        );
     }
 }

@@ -3,9 +3,12 @@
 //! connection (`lines`); on macOS the Mach send right of an IOSurface travels in a Mach message to
 //! the desk's port just before the line that names it (`mach`). The plugin's side is `plugin`: it
 //! connects from its environment, hears the desk's messages (answering its pings by itself), and
-//! sends frames, its title and page messages; `bridge` calls the bridge on the other connection.
-//! `iosurface` (feature `native-wgpu`, macOS) is a frame a plugin renders into with wgpu.
+//! sends frames, its title and page messages, and hands the focus back past its ends; `bridge`
+//! calls the bridge on the other connection. `focus` is a plugin's own focus order, which Tab and
+//! Shift+Tab move through and leave (#128). `iosurface` (feature `native-wgpu`, macOS) is a frame a
+//! plugin renders into with wgpu.
 
+pub mod focus;
 pub mod lines;
 
 #[cfg(target_os = "macos")]
