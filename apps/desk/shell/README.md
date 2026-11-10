@@ -4,11 +4,10 @@ The endue Desk shell on winit and CEF (ADR 0143), Stage 1 of #32: windows holdin
 desk's URL schemes and CEF's message pump, driven from winit's event loop when CEF asks
 (`OnScheduleMessagePumpWork`). The desk starts through `desk-boot`; pages reach it through
 `window.__deskNative`, the caller taken from the browser's window and the frame's URL (#43, #45).
-It has the Tauri shell's services (#45): tray, menu bar, global shortcuts, file dialog, one desk per
-data folder, files opened with the desk, the palette, the floating Eris and the computer-use banner.
-It replaces the Tauri shell (`../src-tauri`) when Stage 1 ends; until then its binary is
-`endue-desk-cef`. Compositor mode (`DESK_COMPOSITOR=1` or `--compositor`; ADR 0149, 0150) draws the
-main window with `desk-compositor`, every surface off screen, its input through the compositor's router.
+It has the Tauri shell's services (#45): tray, menu bar, shortcuts, file dialog, one desk per data folder,
+opened files, the palette, the floating Eris, the computer-use banner; it replaces `../src-tauri` after
+Stage 1 (`endue-desk-cef`). Compositor mode (`DESK_COMPOSITOR=1`, ADR 0149, 0150) draws every surface
+off screen with `desk-compositor` and routes their input.
 
 ## Public API
 
@@ -17,20 +16,18 @@ main window with `desk-compositor`, every surface off screen, its input through 
 - `window::Shell`, `pane::Pane`: the winit application and each window with its browser.
 - `host`, `commands`: the bridge (`Desk`, `receive`, `Pages`) and the commands, named as Tauri's.
 - `instance::claim`: an OS lock on `desk-instance.lock`; a second start hands its arguments over (`desk-instance.json`).
-- `tray`, `menu`, `hotkeys`, `dialog`; `palette`, `eris_window`, `computer`, `float`, `displays`: the other windows.
-- `open_files`, `run_event`, `drops`: files from the command line, Finder, the Dock and drags.
-- `scheme`, `plugin_scheme`, `guard`, `paths`, `renderer`: schemes, loads, files, `__deskNative`;
-  `crashes::watch` names a plugin frame whose renderer died (`desk://frame-crashed`).
-- `web_host`: `specs/surface` for web content, a windowless browser per surface, its input on CEF
-  (`input`, `key_codes`), cursors, IME carets and the SDK's drags (`routes`, `drag`).
-- `compositor_window`: the wgpu scene and the frames' places, winit's input (`input`, `winit_input`),
-  the focus ring and drag image (`overlay`); `harness`, `probe`: their checks.
+- `tray`, `menu`, `hotkeys`, `dialog`; `palette`, `eris_window`, `computer`, `float`, `displays`: the other
+  windows; `open_files`, `run_event`, `drops`: files from the command line, Finder, the Dock and drags.
+- `scheme`, `plugin_scheme`, `guard`, `paths`, `renderer`, `crashes`: schemes, loads, files, crashes.
+- `web_host`: `specs/surface` for web content, a windowless browser per surface and its input (`input`,
+  `key_codes`, `routes`, `drag`); `compositor_window`: the scene, frames' places, winit's input, the
+  focus ring and drag image (`input`, `winit_input`, `overlay`); `harness`, `probe`: their checks.
 - `sandbox`: each macOS helper enters Chromium's sandbox first (ADR 0148); off elsewhere until #61.
 - `release`, `update`: the build's version, key, origin and commit; the updater over `desk_update::install`,
   the tray's "Restart to update", the restart once CEF has shut down (#47).
 
 Packages (`packager/`, #46) carry the built-in plugins; `DESK_PLUGIN_DIRS` names others. Gaps: no Linux
-tray yet (it needs a GTK loop); the pointer's display and work area are macOS-only.
+tray (it needs a GTK loop); the pointer's display and work area are macOS-only.
 
 ## Run and test
 
