@@ -1,9 +1,12 @@
-// Where and how a local Playwright run may happen (ADR 0018). Pure: the runner (scripts/e2e.mjs) and
+// How a local Playwright run may happen (ADR 0018, ADR 0144). Pure: the runner (scripts/e2e.mjs) and
 // the Playwright configs' guard (guard.mjs) both decide from here.
 //
-// macOS: Playwright's WebKit is a real Cocoa app there. Dozens of them at once exhausted WindowServer's
-// IOSurfaces; it aborted, macOS ended the login session and every agent lost its system services.
-// So on macOS the tests run in a Linux container, and native WebKit is for a person at the keyboard.
+// The runtime e2e runs on Playwright's headless Chromium on every OS (ADR 0144). Headless Chromium
+// opens no window, so WindowServer, which dozens of native WebKit processes crashed on macOS (ADR 0018),
+// never draws or captures one of them; the Linux container and the machine's two slots ended with it.
+// What stays: `just test-e2e` is the only entry, a run has at most four workers (about 2 GB of
+// Chromium, inside the old container's 3 GB; #48), and a headed, UI or debug run, which does open
+// Chromium windows, is for a person at the keyboard.
 
 /** Environment variables that AI coding agents set in the shells they run commands in. */
 export const AGENT_MARKERS = [
@@ -14,11 +17,13 @@ export const AGENT_MARKERS = [
   "DESK_AGENT",
 ];
 
-/** Workers per run: container runs share a Docker VM, native macOS runs share WindowServer. */
-export const WORKERS = { container: 4, native: 2, perf: 1 };
+/** Workers per run: four keep a test run within its memory budget; perf measures with one. */
+export const WORKERS = { test: 4, perf: 1 };
 
 const CONFIGS = { test: "playwright.config.ts", perf: "playwright.perf.config.ts" };
-const DISPLAY_FLAGS = new Set(["--headed", "--ui", "--debug"]);
+
+/** Playwright flags that open Chromium windows instead of running headless. */
+export const DISPLAY_FLAGS = new Set(["--headed", "--ui", "--debug"]);
 
 /** A run this machine must not start; the message says what to do instead. */
 export class Refusal extends Error {}
@@ -44,60 +49,40 @@ export function checkWorkers(args, cap, Err = Refusal) {
   const asked = workerArg(args);
   if (asked === null) return;
   if (!/^\d+$/.test(asked) || Number(asked) > cap) {
-    throw new Err(`This run allows at most ${cap} workers; got --workers ${asked} (ADR 0018).`);
+    throw new Err(`This run allows at most ${cap} workers; got --workers ${asked} (ADR 0144).`);
+  }
+}
+
+/** Throws when an agent on macOS asks for a run that opens Chromium windows. */
+export function checkDisplay({ args, platform, env }, Err = Refusal) {
+  if (platform !== "darwin" || !isAgent(env)) return;
+  const display = args.find((arg) => DISPLAY_FLAGS.has(arg));
+  if (display) {
+    throw new Err(
+      `${display} opens Chromium windows on this Mac's WindowServer, so it is for a person at the ` +
+        "keyboard; an AI agent runs `just test-e2e` headless (ADR 0144).",
+    );
   }
 }
 
 /**
  * Decide a run. `command` is "test" (Playwright arguments follow) or "perf" ("check" or "record").
- * Returns { where: "container" | "native", slots: 0 | 1 | "all", config, workers, args, env }.
- * `workers` is the cap handed to the guard as DESK_E2E_WORKERS (undefined: Playwright's default).
+ * Returns { config, workers, args, env }: `workers` is the cap handed to the guard as
+ * DESK_E2E_WORKERS (undefined in CI: Playwright's default for the runner's cores).
  */
 export function planRun({ command, args = [], platform, env }) {
   if (!(command in CONFIGS)) throw new Refusal(`usage: e2e.mjs test [args] | perf [check|record]`);
   const config = CONFIGS[command];
-  const perf = command === "perf";
-  const mode = perf ? (args[0] ?? "check") : null;
-  if (perf && !["check", "record"].includes(mode)) {
-    throw new Refusal(`perf takes "check" or "record", not "${mode}".`);
-  }
-  const runEnv = mode === "record" ? { PERF_RECORD: "1" } : {};
-  const runArgs = perf ? [] : args;
-
-  if (env.CI)
-    return { where: "native", slots: 0, config, workers: undefined, args: runArgs, env: runEnv };
-  if (platform !== "darwin") {
-    const slots = perf ? "all" : 1;
-    return { where: "native", slots, config, workers: undefined, args: runArgs, env: runEnv };
-  }
-
-  const agent = isAgent(env);
-  if (perf) {
-    if (agent) {
-      throw new Refusal(
-        "just perf-opening measures frame times in native WebKit on this Mac. An AI agent never starts " +
-          "native WebKit on macOS (ADR 0018); ask a person to run it.",
-      );
+  if (command === "perf") {
+    const mode = args[0] ?? "check";
+    if (!["check", "record"].includes(mode)) {
+      throw new Refusal(`perf takes "check" or "record", not "${mode}".`);
     }
-    return { where: "native", slots: "all", config, workers: WORKERS.perf, args: [], env: runEnv };
+    const runEnv = mode === "record" ? { PERF_RECORD: "1" } : {};
+    return { config, workers: WORKERS.perf, args: [], env: runEnv };
   }
-  if (env.DESK_E2E_NATIVE === "1") {
-    if (agent) {
-      throw new Refusal(
-        "DESK_E2E_NATIVE=1 is for a person at the keyboard. An AI agent never starts native WebKit on " +
-          "macOS (ADR 0018): run `just test-e2e` without it, which uses the Linux container.",
-      );
-    }
-    checkWorkers(args, WORKERS.native);
-    return { where: "native", slots: 1, config, workers: WORKERS.native, args, env: runEnv };
-  }
-  const display = args.find((arg) => DISPLAY_FLAGS.has(arg));
-  if (display) {
-    throw new Refusal(
-      `${display} needs a display, and the Linux container has none. A person can run ` +
-        `\`DESK_E2E_NATIVE=1 just test-e2e ${display}\` to watch native WebKit (two workers).`,
-    );
-  }
-  checkWorkers(args, WORKERS.container);
-  return { where: "container", slots: 1, config, workers: WORKERS.container, args, env: runEnv };
+  if (env.CI) return { config, workers: undefined, args, env: {} };
+  checkDisplay({ args, platform, env });
+  checkWorkers(args, WORKERS.test);
+  return { config, workers: WORKERS.test, args, env: {} };
 }

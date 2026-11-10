@@ -3,8 +3,8 @@ import { e2eGuard } from "../../scripts/e2e/guard.mjs";
 import { baseURL, webServer } from "./e2e/port";
 
 const ci = Boolean(process.env.CI);
-// Run through `just test-e2e` only: on macOS this refuses native WebKit that the runner did not start
-// and caps the workers everywhere (ADR 0018).
+// Run through `just test-e2e` only: on macOS this refuses a Playwright the runner did not start, and it
+// caps the workers everywhere (ADR 0018, ADR 0144).
 const guard = e2eGuard();
 
 export default defineConfig({
@@ -19,13 +19,13 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "retain-on-failure",
-    ...guard.use,
   },
+  // The engine the desk ships on every OS (ADR 0140), headless (ADR 0144).
   projects: [
     {
-      name: "webkit",
+      name: "chromium",
       use: {
-        ...devices["Desktop Safari"],
+        ...devices["Desktop Chrome"],
         viewport: { width: 1280, height: 800 },
         deviceScaleFactor: 1,
       },

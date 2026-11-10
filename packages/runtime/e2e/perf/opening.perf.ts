@@ -48,7 +48,7 @@ test("opening frame time stays within budget", async ({ page }) => {
     file.openingFrameTime = {
       ...measured,
       windowMs: WINDOW_MS,
-      engine: "WebKit (Playwright)",
+      engine: "Chromium (Playwright, headless)",
       platform: `${process.platform}-${process.arch}`,
       recorded: new Date().toISOString().slice(0, 10),
       allowedRegression: 0.25,

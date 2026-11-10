@@ -125,7 +125,12 @@ describe("budgets", () => {
     const committed = JSON.parse(
       readFileSync(new URL("../budgets.json", import.meta.url), "utf8"),
     ) as Budgets;
-    expect(committed.openingFrameTime).toMatchObject({ p95Ms: 18, allowedRegression: 0.25 });
+    // Re-recorded on headless Chromium by #48 (ADR 0144); WebKit's was 18.
+    expect(committed.openingFrameTime).toMatchObject({
+      p95Ms: 16.7,
+      engine: "Chromium (Playwright, headless)",
+      allowedRegression: 0.25,
+    });
     const verdicts = compare(committed, measured);
     expect(verdicts.map((v) => v.status)).toEqual(Array(5).fill("no-baseline"));
     expect(verdicts.map((v) => v.target)).toEqual([1200, 1200, null, 16, 16]);

@@ -1,13 +1,13 @@
 {
-  "$comment": "Performance budgets. Baselines are first measurements; a check fails when a value regresses past its section's allowedRegression, and a section without a baseline is reported, not failed. openingFrameTime: just perf-opening (record with: just perf-opening record). startup, idleMemory, inputLatency: just perf-app on the Linux .deb, nightly in the e2e workflow's perf job; their baselines come from the CI runner (just perf-app record, or budgets.json from the job's artifact). targetMs are RT-16's targets, printed beside the values, not gates.",
+  "$comment": "Performance budgets. Baselines are first measurements; a check fails when a value regresses past its section's allowedRegression, and a section without a baseline is reported, not failed. openingFrameTime: just perf-opening (record with: just perf-opening record), headless Chromium since #48 (ADR 0144): its frames come on a 60 Hz clock, so p50 and p95 read 16.7 ms while the onboarding frame keeps up, against WebKit's 17 and 18. startup, idleMemory, inputLatency: just perf-app on the CEF desk (DESK_E2E_SHELL=tauri for the Linux .deb), nightly in the e2e workflow's perf job; their baselines come from the CI runner (just perf-app record, or budgets.json from the job's artifact), and none was recorded on the Tauri app, so the CEF desk's first run sets them. targetMs are RT-16's targets, printed beside the values, not gates.",
   "openingFrameTime": {
-    "p50Ms": 17,
-    "p95Ms": 18,
+    "p50Ms": 16.7,
+    "p95Ms": 16.7,
     "frames": 600,
     "windowMs": 10000,
-    "engine": "WebKit (Playwright)",
+    "engine": "Chromium (Playwright, headless)",
     "platform": "darwin-arm64",
-    "recorded": "2026-10-28",
+    "recorded": "2026-11-09",
     "allowedRegression": 0.25
   },
   "startup": {

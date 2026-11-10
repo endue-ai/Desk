@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // agent-hook: a Claude Code PreToolUse hook (.claude/settings.json) that stops an agent from starting
-// Playwright directly on macOS (ADR 0018). The Playwright configs refuse such runs too; this also
+// Playwright directly on macOS (ADR 0018, ADR 0144): `just test-e2e` is the one entry, which caps the
+// workers and keeps an agent's runs headless. The Playwright configs refuse such runs too; this also
 // catches one-off configs and scripts that import Playwright, before anything starts.
 //
 // Reads the hook input (JSON) on stdin. Exit 2 with a reason on stderr blocks the command; anything
@@ -11,10 +12,10 @@ import { basename, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const REASON =
-  "Playwright runs only through `just test-e2e` (and `just perf-opening`, for people) in this " +
-  "repository. On macOS a direct run starts native WebKit, which crashed WindowServer and ended the " +
-  "login session for every agent on this Mac (ADR 0018). Use `just test-e2e [playwright args]`: it " +
-  "runs the tests in a Linux container, two runs per machine at most.";
+  "Playwright runs only through `just test-e2e` (and `just perf-opening`) in this repository " +
+  "(ADR 0018, ADR 0144). Use `just test-e2e [playwright args]`: it runs headless Chromium with four " +
+  "workers at most and refuses an agent's headed or UI run, which opens windows on this Mac's " +
+  "WindowServer. A one-off config or script skips those limits.";
 
 /** Playwright subcommands that start no browser. */
 const HARMLESS = new Set([
