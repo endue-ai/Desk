@@ -11,7 +11,7 @@
 //! commands come as `compositor_wm`.
 
 use std::sync::mpsc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use desk_compositor::NodeId;
 use desk_compositor::glam::Vec2;
@@ -31,7 +31,14 @@ pub const HELD: &str = "desk://compositor-held";
 /// A desk command a card's button runs.
 pub const RUN: &str = "desk://compositor-run";
 /// How long `desk.windows.list` waits for the page to lay out the desk it names.
-const SNAPSHOT_WAIT: std::time::Duration = std::time::Duration::from_secs(1);
+const SNAPSHOT_WAIT: Duration = Duration::from_secs(1);
+
+/// Whether a snapshot asked at `since` is answered at `now`: once the page took the desk it names,
+/// at once while the window is hidden (the page lays nothing out and reports nothing then), and
+/// past `SNAPSHOT_WAIT` in any case.
+fn snapshot_due(since: Instant, now: Instant, caught_up: bool, hidden: bool) -> bool {
+    caught_up || hidden || now.duration_since(since) >= SNAPSHOT_WAIT
+}
 
 /// A call of the page's for the window manager.
 #[derive(Debug)]
@@ -232,14 +239,17 @@ impl CompositorWindow {
 
     /// Answer the snapshots that waited for the page to lay out the desk they read: what
     /// `desk.windows.list` names is then where the page's parts are too, so a press at a window
-    /// it named lands on that window's title bar. One that waited past `SNAPSHOT_WAIT` (a page that
-    /// stopped reporting) is answered as the desk is.
+    /// it named lands on that window's title bar. While the window is hidden the page reports
+    /// nothing (it has no begin frames, `web_host/frames.rs`) and nothing can be pressed, so a
+    /// snapshot is answered as the desk is at once; one that waited past `SNAPSHOT_WAIT` (a page
+    /// that stopped reporting) too.
     fn answer_snapshots(&mut self) {
         let caught_up = self.hosted.page_took(self.hosted.wm.rev());
+        let hidden = self.occluded;
         let now = Instant::now();
         let (ready, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.gestures.snapshots)
             .into_iter()
-            .partition(|(since, ..)| caught_up || now.duration_since(*since) >= SNAPSHOT_WAIT);
+            .partition(|(since, ..)| snapshot_due(*since, now, caught_up, hidden));
         self.gestures.snapshots = later;
         let screen = self.hosted.wm.screen();
         for (_, told, answer) in ready {
@@ -270,10 +280,29 @@ impl CompositorWindow {
             Call::Snapshot { told, answer } => {
                 self.gestures.snapshots.push((now, told, answer));
                 self.answer_snapshots();
+                if !self.gestures.snapshots.is_empty() {
+                    self.look_at_snapshots_after(SNAPSHOT_WAIT);
+                }
                 return;
             }
         };
         self.wm_outs(outs, now);
+    }
+
+    /// Look at the snapshots waiting again once `wait` has passed. The page's reports and edits
+    /// look at them as they come, but a page that stopped reporting sends nothing more: without
+    /// this look its snapshot waited until the call gave up (`commands.rs`, 10 s), and
+    /// `desk.windows.list` failed.
+    fn look_at_snapshots_after(&self, wait: Duration) {
+        let pump = self.desk.pump.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(wait);
+            pump.run(|shell, _| {
+                if let Some(compositor) = shell.compositor.as_mut() {
+                    compositor.answer_snapshots();
+                }
+            });
+        });
     }
 
     /// Tell the runtime and the page what the window manager calls for; whether something drawn
@@ -319,5 +348,25 @@ impl CompositorWindow {
         json!({ "held": wm.held(), "holds": wm.holds(), "rev": wm.rev(), "preview": preview,
             "buttons": self.gestures.buttons.len(), "spread": self.spread_state(),
             "map": self.map_state() })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_snapshot_waits_for_the_page_to_take_the_desk_it_names() {
+        let asked = Instant::now();
+        let soon = asked + Duration::from_millis(30);
+        assert!(!snapshot_due(asked, soon, false, false));
+        assert!(snapshot_due(asked, soon, true, false));
+        assert!(snapshot_due(asked, asked + SNAPSHOT_WAIT, false, false));
+    }
+
+    #[test]
+    fn a_hidden_window_answers_a_snapshot_at_once_as_its_page_reports_nothing() {
+        let asked = Instant::now();
+        assert!(snapshot_due(asked, asked, false, true));
     }
 }

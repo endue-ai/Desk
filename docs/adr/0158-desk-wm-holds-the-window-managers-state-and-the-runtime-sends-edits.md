@@ -55,7 +55,10 @@ no compositor", because it deletes the second window manager instead of moving i
   once the desk they made is in; an action that needs a result awaits it, and one that would read
   after writing asks for one compound edit instead (`focus` then `close-pane` is `close-pane` naming
   the pane). `desk.windows.list` is `desk-wm`'s snapshot with the titles and frame states the runtime
-  tells it (`compositor_snapshot`), plus the closed windows and capabilities.
+  tells it (`compositor_snapshot`), plus the closed windows and capabilities. In the app it answers
+  once the page's report says it took the desk the snapshot names, so a press at a window it names
+  lands where the page lays that window out; at most a second later in any case, and at once while
+  the window is hidden, as a hidden page reports nothing (#142).
 * **The seam in the app.** The page sends `compositor_edit { seq, edits }`; the shell applies batches
   in their order (a call may overtake another), grabs and window commands name the last edit they
   follow (`after`), and a batch numbered 1 is a runtime that started again: its desk starts afresh.
