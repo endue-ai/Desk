@@ -6,6 +6,8 @@
 //! takes the keys, and closing a window answers the plugins to unmount for the session (ADR 0040);
 //! the runtime's unmount then `release`s them.
 
+use std::collections::BTreeSet;
+
 use crate::fill::{fill_with, toggle_floating, toggle_maximize};
 use crate::panes::{self, LAUNCHER};
 use crate::placed::PLUGIN_VIEW;
@@ -114,19 +116,33 @@ impl Desk {
         }
     }
 
+    /// Every window id on the desk (`windowIds`, #101): on each desktop, drawn or placed while its
+    /// plugin is away (it comes back there), the plugin windows in their slots, and the drawer's.
+    /// The drawer and `desk.windows.list` know a window by its id alone.
+    pub fn window_ids(&self) -> BTreeSet<String> {
+        let mut ids = BTreeSet::new();
+        for d in self.desktops() {
+            ids.extend(
+                self.layout_of(d.id.as_str())
+                    .surfaces
+                    .into_iter()
+                    .map(|p| p.id),
+            );
+            ids.extend(self.windows_of(d.id.as_str()).into_iter().map(|p| p.id));
+        }
+        ids.extend(
+            self.drawer
+                .iter()
+                .filter_map(|d| d.placement.as_ref().map(|p| p.id.clone())),
+        );
+        ids
+    }
+
     /// A new window with one launcher pane (⌘N), cascading from the middle of what is in sight,
-    /// focused. Answers its id: `window-<n>`, the first number no window or drawer item has.
+    /// focused. Answers its id: `window-<n>`, the first number no window on any desktop and no
+    /// drawer item has (#101).
     pub fn new_window(&mut self) -> String {
-        let taken: Vec<String> = self
-            .windows()
-            .into_iter()
-            .map(|p| p.id)
-            .chain(
-                self.drawer
-                    .iter()
-                    .filter_map(|d| d.placement.as_ref().map(|p| p.id.clone())),
-            )
-            .collect();
+        let taken = self.window_ids();
         let id = (1..)
             .map(|n: u64| format!("window-{n}"))
             .find(|id| !taken.contains(id))
