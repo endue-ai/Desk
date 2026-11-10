@@ -129,6 +129,20 @@ describe("a cmd.invoked the host cannot deliver (#1)", () => {
     plugins.stop();
   });
 
+  it("waits while its first frame loads, so a command run at once reaches the plugin (#139)", async () => {
+    // The frame's page has no listener before the SDK connects: a message posted then is lost.
+    const { stub, plugins, hello, calls, delivered, wake } = await host();
+    await settle();
+    stub.emit(invoked("i-1"));
+    await settle();
+    expect(delivered()).toEqual([]);
+    expect(wake).not.toHaveBeenCalled();
+    hello();
+    expect(delivered()).toEqual(["i-1"]);
+    expect(calls("cmd.answer")).toEqual([]);
+    plugins.stop();
+  });
+
   it("waits while the frame loads: one wake, and every invocation reaches it after its hello", async () => {
     // The policy answers true once: the frame it loads is live from then on, before its hello.
     let loads = 0;

@@ -21,29 +21,41 @@ function plugin(id: string, permissions: Array<{ permission: string }> = []): Pl
   } as PluginInfo;
 }
 
-/** A host over fake frames that record what the runtime posted to them. */
+/**
+ * A host over fake frames that record what the runtime posted to them once they said hello, as
+ * the SDK does when its page has loaded.
+ */
 async function mount(plugins: PluginInfo[]) {
   const stub = browserStub({ "plugin.list": () => ({ plugins }) });
-  const frames = new Map<string, unknown[]>();
-  const win = { addEventListener() {}, removeEventListener() {} } as unknown as Window;
+  const frames = new Map<string, { posted: unknown[]; window: Window }>();
+  let receive = (_event: MessageEvent) => {};
+  const win = {
+    addEventListener: (_type: string, listener: typeof receive) => {
+      receive = listener;
+    },
+    removeEventListener() {},
+  } as unknown as Window;
   const host = new PluginHost(
     {
       bridge: new BridgeClient(stub),
       win,
-      open: (spec) => frames.set(spec.id, []),
+      open: (spec) => {
+        const posted: unknown[] = [];
+        const window = { postMessage: (m: unknown) => posted.push(m) } as unknown as Window;
+        frames.set(spec.id, { posted, window });
+      },
       close() {},
       reload() {},
-      frame: (id) => {
-        const posted = frames.get(id);
-        return posted
-          ? ({ postMessage: (m: unknown) => posted.push(m) } as unknown as Window)
-          : null;
-      },
+      frame: (id) => frames.get(id)?.window ?? null,
     },
     { url: () => "about:blank" },
   );
   await host.start();
-  return { stub, host, posted: (id: string) => frames.get(id) ?? [] };
+  for (const frame of frames.values()) {
+    receive({ source: frame.window, data: { type: "desk:hello" } } as unknown as MessageEvent);
+    frame.posted.length = 0;
+  }
+  return { stub, host, posted: (id: string) => frames.get(id)?.posted ?? [] };
 }
 
 const prompt = {

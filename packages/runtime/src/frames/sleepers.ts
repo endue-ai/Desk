@@ -1,8 +1,9 @@
 /**
- * Plugins whose frame the runtime unloaded (ADR 0070), until the next frame says hello: what they
- * kept for it (ui.surface.state), and the messages that wait for it. A request, a command
- * invocation, a permission prompt or an agent's approval needs the plugin's answer, so it waits and
- * wakes the frame; anything else is dropped, since the plugin reads what it needs again when it loads.
+ * Plugins whose frame the runtime unloaded (ADR 0070), or whose first frame still loads, until the
+ * next frame says hello: what they kept for it (ui.surface.state), and the messages that wait for
+ * it. A request, a command invocation, a permission prompt or an agent's approval needs the
+ * plugin's answer, so it waits and wakes the frame; anything else is dropped, since the plugin reads
+ * what it needs again when it loads.
  * A plugin can also start asleep (#590): it has no surface yet, and waking it opens one. When no
  * frame can load, a command invocation is not kept: the host answers it (#1). A prompt or a desk
  * command still waits, since the person may open the plugin's window later.
@@ -25,6 +26,8 @@ export class Sleepers {
   readonly #dozing = new Map<string, () => void>();
   /** Plugins whose frame loads for what waits, until its hello. */
   readonly #rousing = new Set<string>();
+  /** Plugins that mounted awake and whose first frame has not said hello yet: not asleep. */
+  readonly #loading = new Set<string>();
   /** Loads an unloaded frame again (the frame policy's wake); true when its frame is live after. */
   readonly #load: (id: string) => boolean;
 
@@ -36,6 +39,7 @@ export class Sleepers {
   sleep(id: string, state: unknown): void {
     this.#restored.delete(id);
     this.#rousing.delete(id);
+    this.#loading.delete(id);
     if (state !== undefined) this.#restored.set(id, state);
     if (!this.#waiting.has(id)) this.#waiting.set(id, []);
   }
@@ -44,6 +48,18 @@ export class Sleepers {
   doze(id: string, open: () => void): void {
     this.sleep(id, undefined);
     this.#dozing.set(id, open);
+  }
+
+  /**
+   * A plugin mounts awake: `open` opens its surface, and until its first frame says hello what
+   * needs its answer waits, as for a sleeper. Its page hears nothing before the SDK connects, and a
+   * command run then was lost: its caller waited for ever (#139).
+   */
+  load(id: string, open: () => void): void {
+    this.sleep(id, undefined);
+    this.#loading.add(id);
+    this.#rousing.add(id);
+    open();
   }
 
   /** Open the surface of a plugin that started asleep; false for any other. It sleeps until hello. */
@@ -67,7 +83,13 @@ export class Sleepers {
     return this.#dozing.has(id);
   }
 
+  /** Whether a plugin has no live frame until its next hello: it started asleep, or unloaded. */
   asleep(id: string): boolean {
+    return this.#waiting.has(id) && !this.#loading.has(id);
+  }
+
+  /** Whether what needs a plugin's answer waits for its next hello: asleep, or loading. */
+  waits(id: string): boolean {
     return this.#waiting.has(id);
   }
 
@@ -99,5 +121,6 @@ export class Sleepers {
     this.#restored.delete(id);
     this.#dozing.delete(id);
     this.#rousing.delete(id);
+    this.#loading.delete(id);
   }
 }

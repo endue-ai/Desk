@@ -199,7 +199,7 @@ export class PluginHost {
       });
     };
     if (asleep) this.#sleepers.doze(info.id, open);
-    else open();
+    else this.#sleepers.load(info.id, open);
     this.#commands.mounted(info);
   }
 
@@ -332,7 +332,7 @@ export class PluginHost {
   }
 
   #post(id: string, message: unknown): void {
-    if (!this.#sleepers.asleep(id)) this.#deps.frame(id)?.postMessage(message, "*");
+    if (!this.#sleepers.waits(id)) this.#deps.frame(id)?.postMessage(message, "*");
     else if (this.#sleepers.hold(id, message) === "stuck")
       this.#commands.refuse(message, id, `${id} is asleep and its frame cannot load`);
   }
