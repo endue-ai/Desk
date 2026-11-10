@@ -1,14 +1,15 @@
 //! The web host's side of the desk's frame clock (#111, #117, `frames.rs`): each look sends a begin
 //! frame (`SendExternalBeginFrame`) to every browser the clock takes at that moment: the surfaces on
 //! it, and the compositor's own shell page while it is shown, which the host does not make but
-//! paints on the same clock. What the browsers heard since the last look starts their prompt frames
-//! or wakes them, and the next look is the soonest any of them wants.
+//! paints on the same clock. What the browsers heard since the last look starts their prompt frames,
+//! wakes them, or, for a page that asked (`frame_asks.js`), gives a resting surface the next desk
+//! frames; the next look is the soonest any of them wants, none while every one rests (#134).
 
 use std::time::Instant;
 
 use cef::*;
 
-use super::frames::{self, Pacing};
+use super::frames::{self, Heard, Pacing};
 use super::view::SharedView;
 use super::{Inner, WebHost, copy_wake};
 
@@ -77,13 +78,15 @@ impl WebHost {
                     view: &p.view,
                 }))
                 .collect();
-            for (id, at, prompt) in heard {
+            for (id, at, what) in heard {
                 if let Some(it) = on.iter_mut().find(|it| it.browser.identifier() == id) {
-                    if prompt {
-                        let painted = paints(it.view);
-                        it.pacing.press(at, painted);
-                    } else {
-                        it.pacing.heard(at);
+                    match what {
+                        Heard::Prompt => {
+                            let painted = paints(it.view);
+                            it.pacing.press(at, painted);
+                        }
+                        Heard::Woken => it.pacing.heard(at),
+                        Heard::Asked => it.pacing.ask(at),
                     }
                 }
             }

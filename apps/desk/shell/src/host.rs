@@ -145,11 +145,8 @@ wrap_task! {
             if self.frame.is_valid() != 1 {
                 return;
             }
-            // What a page hears may change what it shows: a long-idle surface is back on every desk
-            // frame (#117, `web_host/frames.rs`).
-            if let Some(browser) = self.frame.browser() {
-                crate::web_host::frames::heard(browser.identifier(), false);
-            }
+            // What a page hears may change what it shows; if it does, the page asks for frames
+            // (#134, `web_host/frame_asks.js`): a message alone no longer wakes a resting surface.
             let name = if self.surface.is_some() { SURFACE } else { MESSAGE };
             if let Some(mut message) = process_message_create(Some(&name.into())) {
                 if let Some(list) = message.argument_list() {

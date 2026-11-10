@@ -1,6 +1,6 @@
 use super::{
-    COLD, Clock, Copies, FRAME, IDLE, IDLE_RATE, LONG_IDLE, PROMPT, PROMPT_FOR, Pacing, heard,
-    on_clock, prompts, take_heard,
+    ASKED_FOR, COLD, Clock, Copies, FRAME, Heard, IDLE, LONG_IDLE, PROMPT, PROMPT_FOR, Pacing,
+    asked, heard, on_clock, prompts, take_heard,
 };
 use crate::web_host::lifecycle::State;
 use std::time::{Duration, Instant};
@@ -54,35 +54,50 @@ fn a_surfaces_pace_takes_every_desk_frame_or_skips_evenly() {
 }
 
 #[test]
-fn a_long_idle_surface_takes_one_desk_frame_in_six_on_frames_every_long_idle_surface_shares() {
+fn a_long_idle_surface_rests_until_it_hears_something_paints_or_its_page_asks() {
     let t0 = Instant::now();
     let (mut a, mut b) = (Pacing::new(60), Pacing::new(60));
     assert!(a.due(t0, Some(0), 0));
     assert!(b.due(t0, Some(3), 0), "b's first frame is its own");
     let rest = t0 + LONG_IDLE;
     assert!(a.long_idle(rest) && b.long_idle(rest));
-    assert_eq!(taken(&mut a, rest, 60..73, 0), "x.....x.....x");
     assert_eq!(
-        taken(&mut b, rest, 60..73, 0),
-        "x.....x.....x",
-        "the same frames"
+        taken(&mut a, rest, 60..73, 0),
+        ".............",
+        "no frame at rest"
     );
-    assert_eq!(IDLE_RATE, 10);
-    let mut slow = Pacing::new(1);
-    slow.due(t0, Some(1), 0);
-    assert_eq!(
-        taken(&mut slow, rest, 61..121, 0).matches('x').count(),
-        1,
-        "never faster than its pace"
-    );
-    // Input or a message puts it back on every frame, and so does a paint.
+    assert_eq!(taken(&mut b, rest, 60..73, 0), ".............");
+    // Input or a message puts it back on every frame.
     a.heard(rest);
     assert!(!a.long_idle(rest));
     assert_eq!(taken(&mut a, rest, 73..76, 0), "xxx");
-    let later = rest + LONG_IDLE;
-    assert_eq!(taken(&mut b, later, 126..129, 0), "x..");
-    assert!(b.due(later, Some(129), 1), "it painted");
-    assert_eq!(taken(&mut b, later, 130..132, 1), "xx");
+    // Its page asks: the desk frames within ASKED_FOR, then none again, unless they brought a paint.
+    let asked = rest + FRAME / 2;
+    b.ask(asked);
+    let looks = [0.0, 16.7, 33.4, 50.1].map(|t| ms(asked, t));
+    let got: Vec<bool> = looks
+        .iter()
+        .zip(80u64..)
+        .map(|(at, k)| b.due(*at, Some(k), 0))
+        .collect();
+    assert_eq!(
+        got,
+        [true, true, true, false],
+        "{ASKED_FOR:?} of desk frames"
+    );
+    assert!(
+        b.long_idle(looks[3]),
+        "nothing came of them: it rests again"
+    );
+    b.ask(looks[3]);
+    assert!(b.due(looks[3], Some(84), 0));
+    let painted = looks[3] + FRAME;
+    assert!(b.due(painted, Some(85), 1), "a paint came");
+    assert!(
+        !b.long_idle(painted + LONG_IDLE / 2),
+        "awake: it takes its pace's frames"
+    );
+    assert_eq!(taken(&mut b, painted + FRAME, 86..89, 1), "xxx");
 }
 
 #[test]
@@ -118,7 +133,7 @@ fn the_clock_numbers_its_frames_never_makes_up_a_late_one_and_starts_at_once() {
 }
 
 #[test]
-fn a_desk_at_rest_wakes_for_its_clock_ten_times_a_second() {
+fn a_desk_at_rest_has_nothing_to_look_at_until_a_page_asks_or_a_press_comes() {
     let t0 = Instant::now();
     let mut clock = Clock::default();
     let mut pacing = Pacing::new(60);
@@ -129,29 +144,29 @@ fn a_desk_at_rest_wakes_for_its_clock_ten_times_a_second() {
         "awake: every frame"
     );
     let rest = t0 + LONG_IDLE;
-    let k = clock.frame(rest).unwrap();
-    pacing.due(rest, Some(k), 1);
-    let next = pacing.next(&clock, rest).unwrap();
-    let wait = next - rest;
-    assert!(
-        wait <= FRAME * 6 && next == clock.at(k.next_multiple_of(6).max(k + 1)).unwrap(),
-        "the next frame long-idle surfaces share: {wait:?}"
+    let k = clock.frame(rest);
+    assert!(!pacing.due(rest, k, 1));
+    assert_eq!(pacing.next(&clock, rest), None, "no look at rest");
+    pacing.ask(rest);
+    assert_eq!(
+        pacing.next(&clock, rest),
+        clock.next(),
+        "its page asked: the next desk frame"
     );
-    let mut looks = 0;
-    let mut now = rest;
-    loop {
-        let next = pacing.next(&clock, now).unwrap();
-        if next >= rest + Duration::from_secs(1) {
-            break;
-        }
-        now = next;
-        let frame = clock.frame(now);
-        assert!(pacing.due(now, frame, 1), "a frame it takes");
-        looks += 1;
-    }
-    assert_eq!(looks, 10, "one look a long-idle frame");
-    pacing.press(now, 1);
-    assert_eq!(pacing.next(&clock, now), Some(now), "a press looks at once");
+    let after = rest + ASKED_FOR + FRAME;
+    assert_eq!(
+        pacing.next(&clock, after),
+        None,
+        "and none once the ask is over"
+    );
+    let k = clock.frame(after);
+    assert!(!pacing.due(after, k, 1));
+    pacing.press(after, 1);
+    assert_eq!(
+        pacing.next(&clock, after),
+        Some(after),
+        "a press looks at once"
+    );
 }
 
 #[test]
@@ -244,12 +259,20 @@ fn only_visible_awake_surfaces_are_on_the_clock_presses_prompt_and_the_clock_hea
     // Other tests may hear too: look for this one's browser only.
     heard(-117, true);
     heard(-118, false);
-    let got: Vec<(i32, bool)> = take_heard()
+    asked(-119);
+    let got: Vec<(i32, Heard)> = take_heard()
         .into_iter()
         .filter(|(id, _, _)| *id <= -117)
-        .map(|(id, _, prompt)| (id, prompt))
+        .map(|(id, _, what)| (id, what))
         .collect();
-    assert_eq!(got, [(-117, true), (-118, false)]);
+    assert_eq!(
+        got,
+        [
+            (-117, Heard::Prompt),
+            (-118, Heard::Woken),
+            (-119, Heard::Asked)
+        ]
+    );
 }
 
 #[test]

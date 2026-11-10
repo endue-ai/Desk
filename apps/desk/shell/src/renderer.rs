@@ -5,8 +5,9 @@
 //! ADR 0160, `web_host::relay`): a plugin surface's page posts to its parent (`window.parent` is the
 //! desk there, `web_host::shim`), and the runtime's page posts to a surface by naming its host,
 //! `post(text, host)`; the runtime's page hears what a surface posted through
-//! `onSurface(host, text)`, which it sets. Development builds add `pid`, the renderer's process id,
-//! so a check can kill one surface's.
+//! `onSurface(host, text)`, which it sets. `wake()` asks the desk for frames (#134,
+//! `web_host::frame_asks`, which every frame's page runs). Development builds add `pid`, the
+//! renderer's process id, so a check can kill one surface's.
 
 use cef::*;
 
@@ -20,6 +21,9 @@ pub const POST: &str = "desk.post";
 /// The process message carrying what a surface's page posted to the runtime's page: the text, and
 /// the surface's host.
 pub const SURFACE: &str = "desk.surface";
+/// The process message by which a page asks the desk for frames: none came for a change of its own
+/// while its surface rests (#134, `web_host::frame_asks`). No arguments.
+pub const WAKE: &str = "desk.wake";
 
 /// The global the page sees.
 const NATIVE: &str = "__deskNative";
@@ -53,8 +57,16 @@ wrap_v8_handler! {
             let kind = match name.map(|n| n.to_string()).as_deref() {
                 Some("send") => CALL,
                 Some("post") => POST,
+                Some("wake") => WAKE,
                 _ => return 0,
             };
+            if kind == WAKE {
+                let frame = v8_context_get_current_context().and_then(|c| c.frame());
+                if let (Some(frame), Some(mut message)) = (frame, process_message_create(Some(&kind.into()))) {
+                    frame.send_process_message(ProcessId::BROWSER, Some(&mut message));
+                }
+                return 1;
+            }
             let text = string_arg(arguments, 0);
             let to = (kind == POST).then(|| string_arg(arguments, 1)).flatten();
             let (Some(text), Some(frame)) = (text, v8_context_get_current_context().and_then(|c| c.frame())) else {
@@ -90,7 +102,7 @@ wrap_render_process_handler! {
             let Some(context) = context else { return };
             let Some(global) = context.global() else { return };
             let Some(mut native) = v8_value_create_object(None, None) else { return };
-            for name in ["send", "post"] {
+            for name in ["send", "post", "wake"] {
                 let mut handler = SendHandler::new();
                 if let Some(mut function) = v8_value_create_function(Some(&name.into()), Some(&mut handler)) {
                     native.set_value_bykey(Some(&name.into()), Some(&mut function), read_only());
@@ -102,6 +114,8 @@ wrap_render_process_handler! {
                 native.set_value_bykey(Some(&"pid".into()), Some(&mut pid), read_only());
             }
             global.set_value_bykey(Some(&NATIVE.into()), Some(&mut native), read_only());
+            // A resting surface's page asks for frames when a change of its own needs one (#134).
+            crate::web_host::frame_asks::install(context);
             let (main, url) = frame
                 .map(|f| (f.is_main() == 1, CefString::from(&f.url()).to_string()))
                 .unwrap_or_default();
