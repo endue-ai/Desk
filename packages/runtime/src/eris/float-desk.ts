@@ -7,6 +7,7 @@
  */
 import type { ShellCtx } from "../shell/context";
 import { listen } from "../shell/dom";
+import { IDLE } from "../shell/ticker";
 import {
   BACK_KEY,
   type ErisLine,
@@ -75,11 +76,15 @@ export function linkDesk(ctx: ShellCtx, eris: DeskEris, options: DeskLinkOptions
       },
     ),
     ctx.store.watch((s) => s.eris.state, publish),
+    // Her turn's phase, looked at on the desk's frames; it needs none of its own (ADR 0164): a turn
+    // runs her frames (Eris.ts), and its end is seen before she rests.
     ctx.ticker.add(() => {
       const now = eris.phase();
-      if (now === phase) return;
-      phase = now;
-      publish();
+      if (now !== phase) {
+        phase = now;
+        publish();
+      }
+      return IDLE;
     }),
     channel.listen(BACK_KEY, (text) => {
       const back = readBack(text);

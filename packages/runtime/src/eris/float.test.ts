@@ -34,6 +34,7 @@ function linked(focused = true) {
     store,
     ticker: {
       now: () => 0,
+      wake: () => {},
       add: (tick: (now: number) => void) => {
         ticks.add(tick);
         tick(0);

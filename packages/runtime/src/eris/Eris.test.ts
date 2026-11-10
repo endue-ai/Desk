@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ManualClock } from "../clock";
 import type { ShellCtx } from "../shell/context";
 import { emptyState, Store } from "../shell/state";
 import type { Palette } from "./draw";
@@ -12,6 +13,8 @@ vi.mock("./draw", async (original) => ({
   paintMoon: (_c: unknown, _s: unknown, palette: Palette) => painted.moon.push(palette),
 }));
 const { mountEris } = await import("./Eris");
+const { REST_MS } = await import("./states");
+const { Ticker } = await import("../shell/ticker");
 
 const DARK = {
   "--desk-eris": "#e8c98a",
@@ -42,6 +45,7 @@ function shell() {
     store: new Store(emptyState("en")),
     ticker: {
       now: () => 0,
+      wake: () => {},
       add: (tick: (now: number) => void) => {
         tick(0);
         return () => {};
@@ -110,6 +114,28 @@ describe("Eris's palette", () => {
     expect(ctx.store.get().eris.state).toBe("idle");
     el?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     expect(ctx.store.get().eris.state).toBe("listening");
+    eris.dispose();
+  });
+
+  it("rests once idle, silent and settled for a while, and a new state wakes her", () => {
+    const { ctx } = shell();
+    const clock = new ManualClock();
+    const live = ctx as unknown as { ticker: InstanceType<typeof Ticker>; reduced: () => boolean };
+    live.ticker = new Ticker(clock);
+    live.reduced = () => false;
+    const eris = mountEris(document.body, ctx, () => null);
+    const run = (ms: number) => {
+      for (let t = 0; t < ms; t += 16) clock.advance(16);
+    };
+    run(1000);
+    expect(painted.body.length, "her idle motion runs").toBeGreaterThan(50);
+    run(REST_MS);
+    const rested = painted.body.length;
+    run(2000);
+    expect(painted.body.length, "at rest: nothing painted").toBe(rested);
+    ctx.store.set((s) => ({ eris: { ...s.eris, state: "thinking" } }));
+    run(500);
+    expect(painted.body.length, "woken by her new state").toBeGreaterThan(rested + 20);
     eris.dispose();
   });
 });

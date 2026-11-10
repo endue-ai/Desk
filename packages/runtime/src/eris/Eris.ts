@@ -1,7 +1,9 @@
 /**
  * Eris on the desk: the mesh body, the core glow, Dysnomia, the soul text under her, and the sound
  * rings. Draggable anywhere (the position is saved in the current mode); a click (or Enter) starts a
- * spoken turn (talk.ts). Everything runs on the ticker.
+ * spoken turn (talk.ts). Everything runs on the ticker. Idle, silent and settled for `REST_MS`, she
+ * rests (ADR 0164): her last frame stays and her tick tells the ticker it is idle, so a desk at rest
+ * draws nothing; a new state, a line, a turn, a drag, a pointer on her or a new size wakes her.
  */
 import userHello from "../bridge/envelopes/user-hello.json";
 import type { Bands, WordTime } from "../bridge/types";
@@ -9,6 +11,7 @@ import { moveEris } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen } from "../shell/dom";
 import { draggable } from "../shell/drag";
+import { IDLE } from "../shell/ticker";
 import { BODY, digest, type FrameModel, frameModel, paint, paintMoon } from "./draw";
 import { audioContext, openMic, sampleEar } from "./ear";
 import { mountErrands } from "./errand";
@@ -17,7 +20,15 @@ import { linkDesk } from "./float-desk";
 import { basisFor, DENSITIES, type DensityName, generateMesh, type Mesh } from "./mesh";
 import { speakAloud } from "./mouth";
 import { SoulText } from "./SoulText";
-import { coreBreath, type ErisState, floatOffset, LOOKS, type Look, LookTween } from "./states";
+import {
+  coreBreath,
+  type ErisState,
+  floatOffset,
+  LOOKS,
+  type Look,
+  LookTween,
+  REST_MS,
+} from "./states";
 import { Talk } from "./talk";
 import { type Cue, PULSE_TO_RIM_MS, Voice } from "./voice";
 
@@ -94,6 +105,12 @@ export function mountEris(
   let spin = 0;
   let last = ctx.ticker.now();
   let dragging: { x: number; y: number } | null = null;
+  // Since when nothing has moved her: idle, silent, settled and not dragged (`REST_MS`).
+  let quiet: number | undefined;
+  const wake = () => {
+    quiet = undefined;
+    ctx.ticker.wake();
+  };
 
   /** Soul text plus Eris's pulses (ms after the line starts); returns when the line starts. */
   const speakLine = (text: string, words: WordTime[] | undefined, pulses?: number[]) => {
@@ -234,11 +251,30 @@ export function mountEris(
     const p = position();
     el.style.left = `${p.x}px`;
     el.style.top = `${p.y}px`;
+
+    const still =
+      state === "idle" &&
+      look === LOOKS.idle &&
+      rings.mode === "idle" &&
+      talk.phase === "off" &&
+      !said &&
+      !dragging;
+    if (!still) {
+      quiet = undefined;
+      return;
+    }
+    quiet ??= now;
+    return now - quiet >= REST_MS ? IDLE : undefined;
   };
 
   let start = { x: 0, y: 0 };
   const offs = [
     ctx.ticker.add(frame),
+    // What wakes her from rest: her state, a line, her place, the window's size, a pointer on her.
+    ctx.store.watch((s) => s.eris, wake),
+    ctx.store.watch(() => layout(), wake),
+    listen(window, "resize", wake),
+    listen(el, "pointerenter", wake),
     // The floating window over the OS shows her while the desk is inactive (ADR 0121).
     linkDesk(ctx, { phase: () => talk.phase, say: (text) => speakLine(text, undefined), setState }),
     // Every theme applied: a desk.theme.* setting, a preview, a theme plugin installed or edited, the
@@ -253,6 +289,7 @@ export function mountEris(
     draggable(el, {
       start: () => {
         start = position();
+        wake();
       },
       move: (dx, dy) => {
         dragging = { x: start.x + dx, y: start.y + dy };
@@ -270,8 +307,12 @@ export function mountEris(
       },
     }),
     // A click that was not a drag (drag.ts swallows the click after one) talks to her.
-    listen(el, "click", () => talk.toggle(ctx.ticker.now())),
+    listen(el, "click", () => {
+      wake();
+      talk.toggle(ctx.ticker.now());
+    }),
     listen(el, "keydown", (e) => {
+      wake();
       const k = e as KeyboardEvent;
       if (k.key === "Enter" || k.key === " ") {
         k.preventDefault();
@@ -300,6 +341,7 @@ export function mountEris(
     },
     setState,
     talk() {
+      wake();
       talk.toggle(ctx.ticker.now());
     },
     dispose() {

@@ -2,15 +2,25 @@
  * Her figure on its own, for a window without the shell (the floating Eris, ADR 0121): the same
  * mesh, core, halo and Dysnomia as the desk's Eris, in the same classes and theme tokens, painted
  * from a state on an injected clock. No microphone rings; one pulse per syllable while she speaks.
+ * Idle, silent and settled for `REST_MS` she rests as the desk's Eris does (ADR 0164): a new state, a
+ * line or a new look wakes her.
  */
 import { wordTimes } from "../bridge/browser";
 import type { Clock } from "../clock";
 import { h } from "../shell/dom";
-import { Ticker } from "../shell/ticker";
+import { IDLE, Ticker } from "../shell/ticker";
 import { BODY, digest, type FrameModel, frameModel, type Palette, paint, paintMoon } from "./draw";
 import { basisFor, DENSITIES, type DensityName, generateMesh, type Mesh } from "./mesh";
 import { syllablePulses } from "./mouth";
-import { coreBreath, type ErisState, floatOffset, LOOKS, type Look, LookTween } from "./states";
+import {
+  coreBreath,
+  type ErisState,
+  floatOffset,
+  LOOKS,
+  type Look,
+  LookTween,
+  REST_MS,
+} from "./states";
 import { type Cue, PULSE_TO_RIM_MS, Voice } from "./voice";
 
 const MOON = 18;
@@ -146,6 +156,18 @@ export function mountFigure(options: FigureOptions): Figure {
     spark.hidden = !look.dysnomia.spark;
     el.dataset.state = state;
     options.tick?.(now);
+    if (state !== "idle" || look !== LOOKS.idle || rings.mode !== "idle") {
+      quiet = undefined;
+      return;
+    }
+    quiet ??= now;
+    return now - quiet >= REST_MS ? IDLE : undefined;
+  };
+  // Since when she has been idle, silent and settled.
+  let quiet: number | undefined;
+  const wake = () => {
+    quiet = undefined;
+    ticker.wake();
   };
   const off = ticker.add(frame);
 
@@ -153,8 +175,10 @@ export function mountFigure(options: FigureOptions): Figure {
     el,
     set(next) {
       state = next;
+      wake();
     },
     speak(text, msPerChar) {
+      wake();
       const start = ticker.now() + PULSE_TO_RIM_MS;
       const pulses = syllablePulses(wordTimes(text, msPerChar), msPerChar);
       voice.speak(
@@ -163,6 +187,7 @@ export function mountFigure(options: FigureOptions): Figure {
       );
     },
     restyle() {
+      wake();
       colors = palette();
       paintMoonNow();
       if (ctx2d && colors.frost && painted) {
