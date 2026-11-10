@@ -98,18 +98,7 @@ impl Motion {
     /// From the theme's tokens (`motionBase`, `motionFast`, `easing`, as the token table names
     /// them); what a token does not say stays the default. Reduced motion moves nothing.
     pub fn from_tokens(token: impl Fn(&str) -> Option<String>, reduced: bool) -> Motion {
-        let ms = |name: &str, or: f64| {
-            let value = token(name).unwrap_or_default();
-            let value = value.trim();
-            let parsed = match value.strip_suffix("ms") {
-                Some(n) => n.trim().parse::<f64>().ok(),
-                None => value
-                    .strip_suffix('s')
-                    .and_then(|n| n.trim().parse::<f64>().ok())
-                    .map(|s| s * 1000.0),
-            };
-            parsed.filter(|v| v.is_finite() && *v >= 0.0).unwrap_or(or)
-        };
+        let ms = |name: &str, or: f64| token(name).and_then(|v| duration_ms(&v)).unwrap_or(or);
         let base = Motion::default();
         let easing = token("easing")
             .and_then(|v| Easing::parse(&v))
@@ -136,6 +125,19 @@ impl Motion {
             easing: Easing::DESK,
         }
     }
+}
+
+/// A duration token's value in milliseconds (`220ms`, `0.4s`); `None` for anything else.
+pub fn duration_ms(value: &str) -> Option<f64> {
+    let value = value.trim();
+    let parsed = match value.strip_suffix("ms") {
+        Some(n) => n.trim().parse::<f64>().ok(),
+        None => value
+            .strip_suffix('s')
+            .and_then(|n| n.trim().parse::<f64>().ok())
+            .map(|s| s * 1000.0),
+    };
+    parsed.filter(|v| v.is_finite() && *v >= 0.0)
 }
 
 fn mix(a: f64, b: f64, k: f64) -> f64 {

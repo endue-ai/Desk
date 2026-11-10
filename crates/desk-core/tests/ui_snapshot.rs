@@ -19,11 +19,14 @@ const OTHER: &str = "example.other";
 /// The 2 by 1 PNG of the bridge's vectors.
 const PNG: &str = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAAEUlEQVR4nGP4z8DwHwQZGBgAQd8E/G4fLSoAAAAASUVORK5CYII=";
 
+/// One ask: the plugin, the surface and the bound.
+type Asked = (String, String, (Option<u32>, Option<u32>));
+
 /// A compositor holding one frame, `example.hello`'s main surface, which sleeps; it records what
 /// it was asked.
 #[derive(Default)]
 struct Held {
-    asked: Mutex<Vec<(String, String, (Option<u32>, Option<u32>))>>,
+    asked: Mutex<Vec<Asked>>,
 }
 
 impl SurfaceSnapshots for Held {

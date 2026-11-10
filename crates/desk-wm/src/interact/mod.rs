@@ -28,7 +28,7 @@ pub mod wm;
 
 pub use drag::{DRAG_THRESHOLD, Drag, Phase, Step};
 pub use gesture::{Done, Gesture, Kind, Live};
-pub use motion::{Easing, Glide, Motion, Preview, mix_rect};
+pub use motion::{Easing, Glide, Motion, Preview, duration_ms, mix_rect};
 pub use ops::Op;
 pub use pointer::PressLog;
 pub use publish::{Answered, Change, Geometry, Published};

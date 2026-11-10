@@ -217,6 +217,10 @@ pub enum Edit {
         desktop: Option<String>,
         to: Offset,
     },
+    /// Pan just enough to bring window `id` wholly into sight; answers whether it panned.
+    Reveal {
+        id: String,
+    },
     /// Tile or cascade the desktop in front; answers what it replaced (`Arranged`), or null.
     Arrange {
         kind: ArrangeKind,
@@ -351,6 +355,7 @@ pub fn apply(desk: &mut Desk, kept: &mut Kept, edit: &Edit, screen: Size) -> Val
                 .map_or_else(|| desk.here(), |d| desk.id_of(d));
             desk.pan.insert(id, *to);
         }
+        Edit::Reveal { id } => return json!(desk.reveal(id, screen.w, screen.h)),
         Edit::Arrange { kind, now } => {
             let arranged = kept
                 .arranger

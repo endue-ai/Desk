@@ -1,7 +1,8 @@
 //! The window commands the keys, the palette and agents run (`desk.display.*`, ADR 0153): maximize
-//! and restore, snap to any of the eight parts (ADR 0128), and move or resize by a step. Each acts
-//! on one window of the desktop in front (the one in use unless named), changes the desk and
-//! publishes it, and the window glides when its fill changes. Moving or resizing a filled window
+//! and restore, snap to any of the eight parts (ADR 0128), and move or resize by a step; the spread
+//! (ADR 0116) is the compositor's shell's to run. Each acts on one window of the desktop in front
+//! (the one in use unless named), changes the desk and publishes it, and the window glides when its
+//! fill changes. Moving or resizing a filled window
 //! ends its fill where it is, the window floating, as resizing it by a grip does.
 
 use serde::{Deserialize, Serialize};
@@ -25,11 +26,17 @@ pub enum Op {
     Move { dx: f64, dy: f64 },
     /// Grow or shrink by `dw`, `dh` pixels from the right and bottom edges.
     Resize { dw: f64, dh: f64 },
+    /// Fan the desktop's windows out to pick one, or close the spread (ADR 0116). It moves nothing:
+    /// the compositor's shell runs it (`spread::run`) and draws it; here nothing changes.
+    Spread,
 }
 
 impl Wm {
     /// Run `op` on window `window` (the one in use when `None`).
     pub fn run(&mut self, op: &Op, window: Option<&str>) -> Vec<Out> {
+        if *op == Op::Spread {
+            return Vec::new();
+        }
         let id = window
             .map(str::to_owned)
             .or_else(|| self.drawn.focused_window());
@@ -64,6 +71,7 @@ impl Wm {
                 };
                 self.place(&id, moved, floating)
             }
+            Op::Spread => return Vec::new(),
             Op::Resize { dw, dh } => {
                 let (rect, floating) = self.on_screen(&p);
                 let bounds = floating.then(|| screen_area(self.screen.w, self.screen.h));

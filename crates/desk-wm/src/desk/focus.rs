@@ -2,9 +2,12 @@
 //! `packages/runtime/src/policies/display.ts`, over the host's views of `shell/panes.ts` and the
 //! runtime's surfaces in sight). A pane of the shell's own is a stop named `<window>/<pane>`; a
 //! pane showing a plugin is that plugin's surface, a stop named by the plugin's id, counted once
-//! (ADR 0040). Buffers name the same stops.
+//! (ADR 0040). Buffers name the same stops. `reveal` brings a window wholly into sight, as the
+//! spread does before it gives a window the focus (ADR 0116).
 
+use crate::coordinates::{is_floating, screen_rect};
 use crate::placed::PLUGIN_VIEW;
+use crate::types::Offset;
 
 use super::Desk;
 
@@ -92,5 +95,32 @@ impl Desk {
         let next = cycle(&order, self.focused_id().as_deref(), step)?.clone();
         self.focus(&next);
         Some(next)
+    }
+
+    /// Pan the canvas of the desktop in front just enough to bring normal window `id` wholly into
+    /// sight on a `vw`×`vh` app (one larger than the app comes to its top left); floating and
+    /// filled ones always are. Answers whether it panned (`reveal` in `arrange/index.ts`).
+    pub fn reveal(&mut self, id: &str, vw: f64, vh: f64) -> bool {
+        let Some(p) = self.window(id).filter(|p| !is_floating(p)) else {
+            return false;
+        };
+        let here = self.here();
+        let pan = self.pan_of(&here);
+        let r = screen_rect(&p, pan, vw, vh);
+        let fit = |at: f64, length: f64, room: f64| {
+            if length >= room || at < 0.0 {
+                -at
+            } else if at + length > room {
+                room - at - length
+            } else {
+                0.0
+            }
+        };
+        let (dx, dy) = (fit(r.x, r.w, vw), fit(r.y, r.h, vh));
+        if dx == 0.0 && dy == 0.0 {
+            return false;
+        }
+        self.pan.insert(here, Offset::new(pan.x + dx, pan.y + dy));
+        true
     }
 }

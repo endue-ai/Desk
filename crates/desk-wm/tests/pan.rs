@@ -178,3 +178,79 @@ mod the_canvas_pan {
         assert!(reset_shows(Offset::new(12.0, 0.0)));
     }
 }
+
+/// The cases of `packages/runtime/src/shell/Minimap.test.ts` (#54) that are the window manager's:
+/// when the map shows, when it folds by itself, and a drag in it.
+mod the_canvas_map_on_the_desk {
+    use super::*;
+    use desk_wm::edits::{Edit, Kept, apply};
+    use desk_wm::{Desk, MapDrag, Size, fill_in_sight, map_shows};
+    use serde_json::json;
+
+    const APP: Size = Size {
+        w: 1440.0,
+        h: 900.0,
+    };
+
+    fn edit(desk: &mut Desk, edit: serde_json::Value) {
+        let edit: Edit = serde_json::from_value(edit).unwrap();
+        apply(desk, &mut Kept::default(), &edit, APP);
+    }
+
+    fn window(id: &str, more: serde_json::Value) -> serde_json::Value {
+        let mut p = json!({ "id": id, "plugin": "endue.shell", "x": 100, "y": 80, "w": 600,
+            "h": 400, "pinned": false });
+        for (k, v) in more.as_object().unwrap() {
+            p[k] = v.clone();
+        }
+        json!({ "op": "place", "placement": p })
+    }
+
+    #[test]
+    fn is_not_there_while_the_canvas_holds_nothing_to_find() {
+        let mut desk = Desk::default();
+        assert!(!map_shows(&desk));
+        // A floating window is always in sight: nothing to find on the canvas.
+        edit(&mut desk, window("player", json!({ "floating": true })));
+        assert!(!map_shows(&desk));
+        edit(
+            &mut desk,
+            json!({ "op": "pan", "to": { "x": -200, "y": 0 } }),
+        );
+        assert!(map_shows(&desk), "panned away from the start");
+        edit(&mut desk, json!({ "op": "pan", "to": { "x": 0, "y": 0 } }));
+        edit(&mut desk, window("notes", json!({})));
+        assert!(map_shows(&desk), "a normal window");
+    }
+
+    #[test]
+    fn folds_by_itself_while_a_filled_window_is_in_sight() {
+        let mut desk = Desk::default();
+        edit(&mut desk, window("notes", json!({})));
+        assert!(!fill_in_sight(&desk, APP.w, APP.h));
+        let filled = json!({ "floating": true, "fill": "left" });
+        edit(&mut desk, window("files", filled));
+        assert!(fill_in_sight(&desk, APP.w, APP.h));
+    }
+
+    #[test]
+    fn a_drag_moves_the_view_with_the_fit_it_held_and_escape_puts_it_back() {
+        let fit = Fit {
+            scale: 0.1,
+            x: 0.0,
+            y: 0.0,
+        };
+        let drag = MapDrag {
+            before: Offset::new(30.0, 0.0),
+            fit,
+            desktop: "1".into(),
+        };
+        let from = Offset::new(0.0, 0.0);
+        assert_eq!(
+            drag.moved(from, 10.0, 5.0, "1"),
+            Some(Offset::new(-100.0, -50.0))
+        );
+        assert_eq!(drag.moved(from, 10.0, 5.0, "2"), None, "another desktop");
+        assert_eq!(drag.cancelled("1"), Some(Offset::new(30.0, 0.0)));
+    }
+}

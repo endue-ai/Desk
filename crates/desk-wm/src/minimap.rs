@@ -1,7 +1,8 @@
 //! The canvas map's geometry (`packages/runtime/src/shell/minimap-model.ts`, ADR 0082): the world
 //! that the desktop's normal windows and the part in sight span, fitted into the map's box, and the
-//! pan that puts the part in sight where the map points. World pixels are the canvas's; map pixels
-//! are the box's. Drawing the map from the windows' textures is the compositor's (#54).
+//! pan that puts the part in sight where the map points; when it shows and when it folds by itself
+//! (`shell/Minimap.ts`), and a drag in it. World pixels are the canvas's; map pixels are the box's.
+//! Drawing the map from the windows' textures is the compositor's (#54).
 
 use serde::{Deserialize, Serialize};
 
@@ -85,5 +86,50 @@ pub fn pan_by_key(pan: Offset, key: &str, whole: bool, vw: f64, vh: f64) -> Opti
         "ArrowUp" => Some(Offset::new(pan.x, pan.y + sy)),
         "ArrowDown" => Some(Offset::new(pan.x, pan.y - sy)),
         _ => None,
+    }
+}
+
+/// Whether the map shows on `desk`: the desktop in front holds a normal window to find, or its
+/// canvas is panned away from the start (`mapShows`).
+pub fn map_shows(desk: &crate::desk::Desk) -> bool {
+    let pan = desk.pan_of(&desk.here());
+    let normal = desk
+        .windows()
+        .iter()
+        .any(|p| !crate::coordinates::is_floating(p));
+    normal || pan.x != 0.0 || pan.y != 0.0
+}
+
+/// Whether a filled window (maximized or snapped) is in sight on a `vw`×`vh` app: the open map
+/// folds by itself over it, so the fill keeps all of itself (`fillInSight`).
+pub fn fill_in_sight(desk: &crate::desk::Desk, vw: f64, vh: f64) -> bool {
+    let pan = desk.pan_of(&desk.here());
+    desk.windows().iter().any(|p| {
+        if p.fill.is_none() && p.restore.is_none() {
+            return false;
+        }
+        let r = crate::coordinates::screen_rect(p, pan, vw, vh);
+        r.x < vw && r.right() > 0.0 && r.y < vh && r.bottom() > 0.0
+    })
+}
+
+/// A drag in the map: the pan it started from, the fit it holds while it lasts (so the map stays
+/// still under the pointer) and the desktop whose canvas it moves.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MapDrag {
+    pub before: Offset,
+    pub fit: Fit,
+    pub desktop: String,
+}
+
+impl MapDrag {
+    /// The pan with the pointer `dx`, `dy` map pixels from the press, while `desktop` is in front.
+    pub fn moved(&self, from: Offset, dx: f64, dy: f64, desktop: &str) -> Option<Offset> {
+        (desktop == self.desktop).then(|| pan_moved_by(from, dx, dy, self.fit))
+    }
+
+    /// Escape: the pan from before the press, while `desktop` is in front.
+    pub fn cancelled(&self, desktop: &str) -> Option<Offset> {
+        (desktop == self.desktop).then_some(self.before)
     }
 }

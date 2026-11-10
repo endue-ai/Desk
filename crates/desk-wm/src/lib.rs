@@ -10,7 +10,8 @@
 //! - `snap`, `settle`, `fill`: 8-way snap (ADR 0128), the glide into a part, filling and coming
 //!   back.
 //! - `tiling`, `arrange`: slots for unplaced windows (ADR 0040), tile and cascade (ADR 0116).
-//! - `spread`: the spread's places, poses and model (ADR 0116).
+//! - `spread`: the spread's places, poses and model, and its motions on the caller's clock (ADR
+//!   0116).
 //! - `cover`, `placed`: which plugins are out of sight (ADR 0070) and which a layout places.
 //! - `pan`, `minimap`: the canvas pan and the canvas map (ADR 0082).
 //! - `panes`: the pane tree and its dividers; `desktops`, `migrate`: the named list of desktops
@@ -78,8 +79,8 @@ pub use host::{
 };
 pub use layout::{DesktopLayout, Saved, Visible};
 pub use minimap::{
-    Fit, MAP, fit_world, pan_by_key, pan_centred_on, pan_moved_by, to_map, to_world, view_rect,
-    world_of,
+    Fit, MAP, MapDrag, fill_in_sight, fit_world, map_shows, pan_by_key, pan_centred_on,
+    pan_moved_by, to_map, to_world, view_rect, world_of,
 };
 pub use pan::{
     PanDrag, PanTarget, WheelMode, drag_pans, hint_shows, reset_shows, wheel_pan, wheel_pans,
@@ -90,6 +91,7 @@ pub use snap::{Aim, CORNER, Halves, Rows, SNAP, SNAP_TOP, fill_rect, halves, row
 pub use snapshot::{Frame, Seen, Told, Unseen};
 pub use spread::model::{Move, SpreadAction, SpreadModel};
 pub use spread::pose::{Camera, IDENTITY, Pose, ZOOM_MAX, ZOOM_MIN, mix};
+pub use spread::run::{Durations, Ending, Spread, SpreadFrame};
 pub use spread::slots::{
     DEPTH, SPREAD_INSET, Slot, TURN, fan_rows, flat_slots, spread_slots, spread_stage,
 };
