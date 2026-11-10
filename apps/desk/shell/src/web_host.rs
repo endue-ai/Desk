@@ -1,16 +1,19 @@
 //! The web host (#52, #32 §4): the surface protocol's (`specs/surface/v0`, ADR 0141) implementation
-//! for web content. Each surface is one windowless CEF browser (`shared_texture_enabled`): its paints
-//! reach the compositor as `attach`es with their damage (`render.rs`); `resize` lays it out again
-//! (`WasResized`, the device scale through its screen info); `hide` is `WasHidden`; `sleep` closes the
-//! browser, so its renderer exits; `wake` opens it again; `pace` is its windowless frame rate; its
-//! renderer's death is `died`, its load `ready`, its title `title`. The compositor sees only the
-//! protocol, never CEF (`SurfaceSink`). Each surface has an origin of its own (#36), so with
-//! `--site-per-process` each is its own renderer; DevTools reach each one over the remote debugging
-//! port in development builds (ADR 0144).
+//! for web content. Each surface is one windowless CEF browser (`shared_texture_enabled`) that
+//! renders on the desk's frame clock (external begin frames, ADR 0152: `frames.rs`, `clock.rs`): its
+//! paints reach the compositor as `attach`es with their damage (`render.rs`); `resize` lays it out
+//! again (`WasResized`, the device scale through its screen info); `hide` is `WasHidden`; `sleep`
+//! closes the browser, so its renderer exits; `wake` opens it again; `pace` is its windowless frame
+//! rate and its share of the desk's frames; its renderer's death is `died`, its load `ready`, its
+//! title `title`. The compositor sees only the protocol, never CEF (`SurfaceSink`). Each surface has
+//! an origin of its own (#36), so with `--site-per-process` each is its own renderer; DevTools reach
+//! each one over the remote debugging port in development builds (ADR 0144).
 
 pub mod client;
+pub mod clock;
 pub mod cursor;
 pub mod drag;
+pub mod frames;
 pub mod input;
 pub mod key_codes;
 pub mod lifecycle;
@@ -55,7 +58,8 @@ struct Record {
     state: State,
     view: SharedView,
     browser: Option<Browser>,
-    pace: u32,
+    /// Its place on the desk's frame clock, its pace with it.
+    pacing: frames::Pacing,
     /// The ids that join the page's drag messages to the broker's (#56).
     drag: drag::DragIds,
     /// The text the surface's IME composes now.
@@ -67,6 +71,9 @@ struct Inner {
     records: HashMap<String, Record>,
     /// The document each surface shows, set by whoever knows it (the stand-in's URL).
     sources: HashMap<String, String>,
+    /// The desk's frames, and the compositor's page on them (`clock.rs`).
+    clock: frames::Clock,
+    page: Option<clock::Page>,
 }
 
 /// The web host. Cheap to clone; every clone is the same host. Call it on CEF's UI thread.
@@ -149,7 +156,7 @@ impl WebHost {
                     state: State::Gone,
                     view: SharedView::new(view),
                     browser: None,
-                    pace: DEFAULT_PACE,
+                    pacing: frames::Pacing::new(DEFAULT_PACE),
                     drag: drag::DragIds::default(),
                     composing: None,
                 };
@@ -171,14 +178,14 @@ impl WebHost {
             }
             for action in &actions {
                 if let Action::Pace(fps) = action {
-                    record.pace = *fps;
+                    record.pacing.set_pace(*fps);
                 }
             }
             (
                 actions,
                 record.view.clone(),
                 record.browser.clone(),
-                record.pace,
+                record.pacing.pace(),
             )
         };
         for action in actions {
@@ -256,6 +263,7 @@ impl WebHost {
         let info = WindowInfo {
             windowless_rendering_enabled: 1,
             shared_texture_enabled: i32::from(self.shared_textures),
+            external_begin_frame_enabled: 1,
             ..Default::default()
         };
         // Transparent where the page paints nothing, as the frame was over its window.

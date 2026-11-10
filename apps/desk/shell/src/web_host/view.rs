@@ -23,6 +23,8 @@ pub struct Counts {
     pub texture: Option<(u32, u32)>,
     /// The last frame's damage, in texture pixels.
     pub damage_px: u64,
+    /// Begin frames the desk's clock sent it (`clock.rs`): none while hidden or asleep.
+    pub begin_frames: u64,
 }
 
 /// One surface's layout and paint state.

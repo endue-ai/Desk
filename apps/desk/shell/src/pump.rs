@@ -2,7 +2,8 @@
 //! `do_message_loop_work` (`OnScheduleMessagePumpWork`, from any thread); calling it at any other
 //! time blocks ~60 ms per call on macOS (spikes/compositor, finding 1). The schedule wakes winit's
 //! event loop, which runs the work when it is due and sleeps until then (cefclient's
-//! `MainMessageLoopExternalPump`).
+//! `MainMessageLoopExternalPump`). Without an event loop (the surface probe) it unparks the thread
+//! that waits for the work instead.
 
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -35,6 +36,7 @@ pub enum Wake {
 pub struct Pump {
     due: Arc<Mutex<Instant>>,
     proxy: Arc<Mutex<Option<EventLoopProxy<Wake>>>>,
+    parked: Arc<Mutex<Option<std::thread::Thread>>>,
 }
 
 impl Pump {
@@ -42,7 +44,13 @@ impl Pump {
         Self {
             due: Arc::new(Mutex::new(Instant::now())),
             proxy: Arc::new(Mutex::new(proxy)),
+            parked: Arc::default(),
         }
+    }
+
+    /// Without an event loop: every wake unparks `thread`, which waits with `park_timeout`.
+    pub fn wake_thread(&self, thread: std::thread::Thread) {
+        *self.parked.lock().unwrap_or_else(|e| e.into_inner()) = Some(thread);
     }
 
     /// CEF wants work in `delay_ms` (at once when zero or negative); never later than `MAX_DELAY`.
@@ -67,6 +75,14 @@ impl Pump {
             .as_ref()
         {
             let _ = proxy.send_event(what);
+        }
+        if let Some(thread) = self
+            .parked
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+        {
+            thread.unpark();
         }
     }
 
@@ -105,6 +121,24 @@ mod tests {
         assert!(
             pump.take_due(now + MAX_DELAY),
             "never later than the maximum delay"
+        );
+    }
+
+    #[test]
+    fn without_an_event_loop_a_schedule_unparks_the_waiting_thread() {
+        let pump = Pump::new(None);
+        pump.wake_thread(std::thread::current());
+        let other = pump.clone();
+        let started = Instant::now();
+        let scheduler = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(20));
+            other.schedule(0);
+        });
+        std::thread::park_timeout(Duration::from_secs(5));
+        scheduler.join().unwrap();
+        assert!(
+            started.elapsed() < Duration::from_secs(2),
+            "woken by the schedule, not the timeout"
         );
     }
 

@@ -6,9 +6,11 @@
 //! own (`web_host`), and the page's system layer above them. The page renders off screen too, see
 //! through, its windows' chrome left to the compositor. Without the mode the desk is Stage 1's
 //! windowed one, unchanged. Input (#56) goes through the compositor's router to the surface it is
-//! for (`input.rs`); the runtime's window manager stays in the page until #83.
+//! for (`input.rs`); the runtime's window manager stays in the page until #83. Every surface and
+//! the page render on the desk's frame clock (`clock.rs`, ADR 0152).
 
 pub mod checks;
+mod clock;
 pub mod commands;
 pub mod composed;
 pub mod cursor;
@@ -39,6 +41,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
 use crate::host::Desk;
+use crate::web_host::frames::FRAME;
 use crate::web_host::relay::Relay;
 use crate::web_host::render::SurfaceRender;
 use crate::web_host::view::{SharedView, View};
@@ -51,8 +54,6 @@ use report::DeskReport;
 pub const PAGE: &str = "desk";
 /// What the runtime hears: the windows that keep a renderer (ADR 0151).
 pub const LIVE: &str = "desk://compositor-live";
-/// The longest a frame waits for the next one: the display's rate, at most.
-const FRAME: Duration = Duration::from_micros(16_667);
 
 /// Whether this start asks for compositor mode.
 pub fn enabled() -> bool {
@@ -82,6 +83,8 @@ pub struct CompositorWindow {
     desk: Arc<Desk>,
     occluded: bool,
     last_frame: Instant,
+    /// When the frame clock looks next (`clock.rs`).
+    begin_due: Option<Instant>,
     presented: u64,
     slow_presents: u32,
     /// Where input goes (#56).
@@ -131,6 +134,7 @@ impl CompositorWindow {
         let info = WindowInfo {
             windowless_rendering_enabled: 1,
             shared_texture_enabled: i32::from(std::env::var_os("DESK_SURFACE_SOFTWARE").is_none()),
+            external_begin_frame_enabled: 1,
             ..Default::default()
         };
         // See through: the compositor draws the wallpaper and the windows under the page.
@@ -148,6 +152,7 @@ impl CompositorWindow {
             None,
         );
         stand_in::set_shell_page(browser.as_ref().map(|b| b.identifier()));
+        host.clock_page(browser.clone(), page.clone());
         let physical = window.inner_size();
         let settings = PointerSettings {
             underlay: Some(PAGE.to_owned()),
@@ -172,6 +177,7 @@ impl CompositorWindow {
             desk,
             occluded: false,
             last_frame: Instant::now() - FRAME,
+            begin_due: None,
             presented: 0,
             slow_presents: 0,
             router,
@@ -247,6 +253,7 @@ impl CompositorWindow {
     pub fn occluded(&mut self, occluded: bool) {
         self.occluded = occluded;
         self.page.lock().hidden = occluded;
+        self.host.page_shown(!occluded);
         if let Some(host) = self.browser.as_ref().and_then(|b| b.host()) {
             host.was_hidden(i32::from(occluded));
             if !occluded {
@@ -263,19 +270,8 @@ impl CompositorWindow {
         self.router.targets.forget(surface);
     }
 
-    /// The window is in front (the display's rate) or behind (a lower one).
-    pub fn focused(&mut self, focused: bool) {
-        let fps = if focused { 60 } else { 30 };
-        for (surface, _, _) in self.hosted.surfaces().made() {
-            let pace = json!({ "type": "pace", "surface": surface, "fps": fps });
-            if let Ok(message) = serde_json::from_value(pace) {
-                self.host.send(&message);
-            }
-        }
-    }
-
     /// After CEF's work: act on what the surfaces said, on a new look and on the budget's time,
-    /// and draw a frame if one is due.
+    /// send the frame clock's begin frames and draw a frame if one is due.
     pub fn tick(&mut self, now: Instant, event_loop: &ActiveEventLoop) {
         let messages = std::mem::take(&mut self.shared.lock().messages);
         for message in messages {
@@ -315,6 +311,7 @@ impl CompositorWindow {
             self.carry(outcome);
         }
         self.input_tick(event_loop);
+        self.begin_frames(now);
         if !self.shared.lock().dirty || now < self.last_frame + FRAME || self.occluded {
             return;
         }
@@ -347,15 +344,6 @@ impl CompositorWindow {
         self.window.pre_present_notify();
         self.gpu.queue.present(frame);
         self.presented += 1;
-    }
-
-    /// When the next frame may be drawn, or the budget looks again.
-    pub fn next_frame(&self) -> Option<Instant> {
-        let frame = self.shared.lock().dirty.then_some(self.last_frame + FRAME);
-        match (frame, self.hosted.due()) {
-            (Some(a), Some(b)) => Some(a.min(b)),
-            (a, b) => a.or(b),
-        }
     }
 
     /// Lay the scene out again from the hosted desk and the frames the surfaces attached, and tell

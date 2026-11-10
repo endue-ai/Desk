@@ -30,6 +30,9 @@ use crate::pump::Pump;
 use crate::web_host::WebHost;
 use crate::web_host::relay::Relay;
 
+/// The longest a probe step waits: the desk's frames are due on their own cadence too.
+const STEP: Duration = Duration::from_millis(1);
+
 /// The command-line flag, `--surface-probe=<scenario>`.
 pub const FLAG: &str = "--surface-probe=";
 
@@ -49,6 +52,9 @@ pub struct Probe {
     /// compares them with when its test started the probe).
     pub cef_ready: f64,
     pub gpu_ready: f64,
+    /// The desk's frame clock is held: no begin frame goes out (the `lifecycle` run's check that
+    /// surfaces render only on it).
+    pub held: bool,
 }
 
 /// Now, in ms since the Unix epoch: a clock another process can compare with.
@@ -61,6 +67,7 @@ pub fn epoch_ms() -> f64 {
 /// Run `scenario` in this (browser) process; CEF is not initialised yet.
 pub fn run(args: &cef::args::Args, scenario: &str) -> ExitCode {
     let pump = Pump::new(None);
+    pump.wake_thread(std::thread::current());
     let mut app = ShellApp::browser(pump.clone(), crate::paths::dist());
     let root = std::env::temp_dir().join(format!("desk-surface-probe-{}", std::process::id()));
     let settings = cef::Settings {
@@ -97,6 +104,7 @@ pub fn run(args: &cef::args::Args, scenario: &str) -> ExitCode {
                 deaths: Vec::new(),
                 cef_ready,
                 gpu_ready: epoch_ms(),
+                held: false,
             };
             let mut report = match scenario {
                 "import" => scenarios::import(&mut probe),
@@ -144,10 +152,15 @@ impl Probe {
         done(self)
     }
 
+    /// CEF's work when it is due and the frame clock's begin frames, as the compositor window runs
+    /// them (#111), then a wait until either is due again or CEF asks, at most `STEP`.
     fn step(&mut self) {
         if self.pump.take_due(Instant::now()) {
             do_message_loop_work();
         }
+        let clock = (!self.held)
+            .then(|| self.host.begin_frames(Instant::now()))
+            .flatten();
         let messages = std::mem::take(&mut self.shared.lock().messages);
         for message in messages {
             match message {
@@ -158,7 +171,13 @@ impl Probe {
                 _ => {}
             }
         }
-        std::thread::sleep(Duration::from_millis(1));
+        let now = Instant::now();
+        let until = [Some(self.pump.due()), clock, Some(now + STEP)]
+            .into_iter()
+            .flatten()
+            .min()
+            .unwrap_or(now);
+        std::thread::park_timeout(until.saturating_duration_since(now));
     }
 
     /// Tell the host `message`, given as JSON.
@@ -176,6 +195,13 @@ impl Probe {
             json!({ "type": "create", "surface": surface, "plugin": plugin, "view": "main",
             "size": { "width": size.0, "height": size.1 }, "scale": 2, "format": "bgra8" }),
         );
+    }
+
+    /// The begin frames the clock sent `surface` so far.
+    pub fn begin_frames(&self, surface: &str) -> u64 {
+        self.host
+            .counts(surface)
+            .map_or(0, |(c, _, _)| c.begin_frames)
     }
 
     /// Shared-texture and software paints of `surface` so far.
