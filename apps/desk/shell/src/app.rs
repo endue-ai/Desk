@@ -7,7 +7,7 @@ use cef::*;
 
 use crate::pump::Pump;
 use crate::renderer::ShellRenderer;
-use crate::{sandbox, scheme};
+use crate::{features, sandbox, scheme};
 
 /// The scheme plugin files load from (ADR 0012, served by `plugin_scheme`).
 pub const PLUGIN_SCHEME: &str = "desk-plugin";
@@ -59,9 +59,11 @@ wrap_app! {
             let Some(command_line) = command_line else { return };
             // The browser process's own command line: a release build drops the switches that
             // weaken isolation before Chromium reads them, so its subprocesses never get them
-            // (#104, ADR 0148). A subprocess's command line is the browser's to write.
+            // (#104, ADR 0148), and the features the desk turns off join `--disable-features`
+            // (#112). A subprocess's command line is the browser's to write.
             if process_type.is_none_or(|kind| kind.to_string().is_empty()) {
                 sandbox::drop_weakening(command_line);
+                features::disable(command_line);
             }
             for switch in ["no-startup-window", "noerrdialogs", "hide-crash-restore-bubble"] {
                 command_line.append_switch(Some(&switch.into()));

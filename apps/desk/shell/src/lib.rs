@@ -14,6 +14,7 @@ pub mod dialog;
 pub mod displays;
 pub mod drops;
 pub mod eris_window;
+pub mod features;
 pub mod float;
 pub mod guard;
 pub mod host;
