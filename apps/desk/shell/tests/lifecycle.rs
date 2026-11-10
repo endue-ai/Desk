@@ -2,8 +2,10 @@
 //! keeps painting; a sleeping one has no browser and its renderer process is gone, and a wake brings
 //! a new one; a killed renderer is reported as that surface's `died` (the direct signal #44's
 //! recovery takes), only that one, while the others keep painting, and a wake loads it again; twenty
-//! surfaces made hidden and shown together all paint again. Runs
-//! the shell's surface probe (`src/probe.rs`); the process checks need Unix (`ps`, `kill`).
+//! surfaces made hidden and shown together all paint again. Every surface renders on the desk's
+//! frame clock (#111): hidden or asleep it gets no begin frame, and with the clock held an animating
+//! page paints nothing. Runs the shell's surface probe (`src/probe.rs`); the process checks need
+//! Unix (`ps`, `kill`).
 
 mod support;
 
@@ -15,7 +17,13 @@ use support::probe;
 fn report() -> Option<&'static Value> {
     static REPORT: OnceLock<Option<Value>> = OnceLock::new();
     REPORT
-        .get_or_init(|| probe("lifecycle", "lifecycle", &[]))
+        .get_or_init(|| {
+            let report = probe("lifecycle", "lifecycle", &[]);
+            if let Some(report) = &report {
+                eprintln!("lifecycle: {report}");
+            }
+            report
+        })
         .as_ref()
 }
 
@@ -43,6 +51,10 @@ fn a_hidden_surface_paints_nothing_while_another_keeps_painting() {
     assert_eq!(report["started"], true, "{report}");
     let hidden = &report["hidden"];
     assert_eq!(hidden["hidden_paints"], 0, "{hidden}");
+    assert_eq!(
+        hidden["begin_frames"], 0,
+        "no begin frame while hidden: {hidden}"
+    );
     assert!(hidden["other_paints"].as_u64() >= Some(20), "{hidden}");
     assert!(
         report["shown_paints"].as_u64() >= Some(5),
@@ -61,11 +73,26 @@ fn the_compositors_pace_caps_a_surfaces_frame_rate() {
 }
 
 #[test]
+fn a_surface_renders_only_on_the_desks_frame_clock() {
+    let Some(report) = report() else { return };
+    let clock = &report["clock"];
+    assert_eq!(
+        clock["held_paints"], 0,
+        "the clock held, an animating page paints nothing: {clock}"
+    );
+    assert!(
+        clock["paints_after"].as_u64() >= Some(10),
+        "let go, it paints again: {clock}"
+    );
+}
+
+#[test]
 fn a_sleeping_surface_has_no_browser_and_no_renderer() {
     let Some(report) = report() else { return };
     let asleep = &report["asleep"];
     assert_eq!(asleep["browser"], false, "{asleep}");
     assert_eq!(asleep["closed"], true, "{asleep}");
+    assert_eq!(asleep["begin_frames"], 0, "no begin frame asleep: {asleep}");
     if cfg!(unix) {
         assert_eq!(asleep["renderer_alive"], false, "{asleep}");
         let before = report["renderers_before"].as_u64().unwrap_or(0);

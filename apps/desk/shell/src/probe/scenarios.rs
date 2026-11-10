@@ -1,7 +1,9 @@
 //! The probe's two runs. `import`: a still page of a known colour and a WebGPU page reach the
 //! compositor's texture. `lifecycle`: a hidden surface paints nothing while another keeps painting; a
 //! sleeping one has no browser and its renderer is gone; a killed renderer is the one `died`, the
-//! others keep painting, and a wake loads it again. Each returns numbers; the tests judge them.
+//! others keep painting, and a wake loads it again; hidden and asleep, no begin frame reaches it, and
+//! with the desk's frame clock held an animating page paints nothing (#111). Each returns numbers;
+//! the tests judge them.
 
 use std::time::Duration;
 
@@ -88,11 +90,12 @@ pub fn lifecycle(probe: &mut Probe) -> Value {
 
     // Hidden: after a moment for a frame already on its way, no paint at all.
     probe.send(json!({ "type": "hide", "surface": "a" }));
+    let f0 = probe.begin_frames("a");
     probe.pump_for(Duration::from_millis(300));
     let (a0, b0) = (probe.paints("a"), probe.paints("b"));
     probe.pump_for(Duration::from_millis(1500));
-    let hidden =
-        json!({ "hidden_paints": probe.paints("a") - a0, "other_paints": probe.paints("b") - b0 });
+    let hidden = json!({ "hidden_paints": probe.paints("a") - a0, "other_paints": probe.paints("b") - b0,
+        "begin_frames": probe.begin_frames("a") - f0 });
     probe.send(json!({ "type": "show", "surface": "a" }));
     let a1 = probe.paints("a");
     probe.pump_for(Duration::from_millis(800));
@@ -106,9 +109,23 @@ pub fn lifecycle(probe: &mut Probe) -> Value {
     let paced = (probe.paints("a") - a2) as f64 / 2.0;
     probe.send(json!({ "type": "pace", "surface": "a", "fps": 60 }));
 
+    // The desk's frame clock (#111): held, no begin frame goes out and an animating page paints
+    // nothing once what was on its way has come; let go, it paints again.
+    probe.pump_for(Duration::from_millis(300));
+    probe.held = true;
+    probe.pump_for(Duration::from_millis(300));
+    let a4 = probe.paints("a");
+    probe.pump_for(Duration::from_millis(1000));
+    let held_paints = probe.paints("a") - a4;
+    probe.held = false;
+    let a5 = probe.paints("a");
+    probe.pump_for(Duration::from_millis(500));
+    let clock = json!({ "held_paints": held_paints, "paints_after": probe.paints("a") - a5 });
+
     // Asleep: the browser closes and its renderer exits.
     let b_pid = probe.pid("b");
     probe.send(json!({ "type": "sleep", "surface": "b" }));
+    let fb = probe.begin_frames("b");
     let closed = probe.pump_until(Duration::from_secs(5), |p| p.host.browser("b").is_none());
     let gone = probe.pump_until(Duration::from_secs(5), |_| {
         b_pid.and_then(alive) != Some(true)
@@ -119,6 +136,7 @@ pub fn lifecycle(probe: &mut Probe) -> Value {
         "renderer_alive": b_pid.and_then(alive),
         "renderer_gone_in_time": gone,
         "renderers": renderers().map(|r| r.len()),
+        "begin_frames": probe.begin_frames("b") - fb,
     });
     let slept_paints = probe.paints("b");
     let size = json!({ "width": SIZE.0, "height": SIZE.1 });
@@ -149,6 +167,7 @@ pub fn lifecycle(probe: &mut Probe) -> Value {
         "hidden": hidden,
         "shown_paints": shown,
         "paced_fps": paced,
+        "clock": clock,
         "asleep": asleep,
         "woke": woke,
         "death": {
