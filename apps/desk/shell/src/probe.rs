@@ -15,6 +15,7 @@
 mod a11y;
 mod desk_loop;
 mod gates;
+mod idle_input;
 mod input_gate;
 pub mod pages;
 mod rest;
@@ -130,6 +131,7 @@ pub fn run(args: &cef::args::Args, scenario: &str) -> ExitCode {
                 "memory" => gates::memory(&mut probe),
                 "startup" => gates::startup(&mut probe),
                 "input" => input_gate::input(&mut probe),
+                "idle-input" => idle_input::idle_input(&mut probe),
                 "a11y" => a11y::a11y(&mut probe),
                 "rest" => rest::rest(&mut probe),
                 other => json!({ "error": format!("no scenario {other}") }),

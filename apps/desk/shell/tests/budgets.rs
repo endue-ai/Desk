@@ -2,7 +2,8 @@
 //! `just perf-compositor` against `e2e/perf/budgets.json` (`e2e/perf/lib/compositor.ts`): memory
 //! per live surface against #35's baseline, the start to the first composed frame holding a web
 //! surface, a press to the composed frame holding its paint (RT-16, on #56's input path), with
-//! presses CEF's busy-wait catches, and what a desk at rest costs (#129: its wake-ups, CPU). They
+//! presses CEF's busy-wait catches and presses on a desk at rest (#133), and what a desk at rest
+//! costs (#129: its wake-ups, CPU). They
 //! take a quiet machine and a minute, so they are `#[ignore]`d in `cargo test`; the runner runs
 //! them with `--ignored` and `DESK_PERF_OUT`, where each writes what it measured
 //! (`<name>.measured.json`).
@@ -217,20 +218,11 @@ fn perf_desk_at_rest() {
     };
     eprintln!("rest: {report}");
     assert_eq!(report["started"], true, "{report}");
-    assert_eq!(
-        report["clicks"], 5,
-        "every press from rest counted: {report}"
-    );
     let rest = &report["rest"];
     assert_eq!(
         rest["paints_per_s"], 0.0,
         "nothing painted at rest: {report}"
     );
-    let paints: Vec<f64> = report["presses"]
-        .as_array()
-        .map(|p| p.iter().filter_map(|t| t["paint_ms"].as_f64()).collect())
-        .unwrap_or_default();
-    assert_eq!(paints.len(), 5, "every press from rest painted: {report}");
     keep(
         "desk-at-rest",
         json!({ "deskAtRest": {
@@ -243,8 +235,41 @@ fn perf_desk_at_rest() {
             "gpuCpuPercent": rest["gpu_cpu_percent"],
             "renderersCpuPercent": rest["renderers_cpu_percent"],
             "beginFramesPerSecond": rest["begin_frames_per_s"],
-            "pressPaintP50Ms": median(&paints),
             "seconds": rest["seconds"],
+            "platform": platform(),
+        }}),
+    );
+}
+
+/// The presses the `idle-input` run makes, each after the desk rested 2 to 3 s.
+const IDLE_PRESSES: u64 = 12;
+
+#[test]
+#[ignore = "perf: just perf-compositor"]
+fn perf_input_from_rest() {
+    let Some(report) = probe("perf_input_from_rest", "idle-input", &[]) else {
+        return;
+    };
+    eprintln!("idle input: {report}");
+    assert_eq!(report["started"], true, "{report}");
+    assert_eq!(
+        report["lost"], 0,
+        "every press reached a composed frame: {report}"
+    );
+    assert_eq!(
+        report["clicks"], IDLE_PRESSES,
+        "the pages counted every press: {report}"
+    );
+    keep(
+        "input-from-rest",
+        json!({ "inputFromRest": {
+            "p95Ms": report["paint_p95_ms"],
+            "p50Ms": report["paint_p50_ms"],
+            "maxMs": report["paint_max_ms"],
+            "frameP50Ms": report["frame_p50_ms"],
+            "tries": report["tries"].as_array().map_or(0, Vec::len),
+            "adapter": report["adapter"],
+            "software": report["adapter_type"] == "Cpu",
             "platform": platform(),
         }}),
     );

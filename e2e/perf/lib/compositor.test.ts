@@ -23,6 +23,7 @@ function budgets(): Budgets {
       caughtWaitMs: null,
       caughtWaitBudgetMs: 2,
     },
+    inputFromRest: { p95Ms: null, budgetMs: 16 },
     deskAtRest: {
       wakeupsPerSecond: null,
       wakeupsBudget: 45,
@@ -54,12 +55,19 @@ const measured = {
     software: false,
     ...reference,
   },
+  inputFromRest: {
+    p95Ms: 9.6,
+    p50Ms: 7.4,
+    maxMs: 11.2,
+    frameP50Ms: 20.1,
+    software: false,
+    ...reference,
+  },
   deskAtRest: {
     wakeupsPerSecond: 36.6,
     osWakeupsPerSecond: 30.9,
     cefWorksPerSecond: 36.6,
     cpuPercent: 1.7,
-    pressPaintP50Ms: 19.1,
     ...reference,
   },
 };
@@ -78,6 +86,7 @@ describe("compositor budgets", () => {
       "inputToPaint.p95Ms:budget",
       "inputToPaint.frameP50Ms:budget",
       "inputToPaint.caughtWaitMs:budget",
+      "inputFromRest.p95Ms:budget",
       "deskAtRest.wakeupsPerSecond:budget",
       "deskAtRest.cpuPercent:budget",
     ]);
@@ -94,6 +103,7 @@ describe("compositor budgets", () => {
       "inputToPaint.p95Ms": "ok",
       "inputToPaint.frameP50Ms": "ok",
       "inputToPaint.caughtWaitMs": "ok",
+      "inputFromRest.p95Ms": "ok",
       "deskAtRest.wakeupsPerSecond": "ok",
       "deskAtRest.cpuPercent": "ok",
     });
@@ -130,6 +140,26 @@ describe("compositor budgets", () => {
     });
     expect(verdicts.find((v) => v.key === "frameP50Ms")).toMatchObject({ high: 16 });
     expect(failed(verdicts)).toBe(true);
+  });
+
+  it("fails a press on a desk at rest whose paint p95 is past 16 ms, whatever the busy desk's", () => {
+    // #133: a desk at rest 2 s or more painted 8 to 25 ms after a press, a busy one 5.
+    const cold = { ...measured, inputFromRest: { ...measured.inputFromRest, p95Ms: 18.8 } };
+    const verdicts = compare(budgets(), cold);
+    expect(status(verdicts)).toMatchObject({
+      "inputFromRest.p95Ms": "over",
+      "inputToPaint.p95Ms": "ok",
+    });
+    expect(failed(verdicts)).toBe(true);
+    expect(report(verdicts)).toMatch(/desk at rest 2 s or more, p95 +18.8 ms +pass <= 16 ms +OVER/);
+    const recorded = withBaselines(budgets(), measured, { recorded: "2026-11-11" });
+    expect(recorded.inputFromRest).toMatchObject({
+      p95Ms: 9.6,
+      budgetMs: 16,
+      p50Ms: 7.4,
+      maxMs: 11.2,
+      frameP50Ms: 20.1,
+    });
   });
 
   it("fails a desk at rest that wakes or spends more than its budget, and a caught press past its", () => {
@@ -271,6 +301,7 @@ describe("compositor budgets", () => {
       tries: 20,
     });
     expect(committed.deskAtRest).toMatchObject({ wakeupsBudget: 45, cpuBudgetPercent: 4 });
+    expect(committed.inputFromRest).toMatchObject({ budgetMs: 16, tries: 12 });
     // The desk's start is the median of ten starts again (#112), not the fastest of five.
     expect(committed.surfaceStartup).toMatchObject({ runs: 10, allowedRegression: 0.25 });
     expect(committed.surfaceStartup?.reason).toMatch(/median of ten/);
