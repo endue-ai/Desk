@@ -223,3 +223,26 @@ fn reveal_pans_a_normal_window_wholly_into_sight_and_leaves_a_floating_one() {
     let other: Edit = serde_json::from_value(other).unwrap();
     assert_eq!(apply(&mut desk, &mut kept, &other, screen), json!(false));
 }
+
+#[test]
+fn the_window_manager_publishes_the_spreads_reveal_and_the_maps_pan_and_ignores_the_spread_op() {
+    use desk_wm::interact::{Op, Out, Wm};
+    let mut wm = Wm::new();
+    let off = Placement::new("far", "endue.shell", Rect::new(1200.0, 700.0, 400.0, 300.0));
+    let place: Edit = serde_json::from_value(json!({ "op": "place", "placement": off })).unwrap();
+    wm.edit(1, &[place]);
+    let rev = wm.rev();
+    assert!(matches!(wm.reveal("far").first(), Some(Out::Publish(_))));
+    assert_eq!(wm.rev(), rev + 1);
+    assert!(wm.reveal("far").is_empty(), "already wholly in sight");
+    let pan = Offset::new(-40.0, 12.0);
+    assert!(matches!(wm.pan_to(pan).first(), Some(Out::Publish(_))));
+    assert_eq!(wm.desk().pan_of(&wm.desk().here()), pan);
+    assert!(wm.pan_to(pan).is_empty(), "the same pan publishes nothing");
+    // The spread is the compositor's to draw: the window manager alone changes nothing for it.
+    assert!(wm.run(&Op::Spread, None).is_empty());
+    assert_eq!(
+        serde_json::to_value(Op::Spread).unwrap(),
+        json!({ "op": "spread" })
+    );
+}

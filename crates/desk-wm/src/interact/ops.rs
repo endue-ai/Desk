@@ -9,8 +9,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::coordinates::{is_floating, screen_rect};
 use crate::geometry::{clamp_rect, screen_area};
-use crate::types::{Fill, Rect};
+use crate::types::{Fill, Offset, Rect};
 
+use super::publish::Change;
 use super::resize::{Grip, resize_rect};
 use super::wm::{Out, Wm};
 
@@ -71,7 +72,7 @@ impl Wm {
                 };
                 self.place(&id, moved, floating)
             }
-            Op::Spread => return Vec::new(),
+            Op::Spread => Vec::new(),
             Op::Resize { dw, dh } => {
                 let (rect, floating) = self.on_screen(&p);
                 let bounds = floating.then(|| screen_area(self.screen.w, self.screen.h));
@@ -81,6 +82,24 @@ impl Wm {
         };
         out.push(Out::Redraw);
         out
+    }
+
+    /// Bring window `id` of the desktop in front wholly into sight, as the spread does before it
+    /// gives the window the focus (ADR 0116); publishes when the canvas panned.
+    pub fn reveal(&mut self, id: &str) -> Vec<Out> {
+        if !self.drawn.reveal(id, self.screen.w, self.screen.h) {
+            return Vec::new();
+        }
+        vec![self.publish(None), Out::Redraw]
+    }
+
+    /// The canvas of the desktop in front at `pan`, as the canvas map moves it (ADR 0082).
+    pub fn pan_to(&mut self, pan: Offset) -> Vec<Out> {
+        let desktop = self.drawn.here();
+        if self.drawn.pan_of(&desktop) == pan {
+            return Vec::new();
+        }
+        vec![self.change(Change::Pan { desktop, pan }), Out::Redraw]
     }
 
     /// Where `p` is on screen now and the mode a step keeps it in.
