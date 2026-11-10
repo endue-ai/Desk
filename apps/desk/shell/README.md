@@ -5,9 +5,10 @@ desk's URL schemes and CEF's message pump, driven from winit's event loop when C
 (`OnScheduleMessagePumpWork`). The desk starts through `desk-boot`; pages reach it through
 `window.__deskNative`, the caller taken from the browser's window and the frame's URL (#43, #45).
 It has the Tauri shell's services (#45): tray, menu bar, global shortcuts, file dialog, one desk per
-data folder, files opened with the desk, the palette, the floating Eris and the computer-use banner. It replaces the Tauri shell (`../src-tauri`) when Stage 1 ends; until then its
-binary is `endue-desk-cef`. Compositor mode (`DESK_COMPOSITOR=1` or `--compositor`, #52, ADR 0149)
-draws the main window with `desk-compositor` instead: the page and every plugin surface off screen.
+data folder, files opened with the desk, the palette, the floating Eris and the computer-use banner.
+It replaces the Tauri shell (`../src-tauri`) when Stage 1 ends; until then its binary is
+`endue-desk-cef`. Compositor mode (`DESK_COMPOSITOR=1` or `--compositor`; ADR 0149, 0150) draws the
+main window with `desk-compositor`, every surface off screen, its input through the compositor's router.
 
 ## Public API
 
@@ -20,8 +21,10 @@ draws the main window with `desk-compositor` instead: the page and every plugin 
 - `open_files`, `run_event`, `drops`: files from the command line, Finder, the Dock and drags.
 - `scheme`, `plugin_scheme`, `guard`, `paths`, `renderer`: schemes, loads, files, `__deskNative`;
   `crashes::watch` names a plugin frame whose renderer died (`desk://frame-crashed`).
-- `web_host`: `specs/surface` for web content, a windowless browser per surface; `compositor_window`: the
-  wgpu scene and the frames' places; `probe`: their checks.
+- `web_host`: `specs/surface` for web content, a windowless browser per surface, its input on CEF
+  (`input`, `key_codes`), cursors, IME carets and the SDK's drags (`routes`, `drag`).
+- `compositor_window`: the wgpu scene and the frames' places, winit's input (`input`, `winit_input`),
+  the focus ring and drag image (`overlay`); `harness`, `probe`: their checks.
 - `sandbox`: each macOS helper enters Chromium's sandbox first (ADR 0148); off elsewhere until #61.
 - `release`, `update`: the build's version, key, origin and commit; the updater over `desk_update::install`,
   the tray's "Restart to update", the restart once CEF has shut down (#47).
@@ -36,5 +39,5 @@ just dev-shell      # builds the runtime and the shell; on macOS runs the .app b
 just check-shell    # clippy -D warnings and the crate's tests (downloads CEF on first build)
 ```
 
-`tests/osr_import.rs` and `lifecycle.rs` run `--surface-probe` on `just build-shell`'s bundle; dev builds
-open DevTools when `DESK_REMOTE_DEBUGGING_PORT` is set; `e2e/smoke/update-two-hops.sh` updates packages.
+`tests/{osr_import,lifecycle}.rs` run `--surface-probe` on `just build-shell`'s bundle; `e2e/specs/{ime,dnd}`
+feed compositor mode winit's events; dev builds open DevTools when `DESK_REMOTE_DEBUGGING_PORT` is set.
