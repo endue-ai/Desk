@@ -1962,15 +1962,20 @@ name = "desk-update"
 version = "0.0.0"
 dependencies = [
  "base64 0.23.1",
+ "flate2",
  "getrandom 0.4.3",
  "jsonschema",
+ "libc",
  "minisign",
  "minisign-verify",
+ "plist",
  "semver",
  "serde",
  "serde_json",
  "sha2 0.11.1",
+ "tar",
  "ureq",
+ "xattr",
 ]
 
 [[package]]

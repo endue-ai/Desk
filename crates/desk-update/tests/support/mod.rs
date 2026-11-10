@@ -2,6 +2,9 @@
 //! records what it was handed. Nothing key-like is committed: every key is generated here.
 #![allow(dead_code)]
 
+#[cfg(feature = "install")]
+pub mod bundle;
+
 use std::collections::BTreeMap;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};

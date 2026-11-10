@@ -19,13 +19,32 @@ serde_json.workspace = true
 sha2 = "0.11"
 # The release origin over HTTPS (`https`): the client desk-sys's `net` already uses.
 ureq = { version = "3.1", optional = true, default-features = false, features = ["rustls", "platform-verifier"] }
+# Installing a build without Tauri (`install`): the .app.tar.gz and the app's Info.plist, as
+# tauri-plugin-updater reads them.
+flate2 = { version = "1", optional = true }
+plist = { version = "1", optional = true }
+tar = { version = "0.4", optional = true }
+
+# The atomic swap of two app bundles (renamex_np), and the quarantine mark taken off a checked update.
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = { version = "0.2", optional = true }
+xattr = { version = "1", optional = true }
 
 [features]
 https = ["dep:ureq"]
+install = ["dep:flate2", "dep:plist", "dep:tar", "dep:libc", "dep:xattr"]
 
 [[test]]
 name = "https"
 required-features = ["https"]
+
+[[test]]
+name = "installer"
+required-features = ["install"]
+
+[[test]]
+name = "install_packages"
+required-features = ["install"]
 
 [dev-dependencies]
 # Judges the specs/update/v0 vectors by their schemas (tests/vectors.rs).
