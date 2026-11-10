@@ -19,6 +19,12 @@ import { type Response, type Responsiveness, ResponsivenessModel } from "./respo
 export interface FrameResponses {
   /** How surface `id`'s frame answers the desk; undefined for a surface the desk does not watch. */
   state(id: string): Responsiveness | undefined;
+  /**
+   * Whether surface `id`'s frame sleeps: unloaded by the live budget, its state kept, until it is
+   * in sight or in use again (ADR 0070, ADR 0134). A stopped frame is unloaded too, but `state`
+   * says so. The frames installer answers it (`install.ts`); the watch alone does not know.
+   */
+  asleep(id: string): boolean;
   /** Wait on a late frame: its window stops asking for 10 s. False when it is not late. */
   wait(id: string): boolean;
   /** Stop a late frame: it is unloaded and its window offers Reload. False when it is not late. */
@@ -50,7 +56,7 @@ export interface WatchDeps {
 }
 
 export interface FrameWatch {
-  readonly responses: FrameResponses;
+  readonly responses: Omit<FrameResponses, "asleep">;
   track(id: string): void;
   untrack(id: string): void;
   dispose(): void;

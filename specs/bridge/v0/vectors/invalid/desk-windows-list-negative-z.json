@@ -1,0 +1,14 @@
+{
+  "target": "BrainDeskWindow",
+  "description": "a window's place in the stacking order starts at 0 at the back (#82)",
+  "instance": {
+    "id": "endue.notes",
+    "x": 40,
+    "y": 60,
+    "w": 600,
+    "h": 400,
+    "z": -1,
+    "state": "normal",
+    "panes": [{ "id": "p1", "view": "plugin:endue.notes", "plugin": "endue.notes" }]
+  }
+}

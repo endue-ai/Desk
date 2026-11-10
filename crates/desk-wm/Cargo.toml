@@ -9,6 +9,8 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+# The snapshot is the contract's own type (`BrainDesk`, specs/bridge/v0), what desk.windows.list answers.
+desk-bridge.workspace = true
 serde.workspace = true
 # Stored desktops and layouts are read leniently from JSON, as the runtime reads them.
 serde_json.workspace = true

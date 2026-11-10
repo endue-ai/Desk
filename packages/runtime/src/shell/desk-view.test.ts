@@ -46,7 +46,7 @@ describe("the desk Eris sees", () => {
     const git = desk.windows[0];
     expect(git).toMatchObject({ x: 700, y: 60, w: 680, h: 760, focused: true });
     expect(git?.panes).toEqual([
-      { view: "plugin:endue.git", plugin: "endue.git", title: "Git", focused: true },
+      { id: "p1", view: "plugin:endue.git", plugin: "endue.git", title: "Git", focused: true },
     ]);
     const notes = desk.windows.find((w) => w.id === "endue.notes");
     expect(notes).toMatchObject({
@@ -143,11 +143,12 @@ describe("every desktop and the windows closed recently (ADR 0124)", () => {
     openSurface(c, "notes");
     c.store.set((s) => ({ pan: { ...s.pan, "1": { x: -100, y: 0 } } }));
     const desk = deskSnapshot(c, SIZE);
+    const still = { x: 0, y: 0 };
     expect(desk.desktops).toEqual([
-      { id: "1", name: "1" },
-      { id: "2", name: "2", current: true },
-      { id: "3", name: "3" },
-      { id: "4", name: "4" },
+      { id: "1", name: "1", pan: { x: -100, y: 0 } },
+      { id: "2", name: "2", current: true, pan: still },
+      { id: "3", name: "3", pan: still },
+      { id: "4", name: "4", pan: still },
     ]);
     expect(desk.windows.map((w) => [w.id, w.desktop])).toEqual([
       ["notes", "2"],

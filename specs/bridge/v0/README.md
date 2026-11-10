@@ -294,6 +294,13 @@ and up to 64 windows, those of the desktop in front first (front to back), then 
 now and the plugins that are on (`desk.capabilities` lists every command). A pane whose plugin's frame
 stopped answering the desk says so (`responsiveness`, #39): `late` while its window shows Not
 responding (`desk.frames.wait`, `desk.frames.stop`), `stopped` once stopped (`desk.frames.reload`).
+Since #82 the snapshot is also the window manager's inspection API, which `desk.windows.list` answers
+over the bridge and `desk.sock` and the app e2e reads instead of the page: every rect is whole CSS
+pixels of the desk, rounded half up; each window on a desktop has its rank in that desktop's stacking
+order (`z`, 0 at the back), its `state` (`normal`, `floating`, `snapped`, `filled`) with the part a
+snapped or filled one takes (`fill`), and `pinned`; each pane its `id` and `asleep` when the live
+budget put its plugin's frame to sleep (ADR 0134); each desktop its canvas `pan`. Both window managers
+answer the same scene (`vectors/valid/desk-windows-list-scene.json`): the runtime's and `desk-wm`'s.
 The core words it before the line, each plugin on screen with its tools, within 8,192 characters:
 each part has its share and, cut short, ends with a line that names the command listing the rest.
 

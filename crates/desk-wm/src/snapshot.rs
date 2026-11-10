@@ -1,108 +1,144 @@
-//! The desk as the window manager sees it, for `desk.windows.list` (#53; `deskSnapshot` in
-//! `packages/runtime/src/shell/desk-view.ts`, which read the DOM's store): every window, those of
-//! the desktop in front first, front to back, then those put away in the drawer, then those of
-//! the other desktops in their order. Each says where it is on screen (a window on another desktop:
-//! where it is when that desktop comes to the front; one in the drawer: where it comes back), its
-//! stacking level, its desktop, its state and its panes. A plugin window in its slot is on every
-//! desktop until it is moved (ADR 0117): it is named once, where it is seen.
+//! The desk as the window manager sees it: what `desk.windows.list` answers (#82), in the
+//! contract's own type (`BrainDesk`, `specs/bridge/v0/brain.schema.json`), as `deskSnapshot` in
+//! `packages/runtime/src/shell/desk-view.ts` answers it from the DOM's store. Every window, those
+//! of the desktop in front first, front to back, then those put away in the drawer, then those of
+//! the other desktops in their order. Each says where it is on screen in whole CSS pixels (a window
+//! on another desktop: where it is when that desktop comes to the front; one in the drawer: where
+//! it comes back), its rank in its desktop's stacking order (0 at the back), how it is placed
+//! (normal, floating, snapped, filled), whether it is pinned or in use, its desktop and its panes.
+//! A plugin window in its slot is on every desktop until it is moved (ADR 0117): it is named once,
+//! where it is seen. The desktops carry their pans.
 //!
-//! Titles of the shell's own views, the frames' responsiveness and the contract's limits are the
-//! command's to add (#82); a plugin pane's title is the one the runtime handed over.
+//! What the window manager does not hold comes through [`Seen`]: the shell's titles for its own
+//! views and how each plugin's frame is doing. The windows closed recently and the capabilities are
+//! the command's to add; the contract's limits (64 windows, 16 panes, the strings' lengths) hold
+//! here. `tests/scene.rs` and the runtime's `desk-view.scene.test.ts` build one scene and both
+//! must equal the contract's vector `desk-windows-list-scene.json`.
 
-use serde::{Deserialize, Serialize};
+use desk_bridge::{
+    BrainDesk, BrainDeskDesktop, BrainDeskFill, BrainDeskOffset, BrainDeskPane,
+    BrainDeskResponsiveness, BrainDeskSize, BrainDeskWindow, BrainDeskWindowState,
+};
 
 use crate::coordinates::{is_floating, screen_rect};
 use crate::cover::z_of;
 use crate::desk::Desk;
-use crate::desktops::DesktopId;
+use crate::math::round;
 use crate::placed::PLUGIN_VIEW;
-use crate::types::{Fill, Offset, Placement, Size};
+use crate::types::{Fill, Offset, Placement};
 
-fn no(b: &bool) -> bool {
-    !*b
+/// The contract's limits (`BrainDesk`).
+const WINDOWS: usize = 64;
+const DESKTOPS: usize = 32;
+const PANES: usize = 16;
+const ID: usize = 128;
+const DESKTOP_ID: usize = 64;
+const PANE_ID: usize = 64;
+const NAME: usize = 40;
+const TITLE: usize = 200;
+const VIEW: usize = 256;
+
+/// How a plugin's frame is doing, as the runtime knows it (ADR 0134, #39).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Frame {
+    /// Loaded and answering.
+    #[default]
+    Live,
+    /// Put to sleep by the live budget, its state kept.
+    Asleep,
+    /// Loaded but not answering for 5 s: Not responding.
+    Late,
+    /// Stopped by the person; it waits for Reload.
+    Stopped,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Snapshot {
-    /// The app's size in pixels.
-    pub screen: Size,
-    /// The desktops in order; `current` marks the one in front.
-    pub desktops: Vec<DesktopSnapshot>,
-    pub windows: Vec<WindowSnapshot>,
-    /// The window in use, and its pane.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub focused: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pane: Option<String>,
+/// What a snapshot reads beyond the window manager's state.
+pub trait Seen {
+    /// The title of one of the shell's own views (`launcher`, `calendar`, ...), when it has one.
+    fn title(&self, view: &str) -> Option<String> {
+        let _ = view;
+        None
+    }
+
+    /// How plugin `id`'s frame is doing.
+    fn frame(&self, plugin: &str) -> Frame {
+        let _ = plugin;
+        Frame::Live
+    }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DesktopSnapshot {
-    pub id: DesktopId,
-    pub name: String,
-    #[serde(default, skip_serializing_if = "no")]
-    pub current: bool,
-}
+/// Nothing beyond the state: no titles for the shell's views, every frame live.
+pub struct Unseen;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct WindowSnapshot {
-    pub id: String,
-    pub plugin: String,
-    /// The desktop it is on; absent for a window in the drawer.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub desktop: Option<DesktopId>,
-    /// Where it is drawn, in app pixels from the top left.
-    pub x: f64,
-    pub y: f64,
-    pub w: f64,
-    pub h: f64,
-    /// Its stacking level on its desktop, higher in front (`cover::z_of`); none in the drawer.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub z: Option<usize>,
-    #[serde(default, skip_serializing_if = "no")]
-    pub floating: bool,
-    #[serde(default, skip_serializing_if = "no")]
-    pub pinned: bool,
-    /// The part of the app it fills (ADR 0128, ADR 0132).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub fill: Option<Fill>,
-    /// It is the window in use, on the desktop in front.
-    #[serde(default, skip_serializing_if = "no")]
-    pub focused: bool,
-    /// It waits in the drawer.
-    #[serde(default, skip_serializing_if = "no")]
-    pub hidden: bool,
-    pub panes: Vec<PaneSnapshot>,
-}
+impl Seen for Unseen {}
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PaneSnapshot {
-    pub id: String,
-    /// The view it shows: `plugin:<id>`, `launcher`, an item's view.
-    pub view: String,
-    /// The plugin that draws it.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub plugin: Option<String>,
-    /// That plugin's title, as the runtime handed it over.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-    /// It is the pane in use.
-    #[serde(default, skip_serializing_if = "no")]
-    pub focused: bool,
-}
-
-/// Where a window is listed: on a desktop at its stacking level, or in the drawer.
+/// Where a window is listed: on a desktop at its rank, or in the drawer.
 #[derive(Clone, Copy)]
 struct Seat<'a> {
     desktop: Option<&'a str>,
-    z: Option<usize>,
+    z: Option<u64>,
     pan: Offset,
 }
 
+/// A whole number of pixels, as the runtime's `int` gives it: JS rounding, 0 for what is not finite.
+fn int(v: f64) -> i64 {
+    if v.is_finite() { round(v) as i64 } else { 0 }
+}
+
+/// A whole size: never below 0.
+fn size(v: f64) -> u64 {
+    u64::try_from(int(v)).unwrap_or(0)
+}
+
+fn cut(text: &str, at: usize) -> String {
+    text.chars().take(at).collect()
+}
+
+/// A plugin id as the plugin spec writes it (`PluginId`): dotted lower-case words.
+fn is_plugin_id(id: &str) -> bool {
+    let parts: Vec<&str> = id.split('.').collect();
+    parts.len() >= 2
+        && parts.iter().all(|part| {
+            let mut chars = part.chars();
+            chars.next().is_some_and(|c| c.is_ascii_lowercase())
+                && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+        })
+}
+
+fn fill_of(fill: Fill) -> BrainDeskFill {
+    match fill {
+        Fill::Full => BrainDeskFill::Full,
+        Fill::Left => BrainDeskFill::Left,
+        Fill::Right => BrainDeskFill::Right,
+        Fill::Top => BrainDeskFill::Top,
+        Fill::Bottom => BrainDeskFill::Bottom,
+        Fill::TopLeft => BrainDeskFill::TopLeft,
+        Fill::TopRight => BrainDeskFill::TopRight,
+        Fill::BottomLeft => BrainDeskFill::BottomLeft,
+        Fill::BottomRight => BrainDeskFill::BottomRight,
+    }
+}
+
+/// How a window is placed: a fill counts only on a floating window, the one it is drawn by.
+fn state_of(p: &Placement) -> (BrainDeskWindowState, Option<BrainDeskFill>) {
+    if !is_floating(p) {
+        return (BrainDeskWindowState::Normal, None);
+    }
+    match p.fill {
+        Some(Fill::Full) => (BrainDeskWindowState::Filled, Some(BrainDeskFill::Full)),
+        Some(fill) => (BrainDeskWindowState::Snapped, Some(fill_of(fill))),
+        None => (BrainDeskWindowState::Floating, None),
+    }
+}
+
+fn yes(b: bool) -> Option<bool> {
+    b.then_some(true)
+}
+
 impl Desk {
-    /// A desktop's windows front to back, with their stacking levels; the focus counts only on the
-    /// desktop in front.
-    fn stack(&self, desktop: &str) -> Vec<(Placement, usize)> {
+    /// A desktop's windows front to back, each with its rank from the back; the focus counts only
+    /// on the desktop in front.
+    fn stack(&self, desktop: &str) -> Vec<(Placement, u64)> {
         let focused = (desktop == self.here())
             .then_some(self.focused.as_deref())
             .flatten();
@@ -111,81 +147,127 @@ impl Desk {
             .into_iter()
             .enumerate()
             .map(|(i, p)| {
-                let z = z_of(&p, i, focused);
-                (p, z)
+                let level = z_of(&p, i, focused);
+                (p, level)
             })
             .collect();
+        // Stable, as the runtime's sort is: equal levels keep desk order.
         all.sort_by_key(|a| std::cmp::Reverse(a.1));
-        all
+        let n = all.len() as u64;
+        (all.into_iter().enumerate())
+            .map(|(i, (p, _))| (p, n - 1 - i as u64))
+            .collect()
     }
 
-    fn window_snapshot(&self, p: &Placement, seat: Seat, vw: f64, vh: f64) -> WindowSnapshot {
+    fn pane_snapshot(
+        &self,
+        p: &Placement,
+        (id, view): (&str, &str),
+        in_use: Option<&str>,
+        seen: &dyn Seen,
+    ) -> BrainDeskPane {
+        let resolved = self.resolve(p, view);
+        let plugin = resolved
+            .strip_prefix(PLUGIN_VIEW)
+            .filter(|id| is_plugin_id(id))
+            .map(String::from);
+        let title = match &plugin {
+            Some(plugin) => Some(
+                (self.adopted.iter().find(|a| &a.id == plugin))
+                    .map_or_else(|| plugin.clone(), |a| a.title.clone()),
+            ),
+            None => seen.title(view),
+        };
+        let frame = plugin.as_deref().map_or(Frame::Live, |id| seen.frame(id));
+        BrainDeskPane {
+            id: (!id.is_empty()).then(|| cut(id, PANE_ID)),
+            view: cut(&resolved, VIEW),
+            plugin,
+            title: title.filter(|t| !t.is_empty()).map(|t| cut(&t, TITLE)),
+            focused: yes(Some(id) == in_use),
+            asleep: yes(frame == Frame::Asleep),
+            responsiveness: match frame {
+                Frame::Late => Some(BrainDeskResponsiveness::Late),
+                Frame::Stopped => Some(BrainDeskResponsiveness::Stopped),
+                Frame::Live | Frame::Asleep => None,
+            },
+        }
+    }
+
+    fn window_snapshot(
+        &self,
+        p: &Placement,
+        seat: Seat,
+        vw: f64,
+        vh: f64,
+        seen: &dyn Seen,
+    ) -> BrainDeskWindow {
         let rect = screen_rect(p, seat.pan, vw, vh);
         let focused = seat.desktop == Some(self.here().as_str())
             && self.focused.as_deref() == Some(p.id.as_str());
         let tree = p.panes();
-        let leaves = tree.leaves();
+        let leaves: Vec<(&str, &str)> = tree.leaves().into_iter().take(PANES).collect();
         let in_use = focused
             .then(|| {
-                leaves
+                (leaves
                     .iter()
-                    .find(|(id, _)| Some(*id) == self.pane.as_deref())
-                    .or(leaves.first())
-                    .map(|(id, _)| *id)
+                    .find(|(id, _)| Some(*id) == self.pane.as_deref()))
+                .or(leaves.first())
+                .map(|(id, _)| *id)
             })
             .flatten();
-        let panes = leaves
-            .iter()
-            .map(|(id, view)| {
-                let view = self.resolve(p, view);
-                let plugin = view.strip_prefix(PLUGIN_VIEW).map(String::from);
-                let title = plugin.as_ref().and_then(|id| {
-                    self.adopted
-                        .iter()
-                        .find(|a| &a.id == id)
-                        .map(|a| a.title.clone())
-                });
-                PaneSnapshot {
-                    id: id.to_string(),
-                    view,
-                    plugin,
-                    title,
-                    focused: Some(*id) == in_use,
-                }
-            })
+        let mut panes: Vec<BrainDeskPane> = (leaves.iter())
+            .map(|&leaf| self.pane_snapshot(p, leaf, in_use, seen))
             .collect();
-        WindowSnapshot {
-            id: p.id.clone(),
-            plugin: p.plugin.clone(),
-            desktop: seat.desktop.map(String::from),
-            x: rect.x,
-            y: rect.y,
-            w: rect.w,
-            h: rect.h,
+        if panes.is_empty() {
+            panes.push(BrainDeskPane {
+                id: None,
+                view: cut(&p.id, VIEW),
+                plugin: None,
+                title: None,
+                focused: None,
+                asleep: None,
+                responsiveness: None,
+            });
+        }
+        let (state, fill) = state_of(p);
+        BrainDeskWindow {
+            id: cut(&p.id, ID),
+            x: int(rect.x),
+            y: int(rect.y),
+            w: size(rect.w),
+            h: size(rect.h),
             z: seat.z,
-            floating: is_floating(p),
-            pinned: p.pinned,
-            fill: p.fill,
-            focused,
-            hidden: seat.desktop.is_none(),
+            state: Some(state),
+            fill,
+            floating: yes(is_floating(p)),
+            pinned: yes(p.pinned),
+            focused: yes(focused),
+            hidden: yes(seat.desktop.is_none()),
+            desktop: seat.desktop.map(|d| cut(d, DESKTOP_ID)),
             panes,
         }
     }
 
-    /// The desk now on a `vw`×`vh` app: what `desk.windows.list` answers.
-    pub fn snapshot(&self, vw: f64, vh: f64) -> Snapshot {
-        let here = self.here();
-        fn seat<'a>(desk: &Desk, desktop: &'a str, z: usize) -> Seat<'a> {
+    /// The desk now on a `vw`×`vh` app, with nothing known beyond the state ([`Unseen`]).
+    pub fn snapshot(&self, vw: f64, vh: f64) -> BrainDesk {
+        self.snapshot_seen(vw, vh, &Unseen)
+    }
+
+    /// The desk now on a `vw`×`vh` app: what `desk.windows.list` answers, the shell's titles and
+    /// the frames' states read from `seen`.
+    pub fn snapshot_seen(&self, vw: f64, vh: f64, seen: &dyn Seen) -> BrainDesk {
+        fn on<'a>(desk: &Desk, desktop: &'a str, z: u64) -> Seat<'a> {
             Seat {
                 desktop: Some(desktop),
                 z: Some(z),
                 pan: desk.pan_of(desktop),
             }
         }
+        let here = self.here();
         let front = self.stack(&here);
-        let mut windows: Vec<WindowSnapshot> = front
-            .iter()
-            .map(|(p, z)| self.window_snapshot(p, seat(self, &here, *z), vw, vh))
+        let mut windows: Vec<BrainDeskWindow> = (front.iter())
+            .map(|(p, z)| self.window_snapshot(p, on(self, &here, *z), vw, vh, seen))
             .collect();
         let away = Seat {
             desktop: None,
@@ -194,35 +276,42 @@ impl Desk {
         };
         windows.extend(self.drawer.iter().filter_map(|d| {
             let p = d.placement.as_ref()?;
-            Some(self.window_snapshot(p, away, vw, vh))
+            Some(self.window_snapshot(p, away, vw, vh, seen))
         }));
         let listed: Vec<&str> = front.iter().map(|(p, _)| p.id.as_str()).collect();
         for d in self.desktops().iter().filter(|d| d.id != here) {
             let placed = self.layout_of(d.id.as_str()).surfaces;
             for (p, z) in self.stack(&d.id) {
                 if placed.iter().any(|q| q.id == p.id) || !listed.contains(&p.id.as_str()) {
-                    windows.push(self.window_snapshot(&p, seat(self, &d.id, z), vw, vh));
+                    windows.push(self.window_snapshot(&p, on(self, &d.id, z), vw, vh, seen));
                 }
             }
         }
-        Snapshot {
-            screen: Size { w: vw, h: vh },
-            desktops: self
-                .desktops()
-                .iter()
-                .map(|d| DesktopSnapshot {
-                    id: d.id.clone(),
-                    name: if d.name.is_empty() {
-                        d.id.clone()
-                    } else {
-                        d.name.clone()
-                    },
-                    current: d.id == here,
-                })
-                .collect(),
+        windows.truncate(WINDOWS);
+        let desktops = (self.desktops().iter().take(DESKTOPS))
+            .map(|d| {
+                let pan = self.pan_of(&d.id);
+                let name = if d.name.is_empty() { &d.id } else { &d.name };
+                BrainDeskDesktop {
+                    id: cut(&d.id, DESKTOP_ID),
+                    name: cut(name, NAME),
+                    current: yes(d.id == here),
+                    pan: Some(BrainDeskOffset {
+                        x: int(pan.x),
+                        y: int(pan.y),
+                    }),
+                }
+            })
+            .collect();
+        BrainDesk {
+            screen: BrainDeskSize {
+                w: size(vw),
+                h: size(vh),
+            },
             windows,
-            focused: self.focused.clone(),
-            pane: self.pane.clone(),
+            desktops: Some(desktops),
+            closed: None,
+            capabilities: None,
         }
     }
 }

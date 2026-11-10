@@ -4,16 +4,17 @@
 //! window's plugins and takes them out of the handed-over list; here `close_window` answers the
 //! plugins to unmount and `release` is the runtime's half.
 //!
-//! Also the `Desk` state's JSON and its snapshot, what `desk.windows.list` answers (#82): no TS
-//! test, since the runtime built it from the DOM's store (`shell/desk-view.ts`).
+//! Also the `Desk` state's JSON and its snapshot, what `desk.windows.list` answers (#82), in the
+//! contract's type; `tests/scene.rs` checks it against the runtime's on one scene.
 
 mod common;
 
 use std::collections::BTreeMap;
 
 use common::*;
+use desk_bridge::{BrainDesk, BrainDeskFill, BrainDeskWindowState};
 use desk_wm::{
-    Desk, DesktopLayout, Fill, Offset, PaneNode, Placement, Rect, Snapshot, screen_rect, slot_rect,
+    Desk, DesktopLayout, Fill, Offset, PaneNode, Placement, Rect, screen_rect, slot_rect,
 };
 use serde_json::json;
 
@@ -209,17 +210,16 @@ mod the_snapshot {
                 ("keys", Some("2")),
             ]
         );
-        let current: Vec<(&str, bool)> = shot
-            .desktops
+        let desktops = shot.desktops.clone().unwrap_or_default();
+        let current: Vec<(&str, Option<bool>)> = desktops
             .iter()
             .map(|d| (d.id.as_str(), d.current))
             .collect();
         assert_eq!(
             current,
-            [("1", true), ("2", false), ("3", false), ("4", false)]
+            [("1", Some(true)), ("2", None), ("3", None), ("4", None)]
         );
-        assert_eq!((shot.screen.w, shot.screen.h), (1440.0, 900.0));
-        assert_eq!(shot.focused.as_deref(), Some("notes"));
+        assert_eq!((shot.screen.w, shot.screen.h), (1440, 900));
     }
 
     #[test]
@@ -227,27 +227,31 @@ mod the_snapshot {
         let shot = seen_desk().snapshot(1440.0, 900.0);
         let by = |id: &str| shot.windows.iter().find(|w| w.id == id).unwrap();
         let notes = by("notes");
-        assert_eq!(
-            Rect::new(notes.x, notes.y, notes.w, notes.h),
-            Rect::new(200.0, 200.0, 400.0, 300.0)
-        );
-        assert!(notes.focused && !notes.floating && !notes.hidden);
+        assert_eq!((notes.x, notes.y, notes.w, notes.h), (200, 200, 400, 300));
+        assert_eq!(notes.focused, Some(true));
+        assert_eq!((notes.floating, notes.hidden), (None, None));
+        assert_eq!(notes.state, Some(BrainDeskWindowState::Normal));
         assert_eq!(notes.panes.len(), 1);
-        assert!(notes.panes[0].focused);
+        assert_eq!(notes.panes[0].focused, Some(true));
         let mail = by("mail");
-        assert!(mail.floating && !mail.focused);
-        assert_eq!(mail.fill, Some(Fill::Right));
-        assert_eq!((mail.x, mail.y, mail.w, mail.h), (726.0, 0.0, 714.0, 900.0));
-        assert!(mail.z > notes.z && notes.z > by("p.x").z);
+        assert_eq!((mail.floating, mail.focused), (Some(true), None));
+        assert_eq!(mail.state, Some(BrainDeskWindowState::Snapped));
+        assert_eq!(mail.fill, Some(BrainDeskFill::Right));
+        assert_eq!((mail.x, mail.y, mail.w, mail.h), (726, 0, 714, 900));
+        // Ranks from the back: the plugin window in its slot, then Notes in use, then Mail floating.
+        assert_eq!((by("p.x").z, notes.z, mail.z), (Some(0), Some(1), Some(2)));
         let px = by("p.x");
         assert_eq!(px.panes[0].view, "plugin:p.x");
         assert_eq!(px.panes[0].plugin.as_deref(), Some("p.x"));
         assert_eq!(px.panes[0].title.as_deref(), Some("p.x"));
         let files = by("files");
-        assert!(files.hidden);
+        assert_eq!(files.hidden, Some(true));
         assert_eq!(files.z, None);
         // A window on another desktop is where it is when that desktop comes to the front.
-        assert_eq!((by("keys").x, by("keys").y), (20.0, 30.0));
+        assert_eq!(
+            (by("keys").x, by("keys").y, by("keys").z),
+            (20, 30, Some(0))
+        );
     }
 
     #[test]
@@ -257,8 +261,8 @@ mod the_snapshot {
         assert_eq!(
             value["windows"][1],
             json!({
-                "id": "notes", "plugin": "endue.notes", "desktop": "1",
-                "x": 200.0, "y": 200.0, "w": 400.0, "h": 300.0, "z": 100,
+                "id": "notes", "desktop": "1",
+                "x": 200, "y": 200, "w": 400, "h": 300, "z": 1, "state": "normal",
                 "focused": true,
                 "panes": [{ "id": "p1", "view": "notes", "focused": true }]
             })
@@ -266,9 +270,9 @@ mod the_snapshot {
         assert_eq!(value["windows"][3]["hidden"], json!(true));
         assert_eq!(
             value["desktops"][0],
-            json!({ "id": "1", "name": "1", "current": true })
+            json!({ "id": "1", "name": "1", "current": true, "pan": { "x": -100, "y": 0 } })
         );
-        let back: Snapshot = serde_json::from_value(value).unwrap();
+        let back: BrainDesk = serde_json::from_value(value).unwrap();
         assert_eq!(back, shot);
     }
 }

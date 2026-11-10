@@ -1,0 +1,16 @@
+{
+  "target": "BrainDeskWindow",
+  "description": "a snapped window takes a half or a quarter of the app, a filled one all of it: no other part (#82)",
+  "instance": {
+    "id": "endue.mail",
+    "x": 360,
+    "y": 225,
+    "w": 720,
+    "h": 450,
+    "z": 3,
+    "state": "snapped",
+    "fill": "centre",
+    "floating": true,
+    "panes": [{ "id": "p1", "view": "plugin:endue.mail", "plugin": "endue.mail" }]
+  }
+}

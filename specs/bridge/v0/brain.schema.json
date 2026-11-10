@@ -29,7 +29,7 @@
       "additionalProperties": false
     },
     "BrainDesk": {
-      "description": "What the person sees as they say the line, as the runtime's window manager holds it (ADR 0109, ADR 0124): the screen and every window, those of the desktop in front first (front to back), then those put away in the drawer, then those of the other desktops in their order; the desktops, the current one marked; the windows closed recently; and a summary of what the person can do. The core puts it before the line, with each plugin's tools, so the brain knows which plugin a request is for, and keeps those words within a fixed size.",
+      "description": "What the person sees as they say the line, as the runtime's window manager holds it (ADR 0109, ADR 0124): the screen and every window, those of the desktop in front first (front to back), then those put away in the drawer, then those of the other desktops in their order; the desktops, the current one marked; the windows closed recently; and a summary of what the person can do. The core puts it before the line, with each plugin's tools, so the brain knows which plugin a request is for, and keeps those words within a fixed size. The desk command desk.windows.list answers the same snapshot, to an agent in the middle of a turn and to the app's tests, which read windows through it rather than through the page (#82).",
       "type": "object",
       "properties": {
         "screen": { "$ref": "#/$defs/BrainDeskSize" },
@@ -56,14 +56,28 @@
       "additionalProperties": false
     },
     "BrainDeskDesktop": {
-      "description": "One desktop (window view): its id, which windows name in `desktop`, its name for people, and whether it is the one in front.",
+      "description": "One desktop (window view): its id, which windows name in `desktop`, its name for people, whether it is the one in front, and how far its canvas is panned.",
       "type": "object",
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 64 },
         "name": { "type": "string", "minLength": 1, "maxLength": 40 },
-        "current": { "type": "boolean" }
+        "current": { "type": "boolean" },
+        "pan": {
+          "description": "Where its canvas's origin is on screen, in CSS pixels: a normal window on it is drawn this far from its place on the canvas (#82). Absent from a runtime before #82.",
+          "$ref": "#/$defs/BrainDeskOffset"
+        }
       },
       "required": ["id", "name"],
+      "additionalProperties": false
+    },
+    "BrainDeskOffset": {
+      "description": "An offset in whole CSS pixels.",
+      "type": "object",
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" }
+      },
+      "required": ["x", "y"],
       "additionalProperties": false
     },
     "BrainDeskSize": {
@@ -77,7 +91,7 @@
       "additionalProperties": false
     },
     "BrainDeskWindow": {
-      "description": "One window: where the person sees it in CSS pixels from the desk's top left (a window off screen has a rect outside the screen; one on another desktop, where it is when that desktop is in front), whether it floats above the canvas, whether it has the focus, whether it is put away in the drawer (its rect is where it comes back), the desktop it is on, and its panes.",
+      "description": "One window: where the person sees it in CSS pixels from the desk's top left, each number rounded to the nearest whole pixel, halves up (a window off screen has a rect outside the screen; one on another desktop, where it is when that desktop is in front), its place in its desktop's stacking order, how it is placed (state, and the part of the app a snapped or filled one takes), whether it floats above the canvas, whether it is pinned, whether it has the focus, whether it is put away in the drawer (its rect is where it comes back), the desktop it is on, and its panes.",
       "type": "object",
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 128 },
@@ -85,7 +99,18 @@
         "y": { "type": "integer" },
         "w": { "type": "integer", "minimum": 0 },
         "h": { "type": "integer", "minimum": 0 },
+        "z": {
+          "description": "Its place in the stacking order of its desktop, from 0 at the back: a window with a higher z is drawn above one with a lower z (floating windows above the normal ones; within each, the window in use on top and pinned ones above the rest). Absent for a window in the drawer, and from a runtime before #82.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": { "$ref": "#/$defs/BrainDeskWindowState" },
+        "fill": { "$ref": "#/$defs/BrainDeskFill" },
         "floating": { "type": "boolean" },
+        "pinned": {
+          "description": "Pinned from its title bar: drawn above the windows of its kind that are not, below the one in use.",
+          "type": "boolean"
+        },
         "focused": { "type": "boolean" },
         "hidden": { "type": "boolean" },
         "desktop": {
@@ -104,14 +129,44 @@
       "required": ["id", "x", "y", "w", "h", "panes"],
       "additionalProperties": false
     },
+    "BrainDeskWindowState": {
+      "description": "How a window is placed (#82): normal, on its desktop's canvas, moving with the canvas's pan; floating, above the canvas, staying where it is on screen while the canvas moves; snapped, taking a half or a quarter of the app (ADR 0128, `fill` names which); filled, taking the whole app (ADR 0132, `fill` is `full`). A snapped or filled window floats too. Absent from a runtime before #82.",
+      "type": "string",
+      "enum": ["normal", "floating", "snapped", "filled"]
+    },
+    "BrainDeskFill": {
+      "description": "The part of the app a snapped or filled window takes: the whole app, an edge's half or a corner's quarter (ADR 0128, ADR 0132). Absent for a window that is neither.",
+      "type": "string",
+      "enum": [
+        "full",
+        "left",
+        "right",
+        "top",
+        "bottom",
+        "top-left",
+        "top-right",
+        "bottom-left",
+        "bottom-right"
+      ]
+    },
     "BrainDeskPane": {
-      "description": "A pane of a window: the view it shows (plugin:<id>, launcher, an item view), the plugin that draws it, its title for people, whether it is the pane in use, and whether that plugin's frame stopped answering the desk.",
+      "description": "A pane of a window: its id in the window, the view it shows (plugin:<id>, launcher, an item view), the plugin that draws it, its title for people, whether it is the pane in use, whether that plugin's frame sleeps, and whether it stopped answering the desk.",
       "type": "object",
       "properties": {
+        "id": {
+          "description": "The pane's id in its window (p1, p2, ...). Absent from a runtime before #82.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
         "view": { "type": "string", "minLength": 1, "maxLength": 256 },
         "plugin": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
         "title": { "type": "string", "maxLength": 200 },
         "focused": { "type": "boolean" },
+        "asleep": {
+          "description": "Its plugin's frame sleeps (the live budget, ADR 0070, ADR 0134): the window shows a placeholder and the plugin's last desk:state waits for it until it is in sight or in use again. Absent while the frame is live, and for a frame that was stopped (responsiveness).",
+          "type": "boolean"
+        },
         "responsiveness": { "$ref": "#/$defs/BrainDeskResponsiveness" }
       },
       "required": ["view"],

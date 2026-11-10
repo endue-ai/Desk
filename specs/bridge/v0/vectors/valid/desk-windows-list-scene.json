@@ -1,0 +1,185 @@
+{
+  "target": "BrainDesk",
+  "description": "the scene both window managers answer (#82): a filled window, a snapped one, a floating one, a split window in use, a pinned one, one put away, one on a panned second desktop; packages/runtime/src/shell/desk-view.scene.test.ts and crates/desk-wm/tests/scene.rs build it",
+  "instance": {
+    "screen": {
+      "w": 1440,
+      "h": 900
+    },
+    "windows": [
+      {
+        "id": "window-2",
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 900,
+        "z": 4,
+        "state": "filled",
+        "fill": "full",
+        "floating": true,
+        "desktop": "1",
+        "panes": [
+          {
+            "id": "p1",
+            "view": "launcher",
+            "title": "launcherTitle"
+          }
+        ]
+      },
+      {
+        "id": "endue.mail",
+        "x": 726,
+        "y": 0,
+        "w": 714,
+        "h": 900,
+        "z": 3,
+        "state": "snapped",
+        "fill": "right",
+        "floating": true,
+        "desktop": "1",
+        "panes": [
+          {
+            "id": "p1",
+            "view": "plugin:endue.mail",
+            "plugin": "endue.mail",
+            "title": "Mail",
+            "asleep": true
+          }
+        ]
+      },
+      {
+        "id": "endue.notes",
+        "x": 40,
+        "y": 60,
+        "w": 600,
+        "h": 400,
+        "z": 2,
+        "state": "floating",
+        "floating": true,
+        "desktop": "1",
+        "panes": [
+          {
+            "id": "p1",
+            "view": "plugin:endue.notes",
+            "plugin": "endue.notes",
+            "title": "Notes",
+            "responsiveness": "late"
+          }
+        ]
+      },
+      {
+        "id": "window-1",
+        "x": 607,
+        "y": 316,
+        "w": 480,
+        "h": 320,
+        "z": 1,
+        "state": "normal",
+        "focused": true,
+        "desktop": "1",
+        "panes": [
+          {
+            "id": "p1",
+            "view": "launcher",
+            "title": "launcherTitle",
+            "focused": true
+          },
+          {
+            "id": "p2",
+            "view": "launcher",
+            "title": "launcherTitle"
+          }
+        ]
+      },
+      {
+        "id": "endue.git",
+        "x": 731,
+        "y": 40,
+        "w": 680,
+        "h": 760,
+        "z": 0,
+        "state": "normal",
+        "pinned": true,
+        "desktop": "1",
+        "panes": [
+          {
+            "id": "p1",
+            "view": "plugin:endue.git",
+            "plugin": "endue.git",
+            "title": "Git",
+            "responsiveness": "stopped"
+          }
+        ]
+      },
+      {
+        "id": "e2e.hello",
+        "x": 135,
+        "y": 487,
+        "w": 402,
+        "h": 305,
+        "state": "normal",
+        "hidden": true,
+        "panes": [
+          {
+            "id": "p1",
+            "view": "plugin:e2e.hello",
+            "plugin": "e2e.hello",
+            "title": "Hello"
+          }
+        ]
+      },
+      {
+        "id": "calendar",
+        "x": 20,
+        "y": 290,
+        "w": 560,
+        "h": 400,
+        "z": 0,
+        "state": "normal",
+        "desktop": "2",
+        "panes": [
+          {
+            "id": "p1",
+            "view": "calendar",
+            "title": "surfaceCalendar"
+          }
+        ]
+      }
+    ],
+    "desktops": [
+      {
+        "id": "1",
+        "name": "1",
+        "current": true,
+        "pan": {
+          "x": 31,
+          "y": -20
+        }
+      },
+      {
+        "id": "2",
+        "name": "2",
+        "pan": {
+          "x": -100,
+          "y": 50
+        }
+      },
+      {
+        "id": "3",
+        "name": "3",
+        "pan": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "4",
+        "name": "4",
+        "pan": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    ]
+  }
+}

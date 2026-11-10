@@ -159,7 +159,12 @@ export function installFrames(
       changed();
     },
   });
-  offs.push(defineFrameCommands(ctx.hub.commands, watch.responses, deps.lang ?? "ko"));
+  const responses: FrameResponses = {
+    ...watch.responses,
+    // Unloaded and not stopped: the live budget put it to sleep (desk.windows.list says so, #82).
+    asleep: (id) => surfaces.unloaded(id) && watch.responses.state(id) !== "stopped",
+  };
+  offs.push(defineFrameCommands(ctx.hub.commands, responses, deps.lang ?? "ko"));
   const reloads = frameReloads({
     win,
     timers,
@@ -197,7 +202,7 @@ export function installFrames(
     wake: (id) => watch.responses.state(id) !== "stopped" && policy.wake(id),
     reload: (id, src) => reloads.reload(id, src),
     counts: () => ({ ...policy.counts(), budget: Math.floor(setting(LIVE_SURFACES)) }),
-    responses: watch.responses,
+    responses,
     dispose() {
       for (const off of offs) off?.();
       win.removeEventListener("resize", changed);

@@ -1,0 +1,5 @@
+{
+  "target": "BrainDeskDesktop",
+  "description": "a desktop's pan is in whole CSS pixels, as every rect is (#82)",
+  "instance": { "id": "1", "name": "Mail", "current": true, "pan": { "x": 30.5, "y": -20 } }
+}

@@ -14,7 +14,7 @@ use desk_bridge::{
 
 #[path = "desk_context_parts.rs"]
 mod parts;
-use parts::{Part, capabilities, closed, elsewhere, what};
+use parts::{Part, capabilities, closed, elsewhere, place, placed, what};
 
 /// The most tool names said beside one plugin; desk-tools lists the rest.
 const NAMES: usize = 12;
@@ -158,13 +158,14 @@ fn line(window: &BrainDeskWindow, place: Option<&str>) -> String {
     let mut text = format!("{}: {}", window.id, panes.join(" | "));
     let mut flags = Vec::new();
     if window.focused == Some(true) {
-        flags.push("focused");
+        flags.push("focused".to_owned());
     }
-    if window.floating == Some(true) {
-        flags.push("floating");
+    flags.extend(placed(window));
+    if window.pinned == Some(true) {
+        flags.push("pinned".to_owned());
     }
     if window.hidden == Some(true) {
-        flags.push("put away in the drawer");
+        flags.push("put away in the drawer".to_owned());
     }
     if !flags.is_empty() {
         text.push_str(&format!(" ({})", flags.join(", ")));
@@ -188,6 +189,9 @@ fn pane(pane: &BrainDeskPane) -> String {
     if pane.focused == Some(true) {
         text.push_str(" [in use]");
     }
+    if pane.asleep == Some(true) {
+        text.push_str(" [asleep until shown]");
+    }
     match pane.responsiveness {
         Some(BrainDeskResponsiveness::Late) => {
             text.push_str(" [not responding: desk.frames.wait or desk.frames.stop]");
@@ -198,34 +202,6 @@ fn pane(pane: &BrainDeskPane) -> String {
         None => {}
     }
     text
-}
-
-/// Where on the screen a window's middle is, in words: left, centre or right, and top, middle or
-/// bottom; "off screen" when none of it is in sight.
-fn place(window: &BrainDeskWindow, sw: u64, sh: u64) -> &'static str {
-    let (sw, sh) = (to_i64(sw), to_i64(sh));
-    let (w, h) = (to_i64(window.w), to_i64(window.h));
-    let outside = window.x >= sw || window.y >= sh || window.x + w <= 0 || window.y + h <= 0;
-    if sw == 0 || sh == 0 || outside {
-        return "off screen";
-    }
-    let third = |at: i64, size: i64| match at * 3 / size {
-        i64::MIN..=0 => 0,
-        1 => 1,
-        _ => 2,
-    };
-    let column = third(window.x + w / 2, sw);
-    let row = third(window.y + h / 2, sh);
-    const PLACES: [[&str; 3]; 3] = [
-        ["top left", "top centre", "top right"],
-        ["left", "centre", "right"],
-        ["bottom left", "bottom centre", "bottom right"],
-    ];
-    PLACES[row][column]
-}
-
-fn to_i64(value: u64) -> i64 {
-    i64::try_from(value).unwrap_or(i64::MAX)
 }
 
 #[cfg(test)]
@@ -240,15 +216,21 @@ mod tests {
             y: rect.1,
             w: rect.2,
             h: rect.3,
+            z: None,
+            state: None,
+            fill: None,
             floating: None,
+            pinned: None,
             focused: None,
             hidden: None,
             desktop: None,
             panes: vec![BrainDeskPane {
+                id: None,
                 view: plugin.map_or("launcher".to_owned(), |p| format!("plugin:{p}")),
                 plugin: plugin.map(str::to_owned),
                 title: plugin.map(|p| p.trim_start_matches("endue.").to_owned()),
                 focused: None,
+                asleep: None,
                 responsiveness: None,
             }],
         }
@@ -354,16 +336,37 @@ mod tests {
                 id: "1".to_owned(),
                 name: "Mail".to_owned(),
                 current: None,
+                pan: None,
             },
             BrainDeskDesktop {
                 id: "2".to_owned(),
                 name: "Code".to_owned(),
                 current: Some(true),
+                pan: None,
             },
         ]);
         assert_eq!(plugins(&desk), ["endue.git", "endue.notes"]);
         let text = render(&desk, &|_| Vec::new());
         assert!(text.contains("desktop \"Code\" (2 of 2) in front, 1 window(s), front to back:\n"));
         assert!(text.contains("- \"Mail\" (desktop 1): notes: notes (endue.notes), at 40,60 "));
+    }
+
+    #[test]
+    fn a_window_says_how_it_is_placed_and_a_sleeping_pane_says_so() {
+        use desk_bridge::{BrainDeskFill as Fill, BrainDeskWindowState as State};
+        let mut mail = window("mail", (726, 0, 714, 900), Some("endue.mail"));
+        (mail.state, mail.fill, mail.floating) =
+            (Some(State::Snapped), Some(Fill::Left), Some(true));
+        mail.panes[0].asleep = Some(true);
+        let mut git = window("git", (0, 0, 1440, 900), Some("endue.git"));
+        (git.state, git.fill, git.pinned) = (Some(State::Filled), Some(Fill::Full), Some(true));
+        let mut notes = window("notes", (40, 60, 600, 400), Some("endue.notes"));
+        notes.state = Some(State::Normal);
+        let text = render(&desk(vec![git, mail, notes]), &|_| Vec::new());
+        assert!(text.contains("- git: git (endue.git) (filling the screen, pinned), "));
+        assert!(text.contains(
+            "- mail: mail (endue.mail) [asleep until shown] (snapped to the left half), right, "
+        ));
+        assert!(text.contains("- notes: notes (endue.notes), top left, "));
     }
 }

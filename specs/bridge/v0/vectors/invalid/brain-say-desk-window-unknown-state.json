@@ -1,0 +1,22 @@
+{
+  "target": "BrainSayParams",
+  "description": "a window is normal, floating, snapped or filled, nothing else (#82)",
+  "instance": {
+    "text": "bring it back",
+    "desk": {
+      "screen": { "w": 1440, "h": 900 },
+      "windows": [
+        {
+          "id": "window-1",
+          "x": 0,
+          "y": 0,
+          "w": 400,
+          "h": 300,
+          "state": "minimized",
+          "panes": [{ "view": "launcher" }]
+        }
+      ]
+    },
+    "scope": { "permission": "brain:converse" }
+  }
+}

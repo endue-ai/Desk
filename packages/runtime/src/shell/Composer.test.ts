@@ -117,7 +117,7 @@ describe("the talk line", () => {
     expect(desk.screen).toEqual({ w: expect.any(Number), h: expect.any(Number) });
     const notes = desk.windows.find((w: { id: string }) => w.id === "endue.notes");
     expect(notes.panes).toEqual([
-      { view: "plugin:endue.notes", plugin: "endue.notes", title: "Notes" },
+      { id: "p1", view: "plugin:endue.notes", plugin: "endue.notes", title: "Notes" },
     ]);
   });
 

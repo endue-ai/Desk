@@ -4370,7 +4370,7 @@ pub struct BrainSayParams {
     pub scope: BrainConversePermission,
 }
 
-/// What the person sees as they say the line, as the runtime's window manager holds it (ADR 0109, ADR 0124): the screen and every window, those of the desktop in front first (front to back), then those put away in the drawer, then those of the other desktops in their order; the desktops, the current one marked; the windows closed recently; and a summary of what the person can do. The core puts it before the line, with each plugin's tools, so the brain knows which plugin a request is for, and keeps those words within a fixed size.
+/// What the person sees as they say the line, as the runtime's window manager holds it (ADR 0109, ADR 0124): the screen and every window, those of the desktop in front first (front to back), then those put away in the drawer, then those of the other desktops in their order; the desktops, the current one marked; the windows closed recently; and a summary of what the person can do. The core puts it before the line, with each plugin's tools, so the brain knows which plugin a request is for, and keeps those words within a fixed size. The desk command desk.windows.list answers the same snapshot, to an agent in the middle of a turn and to the app's tests, which read windows through it rather than through the page (#82).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainDesk {
@@ -4386,7 +4386,7 @@ pub struct BrainDesk {
     pub capabilities: Option<BrainDeskCapabilities>,
 }
 
-/// One desktop (window view): its id, which windows name in `desktop`, its name for people, and whether it is the one in front.
+/// One desktop (window view): its id, which windows name in `desktop`, its name for people, whether it is the one in front, and how far its canvas is panned.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainDeskDesktop {
@@ -4394,6 +4394,17 @@ pub struct BrainDeskDesktop {
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current: Option<bool>,
+    /// Where its canvas's origin is on screen, in CSS pixels: a normal window on it is drawn this far from its place on the canvas (#82). Absent from a runtime before #82.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pan: Option<BrainDeskOffset>,
+}
+
+/// An offset in whole CSS pixels.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainDeskOffset {
+    pub x: i64,
+    pub y: i64,
 }
 
 /// The desk's size in CSS pixels.
@@ -4404,7 +4415,7 @@ pub struct BrainDeskSize {
     pub h: u64,
 }
 
-/// One window: where the person sees it in CSS pixels from the desk's top left (a window off screen has a rect outside the screen; one on another desktop, where it is when that desktop is in front), whether it floats above the canvas, whether it has the focus, whether it is put away in the drawer (its rect is where it comes back), the desktop it is on, and its panes.
+/// One window: where the person sees it in CSS pixels from the desk's top left, each number rounded to the nearest whole pixel, halves up (a window off screen has a rect outside the screen; one on another desktop, where it is when that desktop is in front), its place in its desktop's stacking order, how it is placed (state, and the part of the app a snapped or filled one takes), whether it floats above the canvas, whether it is pinned, whether it has the focus, whether it is put away in the drawer (its rect is where it comes back), the desktop it is on, and its panes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainDeskWindow {
@@ -4413,8 +4424,18 @@ pub struct BrainDeskWindow {
     pub y: i64,
     pub w: u64,
     pub h: u64,
+    /// Its place in the stacking order of its desktop, from 0 at the back: a window with a higher z is drawn above one with a lower z (floating windows above the normal ones; within each, the window in use on top and pinned ones above the rest). Absent for a window in the drawer, and from a runtime before #82.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub z: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state: Option<BrainDeskWindowState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<BrainDeskFill>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub floating: Option<bool>,
+    /// Pinned from its title bar: drawn above the windows of its kind that are not, below the one in use.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pinned: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub focused: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4425,10 +4446,49 @@ pub struct BrainDeskWindow {
     pub panes: Vec<BrainDeskPane>,
 }
 
-/// A pane of a window: the view it shows (plugin:<id>, launcher, an item view), the plugin that draws it, its title for people, whether it is the pane in use, and whether that plugin's frame stopped answering the desk.
+/// How a window is placed (#82): normal, on its desktop's canvas, moving with the canvas's pan; floating, above the canvas, staying where it is on screen while the canvas moves; snapped, taking a half or a quarter of the app (ADR 0128, `fill` names which); filled, taking the whole app (ADR 0132, `fill` is `full`). A snapped or filled window floats too. Absent from a runtime before #82.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BrainDeskWindowState {
+    #[serde(rename = "normal")]
+    Normal,
+    #[serde(rename = "floating")]
+    Floating,
+    #[serde(rename = "snapped")]
+    Snapped,
+    #[serde(rename = "filled")]
+    Filled,
+}
+
+/// The part of the app a snapped or filled window takes: the whole app, an edge's half or a corner's quarter (ADR 0128, ADR 0132). Absent for a window that is neither.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BrainDeskFill {
+    #[serde(rename = "full")]
+    Full,
+    #[serde(rename = "left")]
+    Left,
+    #[serde(rename = "right")]
+    Right,
+    #[serde(rename = "top")]
+    Top,
+    #[serde(rename = "bottom")]
+    Bottom,
+    #[serde(rename = "top-left")]
+    TopLeft,
+    #[serde(rename = "top-right")]
+    TopRight,
+    #[serde(rename = "bottom-left")]
+    BottomLeft,
+    #[serde(rename = "bottom-right")]
+    BottomRight,
+}
+
+/// A pane of a window: its id in the window, the view it shows (plugin:<id>, launcher, an item view), the plugin that draws it, its title for people, whether it is the pane in use, whether that plugin's frame sleeps, and whether it stopped answering the desk.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainDeskPane {
+    /// The pane's id in its window (p1, p2, ...). Absent from a runtime before #82.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     pub view: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugin: Option<PluginId>,
@@ -4436,6 +4496,9 @@ pub struct BrainDeskPane {
     pub title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub focused: Option<bool>,
+    /// Its plugin's frame sleeps (the live budget, ADR 0070, ADR 0134): the window shows a placeholder and the plugin's last desk:state waits for it until it is in sight or in use again. Absent while the frame is live, and for a frame that was stopped (responsiveness).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub asleep: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub responsiveness: Option<BrainDeskResponsiveness>,
 }

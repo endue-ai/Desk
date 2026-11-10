@@ -17,7 +17,8 @@
 //!   (ADR 0117) and what profiles and sessions stored; `layout`: a desktop's layout and the
 //!   profile's saved ones; `drawer`, `buffers`: the drawer's items and the buffer list.
 //! - `desk`: one `Desk` state holding all of it, its operations, and the `Arranger` (tile and
-//!   cascade, ADR 0116); `snapshot`: what `desk.windows.list` answers.
+//!   cascade, ADR 0116); `snapshot`: what `desk.windows.list` answers, as the contract's
+//!   `BrainDesk` (specs/bridge/v0, #82).
 
 pub mod arrange;
 pub mod buffers;
@@ -72,7 +73,7 @@ pub use pan::{
 pub use placed::{PLUGIN_VIEW, placed_plugins, resolve_view, shown_plugins};
 pub use settle::{Glided, SETTLE_MS, Settle, SettleKind};
 pub use snap::{Aim, CORNER, Halves, Rows, SNAP, SNAP_TOP, fill_rect, halves, rows, snap_for};
-pub use snapshot::{DesktopSnapshot, PaneSnapshot, Snapshot, WindowSnapshot};
+pub use snapshot::{Frame, Seen, Unseen};
 pub use spread::model::{Move, SpreadAction, SpreadModel};
 pub use spread::pose::{Camera, IDENTITY, Pose, ZOOM_MAX, ZOOM_MIN, mix};
 pub use spread::slots::{

@@ -1999,6 +1999,7 @@ dependencies = [
 name = "desk-wm"
 version = "0.0.0"
 dependencies = [
+ "desk-bridge",
  "serde",
  "serde_json",
  "unicode-normalization",
