@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use cef::*;
-use desk_web::sender::Role;
+use desk_web::sender::{Role, System};
 use serde_json::Value;
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
@@ -98,7 +98,8 @@ impl Shell {
         }
     }
 
-    /// The main window is a wgpu scene, its page an off-screen surface (#52, #83).
+    /// The main window is a wgpu scene (#52, #83): the compositor opens first, then the desk's
+    /// system surface in it, the runtime's page, off screen (ADR 0160).
     fn open_compositor(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -113,17 +114,17 @@ impl Shell {
                 crate::compositor_window::CompositorWindow::open(
                     event_loop,
                     window,
-                    url,
                     Arc::clone(&self.desk),
                 )
             });
-        let compositor = match opened {
+        let mut compositor = match opened {
             Ok(compositor) => compositor,
             Err(why) => {
                 eprintln!("endue Desk: the compositor window did not open ({why})");
                 return None;
             }
         };
+        compositor.open_page(url);
         let pane = Pane {
             window: Arc::clone(&compositor.window),
             browser: compositor.browser.clone(),
@@ -135,7 +136,8 @@ impl Shell {
         self.panes.get(&Role::Main)
     }
 
-    /// The main window, its services and the other windows, once the loop runs.
+    /// The main window, its services and the other windows, once the loop runs: the compositor,
+    /// then the system surfaces in their order (`System::ALL`, ADR 0160).
     fn start(&mut self, event_loop: &ActiveEventLoop) {
         self.started = true;
         let attributes = Window::default_attributes()
@@ -150,9 +152,15 @@ impl Shell {
         }
         menu::listen(&self.pump);
         self.menu_bar = menu::app_menu();
-        palette::setup(self, event_loop);
         self.tray = tray::setup(self.offered.as_deref());
-        eris_window::setup(self, event_loop);
+        for system in System::ALL {
+            match system {
+                // Opened with the compositor, in its window.
+                System::Desk => {}
+                System::Palette => palette::setup(self, event_loop),
+                System::Eris => eris_window::setup(self, event_loop),
+            }
+        }
     }
 
     /// The tray offers to restart into `version`, or no longer offers it.

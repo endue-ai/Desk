@@ -22,7 +22,7 @@ pub mod relay;
 pub mod render;
 pub mod routes;
 pub mod shim;
-pub mod stand_in;
+pub mod top;
 pub mod view;
 
 use std::collections::HashMap;
@@ -69,7 +69,7 @@ struct Record {
 #[derive(Default)]
 struct Inner {
     records: HashMap<String, Record>,
-    /// The document each surface shows, set by whoever knows it (the stand-in's URL).
+    /// The document each surface shows, set by whoever knows it (the runtime's report).
     sources: HashMap<String, String>,
     /// The desk's frames, and the compositor's page on them (`clock.rs`).
     clock: frames::Clock,

@@ -1,8 +1,8 @@
 //! The `desk-plugin` scheme in the CEF shell (#42): `desk_web::plugin_scheme` answers, with the
 //! bundles this binary embeds; this adapts CEF's requests and resource handlers to it. Requests run
 //! on CEF's IO thread; a file URL reads at most one 2 MiB part (ADR 0048). A plugin surface's
-//! document at the top of a browser keeps its frame's sandbox, and in compositor mode a plugin frame
-//! of the shell page is a stand-in (`web_host::stand_in`, #52).
+//! document at the top of a browser keeps its frame's sandbox, and the runtime's page frames no
+//! plugin (`web_host::top`, #52, ADR 0160).
 
 use std::sync::{Arc, Mutex};
 
@@ -13,10 +13,10 @@ use desk_web::plugin_scheme::{self, Bundled};
 use http::header;
 
 use crate::scheme::{ReplyHandler, Sending};
-use crate::web_host::{relay, stand_in};
+use crate::web_host::{relay, top};
 
 /// Whether `url` is on a plugin surface's own host.
-fn stand_in_surface(url: &str) -> bool {
+fn on_surface_host(url: &str) -> bool {
     relay::surface_host(url).is_some()
 }
 
@@ -125,10 +125,10 @@ wrap_scheme_handler_factory! {
             let url = CefString::from(&request.url()).to_string();
             let kind = request.resource_type();
             let main = frame.is_some_and(|f| f.is_main() == 1);
-            let surface = stand_in_surface(&url);
+            let surface = on_surface_host(&url);
             let browser = browser.map(|b| b.identifier()).unwrap_or(-1);
-            let reply = if stand_in::is_stand_in(browser, main, kind == ResourceType::SUB_FRAME, surface) {
-                stand_in::reply()
+            let reply = if top::framed_in_page(browser, main, kind == ResourceType::SUB_FRAME, surface) {
+                top::refused()
             } else {
                 let method = CefString::from(&request.method()).to_string();
                 let range = CefString::from(&request.header_by_name(Some(&"Range".into()))).to_string();
@@ -136,7 +136,7 @@ wrap_scheme_handler_factory! {
                 let mut reply = answer(&self.files, &method, &url, range.as_deref());
                 // A plugin surface's document at the top of a browser keeps its frame's sandbox (#52).
                 if surface && main && kind == ResourceType::MAIN_FRAME {
-                    stand_in::sandbox_top(&mut reply);
+                    top::sandbox_top(&mut reply);
                 }
                 reply
             };

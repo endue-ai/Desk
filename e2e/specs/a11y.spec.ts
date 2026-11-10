@@ -62,9 +62,11 @@ const inPlugin = () =>
     "document.hasFocus() ? `${document.activeElement?.tagName}:${document.activeElement?.type ?? ''}` : 'none'",
   );
 
-/** The page's focus is in the desk's own chrome, not in a plugin's stand-in frame. */
+/** The page's focus is in the desk's own chrome, not in a plugin surface's place (ADR 0160). */
 const inChrome = () =>
-  browser.execute(() => !!document.activeElement && document.activeElement.tagName !== "IFRAME");
+  browser.execute(
+    () => !!document.activeElement && !document.activeElement.closest("[data-surface-host]"),
+  );
 
 describe("a11y: the desk is one accessibility tree a screen reader walks and acts through", () => {
   let tree: Tree;
@@ -198,7 +200,7 @@ describe("a11y: the desk is one accessibility tree a screen reader walks and act
     await browser.waitUntil(async () => (await inputState()).focused !== A11Y, {
       timeoutMsg: "the plugin kept the keys",
     });
-    await browser.waitUntil(inChrome, { timeoutMsg: "the page's focus stayed in the stand-in" });
+    await browser.waitUntil(inChrome, { timeoutMsg: "the page's focus stayed in the place" });
     await browser.waitUntil(async () => (await a11y()).focus?.label !== "New item", {
       timeoutMsg: "the tree's focus stayed on the field",
     });
@@ -222,7 +224,7 @@ describe("a11y: the desk is one accessibility tree a screen reader walks and act
     await browser.waitUntil(async () => (await inputState()).focused !== A11Y, {
       timeoutMsg: "Tab past the last control kept the plugin's keys",
     });
-    await browser.waitUntil(inChrome, { timeoutMsg: "the page's focus stayed in the stand-in" });
+    await browser.waitUntil(inChrome, { timeoutMsg: "the page's focus stayed in the place" });
     // Shift+Tab from there: into the plugin again, at its last control.
     await tab({ shift: true });
     await browser.waitUntil(async () => (await inPlugin()) === "INPUT:checkbox", {

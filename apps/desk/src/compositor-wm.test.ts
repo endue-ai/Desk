@@ -134,7 +134,14 @@ describe("the window manager's seam", () => {
       () => undefined,
       () => Promise.reject(new Error("no snapshot here")),
     );
-    const report = startCompositorDesk(win, desk as never, (r) => reports.push(r), seam.state);
+    const pages = { list: () => [] };
+    const report = startCompositorDesk(
+      win,
+      desk as never,
+      pages,
+      (r) => reports.push(r),
+      seam.state,
+    );
     expect(report.flush()).toBe(1);
     expect(reports[0]).toMatchObject({ seq: 1, applied: 0 });
     // Nothing changed: nothing more is sent.

@@ -1,19 +1,19 @@
-//! What the runtime posts to a native plugin's stand-in, as messages of the plugin's surface
+//! What the runtime posts to a native plugin's surface, as messages of the plugin's surface
 //! connection (`specs/surface/v0/native.md`), and Tab's way back out. A page message goes as
-//! `desk.message`. The stand-in's own `desk:stand-in-enter` (the shell page's Tab reached the frame,
-//! #123) is no page message: it goes as `focus.enter` with its edge (#128), as the web host's shim
-//! focuses a page's first or last control. The plugin's `focus.leave` past an end is what a web
-//! page's `OnTakeFocus` is (`connection.rs`): the relay has the stand-in move the page's focus on,
-//! forward past its last edge or backward before its first.
+//! `desk.message`. The runtime's own `desk:surface-enter` (the runtime page's Tab reached the
+//! surface's place, #123) is no page message: it goes as `focus.enter` with its edge (#128), as the
+//! web host's shim focuses a page's first or last control. The plugin's `focus.leave` past an end is
+//! what a web page's `OnTakeFocus` is (`connection.rs`): the relay has the runtime's page move its
+//! focus on from the place, forward past its last edge or backward before its first (ADR 0160).
 
 use desk_surface::generated::{CompositorMessage, SurfaceFocusEdge, SurfaceFocusLeave};
 use serde_json::{Value, json};
 
-/// What the stand-in posts when the shell page's Tab enters it (`stand_in.html`).
-const ENTER: &str = "desk:stand-in-enter";
+/// What the runtime's page posts when its Tab enters a surface's place (`pages/place.ts`).
+const ENTER: &str = "desk:surface-enter";
 
-/// The message for surface `surface`'s process that the runtime's (or the stand-in's) `text`
-/// means; `None` for one that means nothing on the connection.
+/// The message for surface `surface`'s process that the runtime's `text` means; `None` for one that
+/// means nothing on the connection.
 pub fn down(surface: &str, text: &str) -> Option<CompositorMessage> {
     let message: Value = serde_json::from_str(text).ok()?;
     let value = if message.get("type").and_then(Value::as_str) == Some(ENTER) {
@@ -39,20 +39,20 @@ mod tests {
     const SURFACE: &str = "main.example-native--wgpu";
 
     #[test]
-    fn the_stand_ins_tab_reaches_the_plugin_as_focus_enter_at_its_edge() {
+    fn the_runtimes_tab_into_a_place_reaches_the_plugin_as_focus_enter_at_its_edge() {
         for (edge, want) in [
             ("first", SurfaceFocusEdge::First),
             ("last", SurfaceFocusEdge::Last),
         ] {
-            let text = json!({ "type": "desk:stand-in-enter", "edge": edge }).to_string();
+            let text = json!({ "type": "desk:surface-enter", "edge": edge }).to_string();
             let Some(CompositorMessage::SurfaceFocusEnter(enter)) = down(SURFACE, &text) else {
                 panic!("{text}")
             };
             assert_eq!((enter.surface.as_str(), enter.edge), (SURFACE, want));
         }
-        let middle = json!({ "type": "desk:stand-in-enter", "edge": "middle" }).to_string();
-        assert_eq!(down(SURFACE, &middle), None, "a stand-in has two edges");
-        let none = json!({ "type": "desk:stand-in-enter" }).to_string();
+        let middle = json!({ "type": "desk:surface-enter", "edge": "middle" }).to_string();
+        assert_eq!(down(SURFACE, &middle), None, "a place has two edges");
+        let none = json!({ "type": "desk:surface-enter" }).to_string();
         assert_eq!(down(SURFACE, &none), None);
     }
 

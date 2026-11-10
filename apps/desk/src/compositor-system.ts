@@ -1,0 +1,50 @@
+// The parts of the desk's system surface (ADR 0160): what of this page the compositor draws whole in
+// its system layer, above every window, each under a stable id (`desk_web::sender::PARTS`, which
+// lists the same ids in the order the compositor draws them). The page measures each part's box
+// where it shows; one not on the page, hidden or of no size is not reported.
+
+/** A part's id and the element that holds it, found by its root's class. */
+export const PARTS: ReadonlyArray<readonly [id: string, selector: string]> = [
+  ["desk.profiles", '[data-layer="system"] .modes'],
+  ["desk.desktops", '[data-layer="system"] .desktops'],
+  ["desk.agents", '[data-layer="system"] .sidebar'],
+  ["desk.account", '[data-layer="system"] .account-bar'],
+  ["desk.rail", ".rail"],
+  ["desk.bottom", "footer.bottom"],
+  ["desk.eris", ".eris"],
+  ["desk.notices", ".desk-status"],
+  ["desk.settings", "dialog.desk-settings[open]"],
+  ["desk.studios", ".theme-studio"],
+];
+
+/** One part where the page shows it, in CSS pixels. */
+export interface PartReport {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Whether `el` is rendered: on the page, not hidden, not of no size. */
+function shown(el: HTMLElement): boolean {
+  if (!el.isConnected || el.closest("[hidden]")) return false;
+  return el.checkVisibility?.({ visibilityProperty: true }) ?? true;
+}
+
+/** The parts the page shows now, in `PARTS`' order. */
+export function systemParts(doc: Document): PartReport[] {
+  const parts: PartReport[] = [];
+  for (const [id, selector] of PARTS) {
+    const el = doc.querySelector<HTMLElement>(selector);
+    if (!el || !shown(el)) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) continue;
+    // Whole pixels, outward: a part's box never cuts its own edge, and a fraction's jitter is no change.
+    const [x, y] = [Math.floor(r.x), Math.floor(r.y)];
+    const width = Math.ceil(r.x + r.width) - x;
+    const height = Math.ceil(r.y + r.height) - y;
+    parts.push({ id, x, y, width, height });
+  }
+  return parts;
+}

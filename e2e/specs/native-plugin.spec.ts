@@ -67,9 +67,11 @@ const focusLabel = async () => (await a11y()).focus?.label;
 const tab = (mods: Record<string, boolean> = {}) =>
   feed([{ type: "modifiers", ...mods }, ...keyPress("Tab", "Tab", "\t"), { type: "modifiers" }]);
 
-/** The page's focus is in the desk's own chrome, not in a plugin's stand-in frame. */
+/** The page's focus is in the desk's own chrome, not in a plugin surface's place (ADR 0160). */
 const inChrome = () =>
-  browser.execute(() => !!document.activeElement && document.activeElement.tagName !== "IFRAME");
+  browser.execute(
+    () => !!document.activeElement && !document.activeElement.closest("[data-surface-host]"),
+  );
 
 const until = (check: () => Promise<boolean>, timeoutMsg: string) =>
   browser.waitUntil(check, { timeout: 10_000, timeoutMsg });
@@ -217,7 +219,7 @@ describe("native plugin: a process of its own draws a window like any other (#59
       async () => (await keys()) !== SURFACE,
       "Tab past its last part kept the plugin's keys",
     );
-    await until(inChrome, "the page's focus stayed in the plugin's stand-in");
+    await until(inChrome, "the page's focus stayed in the plugin's place");
     await until(
       async () => (await focusLabel()) !== "Pause",
       "the tree's focus stayed on its part",
@@ -243,6 +245,6 @@ describe("native plugin: a process of its own draws a window like any other (#59
       async () => (await keys()) !== SURFACE,
       "Shift+Tab before its first part kept the plugin's keys",
     );
-    await until(inChrome, "the page's focus stayed in the plugin's stand-in");
+    await until(inChrome, "the page's focus stayed in the plugin's place");
   });
 });

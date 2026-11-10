@@ -49,15 +49,15 @@ export async function shellReady(): Promise<void> {
 }
 
 /**
- * Run `body` inside a plugin's page, then return to the shell. The desk's plugin frames are
- * stand-ins (#52, ADR 0149): each plugin's page is an off-screen browser of its own, a DevTools page
- * target here. The stand-in is looked up in any layer: endue.permissions' prompt is an overlay
- * surface.
+ * Run `body` inside a plugin's page, then return to the shell. Each plugin's page is an off-screen
+ * browser of its own (#52, ADR 0160), a DevTools page target here; the runtime's section holds only
+ * the surface's place, which names its host. The place is looked up in any layer:
+ * endue.permissions' prompt is an overlay surface.
  */
 export async function inFrame<T>(plugin: string, body: () => Promise<T>): Promise<T> {
-  const frame = $(`#desk.shell .desk-surface[data-surface="${plugin}"] iframe`);
-  await frame.waitForExist();
-  const host = /^desk-plugin:\/\/([^/?#]+)/.exec((await frame.getAttribute("src")) ?? "")?.[1];
+  const place = $(`#desk.shell .desk-surface[data-surface="${plugin}"] [data-surface-host]`);
+  await place.waitForExist();
+  const host = (await place.getAttribute("data-surface-host")) ?? "";
   const shell = await browser.getWindowHandle();
   await browser.waitUntil(
     async () => {

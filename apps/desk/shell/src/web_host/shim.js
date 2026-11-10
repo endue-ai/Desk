@@ -1,8 +1,8 @@
 // An off-screen plugin surface (#52) is the top of its own browser, so its window has no parent; the
 // SDK talks to `window.parent`. Before the page's own scripts run, `parent` becomes the desk: its
-// postMessage goes to the runtime through the stand-in that holds the surface's place in the shell
-// page, and the runtime's messages arrive as `message` events whose source is `parent`, as a frame's
-// did. Messages travel as JSON.
+// postMessage goes to the runtime's page through the shell's relay (ADR 0160), and the runtime's
+// messages arrive as `message` events whose source is `parent`, as a frame's did. Messages travel
+// as JSON.
 (() => {
   const native = globalThis.__deskNative;
   if (!native || typeof native.post !== "function") return;
@@ -19,27 +19,7 @@
     },
   });
   Object.defineProperty(globalThis, "parent", { value: desk, enumerable: true });
-  // The stand-in takes the page's colour scheme, so Chromium paints under the surface what it
-  // painted under the frame: nothing when the schemes match, the scheme's canvas when they differ.
-  let scheme = "";
-  const tell = () => {
-    const root = document.documentElement;
-    const now = root ? getComputedStyle(root).colorScheme : "";
-    if (now && now !== scheme) {
-      scheme = now;
-      post(JSON.stringify({ type: "desk:stand-in-scheme", scheme }));
-    }
-  };
-  addEventListener("DOMContentLoaded", () => {
-    tell();
-    new MutationObserver(tell).observe(document, {
-      subtree: true,
-      childList: true,
-      attributes: true,
-      attributeFilter: ["style", "class", "content", "data-scheme"],
-    });
-  });
-  // Tab entered the stand-in (#123): the focus goes to this page's first control (or its last, for
+  // Tab entered the surface's place (#123): the focus goes to this page's first control (or its last, for
   // Shift+Tab), as Tab into a plugin's frame put it there; with none, it passes the page by. A text
   // field's text is selected, as Tab selects it. Chromium's own order: positive tabindex first, by
   // value, then document order, open shadow roots included; nothing disabled, inert or unrendered;
@@ -86,7 +66,7 @@
       if (el instanceof HTMLInputElement && TYPED.test(el.type)) el.select();
       return;
     }
-    post(JSON.stringify({ type: "desk:stand-in-leave", next: edge !== "last" }));
+    post(JSON.stringify({ type: "desk:surface-leave", next: edge !== "last" }));
   };
   Object.defineProperty(native, "onMessage", {
     value: (text) => {
@@ -96,7 +76,7 @@
       } catch {
         return;
       }
-      if (data?.type === "desk:stand-in-enter") {
+      if (data?.type === "desk:surface-enter") {
         enter(data.edge);
         return;
       }

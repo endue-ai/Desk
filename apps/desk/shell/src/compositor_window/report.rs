@@ -26,7 +26,7 @@ pub struct FrameReport {
     pub plugin: String,
     /// The surface's host, `<surface>.<plugin label>`.
     pub host: String,
-    /// The document its frame shows (the stand-in's URL, the plugin's own).
+    /// The document its page shows.
     pub src: String,
     /// How many times the frame loaded in the page.
     #[serde(default)]
@@ -52,6 +52,41 @@ pub struct Place {
     /// Shown: in the page and not hidden.
     #[serde(default)]
     pub shown: bool,
+    #[serde(default)]
+    pub layer: Layer,
+}
+
+/// Where in the system layer a plugin surface of the page's goes (ADR 0160): an edge bar under the
+/// page's own parts (its bars and pills float above it), an overlay (the palette, the first run, a
+/// permission prompt) above them, as the page stacks them.
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Layer {
+    #[default]
+    Edge,
+    Overlay,
+}
+
+/// A part of the desk's system surface where the page shows it (`desk_web::sender::PARTS`).
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+pub struct PartReport {
+    pub id: String,
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
+impl PartReport {
+    /// Its box, when it names a part the compositor knows and has a size.
+    pub fn known(&self) -> Option<desk_wm::Rect> {
+        desk_web::sender::part(&self.id)?;
+        let finite = [self.x, self.y, self.width, self.height]
+            .iter()
+            .all(|v| v.is_finite());
+        (finite && self.width > 0.0 && self.height > 0.0)
+            .then(|| desk_wm::Rect::new(self.x, self.y, self.width, self.height))
+    }
 }
 
 /// The live budget's settings (`desk.surfaces.live`, `desk.display.unload-after`).
@@ -93,6 +128,9 @@ pub struct DeskReport {
     pub height: f64,
     #[serde(default)]
     pub frames: Vec<FrameReport>,
+    /// The parts of its system layer it shows, each drawn whole above every window (ADR 0160).
+    #[serde(default)]
+    pub parts: Vec<PartReport>,
     /// The titles of the page's own views, by view.
     #[serde(default)]
     pub titles: BTreeMap<String, String>,
@@ -128,7 +166,7 @@ impl desk_wm::Seen for DeskReport {
 
 #[cfg(test)]
 mod tests {
-    use super::DeskReport;
+    use super::{DeskReport, Layer};
     use desk_wm::{FrameState, Seen};
     use serde_json::json;
 
@@ -149,5 +187,33 @@ mod tests {
         assert_eq!(report.frames[0].card.as_ref().unwrap().actions.len(), 2);
         assert_eq!(report.title("launcher").as_deref(), Some("Launcher"));
         assert_eq!((report.budget.live, report.top.left), (4, Some(300.0)));
+    }
+
+    #[test]
+    fn a_report_names_its_system_parts_and_its_overlays_layer() {
+        let report: DeskReport = serde_json::from_value(json!({
+            "seq": 1, "width": 1280, "height": 800,
+            "frames": [{ "plugin": "desk.palette", "host": "main.desk-palette",
+                "src": "desk-plugin://main.desk-palette/index.html", "loads": 1, "state": "live",
+                "place": { "x": 0, "y": 0, "width": 1280, "height": 800, "shown": true,
+                    "layer": "overlay" } },
+                { "plugin": "endue.dock", "host": "main.endue-dock",
+                "src": "desk-plugin://main.endue-dock/index.html",
+                "place": { "x": 80, "y": 700, "width": 900, "height": 72, "shown": true } }],
+            "parts": [
+                { "id": "desk.agents", "x": 24, "y": 300, "width": 56, "height": 200 },
+                { "id": "desk.nope", "x": 0, "y": 0, "width": 10, "height": 10 },
+                { "id": "desk.rail", "x": 1200, "y": 60, "width": 0, "height": 300 }
+            ]
+        }))
+        .unwrap();
+        let layer = |i: usize| report.frames[i].place.unwrap().layer;
+        assert_eq!((layer(0), layer(1)), (Layer::Overlay, Layer::Edge));
+        let known: Vec<_> = report.parts.iter().filter_map(|p| p.known()).collect();
+        assert_eq!(
+            known,
+            [desk_wm::Rect::new(24.0, 300.0, 56.0, 200.0)],
+            "an unknown or empty one is no part"
+        );
     }
 }

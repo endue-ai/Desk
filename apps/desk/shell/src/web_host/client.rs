@@ -58,8 +58,8 @@ wrap_display_handler! {
 }
 
 wrap_focus_handler! {
-    // The page tabbed past its last control (`next`) or before its first (#123): the shell page's
-    // focus order goes on from the surface's stand-in (`relay.rs`).
+    // The page tabbed past its last control (`next`) or before its first (#123): the runtime page's
+    // focus order goes on from the surface's place (`relay.rs`).
     pub struct SurfaceFocus {
         host: WebHost,
         surface: String,

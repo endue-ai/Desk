@@ -7,8 +7,8 @@
 //! recovers as it does a web surface's (#44). Its frames reach the compositor as `attach`es through
 //! the same `SurfaceSink` (`connection.rs`), its page messages reach the runtime through the relay,
 //! so the runtime's pings, kept state and live budget apply to it as to a web plugin. Tab crosses
-//! its window's stand-in as it crosses a web plugin's (#128): `focus.enter` in, `focus.leave` out
-//! (`page.rs`).
+//! its place in the runtime's page as it crosses a web plugin's (#128, ADR 0160): `focus.enter` in,
+//! `focus.leave` out (`page.rs`).
 
 mod connection;
 mod page;
@@ -183,7 +183,7 @@ impl NativeHost {
     }
 
     /// The runtime's messages for `surface`'s page go to its process as `desk.message`, and Tab into
-    /// its stand-in as `focus.enter` (`page.rs`, #128).
+    /// its place as `focus.enter` (`page.rs`, #128).
     fn relay_down(&self, surface: &str) {
         let host = self.clone();
         let target = surface.to_owned();

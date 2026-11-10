@@ -90,8 +90,24 @@ impl CompositorWindow {
             })
             .collect();
         let page = self.page.lock().counts.clone();
+        // The system layer (ADR 0160): the system surfaces and their callers, the desk's parts the
+        // last scene drew whole, and the plugin surfaces the page lays out there, by layer.
+        let system: Vec<Value> = (desk_web::sender::System::ALL.iter())
+            .map(|s| json!({ "id": s.id(), "role": format!("{:?}", s.role()), "caller": s.caller() }))
+            .collect();
+        let layers: Vec<Value> = (self.hosted.report().map(|r| r.frames.as_slice()))
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|f| {
+                f.place.map(|p| {
+                    json!({ "plugin": f.plugin, "shown": p.shown,
+                "layer": format!("{:?}", p.layer).to_lowercase() })
+                })
+            })
+            .collect();
         json!({
             "page": page,
+            "system": { "surfaces": system, "parts": self.parts.0, "order": self.parts.1, "plugins": layers },
             "surfaces": surfaces,
             "windows": windows,
             "live": self.hosted.live(),

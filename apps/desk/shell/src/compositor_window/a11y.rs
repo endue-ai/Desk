@@ -4,7 +4,7 @@
 //! every surface's tree, the page's included. While an assistive technology is active every surface
 //! exports (`a11y.enable`), a native plugin's (#59) as a web one's; what it asks for comes back as
 //! an `a11y.action` to a surface, a wheel, a press on the chrome where it is drawn (`input`, as a
-//! person's), or the keys to a surface (its stand-in focused in the page, which raises its window
+//! person's), or the keys to a surface (its place focused in the page, which raises its window
 //! as a press would). The adapter's handlers run on whichever thread the OS asks on and reach the
 //! window through the pump.
 
@@ -264,17 +264,16 @@ impl CompositorWindow {
         }
     }
 
-    /// The keys to surface `surface`: its stand-in takes the page's focus, so the runtime raises
-    /// its window as for a press (`Surface.ts`'s `focusin`), and the router gives it the keys.
+    /// The keys to surface `surface`: its place takes the page's focus, so the runtime raises its
+    /// window as for a press (`Surface.ts`'s `focusin`), and the router gives it the keys.
     fn a11y_focus(&mut self, event_loop: &ActiveEventLoop, surface: &str) {
         if surface != PAGE
             && let Some(frame) = self.browser.as_ref().and_then(cef::ImplBrowser::main_frame)
         {
-            let src =
-                serde_json::to_string(&format!("desk-plugin://{surface}/")).unwrap_or_default();
+            let host = serde_json::to_string(surface).unwrap_or_default();
             let script = format!(
-                "(() => {{ const src = {src}; for (const f of document.querySelectorAll('iframe')) \
-                 if (f.src.startsWith(src)) {{ f.focus(); break; }} }})()"
+                "(() => {{ const host = {host}; for (const p of document.querySelectorAll('[data-surface-host]')) \
+                 if (p.dataset.surfaceHost === host) {{ p.focus(); break; }} }})()"
             );
             cef::ImplFrame::execute_java_script(&frame, Some(&script.as_str().into()), None, 0);
         }

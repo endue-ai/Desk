@@ -26,8 +26,10 @@ pub mod hosted;
 pub mod input;
 mod os_pointer;
 pub mod overlay;
+mod page;
 pub mod report;
 mod steps;
+pub mod system;
 pub mod winit_input;
 pub mod wm;
 
@@ -50,9 +52,8 @@ use crate::host::Desk;
 use crate::native_host::NativeHost;
 use crate::web_host::frames::FRAME;
 use crate::web_host::relay::Relay;
-use crate::web_host::render::SurfaceRender;
 use crate::web_host::view::{SharedView, View};
-use crate::web_host::{WebHost, stand_in};
+use crate::web_host::{WebHost, top};
 use composed::Shared;
 use hosted::{Hosted, Outcome, look, motion, owner};
 use report::DeskReport;
@@ -95,15 +96,18 @@ pub struct CompositorWindow {
     gestures: wm::Gestures,
     /// The window's accessibility (#57).
     a11y: a11y::A11y,
+    /// The desk's system parts the last scene drew whole, and its system layer back to front (ADR
+    /// 0160).
+    parts: (Vec<String>, Vec<String>),
 }
 
 impl CompositorWindow {
     /// Open the compositor window: `window` (made unseen, shown once its accessibility adapter is
-    /// on, as AccessKit asks) and the shell page at `url` as its first surface.
+    /// on, as AccessKit asks), with no surface yet; the desk's system surface comes next
+    /// (`open_page`, ADR 0160).
     pub fn open(
         event_loop: &ActiveEventLoop,
         window: Arc<Window>,
-        url: &str,
         desk: Arc<Desk>,
     ) -> Result<CompositorWindow, String> {
         let headless = std::env::var_os("DESK_COMPOSITOR_HEADLESS").is_some();
@@ -128,35 +132,6 @@ impl CompositorWindow {
             window.scale_factor() as f32,
             false,
         ));
-        let render = SurfaceRender::new(page.clone(), Arc::new(shared.clone()));
-        let mut client = crate::client::compositor_page(
-            desk.pump.clone(),
-            Arc::clone(&desk),
-            render,
-            relay.clone(),
-        );
-        let info = WindowInfo {
-            windowless_rendering_enabled: 1,
-            shared_texture_enabled: i32::from(std::env::var_os("DESK_SURFACE_SOFTWARE").is_none()),
-            external_begin_frame_enabled: 1,
-            ..Default::default()
-        };
-        // See through: the compositor draws the wallpaper and the windows under the page.
-        let settings = BrowserSettings {
-            windowless_frame_rate: 60,
-            background_color: 0,
-            ..Default::default()
-        };
-        let browser = browser_host_create_browser_sync(
-            Some(&info),
-            Some(&mut client),
-            Some(&url.into()),
-            Some(&settings),
-            None,
-            None,
-        );
-        stand_in::set_shell_page(browser.as_ref().map(|b| b.identifier()));
-        host.clock_page(browser.clone(), page.clone());
         let physical = window.inner_size();
         let settings = PointerSettings {
             underlay: Some(PAGE.to_owned()),
@@ -178,7 +153,7 @@ impl CompositorWindow {
             native,
             relay,
             page,
-            browser,
+            browser: None,
             theme,
             themes,
             scene: Scene::new(physical.width, physical.height),
@@ -194,6 +169,7 @@ impl CompositorWindow {
             follow_os_pointer: true,
             gestures: wm::Gestures::default(),
             a11y: a11y::A11y::default(),
+            parts: (Vec::new(), Vec::new()),
         };
         opened.stand_in();
         opened.attach_a11y(event_loop);
@@ -355,6 +331,7 @@ impl CompositorWindow {
         }
         self.a11y_drawn(&drawn);
         self.gestures.buttons = drawn.buttons;
+        self.parts = (drawn.parts, drawn.order);
         self.register(drawn.shown);
     }
 
@@ -362,6 +339,7 @@ impl CompositorWindow {
     pub fn close(&self) {
         self.host.close_all();
         self.native.close_all();
-        stand_in::set_shell_page(None);
+        self.relay.page(None);
+        top::set_shell_page(None);
     }
 }

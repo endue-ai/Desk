@@ -42,8 +42,3 @@ html.desk-compositor .pane-head,
 html.desk-compositor .pane:not(:has(.plugin-pane)) {
   background: var(--desk-surface, var(--desk-card));
 }
-/* A plugin's frame here is a stand-in for its own off-screen surface (ADR 0149): it takes the
-   pointer, never paints (not even the backdrop a frame of another colour scheme gets). */
-html.desk-compositor .desk-surface iframe {
-  opacity: 0;
-}

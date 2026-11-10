@@ -23,7 +23,7 @@ use crate::eris_window::ErisWindow;
 use crate::instance::Instance;
 use crate::open_files::OpenFiles;
 use crate::pump::Pump;
-use crate::renderer::MESSAGE;
+use crate::renderer::{MESSAGE, SURFACE};
 
 /// The started desk and what the shell's own commands need.
 pub struct Desk {
@@ -121,7 +121,14 @@ pub fn receive(desk: &Arc<Desk>, role: Role, frame: Frame, text: String) {
 
 /// Hand `text` to `frame`'s page on CEF's UI thread.
 pub fn send(frame: Frame, text: String) {
-    let mut task = SendTask::new(frame, text);
+    let mut task = SendTask::new(frame, text, None);
+    post_task(ThreadId::UI, Some(&mut task));
+}
+
+/// Hand the runtime's page in `frame` what the page of surface `surface` posted to its parent
+/// (`__deskNative.onSurface`, ADR 0160), on CEF's UI thread.
+pub fn send_surface(frame: Frame, surface: &str, text: String) {
+    let mut task = SendTask::new(frame, text, Some(surface.to_owned()));
     post_task(ThreadId::UI, Some(&mut task));
 }
 
@@ -129,6 +136,8 @@ wrap_task! {
     struct SendTask {
         frame: Frame,
         text: String,
+        // The surface a relayed message comes from; none for a reply or an event.
+        surface: Option<String>,
     }
 
     impl Task {
@@ -141,9 +150,13 @@ wrap_task! {
             if let Some(browser) = self.frame.browser() {
                 crate::web_host::frames::heard(browser.identifier(), false);
             }
-            if let Some(mut message) = process_message_create(Some(&MESSAGE.into())) {
+            let name = if self.surface.is_some() { SURFACE } else { MESSAGE };
+            if let Some(mut message) = process_message_create(Some(&name.into())) {
                 if let Some(list) = message.argument_list() {
                     list.set_string(0, Some(&self.text.as_str().into()));
+                    if let Some(surface) = &self.surface {
+                        list.set_string(1, Some(&surface.as_str().into()));
+                    }
                 }
                 self.frame.send_process_message(ProcessId::RENDERER, Some(&mut message));
             }

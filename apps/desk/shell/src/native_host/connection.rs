@@ -127,7 +127,7 @@ impl Reader {
                     self.host.relay.up(&post.surface, text);
                 }
             }
-            // Past an end of its focus order: the shell page's focus goes on from its stand-in,
+            // Past an end of its focus order: the runtime page's focus goes on from its place,
             // which takes it only while it has that focus (#128).
             SurfaceMessage::SurfaceFocusLeave(leave) => {
                 self.host

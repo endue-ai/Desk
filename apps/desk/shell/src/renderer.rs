@@ -1,9 +1,12 @@
 //! The renderer side of the bridge (#43): every frame's script context gets `window.__deskNative`,
 //! whose `send(text)` hands a call to the browser process, and whose `onMessage(text)` the page sets
 //! to hear replies and events. The texts are `desk_web::wire`'s; this side never reads them.
-//! `post(text)` hands a postMessage to the relay between the runtime and off-screen plugin surfaces
-//! (#52, `web_host::relay`), whose pages also get `window.parent` as the desk (`web_host::shim`).
-//! Development builds add `pid`, the renderer's process id, so a check can kill one surface's.
+//! `post(text)` hands a postMessage to the relay between the runtime and the plugin surfaces (#52,
+//! ADR 0160, `web_host::relay`): a plugin surface's page posts to its parent (`window.parent` is the
+//! desk there, `web_host::shim`), and the runtime's page posts to a surface by naming its host,
+//! `post(text, host)`; the runtime's page hears what a surface posted through
+//! `onSurface(host, text)`, which it sets. Development builds add `pid`, the renderer's process id,
+//! so a check can kill one surface's.
 
 use cef::*;
 
@@ -11,8 +14,12 @@ use cef::*;
 pub const CALL: &str = "desk.call";
 /// The process message carrying a reply or an event to the page.
 pub const MESSAGE: &str = "desk.message";
-/// The process message carrying a postMessage for the relay.
+/// The process message carrying a postMessage for the relay: the text, and the surface it is for
+/// when the runtime's page names one.
 pub const POST: &str = "desk.post";
+/// The process message carrying what a surface's page posted to the runtime's page: the text, and
+/// the surface's host.
+pub const SURFACE: &str = "desk.surface";
 
 /// The global the page sees.
 const NATIVE: &str = "__deskNative";
@@ -20,6 +27,15 @@ const NATIVE: &str = "__deskNative";
 /// Pages may not replace `__deskNative` or its `send` (V8's `ReadOnly`).
 fn read_only() -> V8Propertyattribute {
     V8Propertyattribute::from(sys::cef_v8_propertyattribute_t::V8_PROPERTY_ATTRIBUTE_READONLY)
+}
+
+/// The string argument `index` of a V8 call, if it is one.
+fn string_arg(arguments: Option<&[Option<V8Value>]>, index: usize) -> Option<String> {
+    arguments
+        .and_then(|args| args.get(index))
+        .and_then(|arg| arg.as_ref())
+        .filter(|arg| arg.is_string() == 1)
+        .map(|arg| CefString::from(&arg.string_value()).to_string())
 }
 
 wrap_v8_handler! {
@@ -39,20 +55,20 @@ wrap_v8_handler! {
                 Some("post") => POST,
                 _ => return 0,
             };
-            let text = arguments
-                .and_then(|args| args.first())
-                .and_then(|arg| arg.as_ref())
-                .filter(|arg| arg.is_string() == 1)
-                .map(|arg| CefString::from(&arg.string_value()).to_string());
+            let text = string_arg(arguments, 0);
+            let to = (kind == POST).then(|| string_arg(arguments, 1)).flatten();
             let (Some(text), Some(frame)) = (text, v8_context_get_current_context().and_then(|c| c.frame())) else {
                 if let Some(exception) = exception {
-                    *exception = "__deskNative.send and post take one string".into();
+                    *exception = "__deskNative.send and post take a string".into();
                 }
                 return 1;
             };
             if let Some(mut message) = process_message_create(Some(&kind.into())) {
                 if let Some(list) = message.argument_list() {
                     list.set_string(0, Some(&text.as_str().into()));
+                    if let Some(to) = &to {
+                        list.set_string(1, Some(&to.as_str().into()));
+                    }
                 }
                 frame.send_process_message(ProcessId::BROWSER, Some(&mut message));
             }
@@ -102,23 +118,35 @@ wrap_render_process_handler! {
             message: Option<&mut ProcessMessage>,
         ) -> ::std::os::raw::c_int {
             let Some(message) = message else { return 0 };
-            if CefString::from(&message.name()).to_string() != MESSAGE {
-                return 0;
-            }
-            let text = message
-                .argument_list()
-                .map(|list| CefString::from(&list.string(0)).to_string())
-                .unwrap_or_default();
+            let name = CefString::from(&message.name()).to_string();
+            let (handler, args) = match name.as_str() {
+                MESSAGE => ("onMessage", 1),
+                SURFACE => ("onSurface", 2),
+                _ => return 0,
+            };
+            let strings: Vec<String> = (0..args)
+                .map(|i| {
+                    message
+                        .argument_list()
+                        .map(|list| CefString::from(&list.string(i)).to_string())
+                        .unwrap_or_default()
+                })
+                .collect();
             if let Some(context) = frame.and_then(|f| f.v8_context()) {
-                deliver(&context, &text);
+                // `onSurface(host, text)`: the surface first, as the page names it.
+                let ordered: Vec<&str> = match strings.as_slice() {
+                    [text, host] => vec![host, text],
+                    other => other.iter().map(String::as_str).collect(),
+                };
+                deliver(&context, handler, &ordered);
             }
             1
         }
     }
 }
 
-/// Call `__deskNative.onMessage(text)` in `context`, when the page set one.
-fn deliver(context: &V8Context, text: &str) {
+/// Call `__deskNative[handler](...strings)` in `context`, when the page set one.
+fn deliver(context: &V8Context, handler: &str, strings: &[&str]) {
     if context.enter() != 1 {
         return;
     }
@@ -127,14 +155,17 @@ fn deliver(context: &V8Context, text: &str) {
         .and_then(|global| global.value_bykey(Some(&NATIVE.into())))
         .and_then(|native| {
             native
-                .value_bykey(Some(&"onMessage".into()))
+                .value_bykey(Some(&handler.into()))
                 .map(|on| (native, on))
         });
     if let Some((mut native, on)) = target
         && on.is_function() == 1
     {
-        let argument = v8_value_create_string(Some(&text.into()));
-        let _ = on.execute_function(Some(&mut native), Some(&[argument]));
+        let arguments: Vec<Option<V8Value>> = strings
+            .iter()
+            .map(|s| v8_value_create_string(Some(&(*s).into())))
+            .collect();
+        let _ = on.execute_function(Some(&mut native), Some(&arguments));
     }
     context.exit();
 }

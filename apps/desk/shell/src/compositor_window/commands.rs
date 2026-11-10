@@ -1,7 +1,7 @@
 //! The shell page's compositor commands (#52, #56, #81), the runtime's only (`desk_web::sender`):
 //! `compositor_desk` (what only the page knows of the desk, `report.rs`), `compositor_keys` (the
 //! keymap's entries, which the compositor resolves to decide before delivery whose a key is) and
-//! `compositor_focus` (the surface whose stand-in has the page's focus), `compositor_grab` (a press
+//! `compositor_focus` (the surface whose place has the page's focus), `compositor_grab` (a press
 //! the page found starts a move, a resize or a pan, #80), `compositor_wm` (a window command:
 //! maximize, snap, a step), `compositor_edit` (the runtime's edits of the window manager's state,
 //! #83) and `compositor_snapshot` (what `desk.windows.list` answers); in development builds

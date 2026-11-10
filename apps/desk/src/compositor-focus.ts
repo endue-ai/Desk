@@ -1,23 +1,19 @@
-// Compositor mode (#56): the compositor owns the keyboard focus, and a press on a plugin surface
-// gives it that surface. The runtime moves the focus too (opening a window, Ctrl+Tab, the
-// which-key overlay taking it for a prefix and giving it back), by focusing a frame here, which is
-// the surface's stand-in. So this page tells the CEF shell, whenever its focus settles, which
-// surface's stand-in has it, or none (the page's own element has it); the keys go there.
-import { surfaceHostOf } from "./compositor-desk";
+// The compositor owns the keyboard focus (#56), and a press on a plugin surface gives it that
+// surface. The runtime moves the focus too (opening a window, Ctrl+Tab, the which-key overlay taking
+// it for a prefix and giving it back), by focusing a surface's place here (ADR 0160), where the
+// compositor draws the surface's own browser. So this page tells the CEF shell, whenever its focus
+// settles, which surface's place has it, or none (the page's own element has it); the keys go there.
 
-/** The surface host whose stand-in frame has the page's focus; null when the page itself has it. */
+/** The surface host whose place has the page's focus; null when the page itself has it. */
 export function focusedSurface(doc: Document): string | null {
-  const active = doc.activeElement;
-  if (active?.tagName !== "IFRAME") return null;
-  return surfaceHostOf((active as HTMLIFrameElement).src) ?? null;
+  const place = doc.activeElement?.closest<HTMLElement>("[data-surface-host]");
+  return place?.dataset.surfaceHost || null;
 }
 
 /**
  * Report the page's focus when it changes, after a focus move settles (the focus leaves one
  * element before it reaches the next); returns the function that stops. Nothing is said while the
- * window is in the background: its focus did not move, the app's did. A stand-in is a frame of
- * another process: Tab into it (#123) takes the focus from the page's element first and gives it
- * to the frame later, which the page hears only as its window's blur.
+ * window is in the background: its focus did not move, the app's did.
  */
 export function startCompositorFocus(
   win: Window,

@@ -4,9 +4,11 @@
 //! stopped, crashed, not painted yet; Not responding over its last frame), what the page draws of
 //! the window (its title bar's icon and tools, its own views, split panes' headers), taken from
 //! where the page lays the window out and drawn where the window is (#80: a gesture holds it, it
-//! glides); the snap preview under the window dragged to an edge; then the plugin surfaces the page
-//! lays out itself (overlays, edge bars) and the page's system layer (bars, Eris, menus) above every
-//! window. Units are the page's CSS pixels under one group scaled to the window's device pixels, so
+//! glides); the snap preview under the window dragged to an edge; then the system layer (ADR 0160):
+//! the edge bars' plugin surfaces, the desk's system surface (the page's bars, Eris, notices, menus,
+//! the settings and the studios, its named parts drawn whole above every window) and the overlays'
+//! plugin surfaces (the palette, the first run) above them, where the page lays them out. Units are
+//! the page's CSS pixels under one group scaled to the window's device pixels, so
 //! text is set at the device's size. Every node that shows a surface is answered with the input
 //! router's target for it (#56); the compositor's own chrome lets the pointer through to the page,
 //! which finds what a press lands on, but for the cards' buttons, which run their commands.
@@ -17,7 +19,7 @@ use desk_compositor::{
     Chrome, ChromeTheme, GroupNode, Node, NodeId, Rect, RectNode, Scene, SceneError, SurfaceNode,
     TextureId, Wallpaper,
 };
-use desk_wm::host::{intersect, subtract};
+
 use desk_wm::{FrameState, HostWindow};
 
 use super::PAGE;
@@ -47,11 +49,15 @@ pub struct CardButton {
     pub plugin: String,
 }
 
-/// What a scene was drawn with: the nodes that show surfaces, and the cards' buttons.
+/// What a scene was drawn with: the nodes that show surfaces, the cards' buttons, the parts of the
+/// desk's system surface drawn whole above the windows, and the system layer back to front (the
+/// page's own plugin surfaces by plugin, the desk's page as `desk`).
 #[derive(Debug, Default)]
 pub struct Drawn {
     pub shown: Shown,
     pub buttons: Vec<CardButton>,
+    pub parts: Vec<String>,
+    pub order: Vec<String>,
 }
 
 /// The commands a card's buttons run, in the order the page lists them: Not responding's Wait and
@@ -64,7 +70,7 @@ fn commands(state: FrameState) -> &'static [&'static str] {
     }
 }
 
-fn rect(r: desk_wm::Rect) -> Rect {
+pub(super) fn rect(r: desk_wm::Rect) -> Rect {
     Rect::new(r.x as f32, r.y as f32, r.w as f32, r.h as f32)
 }
 
@@ -91,7 +97,7 @@ pub fn sampled(at: Rect, (id, (tw, th)): Texture, scale: f32) -> SurfaceNode {
 
 /// The page's pixels at `at` (page CSS px), drawn at `to` in `parent`; the page hears the pointer
 /// there at its own point.
-fn page_part(
+pub(super) fn page_part(
     scene: &mut Scene,
     parent: NodeId,
     at: Rect,
@@ -121,7 +127,10 @@ fn page_part(
 }
 
 /// The compositor's own parts let the pointer through, to the page under them.
-fn pass(scene: &mut Scene, nodes: impl IntoIterator<Item = NodeId>) -> Result<(), SceneError> {
+pub(super) fn pass(
+    scene: &mut Scene,
+    nodes: impl IntoIterator<Item = NodeId>,
+) -> Result<(), SceneError> {
     for id in nodes {
         if let Some(node) = scene.node(id).cloned() {
             scene.set(id, node.with_hit(false))?;
@@ -174,49 +183,8 @@ pub fn draw(
         }
         window(scene, &mut chrome, desk, w, hosted, from, &mut drawn)?;
     }
-    page_surfaces(scene, &mut chrome, desk, hosted, from, &mut drawn)?;
-    let shown = &mut drawn.shown;
-    // Above every window the page is seen, but over a window the pointer goes to what the window
-    // shows (its surface, or the page's part of it, which hears the press there as well).
-    let windows: Vec<desk_wm::Rect> = plan.windows.iter().map(|w| w.rect).collect();
-    for piece in &plan.page {
-        for open in subtract(*piece, &windows) {
-            page_part(scene, desk, rect(open), rect(open), from, shown)?;
-        }
-        let over = windows.iter().filter_map(|w| intersect(*piece, *w));
-        for part in over.map(rect) {
-            let mut seen = Shown::new();
-            page_part(scene, desk, part, part, from, &mut seen)?;
-            pass(scene, seen.into_iter().map(|(node, _)| node))?;
-        }
-    }
+    super::system::draw(scene, &mut chrome, desk, plan, hosted, from, &mut drawn)?;
     Ok(drawn)
-}
-
-/// The page's own plugin surfaces (overlays, edge bars), where it lays them out: above the windows,
-/// under the page's system layer (its bars and pills float above an edge bar, as in the page).
-fn page_surfaces(
-    scene: &mut Scene,
-    chrome: &mut Chrome,
-    desk: NodeId,
-    hosted: &Hosted,
-    from: &Sources,
-    drawn: &mut Drawn,
-) -> Result<(), SceneError> {
-    let placed = (hosted.report().map(|r| r.frames.as_slice())).unwrap_or_default();
-    for frame in placed {
-        let Some(p) = frame.place.filter(|p| p.shown) else {
-            continue;
-        };
-        let at = Rect::new(p.x as f32, p.y as f32, p.width as f32, p.height as f32);
-        let into = Into {
-            group: desk,
-            to: at,
-            title: &frame.plugin,
-        };
-        surface(scene, chrome, &into, &frame.plugin, hosted, from, drawn)?;
-    }
-    Ok(())
 }
 
 fn window(
@@ -272,15 +240,15 @@ fn window(
 }
 
 /// Where a plugin's surface goes: a group, the box in it, and the title a card names.
-struct Into<'a> {
-    group: NodeId,
-    to: Rect,
-    title: &'a str,
+pub(super) struct Into<'a> {
+    pub(super) group: NodeId,
+    pub(super) to: Rect,
+    pub(super) title: &'a str,
 }
 
 /// What a plugin pane shows: its surface's last frame, a card over it while it does not answer,
 /// or a card instead of it while it has none.
-fn surface(
+pub(super) fn surface(
     scene: &mut Scene,
     chrome: &mut Chrome,
     into: &Into,

@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
-// Compositor mode (#81, ADR 0151): the shell page publishes each plugin frame's document and state
-// with what its window says without a live frame, and the titles of the shell's own views; desk-wm
-// holds the desk itself (#83), and the live set it sends back is the seam's (compositor-wm.test.ts).
-// A frame moved in the page is the same surface; one released is not named.
+// The page's report (#81, ADR 0151, ADR 0160): each plugin surface's document, load count and state
+// with what its window says without a live page, read from the runtime's surface pages (never a
+// frame in this page), the places of its own system layer's plugin surfaces and its parts, and the
+// titles of the shell's own views; desk-wm holds the desk itself (#83), and the live set it sends
+// back is the seam's (compositor-wm.test.ts). A surface moved in the page is the same surface; one
+// released is not named.
+import type { RemoteSurface } from "@endue-ai/runtime";
 import { afterEach, describe, expect, it } from "vitest";
-import { cardOf, type DeskReport, startCompositorDesk, surfaceHostOf } from "./compositor-desk";
+import { cardOf, type DeskReport, startCompositorDesk } from "./compositor-desk";
 
-const NOTES = "desk-plugin://main.endue-notes/endue.notes/ui/index.html?v=1";
+const HOST = "main.endue-notes";
+const NOTES = `desk-plugin://${HOST}/endue.notes/ui/index.html?v=1`;
 
 /** The runtime's parts the reporter reads, played by the test. */
 function runtime(adopted: string[]) {
@@ -30,19 +34,37 @@ function runtime(adopted: string[]) {
   return { desk: desk as never, asleep, states, release: () => desk.store.set({ adopted: [] }) };
 }
 
-/** A plugin's section with its frame, in a shell window unless it is the page's own (`windowed`). */
-function frame(plugin: string, src = NOTES, windowed = true): HTMLElement {
-  const section = document.createElement("section");
-  section.className = "desk-surface";
-  section.dataset.surface = plugin;
-  const iframe = document.createElement("iframe");
-  iframe.src = src;
-  section.append(iframe);
-  const window_ = document.createElement("section");
-  window_.className = "surface";
-  window_.append(section);
-  document.body.append(windowed ? window_ : section);
-  return section;
+/** The runtime's surface pages, played by the test: each surface's place in its section. */
+function pages() {
+  const surfaces: RemoteSurface[] = [];
+  return {
+    list: () => surfaces,
+    /** A plugin's section with its place, in a shell window unless it is the page's own. */
+    add(id: string, src = NOTES, windowed = true, className = "desk-surface"): RemoteSurface {
+      const section = document.createElement("section");
+      section.className = className;
+      section.dataset.surface = id;
+      const view = document.createElement("div");
+      view.className = "desk-surface-frame";
+      section.append(view);
+      const window_ = document.createElement("section");
+      window_.className = "surface";
+      window_.append(section);
+      document.body.append(windowed ? window_ : section);
+      const host = /^desk-plugin:\/\/([^/]+)/.exec(src)?.[1] ?? "";
+      const surface = { id, host, src, loads: 1, view, away: false };
+      surfaces.push(surface);
+      return surface;
+    },
+  };
+}
+
+function frames() {
+  const callbacks: FrameRequestCallback[] = [];
+  const win = window as Window & typeof globalThis;
+  win.requestAnimationFrame = (cb) => callbacks.push(cb);
+  win.cancelAnimationFrame = () => {};
+  return { win, tick: () => callbacks.shift()?.(0) };
 }
 
 describe("the desk the page publishes", () => {
@@ -51,22 +73,13 @@ describe("the desk the page publishes", () => {
     document.documentElement.classList.remove("desk-compositor");
   });
 
-  it("knows a plugin surface's own host and nothing else", () => {
-    expect(surfaceHostOf(NOTES)).toBe("main.endue-notes");
-    expect(surfaceHostOf("desk-plugin://localhost/_desk/palette/index.html")).toBeUndefined();
-    expect(surfaceHostOf("about:blank")).toBeUndefined();
-  });
-
-  it("sends the runtime's desk and its frames once, again only when they change", () => {
-    const callbacks: FrameRequestCallback[] = [];
-    const win = window as Window & typeof globalThis;
-    win.requestAnimationFrame = (cb) => callbacks.push(cb);
-    win.cancelAnimationFrame = () => {};
+  it("sends the runtime's desk and its surfaces once, again only when they change", () => {
+    const { win, tick } = frames();
     const r = runtime(["endue.notes"]);
-    const section = frame("endue.notes");
+    const p = pages();
+    const notes = p.add("endue.notes");
     const reports: DeskReport[] = [];
-    const stop = startCompositorDesk(win, r.desk, (report) => reports.push(report));
-    const tick = () => callbacks.shift()?.(0);
+    const stop = startCompositorDesk(win, r.desk, p, (report) => reports.push(report));
     expect(document.documentElement.classList.contains("desk-compositor")).toBe(true);
     tick();
     tick();
@@ -74,16 +87,19 @@ describe("the desk the page publishes", () => {
     expect(reports[0]).toMatchObject({
       seq: 1,
       titles: { launcher: "New surface" },
-      frames: [{ plugin: "endue.notes", host: "main.endue-notes", src: NOTES, state: "live" }],
+      frames: [{ plugin: "endue.notes", host: HOST, src: NOTES, loads: 1, state: "live" }],
       budget: { live: 4, afterMs: 300_000 },
     });
-    // The frame moved in the page and loaded there: the same surface, one load more.
-    section.querySelector("iframe")?.dispatchEvent(new Event("load"));
+    expect(document.querySelector("iframe"), "no frame stands in for it").toBeNull();
+    // Its page loaded again (a new revision): the same surface, one load more.
+    notes.loads = 2;
     tick();
-    expect(reports[1]?.frames[0]).toMatchObject({ host: "main.endue-notes", loads: 1 });
-    // Put to sleep: its frame is away, its placeholder says what it is.
+    expect(reports[1]?.frames[0]).toMatchObject({ host: HOST, loads: 2 });
+    // Put to sleep: its place is away, its placeholder says what it is.
     r.asleep.add("endue.notes");
-    section.querySelector("iframe")?.remove();
+    const section = notes.view.parentElement as HTMLElement;
+    notes.view.remove();
+    notes.away = true;
     const stand = document.createElement("div");
     stand.className = "desk-surface-placeholder";
     stand.innerHTML = "<p>Notes</p><p>Unloaded while out of sight.</p>";
@@ -94,36 +110,42 @@ describe("the desk the page publishes", () => {
       src: NOTES,
       card: { title: "Notes", line: "Unloaded while out of sight.", actions: [] },
     });
-    // Released by the runtime: no longer named.
+    // Released by the runtime, its section closed with its page: no longer named.
     r.release();
+    p.list().splice(0);
     tick();
     expect(reports[3]?.frames).toEqual([]);
     stop();
     expect(document.documentElement.classList.contains("desk-compositor")).toBe(false);
   });
 
-  it("places a surface of the page's own system layer where the page lays it out", () => {
-    const callbacks: FrameRequestCallback[] = [];
-    const win = window as Window & typeof globalThis;
-    win.requestAnimationFrame = (cb) => callbacks.push(cb);
-    win.cancelAnimationFrame = () => {};
+  it("places a surface of its own system layer where the page lays it out, in its layer", () => {
+    const { win, tick } = frames();
     const r = runtime([]);
-    const overlay = "desk-plugin://main.endue-onboarding/endue.onboarding/ui/index.html?v=1";
-    const section = frame("endue.onboarding", overlay, false);
+    const p = pages();
+    const first = "desk-plugin://main.endue-onboarding/endue.onboarding/ui/index.html?v=1";
+    const overlay = p.add("endue.onboarding", first, false, "desk-surface desk-surface--overlay");
+    const dock = "desk-plugin://main.endue-dock/endue.dock/ui/index.html?v=1";
+    p.add("endue.dock", dock, false, "desk-surface desk-surface--edge");
     const reports: DeskReport[] = [];
-    const stop = startCompositorDesk(win, r.desk, (report) => reports.push(report));
-    callbacks.shift()?.(0);
+    const stop = startCompositorDesk(win, r.desk, p, (report) => reports.push(report));
+    tick();
     expect(reports[0]?.frames).toMatchObject([
-      { plugin: "endue.onboarding", host: "main.endue-onboarding", place: { shown: true } },
+      {
+        plugin: "endue.onboarding",
+        host: "main.endue-onboarding",
+        place: { shown: true, layer: "overlay" },
+      },
+      { plugin: "endue.dock", host: "main.endue-dock", place: { shown: true, layer: "edge" } },
     ]);
-    section.hidden = true;
-    callbacks.shift()?.(0);
+    (overlay.view.parentElement as HTMLElement).hidden = true;
+    tick();
     expect(reports[1]?.frames[0]?.place?.shown).toBe(false);
     stop();
   });
 
   it("reads Not responding with its actions, and nothing for a live frame", () => {
-    const section = frame("e2e.hello");
+    const section = pages().add("e2e.hello").view.parentElement as HTMLElement;
     expect(cardOf(section, "live")).toBeUndefined();
     const asking = document.createElement("div");
     asking.className = "desk-not-responding";

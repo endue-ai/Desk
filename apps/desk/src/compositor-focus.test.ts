@@ -8,43 +8,52 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-/** Focus `el` and say so as a browser does (jsdom fires no focus events for a frame). */
+/** Focus `el` and say so as a browser does. */
 function focus(el: HTMLElement) {
   el.focus();
   el.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
 }
 
-function frame(src: string): HTMLIFrameElement {
-  const iframe = document.createElement("iframe");
-  iframe.src = src;
-  document.body.append(iframe);
-  return iframe;
+/** A plugin surface's place in its section, with its two Tab edges (ADR 0160). */
+function place(host: string): { section: HTMLElement; place: HTMLElement; edge: HTMLElement } {
+  const section = document.createElement("section");
+  section.tabIndex = -1;
+  const place = document.createElement("div");
+  place.dataset.surfaceHost = host;
+  place.tabIndex = -1;
+  const edge = document.createElement("span");
+  edge.tabIndex = 0;
+  place.append(edge);
+  section.append(place);
+  document.body.append(section);
+  return { section, place, edge };
 }
 
 describe("the page's focus report (#56)", () => {
-  it("names the plugin surface whose stand-in has the focus, and none for the page's own", () => {
-    const notes = frame("desk-plugin://main.endue-notes/endue.notes/ui/index.html");
-    const palette = frame("desk-plugin://localhost/_desk/palette/index.html");
+  it("names the plugin surface whose place has the focus, and none for the page's own", () => {
+    const notes = place("main.endue-notes");
     const input = document.createElement("input");
     document.body.append(input);
-    notes.focus();
+    notes.place.focus();
     expect(focusedSurface(document)).toBe("main.endue-notes");
-    palette.focus();
-    expect(focusedSurface(document), "not a plugin surface's").toBeNull();
+    notes.edge.focus();
+    expect(focusedSurface(document), "an edge of the place").toBe("main.endue-notes");
+    notes.section.focus();
+    expect(focusedSurface(document), "the section is the page's, for Ctrl+Tab").toBeNull();
     input.focus();
     expect(focusedSurface(document)).toBeNull();
   });
 
   it("says where the focus settled, once per move", async () => {
-    const notes = frame("desk-plugin://main.endue-notes/endue.notes/ui/index.html");
-    const files = frame("desk-plugin://main.endue-files/endue.files/ui/index.html");
+    const notes = place("main.endue-notes").place;
+    const files = place("main.endue-files").place;
     const input = document.createElement("input");
     document.body.append(input);
     const sent: Array<string | null> = [];
     const stop = startCompositorFocus(window, (surface) => sent.push(surface));
     focus(notes);
     await tick();
-    // Out of one frame and into the next in one move: only where it lands is said.
+    // Out of one place and into the next in one move: only where it lands is said.
     notes.blur();
     notes.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
     focus(files);
@@ -58,24 +67,5 @@ describe("the page's focus report (#56)", () => {
     focus(notes);
     await tick();
     expect(sent).toHaveLength(3);
-  });
-
-  it("hears Tab put the focus in a stand-in of another process, which says so only by a blur (#123)", async () => {
-    const notes = frame("desk-plugin://main.endue-notes/endue.notes/ui/index.html");
-    const input = document.createElement("input");
-    document.body.append(input);
-    const sent: Array<string | null> = [];
-    const stop = startCompositorFocus(window, (surface) => sent.push(surface));
-    focus(input);
-    await tick();
-    // The page's element lets the focus go, and the frame takes it once its process answers.
-    input.blur();
-    input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
-    await tick();
-    notes.focus();
-    window.dispatchEvent(new FocusEvent("blur"));
-    await tick();
-    expect(sent).toEqual([null, "main.endue-notes"]);
-    stop();
   });
 });

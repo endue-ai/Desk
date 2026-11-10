@@ -32,18 +32,19 @@ function key(name: string, timeStamp?: number) {
   document.body.dispatchEvent(event);
 }
 
-/** A key a plugin's frame forwarded to the desk (plugin-sdk's desk:key). */
-function forwarded(frame: HTMLIFrameElement, name: string) {
+/** A key a plugin surface forwarded to the desk (plugin-sdk's desk:key), from its host. */
+function forwarded(host: string, name: string) {
   const data = { type: "desk:key", key: { key: name, ctrlKey: true } };
-  window.dispatchEvent(new MessageEvent("message", { data, source: frame.contentWindow }));
+  window.dispatchEvent(new MessageEvent("message", { data, origin: `desk-plugin://${host}` }));
 }
 
+const NOTES = "main.desk-notes";
 const PAGE = `
-  <section class="desk-surface" data-surface="desk.notes" tabindex="-1"><iframe></iframe></section>
+  <section class="desk-surface" data-surface="desk.notes" tabindex="-1"><div data-surface-host="${NOTES}" tabindex="-1"></div></section>
   <section class="desk-surface desk-surface--overlay" data-surface="desk.palette" hidden></section>`;
 const section = (id: string) =>
   document.querySelector<HTMLElement>(`.desk-surface[data-surface="${id}"]`) as HTMLElement;
-const notesFrame = () => section("desk.notes").querySelector("iframe") as HTMLIFrameElement;
+const notesFrame = () => section("desk.notes").querySelector("[data-surface-host]") as HTMLElement;
 
 beforeEach(() => {
   frames = [];
@@ -60,14 +61,14 @@ afterEach(() => {
 });
 
 describe("the input-latency probe in the shell page", () => {
-  it("takes the keyboard from a plugin frame onto the shell page's body", () => {
+  it("takes the keyboard from a plugin surface's place onto the shell page's body", () => {
     notesFrame().focus();
     expect(document.activeElement).toBe(notesFrame());
     expect(inPage(takeKeyboard)()).toBeNull();
     expect(document.activeElement).toBe(document.body);
     expect(document.body.hasAttribute("tabindex")).toBe(false);
 
-    // A body that is focusable already stays so; a frame that keeps the keyboard is named.
+    // A body that is focusable already stays so; a place that keeps the keyboard is named.
     document.body.tabIndex = 0;
     expect(inPage(takeKeyboard)()).toBeNull();
     expect(document.body.getAttribute("tabindex")).toBe("0");
@@ -107,11 +108,11 @@ describe("the input-latency probe in the shell page", () => {
     expect(probe()).toEqual({ ms: 40 });
   });
 
-  it("names the frame a key reached the page through, and times nothing", () => {
+  it("names the surface a key reached the page through, and times nothing", () => {
     inPage(armProbe)("palette");
     window.dispatchEvent(new MessageEvent("message", { data: { type: "desk:calls", calls: [] } }));
-    forwarded(notesFrame(), "Control");
-    forwarded(notesFrame(), "k");
+    forwarded(NOTES, "Control");
+    forwarded(NOTES, "k");
     tick(1016);
     expect(probe()).toEqual({});
     section("desk.palette").hidden = false;

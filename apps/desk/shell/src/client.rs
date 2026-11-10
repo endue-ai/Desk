@@ -1,8 +1,8 @@
 //! The browsers' client, one per window: it answers the pages' bridge calls (`host`) knowing which
 //! window the browser is for (`Role`, which no page can change), tells the event loop when the
 //! browser closed and, in development builds, prints the page's console to the terminal (CSP reports
-//! land there too). The main window's page renders off screen and relays its plugins' stand-ins
-//! (`compositor_page`); the Eris window's clears the page's base colour so she stands on nothing
+//! land there too). The main window's page, the desk's system surface, renders off screen and posts
+//! to each plugin surface through the relay (`compositor_page`, ADR 0160); the Eris window's clears the page's base colour so she stands on nothing
 //! (macOS, ADR 0121).
 
 // `wrap_client!` makes a constructor with one argument per field.
@@ -97,7 +97,7 @@ wrap_client! {
         requests: RequestHandler,
         load: Option<LoadHandler>,
         desk: Arc<Desk>,
-        // The main window's page (#52): it renders off screen, and its plugin frames are stand-ins.
+        // The main window's page (#52): it renders off screen, and posts to plugin surfaces (ADR 0160).
         render: Option<RenderHandler>,
         relay: Option<Relay>,
     }
@@ -120,14 +120,17 @@ wrap_client! {
         ) -> ::std::os::raw::c_int {
             let (Some(frame), Some(message)) = (frame, message) else { return 0 };
             let name = CefString::from(&message.name()).to_string();
-            let text = message
-                .argument_list()
-                .map(|list| CefString::from(&list.string(0)).to_string())
-                .unwrap_or_default();
+            let arg = |i| {
+                message
+                    .argument_list()
+                    .map(|list| CefString::from(&list.string(i)).to_string())
+                    .unwrap_or_default()
+            };
+            let text = arg(0);
             match (name.as_str(), &self.relay) {
                 (CALL, _) => host::receive(&self.desk, self.role, frame.clone(), text),
-                // What the runtime posted to a plugin's stand-in, for the plugin's own browser.
-                (POST, Some(relay)) if frame.is_main() != 1 => relay.down(frame, text),
+                // What the runtime posted for a plugin surface, which it names: to its own browser.
+                (POST, Some(relay)) if frame.is_main() == 1 => relay.down(&arg(1), text),
                 _ => return 0,
             }
             1
@@ -164,8 +167,8 @@ pub fn client(role: Role, pump: Pump, desk: Arc<Desk>) -> Client {
     )
 }
 
-/// The client of the main window's page (#52): it renders off screen through `render`, and its
-/// plugin frames' stand-ins relay through `relay`. Files dragged in from the OS come through the
+/// The client of the main window's page (#52): it renders off screen through `render`, and posts to
+/// plugin surfaces through `relay` (ADR 0160). Files dragged in from the OS come through the
 /// compositor's input (#56).
 pub fn compositor_page(pump: Pump, desk: Arc<Desk>, render: RenderHandler, relay: Relay) -> Client {
     ShellClient::new(
@@ -173,7 +176,7 @@ pub fn compositor_page(pump: Pump, desk: Arc<Desk>, render: RenderHandler, relay
         ShellLifeSpan::new(Role::Main, pump, true),
         ShellDisplay::new(Role::Main),
         crate::guard::Requests::new(None),
-        Some(crate::web_host::relay::StandInLoads::new(relay.clone())),
+        None,
         desk,
         Some(render),
         Some(relay),

@@ -2,7 +2,7 @@
 //! window hears (winit's, turned into `desk_compositor::input::Input` by `winit_input.rs`) and for
 //! the ones a check feeds (`harness.rs`). The router decides where each goes; this applies what it
 //! says: protocol messages to the page's browser or to a plugin surface's (the web host), keys the
-//! desk's keymap takes to the runtime as the focused frame's (`desk:key` through its stand-in, as
+//! desk's keymap takes to the runtime as the focused frame's (`desk:key` from its surface, as
 //! the SDK forwarded them in Stage 1), the cursor and the OS input method to the window, files from
 //! the OS nobody took to the open-files queue.
 
@@ -113,7 +113,7 @@ impl CompositorWindow {
             return;
         };
         match message {
-            // The page keeps the engine's focus while the window has the OS's: its stand-in frames
+            // The page keeps the engine's focus while the window has the OS's: its surfaces' places
             // take the DOM's focus there, and the runtime follows that to raise its windows.
             CompositorMessage::SurfaceFocusOut(_) if self.router.window_focused() => {}
             _ => {
@@ -124,7 +124,7 @@ impl CompositorWindow {
     }
 
     /// A key the desk's keymap takes while plugin surface `surface` has the focus: the runtime
-    /// hears it from that surface's frame, so it runs with the surface's keys first.
+    /// hears it from that surface, so it runs with the surface's keys first.
     fn desk_key(&self, surface: &str, key: &KeyLike) {
         let press = json!({ "type": "desk:key", "key": {
             "key": key.key, "code": key.code, "metaKey": key.meta, "ctrlKey": key.ctrl,
@@ -148,7 +148,7 @@ impl CompositorWindow {
         self.router.keymap.set_timeout(report.timeout);
     }
 
-    /// The page moved the DOM's focus: to a plugin surface's stand-in, or within itself.
+    /// The page moved the DOM's focus: to a plugin surface's place (ADR 0160), or within itself.
     pub fn page_focus(&mut self, event_loop: &ActiveEventLoop, surface: Option<String>) {
         let made = self.hosted.surfaces().made();
         let surface = surface.filter(|s| made.iter().any(|(host, _, _)| host == s));

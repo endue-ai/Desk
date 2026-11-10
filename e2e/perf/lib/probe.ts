@@ -3,10 +3,11 @@
 // change was first seen, by when that change was painted. WebKitWebDriver delivers the keys; the
 // OS's own input path before the page is not in the number.
 //
-// A key reaches the shell page only while the page itself has the keyboard. With a plugin's frame
-// focused, the key goes to the frame, whose SDK forwards it to the desk as a `desk:key` message: the
-// desk acts on it, but there is no keydown in the shell page to time. So each press first takes the
-// keyboard, and a press that still went through a frame is named and pressed again.
+// A key reaches the shell page only while the page itself has the keyboard. With a plugin surface's
+// place focused (ADR 0160), the key goes to the surface, whose SDK forwards it to the desk as a
+// `desk:key` message from that surface's host: the desk acts on it, but there is no keydown in the
+// shell page to time. So each press first takes the keyboard, and a press that still went through a
+// surface is named and pressed again.
 //
 // takeKeyboard, armProbe, readProbe and paletteShown run in the shell page: support/probe.ts hands
 // each one whole to browser.execute, so they use the page's globals only, never a name from this
@@ -24,9 +25,8 @@ export interface Probe {
 }
 
 /**
- * Give the keyboard to the shell page; the surface whose frame kept it, or null. In WebKit a frame
- * element's blur leaves the keyboard in the frame, so the body takes the focus instead, focusable
- * for that moment (as packages/runtime/src/frames/settle.ts does).
+ * Give the keyboard to the shell page; the surface whose place kept it, or null. The body takes the
+ * focus, focusable for that moment (as packages/runtime/src/frames/settle.ts does).
  */
 export function takeKeyboard(): string | null {
   const { body } = document;
@@ -34,9 +34,9 @@ export function takeKeyboard(): string | null {
   if (!tabbable) body.tabIndex = -1;
   body.focus({ preventScroll: true });
   if (!tabbable) body.removeAttribute("tabindex");
-  const active = document.activeElement;
-  if (!(active instanceof HTMLIFrameElement)) return null;
-  return active.closest("[data-surface]")?.getAttribute("data-surface") ?? "a plugin";
+  const place = document.activeElement?.closest("[data-surface-host]");
+  if (!place) return null;
+  return place.closest("[data-surface]")?.getAttribute("data-surface") ?? "a plugin";
 }
 
 /**
@@ -75,10 +75,10 @@ export function armProbe(change: Change): void {
   const onMessage = (event: MessageEvent) => {
     const data = event.data as { type?: unknown; key?: { key?: unknown } } | null;
     if (data?.type !== "desk:key" || modifier(data.key?.key)) return;
-    const frame = [...document.querySelectorAll("iframe")].find(
-      (candidate) => candidate.contentWindow === event.source,
-    );
-    const surface = frame?.closest("[data-surface]")?.getAttribute("data-surface");
+    // A surface's message comes from its host (packages/runtime/src/pages/remote.ts).
+    const host = /^desk-plugin:\/\/([^/?#]+)/.exec(event.origin)?.[1];
+    const place = host ? document.querySelector(`[data-surface-host="${host}"]`) : null;
+    const surface = place?.closest("[data-surface]")?.getAttribute("data-surface");
     once(() => {
       probe.frame = surface ?? "a plugin";
     });

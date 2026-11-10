@@ -18,7 +18,7 @@ use desk_wm::interact::{Motion, Out, Wm};
 use desk_wm::{FrameDoc, FrameState, LiveBudget, Places, Plan, Rect, Seat, Size, Step, Surfaces};
 use serde_json::json;
 
-use super::report::{DeskReport, FrameReport};
+use super::report::{DeskReport, FrameReport, Layer};
 
 /// What a look at the desk calls for.
 #[derive(Debug, Default, PartialEq)]
@@ -252,8 +252,16 @@ impl Hosted {
         let seat = |plugin: &str| {
             let placed = (report.frames.iter().find(|f| f.plugin == plugin)).and_then(|f| f.place);
             match placed {
+                // One laid out at no size (hidden in the page) keeps the size it had; an overlay
+                // not shown yet is made at the app's, which it covers once shown.
                 Some(p) => Seat {
-                    size: Some((p.width, p.height)),
+                    size: if p.width > 0.0 && p.height > 0.0 {
+                        Some((p.width, p.height))
+                    } else if p.layer == Layer::Overlay {
+                        Some((report.width, report.height))
+                    } else {
+                        None
+                    },
                     visible: p.shown && p.width > 0.0 && p.height > 0.0,
                 },
                 None => plan.seat(plugin),

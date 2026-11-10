@@ -2,12 +2,20 @@
 // under it hosts the core's UI plugins; the shell reaches the brain and its agent directory through
 // the core.
 import { BridgeClient } from "@endue-ai/bridge";
-import { deskPluginUrl, mountDesk, type Published, phase, realClock } from "@endue-ai/runtime";
+import {
+  deskPluginUrl,
+  mountDesk,
+  type Published,
+  phase,
+  realClock,
+  remotePages,
+} from "@endue-ai/runtime";
 import "@endue-ai/runtime/desk.css";
 import "@endue-ai/runtime/shell.css";
 import { startCompositorDesk } from "./compositor-desk";
 import { startCompositorFocus } from "./compositor-focus";
 import { startCompositorKeys } from "./compositor-keys";
+import { shellSurfaces } from "./compositor-surfaces";
 import { cardCommand, type HeldPayload, type RunPayload, wmSeam } from "./compositor-wm";
 import "./compositor.css";
 import { reportCrashes, showLastCrash } from "./crashes";
@@ -47,8 +55,12 @@ const seam = wmSeam(
   (command, args) => void invoke(command, args).catch(() => undefined),
   (command, args) => invoke(command, args),
 );
+// Every plugin surface's page is a browser of its own the compositor draws (ADR 0160): the runtime
+// keeps only its place here, and the shell carries the plugin host's messages to it and back.
+const pages = remotePages(window, shellSurfaces());
 const desk = mountDesk({
   windowManager: seam.host,
+  pages,
   root,
   bridge: shellBridge(core),
   core,
@@ -88,6 +100,7 @@ window.addEventListener("pagehide", disposeOpened, { once: true });
 const stopDesk = startCompositorDesk(
   window,
   desk,
+  pages,
   (report) => {
     void invoke("compositor_desk", report as unknown as Record<string, unknown>);
   },
@@ -119,7 +132,7 @@ const stopFocus = startCompositorFocus(window, (surface) => {
   void invoke("compositor_focus", { surface });
 });
 const stopCompositor = () => {
-  for (const off of [stopDesk, stopKeys, stopFocus]) off();
+  for (const off of [stopDesk, stopKeys, stopFocus, () => pages.dispose()]) off();
   for (const listening of [offLive, offWm, offHeld, offRun]) void listening.then((off) => off());
 };
 window.addEventListener("pagehide", stopCompositor, { once: true });

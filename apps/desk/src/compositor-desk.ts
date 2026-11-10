@@ -1,13 +1,15 @@
-// The page's report (#81, ADR 0151): the CEF shell's compositor draws every window from the window
-// manager (crates/desk-wm), which holds the desk (#83). Whenever what only the page knows changed it
-// sends `compositor_desk`: each plugin frame's document and state with what its window says while
-// it has no live frame, the titles of the shell's own views, the top chips' edges and the live
-// budget's settings, and the window manager's seam (ADR 0153): the last desk desk-wm published that
-// the page took and the window the page lays out where a gesture holds it (`compositor-wm.ts`). The
-// page itself draws only its system layer and its own views; `compositor.css` leaves the rest to the
-// compositor.
-import type { Desk } from "@endue-ai/runtime";
+// The page's report (#81, ADR 0151, ADR 0160): the CEF shell's compositor draws every window from the
+// window manager (crates/desk-wm), which holds the desk (#83). Whenever what only the page knows
+// changed it sends `compositor_desk`: each plugin surface's document, load count and state with what
+// its window says while it has no live page (the runtime's surface pages, never a frame here), the
+// places of the system layer's own plugin surfaces (overlays, the dock) and parts, the titles of the
+// shell's own views, the top chips' edges and the live budget's settings, and the window manager's
+// seam (ADR 0153): the last desk desk-wm published that the page took and the window the page lays
+// out where a gesture holds it (`compositor-wm.ts`). The page itself draws only its system layer and
+// its own views; `compositor.css` leaves the rest to the compositor.
+import type { Desk, RemotePages, RemoteSurface } from "@endue-ai/runtime";
 import { viewTitles } from "@endue-ai/runtime";
+import { type PartReport, systemParts } from "./compositor-system";
 
 export type FrameState = "live" | "asleep" | "late" | "stopped";
 
@@ -30,13 +32,17 @@ export interface FrameReport {
   place?: Place;
 }
 
-/** Where the page lays a surface out itself, in CSS pixels, and whether it shows. */
+/**
+ * Where the page lays a surface of its system layer out, in CSS pixels, whether it shows, and its
+ * layer: an edge bar lies under the system layer's own parts (`edge`), an overlay over them.
+ */
 export interface Place {
   x: number;
   y: number;
   width: number;
   height: number;
   shown: boolean;
+  layer: "edge" | "overlay";
 }
 
 export interface DeskReport {
@@ -44,6 +50,8 @@ export interface DeskReport {
   width: number;
   height: number;
   frames: FrameReport[];
+  /** The parts of the system layer the page shows, drawn whole above every window (ADR 0160). */
+  parts: PartReport[];
   titles: Record<string, string>;
   top: { left?: number; right?: number };
   budget: { live: number; afterMs: number };
@@ -78,13 +86,6 @@ const COPY = {
   en: { crashed: "It stopped working and is loading again.", loading: "Loading…" },
 } as const;
 
-/** The plugin surface host of a frame's URL, `<surface>.<plugin label>`, if it is one. */
-export function surfaceHostOf(src: string): string | undefined {
-  const match = /^desk-plugin:\/\/([^/?#:]+)/.exec(src);
-  const host = match?.[1];
-  return host && host !== "localhost" && host.includes(".") ? host : undefined;
-}
-
 const texts = (root: Element | null, selector: string) =>
   [...(root?.querySelectorAll(selector) ?? [])].map((el) => el.textContent?.trim() ?? "");
 
@@ -103,6 +104,23 @@ export function cardOf(section: Element | null, state: FrameState): Card | undef
   return { title, line, actions: texts(stand, "button") };
 }
 
+/** A window's plugin the runtime made no surface for yet: nothing to show. */
+const NONE = { host: "", src: "", loads: 0 };
+
+/** Where the page lays out a surface of its own system layer, from its place's box. */
+function placeOf(p: Pick<RemoteSurface, "view" | "away">): Place {
+  const section = p.view.closest<HTMLElement>("[data-surface]");
+  const r = p.view.getBoundingClientRect();
+  return {
+    x: r.x,
+    y: r.y,
+    width: p.view.clientWidth,
+    height: p.view.clientHeight,
+    shown: !p.away && p.view.isConnected && !section?.closest("[hidden]"),
+    layer: section?.classList.contains("desk-surface--overlay") ? "overlay" : "edge",
+  };
+}
+
 /** A `--chrome-*` inset of the windows' layer in pixels, if it is measured. */
 function inset(layer: HTMLElement | null, name: string): number | undefined {
   const value = Number.parseFloat(layer?.style.getPropertyValue(name) ?? "");
@@ -113,14 +131,12 @@ function inset(layer: HTMLElement | null, name: string): number | undefined {
 export function startCompositorDesk(
   win: Window,
   desk: Pick<Desk, "store" | "runtime">,
+  pages: Pick<RemotePages, "list">,
   send: (report: DeskReport) => void,
   wm: () => WmState = () => ({ applied: 0 }),
 ): CompositorDesk {
   const doc = win.document;
   doc.documentElement.classList.add("desk-compositor");
-  const loads = new WeakMap<HTMLIFrameElement, number>();
-  /** Each plugin's last frame, so one whose frame is away is still named. */
-  const last = new Map<string, { host: string; src: string; loads: number }>();
   const { frames, settings } = desk.runtime;
   const lang = desk.store.get().lang === "ko" ? "ko" : "en";
   let seq = 0;
@@ -133,48 +149,27 @@ export function startCompositorDesk(
     return said === "late" ? "late" : "live";
   };
   const report = () => {
-    /** The surfaces the page lays out itself, outside every window. */
-    const own: FrameReport[] = [];
-    for (const iframe of doc.querySelectorAll<HTMLIFrameElement>(".desk-surface iframe")) {
-      const host = surfaceHostOf(iframe.src);
-      const section = iframe.closest<HTMLElement>("[data-surface]");
-      const plugin = section?.dataset.surface;
-      if (!host || !plugin) continue;
-      if (!loads.has(iframe)) {
-        loads.set(iframe, 0);
-        iframe.addEventListener("load", () => loads.set(iframe, (loads.get(iframe) ?? 0) + 1));
-      }
-      const known = { host, src: iframe.src, loads: loads.get(iframe) ?? 0 };
-      if (iframe.closest(".surface")) {
-        last.set(plugin, known);
-        continue;
-      }
-      const r = iframe.getBoundingClientRect();
-      const shown = iframe.isConnected && !section?.closest("[hidden]");
-      const place = {
-        x: r.x,
-        y: r.y,
-        width: iframe.clientWidth,
-        height: iframe.clientHeight,
-        shown,
-      };
-      own.push({ plugin, ...known, state: stateOf(plugin), place });
-    }
     const s = desk.store.get();
     const held = new Set(s.adopted.map((a) => a.id));
-    for (const id of last.keys()) if (!held.has(id)) last.delete(id);
+    const surfaces = new Map(pages.list().map((p) => [p.id, p]));
     const reports: FrameReport[] = [];
-    // Every window the runtime handed over, its frame's state with it: one whose frame the page
-    // never showed has no document yet, and the shell makes its surface once it has.
+    // Every window the runtime handed over, its page's state with it: one whose surface the runtime
+    // has not made yet has no document, and the shell makes its surface once it has.
     for (const { id: plugin } of s.adopted) {
-      const known = last.get(plugin) ?? { host: "", src: "", loads: 0 };
+      const p = surfaces.get(plugin);
+      const known = p ? { host: p.host, src: p.src, loads: p.loads } : NONE;
       const state = stateOf(plugin);
       // The runtime's own section (its window is named after it too, in a slot).
       const section = doc.querySelector(`.desk-surface[data-surface="${plugin}"]`);
       const card = cardOf(section, state);
       reports.push({ plugin, ...known, state, ...(card ? { card } : {}) });
     }
-    reports.push(...own.filter((f) => !held.has(f.plugin)));
+    // The surfaces the page lays out itself, outside every window: overlays and edge bars.
+    for (const p of surfaces.values()) {
+      if (held.has(p.id) || !p.host) continue;
+      const known = { host: p.host, src: p.src, loads: p.loads };
+      reports.push({ plugin: p.id, ...known, state: stateOf(p.id), place: placeOf(p) });
+    }
     const layer = doc.querySelector<HTMLElement>(".surfaces");
     const left = inset(layer, "--chrome-left");
     const right = inset(layer, "--chrome-right");
@@ -184,6 +179,7 @@ export function startCompositorDesk(
       width: win.innerWidth,
       height: win.innerHeight,
       frames: reports,
+      parts: systemParts(doc),
       titles: viewTitles(desk.store),
       top: { ...(left === undefined ? {} : { left }), ...(right === undefined ? {} : { right }) },
       budget: {
