@@ -170,6 +170,22 @@ wrap_resource_handler! {
             }
         }
 
+        // A request with a Range header from byte 1 on: CEF skips to that byte itself before it
+        // asks for the headers, and fails the request when nothing is skipped. The reply has the
+        // range applied already (`desk_web` answers 206 with the range's bytes alone, 416, or 200
+        // where it ignores Range), so it starts where CEF wants it: everything counts as skipped.
+        fn skip(
+            &self,
+            bytes_to_skip: i64,
+            bytes_skipped: Option<&mut i64>,
+            _callback: Option<&mut ResourceSkipCallback>,
+        ) -> ::std::os::raw::c_int {
+            if let Some(skipped) = bytes_skipped {
+                *skipped = bytes_to_skip;
+            }
+            1
+        }
+
         // CEF's C signature hands a raw buffer; it is valid for `bytes_to_read` bytes.
         #[allow(clippy::not_unsafe_ptr_arg_deref)]
         fn read(
