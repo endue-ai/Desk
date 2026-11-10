@@ -4,7 +4,7 @@
 
 一个应用，就是一个操作系统。
 
-**没有固定的界面。** Desk 由 Tauri 外壳和小型 Rust 核心构成，上面承载一个 Web 运行时；再往上的每项功能，包括内置功能在内，
+**没有固定的界面。** Desk 由基于 Chromium 的 Rust 外壳和小型 Rust 核心构成，上面承载一个 Web 运行时；再往上的每项功能，包括内置功能在内，
 都是可以在应用运行时替换的插件。就像 Emacs：核心只保留原语（文件、进程、网络、音频、窗口），其余一切都是无需重启即可修改的代码。
 
 > 状态：pre-alpha。`just dev` 会打开带有 Eris 和首次启动流程的桌面；先运行 `just brain-echo`，Eris 就会回答你输入的内容（目前只是回声）。
@@ -39,9 +39,10 @@ just check && just test
 just dev
 ```
 
-你需要 Rust（版本固定在 `rust-toolchain.toml` 中）、Node 22+、pnpm、`just`，以及你所用操作系统对应的
-Tauri 前置依赖。在 macOS 上运行时测试在 Linux 容器中运行，因此还需要 Docker Desktop；在 Linux 和 Windows 上，需执行一次
-`pnpm --filter @endue-ai/runtime exec playwright install webkit`。请用 `just test-e2e` 运行测试，不要直接调用 Playwright。
+你需要 Rust（版本固定在 `rust-toolchain.toml` 中）、Node 22+、pnpm、`just`，以及应用的 Chromium（CEF）所需的
+cmake 和 ninja，CEF 在首次构建时下载；在 Linux 上还需要 GTK 3、xdo、AppIndicator 和 ALSA 的头文件。运行时测试在与应用
+同一版本的无头 Chromium 中运行，`just test-e2e` 会在首次运行时把它下载到 `~/.cache/desk`。请用 `just test-e2e` 运行测试，
+不要直接调用 Playwright。
 
 ## 隐私
 

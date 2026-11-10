@@ -4,7 +4,7 @@
 
 Eine App, die ein OS ist.
 
-**Keine festen Bildschirme.** Desk ist eine Tauri-Shell und ein kleiner Rust-Kern mit einer Web-Runtime
+**Keine festen Bildschirme.** Desk ist eine Rust-Shell auf Chromium und ein kleiner Rust-Kern mit einer Web-Runtime
 darüber, und jede Funktion oberhalb davon, die eingebauten eingeschlossen, ist ein Plugin, das sich im
 laufenden Betrieb ersetzen lässt. Wie bei Emacs: Der Kern enthält nur Primitive (Dateien, Prozesse,
 Netzwerk, Audio, Fenster), und alles andere ist Code, der sich ohne Neustart ändern lässt.
@@ -47,10 +47,10 @@ just check && just test
 just dev
 ```
 
-Benötigt werden Rust (die Version ist in `rust-toolchain.toml` festgelegt), Node 22+, pnpm, `just` und
-die Tauri-Voraussetzungen für das jeweilige Betriebssystem. Unter macOS laufen die Runtime-Tests in
-einem Linux-Container, dafür wird zusätzlich Docker Desktop benötigt. Unter Linux und Windows einmalig
-`pnpm --filter @endue-ai/runtime exec playwright install webkit` ausführen. Die Tests laufen mit
+Benötigt werden Rust (die Version ist in `rust-toolchain.toml` festgelegt), Node 22+, pnpm, `just` sowie
+cmake und ninja für das Chromium der App (CEF), das ihr erster Build herunterlädt; unter Linux außerdem die
+Header von GTK 3, xdo, AppIndicator und ALSA. Die Runtime-Tests laufen in einem Headless-Chromium in der
+Version der App, das `just test-e2e` einmalig nach `~/.cache/desk` holt. Die Tests laufen mit
 `just test-e2e`, nie direkt über Playwright.
 
 ## Datenschutz

@@ -12,8 +12,8 @@ cheap to change.
    as plugins; the brief puts them in `packages/runtime/src/shell`. They can move into `plugins/` once
    the plugin API covers chrome placement. The first-run Eris plugin (`plugins/eris`) is unchanged.
 3. **`pnpm dev`** (root or package) starts the shell on the browser stubs (`browserCore` for the core,
-   kept in localStorage; `browserBridge` for the shell); `just dev` starts the Tauri app, which mounts
-   the shell on the Rust core (#115). Since ADR 0040 the shell's windows hold the plugins' centre and
+   kept in localStorage; `browserBridge` for the shell); `just dev` starts the desk app (the CEF shell
+   since #97), which mounts the shell on the Rust core (#115). Since ADR 0040 the shell's windows hold the plugins' centre and
    floating surfaces; unplaced ones take a slot of their own in the free area until moved, so no
    window moves or resizes for another. Windows can move, grow and fill over the whole app; every
    bar, the runtime's edge bars included, floats above them and clear of the others. Windows are
@@ -97,7 +97,7 @@ cheap to change.
     and the shortcut list says where it came from. Only the person's changes are kept: the setting
     `desk.keys.bindings`, the last layer of the keymap, which desk.session saves. The list shows every
     command in the registry. In Chrome, ⌘N and ⌘W are kept by the browser, so on the dev page rebind
-    them or use the palette; the Tauri webview receives them.
+    them or use the palette; the desk app receives them.
 38. **Korean copy** calls a window a 표면 (the product term) and a pane a 칸.
 
 ## On the policy runtime (ADR 0025)

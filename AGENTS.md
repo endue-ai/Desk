@@ -8,7 +8,7 @@ English summary is `docs/architecture.md`.
 
 | Path | What lives there |
 | --- | --- |
-| `apps/` | `desk/`: the app's web frontend; `src-tauri/` the Tauri 2 shell, being replaced by `shell/`, the CEF shell (ADR 0143) |
+| `apps/` | `desk/`: the app's web frontend; `shell/` the app itself, `endue-desk`, a Rust binary on winit and CEF (ADR 0143) |
 | `crates/` | Rust workspace, prefix `desk-`: core, sys, bridge, plugin host, VM, brain adapters, CLI, MCP server, web (what the desk's URL schemes answer, without an engine) |
 | `packages/` | TypeScript workspace, scope `@endue-ai/`: runtime, bridge, plugin-sdk, ui, create-plugin |
 | `plugins/` | Built-in features written as plugins, in the same format as community plugins |
@@ -31,8 +31,8 @@ just check   # formatting, lints and types; must be green before every push
 ```
 
 `just codegen` regenerates the Rust and TypeScript types from `specs/`. `just test-unit` skips the browser
-tests; `just check-app` lints the Tauri app crate and `just check-shell` the CEF shell, which the default
-commands leave out. `just identity`
+tests; `just check-shell` lints and tests the CEF shell, which the default commands leave out, and
+`just build-shell` builds it for `just test-app-e2e`. `just identity`
 installs the commit identity and its hooks on a machine (see Boundaries).
 
 ## Rules

@@ -5,7 +5,7 @@ English · [日本語](docs/i18n/ja/README.md) · [中文](docs/i18n/zh/README.m
 
 One app that is one OS.
 
-**No fixed screens.** Desk is a Tauri shell and a small Rust core with a web runtime on top, and every
+**No fixed screens.** Desk is a Rust shell on Chromium and a small Rust core with a web runtime on top, and every
 feature above that, the built-in ones included, is a plugin you can replace while the app is running.
 Like Emacs: the core keeps only primitives (files, processes, network, audio, windows), and everything
 else is code you can change without restarting.
@@ -48,10 +48,11 @@ just check && just test
 just dev
 ```
 
-You need Rust (the version is pinned in `rust-toolchain.toml`), Node 22+, pnpm, `just` and the
-Tauri prerequisites for your OS. On macOS the runtime tests run in a Linux container, so you also need
-Docker Desktop; on Linux and Windows, run `pnpm --filter @endue-ai/runtime exec playwright install webkit`
-once. Run them with `just test-e2e`, never with Playwright directly.
+You need Rust (the version is pinned in `rust-toolchain.toml`), Node 22+, pnpm, `just`, and cmake and
+ninja for the app's Chromium (CEF), which its first build downloads; on Linux also the GTK 3, xdo,
+AppIndicator and ALSA headers. The runtime tests run in headless Chromium of the app's own version,
+which `just test-e2e` fetches once into `~/.cache/desk`. Run them with `just test-e2e`, never with
+Playwright directly.
 
 ## Privacy
 

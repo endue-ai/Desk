@@ -5,14 +5,14 @@
 이 문서는 설계의 영문 요약입니다. 기준 문서는 `docs/ko/desk-structure.md`이며, 되돌리기 어려운 결정은
 `docs/adr/`에 있습니다.
 
-Desk는 하나의 앱으로 만든 하나의 OS입니다. Tauri 셸과 작은 Rust 코어가 웹 런타임을 싣고, 그 런타임 위의
+Desk는 하나의 앱으로 만든 하나의 OS입니다. Chromium(CEF) 위의 Rust 셸과 작은 Rust 코어가 웹 런타임을 싣고, 그 런타임 위의
 설정과 키바인딩을 제외한 기능은 플러그인입니다. Emacs처럼 코어는 프리미티브만 갖고, 나머지는 모두 앱이 실행되는 동안 바꿀 수 있습니다.
 
 설정 UI, 기본 키바인딩과 개인 설정 저장은 플러그인이 아닌 런타임 코어 기능입니다. 플러그인을 모두 꺼도 사용할 수 있으며, 플러그인은 추가 단축키를 제공할 수 있습니다. [ADR 0055](../../adr/0055-core-settings-and-keybindings.md).
 
-셸과 화면은 바뀌는 중입니다. Desk는 Tauri와 OS 웹뷰에서 Chromium(CEF) 위의 Rust 셸로, 그다음 모든 창이
+셸과 화면은 바뀌는 중입니다. Desk는 Tauri와 OS 웹뷰에서 Chromium(CEF) 위의 Rust 셸로 옮겨 왔고, 이제 모든 창이
 자기 프로세스에서 그리는 Desk만의 컴포지터로 옮겨 갑니다([ADR 0140](../../adr/0140-a-wgpu-compositor-over-cef-off-screen-surfaces.md)).
-1단계가 진행 중이며, 그것이 나오기 전까지 도는 것은 아래에서 설명하는 Tauri 셸입니다. 단계는 계층 표 아래의
+1단계는 Tauri 셸을 지우며 끝났고, 아래에서 설명하는 셸은 CEF 셸입니다. 단계는 계층 표 아래의
 "셸과 화면이 가는 곳"에 있습니다.
 
 ## 한눈에 보기
@@ -36,7 +36,7 @@ Desk는 하나의 앱으로 만든 하나의 OS입니다. Tauri 셸과 작은 Ru
  │              · logic plugin and connector host (Wasm) · VM     │
  │              · built-in connectors · brain clients             │
  ├────────────────────────────────────────────────────────────────┤
- │ Tauri shell  windows · webviews · primitives (fs, proc, net,   │  rebuild
+ │ Shell (CEF)  windows · browsers · primitives (fs, proc, net,   │  rebuild
  │              audio)                                            │
  ├────────────────────────────────────────────────────────────────┤
  │ OS           macOS · Windows · Linux (signing, notarisation,   │  —
@@ -54,15 +54,17 @@ Desk는 하나의 앱으로 만든 하나의 OS입니다. Tauri 셸과 작은 Ru
 | 웹 런타임 | `packages/runtime`: 컴포지터, UI 플러그인 호스트(ADR 0012), 그리고 ADR 0026이 정해질 때까지 데스크 셸(ADR 0025) · `packages/ui` |
 | Desk 브리지 | `specs/bridge` · 통합 계층의 계약인 `specs/item`, `specs/view`, `specs/connector`(ADR 0032) · `packages/bridge` · `crates/desk-bridge` (이 계약들과 `specs/plugin`에서 생성한 타입) |
 | Rust 코어 | `crates/desk-core`(통합 계층의 `data.*`, `connector.*`, `view.*`, `catalog.get`도 제공하고 OS 캘린더 위에 내장 커넥터 `desk.calendar`와 `desk.reminders`를 정의, 아직 제안 상태인 ADR 0036. http 커넥터는 매니페스트대로 코어가 직접 실행하고 토큰도 코어만 읽는다, ADR 0106) · `crates/desk-index`(SQLite 파일 하나에 두는 아이템 색인, ADR 0033) · `crates/desk-plugin-host`(로직 플러그인과 Wasm 커넥터를 Wasmtime에서 실행, ADR 0019 · 아직 제안 상태인 ADR 0034) · `crates/desk-vm` · `crates/desk-brain*` |
-| Tauri 셸 | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`(macOS의 컴퓨터 사용: 스크린샷, 접근성 트리, 입력, 앱). 코어가 이를 `computer:see`와 `computer:control` 아래 `computer.*`로 제공하며, 에이전트의 모든 동작은 사람의 승인을 기다립니다(ADR 0120, ADR 0123) · `apps/desk/shell`과 `crates/desk-web`: 1단계가 끝나면 이것을 대신하는 CEF 셸(ADR 0143) |
-| OS | `apps/desk/src-tauri/capabilities` · 릴리스 워크플로 (서명, 공증) |
+| 셸(CEF) | `apps/desk/shell`: winit과 CEF 위의 앱 `endue-desk`(ADR 0143), 그리고 `crates/desk-web`: 엔진 없이, 그 URL 스킴이 무엇을 답하고 페이지마다 어느 호출자인지를 정하는 부분 · `crates/desk-sys` · `crates/desk-computer`(macOS의 컴퓨터 사용: 스크린샷, 접근성 트리, 입력, 앱). 코어가 이를 `computer:see`와 `computer:control` 아래 `computer.*`로 제공하며, 에이전트의 모든 동작은 사람의 승인을 기다립니다(ADR 0120, ADR 0123) |
+| OS | `apps/desk/shell/packager`: 번들, CEF 도우미 앱과 그 entitlements(ADR 0145) · 릴리스 워크플로 (서명, 공증) |
 
 ## 셸과 화면이 가는 곳
 
-지금 Desk는 OS 웹뷰 하나를 가진 Tauri 창 하나이고, 플러그인 창은 모두 그 한 페이지 안의 샌드박스 iframe입니다.
-셸과 모든 플러그인이 한 프로세스와 한 메인 스레드를 나눠 쓰므로, 루프에 빠진 플러그인 하나가 데스크 전체를
-멈추고, Linux에는 WebGPU가 없습니다. ADR 0140이 이것을 바꿉니다. 모든 창이 자기 프로세스에서 그리고, wgpu 위의
-Desk 자체 컴포지터가 그 결과를 배치합니다.
+1단계 전까지 Desk는 OS 웹뷰 하나를 가진 Tauri 창 하나였고, 플러그인 창은 모두 그 한 페이지 안의 샌드박스
+iframe이었습니다. 셸과 모든 플러그인이 한 프로세스와 한 메인 스레드를 나눠 썼으므로, 루프에 빠진 플러그인 하나가
+데스크 전체를 멈췄고, Linux에는 WebGPU가 없었습니다. ADR 0140이 이것을 바꿉니다. 모든 창이 자기 프로세스에서
+그리고, wgpu 위의 Desk 자체 컴포지터가 그 결과를 배치합니다. 1단계부터 플러그인 표면은 각각 자기 Chromium
+렌더러라서, 렌더러가 죽어도 잃는 것은 그 창 하나뿐입니다. 다만 2단계가 합성하기 전까지 창은 아직 셸 페이지 안의
+프레임입니다.
 
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
@@ -74,9 +76,9 @@ Desk 자체 컴포지터가 그 결과를 배치합니다.
 
 | 단계 | 바뀌는 것 | 상태 |
 | --- | --- | --- |
-| 0 | Tauri 앱 위에서: 표면마다 `desk-plugin` 스킴의 자기 origin. 살아 있는 프레임은 보이는 창과 최근 포커스한 8개만. 무거운 작업은 worker로. 응답하지 않는 프레임은 그 창에서만 "기다리기" 또는 "멈추기"를 제안 | 진행 중 |
-| 1 | 셸이 winit과 CEF 위의 Rust 바이너리(`apps/desk/shell`, ADR 0143)가 되어 지금의 셸 페이지를 띄우고, Tauri는 없어짐. 플러그인 iframe은 각각 자기 Chromium 렌더러. 앱 단위 e2e는 Chromium 원격 디버깅으로 구동(ADR 0144) | 진행 중: 셸이 CEF로 창을 엶(#41) |
-| 2 | 컴포지터(`crates/desk-compositor`)가 데스크를 그리고 표면마다 텍스처를 배치. 표면은 하나의 프로토콜로 말함(`specs/surface`, ADR 0141). CEF는 플러그인마다 화면 밖에서 렌더링. 창 관리자는 `packages/runtime`에서 Rust로 옮겨 감 | 예정 |
+| 0 | Tauri 앱 위에서: 표면마다 `desk-plugin` 스킴의 자기 origin. 살아 있는 프레임은 보이는 창과 최근 포커스한 8개만. 무거운 작업은 worker로. 응답하지 않는 프레임은 그 창에서만 "기다리기" 또는 "멈추기"를 제안 | 완료 |
+| 1 | 셸이 winit과 CEF 위의 Rust 바이너리(`apps/desk/shell`, ADR 0143)가 되어 지금의 셸 페이지를 띄우고, Tauri는 없어짐. 플러그인 iframe은 각각 자기 Chromium 렌더러. 앱 단위 e2e는 Chromium 원격 디버깅으로 구동(ADR 0144) | 완료(#97): CEF 데스크가 Tauri 앱을 그 이름 `endue-desk` 그대로 대신했고, canary가 이것을 빌드함. Windows와 Linux의 WebGPU는 그 OS에서 확인하고(#61), 업데이터로 설치되는 첫 beta는 다음 릴리스 라인과 함께 나옴 |
+| 2 | 컴포지터(`crates/desk-compositor`)가 데스크를 그리고 표면마다 텍스처를 배치. 표면은 하나의 프로토콜로 말함(`specs/surface`, ADR 0141). CEF는 플러그인마다 화면 밖에서 렌더링. 창 관리자는 `packages/runtime`에서 Rust로 옮겨 감 | 진행 중 |
 | 3 | 네이티브 플러그인: 표면 프로토콜과 브리지를 `desk.sock`으로 말하는 프로세스 | 예정 |
 
 어느 단계에서도 플러그인 코드는 바뀌지 않습니다. 매니페스트, SDK, 브리지의 전송 형식은 그대로입니다. 플러그인은
@@ -94,7 +96,7 @@ Emacs는 작은 C 코어 위에서 거의 모든 것을 Elisp로 실행하며, �
 | --- | --- | --- | --- |
 | 커널 | 커널 | C 코어 | Rust 코어 |
 | 시스템 콜 | syscall | Lisp 프리미티브 | Desk 브리지 API |
-| 드라이버 | 디바이스 드라이버 | OS 연동 코드 | Tauri 셸 + Rust 크레이트 |
+| 드라이버 | 디바이스 드라이버 | OS 연동 코드 | 셸(winit, CEF) + Rust 크레이트 |
 | 창 관리자 | 창 관리자 | 프레임 · 창 | 3D 캔버스 컴포지터 |
 | 셸 | 터미널 셸 | M-x | Eris · 명령 팔레트 |
 | 앱 | 애플리케이션 | 패키지 (Elisp) | 플러그인 (UI · Wasm · MCP) |
@@ -126,7 +128,7 @@ Emacs는 작은 C 코어 위에서 거의 모든 것을 Elisp로 실행하며, �
 
 ```text
  ┌─ rebuild ──────────────────────────────────────────────────────┐
- │  Rust core · Tauri shell · bridge types   restart after update │
+ │  Rust core · Shell (CEF) · bridge types   restart after update │
  │  ┌─ restart ────────────────────────────────────────────────┐  │
  │  │  web runtime                         window reload, ~2 s │  │
  │  │  ┌─ instant ──────────────────────────────────────────┐  │  │

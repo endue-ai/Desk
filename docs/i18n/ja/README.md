@@ -4,7 +4,7 @@
 
 ひとつの OS である、ひとつのアプリ。
 
-**固定された画面はありません。** Desk は Tauri シェルと小さな Rust コアの上に Web ランタイムを載せたもので、その上にあるすべての機能は、組み込みのものも含めて、アプリの実行中に置き換えられるプラグインです。Emacs と同じように、コアはプリミティブ（ファイル、プロセス、ネットワーク、オーディオ、ウィンドウ）だけを持ち、それ以外はすべて再起動せずに変更できるコードです。
+**固定された画面はありません。** Desk は Chromium の上の Rust シェルと小さな Rust コアの上に Web ランタイムを載せたもので、その上にあるすべての機能は、組み込みのものも含めて、アプリの実行中に置き換えられるプラグインです。Emacs と同じように、コアはプリミティブ（ファイル、プロセス、ネットワーク、オーディオ、ウィンドウ）だけを持ち、それ以外はすべて再起動せずに変更できるコードです。
 
 > ステータス：プレアルファ。`just dev` を実行すると、Eris と初回起動のあるデスクが開きます。先に `just brain-echo` を起動しておくと、入力した言葉に Eris が答えます（今はエコーです）。
 
@@ -40,7 +40,7 @@ just check && just test
 just dev
 ```
 
-Rust（バージョンは `rust-toolchain.toml` で固定されています）、Node 22 以上、pnpm、`just`、およびお使いの OS 向けの Tauri の前提条件が必要です。macOS ではランタイムのテストが Linux コンテナで動くため、Docker Desktop も必要です。Linux と Windows では `pnpm --filter @endue-ai/runtime exec playwright install webkit` を一度実行してください。テストは Playwright を直接使わず、`just test-e2e` で実行します。
+Rust（バージョンは `rust-toolchain.toml` で固定されています）、Node 22 以上、pnpm、`just`、そしてアプリの Chromium（CEF）のための cmake と ninja が必要です。CEF は最初のビルドでダウンロードされます。Linux ではさらに GTK 3、xdo、AppIndicator、ALSA のヘッダーも必要です。ランタイムのテストはアプリと同じバージョンのヘッドレス Chromium で動き、`just test-e2e` が最初に一度だけ `~/.cache/desk` に取得します。テストは Playwright を直接使わず、`just test-e2e` で実行します。
 
 ## プライバシー
 

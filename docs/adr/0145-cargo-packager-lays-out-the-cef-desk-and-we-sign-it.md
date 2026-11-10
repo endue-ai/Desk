@@ -60,6 +60,11 @@ app's identifier.
   `.github/release-shell` names at its commit; the final reads it at the candidate's commit. It says
   `tauri`: switching is one reviewed commit on `main` once #47 can update a Tauri desk into this one,
   and the next line carries it to beta, then stable. Canary stays on Tauri until Stage 1 ends.
+* Update (2026-11-10, #97): Stage 1 ended. `.github/release-shell` says `cef`; `release-build.yml`
+  builds the CEF desk by default, so canary builds it, and refuses any other desk, since the Tauri
+  crate is gone (lines cut before keep their own workflows). The main executable took the Tauri desk's
+  name, `endue-desk`, with the helpers `endue-desk Helper…`; on Linux the launcher is
+  `/usr/bin/endue-desk` and the desk `/usr/lib/endue-desk/endue-desk`.
 * **Shape.** The same canonical names (`scripts/release-collect.mjs`), updater artifacts signed with
   `tauri signer sign --app-version`; the CEF desk adds an `.msi` (a first-install image like the
   `.dmg`) and has no `.rpm` (cargo-packager makes none).

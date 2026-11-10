@@ -71,26 +71,33 @@ tracker is the signal.
 
 ## The CEF desk
 
-Until Stage 1 of #32 ends, two desks build side by side: the Tauri desk and the CEF desk
-(`apps/desk/shell`, ADR 0143). `release-build.yml` builds either (`shell: tauri | cef`); a line
-builds what `.github/release-shell` names at its commit, its final what the candidate's commit names,
-and canary always the Tauri desk. The file says `tauri`. To ship the CEF desk, change it to `cef` on
-`main`, then cut the next line: its candidates reach beta, its final stable (ADR 0145). Rehearse
-first with **release-dry-run**, `shell: cef`, and the update smoke below on every OS.
+Since Stage 1 of #32 ended (#97) the desk is the CEF desk (`apps/desk/shell`, ADR 0143), and its
+executable is `endue-desk`, as the Tauri desk's was. `release-build.yml` builds it and refuses any
+other desk; a line builds what `.github/release-shell` names at its commit, its final what the
+candidate's commit names. The file says `cef`, so canary builds the CEF desk every night `main`
+moved, and the next line cut from `main` carries it to beta, then stable (ADR 0145). Lines cut before
+then build the Tauri desk from their own commits. Rehearse a line with **release-dry-run** and the
+update smoke below on every OS.
 
 The CEF desk installs its own updates (#47, ADR 0147) from the same artifacts, so a Tauri desk on
 beta installs the line's first CEF candidate as it installs any build, restarts into it, and from
 then on updates as a CEF desk: the `.app.tar.gz` swapped in on macOS, the NSIS `-setup.exe` or the
 `.msi` run silently once the desk has quit on Windows, the AppImage rewritten or the `.deb` installed
 with `pkexec` on Linux. The `.msi` is an updater artifact too (`windows-x86_64-msi`), for desks
-installed from it. The CEF `.deb` carries `/usr/bin/endue-desk`, where a Tauri desk restarts after
-installing it. Packages carry the built-in plugins beside the shell. A CEF candidate without
-`desk.update.channel` follows beta, as every `-rc` build does (above), so it never reads canary,
-which lists Tauri builds until canary builds the CEF desk; a desk set to canary can install a Tauri
-build again.
+installed from it. With the Tauri desk's executable name, what a Tauri install points at finds the
+CEF desk: its shortcuts, its start at login, and the program a Tauri desk restarts after the update
+(`endue Desk.app/Contents/MacOS/endue-desk` on macOS, `endue-desk.exe` in the same folder on
+Windows, and on Linux the `.deb`'s launcher `/usr/bin/endue-desk`, which starts the desk in
+`/usr/lib/endue-desk` beside `libcef.so`). Packages carry the built-in plugins beside the shell. A CEF
+candidate without `desk.update.channel` follows beta, as every `-rc` build does (above). Tauri `-rc`
+desks released before #98 follow canary when no channel is set, and canary builds the CEF desk now,
+so they update into CEF canary builds. Canary keeps listing its Tauri builds from before #97 until
+the two-week pruning drops them, so a desk set to canary can still meet one with a newer version
+until then.
 
-The update smoke, two hops: `e2e/smoke/update-two-hops.sh <dist> <dist> <dist>`, the last Tauri
-build and two CEF builds, each a release folder (`release-collect.mjs`), all three built with a
+The update smoke, two hops: `e2e/smoke/update-two-hops.sh <dist> <dist> <dist>`, an older build (the
+last Tauri build, from a commit before Stage 1 ended, or a CEF one) and two CEF builds, each a release
+folder (`release-collect.mjs`), all three built with a
 throwaway key's public half (`DESK_UPDATER_PUBKEY`) and `DESK_UPDATE_URL=http://127.0.0.1:19846/desk`.
 With the private half in `TAURI_SIGNING_PRIVATE_KEY` it writes and serves the R2 tree on
 127.0.0.1, installs the first build with a temp HOME that follows beta, and drives `desk update
@@ -122,15 +129,15 @@ run without it (`apps/desk/shell/src/sandbox.rs`) until #61 proves each on its O
 - **Linux.** `chrome-sandbox` (shipped beside `libcef.so`) needs root and the set-uid bit, which
   neither a cargo-packager `.deb` nor an AppImage can carry, so the desk uses the namespace sandbox,
   which needs unprivileged user namespaces; Ubuntu 23.10 and later grant them only through an
-  AppArmor profile. The `.deb` installs such a profile for `/usr/lib/endue-desk-cef/endue-desk-cef`
+  AppArmor profile. The `.deb` installs such a profile for `/usr/lib/endue-desk/endue-desk`
   (`abi <abi/4.0>`, `userns`, `flags=(unconfined)`, as Ubuntu's own profile for Chrome) and loads it in
   `postinst`; the AppImage relies on user namespaces being open. A desk that finds neither stops
   with Chromium's "No usable sandbox" instead of running without. #61 turns `no_sandbox` to 0 on Linux
   and runs the sandbox spec there (on Linux it checks `Seccomp: 2` in `/proc/<pid>/status` and a user
   namespace apart from the desk's).
 - **Windows.** CEF 156 sandboxes only an app built as a client DLL that its `bootstrap.exe` loads
-  (`CEF_USE_BOOTSTRAP`): the desk becomes `endue-desk-cef.dll` (a `cdylib`) beside `bootstrap.exe`
-  renamed `endue-desk-cef.exe`, the layout the `cef` crate's `sandbox` feature makes. NSIS and the
+  (`CEF_USE_BOOTSTRAP`): the desk becomes `endue-desk.dll` (a `cdylib`) beside `bootstrap.exe`
+  renamed `endue-desk.exe`, the layout the `cef` crate's `sandbox` feature makes. NSIS and the
   MSI install both, `DESK_WINDOWS_SIGN_COMMAND` signs both, and the spec checks each renderer's
   token (restricted, at untrusted integrity) on Windows.
 

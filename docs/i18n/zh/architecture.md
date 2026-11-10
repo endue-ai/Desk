@@ -4,12 +4,12 @@
 
 本文是设计的英文摘要。权威来源是 `docs/ko/desk-structure.md`；难以撤回的决策记录在 `docs/adr/` 中。
 
-Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 核心承载一个 Web 运行时，运行时之上的设置和键绑定之外的功能是插件。
+Desk 是以一个应用构建的一个操作系统：基于 Chromium（CEF）的 Rust 外壳和小型 Rust 核心承载一个 Web 运行时，运行时之上的设置和键绑定之外的功能是插件。
 与 Emacs 一样，核心只保留原语，其余一切都能在应用运行时修改。
 
 设置界面、默认键绑定和个人设置持久化属于运行时核心，而非插件。禁用所有插件后仍可使用；插件可以添加快捷键。 [ADR 0055](../../adr/0055-core-settings-and-keybindings.md).
 
-外壳和屏幕正在改变：Desk 正从 Tauri 和操作系统 Web 视图迁移到基于 Chromium（CEF）的 Rust 外壳，然后迁移到 Desk 自己的合成器，在其中每个窗口都在自己的进程中渲染（[ADR 0140](../../adr/0140-a-wgpu-compositor-over-cef-off-screen-surfaces.md)）。第 1 阶段正在进行；在它发布之前，运行的仍是下文描述的 Tauri 外壳。各阶段见层表下方的“外壳与屏幕的去向”。
+外壳和屏幕正在改变：Desk 已从 Tauri 和操作系统 Web 视图迁移到基于 Chromium（CEF）的 Rust 外壳，接下来迁移到 Desk 自己的合成器，在其中每个窗口都在自己的进程中渲染（[ADR 0140](../../adr/0140-a-wgpu-compositor-over-cef-off-screen-surfaces.md)）。第 1 阶段以删除 Tauri 外壳告终；下文描述的外壳是 CEF 外壳。各阶段见层表下方的“外壳与屏幕的去向”。
 
 ## 概览
 
@@ -32,7 +32,7 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
  │              · logic plugin and connector host (Wasm) · VM     │
  │              · built-in connectors · brain clients             │
  ├────────────────────────────────────────────────────────────────┤
- │ Tauri shell  windows · webviews · primitives (fs, proc, net,   │  rebuild
+ │ Shell (CEF)  windows · browsers · primitives (fs, proc, net,   │  rebuild
  │              audio)                                            │
  ├────────────────────────────────────────────────────────────────┤
  │ OS           macOS · Windows · Linux (signing, notarisation,   │  —
@@ -49,12 +49,12 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
 | Web 运行时 | `packages/runtime`：合成器、UI 插件宿主（ADR 0012），以及在 ADR 0026 决定之前的桌面外壳（ADR 0025） · `packages/ui` |
 | Desk 桥接层 | `specs/bridge` · 集成层的契约 `specs/item`、`specs/view` 和 `specs/connector`（ADR 0032） · `packages/bridge` · `crates/desk-bridge`（由这些契约和 `specs/plugin` 生成的类型） |
 | Rust 核心 | `crates/desk-core`（还提供集成层的 `data.*`、`connector.*`、`view.*`、`catalog.get`，并基于操作系统日历定义内置连接器 `desk.calendar` 和 `desk.reminders`，ADR 0036，仍处于提议阶段；http 连接器按清单由核心自己运行，令牌也只由核心读取，ADR 0106） · `crates/desk-index`（存放在一个 SQLite 文件中的条目索引，ADR 0033） · `crates/desk-plugin-host`（在 Wasmtime 上运行逻辑插件和 Wasm 连接器，ADR 0019；ADR 0034 仍处于提议阶段） · `crates/desk-vm` · `crates/desk-brain*` |
-| Tauri 外壳 | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`（macOS 上的电脑操作：截图、辅助功能树、输入、应用），核心在 `computer:see` 和 `computer:control` 之下以 `computer.*` 提供；智能体的每个操作都要等用户批准（ADR 0120、ADR 0123） · `apps/desk/shell` 和 `crates/desk-web`：第 1 阶段结束时取代它的 CEF 外壳（ADR 0143） |
-| 操作系统 | `apps/desk/src-tauri/capabilities` · 发布工作流（签名、公证） |
+| 外壳（CEF） | `apps/desk/shell`：基于 winit 和 CEF 的应用 `endue-desk`（ADR 0143），以及 `crates/desk-web`：不依赖引擎，决定其 URL 协议返回什么、每个页面是哪个调用方 · `crates/desk-sys` · `crates/desk-computer`（macOS 上的电脑操作：截图、辅助功能树、输入、应用），核心在 `computer:see` 和 `computer:control` 之下以 `computer.*` 提供；智能体的每个操作都要等用户批准（ADR 0120、ADR 0123） |
+| 操作系统 | `apps/desk/shell/packager`：安装包、CEF 的辅助应用及其权限（entitlements，ADR 0145） · 发布工作流（签名、公证） |
 
 ## 外壳与屏幕的去向
 
-目前 Desk 是一个只带一个操作系统 Web 视图的 Tauri 窗口，每个插件窗口都是这一个页面里的沙箱 iframe。外壳和所有插件共用一个进程和一个主线程，所以一个陷入死循环的插件会卡住整个桌面，而且 Linux 上没有 WebGPU。ADR 0140 改变了这一点：每个窗口都在自己的进程中渲染，由 Desk 自己基于 wgpu 的合成器摆放它们渲染的结果。
+在第 1 阶段之前，Desk 是一个只带一个操作系统 Web 视图的 Tauri 窗口，每个插件窗口都是这一个页面里的沙箱 iframe。外壳和所有插件共用一个进程和一个主线程，所以一个陷入死循环的插件会卡住整个桌面，而且 Linux 上没有 WebGPU。ADR 0140 改变了这一点：每个窗口都在自己的进程中渲染，由 Desk 自己基于 wgpu 的合成器摆放它们渲染的结果。从第 1 阶段起，每个插件表面都是自己的 Chromium 渲染进程，一个渲染进程崩溃只会让它自己的窗口变空；在第 2 阶段合成它们之前，窗口仍是外壳页面中的框架。
 
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
@@ -66,9 +66,9 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
 
 | 阶段 | 变化 | 状态 |
 | --- | --- | --- |
-| 0 | 在 Tauri 应用上：每个表面在 `desk-plugin` 协议上有自己的源；只有可见窗口和最近获得焦点的 8 个保留活动框架；繁重的工作移到 Worker；停止响应的框架只在自己的窗口上提供“等待”或“停止” | 进行中 |
-| 1 | 外壳成为基于 winit 和 CEF 的 Rust 二进制程序（`apps/desk/shell`，ADR 0143），显示现在的外壳页面，并移除 Tauri；每个插件 iframe 都是自己的 Chromium 渲染进程；应用级 e2e 通过 Chromium 的远程调试驱动它（ADR 0144） | 进行中：外壳已能用 CEF 打开窗口（#41） |
-| 2 | 合成器（`crates/desk-compositor`）绘制桌面并摆放每个表面的纹理；表面使用同一个协议（`specs/surface`，ADR 0141）；CEF 在屏幕外渲染每个插件；窗口管理器从 `packages/runtime` 移到 Rust | 计划中 |
+| 0 | 在 Tauri 应用上：每个表面在 `desk-plugin` 协议上有自己的源；只有可见窗口和最近获得焦点的 8 个保留活动框架；繁重的工作移到 Worker；停止响应的框架只在自己的窗口上提供“等待”或“停止” | 已完成 |
+| 1 | 外壳成为基于 winit 和 CEF 的 Rust 二进制程序（`apps/desk/shell`，ADR 0143），显示现在的外壳页面，并移除 Tauri；每个插件 iframe 都是自己的 Chromium 渲染进程；应用级 e2e 通过 Chromium 的远程调试驱动它（ADR 0144） | 已完成（#97）：CEF 桌面以 Tauri 应用的名字 `endue-desk` 取代了它，canary 构建它；Windows 和 Linux 上的 WebGPU 在这两个系统上检查（#61），第一个通过更新程序安装的 beta 随下一条发布线到来 |
+| 2 | 合成器（`crates/desk-compositor`）绘制桌面并摆放每个表面的纹理；表面使用同一个协议（`specs/surface`，ADR 0141）；CEF 在屏幕外渲染每个插件；窗口管理器从 `packages/runtime` 移到 Rust | 进行中 |
 | 3 | 原生插件：通过 `desk.sock` 使用表面协议和桥接层的进程 | 计划中 |
 
 插件代码在任何阶段都无需改动：清单、SDK 和桥接层的传输格式保持不变。插件获得的是自己的进程和源，以及所有操作系统上的 WebGPU。只有可见窗口和最近获得焦点的 8 个保留活动进程，其余带着状态休眠（ADR 0142）。在 macOS 上的概念验证用 wgpu 合成了 30 个屏幕外 CEF 表面，在其中运行了 WebGPU，并且在杀掉一个渲染进程时其他表面仍在继续绘制；一个轻量的渲染进程约占 40 MiB（`spikes/compositor/README.md`）。Windows 和 Linux 尚待验证。
@@ -81,7 +81,7 @@ Emacs 在小型 C 核心之上用 Elisp 运行几乎所有功能，而且可以�
 | --- | --- | --- | --- |
 | 内核 | 内核 | C 核心 | Rust 核心 |
 | 系统调用 | syscall | Lisp 原语 | Desk 桥接层 API |
-| 驱动程序 | 设备驱动程序 | 操作系统胶水代码 | Tauri 外壳 + Rust crate |
+| 驱动程序 | 设备驱动程序 | 操作系统胶水代码 | 外壳（winit、CEF） + Rust crate |
 | 窗口管理器 | 窗口管理器 | frame · window | 3D 画布合成器 |
 | Shell | 终端 shell | M-x | Eris · 命令面板 |
 | 应用 | 应用程序 | 包（Elisp） | 插件（UI · Wasm · MCP） |
@@ -108,7 +108,7 @@ Emacs 在小型 C 核心之上用 Elisp 运行几乎所有功能，而且可以�
 
 ```text
  ┌─ rebuild ──────────────────────────────────────────────────────┐
- │  Rust core · Tauri shell · bridge types   restart after update │
+ │  Rust core · Shell (CEF) · bridge types   restart after update │
  │  ┌─ restart ────────────────────────────────────────────────┐  │
  │  │  web runtime                         window reload, ~2 s │  │
  │  │  ┌─ instant ──────────────────────────────────────────┐  │  │

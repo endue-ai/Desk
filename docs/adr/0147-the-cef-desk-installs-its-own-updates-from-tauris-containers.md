@@ -66,6 +66,11 @@ on beta installs the CEF build as it installs any other.
 * **The `.deb` transition.** A Tauri desk restarts the binary it started as, `/usr/bin/endue-desk`,
   which the CEF `.deb` removes: the CEF `.deb` carries the launcher there too until the CEF binary
   takes that name at the end of Stage 1.
+* Update (2026-11-10, #97): the CEF binary took that name. The `.deb`'s launcher is
+  `/usr/bin/endue-desk` itself, so the second copy is gone; on Windows the CEF setup installs
+  `endue-desk.exe` over the Tauri desk's, so its shortcuts and start at login keep working; on macOS
+  the restart follows the new app's Info.plist, which a test keeps (an `endue-desk-cef` app updated
+  into an `endue-desk` one restarts under the new name, `crates/desk-update/tests/installer.rs`).
 
 ### Consequences
 

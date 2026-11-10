@@ -2,7 +2,7 @@
 // sites gives each window its own process. A surface's host is `<surface>.<plugin label>`, and the path
 // keeps its shape, `/<plugin id>/<path>`, so file lookup does not change. Two labels make the whole
 // host the site: the last label is never a known suffix, since a plugin label always holds a `-`.
-// apps/desk/src-tauri/src/protocol/hosts.rs parses the same shape and refuses a path of another plugin.
+// crates/desk-web/src/plugin_scheme/hosts.rs parses the same shape and refuses a path of another plugin.
 import type { PluginInfo, PluginManifest } from "@endue-ai/bridge";
 import type { PluginHostOptions } from "./plugin-host-deps";
 

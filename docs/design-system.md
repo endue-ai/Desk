@@ -259,6 +259,6 @@ re-announcing the entire page. Controls retain visible focus and work with keybo
 ## Validation
 
 Run `pnpm exec vitest run packages/ui packages/runtime/src/theme.test.ts plugins/theme`, `just check`,
-`just check-app`, and `just test-e2e packages/runtime/e2e/design-system.spec.ts`. The browser test loads
+`just check-shell`, and `just test-e2e packages/runtime/e2e/design-system.spec.ts`. The browser test loads
 Notes with the served shared sheets and checks live light/dark and reduced-motion changes inside its
 sandbox. Use `just test-e2e` only: on macOS it runs the supported Linux container.

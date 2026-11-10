@@ -6,14 +6,14 @@ English · [日本語](i18n/ja/architecture.md) · [中文](i18n/zh/architecture
 This is the English summary of the design. The source of truth is `docs/ko/desk-structure.md`; decisions
 that are hard to reverse are in `docs/adr/`.
 
-Desk is one OS built as one app: a Tauri shell and a small Rust core carry a web runtime. The runtime
+Desk is one OS built as one app: a Rust shell on Chromium (CEF) and a small Rust core carry a web runtime. The runtime
 owns settings, keyboard bindings and their persistence. Other features on top are plugins. Like Emacs,
 the Rust core keeps primitives while plugins can be changed while the app is running.
 
-The shell and the screen are changing: Desk is moving from Tauri and the OS webviews to a Rust shell on
-Chromium (CEF), and then to a compositor of its own in which every window renders in its own process
-([ADR 0140](adr/0140-a-wgpu-compositor-over-cef-off-screen-surfaces.md)). Stage 1 is in progress; until
-it ships, the Tauri shell described below is what runs. "Where the shell and the screen are going",
+The shell and the screen are changing: Desk has moved from Tauri and the OS webviews to a Rust shell on
+Chromium (CEF), and moves on to a compositor of its own in which every window renders in its own process
+([ADR 0140](adr/0140-a-wgpu-compositor-over-cef-off-screen-surfaces.md)). Stage 1 ended with the Tauri
+shell deleted; the shell described below is the CEF one. "Where the shell and the screen are going",
 below the layer table, has the stages.
 
 ## At a glance
@@ -37,7 +37,7 @@ below the layer table, has the stages.
  │              · logic plugin and connector host (Wasm) · VM     │
  │              · built-in connectors · brain clients             │
  ├────────────────────────────────────────────────────────────────┤
- │ Tauri shell  windows · webviews · primitives (fs, proc, net,   │  rebuild
+ │ Shell (CEF)  windows · browsers · primitives (fs, proc, net,   │  rebuild
  │              audio)                                            │
  ├────────────────────────────────────────────────────────────────┤
  │ OS           macOS · Windows · Linux (signing, notarisation,   │  —
@@ -55,15 +55,17 @@ device. Everything else runs on the user's computer.
 | Web runtime | `packages/runtime`: the compositor, the UI plugin host (ADR 0012) and, until ADR 0026 is decided, the desk shell (ADR 0025) · `packages/ui` |
 | Desk bridge | `specs/bridge` · `specs/item`, `specs/view` and `specs/connector`, the integration layer's contracts (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (types generated from these and `specs/plugin`) |
 | Rust core | `crates/desk-core`, which also serves the integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) and defines the built-in connectors `desk.calendar` and `desk.reminders` over the OS calendar (ADR 0036, proposed), and runs http connectors from their manifests, reading their tokens itself (ADR 0106) · `crates/desk-index`, the item index in one SQLite file (ADR 0033) · `crates/desk-plugin-host`, which runs logic plugins (ADR 0019) and Wasm connectors (ADR 0034, proposed) on Wasmtime · `crates/desk-vm` · `crates/desk-brain*` |
-| Tauri shell | `apps/desk/src-tauri` · `crates/desk-sys` · `crates/desk-computer`, computer use on macOS (screenshots, the accessibility tree, input, apps), which the core serves as `computer.*` under `computer:see` and `computer:control`, each act of an agent waiting for the person's approval (ADR 0120, ADR 0123) · `apps/desk/shell` and `crates/desk-web`, the CEF shell that replaces it when Stage 1 ends (ADR 0143) |
-| OS | `apps/desk/src-tauri/capabilities` · release workflow (signing, notarisation) |
+| Shell (CEF) | `apps/desk/shell`, the app `endue-desk` on winit and CEF (ADR 0143), and `crates/desk-web`, what its URL schemes answer and which caller each page is, without the engine · `crates/desk-sys` · `crates/desk-computer`, computer use on macOS (screenshots, the accessibility tree, input, apps), which the core serves as `computer.*` under `computer:see` and `computer:control`, each act of an agent waiting for the person's approval (ADR 0120, ADR 0123) |
+| OS | `apps/desk/shell/packager`: the bundles, CEF's helper apps and their entitlements (ADR 0145) · release workflow (signing, notarisation) |
 
 ## Where the shell and the screen are going
 
-Today the desk is one Tauri window with one OS webview, and every plugin window is a sandboxed iframe in
-that one page. The shell and all plugins share one process and one main thread, so a plugin that loops
-stalls the whole desk, and WebGPU is missing on Linux. ADR 0140 changes that: every window renders in its
-own process, and a compositor of Desk's own, on wgpu, places what they render.
+Until Stage 1 the desk was one Tauri window with one OS webview, and every plugin window a sandboxed
+iframe in that one page. The shell and all plugins shared one process and one main thread, so a plugin
+that looped stalled the whole desk, and WebGPU was missing on Linux. ADR 0140 changes that: every window
+renders in its own process, and a compositor of Desk's own, on wgpu, places what they render. Since Stage
+1 every plugin surface is its own Chromium renderer, so a dead renderer costs its window only; the
+windows are still frames in the shell's page until Stage 2 composites them.
 
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
@@ -75,9 +77,9 @@ own process, and a compositor of Desk's own, on wgpu, places what they render.
 
 | Stage | What changes | State |
 | --- | --- | --- |
-| 0 | On the Tauri app: each surface gets its own origin on the `desk-plugin` scheme; only the windows in sight and the 8 most recently focused keep a live frame; heavy work moves to workers; a frame that stops answering offers Wait or Stop on its window | in progress |
-| 1 | The shell becomes a Rust binary on winit and CEF (`apps/desk/shell`, ADR 0143) showing today's shell page, and Tauri is removed; every plugin iframe is its own Chromium renderer; app-level e2e drives it over Chromium's remote debugging (ADR 0144) | in progress: the shell opens its window with CEF (#41) |
-| 2 | The compositor (`crates/desk-compositor`) draws the desk and places each surface's texture; surfaces speak one protocol (`specs/surface`, ADR 0141); CEF renders each plugin off-screen; the window manager moves from `packages/runtime` to Rust | planned |
+| 0 | On the Tauri app: each surface gets its own origin on the `desk-plugin` scheme; only the windows in sight and the 8 most recently focused keep a live frame; heavy work moves to workers; a frame that stops answering offers Wait or Stop on its window | done |
+| 1 | The shell becomes a Rust binary on winit and CEF (`apps/desk/shell`, ADR 0143) showing today's shell page, and Tauri is removed; every plugin iframe is its own Chromium renderer; app-level e2e drives it over Chromium's remote debugging (ADR 0144) | done (#97): the CEF desk replaced the Tauri app under its name, `endue-desk`, and canary builds it; WebGPU on Windows and Linux is checked on those OSes (#61), and the first beta that installs through the updater comes with the next release line |
+| 2 | The compositor (`crates/desk-compositor`) draws the desk and places each surface's texture; surfaces speak one protocol (`specs/surface`, ADR 0141); CEF renders each plugin off-screen; the window manager moves from `packages/runtime` to Rust | in progress |
 | 3 | Native plugins: a process that speaks the surface protocol and the bridge over `desk.sock` | planned |
 
 Plugin code does not change at any stage: the manifest, the SDK and the bridge's wire format stay. A
@@ -96,7 +98,7 @@ takes the same shape and names the parts the way an operating system would.
 | --- | --- | --- | --- |
 | Kernel | kernel | C core | Rust core |
 | System calls | syscalls | Lisp primitives | Desk bridge API |
-| Drivers | device drivers | OS glue | Tauri shell + Rust crates |
+| Drivers | device drivers | OS glue | the shell (winit, CEF) + Rust crates |
 | Window manager | window manager | frames · windows | 3D canvas compositor |
 | Shell | terminal shell | M-x | Eris · command palette |
 | Apps | applications | packages (Elisp) | plugins (UI · Wasm · MCP) |
@@ -131,7 +133,7 @@ Six principles follow from this:
 
 ```text
  ┌─ rebuild ──────────────────────────────────────────────────────┐
- │  Rust core · Tauri shell · bridge types   restart after update │
+ │  Rust core · Shell (CEF) · bridge types   restart after update │
  │  ┌─ restart ────────────────────────────────────────────────┐  │
  │  │  web runtime                         window reload, ~2 s │  │
  │  │  ┌─ instant ──────────────────────────────────────────┐  │  │

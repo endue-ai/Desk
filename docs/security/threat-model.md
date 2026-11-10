@@ -60,13 +60,18 @@ On main:
   origin, no forms, popups or top-level navigation.
 - HTML responses carry `default-src 'none'`, `connect-src 'none'`, `frame-src 'none'` and
   `form-action 'none'`, allowing scripts, styles, images and fonts from the scheme only
-  (`apps/desk/src-tauri/src/protocol.rs`). A plugin cannot fetch, embed or post anywhere.
+  (`crates/desk-web/src/plugin-csp.txt`, served by `crates/desk-web/src/plugin_scheme.rs`). A plugin
+  cannot fetch, embed or post anywhere.
 - The runtime knows which plugin calls by the frame a `postMessage` comes from
   (`packages/runtime/src/plugins.ts`) and forwards the call under that plugin's id, so a plugin can
   only call as itself.
-- Only the main window holds a Tauri capability, limited to `bridge_call`, `desk_ready` and core events
-  (`apps/desk/src-tauri/capabilities/default.json`). `withGlobalTauri` is off, and the app's own CSP
-  lets the main webview connect to IPC only (`apps/desk/src-tauri/tauri.conf.json`).
+- Each page may run a fixed list of the shell's own commands (`crates/desk-web/src/sender.rs`, in
+  place of the Tauri shell's capabilities since #97): the main page `desk_ready`, the start's commands
+  and the file dialog, the palette and the floating Eris a few of their own, a plugin frame none. Any
+  page the desk knows may make a bridge call, and the shell takes its caller from the frame that sent
+  it, never from the call (#43): a plugin frame on its own `desk-plugin` host calls as that plugin
+  only, the palette and Eris by the window they were made for, and a page the desk does not know is
+  refused.
 - The core serves a plugin's files only from inside its folder (`crates/desk-core/src/manifest.rs`).
 
 Gaps:
@@ -75,9 +80,10 @@ Gaps:
   arrive without it. No issue yet.
 - `'unsafe-inline'` is allowed for scripts, so a plugin that inserts hostile content as HTML runs it
   with the plugin's grants. The grants still bound the damage. No issue yet.
-- Nothing tests that a plugin frame cannot reach Tauri IPC. The core trusts the caller name the main
-  webview passes to `bridge_call` (`apps/desk/src-tauri/src/commands/bridge.rs`), so that claim
-  carries the whole boundary. No issue yet.
+- The desk's own page (`desk-app://app/`) may still name the caller of a call it forwards for a
+  frame, so the runtime's routing by the sending frame (`packages/runtime/src/plugins.ts`) carries
+  that part of the boundary; `crates/desk-web/src/sender.rs` tests that no other page can name one.
+  No issue yet.
 - The runtime e2e fixture serves plugins without this CSP, so no test exercises it. No issue yet.
 
 ## Wasm logic plugin
@@ -269,17 +275,20 @@ than one the desk has seen is refused, so a stale or replayed copy cannot bring 
 taken down. A check carries no identifier: it reads static files.
 
 On main: the `update.*` contract with `update:manage` (#274), the decisions in `desk-update` (#292), the
-core serving `update.*` and `desk update` (#303), the app's HTTPS transport and its installer over
-`tauri-plugin-updater` with the shell's Restart to update (#297), and the release workflows
+core serving `update.*` and `desk update` (#303), the app's HTTPS transport and its installer, over
+`tauri-plugin-updater` on the Tauri desk (#297) and `desk_update::install` on the CEF desk (#47, ADR
+0147), with the tray's Restart to update, and the release workflows
 (`release-build`, `canary`, `release`, `promote`, `rollback`; #298), which publish nothing until people
 provision the R2 bucket, the updater key and the Apple certificate. Applying a build stays with the
 person: only the runtime and the CLI hold `update:manage`, and the runtime asks the person when anyone
-else invokes `desk.update.apply`. The Tauri plugin is registered only in builds with a key, and none of
-its JavaScript commands is in a capability, so a page cannot install anything itself.
+else invokes `desk.update.apply`. The updater runs only in builds with a key
+(`apps/desk/shell/src/release.rs`), and no page's commands install anything
+(`crates/desk-web/src/sender.rs`), so a page can only ask the core's `update.apply`.
 
 Gaps: Windows Authenticode, since the certificate type is not chosen (SmartScreen warns on a first
-install); `.deb` and `.rpm` updates ask for a password through pkexec; no update smoke test on three
-OSes yet (UPD-16, no issue yet); rotating the updater key takes two releases.
+install); `.deb` updates ask for a password through pkexec; the update smoke
+(`e2e/smoke/update-two-hops.sh`) runs on macOS and Linux, Windows by hand (#61); rotating the updater
+key takes two releases.
 
 ## Local e2e and dev tooling
 

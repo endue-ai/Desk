@@ -33,7 +33,7 @@ R2 에는 정적 파일만 있고, 판단은 전부 기기 안에서 합니다.
 | 채널(canary → beta → stable)과 단계적 롤아웃 | Chrome(Omaha) | 채널별 `index.json`, `rollout` 비율, 기기 안의 난수 버킷 | UPD-01 · UPD-08 |
 | 정적 appcast + EdDSA 서명 | Sparkle | R2 의 정적 JSON + minisign(Ed25519) | UPD-01 · UPD-02 |
 | 메타데이터도 서명, 동결 · 다운그레이드 방어 | TUF | `index.json.sig` · `release.json.sig`, `requireSignedVersion`, 버전 단조 증가 | UPD-02 · UPD-08 |
-| 매니페스트 형식 · OS 별 설치 · 서명 검증 | Tauri updater 플러그인 | 그대로 쓴다. 정책(어느 판 · 언제)만 Desk 가 더한다 | UPD-11 · UPD-12 |
+| 매니페스트 형식 · OS 별 설치 · 서명 검증 | Tauri updater 플러그인 | 형식과 서명은 그대로 쓴다. OS 별 설치는 CEF 데스크가 `desk_update::install` 로 같은 아티팩트를 직접 한다(ADR 0147). 정책(어느 판 · 언제)은 Desk 가 더한다 | UPD-11 · UPD-12 |
 | 받아 둔 뒤 `quitAndInstall` | Electron autoUpdater | 받아 두기와 적용을 나눈 상태 기계 | UPD-09 · UPD-11 |
 
 ## 아키텍처 매핑
@@ -48,9 +48,9 @@ R2 에는 정적 파일만 있고, 판단은 전부 기기 안에서 합니다.
   저장소(디스크 · sha256 · `staged.json`), 체크 스케줄, 상태 기계. 전부 `crates/desk-update/tests` 로 검증한다.
 - **desk-core `core_update.rs`**: 브리지 `update.*` 를 답하고 `update.changed` 를 보낸다. 실제로 받고 설치하는 일은
   `Updater` 트레이트 뒤에 둔다(PKG-01: 코어는 트레이트로만 안다, `with_brain` · `with_calendar` 와 같은 꼴).
-- **앱 어댑터 `apps/desk/src-tauri/src/update.rs`**: 받기는 `desk-update` 의 `https`(ureq · rustls), 설치와 재시작은
-  `tauri-plugin-updater`. 플러그인의 업데이트 핸들은 받아 둔 판의 `release.json` 으로 만들고, 바이트는 desk-update 가
-  검증한 것을 넘긴다. 플러그인은 키가 있는 빌드에만 등록하고, 그 JavaScript 커맨드는 어떤 capability 에도 넣지 않는다.
+- **앱 어댑터 `apps/desk/shell/src/update.rs`**: 받기는 `desk-update` 의 `https`(ureq · rustls), 설치와 재시작은
+  `desk_update::install`(ADR 0147). 1단계가 끝나기 전 Tauri 셸은 `tauri-plugin-updater` 로 설치했다(`update.rs`, #97 에서
+  지움). 업데이터는 키가 있는 빌드에서만 돌고, 어느 페이지의 커맨드도 설치하지 않는다(`crates/desk-web/src/sender.rs`).
 - **셸**(`apps/desk/src/updates.ts`): 레일 attention 행, 알림 한 번, `desk.update.*` 커맨드. 정책 플러그인은 두지 않는다
   (릴리스 빌드에는 내장 플러그인이 실리지 않고, 커맨드는 늘 있어야 해서 `desk` 소유다). **CLI**: `desk update`.
   **트레이**: "Restart to update".
@@ -168,7 +168,7 @@ desk/
 
 ## 데스크의 판단
 
-입력: 현재 버전(semver, `tauri.conf.json` 의 `version` 이 `package_info` 로 들어온다) · 내 커밋 · 내 target
+입력: 현재 버전(semver, 빌드 때 `DESK_VERSION` 으로 들어온다) · 내 커밋 · 내 target
 (`{os}-{arch}` 와 `{os}-{arch}-{installer}`, 플러그인이 정한다: `darwin-aarch64`, `windows-x86_64-nsis`,
 `linux-x86_64-deb` …) · 채널 · 기기 난수 salt(설치 때 한 번 만들어 데이터 폴더에 둔다).
 
@@ -213,7 +213,7 @@ idle ──check──▶ checking ──▶ up-to-date ──(4 h)──▶ idl
 | 서명의 버전 | 받을 때 | `requireSignedVersion: true`: 서명의 trusted comment 가 품은 버전이 매니페스트의 버전과 같아야 한다(옛 아티팩트에 새 버전 번호를 붙여 내리는 공격 방어) |
 
 키는 하나(`tauri signer generate`, Ed25519). 개인키와 비밀번호는 GitHub `signing` 환경에만 있고, 공개키는
-`tauri.conf.json` 의 `plugins.updater.pubkey` 에 내장돼 바이너리에 들어간다. 키 교체는 새 공개키를 내장한 판을
+빌드 때 `DESK_UPDATER_PUBKEY` 로 바이너리에 들어간다. 키 교체는 새 공개키를 내장한 판을
 *옛 키로 서명해* 먼저 내고, 그 다음 판부터 새 키로 서명한다(2단계 키 롤오버).
 
 ## OS 별 적용
@@ -246,7 +246,7 @@ idle ──check──▶ checking ──▶ up-to-date ──(4 h)──▶ idl
 
 | 워크플로 | 트리거 | 하는 일 |
 | --- | --- | --- |
-| `release-build.yml` | canary · release 가 부름 | 4 target(`darwin-aarch64` · `darwin-x86_64` · `windows-x86_64` · `linux-x86_64`) `tauri build`(`createUpdaterArtifacts`, 서명에 버전, 설정의 `plugins.updater.pubkey` 에 공개키 — 없으면 CLI 가 서명을 거부한다) → macOS codesign + notarize(Apple 비밀값이 있을 때) → 정규 이름으로 모으기. Windows 는 NSIS 만, Authenticode 는 인증서를 정한 뒤 |
+| `release-build.yml` | canary · release 가 부름 | 4 target(`darwin-aarch64` · `darwin-x86_64` · `windows-x86_64` · `linux-x86_64`) CEF 데스크 빌드(`cargo build -p desk-shell`)와 cargo-packager 묶음(ADR 0145) → macOS codesign + notarize(Apple 비밀값이 있을 때) → `tauri signer sign --app-version` 으로 업데이터 아티팩트 서명 → 패키지마다 설치 스모크 → 정규 이름으로 모으기. Windows 는 NSIS 와 MSI, Authenticode 는 `DESK_WINDOWS_SIGN_COMMAND` 를 정한 뒤 |
 | `canary.yml` | main push | 빌드 → R2 `releases/<v>/` 업로드(순서대로) → `channels/canary/index.json` 갱신 · 서명 → 2주 지난 canary 정리(§결정 3). 버전은 `<다음>-pre.<run>`, 노트는 커밋 페이지 |
 | `promote.yml` | 주 1회 · 수동 | 3일 넘게 canary 에 있던 가장 새 판을 `channels/beta/index.json` 에 올린다. 재빌드 없음, 포인터만. 새 크래시 조건(ADR 0007)은 크래시 리포트가 생기면 더한다 |
 | `release.yml` | 태그 `v*`(사람) | canary 와 같은 빌드를 태그 버전으로 → `channels/stable/index.json` → GitHub Release(자동 생성 노트, 바이너리 없음, R2 링크). `stable` 환경(사람 승인 단계) |
@@ -254,7 +254,7 @@ idle ──check──▶ checking ──▶ up-to-date ──(4 h)──▶ idl
 
 - **버전**: 태그 빌드는 태그 그대로(`v0.2.0` → `0.2.0`), main 빌드는 가장 최근 태그의 다음 패치 +
   `-pre.<run>`(`0.2.1-pre.48`, 태그가 없으면 `0.1.0-pre.<run>`). semver 프리릴리스라 빌드마다 유일하고 태그 빌드보다
-  낮다. 워크플로가 빌드 때 `tauri.conf.json` 의 `version` 을 덮어쓰므로 저장소의 `0.0.0` 은 그대로다. 채널은 버전
+  낮다. 워크플로가 빌드 때 버전을 `DESK_VERSION` 으로 넣으므로 저장소의 `0.0.0` 은 그대로다. 채널은 버전
   문자열이 아니라 *어느 인덱스에 올랐는가* 다. 그래서 같은 아티팩트가 canary → beta 로 올라간다.
 - **비밀**: `signing` 환경 — `TAURI_SIGNING_PRIVATE_KEY` · `_PASSWORD`, `APPLE_CERTIFICATE` ·
   `APPLE_CERTIFICATE_PASSWORD` · `APPLE_SIGNING_IDENTITY` · `APPLE_ID` · `APPLE_PASSWORD` · `APPLE_TEAM_ID`, Windows
@@ -284,8 +284,8 @@ idle ──check──▶ checking ──▶ up-to-date ──(4 h)──▶ idl
 | UPD-08 | 정책(`desk-update`): 인덱스 · 매니페스트 파싱과 서명 검증, 후보 → `minFrom` 경로 → 롤아웃 → 다운그레이드 금지, 받아 둔 판의 운명(§데스크의 판단 1–5) | 있음 (#292) | 1 |
 | UPD-09 | 스테이징: 받은 바이트를 `<data>/updates/<v>/` 에, sha256 · 길이 비교, `staged.json`, 디스크에 한 판, 버리기 | 있음 (#292) | 1 |
 | UPD-10 | 스케줄: 시작 30 s · 4 h 지터 · 수동 · 백오프, 전부 메인 스레드 밖. `desk.update.check: false` 면 네트워크 0 | 있음 (#292) | 1 |
-| UPD-11 | 적용: 재검증(sha256 + minisign) → 플러그인 `install` → 재시작. OS 별 경로는 §OS 별 적용. 실패는 `failed{reason}` 로 남고 받아 둔 것은 지운다 | 있음 (#297) | 1 |
-| UPD-12 | 앱 어댑터: `tauri-plugin-updater` 등록, 컴파일 시점 `DESK_UPDATER_PUBKEY` · `DESK_BUILD_COMMIT` 내장, 채널별 인덱스 주소, 디버그 `DESK_UPDATE_URL`, 트레이 항목 | 있음 (#297) | 1 |
+| UPD-11 | 적용: 재검증(sha256 + minisign) → 설치(`desk_update::install`, Tauri 셸에서는 플러그인 `install`) → 재시작. OS 별 경로는 §OS 별 적용. 실패는 `failed{reason}` 로 남고 받아 둔 것은 지운다 | 있음 (#297) | 1 |
+| UPD-12 | 앱 어댑터: 업데이터 등록(1단계가 끝난 뒤 `apps/desk/shell/src/update.rs`, 그 전에는 `tauri-plugin-updater`), 컴파일 시점 `DESK_UPDATER_PUBKEY` · `DESK_BUILD_COMMIT` 내장, 채널별 인덱스 주소, 디버그 `DESK_UPDATE_URL`, 트레이 항목 | 있음 (#297) | 1 |
 | UPD-13 | 코어: `Updater` 트레이트 · `core_update.rs` · 설정 `desk.update.{channel,auto,check}` · `desk` 와 `cli` 에 `update:manage` · 로그 채널 `desk.update` | 있음 (#303) | 1 |
 | UPD-14 | 셸(`apps/desk/src/updates.ts`): 레일 attention 행(받는 중 · 준비됨 · 버튼), 판마다 알림 한 번, 커맨드 넷, 다른 호출자의 `desk.update.apply` 는 사람에게 묻기 | 있음 (#297) | 1 |
 | UPD-15 | CLI: `desk update`(상태) · `desk update check` · `desk update apply` | 있음 (#303) | 1 |

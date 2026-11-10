@@ -51,6 +51,8 @@ three OSes, and the runtime suites then test the engine the app ships.
   the only entry, and the guard and the agent hook stay.
 * macOS joins the app suite when the CEF desk ships, without tauri-driver.
 * Until the CEF desk replaces the Tauri app at the end of Stage 1, both runners stay as they are.
+* Update (2026-11-10, #97): Stage 1 ended. `DESK_E2E_SHELL=tauri`, tauri-driver and the
+  `app-e2e-tauri` job are gone; the app e2e, its perf job and the install smoke drive the CEF desk only.
 
 ### Consequences
 

@@ -83,7 +83,7 @@ Emacs 에서 *작은 코어 + 모든 것은 커맨드 + 실행 중에 고친다*
 
 ### 셸과 원시 기능 (SYS)
 
-Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코어가 허락한 호출만 실행합니다.
+셸(`apps/desk/shell`)과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코어가 허락한 호출만 실행합니다.
 
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
@@ -94,7 +94,7 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | SYS-05 | ui 원시: 네이티브 알림 · 파일/폴더 선택 창 · 외부 링크 열기 · 클립보드(1) · 다중 창 · 전체 화면 · 항상 위 · 트레이 · 전역 단축키(4) | 없음 | 1 · 4 |
 | SYS-06 | 토큰과 비밀은 OS 키체인(Keychain · Credential Manager · libsecret)에만 | 없음 | 3 |
 | SYS-07 | `endue://` 딥 링크: 로그인 콜백 · 플러그인 설치 링크 · 커맨드 호출(권한 검사 뒤) | 없음 | 3 |
-| SYS-08 | Tauri capability 는 창마다 최소. 셸이 노출하는 커맨드는 `bridge_call` 하나 | 있음 | 1 |
+| SYS-08 | 창마다 페이지가 부를 수 있는 셸 커맨드는 최소(Tauri capability 였고, 1단계가 끝난 뒤 `crates/desk-web/src/sender.rs` 의 창별 목록). 코어로 가는 커맨드는 `bridge_call` 하나 | 있음 | 1 |
 | SYS-09 | updater: 채널(canary · beta · stable) · 서명 검증 · 재시작 시점 선택 · 롤백 | 일부 (ADR 0054, `updater-requirements.md`: #274 계약 · #294 R2 게시 · 롤백. 데스크 쪽은 #278 · #296 · #297) | 1 |
 | SYS-10 | `desk-plugin://` 스킴: 플러그인 파일 서빙 · CSP · 리비전으로 캐시 무효화 | 있음 | 1 |
 
@@ -120,7 +120,7 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
-| RT-01 | 셸 UI(#21): 모드 · 데스크톱 1–4 · 에이전트/스페이스 바 · Eris · 상태 레일 · 아래 가장자리 · 모드가 못 옮기는 시스템 레이어 · ⌘N · 분할 · 키 재바인딩 | 일부 (#70: 전부 런타임에 있고 `pnpm dev` 의 브라우저 스텁 위에서 돎. Tauri 앱은 아직 `createRuntime` 만 띄움) | 1 |
+| RT-01 | 셸 UI(#21): 모드 · 데스크톱 1–4 · 에이전트/스페이스 바 · Eris · 상태 레일 · 아래 가장자리 · 모드가 못 옮기는 시스템 레이어 · ⌘N · 분할 · 키 재바인딩 | 일부 (#70: 전부 런타임에 있고 `pnpm dev` 의 브라우저 스텁 위에서 돎. 앱(1단계가 끝난 뒤 CEF 데스크)도 `mountDesk` 로 셸을 띄움) | 1 |
 | RT-02 | 표면 모델: pane 트리(분할 · 탭 · 플로팅 · 오버레이) · 포커스 링 · 표면 간 드래그 · 크기 제약 · 데스크톱 간 이동 · 이름 붙인 레이아웃 저장 · 복원 | 일부 (placement 6종 · 레이아웃 저장 · #55 desk.session 복원 · #70 칸 분할 · 셸의 떠 있는 창 · 데스크톱 1–4. 탭 · 표면 간 드래그는 없음) | 1 |
 | RT-03 | 커맨드 팔레트: 모든 커맨드를 이름 · 설명 · 키로 검색, 최근 · 빈도 정렬, 인자 입력(completing-read), 플러그인이 공급자(파일 · 설정 · 플러그인 …)를 더한다 | 일부 (#55 `desk.palette`: 이름 · 키 검색, 최근 실행 순, `desk.palette.pick`(completing-read). 플러그인 공급자는 없음) | 1 |
 | RT-04 | 키맵 계층: 전역 < 모드 < 표면 < 플러그인-로컬. `when` 문맥식(포커스 표면 · 모드 · 플랫폼 · 설정) · 키 시퀀스(prefix) · 충돌 표시 · 사용자 바인딩은 텍스트 파일 | 일부 (#55 `desk.keys`: 계층 · 프레임 안의 키 · #70 재바인딩 `desk.keys.bindings`. `when` · prefix · 텍스트 파일은 없음) | 1 |
@@ -149,7 +149,7 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | PKG-03 | 로컬 IPC: 실행 중 데스크와 CLI 사이 유닉스 소켓 / named pipe. 같은 사용자만, 봉투는 브리지 그대로, 권한은 CLI 호출자로 | 없음 | 1 |
 | PKG-04 | `@endue-ai/plugin-sdk`: UI(있음) + 로직(WIT 바인딩 · Rust/TS 템플릿) + 도구(MCP 매니페스트 헬퍼) + `commands.register` · `keybindings` · `settings` · `i18n.t` · `theme.tokens` + 테스트 하네스 확장 | 일부 | 1 · 2 |
 | PKG-05 | `@endue-ai/ui`: 토큰(있음) + CSS 시트 + 프레임워크 없는 웹 컴포넌트 소수(button · input · list · dialog · menu · toast). iframe 안에서 import map 으로 쓴다 | 있음 (#72: `tokens.css` · desk-button · input · list · dialog · menu · toast, import map 으로) | 1 |
-| PKG-06 | `@endue-ai/bridge`: tauri · browser 어댑터(있음) + 소켓 어댑터, 메서드 메타(문서 · 권한) 노출 | 일부 | 1 |
+| PKG-06 | `@endue-ai/bridge`: cef · browser 어댑터(있음, tauri 어댑터는 1단계가 끝나며 지움) + 소켓 어댑터, 메서드 메타(문서 · 권한) 노출 | 일부 | 1 |
 | PKG-07 | `@endue-ai/create-plugin`: `pnpm create @endue-ai/plugin` — ui · logic(rust · ts) · tool(ts · python) · theme · pack 템플릿, 테스트와 validate 포함 | 일부 (#34: ui 템플릿만) | 2 |
 | PKG-08 | `@endue-ai/runtime` 은 앱과 함께(ADR 0003) 배포되고, 브라우저 진입점을 따로 갖는다 | 일부 | 1 |
 

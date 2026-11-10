@@ -1,5 +1,5 @@
 // Drags from the operating system (Finder, Explorer, a file manager) join the same contract (ADR
-// 0119). The app hears them from Tauri (apps/desk/src/native-files.ts) and tells the desk's page with
+// 0119). The app hears them from the shell (apps/desk/src/native-files.ts) and tells the desk's page with
 // a `desk:native-drag` event, in CSS pixels; the broker offers them as `desk/paths` to the frame under
 // the pointer. On a drop it sets `taken`: true once a plugin performed an effect, so the app opens
 // the files itself only when no plugin took them. Plugin frames cannot dispatch it: they are

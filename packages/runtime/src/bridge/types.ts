@@ -24,7 +24,7 @@ import type {
 
 /**
  * What the desk shell needs from the host. The browser stub (`browser.ts`) implements it for development
- * and tests; a Tauri adapter over `@endue-ai/bridge` comes later.
+ * and tests; the app's adapter is `@endue-ai/bridge`'s `cefAdapter` (`apps/desk/src/host.ts`).
  */
 
 /** Nine band energies in 0..1, index 0 = 80 Hz … 8 = 8 kHz (see `eris/voice.ts`). */

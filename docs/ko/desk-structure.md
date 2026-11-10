@@ -4,9 +4,9 @@
 
 > 이 문서가 Desk 설계의 단일 진실입니다. 코드와 어긋나면 ADR 로 결정을 남기고 이 문서를 고칩니다. 영어 요약은 `docs/architecture.md`, 되돌리기 어려운 결정은 `docs/adr/` 에 있습니다.
 
-Desk 는 Tauri 셸과 작은 Rust 코어 위에 웹 런타임을 얹고, 그 위의 모든 기능을 런타임 플러그인으로 만드는 하나의 OS 입니다. Emacs 처럼 코어는 원시 기능만 갖고, 나머지는 앱을 켠 채 바꿉니다.
+Desk 는 Chromium(CEF) 위의 Rust 셸과 작은 Rust 코어 위에 웹 런타임을 얹고, 그 위의 모든 기능을 런타임 플러그인으로 만드는 하나의 OS 입니다. Emacs 처럼 코어는 원시 기능만 갖고, 나머지는 앱을 켠 채 바꿉니다.
 
-셸과 화면은 바뀌는 중입니다. Tauri 와 OS 웹뷰를 걷어 내고 Chromium(CEF) 위의 Rust 셸로, 그다음 창마다 자기 프로세스가 그린 것을 Desk 의 컴포지터가 합성하는 구조로 갑니다 (ADR 0140). 1단계가 진행 중이고, 그것이 나오기 전까지 도는 것은 이 문서가 그리는 Tauri 셸입니다. 단계는 "기술 스택 장단점" 의 "화면 합성과 플러그인 스킴" 에 있습니다.
+셸과 화면은 바뀌는 중입니다. Tauri 와 OS 웹뷰를 걷어 내고 Chromium(CEF) 위의 Rust 셸로 옮겼고, 그다음 창마다 자기 프로세스가 그린 것을 Desk 의 컴포지터가 합성하는 구조로 갑니다 (ADR 0140). 1단계는 Tauri 셸을 지우고 끝났고 (#97), 이 문서가 그리는 셸은 CEF 셸입니다. 단계는 "기술 스택 장단점" 의 "화면 합성과 플러그인 스킴" 에 있습니다.
 
 ## 한눈에
 
@@ -29,7 +29,7 @@ Desk 는 Tauri 셸과 작은 Rust 코어 위에 웹 런타임을 얹고, 그 위
  │ Rust 코어  권한 · 이벤트 버스 · 저장소 · 항목 색인 · VM · 두뇌   │  재빌드
  │            · 로직(Wasm) 플러그인과 커넥터 호스트 · 내장 커넥터   │
  ├───────────────────────────────────────────────────────────────┤
- │ Tauri 셸   창 · 웹뷰 · 원시 기능(fs · proc · net · audio)        │  재빌드
+ │ 셸 (CEF)   창 · 브라우저 · 원시 기능(fs · proc · net · audio)    │  재빌드
  ├───────────────────────────────────────────────────────────────┤
  │ 운영체제   macOS · Windows · Linux (서명 · 공증 · OS 권한)        │  —
  └───────────────────────────────────────────────────────────────┘
@@ -45,7 +45,7 @@ Emacs 는 작은 C 코어 위에서 거의 모든 기능이 Elisp 로 돌고, �
 | --- | --- | --- | --- |
 | 커널 | 커널 | C 코어 | Rust 코어 |
 | 시스템 호출 | 시스템 콜 | Lisp 원시 함수 | Desk 브리지 API |
-| 드라이버 | 장치 드라이버 | OS 연동 코드 | Tauri 셸 + Rust crate |
+| 드라이버 | 장치 드라이버 | OS 연동 코드 | 셸(winit · CEF) + Rust crate |
 | 창 관리자 | 윈도 매니저 | 프레임 · 윈도 | 3D 캔버스 컴포지터 |
 | 셸 | 터미널 셸 | M-x | Eris · 명령 팔레트 |
 | 앱 | 응용 프로그램 | 패키지 (Elisp) | 플러그인 (UI · Wasm · MCP) |
@@ -68,7 +68,7 @@ Emacs 는 작은 C 코어 위에서 거의 모든 기능이 Elisp 로 돌고, �
 
 | 층 | 기술 | 장점 | 단점 | 대응 |
 | --- | --- | --- | --- | --- |
-| 셸 | 지금은 Tauri 2. 1단계부터 winit 과 CEF 위의 Rust 바이너리 `apps/desk/shell` (ADR 0143) | Rust 코어와 같은 프로세스. 쓰지 않는 웹뷰 런타임이 없음. 트레이 · 메뉴 · 단축키 · 대화상자는 독립 crate(tray-icon · muda · global-hotkey · rfd), 번들러 cargo-packager 가 CEF 도우미 앱을 앎 | Tauri 가 공짜로 주던 창 · 트레이 · 메뉴 연결 코드를 세 OS 에서 직접 지킴. CEF 내려받기와 빌드가 큼. macOS 는 도우미 번들 다섯 개를 서명 · 공증 | CEF 를 빌드하는 셸 crate 는 워크스페이스 기본 멤버에서 빼고, 엔진과 무관한 로직은 `crates/desk-web` 에 둬서 평소 명령은 CEF 를 빌드하지 않음. CEF 는 `OnScheduleMessagePumpWork` 일정대로 winit 이벤트 루프 안에서 돌림 (때 없이 돌리면 macOS 에서 한 번에 ~60 ms 막힘). Tauri crate 는 1단계가 끝날 때 지움 |
+| 셸 | winit 과 CEF 위의 Rust 바이너리 `apps/desk/shell`, 실행 파일 `endue-desk` (ADR 0143). 1단계가 끝나며 Tauri 2 를 대신함 (#97) | Rust 코어와 같은 프로세스. 쓰지 않는 웹뷰 런타임이 없음. 트레이 · 메뉴 · 단축키 · 대화상자는 독립 crate(tray-icon · muda · global-hotkey · rfd), 번들러 cargo-packager 가 CEF 도우미 앱을 앎 | Tauri 가 공짜로 주던 창 · 트레이 · 메뉴 연결 코드를 세 OS 에서 직접 지킴. CEF 내려받기와 빌드가 큼. macOS 는 도우미 번들 다섯 개를 서명 · 공증 | CEF 를 빌드하는 셸 crate 는 워크스페이스 기본 멤버에서 빼고, 엔진과 무관한 로직은 `crates/desk-web` 에 둬서 평소 명령은 CEF 를 빌드하지 않음. CEF 는 `OnScheduleMessagePumpWork` 일정대로 winit 이벤트 루프 안에서 돌림 (때 없이 돌리면 macOS 에서 한 번에 ~60 ms 막힘). Tauri crate 는 1단계가 끝나며 지움 (#97) |
 | 커널 | Rust | 오디오·PTY·파일 감시 같은 상주 작업에 강하고 메모리 안전. 한 crate 를 다른 셸에도 재사용 | 컴파일이 느림. 바꾸면 재빌드·서명·공증 | 코어는 원시 기능만 두고 작게, 기능은 플러그인으로 |
 | 화면 | 지금은 OS 웹뷰(WKWebView · WebView2 · WebKitGTK) 한 페이지. 1단계는 CEF 하나, 2단계부터 wgpu 컴포지터 `crates/desk-compositor` 가 창마다 다른 프로세스가 그린 텍스처를 합성 (ADR 0140) | 웹 기술은 AI 가 가장 잘 만드는 UI 이고 endue 웹 디자인 시스템을 다시 씀. 모든 OS 에 엔진 하나라 화면 회귀 기준선도 하나, 어디서나 WebGPU. 크롬과 효과는 셰이더로. 창 스냅샷이 공짜 (텍스처가 우리 것) | Chromium 을 같이 실어 내려받기가 150–200 MB 늘고, macOS 에서 기본 메모리가 ~0.9 GiB. 4주마다 Chromium 보안 업데이트. 창 관리자를 2단계에서 Rust 로 다시 씀. 접근성은 AccessKit 로 새로 맞춤 | Chromium 보안 stable 뒤 2주 안에 CEF 를 beta 줄로 (ADR 0092 · 0054). 살아 있는 표면 예산 (ADR 0142). 접근성은 VoiceOver · Narrator 로 재고 나서 2단계를 끝냄. 1단계가 끝날 때까지는 지금처럼 Chromium 전용 API 금지와 엔진별 화면 회귀 테스트 |
 | 3D | Three.js (WebGL2) | 모든 웹뷰에서 동작, 생태계가 큼 | WebGPU 보다 느림. 글자별 블러 같은 연출은 WebKit 에서 무거움 | 변화가 있을 때만 렌더, WebGPU 는 되는 곳에서만, 소울 텍스트는 셰이더로 |
@@ -83,8 +83,8 @@ Emacs 는 작은 C 코어 위에서 거의 모든 기능이 Elisp 로 돌고, �
 
 | 단계 | 들어오는 것 | 끝나는 조건 |
 | --- | --- | --- |
-| 0 (Tauri 위) | 표면마다 origin (#36) · 살아 있는 표면 예산 (#37) · 무거운 일은 worker 로 (#38) · 응답 없는 창에만 "기다리기 · 멈추기" (#39) | 지금 앱에 하나씩 들어감 |
-| 1 (선택지 A) | winit 과 창 모드 CEF 의 Rust 셸이 지금 셸 페이지를 띄우고 Tauri 를 지움 (ADR 0143) · `desk-web` 이 스킴을 서빙하고 브리지를 CEF 프로세스 메시지로 나름 · 앱 e2e 는 원격 디버깅으로 (ADR 0144) | iframe 마다 렌더러 하나, 하나를 죽여도 나머지는 동작, 세 OS 에서 플러그인 WebGPU, beta 가 업데이터로 설치됨 |
+| 0 (Tauri 위, 끝남) | 표면마다 origin (#36) · 살아 있는 표면 예산 (#37) · 무거운 일은 worker 로 (#38) · 응답 없는 창에만 "기다리기 · 멈추기" (#39) | 모두 들어감 |
+| 1 (선택지 A, #97 로 끝남) | winit 과 창 모드 CEF 의 Rust 셸이 지금 셸 페이지를 띄우고 Tauri 를 지움 (ADR 0143) · `desk-web` 이 스킴을 서빙하고 브리지를 CEF 프로세스 메시지로 나름 · 앱 e2e 는 원격 디버깅으로 (ADR 0144) | iframe 마다 렌더러 하나, 하나를 죽여도 나머지는 동작, 세 OS 에서 플러그인 WebGPU, beta 가 업데이터로 설치됨 (Windows · Linux 의 WebGPU 는 #61, 업데이터로 설치되는 첫 beta 는 다음 출시 라인에서 확인) |
 | 2 (선택지 D) | 표면 프로토콜 `specs/surface` (ADR 0141) · `desk-compositor` · 표면마다 off-screen CEF · 창 관리자가 Rust 로 · 팔레트 · Eris · 바 · 설정은 시스템 표면 | DOM 이 플러그인 표면을 합성하지 않음, 살아 있는 표면 15개에서 합성 4 ms 이하, 지금 셸 e2e 통과 |
 | 3 | `native` 플러그인 종류 (`specs/surface` 와 `desk.sock`) · Linux DRM/KMS 세션 스파이크 | — |
 
@@ -102,7 +102,7 @@ PoC (macOS · Apple M4 Max, `spikes/compositor/README.md`): 공유 텍스처 가
 
 ```text
  ┌─ 재빌드 ─────────────────────────────────────────────────────┐
- │  Rust 코어 · Tauri 셸 · 브리지 타입            앱 업데이트 뒤 재실행 │
+ │  Rust 코어 · 셸 (CEF) · 브리지 타입            앱 업데이트 뒤 재실행 │
  │  ┌─ 재시작 ───────────────────────────────────────────────┐  │
  │  │  웹 런타임                              창 새로고침, 2초  │  │
  │  │  ┌─ 즉시 ───────────────────────────────────────────┐  │  │
@@ -176,15 +176,15 @@ desk/
 │   │                         # UI 플러그인 호스트 PluginHost (src/plugins.ts): 마운트 · plugin.changed 에 리로드 · 커맨드 양방향 (ADR 0012)
 │   │                         # 데스크 셸 mountDesk (src/shell · surface · system · modes · eris, ADR 0025): ADR 0026 이 정할 때까지 여기.
 │   │                         # Eris 는 plugins/eris 와 두 번 (ADR 0027), 가장자리도 두 번 (ADR 0028)
-│   ├── bridge/               # 브리지 TS 클라이언트 + 생성된 타입 + 어댑터 (tauri · browser 스텁)
+│   ├── bridge/               # 브리지 TS 클라이언트 + 생성된 타입 + 어댑터 (cef · browser 스텁)
 │   ├── plugin-sdk/           # 플러그인 저자가 import 하는 전부
 │   ├── ui/                   # 디자인 토큰 · tokens.css · 프레임워크 없는 custom element 여섯 (ADR 0022, #72)
 │   └── create-plugin/        # `pnpm create @endue-ai/plugin` 스캐폴더 (UI 템플릿, #34)
 │
 ├── apps/
-│   └── desk/                 # Tauri 2 앱. 얇은 어댑터만
-│       ├── src-tauri/        # main.rs · lib.rs · commands/ (브리지 → desk-core) · capabilities/ · tauri.conf.json · icons/
-│       ├── src/              # 부트스트랩: runtime 마운트 · bridge(tauri) 연결 · 플러그인 로드. 셸(mountDesk)은 아직 아님 (#74)
+│   └── desk/                 # 앱. 웹 프런트엔드(src/)와 그것을 서빙하는 셸(shell/)
+│       ├── shell/            # winit · CEF 위의 Rust 바이너리 endue-desk (ADR 0143) · packager/ (번들, ADR 0145) · icons/
+│       ├── src/              # 부트스트랩: 셸(mountDesk)과 runtime 마운트 · bridge(cef) 연결 · 플러그인 로드
 │       └── index.html
 │
 ├── plugins/                  # endue 기본 기능. 커뮤니티 플러그인과 같은 형식
@@ -215,7 +215,7 @@ desk/
 │   ├── plugin-hello-mcp/     # README 만, 계획
 │   └── brain-echo/           # 두뇌 명세의 최소 구현. 테스트와 AI 학습용
 │
-├── e2e/                      # 앱 단위 테스트 (tauri-driver, 계획 #82). 지금은 README · perf/budgets.json
+├── e2e/                      # 앱 단위 테스트: CEF 데스크를 원격 디버깅으로 (WebdriverIO · chromedriver, ADR 0144) · 설치 스모크 · 성능 예산
 │
 ├── docs/                     # 마크다운이 진실, 사이트는 빌드 산출물
 │   ├── architecture.md
@@ -247,8 +247,8 @@ desk/
 | 웹 런타임 | `packages/runtime` (컴포지터, UI 플러그인 호스트 ADR 0012, ADR 0026 이 정할 때까지 데스크 셸 ADR 0025) · `packages/ui` |
 | Desk 브리지 | `specs/bridge` · 통합 계층의 계약 `specs/item` · `specs/view` · `specs/connector` (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (이 명세들과 `specs/plugin` 에서 생성된 타입) |
 | Rust 코어 | `crates/desk-core` (통합 계층 `data.*` · `connector.*` · `view.*` · `catalog.get` 과 내장 커넥터 `desk.calendar` · `desk.reminders`, ADR 0036 제안) · `crates/desk-index` (항목 색인, SQLite, ADR 0033) · `crates/desk-plugin-host` (로직 플러그인 ADR 0019 · Wasm 커넥터 ADR 0034 제안, Wasmtime) · `crates/desk-vm` · `crates/desk-brain*` |
-| Tauri 셸 | `apps/desk/src-tauri` · `crates/desk-sys` · 1단계가 끝나면 이것을 대신하는 CEF 셸 `apps/desk/shell` 과 엔진과 무관한 스킴 응답 `crates/desk-web` (ADR 0143) |
-| 운영체제 | `apps/desk/src-tauri/capabilities` · `.github/workflows/release.yml` (서명 · 공증) |
+| 셸 (CEF) | `apps/desk/shell` (winit 과 CEF 위의 앱 `endue-desk`, ADR 0143) · 엔진과 무관한 스킴 응답과 호출자 판정 `crates/desk-web` · `crates/desk-sys` |
+| 운영체제 | `apps/desk/shell/packager` (번들 · CEF 도우미 앱 · entitlements, ADR 0145) · `.github/workflows/release.yml` (서명 · 공증) |
 
 사람과 AI 가 같이 쓰는 규칙
 
@@ -269,8 +269,8 @@ desk/
 ```text
 .github/
 ├── workflows/
-│   ├── ci.yml               # PR: Linux 에서 just check → 단위 → 계약 → red-on-base → 런타임(Playwright). macOS · Windows 는 check + 단위만. src-tauri · desk-sys 를 건드리면 3 OS 빌드까지
-│   ├── e2e.yml              # main 병합 뒤와 야간: tauri-driver (Linux · Windows) 전체 + macOS 패키지 스모크. PR 에서는 e2e/ · plugins/ 를 건드릴 때만
+│   ├── ci.yml               # PR: Linux 에서 just check → 단위 → 계약 → red-on-base → 런타임(Playwright). macOS · Windows 는 check + 단위만. apps/desk/shell · desk-web · desk-sys 를 건드리면 CEF 셸을 3 OS 에서 빌드
+│   ├── e2e.yml              # main 병합 뒤와 야간: CEF 데스크의 앱 e2e 와 설치 스모크를 3 OS 에서 (ADR 0144). PR 에서는 e2e/ · plugins/ · apps/desk/ 를 건드릴 때만
 │   ├── review.yml           # 작업 PR 의 검토 AI. 코드 변경은 전부, 문서 · 의존성 PR 은 건너뜀. specs · 권한 · 워크플로를 건드리면 강한 모델로
 │   ├── scope-check.yml      # PR 이 이슈 Scope 밖 파일을 건드리면 실패. As-is/To-be 표의 행과 변경 파일이 서로 대응되는지도 확인
 │   ├── security.yml         # PR: cargo deny · cargo audit · pnpm audit · gitleaks · dependency-review. CodeQL 은 main 과 주 1회
@@ -321,7 +321,7 @@ desk/
 
 ## QA: 테스트 층
 
-테스트는 아홉 층이지만 PR 마다 도는 건 Linux 에서 15분 안에 끝나는 다섯 층이고, 가운데의 계약 테스트가 Rust 와 TS, 로컬 두뇌와 클라우드 두뇌를 같은 벡터로 묶습니다. macOS 는 tauri-driver 가 없어서 런타임 테스트와 설치 스모크, 10분 수동 탐색으로 대신합니다.
+테스트는 아홉 층이지만 PR 마다 도는 건 Linux 에서 15분 안에 끝나는 다섯 층이고, 가운데의 계약 테스트가 Rust 와 TS, 로컬 두뇌와 클라우드 두뇌를 같은 벡터로 묶습니다. 앱 e2e 는 CEF 데스크를 Chromium 원격 디버깅으로 몰아 macOS 에서도 돌고 (ADR 0144), stable 전 10분 수동 탐색은 그대로입니다.
 
 | 층 | 무엇을 확인하나 | 도구 · 위치 | 언제 |
 | --- | --- | --- | --- |
@@ -331,9 +331,9 @@ desk/
 | 계약 | `specs/*/vectors` 를 Rust · TS 양쪽이 통과. 두뇌 적합성(brain-echo 대상) · 플러그인 매니페스트 | `crates/desk-brain/tests/conformance.rs` · `packages/bridge` 테스트 | PR 마다 |
 | 통합 (Rust) | 권한 엔진 시나리오(기본 거부 · 허락 · 회수 · 경로 범위) · 플러그인 호스트 수명(설치 · 핫리로드 · 크래시 격리) · VM 수명(부팅 · 폴더 마운트 · 멈춤) · 세션 임대(획득 · 해제 · 만료) | `crates/*/tests` | PR 마다 (VM 은 main · 야간) |
 | 런타임 (웹) | 컴포지터 2D 결정적 렌더 · 표면 · 입력 라우팅 · 레이아웃 저장·복원 · Opening 장면 스냅샷(고정 시각) | Playwright + 브라우저 브리지 스텁, `packages/runtime/e2e` | PR 은 Linux, main 과 야간은 3 OS |
-| 앱 e2e | 첫 실행 경로 · 플러그인 설치 · 권한 프롬프트 · 레이아웃 · updater · "Hey Eris"(테스트 훅) | WebdriverIO + tauri-driver, `e2e/specs` (Linux · Windows) | main 병합 뒤 · `e2e/` `plugins/` 변경 PR · 야간 |
+| 앱 e2e | 첫 실행 경로 · 플러그인 설치 · 권한 프롬프트 · 레이아웃 · updater · "Hey Eris"(테스트 훅) | WebdriverIO 가 chromedriver 로 CEF 데스크의 원격 디버깅 포트에 붙음, `e2e/specs` (macOS · Linux · Windows) | main 병합 뒤 · `e2e/` `plugins/` 변경 PR · 야간 |
 | 설치 스모크 | 깨끗한 러너에 설치 → 실행 → ready 로그 → 서명 · 공증 검증(spctl · signtool) → 종료 | 셸 스크립트, `e2e/smoke` | canary · beta · stable 빌드마다, 3 OS |
-| 성능 예산 | 시작 시간 · 유휴 메모리 · Opening 프레임 시간(WebKit) · VM 부팅 시간. 기준값은 첫 릴리스 측정치로 고정 | `e2e/perf/budgets.json` | 야간, 넘으면 실패 |
+| 성능 예산 | 시작 시간 · 유휴 메모리 · Opening 프레임 시간(Chromium) · VM 부팅 시간. 기준값은 첫 릴리스 측정치로 고정 | `e2e/perf/budgets.json` | 야간, 넘으면 실패 |
 
 켜는 순서
 
@@ -355,7 +355,7 @@ desk/
 
 ```text
 e2e/
-├── wdio.conf.ts                  # WebdriverIO + tauri-driver
+├── wdio.conf.ts                  # WebdriverIO + chromedriver (CEF 데스크, ADR 0144)
 ├── specs/                        # onboarding · plugins · permissions · layouts · updater
 ├── fixtures/                     # 테스트 플러그인 · 폴더 · brain-echo 시나리오
 ├── smoke/                        # install-and-launch · verify-signature (sh · ps1)
@@ -455,12 +455,12 @@ MCP 도구는 가벼운 VM 으로 격리하고, 나머지는 데스크톱 오픈
 
 | 질문 | 결정 | 따른 관례 | ADR |
 | --- | --- | --- | --- |
-| 앱 셸 | Tauri 2 였으나 ADR 0140 이 대체함. 1단계부터 winit 과 CEF 위의 Rust 바이너리 `apps/desk/shell` (기본 멤버 아님), 엔진과 무관한 로직은 `crates/desk-web`, Tauri crate 는 1단계가 끝날 때 지움 |  | 0001 (대체됨) · 0143 |
+| 앱 셸 | Tauri 2 였으나 ADR 0140 이 대체함. 1단계부터 winit 과 CEF 위의 Rust 바이너리 `apps/desk/shell` (기본 멤버 아님), 엔진과 무관한 로직은 `crates/desk-web`, Tauri crate 는 1단계가 끝나며 지웠고 (#97) 바이너리는 Tauri 앱의 이름 `endue-desk` 를 이어받음 |  | 0001 (대체됨) · 0143 |
 | MCP 도구 격리 | 가벼운 Linux VM 하나에서 실행. 허락한 폴더만 virtiofs 로 넣고, 통신은 vsock, 쉬면 VM 째로 멈춤. VM 을 못 띄우는 기기는 설치 때 "격리 없음"을 고지하고 사용자 권한으로 | Claude Cowork · Docker Desktop (macOS Virtualization.framework · Windows WSL2 · Linux KVM) | 0002 |
 | 웹 런타임 번들 배포 | 앱과 함께. 따로 배포하지 않음. 플러그인만 따로 갱신 | VS Code · Electron 앱 일반 | 0003 |
 | 플러그인 API 하위 호환 | v0 는 마이너마다 깨질 수 있음을 명시. v1 부터 직전 메이저를 6개월 지원하고, 제거 한 버전 전에 경고 | semver · VS Code 확장 API | 0004 |
 | 마켓 심사 · 서명 | 자동 검증(매니페스트 · 권한 · 정적 스캔) + 게시 때 마켓이 서명. proc · net 광역 권한만 수동 심사 | VS Code Marketplace · Obsidian 커뮤니티 플러그인 | 0005 |
-| macOS 앱 e2e | 런타임 Playwright + 설치 스모크 + stable 전 10분 수동. tauri-driver 가 macOS 를 지원하면 전환. CEF 데스크가 나오면 Chromium 원격 디버깅으로 macOS 도 앱 e2e 에 들어감 | Tauri 프로젝트 일반 | 0006 · 0144 |
+| macOS 앱 e2e | CEF 데스크를 Chromium 원격 디버깅으로 몰아 macOS 도 앱 e2e 에 들어감 (1단계가 끝나며 tauri-driver 경로는 지움). 설치 스모크와 stable 전 10분 수동은 그대로 | Tauri 프로젝트 일반 · Chromium 원격 디버깅 | 0006 · 0144 |
 | 크래시 리포트 | Sentry, opt-in, 기본은 꺼짐. 서명별 신규 크래시가 beta 승격 조건에 들어감 | Tauri 앱 일반 | 0007 |
 | 자동 병합 범위 | 봇 PR(의존성 패치 · 마이너)만. 작업 PR 은 사람이 승인 |  | 0008 |
 | 명세에서 타입 | `specs/` 에서 Rust · TS 타입을 자체 생성기로 만들고 커밋. 모르는 스키마 모양은 실패 |  | 0009 |

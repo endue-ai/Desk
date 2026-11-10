@@ -66,6 +66,15 @@ first, and splitting the engine-independent logic out keeps CEF out of the defau
 
 * The Tauri crate (`apps/desk/src-tauri`) is deleted when Stage 1 ends. Until then both apps build
   side by side, so M1 ships on Tauri as planned.
+* Update (2026-11-10, #97): Stage 1 ended. `apps/desk/src-tauri`, the vendored single-instance plugin,
+  the `check-app`, `build-app` and `bundle-app` recipes, the `app-build` and `app-e2e-tauri` jobs and
+  the bridge's Tauri adapter are deleted, and the icons moved to `apps/desk/shell/icons`. The shell's
+  binary is `endue-desk`, the Tauri desk's name, with its helper apps `endue-desk Helper…`, so a Tauri
+  install's shortcuts, start at login and restart find it after the update; `just dev` runs it, and
+  `dev-shell` stays as an alias. `.github/release-shell` says `cef`, so canary builds the CEF desk and
+  `release-build.yml` builds no other. `@tauri-apps/cli` stays in `apps/desk` only as the updater's
+  signer (`tauri signer`). The shell's build (`shell-build`) runs on three OSes for app changes and
+  release pull requests, and joins the required `ci` checks once it has run green on all three.
 
 ### Consequences
 
