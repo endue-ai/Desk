@@ -1,0 +1,13 @@
+{
+  "target": "PluginManifest",
+  "description": "a native block names at least one program",
+  "instance": {
+    "id": "example.native-wgpu",
+    "name": "Native wgpu",
+    "version": "0.1.0",
+    "kind": "native",
+    "native": {
+      "binaries": {}
+    }
+  }
+}

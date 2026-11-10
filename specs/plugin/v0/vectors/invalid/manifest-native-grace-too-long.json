@@ -1,0 +1,16 @@
+{
+  "target": "PluginManifest",
+  "description": "the desk waits at most ten seconds for a process to stop",
+  "instance": {
+    "id": "example.native-wgpu",
+    "name": "Native wgpu",
+    "version": "0.1.0",
+    "kind": "native",
+    "native": {
+      "binaries": {
+        "macos-aarch64": "bin/plugin"
+      },
+      "graceMs": 60000
+    }
+  }
+}

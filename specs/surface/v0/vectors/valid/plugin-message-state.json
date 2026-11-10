@@ -1,0 +1,14 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a native plugin keeps its state with the desk, for its next wake",
+  "instance": {
+    "type": "plugin.message",
+    "surface": "main.example-native--wgpu",
+    "message": {
+      "type": "desk:state",
+      "state": {
+        "angle": 1.25
+      }
+    }
+  }
+}

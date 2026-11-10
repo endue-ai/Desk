@@ -1,0 +1,32 @@
+{
+  "target": "PluginManifest",
+  "description": "a native plugin: a program per OS, one surface, the permissions its bridge calls need",
+  "instance": {
+    "id": "example.native-wgpu",
+    "name": "Native wgpu",
+    "version": "0.1.0",
+    "kind": "native",
+    "description": "Draws a wgpu scene into its surface.",
+    "native": {
+      "binaries": {
+        "macos-aarch64": "bin/macos-aarch64/plugin-native-wgpu",
+        "linux-x86_64": "bin/linux-x86_64/plugin-native-wgpu",
+        "windows-x86_64": "bin/windows-x86_64/plugin-native-wgpu.exe"
+      },
+      "args": ["--scene", "cube"],
+      "graceMs": 1500
+    },
+    "surfaces": [
+      {
+        "id": "main",
+        "title": "Native wgpu",
+        "placement": "center"
+      }
+    ],
+    "permissions": [
+      {
+        "permission": "ui:notify"
+      }
+    ]
+  }
+}

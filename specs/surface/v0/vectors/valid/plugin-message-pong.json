@@ -1,0 +1,12 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a native plugin answers the desk's ping",
+  "instance": {
+    "type": "plugin.message",
+    "surface": "main.example-native--wgpu",
+    "message": {
+      "type": "desk:pong",
+      "n": 4
+    }
+  }
+}

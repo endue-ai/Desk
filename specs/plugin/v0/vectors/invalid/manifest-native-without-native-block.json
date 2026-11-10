@@ -1,0 +1,16 @@
+{
+  "target": "PluginManifest",
+  "description": "a native plugin needs its native block",
+  "instance": {
+    "id": "example.native-wgpu",
+    "name": "Native wgpu",
+    "version": "0.1.0",
+    "kind": "native",
+    "surfaces": [
+      {
+        "id": "main",
+        "placement": "center"
+      }
+    ]
+  }
+}

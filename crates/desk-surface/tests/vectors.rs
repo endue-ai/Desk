@@ -118,6 +118,8 @@ const REFUSED_BY_THE_TYPES: &[&str] = &[
     "key-down-without-code.json",
     "a11y-node-unknown-field.json",
     "message-unknown-type.json",
+    "plugin-message-sent-by-the-compositor.json",
+    "desk-message-without-message.json",
 ];
 
 #[test]

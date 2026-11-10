@@ -1,0 +1,15 @@
+{
+  "target": "PluginManifest",
+  "description": "programs are named by <os>-<arch> as Rust names them",
+  "instance": {
+    "id": "example.native-wgpu",
+    "name": "Native wgpu",
+    "version": "0.1.0",
+    "kind": "native",
+    "native": {
+      "binaries": {
+        "darwin-arm64": "bin/plugin"
+      }
+    }
+  }
+}

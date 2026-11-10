@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/surface/v0/native.schema.json",
+  "title": "Desk surface protocol v0: a native plugin's page messages",
+  "description": "What a native plugin's surface and the desk say to each other besides the surface itself: the messages a web plugin's page and the desk post to each other (desk:hello, desk:init, desk:ping and desk:pong, desk:state, ...), carried on the surface's connection because a native plugin has no page. See native.md.",
+  "$defs": {
+    "SurfacePageMessage": {
+      "description": "A page message as the plugin SDK and the desk's runtime post it: an object with a desk: type. The desk reads only its type; the rest is the message's own.",
+      "type": "object",
+      "if": { "type": "object" },
+      "then": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "pattern": "^desk:[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*$",
+            "maxLength": 64
+          }
+        }
+      }
+    },
+    "SurfaceDeskMessage": {
+      "description": "The desk posts message to the plugin, as it posts to a web plugin's frame: desk:init after the plugin's desk:hello, desk:ping, desk:theme, desk:command, desk:event.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "desk.message" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "message": { "$ref": "#/$defs/SurfacePageMessage" }
+      },
+      "required": ["type", "surface", "message"],
+      "additionalProperties": false
+    },
+    "SurfacePluginMessage": {
+      "description": "The plugin posts message to the desk, as a web plugin's page posts to its parent: desk:hello once it listens, desk:ready once it is up, desk:pong for each desk:ping, desk:state to keep its state.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "plugin.message" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "message": { "$ref": "#/$defs/SurfacePageMessage" }
+      },
+      "required": ["type", "surface", "message"],
+      "additionalProperties": false
+    }
+  }
+}

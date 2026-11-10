@@ -12,10 +12,10 @@ block (ADR 0056, ADR 0057), and `theme-index.schema.json` a theme market's index
 | --- | --- |
 | `id` | Reverse-domain id with a dot, lowercase: `endue.eris`, `example.hello-ui` |
 | `version` | Semantic version |
-| `kind` | `ui` (sandboxed iframe), `logic` (Wasm), `tool` (MCP inside the VM), `policy` (data only), `library` (files other plugins import), `connector` (items in, actions as commands; Wasm or MCP), `view` (data only), `theme` (a theme's values and files) |
+| `kind` | `ui` (sandboxed iframe), `logic` (Wasm), `tool` (MCP inside the VM), `policy` (data only), `library` (files other plugins import), `connector` (items in, actions as commands; Wasm or MCP), `view` (data only), `theme` (a theme's values and files), `native` (a program per OS in a process of its own) |
 | `entry` | Entry file relative to the plugin folder, never outside it; `policy`, `library`, `view` and `theme` plugins have none |
 | `permissions` | Everything the plugin may ask for; each is granted by the person at first use; a `library` has none |
-| `surfaces` | Surfaces a UI plugin can open, with a placement (`hidden` until it shows itself); other kinds declare none |
+| `surfaces` | Surfaces a UI or native plugin can open, with a placement (`hidden` until it shows itself); other kinds declare none |
 | `contributes` | Commands, keys, display rules, file openers, themes, settings, profiles and palette providers; required for `policy`, refused for `library` |
 | `autoload` | Off until the desk needs it, like Emacs's autoload: off at start unless a stored flag says on, its file openers count while off; `desk.files` turns it on for a file and off after its last file; default `false`; refused for `library` |
 | `provides` | The roles the plugin can fill (ADR 0104): `role:rail`, `role:agents`, `role:dock`, `role:palette`, `role:settings-ui`; the `desk.roles` setting chooses each role's provider, and a provider not chosen for a role it declares does not mount |
@@ -23,6 +23,7 @@ block (ADR 0056, ADR 0057), and `theme-index.schema.json` a theme market's index
 | `pack` | A `pack` plugin's pack block (`pack.schema.json`, ADR 0108): `services` it is named by, the `plugins` it brings (nested under `plugins/` in its folder, or on the desk), the commands Apply `opens`, the `profile` it lays out; required for that kind, refused for others |
 | `connector` | A `connector` plugin's connector block (`specs/connector/v0`); required for that kind, refused for others |
 | `theme` | A `theme` plugin's theme block (`theme.schema.json`); required for that kind, refused for others |
+| `native` | A `native` plugin's programs: `binaries` (one per `<os>-<arch>`, inside the folder), `args`, `graceMs`; required for that kind, refused for others, and no `entry` |
 
 ## Libraries
 
@@ -36,6 +37,20 @@ always reports it enabled. A consumer maps a bare prefix to the library's folder
 map, for `endue.formats`: `{ "imports": { "@endue-ai/formats/": "/endue.formats/lib/" } }`, then
 imports `@endue-ai/formats/<folder>/<file>.js`. Inside a library, modules import each other by
 relative paths.
+
+## Native plugins
+
+A `native` plugin is a program of its own, in any language, that the desk starts as a process of its
+own when its surface opens or wakes (ADR 0154). `native.binaries` names the program for each
+platform as Rust names it (`macos-aarch64`, `linux-x86_64`, `windows-x86_64`, ...): a desk without
+one for its own platform, or whose program is missing or not executable, does not load the plugin.
+The program runs in the plugin's folder with `native.args`, and its environment names the two
+connections the desk made for it: the surface (`specs/surface/v0/native.md`) and the bridge, on the
+wire of `desk.sock`, where every call is the plugin's own and its manifest's permissions apply. It
+stops when its surface sleeps or closes, the plugin is turned off or the desk quits: the desk sends
+`sleep` or `destroy`, closes both connections and kills it `native.graceMs` later (2000 by default,
+100 to 10000) if it still runs. A native plugin is not sandboxed: it runs as the person, and only its
+bridge calls are checked. The runtime mounts native plugins only on the compositor's desk.
 
 ## Themes
 

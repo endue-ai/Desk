@@ -1,0 +1,11 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a page message's type starts with desk:",
+  "instance": {
+    "type": "plugin.message",
+    "surface": "main.example-native--wgpu",
+    "message": {
+      "type": "hello"
+    }
+  }
+}

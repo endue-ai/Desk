@@ -1,0 +1,15 @@
+{
+  "target": "PluginManifest",
+  "description": "only a native plugin has a native block",
+  "instance": {
+    "id": "example.hello-ui",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "native": {
+      "binaries": {
+        "macos-aarch64": "bin/plugin"
+      }
+    }
+  }
+}

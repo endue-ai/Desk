@@ -1,0 +1,15 @@
+{
+  "target": "PluginManifest",
+  "description": "a program lies inside the plugin folder",
+  "instance": {
+    "id": "example.native-wgpu",
+    "name": "Native wgpu",
+    "version": "0.1.0",
+    "kind": "native",
+    "native": {
+      "binaries": {
+        "macos-aarch64": "../../target/debug/plugin"
+      }
+    }
+  }
+}

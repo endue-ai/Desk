@@ -810,7 +810,28 @@ pub struct SurfaceTitle {
     pub title: String,
 }
 
-/// A message the compositor sends to a surface: its lifecycle, the release of its textures, its frame pace, input, IME, drag and drop, and accessibility requests.
+/// A page message as the plugin SDK and the desk's runtime post it: an object with a desk: type. The desk reads only its type; the rest is the message's own.
+pub type SurfacePageMessage = serde_json::Map<String, serde_json::Value>;
+
+/// The desk posts message to the plugin, as it posts to a web plugin's frame: desk:init after the plugin's desk:hello, desk:ping, desk:theme, desk:command, desk:event.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SurfaceDeskMessage {
+    pub r#type: SurfaceDeskMessageType,
+    pub surface: SurfaceId,
+    pub message: SurfacePageMessage,
+}
+
+/// The plugin posts message to the desk, as a web plugin's page posts to its parent: desk:hello once it listens, desk:ready once it is up, desk:pong for each desk:ping, desk:state to keep its state.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SurfacePluginMessage {
+    pub r#type: SurfacePluginMessageType,
+    pub surface: SurfaceId,
+    pub message: SurfacePageMessage,
+}
+
+/// A message the compositor sends to a surface: its lifecycle, the release of its textures, its frame pace, input, IME, drag and drop, accessibility requests, and a native plugin's page messages.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CompositorMessage {
@@ -843,9 +864,10 @@ pub enum CompositorMessage {
     SurfaceDragEnded(SurfaceDragEnded),
     SurfaceA11yEnable(SurfaceA11yEnable),
     SurfaceA11yAction(SurfaceA11yAction),
+    SurfaceDesk(SurfaceDeskMessage),
 }
 
-/// A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, its IME state, its drags and its accessibility tree.
+/// A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, its IME state, its drags, its accessibility tree, and a native plugin's page messages.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum SurfaceMessage {
@@ -862,6 +884,7 @@ pub enum SurfaceMessage {
     SurfaceDragStatus(SurfaceDragStatus),
     SurfaceDragDone(SurfaceDragDone),
     SurfaceA11yUpdate(SurfaceA11yUpdate),
+    SurfacePlugin(SurfacePluginMessage),
 }
 
 /// The compositor's name for one surface, unique while the desk runs. The compositor picks it in create; every later message about the surface carries it, so one connection can carry many surfaces.
@@ -1424,6 +1447,22 @@ pub enum SurfaceTitleType {
     #[default]
     #[serde(rename = "title")]
     Title,
+}
+
+/// The `type` of [`SurfaceDeskMessage`]: always `"desk.message"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SurfaceDeskMessageType {
+    #[default]
+    #[serde(rename = "desk.message")]
+    DeskMessage,
+}
+
+/// The `type` of [`SurfacePluginMessage`]: always `"plugin.message"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SurfacePluginMessageType {
+    #[default]
+    #[serde(rename = "plugin.message")]
+    PluginMessage,
 }
 
 /// The `kind` of [`SurfaceIoSurfaceHandle`]: always `"iosurface"`.

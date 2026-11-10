@@ -94,6 +94,7 @@ fn kind_name(kind: PluginKind) -> &'static str {
         PluginKind::Pack => "pack",
         PluginKind::Theme => "theme",
         PluginKind::DesignSystem => "design-system",
+        PluginKind::Native => "native",
     }
 }
 

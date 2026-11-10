@@ -765,7 +765,7 @@ export interface PluginManifest {
   permissions?: Permission[];
   /** Other plugins whose files this plugin's pages load (`../../<id>/…`). Each surface has an origin of its own, so another plugin's files load on it only when named here; their code runs in this plugin's frames, as this plugin and under its grants. Libraries load everywhere without an entry (ADR 0049). */
   imports?: PluginId[];
-  /** Surfaces a UI plugin can open. Only UI plugins declare surfaces. */
+  /** Surfaces a UI or native plugin can open. Only those two kinds declare surfaces. */
   surfaces?: Surface[];
   contributes?: PluginContributes;
   /** The roles this plugin can fill (BR-05, ADR 0104): role:rail, role:agents and role:dock are the desk's three edges, role:palette the command palette, role:settings-ui the settings window. The desk.roles setting chooses each role's provider among the plugins that provide it; a provider that is not chosen does not mount that role's surfaces. */
@@ -783,6 +783,7 @@ export interface PluginManifest {
   theme?: ThemePackage;
   /** A design-system plugin's design system: what each component of the desk is made of (ADR 0090). */
   designSystem?: DesignSystemPackage;
+  native?: NativeBlock;
 }
 
 /** Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui. */
@@ -794,7 +795,7 @@ export type Role = string;
 /** Semantic version, for example 0.1.0 or 1.2.3-beta.1. */
 export type Version = string;
 
-/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). pack runs no code either: a pack block naming the plugins it brings (nested in its folder or on the desk), its own views and its contributed layout (ADR 0108). */
+/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). pack runs no code either: a pack block naming the plugins it brings (nested in its folder or on the desk), its own views and its contributed layout (ADR 0108). native is a program per OS (its native block, no entry) that the desk starts as a process of its own: it draws its surface over specs/surface and calls the bridge over the connection the desk gave it, as itself; it is not sandboxed, only its bridge calls are checked (ADR 0154). */
 export type PluginKind =
   | "ui"
   | "logic"
@@ -805,7 +806,27 @@ export type PluginKind =
   | "view"
   | "theme"
   | "design-system"
-  | "pack";
+  | "pack"
+  | "native";
+
+/** A native plugin's programs and how the desk runs them (ADR 0154). The desk starts the program for its OS and processor when the plugin's surface opens or wakes, in the plugin's folder, with the args given and the connections it speaks over (specs/surface/v0/native.md): one process for the plugin. It stops it when the surface sleeps or closes, the plugin is turned off or the desk quits: it sends the surface's sleep or destroy, closes both connections, and kills the process if it has not exited graceMs later. A process that ends while its surface is live died. */
+export interface NativeBlock {
+  binaries: NativeBinaries;
+  /** Arguments the program starts with, after its path. Default none. */
+  args?: string[];
+  /** How long the desk waits for the process to exit once it is asked to stop, before it kills it. Default 2000. */
+  graceMs?: number;
+}
+
+/** The program for each OS and processor it is built for, relative to the plugin folder, without .. segments: <os>-<arch> as Rust names them (std::env::consts). The desk runs the one for its own; a plugin with none for it does not load there. */
+export interface NativeBinaries {
+  "macos-aarch64"?: EntryPath;
+  "macos-x86_64"?: EntryPath;
+  "linux-aarch64"?: EntryPath;
+  "linux-x86_64"?: EntryPath;
+  "windows-aarch64"?: EntryPath;
+  "windows-x86_64"?: EntryPath;
+}
 
 /** Path to the entry file, relative to the plugin folder, without .. segments. */
 export type EntryPath = string;
@@ -816,7 +837,7 @@ export type PluginView = View | UniversalView | UniversalPage;
 /** A view file relative to the plugin folder, without .. segments: YAML (.yaml, .yml) or JSON (.json). */
 export type ViewPath = string;
 
-/** A surface a UI plugin can open on the desk. */
+/** A surface a UI or native plugin can open on the desk. */
 export interface Surface {
   /** Unique within the plugin. */
   id: string;

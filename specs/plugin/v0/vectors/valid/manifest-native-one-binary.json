@@ -1,0 +1,15 @@
+{
+  "target": "PluginManifest",
+  "description": "a native plugin built for one OS only, with no surfaces declared (it opens main)",
+  "instance": {
+    "id": "example.native-wgpu",
+    "name": "Native wgpu",
+    "version": "0.1.0",
+    "kind": "native",
+    "native": {
+      "binaries": {
+        "macos-aarch64": "plugin"
+      }
+    }
+  }
+}

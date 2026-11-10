@@ -1,0 +1,12 @@
+{
+  "target": "CompositorMessage",
+  "description": "the desk pings a native plugin's surface as it pings a web plugin's frame",
+  "instance": {
+    "type": "desk.message",
+    "surface": "main.example-native--wgpu",
+    "message": {
+      "type": "desk:ping",
+      "n": 4
+    }
+  }
+}

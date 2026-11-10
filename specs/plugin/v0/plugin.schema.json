@@ -30,7 +30,7 @@
           "uniqueItems": true
         },
         "surfaces": {
-          "description": "Surfaces a UI plugin can open. Only UI plugins declare surfaces.",
+          "description": "Surfaces a UI or native plugin can open. Only those two kinds declare surfaces.",
           "type": "array",
           "items": { "$ref": "#/$defs/Surface" }
         },
@@ -70,20 +70,23 @@
         "designSystem": {
           "description": "A design-system plugin's design system: what each component of the desk is made of (ADR 0090).",
           "$ref": "design-system.schema.json#/$defs/DesignSystemPackage"
-        }
+        },
+        "native": { "$ref": "#/$defs/NativeBlock" }
       },
       "required": ["id", "version", "kind"],
       "additionalProperties": false,
       "allOf": [
         {
-          "if": { "properties": { "kind": { "not": { "const": "ui" } } } },
+          "if": { "properties": { "kind": { "not": { "enum": ["ui", "native"] } } } },
           "then": { "properties": { "surfaces": { "type": "array", "maxItems": 0 } } }
         },
         {
           "if": {
             "properties": {
               "kind": {
-                "not": { "enum": ["policy", "view", "library", "theme", "design-system", "pack"] }
+                "not": {
+                  "enum": ["policy", "view", "library", "theme", "design-system", "pack", "native"]
+                }
               }
             },
             "not": {
@@ -183,6 +186,11 @@
           "if": { "properties": { "kind": { "const": "pack" } } },
           "then": { "properties": { "pack": true, "entry": false }, "required": ["pack"] },
           "else": { "properties": { "pack": false } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "native" } } },
+          "then": { "properties": { "native": true, "entry": false }, "required": ["native"] },
+          "else": { "properties": { "native": false } }
         }
       ]
     },
@@ -204,7 +212,7 @@
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
     },
     "PluginKind": {
-      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). pack runs no code either: a pack block naming the plugins it brings (nested in its folder or on the desk), its own views and its contributed layout (ADR 0108).",
+      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). pack runs no code either: a pack block naming the plugins it brings (nested in its folder or on the desk), its own views and its contributed layout (ADR 0108). native is a program per OS (its native block, no entry) that the desk starts as a process of its own: it draws its surface over specs/surface and calls the bridge over the connection the desk gave it, as itself; it is not sandboxed, only its bridge calls are checked (ADR 0154).",
       "type": "string",
       "enum": [
         "ui",
@@ -216,8 +224,44 @@
         "view",
         "theme",
         "design-system",
-        "pack"
+        "pack",
+        "native"
       ]
+    },
+    "NativeBlock": {
+      "description": "A native plugin's programs and how the desk runs them (ADR 0154). The desk starts the program for its OS and processor when the plugin's surface opens or wakes, in the plugin's folder, with the args given and the connections it speaks over (specs/surface/v0/native.md): one process for the plugin. It stops it when the surface sleeps or closes, the plugin is turned off or the desk quits: it sends the surface's sleep or destroy, closes both connections, and kills the process if it has not exited graceMs later. A process that ends while its surface is live died.",
+      "type": "object",
+      "properties": {
+        "binaries": { "$ref": "#/$defs/NativeBinaries" },
+        "args": {
+          "description": "Arguments the program starts with, after its path. Default none.",
+          "type": "array",
+          "items": { "type": "string", "maxLength": 1024 },
+          "maxItems": 32
+        },
+        "graceMs": {
+          "description": "How long the desk waits for the process to exit once it is asked to stop, before it kills it. Default 2000.",
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 10000
+        }
+      },
+      "required": ["binaries"],
+      "additionalProperties": false
+    },
+    "NativeBinaries": {
+      "description": "The program for each OS and processor it is built for, relative to the plugin folder, without .. segments: <os>-<arch> as Rust names them (std::env::consts). The desk runs the one for its own; a plugin with none for it does not load there.",
+      "type": "object",
+      "properties": {
+        "macos-aarch64": { "$ref": "#/$defs/EntryPath" },
+        "macos-x86_64": { "$ref": "#/$defs/EntryPath" },
+        "linux-aarch64": { "$ref": "#/$defs/EntryPath" },
+        "linux-x86_64": { "$ref": "#/$defs/EntryPath" },
+        "windows-aarch64": { "$ref": "#/$defs/EntryPath" },
+        "windows-x86_64": { "$ref": "#/$defs/EntryPath" }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
     },
     "EntryPath": {
       "description": "Path to the entry file, relative to the plugin folder, without .. segments.",
@@ -239,7 +283,7 @@
       "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\\\]+\\.(ya?ml|json)$"
     },
     "Surface": {
-      "description": "A surface a UI plugin can open on the desk.",
+      "description": "A surface a UI or native plugin can open on the desk.",
       "type": "object",
       "properties": {
         "id": {

@@ -5,7 +5,7 @@
   "description": "The one contract between the compositor and anything that draws a surface (ADR 0141): a web surface's host (CEF off-screen) today, a native plugin's process in Stage 3. Engine-neutral. Each message is one JSON object with a type and the surface it is about; CompositorMessage is what the compositor sends, SurfaceMessage what a surface sends. File descriptors and Mach ports travel out of band, beside the message that names them by index.",
   "$defs": {
     "CompositorMessage": {
-      "description": "A message the compositor sends to a surface: its lifecycle, the release of its textures, its frame pace, input, IME, drag and drop, and accessibility requests.",
+      "description": "A message the compositor sends to a surface: its lifecycle, the release of its textures, its frame pace, input, IME, drag and drop, accessibility requests, and a native plugin's page messages.",
       "oneOf": [
         { "$ref": "lifecycle.schema.json#/$defs/SurfaceCreate" },
         { "$ref": "lifecycle.schema.json#/$defs/SurfaceResize" },
@@ -35,11 +35,12 @@
         { "$ref": "drag.schema.json#/$defs/SurfaceDragDrop" },
         { "$ref": "drag.schema.json#/$defs/SurfaceDragEnded" },
         { "$ref": "accessibility.schema.json#/$defs/SurfaceA11yEnable" },
-        { "$ref": "accessibility.schema.json#/$defs/SurfaceA11yAction" }
+        { "$ref": "accessibility.schema.json#/$defs/SurfaceA11yAction" },
+        { "$ref": "native.schema.json#/$defs/SurfaceDeskMessage" }
       ]
     },
     "SurfaceMessage": {
-      "description": "A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, its IME state, its drags and its accessibility tree.",
+      "description": "A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, its IME state, its drags, its accessibility tree, and a native plugin's page messages.",
       "oneOf": [
         { "$ref": "lifecycle.schema.json#/$defs/SurfaceReady" },
         { "$ref": "lifecycle.schema.json#/$defs/SurfaceDied" },
@@ -53,7 +54,8 @@
         { "$ref": "drag.schema.json#/$defs/SurfaceDragStart" },
         { "$ref": "drag.schema.json#/$defs/SurfaceDragStatus" },
         { "$ref": "drag.schema.json#/$defs/SurfaceDragDone" },
-        { "$ref": "accessibility.schema.json#/$defs/SurfaceA11yUpdate" }
+        { "$ref": "accessibility.schema.json#/$defs/SurfaceA11yUpdate" },
+        { "$ref": "native.schema.json#/$defs/SurfacePluginMessage" }
       ]
     },
     "SurfaceId": {

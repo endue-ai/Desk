@@ -1,0 +1,11 @@
+{
+  "target": "CompositorMessage",
+  "description": "plugin.message is a surface's message: the desk sends desk.message",
+  "instance": {
+    "type": "plugin.message",
+    "surface": "main.example-native--wgpu",
+    "message": {
+      "type": "desk:hello"
+    }
+  }
+}

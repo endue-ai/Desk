@@ -532,7 +532,24 @@ export interface SurfaceTitle {
   title: string;
 }
 
-/** A message the compositor sends to a surface: its lifecycle, the release of its textures, its frame pace, input, IME, drag and drop, and accessibility requests. */
+/** A page message as the plugin SDK and the desk's runtime post it: an object with a desk: type. The desk reads only its type; the rest is the message's own. */
+export type SurfacePageMessage = Record<string, unknown>;
+
+/** The desk posts message to the plugin, as it posts to a web plugin's frame: desk:init after the plugin's desk:hello, desk:ping, desk:theme, desk:command, desk:event. */
+export interface SurfaceDeskMessage {
+  type: "desk.message";
+  surface: SurfaceId;
+  message: SurfacePageMessage;
+}
+
+/** The plugin posts message to the desk, as a web plugin's page posts to its parent: desk:hello once it listens, desk:ready once it is up, desk:pong for each desk:ping, desk:state to keep its state. */
+export interface SurfacePluginMessage {
+  type: "plugin.message";
+  surface: SurfaceId;
+  message: SurfacePageMessage;
+}
+
+/** A message the compositor sends to a surface: its lifecycle, the release of its textures, its frame pace, input, IME, drag and drop, accessibility requests, and a native plugin's page messages. */
 export type CompositorMessage =
   | SurfaceCreate
   | SurfaceResize
@@ -562,9 +579,10 @@ export type CompositorMessage =
   | SurfaceDragDrop
   | SurfaceDragEnded
   | SurfaceA11yEnable
-  | SurfaceA11yAction;
+  | SurfaceA11yAction
+  | SurfaceDeskMessage;
 
-/** A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, its IME state, its drags and its accessibility tree. */
+/** A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, its IME state, its drags, its accessibility tree, and a native plugin's page messages. */
 export type SurfaceMessage =
   | SurfaceReady
   | SurfaceDied
@@ -578,7 +596,8 @@ export type SurfaceMessage =
   | SurfaceDragStart
   | SurfaceDragStatus
   | SurfaceDragDone
-  | SurfaceA11yUpdate;
+  | SurfaceA11yUpdate
+  | SurfacePluginMessage;
 
 /** The compositor's name for one surface, unique while the desk runs. The compositor picks it in create; every later message about the surface carries it, so one connection can carry many surfaces. */
 export type SurfaceId = string;

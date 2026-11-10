@@ -1,0 +1,16 @@
+{
+  "target": "PluginManifest",
+  "description": "a native plugin names its programs in its native block, never an entry",
+  "instance": {
+    "id": "example.native-wgpu",
+    "name": "Native wgpu",
+    "version": "0.1.0",
+    "kind": "native",
+    "entry": "bin/plugin",
+    "native": {
+      "binaries": {
+        "macos-aarch64": "bin/plugin"
+      }
+    }
+  }
+}

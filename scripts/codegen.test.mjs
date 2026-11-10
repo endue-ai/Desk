@@ -64,11 +64,11 @@ describe("codegen", () => {
       assert.match(ts, new RegExp(`export type ${name} =`), `${name} in TypeScript`);
     }
     const kinds = /pub enum PluginKind \{[^}]*\}/.exec(rust)?.[0] ?? "";
-    for (const kind of ["connector", "view", "theme", "design-system", "pack"])
+    for (const kind of ["connector", "view", "theme", "design-system", "pack", "native"])
       assert.ok(kinds.includes(`#[serde(rename = "${kind}")]`), `PluginKind ${kind} in Rust`);
     assert.match(
       ts,
-      /export type PluginKind =[^;]*"connector"\s*\|\s*"view"\s*\|\s*"theme"\s*\|\s*"design-system"\s*\|\s*"pack";/,
+      /export type PluginKind =[^;]*"connector"\s*\|\s*"view"\s*\|\s*"theme"\s*\|\s*"design-system"\s*\|\s*"pack"\s*\|\s*"native";/,
     );
     for (const file of ["item/v0/item", "item/v0/query", "view/v0/view", "connector/v0/connector"])
       assert.ok(

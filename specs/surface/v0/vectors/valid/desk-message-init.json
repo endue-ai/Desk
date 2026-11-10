@@ -1,0 +1,16 @@
+{
+  "target": "CompositorMessage",
+  "description": "the desk's init after the plugin's hello, with the state it kept when the surface slept",
+  "instance": {
+    "type": "desk.message",
+    "surface": "main.example-native--wgpu",
+    "message": {
+      "type": "desk:init",
+      "pluginId": "example.native-wgpu",
+      "state": null,
+      "restored": {
+        "angle": 1.25
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "a desk.message carries the message it posts",
+  "instance": {
+    "type": "desk.message",
+    "surface": "main.example-native--wgpu"
+  }
+}
