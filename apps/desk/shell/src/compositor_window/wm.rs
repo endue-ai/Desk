@@ -117,9 +117,15 @@ impl CompositorWindow {
                         _ => at,
                     };
                     // On a window still gliding, desk-wm finds what the press starts where the
-                    // window is drawn (#124), its title clear of the top chips as they are drawn.
-                    if let Some(top) = self.hosted.report().map(|r| r.top) {
+                    // window is drawn (#124), its tools clear of the top chips as they are drawn,
+                    // and a press on a part of the system layer above it the page's (#139).
+                    let chrome = self.hosted.report().map(|r| {
+                        let parts: Vec<_> = r.parts.iter().filter_map(|p| p.known()).collect();
+                        (r.top, parts)
+                    });
+                    if let Some((top, parts)) = chrome {
                         self.hosted.wm.set_top_chrome(top);
+                        self.hosted.wm.set_system_parts(parts);
                     }
                     (self.hosted.wm.pressed_at(at, page), false)
                 } else if let Some(held) = self.gestures.pressed.take() {

@@ -4,7 +4,7 @@
 //! the glide ends, so what its DOM finds under the press is not what the person pressed.
 
 use desk_wm::interact::{Grip, Kind, Motion, Wm};
-use desk_wm::{Fill, Rect, snap_rect};
+use desk_wm::{Fill, Rect, TopChrome, snap_rect};
 
 use super::support::*;
 
@@ -61,6 +61,43 @@ fn a_press_on_the_title_bar_mid_glide_moves_the_window_from_where_it_is_drawn() 
     let drop = pt(700.0, 500.0);
     drag_on(&mut wm, from, drop, HALF + 40.0);
     out_of_its_snap(&wm, win, drop);
+}
+
+/// The top chips' edges as the desk's page measures them on a 1440 px app: the profile switcher
+/// ends at 124 and the desktops start at 1260 (`clearance.rs`).
+const CHIPS: TopChrome = TopChrome {
+    left: Some(136.0),
+    right: Some(192.0),
+};
+
+#[test]
+fn a_fills_title_bar_mid_glide_moves_it_left_of_where_the_switcher_moves_its_icon_too() {
+    // The switcher's clearance moves a fill's icon and title in; the bar left of them is still the
+    // bar the page drags it by. windows-snap.spec.ts presses there, at 80, 20, as the window
+    // glides into its quarter: the press went nowhere, and the window stayed in its snap (#139).
+    let (mut wm, win, mid) = gliding();
+    wm.set_top_chrome(CHIPS);
+    let from = pt(80.0, 20.0);
+    assert!(from.x < mid.x + 124.0 && from.y > mid.y + 1.0, "{mid:?}");
+    wm.pressed(from);
+    assert!(wm.holds(), "the window manager took the press");
+    let drop = pt(700.0, 500.0);
+    drag_on(&mut wm, from, drop, HALF);
+    out_of_its_snap(&wm, win, drop);
+}
+
+#[test]
+fn a_press_on_a_part_of_the_system_layer_over_it_mid_glide_is_the_pages() {
+    // The switcher's chips, drawn above every window: a press there is the page's.
+    let (mut wm, _, mid) = gliding();
+    wm.set_top_chrome(CHIPS);
+    let switcher = Rect::new(24.0, 24.0, 101.0, 80.0);
+    wm.set_system_parts(vec![switcher]);
+    let at = pt(60.0, 30.0);
+    assert!(at.y < mid.y + 41.0, "on its title bar as drawn: {mid:?}");
+    wm.pressed(at);
+    assert!(!wm.holds());
+    assert!(wm.frame(HALF + 1.0).moving, "it still glides");
 }
 
 #[test]

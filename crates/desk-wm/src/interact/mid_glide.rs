@@ -2,15 +2,16 @@
 //! its placement puts it, so while one glides into its part the page's DOM, and its grab, cannot
 //! say what a press on it means where the person sees it. The window manager finds that on the
 //! rectangle being drawn, as the person sees it: one of its grips resizes the window, its title bar
-//! away from its tools (and from the top chips over a fill's) moves it. The glide ends at once: the
-//! window stays where it was drawn while the press holds it, and a drag takes it from there; a
-//! press that never drags, or a drag cancelled, lets it glide on from there. Anything else under
-//! the press is the page's and the surfaces' as before.
+//! away from its tools moves it. The glide ends at once: the window stays where it was drawn while
+//! the press holds it, and a drag takes it from there; a press that never drags, or a drag
+//! cancelled, lets it glide on from there. Anything else under the press is the page's and the
+//! surfaces' as before, a part of the system layer drawn over the window (the top chips) among
+//! them.
 
 use crate::clearance::{TopChrome, title_clearance};
 use crate::coordinates::is_floating;
 use crate::cover::z_of;
-use crate::host::{BORDER, TITLE_START, title_bar_of, title_insets_of};
+use crate::host::{title_bar_of, title_insets_of};
 use crate::types::{Point, Rect};
 
 use super::gesture::{Gesture, Kind};
@@ -27,9 +28,18 @@ impl Wm {
         self.top = top;
     }
 
+    /// The system layer's parts where the compositor draws them, above every window.
+    pub fn set_system_parts(&mut self, parts: Vec<Rect>) {
+        self.parts = parts;
+    }
+
     /// The window topmost at `at` when it glides at `now`: its id, what a press there starts and
     /// where it is drawn.
     fn mid_glide(&self, at: Point, now: f64) -> Option<(String, Kind, Rect)> {
+        // The system layer is drawn above every window: what a press on it means is the page's.
+        if self.parts.iter().any(|r| inside(*r, at)) {
+            return None;
+        }
         let windows = self.drawn.windows();
         let focused = self.drawn.focused.as_deref();
         let mut stack: Vec<_> = (windows.iter().enumerate())
@@ -48,10 +58,12 @@ impl Wm {
             return None;
         }
         let fill = p.fill.filter(|_| is_floating(p));
-        let (start, end) = title_insets_of(title_clearance(fill, self.top));
+        let (_, end) = title_insets_of(title_clearance(fill, self.top));
         let bar = title_bar_of(drawn);
-        // The icon starts past the switcher's clearance; the tools end the draggable part.
-        let from = drawn.x + start - TITLE_START - BORDER;
+        // The bar drags from its left edge: the switcher's clearance moves a fill's icon and title
+        // in, not where the bar starts, and the chips themselves are parts of the system layer
+        // (#139). The tools, moved in by the desktops' clearance, end the draggable part.
+        let from = drawn.x;
         let title = Rect::new(from, bar.y, (drawn.right() - end - from).max(0.0), bar.h);
         inside(title, at).then(|| (p.id.clone(), Kind::Move { window }, drawn))
     }

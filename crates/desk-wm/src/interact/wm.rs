@@ -69,6 +69,9 @@ pub struct Wm {
     pub(super) stopped: Option<(String, Rect)>,
     /// The top chips' edges, which a fill's title keeps clear of (`mid_glide.rs`).
     pub(super) top: TopChrome,
+    /// The system layer's parts on screen, drawn above every window: a press on one is the
+    /// page's (`mid_glide.rs`).
+    pub(super) parts: Vec<Rect>,
     pub(super) preview: Preview,
     /// Grabs and commands for a window the runtime has not published yet: the page's calls each
     /// run on a thread of their own, so one may overtake the desk it follows (`pointer.rs`).
@@ -107,6 +110,7 @@ impl Wm {
             glides: BTreeMap::new(),
             stopped: None,
             top: TopChrome::default(),
+            parts: Vec::new(),
             preview: Preview::default(),
             waiting: Vec::new(),
             clock: 0.0,
