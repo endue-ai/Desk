@@ -19,8 +19,8 @@ every surface off screen with `desk-compositor`, places windows from `desk-wm`, 
 - `tray`, `menu`, `hotkeys`, `dialog`; `palette`, `eris_window`, `computer`, `float`, `displays`: the other
   windows; `open_files`, `run_event`, `drops`: files from the command line, Finder, the Dock and drags.
 - `scheme`, `plugin_scheme`, `guard`, `paths`, `renderer`, `crashes`: schemes, loads, files, crashes.
-- `web_host`: `specs/surface` for web content, a windowless browser per surface and its input (`input`,
-  `key_codes`, `routes`, `drag`); `compositor_window`: the runtime's desk in `desk-wm` (`report`, `hosted`),
+- `web_host`: `specs/surface` for web content, a windowless browser per surface on the desk's frame
+  clock (`frames`, `clock`) and its input (`input`, `key_codes`, `routes`, `drag`); `compositor_window`: the runtime's desk in `desk-wm` (`report`, `hosted`),
   its scene (`draw`), winit's input, the focus ring and drag image; `harness`, `probe`: their checks.
 - `sandbox`: each macOS helper enters Chromium's sandbox first (ADR 0148); off elsewhere until #61.
 - `release`, `update`: the build's version, key, origin and commit; the updater over `desk_update::install`,
