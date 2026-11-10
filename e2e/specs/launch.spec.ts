@@ -6,6 +6,7 @@
 // call.
 import { $, browser, expect } from "@wdio/globals";
 import { appLog, inFrame, MODE, READY, SYSTEM, shellReady } from "../support/desk";
+import { drawing } from "../support/frames";
 
 const ONBOARDING = "endue.onboarding";
 
@@ -39,12 +40,17 @@ describe("launch: the desk shell on a fresh data folder", () => {
   });
 
   it("Skip intro works over the shell", async () => {
-    await inFrame(ONBOARDING, async () => {
-      const skip = $("#skip button");
-      await skip.waitForDisplayed();
-      await expect(skip).toHaveText("Skip intro");
-      await skip.click();
-      await expect($("html")).toHaveAttribute("data-scene", "sign-in");
-    });
+    // The first run's timeline moves on the frame's animation frames, which a desk whose display
+    // sleeps or whose screen is locked never gets (the page reads visibilityState hidden): the desk
+    // draws while the case waits for Skip, clicks it and reads the next scene (#103).
+    await drawing(() =>
+      inFrame(ONBOARDING, async () => {
+        const skip = $("#skip button");
+        await skip.waitForDisplayed();
+        await expect(skip).toHaveText("Skip intro");
+        await skip.click();
+        await expect($("html")).toHaveAttribute("data-scene", "sign-in");
+      }),
+    );
   });
 });

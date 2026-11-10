@@ -1,10 +1,12 @@
-// Keep the desk drawing while a gesture runs (#82). A desk whose window the OS does not show (a
-// locked screen, a covered window) draws no frames, and Chromium hands a pointer move to the page
-// at the next frame: chromedriver then waits seconds for each move it sends. While a gesture's
-// actions run, this asks the desk's main page for a coarse screenshot again and again over its
-// own DevTools connection (the address chromedriver attached to), and each one draws a frame. It
-// reads nothing of the page's DOM: the specs learn the windows from desk.windows.list, and from
-// the screen what a rect cannot say.
+// Keep the desk drawing while a gesture runs (#82), or while a spec waits on what a plugin shows
+// on its animation frames (#103: the first run's timeline). A desk whose window the OS does not
+// show (a sleeping display, a locked screen, a covered window) draws no frames: Chromium hands a
+// pointer move to the page at the next frame, so chromedriver waits seconds for each move it
+// sends, and requestAnimationFrame never calls back, in the page or in its plugins' frames. While
+// the work runs, this asks the desk's main page for a coarse screenshot again and again over its
+// own DevTools connection (the address chromedriver attached to), and each one draws a frame of
+// the page and the frames in it. It reads nothing of the page's DOM: the specs learn the windows
+// from desk.windows.list, and from the screen what a rect cannot say.
 import { browser } from "@wdio/globals";
 
 type Pending = Map<number, () => void>;
