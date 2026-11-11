@@ -1,4 +1,10 @@
-import { BridgeClient, type BridgeEvent, browserStub, type PluginInfo } from "@endue-ai/bridge";
+import {
+  BridgeClient,
+  type BridgeEvent,
+  browserStub,
+  type PluginInfo,
+  type StubHandlers,
+} from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { PluginHost } from "./plugins";
 
@@ -25,8 +31,8 @@ function plugin(id: string, permissions: Array<{ permission: string }> = []): Pl
  * A host over fake frames that record what the runtime posted to them once they said hello, as
  * the SDK does when its page has loaded.
  */
-async function mount(plugins: PluginInfo[]) {
-  const stub = browserStub({ "plugin.list": () => ({ plugins }) });
+async function mount(plugins: PluginInfo[], handlers: StubHandlers = {}) {
+  const stub = browserStub({ "plugin.list": () => ({ plugins }), ...handlers });
   const frames = new Map<string, { posted: unknown[]; window: Window }>();
   let receive = (_event: MessageEvent) => {};
   const win = {
@@ -51,11 +57,14 @@ async function mount(plugins: PluginInfo[]) {
     { url: () => "about:blank" },
   );
   await host.start();
-  for (const frame of frames.values()) {
-    receive({ source: frame.window, data: { type: "desk:hello" } } as unknown as MessageEvent);
+  /** A message from plugin `id`'s frame, as its SDK posts it. */
+  const say = (id: string, data: unknown) =>
+    receive({ source: frames.get(id)?.window, data } as unknown as MessageEvent);
+  for (const [id, frame] of frames) {
+    say(id, { type: "desk:hello" });
     frame.posted.length = 0;
   }
-  return { stub, host, posted: (id: string) => frames.get(id)?.posted ?? [] };
+  return { stub, host, say, posted: (id: string) => frames.get(id)?.posted ?? [] };
 }
 
 const prompt = {
@@ -87,6 +96,29 @@ describe("PluginHost events", () => {
     stub.emit(event);
     expect(posted("a.one")).toEqual([{ type: "desk:event", event }]);
     expect(posted("b.two")).toEqual([]);
+  });
+
+  it("a plugin whose window closed and opened again still hears the process it started (#160)", async () => {
+    const { stub, host, say, posted } = await mount([plugin("endue.terminal")], {
+      "proc.spawn": () => ({ procId: "p-1" }),
+    });
+    const spawn = { id: 1, method: "proc.spawn", params: { command: "zsh" } };
+    say("endue.terminal", { type: "desk:calls", calls: [spawn] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const output = (data: string) =>
+      ({
+        event: "proc.output",
+        data: { procId: "p-1", stream: "pty", data, encoding: "utf8" },
+      }) as BridgeEvent;
+
+    // The window's ×: the plugin is put away for the session, and its shell goes on in the core.
+    host.unmount("endue.terminal");
+    stub.emit(output("while away"));
+    await host.launch("endue.terminal");
+    say("endue.terminal", { type: "desk:hello" });
+    posted("endue.terminal").length = 0;
+    stub.emit(output("echo two"));
+    expect(posted("endue.terminal")).toEqual([{ type: "desk:event", event: output("echo two") }]);
   });
 });
 

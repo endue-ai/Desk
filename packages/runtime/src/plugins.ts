@@ -30,7 +30,7 @@ export class PluginHost {
   readonly #options: PluginHostOptions;
   readonly #mounted = new Map<string, PluginInfo>();
   readonly #state = new Map<string, unknown>();
-  /** Turns, watches, data subscriptions and processes, by the plugin whose call started them. */
+  /** Turns, watches, subscriptions and processes, by plugin: kept while one is put away (#160). */
   readonly #owners = new Owners();
   /** Commands delivered to plugins that wait for their reply. */
   readonly #asks = new PluginAsks();
@@ -120,7 +120,7 @@ export class PluginHost {
     return this.#greetings.next(id);
   }
 
-  /** Take a plugin's surface away for the rest of this session, as `desk:close` does. */
+  /** Take a plugin's surface away for the session, as `desk:close` does; its work goes on. */
   unmount(id: string): void {
     this.#unmount(id);
   }
@@ -211,7 +211,6 @@ export class PluginHost {
     this.#greetings.stop(id, new CommandError("cancelled", `${id} stopped`));
     this.#mounting.delete(id);
     this.#commands.unmounted(id);
-    this.#owners.drop(id);
     // One that never woke has no surface to close.
     const opened = !this.#sleepers.dozing(id);
     this.#sleepers.forget(id);
@@ -293,6 +292,7 @@ export class PluginHost {
         break;
       case "disabled":
       case "removed":
+        this.#owners.drop(plugin);
         this.#unmount(plugin);
         break;
       case "enabled":
