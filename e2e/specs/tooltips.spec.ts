@@ -1,6 +1,7 @@
 // Hover titles through the compositor (#156): every page is an off-screen browser, which draws no
 // tooltip of its own, so the compositor draws a page's `title` near the pointer once the pointer
-// has rested on it, in the theme's tooltip look, and puts it away on a move or a press. The desk's
+// has rested on it, in the theme's tooltip look, and puts it away on a move, and on a press until
+// the pointer moves on (nothing shows where a dragged window is dropped). The desk's
 // own page says its titles and its CSS cursor the same way; the controls it labels itself (the
 // rail's and the arrange strip's tooltips) carry no `title`, so each is labelled once. The events
 // are winit's, fed to the compositor window's own input entry (support/compositor.ts): the screen
@@ -8,7 +9,9 @@
 import { browser, expect } from "@wdio/globals";
 import { feed, INPUT, inputState, inSurface, raise } from "../support/compositor";
 import { shellReady } from "../support/desk";
+import { drag, titleAt } from "../support/gestures";
 import { type Image, screenshot } from "../support/pixels";
+import { deskNow, rectOf } from "../support/windows";
 
 interface Shown {
   surface: string;
@@ -139,9 +142,13 @@ describe("tooltips: a page's hover title is drawn by the compositor, in the them
     expect(seen.light).toBeGreaterThan(15);
   });
 
-  it("puts it away on a press, not to come back until the page says another title", async () => {
+  it("puts it away on a press, not to come back until the pointer moves on", async () => {
     await press();
     expect((await tooltip()).shown).toBeNull();
+    await browser.pause(DELAY * 2);
+    expect((await tooltip()).shown).toBeNull();
+    // A hand at rest moves a pixel or two: still the title of what it pressed.
+    await feed([{ type: "pointerMoved", x: zone[0] + 2, y: zone[1] }]);
     await browser.pause(DELAY * 2);
     expect((await tooltip()).shown).toBeNull();
     // Off the zone, where the page has no title, and back.
@@ -201,5 +208,23 @@ describe("tooltips: a page's hover title is drawn by the compositor, in the them
         title: undefined,
       });
     }
+  });
+
+  it("shows nothing where a window is dropped by its title, until the pointer moves on", async () => {
+    const win = (await deskNow()).windows.find((w) =>
+      w.panes.some((p) => p.plugin === "e2e.input"),
+    );
+    if (!win) throw new Error("no input window");
+    const grab = titleAt(rectOf(win), 60);
+    const to = { x: grab.x + 60, y: grab.y + 40 };
+    await drag(grab, to, { steps: 10 });
+    // Longer than the glide into place and the rest: the page said its title bar's title meanwhile.
+    await browser.pause(DELAY * 3);
+    const { shown, titles } = await tooltip();
+    expect(titles.desk).toBeDefined();
+    expect(shown).toBeNull();
+    await feed([{ type: "pointerMoved", x: to.x + 12, y: to.y }]);
+    const moved = await showing(titles.desk ?? "");
+    expect(moved.surface).toBe("desk");
   });
 });

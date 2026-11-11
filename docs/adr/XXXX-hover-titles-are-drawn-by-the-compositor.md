@@ -47,14 +47,24 @@ and it already sets chrome text in the theme from the token table (ADR 0146).
   `OnTooltip`, and the desk's page's, hands its text to the web host, which says it to the compositor
   (`SurfaceSink::tooltip`, an empty text when the pointer left the titled element). The desk's page's
   `OnCursorChange` goes the same way as a plugin surface's, as its `cursor`.
+* **Who names the cursor where**: over a window's grips and its title bar, and while a gesture runs,
+  the window manager (ADR 0183); elsewhere the surface the pointer is for, the desk's page included.
+  The page says no cursor of its own for the chrome the window manager owns (`compositor.css`:
+  `.surface-resize` and `.surface-title` are `default` in compositor mode): a page's cursor reaches
+  the window a frame after the pointer moved, so a grab hand it named for a title showed for a frame
+  over the window's body the pointer moved to next.
 * **When it shows** (`compositor_window/tooltip.rs`): once the pointer has rested `DELAY` (500 ms,
   Chromium's own tooltip's) on the surface whose page said it, counted from the last move or from the
   title's arrival. Only the surface the pointer is for counts: the desk's page hears the pointer over
   every surface too (the router's underlay) and says the titles of what lies under them in its DOM
   (a window's body carries its name as a `title`). A move farther than `SLOP` (4 CSS px) puts it away
-  until the pointer rests again; a press or a key puts it away until that page says another title, as
-  Chromium's tooltip does after a click; the wheel, the pointer leaving the window and the window
-  losing the focus put it away. The event loop wakes for the rest's end (`clock.rs`).
+  until the pointer rests again. A press or a key puts it away until the pointer, let go, moves
+  farther than `SLOP` from where it let go, as Chromium's tooltip stays away after a click; not
+  until the page says another title, because the page says the pressed element's title after the
+  press, and a window dragged by its title has its page catch up with the pointer past its grips
+  and its body, so a title would show where the window was dropped. The wheel, the pointer leaving
+  the window and the window losing the focus put it away. The event loop wakes for the rest's end
+  (`clock.rs`).
 * **How it looks** (`compositor_window/tooltip_draw.rs`, `ChromeTheme::tooltip`): the shell's
   `.tooltip` look from the token table: `tooltip`, `tooltipText`, `tooltipRadius`, `tooltipShadow`,
   `space1` and `space2` of padding, `textXs` on 20 px lines in `fontSans`. It is sized to the title as
@@ -70,19 +80,24 @@ and it already sets chrome text in the theme from the token table (ADR 0146).
 
 * Good, because every `title` of every page shows, in the theme, with the timing people know.
 * Good, because the desk's page's CSS cursors reach the window: a pointer over its buttons, a text
-  cursor in its fields, the resize cursors of its grips where the page is under the pointer.
+  cursor in its fields, its dividers' resize cursors.
+* Bad, because a page's cursor still comes a frame late: moving straight from one of its controls to
+  another shows the first one's cursor for that frame.
 * Bad, because a native surface (#59) cannot say a hover title: the surface protocol has no message
   for one. A `tooltip` message in `specs/surface` is the next step when a native plugin needs it.
 * Bad, because the title shows where the pointer came to rest, not where the element is, and does not
   follow a move: a move hides it and the next rest shows it again.
-* Neutral: a window's title bar carries the page's "Maximize or restore (double-click the title bar)"
-  title, which now shows over every title bar after a rest, as it did in the windowed desk of Stage 1.
+* Neutral: a window's title bar carries the page's "Maximize or restore (double-click the title)"
+  title, which now shows over a title bar the pointer rests on (not after a drag), as it did in the
+  windowed desk of Stage 1.
 
 ## More Information
 
 Issue #156, item 3 (from the QA pass #154). Code: `apps/desk/shell/src/web_host/{client,routes}.rs`,
 `web_host.rs` (`SurfaceSink::tooltip`), `client.rs` (`ShellDisplay`), `compositor_window/{tooltip,
-tooltip_draw,composed,compose,clock,input,steps,page}.rs`, `crates/desk-compositor/src/theme/mod.rs`
-(`TooltipStyle`), `crates/desk-compositor/src/text/{fonts,layout}.rs` (`Fonts::measure`). Tests:
+tooltip_draw,composed,compose,clock,input,steps,page}.rs`, `apps/desk/src/compositor.css`,
+`crates/desk-compositor/src/theme/mod.rs` (`TooltipStyle`),
+`crates/desk-compositor/src/text/{fonts,layout}.rs` (`Fonts::measure`). Tests:
 `compositor_window/tooltip_tests.rs`, `crates/desk-compositor/tests/{text_measure,theme_snapshots}.rs`,
-`e2e/specs/tooltips.spec.ts`. No section of `docs/ko/desk-structure.md` changes.
+`e2e/specs/tooltips.spec.ts`, and `windows-reach.spec.ts` and `windows-selection.spec.ts` for the
+cursor and the drop. No section of `docs/ko/desk-structure.md` changes.
