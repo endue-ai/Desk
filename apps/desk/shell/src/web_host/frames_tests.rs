@@ -287,7 +287,8 @@ fn only_visible_awake_surfaces_are_on_the_clock_presses_prompt_and_the_clock_hea
     // Other tests may hear too: look for this one's browser only.
     heard(-117, true);
     heard(-118, false);
-    asked(-119);
+    asked(-119, Some(Duration::from_millis(2000)));
+    asked(-120, None);
     let got: Vec<(i32, Heard)> = take_heard()
         .into_iter()
         .filter(|(id, _, _)| *id <= -117)
@@ -298,7 +299,8 @@ fn only_visible_awake_surfaces_are_on_the_clock_presses_prompt_and_the_clock_hea
         [
             (-117, Heard::Prompt),
             (-118, Heard::Woken),
-            (-119, Heard::Asked)
+            (-119, Heard::Asked(Some(Duration::from_millis(2000)))),
+            (-120, Heard::Asked(None))
         ]
     );
 }

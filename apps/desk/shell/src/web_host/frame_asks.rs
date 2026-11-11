@@ -10,9 +10,22 @@
 //! frame of another site in a surface paints in that surface. A windowed browser's frames come
 //! anyway, so its pages never ask.
 
+use std::time::Duration;
+
 use cef::*;
 
 const ASKS: &str = include_str!("frame_asks.js");
+
+/// A `desk.wake` from `frame` of `browser` (`renderer::WAKE`): the clock gives its surface frames;
+/// how long the page waited counts only from its main frame (#157, `stall.rs`): another site's frame
+/// in it may be one Chromium throttles out of sight, which asks for frames it does not get.
+pub fn heard(browser: &Browser, frame: &Frame, message: &ProcessMessage) {
+    let waited = (frame.is_main() == 1).then(|| {
+        let ms = message.argument_list().map_or(0, |list| list.int(0));
+        Duration::from_millis(u64::try_from(ms).unwrap_or_default())
+    });
+    super::frames::asked(browser.identifier(), waited);
+}
 
 /// Run the script in `context`, which `__deskNative` is in already.
 pub fn install(context: &V8Context) {

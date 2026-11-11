@@ -74,12 +74,13 @@ pub fn prompts(message: &M) -> bool {
 }
 
 /// What a browser heard: input, which wakes it onto every desk frame; input whose paint should
-/// follow at once (`prompts`); or its page asking for frames while it rests (#134).
+/// follow at once (`prompts`); or its page asking for frames while it rests (#134), with how long
+/// its main frame has waited since its first ask (#157, `stall.rs`; `None`: a frame in it asked).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Heard {
     Woken,
     Prompt,
-    Asked,
+    Asked(Option<Duration>),
 }
 
 /// What a browser heard since the clock last looked: (identifier, when, what). Input reaches a
@@ -96,9 +97,9 @@ pub fn heard(browser: i32, prompt: bool) {
     hear(browser, if prompt { Heard::Prompt } else { Heard::Woken });
 }
 
-/// Browser `browser`'s page asked for frames now (`frame_asks.js`).
-pub fn asked(browser: i32) {
-    hear(browser, Heard::Asked);
+/// Browser `browser`'s page asked for frames now (`frame_asks.js`), having waited `waited`.
+pub fn asked(browser: i32, waited: Option<Duration>) {
+    hear(browser, Heard::Asked(waited));
 }
 
 fn hear(browser: i32, what: Heard) {
@@ -133,9 +134,8 @@ pub struct Clock {
     last: u64,
 }
 
-/// When the desk's GPU last copied: each paint the host takes is a copy into the compositor's own
-/// texture (`desk-compositor`'s attach), and so is the wake-up input brings to a desk whose copies
-/// are cold (#133, `copy_wake.rs`).
+/// When the desk's GPU last copied: each paint the host takes (a copy to the compositor's texture),
+/// and the wake-up input brings to a desk whose copies are cold (#133, `copy_wake.rs`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Copies {
     last: Option<Instant>,

@@ -123,7 +123,7 @@ wrap_client! {
             // The compositor's page asks for frames while it rests (#134); a window's never needs to.
             if name == WAKE {
                 if let Some(browser) = browser {
-                    crate::web_host::frames::asked(browser.identifier());
+                    crate::web_host::frame_asks::heard(browser, frame, message);
                 }
                 return 1;
             }

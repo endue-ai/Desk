@@ -17,8 +17,15 @@ function page() {
   let ids = 0;
   const observers: Array<() => void> = [];
   const wakes: number[] = [];
+  // What each ask said: how long the page had waited since its first ask for the wants unmet.
+  const waited: number[] = [];
   const scope: Record<string, unknown> = {
-    __deskNative: { wake: () => wakes.push(now) },
+    __deskNative: {
+      wake: (ms: number) => {
+        wakes.push(now);
+        waited.push(ms);
+      },
+    },
     requestAnimationFrame: (callback: (time: number) => void) => {
       frames.push(callback);
       ids += 1;
@@ -78,6 +85,7 @@ function page() {
   };
   return {
     wakes,
+    waited,
     advance,
     frame,
     run,
@@ -131,6 +139,18 @@ describe("frame_asks.js", () => {
     p.frame();
     p.advance(5000);
     expect(p.wakes.length, "its frame came").toBe(4);
+  });
+
+  it("says how long it has waited since its first ask, until a frame comes (#157)", () => {
+    const p = page();
+    p.animate();
+    p.run(3);
+    p.advance(3100);
+    expect(p.waited, "a first ask, then each a second on").toEqual([0, 1000, 2000, 3000]);
+    p.frame();
+    p.run(2);
+    p.advance(100);
+    expect(p.waited.slice(4), "its frames came, then stopped again: a first ask").toEqual([0]);
   });
 
   it("asks within 40 ms for a change after an answered ask, not a second on", () => {

@@ -7,7 +7,9 @@
 // page asks the desk, and again a second on while none came (an ask lost while its surface was
 // hidden or the desk's clock held). So a page that waits on a frame asks until one comes, wherever
 // its frames stopped: a want made in a frame, after the frame met the earlier ones (a
-// requestAnimationFrame loop's next frame), waits for the next one.
+// requestAnimationFrame loop's next frame), waits for the next one. Each ask says how long the page
+// has waited since its first ask for the want still unmet (0: a first ask): one that repeats an ask
+// the desk answered with begin frames tells it that its frames stopped (#157, `stall.rs`).
 (() => {
   const native = globalThis.__deskNative;
   const raf = globalThis.requestAnimationFrame;
@@ -31,9 +33,12 @@
   // The timer that looks then, and when it fires.
   let timer;
   let timerAt = Number.POSITIVE_INFINITY;
+  // When the page first asked for the wants still unmet (undefined: it has not asked).
+  let asked;
   const met = () => {
     waiting = false;
     due = 0;
+    asked = undefined;
   };
   // An unmet want's frame is due by `at`: the timer looks then, or sooner if it was set to.
   const expect = (at) => {
@@ -52,7 +57,8 @@
       expect(due);
       return;
     }
-    wake();
+    if (asked === undefined) asked = now();
+    wake(Math.round(now() - asked));
     expect(now() + AGAIN_MS);
   };
   const want = () => {

@@ -5,7 +5,7 @@
 //! ADR 0160, `web_host::relay`): a plugin surface's page posts to its parent (`window.parent` is the
 //! desk there, `web_host::shim`), and the runtime's page posts to a surface by naming its host,
 //! `post(text, host)`; the runtime's page hears what a surface posted through
-//! `onSurface(host, text)`, which it sets. `wake()` asks the desk for frames (#134,
+//! `onSurface(host, text)`, which it sets. `wake(ms)` asks the desk for frames (#134,
 //! `web_host::frame_asks`, which every frame's page runs). Development builds add `pid`, the
 //! renderer's process id, so a check can kill one surface's.
 
@@ -22,7 +22,8 @@ pub const POST: &str = "desk.post";
 /// the surface's host.
 pub const SURFACE: &str = "desk.surface";
 /// The process message by which a page asks the desk for frames: none came for a change of its own
-/// while its surface rests (#134, `web_host::frame_asks`). No arguments.
+/// while its surface rests (#134, `web_host::frame_asks`). Its integer: the milliseconds the page has
+/// waited since its first ask for the want still unmet (0: a first ask, #157).
 pub const WAKE: &str = "desk.wake";
 
 /// The global the page sees.
@@ -40,6 +41,17 @@ fn string_arg(arguments: Option<&[Option<V8Value>]>, index: usize) -> Option<Str
         .and_then(|arg| arg.as_ref())
         .filter(|arg| arg.is_string() == 1)
         .map(|arg| CefString::from(&arg.string_value()).to_string())
+}
+
+/// `wake(ms)`'s milliseconds, as a whole number from 0 (none or not a number: 0).
+fn waited_ms(arguments: Option<&[Option<V8Value>]>) -> i32 {
+    arguments
+        .and_then(|args| args.first())
+        .and_then(|arg| arg.as_ref())
+        .filter(|arg| arg.is_double() == 1)
+        .map_or(0, |arg| {
+            arg.double_value().clamp(0.0, f64::from(i32::MAX)) as i32
+        })
 }
 
 wrap_v8_handler! {
@@ -63,6 +75,9 @@ wrap_v8_handler! {
             if kind == WAKE {
                 let frame = v8_context_get_current_context().and_then(|c| c.frame());
                 if let (Some(frame), Some(mut message)) = (frame, process_message_create(Some(&kind.into()))) {
+                    if let Some(list) = message.argument_list() {
+                        list.set_int(0, waited_ms(arguments));
+                    }
                     frame.send_process_message(ProcessId::BROWSER, Some(&mut message));
                 }
                 return 1;

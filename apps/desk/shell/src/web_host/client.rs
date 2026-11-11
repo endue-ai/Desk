@@ -229,7 +229,7 @@ wrap_client! {
             // Its page, or a frame in it, asks for frames while the surface rests (#134).
             if name == WAKE {
                 if let Some(browser) = browser {
-                    super::frames::asked(browser.identifier());
+                    super::frame_asks::heard(browser, frame, message);
                 }
                 return 1;
             }

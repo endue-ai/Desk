@@ -2,12 +2,13 @@
 //! for web content. Each surface is one windowless CEF browser (`shared_texture_enabled`) that
 //! renders on the desk's frame clock (external begin frames, ADR 0152: `frames.rs`, `clock.rs`): its
 //! paints reach the compositor as `attach`es with their damage (`render.rs`); `resize` lays it out
-//! again (`WasResized`, the device scale through its screen info); `hide` is `WasHidden`; `sleep`
+//! again (`WasResized`, its screen info only for a new scale, #157); `hide` is `WasHidden`; `sleep`
 //! closes the browser, so its renderer exits; `wake` opens it again; `pace` is its windowless frame
 //! rate and its share of the desk's frames; its renderer's death is `died`, its load `ready`, its
 //! title `title`. The compositor sees only the protocol, never CEF (`SurfaceSink`). Each surface has
 //! an origin of its own (#36), so with `--site-per-process` each is its own renderer; DevTools reach
-//! each one over the remote debugging port in development builds (ADR 0144); `view::a11y`: #57.
+//! each one over the remote debugging port in development builds (ADR 0144); `view::a11y`: #57. A
+//! page that stops painting is found and loaded again (`stall.rs`, `revive.rs`, #157).
 
 pub mod client;
 pub mod clock;
@@ -22,8 +23,10 @@ pub mod lifecycle;
 pub mod paint;
 pub mod relay;
 pub mod render;
+mod revive;
 pub mod routes;
 pub mod shim;
+pub mod stall;
 pub mod top;
 pub mod view;
 
@@ -212,7 +215,11 @@ impl WebHost {
             Action::Open { hidden } => self.open(surface, view, hidden, pace),
             Action::Resize => {
                 if let Some(host) = host {
-                    host.notify_screen_info_changed();
+                    // The screen's info only for a new scale: with every resize it stalled a page
+                    // whose window glides to a new size (#157, `View::rescaled`).
+                    if view.lock().rescaled() {
+                        host.notify_screen_info_changed();
+                    }
                     host.was_resized();
                 }
             }
@@ -227,19 +234,7 @@ impl WebHost {
                     }
                 }
             }
-            Action::Restart => {
-                view.lock().restart();
-                // The surface's document as it is now (a new revision may have come meanwhile).
-                let url = self.inner().sources.get(surface).cloned();
-                match (browser.and_then(|b| b.main_frame()), url) {
-                    (Some(frame), Some(url)) => frame.load_url(Some(&url.as_str().into())),
-                    _ => {
-                        if let Some(browser) = browser {
-                            browser.reload();
-                        }
-                    }
-                }
-            }
+            Action::Restart => self.load_again(surface, view, browser),
             Action::Pace(fps) => {
                 if let Some(host) = host {
                     host.set_windowless_frame_rate(fps.min(60) as i32);

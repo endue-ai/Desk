@@ -10,6 +10,8 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
+use super::stall::Watch;
+
 /// A surface's paints, for the compositor's stats and the probe (a hidden surface paints nothing).
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
 pub struct Counts {
@@ -29,6 +31,11 @@ pub struct Counts {
     pub damage_px: u64,
     /// Begin frames the desk's clock sent it (`clock.rs`): none while hidden or asleep.
     pub begin_frames: u64,
+    /// Times its page stopped painting though it took begin frames and asked for them (#157,
+    /// `stall.rs`); whether it is stalled now; and the loads that brought it back.
+    pub stalls: u64,
+    pub stalled: bool,
+    pub stall_reloads: u64,
 }
 
 /// One surface's layout and paint state.
@@ -46,6 +53,11 @@ pub struct View {
     last_size: Option<(u32, u32)>,
     started: Instant,
     pub counts: Counts,
+    /// Whether its page stopped painting (#157).
+    pub watch: Watch,
+    /// The scale its browser last read from its screen info: a resize tells it the screen only when
+    /// the scale changes (`rescaled`).
+    screen_scale: f32,
     /// Its accessibility export (#57), kept across its browsers.
     pub a11y: a11y::Exports,
 }
@@ -62,14 +74,30 @@ impl View {
             last_size: None,
             started: Instant::now(),
             counts: Counts::default(),
+            watch: Watch::default(),
+            screen_scale: scale,
             a11y: Default::default(),
         }
     }
 
-    /// A browser starts painting from now (created or woken).
+    /// A browser starts painting from now (created, woken or loaded again), at the view's scale.
     pub fn restart(&mut self) {
         self.started = Instant::now();
         self.counts.first_paint_ms = None;
+        self.counts.stalled = false;
+        self.watch.restart();
+        self.screen_scale = self.scale;
+    }
+
+    /// Whether the scale changed since its browser last read its screen info, which it reads now.
+    /// A new size alone needs no screen info: CEF holds a resize until the page painted the one
+    /// before, and a screen info change lays the page out again past that hold, so a glide's
+    /// resizes put several new sizes in flight in one frame; after them CEF sent the page no begin
+    /// frame again (#157, ADR XXXX).
+    pub fn rescaled(&mut self) -> bool {
+        let changed = self.screen_scale != self.scale;
+        self.screen_scale = self.scale;
+        changed
     }
 
     /// The next frame of a texture `size` pixels: its frame number and generation.
@@ -131,5 +159,21 @@ mod tests {
         view.hidden = true;
         view.next_frame((1000, 600));
         assert_eq!(view.counts.hidden_paints, 1);
+    }
+
+    #[test]
+    fn a_resize_tells_the_screen_only_when_the_scale_changes() {
+        let mut view = View::new("s", (400, 300), 2.0, false);
+        view.size = (900, 700);
+        assert!(!view.rescaled(), "a new size alone (#157)");
+        view.scale = 1.0;
+        assert!(view.rescaled(), "a new scale");
+        assert!(!view.rescaled(), "told once");
+        view.scale = 2.0;
+        view.restart();
+        assert!(
+            !view.rescaled(),
+            "a new browser reads its screen when it starts"
+        );
     }
 }
