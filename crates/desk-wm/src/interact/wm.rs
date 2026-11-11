@@ -13,7 +13,9 @@ use crate::coordinates::screen_rect;
 use crate::desk::Desk;
 use crate::edits::Kept;
 use crate::fill::snap_rect;
-use crate::reach::within_reach;
+use crate::geometry::MIN;
+use crate::pane_min::window_min;
+use crate::reach::{top_within_reach, within_reach};
 use crate::types::{Fill, Rect, Size};
 use crate::view::View;
 
@@ -328,5 +330,12 @@ impl Wm {
     /// within reach on this app.
     pub(super) fn in_reach(&self, rect: Rect) -> Rect {
         within_reach(rect, self.screen, &self.edges)
+    }
+
+    /// Window `id` resized by its top edge to `rect` on screen, that edge stopped where its title
+    /// bar stays within reach.
+    pub(super) fn top_in_reach(&self, id: &str, rect: Rect) -> Rect {
+        let least = (self.drawn.window(id)).map_or(MIN.h, |p| window_min(&p.panes()).h);
+        top_within_reach(rect, self.screen, &self.edges, least)
     }
 }

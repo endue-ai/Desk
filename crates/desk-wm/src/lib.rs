@@ -93,7 +93,7 @@ pub use pan::{
 };
 pub use pane_min::{PANE_MIN, fit_panes, window_min};
 pub use placed::{PLUGIN_VIEW, placed_plugins, resolve_view, shown_plugins};
-pub use reach::{GRAB, within_reach};
+pub use reach::{GRAB, top_within_reach, within_reach};
 pub use settle::{Glided, SETTLE_MS, Settle, SettleKind};
 pub use snap::{Aim, CORNER, Halves, Rows, SNAP, SNAP_TOP, fill_rect, halves, rows, snap_for};
 pub use snapshot::{Frame, Seen, Told, Unseen};

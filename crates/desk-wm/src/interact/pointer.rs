@@ -261,9 +261,10 @@ impl Wm {
                 // A filled window's size may still be on its way back: it goes on from there.
                 let from = gesture.sized(rect, now, motion);
                 // A move glides on into reach of the pointer; a resize leaves the window where
-                // its edges are.
-                let rect = match gesture.kind {
+                // its edges are, but for a top edge taken past where its title bar is in reach.
+                let rect = match &gesture.kind {
                     Kind::Move { .. } => self.in_reach(rect),
+                    Kind::Resize { grip, .. } if grip.north() => self.top_in_reach(&id, rect),
                     _ => rect,
                 };
                 out.push(Out::Held(None));

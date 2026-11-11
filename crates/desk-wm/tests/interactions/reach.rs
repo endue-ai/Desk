@@ -110,6 +110,39 @@ mod a_drop {
     }
 }
 
+mod a_resize_by_the_top_edge {
+    use super::*;
+
+    #[test]
+    fn stops_with_the_title_bar_in_the_app_and_the_bottom_where_it_was() {
+        // A window at the app's top, its top grip pressed 5 px from the edge and taken far up.
+        let mut desk = windows(1);
+        desk.place("window-1", Rect::new(168.0, 0.0, 402.0, 305.0));
+        let mut wm = wm_of(&desk);
+        let grip = Kind::Resize {
+            window: "window-1".into(),
+            grip: Grip::N,
+        };
+        drag(&mut wm, grip, pt(270.0, 4.0), pt(270.0, -600.0));
+        assert_eq!(
+            rect_of(&wm, "window-1"),
+            Rect::new(168.0, 0.0, 402.0, 305.0)
+        );
+        // Down onto the dock, the window's bottom below it: the title bar stays above the dock.
+        let mut desk = windows(1);
+        desk.place("window-1", Rect::new(168.0, 500.0, 402.0, 600.0));
+        let mut wm = wm_of(&desk);
+        wm.set_edge_bars(vec![DOCK]);
+        let grip = Kind::Resize {
+            window: "window-1".into(),
+            grip: Grip::Nw,
+        };
+        drag(&mut wm, grip, pt(176.0, 508.0), pt(176.0, 830.0));
+        let r = rect_of(&wm, "window-1");
+        assert_eq!((r.y + BAR, r.bottom()), (DOCK.y, 1100.0));
+    }
+}
+
 mod the_move_commands {
     use super::*;
 

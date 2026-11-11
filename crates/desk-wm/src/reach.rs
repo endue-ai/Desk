@@ -40,6 +40,14 @@ pub fn within_reach(r: Rect, screen: Size, bars: &[Rect]) -> Rect {
     Rect::new(x, y, r.w, r.h)
 }
 
+/// `r` resized by its top edge, that edge stopped where the title bar stays within reach; the
+/// bottom edge stays, unless the window would get less than `least` tall.
+pub fn top_within_reach(r: Rect, screen: Size, bars: &[Rect], least: f64) -> Rect {
+    let top = within_reach(r, screen, bars).y;
+    let h = (r.bottom() - top).max(least);
+    Rect::new(r.x, top, r.w, h)
+}
+
 fn overlaps(a: Rect, b: Rect) -> bool {
     a.x < b.right() && b.x < a.right() && a.y < b.bottom() && b.y < a.bottom()
 }
