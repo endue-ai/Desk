@@ -31,6 +31,14 @@ html.desk-compositor .desk-surface-placeholder,
 html.desk-compositor .desk-not-responding {
   opacity: 0;
 }
+/* The window manager names the cursor over a window's grips and its title bar (a resize cursor, a
+   grab hand, ADR 0183). The page names none of its own there: its cursor reaches the window a frame
+   after the pointer moved (#156), so one it named for a grip or a title would show where the pointer
+   went next. A pinned window's title, its tools and a pan the page readies keep theirs. */
+html.desk-compositor .surface-resize,
+html.desk-compositor .surface-title {
+  cursor: default;
+}
 html.desk-compositor .desk-surface {
   background: transparent;
 }
