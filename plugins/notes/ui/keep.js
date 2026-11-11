@@ -1,4 +1,4 @@
-// What notes keeps when the desk puts its window to sleep (ui.surface.state, ADR 0070, ADR XXXX),
+// What notes keeps when the desk puts its window to sleep (ui.surface.state, ADR 0070, ADR 0176),
 // through the SDK's keepFiles: every open note with its watch, the caret and scroll of the one on
 // screen, and the unsaved text: whole while it fits, else only what changed since it was saved
 // (textChange), so typing in a 100 KB note still fits the 64 KiB the desk keeps. And how a kept note

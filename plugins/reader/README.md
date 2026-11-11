@@ -15,7 +15,7 @@ from an allowlist (no scripts, handlers or remote URLs) into a shadow root with 
 It answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed` (`.save` is refused),
 reads SDK byte ranges, asks once for a file's folder, follows files with `fs.watch`, and keeps
 position, zoom, bookmarks and notes per path in its store, never in the file. Asleep out of sight (ADR
-0070, ADR XXXX), the SDK's `keepFiles` keeps its files, pages, zooms and watches; back, the one on screen
+0070, ADR 0176), the SDK's `keepFiles` keeps its files, pages, zooms and watches; back, the one on screen
 opens without asking or taking the focus, the others (and any listed file it lost) when shown. Progress
 offers Cancel, which stops every page being decoded; a stopped PDF or DjVu offers Reload document.
 

@@ -1,5 +1,5 @@
 // What a file opener keeps when the desk puts its window to sleep (ui.surface.state, ADR 0070, ADR
-// XXXX), and how it comes back. It keeps the files open in the frame, the one on screen, where the
+// 0176), and how it comes back. It keeps the files open in the frame, the one on screen, where the
 // person was in each (`place`: a page and zoom, a caret and scroll) and the unsaved edits, fitted
 // into the 64 KiB the desk keeps: a file's edit may come in several forms, best first (the whole
 // text, then only what changed), and what does not fit goes first from the files used longest ago.

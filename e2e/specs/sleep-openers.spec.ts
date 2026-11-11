@@ -1,5 +1,5 @@
 // A file window that slept comes back with its file, its place and its unsaved edits (#162, ADR
-// XXXX), on the CEF desk with no window out of sight kept live (desk.surfaces.live 0): the opener's
+// 0176), on the CEF desk with no window out of sight kept live (desk.surfaces.live 0): the opener's
 // window goes to another desktop, sleeps there, and wakes when the person goes there. Notes first;
 // the other openers join as they take the SDK's keepFiles. Reader's case is in its unit tests for
 // now: on the machine this was written on, a woken Reader page stopped answering chromedriver.

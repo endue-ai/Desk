@@ -1,4 +1,4 @@
-// keepFiles (ADR 0070, ADR XXXX): what a file opener keeps when the desk puts its window to sleep,
+// keepFiles (ADR 0070, ADR 0176): what a file opener keeps when the desk puts its window to sleep,
 // fitted into the 64 KiB the desk keeps, and how it reads it back once it shows again.
 import { describe, expect, it } from "vitest";
 import { defineUiPlugin, type PluginContext } from "./index";

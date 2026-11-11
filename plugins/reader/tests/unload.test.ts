@@ -1,5 +1,5 @@
 // The desk puts a reader window nobody sees to sleep and loads it again when it shows (ADR 0070, ADR
-// XXXX): the reader answers ui.surface.state through the SDK's keepFiles with its files, the one on
+// 0176): the reader answers ui.surface.state through the SDK's keepFiles with its files, the one on
 // screen and where the person was in each, and comes back to them; a file the desk lists that the
 // frame lost opens again when it is shown, instead of "No file" (#162).
 import { describe, expect, it, vi } from "vitest";

@@ -16,7 +16,7 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
   listener)` (unsubscribes). `ctx.views` (`view.*`, `view:manage`): `list()`, `get(id)`, `save(view)`, `remove(id)`.
 - `ctx.surface`: `open(id, { placement?, title? })` a handle for `close(handle)` (`ui:surface`); `close()` ends this
   frame's, `show()`/`hide()` a `hidden` one; `onUnload(provider)`: JSON (64 KiB) back as `restored`. Chords reach the desk.
-  Openers: `keepFiles(ctx.surface, { files, shown })` fits files, places and edits in it (`textChange`; ADR XXXX).
+  Openers: `keepFiles(ctx.surface, { files, shown })` fits files, places and edits in it (`textChange`; ADR 0176).
 - `ctx.settings` (own keys, `settings.*`): `get(key)`, `set(key, value)`, `list()`, `onChange(listener)`. `ctx.log`:
   `write(level, message, fields?)`, `tail({ channel?, count? })` (`log:read`). `ctx.events.subscribe(names, listener)`
   resolves its unsubscribe (`events:subscribe`). `ctx.perm`: `request(permission, reason, duration?)`, `query(permission?)`.

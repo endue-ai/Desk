@@ -1,4 +1,4 @@
-// An unsaved text edit kept as one splice from the saved text (ADR XXXX): small enough for the 64 KiB
+// An unsaved text edit kept as one splice from the saved text (ADR 0176): small enough for the 64 KiB
 // the desk keeps across a sleep, and applied only to the text it was made from.
 import { describe, expect, it } from "vitest";
 import { applyTextChange, isTextChange, textChange, textSum } from "./text-change";

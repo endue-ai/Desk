@@ -1,5 +1,5 @@
 // The desk puts a notes window nobody sees to sleep and loads it again when it shows (ADR 0070, ADR
-// XXXX): notes answers ui.surface.state through the SDK's keepFiles and comes back from
+// 0176): notes answers ui.surface.state through the SDK's keepFiles and comes back from
 // ctx.surface.restored as it was: its notes, their unsaved text, the caret and the scroll.
 import { describe, expect, it } from "vitest";
 import { STATE_LIMIT } from "../../../packages/plugin-sdk/src/surface-state";

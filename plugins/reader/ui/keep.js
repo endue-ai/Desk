@@ -1,5 +1,5 @@
 // What the reader keeps of each open file when the desk puts its window to sleep (ui.surface.state,
-// ADR 0070, ADR XXXX), through the SDK's keepFiles: the page or chapter and the place in it, the zoom
+// ADR 0070, ADR 0176), through the SDK's keepFiles: the page or chapter and the place in it, the zoom
 // and the file's watch. Bookmarks and notes are in the reader's store already (marks.js), and the
 // store's position may lag a scroll by POSITION_DELAY; a password is never kept, so a locked PDF asks
 // for it again.
