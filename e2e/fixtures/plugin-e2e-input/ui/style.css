@@ -62,6 +62,12 @@ body {
     auto;
 }
 
+/* A spec whose window fills the app moves every control clear of the desk's bars over its edges
+   (editing.spec.ts). */
+body[data-layout="middle"] > * {
+  translate: 380px 180px;
+}
+
 [data-testid="ready"] {
   position: absolute;
   left: 10px;

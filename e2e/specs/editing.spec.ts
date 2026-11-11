@@ -6,11 +6,13 @@
 // the screen may be locked. The keys are macOS only: on Windows and Linux Blink binds Ctrl+A,
 // Ctrl+C and the rest itself. A right click in a field opens the field menu the shell places in the
 // page and judges every press on (`field_menu.rs`), on every platform; a page that draws its own
-// menu keeps it.
+// menu keeps it. Whatever the first layout gives the fixture's window, it fills the app here and
+// its controls move clear of the desk's bars; every point is taken from a control's box.
 import { execFileSync } from "node:child_process";
 import { browser, expect } from "@wdio/globals";
-import { feed, INPUT, inSurface, keyPress, raise } from "../support/compositor";
+import { feed, INPUT, inputState, inSurface, keyPress, raise } from "../support/compositor";
 import { shellReady } from "../support/desk";
+import { byId, deskNow, run, windowUntil } from "../support/windows";
 
 interface Text {
   value: string;
@@ -75,25 +77,37 @@ const type = (text: string) => feed([...text].flatMap((ch) => keyPress(ch, codeO
 const chord = (mods: Mods, key: string, code = key) =>
   feed([{ type: "modifiers", ...mods }, ...keyPress(key, code), { type: "modifiers" }]);
 
-/** Click at `local`, a point of the input surface's own. */
-async function clickAt(local: [number, number]): Promise<void> {
+/** The input fixture's window. */
+const WINDOW = "e2e.input";
+
+/** A point of control `id`, a point of the input surface's own: `dx` in from the control's left
+ * (from its right when negative), at its middle. */
+async function spot(id: string, dx: number): Promise<[number, number]> {
+  const [x = 0, y = 0, w = 0, h = 0] = await inSurface<number[]>(
+    INPUT,
+    `(() => { const r = document.querySelector('[data-testid=${id}]').getBoundingClientRect();
+      return [r.x, r.y, r.width, r.height]; })()`,
+  );
+  return [dx >= 0 ? x + dx : x + w + dx, y + h / 2];
+}
+
+/** A click of `button` at `local`, a point of the input surface's own, once the surface (no bar of
+ * the desk over it) hears the pointer there. */
+async function pressAt(local: [number, number], button: "left" | "right"): Promise<void> {
   const at = await raise(INPUT, local);
+  await feed([{ type: "pointerMoved", x: at[0], y: at[1] }]);
+  const hearing = (await inputState()).pointer.hearing;
+  if (!hearing.includes(INPUT)) {
+    throw new Error(`${INPUT}'s point ${local} is under ${hearing.join(", ")}`);
+  }
   await feed([
-    { type: "pointerMoved", x: at[0], y: at[1] },
-    { type: "pointerButton", button: "left", pressed: true },
-    { type: "pointerButton", button: "left", pressed: false },
+    { type: "pointerButton", button, pressed: true },
+    { type: "pointerButton", button, pressed: false },
   ]);
 }
 
-/** A right click at `local`, a point of the input surface's own. */
-async function rightClickAt(local: [number, number]): Promise<void> {
-  const at = await raise(INPUT, local);
-  await feed([
-    { type: "pointerMoved", x: at[0], y: at[1] },
-    { type: "pointerButton", button: "right", pressed: true },
-    { type: "pointerButton", button: "right", pressed: false },
-  ]);
-}
+const clickAt = (local: [number, number]) => pressAt(local, "left");
+const rightClickAt = (local: [number, number]) => pressAt(local, "right");
 
 /** The field menu as the input surface's page shows it: each row's label, top, height and state,
  * and its box. */
@@ -158,13 +172,24 @@ before(async () => {
     { timeout: 20_000, timeoutMsg: "the input plugin never mounted" },
   );
   await feed([{ type: "windowFocused", focused: true }]);
+  // The window in use fills the app, so no first layout decides what of it shows.
+  await browser.waitUntil(
+    async () => {
+      await run("desk.display.show", { plugin: WINDOW });
+      return byId(await deskNow(), WINDOW)?.focused === true;
+    },
+    { timeout: 15_000, interval: 300, timeoutMsg: `${WINDOW} is not shown and in use` },
+  );
+  await run("desk.display.maximize");
+  await windowUntil(WINDOW, (w) => w.state === "filled", "filling the app");
+  await inSurface<boolean>(INPUT, "(document.body.dataset.layout = 'middle', true)");
 });
 
 (mac ? describe : describe.skip)(
   "editing: the Mac's editing keys and the clipboard in a plugin's text field",
   () => {
     before(async () => {
-      await clickAt([20, 20]);
+      await clickAt(await spot("field", 20));
       await put("field", "", 0);
       await type("abc def");
       expect(await settled("field", { value: "abc def" })).toMatchObject({ value: "abc def" });
@@ -213,7 +238,7 @@ before(async () => {
     });
 
     it("⌘↑ and ⌘↓ go to a text area's ends, ⇧⌘↑ selects to its start", async () => {
-      await clickAt([20, 230]);
+      await clickAt(await spot("area", 20));
       await put("area", "one\ntwo\nthree", 5);
       await chord({ meta: true }, "ArrowDown");
       expect(await settled("area", { start: 13, end: 13 })).toMatchObject({ start: 13, end: 13 });
@@ -227,7 +252,7 @@ before(async () => {
     it("⌘C, ⌘X and ⌘V go through the system clipboard", async () => {
       const kept = clipboard();
       try {
-        await clickAt([20, 20]);
+        await clickAt(await spot("field", 20));
         await put("field", "", 0);
         await type("copy me");
         expect(await settled("field", { value: "copy me" })).toMatchObject({ value: "copy me" });
@@ -296,10 +321,10 @@ describe("editing: a right click in a text field opens the field menu", () => {
   });
 
   it("offers Undo, Redo, Cut, Copy, Paste and Select All; its Copy and Paste go through the clipboard", async () => {
-    await clickAt([20, 20]);
+    await clickAt(await spot("field", 20));
     await put("field", "copy me", 7);
     await select("field", 0, 7);
-    await rightClickAt([30, 22]);
+    await rightClickAt(await spot("field", 20));
     const menu = await shownMenu();
     expect(menu.rows.map(([label]) => label)).toEqual([
       "Undo",
@@ -318,20 +343,20 @@ describe("editing: a right click in a text field opens the field menu", () => {
     await menuGone("Copy");
     expect((await clipEvents()).slice(heard)).toEqual(["copy"]);
     await select("field", 7, 7);
-    await rightClickAt([150, 22]);
+    await rightClickAt(await spot("field", -20));
     await choose("Paste");
     await menuGone("Paste");
     expect(await settled("field", { value: "copy mecopy me" })).toMatchObject({
       value: "copy mecopy me",
     });
-    await rightClickAt([150, 22]);
+    await rightClickAt(await spot("field", -20));
     await choose("Select All");
     expect(await settled("field", { start: 0, end: 14 })).toMatchObject({ start: 0, end: 14 });
   });
 
   it("Escape puts the menu away, and the field keeps the keys", async () => {
     await select("field", 14, 14);
-    await rightClickAt([150, 22]);
+    await rightClickAt(await spot("field", -20));
     await shownMenu();
     await feed(keyPress("Escape", "Escape"));
     await menuGone("Escape");
@@ -343,7 +368,7 @@ describe("editing: a right click in a text field opens the field menu", () => {
 
   it("a page that draws its own menu keeps it, and nothing to edit or copy opens none", async () => {
     const before = (await inSurface<unknown[]>(INPUT, "window.e2eInput.events")).length;
-    await rightClickAt([150, 170]);
+    await rightClickAt(await spot("custom", -30));
     await browser.waitUntil(
       async () =>
         (
@@ -351,7 +376,7 @@ describe("editing: a right click in a text field opens the field menu", () => {
         ).some((e) => e.type === "contextmenu"),
       { timeout: 5_000, timeoutMsg: "the page never heard its right click" },
     );
-    await rightClickAt([190, 70]);
+    await rightClickAt(await spot("drop", -15));
     await browser.pause(500);
     expect(await fieldMenu()).toBeNull();
   });
