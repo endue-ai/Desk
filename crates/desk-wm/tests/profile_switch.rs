@@ -14,7 +14,7 @@ use std::collections::BTreeMap;
 
 use common::*;
 use desk_bridge::BrainDeskWindow;
-use desk_wm::{Desk, DesktopLayout, Placement, Saved, Visible, default_placement};
+use desk_wm::{Desk, DesktopLayout, FREE, Placement, Saved, Visible, default_placement};
 
 /// The plugins with a window at a fresh start, in mount order (a part of the desk's fourteen).
 const PLUGINS: [&str; 7] = [
@@ -115,7 +115,7 @@ fn switch(desk: &mut Desk, next: Saved, sample: bool, now: i64) {
     }
     desk.switch_profile(next, title, now);
     if !sample && !desk.holds(TURNED_OFF) {
-        desk.adopt(TURNED_OFF, TURNED_OFF);
+        desk.adopt(TURNED_OFF, TURNED_OFF, FREE);
     }
 }
 
