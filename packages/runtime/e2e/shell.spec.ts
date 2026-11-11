@@ -152,6 +152,22 @@ test.describe("the desk shell", () => {
     await expect(page.locator('[data-rail="listen"] .rail-dot')).toHaveCount(0);
   });
 
+  // The rail is centred by a transform its offsetTop does not see: the first button's tooltip
+  // stood beside the fourth.
+  test("the rail's tooltip stands beside the button it names", async ({ page }) => {
+    for (const id of ["brain", "desks", "listen"]) {
+      const button = page.locator(`[data-rail="${id}"]`);
+      await button.hover();
+      const tip = page.getByRole("tooltip");
+      await expect(tip).toHaveText((await button.getAttribute("aria-label")) ?? "");
+      const b = await button.boundingBox();
+      const t = await tip.boundingBox();
+      if (!b || !t) throw new Error(`no box for ${id}`);
+      expect(Math.abs(t.y + t.height / 2 - (b.y + b.height / 2))).toBeLessThanOrEqual(1);
+      expect(t.x + t.width).toBeLessThanOrEqual(b.x);
+    }
+  });
+
   test("the drawer opens upwards and raises an item onto the desk", async ({ page }) => {
     await page.click(".drawer-button");
     const panel = page.getByRole("dialog", { name: "서랍" });

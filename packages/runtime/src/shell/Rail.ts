@@ -203,7 +203,9 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
     }
     tooltip.textContent = item.label;
     tooltip.hidden = false;
-    tooltip.style.top = `${button.offsetTop + el.offsetTop + button.offsetHeight / 2}px`;
+    // Level with the button as drawn: the rail is centred by a transform that offsetTop leaves out.
+    const at = button.getBoundingClientRect();
+    tooltip.style.top = `${at.top + at.height / 2 - root.getBoundingClientRect().top}px`;
   };
 
   const draw = () => {
