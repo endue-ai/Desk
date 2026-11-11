@@ -178,12 +178,18 @@ export function createTree(doc, tree, actions) {
   });
 
   return {
-    /** @param {Row[]} next @param {string | null} id */
-    render(next, id) {
+    /** @param {Row[]} next @param {string | null} id @param {number} [top] the row to scroll to */
+    render(next, id, top = undefined) {
       rows = next;
       selected = id;
       anyMarked = next.some((r) => r.marked);
+      if (top !== undefined) {
+        space.style.height = `${rows.length * ROW}px`;
+        tree.scrollTop = top * ROW;
+      }
       draw();
     },
+    /** The row at the top of the list now. */
+    top: () => Math.floor(tree.scrollTop / ROW),
   };
 }

@@ -4,7 +4,7 @@
 // test asks for it: byteSource then reads by ranged fs.read calls, as it does where the desk gives
 // no URL.
 import { StubError } from "../../../packages/bridge/src/index";
-import { byteSource, defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
+import { byteSource, defineUiPlugin, keepFiles } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import {
   type ArchiveModel,
@@ -28,6 +28,8 @@ export interface RecordingView extends View {
   progresses: Array<Progress | null>;
   /** How many times the plugin moved the keyboard focus to its tree. */
   focused: number;
+  /** The row at the top of the tree, as the page view would answer: a test scrolls it. */
+  row: number;
 }
 
 export function recordingView(): RecordingView {
@@ -37,7 +39,12 @@ export function recordingView(): RecordingView {
     statuses: [],
     progresses: [],
     focused: 0,
-    archive: (model) => view.archives.push(model),
+    row: 0,
+    archive: (model) => {
+      view.archives.push(model);
+      if (model?.top !== undefined) view.row = model.top;
+    },
+    top: () => view.row,
     preview: (model) => view.previews.push(model),
     status: (text) => view.statuses.push(text),
     progress: (progress) => view.progresses.push(progress),
@@ -74,6 +81,10 @@ export interface MountOptions<V extends View> {
   urls?: boolean;
   /** The SDK's startWorker; without it the library's formats open in the frame. */
   startWorker?: StartWorker;
+  /** What the last sleep kept (ctx.surface.restored). */
+  restored?: unknown;
+  /** False: resolve once mounted, without waiting for its calls (a test races one). */
+  settled?: boolean;
 }
 
 export async function mount<V extends View = RecordingView>(
@@ -87,13 +98,18 @@ export async function mount<V extends View = RecordingView>(
     refuse: options.urls ? {} : { "fs.url": "unsupported" },
     handlers: { "fs.watch": () => ({ watchId: "w1" }), ...options.handlers },
     commands: { ...DESK, ...options.commands },
+    ...(options.restored === undefined ? {} : { restored: options.restored }),
   });
   let app: App | undefined;
   const view = options.view ? options.view(() => app) : (recordingView() as unknown as V);
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createArchives(ctx, view, { byteSource, startWorker: options.startWorker });
+        app = createArchives(ctx, view, {
+          byteSource,
+          startWorker: options.startWorker,
+          keepFiles,
+        });
       },
     },
     host.transport,
@@ -101,7 +117,7 @@ export async function mount<V extends View = RecordingView>(
   const settle = async () => {
     for (let i = 0; i < 6; i++) await host.settle();
   };
-  await settle();
+  if (options.settled !== false) await settle();
   if (!app) throw new Error("the plugin did not mount");
   return {
     host,

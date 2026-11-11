@@ -1,7 +1,7 @@
 // The plugin's file access: the SDK's byteSource (ranges through the file's fs.url URL, or ranged
 // fs.read calls, with its block cache), asking once with perm.request for the file's folder when its
-// grants do not cover it; fs.watch; and the scopes extraction writes under. Every failure is an
-// Error whose message is the sentence the person reads.
+// grants do not cover it (never while a window comes back from a sleep); fs.watch; and the scopes
+// extraction writes under. Every failure is an Error whose message is the sentence the person reads.
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext["bridge"]} Bridge
@@ -78,10 +78,11 @@ export function createFiles(bridge, byteSource) {
   };
 
   /**
-   * Open `path` for ranged reads. Throws "Not allowed to read <path>." when refused.
-   * @param {string} path
+   * Open `path` for ranged reads. Throws "Not allowed to read <path>." when refused, or when its
+   * grants do not cover it and `ask` is false.
+   * @param {string} path @param {{ ask?: boolean }} [how]
    */
-  const open = async (path) => {
+  const open = async (path, { ask: asking = true } = {}) => {
     const scope = /** @type {const} */ (scopeUnder("fs:read", folderOf(path)));
     const refused = new Error(`Not allowed to read ${path}.`);
     /** @param {unknown} error */
@@ -102,7 +103,7 @@ export function createFiles(bridge, byteSource) {
       raw = await acquire();
     } catch (error) {
       if (codeOf(error) !== "permission_denied") throw failed(error);
-      if (!(await ask(scope, `To open ${path} in Archives`))) throw refused;
+      if (!asking || !(await ask(scope, `To open ${path} in Archives`))) throw refused;
       raw = await acquire().catch((e) => Promise.reject(failed(e)));
     }
     const from = blockwise(raw);

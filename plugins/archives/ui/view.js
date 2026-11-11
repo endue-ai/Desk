@@ -129,8 +129,11 @@ export function createView(doc, actions) {
       allButton.disabled = !listing || !!refused || !!next?.extracting;
       allButton.title = refused ?? "";
       selectedButton.title = refused ?? "";
-      tree.render(listing ? (next?.rows ?? []) : [], next?.selected ?? null);
+      tree.render(listing ? (next?.rows ?? []) : [], next?.selected ?? null, next?.top);
     },
+
+    /** The row at the top of the tree now, kept with the file while another one shows. */
+    top: () => tree.top(),
 
     /** @param {PreviewModel | null} next */
     preview(next) {
