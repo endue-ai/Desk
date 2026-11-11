@@ -111,15 +111,47 @@ pub(super) fn page_part(
     from: &Sources,
     shown: &mut Shown,
 ) -> Result<(), SceneError> {
+    let heard = Vec2::new(at.x, at.y);
+    page_part_heard(scene, parent, (at, heard), to, from, shown)
+}
+
+/// The same, the page hearing the pointer from `heard` rather than from `at`'s corner: a window's
+/// part the picture shows at `at` while the DOM has it already elsewhere. Only what the page's
+/// texture holds of `at` is drawn: past its edge (a texture not grown to the window's new size
+/// yet, a window laid out past the page) the sampler would repeat the edge's pixels in stripes.
+pub(super) fn page_part_heard(
+    scene: &mut Scene,
+    parent: NodeId,
+    (at, heard): (Rect, Vec2),
+    to: Rect,
+    from: &Sources,
+    shown: &mut Shown,
+) -> Result<(), SceneError> {
     let Some((id, (tw, th))) = from.page else {
         return Ok(());
     };
     let (s, tw, th) = (from.scale, tw.max(1) as f32, th.max(1) as f32);
+    let (x0, y0) = (at.x.max(0.0), at.y.max(0.0));
+    let (x1, y1) = (
+        (at.x + at.width).min(tw / s),
+        (at.y + at.height).min(th / s),
+    );
+    if x1 <= x0 || y1 <= y0 || at.width <= 0.0 || at.height <= 0.0 {
+        return Ok(());
+    }
+    let (kx, ky) = (to.width / at.width, to.height / at.height);
+    let cut = Vec2::new(x0 - at.x, y0 - at.y);
+    let to = Rect::new(
+        to.x + cut.x * kx,
+        to.y + cut.y * ky,
+        (x1 - x0) * kx,
+        (y1 - y0) * ky,
+    );
     let uv = Rect::new(
-        at.x * s / tw,
-        at.y * s / th,
-        at.width * s / tw,
-        at.height * s / th,
+        x0 * s / tw,
+        y0 * s / th,
+        (x1 - x0) * s / tw,
+        (y1 - y0) * s / th,
     );
     let node = scene.insert(
         parent,
@@ -128,7 +160,7 @@ pub(super) fn page_part(
             ..SurfaceNode::new(to, id)
         },
     )?;
-    shown.push((node, target(PAGE, Vec2::new(at.x, at.y))));
+    shown.push((node, target(PAGE, heard + cut)));
     Ok(())
 }
 
@@ -235,12 +267,15 @@ pub(super) fn window(
     )?;
     let local = |r: desk_wm::Rect| rect(r).translate(-at.min());
     // What the page draws of it (its title bar's icon and tools, its own views, the headers of
-    // split panes), from where the page lays it out, at this window's place in the stack.
+    // split panes), from where the page's picture shows it, at this window's place in the stack;
+    // the pointer on it goes to where the page's DOM has it.
+    let dom = Vec2::new((w.heard.x - w.page.x) as f32, (w.heard.y - w.page.y) as f32);
     for (src, dst) in &w.page_parts {
-        page_part(
+        let src = rect(*src);
+        page_part_heard(
             scene,
             made.group,
-            rect(*src),
+            (src, src.min() + dom),
             local(*dst),
             from,
             &mut drawn.shown,

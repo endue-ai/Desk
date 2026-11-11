@@ -7,9 +7,12 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use desk_compositor::headless::Target;
 use desk_compositor::{AttachError, Attached, Compositor, Frames, Scene, Source, TextureId};
-use desk_surface::generated::{SurfaceAttach, SurfaceMessage};
+use desk_surface::generated::{SurfaceAttach, SurfaceMessage, SurfacePixelRect};
 
 use crate::web_host::SurfaceSink;
+
+/// The most page paints kept between two looks of the window.
+const PAGE_PAINTS: usize = 64;
 
 /// What the compositor knows of the surfaces.
 pub struct Composed {
@@ -23,6 +26,9 @@ pub struct Composed {
     pub messages: Vec<SurfaceMessage>,
     /// Frames attached and refused, by surface.
     pub attached: HashMap<String, (u64, u64)>,
+    /// The damage of each frame the desk's page attached since the window last looked, in texture
+    /// pixels: what its picture shows of the windows (`hosted.rs`, `PageShown`).
+    pub page_damage: Vec<Vec<SurfacePixelRect>>,
 }
 
 impl Composed {
@@ -76,6 +82,7 @@ impl Shared {
             dirty: true,
             messages: Vec::new(),
             attached: HashMap::new(),
+            page_damage: Vec::new(),
         })))
     }
 
@@ -97,6 +104,13 @@ impl SurfaceSink for Shared {
         match &result {
             Ok(_) => counts.0 += 1,
             Err(_) => counts.1 += 1,
+        }
+        if result.is_ok() && attach.surface == super::PAGE {
+            // A window that looks no more (the probe's) keeps the last ones only.
+            if state.page_damage.len() >= PAGE_PAINTS {
+                state.page_damage.remove(0);
+            }
+            state.page_damage.push(attach.damage.clone());
         }
         state.dirty |= result.is_ok();
         result

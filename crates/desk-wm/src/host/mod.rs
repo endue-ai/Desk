@@ -23,6 +23,7 @@ mod budget;
 mod cut;
 mod panes;
 mod parts;
+mod shown;
 mod surfaces;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -35,6 +36,7 @@ pub use panes::{
     title_bar_of,
 };
 pub use parts::{PagePart, page_parts};
+pub use shown::{Laid, PageShown, QUIET_MS};
 pub use surfaces::{FrameDoc, FrameState, Seat, Step, Surfaces};
 
 use crate::clearance::{TitleClearance, TopChrome, title_clearance};
@@ -129,9 +131,11 @@ pub struct HostWindow {
     pub title_bar: Rect,
     pub panes: Vec<HostPane>,
     pub dividers: Vec<Rect>,
-    /// Where the page lays it out: where it is drawn, unless the window manager moves it ahead of
-    /// the page (#80).
+    /// Where the page's picture shows it: where it is drawn, unless the window manager moves it
+    /// ahead of the page (#80) or the page has not painted where its DOM has it yet (`PageShown`).
     pub page: Rect,
+    /// Where the page's DOM lays it out: the page hears the pointer on its parts there.
+    pub heard: Rect,
     /// What the page draws of it, from the page to where it is drawn (`parts.rs`).
     pub page_parts: Vec<PagePart>,
 }
@@ -178,13 +182,22 @@ impl Plan {
     }
 }
 
-/// Where windows are drawn, and laid out by the page, other than where their placements put them
+/// Where windows are drawn, and shown by the page, other than where their placements put them
 /// (#80): a window a gesture holds or that glides, and one the page has not moved yet. By id, on
 /// screen.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Places {
     pub drawn: BTreeMap<String, Rect>,
+    /// Where the page's picture shows a window, which its parts are taken from (`PageShown`).
     pub page: BTreeMap<String, Rect>,
+    /// Where the page's DOM lays a window out, which hears the pointer on its parts, where it is
+    /// not where the picture shows it yet.
+    pub heard: BTreeMap<String, Rect>,
+    /// Windows the page's picture does not show yet: drawn without what the page draws of them.
+    pub unpainted: BTreeSet<String>,
+    /// What the picture may still show of windows gone from the page: never drawn above the
+    /// windows.
+    pub stale: Vec<Rect>,
 }
 
 impl Desk {
@@ -227,11 +240,14 @@ impl Desk {
                 let drawn = places.drawn.get(&p.id).copied().unwrap_or(at);
                 let mut w = self.host_window(p, level, drawn, top, seen);
                 let page = places.page.get(&p.id).copied().unwrap_or(at);
-                if page != drawn {
+                if places.unpainted.contains(&p.id) {
+                    w.page_parts.clear();
+                } else if page != drawn {
                     let laid = self.host_window(p, level, page, top, seen);
                     w.page = page;
                     w.page_parts = page_parts(&laid, &w);
                 }
+                w.heard = places.heard.get(&p.id).copied().unwrap_or(w.page);
                 w
             })
             .collect();
@@ -240,6 +256,7 @@ impl Desk {
         // Each title's text is the compositor's own, drawn over the page's title bar. A window
         // the page lays out elsewhere than it is drawn leaves all of that place to its window.
         let mut under: Vec<Rect> = hosted.iter().map(HostWindow::title_text).collect();
+        under.extend(places.stale.iter().copied());
         for (i, w) in hosted.iter().enumerate() {
             let moved = w.page != w.rect;
             for (part, _) in &w.page_parts {
@@ -331,6 +348,7 @@ impl Desk {
             panes,
             dividers,
             page: rect,
+            heard: rect,
             page_parts: Vec::new(),
         };
         w.page_parts = parts::in_place(&w);

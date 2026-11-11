@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use desk_compositor::glam::Vec2;
 use desk_compositor::input::Target;
-use desk_compositor::{ChromeTheme, Rect, Scene, TextureId, hit_test};
+use desk_compositor::{ChromeTheme, NodeKind, Rect, Scene, TextureId, hit_test};
 use serde_json::json;
 
 use super::{Sources, Texture, draw, sampled};
@@ -192,4 +192,32 @@ fn the_snap_preview_lies_under_the_window_dragged_to_an_edge_and_takes_no_pointe
         .find(|(node, _)| *node == hit.node)
         .unwrap();
     assert_eq!(under.1.surface, PAGE);
+}
+
+#[test]
+fn a_part_of_the_page_is_cut_to_what_its_texture_holds_never_its_edge_stretched() {
+    // A page texture not grown to the app's new size yet (1280×800 for 1440×900), and a window's
+    // part laid out across its bottom right corner.
+    let small = Sources {
+        page: Some((TextureId(1), (1280, 800))),
+        ..sources(&textures)
+    };
+    let mut scene = Scene::new(1440, 900);
+    let root = scene.root();
+    let mut shown = Vec::new();
+    let at = Rect::new(1200.0, 700.0, 200.0, 150.0);
+    let to = Rect::new(1000.0, 500.0, 200.0, 150.0);
+    super::page_part(&mut scene, root, at, to, &small, &mut shown).unwrap();
+    let (node, target) = shown.pop().unwrap();
+    let Some(NodeKind::Surface(drawn)) = scene.node(node).map(|n| n.kind.clone()) else {
+        panic!("a surface node");
+    };
+    assert_eq!(drawn.rect, Rect::new(1000.0, 500.0, 80.0, 100.0));
+    let uv = Rect::new(1200.0 / 1280.0, 700.0 / 800.0, 80.0 / 1280.0, 100.0 / 800.0);
+    assert_eq!(drawn.uv, uv, "inside the texture");
+    assert_eq!(target.origin, Vec2::new(1200.0, 700.0));
+    // Wholly past it: nothing is drawn.
+    let past = Rect::new(1300.0, 100.0, 100.0, 100.0);
+    super::page_part(&mut scene, root, past, past, &small, &mut shown).unwrap();
+    assert!(shown.is_empty());
 }

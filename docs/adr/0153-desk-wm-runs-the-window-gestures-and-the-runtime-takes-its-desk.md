@@ -9,6 +9,8 @@ and command; the windowed desk and the runtime's own drag, resize, snap, glide a
 gone, and a desk without the compositor (the runtime's tests) moves no window.
 Amended by ADR 0158: `desk-wm` holds the desk and publishes it whole on every change, with the
 answers to the runtime's edits; calls follow the last edit (`after`), not the last report.
+Amended by ADR 0166: what the page draws of a window is taken from where the page's paints show it,
+not from where its report lays it out.
 
 # desk-wm runs the window gestures on the compositor's input, and the runtime takes its desk
 

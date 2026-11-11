@@ -15,7 +15,9 @@ use desk_compositor::{ChromeTheme, Tokens};
 use desk_core::TokenTable;
 use desk_surface::generated::CompositorMessage;
 use desk_wm::interact::{Motion, Out, Wm};
-use desk_wm::{FrameDoc, FrameState, LiveBudget, Places, Plan, Rect, Seat, Size, Step, Surfaces};
+use desk_wm::{
+    FrameDoc, FrameState, LiveBudget, PageShown, Plan, Rect, Seat, Size, Step, Surfaces,
+};
 use serde_json::json;
 
 use super::report::{DeskReport, FrameReport, Layer};
@@ -109,6 +111,11 @@ pub struct Hosted {
     spreading: bool,
     /// The window manager's clock held at this many milliseconds, by a check (`compositor_clock`).
     held_clock: Option<f64>,
+    /// Where the page's picture shows each window, as its paints say: its parts are taken from
+    /// there, not from where its DOM has it a frame or two before the picture does.
+    painted: PageShown,
+    /// What the picture shows changed since the window last drew: draw again.
+    restaged: bool,
 }
 
 impl Hosted {
@@ -129,13 +136,19 @@ impl Hosted {
             moving: false,
             spreading: false,
             held_clock: None,
+            painted: PageShown::new(),
+            restaged: false,
         }
     }
 
     /// `now` on the window manager's clock, in milliseconds; where a check holds it, there.
     pub fn ms(&self, now: Instant) -> f64 {
-        let real = now.saturating_duration_since(self.origin).as_secs_f64() * 1000.0;
-        self.held_clock.unwrap_or(real)
+        self.held_clock.unwrap_or(self.real_ms(now))
+    }
+
+    /// `now` in milliseconds from the start, never held: the page's paints keep real time.
+    fn real_ms(&self, now: Instant) -> f64 {
+        now.saturating_duration_since(self.origin).as_secs_f64() * 1000.0
     }
 
     /// Hold the window manager's clock at `at` milliseconds (`None`: let it run), so a check sees
@@ -191,11 +204,10 @@ impl Hosted {
         if let Some(h) = &report.held {
             laid.insert(h.window.clone(), Rect::new(h.x, h.y, h.w, h.h));
         }
-        let places = Places {
-            drawn: frame.drawn,
-            page: laid,
-        };
+        // Each window's parts come from where the page's picture shows it (`hosted_picture.rs`).
+        let real = self.real_ms(now);
         let desk = self.wm.desk();
+        let places = picture::places(&mut self.painted, desk, report, frame.drawn, laid, real);
         let plan = desk.host_plan_at(vw, vh, report.top, report, &places);
         self.plan = Some(plan);
         self.preview = frame.preview;
@@ -311,8 +323,12 @@ impl Hosted {
         self.look(now)
     }
 
-    /// A hidden window's time may have run out, or a window glides.
+    /// A hidden window's time may have run out, a window glides, or the page has been quiet long
+    /// enough to have painted what it laid out.
     pub fn tick(&mut self, now: Instant) -> Outcome {
+        if self.settle_picture(now) {
+            return self.replan(now);
+        }
         if self.moving {
             return self.replan(now);
         }
@@ -322,10 +338,13 @@ impl Hosted {
         }
     }
 
-    /// When the budget looks again by itself.
+    /// When the budget looks again by itself, or the page's picture counts as painted.
     pub fn due(&self) -> Option<Instant> {
-        let ms = self.next?;
-        Some(self.origin + std::time::Duration::from_secs_f64(ms.max(0.0) / 1000.0))
+        let at = |ms: f64| self.origin + std::time::Duration::from_secs_f64(ms.max(0.0) / 1000.0);
+        [self.next.map(at), self.picture_due().map(at)]
+            .into_iter()
+            .flatten()
+            .min()
     }
 
     /// Surface `surface`'s renderer died: the runtime loads its window again (#44).
@@ -372,6 +391,9 @@ fn doc(frame: &FrameReport) -> Option<FrameDoc> {
         state: frame.state,
     })
 }
+
+#[path = "hosted_picture.rs"]
+mod picture;
 
 #[cfg(test)]
 #[path = "hosted_tests.rs"]

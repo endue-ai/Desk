@@ -241,6 +241,7 @@ impl CompositorWindow {
     /// After CEF's work: act on what the surfaces said, on a new look and on the budget's time,
     /// send the frame clock's begin frames and draw a frame if one is due.
     pub fn tick(&mut self, now: Instant, event_loop: &ActiveEventLoop) {
+        self.page_painted(now);
         let messages = std::mem::take(&mut self.shared.lock().messages);
         for message in messages {
             if let SurfaceMessage::SurfaceA11yUpdate(update) = message {
@@ -283,6 +284,9 @@ impl CompositorWindow {
         let outcome = self.hosted.tick(now);
         if outcome != Outcome::default() {
             self.carry(outcome);
+        }
+        if self.hosted.take_restaged() {
+            self.shared.lock().dirty = true;
         }
         self.spread_tick(now);
         if self.hosted.moving() {
@@ -333,6 +337,28 @@ impl CompositorWindow {
         self.window.pre_present_notify();
         self.gpu.queue.present(frame);
         self.presented += 1;
+    }
+
+    /// What the page painted since the last look: the windows its picture shows where its DOM has
+    /// them are drawn from there (`PageShown`).
+    fn page_painted(&mut self, now: Instant) {
+        let painted = std::mem::take(&mut self.shared.lock().page_damage);
+        let scale = self.window.scale_factor().max(f64::MIN_POSITIVE);
+        for damage in painted {
+            let css: Vec<desk_wm::Rect> = (damage.iter())
+                .map(|r| {
+                    let px = |v: u64| v as f64 / scale;
+                    desk_wm::Rect::new(px(r.x), px(r.y), px(r.width), px(r.height))
+                })
+                .collect();
+            let outcome = self.hosted.page_painted(&css, now);
+            if outcome != Outcome::default() {
+                self.carry(outcome);
+            }
+        }
+        if self.hosted.take_restaged() {
+            self.shared.lock().dirty = true;
+        }
     }
 
     /// Close the page's browser and every surface's (the desk quits).
