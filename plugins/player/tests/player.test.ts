@@ -111,7 +111,7 @@ describe("what the readers and the webview decide", () => {
     await settle();
     expect(shown()).toMatchObject({
       mode: "details",
-      why: "This system's WebKit cannot play odd.mov.",
+      why: "This build of the desk cannot play odd.mov.",
     });
   });
 
@@ -123,8 +123,14 @@ describe("what the readers and the webview decide", () => {
     });
     view.playable = (type) => (type.includes("avc1") ? "" : "maybe");
     await host.command("desk.files.visit", V);
-    expect(shown()?.why).toBe("This system's WebKit cannot play MP4 with H.264.");
-    expect(view.asked).toEqual(["video/mp4", expect.stringMatching(/^video\/mp4; codecs="avc1\./)]);
+    // Nothing else here decodes H.264 either (no MSE, no software decoder): the decoder is named.
+    expect(shown()?.why).toBe(
+      "This build of the desk has no H.264 decoder, so it cannot play this MP4 file.",
+    );
+    expect(view.asked.slice(0, 2)).toEqual([
+      "video/mp4",
+      expect.stringMatching(/^video\/mp4; codecs="avc1\./),
+    ]);
   });
 
   it("revert keeps the position; the store is left alone for a short file", async () => {

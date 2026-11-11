@@ -8,6 +8,7 @@ import { webviewReason } from "./decode.js";
 import { release } from "./decoding.js";
 import { modelOf, rowsOf } from "./details.js";
 import { createOpening, scopeOf } from "./opening.js";
+import { reveal as showInFolder } from "./reveal.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -347,10 +348,18 @@ export function createImages({ bridge, commands }, view, options) {
     /** The webview could not decode an image: show its details with that reason. */
     failed(/** @type {ImageModel} */ model) {
       for (const entry of owners(model)) {
-        const reason = webviewReason(entry.decoded.id, entry.decoded.format);
-        remodel(entry, { ...entry.decoded, kind: "details", reason });
+        const { id, format, mime } = entry.decoded;
+        remodel(entry, {
+          ...entry.decoded,
+          kind: "details",
+          reason: webviewReason(id, format, mime),
+        });
       }
       render();
+    },
+    /** Show a card's file in the file manager, for another app to open. */
+    reveal(/** @type {ImageModel} */ model) {
+      return showInFolder(bridge, model.path).catch((error) => say(error.message));
     },
     /** The webview decoded an image whose header gave no size. */
     loaded(/** @type {ImageModel} */ model, /** @type {{ width: number, height: number }} */ size) {

@@ -148,7 +148,7 @@ describe("what the webview cannot play", () => {
       mode: "details",
       name: "clip.mkv",
       format: "Matroska",
-      why: "This system's WebKit cannot play Matroska with HEVC and AC-3.",
+      why: "This build of the desk cannot play Matroska with HEVC and AC-3.",
     });
     expect(shown()?.size).toBe(fixture("clip.mkv").length);
     expect(shown()?.src).toBeUndefined();

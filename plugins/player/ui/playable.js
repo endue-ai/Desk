@@ -1,6 +1,7 @@
 // Whether the webview can play what the readers found, by asking it with canPlayType: the container's
 // media type first, then each track's codec where the container has a standard codec string. What it
-// refuses gets the one sentence the details view shows.
+// refuses gets the one sentence the details view shows. The sentences name this build of the desk,
+// not an engine: what plays is what its engine and the player's own decoders decode (ADR XXXX).
 import { words } from "./codecs.js";
 
 /**
@@ -35,16 +36,20 @@ function codecString(/** @type {Info} */ info, /** @type {Track} */ track) {
 const media = (/** @type {Track[]} */ tracks) =>
   tracks.filter((t) => t.kind === "video" || t.kind === "audio");
 
-/** "This system's WebKit cannot play MP4 with H.264 and AAC." */
+/** "This build of the desk cannot play MP4 with H.264 and AAC." */
 export function cannot(/** @type {Info} */ info, tracks = info.tracks) {
   const all = [...new Set(media(tracks).map((t) => t.codec))];
   if (all.length === 0)
-    return `This system's WebKit cannot play ${info.container} with an unknown codec.`;
+    return `This build of the desk cannot play ${info.container} with an unknown codec.`;
   // "cannot play WavPack with WavPack" says the name twice: the container's own codec is left out.
   const names = all.filter((name) => name !== info.container);
-  if (names.length === 0) return `This system's WebKit cannot play ${info.container}.`;
-  return `This system's WebKit cannot play ${info.container} with ${words(names)}.`;
+  if (names.length === 0) return `This build of the desk cannot play ${info.container}.`;
+  return `This build of the desk cannot play ${info.container} with ${words(names)}.`;
 }
+
+/** "This build of the desk has no H.264 decoder, so it cannot play this MP4 file." */
+export const noDecoder = (/** @type {Info} */ info, /** @type {string[]} */ codecs) =>
+  `This build of the desk has no ${words(codecs, "or")} decoder, so it cannot play this ${info.container} file.`;
 
 /**
  * The sentence for what the webview says it cannot play, or null when it may play it.

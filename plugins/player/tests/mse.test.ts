@@ -208,7 +208,9 @@ describe("the remux engine feeds Media Source Extensions", () => {
     await until(() => FakeMediaSource.last?.buffers.length === 1);
     (FakeMediaSource.last?.buffers[0] as FakeBuffer).fails = true;
     await until(() => h.fail.mock.calls.length > 0);
-    expect(h.fail).toHaveBeenCalledWith("WebKit could not decode the remuxed stream.");
+    expect(h.fail).toHaveBeenCalledWith(
+      "The desk could not decode the remuxed stream: the file may be damaged.",
+    );
   });
 });
 

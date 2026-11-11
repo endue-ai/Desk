@@ -56,6 +56,9 @@ describe("plugin.json", () => {
         permission: "cmd:invoke",
         ids: ["desk.files.changed", "desk.files.open", "desk.buffers.close"],
       },
+      // Show in Finder on a card: the file is shown in the file manager, never opened or run.
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: a desk path rooted at ${home}, not a template
+      { permission: "shell:open", paths: ["${home}/**"] },
     ]);
   });
 

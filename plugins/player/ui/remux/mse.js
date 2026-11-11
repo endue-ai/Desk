@@ -80,7 +80,7 @@ export function playRemuxed(element, remuxed, options) {
       const bad = () => {
         buffer.removeEventListener("updateend", done);
         buffer.removeEventListener("error", bad);
-        reject(new Error("WebKit could not decode the remuxed stream."));
+        reject(new Error("The desk could not decode the remuxed stream: the file may be damaged."));
       };
       buffer.addEventListener("updateend", done);
       buffer.addEventListener("error", bad);

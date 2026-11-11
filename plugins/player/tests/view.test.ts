@@ -170,7 +170,59 @@ describe("resuming long files", () => {
   });
 });
 
-describe("what WebKit refuses", () => {
+describe("a file this build does not play", () => {
+  /** The page on an engine without H.264 or AAC, as this build's Chromium (ADR XXXX). */
+  const withoutH264 = async (prompt?: () => boolean) => {
+    const page = await mountPage({ files: FILES, grants: GRANTS, prompt });
+    page.video.element.canPlayType = (type) => (/avc1|mp4a\.40/.test(type) ? "" : "maybe");
+    await page.host.command("desk.files.visit", V);
+    await page.settle();
+    return page;
+  };
+  const opened = (page: Awaited<ReturnType<typeof mountPage>>) =>
+    page.host.calls.filter((c) => c.method === "shell.open").map((c) => c.params);
+
+  it("opens as a card that names the codec and this build, with no transport and no loading", async () => {
+    const page = await withoutH264();
+    const details = page.byId("details");
+    expect(visible(details)).toBe(true);
+    expect(page.byId("why").textContent).toBe(
+      "This build of the desk has no H.264 decoder, so it cannot play this MP4 file.",
+    );
+    expect(details.textContent).toContain("H.264");
+    expect(details.textContent).not.toContain("WebKit");
+    expect(visible(page.byId("stage"))).toBe(false);
+    expect(visible(page.byId("transport"))).toBe(false);
+    expect(visible(page.byId("progress"))).toBe(false);
+    expect(page.video.element.hasAttribute("src")).toBe(false);
+  });
+
+  it("its Show in file manager button reveals the file, and a refusal is said", async () => {
+    const page = await withoutH264();
+    const button = page.byId("reveal") as HTMLButtonElement;
+    expect(visible(button)).toBe(true);
+    expect(button.textContent).toMatch(/^Show in (Finder|File Explorer|the file manager)$/);
+    button.click();
+    await page.settle();
+    expect(opened(page)).toEqual([
+      {
+        target: V.path,
+        reveal: true,
+        scope: { permission: "shell:open", paths: [V.path] },
+      },
+    ]);
+    expect(page.byId("status").textContent).toBe(
+      "This build of the desk has no H.264 decoder, so it cannot play this MP4 file.",
+    );
+
+    const refused = await withoutH264(() => false);
+    (refused.byId("reveal") as HTMLButtonElement).click();
+    await refused.settle();
+    expect(refused.byId("status").textContent).toMatch(/^Not allowed to show clip\.mp4 in /);
+  });
+});
+
+describe("what the engine refuses", () => {
   it("the element's error event opens the details view", async () => {
     const page = await mountPage({ files: FILES, grants: GRANTS });
     await page.host.command("desk.files.visit", V);
@@ -180,7 +232,7 @@ describe("what WebKit refuses", () => {
     const details = page.byId("details");
     expect(visible(details)).toBe(true);
     expect(details.textContent).toContain(
-      "This system's WebKit cannot play MP4 with H.264 and AAC.",
+      "This build of the desk cannot play MP4 with H.264 and AAC.",
     );
     expect(details.textContent).toContain("clip.mp4");
     expect(details.textContent).toContain("176 × 144");

@@ -60,7 +60,7 @@ export function fallBack(entry, reason) {
   }
   const fallback = item.info
     ? (item.why ?? cannot(item.info))
-    : item.problem || item.why || `This system's WebKit cannot play ${item.name}.`;
+    : item.problem || item.why || `This build of the desk cannot play ${item.name}.`;
   const why = reason && item.engine !== "native" ? reason : fallback;
   delete item.url;
   details(entry, why, item.format);

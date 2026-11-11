@@ -169,8 +169,8 @@ export const mp4Codec = (type) => {
   return names[type] ?? names[type.trim()] ?? type.trim();
 };
 
-/** A list in words: "A", "A and B", "A, B and C". */
-export function words(/** @type {string[]} */ items) {
+/** A list in words: "A", "A and B", "A, B and C"; with `last` "or", "A or B". */
+export function words(/** @type {string[]} */ items, last = "and") {
   if (items.length < 2) return items[0] ?? "";
-  return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+  return `${items.slice(0, -1).join(", ")} ${last} ${items.at(-1)}`;
 }

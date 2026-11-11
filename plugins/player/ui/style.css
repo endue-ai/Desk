@@ -183,6 +183,10 @@ dd {
   font-weight: 600;
 }
 
+#elsewhere {
+  margin: 0 0 8px;
+}
+
 table {
   margin-top: 8px;
   border-collapse: collapse;

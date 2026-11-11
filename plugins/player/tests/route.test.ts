@@ -37,8 +37,65 @@ const webkit: Caps = {
   software: true,
 };
 
+/**
+ * What this build's engine answered in the live check (CEF 156, Chromium without its proprietary
+ * codecs, 2026-11-12): canPlayType's containers, the codecs it takes in them, and MSE.
+ */
+const CHROMIUM_CONTAINERS: Record<string, string> = {
+  "video/mp4": "maybe",
+  "audio/mp4": "maybe",
+  "video/webm": "maybe",
+  "audio/webm": "maybe",
+  "audio/ogg": "maybe",
+  "video/ogg": "maybe",
+  "audio/mpeg": "probably",
+  "audio/wav": "maybe",
+  "audio/flac": "probably",
+  "video/x-matroska": "maybe",
+  "audio/x-matroska": "maybe",
+};
+const CHROMIUM_CODECS = /^(vp8|vp9|vp09\.|av01\.|opus|Opus|vorbis|flac|fLaC|mp3|mp4a\.6B)/;
+const chromium: Caps = {
+  canPlay(type) {
+    const [mime = "", rest] = type.split(";");
+    const container = CHROMIUM_CONTAINERS[mime.trim()] ?? "";
+    if (!rest || container === "") return container;
+    if (!/^(video|audio)\/(mp4|webm|ogg)$/.test(mime.trim())) return "";
+    const codecs = /codecs="([^"]*)"/.exec(rest)?.[1] ?? "";
+    return codecs.split(",").every((c) => CHROMIUM_CODECS.test(c.trim())) ? "probably" : "";
+  },
+  canRemux: (type) =>
+    type === "audio/mpeg" || /codecs="(vp8|vp9|vp09\.[^"]*|av01\.[^"]*|Opus|fLaC)"/.test(type),
+  software: true,
+};
+
 const engines = async (name: string, caps: Caps = webkit) =>
   route(await probe(memorySource(fixture(name)), name), caps).engines;
+
+describe("this build's engine, Chromium without its proprietary codecs", () => {
+  it("H.264 and HEVC video have no engine; the details name the decoder this build lacks", async () => {
+    const lacks = (codec: string, container: string) => ({
+      engines: [],
+      why: `This build of the desk has no ${codec} decoder, so it cannot play this ${container} file.`,
+    });
+    const routed = async (name: string) =>
+      route(await probe(memorySource(fixture(name)), name), chromium);
+    expect(await routed("clip.mp4")).toEqual(lacks("H.264", "MP4"));
+    expect(await routed("clip.mov")).toEqual(lacks("H.264", "QuickTime"));
+    expect(await routed("clip.mkv")).toEqual(lacks("HEVC", "Matroska"));
+    expect(await routed("remux/h264-aac.mkv")).toEqual(lacks("H.264", "Matroska"));
+    expect(await routed("clip.flv")).toEqual(lacks("H.264", "Flash Video"));
+  });
+
+  it("what it does decode keeps its engines: the element, the remuxer, the software decoder", async () => {
+    expect(await engines("remux/vp9-opus.webm", chromium)).toEqual(["native", "remux"]);
+    expect(await engines("tone.flac", chromium)).toEqual(["native", "software"]);
+    // AAC is not in this engine; FFmpeg decodes it.
+    expect(await engines("tone.m4a", chromium)).toEqual(["software"]);
+    expect(await engines("clip.avi", chromium)).toEqual(["software"]);
+    expect(await engines("clip.wmv", chromium)).toEqual(["software"]);
+  });
+});
 
 describe("which engine plays each extension", () => {
   it("what WebKit plays itself stays native", async () => {
@@ -89,7 +146,7 @@ describe("which engine plays each extension", () => {
     expect(await engines("clip.avi", bare)).toEqual(["native"]);
     const info = await probe(memorySource(fixture("clip.wmv")), "clip.wmv");
     expect(route(info, bare).why).toBe(
-      "This system's WebKit cannot play Windows Media with Windows Media Video 8 and Windows Media Audio 2.",
+      "This build of the desk cannot play Windows Media with Windows Media Video 8 and Windows Media Audio 2.",
     );
   });
 
@@ -207,7 +264,7 @@ describe("the player follows the route", () => {
     await settle();
     expect(shown()).toMatchObject({
       mode: "details",
-      why: "This system's WebKit cannot play AVI with MPEG-4 Part 2 and MP3.",
+      why: "This build of the desk cannot play AVI with MPEG-4 Part 2 and MP3.",
     });
   });
 });

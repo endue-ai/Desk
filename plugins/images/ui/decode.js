@@ -48,8 +48,14 @@ export const MIME = /** @type {Record<string, string>} */ ({
   svg: "image/svg+xml",
 });
 
-/** Formats the webview decodes only where the platform's WebKit does. */
-const PLATFORM = new Set(["heic", "jxl", "tiff", "avif"]);
+/**
+ * What the desk's engine has no decoder for, by the type it was handed: Chromium decodes neither
+ * HEIC nor TIFF, in any build (ADR XXXX). Anything else it fails on is damaged.
+ */
+const UNDECODED = /** @type {Record<string, string>} */ ({
+  "image/heic": "HEIC",
+  "image/tiff": "TIFF",
+});
 
 /** The orientation the HEIF transforms (irot, imir) give, as an EXIF orientation number. */
 const ORIENTATION = /** @type {Record<string, number>} */ ({
@@ -81,11 +87,19 @@ const OWN = /** @type {Record<string, (b: Uint8Array, options: DecodeOptions) =>
   emf: decodeEmf,
 });
 
-/** The reason the webview gives when it could not decode a file of `format`. */
-export function webviewReason(/** @type {string} */ id, /** @type {string} */ format) {
-  return PLATFORM.has(id)
-    ? `This system's webview does not decode ${format}.`
-    : `The webview could not decode it; the ${format} data may be damaged.`;
+/**
+ * Why the webview could not decode a file of `format`, handed to it as `mime` (an EPS hands over
+ * its TIFF preview).
+ */
+export function webviewReason(
+  /** @type {string} */ id,
+  /** @type {string} */ format,
+  mime = MIME[id] ?? "",
+) {
+  const missing = UNDECODED[mime];
+  if (!missing) return `Images could not decode it: the ${format} data may be damaged.`;
+  if (missing === format) return `This build of the desk does not decode ${format} images.`;
+  return `This build of the desk does not decode the ${missing} preview this ${format} file carries.`;
 }
 
 /**

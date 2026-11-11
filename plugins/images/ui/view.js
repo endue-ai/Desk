@@ -127,7 +127,7 @@ export function createView(doc, act, options = {}) {
     pane.frame.replaceChildren();
     if (!model) return;
     if (model.kind === "details") {
-      pane.frame.append(notice(doc, model));
+      pane.frame.append(notice(doc, model, act));
       return;
     }
     if (model.kind === "pixels" && model.pixels) {
@@ -323,6 +323,8 @@ export function createView(doc, act, options = {}) {
   let drag = null;
   stage.addEventListener("pointerdown", (event) => {
     if (!state.image || /** @type {MouseEvent} */ (event).button > 0) return;
+    // A card's button keeps its press: a captured pointer would take its click to the stage.
+    if (event.target instanceof Element && event.target.closest(".notice")) return;
     drag = { x: event.clientX, y: event.clientY, ox: viewer.x, oy: viewer.y };
     stage.setPointerCapture?.(/** @type {PointerEvent} */ (event).pointerId ?? 0);
   });

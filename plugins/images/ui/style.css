@@ -193,6 +193,9 @@ figcaption:empty {
   left: 50%;
   box-sizing: border-box;
   width: min(420px, calc(100% - 32px));
+  /* A card taller than the pane scrolls inside it: its name, reason and button stay in view. */
+  max-height: calc(100% - 16px);
+  overflow: auto;
   padding: 16px;
   border: 1px solid var(--desk-border);
   border-radius: var(--desk-radius-md);
@@ -208,6 +211,10 @@ figcaption:empty {
 .notice .reason {
   margin-bottom: 10px;
   color: var(--desk-text);
+}
+
+.notice .elsewhere {
+  margin: 0 0 10px;
 }
 
 main.beside #stage {

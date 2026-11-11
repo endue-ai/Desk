@@ -2,7 +2,7 @@
 // (make-fixtures.py) are compared with the pattern they were drawn from, or, when the format is lossy
 // or float, with the tool's own decode next to them (.rgba, .f32); the rest are built in build.ts.
 import { describe, expect, it } from "vitest";
-import { decode } from "../ui/decode.js";
+import { decode, webviewReason } from "../ui/decode.js";
 import { toneMap } from "../ui/formats/tonemap.js";
 import { dicom16, fits, icnsRleEntry, ktx1, nifti, pattern, plainPnm, rgba, tga16 } from "./build";
 import { fixture } from "./harness";
@@ -185,5 +185,27 @@ describe("DICOM, FITS and NIfTI", () => {
     expect(result.slices).toMatchObject({ index: 2, count: 5 });
     expect(result.rgba).toEqual(slice(2));
     expect(result.slices?.at(4)).toEqual(slice(4));
+  });
+});
+
+describe("what the desk's engine does not decode (ADR XXXX)", () => {
+  it("HEIC and TIFF are this build's limit; anything else the engine fails on is damage", () => {
+    expect(webviewReason("heic", "HEIC")).toBe(
+      "This build of the desk does not decode HEIC images.",
+    );
+    expect(webviewReason("tiff", "TIFF")).toBe(
+      "This build of the desk does not decode TIFF images.",
+    );
+    expect(webviewReason("eps", "EPS", "image/tiff")).toBe(
+      "This build of the desk does not decode the TIFF preview this EPS file carries.",
+    );
+    for (const [id, format] of [
+      ["png", "PNG"],
+      ["avif", "AVIF"],
+      ["jxl", "JPEG XL"],
+    ] as const)
+      expect(webviewReason(id, format)).toBe(
+        `Images could not decode it: the ${format} data may be damaged.`,
+      );
   });
 });

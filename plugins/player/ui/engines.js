@@ -3,6 +3,7 @@
 // remuxer makes of the file ("remux"), or the software player's element, decoding in a worker
 // ("software"). A remuxed picture whose sound MSE refuses (MP3, DTS, Vorbis in Matroska) gets that
 // sound from the software decoder beside it, following the element's clock.
+import { words } from "./codecs.js";
 import { openRemux } from "./remux/index.js";
 import { mediaSourceOf, playRemuxed } from "./remux/mse.js";
 import { createSoftwareMedia } from "./software/element.js";
@@ -106,7 +107,8 @@ export function createEngines(win, deps) {
     try {
       const all = await openRemux(source, target.format);
       if (supported(all.mime)) return { remuxed: all, sound: false };
-      refused = new Error(`This system's Media Source Extensions cannot play ${all.mime}.`);
+      const codecs = words(all.tracks.map((t) => t.codec));
+      refused = new Error(`This build of the desk cannot play the ${codecs} in this file.`);
     } catch (error) {
       refused = error instanceof Error ? error : new Error(String(error));
     }

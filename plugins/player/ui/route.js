@@ -2,8 +2,9 @@
 // plugin's demuxers remuxing it to fragmented MP4 for Media Source Extensions ("remux", ui/remux/),
 // or FFmpeg's decoders in WebAssembly ("software", ui/software/). The engines are tried in order: one
 // that fails at run time hands the file to the next, and the details view says why when none is left.
-// Encrypted and DRM files go straight to the details view.
-import { cannot, refusal } from "./playable.js";
+// Encrypted and DRM files go straight to the details view, and so does a file whose picture no
+// decoder here takes (H.264 and HEVC on a Chromium without its proprietary codecs, ADR XXXX).
+import { cannot, noDecoder, refusal } from "./playable.js";
 import { REMUX_CODECS, REMUX_FORMATS } from "./remux/index.js";
 
 /**
@@ -143,6 +144,32 @@ function decodable(/** @type {Info} */ info, /** @type {Caps} */ caps) {
   return audio.length === 0 || audio.some((t) => SOFTWARE_CODECS.audio.includes(t.codec));
 }
 
+/** The engine's own decoders asked about by type, for codecs the remuxer does not carry. */
+const PLAIN_TYPES = /** @type {Record<string, string>} */ ({
+  VP8: 'video/webm; codecs="vp8"',
+  Vorbis: 'audio/ogg; codecs="vorbis"',
+  Theora: 'video/ogg; codecs="theora"',
+});
+
+/**
+ * The codecs no decoder here takes: the engine, asked by type, refuses them in canPlayType and in
+ * MSE, and the software decoder does not have them. The first picture's codec, or without a picture
+ * every sound's; empty when something else keeps the file from playing, or the engine was not asked.
+ */
+export function lacking(/** @type {Info} */ info, /** @type {Caps} */ caps) {
+  const engineLacks = (/** @type {string} */ codec) => {
+    const type = MSE_TYPES[codec] ?? PLAIN_TYPES[codec];
+    return !!type && caps.canPlay(type) === "" && !caps.canRemux(type);
+  };
+  const software = (/** @type {Track} */ t) =>
+    caps.software && SOFTWARE_CODECS[t.kind === "video" ? "video" : "audio"].includes(t.codec);
+  const missing = (/** @type {Track} */ t) => engineLacks(t.codec) && !software(t);
+  const [first] = media(info.tracks, "video");
+  if (first) return missing(first) ? [first.codec] : [];
+  const audio = media(info.tracks, "audio");
+  return audio.length > 0 && audio.every(missing) ? [...new Set(audio.map((t) => t.codec))] : [];
+}
+
 /** "Windows Media with Windows Media Video 9 is protected with Windows Media DRM ..." */
 export const protectedWhy = (/** @type {Info} */ info) =>
   `This ${info.container} file is protected with ${info.drm}: the player cannot play it.`;
@@ -161,6 +188,9 @@ export function route(info, caps) {
   if (remuxable(info, caps)) ours.push("remux");
   if (decodable(info, caps)) ours.push("software");
   const refused = refusal(info, caps.canPlay);
+  // No decoder here takes the picture: the element is not tried either, and the details say which.
+  const missing = ours.length === 0 ? lacking(info, caps) : [];
+  if (missing.length > 0) return { engines: [], why: noDecoder(info, missing) };
   const why = refused ?? cannot(info);
   if (refused !== null) return { engines: ours, why };
   const sure = caps.canPlay(info.mime) === "probably";

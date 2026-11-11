@@ -1,6 +1,7 @@
 // The panels around the player: the audio card (cover, title, artist, album), the details view (what
-// the file is and why it is not played), a subtitle file's cues with their times, and the side panel
-// with the playlist and the chapters.
+// the file is, why it is not played, and Show in Finder), a subtitle file's cues with their times,
+// and the side panel with the playlist and the chapters.
+import { revealLabel } from "./reveal.js";
 import { bytes, clock, cueTime } from "./time.js";
 
 /**
@@ -62,6 +63,10 @@ export function createPanels(doc, act, seek) {
   const card = byId("card");
   const cover = /** @type {HTMLImageElement} */ (byId("cover"));
   const details = byId("details");
+  // The details' way out: the file in the system's file manager, for another app to open.
+  const reveal = byId("reveal");
+  reveal.textContent = revealLabel(doc.defaultView?.navigator.platform);
+  reveal.addEventListener("click", () => act("reveal"));
   const cuelist = byId("cuelist");
   const cueRows = byId("cue-rows");
   const more = byId("more-cues");

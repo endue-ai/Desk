@@ -50,6 +50,12 @@ describe("plugin.json", () => {
       permission: "cmd:invoke",
       ids: ["desk.files.changed"],
     });
+    // Show in Finder on a file this build does not play: shown, never opened or run.
+    expect(player.permissions).toContainEqual({
+      permission: "shell:open",
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: a desk path rooted at ${home}, not a template
+      paths: ["${home}/**"],
+    });
     expect(player.contributes?.settings?.["endue.player.resume"]).toMatchObject({
       kind: "boolean",
       default: true,

@@ -5,11 +5,15 @@
   "kind": "ui",
   "entry": "ui/index.html",
   "autoload": true,
-  "description": "Opens every still image in one viewer: web formats, HEIC and TIFF where the system decodes them, its own decoders for TGA, Netpbm, QOI, DDS, HDR, OpenEXR, ICNS, KTX, DICOM, FITS and NIfTI, camera RAW previews; zoom, pan, rotate, details and EXIF, the folder's other images, and two images side by side. It never writes a file.",
+  "description": "Opens still images in one viewer: the web formats the desk's engine decodes, its own decoders for TGA, Netpbm, QOI, DDS, HDR, OpenEXR, ICNS, KTX, DICOM, FITS and NIfTI, camera RAW previews; zoom, pan, rotate, details and EXIF, the folder's other images, and two images side by side. A format it cannot show opens as details that say why and show the file in the file manager for another app. It never writes a file.",
   "permissions": [
     {
       "permission": "cmd:invoke",
       "ids": ["desk.files.changed", "desk.files.open", "desk.buffers.close"]
+    },
+    {
+      "permission": "shell:open",
+      "paths": ["${home}/**"]
     }
   ],
   "surfaces": [

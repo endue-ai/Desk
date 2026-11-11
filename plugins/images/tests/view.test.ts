@@ -122,7 +122,7 @@ describe("zoom", () => {
 });
 
 describe("what the webview cannot decode", () => {
-  it("opens as the details view with that reason", async () => {
+  it("opens as the details view saying this build does not decode it", async () => {
     const heic = fixture("exif.heic");
     await open({ "~/Pictures/a.heic": heic }, "~/Pictures/a.heic");
     const img = document.querySelector("#pane-a img.media") as HTMLImageElement;
@@ -131,10 +131,35 @@ describe("what the webview cannot decode", () => {
     const card = document.querySelector("#pane-a .notice") as HTMLElement;
     expect(card.querySelector("h2")?.textContent).toBe("a.heic");
     expect(card.querySelector(".reason")?.textContent).toBe(
-      "This system's webview does not decode HEIC.",
+      "This build of the desk does not decode HEIC images.",
     );
     expect(card.textContent).toContain("File size");
+    expect(card.textContent).not.toMatch(/WebKit|webview/);
     expect(document.querySelector("#pane-a .media")).toBeNull();
+    expect(byId("opening").hidden).toBe(true);
+  });
+
+  it("the card's Show in file manager button reveals the file", async () => {
+    const { params, settle } = await open(
+      { "~/Pictures/a.heic": fixture("exif.heic") },
+      "~/Pictures/a.heic",
+    );
+    (document.querySelector("#pane-a img.media") as HTMLImageElement).dispatchEvent(
+      new Event("error"),
+    );
+    const button = document.querySelector("#pane-a .notice button") as HTMLButtonElement;
+    expect(button.textContent).toMatch(/^Show in (Finder|File Explorer|the file manager)$/);
+    button.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    button.click();
+    await settle();
+    expect(params("shell.open")).toEqual([
+      {
+        target: "~/Pictures/a.heic",
+        reveal: true,
+        scope: { permission: "shell:open", paths: ["~/Pictures/a.heic"] },
+      },
+    ]);
+    expect(byId("status").textContent).toBe("");
   });
 });
 

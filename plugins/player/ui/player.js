@@ -16,6 +16,7 @@ import {
 import { modelOf } from "./model.js";
 import { cancel, capsOf, details, fallBack, SAYINGS } from "./outcome.js";
 import { createResume } from "./resume.js";
+import { reveal as showInFolder } from "./reveal.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -339,6 +340,8 @@ export function createPlayer({ bridge, commands }, view, options) {
       }),
     /** A sentence from an engine (a sound it cannot play beside the picture). */
     say: (/** @type {string} */ words) => say(words),
+    /** Show the file on screen (a playlist's entry) in the file manager, for another app. */
+    reveal: () => act((entry) => showInFolder(bridge, entry.item?.path ?? entry.path)),
     stalled: about(SAYINGS.stalled),
     dropping: about(SAYINGS.dropping),
     cancelled: () => act((entry) => say(cancel(entry))),
