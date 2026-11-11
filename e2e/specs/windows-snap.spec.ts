@@ -7,10 +7,20 @@
 // desk-wm runs the drag (support/gestures.ts). The preview's place, which no rect lists, is read
 // off the screen: inside the part it is drawn over what was there, outside nothing changed. The
 // glide's own frames are not checked (desk-wm's tests check its motion).
-import { expect } from "@wdio/globals";
+import { browser, expect } from "@wdio/globals";
 import type { BrainDeskFill } from "../../packages/bridge/src/generated";
 import { shellReady } from "../support/desk";
-import { drag, emptyAt, KEY, type Point, release, spot, titleAt, walk } from "../support/gestures";
+import {
+  drag,
+  emptyAt,
+  gripAt,
+  KEY,
+  type Point,
+  release,
+  spot,
+  titleAt,
+  walk,
+} from "../support/gestures";
 import { decodePng, difference, settled } from "../support/pixels";
 import {
   clearDesk,
@@ -148,13 +158,13 @@ describe("snap: windows dragged to the app's edges and corners (#82)", () => {
     const part = partOf("bottom-right", desk.screen);
     const snapped = await windowUntil(id, (x) => x.fill === "bottom-right", "the bottom right");
     expect(rectOf(snapped)).toEqual(part);
-    // A step left ends the fill where it is, floating.
+    // A step left ends the fill where it is, in the mode the window had before it (#159).
     await run("desk.display.move-left");
     const moved = await windowUntil(id, (x) => x.fill === undefined, "out of its fill");
     expect({ ...rectOf(moved), floating: moved.floating }).toEqual({
       ...part,
       x: part.x - 32,
-      floating: true,
+      floating: win.floating,
     });
     await run("desk.display.shrink-width");
     await run("desk.display.shrink-height");
@@ -167,6 +177,33 @@ describe("snap: windows dragged to the app's edges and corners (#82)", () => {
     const back = await windowUntil(id, (x) => x.state !== "filled", "back");
     expect(rectOf(back)).toEqual(rectOf(resized));
     expect(win.state).toBe("normal");
+  });
+
+  it("snapped and resized by a grip, a window is out of its snap in its own mode (#159)", async () => {
+    const id = await openWindow();
+    const win = await windowNow(id);
+    const desk = await deskNow();
+    await run("desk.display.snap-left");
+    const half = partOf("left", desk.screen);
+    const snapped = await windowUntil(id, (x) => x.fill === "left", "the left half");
+    expect(rectOf(snapped)).toEqual(half);
+    // Its right edge's grip, once the window glided into the half.
+    await browser.pause(600);
+    const edge = gripAt(rectOf(snapped), "e");
+    await drag(edge, { x: edge.x - 130, y: edge.y });
+    const resized = await windowUntil(id, (x) => x.fill === undefined, "out of its snap");
+    expect({ ...rectOf(resized), state: resized.state, floating: resized.floating }).toEqual({
+      ...half,
+      w: half.w - 130,
+      state: "normal",
+      floating: win.floating,
+    });
+    // On the canvas again, once it glided out of its part: a drag by its title takes it down too.
+    await browser.pause(600);
+    const from = titleAt(rectOf(resized));
+    await drag(from, { x: from.x + 100, y: from.y + 200 });
+    const moved = await windowUntil(id, (x) => x.y !== resized.y, "moved down");
+    expect(rectOf(moved)).toEqual({ ...rectOf(resized), x: resized.x + 100, y: resized.y + 200 });
   });
 
   it("dropped short of an edge, a window stays where it was dropped", async () => {

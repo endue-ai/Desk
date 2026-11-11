@@ -148,6 +148,33 @@ describe("plugins: plugin windows in the window manager (#82)", () => {
     });
   });
 
+  it("one click on the drawer tool of a window not in use puts it away (#159)", async () => {
+    // The window put away is the one whose tools are in sight (a slot may reach past the right
+    // edge); the other is in use, shown last.
+    const { w } = (await deskNow()).screen;
+    const inSight = async (id: string) => toolAt(rectOf(await show(id)), "drawer").x < w - 12;
+    const [away, other] = (await inSight(HELLO)) ? [HELLO, NOTES] : [NOTES, HELLO];
+    const using = rectOf(await show(other));
+    const tool = toolAt(rectOf(await windowNow(away)), "drawer");
+    const under =
+      tool.x >= using.x &&
+      tool.x < using.x + using.w &&
+      tool.y >= using.y &&
+      tool.y < using.y + using.h;
+    expect({ tool, under }).toMatchObject({ under: false });
+    expect(tool.x).toBeLessThan(w - 12);
+    await click(tool);
+    const put = await until(
+      (d) => d.windows.some((x) => x.id === away && x.hidden === true),
+      `${away} in the drawer after one click`,
+    );
+    expect(onScreen(put).some((x) => x.id === away)).toBe(false);
+    // It stays there: nothing that followed the press shows it again.
+    await browser.pause(800);
+    expect(onScreen(await deskNow()).some((x) => x.id === away)).toBe(false);
+    await show(away);
+  });
+
   it("turned off its window goes and the other stays; turned on it comes back", async () => {
     const notes = await windowNow(NOTES);
     await call("plugin.setEnabled", { plugin: HELLO, enabled: false, scope: SCOPE });
