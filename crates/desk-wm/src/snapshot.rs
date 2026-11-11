@@ -24,7 +24,6 @@ use desk_bridge::{
 use serde::{Deserialize, Serialize};
 
 use crate::coordinates::{is_floating, screen_rect};
-use crate::cover::z_of;
 use crate::desk::Desk;
 use crate::math::round;
 use crate::placed::PLUGIN_VIEW;
@@ -166,20 +165,12 @@ impl Desk {
         let focused = (desktop == self.here())
             .then_some(self.focused.as_deref())
             .flatten();
-        let mut all: Vec<(Placement, usize)> = self
-            .windows_of(desktop)
-            .into_iter()
-            .enumerate()
-            .map(|(i, p)| {
-                let level = z_of(&p, i, focused);
-                (p, level)
-            })
-            .collect();
-        // Stable, as the runtime's sort is: equal levels keep desk order.
-        all.sort_by_key(|a| std::cmp::Reverse(a.1));
-        let n = all.len() as u64;
-        (all.into_iter().enumerate())
-            .map(|(i, (p, _))| (p, n - 1 - i as u64))
+        let windows = self.windows_of(desktop);
+        // Back to front, equal levels in desk order, as the runtime's stacking is.
+        let stack = self.used.stack(&windows, focused);
+        (stack.into_iter().enumerate())
+            .map(|(i, (_, p))| (p.clone(), i as u64))
+            .rev()
             .collect()
     }
 

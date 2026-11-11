@@ -38,6 +38,7 @@ impl Desk {
             .or(leaves.first())
             .map(|(id, _)| id.to_string());
         self.focused = Some(window.to_string());
+        self.used.touch(window);
         self.pane = target;
     }
 
@@ -256,14 +257,17 @@ impl Desk {
         self.focus_pane(view, None);
     }
 
-    /// Snap a window to a half or a quarter of the app, or fill it (ADR 0128, ADR 0132).
+    /// Snap a window to a half or a quarter of the app, or fill it (ADR 0128, ADR 0132). It comes
+    /// in front as if used, right behind the window in use when it is not that one.
     pub fn snap_to(&mut self, id: &str, fill: Fill) {
         self.update(id, |p| *p = fill_with(p, fill));
+        self.used.touch(id);
     }
 
-    /// Fill the whole app, or come back from a fill.
+    /// Fill the whole app, or come back from a fill; in front as `snap_to` brings it.
     pub fn toggle_maximize(&mut self, id: &str) {
         self.update(id, |p| *p = toggle_maximize(p));
+        self.used.touch(id);
     }
 
     /// Switch a window between normal and floating, keeping it where it is on a `vw`×`vh` app.

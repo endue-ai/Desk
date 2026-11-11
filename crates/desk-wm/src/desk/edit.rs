@@ -138,6 +138,7 @@ impl Desk {
             });
         }
         self.focused = Some(id.to_string());
+        self.used.touch(id);
         self.pane = None;
     }
 

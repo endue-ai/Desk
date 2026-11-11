@@ -13,8 +13,10 @@
 
 use std::collections::BTreeSet;
 
+use desk_wm::cover::UseOrder;
 use desk_wm::{
-    Adopted, Offset, PaneNode, Placement, Rect, covered_plugins, shown_plugins, slot_windows, z_of,
+    Adopted, Fill, Offset, PaneNode, Placement, Rect, covered_plugins, shown_plugins, slot_windows,
+    z_of,
 };
 
 const A: &str = "a.one";
@@ -59,11 +61,12 @@ impl Desk {
         let mut windows = self.layout.clone();
         windows.extend(slot_windows(&self.adopted, |id| placed.contains(id)));
         let adopted = |plugin: &str| self.adopted.iter().any(|a| a.id == plugin);
+        let levels = UseOrder::default().levels(&windows, self.focused.as_deref());
         let hidden = covered_plugins(
             &windows,
+            &levels,
             |p| shown_plugins(p, adopted),
             self.pan,
-            self.focused.as_deref(),
             1440.0,
             900.0,
         );
@@ -151,21 +154,103 @@ mod covered_plugin_windows {
     }
 }
 
-mod normal_and_floating_windows {
+mod the_stacking_order {
     use super::*;
 
+    fn at(id: &str) -> Placement {
+        Placement::new(id, "x", Rect::new(0.0, 0.0, 1.0, 1.0))
+    }
+
+    /// `windows`' ids front to back, `focused` in use.
+    fn front_to_back(used: &UseOrder, windows: &[Placement], focused: Option<&str>) -> Vec<String> {
+        let mut ids: Vec<String> = (used.stack(windows, focused).into_iter())
+            .map(|(_, p)| p.id.clone())
+            .collect();
+        ids.reverse();
+        ids
+    }
+
     #[test]
-    fn stacks_floating_windows_above_every_normal_one_even_a_focused_one() {
+    fn answers_a_history_of_focuses_most_recent_first() {
+        let windows = [at("a"), at("b"), at("c"), at("d")];
+        let mut used = UseOrder::default();
+        for id in ["d", "a", "c", "a", "b"] {
+            used.touch(id);
+        }
+        assert_eq!(
+            front_to_back(&used, &windows, Some("b")),
+            ["b", "a", "c", "d"]
+        );
+        // The ranks are places from the back, whatever the desk order.
+        assert_eq!(used.ranks(&windows), [2, 3, 1, 0]);
+        let levels = used.levels(&windows, Some("b"));
+        assert!(levels[1] > levels[0] && levels[0] > levels[2] && levels[2] > levels[3]);
+    }
+
+    #[test]
+    fn puts_the_windows_never_in_use_under_the_others_in_desk_order() {
+        let windows = [at("a"), at("b"), at("c"), at("d")];
+        let mut used = UseOrder::default();
+        used.touch("a");
+        assert_eq!(front_to_back(&used, &windows, None), ["a", "d", "c", "b"]);
+    }
+
+    #[test]
+    fn keeps_a_fill_never_in_use_above_the_canvas_windows_never_in_use_as_a_restored_desk_had_it() {
+        let filled = Placement {
+            floating: Some(true),
+            fill: Some(Fill::Full),
+            ..at("full")
+        };
+        let windows = [filled, at("a"), at("b")];
+        assert_eq!(
+            front_to_back(&UseOrder::default(), &windows, None),
+            ["full", "b", "a"]
+        );
+        let mut used = UseOrder::default();
+        used.touch("a");
+        assert_eq!(front_to_back(&used, &windows, None), ["a", "full", "b"]);
+    }
+
+    #[test]
+    fn puts_the_window_in_use_above_a_floating_and_a_filled_one() {
         let normal = Placement {
             pinned: true,
-            ..Placement::new("n", "x", Rect::new(0.0, 0.0, 1.0, 1.0))
+            ..at("n")
         };
         let floating = Placement {
-            id: "f".into(),
-            pinned: false,
             floating: Some(true),
-            ..normal.clone()
+            ..at("f")
         };
-        assert!(z_of(&floating, 0, Some("n")) > z_of(&normal, 1, Some("n")));
+        let filled = Placement {
+            floating: Some(true),
+            fill: Some(Fill::Full),
+            ..at("full")
+        };
+        assert!(z_of(&normal, 0, Some("n")) > z_of(&floating, 1, Some("n")));
+        assert!(z_of(&normal, 0, Some("n")) > z_of(&filled, 2, Some("n")));
+        assert!(z_of(&filled, 0, Some("full")) > z_of(&floating, 1, Some("full")));
+    }
+
+    #[test]
+    fn keeps_a_window_floating_by_choice_above_the_others_and_a_fill_among_them() {
+        let floating = Placement {
+            floating: Some(true),
+            ..at("f")
+        };
+        let filled = Placement {
+            floating: Some(true),
+            fill: Some(Fill::Left),
+            ..at("left")
+        };
+        let windows = [floating, filled, at("a"), at("b")];
+        let mut used = UseOrder::default();
+        for id in ["f", "a", "left", "b"] {
+            used.touch(id);
+        }
+        assert_eq!(
+            front_to_back(&used, &windows, None),
+            ["f", "b", "left", "a"]
+        );
     }
 }

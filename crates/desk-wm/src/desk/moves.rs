@@ -121,6 +121,7 @@ impl Desk {
         }
         if target == here {
             self.focused = Some(window.to_string());
+            self.used.touch(window);
             self.pane = pane;
         } else {
             self.focus_by.insert(
@@ -170,6 +171,7 @@ impl Desk {
         }
         if moved.focused && moved.from == here {
             self.focused = Some(moved.window.clone());
+            self.used.touch(&moved.window);
         } else {
             if moved.focused {
                 self.focus_by.insert(

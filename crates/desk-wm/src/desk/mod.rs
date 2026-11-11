@@ -33,6 +33,7 @@ pub use edit::default_placement;
 pub use moves::Moved;
 
 use crate::coordinates::ORIGIN;
+use crate::cover::UseOrder;
 use crate::desktops::{Desktop, DesktopId, DesktopRef, id_at};
 use crate::drawer::DrawerItem;
 use crate::layout::{DesktopLayout, Saved};
@@ -80,6 +81,9 @@ pub struct Desk {
     /// The pane in use inside it.
     #[serde(default)]
     pub pane: Option<String>,
+    /// The windows in the order they were last in use, which they stack in (`cover.rs`).
+    #[serde(default, skip_serializing_if = "UseOrder::is_empty")]
+    pub used: UseOrder,
 }
 
 impl Default for Desk {
@@ -104,6 +108,7 @@ impl Desk {
             drawer: Vec::new(),
             focused: None,
             pane: None,
+            used: UseOrder::default(),
         }
     }
 

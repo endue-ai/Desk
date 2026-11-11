@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::coordinates::screen_rect;
-use crate::cover::{covered_plugins, z_of};
+use crate::cover::covered_plugins;
 use crate::desk::{Arranger, Desk};
 use crate::desktops::{Desktop, DesktopId};
 use crate::layout::DesktopLayout;
@@ -23,7 +23,7 @@ pub struct Shown {
     pub id: String,
     /// On screen, in CSS pixels of the app.
     pub rect: Rect,
-    /// Its stacking level (`z_of`): floating ones above normal ones, the one in use on top.
+    /// Its stacking level (`cover::z_of`): the one in use on top, then the order of use.
     pub z: usize,
 }
 
@@ -79,19 +79,19 @@ impl View {
             .then(|| write_moved(desk.desktops(), &desk.session));
         let pan = desk.pan_of(&here);
         let shown = desk.windows();
-        let focused = desk.focused.as_deref();
-        let front = (shown.iter().enumerate())
-            .map(|(i, p)| Shown {
+        let levels = desk.used.levels(&shown, desk.focused.as_deref());
+        let front = (shown.iter().zip(&levels))
+            .map(|(p, z)| Shown {
                 id: p.id.clone(),
                 rect: screen_rect(p, pan, screen.w, screen.h),
-                z: z_of(p, i, focused),
+                z: *z,
             })
             .collect();
         let covered = covered_plugins(
             &shown,
+            &levels,
             |p| desk.plugins_of(p),
             pan,
-            focused,
             screen.w,
             screen.h,
         );

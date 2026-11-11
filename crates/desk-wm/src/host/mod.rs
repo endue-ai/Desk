@@ -41,7 +41,7 @@ pub use surfaces::{FrameDoc, FrameState, Seat, Step, Surfaces};
 
 use crate::clearance::{TitleClearance, TopChrome, title_clearance};
 use crate::coordinates::{is_floating, screen_rect};
-use crate::cover::{covered_plugins, z_of};
+use crate::cover::covered_plugins;
 use crate::desk::Desk;
 use crate::geometry::screen_area;
 use crate::placed::PLUGIN_VIEW;
@@ -115,8 +115,8 @@ impl HostPane {
 pub struct HostWindow {
     pub id: String,
     pub rect: Rect,
-    /// Its stacking level (`cover::z_of`): floating windows above normal ones, the focused one on
-    /// top of its kind, pinned ones above the rest.
+    /// Its stacking level (`cover::z_of`): the focused one on top, windows floating by choice
+    /// above the rest, pinned ones above the unpinned, then the order of use.
     pub level: usize,
     pub focused: bool,
     pub pinned: bool,
@@ -220,7 +220,8 @@ impl Desk {
         let pan = self.pan_of(&here);
         let windows = self.windows_of(here.as_str());
         let focused = self.focused.as_deref();
-        let covered = covered_plugins(&windows, |p| self.plugins_of(p), pan, focused, vw, vh);
+        let levels = self.used.levels(&windows, focused);
+        let covered = covered_plugins(&windows, &levels, |p| self.plugins_of(p), pan, vw, vh);
         let mut shown = BTreeSet::new();
         for p in &windows {
             shown.extend(
@@ -229,11 +230,8 @@ impl Desk {
                     .filter(|id| !covered.contains(id)),
             );
         }
-        let mut stack: Vec<(usize, &Placement)> = (windows.iter().enumerate())
-            .map(|(i, p)| (z_of(p, i, focused), p))
-            .collect();
-        // Stable: equal levels keep desk order, as the page's stacking does.
-        stack.sort_by_key(|(level, _)| *level);
+        // Equal levels keep desk order, as the page's stacking does.
+        let stack = self.used.stack(&windows, focused);
         let hosted: Vec<HostWindow> = (stack.into_iter())
             .map(|(level, p)| {
                 let at = screen_rect(p, pan, vw, vh);

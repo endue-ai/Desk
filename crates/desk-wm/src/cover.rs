@@ -1,52 +1,139 @@
-//! Which plugin surfaces the windows hide (`packages/runtime/src/surface/cover.ts`, ADR 0070): a
-//! plugin shown only in windows that are wholly covered by windows drawn above them, or off the
+//! The order the windows stack in, and which plugin surfaces the windows hide
+//! (`packages/runtime/src/surface/cover.ts`, ADR 0070).
+//!
+//! The windows stack in the order of use (ADR XXXX): the window in use on top of every other, then
+//! the windows floating by choice, then the rest (normal and filled ones), each kind in the order
+//! it was last in use; those never in use since the desk started stack under the others as they
+//! did before it kept that order, floating and filled ones above the rest, in desk order.
+//! A plugin shown only in windows that are wholly covered by windows drawn above them, or off the
 //! screen, is out of sight, and the live budget may put its process to sleep. Pure, from the
-//! windows in desk order and the screen's size; the stacking order is the one they are drawn in.
+//! windows in desk order, the order of use and the screen's size.
 
 use std::collections::BTreeSet;
+
+use serde::{Deserialize, Serialize};
 
 use crate::coordinates::{is_floating, screen_rect};
 use crate::types::{Offset, Placement, Rect};
 
-/// Added to a floating window's level: floating windows stay put while the canvas moves under
-/// them, so they are drawn above every normal one.
+/// Added to the level of a window floating by choice: it stays put while the canvas moves under
+/// it, so it is drawn above every normal or filled window not in use (ADR 0082).
 const FLOATING: usize = 200;
+/// Added to a pinned window's rank: above the unpinned ones of its kind.
+const PINNED: usize = 50;
+/// The window in use: above every other, whatever it is (ADR XXXX).
+const IN_USE: usize = 300;
+/// How many windows the order of use remembers; one that falls out was the least recent, and
+/// stacks with the windows never in use, which are under every other anyway.
+const REMEMBERED: usize = 64;
 
-/// A window's stacking level, from its place in desk order (`index`): floating windows above every
-/// normal one; within each, the focused one on top, pinned ones above the rest, in desk order.
-pub fn z_of(p: &Placement, index: usize, focused: Option<&str>) -> usize {
-    let level = if focused == Some(p.id.as_str()) {
-        100
-    } else if p.pinned {
-        50 + index
-    } else {
-        1 + index
-    };
-    if is_floating(p) {
+/// The windows in the order they were last put in use, the least recent first: what stacks the
+/// windows that are not in use. A window comes on top of it whenever it takes the focus.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct UseOrder(Vec<String>);
+
+impl UseOrder {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// The windows remembered, the least recent first.
+    pub fn ids(&self) -> &[String] {
+        &self.0
+    }
+
+    /// Window `id` was put in use: it is the most recent now.
+    pub fn touch(&mut self, id: &str) {
+        if self.0.last().is_some_and(|last| last == id) {
+            return;
+        }
+        self.0.retain(|other| other != id);
+        self.0.push(id.to_string());
+        if self.0.len() > REMEMBERED {
+            self.0.remove(0);
+        }
+    }
+
+    /// Each of `windows`' (one desktop's, in desk order) place in the order of use, from the
+    /// back: the windows never in use first, those on the canvas under the floating and filled
+    /// ones, each in desk order (a restored session's fill stays above its other windows), then
+    /// the others, the least recent first.
+    pub fn ranks(&self, windows: &[Placement]) -> Vec<usize> {
+        let mut order: Vec<usize> = (0..windows.len()).collect();
+        order.sort_by_key(|&i| {
+            let p = &windows[i];
+            match self.0.iter().position(|id| *id == p.id) {
+                Some(at) => (true, false, at),
+                None => (false, is_floating(p), i),
+            }
+        });
+        let mut ranks = vec![0; windows.len()];
+        for (rank, i) in order.into_iter().enumerate() {
+            ranks[i] = rank;
+        }
+        ranks
+    }
+
+    /// Each of `windows`' stacking level (`z_of`), with `focused` in use.
+    pub fn levels(&self, windows: &[Placement], focused: Option<&str>) -> Vec<usize> {
+        (windows.iter().zip(self.ranks(windows)))
+            .map(|(p, rank)| z_of(p, rank, focused))
+            .collect()
+    }
+
+    /// `windows` back to front, each with its level; equal levels keep desk order.
+    pub fn stack<'a>(
+        &self,
+        windows: &'a [Placement],
+        focused: Option<&str>,
+    ) -> Vec<(usize, &'a Placement)> {
+        let levels = self.levels(windows, focused);
+        let mut all: Vec<(usize, &Placement)> = levels.into_iter().zip(windows).collect();
+        all.sort_by_key(|(level, _)| *level);
+        all
+    }
+}
+
+/// Whether `p` floats by choice: a floating window that fills nothing. A fill floats only to keep
+/// its part of the app (ADR 0128), and stacks with the normal windows.
+fn floats_above(p: &Placement) -> bool {
+    is_floating(p) && p.fill.is_none()
+}
+
+/// A window's stacking level from its place in the order of use (`rank`, `UseOrder::ranks`): the
+/// focused one above every other; windows floating by choice above the normal and filled ones;
+/// within each, pinned ones above the rest, then the order of use.
+pub fn z_of(p: &Placement, rank: usize, focused: Option<&str>) -> usize {
+    if focused == Some(p.id.as_str()) {
+        return IN_USE;
+    }
+    let level = if p.pinned { PINNED + rank } else { 1 + rank };
+    if floats_above(p) {
         FLOATING + level
     } else {
         level
     }
 }
 
-/// The plugin ids out of sight among those the `windows` of a desktop show (in desk order, as
-/// drawn), with the canvas at `pan` on a `vw`×`vh` app. `plugins_of` names what a window shows
-/// (`placed::shown_plugins`).
+/// The plugin ids out of sight among those the `windows` of a desktop show (in desk order, at
+/// their stacking `levels`), with the canvas at `pan` on a `vw`×`vh` app. `plugins_of` names what a
+/// window shows (`placed::shown_plugins`).
 pub fn covered_plugins(
     windows: &[Placement],
+    levels: &[usize],
     plugins_of: impl Fn(&Placement) -> Vec<String>,
     pan: Offset,
-    focused: Option<&str>,
     vw: f64,
     vh: f64,
 ) -> BTreeSet<String> {
     let screen = Rect::new(0.0, 0.0, vw, vh);
     let drawn: Vec<(Option<Rect>, usize, Vec<String>)> = windows
         .iter()
-        .enumerate()
-        .map(|(i, p)| {
+        .zip(levels)
+        .map(|(p, z)| {
             let rect = clip(screen_rect(p, pan, vw, vh), screen);
-            (rect, z_of(p, i, focused), plugins_of(p))
+            (rect, *z, plugins_of(p))
         })
         .collect();
     let mut hidden = BTreeSet::new();
@@ -138,5 +225,17 @@ mod tests {
             Some(Rect::new(0.0, 90.0, 30.0, 10.0))
         );
         assert_eq!(clip(Rect::new(100.0, 0.0, 10.0, 10.0), screen), None);
+    }
+
+    #[test]
+    fn the_order_of_use_remembers_a_bounded_number_of_windows_the_least_recent_leave_first() {
+        let mut used = UseOrder::default();
+        for n in 0..=REMEMBERED {
+            used.touch(&format!("w{n}"));
+        }
+        used.touch("w1");
+        assert_eq!(used.ids().len(), REMEMBERED);
+        assert_eq!(used.ids().first().map(String::as_str), Some("w2"));
+        assert_eq!(used.ids().last().map(String::as_str), Some("w1"));
     }
 }

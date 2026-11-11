@@ -10,7 +10,6 @@
 
 use crate::clearance::{TopChrome, title_clearance};
 use crate::coordinates::is_floating;
-use crate::cover::z_of;
 use crate::host::{title_bar_of, title_insets_of};
 use crate::types::{Point, Rect};
 
@@ -41,11 +40,7 @@ impl Wm {
             return None;
         }
         let windows = self.drawn.windows();
-        let focused = self.drawn.focused.as_deref();
-        let mut stack: Vec<_> = (windows.iter().enumerate())
-            .map(|(i, p)| (z_of(p, i, focused), p))
-            .collect();
-        stack.sort_by_key(|(level, _)| *level);
+        let stack = (self.drawn.used).stack(&windows, self.drawn.focused.as_deref());
         let (_, p) = (stack.iter().rev())
             .find(|(_, p)| self.drawn_rect(&p.id, now).is_some_and(|r| inside(r, at)))?;
         let drawn = self.glides.get(&p.id).filter(|g| !g.done(now))?.at(now);

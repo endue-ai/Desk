@@ -128,13 +128,14 @@ impl Arranger {
             .windows()
             .into_iter()
             .filter(|p| p.floating != Some(true) && !p.pinned);
-        // A grid reads in desk order; a cascade puts the window in use last, where it ends on top.
+        // A grid reads in desk order; a cascade lays the windows out back to front as they stack
+        // (`cover.rs`), so the window in use ends last, on top, and the stacking stays.
         let windows: Vec<Placement> = match kind {
             ArrangeKind::Tile => movable.collect(),
             ArrangeKind::Cascade => {
-                let (top, rest): (Vec<_>, Vec<_>) =
-                    movable.partition(|p| desk.focused.as_deref() == Some(p.id.as_str()));
-                rest.into_iter().chain(top).collect()
+                let movable: Vec<Placement> = movable.collect();
+                let stack = desk.used.stack(&movable, desk.focused.as_deref());
+                stack.into_iter().map(|(_, p)| p.clone()).collect()
             }
         };
         if windows.is_empty() {
@@ -149,8 +150,9 @@ impl Arranger {
         };
         let pan = desk.pan_of(&desktop);
         let before = desk.session.get(&desktop).cloned();
-        // The arranged windows go last, in the order they took their places, so the stacking (desk
-        // order) follows the cascade; a plugin window no layout placed yet enters it here.
+        // The arranged windows go last, in the order they took their places, so the windows never
+        // in use stack as the cascade lays them out too; a plugin window no layout placed yet
+        // enters it here.
         let moved: Vec<Placement> = windows
             .iter()
             .zip(rects.iter().chain(std::iter::repeat(&area)))

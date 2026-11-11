@@ -8,72 +8,12 @@
     },
     "windows": [
       {
-        "id": "window-2",
-        "x": 0,
-        "y": 0,
-        "w": 1440,
-        "h": 900,
-        "z": 4,
-        "state": "filled",
-        "fill": "full",
-        "floating": true,
-        "desktop": "1",
-        "panes": [
-          {
-            "id": "p1",
-            "view": "launcher",
-            "title": "launcherTitle"
-          }
-        ]
-      },
-      {
-        "id": "endue.mail",
-        "x": 726,
-        "y": 0,
-        "w": 714,
-        "h": 900,
-        "z": 3,
-        "state": "snapped",
-        "fill": "right",
-        "floating": true,
-        "desktop": "1",
-        "panes": [
-          {
-            "id": "p1",
-            "view": "plugin:endue.mail",
-            "plugin": "endue.mail",
-            "title": "Mail",
-            "asleep": true
-          }
-        ]
-      },
-      {
-        "id": "endue.notes",
-        "x": 40,
-        "y": 60,
-        "w": 600,
-        "h": 400,
-        "z": 2,
-        "state": "floating",
-        "floating": true,
-        "desktop": "1",
-        "panes": [
-          {
-            "id": "p1",
-            "view": "plugin:endue.notes",
-            "plugin": "endue.notes",
-            "title": "Notes",
-            "responsiveness": "late"
-          }
-        ]
-      },
-      {
         "id": "window-1",
         "x": 607,
         "y": 316,
         "w": 480,
         "h": 320,
-        "z": 1,
+        "z": 4,
         "state": "normal",
         "focused": true,
         "desktop": "1",
@@ -92,12 +32,32 @@
         ]
       },
       {
+        "id": "endue.notes",
+        "x": 40,
+        "y": 60,
+        "w": 600,
+        "h": 400,
+        "z": 3,
+        "state": "floating",
+        "floating": true,
+        "desktop": "1",
+        "panes": [
+          {
+            "id": "p1",
+            "view": "plugin:endue.notes",
+            "plugin": "endue.notes",
+            "title": "Notes",
+            "responsiveness": "late"
+          }
+        ]
+      },
+      {
         "id": "endue.git",
         "x": 731,
         "y": 40,
         "w": 680,
         "h": 760,
-        "z": 0,
+        "z": 2,
         "state": "normal",
         "pinned": true,
         "desktop": "1",
@@ -108,6 +68,46 @@
             "plugin": "endue.git",
             "title": "Git",
             "responsiveness": "stopped"
+          }
+        ]
+      },
+      {
+        "id": "window-2",
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 900,
+        "z": 1,
+        "state": "filled",
+        "fill": "full",
+        "floating": true,
+        "desktop": "1",
+        "panes": [
+          {
+            "id": "p1",
+            "view": "launcher",
+            "title": "launcherTitle"
+          }
+        ]
+      },
+      {
+        "id": "endue.mail",
+        "x": 726,
+        "y": 0,
+        "w": 714,
+        "h": 900,
+        "z": 0,
+        "state": "snapped",
+        "fill": "right",
+        "floating": true,
+        "desktop": "1",
+        "panes": [
+          {
+            "id": "p1",
+            "view": "plugin:endue.mail",
+            "plugin": "endue.mail",
+            "title": "Mail",
+            "asleep": true
           }
         ]
       },

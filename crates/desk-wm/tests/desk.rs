@@ -183,6 +183,7 @@ fn seen_desk() -> Desk {
     adopt(&mut d, &["p.x"]);
     d.open_surface("files", None);
     d.put_away("files", "Files", EPOCH);
+    d.focus_pane("mail", None);
     d.focus_pane("notes", None);
     d
 }
@@ -198,13 +199,13 @@ mod the_snapshot {
             .iter()
             .map(|w| (w.id.as_str(), w.desktop.as_deref()))
             .collect();
-        // Mail floats above all; Notes is in use; the plugin window in its slot is named once,
-        // where it is seen; Files waits in the drawer.
+        // Notes is in use; Mail, snapped, was in use before it; the plugin window in its slot is
+        // named once, where it is seen; Files waits in the drawer.
         assert_eq!(
             order,
             [
-                ("mail", Some("1")),
                 ("notes", Some("1")),
+                ("mail", Some("1")),
                 ("p.x", Some("1")),
                 ("files", None),
                 ("keys", Some("2")),
@@ -238,8 +239,8 @@ mod the_snapshot {
         assert_eq!(mail.state, Some(BrainDeskWindowState::Snapped));
         assert_eq!(mail.fill, Some(BrainDeskFill::Right));
         assert_eq!((mail.x, mail.y, mail.w, mail.h), (726, 0, 714, 900));
-        // Ranks from the back: the plugin window in its slot, then Notes in use, then Mail floating.
-        assert_eq!((by("p.x").z, notes.z, mail.z), (Some(0), Some(1), Some(2)));
+        // Ranks from the back: the plugin window in its slot, then Mail, then Notes in use.
+        assert_eq!((by("p.x").z, mail.z, notes.z), (Some(0), Some(1), Some(2)));
         let px = by("p.x");
         assert_eq!(px.panes[0].view, "plugin:p.x");
         assert_eq!(px.panes[0].plugin.as_deref(), Some("p.x"));
@@ -259,10 +260,10 @@ mod the_snapshot {
         let shot = seen_desk().snapshot(1440.0, 900.0);
         let value = serde_json::to_value(&shot).unwrap();
         assert_eq!(
-            value["windows"][1],
+            value["windows"][0],
             json!({
                 "id": "notes", "desktop": "1",
-                "x": 200, "y": 200, "w": 400, "h": 300, "z": 1, "state": "normal",
+                "x": 200, "y": 200, "w": 400, "h": 300, "z": 2, "state": "normal",
                 "focused": true,
                 "panes": [{ "id": "p1", "view": "notes", "focused": true }]
             })

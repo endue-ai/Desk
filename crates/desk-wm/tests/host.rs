@@ -333,8 +333,8 @@ fn with_twenty_windows_and_eight_live_only_the_visible_and_the_eight_most_recent
         }));
     }
 
-    // Focusing Hello wakes it under the window that fills the app, and its count comes back: it
-    // is woken, never made or loaded again.
+    // Focusing Hello wakes it, in front of the window that fills the app, and its count comes
+    // back: it is woken, never made or loaded again.
     desk.focus(HELLO);
     let steps = settle(&desk, &mut budget, &mut holder, &mut surfaces, &ids);
     let hello: Vec<&Step> = steps
@@ -348,8 +348,11 @@ fn with_twenty_windows_and_eight_live_only_the_visible_and_the_eight_most_recent
             .all(|s| !matches!(s, Step::Create { .. } | Step::Load { .. }))
     );
     assert_eq!(holder.counts.get(HELLO), Some(&3));
-    // Hello gives the keys to another sleeping window: nine out of sight would be live, so the
+    // Hello gives the keys back to the window that fills the app, which covers it again, then to
+    // another sleeping window, in front of the fill: nine out of sight would be live, so the
     // least recent of them sleeps.
+    desk.focus(&recent[8]);
+    settle(&desk, &mut budget, &mut holder, &mut surfaces, &ids);
     desk.focus("test.many-10");
     settle(&desk, &mut budget, &mut holder, &mut surfaces, &ids);
     let mut want: Vec<String> = [HELLO.to_string(), "test.many-10".to_string()]
