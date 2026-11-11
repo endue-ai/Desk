@@ -75,7 +75,8 @@ holds what it needs, with no new bridge method.
 * **The hover** (`crates/desk-compositor/src/input/dnd/broker.rs`, the shell's `overlay.rs`): the
   OS still draws the files' image and its copy cursor (winit answers every file drag with copy);
   the compositor draws its drag pill beside it: "+ name" (or "↗ name") over a surface that takes
-  the files with that effect, "Open name" anywhere a drop opens them on the desk.
+  the files with that effect, "Open name" anywhere a drop opens them on the desk. Near the window's
+  right or bottom edge the pill, for every drag, goes to the other side of the pointer.
 
 ### Consequences
 
