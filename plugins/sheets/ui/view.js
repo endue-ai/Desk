@@ -191,6 +191,7 @@ export function createView(doc, actions = { edit: () => false }) {
       }),
     );
     tabs.hidden = names.length === 0;
+    tabs.toggleAttribute("data-single", names.length === 1);
   };
   tabs.addEventListener("keydown", (event) => {
     const count = book()?.sheets.length ?? 0;
@@ -301,6 +302,9 @@ export function createView(doc, actions = { edit: () => false }) {
             .filter(Boolean)
             .join(" · ")
         : "";
+      // Cut to one line by the header: the whole name and format on hover.
+      name.title = model ? model.name : "";
+      detail.title = detail.textContent;
       formula.hidden = kind !== "sheets";
       sheetArea.hidden = kind !== "sheets";
       tier.hidden = kind !== "sheets" || !model?.tier;

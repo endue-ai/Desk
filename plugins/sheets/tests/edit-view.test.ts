@@ -151,6 +151,19 @@ describe("a format Sheets only reads", () => {
   });
 });
 
+describe("the header and the tabs at small sizes (#162)", () => {
+  it("a book of one sheet marks its tab row single, a workbook of two does not; the cut name is whole on hover", async () => {
+    const files = { [A.path]: fixture("crlf-bom-quotes.csv"), [X.path]: fixture("budget.xlsx") };
+    const { host, byId } = await page(files);
+    await host.command("desk.files.visit", A);
+    expect(byId("tabs").hasAttribute("data-single")).toBe(true);
+    expect(byId("book-name").title).toBe("cities.csv");
+    await host.command("desk.files.visit", X);
+    expect(byId("tabs").hasAttribute("data-single")).toBe(false);
+    expect(byId("book-detail").title).toBe(byId("book-detail").textContent);
+  });
+});
+
 describe("a page that slept (#162)", () => {
   it("comes back on the cell, the scroll and the zoom it was left at, with the unsaved edit marked", async () => {
     const files = { [A.path]: fixture("crlf-bom-quotes.csv") };

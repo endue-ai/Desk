@@ -22,17 +22,45 @@ body {
   font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
 }
 
+/* One line, however long the name: the format gives way first, then the tier, then the name; the
+   unsaved mark never does. */
 header {
   display: flex;
-  flex-wrap: wrap;
   align-items: baseline;
-  gap: 2px 10px;
+  gap: 10px;
+  min-width: 0;
   padding: 8px 12px 4px;
 }
 
 h1 {
   margin: 0;
   font-size: calc(var(--desk-text-sm) + 1px);
+}
+
+#book-name,
+#book-detail {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#book-name {
+  flex: 0 1 auto;
+}
+
+#book-detail {
+  flex: 0 1000 auto;
+}
+
+header desk-edit-tier {
+  flex: 0 10 auto;
+  min-width: 0;
+}
+
+#book-mark {
+  flex: none;
+  white-space: nowrap;
 }
 
 h2 {
@@ -308,11 +336,48 @@ footer {
   display: none !important;
 }
 
-/* A small tile (the desk's overview) keeps the grid: the name and the tabs give way first. */
+/* At a window's first sizes (400×263 and smaller) the sheet comes first: the chrome keeps to its
+   thinnest, and a book of one sheet (every CSV) has no tab row, which would only repeat its name. */
+@media (max-height: 420px) {
+  header {
+    padding: 4px 10px 2px;
+  }
+
+  .formula,
+  .find {
+    --desk-field-height: var(--desk-control-xs);
+    padding: 0 10px 4px;
+  }
+
+  .tabs {
+    --desk-tab-height: var(--desk-control-xs);
+    padding: 2px 8px;
+  }
+
+  .tabs[data-single] {
+    display: none;
+  }
+
+  footer {
+    padding: 2px 10px 3px;
+  }
+}
+
+/* A small window (the first one at 1280×800 is 326×169) keeps the grid: the format, the tier and
+   the tabs give way; the name and the unsaved mark stay. */
 @media (max-height: 240px) {
-  header,
+  #book-detail,
+  header desk-edit-tier,
   .tabs {
     display: none;
+  }
+
+  header {
+    padding: 2px 10px 0;
+  }
+
+  h1 {
+    font-size: var(--desk-text-xs);
   }
 }
 
