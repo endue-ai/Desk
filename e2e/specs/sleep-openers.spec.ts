@@ -77,11 +77,12 @@ describe("file openers: a window that slept comes back whole (#162)", () => {
     this.timeout(120_000);
     const long = join(files, "long.md");
     const small = join(files, "small.md");
-    await run("desk.files.open", { path: long });
-    await run("desk.files.open", { path: small });
+    // The desk names each buffer as the OS names its file (`~/files/long.md` under the home folder).
+    const longId = await run("desk.files.open", { path: long });
+    const smallId = await run("desk.files.open", { path: small });
     await show(NOTES);
     await inFrame(NOTES, () => browser.keys(" KEEP-SMALL".split("")));
-    await run("desk.buffers.switch", { id: `file:${long}` });
+    await run("desk.buffers.switch", { id: longId });
     await inFrame(NOTES, () => browser.keys(" UNSAVED-LONG".split("")));
     const text = () => inFrame(NOTES, () => $("textarea").getValue());
     await browser.waitUntil(async () => (await text()).includes("UNSAVED-LONG"), {
@@ -99,13 +100,13 @@ describe("file openers: a window that slept comes back whole (#162)", () => {
     // A new page, not the old one kept: the text came back from what the sleep kept.
     expect(await marked(NOTES)).toBe(false);
     expect(await inFrame(NOTES, () => $("body").getText())).toContain("Unsaved changes");
-    await run("desk.buffers.switch", { id: `file:${small}` });
+    await run("desk.buffers.switch", { id: smallId });
     await browser.waitUntil(async () => (await text()).includes("KEEP-SMALL"), {
       timeoutMsg: "the small note did not come back with its unsaved text",
     });
     const listed = (await run("desk.buffers.list")) as Buffers;
     expect(listed.filter((b) => b.plugin === NOTES && b.modified).map((b) => b.id)).toEqual(
-      expect.arrayContaining([`file:${long}`, `file:${small}`]),
+      expect.arrayContaining([longId, smallId]),
     );
     // Nothing reached the disk.
     expect(readFileSync(long, "utf8")).toBe(LONG);

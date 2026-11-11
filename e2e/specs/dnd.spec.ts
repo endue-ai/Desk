@@ -86,6 +86,8 @@ describe("dnd: between two plugins and from the OS through the compositor's brok
     await browser.waitUntil(async () => (await inputState()).drag.effect === "copy", {
       timeoutMsg: "the zone never answered",
     });
+    // Beside the OS's own image, where the files go (#162 finding 14): the zone takes them.
+    expect((await inputState()).drag.overlay?.caption).toBe("+ 한 글.md  (2)");
     await feed(paths.map((path) => ({ type: "fileDropped", path })));
     await browser.waitUntil(async () => (await drops()).length === 2, {
       timeoutMsg: "the files never landed",
