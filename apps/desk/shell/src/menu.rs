@@ -1,8 +1,12 @@
 //! The menus (`muda`, through `tray-icon`): the tray's (ADR 0053, `tray.rs`) and, on macOS, the
-//! app's menu bar. The menu bar carries the standard Edit items, since Cut, Copy, Paste, Select All,
-//! Undo and Redo reach CEF's views only as menu actions there, and Quit, which goes the desk's own way
-//! out (closing every browser before CEF shuts down) instead of `terminate:`. A choice reaches the
-//! event loop as a job (`Shell::menu`).
+//! app's menu bar. The menu bar carries the standard Edit items, which the windowed CEF views (the
+//! palette, Eris, the banner) answer as menu actions, and Quit, which goes the desk's own way out
+//! (closing every browser before CEF shuts down) instead of `terminate:`. The desk's own window
+//! holds only off-screen pages, and its view answers none of Edit's actions, so there the items stay
+//! off and their key equivalents pass on to the window: the focused page hears ⌘C, ⌘V and the rest
+//! as keys that go down with their edit commands (#156, `web_host/edit_keys.rs`), as a windowed view
+//! would have run them, and a page that binds one of them keeps it. A choice reaches the event loop
+//! as a job (`Shell::menu`).
 
 use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItem};
 
