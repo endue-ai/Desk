@@ -9,6 +9,11 @@ export interface HostViews {
   /** View ids in reading order. */
   ids(): string[];
   focused(): string | null;
+  /**
+   * The plugin surface the host's window in use shows, when that pane is a plugin's: its buffer is
+   * the one in use, whichever way the focus came, so Mod+W closes what shows as focused (#163).
+   */
+  inUse?(): string | null;
   focus(id: string): void;
   /** What a view shows, as the buffer list names it. */
   title(id: string): string;
@@ -28,6 +33,7 @@ export function connectViews(views: HostViews | undefined, buffers: BuffersPolic
   if (!views) return { owns: () => false, dispose: () => {} };
   let known = new Set<string>();
   let focused: string | null = null;
+  let using: string | null = null;
   const sync = () => {
     const ids = views.ids();
     for (const id of known) if (!ids.includes(id)) buffers.surfaceClosed(id);
@@ -39,6 +45,9 @@ export function connectViews(views: HostViews | undefined, buffers: BuffersPolic
     const now = views.focused();
     if (now !== focused) buffers.focused(now);
     focused = now;
+    const plugin = views.inUse?.() ?? null;
+    if (plugin !== using) buffers.focused(plugin);
+    using = plugin;
   };
   sync();
   return { owns: (id) => known.has(id), dispose: views.onChange(sync) };

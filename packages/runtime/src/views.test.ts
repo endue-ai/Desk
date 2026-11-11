@@ -32,12 +32,14 @@ function hostViews() {
   const state = {
     ids: ["w1/p1"],
     focused: null as string | null,
+    inUse: null as string | null,
     titles: { "w1/p1": "Notes" } as Record<string, string>,
   };
   const listeners = new Set<() => void>();
   const views: HostViews = {
     ids: () => state.ids,
     focused: () => state.focused,
+    inUse: () => state.inUse,
     focus: (id) => {
       state.focused = id;
     },
@@ -70,6 +72,26 @@ describe("connectViews", () => {
     change({ ids: ["w1/p1"] });
     expect(routing.owns("w1/p2")).toBe(false);
     expect(policy.buffers.list().map((b) => b.plugin)).toEqual(["w1/p1"]);
+    routing.dispose();
+  });
+
+  it("the plugin surface the window in use shows is the buffer in use, whichever way the focus came (issue 163, finding 5)", () => {
+    const policy = buffersPolicy();
+    const { views, change } = hostViews();
+    policy.surfaceOpened("test.database", "Database");
+    const routing = connectViews(views, policy);
+    change({ ids: ["w1/p1", "w2/p2"] });
+    // A launcher pane was in use; then the window manager put Database's window in use (a press
+    // on its title bar) without the runtime moving its own focus there.
+    change({ focused: "w2/p2" });
+    expect(policy.buffers.current()?.plugin).toBe("w2/p2");
+    change({ focused: null, inUse: "test.database" });
+    expect(policy.buffers.current()?.plugin).toBe("test.database");
+    // Back to the pane, and to Database again: each time the one in use.
+    change({ focused: "w2/p2", inUse: null });
+    expect(policy.buffers.current()?.plugin).toBe("w2/p2");
+    change({ focused: null, inUse: "test.database" });
+    expect(policy.buffers.current()?.plugin).toBe("test.database");
     routing.dispose();
   });
 

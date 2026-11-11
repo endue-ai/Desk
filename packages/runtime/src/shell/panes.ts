@@ -33,6 +33,8 @@ export function paneViews(ctx: ShellCtx): HostViews {
       const id = surface && pane ? `${surface.id}/${pane}` : null;
       return id && all().some((v) => v.id === id) ? id : null;
     },
+    // The window manager's own word for the plugin in use: a press desk-wm took, a close, a command.
+    inUse: () => ctx.store.get().wm.focusedPlugin,
     focus: (id) => focusPane(ctx, ...split(id)),
     title: (id) => {
       const view = all().find((v) => v.id === id)?.view;
@@ -41,7 +43,14 @@ export function paneViews(ctx: ShellCtx): HostViews {
     close: (id) => closePane(ctx, ...split(id)),
     onChange: (listener) =>
       ctx.store.watch(
-        (s) => [windowsOf(s).map((p) => [p.id, panesOf(p)]), s.adopted, s.focused, s.pane, s.lang],
+        (s) => [
+          windowsOf(s).map((p) => [p.id, panesOf(p)]),
+          s.adopted,
+          s.focused,
+          s.pane,
+          s.wm.focusedPlugin,
+          s.lang,
+        ],
         listener,
       ),
   };

@@ -39,4 +39,24 @@ describe("paneViews", () => {
     const views = paneViews(await ctx());
     expect(views.ids()).toEqual(["notes/p1"]);
   });
+
+  it("names the plugin surface the window in use shows, as the window manager has it (issue 163)", async () => {
+    const c = (await ctx()) as unknown as {
+      store: Store;
+      wm: ReturnType<typeof testWindowManager>;
+    };
+    const views = paneViews(c as never);
+    const heard: Array<string | null | undefined> = [];
+    const off = views.onChange(() => heard.push(views.inUse?.()));
+    // The runtime handed the plugin's surface over: its window shows it.
+    await c.wm.edit([{ op: "adopt", id: "test.counter", title: "Counter" }]);
+    await c.wm.edit([{ op: "focus", window: "test.counter" }]);
+    expect(views.inUse?.()).toBe("test.counter");
+    expect(views.focused()).toBeNull();
+    await c.wm.edit([{ op: "focus", window: "notes" }]);
+    expect(views.inUse?.()).toBeNull();
+    expect(views.focused()).toBe("notes/p1");
+    expect(heard).toContain("test.counter");
+    off();
+  });
 });
