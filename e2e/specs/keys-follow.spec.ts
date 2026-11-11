@@ -9,7 +9,7 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { browser, expect } from "@wdio/globals";
-import { click, feed, inputState, keyPress } from "../support/compositor";
+import { click, feed, inputState, keyPress, shellCommand } from "../support/compositor";
 import { inFrame, press, shellReady } from "../support/desk";
 import { HOME_VAR } from "../support/driver";
 import { bodyAt, drag, drawerButtonAt, release, titleAt } from "../support/gestures";
@@ -18,6 +18,7 @@ import { deskNow, inUse, rectOf, run, windowNow, windowUntil } from "../support/
 const TERMINAL = "endue.terminal";
 const TERMINAL_HOST = "main.endue-terminal";
 const PALETTE = "main.desk-palette";
+const PERMISSIONS = "endue.permissions";
 /** A 1×1 PNG: the images the Images plugin walks. */
 const PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
@@ -78,6 +79,25 @@ async function pressInto(id: string, host: string): Promise<void> {
   const at = bodyAt(rectOf(w));
   await click([at.x, at.y]);
   await holds(async () => (await focused()) === host, `a press in ${id} left it without the keys`);
+}
+
+/**
+ * Plugin surfaces other than `own` that lie under window `w`'s body at x, each with a y where they
+ * do: what a press there would reach if the window let it through.
+ */
+async function surfacesUnder(
+  x: number,
+  w: { y: number; h: number },
+  own: string,
+): Promise<Array<[string, number]>> {
+  type Placed = { rect: number[] | null };
+  const { surfaces } = await shellCommand<{ surfaces: Record<string, Placed> }>("compositor_stats");
+  return Object.entries(surfaces).flatMap(([host, { rect }]): Array<[string, number]> => {
+    const [left = 0, top = 0, width = 0, height = 0] = rect ?? [];
+    const y = Math.max(top, w.y + 60) + 10;
+    const lies = x > left && x < left + width && y < Math.min(top + height, w.y + w.h - 10);
+    return host !== own && host.startsWith("main.endue-") && lies ? [[host, y]] : [];
+  });
 }
 
 /** The surfaces the windows show, by host: the keys may be with none of them but the one in use. */
@@ -143,11 +163,24 @@ describe("keys follow the window in use", () => {
     }
   });
 
-  it("a permission question has the keys: Escape answers it", async () => {
+  it("a permission question has the keys: Escape answers it, and they go back", async () => {
+    const back = inUse(await deskNow())?.id;
     await inFrame("e2e.ask", () => press('button[data-folder="~/Pictures/2025"]'));
+    // The question is endue.permissions' overlay (ADR 0190), whatever its surface is called.
+    let question = "";
+    await holds(async () => {
+      question = (await focused()) ?? "";
+      return /\.endue-permissions$/.test(question);
+    }, "the question never had the keys");
+    // Its page shows it with its own focus on Don't allow before a key can answer it.
     await holds(
-      async () => /\.endue-permissions$/.test((await focused()) ?? ""),
-      "the question never had the keys",
+      async () =>
+        (await inFrame(PERMISSIONS, () =>
+          browser.execute(
+            () => document.hasFocus() && document.activeElement?.textContent === "Don't allow",
+          ),
+        )) === true,
+      "the question's page never had its focus on Don't allow",
     );
     await feed(keyPress("Escape", "Escape"));
     await holds(
@@ -159,13 +192,17 @@ describe("keys follow the window in use", () => {
         )?.includes('~/Pictures/2025: {"granted":false') === true,
       "Escape never answered the question",
     );
+    // Answered, the keys go back to the window in use.
+    await holds(
+      async () => (await focused()) !== question && inUse(await deskNow())?.id === back,
+      "the keys stayed with the answered question",
+    );
   });
 
   it("a press on a divider gives the keys to no window lying under it", async () => {
-    // Calendar over the Terminal, split: its divider lies over the Terminal's surface.
+    // Calendar split, its divider over another window's surface (the first layout overlaps them).
     await pressInto("endue.calendar", "main.endue-calendar");
     const calendar = await windowNow("endue.calendar");
-    const terminal = await windowNow(TERMINAL);
     await run("desk.display.split-right");
     await windowUntil("endue.calendar", (w) => w.panes.length === 2, "split");
     const divider = await browser.execute(() => {
@@ -176,15 +213,16 @@ describe("keys follow the window in use", () => {
       return r ? { x: r.x + r.width / 4, y: r.y + r.height / 2 } : null;
     });
     if (!divider) throw new Error("the split Calendar has no divider");
-    const under = { x: divider.x, y: Math.max(divider.y, terminal.y + 60) };
-    expect(under.y < calendar.y + calendar.h && under.x > terminal.x).toBe(true);
+    const [below, y] = (await surfacesUnder(divider.x, calendar, "main.endue-calendar"))[0] ?? [];
+    if (!below || y === undefined) throw new Error("no window's surface lies under the divider");
+    const under = { x: divider.x, y };
     await drag(under, { x: under.x + 20, y: under.y }, { hold: true });
     const held = await inputState();
     await release();
     // The press is the split window's, heard by the page that lays it out.
     expect(held.pointer.capture).toBe("desk");
-    expect(held.focused).not.toBe(TERMINAL_HOST);
-    expect(await focused()).not.toBe(TERMINAL_HOST);
+    expect(held.focused).not.toBe(below);
+    expect(await focused()).not.toBe(below);
   });
 
   it("a press on the Drawer button or on Tile gives the keys to no window lying under it", async () => {
