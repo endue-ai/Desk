@@ -5,7 +5,7 @@
 import { desktopsOf, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, render } from "../shell/dom";
-import { tx } from "./actions";
+import { windowCount } from "./actions";
 import { deskMap } from "./map";
 
 const REST_MS = 400;
@@ -31,11 +31,7 @@ export function mountPeek(root: HTMLElement, ctx: ShellCtx): Peek {
     render(el, () => [
       h("span", { class: "desktop-peek-name" }, d.name),
       deskMap(ctx, s, d.id),
-      h(
-        "span",
-        { class: "desktop-peek-meta" },
-        count ? tx(ctx, "windows", { n: count }) : tx(ctx, "empty"),
-      ),
+      h("span", { class: "desktop-peek-meta" }, windowCount(ctx, count)),
     ]);
     const r = shown.under.getBoundingClientRect();
     const width = 220;

@@ -14,15 +14,17 @@ import { mountOverview } from "../desktops/overview";
 import { mountPeek } from "../desktops/peek";
 import { provideUi } from "../desktops/ui";
 import type { Desktop } from "../modes/types";
-import { desktopId, desktopIsEmpty, desktopsOf, layoutOf } from "./actions";
+import { desktopId, desktopIsEmpty, desktopsOf, windowsOf } from "./actions";
 import { REFERENCE, type ShellCtx } from "./context";
 import { h, listen, render } from "./dom";
 import { draggable } from "./drag";
 import { icon } from "./icons";
+import type { DeskState } from "./state";
 
-function quadrants(ctx: ShellCtx, d: string): boolean[] {
+/** Where a desktop's windows sit, its plugin windows in their slots included: what it shows. */
+function quadrants(s: DeskState, d: string): boolean[] {
   const filled = [false, false, false, false];
-  for (const p of layoutOf(ctx.store.get(), d).surfaces) {
+  for (const p of windowsOf(s, d)) {
     const col = p.x + p.w / 2 > REFERENCE.width / 2 ? 1 : 0;
     const row = p.y + p.h / 2 > REFERENCE.height / 2 ? 1 : 0;
     filled[row * 2 + col] = true;
@@ -133,7 +135,7 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
         h(
           "span",
           { class: "mini-grid", "aria-hidden": "true" },
-          quadrants(ctx, d.id).map((on) => h("span", { class: `mini-dot${on ? " is-on" : ""}` })),
+          quadrants(s, d.id).map((on) => h("span", { class: `mini-dot${on ? " is-on" : ""}` })),
         ),
       );
     });
@@ -164,7 +166,16 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
   draw();
   const offs = [
     ctx.store.watch(
-      (s) => [s.desktop, s.wm.desktops, s.wm.layouts, s.modeId, s.modes, s.lang],
+      // What the buttons show: the plugin windows in their slots come and go with no layout's change.
+      (s) => [
+        s.desktop,
+        s.wm.desktops,
+        s.wm.layouts,
+        desktopsOf(s).map((d) => quadrants(s, d.id)),
+        s.modeId,
+        s.modes,
+        s.lang,
+      ],
       draw,
     ),
     ctx.runtime.keymap.onChange(draw),

@@ -1,13 +1,14 @@
 /**
  * The desktops' two dialogs (ADR 0117): rename one, and remove one after asking what becomes of its
- * windows (moved to its neighbour, or closed). An empty desktop is removed without asking.
+ * windows (moved to its neighbour, or closed). A desktop with no windows of its own is removed
+ * without asking, as a move, so Undo brings it back (#158).
  */
 import type { DesktopRef } from "../modes/types";
-import { desktopId, desktopsOf, layoutOf } from "../shell/actions";
+import { desktopId, desktopsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
 import { containModal } from "../shell/modal";
-import { nameOf, remove, rename, tx } from "./actions";
+import { nameOf, ownWindows, remove, rename, tx } from "./actions";
 import { NAME_LIMIT, neighbourOf } from "./model";
 
 export interface Dialogs {
@@ -95,9 +96,10 @@ export function mountDialogs(root: HTMLElement, ctx: ShellCtx): Dialogs {
       const id = desktopId(s, desktop);
       const into = neighbourOf(list, id);
       if (list.length <= 1 || !into) return;
-      const count = layoutOf(s, id).surfaces.length;
+      const count = ownWindows(s, id);
       if (count === 0) {
-        remove(ctx, id, "close");
+        // Nothing to move or close: no question, and the notice offers Undo.
+        remove(ctx, id, "move");
         return;
       }
       const name = nameOf(s, id);
@@ -109,7 +111,7 @@ export function mountDialogs(root: HTMLElement, ctx: ShellCtx): Dialogs {
       const form = dialog(
         "desktop-remove-title",
         tx(ctx, "removeTitle", { name }),
-        tx(ctx, "removeHint", { n: count }),
+        count === 1 ? tx(ctx, "removeHintOne") : tx(ctx, "removeHint", { n: count }),
         () => {
           close();
           remove(ctx, id, "move");

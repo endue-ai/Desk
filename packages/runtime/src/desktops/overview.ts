@@ -8,7 +8,7 @@ import type { ShellCtx } from "../shell/context";
 import { h, listen, render } from "../shell/dom";
 import { icon } from "../shell/icons";
 import { containModal } from "../shell/modal";
-import { moveWindowTo, newDesktop, switchTo, tx } from "./actions";
+import { moveWindowTo, newDesktop, switchTo, tx, windowCount } from "./actions";
 import type { Dialogs } from "./dialogs";
 import { deskMap } from "./map";
 import { MAX_DESKTOPS } from "./model";
@@ -42,7 +42,9 @@ export function mountOverview(root: HTMLElement, ctx: ShellCtx, dialogs: Dialogs
 
   const card = (id: string, name: string, n: number, here: boolean) => {
     const s = ctx.store.get();
-    const count = windowsOf(s, id).length;
+    const count = windowCount(ctx, windowsOf(s, id).length);
+    // A desktop named by its number is named once, as the switcher names it.
+    const numbered = name === String(n);
     return h(
       "button",
       {
@@ -51,7 +53,7 @@ export function mountOverview(root: HTMLElement, ctx: ShellCtx, dialogs: Dialogs
         "data-key": `overview-${id}`,
         "data-desktop-id": id,
         "aria-current": here ? "true" : undefined,
-        "aria-label": `${n} · ${name} · ${count ? tx(ctx, "windows", { n: count }) : tx(ctx, "empty")}`,
+        "aria-label": `${numbered ? n : `${n} · ${name}`} · ${count}`,
         onClick: () => {
           close();
           switchTo(ctx, id);
@@ -73,13 +75,9 @@ export function mountOverview(root: HTMLElement, ctx: ShellCtx, dialogs: Dialogs
       h(
         "span",
         { class: "overview-name" },
-        h("span", { class: "overview-meta" }, n),
+        numbered ? null : h("span", { class: "overview-meta" }, n),
         h("strong", {}, name),
-        h(
-          "span",
-          { class: "overview-meta" },
-          count ? tx(ctx, "windows", { n: count }) : tx(ctx, "empty"),
-        ),
+        h("span", { class: "overview-meta" }, count),
       ),
     );
   };

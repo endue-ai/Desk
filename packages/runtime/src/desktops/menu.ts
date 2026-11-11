@@ -8,7 +8,7 @@ import { desktopsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen, render } from "../shell/dom";
 import type { DeskState } from "../shell/state";
-import { moveToNew, moveWindowTo, newDesktop, reorder, tx } from "./actions";
+import { moveToNew, moveWindowTo, newDesktop, ownWindows, reorder, tx } from "./actions";
 import { MAX_DESKTOPS } from "./model";
 
 /** The desktop that shows `window`: the one in front first, then those whose layout places it. */
@@ -85,7 +85,13 @@ export function mountMenus(root: HTMLElement, ctx: ShellCtx, switcher: HTMLEleme
         ? []
         : [
             h("div", { class: "desktops-menu-rule", role: "separator" }),
-            item(tx(ctx, "remove"), "menu-remove", () => ui.remove(desktop), list.length > 1),
+            // "…" only when a question follows: what becomes of the desktop's own windows.
+            item(
+              tx(ctx, ownWindows(ctx.store.get(), desktop) > 0 ? "remove" : "removeNow"),
+              "menu-remove",
+              () => ui.remove(desktop),
+              list.length > 1,
+            ),
           ]),
     ];
   };

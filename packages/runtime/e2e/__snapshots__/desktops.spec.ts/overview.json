@@ -183,7 +183,7 @@
       {
        "tag": "button",
        "class": "btn btn-outline overview-card",
-       "aria-label": "3 · 3 · 1 windows",
+       "aria-label": "3 · 1 window",
        "style": {
         "border": "solid rgb(131, 121, 145)"
        },
@@ -224,14 +224,6 @@
          "class": "overview-name",
          "children": [
           {
-           "tag": "span",
-           "class": "overview-meta",
-           "style": {
-            "color": "rgb(176, 173, 183)"
-           },
-           "text": "3"
-          },
-          {
            "tag": "strong",
            "style": {
             "color": "rgb(242, 240, 245)"
@@ -244,7 +236,7 @@
            "style": {
             "color": "rgb(176, 173, 183)"
            },
-           "text": "1 windows"
+           "text": "1 window"
           }
          ]
         }
@@ -253,7 +245,7 @@
       {
        "tag": "button",
        "class": "btn btn-outline overview-card",
-       "aria-label": "4 · 4 · Empty",
+       "aria-label": "4 · Empty",
        "style": {
         "border": "solid rgb(131, 121, 145)"
        },
@@ -271,14 +263,6 @@
          "tag": "span",
          "class": "overview-name",
          "children": [
-          {
-           "tag": "span",
-           "class": "overview-meta",
-           "style": {
-            "color": "rgb(176, 173, 183)"
-           },
-           "text": "4"
-          },
           {
            "tag": "strong",
            "style": {

@@ -111,6 +111,51 @@ test.describe("desktops are a named, open-ended list", () => {
     await expect(names(page)).toHaveText(["1", "2", "3", "4"]);
   });
 
+  // #158 finding 7: the menu promised a question with "…" and asked none, and nothing took it back.
+  test("a desktop with no windows of its own goes at once, and Undo brings it back", async ({
+    page,
+  }) => {
+    await desktop(page, 4).click({ button: "right" });
+    await expect(page.getByRole("menuitem", { name: "Remove desktop…" })).toHaveCount(0);
+    await page.getByRole("menuitem", { name: "Remove desktop", exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(names(page)).toHaveText(["1", "2", "3"]);
+    const status = page.locator("footer.desk-status");
+    await expect(status).toContainText("Removed the desktop “4”.");
+    await status.locator(".desk-status-action", { hasText: "Undo" }).click();
+    await expect(names(page)).toHaveText(["1", "2", "3", "4"]);
+  });
+
+  // #158 finding 20: with three empty desktops "+" went 1 → 4 → 1, never on to the third.
+  test("“+” goes on to the next empty desktop, round the list", async ({ page }) => {
+    await run(page, "desk.shell.desktop-new");
+    await run(page, "desk.shell.desktop-1");
+    const add = page.locator(".desktop-add");
+    await expect(add).toHaveAttribute("aria-label", "Next empty desktop");
+    await add.click();
+    await expect(desktop(page, 4)).toHaveAttribute("aria-pressed", "true");
+    await add.click();
+    await expect(desktop(page, 5)).toHaveAttribute("aria-pressed", "true");
+    await add.click();
+    await expect(desktop(page, 1)).toHaveAttribute("aria-pressed", "true");
+  });
+
+  // #158 finding 20: the cards read "3 3 1 windows" and the hint was cut at "Drag a window o…".
+  test("the overview names a numbered desktop once, counts one window, and says its hint whole", async ({
+    page,
+  }) => {
+    await run(page, "desk.shell.desktops-overview");
+    const overview = page.getByRole("dialog", { name: "Desktops" });
+    const three = overview.locator('[data-desktop-id="3"]');
+    await expect(three).toHaveAttribute("aria-label", "3 · 1 window");
+    expect(await three.locator(".overview-name > *").allTextContents()).toEqual(["3", "1 window"]);
+    const hint = overview.locator(".dialog-hint");
+    await expect(hint).toHaveText(
+      "Choose a desktop to go there. Drag a window onto another desktop to move it.",
+    );
+    expect(await hint.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  });
+
   test("the overview shows every desktop side by side; a click goes there", async ({ page }) => {
     await sixNamed(page);
     await page.keyboard.press("Meta+Shift+Backslash");
@@ -180,6 +225,22 @@ test.describe("desktops are a named, open-ended list", () => {
     await run(page, "desk.shell.desktop-3");
     await expect(page.locator('[data-surface="notes"]')).toBeVisible();
   });
+});
+
+// #158 finding 7: plugin windows in their slots are on every desktop (ADR 0117), yet the buttons
+// said "empty" with a hollow map over them while the preview counted those windows.
+test("a desktop that shows plugin windows in their slots is not called empty", async ({ page }) => {
+  await openShell(page, "?plugins=1&lang=en");
+  await page.evaluate(() => window.__shell.desk.runtime.plugins?.ready);
+  await expect(page.locator('section.surface[data-surface="test.counter"]')).toBeVisible();
+  await expect(desktop(page, 4)).toHaveAttribute("aria-label", "Desktop 4 (⌃4)");
+  await expect(desktop(page, 4).locator(".mini-dot.is-on")).not.toHaveCount(0);
+  // No desktop is empty, so "+" makes one, and says so.
+  const add = page.locator(".desktop-add");
+  await expect(add).toHaveAttribute("aria-label", "New desktop");
+  await add.click();
+  await expect(names(page)).toHaveText(["1", "2", "3", "4", "5"]);
+  await expect(desktop(page, 5)).toHaveAttribute("aria-pressed", "true");
 });
 
 test("named desktops and their windows come back after a restart, and saved into the profile", async ({

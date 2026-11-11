@@ -210,6 +210,7 @@ export function moveEris(ctx: Ctx, pos: { x: number; y: number } | null): Promis
   return edit(ctx, { op: "move-eris", at: pos });
 }
 
+/** A desktop shows no window: none of its own and no plugin window in its slot (issue 158). */
 export function desktopIsEmpty(s: DeskState, d: DesktopRef): boolean {
-  return layoutOf(s, d).surfaces.length === 0;
+  return windowsOf(s, d).length === 0;
 }

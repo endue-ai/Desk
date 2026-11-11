@@ -5,7 +5,7 @@
  * here is the runtime's side: the notices, and unmounting the plugins a removal closed.
  */
 import type { DesktopId, DesktopRef, SurfacePlacement } from "../modes/types";
-import { desktopsOf, edit } from "../shell/actions";
+import { desktopIsEmpty, desktopsOf, edit, layoutOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import type { DeskState } from "../shell/state";
 import { focusPane } from "../shell/windows";
@@ -65,12 +65,29 @@ export async function newDesktop(
   return id;
 }
 
-/** An empty desktop: the first one besides this, else none. */
+/**
+ * The next empty desktop after the one in front, round the list; none when every other shows a
+ * window. Empty is what the person sees: no window of its own and no plugin window in its slot.
+ */
 export function emptyDesktop(s: DeskState): DesktopId | undefined {
-  return desktopsOf(s).find(
-    (d) => d.id !== s.wm.here && (s.wm.layouts[d.id]?.surfaces.length ?? 0) === 0,
-  )?.id;
+  const list = desktopsOf(s);
+  const at = list.findIndex((d) => d.id === s.wm.here);
+  for (let i = 1; i <= list.length; i++) {
+    const d = list[(at + i) % list.length];
+    if (d && d.id !== s.wm.here && desktopIsEmpty(s, d.id)) return d.id;
+  }
+  return undefined;
 }
+
+/**
+ * The windows a removal moves or closes: those the desktop places. The plugin windows in their
+ * slots are on every desktop and stay (ADR 0117).
+ */
+export const ownWindows = (s: DeskState, id: DesktopId): number => layoutOf(s, id).surfaces.length;
+
+/** "Empty", "1 window" or "{n} windows". */
+export const windowCount = (ctx: ShellCtx, n: number): string =>
+  n === 0 ? tx(ctx, "empty") : n === 1 ? tx(ctx, "oneWindow") : tx(ctx, "windows", { n });
 
 export function rename(ctx: ShellCtx, desktop: DesktopRef, name: string): Promise<unknown[]> {
   return edit(ctx, { op: "rename-desktop", desktop, name });

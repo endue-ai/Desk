@@ -91,8 +91,9 @@
 .desktops-menu-rule { height: 1px; margin: var(--space-1) 0; background: var(--desk-border); }
 
 /* The overview: every desktop side by side. */
-/* Its lines have fixed heights, so the panel is the same size whatever font draws it. */
-.desktops-overview-panel {
+/* Its lines have fixed heights, so the panel is the same size whatever font draws it. Inside its
+   scrim, so the width outranks the kit's 360px `.dialog` whichever sheet loads last (#158). */
+.desktops-overview .desktops-overview-panel {
   width: min(1120px, calc(100vw - 96px));
   max-height: calc(100vh - 96px);
   overflow-y: auto;
