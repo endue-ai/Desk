@@ -26,7 +26,7 @@ both. See [the design system guide](../../docs/design-system.md) and ADR 0022 fo
   `dist/ui.js`, `ui.iife.js`, `tokens.css`, `base.css` (served under `/_desk/`) and the source tokens.
 
 ```html
-<link rel="stylesheet" href="/_desk/tokens.css" />
+<link rel="stylesheet" href="/_desk/tokens.css" /> <!-- and the theme's scrollbars and controls -->
 <link rel="stylesheet" href="/_desk/base.css" />
 <script type="importmap">{ "imports": { "@endue-ai/ui": "/_desk/ui.js" } }</script>
 <script type="module">import "@endue-ai/ui";</script>

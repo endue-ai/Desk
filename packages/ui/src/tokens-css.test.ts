@@ -1,13 +1,15 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { cssVariables, tokensCss } from "./index";
+import { NATIVE_CSS } from "./native-css";
+
+const uncommented = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, "").trim();
 
 describe("tokensCss", () => {
-  it("is one :root rule holding every default token, and nothing else", () => {
-    const css = tokensCss()
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .trim();
-    const lines = css.split("\n");
+  it("is one :root rule holding every default token, then the engine's parts' rules", () => {
+    const css = uncommented(tokensCss());
+    const end = css.indexOf("\n}\n");
+    const lines = css.slice(0, end + 2).split("\n");
     expect(lines[0]).toBe(":root {");
     expect(lines.at(-1)).toBe("}");
     const declared = Object.fromEntries(
@@ -18,6 +20,8 @@ describe("tokensCss", () => {
       }),
     );
     expect(declared).toEqual(cssVariables());
+    // Every page links this sheet, so it brings the theme's scheme and scrollbars too (#156).
+    expect(uncommented(css.slice(end + 3))).toBe(uncommented(NATIVE_CSS));
   });
 
   it("starts with a GENERATED header", () => {
