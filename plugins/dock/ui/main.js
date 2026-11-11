@@ -1,6 +1,7 @@
 // The bottom dock. It uses only the public bridge API (plugin.list, plugin.setEnabled,
 // plugin.changed), exactly as a community plugin with plugin:manage would.
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
+import { intoSight, sideways } from "./scroll.js";
 import { tiles } from "./tiles.js";
 
 const scope = { permission: "plugin:manage" };
@@ -8,6 +9,7 @@ const NEXT = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
 
 defineUiPlugin({
   async mount({ bridge }) {
+    const root = document.getElementById("root");
     const bar = document.getElementById("tiles");
     const empty = document.getElementById("empty");
     const status = document.getElementById("status");
@@ -62,6 +64,14 @@ defineUiPlugin({
       if (focused) bar.querySelector('[tabindex="0"]')?.focus();
     };
 
+    /** Scroll a tile wholly into the part of the row inside the dock's padding. */
+    const reveal = (tile) => {
+      const box = root.getBoundingClientRect();
+      const pad = Number.parseFloat(getComputedStyle(root).paddingLeft) || 0;
+      const shown = { left: box.left + pad, right: box.left + root.clientWidth - pad };
+      root.scrollLeft += intoSight(tile.getBoundingClientRect(), shown);
+    };
+
     bar.addEventListener("keydown", (event) => {
       const items = [...bar.querySelectorAll(".tile")];
       const at = items.indexOf(document.activeElement);
@@ -80,8 +90,21 @@ defineUiPlugin({
       items[at].tabIndex = -1;
       items[to].tabIndex = 0;
       items[to].focus();
+      reveal(items[to]);
       current = items[to].dataset.plugin;
     });
+
+    // The row runs sideways only: a vertical wheel scrolls it too.
+    root.addEventListener(
+      "wheel",
+      (event) => {
+        const by = sideways(event, root.clientWidth);
+        if (by === 0 || root.scrollWidth <= root.clientWidth) return;
+        event.preventDefault();
+        root.scrollLeft += by;
+      },
+      { passive: false },
+    );
 
     bridge.onEvent((event) => {
       if (event.event === "plugin.changed") void refresh();

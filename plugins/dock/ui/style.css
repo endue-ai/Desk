@@ -5,23 +5,29 @@ body {
   font: calc(var(--desk-text-sm) - 1px) / 1.4 var(--desk-font-sans);
 }
 
+/* The row scrolls sideways. Its auto margins centre it while it fits; once it overflows, it starts at
+   its first tile and every tile scrolls into reach. (A centred flex row would overflow on both sides,
+   and a scroll never reaches past its start.) */
 #root {
   display: flex;
   align-items: center;
-  justify-content: center;
   height: 100vh;
   padding: 0 8px;
   box-sizing: border-box;
   overflow-x: auto;
+  /* A thin bar in the theme's colours, not the engine's white one across the desk (#158). */
+  scrollbar-width: thin;
+  scrollbar-color: var(--desk-hover) transparent;
 }
 
 #tiles {
   display: flex;
   gap: 8px;
+  margin-inline: auto;
 }
 
 #empty {
-  margin: 0;
+  margin: 0 auto;
   color: var(--desk-text-muted);
 }
 
