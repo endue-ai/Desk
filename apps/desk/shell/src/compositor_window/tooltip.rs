@@ -3,10 +3,13 @@
 //! and the compositor draws it near the pointer, above everything, in the theme's tooltip look
 //! (`tooltip_draw.rs`). It shows once the pointer has rested [`DELAY`] on the surface whose page
 //! said it; a move farther than [`SLOP`] puts it away until the pointer rests again; a press or a
-//! key puts it away until that page says another title, as Chromium's own tooltip does after a
-//! click; the wheel, the pointer leaving the window and the window losing the focus put it away
-//! too. The desk's page labels some controls itself (the rail's and the arrange strip's `.tooltip`,
-//! drawn in the `desk.overlays` part): those carry no `title`, so none is labelled twice.
+//! key puts it away until the pointer, let go, moves farther than [`SLOP`] (as Chromium's own
+//! tooltip stays away after a click): not until the page says another title, as the page says the
+//! pressed element's late, and a dragged window's page says the titles of its grips and its body as
+//! it catches up with the pointer. The wheel, the pointer leaving the window and the window losing
+//! the focus put it away too. The desk's page labels some controls itself (the rail's and the
+//! arrange strip's `.tooltip`, drawn in the `desk.overlays` part): those carry no `title`, so none
+//! is labelled twice.
 
 use std::collections::{BTreeMap, HashMap};
 use std::time::{Duration, Instant};
@@ -59,8 +62,11 @@ pub struct Tip {
 pub struct Tips {
     /// Each surface's title under the pointer now (none when it said `""`).
     titles: HashMap<String, String>,
-    /// A press or a key put these away: none shows again until its page says another.
-    muted: HashMap<String, String>,
+    /// A press or a key put the titles away: none shows until the pointer, let go, moves farther
+    /// than [`SLOP`] from here (device px).
+    quiet: Option<Vec2>,
+    /// A button is down: no title shows, and the pointer's moves keep them away.
+    held: bool,
     /// Where the pointer is (device px) and since when it rests there, or since the title it
     /// rests on came.
     at: Option<Vec2>,
@@ -76,9 +82,6 @@ impl Tips {
     /// The page of `surface` shows `title` on hover now (`""`: none); true when what shows changed.
     pub fn said(&mut self, surface: &str, title: &str, now: Instant) -> bool {
         let text = shown(title);
-        if self.muted.get(surface).is_some_and(|muted| *muted != text) {
-            self.muted.remove(surface);
-        }
         if text.is_empty() {
             self.titles.remove(surface);
         } else if self.titles.get(surface) != Some(&text) {
@@ -93,44 +96,61 @@ impl Tips {
     pub fn moved(&mut self, at: Vec2, scale: f32, now: Instant) -> bool {
         self.at = Some(at);
         self.rest = Some(now);
+        if !self.held && self.quiet.is_some_and(|q| q.distance(at) > SLOP * scale) {
+            self.quiet = None;
+        }
         let far = (self.shown.as_ref()).is_some_and(|t| t.at.distance(at) > SLOP * scale);
         far && self.hide()
     }
 
-    /// A press or a key (`mute`) or the wheel: what shows goes, and the pointer rests anew.
-    pub fn away(&mut self, mute: bool, now: Instant) -> bool {
-        if mute {
-            self.muted = self.titles.clone();
+    /// A button went down (`Some(true)`) or up (`Some(false)`), a key went down (`None`): the
+    /// titles stay away until the pointer, let go, moves on.
+    pub fn pressed(&mut self, button: Option<bool>, now: Instant) -> bool {
+        if let Some(down) = button {
+            self.held = down;
         }
+        self.quiet = self.at.or(self.quiet);
         self.rest = self.at.map(|_| now);
         self.hide()
     }
 
-    /// The pointer left the window, or the window lost the focus.
+    /// The wheel: what shows goes, and the pointer rests anew.
+    pub fn wheel(&mut self, now: Instant) -> bool {
+        self.rest = self.at.map(|_| now);
+        self.hide()
+    }
+
+    /// The pointer left the window (a button held stays held: a drag can leave and come back).
     pub fn left(&mut self) -> bool {
         self.at = None;
         self.rest = None;
+        self.quiet = None;
         self.hide()
+    }
+
+    /// The window lost the focus: no button is held any more, as the window manager drops its
+    /// gesture then.
+    pub fn blurred(&mut self) -> bool {
+        self.held = false;
+        self.left()
     }
 
     /// Surface `surface` left the desk: its title goes with it.
     pub fn forget(&mut self, surface: &str) -> bool {
         self.titles.remove(surface);
-        self.muted.remove(surface);
         let gone = (self.shown.as_ref()).is_some_and(|t| t.surface == surface);
         gone && self.hide()
     }
 
     /// Show or put away at `now`: `hearing` are the surfaces the pointer is in, the one it is for
     /// first (the desk's page hears it over every surface too, and says the titles of what lies
-    /// under them in its DOM: a window's body is titled with its name), `held` whether a press
-    /// holds it. True when what shows changed.
-    pub fn look(&mut self, now: Instant, hearing: &[String], held: bool) -> bool {
+    /// under them in its DOM: a window's body is titled with its name). True when what shows
+    /// changed.
+    pub fn look(&mut self, now: Instant, hearing: &[String]) -> bool {
         self.waiting = None;
         let candidate = (hearing.first())
-            .and_then(|s| self.titles.get(s).map(|t| (s, t)))
-            .filter(|(s, t)| !held && self.muted.get(*s) != Some(*t))
-            .map(|(s, t)| (s.clone(), t.clone()));
+            .and_then(|s| self.titles.get(s).map(|t| (s.clone(), t.clone())))
+            .filter(|_| !self.held && self.quiet.is_none());
         if let Some(tip) = &self.shown {
             let same =
                 (candidate.as_ref()).is_some_and(|(s, t)| *s == tip.surface && *t == tip.text);
@@ -182,10 +202,11 @@ impl CompositorWindow {
                 let scale = self.window.scale_factor() as f32;
                 self.tips.moved(Vec2::new(*x, *y), scale, now)
             }
-            Input::PointerButton { pressed: true, .. } => self.tips.away(true, now),
-            Input::Key(key) if key.pressed => self.tips.away(true, now),
-            Input::Wheel { .. } => self.tips.away(false, now),
-            Input::PointerLeft | Input::WindowFocused { focused: false } => self.tips.left(),
+            Input::PointerButton { pressed, .. } => self.tips.pressed(Some(*pressed), now),
+            Input::Key(key) if key.pressed => self.tips.pressed(None, now),
+            Input::Wheel { .. } => self.tips.wheel(now),
+            Input::PointerLeft => self.tips.left(),
+            Input::WindowFocused { focused: false } => self.tips.blurred(),
             _ => false,
         };
         if changed {
@@ -200,8 +221,8 @@ impl CompositorWindow {
         for (surface, title) in said {
             changed |= self.tips.said(&surface, &title, now);
         }
-        let (capture, hearing, _) = self.router.pointer_state();
-        changed |= self.tips.look(now, hearing, capture.is_some());
+        let (_, hearing, _) = self.router.pointer_state();
+        changed |= self.tips.look(now, hearing);
         if !changed {
             return;
         }
