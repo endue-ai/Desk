@@ -654,7 +654,7 @@
           "children": [
             {
               "tag": "p",
-              "text": "No agent matches. Clear the search or pick another chip."
+              "text": "No agent matches these chips. Pick another chip."
             }
           ]
         }

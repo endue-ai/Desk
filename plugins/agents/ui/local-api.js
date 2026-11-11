@@ -1,7 +1,9 @@
 // The local side's one door to the core: agents.* (specs/bridge/v0/agents.schema.json, ADR 0110),
 // every call under agents:manage. A refusal is asked for once (perm.request) and the call tried
 // again; a desk that looks for no agent programs answers `unsupported`, which the Home shows as the
-// local side being unavailable, not as an error.
+// local side being unavailable, not as an error. An "Allow once" answer allows one call: inside a
+// read (several calls for one look, `read`) it goes to the call that asked, and the others go
+// without, not asking again; the person's next look asks again.
 
 /** The scope every agents.* call carries. */
 export const AGENTS = /** @type {const} */ ({ permission: "agents:manage" });
@@ -47,9 +49,12 @@ function said(error) {
 
 /** @param {{ bridge: Bridge }} ctx */
 export function createLocalApi({ bridge }) {
-  /** @type {Promise<boolean> | undefined} */
+  /** The answer being waited for: false, or how long the grant lasts. @type {Promise<false | string> | undefined} */
   let asking;
   let refused = false;
+  /** Reads going on, and whether one of them was given an "Allow once" that is spent now. */
+  let reads = 0;
+  let spent = false;
 
   /** One call; a refusal asks the person once, then tries again. */
   const call = async (/** @type {string} */ method, /** @type {object} */ params = {}) => {
@@ -57,22 +62,29 @@ export function createLocalApi({ bridge }) {
     try {
       return await request();
     } catch (error) {
-      if (codeOf(error) !== "permission_denied" || refused) throw said(error);
+      if (codeOf(error) !== "permission_denied" || refused || spent) throw said(error);
     }
+    const asker = asking === undefined;
     asking ??= bridge
       .call("perm.request", {
         permission: AGENTS,
         reason: "To show the agent programs on this computer as cards and chat with them",
       })
-      .then((/** @type {{ granted?: boolean }} */ decision) => decision.granted === true)
-      .catch(() => false)
+      .then((/** @type {{ granted?: boolean, grant?: { duration?: string } }} */ decision) =>
+        decision.granted === true ? (decision.grant?.duration ?? "session") : false,
+      )
+      .catch(() => /** @type {false} */ (false))
       .finally(() => {
         asking = undefined;
       });
-    if (!(await asking)) {
+    const answer = await asking;
+    if (!answer) {
       refused = true;
       throw said({ code: "permission_denied" });
     }
+    // Allowed once: that one call is the asker's; the rest of this read goes without.
+    if (answer === "once" && reads > 0) spent = true;
+    if (answer === "once" && !asker) throw said({ code: "permission_denied" });
     try {
       return await request();
     } catch (error) {
@@ -84,6 +96,20 @@ export function createLocalApi({ bridge }) {
     /** The person asked to try again: a refusal may be asked about once more. */
     again() {
       refused = false;
+      spent = false;
+    },
+    /**
+     * Several calls for one look (the Home's read): an "Allow once" given while it runs is not asked
+     * for again until it ends.
+     * @template T @param {() => Promise<T>} work @returns {Promise<T>}
+     */
+    async read(work) {
+      reads++;
+      try {
+        return await work();
+      } finally {
+        if (--reads === 0) spent = false;
+      }
     },
     /** The agents found on this computer. @returns {Promise<LocalAgent[]>} */
     list: async () => (await call("agents.list")).agents,

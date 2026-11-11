@@ -5,7 +5,7 @@
   "kind": "ui",
   "entry": "ui/index.html",
   "autoload": true,
-  "description": "Every agent as a card (ADR 0112): your endue AI agents and the agent programs on this computer, in one Home, one Studio and New agent, with a chat to local agents.",
+  "description": "Every agent as a card: your endue AI agents and the agent programs on this computer, in one Home, one Studio and New agent, with a chat to local agents.",
   "permissions": [
     {
       "permission": "studio:manage"

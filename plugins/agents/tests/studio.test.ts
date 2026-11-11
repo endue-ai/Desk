@@ -128,6 +128,20 @@ describe("Studio", () => {
     });
   });
 
+  it("says when a local agent's version becomes known, not Unknown, and names no ADR", () => {
+    const { version: _, ...fresh } = pick(localAgents(), 0);
+    expect(localFacets(fresh).find((f) => f.id === "version")?.hint).toBe(
+      "Known after its first session",
+    );
+    const inspector = localInspector(fresh, "version");
+    expect(pick(inspector.fields)).toMatchObject({ value: "Known after its first session" });
+    expect(inspector.intro).toContain("no session yet");
+    for (const facet of ["identity", "program", "version", "model", "folder", "sessions"]) {
+      const said = JSON.stringify(localInspector(fresh, facet));
+      expect(said, facet).not.toMatch(/ADR \d|Unknown|--[a-z]/);
+    }
+  });
+
   it("opens a local agent on its chat, with its sessions in the Sessions inspector", async () => {
     const { app, studio, chat, last } = await mount();
     app.studio("local:claude");

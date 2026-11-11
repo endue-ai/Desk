@@ -20,17 +20,26 @@ export function createReaders({ local, studio, sides, draw }) {
     return /** @type {SideState} */ (SIDE_STATES.includes(kind) ? kind : "error");
   };
   return {
-    /** Every local agent, its newest sessions and the core's runs. */
+    /**
+     * Every local agent, its newest sessions and the core's runs: one read, so an "Allow once"
+     * shows the agents (the list asks first) and is not asked for again by the calls after it.
+     */
     async readLocal() {
       try {
-        const [agents, runs] = await Promise.all([local.list(), local.runs().catch(() => [])]);
-        const read = await Promise.all(
-          agents.map((a) =>
-            local
-              .sessions(a.id, { limit: SESSIONS })
-              .catch(() => ({ sessions: [], total: a.sessions })),
-          ),
-        );
+        const { agents, runs, read } = await local.read(async () => {
+          const agents = await local.list();
+          const [runs, read] = await Promise.all([
+            local.runs().catch(() => []),
+            Promise.all(
+              agents.map((a) =>
+                local
+                  .sessions(a.id, { limit: SESSIONS })
+                  .catch(() => ({ sessions: [], total: a.sessions })),
+              ),
+            ),
+          ]);
+          return { agents, runs, read };
+        });
         sides.local = {
           state: "ready",
           agents,

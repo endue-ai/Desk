@@ -16,6 +16,11 @@
   transition: border-color var(--desk-motion-fast) var(--desk-easing);
 }
 
+/* A press anywhere on an agent's card opens its Studio. */
+.agent-card {
+  cursor: pointer;
+}
+
 .agent-card:hover,
 .agent-card:focus-within,
 .catalog-card:hover,

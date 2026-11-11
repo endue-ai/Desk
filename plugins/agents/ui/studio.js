@@ -39,6 +39,8 @@ export const NAME_MAX = 100;
 /** A role's and a description's longest, as studio.* takes them. */
 export const ROLE_MAX = 2000;
 export const PROMPT_MAX = 20000;
+/** What Version says before a session has recorded one: the desk never starts a program to ask. */
+export const NO_VERSION = "Known after its first session";
 
 const count = (
   /** @type {number | undefined} */ n,
@@ -66,7 +68,7 @@ export function localFacets(agent, chat = {}) {
     {
       id: "version",
       label: "Version",
-      hint: agent.version ?? "Unknown",
+      hint: agent.version ?? NO_VERSION,
       place: "card",
       caption: "Program",
     },
@@ -131,14 +133,15 @@ export function localInspector(agent, facet, chat = {}) {
       return {
         facet,
         title: "Version",
-        intro: "The version its newest session recorded. Finding an agent never starts it.",
-        fields: [readonly("version", "Version", agent.version ?? "Unknown")],
+        intro:
+          "The version its newest session recorded. Finding an agent never starts it, so a program with no session yet has no version here.",
+        fields: [readonly("version", "Version", agent.version ?? NO_VERSION)],
       };
     case "model":
       return {
         facet,
         title: "Model",
-        intro: "The model the chat's next message asks for, passed as the program's --model.",
+        intro: "The model the chat's next message asks the program to think with.",
         fields: [
           {
             id: "model",
@@ -189,7 +192,7 @@ export function localInspector(agent, facet, chat = {}) {
       return {
         facet: "identity",
         title: "Identity",
-        intro: "An agent program on this computer, found by its own files (ADR 0110).",
+        intro: "An agent program on this computer, found by its own files.",
         fields: [
           readonly("name", "Name", agent.name),
           readonly("vendor", "Made by", agent.vendor),

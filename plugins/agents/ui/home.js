@@ -62,6 +62,44 @@ export function filterCards(/** @type {Card[]} */ cards, /** @type {Filters} */ 
   );
 }
 
+const STATUS_WORDS = {
+  working: "is working",
+  waiting: "needs you",
+  online: "is online",
+  paused: "is paused",
+  offline: "is offline",
+};
+
+/**
+ * What the grid says when it shows no card, by why: no agent at all, a search, a source with none, a
+ * status nobody has. Only a search is asked to be cleared.
+ * @param {Card[]} cards every card
+ * @param {Filters} filters
+ * @param {{ endueSignedOut?: boolean }} [sides] whether the endue side is signed out
+ */
+export function emptyText(cards, filters, sides = {}) {
+  if (cards.length === 0)
+    return "No agents yet. Make an endue agent, or install Claude Code or Codex on this computer.";
+  const query = filters.query.trim();
+  if (query) return `No agent matches “${query}”. Clear the search or pick another chip.`;
+  const ofSource = cards.filter((c) => filters.source === "all" || c.source === filters.source);
+  if (ofSource.length === 0) {
+    if (filters.source === "local")
+      return "No agent programs on this computer yet. Claude Code and Codex show here once installed.";
+    return sides.endueSignedOut
+      ? "Sign in to see your endue agents."
+      : "You have no endue agents yet. Make your first one with New agent.";
+  }
+  const who =
+    filters.source === "endue"
+      ? "No endue agent"
+      : filters.source === "local"
+        ? "No local agent"
+        : "No agent";
+  const status = filters.status === "all" ? "matches these chips" : STATUS_WORDS[filters.status];
+  return `${who} ${status}. Pick another chip.`;
+}
+
 /** All, endue and Local, each with how many cards it would show under the other filters. */
 export function sourceChips(/** @type {Card[]} */ cards, /** @type {Filters} */ filters) {
   const shown = filterCards(cards, { ...filters, source: "all" });

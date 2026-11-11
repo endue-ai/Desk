@@ -8,6 +8,7 @@ import { createFlow } from "./create.js";
 import {
   agentChips,
   board,
+  emptyText,
   endueRows,
   filterCards,
   localRows,
@@ -38,6 +39,7 @@ import { endueFacets, endueInspector } from "./studio-endue.js";
  * @property {ReturnType<typeof agentChips>} agentChips
  * @property {string[]} boardAgents
  * @property {number} rows
+ * @property {string} empty         what the grid says when the filters keep no card
  * @property {number} now
  * @typedef {object} StudioShown
  * @property {Card} card
@@ -180,6 +182,7 @@ export function createApp(ctx, view, deps) {
         agentChips: agentChips(rows, all),
         boardAgents: [...boardAgents],
         rows: rows.length,
+        empty: emptyText(all, filters, { endueSignedOut: sides.endue.state === "signed-out" }),
         now: now(),
       },
     };

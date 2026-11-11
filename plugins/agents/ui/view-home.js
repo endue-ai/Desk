@@ -57,6 +57,8 @@ export function createHomeView(doc, actions) {
       ),
     );
 
+  // The whole card opens its Studio; its name row is the button the keys reach, and its own
+  // action button does its own thing.
   const card = (/** @type {Card} */ c, /** @type {number} */ now) =>
     el(
       doc,
@@ -65,7 +67,15 @@ export function createHomeView(doc, actions) {
       el(
         doc,
         "desk-card",
-        { class: "agent-card", "data-key": c.key, "data-source": c.source },
+        {
+          class: "agent-card",
+          "data-key": c.key,
+          "data-source": c.source,
+          onclick: (/** @type {MouseEvent} */ event) => {
+            const target = /** @type {Element | null} */ (event.target);
+            if (!target?.closest?.("button")) actions.studio(c.key);
+          },
+        },
         el(
           doc,
           "button",
@@ -236,13 +246,7 @@ export function createHomeView(doc, actions) {
       grid.replaceChildren(...home.cards.map((c) => card(c, home.now)));
       const empty = pick("grid-empty");
       empty.hidden = loading || home.cards.length > 0;
-      empty
-        .querySelector("p")
-        ?.replaceChildren(
-          home.total === 0
-            ? "No agents yet. Make an endue agent, or install Claude Code or Codex on this computer."
-            : "No agent matches. Clear the search or pick another chip.",
-        );
+      empty.querySelector("p")?.replaceChildren(home.empty);
 
       chips(
         pick("agent-chips"),
@@ -251,7 +255,12 @@ export function createHomeView(doc, actions) {
         (id) => actions.boardAgent(id),
       );
       const owners = new Map(home.agentChips.map((c) => [c.id, c.card]));
-      board.replaceChildren(...home.board.map((col) => column(col, owners, home.now)));
+      // No conversation at all: one line says so, not four empty columns over it.
+      const none = home.rows === 0 && !loading;
+      board.replaceChildren(
+        ...(none ? [] : home.board.map((col) => column(col, owners, home.now))),
+      );
+      board.hidden = none;
       pick("board-empty").hidden = home.rows > 0 || loading;
     },
   };

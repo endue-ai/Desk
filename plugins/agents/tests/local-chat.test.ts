@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { type LocalAgentRunData, StubError } from "../../../packages/bridge/src/index";
 import type { TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { localSessions, run } from "./fixtures";
-import { mount, settle } from "./harness";
+import { localHandlers, mount, settle } from "./harness";
 
 const AGENTS = { permission: "agents:manage" };
+const names = (list: Array<{ name: string }>) => list.map((c) => c.name);
 const SESSION = localSessions().claude?.[0]?.id ?? "";
 
 /** One step of a run, as the core sends it to holders of agents:manage. */
@@ -174,5 +175,49 @@ describe("chatting with a local agent", () => {
     });
     expect(params("perm.request")).toEqual([expect.objectContaining({ permission: AGENTS })]);
     expect(last().sides.local.state).toBe("ready");
+  });
+
+  it("one Allow once shows the local agents: the Home's other calls do not ask again", async () => {
+    // As the core keeps an "Allow once": it allows the next call, then it is spent.
+    let once = 0;
+    const gate = <T>(answer: () => T) => {
+      if (once === 0) throw new StubError("permission_denied", "refused");
+      once--;
+      return answer();
+    };
+    const fixtures = localHandlers() as Record<string, (params: never) => unknown>;
+    const local = Object.fromEntries(
+      ["agents.list", "agents.runs", "agents.sessions"].map((method) => [
+        method,
+        (params: never) => gate(() => fixtures[method]?.(params)),
+      ]),
+    );
+    const m = await mount({
+      local: {
+        ...local,
+        "perm.request": () => {
+          once = 1;
+          return {
+            granted: true,
+            grant: {
+              grantId: "g-1",
+              permission: { permission: "agents:manage" as const },
+              duration: "once" as const,
+              grantedAt: "2026-11-07T09:00:00Z",
+            },
+          };
+        },
+      },
+    });
+    expect(m.params("perm.request")).toHaveLength(1);
+    expect(m.last().sides.local.state).toBe("ready");
+    expect(names(m.home().cards.filter((c) => c.source === "local"))).toEqual([
+      "Claude Code",
+      "Codex",
+    ]);
+    // The person's next look (Refresh) asks again.
+    await m.app.refresh();
+    await settle(m.host);
+    expect(m.params("perm.request")).toHaveLength(2);
   });
 });

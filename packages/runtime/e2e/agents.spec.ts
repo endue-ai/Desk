@@ -166,5 +166,18 @@ test.describe("endue.agents", () => {
       "Sign in",
     );
     await expect(frame.locator("#grid .name")).toHaveText(["Claude Code", "Codex"]);
+    // The endue chip shows nobody: it says to sign in, with no search to clear.
+    await frame.getByRole("button", { name: /^endue/ }).click();
+    await expect(frame.locator("#grid > li")).toHaveCount(0);
+    await expect(frame.locator("#grid-empty")).toHaveText("Sign in to see your endue agents.");
+  });
+
+  test("a press anywhere on a card opens its Studio, not only on its name", async ({ page }) => {
+    const frame = await open(page);
+    const card = frame.locator('.agent-card[data-key="local:claude"]');
+    await card.locator(".role").click();
+    await expect(frame.locator("#page-studio")).toBeVisible();
+    await expect(frame.locator("#studio-card")).toContainText("Claude Code");
+    await expect(frame.locator('[data-facet="version"] .facet-hint')).toHaveText("2.1.3");
   });
 });

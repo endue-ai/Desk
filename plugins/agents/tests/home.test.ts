@@ -4,6 +4,7 @@ import {
   agentChips,
   board,
   bucketOf,
+  emptyText,
   endueRows,
   filterCards,
   localRows,
@@ -179,5 +180,53 @@ describe("the Home", () => {
       state: "unavailable",
       text: "This desk does not reach endue agents yet.",
     });
+  });
+
+  it("an empty grid says why: a search is asked to be cleared, a chip with no agent is not", async () => {
+    const signedOut = await mount({
+      studio: {
+        "studio.agents.list": () => {
+          throw new StubError("signed_out" as ErrorCode, "Sign in");
+        },
+      },
+    });
+    // The endue chip with nobody signed in: no search to clear.
+    signedOut.app.filter({ source: "endue" });
+    expect(signedOut.home().cards).toEqual([]);
+    expect(signedOut.home().empty).toBe("Sign in to see your endue agents.");
+    signedOut.app.filter({ source: "local", query: "gemini" });
+    expect(signedOut.home().empty).toBe(
+      "No agent matches “gemini”. Clear the search or pick another chip.",
+    );
+
+    const { home } = await mount();
+    const { cards } = home();
+    expect(emptyText([], ALL)).toBe(
+      "No agents yet. Make an endue agent, or install Claude Code or Codex on this computer.",
+    );
+    expect(emptyText(cards, { ...ALL, source: "local", status: "paused" })).toBe(
+      "No local agent is paused. Pick another chip.",
+    );
+    expect(emptyText(cards, { ...ALL, status: "waiting" })).toBe(
+      "No agent needs you. Pick another chip.",
+    );
+    const local = cards.filter((c) => c.source === "local");
+    expect(emptyText(local, { ...ALL, source: "endue" })).toBe(
+      "You have no endue agents yet. Make your first one with New agent.",
+    );
+    expect(
+      emptyText(
+        cards.filter((c) => c.source === "endue"),
+        { ...ALL, source: "local" },
+      ),
+    ).toBe(
+      "No agent programs on this computer yet. Claude Code and Codex show here once installed.",
+    );
+    // Only a search is ever asked to be cleared.
+    for (const filters of [
+      { ...ALL, source: "endue" as const },
+      { ...ALL, status: "paused" as const },
+    ])
+      expect(emptyText(local, filters)).not.toContain("Clear the search");
   });
 });
