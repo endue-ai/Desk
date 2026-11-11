@@ -42,6 +42,7 @@ const plugins: Record<string, string> = {
   "endue.database": join(repo, "plugins/database"),
   "endue.mail": join(repo, "plugins/mail"),
   "endue.projects": join(repo, "plugins/projects"),
+  "endue.docs": join(repo, "plugins/docs"),
 };
 /** The shell page's ?many=<n> windows (#37): the hello-ui page under test.many-1, test.many-2 … */
 /** Each fixture plugin's manifest `imports` by its plugin label: whose files its surfaces may load. */

@@ -1,18 +1,20 @@
 // A file window that slept comes back with its file, its place and its unsaved edits (#162, ADR
 // 0176), on the CEF desk with no window out of sight kept live (desk.surfaces.live 0): the opener's
-// window goes to another desktop, sleeps there, and wakes when the person goes there. Notes first,
-// then the Player; the other openers join as they take the SDK's keepFiles. Reader's case is in its unit tests for
-// now: on the machine this was written on, a woken Reader page stopped answering chromedriver.
+// window goes to another desktop, sleeps there, and wakes when the person goes there. Images, Notes,
+// the Player, Docs; the other openers join as they take the SDK's keepFiles. Reader's case
+// is in its unit tests for now: on the machine this was written on, a woken Reader page stopped
+// answering chromedriver.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { $, browser, expect } from "@wdio/globals";
-import { inFrame, shellReady } from "../support/desk";
+import { inFrame, press, shellReady } from "../support/desk";
 import { HOME_VAR } from "../support/driver";
 import { byId, clearDesk, deskNow, freshDesktop, openWindow, run, until } from "../support/windows";
 
 const NOTES = "endue.notes";
 const PLAYER = "endue.player";
+const DOCS = "endue.docs";
 const root = fileURLToPath(new URL("../..", import.meta.url));
 
 /** A 114 KB note, as the QA pass edited one: its state no longer fit the desk's 64 KiB. */
@@ -69,20 +71,38 @@ async function pageOpen(host: string): Promise<boolean> {
 }
 
 /**
- * Move the plugin's window (in use) to desktop `to`, use another window, and wait for its sleep: the
- * desk lists it asleep, and its page has closed. The page closes a moment after the listing says so;
- * a window woken before then keeps its old page, with what the sleep would have dropped.
+ * Move the plugin's window (in use) to desktop `to` (its place in the list, or its id), use another
+ * window, and wait for its sleep: the desk lists it asleep, and its page has closed. The page closes
+ * a moment after the listing says so; a window woken before then keeps its old page, with what the
+ * sleep would have dropped.
  */
-async function sleepOn(plugin: string, to: 2 | 3 | 4): Promise<void> {
+async function sleepOn(plugin: string, to: 2 | 3 | 4 | string): Promise<void> {
   await show(plugin);
   const host = await pageHost(plugin);
-  await run(`desk.shell.move-to-desktop-${to}`);
+  if (typeof to === "string") await run("desk.shell.move-to-desktop", { desktop: to });
+  else await run(`desk.shell.move-to-desktop-${to}`);
   await openWindow();
   await until((d) => asleep(d, plugin), `${plugin} asleep on desktop ${to}`, 20_000);
   await browser.waitUntil(async () => !(await pageOpen(host)), {
     timeout: 20_000,
     timeoutMsg: `${plugin}'s page did not close as it slept`,
   });
+}
+
+/**
+ * Two new desktops for a case: an empty one of its own for its window to sleep on (its id), and the
+ * one in front, where the case opens its window.
+ */
+async function desktopsOfItsOwn(): Promise<string> {
+  const own = await freshDesktop();
+  await freshDesktop();
+  return own;
+}
+
+/** Wake the window on desktop `id` by going there, as the person does. */
+async function wakeOn(plugin: string, id: string): Promise<void> {
+  await run("desk.shell.desktop-go", { desktop: id });
+  await until((d) => !asleep(d, plugin), `${plugin} awake on its desktop`, 20_000);
 }
 
 describe("file openers: a window that slept comes back whole (#162)", () => {
@@ -231,5 +251,60 @@ describe("file openers: a window that slept comes back whole (#162)", () => {
     expect(await marked(PLAYER)).toBe(false);
     expect((await at())?.paused).toBe(true);
     await inFrame(PLAYER, () => expect($("#title")).toHaveText("clip.webm"));
+  });
+
+  it("Docs: a document comes back on its page, at the zoom the person chose, and can be switched to", async function () {
+    this.timeout(120_000);
+    const rich = join(files, "rich.docx");
+    copyFileSync(join(root, "plugins/docs/tests/fixtures/rich.docx"), rich);
+    const own = await desktopsOfItsOwn();
+    const id = await run("desk.files.open", { path: rich });
+    await show(DOCS);
+    const now = () =>
+      inFrame(DOCS, () =>
+        browser.execute(() => {
+          const desk = document.getElementById("desk");
+          return {
+            name: document.getElementById("doc-name")?.textContent ?? "",
+            zoom: document.getElementById("zoom-level")?.textContent ?? "",
+            top: desk?.scrollTop ?? 0,
+            pages: document.querySelectorAll(".page").length,
+          };
+        }),
+      );
+    await browser.waitUntil(async () => (await now()).pages >= 2, {
+      timeoutMsg: "Docs did not draw rich.docx",
+    });
+    // The person zooms in twice and scrolls down into the document.
+    await inFrame(DOCS, async () => {
+      await press("#zoom-in");
+      await press("#zoom-in");
+      await browser.execute(() => {
+        const desk = document.getElementById("desk");
+        if (desk) desk.scrollTop = Math.round(desk.scrollHeight / 2);
+      });
+    });
+    const before = await now();
+    expect(before.top).toBeGreaterThan(0);
+    await mark(DOCS);
+
+    await sleepOn(DOCS, own);
+    await wakeOn(DOCS, own);
+    await browser.waitUntil(
+      async () => {
+        const back = await now().catch(() => undefined);
+        return (
+          back?.name === "rich.docx" &&
+          back.zoom === before.zoom &&
+          Math.abs(back.top - before.top) < 24
+        );
+      },
+      { timeoutMsg: `Docs did not come back as ${JSON.stringify(before)}` },
+    );
+    // A new page, not the old one kept: the place came back from what the sleep kept.
+    expect(await marked(DOCS)).toBe(false);
+    // The desk still lists the document, and a switch to it reaches it ("No document" before).
+    await run("desk.buffers.switch", { id });
+    expect((await now()).name).toBe("rich.docx");
   });
 });

@@ -3,11 +3,12 @@
 import { StubError } from "../../../packages/bridge/src/index";
 import {
   defineUiPlugin,
+  keepFiles,
   readBytes,
   type startWorker,
 } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
-import { createDocs, type Progress, type Shown } from "../ui/docs.js";
+import { createDocs, type Progress, type Shown, type Where } from "../ui/docs.js";
 import type { openDocument } from "../ui/open.js";
 import { base64 } from "./model";
 
@@ -20,10 +21,15 @@ export interface RecordingView {
   statuses: string[];
   /** Every progress the plugin showed, without its Cancel; null when it hid the bar. */
   phases: Array<Omit<Progress, "cancel"> | null>;
+  /** Where each show was asked to put the view (undefined: where it was). */
+  wheres: Array<Where | undefined>;
   focused: number;
+  /** Where the person is in what is shown, as the page view would answer: a test moves it. */
+  here: Where;
   /** Press the bar's Cancel, as the person would. */
   cancel(): void;
-  show(shown: Shown | null): void;
+  show(shown: Shown | null, where?: Where): void;
+  where(): Where;
   status(text: string): void;
   focus(): void;
   progress(value: Progress | null): void;
@@ -35,9 +41,15 @@ export function recordingView(): RecordingView {
     shown: [],
     statuses: [],
     phases: [],
+    wheres: [],
     focused: 0,
+    here: { at: null, zoom: null },
     cancel: () => cancel(),
-    show: (shown) => view.shown.push(shown),
+    show: (shown, where) => {
+      view.shown.push(shown);
+      view.wheres.push(where);
+    },
+    where: () => view.here,
     status: (text) => view.statuses.push(text),
     focus: () => {
       view.focused++;
@@ -70,6 +82,10 @@ export async function mount(
     prompt?: Options["prompt"];
     startWorker?: typeof startWorker;
     open?: typeof openDocument;
+    /** What the last sleep kept (ctx.surface.restored). */
+    restored?: unknown;
+    /** False: resolve once mounted, without waiting for its calls (a test holds one back). */
+    settled?: boolean;
   } = {},
 ): Promise<Mounted> {
   const host = createTestHost({
@@ -77,6 +93,7 @@ export async function mount(
     handlers: options.handlers ?? {},
     commands: { ...DESK, ...options.commands },
     prompt: options.prompt,
+    ...(options.restored === undefined ? {} : { restored: options.restored }),
   });
   const view = recordingView();
   let app: ReturnType<typeof createDocs> | undefined;
@@ -87,6 +104,7 @@ export async function mount(
           read: readBytes,
           startWorker: options.startWorker,
           open: options.open,
+          keepFiles,
         });
       },
     },
@@ -95,7 +113,7 @@ export async function mount(
   const settle = async () => {
     for (let i = 0; i < 4; i++) await host.settle();
   };
-  await settle();
+  if (options.settled !== false) await settle();
   if (!app) throw new Error("the plugin did not mount");
   return {
     host,
