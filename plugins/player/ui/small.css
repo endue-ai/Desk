@@ -1,0 +1,113 @@
+/* The player in a small window: the file first, the player's own chrome folds (#162, QA draft 08 #8
+   and #9). A window as the desk first opens one is 328×211 at 1280×800 (its page 326×169), and a
+   person shrinks one to 300×220 (298×178). A short page keeps the header to one line, the transport
+   to one row that scrolls sideways when it must, the song's cover small and the status line to two
+   lines. A narrow page puts the playlist under the stage, and gives the volume slider and the speed
+   menu up to their keys (Up and Down, < and >); narrow and short, the list gives way altogether, and
+   Previous and Next (Page Up and Down) still walk it. */
+@media (max-height: 420px) {
+  header {
+    padding: 3px 10px 2px;
+  }
+
+  h1 {
+    overflow: hidden;
+    font-size: var(--desk-text-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* The format, length and path: the window is too short for them. */
+  #detail {
+    display: none;
+  }
+
+  #resume,
+  #transport {
+    flex-wrap: nowrap;
+    padding: 3px 8px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  #resume > *,
+  #transport > * {
+    flex: none;
+  }
+
+  #card {
+    gap: 10px;
+    padding: 8px;
+  }
+
+  #cover,
+  #no-cover {
+    width: 64px;
+    height: 64px;
+    font-size: var(--desk-text-2xl);
+  }
+
+  #status {
+    display: -webkit-box;
+    padding: 2px 10px;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+@media (max-width: 560px) {
+  #body {
+    flex-direction: column;
+  }
+
+  aside {
+    width: auto;
+    max-height: 40%;
+    border-top: 1px solid var(--desk-border);
+    border-left: 0;
+  }
+
+  #transport {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  #transport > * {
+    flex: none;
+  }
+
+  #volume,
+  #speed {
+    display: none;
+  }
+
+  #cover,
+  #no-cover {
+    width: 96px;
+    height: 96px;
+    font-size: var(--desk-text-3xl);
+  }
+}
+
+/* The seek bar takes what the row leaves, never less than a thumb's worth of travel. */
+@media (max-width: 560px), (max-height: 420px) {
+  #transport > #seek {
+    flex: 1 1 64px;
+    min-width: 64px;
+  }
+}
+
+@media (max-width: 560px) and (max-height: 420px) {
+  aside {
+    display: none;
+  }
+
+  #cover,
+  #no-cover {
+    width: 64px;
+    height: 64px;
+    font-size: var(--desk-text-2xl);
+  }
+}
