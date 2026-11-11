@@ -49,6 +49,24 @@ pub struct A11y {
     /// whether a scene was composed since.
     built: Option<(u64, u64, Option<String>)>,
     pub composed: bool,
+    /// A surface's tree, or the surfaces, changed since the last look.
+    stale: bool,
+}
+
+impl A11y {
+    /// Whether a look has anything to do: a surface's tree or the surfaces changed, a scene was
+    /// composed, or the page's tree, the desk or the focus moved from what the chrome was built from
+    /// (`key`). Nothing else is looked at: the look ran at every turn of the event loop (#155).
+    fn wanted(&mut self, key: (u64, u64, Option<&str>)) -> bool {
+        let built =
+            (self.built.as_ref()).map(|(page, desk, focus)| (*page, *desk, focus.as_deref()));
+        std::mem::take(&mut self.stale) || self.composed || built != Some(key)
+    }
+
+    /// A surface's tree, or the surfaces, changed: the next look has work.
+    pub fn changed(&mut self) {
+        self.stale = true;
+    }
 }
 
 struct Handler(Pump);
@@ -135,6 +153,7 @@ impl CompositorWindow {
     /// A surface's tree changed.
     pub(super) fn a11y_update(&mut self, update: SurfaceA11yUpdate) {
         self.a11y.desk.update(update);
+        self.a11y.changed();
     }
 
     /// A scene was composed: what it showed, while the desk is active.
@@ -147,10 +166,15 @@ impl CompositorWindow {
         }
     }
 
-    /// After every look: the surfaces export while the desk is active, the chrome is the last
-    /// scene's, and what changed goes to the adapter.
+    /// After every look, when something changed: the surfaces export while the desk is active, the
+    /// chrome is the last scene's, and what changed goes to the adapter.
     pub(super) fn a11y_tick(&mut self) {
         if !self.a11y.desk.is_active() {
+            return;
+        }
+        let revision = (self.a11y.desk.tree(PAGE)).map_or(0, |t| t.revision());
+        let key = (revision, self.hosted.seq(), self.router.focused());
+        if !self.a11y.wanted(key) {
             return;
         }
         let made = self.hosted.surfaces().made();
@@ -304,4 +328,34 @@ fn enable(surface: &str, enabled: bool) -> CompositorMessage {
         surface: surface.to_owned(),
         enabled,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::A11y;
+
+    #[test]
+    fn a_look_has_work_only_when_something_it_is_built_from_changed() {
+        let mut a11y = A11y::default();
+        assert!(a11y.wanted((0, 0, None)), "never built");
+        a11y.built = Some((3, 7, Some("main.endue-notes".to_owned())));
+        let key = (3, 7, Some("main.endue-notes"));
+        assert!(
+            !a11y.wanted(key),
+            "nothing changed: no work, turn after turn (#155)"
+        );
+        assert!(!a11y.wanted(key));
+        a11y.changed();
+        assert!(a11y.wanted(key), "a surface's tree or the surfaces");
+        assert!(!a11y.wanted(key), "once");
+        a11y.composed = true;
+        assert!(a11y.wanted(key), "a scene composed");
+        a11y.composed = false;
+        assert!(
+            a11y.wanted((4, 7, Some("main.endue-notes"))),
+            "the page's tree"
+        );
+        assert!(a11y.wanted((3, 8, Some("main.endue-notes"))), "the desk");
+        assert!(a11y.wanted((3, 7, None)), "the focus");
+    }
 }

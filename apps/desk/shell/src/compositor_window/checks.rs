@@ -138,9 +138,12 @@ impl CompositorWindow {
             "browsers": self.host.browsers(),
             "native": self.native.stats(),
             "relayed": self.relay.counts(),
+            "composed": self.composed,
             "presented": self.presented,
             "pump": pump(self.desk.pump.counts()),
             "slow_presents": self.slow_presents,
+            "occluded": self.occluded,
+            "presenting": self.gpu.presents(),
             "adapter": format!("{} ({:?})", self.gpu.adapter.name, self.gpu.adapter.backend),
             "wm": self.wm_state(),
         })

@@ -49,7 +49,9 @@ impl CompositorWindow {
                 .pages
                 .emit(Role::Main, LIVE, json!({ "live": live }));
         }
+        // The next frame shows it, and the accessibility tree follows the surfaces (#155).
         self.shared.lock().dirty = true;
+        self.a11y.changed();
     }
 
     /// A message to the surface it is about: a native plugin's process, or a web surface's browser.

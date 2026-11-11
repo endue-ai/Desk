@@ -71,6 +71,10 @@ use report::DeskReport;
 pub const PAGE: &str = "desk";
 /// What the runtime hears: the windows that keep a renderer (ADR 0151).
 pub const LIVE: &str = "desk://compositor-live";
+/// An image asked of the window this late held the event loop for it.
+const SLOW_IMAGE: Duration = Duration::from_millis(250);
+/// So many late images in a row and the window presents nothing for a while (`gpu::PAUSED`).
+const SLOW_IMAGES: u32 = 3;
 
 /// The compositor window and everything it draws.
 pub struct CompositorWindow {
@@ -92,7 +96,10 @@ pub struct CompositorWindow {
     last_frame: Instant,
     /// When the frame clock looks next (`clock.rs`).
     begin_due: Option<Instant>,
+    /// Frames composed for the window, and those it presented.
+    composed: u64,
     presented: u64,
+    /// The late images in a row.
     slow_presents: u32,
     /// Where input goes (#56).
     router: InputRouter,
@@ -173,6 +180,7 @@ impl CompositorWindow {
             occluded: false,
             last_frame: Instant::now() - FRAME,
             begin_due: None,
+            composed: 0,
             presented: 0,
             slow_presents: 0,
             router,
@@ -223,9 +231,13 @@ impl CompositorWindow {
         self.carry(outcome);
     }
 
-    /// The window went off screen or came back: every surface is hidden, or shown again.
+    /// The window went off screen or came back: every surface is hidden, or shown again, and a
+    /// window that could not present presents again.
     pub fn occluded(&mut self, occluded: bool) {
         self.occluded = occluded;
+        if !occluded {
+            self.gpu.resume();
+        }
         self.page.lock().hidden = occluded;
         self.host.page_shown(!occluded);
         if let Some(host) = self.browser.as_ref().and_then(|b| b.host()) {
@@ -257,6 +269,8 @@ impl CompositorWindow {
                 self.surface_said(event_loop, &message);
                 continue;
             }
+            // A surface came, went or was named: the accessibility tree follows.
+            self.a11y.changed();
             if let SurfaceMessage::SurfaceDied(died) = message {
                 self.forget(&died.surface);
                 // The direct signal for #44's recovery: the runtime loads the window again.
@@ -297,34 +311,43 @@ impl CompositorWindow {
         self.a11y_tick();
         self.begin_frames(now);
         // The OS withheld the last frame (a locked screen): one now means the window shows again.
-        if self.gpu.withheld().is_some_and(|until| now >= until) && self.gpu.frame().is_some() {
+        if self.due().withheld().is_some_and(|until| now >= until) && self.gpu.frame().is_some() {
             self.shared.lock().dirty = true;
         }
-        if !self.shared.lock().dirty || now < self.last_frame + FRAME || self.occluded {
+        // Out of sight, nothing is due: what changed meanwhile is drawn once it shows (#155).
+        if !self.due().frame().is_some_and(|at| now >= at) {
             return;
         }
         self.compose();
+        self.composed += 1;
+        self.last_frame = now;
         if !self.gpu.presents() {
             return;
         }
-        self.last_frame = now;
         let started = Instant::now();
-        let Some(frame) = self.gpu.frame() else {
-            if self.gpu.withheld().is_some() {
-                // Composed for the router and captures, shown nowhere: not again until a change,
-                // where it composed every desk frame for nothing (#134).
-                self.shared.lock().dirty = false;
-            }
-            return;
-        };
-        if started.elapsed() > Duration::from_millis(250) {
-            self.slow_presents += 1;
-            if self.slow_presents == 3 {
-                // A locked screen hands out no drawable: compose for captures only from now on.
-                eprintln!("endue Desk: the window cannot present; composing off screen only");
-                self.gpu.stop_presenting();
-            }
+        let frame = self.gpu.frame();
+        let slow = started.elapsed() > SLOW_IMAGE;
+        self.slow_presents = if slow { self.slow_presents + 1 } else { 0 };
+        match frame {
+            Some(frame) => self.present(frame),
+            // Composed for the router and captures, shown nowhere: not again until a change,
+            // where it composed every desk frame for nothing (#134).
+            None if self.gpu.withheld().is_some() => self.shared.lock().dirty = false,
+            None => {}
         }
+        if self.slow_presents >= SLOW_IMAGES {
+            // A locked screen, a display going off: the images come late, each holding the loop.
+            // The frame in hand went out first; its surface stays (`gpu.rs`).
+            eprintln!(
+                "endue Desk: the window cannot present; composing off screen only for {:?}",
+                gpu::PAUSED
+            );
+            self.gpu.stop_presenting(now);
+        }
+    }
+
+    /// The composed scene into `frame`, to the window.
+    fn present(&mut self, frame: wgpu::SurfaceTexture) {
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
