@@ -1,6 +1,12 @@
 //! One of the shell's windows: a winit window holding a windowed CEF browser (Stage 1 of #32; the
 //! compositor replaces it in Stage 2). The main window, the palette, the floating Eris and the
 //! computer-use banner are each one.
+//!
+//! On macOS Chromium keeps a windowed browser's page visible whether its window is on screen or not:
+//! the palette, never summoned, took the display's 60 begin frames a second with idle pages, in its
+//! renderers, the GPU process and the desk's own (#147). A pane hides its browser's view while its
+//! window is hidden, which Chromium reads as the page hidden, so a hidden one takes none. The
+//! compositor's page is not a pane's browser: the compositor says when it shows.
 
 use std::sync::Arc;
 
@@ -12,6 +18,8 @@ use winit::window::{Window, WindowAttributes};
 pub struct Pane {
     pub window: Arc<Window>,
     pub browser: Option<Browser>,
+    /// Its browser is the window's own (`Pane::open`), told when the window hides and shows.
+    pub windowed: bool,
 }
 
 impl Pane {
@@ -41,7 +49,24 @@ impl Pane {
         if let Some(host) = browser.as_ref().and_then(|b| b.host()) {
             crate::mac::follow_parent_size(host.window_handle());
         }
-        Ok(Self { window, browser })
+        let pane = Self {
+            window,
+            browser,
+            windowed: true,
+        };
+        pane.page_shown(pane.visible());
+        Ok(pane)
+    }
+
+    /// Tell a windowed browser whether its window is on screen (#147): on macOS its view is hidden
+    /// with it, which Chromium reads (`WasHidden` is for windowless browsers only). Elsewhere
+    /// Chromium follows the native window itself.
+    fn page_shown(&self, shown: bool) {
+        #[cfg(target_os = "macos")]
+        if let Some(host) = self.host().filter(|_| self.windowed) {
+            crate::mac::set_hidden(host.window_handle(), !shown);
+        }
+        let _ = shown;
     }
 
     /// The browser's host, while the browser lives.
@@ -52,6 +77,7 @@ impl Pane {
     /// Show the window and give it the keyboard (the app comes forward on macOS).
     pub fn show_and_focus(&self) {
         self.window.set_visible(true);
+        self.page_shown(true);
         self.window.focus_window();
         if let Some(host) = self.host() {
             host.set_focus(1);
@@ -63,9 +89,16 @@ impl Pane {
         self.window.is_visible().unwrap_or(true)
     }
 
+    /// Show the window over the others without making it key or activating the desk.
+    pub fn show_quietly(&self) {
+        crate::float::show_quietly(&self.window);
+        self.page_shown(true);
+    }
+
     /// Hide the window.
     pub fn hide(&self) {
         self.window.set_visible(false);
+        self.page_shown(false);
     }
 
     /// Follow a resize of the window (Windows: a child HWND does not follow by itself).

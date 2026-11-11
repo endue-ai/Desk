@@ -164,7 +164,7 @@ fn eval(pane: &crate::pane::Pane, script: &str) {
 fn show(pump: &Pump) {
     pump.run(|shell, _| {
         if let Some(pane) = shell.pane(Role::Banner) {
-            float::show_quietly(&pane.window);
+            pane.show_quietly();
         }
     });
 }

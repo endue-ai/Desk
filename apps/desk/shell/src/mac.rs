@@ -117,3 +117,19 @@ pub fn follow_parent_size(view: *mut c_void) {
         let _: () = msg_send![&view, setAutoresizingMask: mask];
     }
 }
+
+/// Hide or show the browser's view. Chromium takes a page whose view is hidden (or has a hidden
+/// ancestor) for hidden, and stops its frames; a hidden window alone it does not (#147).
+pub fn set_hidden(view: *mut c_void, hidden: bool) {
+    if view.is_null() {
+        return;
+    }
+    // SAFETY: `view` is the `NSView` CEF created for the browser (`GetWindowHandle`), alive while
+    // the browser is; retaining it here keeps it alive for the call, made on the main thread.
+    unsafe {
+        let Some(view) = Retained::retain(view.cast::<NSView>()) else {
+            return;
+        };
+        view.setHidden(hidden);
+    }
+}

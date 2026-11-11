@@ -128,6 +128,7 @@ impl Shell {
         let pane = Pane {
             window: Arc::clone(&compositor.window),
             browser: compositor.browser.clone(),
+            windowed: false,
         };
         self.desk.pages.set(Role::Main, pane.browser.clone());
         self.roles.insert(pane.window.id(), Role::Main);

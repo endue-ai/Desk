@@ -12,7 +12,6 @@ use winit::dpi::LogicalSize;
 use super::place::resize;
 use super::{ErisWindow, FIGURE, MARGIN, OPEN, lock};
 use crate::displays::{self, display, physical, rect_of};
-use crate::float;
 use crate::window::Shell;
 
 pub(super) fn show(shell: &mut Shell, state: &ErisWindow, summon: bool) {
@@ -40,7 +39,7 @@ pub(super) fn show(shell: &mut Shell, state: &ErisWindow, summon: bool) {
     }
     if !summon {
         // Shown without taking the focus from the app in front.
-        float::show_quietly(&pane.window);
+        pane.show_quietly();
         return;
     }
     pane.show_and_focus();
