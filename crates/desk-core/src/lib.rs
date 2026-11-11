@@ -98,6 +98,7 @@ pub mod native;
 mod paths;
 mod perm;
 mod perm_log;
+mod plugin_landing;
 mod plugins;
 mod prompt_policy;
 mod secrets;
