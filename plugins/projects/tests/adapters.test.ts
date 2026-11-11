@@ -6,7 +6,6 @@ import {
   ASANA,
   asanaTask,
   GITHUB,
-  githubItem,
   JIRA,
   jiraIssue,
   LINEAR,
@@ -14,6 +13,7 @@ import {
   linearMcpIssue,
   otherTask,
 } from "./fixtures";
+import { githubItem } from "./github-fixtures";
 
 describe("the Jira adapter", () => {
   it("reads an issue as Jira's REST API and MCP server return it", () => {
