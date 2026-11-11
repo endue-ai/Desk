@@ -1,7 +1,8 @@
 // A file window that slept comes back with its file, its place and its unsaved edits (#162, ADR
 // 0176), on the CEF desk with no window out of sight kept live (desk.surfaces.live 0): the opener's
 // window goes to another desktop, sleeps there, and wakes when the person goes there. Images, Notes,
-// the Player, Docs, Slides, Web, Sheets and Data; the other openers join as they take keepFiles.
+// the Player, Docs, Slides, Web, Sheets, Data and Archives; the other openers join as they take
+// keepFiles.
 // Reader's case is in its unit tests for now: on the machine this was written on, a woken Reader
 // page stopped answering chromedriver.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -482,5 +483,49 @@ describe("file openers: a window that slept comes back whole (#162)", () => {
     expect(listed.find((b) => b.id === id)).toMatchObject({ plugin: DATA, modified: true });
     // Nothing reached the disk.
     expect(readFileSync(json, "utf8")).toBe(CONFIG);
+  });
+
+  it("Archives: an archive comes back on its open folder and selected entry, and can be switched to", async function () {
+    this.timeout(120_000);
+    const ARCHIVES = "endue.archives";
+    const zip = join(files, "tree.zip");
+    copyFileSync(join(root, "plugins/archives/tests/fixtures/tree.zip"), zip);
+    const own = await desktopsOfItsOwn();
+    const id = await run("desk.files.open", { path: zip });
+    await show(ARCHIVES);
+    /** The archive's name, the folders open in its tree and the selected entry, from the page. */
+    const now = () =>
+      inFrame(ARCHIVES, () =>
+        browser.execute(() => ({
+          name: document.getElementById("archive-name")?.textContent ?? "",
+          open: [...document.querySelectorAll<HTMLElement>("#tree [aria-expanded='true']")].map(
+            (row) => row.dataset.id ?? "",
+          ),
+          selected:
+            document.querySelector<HTMLElement>("#tree [aria-selected='true']")?.dataset.id ?? "",
+        })),
+      );
+    await browser.waitUntil(async () => (await now()).name === "tree.zip", {
+      timeoutMsg: "Archives did not open tree.zip",
+    });
+    // The first row, docs, is selected; the person opens it and goes down to its second entry.
+    await inFrame(ARCHIVES, () => browser.keys(["ArrowRight", "ArrowDown", "ArrowDown"]));
+    const left = { name: "tree.zip", open: ["docs"], selected: "docs/한글.txt" };
+    await browser.waitUntil(async () => JSON.stringify(await now()) === JSON.stringify(left), {
+      timeoutMsg: "the tree is not on docs/한글.txt",
+    });
+    await mark(ARCHIVES);
+
+    await sleepOn(ARCHIVES, own);
+    await wakeOn(ARCHIVES, own);
+    await browser.waitUntil(
+      async () => JSON.stringify(await now().catch(() => undefined)) === JSON.stringify(left),
+      { timeoutMsg: `Archives did not come back as ${JSON.stringify(left)}` },
+    );
+    // A new page, not the old one kept: the folder and the entry came back from the sleep.
+    expect(await marked(ARCHIVES)).toBe(false);
+    // The desk still lists the archive, and a switch to it reaches it ("No archive" before).
+    await run("desk.buffers.switch", { id });
+    expect((await now()).name).toBe("tree.zip");
   });
 });
