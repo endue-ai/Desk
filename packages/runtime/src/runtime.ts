@@ -64,6 +64,8 @@ export interface RuntimeOptions {
   pages?: SurfacePages;
   /** Native hosts may pick a file; null means the person cancelled. */
   pickFile?: () => Promise<string | null>;
+  /** The native host's name for a file: links followed, the home folder as `~` (#162). */
+  realPath?: (path: string) => Promise<string>;
   /** What the host found at start (ADR 0061), and how it starts the desk again without safe mode. */
   start?: StartInfo;
   relaunch?: () => void | Promise<void>;
@@ -183,7 +185,14 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const buffers = installBuffers(ctx, { focus: focusAny });
   routing = connectViews(views, buffers);
   const broken = (key: string) => notify.notify(brokenRecordNotice(key, options.start?.dataDir));
-  const files = installFiles(ctx, buffers, notify.notify, options.pickFile, broken);
+  const files = installFiles(
+    ctx,
+    buffers,
+    notify.notify,
+    options.pickFile,
+    broken,
+    options.realPath,
+  );
   const actions = {
     focus: focusSurface,
     focused: () => shortcuts.focused,

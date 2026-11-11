@@ -15,6 +15,16 @@ export function localPath(value: string): string | null {
   return null;
 }
 
+/**
+ * The shell's name for a file the desk opens (`real_path`, apps/desk/shell/src/real_path.rs): the
+ * folders above it followed through their links, the home folder as `~`, so one file is one buffer.
+ * The path as given when the shell cannot say.
+ */
+export async function realNativePath(path: string): Promise<string> {
+  const real = await invoke<unknown>("real_path", { path }).catch(() => undefined);
+  return typeof real === "string" && real !== "" ? real : path;
+}
+
 export async function pickNativeFile(): Promise<string | null> {
   const options = { multiple: false, directory: false };
   const path = await invoke<string | string[] | null>("plugin:dialog|open", { options });

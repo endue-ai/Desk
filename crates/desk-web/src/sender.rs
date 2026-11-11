@@ -25,6 +25,8 @@ const MAIN_COMMANDS: &[&str] = &[
     "desk_relaunch",
     "desk_trace",
     "take_open_files",
+    // The name the desk gives a file it opens: links followed, the home folder as `~` (#162).
+    "real_path",
     "desk_crash",
     "take_last_crash",
     "palette_reveal_main",
@@ -256,12 +258,15 @@ mod tests {
         for cmd in [
             "desk_ready",
             "take_open_files",
+            "real_path",
             "plugin:dialog|open",
             "palette_reveal_main",
             "desk_quit",
         ] {
             assert!(runtime.may(cmd), "{cmd}");
         }
+        // Only the desk's page names files for its buffers.
+        assert!(!Sender::Plugin("endue.notes".into()).may("real_path"));
         // Only the desk's page answers a quit: a plugin cannot quit the desk or hold its quit.
         assert!(!Sender::Plugin("endue.notes".into()).may("desk_quit"));
         assert!(!Sender::Palette.may("desk_quit"));

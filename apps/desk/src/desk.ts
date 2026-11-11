@@ -21,7 +21,7 @@ import "./compositor.css";
 import { reportCrashes, showLastCrash } from "./crashes";
 import "./crashes.css";
 import { adapter, invoke, listen } from "./host";
-import { pickNativeFile } from "./native-files";
+import { pickNativeFile, realNativePath } from "./native-files";
 import { installOpenedFiles } from "./open-files";
 import { sendThemeToPalette } from "./palette-theme";
 import { installQuit } from "./quit";
@@ -71,6 +71,7 @@ const desk = mountDesk({
   platform: navigator.userAgent.includes("Macintosh") ? "mac" : "other",
   lang,
   pickFile: pickNativeFile,
+  realPath: realNativePath,
   start,
   relaunch: relauncher(invoke),
   onSurfaceShown: (id) => {

@@ -38,6 +38,7 @@ pub mod probe;
 pub mod process_start;
 pub mod pump;
 pub mod quit;
+pub mod real_path;
 pub mod release;
 pub mod renderer;
 pub mod run_event;

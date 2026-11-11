@@ -56,6 +56,8 @@ export interface DeskOptions {
   plugins: PluginHostOptions;
   /** Native hosts may pick a file; cancellation leaves the desk unchanged. */
   pickFile?: () => Promise<string | null>;
+  /** The native host's name for a file: links followed, the home folder as `~` (#162). */
+  realPath?: (path: string) => Promise<string>;
   /** Let the native host reveal a shared picker opened by a background command. */
   onSurfaceShown?(id: string): void;
   clock?: Clock;
@@ -157,6 +159,7 @@ export function mountDesk(options: DeskOptions): Desk {
     language: options.lang ?? "ko",
     plugins: options.plugins,
     pickFile: options.pickFile,
+    ...(options.realPath ? { realPath: options.realPath } : {}),
     onSurfaceShown: options.onSurfaceShown,
     ...(options.start ? { start: options.start } : {}),
     ...(options.relaunch ? { relaunch: options.relaunch } : {}),

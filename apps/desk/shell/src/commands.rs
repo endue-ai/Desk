@@ -64,6 +64,11 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
         }
         // Main-window delivery only: OS-supplied paths, never a file opened or read.
         "take_open_files" => Ok(json!(desk.opened.take())),
+        // The name the desk gives a file, so one file is one buffer (#162); nothing is read.
+        "real_path" => Ok(json!(crate::real_path::real_path(
+            &text("path"),
+            &crate::paths::home_dir()
+        ))),
         // The page's answer to a quit the person asked for (`quit.rs`, #163).
         "desk_quit" => {
             let answer = crate::quit::Answer::parse(&text("answer"))
