@@ -1,4 +1,4 @@
-// The keys follow the window in use (issues 158 #10, 159 #2 #5 #6, 160 #11, 162 #6 #7; ADR XXXX).
+// The keys follow the window in use (issues 158 #10, 159 #2 #5 #6, 160 #11, 162 #6 #7; ADR 0192).
 // The window desk.windows.list marks in use has the keys without a click after Ctrl+Tab, a title
 // drag, a command that shows a window, a file that opens, a permission question and the palette
 // closing, and a press on a divider or on a desk button gives them to no window lying under it.

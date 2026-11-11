@@ -1,4 +1,4 @@
-//! The keys follow the window in use (ADR XXXX, issues 158 #10, 159 #2 #5, 160 #11, 162 #6 #7).
+//! The keys follow the window in use (ADR 0192, issues 158 #10, 159 #2 #5, 160 #11, 162 #6 #7).
 //! The window manager names the surface in use: the one the pane in use of the window in use shows
 //! (none for a pane the page draws, or with no window in use). The page says where its own focus
 //! rests (`apps/desk/src/compositor-focus.ts`): a surface's place gives that surface the keys, an

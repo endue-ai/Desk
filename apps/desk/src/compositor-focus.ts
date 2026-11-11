@@ -4,7 +4,7 @@
 // compositor draws the surface's own browser. So this page tells the CEF shell, whenever its focus
 // settles, which surface's place has it, or whether an element of its own does (a field, a button):
 // the keys go there. When neither does, the focus rests on nothing of the page's own (its body, a
-// window's section) and the keys follow the window in use (ADR XXXX).
+// window's section) and the keys follow the window in use (ADR 0192).
 
 /** The surface host whose place has the page's focus; null when the page itself has it. */
 export function focusedSurface(doc: Document): string | null {

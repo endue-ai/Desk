@@ -6,7 +6,7 @@ decision-makers: Team endue
 
 Status: amended by ADR 0160: a plugin surface's place in the page, not a stand-in frame, holds its
 spot in the page's focus order; Tab enters and leaves it with `desk:surface-enter`, `desk:surface-leave`
-and `desk:surface-tab`; amended by ADR XXXX: the keys follow the window in use where the page's
+and `desk:surface-tab`; amended by ADR 0192: the keys follow the window in use where the page's
 focus rests on nothing of its own, and Ctrl+Tab gives the window the keys.
 
 # The compositor routes input, asks the desk's keymap first and runs the drag broker

@@ -137,7 +137,7 @@ export function remotePages(win: Window, transport: SurfaceTransport): RemotePag
     focusin: () => false,
     // The desk gave the surface the focus (Ctrl+Tab, a window shown, a file opened, a question):
     // its place takes the page's focus, so the compositor gives the surface the keys and a Tab past
-    // its page's end goes on from there (ADR XXXX). Its section alone kept them on this page.
+    // its page's end goes on from there (ADR 0192). Its section alone kept them on this page.
     focused: (id) => {
       const surface = kept.get(id);
       if (surface && !surface.away && surface.view.isConnected)

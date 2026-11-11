@@ -1,4 +1,4 @@
-//! The keys follow the window in use (ADR XXXX; issues 158 #10, 159 #2 #5, 160 #11, 162 #6 #7):
+//! The keys follow the window in use (ADR 0192; issues 158 #10, 159 #2 #5, 160 #11, 162 #6 #7):
 //! where the page's focus rests on nothing of its own (its body after the palette closed, a
 //! window's section after Ctrl+Tab), after a press on the page (a title bar, a divider, a grip),
 //! and when the window in use changes; never past an element of the page's own or a surface of no

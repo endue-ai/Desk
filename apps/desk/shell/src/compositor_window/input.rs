@@ -4,7 +4,7 @@
 //! says: protocol messages to the page's browser or to a plugin surface's (the web host), keys the
 //! desk's keymap takes to the runtime as the focused frame's (`desk:key` from its surface, as
 //! the SDK forwarded them in Stage 1), the cursor and the OS input method to the window, files from
-//! the OS nobody took to the open-files queue. The keys follow the window in use (ADR XXXX): the
+//! the OS nobody took to the open-files queue. The keys follow the window in use (ADR 0192): the
 //! router hears the window manager's surface in use and the windows that cover what lies under
 //! them, and where the page's own focus rests.
 

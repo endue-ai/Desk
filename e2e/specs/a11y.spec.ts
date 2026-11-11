@@ -6,7 +6,7 @@
 // pixels. A screen reader's click reaches the plugin's button, its focus the field (the keys follow,
 // and so does the tree's focus), and a value it sets is typed into the field. A keyboard reaches the
 // plugin's content from its window as through a frame (#123): Control+Tab brings the window forward
-// with the keys (ADR XXXX), Tab enters the plugin at its first control and Shift+Tab at its last, and
+// with the keys (ADR 0192), Tab enters the plugin at its first control and Shift+Tab at its last, and
 // each leaves it at its end.
 import { browser, expect } from "@wdio/globals";
 import { feed, inputState, inSurface, keyPress, shellCommand } from "../support/compositor";
