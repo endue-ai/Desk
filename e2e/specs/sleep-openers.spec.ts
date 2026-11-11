@@ -1,7 +1,7 @@
 // A file window that slept comes back with its file, its place and its unsaved edits (#162, ADR
 // 0176), on the CEF desk with no window out of sight kept live (desk.surfaces.live 0): the opener's
 // window goes to another desktop, sleeps there, and wakes when the person goes there. Images, Notes,
-// the Player, Docs, Slides, Web and Sheets; the other openers join as they take the SDK's keepFiles.
+// the Player, Docs, Slides, Web, Sheets and Data; the other openers join as they take keepFiles.
 // Reader's case is in its unit tests for now: on the machine this was written on, a woken Reader
 // page stopped answering chromedriver.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -444,5 +444,43 @@ describe("file openers: a window that slept comes back whole (#162)", () => {
     expect(listed.find((b) => b.id === id)).toMatchObject({ plugin: SHEETS, modified: true });
     // Nothing reached the disk.
     expect(readFileSync(csv, "utf8")).toBe(PEOPLE);
+  });
+
+  it("Data: a JSON with a value edited and not saved comes back on the node it was left at, the edit still there and marked", async function () {
+    this.timeout(120_000);
+    const DATA = "endue.data";
+    const CONFIG = '{\n  "name": "desk",\n  "version": 3,\n  "tls": false\n}\n';
+    const json = join(files, "config.json");
+    writeFileSync(json, CONFIG);
+    const own = await desktopsOfItsOwn();
+    const id = await run("desk.files.open", { path: json });
+    await show(DATA);
+    /** The selected row's words, whatever a narrow window cuts from view. */
+    const row = () =>
+      inFrame(DATA, () =>
+        browser.execute(
+          () => document.querySelector("#tree [aria-selected='true']")?.textContent ?? "",
+        ),
+      );
+    // The root is selected; two rows down is version, which F2 opens in its row.
+    await inFrame(DATA, () => browser.keys(["ArrowDown", "ArrowDown", "F2"]));
+    await inFrame(DATA, () => $("#tree input").waitForExist());
+    await inFrame(DATA, () => browser.keys(["4", "Enter"]));
+    await browser.waitUntil(async () => /version.*4/.test(await row()), {
+      timeoutMsg: "the edited value is not in the tree",
+    });
+    await mark(DATA);
+
+    await sleepOn(DATA, own);
+    await wakeOn(DATA, own);
+    await browser.waitUntil(async () => /version.*4/.test(await row().catch(() => "")), {
+      timeoutMsg: "the file did not come back on its edited value",
+    });
+    // A new page, not the old one kept: the file, the node and the value came back from the sleep.
+    expect(await marked(DATA)).toBe(false);
+    const listed = (await run("desk.buffers.list")) as Buffers;
+    expect(listed.find((b) => b.id === id)).toMatchObject({ plugin: DATA, modified: true });
+    // Nothing reached the disk.
+    expect(readFileSync(json, "utf8")).toBe(CONFIG);
   });
 });
