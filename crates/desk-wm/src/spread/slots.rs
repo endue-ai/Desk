@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::arrange::{grid_shape, row_sizes};
-use crate::geometry::MIN;
+use crate::geometry::{DOCK_BAND, MIN};
 use crate::math::{round, round_to};
 use crate::types::{Insets, Rect};
 
@@ -38,11 +38,12 @@ impl Slot {
     }
 }
 
-/// Room the spread keeps around its cards: the filter at the top, a margin elsewhere.
+/// Room the spread keeps around its cards: the filter at the top, the dock's band at the bottom
+/// (#158), a margin at the sides.
 pub const SPREAD_INSET: Insets = Insets {
     top: 128.0,
     right: 72.0,
-    bottom: 72.0,
+    bottom: DOCK_BAND,
     left: 72.0,
 };
 /// How far back each row behind the front one sits.
@@ -57,6 +58,8 @@ pub(crate) const FLAT_GAP: f64 = 24.0;
 const MOST: usize = 7;
 /// The window shape the fan sizes its boxes for.
 const CARD_ASPECT: f64 = 1.4;
+/// How far a row's outer cards dip, in rows: the front row's dip stays on the stage too.
+const DIP: f64 = 0.08;
 
 /// The stage the spread lays its cards on, for an app `vw`×`vh`.
 pub fn spread_stage(vw: f64, vh: f64) -> Rect {
@@ -77,6 +80,11 @@ fn balanced(n: usize, rows: usize) -> Vec<usize> {
         .collect()
 }
 
+/// The height of each of `rows` rows of the fan on `stage`, the front row's dip under them.
+fn row_height(stage: Rect, rows: usize) -> f64 {
+    (stage.h - GAP_Y * (rows as f64 - 1.0)) / (rows.max(1) as f64 + DIP)
+}
+
 /// The width of a card box in a row of `k` that is `row_h` tall.
 fn box_width(stage: Rect, k: usize, row_h: f64) -> f64 {
     let k = k as f64;
@@ -92,7 +100,7 @@ pub fn fan_rows(n: usize, stage: Rect) -> Vec<usize> {
     let mut best = (vec![n], -1.0);
     for rows in n.div_ceil(MOST)..=n {
         let sizes = balanced(n, rows);
-        let row_h = (stage.h - GAP_Y * (rows as f64 - 1.0)) / rows as f64;
+        let row_h = row_height(stage, rows);
         let smallest = sizes
             .iter()
             .map(|&k| {
@@ -118,7 +126,7 @@ pub fn spread_slots(n: usize, stage: Rect, flat: bool) -> Vec<Slot> {
     }
     let rows = fan_rows(n, stage);
     let count = rows.len();
-    let row_h = (stage.h - GAP_Y * (count as f64 - 1.0)) / count.max(1) as f64;
+    let row_h = row_height(stage, count);
     let mut slots = Vec::with_capacity(n);
     for (row, &k) in rows.iter().enumerate() {
         let w = box_width(stage, k, row_h);
@@ -135,7 +143,7 @@ pub fn spread_slots(n: usize, stage: Rect, flat: bool) -> Vec<Slot> {
             slots.push(Slot {
                 x: round_to(left + col as f64 * (w + GAP_X), 2),
                 y: round_to(
-                    stage.y + row as f64 * (row_h + GAP_Y) + t * t * row_h * 0.08,
+                    stage.y + row as f64 * (row_h + GAP_Y) + t * t * row_h * DIP,
                     2,
                 ),
                 w: round_to(w, 2),

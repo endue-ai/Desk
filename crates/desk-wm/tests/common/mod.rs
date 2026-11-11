@@ -57,6 +57,7 @@ pub fn adopt(desk: &mut Desk, ids: &[&str]) {
                 title: (*id).into(),
                 slot: Some(slot),
                 at: None,
+                area: None,
             })
             .collect();
     });

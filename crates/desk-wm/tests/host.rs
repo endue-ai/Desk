@@ -15,8 +15,8 @@ use std::collections::BTreeSet;
 use common::{EPOCH, adopt};
 use desk_wm::host::{BORDER, PANE_HEAD, TITLE, TITLE_END, TITLE_START};
 use desk_wm::{
-    Desk, Fill, FrameState, LiveBudget, Offset, Rect, SAFE, Step, Surfaces, TopChrome, Unseen,
-    free_area, free_top,
+    Desk, FREE, Fill, FrameState, LiveBudget, Offset, Rect, SAFE, Step, Surfaces, TopChrome,
+    Unseen, free_area, free_top,
 };
 use support::*;
 
@@ -305,7 +305,7 @@ fn with_twenty_windows_and_eight_live_only_the_visible_and_the_eight_most_recent
     let mut holder = Holder::default();
     let mut surfaces = Surfaces::new();
     for id in &ids {
-        desk.adopt(id, id);
+        desk.adopt(id, id, FREE);
         budget.track(id);
     }
     assert_eq!(desk.windows().len(), 20);

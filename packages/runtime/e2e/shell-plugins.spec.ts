@@ -36,9 +36,9 @@ test.describe("plugin surfaces as shell windows", () => {
     // Two unplaced windows take the first two slots under Eris: side by side, one size.
     await expect(window_(page)).toHaveCSS("left", "104px");
     await expect(window_(page)).toHaveCSS("top", "190px");
-    await expect(window_(page, HELLO)).toHaveCSS("left", "518px");
-    await expect(window_(page)).toHaveCSS("width", "402px");
-    await expect(window_(page)).toHaveCSS("height", "305px");
+    await expect(window_(page, HELLO)).toHaveCSS("left", "497px");
+    await expect(window_(page)).toHaveCSS("width", "381px");
+    await expect(window_(page)).toHaveCSS("height", "261px");
     // The runtime's surfaces layer holds nothing but overlays: the window manager placed them.
     await expect(
       page.locator(".desk-surfaces > .desk-surface:not(.desk-surface--overlay)"),
@@ -68,8 +68,8 @@ test.describe("plugin surfaces as shell windows", () => {
     );
     await expect(window_(page)).toHaveCount(0);
     // The other window stays where it was, at its size.
-    await expect(window_(page, HELLO)).toHaveCSS("left", "518px");
-    await expect(window_(page, HELLO)).toHaveCSS("width", "402px");
+    await expect(window_(page, HELLO)).toHaveCSS("left", "497px");
+    await expect(window_(page, HELLO)).toHaveCSS("width", "381px");
     await page.evaluate(
       (id) =>
         window.__shell.stub.emit({

@@ -1,38 +1,38 @@
 {
   "open": {
     "pane": {
-      "width": 400,
-      "height": 263
+      "width": 379,
+      "height": 219
     },
     "section": {
       "x": 0,
       "y": 0,
-      "width": 400,
-      "height": 263
+      "width": 379,
+      "height": 219
     },
     "frame": {
       "x": 0,
       "y": 0,
-      "width": 400,
-      "height": 263
+      "width": 379,
+      "height": 219
     }
   },
   "resized": {
     "pane": {
-      "width": 320,
-      "height": 203
+      "width": 299,
+      "height": 159
     },
     "section": {
       "x": 0,
       "y": 0,
-      "width": 320,
-      "height": 203
+      "width": 299,
+      "height": 159
     },
     "frame": {
       "x": 0,
       "y": 0,
-      "width": 320,
-      "height": 203
+      "width": 299,
+      "height": 159
     }
   },
   "half": {

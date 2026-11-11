@@ -191,9 +191,10 @@ impl Desk {
     }
 
     /// The runtime handed over plugin `id`'s surface (`adopt` in `surface/host.ts`). One handed
-    /// over again keeps its slot and its pan; a new one takes the first slot left free and the pan
-    /// of the desktop in front, so its slot opens in sight.
-    pub fn adopt(&mut self, id: &str, title: &str) {
+    /// over again keeps its slot, its pan and its area; a new one takes the first slot left free,
+    /// the pan of the desktop in front and `area`, the app's free area now, so its slot opens in
+    /// sight and inside the app.
+    pub fn adopt(&mut self, id: &str, title: &str, area: Rect) {
         let known = self.adopted.iter().find(|a| a.id == id).cloned();
         let others: Vec<Adopted> = self
             .adopted
@@ -204,15 +205,17 @@ impl Desk {
         let slot = known.as_ref().and_then(|a| a.slot).unwrap_or_else(|| {
             free_slot(others.iter().enumerate().map(|(i, a)| a.slot.unwrap_or(i)))
         });
-        let at = known
+        let at = (known.as_ref())
             .and_then(|a| a.at)
             .or_else(|| self.pan.get(&self.here()).copied());
+        let area = known.and_then(|a| a.area).unwrap_or(area);
         self.adopted = others;
         self.adopted.push(Adopted {
             id: id.to_string(),
             title: title.to_string(),
             slot: Some(slot),
             at,
+            area: Some(area),
         });
     }
 

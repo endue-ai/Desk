@@ -70,8 +70,8 @@ pub use desktops::{Desktop, DesktopId, DesktopRef};
 pub use drawer::{DrawerItem, DrawerKind};
 pub use fill::{fill_with, snap_rect, toggle_floating, toggle_maximize, unfilled, unfilled_at};
 pub use geometry::{
-    BELOW_ERIS, FREE, MIN, REF, SAFE, clamp_rect, free_area, free_top, from_screen, screen_area,
-    to_screen,
+    BELOW_ERIS, DOCK_BAND, FREE, MIN, REF, SAFE, clamp_rect, free_area, free_top, from_screen,
+    screen_area, to_screen,
 };
 pub use host::{
     Bars, Decision, FrameDoc, FrameState, HostPane, HostWindow, Laid, LiveBudget, PageShown,

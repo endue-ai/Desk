@@ -4,7 +4,7 @@
 //! Smaller apps move them inwards and shrink them, each axis on its own: a shorter app takes
 //! height, a narrower one width. They never shrink below the minimum size, and a window may be
 //! dragged to every edge of the app: the bars float above it. Windows open and tile in the free
-//! area (`free_area`); a fill takes the whole app (ADR 0132).
+//! area (`free_area`), above the dock; a fill takes the whole app (ADR 0132).
 
 use crate::math::round;
 use crate::types::{Insets, Rect, Size};
@@ -17,13 +17,20 @@ pub const REF: Size = Size {
 
 /// Where the bars sit, the one record of it: the side bars and the rail 24 + 56 + 24 from each
 /// side, the profile switcher and the desktops 72 from the top, the drawer button, the composer and
-/// the running chips 88 from the bottom. Windows open, tile and fill inside it.
+/// the running chips 88 from the bottom. Floating windows scale between them; windows open and
+/// tile inside them and above the dock (`DOCK_BAND`).
 pub const SAFE: Insets = Insets {
     left: 104.0,
     right: 104.0,
     top: 72.0,
     bottom: 88.0,
 };
+
+/// The band along the app's bottom that windows open and tile above (#158): the dock, the bottom
+/// edge's 72 px (`desk.display`, `plugins/display`) over the status line's 28 px track
+/// (`packages/runtime/src/desk.css`), and the 12 px gap the slots keep. The drawer button, the
+/// composer and the running chips lie in it too (`SAFE.bottom`).
+pub const DOCK_BAND: f64 = 112.0;
 
 /// The smallest a window gets.
 pub const MIN: Size = Size { w: 240.0, h: 160.0 };
@@ -47,14 +54,14 @@ pub const fn free_top(eris_at_home: bool) -> f64 {
     if eris_at_home { BELOW_ERIS } else { SAFE.top }
 }
 
-/// The part of a `vw`×`vh` app no bar covers, from `top` down (`SAFE.top` when Eris is away):
-/// where windows open and what arranging tiles (ADR 0040's free area).
+/// The part of a `vw`×`vh` app no bar covers, from `top` down (`SAFE.top` when Eris is away) to
+/// above the dock: where windows open and what arranging tiles (ADR 0040's free area).
 pub const fn free_area(vw: f64, vh: f64, top: f64) -> Rect {
     Rect::new(
         SAFE.left,
         top,
         MIN.w.max(vw - SAFE.left - SAFE.right),
-        MIN.h.max(vh - top - SAFE.bottom),
+        MIN.h.max(vh - top - DOCK_BAND),
     )
 }
 
@@ -100,7 +107,9 @@ mod tests {
 
     #[test]
     fn the_free_area_of_the_reference_frame_sits_under_eris() {
-        assert_eq!(FREE, Rect::new(104.0, 190.0, 1232.0, 622.0));
+        assert_eq!(FREE, Rect::new(104.0, 190.0, 1232.0, 598.0));
+        // Above the dock, whose band starts 100 px up from the bottom.
+        assert!(free_area(1280.0, 800.0, BELOW_ERIS).bottom() <= 800.0 - 100.0);
         assert_eq!(free_area(1440.0, 900.0, free_top(false)).y, SAFE.top);
         // A tiny app keeps the minimum.
         assert_eq!(

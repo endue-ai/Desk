@@ -114,9 +114,9 @@
       {
         "id": "e2e.hello",
         "x": 135,
-        "y": 487,
-        "w": 402,
-        "h": 305,
+        "y": 443,
+        "w": 381,
+        "h": 261,
         "state": "normal",
         "hidden": true,
         "panes": [

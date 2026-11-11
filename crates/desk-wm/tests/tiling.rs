@@ -67,6 +67,7 @@ mod normal_and_floating_windows {
             title: "A".into(),
             slot: Some(0),
             at: Some(pan),
+            area: None,
         }];
         let windows = slot_windows(&adopted, |_| false);
         assert_eq!(windows.len(), 1);
@@ -186,11 +187,11 @@ mod the_tile_grid {
     fn starts_under_eris_in_her_default_place_and_higher_when_she_was_moved() {
         assert_eq!(
             arrange_area(1440.0, 900.0, true),
-            Rect::new(104.0, 190.0, 1232.0, 622.0)
+            Rect::new(104.0, 190.0, 1232.0, 598.0)
         );
         assert_eq!(
             arrange_area(1440.0, 900.0, false),
-            Rect::new(104.0, 72.0, 1232.0, 740.0)
+            Rect::new(104.0, 72.0, 1232.0, 716.0)
         );
     }
 }
@@ -203,7 +204,7 @@ mod the_cascade {
         let area = arrange_area(1440.0, 900.0, true);
         let rects = cascade_rects(5, area, CASCADE);
         let size = cascade_size(area);
-        assert_eq!(size, Size { w: 739.0, h: 404.0 });
+        assert_eq!(size, Size { w: 739.0, h: 389.0 });
         for (i, r) in rects.iter().enumerate() {
             let step = 32.0 * i as f64;
             assert_eq!(*r, Rect::new(area.x + step, area.y + step, size.w, size.h));

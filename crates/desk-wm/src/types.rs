@@ -236,7 +236,8 @@ impl Placement {
 }
 
 /// A plugin surface the runtime handed to the window manager: its window's slot, kept while it
-/// stays mounted, and the pan its desktop had when it arrived (`at`), so the slot opens in sight.
+/// stays mounted, the pan its desktop had when it arrived (`at`) and the app's free area then
+/// (`area`, #158), so the slot opens in sight and inside the app.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Adopted {
     pub id: String,
@@ -245,6 +246,9 @@ pub struct Adopted {
     pub slot: Option<usize>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub at: Option<Offset>,
+    /// The free area its slot is laid in; `None`: the reference frame's (`geometry::FREE`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub area: Option<Rect>,
 }
 
 /// A key as the DOM names it (`KeyboardEvent.key`: `"ArrowLeft"`, `"Tab"`, `"Enter"`, ...), with

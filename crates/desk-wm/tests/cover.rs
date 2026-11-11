@@ -44,6 +44,7 @@ fn desk(windows: Vec<Placement>, focused: Option<&str>) -> Desk {
             title: title.into(),
             slot: None,
             at: None,
+            area: None,
         })
         .to_vec();
     Desk {
@@ -97,7 +98,7 @@ mod covered_plugin_windows {
     #[test]
     fn one_that_covers_only_part_of_a_window_leaves_it_visible() {
         let d = desk(
-            vec![window("half", 104.0, 190.0, 400.0, 622.0)],
+            vec![window("half", 104.0, 190.0, 300.0, 622.0)],
             Some("half"),
         );
         assert!(!d.covered(A));

@@ -119,10 +119,10 @@ test.describe("arranging", () => {
     await button(page, "tile").click();
     await expect.poll(() => boxes(page)).not.toEqual(before);
     const tiled = await boxes(page);
-    // Three columns across the free area (104 to 1336) under Eris, 12 px apart.
-    expect(tiled.calendar).toEqual([104, 190, 403, 622]);
-    expect(tiled.notes).toEqual([519, 190, 402, 622]);
-    expect(tiled.tomorrow).toEqual([933, 190, 403, 622]);
+    // Three columns across the free area (104 to 1336) under Eris and above the dock, 12 px apart.
+    expect(tiled.calendar).toEqual([104, 190, 403, 598]);
+    expect(tiled.notes).toEqual([519, 190, 402, 598]);
+    expect(tiled.tomorrow).toEqual([933, 190, 403, 598]);
     expect(tiled["window-1"]).toEqual(before["window-1"]);
     expect(await shellTree(page, ".surfaces")).toMatchSnapshot("tiled.json");
     await expect(button(page, "restore")).toHaveAttribute("aria-disabled", "false");
@@ -137,10 +137,10 @@ test.describe("arranging", () => {
     await seed(page);
     const before = await boxes(page);
     await page.keyboard.press("Meta+Alt+c");
-    await expect.poll(async () => (await boxes(page)).notes).toEqual([168, 254, 739, 404]);
+    await expect.poll(async () => (await boxes(page)).notes).toEqual([168, 254, 739, 389]);
     const cascaded = await boxes(page);
-    expect(cascaded.calendar).toEqual([104, 190, 739, 404]);
-    expect(cascaded.tomorrow).toEqual([136, 222, 739, 404]);
+    expect(cascaded.calendar).toEqual([104, 190, 739, 389]);
+    expect(cascaded.tomorrow).toEqual([136, 222, 739, 389]);
     const z = (id: string) =>
       page.locator(`[data-surface="${id}"]`).evaluate((el) => Number(getComputedStyle(el).zIndex));
     expect(await z("notes")).toBeGreaterThan(await z("tomorrow"));

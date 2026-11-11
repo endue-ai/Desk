@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+use crate::arrange::arrange_area;
 use crate::desk::{ArrangeKind, Arranged, Arranger, Desk, OnRemove};
 use crate::desktops::DesktopRef;
 use crate::drawer::DrawerItem;
@@ -69,7 +70,8 @@ pub enum Edit {
     Drawer {
         items: Vec<DrawerItem>,
     },
-    /// The runtime handed plugin `id`'s surface over, or let it go.
+    /// The runtime handed plugin `id`'s surface over (its slot laid in the app's free area as it
+    /// is now), or let it go.
     Adopt {
         id: String,
         title: String,
@@ -260,7 +262,10 @@ pub fn apply(desk: &mut Desk, kept: &mut Kept, edit: &Edit, screen: Size) -> Val
             now,
         } => desk.restore_session(desktop, pan, drawer, slots, *now),
         Edit::Drawer { items } => desk.set(|d| d.drawer = items.clone()),
-        Edit::Adopt { id, title } => desk.adopt(id, title),
+        Edit::Adopt { id, title } => {
+            let eris_home = desk.layout().eris.is_none();
+            desk.adopt(id, title, arrange_area(screen.w, screen.h, eris_home));
+        }
         Edit::Release { id } => desk.release(id),
         Edit::Open { id, placement } => desk.open_surface(id, placement.clone()),
         Edit::Place { desktop, placement } => {
