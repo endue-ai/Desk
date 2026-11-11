@@ -3,9 +3,12 @@
  * closes, or takes another view. Each is an edit the window manager makes (crates/desk-wm, #83),
  * as are maximizing, snapping and moving or resizing by a step (`window-commands.ts`, ADR 0153).
  * What stays the runtime's: the plugin surface in use takes the keys once the desk that made it is
- * in, and closing a window unmounts the plugins it showed for the session (ADR 0040).
+ * in, and closing a window unmounts the plugins it showed for the session (ADR 0040), once the
+ * person said what becomes of their unsaved changes (desk.buffers).
  */
 import type { PaneSplit } from "../modes/types";
+import { windowPlugins } from "../surface/placed";
+import { leaves, panesOf } from "../surface/tree";
 import type { Edit } from "../wm/types";
 import { type Ctx, edit, windowsOf } from "./actions";
 
@@ -79,14 +82,29 @@ export function splitPane(ctx: Ctx, dir: PaneSplit["dir"]): Promise<unknown[]> {
   return focusing(ctx, { op: "split", dir });
 }
 
-/** Close a window: the plugins it shows unmount for the session (ADR 0040). */
+/** Whether window `id` may close: its plugins' buffers with unsaved changes asked about first. */
+function mayClose(ctx: Ctx, id: string): Promise<boolean> {
+  const plugins = windowPlugins(ctx.store.get(), id);
+  return ctx.runtime.buffers.mayGo("close", { plugins });
+}
+
+/**
+ * Close a window: the plugins it shows unmount for the session (ADR 0040). Unsaved changes in them
+ * are asked about first, as `Mod+W` asks; the window stays when the person keeps one.
+ */
 export async function closeWindow(ctx: Ctx, id: string): Promise<void> {
+  if (!(await mayClose(ctx, id))) return;
   const [plugins] = await edit(ctx, { op: "close-window", id });
   unmount(ctx, plugins);
 }
 
-/** Close a pane (the focused one unless named); the last pane closes its window. */
+/** Close a pane (the focused one unless named); the last pane closes its window, asking first. */
 export async function closePane(ctx: Ctx, surface?: string, pane?: string): Promise<void> {
+  const s = ctx.store.get();
+  const window = windowsOf(s).find((p) => p.id === (surface ?? s.focused));
+  const only = window && leaves(panesOf(window));
+  const last = only?.length === 1 && (pane === undefined || only[0]?.id === pane);
+  if (window && last && !(await mayClose(ctx, window.id))) return;
   const [plugins] = await focusing(ctx, {
     op: "close-pane",
     ...(surface ? { window: surface } : {}),

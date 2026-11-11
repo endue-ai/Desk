@@ -10,7 +10,7 @@ and mark them changed with `desk.buffers.update { id, modified }`.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `desk.buffers.confirm-unsaved` | true | Ask before closing a buffer with unsaved changes: save, discard or keep |
+| `desk.buffers.confirm-unsaved` | true | Ask before a buffer with unsaved changes goes (`Mod+W`, its window's ×, a quit): save, discard or keep |
 | `desk.buffers.after-close` | `previous` | Show the buffer used before it (`previous`), or nothing (`none`) |
 
 Commands: `desk.buffers.switch` (`Mod+B`, through the palette), `.next`, `.previous`, `.close` (`Mod+W`),

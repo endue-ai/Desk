@@ -4,12 +4,27 @@
  * hold is not drawn (`shell/actions.ts`). A profile's window named after its surface shows the
  * plugin it names (`surface/views.ts`), so its plugin is placed too.
  */
-import { layoutOf } from "../shell/actions";
+import { layoutOf, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import type { DeskState } from "../shell/state";
 import { leaves, panesOf } from "./tree";
 
 const VIEW = "plugin:";
+
+/**
+ * The plugins window `id` of the desktop in front shows, each once: what closing it unmounts
+ * (desk-wm's `plugins_of`). A pane named after its window shows the window's plugin (`resolveView`
+ * in `views.ts`); one the runtime does not hold has no buffers, so it may be named either way.
+ */
+export function windowPlugins(s: DeskState, id: string): string[] {
+  const p = windowsOf(s).find((w) => w.id === id);
+  if (!p) return [];
+  const ids = leaves(panesOf(p)).flatMap(({ view }) => {
+    if (view === p.id && p.plugin) return [p.plugin];
+    return view.startsWith(VIEW) ? [view.slice(VIEW.length)] : [];
+  });
+  return [...new Set(ids)];
+}
 
 /** The plugins the layout of the desktop in front places, each once. */
 export function placedPlugins(s: DeskState): string[] {

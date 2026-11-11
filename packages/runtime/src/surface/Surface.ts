@@ -7,6 +7,7 @@
  */
 
 import { mountArrange } from "../arrange";
+import { reportFailure } from "../gesture";
 import type { SurfacePlacement } from "../modes/types";
 import { stash, togglePin, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
@@ -152,7 +153,12 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
         tool(ctx.tr("stash"), "drawer", () =>
           stash(ctx, p.id, viewOf(ctx, activeView(ctx, entry.placement)).title),
         ),
-        tool(ctx.tr("close"), "close", () => closeWindow(ctx, p.id)),
+        // A save the person chose before the close can fail: the window stays, and the desk says why.
+        tool(ctx.tr("close"), "close", () => {
+          closeWindow(ctx, p.id).catch((error) =>
+            reportFailure(ctx.runtime.notify, ctx.tr("close"), error),
+          );
+        }),
       ),
     );
     const body = h("div", { class: "surface-body" });

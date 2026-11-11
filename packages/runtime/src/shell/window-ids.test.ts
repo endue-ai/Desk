@@ -5,6 +5,7 @@
  * its closed list knows a window by its id alone.
  */
 import { describe, expect, it, vi } from "vitest";
+import { Buffers } from "../buffers";
 import { watchClosed } from "../eris-context/closed";
 import { testWindowManager } from "../wm/testing";
 import { takeDesk } from "../wm/view";
@@ -23,7 +24,12 @@ function ctx() {
   return {
     store,
     wm,
-    runtime: { shortcuts: { focused: null }, focusSurface() {}, plugins: { unmount } } as never,
+    runtime: {
+      shortcuts: { focused: null },
+      focusSurface() {},
+      plugins: { unmount },
+      buffers: new Buffers(),
+    } as never,
     bridge: undefined as never,
     now: () => 1000,
     wall: () => epoch + 1000,

@@ -4,6 +4,7 @@
  * over when desk.plugins.open runs and takes it back when its window closes, and the commands the
  * module defines.
  */
+import { Buffers } from "../buffers";
 import type { CommandInfo, CommandSpec } from "../commands";
 import type { ShellCtx } from "../shell/context";
 import { Store, sampleState } from "../shell/state";
@@ -49,6 +50,8 @@ export function fakeDesk(options: FakeOptions = {}) {
     shortcuts: { focused: null },
     focusSurface() {},
     notify() {},
+    // No buffer with unsaved changes: a window closes without a question.
+    buffers: new Buffers(),
     plugins: {
       ready: Promise.resolve(),
       mounted: () => store.get().adopted.map((a) => a.id),

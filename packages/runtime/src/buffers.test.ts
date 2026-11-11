@@ -49,6 +49,30 @@ describe("Buffers", () => {
     expect(new Buffers().step(undefined, 1)).toBeUndefined();
   });
 
+  it("asks its guards in turn before buffers go; the first no keeps them", async () => {
+    const list = new Buffers();
+    list.add(buffer("a", "p1", { modified: true }));
+    list.add(buffer("b", "p2"));
+    const told: string[] = [];
+    const first = async ({ buffers, leaving }: { buffers: { id: string }[]; leaving: string }) => {
+      told.push(`${leaving}:${buffers.map((b) => b.id).join(",")}`);
+      return leaving === "quit";
+    };
+    const second = async () => {
+      told.push("second");
+      return true;
+    };
+    const off = list.guard(first);
+    list.guard(second);
+    expect(await list.mayGo("close", { plugins: ["p1"] })).toBe(false);
+    expect(await list.mayGo("quit")).toBe(true);
+    // Nothing goes with a window that shows no buffer: no guard is asked.
+    expect(await list.mayGo("close", { plugins: ["p3"] })).toBe(true);
+    expect(told).toEqual(["close:a", "quit:a,b", "second"]);
+    off();
+    expect(await list.mayGo("close", { plugins: ["p1"] })).toBe(true);
+  });
+
   it("tells listeners about every change", () => {
     const list = new Buffers();
     let changes = 0;

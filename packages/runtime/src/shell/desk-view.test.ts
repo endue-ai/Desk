@@ -3,6 +3,7 @@
 // frames' states the runtime tells it; the closed windows are the runtime's. These run the runtime's
 // half on desk-wm as WebAssembly.
 import { describe, expect, it } from "vitest";
+import { Buffers } from "../buffers";
 import { watchClosed } from "../eris-context/closed";
 import { testWindowManager } from "../wm/testing";
 import type { DrawerItem } from "../wm/types";
@@ -27,6 +28,7 @@ function ctx(frames?: { state(id: string): string }) {
       shortcuts: { focused: null },
       focusSurface() {},
       plugins: { unmount() {} },
+      buffers: new Buffers(),
       ...(frames ? { frames } : {}),
     } as never,
     bridge: undefined as never,

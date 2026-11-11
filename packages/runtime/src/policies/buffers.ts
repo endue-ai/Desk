@@ -1,9 +1,10 @@
 /**
  * desk.buffers (buffer.el, ibuffer): the buffer list and its commands. Switching shows a buffer's
- * surface; closing one with unsaved changes asks first; after a close the previous buffer shows.
- * Plugins open, rename and mark their own buffers with desk.buffers.open and desk.buffers.update.
+ * surface; closing one with unsaved changes asks first, and so do closing the window that shows it
+ * and quitting the desk (the list's guard); after a close the previous buffer shows. Plugins open,
+ * rename and mark their own buffers with desk.buffers.open and desk.buffers.update.
  */
-import { type Buffer, Buffers } from "../buffers";
+import { type Buffer, Buffers, type Going, type Leaving } from "../buffers";
 import { type AgentSpec, CommandError } from "../commands";
 import { type DeskContext, disposer, type Installed } from "./context";
 
@@ -31,12 +32,19 @@ export interface BuffersActions {
   focus(plugin: string): void;
 }
 
-/** What the person picks when closing a buffer with unsaved changes. */
-const CLOSE_CHOICES = [
-  { id: "save", label: "Save, then close" },
-  { id: "discard", label: "Close without saving" },
-  { id: "cancel", label: "Keep it open" },
-];
+/** What the person picks about a buffer with unsaved changes as it closes, or as the desk quits. */
+const CHOICES: Record<Leaving, Array<{ id: string; label: string }>> = {
+  close: [
+    { id: "save", label: "Save, then close" },
+    { id: "discard", label: "Close without saving" },
+    { id: "cancel", label: "Keep it open" },
+  ],
+  quit: [
+    { id: "save", label: "Save, then quit" },
+    { id: "discard", label: "Quit without saving" },
+    { id: "cancel", label: "Don't quit" },
+  ],
+};
 
 export function installBuffers(
   ctx: DeskContext,
@@ -75,13 +83,32 @@ export function installBuffers(
       | undefined;
   };
 
-  /** Close a buffer, asking first when it has unsaved changes and the person closes it. */
-  const close = async (buffer: Buffer, ask: boolean): Promise<boolean> => {
-    if (ask && buffer.modified && settings.get("desk.buffers.confirm-unsaved", true)) {
-      const choice = await pick(`${buffer.name} has unsaved changes`, CLOSE_CHOICES);
+  /**
+   * Ask about each buffer going that has unsaved changes, one at a time and each shown first: save
+   * it, let it go, or keep them all (false). A desk that cannot ask (no palette) keeps them when
+   * they close and lets them go when it quits, so that it can always quit.
+   */
+  const ask = async ({ buffers: going, leaving, asking }: Going): Promise<boolean> => {
+    if (!settings.get("desk.buffers.confirm-unsaved", true)) return true;
+    for (const { id } of going) {
+      const buffer = buffers.get(id);
+      if (!buffer?.modified) continue;
+      if (!commands.has("desk.palette.pick")) return leaving === "quit";
+      asking();
+      if (buffers.current()?.id !== id) await show(id).catch(() => {});
+      const choice = await pick(`${buffer.name} has unsaved changes`, CHOICES[leaving]);
       if (choice === undefined || choice === "cancel") return false;
-      if (choice === "save") await commands.run("desk.files.save", { buffer: buffer.id });
+      if (choice === "save") await commands.run("desk.files.save", { buffer: id });
     }
+    return true;
+  };
+  offs.add(buffers.guard(ask));
+
+  /** Close a buffer, asking first when it has unsaved changes and the person closes it. */
+  const close = async (buffer: Buffer, asks: boolean): Promise<boolean> => {
+    // A plugin's own surface takes the plugin's other buffers with it.
+    const going = buffer.surface ? buffers.ofPlugin(buffer.plugin) : [buffer];
+    if (asks && !(await ask({ buffers: going, leaving: "close", asking: () => {} }))) return false;
     buffers.remove(buffer.id);
     if (buffer.surface) ctx.unmount(buffer.plugin);
     else {

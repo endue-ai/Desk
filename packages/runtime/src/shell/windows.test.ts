@@ -1,13 +1,22 @@
 // The runtime's side of the windows (#83): which window a pane is in, where it goes and what a close
 // leaves are desk-wm's (crates/desk-wm/tests/desk.rs, panes.rs, tiling.rs, fill.rs, cover.rs);
-// what stays here is the runtime's surfaces following the pane in use and the plugins a close
-// unmounts for the session (ADR 0040).
+// what stays here is the runtime's surfaces following the pane in use, the plugins a close
+// unmounts for the session (ADR 0040) and the question about their unsaved changes before (#160).
 import { describe, expect, it, vi } from "vitest";
+import { Buffers } from "../buffers";
 import { testWindowManager } from "../wm/testing";
 import { takeDesk } from "../wm/view";
 import { openSurface } from "./actions";
 import { Store, sampleState } from "./state";
-import { closePane, closeWindow, focusPane, newWindow, showInPane, showPlugin } from "./windows";
+import {
+  closePane,
+  closeWindow,
+  focusPane,
+  newWindow,
+  showInPane,
+  showPlugin,
+  splitPane,
+} from "./windows";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 
@@ -22,13 +31,15 @@ async function ctx() {
   });
   const unmount = vi.fn((id: string) => void wm.edit([{ op: "release", id }]));
   await wm.edit(["p.a", "p.b", "p.c"].map((id) => ({ op: "adopt", id, title: id })));
+  const buffers = new Buffers();
   return {
     store,
     wm,
     unmount,
     focusSurface,
     shortcuts,
-    runtime: { shortcuts, focusSurface, plugins: { unmount } } as never,
+    buffers,
+    runtime: { shortcuts, focusSurface, plugins: { unmount }, buffers } as never,
     bridge: undefined as never,
     now: () => 1000,
     wall: () => epoch + 1000,
@@ -92,5 +103,43 @@ describe("closing a window", () => {
     await closePane(c);
     expect(c.unmount).toHaveBeenCalledWith("p.c");
     expect(c.unmount).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("closing a window with unsaved changes (#160, #162)", () => {
+  const unsaved = (c: Awaited<ReturnType<typeof ctx>>, plugin: string) => {
+    c.buffers.add({ id: `${plugin}:1`, name: "a.md", plugin, modified: true, surface: false });
+    const guard = vi.fn(async () => false);
+    c.buffers.guard(guard);
+    return guard;
+  };
+
+  it("asks about the buffers of the plugins it shows first; kept, the window stays", async () => {
+    const c = await ctx();
+    const guard = unsaved(c, "p.b");
+    await closeWindow(c, "p.b");
+    expect(guard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leaving: "close",
+        buffers: [expect.objectContaining({ plugin: "p.b" })],
+      }),
+    );
+    expect(c.unmount).not.toHaveBeenCalled();
+    expect(c.store.get().adopted.map((a) => a.id)).toEqual(["p.a", "p.b", "p.c"]);
+    guard.mockResolvedValue(true);
+    await closeWindow(c, "p.b");
+    expect(c.unmount).toHaveBeenCalledWith("p.b");
+  });
+
+  it("asks when the last pane closes the window, and not for one pane of a split", async () => {
+    const c = await ctx();
+    const guard = unsaved(c, "p.c");
+    await focusPane(c, "p.c");
+    await closePane(c);
+    expect(guard).toHaveBeenCalledTimes(1);
+    expect(c.unmount).not.toHaveBeenCalled();
+    await splitPane(c, "row");
+    await closePane(c);
+    expect(guard).toHaveBeenCalledTimes(1);
   });
 });

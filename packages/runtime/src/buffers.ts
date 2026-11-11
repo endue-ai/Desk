@@ -19,11 +19,26 @@ export interface Buffer {
 
 export type BufferPatch = Partial<Pick<Buffer, "name" | "modified" | "path">>;
 
+/** Why buffers go without a buffer close: their window closes, or the desk quits. */
+export type Leaving = "close" | "quit";
+
+/** What a guard is told: the buffers about to go, why, and how to say it is asking the person. */
+export interface Going {
+  buffers: Buffer[];
+  leaving: Leaving;
+  /** The guard is about to ask the person (the shell then waits for the answer, however long). */
+  asking(): void;
+}
+
+/** Whether buffers may go (Emacs's kill-buffer-query-functions): false keeps them, and their window. */
+export type Guard = (going: Going) => Promise<boolean>;
+
 export class Buffers {
   readonly #byId = new Map<string, Buffer>();
   /** Ids, most recently used first. */
   #recent: string[] = [];
   readonly #listeners = new Set<() => void>();
+  readonly #guards = new Set<Guard>();
 
   add(buffer: Buffer): Buffer {
     this.#byId.set(buffer.id, { ...buffer });
@@ -105,6 +120,29 @@ export class Buffers {
   onChange(listener: () => void): () => void {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
+  }
+
+  /** Ask `guard` before buffers go with their window or the desk (desk.buffers asks the person). */
+  guard(guard: Guard): () => void {
+    this.#guards.add(guard);
+    return () => this.#guards.delete(guard);
+  }
+
+  /**
+   * Whether buffers may go: the buffers of `plugins` as the window showing them closes, or every
+   * buffer as the desk quits. Each guard is asked in turn, and the first that says no keeps them.
+   */
+  async mayGo(
+    leaving: Leaving,
+    options: { plugins?: readonly string[]; asking?: () => void } = {},
+  ): Promise<boolean> {
+    const { plugins, asking = () => {} } = options;
+    const buffers = this.list().filter((b) => plugins === undefined || plugins.includes(b.plugin));
+    if (buffers.length === 0) return true;
+    for (const guard of [...this.#guards]) {
+      if (!(await guard({ buffers, leaving, asking }))) return false;
+    }
+    return true;
   }
 
   #emit(): void {
