@@ -18,9 +18,10 @@ contributes in `plugin.json`. The shell itself is `mountDesk` in `packages/runti
   fills, the secondary surface, the glow, Eris's persona) to desk.theme's, as `--desk-*` custom
   properties. Surfaces every page shares (popover, hover, input, muted, the shadows, the tooltip) are
   desk.theme's role colours (`docs/design-system.md`).
-- **Keys.** `Mod+1…9` switch to the first nine desktops and `Mod+Shift+1…9` move the window in use
-  there; `Mod+Shift+]` and `Mod+Shift+[` go to the next and previous desktop; `Mod+Shift+\` opens
-  the overview. The core keeps `Control+1…4`.
+- **Keys.** `Mod+1…9` switch to the first nine desktops and `Mod+Shift+1…9` (`Control+Shift+1…9`
+  on macOS, which keeps ⇧⌘3–5 for screenshots) move the window in use there; `Mod+Shift+]` and
+  `Mod+Shift+[` go to the next and previous desktop; `Mod+Shift+\` opens the overview. The core
+  keeps `Control+1…4`.
 
 Its commands (`desk.shell.desktop-1` to `-9`, `desktop-new`, `-next`, `-previous`, `-rename`,
 `-remove`, `-move-left`, `-move-right`, `-undo`, `desktops-overview`, `move-to-desktop` and `-1` to

@@ -60,14 +60,16 @@ describe("desktops' commands and keys (ADR 0117)", () => {
     expect(keymap("other").get("Control+9")).toBe("desk.shell.desktop-9");
   });
 
-  test("Mod+Shift+1…9 move the window in use; Mod+Shift+] [ \\ go next, back and to the overview", () => {
+  test("Ctrl+Shift+1…9 move the window in use; Mod+Shift+] [ \\ go next, back and to the overview", () => {
     for (const [platform, mod] of [
       ["mac", "Meta"],
       ["other", "Control"],
     ] as const) {
       const map = keymap(platform);
+      // Mod+Shift+1…9 elsewhere; macOS keeps ⇧⌘3, ⇧⌘4 and ⇧⌘5 for screenshots, so the Mac has ⌃⇧.
       for (let n = 1; n <= 9; n++)
-        expect(map.get(`${mod}+Shift+${n}`)).toBe(`desk.shell.move-to-desktop-${n}`);
+        expect(map.get(`Control+Shift+${n}`)).toBe(`desk.shell.move-to-desktop-${n}`);
+      if (platform === "mac") expect(map.get("Meta+Shift+3")).toBeUndefined();
       expect(map.get(`${mod}+Shift+]`)).toBe("desk.shell.desktop-next");
       expect(map.get(`${mod}+Shift+[`)).toBe("desk.shell.desktop-previous");
       expect(map.get(`${mod}+Shift+\\`)).toBe("desk.shell.desktops-overview");
