@@ -61,7 +61,7 @@ impl Core {
     /// where init.yaml is, rooted at `~` inside the home folder (desk.describe names and shows it).
     /// A value that fails its setting is left out, and one written under an earlier name is handed
     /// out under the setting's own (ADR 0080). Each call reports what is new; one from desk sends
-    /// desk every value that fell back again.
+    /// desk every value that fell back again, and puts the ones not told yet in a notice.
     pub(crate) fn init_get(&self, caller: &str) -> Answer {
         let prefix = format!("{caller}.");
         let settings = self
@@ -79,7 +79,11 @@ impl Core {
                 file: file.path().map(|path| bridge_path(path, self.home())),
             }
         };
-        self.report_settings(caller == "desk");
+        let problems = self.report_settings(caller == "desk");
+        // The runtime asks at its start, the first moment the person can be told (ADR XXXX).
+        if caller == "desk" {
+            self.notice_settings(&problems);
+        }
         json(answer)
     }
 

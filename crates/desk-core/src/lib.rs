@@ -103,6 +103,7 @@ mod prompt_policy;
 mod secrets;
 mod sessions;
 mod settings_check;
+mod settings_notice;
 mod settings_report;
 mod state_file;
 mod store;

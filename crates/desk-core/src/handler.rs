@@ -71,6 +71,8 @@ pub struct Core {
     pub(crate) settings: Mutex<Store>,
     /// The settings problems logged so far (ADR 0080), so each is logged once.
     pub(crate) settings_reported: Mutex<BTreeSet<String>>,
+    /// The values that fell back the person was told of on the desk, so each is told once.
+    pub(crate) settings_noticed: Mutex<BTreeSet<String>>,
     pub(crate) log: Mutex<Log>,
     pub(crate) conversation: Option<Arc<Conversation>>,
     /// The brains the runtime's setting chooses from (ADR 0094), when the desk has more than one.
@@ -132,6 +134,7 @@ impl Core {
             store: Mutex::new(Store::new(None)),
             settings: Mutex::new(Store::new(None)),
             settings_reported: Mutex::default(),
+            settings_noticed: Mutex::default(),
             log: Mutex::new(Log::default()),
             conversation: None,
             choice: None,
