@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { openShell } from "./shell-helpers";
 
 async function open(page: Page, query = "?core=1&platform=mac") {
   await page.goto(`/desk.html${query}`);
@@ -187,6 +188,68 @@ test.describe("core settings", () => {
       .getByRole("button", { name: "플러그인", exact: true })
       .click();
     await expect(dialog(page).getByRole("checkbox", { name: "Confirm unsaved" })).not.toBeChecked();
+  });
+});
+
+// #158 findings 16 and 19: a fresh desk's Keyboard opens on no conflicts (the desk's own keys keep
+// clear of ⇧⌘3/4/5) and on the commands that have a shortcut; ⌘/ puts the caret in their search, whose
+// match is at the top; a conflict a person makes is said in words, not with a file path; and the
+// palette's key leaves Settings for the palette.
+test.describe("keyboard settings for a person", () => {
+  const search = (page: Page) =>
+    dialog(page).getByRole("searchbox", { name: "명령 또는 단축키 검색" });
+
+  test("opens on no conflicts and the shortcuts, with the caret in their search", async ({
+    page,
+  }) => {
+    await openShell(page);
+    await page.keyboard.press("Meta+/");
+    await expect(dialog(page).getByRole("heading", { name: "키보드", exact: true })).toBeVisible();
+    await expect(search(page)).toBeFocused();
+    await expect(dialog(page).locator(".keys-conflicts")).toHaveCount(0);
+    await expect(dialog(page).locator('[data-key="keys-view-shortcuts"]')).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(row(page, "desk.shell.move-to-desktop-2").locator("kbd")).toHaveText("⌃⇧2");
+    await expect(row(page, "desk.display.close-pane")).toHaveCount(0);
+    // A search looks in every command and shows its match at the top of the pane.
+    await page.keyboard.type("close-pane");
+    const match = row(page, "desk.display.close-pane");
+    await expect(match).toBeVisible();
+    const pane = await dialog(page).locator(".settings-content").boundingBox();
+    const found = await match.boundingBox();
+    expect(found && pane && found.y + found.height <= pane.y + pane.height).toBe(true);
+  });
+
+  test("a conflict a person makes is said in words, without a file path", async ({ page }) => {
+    await open(page);
+    await page.keyboard.press("Meta+/");
+    const target = row(page, "desk.settings.open");
+    await target.getByRole("button", { name: /바꾸기/ }).click();
+    await page.keyboard.press("Meta+Shift+3");
+    await dialog(page).getByRole("button", { name: "그래도 지정", exact: true }).click();
+    const conflict = dialog(page).locator(".keys-conflict");
+    await expect(conflict).toHaveCount(1);
+    await expect(conflict.locator("strong")).toHaveText("설정");
+    await expect(conflict).toContainText("macOS가 이 키로 스크린샷을 찍습니다.");
+    await expect(conflict.locator("small")).toHaveText("직접 지정");
+    await expect(conflict).not.toContainText("/");
+  });
+
+  test("the palette's key closes Settings and opens the palette", async ({ page }) => {
+    await open(page, "?platform=mac");
+    await expect
+      .poll(() => page.evaluate(() => window.__desk.runtime.commands.has("desk.palette.open")))
+      .toBe(true);
+    await page.keyboard.press("Meta+,");
+    await expect(dialog(page)).toBeVisible();
+    await page.keyboard.press("Meta+k");
+    await expect(dialog(page)).toHaveCount(0);
+    await expect(page.locator('[data-surface="desk.palette"]')).toBeVisible();
+    await expect(
+      page.frameLocator('[data-surface="desk.palette"] iframe').getByTestId("query"),
+    ).toBeFocused();
   });
 });
 
