@@ -18,21 +18,27 @@ import {
   windowNow,
 } from "../support/windows";
 
-/** Frames the page's requestAnimationFrame runs in 600 ms. */
+/**
+ * Frames the page's requestAnimationFrame runs in 600 ms; none when the page gives no answer in
+ * 5 s (chromedriver's script waits on a page that stopped drawing).
+ */
 const frames = () =>
-  browser.execute(
-    () =>
-      new Promise<number>((resolve) => {
-        let n = 0;
-        const start = performance.now();
-        const tick = () => {
-          n++;
-          if (performance.now() - start < 600) requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-        setTimeout(() => resolve(n), 800);
-      }),
-  );
+  Promise.race([
+    browser.execute(
+      () =>
+        new Promise<number>((resolve) => {
+          let n = 0;
+          const start = performance.now();
+          const tick = () => {
+            n++;
+            if (performance.now() - start < 600) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+          setTimeout(() => resolve(n), 800);
+        }),
+    ),
+    new Promise<number>((resolve) => setTimeout(() => resolve(0), 5_000)),
+  ]);
 
 /** A click (`count` 2: a double-click) through the compositor's input. */
 async function press(p: Point, count = 1): Promise<void> {

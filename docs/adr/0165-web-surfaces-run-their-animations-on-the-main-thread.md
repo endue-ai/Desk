@@ -65,8 +65,11 @@ alone ended every stall the QA pass found while the press's paint keeps its time
 * Bad, because an animation now waits for its page's main thread: a long task stalls a fade or a
   window's transition where the compositor's thread ran it alone (ADR 0157's full pipeline had
   already tied each frame to a main frame).
-* Bad, because a stall of another cause would still go unnoticed: the shell does not yet watch a
-  page that takes begin frames and paints nothing (#157's watchdog is left for a follow-up).
+* Bad, because a stall of another cause still happens and goes unnoticed: with the Mac's screen
+  locked, a plugin window's first maximize stopped its page in two tries of three, on main and with
+  the switch alike (Terminal and Status, 2026-11-12 01:20), while unlocked the switch's runs had
+  none in ten resizes; the shell does not yet watch a page that takes begin frames and paints
+  nothing (#157's watchdog is left for a follow-up).
 
 ## More Information
 
