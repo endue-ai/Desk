@@ -13,12 +13,10 @@ use std::time::Instant;
 
 use desk_compositor::{ChromeTheme, Tokens};
 use desk_core::TokenTable;
-use desk_surface::generated::CompositorMessage;
 use desk_wm::interact::{Motion, Out, Wm};
 use desk_wm::{
     FrameDoc, FrameState, LiveBudget, PageShown, Plan, Rect, Seat, Size, Step, Surfaces,
 };
-use serde_json::json;
 
 use super::report::{DeskReport, FrameReport, Layer};
 
@@ -45,48 +43,6 @@ pub fn look(table: &TokenTable) -> ChromeTheme {
 /// The window manager's motion from the core's token table: the glides and the snap preview.
 pub fn motion(table: &TokenTable) -> Motion {
     Motion::from_tokens(|name| table.tokens.get(name).cloned(), table.reduced_motion)
-}
-
-/// A step as the protocol's message; `None` for a load, which is the web host's own.
-pub fn message(step: &Step) -> Option<CompositorMessage> {
-    let size = |(w, h): (u32, u32)| json!({ "width": w, "height": h });
-    let value = match step {
-        Step::Load { .. } => return None,
-        Step::Create {
-            surface,
-            plugin,
-            view,
-            size: s,
-            scale,
-            hidden,
-        } => json!({ "type": "create", "surface": surface, "plugin": plugin, "view": view,
-            "size": size(*s), "scale": scale, "format": "bgra8", "hidden": hidden }),
-        Step::Resize {
-            surface,
-            size: s,
-            scale,
-        } => json!({ "type": "resize", "surface": surface, "size": size(*s), "scale": scale }),
-        Step::Wake {
-            surface,
-            size: s,
-            scale,
-        } => json!({ "type": "wake", "surface": surface, "size": size(*s), "scale": scale }),
-        Step::Show { surface } => json!({ "type": "show", "surface": surface }),
-        Step::Hide { surface } => json!({ "type": "hide", "surface": surface }),
-        Step::Sleep { surface } => json!({ "type": "sleep", "surface": surface }),
-        Step::Destroy { surface } => json!({ "type": "destroy", "surface": surface }),
-    };
-    serde_json::from_value(value).ok()
-}
-
-/// The plugin id and the manifest's surface a surface host names.
-pub fn owner(host: &str) -> Option<(String, String)> {
-    match desk_web::plugin_scheme::hosts::Host::parse(Some(host))? {
-        desk_web::plugin_scheme::hosts::Host::Surface {
-            surface, plugin, ..
-        } => Some((plugin, surface.to_owned())),
-        _ => None,
-    }
 }
 
 /// The hosted desk.
@@ -406,6 +362,10 @@ fn doc(frame: &FrameReport) -> Option<FrameDoc> {
 
 #[path = "hosted_picture.rs"]
 mod picture;
+
+#[path = "hosted_protocol.rs"]
+mod protocol;
+pub use protocol::{message, owner};
 
 #[cfg(test)]
 #[path = "hosted_tests.rs"]

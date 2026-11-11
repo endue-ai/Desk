@@ -14,7 +14,7 @@ import { createPasteGuard } from "./paste.js";
 import { createSearch } from "./search.js";
 import { createSearchBar } from "./searchbar.js";
 import { createTabs } from "./tabs.js";
-import { searchDecorations } from "./theme.js";
+import { LIVE, searchDecorations, xtermOptions } from "./theme.js";
 import { FitAddon } from "./vendor/addon-fit.mjs";
 import { SearchAddon } from "./vendor/addon-search.mjs";
 import { Unicode11Addon } from "./vendor/addon-unicode11.mjs";
@@ -40,23 +40,6 @@ import { Terminal } from "./vendor/xterm.mjs";
  * }} Deps
  * @typedef {{ term: Terminal, fit: FitAddon, search: ReturnType<typeof createSearch>, pane: HTMLElement, note: HTMLElement | null, guard: ReturnType<typeof createPasteGuard> | null }} Item
  */
-
-/** Options that take effect on a terminal that is already open. */
-const LIVE = [
-  "cursorBlink",
-  "cursorStyle",
-  "fontFamily",
-  "fontSize",
-  "scrollback",
-  "minimumContrastRatio",
-  "theme",
-];
-
-/** xterm's own options, without the plugin's (copyOnSelect): xterm refuses keys it does not know. */
-const xtermOptions = (/** @type {Record<string, unknown>} */ options) =>
-  Object.fromEntries(
-    Object.entries(options).filter(([name]) => name === "allowProposedApi" || LIVE.includes(name)),
-  );
 
 /**
  * @param {Document} doc

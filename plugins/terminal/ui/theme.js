@@ -110,3 +110,20 @@ export function terminalOptions(settings, theme, fallback = {}) {
     theme: xtermTheme(theme, fallback),
   };
 }
+
+/** Options that take effect on a terminal that is already open. */
+export const LIVE = [
+  "cursorBlink",
+  "cursorStyle",
+  "fontFamily",
+  "fontSize",
+  "scrollback",
+  "minimumContrastRatio",
+  "theme",
+];
+
+/** xterm's own options, without the plugin's (copyOnSelect): xterm refuses keys it does not know. */
+export const xtermOptions = (/** @type {Record<string, unknown>} */ options) =>
+  Object.fromEntries(
+    Object.entries(options).filter(([name]) => name === "allowProposedApi" || LIVE.includes(name)),
+  );
