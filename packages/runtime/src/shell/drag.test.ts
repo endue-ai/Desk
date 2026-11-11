@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { draggable } from "./drag";
 
 describe("pointer drags", () => {
@@ -73,6 +73,28 @@ describe("pointer drags", () => {
     expect(handlers.start).not.toHaveBeenCalled();
     expect(handlers.end).not.toHaveBeenCalled();
     expect(handle.releasePointerCapture).toHaveBeenCalledWith(1);
+  });
+
+  it("swallows the click and the double-click a drag ends, and leaves the next ones alone", () => {
+    vi.useFakeTimers();
+    onTestFinished(() => void vi.useRealTimers());
+    const heard: string[] = [];
+    for (const type of ["click", "dblclick"]) {
+      handle.addEventListener(type, () => heard.push(type));
+    }
+    // A press soon after a click, dragged: the release ends the second click of a double-click
+    // (issue 159, finding 11), which would maximize the window it dropped.
+    pointer(handle, "pointerdown", 10);
+    pointer(window, "pointermove", 90);
+    pointer(window, "pointerup", 90);
+    handle.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 2 }));
+    handle.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, detail: 2 }));
+    expect(heard).toEqual([]);
+    // Later clicks and double-clicks are the person's.
+    vi.runAllTimers();
+    handle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    handle.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, detail: 2 }));
+    expect(heard).toEqual(["click", "dblclick"]);
   });
 
   it("ignores another pointer until the original pointer finishes", () => {

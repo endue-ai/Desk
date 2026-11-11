@@ -270,13 +270,12 @@ mod the_seam {
         wm.moved(pt(from.x + 60.0, from.y), 0.0);
         wm.released(pt(from.x + 60.0, from.y), 0.0);
         assert!(wm.grab(moving("window-1"), from, 0.0).is_empty());
-        let full = Op::Snap { fill: Fill::Full };
-        assert!(wm.run(&full, Some("window-1")).is_empty());
+        assert!(wm.run(&Op::Maximize, Some("window-1")).is_empty());
         let out = wm.edit(1, &[Edit::NewWindow]);
         assert_eq!(
             published(&out).len(),
             3,
-            "the edit, the drop, then the fill"
+            "the edit, the drop, then the maximize"
         );
         assert_eq!(rect_of(&wm, "window-1"), Rect::new(0.0, 0.0, W, H));
         // One whose window never comes is let go.

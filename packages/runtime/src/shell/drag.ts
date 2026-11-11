@@ -98,16 +98,19 @@ export function draggable(handle: HTMLElement, handlers: DragHandlers): () => vo
       if (u.pointerId !== e.pointerId) return;
       cleanup();
       if (!dragging) return;
-      // The click that follows a drag must not activate anything under the drop.
+      // The click that follows a drag must not activate anything under the drop, nor the
+      // double-click it ends when the press came soon after a click: a drag is never one.
       const swallow = (c: Event) => {
         c.preventDefault();
         c.stopImmediatePropagation();
       };
       win.addEventListener("click", swallow, { capture: true, once: true });
+      win.addEventListener("dblclick", swallow, { capture: true, once: true });
       const timer = win.setTimeout(() => clearClick?.(), 0);
       clearClick = () => {
         win.clearTimeout(timer);
         win.removeEventListener("click", swallow, true);
+        win.removeEventListener("dblclick", swallow, true);
         clearClick = undefined;
       };
       handlers.end(u.clientX - x0, u.clientY - y0, u);

@@ -78,9 +78,6 @@ pub struct Wm {
     /// The edge bars' surfaces on screen (the dock), above every window: a drop keeps a title bar
     /// clear of them (`reach.rs`).
     pub(super) edges: Vec<Rect>,
-    /// The window the last press dragged, and when it was let go: the page's double-click on its
-    /// title that follows the drop is no double-click (`pointer.rs`).
-    pub(super) dragged: Option<(String, f64)>,
     pub(super) preview: Preview,
     /// Grabs and commands for a window the runtime has not published yet: the page's calls each
     /// run on a thread of their own, so one may overtake the desk it follows (`pointer.rs`).
@@ -121,7 +118,6 @@ impl Wm {
             top: TopChrome::default(),
             parts: Vec::new(),
             edges: Vec::new(),
-            dragged: None,
             preview: Preview::default(),
             waiting: Vec::new(),
             clock: 0.0,

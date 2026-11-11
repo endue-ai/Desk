@@ -59,8 +59,6 @@ impl Wm {
     /// for it (`mid_glide.rs`).
     pub fn pressed_at(&mut self, at: Point, page: Point) -> Vec<Out> {
         let mut out = self.cancel_gesture();
-        // A double-click after this press is a double-click again.
-        self.dragged = None;
         // A grab still waiting is for an earlier press.
         self.waiting.retain(|w| !matches!(w, Waiting::Grab { .. }));
         let taken = self.press_mid_glide(at);
@@ -199,10 +197,7 @@ impl Wm {
         // A window the press stopped mid-glide glides on from there.
         self.resume_glide(self.clock);
         match gesture.cancel() {
-            Some(Done::Back { id }) => {
-                self.dragged = Some((id, self.clock));
-                vec![Out::Held(None), Out::Redraw]
-            }
+            Some(Done::Back { .. }) => vec![Out::Held(None), Out::Redraw],
             Some(Done::Pan { desktop, pan }) => vec![self.change(Change::Pan { desktop, pan })],
             _ => Vec::new(),
         }
@@ -243,11 +238,6 @@ impl Wm {
         };
         self.preview.hide();
         let done = gesture.released(&self.drawn, at, self.screen);
-        if let Some(id) = done.as_ref().and(gesture.window_id()) {
-            // The page hears the release as the end of a click: the second of a double-click when
-            // the press came soon after another (`ops.rs` drops the maximize it asks for).
-            self.dragged = Some((id.to_owned(), now));
-        }
         // A window the press stopped mid-glide and never dragged glides on from there; a drop
         // places it.
         if done.is_none() {

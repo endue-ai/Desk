@@ -1,7 +1,6 @@
-//! What the pointer can always take again (#159 findings 4, 7, 10 and 11): a window's title bar
-//! within reach after a drop and after the move commands, clear of the dock; a snapped window
-//! resized by a grip in the mode it had before it snapped; and a drag that is never the second
-//! click of a double-click.
+//! What the pointer can always take again (#159 findings 4, 7 and 10): a window's title bar within
+//! reach after a drop, a resize by its top edge and the move commands, clear of the dock; and a
+//! snapped window resized by a grip in the mode it had before it snapped.
 
 use desk_wm::host::TITLE_END;
 use desk_wm::interact::{Grip, Kind, Op};
@@ -215,68 +214,5 @@ mod leaving_a_snap_by_a_grip {
         drag(&mut wm, edge, from, pt(from.x + 100.0, 450.0));
         let p = wm.desk().window("window-1").unwrap();
         assert_eq!((p.fill, p.floating), (None, Some(true)));
-    }
-}
-
-mod a_drag {
-    use super::*;
-
-    #[test]
-    fn right_after_a_click_is_no_double_click_and_leaves_the_window_where_it_was_dropped() {
-        let desk = windows(1);
-        let mut wm = wm_of(&desk);
-        let win = rect_of(&wm, "window-1");
-        let from = title_of(win);
-        // A click on the title, then at once a press there that drags 80 px.
-        wm.pressed(from);
-        wm.released(from, 100.0);
-        let to = pt(from.x + 80.0, from.y + 30.0);
-        hold(&mut wm, moving("window-1"), from, to, 8);
-        wm.released(to, 400.0);
-        // The page counts the release as a double-click on the title and asks to maximize.
-        let out = wm.run_at(&Op::Maximize, Some("window-1"), 430.0);
-        assert!(published(&out).is_empty());
-        let p = wm.desk().window("window-1").unwrap();
-        assert_eq!((p.fill, p.restore), (None, None));
-        assert_eq!(
-            rect_of(&wm, "window-1"),
-            Rect {
-                x: win.x + 80.0,
-                y: win.y + 30.0,
-                ..win
-            }
-        );
-    }
-
-    #[test]
-    fn leaves_a_real_double_click_and_the_commands_alone() {
-        let desk = windows(1);
-        let mut wm = wm_of(&desk);
-        let win = rect_of(&wm, "window-1");
-        let from = title_of(win);
-        drag(&mut wm, moving("window-1"), from, pt(from.x + 80.0, from.y));
-        // The palette's maximize names no window; one asked long after the drop is the person's.
-        wm.run_at(&Op::Maximize, None, 100.0);
-        assert_eq!(wm.desk().window("window-1").unwrap().fill, Some(Fill::Full));
-        wm.run_at(&Op::Maximize, None, 200.0);
-        let moved = rect_of(&wm, "window-1");
-        drag(
-            &mut wm,
-            moving("window-1"),
-            title_of(moved),
-            pt(700.0, 400.0),
-        );
-        wm.run_at(&Op::Maximize, Some("window-1"), 5000.0);
-        assert_eq!(wm.desk().window("window-1").unwrap().fill, Some(Fill::Full));
-        // Two clicks with no drag between them maximize.
-        wm.run_at(&Op::Maximize, None, 5100.0);
-        let r = rect_of(&wm, "window-1");
-        let at = title_of(r);
-        wm.pressed(at);
-        wm.released(at, 6000.0);
-        wm.pressed(at);
-        wm.released(at, 6100.0);
-        wm.run_at(&Op::Maximize, Some("window-1"), 6120.0);
-        assert_eq!(wm.desk().window("window-1").unwrap().fill, Some(Fill::Full));
     }
 }

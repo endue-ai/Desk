@@ -35,29 +35,10 @@ pub enum Op {
     Spread,
 }
 
-/// How long after a drag let go of a window, in milliseconds, the page's double-click on its title
-/// can come: the compositor's double-click time.
-const DOUBLE_CLICK: f64 = 500.0;
-
 impl Wm {
-    /// Run `op` on window `window` (the one in use when `None`), at the time the window manager
-    /// last heard.
+    /// Run `op` on window `window` (the one in use when `None`).
     pub fn run(&mut self, op: &Op, window: Option<&str>) -> Vec<Out> {
-        self.run_at(op, window, self.clock)
-    }
-
-    /// The same, asked at `now`. A maximize the page asks for the window a drag just let go of is
-    /// the drop counted as a double-click on its title (the press came soon after a click): a drag
-    /// is never a double-click, so it does nothing (#159 finding 11).
-    pub fn run_at(&mut self, op: &Op, window: Option<&str>, now: f64) -> Vec<Out> {
         if *op == Op::Spread {
-            return Vec::new();
-        }
-        if *op == Op::Maximize
-            && let Some(id) = window
-            && (self.dragged.as_ref()).is_some_and(|(w, at)| w == id && now - at <= DOUBLE_CLICK)
-        {
-            self.dragged = None;
             return Vec::new();
         }
         let id = window
