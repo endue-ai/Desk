@@ -282,12 +282,13 @@ tr[aria-current="true"],
   text-align: left;
 }
 
-.db th button {
+.db th .desk-btn {
+  justify-content: flex-start;
   width: 100%;
   padding: 0 4px;
   color: var(--desk-text-muted);
+  font-size: inherit;
   font-weight: 600;
-  text-align: left;
 }
 
 .db td,

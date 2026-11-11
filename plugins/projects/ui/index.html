@@ -7,38 +7,48 @@
       { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
     </script>
     <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
     <link rel="stylesheet" href="./style.css" />
     <link rel="stylesheet" href="./views.css" />
     <link rel="stylesheet" href="./time.css" />
+    <link rel="stylesheet" href="./small.css" />
   </head>
   <body>
     <header id="bar">
       <h1 id="title">Projects</h1>
-      <div id="views" role="tablist" aria-label="Views"></div>
-      <input
-        id="search"
-        type="search"
-        placeholder="Search (/)"
-        aria-label="Search tasks"
-        autocomplete="off"
-      />
-      <label id="group-control" class="control">
-        Group <select id="group" aria-label="Group by"></select>
-      </label>
-      <select id="source" aria-label="Source"></select>
-      <label class="control"><input id="done" type="checkbox" /> Done</label>
-      <div id="period" class="tools" role="toolbar" aria-label="Period" hidden>
-        <button id="prev" type="button" title="Previous ([)" aria-label="Previous">‹</button>
-        <button id="today" type="button" title="Today (t)">Today</button>
-        <button id="next" type="button" title="Next (])" aria-label="Next">›</button>
-        <span id="period-title"></span>
-        <select id="zoom" aria-label="Zoom">
-          <option value="week">2 weeks</option>
-          <option value="month">6 weeks</option>
-          <option value="quarter">Quarter</option>
-        </select>
+      <div id="controls">
+        <div id="views" class="desk-tabs" role="tablist" aria-label="Views"></div>
+        <div id="filters" class="tools">
+          <input
+            id="search"
+            class="desk-field"
+            type="search"
+            placeholder="Search (/)"
+            aria-label="Search tasks"
+            autocomplete="off"
+          />
+          <label id="group-control" class="control">
+            <span class="caption">Group</span>
+            <select id="group" class="desk-field" aria-label="Group by"></select>
+          </label>
+          <select id="source" class="desk-field" aria-label="Source"></select>
+          <label id="done-control" class="control">
+            <input id="done" class="desk-check" type="checkbox" /> Done
+          </label>
+        </div>
+        <div id="period" class="tools" role="toolbar" aria-label="Period" hidden>
+          <button id="prev" class="desk-icon-btn" type="button" title="Previous ([)" aria-label="Previous">‹</button>
+          <button id="today" class="desk-btn desk-btn-quiet" type="button" title="Today (t)">Today</button>
+          <button id="next" class="desk-icon-btn" type="button" title="Next (])" aria-label="Next">›</button>
+          <span id="period-title"></span>
+          <select id="zoom" class="desk-field" aria-label="Zoom">
+            <option value="week">2 weeks</option>
+            <option value="month">6 weeks</option>
+            <option value="quarter">Quarter</option>
+          </select>
+        </div>
       </div>
-      <button id="refresh" type="button" title="Refresh" aria-label="Refresh">
+      <button id="refresh" class="desk-icon-btn" type="button" title="Refresh" aria-label="Refresh">
         <span aria-hidden="true">↻</span>
       </button>
     </header>

@@ -11,6 +11,7 @@ import { renderDetail } from "./render/detail.js";
 import { h } from "./render/dom.js";
 import { renderList, renderTable } from "./render/list.js";
 import { renderTimeline } from "./render/timeline.js";
+import { createStrip } from "./strip.js";
 
 /**
  * @typedef {import("./present.js").Screen} Screen
@@ -55,6 +56,7 @@ export function createView(doc, actions) {
   const zoom = /** @type {HTMLSelectElement} */ (byId("zoom"));
   const detail = byId("detail");
   const status = byId("status");
+  const strip = createStrip(views);
   /** @type {Screen | null} */
   let last = null;
   /** The card being dragged; DataTransfer is not trusted to carry it. */
@@ -172,12 +174,14 @@ export function createView(doc, actions) {
       el.classList.remove("dragging", "drop-over");
   });
 
-  /** The toolbar as the screen says. */
+  /** The toolbar as the screen says; with no source connected, only the views and refresh. */
   const toolbar = (/** @type {Screen} */ s) => {
+    const idle = s.unconnected;
     views.replaceChildren(
       ...s.views.map((v, i) =>
         h(doc, "button", {
           type: "button",
+          class: "desk-tab",
           role: "tab",
           "data-view": v.name,
           "aria-selected": v.name === s.view ? "true" : "false",
@@ -186,6 +190,7 @@ export function createView(doc, actions) {
         }),
       ),
     );
+    strip.show();
     if (doc.activeElement !== search) search.value = s.search;
     group.replaceChildren(
       ...s.groups.map((g) => h(doc, "option", { value: g.name, text: g.title })),
@@ -198,8 +203,9 @@ export function createView(doc, actions) {
     );
     source.value = s.source ?? "";
     source.hidden = s.sources.length < 2;
+    byId("filters").hidden = idle;
     done.checked = s.showDone;
-    byId("period").hidden = !USES.period.has(s.view);
+    byId("period").hidden = idle || !USES.period.has(s.view);
     zoom.hidden = s.view !== "timeline";
     zoom.value = s.zoom;
     byId("period-title").textContent = s.period;
@@ -212,7 +218,12 @@ export function createView(doc, actions) {
       return h(doc, "div", { class: "empty" }, [
         h(doc, "p", { text: s.empty.text }),
         s.empty.connect
-          ? h(doc, "button", { type: "button", "data-connect": true, text: "Connect a source" })
+          ? h(doc, "button", {
+              type: "button",
+              class: "desk-btn desk-btn-primary",
+              "data-connect": true,
+              text: "Connect a source",
+            })
           : null,
       ]);
     }

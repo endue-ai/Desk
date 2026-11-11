@@ -1,0 +1,152 @@
+/* The page in a small window. A window as the desk first opens one is 328×211 at 1280×800 (its page
+   326×169) and 381×261 at 1440×900. There the toolbar is a row of the views' tabs and refresh, a
+   row of search, grouping, source and done, and one for the timeline's and the calendar's period;
+   a row whose controls are hidden takes no room. The heading is the window's title; the details
+   cover the view; a list row puts its title on a line of its own. A short page gives the empty
+   status line and the empty state's margins back to the view. */
+@media (max-width: 559px) {
+  #bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 6px;
+    padding: 4px 8px;
+  }
+
+  /* The window's title already says "Projects": the heading stays for screen readers. */
+  #title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    min-height: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* The controls' rows are the toolbar's own: the tabs, then the filters, then the period. */
+  #controls {
+    display: contents;
+  }
+
+  #refresh {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  #filters,
+  #period {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  /* One row however many controls it holds: the selects give way before the search field and
+     Done do. */
+  #filters {
+    display: flex;
+    gap: 6px;
+  }
+
+  #search {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 64px;
+  }
+
+  #group-control,
+  #group,
+  #source {
+    min-width: 0;
+  }
+
+  #done-control {
+    flex: none;
+  }
+
+  #period-title {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  #body {
+    padding: 8px;
+  }
+
+  #detail {
+    position: relative;
+    z-index: 2;
+    grid-area: body;
+    width: auto;
+    border-left: 0;
+  }
+
+  .row {
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "title title title title title"
+      "pill ref . who due";
+    row-gap: 2px;
+  }
+
+  .row > .row-title {
+    grid-area: title;
+  }
+
+  .row > .pill {
+    grid-area: pill;
+  }
+
+  .row > .ref {
+    grid-area: ref;
+  }
+
+  .row > .labels {
+    display: none;
+  }
+
+  .row > .avatar {
+    grid-area: who;
+  }
+
+  .row > .due {
+    grid-area: due;
+  }
+
+  /* Narrower name columns; the lanes' cells and the days keep their width. */
+  .lanes {
+    grid-template-columns: 112px repeat(var(--columns, 4), minmax(220px, 1fr));
+  }
+
+  .timeline {
+    --name: 128px;
+    min-width: 608px;
+  }
+}
+
+/* The narrowest first window: the grouping select keeps its name ("Group by") for screen readers,
+   and its caption gives the room to the fields. */
+@media (max-width: 359px) {
+  #group-control .caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 559px), (max-height: 359px) {
+  #status:empty {
+    min-height: 0;
+    padding: 0;
+    border-top-width: 0;
+  }
+
+  /* The words and the button in the middle of whatever room the view has. */
+  .empty {
+    box-sizing: border-box;
+    min-height: 100%;
+    align-content: center;
+    padding: 0 8px;
+  }
+}

@@ -5,7 +5,8 @@ public SDK only. One `center` surface shows the `task` items of the desk's index
 of work in six views: Kanban (a column per status), Swimlane (those columns in lanes by a field), List
 (grouped rows), Database (a table of chosen fields, sorted by its headings), Timeline (bars from start
 to due, milestones, today) and Calendar (work on its due date). Its page takes every colour, font,
-size and radius from the theme (`tests/theme.test.ts`).
+size and radius from the theme and every control from the design system (`tests/theme.test.ts`).
+Under 560 px (a first window is 328×211) the toolbar folds and the details cover the view (small.css).
 
 Adapters (`ui/adapters/`, ADR 0085) read each source's own record, which its connector keeps whole in
 `raw`, into one shape (status and its category, type, priority, assignee, labels, project, sprint,
@@ -20,10 +21,9 @@ connector `acme.jira` provides `acme.jira.task.move { instance, id, status }` (t
 names it) and `acme.jira.task.update { instance, id, due?, start?, priority?, assignee? }` (dates as
 YYYY-MM-DD or null, priority 1 to 4 or null, assignee `{ name?, email? }` or null). Dragging a card to
 a column, a lane (priority or assignee) or a calendar day, Shift+arrows and the details run them, shown
-at once and undone when refused; controls for actions a connector lacks are off.
-
-Keyboard: `j` `k` or arrows walk the work, Enter opens it, Escape closes it, Shift+arrows move it a
-column, `1` to `6` switch views, `/` searches, `[` `]` `t` step the period, `o` opens the original.
+at once and undone when refused; controls for actions a connector lacks are off, and with no source
+connected the toolbar is the views and refresh. Keys: `j` `k` or arrows walk, Enter opens, Escape
+closes, Shift+arrows move a column, `1`–`6` views, `/` search, `[` `]` `t` period, `o` the original.
 
 | Permission | Why |
 | --- | --- |

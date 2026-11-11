@@ -90,7 +90,12 @@ export function renderTable(doc, body, c) {
           h(
             doc,
             "button",
-            { type: "button", "data-sort": col.name, title: `Sort by ${col.title}` },
+            {
+              type: "button",
+              class: "desk-btn desk-btn-quiet",
+              "data-sort": col.name,
+              title: `Sort by ${col.title}`,
+            },
             [
               col.title,
               col.sort

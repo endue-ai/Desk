@@ -45,8 +45,11 @@ import { anyOf, NO_TASK_CONNECTOR } from "./state.js";
  *   source: string | null, sources: Array<{ key: string, title: string }>, showDone: boolean,
  *   zoom: State["zoom"], period: string, today: string,
  *   body: Body, order: string[], selected: string | null, detail: Detail | null,
- *   empty: { text: string, connect: boolean } | null, count: number, loading: boolean,
+ *   empty: { text: string, connect: boolean } | null, unconnected: boolean, count: number,
+ *   loading: boolean,
  * }} Screen
+ * `unconnected`: no source is connected, so every view shows the same empty state and the
+ * toolbar's controls that act on work (search, grouping, source, done, period) have nothing to do.
  */
 
 /** Which of the toolbar's controls each view uses. */
@@ -206,6 +209,7 @@ export function screenOf(/** @type {State} */ s) {
     selected: s.selected !== null && order.includes(s.selected) ? s.selected : null,
     detail: detailOf(s),
     empty,
+    unconnected: empty !== null && !connected,
     count: works.length,
     loading: s.loading,
   };

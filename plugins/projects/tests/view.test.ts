@@ -224,6 +224,38 @@ describe("the toolbar, the keys and drops", () => {
     );
     $("[data-connect]").click();
     expect(a.connect).toHaveBeenCalled();
+    // With nothing to act on, the toolbar is the views and refresh, in every view.
+    for (const view of ["kanban", "timeline", "calendar"]) {
+      createView(document, a).render({ ...m.view.last(), view: view as Screen["view"] });
+      expect($("#filters").hidden, view).toBe(true);
+      expect($("#period").hidden, view).toBe(true);
+      expect(all("#views [role=tab]")).toHaveLength(6);
+      expect($("#refresh").hidden).toBe(false);
+    }
+  });
+
+  it("shows the filters again once a source is connected", async () => {
+    const s = await screens();
+    const view = createView(document, actions());
+    view.render(must(s.timeline));
+    expect($("#filters").hidden).toBe(false);
+    expect($("#period").hidden).toBe(false);
+  });
+
+  it("draws every control as the design system's", async () => {
+    const s = await screens();
+    const view = createView(document, actions());
+    const kit = /\bdesk-(btn|icon-btn|field|check|tab)\b/;
+    // The table's headings are buttons; the details hold selects, dates and buttons.
+    for (const screen of [must(s.table), must(s.detail)]) {
+      view.render(screen);
+      expect($("#views").classList).toContain("desk-tabs");
+      for (const tab of all("#views [role=tab]")) expect(tab.classList).toContain("desk-tab");
+      const controls = all("button, input, select");
+      expect(controls.length).toBeGreaterThan(12);
+      for (const control of controls)
+        expect(control.className, control.outerHTML.slice(0, 80)).toMatch(kit);
+    }
   });
 
   it("draws no Connect button when no installed connector brings tasks", async () => {

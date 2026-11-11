@@ -15,6 +15,7 @@ describe("loading", () => {
     const screen = m.view.last();
     expect(screen.view).toBe("kanban");
     expect(screen.count).toBe(6);
+    expect(screen.unconnected).toBe(false);
     if (screen.body.kind !== "kanban") throw new Error("not the board");
     expect(screen.body.columns.map((c) => c.title)).toEqual([
       "Backlog",
@@ -68,6 +69,8 @@ describe("loading", () => {
       text: "No tasks yet. Connect GitHub to see your tasks here.",
       connect: true,
     });
+    // Nothing to search, group or page through: the toolbar keeps only the views and refresh.
+    expect(m.view.last().unconnected).toBe(true);
     // Never a sentence it could not stand behind: nothing until connector.list answered.
     for (const screen of m.view.screens) expect(screen.empty?.text ?? "").not.toMatch(/installed/);
     expect(m.params("connector.list")).toContainEqual({ scope: CONNECTORS });
@@ -139,6 +142,10 @@ describe("the views", () => {
     expect(titles()).toEqual(["Home", "Offsite", "Payments", "Q4 Launch"]);
     m.app.setSearch("venue");
     expect(m.view.last().count).toBe(1);
+    // A filter that keeps nothing is a filter to change, never "nothing connected".
+    m.app.setSearch("no such words");
+    expect(m.view.last().empty?.text).toBe("Nothing matches the filter.");
+    expect(m.view.last().unconnected).toBe(false);
     m.app.setSearch("");
     m.app.setSource(`${LINEAR}/default`);
     expect(m.view.last().count).toBe(2);

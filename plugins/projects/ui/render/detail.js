@@ -22,7 +22,7 @@ function choice(
     h(
       doc,
       "select",
-      { "data-field": field, disabled: !enabled },
+      { class: "desk-field", "data-field": field, disabled: !enabled },
       options.map(([value, text]) => h(doc, "option", { value, text })),
     )
   );
@@ -66,6 +66,7 @@ export function renderDetail(doc, aside, detail, actions) {
     const input = /** @type {HTMLInputElement} */ (
       h(doc, "input", {
         type: "date",
+        class: "desk-field",
         "data-field": field,
         value: w[field] ?? "",
         disabled: !detail.canUpdate,
@@ -85,7 +86,7 @@ export function renderDetail(doc, aside, detail, actions) {
         });
   const close = h(doc, "button", {
     type: "button",
-    class: "close",
+    class: "desk-icon-btn close",
     "aria-label": "Close",
     title: "Close (Escape)",
     text: "×",
@@ -94,7 +95,7 @@ export function renderDetail(doc, aside, detail, actions) {
   const original = w.url
     ? h(doc, "button", {
         type: "button",
-        class: "original",
+        class: "desk-btn original",
         title: "Open the original (o)",
         text: `Open in ${systemTitle(w.system, w.source.connector)}`,
       })
