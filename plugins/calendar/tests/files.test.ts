@@ -116,6 +116,22 @@ describe("the desk's file requests", () => {
     expect(view.last.calendar?.modified).toBe(false);
   });
 
+  it("an edit keeps the line ends of a file written with bare LF throughout", async () => {
+    const lf = TEAM.replaceAll("\r\n", "\n");
+    const files = { [A.path]: lf };
+    const { host, view, app, settle } = await mount({ handlers: disk(files) });
+    await host.command("desk.files.visit", A);
+    app.compose({ day: day("2026-11-02"), minute: 14 * 60 });
+    app.save({ ...opened(view.editors), title: "Lunch" }, "all");
+    await settle();
+    await host.command("desk.files.save", A);
+    const saved = files[A.path] ?? "";
+    expect(saved).toContain("SUMMARY:Lunch\nDTSTART;TZID=Asia/Seoul:20261102T140000\n");
+    expect(saved).not.toContain("\r");
+    // Every line it read is still there, as it was.
+    for (const line of lf.split("\n").filter(Boolean)) expect(saved).toContain(`${line}\n`);
+  });
+
   it("changing one instance of a series asks for the scope and keeps the rest", async () => {
     const files = { [A.path]: TEAM };
     const { host, view, app } = await mount({ handlers: disk(files) });

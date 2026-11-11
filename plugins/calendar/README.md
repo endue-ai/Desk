@@ -8,8 +8,8 @@ format and on the public SDK only (ADR 0035). `contributes.files` opens `*.ics`,
 It reads every RRULE (all FREQs, BYxxx expand and limit, BYSETPOS, WKST, COUNT, UNTIL), RDATE, EXDATE and
 RECURRENCE-ID overrides; TZIDs that are IANA names, Windows names or the file's VTIMEZONE; DATE, floating
 and UTC times; VALARM reminders. A save writes back everything it read: an unchanged file byte for byte,
-an edit only the properties it changed, plus a VTIMEZONE for each TZID it writes. A series asks whether
-a change or a deletion is for this event, this and following events, or all of them.
+an edit only the properties it changed (bare LF line ends stay LF), plus a VTIMEZONE for each TZID it
+writes. A series asks whether a change or a deletion is for this event, this and following ones, or all.
 
 It answers the desk's `desk.files.visit`, `.save`, `.revert`, `desk.buffers.show` and `.closed`, as
 `plugins/notes` does, with the same one ask on a refused read or write. Its commands for agents take an

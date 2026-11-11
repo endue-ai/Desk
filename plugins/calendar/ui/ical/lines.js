@@ -54,6 +54,15 @@ export function fold(line) {
   return `${out}\r\n`;
 }
 
+/**
+ * Text `fold` wrote (CRLF) in the line ends of the text it replaces: a file written with bare LF
+ * throughout keeps LF, so an edit changes only the lines it changed; anything else gets CRLF (§3.1).
+ * @param {string} original
+ * @param {string} written
+ */
+export const lineEndsOf = (original, written) =>
+  original.includes("\n") && !original.includes("\r") ? written.replaceAll("\r\n", "\n") : written;
+
 /** RFC 6868: ^n is a new line, ^' a double quote and ^^ a caret in a parameter value. */
 const decodeParam = (/** @type {string} */ value) =>
   value.replace(/\^([n'^])/g, (_, c) => (c === "n" ? "\n" : c === "'" ? '"' : "^"));

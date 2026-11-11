@@ -2,8 +2,9 @@
 // desk.buffers.show, .closed) for the iCalendar files it holds, fs.read and fs.write under the
 // plugin's grants (asking once with perm.request for a folder they do not cover), a watch on each
 // open file, and the unsaved mark the desk shows. Like the notes plugin, a save of an unchanged
-// calendar writes the file exactly as it was read.
+// calendar writes the file exactly as it was read; a changed one keeps a file's bare LF line ends.
 import { formatComponent } from "./ical/component.js";
+import { lineEndsOf } from "./ical/lines.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -155,7 +156,9 @@ export function createFiles({ bridge, commands }, core) {
     const cal = core.writable(held(buffer));
     const path = asked ?? cal.path;
     const doc = cal.doc;
-    const content = cal.modified ? doc.calendars.map(formatComponent).join("") : cal.text;
+    const content = cal.modified
+      ? lineEndsOf(cal.text, doc.calendars.map(formatComponent).join(""))
+      : cal.text;
     await write(path, content);
     cal.text = content;
     cal.reported = false;
