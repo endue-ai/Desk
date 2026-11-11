@@ -9,11 +9,11 @@ data; no clock (times are passed in), no I/O, no rendering. It reads and writes 
 - `types`, `layout`: `Rect`, `Placement` (normal or floating, `fill`, `restore`), `PaneNode`,
   `Adopted`; `DesktopLayout`, and `Saved`, what the profile in force saved.
 - Geometry, snap and fill (ADR 0128, ADR 0132): `screen_rect`, `stored_rect`, `free_area`,
-  `snap_for`, `Aim`, `fill_with`, `unfilled`, `toggle_maximize`, `toggle_floating`, `Settle`.
+  `snap_for`, `Aim`, `fill_with`, `unfilled`, `own_floating`, `toggle_maximize`, `toggle_floating`, `Settle`; `within_reach`.
 - Tiling and the spread (ADR 0040, ADR 0116): `slot_rect`, `slot_windows`, `tile_rects`, `cascade_rects`,
   `SpreadModel`, `spread_slots`, `Spread` (its motions on the caller's clock, ADR 0161); `covered_plugins`.
 - Canvas (ADR 0082): `drag_pans`, `wheel_pan`, `PanDrag`; the map's `fit_world`, `map_shows`, `MapDrag`.
-- `panes`: `split`, `close`, `set_view`, `set_ratio`, the dividers' `key_ratio` and `drag_ratio`.
+- `panes`: `split`, `close`, `set_view`, `set_ratio`, `key_ratio`, `drag_ratio`; `window_min`, `fit_panes`.
 - `desktops`, `migrate` (ADR 0117): the named list of at most 32; `read_moved`, `read_recipe`,
   `read_pan`, `read_current` read what four-desktop desks saved; `write_moved` writes the list.
 - `drawer`, `buffers`: `DrawerItem`, `recent_fade` and `shown` (12 h, 24 h); `Buffers`, by use.
@@ -26,7 +26,7 @@ data; no clock (times are passed in), no I/O, no rendering. It reads and writes 
 - `host` (#81, ADR 0151): `Desk::host_plan` and `host_plan_at` with `Places` (windows back to front,
   panes' boxes, bars, what the page draws), `LiveBudget` (ADR 0134) and `Surfaces`, the protocol steps.
 - `interact` (#80, ADR 0153): `Wm`, which holds the desk (#83, ADR 0158), on the compositor's input
-  (`pressed`, `grab`, `moved`, `released`, `escape`, `run` an `Op`, `reveal`, `pan_to`, `frame`), the runtime's `edit`s
+  (`pressed`, `grab`, `moved`, `released`, `escape`, `run` an `Op`, `reveal`, `pan_to`, `cursor_at`, `frame`), the runtime's `edit`s
   (`edits::Edit`, the desktops' `undo`) and `took`; each change publishes the whole `Desk` with its
   `view::View` and the edits' answers (`Published`). `desk-wm-wasm` runs it where there is no compositor.
 
