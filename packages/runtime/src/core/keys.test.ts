@@ -53,6 +53,19 @@ describe("the default keymap", () => {
     }
   });
 
+  it("opens the Plugins list with Mod+Shift+X, which no plugin binds, so no plugin is needed", () => {
+    for (const platform of ["mac", "other"] as const) {
+      const combo = `${platform === "mac" ? "Meta" : "Control"}+Shift+X`;
+      const bound = resolveKeymap(keys, platform).find((b) => b.combo === combo);
+      expect(bound?.command).toBe("desk.plugins.open");
+      expect(bound?.args).toEqual({ plugin: "endue.sidebar" });
+      const taken = pluginKeys.map((k) =>
+        canonical(platform === "mac" && k.mac ? k.mac : k.key, platform),
+      );
+      expect(taken).not.toContain(combo);
+    }
+  });
+
   it("arranges windows with Mod+Alt+G, C, S and Z, which no other default or plugin binds", () => {
     const arrange = {
       G: "desk.windows.tile",

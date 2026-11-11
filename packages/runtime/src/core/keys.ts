@@ -147,6 +147,15 @@ export const DEFAULT_KEYS: Array<KeyBinding & { owner: string }> = [
     command: "desk.settings.open",
     owner: "desk",
   },
+  // The Plugins list from any desk (ADR XXXX): with the dock and the palette off, or every plugin
+  // held off by init.yaml, this key is still the way back to turning plugins on. desk.plugins.open
+  // turns the list on when it is off. ⇧⌘X is where VS Code keeps its extensions.
+  {
+    key: "Mod+Shift+X",
+    command: "desk.plugins.open",
+    args: { plugin: "endue.sidebar" },
+    owner: "desk",
+  },
   // Arranging windows (ADR 0116). G for the grid: Control+Alt+T opens a terminal on GNOME, and
   // create-plugin's policy template binds Mod+Alt+T.
   {

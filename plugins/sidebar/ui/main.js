@@ -1,50 +1,29 @@
 // The built-in plugin list. It uses only the public bridge API (plugin.list, plugin.setEnabled,
-// plugin.changed), exactly as a community plugin with plugin:manage would.
+// plugin.changed), exactly as a community plugin with plugin:manage would. The rows are rows.js's.
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
+import { row, status as statusText } from "./rows.js";
 
 const scope = { permission: "plugin:manage" };
+const platform = (navigator.platform ?? "").toLowerCase().startsWith("mac") ? "mac" : "other";
 
 defineUiPlugin({
   async mount({ pluginId, bridge }) {
     const list = document.querySelector("[data-testid=plugins]");
     const status = document.querySelector("[data-testid=status]");
 
-    const row = (plugin) => {
-      const item = document.createElement("li");
-      const label = document.createElement("label");
-      const toggle = document.createElement("input");
-      toggle.type = "checkbox";
-      toggle.className = "desk-check";
-      toggle.checked = plugin.enabled;
-      // The list cannot turn itself off; there would be no way back.
-      toggle.disabled = plugin.status !== "ready" || plugin.id === pluginId;
-      toggle.addEventListener("change", async () => {
-        try {
-          await bridge.call("plugin.setEnabled", {
-            plugin: plugin.id,
-            enabled: toggle.checked,
-            scope,
-          });
-        } catch (error) {
-          toggle.checked = !toggle.checked;
-          status.textContent = `${plugin.id}: ${error.code ?? "error"}`;
-        }
-      });
-      const name = plugin.manifest?.name ?? plugin.id;
-      label.append(toggle, ` ${name}`);
-      item.append(label);
-      if (plugin.status === "failed") {
-        const reason = document.createElement("small");
-        reason.textContent = plugin.error ?? "failed";
-        item.append(reason);
+    const toggle = async (plugin, enabled) => {
+      try {
+        await bridge.call("plugin.setEnabled", { plugin, enabled, scope });
+      } catch (error) {
+        status.textContent = `${plugin}: ${error.code ?? "error"}`;
+        throw error;
       }
-      return item;
     };
 
     const refresh = async () => {
       const { plugins } = await bridge.call("plugin.list", { scope });
-      list.replaceChildren(...plugins.map(row));
-      status.textContent = `${plugins.length} installed`;
+      list.replaceChildren(...plugins.map((p) => row(document, p, { self: pluginId, toggle })));
+      status.textContent = statusText(plugins.length, platform);
     };
 
     bridge.onEvent((event) => {
