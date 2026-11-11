@@ -5,7 +5,7 @@ decision-makers: Team endue
 ---
 
 Status: amended by ADR 0166: the page's open overlays (popovers, menus, hover titles, dialog boxes)
-are one more part, a box each; amended by ADR XXXX: every control the page draws outside its
+are one more part, a box each; amended by ADR 0167: every control the page draws outside its
 windows is in a part (the bottom edge's, a box each, the arrange strip, the canvas button, the safe
 mode badge), and a window under an edge bar is under it whole.
 
