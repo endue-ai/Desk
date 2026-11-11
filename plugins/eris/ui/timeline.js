@@ -14,16 +14,23 @@ export class Timeline {
   #frame = null;
   #animations = [];
   #cues = [];
+  /** A frame was asked for and has not come yet (or is running now). */
+  #waiting = false;
+  /** It held nothing at its last frame and asked for no other: its time stands still. */
+  #stopped = false;
 
   /**
    * The timeline starts at its first frame (or at `origin`, in the clock's time) and its time is the
    * time of the latest frame. Frame times fall on the clock's frame grid; `now()` read at load or in an
    * event handler would carry however long loading or input took, and shift the whole scene.
+   * Holding nothing (no animation, no cue), it asks for no frame and its time stands still; a cue or
+   * an animation starts it again, its time going on from where it stopped (#134: a frame loop with
+   * nothing to move kept a desk at rest asking for frames).
    */
   constructor(clock = browserClock(), origin = null) {
     this.#clock = clock;
     this.#origin = origin;
-    clock.frame((at) => this.#tick(at));
+    this.#next();
   }
 
   /** Milliseconds since the timeline started, as of the latest frame; 0 until its first frame. */
@@ -46,6 +53,7 @@ export class Timeline {
     animation.cancel();
     held.currentTime = Math.max(0, this.time);
     this.#animations.push(held);
+    this.#wake();
     return held;
   }
 
@@ -53,6 +61,7 @@ export class Timeline {
   at(ms, fn) {
     this.#cues.push({ ms, fn });
     this.#cues.sort((a, b) => a.ms - b.ms);
+    this.#wake();
   }
 
   /** Drop every animation and cue (a scene was skipped). */
@@ -62,13 +71,30 @@ export class Timeline {
     this.#cues = [];
   }
 
+  #next() {
+    this.#waiting = true;
+    this.#clock.frame((at) => this.#tick(at));
+  }
+
+  /** A cue or an animation came: a stopped timeline asks for its next frame. */
+  #wake() {
+    if (!this.#waiting) this.#next();
+  }
+
   #tick(at) {
+    if (this.#stopped && this.#frame !== null) {
+      // Its time goes on from where it stopped: what was set from it keeps its delays.
+      this.#origin = at - this.time;
+      this.#stopped = false;
+    }
     this.#origin ??= at;
     this.#frame = at;
     const now = this.time;
     while (this.#cues.length > 0 && this.#cues[0].ms <= now) this.#cues.shift().fn(now);
     this.#animations = this.#animations.filter((animation) => this.#hold(animation, now));
-    this.#clock.frame((next) => this.#tick(next));
+    this.#waiting = false;
+    if (this.#animations.length > 0 || this.#cues.length > 0) this.#next();
+    else this.#stopped = true;
   }
 
   /**

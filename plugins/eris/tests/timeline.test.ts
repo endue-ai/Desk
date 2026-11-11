@@ -38,6 +38,8 @@ function manualClock() {
       next = null;
       run?.(at);
     },
+    /** Whether the timeline asked for a frame that has not come yet. */
+    waiting: () => next !== null,
   };
 }
 
@@ -101,6 +103,32 @@ describe("the timeline lets go", () => {
     expect(timeline.size).toBe(1);
     expect(held?.currentTime).toBe(600_000);
     expect(held?.cancelled).toBe(false);
+  });
+
+  it("and, holding nothing, asks for no frame until a cue or an animation comes (#134)", () => {
+    const clock = manualClock();
+    const timeline = new Timeline(clock);
+    const ran: number[] = [];
+    timeline.at(100, (now: number) => ran.push(now));
+    clock.tick(1000);
+    clock.tick(1100);
+    expect(ran).toEqual([100]);
+    expect(clock.waiting(), "nothing left to move or run").toBe(false);
+    // Long after: a cue set from its time keeps its delay, its time going on from where it stopped.
+    timeline.at(timeline.time + 300, (now: number) => ran.push(now));
+    expect(clock.waiting(), "a cue starts it again").toBe(true);
+    clock.tick(60_000);
+    expect(timeline.time).toBe(100);
+    clock.tick(60_200);
+    expect(ran).toEqual([100]);
+    clock.tick(60_300);
+    expect(ran).toEqual([100, 400]);
+    expect(clock.waiting()).toBe(false);
+    timeline.add(animationOn(Number.POSITIVE_INFINITY).animation);
+    expect(clock.waiting(), "an animation starts it again").toBe(true);
+    clock.tick(90_000);
+    expect(FakeAnimation.made[0]?.currentTime).toBe(400);
+    expect(clock.waiting(), "an endless one keeps it going").toBe(true);
   });
 
   it("and size is read-only", () => {
