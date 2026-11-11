@@ -391,6 +391,89 @@ mark.is-current {
   color: var(--desk-text-muted);
 }
 
+/* A narrow page (a window's first size, or one made small) shows the document first: the outline
+   and the comments fold over the pages (view/panels.js folds them, at the same width), the header is
+   one row whose tools scroll sideways when they do not fit, and find fits beside its buttons. */
+@media (max-width: 719px) {
+  #layout {
+    position: relative;
+  }
+
+  #outline,
+  #comments {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    width: min(260px, 85%);
+    background: var(--desk-card);
+    box-shadow: var(--desk-shadow-md);
+  }
+
+  #outline {
+    left: 0;
+  }
+
+  #comments {
+    right: 0;
+  }
+}
+
+@media (max-width: 559px) {
+  #bar,
+  #find {
+    --desk-button-height: var(--desk-control-xs);
+    --desk-icon-button-size: var(--desk-control-xs);
+    --desk-field-height: var(--desk-control-xs);
+  }
+
+  #bar {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 4px 8px;
+  }
+
+  #title {
+    flex: 1 1 8em;
+    min-width: 4em;
+  }
+
+  #doc-detail {
+    display: none;
+  }
+
+  #tools {
+    flex: 0 1 auto;
+    flex-wrap: nowrap;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  #tools > * {
+    flex: none;
+  }
+
+  #find {
+    flex-wrap: nowrap;
+    padding: 4px 8px;
+  }
+
+  #find-text {
+    flex: 1 1 6em;
+    min-width: 0;
+  }
+
+  #sheet {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  #status {
+    padding: 2px 8px;
+  }
+}
+
 [hidden] {
   display: none !important;
 }

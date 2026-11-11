@@ -1,24 +1,32 @@
 // The docs plugin without its DOM. It answers the desk's file and buffer requests (desk.files.visit,
 // .revert, .save refused, desk.buffers.show, .closed), reads each file in ranges with the SDK's
 // readBytes and shows the progress, asks with perm.request for the file's folder when the grants do
-// not cover it, opens it into the document model (in a worker for a file over 8 MiB) or the details
-// view, follows it on disk, and opens a document's links with shell.open. It only talks to
-// ctx.commands, ctx.bridge and a view, so the SDK's test host runs it with a recording view.
+// not cover it (reading.js), opens it into the document model (in a worker for a file over 8 MiB) or
+// the details view, follows it on disk, and opens a document's links with shell.open. A document the
+// desk lists and the frame lost (it slept, or its page loaded again) opens again, where it was when a
+// sleep kept it (keep.js). It only talks to ctx.commands, ctx.bridge, ctx.surface and a view, so the
+// SDK's test host runs it with a recording view.
+import { placeOf, readPlace } from "./keep.js";
+import { codeOf, openInWorker, readWhole, scopeOf } from "./reading.js";
 import { createLinks } from "./view/links.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
  * @typedef {import("@endue-ai/bridge").BridgeEvent} BridgeEvent
- * @typedef {import("@endue-ai/bridge").Permission} Permission
  * @typedef {import("./model.js").Opened} Opened
  * @typedef {{ buffer: string, path: string, name: string, size: number, doc: Opened }} Shown
+ * @typedef {import("./keep.js").At} At
+ * @typedef {import("./keep.js").KeptPlace} KeptPlace
+ * @typedef {{ at: At | null, zoom: number | null }} Where where the view is in the pages, and the
+ *   zoom the person chose (null: fitted)
  * @typedef {{ label: string, value: number | null, max: number, detail: string, cancel(): void }} Progress
- * @typedef {{ show(shown: Shown | null): unknown, status(text: string): void, focus(): void,
- *   progress?(value: Progress | null): void }} View
- * @typedef {Shown & { watchId?: string }} Open
+ * @typedef {{ show(shown: Shown | null, where?: Where): unknown, status(text: string): void,
+ *   focus(): void, where?(): Where, progress?(value: Progress | null): void }} View
+ * @typedef {Shown & { watchId?: string, at?: At }} Open
  * @typedef {typeof import("./open.js").openDocument} OpenDocument
  * @typedef {{ read: typeof import("@endue-ai/plugin-sdk").readBytes,
- *   startWorker?: typeof import("@endue-ai/plugin-sdk").startWorker, open?: OpenDocument }} Options
+ *   startWorker?: typeof import("@endue-ai/plugin-sdk").startWorker, open?: OpenDocument,
+ *   keepFiles: typeof import("@endue-ai/plugin-sdk").keepFiles }} Options
  */
 
 /**
@@ -35,18 +43,6 @@ const openDocument = async (bytes, path) => (await readers()).openDocument(bytes
 export const LARGE = 8 * 1024 * 1024;
 
 const nameOf = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/") + 1);
-const folderOf = (/** @type {string} */ path) => {
-  const slash = path.lastIndexOf("/");
-  return slash < 0 ? path : path.slice(0, slash);
-};
-/** The scope a read carries: the file's whole folder, as the person is asked for it. */
-const scopeOf = (/** @type {string} */ path) => {
-  /** @type {{ permission: "fs:read", paths: string[] }} */
-  const scope = { permission: "fs:read", paths: [`${folderOf(path)}/**`] };
-  return scope;
-};
-const codeOf = (/** @type {unknown} */ error) =>
-  /** @type {{ code?: string }} */ (error)?.code ?? "error";
 const bytesOf = (/** @type {number} */ done, /** @type {number} */ total) =>
   `${done.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} bytes`;
 const DAMAGED = "This file is damaged, or it is a variant Docs does not read.";
@@ -61,53 +57,11 @@ const requested = (/** @type {unknown} */ args) => {
 };
 
 /**
- * Open a document in a worker started with the SDK's startWorker (ui/worker.js): the bytes move to
- * it (they are gone here afterwards) and the model comes back in parts. The signal ends the worker.
- * @param {Uint8Array} bytes @param {string} path
- * @param {{ signal: AbortSignal, startWorker: NonNullable<Options["startWorker"]> }} options
- * @returns {Promise<Opened>}
- */
-export function openInWorker(bytes, path, { signal, startWorker }) {
-  return new Promise((resolve, reject) => {
-    signal.throwIfAborted();
-    const worker = startWorker(new URL("./worker.js", import.meta.url), { name: "Docs reader" });
-    /** @type {any} */
-    let doc;
-    const finish = () => {
-      worker.terminate();
-      signal.removeEventListener("abort", abort);
-    };
-    const abort = () => {
-      finish();
-      reject(new DOMException("Opening was cancelled.", "AbortError"));
-    };
-    signal.addEventListener("abort", abort, { once: true });
-    worker.onerror = (event) => {
-      event.preventDefault?.();
-      finish();
-      reject(new Error(event.message || "The document reader stopped."));
-    };
-    worker.onmessage = ({ data }) => {
-      if (data.type === "head") doc = data.doc;
-      else if (data.type === "part") {
-        const list = typeof data.at === "number" ? doc.sections[data.at].blocks : doc[data.at];
-        for (const item of data.items) list.push(item);
-      } else if (data.type === "failed" || data.type === "done") {
-        finish();
-        if (data.type === "failed") reject(new Error(data.message));
-        else resolve(data.doc ?? doc);
-      }
-    };
-    worker.postMessage({ bytes, path }, [bytes.buffer]);
-  });
-}
-
-/**
- * @param {Pick<PluginContext, "bridge" | "commands">} ctx
+ * @param {Pick<PluginContext, "bridge" | "commands" | "surface">} ctx
  * @param {View} view
  * @param {Options} options
  */
-export function createDocs({ bridge, commands }, view, options) {
+export function createDocs({ bridge, commands, surface }, view, options) {
   const { read: readBytes, startWorker, open = openDocument } = options;
   if (!options.open) readers().catch(() => {});
   /** @type {Map<string, Open>} */
@@ -121,23 +75,51 @@ export function createDocs({ bridge, commands }, view, options) {
   /** @type {AbortController | undefined} */
   let opening;
   let openingBuffer = "";
+  /** Bumped by every opening, show and close: a quiet opening that lost to one says nothing. */
+  let generation = 0;
   const links = createLinks(bridge);
+  // Put to sleep while nobody sees it, Docs keeps its documents and comes back to them (ADR 0070).
+  const kept = options.keepFiles(surface, {
+    files: () =>
+      [...docs.values()].map((d) => ({
+        buffer: d.buffer,
+        path: d.path,
+        place: placeOf(d, d.buffer === shown ? view.where?.() : undefined),
+      })),
+    shown: () => shown,
+    readPlace,
+  });
+  /** Buffers this frame closed: a show of one does not open it again. @type {Set<string>} */
+  const closed = new Set();
+  /** The kept file of a buffer this frame does not hold yet. */
+  const keptOf = (/** @type {string} */ buffer) => kept.files().find((f) => f.buffer === buffer);
 
   const say = (/** @type {string} */ text) => {
     if (text === said) return;
     said = text;
     view.status(text);
   };
-  const render = () => {
+  const render = (/** @type {Where | undefined} */ where) => {
     const doc = shown === null ? undefined : docs.get(shown);
     if (!doc) return view.show(null);
-    const { watchId: _, ...visible } = doc;
-    return view.show(visible);
+    const { watchId: _, at: __, ...visible } = doc;
+    return view.show(visible, where);
   };
-  const present = async (/** @type {string} */ buffer) => {
+  /**
+   * Show a held document where it was when the person left it (or at `where`), with the focus
+   * unless the window is coming back from a sleep. The document left behind remembers its place.
+   * @param {string} buffer
+   * @param {{ where?: Where, focus?: boolean }} [how]
+   */
+  const present = async (buffer, { where, focus = true } = {}) => {
+    const left = shown === null || shown === buffer ? undefined : docs.get(shown);
+    const at = left && view.where?.().at;
+    if (left && at) left.at = at;
+    const doc = docs.get(buffer);
+    const back = shown !== buffer && doc?.at ? { at: doc.at, zoom: null } : undefined;
     shown = buffer;
-    await render();
-    view.focus();
+    await render(where ?? back);
+    if (focus) view.focus();
   };
   const held = (/** @type {string} */ buffer) => {
     const doc = docs.get(buffer);
@@ -160,46 +142,16 @@ export function createDocs({ bridge, commands }, view, options) {
     return buffer;
   };
 
-  /** The whole file in ranges; a refusal asks once for the file's folder and reads again. */
-  const read = async (
-    /** @type {string} */ path,
-    /** @type {AbortSignal} */ signal,
-    /** @type {(done: number, total: number) => void} */ onProgress,
-  ) => {
-    const scope = scopeOf(path);
-    const refused = new Error(`Not allowed to read ${path}.`);
-    const failed = (/** @type {unknown} */ error) =>
-      codeOf(error) === "permission_denied"
-        ? refused
-        : new Error(`Could not read ${path}: ${codeOf(error)}.`);
-    const call = () => readBytes({ bridge }, { path, scope }, { signal, onProgress });
-    try {
-      return await call();
-    } catch (error) {
-      if (signal.aborted) throw error;
-      if (codeOf(error) !== "permission_denied") throw failed(error);
-    }
-    const decision = await bridge
-      .call("perm.request", {
-        permission: /** @type {Permission} */ (scope),
-        reason: `To open ${path} in Docs`,
-      })
-      .catch(() => ({ granted: false }));
-    signal.throwIfAborted();
-    if (!decision.granted) throw refused;
-    try {
-      return await call();
-    } catch (error) {
-      if (signal.aborted) throw error;
-      throw failed(error);
-    }
-  };
-
   /**
    * Read and open a file, showing the progress; a reader's failure is the details view, never an
-   * error. Cancel stops the read or the worker and keeps what is on screen.
+   * error. Cancel stops the read or the worker and keeps what is on screen. Without `ask` (a window
+   * coming back from a sleep) a refused read is not asked for.
    */
-  const load = async (/** @type {string} */ buffer, /** @type {string} */ path) => {
+  const load = async (
+    /** @type {string} */ buffer,
+    /** @type {string} */ path,
+    { ask = true } = {},
+  ) => {
     stopOpening();
     const job = new AbortController();
     opening = job;
@@ -217,9 +169,11 @@ export function createDocs({ bridge, commands }, view, options) {
     say(`Opening ${name}…`);
     report("Reading");
     try {
-      const bytes = await read(path, job.signal, (done, total) =>
-        report("Reading", done, total, bytesOf(done, total)),
-      );
+      const bytes = await readWhole({ bridge, readBytes }, path, {
+        signal: job.signal,
+        onProgress: (done, total) => report("Reading", done, total, bytesOf(done, total)),
+        ask,
+      });
       const size = bytes.length;
       report("Opening");
       /** @type {Opened} */
@@ -278,22 +232,67 @@ export function createDocs({ bridge, commands }, view, options) {
       }
     });
 
+  /**
+   * Open `path` as `buffer`: a visit, or a document the desk lists that this frame lost, at `place`
+   * when a sleep kept one. Coming back from a sleep it neither asks for the folder nor takes the focus.
+   * @param {string} buffer
+   * @param {string} path
+   * @param {{ place?: KeptPlace, waking?: boolean }} [how]
+   */
+  const openFile = async (buffer, path, { place, waking = false } = {}) => {
+    /** @type {Open} */
+    const doc = await load(buffer, path, { ask: !waking });
+    forget(buffer);
+    kept.take(buffer);
+    closed.delete(buffer);
+    if (place?.at) doc.at = place.at;
+    docs.set(buffer, doc);
+    const where = place ? { at: place.at ?? null, zoom: place.zoom ?? null } : undefined;
+    await present(buffer, { where, focus: !waking });
+    // The watch the document had before the sleep still follows it.
+    if (place?.watchId) {
+      doc.watchId = place.watchId;
+      watches.set(place.watchId, buffer);
+    } else await watch(doc);
+  };
+  /** The document on its way to open, if any: a show of it waits for it. */
+  /** @type {{ buffer: string, done: Promise<boolean>, waking: boolean } | undefined} */
+  let underway;
+  /** @type {typeof openFile} */
+  const begin = (buffer, path, how = {}) => {
+    generation++;
+    const done = openFile(buffer, path, how);
+    const settled = done.then(
+      () => true,
+      () => false,
+    );
+    underway = { buffer, done: settled, waking: how.waking === true };
+    void settled.then(() => {
+      if (underway?.done === settled) underway = undefined;
+    });
+    return done;
+  };
+  /** Open again a document the desk lists that this frame lost, unless it closed it itself. */
+  const lost = (/** @type {string} */ buffer, /** @type {string | undefined} */ path) => {
+    const from = path ?? keptOf(buffer)?.path;
+    const missing = !docs.has(buffer) && !closed.has(buffer) && openingBuffer !== buffer;
+    return from && missing ? begin(buffer, from, { place: keptOf(buffer)?.place }) : undefined;
+  };
+
   answer("desk.files.visit", async (args) => {
     const { buffer, path } = requested(args);
     if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
-    const doc = await load(buffer, path);
-    forget(buffer);
-    docs.set(buffer, doc);
-    await present(buffer);
-    await watch(doc);
+    await begin(buffer, path);
   });
 
   answer("desk.files.revert", async (args) => {
     const { buffer, path: asked } = requested(args);
+    const reopening = lost(buffer, asked);
+    if (reopening) return reopening;
     const old = held(buffer);
     const doc = await load(buffer, asked ?? old.path);
     if (docs.get(buffer) !== old) return;
-    docs.set(buffer, { ...doc, watchId: old.watchId });
+    docs.set(buffer, { ...doc, watchId: old.watchId, at: old.at });
     if (shown === buffer) await render();
   });
 
@@ -302,7 +301,14 @@ export function createDocs({ bridge, commands }, view, options) {
   });
 
   answer("desk.buffers.show", async (args) => {
-    const { buffer } = requested(args);
+    const { buffer, path } = requested(args);
+    // Its document still opening (the window coming back from a sleep, or a visit): shown once it
+    // is. A visit that failed said so itself; one that did not open as the window woke opens now.
+    const before = underway?.buffer === buffer ? underway : undefined;
+    const ok = before ? await before.done : true;
+    const reopening = ok || before?.waking ? lost(buffer, path) : undefined;
+    if (reopening) return reopening;
+    generation++;
     held(buffer);
     stopOpening();
     await present(buffer);
@@ -310,9 +316,12 @@ export function createDocs({ bridge, commands }, view, options) {
 
   answer("desk.buffers.closed", async (args) => {
     const { buffer } = requested(args);
+    generation++;
+    closed.add(buffer);
+    const wasKept = kept.take(buffer);
     // Closing the buffer that is still opening stops that opening.
     const pending = openingBuffer === buffer && stopOpening() === buffer;
-    if (pending && !docs.has(buffer)) return;
+    if ((pending || wasKept) && !docs.has(buffer)) return;
     held(buffer);
     forget(buffer);
     if (shown !== buffer) return;
@@ -329,6 +338,16 @@ export function createDocs({ bridge, commands }, view, options) {
   });
 
   render();
+
+  // Back from a sleep, the document that was on screen opens again where it was; the others open
+  // when shown. A show of another document meanwhile goes first, and this one gives way quietly.
+  const back = kept.shown === null ? undefined : keptOf(kept.shown);
+  if (back) {
+    const mine = generation + 1;
+    begin(back.buffer, back.path, { place: back.place, waking: true }).catch((error) => {
+      if (generation === mine) say(error instanceof Error ? error.message : String(error));
+    });
+  }
 
   return {
     /** A link in the document: http, https and mailto open in the system's browser or mail app. */

@@ -1,34 +1,25 @@
 // The DOM for the docs plugin: the header (name, format, "Text only"), the toolbar, the outline, the
 // pages on the desk's background, the comments panel, find, zoom, the details view and a status
-// live region. Pages are drawn a few at a time so a long document never freezes the surface.
-// Chords the desk binds (Mod+S, Mod+O, Mod+W, Mod+K) are never prevented. A link goes to
-// `actions.external`; the opening's progress is the page's <desk-progress>.
+// live region. Pages are drawn a few at a time so a long document never freezes the surface
+// (draw.js). In a narrow page the panels fold over the pages (panels.js) and the header is one row
+// (style.css). Where the person is in the pages can be read and gone back to (place.js). Chords the
+// desk binds (Mod+S, Mod+O, Mod+W, Mod+K) are never prevented. A link goes to `actions.external`;
+// the opening's progress is the page's <desk-progress>.
 import { renderDetails } from "./details.js";
+import { createDraw } from "./draw.js";
 import { createFind } from "./find.js";
-import { paginate } from "./pages.js";
-import { headingsOf, renderComments, renderOutline } from "./panels.js";
+import { createPanels, headingsOf, renderComments, renderOutline } from "./panels.js";
+import { goTo as scrollTo, whereIn } from "./place.js";
 import { createProgress } from "./progress.js";
-import { renderBlocks } from "./render.js";
 
 /**
  * @typedef {import("../docs.js").Shown} Shown
+ * @typedef {import("../docs.js").Where} Where
  * @typedef {import("../model.js").DocModel} DocModel
  */
 
 const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4];
-const BATCH = 120;
 const PX = 96 / 72;
-
-/** A turn of the event loop: a message, which a hidden page does not throttle as it does timers. */
-const pause = () =>
-  new Promise((resolve) => {
-    const channel = new MessageChannel();
-    channel.port1.onmessage = () => {
-      channel.port1.close();
-      resolve(undefined);
-    };
-    channel.port2.postMessage(null);
-  });
 
 /**
  * @param {Document} doc
@@ -64,9 +55,13 @@ export function createView(doc, actions = {}) {
   let selected = null;
   /** @type {Promise<void>} */
   let drawn = Promise.resolve();
-  /** Pages already drawn, per document, so switching back is instant. */
-  /** @type {WeakMap<DocModel, HTMLElement[]>} */
-  const cache = new WeakMap();
+  const draw = createDraw(doc, sheet);
+  const panels = createPanels(doc, {
+    outline,
+    comments: commentsPanel,
+    outlineToggle,
+    commentsToggle,
+  });
 
   const say = (/** @type {string} */ words) => {
     status.textContent = words;
@@ -89,7 +84,9 @@ export function createView(doc, actions = {}) {
   const fitZoom = () => {
     const widest = Math.max(...(model?.sections ?? []).map((s) => s.width), 0);
     if (!widest || desk.clientWidth === 0) return undefined;
-    return (desk.clientWidth - 48) / (widest * PX);
+    // The sheet's padding is narrower in a narrow page (style.css).
+    const pad = Number.parseFloat(doc.defaultView?.getComputedStyle(sheet).paddingLeft ?? "") || 24;
+    return (desk.clientWidth - 2 * pad) / (widest * PX);
   };
   const fit = () => {
     zoomed = true;
@@ -98,6 +95,8 @@ export function createView(doc, actions = {}) {
   };
 
   const goTo = async (/** @type {string} */ id) => {
+    // A panel over the pages folds to show where it went.
+    panels.fold();
     // A heading the batches have not drawn yet is waited for.
     if (!doc.getElementById(id)) await drawn;
     const el = doc.getElementById(id);
@@ -117,6 +116,7 @@ export function createView(doc, actions = {}) {
       el.classList.remove("is-selected");
     comments.mark(id);
     if (!id) return;
+    panels.fold();
     const marked = Array.from(sheet.querySelectorAll("[data-comments]")).filter((el) =>
       /** @type {HTMLElement} */ (el.dataset.comments ?? "").split(" ").includes(id),
     );
@@ -130,86 +130,6 @@ export function createView(doc, actions = {}) {
     );
   };
   const comments = renderComments(doc, byId("comment-list"), (id) => select(id));
-
-  /** Draw every page of a model into the sheet, a batch of blocks at a time. */
-  const draw = async (/** @type {DocModel} */ doc_, /** @type {number} */ mine) => {
-    const cached = cache.get(doc_);
-    if (cached) {
-      sheet.replaceChildren(...cached);
-      return;
-    }
-    sheet.replaceChildren();
-    const pages = paginate(doc_);
-    const { ids } = headingsOf(doc_);
-    const notes = new Map(doc_.notes.map((n) => [n.id, n]));
-    /** @type {HTMLElement[]} */
-    const drawnPages = [];
-    let budget = BATCH;
-    for (const [index, page] of pages.entries()) {
-      const { section } = page;
-      const m = section.margins;
-      const header = m.header ?? m.top / 2;
-      const footer = m.footer ?? m.bottom / 2;
-      const article = doc.createElement("article");
-      article.className = "page";
-      article.setAttribute("aria-label", `Page ${index + 1} of ${pages.length}`);
-      article.style.width = `${section.width}pt`;
-      article.style.minHeight = `${section.height}pt`;
-      // Pages off screen skip layout and paint until they come near, so a long document stays light.
-      article.style.containIntrinsicSize = `auto ${section.width}pt auto ${section.height}pt`;
-      article.style.padding = `${header}pt ${m.right}pt ${footer}pt ${m.left}pt`;
-      const ctx = { doc, page: index + 1, pages: pages.length, headings: ids, notes: new Set() };
-      const top = part("page-header", Math.max(0, m.top - header));
-      renderBlocks(section.header, ctx, top);
-      const body = part("page-body", 0);
-      // The page is on the sheet before its body is complete, so a long page appears at once
-      // and fills in while the surface stays responsive.
-      article.append(top, body);
-      sheet.append(article);
-      drawnPages.push(article);
-      for (let at = 0; at < page.blocks.length; at += BATCH) {
-        renderBlocks(page.blocks.slice(at, at + BATCH), ctx, body);
-        budget -= Math.min(BATCH, page.blocks.length - at);
-        if (budget <= 0) {
-          budget = BATCH;
-          await pause();
-          if (mine !== token) return;
-        }
-      }
-      const own = [...ctx.notes].map((id) => notes.get(id)).filter((n) => n?.kind === "footnote");
-      const last = index === pages.length - 1;
-      const ends = last ? doc_.notes.filter((n) => n.kind === "endnote") : [];
-      const noteBox = part("page-notes", 0);
-      for (const note of [...own, ...ends]) if (note) noteBox.append(renderNote(note, ctx));
-      const bottom = part("page-footer", Math.max(0, m.bottom - footer));
-      renderBlocks(section.footer, ctx, bottom);
-      article.append(...(noteBox.childElementCount ? [noteBox] : []), bottom);
-      budget--;
-    }
-    cache.set(doc_, drawnPages);
-  };
-  const part = (/** @type {string} */ className, /** @type {number} */ min) => {
-    const el = doc.createElement("div");
-    el.className = className;
-    if (min) el.style.minHeight = `${min}pt`;
-    return el;
-  };
-  const renderNote = (
-    /** @type {import("../model.js").Note} */ note,
-    /** @type {Parameters<typeof renderBlocks>[1]} */ ctx,
-  ) => {
-    const el = doc.createElement("div");
-    el.className = `note ${note.kind}`;
-    el.id = `docs-note-${note.id}`;
-    const label = doc.createElement("span");
-    label.className = "note-label";
-    label.textContent = note.label;
-    const text = doc.createElement("div");
-    text.className = "note-text";
-    renderBlocks(note.blocks, ctx, text);
-    el.append(label, text);
-    return el;
-  };
 
   const detailEls = () => ({
     facts: byId("details-facts"),
@@ -263,21 +183,6 @@ export function createView(doc, actions = {}) {
   byId("zoom-in").addEventListener("click", () => zoomBy(1));
   byId("zoom-out").addEventListener("click", () => zoomBy(-1));
   byId("zoom-fit").addEventListener("click", fit);
-  /** Panels the person closed stay closed for the next document. */
-  const closed = { outline: false, comments: false };
-  const toggle = (
-    /** @type {HTMLElement} */ button,
-    /** @type {HTMLElement} */ panel,
-    /** @type {"outline" | "comments"} */ which,
-  ) =>
-    button.addEventListener("click", () => {
-      panel.hidden = !panel.hidden;
-      closed[which] = panel.hidden;
-      button.setAttribute("aria-pressed", String(!panel.hidden));
-    });
-  toggle(outlineToggle, outline, "outline");
-  toggle(commentsToggle, commentsPanel, "comments");
-
   sheet.addEventListener("click", (event) => {
     const target = /** @type {HTMLElement} */ (event.target);
     const link = target.closest?.("a");
@@ -312,14 +217,20 @@ export function createView(doc, actions = {}) {
       setZoom(1);
     } else if (key === "escape" && !findBar.hidden) closeFind();
     else if (key === "escape" && selected) select(null);
-    else return;
+    else if (!(key === "escape" && panels.fold())) return;
     event.preventDefault();
   });
 
   return {
-    /** @param {Shown | null} shown */
-    async show(shown) {
+    /**
+     * @param {Shown | null} shown
+     * @param {Where} [where] where to put the view: its place (null: the first page) and the zoom
+     *   the person chose (null: the view's). Without it the same document stays where it is and
+     *   another starts at its first page.
+     */
+    async show(shown, where) {
       const mine = ++token;
+      const before = model;
       find.clear();
       selected = null;
       for (const el of Array.from(sheet.querySelectorAll(".is-selected")))
@@ -351,13 +262,16 @@ export function createView(doc, actions = {}) {
       const count = docModel.comments.length;
       commentsToggle.hidden = count === 0;
       commentsToggle.textContent = `Comments (${count})`;
-      commentsPanel.hidden = count === 0 || closed.comments;
-      commentsToggle.setAttribute("aria-pressed", String(!commentsPanel.hidden));
-      outline.hidden = closed.outline;
+      panels.show(count > 0);
       // The zoom is set before the pages are drawn: changing it afterwards lays every page out again.
-      const fitted = zoomed ? undefined : fitZoom();
-      setZoom(fitted && fitted < 1 ? fitted : zoomed ? zoom : 1);
-      drawn = draw(docModel, mine).catch(() => {
+      if (where?.zoom) {
+        zoomed = true;
+        setZoom(where.zoom);
+      } else {
+        const fitted = zoomed ? undefined : fitZoom();
+        setZoom(fitted && fitted < 1 ? fitted : zoomed ? zoom : 1);
+      }
+      drawn = draw(docModel, () => mine === token).catch(() => {
         // A model the renderer cannot draw still says so instead of leaving a blank page.
         sheet.replaceChildren();
         layout.hidden = true;
@@ -375,12 +289,18 @@ export function createView(doc, actions = {}) {
       });
       await drawn;
       if (mine !== token || layout.hidden) return;
+      if (where || before !== docModel) scrollTo(desk, sheet, where?.at ?? null);
       if (!findBar.hidden && findText.value) runFind();
       const pages = sheet.childElementCount;
       say(
         `${shown.name}: ${pages} ${pages === 1 ? "page" : "pages"}${count ? `, ${count} ${count === 1 ? "comment" : "comments"}` : ""}.`,
       );
     },
+    /** Where the view is in the document on screen, and the zoom the person chose. @returns {Where} */
+    where: () => ({
+      at: model && !layout.hidden ? whereIn(desk, sheet) : null,
+      zoom: zoomed ? zoom : null,
+    }),
     /** @param {string} words */
     status: say,
     progress: createProgress(doc),

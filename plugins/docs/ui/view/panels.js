@@ -1,11 +1,71 @@
 // The two side panels: the outline (headings of levels 1 to 6, each a button that scrolls to it)
-// and the comments (author, date and text; selecting one highlights its range in the page).
+// and the comments (author, date and text; selecting one highlights its range in the page). Beside
+// the pages in a wide page; in a narrow one they fold over the pages (createPanels).
 import { plainText } from "../model.js";
 
 /**
  * @typedef {import("../model.js").Paragraph} Paragraph
  * @typedef {{ id: string, level: number, text: string }} Heading
+ * @typedef {"outline" | "comments"} Panel
  */
+
+/** A page this narrow lays the panels over the pages (style.css says the same width). */
+export const NARROW = "(max-width: 719px)";
+
+/**
+ * The panels' toggles. In a wide page a panel the person closed stays closed for the next document.
+ * In a narrow one both start folded, so the pages come first: a toggle opens one over the pages and
+ * folds the other, and choosing in it, Escape or a change of width folds it again.
+ * @param {Document} doc
+ * @param {{ outline: HTMLElement, comments: HTMLElement, outlineToggle: HTMLElement,
+ *   commentsToggle: HTMLElement }} els
+ */
+export function createPanels(doc, { outline, comments, outlineToggle, commentsToggle }) {
+  const narrow = doc.defaultView?.matchMedia?.(NARROW);
+  /** @type {Record<Panel, [HTMLElement, HTMLElement]>} */
+  const parts = { outline: [outline, outlineToggle], comments: [comments, commentsToggle] };
+  /** In a wide page: closed by the person. In a narrow one: open over the pages. */
+  const closed = { outline: false, comments: false };
+  const over = { outline: false, comments: false };
+  const has = { outline: false, comments: false };
+  const apply = () => {
+    for (const which of /** @type {Panel[]} */ (["outline", "comments"])) {
+      const [panel, button] = parts[which];
+      panel.hidden = !has[which] || (narrow?.matches ? !over[which] : closed[which]);
+      button.setAttribute("aria-pressed", String(!panel.hidden));
+    }
+  };
+  const fold = () => {
+    const open = over.outline || over.comments;
+    over.outline = over.comments = false;
+    if (open) apply();
+    return open && narrow?.matches === true;
+  };
+  for (const which of /** @type {Panel[]} */ (["outline", "comments"]))
+    parts[which][1].addEventListener("click", () => {
+      if (narrow?.matches) {
+        const open = !over[which];
+        over.outline = over.comments = false;
+        over[which] = open;
+      } else closed[which] = !closed[which];
+      apply();
+    });
+  narrow?.addEventListener?.("change", () => {
+    fold();
+    apply();
+  });
+  return {
+    /** A document is shown: its panels as the person left them, folded in a narrow page. */
+    show(/** @type {boolean} */ hasComments) {
+      has.outline = true;
+      has.comments = hasComments;
+      over.outline = over.comments = false;
+      apply();
+    },
+    /** Fold a panel open over the pages; true when one was (Escape is then taken). */
+    fold,
+  };
+}
 
 /** The headings of a document, each with the element id the page view gives it. */
 export function headingsOf(/** @type {import("../model.js").DocModel} */ model) {
