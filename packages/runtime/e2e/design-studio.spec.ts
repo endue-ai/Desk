@@ -55,3 +55,39 @@ test("the design system studio previews, reverts and applies a design system ove
   );
   expect(active).toBe("endue.design-soft");
 });
+
+// The desk's own chips take the design system's corners as its kit does (#158, item 18): under
+// Blueprint (square buttons) the profile chips, the desktop buttons and the talk pill stayed round.
+test("the profile chips, the desktop buttons and the talk pill take a design system's corners", async ({
+  page,
+}) => {
+  await openShell(page, "?designs=1&lang=en");
+  const corners = () =>
+    page.evaluate(() => {
+      const radius = (selector: string) => {
+        const el = document.querySelector(selector);
+        return el ? getComputedStyle(el).borderTopLeftRadius : "missing";
+      };
+      return {
+        chip: radius(".mode-chip"),
+        desktop: radius(".desktop-button"),
+        pill: radius(".talk-pill"),
+      };
+    });
+  const use = (id: string) =>
+    page.evaluate(
+      (design) => window.__shell.desk.runtime.commands.run("desk.design.use", { id: design }),
+      id,
+    );
+  const endue = await corners();
+  expect([endue.chip, endue.desktop]).toEqual(["8px", "8px"]);
+  // A pill: its corners at least half its 48 px height.
+  expect(Number.parseFloat(endue.pill)).toBeGreaterThanOrEqual(24);
+
+  await use("endue.design-blueprint");
+  await expect.poll(corners).toEqual({ chip: "0px", desktop: "0px", pill: "0px" });
+
+  await use("endue.design-soft");
+  await expect.poll(async () => (await corners()).chip).toBe("9999px");
+  expect(Number.parseFloat((await corners()).pill)).toBeGreaterThanOrEqual(24);
+});

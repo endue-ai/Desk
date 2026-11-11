@@ -101,18 +101,20 @@
 .composer-option:hover,
 .composer-option.is-selected { background: var(--desk-hover); }
 
-/* The talk bar has a quiet pill, an unfocused hover preview, and a full editing state. */
+/* The talk bar has a quiet pill, an unfocused hover preview, and a full editing state. It is a pill
+   while buttons have corners and square where the design system or the theme makes them square
+   (Blueprint, Amber CRT): a square button's radius times anything is 0. */
 .talk-pill {
   width: 184px;
   height: 48px;
   border: 1px solid var(--desk-primary-border);
-  border-radius: var(--radius-full);
+  border-radius: calc(var(--desk-button-radius) * 999);
   background: var(--desk-card);
   box-shadow: var(--desk-shadow-md);
   transition: width var(--motion-base) ease, height var(--motion-base) ease, border-radius var(--motion-base) ease;
 }
 .talk-pill[data-state="hover"] { width: 400px; border-color: var(--desk-accent); }
-.talk-pill.is-open { width: min(640px, calc(100vw - 280px)); height: 72px; border-radius: var(--radius-lg); border-color: var(--desk-accent); }
+.talk-pill.is-open { width: min(640px, calc(100vw - 280px)); height: 72px; border-radius: min(var(--radius-lg), calc(var(--desk-button-radius) * 999)); border-color: var(--desk-accent); }
 .talk-pill .composer-hint { display: none; }
 .talk-pill .composer-field {
   position: absolute;
@@ -152,7 +154,7 @@
   height: 22px;
   padding: 2px 9px;
   overflow: hidden;
-  border-radius: var(--radius-full);
+  border-radius: calc(var(--desk-button-radius) * 999);
   background: var(--desk-muted);
   color: var(--desk-text-muted);
   font-size: var(--text-xs);

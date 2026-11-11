@@ -48,7 +48,7 @@
   height: var(--control-sm);
   padding: 0 var(--space-3);
   border: 1px solid var(--desk-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--desk-button-radius);
   background: var(--desk-card);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -88,7 +88,7 @@
   height: var(--control-sm);
   padding: 0;
   border: 1px solid var(--desk-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--desk-button-radius);
   background: transparent;
   color: var(--desk-text-muted) !important;
   font-size: var(--text-xs);
