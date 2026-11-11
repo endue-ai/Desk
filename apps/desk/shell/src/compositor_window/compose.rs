@@ -33,6 +33,11 @@ impl CompositorWindow {
                 let id = composed.texture_of(surface)?;
                 Some((id, composed.frames.size(id)?))
             };
+            let popup = |surface: &str| {
+                let (place, id, size) = composed.popup_of(surface)?;
+                let at = desk_compositor::Rect::new(place.x, place.y, place.width, place.height);
+                Some((at, (id, size)))
+            };
             let thumbnails = &self.mapping.thumbnails;
             let thumbnail = |host: &str| thumbnails.of(composed.texture_of(host)?);
             let map = (layout.as_ref()).map(|layout| draw_map::MapSource {
@@ -44,6 +49,7 @@ impl CompositorWindow {
                 scale,
                 page: texture(PAGE),
                 surface: &texture,
+                popup: &popup,
                 spread: self.spreading.open.as_ref().map(|s| (s, at)),
                 map,
             };

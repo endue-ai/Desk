@@ -25,6 +25,7 @@ pub mod cursor;
 pub mod draw;
 mod draw_map;
 mod draw_pane;
+mod draw_popup;
 mod draw_spread;
 mod gpu;
 pub mod harness;

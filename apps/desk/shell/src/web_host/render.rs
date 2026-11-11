@@ -2,9 +2,17 @@
 //! the compositor as an `attach` inside CEF's paint callback (the shared texture is CEF's again when
 //! the callback returns). macOS names the IOSurface and the compositor imports it; on Windows and
 //! Linux the `cef` crate's importer copies the frame into a texture of the compositor's device first.
-//! Software paints (no GPU: CI's path) are uploaded and attached the same way. For input (#56) it
-//! says the composition's character boxes (`ime.caret`), whether an editable element has the focus
-//! (`ime.enabled`), and hands the drags the page's engine starts to the compositor's broker.
+//! Software paints (no GPU: CI's path) are uploaded and attached the same way. A popup widget's
+//! paints (a select's list, a picker) are attached as a surface of their own, placed over the view
+//! (`popup.rs`, #156), the host's other browsers making room for its first frame (`popup_room.rs`,
+//! the `room`). For input (#56) it says the composition's character boxes (`ime.caret`),
+//! whether an editable element has the focus (`ime.enabled`), and hands the drags the page's engine
+//! starts to the compositor's broker.
+
+#[path = "popup.rs"]
+pub mod popup;
+#[path = "popup_room.rs"]
+pub mod popup_room;
 
 use std::sync::Arc;
 
@@ -20,6 +28,7 @@ wrap_render_handler! {
     pub struct SurfaceRender {
         view: SharedView,
         sink: Arc<dyn SurfaceSink>,
+        room: popup_room::Room,
     }
 
     impl RenderHandler {
@@ -52,16 +61,13 @@ wrap_render_handler! {
             dirty_rects: Option<&[Rect]>,
             info: Option<&AcceleratedPaintInfo>,
         ) {
-            // Popups (a <select>'s list) are drawn by the page itself once input arrives (#56).
-            let (true, Some(info)) = (type_ == PaintElementType::VIEW, info) else { return };
+            let Some(info) = info else { return };
             let Some(painted) = paint::painted(info) else {
                 self.failed("CEF painted without a shared texture".into());
                 return;
             };
-            let (frame, generation, surface) = {
-                let mut view = self.view.lock();
-                let (frame, generation) = view.next_frame(painted.size);
-                (frame, generation, view.surface.clone())
+            let Some((surface, frame, generation)) = self.next_frame(type_, painted.size) else {
+                return;
             };
             let damage = paint::damage(dirty_rects, painted.size);
             let damage_px = damage.iter().map(|r| r.width * r.height).sum();
@@ -69,10 +75,42 @@ wrap_render_handler! {
             match import(&*self.sink, &attach, info) {
                 Ok(_) => {
                     let mut view = self.view.lock();
+                    if type_ == PaintElementType::POPUP {
+                        view.counts.popup_paints += 1;
+                        return;
+                    }
                     view.counts.paints += 1;
                     view.counts.damage_px = damage_px;
                 }
                 Err(why) => self.failed(why),
+            }
+        }
+
+        // A popup widget opens (a select's list, a picker) or closes; `on_popup_size` places it. CEF
+        // shows it after this returns: the other browsers hand over their frames first, so that
+        // Chromium keeps the popup's (`popup_room.rs`).
+        fn on_popup_show(&self, browser: Option<&mut Browser>, show: ::std::os::raw::c_int) {
+            if let (true, Some(browser)) = (show != 0, browser) {
+                self.room.make(browser.identifier());
+            }
+            let (surface, heard) = {
+                let mut view = self.view.lock();
+                (view.surface.clone(), view.popup.shown(show != 0))
+            };
+            if let Some(place) = heard {
+                self.sink.popup(&surface, place);
+            }
+        }
+
+        // Where the popup is, in the view's pixels: the pointer there is the popup's (CEF's routing).
+        fn on_popup_size(&self, _browser: Option<&mut Browser>, rect: Option<&Rect>) {
+            let Some(rect) = rect else { return };
+            let (surface, heard) = {
+                let mut view = self.view.lock();
+                (view.surface.clone(), view.popup.sized(rect))
+            };
+            if let Some(place) = heard {
+                self.sink.popup(&surface, place);
             }
         }
 
@@ -124,19 +162,22 @@ wrap_render_handler! {
             width: ::std::os::raw::c_int,
             height: ::std::os::raw::c_int,
         ) {
-            if type_ != PaintElementType::VIEW || buffer.is_null() || width <= 0 || height <= 0 {
+            if buffer.is_null() || width <= 0 || height <= 0 {
                 return;
             }
             let size = (width as u32, height as u32);
             // SAFETY: CEF hands `width * height` BGRA pixels, valid for this call.
             #[allow(unsafe_code)]
             let pixels = unsafe { std::slice::from_raw_parts(buffer, size.0 as usize * size.1 as usize * 4) };
-            let (frame, generation, surface) = {
+            let Some((surface, frame, generation)) = self.next_frame(type_, size) else { return };
+            {
                 let mut view = self.view.lock();
-                let (frame, generation) = view.next_frame(size);
-                view.counts.software_paints += 1;
-                (frame, generation, view.surface.clone())
-            };
+                if type_ == PaintElementType::POPUP {
+                    view.counts.popup_paints += 1;
+                } else {
+                    view.counts.software_paints += 1;
+                }
+            }
             let (device, queue) = self.sink.device();
             let texture = upload(&device, &queue, size, pixels);
             let painted = Painted {
@@ -155,6 +196,18 @@ wrap_render_handler! {
 }
 
 impl SurfaceRender {
+    /// What a paint of `type_` attaches as: the view's next frame, or its popup's while one is open
+    /// (a popup's frames are a surface of their own, `popup::id`).
+    fn next_frame(&self, type_: PaintElementType, size: (u32, u32)) -> Option<(String, u64, u64)> {
+        let mut view = self.view.lock();
+        if type_ == PaintElementType::VIEW {
+            let (frame, generation) = view.next_frame(size);
+            return Some((view.surface.clone(), frame, generation));
+        }
+        let (frame, generation) = view.popup.next_frame(size)?;
+        Some((popup::id(&view.surface), frame, generation))
+    }
+
     fn failed(&self, why: String) {
         let mut view = self.view.lock();
         view.counts.import_errors += 1;

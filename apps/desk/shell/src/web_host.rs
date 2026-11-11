@@ -51,6 +51,8 @@ pub trait SurfaceSink: Send + Sync {
     fn attach(&self, attach: &SurfaceAttach, source: Source<'_>) -> Result<Attached, AttachError>;
     /// Every other message: `ready`, `died`, `title`.
     fn message(&self, message: SurfaceMessage);
+    /// Its popup widget is at `place` in its view, or closed (`render::popup`, #156).
+    fn popup(&self, surface: &str, place: Option<render::popup::Place>);
     /// The compositor's device, for frames the engine imports or the host uploads itself.
     fn device(&self) -> (wgpu::Device, wgpu::Queue);
 }
@@ -256,7 +258,7 @@ impl WebHost {
             return;
         };
         view.lock().restart();
-        let render = render::SurfaceRender::new(view.clone(), Arc::clone(&self.sink));
+        let render = render::SurfaceRender::new(view.clone(), Arc::clone(&self.sink), self.room());
         let mut client = client::client(self, surface, render, self.desk.clone());
         let info = WindowInfo {
             windowless_rendering_enabled: 1,

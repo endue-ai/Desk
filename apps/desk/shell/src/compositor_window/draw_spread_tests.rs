@@ -53,6 +53,7 @@ fn sources<'a>(spread: Option<(&'a Spread, f64)>, map: Option<MapSource<'a>>) ->
         scale: 1.0,
         page: Some((TextureId(1), (1440, 900))),
         surface: &textures,
+        popup: &crate::compositor_window::draw_popup::none,
         spread,
         map,
     }

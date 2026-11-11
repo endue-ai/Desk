@@ -14,7 +14,8 @@
 //! with the input router's target for it (#56); the compositor's own chrome lets the pointer
 //! through to the page, which finds what a press lands on, but for the cards' buttons, which run
 //! their commands. While the spread is open every window is a card at its pose instead
-//! (`draw_spread.rs`).
+//! (`draw_spread.rs`). A surface's open popup widget (a select's list, a picker) goes over the
+//! surface, the page's over everything (`draw_popup.rs`).
 
 use desk_compositor::a11y::ChromeSpread;
 use desk_compositor::glam::{Mat4, Vec2, Vec3};
@@ -41,6 +42,8 @@ pub struct Sources<'a> {
     pub page: Option<Texture>,
     /// A surface's texture, by surface host.
     pub surface: &'a dyn Fn(&str) -> Option<Texture>,
+    /// A surface's open popup widget, by surface host (#156, `draw_popup.rs`).
+    pub popup: &'a dyn Fn(&str) -> Option<super::draw_popup::Popup>,
     /// The spread while it is open, and the window manager's time (#54).
     pub spread: Option<(&'a desk_wm::Spread, f64)>,
     /// The canvas map while it shows (#54).
@@ -241,6 +244,8 @@ pub fn draw(
     }
     // The canvas map with it, over the bars and under what the desk opens over them.
     super::system::draw(scene, &mut chrome, desk, plan, hosted, from, &mut drawn)?;
+    // The page's own popup (a list in the settings, say) over everything it lays out.
+    super::draw_popup::over(scene, desk, whole, PAGE, from, &mut drawn.shown)?;
     Ok(drawn)
 }
 

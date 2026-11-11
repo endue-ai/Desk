@@ -1,7 +1,7 @@
 //! What compositor mode tells checks (development builds, #52, #81): the composed frame as a PNG,
 //! read back from the GPU (`compositor_capture`), and what every surface painted, where it is drawn
-//! and which parts of it nothing covers, the windows the compositor hosts and the live set
-//! (`compositor_stats`).
+//! and which parts of it nothing covers, the windows the compositor hosts and the live set, and
+//! where each open popup widget is drawn from, once it painted (`compositor_stats`).
 
 use desk_wm::host::{intersect, subtract};
 use serde_json::{Value, json};
@@ -114,6 +114,16 @@ impl CompositorWindow {
             })
             .collect();
         let page = self.page.lock().counts.clone();
+        // Each popup widget that painted, at its place in its surface's view (#156).
+        let popups: serde_json::Map<String, Value> = (composed.popups.keys())
+            .filter_map(|s| {
+                let (p, _, size) = composed.popup_of(s)?;
+                Some((
+                    s.clone(),
+                    json!({ "place": [p.x, p.y, p.width, p.height], "texture": size }),
+                ))
+            })
+            .collect();
         // The system layer (ADR 0160): the system surfaces and their callers, the desk's parts the
         // last scene drew whole, and the plugin surfaces the page lays out there, by layer.
         let system: Vec<Value> = (desk_web::sender::System::ALL.iter())
@@ -133,6 +143,7 @@ impl CompositorWindow {
             "page": page,
             "system": { "surfaces": system, "parts": self.parts.0, "order": self.parts.1, "plugins": layers },
             "surfaces": surfaces,
+            "popups": popups,
             "windows": windows,
             "live": self.hosted.live(),
             "browsers": self.host.browsers(),

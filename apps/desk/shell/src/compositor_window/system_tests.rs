@@ -93,6 +93,7 @@ fn drawn_map(hosted: &Hosted, map: bool) -> (Scene, crate::compositor_window::dr
         scale: 1.0,
         page: Some((PAGE_TEXTURE, (1440, 900))),
         surface: &textures,
+        popup: &crate::compositor_window::draw_popup::none,
         spread: None,
         map: layout.as_ref().map(|layout| MapSource {
             layout,

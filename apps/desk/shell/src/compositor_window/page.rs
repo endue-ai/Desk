@@ -14,8 +14,8 @@ impl CompositorWindow {
     /// Open the desk's system surface at `url`: the runtime's page.
     pub fn open_page(&mut self, url: &str) {
         debug_assert_eq!(PAGE, System::Desk.id());
-        let render =
-            SurfaceRender::new(self.page.clone(), std::sync::Arc::new(self.shared.clone()));
+        let sink = std::sync::Arc::new(self.shared.clone());
+        let render = SurfaceRender::new(self.page.clone(), sink, self.host.room());
         let mut client = crate::client::compositor_page(
             self.desk.pump.clone(),
             std::sync::Arc::clone(&self.desk),

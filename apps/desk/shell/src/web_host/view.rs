@@ -36,6 +36,8 @@ pub struct Counts {
     pub stalls: u64,
     pub stalled: bool,
     pub stall_reloads: u64,
+    /// Paints of its popup widget (a select's list, a picker: `popup.rs`) that reached the compositor.
+    pub popup_paints: u64,
 }
 
 /// One surface's layout and paint state.
@@ -60,6 +62,8 @@ pub struct View {
     screen_scale: f32,
     /// Its accessibility export (#57), kept across its browsers.
     pub a11y: a11y::Exports,
+    /// Its page's popup widget, while one is open (#156).
+    pub popup: super::render::popup::Popup,
 }
 
 impl View {
@@ -77,6 +81,7 @@ impl View {
             watch: Watch::default(),
             screen_scale: scale,
             a11y: Default::default(),
+            popup: Default::default(),
         }
     }
 
@@ -87,6 +92,7 @@ impl View {
         self.counts.stalled = false;
         self.watch.restart();
         self.screen_scale = self.scale;
+        self.popup = Default::default();
     }
 
     /// Whether the scale changed since its browser last read its screen info, which it reads now.

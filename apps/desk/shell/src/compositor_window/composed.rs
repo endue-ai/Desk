@@ -1,6 +1,8 @@
 //! The compositor's side of the surface protocol in the desk's process: the frames surfaces attach
 //! (`desk_compositor::Frames`, the texture import entry) and the other messages they send, behind
-//! the `SurfaceSink` the web host talks to. Shared by the compositor window and the surface probe.
+//! the `SurfaceSink` the web host talks to, and where each surface's popup widget is (#156: its
+//! frames attach as a surface of their own, drawn over it). Shared by the compositor window and the
+//! surface probe.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -10,6 +12,7 @@ use desk_compositor::{AttachError, Attached, Compositor, Frames, Scene, Source, 
 use desk_surface::generated::{SurfaceAttach, SurfaceMessage, SurfacePixelRect};
 
 use crate::web_host::SurfaceSink;
+use crate::web_host::render::popup::{self, Place};
 
 /// The most page paints kept between two looks of the window.
 const PAGE_PAINTS: usize = 64;
@@ -29,6 +32,8 @@ pub struct Composed {
     /// The damage of each frame the desk's page attached since the window last looked, in texture
     /// pixels: what its picture shows of the windows (`hosted.rs`, `PageShown`).
     pub page_damage: Vec<Vec<SurfacePixelRect>>,
+    /// Where each surface's open popup widget is, in its view's logical pixels.
+    pub popups: HashMap<String, Place>,
 }
 
 impl Composed {
@@ -48,12 +53,30 @@ impl Composed {
         self.textures.get(surface).copied()
     }
 
-    /// `surface` is gone: its frames go too.
+    /// `surface` is gone: its frames go too, and its popup's.
     pub fn destroy(&mut self, surface: &str) {
+        self.close_popup(surface);
+        self.drop_frames(surface);
+    }
+
+    fn drop_frames(&mut self, surface: &str) {
         if let Some(id) = self.textures.remove(surface) {
             self.frames.destroy(&mut self.compositor, id);
             self.dirty = true;
         }
+    }
+
+    /// `surface`'s popup closed (or its page went): its place and its frames go.
+    fn close_popup(&mut self, surface: &str) {
+        self.dirty |= self.popups.remove(surface).is_some();
+        self.drop_frames(&popup::id(surface));
+    }
+
+    /// Where `surface`'s popup is and the texture it is drawn with, once it painted.
+    pub fn popup_of(&self, surface: &str) -> Option<(Place, TextureId, (u32, u32))> {
+        let place = *self.popups.get(surface)?;
+        let id = self.texture_of(&popup::id(surface))?;
+        Some((place, id, self.frames.size(id)?))
     }
 
     /// Draw `scene` into a fresh off-screen target and read it back (RGBA rows).
@@ -83,6 +106,7 @@ impl Shared {
             messages: Vec::new(),
             attached: HashMap::new(),
             page_damage: Vec::new(),
+            popups: HashMap::new(),
         })))
     }
 
@@ -124,7 +148,21 @@ impl SurfaceSink for Shared {
             // The dead process's imports go; its last frame stays until it loads again.
             composed.frames.ended(id);
         }
+        if let SurfaceMessage::SurfaceDied(died) = &message {
+            composed.close_popup(&died.surface);
+        }
         composed.messages.push(message);
+    }
+
+    fn popup(&self, surface: &str, place: Option<Place>) {
+        let mut composed = self.lock();
+        match place {
+            Some(place) => {
+                composed.popups.insert(surface.to_owned(), place);
+                composed.dirty = true;
+            }
+            None => composed.close_popup(surface),
+        }
     }
 
     fn device(&self) -> (wgpu::Device, wgpu::Queue) {

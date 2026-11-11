@@ -56,6 +56,7 @@ fn sources(surface: &dyn Fn(&str) -> Option<Texture>) -> Sources<'_> {
         scale: 1.0,
         page: Some((TextureId(1), (1440, 900))),
         surface,
+        popup: &crate::compositor_window::draw_popup::none,
         spread: None,
         map: None,
     }
@@ -220,4 +221,56 @@ fn a_part_of_the_page_is_cut_to_what_its_texture_holds_never_its_edge_stretched(
     let past = Rect::new(1300.0, 100.0, 100.0, 100.0);
     super::page_part(&mut scene, root, past, past, &small, &mut shown).unwrap();
     assert!(shown.is_empty());
+}
+
+#[test]
+fn an_open_popup_is_drawn_over_its_surface_and_the_page_s_over_everything_heard_where_it_lies() {
+    // Notes's list under its field, the page's under a field of its settings.
+    let popup = |surface: &str| match surface {
+        "main.endue-notes" => Some((
+            Rect::new(10.0, 34.0, 140.0, 100.0),
+            (TextureId(5), (140, 100)),
+        )),
+        PAGE => Some((
+            Rect::new(600.0, 300.0, 200.0, 150.0),
+            (TextureId(6), (200, 150)),
+        )),
+        _ => None,
+    };
+    let hosted = hosted("live");
+    let mut scene = Scene::new(1440, 900);
+    let from = Sources {
+        popup: &popup,
+        ..sources(&textures)
+    };
+    let shown = draw(&mut scene, &ChromeTheme::default(), &hosted, &from)
+        .unwrap()
+        .shown;
+    let under = |at: Vec2| {
+        let hit = hit_test(&scene, at)?;
+        let Some(NodeKind::Surface(node)) = scene.node(hit.node).map(|n| n.kind.clone()) else {
+            return None;
+        };
+        let t: &Target = &shown.iter().find(|(id, _)| *id == hit.node)?.1;
+        Some((
+            node.texture,
+            t.surface.clone(),
+            t.origin + hit.local_point * t.per_unit,
+        ))
+    };
+    // The pane's body starts at 105,231: the list from 115,265, the pointer on it Notes's there.
+    let (texture, surface, at) = under(Vec2::new(135.0, 285.0)).unwrap();
+    assert_eq!(texture, TextureId(5), "the list, over the frame");
+    assert_eq!(
+        (surface.as_str(), at),
+        ("main.endue-notes", Vec2::new(30.0, 54.0))
+    );
+    // Beside it, the frame itself.
+    assert_eq!(under(Vec2::new(300.0, 285.0)).unwrap().0, TextureId(2));
+    // The page's list over the window and the page's own layer, the page hearing its own point.
+    let (texture, surface, at) = under(Vec2::new(650.0, 350.0)).unwrap();
+    assert_eq!(
+        (texture, surface.as_str(), at),
+        (TextureId(6), PAGE, Vec2::new(650.0, 350.0))
+    );
 }
