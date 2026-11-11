@@ -70,7 +70,7 @@ describe("what the store keeps", () => {
 
 describe("keys and words", () => {
   it("map single keys per view, and leave chords to the desk", () => {
-    expect(actionFor("chat", { key: "3" })).toEqual({ action: "compare" });
+    expect(actionFor("chat", { key: "3" })).toEqual({ action: "show", args: ["compare"] });
     expect(actionFor("board", { key: "r" })).toEqual({ action: "runSelected" });
     expect(actionFor("board", { key: "ArrowLeft" })).toEqual({ action: "move", args: ["left"] });
     expect(actionFor("chat", { key: "ArrowLeft" })).toBeUndefined();

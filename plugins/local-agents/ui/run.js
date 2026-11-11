@@ -108,12 +108,12 @@ export function createRunner(bridge, options = {}) {
     const refused = (/** @type {unknown} */ error) => {
       const code = codeOf(error);
       if (code === "unsupported")
-        return new AgentError("This desk cannot run programs yet: proc.spawn is unsupported.", {
+        return new AgentError("This desk cannot start programs here.", {
           kind: "unsupported",
         });
       if (code === "not_found")
         return new AgentError(
-          `${command} is not on PATH: install it, or set endue.local-agents.path to the folders it is in.`,
+          `${command} is not on PATH: install it, or name the folders it is in under Settings › Local agents › Path.`,
           { kind: "missing" },
         );
       if (code === "permission_denied")

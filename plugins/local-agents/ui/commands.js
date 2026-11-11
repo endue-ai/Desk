@@ -3,7 +3,6 @@
 
 import { VIEWS } from "./agents.js";
 import { agentById } from "./catalog.js";
-import { hints } from "./keys.js";
 import { registerSchemas } from "./schemas.js";
 
 /**
@@ -49,6 +48,25 @@ export function wireCommands({ commands, bridge }, app, talk, tasks) {
 
   const nameOf = (/** @type {unknown} */ agent) =>
     agentById(agent ?? app.ui.chatAgent)?.name ?? "the agent";
+
+  /**
+   * Ask for a conversation's model: the program's default (""), the one in use, or a name typed.
+   * Undefined when the person cancels.
+   */
+  const pickModel = async (/** @type {unknown} */ agent) => {
+    const name = nameOf(agent);
+    const id = agentById(agent ?? app.ui.chatAgent)?.id;
+    const current = id ? app.chats.peek(id).model : "";
+    return app.pick(
+      `Local agents: ${name}'s model`,
+      [
+        { id: "", label: "Its default model", detail: `The model ${name} picks itself` },
+        ...(current ? [{ id: current, label: current, detail: "In use" }] : []),
+      ],
+      true,
+      "Type a model name, or pick its default",
+    );
+  };
 
   /**
    * Answer a command. A failure goes to the status line and ends the command with the same words,
@@ -97,9 +115,7 @@ export function wireCommands({ commands, bridge }, app, talk, tasks) {
     talk.useAgent(agent ?? (await pickAgent("Local agents: talk to which agent?"))),
   );
   answer(`${p}.model`, async ({ model, agent }) => {
-    const chosen =
-      model ??
-      (await app.pick(`Local agents: ${nameOf(agent)}'s model`, [], true, "empty: its default"));
+    const chosen = model ?? (await pickModel(agent));
     if (chosen === undefined) throw app.cancelled("No model was given.");
     return talk.setModel(chosen, agent);
   });
@@ -148,7 +164,9 @@ export function wireCommands({ commands, bridge }, app, talk, tasks) {
 
   /** @type {Record<string, (...args: any[]) => unknown>} */
   const actions = {
-    ...Object.fromEntries(VIEWS.map((name) => [name, () => app.show(name)])),
+    // A view is shown by its name as an argument: a view's name is never an action of its own,
+    // so Compare (the view) and askCompared (its question) cannot be taken for each other.
+    show: (/** @type {import("./agents.js").ViewName} */ name) => app.show(name),
     detect: () => app.detect(),
     send: (/** @type {string} */ text) => talk.send(text),
     newChat: () => talk.newChat(undefined),
@@ -156,15 +174,10 @@ export function wireCommands({ commands, bridge }, app, talk, tasks) {
     pickAgent: async () => talk.useAgent(await pickAgent("Local agents: talk to which agent?")),
     stopChat: () => talk.stopChat(undefined),
     pickModel: async () => {
-      const chosen = await app.pick(
-        `Local agents: ${nameOf(undefined)}'s model`,
-        [],
-        true,
-        "empty: its default",
-      );
+      const chosen = await pickModel(undefined);
       if (chosen !== undefined) await talk.setModel(chosen, undefined);
     },
-    compare: (/** @type {string} */ text) => talk.compare(text),
+    askCompared: (/** @type {string} */ text) => talk.compare(text),
     toggleCompared: (/** @type {string} */ id) => talk.toggleCompared(id),
     stopCompare: () => app.runs.stopAll("compare"),
     addCard: (/** @type {Args} */ spec) => tasks.addCard(spec),
@@ -186,7 +199,6 @@ export function wireCommands({ commands, bridge }, app, talk, tasks) {
     },
     stopRun: (/** @type {string} */ id) => app.runs.stop(id),
     stopAll: () => app.runs.stopAll(),
-    help: () => app.say(hints(app.ui.view)),
   };
   return Object.fromEntries(Object.entries(actions).map(([name, fn]) => [name, guard(fn)]));
 }

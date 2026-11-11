@@ -2,7 +2,7 @@
 // column, or moved with [ and ]; Run puts it in Running, where its agent answers it; the selected
 // card opens beside the board with its prompt and answer.
 
-import { badge, button, el, markdown } from "./dom.js";
+import { badge, button, el, fill, markdown } from "./dom.js";
 
 /**
  * @typedef {import("./dom.js").Act} Act
@@ -108,7 +108,8 @@ export function createBoardView(doc, act) {
   const drawDetail = (card) => {
     detail.hidden = !card;
     if (!card) return detail.replaceChildren();
-    detail.replaceChildren(
+    fill(
+      detail,
       el(doc, "h2", {}, card.title),
       el(
         doc,

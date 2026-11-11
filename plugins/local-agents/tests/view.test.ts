@@ -57,7 +57,10 @@ describe("the view", () => {
     expect($("#view-agents").hidden).toBe(true);
     key("2");
     $("#tab-activity").click();
-    expect(acts).toEqual([["chat"], ["activity"]]);
+    expect(acts).toEqual([
+      ["show", "chat"],
+      ["show", "activity"],
+    ]);
   });
 
   it("lists every agent with its version, guard and how to install a missing one", async () => {

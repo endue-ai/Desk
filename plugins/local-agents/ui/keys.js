@@ -58,7 +58,7 @@ const MOVES = {
 export function actionFor(view, event) {
   if (event.metaKey || event.ctrlKey || event.altKey) return undefined;
   const target = VIEW_KEYS[event.key];
-  if (target) return { action: target };
+  if (target) return { action: "show", args: [target] };
   if (event.key === "?") return { action: "help" };
   const own = BY_VIEW[view][event.key];
   if (own) return { action: own };
@@ -68,20 +68,66 @@ export function actionFor(view, event) {
   return undefined;
 }
 
+/** @type {Record<ViewName, [string, string][]>} What each view's keys do, as the hints name them. */
+const KEY_WORDS = {
+  agents: [
+    ["↑↓", "pick"],
+    ["↵", "chat with it"],
+    ["r", "look again"],
+  ],
+  chat: [
+    ["i", "write"],
+    ["↵", "send"],
+    ["⇧↵", "new line"],
+    ["n", "new conversation"],
+    ["a", "agent"],
+    ["m", "model"],
+    ["x", "stop"],
+  ],
+  compare: [
+    ["i", "write"],
+    ["↵", "ask every agent picked"],
+    ["x", "stop"],
+  ],
+  board: [
+    ["←→↑↓", "pick"],
+    ["n", "new card"],
+    ["r", "run"],
+    ["[ ]", "move"],
+    ["a", "agent"],
+    ["↵", "open"],
+    ["x", "stop"],
+    ["D", "remove"],
+    ["C", "clear Done"],
+  ],
+  activity: [
+    ["↑↓", "pick"],
+    ["↵", "open"],
+    ["x", "stop"],
+    ["X", "stop all"],
+  ],
+};
+
+/** @type {[string, string][]} */
+const COMMON = [
+  ["1–5", "views"],
+  ["?", "keys"],
+];
+
+/**
+ * Every key of a view and what it does, the view's own first, for the list `?` opens.
+ * @returns {[string, string][]}
+ */
+export function keyList(/** @type {ViewName} */ view) {
+  return [
+    ...(KEY_WORDS[view] ?? []),
+    ["1–5", "views"],
+    ["Esc", "leave a text field, or close this list"],
+    ["?", "close this list"],
+  ];
+}
+
 /** The hint line for a view. */
 export function hints(/** @type {ViewName} */ view) {
-  const common = "1–5 views · ? keys";
-  switch (view) {
-    case "agents":
-      return `↑↓ pick · ↵ chat with it · r look again · ${common}`;
-    case "chat":
-      return `i write · ↵ send · ⇧↵ new line · n new conversation · a agent · m model · x stop · ${common}`;
-    case "compare":
-      return `i write · ↵ ask every agent picked · x stop · ${common}`;
-    case "board":
-      return `←→↑↓ pick · n new card · r run · [ ] move · a agent · ↵ open · x stop · D remove · C clear Done · ${common}`;
-    case "activity":
-      return `↑↓ pick · ↵ open · x stop · X stop all · ${common}`;
-  }
-  return common;
+  return [...(KEY_WORDS[view] ?? []), ...COMMON].map(([k, what]) => `${k} ${what}`).join(" · ");
 }

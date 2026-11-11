@@ -1,7 +1,7 @@
 // The Activity view: every run this session, newest first, from whichever view asked; one opens to
 // its prompt, the command that ran (the prompt left out), the answer and what the agent used.
 
-import { badge, button, el, markdown, toolList } from "./dom.js";
+import { badge, button, el, fill, markdown, toolList } from "./dom.js";
 
 /**
  * @typedef {import("./dom.js").Act} Act
@@ -56,7 +56,8 @@ export function createActivityView(doc, act) {
   const drawDetail = (run) => {
     detail.hidden = !run;
     if (!run) return detail.replaceChildren();
-    detail.replaceChildren(
+    fill(
+      detail,
       el(doc, "h2", {}, `${run.name}: `, badge(doc, run.status)),
       el(doc, "p", { class: "meta" }, run.meta),
       el(doc, "h3", {}, "Prompt"),

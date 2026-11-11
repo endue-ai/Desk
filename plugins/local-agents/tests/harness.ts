@@ -154,6 +154,8 @@ export async function mount(
     /** What the palette answers each pick with, in order ("" once they run out); a function sees the request. */
     picks?: Array<string | undefined | ((args: unknown) => unknown)>;
     now?: () => number;
+    /** A second view drawn as the recording one is: the page's own, for the wired tests. */
+    also?: { render(model: ViewModel): void; say(text: string): void };
   } = {},
 ) {
   const programs = fakePrograms(options.script ?? computer());
@@ -184,13 +186,26 @@ export async function mount(
   });
   programs.attach(host);
   const view = recordingView();
+  const { also } = options;
+  const drawn = also
+    ? {
+        render: (model: ViewModel) => {
+          view.render(model);
+          also.render(model);
+        },
+        say: (text: string) => {
+          view.say(text);
+          also.say(text);
+        },
+      }
+    : view;
   let started: ReturnType<typeof startPlugin> | undefined;
   await defineUiPlugin(
     {
       mount(ctx) {
         const cancelled = (message: string) =>
           new CommandFailed("endue.local-agents.ask", "cancelled", message);
-        started = startPlugin(ctx, view, {
+        started = startPlugin(ctx, drawn, {
           flushMs: 0,
           cancelled,
           plain: new Set(),

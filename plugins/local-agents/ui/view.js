@@ -1,8 +1,10 @@
 // The DOM of the Local agents surface: the header (how many agents were found, read-only or not,
 // how many runs are going), tabs for the five views, each view's own renderer, the keys, a hint
-// line and a status live region. Chords with Mod are never prevented, so the desk's keymap gets them.
+// line, the list of keys `?` opens and a status live region. Chords with Mod are never prevented,
+// so the desk's keymap gets them.
 
-import { actionFor, hints, VIEW_KEYS } from "./keys.js";
+import { el } from "./dom.js";
+import { actionFor, hints, keyList, VIEW_KEYS } from "./keys.js";
 import { createActivityView } from "./view-activity.js";
 import { createAgentsView } from "./view-agents.js";
 import { createBoardView } from "./view-board.js";
@@ -37,6 +39,7 @@ export function createView(doc, act) {
   const accessEl = byId("access");
   const busyEl = byId("busy");
   const hintsEl = byId("hints");
+  const keysEl = byId("keys");
   const statusEl = byId("status");
 
   /** @type {Record<ViewName, Section>} */
@@ -59,9 +62,27 @@ export function createView(doc, act) {
     tab.setAttribute("role", "tab");
     tab.setAttribute("aria-controls", `view-${name}`);
     tab.textContent = `${key} ${TITLES[name]}`;
-    tab.addEventListener("click", () => void act(name));
+    tab.addEventListener("click", () => void act("show", name));
     tabs.append(tab);
   }
+
+  /** Show every key of the view in words, or hide the list. */
+  const showKeys = (/** @type {boolean} */ on) => {
+    keysEl.hidden = !on;
+    if (!on) return keysEl.replaceChildren();
+    keysEl.replaceChildren(
+      el(doc, "h2", {}, `Keys in ${TITLES[current]}`),
+      el(
+        doc,
+        "dl",
+        {},
+        ...keyList(current).flatMap(([keys, what]) => [
+          el(doc, "dt", {}, el(doc, "kbd", {}, keys)),
+          el(doc, "dd", {}, what),
+        ]),
+      ),
+    );
+  };
 
   /** @param {ViewModel} model */
   const render = (model) => {
@@ -86,7 +107,10 @@ export function createView(doc, act) {
     busyEl.textContent = `${model.busy} running`;
     busyEl.setAttribute("aria-label", `${model.busy} running`);
     sections[current].render(model);
-    if (changed) hintsEl.textContent = hints(current);
+    if (changed) {
+      hintsEl.textContent = hints(current);
+      if (!keysEl.hidden) showKeys(true);
+    }
   };
 
   doc.addEventListener("keydown", (event) => {
@@ -96,10 +120,15 @@ export function createView(doc, act) {
       if (event.key === "Escape" && target) target.blur();
       return;
     }
+    if (event.key === "Escape" && !keysEl.hidden) {
+      event.preventDefault();
+      showKeys(false);
+      return;
+    }
     const press = actionFor(current, event);
     if (!press) return;
     event.preventDefault();
-    if (press.action === "help") hintsEl.textContent = hints(current);
+    if (press.action === "help") return showKeys(keysEl.hidden);
     if (sections[current].key?.(press.action, press.args ?? [])) return;
     void act(press.action, ...(press.args ?? []));
   });

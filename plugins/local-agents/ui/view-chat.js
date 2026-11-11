@@ -3,7 +3,7 @@
 // by side). An element is drawn again only when what it shows changed, so a streaming answer does
 // not redraw the whole conversation.
 
-import { badge, button, el, markdown, toolList } from "./dom.js";
+import { badge, button, el, fill, markdown, toolList } from "./dom.js";
 
 /**
  * @typedef {import("./dom.js").Act} Act
@@ -101,7 +101,8 @@ export function createChatView(doc, act) {
   const render = (model) => {
     const { chat, agents } = model;
     const found = agents.filter((a) => a.state === "ready");
-    bar.replaceChildren(
+    fill(
+      bar,
       el(
         doc,
         "div",
@@ -183,7 +184,7 @@ export function createCompareView(doc, act) {
   const send = /** @type {HTMLButtonElement} */ (doc.getElementById("compare-send"));
   const panesEl = /** @type {HTMLElement} */ (doc.getElementById("compare-panes"));
   const panes = keyed();
-  composer(form, input, (text) => act("compare", text));
+  composer(form, input, (text) => act("askCompared", text));
 
   /** @param {PaneModel} p */
   const draw = (p) =>
@@ -211,7 +212,8 @@ export function createCompareView(doc, act) {
     const { compare } = model;
     const found = model.agents.filter((a) => a.state === "ready");
     const picked = found.filter((a) => compare.picked.includes(a.id)).length;
-    bar.replaceChildren(
+    fill(
+      bar,
       ...found.map((a) =>
         button(doc, a.name, act, "toggleCompared", [a.id], {
           "aria-pressed": String(compare.picked.includes(a.id)),

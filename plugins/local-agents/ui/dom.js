@@ -27,6 +27,20 @@ export function el(doc, tag, attrs = {}, ...children) {
 }
 
 /**
+ * Replace a node's children, leaving out the absent ones as `el` does: `replaceChildren` itself
+ * would write an absent child as the text "undefined".
+ * @param {Element} node
+ * @param {...(Node | string | undefined | false)} children
+ */
+export function fill(node, ...children) {
+  node.replaceChildren(
+    ...children.filter(
+      /** @returns {child is Node | string} */ (child) => child !== undefined && child !== false,
+    ),
+  );
+}
+
+/**
  * A button that runs an action with its arguments.
  * @param {Document} doc
  * @param {string} label

@@ -105,7 +105,7 @@ describe("the runner", () => {
     };
     expect(await refused("not_found", "/opt/bin")).toMatchObject({
       kind: "missing",
-      message: expect.stringMatching(/grok is not on PATH.*endue.local-agents.path/),
+      message: expect.stringMatching(/grok is not on PATH.*Settings › Local agents › Path/),
     });
     expect(await refused("unsupported")).toMatchObject({ kind: "unsupported" });
     expect(await refused("invalid_params")).toMatchObject({ kind: "failed" });

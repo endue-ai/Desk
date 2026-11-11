@@ -26,7 +26,7 @@ export function createAgentsView(doc, act) {
       doc,
       "p",
       { class: "note" },
-      "Agent programs installed on this computer. Each answers in the folder endue.local-agents.folder names (your home folder by default).",
+      "Agent programs installed on this computer. They work in the folder Settings › Local agents › Folder names, your home folder by default.",
     ),
     button(doc, "Look again", act, "detect"),
   );
@@ -64,7 +64,7 @@ export function createAgentsView(doc, act) {
               { class: `guard ${model.access === "read-only" ? a.guard : "agent"}` },
               model.access === "read-only"
                 ? `${GUARDS[a.guard]}. ${a.guardNote}`
-                : "Runs with its own permission settings (endue.local-agents.access is agent).",
+                : "Runs with its own permission settings: Settings › Local agents › Access is agent.",
             )
           : undefined,
         a.state === "missing"
