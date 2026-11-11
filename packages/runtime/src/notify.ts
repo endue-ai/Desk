@@ -1,8 +1,9 @@
 /**
  * Notifications (desk.notify, like the echo area and *Messages*): one shows in the status line for
  * as long as its level says, every one goes to the history, and do-not-disturb holds back the levels
- * it does not allow until it ends. A notice with actions (ADR 0061) stays until it is dismissed or
- * acted on: a newer notice covers it for its own time, then it shows again.
+ * it does not allow until it ends. A notice that stays until it is dismissed (one with actions, ADR
+ * 0061, or of a level that shows for 0 ms: an error by default) is not lost under a newer one: that
+ * one covers it for its own time, then it shows again (#158).
  */
 import type { NotifyLevel } from "@endue-ai/bridge";
 import type { Clock } from "./clock";
@@ -54,7 +55,7 @@ export class Notifications {
   #settings: NotifySettings = DEFAULT_NOTIFY;
   #history: Notice[] = [];
   #current: Notice | null = null;
-  /** Notices with actions that a newer one covered, oldest first. */
+  /** Notices that stay which a newer one covered, oldest first. */
   #waiting: Notice[] = [];
   #until = Number.POSITIVE_INFINITY;
   #cancel: (() => void) | undefined;
@@ -117,6 +118,11 @@ export class Notifications {
     return this.#current;
   }
 
+  /** Whether `notice` shows until it is dismissed (or acted on), rather than for its level's time. */
+  stays(notice: Notice): boolean {
+    return this.#duration(notice) <= 0;
+  }
+
   dismiss(): void {
     this.#cancel?.();
     this.#cancel = undefined;
@@ -149,10 +155,10 @@ export class Notifications {
   #show(notice: Notice): void {
     this.#cancel?.();
     const covered = this.#current;
-    if (covered?.actions && covered !== notice) this.#waiting.push(covered);
+    if (covered && covered !== notice && this.stays(covered)) this.#waiting.push(covered);
     this.#current = notice;
     this.#render(notice);
-    const duration = notice.actions ? 0 : this.#settings.durations[notice.level];
+    const duration = this.#duration(notice);
     this.#until = duration > 0 ? notice.at + duration : Number.POSITIVE_INFINITY;
     if (duration <= 0) return;
     const step = (now: number) => {
@@ -160,6 +166,10 @@ export class Notifications {
       else this.#cancel = this.#clock.requestFrame(step);
     };
     this.#cancel = this.#clock.requestFrame(step);
+  }
+
+  #duration(notice: Notice): number {
+    return notice.actions ? 0 : this.#settings.durations[notice.level];
   }
 
   #trim(): void {

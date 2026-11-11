@@ -139,6 +139,27 @@ div.desk-surface-frame {
   pointer-events: auto;
 }
 
+/* A notice that stays until it is dismissed: its Dismiss button, last. The glyph is drawn here, so
+   the line's text is the notice's alone. */
+.desk-status .desk-status-dismiss {
+  flex: none;
+  margin-left: var(--desk-space-1);
+  padding: 0 var(--desk-space-1);
+  font: inherit;
+  color: var(--desk-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--desk-radius-sm);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.desk-status .desk-status-dismiss::before {
+  content: "×";
+  font-size: var(--desk-text-sm);
+  line-height: 1;
+}
+
 /* A surface a window host holds (the shell's windows, ADR 0040): the window has the title bar. */
 .desk-surface--windowed {
   grid-template-rows: minmax(0, 1fr);

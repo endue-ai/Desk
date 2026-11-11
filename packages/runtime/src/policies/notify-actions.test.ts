@@ -78,3 +78,39 @@ describe("a notice's action", () => {
     expect(d.log).not.toHaveBeenCalled();
   });
 });
+
+// A notice that stays until it is dismissed can be (#158): an error, or one with actions.
+describe("a notice that stays", () => {
+  const dismiss = (line: HTMLElement) =>
+    line.querySelector<HTMLButtonElement>('.desk-status-dismiss[aria-label="Dismiss"]');
+  const buttons = (line: HTMLElement) =>
+    [...line.querySelectorAll("button")].map((b) => b.className);
+
+  it("has a Dismiss button after its actions, and an error without actions has it too", async () => {
+    const d = await desk(() => undefined);
+    expect(buttons(d.line)).toEqual(["desk-status-action", "desk-status-dismiss"]);
+    expect(d.line.textContent).toBe("The upload stoppedRetry");
+
+    dismiss(d.line)?.click();
+    expect(d.policy.notifications.current()).toBeNull();
+    expect(d.ran()).toBe(0);
+
+    d.policy.notify({
+      caller: "desk",
+      title: "Shell failed",
+      body: "No container.",
+      level: "error",
+    });
+    expect(d.line.textContent).toBe("Shell failed — No container.");
+    expect(buttons(d.line)).toEqual(["desk-status-dismiss"]);
+    dismiss(d.line)?.click();
+    expect(d.policy.notifications.current()).toBeNull();
+  });
+
+  it("one that goes by itself has none", async () => {
+    const d = await desk(() => undefined);
+    d.policy.notify({ caller: "desk", title: "Saved", level: "info" });
+    expect(d.line.querySelector("button")).toBeNull();
+    expect(d.line.textContent).toBe("Saved");
+  });
+});

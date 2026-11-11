@@ -2,9 +2,10 @@
  * desk.notify: the status line is the echo area. ui.notified events and the runtime's own notices
  * show there as the notify settings say, and every one goes to the history (*Messages*). A notice's
  * actions are buttons beside its text: each runs its desk command and dismisses the notice, and one
- * that fails says why in a notice of its own (gesture.ts). A running plugin's notice opens what it is
- * about (ADR 0113): a click on its text, or picking it in the history, shows the plugin
- * (desk.display.show) and then hands it the notice (desk.notify.open).
+ * that fails says why in a notice of its own (gesture.ts). A notice that stays until it is dismissed
+ * (an error, one with actions) has a Dismiss button after them (#158). A running plugin's notice
+ * opens what it is about (ADR 0113): a click on its text, or picking it in the history, shows the
+ * plugin (desk.display.show) and then hands it the notice (desk.notify.open).
  */
 import type { NotifyLevel } from "@endue-ai/bridge";
 import { type GestureDesk, runGesture } from "../gesture";
@@ -72,8 +73,10 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
     const actions = notice?.actions ?? [];
     // A running plugin's notice is itself a button that opens what it is about (ADR 0113).
     const opener = notice !== null && opens(notice);
-    statusLine.classList.toggle("has-actions", actions.length > 0 || opener);
-    if (!notice || (actions.length === 0 && !opener)) return;
+    // One that stays until it is dismissed (an error, or one with actions) can be (#158).
+    const stays = notice !== null && notifications.stays(notice);
+    statusLine.classList.toggle("has-actions", actions.length > 0 || opener || stays);
+    if (!notice || (actions.length === 0 && !opener && !stays)) return;
     const said = noticeText(notice);
     // The text gives way (ellipsis, the whole of it on hover) so the buttons always show.
     const text = opener
@@ -91,6 +94,13 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
           runGesture(desk, action.command, action.args),
         ),
       );
+    }
+    if (stays) {
+      // Its glyph is the stylesheet's, so the line's text stays the notice's own.
+      const dismiss = button(notice, "", "desk-status-dismiss", async () => {});
+      dismiss.title = "Dismiss";
+      dismiss.setAttribute("aria-label", "Dismiss");
+      statusLine.append(dismiss);
     }
   };
   const notifications = new Notifications(clock, render);

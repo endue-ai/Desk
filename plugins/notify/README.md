@@ -14,6 +14,9 @@ core checks the permission and the runtime shows the `ui.notified` event in the 
 | `desk.notify.history` | 200 | How many past notifications to keep |
 
 Held notifications go to the history; when do not disturb ends, one line says how many arrived.
+A notice that stays until it is dismissed (an error by default, or one with actions) has a Dismiss
+button, and a newer notice covers it only for its own time. In the shell the status line is a card at
+the top centre, one line until it is pointed at or focused, then the whole of it.
 Commands: `desk.notify.dismiss`, `.dnd`, `.history` (in the palette when it is on), `.clear`.
 
 ```bash

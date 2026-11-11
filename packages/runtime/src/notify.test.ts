@@ -37,6 +37,23 @@ describe("Notifications", () => {
     expect(notifications.current()).toBeNull();
   });
 
+  it("shows an error a newer notice covered again once that one ends, until it is dismissed", () => {
+    const { clock, notifications } = center();
+    notifications.push({ caller: "desk", title: "Shell failed", level: "error" });
+    const error = notifications.current();
+    expect(error && notifications.stays(error)).toBe(true);
+    notifications.push({ caller: "example.build", title: "Built", level: "success" });
+    const built = notifications.current();
+    expect(built?.title).toBe("Built");
+    expect(built && notifications.stays(built)).toBe(false);
+    clock.advance(4000);
+    expect(notifications.current()?.title).toBe("Shell failed");
+    clock.advance(60_000);
+    expect(notifications.current()?.title).toBe("Shell failed");
+    notifications.dismiss();
+    expect(notifications.current()).toBeNull();
+  });
+
   it("holds back what do-not-disturb does not allow, and says how many when it ends", () => {
     const { notifications } = center();
     notifications.configure({ ...DEFAULT_NOTIFY, dnd: true });
