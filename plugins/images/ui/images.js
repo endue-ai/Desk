@@ -1,12 +1,14 @@
 // The images plugin without its DOM. It answers the desk's file and buffer requests for the images
 // it holds (desk.files.visit, .revert, desk.buffers.show, .closed; .save is refused), opens them
 // (opening.js: ranged reads with progress and Cancel, one ask for the folder, decoding in a worker
-// for large files), follows them on disk, lists their folder for Left and Right, and loads a second
-// image to compare. It only talks to ctx.commands, ctx.bridge and a view, so the SDK's test host
-// runs it.
+// for large files), follows them on disk, lists their folder for Left and Right (folder.js), keeps
+// them across a sleep (keep.js), and loads a second image to compare. It only talks to
+// ctx.commands, ctx.bridge, ctx.surface and a view, so the SDK's test host runs it.
 import { webviewReason } from "./decode.js";
 import { release } from "./decoding.js";
 import { modelOf, rowsOf } from "./details.js";
+import { createWalk, folderOf, listFolder, nameOf } from "./folder.js";
+import { readPlace } from "./keep.js";
 import { createOpening, scopeOf } from "./opening.js";
 import { reveal as showInFolder } from "./reveal.js";
 
@@ -16,40 +18,20 @@ import { reveal as showInFolder } from "./reveal.js";
  * @typedef {import("@endue-ai/bridge").Permission} Permission
  * @typedef {import("./details.js").ImageModel} ImageModel
  * @typedef {import("./decode.js").Decoded} Decoded
+ * @typedef {import("./keep.js").ViewPlace} ViewPlace
  * @typedef {{ path: string, name: string }} Choice
  * @typedef {{ image: ImageModel | null, partner: ImageModel | null,
  *   position: { index: number, count: number } | null, choices: Choice[] }} ImagesState
  * @typedef {{ render(state: ImagesState): void, status(text: string): void, focus(): void,
- *   progress?(value: import("./opening.js").Progress | null): void }} View
+ *   progress?(value: import("./opening.js").Progress | null): void,
+ *   place?(): ViewPlace | null, restore?(place: ViewPlace): void }} View
+ *   place and restore: the zoom, pan and turn of the image on screen, kept across a sleep.
  * @typedef {{ buffer: string, path: string, name: string, size: number, decoded: Decoded,
  *   model: ImageModel, watchId?: string, slice?: number }} Entry
  *   slice: the slice last asked for, while it decodes.
+ * @typedef {import("./opening.js").Options & {
+ *   keepFiles: typeof import("@endue-ai/plugin-sdk").keepFiles }} Options
  */
-
-const PLUGIN = "endue.images";
-
-/** Every extension the plugin opens, as the folder walk filters names. */
-export const EXTENSIONS = new Set(
-  (
-    "png apng jpg jpeg jpe jfif pjpeg gif webp avif heic heif jxl bmp dib tif tiff ico cur icns " +
-    "svg svgz tga pnm pbm pgm ppm pam qoi dds hdr exr ktx eps wmf emf dng cr2 cr3 crw nef nrw " +
-    "arw srf sr2 orf rw2 raf pef srw 3fr erf kdc mrw dcm fits fit fts nii"
-  ).split(" "),
-);
-
-const nameOf = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/") + 1);
-const folderOf = (/** @type {string} */ path) => {
-  const slash = path.lastIndexOf("/");
-  return slash < 0 ? path : path.slice(0, slash);
-};
-const imageName = (/** @type {string} */ name) => {
-  const dot = name.lastIndexOf(".");
-  return !name.startsWith(".") && dot > 0 && EXTENSIONS.has(name.slice(dot + 1).toLowerCase());
-};
-const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-/** Natural name order: img2 before img10, case aside; ties in code-unit order. */
-export const natural = (/** @type {string} */ a, /** @type {string} */ b) =>
-  collator.compare(a, b) || (a < b ? -1 : a > b ? 1 : 0);
 
 /** The buffer and path the desk sends with every request. */
 const requested = (/** @type {unknown} */ args) => {
@@ -59,13 +41,15 @@ const requested = (/** @type {unknown} */ args) => {
     path: typeof path === "string" && path !== "" ? path : undefined,
   };
 };
+const text = (/** @type {unknown} */ error) =>
+  error instanceof Error ? error.message : String(error);
 
 /**
- * @param {Pick<PluginContext, "bridge" | "commands">} ctx
+ * @param {Pick<PluginContext, "bridge" | "commands" | "surface">} ctx
  * @param {View} view
- * @param {import("./opening.js").Options} options the SDK's readBytes, and its startWorker
+ * @param {Options} options the SDK's readBytes, startWorker and keepFiles
  */
-export function createImages({ bridge, commands }, view, options) {
+export function createImages({ bridge, commands, surface }, view, options) {
   const opening = createOpening(bridge, view, options);
   /** @type {Map<string, Entry>} */
   const images = new Map();
@@ -80,13 +64,28 @@ export function createImages({ bridge, commands }, view, options) {
   /** The shown image's folder: its path and its images in natural order. */
   /** @type {{ dir: string, names: string[] } | null} */
   let folder = null;
-  let moving = false;
   let said = "";
+  // Put to sleep while nobody sees it, Images keeps its files and comes back to them (ADR 0070).
+  const kept = options.keepFiles(surface, {
+    files: () =>
+      [...images.values()].map(({ buffer, path, watchId }) => {
+        const seen = buffer === shown ? view.place?.() : null;
+        return {
+          buffer,
+          path,
+          place: { ...(seen ? { view: seen } : {}), ...(watchId ? { watchId } : {}) },
+        };
+      }),
+    shown: () => shown,
+    readPlace,
+  });
+  /** The kept file of a buffer this frame does not hold yet. */
+  const keptOf = (/** @type {string} */ buffer) => kept.files().find((f) => f.buffer === buffer);
 
-  const say = (/** @type {string} */ text) => {
-    if (text === said) return;
-    said = text;
-    view.status(text);
+  const say = (/** @type {string} */ words) => {
+    if (words === said) return;
+    said = words;
+    view.status(words);
   };
   const current = () => (shown === null ? undefined : images.get(shown));
 
@@ -113,6 +112,9 @@ export function createImages({ bridge, commands }, view, options) {
     };
   };
   const render = () => view.render(state());
+  const list = async (/** @type {string} */ path) => {
+    folder = await listFolder(bridge, path);
+  };
 
   const held = (/** @type {string} */ buffer) => images.get(buffer) ?? fail(`No image ${buffer}.`);
   /** @param {string} message @returns {never} */
@@ -121,8 +123,8 @@ export function createImages({ bridge, commands }, view, options) {
   }
 
   /** Read and decode one file. Decoding never throws: a file it cannot show is a details view. */
-  const load = async (/** @type {string} */ buffer, /** @type {string} */ path) => {
-    const { size, decoded } = await opening.load(buffer, path);
+  const load = async (/** @type {string} */ buffer, /** @type {string} */ path, ask = true) => {
+    const { size, decoded } = await opening.load(buffer, path, { ask });
     const file = { buffer, path, name: nameOf(path), size };
     return /** @type {Entry} */ ({ ...file, decoded, model: modelOf(file, decoded) });
   };
@@ -132,24 +134,14 @@ export function createImages({ bridge, commands }, view, options) {
     release(entry.decoded);
   };
 
-  /** List the folder of `path`: its images, in natural order. Without a listing there is no walk. */
-  const list = async (/** @type {string} */ path) => {
-    const dir = folderOf(path);
-    try {
-      const { entries } = await bridge.call("fs.list", { path: dir, scope: scopeOf(path) });
-      const names = entries.filter((e) => e.kind !== "dir" && imageName(e.name)).map((e) => e.name);
-      folder = { dir, names: names.sort(natural) };
-    } catch {
-      folder = { dir, names: [nameOf(path)] };
-    }
+  const follow = (/** @type {Entry} */ entry, /** @type {string} */ watchId) => {
+    entry.watchId = watchId;
+    watches.set(watchId, entry.buffer);
   };
-
   const watch = async (/** @type {Entry} */ entry) => {
     await bridge.call("fs.watch", { path: entry.path, scope: scopeOf(entry.path) }).then(
       ({ watchId }) => {
-        if (images.get(entry.buffer) !== entry) return;
-        entry.watchId = watchId;
-        watches.set(watchId, entry.buffer);
+        if (images.get(entry.buffer) === entry) follow(entry, watchId);
       },
       () => {},
     );
@@ -157,10 +149,29 @@ export function createImages({ bridge, commands }, view, options) {
 
   const forget = (/** @type {string} */ buffer) => {
     forgotten.add(buffer);
+    kept.take(buffer);
     const entry = images.get(buffer);
     if (entry?.watchId) watches.delete(entry.watchId);
     images.delete(buffer);
     drop(entry);
+  };
+
+  /**
+   * Open again a file the desk lists that this frame lost (a window that slept, a page loaded
+   * again), with the watch it had; answers the view a sleep kept of it, if any.
+   */
+  const reopen = async (/** @type {string} */ buffer, /** @type {string} */ path, ask = true) => {
+    const place = keptOf(buffer)?.place;
+    const entry = await load(buffer, path, ask);
+    images.set(buffer, entry);
+    kept.take(buffer);
+    if (place?.watchId) follow(entry, place.watchId);
+    else await watch(entry);
+    return place?.view;
+  };
+  const lost = (/** @type {string} */ buffer, /** @type {string | undefined} */ path) => {
+    const from = path ?? keptOf(buffer)?.path;
+    return !images.has(buffer) && !forgotten.has(buffer) ? from : undefined;
   };
 
   /**
@@ -175,7 +186,7 @@ export function createImages({ bridge, commands }, view, options) {
         await handler(args);
         say("");
       } catch (error) {
-        say(error instanceof Error ? error.message : String(error));
+        say(text(error));
         throw error;
       }
     });
@@ -199,6 +210,7 @@ export function createImages({ bridge, commands }, view, options) {
       if (visiting.get(buffer) === loading) visiting.delete(buffer);
     }
     forgotten.delete(buffer);
+    kept.take(buffer);
     const old = images.get(buffer);
     images.set(buffer, entry);
     if (old?.watchId) watches.delete(old.watchId);
@@ -215,6 +227,12 @@ export function createImages({ bridge, commands }, view, options) {
 
   answer("desk.files.revert", async (args) => {
     const { buffer, path: asked } = requested(args);
+    const from = lost(buffer, asked);
+    if (from) {
+      await reopen(buffer, from);
+      if (shown === buffer) render();
+      return;
+    }
     const old = held(buffer);
     const entry = await load(buffer, asked ?? old.path);
     if (images.get(buffer) !== old) return drop(entry);
@@ -226,22 +244,22 @@ export function createImages({ bridge, commands }, view, options) {
 
   answer("desk.buffers.show", async (args) => {
     const { buffer, path } = requested(args);
-    // The desk lists a buffer as its visit starts: one still reading (or waiting for a permission
-    // prompt) is shown once it is read, never read again, and a visit that failed says so itself.
+    // The image on screen before a sleep, opening again as the window wakes: shown once it is; one
+    // that could not open without asking opens now. The desk lists a buffer as its visit starts:
+    // one still reading (or waiting for a permission prompt) is shown once it is read, never read
+    // again, and a visit that failed says so itself.
+    if (waking?.buffer === buffer) await waking.done;
     const visit = visiting.get(buffer);
     if (visit) await visit.catch(() => {});
     else if (opening.pending() !== buffer) opening.stop();
     // A window put away or unloaded may come back with a fresh frame. Its file buffer survives.
-    let entry = images.get(buffer);
-    if (!entry && path && !forgotten.has(buffer) && !visit) {
-      entry = await load(buffer, path);
-      images.set(buffer, entry);
-      await watch(entry);
-    }
-    entry ??= held(buffer);
+    const from = visit ? undefined : lost(buffer, path);
+    const seen = from ? await reopen(buffer, from) : undefined;
+    const entry = held(buffer);
     shown = buffer;
     if (folder?.dir !== folderOf(entry.path)) await list(entry.path);
     render();
+    if (seen) view.restore?.(seen);
     view.focus();
   });
 
@@ -251,6 +269,7 @@ export function createImages({ bridge, commands }, view, options) {
       opening.stop();
       if (!images.has(buffer)) return;
     }
+    if (kept.take(buffer) && !images.has(buffer)) return void forgotten.add(buffer);
     held(buffer);
     forget(buffer);
     if (shown !== buffer) return;
@@ -269,30 +288,33 @@ export function createImages({ bridge, commands }, view, options) {
 
   render();
 
-  /** Show the folder's image at `target` (0-based) in place of the one on screen. */
-  const go = async (/** @type {(index: number, count: number) => number} */ where) => {
-    const entry = current();
-    if (!entry || !folder || moving) return;
-    const index = folder.names.indexOf(entry.name);
-    const target = where(index, folder.names.length);
-    if (target < 0) return say("This is the first image in the folder.");
-    if (target >= folder.names.length) return say("This is the last image in the folder.");
-    if (target === index) return;
-    moving = true;
-    try {
-      await commands.run("desk.files.open", {
-        path: `${folder.dir}/${folder.names[target]}`,
-        plugin: PLUGIN,
-      });
-      // Like find-alternate-file: the image walked away from closes, so the walk leaves one buffer.
-      if (images.has(entry.buffer) && shown !== entry.buffer)
-        await commands.run("desk.buffers.close", { id: entry.buffer });
-    } catch (error) {
-      say(error instanceof Error ? error.message : String(error));
-    } finally {
-      moving = false;
-    }
+  // Back from a sleep, the image that was on screen opens again as the person left it, without
+  // asking for its folder or taking the focus; the others open when they are shown.
+  const back = kept.shown === null ? undefined : keptOf(kept.shown);
+  /** @type {{ buffer: string, done: Promise<void> } | undefined} */
+  const waking = back && {
+    buffer: back.buffer,
+    done: (async () => {
+      try {
+        const seen = await reopen(back.buffer, back.path, false);
+        // The person showed another image meanwhile: that one stays.
+        if (shown !== null && shown !== back.buffer) return;
+        shown = back.buffer;
+        await list(back.path);
+        render();
+        if (seen) view.restore?.(seen);
+      } catch (error) {
+        if (shown === null) say(text(error));
+      }
+    })(),
   };
+
+  const go = createWalk(commands, {
+    current,
+    folder: () => folder,
+    left: (buffer) => images.has(buffer) && shown !== buffer,
+    say,
+  });
 
   /** Rebuild an entry's model after its decoded image changed. */
   const remodel = (/** @type {Entry} */ entry, /** @type {Decoded} */ decoded) => {
@@ -324,7 +346,7 @@ export function createImages({ bridge, commands }, view, options) {
         if (current() === entry) render();
         say(`Slice ${index + 1} of ${slices.count}.`);
       } catch (error) {
-        say(error instanceof Error ? error.message : String(error));
+        say(text(error));
       }
     },
     /** Split the surface with another image, by path; null ends the comparison. */
@@ -342,7 +364,7 @@ export function createImages({ bridge, commands }, view, options) {
         drop(before);
         say(`Comparing with ${partner.name}.`);
       } catch (error) {
-        say(error instanceof Error ? error.message : String(error));
+        say(text(error));
       }
     },
     /** The webview could not decode an image: show its details with that reason. */

@@ -64,6 +64,11 @@ export function createViewer() {
     y: 0,
     rotation: 0,
     flipped: false,
+    /** The zoom, pan and turn, as a sleep keeps them (keep.js). */
+    place() {
+      const { zoom, x, y, rotation, flipped } = this;
+      return { zoom, x, y, rotation, flipped };
+    },
     /** Start over for a new image: fit, centred, turned as its orientation says. */
     reset(orientation = 1) {
       Object.assign(this, { zoom: "fit", x: 0, y: 0 }, fromOrientation(orientation));

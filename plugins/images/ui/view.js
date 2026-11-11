@@ -3,6 +3,8 @@
 // turn (viewer.js), handles the keys and the pointer, and asks the controller for the rest. Chords
 // the desk binds (Mod+S, Mod+O, Mod+W, Mod+K ...) are never prevented.
 import { notice, rows } from "./cards.js";
+import { createChooser } from "./compare.js";
+import { createStrip } from "./strip.js";
 import { createViewer, fitOf, fromOrientation, PAN, transform, turned } from "./viewer.js";
 
 /**
@@ -25,8 +27,6 @@ export function createView(doc, act, options = {}) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const stage = byId("stage");
   const zoomLevel = byId("zoom-level");
-  const pick = /** @type {HTMLSelectElement} */ (byId("compare-with"));
-  const picker = byId("compare-pick");
   const details = byId("details");
   const main = /** @type {HTMLElement} */ (stage.parentElement);
   const status = byId("status");
@@ -64,6 +64,8 @@ export function createView(doc, act, options = {}) {
   const turnOf = (/** @type {Pane} */ pane) =>
     pane === a ? viewer : fromOrientation(pane.model?.orientation ?? 1);
   const comparing = () => !!state.partner && !!state.image;
+  const chooser = createChooser(doc, { act, comparing, stage });
+  const strip = createStrip(byId("toolbar"));
 
   /** Each shown pane's size, its image's turned size and the scale that fits it. */
   const geometry = () => {
@@ -162,22 +164,6 @@ export function createView(doc, act, options = {}) {
     byId("details-list").replaceChildren(...rows(doc, [...(model?.details ?? []), ...reason]));
   };
 
-  /** The compare picker's options: the other open images and the folder's. */
-  const offer = () => {
-    const chosen = state.partner?.path ?? "";
-    const first = /** @type {HTMLOptionElement} */ (pick.options[0]);
-    pick.replaceChildren(
-      first,
-      ...state.choices.map(({ path: value, name }) => {
-        const option = doc.createElement("option");
-        option.value = value;
-        option.textContent = name;
-        return option;
-      }),
-    );
-    pick.value = chosen;
-  };
-
   const controls = () => {
     const image = state.image;
     const visual = !!image && image.kind !== "details";
@@ -199,6 +185,7 @@ export function createView(doc, act, options = {}) {
     /** @type {HTMLButtonElement} */ (byId("compare")).disabled = !image;
     byId("compare").setAttribute("aria-pressed", String(comparing()));
     byId("flip").setAttribute("aria-pressed", String(viewer.flipped));
+    strip.more();
   };
 
   /** Re-lay out after a change to the zoom, the pan or the turn. */
@@ -224,10 +211,6 @@ export function createView(doc, act, options = {}) {
     changed();
     say(`Turned to ${viewer.rotation}°.`);
   };
-  const leave = () => {
-    picker.hidden = true;
-    act("compare", null);
-  };
 
   const buttons = /** @type {Record<string, () => unknown>} */ ({
     previous: () => act("previous"),
@@ -243,11 +226,6 @@ export function createView(doc, act, options = {}) {
       changed();
       say(viewer.flipped ? "Flipped." : "Not flipped.");
     },
-    compare: () => {
-      if (comparing()) return leave();
-      picker.hidden = false;
-      pick.focus();
-    },
     "details-toggle": () => {
       details.hidden = !details.hidden;
       byId("details-toggle").setAttribute("aria-expanded", String(!details.hidden));
@@ -255,7 +233,6 @@ export function createView(doc, act, options = {}) {
     },
   });
   for (const [id, run] of Object.entries(buttons)) byId(id).addEventListener("click", () => run());
-  pick.addEventListener("change", () => act("compare", pick.value || null));
 
   doc.addEventListener("keydown", (event) => {
     const target = /** @type {HTMLElement | null} */ (event.target);
@@ -288,7 +265,7 @@ export function createView(doc, act, options = {}) {
     else if (key === "PageDown") act("next");
     else if (key === "Home") act("first");
     else if (key === "End") act("last");
-    else if (key === "Escape" && (comparing() || !picker.hidden)) leave();
+    else if (key === "Escape" && chooser.shown()) chooser.leave();
     else handled = false;
     if (handled) event.preventDefault();
   });
@@ -369,9 +346,8 @@ export function createView(doc, act, options = {}) {
       show(b, comparing() ? next.partner : null);
       b.el.hidden = !comparing();
       stage.classList.toggle("split", comparing());
-      if (!comparing() && !image) picker.hidden = true;
       describe(image);
-      offer();
+      chooser.offer(next);
       changed();
     },
     status: say,
@@ -386,6 +362,13 @@ export function createView(doc, act, options = {}) {
     },
     focus() {
       stage.focus();
+    },
+    /** The zoom, pan and turn of the image on screen, as a sleep keeps them (keep.js). */
+    place: () => (state.image ? viewer.place() : null),
+    /** Back to the zoom, pan and turn a sleep kept of the image on screen. */
+    restore(/** @type {import("./keep.js").ViewPlace} */ place) {
+      Object.assign(viewer, place);
+      changed();
     },
   };
 }

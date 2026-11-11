@@ -52,11 +52,12 @@ export function createOpening(bridge, view, { read: readBytes, startWorker }) {
   /** @type {string | undefined} */
   let jobBuffer;
 
-  /** The whole file; a refusal asks once for the file's folder and reads again. */
+  /** The whole file; a refusal asks once for the file's folder, when `ask` says so, and reads again. */
   const read = async (
     /** @type {string} */ path,
     /** @type {AbortSignal} */ signal,
     /** @type {(done: number, total: number) => void} */ onProgress,
+    ask = true,
   ) => {
     const scope = scopeOf(path);
     const refused = new Error(`Not allowed to read ${path}.`);
@@ -67,7 +68,7 @@ export function createOpening(bridge, view, { read: readBytes, startWorker }) {
       return await call();
     } catch (error) {
       if (signal.aborted) throw error;
-      if (codeOf(error) !== "permission_denied") throw failed(error);
+      if (codeOf(error) !== "permission_denied" || !ask) throw failed(error);
     }
     // perm.request answers a refusal as a result; a failed ask counts as one.
     const decision = await bridge
@@ -105,9 +106,10 @@ export function createOpening(bridge, view, { read: readBytes, startWorker }) {
      * a stopped opening throws `Opening <name> was cancelled.`
      * @param {string} buffer
      * @param {string} path
+     * @param {{ ask?: boolean }} [how] ask: false asks the person nothing (a window waking)
      * @returns {Promise<{ size: number, decoded: Decoded }>}
      */
-    async load(buffer, path) {
+    async load(buffer, path, { ask = true } = {}) {
       stop();
       const mine = new AbortController();
       job = mine;
@@ -124,8 +126,11 @@ export function createOpening(bridge, view, { read: readBytes, startWorker }) {
       };
       try {
         report("Reading", null, 1, name);
-        const bytes = await read(path, mine.signal, (done, total) =>
-          report("Reading", done, total, counted(done, total, "bytes")),
+        const bytes = await read(
+          path,
+          mine.signal,
+          (done, total) => report("Reading", done, total, counted(done, total, "bytes")),
+          ask,
         );
         mine.signal.throwIfAborted();
         const size = bytes.length;

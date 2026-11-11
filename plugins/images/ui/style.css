@@ -56,7 +56,8 @@ h2 {
   content: "· ";
 }
 
-/* One row that scrolls rather than wraps, so a small window keeps room for the image. */
+/* One row that scrolls rather than wraps, so a small window keeps room for the image; a wheel over
+   it scrolls it sideways (strip.js). */
 #toolbar {
   display: flex;
   flex: 0 1 auto;
@@ -65,6 +66,25 @@ h2 {
   max-width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
+}
+
+/* An end that hides tools fades out: the mask's colour is only its opacity. */
+#toolbar[data-more="end"] {
+  mask-image: linear-gradient(to left, transparent, currentColor var(--desk-space-6));
+}
+
+#toolbar[data-more="start"] {
+  mask-image: linear-gradient(to right, transparent, currentColor var(--desk-space-6));
+}
+
+#toolbar[data-more="both"] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    currentColor var(--desk-space-6),
+    currentColor calc(100% - var(--desk-space-6)),
+    transparent
+  );
 }
 
 .gap {
