@@ -58,6 +58,55 @@ test("a crash-loop start names the plugins it held off", async ({ page }) => {
   await expect(action(page, "Start normally")).toBeVisible();
 });
 
+// #163 (draft 09 #8): the badge's button had the badge's own warning colour as its text, the badge lay
+// on Eris, and the notice was cut by the app's bottom edge.
+for (const viewport of [DESK, { width: 1024, height: 500 }]) {
+  test(`at ${viewport.width}×${viewport.height} the badge and its notice can be read, in sight and off Eris`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await open(page, "safe=crash-loop&held=endue.notes,endue.terminal");
+    const badge = page.locator('[data-layer="system"] .safe-badge');
+    await expect(badge).toBeVisible();
+    const look = (selector: string) =>
+      page.locator(selector).evaluate((el) => {
+        const style = getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        return {
+          color: style.color,
+          background: style.backgroundColor,
+          r: [r.x, r.y, r.width, r.height],
+        };
+      });
+    const button = await look('[data-layer="system"] .safe-badge-button');
+    expect(button.color).not.toBe(button.background);
+    const action = await look("footer.desk-status .desk-status-action");
+    expect(action.color).not.toBe(action.background);
+
+    const meet = (a: number[], b: number[]) =>
+      (a[0] ?? 0) < (b[0] ?? 0) + (b[2] ?? 0) &&
+      (b[0] ?? 0) < (a[0] ?? 0) + (a[2] ?? 0) &&
+      (a[1] ?? 0) < (b[1] ?? 0) + (b[3] ?? 0) &&
+      (b[1] ?? 0) < (a[1] ?? 0) + (a[3] ?? 0);
+    const [eris, safe, notice] = await Promise.all(
+      [".eris", '[data-layer="system"] .safe-badge', "footer.desk-status"].map(
+        async (s) => (await look(s)).r,
+      ),
+    );
+    expect(meet(safe as number[], eris as number[]), "the badge lies on Eris").toBe(false);
+    expect(meet(notice as number[], eris as number[]), "the notice lies on Eris").toBe(false);
+    expect(meet(notice as number[], safe as number[]), "the notice lies on the badge").toBe(false);
+    const [x, y, w, h] = notice as [number, number, number, number];
+    expect(x >= 0 && y >= 0 && x + w <= viewport.width && y + h <= viewport.height).toBe(true);
+
+    // The whole explanation, with every plugin it held off, once it is pointed at.
+    const text = page.locator("footer.desk-status .desk-status-text");
+    await text.hover();
+    await expect.poll(() => text.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await expect(text).toContainText("endue.notes, endue.terminal");
+  });
+}
+
 test("each state file kept broken gets one notice, and Show in file manager reveals it", async ({
   page,
 }) => {

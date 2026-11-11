@@ -32,11 +32,24 @@
   z-index: var(--z-popover);
 }
 
-/* The person's controls stay below the agent bar, including on shorter displays. */
+/* The agent bar lies between the profile switcher with its "+" (24 + 32 + 8 + 32, then 20: 116)
+   and the account bar (24 + 162, then 12: 198), never on them (issue 159). Centred 88 px above
+   the middle, no taller than keeps its top at 116 (408 = 2 × (88 + 116)), while the bar as it
+   comes (220 px) fits so: from 628 px up. A shorter app hangs it from under the switcher, closer
+   set, and what still does not fit scrolls. */
 .layer-system .sidebar {
   top: calc(50% - 88px);
-  max-height: calc(100% - 320px);
+  max-height: calc(100% - 408px);
   overflow-y: auto;
+}
+@media (max-height: 627px) {
+  .layer-system .sidebar {
+    top: 116px;
+    gap: var(--space-1);
+    max-height: calc(100% - 314px);
+    padding: var(--space-2) 0;
+    transform: none;
+  }
 }
 .account-bar {
   left: var(--space-6);
@@ -143,20 +156,88 @@
 
 /* The status line is the echo area: one quiet line at the top, above Eris, between the profiles and
    the desktops. Centred by its margins, not a transform: a translate of -50% would be half the
-   text's width, which differs with the fonts installed (render trees, ADR 0011). */
+   text's width, which differs with the fonts installed (render trees, ADR 0011). Placed in the whole
+   layer: the runtime's grid would hold an absolute child in the grid area it names, its 28 px row at
+   the very bottom, cut by the app's edge and under the talk pill (issues 158, 159). Above the
+   windows, so a press on it is its own. */
 .layer-desk .desk-status {
   position: absolute;
+  grid-area: auto;
   top: var(--space-2);
   right: 0;
   left: 0;
+  z-index: var(--z-float-top);
   width: max-content;
-  max-width: 480px;
+  max-width: min(720px, calc(100% - 560px));
   height: var(--control-xs);
   margin: 0 auto;
   padding: 0 var(--space-3);
   border: 0;
   font-size: var(--text-xs);
   line-height: var(--control-xs);
+  text-overflow: ellipsis;
+}
+/* A notice is a card over whatever lies under it, edged in its level's colour: one line until it is
+   pointed at or focused, then the whole of it (safe mode names every plugin it held off), scrolling
+   past half the app. One that stays until it is dismissed has a Dismiss button (notify policy). */
+.layer-desk .desk-status[data-level] {
+  height: auto;
+  max-height: 50%;
+  padding: 3px var(--space-3);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--radius-md);
+  background: var(--desk-popover);
+  box-shadow: var(--desk-shadow-md);
+  color: var(--desk-text);
+  line-height: 18px;
+  pointer-events: auto;
+}
+.layer-desk .desk-status[data-level="error"] { border-color: var(--desk-danger-border); }
+.layer-desk .desk-status[data-level="warning"] { border-color: var(--desk-warning-border); }
+.layer-desk .desk-status[data-level="success"] { border-color: var(--desk-success-border); }
+.layer-desk .desk-status.has-actions {
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.layer-desk .desk-status:has(> .desk-status-action, > .desk-status-dismiss) { padding-right: 3px; }
+.layer-desk .desk-status.has-actions .desk-status-text {
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
+.layer-desk .desk-status[data-level]:is(:hover, :focus-within) { overflow-y: auto; }
+.layer-desk .desk-status[data-level]:is(:hover, :focus-within),
+.layer-desk .desk-status[data-level]:is(:hover, :focus-within) .desk-status-text {
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+/* Its buttons in the kit's colours: the shell's button reset would give them the line's. */
+.layer-desk .desk-status .desk-status-action {
+  height: 18px;
+  margin: 0;
+  color: var(--desk-primary-text);
+  line-height: 16px;
+}
+.layer-desk .desk-status .desk-status-dismiss {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--desk-text-muted);
+}
+.layer-desk .desk-status .desk-status-dismiss:hover {
+  background: var(--desk-hover);
+  color: var(--desk-text);
+}
+/* While the other profiles unfold along the top, the line gives way to them. */
+.layer-system:has(.modes:is(:hover, :focus-within) .modes-more > *) ~ .layer-mode .desk-status {
+  visibility: hidden;
 }
 
 /* The palette (an overlay plugin) comes over the whole shell, the system layer included. */
@@ -229,22 +310,24 @@
   white-space: nowrap;
 }
 
-/* Safe mode (ADR 0061): top centre, above every mode, in the theme's warning colours. */
+/* Safe mode (ADR 0061): above every mode, in the theme's warning colours, under the desktops at
+   the top right. Not top centre: there the status line is, and Eris under it (issue 163). Opaque,
+   so a window under it never shows through. */
 .layer-system .safe-badge {
   position: absolute;
-  top: var(--space-6);
-  left: 50%;
+  top: calc(var(--space-6) + var(--control-sm) + var(--space-3));
+  right: var(--space-6);
   z-index: var(--z-system);
   display: flex;
   align-items: center;
   gap: var(--desk-space-2);
   padding: var(--desk-space-1) var(--desk-space-1) var(--desk-space-1) var(--desk-space-3);
-  transform: translateX(-50%);
   color: var(--desk-warning-text);
-  background: var(--desk-warning-soft);
+  background: linear-gradient(var(--desk-warning-soft), var(--desk-warning-soft)) var(--desk-card);
   border: 1px solid var(--desk-warning-border);
   border-radius: var(--desk-radius-full);
   font-size: var(--desk-text-xs);
+  white-space: nowrap;
   pointer-events: auto;
 }
 
@@ -252,7 +335,8 @@
   font-weight: 600;
 }
 
-.layer-system .safe-badge-button {
+/* Over the shell's button reset, which would give it the badge's warning colour on warning. */
+.layer-system .safe-badge .safe-badge-button {
   padding: var(--desk-space-1) var(--desk-space-3);
   font: inherit;
   color: var(--desk-warning-foreground);

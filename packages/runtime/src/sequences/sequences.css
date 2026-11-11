@@ -148,6 +148,8 @@
 
 .layer-desk .desk-keys-pending {
   position: absolute;
+  /* In the whole layer, over the status line: a grid area would hold it in the bottom row. */
+  grid-area: auto;
   top: var(--space-2, 8px);
   right: 0;
   left: 0;

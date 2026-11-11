@@ -1,7 +1,7 @@
 /**
- * The safe-mode badge (ADR 0061): top centre of the system layer, so no mode can hide it, while this
- * start runs only the desk's own policies. "Start normally" runs desk.start.normally: the desk saves
- * the session and the host starts it again without safe mode.
+ * The safe-mode badge (ADR 0061): in the system layer, under the desktops, so no mode can hide it,
+ * while this start runs only the desk's own policies. "Start normally" runs desk.start.normally: the
+ * desk saves the session and the host starts it again without safe mode.
  */
 import { runGesture } from "../gesture";
 import type { ShellCtx } from "../shell/context";
