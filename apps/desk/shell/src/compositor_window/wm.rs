@@ -93,6 +93,11 @@ impl CompositorWindow {
         let now = Instant::now();
         let ms = self.hosted.ms(now);
         let css = |at: Vec2| Point::new(f64::from(at.x) / scale, f64::from(at.y) / scale);
+        let pointer = match input {
+            Input::PointerMoved { x, y } => Some(css(Vec2::new(*x, *y))),
+            Input::PointerButton { .. } => Some(css(self.router.pointer_state().2)),
+            _ => None,
+        };
         let (outs, taken) = match input {
             Input::PointerMoved { x, y } => {
                 let at = css(Vec2::new(*x, *y));
@@ -157,6 +162,9 @@ impl CompositorWindow {
             _ => return false,
         };
         self.wm_outs(outs, now);
+        if let Some(at) = pointer {
+            self.wm_cursor(at);
+        }
         taken
     }
 

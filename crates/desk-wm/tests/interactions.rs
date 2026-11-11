@@ -8,6 +8,8 @@
 //! runtime and the window commands, `interactions/mid_glide.rs` a press on a window mid-glide.
 
 mod common;
+#[path = "interactions/cursor.rs"]
+mod cursor;
 #[path = "interactions/mid_glide.rs"]
 mod mid_glide;
 #[path = "interactions/reach.rs"]

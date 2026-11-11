@@ -213,7 +213,7 @@ impl CompositorWindow {
         json!({
             "focused": self.router.focused(),
             "windowFocused": self.router.window_focused(),
-            "cursor": format!("{:?}", self.router.cursor()),
+            "cursor": format!("{:?}", self.cursors.shown(self.router.cursor())),
             "ime": { "allowed": allowed, "area": area.map(|r| [r.x, r.y, r.width, r.height]),
                 "composing": composing.map(|(s, t)| json!({ "surface": s, "text": t })) },
             "pointer": { "capture": capture, "hearing": hearing, "at": [at.x, at.y] },

@@ -11,13 +11,13 @@
 use crate::clearance::{TopChrome, title_clearance};
 use crate::coordinates::is_floating;
 use crate::host::{title_bar_of, title_insets_of};
-use crate::types::{Point, Rect};
+use crate::types::{Placement, Point, Rect};
 
 use super::gesture::{Gesture, Kind};
 use super::resize::grip_at;
 use super::wm::Wm;
 
-fn inside(r: Rect, at: Point) -> bool {
+pub(super) fn inside(r: Rect, at: Point) -> bool {
     at.x >= r.x && at.x < r.right() && at.y >= r.y && at.y < r.bottom()
 }
 
@@ -39,10 +39,8 @@ impl Wm {
         if self.parts.iter().any(|r| inside(*r, at)) {
             return None;
         }
-        let windows = self.drawn.windows();
-        let stack = (self.drawn.used).stack(&windows, self.drawn.focused.as_deref());
-        let (_, p) = (stack.iter().rev())
-            .find(|(_, p)| self.drawn_rect(&p.id, now).is_some_and(|r| inside(r, at)))?;
+        let (p, _) = self.topmost_at(at, now)?;
+        let p = &p;
         let drawn = self.glides.get(&p.id).filter(|g| !g.done(now))?.at(now);
         let window = p.id.clone();
         if let Some(grip) = grip_at(drawn, at) {
@@ -52,15 +50,30 @@ impl Wm {
         if p.pinned {
             return None;
         }
+        let title = self.title_stretch(p, drawn);
+        inside(title, at).then(|| (p.id.clone(), Kind::Move { window }, drawn))
+    }
+
+    /// The part of `p`'s title bar, drawn at `drawn`, that a press drags it by. The bar drags from
+    /// its left edge: the switcher's clearance moves a fill's icon and title in, not where the bar
+    /// starts, and the chips themselves are parts of the system layer (#139). The tools, moved in
+    /// by the desktops' clearance, end the draggable part.
+    pub(super) fn title_stretch(&self, p: &Placement, drawn: Rect) -> Rect {
         let fill = p.fill.filter(|_| is_floating(p));
         let (_, end) = title_insets_of(title_clearance(fill, self.top));
         let bar = title_bar_of(drawn);
-        // The bar drags from its left edge: the switcher's clearance moves a fill's icon and title
-        // in, not where the bar starts, and the chips themselves are parts of the system layer
-        // (#139). The tools, moved in by the desktops' clearance, end the draggable part.
         let from = drawn.x;
-        let title = Rect::new(from, bar.y, (drawn.right() - end - from).max(0.0), bar.h);
-        inside(title, at).then(|| (p.id.clone(), Kind::Move { window }, drawn))
+        Rect::new(from, bar.y, (drawn.right() - end - from).max(0.0), bar.h)
+    }
+
+    /// The window topmost at `at` as drawn at `now`, and where it is drawn.
+    pub(super) fn topmost_at(&self, at: Point, now: f64) -> Option<(Placement, Rect)> {
+        let windows = self.drawn.windows();
+        let stack = (self.drawn.used).stack(&windows, self.drawn.focused.as_deref());
+        (stack.iter().rev()).find_map(|(_, p)| {
+            let drawn = self.drawn_rect(&p.id, now).filter(|r| inside(*r, at))?;
+            Some(((*p).clone(), drawn))
+        })
     }
 
     /// The press at `at` lands on a window gliding now (as last drawn): whether the window manager

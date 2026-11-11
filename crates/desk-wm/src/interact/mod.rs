@@ -14,7 +14,9 @@
 //!   with what it changed since, the compositor's pointer and keys, the `desk.display.*` window
 //!   commands, and each frame's places.
 //! - `publish`: the whole desk the runtime takes on each change; `edit`: the runtime's edits (#83).
+//! - `cursor`: the cursor over the grips and title bars and while a gesture runs (#159).
 
+pub mod cursor;
 pub mod drag;
 pub mod edit;
 pub mod gesture;
