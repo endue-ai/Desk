@@ -137,13 +137,15 @@ describe("quitting the desk with unsaved changes", () => {
   });
 });
 
-describe("Mod+W on a plugin's own surface", () => {
+describe("closing a plugin's own surface", () => {
   it("asks about the plugin's buffers that go with it", async () => {
     const d = await desk(["cancel"]);
     d.add(`surface:${NOTES}`, NOTES, false, true);
     d.add("a.md", NOTES, true);
     d.list.touch(`surface:${NOTES}`);
-    await expect(d.hub.commands.run("desk.buffers.close")).resolves.toBe(false);
+    // Named by its id: Mod+W with no id closes the file the surface shows (buffers-ring.test.ts).
+    const close = d.hub.commands.run("desk.buffers.close", { id: `surface:${NOTES}` });
+    await expect(close).resolves.toBe(false);
     expect(d.asked[0]?.title).toBe("a.md has unsaved changes");
     expect(d.ctx.unmount).not.toHaveBeenCalled();
   });

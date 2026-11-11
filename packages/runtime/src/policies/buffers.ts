@@ -2,7 +2,9 @@
  * desk.buffers (buffer.el, ibuffer): the buffer list and its commands. Switching shows a buffer's
  * surface; closing one with unsaved changes asks first, and so do closing the window that shows it
  * and quitting the desk (the list's guard); after a close the previous buffer shows. Plugins open,
- * rename and mark their own buffers with desk.buffers.open and desk.buffers.update.
+ * rename and mark their own buffers with desk.buffers.open and desk.buffers.update. The ring that
+ * switching, next, previous and Mod+W walk holds what shows something: a plugin's own surface is
+ * one of its stops only while the plugin holds no buffer of its own (#162).
  */
 import { type Buffer, Buffers, type Going, type Leaving } from "../buffers";
 import { type AgentSpec, CommandError } from "../commands";
@@ -62,9 +64,30 @@ export function installBuffers(
 
   const surfaceId = (plugin: string) => `surface:${plugin}`;
 
-  const show = async (id: string) => {
-    const buffer = buffers.get(id);
-    if (!buffer) throw new CommandError("failed", `no buffer ${id}`);
+  /** A plugin's own buffers, most recently used first: what it opened, not its surface. */
+  const own = (plugin: string) => buffers.ofPlugin(plugin).filter((b) => !b.surface);
+  /** What a buffer shows: a plugin's surface, while the plugin holds buffers, shows one of them. */
+  const shown = (buffer: Buffer | undefined) =>
+    buffer?.surface ? (own(buffer.plugin)[0] ?? buffer) : buffer;
+  /** Whether the ring stops at a buffer: every one but a surface beside its plugin's own. */
+  const inRing = (buffer: Buffer) => shown(buffer)?.id === buffer.id;
+  /** The buffer in use: the most recent, as it shows. */
+  const inUse = () => shown(buffers.current());
+  /** The stop `by` places from the buffer in use, in the list's stable order, wrapping round. */
+  const step = (by: number) => {
+    let at = inUse()?.id;
+    for (let tries = buffers.list().length; tries > 0; tries -= 1) {
+      const next = buffers.step(at, by);
+      if (!next || inRing(next)) return next;
+      at = next.id;
+    }
+    return undefined;
+  };
+
+  const show = async (named: string) => {
+    const buffer = shown(buffers.get(named));
+    if (!buffer) throw new CommandError("failed", `no buffer ${named}`);
+    const { id } = buffer;
     surfaces.show(buffer.plugin, true);
     actions.focus(buffer.plugin);
     buffers.touch(id);
@@ -95,7 +118,7 @@ export function installBuffers(
       if (!buffer?.modified) continue;
       if (!commands.has("desk.palette.pick")) return leaving === "quit";
       asking();
-      if (buffers.current()?.id !== id) await show(id).catch(() => {});
+      if (inUse()?.id !== id) await show(id).catch(() => {});
       const choice = await pick(`${buffer.name} has unsaved changes`, CHOICES[leaving]);
       if (choice === undefined || choice === "cancel") return false;
       if (choice === "save") await commands.run("desk.files.save", { buffer: id });
@@ -117,7 +140,7 @@ export function installBuffers(
         .catch(() => {});
     }
     closed(buffer);
-    const next = buffers.current();
+    const next = inUse();
     if (next && settings.get("desk.buffers.after-close", "previous") === "previous") {
       await show(next.id).catch(() => {});
     }
@@ -156,19 +179,23 @@ export function installBuffers(
         idOf(args) ??
         (await pick(
           "Switch to a buffer",
-          buffers.list().map((b) => ({ id: b.id, label: label(b), detail: b.path ?? b.plugin })),
+          buffers
+            .list()
+            .filter(inRing)
+            .map((b) => ({ id: b.id, label: label(b), detail: b.path ?? b.plugin })),
         ));
-      if (id) await show(id);
-      return id ?? null;
+      if (!id) return null;
+      await show(id);
+      return shown(buffers.get(id))?.id ?? id;
     },
     ["switch-to-buffer"],
   );
-  for (const [id, title, step] of [
+  for (const [id, title, by] of [
     ["desk.buffers.next", "Next buffer", 1],
     ["desk.buffers.previous", "Previous buffer", -1],
   ] as const) {
     define(id, title, async () => {
-      const next = buffers.step(buffers.current()?.id, step);
+      const next = step(by);
       if (next) await show(next.id);
       return next?.id ?? null;
     });
@@ -177,7 +204,9 @@ export function installBuffers(
     "desk.buffers.close",
     "Close the buffer",
     async (args, caller) => {
-      const buffer = buffers.get(idOf(args) ?? buffers.current()?.id ?? "");
+      const named = idOf(args);
+      // Mod+W closes what shows; a plugin's surface named by its id goes with the plugin's buffers.
+      const buffer = named === undefined ? inUse() : buffers.get(named);
       if (!buffer) return false;
       if (caller !== undefined && caller !== buffer.plugin && caller !== "desk.palette")
         throw new CommandError("failed", `${caller} may not close ${buffer.plugin}'s buffers`);
@@ -229,7 +258,7 @@ export function installBuffers(
     },
     focused: (plugin) => {
       if (plugin === null) return;
-      const mine = buffers.ofPlugin(plugin)[0];
+      const mine = shown(buffers.ofPlugin(plugin)[0]);
       if (mine) buffers.touch(mine.id);
     },
     show,
