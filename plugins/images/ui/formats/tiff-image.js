@@ -1,4 +1,4 @@
-// TIFF images, which the desk's engine does not decode (ADR XXXX): the uncompressed 8-bit RGB strips
+// TIFF images, which the desk's engine does not decode (ADR 0174): the uncompressed 8-bit RGB strips
 // that raw.js already reads for RAW thumbnails are drawn to a canvas, which covers what `sips` and
 // most screenshot tools write; any other TIFF gets the sentence saying what it is.
 import { probe } from "./probe.js";

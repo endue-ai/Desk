@@ -1,5 +1,5 @@
 // What the desk does with the phone's video and photo formats its engine may have no decoder for
-// (#162 findings 3 and 4, ADR XXXX), on the real CEF engine: an H.264 + AAC MP4 plays, or opens as
+// (#162 findings 3 and 4, ADR 0174), on the real CEF engine: an H.264 + AAC MP4 plays, or opens as
 // the Player's card naming the decoder this build lacks; a HEIC shows, or opens as Images' card
 // naming this build's limit; an uncompressed 8-bit RGB TIFF (as `sips` writes) is drawn by Images
 // itself. Each card offers Show in Finder; it is not pressed, since that opens the system's file

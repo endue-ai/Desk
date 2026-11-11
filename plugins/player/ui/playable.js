@@ -1,7 +1,7 @@
 // Whether the webview can play what the readers found, by asking it with canPlayType: the container's
 // media type first, then each track's codec where the container has a standard codec string. What it
 // refuses gets the one sentence the details view shows. The sentences name this build of the desk,
-// not an engine: what plays is what its engine and the player's own decoders decode (ADR XXXX).
+// not an engine: what plays is what its engine and the player's own decoders decode (ADR 0174).
 import { words } from "./codecs.js";
 
 /**

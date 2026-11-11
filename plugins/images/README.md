@@ -5,7 +5,7 @@ on the public SDK only. It shows; it never writes a file (`desk.files.save` is r
 
 - This build's engine (Chromium, ADR 0143) decodes PNG, APNG, JPEG, GIF, WebP, AVIF, JPEG XL, BMP,
   ICO, CUR and SVG (SVGZ is gunzipped first; SVG goes into an `<img>`, so its scripts never run).
-  It has no HEIC or TIFF decoder (ADR XXXX): **HEIC does not show in this build**, and a phone's
+  It has no HEIC or TIFF decoder (ADR 0174): **HEIC does not show in this build**, and a phone's
   photo opens as the details view saying so, with Show in Finder for another app.
 - Its own decoders, drawn to a canvas: uncompressed 8-bit RGB TIFF (as `sips` writes; other TIFFs
   open as details saying what they are), TGA, Netpbm (P1 to P7), QOI, DDS (BC1 to BC3), Radiance

@@ -189,7 +189,7 @@ describe("DICOM, FITS and NIfTI", () => {
   });
 });
 
-describe("what the desk's engine does not decode (ADR XXXX)", () => {
+describe("what the desk's engine does not decode (ADR 0174)", () => {
   it("HEIC and TIFF are this build's limit; anything else the engine fails on is damage", () => {
     expect(webviewReason("heic", "HEIC")).toBe(
       "This build of the desk does not decode HEIC images.",

@@ -1,4 +1,4 @@
-// "Show in Finder" on a file this build of the desk does not play (ADR XXXX): shell.open with reveal
+// "Show in Finder" on a file this build of the desk does not play (ADR 0174): shell.open with reveal
 // shows the file selected in the system's file manager, so another app can open it. The manifest's
 // shell:open grant covers files under the home folder; for any other the core asks first (ADR 0047).
 

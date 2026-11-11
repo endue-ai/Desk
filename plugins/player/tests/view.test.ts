@@ -171,7 +171,7 @@ describe("resuming long files", () => {
 });
 
 describe("a file this build does not play", () => {
-  /** The page on an engine without H.264 or AAC, as this build's Chromium (ADR XXXX). */
+  /** The page on an engine without H.264 or AAC, as this build's Chromium (ADR 0174). */
   const withoutH264 = async (prompt?: () => boolean) => {
     const page = await mountPage({ files: FILES, grants: GRANTS, prompt });
     page.video.element.canPlayType = (type) => (/avc1|mp4a\.40/.test(type) ? "" : "maybe");

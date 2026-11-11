@@ -51,7 +51,7 @@ export const MIME = /** @type {Record<string, string>} */ ({
 
 /**
  * What the desk's engine has no decoder for, by the type it was handed: Chromium decodes neither
- * HEIC nor TIFF, in any build (ADR XXXX). Anything else it fails on is damaged.
+ * HEIC nor TIFF, in any build (ADR 0174). Anything else it fails on is damaged.
  */
 const UNDECODED = /** @type {Record<string, string>} */ ({
   "image/heic": "HEIC",
@@ -167,7 +167,7 @@ export async function decode(bytes, name, options = {}) {
       };
     }
     if (id === "tiff") {
-      // The engine has no TIFF decoder (ADR XXXX): Images draws the uncompressed RGB ones itself.
+      // The engine has no TIFF decoder (ADR 0174): Images draws the uncompressed RGB ones itself.
       const facts = probe(id, bytes);
       const exif = readExif(bytes, id);
       const orientation = exif?.orientation ?? 1;

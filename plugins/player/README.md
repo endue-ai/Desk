@@ -10,7 +10,7 @@ URL; the remuxer (`ui/remux/`), which rewrites MKV, WebM, AVI, FLV, Ogg, MXF and
 fragmented MP4 for Media Source Extensions; FFmpeg's decoders in WebAssembly (`ui/software/`, a
 worker), drawn with WebGL and played with Web Audio. A failing engine hands over to the next.
 
-This build's engine is Chromium without its proprietary codecs (ADR 0143, ADR XXXX): it plays VP8,
+This build's engine is Chromium without its proprietary codecs (ADR 0143, ADR 0174): it plays VP8,
 VP9, AV1, Opus, Vorbis, FLAC, MP3 and PCM itself, and FFmpeg adds AAC, AC-3, E-AC-3, DTS, ALAC, WMV,
 VC-1, MPEG-4 Part 2, MPEG-1/2, Theora, RealMedia, WMA, APE, WavPack, AMR and DSD; MIDI and AU become
 a WAV. **H.264 and HEVC video do not play in this build** (most MP4, MOV, MKV and MTS files from

@@ -3,7 +3,7 @@
 // or FFmpeg's decoders in WebAssembly ("software", ui/software/). The engines are tried in order: one
 // that fails at run time hands the file to the next, and the details view says why when none is left.
 // Encrypted and DRM files go straight to the details view, and so does a file whose picture no
-// decoder here takes (H.264 and HEVC on a Chromium without its proprietary codecs, ADR XXXX).
+// decoder here takes (H.264 and HEVC on a Chromium without its proprietary codecs, ADR 0174).
 import { cannot, noDecoder, refusal } from "./playable.js";
 import { REMUX_CODECS, REMUX_FORMATS } from "./remux/index.js";
 
