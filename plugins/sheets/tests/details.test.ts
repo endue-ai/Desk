@@ -68,6 +68,45 @@ describe("files that open as the details view", () => {
     });
   });
 
+  it("bytes that are not text under a CSV or TSV name say what they are instead of rows of mojibake (#162)", () => {
+    // A PNG's signature and the start of its IHDR chunk, as a picture saved as .csv begins.
+    const png = Uint8Array.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0,
+      16, 0, 0, 0, 16, 8, 6, 0, 0, 0,
+    ]);
+    expect(openBook(png, { name: "really-a-png.csv" })).toEqual({
+      kind: "details",
+      format: "Comma-separated values",
+      detected: "PNG image",
+      reason: "Its first bytes are a PNG image, not comma-separated text.",
+    });
+    // Whatever encoding the setting names.
+    expect(openBook(png, { name: "really-a-png.csv", encoding: "euc-kr" })).toMatchObject({
+      kind: "details",
+      detected: "PNG image",
+    });
+    expect(openBook(utf8("%PDF-1.7\n%âãÏÓ\n"), { name: "report.tsv" })).toMatchObject({
+      kind: "details",
+      detected: "PDF document",
+      reason: "Its first bytes are a PDF document, not tab-separated text.",
+    });
+    const noise = Uint8Array.from({ length: 64 }, (_, i) => (i * 37 + 11) % 256);
+    expect(openBook(noise, { name: "dump.csv" })).toMatchObject({
+      kind: "details",
+      detected: "Binary data",
+      reason: "Its first bytes are binary data, not comma-separated text.",
+    });
+  });
+
+  it("text in another encoding, and an old DOS file's Ctrl+Z at its end, still open as a CSV", () => {
+    expect(openBook(fixture("notes-euc-kr.csv"), { name: "notes.csv" })).toMatchObject({
+      kind: "sheets",
+      encoding: "EUC-KR",
+    });
+    const dos = openBook(utf8("a,b\r\n1,2\r\n\x1a"), { name: "old.csv" });
+    expect(dos).toMatchObject({ kind: "sheets" });
+  });
+
   it("a Google Sheets shortcut is a card with the document's address", () => {
     expect(openBook(utf8(SHORTCUT), { name: "Plan.gsheet" })).toEqual({
       kind: "link",

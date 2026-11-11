@@ -49,6 +49,22 @@ export const withArticle = (/** @type {string} */ format) =>
 const startsWith = (/** @type {Uint8Array} */ bytes, /** @type {number[]} */ magic, at = 0) =>
   magic.every((byte, i) => bytes[at + i] === byte);
 
+/** Files that are often named by mistake (a picture saved as .csv): each said by its kind. */
+const SIGNATURES = /** @type {Array<[number[], string]>} */ ([
+  [[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], "PNG image"],
+  [[0xff, 0xd8, 0xff], "JPEG image"],
+  [[0x47, 0x49, 0x46, 0x38], "GIF image"],
+  [[0x25, 0x50, 0x44, 0x46, 0x2d], "PDF document"],
+  [[0x1f, 0x8b], "gzip archive"],
+]);
+
+/** What the first bytes say a file is when it is not text: what a text format must refuse. */
+export const NOT_TEXT = new Set([
+  ...SIGNATURES.map(([, name]) => name),
+  "WebP image",
+  "Binary data",
+]);
+
 /**
  * What the first bytes say the file is.
  * @param {Uint8Array} bytes
@@ -64,11 +80,22 @@ export function detect(bytes) {
   if (startsWith(bytes, [0x51, 0x50, 0x57], 4)) return "Quattro Pro notebook";
   if (bytes[0] === 0x09 && [0, 2, 4].includes(bytes[1] ?? -1)) return "Excel 2-4 worksheet";
   if (startsWith(bytes, [0xff, 0xfe]) || startsWith(bytes, [0xfe, 0xff])) return "UTF-16 text";
+  for (const [magic, name] of SIGNATURES) if (startsWith(bytes, magic)) return name;
+  if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes, [0x57, 0x45, 0x42, 0x50], 8))
+    return "WebP image";
   const first = bytes.subarray(0, 1024);
-  // Text has no control characters but tab, new lines, form feed and escape.
+  // Text has no control characters but tab, new lines, form feed and escape, and an old DOS file's
+  // Ctrl+Z at its very end.
   if (
     first.some(
-      (b) => b < 0x20 && b !== 0x09 && b !== 0x0a && b !== 0x0c && b !== 0x0d && b !== 0x1b,
+      (b, i) =>
+        b < 0x20 &&
+        b !== 0x09 &&
+        b !== 0x0a &&
+        b !== 0x0c &&
+        b !== 0x0d &&
+        b !== 0x1b &&
+        !(b === 0x1a && i === bytes.length - 1),
     )
   )
     return "Binary data";

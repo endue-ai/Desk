@@ -3,7 +3,7 @@
 // what SheetJS Community Edition leaves out (OOXML styles and frozen panes, ODS sizes and panes).
 // Nothing here throws: every failure is a details view, and the parser's console stays quiet.
 import { readCsv } from "./csv.js";
-import { BINARY, detect, extensionOf, formatOf } from "./detect.js";
+import { BINARY, detect, extensionOf, formatOf, NOT_TEXT, withArticle } from "./detect.js";
 import { damaged, ENCRYPTED, failure, NO_WORKBOOK, OLD_NUMBERS, sayer } from "./errors.js";
 
 export { ENCRYPTED, failure } from "./errors.js";
@@ -296,6 +296,13 @@ function fromZip(bytes, say, emit) {
   return bookOf(wb, say, { ooxml: ooxmlExtras(wb, text) });
 }
 
+/** Why a CSV or TSV whose bytes are not text does not open: what its first bytes are instead. */
+const notText = (/** @type {string} */ detected, /** @type {string} */ ext) => {
+  const what = detected === "Binary data" ? "binary data" : withArticle(detected);
+  const text = ext === "tsv" ? "tab-separated" : "comma-separated";
+  return `Its first bytes are ${what}, not ${text} text.`;
+};
+
 /**
  * Open a spreadsheet file.
  * @param {Uint8Array} bytes the whole file
@@ -313,6 +320,8 @@ export function openBook(bytes, { name, encoding = "auto", onSheet }) {
       if (detected === "ZIP archive") return fromZip(bytes, say, onSheet);
       if (detected !== "OLE compound file") {
         if (ext === "csv" || ext === "tsv") {
+          // Bytes that are not text read as rows of mojibake in any encoding: say what they are.
+          if (NOT_TEXT.has(detected)) return say(notText(detected, ext));
           const { sheet, detail, syntax, ...read } = readCsv(bytes, { name, encoding });
           const csv = syntax ? { csv: syntax } : {};
           const format = formatOf(name);
