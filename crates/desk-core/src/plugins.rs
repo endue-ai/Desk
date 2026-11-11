@@ -1,9 +1,10 @@
 //! The plugin registry: installed plugin folders, their validation status, revisions and the
 //! enabled flags, which are persisted in a small JSON store. init.yaml can hold plugins off at
-//! start without touching the persisted flags. A plugin with no stored flag starts on, unless its
-//! manifest says `autoload`: then it is off until the desk turns it on (ADR 0046). A library (files
-//! other plugins import) is always on: no flag or hold turns it off. Folders the core writes itself
-//! (user themes, ADR 0058) are written beside their place, checked, and only then put in it.
+//! start without touching the persisted flags (plugin.list's `heldOff`). A plugin with no stored flag
+//! starts on, unless its manifest says `autoload`: then it is off until the desk turns it on (ADR
+//! 0046). A library (files other plugins import) is always on: no flag or hold turns it off. Folders
+//! the core writes itself (user themes, ADR 0058) are written beside their place, checked, and only
+//! then put in it.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -12,7 +13,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use desk_bridge::{PluginInfo, PluginKind, PluginManifest, PluginStatus};
+use desk_bridge::{PluginHold, PluginInfo, PluginKind, PluginManifest, PluginStatus};
 use serde::{Deserialize, Serialize};
 
 use crate::manifest::{fallback_id, inside, validate_dir};
@@ -43,8 +44,8 @@ pub struct PluginRegistry {
     entries: Vec<Entry>,
     store_path: Option<PathBuf>,
     store: Store,
-    /// Held off for this run by init.yaml, until set_enabled says otherwise.
-    held_off: BTreeSet<String>,
+    /// Held off for this run (init.yaml, safe mode, a quarantine), until set_enabled says otherwise.
+    held_off: BTreeMap<String, PluginHold>,
 }
 
 impl PluginRegistry {
@@ -59,7 +60,7 @@ impl PluginRegistry {
             entries: Vec::new(),
             store_path: store,
             store: loaded,
-            held_off: BTreeSet::new(),
+            held_off: BTreeMap::new(),
         }
     }
 
@@ -121,12 +122,12 @@ impl PluginRegistry {
         Some(self.info(index))
     }
 
-    /// Keep a plugin disabled for this run without changing its persisted flag (init.yaml's
-    /// `plugins.disabled`). A later set_enabled overrides it. A library is never held off.
-    pub fn hold_off(&mut self, id: &str) -> Option<PluginInfo> {
+    /// Keep a plugin disabled for this run without changing its persisted flag, for `hold`'s reason.
+    /// A later set_enabled overrides it. A library is never held off.
+    pub fn hold_off(&mut self, id: &str, hold: PluginHold) -> Option<PluginInfo> {
         let index = self.entries.iter().position(|e| e.id == id)?;
         if !library(&self.entries[index]) {
-            self.held_off.insert(id.to_owned());
+            self.held_off.entry(id.to_owned()).or_insert(hold);
         }
         Some(self.info(index))
     }
@@ -134,7 +135,7 @@ impl PluginRegistry {
     /// Keep a plugin off for this run in safe mode, a library too (ADR 0061). set_enabled ends it.
     pub fn hold_for_safe_mode(&mut self, id: &str) -> Option<PluginInfo> {
         let index = self.entries.iter().position(|e| e.id == id)?;
-        self.held_off.insert(id.to_owned());
+        self.held_off.insert(id.to_owned(), PluginHold::SafeMode);
         Some(self.info(index))
     }
 
@@ -200,7 +201,7 @@ impl PluginRegistry {
             } else {
                 PluginStatus::Failed
             },
-            enabled: !self.held_off.contains(&entry.id)
+            enabled: !self.held_off.contains_key(&entry.id)
                 && (library(entry)
                     || self
                         .store
@@ -213,6 +214,7 @@ impl PluginRegistry {
             manifest: entry.manifest.clone(),
             error: entry.error.clone(),
             folder: Some(folder(&entry.dir)),
+            held_off: self.held_off.get(&entry.id).copied(),
         }
     }
 

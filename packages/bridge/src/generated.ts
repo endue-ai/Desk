@@ -5318,7 +5318,11 @@ export interface PluginInfo {
   error?: string;
   /** The folder the plugin was installed from, as an absolute path, so people can be shown its files. */
   folder?: Path;
+  heldOff?: PluginHold;
 }
+
+/** Why a plugin is off for this run only, whatever its remembered choice says: init (init.yaml's plugins.disabled), safe-mode (ADR 0061) or quarantine (its version stopped an earlier start, ADR 0061). Absent when nothing holds it. plugin.setEnabled ends the hold; desk plugin sync leaves a held plugin as it is. */
+export type PluginHold = "init" | "safe-mode" | "quarantine";
 
 /** ready: the manifest is valid and the entry exists; failed: it cannot run. */
 export type PluginStatus = "ready" | "failed";

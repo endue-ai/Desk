@@ -123,7 +123,9 @@ pub struct Plan {
     pub versions: Vec<(String, String, String)>,
 }
 
-/// The plan for `lock` against `plugins`: plugins the lock does not name are left alone.
+/// The plan for `lock` against `plugins`: plugins the lock does not name are left alone, and so is
+/// one held off for this run (init.yaml, safe mode, a quarantine): the lock keeps its remembered
+/// choice, holds aside, so a plugin it says is on is not turned on against the hold.
 pub fn plan(lock: &PluginsLock, plugins: &[PluginInfo]) -> Plan {
     let mut plan = Plan::default();
     let mut locked: Vec<&LockedPlugin> = lock.plugins.iter().collect();
@@ -133,7 +135,8 @@ pub fn plan(lock: &PluginsLock, plugins: &[PluginInfo]) -> Plan {
             plan.missing.push(line.id.clone());
             continue;
         };
-        if installed.enabled != line.enabled {
+        let held = installed.held_off.is_some() && !installed.enabled;
+        if installed.enabled != line.enabled && !held {
             let list = if line.enabled {
                 &mut plan.enable
             } else {

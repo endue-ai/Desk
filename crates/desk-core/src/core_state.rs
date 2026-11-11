@@ -8,7 +8,7 @@
 use std::path::Path;
 use std::sync::MutexGuard;
 
-use desk_bridge::{PluginInfo, PluginKind};
+use desk_bridge::{PluginHold, PluginInfo, PluginKind};
 use serde_json::Value;
 
 use crate::handler::Core;
@@ -147,7 +147,8 @@ impl Core {
             return held;
         }
         if self.quarantined(&info) {
-            return self.registry().hold_off(&info.id).unwrap_or(info);
+            let held = self.registry().hold_off(&info.id, PluginHold::Quarantine);
+            return held.unwrap_or(info);
         }
         info
     }

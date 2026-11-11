@@ -9,7 +9,7 @@ use std::sync::{Arc, MutexGuard};
 
 use desk_bridge::{
     BridgeEvent, ErrorCode, EventName, Permission, PluginChange, PluginChangedData,
-    PluginChangedEvent, PluginInfo, PluginKind, PluginListParams, PluginListResult,
+    PluginChangedEvent, PluginHold, PluginInfo, PluginKind, PluginListParams, PluginListResult,
     PluginManagePermission, PluginSetEnabledParams, PluginSetEnabledResult, PluginStatus,
 };
 
@@ -31,7 +31,8 @@ impl Core {
     pub fn install_plugin(&self, dir: &Path, built_in: bool) -> PluginInfo {
         let mut info = self.registry().install(dir, built_in);
         if self.init_disables(&info.id) {
-            info = self.registry().hold_off(&info.id).unwrap_or(info);
+            let held = self.registry().hold_off(&info.id, PluginHold::Init);
+            info = held.unwrap_or(info);
         }
         info = self.hold_for_start(info);
         if built_in && info.status == PluginStatus::Ready {

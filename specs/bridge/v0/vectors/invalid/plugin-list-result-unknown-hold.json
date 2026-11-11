@@ -1,0 +1,16 @@
+{
+  "target": "PluginListResult",
+  "description": "a plugin is held off only by init.yaml, safe mode or a quarantine",
+  "instance": {
+    "plugins": [
+      {
+        "id": "endue.onboarding",
+        "status": "ready",
+        "enabled": false,
+        "builtIn": true,
+        "revision": 1,
+        "heldOff": "profile"
+      }
+    ]
+  }
+}

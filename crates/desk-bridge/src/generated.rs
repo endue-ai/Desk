@@ -8260,6 +8260,19 @@ pub struct PluginInfo {
     /// The folder the plugin was installed from, as an absolute path, so people can be shown its files.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub folder: Option<Path>,
+    #[serde(rename = "heldOff", default, skip_serializing_if = "Option::is_none")]
+    pub held_off: Option<PluginHold>,
+}
+
+/// Why a plugin is off for this run only, whatever its remembered choice says: init (init.yaml's plugins.disabled), safe-mode (ADR 0061) or quarantine (its version stopped an earlier start, ADR 0061). Absent when nothing holds it. plugin.setEnabled ends the hold; desk plugin sync leaves a held plugin as it is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PluginHold {
+    #[serde(rename = "init")]
+    Init,
+    #[serde(rename = "safe-mode")]
+    SafeMode,
+    #[serde(rename = "quarantine")]
+    Quarantine,
 }
 
 /// ready: the manifest is valid and the entry exists; failed: it cannot run.

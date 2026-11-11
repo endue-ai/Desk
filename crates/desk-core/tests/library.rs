@@ -7,7 +7,7 @@ mod support;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use desk_bridge::{BridgeEvent, ErrorCode, PluginChange, PluginKind, PluginStatus};
+use desk_bridge::{BridgeEvent, ErrorCode, PluginChange, PluginHold, PluginKind, PluginStatus};
 use desk_core::{Core, PluginRegistry};
 use serde_json::json;
 use support::{call, grant, home, plugin_manage, roots};
@@ -142,7 +142,12 @@ fn a_library_is_never_mounted_or_turned_off() {
     // The registry alone keeps it on too, and remembers no flag for it.
     let mut registry = PluginRegistry::new(Some(home.join("registry.json")));
     registry.install(&library(&home), true);
-    assert!(registry.hold_off(LIBRARY).unwrap().enabled);
+    assert!(
+        registry
+            .hold_off(LIBRARY, PluginHold::Init)
+            .unwrap()
+            .enabled
+    );
     assert!(registry.set_enabled(LIBRARY, false).unwrap().enabled);
     assert!(!home.join("registry.json").exists());
 }

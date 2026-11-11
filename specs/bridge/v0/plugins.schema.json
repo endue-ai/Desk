@@ -53,10 +53,16 @@
         "folder": {
           "description": "The folder the plugin was installed from, as an absolute path, so people can be shown its files.",
           "$ref": "bridge.schema.json#/$defs/Path"
-        }
+        },
+        "heldOff": { "$ref": "#/$defs/PluginHold" }
       },
       "required": ["id", "status", "enabled", "builtIn", "revision"],
       "additionalProperties": false
+    },
+    "PluginHold": {
+      "description": "Why a plugin is off for this run only, whatever its remembered choice says: init (init.yaml's plugins.disabled), safe-mode (ADR 0061) or quarantine (its version stopped an earlier start, ADR 0061). Absent when nothing holds it. plugin.setEnabled ends the hold; desk plugin sync leaves a held plugin as it is.",
+      "type": "string",
+      "enum": ["init", "safe-mode", "quarantine"]
     },
     "PluginStatus": {
       "description": "ready: the manifest is valid and the entry exists; failed: it cannot run.",
