@@ -1,11 +1,13 @@
-//! The browser side of the bridge (#43): a page's call arrives as a process message, is answered on a
-//! thread of its own (a call may wait: a `perm.request`, the OS calendar prompt, a file dialog), and
-//! the reply goes back to the frame it came from on CEF's UI thread. The caller comes from the
+//! The browser side of the bridge (#43): a page's call arrives as a process message, is answered off
+//! CEF's UI thread after the calls its caller sent before it (`lanes.rs`; a call may wait, for a
+//! `perm.request`, the OS calendar prompt or a file dialog, and then holds the rest up only so long),
+//! and the reply goes back to the frame it came from on CEF's UI thread. The caller comes from the
 //! window the browser is for and the frame's URL (`desk_web::sender`), never from the call (#45).
 //! Core events go to the pages of the main, palette and Eris windows, as Tauri's `emit` did.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
+use std::time::Duration;
 
 use cef::*;
 use desk_boot::Booted;
@@ -24,6 +26,9 @@ use crate::instance::Instance;
 use crate::open_files::OpenFiles;
 use crate::pump::Pump;
 use crate::renderer::{MESSAGE, SURFACE};
+
+mod lanes;
+use lanes::Lanes;
 
 /// The started desk and what the shell's own commands need.
 pub struct Desk {
@@ -44,6 +49,8 @@ pub struct Desk {
     pub instance: Mutex<Option<Instance>>,
     /// The desk's own updates, when this build updates itself (#47).
     pub updater: Option<desk_update::Updater>,
+    /// The pages' bridge calls, in their lanes.
+    calls: Calls,
     /// The watchers and the desk socket, until the desk lets go of them.
     keep: Mutex<Option<Keep>>,
 }
@@ -80,6 +87,7 @@ impl Desk {
             eris: OnceLock::new(),
             instance: Mutex::new(instance),
             updater,
+            calls: Calls::default(),
             keep: Mutex::new(Some(keep)),
         };
         (Arc::new(desk), events)
@@ -100,23 +108,67 @@ impl Desk {
     }
 }
 
-/// Answer the call `text` that `frame`, in a browser of `role`, sent; then reply to it.
+/// How long a call that waits (for the person, a dialog, the network, a later call of its own page)
+/// holds up the calls its caller sent after it: far longer than a call that does not wait takes.
+const HOLD: Duration = Duration::from_millis(250);
+
+/// The pages' calls in lanes (`lanes.rs`): each page's read one after another in the order it sent
+/// them, then each caller's answered one after another in that order, beside every other caller's.
+/// A caller is the core caller a bridge call runs as (the runtime's page calls for each plugin it
+/// hosts as that plugin), or the shell's own commands of that page.
+struct Calls {
+    pages: Lanes<String>,
+    callers: Lanes<(String, Lane)>,
+}
+
+impl Default for Calls {
+    fn default() -> Self {
+        Self {
+            pages: Lanes::strict("desk-bridge-read"),
+            callers: Lanes::letting_go("desk-bridge", HOLD),
+        }
+    }
+}
+
+/// Whose calls of its page a call is among.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+enum Lane {
+    /// The shell's own commands (`desk_ready`, `compositor_edit`, …).
+    Shell,
+    /// The bridge calls that run as this caller.
+    Caller(String),
+}
+
+impl Lane {
+    fn of(sender: &Sender, call: &Call) -> Self {
+        if call.cmd != "bridge_call" {
+            return Self::Shell;
+        }
+        let named = call.args.get("caller").and_then(Value::as_str);
+        sender.caller(named).map_or(Self::Shell, Self::Caller)
+    }
+}
+
+/// Answer the call `text` that `frame`, in a browser of `role`, sent; then reply to it. Never waits:
+/// the call is read and answered on the bridge's threads, after the calls its caller sent before it.
 pub fn receive(desk: &Arc<Desk>, role: Role, frame: Frame, text: String) {
     let url = CefString::from(&frame.url()).to_string();
+    let page = CefString::from(&frame.identifier()).to_string();
     let sender = Sender::in_role(role, &url);
-    let desk = Arc::clone(desk);
-    let spawned = std::thread::Builder::new()
-        .name("desk-bridge".to_owned())
-        .spawn(move || {
-            let (id, outcome) = match Call::parse(&text) {
-                Ok(call) => (call.id, crate::commands::answer(&desk, &sender, call)),
-                Err(why) => (0, Err(why)),
-            };
+    let reading = Arc::clone(desk);
+    desk.calls.pages.run(page.clone(), move || {
+        let call = match Call::parse(&text) {
+            Ok(call) => call,
+            Err(why) => return send(frame, wire::reply(0, Err(why))),
+        };
+        let lane = Lane::of(&sender, &call);
+        let desk = Arc::clone(&reading);
+        reading.calls.callers.run((page, lane), move || {
+            let id = call.id;
+            let outcome = crate::commands::answer(&desk, &sender, call);
             send(frame, wire::reply(id, outcome));
         });
-    if let Err(why) = spawned {
-        eprintln!("endue Desk: no thread for a bridge call ({why})");
-    }
+    });
 }
 
 /// Hand `text` to `frame`'s page on CEF's UI thread.
@@ -204,5 +256,47 @@ pub fn forward_events(events: std::sync::mpsc::Receiver<Delivery>, pages: Pages)
         });
     if let Err(why) = spawned {
         eprintln!("endue Desk: no thread for core events ({why})");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Lane;
+    use desk_web::sender::Sender;
+    use desk_web::wire::Call;
+
+    fn lane(sender: &Sender, text: &str) -> Lane {
+        Lane::of(sender, &Call::parse(text).unwrap())
+    }
+
+    #[test]
+    fn a_call_is_in_the_lane_of_the_caller_it_runs_as() {
+        let runtime = Sender::Runtime;
+        let call = r#"{"id":1,"cmd":"bridge_call","args":{"request":{}}}"#;
+        assert_eq!(lane(&runtime, call), Lane::Caller("desk".into()));
+        // The runtime's page calls for each plugin it hosts in that plugin's lane.
+        let hosted =
+            r#"{"id":2,"cmd":"bridge_call","args":{"request":{},"caller":"endue.terminal"}}"#;
+        assert_eq!(
+            lane(&runtime, hosted),
+            Lane::Caller("endue.terminal".into())
+        );
+        let notes = r#"{"id":3,"cmd":"bridge_call","args":{"request":{},"caller":"endue.notes"}}"#;
+        assert_eq!(lane(&runtime, notes), Lane::Caller("endue.notes".into()));
+        // A plugin's frame is its own caller whatever it names.
+        let plugin = Sender::Plugin("endue.terminal".into());
+        assert_eq!(lane(&plugin, notes), Lane::Caller("endue.terminal".into()));
+        assert_eq!(lane(&Sender::Palette, call), Lane::Caller("palette".into()));
+    }
+
+    #[test]
+    fn the_shells_own_commands_have_a_lane_of_their_own() {
+        let edit = r#"{"id":4,"cmd":"compositor_edit","args":{"seq":1,"edits":[]}}"#;
+        assert_eq!(lane(&Sender::Runtime, edit), Lane::Shell);
+        let dialog = r#"{"id":5,"cmd":"plugin:dialog|open","args":{}}"#;
+        assert_eq!(lane(&Sender::Runtime, dialog), Lane::Shell);
+        // No bridge for a page the desk does not know: refused at once, beside the shell's commands.
+        let call = r#"{"id":6,"cmd":"bridge_call","args":{"request":{}}}"#;
+        assert_eq!(lane(&Sender::Unknown, call), Lane::Shell);
     }
 }
