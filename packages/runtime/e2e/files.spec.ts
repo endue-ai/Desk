@@ -131,6 +131,54 @@ test.describe("desk.buffers", () => {
   });
 });
 
+test.describe("desk.files: a file no rule names, one file one buffer, the ring (#162)", () => {
+  const fallback = `?init=${encodeURIComponent(JSON.stringify({ "desk.files.fallback": "test.lazy" }))}`;
+
+  test("a file no rule names opens in the fallback; a name without an extension as text", async ({
+    page,
+  }) => {
+    await open(page, fallback);
+    expect(await run(page, "desk.files.open", { path: "~/files/blob.bin" })).toBe(
+      "file:~/files/blob.bin",
+    );
+    await expect(lazy(page).getByTestId("file")).toHaveText(
+      "file:~/files/blob.bin: ~/files/blob.bin",
+    );
+    expect(await run(page, "desk.files.open", { path: "~/src/README" })).toBe("file:~/src/README");
+    await expect(echo(page).getByTestId("file")).toHaveText("file:~/src/README: ~/src/README");
+    await expect(status(page)).not.toHaveText(/No plugin opens/);
+  });
+
+  test("the same file by three spellings of its path is one buffer", async ({ page }) => {
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: a bridge path root, not a placeholder
+    const home = "${home}";
+    await open(page);
+    for (const path of ["~/notes/a.txt", `${home}/notes/a.txt`, "~/notes/./x/../a.txt"])
+      expect(await run(page, "desk.files.open", { path })).toBe("file:~/notes/a.txt");
+    expect((await buffers(page)).filter((id) => id.includes("a.txt"))).toEqual([
+      "file:~/notes/a.txt",
+    ]);
+    await expect(echo(page).getByTestId("log")).toContainText("visit ~/notes/a.txt;");
+    await expect(echo(page).getByTestId("log")).not.toContainText(`visit ${home}`);
+  });
+
+  test("Mod+W twice in a plugin with three files leaves the third showing", async ({ page }) => {
+    await open(page);
+    for (const name of ["a", "b", "c"])
+      await run(page, "desk.files.open", { path: `~/${name}.txt` });
+    // The plugin's own surface, which a walk with Mod+Alt+Right used to stop at, stands for its file.
+    expect(await run(page, "desk.buffers.switch", { id: "surface:test.echo" })).toBe(
+      "file:~/c.txt",
+    );
+    await page.evaluate(() => window.__desk.runtime.focusSurface("test.echo"));
+    await page.keyboard.press("Control+W");
+    await expect(echo(page).getByTestId("file")).toHaveText("file:~/b.txt: ~/b.txt");
+    await page.keyboard.press("Control+W");
+    await expect(echo(page).getByTestId("file")).toHaveText("file:~/a.txt: ~/a.txt");
+    expect(await buffers(page)).toContain("file:~/a.txt");
+  });
+});
+
 test.describe("desk.files: the plugin's own writes", () => {
   test("saving a file does not report it as changed on disk", async ({ page }) => {
     await open(page);

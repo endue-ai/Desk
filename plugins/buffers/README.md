@@ -6,7 +6,10 @@ only `contributes.settings` (ADR 0017). The list itself lives in the runtime
 
 A buffer is something open, apart from where it shows: every plugin surface on the grid is one, and a
 plugin may open more inside its own surface (a file each, say) with `desk.buffers.open { name, path }`
-and mark them changed with `desk.buffers.update { id, modified }`.
+and mark them changed with `desk.buffers.update { id, modified }`. The ring that `Mod+B`, next,
+previous, `Mod+W` and what shows after a close walk holds what shows something: a plugin's surface is
+a stop only while the plugin holds no buffer of its own; while it does, the surface stands for the
+buffer it shows. `desk.buffers.list` lists every buffer, surfaces too.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
