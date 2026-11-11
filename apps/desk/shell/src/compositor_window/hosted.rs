@@ -215,7 +215,11 @@ impl Hosted {
         // Each window's parts come from where the page's picture shows it (`hosted_picture.rs`).
         let real = self.real_ms(now);
         let desk = self.wm.desk();
-        let places = picture::places(&mut self.painted, desk, report, frame.drawn, laid, real);
+        let mut places = picture::places(&mut self.painted, desk, report, frame.drawn, laid, real);
+        // What lies above the windows: the system layer's parts and the snap preview, which the
+        // windows' page parts leave to them (#159 findings 15 and 19).
+        places.over = report.parts.iter().filter_map(|p| p.known()).collect();
+        places.preview = frame.preview.clone();
         let plan = desk.host_plan_at(vw, vh, report.top, report, &places);
         self.plan = Some(plan);
         self.preview = frame.preview;

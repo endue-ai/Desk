@@ -7,6 +7,8 @@
 //! (#52), which they replace, except that a frame moved in the page loads nothing again.
 
 mod common;
+#[path = "host/over.rs"]
+mod over;
 #[path = "host/support.rs"]
 mod support;
 

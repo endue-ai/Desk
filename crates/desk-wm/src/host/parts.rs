@@ -70,3 +70,24 @@ pub fn page_parts(page: &HostWindow, drawn: &HostWindow) -> Vec<PagePart> {
 pub fn in_place(w: &HostWindow) -> Vec<PagePart> {
     w.drawn_by_page().into_iter().map(|r| (r, r)).collect()
 }
+
+/// `parts` without what the page shows of `holes` (in the page): each piece left is drawn where
+/// its part is, shifted alike. What the system layer draws above every window (Eris, the rail)
+/// is the page's in the same picture; a window's parts leave it out, so a card in the spread shows
+/// the window and not what floated over it (#159 finding 15).
+pub fn cut_out(parts: &[PagePart], holes: &[Rect]) -> Vec<PagePart> {
+    if holes.is_empty() {
+        return parts.to_vec();
+    }
+    let mut out = Vec::new();
+    for (src, dst) in parts {
+        let (dx, dy) = (dst.x - src.x, dst.y - src.y);
+        for piece in super::subtract(*src, holes) {
+            out.push((
+                piece,
+                Rect::new(piece.x + dx, piece.y + dy, piece.w, piece.h),
+            ));
+        }
+    }
+    out
+}

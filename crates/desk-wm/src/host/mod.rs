@@ -35,7 +35,7 @@ pub use panes::{
     BORDER, Cell, DIVIDER, PANE_HEAD, TITLE, TITLE_END, TITLE_START, body_of, cells, head_of,
     title_bar_of,
 };
-pub use parts::{PagePart, page_parts};
+pub use parts::{PagePart, cut_out, page_parts};
 pub use shown::{Laid, PageShown, QUIET_MS};
 pub use surfaces::{FrameDoc, FrameState, Seat, Step, Surfaces};
 
@@ -198,6 +198,12 @@ pub struct Places {
     /// What the picture may still show of windows gone from the page: never drawn above the
     /// windows.
     pub stale: Vec<Rect>,
+    /// The system layer's parts where the page shows them, drawn whole above every window: what
+    /// the page draws of a window leaves them out.
+    pub over: Vec<Rect>,
+    /// The snap preview and the window it lies under: what the page draws of the windows below
+    /// it is drawn with them, under it (#159 finding 19).
+    pub preview: Option<(Rect, String)>,
 }
 
 impl Desk {
@@ -245,6 +251,7 @@ impl Desk {
                     w.page = page;
                     w.page_parts = page_parts(&laid, &w);
                 }
+                w.page_parts = cut_out(&w.page_parts, &places.over);
                 w.heard = places.heard.get(&p.id).copied().unwrap_or(w.page);
                 w
             })
@@ -255,8 +262,12 @@ impl Desk {
         // the page lays out elsewhere than it is drawn leaves all of that place to its window.
         let mut under: Vec<Rect> = hosted.iter().map(HostWindow::title_text).collect();
         under.extend(places.stale.iter().copied());
+        // The snap preview is drawn over every window but the one it lies under.
+        let preview =
+            (places.preview.as_ref()).filter(|(_, by)| hosted.iter().any(|w| &w.id == by));
         for (i, w) in hosted.iter().enumerate() {
             let moved = w.page != w.rect;
+            let tinted = preview.filter(|(_, by)| *by != w.id).map(|(r, _)| *r);
             for (part, _) in &w.page_parts {
                 if moved {
                     under.push(*part);
@@ -264,7 +275,9 @@ impl Desk {
                 }
                 let over = hosted[i + 1..]
                     .iter()
-                    .filter_map(|u| intersect(*part, u.rect));
+                    .map(|u| u.rect)
+                    .chain(tinted)
+                    .filter_map(|u| intersect(*part, u));
                 under.extend(over);
             }
         }
