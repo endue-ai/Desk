@@ -6,10 +6,16 @@ it does, under its own `fs:read` and `fs:write` grants, and the desk asks it to.
 
 Which plugin opens a file is each plugin's `contributes.files` rule, `{ "pattern": "*.md", "plugin":
 "example.notes" }`: patterns with a slash match the whole path, others the file name, and later layers
-are asked first. These defaults add no rule, so files open once a plugin says it opens them.
+are asked first. These defaults add no rule. A file no rule names opens in the fallbacks (Emacs's
+`fundamental-mode`): a name without an extension (`README`, `Makefile`, `.zshrc`) as text first, in
+the plugin `.txt` files open with, then in `desk.files.fallback`, which shows its details when it
+cannot show it. A file is one buffer however its path is spelled: the desk names it in one spelling,
+the folders above it followed through their links and the home folder as `~` (`~/files/a.csv`, not
+`/Users/me/files/a.csv` or `/private/tmp/…` for `/tmp/…`).
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
+| `desk.files.fallback` | `endue.data` | The plugin that opens a file no rule names (Data reads the format from the first bytes, else shows name, size, format and why); empty: it does not open |
 | `desk.files.recent-max` | 20 | How many recent files to remember (kept with `store.set`) |
 | `desk.files.on-change` | `reload` | Changed on disk: reload when there are no unsaved changes, else ask; `ask`; `ignore` |
 | `desk.files.history-max-bytes` | 268435456 (256 MiB) | What the history of earlier versions holds in all; the oldest go first |

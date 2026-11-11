@@ -5,14 +5,18 @@
  * desk.files.save, desk.files.revert). Opening a file the person chose never asks: the desk gives its
  * opener read access to the file's folder first (perm.grant, ADR 0131). An autoload opener that is
  * off comes on for a file and, when the desk turned it on, goes off again with its last buffer (ADR
- * 0046).
+ * 0046). A file no rule names opens in the fallbacks (`files-open.ts`), and a file is named in one
+ * spelling, so it is one buffer.
  */
 import { baseName } from "../buffers";
 import { type AgentSpec, type CommandCaller, CommandError, type CommandHandler } from "../commands";
 import type { NoticeInput } from "../notify";
-import { autoloads, globMatch, type PolicySet } from "../policy";
+import { autoloads } from "../policy";
 import type { BufferEvents, BuffersPolicy } from "./buffers";
 import { type DeskContext, disposer, type Installed } from "./context";
+import { onePath, opener, openers } from "./files-open";
+
+export { opener } from "./files-open";
 
 export interface RecentFile {
   path: string;
@@ -57,20 +61,6 @@ export const folderRead = (path: string) => ({
 /** The message of a failed request, without the error's class name in front. */
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-/**
- * The opener for `path`: the first rule whose pattern matches the file name (or the whole path) as
- * written; when none does, the first that matches it in any case, as Emacs's auto-mode-case-fold
- * (`IMG_0001.JPG` opens with a `*.jpg` rule, while `*.Z` still wins for `x.Z` over an earlier `*.z`).
- */
-export function opener(rules: PolicySet["files"], path: string): string | undefined {
-  const name = baseName(path);
-  const subject = (pattern: string) => (pattern.includes("/") ? path : name);
-  const exact = rules.find((rule) => globMatch(rule.pattern, subject(rule.pattern)));
-  const folded = (pattern: string) =>
-    globMatch(pattern.toLowerCase(), subject(pattern).toLowerCase());
-  return (exact ?? rules.find((rule) => folded(rule.pattern)))?.plugin;
-}
-
 export function installFiles(
   ctx: DeskContext,
   buffers: BuffersPolicy & BufferEvents,
@@ -78,6 +68,11 @@ export function installFiles(
   pickFile?: () => Promise<string | null>,
   /** The recent list in the store could not be read; it was kept as `<key>.broken` (ADR 0061). */
   broken?: (key: string) => void,
+  /**
+   * The host's name for a path: the folders above the file followed through their links, the home
+   * folder as `~`; it answers the path as given when it cannot say. Without it, one spelling only.
+   */
+  realPath?: (path: string) => Promise<string>,
 ): FilesPolicy {
   const { hub, bridge } = ctx;
   const { commands, settings } = hub;
@@ -160,11 +155,22 @@ export function installFiles(
   };
 
   /**
+   * `path` as its buffer is named: one spelling, and the host's name for it (links followed, the
+   * home folder as `~`) unless a buffer or a visit already has that spelling.
+   */
+  const named = async (path: string) => {
+    const one = onePath(path);
+    if (!realPath || list.byPath(one) || visiting.has(one)) return one;
+    return onePath(await realPath(one).catch(() => one));
+  };
+
+  /**
    * Open `path`, or show its buffer; with `show` false (find-file-noselect), open it without showing
    * it. A second open while the first visit is still on its way joins that one: the plugin cannot
    * show a buffer it does not hold yet ("No note file:…").
    */
-  const open = (path: string, by?: string, show = true, chosen = true): Promise<string> => {
+  const open = async (given: string, by?: string, show = true, chosen = true): Promise<string> => {
+    const path = await named(given);
     const going = visiting.get(path);
     if (going) return show && !going.show ? going.opening.then(reveal) : going.opening;
     const existing = list.byPath(path);
@@ -188,28 +194,41 @@ export function installFiles(
       // Without it the opener asks as before.
       .catch(() => undefined);
 
+  /** The plugins that may open `path`, in turn: the one named, its rule's, or the fallbacks. */
+  const openersOf = (path: string, by: string | undefined) => {
+    if (by) return [by];
+    const fallback = settings.get("desk.files.fallback", "endue.data");
+    const installed = (plugin: string) => hub.plugins.some((p) => p.id === plugin);
+    return openers(hub.policy.files, path, typeof fallback === "string" ? fallback : "", installed);
+  };
+
   const visit = async (path: string, by: string | undefined, show: boolean, chosen: boolean) => {
-    const plugin = by ?? opener(hub.policy.files, path);
-    if (!plugin) {
+    const plugins = openersOf(path, by);
+    if (plugins.length === 0) {
       notify({ caller: "desk", title: `No plugin opens ${baseName(path)}`, level: "warning" });
       throw new CommandError("failed", `no plugin opens ${path}`);
     }
-    await ready(plugin);
-    if (chosen) await allowRead(plugin, path);
     const id = `file:${path}`;
-    list.add({ id, name: baseName(path), plugin, path, modified: false, surface: false });
-    try {
-      await ctx.request(plugin, "desk.files.visit", { buffer: id, path });
-    } catch (error) {
-      list.remove(id);
-      release(plugin);
-      notify({
-        caller: "desk",
-        title: `${baseName(path)} did not open`,
-        body: reason(error),
-        level: "error",
-      });
-      throw error;
+    for (const [at, plugin] of plugins.entries()) {
+      await ready(plugin);
+      if (chosen) await allowRead(plugin, path);
+      list.add({ id, name: baseName(path), plugin, path, modified: false, surface: false });
+      try {
+        await ctx.request(plugin, "desk.files.visit", { buffer: id, path });
+      } catch (error) {
+        list.remove(id);
+        release(plugin);
+        // The text opener could not read a name without an extension: the fallback shows it.
+        if (at < plugins.length - 1) continue;
+        notify({
+          caller: "desk",
+          title: `${baseName(path)} did not open`,
+          body: reason(error),
+          level: "error",
+        });
+        throw error;
+      }
+      break;
     }
     unshown.add(path);
     return show ? reveal(id) : id;
@@ -314,7 +333,7 @@ export function installFiles(
     "desk.files.changed",
     "Handle a file that changed on disk",
     async (args) => {
-      const path = (args as { path?: string } | undefined)?.path ?? "";
+      const path = onePath((args as { path?: string } | undefined)?.path ?? "");
       const buffer = list.byPath(path);
       if (!buffer) return "not open";
       // The watch fires for the plugin's own write too: just saved and unchanged since means it.

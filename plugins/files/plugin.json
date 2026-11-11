@@ -11,6 +11,11 @@
         "default": 20,
         "description": "How many recent files to remember."
       },
+      "desk.files.fallback": {
+        "kind": "string",
+        "default": "endue.data",
+        "description": "The plugin that opens a file no rule names: it reads the format from the first bytes and shows the file's details when it cannot show the file. A name without an extension opens as text first. Empty: such a file does not open."
+      },
       "desk.files.on-change": {
         "kind": "string",
         "default": "reload",
