@@ -276,6 +276,9 @@ describe("popups at a window's first size: drawn whole past the pane, and usable
     await click([bx + LAST_WEEK[0], by + LAST_WEEK[1]]);
     await closed();
     expect((await values()).date).toBe("2026-11-30");
+    // The keys stay with the fixture, its window in use: nothing under the picker took the press.
+    expect((await inputState()).focused).toBe(POPUP);
+    expect((await windowNow(WINDOW)).focused).toBe(true);
     // Open again: Today picks the page's today.
     const [tx, ty, tw, th] = await open([x + w - 12, y + h / 2]);
     await click([tx + tw - TODAY[0], ty + th - TODAY[1]]);
