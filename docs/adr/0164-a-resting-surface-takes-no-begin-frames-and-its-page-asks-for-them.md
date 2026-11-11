@@ -44,11 +44,16 @@ nothing on its clock, and a change shows within a frame of the page's asking.
 * **The ask** (`web_host/frame_asks.{rs,js}`, `renderer.rs`): before a frame's scripts run, its page
   gets a script that, when something there may need a frame (a `requestAnimationFrame`, a change to
   the document, `Element.animate`, media playing, a load, a font, a draw on a 2D, WebGL or WebGPU
-  canvas), looks whether one comes within 40 ms, two desk frames; if none does it calls
-  `__deskNative.wake()` once (the `desk.wake` process message), and again only after a frame came,
-  or a second on if none did (an ask lost while its surface was hidden or the clock held). The
-  clients tell the clock (`frames::asked`), which gives the surface the desk frames within 42 ms of
-  its look; a paint they bring wakes it as any paint does.
+  canvas), wants one: while a want is unmet (no frame came after it), a frame must come within
+  40 ms, two desk frames, of it or of the last frame; if none does it calls `__deskNative.wake()`
+  (the `desk.wake` process message), and again a second on while none came (an ask lost while its
+  surface was hidden or the clock held). A want made in a frame after the frame met the earlier
+  ones (a `requestAnimationFrame` loop's next frame) waits for a frame of its own, so a page waiting
+  on a frame asks until one comes, wherever its frames stopped: a first version looked once per
+  40 ms and missed the wants made during that look, and an animating page whose frames stopped
+  inside it (the probe's held clock, about one run in two) waited for good. The clients tell the
+  clock (`frames::asked`), which gives the surface the desk frames within 42 ms of its look; a
+  paint they bring wakes it as any paint does.
 * **What kept a fresh desk busy**, found with the processes' CPU and each page's task time over
   DevTools, Chromium's trace and `sample`: the first run's animation (its surface painted at every
   frame until it ends); Eris's idle motion, her mesh drawn on a canvas at every frame in the shell
