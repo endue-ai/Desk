@@ -14,3 +14,16 @@ export function testWindowManager(size?: { w: number; h: number }): LocalWindowM
   module ??= new WebAssembly.Module(readFileSync(WASM));
   return localWindowManager(module, size);
 }
+
+/**
+ * The same, with each batch of edits applied a task later, in order, as the compositor's window
+ * manager does (the edit travels to the shell and its desk comes back): the runtime asks again
+ * before the desk of what it asked first is in (issue 160).
+ */
+export function lateWindowManager(size?: { w: number; h: number }): LocalWindowManager {
+  const wm = testWindowManager(size);
+  return {
+    ...wm,
+    edit: (edits) => new Promise((later) => setTimeout(later, 0)).then(() => wm.edit(edits)),
+  };
+}

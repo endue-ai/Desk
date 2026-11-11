@@ -27,11 +27,35 @@ function follow(ctx: Ctx): void {
   }
 }
 
-/** `edits` that move the focus, then the runtime's surfaces follow it. */
+/** Each desk's focus moves (by its store): how many were asked, and how many are on their way. */
+const moves = new WeakMap<object, { asked: number; going: number }>();
+
+function movesOf(ctx: Ctx): { asked: number; going: number } {
+  const known = moves.get(ctx.store);
+  if (known) return known;
+  const m = { asked: 0, going: 0 };
+  moves.set(ctx.store, m);
+  return m;
+}
+
+/**
+ * `edits` that move the focus, then the runtime's surfaces follow it: only when no later move was
+ * asked and the runtime's focus is where this one left it. In the app the desk comes back late
+ * (ADR 0153), so a desk that answers an earlier move names a focus already given away; following
+ * it took the focus back, which asked again, and two moves on their way never settled (issue 160).
+ */
 async function focusing(ctx: Ctx, ...edits: Edit[]): Promise<unknown[]> {
-  const answers = await edit(ctx, ...edits);
-  follow(ctx);
-  return answers;
+  const m = movesOf(ctx);
+  const mine = ++m.asked;
+  const keys = ctx.runtime.shortcuts.focused;
+  m.going += 1;
+  try {
+    const answers = await edit(ctx, ...edits);
+    if (m.asked === mine && ctx.runtime.shortcuts.focused === keys) follow(ctx);
+    return answers;
+  } finally {
+    m.going -= 1;
+  }
 }
 
 /** The plugins a close answered: they unmount for the session (ADR 0040). */
@@ -47,10 +71,14 @@ export function showPlugin(ctx: Ctx, id: string): Promise<unknown[]> {
   return focusing(ctx, { op: "show-plugin", id });
 }
 
-/** Focus a surface and one of its panes (its first when none is named). */
+/**
+ * Focus a surface and one of its panes (its first when none is named). One already in use is not
+ * asked for again, unless a move is on its way: the desk that names it in use is not the last.
+ */
 export function focusPane(ctx: Ctx, surface: string, pane?: string): Promise<unknown[]> {
   const s = ctx.store.get();
-  if (s.focused === surface && (pane === undefined || s.pane === pane)) {
+  const inUse = s.focused === surface && (pane === undefined || s.pane === pane);
+  if (inUse && movesOf(ctx).going === 0) {
     follow(ctx);
     return Promise.resolve([null]);
   }

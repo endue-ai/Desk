@@ -4,7 +4,7 @@
 // unmounts for the session (ADR 0040) and the question about their unsaved changes before (#160).
 import { describe, expect, it, vi } from "vitest";
 import { Buffers } from "../buffers";
-import { testWindowManager } from "../wm/testing";
+import { lateWindowManager, testWindowManager } from "../wm/testing";
 import { takeDesk } from "../wm/view";
 import { openSurface } from "./actions";
 import { Store, sampleState } from "./state";
@@ -21,9 +21,8 @@ import {
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 
 /** The shell over desk-wm, with plugins `p.a`, `p.b` and `p.c` handed over in slots 0 to 2. */
-async function ctx() {
+async function ctx(wm = testWindowManager()) {
   const store = new Store(sampleState("en", epoch));
-  const wm = testWindowManager();
   wm.connect((published) => takeDesk(store, published));
   const shortcuts = { focused: null as string | null };
   const focusSurface = vi.fn((id: string | null) => {
@@ -78,6 +77,68 @@ describe("the runtime's surfaces follow the pane in use", () => {
     expect(c.shortcuts.focused).toBeNull();
     await showInPane(c, id, "p1", "plugin:p.a");
     expect(c.store.get().focused).toBe(id);
+    expect(c.shortcuts.focused).toBe("p.a");
+  });
+});
+
+/** A few tasks of the late window manager: every edit asked so far is in, and those they asked. */
+const turns = () => new Promise((done) => setTimeout(done, 30));
+
+describe("the focus settles while the window manager's desk comes late (#160)", () => {
+  /** The runtime's focusSurface: its surface takes the keys, then its window shows (`windows.show`). */
+  async function late() {
+    const c = await ctx(lateWindowManager());
+    c.focusSurface.mockImplementation((id: string | null) => {
+      c.shortcuts.focused = id;
+      if (id) void showPlugin(c, id);
+    });
+    return c;
+  }
+
+  it("two windows shown at once (a restore's files in two plugins) end on the second, and nothing moves after", async () => {
+    const c = await late();
+    const edit = vi.spyOn(c.wm, "edit");
+    c.focusSurface("p.a");
+    c.focusSurface("p.b");
+    await turns();
+    const asked = edit.mock.calls.length;
+    await turns();
+    expect(edit.mock.calls.length).toBe(asked);
+    expect(asked).toBe(2);
+    expect(c.store.get().focused).toBe("p.b");
+    expect(c.shortcuts.focused).toBe("p.b");
+  });
+
+  it("a desk that answers a focus move asked before another does not take the keys back", async () => {
+    const c = await late();
+    const first = focusPane(c, "p.a");
+    const second = focusPane(c, "p.b");
+    await Promise.all([first, second]);
+    await turns();
+    expect(c.store.get().focused).toBe("p.b");
+    expect(c.focusSurface.mock.calls.map(([id]) => id)).toEqual(["p.b"]);
+  });
+
+  it("a surface the runtime focused while the move was on its way keeps the keys", async () => {
+    const c = await late();
+    const showing = showPlugin(c, "p.a");
+    // The palette (an overlay: no window shows it) takes the keys before the desk is in.
+    c.shortcuts.focused = "p.palette";
+    await showing;
+    await turns();
+    expect(c.store.get().focused).toBe("p.a");
+    expect(c.shortcuts.focused).toBe("p.palette");
+  });
+
+  it("a pane in use by a desk not yet in is focused again, so the move after it does not win", async () => {
+    const c = await late();
+    await focusPane(c, "p.a");
+    const moving = focusPane(c, "p.b");
+    // The store still names p.a in use: the move to p.b is on its way.
+    expect(c.store.get().focused).toBe("p.a");
+    await Promise.all([moving, focusPane(c, "p.a")]);
+    await turns();
+    expect(c.store.get().focused).toBe("p.a");
     expect(c.shortcuts.focused).toBe("p.a");
   });
 });
