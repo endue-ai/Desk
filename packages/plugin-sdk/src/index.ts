@@ -75,6 +75,15 @@ export {
   restoreFile,
 } from "./history";
 export {
+  fitFiles,
+  type KeepFilesOptions,
+  type KeptFile,
+  type KeptFiles,
+  type KeptState,
+  keepFiles,
+  type OpenFile,
+} from "./open-files";
+export {
   type CommandOutcome,
   type FollowHandlers,
   type HostMessage,
@@ -95,6 +104,13 @@ export {
   type PluginTheme,
   type UiPlugin,
 } from "./sdk";
+export {
+  applyTextChange,
+  isTextChange,
+  type TextChange,
+  textChange,
+  textSum,
+} from "./text-change";
 export {
   fillArgs,
   type PluginUniversal,

@@ -16,10 +16,10 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
   listener)` (unsubscribes). `ctx.views` (`view.*`, `view:manage`): `list()`, `get(id)`, `save(view)`, `remove(id)`.
 - `ctx.surface`: `open(id, { placement?, title? })` a handle for `close(handle)` (`ui:surface`); `close()` ends this
   frame's, `show()`/`hide()` a `hidden` one; `onUnload(provider)`: JSON (64 KiB) back as `restored`. Chords reach the desk.
-- `ctx.settings` (the plugin's own keys, `settings.*`): `get(key)`, `set(key, value)`, `list()`,
-  `onChange(listener)`. `ctx.log`: `write(level, message, fields?)`, `tail({ channel?, count? })`
-  (needs `log:read`). `ctx.events.subscribe(names, listener)` resolves the function that unsubscribes
-  (needs `events:subscribe`). `ctx.perm`: `request(permission, reason, duration?)`, `query(permission?)`.
+  Openers: `keepFiles(ctx.surface, { files, shown })` fits files, places and edits in it (`textChange`; ADR XXXX).
+- `ctx.settings` (own keys, `settings.*`): `get(key)`, `set(key, value)`, `list()`, `onChange(listener)`. `ctx.log`:
+  `write(level, message, fields?)`, `tail({ channel?, count? })` (`log:read`). `ctx.events.subscribe(names, listener)`
+  resolves its unsubscribe (`events:subscribe`). `ctx.perm`: `request(permission, reason, duration?)`, `query(permission?)`.
 - `ctx.commands` (`cmd.*`, ADR 0017): `run(id, args)` is `cmd.invoke` and resolves with the provider's
   answer (needs `cmd:invoke` for the id); `list()`; `tools(query?)` (ADR 0088); `on(name, handler)`
   answers this plugin's commands and the desk's requests, after `mount`. Failures are `CommandFailed`
