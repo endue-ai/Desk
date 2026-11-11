@@ -1,7 +1,8 @@
 // The plugin's file access: the SDK's byteSource (ranges through the file's fs.url URL, or ranged
 // fs.read calls, with its block cache), asking once with perm.request for the file's folder when its
 // grants do not cover it (never while a window comes back from a sleep); fs.watch; and the scopes
-// extraction writes under. Every failure is an Error whose message is the sentence the person reads.
+// extraction writes under, with the grant it was given. Every failure is an Error whose message is
+// the sentence the person reads.
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext["bridge"]} Bridge
@@ -67,15 +68,33 @@ export function blockwise(source) {
 /** @param {Bridge} bridge @param {ByteSource} byteSource the SDK's */
 export function createFiles(bridge, byteSource) {
   /**
-   * Ask once for `scope`; true when the person allows it.
+   * Ask once for `scope`: whether the person allows it, and whether only once (the next call it
+   * allows spends it), with the grant's id.
    * @param {Permission} scope @param {string} reason
+   * @returns {Promise<{ granted: boolean, once: boolean, grantId?: string }>}
    */
-  const ask = async (scope, reason) => {
+  const request = async (scope, reason) => {
+    /** @type {{ granted?: boolean, grant?: { grantId?: string, duration?: string } }} */
     const decision = await bridge
       .call("perm.request", { permission: scope, reason })
       .catch(() => ({ granted: false }));
-    return decision.granted === true;
+    const { grantId, duration } = decision.grant ?? {};
+    return {
+      granted: decision.granted === true,
+      once: duration === "once",
+      ...(grantId ? { grantId } : {}),
+    };
   };
+  /** Ask once for `scope`; true when the person allows it. @param {Permission} scope @param {string} reason */
+  const ask = async (scope, reason) => (await request(scope, reason)).granted;
+  /** Give back a grant the plugin will not use. @param {string | undefined} grantId */
+  const giveBack = (grantId) =>
+    grantId
+      ? bridge.call("perm.revoke", { grantId }).then(
+          () => {},
+          () => {},
+        )
+      : Promise.resolve();
 
   /**
    * Open `path` for ranged reads. Throws "Not allowed to read <path>." when refused, or when its
@@ -122,5 +141,5 @@ export function createFiles(bridge, byteSource) {
       .then(({ watchId }) => watchId)
       .catch(() => undefined);
 
-  return { open, watch, ask };
+  return { open, watch, ask, request, giveBack };
 }

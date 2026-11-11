@@ -1,9 +1,12 @@
-// Extraction: the selection or everything, to a folder the person picks in the palette, after
-// perm.request for fs:write on it. Names that would land outside are refused and listed, an existing
-// file asks once for the run (overwrite, skip or stop), the progress element counts files and bytes,
-// and stop() (its Cancel, or Escape) ends the run between files and stops the entry being read.
+// Extraction: the selection or everything, to a folder the person picks in the palette, after one
+// question, perm.request for fs:write on it (#162 finding 15). Names that would land outside are
+// refused and listed; where Archives may read the folder an existing file asks once for the run
+// (overwrite, skip or stop), where it may not one is replaced and named (existing.js); "Allow once"
+// lets one file through. The progress element counts files and bytes, and stop() (its Cancel, or
+// Escape) ends the run between files and stops the entry being read.
 import { formatSize, toBase64 } from "./bytes.js";
-import { codeOf, folderOf, scopeUnder } from "./files.js";
+import { createExisting } from "./existing.js";
+import { codeOf, scopeUnder } from "./files.js";
 import { safeTarget } from "./safety.js";
 
 /**
@@ -69,8 +72,8 @@ export function createExtractor({ bridge, commands }, files, out) {
     if (!answer) return out.say("Nothing was extracted.");
     const target = answer.replace(/\/+$/, "");
     const write = scopeUnder("fs:write", target);
-    if (!(await files.ask(write, `To extract ${what.name} to ${target}`)))
-      return out.say(`Not allowed to write ${target}.`);
+    const allowed = await files.request(write, `To extract ${what.name} to ${target}`);
+    if (!allowed.granted) return out.say(`Not allowed to write ${target}.`);
 
     /** @type {Array<{ entry: Entry, path: string }>} */
     const plan = [];
@@ -97,39 +100,23 @@ export function createExtractor({ bridge, commands }, files, out) {
       else if (entry.size > EXTRACT_LIMIT) large.push(entry.path);
       else plan.push({ entry, path: safe.path });
     }
+    // A once grant is spent by the first call it allows: it writes one file, and is given back when
+    // it would write none or could not write them all.
+    if (allowed.once && plan.length !== 1) await files.giveBack(allowed.grantId);
+    if (allowed.once && plan.length > 1) {
+      return out.say(
+        `Nothing was extracted: "Allow once" lets Archives write one file, and ${what.name} has ${plan.length} to write. Extract again and allow it for this session.`,
+      );
+    }
     const total = plan.reduce((n, p) => n + Math.max(0, p.entry.size), 0);
     let done = 0;
     let bytes = 0;
     let skipped = 0;
+    /** Files a write replaced where Archives could not see them first. @type {string[]} */
+    const replaced = [];
     /** @type {"overwrite" | "skip" | undefined} */
     let existing;
-    /** Existing names per folder, listed once (fs.list under fs:read). @type {Map<string, Promise<Set<string>>>} */
-    const listed = new Map();
-    const read = scopeUnder("fs:read", target);
-    let mayRead = true;
-    const names = async (/** @type {string} */ folder) => {
-      const list = () =>
-        bridge
-          .call("fs.list", { path: folder, scope: read })
-          .then(({ entries }) => new Set(entries.map((e) => e.name)));
-      try {
-        return await list();
-      } catch (error) {
-        if (codeOf(error) === "not_found") return new Set();
-        if (codeOf(error) !== "permission_denied" || !mayRead) throw error;
-        mayRead = false;
-        if (!(await files.ask(read, `To see which files already exist in ${target}`)))
-          throw new Error(`Not allowed to read ${target}, so existing files cannot be told apart.`);
-        return list().catch((e) => (codeOf(e) === "not_found" ? new Set() : Promise.reject(e)));
-      }
-    };
-    const exists = (/** @type {string} */ path) => {
-      const folder = folderOf(path);
-      if (!listed.has(folder)) listed.set(folder, names(folder));
-      return /** @type {Promise<Set<string>>} */ (listed.get(folder)).then((set) =>
-        set.has(path.slice(folder.length + 1)),
-      );
-    };
+    const there = createExisting(bridge, target);
     const counts = () =>
       `${done} of ${plural(plan.length, "file")}, ${formatSize(bytes)} of ${formatSize(total)}`;
     /** @type {import("./jobs.js").Running["report"]} */
@@ -140,7 +127,7 @@ export function createExtractor({ bridge, commands }, files, out) {
     /** @param {{ entry: Entry, path: string }} item @param {Uint8Array} data */
     const put = async (item, data) => {
       if (stopping) throw STOP;
-      if (await exists(item.path)) {
+      if (await there.has(item.path)) {
         if (!existing) {
           const choice = await pick({
             title: `${item.path.slice(target.length + 1)} already exists in ${target}`,
@@ -163,13 +150,14 @@ export function createExtractor({ bridge, commands }, files, out) {
         }
       }
       try {
-        await bridge.call("fs.write", {
+        const { version } = await bridge.call("fs.write", {
           path: item.path,
           content: toBase64(data),
           encoding: "base64",
           createDirs: true,
           scope: write,
         });
+        if (version && there.blind) replaced.push(item.path.slice(target.length + 1));
       } catch (error) {
         if (codeOf(error) === "permission_denied")
           throw new Error(`Not allowed to write ${target}.`);
@@ -222,6 +210,12 @@ export function createExtractor({ bridge, commands }, files, out) {
       out.changed();
     }
     if (skipped) ending += ` Skipped ${skipped} that already existed.`;
+    if (replaced.length) {
+      const one = replaced.length === 1;
+      const named = replaced.slice(0, 10).join(", ");
+      const more = replaced.length > 10 ? ` and ${replaced.length - 10} more` : "";
+      ending += ` Replaced ${plural(replaced.length, "file")} that ${one ? "was" : "were"} already there: ${named}${more}; the desk keeps what ${one ? "it" : "they"} held in ${one ? "its" : "their"} history.`;
+    }
     if (refused.length)
       ending += ` Refused ${refused.length} outside the folder: ${refused.join(", ")}.`;
     if (locked.length) ending += ` Encrypted, not extracted: ${locked.join(", ")}.`;

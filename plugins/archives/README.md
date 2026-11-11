@@ -20,15 +20,16 @@ It answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed`, ref
 and asks once for the file's folder when its grants do not cover a read. A window that sleeps keeps
 each archive's levels, open folders, selection, marks, top row, sort and filter (`keepFiles`) and
 comes back to them without asking; an archive the desk lists that it lost opens when shown. Extraction
-asks with `desk.palette.pick` for the folder, then `perm.request` for `fs:write` on it, and refuses
-names that leave it (`..`, absolute paths, drive letters, links out); an existing file asks once for
-the run; files over 64 MiB are listed, not written. Permission: `cmd:invoke` for `desk.files.changed`
-and `desk.palette.pick`.
+asks with `desk.palette.pick` for the folder, then one question, `perm.request` for `fs:write` on it,
+and refuses names that leave it (`..`, absolute paths, drive letters, links out). Where its grants read
+the folder (beside the archive) an existing file asks once for the run; elsewhere a file of the same
+name is replaced and named, and its history keeps it. "Allow once" writes one file; files over 64 MiB
+are listed, not written. Permission: `cmd:invoke` for `desk.files.changed` and `desk.palette.pick`.
 
 | File | Purpose |
 | --- | --- |
 | `ui/archives.js`, `actions.js`, `keep.js`, `opening.js`, `previews.js`, `jobs.js` | Requests, what the person does, what a sleep keeps, levels (archives inside archives), previews, long work |
-| `ui/files.js`, `formats/`, `library-*.js`, `extract.js`, `safety.js`, `tree.js`, `preview.js` | File access, one reader per format (`index.js` tells them apart), the library worker, extraction and the paths it refuses, sorting and previews, without the DOM |
+| `ui/files.js`, `formats/`, `library-*.js`, `extract.js`, `existing.js`, `safety.js`, `tree.js`, `preview.js` | File access, one reader per format (`index.js` tells them apart), the library worker, extraction, the files it would replace and the paths it refuses, sorting and previews, without the DOM |
 | `ui/view*.js` | The DOM: a virtual ARIA tree, the preview pane, status and progress; a small window shows the tree first |
 
 Keys: arrows, Page Up/Down, Home/End, Enter, Space (mark), Mod+F (filter), Escape (stop long work).
