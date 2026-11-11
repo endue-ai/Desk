@@ -12,7 +12,10 @@ use desk_surface::generated::{
     SurfaceWheelUnit,
 };
 
-use super::{edit_keys, key_codes};
+use super::{field_menu, key_codes};
+
+#[path = "edit_keys.rs"]
+pub mod edit_keys;
 
 /// Pixels a wheel line scrolls in Chromium.
 const LINE: f64 = 40.0;
@@ -112,6 +115,10 @@ pub fn deliver(host: &BrowserHost, message: &M, composing: &mut Option<String>, 
     {
         super::copy_wake::input();
         super::frames::heard(browser.identifier(), super::frames::prompts(message));
+    }
+    // While the text field's menu shows, what it takes never reaches the page (#156).
+    if field_menu::take(host, message) {
+        return;
     }
     match message {
         M::SurfacePointerMove(m) => {

@@ -15,7 +15,7 @@ pub mod clock;
 mod copy_wake;
 pub mod cursor;
 pub mod drag;
-pub mod edit_keys;
+pub mod field_menu;
 pub mod frame_asks;
 pub mod frames;
 pub mod input;
@@ -250,7 +250,8 @@ impl WebHost {
         };
         view.lock().restart();
         let render = render::SurfaceRender::new(view.clone(), Arc::clone(&self.sink), self.room());
-        let mut client = client::client(self, surface, render, self.desk.clone());
+        let client = client::client(self, surface, render, self.desk.clone());
+        let mut client = field_menu::client(client, view.clone());
         let info = WindowInfo {
             windowless_rendering_enabled: 1,
             shared_texture_enabled: i32::from(self.shared_textures),

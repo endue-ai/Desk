@@ -22,6 +22,11 @@ pub fn set_shell_page(id: Option<i32>) {
     SHELL_PAGE.store(id.unwrap_or(-1), Ordering::Release);
 }
 
+/// Whether browser `id` is the runtime's page.
+pub fn is_shell_page(id: i32) -> bool {
+    SHELL_PAGE.load(Ordering::Acquire) == id
+}
+
 /// Whether a document request of `browser` for a frame (`main` or not) at a plugin surface's host
 /// is a frame of the runtime's page, which may not have one.
 pub fn framed_in_page(browser: i32, main: bool, sub_frame: bool, surface_host: bool) -> bool {

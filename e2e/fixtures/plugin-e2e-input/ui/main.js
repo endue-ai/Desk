@@ -1,9 +1,10 @@
 // The app e2e's input plugin (#56). It records what reaches its text field (keys, compositions, the
 // value) and what lands on its drop zone, on `window.e2eInput`, for a spec to read over DevTools in
 // the surface's own page. The drop zone takes desk text and paths and copies them. The text area
-// beside the field has lines, for the keys that go to a document's ends (#156); a spec lists in
+// under the rest has lines, for the keys that go to a document's ends (#156); a spec lists in
 // `cancel` the codes of the chords this page cancels, as a page that binds them itself does, and
-// the clipboard's events on either control are recorded too.
+// the clipboard's events on either control are recorded too. The custom-cursor box draws its own
+// menu, as a page that has one does: it cancels the right click, which it records.
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
 
 const seen = { events: [], drops: [], value: "", cancel: [] };
@@ -31,6 +32,10 @@ defineUiPlugin({
         });
       }
     }
+    document.querySelector("[data-testid=custom]").addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      seen.events.push({ type: "contextmenu", target: "custom" });
+    });
     const zone = document.querySelector("[data-testid=drop]");
     dnd?.onDrop(
       zone,

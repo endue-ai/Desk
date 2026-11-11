@@ -3,8 +3,10 @@
 // key equivalents (⌘A, ⌘C, ⌘X, ⌘V, ⌘Z, ⇧⌘Z), so the shell sends those keys down with the edit
 // commands a windowed view would have given Blink (`apps/desk/shell/src/web_host/edit_keys.rs`).
 // The keys are winit's, fed to the compositor window's own input entry (support/compositor.ts):
-// the screen may be locked. macOS only: on Windows and Linux Blink binds Ctrl+A, Ctrl+C and the
-// rest itself.
+// the screen may be locked. The keys are macOS only: on Windows and Linux Blink binds Ctrl+A,
+// Ctrl+C and the rest itself. A right click in a field opens the field menu the shell places in the
+// page and judges every press on (`field_menu.rs`), on every platform; a page that draws its own
+// menu keeps it.
 import { execFileSync } from "node:child_process";
 import { browser, expect } from "@wdio/globals";
 import { feed, INPUT, inSurface, keyPress, raise } from "../support/compositor";
@@ -33,6 +35,13 @@ const read = (id: Control) =>
     INPUT,
     `(() => { const c = document.querySelector('[data-testid=${id}]');
       return { value: c.value, start: c.selectionStart, end: c.selectionEnd }; })()`,
+  );
+
+/** Select from `start` to `end` in a control, from the page. */
+const select = (id: Control, start: number, end: number) =>
+  inSurface<boolean>(
+    INPUT,
+    `(document.querySelector('[data-testid=${id}]').setSelectionRange(${start}, ${end}), true)`,
   );
 
 /** Set a control's text and caret from the page: the keys under test come after. */
@@ -76,23 +85,85 @@ async function clickAt(local: [number, number]): Promise<void> {
   ]);
 }
 
+/** A right click at `local`, a point of the input surface's own. */
+async function rightClickAt(local: [number, number]): Promise<void> {
+  const at = await raise(INPUT, local);
+  await feed([
+    { type: "pointerMoved", x: at[0], y: at[1] },
+    { type: "pointerButton", button: "right", pressed: true },
+    { type: "pointerButton", button: "right", pressed: false },
+  ]);
+}
+
+/** The field menu as the input surface's page shows it: each row's label, top, height and state,
+ * and its box. */
+interface FieldMenu {
+  rows: Array<[string, number, number, boolean]>;
+  rect: [number, number, number, number];
+}
+
+const fieldMenu = () =>
+  inSurface<FieldMenu | null>(
+    INPUT,
+    `(() => { const m = document.querySelector('desk-field-menu');
+      if (!m || !m.matches(':popover-open')) return null;
+      const r = m.getBoundingClientRect();
+      return { rows: JSON.parse(m.dataset.rows), rect: [r.x, r.y, r.width, r.height] }; })()`,
+  );
+
+async function shownMenu(): Promise<FieldMenu> {
+  let menu: FieldMenu | null = null;
+  await browser.waitUntil(
+    async () => {
+      menu = await fieldMenu();
+      return menu !== null;
+    },
+    { timeout: 5_000, timeoutMsg: "no field menu" },
+  );
+  return menu as unknown as FieldMenu;
+}
+
+const menuGone = (what: string) =>
+  browser.waitUntil(async () => (await fieldMenu()) === null, {
+    timeout: 5_000,
+    timeoutMsg: `the field menu stayed after ${what}`,
+  });
+
+/** Click the field menu's row `label`. */
+async function choose(label: string): Promise<void> {
+  const menu = await shownMenu();
+  const row = menu.rows.find(([name]) => name === label);
+  if (!row) throw new Error(`no ${label} in the field menu`);
+  const [x, y] = menu.rect;
+  await clickAt([x + 40, y + row[1] + row[2] / 2]);
+}
+
+/** The clipboard's events the page heard. */
+const clipEvents = async () =>
+  (await inSurface<Array<{ type: string }>>(INPUT, "window.e2eInput.events"))
+    .map((e) => e.type)
+    .filter((t) => ["copy", "cut", "paste"].includes(t));
+
 /** The system clipboard's text (macOS). */
 const clipboard = () => execFileSync("pbpaste", { encoding: "utf8" });
+
+before(async () => {
+  await shellReady();
+  await browser.waitUntil(
+    async () =>
+      (await inSurface<string>(
+        INPUT,
+        "document.querySelector('[data-testid=ready]').textContent",
+      )) === "ready",
+    { timeout: 20_000, timeoutMsg: "the input plugin never mounted" },
+  );
+  await feed([{ type: "windowFocused", focused: true }]);
+});
 
 (mac ? describe : describe.skip)(
   "editing: the Mac's editing keys and the clipboard in a plugin's text field",
   () => {
     before(async () => {
-      await shellReady();
-      await browser.waitUntil(
-        async () =>
-          (await inSurface<string>(
-            INPUT,
-            "document.querySelector('[data-testid=ready]').textContent",
-          )) === "ready",
-        { timeout: 20_000, timeoutMsg: "the input plugin never mounted" },
-      );
-      await feed([{ type: "windowFocused", focused: true }]);
       await clickAt([20, 20]);
       await put("field", "", 0);
       await type("abc def");
@@ -213,3 +284,75 @@ const clipboard = () => execFileSync("pbpaste", { encoding: "utf8" });
     });
   },
 );
+
+describe("editing: a right click in a text field opens the field menu", () => {
+  // The menu's Copy and Paste go through the system clipboard: give back what was on it (macOS).
+  let kept: string | undefined;
+  before(() => {
+    if (mac) kept = clipboard();
+  });
+  after(() => {
+    if (kept !== undefined) execFileSync("pbcopy", { input: kept });
+  });
+
+  it("offers Undo, Redo, Cut, Copy, Paste and Select All; its Copy and Paste go through the clipboard", async () => {
+    await clickAt([20, 20]);
+    await put("field", "copy me", 7);
+    await select("field", 0, 7);
+    await rightClickAt([30, 22]);
+    const menu = await shownMenu();
+    expect(menu.rows.map(([label]) => label)).toEqual([
+      "Undo",
+      "Redo",
+      "-",
+      "Cut",
+      "Copy",
+      "Paste",
+      "-",
+      "Select All",
+    ]);
+    const on = menu.rows.filter(([, , , enabled]) => enabled).map(([label]) => label);
+    expect(on).toEqual(expect.arrayContaining(["Cut", "Copy", "Paste", "Select All"]));
+    const heard = (await clipEvents()).length;
+    await choose("Copy");
+    await menuGone("Copy");
+    expect((await clipEvents()).slice(heard)).toEqual(["copy"]);
+    await select("field", 7, 7);
+    await rightClickAt([150, 22]);
+    await choose("Paste");
+    await menuGone("Paste");
+    expect(await settled("field", { value: "copy mecopy me" })).toMatchObject({
+      value: "copy mecopy me",
+    });
+    await rightClickAt([150, 22]);
+    await choose("Select All");
+    expect(await settled("field", { start: 0, end: 14 })).toMatchObject({ start: 0, end: 14 });
+  });
+
+  it("Escape puts the menu away, and the field keeps the keys", async () => {
+    await select("field", 14, 14);
+    await rightClickAt([150, 22]);
+    await shownMenu();
+    await feed(keyPress("Escape", "Escape"));
+    await menuGone("Escape");
+    await type("x");
+    expect(await settled("field", { value: "copy mecopy mex" })).toMatchObject({
+      value: "copy mecopy mex",
+    });
+  });
+
+  it("a page that draws its own menu keeps it, and nothing to edit or copy opens none", async () => {
+    const before = (await inSurface<unknown[]>(INPUT, "window.e2eInput.events")).length;
+    await rightClickAt([150, 170]);
+    await browser.waitUntil(
+      async () =>
+        (
+          await inSurface<Array<{ type: string }>>(INPUT, `window.e2eInput.events.slice(${before})`)
+        ).some((e) => e.type === "contextmenu"),
+      { timeout: 5_000, timeoutMsg: "the page never heard its right click" },
+    );
+    await rightClickAt([190, 70]);
+    await browser.pause(500);
+    expect(await fieldMenu()).toBeNull();
+  });
+});
