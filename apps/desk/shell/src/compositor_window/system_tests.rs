@@ -182,7 +182,7 @@ fn a_window_under_an_edge_bar_is_drawn_under_it_whole_and_the_bar_hears_what_it_
     let hosted = hosted_with(false, [300.0, 180.0, 800.0, 60.0]);
     let notes = &hosted.plan().unwrap().windows[0];
     assert!(!notes.page_parts.is_empty(), "the page shows Notes");
-    let tools = Vec2::new(490.0, 210.0);
+    let tools = Vec2::new(470.0, 210.0);
     assert_eq!(reached_in(&hosted, tools).0, DOCK);
     assert_eq!(
         seen_at(&hosted, tools),
@@ -194,7 +194,7 @@ fn a_window_under_an_edge_bar_is_drawn_under_it_whole_and_the_bar_hears_what_it_
     assert_eq!(seen_at(&hosted, icon), Some(PAGE_TEXTURE));
     assert_eq!(reached_in(&hosted, icon).0, PAGE);
     // Notes's view below the dock: Notes.
-    assert_eq!(reached_in(&hosted, Vec2::new(490.0, 245.0)).0, NOTES);
+    assert_eq!(reached_in(&hosted, Vec2::new(470.0, 245.0)).0, NOTES);
 }
 
 #[test]
