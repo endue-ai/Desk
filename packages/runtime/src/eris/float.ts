@@ -114,7 +114,11 @@ export function pairedChannels(): [LinkChannel, LinkChannel] {
   return [side(0), side(1)];
 }
 
-/** What she shows: an approval waiting first, then what her turn or the desk says she does. */
+/**
+ * What she shows: an approval waiting first (the desk's microphone question among them: she does
+ * not listen before the person allows it, issue 161), then what her turn or the desk says she
+ * does.
+ */
 export function statusOf(input: {
   state: ErisState;
   talk: TalkPhase;
@@ -122,7 +126,7 @@ export function statusOf(input: {
   speaking: boolean;
   approval: boolean;
 }): FloatStatus {
-  if (input.approval) return "approval";
+  if (input.approval || input.talk === "asking") return "approval";
   if (input.talk === "listening" || input.state === "listening") return "listening";
   if (input.thinking || input.talk === "thinking" || input.state === "thinking") return "thinking";
   if (input.speaking || input.talk === "speaking") return "speaking";
@@ -139,7 +143,7 @@ export function keepLines(lines: readonly ErisLine[], line: ErisLine): ErisLine[
 
 const isState = (value: unknown): value is ErisState =>
   typeof value === "string" && (ERIS_STATES as readonly string[]).includes(value);
-const PHASES: readonly TalkPhase[] = ["off", "listening", "thinking", "speaking"];
+const PHASES: readonly TalkPhase[] = ["off", "asking", "listening", "thinking", "speaking"];
 
 function isLine(value: unknown): value is ErisLine {
   const line = value as Partial<ErisLine> | null;

@@ -1029,20 +1029,6 @@
          ]
         }
        ]
-      },
-      {
-       "tag": "div",
-       "class": "soul",
-       "box": [
-        480,
-        190,
-        480,
-        32
-       ],
-       "style": {
-        "color": "rgb(242, 240, 245)",
-        "transform": "matrix(1, 0, 0, 1, -240, 0)"
-       }
       }
      ]
     },
@@ -1053,6 +1039,63 @@
      "style": {
       "color": "rgb(242, 240, 245)"
      }
+    },
+    {
+     "tag": "section",
+     "class": "popover eris-said",
+     "aria-label": "Eris가 한 말",
+     "hidden": "",
+     "style": {
+      "display": "none",
+      "background": "rgb(43, 39, 49)",
+      "border": "solid rgb(51, 49, 54)"
+     },
+     "children": [
+      {
+       "tag": "div",
+       "class": "soul",
+       "box": [
+        0,
+        0,
+        0,
+        0
+       ],
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "div",
+       "class": "eris-said-text",
+       "hidden": "",
+       "style": {
+        "display": "none",
+        "color": "rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "button",
+       "class": "icon-button eris-said-close",
+       "aria-label": "닫기",
+       "hidden": "",
+       "box": [
+        0,
+        0,
+        0,
+        0
+       ],
+       "style": {
+        "display": "none",
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "close"
+        }
+       ]
+      }
+     ]
     },
     {
      "tag": "aside",

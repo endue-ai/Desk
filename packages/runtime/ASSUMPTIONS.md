@@ -136,8 +136,12 @@ cheap to change.
     1.1 s. Until the core captures audio (`audio.capture.*` exists in the contract, `levels()` is still
     silent), the shell hears through the webview: after `perm.request("mic")`, `getUserMedia` into an
     AnalyserNode (fftSize 256, −90 to −25 dBFS) and the nine bands; words come from the platform's
-    speech recognition when the page has one. Without a microphone she listens to the recorded sample
-    voice (`user-hello.json`). Recognised words go to `brain.say` like typed ones; otherwise she answers
+    speech recognition when the page has one. She listens only once the person allows the microphone:
+    while the question is open nothing says she listens (the floating window says she waits for an
+    approval) and a second click asks nothing more; after a no she says she can be typed to and the
+    turn ends (#161). Allowed but with no microphone to open, she listens to the recorded sample
+    voice (`user-hello.json`). The rail's Listening button turns on only once the microphone is
+    allowed, too. Recognised words go to `brain.say` like typed ones; otherwise she answers
     with a short sample line. She says the answer with the platform's speech synthesis, timed at
     140 ms (ko) or 62 ms (en) per character when it gives no timestamps, one pulse per syllable at
     0.75 strength so close pulses stay distinct at the rim. A signed macOS build needs the
@@ -154,3 +158,9 @@ cheap to change.
     the person types. A work request continues the session on screen, or starts one in a folder after
     New session; it is read-only until the person picks Allow edits, and Eris's `desk.agents.*` tools
     always run read-only. A tool waits four minutes for a run, then answers that it goes on.
+49. **Her words are a card under her** (`eris/said.ts`, #161, #158): under her, or above her when there
+    is more room there, inside the desk with 16 px to spare, at most 480 px wide. A line of up to 60
+    characters is soul text, wrapped, and leaves with it; a longer one is kept as text (paragraphs,
+    bullets, bold and code; never markup) until the person closes it or she says something else, and
+    "Show what Eris said" (`desk.eris.said`) brings back her last 12 lines. The card is a `popover`, so
+    the app's compositor draws it above every window (ADR 0166) and it takes its own presses.

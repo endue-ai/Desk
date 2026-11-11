@@ -9,6 +9,8 @@ import {
   END_SILENCE_MS,
   MIN_THINK_MS,
   NO_SPEECH_MS,
+  type Opened,
+  REFUSED_LINES,
   type Reply,
   SAMPLE_DELAY_MS,
   SAMPLE_LINES,
@@ -19,16 +21,20 @@ import {
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 /** A turn with a fake ear and brain; records her states, lines and voice. */
-function turn(options: { ear?: Ear | null; heard?: string; reply?: Reply } = {}) {
+function turn(options: { ear?: Opened | Promise<Opened>; heard?: string; reply?: Reply } = {}) {
   const states: ErisState[] = [];
   const lines: { text: string; words: WordTime[]; pulses: number[] }[] = [];
   const said: string[] = [];
   const asked: string[] = [];
   let hushed = 0;
+  let asks = 0;
   let now = 0;
   const deps: TalkDeps = {
     lang: () => "en",
-    openEar: async () => (options.ear === undefined ? null : options.ear),
+    openEar: async () => {
+      asks++;
+      return options.ear ?? "none";
+    },
     sampleEar: (at) => sampleEar(userHello, at),
     answer: async (text) => {
       asked.push(text);
@@ -62,6 +68,7 @@ function turn(options: { ear?: Ear | null; heard?: string; reply?: Reply } = {})
     asked,
     run,
     hushed: () => hushed,
+    asks: () => asks,
     at: () => now,
   };
 }
@@ -80,6 +87,7 @@ describe("a spoken turn with Eris", () => {
   test("listens, thinks, then speaks what the brain answers", async () => {
     const t = turn({ ear: mic(100, 1200, "what's on today") });
     t.talk.toggle(0);
+    await flush();
     expect(t.talk.phase).toBe("listening");
     expect(t.states).toEqual(["listening"]);
     await t.run(1200 + END_SILENCE_MS + 40);
@@ -106,8 +114,8 @@ describe("a spoken turn with Eris", () => {
     expect(t.talk.phase).toBe("speaking");
   });
 
-  test("without a microphone she listens to the sample voice and says the sample line", async () => {
-    const t = turn({ ear: null });
+  test("allowed but without a microphone she listens to the sample voice and says the sample line", async () => {
+    const t = turn({ ear: "none" });
     t.talk.toggle(0);
     await t.run(SAMPLE_DELAY_MS + 3000 + END_SILENCE_MS + MIN_THINK_MS + 200);
     expect(t.asked).toEqual([]);
@@ -115,7 +123,7 @@ describe("a spoken turn with Eris", () => {
   });
 
   test("the sample voice drives the user's rings while she listens", async () => {
-    const t = turn({ ear: null });
+    const t = turn({ ear: "none" });
     t.talk.toggle(0);
     await t.run(40);
     const bands = t.talk.update(SAMPLE_DELAY_MS + 200);
@@ -151,6 +159,7 @@ describe("a spoken turn with Eris", () => {
     expect(t.talk.phase).toBe("speaking");
     t.talk.toggle(t.at());
     expect(t.hushed()).toBe(1);
+    await flush();
     expect(t.talk.phase).toBe("listening");
     t.talk.cancel();
     expect(t.talk.phase).toBe("off");
@@ -184,6 +193,49 @@ describe("a spoken turn with Eris", () => {
     talk.update(5000);
     expect(talk.phase).toBe("off");
     expect(t.lines).toEqual([]);
+  });
+
+  test("she asks before she listens: nothing says listening until the microphone is allowed", async () => {
+    let allow: (opened: Opened) => void = () => {};
+    const t = turn({ ear: new Promise<Opened>((r) => (allow = r)) });
+    t.talk.toggle(0);
+    await t.run(400);
+    expect(t.talk.phase).toBe("asking");
+    expect(t.states).not.toContain("listening");
+    // A second click while the question is up asks nothing more.
+    t.talk.toggle(t.at());
+    await flush();
+    expect(t.asks()).toBe(1);
+    expect(t.talk.phase).toBe("asking");
+    allow(mic(t.at(), t.at() + 300, "hello"));
+    await flush();
+    expect(t.talk.phase).toBe("listening");
+    expect(t.states).toEqual(["listening"]);
+  });
+
+  test("a refused microphone is no listening: she says she can be typed to, and the turn ends", async () => {
+    const t = turn({ ear: "refused" });
+    t.talk.toggle(0);
+    await flush();
+    expect(t.states).not.toContain("listening");
+    expect(t.talk.phase).toBe("speaking");
+    expect(t.lines.map((l) => l.text)).toEqual([REFUSED_LINES.en]);
+    await t.run(8000, 50);
+    expect(t.talk.phase).toBe("off");
+    expect(t.asked).toEqual([]);
+  });
+
+  test("Escape while she asks ends the turn, and the late answer is dropped", async () => {
+    let allow: (opened: Opened) => void = () => {};
+    const t = turn({ ear: new Promise<Opened>((r) => (allow = r)) });
+    t.talk.toggle(0);
+    await flush();
+    t.talk.cancel();
+    expect(t.talk.phase).toBe("off");
+    allow(mic(0, 300, "late"));
+    await t.run(3000);
+    expect(t.talk.phase).toBe("off");
+    expect(t.states).not.toContain("listening");
   });
 
   test("each syllable sends a pulse", async () => {

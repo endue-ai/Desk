@@ -1,5 +1,6 @@
 /** Right status rail: six icon buttons with a dot and a count, a tooltip on hover, a popover on click. */
 import type { BrainName } from "../bridge/types";
+import { toggleListening } from "../eris/hey";
 import { agentName, isOpen } from "../system/agents";
 import { layoutOf } from "./actions";
 import type { ShellCtx } from "./context";
@@ -221,7 +222,7 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
             "aria-expanded": item.id === "listen" ? undefined : String(s.popover === item.id),
             "aria-pressed": item.id === "listen" ? String(s.listening) : undefined,
             onClick: () => {
-              if (item.id === "listen") return ctx.store.set({ listening: !s.listening });
+              if (item.id === "listen") return void toggleListening(ctx);
               ctx.store.set({ popover: s.popover === item.id ? null : item.id });
             },
           },

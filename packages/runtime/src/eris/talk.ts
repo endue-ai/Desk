@@ -1,16 +1,20 @@
 /**
- * A spoken turn with Eris, started by clicking her. She listens (the microphone, or a recorded sample
- * voice when there is none), thinks (the brain answers what the platform recognised, or a sample line
- * answers), and speaks (soul text, one pulse per syllable, the platform's voice). Each phase is one of
- * her states, so the mesh flows from listening to thinking to speaking. Time comes in through
- * `toggle(now)` and `update(now)`, so tests drive it frame by frame.
+ * A spoken turn with Eris, started by clicking her. She asks for the microphone, listens once the
+ * person allows it (the microphone, or a recorded sample voice when it is allowed but there is
+ * none), thinks (the brain answers what the platform recognised, or a sample line answers), and
+ * speaks (soul text, one pulse per syllable, the platform's voice). Nothing says she listens while
+ * the question is open or after a no: a refusal ends the turn with a line saying she can be typed
+ * to (issue 161). Each phase from listening on is one of her states, so the mesh flows from
+ * listening to thinking to speaking. Time comes in through `toggle(now)` and `update(now)`, so
+ * tests drive it frame by frame.
  */
 import { wordTimes } from "../bridge/browser";
 import type { Bands, WordTime } from "../bridge/types";
 import { syllablePulses } from "./mouth";
 import type { ErisState } from "./states";
 
-export type TalkPhase = "off" | "listening" | "thinking" | "speaking";
+/** `asking`: the microphone question is open, and she does not listen yet. */
+export type TalkPhase = "off" | "asking" | "listening" | "thinking" | "speaking";
 export type TalkLang = "ko" | "en";
 
 /** Where the user's voice comes from during a turn. */
@@ -34,10 +38,16 @@ export interface Reply {
   words?: WordTime[];
 }
 
+/**
+ * What asking for the microphone gave: the microphone; `none`, allowed but with no microphone to
+ * open (the sample voice stands in); `refused`, the person said no.
+ */
+export type Opened = Ear | "none" | "refused";
+
 export interface TalkDeps {
   lang(): TalkLang;
-  /** The microphone, after the person allows it; null when there is none or it was refused. */
-  openEar(): Promise<Ear | null>;
+  /** Ask for the microphone and open it once the person allows it. */
+  openEar(): Promise<Opened>;
   /** The recorded sample voice, starting at `at`. */
   sampleEar(at: number): Ear;
   answer(heard: string): Promise<Reply>;
@@ -81,6 +91,12 @@ export const SAMPLE_LINES = {
   },
 } as const;
 
+/** What she says when the person did not allow the microphone. */
+export const REFUSED_LINES: Record<TalkLang, string> = {
+  ko: "마이크 없이는 들을 수 없어요. 대신 입력해 주세요.",
+  en: "I need the microphone to hear you. You can type instead.",
+};
+
 const SILENT: Bands = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0]);
 const mean = (b: Bands) => b.reduce((a, v) => a + v, 0) / Math.max(1, b.length);
 
@@ -108,9 +124,13 @@ export class Talk {
     return this.#phase;
   }
 
-  /** A click: start listening; while listening, stop and answer; otherwise start over. */
+  /**
+   * A click: ask for the microphone and listen; while listening, stop and answer; while the
+   * question is open, nothing (one question at a time); otherwise start over.
+   */
   toggle(now: number): void {
     this.#now = now;
+    if (this.#phase === "asking") return;
     if (this.#phase === "listening") {
       this.#think(now);
       return;
@@ -148,26 +168,29 @@ export class Talk {
     return SILENT;
   }
 
-  #listen(now: number): void {
+  #listen(_now: number): void {
     const turn = ++this.#turn;
-    this.#phase = "listening";
-    this.#since = now;
+    this.#phase = "asking";
     this.#heard = false;
-    this.#lastLoud = now;
     this.#sample = false;
-    this.#deps.setState("listening");
-    const arrive = (ear: Ear | null) => {
-      if (turn !== this.#turn || this.#phase !== "listening") {
-        void ear?.close();
+    const arrive = (opened: Opened) => {
+      if (turn !== this.#turn || this.#phase !== "asking") {
+        if (typeof opened === "object") void opened.close();
+        return;
+      }
+      if (opened === "refused") {
+        this.#speak({ text: REFUSED_LINES[this.#deps.lang()] });
         return;
       }
       // The clock starts once she can hear: a permission prompt is not silence.
+      this.#phase = "listening";
       this.#since = this.#now;
       this.#lastLoud = this.#now;
-      this.#sample = !ear;
-      this.#ear = ear ?? this.#deps.sampleEar(this.#now + SAMPLE_DELAY_MS);
+      this.#sample = opened === "none";
+      this.#ear = opened === "none" ? this.#deps.sampleEar(this.#now + SAMPLE_DELAY_MS) : opened;
+      this.#deps.setState("listening");
     };
-    this.#deps.openEar().then(arrive, () => arrive(null));
+    this.#deps.openEar().then(arrive, () => arrive("refused"));
   }
 
   #listening(now: number): Bands {

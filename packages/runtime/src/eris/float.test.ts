@@ -189,6 +189,13 @@ describe("the link's pieces", () => {
     expect(statusOf({ state: "thinking", talk: "off", ...off })).toBe("thinking");
   });
 
+  it("never says listening while the desk's microphone question is open: she waits for an answer", () => {
+    const off = { thinking: false, speaking: false, approval: false };
+    expect(statusOf({ state: "idle", talk: "asking", ...off })).toBe("approval");
+    const text = JSON.stringify({ v: 1, state: "idle", talk: "asking", lines: [] });
+    expect(readSnapshot(text)?.talk).toBe("asking");
+  });
+
   it("leaves out what another window wrote that is not a snapshot or an answer", () => {
     expect(readSnapshot(null)).toBeUndefined();
     expect(readSnapshot("not json")).toBeUndefined();

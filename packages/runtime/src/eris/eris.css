@@ -82,18 +82,41 @@
 .eris-tail-1 { left: 32%; top: 28%; opacity: 0.5; }
 .eris-tail-2 { left: 42%; top: 36%; opacity: 0.3; }
 
-.soul {
+/* Her words (said.ts): a card under her that said.ts keeps inside the desk; one of the page's
+   overlays, so it is drawn above every window. A long line is kept as text and scrolls. */
+.eris-said {
   position: absolute;
-  left: 50%;
-  top: 150px;
-  width: 480px;
-  height: 32px;
-  transform: translateX(-50%);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3);
+}
+.eris-said[hidden] { display: none; }
+.eris-said-text {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: var(--space-6);
+  color: var(--desk-text);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  user-select: text;
+  cursor: text;
+}
+.eris-said-text[hidden] { display: none; }
+.eris-said-text p { margin: 0 0 var(--space-2); }
+.eris-said-text p:last-child { margin-bottom: 0; }
+.eris-said-text code { font-family: var(--font-mono); font-size: 0.92em; }
+.eris-said-close { position: absolute; top: var(--space-1); right: var(--space-1); }
+
+/* Soul text: one line at a time in one grid cell, so a line leaving and the next arriving overlap
+   and the card is as tall as the taller of them; its words wrap. */
+.soul {
+  display: grid;
   pointer-events: none;
 }
 .soul-line {
-  position: absolute;
-  inset: 0;
+  grid-area: 1 / 1;
   margin: 0;
   color: var(--desk-text);
   font-size: var(--text-xl);
@@ -101,7 +124,6 @@
   line-height: 32px;
   letter-spacing: -0.01em;
   text-align: center;
-  white-space: nowrap;
   text-shadow: 0 0 16px var(--desk-eris-glow);
 }
 .soul-solemn { text-transform: uppercase; letter-spacing: 0.01em; }

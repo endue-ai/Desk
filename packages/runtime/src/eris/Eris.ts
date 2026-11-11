@@ -1,9 +1,10 @@
 /**
- * Eris on the desk: the mesh body, the core glow, Dysnomia, the soul text under her, and the sound
- * rings. Draggable anywhere (the position is saved in the current mode); a click (or Enter) starts a
- * spoken turn (talk.ts). Everything runs on the ticker. Idle, silent and settled for `REST_MS`, she
- * rests (ADR 0164): her last frame stays and her tick tells the ticker it is idle, so a desk at rest
- * draws nothing; a new state, a line, a turn, a drag, a pointer on her or a new size wakes her.
+ * Eris on the desk: the mesh body, the core glow, Dysnomia, her words under her (a card: soul text,
+ * or a long line kept as text, said.ts), and the sound rings. Draggable anywhere (the position is
+ * saved in the current mode); a click (or Enter) starts a spoken turn (talk.ts), a drag never does.
+ * Everything runs on the ticker. Idle, silent and settled for `REST_MS`, she rests (ADR 0164): her
+ * last frame stays and her tick tells the ticker it is idle, so a desk at rest draws nothing; a new
+ * state, a line, a turn, a drag, a pointer on her or a new size wakes her.
  */
 import userHello from "../bridge/envelopes/user-hello.json";
 import type { Bands, WordTime } from "../bridge/types";
@@ -20,6 +21,7 @@ import { linkDesk } from "./float-desk";
 import { basisFor, DENSITIES, type DensityName, generateMesh, type Mesh } from "./mesh";
 import { speakAloud } from "./mouth";
 import { SoulText } from "./SoulText";
+import { mountSaid } from "./said";
 import {
   coreBreath,
   type ErisState,
@@ -81,9 +83,9 @@ export function mountEris(
     },
     h("span", { class: "eris-ring", "aria-hidden": "true" }),
     body,
-    soul.el,
   );
   root.append(el, soul.live);
+  const said = mountSaid(root, ctx, soul.el);
 
   const voice = new Voice();
   const tween = new LookTween(ctx.store.get().eris.state);
@@ -112,21 +114,28 @@ export function mountEris(
     ctx.ticker.wake();
   };
 
-  /** Soul text plus Eris's pulses (ms after the line starts); returns when the line starts. */
+  /**
+   * Her line plus her pulses (ms after the line starts); returns when the line starts. A long line
+   * is kept in her card as text, any soul line scattering; a short one is soul text.
+   */
   const speakLine = (text: string, words: WordTime[] | undefined, pulses?: number[]) => {
     const now = ctx.ticker.now();
     const voiced = words !== undefined;
-    const line = soul.say(text, now, words, voiced ? PULSE_TO_RIM_MS : 0);
+    let start = now;
+    if (said.say(text)) {
+      soul.stop(now);
+      soul.live.textContent = text;
+    } else start = soul.say(text, now, words, voiced ? PULSE_TO_RIM_MS : 0).start;
     const times = pulses ?? words?.map((w) => w.at);
     // Syllables come closer together than words: smaller pulses keep each one distinct at the rim.
     const amplitude = pulses ? SYLLABLE_PULSE : 1;
     if (voiced && times)
       voice.speak(
-        times.map((at) => line.start + at),
+        times.map((at) => start + at),
         amplitude,
       );
     ctx.store.set((s) => ({ eris: { ...s.eris, state: "idle", saying: text } }));
-    return line.start;
+    return start;
   };
   const setState = (state: ErisState) => {
     ctx.store.set((s) => ({ eris: { ...s.eris, state } }));
@@ -141,9 +150,11 @@ export function mountEris(
       // Made inside the click, so the page lets it run once the person allows the microphone.
       const audio = audioContext();
       const granted = await ctx.bridge.perm.request("mic").catch(() => false);
-      if (granted) return openMic(ctx.store.get().lang, audio);
-      void audio?.close();
-      return null;
+      if (!granted) {
+        void audio?.close();
+        return "refused";
+      }
+      return (await openMic(ctx.store.get().lang, audio)) ?? "none";
     },
     sampleEar: (at) => sampleEar(userHello, at),
     // A spoken line runs the same agentic loop as a typed one, so its hand-offs are drawn too
@@ -171,9 +182,12 @@ export function mountEris(
   };
   paintMoonNow();
 
+  const size = () => ({
+    width: root.clientWidth || window.innerWidth,
+    height: root.clientHeight || window.innerHeight,
+  });
   const position = () => {
-    const vw = root.clientWidth || window.innerWidth;
-    const vh = root.clientHeight || window.innerHeight;
+    const { width: vw, height: vh } = size();
     const p = dragging ?? layout() ?? { x: Math.round((vw - BODY.width) / 2), y: DEFAULT_TOP };
     return {
       x: Math.max(0, Math.min(p.x, vw - BODY.width)),
@@ -243,21 +257,25 @@ export function mountEris(
         : talk.phase === "thinking"
           ? ctx.tr("erisThinking")
           : "";
-    const said = saying || doing;
-    el.setAttribute("aria-label", said ? `${ctx.tr("erisLabel")}: ${said}` : ctx.tr("erisLabel"));
+    const busy = saying || doing;
+    const label = saying || said.kept() || doing;
+    el.setAttribute("aria-label", label ? `${ctx.tr("erisLabel")}: ${label}` : ctx.tr("erisLabel"));
     el.dataset.state = state;
     if (talk.phase === "off") delete el.dataset.talk;
     else el.dataset.talk = talk.phase;
     const p = position();
     el.style.left = `${p.x}px`;
     el.style.top = `${p.y}px`;
+    said.update(soul.visible(now));
+    said.place({ x: p.x, y: p.y, width: BODY.width, height: BODY.height }, size());
 
+    // While the microphone question is open she does nothing and waits: its answer wakes her.
     const still =
       state === "idle" &&
       look === LOOKS.idle &&
       rings.mode === "idle" &&
-      talk.phase === "off" &&
-      !said &&
+      (talk.phase === "off" || talk.phase === "asking") &&
+      !busy &&
       !dragging;
     if (!still) {
       quiet = undefined;
@@ -268,6 +286,9 @@ export function mountEris(
   };
 
   let start = { x: 0, y: 0 };
+  // Whether the press moved her: then no click after it talks to her, however late it comes
+  // (issue 161).
+  let moved = false;
   const offs = [
     ctx.ticker.add(frame),
     // What wakes her from rest: her state, a line, her place, the window's size, a pointer on her.
@@ -287,8 +308,12 @@ export function mountEris(
       }
     }),
     draggable(el, {
+      press: () => {
+        moved = false;
+      },
       start: () => {
         start = position();
+        moved = true;
         wake();
       },
       move: (dx, dy) => {
@@ -309,7 +334,8 @@ export function mountEris(
     // A click that was not a drag (drag.ts swallows the click after one) talks to her.
     listen(el, "click", () => {
       wake();
-      talk.toggle(ctx.ticker.now());
+      if (moved) moved = false;
+      else talk.toggle(ctx.ticker.now());
     }),
     listen(el, "keydown", (e) => {
       wake();
@@ -349,6 +375,7 @@ export function mountEris(
       errands.dispose();
       for (const off of offs) off();
       el.remove();
+      said.dispose();
       soul.live.remove();
     },
   };

@@ -14,6 +14,7 @@ vi.mock("./draw", async (original) => ({
 }));
 const { mountEris } = await import("./Eris");
 const { REST_MS } = await import("./states");
+const { REFUSED_LINES } = await import("./talk");
 const { Ticker } = await import("../shell/ticker");
 
 const DARK = {
@@ -31,8 +32,15 @@ const setTokens = (set: Record<string, string>) => {
     document.documentElement.style.setProperty(name, value);
 };
 
-/** A shell context with a still clock, whose settings and theme system say when they change. */
-function shell() {
+const settle = async () => {
+  for (let i = 0; i < 10; i++) await Promise.resolve();
+};
+
+/**
+ * A shell context with a still clock, whose settings and theme system say when they change; the
+ * person allows the microphone when `mic` says so.
+ */
+function shell(mic = false) {
   const themes = new Set<() => void>();
   const settings = new Set<(keys: string[]) => void>();
   const subscribe =
@@ -55,7 +63,7 @@ function shell() {
     tr: (key: string) => key,
     bridge: {
       audio: { levels: () => ({ user: [], eris: [] }) },
-      perm: { request: async () => false },
+      perm: { request: async () => mic },
     },
     runtime: {
       settings: { onChange: subscribe(settings) },
@@ -103,17 +111,32 @@ describe("Eris's palette", () => {
     expect([painted.body.length, painted.moon.length]).toEqual([body, moon]);
   });
 
-  it("is a button: a click or Enter starts listening, Escape ends the turn", () => {
-    const { ctx } = shell();
+  it("is a button: a click or Enter asks, listens once allowed; Escape ends the turn", async () => {
+    const { ctx } = shell(true);
     const eris = mountEris(document.body, ctx, () => null);
     const el = document.querySelector<HTMLElement>(".eris");
     expect(el?.getAttribute("role")).toBe("button");
     el?.click();
+    await settle();
     expect(ctx.store.get().eris.state).toBe("listening");
     el?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     expect(ctx.store.get().eris.state).toBe("idle");
     el?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    await settle();
     expect(ctx.store.get().eris.state).toBe("listening");
+    eris.dispose();
+  });
+
+  it("does not listen without the microphone: a refusal says she can be typed to", async () => {
+    const { ctx } = shell(false);
+    const eris = mountEris(document.body, ctx, () => null);
+    const el = document.querySelector<HTMLElement>(".eris");
+    el?.click();
+    expect(ctx.store.get().eris.state).not.toBe("listening");
+    expect(el?.dataset.talk).not.toBe("listening");
+    await settle();
+    expect(ctx.store.get().eris.state).not.toBe("listening");
+    expect(ctx.store.get().eris.saying).toBe(REFUSED_LINES.en);
     eris.dispose();
   });
 

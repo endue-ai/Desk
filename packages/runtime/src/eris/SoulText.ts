@@ -1,6 +1,7 @@
 /**
- * Eris's words under her body. Glyphs condense as each word is spoken, hold, then scatter upwards.
- * One line at a time; screen readers hear the whole sentence once through a polite live region.
+ * Eris's words under her body, in her card (said.ts). Glyphs condense as each word is spoken, hold,
+ * then scatter upwards. One line at a time, wrapped in the card; screen readers hear the whole
+ * sentence once through a polite live region.
  */
 import type { WordTime } from "../bridge/types";
 import { lineLook, nextStart, planLine, type SoulLine, type SoulStyle, wispGlyph } from "./soul";
@@ -79,6 +80,11 @@ export class SoulText {
         entry.line = { ...entry.line, dissolveAt: now, end: entry.line.end - shift };
       }
     }
+  }
+
+  /** Whether a line shows at `now`, scattering included. */
+  visible(now: number): boolean {
+    return this.#lines.some((e) => e.line.start <= now && now < e.line.end);
   }
 
   /** The sentence on screen now, for Eris's aria-label. */
