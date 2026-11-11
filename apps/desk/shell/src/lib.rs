@@ -37,6 +37,7 @@ pub mod plugin_scheme;
 pub mod probe;
 pub mod process_start;
 pub mod pump;
+pub mod quit;
 pub mod release;
 pub mod renderer;
 pub mod run_event;

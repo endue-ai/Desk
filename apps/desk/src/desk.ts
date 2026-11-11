@@ -24,6 +24,7 @@ import { adapter, invoke, listen } from "./host";
 import { pickNativeFile } from "./native-files";
 import { installOpenedFiles } from "./open-files";
 import { sendThemeToPalette } from "./palette-theme";
+import { installQuit } from "./quit";
 import { shellBridge } from "./shell-bridge";
 import { readStart, relauncher } from "./start";
 import { nextPaint, reportStartup } from "./startup";
@@ -92,6 +93,22 @@ const disposeOpened = installOpenedFiles({
     }),
 });
 window.addEventListener("pagehide", disposeOpened, { once: true });
+
+// The person quits (the menu, the tray, the Dock, an update's restart): unsaved changes are asked
+// about here first, and the shell quits on the answer (#163).
+const disposeQuit = installQuit({
+  buffers: desk.runtime.buffers,
+  listen: (event, handler) => listen(event, handler),
+  answer: (answer) => invoke("desk_quit", { answer }),
+  report: (error) =>
+    desk.runtime.notify({
+      caller: "desk",
+      title: "The desk did not quit",
+      body: error instanceof Error ? error.message : String(error),
+      level: "error",
+    }),
+});
+window.addEventListener("pagehide", disposeQuit, { once: true });
 
 // The page reports what only it knows (ADR 0151); the CEF shell answers with the windows that keep
 // a live frame, which the runtime carries out, and with each desk desk-wm publishes, which the

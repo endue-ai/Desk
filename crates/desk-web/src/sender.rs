@@ -29,6 +29,8 @@ const MAIN_COMMANDS: &[&str] = &[
     "take_last_crash",
     "palette_reveal_main",
     "plugin:dialog|open",
+    // The answer to a quit the person asked for: asking about unsaved changes, quit or stay (#163).
+    "desk_quit",
     // Compositor mode (#52, #81): the desk the runtime keeps; captures and counts for checks in
     // development builds. Input (#56): the keymap's entries and the page's focus; events fed to the
     // window's input and where input goes, for checks in development builds.
@@ -253,9 +255,13 @@ mod tests {
             "take_open_files",
             "plugin:dialog|open",
             "palette_reveal_main",
+            "desk_quit",
         ] {
             assert!(runtime.may(cmd), "{cmd}");
         }
+        // Only the desk's page answers a quit: a plugin cannot quit the desk or hold its quit.
+        assert!(!Sender::Plugin("endue.notes".into()).may("desk_quit"));
+        assert!(!Sender::Palette.may("desk_quit"));
         assert!(!runtime.may("palette_hide"));
         assert!(!runtime.may("plugin:eris-window|drag"));
         // Compositor mode (#52, #81): the shell page publishes its desk; nobody else does.

@@ -64,6 +64,14 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
         }
         // Main-window delivery only: OS-supplied paths, never a file opened or read.
         "take_open_files" => Ok(json!(desk.opened.take())),
+        // The page's answer to a quit the person asked for (`quit.rs`, #163).
+        "desk_quit" => {
+            let answer = crate::quit::Answer::parse(&text("answer"))
+                .ok_or_else(|| "desk_quit answers asking, quit or stay".to_owned())?;
+            desk.pump
+                .run(move |shell, event_loop| crate::quit::answered(shell, event_loop, answer));
+            Ok(Value::Null)
+        }
         "desk_crash" => Ok(json!(crash.record(&text("message"), &text("stack")))),
         "take_last_crash" => Ok(crash.take_last().unwrap_or(Value::Null)),
         "plugin:dialog|open" => crate::dialog::open(desk, &call.args),

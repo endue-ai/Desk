@@ -2,7 +2,8 @@
 //! computer-use banner (each a `Pane`), the tray, the menu bar and the global shortcuts, and CEF's
 //! message loop work when the pump says it is due. Other threads reach it through the pump's jobs.
 //! Closing the main window hides it, as in the Tauri shell; the desk quits from the tray or the
-//! menu, closing every browser before CEF shuts down.
+//! menu, once its page has asked about unsaved changes (`quit.rs`), closing every browser before
+//! CEF shuts down.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -45,7 +46,10 @@ pub struct Shell {
     /// The main window's scene and its off-screen surfaces (#52, #83).
     pub compositor: Option<crate::compositor_window::CompositorWindow>,
     started: bool,
-    quitting: bool,
+    /// The browsers are closing: the desk quits.
+    pub(crate) quitting: bool,
+    /// A quit the page is asked about (`quit.rs`).
+    pub(crate) asked: crate::quit::Quit,
 }
 
 impl Shell {
@@ -67,6 +71,7 @@ impl Shell {
             compositor: None,
             started: false,
             quitting: false,
+            asked: crate::quit::Quit::default(),
         }
     }
 
@@ -194,7 +199,7 @@ impl Shell {
                     eprintln!("endue Desk: no update to restart into ({why})");
                 }
             }
-            Choice::Quit => self.quit(event_loop),
+            Choice::Quit => crate::quit::requested(self, event_loop),
         }
     }
 
@@ -222,7 +227,7 @@ impl Shell {
         }
     }
 
-    fn focus_main(&self) {
+    pub(crate) fn focus_main(&self) {
         if let Some(main) = self.pane(Role::Main) {
             main.window.set_minimized(false);
             main.show_and_focus();
@@ -231,7 +236,7 @@ impl Shell {
     }
 
     /// Close every browser; the loop ends when the last one has.
-    fn quit(&mut self, event_loop: &ActiveEventLoop) {
+    pub(crate) fn quit_now(&mut self, event_loop: &ActiveEventLoop) {
         // Asked again (the menu, then the Dock's Quit): the browsers are closing already.
         if self.quitting {
             return;
@@ -269,7 +274,7 @@ impl Shell {
         }
         if role == Role::Main && !self.quitting {
             // The page closed its own window: the desk goes with it.
-            self.quit(event_loop);
+            self.quit_now(event_loop);
         }
         if self.done_quitting() {
             event_loop.exit();
