@@ -63,6 +63,8 @@ async function show(plugin: string): Promise<Window> {
  * bars float over its right part), and away from the title bar the pointer rests on after a drag.
  */
 const leftOf = (w: Window) => ({ x: w.x, y: w.y + TITLE_BAR, w: 180, h: w.h - TITLE_BAR });
+/** The agent bar's right edge, 24 + 56 + 24 from the left (desk-wm's `SAFE.left`): it floats over windows. */
+const BESIDE_BARS = 104;
 
 describe("plugins: plugin windows in the window manager (#82)", () => {
   before(async () => {
@@ -99,11 +101,13 @@ describe("plugins: plugin windows in the window manager (#82)", () => {
     const notes = await windowNow(NOTES);
     const { w } = (await deskNow()).screen;
     const before = await settled(w);
-    // Moved left by its title bar, all of it still in sight.
+    // Moved left by its title bar, all of it still in sight: as far as 500 px, but never under the
+    // agent bar, wherever its slot put it.
+    const dx = Math.min(500, win.x - BESIDE_BARS);
     const from = titleAt(rectOf(win));
-    await drag(from, { x: from.x - 500, y: from.y + 60 });
+    await drag(from, { x: from.x - dx, y: from.y + 60 });
     const moved = await windowUntil(HELLO, (x) => x.x !== win.x, "moved");
-    expect(rectOf(moved)).toEqual({ ...rectOf(win), x: win.x - 500, y: win.y + 60 });
+    expect(rectOf(moved)).toEqual({ ...rectOf(win), x: win.x - dx, y: win.y + 60 });
     // Never loaded again: the same picture at its new place, the same count in its frame.
     const after = await settled(w);
     expect(difference(after, leftOf(moved), before, leftOf(win), { inset: 4 })).toBeLessThan(0.005);
