@@ -3,7 +3,7 @@
   "name": "GitHub",
   "version": "0.1.0",
   "kind": "pack",
-  "description": "Your GitHub work set up in one go: the GitHub connector, a board and a timeline of your issues and pull requests, and a Builder morning layout.",
+  "description": "Your GitHub work set up in one go: the GitHub connector, a board and a timeline of your issues and pull requests, and a Builder morning profile.",
   "pack": {
     "services": ["github", "git hub", "깃허브", "깃헙"],
     "plugins": ["desk.github"],

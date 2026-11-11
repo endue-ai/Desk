@@ -22,7 +22,7 @@ there were two formats, the API would have holes.
 | `fleet/` | The control center for agents (`desk.fleet`, ADR 0100): a data-only `policy` plugin whose command opens a universal kanban of every agent's runs, the ones waiting for approval first, with Approve, Deny and Stop |
 | `today/` | The day at a glance (`desk.today`): a data-only `view` plugin, a page of universal views that `desk.universal` draws; `Mod+T` opens it |
 | `github/` | Your GitHub work as tasks (`desk.github`): an http connector the core runs (ADR 0106), the issues assigned to you, the reviews you owe and your own pull requests; the token stays in the core |
-| `pack-github/` | The GitHub pack (`desk.pack-github`, ADR 0108): data only, it brings `desk.github`, opens a board and a timeline of your GitHub work and lays out "Builder morning"; "Set up GitHub" to Eris applies it |
+| `pack-github/` | The GitHub pack (`desk.pack-github`, ADR 0108): data only, it brings `desk.github`, opens a board and a timeline of your GitHub work and switches to "Builder morning"; "Set up GitHub" to Eris applies it, Undo takes it back |
 | `item/` | One item in Desk (`desk.item`): the data-only `view` plugin, a universal detail view, that the palette's Open in Desk shows |
 | `inspector/` | What the desk holds now, read-only (`desk.inspector`, autoload): the render tree, surfaces and buffers, the last commands, grants, settings by layer, plugins, bridge calls; `desk inspect` prints its Export JSON |
 | `memory/` | What Eris knows, kept on this computer (`endue.memory`, autoload): facts and conversations, search, edit a fact, forget one or everything (ADR 0095) |
