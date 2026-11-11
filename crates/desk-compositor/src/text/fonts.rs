@@ -2,7 +2,7 @@
 //! set (tests, a bundle), with cosmic-text's fallback across scripts behind them. A CSS font stack
 //! resolves to the first family present here.
 
-use crate::text::style::FontStack;
+use crate::text::style::{FontStack, TextNode};
 use cosmic_text::skrifa::{self, MetadataProvider as _};
 use cosmic_text::{Family, FontSystem, SwashCache, fontdb};
 use std::collections::HashMap;
@@ -147,6 +147,14 @@ impl Fonts {
     /// The family `stack` sets text in here.
     pub fn family_of(&mut self, stack: &FontStack) -> String {
         self.resolve(stack).to_string()
+    }
+
+    /// What `node`'s text takes when it is set: its widest line and how many lines (a wrapped
+    /// node breaks at its box's width and at its newlines), for a box sized to its text (a hover
+    /// title, #156).
+    pub fn measure(&mut self, node: &TextNode) -> (f32, usize) {
+        let layout = super::layout::lay_out(self, node);
+        (layout.width, layout.lines)
     }
 
     /// The family a stack sets text in here: its first family present, a generic one as the

@@ -65,7 +65,7 @@ pub use scene::{Scene, SceneError, Wallpaper};
 pub use text::{FontStack, Fonts, TextAlign, TextNode, TextStyle};
 pub use theme::{
     BarStyle, ChromeTheme, MapStyle, PlaceholderStyle, SnapStyle, SpreadStyle, ToastStyle, Tokens,
-    WindowStyle,
+    TooltipStyle, WindowStyle,
 };
 pub use thumbnails::{THUMBNAIL_IDS, Thumbnails, read_texture};
 pub use types::{Color, Rect, Shadow, Stroke, TextureId};

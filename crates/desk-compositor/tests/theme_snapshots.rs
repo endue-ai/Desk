@@ -95,6 +95,33 @@ fn the_chrome_takes_the_tokens_of_the_look_in_force() {
 }
 
 #[test]
+fn a_hover_title_takes_the_tooltip_tokens_as_the_shells_tooltip_does() {
+    let (dark, amber) = (look(""), look("-amber"));
+    let (endue, amber_theme) = (
+        ChromeTheme::from_tokens(&dark),
+        ChromeTheme::from_tokens(&amber),
+    );
+    assert_eq!(amber_theme.tooltip.fill, amber.color("tooltip").unwrap());
+    assert_eq!(
+        amber_theme.tooltip.text.color,
+        amber.color("tooltipText").unwrap()
+    );
+    assert_eq!(amber_theme.tooltip.radius, 0.0, "amber's radius-md is 0");
+    let tip = &endue.tooltip;
+    assert_eq!((tip.radius, tip.padding_x, tip.padding_y), (8.0, 8.0, 4.0));
+    assert_eq!(tip.text.size, 12.0);
+    assert!(
+        (tip.text.size * tip.text.line_height - 20.0).abs() < 1e-3,
+        "20 px lines"
+    );
+    assert!(
+        tip.shadow.is_some_and(|s| s.blur == 2.0),
+        "{:?}",
+        tip.shadow
+    );
+}
+
+#[test]
 fn chrome_in_the_endue_theme() {
     let Some(gpu) = gpu("chrome_in_the_endue_theme") else {
         return;

@@ -1,7 +1,7 @@
 //! The look of the desk's chrome, read from the flat token table (ADR 0146): which token each part
-//! of a window frame, a title bar, a bar, a snap preview, a toast, a placeholder, the spread and the
-//! canvas map takes, the same tokens the web shell's CSS reads today. A token the table lacks, or holds in a form this
-//! does not read, keeps the endue dark theme's value.
+//! of a window frame, a title bar, a bar, a snap preview, a toast, a hover title, a placeholder, the
+//! spread and the canvas map takes, the same tokens the web shell's CSS reads today. A token the
+//! table lacks, or holds in a form this does not read, keeps the endue dark theme's value.
 
 mod css;
 mod tokens;
@@ -56,6 +56,20 @@ pub struct ToastStyle {
     pub radius: f32,
     pub shadow: Option<Shadow>,
     pub padding: f32,
+    pub text: TextStyle,
+}
+
+/// A page's hover title, which an off-screen page leaves to the compositor (#156), as the shell's
+/// `.tooltip` looks: its box, its padding across and down, the widest its text runs before it
+/// breaks, and the text (its line height a multiple of the size, as CSS's 20 px on 12 px).
+#[derive(Clone, Debug, PartialEq)]
+pub struct TooltipStyle {
+    pub fill: Color,
+    pub radius: f32,
+    pub shadow: Option<Shadow>,
+    pub padding_x: f32,
+    pub padding_y: f32,
+    pub max_width: f32,
     pub text: TextStyle,
 }
 
@@ -128,6 +142,7 @@ pub struct ChromeTheme {
     pub bar: BarStyle,
     pub snap: SnapStyle,
     pub toast: ToastStyle,
+    pub tooltip: TooltipStyle,
     pub placeholder: PlaceholderStyle,
     pub spread: SpreadStyle,
     pub map: MapStyle,
@@ -151,6 +166,7 @@ mod endue {
     pub const TEXT_MUTED: u32 = 0xb0adb7;
     pub const PRIMARY: u32 = 0xb6a3f5;
     pub const POPOVER: u32 = 0x2b2731;
+    pub const TOOLTIP: u32 = 0x403a49;
     pub const FONT: &str = r#""Inter", "SUIT Variable", "SUIT", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif"#;
 }
 
@@ -218,6 +234,19 @@ impl ChromeTheme {
             padding: length("space3", 12.0),
             text: text("textSm", 14.0, 400, color("toastFg", ink)),
         };
+        let tip_size = length("textXs", 12.0);
+        let tooltip = TooltipStyle {
+            fill: color("tooltip", hex(endue::TOOLTIP)),
+            radius: length("tooltipRadius", length("radiusMd", 8.0)),
+            shadow: shadow("tooltipShadow", Some(drop(1.0, 2.0, 0.4))),
+            padding_x: length("space2", 8.0),
+            padding_y: length("space1", 4.0),
+            max_width: 360.0,
+            text: TextStyle {
+                line_height: 20.0 / tip_size.max(1.0),
+                ..text("textXs", 12.0, 400, color("tooltipText", ink))
+            },
+        };
         let muted = color("muted", hex(endue::MUTED));
         let placeholder = PlaceholderStyle {
             fill: muted,
@@ -279,6 +308,7 @@ impl ChromeTheme {
             bar,
             snap,
             toast,
+            tooltip,
             placeholder,
             spread,
             map,

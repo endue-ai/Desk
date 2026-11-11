@@ -27,6 +27,8 @@ pub(crate) struct Layout {
     pub missing: usize,
     /// The widest line.
     pub width: f32,
+    /// How many lines were set.
+    pub lines: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -137,6 +139,7 @@ pub(crate) fn lay_out(fonts: &mut Fonts, node: &TextNode) -> Layout {
             break;
         }
         layout.width = layout.width.max(run.line_w);
+        layout.lines += 1;
         // A glyph without a finite place (a shaping bug) is dropped rather than drawn anywhere.
         for glyph in run
             .glyphs
