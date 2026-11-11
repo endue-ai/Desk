@@ -54,15 +54,21 @@ decision, and it leaves every other option open to D7.
   software decoder's list. When no decoder here takes it, no engine is tried and the details say
   "This build of the desk has no H.264 decoder, so it cannot play this MP4 file." Any other refusal
   says "This build of the desk cannot play …"; the remuxer's failures no longer name WebKit.
-* **Images.** A HEIC or TIFF the webview fails on (and an EPS's TIFF preview) says "This build of the
-  desk does not decode HEIC images."; anything else the webview fails on may be damaged, and says so.
+* **Images.** A HEIC the webview fails on says "This build of the desk does not decode HEIC images.",
+  an EPS's TIFF preview that it fails on says the same of the preview, and anything else the webview
+  fails on may be damaged, and says so.
+* **TIFF, the one cheap route.** Images already reads uncompressed 8-bit RGB TIFF strips for RAW
+  thumbnails (`ui/formats/raw.js`); `ui/formats/tiff-image.js` draws such a TIFF itself, which is
+  what `sips` writes by default. Any other TIFF opens as details naming what it is:
+  "This build of the desk shows only uncompressed 8-bit RGB TIFF images; this one is
+  LZW-compressed." No library is added, and no TIFF goes to the webview, which never decodes one.
 * **Show in Finder.** Both details cards have a button, "Show in Finder" ("Show in File Explorer",
   "Show in the file manager" elsewhere): `shell.open` with `reveal: true` for that one file (ADR
   0047), which is only shown, never opened or run. Both manifests declare `shell:open` for
   `${home}/**`, which a built-in plugin holds from its install; a file elsewhere asks the person
   first. `shell.open` opens no `file:` URL, so "Open with the system app" is not offered.
 * **READMEs.** `plugins/player/README.md`, `plugins/images/README.md` and `plugins/README.md` list what
-  this build decodes and say that H.264 and HEVC video and HEIC and TIFF images do not show.
+  this build decodes and say that H.264 and HEVC video, HEIC and compressed TIFF images do not show.
 
 ### What D7 has to weigh
 
@@ -75,9 +81,9 @@ decision, and it leaves every other option open to D7.
 * **Software routes.** FFmpeg's `h264` and `hevc` decoders are LGPL 2.1 like the rest of the build:
   two names in `scripts/vendor-ffmpeg.sh` and `SOFTWARE_CODECS` send these files to the existing
   software engine, single-threaded (1080p is likely to drop frames), with the same patent question
-  and a larger `ffmpeg.wasm`. Images would need a TIFF decoder (uncompressed RGB strips are already
-  read for RAW thumbnails in `ui/formats/raw.js`; LZW, Deflate and PackBits are small) and, for
-  HEIC, an HEVC decoder and HEIF's grid of tiles.
+  and a larger `ffmpeg.wasm`. Images' TIFF reader would grow by LZW, Deflate (the platform's
+  `DecompressionStream`) and PackBits, greyscale, alpha and 16-bit samples, all small; HEIC needs an
+  HEVC decoder and HEIF's grid of tiles.
 * **The system converting.** No bridge call converts a file; `proc.spawn` of `sips` would give Images
   a process permission it does not have today, and only on macOS.
 
@@ -96,6 +102,6 @@ decision, and it leaves every other option open to D7.
 Issue #162 (from the QA pass #154), findings 3, 4 and 20; work order B14; decision D7. ADR 0050 (the
 software decoder), ADR 0143 (the CEF shell), ADR 0047 (`shell.open`). Code: `plugins/player/ui/`
 (`route.js`, `playable.js`, `reveal.js`, `view-panels.js`), `plugins/images/ui/` (`decode.js`,
-`cards.js`, `reveal.js`). Tests: `plugins/player/tests/route.test.ts` (this build's answers),
+`cards.js`, `reveal.js`, `formats/tiff-image.js`). Tests: `plugins/player/tests/route.test.ts` (this build's answers),
 `view.test.ts`, `reveal.test.ts`; `plugins/images/tests/view.test.ts`, `decode.test.ts`. No section
 of `docs/ko/desk-structure.md` changes.

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { decode, webviewReason } from "../ui/decode.js";
 import { toneMap } from "../ui/formats/tonemap.js";
 import { dicom16, fits, icnsRleEntry, ktx1, nifti, pattern, plainPnm, rgba, tga16 } from "./build";
+import { tiff } from "./containers";
 import { fixture } from "./harness";
 
 const W = 8;
@@ -207,5 +208,44 @@ describe("what the desk's engine does not decode (ADR XXXX)", () => {
       expect(webviewReason(id, format)).toBe(
         `Images could not decode it: the ${format} data may be damaged.`,
       );
+  });
+});
+
+describe("TIFF, which the engine does not decode", () => {
+  /** A one-strip TIFF of the pattern: 8-bit samples, `compression` 1 (none) unless given. */
+  const strip = (samples: number[], bits: number[], photometric: number, compression = 1) =>
+    tiff(
+      [
+        [0x100, 3, [W]],
+        [0x101, 3, [H]],
+        [0x102, 3, bits],
+        [0x103, 3, [compression]],
+        [0x106, 3, [photometric]],
+        [0x111, 4, { blob: "px" }],
+        [0x115, 3, [bits.length]],
+        [0x116, 3, [H]],
+        [0x117, 4, { blob: "px" }],
+        [0x11c, 3, [1]],
+      ],
+      { blobs: { px: Uint8Array.from(samples) } },
+    );
+  const RGB = Array.from(OPAQUE).filter((_, i) => i % 4 !== 3);
+
+  it("an uncompressed 8-bit RGB TIFF (what sips writes) is drawn by Images itself", async () => {
+    const result = await pixels(strip(RGB, [8, 8, 8], 2), "scan.tif");
+    expect(result).toMatchObject({ format: "TIFF", width: W, height: H, depth: "8-bit RGB" });
+    expect(Uint8Array.from(result.rgba)).toEqual(OPAQUE);
+  });
+
+  it("any other TIFF opens as details saying what it is", async () => {
+    const lzw = await decode(strip(RGB, [8, 8, 8], 2, 5), "scan.tif");
+    expect(lzw).toMatchObject({ kind: "details", format: "TIFF", width: W, height: H });
+    expect(lzw.reason).toBe(
+      "This build of the desk shows only uncompressed 8-bit RGB TIFF images; this one is LZW-compressed.",
+    );
+    const grey = await decode(strip(new Array(W * H * 2).fill(0), [16], 1), "grey.tif");
+    expect(grey.reason).toBe(
+      "This build of the desk shows only uncompressed 8-bit RGB TIFF images; this one is 16-bit greyscale.",
+    );
   });
 });

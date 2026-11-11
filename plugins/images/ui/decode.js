@@ -16,6 +16,7 @@ import { probe } from "./formats/probe.js";
 import { decodeQoi } from "./formats/qoi.js";
 import { largestJpeg, largestStrips } from "./formats/raw.js";
 import { decodeTga } from "./formats/tga.js";
+import { decodeTiff } from "./formats/tiff-image.js";
 import { decodeEmf, decodeEps, decodeWmf } from "./formats/vector.js";
 import { LABELS, sniff } from "./sniff.js";
 
@@ -164,6 +165,15 @@ export async function decode(bytes, name, options = {}) {
         orientation,
         depth,
       };
+    }
+    if (id === "tiff") {
+      // The engine has no TIFF decoder (ADR XXXX): Images draws the uncompressed RGB ones itself.
+      const facts = probe(id, bytes);
+      const exif = readExif(bytes, id);
+      const orientation = exif?.orientation ?? 1;
+      const out = decodeTiff(bytes);
+      if ("rgba" in out) return { ...base, ...facts, ...out, kind: "pixels", exif, orientation };
+      return { ...base, ...facts, exif, orientation, reason: out.reason };
     }
     const mime = MIME[id];
     if (mime) {
