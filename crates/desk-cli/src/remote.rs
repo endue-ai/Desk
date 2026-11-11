@@ -1,43 +1,71 @@
 //! The subcommands a running desk answers over its socket (desk-ipc, ADR 0030). The CLI is the
 //! caller `cli`: what it may do is what the desk granted it. Exit codes: 0 ok, 1 a bridge error, a
 //! failed or cancelled command, no answer within `cmd run --timeout`, or no desk at the socket.
+//! When no answer came, `--json` prints the CLI's own failure as one line on stdout (`fail`).
 
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use desk_bridge::{BridgeEvent, BridgeRequest, BridgeResponse};
 use desk_ipc::Client;
 use serde_json::{Map, Value, json};
 
-use crate::args::{Remote, UpdateStep};
+use crate::args::Remote;
 
 mod cmd;
+mod gone;
 mod inspect;
 mod market;
 mod sync;
+mod update;
 
 pub fn run(remote: Remote, json: bool) -> ExitCode {
     let Some(path) = desk_ipc::socket_path() else {
-        return fail("no data folder to find the desk socket in; set DESK_SOCKET");
+        let why = "no data folder to find the desk socket in; set DESK_SOCKET";
+        return fail(json, NO_DESK, why);
     };
     let client = match Client::connect(&path) {
         Ok(client) => client,
-        Err(why) => return fail(&unreachable(&path, &why)),
+        Err(why) => {
+            let code = match why.kind() {
+                io::ErrorKind::NotFound | io::ErrorKind::ConnectionRefused => NO_DESK,
+                io::ErrorKind::Unsupported => "unsupported",
+                _ => "io_error",
+            };
+            return fail(json, code, &unreachable(&path, &why));
+        }
     };
     let mut session = Session {
         client,
         next: 0,
         json,
+        path: path.clone(),
     };
     session.run(remote).unwrap_or_else(|why| match why {
-        Problem::Io(why) => fail(&format!("lost the desk at {}: {why}", path.display())),
-        Problem::Request(why) => fail(&why),
+        Problem::Io(why) => {
+            let why = format!("lost the desk at {}: {why}", path.display());
+            fail(json, "io_error", &why)
+        }
+        Problem::Closed(id) => {
+            let why = format!(
+                "lost the desk at {} while {id} ran: the desk closed the connection",
+                path.display()
+            );
+            fail(json, "io_error", &why)
+        }
+        Problem::Request(why) => fail(json, "failed", &why),
     })
 }
 
+/// The code of the CLI's own failure when nothing answers at the socket.
+const NO_DESK: &str = "no_desk";
+
 pub(crate) enum Problem {
     Io(io::Error),
+    /// The desk closed the connection while the command with this id ran: it may have quit or
+    /// started again (`gone`).
+    Closed(String),
     Request(String),
 }
 
@@ -57,6 +85,8 @@ pub(crate) struct Session {
     client: Client,
     next: u64,
     pub(crate) json: bool,
+    /// The socket, to look for the desk again after it closed the connection (`gone`).
+    path: PathBuf,
 }
 
 impl Session {
@@ -143,47 +173,6 @@ impl Session {
             Remote::Log { count } => self.log(count),
             Remote::Undo { redo } => self.undo(redo),
             Remote::Inspect { section } => self.inspect(section),
-        }
-    }
-
-    /// update.* (ADR 0054), one status line. `check` waits for the `update.changed` that ends the
-    /// check, and exits 1 when it failed.
-    fn update(&mut self, step: UpdateStep) -> Result<ExitCode, Problem> {
-        let scope = json!({ "permission": "update:manage" });
-        let (method, params) = match step {
-            UpdateStep::Status => ("update.status", json!({ "scope": scope })),
-            UpdateStep::Check => ("update.check", json!({ "scope": scope })),
-            UpdateStep::Download => ("update.download", json!({ "scope": scope })),
-            UpdateStep::Apply => ("update.apply", json!({ "scope": scope })),
-            UpdateStep::Channel(channel) => (
-                "update.setChannel",
-                json!({ "channel": channel, "scope": scope }),
-            ),
-        };
-        let reply = self.call(method, params)?;
-        let checking = matches!(step, UpdateStep::Check)
-            && reply
-                .result
-                .as_ref()
-                .is_ok_and(|s| s["state"] == "checking");
-        if !checking {
-            return Ok(self.report(reply, |status| vec![update_line(status)]));
-        }
-        loop {
-            let (event, line) = self.client.next_event_line()?;
-            let BridgeEvent::UpdateChanged(changed) = event else {
-                continue;
-            };
-            let status = serde_json::to_value(&changed.data).unwrap_or_default();
-            if status["state"] == "checking" {
-                continue;
-            }
-            let result = if status["state"] == "failed" {
-                Err(("failed".to_owned(), text(&status, "reason").to_owned()))
-            } else {
-                Ok(status)
-            };
-            return Ok(self.report(Reply { result, line }, |status| vec![update_line(status)]));
         }
     }
 
@@ -276,7 +265,13 @@ impl Session {
             Err(_) => return Ok(reply),
         };
         loop {
-            let (event, line) = self.client.next_event_line()?;
+            let (event, line) = self.client.next_event_line().map_err(|why| {
+                if why.kind() == io::ErrorKind::UnexpectedEof {
+                    Problem::Closed(id.to_owned())
+                } else {
+                    Problem::Io(why)
+                }
+            })?;
             let BridgeEvent::CmdAnswered(answered) = event else {
                 continue;
             };
@@ -338,23 +333,6 @@ impl Session {
     }
 }
 
-/// `state  running  channel  chosen [percent]`: `staged  0.1.0  stable  0.2.0`.
-fn update_line(status: &Value) -> String {
-    let chosen = status["release"]["version"].as_str().unwrap_or("-");
-    let mut line = format!(
-        "{}\t{}\t{}\t{chosen}",
-        text(status, "state"),
-        text(&status["current"], "version"),
-        text(status, "channel")
-    );
-    if let (Some(received), Some(total)) = (status["received"].as_u64(), status["total"].as_u64())
-        && total > 0
-    {
-        line.push_str(&format!("\t{}%", received * 100 / total));
-    }
-    line
-}
-
 /// The runtime's describe command (`desk describe`).
 const DESCRIBE: &str = "desk.describe.open";
 
@@ -387,7 +365,19 @@ fn unreachable(path: &Path, why: &io::Error) -> String {
     }
 }
 
-fn fail(message: &str) -> ExitCode {
-    eprintln!("desk: {message}");
+/// A failure no desk answered, exit 1 (`say`).
+fn fail(json: bool, code: &str, message: &str) -> ExitCode {
+    say(json, code, message);
     ExitCode::from(1)
+}
+
+/// A failure no desk answered: `desk: <message>` on stderr, or with `--json` the line a desk's
+/// failure has, without an id, on stdout: `{"ok":false,"error":{"code","message"}}`.
+fn say(json: bool, code: &str, message: &str) {
+    if json {
+        let line = json!({ "ok": false, "error": { "code": code, "message": message } });
+        out(&line.to_string());
+    } else {
+        eprintln!("desk: {message}");
+    }
 }
