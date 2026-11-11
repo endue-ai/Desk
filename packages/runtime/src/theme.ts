@@ -155,7 +155,7 @@ export function resolveTheme(
 }
 
 /**
- * A window shows nothing of the windows under it (ADR XXXX). The compositor draws each window over
+ * A window shows nothing of the windows under it (ADR 0184). The compositor draws each window over
  * the ones below and cannot blur them, so a see-through window (the material's opacity, ADR 0057, or
  * a card with alpha) showed their text sharp through its title bar. Its surface becomes the colour it
  * has over the theme's background, and the blur, with nothing left behind it to soften, goes.

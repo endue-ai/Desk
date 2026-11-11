@@ -81,7 +81,7 @@ reads the tokens follows a theme's typeface, corners, density and motion without
   transparency) and `--desk-surface-filter` (a blur); the shell's windows read
   `var(--desk-surface, var(--desk-card))`. The compositor cannot blur the windows under a window, so the
   runtime draws every window opaque: a see-through surface or card becomes its colour over
-  `--desk-background`, and the blur goes (ADR XXXX). `base.css` lays the grain (`--desk-noise`) over
+  `--desk-background`, and the blur goes (ADR 0184). `base.css` lays the grain (`--desk-noise`) over
   every page.
 - Backdrop: `--desk-backdrop` (a background image: `none`, a gradient or a theme image's `url()`),
   `--desk-backdrop-size` and `--desk-backdrop-repeat`, drawn by the shell behind its windows.

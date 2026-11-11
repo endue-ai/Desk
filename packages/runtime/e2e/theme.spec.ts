@@ -46,7 +46,7 @@ test("choosing an installed theme restyles the desk and a plugin frame without a
     /^url\(".*\/plugins\/test\.theme\/images\/tiles\.png\?v=1"\)$/,
   );
   // The compositor cannot blur the windows under a window, so the theme's 90% windows are opaque:
-  // its card over its background, with no blur (ADR XXXX).
+  // its card over its background, with no blur (ADR 0184).
   expect(await rootVar("--desk-surface")).toBe("#152539");
   expect(await rootVar("--desk-surface-filter")).toBe("");
   // The same page, restyled in place.
