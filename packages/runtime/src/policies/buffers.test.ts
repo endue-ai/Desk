@@ -23,6 +23,8 @@ async function desk(answers: Array<string | undefined>, options: { palette?: boo
   const core = browserCore({ manifests });
   const hub = new PolicyHub(core.client);
   const request = vi.fn(async (_plugin: string, _command: string, _args?: unknown) => null);
+  // The plugins whose window is out of sight (in the drawer, on another desktop).
+  const away = new Set<string>();
   const ctx = {
     hub,
     bridge: core.client,
@@ -33,7 +35,8 @@ async function desk(answers: Array<string | undefined>, options: { palette?: boo
     whenReady: async () => {},
     unmount: vi.fn(),
   } as unknown as DeskContext;
-  const policy = installBuffers(ctx, { focus: vi.fn() });
+  const focus = vi.fn();
+  const policy = installBuffers(ctx, { focus, inSight: (plugin) => !away.has(plugin) });
   const asked: Asked[] = [];
   if (options.palette !== false) {
     hub.commands.define("desk.palette.pick", {
@@ -60,7 +63,7 @@ async function desk(answers: Array<string | undefined>, options: { palette?: boo
   await hub.commands.settled();
   const add = (id: string, plugin: string, modified: boolean, surface = false): Buffer =>
     policy.buffers.add({ id, name: id, plugin, modified, surface });
-  return { hub, ctx, policy, list: policy.buffers, request, asked, saved, add };
+  return { hub, ctx, policy, list: policy.buffers, request, asked, saved, add, away, focus };
 }
 
 const labels = (asked: Asked | undefined) => asked?.items.map((item) => item.label);
@@ -148,5 +151,39 @@ describe("closing a plugin's own surface", () => {
     await expect(close).resolves.toBe(false);
     expect(d.asked[0]?.title).toBe("a.md has unsaved changes");
     expect(d.ctx.unmount).not.toHaveBeenCalled();
+  });
+});
+
+describe("after a close, the buffer used before it shows", () => {
+  const STATUS = "test.status";
+  const MAIL = "test.mail";
+  const TERMINAL = "test.terminal";
+
+  it("the last one used that is in sight: a window put in the drawer stays there (issue 163, finding 6)", async () => {
+    const d = await desk([]);
+    for (const plugin of [TERMINAL, STATUS, MAIL]) d.add(`surface:${plugin}`, plugin, false, true);
+    // The Terminal, then Status were used; Status went to the drawer; Mail is in use.
+    d.list.touch(`surface:${TERMINAL}`);
+    d.list.touch(`surface:${STATUS}`);
+    d.away.add(STATUS);
+    d.list.touch(`surface:${MAIL}`);
+    await expect(d.hub.commands.run("desk.buffers.close")).resolves.toBe(true);
+    expect(d.ctx.unmount).toHaveBeenCalledWith(MAIL);
+    expect(d.focus).toHaveBeenCalledTimes(1);
+    expect(d.focus).toHaveBeenCalledWith(TERMINAL);
+    expect(d.list.current()?.id).toBe(`surface:${TERMINAL}`);
+  });
+
+  it("a shell pane's buffer is in sight while it is a buffer, and nothing shows when none is", async () => {
+    const d = await desk([]);
+    for (const id of ["window-1/p2", STATUS, MAIL]) {
+      d.add(`surface:${id}`, id, false, true);
+      d.list.touch(`surface:${id}`);
+    }
+    d.away.add(STATUS);
+    await d.hub.commands.run("desk.buffers.close");
+    expect(d.focus).toHaveBeenLastCalledWith("window-1/p2");
+    await d.hub.commands.run("desk.buffers.close");
+    expect(d.focus).toHaveBeenCalledTimes(1);
   });
 });

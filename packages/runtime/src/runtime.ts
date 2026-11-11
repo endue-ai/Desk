@@ -182,7 +182,9 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   // Windows out of sight are unloaded, their state kept (ADR 0070); every frame is watched (#39).
   const frames = installFrames(ctx, { windows, host: () => pluginHost, lang: language });
   focusMoved = (id) => frames.focused(id);
-  const buffers = installBuffers(ctx, { focus: focusAny });
+  // A host's view is a buffer only while in sight; a surface is when shown and on the page.
+  const inSight = (id: string) => surfaces.get(id) === undefined || surfaces.visible(id);
+  const buffers = installBuffers(ctx, { focus: focusAny, inSight });
   routing = connectViews(views, buffers);
   const broken = (key: string) => notify.notify(brokenRecordNotice(key, options.start?.dataDir));
   const files = installFiles(

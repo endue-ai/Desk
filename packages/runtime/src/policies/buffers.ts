@@ -1,10 +1,10 @@
 /**
  * desk.buffers (buffer.el, ibuffer): the buffer list and its commands. Switching shows a buffer's
  * surface; closing one with unsaved changes asks first, and so do closing the window that shows it
- * and quitting the desk (the list's guard); after a close the previous buffer shows. Plugins open,
- * rename and mark their own buffers with desk.buffers.open and desk.buffers.update. The ring that
- * switching, next, previous and Mod+W walk holds what shows something: a plugin's own surface is
- * one of its stops only while the plugin holds no buffer of its own (#162).
+ * and quitting the desk (the list's guard); after a close the previous buffer in sight shows.
+ * Plugins open, rename and mark their own buffers with desk.buffers.open and desk.buffers.update. The
+ * ring that switching, next, previous and Mod+W walk holds what shows something: a plugin's own
+ * surface is one of its stops only while the plugin holds no buffer of its own (#162).
  */
 import { type Buffer, Buffers, type Going, type Leaving } from "../buffers";
 import { type AgentSpec, CommandError } from "../commands";
@@ -32,6 +32,12 @@ export interface BufferEvents {
 
 export interface BuffersActions {
   focus(plugin: string): void;
+  /**
+   * Whether a plugin's surface (or a host's view) is in sight: a close shows the buffer used before
+   * it only from those, so one in the drawer or on another desktop stays where the person put it
+   * (issue 163, finding 6). Every one is, without it.
+   */
+  inSight?(plugin: string): boolean;
 }
 
 /** What the person picks about a buffer with unsaved changes as it closes, or as the desk quits. */
@@ -63,6 +69,7 @@ export function installBuffers(
   };
 
   const surfaceId = (plugin: string) => `surface:${plugin}`;
+  const inSight = (buffer: Buffer) => actions.inSight?.(buffer.plugin) ?? true;
 
   /** A plugin's own buffers, most recently used first: what it opened, not its surface. */
   const own = (plugin: string) => buffers.ofPlugin(plugin).filter((b) => !b.surface);
@@ -140,7 +147,7 @@ export function installBuffers(
         .catch(() => {});
     }
     closed(buffer);
-    const next = inUse();
+    const next = shown(buffers.list().find(inSight));
     if (next && settings.get("desk.buffers.after-close", "previous") === "previous") {
       await show(next.id).catch(() => {});
     }
