@@ -2,11 +2,14 @@
 // .revert, desk.buffers.show, .closed; .save is refused: the reader never writes), reads each file
 // with SDK binary ranges (asking once for the folder when its grants do not cover it), opens it
 // as a book (open.js), follows it with fs.watch, and keeps each file's
-// position, zoom, bookmarks and notes in its store (marks.js). The SDK's test host runs it with a
-// recording view.
+// position, zoom, bookmarks and notes in its store (marks.js). A file the desk lists and the frame
+// lost (it slept, or its page loaded again) opens again, where it was when a sleep kept it (keep.js).
+// The SDK's test host runs it with a recording view.
+import { placeOf, readPlace } from "./keep.js";
 import { createLinks } from "./links.js";
 import { createLoading } from "./loading.js";
-import { emptyMarks, loadMarks, marksFit, NOTE_MAX, saveMarks } from "./marks.js";
+import { createMarking } from "./marking.js";
+import { emptyMarks, loadMarks, saveMarks } from "./marks.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -18,6 +21,7 @@ import { emptyMarks, loadMarks, marksFit, NOTE_MAX, saveMarks } from "./marks.js
  * @typedef {{ buffer: string, path: string, name: string, size: number, book: Book } & Marks} ShownModel
  * @typedef {{ show(model: ShownModel | null): void, marks(model: ShownModel): void, status(text: string): void, focus(): void, progress?(value: import("./progress.js").Progress | null): void }} View
  * @typedef {ShownModel & { cancel(): void, watchId?: string, password?: string }} Open
+ * @typedef {import("./keep.js").KeptPlace} KeptPlace
  */
 
 const nameOf = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/") + 1);
@@ -52,12 +56,13 @@ const opened = (/** @type {{ name: string, book: Book }} */ { name, book }) => {
 const POSITION_DELAY = 600;
 
 /**
- * @param {Pick<PluginContext, "bridge" | "commands">} ctx
+ * @param {Pick<PluginContext, "bridge" | "commands" | "surface">} ctx
  * @param {View} view
  * @param {{ pdfjs?: () => Promise<object>, byteSource: typeof import("@endue-ai/plugin-sdk").byteSource,
- *   readBytes: typeof import("@endue-ai/plugin-sdk").readBytes, startWorker?: import("./djvu-client.js").StartWorker }} options
+ *   readBytes: typeof import("@endue-ai/plugin-sdk").readBytes, startWorker?: import("./djvu-client.js").StartWorker,
+ *   keepFiles: typeof import("@endue-ai/plugin-sdk").keepFiles }} options
  */
-export function createReader({ bridge, commands }, view, options) {
+export function createReader({ bridge, commands, surface }, view, options) {
   /** @type {Map<string, Open>} */
   const files = new Map();
   const loading = createLoading(bridge, view, options);
@@ -70,6 +75,17 @@ export function createReader({ bridge, commands }, view, options) {
   let shown = null;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let pending;
+  // Put to sleep while nobody sees it, the reader keeps its files and comes back to them (ADR 0070).
+  const kept = options.keepFiles(surface, {
+    files: () =>
+      [...files.values()].map((f) => ({ buffer: f.buffer, path: f.path, place: placeOf(f) })),
+    shown: () => shown,
+    readPlace,
+  });
+  /** Buffers this frame closed: a show of one does not open it again. @type {Set<string>} */
+  const closed = new Set();
+  /** The kept file of a buffer this frame does not hold yet. */
+  const keptOf = (/** @type {string} */ buffer) => kept.files().find((f) => f.buffer === buffer);
 
   const model = (/** @type {Open} */ f) => {
     const { buffer, path, name, size, book, at, zoom, bookmarks, notes } = f;
@@ -131,29 +147,82 @@ export function createReader({ bridge, commands }, view, options) {
       }
     });
 
-  answer("desk.files.visit", async (args) => {
-    const { buffer, path } = requested(args);
-    if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
+  /**
+   * Open `path` as `buffer`: a visit, or a file the desk lists that this frame lost, at `place` when
+   * a sleep kept one. Coming back from a sleep it neither asks for the folder nor takes the focus.
+   * @param {string} buffer
+   * @param {string} path
+   * @param {{ place?: KeptPlace, waking?: boolean }} [how]
+   */
+  const opening = async (buffer, path, { place, waking = false } = {}) => {
     flush();
     const mine = ++generation;
     openingBuffer = buffer;
-    const [openedFile, marks] = await Promise.all([loading.load(path), loadMarks(bridge, path)]);
+    const [openedFile, marks] = await Promise.all([
+      loading.load(path, undefined, { ask: !waking }),
+      loadMarks(bridge, path),
+    ]).catch((error) => {
+      // It did not open: a show of it may open it again.
+      if (mine === generation) openingBuffer = undefined;
+      throw error;
+    });
     if (mine !== generation) {
       dispose(openedFile);
       throw new Error(`Opening ${nameOf(path)} was cancelled.`);
     }
     openingBuffer = undefined;
     forget(buffer);
+    kept.take(buffer);
+    closed.delete(buffer);
+    const at = place ? { at: place.at, zoom: place.zoom } : {};
     /** @type {Open} */
-    const file = { buffer, path, ...openedFile, ...marks };
+    const file = { buffer, path, ...openedFile, ...marks, ...at };
     files.set(buffer, file);
-    present(buffer);
+    shown = buffer;
+    view.show(model(file));
+    if (!waking) view.focus();
     view.status(opened(file));
-    await watch(file);
+    // The watch the file had before the sleep still follows it.
+    if (place?.watchId) {
+      file.watchId = place.watchId;
+      watches.set(place.watchId, buffer);
+    } else await watch(file);
+  };
+  /**
+   * The file on its way to open, if any: a show of it waits for it.
+   * @type {{ buffer: string, done: Promise<boolean>, waking: boolean } | undefined}
+   */
+  let underway;
+  /** @type {typeof opening} */
+  const open = (buffer, path, how = {}) => {
+    const done = opening(buffer, path, how);
+    const settled = done.then(
+      () => true,
+      () => false,
+    );
+    underway = { buffer, done: settled, waking: how.waking === true };
+    void settled.then(() => {
+      if (underway?.done === settled) underway = undefined;
+    });
+    return done;
+  };
+  /** Open again a file the desk lists that this frame lost, unless it closed it itself. */
+  const lost = (/** @type {string} */ buffer, /** @type {string | undefined} */ path) => {
+    const from = path ?? keptOf(buffer)?.path;
+    const missing = !files.has(buffer) && !closed.has(buffer) && openingBuffer !== buffer;
+    return from && missing ? open(buffer, from, { place: keptOf(buffer)?.place }) : undefined;
+  };
+
+  answer("desk.files.visit", async (args) => {
+    const { buffer, path } = requested(args);
+    if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
+    await open(buffer, path);
   });
 
   const revert = async (args) => {
     const { buffer, path: asked } = requested(args);
+    const reopening = lost(buffer, asked);
+    if (reopening) return reopening;
     const file = held(buffer);
     const next = await loading.load(asked ?? file.path, file.password);
     if (files.get(buffer) !== file) {
@@ -173,10 +242,16 @@ export function createReader({ bridge, commands }, view, options) {
     throw new Error("Reader opens files read-only.");
   });
 
-  answer("desk.buffers.show", (args) => {
+  answer("desk.buffers.show", async (args) => {
+    const { buffer, path } = requested(args);
+    // Its file still opening (the window coming back from a sleep, or a visit): shown once it is.
+    // A visit that failed said so itself; a file that did not open as the window woke opens now.
+    const before = underway?.buffer === buffer ? underway : undefined;
+    const ok = before ? await before.done : true;
+    const reopening = ok || before?.waking ? lost(buffer, path) : undefined;
+    if (reopening) return reopening;
     generation++;
     loading.cancel();
-    const { buffer } = requested(args);
     held(buffer);
     flush();
     // The desk follows visit with show; the existing view may still be decoding its first page.
@@ -188,10 +263,13 @@ export function createReader({ bridge, commands }, view, options) {
     generation++;
     loading.cancel();
     const { buffer } = requested(args);
+    closed.add(buffer);
+    const wasKept = kept.take(buffer);
     if (openingBuffer === buffer && !files.has(buffer)) {
       openingBuffer = undefined;
       return;
     }
+    if (wasKept && !files.has(buffer)) return;
     held(buffer);
     if (shown === buffer) flush();
     forget(buffer);
@@ -209,25 +287,23 @@ export function createReader({ bridge, commands }, view, options) {
 
   view.show(null);
 
-  /** The marks changed: keep them and show the panel again. */
-  const changed = async (
-    /** @type {Open} */ file,
-    /** @type {string} */ said,
-    /** @type {() => void} */ undo,
-  ) => {
-    const full = !marksFit(file.path, file);
-    if (full) undo();
-    const ok = !full && (await keep(file));
-    if (files.get(file.buffer) !== file || shown !== file.buffer) return;
-    view.marks(model(file));
-    view.status(
-      ok
-        ? said
-        : full
-          ? "This file's notes are full; remove a note or a bookmark first."
-          : "The reader could not keep that: its store refused it.",
-    );
-  };
+  // Back from a sleep, the file that was on screen opens again where it was; the others open when
+  // they are shown. A show of another file meanwhile goes first, and this one gives way quietly.
+  const back = kept.shown === null ? undefined : keptOf(kept.shown);
+  if (back) {
+    const mine = generation + 1;
+    open(back.buffer, back.path, { place: back.place, waking: true }).catch((error) => {
+      if (generation === mine) view.status(error instanceof Error ? error.message : String(error));
+    });
+  }
+
+  const marking = createMarking({
+    current,
+    keep,
+    view,
+    model,
+    showing: (file) => files.get(file.buffer) === file && shown === file.buffer,
+  });
 
   return {
     reload: () => {
@@ -258,49 +334,7 @@ export function createReader({ bridge, commands }, view, options) {
       file.zoom = zoom;
       void keep(file);
     },
-    bookmark(/** @type {At} */ at, /** @type {string} */ label) {
-      const file = current();
-      if (!file) return;
-      const bookmark = { unit: at.unit, offset: at.offset, label, added: new Date().toISOString() };
-      file.bookmarks = [...file.bookmarks, bookmark].sort(
-        (a, b) => a.unit - b.unit || a.offset - b.offset,
-      );
-      return changed(file, `Bookmarked ${label}.`, () => {
-        file.bookmarks = file.bookmarks.filter((item) => item !== bookmark);
-      });
-    },
-    note(/** @type {At} */ at, /** @type {string} */ text) {
-      const file = current();
-      const trimmed = text.trim().slice(0, NOTE_MAX);
-      if (!file || !trimmed) return;
-      const note = {
-        unit: at.unit,
-        offset: at.offset,
-        text: trimmed,
-        added: new Date().toISOString(),
-      };
-      file.notes = [...file.notes, note];
-      return changed(file, "Note kept.", () => {
-        file.notes = file.notes.filter((item) => item !== note);
-      });
-    },
-    forget(/** @type {"bookmarks" | "notes"} */ kind, /** @type {number} */ index) {
-      const file = current();
-      if (!file?.[kind][index]) return;
-      const bookmark = kind === "bookmarks" ? file.bookmarks[index] : undefined;
-      const note = kind === "notes" ? file.notes[index] : undefined;
-      file[kind] = file[kind].filter((_, i) => i !== index);
-      return changed(file, kind === "bookmarks" ? "Bookmark removed." : "Note removed.", () => {
-        if (bookmark && !file.bookmarks.includes(bookmark))
-          file.bookmarks = [
-            ...file.bookmarks.slice(0, index),
-            bookmark,
-            ...file.bookmarks.slice(index),
-          ];
-        if (note && !file.notes.includes(note))
-          file.notes = [...file.notes.slice(0, index), note, ...file.notes.slice(index)];
-      });
-    },
+    ...marking,
     /** Try a locked PDF's password; a wrong one shows the field again with a word about it. */
     async unlock(/** @type {string} */ password) {
       const file = current();

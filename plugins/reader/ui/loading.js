@@ -21,7 +21,8 @@ export function createLoading(
   };
   return {
     cancel,
-    async load(path, password) {
+    /** Open `path`; without `ask` (a window coming back from a sleep) a refused read is not asked for. */
+    async load(path, password, { ask = true } = {}) {
       cancel();
       const job = new AbortController();
       opening = job;
@@ -46,7 +47,7 @@ export function createLoading(
           raw = await acquire();
         } catch (error) {
           job.signal.throwIfAborted();
-          if (error?.code !== "permission_denied") throw error;
+          if (error?.code !== "permission_denied" || !ask) throw error;
           const granted = await bridge
             .call("perm.request", {
               permission: file.scope,

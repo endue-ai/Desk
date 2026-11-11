@@ -14,12 +14,14 @@ from an allowlist (no scripts, handlers or remote URLs) into a shadow root with 
 
 It answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed` (`.save` is refused),
 reads SDK byte ranges, asks once for a file's folder, follows files with `fs.watch`, and keeps
-position, zoom, bookmarks and notes per path in its store, never in the file. Progress offers
-Cancel, which stops every page being decoded; a stopped PDF or DjVu offers Reload document.
+position, zoom, bookmarks and notes per path in its store, never in the file. Asleep out of sight (ADR
+0070, ADR XXXX), the SDK's `keepFiles` keeps its files, pages, zooms and watches; back, the one on screen
+opens without asking or taking the focus, the others (and any listed file it lost) when shown. Progress
+offers Cancel, which stops every page being decoded; a stopped PDF or DjVu offers Reload document.
 
 | File | Purpose |
 | --- | --- |
-| `ui/reader.js`, `ui/marks.js` | The desk's requests, reads with one ask, watches; marks in the store |
+| `ui/reader.js`, `marks.js`, `marking.js`, `keep.js` | The desk's requests, reads with one ask, watches; marks; sleep |
 | `ui/open.js`, `ui/detect.js` | Sniffing and opening: a book, a password request or a details view |
 | `ui/formats/` | The readers: zip, tar, pdf, epub, sanitize, css, palm, mobi, fb2, xps, archive-comic, djvu |
 | `ui/library-*.js`, `ui/djvu-client.js` | The endue.formats worker, its client, DjVu documents in it |
@@ -33,8 +35,5 @@ closes search or panel; Mod+S, Mod+O, Mod+W, Mod+K pass to the desk. `tests/buil
 | --- | --- |
 | `cmd:invoke` (`desk.files.changed`); `fs:read` and `shell:open`, asked when needed | File changes; scoped reads; http, https and mailto links |
 
-```bash
-pnpm exec vitest run plugins/reader
-python3 plugins/reader/tests/build/live.py /tmp/reader-large # 300 MiB PDF, 100 MiB EPUB
-cargo run -p desk-cli -- plugin validate plugins/reader
-```
+`pnpm exec vitest run plugins/reader` · `cargo run -p desk-cli -- plugin validate plugins/reader` ·
+`python3 plugins/reader/tests/build/live.py /tmp/reader-large` (a 300 MiB PDF, a 100 MiB EPUB)

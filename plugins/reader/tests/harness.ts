@@ -5,7 +5,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StubError } from "../../../packages/bridge/src/index";
-import { byteSource, defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
+import {
+  byteSource,
+  defineUiPlugin,
+  keepFiles,
+  readBytes,
+} from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { createReader, type ShownModel } from "../ui/reader.js";
 import { loadPdfjs } from "./pdfjs";
@@ -61,19 +66,29 @@ export async function mount<V extends View = RecordingView>(
     commands?: Commands;
     pdfjs?: () => Promise<object>;
     view?: (app: () => Reader | undefined) => V;
+    /** What the last sleep kept (ctx.surface.restored). */
+    restored?: unknown;
+    /** False: resolve once mounted, without waiting for its calls (a test holds one back). */
+    settled?: boolean;
   } = {},
 ): Promise<Mounted<V>> {
   const host = createTestHost({
     pluginId: "endue.reader",
     handlers: options.handlers ?? {},
     commands: { ...DESK, ...options.commands },
+    ...(options.restored === undefined ? {} : { restored: options.restored }),
   });
   let app: Reader | undefined;
   const view = (options.view?.(() => app) ?? recordingView()) as V;
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createReader(ctx, view, { pdfjs: options.pdfjs ?? loadPdfjs, byteSource, readBytes });
+        app = createReader(ctx, view, {
+          pdfjs: options.pdfjs ?? loadPdfjs,
+          byteSource,
+          readBytes,
+          keepFiles,
+        });
       },
     },
     host.transport,
@@ -81,7 +96,7 @@ export async function mount<V extends View = RecordingView>(
   const settle = async () => {
     for (let i = 0; i < 8; i++) await host.settle();
   };
-  await settle();
+  if (options.settled !== false) await settle();
   if (!app) throw new Error("the plugin did not mount");
   return {
     host,
