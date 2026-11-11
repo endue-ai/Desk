@@ -1,9 +1,12 @@
-// The permissions plugin without its DOM: it lists every caller's grants and revokes them, and it is
-// the prompter, answering perm.prompt and an agent's perm.approval (ADR 0078) one card at a time. It
-// only talks to the bridge and to a view, so the SDK's test host runs it with a recording view.
+// The permissions plugin without its DOM: it is the prompter, answering perm.prompt and an agent's
+// perm.approval (ADR 0078) one card at a time in front of everything (`overlay.js`), and it lists
+// every caller's grants and this session's refusals. It only talks to the bridge, its surface and a
+// view, so the SDK's test host runs it with a recording view.
 import { answeredLabel, approvalModel, resultModel } from "./approval.js";
 import { describeCaller, describePermission, durationLabel } from "./describe.js";
 import { grantList, parentOffer, promptModel } from "./model.js";
+import { createOverlay } from "./overlay.js";
+import { createRefusals, refusalItems } from "./refusals.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -16,29 +19,43 @@ import { grantList, parentOffer, promptModel } from "./model.js";
  * @typedef {import("./model.js").GrantList} GrantList
  * @typedef {import("./model.js").PromptModel} PromptModel
  * @typedef {import("./approval.js").CardModel} CardModel
- * @typedef {{ grants(list: GrantList): void, prompt(model: PromptModel | null): void,
+ * @typedef {import("./refusals.js").RefusalItem} RefusalItem
+ * @typedef {{ grants(list: GrantList): void, refusals(items: RefusalItem[]): void,
+ *   sheet(open: boolean): void, prompt(model: PromptModel | null): void,
  *   approval(model: CardModel | null): void, status(text: string): void }} View
  * @typedef {"once" | "session" | "always" | "parent" | "refuse" | "task" | "deny" | "done" | "undo"}
  *   Choice
  * @typedef {{ kind: "prompt", data: PermPromptData } | { kind: "approval", data: PermApprovalData }
  *   | { kind: "result", data: PermApprovalData }} Card
+ * @typedef {Pick<PluginContext["surface"], "show" | "hide">} Surface
+ * @typedef {Pick<PluginContext["state"], "get" | "set">} State
  */
 
 const MANAGE = { permission: "perm:manage" };
 const PLUGINS = { permission: "plugin:manage" };
-const SURFACE = { permission: "ui:surface" };
 const CHANGES = { permission: "events:subscribe", names: ["perm.changed"] };
 const DURATIONS = new Set(["once", "session", "always"]);
 const APPROVALS = new Set(["once", "task", "deny"]);
+/** How many answered cards are remembered, so one delivered again is not asked twice. */
+const SETTLED = 256;
 
 const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
+const NO_SURFACE = { show() {}, hide() {} };
+
+/** The waiting cards a page kept, well formed; results are not kept. @returns {Card[]} */
+const cardsOf = (/** @type {unknown} */ kept) =>
+  (Array.isArray(kept) ? kept : []).filter(
+    (c) =>
+      (c?.kind === "prompt" && typeof c.data?.promptId === "string") ||
+      (c?.kind === "approval" && typeof c.data?.approvalId === "string"),
+  );
 
 /**
- * @param {Pick<PluginContext, "bridge">} ctx
+ * @param {Pick<PluginContext, "bridge"> & { surface?: Surface, state?: State }} ctx
  * @param {View} view
  */
-export function createPermissions({ bridge }, view) {
+export function createPermissions({ bridge, surface = NO_SURFACE, state }, view) {
   /** @type {PluginInfo[]} */
   let plugins = [];
   /** The latest perm.list answer, null before the first one. @type {CallerGrant[] | null} */
@@ -52,22 +69,37 @@ export function createPermissions({ bridge }, view) {
   const results = new Map();
   /** The writes waiting on a card, whose perm.approval.done the result card shows. */
   const writes = new Set();
-  /**
-   * The prompt surface while it is open or opening: its handle, or null when it could not open.
-   * @type {Promise<string | null> | null}
-   */
-  let overlay = null;
+  /** The cards answered, by kind and id, oldest first: a copy delivered again is not shown. */
+  const settled = new Set();
+  // What the page kept before it loaded again (a renderer that died, a reload): the refusals, and
+  // the cards still waiting, which nobody else will ever show.
+  const saved = /** @type {{ refused?: unknown, cards?: unknown } | undefined} */ (state?.get());
+  const refusals = createRefusals(saved?.refused);
+  const overlay = createOverlay(surface, view, () => queue.length);
   let answering = false;
   let listing = 0;
 
   const showGrants = () => {
     if (grants) view.grants(grantList(grants, plugins));
   };
+  const showRefusals = () => view.refusals(refusalItems(refusals.all(), plugins));
+  const keep = () =>
+    state?.set({ refused: refusals.all(), cards: queue.filter((c) => c.kind !== "result") });
+  const keepRefusals = () => {
+    keep();
+    showRefusals();
+  };
   /** @param {Card} card @param {number} waiting @returns {PromptModel | CardModel} */
   const modelOf = (card, waiting) => {
     if (card.kind === "prompt") return promptModel(card.data, plugins, waiting);
     if (card.kind === "approval") return approvalModel(card.data, plugins, waiting);
     return resultModel(card.data, results.get(card.data.approvalId), plugins, waiting);
+  };
+  const idOf = (/** @type {Card} */ c) =>
+    c.kind === "prompt" ? c.data.promptId : c.data.approvalId;
+  const settle = (/** @type {Card} */ card) => {
+    settled.add(`${card.kind}:${idOf(card)}`);
+    if (settled.size > SETTLED) settled.delete(settled.values().next().value);
   };
 
   /** The card in front, in the dialog it belongs to; the other dialog closes first. */
@@ -86,6 +118,7 @@ export function createPermissions({ bridge }, view) {
   /** Show what is on screen again with fresh plugin names. */
   const showNames = () => {
     showGrants();
+    showRefusals();
     if (queue.length > 0) showPrompt();
   };
 
@@ -106,6 +139,7 @@ export function createPermissions({ bridge }, view) {
       if (mine !== listing) return;
       grants = result.grants;
       showGrants();
+      if (refusals.prune(grants)) keepRefusals();
     } catch (error) {
       if (mine === listing) view.status(`Could not list permissions: ${codeOf(error)}.`);
     }
@@ -115,32 +149,15 @@ export function createPermissions({ bridge }, view) {
   const subscribe = () =>
     bridge.call("events.subscribe", { names: ["perm.changed"], scope: CHANGES }).catch(() => {});
 
-  const raise = () => {
-    overlay ??= bridge
-      .call("ui.surface.open", { surface: "prompt", title: "Permission request", scope: SURFACE })
-      .then(
-        ({ handle }) => handle,
-        // The prompt stays in this plugin's own frame.
-        () => null,
-      );
-  };
-
-  const lower = () => {
-    const opened = overlay;
-    overlay = null;
-    void opened?.then((handle) => {
-      if (handle) bridge.call("ui.surface.close", { handle, scope: SURFACE }).catch(() => {});
-    });
-  };
-
   /** @param {Card} card */
   const enqueue = (card) => {
-    const id = (/** @type {Card} */ c) =>
-      c.kind === "prompt" ? c.data.promptId : c.data.approvalId;
-    if (queue.some((c) => c.kind === card.kind && id(c) === id(card))) return;
+    const id = idOf(card);
+    if (settled.has(`${card.kind}:${id}`)) return;
+    if (queue.some((c) => c.kind === card.kind && idOf(c) === id)) return;
     queue.push(card);
-    if (card.kind === "approval" && card.data.action === "fs.write") writes.add(id(card));
-    raise();
+    keep();
+    if (card.kind === "approval" && card.data.action === "fs.write") writes.add(id);
+    overlay.raise();
     showPrompt();
   };
 
@@ -153,14 +170,15 @@ export function createPermissions({ bridge }, view) {
   };
 
   /**
-   * The card in front is done with: the next one shows, or the overlay closes. The live region says
+   * The card in front is done with: the next one shows, or the overlay goes. The live region says
    * what happened and, when another card follows, what it is.
    * @param {string} said
    */
   const moveOn = (said) => {
     const [next] = queue;
-    if (!next) lower();
+    keep();
     showPrompt();
+    if (!next) overlay.lower();
     const title = next && next.kind !== "result" ? modelOf(next, 0).title : "";
     const text = [said, title && `Next: ${title}.`].filter(Boolean).join(" ");
     if (text) view.status(text);
@@ -183,9 +201,37 @@ export function createPermissions({ bridge }, view) {
   };
 
   /**
+   * Take a refusal back: grant what was asked, for as long as it was asked. The core forgets the
+   * refusal with the grant, so the caller's next try works without a question.
+   * @param {string} key
+   */
+  const allow = async (key) => {
+    const refusal = refusals.find(key);
+    if (!refusal) return;
+    const { label } = describePermission(refusal.permission);
+    const { name } = describeCaller(refusal.caller, plugins);
+    try {
+      await bridge.call("perm.grant", {
+        caller: refusal.caller,
+        permission: refusal.permission,
+        duration: refusal.duration,
+        reason: "The person allowed it in Permissions after refusing it",
+        scope: MANAGE,
+      });
+    } catch (error) {
+      view.status(`Could not allow ${name}: ${label}: ${codeOf(error)}.`);
+      return;
+    }
+    refusals.remove(key);
+    keepRefusals();
+    view.status(`Allowed ${name}: ${label} (${durationLabel(refusal.duration)}).`);
+    await refresh();
+  };
+
+  /**
    * Answer the prompt on screen. "parent" grants the parent folder the core offered instead, for the
    * duration asked. Any failure (decided, withdrawn or refused) still moves on, so the overlay never
-   * traps the person.
+   * traps the person. A refusal is listed, to be taken back.
    * @param {PermPromptData} prompt
    * @param {Choice} choice
    */
@@ -210,11 +256,17 @@ export function createPermissions({ bridge }, view) {
       said = granted
         ? `Allowed ${name}: ${what} (${durationLabel(duration)}).`
         : `Refused ${name}: ${label}.`;
+      if (!granted) {
+        const { caller, permission, duration: asked } = prompt;
+        refusals.add({ caller, permission, duration: asked });
+        keepRefusals();
+      }
     } catch (error) {
       said = `Could not answer ${name}: ${codeOf(error)}.`;
     }
     answering = false;
-    queue.shift();
+    const card = queue.shift();
+    if (card) settle(card);
     // The dialog stays open for the next card; the live region says that it changed.
     moveOn(said);
   };
@@ -240,7 +292,8 @@ export function createPermissions({ bridge }, view) {
       said = `Could not answer ${describeCaller(data.caller, plugins).name}: ${codeOf(error)}.`;
     }
     answering = false;
-    queue.shift();
+    const card = queue.shift();
+    if (card) settle(card);
     if (allowed && writes.has(data.approvalId)) queue.unshift({ kind: "result", data });
     else writes.delete(data.approvalId);
     moveOn(said);
@@ -286,15 +339,25 @@ export function createPermissions({ bridge }, view) {
   };
 
   /**
-   * Keys the plugin handles wherever focus is. Returns whether the key was used.
+   * Keys the plugin handles wherever focus is in its page. Returns whether the key was used.
+   * Escape refuses, denies or closes the card in front, else closes the list.
    * @param {string} key
    */
   const key = (key) => {
+    if (key !== "Escape") return false;
     const [front] = queue;
-    if (key !== "Escape" || !front) return false;
-    void answer(front.kind === "prompt" ? "refuse" : front.kind === "approval" ? "deny" : "done");
+    if (!front) overlay.close();
+    else
+      void answer(front.kind === "prompt" ? "refuse" : front.kind === "approval" ? "deny" : "done");
     return true;
   };
+
+  /** A press beside the list closes it; beside a card it does nothing, the card waits. */
+  const dismiss = () => {
+    if (queue.length === 0) overlay.close();
+  };
+
+  for (const card of cardsOf(saved?.cards)) enqueue(card);
 
   bridge.onEvent((event) => {
     if (event.event === "perm.changed") void refresh();
@@ -310,5 +373,6 @@ export function createPermissions({ bridge }, view) {
     await refresh();
   })();
 
-  return { ready, revoke, answer, key };
+  const { opened, hidden, close: closeList } = overlay;
+  return { ready, revoke, allow, answer, key, opened, hidden, close: closeList, dismiss };
 }

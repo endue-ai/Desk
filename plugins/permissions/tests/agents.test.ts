@@ -16,7 +16,6 @@ function core(extra: Handlers = {}): Handlers {
       ],
     }),
     "perm.answer": () => ({}),
-    "ui.surface.open": () => ({ handle: "overlay-1" }),
     ...extra,
   };
 }

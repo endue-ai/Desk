@@ -4,17 +4,13 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
-  "description": "Lists every caller's grants and revokes them, and asks the person when a caller requests a permission.",
+  "description": "Asks the person, in front of everything, when a caller requests a permission or an agent's irreversible call waits; lists every caller's grants and this session's refusals, to revoke or take back.",
   "permissions": [
     { "permission": "perm:manage" },
     { "permission": "events:subscribe", "names": ["perm.changed"] },
-    { "permission": "ui:surface" },
     { "permission": "plugin:manage" }
   ],
-  "surfaces": [
-    { "id": "main", "title": "Permissions", "placement": "right" },
-    { "id": "prompt", "title": "Permission request", "placement": "overlay" }
-  ],
+  "surfaces": [{ "id": "main", "title": "Permissions", "placement": "overlay", "hidden": true }],
   "contributes": {
     "commands": [
       {

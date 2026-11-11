@@ -11,17 +11,29 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <main id="grants" aria-labelledby="grants-title">
-      <h1 id="grants-title" tabindex="-1">Permissions</h1>
-      <p id="grants-summary"></p>
-      <div id="grants-groups"></div>
-      <section id="agents" aria-labelledby="agents-title" hidden>
-        <h2 id="agents-title">Agents</h2>
-        <div id="agents-groups"></div>
-      </section>
+    <div id="scrim" class="scrim"></div>
+    <main id="grants" class="panel sheet" aria-labelledby="grants-title" hidden>
+      <header class="sheet-head">
+        <h1 id="grants-title" tabindex="-1">Permissions</h1>
+        <button type="button" id="grants-close" class="desk-btn desk-btn-quiet">Close</button>
+      </header>
+      <div class="panel-body">
+        <p id="grants-summary"></p>
+        <section id="refused" aria-labelledby="refused-title" hidden>
+          <h2 id="refused-title">Refused this session</h2>
+          <p class="kind">These are refused again without asking until you allow them here.</p>
+          <ul id="refused-list"></ul>
+        </section>
+        <div id="grants-groups"></div>
+        <section id="agents" aria-labelledby="agents-title" hidden>
+          <h2 id="agents-title">Agents</h2>
+          <div id="agents-groups"></div>
+        </section>
+      </div>
     </main>
     <section
       id="prompt"
+      class="panel card"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="prompt-title"
@@ -29,7 +41,7 @@
       hidden
     >
       <h1 id="prompt-title"></h1>
-      <div id="prompt-body">
+      <div id="prompt-body" class="panel-body">
         <p id="prompt-who" class="kind"></p>
         <p id="prompt-what"></p>
         <div id="prompt-warning"></div>
@@ -47,6 +59,7 @@
     </section>
     <section
       id="approval"
+      class="panel card"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="approval-title"
@@ -54,7 +67,7 @@
       hidden
     >
       <h1 id="approval-title"></h1>
-      <div id="approval-body">
+      <div id="approval-body" class="panel-body">
         <p id="approval-who" class="kind"></p>
         <p id="approval-what"></p>
         <pre id="approval-preview" class="preview" tabindex="0" aria-label="Preview" hidden></pre>

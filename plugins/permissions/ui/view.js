@@ -1,6 +1,7 @@
-// The DOM for the permissions plugin: the grant list, the prompt dialog and the approval card (ADR
-// 0078). Native buttons, headings, alert dialogs and a status live region carry the keyboard and
-// screen reader behaviour; the words come from the model.
+// The DOM for the permissions plugin, a page that covers the desk as an overlay: the prompt dialog and
+// the approval card (ADR 0078) in front, and the list of grants and refusals when the person opens
+// it. Native buttons, headings, alert dialogs and a status live region carry the keyboard and screen
+// reader behaviour; the words come from the model.
 
 /**
  * @typedef {import("./model.js").GrantList} GrantList
@@ -8,9 +9,11 @@
  * @typedef {import("./model.js").GrantItem} GrantItem
  * @typedef {import("./model.js").PromptModel} PromptModel
  * @typedef {import("./approval.js").CardModel} CardModel
+ * @typedef {import("./refusals.js").RefusalItem} RefusalItem
  * @typedef {import("./controller.js").Choice} Choice
- * @typedef {{ revoke(grantId: string): unknown, answer(choice: Choice): unknown,
- *   key(key: string): boolean }} Actions
+ * @typedef {{ revoke(grantId: string): unknown, allow(key: string): unknown,
+ *   answer(choice: Choice): unknown, key(key: string): boolean, close(): unknown,
+ *   dismiss(): unknown }} Actions
  */
 
 /**
@@ -25,6 +28,8 @@ export function createView(doc, actions) {
   const groups = byId("grants-groups");
   const agents = byId("agents");
   const agentGroups = byId("agents-groups");
+  const refused = byId("refused");
+  const refusedList = byId("refused-list");
   const dialog = byId("prompt");
   const status = byId("status");
   const refuse = /** @type {HTMLButtonElement} */ (dialog.querySelector("[data-answer=refuse]"));
@@ -47,10 +52,11 @@ export function createView(doc, actions) {
   const warning = (/** @type {string} */ text) =>
     el("p", { className: "warning" }, el("strong", {}, "Broad access."), ` ${text}`);
 
-  /** The prompt and the card on screen, and where focus was before the first one opened. */
+  /** The prompt and the card on screen, where focus was before the first one, whether the list is. */
   let shown = /** @type {string | null} */ (null);
   let shownCard = /** @type {string | null} */ (null);
   let returnTo = /** @type {Element | null} */ (null);
+  let listOpen = false;
 
   for (const box of [dialog, card]) {
     box.addEventListener("click", (event) => {
@@ -60,13 +66,17 @@ export function createView(doc, actions) {
     });
   }
 
+  byId("grants-close").addEventListener("click", () => actions.close());
+  // A press beside the list closes it; beside a card nothing happens: the card waits for an answer.
+  byId("scrim").addEventListener("click", () => actions.dismiss());
+
   doc.addEventListener("keydown", (event) => {
-    const open = !dialog.hidden ? dialog : !card.hidden ? card : null;
+    const open = !dialog.hidden ? dialog : !card.hidden ? card : !list.hidden ? list : null;
     if (actions.key(event.key)) event.preventDefault();
     else if (event.key === "Tab" && open) keepFocusIn(event, open);
   });
 
-  /** Tab and Shift+Tab cycle through the open dialog's buttons (and its preview) while it is open. */
+  /** Tab and Shift+Tab cycle through the open panel's buttons (and a preview) while it is open. */
   const keepFocusIn = (/** @type {KeyboardEvent} */ event, /** @type {HTMLElement} */ box) => {
     const buttons = [...box.querySelectorAll("button, pre[tabindex]")].filter(
       (el) => !(/** @type {HTMLElement} */ (el).closest("[hidden]")),
@@ -81,7 +91,7 @@ export function createView(doc, actions) {
     }
   };
 
-  /** The grant list goes behind a dialog that opens, and comes back with focus when none is open. */
+  /** The list goes behind a dialog that opens, and comes back with focus when none is open. */
   const cover = () => {
     if (shown === null && shownCard === null) returnTo = doc.activeElement;
     list.hidden = true;
@@ -89,11 +99,11 @@ export function createView(doc, actions) {
   };
   const uncover = () => {
     if (shown !== null || shownCard !== null) return;
-    list.hidden = false;
-    list.inert = false;
+    list.hidden = !listOpen;
+    list.inert = !listOpen;
     const back = returnTo instanceof HTMLElement && returnTo.isConnected ? returnTo : listTitle;
     returnTo = null;
-    back.focus();
+    if (listOpen) back.focus();
   };
 
   /** A preview's lines, each marked added, removed or the like. */
@@ -144,7 +154,55 @@ export function createView(doc, actions) {
     return section;
   };
 
+  /** A refusal of this session, with the button that takes it back. */
+  const refusal = (/** @type {RefusalItem} */ item) => {
+    const what = el(
+      "p",
+      { className: "what" },
+      el("span", { className: "permission" }, item.permission),
+    );
+    if (item.scope) what.append(" ", el("code", { className: "scope" }, item.scope));
+    const allow = el("button", {
+      type: "button",
+      className: "desk-btn desk-btn-quiet allow",
+      textContent: "Allow",
+    });
+    allow.setAttribute("aria-label", item.allowLabel);
+    allow.addEventListener("click", () => actions.allow(item.key));
+    const who = el("p", { className: "who" }, item.caller.name, " ");
+    who.append(el("span", { className: "kind" }, `${item.caller.kind} · ${item.caller.id}`));
+    return el(
+      "li",
+      { className: "refusal" },
+      who,
+      what,
+      el("p", { className: "duration" }, `Asked for: ${item.duration}`),
+      allow,
+    );
+  };
+
   return {
+    /** @param {boolean} open */
+    sheet(open) {
+      listOpen = open;
+      if (shown !== null || shownCard !== null) return;
+      list.hidden = !open;
+      list.inert = !open;
+      if (open) listTitle.focus();
+    },
+
+    /** @param {RefusalItem[]} items */
+    refusals(items) {
+      const before = [...refusedList.querySelectorAll("button")].indexOf(
+        /** @type {HTMLButtonElement} */ (doc.activeElement),
+      );
+      refusedList.replaceChildren(...items.map(refusal));
+      refused.hidden = items.length === 0;
+      if (before < 0) return;
+      const after = [...refusedList.querySelectorAll("button")];
+      (after[Math.min(before, after.length - 1)] ?? listTitle).focus();
+    },
+
     /** @param {GrantList} model */
     grants(model) {
       // A revoked row takes its button with it: keep focus at the same place in the list.

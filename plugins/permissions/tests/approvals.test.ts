@@ -2,16 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { PermApprovalData, PermApprovalDoneData } from "../../../packages/bridge/src/index";
 import { type Handlers, MANAGE, type Mounted, mount, plugin } from "./harness";
 
-const SURFACE = { permission: "ui:surface" } as const;
-
 function core(extra: Handlers = {}): Handlers {
   return {
     "plugin.list": () => ({ plugins: [plugin("example.notes", "Notes", "ui")] }),
     "events.subscribe": () => ({ subscriptionId: "sub-1" }),
     "perm.list": () => ({ grants: [] }),
     "perm.approve": () => ({}),
-    "ui.surface.open": () => ({ handle: "overlay-1" }),
-    "ui.surface.close": () => ({}),
     ...extra,
   };
 }
@@ -52,10 +48,8 @@ const done = (mounted: Mounted, data: PermApprovalDoneData) =>
 
 describe("the approval card (ADR 0078)", () => {
   it("names the agent, the action, the path, the size and the diff", async () => {
-    const { view, params } = await held(core(), write("a-1"));
-    expect(params("ui.surface.open")).toEqual([
-      { surface: "prompt", title: "Permission request", scope: SURFACE },
-    ]);
+    const { host, view } = await held(core(), write("a-1"));
+    expect(host.visible).toBe(true);
     expect(view.approvals.at(-1)).toMatchObject({
       kind: "approval",
       approvalId: "a-1",
@@ -109,7 +103,7 @@ describe("the approval card (ADR 0078)", () => {
 
   it("answers Allow once, Allow for this task and Deny with perm.approve", async () => {
     const mounted = await held(core(), write("a-1"), write("a-2"), write("a-3"));
-    const { app, view, params, settle } = mounted;
+    const { app, host, view, params, settle } = mounted;
     for (const choice of ["once", "task", "deny"] as const) {
       await app.answer(choice);
       await settle();
@@ -125,7 +119,7 @@ describe("the approval card (ADR 0078)", () => {
     expect(view.statuses).toContain("Allowed Agent mira for this task: Write a file ~/Notes/a.md.");
     expect(view.statuses.at(-1)).toBe("Denied Agent mira: Write a file ~/Notes/a.md.");
     expect(view.approvals.at(-1)).toBeNull();
-    expect(params("ui.surface.close")).toEqual([{ handle: "overlay-1", scope: SURFACE }]);
+    expect(host.visible).toBe(false);
   });
 
   it("offers Allow for this task only with a task, and Escape denies", async () => {

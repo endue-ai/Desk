@@ -2,16 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { Permission, PermPromptData } from "../../../packages/bridge/src/index";
 import { type Handlers, MANAGE, type Mounted, mount, plugin } from "./harness";
 
-const SURFACE = { permission: "ui:surface" } as const;
-
 function core(extra: Handlers = {}): Handlers {
   return {
     "plugin.list": () => ({ plugins: [plugin("example.notes", "Notes", "ui")] }),
     "events.subscribe": () => ({ subscriptionId: "sub-1" }),
     "perm.list": () => ({ grants: [] }),
     "perm.answer": () => ({}),
-    "ui.surface.open": () => ({ handle: "overlay-1" }),
-    "ui.surface.close": () => ({}),
     ...extra,
   };
 }
@@ -33,11 +29,9 @@ async function prompted(handlers: Handlers, ...prompts: PermPromptData[]): Promi
 }
 
 describe("the prompt", () => {
-  it("opens the overlay and shows who asks, for what and why", async () => {
-    const { view, params } = await prompted(core(), ask("p1"));
-    expect(params("ui.surface.open")).toEqual([
-      { surface: "prompt", title: "Permission request", scope: SURFACE },
-    ]);
+  it("shows its overlay and who asks, for what and why", async () => {
+    const { host, view } = await prompted(core(), ask("p1"));
+    expect(host.visible).toBe(true);
     expect(view.prompts.at(-1)).toEqual({
       promptId: "p1",
       title: "Notes asks for permission",
@@ -125,7 +119,6 @@ describe("the prompt", () => {
       { promptId: "p2", granted: false, scope: MANAGE },
     ]);
     expect(view.statuses.at(-1)).toBe("Refused Notes: Read files.");
-    expect(app.key("Escape")).toBe(false);
     expect(app.key("Enter")).toBe(false);
     await settle();
     expect(params("perm.answer")).toHaveLength(2);
@@ -140,7 +133,7 @@ describe("the prompt", () => {
     );
     host.emit({ event: "perm.prompt", data: ask("p2") });
     await settle();
-    expect(params("ui.surface.open")).toHaveLength(1);
+    expect(host.visible).toBe(true);
     expect(view.prompts.at(-1)).toMatchObject({ promptId: "p1", waiting: 2 });
 
     await app.answer("once");
@@ -160,7 +153,7 @@ describe("the prompt", () => {
       title: "Desk asks for permission",
       waiting: 0,
     });
-    expect(params("ui.surface.close")).toEqual([]);
+    expect(host.visible).toBe(true);
 
     await app.answer("always");
     await settle();
@@ -170,7 +163,7 @@ describe("the prompt", () => {
       "p2",
       "p3",
     ]);
-    expect(params("ui.surface.close")).toEqual([{ handle: "overlay-1", scope: SURFACE }]);
+    expect(host.visible).toBe(false);
   });
 
   it("moves on when an answer fails", async () => {
@@ -199,16 +192,5 @@ describe("the prompt", () => {
       scope: "zsh",
       warning: "It can run any program through zsh.",
     });
-  });
-
-  it("still prompts when the overlay cannot open", async () => {
-    const handlers = core();
-    delete handlers["ui.surface.open"];
-    const { app, view, params, settle } = await prompted(handlers, ask("p1"));
-    expect(view.prompts.at(-1)).toMatchObject({ promptId: "p1" });
-    await app.answer("once");
-    await settle();
-    expect(params("perm.answer")).toHaveLength(1);
-    expect(params("ui.surface.close")).toEqual([]);
   });
 });

@@ -6,15 +6,20 @@ import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/
 import type { CardModel } from "../ui/approval.js";
 import { createPermissions } from "../ui/controller.js";
 import type { GrantList, PromptModel } from "../ui/model.js";
+import type { RefusalItem } from "../ui/refusals.js";
 
 export type Handlers = NonNullable<Parameters<typeof createTestHost>[0]["handlers"]>;
 
 export interface RecordingView {
   lists: GrantList[];
+  refused: RefusalItem[][];
+  sheets: boolean[];
   prompts: Array<PromptModel | null>;
   approvals: Array<CardModel | null>;
   statuses: string[];
   grants(list: GrantList): void;
+  refusals(items: RefusalItem[]): void;
+  sheet(open: boolean): void;
   prompt(model: PromptModel | null): void;
   approval(model: CardModel | null): void;
   status(text: string): void;
@@ -23,10 +28,14 @@ export interface RecordingView {
 export function recordingView(): RecordingView {
   const view: RecordingView = {
     lists: [],
+    refused: [],
+    sheets: [],
     prompts: [],
     approvals: [],
     statuses: [],
     grants: (list) => view.lists.push(list),
+    refusals: (items) => view.refused.push(items),
+    sheet: (open) => view.sheets.push(open),
     prompt: (model) => view.prompts.push(model),
     approval: (model) => view.approvals.push(model),
     status: (text) => view.statuses.push(text),
@@ -46,8 +55,9 @@ export interface Mounted {
   settle(): Promise<void>;
 }
 
-export async function mount(handlers: Handlers): Promise<Mounted> {
-  const host = createTestHost({ pluginId: "endue.permissions", handlers });
+/** Mount the plugin; `state` is what it kept before its page loaded again. */
+export async function mount(handlers: Handlers, state?: unknown): Promise<Mounted> {
+  const host = createTestHost({ pluginId: "endue.permissions", handlers, state });
   const view = recordingView();
   let app: ReturnType<typeof createPermissions> | undefined;
   await defineUiPlugin(
