@@ -4,15 +4,18 @@
 //! - the edge bars' plugin surfaces (the dock), under the page's own bars and pills, as the page
 //!   stacks them;
 //! - the desk's system surface, the page's pixels: wherever no window lies over a part of another
-//!   window that the page draws (`Plan::page`), and, whole, the box of each part of its system layer
-//!   it names (`desk_web::sender::PARTS`: the bars' content, Eris, the notices, the settings, the
-//!   studios), whatever lies under it, so a bar over a window's part is never cut;
+//!   window that the page draws (`Plan::page`) and no edge bar lies over a window, and, whole, the
+//!   box of each part of its system layer it names (`desk_web::sender::PARTS`: the bars' content,
+//!   the bottom edge's controls, the arrange strip, Eris, the notices, the settings, the studios,
+//!   the overlays), whatever lies under it, so a bar over a window's part is never cut;
 //! - the overlays' plugin surfaces (the palette, the first run, a permission prompt), above it all.
 //!
 //! The pieces never overlap, so no pixel of the page blends twice. A named part takes the pointer
-//! everywhere it is drawn; the rest of the page takes it outside windows, but where an edge bar's
-//! surface lies under it, so the bar's plugin hears its own presses; over a window the pointer goes
-//! to what the window shows, and the page hears the press there as well (ADR 0150).
+//! everywhere it is drawn, an edge bar's surface included; the rest of the page takes it outside
+//! windows, but where an edge bar's surface lies under it, so the bar's plugin hears its own
+//! presses; over a window the pointer goes to what the window shows, and the page hears the press
+//! there as well (ADR 0150). A window under an edge bar is under it whole: what the page draws of
+//! it (its icon, its tools, its own views) is drawn with the window, never above the bar.
 
 use desk_compositor::{Chrome, NodeId, Rect, Scene, SceneError};
 use desk_wm::Plan;
@@ -93,8 +96,12 @@ pub fn draw(
                 unheard(scene, desk, over, from)?;
             }
         }
+        // What the page draws of a window stays with its window, under the edge bars: drawn over
+        // a bar, a window's icon and tools would show where the bar's plugin hears the press.
         for over in windows.iter().filter_map(|w| intersect(*piece, *w)) {
-            unheard(scene, desk, over, from)?;
+            for clear in subtract(over, &bars) {
+                unheard(scene, desk, clear, from)?;
+            }
         }
     }
     for (id, boxes) in &split.parts {
