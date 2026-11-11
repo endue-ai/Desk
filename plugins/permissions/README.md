@@ -1,7 +1,7 @@
 # plugins/permissions
 
 The person's side of the permission engine, in the community folder format and on the public bridge
-API only. Its one surface is a hidden overlay, never a window (ADR XXXX): each `perm.prompt` and each
+API only. Its one surface is a hidden overlay, never a window (ADR 0190): each `perm.prompt` and each
 `perm.approval` (an agent's irreversible call, ADR 0078) shows it in front of everything, whole at any
 size, with the keys; the answer goes back with `perm.answer` or `perm.approve`, and with no card left
 it hides. One card at a time; the rest queue, and a page that loads again shows the ones still waiting.

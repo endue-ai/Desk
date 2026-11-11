@@ -1,6 +1,6 @@
 // A permission question always reaches the person (#161 findings 1, 2, 11; #162 findings 5, 6, 16;
 // #158 finding 13). endue.permissions is a hidden overlay, not a window the person can close (ADR
-// XXXX): a perm.request shows its question in front of every window and bar, whole at the app's
+// 0190): a perm.request shows its question in front of every window and bar, whole at the app's
 // 1280x800, with the keys, so Escape refuses it and Tab and Enter answer it; a refusal is listed,
 // and Allow there takes it back. The asking caller is `cli` on a desk socket connection of its own
 // (a request waits for its answer, and one connection answers one line at a time); it asks for the
