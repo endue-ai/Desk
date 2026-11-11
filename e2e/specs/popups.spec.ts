@@ -4,22 +4,27 @@
 // and the host makes room for its first frame among the desk's other browsers
 // (`web_host/popup_room.rs`): the desk shows more browsers than Chromium keeps frames for, which
 // left every popup unpainted. Each case opens one by pointer on the popup fixture
-// (e2e/fixtures/plugin-e2e-popup), finds it in the composed frame and picks by pointer. The events
-// are winit's, fed to the compositor window's own input entry (support/compositor.ts): the screen
-// may be locked.
+// (e2e/fixtures/plugin-e2e-popup), finds it in the composed frame and picks by pointer. Whatever the
+// first layout gives the fixture's window, it takes the app's left half here, so the windows on the
+// right half stay in sight with their browsers shown, and its fields move clear of the desk's bars;
+// every point is taken from a field's box or the popup's, and pressed once the fixture hears the
+// pointer there. The events are winit's, fed to the compositor window's own input entry
+// (support/compositor.ts): the screen may be locked.
 import { browser, expect } from "@wdio/globals";
-import { click, feed, inputState, inSurface, keyPress, shellCommand } from "../support/compositor";
+import { feed, inputState, inSurface, keyPress, shellCommand } from "../support/compositor";
 import { shellReady } from "../support/desk";
-import { drag, titleAt } from "../support/gestures";
 import { composedFrame, decodePng, type Image, pixel } from "../support/pixels";
+import { byId, deskNow, run, windowUntil } from "../support/windows";
 
 const POPUP = "main.e2e-popup";
+/** The popup fixture's window. */
+const WINDOW = "e2e.popup";
+/** A surface with its browser shown, as `compositor_stats` names its state. */
+const SHOWN = "Live { hidden: false }";
 
 interface Stats {
-  browsers: number;
   popups: Record<string, { place: number[]; texture: number[] }>;
-  surfaces: Record<string, { rect: number[] | null }>;
-  windows: Array<{ id: string; rect: number[] }>;
+  surfaces: Record<string, { rect: number[] | null; state: string }>;
 }
 
 type Box = [number, number, number, number];
@@ -83,11 +88,28 @@ function unlikePage(img: Image, [x, y, w, h]: Box): number {
   return seen ? unlike / seen : 0;
 }
 
+/** A click at window point `at` once the fixture's surface (no bar of the desk over it) hears the
+ * pointer there. */
+async function click(at: [number, number]): Promise<void> {
+  await feed([{ type: "pointerMoved", x: at[0], y: at[1] }]);
+  const hearing = (await inputState()).pointer.hearing;
+  if (!hearing.includes(POPUP)) throw new Error(`${at} is under ${hearing.join(", ")}`);
+  await feed([
+    { type: "pointerButton", button: "left", pressed: true },
+    { type: "pointerButton", button: "left", pressed: false },
+  ]);
+}
+
+/** A click at the fixture's own point `local`. */
+async function clickAt(local: [number, number]): Promise<void> {
+  const [ox, oy] = await origin();
+  await click([ox + local[0], oy + local[1]]);
+}
+
 /** Open a popup with a click at the fixture's point `local`; its box, drawn where it lies. */
 async function open(local: [number, number]): Promise<Box> {
-  const [ox, oy] = await origin();
   const before = await frame();
-  await click([ox + local[0], oy + local[1]]);
+  await clickAt(local);
   const box = await popupBox();
   const after = await frame();
   // The popup's pixels are in the composed frame, over the page's dark ones.
@@ -107,17 +129,27 @@ describe("popups: select lists and the date, time and colour pickers are drawn a
       { timeout: 20_000, timeoutMsg: "the popup plugin never mounted" },
     );
     await feed([{ type: "windowFocused", focused: true }]);
-    // The fixture's window in full view, clear of the bars: dragged there by its title bar.
-    const win = (await stats()).windows.find((w) => w.id === "e2e.popup");
-    const [x = 0, y = 0, w = 0, h = 0] = win?.rect ?? [];
-    const from = titleAt({ x, y, w, h });
-    await drag(from, { x: from.x + 200 - x, y: from.y + 220 - y }, { steps: 12 });
-    await browser.waitUntil(async () => (await origin())[0] < 300, {
-      timeoutMsg: "the fixture's window did not move",
-    });
+    // The window in use takes the app's left half, so no first layout decides what of it shows,
+    // and the windows on the right half stay in sight (a fill would hide every one of them).
+    await browser.waitUntil(
+      async () => {
+        await run("desk.display.show", { plugin: WINDOW });
+        return byId(await deskNow(), WINDOW)?.focused === true;
+      },
+      { timeout: 15_000, interval: 300, timeoutMsg: `${WINDOW} is not shown and in use` },
+    );
+    await run("desk.display.snap-left");
+    await windowUntil(
+      WINDOW,
+      (w) => w.state === "snapped" && w.fill === "left",
+      "taking the left half",
+    );
+    await inSurface<boolean>(POPUP, "(document.body.dataset.layout = 'middle', true)");
     await browser.pause(500);
-    // More browsers than Chromium keeps frames for: what made every popup paint nothing.
-    expect((await stats()).browsers).toBeGreaterThan(5);
+    // More browsers shown than Chromium keeps frames for (five): what made every popup paint
+    // nothing.
+    const shown = Object.values((await stats()).surfaces).filter((s) => s.state === SHOWN).length;
+    expect(shown).toBeGreaterThan(5);
   });
 
   it("a select's list opens under it and a click picks the third option", async () => {
@@ -142,8 +174,8 @@ describe("popups: select lists and the date, time and colour pickers are drawn a
   it("a press elsewhere in the page closes the list", async () => {
     const [x, y, w, h] = await field("select");
     await open([x + w / 2, y + h / 2]);
-    const [ox, oy] = await origin();
-    await click([ox + 60, oy + 200]);
+    // Left of the fields and under them: no popup opens there.
+    await clickAt([x - 100, y + 200]);
     await closed();
     expect((await values()).select).toBe("three");
   });
@@ -176,8 +208,8 @@ describe("popups: select lists and the date, time and colour pickers are drawn a
     await browser.waitUntil(async () => (await values()).color !== "#3366cc", {
       timeoutMsg: "no colour was picked",
     });
-    const [ox, oy] = await origin();
-    await click([ox + 60, oy + 200]);
+    const [sx, sy] = await field("select");
+    await clickAt([sx - 100, sy + 200]);
     await closed();
     expect((await heard()).some((e) => e.type === "change" && e.field === "color")).toBe(true);
   });

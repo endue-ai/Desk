@@ -43,3 +43,9 @@ input {
   top: 220px;
   margin: 0;
 }
+
+/* A spec whose window takes the app's left half moves every field clear of the desk's bars over
+   its edges (popups.spec.ts), with room right of and under each for its popup. */
+body[data-layout="middle"] > * {
+  translate: 200px 180px;
+}
