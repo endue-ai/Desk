@@ -7,12 +7,11 @@
 //! page's system layer above them. The page renders off screen too, see through, its windows'
 //! chrome left to the compositor. Input (#56) goes through the compositor's router to the surface
 //! it is for (`input.rs`), and first through `desk-wm`'s window manager, which drags, resizes,
-//! snaps and pans (`wm.rs`, #80, ADR 0153); a page's hover title is the compositor's to draw
+//! snaps and pans (`wm.rs`, #80, ADR 0153); the compositor draws a page's hover title
 //! (`tooltip.rs`, #156). Every surface and the page render on the desk's frame clock (`clock.rs`,
-//! ADR 0152). Screen readers see the desk as one tree through an AccessKit adapter on the window
-//! (`a11y.rs`, #57). The spread (`spread.rs`), the canvas map (`minimap.rs`) and every surface's
-//! snapshot for the core (`snapshots.rs`) draw on the surfaces' live and last textures (#54, ADR
-//! 0161).
+//! ADR 0152). Screen readers see the desk as one tree through an AccessKit adapter (`a11y.rs`,
+//! #57). The spread (`spread.rs`), the canvas map (`minimap.rs`) and every surface's snapshot for
+//! the core (`snapshots.rs`) draw on the surfaces' live and last textures (#54, ADR 0161).
 
 pub mod a11y;
 pub mod a11y_check;
@@ -116,8 +115,7 @@ pub struct CompositorWindow {
     gestures: wm::Gestures,
     /// The window's accessibility (#57).
     a11y: a11y::A11y,
-    /// The desk's system parts the last scene drew whole, and its system layer back to front (ADR
-    /// 0160).
+    /// The system parts the last scene drew whole, and its system layer back to front (ADR 0160).
     parts: (Vec<String>, Vec<String>),
     /// The spread while it is open, and the canvas map (#54).
     spreading: spread::Spreading,
