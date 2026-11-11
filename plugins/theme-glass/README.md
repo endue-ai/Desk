@@ -6,7 +6,7 @@ no code and no files, only the `theme` block in `plugin.json`.
 | Layer | What it sets |
 | --- | --- |
 | Palette | Dark: night blue `#0b1020`, aurora teal `#6ee7d2`. Light: frosted white over pastels, a bright teal fill. Every role colour, the shell's and Eris's tokens, sixteen terminal colours |
-| Material | windows at 72% opacity with a 20 px blur, strong shadows (tinted in light) |
+| Material | windows at 72% opacity with a 20 px blur, strong shadows (tinted in light). The desk cannot blur the windows under a window, so it draws each one opaque: its card at 72% over the background (ADR XXXX) |
 | Backdrop | an aurora gradient per scheme: night, teal and violet; or blue, mint, lilac and blush |
 | Type | the system's sans-serif |
 | Shape, motion | round corners, comfortable density, smooth motion |

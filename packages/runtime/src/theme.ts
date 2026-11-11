@@ -5,11 +5,21 @@
  * The result is every design token (@endue-ai/ui: the role colours and the scale), applied to the
  * shell's root and to each plugin frame as --desk-* custom properties. Over them all goes the theme
  * that desk.theme.active names (ADR 0056): an installed theme plugin, compiled for the scheme and gated
- * for contrast (@endue-ai/ui/theme); with none, the result is the layers alone.
+ * for contrast (@endue-ai/ui/theme); with none, the result is the layers alone. A see-through window
+ * is made opaque, as the compositor cannot blur the windows under it.
  */
 import type { ThemePackage } from "@endue-ai/bridge";
 import { components, cssVariables, MOTION_TOKENS, tokens } from "@endue-ai/ui";
-import { compileTheme, type GateFix, gate, type ThemeFontFace } from "@endue-ai/ui/theme";
+import {
+  compileTheme,
+  formatColor,
+  type GateFix,
+  gate,
+  over,
+  parseColor,
+  type Rgba,
+  type ThemeFontFace,
+} from "@endue-ai/ui/theme";
 import { HIGH_CONTRAST, LIGHT_COLORS } from "./core/colors";
 import type { PolicySet } from "./policy";
 
@@ -126,6 +136,7 @@ export function resolveTheme(
       fixes = gated.fixes;
     }
   }
+  opaqueWindows(result);
   result = { ...result, ...(design?.tokens ?? components) };
   // The motion tokens are inline on each root, so a stylesheet rule could not zero them.
   if (reducedMotion) for (const name of MOTION_TOKENS) result[name] = "0ms";
@@ -141,6 +152,25 @@ export function resolveTheme(
     fonts: compiled?.fonts ?? [],
     fixes,
   };
+}
+
+/**
+ * A window shows nothing of the windows under it (ADR XXXX). The compositor draws each window over
+ * the ones below and cannot blur them, so a see-through window (the material's opacity, ADR 0057, or
+ * a card with alpha) showed their text sharp through its title bar. Its surface becomes the colour it
+ * has over the theme's background, and the blur, with nothing left behind it to soften, goes.
+ */
+function opaqueWindows(out: Record<string, string>): void {
+  const card = parseColor(out.card ?? "");
+  const own = parseColor(out.surface ?? "");
+  const opacity = out.surface === undefined ? 1 : Number(out.surfaceOpacity ?? 1);
+  const pane: Rgba | undefined =
+    own ??
+    (card && [card[0], card[1], card[2], card[3] * (Number.isFinite(opacity) ? opacity : 1)]);
+  if (!pane || pane[3] >= 1) return;
+  const ground = over(parseColor(out.background ?? "") ?? [0, 0, 0, 1], [0, 0, 0, 1]);
+  out.surface = formatColor(over(pane, ground));
+  delete out.surfaceFilter;
 }
 
 /** Apply theme tokens as CSS custom properties on `root` (CSSOM, so a strict CSP still allows it). */

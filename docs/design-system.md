@@ -79,7 +79,10 @@ reads the tokens follows a theme's typeface, corners, density and motion without
 - Material, per scheme: `--desk-surface-opacity` (`1`), `--desk-blur` (`0px`), `--desk-noise` (`0`) and
   `--desk-border-width` (`1px`). A translucent theme also sets `--desk-surface` (the card mixed with
   transparency) and `--desk-surface-filter` (a blur); the shell's windows read
-  `var(--desk-surface, var(--desk-card))`. `base.css` lays the grain (`--desk-noise`) over every page.
+  `var(--desk-surface, var(--desk-card))`. The compositor cannot blur the windows under a window, so the
+  runtime draws every window opaque: a see-through surface or card becomes its colour over
+  `--desk-background`, and the blur goes (ADR XXXX). `base.css` lays the grain (`--desk-noise`) over
+  every page.
 - Backdrop: `--desk-backdrop` (a background image: `none`, a gradient or a theme image's `url()`),
   `--desk-backdrop-size` and `--desk-backdrop-repeat`, drawn by the shell behind its windows.
 - Terminal: `--desk-ansi-0` through `--desk-ansi-15`, black to bright white, per scheme.

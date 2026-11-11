@@ -3,10 +3,12 @@ import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest, ThemePackage } from "../../../packages/bridge/src/index";
+import { resolveTheme } from "../../../packages/runtime/src/theme";
 import { colors } from "../../../packages/ui/src/index";
 import {
   compileTheme,
   contrast,
+  formatColor,
   gate,
   over,
   parseColor,
@@ -123,6 +125,19 @@ describe(ID, () => {
         for (const ink of ["text", "textMuted"])
           expect(contrast(rgba(t[ink]), pane), `${ink} over ${stop}`).toBeGreaterThanOrEqual(4.5);
       }
+    });
+
+    it("on the desk, shows nothing of a window under one: its windows are opaque, unblurred", () => {
+      const glass = { id: ID, name: "Glass", theme: theme(), url: (path: string) => path };
+      const settings = { scheme, contrast: "normal", motion: "full", active: ID } as const;
+      const media = { dark: false, highContrast: false, reducedMotion: false };
+      const desk = resolveTheme([], settings, media, [glass]).tokens;
+      const t = tokens();
+      expect(desk.surface).toBe(
+        formatColor(over([...rgba(t.card).slice(0, 3), 0.72] as Rgba, rgba(t.background))),
+      );
+      expect(rgba(desk.surface)[3]).toBe(1);
+      expect(desk.surfaceFilter).toBeUndefined();
     });
   });
 

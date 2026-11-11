@@ -1,4 +1,5 @@
 import { tokens } from "@endue-ai/ui";
+import { parseColor } from "@endue-ai/ui/theme";
 import { describe, expect, it } from "vitest";
 import { type InstalledTheme, resolveTheme } from "./theme";
 
@@ -238,5 +239,43 @@ describe("the active theme (desk.theme.active)", () => {
     ]);
     expect(state.tokens.motionFast).toBe("0ms");
     expect(state.tokens.motionTheme).toBe("0ms");
+  });
+
+  // The compositor draws a window over the windows under it and cannot blur them: a see-through
+  // title bar showed their text sharp through it (04 #18, Glass).
+  describe("a window shows nothing of the windows under it", () => {
+    const glass: InstalledTheme = {
+      ...ember,
+      id: "example.glass",
+      theme: {
+        dark: {
+          colors: { background: "#0b1020", card: "#141a2e" },
+          material: { opacity: 0.72, blur: 20 },
+        },
+      },
+    };
+    const opaque = (value: string | undefined) => parseColor(value ?? "")?.[3];
+
+    it("draws a translucent theme's window as its card over the background, with no blur", () => {
+      const state = resolveTheme(themes, { ...dark, active: "example.glass" }, os, [glass]);
+      expect(state.tokens.surfaceOpacity).toBe("0.72");
+      // #141a2e at 72% over #0b1020.
+      expect(state.tokens.surface).toBe("#11172a");
+      expect(opaque(state.variables["--desk-surface"])).toBe(1);
+      expect(state.tokens.surfaceFilter).toBeUndefined();
+      expect(state.variables["--desk-surface-filter"]).toBeUndefined();
+    });
+
+    it("draws a window whose card is see-through on the background", () => {
+      const state = resolveTheme(themes, { ...dark, active: "example.ember" }, os, [ember]);
+      expect(state.tokens.card).toBe("#22171400");
+      expect(state.tokens.surface).toBe("#1a1210");
+    });
+
+    it("leaves a theme whose windows are opaque as it is", () => {
+      const state = resolveTheme(themes, dark, os);
+      expect(state.tokens.surface).toBeUndefined();
+      expect(state.tokens.card).toBe(tokens.card);
+    });
   });
 });
