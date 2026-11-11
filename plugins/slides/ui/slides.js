@@ -2,44 +2,35 @@
 // .revert, .save, desk.buffers.show, .closed) for the presentations it holds, reads them in ranges
 // with the SDK's readBytes and shows the progress, asks with perm.request for a file its grants do
 // not cover, opens a file over 8 MiB in a worker that stays while its deck is held, follows each
-// file on disk, and opens a slide's links with shell.open. It only talks to ctx.commands,
-// ctx.bridge and a view, so the SDK's test host runs it.
-import { imageCache } from "./deck.js";
+// file on disk, and opens a slide's links with shell.open (reading.js). A presentation the desk lists
+// and the frame lost (it slept, or its page loaded again) opens again, on the slide it was on when a
+// sleep kept it (keep.js). It only talks to ctx.commands, ctx.bridge, ctx.surface and a view, so the
+// SDK's test host runs it.
+import { placeOf, readPlace } from "./keep.js";
 import { openFile } from "./open.js";
+import { codeOf, openInWorker, readWhole, scopeOf } from "./reading.js";
 import { createLinks } from "./render/links.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
  * @typedef {import("@endue-ai/bridge").BridgeEvent} BridgeEvent
- * @typedef {import("@endue-ai/bridge").Permission} Permission
  * @typedef {import("./open.js").Opened} Opened
+ * @typedef {import("./keep.js").KeptPlace} KeptPlace
  * @typedef {{ buffer: string, path: string, name: string, size: number, opened: Opened }} Shown
  * @typedef {{ label: string, value: number | null, max: number, detail: string, cancel(): void }} Progress
- * @typedef {{ show(model: Shown | null): void, status(text: string): void, focus(): void,
+ * @typedef {{ show(model: Shown | null, slide?: number): void, status(text: string): void,
+ *   focus(): void, slideOf?(buffer: string): number | undefined,
  *   progress?(value: Progress | null): void }} View
  * @typedef {Shown & { watchId?: string, close?: () => void }} OpenFile
  * @typedef {{ read: typeof import("@endue-ai/plugin-sdk").readBytes,
- *   startWorker?: typeof import("@endue-ai/plugin-sdk").startWorker }} Options
+ *   startWorker?: typeof import("@endue-ai/plugin-sdk").startWorker,
+ *   keepFiles: typeof import("@endue-ai/plugin-sdk").keepFiles }} Options
  */
 
 /** Files over this many bytes open in a worker. */
 export const LARGE = 8 * 1024 * 1024;
 
 const nameOf = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/") + 1);
-const folderOf = (/** @type {string} */ path) => {
-  const slash = path.lastIndexOf("/");
-  return slash < 0 ? path : path.slice(0, slash);
-};
-/** @type {"fs:read"} */
-const FS_READ = "fs:read";
-const EVERYTHING_UNDER = "/**";
-/** The scope a read carries: the file's folder. @param {string} path */
-const scopeOf = (path) => ({
-  permission: FS_READ,
-  paths: [`${folderOf(path)}${EVERYTHING_UNDER}`],
-});
-const codeOf = (/** @type {unknown} */ error) =>
-  /** @type {{ code?: string }} */ (error)?.code ?? "error";
 const bytesOf = (/** @type {number} */ done, /** @type {number} */ total) =>
   `${done.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} bytes`;
 
@@ -63,78 +54,12 @@ function summary(name, opened) {
 }
 
 /**
- * Open a presentation in a worker started with the SDK's startWorker (ui/worker.js): the bytes move
- * to it (they are gone here afterwards), the deck comes back in parts, and its pictures are asked of
- * the worker, which stays until `close`. The signal ends the worker while it opens.
- * @param {Uint8Array} bytes @param {string} name
- * @param {{ signal: AbortSignal, startWorker: NonNullable<Options["startWorker"]> }} options
- * @returns {Promise<{ opened: Opened, close(): void }>}
- */
-export function openInWorker(bytes, name, { signal, startWorker }) {
-  return new Promise((resolve, reject) => {
-    signal.throwIfAborted();
-    const worker = startWorker(new URL("./worker.js", import.meta.url), { name: "Slides reader" });
-    /** @type {Map<number, (url: string | null) => void>} */
-    const asked = new Map();
-    let next = 0;
-    let closed = false;
-    const close = () => {
-      closed = true;
-      worker.terminate();
-      for (const answer of asked.values()) answer(null);
-      asked.clear();
-    };
-    /** @type {any} */
-    let opened;
-    const abort = () => {
-      close();
-      reject(new DOMException("Opening was cancelled.", "AbortError"));
-    };
-    signal.addEventListener("abort", abort, { once: true });
-    const settle = (/** @type {() => void} */ then) => {
-      signal.removeEventListener("abort", abort);
-      then();
-    };
-    worker.onerror = (event) => {
-      event.preventDefault?.();
-      close();
-      settle(() => reject(new Error(event.message || "The presentation reader stopped.")));
-    };
-    worker.onmessage = ({ data }) => {
-      if (data.type === "image") {
-        asked.get(data.n)?.(data.url);
-        asked.delete(data.n);
-      } else if (data.type === "head") opened = data.opened;
-      else if (data.type === "slides") opened.deck.slides.push(...data.items);
-      else if (data.type === "failed") {
-        close();
-        settle(() => reject(new Error(data.message)));
-      } else if (data.type === "done") {
-        if (data.opened) {
-          close();
-          return settle(() => resolve({ opened: data.opened, close }));
-        }
-        opened.deck.image = imageCache(
-          (id) =>
-            new Promise((answer) => {
-              if (closed) return answer(null);
-              asked.set(++next, answer);
-              worker.postMessage({ type: "image", n: next, id });
-            }),
-        );
-        settle(() => resolve({ opened, close }));
-      }
-    };
-    worker.postMessage({ type: "open", bytes, name }, [bytes.buffer]);
-  });
-}
-
-/**
- * @param {Pick<PluginContext, "bridge" | "commands">} ctx
+ * @param {Pick<PluginContext, "bridge" | "commands" | "surface">} ctx
  * @param {View} view
  * @param {Options} options
  */
-export function createSlides({ bridge, commands }, view, { read: readBytes, startWorker }) {
+export function createSlides({ bridge, commands, surface }, view, options) {
+  const { read: readBytes, startWorker } = options;
   /** @type {Map<string, OpenFile>} */
   const files = new Map();
   /** @type {Map<string, string>} */
@@ -146,23 +71,41 @@ export function createSlides({ bridge, commands }, view, { read: readBytes, star
   /** @type {AbortController | undefined} */
   let opening;
   let openingBuffer = "";
+  /** Bumped by every opening, show and close: a quiet opening that lost to one says nothing. */
+  let generation = 0;
   const links = createLinks(bridge);
+  // Put to sleep while nobody sees it, Slides keeps its presentations and comes back to them.
+  const kept = options.keepFiles(surface, {
+    files: () =>
+      [...files.values()].map((f) => ({
+        buffer: f.buffer,
+        path: f.path,
+        place: placeOf(f, view.slideOf?.(f.buffer)),
+      })),
+    shown: () => shown,
+    readPlace,
+  });
+  /** Buffers this frame closed: a show of one does not open it again. @type {Set<string>} */
+  const closed = new Set();
+  /** The kept file of a buffer this frame does not hold yet. */
+  const keptOf = (/** @type {string} */ buffer) => kept.files().find((f) => f.buffer === buffer);
   const say = (/** @type {string} */ text) => {
     if (text === said) return;
     said = text;
     view.status(text);
   };
 
-  const render = () => {
+  const render = (/** @type {number | undefined} */ slide) => {
     const file = shown === null ? undefined : files.get(shown);
     if (!file) return view.show(null);
     const { buffer, path, name, size, opened } = file;
-    view.show({ buffer, path, name, size, opened });
+    view.show({ buffer, path, name, size, opened }, slide);
   };
-  const present = (/** @type {string} */ buffer) => {
+  /** Show a held file, on `slide` when a sleep kept one; with the focus unless the window woke. */
+  const present = (/** @type {string} */ buffer, { slide = undefined, focus = true } = {}) => {
     shown = buffer;
-    render();
-    view.focus();
+    render(slide);
+    if (focus) view.focus();
   };
   const held = (/** @type {string} */ buffer) => {
     const file = files.get(buffer);
@@ -186,45 +129,17 @@ export function createSlides({ bridge, commands }, view, { read: readBytes, star
     return buffer;
   };
 
-  /** The whole file in ranges; when the grants do not cover it, ask once for its folder and try again. */
-  const read = async (
-    /** @type {string} */ path,
-    /** @type {AbortSignal} */ signal,
-    /** @type {(done: number, total: number) => void} */ onProgress,
-  ) => {
-    const scope = scopeOf(path);
-    const refused = new Error(`Not allowed to read ${path}.`);
-    const failed = (/** @type {unknown} */ error) =>
-      codeOf(error) === "permission_denied"
-        ? refused
-        : new Error(`Could not read ${path}: ${codeOf(error)}.`);
-    const call = () => readBytes({ bridge }, { path, scope }, { signal, onProgress });
-    try {
-      return await call();
-    } catch (error) {
-      if (signal.aborted) throw error;
-      if (codeOf(error) !== "permission_denied") throw failed(error);
-      const decision = await bridge
-        .call("perm.request", {
-          permission: /** @type {Permission} */ (scope),
-          reason: `To open ${path} in Slides`,
-        })
-        .catch(() => ({ granted: false }));
-      signal.throwIfAborted();
-      if (!decision.granted) throw refused;
-      return await call().catch((again) => {
-        if (signal.aborted) throw again;
-        throw failed(again);
-      });
-    }
-  };
-
   /**
    * Read and open a file, showing the progress; a reader's failure is a details view, never an
-   * error. Cancel stops the read or the worker and keeps what is on screen.
+   * error. Cancel stops the read or the worker and keeps what is on screen. Without `ask` (a window
+   * coming back from a sleep) a refused read is not asked for.
    * @returns {Promise<{ size: number, opened: Opened, close?: () => void }>}
    */
-  const load = async (/** @type {string} */ buffer, /** @type {string} */ path) => {
+  const load = async (
+    /** @type {string} */ buffer,
+    /** @type {string} */ path,
+    { ask = true } = {},
+  ) => {
     stopOpening();
     const job = new AbortController();
     opening = job;
@@ -242,9 +157,11 @@ export function createSlides({ bridge, commands }, view, { read: readBytes, star
     say(`Opening ${name}…`);
     report("Reading");
     try {
-      const bytes = await read(path, job.signal, (done, total) =>
-        report("Reading", done, total, bytesOf(done, total)),
-      );
+      const bytes = await readWhole({ bridge, readBytes }, path, {
+        signal: job.signal,
+        onProgress: (done, total) => report("Reading", done, total, bytesOf(done, total)),
+        ask,
+      });
       const size = bytes.length;
       report("Opening");
       const failed = (/** @type {unknown} */ error) => {
@@ -305,17 +222,57 @@ export function createSlides({ bridge, commands }, view, { read: readBytes, star
       }
     });
 
-  answer("desk.files.visit", async (args) => {
-    const { buffer, path } = requested(args);
-    if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
-    const { size, opened, close } = await load(buffer, path);
+  /**
+   * Open `path` as `buffer`: a visit, or a presentation the desk lists that this frame lost, on the
+   * slide a sleep kept. Coming back from a sleep it neither asks for the folder nor takes the focus.
+   * @param {string} buffer
+   * @param {string} path
+   * @param {{ place?: KeptPlace, waking?: boolean }} [how]
+   */
+  const openAs = async (buffer, path, { place, waking = false } = {}) => {
+    const { size, opened, close } = await load(buffer, path, { ask: !waking });
     forget(buffer);
+    kept.take(buffer);
+    closed.delete(buffer);
     /** @type {OpenFile} */
     const file = { buffer, path, name: nameOf(path), size, opened, close };
     files.set(buffer, file);
-    present(buffer);
-    await watch(file);
+    present(buffer, { slide: place?.slide, focus: !waking });
+    // The watch the file had before the sleep still follows it.
+    if (place?.watchId) {
+      file.watchId = place.watchId;
+      watches.set(place.watchId, buffer);
+    } else await watch(file);
     return summary(file.name, opened);
+  };
+  /** The file on its way to open, if any: a show of it waits for it. */
+  /** @type {{ buffer: string, done: Promise<boolean>, waking: boolean } | undefined} */
+  let underway;
+  /** @type {typeof openAs} */
+  const begin = (buffer, path, how = {}) => {
+    generation++;
+    const done = openAs(buffer, path, how);
+    const settled = done.then(
+      () => true,
+      () => false,
+    );
+    underway = { buffer, done: settled, waking: how.waking === true };
+    void settled.then(() => {
+      if (underway?.done === settled) underway = undefined;
+    });
+    return done;
+  };
+  /** Open again a presentation the desk lists that this frame lost, unless it closed it itself. */
+  const lost = (/** @type {string} */ buffer, /** @type {string | undefined} */ path) => {
+    const from = path ?? keptOf(buffer)?.path;
+    const missing = !files.has(buffer) && !closed.has(buffer) && openingBuffer !== buffer;
+    return from && missing ? begin(buffer, from, { place: keptOf(buffer)?.place }) : undefined;
+  };
+
+  answer("desk.files.visit", (args) => {
+    const { buffer, path } = requested(args);
+    if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
+    return begin(buffer, path);
   });
 
   answer("desk.files.save", () => {
@@ -324,6 +281,8 @@ export function createSlides({ bridge, commands }, view, { read: readBytes, star
 
   answer("desk.files.revert", async (args) => {
     const { buffer, path: asked } = requested(args);
+    const reopening = lost(buffer, asked);
+    if (reopening) return reopening;
     const file = held(buffer);
     const { size, opened, close } = await load(buffer, asked ?? file.path);
     if (files.get(buffer) !== file) {
@@ -336,8 +295,15 @@ export function createSlides({ bridge, commands }, view, { read: readBytes, star
     return summary(file.name, opened);
   });
 
-  answer("desk.buffers.show", (args) => {
-    const { buffer } = requested(args);
+  answer("desk.buffers.show", async (args) => {
+    const { buffer, path } = requested(args);
+    // Its file still opening (the window coming back from a sleep, or a visit): shown once it is.
+    // A visit that failed said so itself; one that did not open as the window woke opens now.
+    const before = underway?.buffer === buffer ? underway : undefined;
+    const ok = before ? await before.done : true;
+    const reopening = ok || before?.waking ? lost(buffer, path) : undefined;
+    if (reopening) return reopening;
+    generation++;
     const file = held(buffer);
     stopOpening();
     present(buffer);
@@ -346,9 +312,12 @@ export function createSlides({ bridge, commands }, view, { read: readBytes, star
 
   answer("desk.buffers.closed", (args) => {
     const { buffer } = requested(args);
+    generation++;
+    closed.add(buffer);
+    const wasKept = kept.take(buffer);
     // Closing the buffer that is still opening stops that opening.
     const pending = openingBuffer === buffer && stopOpening() === buffer;
-    if (pending && !files.has(buffer)) return "";
+    if ((pending || wasKept) && !files.has(buffer)) return "";
     held(buffer);
     forget(buffer);
     if (shown === buffer) {
@@ -367,6 +336,21 @@ export function createSlides({ bridge, commands }, view, { read: readBytes, star
   });
 
   render();
+
+  // Back from a sleep, the presentation that was on screen opens again on its slide; the others
+  // open when shown. A show of another one meanwhile goes first, and this one gives way quietly.
+  const back = kept.shown === null ? undefined : keptOf(kept.shown);
+  if (back) {
+    const mine = generation + 1;
+    begin(back.buffer, back.path, { place: back.place, waking: true }).then(
+      (words) => {
+        if (generation === mine) say(words);
+      },
+      (error) => {
+        if (generation === mine) say(error instanceof Error ? error.message : String(error));
+      },
+    );
+  }
 
   return {
     /** A link on a slide: http, https and mailto open in the system's browser or mail app. */

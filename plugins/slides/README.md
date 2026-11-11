@@ -21,7 +21,9 @@ outside its grants; `<desk-progress>` shows after 300 ms, and its Cancel keeps t
 8 MiB a worker (`ui/worker.js`, with its own XML DOM) reads the deck and stays to decode its pictures.
 http, https and mailto links open with `shell.open` (the core asks once for `shell:open`), a jump shows
 its slide; links on the stage are named and in the tab order. `fs.watch` on each file runs
-`desk.files.changed { path }` (`cmd:invoke`, the one permission the manifest declares).
+`desk.files.changed { path }` (`cmd:invoke`, the one permission the manifest declares). Asleep out of
+sight (ADR 0070, 0176), the SDK's `keepFiles` keeps its files, the slide of each and its watch; back, the
+one on screen opens without asking or taking the focus, the others (or one the frame lost) when shown.
 
 Keys: arrows, Page Up/Down, Home, End move between slides, Enter follows a focused link; F5 plays from
 the start, Shift+F5 (or Play) from the slide on screen. In play mode Space, Right, Down and Page Down go
@@ -31,10 +33,7 @@ Chords always reach the desk.
 | Folder | Purpose |
 | --- | --- |
 | `ui/pptx/`, `ui/odp/`, `ui/ppt/`, `ui/other.js` | The readers, on `ui/zip.js`, `ui/cfb.js` and `DOMParser` |
-| `ui/slides.js`, `ui/worker.js`, `ui/view.js`, `ui/play.js`, `ui/style.css` | Desk requests, ranged reads, progress, links; the worker; the DOM; play mode; the theme's `--desk-*` tokens only (`tests/theme.test.ts`), a slide's own colours and faces marked `theme: content` |
+| `ui/slides.js`, `reading.js`, `keep.js`, `worker.js`, `view.js`, `play.js`, `style.css` | Desk requests, ranged reads, progress, links, sleep; the worker; the DOM; play mode; the theme's `--desk-*` tokens only (`tests/theme.test.ts`), a slide's own colours and faces marked `theme: content` |
 
-```bash
-pnpm exec vitest run plugins/slides
-cargo run -p desk-cli -- plugin validate plugins/slides
-plugins/slides/tests/fixtures/make.sh   # real-world fixtures (Docker); ppt/make.sh: the .ppt deck
-```
+`pnpm exec vitest run plugins/slides` · `cargo run -p desk-cli -- plugin validate plugins/slides` ·
+`plugins/slides/tests/fixtures/make.sh` (real-world fixtures, Docker; `ppt/make.sh`: the .ppt deck)
