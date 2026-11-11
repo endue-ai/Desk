@@ -1,7 +1,7 @@
 // A file window that slept comes back with its file, its place and its unsaved edits (#162, ADR
 // 0176), on the CEF desk with no window out of sight kept live (desk.surfaces.live 0): the opener's
 // window goes to another desktop, sleeps there, and wakes when the person goes there. Images, Notes,
-// the Player, Docs, Slides and Web; the other openers join as they take the SDK's keepFiles.
+// the Player, Docs, Slides, Web and Sheets; the other openers join as they take the SDK's keepFiles.
 // Reader's case is in its unit tests for now: on the machine this was written on, a woken Reader
 // page stopped answering chromedriver.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -402,5 +402,47 @@ describe("file openers: a window that slept comes back whole (#162)", () => {
     // The desk still lists the page, and a switch to it reaches it ("No file" before).
     await run("desk.buffers.switch", { id });
     expect((await now()).name).toBe("long.html");
+  });
+
+  it("Sheets: a CSV with a cell typed and not saved comes back on the cell it was left at, the edit still there and marked", async function () {
+    this.timeout(120_000);
+    const SHEETS = "endue.sheets";
+    const PEOPLE = "name,city\nAda,Paris\nGrace,London\n";
+    const csv = join(files, "people.csv");
+    writeFileSync(csv, PEOPLE);
+    const own = await desktopsOfItsOwn();
+    const id = await run("desk.files.open", { path: csv });
+    await show(SHEETS);
+    /** The cell in use, B2's text and the unsaved mark, read from the page's words. */
+    const now = () =>
+      inFrame(SHEETS, () =>
+        browser.execute(() => ({
+          address: document.getElementById("cell-address")?.textContent ?? "",
+          b2: document.querySelector('[aria-rowindex="3"] [aria-colindex="3"]')?.textContent ?? "",
+          unsaved: document.getElementById("book-mark")?.hidden === false,
+        })),
+      );
+    // B2 typed over, then Enter: the cell below is the one in use.
+    await inFrame(SHEETS, () =>
+      browser.keys(["ArrowDown", "ArrowRight", ..."Lyon".split(""), "Enter"]),
+    );
+    const typed = { address: "B3", b2: "Lyon", unsaved: true };
+    await browser.waitUntil(async () => JSON.stringify(await now()) === JSON.stringify(typed), {
+      timeoutMsg: "the typed cell is not in the sheet",
+    });
+    await mark(SHEETS);
+
+    await sleepOn(SHEETS, own);
+    await wakeOn(SHEETS, own);
+    await browser.waitUntil(
+      async () => JSON.stringify(await now().catch(() => undefined)) === JSON.stringify(typed),
+      { timeoutMsg: `Sheets did not come back as ${JSON.stringify(typed)}` },
+    );
+    // A new page, not the old one kept: the file, the cell and the edit came back from the sleep.
+    expect(await marked(SHEETS)).toBe(false);
+    const listed = (await run("desk.buffers.list")) as Buffers;
+    expect(listed.find((b) => b.id === id)).toMatchObject({ plugin: SHEETS, modified: true });
+    // Nothing reached the disk.
+    expect(readFileSync(csv, "utf8")).toBe(PEOPLE);
   });
 });
