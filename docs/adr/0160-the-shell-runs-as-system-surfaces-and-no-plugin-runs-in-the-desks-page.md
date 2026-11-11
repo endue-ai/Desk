@@ -4,6 +4,9 @@ date: 2026-11-11
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0166: the page's open overlays (popovers, menus, hover titles, dialog boxes)
+are one more part, a box each.
+
 # The shell runs as system surfaces the compositor places, and no plugin runs in the desk's page
 
 ## Context and Problem Statement

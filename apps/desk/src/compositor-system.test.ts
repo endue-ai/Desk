@@ -39,4 +39,14 @@ describe("the desk's system parts", () => {
       { id: "desk.eris", x: 656, y: 40, width: 128, height: 138 },
     ]);
   });
+
+  it("report every overlay the page has open, each with its own box", () => {
+    at("popover rail-popover", [900, 300, 280, 180.4]);
+    at("tooltip", [40.5, 640, 120, 24]);
+    at("popover drawer-panel", [80, 500, 300, 200]).hidden = true;
+    expect(systemParts(document)).toEqual([
+      { id: "desk.overlays", x: 900, y: 300, width: 280, height: 181 },
+      { id: "desk.overlays", x: 40, y: 640, width: 121, height: 24 },
+    ]);
+  });
 });

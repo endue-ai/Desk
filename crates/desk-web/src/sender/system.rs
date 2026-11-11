@@ -116,6 +116,10 @@ pub const PARTS: &[SystemPart] = &[
         id: "desk.studios",
         holds: "the theme and design studios",
     },
+    SystemPart {
+        id: "desk.overlays",
+        holds: "each popover, menu, hover title and dialog box the page has open, one box each",
+    },
 ];
 
 /// The part `id` names, if it is one.
@@ -170,6 +174,7 @@ mod tests {
             "desk.eris",
             "desk.notices",
             "desk.settings",
+            "desk.overlays",
         ] {
             assert!(part(wanted).is_some(), "{wanted}");
         }
