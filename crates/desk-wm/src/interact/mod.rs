@@ -34,5 +34,5 @@ pub use motion::{Easing, Glide, Motion, Preview, duration_ms, mix_rect};
 pub use ops::Op;
 pub use pointer::PressLog;
 pub use publish::{Answered, Change, Geometry, Published};
-pub use resize::{GRIPS, Grip, grip_at, resize_rect};
+pub use resize::{GRIPS, Grip, grip_at, resize_rect, resize_rect_min};
 pub use wm::{Frame, Out, Wm};

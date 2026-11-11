@@ -10,7 +10,7 @@ mod common;
 
 use common::*;
 use desk_wm::panes::{self, LAUNCHER, MIN_RATIO, STEP};
-use desk_wm::{Desk, PaneNode, Placement, Rect, SplitDir};
+use desk_wm::{Desk, PANE_MIN, PaneNode, Placement, Rect, SplitDir, window_min};
 
 fn one() -> PaneNode {
     PaneNode::view("p1", "calendar")
@@ -209,10 +209,32 @@ mod splitting_and_closing {
     #[test]
     fn a_dividers_ratio_is_kept_between_15_and_85_and_to_three_decimals() {
         let mut desk = notes_desk();
+        let wide = Rect::new(100.0, 100.0, 1000.0, 400.0);
+        desk.update("notes", |p| p.set_rect(wide));
         desk.split(SplitDir::Row);
         desk.resize_split("notes", "s2", 0.123_45);
         assert_eq!(ratio(&panes_of(&desk, "notes")), 0.15);
         desk.resize_split("notes", "s2", 0.666_66);
         assert_eq!(ratio(&panes_of(&desk, "notes")), 0.667);
+    }
+
+    #[test]
+    fn a_divider_leaves_each_pane_room_for_its_header_and_a_split_grows_a_small_window() {
+        let mut desk = notes_desk();
+        let small = Rect::new(100.0, 100.0, 300.0, 300.0);
+        desk.update("notes", |p| p.set_rect(small));
+        desk.split(SplitDir::Row);
+        // 15 % of a 298 px body would leave the first pane 45 px.
+        desk.resize_split("notes", "s2", 0.15);
+        let body = small.w - 2.0;
+        assert!(ratio(&panes_of(&desk, "notes")) * body >= PANE_MIN.w - 1e-9);
+        desk.resize_split("notes", "s2", 0.85);
+        let rest = (1.0 - ratio(&panes_of(&desk, "notes"))) * body - 1.0;
+        assert!(rest >= PANE_MIN.w - 1e-9, "{rest}");
+        // A third pane does not fit 300 px: the window grows to its new minimum.
+        desk.split(SplitDir::Row);
+        let p = desk.window("notes").unwrap();
+        assert_eq!(p.w, window_min(&p.panes()).w);
+        assert_eq!(p.w, 3.0 * PANE_MIN.w + 2.0 + 2.0);
     }
 }

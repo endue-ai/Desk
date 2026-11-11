@@ -11,10 +11,11 @@ use serde::{Deserialize, Serialize};
 use crate::coordinates::screen_rect;
 use crate::fill::own_floating;
 use crate::geometry::{clamp_rect, screen_area};
+use crate::pane_min::window_min;
 use crate::types::{Fill, Offset, Rect};
 
 use super::publish::Change;
-use super::resize::{Grip, resize_rect};
+use super::resize::{Grip, resize_rect_min};
 use super::wm::{Out, Wm};
 
 /// One window command.
@@ -98,7 +99,8 @@ impl Wm {
             Op::Resize { dw, dh } => {
                 let (rect, floating) = self.on_screen(&p);
                 let bounds = floating.then(|| screen_area(self.screen.w, self.screen.h));
-                let resized = resize_rect(rect, Grip::Se, *dw, *dh, bounds);
+                let least = window_min(&p.panes());
+                let resized = resize_rect_min(rect, Grip::Se, *dw, *dh, bounds, least);
                 self.place(&id, resized, floating)
             }
         };

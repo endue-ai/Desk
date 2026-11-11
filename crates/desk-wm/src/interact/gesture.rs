@@ -20,15 +20,16 @@ use serde::{Deserialize, Serialize};
 use crate::coordinates::{is_floating, screen_rect};
 use crate::desk::Desk;
 use crate::fill::{own_floating, unfilled};
-use crate::geometry::{clamp_rect, screen_area};
+use crate::geometry::{MIN, clamp_rect, screen_area};
 use crate::math::round;
 use crate::pan::PanDrag;
+use crate::pane_min::window_min;
 use crate::snap::Aim;
 use crate::types::{Fill, Offset, Placement, Point, Rect, Size};
 
 use super::drag::{Drag, Step};
 use super::motion::{Easing, Motion};
-use super::resize::{Grip, resize_rect};
+use super::resize::{Grip, resize_rect_min};
 
 /// What a press does, as the page found it under the pointer.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -81,6 +82,8 @@ struct Window {
     aim: Option<Aim>,
     /// A filled window coming off its fill: its size glides back from the filled one, since `at`.
     unsnap: Option<(Size, f64)>,
+    /// The smallest a resize leaves it: room for each of its panes.
+    least: Size,
 }
 
 /// One gesture, from its press.
@@ -151,6 +154,7 @@ impl Gesture {
                     floating: own_floating(&p),
                     aim: None,
                     unsnap: None,
+                    least: window_min(&p.panes()),
                 });
                 true
             }
@@ -163,6 +167,7 @@ impl Gesture {
                     floating: is_floating(&p),
                     aim: Some(Aim::new(press, area)),
                     unsnap: None,
+                    least: MIN,
                 };
                 if p.restore.is_some() {
                     // Off its fill as the drag starts: its own size again, the pointer at the same
@@ -199,7 +204,7 @@ impl Gesture {
         Some(match &self.kind {
             Kind::Resize { grip, .. } => {
                 let bounds = w.floating.then(|| screen_area(screen.w, screen.h));
-                resize_rect(s, *grip, dx, dy, bounds)
+                resize_rect_min(s, *grip, dx, dy, bounds, w.least)
             }
             _ => {
                 let r = Rect::new(s.x + dx, s.y + dy, s.w, s.h);

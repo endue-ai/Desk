@@ -9,6 +9,7 @@
 use std::collections::BTreeSet;
 
 use crate::fill::{fill_with, toggle_floating, toggle_maximize};
+use crate::pane_min::{body_size, fit_panes, window_min};
 use crate::panes::{self, LAUNCHER};
 use crate::placed::PLUGIN_VIEW;
 use crate::types::{Fill, PaneNode, Placement, Rect, SplitDir};
@@ -167,7 +168,13 @@ impl Desk {
         let tree = p.panes();
         let target = self.pane.clone().unwrap_or_else(|| first_pane(&tree));
         let (next, added) = panes::split(&tree, &target, dir, LAUNCHER);
-        self.update(&p.id, |q| q.panes = Some(next));
+        // A window too small for its panes' headers grows to its new minimum (#159).
+        let least = window_min(&next);
+        self.update(&p.id, |q| {
+            q.w = q.w.max(least.w);
+            q.h = q.h.max(least.h);
+            q.panes = Some(fit_panes(&next, body_size(q.w, q.h)));
+        });
         self.focus_pane(&p.id, Some(&added));
     }
 
@@ -220,10 +227,12 @@ impl Desk {
         self.focus_pane(window, Some(pane));
     }
 
-    /// A divider of `window` dropped at `ratio`, kept between 15 % and 85 %.
+    /// A divider of `window` dropped at `ratio`, kept between 15 % and 85 %, and where the window
+    /// has room, short of the panes on either side getting less than their minimum.
     pub fn resize_split(&mut self, window: &str, split: &str, ratio: f64) {
         self.update(window, |q| {
-            q.panes = Some(panes::set_ratio(&q.panes(), split, ratio));
+            let set = panes::set_ratio(&q.panes(), split, ratio);
+            q.panes = Some(fit_panes(&set, body_size(q.w, q.h)));
         });
     }
 

@@ -296,11 +296,16 @@ impl Wm {
         let pan = self.drawn.pan_of(&self.drawn.here());
         let (vw, vh) = (self.screen.w, self.screen.h);
         let stored = crate::coordinates::stored_rect(rect, floating, pan, vw, vh);
+        let body = crate::pane_min::body_size(rect.w, rect.h);
         self.drawn.update(id, |p| {
             p.set_rect(stored);
             p.floating = floating.then_some(true);
             p.restore = None;
             p.fill = None;
+            // Each pane keeps its room at the new size, where the window has it.
+            if let Some(tree) = &p.panes {
+                p.panes = Some(crate::pane_min::fit_panes(tree, body));
+            }
         });
         self.publish_window(id)
     }

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::geometry::MIN;
 use crate::host::BORDER;
-use crate::types::{Point, Rect};
+use crate::types::{Point, Rect, Size};
 
 /// A resize grip, by the edges it moves.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -127,6 +127,19 @@ pub fn grip_at(window: Rect, at: Point) -> Option<Grip> {
 /// `start` resized from `grip` by `dx`, `dy`: the grabbed edges move, the opposite ones stay, never
 /// below the minimum size; with `bounds` (a floating window: the app) the grabbed edges stop there.
 pub fn resize_rect(start: Rect, grip: Grip, dx: f64, dy: f64, bounds: Option<Rect>) -> Rect {
+    resize_rect_min(start, grip, dx, dy, bounds, MIN)
+}
+
+/// The same, never below `least`: a window of several panes keeps room for each (`pane_min.rs`).
+pub fn resize_rect_min(
+    start: Rect,
+    grip: Grip,
+    dx: f64,
+    dy: f64,
+    bounds: Option<Rect>,
+    least: Size,
+) -> Rect {
+    let (w, h) = (least.w.max(MIN.w), least.h.max(MIN.h));
     let mut left = start.x;
     let mut top = start.y;
     let mut right = left + start.w;
@@ -134,16 +147,16 @@ pub fn resize_rect(start: Rect, grip: Grip, dx: f64, dy: f64, bounds: Option<Rec
     let (min_x, max_x) = bounds.map_or((f64::NEG_INFINITY, f64::INFINITY), |b| (b.x, b.right()));
     let (min_y, max_y) = bounds.map_or((f64::NEG_INFINITY, f64::INFINITY), |b| (b.y, b.bottom()));
     if grip.west() {
-        left = (right - MIN.w).min(min_x.max(left + dx));
+        left = (right - w).min(min_x.max(left + dx));
     }
     if grip.east() {
-        right = (left + MIN.w).max(max_x.min(right + dx));
+        right = (left + w).max(max_x.min(right + dx));
     }
     if grip.north() {
-        top = (bottom - MIN.h).min(min_y.max(top + dy));
+        top = (bottom - h).min(min_y.max(top + dy));
     }
     if grip.south() {
-        bottom = (top + MIN.h).max(max_y.min(bottom + dy));
+        bottom = (top + h).max(max_y.min(bottom + dy));
     }
     Rect::new(left, top, right - left, bottom - top)
 }

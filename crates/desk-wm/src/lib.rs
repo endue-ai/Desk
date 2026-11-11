@@ -15,9 +15,10 @@
 //! - `cover`, `placed`: which plugins are out of sight (ADR 0070) and which a layout places.
 //! - `reach`: a window's title bar kept within reach of the pointer after a drop or a move.
 //! - `pan`, `minimap`: the canvas pan and the canvas map (ADR 0082).
-//! - `panes`: the pane tree and its dividers; `desktops`, `migrate`: the named list of desktops
-//!   (ADR 0117) and what profiles and sessions stored; `layout`: a desktop's layout and the
-//!   profile's saved ones; `drawer`, `buffers`: the drawer's items and the buffer list.
+//! - `panes`, `pane_min`: the pane tree and its dividers, and each pane's room; `desktops`,
+//!   `migrate`: the named list of desktops (ADR 0117) and what profiles and sessions stored;
+//!   `layout`: a desktop's layout and the profile's saved ones; `drawer`, `buffers`: the drawer's
+//!   items and the buffer list.
 //! - `desk`: one `Desk` state holding all of it, its operations, and the `Arranger` (tile and
 //!   cascade, ADR 0116); `snapshot`: what `desk.windows.list` answers, as the contract's
 //!   `BrainDesk` (specs/bridge/v0, #82).
@@ -45,6 +46,7 @@ mod math;
 pub mod migrate;
 pub mod minimap;
 pub mod pan;
+pub mod pane_min;
 pub mod panes;
 pub mod placed;
 pub mod reach;
@@ -89,6 +91,7 @@ pub use minimap::{
 pub use pan::{
     PanDrag, PanTarget, WheelMode, drag_pans, hint_shows, reset_shows, wheel_pan, wheel_pans,
 };
+pub use pane_min::{PANE_MIN, fit_panes, window_min};
 pub use placed::{PLUGIN_VIEW, placed_plugins, resolve_view, shown_plugins};
 pub use reach::{GRAB, within_reach};
 pub use settle::{Glided, SETTLE_MS, Settle, SettleKind};
