@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { CommandSpec, Commands } from "../commands";
 import type { InstalledDesign } from "../design";
 import type { RuntimeDesigns } from "../policies/design";
+import type { StudioLang } from "../theme-studio/copy";
 import { mountDesignStudio } from "./studio";
 
 const soft: InstalledDesign = {
@@ -17,7 +18,7 @@ const soft: InstalledDesign = {
   },
 };
 
-function setup() {
+function setup(lang: StudioLang = "en") {
   let active = "";
   let previewed: string | undefined;
   const listeners = new Set<() => void>();
@@ -71,7 +72,7 @@ function setup() {
   const studio = mountDesignStudio(host, {
     designs,
     commands,
-    lang: () => "en",
+    lang: () => lang,
     fallback: () => host,
     brain: () => undefined,
   });
@@ -121,6 +122,24 @@ describe("the design system studio", () => {
     await vi.waitFor(() => expect(saved).toHaveLength(1));
     expect(saved[0]).toMatchObject({ id: "local.soft-lines", name: "Soft lines" });
     expect(designs.apply).toHaveBeenCalledWith("local.soft-lines");
+  });
+
+  it("names each of the tuner's choices by the token it sets and shows its options bare", () => {
+    const { studio, host, key } = setup();
+    studio.edit("");
+    const selects = [...host.querySelectorAll<HTMLSelectElement>("select")];
+    expect(selects).toHaveLength(48);
+    const names = selects.map((s) => s.getAttribute("aria-label"));
+    expect(new Set(names).size).toBe(48);
+    expect(key("button.shape")?.getAttribute("aria-label")).toBe("Button shape");
+    expect(key("iconButton.shape")?.getAttribute("aria-label")).toBe("Icon button shape");
+    const options = [...host.querySelectorAll("option")].map((o) => o.textContent);
+    expect(options.filter((text) => text?.includes("·"))).toEqual([]);
+    expect((key("button.shape") as HTMLSelectElement).selectedOptions[0]?.textContent).toBe("md");
+
+    const ko = setup("ko");
+    ko.studio.edit("");
+    expect(ko.key("button.shape")?.getAttribute("aria-label")).toBe("버튼 모서리");
   });
 
   it("exports the selected design system and goes to the theme studio", async () => {

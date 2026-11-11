@@ -91,3 +91,64 @@ test("the profile chips, the desktop buttons and the talk pill take a design sys
   await expect.poll(async () => (await corners()).chip).toBe("9999px");
   expect(Number.parseFloat((await corners()).pill)).toBeGreaterThanOrEqual(24);
 });
+
+// The tuner (DS-03, QA 2026-11-11 04 #19): Save and Reset stay at the bottom while the 48 choices
+// scroll between the name fields and them, as in the theme tuner; each choice is named by the token it
+// sets, not by its options run together; and its values read bare, without a trailing "·".
+test.describe("the design system tuner", () => {
+  test("pins Save and Reset, names each choice by its token and shows bare values", async ({
+    page,
+  }) => {
+    await openShell(page, "?designs=1&lang=en");
+    await page.evaluate(() =>
+      window.__shell.desk.runtime.commands.run("desk.design.edit", { id: "" }),
+    );
+    const studio = page.getByRole("dialog", { name: "Design systems" });
+    await expect(studio).toBeVisible();
+    const save = studio.locator('[data-key="design-save"]');
+    const reset = studio.locator('[data-key="design-reset"]');
+    const name = studio.locator('[data-key="design-name"]');
+    await expect(save).toBeInViewport({ ratio: 1 });
+    await expect(reset).toBeInViewport({ ratio: 1 });
+
+    // The last choice scrolled into view: the name field and the buttons have not moved away.
+    const choices = studio.getByRole("combobox");
+    await expect(choices).toHaveCount(48);
+    await choices.last().scrollIntoViewIfNeeded();
+    await expect(choices.last()).toBeInViewport();
+    await expect(save).toBeInViewport({ ratio: 1 });
+    await expect(reset).toBeInViewport({ ratio: 1 });
+    await expect(name).toBeInViewport({ ratio: 1 });
+
+    // A name of its own for every choice: component and property, each one different.
+    const shape = studio.getByRole("combobox", { name: "Button shape", exact: true });
+    await expect(shape).toHaveCount(1);
+    await expect(shape).toHaveAttribute("data-key", "button.shape");
+    await expect(
+      studio.getByRole("combobox", { name: "Icon button shape", exact: true }),
+    ).toHaveAttribute("data-key", "iconButton.shape");
+    const names = await choices.evaluateAll((all) =>
+      all.map((el) => el.getAttribute("aria-label")),
+    );
+    expect(names.every((n) => typeof n === "string" && n.length > 0)).toBe(true);
+    expect(new Set(names).size).toBe(names.length);
+
+    // Bare values: "md", not "md ·", in the closed drop-down and in its list.
+    await expect(shape).toHaveValue("md");
+    expect(
+      await shape.evaluate((el: HTMLSelectElement) => el.selectedOptions[0]?.textContent),
+    ).toBe("md");
+    const texts = await studio
+      .locator("select option")
+      .evaluateAll((all) => all.map((el) => el.textContent ?? ""));
+    expect(texts.filter((t) => t.includes("·"))).toEqual([]);
+
+    // Reset still answers from its pinned place.
+    await shape.selectOption("full");
+    await expect(shape).toHaveValue("full");
+    await reset.click();
+    await expect(studio.getByRole("combobox", { name: "Button shape", exact: true })).toHaveValue(
+      "md",
+    );
+  });
+});
