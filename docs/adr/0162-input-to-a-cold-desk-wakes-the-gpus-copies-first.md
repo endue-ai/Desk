@@ -61,6 +61,19 @@ the press, while the page handles it, at the cost of a copy of a few pixels.
 * The desk's own copy of a press's frame waits 0.4 ms again. Chromium's still ends at viz's second to
   fourth look: the GPU wakes no sooner than it can. On a quiet machine a copy of a few pixels after a
   rest took 4 to 13 ms to finish; at a load average of 6 to 8, presses painted in 7.4 to 8.2 ms at p95.
+* What moved the gate since (#148, 2026-11-11): the machine's cores, not the desk. The gate read 8.0
+  to 8.4 ms at p95 in #134's runs and 15.1 to 21.6 later the same day at like load averages, on main
+  too: a load average says too little of what the cores do at a press. Run by run at a load average
+  of 4 to 8 the presses painted 5.8 to 15.8 ms after them (p95 12.9 to 15.2); with one busy loop
+  anywhere on the machine (`yes`, another process) 6.5 to 7.8 (p95 7.4 to 7.6), and with six 6.3 to
+  7.4. A press's path wakes threads in three processes (the desk's, the renderer's, the GPU
+  process's), and on a machine with a core running they wake and run sooner. A core kept busy by the
+  desk from the press on (the wake-up thread spinning at the user-interactive class until the paint,
+  at most 20 ms) did not help: p95 13.9 to 16.1 at a load average of 4 to 5, so it was not kept.
+  Keeping a core busy at rest would pass the gate and cost every desk at rest a core: not done. The
+  probe now presses once first, not counted, then three blocks of twelve, and the gate reads the
+  block whose p95 is the median, so a burst of other work on the machine during one block, or its
+  end, does not decide a run.
 
 ### Consequences
 
@@ -71,6 +84,9 @@ the press, while the page handles it, at the cost of a copy of a few pixels.
   the way to a press wake the copies, a press with no move before it does not.
 * Bad, because Chromium's GPU process still meets its first copy cold: one or two more of viz's looks
   than on a busy desk, which only Chromium can change.
+* Bad, because the cores' own wake-up is the rest of the floor (#148): a press from rest paints in
+  about 7 ms on a machine with a core busy and 9 to 16 on a quiet one, and only the machine decides
+  which. The gate's margin on a quiet machine stays small.
 
 ## More Information
 
