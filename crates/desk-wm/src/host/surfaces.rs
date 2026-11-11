@@ -300,3 +300,7 @@ impl Surfaces {
             .map(|(host, _)| host.as_str())
     }
 }
+
+#[cfg(test)]
+#[path = "surfaces_tests.rs"]
+mod tests;
