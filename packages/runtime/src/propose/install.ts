@@ -6,7 +6,7 @@
  * with desk.palette.pick and answers at once.
  * `desk.propose.undo { kind?, id? }` takes back what this session applied, the last one by default:
  * the inverse `cmd.undo` (#276) can point to. `desk.pack.setup { service }` proposes the pack for a
- * service ("Set up GitHub", ADR 0108).
+ * service ("Set up GitHub", ADR 0108); without one ("Set up a service…") it asks which.
  */
 import type { BridgeClient } from "@endue-ai/bridge";
 import type { Commands } from "../commands";
@@ -17,7 +17,7 @@ import type { Settings } from "../settings";
 import { createAsker } from "./asker";
 import { createCard } from "./card";
 import { keysKind, settingsKeys } from "./keys";
-import { proposePack } from "./pack";
+import { setUpPack } from "./pack";
 import { createProposals, type Eris, type ProposalKind } from "./pipeline";
 import { profileKind } from "./profile";
 import { kindOf } from "./talk";
@@ -149,11 +149,9 @@ export function installProposals(options: InstallProposalsOptions): () => void {
         keywords: ["set up", "pack", "connect", "github", "service", "eris"],
         owner: "desk",
         run: (args) => {
-          const { service } = (args ?? {}) as { service?: unknown };
-          if (typeof service !== "string" || !service.trim())
-            throw new Error("desk.pack.setup needs a service: github");
           const run = (id: string, more?: unknown) => commands.run(id, more);
-          return proposePack({ bridge, commands: { run }, card, notify: options.notify }, service);
+          const has = (id: string) => commands.has(id);
+          return setUpPack({ bridge, commands: { run, has }, card, notify: options.notify }, args);
         },
       }),
     );

@@ -4,7 +4,8 @@
  * change) and Discard, and answers with the person's choice as desk.views.preview does. Once applied
  * it says so with Undo. It belongs to the runtime, not to a plugin, because a profile may turn the
  * plugins off, desk.views among them, and the way back must outlive the switch. Escape is Discard
- * (or Close once applied); a newer preview discards an older one.
+ * (or Close once applied); a newer preview discards an older one. An applied card may offer the next
+ * steps before Undo (a pack's board once its token is in, ADR 0108); the first one has the focus.
  */
 import { drawProfile, type ProfileModel } from "./ghost";
 import { drawKeys, type KeyRow } from "./keys-table";
@@ -15,11 +16,17 @@ export type CardContent =
   | { kind: "keys"; title: string; rows: KeyRow[] }
   | { kind: "pack"; title: string; rows: Array<[string, string]> };
 
+/** A next step an applied card offers: its button's label and what it runs. */
+export interface CardStep {
+  label: string;
+  run(): unknown;
+}
+
 export interface Card {
   /** Show a proposal and wait for the person's choice. */
   preview(content: CardContent, note: string): Promise<Choice>;
-  /** Show what was applied, with Undo running `undo`. */
-  applied(content: CardContent, text: string, undo: () => unknown): void;
+  /** Show what was applied, with the `next` steps, then Undo running `undo`. */
+  applied(content: CardContent, text: string, undo: () => unknown, next?: CardStep[]): void;
   /** Take the card away; a preview still waiting is discarded. */
   close(): void;
 }
@@ -150,10 +157,15 @@ export function createCard(host: HTMLElement): Card {
       return answer;
     },
 
-    applied(content, text, undo) {
+    applied(content, text, undo, next = []) {
       settle(DISCARD);
       const { card } = frame(content, "applied", text, take);
-      const back = button("Undo", { action: "undo" }, true);
+      const steps = next.map((step, i) => {
+        const el = button(step.label, { action: "next" }, i === 0);
+        el.addEventListener("click", () => void step.run());
+        return el;
+      });
+      const back = button("Undo", { action: "undo" }, steps.length === 0);
       const close = button("Close", { action: "close" });
       back.addEventListener("click", () => {
         back.disabled = true;
@@ -161,9 +173,9 @@ export function createCard(host: HTMLElement): Card {
       });
       close.addEventListener("click", take);
       const actions = make("div", "proposal-actions");
-      actions.append(back, close);
+      actions.append(...steps, back, close);
       card.append(actions);
-      back.focus({ preventScroll: true });
+      (steps[0] ?? back).focus({ preventScroll: true });
     },
 
     close() {

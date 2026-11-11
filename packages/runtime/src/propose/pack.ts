@@ -2,14 +2,19 @@
  * Packs in Make with Eris (ADR 0108): "Set up GitHub" (or "깃허브 연결해줘") names a service; the
  * desk finds a pack for it (installed, else in the markets, by its services, name or tags), shows on
  * the proposal card what it brings, and on Apply installs it when the desk lacks it, turns it and its
- * plugins on, switches to its profile, runs what it opens and leads to Settings, Connections on its
- * first connector. Nothing here asks the brain: a pack is data the desk already has.
+ * plugins on and switches to its profile. Then it leaves the person in front of the next step: while
+ * its first connector has no account, Settings, Connections on it, with what the pack opens waiting
+ * on the card (an overlay would cover the token form); else what it opens. Undo takes back what Apply
+ * did (`pack-undo.ts`). With no service named, desk.pack.setup asks which (`setUpPack`). Nothing here
+ * asks the brain: a pack is data the desk already has.
  */
 import type { BridgeClient, MarketListing, PluginInfo, PluginManifest } from "@endue-ai/bridge";
 import type { NoticeInput } from "../notify";
-import type { Card } from "./card";
+import type { Card, CardContent } from "./card";
+import { enabledOn, takeBack } from "./pack-undo";
 
 const SCOPE = { permission: "plugin:manage" } as const;
+const CONNECTORS = { permission: "connector:manage" } as const;
 const SET_UP =
   /^\s*(?:please\s+)?(?:set\s*up|hook\s+up|connect)\s+(?:my\s+|the\s+)?(.+?)\s*[.!?]*\s*$/i;
 const KO =
@@ -24,7 +29,7 @@ export function serviceOf(text: string): string | null {
 
 export interface PackDeps {
   bridge: BridgeClient;
-  commands: { run(id: string, args?: unknown): Promise<unknown> };
+  commands: { run(id: string, args?: unknown): Promise<unknown>; has?(id: string): boolean };
   card: Card;
   notify(input: NoticeInput): void;
 }
@@ -46,9 +51,60 @@ const names = (manifest: PluginManifest | undefined, tags: string[] = []) =>
     ...tags,
   ].map((n) => n.toLowerCase());
 
+/**
+ * desk.pack.setup { service }: the pack for the service. With none (the palette runs it so), it asks
+ * which through desk.palette.pick and answers at once, as desk.propose does: the palette cannot show
+ * its own pick while it waits for the command.
+ */
+export function setUpPack(
+  deps: PackDeps,
+  args: unknown,
+): Promise<PackOutcome> | { status: "asking" } {
+  const { service } = (args ?? {}) as { service?: unknown };
+  if (typeof service === "string" && service.trim()) return proposePack(deps, service.trim());
+  if (!deps.commands.has?.("desk.palette.pick"))
+    throw new Error("Say which service to set up, as in “Set up GitHub”.");
+  void askService(deps)
+    .then((said) => (said ? proposePack(deps, said) : undefined))
+    .catch((error: unknown) =>
+      deps.notify({
+        caller: "desk",
+        title: "That service could not be set up",
+        body: error instanceof Error ? error.message : String(error),
+        level: "error",
+      }),
+    );
+  return { status: "asking" };
+}
+
+/** Which service: a pack on the desk picked, or one typed (a sentence to Eris counts); "" backs out. */
+async function askService({ bridge, commands }: PackDeps): Promise<string> {
+  const plugins = (await bridge.call("plugin.list", { scope: SCOPE })).plugins;
+  const items = plugins
+    .filter((p) => p.manifest?.kind === "pack")
+    .map((p) => ({
+      id: p.manifest?.pack?.services?.[0] ?? p.id,
+      label: p.manifest?.name ?? p.id,
+      detail: p.manifest?.description ?? "",
+    }));
+  const picked = await commands
+    .run("desk.palette.pick", {
+      title: "Set up a service",
+      placeholder: "A service, such as GitHub",
+      items,
+      free: true,
+    })
+    .catch((error: { code?: string }) => {
+      if (error.code === "cancelled") return "";
+      throw error;
+    });
+  const said = typeof picked === "string" ? picked.trim() : "";
+  return serviceOf(said) ?? said;
+}
+
 /** Propose the pack for `service`, and apply it when the person says so. */
 export async function proposePack(deps: PackDeps, service: string): Promise<PackOutcome> {
-  const { bridge, commands, card } = deps;
+  const { bridge, card } = deps;
   const wanted = service.toLowerCase();
   const plugins = (await bridge.call("plugin.list", { scope: SCOPE })).plugins;
   const installed = plugins.find(
@@ -86,6 +142,31 @@ export async function proposePack(deps: PackDeps, service: string): Promise<Pack
     card.close();
     return { status: "discarded" };
   }
+  return applyPack(deps, { installed, listing, title, content });
+}
+
+interface Found {
+  /** The pack on the desk, or none when it comes from `listing`. */
+  installed: PluginInfo | undefined;
+  listing: MarketListing | undefined;
+  title: string;
+  content: CardContent;
+}
+
+/**
+ * Apply: install, turn on, switch, then the next step in front: the token form while the connector
+ * has no account (what the pack opens waits on the card), else what it opens. The card says what was
+ * applied before the form opens, so closing the form gives the focus back to it.
+ */
+async function applyPack(deps: PackDeps, found: Found): Promise<PackOutcome> {
+  const { bridge, commands, card } = deps;
+  const { installed, listing, title, content } = found;
+  // What Undo puts back: the profile in force and the plugins on.
+  const profiles = (await commands.run("desk.profiles.list").catch(() => undefined)) as
+    | { active?: string }
+    | undefined;
+  const now = (await bridge.call("plugin.list", { scope: SCOPE })).plugins;
+  const before = { profile: profiles?.active, on: enabledOn(now) };
   let pack = installed;
   if (!pack && listing) {
     const accept = listing.entry.permissions ?? listing.added;
@@ -103,17 +184,60 @@ export async function proposePack(deps: PackDeps, service: string): Promise<Pack
   for (const id of [pack.id, ...block.plugins])
     await bridge.call("plugin.setEnabled", { plugin: id, enabled: true, scope: SCOPE });
   if (block.profile) await commands.run("desk.profiles.switch", { id: block.profile });
-  for (const open of block.opens ?? [])
-    await (open.args === undefined
-      ? commands.run(open.command)
-      : commands.run(open.command, open.args));
   const all = (await bridge.call("plugin.list", { scope: SCOPE })).plugins;
   const connector = block.plugins.find(
     (id) => all.find((p) => p.id === id)?.manifest?.kind === "connector",
   );
-  if (connector) await commands.run("desk.connectors.open", { connector });
-  card.applied(content, `${title} is set up.`, () => {});
-  return { status: "applied", id: pack.id };
+  const opens = block.opens ?? [];
+  const runOpen = (open: (typeof opens)[number]) =>
+    open.args === undefined ? commands.run(open.command) : commands.run(open.command, open.args);
+  const token = connector !== undefined && !(await hasAccount(bridge, connector));
+  if (!token) for (const open of opens) await runOpen(open);
+  const titles = opens.map(
+    (open) =>
+      pack?.manifest?.contributes?.commands?.find((c) => c.id === open.command)?.title ??
+      open.command,
+  );
+  const next = token
+    ? opens.map((open, i) => ({
+        label: `Open ${titles[i]}`,
+        run: () =>
+          runOpen(open).catch((error: unknown) =>
+            deps.notify({
+              caller: "desk",
+              title: `${titles[i]} did not open`,
+              body: error instanceof Error ? error.message : String(error),
+              level: "error",
+            }),
+          ),
+      }))
+    : [];
+  const id = pack.id;
+  const undo = () =>
+    takeBack(deps, {
+      pack: id,
+      title,
+      installed: !installed,
+      ...(block.profile ? { profile: block.profile } : {}),
+      before,
+      after: enabledOn(all),
+    });
+  const form = `${title} is on. Put your token in Settings, Connections`;
+  const said = !token
+    ? `${title} is set up.`
+    : titles.length
+      ? `${form}, then open ${titles.join(" and ")} here.`
+      : `${form}.`;
+  card.applied(content, said, undo, next);
+  if (token) await commands.run("desk.connectors.open", { connector });
+  return { status: "applied", id };
+}
+
+/** Whether `connector` has an account that works; an error or a failed listing counts as none. */
+async function hasAccount(bridge: BridgeClient, connector: string): Promise<boolean> {
+  const listed = await bridge.call("connector.list", { scope: CONNECTORS }).catch(() => undefined);
+  const info = listed?.connectors.find((c) => c.id === connector);
+  return info?.instances.some((i) => i.status.state !== "error") ?? false;
 }
 
 /** What the card lists: the connectors and views it brings, what it opens, its layout. */

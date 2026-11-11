@@ -176,6 +176,7 @@ describe("the proposal card", () => {
     );
     expect(el?.querySelector(".proposal-correction")).toBeNull();
     expect(texts(el as Element, ".proposal-actions button")).toEqual(["Undo", "Close"]);
+    expect(document.activeElement).toBe(button('[data-action="undo"]'));
     button('[data-action="undo"]')?.click();
     expect(undo).toHaveBeenCalledTimes(1);
     button('[data-action="close"]')?.click();
@@ -183,4 +184,36 @@ describe("the proposal card", () => {
     card.close();
     expect(document.querySelector(".proposal")).toBeNull();
   });
+
+  it("an applied card offers the next steps before Undo, the first in focus; each runs and the card stays", () => {
+    const card = createCard(document.body);
+    const open = vi.fn();
+    const undo = vi.fn();
+    const steps = [{ label: "Open GitHub board", run: open }];
+    card.applied(PACK, "GitHub is on.", undo, steps);
+    const el = document.querySelector(".proposal");
+    expect(texts(el as Element, ".proposal-actions button")).toEqual([
+      "Open GitHub board",
+      "Undo",
+      "Close",
+    ]);
+    const next = button('[data-action="next"]');
+    expect(document.activeElement).toBe(next);
+    expect(next?.classList.contains("is-primary")).toBe(true);
+    expect(button('[data-action="undo"]')?.classList.contains("is-primary")).toBe(false);
+    next?.click();
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(undo).not.toHaveBeenCalled();
+    expect(document.querySelector(".proposal")?.getAttribute("data-state")).toBe("applied");
+    card.close();
+  });
 });
+
+const PACK: CardContent = {
+  kind: "pack",
+  title: "GitHub pack",
+  rows: [
+    ["Connector", "GitHub"],
+    ["Opens", "GitHub board"],
+  ],
+};
