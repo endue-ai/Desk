@@ -4,14 +4,16 @@
 //! says: protocol messages to the page's browser or to a plugin surface's (the web host), keys the
 //! desk's keymap takes to the runtime as the focused frame's (`desk:key` from its surface, as
 //! the SDK forwarded them in Stage 1), the cursor and the OS input method to the window, files from
-//! the OS nobody took to the open-files queue.
+//! the OS nobody took to the open-files queue. The keys follow the window in use (ADR XXXX): the
+//! router hears the window manager's surface in use and the windows that cover what lies under
+//! them, and where the page's own focus rests.
 
 use std::time::Instant;
 
 use cef::ImplBrowser;
 use desk_compositor::Rect;
 use desk_compositor::input::keymap::{KeyEntry, KeyLike, Platform};
-use desk_compositor::input::{Input, Out};
+use desk_compositor::input::{Area, Input, Out, PageFocus};
 use desk_surface::generated::{CompositorMessage, SurfaceMessage};
 use desk_web::sender::Role;
 use serde::Deserialize;
@@ -77,8 +79,21 @@ impl CompositorWindow {
                 self.input(event_loop, Input::PointerMoved { x, y });
             }
         }
-        let outs = self.router.tick(&self.scene, Instant::now());
+        let in_use = self.surface_in_use();
+        let mut outs = self.router.in_use(in_use.as_deref());
+        outs.extend(self.router.tick(&self.scene, Instant::now()));
         self.apply(event_loop, outs);
+    }
+
+    /// The surface the window manager has in use: the one the pane in use of the window in use
+    /// shows, while it is made and awake; none for a pane the page draws.
+    fn surface_in_use(&self) -> Option<String> {
+        let plugin = self.hosted.plan()?.focused_plugin.as_deref()?;
+        let made = self.hosted.surfaces().made();
+        let (host, _, _) = made
+            .into_iter()
+            .find(|(_, of, asleep)| of == plugin && !asleep)?;
+        Some(host)
     }
 
     pub(super) fn apply(&mut self, event_loop: &ActiveEventLoop, outs: Vec<Out>) {
@@ -156,11 +171,17 @@ impl CompositorWindow {
         self.router.keymap.set_timeout(report.timeout);
     }
 
-    /// The page moved the DOM's focus: to a plugin surface's place (ADR 0160), or within itself.
-    pub fn page_focus(&mut self, event_loop: &ActiveEventLoop, surface: Option<String>) {
+    /// The page moved the DOM's focus: to a plugin surface's place (ADR 0160), to an element of
+    /// its own (`own`), or to rest on nothing of its own, where the keys follow the window in use.
+    pub fn page_focus(&mut self, event_loop: &ActiveEventLoop, surface: Option<String>, own: bool) {
         let made = self.hosted.surfaces().made();
         let surface = surface.filter(|s| made.iter().any(|(host, _, _)| host == s));
-        let outs = self.router.focus(Some(surface.as_deref().unwrap_or(PAGE)));
+        let said = match surface {
+            Some(surface) => PageFocus::Place(surface),
+            None if own => PageFocus::Own,
+            None => PageFocus::Rest,
+        };
+        let outs = self.router.page_focus(said);
         self.apply(event_loop, outs);
     }
 
@@ -175,6 +196,23 @@ impl CompositorWindow {
             router.targets.surface(&self.scene, node, target);
         }
         let scale = self.window.scale_factor() as f32;
+        // Each window covers what lies under it (issue 159, finding 5); not on the spread's cards.
+        if let Some(plan) = self.hosted.plan().filter(|_| self.spreading.open.is_none()) {
+            let made = self.hosted.surfaces().made();
+            let areas = (plan.windows.iter()).map(|w| Area {
+                rect: Rect::new(
+                    w.rect.x as f32 * scale,
+                    w.rect.y as f32 * scale,
+                    w.rect.w as f32 * scale,
+                    w.rect.h as f32 * scale,
+                ),
+                surfaces: (w.panes.iter().filter_map(|p| p.plugin.as_deref()))
+                    .flat_map(|plugin| made.iter().filter(move |(_, of, _)| of == plugin))
+                    .map(|(host, _, _)| host.clone())
+                    .collect(),
+            });
+            router.targets.set_areas(PAGE, areas.collect());
+        }
         let focused = router.focused().filter(|s| *s != PAGE).map(str::to_owned);
         // The ring goes round the pane the focused surface shows in, while it is drawn.
         // Not while the spread is open: the pane is on a card, not where the ring would go.

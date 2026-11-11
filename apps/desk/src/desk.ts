@@ -155,8 +155,8 @@ const keys = {
 const stopKeys = startCompositorKeys(keys, (report) => {
   void invoke("compositor_keys", report as unknown as Record<string, unknown>);
 });
-const stopFocus = startCompositorFocus(window, (surface) => {
-  void invoke("compositor_focus", { surface });
+const stopFocus = startCompositorFocus(window, ({ surface, own }) => {
+  void invoke("compositor_focus", { surface, own });
 });
 const stopCompositor = () => {
   for (const off of [stopDesk, stopKeys, stopFocus, () => pages.dispose()]) off();

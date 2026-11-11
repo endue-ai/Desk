@@ -1,10 +1,11 @@
 //! The shell page's compositor commands (#52, #56, #81), the runtime's only (`desk_web::sender`):
 //! `compositor_desk` (what only the page knows of the desk, `report.rs`), `compositor_keys` (the
 //! keymap's entries, which the compositor resolves to decide before delivery whose a key is) and
-//! `compositor_focus` (the surface whose place has the page's focus), `compositor_grab` (a press
-//! the page found starts a move, a resize or a pan, #80), `compositor_wm` (a window command:
-//! maximize, snap, a step), `compositor_edit` (the runtime's edits of the window manager's state,
-//! #83) and `compositor_snapshot` (what `desk.windows.list` answers); in development builds
+//! `compositor_focus` (the surface whose place has the page's focus, or whether an element of the
+//! page's own has it), `compositor_grab` (a press the page found starts a move, a resize or a pan,
+//! #80), `compositor_wm` (a window command: maximize, snap, a step), `compositor_edit` (the
+//! runtime's edits of the window manager's state, #83) and `compositor_snapshot` (what
+//! `desk.windows.list` answers); in development builds
 //! `compositor_capture { path }` (the composed frame as a PNG), `compositor_stats` (what every surface
 //! painted), `compositor_input { events, logical? }` (events fed to the window's own input entry,
 //! `harness.rs`), `compositor_input_state` (where input goes), `compositor_a11y` (the
@@ -68,9 +69,10 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
                 .get("surface")
                 .and_then(Value::as_str)
                 .map(str::to_owned);
+            let own = args.get("own").and_then(Value::as_bool).unwrap_or(false);
             desk.pump.run(move |shell, event_loop| {
                 if let Some(compositor) = shell.compositor.as_mut() {
-                    compositor.page_focus(event_loop, surface);
+                    compositor.page_focus(event_loop, surface, own);
                 }
             });
             Ok(Value::Null)
