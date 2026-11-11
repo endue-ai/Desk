@@ -168,7 +168,8 @@ defineUiPlugin({
         group.inner.append(item);
       });
       list.replaceChildren(...children);
-      if (shown.length === 0) {
+      // A question that takes typed text has nothing to match before something is typed.
+      if (shown.length === 0 && !(mode?.free && !typed)) {
         const pending = mode?.kind === "commands" && (search.pending() || asker.pending());
         list.append(
           element(

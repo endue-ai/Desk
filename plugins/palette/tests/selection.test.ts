@@ -178,4 +178,17 @@ describe("palette picks", () => {
     palette.key("Enter");
     await expect(answer).resolves.toBe("notes.md");
   });
+
+  it("a question that takes typed text says nothing under its empty field, then offers the text", async () => {
+    const palette = await mount();
+    const pick = palette.callbacks.get("desk.palette.pick");
+    void pick?.({ title: "Add a folder", items: [], free: true, placeholder: "~/path" });
+    expect(palette.list.textContent).toBe("");
+    palette.type("~/Projects");
+    expect(palette.list.textContent).toContain("Use “~/Projects”");
+    // A question with answers to pick from still says when the text matches none of them.
+    void pick?.({ title: "Pick one", items: [{ id: "a", label: "Alpha" }] });
+    palette.type("zzz");
+    expect(palette.list.querySelector(".empty")?.textContent).toBe("No match");
+  });
 });
