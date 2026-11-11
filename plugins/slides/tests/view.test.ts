@@ -132,6 +132,21 @@ describe("the slides view", () => {
     );
   });
 
+  it("shows a deck on the slide a sleep kept, and says which slide it last showed of each (#162)", () => {
+    const view = createView(document);
+    expect(view.slideOf("file:~/a.pptx")).toBeUndefined();
+    view.show(shown(), 2);
+    expect(current()).toBe(3);
+    expect(view.slideOf("file:~/a.pptx")).toBe(2);
+    key("ArrowLeft");
+    expect(view.slideOf("file:~/a.pptx")).toBe(1);
+    // Shown again without one, it is where the person left it; past the end, on the last slide.
+    view.show(shown());
+    expect(current()).toBe(2);
+    view.show(shown(), 9);
+    expect(current()).toBe(3);
+  });
+
   it("show(null) says no presentation is open", () => {
     const view = createView(document);
     view.show(shown());

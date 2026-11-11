@@ -1,9 +1,9 @@
 // A file window that slept comes back with its file, its place and its unsaved edits (#162, ADR
 // 0176), on the CEF desk with no window out of sight kept live (desk.surfaces.live 0): the opener's
 // window goes to another desktop, sleeps there, and wakes when the person goes there. Images, Notes,
-// the Player, Docs; the other openers join as they take the SDK's keepFiles. Reader's case
-// is in its unit tests for now: on the machine this was written on, a woken Reader page stopped
-// answering chromedriver.
+// the Player, Docs, Slides and Web; the other openers join as they take the SDK's keepFiles.
+// Reader's case is in its unit tests for now: on the machine this was written on, a woken Reader
+// page stopped answering chromedriver.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,7 +15,15 @@ import { byId, clearDesk, deskNow, freshDesktop, openWindow, run, until } from "
 const NOTES = "endue.notes";
 const PLAYER = "endue.player";
 const DOCS = "endue.docs";
+const SLIDES = "endue.slides";
+const WEB = "endue.web";
 const root = fileURLToPath(new URL("../..", import.meta.url));
+
+/** A saved page long enough to scroll. */
+const LONG_PAGE = `<!doctype html><title>Long page</title>${Array.from(
+  { length: 200 },
+  (_, i) => `<p id="p${i}">Paragraph ${i} of a page the person reads down.</p>`,
+).join("")}`;
 
 /** A 114 KB note, as the QA pass edited one: its state no longer fit the desk's 64 KiB. */
 const LONG = `# Long note\n\n${"the desk keeps what a person was doing while a window sleeps\n".repeat(1900)}`;
@@ -306,5 +314,93 @@ describe("file openers: a window that slept comes back whole (#162)", () => {
     // The desk still lists the document, and a switch to it reaches it ("No document" before).
     await run("desk.buffers.switch", { id });
     expect((await now()).name).toBe("rich.docx");
+  });
+
+  it("Slides: a presentation comes back on the slide the person was on, and can be switched to", async function () {
+    this.timeout(120_000);
+    const deck = join(files, "sample.pptx");
+    copyFileSync(join(root, "plugins/slides/tests/fixtures/sample.pptx"), deck);
+    const own = await desktopsOfItsOwn();
+    const id = await run("desk.files.open", { path: deck });
+    await show(SLIDES);
+    const slide = () =>
+      inFrame(SLIDES, () =>
+        browser.execute(() => ({
+          name: document.getElementById("deck-name")?.textContent ?? "",
+          at: document.getElementById("stage")?.getAttribute("aria-label") ?? "",
+        })),
+      );
+    await browser.waitUntil(async () => (await slide()).name === "sample.pptx", {
+      timeoutMsg: "Slides did not open sample.pptx",
+    });
+    // The person picks the fourth slide in the rail.
+    await inFrame(SLIDES, () => press("#rail li:nth-child(4) button"));
+    await browser.waitUntil(async () => (await slide()).at.startsWith("Slide 4 of"), {
+      timeoutMsg: "the rail did not go to slide 4",
+    });
+    const before = await slide();
+    await mark(SLIDES);
+
+    await sleepOn(SLIDES, own);
+    await wakeOn(SLIDES, own);
+    await browser.waitUntil(
+      async () => {
+        const back = await slide().catch(() => undefined);
+        return back?.name === before.name && back.at === before.at;
+      },
+      { timeoutMsg: `Slides did not come back as ${JSON.stringify(before)}` },
+    );
+    // A new page, not the old one kept: the slide came back from what the sleep kept.
+    expect(await marked(SLIDES)).toBe(false);
+    // The desk still lists the presentation, and a switch to it reaches it ("No presentation" before).
+    await run("desk.buffers.switch", { id });
+    expect((await slide()).name).toBe("sample.pptx");
+  });
+
+  it("Web: a saved page comes back as far down as the person read, and can be switched to", async function () {
+    this.timeout(120_000);
+    const html = join(files, "long.html");
+    writeFileSync(html, LONG_PAGE);
+    const own = await desktopsOfItsOwn();
+    const id = await run("desk.files.open", { path: html });
+    await show(WEB);
+    const now = () =>
+      inFrame(WEB, () =>
+        browser.execute(() => {
+          const page = document.getElementById("page");
+          return {
+            name: document.getElementById("file-name")?.textContent ?? "",
+            down: page && page.scrollHeight > 0 ? page.scrollTop / page.scrollHeight : 0,
+            tall: page ? page.scrollHeight > page.clientHeight * 2 : false,
+          };
+        }),
+      );
+    await browser.waitUntil(async () => (await now()).tall, {
+      timeoutMsg: "Web did not draw long.html",
+    });
+    // The person reads half way down the page.
+    await inFrame(WEB, () =>
+      browser.execute(() => {
+        const page = document.getElementById("page");
+        if (page) page.scrollTop = Math.round(page.scrollHeight / 2);
+      }),
+    );
+    const before = await now();
+    expect(before.down).toBeGreaterThan(0.3);
+    await mark(WEB);
+
+    await sleepOn(WEB, own);
+    await wakeOn(WEB, own);
+    await browser.waitUntil(
+      async () => {
+        const back = await now().catch(() => undefined);
+        return back?.name === "long.html" && Math.abs(back.down - before.down) < 0.02;
+      },
+      { timeoutMsg: `Web did not come back as ${JSON.stringify(before)}` },
+    );
+    expect(await marked(WEB)).toBe(false);
+    // The desk still lists the page, and a switch to it reaches it ("No file" before).
+    await run("desk.buffers.switch", { id });
+    expect((await now()).name).toBe("long.html");
   });
 });

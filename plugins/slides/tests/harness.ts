@@ -3,6 +3,7 @@
 import { StubError } from "../../../packages/bridge/src/index";
 import {
   defineUiPlugin,
+  keepFiles,
   readBytes,
   type startWorker,
 } from "../../../packages/plugin-sdk/src/index";
@@ -18,10 +19,15 @@ export interface RecordingView {
   statuses: string[];
   /** Every progress the plugin showed, without its Cancel; null when it hid the bar. */
   phases: Array<Omit<Progress, "cancel"> | null>;
+  /** The slide each show was asked for (undefined: where the view left it). */
+  slides: Array<number | undefined>;
   focused: number;
+  /** The slide the view shows of each buffer, as the page view would answer: a test moves it. */
+  at: Record<string, number>;
   /** Press the bar's Cancel, as the person would. */
   cancel(): void;
-  show(model: Shown | null): void;
+  show(model: Shown | null, slide?: number): void;
+  slideOf(buffer: string): number | undefined;
   status(text: string): void;
   focus(): void;
   progress(value: Progress | null): void;
@@ -33,9 +39,16 @@ export function recordingView(): RecordingView {
     shown: [],
     statuses: [],
     phases: [],
+    slides: [],
     focused: 0,
+    at: {},
     cancel: () => cancel(),
-    show: (model) => view.shown.push(model),
+    show: (model, slide) => {
+      view.shown.push(model);
+      view.slides.push(slide);
+      if (model) view.at[model.buffer] = slide ?? view.at[model.buffer] ?? 0;
+    },
+    slideOf: (buffer) => view.at[buffer],
     status: (text) => view.statuses.push(text),
     focus: () => {
       view.focused++;
@@ -67,6 +80,10 @@ export async function mount(
     commands?: Commands;
     prompt?: Options["prompt"];
     startWorker?: typeof startWorker;
+    /** What the last sleep kept (ctx.surface.restored). */
+    restored?: unknown;
+    /** False: resolve once mounted, without waiting for its calls (a test holds one back). */
+    settled?: boolean;
   } = {},
 ): Promise<Mounted> {
   const host = createTestHost({
@@ -74,13 +91,18 @@ export async function mount(
     handlers: options.handlers ?? {},
     commands: { ...DESK, ...options.commands },
     prompt: options.prompt,
+    ...(options.restored === undefined ? {} : { restored: options.restored }),
   });
   const view = recordingView();
   let app: ReturnType<typeof createSlides> | undefined;
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createSlides(ctx, view, { read: readBytes, startWorker: options.startWorker });
+        app = createSlides(ctx, view, {
+          read: readBytes,
+          startWorker: options.startWorker,
+          keepFiles,
+        });
       },
     },
     host.transport,
@@ -88,7 +110,7 @@ export async function mount(
   const settle = async () => {
     for (let i = 0; i < 4; i++) await host.settle();
   };
-  await settle();
+  if (options.settled !== false) await settle();
   if (!app) throw new Error("the plugin did not mount");
   return {
     host,

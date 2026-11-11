@@ -4,8 +4,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StubError } from "../../../packages/bridge/src/index";
-import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
+import { defineUiPlugin, keepFiles, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
+import type { Where } from "../ui/keep.js";
 import type { Shown } from "../ui/web.js";
 import { createWeb } from "../ui/web.js";
 
@@ -26,9 +27,14 @@ export interface RecordingView {
   shown: Array<Shown | null>;
   statuses: string[];
   progresses: Progress[];
+  /** Where each show was asked to put the view (undefined: where it was). */
+  wheres: Array<Where | undefined>;
   /** How many times the plugin moved the keyboard focus to its surface. */
   focused: number;
-  show(file: Shown | null): void;
+  /** Where the person is in the file shown, as the real view would answer: a test moves it. */
+  here: Where | null;
+  show(file: Shown | null, job?: unknown, where?: Where): void;
+  where(): Where | null;
   status(text: string): void;
   progress(value: Progress): void;
   focus(): void;
@@ -39,10 +45,14 @@ export function recordingView(): RecordingView {
     shown: [],
     statuses: [],
     progresses: [],
+    wheres: [],
     focused: 0,
-    show: (file) => {
+    here: null,
+    show: (file, _job, where) => {
       view.shown.push(file);
+      view.wheres.push(where);
     },
+    where: () => view.here,
     status: (text) => view.statuses.push(text),
     progress: (value) => view.progresses.push(value),
     focus: () => {
@@ -86,12 +96,17 @@ export async function mount<V extends View = RecordingView>(
     view?: (actions: Actions) => V;
     /** The rest of createWeb's options: startWorker, the worker threshold. */
     options?: Partial<Parameters<typeof createWeb>[2]>;
+    /** What the last sleep kept (ctx.surface.restored). */
+    restored?: unknown;
+    /** False: resolve once mounted, without waiting for its calls (a test holds one back). */
+    settled?: boolean;
   } = {},
 ): Promise<Mounted<V>> {
   const host = createTestHost({
     pluginId: "endue.web",
     handlers: options.handlers ?? {},
     commands: { ...DESK, ...options.commands },
+    ...(options.restored === undefined ? {} : { restored: options.restored }),
   });
   let app: ReturnType<typeof createWeb> | undefined;
   const actions: Actions = {
@@ -103,7 +118,7 @@ export async function mount<V extends View = RecordingView>(
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createWeb(ctx, view, { read: readBytes, ...options.options });
+        app = createWeb(ctx, view, { read: readBytes, keepFiles, ...options.options });
       },
     },
     host.transport,
@@ -111,7 +126,7 @@ export async function mount<V extends View = RecordingView>(
   const settle = async () => {
     for (let i = 0; i < 4; i++) await host.settle();
   };
-  await settle();
+  if (options.settled !== false) await settle();
   if (!app) throw new Error("the plugin did not mount");
   return {
     host,
