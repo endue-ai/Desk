@@ -43,6 +43,22 @@ const ARRANGED = {
   },
   required: ["desktop", "entry", "kind", "windows"],
 };
+/**
+ * Restore's args: none from the strip, keys, the palette or an agent; from cmd.undo, the
+ * arrangement's own `{ args, result }` (ADR 0077). The core checks an undo's args against these
+ * as it checks any invocation's, so they name both, or no tile or cascade could be undone (#163).
+ */
+const RESTORE_ARGS = {
+  type: "object",
+  properties: {
+    args: { ...NO_ARGS, description: "The args the tile or cascade ran with: none." },
+    result: {
+      ...ARRANGED,
+      description: "The arrangement to put back, as tile or cascade answered it.",
+    },
+  },
+  additionalProperties: false,
+};
 
 /** Who may run what: the arranging commands with their schemas for agents (ADR 0088). */
 const ARRANGE: Record<Kind, { id: string; title: ArrangeCopyKey; words: string[]; does: string }> =
@@ -109,8 +125,8 @@ export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void)
       },
       agent: {
         description:
-          "Put the windows of the current desktop back where they were before the last tile or cascade.",
-        args: NO_ARGS,
+          "Put the windows of the current desktop back where they were before the last tile or cascade. Takes no args; the desk's undo passes the arrangement it undoes.",
+        args: RESTORE_ARGS,
       },
     }),
     commands.define(SPREAD, {

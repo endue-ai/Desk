@@ -4,8 +4,10 @@
 // one undoable step on the core's undo stack (ADR 0077), which hands the arrangement's answer back
 // to restore-arrangement, and a refusal is the command's error. desk.windows.spread asks the window
 // manager's host, whose compositor draws it (#54), and desk.windows.focus is its pick: the window
-// comes wholly into sight and takes the keys.
+// comes wholly into sight and takes the keys. The stub checks no args; the core does (#163), so the
+// args cmd.undo hands restore-arrangement are checked here against those it declares.
 import { BridgeClient, type BridgeEvent, browserStub, stubCommands } from "@endue-ai/bridge";
+import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it, vi } from "vitest";
 import { Commands } from "../commands";
 import type { DesktopId, SurfacePlacement } from "../modes/types";
@@ -37,7 +39,11 @@ const place = (desktop: DesktopId, placement: SurfacePlacement): Edit => ({
 
 /** The desk's command registry on the bridge stub's core, which keeps the undo stack, over desk-wm. */
 async function desk(keys?: (window: string) => void) {
-  const registry = stubCommands((event: BridgeEvent) => stub.emit(event));
+  const seen: BridgeEvent[] = [];
+  const registry = stubCommands((event: BridgeEvent) => {
+    seen.push(event);
+    stub.emit(event);
+  });
   const stub = browserStub({ ...registry.handlers });
   const client = new BridgeClient(stub);
   const commands = new Commands(client);
@@ -65,7 +71,14 @@ async function desk(keys?: (window: string) => void) {
   } as unknown as Ctx;
   defineArrangeCommands(ctx, keys);
   await commands.settled();
-  return { store, wm, commands, client, ctx };
+  return { store, wm, commands, client, ctx, seen };
+}
+
+/** The args of the latest cmd.invoked of `id`. */
+function invokedArgs(seen: BridgeEvent[], id: string): unknown {
+  const invoked = seen.filter((e) => e.event === "cmd.invoked" && e.data.id === id).at(-1);
+  if (invoked?.event !== "cmd.invoked") throw new Error(`no cmd.invoked of ${id}`);
+  return invoked.data.args;
 }
 
 const rects = (store: Store, d?: DesktopId) =>
@@ -117,6 +130,30 @@ describe("undo and restore", () => {
     await client.call("cmd.redo", { scope: ALL });
     await vi.waitFor(() => expect(rects(store)).toEqual(tiled));
   });
+
+  it.each([
+    [TILE, "tile"],
+    [CASCADE, "cascade"],
+  ])(
+    "%s: the undo hands restore-arrangement args it declares, as the core checks",
+    async (id, kind) => {
+      const { store, commands, client, seen } = await desk();
+      const { commands: listed } = await client.call("cmd.list", { scope: ALL });
+      const schema = listed.find((c) => c.id === RESTORE)?.argsSchema;
+      if (!schema) throw new Error(`${RESTORE} declares no args`);
+      const fits = new Ajv2020({ strict: true }).compile(schema);
+      const before = rects(store);
+      await commands.run(id);
+      await client.call("cmd.undo", { scope: ALL });
+      await vi.waitFor(() => expect(rects(store)).toEqual(before));
+      const handed = invokedArgs(seen, RESTORE);
+      expect(handed).toMatchObject({ args: {}, result: { desktop: "1", kind } });
+      expect(fits(handed), JSON.stringify(fits.errors)).toBe(true);
+      // The strip, keys and the palette run it bare; anything else is still refused.
+      expect(fits({})).toBe(true);
+      expect(fits({ window: "notes" })).toBe(false);
+    },
+  );
 
   it("an undo of an arrangement already restored does nothing", async () => {
     const { store, commands, client, wm } = await desk();
