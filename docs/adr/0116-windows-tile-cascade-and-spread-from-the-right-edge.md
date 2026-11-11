@@ -11,7 +11,7 @@ Amended by ADR 0161: the compositor draws the spread from the windows' live text
 `desk-wm`'s (`spread::run`, on the window manager's clock), and its command, key and button are back; a
 covered window shows live on its card, a sleeping one its last frame greyed, and the scrim darkens
 without a blur.
-Amended by ADR XXXX: a cascade lays the windows out back to front as they stack (the order of use),
+Amended by ADR 0168: a cascade lays the windows out back to front as they stack (the order of use),
 the window in use last, and leaves the stacking as it was.
 
 # Windows tile, cascade and spread from the right edge

@@ -1,7 +1,7 @@
 //! The order the windows stack in, and which plugin surfaces the windows hide
 //! (`packages/runtime/src/surface/cover.ts`, ADR 0070).
 //!
-//! The windows stack in the order of use (ADR XXXX): the window in use on top of every other, then
+//! The windows stack in the order of use (ADR 0168): the window in use on top of every other, then
 //! the windows floating by choice, then the rest (normal and filled ones), each kind in the order
 //! it was last in use; those never in use since the desk started stack under the others as they
 //! did before it kept that order, floating and filled ones above the rest, in desk order.
@@ -21,7 +21,7 @@ use crate::types::{Offset, Placement, Rect};
 const FLOATING: usize = 200;
 /// Added to a pinned window's rank: above the unpinned ones of its kind.
 const PINNED: usize = 50;
-/// The window in use: above every other, whatever it is (ADR XXXX).
+/// The window in use: above every other, whatever it is (ADR 0168).
 const IN_USE: usize = 300;
 /// How many windows the order of use remembers; one that falls out was the least recent, and
 /// stacks with the windows never in use, which are under every other anyway.
