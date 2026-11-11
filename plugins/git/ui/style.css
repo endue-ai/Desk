@@ -191,6 +191,11 @@ main {
   font-style: italic;
 }
 
+/* A sentence, not a path: it wraps in a narrow window instead of running out of it. */
+.row.empty {
+  white-space: normal;
+}
+
 .graph {
   flex: none;
   overflow: visible;
@@ -262,11 +267,15 @@ main {
   font-style: italic;
 }
 
+/* The editor may shrink below its content and scrolls inside its view, so in a short window the
+   options stay reachable instead of running under the footer; the message keeps three lines. */
 #commit {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
+  overflow: auto;
   padding: 12px;
 }
 
@@ -281,22 +290,22 @@ main {
   font-size: var(--desk-text-sm);
 }
 
-#commit-summary,
-#commit .hint {
+#commit-summary {
   margin: 0;
   color: var(--desk-text-muted);
 }
 
 #commit-message {
   flex: 1;
-  min-height: 120px;
+  min-height: 4.5em;
   font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-mono);
   resize: none;
 }
 
 #commit .options {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   margin: 0;
 }
 
@@ -312,6 +321,17 @@ footer p {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* `?` opens the whole list of keys: it wraps between keys, never inside one. */
+#hints[data-open] {
+  max-height: 50vh;
+  overflow: auto;
+  white-space: normal;
+}
+
+#hints .binding {
+  white-space: nowrap;
 }
 
 #status:empty {

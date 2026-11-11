@@ -19,7 +19,8 @@ describe("the keys inside the Git surface", () => {
     expect(actionFor("status", press("Enter"))).toBe("visit");
     expect(actionFor("log", press("Enter"))).toBe("diff");
     expect(actionFor("log", press("+"))).toBe("more");
-    expect(actionFor("diff", press("q"))).toBe("status");
+    expect(actionFor("log", press("q"))).toBe("status");
+    expect(actionFor("diff", press("q"))).toBe("back");
     expect(actionFor("status", press("z"))).toBeUndefined();
   });
 
@@ -44,7 +45,10 @@ describe("the keys inside the Git surface", () => {
   });
 
   it("hints list the labelled keys of a view and pressOf reads either modifier as Mod", () => {
-    expect(hints("status")).toMatch(/^s stage · S stage all · u unstage/);
+    // `? keys` first: a narrow window cuts the line's end, never the way to the whole list.
+    for (const view of ["status", "log", "diff"] as const)
+      expect(hints(view)).toMatch(/^\? keys · /);
+    expect(hints("status")).toMatch(/^\? keys · s stage · S stage all · u unstage/);
     expect(hints("commit")).toBe("Mod+Enter commit · Escape cancel");
     for (const bindings of Object.values(BINDINGS))
       expect(new Set(bindings.map((b) => b.key)).size).toBe(bindings.length);

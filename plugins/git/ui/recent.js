@@ -1,5 +1,6 @@
 // The repositories opened before, most recent first, kept in the plugin's store, and the pick that
-// offers them when Git: status names no folder.
+// offers them when Git: status names no folder. The first is the one the surface showed last, which
+// a start of the desk opens again.
 
 const RECENT_KEY = "recent";
 
@@ -27,6 +28,8 @@ export function createRecent(bridge, max, pick) {
       const next = [root, ...list.filter((path) => path !== root)].slice(0, max());
       await bridge.call("store.set", { key: RECENT_KEY, value: next }).catch(() => {});
     },
+    /** The repository opened last, if any. @returns {Promise<string | undefined>} */
+    last: async () => (await recentRepos())[0],
     pickRepo: async () => {
       const items = (await recentRepos()).map((p) => ({ id: p, label: nameOf(p), detail: p }));
       return pick("Git: which repository?", items, true, "a folder path");

@@ -3,14 +3,15 @@
 `endue.git`, a keyboard-first front for Git, in the community folder format and on the public SDK only.
 One `center` surface shows a repository's status (head, unmerged, untracked, unstaged, staged, stashes,
 recent commits), its log as a graph of lanes, and diffs; single letters do the work (`s` stage,
-`u` unstage, `k` discard, `c` commit, `l` log, `d` diff, `f`/`F`/`P` fetch/pull/push, `b` switch).
+`u` unstage, `k` discard, `c` commit, `l` log, `d` diff, `f`/`F`/`P` fetch/pull/push, `b` switch),
+`?` lists them all and `q` goes back. A start of the desk reopens the repository opened last.
 Every operation is a command (`endue.git.*`), so the palette, Eris and agents run the same ones;
 `Mod+Shift+G` is `endue.git.status`. Agents get `endue.git.state` (the repository as data) and the
 operations as tools (ADR 0088); push and discard wait for the person's approval. Design and requirements: `docs/ko/git-plugin-requirements.md`.
 
 Git runs through `proc.spawn` without a shell, `--` before every path, `GIT_TERMINAL_PROMPT=0` so a
 missing credential fails at once instead of waiting. What cannot be undone (discard, force push) asks
-first through `desk.palette.pick`. Failures are said in git's own words on a status line and in the
+first through `desk.palette.pick`, on "Keep everything as it is". Failures are said in git's own words on a status line and in the
 desk's notice. Until the core serves `proc.*` (#77) the status line says so.
 
 In the palette (`Mod+K`) the Branches group (`endue.git.branches`, a `paletteProviders` entry) lists the

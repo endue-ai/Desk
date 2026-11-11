@@ -1,6 +1,7 @@
 // The keys inside the Git surface, one table per view: single letters, as keyboard Git fronts do. Chords
 // with Mod, Alt or Control are never taken (the desk's keymap gets them), apart from Mod+Enter in the
-// commit editor. Pure: `actionFor` maps a key press to an action name, `hints` lists them for a view.
+// commit editor. Pure: `actionFor` maps a key press to an action name, `hints` lists them for a view,
+// `? keys` first (and `q back` next), so a narrow window cuts the end of the line, not the way to it all.
 
 /**
  * @typedef {"status" | "log" | "diff" | "commit"} ViewName
@@ -21,6 +22,7 @@ const MOVE = [
 /** @type {Record<ViewName, Binding[]>} */
 export const BINDINGS = {
   status: [
+    { key: "?", action: "help", label: "keys" },
     { key: "s", action: "stage", label: "stage" },
     { key: "S", action: "stageAll", label: "stage all" },
     { key: "u", action: "unstage", label: "unstage" },
@@ -37,27 +39,26 @@ export const BINDINGS = {
     { key: "g", action: "refresh", label: "refresh" },
     { key: "Enter", action: "visit", label: "open" },
     { key: "Tab", action: "fold", label: "fold" },
-    { key: "?", action: "help", label: "keys" },
     ...MOVE,
   ],
   log: [
+    { key: "?", action: "help", label: "keys" },
+    { key: "q", action: "status", label: "back" },
     { key: "Enter", action: "diff", label: "show" },
     { key: "+", action: "more", label: "more" },
     { key: "a", action: "toggleAll", label: "all branches" },
     { key: "b", action: "checkout", label: "switch branch" },
     { key: "g", action: "refresh", label: "refresh" },
-    { key: "q", action: "status", label: "back" },
-    { key: "?", action: "help", label: "keys" },
     ...MOVE,
   ],
   diff: [
+    { key: "?", action: "help", label: "keys" },
+    { key: "q", action: "back", label: "back" },
     { key: "s", action: "stage", label: "stage" },
     { key: "u", action: "unstage", label: "unstage" },
     { key: "Enter", action: "visit", label: "open" },
     { key: "Tab", action: "fold", label: "fold" },
     { key: "g", action: "refresh", label: "refresh" },
-    { key: "q", action: "status", label: "back" },
-    { key: "?", action: "help", label: "keys" },
     ...MOVE,
   ],
   commit: [

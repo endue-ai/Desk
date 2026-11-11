@@ -53,6 +53,13 @@ export function createView(doc, act) {
   let cursor = 0;
   /** What the cursor was on, so a re-render keeps it there. */
   let cursorKey = "";
+  /**
+   * Each view's own cursor while another is on screen: coming back finds it where it was; a log or
+   * a diff loaded meanwhile is a new one and starts on its first row.
+   * @type {Record<"status" | "log" | "diff", { at: number, key: string }>}
+   */
+  const places = { status: { at: 0, key: "" }, log: { at: 0, key: "" }, diff: { at: 0, key: "" } };
+  const listOf = (/** @type {ViewName} */ name) => (name === "commit" ? "status" : name);
   const folded = new Set();
 
   const keyOf = (/** @type {RowSpec | undefined} */ spec) =>
@@ -60,7 +67,7 @@ export function createView(doc, act) {
 
   const render = () => {
     const hadFocus = tree.contains(doc.activeElement);
-    const shown = current === "commit" ? "status" : current;
+    const shown = listOf(current);
     const model = models[shown];
     if (shown === "status")
       rows = model ? renderStatus(doc, /** @type {StatusView} */ (model), folded) : [];
@@ -116,6 +123,22 @@ export function createView(doc, act) {
     moveTo(cursor);
   };
 
+  /** `?`: the hint line shows every key of the view, wrapped, until `?` again. */
+  const toggleKeys = () => {
+    if ("open" in hintsEl.dataset) delete hintsEl.dataset.open;
+    else hintsEl.dataset.open = "";
+  };
+  /** The hint line, one unbreakable span per key, so an open list wraps between keys. */
+  const setHints = (/** @type {string} */ hints) => {
+    const parts = hints === "" ? [] : hints.split(" · ");
+    hintsEl.replaceChildren(
+      ...parts.flatMap((part, index) => [
+        ...(index > 0 ? [" · "] : []),
+        Object.assign(doc.createElement("span"), { className: "binding", textContent: part }),
+      ]),
+    );
+  };
+
   tree.addEventListener("keydown", (event) => {
     if (current === "commit") return;
     const action = actionFor(current, pressOf(event));
@@ -123,6 +146,7 @@ export function createView(doc, act) {
     event.preventDefault();
     if (MOVES.has(action)) move(action);
     else if (action === "fold") fold();
+    else if (action === "help") toggleKeys();
     else if (current === "log" && action === "diff" && rows[cursor]?.activate)
       void act(rows[cursor].activate);
     else if (current === "log" && action === "diff" && !rows[cursor]?.item) return;
@@ -176,8 +200,13 @@ export function createView(doc, act) {
       countsEl.textContent = counts.filter(Boolean).join(" ");
     },
     show(name, hints) {
+      const [from, to] = [listOf(current), listOf(name)];
+      if (from !== to) {
+        places[from] = { at: cursor, key: cursorKey };
+        ({ at: cursor, key: cursorKey } = places[to]);
+      }
       current = name;
-      hintsEl.textContent = hints;
+      setHints(hints);
       const editing = name === "commit";
       form.hidden = !editing;
       tree.hidden = editing;
@@ -190,10 +219,12 @@ export function createView(doc, act) {
     log(model) {
       models.log = model;
       if (current === "log") render();
+      else places.log = { at: 0, key: "" };
     },
     diff(model) {
       models.diff = model;
       if (current === "diff") render();
+      else places.diff = { at: 0, key: "" };
     },
     commit(editor) {
       if (!editor) return;

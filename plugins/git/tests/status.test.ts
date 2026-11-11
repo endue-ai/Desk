@@ -75,7 +75,7 @@ describe("Git: status", () => {
       { sha: "1111111", subject: "Initial commit", refs: ["HEAD -> main", "origin/main"] },
     ]);
     expect(view.shown.at(-1)).toBe("status");
-    expect(view.hints.at(-1)).toMatch(/^s stage/);
+    expect(view.hints.at(-1)).toMatch(/^\? keys · s stage/);
     expect(store.recent).toEqual([ROOT]);
     expect(host.state).toEqual({ root: ROOT, view: "status" });
     expect(params("store.set").at(-1)).toEqual({ key: "recent", value: [ROOT] });
@@ -99,8 +99,8 @@ describe("Git: status", () => {
 
   it("without a path it offers the recent repositories, with room to type one", async () => {
     const picks: unknown[] = [];
+    // Remembered after the start, which would otherwise reopen the first of them.
     const { host, store } = await mount({
-      store: { recent: ["/Users/me/a", "/Users/me/b"] },
       commands: {
         "desk.palette.pick": (args) => {
           picks.push(args);
@@ -109,6 +109,7 @@ describe("Git: status", () => {
       },
       script: repository({ "rev-parse --show-toplevel": { stdout: "/Users/me/b\n" } }),
     });
+    store.recent = ["/Users/me/a", "/Users/me/b"];
     await expect(host.command("endue.git.status")).resolves.toBe("/Users/me/b");
     expect(picks).toEqual([
       {

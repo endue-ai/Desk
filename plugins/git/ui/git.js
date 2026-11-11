@@ -1,8 +1,7 @@
 // The Git plugin without its DOM: which repository is open, the status, log and diff views and the
 // desk buffers they are, the plugin's commands (endue.git.*), endue.git.state for agents, and the
-// desk's requests. It talks only
-// to ctx.bridge, ctx.commands, ctx.state and a view, so the SDK's test host runs it with a recording
-// view and a scripted git.
+// desk's requests. It talks only to ctx.bridge, ctx.commands, ctx.state and a view, so the SDK's
+// test host runs it with a recording view and a scripted git.
 
 import { createActions } from "./actions.js";
 import { snapshot } from "./agent.js";
@@ -75,6 +74,8 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
   let loadingMore = null;
   /** @type {DiffView | null} */
   let diffView = null;
+  /** The view a diff was opened from. @type {"status" | "log"} */
+  let diffFrom = "status";
   /** The desk buffer each extra view is, once opened. @type {Map<"log" | "diff", string>} */
   const buffers = new Map();
   let said = "";
@@ -219,10 +220,14 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
 
   /** @param {DiffTarget} [args] */
   const showDiff = async (args) => {
+    const from = current;
     await loadDiff(targetOf(args));
     await buffer("diff", `git diff: ${diffView?.title ?? ""}`);
+    if (from !== "diff") diffFrom = from === "log" ? "log" : "status";
     show("diff");
   };
+  /** `q` in a diff: back to the log it came from while that log is open, else the status. */
+  const back = () => show(diffFrom === "log" && logView ? "log" : "status");
   const refresh = async () => {
     opened();
     await refreshStatus();
@@ -230,12 +235,9 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     if (current === "diff" && diffView) await loadDiff(diffView.target);
   };
 
-  const { remember, pickRepo } = createRecent(bridge, () => settings.recentMax, pick);
+  const { remember, pickRepo, last } = createRecent(bridge, () => settings.recentMax, pick);
 
-  /**
-   * Open the repository `path` is in (or the one picked), then show its status.
-   * @param {string} [path]
-   */
+  /** Open the repository `path` is in, or one picked; show its status. @param {string} [path] */
   const open = async (path) => {
     const chosen = path ?? (await pickRepo());
     if (chosen === undefined) return null;
@@ -266,8 +268,7 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     pick,
     editor: (model) => {
       view.commit(model);
-      if (model) show("commit");
-      else show("status");
+      show(model ? "commit" : "status");
     },
     openFile: async (path) => {
       await commands.run("desk.files.open", { path: `${opened().root}/${path}` });
@@ -277,13 +278,15 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
   });
 
   /**
-   * Answer a command or a request. A failure goes to the status line and ends the request with the
-   * same words, which the desk shows in its own notice; a success clears the line.
+   * Answer a command or a request, after the start (its repository open). A failure goes to the
+   * status line and ends the request with the same words, which the desk shows in its own notice;
+   * a success clears the line.
    * @param {string} name
    * @param {(args: any) => unknown} handler
    */
   const answer = (name, handler) =>
     commands.on(name, async (args) => {
+      await ready;
       try {
         const result = await handler(args ?? {});
         if (name !== "endue.git.commit") said = "";
@@ -350,18 +353,21 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
       }
     };
   const ready = (async () => {
-    // Read what a reload handed back before show() saves the state anew.
+    // A reload hands back what the surface had (read before show() saves it anew); a start of the
+    // desk, which keeps no surface state, opens the repository opened last.
     const saved = /** @type {{ root?: string | null, view?: ViewName } | undefined} */ (
       state.get()
     );
     settings = await loadSettings(bridge);
+    const root = saved ? saved.root : await last();
+    if (root) {
+      await guard(open)(root);
+      if (repo && saved?.view === "log") await guard(showLog)();
+    }
+    if (repo) return;
     header();
     view.status(statusView);
     show("status");
-    if (saved?.root) {
-      await guard(open)(saved.root);
-      if (saved.view === "log") await guard(showLog)();
-    }
   })();
   // The palette's Branches group, for the repository a reload brought back too. Asking is not an
   // operation: the status line neither says nor clears anything.
@@ -382,11 +388,11 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     open: guard(open),
     refresh: guard(refresh),
     status: () => show("status"),
+    back,
     log: guard(showLog),
     toggleAll: guard(() => showLog({ all: !(logView?.all ?? false) })),
     more: guard(more),
     diff: guard(showDiff),
-    help: () => say(hints(current)),
   };
 }
 
