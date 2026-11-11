@@ -55,7 +55,8 @@ export function modelOf(/** @type {Entry} */ entry) {
     if (subs && subs.options.length > 0)
       model.subtitles = { options: subs.options, selected: subs.selected, offset: subs.offset };
   }
-  if (item && item.path !== path) model.item = { path: item.path, name: item.name };
+  if (item && item.path !== path)
+    model.item = { path: item.path, name: item.name, size: item.size };
   const list = entry.playlist;
   if (list) {
     model.playlist = { rows: rowsOf(list), index: list.index };

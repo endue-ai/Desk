@@ -1,7 +1,13 @@
 // The player: every video and audio file in one player, with subtitles and playlists. It uses only
 // the public SDK and bridge API, exactly as a community plugin would. What the webview cannot play
 // is remuxed for Media Source Extensions or decoded by FFmpeg in a worker (ADR 0050).
-import { byteSource, defineUiPlugin, readBytes, startWorker } from "@endue-ai/plugin-sdk";
+import {
+  byteSource,
+  defineUiPlugin,
+  keepFiles,
+  readBytes,
+  startWorker,
+} from "@endue-ai/plugin-sdk";
 import "@endue-ai/ui";
 import { scopeOf } from "./access.js";
 import { createPlayer } from "./player.js";
@@ -33,6 +39,7 @@ defineUiPlugin({
         createPlayer(ctx, view, {
           objectUrl: (bytes, type) => URL.createObjectURL(new Blob([bytes], { type })),
           revokeUrl: (url) => URL.revokeObjectURL(url),
+          keepFiles,
           audioContext: Offline
             ? (channels, length, rate) => new Offline(channels, length, rate)
             : undefined,

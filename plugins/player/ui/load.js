@@ -248,13 +248,14 @@ export function openPlaylist(/** @type {Entry} */ entry, /** @type {Uint8Array} 
 
 /**
  * Subtitles with the video's base name in its folder, offered in a menu; a SAMI file offers each of
- * its language classes. The first one is shown.
+ * its language classes. The first one is shown, or the one a sleep kept (none when it kept "").
  * @param {Entry} entry
  * @param {Item} item
  * @param {Deps} deps
  * @param {(entry: Entry, id: string) => Promise<void>} choose
+ * @param {{ subtitle?: string, offset?: number }} [kept]
  */
-export async function findSubtitles(entry, item, deps, choose) {
+export async function findSubtitles(entry, item, deps, choose, kept) {
   const folder = folderOf(item.path);
   const found = sameName(item.name, await deps.access.list(folder));
   /** @type {{ id: string, label: string }[]} */
@@ -274,8 +275,10 @@ export async function findSubtitles(entry, item, deps, choose) {
         options.push({ id: `${id}#${l.id}`, label: `${name} (${l.name})` });
   }
   if (entry.item !== item) return;
-  entry.subs = { options, selected: "", offset: entry.subs?.offset ?? 0, cues: [] };
-  if (options[0]) await choose(entry, options[0].id);
+  entry.subs = { options, selected: "", offset: kept?.offset ?? entry.subs?.offset ?? 0, cues: [] };
+  const first =
+    kept?.subtitle === undefined ? options[0] : options.find((o) => o.id === kept.subtitle);
+  if (first) await choose(entry, first.id);
 }
 
 /** A small text file through fs.read, decoded as subtitles are. */

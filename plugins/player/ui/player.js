@@ -1,20 +1,12 @@
 // The player without its DOM. It answers the desk's file and buffer requests for the files it holds,
-// opens each by what it is (load.js), keeps the subtitles, playlist and position of each, and says
-// what happened. It only talks to ctx.commands, ctx.bridge and a view, so the SDK's test host runs
-// it with a recording view.
-import { codeOf, createAccess, nameOf } from "./access.js";
-import { detect, familyByName } from "./format.js";
-import {
-  findSubtitles,
-  HEAD,
-  openCues,
-  openPlaylist,
-  playDecoded,
-  playMedia,
-  showSubtitles,
-} from "./load.js";
+// opens each by what it is (playing.js), keeps the subtitles, playlist and position of each, also
+// across a sleep (keep.js), and says what happened. It only talks to ctx.commands, ctx.bridge,
+// ctx.surface and a view, so the SDK's test host runs it with a recording view.
+import { createAccess, nameOf } from "./access.js";
+import { placeOf, readPlace } from "./keep.js";
 import { modelOf } from "./model.js";
-import { cancel, capsOf, details, fallBack, SAYINGS } from "./outcome.js";
+import { cancel, capsOf, fallBack, SAYINGS } from "./outcome.js";
+import { createPlaying } from "./playing.js";
 import { createResume } from "./resume.js";
 import { reveal as showInFolder } from "./reveal.js";
 
@@ -24,6 +16,7 @@ import { reveal as showInFolder } from "./reveal.js";
  * @typedef {import("./probe/index.js").Info} Info
  * @typedef {import("./subtitles.js").Cue} Cue
  * @typedef {import("./playlists.js").Entry} ListEntry
+ * @typedef {import("./keep.js").KeptPlace} KeptPlace
  * @typedef {{ title: string, start: number }} Chapter
  * @typedef {{ title: string, detail: string, state: "playing" | "queued" | "remote" | "missing" }} Row
  * @typedef {import("./route.js").Engine} Engine
@@ -44,7 +37,7 @@ import { reveal as showInFolder } from "./reveal.js";
  *   mode: Entry["mode"], why?: string, message?: string,
  *   element?: "video" | "audio", src?: string, start?: number, resume?: number,
  *   engine?: Engine, target?: { path: string, size: number, format: string },
- *   info?: Info, cover?: string, item?: { path: string, name: string }, cues?: Cue[],
+ *   info?: Info, cover?: string, item?: { path: string, name: string, size: number }, cues?: Cue[],
  *   subtitles?: { options: { id: string, label: string }[], selected: string, offset: number },
  *   playlist?: { rows: Row[], index: number }, chapters?: Chapter[],
  * }} Model
@@ -55,9 +48,11 @@ import { reveal as showInFolder } from "./reveal.js";
  * @typedef {{
  *   objectUrl(bytes: Uint8Array, type: string): string,
  *   revokeUrl(url: string): void,
+ *   keepFiles: typeof import("@endue-ai/plugin-sdk").keepFiles,
  *   audioContext?: import("./synth.js").CreateContext,
  *   now?: () => number,
  * }} PlayerOptions
+ *   keepFiles: the SDK's, which main.js imports (ADR 0176).
  */
 
 /** The buffer and path the desk sends with every request. */
@@ -73,11 +68,11 @@ const text = (/** @type {unknown} */ error) =>
   error instanceof Error ? error.message : String(error);
 
 /**
- * @param {Pick<PluginContext, "bridge" | "commands">} ctx
+ * @param {Pick<PluginContext, "bridge" | "commands" | "surface">} ctx
  * @param {PlayerView} view
  * @param {PlayerOptions} options
  */
-export function createPlayer({ bridge, commands }, view, options) {
+export function createPlayer({ bridge, commands, surface }, view, options) {
   const access = createAccess({ bridge });
   const resume = createResume(bridge, options.now ?? Date.now);
   const ready = Promise.all([resume.load(), view.loadVolume?.(bridge)]);
@@ -89,6 +84,17 @@ export function createPlayer({ bridge, commands }, view, options) {
   let shown = null;
   let said = "";
   let sayings = 0;
+  // Put to sleep while nobody sees it, the player keeps its files and comes back to them (ADR 0070).
+  const kept = options.keepFiles(surface, {
+    files: () =>
+      [...entries.values()].map((e) => ({ buffer: e.buffer, path: e.path, place: placeOf(e) })),
+    shown: () => shown,
+    readPlace,
+  });
+  /** Buffers this frame closed: a show of one does not open it again. @type {Set<string>} */
+  const closed = new Set();
+  /** The kept file of a buffer this frame does not hold yet. */
+  const keptOf = (/** @type {string} */ buffer) => kept.files().find((f) => f.buffer === buffer);
 
   const say = (/** @type {string} */ words) => {
     sayings++;
@@ -127,82 +133,7 @@ export function createPlayer({ bridge, commands }, view, options) {
 
   /** @type {import("./load.js").Deps} */
   const deps = { access, caps: capsOf(view), options, show: refresh };
-
-  /** Show the chosen subtitles ("" for none). */
-  const choose = (/** @type {Entry} */ entry, /** @type {string} */ id) =>
-    showSubtitles(deps, entry, id).catch((error) => say(text(error)));
-
-  /** Play one item of the entry (its own file, or a playlist entry) and find its subtitles. */
-  const play = async (/** @type {Entry} */ entry, /** @type {string} */ path) => {
-    const token = ++entry.token;
-    release(entry);
-    entry.item = undefined;
-    entry.subs = undefined;
-    entry.why = undefined;
-    await playMedia(entry, path, deps, { token });
-    if (entry.token !== token) return;
-    const item = entry.item;
-    if (entry.mode === "details") say(entry.why ?? "");
-    if (!entry.playlist) entry.resume = entry.position > 0 ? null : resume.offer(path);
-    if (item && entry.mode === "media" && item.element === "video")
-      await findSubtitles(entry, item, deps, choose);
-  };
-
-  /** Play the playlist's first playable local entry from `from` in direction `step`. */
-  const playEntry = async (/** @type {Entry} */ entry, /** @type {number} */ from, step = 1) => {
-    const list = entry.playlist;
-    if (!list) return false;
-    for (let i = from; i >= 0 && i < list.entries.length; i += step) {
-      const target = list.entries[i];
-      if (!target?.path || target.remote || list.states[i]) continue;
-      const before = list.index;
-      list.index = i;
-      entry.position = 0;
-      try {
-        await play(entry, target.path);
-        return true;
-      } catch (error) {
-        const code = codeOf(error);
-        list.states[i] =
-          code === "not_found"
-            ? "Not found"
-            : code === "permission_denied"
-              ? "Not allowed"
-              : "Could not open";
-        list.index = before;
-      }
-    }
-    return false;
-  };
-
-  /** Open the entry's file by what it is. */
-  const load = async (/** @type {Entry} */ entry) => {
-    const { path, name } = entry;
-    if (familyByName(name) === "media") return play(entry, path);
-    const token = ++entry.token;
-    const head = await access.range(path, 0, HEAD, true);
-    entry.size = head.size;
-    const found = detect(head.bytes, name);
-    if (found.family === "media") return play(entry, path);
-    if (found.family === "midi" || found.family === "au")
-      return playDecoded(entry, path, head.size, head.bytes, deps, { token });
-    const all =
-      head.size > head.bytes.length
-        ? await access.all(path, head.size, 16 << 20, head.bytes)
-        : head.bytes;
-    if (found.family === "subtitles") return openCues(entry, all);
-    if (found.family === "playlist") {
-      openPlaylist(entry, all);
-      if (entry.playlist && !(await playEntry(entry, 0)))
-        details(
-          entry,
-          `Nothing in ${name} can be played here: its entries are remote, missing or not allowed.`,
-          entry.format,
-        );
-      return;
-    }
-    details(entry, `${name} is not a file the player knows.`, "Unknown");
-  };
+  const { choose, load, play, playEntry } = createPlaying({ deps, resume, say });
 
   /**
    * Answer one of the desk's requests. A failure goes to the status line and ends the request with
@@ -222,8 +153,15 @@ export function createPlayer({ bridge, commands }, view, options) {
       }
     });
 
-  /** (Re)open a buffer's file: a visit, or a revert that keeps the position. */
-  const open = async (/** @type {string} */ buffer, /** @type {string} */ path, position = 0) => {
+  /**
+   * (Re)open a buffer's file: a visit, a revert that keeps the position, or a file the desk lists
+   * that this frame lost, where a sleep kept it. Coming back from a sleep it neither asks for the
+   * folder nor takes the focus, and gives way to a file the person shows meanwhile.
+   * @param {string} buffer
+   * @param {string} path
+   * @param {{ position?: number, place?: KeptPlace, waking?: boolean }} [how]
+   */
+  const open = async (buffer, path, { place, waking = false, ...how } = {}) => {
     await ready;
     const existing = entries.get(buffer);
     if (existing) release(existing);
@@ -235,21 +173,28 @@ export function createPlayer({ bridge, commands }, view, options) {
       size: 0,
       format: "",
       mode: "loading",
-      position,
+      position: how.position ?? place?.position ?? 0,
       resume: null,
       token: 0,
     };
-    if (existing?.watchId) entry.watchId = existing.watchId;
+    // The watch the file had before the sleep still follows it.
+    const watchId = existing?.watchId ?? place?.watchId;
+    if (watchId) {
+      entry.watchId = watchId;
+      watches.set(watchId, buffer);
+    }
     entries.set(buffer, entry);
     const before = shown;
+    const mine = () =>
+      entries.get(buffer) === entry && (!waking || shown === null || shown === buffer);
     // A slow read (a large header, a question) shows the file loading, with the progress bar.
     const slow = setTimeout(() => {
-      if (entries.get(buffer) !== entry || entry.mode !== "loading") return;
+      if (!mine() || entry.mode !== "loading") return;
       shown = buffer;
       render();
     }, 300);
     try {
-      await load(entry);
+      await load(entry, { ask: !waking, place });
     } catch (error) {
       if (entries.get(buffer) === entry) entries.delete(buffer);
       if (shown === buffer) {
@@ -261,12 +206,24 @@ export function createPlayer({ bridge, commands }, view, options) {
       clearTimeout(slow);
     }
     if (entries.get(buffer) !== entry) return;
-    present(buffer);
+    kept.take(buffer);
+    closed.delete(buffer);
+    if (!mine()) return;
+    if (waking) {
+      shown = buffer;
+      render();
+    } else present(buffer);
     if (entry.watchId) return;
-    const watchId = await access.watch(path);
-    if (!watchId || entries.get(buffer) !== entry) return;
-    entry.watchId = watchId;
-    watches.set(watchId, buffer);
+    const watched = await access.watch(path);
+    if (!watched || entries.get(buffer) !== entry) return;
+    entry.watchId = watched;
+    watches.set(watched, buffer);
+  };
+  /** Open again a file the desk lists that this frame lost, unless it closed it itself. */
+  const lost = (/** @type {string} */ buffer, /** @type {string | undefined} */ path) => {
+    const from = path ?? keptOf(buffer)?.path;
+    const missing = !entries.has(buffer) && !closed.has(buffer);
+    return from && missing ? open(buffer, from, { place: keptOf(buffer)?.place }) : undefined;
   };
 
   answer("desk.files.visit", async (args) => {
@@ -279,16 +236,25 @@ export function createPlayer({ bridge, commands }, view, options) {
   });
   answer("desk.files.revert", async (args) => {
     const { buffer, path } = requested(args);
+    const reopening = lost(buffer, path);
+    if (reopening) return reopening;
     const entry = held(buffer);
-    await open(buffer, path ?? entry.path, entry.position);
+    await open(buffer, path ?? entry.path, { position: entry.position });
   });
-  answer("desk.buffers.show", (args) => {
-    const { buffer } = requested(args);
+  answer("desk.buffers.show", async (args) => {
+    const { buffer, path } = requested(args);
+    // The file on screen before a sleep, still opening as the window wakes: shown once it is. One
+    // that did not open as it woke (a folder it may not read without asking) opens now.
+    if (waking?.buffer === buffer) await waking.done;
+    const reopening = lost(buffer, path);
+    if (reopening) return reopening;
     held(buffer);
     present(buffer);
   });
   answer("desk.buffers.closed", (args) => {
     const { buffer } = requested(args);
+    closed.add(buffer);
+    if (kept.take(buffer) && !entries.has(buffer)) return;
     held(buffer);
     forget(buffer);
     if (shown !== buffer) return;
@@ -306,6 +272,17 @@ export function createPlayer({ bridge, commands }, view, options) {
   });
 
   render();
+
+  // Back from a sleep, the file that was on screen opens again where it was, paused; the others
+  // open when they are shown.
+  const back = kept.shown === null ? undefined : keptOf(kept.shown);
+  /** @type {{ buffer: string, done: Promise<unknown> } | undefined} */
+  const waking = back && {
+    buffer: back.buffer,
+    done: open(back.buffer, back.path, { place: back.place, waking: true }).catch((error) => {
+      if (shown === null) say(text(error));
+    }),
+  };
 
   const current = () => (shown === null ? undefined : entries.get(shown));
   /** Run an action on the entry on screen, then show it again. */
@@ -327,7 +304,7 @@ export function createPlayer({ bridge, commands }, view, options) {
   const move = (/** @type {number} */ step) =>
     act(async (entry) => {
       const list = entry.playlist;
-      if (!list || (await playEntry(entry, list.index + step, step))) return;
+      if (!list || (await playEntry(entry, list.index + step, step)) === null) return;
       say(step > 0 ? "That was the last entry." : "This is the first entry.");
     });
 
@@ -374,9 +351,12 @@ export function createPlayer({ bridge, commands }, view, options) {
     },
     next: () => move(1),
     previous: () => move(-1),
-    /** Play one playlist entry, by its index. */
+    /** Play one playlist entry, by its index; one that cannot be read leaves the last, and says why. */
     pick: (/** @type {number} */ index) =>
-      act((entry) => entry.playlist && playEntry(entry, index)),
+      act(async (entry) => {
+        const why = entry.playlist ? await playEntry(entry, index, 0) : null;
+        if (why) say(why);
+      }),
     /** Choose subtitles by id; "" turns them off. */
     subtitle: (/** @type {string} */ id) => act((entry) => choose(entry, id)),
     /** Move the subtitles later (positive) or earlier, in steps of a tenth of a second. */

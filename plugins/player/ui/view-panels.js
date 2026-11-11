@@ -123,9 +123,11 @@ export function createPanels(doc, act, seek) {
       byId("why").textContent = model.why ?? "";
       const info = model.info;
       const tags = info?.tags ?? {};
+      // A playlist's entry is described by its own file, not by the playlist's.
+      const size = model.item?.size ?? model.size;
       fill(byId("facts"), [
         ["Name", model.item?.name ?? model.name],
-        ["Size", model.size > 0 ? bytes(model.size) : undefined],
+        ["Size", size > 0 ? bytes(size) : undefined],
         ["Format", model.format],
         ["Duration", info?.duration ? clock(info.duration) : undefined],
         ["Title", tags.title],
