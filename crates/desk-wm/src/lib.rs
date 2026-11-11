@@ -97,6 +97,7 @@ pub use reach::{GRAB, top_within_reach, within_reach};
 pub use settle::{Glided, SETTLE_MS, Settle, SettleKind};
 pub use snap::{Aim, CORNER, Halves, Rows, SNAP, SNAP_TOP, fill_rect, halves, rows, snap_for};
 pub use snapshot::{Frame, Seen, Told, Unseen};
+pub use spread::drawn::{GROW, LIFT, drawn_box, fitted_stage, lifted_box};
 pub use spread::model::{Move, SpreadAction, SpreadModel};
 pub use spread::pose::{Camera, IDENTITY, Pose, ZOOM_MAX, ZOOM_MIN, mix};
 pub use spread::run::{Durations, Ending, Spread, SpreadFrame};

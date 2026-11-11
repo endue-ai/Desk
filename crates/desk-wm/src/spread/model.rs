@@ -10,8 +10,9 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use super::drawn::{GROW, LIFT, fitted_stage};
 use super::pose::{Camera, IDENTITY, Pose, ZOOM_MAX, ZOOM_MIN};
-use super::slots::{FLAT_GAP, Slot, fan_rows, spread_slots, spread_stage};
+use super::slots::{FLAT_GAP, Slot, fan_rows, spread_slots};
 use super::windows::{SpreadWindow, centre, fold, spread_order};
 use crate::arrange::{grid_shape, row_sizes};
 use crate::math::round_to;
@@ -264,8 +265,8 @@ impl SpreadModel {
         let lifted = shown && self.selected.as_deref() == Some(w.id.as_str());
         let (cx, cy) = centre(&w.rect);
         // A lifted card comes forward and grows a little; a filtered-out one sinks and shrinks.
-        let lift = if lifted && !self.flat { 56.0 } else { 0.0 };
-        let grow = if lifted { 1.04 } else { 1.0 };
+        let lift = if lifted && !self.flat { LIFT } else { 0.0 };
+        let grow = if lifted { GROW } else { 1.0 };
         let (back, shrink) = if shown { (0.0, 1.0) } else { (160.0, 0.85) };
         Pose {
             tx: round_to(r.x + r.w / 2.0 - cx, 2),
@@ -310,8 +311,9 @@ impl SpreadModel {
     }
 
     fn layout(&self, windows: &[SpreadWindow]) -> (Vec<SpreadWindow>, BTreeMap<String, Slot>) {
-        let stage = spread_stage(self.vw, self.vh);
         let n = windows.len();
+        // Shortened so that every card is drawn above the dock, selected too (#158).
+        let stage = fitted_stage(n, self.vw, self.vh, self.flat);
         let rows = if self.flat {
             row_sizes(n, grid_shape(n, stage, FLAT_GAP).cols)
         } else {

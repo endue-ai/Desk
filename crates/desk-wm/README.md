@@ -11,7 +11,7 @@ data; no clock (times are passed in), no I/O, no rendering. It reads and writes 
 - Geometry, snap and fill (ADR 0128, ADR 0132): `screen_rect`, `stored_rect`, `free_area`,
   `snap_for`, `Aim`, `fill_with`, `unfilled`, `own_floating`, `toggle_maximize`, `toggle_floating`, `Settle`; `within_reach`.
 - Tiling and the spread (ADR 0040, ADR 0116): `slot_rect`, `slot_windows`, `tile_rects`, `cascade_rects`,
-  `SpreadModel`, `spread_slots`, `Spread` (its motions on the caller's clock, ADR 0161); `covered_plugins`.
+  `SpreadModel`, `spread_slots`, `fitted_stage`, `drawn_box`, `Spread` (on the caller's clock, ADR 0161); `covered_plugins`.
 - Canvas (ADR 0082): `drag_pans`, `wheel_pan`, `PanDrag`; the map's `fit_world`, `map_shows`, `MapDrag`.
 - `panes`: `split`, `close`, `set_view`, `set_ratio`, `key_ratio`, `drag_ratio`; `window_min`, `fit_panes`.
 - `desktops`, `migrate` (ADR 0117): the named list of at most 32; `read_moved`, `read_recipe`,

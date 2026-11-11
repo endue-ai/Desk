@@ -3,6 +3,7 @@
 //! and the live budget see the windows where they are. `run` moves it between poses on the
 //! caller's clock; the compositor draws it (#54).
 
+pub mod drawn;
 pub mod model;
 pub mod pose;
 pub mod run;
