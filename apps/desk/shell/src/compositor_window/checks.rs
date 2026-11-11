@@ -8,6 +8,13 @@ use serde_json::{Value, json};
 
 use super::CompositorWindow;
 
+/// What the event loop did so far (`pump::Counts`): its turns, CEF's work calls, the time those
+/// took and how many ran 5 ms or more (CEF's busy-wait, ADR 0159), for checks at rest (#147).
+fn pump(counts: crate::pump::Counts) -> Value {
+    json!({ "turns": counts.turns, "works": counts.works,
+        "work_ms": counts.work.as_secs_f64() * 1000.0, "long": counts.long })
+}
+
 /// `[x, y, w, h]`.
 fn quad(r: desk_wm::Rect) -> [f64; 4] {
     [r.x, r.y, r.w, r.h]
@@ -132,6 +139,7 @@ impl CompositorWindow {
             "native": self.native.stats(),
             "relayed": self.relay.counts(),
             "presented": self.presented,
+            "pump": pump(self.desk.pump.counts()),
             "slow_presents": self.slow_presents,
             "adapter": format!("{} ({:?})", self.gpu.adapter.name, self.gpu.adapter.backend),
             "wm": self.wm_state(),
