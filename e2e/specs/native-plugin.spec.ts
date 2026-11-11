@@ -2,8 +2,9 @@
 // this machine by wdio.conf.ts, is a process of its own that the desk starts. It draws a wgpu scene
 // into its window, which moves and snaps like any other window, and a kill of its process costs
 // that window only: the desk keeps drawing every other surface, says the plugin died, and starts it
-// again. The windows and the process are read through compositor_stats; the pointer is the
-// compositor's own input (support/compositor.ts), since the screen may be locked. A keyboard goes
+// again, its tree too while a screen reader runs (#146). The windows and the process are read
+// through compositor_stats; the pointer is the compositor's own input (support/compositor.ts),
+// since the screen may be locked. A keyboard goes
 // through its window as through a web plugin's (#128): Tab enters it at its first part and Shift+Tab
 // at its last, its own Tab moves between its two parts, and past either end it hands the focus back
 // to the desk, which goes on in the page's own order; the keys and the desk's accessibility tree
@@ -159,6 +160,9 @@ describe("native plugin: a process of its own draws a window like any other (#59
   it("a kill of its process costs its window only, and the desk starts it again", async () => {
     const pid = (await running())?.pid;
     if (!pid) throw new Error("no process");
+    // A screen reader runs while it dies, so its new process must export its tree too: the Tab
+    // case below reads its parts' focus from it (#146).
+    await a11y({ activate: true });
     const before = await stats();
     const others = (s: Stats) =>
       Object.entries(s.surfaces)
