@@ -14,6 +14,7 @@ import { createPasteGuard } from "./paste.js";
 import { createSearch } from "./search.js";
 import { createSearchBar } from "./searchbar.js";
 import { createTabs } from "./tabs.js";
+import { searchDecorations } from "./theme.js";
 import { FitAddon } from "./vendor/addon-fit.mjs";
 import { SearchAddon } from "./vendor/addon-search.mjs";
 import { Unicode11Addon } from "./vendor/addon-unicode11.mjs";
@@ -56,22 +57,6 @@ const xtermOptions = (/** @type {Record<string, unknown>} */ options) =>
   Object.fromEntries(
     Object.entries(options).filter(([name]) => name === "allowProposedApi" || LIVE.includes(name)),
   );
-
-const HEX = /^#[0-9a-f]{6}$/iu;
-
-/** Search highlights from the theme: xterm's decorations take #rrggbb only. */
-const decorationsOf = (/** @type {Options} */ options) => {
-  const theme = /** @type {Record<string, string | undefined>} */ (options.theme ?? {});
-  const match = theme.yellow;
-  const active = theme.cursor;
-  if (!match || !active || !HEX.test(match) || !HEX.test(active)) return undefined;
-  return {
-    matchBorder: match,
-    matchOverviewRuler: match,
-    activeMatchBorder: active,
-    activeMatchColorOverviewRuler: active,
-  };
-};
 
 /**
  * @param {Document} doc
@@ -116,10 +101,21 @@ export function createView(doc, actions, options, deps) {
   const find = () => bar.show(shownItem()?.term.getSelection() ?? "");
 
   /** xterm asks before it handles a key: false leaves the key to the browser, and so to the desk. */
-  const onKey = (/** @type {Terminal} */ term, /** @type {KeyboardEvent} */ event) => {
+  const onKey = (
+    /** @type {string} */ id,
+    /** @type {Terminal} */ term,
+    /** @type {KeyboardEvent} */ event,
+  ) => {
     if (event.type !== "keydown") return true;
     const { key, metaKey, ctrlKey, altKey, shiftKey } = event;
-    switch (actions.key({ key, metaKey, ctrlKey, altKey, shiftKey }, term.hasSelection())) {
+    const decision = actions.key({ key, metaKey, ctrlKey, altKey, shiftKey }, term.hasSelection());
+    if (typeof decision === "object") {
+      // The shell's key as text of the terminal's own (keys.js): ⌥← and ⌥→ on macOS.
+      event.preventDefault();
+      actions.input(id, decision.type);
+      return false;
+    }
+    switch (decision) {
       case "desk":
       case "paste":
         // Not prevented: the SDK hands a chord on to the desk's keymap, and the browser pastes into
@@ -245,7 +241,7 @@ export function createView(doc, actions, options, deps) {
       term.loadAddon(new WebLinksAddon(links.open, links.handler));
       term.open(pane);
       const search = createSearch(searching, {
-        decorations: () => decorationsOf(current),
+        decorations: () => searchDecorations(current),
         render: (state) => shown === id && bar.render(state.label),
       });
       /** @type {Item} */
@@ -268,7 +264,7 @@ export function createView(doc, actions, options, deps) {
       term.onSelectionChange(() => {
         if (current.copyOnSelect && term.hasSelection()) copy();
       });
-      term.attachCustomKeyEventHandler((event) => onKey(term, event));
+      term.attachCustomKeyEventHandler((event) => onKey(id, term, event));
       const guard = createPasteGuard({
         paste: (text) => term.paste(text),
         ask: (_text, lines) => ask(item, lines),
@@ -372,7 +368,7 @@ export function createView(doc, actions, options, deps) {
         unnote(item);
         return;
       }
-      note(item, text, [
+      note(item, `${text} Press Enter to start it again.`, [
         ["Restart", true, () => actions.restart(id)],
         ["Close", false, () => actions.close(id)],
       ]);

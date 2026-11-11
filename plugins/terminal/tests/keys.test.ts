@@ -51,6 +51,16 @@ describe("who gets a key pressed in a terminal", () => {
     }
   });
 
+  it("on macOS ⌥← and ⌥→ type ESC b and ESC f, a word back and forward, as Terminal.app does (#160)", () => {
+    expect(on("mac", press("ArrowLeft", { altKey: true }))).toEqual({ type: "\x1bb" });
+    expect(on("mac", press("ArrowRight", { altKey: true }))).toEqual({ type: "\x1bf" });
+    // With another modifier, and on the other platforms, xterm's own sequence goes.
+    expect(on("mac", press("ArrowLeft", { altKey: true, shiftKey: true }))).toBe("terminal");
+    expect(on("mac", press("ArrowLeft"))).toBe("terminal");
+    expect(on("linux", press("ArrowLeft", { altKey: true }))).toBe("terminal");
+    expect(on("windows", press("ArrowRight", { altKey: true }))).toBe("terminal");
+  });
+
   it("the desk gets its own chords: the palette, buffers, windows and desktops", () => {
     expect(on("mac", press("k", { metaKey: true }))).toBe("desk");
     expect(on("linux", press("k", { ctrlKey: true }))).toBe("desk");

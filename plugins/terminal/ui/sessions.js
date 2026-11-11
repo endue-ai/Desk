@@ -1,14 +1,17 @@
 // The terminal plugin without its DOM: sessions (one program each, in a PTY the core runs), their
-// output and input over the bridge's proc.*, what programs say in OSC sequences (the folder, the
-// shell's marks, notifications: notices.js), a desk buffer for each, and the snapshot the surface
-// comes back from after a reload. commands.js answers the plugin's commands and the desk's requests
-// on top. It talks only to ctx.bridge, ctx.commands, ctx.state and a view, so the SDK's test host
-// runs it with a recording view.
+// output and input over the bridge's proc.* (pipe.js sends a process's calls in order), what
+// programs say in OSC sequences (the folder, the shell's marks, notifications: notices.js), a desk
+// buffer for each (names.js), and the snapshot the surface comes back from after a reload.
+// commands.js answers the plugin's commands and the desk's requests on top. It talks only to
+// ctx.bridge, ctx.commands, ctx.state, ctx.surface and a view, so the SDK's test host runs it with a
+// recording view.
 
+import { createNames, programName } from "./names.js";
 import { createNotices } from "./notices.js";
 import { cwdOf } from "./osc.js";
-import { decode, exitLine, exitText, keep } from "./output.js";
-import { basename, candidates, DEFAULTS, environment, PREFIX, parseSettings } from "./shell.js";
+import { decode, exitText, keep } from "./output.js";
+import { createPipes } from "./pipe.js";
+import { candidates, DEFAULTS, environment, PREFIX, parseSettings } from "./shell.js";
 import { blankSession, reorder, restoredSession, snapshotOf } from "./snapshot.js";
 import { codeOf, scopeOf, spawnProgram } from "./spawn.js";
 
@@ -24,11 +27,11 @@ import { codeOf, scopeOf, spawnProgram } from "./spawn.js";
  */
 
 /**
- * @param {Pick<PluginContext, "bridge" | "commands" | "state">} ctx
+ * @param {Pick<PluginContext, "bridge" | "commands" | "state" | "surface">} ctx
  * @param {View} view
  * @param {{ platform: Platform, snapshotMs?: number, looking?: (id: string) => boolean, now?: () => number }} options
  */
-export function createTerminals({ bridge, commands, state }, view, options) {
+export function createTerminals({ bridge, commands, state, surface }, view, options) {
   const { platform, snapshotMs = 250, looking = () => false, now = Date.now } = options;
   /** @type {Map<string, Session>} */
   const sessions = new Map();
@@ -76,29 +79,7 @@ export function createTerminals({ bridge, commands, state }, view, options) {
     if (timer === null) timer = setTimeout(snapshot, snapshotMs);
   };
 
-  const name = (/** @type {Session} */ session, /** @type {string} */ title) => {
-    if (title === "" || title === session.title) return;
-    session.title = title;
-    view.retitle(session.id, title);
-    if (session.buffer) {
-      commands.run("desk.buffers.update", { id: session.buffer, name: title }).catch(() => {});
-    }
-    changed();
-  };
-  /** The program set a title (OSC 0 or 2); a name the person gave the tab wins. */
-  const retitle = (/** @type {string} */ id, /** @type {string} */ title) => {
-    const session = held(id);
-    if (!session.named) name(session, title);
-  };
-  /** The person names the tab; an empty name gives it back to the program. */
-  const rename = (/** @type {string} */ id, /** @type {string} */ title) => {
-    const session = held(id);
-    const given = title.trim();
-    session.named = given !== "";
-    const program = session.program ?? session.programs[0];
-    name(session, given || (program ? (program.title ?? basename(program.command)) : "Terminal"));
-    changed();
-  };
+  const { retitle, rename } = createNames({ view, commands, sessions, held, changed });
 
   const ended = (/** @type {Session} */ session, /** @type {string | null} */ text) => {
     if (session.ended === text) return;
@@ -120,7 +101,7 @@ export function createTerminals({ bridge, commands, state }, view, options) {
         session.exit = null;
         ended(session, null);
         byProc.set(procId, session.id);
-        retitle(session.id, program.title ?? basename(program.command));
+        retitle(session.id, programName(program, sessions.values(), session.id));
         changed();
         return;
       } catch (error) {
@@ -152,6 +133,12 @@ export function createTerminals({ bridge, commands, state }, view, options) {
     view.focus(held(id).id);
     notices.seen(id);
   };
+  /** A command brings the tab to the person: shown, with the keys, its window in front (#160). */
+  const present = (/** @type {string} */ id) => {
+    if (shown !== id) show(id);
+    focus(id);
+    surface.show();
+  };
 
   /** Where a new terminal starts: the folder the one on screen is in (OSC 7), else the setting. */
   const folder = () => {
@@ -170,8 +157,7 @@ export function createTerminals({ bridge, commands, state }, view, options) {
     const programs = program
       ? [program]
       : candidates(platform, settings).map((p) => ({ ...p, cwd: where }));
-    const first = /** @type {Program} */ (programs[0]);
-    const session = blankSession(id, first.title ?? basename(first.command), programs);
+    const session = blankSession(id, programName(programs[0], sessions.values(), id), programs);
     sessions.set(id, session);
     const size = view.open(id, session.title);
     session.cols = size.cols;
@@ -234,7 +220,8 @@ export function createTerminals({ bridge, commands, state }, view, options) {
       await signal(id, "term");
       return;
     }
-    view.line(id, `Starting ${session.title} again.`);
+    const again = `Starting ${session.title} again.`;
+    view.line(id, session.exit ? `${session.exit} ${again}` : again);
     await launch(session);
   };
 
@@ -244,15 +231,7 @@ export function createTerminals({ bridge, commands, state }, view, options) {
       if (data === "\r") void restart(id);
       return;
     }
-    const params = {
-      procId: session.procId,
-      data,
-      encoding: /** @type {const} */ ("utf8"),
-      scope: scopeOf(session.program.command),
-    };
-    bridge
-      .call("proc.write", params)
-      .catch((error) => say(`Could not write to ${session.title}: ${codeOf(error)}.`));
+    pipes.write(session.procId, scopeOf(session.program.command), data);
   };
 
   /** The view's size reached the PTY; `again` sends it even when it did not change (a reload). */
@@ -267,10 +246,7 @@ export function createTerminals({ bridge, commands, state }, view, options) {
     session.cols = cols;
     session.rows = rows;
     if (!session.procId || !session.program) return;
-    const params = { procId: session.procId, size: { cols, rows } };
-    bridge
-      .call("proc.resize", { ...params, scope: scopeOf(session.program.command) })
-      .catch(() => {});
+    pipes.resize(session.procId, scopeOf(session.program.command), { cols, rows });
   };
 
   /** What a program said in an OSC sequence the view handed over (osc.js has the codes). */
@@ -297,6 +273,35 @@ export function createTerminals({ bridge, commands, state }, view, options) {
     changed();
   };
 
+  /**
+   * The program ended: its exit came, or a call was answered `not_found` (it ended unheard, say
+   * while the window was closed). The banner says how; a restart writes it in the text.
+   */
+  const exited = (
+    /** @type {Session} */ session,
+    /** @type {import("@endue-ai/bridge").ProcExitData} */ exit,
+  ) => {
+    if (session.procId !== exit.procId) return;
+    byProc.delete(exit.procId);
+    pipes.drop(exit.procId);
+    session.procId = null;
+    session.exit = exitText(session.title, exit);
+    changed();
+    if (session.relaunch) {
+      session.relaunch = false;
+      void restart(session.id);
+      return;
+    }
+    ended(session, session.exit);
+    notices.exited(session.id, exit);
+  };
+  const pipes = createPipes(bridge, (procId, method, code) => {
+    const session = sessions.get(byProc.get(procId) ?? "");
+    if (!session) return;
+    if (code === "not_found") exited(session, { procId });
+    else if (method === "proc.write") say(`Could not write to ${session.title}: ${code}.`);
+  });
+
   bridge.onEvent((/** @type {BridgeEvent} */ event) => {
     if (event.event !== "proc.output" && event.event !== "proc.exit") return;
     const id = byProc.get(event.data.procId);
@@ -309,21 +314,13 @@ export function createTerminals({ bridge, commands, state }, view, options) {
       changed();
       return;
     }
-    byProc.delete(event.data.procId);
-    session.procId = null;
-    session.exit = exitLine(session.title, event.data);
-    view.line(session.id, session.exit);
-    changed();
-    if (session.relaunch) {
-      session.relaunch = false;
-      void restart(session.id);
-      return;
-    }
-    ended(session, exitText(session.title, event.data));
-    notices.exited(session.id, event.data);
+    exited(session, event.data);
   });
 
-  /** The terminals a reload left behind: their programs still run in the core, so attach again. */
+  /**
+   * The terminals a reload or a closed window left behind: their programs still run in the core,
+   * so attach again; one that ended meanwhile answers `not_found` to the resize (`exited`).
+   */
   const restore = (/** @type {Snapshot} */ saved) => {
     next = Math.max(next, saved.next);
     for (const kept of saved.sessions) {
@@ -338,8 +335,7 @@ export function createTerminals({ bridge, commands, state }, view, options) {
         byProc.set(session.procId, session.id);
         resize(session.id, size.cols, size.rows, true);
       } else if (session.exit) {
-        view.line(session.id, session.exit);
-        if (session.ended) view.end(session.id, session.ended);
+        view.end(session.id, session.ended ?? session.exit);
       }
     }
     const first = saved.shown !== null && sessions.has(saved.shown) ? saved.shown : order().at(-1);
@@ -379,14 +375,14 @@ export function createTerminals({ bridge, commands, state }, view, options) {
     openNotice(/** @type {unknown} */ notificationId) {
       const id = notices.open(notificationId);
       if (id === undefined || !sessions.has(id)) return null;
-      show(id);
-      focus(id);
+      present(id);
       return id;
     },
     /** The frame took the focus: the tab on screen is read. */
     attend: () => shown !== null && notices.seen(shown),
     clear: (/** @type {string} */ id) => view.clear(held(id).id),
     focus,
+    present,
     shown: () => shown,
     ids: order,
     /** The session whose desk buffer this is. */

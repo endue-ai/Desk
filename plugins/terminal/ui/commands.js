@@ -35,8 +35,7 @@ export function wireCommands(commands, app) {
     if (ids.length === 0 || shown === null) throw new Error("No terminal is open.");
     const id = ids[(ids.indexOf(shown) + by + ids.length) % ids.length];
     if (id === undefined) return null;
-    app.show(id);
-    app.focus(id);
+    app.present(id);
     return id;
   };
 
@@ -53,15 +52,14 @@ export function wireCommands(commands, app) {
       );
     }
     const session = await app.open(undefined, cwd);
-    app.focus(session.id);
+    app.present(session.id);
     if (!session.procId) throw new Error(session.exit ?? "Could not start the terminal.");
     return session.id;
   });
+  // Show and focus: the tab, and the window in front with the keys, from wherever it is (#160).
   commands.on("endue.terminal.focus", async (args) => {
-    const named = sessionOf(args);
-    if (named) app.show(named);
-    const id = named ?? app.shown() ?? (await app.open()).id;
-    app.focus(id);
+    const id = sessionOf(args) ?? app.shown() ?? (await app.open()).id;
+    app.present(id);
     return id;
   });
   commands.on("endue.terminal.rename", (args) => {

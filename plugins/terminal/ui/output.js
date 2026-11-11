@@ -1,5 +1,5 @@
 // What a terminal shows of its process: output chunks decoded as the bridge encodes them, the tail a
-// reload replays, and the line that says how the program ended. No DOM.
+// reload replays, and the words that say how the program ended. No DOM.
 
 /**
  * @typedef {import("@endue-ai/bridge").ProcExitData} ProcExitData
@@ -32,7 +32,10 @@ export function keep(/** @type {Tail} */ tail, /** @type {Chunk} */ chunk) {
   }
 }
 
-/** How a terminal's program ended, as its exit banner says it. */
+/**
+ * How a terminal's program ended, as its exit banner says it, and its text once it starts again;
+ * an exit with neither code nor signal is one the terminal did not hear (sessions.js `exited`).
+ */
 export function exitText(/** @type {string} */ title, /** @type {ProcExitData} */ exit) {
   const how =
     exit.signal !== undefined
@@ -41,9 +44,4 @@ export function exitText(/** @type {string} */ title, /** @type {ProcExitData} *
         ? `exited with code ${exit.code}`
         : "ended";
   return `${title} ${how}.`;
-}
-
-/** The line a terminal writes when its program ends. */
-export function exitLine(/** @type {string} */ title, /** @type {ProcExitData} */ exit) {
-  return `${exitText(title, exit)} Press Enter to start it again.`;
 }

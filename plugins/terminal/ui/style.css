@@ -90,6 +90,12 @@ body {
   max-width: 40ch;
 }
 
+/* The bar has a close button of its own: the browser's blue clear button beside it is one too many. */
+.search-query::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .search-count {
   min-width: 10ch;
   color: var(--desk-text-muted);
@@ -121,6 +127,12 @@ body {
   box-sizing: border-box;
   height: 100%;
   padding: 4px 0 0 6px;
+}
+
+/* xterm.css paints the viewport black, which showed as a frame around the text and under the rows
+   left over after a resize; the terminal's own background is the desk's (theme.js). */
+.pane .xterm .xterm-viewport {
+  background-color: var(--desk-background);
 }
 
 /* The visual bell: the pane's edge lights for a moment (no motion, so reduced motion keeps it). */

@@ -6,8 +6,16 @@
 /** @typedef {import("./shell.js").Platform} Platform */
 /**
  * @typedef {{ key: string, metaKey: boolean, ctrlKey: boolean, altKey: boolean, shiftKey: boolean }} KeyPress
- * @typedef {"terminal" | "desk" | "copy" | "paste" | "find"} Decision
+ * @typedef {"terminal" | "desk" | "copy" | "paste" | "find" | { type: string }} Decision `type`:
+ *   the shell's, as this text instead of xterm's own sequence for the key.
  */
+
+/**
+ * Option and an arrow on macOS move a word, as Terminal.app and iTerm2 send them (ESC b, ESC f);
+ * xterm 6 sends the modified arrows (ESC [1;3D), which a stock zsh or bash types as text (#160).
+ * @type {Record<string, string>}
+ */
+const MAC_TYPED = { "Alt+ArrowLeft": "\x1bb", "Alt+ArrowRight": "\x1bf" };
 
 /**
  * The desk's chords that a terminal never swallows, as the core and the shell bind them. Mod is
@@ -96,7 +104,7 @@ export function canonical(combo, platform) {
  * Command+V, which are the clipboard's, and Command+F, the terminal's search; elsewhere
  * Control+Shift+C and Control+Shift+V are the clipboard's, as is Control+C over a selection and
  * Control+V, and Control+Shift+F is search. Everything else, Escape and Control chords included, is
- * the shell's.
+ * the shell's; Option+← and Option+→ on macOS as the words they move by (MAC_TYPED).
  * @param {KeyPress} press
  * @param {{ platform: Platform, deskKeys?: readonly string[], hasSelection?: boolean }} context
  * @returns {Decision}
@@ -107,6 +115,8 @@ export function decide(press, { platform, deskKeys = [], hasSelection = false })
   if (toDesk) return "desk";
   const letter = press.key.length === 1 ? press.key.toLowerCase() : "";
   if (platform === "mac") {
+    const typed = MAC_TYPED[combo];
+    if (typed) return { type: typed };
     if (!press.metaKey) return "terminal";
     if (press.altKey || press.shiftKey) return "desk";
     if (letter === "c" && hasSelection) return "copy";

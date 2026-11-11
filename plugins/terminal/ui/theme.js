@@ -74,6 +74,22 @@ export function xtermTheme(theme, fallback = {}) {
   );
 }
 
+const HEX = /^#[0-9a-f]{6}$/iu;
+
+/** Search highlights from the terminal's theme: xterm's decorations take #rrggbb only. */
+export function searchDecorations(/** @type {{ theme?: Record<string, string> }} */ options) {
+  const theme = /** @type {Record<string, string | undefined>} */ (options.theme ?? {});
+  const match = theme.yellow;
+  const active = theme.cursor;
+  if (!match || !active || !HEX.test(match) || !HEX.test(active)) return undefined;
+  return {
+    matchBorder: match,
+    matchOverviewRuler: match,
+    activeMatchBorder: active,
+    activeMatchColorOverviewRuler: active,
+  };
+}
+
 /**
  * The options every terminal is made with, and given again when the settings or the theme change.
  * Reduced motion stops the cursor blinking; high contrast asks xterm for a 7:1 ratio on every cell.

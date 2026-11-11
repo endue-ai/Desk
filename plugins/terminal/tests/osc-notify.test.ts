@@ -143,7 +143,7 @@ describe("the terminal's own notices", () => {
     expect(params("ui.notify")).toEqual([note("zsh", "Exited with code 1.", "warning")]);
     expect(view.ended).toEqual([
       { id: "t-1", text: "zsh exited with code 1." },
-      { id: "t-2", text: "zsh exited with code 0." },
+      { id: "t-2", text: "zsh 2 exited with code 0." },
     ]);
   });
 });

@@ -197,19 +197,21 @@ describe("a running terminal", () => {
     expect(params("proc.kill")).toEqual([{ procId: "p1", signal: "int", scope: scope("zsh") }]);
   });
 
-  it("an exit is said in the terminal, and Enter starts the shell again", async () => {
+  it("an exit is said once, in the banner; Enter starts the shell again and the text keeps it", async () => {
     const { app, host, view, params, settle } = await mount();
     host.emit({ event: "proc.exit", data: { procId: "p1", code: 1 } });
     await settle();
-    expect(view.lines).toEqual([
-      { id: "t-1", text: "zsh exited with code 1. Press Enter to start it again." },
-    ]);
+    expect(view.ended).toEqual([{ id: "t-1", text: "zsh exited with code 1." }]);
+    expect(view.lines).toEqual([]);
     app.input("t-1", "x");
     app.input("t-1", "\r");
     await settle();
     expect(params("proc.write")).toEqual([]);
     expect(params("proc.spawn")).toHaveLength(2);
-    expect(view.lines.at(-1)).toEqual({ id: "t-1", text: "Starting zsh again." });
+    expect(view.lines).toEqual([
+      { id: "t-1", text: "zsh exited with code 1. Starting zsh again." },
+    ]);
+    expect(view.ended.at(-1)).toEqual({ id: "t-1", text: null });
     host.emit({
       event: "proc.output",
       data: { procId: "p2", stream: "pty", data: "back", encoding: "utf8" },
@@ -258,6 +260,12 @@ describe("several terminals", () => {
     expect(await host.command("endue.terminal.new")).toBe("t-2");
     expect(view.shown).toEqual(["t-1", "t-2"]);
     expect(view.focused).toEqual(["t-2"]);
+    // Two tabs of one shell are told apart, in the strip and in the desk's buffer list.
+    expect(view.opened).toEqual([
+      { id: "t-1", title: "zsh" },
+      { id: "t-2", title: "zsh 2" },
+    ]);
+    expect(ran("desk.buffers.open")).toEqual([{ name: "zsh" }, { name: "zsh 2" }]);
     expect(await host.command("endue.terminal.previous")).toBe("t-1");
     expect(await host.command("endue.terminal.next")).toBe("t-2");
     expect(await host.command("endue.terminal.next")).toBe("t-1");
@@ -282,6 +290,28 @@ describe("several terminals", () => {
     await settle();
     expect(view.closed).toEqual(["t-2"]);
     expect(params("proc.kill")).toEqual([{ procId: "p2", signal: "hup", scope: scope("zsh") }]);
+  });
+
+  it("focus, new, next and previous bring the terminal's window forward with the keys (#160)", async () => {
+    for (const name of [
+      "endue.terminal.focus",
+      "endue.terminal.new",
+      "endue.terminal.next",
+      "endue.terminal.previous",
+    ]) {
+      const { host, view } = await mount();
+      expect(host.visible).toBeUndefined();
+      await host.command(name);
+      expect(host.visible, name).toBe(true);
+      expect(view.focused.length, name).toBe(1);
+    }
+    // Typing, a resize or a click on a tab in the window itself asks the desk for nothing.
+    const { app, host } = await mount();
+    app.input("t-1", "x");
+    app.resize("t-1", 100, 30);
+    app.show("t-1");
+    app.focus("t-1");
+    expect(host.visible).toBeUndefined();
   });
 
   it("closing the last terminal leaves none, and focus opens one again", async () => {
@@ -353,12 +383,11 @@ describe("after a reload", () => {
     expect(again.params("proc.spawn")).toEqual([]);
     expect(again.view.opened).toEqual([
       { id: "t-1", title: "zsh" },
-      { id: "t-2", title: "zsh" },
+      { id: "t-2", title: "zsh 2" },
     ]);
     expect(again.view.writes).toEqual([{ id: "t-1", data: "kept" }]);
-    expect(again.view.lines).toEqual([
-      { id: "t-2", text: "zsh exited with code 0. Press Enter to start it again." },
-    ]);
+    expect(again.view.lines).toEqual([]);
+    expect(again.view.ended).toEqual([{ id: "t-2", text: "zsh 2 exited with code 0." }]);
     expect(again.params("proc.resize")).toEqual([
       { procId: "p1", size: { cols: 90, rows: 20 }, scope: scope("zsh") },
     ]);
