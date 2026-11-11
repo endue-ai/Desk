@@ -216,6 +216,7 @@ export function createChat({ bridge, commands, settings, surface }, view, option
       toggleSave,
       togglePin,
       find,
+      connect: actions.connect,
     },
   });
 

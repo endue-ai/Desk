@@ -83,16 +83,26 @@
 
 .empty,
 .empty-state p {
-  margin: var(--desk-space-8) auto;
   max-width: 36ch;
   color: var(--desk-text-muted);
   text-align: center;
 }
 
+.empty {
+  margin: var(--desk-space-8) auto;
+}
+
+/* An empty layout's words, with Connect an account under them when it is offered: centred while
+   they fit, read from the top in a window too small for them. */
 .empty-state {
   display: grid;
   flex: 1;
-  place-items: center;
+  place-content: safe center;
+  justify-items: center;
+  gap: var(--desk-space-3);
+  min-height: 0;
+  padding: 0 var(--desk-space-4);
+  overflow: auto;
 }
 
 .layout-head {
@@ -208,9 +218,17 @@
   height: 28px;
 }
 
-body[data-connected="false"] #nav #filters,
-body[data-connected="false"] #layouts {
-  visibility: hidden;
+/* Until an account is connected, and before the plugin knows, nothing that acts on chats is in the
+   page: no layouts, and no navigation, whose services, filters and conversations would be empty.
+   The main area takes the whole width. Out of the page, not out of sight: a part hidden by
+   `visibility` keeps its room, a hole beside the title and a band above the empty state (#160). */
+body:not([data-connected="true"]) #layouts,
+body:not([data-connected="true"]) #nav {
+  display: none;
+}
+
+body:not([data-connected="true"]) #main {
+  grid-column: 1 / -1;
 }
 
 .pane.column .composer-tools .hint {

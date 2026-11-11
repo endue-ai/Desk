@@ -3,12 +3,12 @@
 // each message as the view shows it (its text parsed once, its avatar, actions and reactions).
 // Pure functions over state.js.
 import { emojiOf, reactionLabel } from "./emoji.js";
-import { badge, clockTime, countsLabel, fullTime, initials, sizeText } from "./format.js";
+import { anyOf, badge, clockTime, countsLabel, fullTime, initials, sizeText } from "./format.js";
 import { parse } from "./markup.js";
 import { isDirect } from "./model.js";
 import { detectPlatform, hueOf } from "./platforms.js";
 import { FILTERS, filterOf, LAYOUTS, listed } from "./query.js";
-import { conversationTarget, threadTarget } from "./state.js";
+import { conversationTarget, NO_CONNECTOR, threadTarget } from "./state.js";
 import { cardsOf, columnsOf, entriesOf, mainline, replyCounts, streamOf } from "./timeline.js";
 
 /**
@@ -46,10 +46,11 @@ import { cardsOf, columnsOf, entriesOf, mainline, replyCounts, streamOf } from "
  * @typedef {{ key: string, name: string, kind: string, platform: Platform, workspace: string,
  *   topic: string, rows: Row[], more: boolean, loading: boolean, composer: ComposerModel,
  *   pinned: boolean, unread: number, empty: string }} Pane
- * @typedef {{ layout: "conversation", pane: Pane | null, empty: string }
- *   | { layout: "inbox", cards: Pane[], empty: string }
- *   | { layout: "timeline", title: string, rows: Row[], more: boolean, loading: boolean, empty: string }
- *   | { layout: "columns", columns: Pane[], empty: string }} Main
+ * @typedef {({ layout: "conversation", pane: Pane | null }
+ *   | { layout: "inbox", cards: Pane[] }
+ *   | { layout: "timeline", title: string, rows: Row[], more: boolean, loading: boolean }
+ *   | { layout: "columns", columns: Pane[] }) & { empty: string, connect: boolean }} Main
+ * `connect` offers to connect an account: none is, and an installed connector brings messages.
  * @typedef {{ root: MessageModel, rows: Row[], loading: boolean, composer: ComposerModel, where: string }} ThreadModel
  */
 
@@ -63,14 +64,11 @@ const blocksOf = (/** @type {ChatMessage} */ m) => {
   return blocks;
 };
 
-/** Names as a sentence lists them: "Slack", "Slack or Discord", "Discord, Matrix or Slack". */
-const anyOf = (/** @type {string[]} */ names) =>
-  names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} or ${names.at(-1)}`;
 /** With no account connected: the installed message connectors to connect, or that none exists. */
 const noAccount = (/** @type {State} */ s) =>
   s.installed.length
     ? `No chat account is connected yet. Connect ${anyOf(s.installed)} and your conversations show here.`
-    : "No installed connector brings messages yet.";
+    : NO_CONNECTOR;
 const can = (
   /** @type {State} */ s,
   /** @type {string} */ connector,
@@ -310,12 +308,14 @@ export function chromeOf(s) {
 /** The main area of the layout in use. @param {State} s @param {Clock} [clock] @returns {Main} */
 export function mainOf(s, clock = {}) {
   const connected = s.accounts.length > 0 || s.conversations.length > 0;
+  const connect = !connected && s.installed.length > 0;
   if (s.layout === "inbox") {
     const shown = new Set(visible(s).map((c) => c.key));
     const cards = cardsOf([...s.unread.values()], s.byKey)
       .filter((card) => shown.has(card.conversation.key))
       .map((card) => paneOf(s, card.conversation, undefined, card.messages, clock));
-    return { layout: "inbox", cards, empty: connected ? "You are all caught up." : noAccount(s) };
+    const empty = connected ? "You are all caught up." : noAccount(s);
+    return { layout: "inbox", cards, empty, connect };
   }
   if (s.layout === "timeline") {
     const filter = filterOf(s.filter)?.title ?? "All";
@@ -337,6 +337,7 @@ export function mainOf(s, clock = {}) {
       more: s.timeline.cursor !== undefined,
       loading: s.timeline.loading,
       empty,
+      connect,
     };
   }
   if (s.layout === "columns") {
@@ -346,6 +347,7 @@ export function mainOf(s, clock = {}) {
       layout: "columns",
       columns,
       empty: connected ? "No conversations yet." : noAccount(s),
+      connect,
     };
   }
   const c = s.current ? s.byKey.get(s.current) : undefined;
@@ -355,7 +357,7 @@ export function mainOf(s, clock = {}) {
     : s.conversations.length === 0
       ? "No conversations yet."
       : "Pick a conversation.";
-  return { layout: "conversation", pane, empty };
+  return { layout: "conversation", pane, empty, connect };
 }
 
 /** The thread beside the conversation. @param {State} s @param {Clock} [clock] @returns {ThreadModel | null} */

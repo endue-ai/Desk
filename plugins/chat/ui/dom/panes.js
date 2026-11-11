@@ -209,8 +209,22 @@ export function createPanes(doc, composers, quick) {
     return held.node;
   };
 
-  const emptyNode = (/** @type {string} */ text) =>
-    h(doc, "div", { class: "empty-state" }, h(doc, "p", { text }));
+  /** The words of an empty layout, and Connect an account when an installed connector can. */
+  const emptyNode = (/** @type {Main} */ m) =>
+    h(
+      doc,
+      "div",
+      { class: "empty-state" },
+      h(doc, "p", { text: m.empty }),
+      m.connect
+        ? h(doc, "button", {
+            type: "button",
+            class: "desk-btn desk-btn-primary",
+            "data-act": "connect",
+            text: "Connect an account",
+          })
+        : null,
+    );
 
   return {
     /** @param {Main} m */
@@ -218,7 +232,7 @@ export function createPanes(doc, composers, quick) {
       targets = new Set([...targets].filter((t) => t.startsWith("thread:")));
       main.dataset.layout = m.layout;
       if (m.layout === "conversation") {
-        main.replaceChildren(m.pane ? pane(m.pane, "conversation") : emptyNode(m.empty));
+        main.replaceChildren(m.pane ? pane(m.pane, "conversation") : emptyNode(m));
       } else if (m.layout === "inbox") {
         const cards = m.cards.map((c) => pane(c, "card"));
         main.replaceChildren(
@@ -234,13 +248,16 @@ export function createPanes(doc, composers, quick) {
                 : "",
             }),
           ),
-          m.cards.length ? h(doc, "div", { class: "cards" }, ...cards) : emptyNode(m.empty),
+          m.cards.length ? h(doc, "div", { class: "cards" }, ...cards) : emptyNode(m),
         );
       } else if (m.layout === "timeline") {
         const held = frame("timeline", "timeline", m.title);
         held.head.replaceChildren(h(doc, "h2", { text: m.title }));
         fill(held, m.rows, { where: true, stick: false });
-        if (m.rows.length === 0) held.log.append(h(doc, "p", { class: "empty", text: m.empty }));
+        if (m.rows.length === 0)
+          held.log.append(
+            m.connect ? emptyNode(m) : h(doc, "p", { class: "empty", text: m.empty }),
+          );
         held.foot.replaceChildren(
           m.more
             ? h(doc, "button", {
@@ -256,7 +273,7 @@ export function createPanes(doc, composers, quick) {
       } else {
         const columns = m.columns.map((c) => pane(c, "column"));
         main.replaceChildren(
-          m.columns.length ? h(doc, "div", { class: "columns" }, ...columns) : emptyNode(m.empty),
+          m.columns.length ? h(doc, "div", { class: "columns" }, ...columns) : emptyNode(m),
         );
       }
       const shown = new Set(

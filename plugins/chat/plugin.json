@@ -15,7 +15,8 @@
         "*.chat.read",
         "*.chat.edit",
         "*.chat.delete",
-        "desk.palette.pick"
+        "desk.palette.pick",
+        "desk.connectors.open"
       ]
     },
     { "permission": "ui:notify" },
@@ -121,6 +122,11 @@
         "id": "endue.chat.find",
         "title": "Find chat conversations",
         "keywords": ["chat", "find"]
+      },
+      {
+        "id": "endue.chat.connect",
+        "title": "Connect a chat account",
+        "keywords": ["chat", "connect", "account", "slack", "discord", "connector"]
       }
     ],
     "keys": [{ "key": "Mod+Shift+J", "command": "endue.chat.open" }],

@@ -133,3 +133,7 @@ export function initials(/** @type {string} */ name) {
       : [...(words[0] ?? "")].slice(0, 2).join("");
   return letters.toUpperCase();
 }
+
+/** Names as a sentence lists them: "Slack", "Slack or Discord", "Discord, Matrix or Slack". */
+export const anyOf = (/** @type {string[]} */ names) =>
+  names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} or ${names.at(-1)}`;

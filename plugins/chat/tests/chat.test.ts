@@ -158,24 +158,50 @@ describe("one place for every chat", () => {
     expect(params("connector.list")).toContainEqual({ scope: { permission: "connector:manage" } });
     const said =
       "No chat account is connected yet. Connect Slack and your conversations show here.";
-    expect(view.last().empty).toBe(said);
+    expect(view.last()).toMatchObject({ empty: said, connect: true });
     for (const layout of ["inbox", "columns", "timeline"]) {
       await app.command("endue.chat.layout", { layout });
-      expect(view.last()).toMatchObject({ layout, empty: said });
+      expect(view.last()).toMatchObject({ layout, empty: said, connect: true });
     }
   });
 
+  it("leads to the connectors that bring messages, or says where to connect one", async () => {
+    const handlers = installed(["acme.slack", "Slack", ["message"]]);
+    const ok = await mount({
+      items: [],
+      handlers,
+      commands: { "desk.connectors.open": () => ({ ok: true }) },
+    });
+    await ok.app.command("endue.chat.connect", {});
+    expect(ok.ran("desk.connectors.open")).toEqual([{ kinds: ["message"] }]);
+    // A desk without Settings' Connections says where to go instead.
+    const bare = await mount({ items: [], handlers });
+    await expect(bare.app.command("endue.chat.connect", {})).rejects.toThrow(
+      "Connect Slack from the desk's connectors first.",
+    );
+    expect(bare.view.statuses.at(-1)).toBe("Connect Slack from the desk's connectors first.");
+  });
+
   it("says no installed connector brings messages when none is installed", async () => {
-    const { app, view } = await mount({
+    const { app, view, ran } = await mount({
       items: [],
       handlers: installed(["desk.github", "GitHub", ["task"]]),
+      commands: { "desk.connectors.open": () => ({ ok: true }) },
     });
     const said = "No installed connector brings messages yet.";
-    expect(view.last()).toMatchObject({ layout: "conversation", pane: null, empty: said });
+    expect(view.last()).toMatchObject({
+      layout: "conversation",
+      pane: null,
+      empty: said,
+      connect: false,
+    });
     for (const layout of ["inbox", "columns", "timeline"]) {
       await app.command("endue.chat.layout", { layout });
-      expect(view.last()).toMatchObject({ layout, empty: said });
+      expect(view.last()).toMatchObject({ layout, empty: said, connect: false });
     }
+    // Nothing installed can bring messages: there is nothing to connect.
+    await expect(app.command("endue.chat.connect", {})).rejects.toThrow(said);
+    expect(ran("desk.connectors.open")).toEqual([]);
   });
 
   it("the palette finds conversations by name, workspace or service", async () => {

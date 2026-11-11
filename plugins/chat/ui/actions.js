@@ -4,7 +4,9 @@
 // provides `acme.slack.chat.send`, `.chat.react`, `.chat.read`, `.chat.edit` and `.chat.delete`;
 // views, Eris and agents run the same ids. Every failure is an Error whose message is the
 // sentence the person reads.
+import { anyOf } from "./format.js";
 import { safeHref } from "./markup.js";
+import { NO_CONNECTOR } from "./state.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -54,6 +56,15 @@ export const actionId = (/** @type {string} */ connector, /** @type {Action} */ 
 /** @param {Pick<PluginContext, "bridge" | "commands">} ctx */
 export function createActions({ bridge, commands }) {
   let asked = false;
+
+  /** The installed connectors that bring messages, by name, connected or not; none when unknown. */
+  const installed = async () => {
+    const listed = await bridge
+      .call("connector.list", { scope: CONNECTORS })
+      .catch(() => ({ connectors: [] }));
+    const bringing = listed.connectors.filter((c) => c.resources.some((r) => r.kind === "message"));
+    return [...new Set(bringing.map((c) => c.title ?? c.id))];
+  };
 
   /**
    * A read under the data:read scope; a refusal is asked for once per session, then said.
@@ -108,15 +119,24 @@ export function createActions({ bridge, commands }) {
         .sort();
     },
 
-    /** The installed connectors that bring messages, by name, connected or not; none when unknown. */
-    installed: async () => {
-      const listed = await bridge
-        .call("connector.list", { scope: CONNECTORS })
-        .catch(() => ({ connectors: [] }));
-      const bringing = listed.connectors.filter((c) =>
-        c.resources.some((r) => r.kind === "message"),
-      );
-      return [...new Set(bringing.map((c) => c.title ?? c.id))];
+    installed,
+
+    /**
+     * Lead the person to connecting an account: the desk's Connections, with the connectors that
+     * bring messages first. With none installed there is nothing to connect, which is said.
+     */
+    connect: async () => {
+      const names = await installed();
+      if (names.length === 0) throw new Error(NO_CONNECTOR);
+      try {
+        await commands.run("desk.connectors.open", { kinds: ["message"] });
+      } catch (error) {
+        throw new Error(
+          codeOf(error) === "unknown_command"
+            ? `Connect ${anyOf(names)} from the desk's connectors first.`
+            : `Could not open the connectors: ${whyOf(error)}`.replace(/\.?$/, "."),
+        );
+      }
     },
 
     /** Which actions each connector provides, by its command ids in the registry. */

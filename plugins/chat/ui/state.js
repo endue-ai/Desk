@@ -44,6 +44,8 @@ export const DEFAULTS = {
   density: "comfortable",
   "quick-reactions": /** @type {string[]} */ ([]),
 };
+/** What the plugin says when no installed connector brings messages: there is nothing to connect. */
+export const NO_CONNECTOR = "No installed connector brings messages yet.";
 export const NOTIFY = ["mentions", "all", "none"];
 export const DENSITIES = ["comfortable", "compact"];
 /** How many saved messages the plugin keeps and reads. */

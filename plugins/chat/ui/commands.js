@@ -27,7 +27,7 @@ import { asArgs, asString, conversationTarget, threadTarget } from "./state.js";
  *     setPlatform(id: string | null): Promise<string>, setSearch(text: string): Promise<string>,
  *     refresh(): Promise<void>, nextUnread(): Promise<string>,
  *     toggleSave(message: ChatMessage): boolean, togglePin(key: string): boolean,
- *     find(query: string, limit: number): unknown,
+ *     find(query: string, limit: number): unknown, connect(): Promise<void>,
  *   },
  * }} Deps
  */
@@ -230,6 +230,8 @@ export function registerCommands({ commands, surface, view, say, pick, writing, 
     return pinned;
   });
   answer("endue.chat.find", (a) => app.find(asString(a.query) ?? "", Number(a.limit) || 8));
+  // The empty state's Connect an account: Settings, Connections, message connectors first.
+  answer("endue.chat.connect", () => app.connect());
 
   return { command, ids: () => [...own.keys()] };
 }

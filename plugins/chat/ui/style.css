@@ -307,7 +307,8 @@ input[type="search"] {
 @media (max-width: 760px) {
   body,
   body[data-layout="conversation"][data-thread="open"] {
-    grid-template-columns: 1fr;
+    /* minmax(0, …): the bar's controls never lay the page out wider than its window. */
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto minmax(0, 1fr) auto;
     grid-template-areas:
       "bar"

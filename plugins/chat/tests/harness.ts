@@ -325,7 +325,7 @@ function tee(record: RecordingView, dom: View | undefined): View {
 export const READ: DataReadPermission = { permission: "data:read", kinds: ["message"] };
 export const INVOKE: CmdInvokePermission = {
   permission: "cmd:invoke",
-  ids: [...ACTIONS.map((a) => `*.chat.${a}`), "desk.palette.pick"],
+  ids: [...ACTIONS.map((a) => `*.chat.${a}`), "desk.palette.pick", "desk.connectors.open"],
 };
 
 /** connector.list answering these installed connectors, `[id, title, kinds]`, none connected. */

@@ -40,7 +40,11 @@ describe("plugin.json", () => {
     expect(chat.surfaces).toEqual([{ id: "main", title: "Chat", placement: "center" }]);
     expect(chat.permissions).toEqual([
       { permission: "data:read", kinds: ["message"] },
-      { permission: "cmd:invoke", ids: [...ACTION_PATTERNS, "desk.palette.pick"] },
+      // desk.connectors.open: the empty state's Connect an account (Settings, Connections).
+      {
+        permission: "cmd:invoke",
+        ids: [...ACTION_PATTERNS, "desk.palette.pick", "desk.connectors.open"],
+      },
       { permission: "ui:notify" },
       { permission: "shell:open", schemes: ["http", "https", "mailto"] },
       // connector.list: which installed connectors bring messages, for the empty state's words.
@@ -73,6 +77,7 @@ describe("plugin.json", () => {
         "save",
         "pin",
         "find",
+        "connect",
       ].map((n) => `${ID}.${n}`),
     );
     // What an agent cannot take back waits for the person (ADR 0078).
