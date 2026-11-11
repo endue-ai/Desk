@@ -1,12 +1,8 @@
 // @vitest-environment jsdom
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createView } from "../ui/view.js";
 import { at, chat, SLACK, sample } from "./chat-fixtures";
-import { type MountOptions, mount } from "./harness";
+import { drawn, loadPage } from "./page";
 
-const html = readFileSync(join(import.meta.dirname, "../ui/index.html"), "utf8");
 const $ = <T extends Element = HTMLElement>(selector: string) => {
   const found = document.querySelector<T>(selector);
   if (!found) throw new Error(`no ${selector}`);
@@ -20,43 +16,7 @@ const key = (target: EventTarget, init: KeyboardEventInit & { keyCode?: number }
   return event;
 };
 
-async function drawn(options: MountOptions = {}) {
-  return mount({
-    ...options,
-    dom: (app) =>
-      createView(document, {
-        command: (id, args) =>
-          app()
-            ?.command(id, args ?? {})
-            .catch(() => {}),
-        open: (k) =>
-          app()
-            ?.openConversation(k)
-            .catch(() => {}),
-        activate: (k) =>
-          app()
-            ?.activate(k)
-            .catch(() => {}),
-        select: (k) => app()?.select(k),
-        key: (name, where) => app()?.key(name, where) ?? false,
-        more: (where) => app()?.more(where),
-        type: (target, text) => app()?.type(target, text),
-        cancelEdit: () => app()?.cancelEdit() ?? false,
-        closeThread: () => app()?.closeThread() ?? false,
-        retry: (k) => app()?.retry(k),
-        discard: (k) => app()?.discard(k),
-        link: (url) => app()?.link(url),
-      }),
-  });
-}
-
-// A fresh body for every test, so no view of an earlier test still listens.
-beforeEach(() => {
-  const body = document.createElement("body");
-  body.innerHTML =
-    /<body[^>]*>([\s\S]*)<\/body>/.exec(html)?.[1]?.replace(/<script[\s\S]*?<\/script>/g, "") ?? "";
-  document.documentElement.replaceChild(body, document.body);
-});
+beforeEach(() => loadPage(document));
 
 describe("the page", () => {
   it("draws the services, filters and conversations, and opens one on a click", async () => {
