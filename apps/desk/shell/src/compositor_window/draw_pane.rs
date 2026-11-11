@@ -1,9 +1,9 @@
-//! What a plugin pane shows (#81, #54): its surface's frame, and its open popup over it (#156); a
-//! card over its last frame while it does not answer (Wait, Stop); its last frame greyed under a
-//! card with Reload while it sleeps (ADR 0134: the compositor keeps a surface's last texture when
-//! its process goes); a card instead of a frame while it has none (stopped, crashed, not painted
-//! yet). A card lets the pointer through to the page, but for its buttons, each of which runs its
-//! desk command for the plugin.
+//! What a plugin pane shows (#81, #54): its surface's frame, whose open popup is drawn whole once
+//! the layer is (#156, `draw_popup::flush`); a card over its last frame while it does not answer
+//! (Wait, Stop); its last frame greyed under a card with Reload while it sleeps (ADR 0134: the
+//! compositor keeps a surface's last texture when its process goes); a card instead of a frame
+//! while it has none (stopped, crashed, not painted yet). A card lets the pointer through to the
+//! page, but for its buttons, each of which runs its desk command for the plugin.
 
 use desk_compositor::glam::Vec2;
 use desk_compositor::{Chrome, NodeId, Rect, Scene, SceneError, SurfaceNode};
@@ -13,10 +13,12 @@ use super::draw::{CardButton, Drawn, Sources, pass, sampled, target};
 use super::hosted::Hosted;
 use super::report::Card;
 
-/// Where a plugin's surface goes: a group, the box in it, and the title a card names.
+/// Where a plugin's surface goes: a group, the box in it, the group's top left on the desk, and the
+/// title a card names.
 pub struct Into<'a> {
     pub group: NodeId,
     pub to: Rect,
+    pub at: Vec2,
     pub title: &'a str,
 }
 
@@ -116,7 +118,9 @@ pub fn surface(
     };
     let node = scene.insert(into.group, sampled(into.to, texture, from.scale))?;
     drawn.shown.push((node, target(host, Vec2::ZERO)));
-    super::draw_popup::over(scene, into.group, into.to, host, from, &mut drawn.shown)?;
+    drawn
+        .placed
+        .push((host.to_owned(), into.to.translate(into.at)));
     if state == FrameState::Late {
         shows(&card(""), chrome, scene, On::Late)?;
     }

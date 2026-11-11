@@ -95,11 +95,14 @@ impl CompositorWindow {
                 .map(|(_, open)| open.iter().copied().map(quad).collect())
                 .unwrap_or_default();
             let loads = self.hosted.frame(&plugin).map(|f| f.loads);
+            // Where its page was told it is, the screen its popups are placed in (#156).
+            let screen = self.host.told(&surface);
             surfaces.insert(
                 surface,
                 json!({ "plugin": plugin, "state": state, "asleep": asleep, "counts": counts,
                 "attached": attached.0, "refused": attached.1, "texture": texture,
-                "pieces": pieces, "loads": loads, "rect": placed.map(|(at, _)| quad(at)) }),
+                "pieces": pieces, "loads": loads, "rect": placed.map(|(at, _)| quad(at)),
+                "screen": screen }),
             );
         }
         let windows: Vec<Value> = (self.hosted.plan().map(|p| p.windows.as_slice()))

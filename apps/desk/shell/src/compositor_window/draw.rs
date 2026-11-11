@@ -14,8 +14,9 @@
 //! with the input router's target for it (#56); the compositor's own chrome lets the pointer
 //! through to the page, which finds what a press lands on, but for the cards' buttons, which run
 //! their commands. While the spread is open every window is a card at its pose instead
-//! (`draw_spread.rs`). A surface's open popup widget (a select's list, a picker) goes over the
-//! surface, the page's over everything (`draw_popup.rs`).
+//! (`draw_spread.rs`). A surface's open popup widget (a select's list, a picker) is drawn whole: a
+//! window's above every window and under the system layer, a system surface's over its layer, the
+//! page's over everything (`draw_popup.rs`).
 
 use desk_compositor::a11y::ChromeSpread;
 use desk_compositor::glam::{Mat4, Vec2, Vec3};
@@ -78,6 +79,12 @@ pub struct Drawn {
     /// The spread for assistive technology.
     pub spread: Option<ChromeSpread>,
     pub map: Option<MapDrawn>,
+    /// Each plugin surface drawn live, by host, and where (the web host's screens and the popups
+    /// over them, `draw_popup::flush`); how many of them had their popups drawn; and where those
+    /// are, by host.
+    pub placed: Vec<(String, Rect)>,
+    pub flushed: usize,
+    pub popups: Vec<(String, desk_wm::Rect)>,
 }
 
 pub(super) fn rect(r: desk_wm::Rect) -> Rect {
@@ -242,10 +249,12 @@ pub fn draw(
         }
         window(scene, &mut chrome, desk, w, hosted, from, &mut drawn)?;
     }
+    // The windows' popups, whole, above every window and under the system layer.
+    super::draw_popup::flush(scene, desk, whole, from, &mut drawn)?;
     // The canvas map with it, over the bars and under what the desk opens over them.
     super::system::draw(scene, &mut chrome, desk, plan, hosted, from, &mut drawn)?;
     // The page's own popup (a list in the settings, say) over everything it lays out.
-    super::draw_popup::over(scene, desk, whole, PAGE, from, &mut drawn.shown)?;
+    super::draw_popup::over(scene, desk, (whole, whole), PAGE, from, &mut drawn.shown)?;
     Ok(drawn)
 }
 
@@ -294,6 +303,7 @@ pub(super) fn window(
             let into = Into {
                 group: made.group,
                 to: local(pane.body),
+                at: at.min(),
                 title: &pane.title,
             };
             surface(scene, chrome, &into, plugin, hosted, from, drawn)?;

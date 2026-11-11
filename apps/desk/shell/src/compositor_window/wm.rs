@@ -76,6 +76,8 @@ pub struct Gestures {
     pressed: Option<NodeId>,
     /// An Escape the window manager took: its release goes nowhere either.
     escape: bool,
+    /// The popups drawn, and a press on one, which the window manager never hears (#156).
+    pub popups: super::input::popup_input::PopupPress,
 }
 
 impl CompositorWindow {

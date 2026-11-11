@@ -22,7 +22,9 @@
 //! windows, but where an edge bar's surface lies under it, so the bar's plugin hears its own
 //! presses; over a window the pointer goes to what the window shows, and the page hears the press
 //! there as well (ADR 0150). A window under an edge bar is under it whole: what the page draws of
-//! it (its icon, its tools, its own views) is drawn with the window, never above the bar.
+//! it (its icon, its tools, its own views) is drawn with the window, never above the bar. A
+//! window's popup, drawn above every window and under this layer, may lie past its window or over
+//! another's tools the page draws: the page's own pieces leave out its box (`draw_popup.rs`).
 
 use desk_compositor::glam::Vec2;
 use desk_compositor::{Chrome, NodeId, Rect, RectNode, Scene, SceneError};
@@ -116,7 +118,13 @@ pub fn draw(
     let split = pieces(&plan.page, hosted);
     let windows: Vec<desk_wm::Rect> = plan.windows.iter().map(|w| w.rect).collect();
     let bars = edges(hosted);
-    for piece in &split.page {
+    // A window's popup lies above the page's own pieces, which show windows' parts or nothing
+    // there, and may reach past its window: it is drawn there, and hears the pointer.
+    let popups: Vec<desk_wm::Rect> = drawn.popups.iter().map(|(_, at)| *at).collect();
+    let own: Vec<desk_wm::Rect> = (split.page.iter())
+        .flat_map(|p| subtract(*p, &popups))
+        .collect();
+    for piece in &own {
         for open in subtract(*piece, &windows) {
             for clear in subtract(open, &bars) {
                 page_part(
@@ -225,12 +233,18 @@ pub(super) fn plugin_surfaces(
         let into = Into {
             group: desk,
             to: at,
+            at: Vec2::ZERO,
             title: &frame.plugin,
         };
         surface(scene, chrome, &into, &frame.plugin, hosted, from, drawn)?;
         drawn.order.push(frame.plugin.clone());
     }
-    Ok(())
+    // Their popups, whole, over the layer.
+    let screen = hosted.plan().map(|p| p.screen);
+    let whole = screen.map_or(Rect::new(0.0, 0.0, 0.0, 0.0), |s| {
+        Rect::new(0.0, 0.0, s.w as f32, s.h as f32)
+    });
+    super::draw_popup::flush(scene, desk, whole, from, drawn)
 }
 
 #[cfg(test)]

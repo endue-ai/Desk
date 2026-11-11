@@ -1,11 +1,13 @@
 //! Laying the compositor window's scene out again (#81, #54): from the hosted desk, the frames the
 //! surfaces attached, the spread while it is open and the canvas map with its thumbnails (refreshed
 //! here, under the compositor's lock, at most ten times a second); then what the scene drew goes to
-//! the input router, the window manager's cards, the spread, the map and accessibility.
+//! the input router, the window manager's cards, the spread, the map and accessibility, and where
+//! it drew each plugin surface to the web host, the screen its popups are placed in (#156).
 
 use std::time::Instant;
 
 use super::{CompositorWindow, PAGE, draw, draw_map};
+use crate::web_host::render::popup_screen::App;
 
 impl CompositorWindow {
     /// Lay the scene out again from the hosted desk and the frames the surfaces attached, and tell
@@ -69,6 +71,18 @@ impl CompositorWindow {
         self.spreading.bar = drawn.bar;
         self.mapping.drawn = drawn.map;
         self.mapping.layout = layout;
+        self.gestures.popups.boxes = drawn.popups;
+        if let Some(plan) = self.hosted.plan() {
+            let placed: Vec<(String, (f32, f32))> = (drawn.placed.into_iter())
+                .map(|(host, at)| (host, (at.x, at.y)))
+                .collect();
+            let free = plan.bars.free;
+            let app = App::new(
+                (plan.screen.w, plan.screen.h),
+                [free.x, free.y, free.w, free.h],
+            );
+            self.host.placed(&placed, app, Instant::now());
+        }
         self.register(drawn.shown);
         self.tip_draw();
     }

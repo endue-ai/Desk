@@ -20,6 +20,8 @@ impl CompositorWindow {
     pub(super) fn begin_frames(&mut self, now: Instant) {
         self.begin_due = self.host.begin_frames(now);
         self.desk.pump.looked(now, self.begin_due);
+        // A page whose window came to rest somewhere new hears its screen (#156, popups).
+        self.host.tell_screens(now);
     }
 
     /// The pump's stand-in looks at the same clock from its own thread (#129).

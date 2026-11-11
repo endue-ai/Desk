@@ -64,6 +64,8 @@ pub struct View {
     pub a11y: a11y::Exports,
     /// Its page's popup widget, while one is open (#156).
     pub popup: super::render::popup::Popup,
+    /// Where the compositor draws it in the app window, its screen, and what its browser was told.
+    pub screen: super::render::popup_screen::Screen,
 }
 
 impl View {
@@ -82,6 +84,7 @@ impl View {
             screen_scale: scale,
             a11y: Default::default(),
             popup: Default::default(),
+            screen: Default::default(),
         }
     }
 
@@ -103,6 +106,10 @@ impl View {
     pub fn rescaled(&mut self) -> bool {
         let changed = self.screen_scale != self.scale;
         self.screen_scale = self.scale;
+        if changed {
+            let paints = super::render::popup_screen::paints(self);
+            self.screen.tell(paints);
+        }
         changed
     }
 

@@ -13,7 +13,7 @@ use std::time::Instant;
 use cef::ImplBrowser;
 use desk_compositor::Rect;
 use desk_compositor::input::keymap::{KeyEntry, KeyLike, Platform};
-use desk_compositor::input::{Area, Input, Out, PageFocus};
+use desk_compositor::input::{Input, Out, PageFocus};
 use desk_surface::generated::{CompositorMessage, SurfaceMessage};
 use desk_web::sender::Role;
 use serde::Deserialize;
@@ -53,10 +53,13 @@ impl CompositorWindow {
             self.compose();
         }
         self.tip_input(&input);
-        if self.wm_input(&input) {
+        // A press on a popup widget, and what follows it, is its surface's alone (#156).
+        let popup = self.popup_input(&input);
+        if !popup && self.wm_input(&input) {
             return;
         }
         let outs = self.router.handle(&self.scene, &input, Instant::now());
+        let outs = if popup { Self::popup_outs(outs) } else { outs };
         self.apply(event_loop, outs);
     }
 
@@ -200,19 +203,9 @@ impl CompositorWindow {
         // Each window covers what lies under it (issue 159, finding 5); not on the spread's cards.
         if let Some(plan) = self.hosted.plan().filter(|_| self.spreading.open.is_none()) {
             let made = self.hosted.surfaces().made();
-            let areas = (plan.windows.iter()).map(|w| Area {
-                rect: Rect::new(
-                    w.rect.x as f32 * scale,
-                    w.rect.y as f32 * scale,
-                    w.rect.w as f32 * scale,
-                    w.rect.h as f32 * scale,
-                ),
-                surfaces: (w.panes.iter().filter_map(|p| p.plugin.as_deref()))
-                    .flat_map(|plugin| made.iter().filter(move |(_, of, _)| of == plugin))
-                    .map(|(host, _, _)| host.clone())
-                    .collect(),
-            });
-            router.targets.set_areas(PAGE, areas.collect());
+            let popups = &self.gestures.popups.boxes;
+            let areas = popup_input::areas(&plan.windows, &made, popups, scale);
+            router.targets.set_areas(PAGE, areas);
         }
         let focused = router.focused().filter(|s| *s != PAGE).map(str::to_owned);
         // The ring goes round the pane the focused surface shows in, while it is drawn.
@@ -264,3 +257,6 @@ impl CompositorWindow {
         })
     }
 }
+
+#[path = "popup_input.rs"]
+pub(super) mod popup_input;

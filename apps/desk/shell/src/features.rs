@@ -12,17 +12,29 @@
 //! signature valid while an update replaces its bundle underneath it, which the desk never runs
 //! through: it quits as soon as it has applied an update and starts the new one (ADR 0147). A desk
 //! that was killed left its copy behind for good, holding the replaced build's files on disk.
+//!
+//! Everywhere: Chromium's `LimitPopupWidgetHostPosition` keeps the top of a page's popup widget (a
+//! select's list, a date, time or colour picker) at or below the top of the page's view, the line
+//! of death under a browser's address bar (crbug.com/424995036). On the desk a view is a window's
+//! pane, so a picker in a window low in the app could not open above its field: it covered the
+//! field and ran on past the app's bottom (#156, B6b). Here a popup lies past its pane as it would
+//! on a desktop, above the windows, and the desk's own bars, notices, dialogs and prompts are drawn
+//! above every popup (`compositor_window/draw_popup.rs`), so no page's popup covers what the desk
+//! says.
 
 use cef::{CefString, ImplCommandLine};
 
 /// The switch Chromium reads the features to turn off from.
 pub const SWITCH: &str = "disable-features";
 
+/// Chromium's limit on where a page's popup widget may go.
+const POPUP_LIMIT: &str = "LimitPopupWidgetHostPosition";
+
 /// The features the desk turns off on this OS, by Chromium's names.
 pub const DISABLED: &[&str] = if cfg!(target_os = "macos") {
-    &["MacAppCodeSignClone"]
+    &["MacAppCodeSignClone", POPUP_LIMIT]
 } else {
-    &[]
+    &[POPUP_LIMIT]
 };
 
 /// `--disable-features` holding what it held (`given`, comma-separated as Chromium writes it) and
@@ -66,6 +78,11 @@ mod tests {
             DISABLED.contains(&"MacAppCodeSignClone"),
             cfg!(target_os = "macos")
         );
+    }
+
+    #[test]
+    fn everywhere_a_pages_popup_may_open_above_the_top_of_its_view() {
+        assert!(DISABLED.contains(&"LimitPopupWidgetHostPosition"));
     }
 
     #[test]

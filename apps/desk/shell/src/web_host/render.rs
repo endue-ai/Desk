@@ -5,14 +5,17 @@
 //! Software paints (no GPU: CI's path) are uploaded and attached the same way. A popup widget's
 //! paints (a select's list, a picker) are attached as a surface of their own, placed over the view
 //! (`popup.rs`, #156), the host's other browsers making room for its first frame (`popup_room.rs`,
-//! the `room`). For input (#56) it says the composition's character boxes (`ime.caret`),
-//! whether an editable element has the focus (`ime.enabled`), and hands the drags the page's engine
-//! starts to the compositor's broker.
+//! the `room`); the view's screen is the app window, the view at its place in it, so a popup lies
+//! where it would on a desktop (`popup_screen.rs`). For input (#56) it says the composition's
+//! character boxes (`ime.caret`), whether an editable element has the focus (`ime.enabled`), and
+//! hands the drags the page's engine starts to the compositor's broker.
 
 #[path = "popup.rs"]
 pub mod popup;
 #[path = "popup_room.rs"]
 pub mod popup_room;
+#[path = "popup_screen.rs"]
+pub mod popup_screen;
 
 use std::sync::Arc;
 
@@ -37,20 +40,21 @@ wrap_render_handler! {
             Some(super::view::a11y::handler(&self.view, &self.sink))
         }
 
+        // Where the view is on its screen, the app window (`popup_screen.rs`): Chromium places a
+        // popup from there and hands its place back less this origin, in the view's pixels.
         fn view_rect(&self, _browser: Option<&mut Browser>, rect: Option<&mut Rect>) {
             if let Some(rect) = rect {
-                let (width, height) = self.view.lock().size;
-                *rect = Rect { x: 0, y: 0, width: width.max(1) as i32, height: height.max(1) as i32 };
+                let view = self.view.lock();
+                *rect = view.screen.view_rect(view.size);
             }
         }
 
+        // The app window, its free area where a popup may lie past the view (`popup_screen.rs`).
         fn screen_info(&self, _browser: Option<&mut Browser>, info: Option<&mut ScreenInfo>) -> ::std::os::raw::c_int {
             let Some(info) = info else { return 0 };
             let view = self.view.lock();
             info.device_scale_factor = view.scale;
-            let screen = Rect { x: 0, y: 0, width: view.size.0 as i32, height: view.size.1 as i32 };
-            info.rect = screen.clone();
-            info.available_rect = screen;
+            (info.rect, info.available_rect) = view.screen.rects(view.size);
             1
         }
 
