@@ -4,14 +4,17 @@
 //! cmd.undo runs the newest entry's inverse with `{ args, result }` (a write: restores its version;
 //! a file operation: `core_fs::undo` reverses it) and moves it to the redo side, which cmd.redo
 //! walks back and a new entry clears. Inverses and redos the stack runs push nothing of their own,
-//! but a redone command's answer lands on the stack again. Kept in memory: 200 entries.
+//! but a redone command's answer lands on the stack again. A command's entry whose inverse cannot
+//! start for any reason but a refusal to the caller (it is not registered any more, it does not
+//! accept the args) leaves the stack with the error, so it never blocks the entries before it.
+//! Kept in memory: 200 entries.
 
 use std::collections::VecDeque;
 use std::sync::MutexGuard;
 
 use desk_bridge::{
     BridgeError, BridgeEvent, CmdRedoParams, CmdRedoResult, CmdUndoParams, CmdUndoResult,
-    CmdUndoneData, CmdUndoneEvent, EventName, Permission, UndoEntry,
+    CmdUndoneData, CmdUndoneEvent, ErrorCode, EventName, Permission, UndoEntry,
 };
 use desk_plugin_host::rfc3339;
 use serde_json::{Map, Value, json};
@@ -36,6 +39,14 @@ pub(crate) struct Stacks {
 /// Whether `entry` is a write the core kept a version of: undone and redone by restoring one.
 fn is_write(entry: &UndoEntry) -> bool {
     entry.inverse == RESTORE && matches!(entry.command.as_str(), "fs.write" | "fs.restore")
+}
+
+/// Whether `entry` stays on the stack after its undo failed with `why`. A write and a file operation
+/// stay (ADR 0076, 0125): the person can clear the way and undo again. A command's entry stays when
+/// its inverse was refused to this caller (another caller, or the person's later yes, may run it);
+/// an inverse that is gone or refuses the entry's `{ args, result }` never will.
+fn stays(entry: &UndoEntry, why: &BridgeError) -> bool {
+    is_write(entry) || is_fs_op(entry) || why.code == ErrorCode::PermissionDenied
 }
 
 /// `entry` with `result.version` set to `version`.
@@ -107,9 +118,16 @@ impl Core {
                 self.stacks().redo.extend(redo);
                 invocation
             }
-            Err(why) => {
+            Err(why) if stays(&entry, &why) => {
                 self.stacks().undo.push_back(entry);
                 return Err(why);
+            }
+            Err(why) => {
+                let message = format!(
+                    "{} cannot be undone, so it left the undo stack: {}",
+                    entry.command, why.message
+                );
+                return Err(BridgeError { message, ..why });
             }
         };
         self.undone(caller, &entry, false);

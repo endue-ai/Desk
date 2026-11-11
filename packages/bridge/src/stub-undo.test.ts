@@ -98,6 +98,27 @@ describe("the stub's undo stack", () => {
     expect(await read()).toBe("# two");
   });
 
+  it("drops an entry whose inverse is gone, so the one before is next", async () => {
+    const { bridge } = desk();
+    for (const [id, undo] of [
+      ["example.notes.delete", "example.notes.restore"],
+      ["example.notes.pin", "example.notes.unpin"],
+    ] as const) {
+      await bridge.call("cmd.register", { id, title: id, undo }, NOTES);
+      await bridge.call("cmd.register", { id: undo, title: undo }, NOTES);
+      const { invocationId } = await bridge.call("cmd.invoke", { id, scope: ALL });
+      await bridge.call("cmd.answer", { invocationId, result: id }, NOTES);
+    }
+    await bridge.call("cmd.unregister", { id: "example.notes.unpin" }, NOTES);
+    await expect(bridge.call("cmd.undo", { scope: ALL })).rejects.toMatchObject({
+      code: "not_found",
+      message: expect.stringContaining("example.notes.pin cannot be undone"),
+    });
+    expect((await bridge.call("cmd.undo", { scope: ALL })).undone?.command).toBe(
+      "example.notes.delete",
+    );
+  });
+
   it("needs a scope covering the inverse, and the entry stays", async () => {
     const { bridge } = desk();
     await bridge.call(

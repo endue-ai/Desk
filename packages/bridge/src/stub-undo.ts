@@ -2,9 +2,10 @@
  * The stub's undo stack (ADR 0077), one for the desk as the core keeps it: an ok answer of a command
  * that names an `undo` lands on it, and so does a write that kept a version (stub-history.ts);
  * cmd.undo runs the newest entry's inverse with `{ args, result }` (a write: restores its version)
- * and cmd.redo runs it again. A new entry clears what is left to redo; 200 entries at most.
+ * and cmd.redo runs it again. A new entry clears what is left to redo; 200 entries at most. A
+ * command's entry whose inverse cannot be invoked any more leaves the stack with the error.
  */
-import type { StubHandlers } from "./adapters";
+import { StubError, type StubHandlers } from "./adapters";
 import type { BridgeEvent, CmdInvokePermission, Permission, UndoEntry } from "./generated";
 import { starMatch } from "./stub-covers";
 
@@ -103,8 +104,14 @@ export function stubUndo(host: Host) {
         done(caller, top, false);
         return { undone: top, invocationId };
       } catch (error) {
-        undo.push(top);
-        throw error;
+        // As the core: a write, and an inverse refused to this caller, stay; a command's entry
+        // whose inverse is gone leaves the stack, so it never blocks the ones before it.
+        if (isWrite(top) || !(error instanceof StubError) || error.code === "permission_denied") {
+          undo.push(top);
+          throw error;
+        }
+        const why = `${top.command} cannot be undone, so it left the undo stack: ${error.message}`;
+        throw new StubError(error.code, why, error.permission);
       }
     },
     "cmd.redo": async ({ scope }, caller) => {

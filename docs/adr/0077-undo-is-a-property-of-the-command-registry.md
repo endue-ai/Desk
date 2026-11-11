@@ -50,6 +50,12 @@ registry already sees every invocation and its answer.
   reach the same stack.
 * An agent's undo is held for the person like its other calls: the inverse's invocation, or the
   restore's write (ADR 0078).
+* Update (2026-11-12, #163): the inverse is invoked as any command is, so its `argsSchema` must
+  accept `{ args, result }`. A command's entry whose inverse cannot be invoked for any reason but a
+  refusal to the caller (`permission_denied`: the scope, or the person's no to an agent) leaves the
+  stack with the error, which names the command: an inverse that is no longer registered or refuses
+  the args never will run, and it blocked every older entry. Writes and file operations stay, as
+  before (ADR 0125): the person can clear the way and undo again.
 
 ### Consequences
 

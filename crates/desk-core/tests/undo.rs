@@ -249,6 +249,62 @@ fn undo_needs_a_cmd_invoke_scope_covering_the_inverse() {
     assert_eq!(undo(&core, "desk").unwrap()["undone"]["command"], DELETE);
 }
 
+/// Register `id`, undone by `inverse`, and `inverse` with `args_schema` (none: unchecked args).
+fn register_pair(core: &Core, id: &str, inverse: &str, args_schema: Option<Value>) {
+    let params = json!({ "id": id, "title": id, "undo": inverse });
+    call(core, NOTES, "cmd.register", params).unwrap();
+    let mut params = json!({ "id": inverse, "title": inverse });
+    if let Some(schema) = args_schema {
+        params["argsSchema"] = schema;
+    }
+    call(core, NOTES, "cmd.register", params).unwrap();
+}
+
+#[test]
+fn an_entry_whose_inverse_cannot_run_leaves_the_stack_and_the_one_before_is_next() {
+    let (core, deliveries, _) = desk("undo-blocked");
+    // An inverse whose declared args refuse the { args, result } cmd.undo hands it.
+    let none = json!({ "type": "object", "properties": {}, "additionalProperties": false });
+    register_pair(
+        &core,
+        "example.notes.tile",
+        "example.notes.untile",
+        Some(none),
+    );
+    // An inverse that is gone by the time of the undo (its plugin turned off).
+    register_pair(&core, "example.notes.pin", "example.notes.unpin", None);
+    let ok = |id: &str, n: i64| run(&core, "desk", id, json!({ "n": n }), Ok(json!(n)));
+    ok(DELETE, 1);
+    ok("example.notes.pin", 2);
+    ok("example.notes.tile", 3);
+    call(
+        &core,
+        NOTES,
+        "cmd.unregister",
+        json!({ "id": "example.notes.unpin" }),
+    )
+    .unwrap();
+
+    let refused = undo(&core, "desk").unwrap_err();
+    assert_eq!(refused.code, ErrorCode::InvalidParams, "{refused:?}");
+    assert!(
+        refused.message.contains("example.notes.tile"),
+        "{refused:?}"
+    );
+    let gone = undo(&core, "desk").unwrap_err();
+    assert_eq!(gone.code, ErrorCode::NotFound, "{gone:?}");
+    assert!(gone.message.contains("example.notes.pin"), "{gone:?}");
+    // Neither blocks the entry before them, and neither waits on the redo side.
+    let undone = undo(&core, "desk").unwrap();
+    assert_eq!(undone["undone"]["command"], DELETE);
+    assert_eq!(
+        invoked_args(&deliveries, RESTORE),
+        json!({ "args": { "n": 1 }, "result": 1 })
+    );
+    assert_eq!(redo(&core, "desk").unwrap()["undone"]["command"], DELETE);
+    assert!(redo(&core, "desk").unwrap().get("undone").is_none());
+}
+
 #[test]
 fn the_stack_keeps_200_entries() {
     let (core, _, _) = desk("undo-200");
