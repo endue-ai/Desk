@@ -1,8 +1,9 @@
 /**
  * Settings, Market (ADR 0107): every kind the markets offer (market.list), in groups by kind, each
- * with its publisher, licence, version and whether it comes from the endue index. Installing shows
- * the permissions it would add and asks before plugin.install runs; code that is not verified does not
- * install. What the market installed can be removed (plugin.remove).
+ * with its publisher, licence, version and whether it comes from the endue index. Install always
+ * asks first, saying what it would be allowed (or that it asks for nothing) and where an entry that
+ * is not verified comes from, before plugin.install runs; code that is not verified does not install.
+ * What the market installed can be removed (plugin.remove), after a question too.
  */
 import {
   BridgeCallError,
@@ -10,6 +11,7 @@ import {
   type MarketListing,
   type Permission,
 } from "@endue-ai/bridge";
+import { permissionWords } from "../describe/words";
 import { h, render } from "../shell/dom";
 import type { SettingsLanguage } from "./copy";
 
@@ -30,7 +32,13 @@ const COPY = {
   remove: ["제거", "Remove"],
   installed: ["설치됨", "Installed"],
   asks: ["설치하면 다음을 허락합니다:", "Installing it allows:"],
+  nothing: ["허락할 권한이 없습니다.", "It asks for no permissions."],
+  from: ["확인되지 않은 마켓에서 옵니다:", "Not verified: it comes from"],
   allow: ["허락하고 설치", "Allow and install"],
+  removeAsk: [
+    "제거할까요? 여기서 다시 설치할 수 있습니다.",
+    "Remove it? You can install it again here.",
+  ],
   cancel: ["취소", "Cancel"],
   empty: ["마켓에 아무것도 없습니다.", "The markets offer nothing yet."],
   code: ["코드는 endue 마켓에서만 설치합니다.", "Code installs from the endue market only."],
@@ -53,10 +61,22 @@ export function permissionText(permission: Permission, language: SettingsLanguag
       return ko ? `파일 읽기: ${list(p.paths)}` : `Read files: ${list(p.paths)}`;
     case "fs:write":
       return ko ? `파일 쓰기: ${list(p.paths)}` : `Write files: ${list(p.paths)}`;
-    default:
-      return p.permission;
+    default: {
+      if (ko) return p.permission;
+      const words = permissionWords(permission);
+      return words.charAt(0).toUpperCase() + words.slice(1);
+    }
   }
 }
+
+/** Where a market index is, by its host. */
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+};
 
 export function mountMarket(options: { bridge: BridgeClient; language: SettingsLanguage }): {
   el: HTMLElement;
@@ -68,7 +88,8 @@ export function mountMarket(options: { bridge: BridgeClient; language: SettingsL
   const tr = (key: Copy) => COPY[key][language === "ko" ? 0 : 1];
   const el = h("div", { class: "settings-panel-body settings-market" });
   let entries: MarketListing[] = [];
-  let asking: string | undefined;
+  /** The entry whose question is open: to install it, or to remove it. */
+  let asking: { id: string; remove: boolean } | undefined;
   const alerts = new Map<string, string>();
   let pending: Promise<void> = Promise.resolve();
   let disposed = false;
@@ -88,7 +109,12 @@ export function mountMarket(options: { bridge: BridgeClient; language: SettingsL
       try {
         await work();
       } catch (error) {
-        alerts.set(id, error instanceof BridgeCallError ? error.message : String(error));
+        // The core's own words, without the "plugin.install: invalid_params: " a call error starts with.
+        const said = error instanceof Error ? error.message : String(error);
+        alerts.set(
+          id,
+          error instanceof BridgeCallError ? said.replace(/^[a-z.]+: [a-z_]+: /, "") : said,
+        );
       }
       await load();
     });
@@ -106,8 +132,19 @@ export function mountMarket(options: { bridge: BridgeClient; language: SettingsL
       }),
     );
   };
+  const remove = (listing: MarketListing) => {
+    asking = undefined;
+    const id = listing.entry.id;
+    void queue(id, () => bridge.call("plugin.remove", { plugin: id, scope: SCOPE }));
+  };
+  const askFor = (listing: MarketListing, removing: boolean) => {
+    asking = { id: listing.entry.id, remove: removing };
+    draw();
+  };
   const actions = (listing: MarketListing) => {
-    const { entry, state, verified, added } = listing;
+    const { entry, state, verified } = listing;
+    // While its question is open, the question's own buttons are the row's.
+    if (asking?.id === entry.id) return h("div", { class: "connection-actions" });
     const blocked = entry.kind === "plugin" && !verified;
     const buttons: HTMLElement[] = [];
     if (state !== "installed") {
@@ -120,13 +157,7 @@ export function mountMarket(options: { bridge: BridgeClient; language: SettingsL
             class: "btn btn-xs btn-primary",
             disabled: blocked,
             title: blocked ? tr("code") : undefined,
-            onClick: () => {
-              if (added.length === 0) install(listing);
-              else {
-                asking = entry.id;
-                draw();
-              }
-            },
+            onClick: () => askFor(listing, false),
           },
           label,
         ),
@@ -138,36 +169,40 @@ export function mountMarket(options: { bridge: BridgeClient; language: SettingsL
       buttons.push(
         h(
           "button",
-          {
-            type: "button",
-            class: "btn btn-xs btn-outline",
-            onClick: () =>
-              void queue(entry.id, () =>
-                bridge.call("plugin.remove", { plugin: entry.id, scope: SCOPE }),
-              ),
-          },
+          { type: "button", class: "btn btn-xs btn-outline", onClick: () => askFor(listing, true) },
           tr("remove"),
         ),
       );
     return h("div", { class: "connection-actions" }, buttons);
   };
-  const ask = (listing: MarketListing) =>
-    h(
+  /** The question before an install (what it would be allowed, where it comes from) or a remove. */
+  const ask = (listing: MarketListing, removing: boolean) => {
+    const { added, verified, market } = listing;
+    const said = removing ? tr("removeAsk") : added.length ? tr("asks") : tr("nothing");
+    const yes = removing ? tr("remove") : added.length ? tr("allow") : tr("install");
+    return h(
       "div",
-      { class: "market-ask", role: "alertdialog", "aria-label": tr("asks") },
-      h("p", {}, tr("asks")),
-      h(
-        "ul",
-        {},
-        listing.added.map((p) => h("li", {}, permissionText(p, language))),
-      ),
+      { class: "market-ask", role: "alertdialog", "aria-label": said },
+      h("p", {}, said),
+      !removing && added.length
+        ? h(
+            "ul",
+            {},
+            added.map((p) => h("li", {}, permissionText(p, language))),
+          )
+        : null,
+      !removing && !verified ? h("p", {}, `${tr("from")} ${hostOf(market)}`) : null,
       h(
         "div",
         { class: "connection-actions" },
         h(
           "button",
-          { type: "button", class: "btn btn-xs btn-primary", onClick: () => install(listing) },
-          tr("allow"),
+          {
+            type: "button",
+            class: `btn btn-xs ${removing ? "btn-outline" : "btn-primary"}`,
+            onClick: () => (removing ? remove(listing) : install(listing)),
+          },
+          yes,
         ),
         h(
           "button",
@@ -183,6 +218,7 @@ export function mountMarket(options: { bridge: BridgeClient; language: SettingsL
         ),
       ),
     );
+  };
   const card = (listing: MarketListing) => {
     const { entry, verified, state, installed } = listing;
     const status =
@@ -209,7 +245,7 @@ export function mountMarket(options: { bridge: BridgeClient; language: SettingsL
           ` · ${entry.publisher} · ${entry.license} · ${status}`,
         ),
         entry.description ? h("p", {}, entry.description) : null,
-        asking === entry.id ? ask(listing) : null,
+        asking?.id === entry.id ? ask(listing, asking.remove) : null,
         alerts.has(entry.id)
           ? h("p", { class: "connection-alert", role: "alert" }, alerts.get(entry.id))
           : null,

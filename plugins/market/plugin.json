@@ -3,7 +3,7 @@
   "name": "Market",
   "version": "0.1.0",
   "kind": "policy",
-  "description": "Where the market for every kind reads from: views, packs and plugins, beside the theme and design system markets (ADR 0107).",
+  "description": "Where the market for every kind reads from: views, packs and plugins, beside the theme and design system markets.",
   "contributes": {
     "settings": {
       "desk.market.indexes": {

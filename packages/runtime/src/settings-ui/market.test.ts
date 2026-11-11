@@ -1,16 +1,18 @@
 // @vitest-environment jsdom
-// Settings, Market (ADR 0107): every kind the markets offer in one list, verified or not, the
-// permissions an install adds shown and asked before it runs, code that is not verified not
-// installable, and remove for what the market installed. The bridge answers as the core does.
+// Settings, Market (ADR 0107): every kind the markets offer in one list, verified or not, every
+// install asked before it runs with the permissions it adds (or none) and where an unverified one
+// comes from, code that is not verified not installable, and remove, asked too, for what the market
+// installed (07 #15). The bridge answers as the core does.
 import {
   BridgeClient,
   browserStub,
   type MarketListing,
   type Permission,
+  StubError,
   type StubHandlers,
 } from "@endue-ai/bridge";
 import { afterEach, describe, expect, it } from "vitest";
-import { mountMarket } from "./market";
+import { mountMarket, permissionText } from "./market";
 
 const ENDUE = "https://raw.githubusercontent.com/endue-ai/Desk/main/market/views/index.json";
 const ACME = "https://market.acme.test/index.json";
@@ -102,10 +104,28 @@ describe("Settings, Market", () => {
     panel.dispose();
   });
 
-  it("installs at once when it adds no permission", async () => {
+  it("asks before an install that adds no permission too, and says it asks for none", async () => {
     const { panel, calls } = mount();
     await panel.ready;
     button(card(panel.el, "market.week-ahead"), "Install")?.click();
+    await panel.idle();
+    expect(calls, "nothing installs on the first press").toEqual([]);
+    const asked = card(panel.el, "market.week-ahead").querySelector('[role="alertdialog"]');
+    expect(asked?.textContent).toContain("It asks for no permissions.");
+    // Verified: no line about where it comes from.
+    expect(asked?.textContent).not.toContain("Not verified");
+    button(card(panel.el, "market.week-ahead"), "Cancel")?.click();
+    await panel.idle();
+    expect(calls).toEqual([]);
+    expect(card(panel.el, "market.week-ahead").querySelector('[role="alertdialog"]')).toBeNull();
+
+    button(card(panel.el, "market.week-ahead"), "Install")?.click();
+    // The question's own Install is the only one while it is open.
+    const installs = [...card(panel.el, "market.week-ahead").querySelectorAll("button")].filter(
+      (b) => b.textContent === "Install",
+    );
+    expect(installs).toHaveLength(1);
+    installs[0]?.click();
     await panel.idle();
     expect(calls).toEqual([
       {
@@ -131,6 +151,8 @@ describe("Settings, Market", () => {
     expect(calls).toEqual([]);
     const asked = card(panel.el, "acme.board").querySelector('[role="alertdialog"]');
     expect(asked?.textContent).toContain("Read your tasks");
+    // Not verified: where it comes from.
+    expect(asked?.textContent).toContain("Not verified: it comes from market.acme.test");
     button(card(panel.el, "acme.board"), "Cancel")?.click();
     expect(card(panel.el, "acme.board").querySelector('[role="alertdialog"]')).toBeNull();
     button(card(panel.el, "acme.board"), "Install")?.click();
@@ -150,11 +172,17 @@ describe("Settings, Market", () => {
     panel.dispose();
   });
 
-  it("removes what the market installed", async () => {
+  it("removes what the market installed, after asking", async () => {
     const { panel, calls } = mount();
     await panel.ready;
     button(card(panel.el, "market.week-ahead"), "Install")?.click();
+    button(card(panel.el, "market.week-ahead"), "Install")?.click();
     await panel.idle();
+    button(card(panel.el, "market.week-ahead"), "Remove")?.click();
+    await panel.idle();
+    expect(calls.at(-1)?.method, "nothing is removed on the first press").toBe("plugin.install");
+    const asked = card(panel.el, "market.week-ahead").querySelector('[role="alertdialog"]');
+    expect(asked?.textContent).toContain("Remove it? You can install it again here.");
     button(card(panel.el, "market.week-ahead"), "Remove")?.click();
     await panel.idle();
     expect(calls.at(-1)).toEqual({
@@ -162,6 +190,37 @@ describe("Settings, Market", () => {
       params: { plugin: "market.week-ahead", scope: { permission: "plugin:manage" } },
     });
     expect(button(card(panel.el, "market.week-ahead"), "Install")).toBeDefined();
+    panel.dispose();
+  });
+
+  it("says every permission in words, never by its id", () => {
+    const said = (p: Permission) => permissionText(p, "en");
+    expect(said({ permission: "cmd:invoke", ids: ["desk.github.sync"] })).toBe(
+      "Run commands (ids: desk.github.sync)",
+    );
+    expect(said({ permission: "view:manage" })).toBe("Manage views");
+    expect(said({ permission: "shell:open", schemes: ["https"] })).not.toBe("shell:open");
+  });
+
+  it("a failed install says the core's words, without the call's method and code", async () => {
+    const entries = [listing("market.week-ahead", "view", ENDUE)];
+    const bridge = new BridgeClient(
+      browserStub({
+        "market.list": () => ({ entries: structuredClone(entries), problems: [] }),
+        "plugin.install": () => {
+          throw new StubError("invalid_value", "The bundle does not match its sha256.");
+        },
+      }),
+    );
+    const panel = mountMarket({ bridge, language: "en" });
+    document.body.append(panel.el);
+    await panel.ready;
+    button(card(panel.el, "market.week-ahead"), "Install")?.click();
+    button(card(panel.el, "market.week-ahead"), "Install")?.click();
+    await panel.idle();
+    expect(card(panel.el, "market.week-ahead").querySelector('[role="alert"]')?.textContent).toBe(
+      "The bundle does not match its sha256.",
+    );
     panel.dispose();
   });
 });

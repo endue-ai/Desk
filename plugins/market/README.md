@@ -2,7 +2,9 @@
 
 `desk.market`, a `policy` plugin: data only. It declares the setting the market for every kind reads
 (ADR 0107, `specs/market/v0`); the core runs `market.list`, `plugin.install` and `plugin.remove`, and the
-runtime draws them in Settings, Market (`desk.market.open`).
+runtime draws them in Settings, Market (`desk.market.open`). Install always asks first, with what the entry
+would be allowed (or that it asks for nothing) and, when not verified, the market it comes from; Remove
+asks too.
 
 | Setting | Default | What it says |
 | --- | --- | --- |
