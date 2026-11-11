@@ -3,7 +3,9 @@
 // lists the same ids in the order the compositor draws them). The page measures each part's box
 // where it shows; one not on the page, hidden or of no size is not reported. The page's overlays
 // (its popovers, menus, hover titles and dialog boxes) are one part with a box for each one open, so
-// a window's title or a window over another never cuts through them.
+// a window's title or a window over another never cuts through them. Every control the page draws
+// outside its windows is in a part: one that is not lets the press through to the dock or the
+// window under it (#158, #159).
 
 /** A part's id and the element that holds it, found by its root's class; `every` reports each
  * element the selector finds, each with a box of its own. */
@@ -13,7 +15,11 @@ export const PARTS: ReadonlyArray<readonly [id: string, selector: string, every?
   ["desk.agents", '[data-layer="system"] .sidebar'],
   ["desk.account", '[data-layer="system"] .account-bar'],
   ["desk.rail", ".rail"],
-  ["desk.bottom", "footer.bottom"],
+  ["desk.arrange", ".arrange-strip"],
+  // The bottom edge has no box of its own: each of its controls is placed on its own.
+  ["desk.bottom", "footer.bottom > *", "every"],
+  ["desk.canvas", ".canvas-reset"],
+  ["desk.safe", '[data-layer="system"] .safe-badge'],
   ["desk.eris", ".eris"],
   ["desk.notices", ".desk-status"],
   ["desk.settings", "dialog.desk-settings[open]"],

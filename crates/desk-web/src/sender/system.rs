@@ -97,8 +97,21 @@ pub const PARTS: &[SystemPart] = &[
         holds: "the rail's content: the status drawers",
     },
     SystemPart {
+        id: "desk.arrange",
+        holds: "the arrange strip beside the canvas map: tile, cascade, spread, restore",
+    },
+    SystemPart {
         id: "desk.bottom",
-        holds: "the bottom bar: the drawer button, the composer, the running chips",
+        holds: "the bottom edge's controls, one box each: the drawer button, the talk pill and its \
+                line, the running chips",
+    },
+    SystemPart {
+        id: "desk.canvas",
+        holds: "the button that puts the canvas back where it started",
+    },
+    SystemPart {
+        id: "desk.safe",
+        holds: "the safe mode badge and its button, top centre",
     },
     SystemPart {
         id: "desk.eris",
@@ -171,6 +184,10 @@ mod tests {
         for wanted in [
             "desk.agents",
             "desk.rail",
+            // What the page draws over the dock takes its own presses (#158, #159).
+            "desk.arrange",
+            "desk.bottom",
+            "desk.canvas",
             "desk.eris",
             "desk.notices",
             "desk.settings",
