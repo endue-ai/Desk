@@ -19,7 +19,7 @@ use desk_compositor::input::Input;
 use serde_json::{Value, json};
 
 use super::CompositorWindow;
-use super::tooltip_draw::{self, Placed};
+use tooltip_draw::Placed;
 
 /// How long the pointer rests before a title shows: Chromium's own tooltip's delay.
 pub const DELAY: Duration = Duration::from_millis(500);
@@ -245,6 +245,9 @@ impl CompositorWindow {
         }
     }
 }
+
+#[path = "tooltip_draw.rs"]
+mod tooltip_draw;
 
 #[cfg(test)]
 #[path = "tooltip_tests.rs"]

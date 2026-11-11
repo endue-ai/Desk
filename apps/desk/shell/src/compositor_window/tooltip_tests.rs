@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use desk_compositor::glam::Vec2;
 use desk_compositor::{ChromeTheme, Rect, Scene};
 
-use super::super::tooltip_draw::{Placed, boxes, draw};
+use super::tooltip_draw::{Placed, boxes, draw};
 use super::{DELAY, Tips, shown};
 
 const MS: Duration = Duration::from_millis(1);

@@ -41,7 +41,6 @@ mod spread;
 mod steps;
 pub mod system;
 mod tooltip;
-mod tooltip_draw;
 pub mod winit_input;
 pub mod wm;
 

@@ -10,7 +10,7 @@ use desk_compositor::{
     Fonts, Node, Rect, RectNode, Scene, Shadow, TextNode, TextStyle, TooltipStyle,
 };
 
-use super::tooltip::Tip;
+use super::Tip;
 
 /// Under the pointer by the arrow's height (CSS px), or above it by this gap.
 const BELOW: f32 = 20.0;
