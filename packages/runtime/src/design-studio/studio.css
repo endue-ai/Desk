@@ -73,8 +73,7 @@
   background: var(--desk-check-accent);
 }
 
-/* The editor, Describe and the Market, docked to the right. */
-.design-editor,
+/* Describe and the Market, docked to the right, scroll whole. */
 .design-describe,
 .design-market {
   display: grid;
@@ -83,10 +82,23 @@
   min-height: 0;
   overflow: auto;
 }
+/* The editor, docked too, pins its ends as the theme tuner does (theme-studio/editor.css): the name
+   fields on top, the note and Save, Reset and Back at the bottom, and only the choices scroll. */
+.design-editor {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: var(--desk-space-3);
+  min-height: 0;
+}
 .design-editor-meta,
 .design-editor-sections {
   display: grid;
   gap: var(--desk-space-2);
+}
+.design-editor-sections {
+  align-content: start;
+  overflow: auto;
+  padding-right: var(--desk-space-1);
 }
 .design-editor-component {
   display: grid;

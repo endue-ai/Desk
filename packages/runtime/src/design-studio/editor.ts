@@ -7,7 +7,6 @@
 import type { DesignSystemPackage } from "@endue-ai/bridge";
 import {
   COMPONENTS,
-  defaultOf,
   type FullRecipe,
   fillRecipe,
   optionsOf,
@@ -17,7 +16,7 @@ import {
 import { localDesignId, type RuntimeDesigns } from "../policies/design";
 import { h } from "../shell/dom";
 import type { StudioLang } from "../theme-studio/copy";
-import { type DesignCopy, designText, partLabel } from "./copy";
+import { choiceLabel, type DesignCopy, designText, partLabel } from "./copy";
 
 export interface DesignEditorDeps {
   designs: RuntimeDesigns;
@@ -60,11 +59,13 @@ export function createDesignEditor(deps: DesignEditorDeps): DesignEditor {
     const value = (recipe as unknown as Record<string, Record<string, string>>)[component]?.[
       property
     ];
+    // Named by its token, since "Shape" alone is a dozen of the 48; its options read bare.
     const select = h(
       "select",
       {
         class: "input design-editor-select",
         "data-key": `${component}.${property}`,
+        "aria-label": choiceLabel(deps.lang(), component, property),
         onChange: () => {
           const next = recipe as unknown as Record<string, Record<string, string>>;
           if (next[component]) next[component][property] = select.value;
@@ -72,11 +73,7 @@ export function createDesignEditor(deps: DesignEditorDeps): DesignEditor {
         },
       },
       optionsOf(component, property).map((option) =>
-        h(
-          "option",
-          { value: option, ...(option === value ? { selected: true } : {}) },
-          option === defaultOf(component, property) ? `${option} ·` : option,
-        ),
+        h("option", { value: option, ...(option === value ? { selected: true } : {}) }, option),
       ),
     );
     return h(

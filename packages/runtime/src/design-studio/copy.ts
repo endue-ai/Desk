@@ -162,3 +162,8 @@ export function partLabel(lang: StudioLang, name: string): string {
   const words = name.replace(/([A-Z])/g, " $1").toLowerCase();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
+
+/** A choice's own name, the token it sets: "Button shape", "버튼 모서리". */
+export function choiceLabel(lang: StudioLang, component: string, property: string): string {
+  return `${partLabel(lang, component)} ${partLabel(lang, property).toLowerCase()}`;
+}
