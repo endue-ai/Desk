@@ -2,51 +2,28 @@
 // .save, .revert, desk.buffers.show, .closed) for the notes it holds, reads and writes them with fs.read
 // and fs.write, asks with perm.request for a file its grants do not cover, and tells the desk about
 // unsaved changes and changes on disk. It only talks to ctx.commands, ctx.bridge and a view, so the
-// SDK's test host runs it with a recording view.
+// SDK's test host runs it with a recording view. A note the desk lists and the frame lost (it slept,
+// or its page loaded again) opens again from what the sleep kept (keep.js), or from disk.
 
 import { createDrops } from "./drops.js";
-import { keep, readKept } from "./keep.js";
+import { createGrants, scopeOf } from "./grants.js";
+import { keptText, openFiles, readEdit, readPlace } from "./keep.js";
 import { createLibrary } from "./library.js";
+import { createSearch } from "./search.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
  * @typedef {import("@endue-ai/bridge").BridgeEvent} BridgeEvent
- * @typedef {import("@endue-ai/bridge").Permission} Permission
  * @typedef {import("./keep.js").Place} Place
- * @typedef {"fs:read" | "fs:write"} FsPermission
+ * @typedef {import("./keep.js").KeptPlace} KeptPlace
+ * @typedef {import("./keep.js").KeepSdk} KeepSdk
  * @typedef {{ buffer: string, path: string, name: string, text: string, modified: boolean }} NoteModel
  * @typedef {{ note(model: NoteModel | null): void, status(text: string): void, focus(): void, where(): Place, place(at: Place): void } & import("./drops.js").DropView} View
- * @typedef {NoteModel & { reported: boolean, watchId?: string }} Note
- * @typedef {Pick<PluginContext, "bridge" | "commands"> & { surface?: Pick<PluginContext["surface"], "onUnload" | "restored">, dnd?: PluginContext["dnd"] }} NotesContext
- */
-
-/**
- * The scope an fs call carries, as the manifest's permissions write it.
- * @template {FsPermission} P
- * @typedef {{ permission: P, paths: string[] }} FsScope
+ * @typedef {NoteModel & { reported: boolean, saved?: string, watchId?: string }} Note
+ * @typedef {Pick<PluginContext, "bridge" | "commands"> & { surface: Pick<PluginContext["surface"], "onUnload" | "restored">, dnd?: PluginContext["dnd"] }} NotesContext
  */
 
 const nameOf = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/") + 1);
-
-/** The folder a file is in: notes ask for, and work under, whole folders. */
-const folderOf = (/** @type {string} */ path) => {
-  const slash = path.lastIndexOf("/");
-  return slash < 0 ? path : path.slice(0, slash);
-};
-
-/**
- * @template {FsPermission} P
- * @param {P} permission
- * @param {string} path
- * @returns {FsScope<P>}
- */
-const scopeOf = (permission, path) => {
-  const folder = folderOf(path);
-  return { permission, paths: [`${folder}/**`] };
-};
-
-const codeOf = (/** @type {unknown} */ error) =>
-  /** @type {{ code?: string }} */ (error)?.code ?? "error";
 
 /** The buffer and path the desk sends with every request. */
 const requested = (/** @type {unknown} */ args) => {
@@ -60,65 +37,21 @@ const requested = (/** @type {unknown} */ args) => {
 /**
  * @param {NotesContext} ctx
  * @param {View} view
+ * @param {KeepSdk} sdk the SDK's keepFiles and text changes, which main.js imports
  */
-export function createNotes({ bridge, commands, surface, dnd }, view) {
+export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
   /** Open notes by the buffer the desk named them with. @type {Map<string, Note>} */
   const notes = new Map();
-  // Only notes opened by the person enter global search, never arbitrary files or private settings.
-  let publishing = false;
-  /** @type {"typing" | "immediate" | undefined} */
-  let pending;
-  /** @type {ReturnType<typeof setTimeout> | undefined} */
-  let publishTimer;
-  /** The open notes search lists: the last 30. */
-  const published = () => [...notes.values()].slice(-30);
-  const sendSearch = () => {
-    if (publishing || !pending || (pending === "typing" && publishTimer !== undefined)) return;
-    // An immediate replacement includes every edit so far, even if its timer was still running.
-    clearTimeout(publishTimer);
-    publishTimer = undefined;
-    pending = undefined;
-    publishing = true;
-    const documents = published().map((note) => ({
-      id: note.path,
-      title: note.name,
-      detail: note.path,
-      text: note.text.slice(0, 16384),
-      command: "endue.notes.search-open",
-      args: { path: note.path },
-    }));
-    const finished = () => {
-      publishing = false;
-      sendSearch();
-    };
-    void bridge.call("search.replace", { documents }).then(finished, finished);
-  };
-  const publish = () => {
-    clearTimeout(publishTimer);
-    publishTimer = undefined;
-    pending = "immediate";
-    sendSearch();
-  };
-  const publishAfterTyping = () => {
-    clearTimeout(publishTimer);
-    publishTimer = setTimeout(() => {
-      publishTimer = undefined;
-      pending ??= "typing";
-      sendSearch();
-    }, 500);
-  };
-  commands.on("endue.notes.search-open", (args) => {
-    const { path } = requested(args);
-    if (!path) throw new Error("Choose a note to open");
-    const note = [...notes.values()].find((n) => n.path === path);
-    if (note) return commands.run("desk.buffers.switch", { id: note.buffer });
-    return commands.run("desk.files.open", { path });
-  });
+  const { publish, publishAfterTyping, published } = createSearch({ bridge, commands }, () => [
+    ...notes.values(),
+  ]);
   /** Watch id -> the buffer it follows. @type {Map<string, string>} */
   const watches = new Map();
   /** The buffer on screen. @type {string | null} */
   let shown = null;
   let said = "";
+  /** What a success leaves on the status line until the person types: unsaved text not kept. */
+  let notice = "";
 
   const say = (/** @type {string} */ text) => {
     if (text === said) return;
@@ -151,50 +84,16 @@ export function createNotes({ bridge, commands, surface, dnd }, view) {
     notes.delete(buffer);
   };
 
-  /**
-   * One fs call. When the grants do not cover the file, ask once for its folder and try again. Every
-   * failure is an Error whose message is the sentence the person reads.
-   * @template T
-   * @template {FsPermission} P
-   * @param {P} permission
-   * @param {string} path
-   * @param {(scope: FsScope<P>) => Promise<T>} call
-   * @param {string} [why] the ask's reason, when it is not opening or saving the file
-   * @returns {Promise<T>}
-   */
-  const withGrant = async (permission, path, call, why) => {
-    const verb = permission === "fs:read" ? "read" : "write";
-    const scope = scopeOf(permission, path);
-    const refused = new Error(`Not allowed to ${verb} ${path}.`);
-    const failed = (/** @type {unknown} */ error) =>
-      codeOf(error) === "permission_denied"
-        ? refused
-        : new Error(`Could not ${verb} ${path}: ${codeOf(error)}.`);
-    try {
-      return await call(scope);
-    } catch (error) {
-      if (codeOf(error) !== "permission_denied") throw failed(error);
-    }
-    const reason = why ?? (verb === "read" ? `To open ${path} in Notes` : `To save ${path}`);
-    // perm.request answers a refusal as a result; a failed ask counts as one.
-    const decision = await bridge
-      .call("perm.request", { permission: /** @type {Permission} */ (scope), reason })
-      .catch(() => ({ granted: false }));
-    if (!decision.granted) throw refused;
-    try {
-      return await call(scope);
-    } catch (error) {
-      throw failed(error);
-    }
-  };
-
-  /** @param {string} path */
-  const read = async (path) => {
-    const { content } = await withGrant("fs:read", path, (scope) =>
-      bridge.call("fs.read", { path, encoding: "utf8", scope }),
-    );
-    return content;
-  };
+  // Put to sleep while nobody sees it, notes keeps its notes and comes back from them (ADR 0070).
+  const kept = sdk.keepFiles(surface, {
+    files: () => openFiles([...notes.values()], shown, view.where(), sdk.textChange),
+    shown: () => shown,
+    readPlace,
+    readEdit: readEdit(sdk.isTextChange),
+  });
+  /** Buffers this frame closed: a show of one does not open it again. @type {Set<string>} */
+  const closed = new Set();
+  const { withGrant, read, quietly } = createGrants(bridge);
 
   /** Follow the file on disk. Without a watch the note still works; changes just go unnoticed. */
   const watch = async (/** @type {Note} */ note) => {
@@ -218,7 +117,8 @@ export function createNotes({ bridge, commands, surface, dnd }, view) {
 
   /**
    * Answer one of the desk's requests. A failure goes to the status line and ends the request with
-   * the same words, which the desk shows in its own notice; a success clears the status line.
+   * the same words, which the desk shows in its own notice; a success clears the status line, but
+   * for a notice about unsaved text a sleep could not keep.
    * @param {string} name
    * @param {(args: unknown) => unknown} handler
    */
@@ -226,7 +126,7 @@ export function createNotes({ bridge, commands, surface, dnd }, view) {
     commands.on(name, async (args) => {
       try {
         await handler(args);
-        say("");
+        say(notice);
       } catch (error) {
         say(error instanceof Error ? error.message : String(error));
         throw error;
@@ -252,8 +152,18 @@ export function createNotes({ bridge, commands, surface, dnd }, view) {
       if (visiting.get(buffer) === reading) visiting.delete(buffer);
     }
     forget(buffer);
+    kept.take(buffer);
+    closed.delete(buffer);
     /** @type {Note} */
-    const note = { buffer, path, name: nameOf(path), text, modified: false, reported: false };
+    const note = {
+      buffer,
+      path,
+      name: nameOf(path),
+      text,
+      saved: text,
+      modified: false,
+      reported: false,
+    };
     notes.set(buffer, note);
     publish();
     present(buffer);
@@ -262,7 +172,7 @@ export function createNotes({ bridge, commands, surface, dnd }, view) {
 
   answer("desk.files.save", async (args) => {
     const { buffer, path: asked } = requested(args);
-    const note = held(buffer);
+    const note = await holding(buffer);
     const path = asked ?? note.path;
     const content = note.text;
     await withGrant("fs:write", path, (scope) =>
@@ -271,6 +181,7 @@ export function createNotes({ bridge, commands, surface, dnd }, view) {
     // desk.files clears the list's mark after a save; text typed while it was written stays unsaved,
     // and the desk hears so once this answer has reached it.
     note.reported = false;
+    if (path === note.path) note.saved = content;
     note.modified = note.text !== content;
     if (shown === buffer) render();
     if (note.modified) setTimeout(() => report(note), 0);
@@ -278,8 +189,9 @@ export function createNotes({ bridge, commands, surface, dnd }, view) {
 
   answer("desk.files.revert", async (args) => {
     const { buffer, path: asked } = requested(args);
-    const note = held(buffer);
+    const note = await holding(buffer);
     note.text = await read(asked ?? note.path);
+    if (!asked || asked === note.path) note.saved = note.text;
     publish();
     note.modified = false;
     note.reported = false;
@@ -287,16 +199,28 @@ export function createNotes({ bridge, commands, surface, dnd }, view) {
   });
 
   answer("desk.buffers.show", async (args) => {
-    const { buffer } = requested(args);
+    const { buffer, path } = requested(args);
     // The desk lists a buffer as its visit starts; one still waiting for a permission prompt shows
     // once it is read, and a visit that failed says so itself.
-    await visiting.get(buffer)?.catch(() => {});
+    const visit = visiting.get(buffer);
+    const visited = visit
+      ? await visit.then(
+          () => true,
+          () => false,
+        )
+      : true;
+    // One the desk lists that this frame lost, and did not close itself, opens again.
+    const from = path ?? kept.files().find((file) => file.buffer === buffer)?.path;
+    if (visited && from && !notes.has(buffer) && !closed.has(buffer))
+      await reopen(buffer, from, true);
     held(buffer);
     present(buffer);
   });
 
   answer("desk.buffers.closed", (args) => {
     const { buffer } = requested(args);
+    closed.add(buffer);
+    if (kept.take(buffer) && !notes.has(buffer)) return;
     held(buffer);
     forget(buffer);
     publish();
@@ -335,44 +259,79 @@ export function createNotes({ bridge, commands, surface, dnd }, view) {
 
   render();
 
-  // Unloaded while nobody sees it, notes keeps what it holds and comes back from it (ADR 0070).
-  surface?.onUnload?.(() => keep([...notes.values()], shown, view.where()));
-  /** Open again what was kept, without asking for grants or taking the focus. */
-  const restore = async (/** @type {unknown} */ value) => {
-    const kept = readKept(value);
-    if (!kept) return;
-    for (const { buffer, path, modified, reported, text, watchId } of kept.notes) {
-      const content =
-        text ??
-        (await bridge
-          .call("fs.read", { path, encoding: "utf8", scope: scopeOf("fs:read", path) })
-          .then(({ content }) => content)
-          .catch(() => undefined));
-      if (content === undefined) continue;
-      const note = {
-        buffer,
-        path,
-        name: nameOf(path),
-        text: content,
-        modified,
-        reported: !!reported,
-      };
-      notes.set(buffer, watchId ? { ...note, watchId } : note);
-      if (watchId) watches.set(watchId, buffer);
+  /**
+   * Open again a note the desk lists and this frame does not hold: from what the last sleep kept,
+   * else from disk. `ask` (the person wants it now) may ask for its folder; without it a note that
+   * cannot be read stays kept. Resolves with its kept place, or undefined when it did not open.
+   * @returns {Promise<KeptPlace | undefined>}
+   */
+  const reopen = async (
+    /** @type {string} */ buffer,
+    /** @type {string} */ path,
+    /** @type {boolean} */ ask,
+  ) => {
+    const found = kept.files().find((file) => file.buffer === buffer);
+    const file = found ?? { buffer, path };
+    const whole = file.edit !== undefined && "text" in file.edit;
+    const disk = ask && !whole ? await read(file.path) : await quietly(file.path);
+    const back = keptText(file, disk, sdk.applyTextChange);
+    if (!back || notes.has(buffer)) return undefined;
+    kept.take(buffer);
+    const { text, saved, modified, reported, lost } = back;
+    const name = nameOf(file.path);
+    /** @type {Note} */
+    const note = { buffer, path: file.path, name, text, modified, reported };
+    if (saved !== undefined) note.saved = saved;
+    notes.set(buffer, note);
+    publish();
+    const watchId = file.place?.watchId;
+    if (watchId) {
+      note.watchId = watchId;
+      watches.set(watchId, buffer);
+    } else void watch(note);
+    if (lost || !found) {
+      // What the desk marks unsaved is not here any more: the note is as it is on disk.
+      commands.run("desk.buffers.update", { id: buffer, modified: false }).catch(() => {});
+      notice = lost
+        ? `The unsaved changes to ${name} could not be kept while its window slept.`
+        : `${name} was opened again from disk.`;
+      say(notice);
+    }
+    return file.place ?? {};
+  };
+  /** The note of `buffer`, opened again first when the last sleep kept it. */
+  const holding = async (/** @type {string} */ buffer) => {
+    const file = notes.has(buffer) ? undefined : kept.files().find((f) => f.buffer === buffer);
+    if (file) await reopen(buffer, file.path, true);
+    return held(buffer);
+  };
+
+  /** Back from a sleep: the kept notes open again, without asking or taking the focus. */
+  const restore = async () => {
+    /** @type {KeptPlace | undefined} */
+    let at;
+    for (const file of kept.files()) {
+      const place = await reopen(file.buffer, file.path, false);
+      if (file.buffer === kept.shown) at = place;
     }
     publish();
     if (kept.shown === null || !notes.has(kept.shown)) return;
     shown = kept.shown;
     render();
-    view.place({ start: kept.caret[0], end: kept.caret[1], scroll: kept.scroll });
+    const [start = 0, end = 0] = at?.caret ?? [];
+    view.place({ start, end, scroll: at?.scroll ?? 0 });
   };
-  const ready = restore(surface?.restored);
+  const ready = restore();
 
   /** The person typed in the note on screen. */
   const edit = (/** @type {string} */ text) => {
     const note = shown === null ? undefined : notes.get(shown);
     if (!note || note.text === text) return;
     note.text = text;
+    if (notice) {
+      notice = "";
+      say("");
+    }
     if (!note.modified) {
       note.modified = true;
       render();

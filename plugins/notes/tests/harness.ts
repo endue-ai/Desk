@@ -1,7 +1,13 @@
 // Mounts the notes plugin on the SDK's test host with a view that records what it was asked to show.
 // The SDK is imported by its workspace path: plugin folders are not workspace packages yet.
 import { type DirEntry, StubError } from "../../../packages/bridge/src/index";
-import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
+import {
+  applyTextChange,
+  defineUiPlugin,
+  isTextChange,
+  keepFiles,
+  textChange,
+} from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { createNotes, type NoteModel } from "../ui/notes.js";
 
@@ -95,7 +101,7 @@ export async function mount(
   await defineUiPlugin(
     {
       async mount(ctx) {
-        app = createNotes(ctx, view);
+        app = createNotes(ctx, view, { keepFiles, textChange, applyTextChange, isTextChange });
         await app.ready;
       },
     },

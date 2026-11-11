@@ -5,11 +5,11 @@ only. Its `contributes.files` rule opens `*.md` and `*.txt` (anywhere: the grant
 where it reads without asking) in one plain text area on the grid; `Mod+O` with a path opens one.
 
 It answers the desk's `desk.files.visit`, `.save` and `.revert` (`{ buffer, path }`) and
-`desk.buffers.show` and `.closed` (`plugins/files`, `plugins/buffers`). Several notes can be open; the
+`desk.buffers.show` (a listed note it lost opens again) and `.closed`. Several notes can be open; the
 text area shows one. The first edit after a load or save runs `desk.buffers.update { id, modified: true }`;
 `fs.watch` on each open file runs `desk.files.changed { path }`, and `desk.files.on-change` decides.
-When the desk unloads it out of sight (`ui.surface.state`, ADR 0070) it keeps the open notes, unsaved
-text, watches, the note on screen, caret and scroll, and comes back from them without taking the focus.
+Asleep out of sight (`ui.surface.state`, ADR 0070, ADR XXXX), the SDK's `keepFiles` keeps its notes, watches,
+caret, scroll and unsaved text (whole, or its change from the saved text); back, it neither asks nor takes the focus.
 A dropped path becomes a link at the caret (ADR 0119; Markdown, relative to the note's folder, in a `.md` note), dropped
 text goes in as text, and with no note open dropped files open; reading a dropped path still needs a grant.
 New note (`endue.notes.new`, `Mod+Alt+N`) writes an empty `~/Notes/<YYYY-MM-DD>.md`, `-2`, `-3` on the
@@ -28,11 +28,11 @@ the desk's notice: `Not allowed to read ~/Documents/x.md.` The palette's group n
 
 | File | Purpose |
 | --- | --- |
-| `ui/notes.js` | The desk's requests, fs calls with one ask on refusal, watches, the unsaved mark |
-| `ui/library.js` | `~/Notes` on disk: a new note's name, the palette's Notes group and what it read |
+| `ui/notes.js`, `ui/grants.js` | The desk's requests, fs calls with one ask on refusal, watches, the unsaved mark |
+| `ui/library.js`, `ui/search.js` | `~/Notes` on disk: new names, the palette's Notes group; open notes in search |
 | `ui/view.js` | The DOM: the file name, path and unsaved mark, the text area, a status live region |
 | `ui/counter.js` | Word and character counts in a worker (`ui/count-worker.js`), never on the frame's thread (#38) |
-| `ui/keep.js` | What notes keeps when the desk unloads it, and reading that back |
+| `ui/keep.js` | What notes keeps when the desk puts it to sleep, and reading that back |
 | `ui/drops.js` | Drops: paths as links (or opened), text at the caret |
 | `ui/main.js` | Mounts the plugin and joins the view to the controller |
 
