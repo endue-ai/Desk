@@ -16,6 +16,7 @@ body {
 }
 
 body {
+  position: relative;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -31,7 +32,8 @@ body {
   box-sizing: inherit;
 }
 
-header {
+/* The page's own header; a card's, a message's and a pane's are styled in views.css. */
+body > header {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -91,6 +93,8 @@ main {
   flex-direction: column;
 }
 
+/* Each view's list keeps a height it can be read at (views.css); a window too short for that
+   scrolls the whole view rather than squeezing the list into a strip. */
 .view {
   display: flex;
   flex: 1;
@@ -98,6 +102,7 @@ main {
   flex-direction: column;
   gap: 8px;
   padding: 8px 12px;
+  overflow-y: auto;
 }
 
 .view[hidden] {
@@ -234,6 +239,50 @@ footer p {
   margin: 0;
 }
 
+/* One line however narrow the window: `?` lists every key. */
+#hints {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 #status {
+  flex: 0 1 auto;
+  max-width: 60%;
   color: var(--desk-text);
+}
+
+/* The keys `?` lists, over the view's lower right corner. */
+#keys {
+  position: absolute;
+  right: 12px;
+  bottom: 32px;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 48px);
+  padding: 8px 12px;
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-popover);
+  box-shadow: var(--desk-shadow-md);
+}
+
+#keys[hidden] {
+  display: none;
+}
+
+#keys dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  margin: 0;
+}
+
+#keys dt {
+  white-space: nowrap;
+}
+
+#keys dd {
+  margin: 0;
 }

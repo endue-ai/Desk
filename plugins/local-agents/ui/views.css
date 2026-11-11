@@ -2,11 +2,17 @@
    and cards, the activity list. Theme tokens only, as in style.css. */
 
 /* Agents */
+#agents-bar .note {
+  flex: 1 1 16em;
+}
+
+/* The cards scroll with the view, the bar above them too: one scroll area, never a strip. */
 #agents-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  flex: 1 0 auto;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  align-content: start;
   gap: 8px;
-  overflow: auto;
 }
 
 .agent {
@@ -46,6 +52,7 @@
 }
 
 /* Chat and compare */
+/* The conversation gives way before the composer does: what is typed stays in sight. */
 #chat-log {
   display: flex;
   flex: 1;
@@ -122,17 +129,26 @@
 
 .composer textarea {
   flex: 1;
-  min-width: 200px;
+  min-width: 160px;
   resize: vertical;
 }
 
+/* A short window (the first size is 305 px) keeps two lines of each field, so the conversation
+   above the composer still shows. */
+@media (max-height: 360px) {
+  .composer textarea {
+    height: 3.6em;
+  }
+}
+
 #card-title {
-  flex-basis: 100%;
+  flex: 1 1 10em;
+  max-width: 16em;
 }
 
 #compare-panes {
   flex: 1;
-  min-height: 0;
+  min-height: 120px;
   overflow: auto;
 }
 
@@ -153,12 +169,20 @@
   border-radius: var(--desk-radius-md);
 }
 
-/* Board */
+/* Board. The four columns always share the width, so none hides behind a scrollbar. The selected
+   card opens beside them, and each column scrolls its own cards. Narrower than 640 px the card opens
+   below them and below 520 px the columns go two by two; there the cards take the height they need
+   and the view scrolls. Activity's run opens the same way. */
+#view-board,
+#view-activity {
+  container-type: inline-size;
+}
+
 #board-body,
 #activity-body {
   display: flex;
   flex: 1;
-  min-height: 0;
+  min-height: 200px;
   gap: 10px;
 }
 
@@ -166,13 +190,14 @@
   display: grid;
   flex: 1;
   min-width: 0;
-  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
   gap: 8px;
-  overflow: auto;
 }
 
 .column {
   display: flex;
+  min-width: 0;
   min-height: 0;
   flex-direction: column;
   gap: 6px;
@@ -204,11 +229,17 @@
 }
 
 .card {
+  flex: none;
   padding: 6px 8px;
   border: 1px solid var(--desk-border);
   border-radius: var(--desk-radius-sm);
   background: var(--desk-card);
+  overflow-wrap: anywhere;
   cursor: grab;
+}
+
+.card .actions {
+  gap: 4px;
 }
 
 .card[aria-current="true"] {
@@ -226,16 +257,56 @@
 
 #card-detail,
 #run-detail {
-  flex: 0 0 36%;
-  min-width: 220px;
+  flex: 0 0 clamp(200px, 28%, 360px);
+  min-width: 0;
   padding: 8px 10px;
   border-left: 1px solid var(--desk-border);
   overflow: auto;
+  overflow-wrap: anywhere;
 }
 
 #card-detail[hidden],
 #run-detail[hidden] {
   display: none;
+}
+
+@container (width < 640px) {
+  #board-body,
+  #activity-body {
+    flex: 1 0 auto;
+    flex-direction: column;
+  }
+
+  #board-columns {
+    flex: 1 0 auto;
+    grid-template-rows: none;
+    grid-auto-rows: minmax(120px, auto);
+  }
+
+  #activity-list {
+    flex: none;
+    max-height: 14em;
+  }
+
+  .cards {
+    flex: none;
+    overflow: visible;
+  }
+
+  #card-detail,
+  #run-detail {
+    flex: none;
+    padding: 8px 0 0;
+    border-top: 1px solid var(--desk-border);
+    border-left: 0;
+    overflow: visible;
+  }
+}
+
+@container (width < 520px) {
+  #board-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* Activity */
