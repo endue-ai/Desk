@@ -52,6 +52,9 @@ const MAIN_COMMANDS: &[&str] = &[
     "compositor_a11y",
     // The window manager's clock held at a time a check chooses (#54, development builds).
     "compositor_clock",
+    // The main window closed, minimized or brought back as a person does it, for checks of a desk
+    // out of sight (#155, development builds).
+    "compositor_window",
 ];
 const PALETTE_COMMANDS: &[&str] = &[
     "palette_hide",
@@ -281,6 +284,7 @@ mod tests {
             "compositor_wm",
             "compositor_a11y",
             "compositor_clock",
+            "compositor_window",
         ] {
             assert!(runtime.may(cmd), "{cmd}");
             assert!(!Sender::Plugin("endue.notes".into()).may(cmd), "{cmd}");

@@ -10,11 +10,14 @@
 //! `harness.rs`), `compositor_input_state` (where input goes), `compositor_a11y` (the
 //! accessibility tree the adapter has, and a screen reader's request, `a11y_check.rs`) and
 //! `compositor_clock { hold?, at? }` (the window manager's clock held, so a check sees a motion at a
-//! time it chooses, ADR 0013). They run on the event loop's thread, where the compositor is.
+//! time it chooses, ADR 0013) and `compositor_window { to } | { occluded }` (the main window closed,
+//! minimized or brought back as a person does it, or what the OS says of it, #155). They run on the
+//! event loop's thread, where the compositor is.
 
 use std::sync::mpsc;
 use std::time::Duration;
 
+use desk_web::sender::Role;
 use desk_wm::Told;
 use desk_wm::interact::{Kind, Op};
 
@@ -24,6 +27,10 @@ use serde_json::Value;
 use super::input::KeysReport;
 use super::report::DeskReport;
 use crate::host::Desk;
+use crate::window::Shell;
+use winit::application::ApplicationHandler;
+use winit::event::WindowEvent;
+use winit::event_loop::ActiveEventLoop;
 
 /// The number of the desk a call of the page's follows (`after`; 0: none).
 fn after(args: &Value) -> u64 {
@@ -166,6 +173,41 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
                 .recv_timeout(Duration::from_secs(10))
                 .map_err(|_| "the compositor did not answer".to_owned())?
         }
+        "compositor_window" if cfg!(debug_assertions) => {
+            let (sent, answered) = mpsc::channel();
+            let args = args.clone();
+            desk.pump.run(move |shell, event_loop| {
+                let _ = sent.send(main_window(shell, event_loop, &args));
+            });
+            answered
+                .recv_timeout(Duration::from_secs(10))
+                .map_err(|_| "the window did not answer".to_owned())?
+        }
         other => Err(format!("the CEF shell has no command {other}")),
     }
+}
+
+/// The main window out of sight as a person puts it there, or back (development builds, #155):
+/// `{ to }` is `closed` (its red button, which only hides it, #583), `minimized` or `front` (the
+/// Dock icon, a second start); `{ occluded }` is what the OS says of a window out of sight or back,
+/// fed as its event, where it says nothing (a locked screen).
+fn main_window(
+    shell: &mut Shell,
+    event_loop: &ActiveEventLoop,
+    args: &Value,
+) -> Result<Value, String> {
+    let main = shell.pane(Role::Main).ok_or("no main window")?;
+    if let Some(occluded) = args.get("occluded").and_then(Value::as_bool) {
+        let id = main.window.id();
+        shell.window_event(event_loop, id, WindowEvent::Occluded(occluded));
+        return Ok(Value::Null);
+    }
+    match args.get("to").and_then(Value::as_str).unwrap_or_default() {
+        "closed" => main.hide(),
+        "minimized" => main.window.set_minimized(true),
+        "front" => crate::palette::reveal_main(shell),
+        other => return Err(format!("not a way to show the main window: {other}")),
+    }
+    crate::eris_window::main_changed(shell);
+    Ok(Value::Null)
 }

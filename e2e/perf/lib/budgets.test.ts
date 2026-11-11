@@ -35,6 +35,16 @@ function budgets(): Budgets {
       allowedRegression: 0.25,
     },
     freshDeskAtRest: { cpuPercent: null, budgetPercent: 5, platform: null, recorded: null },
+    deskOutOfSight: {
+      cpuPercent: null,
+      budgetPercent: 5,
+      turnsPerSecond: null,
+      turnsBudget: 50,
+      shownFrameMs: null,
+      shownBudgetMs: 500,
+      platform: null,
+      recorded: null,
+    },
   };
 }
 
@@ -43,10 +53,16 @@ const measured = {
   idleMemory: { rssMb: 420.5 },
   inputLatency: { paletteP95Ms: 40, focusP95Ms: 20 },
   freshDeskAtRest: { cpuPercent: 2.4, treePercent: 6.1 },
+  deskOutOfSight: { cpuPercent: 0.8, turnsPerSecond: 21, shownFrameMs: 40 },
 };
 
+/** The budgets' verdicts: the five without a baseline, then the four the budgets gate. */
+const FIRST_RUN = [...Array(5).fill("no-baseline"), ...Array(4).fill("ok")];
+/** The RT-16 targets, by measure. */
+const TARGETS = [1200, 1200, null, 16, 16, null, null, null, null];
+
 describe("budgets", () => {
-  it("measures six values in four sections", () => {
+  it("measures nine values in five sections", () => {
     expect(MEASURES.map((m) => `${m.section}.${m.key}`)).toEqual([
       "startup.readyMs",
       "startup.firstFrameMs",
@@ -54,12 +70,15 @@ describe("budgets", () => {
       "inputLatency.paletteP95Ms",
       "inputLatency.focusP95Ms",
       "freshDeskAtRest.cpuPercent",
+      "deskOutOfSight.cpuPercent",
+      "deskOutOfSight.turnsPerSecond",
+      "deskOutOfSight.shownFrameMs",
     ]);
   });
 
   it("without a baseline it reports and does not fail; a budget gates from the first run", () => {
     const verdicts = compare(budgets(), measured);
-    expect(verdicts.map((v) => v.status)).toEqual([...Array(5).fill("no-baseline"), "ok"]);
+    expect(verdicts.map((v) => v.status)).toEqual(FIRST_RUN);
     expect(failed(verdicts)).toBe(false);
     expect(report(verdicts)).toMatch(/no baseline/);
   });
@@ -90,7 +109,7 @@ describe("budgets", () => {
       recorded: "2026-11-03",
     });
     const verdicts = compare(committed, measured);
-    expect(verdicts.map((v) => v.target)).toEqual([1200, 1200, null, 16, 16, null]);
+    expect(verdicts.map((v) => v.target)).toEqual(TARGETS);
     expect(failed(verdicts)).toBe(false);
     const text = report(verdicts);
     expect(text).toMatch(/1200/);
@@ -104,6 +123,27 @@ describe("budgets", () => {
     const recorded = withBaselines(budgets(), busy, { platform: "darwin-arm64", recorded: "x" });
     expect(failed(compare(recorded, busy))).toBe(true);
     expect(report(compare(budgets(), busy))).toMatch(/fresh desk at rest.*55.2 %.*over/);
+  });
+
+  it("fails a desk out of sight that spins, whatever a recorded baseline says (#155)", () => {
+    const spinning = {
+      ...measured,
+      deskOutOfSight: { cpuPercent: 99.6, turnsPerSecond: 14_200, shownFrameMs: 40 },
+    };
+    const verdicts = compare(budgets(), spinning).filter((v) => v.section === "deskOutOfSight");
+    expect(verdicts.map((v) => [v.key, v.status, v.limit])).toEqual([
+      ["cpuPercent", "over", 5],
+      ["turnsPerSecond", "over", 50],
+      ["shownFrameMs", "ok", 500],
+    ]);
+    const recorded = withBaselines(budgets(), spinning, {
+      platform: "darwin-arm64",
+      recorded: "x",
+    });
+    expect(failed(compare(recorded, spinning))).toBe(true);
+    expect(report(verdicts)).toMatch(/out of sight, its event loop's turns.*14200.0 \/s.*over/);
+    const late = { ...measured, deskOutOfSight: { ...measured.deskOutOfSight, shownFrameMs: 900 } };
+    expect(compare(budgets(), late).find((v) => v.key === "shownFrameMs")?.status).toBe("over");
   });
 
   it("a measurement that is missing is reported as missing", () => {
@@ -144,8 +184,13 @@ describe("budgets", () => {
       allowedRegression: 0.25,
     });
     expect(committed.freshDeskAtRest).toMatchObject({ budgetPercent: 5 });
+    expect(committed.deskOutOfSight).toMatchObject({
+      budgetPercent: 5,
+      turnsBudget: 50,
+      shownBudgetMs: 500,
+    });
     const verdicts = compare(committed, measured);
-    expect(verdicts.map((v) => v.status)).toEqual([...Array(5).fill("no-baseline"), "ok"]);
-    expect(verdicts.map((v) => v.target)).toEqual([1200, 1200, null, 16, 16, null]);
+    expect(verdicts.map((v) => v.status)).toEqual(FIRST_RUN);
+    expect(verdicts.map((v) => v.target)).toEqual(TARGETS);
   });
 });
