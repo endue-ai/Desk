@@ -17,7 +17,7 @@ last one used ends in use and a file that fails does not hold up the others. The
 come back, and the history is there for `desk.notify.history`. A session that does not match is
 skipped and Desk starts as it would without one. A plugin whose window the session does not show
 (closed, or in the drawer) starts asleep, a side one too, so a closed window stays closed until its
-first use. The app window's own frame is the shell's, in `<data>/desk-window.json` (ADR XXXX).
+first use. The app window's own frame is the shell's, in `<data>/desk-window.json` (ADR 0189).
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
