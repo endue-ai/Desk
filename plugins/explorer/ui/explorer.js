@@ -1,5 +1,6 @@
 // Explorer state and commands on the public SDK: bounded previews, folder grants, file opening
-// through desk.files.open, the remembered tree selection, and the edits on disk (edits.js).
+// through desk.files.open, the remembered tree selection, the status line (status.js), and the edits
+// on disk (edits.js).
 import { commandRegistry } from "./command-registry.js";
 import { contextActions } from "./context-actions.js";
 import { createDeskLink } from "./desk.js";
@@ -7,6 +8,7 @@ import { createDisk } from "./disk.js";
 import { createDrops } from "./drops.js";
 import { createEdits } from "./edits.js";
 import { createPreview } from "./preview.js";
+import { statusLine } from "./status.js";
 import {
   rows as flatten,
   folderList,
@@ -15,6 +17,7 @@ import {
   joinPath,
   jump,
   move,
+  nameOf,
   normalizePath,
 } from "./tree.js";
 
@@ -59,15 +62,11 @@ export function createExplorer({ bridge, commands, settings, surface, dnd }, vie
   const timers = new Map();
   /** @type {Row[]} */
   let list = [];
-  let said = "";
   let typed = "";
   let typedAt = 0;
 
-  const say = (/** @type {string} */ text) => {
-    if (text === said) return;
-    said = text;
-    view.status(text);
-  };
+  const status = statusLine((text) => view.status(text));
+  const { say } = status;
   const rowOf = (/** @type {string | null} */ id) => list.find((row) => row.id === id);
   const render = () => {
     list = flatten(roots, folders, expanded, { showHidden, page });
@@ -81,7 +80,10 @@ export function createExplorer({ bridge, commands, settings, surface, dnd }, vie
       .catch(() => {});
 
   const rootOf = (/** @type {string} */ path) => roots.find((root) => isUnder(root, path));
-  /** List one folder; a failure shows on its row and the status line. Resolves whether it listed. */
+  /**
+   * List one folder; a failure shows briefly on its row and in a sentence on the status line.
+   * Resolves whether it listed.
+   */
   const load = async (/** @type {string} */ path) => {
     const before = folders.get(path);
     folders.set(path, { ...(before?.entries ? { entries: before.entries } : {}), loading: true });
@@ -89,17 +91,19 @@ export function createExplorer({ bridge, commands, settings, surface, dnd }, vie
     try {
       const entries = await disk.list(path);
       folders.set(path, { entries, ...(before?.shown ? { shown: before.shown } : {}) });
-      say("");
+      status.listed(path);
       void disk.watch(path);
       render();
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      const brief = /** @type {{ brief?: string }} */ (error)?.brief ?? "could not list";
       folders.set(path, {
         ...(before?.entries ? { entries: before.entries } : {}),
-        error: message,
+        error: brief,
+        reason: message,
       });
-      say(message);
+      status.failed(path, message);
       render();
       return false;
     }
@@ -143,7 +147,9 @@ export function createExplorer({ bridge, commands, settings, surface, dnd }, vie
     render();
     void save();
   };
+  /** A selection that moves ends the last message: it spoke of the row before. */
   const select = (/** @type {string | null} */ id) => {
+    if (id !== selected) say("");
     selected = id;
     if (view.selection) view.selection(selected);
     else render();
@@ -152,12 +158,19 @@ export function createExplorer({ bridge, commands, settings, surface, dnd }, vie
     void save();
   };
 
-  const open = (/** @type {string} */ path) => {
+  /** Open where the desk says; a file no plugin opens shows in the quick preview instead. */
+  const open = async (/** @type {string} */ path) => {
     preview.close();
-    return desk.open(path).then(
-      () => say(""),
-      (error) => say(error.message),
-    );
+    try {
+      await desk.open(path);
+      say("");
+    } catch (error) {
+      const row = rowOf(path);
+      if (/** @type {{ code?: string }} */ (error)?.code !== "no_opener" || !row)
+        return say(error instanceof Error ? error.message : String(error));
+      say(`No plugin opens ${nameOf(path)}: its preview is below.`);
+      await preview.open(row);
+    }
   };
 
   /** Enter or click: a folder opens or closes, a file opens, a "more" row shows a page. */
@@ -258,7 +271,7 @@ export function createExplorer({ bridge, commands, settings, surface, dnd }, vie
     setRoots([...roots, path]);
     if (!(await expand(path))) {
       // Refused or missing: a root that cannot be listed is of no use, so it does not stay.
-      const why = folders.get(path)?.error ?? `Could not list ${path}.`;
+      const why = folders.get(path)?.reason ?? `Could not list ${path}.`;
       expanded.delete(path);
       setRoots(roots.filter((root) => root !== path));
       throw new Error(why);
@@ -325,15 +338,12 @@ export function createExplorer({ bridge, commands, settings, surface, dnd }, vie
     selected: () => rowOf(selected),
     say,
     open: async (row) => {
+      if (row.kind !== "dir") return open(row.path);
       preview.close();
-      return row.kind === "dir" ? expand(row.path) : desk.open(row.path);
+      return expand(row.path);
     },
   });
-  for (const [id, action] of Object.entries(context))
-    answer(id, async () => {
-      say("");
-      return action();
-    });
+  for (const [id, action] of Object.entries(context)) answer(id, action);
 
   const start = async () => {
     const init = await bridge.call("init.get", {}).catch(() => ({ settings: {} }));

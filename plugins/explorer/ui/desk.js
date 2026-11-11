@@ -12,18 +12,25 @@ const asString = (/** @type {unknown} */ value) =>
 /** @param {import("@endue-ai/plugin-sdk").PluginContext["commands"]} commands */
 export function createDeskLink(commands) {
   return {
-    /** Open a file where the desk says. The desk reports a file nobody opens; so does this. */
+    /**
+     * Open a file where the desk says. The desk reports a file nobody opens; so does this, with the
+     * code `no_opener`.
+     */
     open: async (/** @type {string} */ path) => {
       try {
         await commands.run("desk.files.open", { path });
       } catch (error) {
-        // A CommandFailed reads "desk.files.open: <code>: <why>"; the person gets the why.
+        // A CommandFailed reads "desk.files.open: <code>: <why>"; the person gets the why. The desk
+        // says a file no rule names with the code `failed` and "no plugin opens <path>".
         const text = error instanceof Error ? error.message : String(error);
         const why =
           codeOf(error) === "unknown_command"
             ? "the desk's file commands are off"
             : text.replace(/^[a-z.-]+: [a-z_]+: /, "");
-        throw new Error(`Could not open ${nameOf(path)}: ${why}`.replace(/\.?$/, "."));
+        const failed = new Error(`Could not open ${nameOf(path)}: ${why}`.replace(/\.?$/, "."));
+        throw Object.assign(failed, {
+          code: why.startsWith("no plugin opens ") ? "no_opener" : codeOf(error),
+        });
       }
     },
 
@@ -45,13 +52,17 @@ export function createDeskLink(commands) {
       }
     },
 
-    /** One question in the palette: whether the first answer was picked (Escape is no). */
+    /**
+     * One question in the palette: whether the answer `yes` was picked (Escape is no). The first item
+     * is the one Enter picks, so a question that cannot be undone puts the answer that keeps first.
+     */
     confirm: async (
       /** @type {string} */ title,
       /** @type {Array<{ id: string, label: string, detail: string }>} */ items,
+      /** @type {string} */ yes,
     ) => {
       try {
-        return (await commands.run("desk.palette.pick", { title, items })) === items[0]?.id;
+        return (await commands.run("desk.palette.pick", { title, items })) === yes;
       } catch (error) {
         if (codeOf(error) !== "unknown_command") return false;
         throw new Error(`${title.replace(/\?$/, "")}: the palette is not available to ask.`);

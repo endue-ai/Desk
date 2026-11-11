@@ -117,8 +117,15 @@ describe("move to trash", () => {
     const { app, host, view, params, ran, tree } = await explorer({ pick: () => "trash" });
     app.select(`${DOCS}/a2.md`);
     await expect(host.command("endue.explorer.trash")).resolves.toBe(`${DOCS}/a2.md`);
+    // The question opens on the answer that keeps (the palette's first row): Enter alone keeps.
     expect(ran("desk.palette.pick")).toMatchObject([
-      { title: "Move a2.md to the Trash?", items: [{ id: "trash", label: "Move to Trash" }, {}] },
+      {
+        title: "Move a2.md to the Trash?",
+        items: [
+          { id: "keep", label: "Keep it" },
+          { id: "trash", label: "Move to Trash" },
+        ],
+      },
     ]);
     expect(params("fs.trash")).toEqual([{ path: `${DOCS}/a2.md`, scope: WRITE }]);
     expect(tree.trashed()).toEqual([`${DOCS}/a2.md`]);

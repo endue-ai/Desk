@@ -5,9 +5,10 @@
 /**
  * @typedef {import("@endue-ai/bridge").DirEntry} DirEntry
  * @typedef {"file" | "dir" | "symlink"} EntryKind
- * @typedef {{ entries?: DirEntry[], loading?: boolean, error?: string, shown?: number }} Folder
- * One folder the explorer listed: its entries, or why it has none yet; `shown` is how many entries
- * the person asked to see past the page.
+ * @typedef {{ entries?: DirEntry[], loading?: boolean, error?: string, reason?: string,
+ *   shown?: number }} Folder
+ * One folder the explorer listed: its entries, or why it has none yet (`error` in a few words for
+ * its row, `reason` the sentence); `shown` is how many entries the person asked to see past the page.
  * @typedef {{
  *   id: string, path: string, name: string, kind: EntryKind | "more", depth: number, root: string,
  *   hidden: boolean, expanded?: boolean, loading?: boolean, error?: string, size?: number,

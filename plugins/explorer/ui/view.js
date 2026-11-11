@@ -1,7 +1,7 @@
 // The DOM for the explorer: a header with the folder tools, one flat list with role=tree whose rows
 // carry their level (the WAI-ARIA tree pattern, roving tabindex) and an icon for what each entry
-// is (file-icons.js), and a status live region for
-// refusals and errors. Rows are never the browser's draggables: in WebKit a click that moved a few
+// is (file-icons.js), and a status live region for what the last action did or why it failed.
+// Rows are never the browser's draggables: in WebKit a click that moved a few
 // pixels on one became a drag, and the file did not open. They drag their path as desk data through
 // ctx.dnd instead, past the SDK's movement threshold, and folders take drops (ADR 0119). Desk chords
 // pass through, but for Cmd+Backspace, which trashes as F2 renames; Escape first closes a visible
@@ -111,8 +111,9 @@ export function createView(doc, actions, dnd) {
     if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
       if (!entry) return;
       event.preventDefault();
+      // Below the row, or above it where there is no room below.
       const bounds = entry.getBoundingClientRect();
-      menu.show(bounds.left + 12, bounds.bottom);
+      menu.show(bounds.left + 12, bounds.bottom, bounds.top);
       return;
     }
     if (event.key.length === 1 && event.key !== " ") {
@@ -239,7 +240,12 @@ export function createView(doc, actions, dnd) {
       status.textContent = words;
     },
 
-    preview: preview.render,
+    /** The preview takes the lower part of the page: the selected row stays in sight above it. */
+    preview(/** @type {import("./preview.js").Preview | null} */ model) {
+      preview.render(model);
+      if (model !== null && selected !== null)
+        items.get(selected)?.scrollIntoView?.({ block: "nearest" });
+    },
     focus,
     dropTarget: tree,
     landing,

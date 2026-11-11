@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { placeMenu } from "../ui/context-menu.js";
 import type { Row } from "../ui/tree.js";
 import { createView } from "../ui/view.js";
 
@@ -142,6 +143,31 @@ describe("Explorer context menu", () => {
     expect(menu()?.hidden).toBe(true);
     expect(document.activeElement).toBe(items()[0]);
     expect(context).not.toHaveBeenCalled();
+  });
+
+  it("opens beside the press where it fits, else on the other side, else inside the page", () => {
+    const menu = { width: 200, height: 230 };
+    const page = { width: 400, height: 263 };
+    // Room right of and below the press: there.
+    expect(placeMenu({ x: 20, y: 20 }, menu, { width: 400, height: 600 })).toEqual({
+      left: 20,
+      top: 20,
+    });
+    // No room right or below: left of it and above it (a row's top edge for the keyboard).
+    expect(placeMenu({ x: 380, y: 590, top: 570 }, menu, { width: 400, height: 600 })).toEqual({
+      left: 180,
+      top: 340,
+    });
+    // Room on neither side: as far up or left as keeps it whole, 6 px from the edge.
+    expect(placeMenu({ x: 150, y: 113 }, { width: 300, height: 230 }, page)).toEqual({
+      left: 94,
+      top: 27,
+    });
+    // Larger than the page: from its top-left margin (the menu scrolls there).
+    expect(placeMenu({ x: 10, y: 10 }, { width: 500, height: 300 }, page)).toEqual({
+      left: 6,
+      top: 6,
+    });
   });
 
   it("refreshing the tree closes the stale menu and keeps keyboard focus on the selection", () => {

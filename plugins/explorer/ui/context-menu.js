@@ -1,8 +1,12 @@
 // A compact keyboard menu kept inside the plugin viewport, returning focus to its selection. The last
 // four change files (edits.js), the one that cannot be undone last; Rename and Move to Trash have
-// keys on the tree too.
+// keys on the tree too. Its rows are compact (style.css), so all nine fit the window's first size
+// (402×305, a 263 px page); it opens beside the press where it fits, else on the other side, else as
+// close as the page allows, and scrolls only in a window too small for nine rows.
 const RENAME = "endue.explorer.rename";
 const TRASH = "endue.explorer.trash";
+/** The gap the menu keeps from the page's edges. */
+const MARGIN = 6;
 /** @type {Array<[string, string, string?]>} title, command, aria-keyshortcuts */
 const ITEMS = [
   ["Open", "endue.explorer.open-selected"],
@@ -25,6 +29,32 @@ export function keyCommand(event) {
   if (event.ctrlKey || event.altKey || event.shiftKey) return undefined;
   if (event.metaKey) return event.key === "Backspace" ? TRASH : undefined;
   return event.key === "F2" ? RENAME : event.key === "Delete" ? TRASH : undefined;
+}
+
+/**
+ * Where a menu of `size` opens on a page of `page` for a press at `at`: right of and below the point
+ * where it fits there, else left of it and above `at.top` (a row's top edge when the keyboard opened
+ * it; the point itself for a pointer), else pushed inside the page.
+ * @param {{ x: number, y: number, top?: number }} at
+ * @param {{ width: number, height: number }} size
+ * @param {{ width: number, height: number }} page
+ */
+export function placeMenu(at, size, page) {
+  const along = (
+    /** @type {number} */ start,
+    /** @type {number} */ end,
+    /** @type {number} */ length,
+    /** @type {number} */ room,
+  ) =>
+    start + length <= room - MARGIN
+      ? start
+      : end - length >= MARGIN
+        ? end - length
+        : Math.max(MARGIN, room - MARGIN - length);
+  return {
+    left: along(at.x, at.x, size.width, page.width),
+    top: along(at.y, at.top ?? at.y, size.height, page.height),
+  };
 }
 
 /** @param {Document} doc @param {(id: string) => unknown} run @param {() => void} restore */
@@ -78,15 +108,22 @@ export function contextMenu(doc, run, restore) {
   doc.body.append(menu);
   return {
     close,
-    show(/** @type {number} */ x, /** @type {number} */ y) {
+    /**
+     * Open for a press at `x, y`; `top` is where a menu that opens upward ends (a row's top edge).
+     * @param {number} x @param {number} y @param {number} [top]
+     */
+    show(x, y, top = y) {
       menu.hidden = false;
       menu.style.left = "0px";
       menu.style.top = "0px";
-      const bounds = menu.getBoundingClientRect();
-      const width = doc.defaultView?.innerWidth ?? doc.documentElement.clientWidth;
-      const height = doc.defaultView?.innerHeight ?? doc.documentElement.clientHeight;
-      menu.style.left = `${Math.max(6, Math.min(x, width - bounds.width - 6))}px`;
-      menu.style.top = `${Math.max(6, Math.min(y, height - bounds.height - 6))}px`;
+      const { width, height } = menu.getBoundingClientRect();
+      const page = {
+        width: doc.defaultView?.innerWidth ?? doc.documentElement.clientWidth,
+        height: doc.defaultView?.innerHeight ?? doc.documentElement.clientHeight,
+      };
+      const at = placeMenu({ x, y, top }, { width, height }, page);
+      menu.style.left = `${at.left}px`;
+      menu.style.top = `${at.top}px`;
       buttons[0]?.focus();
     },
   };

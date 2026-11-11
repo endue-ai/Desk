@@ -1,8 +1,9 @@
 // The explorer's side of the bridge's fs namespace: a listing, an empty new file, a new folder, a
 // rename, a trash, and watches on folders, each under a scope that covers the folder the path belongs
 // to. When the grants do not cover a path, the person is asked once for its folder (perm.request) and
-// the call is tried again. Every failure is an Error whose message is the sentence the person reads,
-// with the bridge's error code as `code`.
+// the call is tried again. Every failure is an Error whose message is the sentence the person reads
+// (the bridge's code in words), with the bridge's error code as `code` and a few words for a row as
+// `brief`.
 import { parentOf, patternOf } from "./tree.js";
 
 /**
@@ -19,6 +20,30 @@ const NAME = "the explorer";
 
 const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
+
+/** What a bridge error code means, said after "Could not list ~/x: ". */
+const WORDS = /** @type {Record<string, string>} */ ({
+  not_found: "it is not there",
+  already_exists: "something by that name is already there",
+  io_error: "the disk answered with an error",
+  timeout: "the desk did not answer in time",
+  unsupported: "this desk cannot do that",
+  invalid_params: "the desk does not take that path",
+  cancelled: "it was stopped",
+  internal: "something went wrong in the desk",
+});
+/** The same, in a few words for a folder's row. */
+const BRIEF = /** @type {Record<string, string>} */ ({
+  not_found: "not there",
+  permission_denied: "not allowed",
+});
+
+/** An Error the person reads, with the bridge's code and the row's few words. */
+const failure = (
+  /** @type {string} */ text,
+  /** @type {string} */ code,
+  /** @type {string} */ verb,
+) => Object.assign(new Error(text), { code, brief: BRIEF[code] ?? `could not ${verb}` });
 
 /**
  * @param {PluginContext["bridge"]} bridge
@@ -44,15 +69,12 @@ export function createDisk(bridge, { rootOf, changed }) {
    */
   const withGrant = async ({ permission, verb, path, reason }, call) => {
     const scope = scopeOf(permission, path);
-    const refused = Object.assign(new Error(`Not allowed to ${verb} ${path}.`), {
-      code: "permission_denied",
-    });
-    const failed = (/** @type {unknown} */ error) =>
-      codeOf(error) === "permission_denied"
-        ? refused
-        : Object.assign(new Error(`Could not ${verb} ${path}: ${codeOf(error)}.`), {
-            code: codeOf(error),
-          });
+    const refused = failure(`Not allowed to ${verb} ${path}.`, "permission_denied", verb);
+    const failed = (/** @type {unknown} */ error) => {
+      const code = codeOf(error);
+      if (code === "permission_denied") return refused;
+      return failure(`Could not ${verb} ${path}: ${WORDS[code] ?? "it failed"}.`, code, verb);
+    };
     try {
       return await call(scope);
     } catch (error) {

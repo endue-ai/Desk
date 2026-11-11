@@ -1,4 +1,5 @@
-// Register explorer commands and surface failures on the status line.
+// Register explorer commands and surface failures on the status line. A command is the person's
+// next action: it starts from a clear line, and says what it did or why it failed.
 /** @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext */
 
 /** @param {PluginContext["commands"]} commands @param {(text: string) => void} say */
@@ -9,6 +10,7 @@ export function commandRegistry(commands, say) {
   const command = async (name, raw) => {
     const handler = own.get(name);
     if (!handler) throw new Error(`the explorer has no command ${name}.`);
+    say("");
     try {
       const args = /** @type {Record<string, unknown>} */ (
         raw && typeof raw === "object" ? raw : {}

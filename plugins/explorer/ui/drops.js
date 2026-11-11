@@ -186,6 +186,8 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
     }
     let done = 0;
     let copied = false;
+    /** Why a step failed: said after what went before it is listed again. */
+    let failed;
     for (const step of plan) {
       const verb = step.how === "copy" ? "copy" : "move";
       const reason = `To ${verb} ${nameOf(step.from)} to ${folder}`;
@@ -196,21 +198,22 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
         done++;
         copied ||= step.how === "copy";
       } catch (error) {
-        deps.say(failure(error, verb, step.from, folder));
+        failed = failure(error, verb, step.from, folder);
         break;
       }
     }
-    if (done === 0) return "none";
-    const touched = [
-      folder,
-      ...plan.filter((s) => s.how === "move").map((s) => parentOf(s.from) ?? ""),
-    ];
-    await deps.placed(
-      [...new Set(touched)].filter((f) => f !== ""),
-      plan[0]?.to ?? folder,
-    );
-    if (done === plan.length) deps.say(said(plan, folder));
-    return copied ? "copy" : "move";
+    if (done > 0) {
+      const touched = [
+        folder,
+        ...plan.filter((s) => s.how === "move").map((s) => parentOf(s.from) ?? ""),
+      ];
+      await deps.placed(
+        [...new Set(touched)].filter((f) => f !== ""),
+        plan[0]?.to ?? folder,
+      );
+    }
+    if (failed !== undefined || done > 0) deps.say(failed ?? said(plan, folder));
+    return done === 0 ? "none" : copied ? "copy" : "move";
   };
 
   /** A command call; refused, ask once to run the command and try again. */
@@ -251,6 +254,8 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
     /** @type {string[]} */
     const placed = [];
     let wanted = 0;
+    /** Why a copy failed: said after what went before it is listed again. */
+    let failed;
     for (const file of files) {
       const clash = taken.has(file.name);
       if (clash && answer === "skip") continue;
@@ -268,17 +273,17 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
         );
         placed.push(joinPath(folder, name));
       } catch (error) {
-        deps.say(`Could not copy ${file.name} to ${nameOf(folder)}: ${messageOf(error)}`);
+        failed = `Could not copy ${file.name} to ${nameOf(folder)}: ${messageOf(error)}`;
         break;
       }
     }
-    if (placed.length === 0) return "none";
-    await deps.placed([folder], placed[0] ?? folder);
-    if (placed.length === wanted) {
+    if (placed.length > 0) await deps.placed([folder], placed[0] ?? folder);
+    if (failed !== undefined) deps.say(failed);
+    else if (placed.length > 0) {
       const what = placed.length === 1 ? nameOf(placed[0] ?? "") : `${placed.length} items`;
       deps.say(`Copied ${what} to ${nameOf(folder)}.`);
     }
-    return "copy";
+    return placed.length === 0 ? "none" : "copy";
   };
 
   dnd?.onDrop(

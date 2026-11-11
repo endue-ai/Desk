@@ -114,19 +114,26 @@ export function createEdits(act, state) {
     return to;
   };
 
-  /** To the OS trash after one question; the next row is selected, or the one before the last. */
+  /**
+   * To the OS trash after one question, which opens on "Keep it": Enter alone never trashes. The next
+   * row is selected after, or the one before the last.
+   */
   const trash = async (/** @type {{ path?: string }} */ wanted) => {
     const row = await entry(wanted.path);
     if (!row) return null;
     const what = row.kind === "dir" ? `${row.name} and everything in it` : row.name;
-    const sure = await desk.confirm(`Move ${what} to the Trash?`, [
-      {
-        id: "trash",
-        label: "Move to Trash",
-        detail: "The desk cannot undo this; the Trash keeps it",
-      },
-      { id: "keep", label: "Keep it", detail: `Leave ${row.name} where it is` },
-    ]);
+    const sure = await desk.confirm(
+      `Move ${what} to the Trash?`,
+      [
+        { id: "keep", label: "Keep it", detail: `Leave ${row.name} where it is` },
+        {
+          id: "trash",
+          label: "Move to Trash",
+          detail: "The desk cannot undo this; the Trash keeps it",
+        },
+      ],
+      "trash",
+    );
     if (!sure) return null;
     const at = state.rows().findIndex((r) => r.id === row.id);
     try {

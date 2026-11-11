@@ -159,6 +159,17 @@ describe("dropping paths on an explorer folder", () => {
     );
   });
 
+  it("says why the rest did not go once what did go is listed again", async () => {
+    const check: Check = (_caller, scope) => {
+      if (scope.paths.includes("/Volumes/USB/**"))
+        throw new StubError("permission_denied", "not granted");
+    };
+    const { drop, tree, view } = await explorer({ check });
+    expect(await drop(`${WORK}/deep`, [`${DOCS}/b.txt`, "/Volumes/USB/photo.jpg"])).toBe("move");
+    expect(tree.read(`${WORK}/deep/b.txt`)).toBe("bi");
+    expect(view.statuses.at(-1)).toBe(`Not allowed to copy photo.jpg to ${WORK}/deep.`);
+  });
+
   it("never puts a folder into itself", async () => {
     const { drop, params, view } = await explorer();
     expect(await drop(WORK, [WORK])).toBe("none");

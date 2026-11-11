@@ -97,6 +97,16 @@ describe("Explorer quick preview controls", () => {
     expect(actions.key).toHaveBeenCalledWith("Escape");
   });
 
+  it("brings the selected row into sight above the preview each time it shows", () => {
+    const into = vi.fn();
+    item().scrollIntoView = into;
+    show({ ...row, kind: "loading" });
+    show({ ...row, kind: "text", text: "a" });
+    expect(into.mock.calls).toEqual([[{ block: "nearest" }], [{ block: "nearest" }]]);
+    show(null);
+    expect(into).toHaveBeenCalledTimes(2);
+  });
+
   it("loading and failure are visible, and Escape passes through when preview is closed", () => {
     show({ ...row, kind: "loading" });
     expect(document.querySelector("#preview")?.getAttribute("aria-busy")).toBe("true");

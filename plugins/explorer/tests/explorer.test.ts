@@ -98,12 +98,12 @@ describe("opening files", () => {
       handlers: disk(sample()),
       commands: {
         "desk.files.open": () => {
-          throw new Error(`no plugin opens ${DOCS}/a2.md`);
+          throw new Error("Notes did not answer");
         },
       },
     });
     await app.activate(`${DOCS}/a2.md`);
-    expect(view.statuses.at(-1)).toBe(`Could not open a2.md: no plugin opens ${DOCS}/a2.md.`);
+    expect(view.statuses.at(-1)).toBe("Could not open a2.md: Notes did not answer.");
   });
 });
 
@@ -124,7 +124,7 @@ describe("permissions", () => {
     expect(params("fs.list")).toHaveLength(1);
     expect(params("fs.watch")).toEqual([]);
     expect(view.shown()).toEqual(["0:dir:Documents+!"]);
-    expect(view.trees.at(-1)?.rows[0]?.error).toBe(`Not allowed to list ${DOCS}.`);
+    expect(view.trees.at(-1)?.rows[0]?.error).toBe("not allowed");
     expect(view.statuses.at(-1)).toBe(`Not allowed to list ${DOCS}.`);
   });
 
@@ -156,12 +156,12 @@ describe("permissions", () => {
     expect(view.statuses).toEqual([]);
   });
 
-  it("other errors are reported with their code and no ask", async () => {
+  it("other errors are reported in words, and with no ask", async () => {
     const { view, params } = await mount({
       handlers: { ...disk({}), "perm.request": () => ({ granted: true }) },
     });
     expect(params("perm.request")).toEqual([]);
-    expect(view.statuses.at(-1)).toBe(`Could not list ${DOCS}: not_found.`);
+    expect(view.statuses.at(-1)).toBe(`Could not list ${DOCS}: it is not there.`);
   });
 });
 

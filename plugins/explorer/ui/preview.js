@@ -105,6 +105,11 @@ export function createPreview(disk, show) {
     active: () => active,
     close,
     select,
+    /** Show `row`, whether or not the preview was open. */
+    async open(/** @type {Row | undefined} */ row) {
+      active = true;
+      await select(row);
+    },
     async toggle(row) {
       if (active) close();
       else {

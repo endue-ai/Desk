@@ -1,20 +1,20 @@
 # plugins/explorer
 
 `endue.explorer`, the folder view on the public SDK, uses one `left` surface for allowed folders:
-first in natural order, dotfiles on request, 500 entries a page. A file opens through `desk.files.open`: the plugin the desk's rules name reads it, given its folder first, so opening never asks (ADR 0131).
-Space shows a bounded quick preview. Each row's icon says what it is (folder, code, image, archive, ...) in the theme's colours.
+first in natural order, dotfiles on request, 500 entries a page. A file opens through `desk.files.open`: the plugin the desk's rules name reads it, given its folder first, so opening never asks (ADR 0131); a file no plugin opens shows in the quick preview.
+Space shows a bounded quick preview, the selected row kept in sight above it. Each row's icon says what it is (folder, code, image, archive, ...) in the theme's colours; each tool's icon says what it does.
 
 Keyboard: the WAI-ARIA tree pattern. Arrows move, `→` expands or steps in, `←` collapses or steps out,
 Home/End jump, Space previews, Enter opens, Escape closes the preview; letters jump by name; F2 renames, Delete or Cmd+Backspace trashes.
-One click selects and opens a file or toggles a folder; rows never select their text, and a row drags its path (`desk/paths`, ADR 0119) past 6 px. Right-click or Shift+F10 offers Open, terminal, Git, system reveal, Copy path, New file, New folder, Rename and Move to Trash.
-Each change asks one question in the palette (the name, from the old one for Rename; Move to Trash every time), never overwrites, and is one `fs.write`, `fs.mkdir`, `fs.rename` or `fs.trash` (ADR 0125): the desk's undo takes back a rename or a new folder, the OS Trash keeps what is trashed. The explorer's own folders are never renamed or trashed.
+One click selects and opens a file or toggles a folder; rows never select their text, and a row drags its path (`desk/paths`, ADR 0119) past 6 px. Right-click or Shift+F10 offers Open, terminal, Git, system reveal, Copy path, New file, New folder, Rename and Move to Trash, in compact rows that all fit the first window size, beside the press or on its other side.
+Each change asks one question in the palette (the name, from the old one for Rename; Move to Trash every time, opening on "Keep it"), never overwrites, and is one `fs.write`, `fs.mkdir`, `fs.rename` or `fs.trash` (ADR 0125): the desk's undo takes back a rename or a new folder, the OS Trash keeps what is trashed. The explorer's own folders are never renamed or trashed.
 A drop on a folder moves there (`fs.rename`; Alt, the OS or another volume copy with `fs.copy`); a taken name asks
 to keep both, replace (the old one goes to the Trash) or skip; a container's file (`docker/file`) copies in through Docker's `endue.docker.copy-out`. Preview: 64 KiB of UTF-8 text, or images to 8 MiB.
 
 A listing outside its grants is refused: the explorer asks with `perm.request` for that folder (`<folder>/**`)
-and tries once more; a refusal is said in words on the row and the status line (`Not allowed to list
-~/Documents.`); drops ask the same way. Expanded folders are watched (`fs.watch`, 64 at most) and listed again
-when they change; expanded folders and the selection live in the store, the rest in settings (`endue.explorer.*`).
+and tries once more; a refusal or failure is said briefly on the row (`not allowed`, `not there`) and in a sentence
+on the status line (`Not allowed to list ~/Documents.`), which keeps what the last action did until the next one; drops ask the same way.
+Expanded folders are watched (`fs.watch`, 64 at most) and listed again when they change; expanded folders and the selection live in the store, the rest in settings (`endue.explorer.*`).
 
 | Permission | Why |
 | --- | --- |
@@ -31,7 +31,7 @@ when they change; expanded folders and the selection live in the store, the rest
 | File | Purpose |
 | --- | --- |
 | `ui/tree.js` · `ui/file-icons.js` · `ui/glyphs.js` | Paths, the order of entries, the rows on screen, where a key moves the selection; each row's icon (glyph and theme tone by kind, name and extension) as inline SVG |
-| `ui/disk.js` · `ui/desk.js` · `ui/drops.js` · `ui/edits.js` · `ui/explorer.js` · `ui/command-registry.js` | Scoped disk and desk calls, drops on folders, edits on disk, tree state, commands, store and settings |
+| `ui/disk.js` · `ui/desk.js` · `ui/drops.js` · `ui/edits.js` · `ui/explorer.js` · `ui/command-registry.js` · `ui/status.js` | Scoped disk and desk calls, drops on folders, edits on disk, tree state, commands, store and settings, the status line |
 | `ui/view.js` · `ui/main.js` · `ui/context-*.js` · `ui/size.js` · `ui/style.css` | Tree DOM, keyboard menu, selection actions and mount; the look, from the theme's `--desk-*` tokens only |
 | `ui/preview.js` · `ui/preview-view.js` | Bounded text reads; images from their `fs.url` URL, never decoded in the frame (#38); stale results; safe DOM |
 ```bash

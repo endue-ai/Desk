@@ -14,13 +14,30 @@
     <header>
       <h1 id="title">Explorer</h1>
       <div class="tools" role="toolbar" aria-label="Explorer tools">
-        <button id="add-folder" class="desk-icon-btn" type="button" title="Add a folder" aria-label="Add a folder">+</button>
-        <button id="new-file" class="desk-icon-btn" type="button" title="New file" aria-label="New file">
-          <span aria-hidden="true">✎</span>
+        <!-- Line icons on a 24 grid, as the rows' (glyphs.js); style.css draws them. -->
+        <button id="add-folder" class="desk-icon-btn" type="button" title="Add a folder" aria-label="Add a folder">
+          <svg class="tool-icon" data-icon="folder-plus" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3 17.5v-11a2 2 0 0 1 2-2h3.9a1.5 1.5 0 0 1 1.2.6l1.2 1.6a1.5 1.5 0 0 0 1.2.6H19a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <path d="M12 10.5v6M9 13.5h6" />
+          </svg>
         </button>
-        <button id="toggle-preview" class="desk-icon-btn" type="button" aria-controls="preview" aria-expanded="false" title="Quick preview (Space)" aria-label="Quick preview">◉</button>
+        <button id="new-file" class="desk-icon-btn" type="button" title="New file" aria-label="New file">
+          <svg class="tool-icon" data-icon="file-plus" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M13.5 3h-6A2.5 2.5 0 0 0 5 5.5v13A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5v-10zM13.5 3v3.5a2 2 0 0 0 2 2H19" />
+            <path d="M12 11.5v6M9 14.5h6" />
+          </svg>
+        </button>
+        <button id="toggle-preview" class="desk-icon-btn" type="button" aria-controls="preview" aria-expanded="false" title="Quick preview (Space)" aria-label="Quick preview">
+          <svg class="tool-icon" data-icon="eye" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+            <path d="M14.5 12a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z" />
+          </svg>
+        </button>
         <button id="refresh" class="desk-icon-btn" type="button" title="Refresh" aria-label="Refresh">
-          <span aria-hidden="true">↻</span>
+          <svg class="tool-icon" data-icon="refresh" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" />
+            <path d="M17.3 2.7v4h-4" />
+          </svg>
         </button>
         <button
           id="toggle-hidden" class="desk-icon-btn"
@@ -29,7 +46,10 @@
           aria-label="Dotfiles"
           aria-pressed="false"
         >
-          <span aria-hidden="true">.•</span>
+          <svg class="tool-icon" data-icon="dotfile" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M15 4h-3.5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2H18a2 2 0 0 0 2-2V9zM15 4v3.5A1.5 1.5 0 0 0 16.5 9H20" />
+            <path class="dot" d="M5 18.5h.01" />
+          </svg>
         </button>
       </div>
     </header>
