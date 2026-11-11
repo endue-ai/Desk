@@ -80,7 +80,10 @@ the clients that exist work, and keep a slow bridge call from delaying a frame.
 * **Stop.** On `sleep`, `destroy`, the plugin turned off and the desk quitting, the desk sends the
   message, closes both connections and kills the process `graceMs` (2 s) later if it still runs; that
   end is no death. A hot reload (the plugin's files changed) stops the process and starts the new
-  program at the window's size.
+  program at the window's size. A process started again (after a death, a sleep or a hot reload)
+  starts with no accessibility tree: while its surface exports one (`a11y.enable`), the native host
+  asks it again right after its `create` or `wake`, as a web surface's new browser exports when its
+  surface does (#146).
 * **Windows and Linux.** They compile: the core's process start says Unsupported on Windows (no socket
   pair yet), and the native host refuses frames that are not an IOSurface, so the window shows that the
   plugin could not draw. #61 checks: named pipes and `DuplicateHandle` of a D3D11 shared handle on
