@@ -11,7 +11,7 @@
 //! - the canvas map (`draw_map.rs`), over the bars;
 //! - each modal's scrim the page has open: the theme's dialog scrim over everything drawn so far,
 //!   every window, the dock and the map included; the page paints none, as it could dim only its
-//!   own pixels (ADR XXXX);
+//!   own pixels (ADR 0180);
 //! - what the desk opens over all that, whole: the settings, the studios, the dialogs, menus, hover
 //!   cards and popovers (the parts of `Level::Front`);
 //! - the overlays' plugin surfaces (the palette, the first run, a permission prompt), above it all.

@@ -42,7 +42,7 @@ html.desk-compositor .pane-head,
 html.desk-compositor .pane:not(:has(.plugin-pane)) {
   background: var(--desk-surface, var(--desk-card));
 }
-/* A modal's scrim is the compositor's (`desk.scrim`, ADR XXXX): drawn here it would dim only the
+/* A modal's scrim is the compositor's (`desk.scrim`, ADR 0180): drawn here it would dim only the
    page, never the windows, the dock or the canvas map the compositor draws under the dialog. The
    page keeps it for the pointer (a press outside the dialog is the dialog's) and paints none. */
 html.desk-compositor .scrim,

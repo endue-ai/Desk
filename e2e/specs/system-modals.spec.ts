@@ -1,4 +1,4 @@
-// What the desk opens over its windows (#158, #161, ADR XXXX): a dialog, the desktops' overview and
+// What the desk opens over its windows (#158, #161, ADR 0180): a dialog, the desktops' overview and
 // the settings are drawn whole above every window, the dock, Eris and the canvas map, and a modal's
 // scrim dims all of them, the windows' titles and bodies included, which the page's own scrim never
 // reached; a press outside the dialog is the dialog's, never a window's. What the screen shows is

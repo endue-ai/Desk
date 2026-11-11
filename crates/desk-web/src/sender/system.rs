@@ -69,7 +69,7 @@ pub struct SystemPart {
 }
 
 /// Where a part goes among what the compositor draws of its own, the canvas map and a modal's
-/// scrim, which the page cannot draw over the windows (ADR XXXX).
+/// scrim, which the page cannot draw over the windows (ADR 0180).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Level {
     /// The page's pixels, whole, under the canvas map: the bars, the pills, Eris, the notices.

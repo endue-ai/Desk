@@ -6,7 +6,7 @@
 // open, so a window's title or a window over another never cuts through them. Every control the
 // page draws outside its windows is in a part: one that is not lets the press through to the dock
 // or the window under it (#158, #159). A modal's scrim is a part the compositor draws itself, over
-// every window, the dock and the canvas map, which the page's own could never dim (ADR XXXX):
+// every window, the dock and the canvas map, which the page's own could never dim (ADR 0180):
 // `compositor.css` leaves it unpainted here.
 
 /** How a part's elements are reported: the first the selector finds, `every` one each with a box
