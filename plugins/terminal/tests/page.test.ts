@@ -28,4 +28,14 @@ describe("the terminal's page", () => {
     expect(xterm).toContain("box-sizing: border-box;");
     expect(xterm).toContain("height: 100%;");
   });
+
+  // In a light theme the gap was a black frame around a white terminal (#158, item 18): xterm's own
+  // sheet paints its viewport, which spans the gap, black; only the screen takes the theme.
+  it("shows the theme's background in the gap around the cells, not xterm's black", () => {
+    const vendor = readFileSync(join(import.meta.dirname, "../ui/vendor/xterm.css"), "utf8");
+    expect(vendor).toMatch(/\.xterm \.xterm-viewport \{[^}]*background-color: #000;/u);
+    expect(rule(".pane .xterm .xterm-viewport")).toContain(
+      "background-color: var(--desk-background);",
+    );
+  });
 });
