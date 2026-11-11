@@ -33,12 +33,15 @@ pub enum DndOut {
     Open(Vec<String>),
 }
 
-/// The drag image the compositor draws above every window.
+/// The drag image the compositor draws above every window: for a drag from a surface, the image
+/// under the pointer; for files from the OS, which draws their image, where they go (#162).
 #[derive(Clone, Debug, PartialEq)]
 pub struct DragOverlay {
     pub look: DragLook,
     pub at: Vec2,
     pub effect: SurfaceDropAnswer,
+    /// Files from the OS that no surface takes here: dropped, they open on the desk.
+    pub opens: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -130,13 +133,17 @@ impl Broker {
         self.drag.as_ref()?.over.as_ref().map(|(s, _)| s.as_str())
     }
 
-    /// What the compositor draws for a drag from a surface.
+    /// What the compositor draws for a drag: a surface's drag image, or where the OS's files go,
+    /// once the pointer is in the window. A drop from the OS that no surface takes with an effect
+    /// opens its files (`land`).
     pub fn overlay(&self) -> Option<DragOverlay> {
-        let drag = self.drag.as_ref().filter(|d| d.source.is_some())?;
+        let drag = self.drag.as_ref().filter(|d| d.at.is_finite())?;
+        let taken = drag.over.is_some() && drag.effect != SurfaceDropAnswer::None;
         Some(DragOverlay {
             look: drag.look.clone(),
             at: drag.at,
             effect: drag.effect,
+            opens: drag.source.is_none() && !taken,
         })
     }
 

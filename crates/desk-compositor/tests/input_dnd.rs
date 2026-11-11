@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use desk_compositor::glam::Vec2;
 use desk_compositor::input::*;
+use desk_surface::generated::SurfaceDropAnswer;
 
 mod input_desk;
 use input_desk::*;
@@ -156,10 +157,16 @@ fn files_from_the_os_reach_the_surface_under_the_pointer_and_open_when_nobody_ta
         serde_json::json!(["copy", "link"]),
         "never move a person's files"
     );
-    assert!(d.router.overlay().is_none(), "the OS draws its own image");
+    // Until the surface answers, a drop would open the files on the desk.
+    assert!(d.router.overlay().is_some_and(|o| o.opens));
     d.said(message(
         serde_json::json!({ "type": "drag.status", "surface": B, "effect": "copy" }),
     ));
+    let taken = d.router.overlay().unwrap();
+    assert_eq!(
+        (taken.opens, taken.effect),
+        (false, SurfaceDropAnswer::Copy)
+    );
     d.feed(Input::FileDropped {
         path: "/Users/me/한 글.md".into(),
     });
@@ -187,4 +194,47 @@ fn files_from_the_os_reach_the_surface_under_the_pointer_and_open_when_nobody_ta
         d.router.tick(&d.scene, d.now),
         [Out::OpenFiles(vec!["/Users/me/c.md".into()])]
     );
+}
+
+#[test]
+fn a_file_from_the_os_shows_where_it_goes_over_the_desk_and_over_a_window() {
+    // #162 finding 14: a hover over the canvas, a window that takes no files, and one that does.
+    let mut d = desk();
+    d.said(message(
+        serde_json::json!({ "type": "drag.accept", "surface": B, "types": ["desk/paths"] }),
+    ));
+    d.to(20.0, 20.0);
+    assert!(d.router.overlay().is_none(), "no drag, no image");
+    d.feed(Input::FileHovered {
+        path: "/Users/me/budget.xlsx".into(),
+    });
+    let out = d.router.tick(&d.scene, d.now);
+    assert!(out.contains(&Out::Redraw), "the hint is drawn: {out:?}");
+    let canvas = d
+        .router
+        .overlay()
+        .expect("over the canvas the desk opens the file");
+    assert_eq!(
+        (canvas.look.label.as_str(), canvas.opens, canvas.at),
+        ("budget.xlsx", true, Vec2::new(40.0, 40.0))
+    );
+    // Over a window that takes no files the drop still opens it on the desk.
+    d.to(200.0, 100.0);
+    let window = d.router.overlay().unwrap();
+    assert_eq!((window.opens, window.at), (true, Vec2::new(400.0, 200.0)));
+    // Over one that takes files, what it answered.
+    d.to(650.0, 60.0);
+    d.said(message(
+        serde_json::json!({ "type": "drag.status", "surface": B, "effect": "link" }),
+    ));
+    let over = d.router.overlay().unwrap();
+    assert_eq!((over.opens, over.effect), (false, SurfaceDropAnswer::Link));
+    // Refused there: dropped, it opens on the desk after all.
+    d.to(660.0, 60.0);
+    d.said(message(
+        serde_json::json!({ "type": "drag.status", "surface": B, "effect": "none" }),
+    ));
+    assert!(d.router.overlay().is_some_and(|o| o.opens));
+    d.feed(Input::FileHoverCancelled);
+    assert!(d.router.overlay().is_none(), "the drag left the window");
 }

@@ -27,9 +27,11 @@ pub fn focus_ring(scene: &mut Scene, rect: Rect, scale: f32) {
     let _ = scene.insert(root, Node::from(ring).with_hit(false));
 }
 
-/// The text the drag image shows: the effect's mark, the label, how many.
+/// The text the drag image shows: the effect's mark, the label, how many; for files from the OS
+/// that no surface takes there, that a drop opens them (#162).
 pub fn caption(overlay: &DragOverlay) -> String {
     let mark = match overlay.effect {
+        _ if overlay.opens => "Open ",
         SurfaceDropAnswer::Copy => "+ ",
         SurfaceDropAnswer::Link => "↗ ",
         SurfaceDropAnswer::None => "⊘ ",
@@ -48,13 +50,23 @@ pub fn drag_image(scene: &mut Scene, overlay: &DragOverlay, scale: f32) {
     let text = caption(overlay);
     let width = (16.0 + 7.5 * text.chars().count() as f32).clamp(48.0, 280.0) * scale;
     let height = 28.0 * scale;
+    // Below and right of the pointer; near the window's right or bottom edge, on the other side.
+    let (w, h) = scene.viewport();
+    let gap = 12.0 * scale;
+    let side = |at: f32, size: f32, room: u32| {
+        if at + gap + size > room as f32 && at - gap - size >= 0.0 {
+            at - gap - size
+        } else {
+            at + gap
+        }
+    };
     let rect = Rect::new(
-        overlay.at.x + 12.0 * scale,
-        overlay.at.y + 12.0 * scale,
+        side(overlay.at.x, width, w),
+        side(overlay.at.y, height, h),
         width,
         height,
     );
-    let refused = overlay.effect == SurfaceDropAnswer::None;
+    let refused = overlay.effect == SurfaceDropAnswer::None && !overlay.opens;
     let pill = RectNode {
         rect,
         fill: if refused {
@@ -117,6 +129,7 @@ mod tests {
             look,
             at: Vec2::new(100.0, 100.0),
             effect,
+            opens: false,
         }
     }
 
@@ -125,6 +138,41 @@ mod tests {
         assert_eq!(caption(&overlay(SurfaceDropAnswer::Copy, 1)), "+ a.md");
         assert_eq!(caption(&overlay(SurfaceDropAnswer::Link, 3)), "↗ a.md  (3)");
         assert_eq!(caption(&overlay(SurfaceDropAnswer::None, 1)), "⊘ a.md");
+    }
+
+    #[test]
+    fn files_from_the_os_that_no_window_takes_say_a_drop_opens_them() {
+        // #162 finding 14: the OS draws the files' image; the desk says where they go.
+        let opens = |effect, count| DragOverlay {
+            opens: true,
+            ..overlay(effect, count)
+        };
+        assert_eq!(caption(&opens(SurfaceDropAnswer::None, 1)), "Open a.md");
+        assert_eq!(
+            caption(&opens(SurfaceDropAnswer::None, 4)),
+            "Open a.md  (4)"
+        );
+    }
+
+    #[test]
+    fn near_the_right_and_bottom_edges_the_drag_image_goes_to_the_other_side() {
+        let pill = |at: Vec2| {
+            let mut scene = Scene::new(400, 300);
+            drag_image(
+                &mut scene,
+                &DragOverlay {
+                    at,
+                    ..overlay(SurfaceDropAnswer::Copy, 1)
+                },
+                1.0,
+            );
+            let first = scene.children(scene.root())[0];
+            scene.node(first).and_then(|n| n.rect()).unwrap()
+        };
+        let free = pill(Vec2::new(100.0, 100.0));
+        assert_eq!((free.x, free.y), (112.0, 112.0));
+        let corner = pill(Vec2::new(390.0, 290.0));
+        assert!(corner.x + corner.width <= 390.0 && corner.y + corner.height <= 290.0);
     }
 
     #[test]
