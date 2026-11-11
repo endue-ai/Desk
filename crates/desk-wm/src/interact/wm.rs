@@ -13,6 +13,7 @@ use crate::coordinates::screen_rect;
 use crate::desk::Desk;
 use crate::edits::Kept;
 use crate::fill::snap_rect;
+use crate::reach::within_reach;
 use crate::types::{Fill, Rect, Size};
 use crate::view::View;
 
@@ -72,6 +73,12 @@ pub struct Wm {
     /// The system layer's parts on screen, drawn above every window: a press on one is the
     /// page's (`mid_glide.rs`).
     pub(super) parts: Vec<Rect>,
+    /// The edge bars' surfaces on screen (the dock), above every window: a drop keeps a title bar
+    /// clear of them (`reach.rs`).
+    pub(super) edges: Vec<Rect>,
+    /// The window the last press dragged, and when it was let go: the page's double-click on its
+    /// title that follows the drop is no double-click (`pointer.rs`).
+    pub(super) dragged: Option<(String, f64)>,
     pub(super) preview: Preview,
     /// Grabs and commands for a window the runtime has not published yet: the page's calls each
     /// run on a thread of their own, so one may overtake the desk it follows (`pointer.rs`).
@@ -111,6 +118,8 @@ impl Wm {
             stopped: None,
             top: TopChrome::default(),
             parts: Vec::new(),
+            edges: Vec::new(),
+            dragged: None,
             preview: Preview::default(),
             waiting: Vec::new(),
             clock: 0.0,
@@ -308,5 +317,16 @@ impl Wm {
     /// Where a fill puts a window on this app: what the preview shows.
     pub(super) fn part(&self, fill: Fill) -> Rect {
         snap_rect(fill, self.screen.w, self.screen.h)
+    }
+
+    /// The edge bars' surfaces where the compositor draws them (the dock), above every window.
+    pub fn set_edge_bars(&mut self, edges: Vec<Rect>) {
+        self.edges = edges;
+    }
+
+    /// A window moved to `rect` on screen, moved as little as it takes to keep its title bar
+    /// within reach on this app.
+    pub(super) fn in_reach(&self, rect: Rect) -> Rect {
+        within_reach(rect, self.screen, &self.edges)
     }
 }

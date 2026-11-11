@@ -10,6 +10,8 @@
 mod common;
 #[path = "interactions/mid_glide.rs"]
 mod mid_glide;
+#[path = "interactions/reach.rs"]
+mod reach;
 #[path = "interactions/snap.rs"]
 mod snap;
 #[path = "interactions/support.rs"]

@@ -276,7 +276,10 @@ impl CompositorWindow {
                 return;
             }
             // A window command, for window `window` or the one in use.
-            Call::Command { op, window } => self.hosted.wm.run(&op, window.as_deref()),
+            Call::Command { op, window } => {
+                let ms = self.hosted.ms(now);
+                self.hosted.wm.run_at(&op, window.as_deref(), ms)
+            }
             Call::Snapshot { told, answer } => {
                 self.gestures.snapshots.push((now, told, answer));
                 self.answer_snapshots();

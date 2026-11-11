@@ -94,7 +94,7 @@ mod the_commands {
     }
 
     #[test]
-    fn moving_by_a_step_moves_the_window_and_a_filled_one_ends_its_fill_where_it_is() {
+    fn moving_by_a_step_moves_the_window_and_a_filled_one_ends_its_fill_where_it_is_in_its_mode() {
         let desk = windows(1);
         let mut wm = wm_of(&desk);
         let win = rect_of(&wm, "window-1");
@@ -116,8 +116,9 @@ mod the_commands {
         wm.run(&Op::Snap { fill: Fill::Right }, None);
         let part = snap_rect(Fill::Right, W, H);
         wm.run(&Op::Move { dx: -32.0, dy: 0.0 }, None);
+        // A normal window before it snapped, a normal one again (#159 finding 10).
         let p = wm.desk().window("window-1").unwrap();
-        assert_eq!((p.fill, p.restore, p.floating), (None, None, Some(true)));
+        assert_eq!((p.fill, p.restore, p.floating), (None, None, None));
         assert_eq!(
             rect_of(&wm, "window-1"),
             Rect {
@@ -269,12 +270,13 @@ mod the_seam {
         wm.moved(pt(from.x + 60.0, from.y), 0.0);
         wm.released(pt(from.x + 60.0, from.y), 0.0);
         assert!(wm.grab(moving("window-1"), from, 0.0).is_empty());
-        assert!(wm.run(&Op::Maximize, Some("window-1")).is_empty());
+        let full = Op::Snap { fill: Fill::Full };
+        assert!(wm.run(&full, Some("window-1")).is_empty());
         let out = wm.edit(1, &[Edit::NewWindow]);
         assert_eq!(
             published(&out).len(),
             3,
-            "the edit, the drop, then the maximize"
+            "the edit, the drop, then the fill"
         );
         assert_eq!(rect_of(&wm, "window-1"), Rect::new(0.0, 0.0, W, H));
         // One whose window never comes is let go.

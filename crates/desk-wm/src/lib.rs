@@ -13,6 +13,7 @@
 //! - `spread`: the spread's places, poses and model, and its motions on the caller's clock (ADR
 //!   0116).
 //! - `cover`, `placed`: which plugins are out of sight (ADR 0070) and which a layout places.
+//! - `reach`: a window's title bar kept within reach of the pointer after a drop or a move.
 //! - `pan`, `minimap`: the canvas pan and the canvas map (ADR 0082).
 //! - `panes`: the pane tree and its dividers; `desktops`, `migrate`: the named list of desktops
 //!   (ADR 0117) and what profiles and sessions stored; `layout`: a desktop's layout and the
@@ -46,6 +47,7 @@ pub mod minimap;
 pub mod pan;
 pub mod panes;
 pub mod placed;
+pub mod reach;
 pub mod settle;
 pub mod snap;
 pub mod snapshot;
@@ -68,7 +70,9 @@ pub use desk::{
 };
 pub use desktops::{Desktop, DesktopId, DesktopRef};
 pub use drawer::{DrawerItem, DrawerKind};
-pub use fill::{fill_with, snap_rect, toggle_floating, toggle_maximize, unfilled, unfilled_at};
+pub use fill::{
+    fill_with, own_floating, snap_rect, toggle_floating, toggle_maximize, unfilled, unfilled_at,
+};
 pub use geometry::{
     BELOW_ERIS, DOCK_BAND, FREE, MIN, REF, SAFE, clamp_rect, free_area, free_top, from_screen,
     screen_area, to_screen,
@@ -86,6 +90,7 @@ pub use pan::{
     PanDrag, PanTarget, WheelMode, drag_pans, hint_shows, reset_shows, wheel_pan, wheel_pans,
 };
 pub use placed::{PLUGIN_VIEW, placed_plugins, resolve_view, shown_plugins};
+pub use reach::{GRAB, within_reach};
 pub use settle::{Glided, SETTLE_MS, Settle, SettleKind};
 pub use snap::{Aim, CORNER, Halves, Rows, SNAP, SNAP_TOP, fill_rect, halves, rows, snap_for};
 pub use snapshot::{Frame, Seen, Told, Unseen};

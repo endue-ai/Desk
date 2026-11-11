@@ -8,7 +8,8 @@
 //!   filled window comes off its fill as the drag starts, its own size again with the pointer at
 //!   the same share of its width, its size gliding back (ADR 0132). A pinned window does not move.
 //! - A resize moves the grabbed edges, the opposite ones anchored; a floating window's stop at the
-//!   app's edges. It ends a fill where it is, the window floating.
+//!   app's edges. It ends a fill where it is, the window in the mode it had before it filled, so a
+//!   normal window snapped and resized is on the canvas again (#159 finding 10).
 //! - A pan moves the canvas of the desktop it started on, and the normal windows with it.
 //!
 //! Escape, the app losing the focus or the window going cancels: the window is back where it was,
@@ -18,7 +19,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::coordinates::{is_floating, screen_rect};
 use crate::desk::Desk;
-use crate::fill::unfilled;
+use crate::fill::{own_floating, unfilled};
 use crate::geometry::{clamp_rect, screen_area};
 use crate::math::round;
 use crate::pan::PanDrag;
@@ -147,7 +148,7 @@ impl Gesture {
                 };
                 self.window = Some(Window {
                     start: drawn,
-                    floating: is_floating(&p),
+                    floating: own_floating(&p),
                     aim: None,
                     unsnap: None,
                 });

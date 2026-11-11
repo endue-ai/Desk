@@ -173,6 +173,14 @@ impl Hosted {
             w: report.width,
             h: report.height,
         };
+        // What lies above every window, as the page lays it out: a drop keeps a title bar clear
+        // of the edge bars (the dock), and the system layer's parts are the page's.
+        let edges = (report.frames.iter())
+            .filter_map(|f| f.place.filter(|p| p.shown && p.layer == Layer::Edge))
+            .map(|p| Rect::new(p.x, p.y, p.width, p.height));
+        self.wm.set_edge_bars(edges.collect());
+        let parts = report.parts.iter().filter_map(|p| p.known());
+        self.wm.set_system_parts(parts.collect());
         let wm = self.wm.took(report.applied, screen);
         self.report = Some(report);
         let mut outcome = self.replan(now);

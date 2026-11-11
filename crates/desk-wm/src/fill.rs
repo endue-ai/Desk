@@ -43,12 +43,18 @@ pub fn unfilled(p: &Placement) -> Placement {
     unfilled_at(p, back)
 }
 
+/// The mode a window comes out of its fill in: the one it had before it filled, which a restore
+/// saved before fills floated does not name (the window keeps its own then); a window that fills
+/// nothing is in its own.
+pub fn own_floating(p: &Placement) -> bool {
+    p.restore
+        .and_then(|r| r.floating)
+        .unwrap_or_else(|| is_floating(p))
+}
+
 /// The same, at `back`: where a drag dropped it.
 pub fn unfilled_at(p: &Placement, back: Rect) -> Placement {
-    let floating = p
-        .restore
-        .and_then(|r| r.floating)
-        .unwrap_or_else(|| is_floating(p));
+    let floating = own_floating(p);
     let mut out = Placement {
         restore: None,
         fill: None,
