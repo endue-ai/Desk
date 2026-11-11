@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>E2E Popup</title>
+    <!-- Desk serves the SDK at /_desk/plugin-sdk.js; the import map lets plugins import it by name. -->
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <select data-testid="select">
+      <option value="one">One</option>
+      <option value="two">Two</option>
+      <option value="three">Three</option>
+      <option value="four">Four</option>
+      <option value="five">Five</option>
+    </select>
+    <input data-testid="date" type="date" value="2026-11-12" />
+    <input data-testid="time" type="time" value="09:30" />
+    <input data-testid="color" type="color" value="#3366cc" />
+    <p data-testid="ready">mounting</p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "id": "e2e.popup",
+  "name": "E2E Popup",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The app e2e's popup plugin (#156): a select, a date, a time and a colour field, whose lists and pickers the engine paints as popup widgets the compositor draws over the surface.",
+  "surfaces": [{ "id": "main", "title": "E2E Popup", "placement": "center" }]
+}

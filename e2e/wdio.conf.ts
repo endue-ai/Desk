@@ -36,7 +36,7 @@ const DEFAULT_INIT = "init-no-first-run.yaml";
  * The app's environment a spec adds: persist.spec.ts asks for permissions from e2e.ask too,
  * sandbox.spec.ts runs e2e.sandbox's checks in its renderer, the input specs run with the input and
  * drag fixtures (#56), the native plugin spec with the native example (#59), and the accessibility
- * spec with its own fixture (#57).
+ * and popup specs with their own fixtures (#57, #156).
  */
 const ENV: Record<string, Record<string, string>> = {
   "ime.spec.ts": compositorEnv(root),
@@ -54,6 +54,7 @@ const ENV: Record<string, Record<string, string>> = {
   "native-plugin.spec.ts": {
     DESK_DEV_PLUGINS: join(root, "examples/plugin-native-wgpu"),
   },
+  "popups.spec.ts": { DESK_DEV_PLUGINS: join(root, "e2e/fixtures/plugin-e2e-popup") },
 };
 
 /** What a spec builds before its app starts: the native example's program (#59). */

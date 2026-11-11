@@ -1,0 +1,45 @@
+/* Fixed places, so a spec can point at each part from the surface's top left, and room under each
+   field for its popup. */
+body {
+  margin: 0;
+  padding: 0;
+  background: #1e1d21;
+  color: #f2f0f5;
+  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+select,
+input {
+  position: absolute;
+  top: 10px;
+  width: 140px;
+  height: 24px;
+  font: inherit;
+}
+
+[data-testid="select"] {
+  left: 10px;
+}
+
+[data-testid="date"] {
+  left: 160px;
+}
+
+[data-testid="time"] {
+  left: 10px;
+  top: 46px;
+}
+
+[data-testid="color"] {
+  left: 160px;
+  top: 46px;
+  width: 60px;
+  padding: 0;
+}
+
+[data-testid="ready"] {
+  position: absolute;
+  left: 10px;
+  top: 220px;
+  margin: 0;
+}
