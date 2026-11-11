@@ -253,8 +253,9 @@ fn perf_desk_at_rest() {
     );
 }
 
-/// The presses the `idle-input` run makes, each after the desk rested 2 to 3 s.
-const IDLE_PRESSES: u64 = 12;
+/// The presses the `idle-input` run makes, each after the desk rested 2 to 3 s: one not counted,
+/// then three blocks of twelve (`probe/idle_input.rs`, #148).
+const IDLE_PRESSES: u64 = 1 + 3 * 12;
 
 #[test]
 #[ignore = "perf: just perf-compositor"]
@@ -279,6 +280,7 @@ fn perf_input_from_rest() {
             "p50Ms": report["paint_p50_ms"],
             "maxMs": report["paint_max_ms"],
             "frameP50Ms": report["frame_p50_ms"],
+            "blockP95Ms": report["block_p95_ms"],
             "tries": report["tries"].as_array().map_or(0, Vec::len),
             "adapter": report["adapter"],
             "software": report["adapter_type"] == "Cpu",
