@@ -82,7 +82,7 @@ export function dirty(s: DeskState): boolean {
   return s.wm.dirty;
 }
 
-/** Every window on a desktop: what its layout places, then the plugin windows in their slots. */
+/** Every window on a desktop: the plugin windows in their slots, then what its layout places. */
 export function windowsOf(s: DeskState, desktop: DesktopRef = s.desktop): SurfacePlacement[] {
   return s.wm.windows[desktopId(s, desktop)] ?? [];
 }

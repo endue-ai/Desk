@@ -1,6 +1,6 @@
 //! What the runtime reads of the window manager (#83): published with the `Desk` on every change,
 //! so the page never works out a window itself. The desktops in order and the one in front, every
-//! desktop's windows as drawn (its layout's, then the plugin windows in their slots) and layout,
+//! desktop's windows as drawn (the plugin windows in their slots, then its layout's) and layout,
 //! whether the profile in force changed, the plugin surface in use, what `desk.shell.layouts` keeps
 //! for the session, whether an arrangement can be put back, and for the desktop in front each
 //! window where it is on screen and at what stacking level, with the plugins out of sight.

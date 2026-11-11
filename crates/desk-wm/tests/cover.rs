@@ -4,8 +4,8 @@
 //! about `zOf`.
 //!
 //! The TS cases build the shell's store and ask the host (`surface/host.ts`); here the same desk is
-//! built from its parts as `windowsOf` lays them out: the layout's windows, then the plugin windows
-//! in their slots.
+//! built from its parts as `windows_of` lays them out: the plugin windows in their slots, then the
+//! layout's windows over them (#158).
 //!
 //! Not ported: "tells the runtime after the store changes, once the windows are drawn" is the
 //! host's wiring (a store watch and a microtask), not the model's. The host on the compositor
@@ -58,8 +58,8 @@ impl Desk {
     /// What `host.covered(id)` answered, at the runtime's 1440 × 900 without a DOM.
     fn covered(&self, id: &str) -> bool {
         let placed: BTreeSet<&str> = self.layout.iter().map(|p| p.plugin.as_str()).collect();
-        let mut windows = self.layout.clone();
-        windows.extend(slot_windows(&self.adopted, |id| placed.contains(id)));
+        let mut windows = slot_windows(&self.adopted, |id| placed.contains(id));
+        windows.extend(self.layout.iter().cloned());
         let adopted = |plugin: &str| self.adopted.iter().any(|a| a.id == plugin);
         let levels = UseOrder::default().levels(&windows, self.focused.as_deref());
         let hidden = covered_plugins(
@@ -104,15 +104,15 @@ mod covered_plugin_windows {
     }
 
     #[test]
-    fn a_window_of_the_layout_drawn_below_the_tiled_plugin_windows_covers_nothing() {
-        let d = desk(vec![window("under", 104.0, 190.0, 1232.0, 622.0)], None);
-        assert!(!d.covered(A));
+    fn a_window_of_the_layout_lies_over_the_tiled_plugin_windows_even_out_of_focus() {
+        let d = desk(vec![window("over", 104.0, 190.0, 1232.0, 622.0)], None);
+        assert!(d.covered(A));
+        assert!(d.covered(B));
     }
 
     #[test]
     fn two_pinned_windows_that_cover_it_together_cover_it() {
-        // Pinned windows are drawn above the tiled plugin windows; unpinned ones of the layout
-        // below.
+        // Pinned windows are drawn above the tiled plugin windows, as the layout's others are.
         let left = Placement {
             pinned: true,
             ..window("left", 104.0, 190.0, 320.0, 622.0)

@@ -90,13 +90,17 @@ test.describe("the desk shell", () => {
     await expect(page.getByRole("dialog", { name: "지금 이대로 저장" })).toBeVisible();
   });
 
-  test("switching profiles sends surfaces the new one lacks to the drawer", async ({ page }) => {
+  test("switching profiles, the one left takes its windows with it, not to the drawer", async ({
+    page,
+  }) => {
     await page.click('[data-desktop="2"]');
     await page.hover(".mode-chip.is-current");
     await step(page, 400);
     await page.click('[data-mode="deep-work"]');
     await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", "deep-work");
-    await expect(page.locator(".drawer-button .badge")).toHaveText("5");
+    // Morning lays them out again when it is back (#158): the drawer keeps its three items.
+    await expect(page.locator(".surface")).toHaveCount(0);
+    await expect(page.locator(".drawer-button .badge")).toHaveText("3");
   });
 
   test("switching back takes the surfaces the profile places out of the drawer", async ({

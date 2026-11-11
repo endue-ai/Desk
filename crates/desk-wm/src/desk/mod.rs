@@ -238,17 +238,18 @@ impl Desk {
         })
     }
 
-    /// Every window on a desktop in desk order: what its layout places and draws, then the plugin
-    /// windows in their slots.
+    /// Every window on a desktop in desk order: the plugin windows in their slots, then what its
+    /// layout places and draws. What a profile, a move or an open placed lies over the slots
+    /// (#158): a profile's windows are not opened under the plugin windows already there.
     pub fn windows_of(&self, r: impl Into<DesktopRef>) -> Vec<Placement> {
         let id = self.id_of(r);
-        let mut all: Vec<Placement> = self
-            .layout_of(id.as_str())
-            .surfaces
-            .into_iter()
-            .filter(|p| self.shows_something(p))
-            .collect();
-        all.extend(self.auto_placements(id.as_str()));
+        let mut all = self.auto_placements(id.as_str());
+        all.extend(
+            self.layout_of(id.as_str())
+                .surfaces
+                .into_iter()
+                .filter(|p| self.shows_something(p)),
+        );
         all
     }
 

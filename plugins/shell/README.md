@@ -9,7 +9,8 @@ contributes in `plugin.json`. The shell itself is `mountDesk` in `packages/runti
   form (layouts by number), which still loads. A profile's `desk.shell.mode` layers over the
   setting's default, which is what every profile starts from (the old `base` mode). The
   samples turn off `endue.dock`, `endue.sidebar` and `endue.toolbar`: the shell's agent bar, rail and
-  bottom edge hold those places.
+  bottom edge hold those places. A profile's windows open in front, the last one in use; leaving it,
+  they go with it and each plugin's own window is back in its slot (ADR XXXX).
 - **Settings.** `desk.shell.mode`; `desk.shell.layouts` (the desktops and layouts changed since the
   profile was saved, as a `desktops` list); `desk.shell.density` (Eris's mesh: airy, balanced,
   dense); `desk.shell.soul` (wisp, solemn).

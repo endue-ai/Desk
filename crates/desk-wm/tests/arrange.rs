@@ -83,9 +83,10 @@ mod desk_windows_tile_and_desk_windows_cascade {
         let done = arrange(&mut d, &mut a, ArrangeKind::Tile).expect("tiled");
         let grid = tile_rects(3, area(), 12.0);
         let now = rects(&d, "1");
-        assert_eq!(now["calendar"], boxed(grid[0]));
-        assert_eq!(now["notes"], boxed(grid[1]));
-        assert_eq!(now["p.counter"], boxed(grid[2]));
+        // In desk order: the plugin window in its slot first, under what the layout places (#158).
+        assert_eq!(now["p.counter"], boxed(grid[0]));
+        assert_eq!(now["calendar"], boxed(grid[1]));
+        assert_eq!(now["notes"], boxed(grid[2]));
         assert_eq!(now["reference"], before["reference"]);
         assert_eq!(now["pinned"], before["pinned"]);
         // Desktop 2's own windows stay; the plugin window, placed on desktop 1 by the tile, now
@@ -108,8 +109,8 @@ mod desk_windows_tile_and_desk_windows_cascade {
         arrange(&mut d, &mut a, ArrangeKind::Cascade).expect("cascaded");
         let steps = cascade_rects(3, area(), CASCADE);
         let now = rects(&d, "1");
-        assert_eq!(now["notes"], boxed(steps[0]));
-        assert_eq!(now["p.counter"], boxed(steps[1]));
+        assert_eq!(now["p.counter"], boxed(steps[0]));
+        assert_eq!(now["notes"], boxed(steps[1]));
         assert_eq!(now["calendar"], boxed(steps[2]));
         // Desk order is the stacking order: the cascade's order, whichever window is focused next.
         let order: Vec<String> = d
@@ -118,7 +119,7 @@ mod desk_windows_tile_and_desk_windows_cascade {
             .filter(|p| p.floating != Some(true) && !p.pinned)
             .map(|p| p.id)
             .collect();
-        assert_eq!(order, ["notes", "p.counter", "calendar"]);
+        assert_eq!(order, ["p.counter", "notes", "calendar"]);
     }
 
     #[test]
@@ -151,7 +152,7 @@ mod undo_and_restore {
         arrange(&mut d, &mut a, ArrangeKind::Tile).expect("tiled again");
         assert_eq!(
             rects(&d, "1")["notes"],
-            boxed(tile_rects(3, area(), 12.0)[1])
+            boxed(tile_rects(3, area(), 12.0)[2])
         );
     }
 

@@ -96,7 +96,7 @@ export interface Geometry extends Rect {
 export interface WmView {
   desktops: Desktop[];
   here: DesktopId;
-  /** Every desktop's windows in desk order: its layout's, then the plugin windows in their slots. */
+  /** Every desktop's windows in desk order: the plugin windows in their slots, then its layout's. */
   windows: Record<DesktopId, SurfacePlacement[]>;
   layouts: Record<DesktopId, DesktopLayout>;
   dirty: boolean;

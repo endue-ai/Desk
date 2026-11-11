@@ -90,9 +90,37 @@ describe("profiles as the shell lays them out", () => {
     expect(savedLayout(get("morning"), base, 1).rail.visible).toBe(true);
   });
 
-  test("switching profiles sends surfaces the next one does not place to the drawer", () => {
-    const sent = leftBehind(get("morning"), get("deep-work"), base, {});
-    expect(sent.map((s) => s.id)).toEqual(["calendar", "tomorrow"]);
+  test("switching profiles sends what only the session opened, and the next one does not place, to the drawer", () => {
+    const morning = get("morning");
+    const opened = {
+      id: "window-1",
+      plugin: "endue.window",
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+      pinned: false,
+    };
+    const session = { 1: { ...savedLayout(morning, base, 1), surfaces: [opened] } };
+    const sent = leftBehind(morning, get("deep-work"), base, session);
+    expect(sent.map((s) => s.id)).toEqual(["window-1"]);
+  });
+
+  test("the profile left takes its own windows with it, and a plugin's own window goes back to its slot (#158)", () => {
+    const morning = get("morning");
+    // Moved in the session: the Terminal's window left its slot and entered the layout.
+    const moved = {
+      id: "endue.terminal",
+      plugin: "endue.terminal",
+      x: 9,
+      y: 9,
+      w: 1,
+      h: 1,
+      pinned: false,
+    };
+    const session = { 1: { ...savedLayout(morning, base, 1), surfaces: [moved] } };
+    expect(leftBehind(morning, get("deep-work"), base, session)).toEqual([]);
+    expect(leftBehind(get("review"), base, base, {})).toEqual([]);
   });
 
   test("ids are slugs and unique", () => {

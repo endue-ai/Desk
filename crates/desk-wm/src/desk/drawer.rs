@@ -9,6 +9,7 @@ use std::collections::BTreeSet;
 use crate::desktops::id_at;
 use crate::drawer::{DrawerItem, DrawerKind};
 use crate::layout::Saved;
+use crate::placed::PLUGIN_VIEW;
 use crate::types::Placement;
 
 use super::Desk;
@@ -64,16 +65,25 @@ impl Desk {
 
     /// Another profile is in force (`switched`): the windows it places on none of its desktops go
     /// to the drawer instead of closing, under `title(id)` at wall-clock `now`, and the desktops
-    /// moved under the last one are dropped. The desk stays on the same desktop when the next
-    /// profile has it, else on the same position.
+    /// moved under the last one are dropped. Two kinds never go there, as they come back by
+    /// themselves (#158): the last profile's own windows leave with it, from the desktops and from
+    /// the drawer (it lays them out again when it is back), and a plugin's own window goes back to
+    /// its slot. The desk stays on the same desktop when the next profile has it, else on the same
+    /// position, and the next profile's windows there open in front, the last one in use.
     pub fn switch_profile(&mut self, next: Saved, title: impl Fn(&str) -> String, now: i64) {
         let kept: BTreeSet<&str> = next.placed().collect();
+        let leaving: BTreeSet<String> = self.saved.placed().map(String::from).collect();
         let mut seen: BTreeSet<String> = BTreeSet::new();
         let sent: Vec<Placement> = self
             .desktops()
             .iter()
             .flat_map(|d| self.layout_of(d.id.as_str()).surfaces)
-            .filter(|p| !kept.contains(p.id.as_str()) && seen.insert(p.id.clone()))
+            .filter(|p| {
+                !kept.contains(p.id.as_str())
+                    && !leaving.contains(&p.id)
+                    && !own_window(p)
+                    && seen.insert(p.id.clone())
+            })
             .collect();
         let here = self.here();
         let position = self
@@ -100,7 +110,7 @@ impl Desk {
         drawer.extend(self.drawer.drain(..).filter(|d| {
             d.placement
                 .as_ref()
-                .is_none_or(|p| !sent_ids.contains(&p.id))
+                .is_none_or(|p| !sent_ids.contains(&p.id) && !leaving.contains(&p.id))
         }));
         self.saved = next;
         self.session.clear();
@@ -108,5 +118,40 @@ impl Desk {
         self.desktop = desktop;
         self.drawer = drawer;
         self.keep_away();
+        self.use_arrived();
     }
+
+    /// The next profile's windows count as used (ADR 0168), in its order, so on each desktop they
+    /// stack in front of the windows that were there: those of the other desktops first, then
+    /// those of the desktop in front, each taking the focus in turn; the last one stays in use.
+    fn use_arrived(&mut self) {
+        let here = self.here();
+        let drawn = |desk: &Desk, desktop: &str| -> Vec<String> {
+            let shown: BTreeSet<String> =
+                desk.windows_of(desktop).into_iter().map(|p| p.id).collect();
+            (desk.layout_of(desktop).surfaces.into_iter())
+                .map(|p| p.id)
+                .filter(|id| shown.contains(id))
+                .collect()
+        };
+        let others: Vec<String> = (self.desktops().iter())
+            .filter(|d| d.id != here)
+            .flat_map(|d| drawn(self, d.id.as_str()))
+            .collect();
+        for id in others {
+            self.used.touch(&id);
+        }
+        for id in drawn(self, here.as_str()) {
+            self.focus_pane(&id, None);
+        }
+    }
+}
+
+/// A plugin's own window: named after its plugin and showing nothing else. Its plugin's slot
+/// shows it again once no layout places it, so a profile switch need not keep it in the drawer.
+fn own_window(p: &Placement) -> bool {
+    p.id == p.plugin
+        && p.panes().leaves().into_iter().all(|(_, view)| {
+            view == p.id || view.strip_prefix(PLUGIN_VIEW) == Some(p.plugin.as_str())
+        })
 }

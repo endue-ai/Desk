@@ -248,10 +248,11 @@ mod the_snapshot {
         let files = by("files");
         assert_eq!(files.hidden, Some(true));
         assert_eq!(files.z, None);
-        // A window on another desktop is where it is when that desktop comes to the front.
+        // A window on another desktop is where it is when that desktop comes to the front, over
+        // the plugin window in its slot there (#158).
         assert_eq!(
             (by("keys").x, by("keys").y, by("keys").z),
-            (20, 30, Some(0))
+            (20, 30, Some(1))
         );
     }
 

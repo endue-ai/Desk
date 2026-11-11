@@ -58,12 +58,25 @@ mod the_drawer_holds_only_what_is_away {
 
     #[test]
     fn lets_go_of_a_surface_when_a_profile_that_places_it_is_in_force_again() {
-        let mut c = desk();
+        // Opened in the session under Focus, which places nothing: a switch puts it away.
+        let mut c = Desk::new(focus());
+        c.set(|d| d.drawer = sample_drawer(EPOCH));
+        c.edit_at("2", |l| l.surfaces.push(default_placement("calendar")));
         c.switch_profile(focus(), title, EPOCH + 1000);
         assert!(drawer_ids(&c).contains(&"calendar".into()));
         c.switch_profile(morning(), title, EPOCH + 2000);
         assert_eq!(ids(&c.layout_of("2").surfaces), ["calendar"]);
         assert!(!drawer_ids(&c).contains(&"calendar".into()));
+    }
+
+    #[test]
+    fn holds_none_of_the_windows_of_the_profile_left_which_leave_with_it() {
+        let mut c = desk();
+        c.switch_profile(focus(), title, EPOCH + 1000);
+        assert_eq!(
+            drawer_ids(&c),
+            ["file-brief", "recent-weather", "recent-summary"]
+        );
     }
 
     #[test]

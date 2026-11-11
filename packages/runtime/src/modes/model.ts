@@ -3,7 +3,15 @@
  * Desktops are named by id (ADR 0117); a number names one by its position in the mode's list.
  */
 import { idAt, sameList } from "../desktops/model";
-import type { Desktop, DesktopId, DesktopLayout, DesktopRef, Mode } from "./types";
+import { leaves, panesOf } from "../surface/tree";
+import type {
+  Desktop,
+  DesktopId,
+  DesktopLayout,
+  DesktopRef,
+  Mode,
+  SurfacePlacement,
+} from "./types";
 
 export const EMPTY_DESKTOP: DesktopLayout = {
   surfaces: [],
@@ -73,7 +81,24 @@ export function isDirty(
   );
 }
 
-/** Surfaces open now that the next mode does not place anywhere: they go to the drawer, not away. */
+/** Every window a mode's saved desktops place, by id. */
+const placedBy = (mode: Mode, base: Mode | undefined): Set<string> =>
+  new Set(mode.list.flatMap((d) => savedLayout(mode, base, d.id).surfaces.map((s) => s.id)));
+
+/** A plugin's own window: named after its plugin and showing nothing else; its slot shows it again. */
+function ownWindow(s: SurfacePlacement): boolean {
+  return (
+    s.id === s.plugin &&
+    leaves(panesOf(s)).every((l) => l.view === s.id || l.view === `plugin:${s.plugin}`)
+  );
+}
+
+/**
+ * Surfaces open now that the next mode does not place anywhere and that would be lost: they go to
+ * the drawer, not away. The mode left's own windows leave with it (it lays them out again when it
+ * is back), and a plugin's own window goes back to its slot (#158). desk-wm's `switch_profile` is
+ * what the desk runs; this says the same.
+ */
 export function leftBehind(
   from: Mode,
   to: Mode,
@@ -81,14 +106,13 @@ export function leftBehind(
   session: Session,
   list: readonly Desktop[] = from.list,
 ): DesktopLayout["surfaces"] {
-  const kept = new Set(
-    to.list.flatMap((d) => savedLayout(to, base, d.id).surfaces.map((s) => s.id)),
-  );
+  const kept = placedBy(to, base);
+  const leaving = placedBy(from, base);
   const seen = new Set<string>();
   return list
     .flatMap((d) => effectiveLayout(from, base, d.id, session).surfaces)
     .filter((s) => {
-      if (kept.has(s.id) || seen.has(s.id)) return false;
+      if (kept.has(s.id) || leaving.has(s.id) || ownWindow(s) || seen.has(s.id)) return false;
       seen.add(s.id);
       return true;
     });
