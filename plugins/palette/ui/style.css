@@ -77,7 +77,7 @@ li[aria-selected="true"] {
   color: var(--desk-text-muted);
 }
 
-/* A provider's results under its title, after the commands. */
+/* A provider's results under its title, after the commands; the first list's sections the same way. */
 li[role="group"] {
   display: block;
   padding: 0;

@@ -2,10 +2,11 @@
 // (completing-read). It lists and runs the core's command registry (cmd.list, cmd.invoke) under its
 // cmd:invoke grant, exactly as any plugin could; its own commands come to it as cmd.invoked. Typing
 // also asks the palette providers (desk.palette.providers), its own item search among them, whose
-// results follow the commands in one group each.
+// results follow the commands in one group each. The first row is the selected one until the
+// person moves the selection; the first list is what they used last, the plugins, then the commands.
 import { CommandFailed, defineUiPlugin } from "@endue-ai/plugin-sdk";
 import { keyHint } from "./keys.js";
-import { filter, remember } from "./match.js";
+import { commandEntries, filter, rank, remember } from "./match.js";
 import { actionOf, createAsker, rows, searchItems } from "./providers.js";
 import { createSearch, openSearchHit, searchEntry } from "./search.js";
 
@@ -31,6 +32,8 @@ defineUiPlugin({
     let mode = null;
     let shown = [];
     let selected = 0;
+    /** The person moved the selection with the arrows: it stays on its row as results arrive. */
+    let moved = false;
     let lastInput = "";
     let history = [];
     let max = 50;
@@ -127,43 +130,40 @@ defineUiPlugin({
 
     const render = () => {
       const previous = identity(shown[selected]);
-      const entries = filter(
-        input.value,
-        mode?.entries ?? [],
-        mode?.kind === "commands" ? history : [],
-      );
+      const commands = mode?.kind === "commands";
+      const entries = commands
+        ? rank(input.value, mode.entries, pluginHits, history)
+        : filter(input.value, mode?.entries ?? []);
       // A pick that takes free text offers what was typed as its first answer.
       const typed = input.value.trim();
       if (mode?.free && typed && !entries.some((entry) => entry.id === typed)) {
         entries.unshift({ id: typed, label: `Use “${typed}”`, detail: "typed" });
       }
-      shown = rows(entries, mode?.kind === "commands" ? asker.groups() : []);
-      if (mode?.kind === "commands") {
-        const plugins = rows(pluginHits, []);
-        shown = typed ? [...plugins, ...shown, ...rows(systemHits, [])] : [...shown, ...plugins];
-      }
-      const kept = previous === null ? -1 : shown.findIndex((row) => identity(row) === previous);
+      shown = rows(entries, commands ? asker.groups() : []);
+      if (commands && typed) shown = [...shown, ...rows(systemHits, [])];
+      // The first row is the selected one, whatever arrives ahead of it, until the person moves it.
+      const kept = moved ? shown.findIndex((row) => identity(row) === previous) : -1;
+      if (kept < 0) moved = false;
       selected = Math.max(0, kept);
       const children = [];
-      /** The group the last result went into, by provider. */
+      /** The group the last row went into: a provider's results, or a section of the first list. */
       let group = null;
       shown.forEach((row, index) => {
         const item = option(row, index);
-        if (row.type === "command") {
+        const title = row.type === "result" ? row.group : row.entry.section;
+        if (!title) {
           group = null;
           children.push(item);
           return;
         }
-        if (group?.provider !== row.provider) {
-          const box = element("li", {
-            role: "group",
-            "aria-label": row.group,
-            "data-provider": row.provider,
-          });
+        const key = row.type === "result" ? row.provider : title;
+        if (group?.key !== key) {
+          const box = element("li", { role: "group", "aria-label": title });
+          if (row.type === "result") box.dataset.provider = row.provider;
           const inner = element("ul", { role: "none" });
-          box.append(element("span", { class: "group", "aria-hidden": "true" }, row.group), inner);
+          box.append(element("span", { class: "group", "aria-hidden": "true" }, title), inner);
           children.push(box);
-          group = { provider: row.provider, inner };
+          group = { key, inner };
         }
         group.inner.append(item);
       });
@@ -191,6 +191,7 @@ defineUiPlugin({
       input.placeholder = next.placeholder ?? "";
       input.value = next.query ?? "";
       selected = 0;
+      moved = false;
       shown = [];
       lastInput = input.value;
       pluginHits = [];
@@ -234,6 +235,12 @@ defineUiPlugin({
         .catch(() => {});
     };
 
+    /** What was run or opened from here comes first in the next first list. */
+    const keep = (/** @type {string} */ id) => {
+      history = remember(history, id, max);
+      void ctx.bridge.call("store.set", { key: "history", value: history }).catch(() => {});
+    };
+
     /** Run a command, published document, OS hit, or provider action. */
     const choose = async (mod = false) => {
       const row = shown[selected];
@@ -250,6 +257,7 @@ defineUiPlugin({
       try {
         if (entry?.hit) {
           await openSearchHit(ctx, entry.hit);
+          if (entry.hit.kind === "plugin") keep(entry.id);
           if (native && entry.hit.plugin)
             window.parent.postMessage({ type: "desk:palette-activated" }, "*");
           if (mode === was) close();
@@ -258,10 +266,7 @@ defineUiPlugin({
           else window.parent.postMessage({ type: "desk:palette-command" }, "*");
           await ctx.commands.run(action?.command ?? entry.id, action?.args ?? {});
           if (native && mode === was) close();
-          if (!action) {
-            history = remember(history, entry.id, max);
-            void ctx.bridge.call("store.set", { key: "history", value: history }).catch(() => {});
-          }
+          if (!action) keep(entry.id);
         }
       } catch (error) {
         if (native || entry?.hit) {
@@ -289,6 +294,7 @@ defineUiPlugin({
     input.addEventListener("input", () => {
       if (input.value !== lastInput) {
         selected = 0;
+        moved = false;
         shown = [];
         lastInput = input.value;
       }
@@ -303,6 +309,7 @@ defineUiPlugin({
       const moves = { ArrowDown: 1, ArrowUp: -1 };
       if (event.key in moves && shown.length > 0) {
         selected = (selected + moves[event.key] + shown.length) % shown.length;
+        moved = true;
         render();
       } else if (event.key === "Enter") {
         choose(event.metaKey || event.ctrlKey);
@@ -321,14 +328,17 @@ defineUiPlugin({
     });
 
     ctx.commands.on("desk.palette.open", async (args) => {
-      const [commands, bindings, init, providers] = await Promise.all([
-        ctx.commands.list(),
+      // Its key again while the desk's palette is open closes it, as Escape does.
+      if (!native && mode?.kind === "commands" && !document.hidden && args?.query === undefined)
+        return cancel();
+      const [listed, bindings, init, providers] = await Promise.all([
+        // The registry itself, for each command's argsSchema: one that needs args is not listed.
+        ctx.bridge.call("cmd.list", { scope: { permission: "cmd:invoke", ids: ["*"] } }),
         ctx.commands.run("desk.keys.list").catch(() => []),
         ctx.bridge.call("init.get", {}).catch(() => ({ settings: {} })),
         ctx.commands.run("desk.palette.providers").catch(() => []),
       ]);
       max = init.settings["desk.palette.history"] ?? max;
-      const keysOf = (id) => bindings.filter((b) => b.command === id).map((b) => b.key);
       const asked = Array.isArray(providers) ? providers : [];
       // A provider's command needs a query: the palette asks it, the person does not run it.
       const hidden = new Set([...OWN, ...asked.map((p) => p.command)]);
@@ -338,15 +348,7 @@ defineUiPlugin({
         placeholder: "Search plugins, data, files and applications",
         query: args?.query ?? "",
         providers: asked,
-        entries: commands
-          .filter((c) => !hidden.has(c.id))
-          .map((c) => ({
-            id: c.id,
-            provider: c.provider,
-            label: c.title,
-            keywords: c.keywords,
-            keys: keysOf(c.id),
-          })),
+        entries: commandEntries(listed.commands, Array.isArray(bindings) ? bindings : [], hidden),
       });
     });
 

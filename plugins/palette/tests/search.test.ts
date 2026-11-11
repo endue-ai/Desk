@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createSearch, openSearchHit } from "../ui/search.js";
+import { createSearch, FOLDER, folderOf, openSearchHit, searchEntry } from "../ui/search.js";
 
 const deferred = () => {
   let resolve!: (v: unknown) => void;
@@ -79,5 +79,26 @@ describe("global search", () => {
       id: "os:1",
       scope: { permission: "search:system" },
     });
+  });
+});
+
+describe("an OS result's row", () => {
+  it("shows the folder, home as ~, and a long one by its end, so files of one name differ", () => {
+    const root = "/Users/someone/Project/endue/check-desk/Desk";
+    const details = [`${root}/docs/i18n/ko/README.md`, `${root}/docs/i18n/ja/README.md`].map(
+      (path) => searchEntry({ id: path, kind: "file", title: "README.md", detail: path }).detail,
+    );
+    expect(details).toEqual([
+      "File · …/endue/check-desk/Desk/docs/i18n/ko",
+      "File · …/endue/check-desk/Desk/docs/i18n/ja",
+    ]);
+    expect(details.every((detail) => detail.length <= "File · ".length + FOLDER)).toBe(true);
+    expect(folderOf("/Users/someone/notes/a.md")).toBe("~/notes");
+    expect(folderOf("/home/someone/a.md")).toBe("~");
+    expect(folderOf(String.raw`C:\Users\someone\Desktop\a.txt`)).toBe(String.raw`~\Desktop`);
+    expect(folderOf("/a.txt")).toBe("/");
+    expect(folderOf("/System/Applications/Utilities/Terminal.app")).toBe(
+      "/System/Applications/Utilities",
+    );
   });
 });
