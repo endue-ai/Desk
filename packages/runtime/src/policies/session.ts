@@ -133,6 +133,25 @@ export function installSession(
     return undefined;
   };
 
+  /**
+   * The surface in use takes the keys (issue 163, finding 11): in the app its place in its section
+   * (`pages/place.ts`) takes the page's focus, which the compositor gives the keys to (ADR 0150,
+   * ADR 0160). A surface focused as it mounted, before its window was in the page, kept no focus,
+   * and a window's section that has it keeps the keys with the desk's page. Only while the page's
+   * focus is free or on that surface: a question or the intro that took it during the start keeps
+   * it. A frame of this page has no place: there the section keeps the focus (frames/settle.ts).
+   */
+  const keys = () => {
+    const id = actions.focused();
+    const section = id ? surfaces.get(id) : undefined;
+    if (!section?.isConnected || section.hidden) return;
+    const place = section.querySelector<HTMLElement>(":scope > [data-surface-host]");
+    const active = section.ownerDocument.activeElement;
+    if (!place || (active && active !== section.ownerDocument.body && !section.contains(active)))
+      return;
+    place.focus({ preventScroll: true });
+  };
+
   const restore = async () => {
     if (options.hold) return;
     const start = now();
@@ -159,6 +178,7 @@ export function installSession(
       }
     }
     restored = true;
+    keys();
     phase("session restore", start);
   };
 
