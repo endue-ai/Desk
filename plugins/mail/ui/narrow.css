@@ -1,0 +1,117 @@
+/* The page when it is narrow or short: the layout of a window at its first sizes (#160). Loaded
+   after style.css, whose rules it overrides there. */
+
+/* A narrow page (a window at its first size, 402×305, or after Cascade, 643×339; #160): the mailboxes
+   keep the whole left column, the list sits over the open message, and a message being written takes
+   the page until it is sent, closed or discarded. */
+@media (max-width: 720px) {
+  body {
+    grid-template-columns: 120px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-areas:
+      "nav list"
+      "nav pane"
+      "status status";
+  }
+
+  body:has(#pane[data-showing="none"]) {
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "nav list"
+      "status status";
+  }
+
+  body:has(#pane[data-showing="composer"]) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "pane"
+      "status";
+  }
+
+  #pane[data-showing="none"],
+  body:has(#pane[data-showing="composer"]) :is(#nav, #messages) {
+    display: none;
+  }
+
+  #nav {
+    gap: 4px;
+    padding: 6px 6px 4px;
+  }
+
+  #messages {
+    border-right: 0;
+  }
+
+  #pane[data-showing="reader"] {
+    border-top: 1px solid var(--desk-border);
+  }
+}
+
+/* A narrow or short page writes in a compact composer: the title and Send, Close and Discard on one
+   row, the four fields 24 px each, and the text taking what is left (at least three lines). */
+@media (max-width: 720px), (max-height: 480px) {
+  #composer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto auto auto auto minmax(54px, 1fr);
+    grid-template-areas:
+      "title tools"
+      "problems problems"
+      "to to"
+      "cc cc"
+      "bcc bcc"
+      "subject subject"
+      "text text";
+    gap: 4px 8px;
+    box-sizing: border-box;
+    height: 100%;
+    padding: 8px 12px;
+  }
+
+  #composer h2 {
+    grid-area: title;
+    align-self: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #composer .tools {
+    grid-area: tools;
+    flex-wrap: nowrap;
+  }
+
+  #composer .problems {
+    grid-area: problems;
+    margin: 0;
+  }
+
+  #composer label:has([name="to"]) {
+    grid-area: to;
+  }
+
+  #composer label:has([name="cc"]) {
+    grid-area: cc;
+  }
+
+  #composer label:has([name="bcc"]) {
+    grid-area: bcc;
+  }
+
+  #composer label:has([name="subject"]) {
+    grid-area: subject;
+  }
+
+  #composer input {
+    height: 24px;
+    padding-block: 0;
+  }
+
+  #composer textarea {
+    grid-area: text;
+    height: auto;
+    min-height: 0;
+    resize: none;
+  }
+}

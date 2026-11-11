@@ -65,6 +65,17 @@ h3 {
   gap: 4px;
 }
 
+/* New message and Refresh stay on the title's row, also in the narrow column. */
+#nav header .tools {
+  flex: none;
+  flex-wrap: nowrap;
+}
+
+#nav header .tools button {
+  width: 24px;
+  padding: 0;
+}
+
 button,
 select,
 input,
@@ -334,17 +345,6 @@ textarea {
 
 [hidden] {
   display: none !important;
-}
-
-@media (max-width: 720px) {
-  body {
-    grid-template-columns: 120px 1fr;
-    grid-template-areas:
-      "nav list"
-      "pane pane"
-      "status status";
-    grid-template-rows: 1fr 1fr auto;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
