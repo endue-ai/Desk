@@ -1,8 +1,8 @@
 //! The client of one off-screen plugin surface's browser: its render handler (`render.rs`); its
-//! title, its cursor, its load (`ready`) and its renderer's death (`died`) for the host; no popups; the
-//! browser-process guard on every load (`guard.rs`); its page's bridge calls, as the plugin its URL
-//! names (`desk_web::sender`, #43); its postMessages for the relay; and a Tab past its page's end
-//! (#123), for the relay too.
+//! title, its cursor, its hover title (#156), its load (`ready`) and its renderer's death (`died`)
+//! for the host; no popups; the browser-process guard on every load (`guard.rs`); its page's bridge
+//! calls, as the plugin its URL names (`desk_web::sender`, #43); its postMessages for the relay;
+//! and a Tab past its page's end (#123), for the relay too.
 
 // `wrap_client!` makes a constructor with one argument per field.
 #![allow(clippy::too_many_arguments)]
@@ -37,6 +37,17 @@ wrap_display_handler! {
             custom_cursor_info: Option<&CursorInfo>,
         ) -> ::std::os::raw::c_int {
             self.host.cursor(&self.surface, type_, custom_cursor_info);
+            1
+        }
+
+        // Nor does it draw a tooltip: the compositor does, in the theme (#156).
+        fn on_tooltip(
+            &self,
+            _browser: Option<&mut Browser>,
+            text: Option<&mut CefString>,
+        ) -> ::std::os::raw::c_int {
+            let text = text.map(|t| t.to_string()).unwrap_or_default();
+            self.host.tooltip(&self.surface, &text);
             1
         }
 

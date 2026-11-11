@@ -7,11 +7,12 @@
 //! page's system layer above them. The page renders off screen too, see through, its windows'
 //! chrome left to the compositor. Input (#56) goes through the compositor's router to the surface
 //! it is for (`input.rs`), and first through `desk-wm`'s window manager, which drags, resizes,
-//! snaps and pans (`wm.rs`, #80, ADR 0153). Every surface and the page render on the desk's frame
-//! clock (`clock.rs`, ADR 0152). Screen readers see the desk as one tree through an AccessKit
-//! adapter on the window (`a11y.rs`, #57). The spread (`spread.rs`), the canvas map (`minimap.rs`)
-//! and every surface's snapshot for the core (`snapshots.rs`) draw on the surfaces' live and last
-//! textures (#54, ADR 0161).
+//! snaps and pans (`wm.rs`, #80, ADR 0153); a page's hover title is the compositor's to draw
+//! (`tooltip.rs`, #156). Every surface and the page render on the desk's frame clock (`clock.rs`,
+//! ADR 0152). Screen readers see the desk as one tree through an AccessKit adapter on the window
+//! (`a11y.rs`, #57). The spread (`spread.rs`), the canvas map (`minimap.rs`) and every surface's
+//! snapshot for the core (`snapshots.rs`) draw on the surfaces' live and last textures (#54, ADR
+//! 0161).
 
 pub mod a11y;
 pub mod a11y_check;
@@ -40,6 +41,8 @@ mod snapshots;
 mod spread;
 mod steps;
 pub mod system;
+mod tooltip;
+mod tooltip_draw;
 pub mod winit_input;
 pub mod wm;
 
@@ -119,6 +122,8 @@ pub struct CompositorWindow {
     /// The spread while it is open, and the canvas map (#54).
     spreading: spread::Spreading,
     mapping: minimap::Mapping,
+    /// The pages' hover titles, which the compositor draws (#156).
+    tips: tooltip::Tips,
 }
 
 impl CompositorWindow {
@@ -193,6 +198,7 @@ impl CompositorWindow {
             parts: (Vec::new(), Vec::new()),
             spreading: spread::Spreading::default(),
             mapping: minimap::Mapping::default(),
+            tips: tooltip::Tips::default(),
         };
         opened.stand_in();
         opened.attach_a11y(event_loop);
@@ -309,6 +315,7 @@ impl CompositorWindow {
             self.shared.lock().dirty = true;
         }
         self.input_tick(event_loop);
+        self.tip_tick(now);
         self.a11y_tick();
         self.begin_frames(now);
         // The OS withheld the last frame (a locked screen): one now means the window shows again.

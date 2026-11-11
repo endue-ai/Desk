@@ -53,6 +53,8 @@ pub trait SurfaceSink: Send + Sync {
     fn message(&self, message: SurfaceMessage);
     /// Its popup widget is at `place` in its view, or closed (`render::popup`, #156).
     fn popup(&self, surface: &str, place: Option<render::popup::Place>);
+    /// A page's hover title now (`""`: none), for the compositor to draw (#156, `routes.rs`).
+    fn tooltip(&self, surface: &str, text: &str);
     /// The compositor's device, for frames the engine imports or the host uploads itself.
     fn device(&self) -> (wgpu::Device, wgpu::Queue);
 }

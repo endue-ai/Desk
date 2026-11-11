@@ -53,11 +53,12 @@ impl CompositorWindow {
             hosted: self.hosted.due(),
             clock: self.begin_due,
             withheld: self.gpu.withheld(),
+            tips: self.tips.due(),
         }
     }
 
-    /// When the window should wake next: a frame to draw, the budget's look, the clock's, or a look
-    /// for a frame the OS withheld.
+    /// When the window should wake next: a frame to draw, the budget's look, the clock's, a look
+    /// for a frame the OS withheld, or a hover title's rest ending (#156).
     pub fn next_frame(&self) -> Option<Instant> {
         self.due().next()
     }
@@ -81,6 +82,8 @@ pub(super) struct Due {
     pub clock: Option<Instant>,
     /// When to ask again for a frame the OS withheld.
     pub withheld: Option<Instant>,
+    /// When a hover title's rest ends (`tooltip.rs`); `tip_tick` shows it at that wake-up, seen or not.
+    pub tips: Option<Instant>,
 }
 
 impl Due {
@@ -97,10 +100,16 @@ impl Due {
 
     /// The soonest of them.
     pub fn next(&self) -> Option<Instant> {
-        [self.frame(), self.hosted, self.clock, self.withheld()]
-            .into_iter()
-            .flatten()
-            .min()
+        [
+            self.frame(),
+            self.hosted,
+            self.clock,
+            self.withheld(),
+            self.tips,
+        ]
+        .into_iter()
+        .flatten()
+        .min()
     }
 }
 
@@ -118,6 +127,7 @@ mod tests {
             hosted: None,
             clock: None,
             withheld: None,
+            tips: None,
         }
     }
 

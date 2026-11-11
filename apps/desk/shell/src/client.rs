@@ -11,11 +11,12 @@
 use std::sync::Arc;
 
 use cef::*;
-use desk_web::sender::Role;
+use desk_web::sender::{Role, System};
 
 use crate::host::{self, Desk};
 use crate::pump::{Pump, Wake};
 use crate::renderer::{CALL, POST, WAKE};
+use crate::web_host::WebHost;
 use crate::web_host::relay::Relay;
 
 wrap_life_span_handler! {
@@ -42,11 +43,38 @@ wrap_life_span_handler! {
 }
 
 wrap_display_handler! {
+    // The main window's page renders off screen (#52), so its cursor and its hover titles go to
+    // the compositor through the web host, as a plugin surface's do (`web_host/client.rs`, #156);
+    // a window's browser shows its own.
     pub struct ShellDisplay {
         role: Role,
+        host: Option<WebHost>,
     }
 
     impl DisplayHandler {
+        fn on_cursor_change(
+            &self,
+            _browser: Option<&mut Browser>,
+            _cursor: *mut u8,
+            type_: CursorType,
+            custom_cursor_info: Option<&CursorInfo>,
+        ) -> ::std::os::raw::c_int {
+            let Some(host) = &self.host else { return 0 };
+            host.cursor(System::Desk.id(), type_, custom_cursor_info);
+            1
+        }
+
+        fn on_tooltip(
+            &self,
+            _browser: Option<&mut Browser>,
+            text: Option<&mut CefString>,
+        ) -> ::std::os::raw::c_int {
+            let Some(host) = &self.host else { return 0 };
+            let text = text.map(|t| t.to_string()).unwrap_or_default();
+            host.tooltip(System::Desk.id(), &text);
+            1
+        }
+
         fn on_console_message(
             &self,
             _browser: Option<&mut Browser>,
@@ -165,7 +193,7 @@ pub fn client(role: Role, pump: Pump, desk: Arc<Desk>) -> Client {
     ShellClient::new(
         role,
         ShellLifeSpan::new(role, pump, false),
-        ShellDisplay::new(role),
+        ShellDisplay::new(role, None),
         crate::guard::Requests::new(banner),
         load,
         desk,
@@ -174,14 +202,20 @@ pub fn client(role: Role, pump: Pump, desk: Arc<Desk>) -> Client {
     )
 }
 
-/// The client of the main window's page (#52): it renders off screen through `render`, and posts to
-/// plugin surfaces through `relay` (ADR 0160). Files dragged in from the OS come through the
-/// compositor's input (#56).
-pub fn compositor_page(pump: Pump, desk: Arc<Desk>, render: RenderHandler, relay: Relay) -> Client {
+/// The client of the main window's page (#52): it renders off screen through `render`, posts to
+/// plugin surfaces through `relay` (ADR 0160) and says its cursor and hover titles through `host`.
+/// Files dragged in from the OS come through the compositor's input (#56).
+pub fn compositor_page(
+    pump: Pump,
+    desk: Arc<Desk>,
+    render: RenderHandler,
+    relay: Relay,
+    host: WebHost,
+) -> Client {
     ShellClient::new(
         Role::Main,
         ShellLifeSpan::new(Role::Main, pump, true),
-        ShellDisplay::new(Role::Main),
+        ShellDisplay::new(Role::Main, Some(host)),
         crate::guard::Requests::new(None),
         None,
         desk,

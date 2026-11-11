@@ -70,5 +70,6 @@ impl CompositorWindow {
         self.mapping.drawn = drawn.map;
         self.mapping.layout = layout;
         self.register(drawn.shown);
+        self.tip_draw();
     }
 }

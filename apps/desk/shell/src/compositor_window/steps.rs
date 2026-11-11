@@ -65,5 +65,8 @@ impl CompositorWindow {
     pub(super) fn forget(&mut self, surface: &str) {
         let _ = self.router.forget(surface);
         self.router.targets.forget(surface);
+        if self.tips.forget(surface) {
+            self.shared.lock().dirty = true;
+        }
     }
 }

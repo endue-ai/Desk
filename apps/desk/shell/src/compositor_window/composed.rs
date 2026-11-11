@@ -1,8 +1,8 @@
 //! The compositor's side of the surface protocol in the desk's process: the frames surfaces attach
-//! (`desk_compositor::Frames`, the texture import entry) and the other messages they send, behind
-//! the `SurfaceSink` the web host talks to, and where each surface's popup widget is (#156: its
-//! frames attach as a surface of their own, drawn over it). Shared by the compositor window and the
-//! surface probe.
+//! (`desk_compositor::Frames`, the texture import entry), the other messages they send and their
+//! pages' hover titles, behind the `SurfaceSink` the web host talks to, and where each surface's
+//! popup widget is (#156: its frames attach as a surface of their own, drawn over it). Shared by
+//! the compositor window and the surface probe.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -34,6 +34,8 @@ pub struct Composed {
     pub page_damage: Vec<Vec<SurfacePixelRect>>,
     /// Where each surface's open popup widget is, in its view's logical pixels.
     pub popups: HashMap<String, Place>,
+    /// The hover title each page said last since the window looked (`""`: none, #156).
+    pub tips: HashMap<String, String>,
 }
 
 impl Composed {
@@ -107,6 +109,7 @@ impl Shared {
             attached: HashMap::new(),
             page_damage: Vec::new(),
             popups: HashMap::new(),
+            tips: HashMap::new(),
         })))
     }
 
@@ -163,6 +166,11 @@ impl SurfaceSink for Shared {
             }
             None => composed.close_popup(surface),
         }
+    }
+
+    fn tooltip(&self, surface: &str, text: &str) {
+        let mut composed = self.lock();
+        composed.tips.insert(surface.to_owned(), text.to_owned());
     }
 
     fn device(&self) -> (wgpu::Device, wgpu::Queue) {

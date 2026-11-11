@@ -1,7 +1,8 @@
 //! The web host's input side (#56): the compositor's input and drag messages to a surface's browser
-//! (`input.rs`, `drag.rs`), and what the browser says back about input: its cursor, whether it
-//! takes text, its caret, its page's drag messages, and drags its page starts itself (CEF's
-//! `StartDragging`: a link, a text selection or files, offered to the broker as desk data).
+//! (`input.rs`, `drag.rs`), and what the browser says back about input: its cursor, its hover
+//! title (an off-screen page draws none: CEF's `OnTooltip`, #156), whether it takes text, its
+//! caret, its page's drag messages, and drags its page starts itself (CEF's `StartDragging`: a
+//! link, a text selection or files, offered to the broker as desk data).
 
 use cef::*;
 use desk_surface::generated::{
@@ -188,5 +189,11 @@ impl WebHost {
         let change = super::cursor::change(surface, kind, custom);
         self.sink
             .message(SurfaceMessage::SurfaceCursorChange(change));
+    }
+
+    /// The page of `surface` shows `title` on hover now (`""`: none, the pointer left it): the
+    /// compositor draws it once the pointer rests (`compositor_window/tooltip.rs`).
+    pub fn tooltip(&self, surface: &str, title: &str) {
+        self.sink.tooltip(surface, title);
     }
 }

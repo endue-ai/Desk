@@ -21,6 +21,7 @@ impl CompositorWindow {
             std::sync::Arc::clone(&self.desk),
             render,
             self.relay.clone(),
+            self.host.clone(),
         );
         let info = WindowInfo {
             windowless_rendering_enabled: 1,
