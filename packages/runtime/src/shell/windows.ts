@@ -10,7 +10,7 @@ import type { PaneSplit } from "../modes/types";
 import { windowPlugins } from "../surface/placed";
 import { leaves, panesOf } from "../surface/tree";
 import type { Edit } from "../wm/types";
-import { type Ctx, edit, windowsOf } from "./actions";
+import { type Ctx, edit, settled, windowsOf } from "./actions";
 
 /**
  * The runtime's surfaces follow the pane in use: a plugin's takes the keys, a pane of the shell's
@@ -43,6 +43,9 @@ function movesOf(ctx: Ctx): { asked: number; going: number } {
  * asked and the runtime's focus is where this one left it. In the app the desk comes back late
  * (ADR 0153), so a desk that answers an earlier move names a focus already given away; following
  * it took the focus back, which asked again, and two moves on their way never settled (issue 160).
+ * It follows on the desk the batches asked for after it leave: a press that focuses a window and
+ * puts it in the drawer with the same click follows no window that is gone, since focusing a
+ * plugin's surface shows its window (issue 159, finding 12).
  */
 async function focusing(ctx: Ctx, ...edits: Edit[]): Promise<unknown[]> {
   const m = movesOf(ctx);
@@ -51,6 +54,7 @@ async function focusing(ctx: Ctx, ...edits: Edit[]): Promise<unknown[]> {
   m.going += 1;
   try {
     const answers = await edit(ctx, ...edits);
+    await settled(ctx);
     if (m.asked === mine && ctx.runtime.shortcuts.focused === keys) follow(ctx);
     return answers;
   } finally {

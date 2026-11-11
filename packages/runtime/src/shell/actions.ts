@@ -87,9 +87,23 @@ export function windowsOf(s: DeskState, desktop: DesktopRef = s.desktop): Surfac
   return s.wm.windows[desktopId(s, desktop)] ?? [];
 }
 
+/** The last batch asked of each window manager, which what waits for every batch waits for. */
+const lastBatch = new WeakMap<object, Promise<unknown[]>>();
+
 /** Ask the window manager for `edits`; their answers once the desk they made is in. */
 export function edit(ctx: Pick<Ctx, "wm">, ...edits: Edit[]): Promise<unknown[]> {
-  return ctx.wm.edit(edits);
+  const done = ctx.wm.edit(edits);
+  lastBatch.set(ctx.wm, done);
+  return done;
+}
+
+/** Settles once every batch asked for so far has, and those asked for meanwhile. */
+export async function settled(ctx: Pick<Ctx, "wm">): Promise<void> {
+  let seen: Promise<unknown[]> | undefined;
+  for (let last = lastBatch.get(ctx.wm); last && last !== seen; last = lastBatch.get(ctx.wm)) {
+    seen = last;
+    await last;
+  }
 }
 
 export function togglePin(ctx: Ctx, id: string): Promise<unknown[]> {

@@ -4,9 +4,11 @@
 // unmounts for the session (ADR 0040) and the question about their unsaved changes before (#160).
 import { describe, expect, it, vi } from "vitest";
 import { Buffers } from "../buffers";
+import { answers, type WindowManagerHost } from "../wm/host";
 import { lateWindowManager, testWindowManager } from "../wm/testing";
+import type { Published } from "../wm/types";
 import { takeDesk } from "../wm/view";
-import { openSurface } from "./actions";
+import { openSurface, settled, stash, windowsOf } from "./actions";
 import { Store, sampleState } from "./state";
 import {
   closePane,
@@ -140,6 +142,66 @@ describe("the focus settles while the window manager's desk comes late (#160)", 
     await turns();
     expect(c.store.get().focused).toBe("p.a");
     expect(c.shortcuts.focused).toBe("p.a");
+  });
+});
+
+describe("a press that focuses a window and puts it in the drawer", () => {
+  /**
+   * desk-wm as the app's compositor runs it: each desk it publishes, and the answers it settles,
+   * reach the page on a task of their own, so what a focus awaits runs before the next desk is in.
+   */
+  function onTasksOfTheirOwn(inner: ReturnType<typeof testWindowManager>): WindowManagerHost {
+    const pending = answers();
+    let take: (published: Published) => void = () => undefined;
+    inner.connect((published) =>
+      setTimeout(() => {
+        take(published);
+        pending.settle(published);
+      }, 0),
+    );
+    return {
+      ...inner,
+      connect(next) {
+        take = next;
+      },
+      edit(edits) {
+        const { done } = pending.next();
+        void inner.edit(edits);
+        return done;
+      },
+    };
+  }
+
+  it("puts it away at once: the surfaces do not follow it back out of the drawer (issue 159)", async () => {
+    const store = new Store(sampleState("en", epoch));
+    const wm = onTasksOfTheirOwn(testWindowManager());
+    wm.connect((published) => takeDesk(store, published));
+    await wm.edit(["p.a", "p.b"].map((id) => ({ op: "adopt", id, title: id })));
+    const shortcuts = { focused: null as string | null };
+    const c = {
+      store,
+      wm,
+      runtime: { shortcuts, focusSurface: (id: string | null) => focus(id) } as never,
+      bridge: undefined as never,
+      now: () => 1000,
+      wall: () => epoch + 1000,
+      tr: (key: string) => key,
+    };
+    // As the runtime does: a plugin's surface taking the keys shows its window.
+    const focus = vi.fn((id: string | null) => {
+      shortcuts.focused = id;
+      if (id) void showPlugin(c, id);
+    });
+    await focusPane(c, "p.a");
+    // The press focuses p.b, its click on the drawer tool puts it away.
+    const pressed = focusPane(c, "p.b");
+    const away = stash(c, "p.b", "B");
+    await Promise.all([pressed, away]);
+    await settled(c);
+    const s = store.get();
+    expect(windowsOf(s).map((p) => p.id)).not.toContain("p.b");
+    expect(s.drawer.map((d) => d.id)).toContain("surface-p.b");
+    expect(focus).not.toHaveBeenCalledWith("p.b");
   });
 });
 
