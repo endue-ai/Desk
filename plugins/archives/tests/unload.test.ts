@@ -29,7 +29,7 @@ const FILES = () => ({
 
 type Mounted = Awaited<ReturnType<typeof mount>>;
 
-/** Archives with A and B open: A left with docs open, two.md selected and top.txt marked; B on screen, one level down in inner.zip, deep open, sorted by size and filtered. */
+/** Archives with A and B open: A left with docs open, two.md selected and top.txt marked; B on screen, one level down in inner.zip, deep open, sorted by size. */
 async function twoArchives(files = FILES()) {
   const first = await mount({ files, grants: [DOWNLOADS] });
   await first.host.command("desk.files.visit", A);
@@ -206,6 +206,18 @@ describe("put to sleep while hidden, and back", () => {
     expect(second.view.archives.at(-1)).toMatchObject({ buffer: A.buffer });
     // B came back meanwhile, held but not put over what the person asked for.
     expect(((await asleep(second)) as { shown: string }).shown).toBe(A.buffer);
+  });
+
+  it("comes back with the filter it showed", async () => {
+    const first = await mount({ files: FILES(), grants: [DOWNLOADS] });
+    await first.host.command("desk.files.visit", B);
+    first.app.filter("b.");
+    const state = await asleep(first);
+    const second = await mount({ files: FILES(), grants: [DOWNLOADS], restored: state });
+    await vi.waitFor(() =>
+      expect(second.view.archives.at(-1)).toMatchObject({ buffer: B.buffer, filter: "b." }),
+    );
+    expect(rowNames(second.view)).toEqual(["b.txt"]);
   });
 
   it("starts empty from a state it cannot read", async () => {
