@@ -18,6 +18,8 @@ export default defineConfig({
     include: [
       "packages/*/src/**/*.test.ts",
       "apps/*/src/**/*.test.ts",
+      // The CEF shell's page scripts (#134, `web_host/frame_asks.js`).
+      "apps/desk/shell/src/**/*.test.ts",
       "plugins/*/tests/**/*.test.ts",
       "examples/*/tests/**/*.test.ts",
       "e2e/perf/lib/*.test.ts",

@@ -13,6 +13,7 @@
     "plugins/*/tests",
     "examples/*/tests",
     "apps/*/src",
+    "apps/desk/shell/src/**/*.test.ts",
     "apps/*/*.config.ts",
     "vitest.config.ts"
   ]
