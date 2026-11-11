@@ -4,11 +4,11 @@
 // that window only: the desk keeps drawing every other surface, says the plugin died, and starts it
 // again, its tree too while a screen reader runs (#146). The windows and the process are read
 // through compositor_stats; the pointer is the compositor's own input (support/compositor.ts),
-// since the screen may be locked. A keyboard goes
-// through its window as through a web plugin's (#128): Tab enters it at its first part and Shift+Tab
-// at its last, its own Tab moves between its two parts, and past either end it hands the focus back
-// to the desk, which goes on in the page's own order; the keys and the desk's accessibility tree
-// (what a screen reader reads, `compositor_a11y`) follow each move.
+// since the screen may be locked. A keyboard goes through its window as through a web plugin's
+// (#128): Control+Tab gives its window the keys (ADR 0192), Tab enters it at its first part and
+// Shift+Tab at its last, its own Tab moves between its two parts, and past either end it hands the
+// focus back to the desk, which goes on in the page's own order; the keys and the desk's
+// accessibility tree (what a screen reader reads, `compositor_a11y`) follow each move.
 import { browser, expect } from "@wdio/globals";
 import { feed, inputState, keyPress, shellCommand } from "../support/compositor";
 import { focusedSurface, shellReady } from "../support/desk";
@@ -199,18 +199,19 @@ describe("native plugin: a process of its own draws a window like any other (#59
       await browser
         .waitUntil(async () => (await focusedSurface()) !== before, { timeout: 5_000 })
         .catch(() => undefined);
-      if ((await focusedSurface()) === PLUGIN && (await inChrome())) break;
+      if ((await focusedSurface()) === PLUGIN) break;
     }
     expect(await focusedSurface()).toBe(PLUGIN);
-    expect(await inChrome()).toBe(true);
+    // The window in use has the keys (ADR 0192): its place has the page's focus, no part of its
+    // own has the plugin's yet.
     await until(
-      async () => (await keys()) !== SURFACE,
-      "the window's section has the page's focus, yet the plugin kept the keys",
+      async () => (await keys()) === SURFACE,
+      "Control+Tab to the plugin's window left its keys with the desk's page",
     );
+    expect(await inChrome()).toBe(false);
 
-    // Tab: into the plugin at its first part, then on to its second; the keys and the tree follow.
+    // Tab: on to its first part, then its second; the tree follows.
     await tab();
-    await until(async () => (await keys()) === SURFACE, "Tab never gave the plugin the keys");
     await until(async () => (await focusLabel()) === "Colour", "Tab never reached its first part");
     await tab();
     await until(
