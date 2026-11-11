@@ -12,7 +12,7 @@ import { DESK_DIR, type DeskFolder } from "./desk-folder";
 export const PROFILES_DIR = `${DESK_DIR}/profiles`;
 /** Where an older desk kept saved profiles, in the store. */
 export const PROFILES_KEY = "profiles";
-/** Profile files the person removed, with the text they had: the bridge has no fs.remove yet. */
+/** Profile files removed where there is no Trash to take them, with the text they had. */
 export const REMOVED_KEY = "profiles.removed";
 export const PROFILE_ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
@@ -30,7 +30,10 @@ export interface ProfileFiles {
   /** The valid profiles, by file name. */
   saved(): ProfileContribution[];
   save(profile: ProfileContribution): Promise<void>;
-  /** Drop a saved profile. Its file stays (the bridge cannot delete one) but is not read until it is edited. */
+  /**
+   * Drop a saved profile: its file goes to the Trash, from which it can come back (#158). Where
+   * there is no Trash the file stays, but is not read until it is edited.
+   */
   remove(id: string): Promise<void>;
   /** Hear the id of a profile whose file changed on disk (saved, edited or removed). */
   onChange(listener: (id: string) => void): () => void;
@@ -141,7 +144,13 @@ export function profileFiles(
     remove: async (id) => {
       profiles.delete(id);
       const text = texts.get(id) ?? (await folder.read(pathOf(id)));
-      if (text !== undefined) removed = { ...removed, [id]: text };
+      if (text === undefined) return;
+      // Forgotten first, so the trash's own fs.changed reads as no change and a file that comes
+      // back from the Trash is read again.
+      texts.delete(id);
+      if (await folder.trash(pathOf(id))) return;
+      texts.set(id, text);
+      removed = { ...removed, [id]: text };
       await saveRemoved();
     },
     onChange: (listener) => {

@@ -15,6 +15,8 @@ export interface DeskFolder {
   read(path: string): Promise<string | undefined>;
   /** Create or replace the file, and its folder when missing. */
   write(path: string, text: string): Promise<void>;
+  /** Move the file to the Trash; whether it went (where there is no trash, it stays). */
+  trash(path: string): Promise<boolean>;
   /** The names of the files in a folder; none when it is missing. */
   list(dir: string): Promise<string[]>;
   /** Hear the path of each file that changed on disk, whoever changed it. */
@@ -72,6 +74,14 @@ export function deskFolder(bridge: BridgeClient): DeskFolder {
         ...(nested ? { createDirs: true } : {}),
         scope,
       });
+    },
+    trash: async (path) => {
+      try {
+        await bridge.call("fs.trash", { path, scope: { permission: "fs:write", paths: [path] } });
+        return true;
+      } catch {
+        return false;
+      }
     },
     list: async (dir) => {
       try {

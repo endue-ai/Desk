@@ -1,8 +1,9 @@
 /**
- * The desk folder on the browser stub: the runtime's own fs.read, fs.write, fs.list and fs.watch under
- * `~/.desk`, over text files held in memory, as desk-core answers the runtime (which holds fs:read on
- * `~/.desk/**` and fs:write on its profiles and keys.yaml): a write is refused as the core refuses it
- * (`checkWrite`), so a scope that fails there fails here too (#102). Every write is an fs.changed for
+ * The desk folder on the browser stub: the runtime's own fs.read, fs.write, fs.list, fs.watch and
+ * fs.trash under `~/.desk`, over text files held in memory, as desk-core answers the runtime (which
+ * holds fs:read on `~/.desk/**` and fs:write on its profiles and keys.yaml): a write or a trash is
+ * refused as the core refuses it (`checkScope`), so a scope that fails there fails here too (#102).
+ * Every write and trash is an fs.changed for
  * the watches that cover it, the runtime's own included, as the OS reports it. Calls a plugin makes,
  * and paths outside the folder, go to `fallback` (the page's own handlers).
  */
@@ -105,6 +106,15 @@ export function stubFolder(
       watches.set(watchId, { path: params.path, recursive: params.recursive === true });
       return { watchId };
     },
+    // A removed profile's file goes to the Trash (#158): gone from the folder, under the same grant.
+    "fs.trash": (params, caller) => {
+      if (caller !== undefined || !inFolder(params.path))
+        return passOn(fallback, "fs.trash")(params, caller);
+      checkScope(params.path, params.scope);
+      if (!files.has(params.path)) throw missing(params.path);
+      folder.remove(params.path);
+      return {};
+    },
   };
   return { folder, handlers };
 }
@@ -120,6 +130,14 @@ function patternCovers(grant: string, asked: string): boolean {
   return grant === asked || (prefix !== undefined && under(asked, prefix));
 }
 
+/** The scope covers `path` and RUNTIME_WRITE covers the scope, as desk-core judges a write's or a trash's. */
+function checkScope(path: string, scope: FsWritePermission): void {
+  if (!scope.paths.some((pattern) => pathMatch(pattern, path)))
+    throw denied(`the scope does not cover ${path}`, scope);
+  if (!scope.paths.every((asked) => RUNTIME_WRITE.some((grant) => patternCovers(grant, asked))))
+    throw denied("no grant covers the scope", scope);
+}
+
 /**
  * The runtime's fs.write in the folder, refused as desk-core refuses it (core_fs.rs, perm.rs): the
  * scope covers the path and RUNTIME_WRITE covers the scope; a folder createDirs would make is
@@ -127,10 +145,7 @@ function patternCovers(grant: string, asked: string): boolean {
  */
 function checkWrite(params: FsWriteParams, exists: (dir: string) => boolean): void {
   const { path, scope } = params;
-  if (!scope.paths.some((pattern) => pathMatch(pattern, path)))
-    throw denied(`the scope does not cover ${path}`, scope);
-  if (!scope.paths.every((asked) => RUNTIME_WRITE.some((grant) => patternCovers(grant, asked))))
-    throw denied("no grant covers the scope", scope);
+  checkScope(path, scope);
   const dir = path.slice(0, path.lastIndexOf("/"));
   if (params.createDirs === true) {
     if (dir !== "~" && !scope.paths.some((pattern) => pathMatch(pattern, dir)))
@@ -139,7 +154,7 @@ function checkWrite(params: FsWriteParams, exists: (dir: string) => boolean): vo
 }
 
 /** The page's own handler for `method`, or an answer that nobody serves it. */
-function passOn<M extends "fs.read" | "fs.write" | "fs.list" | "fs.watch">(
+function passOn<M extends "fs.read" | "fs.write" | "fs.list" | "fs.watch" | "fs.trash">(
   fallback: StubHandlers,
   method: M,
 ): NonNullable<StubHandlers[M]> {

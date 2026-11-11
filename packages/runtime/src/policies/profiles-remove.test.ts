@@ -1,13 +1,15 @@
+import type { BridgeClient } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { browserCore, memoryStore } from "../bridge/core";
 import { PolicyHub } from "../hub";
 import type { DeskContext } from "./context";
+import { type DeskFolder, deskFolder } from "./desk-folder";
 import { installProfiles } from "./profiles";
 
 const MANAGE = { permission: "plugin:manage" } as const;
 
 /** desk.profiles on the stub core with two contributed profiles, `plain` in force. */
-async function desk() {
+async function desk(folder?: (bridge: BridgeClient) => DeskFolder) {
   const core = browserCore({
     manifests: [
       {
@@ -29,13 +31,22 @@ async function desk() {
   const hub = new PolicyHub(bridge);
   hub.apply((await bridge.call("plugin.list", { scope: MANAGE })).plugins);
   await hub.readInit(bridge);
-  const profiles = installProfiles({ hub, bridge } as unknown as DeskContext, () => {});
+  const profiles = installProfiles(
+    { hub, bridge } as unknown as DeskContext,
+    () => {},
+    folder?.(bridge),
+  );
   await hub.commands.settled();
   await profiles.start();
   const run = (id: string, args?: unknown) => hub.commands.run(id, args);
-  const file = (id: string) => core.folder.read(`~/.desk/profiles/${id}.yaml`);
-  return { run, file, profiles };
+  const path = (id: string) => `~/.desk/profiles/${id}.yaml`;
+  const file = (id: string) => core.folder.read(path(id));
+  /** The person edits the file by hand (or takes it back from the Trash). */
+  const edit = (id: string, text: string) => core.folder.write(path(id), text);
+  return { run, file, edit, profiles };
 }
+
+const settled = () => new Promise((resolve) => setTimeout(resolve, 10));
 
 describe("desk.profiles.remove", () => {
   it("removes a saved profile from the list; save keeps its description", async () => {
@@ -54,8 +65,33 @@ describe("desk.profiles.remove", () => {
 
     expect(await m.run("desk.profiles.remove", { id: "mine" })).toEqual({ id: "mine" });
     expect(m.profiles.list().map((p) => p.id)).toEqual(["plain", "loud"]);
-    // The bridge cannot delete the file: it stays, but is not read again until it is edited.
-    expect(await m.file("mine")).toBeDefined();
+    // Its file goes to the Trash (#158), where the person can take it back.
+    expect(m.file("mine")).toBeUndefined();
+  });
+
+  it("a file taken back from the Trash is that profile again", async () => {
+    const m = await desk();
+    await m.run("desk.profiles.save", { id: "mine", name: "Mine", plugins: {}, settings: {} });
+    const text = m.file("mine") as string;
+    await m.run("desk.profiles.remove", { id: "mine" });
+    m.edit("mine", text);
+    await settled();
+    expect(m.profiles.list().map((p) => p.id)).toContain("mine");
+  });
+
+  it("where there is no Trash the file stays, not read again until it is edited", async () => {
+    const keeping = (bridge: BridgeClient): DeskFolder => ({
+      ...deskFolder(bridge),
+      trash: async () => false,
+    });
+    const m = await desk(keeping);
+    await m.run("desk.profiles.save", { id: "mine", name: "Mine", plugins: {}, settings: {} });
+    await m.run("desk.profiles.remove", { id: "mine" });
+    expect(m.file("mine")).toBeDefined();
+    expect(m.profiles.list().map((p) => p.id)).toEqual(["plain", "loud"]);
+    m.edit("mine", `${m.file("mine")}description: Back.\n`);
+    await settled();
+    expect(m.profiles.list().find((p) => p.id === "mine")?.description).toBe("Back.");
   });
 
   it("refuses a contributed profile, one nobody saved and the one in force", async () => {
