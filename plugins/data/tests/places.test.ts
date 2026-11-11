@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // The page with the plugin behind it (#162, ADR 0176): a Data window that slept comes back as it was
-// shown, with the same nodes open, the same one selected and the same mode, and its unsaved value.
+// shown, with the same nodes open, the same one selected and the same mode, and its unsaved value;
+// and a narrow window first shows a file as its tree alone (finding 9).
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { disk, file, mountPage } from "./harness";
 
@@ -46,5 +47,27 @@ describe("a page that slept", () => {
     expect(pressed()).toBe("tree");
     expect($("#raw-pane").hidden).toBe(true);
     expect(second.ran("desk.buffers.update")).toEqual([]);
+  });
+});
+
+describe("the first mode", () => {
+  it("a narrow window shows a file's tree alone; a wide one shows the tree and the raw text", async () => {
+    width(326);
+    const narrow = await mountPage({ handlers: disk({ [A.path]: TEXT }) });
+    await narrow.host.command("desk.files.visit", A);
+    expect([pressed(), $("#raw-pane").hidden]).toEqual(["tree", true]);
+    // The person's choice stays the file's.
+    $("#mode-both").click();
+    await narrow.host.command("desk.buffers.show", A);
+    expect(pressed()).toBe("both");
+
+    width(900);
+    const wide = await mountPage({ handlers: disk({ [A.path]: TEXT }) });
+    await wide.host.command("desk.files.visit", A);
+    expect([pressed(), $("#raw-pane").hidden, $("#tree-pane").hidden]).toEqual([
+      "both",
+      false,
+      false,
+    ]);
   });
 });

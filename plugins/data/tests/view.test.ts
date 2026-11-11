@@ -218,6 +218,23 @@ describe("the problems panel", () => {
     expect($('#raw .line[data-line="4"]').classList.contains("current")).toBe(true);
   });
 
+  it("is quiet with nothing to act on, which a small window gives to the file (#162)", () => {
+    show("a.json", '{ "a": 1 }');
+    view.schema("file:~/data/a.json", { state: "none", errors: [] });
+    expect($("#problems").hasAttribute("data-quiet")).toBe(true);
+    view.schema("file:~/data/a.json", {
+      state: "invalid",
+      how: "sibling",
+      source: "~/data/a.schema.json",
+      errors: [
+        { pointer: "/a", message: "Should be string.", keyword: "type", line: 1, col: 8, root: 0 },
+      ],
+    });
+    expect($("#problems").hasAttribute("data-quiet")).toBe(false);
+    show("broken.json", '{ "a": }');
+    expect($("#problems").hasAttribute("data-quiet")).toBe(false);
+  });
+
   it("says why there is no check: a remote schema is never fetched", () => {
     show("b.json", '{ "$schema": "https://example.invalid/s.json" }');
     const note = "Remote schemas are not fetched: https://example.invalid/s.json.";

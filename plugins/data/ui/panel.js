@@ -100,6 +100,13 @@ export function createPanel(doc, el, hooks) {
     }
     el.replaceChildren(...parts);
     el.hidden = parts.length === 0;
+    // Nothing to act on (no error, no warning, no schema or one the file matches): a small window
+    // gives the panel's room to the file.
+    const quiet =
+      docErrors.length === 0 &&
+      warnings.length === 0 &&
+      (!schema || schema.state === "none" || schema.state === "valid");
+    el.toggleAttribute("data-quiet", quiet);
   };
 
   return {

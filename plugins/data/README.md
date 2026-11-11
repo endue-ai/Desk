@@ -19,16 +19,16 @@ the tree, text, search, checks and edits, and the page gets bounded, masked rows
 | YAML, TOML (UTF-8, up to 64 MiB) | full | text: the first save asks "Save as copy" (default) or "Overwrite" |
 | The other formats; files not UTF-8 or that do not parse | full, or details | read-only |
 
-Enter or F2 on a value, or a double click, edits it in its row (a string's text, or a literal in the
-format's syntax); `<desk-edit-tier>` shows the tier. It answers `desk.files.visit`, `.save`, `.revert`,
-`desk.buffers.show` and `.closed`, asking once for a file's folder to read (`fs:read`) or save
-(`fs:write`), and invokes `desk.files.changed`, `desk.palette.pick` and `desk.buffers.update`.
+Enter or F2 on a value, or a double click, edits it in its row (`<desk-edit-tier>` shows the tier). It
+answers `desk.files.visit`, `.save`, `.revert`, `desk.buffers.show` and `.closed`, asking once for a folder
+to read or save. Asleep out of sight (ADR 0176), the SDK's `keepFiles` keeps its files, modes, open and
+selected nodes and unsaved values. A narrow window first shows the tree alone; a small one folds its chrome.
 
 | File | Purpose |
 | --- | --- |
-| `ui/data.js`, `ui/schema-check.js` | The desk's requests, reads with one ask, watches, schema checks |
+| `ui/data.js`, `wake.js`, `keep.js`, `schema-check.js`, `validate-with.js` | The desk's requests, reads with one ask, watches, sleep, schema checks |
 | `ui/formats.js`, `ui/parse/`, `ui/tree.js`, `ui/search.js`, `ui/secrets.js`, `ui/schema.js` | The format (first bytes, then extension) and its parser; the tree, search, masking, JSON Schema |
-| `ui/view.js`, `ui/*-view.js`, `ui/panel.js`, `ui/worker*.js`, `ui/remote-*.js` | The DOM; the worker's document and bounded requests |
+| `ui/view.js`, `ui/places.js`, `ui/*-view.js`, `ui/panel.js`, `ui/worker*.js`, `ui/remote-*.js` | The DOM; the worker's document and bounded requests |
 | `ui/edit/` | Tiers and edits (`session.js`), the JSON syntax model (`cst.js`), saving, the save question, the editor |
 
 ```bash

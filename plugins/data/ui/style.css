@@ -323,11 +323,36 @@ footer { border-top: 1px solid var(--desk-border); }
 
 [hidden] { display: none !important; }
 
-/* Small windows: one line of header that scrolls sideways, so the panes keep the height. */
+/* Small windows: one thin line of header that scrolls sideways without a bar of its own, so the
+   panes keep the height; the path and the buttons that open or close every node give way, and the
+   controls take the design system's smallest height. */
 @media (max-width: 720px), (max-height: 480px) {
-  header { flex-wrap: nowrap; gap: 8px; padding: 4px 8px; overflow-x: auto; white-space: nowrap; }
+  header {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 3px 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    white-space: nowrap;
+  }
   .title { display: flex; align-items: baseline; gap: 8px; }
-  #toolbar { flex-wrap: nowrap; margin-left: 0; }
+  #toolbar {
+    --desk-field-height: var(--desk-control-xs);
+    --desk-button-height: var(--desk-control-xs);
+    --desk-tab-height: var(--desk-control-xs);
+    flex-wrap: nowrap;
+    margin-left: 0;
+  }
+  #path, #expand-all, #collapse-all { display: none; }
+  input[type="search"] { width: 9em; }
   #where, #status { padding: 2px 8px; }
   #problems { max-height: 22vh; padding: 2px 8px; }
+}
+
+/* A window's first size (326×169 at 1280×800) and smaller: the file comes first. Under the panes
+   only the status line and problems that need the person stay; the selected node's pointer and a
+   panel with nothing to act on give way. */
+@media (max-height: 300px) {
+  #where, #problems[data-quiet] { display: none; }
+  #problems { max-height: 3.5em; }
 }

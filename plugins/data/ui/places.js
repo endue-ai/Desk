@@ -9,6 +9,9 @@
  * @typedef {import("./tree-view.js").TreeState & { mode: Mode }} State
  */
 
+/** The mode a file is first shown in: the tree alone in a narrow window, else both side by side. */
+export const firstMode = (/** @type {number} */ width) => (width < 560 ? "tree" : "both");
+
 /**
  * @param {Map<string, State>} states the view's, per buffer
  * @param {{ shown(): { buffer: string, remote: boolean } | null,

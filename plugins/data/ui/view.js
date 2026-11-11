@@ -8,7 +8,7 @@
 import { createEditField, showTier } from "./edit/field.js";
 import { createPanel } from "./panel.js";
 import { createPanes } from "./panes.js";
-import { createPlaces } from "./places.js";
+import { createPlaces, firstMode } from "./places.js";
 import { CHECKED } from "./schemas.js";
 import { chainOf, search } from "./search.js";
 import { isMasked, maskRanges } from "./secrets.js";
@@ -319,6 +319,8 @@ export function createView(doc, actions) {
       resetSearch();
       $.name.textContent = next ? next.name : "No file open";
       $.path.textContent = next?.path ?? "";
+      // A small window leaves the path out of its header: it is on the name, on hover.
+      $.name.title = next?.path ?? "";
       showTier($.tier, next);
       $.toolbar.hidden = !next || next.opened.reason !== undefined;
       $.validate.hidden = !next || !CHECKED.has(next.opened.format) || !next.opened.doc;
@@ -340,7 +342,8 @@ export function createView(doc, actions) {
       if (!state || state.selected === null) {
         const open =
           (data?.roots.length ?? 0) <= 20 ? (data?.roots ?? []).map((_, i) => String(i)) : [];
-        state = { expanded: new Set(open), selected: null, mode: state?.mode ?? "both" };
+        const mode = state?.mode ?? firstMode(doc.defaultView?.innerWidth ?? 1024);
+        state = { expanded: new Set(open), selected: null, mode };
         states.set(next.buffer, state);
       }
       $.panes.hidden = false;
