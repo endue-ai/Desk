@@ -2,10 +2,11 @@
 //! each new look at the desk calls for. A surface is keyed by its host (`<surface>.<plugin
 //! label>`, #36), never by where its window is, so a split, the drawer, a desktop switch or a
 //! profile switch only moves, resizes, hides or shows it: its document never loads again (ADR
-//! 0040's reload goes). It loads again only for a new document (a new revision: hot reload), and
-//! after it died, when its holder loads it again (#44). It `sleep`s when its holder took its frame
-//! away (the live budget's decision carried out, or a frame the person stopped) and `wake`s when
-//! the frame is back; one with no visible window, or the app window off screen, is `hide`.
+//! 0040's reload goes). It loads again only for a page its holder counts and it has not shown: a
+//! new document (a new revision: hot reload), after it died, when its holder loads it again (#44),
+//! and its frame taken away and back between two reports. It `sleep`s when its holder took its
+//! frame away (the live budget's decision carried out, or a frame the person stopped) and `wake`s
+//! when the frame is back; one with no visible window, or the app window off screen, is `hide`.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -44,8 +45,9 @@ pub struct FrameDoc {
     pub view: String,
     /// The document it shows.
     pub src: String,
-    /// How many times its frame loaded in the page: it moves when the page moves the frame, and
-    /// when the holder loads it again after a death.
+    /// How many pages its holder asked for (`pages/remote.ts`): one more for a new revision, and
+    /// each time its frame is back after a sleep, a stop or a death; never for a move in the page.
+    /// The surface shows the page for the last count: one it has not shown loads again.
     #[serde(default)]
     pub loads: u64,
     #[serde(default)]
@@ -236,7 +238,10 @@ impl Surfaces {
             });
             known.asleep = false;
             known.dead = false;
-        } else if new_document && !known.dead {
+        } else if loaded_again && !known.dead {
+            // Its holder asked for a page this one is not: a new revision, or its frame taken away
+            // and put back between two reports (a sleep the reports missed). The holder kept its
+            // state for the new page's hello and stopped hearing this one: it loads again.
             load(steps);
         }
         known.src = doc.src.clone();

@@ -131,16 +131,20 @@ fn a_window_out_of_sight_past_the_budget_sleeps_once_the_runtime_took_it_away_an
     ];
     let out = report(&mut hosted, now, 3, true, asleep, 0);
     assert_eq!(kinds(&out), [format!("sleep {NOTES}")]);
-    // Mail back to its slot: Notes is in sight again, kept, and wakes once its frame is back.
-    let out = report(&mut hosted, now, 4, false, live(1), 0);
+    // Mail back to its slot: Notes is in sight again, kept, and wakes once its frame is back on
+    // its second page.
+    let out = report(&mut hosted, now, 4, false, live(2), 0);
     assert_eq!(
         out.live,
         Some(vec!["endue.mail".into(), "endue.notes".into()])
     );
     assert_eq!(kinds(&out)[0], format!("wake {NOTES}"));
-    // Its frame moved in the page (a split, the drawer): nothing loads again.
+    // Its frame moved in the page (a split, the drawer): the runtime counts no page, nothing loads.
     let out = report(&mut hosted, now, 5, false, live(2), 0);
     assert_eq!(out, Outcome::default());
+    // Taken away and back between two reports: the third page loads in place of the second (W1).
+    let out = report(&mut hosted, now, 6, false, live(3), 0);
+    assert_eq!(kinds(&out), [format!("load {NOTES}")]);
 }
 
 #[test]

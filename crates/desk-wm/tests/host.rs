@@ -225,24 +225,22 @@ mod never_a_reload {
         let mut desk = Desk::default();
         adopt(&mut desk, &["e2e.hello"]);
         let mut surfaces = Surfaces::new();
-        let mut frames = vec![doc("e2e.hello", FrameState::Live)];
+        let frames = vec![doc("e2e.hello", FrameState::Live)];
         assert_eq!(
             kinds(&look(&mut surfaces, &desk, &frames)),
             ["load", "create"]
         );
         let mut seen = Vec::new();
-        // Split its window: the page moves the frame (it loads there again); the surface resizes.
+        // Split its window: the page moves the surface's place, and its holder counts no new page
+        // (ADR 0160); the surface resizes.
         desk.focus("e2e.hello");
         desk.split(desk_wm::SplitDir::Row);
-        frames[0].loads += 1;
         seen.extend(look(&mut surfaces, &desk, &frames));
         // Into the drawer and back, each time moved in the page.
         desk.put_away("e2e.hello", "Hello", EPOCH);
-        frames[0].loads += 1;
         seen.extend(look(&mut surfaces, &desk, &frames));
         let item = desk.drawer[0].id.clone();
         desk.bring_back(&item);
-        frames[0].loads += 1;
         seen.extend(look(&mut surfaces, &desk, &frames));
         // Another desktop and back.
         desk.set_desktop("2");
