@@ -5,15 +5,16 @@
 //! the window (its title bar's icon and tools, its own views, split panes' headers), taken from
 //! where the page lays the window out and drawn where the window is (#80: a gesture holds it, it
 //! glides); the snap preview under the window dragged to an edge; then the system layer (ADR 0160):
-//! the edge bars' plugin surfaces, the desk's system surface (the page's bars, Eris, notices, menus,
-//! the settings and the studios, its named parts drawn whole above every window) and the overlays'
-//! plugin surfaces (the palette, the first run) above them, where the page lays them out. Units are
-//! the page's CSS pixels under one group scaled to the window's device pixels, so
-//! text is set at the device's size. Every node that shows a surface is answered with the input
-//! router's target for it (#56); the compositor's own chrome lets the pointer through to the page,
-//! which finds what a press lands on, but for the cards' buttons, which run their commands. While
-//! the spread is open every window is a card at its pose instead (`draw_spread.rs`), and the canvas
-//! map goes over the page's layer when it shows (`draw_map.rs`, #54).
+//! the edge bars' plugin surfaces, the desk's system surface (the page's bars, Eris, notices, its
+//! named parts drawn whole above every window), the canvas map when it shows (`draw_map.rs`, #54),
+//! a modal's scrim, what the desk opens over them (the settings, the studios, dialogs, menus) and
+//! the overlays' plugin surfaces (the palette, the first run) above it all, where the page lays
+//! them out (`system.rs`). Units are the page's CSS pixels under one group scaled to the window's
+//! device pixels, so text is set at the device's size. Every node that shows a surface is answered
+//! with the input router's target for it (#56); the compositor's own chrome lets the pointer
+//! through to the page, which finds what a press lands on, but for the cards' buttons, which run
+//! their commands. While the spread is open every window is a card at its pose instead
+//! (`draw_spread.rs`).
 
 use desk_compositor::a11y::ChromeSpread;
 use desk_compositor::glam::{Mat4, Vec2, Vec3};
@@ -238,10 +239,8 @@ pub fn draw(
         }
         window(scene, &mut chrome, desk, w, hosted, from, &mut drawn)?;
     }
+    // The canvas map with it, over the bars and under what the desk opens over them.
     super::system::draw(scene, &mut chrome, desk, plan, hosted, from, &mut drawn)?;
-    if let Some(map) = &from.map {
-        drawn.map = Some(super::draw_map::draw(scene, &mut chrome, desk, map)?);
-    }
     Ok(drawn)
 }
 

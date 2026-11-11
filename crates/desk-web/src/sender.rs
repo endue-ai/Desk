@@ -10,7 +10,7 @@
 use crate::plugin_scheme::hosts::Host;
 
 mod system;
-pub use system::{PARTS, System, SystemPart, part};
+pub use system::{Level, PARTS, System, SystemPart, part};
 
 /// The runtime's caller id (desk-boot's `RUNTIME_CALLER`).
 pub const RUNTIME: &str = "desk";

@@ -57,13 +57,30 @@ impl System {
 
 /// One part of the desk's system surface that the compositor places in its system layer, above
 /// every window and below the compositor's own overlays (ADR 0160): the page reports its box, and
-/// the compositor draws the page's pixels there whole.
+/// the compositor draws the page's pixels there whole, or dims it for a modal's scrim.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SystemPart {
     /// Its stable id: `desk.` and what it is.
     pub id: &'static str,
     /// What it holds.
     pub holds: &'static str,
+    /// How the compositor draws it, and where among what it draws of its own.
+    pub level: Level,
+}
+
+/// Where a part goes among what the compositor draws of its own, the canvas map and a modal's
+/// scrim, which the page cannot draw over the windows (ADR XXXX).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Level {
+    /// The page's pixels, whole, under the canvas map: the bars, the pills, Eris, the notices.
+    Bar,
+    /// A modal's scrim, which the page paints none of: the compositor fills its box with the
+    /// theme's dialog scrim over everything under it, every window, the dock and the canvas map
+    /// included, and the page hears the pointer there.
+    Scrim,
+    /// The page's pixels, whole, above the canvas map and every scrim: the settings, the studios,
+    /// the dialogs, menus, hover cards and popovers.
+    Front,
 }
 
 impl SystemPart {
@@ -73,65 +90,86 @@ impl SystemPart {
     }
 }
 
-/// The parts of the desk's system surface, in the order the compositor draws them (bars under the
-/// windows the desk opens over them: the settings, the studios).
+/// The parts of the desk's system surface, in the order the compositor draws them: the bars, then
+/// (after the canvas map, the compositor's) the scrims, then what the desk opens over them.
 pub const PARTS: &[SystemPart] = &[
     SystemPart {
         id: "desk.profiles",
         holds: "the profile switcher, top left",
+        level: Level::Bar,
     },
     SystemPart {
         id: "desk.desktops",
         holds: "the desktops, top right",
+        level: Level::Bar,
     },
     SystemPart {
         id: "desk.agents",
         holds: "the agent bar's content: agents, spaces, local agents",
+        level: Level::Bar,
     },
     SystemPart {
         id: "desk.account",
         holds: "the person's controls, bottom left",
+        level: Level::Bar,
     },
     SystemPart {
         id: "desk.rail",
         holds: "the rail's content: the status drawers",
+        level: Level::Bar,
     },
     SystemPart {
         id: "desk.arrange",
         holds: "the arrange strip beside the canvas map: tile, cascade, spread, restore",
+        level: Level::Bar,
     },
     SystemPart {
         id: "desk.bottom",
         holds: "the bottom edge's controls, one box each: the drawer button, the talk pill and its \
                 line, the running chips",
+        level: Level::Bar,
     },
     SystemPart {
         id: "desk.canvas",
         holds: "the button that puts the canvas back where it started",
+        level: Level::Bar,
     },
     SystemPart {
         id: "desk.safe",
         holds: "the safe mode badge and its button, top centre",
+        level: Level::Bar,
     },
     SystemPart {
         id: "desk.eris",
         holds: "Eris: her figure, her soul text and her errands",
+        level: Level::Bar,
     },
     SystemPart {
         id: "desk.notices",
         holds: "the status line and its notices",
+        level: Level::Bar,
+    },
+    SystemPart {
+        id: "desk.scrim",
+        holds: "each modal's scrim the page has open, one box each: a dialog's, the settings' \
+                backdrop",
+        level: Level::Scrim,
     },
     SystemPart {
         id: "desk.settings",
         holds: "the settings window",
+        level: Level::Front,
     },
     SystemPart {
         id: "desk.studios",
         holds: "the theme and design studios",
+        level: Level::Front,
     },
     SystemPart {
         id: "desk.overlays",
-        holds: "each popover, menu, hover title and dialog box the page has open, one box each",
+        holds: "each popover, menu, hover title, card and dialog box the page has open, one box \
+                each",
+        level: Level::Front,
     },
 ];
 
@@ -143,7 +181,7 @@ pub fn part(id: &str) -> Option<&'static SystemPart> {
 #[cfg(test)]
 mod tests {
     use super::super::Sender;
-    use super::{PARTS, Role, System, part};
+    use super::{Level, PARTS, Role, System, part};
 
     #[test]
     fn each_system_surface_has_a_stable_id_a_window_and_the_caller_of_that_window() {
@@ -200,5 +238,23 @@ mod tests {
         ids.sort_unstable();
         ids.dedup();
         assert_eq!(ids.len(), all, "each id once");
+    }
+
+    #[test]
+    fn the_bars_go_under_the_canvas_map_and_a_scrim_and_what_the_desk_opens_over_them() {
+        // A dialog over the map and the pill, its scrim over every window (#158, #161).
+        let level = |id: &str| part(id).map(|p| p.level);
+        for bar in ["desk.bottom", "desk.arrange", "desk.eris", "desk.notices"] {
+            assert_eq!(level(bar), Some(Level::Bar), "{bar}");
+        }
+        assert_eq!(level("desk.scrim"), Some(Level::Scrim));
+        for front in ["desk.settings", "desk.studios", "desk.overlays"] {
+            assert_eq!(level(front), Some(Level::Front), "{front}");
+        }
+        // In drawing order: every bar, then the scrims, then the front.
+        let levels: Vec<Level> = PARTS.iter().map(|p| p.level).collect();
+        let mut sorted = levels.clone();
+        sorted.sort_by_key(|l| *l as u8);
+        assert_eq!(levels, sorted);
     }
 }

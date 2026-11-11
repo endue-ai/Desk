@@ -2,14 +2,20 @@
 // its system layer, above every window, each under a stable id (`desk_web::sender::PARTS`, which
 // lists the same ids in the order the compositor draws them). The page measures each part's box
 // where it shows; one not on the page, hidden or of no size is not reported. The page's overlays
-// (its popovers, menus, hover titles and dialog boxes) are one part with a box for each one open, so
-// a window's title or a window over another never cuts through them. Every control the page draws
-// outside its windows is in a part: one that is not lets the press through to the dock or the
-// window under it (#158, #159).
+// (its popovers, menus, hover titles, cards and dialog boxes) are one part with a box for each one
+// open, so a window's title or a window over another never cuts through them. Every control the
+// page draws outside its windows is in a part: one that is not lets the press through to the dock
+// or the window under it (#158, #159). A modal's scrim is a part the compositor draws itself, over
+// every window, the dock and the canvas map, which the page's own could never dim (ADR XXXX):
+// `compositor.css` leaves it unpainted here.
 
-/** A part's id and the element that holds it, found by its root's class; `every` reports each
- * element the selector finds, each with a box of its own. */
-export const PARTS: ReadonlyArray<readonly [id: string, selector: string, every?: "every"]> = [
+/** How a part's elements are reported: the first the selector finds, `every` one each with a box
+ * of its own, or each as a modal's `scrim`: its box, or the whole app for a modal dialog's
+ * backdrop. */
+export type Found = "every" | "scrim";
+
+/** A part's id and the element that holds it, found by its root's class. */
+export const PARTS: ReadonlyArray<readonly [id: string, selector: string, found?: Found]> = [
   ["desk.profiles", '[data-layer="system"] .modes'],
   ["desk.desktops", '[data-layer="system"] .desktops'],
   ["desk.agents", '[data-layer="system"] .sidebar'],
@@ -22,9 +28,15 @@ export const PARTS: ReadonlyArray<readonly [id: string, selector: string, every?
   ["desk.safe", '[data-layer="system"] .safe-badge'],
   ["desk.eris", ".eris"],
   ["desk.notices", ".desk-status"],
+  // The theme studio docked to the side while it edits dims nothing (`editor.css`).
+  ["desk.scrim", ".scrim:not(.is-editing), .desk-describe, dialog[open]", "scrim"],
   ["desk.settings", "dialog.desk-settings[open]"],
   ["desk.studios", ".theme-studio"],
-  ["desk.overlays", '.popover, .tooltip, [role="menu"], .dialog', "every"],
+  [
+    "desk.overlays",
+    '.popover, .tooltip, [role="menu"], .dialog, .proposal, .desk-describe-panel, .desk-which-key',
+    "every",
+  ],
 ];
 
 /** One part where the page shows it, in CSS pixels. */
@@ -42,17 +54,37 @@ function shown(el: HTMLElement): boolean {
   return el.checkVisibility?.({ visibilityProperty: true }) ?? true;
 }
 
+/** Whether a dialog is modal, its backdrop over the whole app; an engine that cannot tell takes
+ * an open one for modal, as the desk opens its settings. */
+function modal(dialog: Element): boolean {
+  try {
+    return dialog.matches(":modal");
+  } catch {
+    return dialog.hasAttribute("open");
+  }
+}
+
+/** The box `el` is reported with, if it is: a modal dialog's scrim is its backdrop. */
+function boxOf(el: HTMLElement, found: Found | undefined): DOMRectReadOnly | undefined {
+  if (found === "scrim" && el instanceof HTMLDialogElement) {
+    if (!modal(el)) return undefined;
+    const win = el.ownerDocument.defaultView;
+    return new DOMRect(0, 0, win?.innerWidth ?? 0, win?.innerHeight ?? 0);
+  }
+  return el.getBoundingClientRect();
+}
+
 /** The parts the page shows now, in `PARTS`' order. */
 export function systemParts(doc: Document): PartReport[] {
   const parts: PartReport[] = [];
-  for (const [id, selector, every] of PARTS) {
-    const found = every
+  for (const [id, selector, found] of PARTS) {
+    const all = found
       ? [...doc.querySelectorAll<HTMLElement>(selector)]
       : [doc.querySelector<HTMLElement>(selector)];
-    for (const el of found) {
+    for (const el of all) {
       if (!el || !shown(el)) continue;
-      const r = el.getBoundingClientRect();
-      if (r.width <= 0 || r.height <= 0) continue;
+      const r = boxOf(el, found);
+      if (!r || r.width <= 0 || r.height <= 0) continue;
       // Whole pixels, outward: a part's box never cuts its own edge, and a fraction's jitter is no
       // change.
       const [x, y] = [Math.floor(r.x), Math.floor(r.y)];

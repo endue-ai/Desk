@@ -68,9 +68,51 @@ describe("the desk's system parts", () => {
     at("popover rail-popover", [900, 300, 280, 180.4]);
     at("tooltip", [40.5, 640, 120, 24]);
     at("popover drawer-panel", [80, 500, 300, 200]).hidden = true;
+    // Eris's proposal, the description's panel and the keys' hint are cards over the desk too.
+    at("proposal", [360, 72, 560, 300]);
+    at("desk-which-key", [360, 600, 560, 120]);
     expect(systemParts(document)).toEqual([
       { id: "desk.overlays", x: 900, y: 300, width: 280, height: 181 },
       { id: "desk.overlays", x: 40, y: 640, width: 121, height: 24 },
+      { id: "desk.overlays", x: 360, y: 72, width: 560, height: 300 },
+      { id: "desk.overlays", x: 360, y: 600, width: 560, height: 120 },
+    ]);
+  });
+
+  it("report each modal's scrim, which the compositor dims, and its dialog above it", () => {
+    // A dialog's scrim over the whole app: the compositor draws it, over every window (#158).
+    const scrim = at("scrim desktops-dialog", [0, 0, 1280, 800]);
+    at("dialog", [420, 304, 440, 192], scrim);
+    // The theme studio docked to the side while it edits dims nothing.
+    at("scrim theme-studio-scrim is-editing", [0, 0, 1280, 800]);
+    // The description's scrim and its panel.
+    at("desk-describe", [0, 0, 1280, 800]).append(at("desk-describe-panel", [320, 200, 640, 300]));
+    expect(systemParts(document)).toEqual([
+      { id: "desk.scrim", x: 0, y: 0, width: 1280, height: 800 },
+      { id: "desk.scrim", x: 0, y: 0, width: 1280, height: 800 },
+      { id: "desk.overlays", x: 420, y: 304, width: 440, height: 192 },
+      { id: "desk.overlays", x: 320, y: 200, width: 640, height: 300 },
+    ]);
+  });
+
+  it("report the backdrop of a modal dialog over the whole app, and the dialog's own box", () => {
+    const settings = document.createElement("dialog");
+    settings.className = "desk-settings";
+    settings.getBoundingClientRect = () => ({ x: 190, y: 65, width: 900, height: 670 }) as DOMRect;
+    document.body.append(settings);
+    expect(systemParts(document)).toEqual([]);
+    // Open as `show()` opens it: no backdrop.
+    settings.setAttribute("open", "");
+    const box = { id: "desk.settings", x: 190, y: 65, width: 900, height: 670 };
+    expect(systemParts(document)).toEqual([box]);
+    // Modal, as `showModal()` opens it (jsdom has no top layer): its backdrop over the whole app.
+    const matches = settings.matches.bind(settings);
+    Object.defineProperty(settings, "matches", {
+      value: (selector: string) => selector === ":modal" || matches(selector),
+    });
+    expect(systemParts(document)).toEqual([
+      { id: "desk.scrim", x: 0, y: 0, width: window.innerWidth, height: window.innerHeight },
+      box,
     ]);
   });
 });
