@@ -203,4 +203,24 @@ describe("startsAsleep", () => {
     expect([...startsAsleep(plugins, shown)].sort()).toEqual(["p.bare", "p.floating", "p.window"]);
     expect([...startsAsleep(plugins, undefined)]).toEqual([]);
   });
+
+  it("on a desk whose window host holds the side surfaces too, a side window the session does not show starts asleep: one the person closed stays closed (issue 163, finding 3)", () => {
+    const plugins = [
+      plugin("p.window"),
+      plugin("p.shown"),
+      plugin("p.left", "left"),
+      plugin("p.right", "right"),
+      plugin("p.side", "right"),
+      plugin("p.dock", "bottom"),
+      plugin("p.palette", "overlay"),
+    ] as PluginInfo[];
+    const shown = new Set(["p.shown", "p.side"]);
+    expect([...startsAsleep(plugins, shown, { windows: true })].sort()).toEqual([
+      "p.left",
+      "p.right",
+      "p.window",
+    ]);
+    expect([...startsAsleep(plugins, shown, { windows: false })]).toEqual(["p.window"]);
+    expect([...startsAsleep(plugins, undefined, { windows: true })]).toEqual([]);
+  });
 });

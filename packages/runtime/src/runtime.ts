@@ -299,7 +299,11 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         wake: (id) => frames.wake(id),
         // A role named in desk.roles is its provider's alone (ADR 0104).
         mayMount: (info) => mayMount(info, chosenOf(hub.settings.get(ROLES_SETTING))),
-        startAsleep: async (all) => startsAsleep(all, surfaces.returning(await session.shows())),
+        // Under a window host the side surfaces are windows: a closed one stays closed (#163).
+        startAsleep: async (all) =>
+          startsAsleep(all, surfaces.returning(await session.shows()), {
+            windows: options.windows !== undefined,
+          }),
       },
       options.plugins,
     );
