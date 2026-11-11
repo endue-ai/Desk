@@ -28,9 +28,10 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   update check                          read the channel index now and print what came of it
   update download | apply               download the chosen build, or restart into the staged one
   update channel <stable|beta|canary>   follow another channel from the next check on
-  theme list                            the installed themes: id, status, where from (built-in,
-                                        user, pack or dev), name; theme remove deletes a user one
-  theme apply <id>                      put an installed theme in force
+  theme list                            the installed themes and design systems: id, kind, status,
+                                        where from (built-in, user, pack or dev), name; theme
+                                        remove deletes a user one
+  theme apply <id>                      put an installed theme or design system in force
   theme import <file>                   install a .desk-theme file as a user theme; prints its id
   theme export <id> [file]              write a theme as a .desk-theme file (default: in Downloads)
   theme remove <id>                     delete a user theme

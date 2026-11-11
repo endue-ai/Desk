@@ -1,7 +1,8 @@
 //! `desk theme` (ADR 0058): the installed themes, the one in force, and the person's own themes as
-//! `.desk-theme` files. `list` reads plugin.list (plugin:manage) and says where each theme comes
-//! from, `apply` runs the runtime's `desk.theme.use` (cmd:invoke), and `import`, `export` and
-//! `remove` call theme.* (theme:manage).
+//! `.desk-theme` files; design systems travel the same way (ADR 0091). `list` reads plugin.list
+//! (plugin:manage) and says what each entry is and where it comes from, `apply` runs the runtime's
+//! `desk.theme.use` or `desk.design.use` (cmd:invoke), and `import`, `export` and `remove` call
+//! theme.* (theme:manage).
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -16,8 +17,7 @@ impl Session {
         let scope = json!({ "permission": "theme:manage" });
         match step {
             ThemeStep::List => {
-                let params = json!({ "scope": { "permission": "plugin:manage" } });
-                let reply = self.call("plugin.list", params)?;
+                let reply = self.plugins()?;
                 Ok(self.report(reply, |result| {
                     let plugins = result["plugins"].as_array();
                     plugins
@@ -49,32 +49,67 @@ impl Session {
         }
     }
 
-    /// `desk.theme.use { id }`, which answers the theme now in force: anything but `id` means the
-    /// desk has no such theme.
+    fn plugins(&mut self) -> Result<Reply, Problem> {
+        let params = json!({ "scope": { "permission": "plugin:manage" } });
+        self.call("plugin.list", params)
+    }
+
+    /// `desk.theme.use { id }` for a theme, `desk.design.use { id }` for a design system: each answers
+    /// the look now in force, and anything but `id` means the desk has no such one. An id the desk
+    /// does not list runs neither, as either would put the endue one back in force.
     fn apply(&mut self, id: &str) -> Result<ExitCode, Problem> {
+        let listed = self.plugins()?;
+        let command = match &listed.result {
+            Ok(result) => use_command(result, id),
+            Err(_) => return Ok(self.report(listed, |_| Vec::new())),
+        };
+        let missing = || ("not_found".to_owned(), format!("no installed theme {id}"));
+        let Some(command) = command else {
+            let (code, message) = missing();
+            let line = json!({ "ok": false, "error": { "code": code, "message": message } });
+            let reply = Reply {
+                result: Err((code, message)),
+                line: line.to_string(),
+            };
+            return Ok(self.report(reply, |_| Vec::new()));
+        };
         let mut args = Map::new();
         args.insert("id".to_owned(), json!(id));
-        let Reply { result, line } = self.invoke_and_wait("desk.theme.use", Some(args))?;
+        let Reply { result, line } = self.invoke_and_wait(command, Some(args))?;
         let result = match result {
-            Ok(active) if active == id => Ok(active),
-            Ok(_) => Err(("not_found".to_owned(), format!("no installed theme {id}"))),
+            Ok(active) if active == id || active["active"] == id => Ok(active),
+            Ok(_) => Err(missing()),
             Err(failure) => Err(failure),
         };
         Ok(self.report(Reply { result, line }, |_| vec!["ok".to_owned()]))
     }
 }
 
-/// `id  status  source  name` for a theme or design system, and for a failed plugin in the user
-/// themes folder, which has no kind to show.
+const DESIGN: &str = "design-system";
+
+/// What puts `id` in force: `desk.theme.use` for a theme, `desk.design.use` for a design system,
+/// nothing for an id plugin.list does not name as either.
+fn use_command(result: &Value, id: &str) -> Option<&'static str> {
+    let plugins = result["plugins"].as_array()?;
+    let plugin = plugins.iter().find(|plugin| text(plugin, "id") == id)?;
+    match plugin["manifest"]["kind"].as_str()? {
+        "theme" => Some("desk.theme.use"),
+        DESIGN => Some("desk.design.use"),
+        _ => None,
+    }
+}
+
+/// `id  kind  status  source  name` for a theme or design system, and for a failed plugin in the
+/// user themes folder, whose kind is `-` when its manifest could not be read.
 fn theme_line(plugin: &Value) -> Option<String> {
     let source = source(plugin);
     let kind = &plugin["manifest"]["kind"];
-    let theme = kind == "theme"
-        || kind == "design-system"
-        || (plugin["status"] == "failed" && source == "user");
+    let theme =
+        kind == "theme" || kind == DESIGN || (plugin["status"] == "failed" && source == "user");
+    let kind = kind.as_str().unwrap_or("-");
     let name = plugin["manifest"]["name"].as_str().unwrap_or("-");
     let (id, status) = (text(plugin, "id"), text(plugin, "status"));
-    theme.then(|| format!("{id}\t{status}\t{source}\t{name}"))
+    theme.then(|| format!("{id}\t{kind}\t{status}\t{source}\t{name}"))
 }
 
 /// Where an installed plugin comes from, by its folder: `built-in`; `user`, a folder in the user

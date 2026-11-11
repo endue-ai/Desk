@@ -1,6 +1,7 @@
 //! `desk theme` against the real stack: the binary, the desk socket and a `Core` keeping user themes
 //! in a temporary folder (ADR 0058). The CLI holds theme:manage, plugin:manage and cmd:invoke; the
-//! runtime (`desk`) provides `desk.theme.use`, which answers the theme now in force.
+//! runtime (`desk`) provides `desk.theme.use` and `desk.design.use` (ADR 0091), which answer the look
+//! now in force.
 #![cfg(unix)]
 
 use std::fs;
@@ -31,7 +32,8 @@ fn grant(core: &Core, permission: Value) {
 struct Desk {
     home: PathBuf,
     socket: PathBuf,
-    used: Arc<Mutex<Vec<Value>>>,
+    /// Each invocation's command and args, in order.
+    used: Arc<Mutex<Vec<(String, Value)>>>,
     _core: Arc<Core>,
     _listener: Listener,
 }
@@ -46,28 +48,39 @@ impl Desk {
         let nanos = format!("{nanos}-{n}");
         let home = std::env::temp_dir().join(format!("dcli-theme-{}-{nanos}", std::process::id()));
         fs::create_dir_all(home.join("builtin/ember")).unwrap();
+        fs::create_dir_all(home.join("builtin/square")).unwrap();
         // The CLI makes relative paths absolute from its working folder, which the OS resolves.
         let home = fs::canonicalize(home).unwrap();
         let builtin = home.join("builtin/ember");
         let ember = json!({ "id": "example.ember", "name": "Ember", "version": "0.1.0", "kind": "theme",
             "theme": { "dark": { "colors": { "background": "#1a1210" } } } });
         fs::write(builtin.join("plugin.json"), ember.to_string()).unwrap();
+        let square = json!({ "id": "example.square", "name": "Square", "version": "0.1.0", "kind": "design-system",
+            "designSystem": { "components": { "button": { "shape": "none" } } } });
+        fs::write(home.join("builtin/square/plugin.json"), square.to_string()).unwrap();
         let core = Arc::new(
             Core::new(Roots { home: home.clone() }).with_themes_dir(home.join("data/themes")),
         );
         core.install_plugin(&builtin, true);
+        core.install_plugin(&home.join("builtin/square"), true);
         grant(&core, json!({ "permission": "theme:manage" }));
         grant(&core, json!({ "permission": "plugin:manage" }));
         grant(&core, json!({ "permission": "cmd:invoke", "ids": ["*"] }));
-        let registered = call(
-            &core,
-            "desk",
-            "cmd.register",
-            json!({ "id": "desk.theme.use", "title": "Use a theme" }),
-        );
-        assert!(matches!(registered, BridgeResponse::BridgeSuccess(_)));
+        for (id, title) in [
+            ("desk.theme.use", "Use a theme"),
+            ("desk.design.use", "Use a design system"),
+        ] {
+            let registered = call(
+                &core,
+                "desk",
+                "cmd.register",
+                json!({ "id": id, "title": title }),
+            );
+            assert!(matches!(registered, BridgeResponse::BridgeSuccess(_)));
+        }
 
-        // The runtime's part: desk.theme.use puts an installed theme in force and answers its id.
+        // The runtime's part: desk.theme.use puts an installed theme in force and answers its id,
+        // desk.design.use a design system and answers { active }. Neither checks the kind.
         let used = Arc::new(Mutex::new(Vec::new()));
         let (events, provider, seen) = (
             core.events().subscribe(),
@@ -81,9 +94,16 @@ impl Desk {
                 };
                 let args = invoked.data.args.map(Value::Object).unwrap_or_default();
                 let id = args["id"].as_str().unwrap_or_default().to_owned();
-                seen.lock().unwrap().push(args);
+                seen.lock().unwrap().push((invoked.data.id.clone(), args));
                 let known = provider.plugins().iter().any(|p| p.id == id);
-                let answer = json!({ "invocationId": invoked.data.invocation_id, "result": if known { id } else { String::new() } });
+                let active = if known { id } else { String::new() };
+                let result = if invoked.data.id == "desk.design.use" {
+                    json!({ "active": active })
+                } else {
+                    json!(active)
+                };
+                let answer =
+                    json!({ "invocationId": invoked.data.invocation_id, "result": result });
                 call(&provider, "desk", "cmd.answer", answer);
             }
         });
@@ -148,21 +168,41 @@ fn desk_theme_imports_lists_applies_exports_and_removes() {
         desk.ok(&["theme", "import", "paper.desk-theme"]),
         "local.paper-ink\n"
     );
+    // Design systems travel the theme pipeline (ADR 0091): listed with their kind, so they are
+    // told apart from themes (#158, item 18).
     assert_eq!(
         desk.ok(&["theme", "list"]),
-        "example.ember\tready\tbuilt-in\tEmber\nlocal.paper-ink\tready\tuser\tPaper & Ink\n"
+        "example.ember\ttheme\tready\tbuilt-in\tEmber\n\
+         example.square\tdesign-system\tready\tbuilt-in\tSquare\n\
+         local.paper-ink\ttheme\tready\tuser\tPaper & Ink\n"
     );
 
     assert_eq!(desk.ok(&["theme", "apply", "local.paper-ink"]), "ok\n");
+    let last = || desk.used.lock().unwrap().last().cloned();
     assert_eq!(
-        desk.used.lock().unwrap().last(),
-        Some(&json!({ "id": "local.paper-ink" }))
+        last(),
+        Some((
+            "desk.theme.use".to_owned(),
+            json!({ "id": "local.paper-ink" })
+        ))
     );
+    // A design system is put in force as one: desk.theme.use would have put the endue theme back.
+    assert_eq!(desk.ok(&["theme", "apply", "example.square"]), "ok\n");
+    assert_eq!(
+        last(),
+        Some((
+            "desk.design.use".to_owned(),
+            json!({ "id": "example.square" })
+        ))
+    );
+    // An id the desk does not list runs neither command.
+    let runs = desk.used.lock().unwrap().len();
     let unknown = desk.fails(&["theme", "apply", "local.nothing"], 1);
     assert!(
         unknown.contains("no installed theme local.nothing"),
         "{unknown}"
     );
+    assert_eq!(desk.used.lock().unwrap().len(), runs);
 
     let out = desk.home.join("out/paper.desk-theme");
     let printed = desk.ok(&["theme", "export", "local.paper-ink", "out/paper.desk-theme"]);
@@ -187,7 +227,8 @@ fn desk_theme_imports_lists_applies_exports_and_removes() {
     assert_eq!(desk.ok(&["theme", "remove", "local.paper-ink"]), "ok\n");
     assert_eq!(
         desk.ok(&["theme", "list"]),
-        "example.ember\tready\tbuilt-in\tEmber\n"
+        "example.ember\ttheme\tready\tbuilt-in\tEmber\n\
+         example.square\tdesign-system\tready\tbuilt-in\tSquare\n"
     );
     let builtin = desk.fails(&["theme", "remove", "example.ember"], 1);
     assert!(builtin.contains("invalid_params"), "{builtin}");
@@ -235,24 +276,25 @@ fn desk_theme_list_says_where_each_theme_comes_from() {
     let listed = desk.ok(&["theme", "list"]);
     let lines: Vec<&str> = listed.lines().collect();
     assert!(
-        lines.contains(&"example.ember\tready\tbuilt-in\tEmber"),
+        lines.contains(&"example.ember\ttheme\tready\tbuilt-in\tEmber"),
         "{listed}"
     );
     assert!(
-        lines.contains(&"example.hello-theme\tready\tdev\tHello theme"),
+        lines.contains(&"example.hello-theme\ttheme\tready\tdev\tHello theme"),
         "{listed}"
     );
     assert!(
-        lines.contains(&"example.dusk\tready\tpack\tDusk"),
+        lines.contains(&"example.dusk\ttheme\tready\tpack\tDusk"),
         "{listed}"
     );
-    let torn_line = format!("{}\tfailed\tuser\t-", torn.id);
+    let torn_line = format!("{}\t-\tfailed\tuser\t-", torn.id);
     assert!(lines.contains(&torn_line.as_str()), "{listed}");
     assert!(
         !listed.contains(&not_a_plugin.id),
         "a folder that is no plugin is no theme: {listed}"
     );
-    assert_eq!(lines.len(), 4, "{listed}");
+    // The four, and the built-in design system every desk here has.
+    assert_eq!(lines.len(), 5, "{listed}");
     // What the list calls dev, theme remove does not take for a user theme either.
     let refused = desk.fails(&["theme", "remove", "example.hello-theme"], 1);
     assert!(refused.contains("is not a user theme"), "{refused}");
