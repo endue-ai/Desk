@@ -13,18 +13,21 @@
 import { browser, expect } from "@wdio/globals";
 import { feed, inputState, inSurface, keyPress, shellCommand } from "../support/compositor";
 import { shellReady } from "../support/desk";
-import { composedFrame, decodePng, type Image, pixel } from "../support/pixels";
-import { byId, deskNow, run, windowUntil } from "../support/windows";
+import { drag, titleAt } from "../support/gestures";
+import { composedFrame, decodePng, difference, type Image, pixel } from "../support/pixels";
+import { byId, deskNow, type Rect, rectOf, run, windowNow, windowUntil } from "../support/windows";
 
 const POPUP = "main.e2e-popup";
 /** The popup fixture's window. */
 const WINDOW = "e2e.popup";
+/** The fixture window as the first layout gave it, before the first cases snap it. */
+let first: Rect | undefined;
 /** A surface with its browser shown, as `compositor_stats` names its state. */
 const SHOWN = "Live { hidden: false }";
 
 interface Stats {
   popups: Record<string, { place: number[]; texture: number[] }>;
-  surfaces: Record<string, { rect: number[] | null; state: string }>;
+  surfaces: Record<string, { rect: number[] | null; screen?: number[] | null; state: string }>;
 }
 
 type Box = [number, number, number, number];
@@ -138,6 +141,7 @@ describe("popups: select lists and the date, time and colour pickers are drawn a
       },
       { timeout: 15_000, interval: 300, timeoutMsg: `${WINDOW} is not shown and in use` },
     );
+    first = rectOf(await windowNow(WINDOW));
     await run("desk.display.snap-left");
     await windowUntil(
       WINDOW,
@@ -212,5 +216,74 @@ describe("popups: select lists and the date, time and colour pickers are drawn a
     await clickAt([sx - 100, sy + 200]);
     await closed();
     expect((await heard()).some((e) => e.type === "change" && e.field === "color")).toBe(true);
+  });
+});
+
+// A window at its first size (C1: 328 × 211 at 1280 × 800) has a pane 169 px tall, shorter than the
+// date picker (281 px), the time picker (260) and the colour picker (252). Each page's screen is the
+// app window, the pane at its place in it (`web_host/popup_screen.rs`), so Chromium puts a picker
+// under its field past the pane, and the compositor draws it whole above the windows, the pointer
+// reaching its parts outside the pane (`compositor_window/draw_popup.rs`; B6b, #156).
+describe("popups at a window's first size: drawn whole past the pane, and usable there", () => {
+  /** Where the window takes back its own size: high in the app's free middle, so a picker under a
+   * field has room below, clear of Eris above and of the dock and the canvas map below. */
+  const DROP = { x: 420, y: 230 };
+  /** In the date picker of November 2026 (Sunday the 1st), from its top left: Monday the 30th,
+   * which starts the fifth row; from its bottom right: Today, the bottom row's right button. */
+  const LAST_WEEK: [number, number] = [53, 200];
+  const TODAY: [number, number] = [40, 22];
+
+  before(async () => {
+    // Dragged by its title out of the half the cases above snapped it to, the window takes back
+    // its own size under the pointer (ADR 0128), its fields back at their first places.
+    await drag(titleAt(rectOf(await windowNow(WINDOW)), 160), DROP);
+    const back = await windowUntil(WINDOW, (w) => w.state === "normal", "its own size again");
+    if (first) expect({ w: back.w, h: back.h }).toEqual({ w: first.w, h: first.h });
+    await inSurface<boolean>(POPUP, "(delete document.body.dataset.layout, true)");
+    // Its page is told where the window rests, its screen the app window, and that its popups
+    // go between the desk's bars.
+    const { screen } = await deskNow();
+    await browser.waitUntil(
+      async () => {
+        const { rect, screen: told } = (await stats()).surfaces[POPUP] ?? {};
+        const [x = 0, y = 0] = rect ?? [];
+        return `${told}` === `${[Math.round(x), Math.round(y), screen.w, screen.h]}`;
+      },
+      { timeout: 10_000, timeoutMsg: "the page was never told where its window is" },
+    );
+    await browser.waitUntil(
+      async () =>
+        (await inSurface<number>(POPUP, "screen.availTop")) > 0 &&
+        (await inSurface<number>(POPUP, "screen.width")) === screen.w,
+      { timeout: 10_000, timeoutMsg: "the page never heard its screen" },
+    );
+  });
+
+  it("the date picker opens whole under its field; a day of its last week and Today pick", async () => {
+    const [, oy = 0, , pane = 0] = (await stats()).surfaces[POPUP]?.rect ?? [];
+    expect(pane).toBeLessThan(200);
+    const [x, y, w, h] = await field("date");
+    const before = await frame();
+    const [bx, by, bw, bh] = await open([x + w - 12, y + h / 2]);
+    // Under its field, taller than the pane and past its bottom.
+    expect(by).toBeGreaterThanOrEqual(oy + y + h - 1);
+    expect(bh).toBeGreaterThan(pane);
+    expect(by + bh).toBeGreaterThan(oy + pane + 50);
+    // Its bottom row (Clear and Today) is drawn: what lay there before shows no more.
+    const strip = { x: bx, y: by + bh - 28, w: bw, h: 28 };
+    expect(difference(before, strip, await frame(), strip, { inset: 2 })).toBeGreaterThan(0.3);
+    // A day of the month's last week, outside the pane: picked.
+    await click([bx + LAST_WEEK[0], by + LAST_WEEK[1]]);
+    await closed();
+    expect((await values()).date).toBe("2026-11-30");
+    // Open again: Today picks the page's today.
+    const [tx, ty, tw, th] = await open([x + w - 12, y + h / 2]);
+    await click([tx + tw - TODAY[0], ty + th - TODAY[1]]);
+    await closed();
+    const today = await inSurface<string>(
+      POPUP,
+      "(() => { const d = new Date(), p = (n) => String(n).padStart(2, '0'); return [d.getFullYear(), p(d.getMonth() + 1), p(d.getDate())].join('-'); })()",
+    );
+    expect((await values()).date).toBe(today);
   });
 });
