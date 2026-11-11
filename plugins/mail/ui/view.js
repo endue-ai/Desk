@@ -259,9 +259,13 @@ export function createView(doc, actions) {
 
     /** @param {Draft | null} draft @param {string[]} problems */
     composer(draft, problems) {
+      // A composer put away with the keys in it gives them to what shows again (on a narrow page
+      // it held the whole page), not to the page's body.
+      const hadKeys = composing && byId("composer").contains(doc.activeElement);
       composing = draft !== null;
       composer.show(draft, problems);
       pane.dataset.showing = composing ? "composer" : reader.showing() ? "reader" : "none";
+      if (hadKeys && !composing) focus(reader.showing() ? "reader" : "list");
     },
 
     /** @param {string} words */

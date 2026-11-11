@@ -90,6 +90,16 @@ test.describe("endue.mail at the first sizes", () => {
     });
   }
 
+  test("an empty mailbox says so under the search field, not at the foot of the column", async ({
+    page,
+  }) => {
+    const frame = await open(page, SIZES.cascade);
+    await frame.locator('#mailboxes [data-mailbox="junk"]').click();
+    await expect(frame.locator("#empty")).toBeVisible();
+    const [search, empty] = [await box(frame, "#search"), await box(frame, "#empty")];
+    expect((empty?.top ?? 0) - (search?.bottom ?? 0)).toBeLessThanOrEqual(16);
+  });
+
   for (const [name, size] of Object.entries(SIZES)) {
     test(`${name} (${size.width}×${size.height}): New message gets the page, and every field and button is in view`, async ({
       page,
@@ -142,11 +152,14 @@ test.describe("endue.mail at the first sizes", () => {
     await expect(frame.locator("#composer")).toBeHidden();
     await expect(frame.locator("#messages")).toBeVisible();
     await expect(drafts).toHaveText("Drafts");
-    // Escape on an empty message is the same, and a written one is kept.
+    // Escape on an empty message is the same, and the keys go back to the list; a written one is kept.
     await frame.locator("#compose").click();
     await frame.locator("#composer [name=to]").press("Escape");
     await expect(frame.locator("#composer")).toBeHidden();
     await expect(drafts).toHaveText("Drafts");
+    expect(await frame.evaluate(() => document.activeElement?.closest("#list") !== null)).toBe(
+      true,
+    );
     await frame.locator("#compose").click();
     await frame.locator("#composer [name=subject]").fill("Lunch");
     await frame.locator("#composer [data-close]").click();

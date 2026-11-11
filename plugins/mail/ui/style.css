@@ -165,6 +165,17 @@ textarea {
   outline: none;
 }
 
+/* An empty mailbox says so under the search field, not at the foot of a tall column. */
+#list:empty {
+  flex: none;
+}
+
+#empty {
+  margin: 0;
+  padding: 12px;
+  color: var(--desk-text-muted);
+}
+
 .row {
   padding: 6px 12px;
   border-bottom: 1px solid var(--desk-border);
