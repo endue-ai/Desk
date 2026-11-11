@@ -79,6 +79,10 @@ wrap_app! {
             // before it, so a begin frame from the desk's clock that a page has nothing to draw
             // for ends at once, where the display held it a whole frame and CEF sent no other.
             command_line.append_switch(Some(&"run-all-compositor-stages-before-draw".into()));
+            // With it, an animation on the compositor's thread (a popover's fade, a window's
+            // transition) left a begin frame that never ended, and the page never drew again
+            // (#157, ADR 0165): animations run on the main thread, a main frame the display waits for.
+            command_line.append_switch(Some(&"disable-threaded-animation".into()));
             // Chromium merges renderers once it counts more than its own memory-based limit; the live
             // budget (#37, ADR 0142) is what bounds them here, so the limit only keeps Chromium from
             // putting two plugins in one process (#44).
