@@ -89,7 +89,7 @@ test.describe("desk.today", () => {
     const frame = await openToday(page);
     await expect(frame.locator(SECTIONS)).toHaveCount(5);
     await expect(frame.locator(`${SECTIONS} .status[data-state="empty"]`)).toHaveText([
-      "Nothing on the calendar today.",
+      "Nothing on the calendar.",
       "Nothing due.",
       "No unread messages.",
       "No notes yet.",
@@ -165,5 +165,47 @@ test.describe("desk.today", () => {
     await page.keyboard.press("Enter");
     await expect(page.locator(PALETTE)).toBeHidden();
     await todayFrame(page);
+  });
+
+  test("the page shows its way out: Close at the top right, and a press beside the sections", async ({
+    page,
+  }) => {
+    await load(page);
+    let frame = await openToday(page);
+    const close = frame.getByRole("button", { name: "Close (Escape)" });
+    await expect(close).toBeVisible();
+    await expect(close.locator("kbd")).toHaveText("Esc");
+    // In sight: at the overlay's top right, above the page's title.
+    const shown = await page.locator(UNIVERSAL).boundingBox();
+    const box = await close.boundingBox();
+    const title = await frame.locator(".desk-universal-page-title").boundingBox();
+    if (!shown || !box || !title) throw new Error("no boxes");
+    expect(box.y + box.height).toBeLessThanOrEqual(title.y);
+    expect(box.x).toBeGreaterThan(shown.x + shown.width / 2);
+    expect(box.x + box.width).toBeLessThanOrEqual(shown.x + shown.width);
+    await close.click();
+    await expect(page.locator(UNIVERSAL)).toBeHidden();
+
+    frame = await openToday(page);
+    await frame.locator("#root").click({ position: { x: 24, y: 24 } });
+    await expect(page.locator(UNIVERSAL)).toBeHidden();
+  });
+
+  test("Next on the Schedule shows the next day's events; Today brings today's back", async ({
+    page,
+  }) => {
+    await load(page);
+    const frame = await openToday(page);
+    const schedule = section(frame, "Schedule");
+    await expect(titles(frame, "Schedule")).toHaveCount(3);
+    await schedule.locator('[data-go="next"]').click();
+    await expect(schedule.locator(".calendar-view .title")).toHaveText("Sat, Oct 31");
+    await expect(titles(frame, "Schedule")).toHaveText(["Hike at Bukhansan"]);
+    await schedule.locator('[data-go="today"]').click();
+    await expect(titles(frame, "Schedule")).toHaveText([
+      "Team standup",
+      "Lunch with Mina",
+      "Design review",
+    ]);
   });
 });

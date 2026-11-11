@@ -119,7 +119,7 @@ describe("desk.today", () => {
     ]);
     expect(sections[0]?.options?.range).toBe("day");
     expect(sections.map((s) => s.empty)).toEqual([
-      "Nothing on the calendar today.",
+      "Nothing on the calendar.",
       "Nothing due.",
       "No unread messages.",
       "No notes yet.",

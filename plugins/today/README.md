@@ -6,7 +6,7 @@ view is a page of universal views inline in `plugin.json` (`UniversalPage`, `spe
 
 | Section | Presentation | Items query | Empty |
 | --- | --- | --- | --- |
-| Schedule | `calendar`, `range: day` | events with `start lt {tomorrow}` and `end gt {today}`, earliest first | Nothing on the calendar today. |
+| Schedule | `calendar`, `range: day` | events with `start lt {tomorrow}` and `end gt {today}`, earliest first | Nothing on the calendar. |
 | Due | `list` | open tasks with `due lt {tomorrow}` (today's and overdue), earliest due first, 10 | Nothing due. |
 | Unread | `list` | messages with `unread eq true`, newest first, 10 | No unread messages. |
 | Last touched | `list` | notes, last updated first, 5 | No notes yet. |
@@ -15,8 +15,9 @@ view is a page of universal views inline in `plugin.json` (`UniversalPage`, `spe
 Two columns. Each query reads every source of its kinds the desk lets `desk.universal` read, so the
 page renders with the OS calendar alone and nobody picks a source; a kind nothing serves draws its
 empty text. `{today}` and `{tomorrow}` are the starts of this day and the next in the view's zone,
-filled when a section loads. Each query is whole on its own, so another reader runs it with the
-clock filled.
+filled when a section loads; Previous and Next on the Schedule move them to the day shown, so that
+day's events show (`desk.universal`). Each query is whole on its own, so another reader runs it with
+the clock filled.
 
 | Contribution | What it does |
 | --- | --- |

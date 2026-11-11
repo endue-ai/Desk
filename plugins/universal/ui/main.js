@@ -2,11 +2,13 @@
 // community plugin would. desk.universal.open { view | id | file | url | data, type?, title?, params?,
 // notice? } draws one, or a page of them (ADR 0103); desk.universal.drafting and desk.universal.preview are Eris's (ADR 0073, 0102): the
 // drafting state at once, then the preview's choice; desk.universal.build opens the view builder;
-// desk.universal.folder { path } answers a folder as universal data.
+// desk.universal.folder { path } answers a folder as universal data. The overlay covers the desk, so
+// it always shows its way out: Close, Escape, a press beside the view (leave.js).
 import "@endue-ai/ui";
 import { defineUiPlugin, parseYaml } from "@endue-ai/plugin-sdk";
 import { createBuilder } from "./builder.js";
 import { folderData } from "./folder.js";
+import { createLeave } from "./leave.js";
 import { isView, viewOf } from "./open.js";
 import { createScreen } from "./screen.js";
 
@@ -46,6 +48,15 @@ defineUiPlugin({
       ctx.surface.hide();
       return {};
     };
+    createLeave(root, {
+      close,
+      // Beside a drawn view only: not the builder's work, nor a preview that waits for an answer.
+      beside: () =>
+        screen.view !== undefined &&
+        builder.element.hidden &&
+        !screen.bar.waiting &&
+        !root.hasAttribute("data-drafting"),
+    });
     /** @param {unknown} args */
     const argsOf = (args) => /** @type {Record<string, any>} */ (args ?? {});
 

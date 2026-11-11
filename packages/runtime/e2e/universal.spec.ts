@@ -147,6 +147,34 @@ test.describe("say it, see it", () => {
     await expect(view.getByText("Write the launch post")).toBeVisible();
     expect(await page.evaluate(() => window.__views.reads.length)).toBe(reads);
   });
+
+  test("the builder says a missing file in words, keeps Name and Save in sight, and Close leaves it", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await load(page);
+    await palette(page, "Build a view", "Build a view…");
+    const frame = await universalFrame(page);
+    const builder = frame.locator(".builder");
+    await builder.locator('input[aria-label="Where"]').fill("~/boards/gone.yaml");
+    await builder.getByRole("button", { name: "Load" }).click();
+    const said = "There is no file at ~/boards/gone.yaml.";
+    await expect(builder.locator(".build-status")).toHaveText(said);
+    await expect(builder.locator("desk-universal-view .status")).toHaveText(said);
+    await expect(frame.getByText(/fs\.read|not_found|os error/)).toHaveCount(0);
+    // Name, Save view and Cancel are inside the 800 px desk without scrolling the steps.
+    for (const control of [
+      builder.locator('input[aria-label="Name"]'),
+      builder.getByRole("button", { name: "Save view" }),
+      builder.getByRole("button", { name: "Cancel" }),
+    ]) {
+      const box = await control.boundingBox();
+      if (!box) throw new Error("not drawn");
+      expect(box.y + box.height).toBeLessThanOrEqual(800);
+    }
+    await frame.getByRole("button", { name: "Close (Escape)" }).click();
+    await expect(page.locator(UNIVERSAL)).toBeHidden();
+  });
 });
 
 test.describe("say it, see it from the talk line", () => {

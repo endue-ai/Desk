@@ -3,6 +3,18 @@
   "aria-label": "Universal View",
   "children": [
     {
+      "tag": "button",
+      "aria-label": "Close (Escape)",
+      "class": "desk-btn leave",
+      "text": "Close",
+      "children": [
+        {
+          "tag": "kbd",
+          "text": "Esc"
+        }
+      ]
+    },
+    {
       "tag": "div",
       "role": "alert",
       "hidden": "",
@@ -70,186 +82,198 @@
       "children": [
         {
           "tag": "div",
-          "class": "build-form",
+          "class": "build-side",
           "children": [
             {
-              "tag": "fieldset",
-              "class": "build-step",
+              "tag": "div",
+              "class": "build-form",
               "children": [
                 {
-                  "tag": "legend",
-                  "text": "Source"
-                },
-                {
-                  "tag": "div",
-                  "role": "tablist",
-                  "aria-label": "Source",
-                  "class": "desk-tabs"
-                },
-                {
-                  "tag": "input",
-                  "aria-label": "Where",
-                  "class": "desk-field"
-                },
-                {
-                  "tag": "textarea",
-                  "aria-label": "Arguments (JSON)",
-                  "class": "desk-field"
-                },
-                {
-                  "tag": "div",
-                  "class": "build-kinds",
+                  "tag": "fieldset",
+                  "class": "build-step",
                   "children": [
                     {
-                      "tag": "label",
-                      "class": "build-kind",
-                      "text": "task",
+                      "tag": "legend",
+                      "text": "Source"
+                    },
+                    {
+                      "tag": "div",
+                      "role": "tablist",
+                      "aria-label": "Source",
+                      "class": "desk-tabs"
+                    },
+                    {
+                      "tag": "input",
+                      "aria-label": "Where",
+                      "class": "desk-field"
+                    },
+                    {
+                      "tag": "textarea",
+                      "aria-label": "Arguments (JSON)",
+                      "class": "desk-field"
+                    },
+                    {
+                      "tag": "div",
+                      "class": "build-kinds",
                       "children": [
                         {
-                          "tag": "input",
-                          "class": "desk-check",
-                          "value": "task"
+                          "tag": "label",
+                          "class": "build-kind",
+                          "text": "task",
+                          "children": [
+                            {
+                              "tag": "input",
+                              "class": "desk-check",
+                              "value": "task"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "label",
+                          "class": "build-kind",
+                          "text": "event",
+                          "children": [
+                            {
+                              "tag": "input",
+                              "class": "desk-check",
+                              "value": "event"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "label",
+                          "class": "build-kind",
+                          "text": "note",
+                          "children": [
+                            {
+                              "tag": "input",
+                              "class": "desk-check",
+                              "value": "note"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "label",
+                          "class": "build-kind",
+                          "text": "message",
+                          "children": [
+                            {
+                              "tag": "input",
+                              "class": "desk-check",
+                              "value": "message"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "label",
+                          "class": "build-kind",
+                          "text": "file",
+                          "children": [
+                            {
+                              "tag": "input",
+                              "class": "desk-check",
+                              "value": "file"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "label",
+                          "class": "build-kind",
+                          "text": "person",
+                          "children": [
+                            {
+                              "tag": "input",
+                              "class": "desk-check",
+                              "value": "person"
+                            }
+                          ]
                         }
                       ]
                     },
                     {
-                      "tag": "label",
-                      "class": "build-kind",
-                      "text": "event",
-                      "children": [
-                        {
-                          "tag": "input",
-                          "class": "desk-check",
-                          "value": "event"
-                        }
-                      ]
+                      "tag": "button",
+                      "class": "desk-btn",
+                      "text": "Load"
                     },
                     {
-                      "tag": "label",
-                      "class": "build-kind",
-                      "text": "note",
-                      "children": [
-                        {
-                          "tag": "input",
-                          "class": "desk-check",
-                          "value": "note"
-                        }
-                      ]
+                      "tag": "p",
+                      "role": "status",
+                      "class": "build-status"
                     },
                     {
-                      "tag": "label",
-                      "class": "build-kind",
-                      "text": "message",
-                      "children": [
-                        {
-                          "tag": "input",
-                          "class": "desk-check",
-                          "value": "message"
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "label",
-                      "class": "build-kind",
-                      "text": "file",
-                      "children": [
-                        {
-                          "tag": "input",
-                          "class": "desk-check",
-                          "value": "file"
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "label",
-                      "class": "build-kind",
-                      "text": "person",
-                      "children": [
-                        {
-                          "tag": "input",
-                          "class": "desk-check",
-                          "value": "person"
-                        }
-                      ]
+                      "tag": "button",
+                      "hidden": "",
+                      "class": "desk-btn",
+                      "text": "Allow"
                     }
                   ]
                 },
                 {
-                  "tag": "button",
-                  "class": "desk-btn",
-                  "text": "Load"
+                  "tag": "fieldset",
+                  "class": "build-step",
+                  "children": [
+                    {
+                      "tag": "legend",
+                      "text": "Shape"
+                    },
+                    {
+                      "tag": "div",
+                      "role": "group",
+                      "aria-label": "Shape",
+                      "class": "desk-tabs"
+                    }
+                  ]
                 },
                 {
-                  "tag": "p",
-                  "role": "status",
-                  "class": "build-status"
-                },
-                {
-                  "tag": "button",
-                  "hidden": "",
-                  "class": "desk-btn",
-                  "text": "Allow"
-                }
-              ]
-            },
-            {
-              "tag": "fieldset",
-              "class": "build-step",
-              "children": [
-                {
-                  "tag": "legend",
-                  "text": "Shape"
-                },
-                {
-                  "tag": "div",
-                  "role": "group",
-                  "aria-label": "Shape",
-                  "class": "desk-tabs"
-                }
-              ]
-            },
-            {
-              "tag": "fieldset",
-              "class": "build-step",
-              "children": [
-                {
-                  "tag": "legend",
-                  "text": "Fields"
-                },
-                {
-                  "tag": "div",
-                  "class": "build-roles"
-                }
-              ]
-            },
-            {
-              "tag": "fieldset",
-              "class": "build-step",
-              "children": [
-                {
-                  "tag": "legend",
-                  "text": "Name"
-                },
-                {
-                  "tag": "input",
-                  "aria-label": "Name",
-                  "class": "desk-field"
+                  "tag": "fieldset",
+                  "class": "build-step",
+                  "children": [
+                    {
+                      "tag": "legend",
+                      "text": "Fields"
+                    },
+                    {
+                      "tag": "div",
+                      "class": "build-roles"
+                    }
+                  ]
                 }
               ]
             },
             {
               "tag": "div",
-              "class": "build-actions",
+              "class": "build-foot",
               "children": [
                 {
-                  "tag": "button",
-                  "class": "desk-btn desk-btn-primary",
-                  "text": "Save view"
+                  "tag": "fieldset",
+                  "class": "build-step",
+                  "children": [
+                    {
+                      "tag": "legend",
+                      "text": "Name"
+                    },
+                    {
+                      "tag": "input",
+                      "aria-label": "Name",
+                      "class": "desk-field"
+                    }
+                  ]
                 },
                 {
-                  "tag": "button",
-                  "class": "desk-btn desk-btn-quiet",
-                  "text": "Cancel"
+                  "tag": "div",
+                  "class": "build-actions",
+                  "children": [
+                    {
+                      "tag": "button",
+                      "class": "desk-btn desk-btn-primary",
+                      "text": "Save view"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "desk-btn desk-btn-quiet",
+                      "text": "Cancel"
+                    }
+                  ]
                 }
               ]
             }
@@ -386,7 +410,7 @@
                   "role": "status",
                   "class": "status",
                   "data-state": "empty",
-                  "text": "Nothing on the calendar today."
+                  "text": "Nothing on the calendar."
                 },
                 {
                   "tag": "div",

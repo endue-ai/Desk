@@ -39,7 +39,7 @@
         "options": {
           "range": "day"
         },
-        "empty": "Nothing on the calendar today."
+        "empty": "Nothing on the calendar."
       },
       {
         "title": "Due",

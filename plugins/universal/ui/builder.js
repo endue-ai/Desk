@@ -1,8 +1,9 @@
 // The view builder (ADR 0102): pick a source (a file, a URL, a command or the desk's items), load it,
 // pick a shape, map fields to the roles it draws and see each change at once in the preview beside
 // it, then save the universal view as `~/.desk/views/<id>.yaml` with view.save, the same file Eris's
-// Apply writes. The preview is loaded once per source: a shape or a field only redraws it. Controls
-// are the design system's kit classes (ADR 0090).
+// Apply writes. The preview is loaded once per source: a shape or a field only redraws it. The name
+// and Save stay in sight below the steps, whatever the height. Controls are the design system's kit
+// classes (ADR 0090); a source that fails says why in words (words.js).
 import {
   fieldsOf,
   idFor,
@@ -15,6 +16,7 @@ import {
   viewOf,
 } from "./build-model.js";
 import { scopeOf } from "./open.js";
+import { failureText } from "./words.js";
 
 /**
  * @typedef {import("./open.js").UniversalView} UniversalView
@@ -66,13 +68,17 @@ export function createBuilder(host, ctx, hooks) {
   };
 
   const root = el("section", { class: "builder", "aria-label": "View builder" });
+  // The steps scroll; the name and the actions under them do not.
+  const side = el("div", { class: "build-side" });
   const form = el("div", { class: "build-form" });
+  const foot = el("div", { class: "build-foot" });
+  side.append(form, foot);
   const pane = el("div", { class: "build-preview" });
   const preview = /** @type {HTMLElement & { view: unknown, data: unknown }} */ (
     el("desk-universal-view", { state: "empty", label: "Preview" })
   );
   pane.append(preview);
-  root.append(form, pane);
+  root.append(side, pane);
 
   // Source.
   const source = section("Source");
@@ -113,7 +119,8 @@ export function createBuilder(host, ctx, hooks) {
   const save = el("button", { class: "desk-btn desk-btn-primary", type: "button" }, "Save view");
   const cancel = el("button", { class: "desk-btn desk-btn-quiet", type: "button" }, "Cancel");
   actions.append(save, cancel);
-  form.append(source, shape, fields, name, actions);
+  form.append(source, shape, fields);
+  foot.append(name, actions);
 
   /** @type {{ kind: SourceKind, id?: string, type: UniversalType, map: Record<string, string>,
    *   source?: import("./open.js").UniversalView["source"], data: UniversalData | null }} */
@@ -259,6 +266,7 @@ export function createBuilder(host, ctx, hooks) {
       const named = sourceOf(inputFor(state.kind));
       if ("problem" in named) return say(named.problem, true);
       allow.hidden = true;
+      preview.removeAttribute("message");
       preview.setAttribute("state", "loading");
       say("Loading…");
       try {
@@ -277,12 +285,13 @@ export function createBuilder(host, ctx, hooks) {
         drawRoles();
         redraw();
       } catch (error) {
-        const failure = /** @type {{ code?: string, message?: string } | undefined} */ (error);
-        const refused = failure?.code === "permission_denied";
-        preview.setAttribute("state", refused ? "denied" : "error");
-        allow.hidden = !refused;
-        const why = failure?.message ?? String(error);
-        say(refused ? "Desk needs your permission to read this source." : why, true);
+        const refused = /** @type {{ code?: string } | undefined} */ (error)?.code;
+        const why = failureText(error, named.source);
+        preview.setAttribute("state", refused === "permission_denied" ? "denied" : "error");
+        // The preview says the same as the status, not "The source did not answer."
+        if (refused !== "permission_denied") preview.setAttribute("message", why);
+        allow.hidden = refused !== "permission_denied";
+        say(why, true);
       }
     },
     /** @param {UniversalType} type */
@@ -307,7 +316,13 @@ export function createBuilder(host, ctx, hooks) {
       try {
         await ctx.views.save(kept);
       } catch (error) {
-        return say(`Not saved: ${/** @type {Error} */ (error)?.message ?? error}`, true);
+        const refused = /** @type {{ code?: string }} */ (error)?.code === "permission_denied";
+        return say(
+          refused
+            ? "Not saved: Desk needs your permission to keep views."
+            : `Not saved: ~/.desk/views/${id}.yaml could not be written.`,
+          true,
+        );
       }
       state.id = id;
       hooks.saved(kept);

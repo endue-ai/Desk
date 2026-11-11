@@ -1,20 +1,26 @@
 // desk.universal's page: one universal view at a time, drawn by ctx.universal.open, under the bar
 // (bar.js) that shows what Eris is drafting, the preview's choices and the notice after Apply, with
 // a notice that asks for the permission its source needs when the desk refused to read it. A view
-// opened again by the id it is drawn under keeps its element and data: Apply never redraws.
+// opened again by the id it is drawn under keeps its element and data: Apply never redraws. A source
+// that fails says why in words (words.js); a calendar paged to another day moves the clock its
+// queries read (clock.js).
 import { createBar } from "./bar.js";
+import { createClock, readsClock } from "./clock.js";
 import { scopeOf } from "./open.js";
+import { failureText } from "./words.js";
 
 /**
  * @typedef {import("./open.js").UniversalView} UniversalView
+ * @typedef {import("../../../packages/bridge/src/index").UniversalPage} UniversalPage
  * @typedef {import("./bar.js").Choice} Choice
  * @typedef {import("./bar.js").Notice} Notice
  * @typedef {import("../../../packages/plugin-sdk/src/index").PluginContext} PluginContext
  * @typedef {import("../../../packages/plugin-sdk/src/index").UniversalHandle} UniversalHandle
- * @typedef {{ readonly handle: UniversalHandle | undefined, readonly view: UniversalView | undefined,
+ * @typedef {{ readonly handle: UniversalHandle | undefined,
+ *   readonly view: UniversalView | UniversalPage | undefined,
  *   readonly bar: ReturnType<typeof createBar>,
- *   open(view: UniversalView, options?: { notice?: Notice, params?: Record<string, unknown> }):
- *     UniversalHandle,
+ *   open(view: UniversalView | UniversalPage,
+ *     options?: { notice?: Notice, params?: Record<string, unknown> }): UniversalHandle,
  *   drafting(note: string): void, preview(view: UniversalView, note: string): Promise<Choice>,
  *   allow(): Promise<{ granted: boolean }>, close(id?: string): boolean }} Screen
  */
@@ -37,9 +43,10 @@ export function canonical(value) {
 /**
  * @param {HTMLElement} host
  * @param {PluginContext} ctx
+ * @param {{ now?: () => number }} [options] the live clock, Date.now by default
  * @returns {Screen}
  */
-export function createScreen(host, ctx) {
+export function createScreen(host, ctx, options = {}) {
   const doc = host.ownerDocument ?? document;
   const notice = doc.createElement("div");
   notice.setAttribute("class", "notice");
@@ -73,11 +80,27 @@ export function createScreen(host, ctx) {
   let needed;
   /** The params the drawn view was opened with. @type {Record<string, unknown>} */
   let params = {};
+  const clock = createClock(options.now);
 
+  /** The drawn views, each with the source it reads: the view, or a page's sections in order. */
+  const drawn = () => {
+    if (!handle || !view) return [];
+    if (!("sections" in view)) return [{ element: handle.element, source: view.source }];
+    const { sections } = view;
+    const elements = [...handle.element.querySelectorAll(":scope > desk-universal-view")];
+    return elements.map((element, i) => ({ element, source: sections[i]?.source }));
+  };
   /** @param {unknown} error */
   const failed = (error) => {
     const refused = /** @type {{ code?: string, permission?: typeof needed }} */ (error ?? {});
-    if (refused.code !== "permission_denied") return;
+    if (refused.code !== "permission_denied") {
+      // The view shows the load's own message: say it in words instead.
+      const raw = error instanceof Error ? error.message : undefined;
+      for (const { element, source } of drawn())
+        if (raw !== undefined && element.getAttribute("message") === raw)
+          element.setAttribute("message", failureText(error, source));
+      return;
+    }
     needed = refused.permission ?? scopeOf(view?.source);
     text.textContent = "Desk needs your permission to read this view's source.";
     notice.hidden = false;
@@ -112,7 +135,8 @@ export function createScreen(host, ctx) {
       params = options.params ?? {};
       needed = undefined;
       notice.hidden = true;
-      handle = ctx.universal.open(host, next, { onError: failed, params });
+      clock.reset();
+      handle = ctx.universal.open(host, next, { onError: failed, params, now: clock.now });
       if (options.notice) bar.notice(options.notice);
       else bar.hide();
       return handle;
@@ -149,5 +173,11 @@ export function createScreen(host, ctx) {
     },
   };
   allow.addEventListener("click", () => void screen.allow());
+  // A calendar paged to another day: the queries of its view (or page) read that day's clock.
+  host.addEventListener("desk-range", (event) => {
+    const { anchor } = /** @type {CustomEvent<{ anchor?: string }>} */ (event).detail ?? {};
+    if (!handle || !readsClock(view) || !clock.move(String(anchor))) return;
+    void handle.reload();
+  });
   return screen;
 }

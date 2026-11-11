@@ -13,12 +13,29 @@ body {
 /* Inset past the shell's floating chrome (its top bar, rails, talk line and errands float over a
    desk-wide overlay), so the bar's buttons and the switcher stay reachable. */
 #root {
+  position: relative;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 12px;
   height: 100%;
   padding: 88px 96px 96px;
+}
+
+/* The way out: the overlay covers the whole desk, so Close stays at its top right, saying that
+   Escape does the same. */
+.leave {
+  position: absolute;
+  top: 40px;
+  right: 96px;
+  z-index: 1;
+}
+
+.leave kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-sm);
+  color: var(--desk-text-muted);
 }
 
 desk-universal-view {
@@ -131,6 +148,7 @@ desk-universal-view {
 .builder {
   display: grid;
   grid-template-columns: minmax(260px, 340px) 1fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: 20px;
   flex: 1 1 auto;
   min-height: 0;
@@ -142,11 +160,30 @@ desk-universal-view {
   display: none;
 }
 
-.build-form {
+/* The steps scroll; the name and Save stay in sight under them. */
+.build-side {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.build-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   gap: 14px;
+  min-height: 0;
   overflow: auto;
+}
+
+.build-foot {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--desk-border);
 }
 
 .build-step {
@@ -237,13 +274,24 @@ desk-universal-view {
     padding: 72px 24px 80px;
   }
 
+  .leave {
+    top: 24px;
+    right: 24px;
+  }
+
   .builder {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
 @media (max-width: 480px) {
   #root {
     padding: 10px 12px;
+  }
+
+  .leave {
+    position: static;
+    align-self: flex-end;
   }
 }

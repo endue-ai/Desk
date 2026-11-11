@@ -129,4 +129,33 @@ describe("the view builder", () => {
     m.$<HTMLButtonElement>(".build-actions .desk-btn-quiet").click();
     expect(m.cancelled).toHaveBeenCalledOnce();
   });
+
+  it("a file that is not there is said in words, in the status and the preview alike", async () => {
+    const m = await mount();
+    await m.builder.start(undefined);
+    m.$<HTMLInputElement>('input[aria-label="Where"]').value = "~/boards/gone.yaml";
+    await m.builder.load();
+    expect(m.builder.preview.getAttribute("state")).toBe("error");
+    expect(m.$(".build-status").textContent).toBe("There is no file at ~/boards/gone.yaml.");
+    expect(m.builder.preview.getAttribute("message")).toBe(
+      "There is no file at ~/boards/gone.yaml.",
+    );
+    // The next load says Loading…, not the last failure.
+    m.$<HTMLInputElement>('input[aria-label="Where"]').value = "~/boards/launch.yaml";
+    const loading = m.builder.load();
+    expect(m.builder.preview.hasAttribute("message")).toBe(false);
+    await loading;
+    expect(m.builder.preview.getAttribute("state")).toBe("ready");
+  });
+
+  it("keeps the name and Save outside the steps that scroll, so a short window still shows them", async () => {
+    const m = await mount();
+    await m.builder.start(undefined);
+    const form = m.$(".build-form");
+    const foot = m.$(".build-foot");
+    expect(form.contains(m.$('input[aria-label="Name"]'))).toBe(false);
+    expect(foot.contains(m.$('input[aria-label="Name"]'))).toBe(true);
+    expect(foot.contains(m.$(".build-actions"))).toBe(true);
+    expect(form.nextElementSibling).toBe(foot);
+  });
 });

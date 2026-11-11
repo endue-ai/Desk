@@ -20,11 +20,14 @@ plugin would. The desk, Eris, agents and the palette use it by command instead o
 | `view:manage` | Saved views: `{ id }` and the builder's Save |
 
 A `url` source asks for `net:fetch` on its host when it opens (the notice), so no host is granted ahead.
+The overlay covers the desk, so Close (top right, "Esc") and a press beside the view leave it; a
+source that fails is said in words; a calendar paged to another day reads `{today}` as that day.
 
 | File | Purpose |
 | --- | --- |
 | `ui/open.js` | The arguments as the view they open; the permission a source is read under |
 | `ui/screen.js`, `ui/bar.js` | The page: one view under Eris's bar (drafting, preview, notice) and the permission notice |
+| `ui/leave.js`, `ui/words.js`, `ui/clock.js` | Close and a press beside; a failed source in words; the clock a paged calendar moves |
 | `ui/build-model.js`, `ui/builder.js` | The builder's model (fields, roles, suggested map, the view) and its page |
 | `ui/folder.js` | A folder's entries as universal data |
 | `ui/main.js` | The commands and Escape |
