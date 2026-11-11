@@ -19,6 +19,7 @@ import type {
 } from "../ui/lists.js";
 import type { Overview } from "../ui/overview.js";
 import type { Prefs } from "../ui/query.js";
+import type { Page } from "../ui/reach.js";
 import type { Snapshot } from "../ui/stats.js";
 import {
   CONTEXTS,
@@ -173,6 +174,8 @@ export interface RecordingView extends View {
   logViews: LogsView[];
   details: Array<Detail | null>;
   said: string[];
+  /** The lists the view was told could not be read. */
+  unreads: string[];
   busy_: number[];
   selected: Item | undefined;
   /** What the person marked, as the view would hand it over. */
@@ -212,6 +215,7 @@ export function recordingView(): RecordingView {
     logViews: [],
     details: [],
     said: [],
+    unreads: [],
     busy_: [],
     selected: undefined,
     marks: [],
@@ -232,6 +236,7 @@ export function recordingView(): RecordingView {
     logs: (model) => view.logViews.push({ ...model, lines: [...model.lines] }),
     detail: (model) => view.details.push(model),
     say: (text) => view.said.push(text),
+    unread: (name) => view.unreads.push(name),
     busy: (n) => view.busy_.push(n),
     focus: () => {},
     selection: () => view.selected,
@@ -314,6 +319,8 @@ export async function mount(
     store?: Record<string, unknown>;
     /** Run on the platform's timers instead of the fake clock. */
     systemClock?: boolean;
+    /** Whether the page can be seen; shown for good when not given. */
+    page?: Page;
   } = {},
 ): Promise<Mounted> {
   const docker = fakeDocker(options.script ?? engine());
@@ -356,6 +363,7 @@ export async function mount(
           new CommandFailed("endue.docker.cancel", "cancelled", message);
         app = createDocker(ctx, view, {
           ...(options.systemClock ? {} : { clock }),
+          ...(options.page ? { page: options.page } : {}),
           flushMs: 0,
           cancelled,
         });

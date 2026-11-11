@@ -12,6 +12,7 @@
  *   header(header: import("./engine.js").Header): void,
  *   show(view: ViewName, hints: string): void,
  *   list(view: ListName, model: unknown): void,
+ *   unread(view: ListName): void,
  *   logs(model: LogsView): void,
  *   detail(model: import("./inspect.js").Detail | null): void,
  *   pane(model: import("./pane.js").PaneModel | null): void,

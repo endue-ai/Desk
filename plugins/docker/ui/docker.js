@@ -1,9 +1,9 @@
 // The Docker plugin without its DOM: the engine it talks to (context, versions, what is wrong), the
 // lists and which one is on screen (shelf.js), the detail pane beside them (pane.js, docker-pane.js)
-// as desk buffers, each list's query and sort, and the live updates (live.js, watch.js, stats.js)
-// that keep it all current. commands.js answers the plugin's commands on top. It talks only to
-// ctx.bridge, ctx.commands, ctx.state and a view, so the SDK's test host runs it with a recording
-// view and a scripted docker.
+// as desk buffers, each list's query and sort, and the live updates (live.js, follow.js, stats.js)
+// that keep it all current, or, while the engine does not answer, the wait for it (reach.js).
+// commands.js answers the plugin's commands on top. It talks only to ctx.bridge, ctx.commands,
+// ctx.state and a view, so the SDK's test host runs it with a recording view and a scripted docker.
 
 import { createActions } from "./actions.js";
 import { createMoreActions } from "./actions-more.js";
@@ -11,6 +11,7 @@ import { createOps } from "./actions-ops.js";
 import { createDesk, guarded } from "./desk.js";
 import { createPaneControl } from "./docker-pane.js";
 import { createEngine } from "./engine.js";
+import { createFollow } from "./follow.js";
 import { hints, LISTS } from "./keys.js";
 import { createLoaders } from "./lists.js";
 import { createLive } from "./live.js";
@@ -22,7 +23,7 @@ import { createRunner } from "./run.js";
 import { DEFAULTS, loadSettings } from "./settings.js";
 import { createShelf } from "./shelf.js";
 import { createUse } from "./stats.js";
-import { createAlerts, createWatcher, SYSTEM_CLOCK } from "./watch.js";
+import { SYSTEM_CLOCK } from "./watch.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -39,7 +40,7 @@ import { createAlerts, createWatcher, SYSTEM_CLOCK } from "./watch.js";
  * @typedef {{ view?: ViewName, back?: string, all?: boolean, logs?: LogTarget | null,
  *   detail?: string | null, prefs?: unknown }} Saved
  * @typedef {{ runner?: ReturnType<typeof createRunner>, clock?: Clock, flushMs?: number,
- *   cancelled?(message: string): Error }} Options
+ *   page?: import("./reach.js").Page, cancelled?(message: string): Error }} Options
  */
 
 const CONTEXT_KEY = "context";
@@ -54,7 +55,8 @@ const inPane = (/** @type {ViewName} */ name) => name === "inspect" || name === 
 /**
  * @param {Pick<PluginContext, "bridge" | "commands" | "state">} ctx
  * @param {View} view
- * @param {Options} [options] `cancelled` makes the error a cancelled command answers with.
+ * @param {Options} [options] `cancelled` makes the error a cancelled command answers with;
+ *   `page` says whether the page can be seen (the wait for an engine asks only then).
  */
 export function createDocker({ bridge, commands, state }, view, options = {}) {
   const clock = options.clock ?? SYSTEM_CLOCK;
@@ -77,21 +79,24 @@ export function createDocker({ bridge, commands, state }, view, options = {}) {
   let filter = "";
   const { pick, buffer, buffers, viewOf } = createDesk(commands);
   let said = "";
-  /** Whether the event stream was lost and is being started again. */
-  let lost = false;
-
-  const say = (/** @type {string} */ text) => {
-    if (text === said) return;
-    said = text;
-    view.say(text);
-  };
 
   const engine = createEngine({
     runner,
     view,
     context: () => context,
-    live: () => watcher.watching(),
+    live: () => watch.watching(),
+    // A read worked while the plugin waited for the engine: ask now rather than in a minute.
+    back: () => watch.now(),
   });
+
+  const say = (/** @type {string} */ text) => {
+    // What is wrong with the engine is said in the header, with Try again: the status line would
+    // say it twice and squeeze the keys' hints.
+    if (text !== "" && text === engine.problem()) return;
+    if (text === said) return;
+    said = text;
+    view.say(text);
+  };
 
   /** Run docker; a failure that says the engine is unreachable goes to the header too. */
   const docker = async (
@@ -137,32 +142,19 @@ export function createDocker({ bridge, commands, state }, view, options = {}) {
   });
   const { models, load } = shelf;
 
-  const alerts = createAlerts({
+  const watch = createFollow({
+    runner,
+    clock,
+    engine,
+    ...(options.page ? { page: options.page } : {}),
     notify: (alert) =>
       void bridge
         .call("ui.notify", { ...alert, scope: { permission: "ui:notify" } })
         .catch(() => {}),
     mode: () => settings.notify,
-    now: clock.now,
-  });
-  const watcher = createWatcher({
-    runner,
-    clock,
-    onEvent: (event) => {
-      alerts.feed(event);
-      live.invalidate(event.type, event.id);
-    },
-    onState: (state) => {
-      engine.header();
-      // Back after the engine went away (Docker Desktop restarted): read what is on screen again.
-      if (state === "watching" && lost)
-        void engine
-          .probe()
-          .then(refresh)
-          .catch(() => {});
-      lost = state === "retrying";
-      wantStats();
-    },
+    onEvent: (event) => live.invalidate(event.type, event.id),
+    reread: () => void guard(refresh)(),
+    changed: () => wantStats(),
   });
 
   const drawLogs = (/** @type {LogModel} */ model) => view.logs({ ...model, timestamps, filter });
@@ -229,8 +221,12 @@ export function createDocker({ bridge, commands, state }, view, options = {}) {
 
   /** Refresh what is on screen: the list and what the pane shows (logs from their tail again). */
   const refresh = async () => {
-    // Try again after the engine was not there: ask who it is before reading what it holds.
-    if (!engine.up() && (await engine.probe())) watcher.start();
+    // Try again after the engine was not there: ask who it is before reading what it holds, and
+    // read nothing while it does not answer (the header says so).
+    if (!engine.up()) {
+      if (!(await engine.probe())) return watch.away();
+      watch.start();
+    }
     const model = pane.model();
     if (current === "logs") {
       const { target, follow } = logs.model();
@@ -261,7 +257,7 @@ export function createDocker({ bridge, commands, state }, view, options = {}) {
     refresh,
     say,
     pick,
-    expect: (id) => alerts.expect(id),
+    expect: (id) => watch.expect(id),
     cancelled,
   };
   const actions = {
@@ -278,8 +274,9 @@ export function createDocker({ bridge, commands, state }, view, options = {}) {
     await bridge.call("store.set", { key: CONTEXT_KEY, value: context }).catch(() => {});
     shelf.clear();
     history.clear();
-    await Promise.all([watcher.stop(), stream.stop()]);
-    if (await engine.probe()) watcher.start();
+    await Promise.all([watch.stop(), stream.stop()]);
+    if (await engine.probe()) watch.start();
+    else watch.away();
     wantStats();
     await load(back).catch(() => {});
     return context;
@@ -301,7 +298,8 @@ export function createDocker({ bridge, commands, state }, view, options = {}) {
     const kept = await bridge.call("store.get", { key: CONTEXT_KEY }).catch(() => ({}));
     context = typeof kept.value === "string" ? kept.value : settings.context;
     const reachable = await engine.probe();
-    watcher.start();
+    if (reachable) watch.start();
+    else watch.away();
     const was = saved?.back ? (RENAMED[saved.back] ?? saved.back) : "overview";
     back = isList(was) ? /** @type {ListName} */ (was) : "overview";
     const target = saved?.logs;
@@ -356,7 +354,7 @@ export function createDocker({ bridge, commands, state }, view, options = {}) {
     stats: read,
     stop: async () => {
       live.stop();
-      await Promise.all([watcher.stop(), logs.stop(), stream.stop()]);
+      await Promise.all([watch.stop(), logs.stop(), stream.stop()]);
     },
     sample: () => loaders.stats(),
     system: () => loaders.system(context),

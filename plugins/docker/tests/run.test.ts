@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { StubError } from "../../../packages/bridge/src/index";
 import { defineUiPlugin, type PluginContext } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost } from "../../../packages/plugin-sdk/src/testing/index";
-import { NOT_RUNNING } from "../ui/errors.js";
+import { notReachable } from "../ui/errors.js";
 import {
   createRunner,
   DOCKER_ENV,
@@ -13,6 +13,9 @@ import {
 } from "../ui/run.js";
 import { DAEMON_DOWN } from "./fixtures";
 import { fakeDocker, type Handlers, type Script } from "./harness";
+
+/** What the header says of DAEMON_DOWN: not reachable, where docker looked. */
+const DOWN = notReachable("unix:///Users/me/.docker/run/docker.sock");
 
 /** A runner on a test host whose docker is the scripted one (or the handlers given). */
 async function runner(
@@ -115,7 +118,7 @@ describe("createRunner.run", () => {
     });
     const error = await run.run(["ps"]).catch((e) => e);
     expect(error).toBeInstanceOf(DockerError);
-    expect(error.message).toBe(NOT_RUNNING);
+    expect(error.message).toBe(DOWN);
     expect(error.kind).toBe("daemon");
     expect((await run.run(["version"], { ok: [1] })).stdout).toBe("{}");
   });

@@ -1,15 +1,17 @@
 // The engine's event stream (`docker events`) kept running while the plugin is mounted: each event
 // goes to the controller (which refreshes what is on screen) and to the alerts, and when the stream
-// ends (the daemon restarted, Docker Desktop quit) it starts again after 1, 2, 4 … 30 seconds. A
-// failure no retry can fix (no docker program, no grant) stops it. The alerts decide which events
-// the person hears about: a container that failed on its own, ran out of memory or went unhealthy.
+// ends (the daemon restarted, Docker Desktop quit) it starts again after 1, 2, 4 … 30 seconds, once
+// the engine answers (`reachable`); when it does not, the watcher stops ("away") and the controller
+// waits for the engine (reach.js) instead of starting docker against it. A failure no retry can fix
+// (no docker program, no grant) stops it. The alerts decide which events the person hears about: a
+// container that failed on its own, ran out of memory or went unhealthy.
 
 import { parseEvent } from "./parse-engine.js";
 
 /**
  * @typedef {import("./parse-engine.js").DockerEvent} DockerEvent
  * @typedef {{ setTimeout: typeof setTimeout, clearTimeout: typeof clearTimeout, now(): number }} Clock
- * @typedef {"watching" | "retrying" | "stopped"} WatchState
+ * @typedef {"watching" | "retrying" | "away" | "stopped"} WatchState
  * @typedef {{ title: string, body: string, level: "warning" | "error" }} Alert
  */
 
@@ -25,8 +27,8 @@ export const EVENT_ARGS = Object.freeze([
 
 const FIRST_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 30_000;
-/** Failures a retry cannot fix. */
-const FINAL = new Set(["missing", "unsupported", "denied", "context"]);
+/** Failures a retry cannot fix: only the person can (install docker, grant it, pick a context). */
+export const FINAL = new Set(["missing", "unsupported", "denied", "context"]);
 
 /**
  * The platform's timers. Called through wrappers: a browser throws "Illegal invocation" when
@@ -45,8 +47,16 @@ export const SYSTEM_CLOCK = {
  * @param {(event: DockerEvent) => void} deps.onEvent
  * @param {(state: WatchState, message: string) => void} [deps.onState]
  * @param {Clock} [deps.clock]
+ * @param {() => Promise<boolean>} [deps.reachable] Asked before the stream starts again; without
+ *   it the stream starts again whatever the engine.
  */
-export function createWatcher({ runner, onEvent, onState = () => {}, clock = SYSTEM_CLOCK }) {
+export function createWatcher({
+  runner,
+  onEvent,
+  onState = () => {},
+  clock = SYSTEM_CLOCK,
+  reachable,
+}) {
   /** @type {{ stop(): Promise<void> } | null} */
   let handle = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
@@ -61,9 +71,26 @@ export function createWatcher({ runner, onEvent, onState = () => {}, clock = SYS
     onState("retrying", message);
     timer = clock.setTimeout(() => {
       timer = null;
-      void begin();
+      void again(message);
     }, delay);
     delay = Math.min(delay * 2, MAX_DELAY_MS);
+  };
+
+  /** Start the stream again, unless the engine does not answer: then stop, and say it is away. */
+  const again = async (/** @type {string} */ message) => {
+    if (!wanted) return;
+    if (reachable) {
+      const mine = run;
+      const up = await reachable().catch(() => false);
+      // Stopped or started anew meanwhile: that call decides.
+      if (mine !== run || !wanted) return;
+      if (!up) {
+        wanted = false;
+        onState("away", message);
+        return;
+      }
+    }
+    void begin();
   };
 
   let starting = false;

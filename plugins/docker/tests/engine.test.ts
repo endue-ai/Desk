@@ -3,7 +3,8 @@ import {
   explain,
   kindOf,
   NO_COMPOSE,
-  NOT_RUNNING,
+  NOT_REACHABLE,
+  notReachable,
   SOCKET_DENIED,
   stripAnsi,
 } from "../ui/errors.js";
@@ -109,7 +110,10 @@ describe("parseEvent", () => {
 
 describe("explain", () => {
   it("says the failures everyone meets the same way every time", () => {
-    expect(explain(["ps"], failed(DAEMON_DOWN))).toBe(NOT_RUNNING);
+    // Not reachable, as the header says, and where docker looked, as docker's own words say.
+    expect(explain(["ps"], failed(DAEMON_DOWN))).toBe(
+      "Docker is not reachable at unix:///Users/me/.docker/run/docker.sock: start Docker Desktop, Colima, OrbStack or the docker service, or pick another context, then try again.",
+    );
     expect(
       explain(
         ["ps"],
@@ -117,7 +121,16 @@ describe("explain", () => {
           "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?",
         ),
       ),
-    ).toBe(NOT_RUNNING);
+    ).toBe(notReachable("unix:///var/run/docker.sock"));
+    expect(
+      explain(
+        ["ps"],
+        failed(
+          'error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.47/containers/json": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.',
+        ),
+      ),
+    ).toBe(NOT_REACHABLE);
+    expect(NOT_REACHABLE).toMatch(/^Docker is not reachable: start Docker Desktop/);
     expect(
       explain(
         ["ps"],

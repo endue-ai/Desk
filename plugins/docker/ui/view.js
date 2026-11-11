@@ -5,9 +5,10 @@
 // keymap gets them, and Tab is left to move between the list and the pane.
 
 import { el } from "./dom.js";
-import { actionFor, hints, keyTable, LISTS, pressOf, VIEW_ONLY } from "./keys.js";
+import { actionFor, hints, LISTS, pressOf, VIEW_ONLY } from "./keys.js";
 import { fillMetrics } from "./sparkline.js";
 import { createTree } from "./tree.js";
+import { createKeysCard } from "./view-keys.js";
 import {
   renderCompose,
   renderContainers,
@@ -15,6 +16,7 @@ import {
   renderNetworks,
   renderVolumes,
 } from "./view-lists.js";
+import { COUNTED, emptyRow, TITLES } from "./view-names.js";
 import { renderOverview } from "./view-overview.js";
 import { createPaneView } from "./view-pane.js";
 import { createToolbar } from "./view-toolbar.js";
@@ -29,25 +31,9 @@ import { createToolbar } from "./view-toolbar.js";
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
  */
 
-const TITLES = /** @type {Record<ListName, string>} */ ({
-  overview: "Overview",
-  containers: "Containers",
-  compose: "Compose",
-  images: "Images",
-  volumes: "Volumes",
-  networks: "Networks",
-});
 const MOVES = new Set(["next", "previous", "first", "last", "pageDown", "pageUp"]);
 /** Lists re-sorted as resource use changes, at most this often. */
 const RESORT_MS = 2000;
-/** The kind of row each list counts. */
-const COUNTED = /** @type {Record<string, string>} */ ({
-  containers: "container",
-  compose: "project",
-  images: "image",
-  volumes: "volume",
-  networks: "network",
-});
 
 /**
  * @param {Document} doc
@@ -66,7 +52,6 @@ export function createView(doc, act) {
   const tabs = byId("tabs");
   const split = byId("split");
   const listEl = byId("view");
-  const keysEl = byId("keys");
   const hintsEl = byId("hints");
   const statusEl = byId("status");
   const logSearch = /** @type {HTMLInputElement} */ (byId("log-search"));
@@ -83,6 +68,8 @@ export function createView(doc, act) {
   let shownList = "overview";
   /** @type {Record<string, unknown>} */
   const models = {};
+  /** The lists whose first read failed. @type {Set<string>} */
+  const unread = new Set();
   /** @type {Record<string, Prefs>} */
   const prefs = {};
   /** @type {StatsRead | undefined} */
@@ -134,13 +121,9 @@ export function createView(doc, act) {
     const model = /** @type {any} */ (models[shownList]);
     const p = prefs[shownList] ?? { query: "", sort: { key: "name", desc: false } };
     if (!model) {
-      const reading = el(
-        doc,
-        "div",
-        { class: "row empty" },
-        el(doc, "span", { class: "desk-muted" }, "Reading…"),
-      );
-      list.set([{ el: reading, item: undefined, level: 1 }]);
+      // Not "Reading…" for ever: a read that failed says so.
+      const row = emptyRow(doc, shownList, unread.has(shownList), problem !== "");
+      list.set([{ el: row, item: undefined, level: 1 }]);
       return;
     }
     const drawn =
@@ -173,37 +156,22 @@ export function createView(doc, act) {
         : "inspect"
       : shownList;
 
+  const keysCard = createKeysCard(doc, {
+    card: byId("keys"),
+    button: byId("keys-btn"),
+    title: (where) =>
+      where === "inspect" || where === "logs"
+        ? "the pane"
+        : TITLES[/** @type {ListName} */ (where)],
+  });
   const showHints = (/** @type {ViewName} */ where) => {
     hintsEl.textContent = hints(where);
-    if (!keysEl.hidden) drawKeys(where);
+    keysCard.follow(where);
   };
-  const drawKeys = (/** @type {ViewName} */ where) =>
-    keysEl.replaceChildren(
-      el(
-        doc,
-        "h2",
-        {},
-        `Keys: ${where === "inspect" || where === "logs" ? "the pane" : TITLES[/** @type {ListName} */ (where)]}`,
-      ),
-      el(
-        doc,
-        "dl",
-        {},
-        ...keyTable(where).flatMap(([key, what]) => [
-          el(doc, "dt", {}, el(doc, "kbd", {}, String(key))),
-          el(doc, "dd", {}, String(what)),
-        ]),
-      ),
-    );
 
   const toggleWrap = () => {
     wrap = !wrap;
     pane.logs.wrap(wrap);
-  };
-  const toggleKeys = (/** @type {ViewName} */ where) => {
-    keysEl.hidden = !keysEl.hidden;
-    byId("keys-btn").setAttribute("aria-expanded", String(!keysEl.hidden));
-    if (!keysEl.hidden) drawKeys(where);
   };
 
   /** The keys that only move or mark in the view. @param {ViewName} where @param {string} action */
@@ -232,6 +200,7 @@ export function createView(doc, act) {
   };
 
   const onKey = (/** @type {KeyboardEvent} */ event) => {
+    if (keysCard.escape(event)) return;
     const target = /** @type {HTMLElement} */ (event.target);
     if (target === toolbar.search || target === logSearch) {
       if (event.key === "Escape" || event.key === "Enter" || event.key === "ArrowDown") {
@@ -252,7 +221,7 @@ export function createView(doc, act) {
     const action = actionFor(where, pressOf(event));
     if (!action) return;
     event.preventDefault();
-    if (action === "help") toggleKeys(where);
+    if (action === "help") keysCard.toggle(where);
     else if (where === "inspect" && action === "copyOut") {
       const item = pane.tree.selection();
       void act("copyOut", item?.kind === "entry" ? item.path : undefined);
@@ -308,7 +277,7 @@ export function createView(doc, act) {
     // The marks bar goes once its action is done: the keys go back to the list.
     if (byId("marks").contains(button)) list.focus();
   });
-  byId("keys-btn").addEventListener("click", () => toggleKeys(current));
+  byId("keys-btn").addEventListener("click", () => keysCard.toggle(current));
 
   return {
     header(header) {
@@ -330,8 +299,11 @@ export function createView(doc, act) {
       if (changed && overview) {
         const up = problem === "" && overview.engine.version !== "";
         models.overview = { ...overview, engine: { ...overview.engine, problem, up } };
-        if (shownList === "overview") render();
       }
+      // The engine is back: what could not be read is being read again.
+      if (changed && problem === "") unread.clear();
+      // The overview's card, or a list that could not be read, says it too.
+      if (changed && (shownList === "overview" || !models[shownList])) render();
     },
     show(name, hint) {
       current = name;
@@ -350,7 +322,12 @@ export function createView(doc, act) {
     },
     list(name, model) {
       models[name] = model;
+      unread.delete(name);
       if (shownList === name) render();
+    },
+    unread(name) {
+      unread.add(name);
+      if (shownList === name && !models[name]) render();
     },
     logs(model) {
       pane.logs.render(model);

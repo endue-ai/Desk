@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { NOT_RUNNING } from "../ui/errors.js";
+import { notReachable } from "../ui/errors.js";
+import { FIRST_ASK_MS } from "../ui/reach.js";
 import { COMMANDS } from "../ui/schemas.js";
 import { EVENT_ARGS } from "../ui/watch.js";
 import {
@@ -14,6 +15,9 @@ import {
   WEB_ID,
 } from "./fixtures";
 import { engine, mount } from "./harness";
+
+/** What the header says of DAEMON_DOWN: not reachable, where docker looked. */
+const DOWN = notReachable("unix:///Users/me/.docker/run/docker.sock");
 
 const wait = () => new Promise((resolve) => setTimeout(resolve, 5));
 
@@ -66,10 +70,10 @@ describe("the engine", () => {
         events: () => (up ? { hang: true } : { stderr: DAEMON_DOWN, code: 1 }),
       }),
     });
-    expect(m.view.headers.at(-1)?.problem).toBe(NOT_RUNNING);
+    expect(m.view.headers.at(-1)?.problem).toBe(DOWN);
     // Nothing is read while the engine is down: the overview says so, with what to do.
     expect(m.view.lists.map((l) => l.name)).toEqual(["overview"]);
-    expect(m.view.latest("overview").engine).toMatchObject({ up: false, problem: NOT_RUNNING });
+    expect(m.view.latest("overview").engine).toMatchObject({ up: false, problem: DOWN });
     expect(m.docker.of("ps")).toEqual([]);
     up = true;
     await m.keys.refresh?.();
@@ -80,7 +84,7 @@ describe("the engine", () => {
 });
 
 describe("the engine coming back", () => {
-  it("reads the screen again by itself once the event stream is back", async () => {
+  it("reads the screen again by itself once the engine answers again", async () => {
     let up = false;
     const m = await mount({
       script: engine({
@@ -90,9 +94,9 @@ describe("the engine coming back", () => {
         events: () => (up ? { hang: true } : { stderr: DAEMON_DOWN, code: 1 }),
       }),
     });
-    expect(m.view.headers.at(-1)?.problem).toBe(NOT_RUNNING);
+    expect(m.view.headers.at(-1)?.problem).toBe(DOWN);
     up = true;
-    m.clock.advance(1000);
+    m.clock.advance(FIRST_ASK_MS);
     await m.settle();
     expect(m.view.headers.at(-1)).toMatchObject({ problem: "", live: true });
     expect(m.view.latest("overview").counts.total).toBe(3);

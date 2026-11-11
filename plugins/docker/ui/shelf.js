@@ -1,6 +1,7 @@
 // What each list holds now: read with its loader (lists.js), drawn, and kept until an event or a
-// context switch makes it stale. A read that a newer read of the same list overtook is not drawn.
-// The overview draws twice: once its lists are in, and again with disk use, which can take seconds.
+// context switch makes it stale. A read that a newer read of the same list overtook is not drawn;
+// a first read that failed is told to the view, which says so instead of "Reading…". The overview
+// draws twice: once its lists are in, and again with disk use, which can take seconds.
 
 import { overviewModel } from "./overview.js";
 
@@ -12,7 +13,7 @@ import { overviewModel } from "./overview.js";
 /**
  * @param {object} deps
  * @param {ReturnType<typeof import("./lists.js").createLoaders>} deps.loaders
- * @param {{ list(name: ListName, model: unknown): void }} deps.view
+ * @param {{ list(name: ListName, model: unknown): void, unread(name: ListName): void }} deps.view
  * @param {ReturnType<typeof import("./engine.js").createEngine>} deps.engine
  * @param {() => Map<string, import("./parse-engine.js").Stats>} deps.stats The latest resource use.
  * @param {() => string} deps.context
@@ -67,10 +68,16 @@ export function createShelf({ loaders, view, engine, stats, context, all }) {
       const mine = (loads[name] ?? 0) + 1;
       loads[name] = mine;
       if (name === "overview") return overview(mine);
-      const model =
-        name === "containers"
-          ? { ...(await loaders.containers(all())), stats: stats() }
-          : await loaders[name]();
+      let model;
+      try {
+        model =
+          name === "containers"
+            ? { ...(await loaders.containers(all())), stats: stats() }
+            : await loaders[name]();
+      } catch (error) {
+        if (mine === loads[name] && !models[name]) view.unread(name);
+        throw error;
+      }
       if (mine !== loads[name]) return models[name];
       engine.ok();
       draw(name, model);

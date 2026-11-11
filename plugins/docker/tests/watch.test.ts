@@ -111,6 +111,50 @@ describe("createWatcher", () => {
     expect(clock.pending()).toBe(0);
   });
 
+  it("asks the engine before it starts the stream again, and stops when no engine answers", async () => {
+    const runner = streams();
+    const clock = fakeClock();
+    const states: string[] = [];
+    let up = true;
+    let asked = 0;
+    const watcher = createWatcher({
+      runner,
+      clock,
+      onEvent: () => {},
+      onState: (s, m) => states.push(`${s}:${m}`),
+      reachable: async () => {
+        asked += 1;
+        return up;
+      },
+    });
+    watcher.start();
+    await wait();
+    // The first start follows the caller's own question.
+    expect(asked).toBe(0);
+    runner.started[0]?.options.onExit?.({ code: 1, signal: null, stdout: "", stderr: "gone" });
+    clock.advance(1000);
+    await wait();
+    expect(asked).toBe(1);
+    expect(runner.started).toHaveLength(2);
+    up = false;
+    runner.started[1]?.options.onExit?.({
+      code: 1,
+      signal: null,
+      stdout: "",
+      stderr: "gone again",
+    });
+    clock.advance(2000);
+    await wait();
+    expect(asked).toBe(2);
+    expect(runner.started).toHaveLength(2);
+    expect(states.at(-1)).toBe("away:gone again");
+    expect(watcher.watching()).toBe(false);
+    expect(clock.pending()).toBe(0);
+    clock.advance(60_000);
+    await wait();
+    expect(asked).toBe(2);
+  });
+
   it("ends the stream on stop and does not start again", async () => {
     const runner = streams();
     const clock = fakeClock();

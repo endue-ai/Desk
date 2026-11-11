@@ -221,3 +221,44 @@ describe("the surface", () => {
     expect(byId("log-follow").attributes["aria-pressed"]).toBe("true");
   });
 });
+
+describe("what the surface says when it has nothing", () => {
+  it("says a list could not be read, and why when it is the engine, instead of Reading… for ever", () => {
+    const { view, byId } = surface();
+    const row = () => byId("view").textContent.replace(/\s+/g, " ").trim();
+    view.show("images", hints("images"));
+    expect(row()).toBe("Reading…");
+    view.unread("images");
+    expect(row()).toBe("Could not read the images.");
+    view.header({ context: "", engine: "", problem: "Docker is not reachable at x.", live: false });
+    expect(row()).toBe("Could not read the images: Docker is not reachable.");
+    view.show("compose", hints("compose"));
+    expect(row()).toBe("Reading…");
+    view.unread("compose");
+    expect(row()).toBe("Could not read the Compose projects: Docker is not reachable.");
+    view.list("compose", { projects: parseProjects(PROJECTS), containers: [] });
+    expect(row()).not.toMatch(/Could not read/);
+  });
+
+  it("closes the keys card with Escape, from the list or from its button, before anything else", () => {
+    const { view, byId, cursor } = surface();
+    view.show("containers", hints("containers"));
+    view.list("containers", { containers: parseContainers(PS), stats: new Map(), all: true });
+    cursor()?.focus();
+    cursor()?.key(" ");
+    expect(byId("marks").hidden).toBe(false);
+    cursor()?.key("?");
+    expect(byId("keys").hidden).toBe(false);
+    expect(cursor()?.key("Escape").defaultPrevented).toBe(true);
+    expect(byId("keys").hidden).toBe(true);
+    expect(byId("keys-btn").attributes["aria-expanded"]).toBe("false");
+    // The marks stay: that Escape was the card's.
+    expect(byId("marks").hidden).toBe(false);
+    byId("keys-btn").fire("click");
+    expect(byId("keys").hidden).toBe(false);
+    expect(byId("keys-btn").key("Escape").defaultPrevented).toBe(true);
+    expect(byId("keys").hidden).toBe(true);
+    // With the card closed, Escape in the header is not the plugin's.
+    expect(byId("keys-btn").key("Escape").defaultPrevented).toBe(false);
+  });
+});

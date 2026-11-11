@@ -30,7 +30,7 @@ Drag and drop (ADR 0119, `dnd.js`, `drop.js`): paths dropped on a container or i
 | `run.js`, `errors.js`, `refs.js` | docker over the bridge, its errors in words, every value checked |
 | `parse-*.js`, `inspect.js`, `images.js`, `files.js`, `stats.js` | What docker prints, as models |
 | `overview.js`, `query.js`, `prefs.js`, `bulk.js`, `preview.js` | The overview; search, sort; bulk; prune previews |
-| `actions*.js`, `logs.js`, `watch.js`, `live.js` | Actions; logs; events and alerts |
+| `actions*.js`, `logs.js`, `follow.js`, `watch.js`, `reach.js`, `live.js` | Actions; logs; events and alerts; with no engine only `docker version`, at most once a minute, in sight (ADR XXXX) |
 | `docker*.js`, `shelf.js`, `pane.js`, `commands*.js`, `schemas*.js`, `dnd.js`, `drop.js` | The controller, the pane, the commands, drags and drops |
 | `view*.js`, `tree.js`, `keys.js`, `dom.js`, `sparkline.js`, `*.css` | The DOM, from `--desk-*` tokens only |
 

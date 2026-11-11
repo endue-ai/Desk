@@ -1,11 +1,17 @@
 // What docker said, as a sentence the person reads: the daemon's and the CLI's prefixes taken off,
-// usage hints dropped, and the failures everyone meets (Docker not running, the socket not allowed,
-// Compose missing, a context that is gone) said the same way every time, with what to do.
+// usage hints dropped, and the failures everyone meets (no engine at the endpoint, the socket not
+// allowed, Compose missing, a context that is gone) said the same way every time, with what to do.
 
 /** @typedef {{ code: number | null, signal: string | null, stdout: string, stderr: string }} Outcome */
 
-export const NOT_RUNNING =
-  "Docker is not running: start Docker Desktop, Colima, OrbStack or the docker service, then refresh.";
+/**
+ * No engine answers where docker looked, which docker's own words name: "not reachable", as the
+ * header says, since Docker Desktop may run while the context's socket is elsewhere.
+ * @param {string} [at] The endpoint, e.g. unix:///var/run/docker.sock.
+ */
+export const notReachable = (at = "") =>
+  `Docker is not reachable${at ? ` at ${at}` : ""}: start Docker Desktop, Colima, OrbStack or the docker service, or pick another context, then try again.`;
+export const NOT_REACHABLE = notReachable();
 export const SOCKET_DENIED =
   "Not allowed to reach the Docker socket: add your user to the docker group, or pick a rootless context.";
 export const NO_COMPOSE =
@@ -33,6 +39,10 @@ export function kindOf(/** @type {string} */ stderr) {
 /** The context a "context not found" message names. */
 const contextIn = (/** @type {string} */ stderr) => /context "([^"]*)"/.exec(stderr)?.[1] ?? "";
 
+/** Where docker looked for the engine: "… daemon at unix:///….sock. Is …", "… API at …; check …". */
+const endpointIn = (/** @type {string} */ stderr) =>
+  /(?:daemon|api) at (\S+?)[.;]?(?:\s|$)/i.exec(stderr)?.[1] ?? "";
+
 /**
  * What docker said, without its prefixes and hints, three lines at most; or a plain line about the
  * exit when it said nothing.
@@ -41,7 +51,7 @@ const contextIn = (/** @type {string} */ stderr) => /context "([^"]*)"/.exec(std
  */
 export function explain(args, outcome) {
   const kind = kindOf(outcome.stderr);
-  if (kind === "daemon") return NOT_RUNNING;
+  if (kind === "daemon") return notReachable(endpointIn(outcome.stderr));
   if (kind === "socket") return SOCKET_DENIED;
   if (kind === "compose") return NO_COMPOSE;
   if (kind === "context")
