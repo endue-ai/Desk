@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
+import { defineUiPlugin, keepFiles, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { defineElements } from "../../../packages/ui/src/elements/index";
 import { openBook } from "../ui/book.js";
@@ -20,8 +20,11 @@ const X = file("~/Documents/budget.xlsx");
 
 afterEach(() => document.body.replaceChildren());
 
-/** The plugin's page in jsdom with an 800 by 600 grid, mounted on the test host. */
-async function page(files: Record<string, Uint8Array>) {
+/**
+ * The plugin's page in jsdom with an 800 by 600 grid, mounted on the test host; `restored` is
+ * what the last sleep kept.
+ */
+async function page(files: Record<string, Uint8Array>, restored?: unknown) {
   const parsed = new DOMParser().parseFromString(html, "text/html");
   for (const script of parsed.querySelectorAll("script")) script.remove();
   document.body.replaceWith(document.importNode(parsed.body, true));
@@ -32,13 +35,17 @@ async function page(files: Record<string, Uint8Array>) {
     pluginId: "endue.sheets",
     handlers: { "init.get": () => ({ profile: "default", settings: {} }), ...disk(files) },
     commands: { "desk.files.changed": () => "", "desk.buffers.update": () => ({}) },
+    ...(restored === undefined ? {} : { restored }),
   });
   let app: Sheets | undefined;
-  const view = createView(document, { edit: (r, c, text) => app?.edit(r, c, text) ?? false });
+  const view = createView(document, {
+    edit: (r, c, text) => app?.edit(r, c, text) ?? false,
+    refused: (buffer, r, c) => app?.refused(buffer, r, c),
+  });
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createSheets(ctx, view, { read: readBytes, open: openBook });
+        app = createSheets(ctx, view, { read: readBytes, open: openBook, keepFiles });
       },
     },
     host.transport,
@@ -102,23 +109,70 @@ describe("editing a CSV on its page", () => {
     expect(saved).toContain("\r\nUlsan,Korea,3.4,");
   });
 
-  it("past a row's last field the formula bar stays read-only", async () => {
-    const { host, bar, press } = await page({ [A.path]: fixture("crlf-bom-quotes.csv") });
+  it("past a row's last field the formula bar stays read-only, and the status line says why", async () => {
+    const { host, bar, press, byId } = await page({ [A.path]: fixture("crlf-bom-quotes.csv") });
     await host.command("desk.files.visit", A);
     for (let i = 0; i < 4; i++) press("ArrowRight");
     press("F2");
     expect([bar.readOnly, document.activeElement === bar]).toEqual([true, false]);
+    expect(byId("status").textContent).toBe(
+      "E1 is not in cities.csv: only its own cells are edited.",
+    );
   });
 });
 
 describe("a format Sheets only reads", () => {
-  it("an .xlsx says Read-only and its formula bar stays read-only", async () => {
-    const { host, grid, bar, label, press } = await page({ [X.path]: fixture("budget.xlsx") });
+  it("an .xlsx says Read-only, its formula bar stays read-only, and typing says why (#162)", async () => {
+    const { host, grid, bar, label, press, byId } = await page({
+      [X.path]: fixture("budget.xlsx"),
+    });
     await host.command("desk.files.visit", X);
     expect(label()).toBe("XLSX · Read-only");
     expect(press("F2").defaultPrevented).toBe(false);
+    expect(byId("status").textContent).toBe("Sheets opens XLSX files read-only.");
     press("q");
     expect([bar.readOnly, document.activeElement]).toEqual([true, grid]);
+  });
+
+  it("typing into a CSV that is not UTF-8 says that it is read-only and why (#162)", async () => {
+    const K = file("~/Documents/notes-euc-kr.csv");
+    const { host, grid, label, press, byId } = await page({
+      [K.path]: fixture("notes-euc-kr.csv"),
+    });
+    await host.command("desk.files.visit", K);
+    expect(label()).toBe("CSV · Read-only");
+    expect(byId("status").textContent).toBe("Opened notes-euc-kr.csv: 1 sheet.");
+    press("ArrowDown");
+    press("가");
+    expect(document.activeElement).toBe(grid);
+    expect(byId("status").textContent).toBe(
+      "Sheets saves CSV and TSV files in UTF-8 only; this one is EUC-KR, so it opens for reading.",
+    );
+  });
+});
+
+describe("a page that slept (#162)", () => {
+  it("comes back on the cell, the scroll and the zoom it was left at, with the unsaved edit marked", async () => {
+    const files = { [A.path]: fixture("crlf-bom-quotes.csv") };
+    const first = await page(files);
+    await first.host.command("desk.files.visit", A);
+    first.press("ArrowDown");
+    first.press("F2");
+    first.type("Seoul, South Korea");
+    first.press("Enter", first.bar);
+    first.press("ArrowRight");
+    first.byId("grid-scroll").scrollTop = 40;
+    first.press("=", first.grid, { metaKey: true });
+    const state = ((await first.host.surfaceState()) as { state: unknown }).state;
+
+    const second = await page(files, state);
+    await vi.waitFor(() => expect(second.byId("cell-address").textContent).toBe("B3"));
+    expect(second.byId("grid-scroll").scrollTop).toBe(40);
+    expect(second.byId("grid-layer").style.fontSize).toBe("calc(var(--desk-text-xs) * 1.1)");
+    expect(second.cell(1, 0)).toBe("Seoul, South Korea");
+    expect(second.byId("book-mark").hidden).toBe(false);
+    // Nothing reached the disk.
+    expect(new TextDecoder().decode(files[A.path])).toContain('"Seoul, KR"');
   });
 });
 

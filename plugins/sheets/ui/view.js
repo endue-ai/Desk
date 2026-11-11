@@ -34,8 +34,8 @@ const number = (/** @type {number} */ n) =>
 
 /**
  * @param {Document} doc
- * @param {{ edit(r: number, c: number, text: string): boolean }} [actions] what an edit asks of
- *   the file on screen (sheets.js)
+ * @param {{ edit(r: number, c: number, text: string): boolean, refused?(buffer: string, r: number, c: number): void }} [actions]
+ *   what an edit asks of the file on screen, and an edit begun where it cannot be made (sheets.js)
  */
 export function createView(doc, actions = { edit: () => false }) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
@@ -76,6 +76,9 @@ export function createView(doc, actions = { edit: () => false }) {
   /** What each open file looked like when it was left: the sheet, and per sheet the selection. */
   /** @type {Map<string, Kept>} */
   const kept = new Map();
+  /** The sheet the file on screen was left on, while it has not arrived (a workbook parsing). */
+  /** @type {number | undefined} */
+  let wanted;
   /** @type {{ query: string, sheet: unknown, matches: Matches } | undefined} */
   let found;
 
@@ -111,6 +114,9 @@ export function createView(doc, actions = { edit: () => false }) {
       editable: (r, c) => shown?.editable?.(r, c) ?? false,
       text: (r, c) => sheet()?.input(r, c) ?? "",
       commit: (r, c, text) => actions.edit(r, c, text),
+      refused: (r, c) => {
+        if (shown) actions.refused?.(shown.buffer, r, c);
+      },
       move(dr, dc) {
         const s = sheet();
         const at = grid.selection()?.active();
@@ -146,7 +152,7 @@ export function createView(doc, actions = { edit: () => false }) {
     if (!shown || !book()) return;
     const place = grid.place();
     const entry = kept.get(shown.buffer) ?? { sheet: current, places: new Map() };
-    entry.sheet = current;
+    entry.sheet = wanted ?? current;
     if (place) entry.places.set(current, place);
     kept.set(shown.buffer, entry);
   };
@@ -177,6 +183,7 @@ export function createView(doc, actions = { edit: () => false }) {
         tab.setAttribute("aria-controls", "grid");
         tab.textContent = label;
         tab.addEventListener("click", () => {
+          wanted = undefined;
           keep();
           showSheet(i);
         });
@@ -195,6 +202,7 @@ export function createView(doc, actions = { edit: () => false }) {
     })[event.key];
     if (to === undefined || event.metaKey || event.ctrlKey || event.altKey) return;
     event.preventDefault();
+    wanted = undefined;
     keep();
     showSheet((to + count) % count, true);
   });
@@ -284,6 +292,7 @@ export function createView(doc, actions = { edit: () => false }) {
       keep();
       const same = model !== null && shown?.buffer === model.buffer;
       if (!same) editor.reset();
+      if (!same) wanted = model ? kept.get(model.buffer)?.sheet : undefined;
       shown = model;
       const kind = model?.book.kind;
       name.textContent = model ? model.name : "No spreadsheet open";
@@ -321,7 +330,9 @@ export function createView(doc, actions = { edit: () => false }) {
         byId("link-url").textContent = model.book.url;
       } else if (model?.book.kind === "sheets") {
         renderTabs(model.book.sheets.map((s) => s.name));
-        showSheet(same ? current : (kept.get(model.buffer)?.sheet ?? 0));
+        const arrived = wanted !== undefined && wanted < model.book.sheets.length;
+        showSheet(arrived ? /** @type {number} */ (wanted) : same ? current : (wanted ?? 0));
+        if (arrived) wanted = undefined;
       }
     },
 
@@ -333,6 +344,28 @@ export function createView(doc, actions = { edit: () => false }) {
     /** Commit the edit in progress in the formula bar, if any: a save takes it. */
     commit() {
       editor.commit();
+    },
+
+    /**
+     * Where the person was in an open file: the sheet, the selection and scroll on each sheet
+     * looked at, and the zoom. What a sleep keeps (keep.js).
+     * @param {string} buffer
+     * @returns {import("./keep.js").Where | undefined}
+     */
+    where(buffer) {
+      if (shown?.buffer === buffer) keep();
+      const entry = kept.get(buffer);
+      return entry && { sheet: entry.sheet, places: [...entry.places], zoom: grid.level() };
+    },
+
+    /**
+     * A file that slept comes back where it was: given before it is shown again.
+     * @param {string} buffer
+     * @param {Partial<import("./keep.js").Where>} where its zoom only for the file that was on screen
+     */
+    restore(buffer, { sheet, places, zoom }) {
+      if (sheet !== undefined) kept.set(buffer, { sheet, places: new Map(places) });
+      if (zoom !== undefined) grid.zoomTo(zoom);
     },
 
     focus() {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readBytes } from "../../../packages/plugin-sdk/src/index";
+import { keepFiles, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { createSheets, type Open } from "../ui/sheets.js";
 import { file, recordingView } from "./harness";
@@ -41,7 +41,7 @@ async function mounted(size: number, url = true) {
   await defineUiPlugin(
     {
       mount(ctx) {
-        createSheets(ctx, h.view, { open: h.open, read: readBytes });
+        createSheets(ctx, h.view, { open: h.open, read: readBytes, keepFiles });
       },
     },
     h.host.transport,

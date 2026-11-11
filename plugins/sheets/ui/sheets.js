@@ -1,20 +1,24 @@
 // The sheets plugin without its DOM. It answers the desk's file and buffer requests
 // (desk.files.visit, .save, .revert, desk.buffers.show, .closed) for the spreadsheets it holds,
-// reads bounded binary ranges, asks with perm.request for a folder its grants do not cover,
-// follows each file on disk, and reads CSV again when the csv-encoding setting changes. CSV and TSV
-// in UTF-8 are edited and saved byte for byte (save.js); the desk hears of unsaved edits with
-// desk.buffers.update. It only talks to ctx.commands, ctx.bridge, ctx.settings and a view, so the
+// opens them one at a time (loading.js), follows each file on disk, and reads CSV again when the
+// csv-encoding setting changes. CSV and TSV in UTF-8 are edited and saved byte for byte (save.js);
+// the desk hears of unsaved edits with desk.buffers.update. Put to sleep while nobody sees it, it
+// keeps its files, the place in each and a CSV's unsaved edits, and comes back to them (keep.js,
+// wake.js). It only talks to ctx.commands, ctx.bridge, ctx.settings, ctx.surface and a view, so the
 // SDK's test host runs it.
 
 import { ENCODINGS } from "./csv.js";
 import { extensionOf } from "./detect.js";
-import { failure } from "./errors.js";
+import { createLoading, NAME, scopeOf } from "./loading.js";
+import { addressOf } from "./model.js";
 import { editing, writeFile } from "./save.js";
+import { createWake } from "./wake.js";
+
+export { NAME } from "./loading.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
  * @typedef {import("@endue-ai/bridge").BridgeEvent} BridgeEvent
- * @typedef {import("@endue-ai/bridge").Permission} Permission
  * @typedef {import("./book.js").Book} Book
  * @typedef {import("./save.js").Tier} Tier
  * @typedef {{
@@ -23,34 +27,23 @@ import { editing, writeFile } from "./save.js";
  * }} Shown tier, modified and editable once the file is open (not while it is a preview)
  * @typedef {(bytes: Uint8Array, file: { name: string, encoding: string }, options: import("./parse.js").ParseOptions) => Book | Promise<Book>} Open
  * @typedef {{ label: string, value: number | null, max: number, detail: string, cancel(): void }} Progress
- * @typedef {{ show(model: Shown | null): void, status(text: string): void, focus(): void, progress?(value: Progress | null): void, commit?(): void }} View
- *   commit: the edit in progress on screen becomes an edit before a save
- * @typedef {Shown & import("./save.js").Editing & { watchId?: string }} Held
- * @typedef {{ edit(r: number, c: number, text: string): boolean }} Sheets What the view asks of
- *   the file on screen: set a cell's text; false when the file has no field there or is read-only
+ * @typedef {{
+ *   show(model: Shown | null): void, status(text: string): void, focus(): void,
+ *   progress?(value: Progress | null): void, commit?(): void,
+ *   where?(buffer: string): import("./keep.js").Where | undefined,
+ *   restore?(buffer: string, where: Partial<import("./keep.js").Where>): void,
+ * }} View commit: the edit in progress on screen becomes an edit before a save; where and
+ *   restore: the place in a file, kept across a sleep
+ * @typedef {Shown & import("./save.js").Editing & { watchId?: string, notice?: string }} Held
+ *   notice: what the status line says of it until the person edits it (an edit a sleep lost)
+ * @typedef {{ edit(r: number, c: number, text: string): boolean, refused(buffer: string, r: number, c: number): void }} Sheets
+ *   What the view asks of the file on screen: set a cell's text (false when the file has no
+ *   field there or is read-only), and say why a cell cannot be edited
  */
 
-export const NAME = "Sheets";
 const SETTING = "csv-encoding";
 /** Formats whose text depends on the csv-encoding setting. */
 const TEXT = new Set(["csv", "tsv"]);
-
-const nameOf = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/") + 1);
-const folderOf = (/** @type {string} */ path) => {
-  const slash = path.lastIndexOf("/");
-  return slash < 0 ? path : path.slice(0, slash);
-};
-/**
- * The scope an fs call carries: the file's whole folder, as the manifest would write it.
- * @param {string} path
- * @returns {{ permission: "fs:read", paths: string[] }}
- */
-const scopeOf = (path) => {
-  const folder = folderOf(path);
-  return { permission: "fs:read", paths: [`${folder}/**`] };
-};
-const codeOf = (/** @type {unknown} */ error) =>
-  /** @type {{ code?: string }} */ (error)?.code ?? "error";
 
 /** The buffer and path the desk sends with every request. */
 const requested = (/** @type {unknown} */ args) => {
@@ -73,19 +66,27 @@ const encodingOf = (/** @type {unknown} */ value) =>
   typeof value === "string" && value in ENCODINGS ? value : "auto";
 
 /** What the status line says once a file is open. */
-function summary(/** @type {Shown} */ { name, book }) {
+export function summary(/** @type {Shown & { notice?: string }} */ { name, book, notice }) {
+  if (notice) return notice;
   if (book.kind === "details") return book.reason;
   if (book.kind === "link") return `${name} is a Google Sheets shortcut.`;
   const n = book.sheets.length;
   return `Opened ${name}: ${n} sheet${n === 1 ? "" : "s"}.`;
 }
 
+/** Why a cell of an open file cannot be edited. */
+function refusal(/** @type {Held} */ file, /** @type {number} */ r, /** @type {number} */ c) {
+  if (file.doc) return `${addressOf(r, c)} is not in ${file.name}: only its own cells are edited.`;
+  return file.tier.detail ?? file.tier.refusal ?? `${NAME} opens ${file.name} read-only.`;
+}
+
 /**
- * @param {Pick<PluginContext, "bridge" | "commands" | "settings">} ctx
+ * @param {Pick<PluginContext, "bridge" | "commands" | "settings" | "surface">} ctx
  * @param {View} view
- * @param {{ open: Open, read: typeof import("@endue-ai/plugin-sdk").readBytes }} options
+ * @param {{ open: Open, read: typeof import("@endue-ai/plugin-sdk").readBytes,
+ *   keepFiles: typeof import("@endue-ai/plugin-sdk").keepFiles }} options
  */
-export function createSheets({ bridge, commands, settings }, view, { open, read: readBytes }) {
+export function createSheets({ bridge, commands, settings, surface }, view, options) {
   /** Open files by the buffer the desk named them with. @type {Map<string, Held>} */
   const files = new Map();
   /** Watch id -> the buffer it follows. @type {Map<string, string>} */
@@ -94,10 +95,6 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
   let shown = null;
   let encoding = "auto";
   let said = "";
-  /** @type {AbortController | undefined} */
-  let opening;
-  /** @type {string | undefined} */
-  let openingBuffer;
 
   const say = (/** @type {string} */ text) => {
     if (text === said) return;
@@ -111,16 +108,8 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
     const { buffer, path, name, size, book, tier, doc, editable } = held;
     return { buffer, path, name, size, book, tier, modified: doc?.modified ?? false, editable };
   };
-  const render = () => view.show(model(shown === null ? undefined : files.get(shown)));
-  const stopOpening = () => {
-    const buffer = openingBuffer;
-    opening?.abort();
-    opening = undefined;
-    openingBuffer = undefined;
-    view.progress?.(null);
-    if (buffer !== undefined) render();
-    return buffer;
-  };
+  const onScreen = () => model(shown === null ? undefined : files.get(shown));
+  const render = () => view.show(onScreen());
   const present = (/** @type {string} */ buffer) => {
     shown = buffer;
     render();
@@ -136,35 +125,6 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
     const file = files.get(buffer);
     if (file?.watchId) watches.delete(file.watchId);
     files.delete(buffer);
-  };
-
-  /** Read a whole file; when the grants do not cover it, ask once for its folder and try again. */
-  const read = async (/** @type {string} */ path, signal, onProgress) => {
-    const scope = scopeOf(path);
-    const refused = new Error(`Not allowed to read ${path}.`);
-    const call = () => readBytes({ bridge }, { path, scope }, { signal, onProgress });
-    const failed = (/** @type {unknown} */ error) =>
-      codeOf(error) === "permission_denied"
-        ? refused
-        : new Error(`Could not read ${path}: ${codeOf(error)}.`);
-    let answer;
-    try {
-      answer = await call();
-    } catch (error) {
-      if (signal.aborted) throw error;
-      if (codeOf(error) !== "permission_denied") throw failed(error);
-      // perm.request answers a refusal as a result; a failed ask counts as one.
-      const reason = `To open ${path} in ${NAME}`;
-      const decision = await bridge
-        .call("perm.request", { permission: /** @type {Permission} */ (scope), reason })
-        .catch(() => ({ granted: false }));
-      signal.throwIfAborted();
-      if (!decision.granted) throw refused;
-      answer = await call().catch((again) => {
-        throw failed(again);
-      });
-    }
-    return answer;
   };
 
   /** Follow the file on disk. Without a watch the file still opens; changes just go unnoticed. */
@@ -195,7 +155,7 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
       }
     });
 
-  const loaded = (async () => {
+  const ready = (async () => {
     const init = await bridge.call("init.get", {}).catch(() => ({ settings: {} }));
     const own = await settings.get(SETTING).catch(() => undefined);
     const values = /** @type {Record<string, unknown> | undefined} */ (init.settings);
@@ -203,78 +163,18 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
     encoding = encodingOf(own ?? fromInit);
   })();
 
-  /** Read and parse in isolation. A partial book is a preview until the whole operation commits. */
-  const load = async (/** @type {string} */ buffer, /** @type {string} */ path, preview = true) => {
-    stopOpening();
-    const job = new AbortController();
-    opening = job;
-    openingBuffer = buffer;
-    const name = nameOf(path);
-    const previous = model(shown === null ? undefined : files.get(shown));
-    let first = false;
-    let size = 0;
-    const report = (label, value, max, detail) => {
-      if (opening === job && !first)
-        view.progress?.({ label, value, max, detail, cancel: () => job.abort() });
-    };
-    report("Reading", null, 1, name);
-    say(`Opening ${name}…`);
-    try {
-      const bytes = await read(path, job.signal, (done, total) =>
-        report(
-          "Reading",
-          done,
-          total,
-          `${done.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} bytes`,
-        ),
-      );
-      size = bytes.length;
-      // Keep only the signature for a worker error: ownership of the file goes to the worker.
-      const signature = bytes.slice(0, 512);
-      await loaded;
-      job.signal.throwIfAborted();
-      report("Parsing", null, 1, name);
-      let book;
-      try {
-        book = await open(
-          bytes,
-          { name, encoding },
-          {
-            signal: job.signal,
-            progress: (done, total) =>
-              report(
-                "Parsing",
-                done,
-                total,
-                `${done.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} rows`,
-              ),
-            sheet: (book) => {
-              if (opening !== job || job.signal.aborted || !preview) return;
-              view.show({ buffer, path, name, size, book });
-              if (!first) view.focus();
-              first = true;
-              view.progress?.(null);
-            },
-          },
-        );
-      } catch (error) {
-        if (job.signal.aborted) throw error;
-        book = failure(signature, name, error);
-      }
-      job.signal.throwIfAborted();
-      return { buffer, path, name, size, book, focused: first };
-    } catch (error) {
-      if (opening === job) view.show(previous);
-      if (job.signal.aborted) throw new Error(`Opening ${name} was cancelled.`);
-      throw error;
-    } finally {
-      if (opening === job) {
-        opening = undefined;
-        openingBuffer = undefined;
-        view.progress?.(null);
-      }
-    }
-  };
+  const loading = createLoading({
+    bridge,
+    view,
+    open: options.open,
+    readBytes: options.read,
+    say,
+    render,
+    onScreen,
+    ready,
+    encoding: () => encoding,
+  });
+  const { load } = loading;
 
   /** Tell the desk when a file's edits leave it unsaved, and when they no longer do. */
   const report = (/** @type {Held} */ file) => {
@@ -284,34 +184,70 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
     commands.run("desk.buffers.update", { id: file.buffer, modified }).catch(() => {});
   };
 
+  /** Hold an opened file for its buffer and follow it on disk, unless it keeps a watch it had. */
+  const hold = (/** @type {Held} */ file, /** @type {string | undefined} */ watchId) => {
+    forget(file.buffer);
+    files.set(file.buffer, file);
+    if (!watchId) return watch(file);
+    file.watchId = watchId;
+    watches.set(watchId, file.buffer);
+  };
+
+  // Put to sleep while nobody sees it, Sheets keeps its files and comes back to them (ADR 0070).
+  const wake = createWake({
+    surface,
+    keepFiles: options.keepFiles,
+    view,
+    load,
+    files: () => [...files.values()],
+    shown: () => shown,
+    has: (buffer) => files.has(buffer),
+    hold,
+    present: (file) => {
+      shown = file.buffer;
+      render();
+    },
+    unsaved: (file) => report(file),
+    marked: (buffer) => {
+      commands.run("desk.buffers.update", { id: buffer, modified: false }).catch(() => {});
+    },
+    say,
+    summary,
+    busy: () => loading.opening() !== undefined,
+  });
+
   answer("desk.files.visit", async (args) => {
     const { buffer, path } = requested(args);
     if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
     const loaded = await load(buffer, path);
+    wake.opened(buffer);
     /** @type {Held} */
     const file = { ...loaded, ...editing(loaded) };
-    forget(buffer);
-    files.set(buffer, file);
+    const watching = hold(file, undefined);
     shown = buffer;
     render();
-    if (!file.focused) view.focus();
-    await watch(file);
+    if (!loaded.focused) view.focus();
+    await watching;
     return summary(file);
   });
 
   answer("desk.files.revert", async (args) => {
     const { buffer, path } = requested(args);
+    // A file the frame lost opens from disk, where it was; what the sleep kept unsaved is gone.
+    const reopened = await wake.lost(buffer, path, { edits: false });
+    if (reopened) return summary(reopened);
     const before = held(buffer);
-    const file = await load(buffer, path ?? before.path, shown === buffer);
+    const file = await load(buffer, path ?? before.path, { preview: shown === buffer });
     if (files.get(buffer) !== before) return "";
     Object.assign(before, { ...file, ...editing(file), watchId: before.watchId });
+    delete before.notice;
     if (shown === buffer) render();
     return summary(before);
   });
 
   answer("desk.files.save", async (args) => {
     const { buffer, path } = requested(args);
-    const file = held(buffer);
+    const file = (await wake.lost(buffer, undefined)) ?? held(buffer);
     if (!file.doc) throw new Error(file.tier.refusal ?? `${NAME} opens files read-only.`);
     if (shown === buffer) view.commit?.();
     const saving = file.doc.save();
@@ -320,14 +256,19 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
     // desk.files clears the list's mark after a save; edits made while it was written stay
     // unsaved, and the desk hears so once this answer has reached it.
     file.reported = false;
+    delete file.notice;
     if (shown === buffer) render();
     if (file.doc.modified) setTimeout(() => report(file), 0);
     return `Saved ${file.name}.`;
   });
 
-  answer("desk.buffers.show", (args) => {
-    stopOpening();
-    const file = held(requested(args).buffer);
+  answer("desk.buffers.show", async (args) => {
+    const { buffer, path } = requested(args);
+    // Its file still opening as the window woke waits for it; one the frame lost opens now.
+    await wake.settled(buffer);
+    await wake.lost(buffer, path, { show: true });
+    loading.stop();
+    const file = held(buffer);
     present(file.buffer);
     // The desk shows a file right after its visit: the status line keeps saying what it is.
     return summary(file);
@@ -335,7 +276,8 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
 
   answer("desk.buffers.closed", (args) => {
     const { buffer } = requested(args);
-    const pending = stopOpening();
+    const pending = loading.stop();
+    if (wake.closed(buffer) && !files.has(buffer)) return "";
     if (pending === buffer && !files.has(buffer)) return "";
     held(buffer);
     forget(buffer);
@@ -364,7 +306,7 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
         if (!TEXT.has(extensionOf(file.name))) continue;
         // Unsaved edits are the person's: the file keeps the encoding it was edited in.
         if (file.doc?.modified) continue;
-        const next = await load(file.buffer, file.path, shown === file.buffer);
+        const next = await load(file.buffer, file.path, { preview: shown === file.buffer });
         if (files.get(file.buffer) !== file) continue;
         Object.assign(file, { ...next, ...editing(next), watchId: file.watchId });
         if (shown === file.buffer) render();
@@ -374,6 +316,7 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
   });
 
   render();
+  wake.start();
 
   /** @type {Sheets} */
   return {
@@ -382,10 +325,15 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
       const result = file?.doc?.set(r, c, text) ?? "outside";
       if (!file || result === "outside") return false;
       if (result === "changed") {
+        delete file.notice;
         report(file);
         render();
       }
       return true;
+    },
+    refused(buffer, r, c) {
+      const file = files.get(buffer);
+      say(file ? refusal(file, r, c) : `${NAME} is still opening this file.`);
     },
   };
 }

@@ -98,7 +98,7 @@ export function fieldIndex(/** @type {CsvSyntax} */ s, /** @type {number} */ r, 
 }
 
 /** The row field f is in. */
-function rowOf(/** @type {CsvSyntax} */ s, /** @type {number} */ f) {
+export function rowOf(/** @type {CsvSyntax} */ s, /** @type {number} */ f) {
   let lo = 0;
   let hi = s.rows - 1;
   while (lo < hi) {

@@ -315,6 +315,14 @@ export function createGrid(doc, { root, scroller, sizer, layer }, { changed }) {
       render();
       return zoom;
     },
+    /** The zoom now. */
+    level: () => zoom,
+    /** Zoom to the step nearest `to`, as a window that slept comes back to it. */
+    zoomTo(/** @type {number} */ to) {
+      zoom = ZOOMS.reduce((a, b) => (Math.abs(b - to) < Math.abs(a - to) ? b : a), 1);
+      layout();
+      render();
+    },
     clear() {
       sheet = undefined;
       selection = undefined;

@@ -3,9 +3,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StubError } from "../../../packages/bridge/src/index";
-import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
+import { defineUiPlugin, keepFiles, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { openBook } from "../ui/book.js";
+import type { Where } from "../ui/keep.js";
 import { createSheets, type Open, type Sheets, type Shown } from "../ui/sheets.js";
 
 type Options = Parameters<typeof createTestHost>[0];
@@ -17,9 +18,15 @@ export interface RecordingView {
   statuses: string[];
   /** How many times the plugin moved the keyboard focus to its grid. */
   focused: number;
+  /** Where the person is in each file, as the page's view would say it (view.js where). */
+  places: Map<string, Where>;
+  /** What the plugin gave back to the view as a file came back from a sleep. */
+  restored: Array<[string, Partial<Where>]>;
   show(model: Shown | null): void;
   status(text: string): void;
   focus(): void;
+  where(buffer: string): Where | undefined;
+  restore(buffer: string, where: Partial<Where>): void;
 }
 
 export function recordingView(): RecordingView {
@@ -27,10 +34,16 @@ export function recordingView(): RecordingView {
     shown: [],
     statuses: [],
     focused: 0,
+    places: new Map(),
+    restored: [],
     show: (model) => view.shown.push(model),
     status: (text) => view.statuses.push(text),
     focus: () => {
       view.focused++;
+    },
+    where: (buffer) => view.places.get(buffer),
+    restore: (buffer, where) => {
+      view.restored.push([buffer, where]);
     },
   };
   return view;
@@ -61,6 +74,10 @@ export async function mount(
     commands?: Commands;
     settings?: Record<string, unknown>;
     open?: Open;
+    /** What the last sleep kept (ctx.surface.restored). */
+    restored?: unknown;
+    /** False: resolve once mounted, without waiting for its calls (a test holds one back). */
+    settled?: boolean;
   } = {},
 ): Promise<Mounted> {
   const host = createTestHost({
@@ -68,6 +85,7 @@ export async function mount(
     handlers: { "init.get": () => ({ profile: "default", settings: {} }), ...options.handlers },
     commands: { ...DESK, ...options.commands },
     settings: options.settings,
+    ...(options.restored === undefined ? {} : { restored: options.restored }),
   });
   const view = recordingView();
   let app: Sheets | undefined;
@@ -75,7 +93,11 @@ export async function mount(
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createSheets(ctx, view, { read: readBytes, open: options.open ?? openBook });
+        app = createSheets(ctx, view, {
+          read: readBytes,
+          open: options.open ?? openBook,
+          keepFiles,
+        });
         mounted = true;
       },
     },
@@ -84,7 +106,7 @@ export async function mount(
   const settle = async () => {
     for (let i = 0; i < 4; i++) await host.settle();
   };
-  await settle();
+  if (options.settled !== false) await settle();
   if (!mounted) throw new Error("the plugin did not mount");
   return {
     host,

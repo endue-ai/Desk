@@ -1,16 +1,18 @@
 // Editing a cell in the formula bar (ADR 0071). F2, a double-click or typing on the grid starts an
 // edit of the active cell, and so does clicking the bar; Enter commits and moves down (Shift+Enter
 // up), Tab right (Shift+Tab left), Escape puts the cell's text back, and leaving the bar commits.
-// Only a cell the file has is edited: the bar is read-only everywhere else. A key with Mod or Alt is
-// never taken, so the desk's chords pass; while an input method composes, the keys are its own.
+// Only a cell the file has is edited: the bar is read-only everywhere else, and an edit begun there
+// says why on the status line. A key with Mod or Alt is never taken, so the desk's chords pass;
+// while an input method composes, the keys are its own.
 
 /**
  * @typedef {{ r: number, c: number }} Address
  * @typedef {{
  *   active(): Address | undefined, editable(r: number, c: number): boolean,
  *   text(r: number, c: number): string, commit(r: number, c: number, text: string): unknown,
- *   move(dr: number, dc: number): void,
- * }} EditorActions text: what the bar shows for a cell; move: the selection after a commit
+ *   move(dr: number, dc: number): void, refused(r: number, c: number): void,
+ * }} EditorActions text: what the bar shows for a cell; move: the selection after a commit;
+ *   refused: an edit was begun on a cell that cannot be edited
  */
 
 const STEPS = /** @type {Record<string, [number, number]>} */ ({ Enter: [1, 0], Tab: [0, 1] });
@@ -30,7 +32,10 @@ export function createEditor({ root, scroller, bar }, actions) {
   /** Start editing the active cell, with `value` in place of its text when given. */
   const begin = (/** @type {string | undefined} */ value) => {
     const at = actions.active();
-    if (!editable(at)) return false;
+    if (!editable(at)) {
+      if (at) actions.refused(at.r, at.c);
+      return false;
+    }
     editing = at;
     bar.readOnly = false;
     if (value !== undefined) bar.value = value;

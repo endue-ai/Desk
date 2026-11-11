@@ -9,6 +9,7 @@ import {
   fieldText,
   isQuoted,
   parseSyntax,
+  rowOf,
   serialize,
 } from "./csv-syntax.js";
 
@@ -43,6 +44,19 @@ export function createCsvDoc(file) {
     text(/** @type {number} */ r, /** @type {number} */ c) {
       const f = field(r, c);
       return f < 0 ? undefined : texts.get(f);
+    },
+    /**
+     * Every cell whose text differs from the file on disk, as [row, column, text] in the file's
+     * order: what a save would write, and what a sleep keeps (keep.js).
+     * @returns {Array<[number, number, string]>}
+     */
+    edits() {
+      return [...pending.keys()]
+        .sort((a, b) => a - b)
+        .map((f) => {
+          const r = rowOf(syntax, f);
+          return [r, f - (syntax.rowStarts[r] ?? 0), texts.get(f) ?? fieldText(syntax, f)];
+        });
     },
     /**
      * Set a cell's text: "changed", "same" when it already shows that text, or "outside" when the
