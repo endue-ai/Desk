@@ -22,8 +22,8 @@ addresses (`endue.mail.addresses`), else by the message's recipients.
 
 Keyboard: `j` `k` or arrows move, Enter opens, `r` `a` `f` reply, reply all and forward, `e` archives,
 `#` trashes, `s` flags, `u` toggles unread, `c` composes, `/` searches, `y` `m` `n` answer an invitation,
-`Mod+Enter` sends, Escape puts the composer away (the draft stays). Chords reach the desk. Discard asks
-first when the draft holds text (agents' `endue.mail.discard` does not); dates follow the system locale.
+`Mod+Enter` sends, Escape puts the composer away (a blank draft is not kept). Chords reach the desk. Discard
+asks first when the draft holds text (agents' `endue.mail.discard` does not); dates follow the system locale.
 
 | Permission | Why |
 | --- | --- |

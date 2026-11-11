@@ -131,4 +131,25 @@ test.describe("endue.mail at the first sizes", () => {
     for (let nth = 1; nth <= MAILBOXES.length; nth++)
       expect(await inside(frame, `#mailboxes li:nth-child(${nth}) button`, "#nav")).toBe(true);
   });
+
+  test("opening and closing an empty new message keeps no draft", async ({ page }) => {
+    const frame = await open(page, SIZES.cascade);
+    const drafts = frame.locator('#mailboxes [data-mailbox="drafts"]');
+    await expect(drafts).toHaveText("Drafts");
+    await frame.locator("#compose").click();
+    await expect(frame.locator("#composer")).toBeVisible();
+    await frame.locator("#composer [data-close]").click();
+    await expect(frame.locator("#composer")).toBeHidden();
+    await expect(frame.locator("#messages")).toBeVisible();
+    await expect(drafts).toHaveText("Drafts");
+    // Escape on an empty message is the same, and a written one is kept.
+    await frame.locator("#compose").click();
+    await frame.locator("#composer [name=to]").press("Escape");
+    await expect(frame.locator("#composer")).toBeHidden();
+    await expect(drafts).toHaveText("Drafts");
+    await frame.locator("#compose").click();
+    await frame.locator("#composer [name=subject]").fill("Lunch");
+    await frame.locator("#composer [data-close]").click();
+    await expect(drafts).toHaveText("Drafts1");
+  });
 });

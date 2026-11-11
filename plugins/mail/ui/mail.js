@@ -6,7 +6,7 @@
 
 import { createActions } from "./actions.js";
 import { registerCommands } from "./commands.js";
-import { NO_ACCOUNT } from "./compose.js";
+import { blank, NO_ACCOUNT } from "./compose.js";
 import { latestOf, latestQuery } from "./latest.js";
 import {
   MAILBOXES,
@@ -335,9 +335,11 @@ export function createMail({ bridge, commands, settings, surface }, view, option
         .value;
     const saved = asArgs(await read(VIEW_KEY));
     const drafts = await read(DRAFTS_KEY);
+    // A blank draft an earlier version kept (opened and closed empty) is not shown.
     s.drafts = /** @type {Draft[]} */ (
       (Array.isArray(drafts) ? drafts : []).filter(
-        (d) => d && typeof d === "object" && typeof d.id === "string",
+        (d) =>
+          d && typeof d === "object" && typeof d.id === "string" && !blank(d, s.conf.signature),
       )
     );
     s.answers = /** @type {typeof s.answers} */ (asArgs(await read(ANSWERS_KEY)));

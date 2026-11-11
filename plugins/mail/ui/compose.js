@@ -218,6 +218,21 @@ export function newDraft(given = {}) {
   };
 }
 
+/**
+ * Whether a draft holds nothing anyone wrote: no recipient, no subject, and no text but the
+ * signature the plugin puts in a new message. A blank draft is never kept, and goes without asking.
+ * @param {Pick<Draft, "to" | "cc" | "bcc" | "subject" | "body">} draft
+ * @param {string} [signature]
+ */
+export function blank(draft, signature = "") {
+  const empty = (/** @type {string | undefined} */ text) => (text ?? "").trim() === "";
+  const body = (draft.body ?? "").trim();
+  return (
+    [draft.to, draft.cc, draft.bcc, draft.subject].every(empty) &&
+    (body === "" || body === signature.trim())
+  );
+}
+
 /** Said when there is no account to send from, on Send and on Refresh. */
 export const NO_ACCOUNT = "No mail account is connected yet.";
 

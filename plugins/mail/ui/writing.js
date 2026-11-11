@@ -3,6 +3,7 @@
 // Accept, Tentative or Decline sends to the organizer (RFC 5546, RFC 6047). It talks to the DOM
 // only through the view and to the bridge only through actions.js.
 import {
+  blank,
   forwardDraft,
   newDraft,
   parseAddresses,
@@ -48,10 +49,6 @@ import { localZone } from "./ical/values.js";
  *   now?: () => number,
  * }} Deps
  */
-
-/** Whether a draft holds anything worth asking about: text in a recipient, the subject or the body. */
-const written = (/** @type {Draft} */ d) =>
-  [d.to, d.cc, d.bcc, d.subject, d.body].some((field) => (field ?? "").trim() !== "");
 
 const DISCARD = {
   title: "Discard this draft?",
@@ -141,8 +138,14 @@ export function createWriting(deps) {
   let saving;
 
   const show = (/** @type {string[]} */ problems = []) => view.composer(draft, problems);
+  /** Whether a draft holds anything worth keeping or asking about. @param {Draft} d */
+  const written = (d) => !blank(d, deps.conf().signature);
+  /** Save the draft on screen; a blank one is not kept, and leaves the store if it was there. */
   const keep = () => {
-    if (draft) drafts.put({ ...draft, savedAt: new Date(now()).toISOString() });
+    const current = draft;
+    if (!current) return;
+    if (written(current)) drafts.put({ ...current, savedAt: new Date(now()).toISOString() });
+    else if (drafts.all().some((d) => d.id === current.id)) drafts.remove(current.id);
   };
   const open = (/** @type {Draft} */ next) => {
     draft = next;
@@ -270,7 +273,7 @@ export function createWriting(deps) {
       return discard();
     },
 
-    /** Put the composer away, keeping the draft. */
+    /** Put the composer away, keeping the draft when it holds anything. */
     close: () => {
       if (!draft) return;
       clearTimeout(saving);
