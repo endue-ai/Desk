@@ -34,7 +34,7 @@ jump. `fs.watch` runs `desk.files.changed`. `ui/hwp/` follows Hancom's published
 | `ui/zip.js`, `ui/cfb.js`, `ui/bytes.js`, `ui/xml.js`, `ui/numbers.js` | Containers, deflate (DecompressionStream), XML, list numbers |
 | `ui/ooxml/`, `ui/doc/`, `ui/odf/`, `ui/rtf/`, `ui/hwp/`, `ui/hwpx/`, `ui/abw/` | The full readers |
 | `ui/text/`, `ui/package.js` | WordPerfect and Works text, Pages and .gdoc |
-| `ui/view/`, `ui/style.css` | Pages drawn and placed, renderer, panels, find, links, progress, details; the theme's `--desk-*` tokens only (`tests/theme.test.ts`), a page's paper, ink and type and a format's palette marked `theme: content` |
+| `ui/view/`, `ui/style.css`, `ui/small.css` | Pages drawn and placed, renderer, panels, find, links, progress, details, a narrow page (`small.css`); the theme's `--desk-*` tokens only (`tests/theme.test.ts`), a page's paper, ink and type and a format's palette marked `theme: content` |
 
 `pnpm exec vitest run plugins/docs` · `just test-e2e docs.spec.ts` · `cargo run -p desk-cli -- plugin
 validate plugins/docs` · `tests/fixtures/make.sh` (real tools; also `doc/make.sh`, `hwp/make.mjs`)

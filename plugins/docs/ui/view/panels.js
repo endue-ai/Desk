@@ -9,7 +9,7 @@ import { plainText } from "../model.js";
  * @typedef {"outline" | "comments"} Panel
  */
 
-/** A page this narrow lays the panels over the pages (style.css says the same width). */
+/** A page this narrow lays the panels over the pages (small.css says the same width). */
 export const NARROW = "(max-width: 719px)";
 
 /**
