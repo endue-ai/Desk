@@ -22,6 +22,8 @@ function items(ctx: ShellCtx, s: DeskState): Item[] {
   const running = open.filter((t) => t.status === "working").length;
   const waiting = open.length - running;
   const sees = [...s.sees.folders, s.sees.calendar, s.sees.mail, s.sees.mic].filter(Boolean).length;
+  // The desks besides this one: none while the desk knows no other (issue 158).
+  const others = s.desks.filter((d) => !d.here).length;
   return [
     b.mode === "local"
       ? {
@@ -50,7 +52,7 @@ function items(ctx: ShellCtx, s: DeskState): Item[] {
     {
       id: "desks",
       icon: "link",
-      label: `${ctx.tr("desks")} · ${s.desks.length - 1}`,
+      label: `${ctx.tr("desks")} · ${others}`,
       dot: s.desks.some((d) => d.here && d.busy) ? "active" : undefined,
     },
     s.vm === "on"
@@ -144,6 +146,8 @@ function body(ctx: ShellCtx, id: RailId, s: DeskState): Child[] {
           ),
         );
     case "desks":
+      // Nothing to bring here: say so rather than offer a button that does nothing.
+      if (!s.desks.some((d) => !d.here)) return [row(ctx.tr("empty"))];
       return [
         ...s.desks.map((d) =>
           row(
