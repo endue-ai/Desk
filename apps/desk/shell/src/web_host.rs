@@ -15,6 +15,7 @@ pub mod clock;
 mod copy_wake;
 pub mod cursor;
 pub mod drag;
+pub mod edit_keys;
 pub mod frame_asks;
 pub mod frames;
 pub mod input;

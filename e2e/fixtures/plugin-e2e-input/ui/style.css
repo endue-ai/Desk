@@ -16,6 +16,20 @@ body {
   font: inherit;
 }
 
+/* Under the rest, in the window's left half (the desk's rail may cover its right): lines for the
+   document's ends. */
+[data-testid="area"] {
+  position: absolute;
+  left: 10px;
+  top: 222px;
+  width: 180px;
+  height: 36px;
+  box-sizing: border-box;
+  margin: 0;
+  font: 11px/1.4 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  resize: none;
+}
+
 .zone,
 .resize,
 .custom {

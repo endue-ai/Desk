@@ -35,12 +35,13 @@ const DEFAULT_INIT = "init-no-first-run.yaml";
 /**
  * The app's environment a spec adds: persist.spec.ts and keys-follow.spec.ts ask for permissions
  * from e2e.ask, sandbox.spec.ts runs e2e.sandbox's checks in its renderer, the input specs (the
- * hover titles' too, #156) run with the input and drag fixtures (#56), the native plugin spec with
- * the native example (#59), and the accessibility and popup specs with their own fixtures (#57,
- * #156).
+ * editing keys' and the hover titles' too, #156) run with the input and drag fixtures (#56), the
+ * native plugin spec with the native example (#59), and the accessibility and popup specs with
+ * their own fixtures (#57, #156).
  */
 const ENV: Record<string, Record<string, string>> = {
   "ime.spec.ts": compositorEnv(root),
+  "editing.spec.ts": compositorEnv(root),
   "dnd.spec.ts": compositorEnv(root),
   "tooltips.spec.ts": compositorEnv(root),
   "a11y.spec.ts": {

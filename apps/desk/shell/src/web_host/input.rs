@@ -1,9 +1,10 @@
 //! The surface protocol's input on a windowless CEF browser (#56): `pointer.*` become
 //! `SendMouseMoveEvent`, `SendMouseClickEvent` and `SendMouseWheelEvent` in the view's logical pixels
 //! with the held buttons and keys as flags; `key.*` become `SendKeyEvent` with the OS's own key codes
-//! (`key_codes.rs`); `ime.*` become `ImeSetComposition`, `ImeCommitText` (or
-//! `ImeFinishComposingText` for the text already composed) and `ImeCancelComposition`; `focus.*` is
-//! `SetFocus`. CEF's wheel deltas count up for "towards the top", the DOM's for "towards the end".
+//! (`key_codes.rs`), the Mac's editing keys going down with Blink's edit commands (`edit_keys.rs`);
+//! `ime.*` become `ImeSetComposition`, `ImeCommitText` (or `ImeFinishComposingText` for the text
+//! already composed) and `ImeCancelComposition`; `focus.*` is `SetFocus`. CEF's wheel deltas count
+//! up for "towards the top", the DOM's for "towards the end".
 
 use cef::*;
 use desk_surface::generated::{
@@ -11,7 +12,7 @@ use desk_surface::generated::{
     SurfaceWheelUnit,
 };
 
-use super::key_codes;
+use super::{edit_keys, key_codes};
 
 /// Pixels a wheel line scrolls in Chromium.
 const LINE: f64 = 40.0;
@@ -153,7 +154,10 @@ pub fn deliver(host: &BrowserHost, message: &M, composing: &mut Option<String>, 
             if k.repeat {
                 event.modifiers |= flag(cef::sys::cef_event_flags_t::EVENTFLAG_IS_REPEAT);
             }
-            host.send_key_event(Some(&event));
+            // The Mac's editing keys go down with their edit commands (#156, `edit_keys.rs`).
+            if !edit_keys::send(host, &event, &k.code, &k.key, &k.modifiers, k.repeat) {
+                host.send_key_event(Some(&event));
+            }
         }
         M::SurfaceKeyUp(k) => {
             let event = key_event(KeyEventType::KEYUP, &k.code, &k.key, &k.modifiers, true);
