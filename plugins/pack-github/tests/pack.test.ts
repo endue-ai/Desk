@@ -1,6 +1,6 @@
 // desk.pack-github, the first built-in pack (ADR 0108): data only, it brings desk.github, opens a
-// board and a timeline of its work (universal views over the desk.github items, ADR 0087) and lays
-// out the "Builder morning" profile. Make with Eris finds it by "github" or "깃허브".
+// board and a timeline of its work (universal views over the desk.github items, ADR 0087) and switches
+// to the "Builder morning" profile. Make with Eris finds it by "github" or "깃허브".
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -59,14 +59,18 @@ describe("desk.pack-github", () => {
     }
   });
 
-  it("lays out Builder morning with GitHub, Today and Projects on", () => {
+  it("turns GitHub, Today and Projects on in Builder morning, and places no window", () => {
     const profiles = manifest().contributes?.profiles ?? [];
     const morning = profiles.find((p) => p.id === "builder-morning");
     expect(morning?.name).toBe("Builder morning");
     expect(morning?.plugins?.enabled).toEqual(
       expect.arrayContaining(["desk.github", "desk.pack-github", "desk.today", "endue.projects"]),
     );
-    const mode = morning?.settings?.["desk.shell.mode"] as { desktops: Record<string, unknown> };
-    expect(Object.keys(mode.desktops)).toEqual(["1"]);
+    // The board is an overlay, not a window; a window the profile placed would stay in the drawer
+    // after Undo switches back, so Apply and Undo leave the windows as they are (#161).
+    const mode = morning?.settings?.["desk.shell.mode"] as Record<string, unknown>;
+    expect(mode).toMatchObject({ icon: "sunrise", triggers: { time: "07:00-10:00" } });
+    expect(mode.desktops).toBeUndefined();
+    expect(mode.desktop).toBeUndefined();
   });
 });

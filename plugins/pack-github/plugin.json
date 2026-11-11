@@ -85,30 +85,6 @@
             "icon": "sunrise",
             "author": "endue",
             "version": "1.0.0",
-            "desktops": {
-              "1": {
-                "surfaces": [
-                  {
-                    "id": "projects",
-                    "plugin": "endue.projects",
-                    "x": 80,
-                    "y": 120,
-                    "w": 720,
-                    "h": 520,
-                    "pinned": false
-                  },
-                  {
-                    "id": "github",
-                    "plugin": "desk.universal",
-                    "x": 840,
-                    "y": 120,
-                    "w": 520,
-                    "h": 520,
-                    "pinned": false
-                  }
-                ]
-              }
-            },
             "triggers": { "manual": true, "time": "07:00-10:00" }
           }
         }
