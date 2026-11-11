@@ -4,6 +4,9 @@ date: 2026-11-09
 decision-makers: Team endue
 ---
 
+Status: amended by ADR XXXX: a fill still floats, but stacks with the normal windows in the order
+of use, and the window in use is above it.
+
 # Windows snap to halves at the app's edges and quarters at its corners, and a snapped window floats
 
 ## Context and Problem Statement

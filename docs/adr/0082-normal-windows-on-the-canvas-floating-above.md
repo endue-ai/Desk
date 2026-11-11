@@ -4,6 +4,9 @@ date: 2026-11-03
 decision-makers: Team endue
 ---
 
+Status: amended by ADR XXXX: the window in use is on top of every window, a floating one too, and
+the others stack in the order of use; floating windows stay above the normal ones not in use.
+
 # Windows are normal on the canvas by default; floating windows stay put above them
 
 ## Context and Problem Statement
