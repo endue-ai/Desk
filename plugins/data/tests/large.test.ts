@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
+import { defineUiPlugin, keepFiles, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { createData } from "../ui/data.js";
 import { file, recordingView } from "./harness";
@@ -25,7 +25,7 @@ it("Cancel terminates parsing and preserves the already-open document", async ()
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createData(ctx, view, { readBytes: read, startWorker });
+        app = createData(ctx, view, { readBytes: read, startWorker, keepFiles });
       },
     },
     host.transport,
@@ -78,7 +78,7 @@ it("visit reads binary ranges with chunk progress and transfers >1 MiB into the 
     await defineUiPlugin(
       {
         mount(ctx) {
-          createData(ctx, view, { readBytes, startWorker: worker.start });
+          createData(ctx, view, { readBytes, startWorker: worker.start, keepFiles });
         },
       },
       host.transport,
@@ -132,7 +132,7 @@ it("Cancel aborts a pending ranged read without replacing the current buffer", a
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createData(ctx, view, { readBytes, startWorker: vi.fn() });
+        app = createData(ctx, view, { readBytes, startWorker: vi.fn(), keepFiles });
       },
     },
     host.transport,

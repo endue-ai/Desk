@@ -4,9 +4,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StubError } from "../../../packages/bridge/src/index";
-import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
+import { defineUiPlugin, keepFiles, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { createData, type SchemaState, type Shown } from "../ui/data.js";
+import type { Where } from "../ui/keep.js";
 import { createView } from "../ui/view.js";
 
 type Options = Parameters<typeof createTestHost>[0];
@@ -20,11 +21,17 @@ export interface RecordingView {
   statuses: string[];
   /** How many times the plugin moved the keyboard focus to its surface. */
   focused: number;
+  /** Where the person is in each file, as the page's view would say it (places.js where). */
+  places: Map<string, Where>;
+  /** What the plugin gave back to the view as a file came back from a sleep. */
+  restored: Array<[string, Partial<Where>]>;
   show(model: Shown | null): void;
   schema(buffer: string, state: SchemaState): void;
   mask(keys: boolean): void;
   status(text: string): void;
   focus(): void;
+  where(buffer: string): Where | undefined;
+  restore(buffer: string, where: Partial<Where>): void;
 }
 
 export function recordingView(): RecordingView {
@@ -34,12 +41,18 @@ export function recordingView(): RecordingView {
     masks: [],
     statuses: [],
     focused: 0,
+    places: new Map(),
+    restored: [],
     show: (model) => view.shown.push(model),
     schema: (buffer, state) => view.schemas.push({ buffer, state }),
     mask: (keys) => view.masks.push(keys),
     status: (text) => view.statuses.push(text),
     focus: () => {
       view.focused++;
+    },
+    where: (buffer) => view.places.get(buffer),
+    restore: (buffer, where) => {
+      view.restored.push([buffer, where]);
     },
   };
   return view;
@@ -68,6 +81,10 @@ interface MountOptions {
   handlers?: Handlers;
   commands?: Commands;
   settings?: Record<string, unknown>;
+  /** What the last sleep kept (ctx.surface.restored). */
+  restored?: unknown;
+  /** False: resolve once mounted, without waiting for its calls (a test holds one back). */
+  settled?: boolean;
 }
 
 async function mountWith<V extends AnyView>(view: V, options: MountOptions): Promise<Mounted<V>> {
@@ -76,12 +93,13 @@ async function mountWith<V extends AnyView>(view: V, options: MountOptions): Pro
     handlers: options.handlers ?? {},
     commands: { ...DESK, ...options.commands },
     settings: options.settings,
+    ...(options.restored === undefined ? {} : { restored: options.restored }),
   });
   let app: ReturnType<typeof createData> | undefined;
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createData(ctx, view, { readBytes });
+        app = createData(ctx, view, { readBytes, keepFiles });
       },
     },
     host.transport,
@@ -89,7 +107,7 @@ async function mountWith<V extends AnyView>(view: V, options: MountOptions): Pro
   const settle = async () => {
     for (let i = 0; i < 6; i++) await host.settle();
   };
-  await settle();
+  if (options.settled !== false) await settle();
   if (!app) throw new Error("the plugin did not mount");
   return {
     host,

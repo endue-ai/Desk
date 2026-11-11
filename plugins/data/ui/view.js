@@ -8,6 +8,7 @@
 import { createEditField, showTier } from "./edit/field.js";
 import { createPanel } from "./panel.js";
 import { createPanes } from "./panes.js";
+import { createPlaces } from "./places.js";
 import { CHECKED } from "./schemas.js";
 import { chainOf, search } from "./search.js";
 import { isMasked, maskRanges } from "./secrets.js";
@@ -185,6 +186,11 @@ export function createView(doc, actions) {
   });
 
   const stateOf = () => (model ? states.get(model.buffer) : undefined);
+  const places = createPlaces(states, {
+    shown: () => (model ? { buffer: model.buffer, remote: Boolean(model.opened.remote) } : null),
+    selected: () => tree.selected(),
+    reveal: (path) => tree.reveal(path),
+  });
 
   const setMode = (/** @type {Mode} */ mode) => {
     const state = stateOf();
@@ -346,6 +352,7 @@ export function createView(doc, actions) {
       if (next.opened.remote) tree.load(data, state, maskKeys, next.opened.remote);
       raw.load(next.opened, data ? maskRanges(data, maskKeys) : [], data?.errors ?? []);
       if (!next.opened.remote) tree.load(data, state, maskKeys);
+      safely(() => places.shown(next.buffer, Boolean(next.opened.remote)));
       panel.show(next.opened, next.schema);
     },
     /** @param {string} buffer @param {SchemaState} state */
@@ -367,6 +374,8 @@ export function createView(doc, actions) {
     },
     /** @param {string} text */
     status: say,
+    where: places.where,
+    restore: places.restore,
     focus() {
       if (!model) return;
       if (!$.details.hidden) $.details.focus();

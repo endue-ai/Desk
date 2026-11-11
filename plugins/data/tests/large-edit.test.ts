@@ -1,7 +1,7 @@
 // A 10 MiB JSON opens in the SDK worker; one value edited there and saved differs from the file only
 // in that value's bytes. The file is generated here, not committed.
 import { afterEach, expect, it, vi } from "vitest";
-import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
+import { defineUiPlugin, keepFiles, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { assertMinimalEdit } from "../../../packages/plugin-sdk/src/testing/round-trip";
 import { createData } from "../ui/data.js";
@@ -48,7 +48,7 @@ it("edits one value of a 10 MiB JSON in the worker and saves only that value's b
     await defineUiPlugin(
       {
         mount(ctx) {
-          app = createData(ctx, view, { readBytes, startWorker: worker.start });
+          app = createData(ctx, view, { readBytes, startWorker: worker.start, keepFiles });
         },
       },
       host.transport,
@@ -74,5 +74,67 @@ it("edits one value of a 10 MiB JSON in the worker and saves only that value's b
     await host.command("desk.buffers.closed", target);
   } finally {
     worker.close();
+  }
+}, 60_000);
+
+it("a value edited in the worker is kept across a sleep and set there again, still marked (#162)", async () => {
+  const payload = largeJson(2 * 1024 * 1024);
+  const target = file("~/data/large.json");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url, init) => {
+      const match = /bytes=(\d+)-(\d+)/.exec(String(init.headers.Range));
+      if (!match) throw new Error("Missing byte range");
+      return new Response(payload.slice(Number(match[1]), Number(match[2]) + 1), { status: 206 });
+    }),
+  );
+  /** Data on its own test host and worker, with `restored` as what the last sleep kept. */
+  const start = async (restored?: unknown) => {
+    const host = createTestHost({
+      pluginId: "endue.data",
+      handlers: {
+        "fs.url": () => ({
+          url: "https://fixture.invalid/large",
+          type: "application/json",
+          size: payload.length,
+        }),
+        "fs.watch": () => ({ watchId: "fixture" }),
+        "store.get": () => ({}),
+      },
+      commands: { "desk.buffers.update": () => undefined },
+      ...(restored === undefined ? {} : { restored }),
+    });
+    const view = recordingView();
+    const worker = workerHarness();
+    let app: ReturnType<typeof createData> | undefined;
+    await defineUiPlugin(
+      {
+        mount(ctx) {
+          app = createData(ctx, view, { readBytes, startWorker: worker.start, keepFiles });
+        },
+      },
+      host.transport,
+    );
+    if (!app) throw new Error("the plugin did not mount");
+    return { host, view, worker, app };
+  };
+  const first = await start();
+  let state: unknown;
+  try {
+    await first.host.command("desk.files.visit", target);
+    await first.app.edit([0, 1000, 1], "Edited record");
+    state = ((await first.host.surfaceState()) as { state: unknown }).state;
+  } finally {
+    first.worker.close();
+  }
+  const second = await start(state);
+  try {
+    await vi.waitFor(() => expect(second.view.shown.at(-1)?.opened.remote).toBeDefined(), {
+      timeout: 20_000,
+    });
+    await expect(second.app.begin([0, 1000, 1])).resolves.toBe("Edited record");
+    expect(second.host.ran.filter((r) => r.name === "desk.buffers.update")).toEqual([]);
+  } finally {
+    second.worker.close();
   }
 }, 60_000);

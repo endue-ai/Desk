@@ -2,10 +2,12 @@
 // in order, in its session (the page's, or the worker's above 1 MiB); the first since a load or a
 // save marks its buffer unsaved with desk.buffers.update. desk.files.save writes the file's bytes
 // with fs.write under an fs:write scope of its folder, asking once with perm.request when that is
-// refused. A text-tier file asks first whether to save a copy or overwrite (save-copy.js).
+// refused. A text-tier file asks first whether to save a copy or overwrite (save-copy.js). Each file
+// also keeps the values its edits set since the file on disk, for a sleep to keep (keep.js).
 
 import { copyPathOf, createSaveChoice } from "./save-copy.js";
 import { MAX_EDIT } from "./session.js";
+import { bytesSum } from "./sum.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -21,6 +23,9 @@ import { MAX_EDIT } from "./session.js";
  * @property {ReturnType<typeof import("./session.js").createSession>} [session] Below 1 MiB
  * @property {boolean} [edited] Marked unsaved since the last load or save
  * @property {Promise<unknown>} [pending] The edits still running
+ * @property {Map<string, import("../keep.js").Value>} [values] What the edits set since the file
+ *   on disk, by path: replaced, never changed in place, so a save can tell what came after it
+ * @property {import("../keep.js").Base} [base] The bytes on disk the values are set on
  * @typedef {{ shown(): EditedFile | undefined, held(buffer: string): EditedFile,
  *   changed(file: EditedFile): Promise<void>, say(text: string): void }} Hooks
  */
@@ -98,7 +103,42 @@ export function createEditing({ bridge, commands }, hooks) {
     }
   };
 
+  /** Set the value at `path` of `file` from `text`; false when it already reads so. */
+  const apply = async (
+    /** @type {EditedFile} */ file,
+    /** @type {number[]} */ path,
+    /** @type {string} */ text,
+  ) => {
+    const remote = file.opened.remote;
+    if (remote) {
+      const { changed, ...meta } = await remote.request("edit", { path, text });
+      if (changed) file.opened = { ...meta, remote };
+      return changed;
+    }
+    const session = /** @type {NonNullable<EditedFile["session"]>} */ (file.session);
+    const { changed } = session.edit(path, text);
+    if (changed) file.opened = session.opened;
+    return changed;
+  };
+
   return {
+    /**
+     * Put back on `file`, opened again from disk, the values a sleep kept: false when one of them
+     * cannot be set (the file changed meanwhile, or opens in another tier).
+     * @param {EditedFile} file
+     * @param {import("../keep.js").Value[]} values
+     */
+    async restore(file, values) {
+      if (file.tier === "read-only") return false;
+      try {
+        for (const [path, text] of values) await apply(file, path, text);
+      } catch {
+        return false;
+      }
+      file.values = new Map(values.map(([path, text]) => [path.join("/"), [path, text]]));
+      return true;
+    },
+
     /**
      * The editor's text for the value at `path` (root index, then child indexes) of the file shown.
      * @param {number[]} path
@@ -123,16 +163,8 @@ export function createEditing({ bridge, commands }, hooks) {
       const file = current();
       const run = async () => {
         if (file.tier === "read-only") throw readOnly(file);
-        const remote = file.opened.remote;
-        if (remote) {
-          const { changed, ...meta } = await remote.request("edit", { path, text });
-          if (!changed) return;
-          file.opened = { ...meta, remote };
-        } else {
-          const session = /** @type {NonNullable<EditedFile["session"]>} */ (file.session);
-          if (!session.edit(path, text).changed) return;
-          file.opened = session.opened;
-        }
+        if (!(await apply(file, path, text))) return;
+        file.values = new Map(file.values).set(path.join("/"), [path, text]);
         if (!file.edited) {
           file.edited = true;
           commands.run("desk.buffers.update", { id: file.buffer, modified: true }).catch(() => {});
@@ -167,8 +199,16 @@ export function createEditing({ bridge, commands }, hooks) {
         : /** @type {NonNullable<EditedFile["session"]>} */ (file.session).bytes;
       if (bytes.length > MAX_EDIT)
         throw new Error(`Did not save ${file.name}: Data saves files up to 64 MiB.`);
+      const before = file.values;
       await write(target, bytes);
       file.edited = false;
+      // The file on disk is what was written: only values set after it are unsaved. A copy leaves
+      // the file as it was.
+      if (target === file.path) {
+        file.base = { size: bytes.length, sum: bytesSum(bytes) };
+        const after = [...(file.values ?? [])].filter(([key, value]) => before?.get(key) !== value);
+        file.values = after.length > 0 ? new Map(after) : undefined;
+      }
       hooks.say(
         target === file.path
           ? `Saved ${file.name}.`

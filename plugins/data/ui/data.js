@@ -2,14 +2,18 @@
 // .revert, .save, desk.buffers.show, .closed), reads files in binary ranges with one ask for the file's
 // folder when its grants do not cover it, opens them with formats.js, follows them with fs.watch,
 // checks them against their JSON Schema (schema-check.js), edits and saves them in their edit tier
-// (edit/), and tells the view what to show. It only talks to ctx and a view, so the SDK's test host
-// runs it with a recording view.
+// (edit/), and tells the view what to show. Put to sleep while nobody sees it, it keeps its files,
+// how each was shown and their unsaved values, and comes back to them (keep.js, wake.js). It only
+// talks to ctx and a view, so the SDK's test host runs it with a recording view.
 
 import { createEditing } from "./edit/editing.js";
 import { createSession } from "./edit/session.js";
+import { bytesSum } from "./edit/sum.js";
 import { openFile } from "./formats.js";
 import { createSchemaCheck } from "./schema-check.js";
-import { CHECKED, folderOf, join, nameOf, pickedKey } from "./schemas.js";
+import { CHECKED, folderOf, nameOf } from "./schemas.js";
+import { createValidateWith } from "./validate-with.js";
+import { createWake } from "./wake.js";
 import { openWorker } from "./worker-client.js";
 
 /**
@@ -23,7 +27,9 @@ import { openWorker } from "./worker-client.js";
  *   schema: SchemaState, maskKeys: boolean, tier?: EditTier, why?: string }} Shown
  * @typedef {{ show(model: Shown | null): void, schema(buffer: string, state: SchemaState): void,
  *   mask(keys: boolean): void, status(text: string): void, focus(): void,
- *   progress?(state: { phase: string, done: number, total: number } | null): void }} View
+ *   progress?(state: { phase: string, done: number, total: number } | null): void,
+ *   where?(buffer: string): import("./keep.js").Where | undefined,
+ *   restore?(buffer: string, where: Partial<import("./keep.js").Where>): void }} View
  * @typedef {Omit<Shown, "maskKeys" | "tier"> & import("./edit/editing.js").EditedFile
  *   & { watchId?: string }} File
  */
@@ -46,11 +52,12 @@ const requested = (/** @type {unknown} */ args) => {
 };
 
 /**
- * @param {Pick<PluginContext, "bridge" | "commands" | "settings">} ctx
+ * @param {Pick<PluginContext, "bridge" | "commands" | "settings" | "surface">} ctx
  * @param {View} view
- * @param {import("./formats.js").OpenOptions & { readBytes: typeof import("@endue-ai/plugin-sdk").readBytes, startWorker?: typeof import("@endue-ai/plugin-sdk").startWorker }} options
+ * @param {import("./formats.js").OpenOptions & { readBytes: typeof import("@endue-ai/plugin-sdk").readBytes, startWorker?: typeof import("@endue-ai/plugin-sdk").startWorker,
+ *   keepFiles: typeof import("@endue-ai/plugin-sdk").keepFiles }} options
  */
-export function createData({ bridge, commands, settings }, view, options) {
+export function createData({ bridge, commands, settings, surface }, view, options) {
   /** @type {Map<string, File>} */
   const files = new Map();
   /** Watch id -> the buffer it follows. @type {Map<string, string>} */
@@ -164,8 +171,8 @@ export function createData({ bridge, commands, settings }, view, options) {
     if (files.get(file.buffer) === file) view.schema(file.buffer, file.schema);
   };
 
-  /** Read and open a file for its buffer. */
-  const load = async (/** @type {string} */ buffer, /** @type {string} */ path) => {
+  /** Read and open a file for its buffer; without `ask` (a window waking) a refused read stays so. */
+  const load = async (/** @type {string} */ buffer, /** @type {string} */ path, ask = true) => {
     await ready;
     const name = nameOf(path);
     loading?.stop.abort(new DOMException("Opening was cancelled.", "AbortError"));
@@ -174,7 +181,7 @@ export function createData({ bridge, commands, settings }, view, options) {
     const progress = (phase) => (done, total) => view.progress?.({ phase, done, total });
     view.progress?.({ phase: "Reading", done: 0, total: 0 });
     try {
-      const bytes = await read(path, true, {
+      const bytes = await read(path, ask, {
         signal: stop.signal,
         onProgress: progress("Reading"),
       });
@@ -200,7 +207,21 @@ export function createData({ bridge, commands, settings }, view, options) {
       // Above 1 MiB the worker keeps the file and its edits; it said the tier with the rest.
       const session = opened.remote ? undefined : createSession(name, bytes, opened);
       const { tier = "read-only", why } = session ?? opened;
-      return /** @type {File} */ ({ buffer, path, name, size, opened, schema, session, tier, why });
+      // The bytes on disk its edits are made on, which a sleep checks them against (keep.js).
+      const sum = tier === "read-only" ? undefined : (opened.sum ?? bytesSum(bytes));
+      const base = sum === undefined ? undefined : { size, sum };
+      return /** @type {File} */ ({
+        buffer,
+        path,
+        name,
+        size,
+        opened,
+        schema,
+        session,
+        tier,
+        why,
+        base,
+      });
     } finally {
       if (loading?.stop === stop) {
         loading = null;
@@ -229,6 +250,7 @@ export function createData({ bridge, commands, settings }, view, options) {
     const { buffer, path } = requested(args);
     if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
     const file = await load(buffer, path);
+    wake.opened(buffer);
     forget(buffer);
     files.set(buffer, file);
     present(buffer);
@@ -239,6 +261,8 @@ export function createData({ bridge, commands, settings }, view, options) {
 
   answer("desk.files.revert", async (args) => {
     const { buffer, path } = requested(args);
+    // A file the frame lost opens from disk, as it was shown; what the sleep kept unsaved is gone.
+    if (await wake.lost(buffer, path, { edits: false })) return;
     const old = held(buffer);
     const file = await load(buffer, path ?? old.path);
     if (old.watchId) file.watchId = old.watchId;
@@ -264,23 +288,60 @@ export function createData({ bridge, commands, settings }, view, options) {
     },
   );
 
-  answer("desk.files.save", (args) => {
+  // Put to sleep while nobody sees it, Data keeps its files and comes back to them (ADR 0070).
+  const wake = createWake({
+    surface,
+    keepFiles: options.keepFiles,
+    view,
+    load,
+    files: () => [...files.values()],
+    shown: () => shown,
+    has: (buffer) => files.has(buffer),
+    hold: (file, watchId) => {
+      forget(file.buffer);
+      files.set(file.buffer, file);
+      if (watchId) {
+        file.watchId = watchId;
+        watches.set(watchId, file.buffer);
+      } else void watch(file);
+      runSchema(file).catch(() => {});
+    },
+    present: (file) => {
+      shown = file.buffer;
+      view.show(modelOf(file));
+    },
+    restore: editing.restore,
+    marked: (buffer) => {
+      commands.run("desk.buffers.update", { id: buffer, modified: false }).catch(() => {});
+    },
+    say,
+    opening,
+    busy: () => loading !== null,
+  });
+
+  answer("desk.files.save", async (args) => {
     const { buffer, path } = requested(args);
+    await wake.lost(buffer, undefined);
     return editing.save(buffer, path);
   });
 
-  answer("desk.buffers.show", (args) => {
-    const { buffer } = requested(args);
+  answer("desk.buffers.show", async (args) => {
+    const { buffer, path } = requested(args);
+    // Its file still opening as the window woke waits for it; one the frame lost opens now.
+    await wake.settled(buffer);
+    await wake.lost(buffer, path);
     held(buffer);
     present(buffer);
   });
 
   answer("desk.buffers.closed", (args) => {
     const { buffer } = requested(args);
+    const keptOnly = wake.closed(buffer);
     if (loading?.buffer === buffer) {
       loading.stop.abort();
       if (!files.has(buffer)) return;
     }
+    if (keptOnly && !files.has(buffer)) return;
     editing.closed(held(buffer).path);
     forget(buffer);
     if (shown !== buffer) return;
@@ -299,41 +360,18 @@ export function createData({ bridge, commands, settings }, view, options) {
   });
 
   view.show(null);
+  wake.start();
 
-  /** "Validate with...": pick a schema with the palette, keep it for this file, and check. */
-  const validateWith = async () => {
-    const file = shown === null ? undefined : files.get(shown);
-    if (!file) return say("Open a JSON, YAML or TOML file first.");
-    if (!CHECKED.has(file.opened.format) || !file.opened.doc)
-      return say(`${file.opened.label} files are not checked against a JSON Schema.`);
-    const folder = folderOf(file.path);
-    const listed = await bridge
-      .call("fs.list", { path: folder, scope: scopeOf(file.path) })
-      .catch(() => ({ entries: [] }));
-    const items = listed.entries
-      .filter((e) => e.kind === "file" && /\.json$/i.test(e.name) && e.name !== file.name)
-      .map((e) => ({ id: `${folder}/${e.name}`, label: e.name, detail: folder }));
-    let picked;
-    try {
-      picked = await commands.run("desk.palette.pick", {
-        title: `Validate ${file.name} with which JSON Schema?`,
-        items,
-        free: true,
-        placeholder: "~/path/to/schema.json",
-      });
-    } catch (error) {
-      if (codeOf(error) !== "cancelled") say("Cannot ask: the palette is off.");
-      return;
-    }
-    if (typeof picked !== "string" || picked.trim() === "") return;
-    const schema = join(folder, picked.trim());
-    const value = { file: file.path, schema };
-    await bridge.call("store.set", { key: pickedKey(file.path), value }).catch(() => {});
-    view.schema(file.buffer, { state: "loading", how: "picked", source: schema, errors: [] });
-    await runSchema(file);
-    const result = file.schema.state === "valid" ? "matches" : "was checked against";
-    say(`${file.name} ${result} ${nameOf(schema)}.`);
-  };
+  const validateWith = createValidateWith(
+    { bridge, commands },
+    {
+      current: () => (shown === null ? undefined : files.get(shown)),
+      view,
+      say,
+      check: runSchema,
+      scopeOf,
+    },
+  );
 
   return {
     validateWith,
