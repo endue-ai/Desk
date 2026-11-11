@@ -22,6 +22,7 @@ pub mod hotkeys;
 pub mod instance;
 #[cfg(target_os = "macos")]
 pub mod mac;
+pub mod main_frame;
 pub mod menu;
 #[cfg(unix)]
 pub mod native_host;

@@ -150,6 +150,8 @@ impl Shell {
             .with_title("endue Desk")
             .with_inner_size(LogicalSize::new(1280.0, 800.0))
             .with_min_inner_size(LogicalSize::new(1024.0, 500.0));
+        // Where the person left it, and as large (#163).
+        let attributes = crate::main_frame::opened(event_loop, &self.pump, attributes);
         let url = self.url.clone();
         // Each surface's own browser reports its renderer's death (#52, `crashes.rs`).
         if self.open_compositor(event_loop, attributes, &url).is_none() {
@@ -242,6 +244,7 @@ impl Shell {
             return;
         }
         self.quitting = true;
+        crate::main_frame::keep(self);
         for action in [Action::Palette, Action::Eris, Action::StopComputer] {
             self.hotkeys.unregister(action);
         }
@@ -335,6 +338,7 @@ impl ApplicationHandler<Wake> for Shell {
                 if let Some(compositor) = self.compositor.as_mut() {
                     compositor.resized();
                 }
+                crate::main_frame::moved();
                 eris_window::main_changed(self);
             }
             (Role::Main, WindowEvent::Occluded(occluded)) if self.compositor.is_some() => {
@@ -371,6 +375,7 @@ impl ApplicationHandler<Wake> for Shell {
                 eris_window::focused(self, role, focused);
             }
             (Role::Eris, WindowEvent::Moved(_)) => eris_window::moved(self),
+            (Role::Main, WindowEvent::Moved(_)) => crate::main_frame::moved(),
             _ => {}
         }
     }

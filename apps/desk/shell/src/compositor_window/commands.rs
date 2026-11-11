@@ -10,9 +10,10 @@
 //! `harness.rs`), `compositor_input_state` (where input goes), `compositor_a11y` (the
 //! accessibility tree the adapter has, and a screen reader's request, `a11y_check.rs`) and
 //! `compositor_clock { hold?, at? }` (the window manager's clock held, so a check sees a motion at a
-//! time it chooses, ADR 0013) and `compositor_window { to } | { occluded }` (the main window closed,
-//! minimized or brought back as a person does it, or what the OS says of it, #155). They run on the
-//! event loop's thread, where the compositor is.
+//! time it chooses, ADR 0013) and `compositor_window { to } | { occluded } | { frame }` (the main
+//! window closed, minimized or brought back as a person does it, or what the OS says of it, #155; its
+//! frame read, or set as a drag and a resize would, #163). They run on the event loop's thread, where
+//! the compositor is.
 
 use std::sync::mpsc;
 use std::time::Duration;
@@ -201,6 +202,14 @@ fn main_window(
         let id = main.window.id();
         shell.window_event(event_loop, id, WindowEvent::Occluded(occluded));
         return Ok(Value::Null);
+    }
+    // `{ frame: true }` reads it; a frame moves and resizes the window there first.
+    if let Some(frame) = args.get("frame") {
+        if let Ok(frame) = serde_json::from_value(frame.clone()) {
+            crate::main_frame::set(&main.window, frame);
+        }
+        let now = crate::main_frame::frame_of(&main.window);
+        return serde_json::to_value(now).map_err(|why| why.to_string());
     }
     match args.get("to").and_then(Value::as_str).unwrap_or_default() {
         "closed" => main.hide(),
