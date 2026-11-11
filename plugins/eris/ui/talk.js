@@ -1,5 +1,7 @@
 // Talking to Eris: what the person types rises into her centre and is absorbed, and the brain's
 // answer comes back as soul text under her, word by word while it streams (brain.say, brain.turn).
+// A long answer is read in the history alone, so it is never shown twice (#161, finding 12); Stop,
+// or Escape in the field, ends the wait for an answer while it streams.
 
 import { createContext } from "./context.js";
 import { createConversation } from "./conversation.js";
@@ -9,6 +11,9 @@ const CONVERSE = { permission: "brain:converse" };
 /** The smallest gap between two words appearing, when deltas arrive faster than that. */
 const WORD_GAP = 90;
 const FAILED = "Something went wrong on my side. Try that again in a moment.";
+const STOPPED = "Stopped.";
+/** An answer longer than this, or of more than one line, is read in the history alone. */
+export const SOUL_CHARS = 120;
 
 /** The words of `text` that are complete: all of them once the answer is final. */
 export function completeWords(text, final) {
@@ -35,6 +40,12 @@ export class Talk {
   #conversation;
   #context;
   #question = "";
+  /** The answer outgrew soul text: the history alone shows the rest. */
+  #long = false;
+  /** Turns the person stopped: what they still send is dropped. */
+  #stopped = new Set();
+  /** Counts sends and stops, so a send's late turn id after a Stop is known as stopped. */
+  #ticket = 0;
 
   /** `show(pose)` switches Eris's pose; `style` is the soul text style. */
   constructor({
@@ -64,7 +75,30 @@ export class Talk {
       event.preventDefault();
       void this.send(this.#el("say-text").value);
     });
+    this.#el("stop").addEventListener("click", () => this.stop());
+    this.#el("say-text").addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !this.#busy) return;
+      event.preventDefault();
+      this.stop();
+    });
     this.#bridge.onEvent((event) => this.#onEvent(event));
+  }
+
+  /** Stop waiting for her answer: what came stays, marked stopped, and the field is free again. */
+  stop() {
+    if (!this.#busy) return;
+    this.#ticket += 1;
+    if (this.#turn !== null) this.#stopped.add(this.#turn);
+    this.#turn = null;
+    this.#conversation.notice(STOPPED, true);
+    this.#drop(this.#line);
+    this.#drop(this.#notice);
+    this.#line = null;
+    this.#notice = null;
+    this.#announce(STOPPED);
+    this.#show("idle");
+    this.#setBusy(false);
+    this.#el("say-text").focus();
   }
 
   async send(value) {
@@ -84,12 +118,19 @@ export class Talk {
     this.#el("say-text").value = "";
     this.#rise(text);
     this.#show("thinking");
+    const ticket = ++this.#ticket;
     try {
       const { turnId } = await this.#bridge.call("brain.say", { text: message, scope: CONVERSE });
-      this.#turn ??= turnId;
       this.#context.clear();
+      if (ticket !== this.#ticket) {
+        // Stopped before the desk named the turn.
+        this.#stopped.add(turnId);
+        if (this.#turn === turnId) this.#turn = null;
+        return;
+      }
+      this.#turn ??= turnId;
     } catch {
-      this.#fail(FAILED);
+      if (ticket === this.#ticket) this.#fail(FAILED);
     }
   }
 
@@ -105,9 +146,21 @@ export class Talk {
     this.#show("idle");
   }
 
+  /** Whether the answer is too long for soul text: then it leaves, and the history shows it. */
+  #outgrown() {
+    if (this.#long) return true;
+    const text = this.#text.trim();
+    if (text.length <= SOUL_CHARS && !text.includes("\n")) return false;
+    this.#long = true;
+    this.#drop(this.#line);
+    this.#line = null;
+    return true;
+  }
+
   #onEvent(event) {
     if (event.event !== "brain.turn" || !this.#busy) return;
     const { turnId, kind, text } = event.data;
+    if (this.#stopped.has(turnId)) return;
     // Desk sends a plugin only its own turns, so an event before the answer is for this one.
     if (this.#turn === null && this.#busy) this.#turn = turnId;
     if (turnId !== this.#turn) return;
@@ -117,7 +170,7 @@ export class Talk {
         this.#begin();
         break;
       case "delta":
-        if (!this.#line) this.#begin();
+        if (!this.#line && !this.#long) this.#begin();
         this.#text += text ?? "";
         this.#write(false);
         this.#conversation.answer(this.#text);
@@ -164,11 +217,13 @@ export class Talk {
     this.#el("answer").append(this.#line);
     this.#text = "";
     this.#shown = 0;
+    this.#long = false;
     this.#nextAt = this.#timeline.time;
   }
 
   /** Put the words that are complete so far on screen, each condensing as it arrives. */
   #write(final) {
+    if (this.#outgrown()) return;
     const fresh = completeWords(this.#text, final).slice(this.#shown);
     if (fresh.length === 0) return;
     let at = Math.max(this.#timeline.time, this.#nextAt);
@@ -277,6 +332,11 @@ export class Talk {
   #setBusy(busy) {
     this.#busy = busy;
     for (const button of this.#el("say").querySelectorAll("button")) button.disabled = busy;
+    // While she answers, Stop takes Send's place.
+    const stop = this.#el("stop");
+    stop.hidden = !busy;
+    stop.disabled = !busy;
+    this.#el("say").querySelector(".send").hidden = busy;
   }
 
   #el(id) {

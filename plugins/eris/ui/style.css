@@ -100,18 +100,22 @@ body {
   color: var(--desk-text-muted);
 }
 
-/* The answer under Eris: soul text at panel size. A long one scrolls; the form below never moves. */
+/* The answer under Eris: soul text at panel size, for short answers only (talk.js); a long one is
+   read in the history. One line at a time in one grid cell, so a line leaving and the next arriving
+   overlap; at most three lines, and never a scroll bar of its own. */
 #answer.cap {
   grid-row: 3;
+  display: grid;
   height: auto;
   min-height: 0;
-  max-height: 72px;
-  overflow-y: auto;
+  max-height: calc(3 * 1.2em);
+  overflow: hidden;
   font-size: var(--desk-text-base);
 }
 
 #answer .wrap {
   position: static;
+  grid-area: 1 / 1;
 }
 
 .say {
@@ -127,6 +131,12 @@ body {
 
 .say input {
   min-width: 0;
+}
+
+/* Stop takes Send's place while she answers. */
+.say .send,
+.say .stop {
+  grid-column: 2;
 }
 
 .say :focus-visible,
@@ -184,9 +194,9 @@ body {
   [data-scheme="light"] #pose img { padding: 8px; margin: -8px; }
   #pose figcaption, #answer.cap { display: none; }
   .say { max-height: 65vh; overflow-y: auto; margin-top: 4px; gap: 4px; }
-  #say-text, .send { grid-row: 1; }
+  #say-text, .send, .stop { grid-row: 1; }
   #say-text { grid-column: 1; }
-  .send { grid-column: 2; }
+  .send, .stop { grid-column: 2; }
   #attach-file { grid-row: 2; }
   #attachment { grid-row: 3; }
   #context-notice { grid-row: 4; }

@@ -86,7 +86,8 @@ test.describe("talking to Eris", () => {
     await expect(frame.locator("#live p").last()).toHaveText(
       "I can't reach endue right now. Check your connection, and I'll pick up where we left off.",
     );
-    await expect(frame.getByRole("button", { name: "Send" })).toBeDisabled();
+    // She waits: Stop takes Send's place.
+    await expect(frame.getByRole("button", { name: "Stop" })).toBeEnabled();
     await page.evaluate(() => {
       const turn = (kind: "online" | "started" | "delta" | "completed", text?: string) =>
         window.__desk.stub.emit({
@@ -115,6 +116,40 @@ test.describe("talking to Eris", () => {
     await page.clock.runFor(500);
     await expect(frame.locator("#answer .word")).toHaveCount(0);
     await expect(frame.locator("#pose")).toHaveAttribute("data-state", "idle");
+  });
+
+  test("a long answer streams once, into the history, and Stop ends it (#161)", async ({
+    page,
+  }) => {
+    const frame = await open(page, "echo");
+    await page.locator('[data-surface="endue.eris"] iframe').evaluate((element) => {
+      const iframe = element as HTMLIFrameElement;
+      iframe.style.setProperty("width", "900px", "important");
+      iframe.style.setProperty("height", "600px", "important");
+    });
+    const words = Array.from({ length: 60 }, (_, i) => `word${i}`);
+    await send(page, frame, words.join(" "));
+    // 50 ms to start, then a word every 50 ms: 30 words in, past soul text's length.
+    await page.clock.runFor(50 + 30 * 50);
+    const history = frame.getByRole("region", { name: "Conversation history" });
+    await expect(history.locator("article p").last()).toContainText("word29");
+    // The soul text left once the answer outgrew it: the answer shows once.
+    await page.clock.runFor(1200);
+    await expect(frame.locator("#answer .word")).toHaveCount(0);
+    const strip = await frame.locator("#answer").evaluate((el) => ({
+      scrolls: el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth,
+    }));
+    expect(strip).toEqual({ scrolls: false });
+    await expect(frame.getByRole("button", { name: "Send" })).toBeHidden();
+    await frame.getByRole("button", { name: "Stop" }).click();
+    await expect(history.locator("article p").last()).toContainText("Stopped.");
+    await expect(frame.getByRole("button", { name: "Send" })).toBeVisible();
+    await expect(frame.getByLabel("Talk to Eris")).toBeFocused();
+    const kept = await history.locator("article p").last().textContent();
+    // The rest of the stopped turn never shows.
+    await page.clock.runFor(3000);
+    await expect(history.locator("article p").last()).toHaveText(kept ?? "");
+    expect(kept).not.toContain("word59");
   });
 
   test("both exchanges stay readable while the composer keeps keyboard focus", async ({ page }) => {
