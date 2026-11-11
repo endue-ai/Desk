@@ -6,7 +6,7 @@
 // compositor's input, and after it the page's requestAnimationFrame must still call back. A
 // window the OS does not show (a locked screen, a sleeping display) runs no frames at all, so the
 // case is skipped there. A plugin window's first maximize or snap stopped its page the same way
-// (with the Mac's screen locked, in most tries, ADR XXXX): a resize told the page's browser the
+// (with the Mac's screen locked, in most tries, ADR 0170): a resize told the page's browser the
 // screen changed as well, which laid it out again past CEF's hold on a resize in flight, and after
 // a glide's resizes CEF sent it no begin frame again; its texture stayed a few pixels short of its
 // pane. Its page must draw after each gesture, at its pane's size, and the shell's watch for a page

@@ -93,7 +93,7 @@ impl View {
     /// A new size alone needs no screen info: CEF holds a resize until the page painted the one
     /// before, and a screen info change lays the page out again past that hold, so a glide's
     /// resizes put several new sizes in flight in one frame; after them CEF sent the page no begin
-    /// frame again (#157, ADR XXXX).
+    /// frame again (#157, ADR 0170).
     pub fn rescaled(&mut self) -> bool {
         let changed = self.screen_scale != self.scale;
         self.screen_scale = self.scale;
