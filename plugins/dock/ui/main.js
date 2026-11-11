@@ -1,6 +1,8 @@
 // The bottom dock. It uses only the public bridge API (plugin.list, plugin.setEnabled,
-// plugin.changed), exactly as a community plugin with plugin:manage would.
+// plugin.changed, and cmd.invoke of desk.windows.list and desk.plugins.open), exactly as a
+// community plugin granted plugin:manage and those two commands would.
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
+import { bringsForward } from "./front.js";
 import { intoSight, sideways } from "./scroll.js";
 import { tiles } from "./tiles.js";
 
@@ -8,7 +10,7 @@ const scope = { permission: "plugin:manage" };
 const NEXT = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
 
 defineUiPlugin({
-  async mount({ bridge }) {
+  async mount({ bridge, commands }) {
     const root = document.getElementById("root");
     const bar = document.getElementById("tiles");
     const empty = document.getElementById("empty");
@@ -16,12 +18,26 @@ defineUiPlugin({
     /** The tile that takes Tab into the dock (roving tabindex), by plugin id. */
     let current;
 
+    /** Whether the plugin's window waits behind; a desk that cannot say gets the plain toggle. */
+    const behind = (plugin) =>
+      commands.run("desk.windows.list").then(
+        (desk) => bringsForward(desk, plugin),
+        () => false,
+      );
+
     const toggle = async (tile) => {
       if (!tile.available) {
         status.textContent = `${tile.name}: ${tile.reason}`;
         return;
       }
       try {
+        // A window under others, in the drawer or on another desktop comes forward; the one in
+        // front, or a plugin with no window, is put away.
+        if (tile.open && (await behind(tile.id))) {
+          await commands.run("desk.plugins.open", { plugin: tile.id });
+          status.textContent = `${tile.name} brought forward`;
+          return;
+        }
         await bridge.call("plugin.setEnabled", { plugin: tile.id, enabled: !tile.open, scope });
         status.textContent = `${tile.name} ${tile.open ? "put away" : "opened"}`;
       } catch (error) {

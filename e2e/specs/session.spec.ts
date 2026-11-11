@@ -42,7 +42,9 @@ describe("session: the shell across a relaunch", () => {
     await shellReady();
     await expect(surface(HELLO)).toExist();
 
-    // Put it away from the dock.
+    // Put it away from the dock. A tile puts away the window in front and brings any other forward
+    // (#158), so the window comes in front first.
+    await windowOf(HELLO).$(".surface-title").click();
     await inFrame(DOCK, async () => {
       await expect(tile()).toHaveAttribute("aria-pressed", "true");
       await press(TILE);

@@ -5,7 +5,10 @@
   "kind": "ui",
   "provides": ["role:dock"],
   "entry": "ui/index.html",
-  "description": "The bottom dock: the plugins that open on the desk, to open and put away.",
-  "permissions": [{ "permission": "plugin:manage" }],
+  "description": "The bottom dock: the plugins that open on the desk, to open, bring forward and put away.",
+  "permissions": [
+    { "permission": "plugin:manage" },
+    { "permission": "cmd:invoke", "ids": ["desk.windows.list", "desk.plugins.open"] }
+  ],
   "surfaces": [{ "id": "main", "title": "Dock", "placement": "bottom" }]
 }
