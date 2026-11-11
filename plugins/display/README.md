@@ -9,8 +9,11 @@ match, an empty match matches all) and what to do: the `area` (`center`, `floati
 keyboard focus when it opens) and `reuse` (show an open surface again instead of reopening it).
 
 The defaults keep each manifest's placement: edges get 240, 320 and 72 px, overlays and floating
-surfaces take the focus, and everything else gets one grid cell without taking the focus. A plugin's
-rules are asked before these, so a plugin can say "my notes go on the right, 360 px wide":
+surfaces take the focus, and everything else opens as a window without taking the focus. The window
+manager puts it in its slot (`crates/desk-wm/src/tiling.rs`, ADR 0040): six to the app's free area as
+it is when the window opens, three by two, between the side bars and above the dock (the bottom
+edge's 72 px), the next twelve cascading over them inside it. A plugin's rules are asked before
+these, so a plugin can say "my notes go on the right, 360 px wide":
 
 ```json
 { "match": { "plugin": "example.notes" }, "area": "right", "size": { "pixels": 360 } }
