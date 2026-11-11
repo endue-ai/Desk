@@ -65,7 +65,12 @@ nothing on its clock, and a change shows within a frame of the page's asking.
   ten seconds idle, silent and settled (her state, a line, a turn, a drag, a pointer or a new size
   wakes her); the report looks every frame only while the desk changes, then stops after 30 frames
   (a change to the page, a new size, the compositor's word or a look every second start it again);
-  a withheld frame is composed once and asked for again after a second (`gpu.rs`).
+  a withheld frame is composed once and asked for again after a second (`gpu.rs`). Once a page
+  waiting on a frame kept asking, one more showed: the Eris plugin's page, whose timeline
+  (`plugins/eris/ui/timeline.js`, the first run's too) asked for a frame at every frame with
+  nothing on it, took about 35 begin frames a second and painted none. A timeline holding no
+  animation and no cue asks for no frame now; its time stands still until a cue or an animation
+  starts it again, and goes on from there.
 
 ### What the measures found (macOS, M4 Max)
 
@@ -74,6 +79,9 @@ nothing on its clock, and a change shows within a frame of the page's asking.
   wake-ups, no begin frame, the change painted 49.6 to 51.6 ms after it (a timer's, three a run).
 * A fresh desk with its first run gone through, its own process: 59.2 % of a core before (its tree
   124.9 %), 3.1 to 3.4 % after in three runs at a load average of 5 to 9 (its tree 5.3 to 5.7 %).
+  On 2026-11-11 the same head read 6.8 % (its tree 12.7 %) at a load average of 4 to 5, no surface
+  taking a begin frame; after the ask's fix and Eris's timeline, 6.7 % (12 %), the same. With the
+  ask's fix alone, 13.8 % and 14.0 %: Eris's page asking every 80 ms.
 
 ### Consequences
 
@@ -96,7 +104,8 @@ Issue #134 (epic #32 §8), found by #129. Amends ADR 0157 (the slow clock: none 
 (what still wakes a desk at rest). Code: `apps/desk/shell/src/web_host/{frames,clock,frame_asks,
 client}.rs`, `frame_asks.js`, `renderer.rs`, `client.rs`, `host.rs`, `compositor_window{,/clock,/gpu}.rs`,
 `packages/runtime/src/shell/{ticker,Running}.ts`, `packages/runtime/src/eris/{Eris,figure,float-desk,
-states}.ts`, `apps/desk/src/{compositor-desk,desk}.ts`, `probe/{rest,pages}.rs`. Tests:
-`web_host/frames_tests.rs`, `shell/ticker.test.ts`, `eris/Eris.test.ts`, `compositor-desk.test.ts`,
+states}.ts`, `apps/desk/src/{compositor-desk,desk}.ts`, `plugins/eris/ui/timeline.js`,
+`probe/{rest,pages}.rs`. Tests: `web_host/frames_tests.rs`, `web_host/frame_asks.test.ts`,
+`shell/ticker.test.ts`, `eris/Eris.test.ts`, `plugins/eris/tests/timeline.test.ts`, `compositor-desk.test.ts`,
 `tests/budgets.rs` through `just perf-compositor` (`deskAtRest`), `e2e/perf/rest.perf.ts` through
 `just perf-app` (`freshDeskAtRest`). No section of `docs/ko/desk-structure.md` changes.
