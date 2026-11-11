@@ -77,5 +77,5 @@ open"; the other options change what the spec promises or work around its bound.
 Issue #162, finding 1 (QA pass of 2026-11-11). Amends ADR 0070. Code:
 `packages/plugin-sdk/src/{open-files,text-change}.ts`, `plugins/notes/ui/{keep,notes,grants,search}.js`,
 `plugins/reader/ui/{keep,reader,loading}.js`. Tests: `packages/plugin-sdk/src/{open-files,text-change}.test.ts`,
-`plugins/notes/tests/unload.test.ts`, `plugins/reader/tests/unload.test.ts`. No section of
-`docs/ko/desk-structure.md` changes.
+`plugins/notes/tests/unload.test.ts`, `plugins/reader/tests/unload.test.ts`, the app e2e
+`e2e/specs/sleep-openers.spec.ts` (Notes). No section of `docs/ko/desk-structure.md` changes.
