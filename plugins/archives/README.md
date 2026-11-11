@@ -29,7 +29,7 @@ and `desk.palette.pick`.
 | --- | --- |
 | `ui/archives.js`, `actions.js`, `keep.js`, `opening.js`, `previews.js`, `jobs.js` | Requests, what the person does, what a sleep keeps, levels (archives inside archives), previews, long work |
 | `ui/files.js`, `formats/`, `library-*.js`, `extract.js`, `safety.js`, `tree.js`, `preview.js` | File access, one reader per format (`index.js` tells them apart), the library worker, extraction and the paths it refuses, sorting and previews, without the DOM |
-| `ui/view*.js` | The DOM: a virtual ARIA tree, the preview pane, status and progress |
+| `ui/view*.js` | The DOM: a virtual ARIA tree, the preview pane, status and progress; a small window shows the tree first |
 
 Keys: arrows, Page Up/Down, Home/End, Enter, Space (mark), Mod+F (filter), Escape (stop long work).
 Tests use the library's fixtures; `tests/make-fixtures.py` remakes the plugin's own.

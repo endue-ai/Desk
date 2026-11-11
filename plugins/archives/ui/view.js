@@ -85,6 +85,8 @@ export function createView(doc, actions) {
       model = next;
       name.textContent = next ? next.name : "No archive open";
       about.textContent = next ? `${next.format}, ${next.path}` : "";
+      // A small window hides the line under the name; the name still says it on hover.
+      name.title = about.textContent;
       levels.hidden = !next || next.levels.length < 2;
       levels.replaceChildren(
         ...(next?.levels ?? []).map((level, i, all) => {
