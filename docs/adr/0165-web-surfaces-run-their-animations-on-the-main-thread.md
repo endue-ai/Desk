@@ -7,6 +7,10 @@ decision-makers: Team endue
 Amends ADR 0157: the full pipeline stays, and Chromium's compositor no longer runs animations of its
 own.
 
+Status: amended by ADR XXXX: the stall left on a locked screen came from a resize that told the
+page's browser the screen as well, which a resize now does only for a new scale; and the shell
+watches for a page that stops painting, says so and loads a plugin's page again.
+
 # Web surfaces run their animations on the main thread, so the full pipeline never stalls
 
 ## Context and Problem Statement

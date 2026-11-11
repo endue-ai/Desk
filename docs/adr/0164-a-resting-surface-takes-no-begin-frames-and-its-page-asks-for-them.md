@@ -4,6 +4,9 @@ date: 2026-11-11
 decision-makers: Team endue
 ---
 
+Status: amended by ADR XXXX: an ask says how long its page has waited since its first one
+(`wake(ms)`), and the shell finds a page whose asks repeat after begin frames: it stopped painting.
+
 # A resting surface takes no begin frames, and its page asks for them
 
 ## Context and Problem Statement
