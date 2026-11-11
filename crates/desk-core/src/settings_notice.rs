@@ -1,4 +1,4 @@
-//! Telling the person about setting values that fail (ADR 0080, ADR XXXX). The core logs every
+//! Telling the person about setting values that fail (ADR 0080, ADR 0187). The core logs every
 //! problem and sends `settings.invalid`; the person learns of a value that fell back from one notice
 //! on the desk (ui.notified from `core`, a warning), naming each value with its file and line. The
 //! runtime's own init.get at its start is the first moment anything listens, so that call tells;

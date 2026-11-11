@@ -2,7 +2,7 @@
 //! (`Report::webview`) write `<data>/crashes/<timestamp>.json`: the version, the OS, the message, a
 //! backtrace and the plugins that were on, with every path under the person's home as `~` and long
 //! text cut. A run that ended without quitting leaves nothing to write with, so the next start
-//! writes its `exit` report (`Report::exit`, ADR XXXX). `desk doctor --last-crash` prints the
+//! writes its `exit` report (`Report::exit`, ADR 0187). `desk doctor --last-crash` prints the
 //! newest; the next start takes it once (`take_unseen`) to show a notice. Nothing is uploaded (ADR
 //! 0007).
 

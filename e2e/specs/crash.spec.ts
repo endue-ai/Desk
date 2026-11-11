@@ -3,7 +3,7 @@
 // the error's message names, is `~` there. The next start shows one card for it ("Desk crashed last
 // time."), and the start after that shows none. browser.reloadSession() quits the app and launches it
 // again with the same HOME (support/driver.ts). A kill lets nothing write: the next start finds the run
-// was never marked quit in last-start.json, writes an `exit` report for it and shows its card (ADR XXXX).
+// was never marked quit in last-start.json, writes an `exit` report for it and shows its card (ADR 0187).
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { $, $$, browser, expect } from "@wdio/globals";

@@ -115,7 +115,7 @@ fn main() -> ExitCode {
     let outcome = event_loop.run_app(&mut shell);
     drop(shell);
     cef::shutdown();
-    // Every quit the desk agrees to ends here (ADR XXXX): the next start then has nothing to say.
+    // Every quit the desk agrees to ends here (ADR 0187): the next start then has nothing to say.
     if outcome.is_ok() {
         kept.start.quit();
     }

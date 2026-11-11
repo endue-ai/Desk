@@ -147,7 +147,7 @@ export const DEFAULT_KEYS: Array<KeyBinding & { owner: string }> = [
     command: "desk.settings.open",
     owner: "desk",
   },
-  // The Plugins list from any desk (ADR XXXX): with the dock and the palette off, or every plugin
+  // The Plugins list from any desk (ADR 0187): with the dock and the palette off, or every plugin
   // held off by init.yaml, this key is still the way back to turning plugins on. desk.plugins.open
   // turns the list on when it is off. ⇧⌘X is where VS Code keeps its extensions.
   {

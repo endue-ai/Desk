@@ -1,4 +1,4 @@
-//! A run that ended without quitting (ADR XXXX): the next start writes an `exit` report that says
+//! A run that ended without quitting (ADR 0187): the next start writes an `exit` report that says
 //! when that run started, which process it was and whether it got ready, unless that run's own panic
 //! report already explains it. The next start shows it once, as it does a panic's.
 

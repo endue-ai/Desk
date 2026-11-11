@@ -1,6 +1,6 @@
 //! last-start.json (ADR 0061): how the starts before this one went, so a desk that keeps dying
 //! before it is ready starts in safe mode instead of dying again, and a run that ended without
-//! quitting is named by the next start (ADR XXXX).
+//! quitting is named by the next start (ADR 0187).
 //!
 //! ```json
 //! { "at": "2026-11-02T09:00:00Z", "pid": 4242, "phase": "starting", "failed": 1, "quit": false }

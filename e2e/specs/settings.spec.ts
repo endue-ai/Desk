@@ -3,7 +3,7 @@
 // desk.notify.dnd ("yes", not a boolean) fail their settings: it reaches the ready line, the theme in
 // force is desk.theme.scheme's default (dark), and the core names both values with their init.yaml
 // lines on the app's log (apps/desk prints Core::settings_problems at start) and in one notice on the
-// desk (ADR XXXX). The status line shows that notice for its 8 s right after the ready line, before
+// desk (ADR 0187). The status line shows that notice for its 8 s right after the ready line, before
 // shellReady sees the ready line there, so the spec reads it from the notification history the session
 // keeps in store.json (desk.session's `notices`).
 import { $, browser, expect } from "@wdio/globals";

@@ -80,7 +80,7 @@ impl Core {
             }
         };
         let problems = self.report_settings(caller == "desk");
-        // The runtime asks at its start, the first moment the person can be told (ADR XXXX).
+        // The runtime asks at its start, the first moment the person can be told (ADR 0187).
         if caller == "desk" {
             self.notice_settings(&problems);
         }

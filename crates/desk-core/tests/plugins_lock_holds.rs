@@ -1,4 +1,4 @@
-//! Holds for this run against plugins.lock (ADR 0061, ADR 0079, ADR XXXX): plugin.list names why a
+//! Holds for this run against plugins.lock (ADR 0061, ADR 0079, ADR 0187): plugin.list names why a
 //! plugin is off for this run only (`heldOff`: init, safe-mode, quarantine), the lock keeps the
 //! remembered choice, and `desk_core::lock::plan`, what `desk plugin sync` does, leaves a held plugin
 //! as it is. A sync right after a start therefore changes nothing.

@@ -3,7 +3,7 @@
 //! The shell's `desk_start` hands the runtime what the start found ([`Start::info`]: safe mode, the
 //! state files kept broken), and `desk_relaunch` starts the desk again without safe mode
 //! ([`relaunch`], "Start normally"). A clean quit marks the record ([`Start::quit`]); the next start
-//! names a run that was not marked (ADR XXXX).
+//! names a run that was not marked (ADR 0187).
 
 use std::ffi::OsString;
 use std::path::Path;

@@ -1,4 +1,4 @@
-//! A value that fails its setting is told in the desk (ADR 0080, ADR XXXX): the first init.get from
+//! A value that fails its setting is told in the desk (ADR 0080, ADR 0187): the first init.get from
 //! desk, the runtime's at its start, brings one notice (ui.notified, caller `core`, level warning)
 //! that names every value that fell back with its file and line. The person is told once: a later
 //! init.get tells only a value that is wrong in a new way, and a clean file tells nothing.

@@ -2,7 +2,7 @@
 //! what the shell's window asks for. `desk_crash` ([`Crash::record`]) writes a report for an uncaught error in
 //! the window; `take_last_crash` hands the next start the newest report not shown yet. The plugins in
 //! a report are the ones on, refreshed after start and on every plugin.changed. A run that ended
-//! without quitting gets its `exit` report from the next start ([`Crash::ended_unclean`], ADR XXXX).
+//! without quitting gets its `exit` report from the next start ([`Crash::ended_unclean`], ADR 0187).
 //! `DESK_E2E_PANIC=1` panics right after the ready line, so a live check can force a report on any
 //! build.
 
