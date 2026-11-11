@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StubError } from "../../../packages/bridge/src/index";
-import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
+import { defineUiPlugin, keepFiles } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { createPlayer, type Model, type PlayerOptions, type PlayerView } from "../ui/player.js";
 
@@ -96,6 +96,10 @@ export interface MountOptions {
   store?: Record<string, unknown>;
   prompt?: Options["prompt"];
   options?: Partial<PlayerOptions>;
+  /** What the last sleep kept (ctx.surface.restored). */
+  restored?: unknown;
+  /** False: resolve once mounted, without waiting for its calls (a test holds one back). */
+  settled?: boolean;
 }
 
 export async function mount<V extends PlayerView = RecordingView>(
@@ -121,6 +125,7 @@ export async function mount<V extends PlayerView = RecordingView>(
       ...options.handlers,
     },
     commands: { ...DESK, ...options.commands },
+    ...(options.restored === undefined ? {} : { restored: options.restored }),
   });
   const view = (options.view ?? recordingView()) as V;
   let app: ReturnType<typeof createPlayer> | undefined;
@@ -128,6 +133,7 @@ export async function mount<V extends PlayerView = RecordingView>(
   const player: PlayerOptions = {
     objectUrl: () => `blob:endue.player/${++urls}`,
     revokeUrl: () => {},
+    keepFiles,
     ...options.options,
   };
   await defineUiPlugin(
@@ -141,7 +147,7 @@ export async function mount<V extends PlayerView = RecordingView>(
   const settle = async () => {
     for (let i = 0; i < 6; i++) await host.settle();
   };
-  await settle();
+  if (options.settled !== false) await settle();
   if (!app) throw new Error("the plugin did not mount");
   return {
     host,
