@@ -3,7 +3,9 @@
 // text size, corner radius and duration from the theme's --desk-* tokens, so a theme reaches all of it: the
 // shell, @endue-ai/ui, the examples and every plugin page. A literal is allowed only where a
 // `theme: content` comment marks it: the colours of a file's own content (a document's text, an
-// image's checkerboard), which a theme must not change.
+// image's checkerboard), which a theme must not change. The engine's own parts (scrollbars, checkboxes,
+// selects) follow the theme too (rule `scheme`): every page links /_desk/tokens.css, which sets them
+// from the theme's data-scheme (#156), and no page fixes a scheme or a track of its own over it.
 //
 //   node scripts/ui-lint.mjs            check every target against its baseline (just check)
 //   node scripts/ui-lint.mjs --update   write the baselines as the code stands
@@ -18,7 +20,7 @@ import { fileURLToPath } from "node:url";
 
 export const ROOT = fileURLToPath(new URL("..", import.meta.url));
 export const BASELINES = join(ROOT, "scripts/ui-lint-baseline");
-export const RULES = ["color", "font", "size", "radius", "duration"];
+export const RULES = ["color", "font", "size", "radius", "duration", "scheme"];
 const MARKER = /theme:\s*content/;
 const SKIP_DIRS = new Set(["vendor", "node_modules", "dist", "tests", "e2e", "lib"]);
 
@@ -63,6 +65,40 @@ const COLOR_PROPS =
 const COLOR_FN = /\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/;
 const HEX = /#[0-9a-fA-F]{3,8}\b/;
 
+// A scrollbar's track that never stands lighter than the page under it: clear, or a surface token.
+const TRACK = /^(transparent|var\(--desk-(background|card|muted|popover)\s*(,.*)?\))$/;
+const TOKENS_LINK = /<link\b[^>]*\bhref=["']\/_desk\/tokens\.css["']/i;
+
+/** A value's parts at its top level: `var(--a, #000) transparent` is two. */
+function parts(value) {
+  const out = [""];
+  let depth = 0;
+  for (const ch of value) {
+    depth += ch === "(" ? 1 : ch === ")" ? -1 : 0;
+    if (depth === 0 && /\s/.test(ch)) {
+      if (out.at(-1)) out.push("");
+    } else out[out.length - 1] += ch;
+  }
+  return out.filter(Boolean);
+}
+
+/**
+ * Whether a `color-scheme` or `scrollbar-color` keeps the engine's parts in the theme's look: a
+ * scheme only under the `[data-scheme]` that names it, a track clear or of a surface. `auto` and its
+ * kin bring back the engine's own light track, in a dark theme too.
+ */
+function followsTheme(prop, value, selector) {
+  if (value === "inherit" || (prop === "color-scheme" && value.includes("var("))) return true;
+  if (prop === "scrollbar-color") {
+    const [thumb, track, ...more] = parts(value);
+    return thumb !== undefined && more.length === 0 && TRACK.test(track ?? "");
+  }
+  const words = value.split(/\s+/).filter((word) => word !== "only");
+  const [scheme] = words;
+  if (words.length !== 1 || (scheme !== "light" && scheme !== "dark")) return false;
+  return new RegExp(`\\[data-scheme=(["']?)${scheme}\\1\\]`).test(selector);
+}
+
 const withoutUrls = (value) => value.replace(/url\([^)]*\)/g, "url()");
 const withoutVars = (value) => {
   let out = value;
@@ -70,8 +106,8 @@ const withoutVars = (value) => {
   return out;
 };
 
-/** The rules a CSS declaration breaks. */
-export function checkDeclaration(property, rawValue) {
+/** The rules a CSS declaration breaks; `selector` is its rule's, with the rules' around it. */
+export function checkDeclaration(property, rawValue, selector = "") {
   const prop = property.trim().toLowerCase();
   const value = withoutUrls(rawValue.trim());
   const bare = withoutVars(value).toLowerCase();
@@ -99,6 +135,9 @@ export function checkDeclaration(property, rawValue) {
   if (/^(transition|animation)(-duration|-delay)?$/.test(prop)) {
     if (/(^|[\s,(])(\d*\.)?\d*[1-9]\d*(\.\d+)?m?s\b/.test(bare)) broken.push("duration");
   }
+  if (prop === "color-scheme" || prop === "scrollbar-color") {
+    if (!followsTheme(prop, value.toLowerCase(), selector)) broken.push("scheme");
+  }
   return broken;
 }
 
@@ -117,12 +156,14 @@ export function lintCss(source, offset = 0) {
   const above = (line) => markers.has(line - 1) && (lines[line - 2] ?? "").trim() === "";
   const lineOf = (at) => text.slice(0, at).split("\n").length;
   const exempt = [];
+  const selectors = [];
   let start = 0;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (ch === "{") {
       const line = lineOf(i);
       exempt.push(exempt.at(-1) || markers.has(line) || above(line));
+      selectors.push(text.slice(start, i).trim());
       start = i + 1;
     } else if (ch === "}" || ch === ";") {
       const decl = text.slice(start, i);
@@ -130,11 +171,15 @@ export function lintCss(source, offset = 0) {
       if (colon > 0) {
         const line = lineOf(start + decl.search(/\S/));
         const skip = exempt.at(-1) || markers.has(line) || markers.has(lineOf(i));
+        const around = selectors.join(" ");
         if (!skip)
-          for (const rule of checkDeclaration(decl.slice(0, colon), decl.slice(colon + 1)))
+          for (const rule of checkDeclaration(decl.slice(0, colon), decl.slice(colon + 1), around))
             findings.push({ line: line + offset, rule, text: decl.trim().replace(/\s+/g, " ") });
       }
-      if (ch === "}") exempt.pop();
+      if (ch === "}") {
+        exempt.pop();
+        selectors.pop();
+      }
       start = i + 1;
     }
   }
@@ -177,10 +222,16 @@ export function lintJs(source) {
   return findings;
 }
 
-/** Findings in a page: its <style> blocks and style="" attributes. */
+/** Findings in a page: the sheet it must link, its <style> blocks and style="" attributes. */
 export function lintHtml(source) {
   const findings = [];
   const lineAt = (at) => source.slice(0, at).split("\n").length;
+  const page = /<!doctype html|<html[\s>]/i.exec(source);
+  const marked = [...source.matchAll(/<!--([\s\S]*?)-->/g)].some(([, text]) => MARKER.test(text));
+  if (page && !marked && !TOKENS_LINK.test(source)) {
+    const text = `no <link href="/_desk/tokens.css">: the engine's light scrollbars and controls`;
+    findings.push({ line: lineAt(page.index), rule: "scheme", text });
+  }
   for (const match of source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
     const at = match.index + match[0].indexOf(match[1]);
     findings.push(...lintCss(match[1], lineAt(at) - 1));

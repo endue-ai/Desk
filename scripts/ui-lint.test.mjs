@@ -51,6 +51,82 @@ test("fonts, sizes, radii and durations come from tokens", () => {
   assert.deepEqual(checkDeclaration("transition", "none 0s"), []);
 });
 
+test("the scheme is the theme's: a page sets color-scheme only under the data-scheme it names", () => {
+  // tokens.css sets it from data-scheme; a fixed scheme draws the engine's parts in the other one.
+  assert.deepEqual(checkDeclaration("color-scheme", "dark light", ":root"), ["scheme"]);
+  assert.deepEqual(checkDeclaration("color-scheme", "light", "body"), ["scheme"]);
+  assert.deepEqual(checkDeclaration("color-scheme", "dark", ":root"), ["scheme"]);
+  assert.deepEqual(checkDeclaration("color-scheme", "normal", "html"), ["scheme"]);
+  assert.deepEqual(checkDeclaration("color-scheme", "light", '[data-scheme="dark"] body'), [
+    "scheme",
+  ]);
+  assert.deepEqual(checkDeclaration("color-scheme", "light", '[data-scheme="light"] body'), []);
+  assert.deepEqual(checkDeclaration("color-scheme", "only dark", "[data-scheme=dark] .x"), []);
+  assert.deepEqual(checkDeclaration("color-scheme", "inherit", ".x"), []);
+  assert.deepEqual(checkDeclaration("color-scheme", "var(--scheme)", ".x"), []);
+});
+
+test("scrollbars: a track lighter than the ground in the dark theme fails", () => {
+  // The engine's own track (auto and its kin) is light in every theme; a surface token or a clear
+  // track never stands lighter than the page under it.
+  assert.deepEqual(checkDeclaration("scrollbar-color", "auto", ".list"), ["scheme"]);
+  assert.deepEqual(checkDeclaration("scrollbar-color", "unset", ".list"), ["scheme"]);
+  assert.deepEqual(
+    checkDeclaration("scrollbar-color", "var(--desk-input) var(--desk-text)", ".a"),
+    ["scheme"],
+  );
+  assert.deepEqual(checkDeclaration("scrollbar-color", "#888 #fff", ".a"), ["color", "scheme"]);
+  assert.deepEqual(checkDeclaration("scrollbar-color", "var(--desk-input) transparent", ".a"), []);
+  assert.deepEqual(
+    checkDeclaration("scrollbar-color", "var(--desk-input) var(--desk-card)", ".a"),
+    [],
+  );
+  assert.deepEqual(
+    checkDeclaration("scrollbar-color", "var(--desk-text-muted) var(--desk-muted, #222)", ".a"),
+    [],
+  );
+  assert.deepEqual(
+    checkDeclaration("scrollbar-color", "var(--desk-input) var(--desk-card-border)", ".a"),
+    ["scheme"],
+  );
+  assert.deepEqual(checkDeclaration("scrollbar-color", "inherit", ".a"), []);
+  assert.deepEqual(checkDeclaration("scrollbar-width", "none", ".a"), []);
+});
+
+test("stylesheets: a declaration is checked against the selectors around it", () => {
+  const css = [
+    ":root { color-scheme: dark light; }",
+    "@media (min-width: 1px) {",
+    '  [data-scheme="light"] body { color-scheme: light; }',
+    "  body { color-scheme: light; }",
+    "}",
+    ".grid { scrollbar-color: auto; /* theme: content */ }",
+  ].join("\n");
+  assert.deepEqual(
+    lintCss(css).map(({ line, rule }) => [line, rule]),
+    [
+      [1, "scheme"],
+      [4, "scheme"],
+    ],
+  );
+});
+
+test("pages link /_desk/tokens.css, which brings the theme's scheme and scrollbars", () => {
+  const page = (head) =>
+    `<!doctype html>\n<html>\n<head>\n${head}\n</head>\n<body></body>\n</html>`;
+  assert.deepEqual(
+    lintHtml(page('<link rel="stylesheet" href="/_desk/base.css" />')).map(({ line, rule }) => [
+      line,
+      rule,
+    ]),
+    [[1, "scheme"]],
+  );
+  assert.deepEqual(lintHtml(page('<link rel="stylesheet" href="/_desk/tokens.css" />')), []);
+  assert.deepEqual(lintHtml(page("<!-- theme: content (a file's own page) -->")), []);
+  // A fragment that is not a page (a template a script fills) is left alone.
+  assert.deepEqual(lintHtml("<template><p>hi</p></template>"), []);
+});
+
 test("stylesheets: declarations with their lines; selectors and comments are not values", () => {
   const css = [
     "#feed:hover {", // a selector that looks like a colour
@@ -98,7 +174,7 @@ test("scripts: colour literals inside strings, unless marked", () => {
 
 test("pages: <style> blocks and style attributes, at their lines", () => {
   const html = [
-    "<html>",
+    '<html><link rel="stylesheet" href="/_desk/tokens.css" />',
     "<style>",
     "body { color: #111; }",
     "</style>",

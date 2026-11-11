@@ -178,6 +178,14 @@ Derived values stay token-based: `color-mix(in srgb, var(--desk-text) 8%, transp
 document's text, a highlight, an image's checkerboard) are not the theme's: mark them with a
 `theme: content` comment on the line, or on the line that opens the rule.
 
+The engine's own parts follow the theme too: `/_desk/tokens.css`, which every page links, sets
+`color-scheme` from the theme's `data-scheme`, thin scrollbars with a `--desk-input` thumb on a clear
+track, and `accent-color` from `--desk-check-accent`, each under `:where()` so a page's own rule wins
+(`packages/ui/src/native-css.ts`). A page leaves `color-scheme` to it (or sets one only under the
+`[data-scheme]` that names it), and a `scrollbar-color` of its own keeps a clear or surface track;
+a box that draws its own bars with `::-webkit-scrollbar` sets `scrollbar-color: auto` and a
+`theme: content` mark. The lint's `scheme` rule holds this, and a page without the sheet.
+
 `node scripts/ui-lint.mjs` checks this in `just check` as a ratchet. `scripts/ui-lint-baseline/<target>.json`
 holds the literals a plugin (or `_runtime`, `_ui`, `_examples`) may still have; more fail, fewer are
 reported until `node scripts/ui-lint.mjs --update` lowers the baseline (or deletes it at zero). `--list` names each

@@ -4,7 +4,6 @@
   --event: color-mix(in srgb, var(--desk-accent) 26%, var(--desk-card));
   --event-border: var(--desk-accent);
   --hour: 48px;
-  color-scheme: dark light;
 }
 
 html,
