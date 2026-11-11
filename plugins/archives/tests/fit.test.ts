@@ -1,12 +1,12 @@
 // What keeps the tree in view at small windows (#162 findings 8 and 9: at the first size, 326x169 at
 // 1280x800, the header's two rows, the column names and the preview left the tree no height at all;
 // at 300x220 half a row). A unit test has no layout, so this reads the rules that do it from the
-// stylesheet; the live app checks the pixels.
+// small-size stylesheet (ui/small.css); the live app checks the pixels.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(import.meta.dirname, "../ui/style.css"), "utf8").replace(
+const source = readFileSync(join(import.meta.dirname, "../ui/small.css"), "utf8").replace(
   /\/\*[\s\S]*?\*\//g,
   "",
 );

@@ -1,5 +1,6 @@
 /* Every colour, font, size, radius and duration is the theme's: the desk's tokens come from
-   /_desk/tokens.css and the runtime redefines them for the theme in force. */
+   /_desk/tokens.css and the runtime redefines them for the theme in force. The rules for a narrow
+   or short window are in small.css, which the page loads after this. */
 :root {
   --archives-danger: var(--desk-danger-text);
   --archives-row: 24px;
@@ -323,104 +324,6 @@ footer {
   flex: 1 1 280px;
   max-width: 520px;
   padding: 2px 0;
-}
-
-/* A narrow surface puts the preview under the tree and keeps the name, size and date. */
-@media (max-width: 640px) {
-  main {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) minmax(0, 40%);
-  }
-
-  #listing {
-    border-right: 0;
-    border-bottom: 1px solid var(--desk-border);
-  }
-
-  .columns,
-  .row {
-    grid-template-columns: minmax(80px, 1fr) 64px 112px;
-  }
-
-  .packed,
-  .method {
-    display: none;
-  }
-}
-
-/* Small windows: one thin line of header that scrolls sideways without a bar of its own, so the
-   tree keeps the height. The format and path under the name give way (the name says them on
-   hover), the controls take the design system's smallest height and the column names are one row
-   of the tree high. */
-@media (max-width: 720px), (max-height: 480px) {
-  header {
-    flex-wrap: nowrap;
-    gap: 8px;
-    padding: 3px 8px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    white-space: nowrap;
-  }
-
-  .title {
-    display: flex;
-    flex: 1 0 auto;
-    align-items: baseline;
-    gap: 8px;
-    min-width: 6em;
-    max-width: 60%;
-  }
-
-  #archive-about {
-    display: none;
-  }
-
-  #levels {
-    flex-wrap: nowrap;
-  }
-
-  .actions {
-    --desk-field-height: var(--desk-control-xs);
-    --desk-button-height: var(--desk-control-xs);
-    flex-wrap: nowrap;
-  }
-
-  #filter {
-    width: 8em;
-  }
-
-  .columns {
-    --desk-button-height: var(--archives-row);
-    padding-top: 0;
-    padding-bottom: 0;
-  }
-
-  #summary,
-  footer {
-    padding: 2px 8px;
-  }
-}
-
-/* A window's first size (326×169 at 1280×800) and smaller: the tree comes first. The counts under
-   it give way, and in a narrow window so does the preview, which comes back with the height. */
-@media (max-height: 300px) {
-  #summary {
-    display: none;
-  }
-}
-
-@media (max-width: 640px) and (max-height: 300px) {
-  main {
-    grid-template-rows: minmax(0, 1fr);
-  }
-
-  #listing {
-    border-bottom: 0;
-  }
-
-  #preview {
-    display: none;
-  }
 }
 
 [hidden] {
