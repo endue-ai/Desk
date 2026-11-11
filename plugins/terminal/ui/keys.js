@@ -52,6 +52,8 @@ export const DESK_KEYS = Object.freeze([
   "Mod+Shift+D",
   "Mod+Shift+M",
   "Mod+Shift+T",
+  // The Plugins list (desk.plugins.open for endue.sidebar), which brings plugins back (#163).
+  "Mod+Shift+X",
   "Control+`",
   "Control+Tab",
   "Control+Shift+Tab",
