@@ -8,7 +8,9 @@
 //! the same `SurfaceSink` (`connection.rs`), its page messages reach the runtime through the relay,
 //! so the runtime's pings, kept state and live budget apply to it as to a web plugin. Tab crosses
 //! its place in the runtime's page as it crosses a web plugin's (#128, ADR 0160): `focus.enter` in,
-//! `focus.leave` out (`page.rs`).
+//! `focus.leave` out (`page.rs`). A surface that exports its accessibility tree (`a11y.enable`) is
+//! told so again after each create or wake, since its process may be new and starts with none, as
+//! a web surface's new browser exports when its surface does (#146).
 
 mod connection;
 mod page;
@@ -20,7 +22,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use desk_bridge::PluginKind;
 use desk_core::native::{Ended, Exit, NativeProcess};
 use desk_surface::generated::{
-    CompositorMessage, SurfaceDeathReason, SurfaceDied, SurfaceDiedType, SurfaceMessage,
+    CompositorMessage, SurfaceA11yEnable, SurfaceA11yEnableType, SurfaceDeathReason, SurfaceDied,
+    SurfaceDiedType, SurfaceMessage,
 };
 use desk_surface::native::lines::line;
 use serde_json::{Value, json};
@@ -39,6 +42,9 @@ struct Surface {
     idle: bool,
     /// Its last size and scale, for a process started again (hot reload).
     size: Option<(Value, f64)>,
+    /// The desk asked it to export its accessibility tree (`a11y.enable`), for a process started
+    /// again (#146).
+    exports: bool,
 }
 
 struct Running {
@@ -116,6 +122,7 @@ impl NativeHost {
                 plugin: create.plugin.clone(),
                 idle: false,
                 size: None,
+                exports: false,
             };
             self.inner().surfaces.insert(surface.clone(), record);
             self.relay_down(&surface);
@@ -139,6 +146,21 @@ impl NativeHost {
                     record.idle = false;
                 }
                 self.ensure(&plugin, &surface);
+                self.write(&plugin, message);
+                // Its process may be new (after a death, a sleep or a reload): it has no tree yet.
+                let exports = self
+                    .inner()
+                    .surfaces
+                    .get(&surface)
+                    .is_some_and(|s| s.exports);
+                if exports {
+                    self.write(&plugin, &a11y_enable(&surface));
+                }
+            }
+            CompositorMessage::SurfaceA11yEnable(enable) => {
+                if let Some(record) = self.inner().surfaces.get_mut(&surface) {
+                    record.exports = enable.enabled;
+                }
                 self.write(&plugin, message);
             }
             CompositorMessage::SurfaceSleep(_) => {
@@ -351,6 +373,15 @@ impl NativeHost {
             .collect();
         Value::Object(plugins)
     }
+}
+
+/// `a11y.enable` for surface `surface`: export its accessibility tree.
+fn a11y_enable(surface: &str) -> CompositorMessage {
+    CompositorMessage::SurfaceA11yEnable(SurfaceA11yEnable {
+        r#type: SurfaceA11yEnableType::A11yEnable,
+        surface: surface.to_owned(),
+        enabled: true,
+    })
 }
 
 /// The size and scale a lifecycle message brings, as the protocol writes them.
