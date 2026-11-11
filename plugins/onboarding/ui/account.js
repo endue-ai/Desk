@@ -64,14 +64,20 @@ function button(label, primary, run) {
   return node;
 }
 
+/** Skip for now, quiet, in the scene's own block: on the edge it met the note (issue 161, #7). */
+function skipButton(scene) {
+  const node = button(ENTRY.skip, false, () => stayLocal(scene));
+  node.classList.add("quiet", "desk-btn-quiet", "entry-skip");
+  return node;
+}
+
 const leave = (scene, key, at) => {
   scene.d.drop(scene[key], at);
   scene[key] = null;
 };
 
-/** The web's entry: eyebrow, headline, subtitle, Sign in and Create account; Skip on the edge. */
+/** The web's entry: eyebrow, headline, subtitle, Sign in and Create account, the note, Skip. */
 function entry(scene) {
-  const { d } = scene;
   scene.shown = "entry";
   const card = element("div", "entry");
   card.setAttribute("role", "group");
@@ -90,9 +96,10 @@ function entry(scene) {
     element("p", "entry-sub", ENTRY.subtitle),
     actions,
     element("p", "entry-note", ENTRY.note),
+    skipButton(scene),
   );
   $("formslot").replaceChildren(card);
-  d.edge([{ label: ENTRY.skip, pick: () => stayLocal(scene) }], "btn quiet");
+  $("edge").replaceChildren();
 }
 
 /** Offline, the browser is not opened: Eris says so, and the entry comes back with the connection. */
@@ -147,19 +154,24 @@ function rest(scene, now) {
 /** The browser is open: Eris moves up and waits; once, after 20 s, she says she is patient. */
 function waiting(scene, change) {
   const { d } = scene;
-  const now = d.timeline.time;
-  if (!scene.up) {
-    scene.up = true;
-    d.pose("up", now);
-    const wait = ++scene.waits;
-    d.timeline.at(now + PATIENCE, () => {
-      if (scene.waits !== wait || scene.patient || scene.done) return;
-      scene.patient = true;
-      d.say(SAY.patient, d.timeline.time);
-    });
-  }
   const shown = `waiting|${change.code}|${change.signUp}|${change.notice}`;
-  if (scene.shown === shown) return;
+  if (scene.shown !== shown) show(scene, change, shown);
+  // Up once the card is in: how far up depends on what the window holds.
+  if (scene.up) return;
+  scene.up = true;
+  const now = d.timeline.time;
+  d.pose("up", now);
+  const wait = ++scene.waits;
+  d.timeline.at(now + PATIENCE, () => {
+    if (scene.waits !== wait || scene.patient || scene.done) return;
+    scene.patient = true;
+    d.say(SAY.patient, d.timeline.time);
+  });
+}
+
+/** The waiting card: the code to confirm, the page, Open browser again and Cancel. */
+function show(scene, change, shown) {
+  const { d } = scene;
   scene.shown = shown;
   const card = element("div", "entry entry-waiting");
   card.setAttribute("aria-live", "polite");
@@ -201,10 +213,9 @@ function failed(scene, change) {
       open(scene, scene.screen);
     });
     const actions = element("div", "entry-actions");
-    actions.append(again);
+    actions.append(again, skipButton(scene));
     $("formslot").replaceChildren(actions);
     if (needsHelp(scene.failures)) $("formslot").append(element("p", "help", HELP));
-    d.edge([{ label: ENTRY.skip, pick: () => stayLocal(scene) }], "btn quiet");
   });
 }
 

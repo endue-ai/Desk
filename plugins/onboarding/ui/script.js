@@ -83,8 +83,8 @@ export const TIMES = {
   greeting: 3000,
   talk: 17000,
   microphone: 19000,
+  /** The answers to the microphone question come; she goes on when the person gives one. */
   askMic: 20400,
-  afterMic: 21000,
   formDelay: 1600,
   silence: 8000,
 };
@@ -122,8 +122,23 @@ export const SAY = {
     "I can't reach endue right now. Check your connection, and I'll pick up where we left off.",
   brief: "Fine. I'll be brief.",
   resume: "Where were we? Right, your desk.",
-  morning: (name) => (name ? `Morning, ${name}.` : "Morning."),
+  /** A finished first run's greeting, by the hour of the day (0-23) on this computer. */
+  welcome: (hour, name) => {
+    const part =
+      hour >= 5 && hour < 12 ? "Morning" : hour >= 12 && hour < 18 ? "Afternoon" : "Evening";
+    return name ? `${part}, ${name}.` : `${part}.`;
+  },
 };
+
+/** Scene 3's answers along the edge, and what shows while the desk asks the person in turn. */
+export const MIC = {
+  allow: "Use my microphone",
+  notNow: "Not now",
+  waiting: "Waiting for your approval",
+};
+
+/** Under scene 6's cards: they bring in sample data until pickers and connectors are connected. */
+export const SOURCES_NOTE = "For now, each card brings in sample data.";
 
 /** A category colour of the theme, as a CSS value. */
 const chart = (n) => `var(--desk-chart-${n})`;

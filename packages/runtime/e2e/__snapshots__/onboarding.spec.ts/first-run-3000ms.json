@@ -76,9 +76,9 @@
       "children": [
         {
           "tag": "button",
-          "class": "btn quiet",
+          "class": "btn quiet desk-btn desk-btn-quiet",
           "style": {
-            "display": "inline-block",
+            "display": "inline-flex",
             "visibility": "visible",
             "opacity": "1",
             "transform": "none",

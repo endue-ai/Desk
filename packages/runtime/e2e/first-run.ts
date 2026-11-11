@@ -82,7 +82,26 @@ export const brainCalls = (page: Page) =>
     () => window.__desk.stub.log.filter((entry) => entry.request.method === "brain.say").length,
   );
 
+/** Scene 3's answers along the edge. */
+export const USE_MIC = "Use my microphone";
+export const NOT_NOW = "Not now";
+
+/**
+ * From before the microphone scene: wait for Eris's question and give `choice`. A yes is asked of
+ * the desk, whose answer comes over the bridge in real time; the scene goes on from the time of the
+ * press, so the clock stays put until the answer is in.
+ */
+export async function answerMicrophone(page: Page, frame: Frame, choice = USE_MIC) {
+  await untilScene(page, frame, "microphone");
+  const button = frame.getByRole("button", { name: choice });
+  await until(page, button);
+  await button.click();
+  await expect(frame.locator("html")).toHaveAttribute("data-microphone", /^(on|off)$/);
+}
+
+/** From before the microphone scene: allow the microphone, then give the name. */
 export async function submitName(page: Page, frame: Frame, name: string) {
+  await answerMicrophone(page, frame);
   await untilScene(page, frame, "name");
   await answer(page, frame, "Type your name", name);
 }

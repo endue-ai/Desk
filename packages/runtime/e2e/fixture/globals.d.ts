@@ -11,6 +11,8 @@ declare global {
     __desk: { clock: ManualClock; runtime: Runtime; stub: BrowserStub; commands: string[] };
     /** The onboarding fixture's in-memory store.get/store.set backing. */
     __deskStore: Record<string, unknown>;
+    /** The onboarding fixture's open microphone question (?mic=ask): the person's answer to it. */
+    __deskMic?: (granted: boolean) => void;
     /** The shell fixture's handle (shell.html). */
     __shell: {
       desk: Desk;

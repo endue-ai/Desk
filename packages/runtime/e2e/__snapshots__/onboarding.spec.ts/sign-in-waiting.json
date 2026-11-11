@@ -77,9 +77,9 @@
       "children": [
         {
           "tag": "button",
-          "class": "btn quiet",
+          "class": "btn quiet desk-btn desk-btn-quiet",
           "style": {
-            "display": "inline-block",
+            "display": "inline-flex",
             "visibility": "visible",
             "opacity": "1",
             "transform": "none",
@@ -257,7 +257,7 @@
         "display": "flex",
         "visibility": "visible",
         "opacity": "1",
-        "transform": "matrix(0.8, 0, 0, 0.8, 0, -96)",
+        "transform": "matrix(0.8, 0, 0, 0.8, 0, -26)",
         "filter": "none",
         "color": "rgb(242, 240, 245)"
       },
@@ -282,7 +282,7 @@
                 "display": "block",
                 "visibility": "visible",
                 "opacity": "1",
-                "transform": "matrix(1, 0, 0, 1, 0, -5.378)",
+                "transform": "matrix(1, 0, 0, 1, 0, -4.323)",
                 "filter": "none",
                 "color": "rgb(242, 240, 245)"
               },
@@ -307,7 +307,7 @@
                         "visibility": "visible",
                         "opacity": "1",
                         "transform": "matrix(1, 0, 0, 1, 0, 0)",
-                        "filter": "brightness(1.199)",
+                        "filter": "brightness(1.185)",
                         "color": "rgb(242, 240, 245)"
                       }
                     }
@@ -346,7 +346,7 @@
                     "display": "inline",
                     "visibility": "visible",
                     "opacity": "1",
-                    "transform": "matrix(1, 0, 0, 1, 0, -0.02)",
+                    "transform": "matrix(1, 0, 0, 1, 0, -0.03)",
                     "filter": "none",
                     "color": "rgb(242, 240, 245)"
                   }
@@ -399,7 +399,7 @@
             "display": "flex",
             "visibility": "visible",
             "opacity": "1",
-            "transform": "none",
+            "transform": "matrix(1.25, 0, 0, 1.25, 0, 0)",
             "filter": "none",
             "color": "rgb(242, 240, 245)"
           },

@@ -200,7 +200,6 @@
 .card[aria-pressed="true"] {
   border-color: var(--desk-primary-text);
   color: var(--desk-primary-text);
-  cursor: default;
 }
 
 .card.quiet {

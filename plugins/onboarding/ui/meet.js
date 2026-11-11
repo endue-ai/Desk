@@ -2,9 +2,9 @@
 // account.js.
 import { buildOrb } from "eris/orb.js";
 import { floor } from "./arrival.js";
-import { $, ASSETS, reduced } from "./director.js";
+import { $, ASSETS, element, reduced } from "./director.js";
 import { cleanName } from "./flow.js";
-import { ASK, GREETING, NAME_AT, NICE, SAY, TIMES } from "./script.js";
+import { ASK, GREETING, MIC, NAME_AT, NICE, SAY, TIMES } from "./script.js";
 
 /** Scene 2 from `shift` (the prototype's LINES, pushed back by the arrival). */
 export function greeting(d, shift) {
@@ -17,37 +17,72 @@ export function greeting(d, shift) {
       ...(w.cap === undefined ? {} : { cap: w.cap + shift }),
     }));
     const text = words.map((w) => w.t).join(" ");
-    d.say(text, words[0].cap ?? words[0].at, { words, out: line.out + shift });
+    d.say(text, words[0].cap ?? words[0].at, { words, out: line.out + shift, overlap: true });
   }
   d.orb.shrink(GREETING[3].words[0].at + shift);
   d.go("microphone", TIMES.talk + shift);
 }
 
-/** Scene 3. While the system asks, Eris says nothing; a refusal switches her to typing. */
+/** Whether she listens (page, tests): `asking` while the question is open, then `on` or `off`. */
+const hearing = (value) => {
+  document.documentElement.dataset.microphone = value;
+};
+
+/**
+ * Scene 3. Eris asks, and the person answers on the edge: she listens only after a yes that the desk
+ * allows too (issue 161, finding 9: a built-in holds `audio:capture` from its manifest, so the desk's
+ * answer alone is nobody's yes). While the question is open she says nothing; if the desk asks the
+ * person in turn, she says she waits for that approval. Not now, or a refusal, switches her to typing.
+ */
 export function microphone(d, at) {
   const ask = TIMES.microphone - TIMES.talk;
   d.say(SAY.talk, at, { out: at + ask - 300 });
   const question = d.say(SAY.microphone, at + ask, { stay: true });
-  d.timeline.at(at + TIMES.askMic - TIMES.talk, async () => {
-    let granted = false;
-    try {
-      const answer = await d.ctx.bridge.call("perm.request", {
-        permission: { permission: "audio:capture" },
-        reason: "Eris listens when you talk to her. You can type instead.",
-      });
-      granted = answer.granted;
-    } catch {
-      granted = false;
-    }
-    if (d.current !== "microphone") return; // Skip intro was pressed meanwhile
-    const now = Math.max(d.timeline.time, at + TIMES.afterMic - TIMES.talk);
-    d.drop(question, now);
-    d.state.listening = granted;
-    d.state.micAsked = true;
-    if (granted) d.orb.listen(now);
-    d.say(granted ? SAY.listening : SAY.typing, now + 300, { out: now + 2300 });
-    d.advance(now + 2600);
+  d.timeline.at(at + TIMES.askMic - TIMES.talk, () => {
+    if (d.current !== "microphone") return;
+    const open = { question };
+    d.asking = open;
+    hearing("asking");
+    const [yes, no] = d.edge([
+      { label: MIC.allow, pick: () => void allow(d, open) },
+      { label: MIC.notNow, pick: () => answered(d, open, false) },
+    ]);
+    yes.classList.add("primary", "desk-btn-primary");
+    no.classList.add("quiet", "desk-btn-quiet");
   });
+}
+
+/** Yes: the desk is asked; an answer that does not come at once is waited for, and said so. */
+async function allow(d, open) {
+  $("edge").replaceChildren();
+  d.timeline.at(d.timeline.time + 300, () => {
+    if (d.asking === open) $("edge").replaceChildren(element("p", "note", MIC.waiting));
+  });
+  let granted = false;
+  try {
+    const answer = await d.ctx.bridge.call("perm.request", {
+      permission: { permission: "audio:capture" },
+      reason: "Eris listens when you talk to her. You can type instead.",
+    });
+    granted = answer.granted;
+  } catch {
+    granted = false;
+  }
+  answered(d, open, granted);
+}
+
+function answered(d, open, granted) {
+  if (d.asking !== open) return; // answered already, or Skip intro was pressed meanwhile
+  d.asking = null;
+  $("edge").replaceChildren();
+  const now = d.timeline.time;
+  d.drop(open.question, now);
+  d.state.listening = granted;
+  d.state.micAsked = true;
+  hearing(granted ? "on" : "off");
+  if (granted) d.orb.listen(now);
+  d.say(granted ? SAY.listening : SAY.typing, now + 300, { out: now + 2300 });
+  d.advance(now + 2600);
 }
 
 /** Scene 4. The name rises into the orb's centre; an empty answer is asked for once more. */
@@ -80,7 +115,7 @@ export function name(d, at) {
     d.advance(now + 4700);
   };
   d.ask(at, {
-    question,
+    question: () => question,
     label: "Type your name",
     placeholder: "Your name",
     autocomplete: "given-name",
@@ -97,7 +132,11 @@ export function skip(d) {
   $("cap").replaceChildren();
   $("space").replaceChildren();
   $("skip").hidden = true;
+  $("edge").replaceChildren();
   d.answered();
+  // The microphone question is put off to the first conversation, unanswered.
+  d.asking = null;
+  delete document.documentElement.dataset.microphone;
   d.scene("sign-in"); // "Fine. I'll be brief." already belongs to the sign-in
   d.state.skipped = true;
   d.orb = buildOrb(document, d.timeline, $("sphere"), { assets: ASSETS, reduced, assembled: true });

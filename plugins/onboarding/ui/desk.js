@@ -3,7 +3,7 @@
 // yet, so a chosen card connects to sample data (samples.js).
 import { $, centre, EASE, element, reduced } from "./director.js";
 import { CALENDAR, findOverlap } from "./samples.js";
-import { AGENT_SAY, AGENTS, SAY, SOURCES } from "./script.js";
+import { AGENT_SAY, AGENTS, SAY, SOURCES, SOURCES_NOTE } from "./script.js";
 
 /** The frame, in the order it switches on: where it sits, and the edge its line is drawn from. */
 const PIECES = [
@@ -58,8 +58,8 @@ export function desk(d, at) {
   d.timeline.at(first.out + 1300, () => cards(d, question));
 }
 
+/** The cards along the edge: a press chooses a source, a second takes it back (issue 161, #19). */
 function cards(d, question) {
-  const note = "Pickers and connectors are not connected yet: a card connects to sample data.";
   const done = () => {
     const now = d.timeline.time;
     $("edge").replaceChildren();
@@ -72,19 +72,23 @@ function cards(d, question) {
     label: source.label,
     pressed: false,
     pick: (button) => {
-      if (d.state.connections.includes(source.id)) return;
-      d.state.connections.push(source.id);
-      button.setAttribute("aria-pressed", "true");
-      button.disabled = true;
-      fly(d, button);
-      connect(d, source.id, d.timeline.time + 600);
-      finished.textContent = "Done";
+      const chosen = d.state.connections.includes(source.id);
+      if (chosen) {
+        d.state.connections = d.state.connections.filter((id) => id !== source.id);
+        $("frame").querySelector(`.toolbar [data-source="${source.id}"]`)?.remove();
+      } else {
+        d.state.connections.push(source.id);
+        fly(d, button);
+        connect(d, source.id, d.timeline.time + 600);
+      }
+      button.setAttribute("aria-pressed", String(!chosen));
+      finished.textContent = d.state.connections.length > 0 ? "Done" : "Later";
     },
   }));
   const buttons = d.edge([...choices, { label: "Later", pick: done }], "card");
   const finished = buttons[buttons.length - 1];
   finished.classList.add("quiet");
-  $("edge").append(element("p", "note", note));
+  $("edge").append(element("p", "note", SOURCES_NOTE));
   buttons[0]?.focus();
 }
 

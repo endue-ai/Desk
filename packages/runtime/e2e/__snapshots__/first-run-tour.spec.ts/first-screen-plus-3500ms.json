@@ -552,9 +552,9 @@
       "children": [
         {
           "tag": "button",
-          "class": "btn quiet",
+          "class": "btn quiet desk-btn desk-btn-quiet",
           "style": {
-            "display": "inline-block",
+            "display": "inline-flex",
             "visibility": "visible",
             "opacity": "1",
             "transform": "none",
@@ -624,7 +624,7 @@
         "display": "flex",
         "visibility": "visible",
         "opacity": "1",
-        "transform": "matrix(0.5, 0, 0, 0.5, -296, -20)",
+        "transform": "matrix(0.5, 0, 0, 0.5, -296, 29)",
         "filter": "none",
         "color": "rgb(242, 240, 245)"
       },
@@ -1576,7 +1576,7 @@
             "display": "flex",
             "visibility": "visible",
             "opacity": "1",
-            "transform": "none",
+            "transform": "matrix(2, 0, 0, 2, 0, 0)",
             "filter": "none",
             "color": "rgb(242, 240, 245)"
           }

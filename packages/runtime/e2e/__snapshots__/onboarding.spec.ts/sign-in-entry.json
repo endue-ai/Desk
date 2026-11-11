@@ -77,9 +77,9 @@
       "children": [
         {
           "tag": "button",
-          "class": "btn quiet",
+          "class": "btn quiet desk-btn desk-btn-quiet",
           "style": {
-            "display": "inline-block",
+            "display": "inline-flex",
             "visibility": "visible",
             "opacity": "1",
             "transform": "none",
@@ -282,7 +282,7 @@
                 "display": "block",
                 "visibility": "visible",
                 "opacity": "1",
-                "transform": "matrix(1, 0, 0, 1, 0, -4.386)",
+                "transform": "matrix(1, 0, 0, 1, 0, -3.416)",
                 "filter": "none",
                 "color": "rgb(242, 240, 245)"
               },
@@ -307,7 +307,7 @@
                         "visibility": "visible",
                         "opacity": "1",
                         "transform": "matrix(1, 0, 0, 1, 0, 0)",
-                        "filter": "brightness(1.187)",
+                        "filter": "brightness(1.156)",
                         "color": "rgb(242, 240, 245)"
                       }
                     }
@@ -346,7 +346,7 @@
                     "display": "inline",
                     "visibility": "visible",
                     "opacity": "1",
-                    "transform": "matrix(1, 0, 0, 1, 0, -0.023)",
+                    "transform": "matrix(1, 0, 0, 1, 0, -0.224)",
                     "filter": "none",
                     "color": "rgb(242, 240, 245)"
                   }
@@ -1162,6 +1162,19 @@
                     "color": "rgb(176, 173, 183)"
                   },
                   "text": "Start free. No card required."
+                },
+                {
+                  "tag": "button",
+                  "class": "btn desk-btn quiet desk-btn-quiet entry-skip",
+                  "style": {
+                    "display": "flex",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "transform": "none",
+                    "filter": "none",
+                    "color": "rgb(242, 240, 245)"
+                  },
+                  "text": "Skip for now"
                 }
               ]
             }
@@ -1179,22 +1192,7 @@
         "transform": "none",
         "filter": "none",
         "color": "rgb(242, 240, 245)"
-      },
-      "children": [
-        {
-          "tag": "button",
-          "class": "desk-btn desk-btn-quiet btn quiet",
-          "style": {
-            "display": "flex",
-            "visibility": "visible",
-            "opacity": "1",
-            "transform": "none",
-            "filter": "none",
-            "color": "rgb(242, 240, 245)"
-          },
-          "text": "Skip for now"
-        }
-      ]
+      }
     }
   ]
 }

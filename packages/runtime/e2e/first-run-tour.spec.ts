@@ -113,6 +113,28 @@ test.describe("first run, scenes 6-10", () => {
     await untilScene(page, frame, "layout");
   });
 
+  // #161 finding 19: a chosen card dimmed and could not be taken back.
+  test("a chosen card is taken back by a second press", async ({ page }) => {
+    const frame = await open(page, "?resume=desk&name=Ada");
+    const calendar = frame.getByRole("button", { name: "Calendar" });
+    const chip = frame.locator('#frame .toolbar [data-source="calendar"]');
+    await until(page, calendar);
+    await expect(frame.getByText("For now, each card brings in sample data.")).toBeVisible();
+    await calendar.click();
+    await expect(calendar).toHaveAttribute("aria-pressed", "true");
+    await expect(calendar).toBeEnabled();
+    await expect(frame.getByRole("button", { name: "Done" })).toBeVisible();
+    await run(page, 1000);
+    await expect(chip).toHaveCount(1);
+    await calendar.click();
+    await expect(calendar).toHaveAttribute("aria-pressed", "false");
+    await expect(chip).toHaveCount(0);
+    await expect(frame.getByRole("button", { name: "Later" })).toBeVisible();
+    await frame.getByRole("button", { name: "Later" }).click();
+    await untilScene(page, frame, "agents");
+    expect(await stored(page, "first-run")).toMatchObject({ connections: [] });
+  });
+
   test("Later during the agents: they wait at the edge", async ({ page }) => {
     const frame = await open(page, "?resume=agents&name=Ada");
     await untilScene(page, frame, "agents");

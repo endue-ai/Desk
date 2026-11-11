@@ -9,11 +9,13 @@ body {
   font-family: var(--desk-font-sans);
 }
 
+/* The stage fits the window (fit.js): it sets the padding above and below for what stands along the
+   bottom edge, and scales the orb. */
 #root {
   position: relative;
   min-height: 100vh;
   box-sizing: border-box;
-  padding: 64px 16px 80px;
+  padding: 16px 16px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -128,6 +130,8 @@ body {
   pointer-events: none;
 }
 
+/* Its height is kept for a form, so a form that comes does not move Eris; the box lets presses through
+   to what lies beside the form. Eris's pose scales the stage, and the director scales this back. */
 #formslot {
   min-height: 96px;
   margin-top: 8px;
@@ -135,6 +139,25 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  transform-origin: 50% 0;
+  pointer-events: none;
+}
+
+#formslot > * {
+  pointer-events: auto;
+}
+
+/* A short window: two lines of a smaller caption, no room kept for a form (the orb gives way). */
+@media (max-height: 700px) {
+  #cap {
+    height: 80px;
+    margin-top: 8px;
+    font-size: var(--desk-text-3xl);
+  }
+
+  #formslot {
+    min-height: 0;
+  }
 }
 
 .ask-form {
@@ -204,6 +227,7 @@ input {
 .entry-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
   gap: 8px;
   margin-top: 8px;

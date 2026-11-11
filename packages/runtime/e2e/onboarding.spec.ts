@@ -1,10 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import {
   accountCalls,
   accountChanged,
+  answerMicrophone,
   approve,
   CODE,
   fail,
+  NOT_NOW,
   open,
   run,
   scene,
@@ -23,6 +25,12 @@ import { frameTree } from "./frame-tree";
 // account.changed events the core would send.
 
 const ACCOUNT = { permission: "account:manage" };
+
+/** Who asked the desk for a permission, in order. */
+const micRequests = (page: Page) =>
+  page.evaluate(() =>
+    window.__desk.stub.log.filter((e) => e.request.method === "perm.request").map((e) => e.caller),
+  );
 
 // `run` renders every frame: about 0.4 s of real time per second of first-run time in the e2e
 // container. The tests that walk the arrival and the name scene, and most of them on into sign-in,
@@ -92,15 +100,48 @@ test.describe("branches", () => {
 
   test("a refused microphone switches to typing", async ({ page }) => {
     const frame = await open(page, "?mic=deny");
+    await answerMicrophone(page, frame);
     await untilScene(page, frame, "name");
     await expect(frame.locator("#live")).toContainText("That's fine. Type to me instead.");
     await expect(frame.getByLabel("Type your name")).toBeVisible();
-    const requests = await page.evaluate(() =>
-      window.__desk.stub.log
-        .filter((e) => e.request.method === "perm.request")
-        .map((e) => e.caller),
-    );
-    expect(requests).toEqual(["endue.onboarding"]);
+    expect(await micRequests(page)).toEqual(["endue.onboarding"]);
+  });
+
+  // #161 finding 9: the desk's grant of a built-in's manifest permission is nobody's yes.
+  test("the microphone: nothing says she listens until the person answers", async ({ page }) => {
+    test.setTimeout(LONG_RUN);
+    const frame = await open(page);
+    await untilScene(page, frame, "microphone");
+    await until(page, frame.getByRole("button", { name: NOT_NOW }));
+    await skip(page, 10_000);
+    expect(await scene(frame)).toBe("microphone");
+    await expect(frame.locator("html")).toHaveAttribute("data-microphone", "asking");
+    await expect(frame.locator("#live")).not.toContainText("listening");
+    expect(await micRequests(page)).toEqual([]);
+    await frame.getByRole("button", { name: NOT_NOW }).click();
+    await untilScene(page, frame, "name");
+    await expect(frame.locator("#live")).toContainText("That's fine. Type to me instead.");
+    await expect(frame.getByText("Say it, or type it.")).toHaveCount(0);
+    expect(await micRequests(page)).toEqual([]);
+  });
+
+  test("the microphone: while the desk asks in turn, she waits for that approval", async ({
+    page,
+  }) => {
+    test.setTimeout(LONG_RUN);
+    const frame = await open(page, "?mic=ask");
+    await untilScene(page, frame, "microphone");
+    const yes = frame.getByRole("button", { name: "Use my microphone" });
+    await until(page, yes);
+    await yes.click();
+    await expect.poll(() => micRequests(page)).toEqual(["endue.onboarding"]);
+    await run(page, 1000);
+    await expect(frame.getByText("Waiting for your approval")).toBeVisible();
+    await expect(frame.locator("#live")).not.toContainText("listening");
+    await page.evaluate(() => window.__deskMic?.(true));
+    await expect(frame.locator("html")).toHaveAttribute("data-microphone", "on");
+    await untilSaid(page, frame, "Thanks. I'm listening.");
+    await expect(frame.getByText("Waiting for your approval")).toHaveCount(0);
   });
 
   test("an empty name is asked for again", async ({ page }) => {
@@ -125,8 +166,11 @@ test.describe("branches", () => {
       "Meet your AI. Give it character, connect your tools, and make things happen.",
     );
     await expect(entry).toContainText("Start free. No card required.");
-    await expect(entry.getByRole("button")).toHaveText(["Sign in with endue ID", "Create account"]);
-    await expect(frame.getByRole("button", { name: "Skip for now" })).toBeVisible();
+    await expect(entry.getByRole("button")).toHaveText([
+      "Sign in with endue ID",
+      "Create account",
+      "Skip for now",
+    ]);
     await run(page, 1000);
     expect(await frameTree(frame)).toMatchSnapshot("sign-in-entry.json");
   });
@@ -300,20 +344,32 @@ test.describe("branches", () => {
     await expect(frame.locator("#live")).toContainText("Take your time. I'm very patient. Mostly.");
   });
 
-  test("8 s of silence bring one nudge to type", async ({ page }) => {
+  test("8 s of silence bring one nudge to type, and the question again", async ({ page }) => {
     test.setTimeout(LONG_RUN);
     const frame = await open(page);
+    await answerMicrophone(page, frame);
     await untilScene(page, frame, "name");
     await run(page, 8500);
     await expect(frame.locator("#live")).toContainText("Still there? You can type, too.");
     await expect(frame.getByLabel("Type your name")).toBeFocused();
+    // #161 finding 19: the question was gone for good after the nudge.
+    const asked = frame.locator("#live p", { hasText: "What should I call you?" });
+    for (let i = 0; i < 40 && (await asked.count()) < 2; i++) await run(page, 256);
+    await expect(asked).toHaveCount(2);
+    await run(page, 2500);
+    // Soul text is a span per letter, with no spaces between the words.
+    await expect(frame.locator("#cap")).toHaveText("WhatshouldIcallyou?");
+    await expect(frame.locator("#cap .wrap")).toHaveCount(1);
   });
 
-  test("the second run only says good morning", async ({ page }) => {
+  test("the second run only greets, by the hour", async ({ page }) => {
     const frame = await open(page, "?name=Ada");
     await run(page, 2000);
     expect(await scene(frame)).toBe("welcome-back");
-    await expect(frame.locator("#live")).toHaveText("Morning, Ada.");
+    const hour = await frame.evaluate(() => new Date().getHours());
+    const part =
+      hour >= 5 && hour < 12 ? "Morning" : hour >= 12 && hour < 18 ? "Afternoon" : "Evening";
+    await expect(frame.locator("#live")).toHaveText(`${part}, Ada.`);
     await expect(frame.locator("#live")).not.toContainText("Hello.");
   });
 

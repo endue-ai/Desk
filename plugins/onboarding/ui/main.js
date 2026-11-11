@@ -1,5 +1,5 @@
 // The first run (docs/ko/first-run-scenario.md), scenes 1-10 on an overlay, which closes itself when
-// it is done. A finished first run only says good morning next time; an interrupted one picks up at
+// it is done. A finished first run only greets by the hour next time; an interrupted one picks up at
 // the scene it stopped in, without the arrival.
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
 import { buildOrb } from "eris/orb.js";
@@ -24,7 +24,7 @@ function firstRun(d) {
 function welcomeBack(d, saved) {
   d.scene("welcome-back");
   d.orb = buildOrb(document, d.timeline, $("sphere"), { assets: ASSETS, reduced, quick: true });
-  d.say(SAY.morning(saved.name), 1200, { stay: true });
+  d.say(SAY.welcome(new Date().getHours(), saved.name), 1200, { stay: true });
   d.timeline.at(4200, () => d.finish());
 }
 

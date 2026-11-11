@@ -1,6 +1,7 @@
 // Test page: the built-in Eris and onboarding plugins on the browser bridge stub. Never shipped.
 //   ?plugins=onboarding (default) | eris | both    which plugins plugin.list returns
-//   ?mic=grant (default) | deny                    how perm.request answers
+//   ?mic=grant (default) | deny | ask              how perm.request answers (ask: when the test
+//                                                  calls window.__deskMic, as a person would)
 //   ?name=<name>                                   a finished first run, as the core would remember it
 //   ?resume=<scene>                                an interrupted first run (with ?name, ?connect=a,b)
 //   ?brain=echo (default) | offline                how brain.say answers: like brain-echo, or offline
@@ -142,7 +143,12 @@ const stub = browserStub({
   ...(query.get("account") === "none" ? {} : accountHandlers),
   "perm.query": () => ({ grants: [] }),
   "plugin.list": () => ({ plugins }),
-  "perm.request": () => ({ granted: query.get("mic") !== "deny" }),
+  "perm.request": () => {
+    if (query.get("mic") !== "ask") return { granted: query.get("mic") !== "deny" };
+    return new Promise((answer) => {
+      window.__deskMic = (granted) => answer({ granted });
+    });
+  },
   "store.get": ({ key }) => (key in store ? { value: store[key] } : {}),
   "store.set": ({ key, value }) => {
     store[key] = value;

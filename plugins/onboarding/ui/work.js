@@ -1,6 +1,7 @@
 // Scenes 8-10: the first task builds a screen that did not exist a second ago, the person names the
 // layout and it folds into the dock, and Eris settles into her slot at the top of the left bar.
 import { $, centre, element, FIRST_RUN, LAYOUTS } from "./director.js";
+import { orbScale } from "./fit.js";
 import { examplesFor, layoutName, matchExample } from "./flow.js";
 import { answer, folder, row, tomorrow, week } from "./panels.js";
 import { moveAfter } from "./samples.js";
@@ -64,12 +65,13 @@ function build(d, kind, text, now) {
 
 function shards(d, panels, at) {
   const sphere = centre($("sphere"));
+  const rim = 150 * orbScale();
   panels.forEach((piece, p) => {
     const to = centre(piece);
     for (let i = 0; i < 3; i++) {
       const angle = ((-60 + p * 40 + i * 25) * Math.PI) / 180;
-      const x = Math.round(sphere.x + 150 * Math.cos(angle));
-      const y = Math.round(sphere.y + 150 * Math.sin(angle));
+      const x = Math.round(sphere.x + rim * Math.cos(angle));
+      const y = Math.round(sphere.y + rim * Math.sin(angle));
       const shard = element("div", "shard loose");
       Object.assign(shard.style, { left: `${x - 13}px`, top: `${y - 13}px` });
       $("root").append(shard);
@@ -174,7 +176,12 @@ export function layout(d, at) {
     d.advance(saved.out + 1300);
   };
   d.timeline.at(at + 600, () => d.edge([{ label: "Not now", pick: notNow }], "btn quiet"));
-  d.ask(at, { question, label: "Name this layout", placeholder: "Morning", answer: named });
+  d.ask(at, {
+    question: () => question,
+    label: "Name this layout",
+    placeholder: "Morning",
+    answer: named,
+  });
 }
 
 /** The screen shrinks into a card that drops into the dock (or just fades, unnamed). */
@@ -214,7 +221,10 @@ export function outro(d, at) {
   const slot = $("frame").querySelector(".eris-slot");
   const from = centre(sphere);
   const to = centre(slot);
-  const into = `translate(${to.x - from.x}px, ${to.y - from.y}px) scale(${40 / 360})`;
+  // The fitted orb's own scale (fit.js) applies over this transform: the move is divided by it.
+  const fitted = orbScale();
+  const [dx, dy] = [(to.x - from.x) / fitted, (to.y - from.y) / fitted];
+  const into = `translate(${dx}px, ${dy}px) scale(${40 / 360 / fitted})`;
   d.move(sphere, [{ transform: "none" }, { transform: into }], at + 600, 1200);
   d.timeline.at(at + 1800, () => slot.classList.add("filled"));
   const heyAt = first.out + 300;

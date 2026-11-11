@@ -5,6 +5,7 @@
 import { leave, REDUCED, renderLine, WISP, wordsFromText } from "eris/soul-text.js";
 import { Timeline } from "eris/timeline.js";
 import { createVoice } from "eris/voice.js";
+import { fittedTop, orbScale, TOP, watchFit } from "./fit.js";
 import { nextScene, RESUMABLE, RESUME_AT } from "./flow.js";
 import { SAY, TIMES } from "./script.js";
 import { createSound } from "./sound.js";
@@ -56,8 +57,12 @@ export class Director {
     this.current = null;
     this.orb = undefined;
     this.stagePose = "none";
+    this.formPose = "none";
     this.nudged = false; // "Still there?" is said once per first run
     this.waiting = 0; // the question that waits for an answer
+    this.lines = new Map(); // the last line said into each container
+    this.asking = null; // the microphone question while it waits for the person (meet.js)
+    watchFit(this);
   }
 
   scene(name) {
@@ -102,11 +107,15 @@ export class Director {
   /**
    * Say a sentence from `at`: soul text in `into` (under the orb by default), the whole sentence in the
    * live region, and aloud. The line is built when it starts and removed once it has scattered.
-   * Returns a handle for `drop`; `handle.out` is when the line starts to scatter (null: it stays).
+   * Returns a handle for `drop` (`options.handle` reuses one); `handle.out` is when the line starts
+   * to scatter (null: it stays). A line that starts while the one before it still scatters there
+   * sends that one off quickly, so two are never read on top of each other (issue 161, finding 19);
+   * `overlap` lines (scene 2's, whose E.R.I.S. stays into the next) keep the prototype's timing.
    */
   say(text, at, options = {}) {
     const {
       words,
+      overlap = false,
       stay = false,
       out,
       into = $("cap"),
@@ -118,9 +127,14 @@ export class Director {
     const last = spoken[spoken.length - 1]?.at ?? at;
     const hold = 1000 + Math.min(400, text.length * 10);
     const line = { index: this.next++, words: spoken, out: stay ? null : (out ?? last + hold) };
-    const handle = { element: null, out: line.out };
+    const handle = Object.assign(options.handle ?? {}, { element: null, out: line.out, text });
     this.timeline.at(at, () => {
+      const before = this.lines.get(into);
+      if (!overlap && before && before.out !== null && before.out <= at) {
+        this.hurry(before.element, at);
+      }
       handle.element = renderLine(document, this.timeline, line, style);
+      this.lines.set(into, handle);
       into.append(handle.element);
       if (announce) this.announce(who ? `${who}: ${text}` : text);
       if (speak) this.voice.speak(text);
@@ -130,6 +144,16 @@ export class Director {
       this.timeline.at(gone, () => handle.element?.remove());
     }
     return handle;
+  }
+
+  /** A line that still scatters fades up and away at once. */
+  hurry(element, at) {
+    if (!element?.isConnected) return;
+    const frames = [
+      { opacity: 1, transform: "none" },
+      { opacity: 0, transform: "translateY(-16px)" },
+    ];
+    this.move(element, frames, at, 300, "ease-in");
   }
 
   /** Let a staying line leave from `at`, then remove it. */
@@ -146,21 +170,29 @@ export class Director {
     $("live").append(sentence);
   }
 
-  /** The person's words rise from below into the orb's empty centre and light the core. */
+  /**
+   * The person's words rise from the form into the orb's empty centre and light the core, wherever
+   * the fitted orb stands.
+   */
   rise(text, at) {
     const rise = element("div", "user-rise", text.length > 40 ? `${text.slice(0, 37)}...` : text);
     rise.setAttribute("aria-hidden", "true");
+    const scale = orbScale();
+    // The core's centre is 6 px above the sphere's (soul-text.css), the words' top 20 px above that.
+    const top = Math.round($("sphere").offsetTop + 194 - 6 * scale - 20);
+    const from = $("formslot").offsetTop - top + 20;
+    rise.style.top = `${top}px`;
     $("stage").append(rise);
     const frames = reduced
       ? [{ opacity: 1 }, { opacity: 0 }]
       : [
-          { offset: 0, opacity: 0, transform: "translateY(388px)" },
-          { offset: 0.12, opacity: 1, transform: "translateY(376px)" },
+          { offset: 0, opacity: 0, transform: `translateY(${from}px)` },
+          { offset: 0.12, opacity: 1, transform: `translateY(${from - 12}px)` },
           {
             offset: 0.7,
             opacity: 0.9,
             filter: "blur(0px)",
-            transform: "translateY(40px) scale(0.7)",
+            transform: `translateY(${Math.round(40 * scale)}px) scale(0.7)`,
           },
           { offset: 1, opacity: 0, filter: "blur(6px)", transform: "translateY(0px) scale(0.3)" },
         ];
@@ -188,25 +220,39 @@ export class Director {
     );
   }
 
-  /** Where Eris stands: "centre"; "up", smaller, while the browser signs in; "aside", top left. */
+  /**
+   * Where Eris stands: "centre"; "up", smaller and as far up as the window lets her, while the
+   * browser signs in; "aside", top left. The form under her keeps its size (issue 161, finding 10).
+   */
   pose(name, at) {
     const stage = $("stage");
     let to = "none";
-    if (name === "up") to = "translateY(-96px) scale(0.8)";
-    if (name === "aside") {
-      const dx = 344 - (stage.offsetLeft + stage.offsetWidth / 2);
-      to = `translate(${dx}px, ${56 - stage.offsetTop}px) scale(0.5)`;
+    let scale = 1;
+    if (name === "up") {
+      scale = 0.8;
+      const lift = Math.round(Math.min(96, Math.max(0, fittedTop() - TOP)));
+      to = `translateY(${-lift}px) scale(${scale})`;
     }
+    if (name === "aside") {
+      scale = 0.5;
+      const dx = 344 - (stage.offsetLeft + stage.offsetWidth / 2);
+      to = `translate(${dx}px, ${56 - stage.offsetTop}px) scale(${scale})`;
+    }
+    const form = scale === 1 ? "none" : `scale(${1 / scale})`;
     this.move(stage, [{ transform: this.stagePose }, { transform: to }], at, 900);
+    this.move($("formslot"), [{ transform: this.formPose }, { transform: form }], at, 900);
     this.stagePose = to;
+    this.formPose = form;
   }
 
   /**
-   * Put an input under Eris's `question` and call `answer(value)` on Enter. While the microphone
-   * listens the input comes 1.6 s later with a hint, and 8 s of silence bring "Still there?" once
-   * per first run. Returns the question's token.
+   * Put an input under Eris's question and call `answer(value)` on Enter. `question` is the line's
+   * handle, or a function giving the one standing now. While the microphone listens the input comes
+   * 1.6 s later with a hint, and 8 s of silence bring "Still there?" once per first run, after
+   * which she asks again (issue 161, finding 19). Returns the question's token.
    */
   ask(at, { question, label, placeholder, autocomplete = "off", answer }) {
+    const current = typeof question === "function" ? question : () => question;
     const token = ++this.waiting;
     const formAt = this.state.listening ? at + TIMES.formDelay : at;
     this.timeline.at(formAt, () => {
@@ -239,9 +285,14 @@ export class Director {
         if (this.waiting !== token || this.nudged || input?.value) return;
         this.nudged = true;
         const now = this.timeline.time;
-        this.drop(question, now);
-        this.say(SAY.still, now + 300);
+        const asked = current();
+        this.drop(asked, now);
+        const still = this.say(SAY.still, now + 300);
         input?.focus();
+        this.timeline.at(still.out + 300, () => {
+          if (this.waiting !== token || current() !== asked) return;
+          this.say(asked.text, this.timeline.time, { stay: true, handle: asked });
+        });
       });
     }
     return token;
