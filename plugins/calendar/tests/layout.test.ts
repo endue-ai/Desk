@@ -134,6 +134,10 @@ describe("words", () => {
     expect(
       s(heading("ko-KR", "month", span("month", day("2026-10-30"), 0), day("2026-10-30"))),
     ).toBe("2026년 10월");
+    // Short enough to sit beside the bar's buttons at the window's first sizes.
+    expect(heading("en-US", "day", span("day", day("2026-11-11"), 0), day("2026-11-11"))).toBe(
+      "Wed, Nov 11, 2026",
+    );
     expect(a && s(whenText("en-US", a))).toBe("9:00 AM – 10:00 AM");
     expect(late && s(whenText("en-GB", late))).toBe("30 Oct, 23:00 – 31 Oct, 01:00");
     expect(trip && whenText("en-US", trip)).toBe("Oct 29 – Oct 31");

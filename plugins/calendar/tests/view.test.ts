@@ -154,6 +154,43 @@ describe("the view", () => {
     expect(actions.edit).toHaveBeenCalledWith("a");
   });
 
+  it("a 30-minute block leads with its title, its time after it, in the week and the day", () => {
+    const standup = occurrences(
+      model(
+        ics([
+          "UID:s",
+          "DTSTART;TZID=Asia/Seoul:20261030T090000",
+          "DTEND;TZID=Asia/Seoul:20261030T093000",
+          "SUMMARY:Daily standup",
+        ]),
+      ),
+      at("2026-10-01T00:00:00Z"),
+      at("2026-11-30T00:00:00Z"),
+    );
+    for (const mode of ["week", "day"] as const) {
+      const { view, grid } = setup();
+      view.render(state(mode, { occurrences: standup }));
+      const block = grid.querySelector("button.block");
+      // One line of room shows the title: it comes first, and the time follows where there is room.
+      const parts = block?.children.map((c) => (typeof c === "string" ? c : c.className));
+      expect(parts, mode).toEqual(["title", "when"]);
+      expect(block?.textContent.replace(/\s/g, " ")).toBe("Daily standup9:00 AM – 9:30 AM");
+      expect(block?.getAttribute("aria-label")?.replace(/\s/g, " ")).toBe(
+        "Daily standup, 9:00 AM – 9:30 AM",
+      );
+    }
+  });
+
+  it("scrolls the timeline to the day's first hour with that hour's label in view", async () => {
+    const { view, grid } = setup();
+    view.render(state("day"));
+    const scroll = grid.querySelector(".scroll") as El;
+    scroll.scrollHeight = 24 * 48;
+    await Promise.resolve();
+    // A quarter of an hour above 8:00, so the label (drawn half above its line) is not cut.
+    expect(scroll.scrollTop).toBe(7.75 * 48);
+  });
+
   it("draws the agenda by day, and says when there is nothing", () => {
     const { view, grid } = setup();
     view.render(state("agenda"));
@@ -277,6 +314,23 @@ describe("the editor", () => {
       }),
       "one",
     );
+  });
+
+  it("keeps Save, Cancel, Delete and the series choice out of the part that scrolls", () => {
+    const { doc } = open(editing({ rrule: "FREQ=WEEKLY" }, true));
+    const fields = doc.querySelector(".fields") as El;
+    const foot = doc.querySelector(".editor-foot") as El;
+    for (const name of ["title", "allDay", "startDate", "endTime", "zone", "repeat", "free"])
+      expect(fields.contains(doc.querySelector(`[name="${name}"]`)), name).toBe(true);
+    for (const control of [
+      doc.querySelector('button[type="submit"]'),
+      doc.getElementById("editor-cancel"),
+      doc.getElementById("editor-delete"),
+      doc.getElementById("editor-scope"),
+    ]) {
+      expect(foot.contains(control)).toBe(true);
+      expect(fields.contains(control)).toBe(false);
+    }
   });
 
   it("an all-day event's end field shows its last day; the end it hands back is the day after", () => {

@@ -1,6 +1,7 @@
 // The week and day views, and the agenda. A week or a day is a row of all-day events over columns of
 // time, with overlapping events side by side and a line at the current time; a click on a column
-// adds an event at that half hour. The agenda lists the days that have events.
+// adds an event at that half hour. A block reads title, then time. The agenda lists the days that
+// have events.
 import { agenda as agendaDays, banner, dayBlocks } from "./calendar/layout.js";
 import { eventButton, h } from "./dom.js";
 import { dayText, timeText, wallText, whenText } from "./format.js";
@@ -72,20 +73,20 @@ export function createTimeline(doc, actions) {
             "aria-label": dayText(s.locale, day),
           },
           dayBlocks(s.occurrences, day).map((b) => {
+            // The title first, then the time: a block with room for one line still names its event.
             const button = eventButtonOf(
               s,
               b.occ,
               ["block", b.continued ? "continued" : "", b.continues ? "continues" : ""]
                 .join(" ")
                 .trim(),
-              true,
+              false,
             );
             button.style.top = `${(b.top / 1440) * 100}%`;
             button.style.height = `${(b.height / 1440) * 100}%`;
             button.style.left = `${(b.col / b.cols) * 100}%`;
             button.style.width = `${100 / b.cols}%`;
-            const when = h(doc, "span", { class: "when", text: whenText(s.locale, b.occ) });
-            if (b.height >= 45) button.append(when);
+            button.append(h(doc, "span", { class: "when", text: whenText(s.locale, b.occ) }));
             return button;
           }),
         );
@@ -106,8 +107,9 @@ export function createTimeline(doc, actions) {
     const key = `${s.mode}:${s.span.from}`;
     if (key !== scrolledFor) {
       scrolledFor = key;
+      // A quarter of an hour above the first hour, so its label (drawn half above its line) shows.
       queueMicrotask(() => {
-        body.scrollTop = (body.scrollHeight / 24) * Math.max(0, Math.min(23, s.dayStart));
+        body.scrollTop = (body.scrollHeight / 24) * Math.max(0, Math.min(23, s.dayStart) - 0.25);
       });
     }
     return view;

@@ -83,10 +83,16 @@ button:disabled {
   color: var(--desk-primary-text);
 }
 
+/* One line beside the buttons: short of room the bar puts the buttons on a second row, and short of
+   that the heading is cut at its end; it never wraps. */
 h1 {
-  flex: 1;
+  flex: 1 1 6em;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   font-size: calc(var(--desk-text-sm) + 1px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #cal-detail,
@@ -197,12 +203,22 @@ h1 {
   color: var(--desk-primary-foreground);
 }
 
+/* One column as wide as the cell: a chip never runs into the next day, its title is cut instead. In
+   a narrow cell the title has the room; the time stays in the chip's name and the other views. */
 .month .events {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
   margin: 2px 0 0;
   padding: 0;
   list-style: none;
+  container-type: inline-size;
+}
+
+@container (width < 9em) {
+  .month .event .time {
+    display: none;
+  }
 }
 
 /* Week and day */
@@ -283,14 +299,29 @@ h1 {
   );
 }
 
+/* Title, then time, in lines the block's height cuts: a block with room for one line shows its title.
+   One that is not two lines tall keeps the title to that line, cut at its end. */
 .block {
   position: absolute;
-  flex-direction: column;
-  gap: 0;
+  flex-flow: row wrap;
+  align-content: flex-start;
+  gap: 0 4px;
   padding: 1px 4px;
   white-space: normal;
   border: 1px solid var(--desk-background);
   border-left: 3px solid var(--event-border);
+  container-type: size;
+}
+
+/* A word wider than a narrow column breaks, so its letters show rather than a lone ellipsis. */
+.block .title {
+  overflow-wrap: break-word;
+}
+
+@container (height < 3em) {
+  .block .title {
+    white-space: nowrap;
+  }
 }
 
 .block.continued {
@@ -342,90 +373,6 @@ h1 {
 .agenda .when {
   flex: none;
   width: 9em;
-}
-
-/* Editor */
-dialog {
-  width: min(460px, 92vw);
-  max-height: 92vh;
-  padding: 16px;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--desk-radius-lg);
-  background: var(--desk-card);
-  color: var(--desk-text);
-}
-
-dialog::backdrop {
-  background: var(--desk-scrim);
-}
-
-dialog form {
-  display: grid;
-  gap: 6px;
-}
-
-dialog h2 {
-  margin: 0 0 4px;
-  font-size: calc(var(--desk-text-sm) + 1px);
-}
-
-dialog label,
-dialog legend {
-  color: var(--desk-text-muted);
-}
-
-dialog input:not([type="checkbox"], [type="radio"]),
-dialog select,
-dialog textarea {
-  width: 100%;
-}
-
-dialog [aria-invalid="true"] {
-  border-color: var(--desk-danger);
-}
-
-fieldset {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-fieldset.times input {
-  flex: 1;
-}
-
-fieldset legend {
-  padding: 0 0 2px;
-}
-
-#editor-scope {
-  flex-direction: column;
-}
-
-.check {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  color: var(--desk-text);
-}
-
-.error {
-  flex-basis: 100%;
-  margin: 0;
-  color: var(--desk-danger-text);
-}
-
-.actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.spacer {
-  flex: 1;
 }
 
 [hidden] {

@@ -42,7 +42,10 @@ const clock24 = (/** @type {string} */ locale) => {
 export const timeText = (/** @type {string} */ locale, /** @type {number} */ wall) =>
   wallText(locale, wall, { hour: clock24(locale) ? "2-digit" : "numeric", minute: "2-digit" });
 
-/** The heading of a view: "October 2026", "Oct 26 – Nov 1, 2026", "Friday, October 30, 2026". */
+/**
+ * The heading of a view: "October 2026", "Oct 26 – Nov 1, 2026", "Fri, Oct 30, 2026". Short words, so
+ * it fits on one line beside the bar's buttons at the window's first sizes.
+ */
 export function heading(
   /** @type {string} */ locale,
   /** @type {Mode} */ mode,
@@ -52,8 +55,8 @@ export function heading(
   if (mode === "month") return wallText(locale, anchor * DAY, { month: "long", year: "numeric" });
   if (mode === "day")
     return wallText(locale, anchor * DAY, {
-      weekday: "long",
-      month: "long",
+      weekday: "short",
+      month: "short",
       day: "numeric",
       year: "numeric",
     });

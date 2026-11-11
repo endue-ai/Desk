@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="/_desk/tokens.css" />
     <link rel="stylesheet" href="/_desk/base.css" />
     <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./editor.css" />
     <link rel="stylesheet" href="./layer.css" />
   </head>
   <body>
@@ -40,63 +41,66 @@
     <dialog id="editor" aria-labelledby="editor-title">
       <form novalidate>
         <h2 id="editor-title">New event</h2>
-        <label for="title">Title</label>
-        <input id="title" name="title" autocomplete="off" placeholder="(No title)" class="desk-field" />
+        <div class="fields">
+          <label for="title">Title</label>
+          <input id="title" name="title" autocomplete="off" placeholder="(No title)" class="desk-field" />
 
-        <label class="check"><input type="checkbox" name="allDay" class="desk-check" /> All day</label>
+          <label class="check"><input type="checkbox" name="allDay" class="desk-check" /> All day</label>
 
-        <fieldset class="times">
-          <legend>Starts</legend>
-          <input type="date" name="startDate" aria-label="Start date" aria-describedby="startDate-error" class="desk-field" />
-          <input type="time" name="startTime" aria-label="Start time" step="300" class="desk-field" />
+          <span class="label" id="starts-label">Starts</span>
+          <div class="times" role="group" aria-labelledby="starts-label">
+            <input type="date" name="startDate" aria-label="Start date" aria-describedby="startDate-error" class="desk-field" />
+            <input type="time" name="startTime" aria-label="Start time" step="300" class="desk-field" />
+          </div>
           <p id="startDate-error" class="error" hidden></p>
-        </fieldset>
-        <fieldset class="times">
-          <legend>Ends</legend>
-          <input type="date" name="endDate" aria-label="End date" aria-describedby="endDate-error" class="desk-field" />
-          <input type="time" name="endTime" aria-label="End time" step="300" class="desk-field" />
+          <span class="label" id="ends-label">Ends</span>
+          <div class="times" role="group" aria-labelledby="ends-label">
+            <input type="date" name="endDate" aria-label="End date" aria-describedby="endDate-error" class="desk-field" />
+            <input type="time" name="endTime" aria-label="End time" step="300" class="desk-field" />
+          </div>
           <p id="endDate-error" class="error" hidden></p>
-        </fieldset>
 
-        <label for="zone" id="zone-label">Time zone</label>
-        <input id="zone" name="zone" list="zones" autocomplete="off" spellcheck="false" aria-describedby="zone-error" class="desk-field" />
-        <datalist id="zones"></datalist>
-        <p id="zone-error" class="error" hidden></p>
+          <label for="zone" id="zone-label">Time zone</label>
+          <input id="zone" name="zone" list="zones" autocomplete="off" spellcheck="false" aria-describedby="zone-error" class="desk-field" />
+          <datalist id="zones"></datalist>
+          <p id="zone-error" class="error" hidden></p>
 
-        <label for="repeat">Repeat</label>
-        <select id="repeat" name="repeat" class="desk-field"></select>
-        <label for="rrule" id="rrule-label" hidden>Rule (RFC 5545 RRULE)</label>
-        <input id="rrule" name="rrule" hidden spellcheck="false" autocomplete="off" placeholder="FREQ=WEEKLY;BYDAY=MO,WE" aria-describedby="rrule-error" class="desk-field" />
-        <p id="rrule-error" class="error" hidden></p>
+          <label for="repeat">Repeat</label>
+          <select id="repeat" name="repeat" class="desk-field"></select>
+          <label for="rrule" id="rrule-label" hidden>Rule (RFC 5545 RRULE)</label>
+          <input id="rrule" name="rrule" hidden spellcheck="false" autocomplete="off" placeholder="FREQ=WEEKLY;BYDAY=MO,WE" aria-describedby="rrule-error" class="desk-field" />
+          <p id="rrule-error" class="error" hidden></p>
 
-        <label for="reminder">Reminder</label>
-        <select id="reminder" name="reminder" class="desk-field"></select>
+          <label for="reminder">Reminder</label>
+          <select id="reminder" name="reminder" class="desk-field"></select>
 
-        <label for="location">Location</label>
-        <input id="location" name="location" autocomplete="off" class="desk-field" />
+          <label for="location">Location</label>
+          <input id="location" name="location" autocomplete="off" class="desk-field" />
 
-        <label for="description">Notes</label>
-        <textarea id="description" name="description" rows="3" class="desk-field"></textarea>
+          <label for="description">Notes</label>
+          <textarea id="description" name="description" rows="2" class="desk-field"></textarea>
 
-        <label for="free">Show as</label>
-        <select id="free" name="free" class="desk-field">
-          <option value="busy">Busy</option>
-          <option value="free">Free</option>
-        </select>
-
-        <fieldset id="editor-scope" hidden>
-          <legend>This event repeats. Change or delete</legend>
-          <label class="check"><input type="radio" name="scope" value="one" checked class="desk-check" /> This event</label>
-          <label class="check"><input type="radio" name="scope" value="following" class="desk-check" /> This and following events</label>
-          <label class="check"><input type="radio" name="scope" value="all" class="desk-check" /> All events</label>
-        </fieldset>
-
-        <div class="actions">
-          <button type="button" id="editor-delete" class="desk-btn desk-btn-danger danger">Delete</button>
-          <span class="spacer"></span>
-          <button type="button" id="editor-cancel" class="desk-btn desk-btn-quiet">Cancel</button>
-          <button type="submit" class="desk-btn desk-btn-primary primary">Save</button>
+          <label for="free">Show as</label>
+          <select id="free" name="free" class="desk-field">
+            <option value="busy">Busy</option>
+            <option value="free">Free</option>
+          </select>
         </div>
+
+        <footer class="editor-foot">
+          <fieldset id="editor-scope" hidden>
+            <legend>This event repeats. Change or delete</legend>
+            <label class="check"><input type="radio" name="scope" value="one" checked class="desk-check" /> This event</label>
+            <label class="check"><input type="radio" name="scope" value="following" class="desk-check" /> This and following events</label>
+            <label class="check"><input type="radio" name="scope" value="all" class="desk-check" /> All events</label>
+          </fieldset>
+          <div class="actions">
+            <button type="button" id="editor-delete" class="desk-btn desk-btn-danger danger">Delete</button>
+            <span class="spacer"></span>
+            <button type="button" id="editor-cancel" class="desk-btn desk-btn-quiet">Cancel</button>
+            <button type="submit" class="desk-btn desk-btn-primary primary">Save</button>
+          </div>
+        </footer>
       </form>
     </dialog>
     <p id="status" role="status"></p>

@@ -215,7 +215,7 @@ describe("the person's commands", () => {
     expect(view.last.title.replace(/\s/g, " ")).toBe("Nov 29 – Dec 5, 2026");
     await host.command("endue.calendar.previous");
     await host.command("endue.calendar.day");
-    expect(view.last.title).toBe("Monday, November 23, 2026");
+    expect(view.last.title).toBe("Mon, Nov 23, 2026");
     await host.command("endue.calendar.today");
     await host.command("endue.calendar.agenda");
     expect(view.last).toMatchObject({ mode: "agenda", anchor: day("2026-10-30") });
