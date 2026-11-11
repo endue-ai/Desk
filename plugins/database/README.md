@@ -30,11 +30,11 @@ writes and edits before the client starts; production writes and agents' writes 
 | `ui/edit/`, `ui/edits.js` | Pending changes, their SQL and the one transaction they run in |
 | `ui/explain/`, `export.js`, `results.js`, `run.js`, `output-*.js`, `clients.js`, `execute.js`, `catalog.js` | Plan trees; copy and export formats; processes and the result worker, clients, checks before a run, the catalog |
 | `ui/consoles.js`, `console-run.js`, `pages.js`, `tools.js` | Consoles, runs, paging, history and stars, DDL |
-| `ui/database.js`, `commands.js`, `view*.js`, `keys.js`, `*.css` | Controller, commands, DOM, keys, the look |
+| `ui/database.js`, `commands.js`, `view*.js`, `keys.js`, `*.css` | Controller, commands, DOM, keys, the look: one header row (what does not fit is behind More), one footer line, dialogs inside the page |
 | `ui/drops.js`, `dropped.js`, `dnd.js`, `import*.js` | What a drop does and carries out, what rows and tables drag, the import |
 
 ```bash
-pnpm exec vitest run plugins/database
+pnpm exec vitest run plugins/database; just test-e2e e2e/database.spec.ts  # the page at 402×305, 643×339, 900×600
 ENDUE_DB_TEST_POSTGRES=postgresql://... ENDUE_DB_TEST_MYSQL=mysql://... pnpm exec vitest run plugins/database/tests/live.test.ts
 cargo run -p desk-cli -- plugin validate plugins/database
 ```

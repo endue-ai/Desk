@@ -130,6 +130,18 @@
   color: var(--desk-primary-text);
 }
 
+/* The bars over the tree and the rows hold the design system's controls at its smallest size, so
+   a short window keeps its room for what they filter. */
+.side-head,
+.filter,
+#grid-bar,
+#table-bar {
+  --desk-button-height: var(--desk-control-xs);
+  --desk-button-padding-x: var(--desk-space-2);
+  --desk-field-height: var(--desk-control-xs);
+  --desk-icon-button-size: var(--desk-control-xs);
+}
+
 .filter,
 .quick {
   display: block;
@@ -141,17 +153,34 @@
   box-sizing: border-box;
 }
 
+/* The result's tabs and its toolbar share a row while it has room, the tabs standing on the
+   result's top edge; on a narrow page the toolbar wraps below them. */
+.results-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  column-gap: 8px;
+}
+
 #grid-bar {
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 6px;
-  padding: 4px 8px;
-  border-top: 1px solid var(--desk-border);
+  padding: 2px 8px;
 }
 
 #grid-bar .quick {
+  flex: 1 1 8em;
+  min-width: 6em;
+  max-width: 16em;
   padding: 0;
+}
+
+#quick {
+  box-sizing: border-box;
+  width: 100%;
 }
 
 #grid-bar .grow {
@@ -293,7 +322,7 @@
 }
 
 #value-text {
-  min-height: 220px;
+  min-height: min(220px, 40vh);
   max-height: 60vh;
   font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
   resize: vertical;

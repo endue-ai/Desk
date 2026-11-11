@@ -1,11 +1,11 @@
 // The results' DOM: for a result set a grid (role=grid) that draws only the rows in view, so a
 // hundred thousand rows scroll as fast as ten. A cell cursor the arrows move, Shift+arrows select a
 // block; `s` sorts by the cursor's column (on the server for a table's view), `/` filters the rows
-// on screen, `t` shows the cursor's row as a record. Enter or F2 edits a cell of a result that can
-// be changed (pending until Submit), `n` sets NULL, `+` adds a row, Delete marks rows for deletion,
-// `u` takes a row's changes back; changed cells, added and deleted rows are drawn as a diff. `v`
-// opens the value viewer, Mod+C copies the block as tab-separated text. NULL is drawn apart from ''
-// and 'NULL'. A plan tab draws the plan tree, the Messages tab each statement's outcome.
+// on screen, `t` shows the cursor's row as a record. Enter, F2 or a double click edits a cell of a
+// result that can be changed (pending until Submit), `n` sets NULL, `+` adds a row, Delete marks
+// rows for deletion, `u` takes a row's changes back; changed cells, added and deleted rows are drawn
+// as a diff. `v` opens the value viewer, Mod+C copies the block as tab-separated text. NULL is drawn
+// apart from '' and 'NULL'. A plan tab draws the plan tree, the Messages tab each statement's outcome.
 
 import { el } from "./dom.js";
 import { rowOrder, rowsShown, valueAt, widths } from "./grid-model.js";
@@ -326,9 +326,9 @@ export function createGrid(doc, host, act) {
       Number(cell.getAttribute("aria-colindex")) - 1,
       event.shiftKey,
     );
-  });
-  grid.addEventListener("dblclick", (event) => {
-    if (/** @type {HTMLElement | null} */ (event.target)?.closest("[role=gridcell]")) startEdit();
+    // A double click edits the cell, here and not on dblclick: the second click's repaint has taken
+    // the cell it lands on out of the page, so a dblclick never reaches the grid.
+    if (event.detail === 2 && !event.shiftKey) startEdit();
   });
   // With nothing selected the copy event goes to the body, not to the focused grid.
   doc.addEventListener("copy", (event) => {

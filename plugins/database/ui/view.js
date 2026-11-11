@@ -10,6 +10,7 @@ import { el } from "./dom.js";
 import { engineOf } from "./engines/index.js";
 import { formatCount } from "./format.js";
 import { hints } from "./keys.js";
+import { createActions } from "./view-actions.js";
 import { diagramView } from "./view-diagram.js";
 import { createEditor } from "./view-editor.js";
 import { createForms } from "./view-form.js";
@@ -44,8 +45,10 @@ export function createView(doc, act) {
   const gridBar = byId("grid-bar");
   const record = byId("record");
   const previewForm = /** @type {HTMLFormElement} */ (byId("preview"));
+  // The footer keeps to one line, so a long message is cut there; its title holds all of it.
   const say = (/** @type {string} */ text) => {
     statusEl.textContent = text;
+    statusEl.title = text;
   };
   /** @type {Console | null} */
   let shown = null;
@@ -100,6 +103,11 @@ export function createView(doc, act) {
     button.addEventListener("click", () =>
       act(/** @type {HTMLElement} */ (button).dataset.act ?? ""),
     );
+  createActions(
+    doc,
+    { nav: byId("actions"), more: byId("actions-more"), menu: byId("actions-menu") },
+    act,
+  );
   // Reading a large output in the result worker shows a bar after 300 ms, with Cancel (#38).
   byId("reading")?.addEventListener("desk-cancel", () => act("cancel"));
   for (const button of doc.querySelectorAll("[data-page]"))
@@ -246,7 +254,9 @@ export function createView(doc, act) {
       byId("page").textContent =
         `${formatCount(from)}–${formatCount(model.table.offset + rows)}${count}`;
     }
-    byId("summary").textContent = model?.running ? "Running…" : (model?.shown?.summary ?? "");
+    const summary = byId("summary");
+    summary.textContent = model?.running ? "Running…" : (model?.shown?.summary ?? "");
+    summary.title = summary.textContent;
     if (!model?.shown) {
       tabsEl.replaceChildren();
       gridBar.hidden = true;

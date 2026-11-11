@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="/_desk/tokens.css" />
     <link rel="stylesheet" href="/_desk/base.css" />
     <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./frame.css" />
     <link rel="stylesheet" href="./work.css" />
     <link rel="stylesheet" href="./diagram.css" />
     <link rel="stylesheet" href="./import.css" />
@@ -31,7 +32,9 @@
         <button type="button" data-act="starred" title="Starred queries of this connection" class="desk-btn desk-btn-quiet">Starred</button>
         <button type="button" data-act="copy" title="Copy the result as TSV, CSV, JSON, Markdown, SQL INSERT or SQL UPDATE" class="desk-btn desk-btn-quiet">Copy as…</button>
         <button type="button" data-act="exportTo" title="Export the result to a file in ~/Downloads" class="desk-btn desk-btn-quiet">Export…</button>
+        <button type="button" id="actions-more" title="The actions that do not fit in this row" class="desk-btn desk-btn-quiet" hidden>More</button>
       </nav>
+      <desk-menu id="actions-menu" label="More actions"></desk-menu>
       <span id="busy" role="img" aria-label="Running" hidden>…</span>
       <desk-progress id="reading" label="Reading the results" cancelable hidden></desk-progress>
     </header>
@@ -51,10 +54,12 @@
           <label>Filter <input id="where" placeholder="WHERE …" spellcheck="false" class="desk-field" /></label>
           <label>Order by <input id="order" placeholder="ORDER BY …" spellcheck="false" class="desk-field" /></label>
           <button type="submit" class="desk-btn desk-btn-primary">Apply</button>
-          <button type="button" data-page="-1" aria-label="Previous page" class="desk-icon-btn">‹</button>
-          <span id="page"></span>
-          <button type="button" data-page="1" aria-label="Next page" class="desk-icon-btn">›</button>
-          <button type="button" id="count" class="desk-btn desk-btn-quiet">Count</button>
+          <span class="pager">
+            <button type="button" data-page="-1" aria-label="Previous page" class="desk-icon-btn">‹</button>
+            <span id="page"></span>
+            <button type="button" data-page="1" aria-label="Next page" class="desk-icon-btn">›</button>
+            <button type="button" id="count" class="desk-btn desk-btn-quiet">Count</button>
+          </span>
         </form>
         <div id="editor-box" hidden>
           <pre id="highlight" aria-hidden="true"></pre>
@@ -64,24 +69,26 @@
         </div>
         <div id="diagram-box" hidden aria-label="ER diagram"></div>
         <div id="results" hidden>
-          <div id="tabs" role="tablist" aria-label="Results"></div>
-          <div id="grid-bar" role="toolbar" aria-label="Result" hidden>
-            <label class="quick"><span class="sr-only">Filter rows</span><input id="quick" type="search" placeholder="Filter rows (/)" spellcheck="false" class="desk-field" /></label>
-            <button type="button" id="record" aria-pressed="false" title="One row as a record (t)" class="desk-btn desk-btn-quiet">Record</button>
-            <button type="button" id="value-open" title="The whole value under the cursor (v)" class="desk-btn desk-btn-quiet">Value</button>
-            <span id="console-pages" hidden>
-              <button type="button" data-console-page="-1" aria-label="Previous page" class="desk-icon-btn">‹</button>
-              <span id="console-page"></span>
-              <button type="button" data-console-page="1" aria-label="Next page" class="desk-icon-btn">›</button>
-            </span>
-            <span class="grow"></span>
-            <button type="button" data-act="addRow" title="Add a row (+)" class="desk-btn desk-btn-quiet edit-only">Add row</button>
-            <span id="changes" role="status" hidden>
-              <span id="changes-count"></span>
-              <button type="button" data-act="previewChanges" title="The SQL a submit runs (p)" class="desk-btn desk-btn-quiet">Preview</button>
-              <button type="button" data-act="revertRows" title="Drop every pending change" class="desk-btn desk-btn-quiet">Revert</button>
-              <button type="button" data-act="submitChanges" title="Apply in one transaction (Mod+Enter in the grid)" class="desk-btn desk-btn-primary">Submit</button>
-            </span>
+          <div class="results-head">
+            <div id="tabs" role="tablist" aria-label="Results"></div>
+            <div id="grid-bar" role="toolbar" aria-label="Result" hidden>
+              <label class="quick"><span class="sr-only">Filter rows</span><input id="quick" type="search" placeholder="Filter rows (/)" spellcheck="false" class="desk-field" /></label>
+              <button type="button" id="record" aria-pressed="false" title="One row as a record (t)" class="desk-btn desk-btn-quiet">Record</button>
+              <button type="button" id="value-open" title="The whole value under the cursor (v)" class="desk-btn desk-btn-quiet">Value</button>
+              <span id="console-pages" hidden>
+                <button type="button" data-console-page="-1" aria-label="Previous page" class="desk-icon-btn">‹</button>
+                <span id="console-page"></span>
+                <button type="button" data-console-page="1" aria-label="Next page" class="desk-icon-btn">›</button>
+              </span>
+              <span class="grow"></span>
+              <button type="button" data-act="addRow" title="Add a row (+)" class="desk-btn desk-btn-quiet edit-only">Add row</button>
+              <span id="changes" role="status" hidden>
+                <span id="changes-count"></span>
+                <button type="button" data-act="previewChanges" title="The SQL a submit runs (p)" class="desk-btn desk-btn-quiet">Preview</button>
+                <button type="button" data-act="revertRows" title="Drop every pending change" class="desk-btn desk-btn-quiet">Revert</button>
+                <button type="button" data-act="submitChanges" title="Apply in one transaction (Mod+Enter in the grid)" class="desk-btn desk-btn-primary">Submit</button>
+              </span>
+            </div>
           </div>
           <p id="edit-note" class="note" role="status"></p>
           <div id="result"></div>

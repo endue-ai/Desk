@@ -1,0 +1,148 @@
+/* The page's frame at every size (QA 06 #6, #16): the header's one row (the title, its tags and the
+   actions that fit; view-actions.js puts the rest behind More), dialogs that stay inside the page,
+   and the footer's one line. Every colour, font, size and radius comes from the theme's --desk-*
+   tokens. */
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 5px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+#title {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+header .tag {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* The actions take the room the title leaves; the ones that do not fit are behind More, so the
+   row's width never depends on them. They are the design system's buttons at its smallest size. */
+nav {
+  --desk-button-height: var(--desk-control-xs);
+  --desk-button-padding-x: var(--desk-space-2);
+  display: flex;
+  flex: 1 1 0;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+nav > button {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* A dialog stays inside the page: its fields scroll in it, and its buttons stay in sight at its
+   foot, a focused field scrolling clear of them. */
+.dialog {
+  position: fixed;
+  inset: var(--db-dialog-edge) auto auto 50%;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+  box-sizing: border-box;
+  width: min(440px, calc(100% - 16px));
+  max-height: calc(100% - 2 * var(--db-dialog-edge));
+  padding: 14px 16px 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding-bottom: 52px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-popover);
+  transform: translateX(-50%);
+  box-shadow: var(--desk-shadow-md);
+}
+
+.dialog label {
+  display: grid;
+  grid-template-columns: 7em 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.dialog label.check {
+  display: flex;
+}
+
+.dialog p {
+  margin: 0;
+}
+
+.dialog .hint,
+.note {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.dialog .buttons {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 8px 0 14px;
+  background: var(--desk-popover);
+}
+
+/* On a short page a dialog's controls are the design system's smaller ones, so more fields show. */
+@media (max-height: 400px) {
+  .dialog {
+    --desk-field-height: var(--desk-control-sm);
+    --desk-button-height: var(--desk-control-xs);
+    gap: 4px;
+    padding-top: 10px;
+  }
+
+  .dialog .buttons {
+    padding: 6px 0 10px;
+  }
+}
+
+/* One line: the status first, then the run's summary, and the keys in what room is left. */
+footer {
+  display: flex;
+  gap: 16px;
+  padding: 3px 12px 4px;
+  border-top: 1px solid var(--desk-border);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  white-space: nowrap;
+}
+
+footer p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+footer p:empty {
+  display: none;
+}
+
+#hints {
+  flex: 1 1 0;
+}
+
+#summary {
+  flex: 0 8 auto;
+}
+
+#status {
+  flex: 0 1 auto;
+  margin-left: auto;
+  color: var(--desk-text);
+}
