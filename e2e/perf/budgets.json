@@ -125,13 +125,13 @@
     "ownChangeMaxMs": 52.3
   },
   "freshDeskAtRest": {
-    "cpuPercent": 3.4,
+    "cpuPercent": 3,
     "budgetPercent": 5,
-    "treePercent": 5.6,
+    "treePercent": 4.5,
     "settleMs": 20000,
     "windowMs": 10000,
     "platform": "darwin-arm64",
     "recorded": "2026-11-11",
-    "reason": "#134 (ADR 0164): a fresh desk left alone, through just perf-app (e2e/perf/rest.perf.ts): the Default profile with its first run, gone through as a person in a hurry does (Skip for now, Later, Not now, a name, the first suggested task), then twenty seconds alone and ten measured with ps: the app's own process's CPU as a share of one core, within budgetPercent, a budget that fails from the first run (no baseline needed), and its whole tree's kept beside it. Before #134 it read 59.2 % (its tree 124.9 %): the first run's animation, Eris's idle motion drawn on a canvas at every frame in the shell page and in her floating window, the runtime's ticker and the page's report asking for a frame at every frame, messages waking every surface for a second, and on the reference machine's locked screen the compositor composing at every desk frame for a window that withheld its frames. After: 3.1 to 3.4 % in three runs at a load average of 5 to 9 (its tree 5.3 to 5.7 %). Left: the windowed panes (the palette, the floating Eris) take Chromium's 60 Hz begin frames with idle pages, about 60 of CEF's work calls a second, and endue.docker spawns a process every two seconds. The values are the median run."
+    "reason": "#134 (ADR 0164): a fresh desk left alone, through just perf-app (e2e/perf/rest.perf.ts): the Default profile with its first run, gone through as a person in a hurry does (Skip for now, Later, Not now, a name, the first suggested task), then twenty seconds alone and ten measured with ps: the app's own process's CPU as a share of one core, within budgetPercent, a budget that fails from the first run (no baseline needed), and its whole tree's kept beside it. Before #134 it read 59.2 % (its tree 124.9 %): the first run's animation, Eris's idle motion drawn on a canvas at every frame in the shell page and in her floating window, the runtime's ticker and the page's report asking for a frame at every frame, messages waking every surface for a second, and on the reference machine's locked screen the compositor composing at every desk frame for a window that withheld its frames. After: 3.1 to 3.4 % in three runs at a load average of 5 to 9 (its tree 5.3 to 5.7 %). On 2026-11-11 the same head read 6.6 to 6.8 % at a load average of 4 to 5: the palette, never summoned, took Chromium's 60 Hz begin frames in its page and its frame, the desk's own process answering each. Since #147 a hidden floating window's page is hidden (apps/desk/shell/src/pane.rs): 2.8, 2.8, 3.0 and 3.2 % in four runs in a row at a load average of 3.8 to 5.5 (its tree 3.8 to 4.8 %), against 3.6 and 6.1 % (5.9 and 11.6 %) without it the same hour. Left: on the e2e desk Eris floats (the desk is not the app in front) and her window takes Chromium's 60 Hz begin frames with an idle page; CEF's busy-wait (ADR 0159) about twice a second for a delayed task of Chromium's own; endue.docker's proc.spawn every few seconds. The values are the median run of the four (#147's)."
   }
 }

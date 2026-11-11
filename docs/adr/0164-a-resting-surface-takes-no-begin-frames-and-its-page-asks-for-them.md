@@ -82,6 +82,18 @@ nothing on its clock, and a change shows within a frame of the page's asking.
   On 2026-11-11 the same head read 6.8 % (its tree 12.7 %) at a load average of 4 to 5, no surface
   taking a begin frame; after the ask's fix and Eris's timeline, 6.7 % (12 %), the same. With the
   ask's fix alone, 13.8 % and 14.0 %: Eris's page asking every 80 ms.
+* #147 (2026-11-11), Chromium's trace and `sample` of a fresh desk at rest: the palette, never
+  summoned, took Chromium's 60 begin frames a second in its page and its frame (both still
+  `visible` to Chromium), and the floating Eris hers, the desk's own process answering each (about
+  120 begin frames a second for the two windows' compositors on its main thread). A pane now hides
+  its browser's view while its window is hidden (`pane.rs`), which Chromium reads as the page
+  hidden. The fresh desk's own process then read 2.8, 2.8, 3.0 and 3.2 % in four runs in a row at a
+  load average of 3.8 to 5.5 (its tree 3.8 to 4.8 %); without it, run by run the same hour, 3.6 and
+  6.1 % (its tree 5.9 and 11.6 %). Left, on the e2e desk, where the desk is not the app in front so
+  Eris floats: her window's 60 begin frames a second with an idle page, and CEF's busy-wait (ADR
+  0159) about twice a second, 10 ms each: a work call her begin frame starts finds a delayed task
+  of Chromium's own due within its slice (partition_alloc's periodic purge, the memory pressure
+  check), about 19 ms a second of the main thread's 31.
 
 ### Consequences
 
@@ -94,9 +106,10 @@ nothing on its clock, and a change shows within a frame of the page's asking.
   draws nothing) asks every 80 ms; its renderer pays, and the desk's wake-ups with it. A hidden
   page that keeps wanting frames asks once a second, for nothing.
 * Bad, because Eris no longer breathes on a desk left alone for ten seconds.
-* Bad, because the windowed panes (the palette, the floating Eris, the palette's frame) still take
-  Chromium's 60 Hz begin frames with idle pages: about 60 of CEF's work calls a second. Chromium's,
-  not the desk's clock. endue.docker's `proc.spawn` every two seconds is the plugin's.
+* Bad, because a floating Eris on screen still takes Chromium's 60 Hz begin frames with an idle
+  page, and the work calls they bring now and then busy-wait out CEF's slice for a delayed task:
+  Chromium's vsync and CEF's pump, not the desk's clock. A hidden palette, Eris or banner takes
+  none since #147. endue.docker's `proc.spawn` every few seconds is the plugin's.
 
 ## More Information
 
@@ -105,7 +118,7 @@ Issue #134 (epic #32 §8), found by #129. Amends ADR 0157 (the slow clock: none 
 client}.rs`, `frame_asks.js`, `renderer.rs`, `client.rs`, `host.rs`, `compositor_window{,/clock,/gpu}.rs`,
 `packages/runtime/src/shell/{ticker,Running}.ts`, `packages/runtime/src/eris/{Eris,figure,float-desk,
 states}.ts`, `apps/desk/src/{compositor-desk,desk}.ts`, `plugins/eris/ui/timeline.js`,
-`probe/{rest,pages}.rs`. Tests: `web_host/frames_tests.rs`, `web_host/frame_asks.test.ts`,
+`probe/{rest,pages}.rs`, and since #147 `pane.rs`, `mac.rs`. Tests: `web_host/frames_tests.rs`, `web_host/frame_asks.test.ts`,
 `shell/ticker.test.ts`, `eris/Eris.test.ts`, `plugins/eris/tests/timeline.test.ts`, `compositor-desk.test.ts`,
 `tests/budgets.rs` through `just perf-compositor` (`deskAtRest`), `e2e/perf/rest.perf.ts` through
 `just perf-app` (`freshDeskAtRest`). No section of `docs/ko/desk-structure.md` changes.
