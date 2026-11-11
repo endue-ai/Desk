@@ -88,8 +88,8 @@ describe("discard", () => {
       {
         title: "Discard the changes to unstaged.js?",
         items: [
-          { id: "yes", label: "Discard them" },
           { id: "no", label: "Keep everything as it is" },
+          { id: "yes", label: "Discard them" },
         ],
       },
     ]);
@@ -103,6 +103,36 @@ describe("discard", () => {
     await host.command("endue.git.discard", { path: "new.txt" });
     expect(asked.at(-1)).toMatchObject({ title: "Delete new.txt?" });
     expect(git.of("clean").at(-1)).toEqual(["clean", "-fdq", "--", "new.txt"]);
+  });
+
+  it("every question that cannot be undone comes up on keeping things as they are (#160)", async () => {
+    const asked: Array<{ title: string; items: Array<{ id: string }> }> = [];
+    const { host, view, git } = await open({
+      script: repo(DIRTY),
+      commands: {
+        "desk.palette.pick": (args) => {
+          asked.push(args as (typeof asked)[number]);
+          // The palette selects its first row: what Enter answers.
+          return (args as (typeof asked)[number]).items[0]?.id ?? "";
+        },
+      },
+    });
+    await host.command("endue.git.discard", { path: "unstaged.js" });
+    await host.command("endue.git.discard", { path: "new.txt" });
+    view.selected = { kind: "section", section: "untracked" };
+    await host.command("endue.git.discard");
+    view.selected = { kind: "section", section: "unstaged" };
+    await host.command("endue.git.discard");
+    await host.command("endue.git.push", { force: true });
+    expect(asked.map((a) => a.title)).toEqual([
+      "Discard the changes to unstaged.js?",
+      "Delete new.txt?",
+      "Delete every untracked file?",
+      "Discard every unstaged change?",
+      "Force-push main?",
+    ]);
+    for (const question of asked) expect(question.items[0]?.id, question.title).toBe("no");
+    expect([...git.of("restore"), ...git.of("clean"), ...git.of("push")]).toEqual([]);
   });
 
   it("with confirm off it does not ask; without the palette it refuses", async () => {

@@ -58,12 +58,15 @@ export function createActions(deps) {
     return ["--", ...list];
   };
 
-  /** Ask before something that cannot be undone; `confirm: false` in the settings skips the ask. */
+  /**
+   * Ask before something that cannot be undone; `confirm: false` in the settings skips the ask.
+   * Keeping things as they are is the first row, the one the palette selects, so Enter keeps them.
+   */
   const confirm = async (/** @type {string} */ question, /** @type {string} */ yes) => {
     if (!deps.settings().confirm) return true;
     const answer = await deps.pick(question, [
-      { id: "yes", label: yes },
       { id: "no", label: "Keep everything as it is" },
+      { id: "yes", label: yes },
     ]);
     return answer === "yes";
   };
