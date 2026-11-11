@@ -27,6 +27,14 @@ export function scopeOf(/** @type {string} */ path) {
 }
 const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
+/** A failed read in words, never the bridge's code (#162, finding 20). */
+const WHY = /** @type {Record<string, string>} */ ({
+  not_found: ": there is no file at that path",
+  io_error: ": the system could not read it",
+  timeout: ": reading it took too long",
+});
+const unread = (/** @type {string} */ path, /** @type {unknown} */ error) =>
+  new Error(`Could not read ${path}${WHY[codeOf(error)] ?? ""}.`);
 const counted = (
   /** @type {number} */ done,
   /** @type {number} */ total,
@@ -54,9 +62,7 @@ export function createOpening(bridge, view, { read: readBytes, startWorker }) {
     const refused = new Error(`Not allowed to read ${path}.`);
     const call = () => readBytes({ bridge }, { path, scope }, { signal, onProgress });
     const failed = (/** @type {unknown} */ e) =>
-      codeOf(e) === "permission_denied"
-        ? refused
-        : new Error(`Could not read ${path}: ${codeOf(e)}.`);
+      codeOf(e) === "permission_denied" ? refused : unread(path, e);
     try {
       return await call();
     } catch (error) {

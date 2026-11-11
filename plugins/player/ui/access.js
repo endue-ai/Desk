@@ -29,6 +29,13 @@ export function scopeOf(/** @type {string} */ path) {
 export const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
 
+/** A failed read in words, never the bridge's code (#162, finding 20). */
+const WHY = /** @type {Record<string, string>} */ ({
+  not_found: ": there is no file at that path",
+  io_error: ": the system could not read it",
+  timeout: ": reading it took too long",
+});
+
 /** An Error whose message is the sentence the person reads, and whose code says what happened. */
 export class FileError extends Error {
   /**
@@ -58,7 +65,7 @@ export function createAccess({ bridge }) {
     const failed = (/** @type {unknown} */ error) =>
       codeOf(error) === "permission_denied"
         ? refused
-        : new FileError(`Could not read ${path}: ${codeOf(error)}.`, codeOf(error));
+        : new FileError(`Could not read ${path}${WHY[codeOf(error)] ?? ""}.`, codeOf(error));
     try {
       return await call(scope);
     } catch (error) {

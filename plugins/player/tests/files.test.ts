@@ -125,10 +125,10 @@ describe("files outside the grants", () => {
     expect(shown()).toBeNull();
   });
 
-  it("a missing file is reported with its code and no ask", async () => {
+  it("a missing file is said in words, not the bridge's code, and asks nothing", async () => {
     const { host, params } = await mount({ grants: ["~/Movies/**"] });
     await expect(host.command("desk.files.visit", file("~/Movies/gone.mp4"))).rejects.toThrow(
-      "Could not read ~/Movies/gone.mp4: not_found.",
+      "Could not read ~/Movies/gone.mp4: there is no file at that path.",
     );
     expect(params("perm.request")).toEqual([]);
   });

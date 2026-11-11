@@ -181,12 +181,11 @@ describe("files outside the grants", () => {
     expect(view.states.at(-1)?.image).toMatchObject({ buffer: X.buffer, width: 4, height: 3 });
   });
 
-  it("other read errors are reported with their code and no ask", async () => {
+  it("other read errors are said in words, never the bridge's code, and ask nothing", async () => {
     const { host, view, params } = await mount({ handlers: disk({}) });
-    await expect(host.command("desk.files.visit", A)).rejects.toThrow(
-      "Could not read ~/Pictures/a.png: not_found.",
-    );
+    const why = "Could not read ~/Pictures/a.png: there is no file at that path.";
+    await expect(host.command("desk.files.visit", A)).rejects.toThrow(why);
     expect(params("perm.request")).toEqual([]);
-    expect(view.statuses.at(-1)).toBe("Could not read ~/Pictures/a.png: not_found.");
+    expect(view.statuses.at(-1)).toBe(why);
   });
 });
