@@ -164,6 +164,20 @@ export function createView(doc, actions, options = {}) {
     } else if (!showSource) sayLeft("");
   };
 
+  /** What shows the file and scrolls: its source, the page, a record, a card, an outline, details. */
+  const scroller = () =>
+    [sourceBox, pageHost, text, card, outline, details].find((el) => !el.hidden);
+  /** Put the view `down` its content, again on the next frame: a page's pictures may still load. */
+  const scrollDown = (/** @type {number} */ down) => {
+    const put = () => {
+      const el = scroller();
+      if (el) el.scrollTop = down * el.scrollHeight;
+    };
+    put();
+    const win = doc.defaultView;
+    if (typeof win?.requestAnimationFrame === "function") win.requestAnimationFrame(put);
+  };
+
   const select = async (/** @type {number} */ index) => {
     selected = index;
     markEntry(entryList, index);
@@ -192,8 +206,12 @@ export function createView(doc, actions, options = {}) {
       cancel = value.cancel;
     },
 
-    /** @param {Shown | null} shown @param {Job} [job] what an opening draws under */
-    async show(shown, job) {
+    /**
+     * @param {Shown | null} shown
+     * @param {Job} [job] what an opening draws under
+     * @param {import("./keep.js").Where} [where] where the person was in it: the entry, how far down
+     */
+    async show(shown, job, where) {
       const changed = shown?.model !== file?.model;
       file = shown;
       name.textContent = shown ? shown.name : "No file open";
@@ -207,8 +225,11 @@ export function createView(doc, actions, options = {}) {
         selected = Math.min(model.selected, Math.max(0, model.entries.length - 1));
         entriesNav.setAttribute("aria-label", model.label);
         renderEntries(doc, entryList, model.entries, (index) => void select(index));
-        markEntry(entryList, selected);
       }
+      if (model?.kind === "entries" && where?.entry !== undefined)
+        selected = Math.min(where.entry, Math.max(0, model.entries.length - 1));
+      if (model?.kind === "entries" && (changed || where?.entry !== undefined))
+        markEntry(entryList, selected);
       if (changed && model?.kind === "card")
         renderCard(doc, card, model, {
           open: (path) => void actions.open(path),
@@ -224,6 +245,15 @@ export function createView(doc, actions, options = {}) {
           reason: model.reason,
         });
       await layout(job);
+      if (where && file === shown) scrollDown(where.down);
+    },
+
+    /** Where the person is in the file on screen: how far down it, and the entry chosen. */
+    where() {
+      if (!file) return null;
+      const el = scroller();
+      const down = el && el.scrollHeight > 0 ? Math.min(1, el.scrollTop / el.scrollHeight) : 0;
+      return { down, ...(file.model.kind === "entries" ? { entry: selected } : {}) };
     },
 
     /** @param {string} words */

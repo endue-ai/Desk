@@ -19,7 +19,9 @@ as it is scrolled to. `<desk-progress>` shows Reading, Opening, Parsing and Draw
 them and keeps the file on screen. A bar counts remote resources left out. `#fragment` links
 scroll, local links run `desk.files.open`, http, https and mailto links open with `shell.open`. It
 answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed`; `.save` is refused. Its own
-page takes every colour, font, size and radius from the theme (`tests/theme.test.ts`).
+page takes every colour, font, size and radius from the theme (`tests/theme.test.ts`). Asleep out of
+sight (ADR 0070, 0176), `keepFiles` keeps its files, how far down each was, the entry chosen and the
+watch; back, the one on screen opens without asking or taking the focus, the others when shown.
 
 | Permission | Why |
 | --- | --- |
@@ -28,13 +30,11 @@ page takes every colour, font, size and radius from the theme (`tests/theme.test
 
 | File | Purpose |
 | --- | --- |
-| `ui/web.js`, `ui/external.js` | The desk's requests, ranged reads with one folder ask, jobs, links |
+| `ui/web.js`, `reading.js`, `keep.js`, `external.js` | The desk's requests, reads with one folder ask, jobs, sleep, links |
 | `ui/formats.js`, `ui/detect.js`, `ui/worker.js`, `ui/remote.js` | Bytes to a model, in a worker when large |
 | `ui/archive.js`, `ui/warc.js`, `ui/mime.js`, `ui/plist.js`, `ui/zip.js`, `ui/inflate.js`, `ui/links.js`, `ui/lnk.js`, `ui/feeds.js` | Archives, link files, feeds |
 | `ui/page.js`, `ui/resources.js`, `ui/sanitize.js`, `ui/allow.js`, `ui/css*.js` | Drawing a page safely |
 | `ui/view*.js`, `ui/source.js` | The DOM; `ui/main.js` joins it to the controller |
 
-```bash
-pnpm exec vitest run plugins/web     # fixtures: tests/fixtures/make.sh, real.sh
-cargo run -p desk-cli -- plugin validate plugins/web
-```
+`pnpm exec vitest run plugins/web` (fixtures: `tests/fixtures/make.sh`, `real.sh`) ·
+`cargo run -p desk-cli -- plugin validate plugins/web`
