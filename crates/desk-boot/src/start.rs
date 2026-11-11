@@ -2,7 +2,8 @@
 //! says whether the starts before this one keep dying, in which case safe mode comes on by itself.
 //! The shell's `desk_start` hands the runtime what the start found ([`Start::info`]: safe mode, the
 //! state files kept broken), and `desk_relaunch` starts the desk again without safe mode
-//! ([`relaunch`], "Start normally").
+//! ([`relaunch`], "Start normally"). A clean quit marks the record ([`Start::quit`]); the next start
+//! names a run that was not marked (ADR XXXX).
 
 use std::ffi::OsString;
 use std::path::Path;
@@ -10,6 +11,8 @@ use std::sync::Mutex;
 use std::time::SystemTime;
 
 use desk_core::{Core, LastStart, SafeReason};
+
+use crate::crash::Crash;
 use serde_json::{Value, json};
 
 /// The flag that asks for safe mode, and the environment variable that does the same.
@@ -28,8 +31,9 @@ pub fn asked(mut args: impl Iterator<Item = OsString>, env: Option<OsString>) ->
 }
 
 /// Write this start to last-start.json and decide whether it runs in safe mode, before the core
-/// installs any plugin. A broken last-start.json is reported to the core like its own files.
-pub fn begin(data: &Path, core: Core) -> (Core, LastStart) {
+/// installs any plugin. A broken last-start.json is reported to the core like its own files; a run
+/// before this one that ended without quitting gets its report.
+pub fn begin(data: &Path, core: Core, crash: &Crash) -> (Core, LastStart) {
     let (last, begun) = LastStart::begin(
         &data.join("last-start.json"),
         SystemTime::now(),
@@ -44,6 +48,9 @@ pub fn begin(data: &Path, core: Core) -> (Core, LastStart) {
     };
     if let Some(file) = begun.broken {
         core.report_broken(file);
+    }
+    if let Some(run) = &begun.unclean {
+        crash.ended_unclean(run);
     }
     match reason {
         Some(reason) => {
@@ -83,6 +90,15 @@ impl Start {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         last.ready(SystemTime::now());
+    }
+
+    /// A clean quit: the next start has nothing to say about this run.
+    pub fn quit(&self) {
+        let last = self
+            .last
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        last.quit();
     }
 }
 

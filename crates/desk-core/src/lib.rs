@@ -134,7 +134,7 @@ pub use eris_lines::{
 pub use events::{Delivery, EventBus};
 pub use handler::{Core, Roots};
 pub use init::{INIT_TEMPLATE, INIT_VERSION, Init, PluginSetup, SyncSetup};
-pub use last_start::{Begun, CRASH_LOOP, LastStart, READY_WITHIN};
+pub use last_start::{Begun, CRASH_LOOP, LastStart, READY_WITHIN, Unclean};
 pub use lease::{LeaseClient, LeaseError};
 pub use local_agents::{LocalAgents, LocalAgentsOptions};
 pub use lock::folder_sha256;

@@ -2,12 +2,13 @@
 // command, which writes a redacted report under the data folder's crashes/: the spec's HOME, which
 // the error's message names, is `~` there. The next start shows one card for it ("Desk crashed last
 // time."), and the start after that shows none. browser.reloadSession() quits the app and launches it
-// again with the same HOME (support/driver.ts).
+// again with the same HOME (support/driver.ts). A kill lets nothing write: the next start finds the run
+// was never marked quit in last-start.json, writes an `exit` report for it and shows its card (ADR XXXX).
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { $, $$, browser, expect } from "@wdio/globals";
 import { appData, shellReady } from "../support/desk";
-import { HOME_VAR } from "../support/driver";
+import { appPid, HOME_VAR } from "../support/driver";
 
 const home = () => {
   const value = process.env[HOME_VAR];
@@ -64,5 +65,20 @@ describe("crash: a webview error writes a redacted report, and the next start sh
     // The card would come right after the ready line; give it the time it takes.
     await browser.pause(2_000);
     await expect($(".crash-card")).not.toBeExisting();
+  });
+
+  it("a start after a kill shows a card for the run that ended without quitting", async () => {
+    const pid = appPid();
+    if (!pid) throw new Error("the running app's pid is not known");
+    const before = reports().length;
+    process.kill(pid, "SIGKILL");
+    await browser.reloadSession();
+    await shellReady();
+    await expect($(".crash-card")).toBeDisplayed({ wait: 10_000 });
+    const written = reports();
+    expect(written).toHaveLength(before + 1);
+    const newest = written.at(-1) ?? "";
+    expect(newest).toContain('"kind": "exit"');
+    expect(newest).toContain(`(process ${pid})`);
   });
 });

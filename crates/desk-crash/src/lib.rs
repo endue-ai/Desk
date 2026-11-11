@@ -1,8 +1,10 @@
 //! Local crash reports (#322). A panic hook (`install_hook`) and the webview's uncaught errors
 //! (`Report::webview`) write `<data>/crashes/<timestamp>.json`: the version, the OS, the message, a
 //! backtrace and the plugins that were on, with every path under the person's home as `~` and long
-//! text cut. `desk doctor --last-crash` prints the newest; the next start takes it once
-//! (`take_unseen`) to show a notice. Nothing is uploaded (ADR 0007).
+//! text cut. A run that ended without quitting leaves nothing to write with, so the next start
+//! writes its `exit` report (`Report::exit`, ADR XXXX). `desk doctor --last-crash` prints the
+//! newest; the next start takes it once (`take_unseen`) to show a notice. Nothing is uploaded (ADR
+//! 0007).
 
 mod redact;
 mod time;
@@ -30,7 +32,8 @@ const SEEN: &str = ".seen";
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Report {
     pub schema: u32,
-    /// `panic` (the Rust side) or `webview` (an uncaught error in the shell's window).
+    /// `panic` (the Rust side), `webview` (an uncaught error in the shell's window) or `exit` (a run
+    /// that ended without quitting, written by the next start).
     pub kind: String,
     pub at: String,
     pub version: String,
@@ -127,6 +130,21 @@ impl Report {
         let lines = stack.lines().map(str::to_owned).collect();
         Self::new("webview", message, lines, context)
     }
+
+    /// The run that started at `started` as process `pid` ended without quitting, after its ready
+    /// line or before it: written by the next start, since a kill or a signal lets nothing write.
+    pub fn exit(started: &str, pid: u32, ready: bool, context: &Context) -> Self {
+        let when = if ready { "" } else { " before it was ready," };
+        let mut message = format!(
+            "The desk that started at {started} (process {pid}) ended{when} without quitting: it was killed, or it crashed where no report could be written."
+        );
+        if cfg!(target_os = "macos") {
+            message.push_str(
+                " macOS keeps its own crash reports in ~/Library/Logs/DiagnosticReports.",
+            );
+        }
+        Self::new("exit", &message, Vec::new(), context)
+    }
 }
 
 /// The crash reports of one data folder.
@@ -186,6 +204,17 @@ impl Crashes {
         let path = self.dir.join(&name);
         let value = serde_json::from_str(&fs::read_to_string(&path).ok()?).ok()?;
         Some((path, value))
+    }
+
+    /// Whether a `panic` report was written at `at` or later: a run that panicked has its report.
+    pub fn panicked_since(&self, at: SystemTime) -> bool {
+        let from = (time::stamp(at), 0);
+        self.names()
+            .iter()
+            .filter(|name| order(name) >= from)
+            .filter_map(|name| fs::read_to_string(self.dir.join(name)).ok())
+            .filter_map(|text| serde_json::from_str::<Value>(&text).ok())
+            .any(|report| report["kind"] == "panic")
     }
 
     /// The newest report when it was not shown yet, marked shown; then nothing until a newer one.

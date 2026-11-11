@@ -41,6 +41,8 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
         ))),
         "desk_start" => Ok(start.info()),
         "desk_relaunch" => {
+            // A quit of its own: the new start has nothing to say about this run.
+            start.quit();
             // This desk's hold goes first, or the new one would hand its arguments here and quit.
             desk_boot::start::relaunch(|| {
                 desk.instance

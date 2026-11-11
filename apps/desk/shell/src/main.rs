@@ -115,6 +115,10 @@ fn main() -> ExitCode {
     let outcome = event_loop.run_app(&mut shell);
     drop(shell);
     cef::shutdown();
+    // Every quit the desk agrees to ends here (ADR XXXX): the next start then has nothing to say.
+    if outcome.is_ok() {
+        kept.start.quit();
+    }
     // An applied update quit the desk: start the new one once this one has let go.
     update::relaunch_if_asked(&paths::data_dir(), || kept.let_go());
     match outcome {

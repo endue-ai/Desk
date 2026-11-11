@@ -12,9 +12,11 @@ Rust, beside the core.
   hook reads the plugins without waiting, so a panic while they change reports none.
 - `install_hook(data, context)`: every panic writes a `panic` report, then the previous hook runs.
 - `Report::panic(...)`, `Report::webview(message, stack, context)`: redacted (`redact`, `cut`) and cut
-  at `MESSAGE_MAX` characters and `BACKTRACE_MAX` lines.
+  at `MESSAGE_MAX` characters and `BACKTRACE_MAX` lines. `Report::exit(started, pid, ready, context)`:
+  the run before this one ended without quitting (a kill, a signal), written by the next start.
 - `Crashes::in_data(data)`: `write` (a new file, `-1`, `-2` on a clash; the newest `KEEP` kept),
-  `count`, `newest`, `take_unseen` (the newest not shown yet, once; `crashes/.seen` remembers).
+  `count`, `newest`, `take_unseen` (the newest not shown yet, once; `crashes/.seen` remembers),
+  `panicked_since(at)` (a run that panicked has its own report, so no `exit` one is written).
 - The file carries `schema: 1`; it becomes a spec with the upload task, when another program reads it.
 
 ## Testing
@@ -24,4 +26,4 @@ cargo test -p desk-crash
 ```
 
 `tests/report.rs` covers the fields, the redaction, the cuts, pruning and the unseen report;
-`tests/hook.rs` a panic on a thread.
+`tests/hook.rs` a panic on a thread; `tests/exit.rs` the `exit` report and `panicked_since`.

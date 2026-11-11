@@ -106,7 +106,7 @@ pub fn boot(input: BootInput) -> Booted {
     let core = core_files::open(core, &data);
     // Safe mode, asked for or after two starts that never got ready, holds plugins off as they
     // install (ADR 0061).
-    let (mut core, last) = start::begin(&data, core);
+    let (mut core, last) = start::begin(&data, core, &crash);
     if let Some(problem) = core.init_problem() {
         eprintln!("endue Desk: init.yaml is not in force ({problem}); using the defaults");
     }

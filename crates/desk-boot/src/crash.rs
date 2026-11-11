@@ -1,14 +1,16 @@
 //! Crash reports (#322): the panic hook from desk-crash, installed before anything else runs, and
 //! what the shell's window asks for. `desk_crash` ([`Crash::record`]) writes a report for an uncaught error in
 //! the window; `take_last_crash` hands the next start the newest report not shown yet. The plugins in
-//! a report are the ones on, refreshed after start and on every plugin.changed. `DESK_E2E_PANIC=1`
-//! panics right after the ready line, so a live check can force a report on any build.
+//! a report are the ones on, refreshed after start and on every plugin.changed. A run that ended
+//! without quitting gets its `exit` report from the next start ([`Crash::ended_unclean`], ADR XXXX).
+//! `DESK_E2E_PANIC=1` panics right after the ready line, so a live check can force a report on any
+//! build.
 
 use std::path::Path;
 use std::sync::Arc;
 
 use desk_bridge::BridgeEvent;
-use desk_core::Core;
+use desk_core::{Core, Unclean};
 use desk_crash::{Context, Crashes, Report};
 use serde_json::Value;
 
@@ -73,6 +75,22 @@ impl Crash {
     /// The newest report not shown yet, now marked shown (`take_last_crash`).
     pub fn take_last(&self) -> Option<Value> {
         self.crashes.take_unseen()
+    }
+
+    /// The run before this one ended without quitting: an `exit` report says so, which the start
+    /// shows like any other, unless that run panicked and its own report already does.
+    pub fn ended_unclean(&self, run: &Unclean) {
+        eprintln!(
+            "endue Desk: the run before this one (process {}, started {}) ended without quitting",
+            run.pid, run.at
+        );
+        if self.crashes.panicked_since(run.started) {
+            return;
+        }
+        let report = Report::exit(&run.at, run.pid, run.ready, &self.context);
+        if let Err(why) = self.crashes.write(&report) {
+            eprintln!("endue Desk: the crash report was not written ({why})");
+        }
     }
 }
 
