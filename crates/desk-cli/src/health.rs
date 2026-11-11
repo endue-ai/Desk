@@ -4,7 +4,8 @@
 //! folder and the data folder with who writes it, its size and whether it reads as its spec says
 //! (`desk_core::desk_files`), and how many crash reports `crashes/` holds with the newest one's time
 //! and kind (#322); `--last-crash` prints that report. It only reads, never the socket, so it works
-//! after a crash; it exits 1 when a file is invalid, 0 otherwise.
+//! after a crash; it exits 1 when a file is invalid or `--data` names no folder, 0 otherwise. A
+//! default data folder that is not there yet is a desk that never ran, and says so.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -13,8 +14,7 @@ use desk_core::{DeskFile, FileState};
 use serde_json::{Value, json};
 
 pub fn run(data: Option<PathBuf>, json: bool) -> ExitCode {
-    let Some(data) = data.or_else(desk_ipc::data_dir) else {
-        eprintln!("desk doctor: no data folder (no home); pass --data <dir>");
+    let Some(data) = folder(data, json) else {
         return ExitCode::from(1);
     };
     let quarantined = quarantined(&data);
@@ -54,7 +54,10 @@ pub fn run(data: Option<PathBuf>, json: bool) -> ExitCode {
         }
         println!("{answer}");
     } else {
-        if quarantined.is_empty() && broken.is_empty() {
+        if !data.is_dir() {
+            let never = "no desk has run as this user";
+            println!("ok: no data folder at {} yet ({never})", data.display());
+        } else if quarantined.is_empty() && broken.is_empty() {
             println!(
                 "ok: nothing quarantined, no broken state files in {}",
                 data.display()
@@ -97,8 +100,7 @@ pub fn run(data: Option<PathBuf>, json: bool) -> ExitCode {
 /// `desk doctor --last-crash`: the newest crash report, indented, or the file as it is with `--json`;
 /// a desk that never crashed says so and exits 0.
 pub fn last_crash(data: Option<PathBuf>, json: bool) -> ExitCode {
-    let Some(data) = data.or_else(desk_ipc::data_dir) else {
-        eprintln!("desk doctor: no data folder (no home); pass --data <dir>");
+    let Some(data) = folder(data, json) else {
         return ExitCode::from(1);
     };
     let crashes = desk_crash::Crashes::in_data(&data);
@@ -117,6 +119,28 @@ pub fn last_crash(data: Option<PathBuf>, json: bool) -> ExitCode {
         None => println!("no crash reports in {}", crashes.dir().display()),
     }
     ExitCode::SUCCESS
+}
+
+/// The data folder to read: the one `--data` names, which must be a folder, or the desk's own,
+/// which may not be there yet. `None`, said on stderr (or as a JSON line with `--json`), when
+/// there is none.
+fn folder(named: Option<PathBuf>, json: bool) -> Option<PathBuf> {
+    let why = match named {
+        Some(dir) if dir.is_dir() => return Some(dir),
+        Some(dir) if dir.exists() => format!("--data {} is not a folder", dir.display()),
+        Some(dir) => format!("--data {}: no such folder", dir.display()),
+        None => match desk_ipc::data_dir() {
+            Some(dir) => return Some(dir),
+            None => "no data folder (no home); pass --data <dir>".to_owned(),
+        },
+    };
+    if json {
+        let error = json!({ "code": "not_found", "message": why });
+        println!("{}", json!({ "ok": false, "error": error }));
+    } else {
+        eprintln!("desk doctor: {why}");
+    }
+    None
 }
 
 /// The entries of `plugins.quarantined` in the data folder's store.json; none when it cannot be read.

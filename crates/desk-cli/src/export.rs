@@ -3,8 +3,10 @@
 //! plugins.lock) with `desk.json { version, os, exportedAt }` at its root and, with `--with-data`,
 //! the data files that are safe to carry under `data/` (`desk_core::DATA_FILES`). Import never
 //! overwrites an existing init.yaml (it writes `init.yaml.imported` and says so), replaces the
-//! other files of the same path, leaves the rest alone, refuses an export of a newer version, and
-//! refuses data while a desk answers on its socket. Offline; exit codes 0 ok, 1 refused or failed.
+//! other files of the same path (`replaced <file>` for each that held something else), leaves the
+//! rest alone, refuses an export of a newer version and anything that is neither a folder nor a
+//! zip archive, and refuses data while a desk answers on its socket. Offline; exit codes 0 ok, 1
+//! refused or failed.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -55,8 +57,7 @@ pub fn export(target: &Path, with_data: bool, data: Option<PathBuf>) -> ExitCode
     };
     match written {
         Ok(()) => {
-            let files = tree.len() - 1;
-            println!("exported {files} file(s) to {}", target.display());
+            println!("exported {} to {}", counted(&tree), target.display());
             ExitCode::SUCCESS
         }
         Err(e) => fail(&format!("desk export: {}: {e}", target.display())),
@@ -67,12 +68,7 @@ pub fn import(source: &Path, with_data: bool, data: Option<PathBuf>) -> ExitCode
     let (Some(home), Some(data)) = (home(), data.or_else(desk_ipc::data_dir)) else {
         return fail("desk import: no home folder; set HOME");
     };
-    let read = if is_zip(source) {
-        read_zip(source)
-    } else {
-        read_dir(source)
-    };
-    let tree = match read {
+    let tree = match read_export(source) {
         Ok(tree) => tree,
         Err(e) => return fail(&format!("desk import: {}: {e}", source.display())),
     };
@@ -104,7 +100,7 @@ pub fn import(source: &Path, with_data: bool, data: Option<PathBuf>) -> ExitCode
             lines.push(format!("skipped {path}: not a desk file"));
             continue;
         };
-        let written = if let Some(name) = path.strip_prefix("data/") {
+        let (target, bytes) = if let Some(name) = path.strip_prefix("data/") {
             if !with_data {
                 lines.push(format!("skipped {path}: pass --with-data to import data"));
                 continue;
@@ -118,7 +114,7 @@ pub fn import(source: &Path, with_data: bool, data: Option<PathBuf>) -> ExitCode
             } else {
                 bytes.clone()
             };
-            write(&data.join(name), &bytes)
+            (data.join(name), bytes)
         } else if !desk_file(path) {
             lines.push(format!("skipped {path}: not a desk file"));
             continue;
@@ -128,11 +124,15 @@ pub fn import(source: &Path, with_data: bool, data: Option<PathBuf>) -> ExitCode
                 "init.yaml exists: kept it, and wrote the export's as {}",
                 beside.display()
             ));
-            write(&beside, bytes)
+            (beside, bytes.clone())
         } else {
-            write(&desk.join(rel), bytes)
+            (desk.join(rel), bytes.clone())
         };
-        if let Err(e) = written {
+        // A file of this HOME that held something else is said, so a second import is no surprise.
+        if fs::read(&target).is_ok_and(|before| before != bytes) {
+            lines.push(format!("replaced {}", target.display()));
+        }
+        if let Err(e) = write(&target, &bytes) {
             return fail(&format!("desk import: {path}: {e}"));
         }
     }
@@ -141,6 +141,38 @@ pub fn import(source: &Path, with_data: bool, data: Option<PathBuf>) -> ExitCode
     }
     println!("imported {} into {}", source.display(), desk.display());
     ExitCode::SUCCESS
+}
+
+/// `<n> file(s) (desk.json, <d> from the desk folder[, <k> data file(s)])`: every file written.
+fn counted(tree: &Tree) -> String {
+    let data = tree.keys().filter(|path| path.starts_with("data/")).count();
+    let desk = tree.len() - 1 - data;
+    let mut text = format!(
+        "{} file(s) ({MANIFEST}, {desk} from the desk folder",
+        tree.len()
+    );
+    if data > 0 {
+        text.push_str(&format!(", {data} data file(s)"));
+    }
+    text.push(')');
+    text
+}
+
+/// An export as files: a folder, or a file that starts as a zip archive does (`.zip` or not).
+fn read_export(source: &Path) -> io::Result<Tree> {
+    if fs::metadata(source)?.is_dir() {
+        return read_dir(source);
+    }
+    let mut start = [0u8; 4];
+    let read = fs::File::open(source)?.read(&mut start)?;
+    // A local file header, or the end record of an empty archive.
+    if read == 4 && (start == *b"PK\x03\x04" || start == *b"PK\x05\x06") {
+        return read_zip(source);
+    }
+    Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        "not a desk export: neither a folder nor a zip archive",
+    ))
 }
 
 /// A desk folder file an export may carry: the single files and the YAML files of the folders.

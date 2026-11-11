@@ -196,6 +196,68 @@ fn desk_theme_imports_lists_applies_exports_and_removes() {
     assert_eq!(answer["result"]["plugin"]["id"], "local.paper-ink");
 }
 
+/// A theme plugin folder `dir` with `id` and `name`.
+fn theme_folder(dir: &Path, id: &str, name: &str) {
+    fs::create_dir_all(dir).unwrap();
+    let manifest = json!({ "id": id, "name": name, "version": "0.1.0", "kind": "theme",
+        "theme": { "dark": { "colors": { "background": "#101010" } } } });
+    fs::write(dir.join("plugin.json"), manifest.to_string()).unwrap();
+}
+
+#[test]
+fn desk_theme_list_says_where_each_theme_comes_from() {
+    let desk = Desk::start();
+    let core = &desk._core;
+    // Folders the desk was started with (DESK_DEV_PLUGINS): a theme, and one that is no plugin.
+    let dev = desk.home.join("dev");
+    theme_folder(
+        &dev.join("hello-theme"),
+        "example.hello-theme",
+        "Hello theme",
+    );
+    core.install_plugin(&dev.join("hello-theme"), false);
+    fs::create_dir_all(dev.join("brain-echo")).unwrap();
+    let not_a_plugin = core.install_plugin(&dev.join("brain-echo"), false);
+    // A pack's nested theme, and a user theme whose manifest is broken.
+    let nested = desk.home.join("packs/morning/plugins/dusk");
+    theme_folder(&nested, "example.dusk", "Dusk");
+    core.install_plugin(&nested, false);
+    let torn = desk.home.join("data/themes/local.torn");
+    fs::create_dir_all(&torn).unwrap();
+    fs::write(
+        torn.join("plugin.json"),
+        r#"{ "id": "local.torn", "kind": "theme" }"#,
+    )
+    .unwrap();
+    let torn = core.install_plugin(&torn, false);
+    assert_eq!(format!("{:?}", torn.status), "Failed");
+
+    let listed = desk.ok(&["theme", "list"]);
+    let lines: Vec<&str> = listed.lines().collect();
+    assert!(
+        lines.contains(&"example.ember\tready\tbuilt-in\tEmber"),
+        "{listed}"
+    );
+    assert!(
+        lines.contains(&"example.hello-theme\tready\tdev\tHello theme"),
+        "{listed}"
+    );
+    assert!(
+        lines.contains(&"example.dusk\tready\tpack\tDusk"),
+        "{listed}"
+    );
+    let torn_line = format!("{}\tfailed\tuser\t-", torn.id);
+    assert!(lines.contains(&torn_line.as_str()), "{listed}");
+    assert!(
+        !listed.contains(&not_a_plugin.id),
+        "a folder that is no plugin is no theme: {listed}"
+    );
+    assert_eq!(lines.len(), 4, "{listed}");
+    // What the list calls dev, theme remove does not take for a user theme either.
+    let refused = desk.fails(&["theme", "remove", "example.hello-theme"], 1);
+    assert!(refused.contains("is not a user theme"), "{refused}");
+}
+
 #[test]
 fn desk_theme_usage_errors_exit_2() {
     let desk = Desk::start();

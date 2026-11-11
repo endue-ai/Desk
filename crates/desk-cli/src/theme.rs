@@ -1,6 +1,7 @@
 //! `desk theme` (ADR 0058): the installed themes, the one in force, and the person's own themes as
-//! `.desk-theme` files. `list` reads plugin.list (plugin:manage), `apply` runs the runtime's
-//! `desk.theme.use` (cmd:invoke), and `import`, `export` and `remove` call theme.* (theme:manage).
+//! `.desk-theme` files. `list` reads plugin.list (plugin:manage) and says where each theme comes
+//! from, `apply` runs the runtime's `desk.theme.use` (cmd:invoke), and `import`, `export` and
+//! `remove` call theme.* (theme:manage).
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -63,20 +64,33 @@ impl Session {
     }
 }
 
-/// `id  status  built-in|user  name` for a theme, and for a failed plugin with a user theme's id.
+/// `id  status  source  name` for a theme or design system, and for a failed plugin in the user
+/// themes folder, which has no kind to show.
 fn theme_line(plugin: &Value) -> Option<String> {
-    let id = text(plugin, "id");
-    let user = id.starts_with("local.") || id.starts_with("market.");
+    let source = source(plugin);
     let kind = &plugin["manifest"]["kind"];
-    let theme =
-        kind == "theme" || kind == "design-system" || (plugin["status"] == "failed" && user);
-    let source = if plugin["builtIn"] == true {
-        "built-in"
-    } else {
-        "user"
-    };
+    let theme = kind == "theme"
+        || kind == "design-system"
+        || (plugin["status"] == "failed" && source == "user");
     let name = plugin["manifest"]["name"].as_str().unwrap_or("-");
-    theme.then(|| format!("{id}\t{}\t{source}\t{name}", text(plugin, "status")))
+    let (id, status) = (text(plugin, "id"), text(plugin, "status"));
+    theme.then(|| format!("{id}\t{status}\t{source}\t{name}"))
+}
+
+/// Where an installed plugin comes from, by its folder: `built-in`; `user`, a folder in the user
+/// themes folder (`<data>/themes`, which theme.import and the market write and theme.remove
+/// deletes from); `pack`, a pack's nested plugin (`<pack>/plugins/<folder>`); otherwise `dev`, a
+/// folder the desk was started with (`DESK_DEV_PLUGINS`).
+fn source(plugin: &Value) -> &'static str {
+    if plugin["builtIn"] == true {
+        return "built-in";
+    }
+    let folder = Path::new(text(plugin, "folder"));
+    match folder.parent().and_then(Path::file_name) {
+        Some(parent) if parent == "themes" => "user",
+        Some(parent) if parent == "plugins" => "pack",
+        _ => "dev",
+    }
 }
 
 /// The bridge path of a file the person named: absolute, with forward slashes.

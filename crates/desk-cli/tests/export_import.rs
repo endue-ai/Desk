@@ -269,3 +269,67 @@ fn import_of_data_refuses_while_a_desk_answers() {
         json!({ "deskId": "", "transcript": [{ "who": "person", "text": "hi" }] })
     );
 }
+
+#[test]
+fn export_counts_every_file_it_writes() {
+    let desk = Desk::full("count");
+    let zip = desk.root().join("desk.zip");
+    let said = ok(&desk.run(&["export", zip.to_str().unwrap(), "--with-data"], None));
+    // desk.json, the five desk folder files and the five data files an export carries.
+    let expected = format!(
+        "exported 11 file(s) (desk.json, 5 from the desk folder, 5 data file(s)) to {}\n",
+        zip.display()
+    );
+    assert_eq!(said, expected);
+    let out = desk.root().join("out");
+    let said = ok(&desk.run(&["export", out.to_str().unwrap()], None));
+    let six = "exported 6 file(s) (desk.json, 5 from the desk folder) to ";
+    assert!(said.starts_with(six), "{said}");
+    assert_eq!(files_in(&out).len(), 6);
+}
+
+#[test]
+fn import_says_which_files_it_replaced() {
+    let from = Desk::full("replaced-from");
+    let zip = from.root().join("desk.zip");
+    ok(&from.run(&["export", zip.to_str().unwrap(), "--with-data"], None));
+    let to = Desk::new("replaced-to");
+    let args = ["import", zip.to_str().unwrap(), "--with-data"];
+    let first = ok(&to.run(&args, None));
+    let nothing = !first.lines().any(|line| line.starts_with("replaced "));
+    assert!(nothing, "a new HOME has nothing to replace: {first}");
+    // The person's desk moves on; a second import of the same export puts it back, and says so.
+    to.put_data("store.json", r#"{"desk":{"moved":"on"}}"#);
+    to.put("keys.yaml", "bindings: []\n");
+    let second = ok(&to.run(&args, None));
+    let replaced: Vec<&str> = second
+        .lines()
+        .filter(|l| l.starts_with("replaced "))
+        .collect();
+    let store = format!("replaced {}", to.data.join("store.json").display());
+    let keys = format!("replaced {}", to.home.join(".desk/keys.yaml").display());
+    assert_eq!(replaced, [store.as_str(), keys.as_str()], "{second}");
+}
+
+#[test]
+fn import_of_a_file_that_is_no_zip_says_so() {
+    let to = Desk::new("not-zip");
+    let file = to.root().join("notes.txt");
+    fs::write(&file, "hello\n").unwrap();
+    let refused = to.run(&["import", file.to_str().unwrap()], None);
+    assert_eq!(refused.status.code(), Some(1));
+    let said = String::from_utf8_lossy(&refused.stderr);
+    assert!(
+        said.contains("neither a folder nor a zip archive"),
+        "{said}"
+    );
+    assert!(!said.contains("os error"), "{said}");
+    // A zip that has lost its .zip still imports.
+    let from = Desk::full("not-zip-from");
+    let zip = from.root().join("desk.zip");
+    ok(&from.run(&["export", zip.to_str().unwrap()], None));
+    let renamed = from.root().join("desk.backup");
+    fs::rename(&zip, &renamed).unwrap();
+    ok(&to.run(&["import", renamed.to_str().unwrap()], None));
+    assert_eq!(to.read("keys.yaml"), from.read("keys.yaml"));
+}
