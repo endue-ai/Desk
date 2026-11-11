@@ -131,6 +131,26 @@ describe("remote surface pages", () => {
     d.runtime.dispose();
   });
 
+  it("put the page's focus on a surface's place when the desk gives the surface the focus", async () => {
+    const d = await desk();
+    const section = d.root.querySelector<HTMLElement>('[data-surface="test.notes"]');
+    const place = section?.querySelector<HTMLElement>("[data-surface-host]");
+    d.runtime.focusSurface("test.notes");
+    // The place, not its section: the compositor gives the keys to the surface whose place has the
+    // page's focus (issue 159, finding 2: Ctrl+Tab left them with the desk's page).
+    expect(document.activeElement).toBe(place);
+    // Away (unloaded), the section keeps it; back, the place takes it again.
+    const view = place as HTMLElement;
+    d.pages.away("test.notes", view);
+    view.remove();
+    d.runtime.focusSurface("test.notes");
+    expect(document.activeElement).toBe(section);
+    section?.append(view);
+    d.pages.back("test.notes", view, true);
+    expect(document.activeElement).toBe(place);
+    d.runtime.dispose();
+  });
+
   it("enter a surface's page with Tab, and leave it by the page's own order", async () => {
     const d = await desk();
     const section = d.root.querySelector<HTMLElement>('[data-surface="test.notes"]');
