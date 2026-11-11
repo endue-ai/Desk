@@ -5,6 +5,7 @@
 // running, so the agent bar shows the directory offline, and Skip stops at sign-in before any brain
 // call.
 import { $, browser, expect } from "@wdio/globals";
+import { feed, inputState, shellCommand } from "../support/compositor";
 import { appLog, inFrame, MODE, READY, SYSTEM, shellReady } from "../support/desk";
 import { drawing } from "../support/frames";
 
@@ -37,6 +38,24 @@ describe("launch: the desk shell on a fresh data folder", () => {
         timeoutMsg: "the onboarding frame never set data-scene",
       }),
     );
+  });
+
+  it("the first run lies over the canvas map", async () => {
+    // The map is the compositor's, drawn under the overlays' surfaces (#161): a press on it is
+    // the first run's.
+    type Map = { shows: boolean; folded?: boolean; outer?: number[] };
+    let map: Map | undefined;
+    await browser.waitUntil(
+      async () => {
+        map = (await shellCommand<{ wm: { map: Map } }>("compositor_stats")).wm.map;
+        return map.shows && !map.folded;
+      },
+      { timeoutMsg: "the canvas map never showed open" },
+    );
+    const [x = 0, y = 0, w = 0, h = 0] = map?.outer ?? [];
+    await feed([{ type: "pointerMoved", x: Math.round(x + w / 2), y: Math.round(y + h / 2) }]);
+    const { hearing } = (await inputState()).pointer;
+    expect(hearing[0] ?? "").toContain("onboarding");
   });
 
   it("Skip intro works over the shell", async () => {
