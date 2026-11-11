@@ -1,5 +1,5 @@
 use super::Pacing;
-use crate::web_host::frames::{ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PROMPT, PROMPT_FOR};
+use crate::web_host::frames::{ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PROMPT, PROMPT_FOR, RATE};
 use std::time::{Duration, Instant};
 
 /// Which of desk `frames` a surface that painted `paints` frames takes, as `x` and `.`.
@@ -13,6 +13,14 @@ fn taken(pacing: &mut Pacing, now: Instant, frames: std::ops::Range<u64>, paints
             }
         })
         .collect()
+}
+
+/// Looks at every desk frame of the second after `from` (frames `k + 1` on) with `paints` painted,
+/// as the desk does while a surface takes every frame.
+fn a_second_of_frames(pacing: &mut Pacing, from: Instant, k: u64, paints: u64) {
+    for j in 1..RATE {
+        pacing.due(from + FRAME * j, Some(k + u64::from(j)), paints);
+    }
 }
 
 fn ms(at: Instant, ms: f64) -> Instant {
@@ -56,6 +64,8 @@ fn a_long_idle_surface_rests_until_it_hears_something_paints_or_its_page_asks() 
     let (mut a, mut b) = (Pacing::new(60), Pacing::new(60));
     assert!(a.due(t0, Some(0), 1), "a's page painted");
     assert!(b.due(t0, Some(3), 1), "b's first frame is its own");
+    a_second_of_frames(&mut a, t0, 0, 1);
+    a_second_of_frames(&mut b, t0, 3, 1);
     let rest = t0 + LONG_IDLE;
     assert!(a.long_idle(rest) && b.long_idle(rest));
     assert_eq!(
@@ -90,11 +100,13 @@ fn a_long_idle_surface_rests_until_it_hears_something_paints_or_its_page_asks() 
     assert!(b.due(looks[3], Some(84), 1));
     let painted = looks[3] + FRAME;
     assert!(b.due(painted, Some(85), 2), "a paint came");
-    assert!(
-        !b.long_idle(painted + LONG_IDLE / 2),
-        "awake: it takes its pace's frames"
-    );
-    assert_eq!(taken(&mut b, painted + FRAME, 86..89, 2), "xxx");
+    assert!(!b.long_idle(painted + LONG_IDLE / 2));
+    // A lone paint: the ask's last frame, then the slow frames for a second, not every frame.
+    let after: String = (1..=60u32)
+        .map(|j| b.due(painted + FRAME * j, Some(85 + u64::from(j)), 2))
+        .map(|due| if due { 'x' } else { '.' })
+        .collect();
+    assert_eq!(after, format!("x....x{}......", ".....x".repeat(8)));
 }
 
 #[test]
@@ -112,6 +124,7 @@ fn a_page_that_has_not_painted_since_it_loaded_keeps_its_frames_while_it_rests()
     );
     // Its first paint comes; once idle after it, it rests without frames.
     assert!(slow.due(late, Some(183), 1));
+    a_second_of_frames(&mut slow, late, 183, 1);
     let rest = late + LONG_IDLE;
     assert!(slow.long_idle(rest));
     assert_eq!(taken(&mut slow, rest, 240..243, 1), "...");
@@ -136,6 +149,7 @@ fn a_desk_at_rest_has_nothing_to_look_at_until_a_page_asks_or_a_press_comes() {
         Some(t0 + FRAME),
         "awake: every frame"
     );
+    a_second_of_frames(&mut pacing, t0, 0, 1);
     let rest = t0 + LONG_IDLE;
     let k = clock.frame(rest);
     assert!(!pacing.due(rest, k, 1));

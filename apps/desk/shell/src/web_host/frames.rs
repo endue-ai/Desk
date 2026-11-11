@@ -9,7 +9,9 @@
 //! until it hears something (input, a compositor message for it), or its page asks for frames
 //! (`frame_asks.js`: a change of its own, or one a message to it made, that no frame came for), so
 //! a desk at rest has nothing on its clock (#134). An ask brings the desk frames within
-//! `ASKED_FOR`; a paint, input or a compositor message put it back on every frame its pace takes.
+//! `ASKED_FOR`; input or a compositor message puts it back on every frame its pace takes, and so
+//! does painting (`PAINTING`), while a lone paint (a caret's blink) keeps it on slow frames
+//! (`SLOW`) for `LONG_IDLE` (#163). `Pacing` (`frames_pacing.rs`) keeps each surface's.
 //!
 //! A press, a key, a composition or a focus change an idle surface hears (one that painted nothing
 //! for `IDLE`) is followed by a begin frame every `PROMPT` from the press on, until it paints or for
@@ -44,10 +46,17 @@ pub const PROMPT: Duration = Duration::from_millis(1);
 pub const PROMPT_FOR: Duration = Duration::from_micros(33_333);
 /// A surface that painted nothing for this long is idle: a press prompts it.
 pub const IDLE: Duration = Duration::from_micros(33_333);
-/// A surface that painted nothing and heard nothing for this long is long idle: it rests.
+/// A surface that painted nothing and heard nothing for this long (and was sent `SLOW` begin
+/// frames since its last paint) is long idle: it rests.
 pub const LONG_IDLE: Duration = Duration::from_secs(1);
-/// When a resting surface's page asks for frames, it takes the desk frames within this long: two or
-/// three, the renderer's frame and the display's.
+/// Two paints less than this apart, the later one less than this ago: the surface is painting (an
+/// animation, a video, a GIF of four frames a second or more) and takes every frame its pace takes.
+pub const PAINTING: Duration = Duration::from_millis(250);
+/// The slow frames a second (100 ms apart, on times of the surface's own) a surface takes after a
+/// lone paint, as a caret's blink is, hearing nothing: for `LONG_IDLE` and at least this many.
+pub const SLOW: u32 = 10;
+/// When the page of a surface resting or on the slow frames asks for frames, it takes the desk
+/// frames within this long: two or three, the renderer's frame and the display's.
 pub const ASKED_FOR: Duration = Duration::from_micros(41_667);
 /// The GPU's first copy after about a second without one takes milliseconds more, in the desk's
 /// process and in Chromium's GPU process alike (#133): input to a desk that painted nothing for

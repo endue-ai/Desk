@@ -6,6 +6,8 @@ decision-makers: Team endue
 
 Status: amended by ADR 0170: an ask says how long its page has waited since its first one
 (`wake(ms)`), and the shell finds a page whose asks repeat after begin frames: it stopped painting.
+Amended by ADR XXXX: a lone paint (a caret's blink) keeps a surface on slow frames, ten a second,
+not on every frame for a second; it rests once ten went out and a second passed without a paint.
 
 # A resting surface takes no begin frames, and its page asks for them
 

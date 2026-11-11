@@ -8,7 +8,8 @@ Status: amended by ADR 0159: CEF's poll rides the desk's own wake-ups at rest (a
 and while CEF's work busy-waits a stand-in thread sends the frame clock's begin frames. Amended by
 ADR 0164: a long-idle surface takes no begin frames at all; its page asks for them.
 Amended by ADR 0165: Chromium's threaded animations are off beside the full pipeline, whose begin
-frames otherwise stalled a page for good (#157).
+frames otherwise stalled a page for good (#157). Amended by ADR XXXX: slow frames come back for a
+surface whose last paint was a lone one, on times of its own rather than shared desk frames.
 
 # Web surfaces run Chromium's full pipeline, and long-idle ones rest on a slower clock
 
