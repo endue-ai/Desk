@@ -106,6 +106,53 @@ describe("file openers: a window that slept comes back whole (#162)", () => {
     await freshDesktop();
   });
 
+  it("Images: an image comes back at its zoom and pan", async function () {
+    this.timeout(120_000);
+    const IMAGES = "endue.images";
+    const photo = join(files, "photo.png");
+    const fixture = new URL("../../plugins/images/tests/fixtures/exif.png", import.meta.url);
+    writeFileSync(photo, readFileSync(fixture));
+    await run("desk.files.open", { path: photo });
+    await show(IMAGES);
+    /** The zoom and the image's transform, once the image is drawn. */
+    const view = () =>
+      inFrame(IMAGES, () =>
+        browser.execute(() => {
+          const img = document.querySelector<HTMLImageElement>("#pane-a img");
+          if (!img?.complete || img.naturalWidth === 0) return null;
+          return `${document.getElementById("zoom-level")?.textContent} ${img.style.transform}`;
+        }),
+      );
+    await browser.waitUntil(async () => (await view()) !== null, {
+      timeout: 15_000,
+      timeoutMsg: "the image was not drawn",
+    });
+    // Zoomed in past the window (the 64 × 48 photo, turned by its EXIF orientation) and panned with
+    // the arrows, as the person's buttons and keys do.
+    await inFrame(IMAGES, () =>
+      browser.execute(() => {
+        for (let i = 0; i < 6; i++) document.getElementById("zoom-in")?.click();
+        const stage = document.getElementById("stage");
+        for (const key of ["ArrowRight", "ArrowDown"])
+          stage?.dispatchEvent(
+            new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
+          );
+      }),
+    );
+    const seen = await view();
+    expect(seen).toMatch(/^\d+% translate\(-[\d.]+px, -[\d.]+px\)/);
+    await mark(IMAGES);
+
+    await sleepOn(IMAGES, 4);
+    await run("desk.shell.desktop-4");
+    await until((d) => !asleep(d, IMAGES), "Images awake on desktop 4", 20_000);
+    await browser.waitUntil(async () => (await view().catch(() => null)) === seen, {
+      timeout: 20_000,
+      timeoutMsg: `the image did not come back as ${seen}`,
+    });
+    expect(await marked(IMAGES)).toBe(false);
+  });
+
   it("Notes: a 114 KB note and a small one, both unsaved, come back with their text, still marked", async function () {
     this.timeout(120_000);
     const long = join(files, "long.md");

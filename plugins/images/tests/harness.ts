@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { vi } from "vitest";
 import { StubError } from "../../../packages/bridge/src/index";
-import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
+import { defineUiPlugin, keepFiles, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { createImages, type ImagesState } from "../ui/images.js";
 
@@ -68,19 +68,28 @@ export async function mount<V extends View = RecordingView>(
     view?: (app: () => ReturnType<typeof createImages> | undefined) => V;
     /** The SDK's startWorker, or a test's stand-in; without it every file decodes in place. */
     startWorker?: (url: string | URL, options?: { name?: string }) => Worker;
+    /** What the last sleep kept (ctx.surface.restored). */
+    restored?: unknown;
+    /** False: resolve once mounted, without waiting for its calls (a test holds one back). */
+    settled?: boolean;
   } = {},
 ): Promise<Mounted<V>> {
   const host = createTestHost({
     pluginId: "endue.images",
     handlers: options.handlers ?? {},
     commands: { ...DESK, ...options.commands },
+    ...(options.restored === undefined ? {} : { restored: options.restored }),
   });
   let app: ReturnType<typeof createImages> | undefined;
   const view = (options.view?.(() => app) ?? recordingView()) as V;
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createImages(ctx, view, { read: readBytes, startWorker: options.startWorker });
+        app = createImages(ctx, view, {
+          read: readBytes,
+          startWorker: options.startWorker,
+          keepFiles,
+        });
       },
     },
     host.transport,
@@ -88,7 +97,7 @@ export async function mount<V extends View = RecordingView>(
   const settle = async () => {
     for (let i = 0; i < 6; i++) await host.settle();
   };
-  await settle();
+  if (options.settled !== false) await settle();
   if (!app) throw new Error("the plugin did not mount");
   return {
     host,
