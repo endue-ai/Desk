@@ -1,56 +1,15 @@
-//! The command line, matched by hand (no parser dependency). `--json` may stand anywhere.
+//! The command line, matched by hand (no parser dependency). `--json` may stand anywhere. Words
+//! that are no action say why (`usage::Wrong`): the value that is wrong, or where they stop fitting.
 
 use std::path::PathBuf;
 
 use serde_json::{Map, Value};
 
-pub const USAGE: &str = "usage: desk [--json] <command>
-  plugin validate <dir>                 check a plugin folder against specs/plugin v0
-  plugin test <dir>                     run a plugin folder's tests on the host for its kind
-  ping                                  a round trip to the running desk
-  cmd list                              the commands the desk has: id, provider, title
-  cmd run <id> [--args <json object>] [--timeout <seconds>]
-                                        run a command and print its result; with --timeout, stop
-                                        waiting for it after that many seconds and exit 1
-  cmd tools [<words>]                   the commands agents get as tools: id, provider, reads or acts
-  plugin list                           the installed plugins: id, status, enabled
-  plugin list --lock                    ~/.desk/plugins.lock as it is (no desk needed)
-  plugin sync                           turn plugins on and off as plugins.lock says; report the
-                                        ones it names that are not installed
-  market list                           what the markets offer: kind, id, version, state, verified
-  market install <id> [--accept]        install from a market; --accept takes the permissions it asks
-  plugin enable <id> | disable <id>     turn a plugin on or off
-  perm list                             every grant: grantId, caller, permission
-  perm revoke <grantId>                 take a grant back
-  perm log [--agent <id>]               grants, refusals and agents' calls; one agent's only
-  describe key|command|setting|plugin|grant <x>
-                                        what it is, where it comes from and who may call it
-  inspect [tree|surfaces|commands|grants|settings|plugins|calls]
-                                        what the desk holds now, as the inspector's Export JSON
-  update                                the desk's updates: state, running build, channel, chosen build
-  update check                          read the channel index now and print what came of it
-  update download | apply               download the chosen build, or restart into the staged one
-  update channel <stable|beta|canary>   follow another channel from the next check on
-  theme list                            the installed themes: id, status, built-in or user, name
-  theme apply <id>                      put an installed theme in force
-  theme import <file>                   install a .desk-theme file as a user theme; prints its id
-  theme export <id> [file]              write a theme as a .desk-theme file (default: in Downloads)
-  theme remove <id>                     delete a user theme
-  doctor [--data <dir>]                 offline: quarantined plugins, .broken state files, crash
-                                        reports, and every desk and data file with its owner, size, state
-  doctor --last-crash [--data <dir>]    the newest crash report (--json: the file as it is)
-  export <dir|file.zip> [--with-data]   copy the desk folder (and the safe data files) with desk.json
-  import <dir|file.zip> [--with-data]   restore an export into this HOME; keeps an existing init.yaml
-  fs history <path> [--limit <n>]       the versions the desk kept of a file: id, at, caller, size
-  fs restore <path> <version>           write a kept version back (what it replaces is kept too)
-  log [--count <n>]                     the desk's log, oldest first: at, level, channel, message
-  undo | redo                           the desk's undo stack: what was undone or redone, if anything
-  doctor --trace <file>                 summarize a start-up trace (DESK_TRACE=1): phases, totals,
-                                        the five longest
-  mcp [--agent <id>] [--plugin <id>]... serve the running desk to another app over MCP on stdin and
-                                        stdout, as the agent <id> (mcp); each --plugin (or *) gives
-                                        that plugin's commands tools of their own
---json prints the desk's answer line as it is. Exit codes: 0 ok, 1 failed, 2 usage.";
+use crate::usage::{self, Wrong};
+
+mod forms;
+
+use forms::{CHANNELS, KINDS, carry, cmd_run, fs, mcp, name, number, one_of, theme};
 
 pub struct Args {
     pub action: Action,
@@ -175,15 +134,43 @@ pub enum ThemeStep {
     Remove(String),
 }
 
-/// The action the arguments ask for, or `None` for a usage error.
-pub fn parse(args: Vec<String>) -> Option<Args> {
+/// The action the arguments ask for, or what was wrong with them.
+pub fn parse(args: Vec<String>) -> Result<Args, Wrong> {
     let json = args.iter().any(|arg| arg == "--json");
     let words: Vec<&str> = args
         .iter()
         .map(String::as_str)
         .filter(|arg| *arg != "--json")
         .collect();
-    let action = match words.as_slice() {
+    let message = match action(&words) {
+        Ok(action) => return Ok(Args { action, json }),
+        Err(Miss::Wrong(message)) => message,
+        Err(Miss::Unmatched) => unmatched(&words),
+    };
+    let command = words.first().filter(|word| usage::knows(word));
+    Err(Wrong {
+        message,
+        command: command.map(|word| (*word).to_owned()),
+    })
+}
+
+/// Why words are no action: no form of any command matches them, or one does and a value in it is
+/// wrong (that sentence).
+enum Miss {
+    Unmatched,
+    Wrong(String),
+}
+
+impl From<String> for Miss {
+    fn from(message: String) -> Self {
+        Self::Wrong(message)
+    }
+}
+
+type Parsed<T> = Result<T, Miss>;
+
+fn action(words: &[&str]) -> Parsed<Action> {
+    Ok(match words {
         ["--help" | "-h" | "help"] => Action::Help,
         ["plugin", "validate", dir] => Action::Validate(PathBuf::from(dir)),
         ["doctor"] => Action::Doctor(None),
@@ -195,7 +182,7 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["plugin", "test", dir] => Action::Test(PathBuf::from(dir)),
         ["doctor", "--trace", file] => Action::Trace(PathBuf::from(file)),
         ["export", target, rest @ ..] => {
-            let (with_data, data) = carry(rest)?;
+            let (with_data, data) = carry("export", rest)?;
             Action::Export {
                 target: PathBuf::from(target),
                 with_data,
@@ -203,7 +190,7 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
             }
         }
         ["import", source, rest @ ..] => {
-            let (with_data, data) = carry(rest)?;
+            let (with_data, data) = carry("import", rest)?;
             Action::Import {
                 source: PathBuf::from(source),
                 with_data,
@@ -247,13 +234,11 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["update", "check"] => Action::Remote(Remote::Update(UpdateStep::Check)),
         ["update", "download"] => Action::Remote(Remote::Update(UpdateStep::Download)),
         ["update", "apply"] => Action::Remote(Remote::Update(UpdateStep::Apply)),
-        ["update", "channel", name] => Action::Remote(Remote::Update(UpdateStep::Channel(
-            ["stable", "beta", "canary"]
-                .into_iter()
-                .find(|channel| channel == name)?,
+        ["update", "channel", channel] => Action::Remote(Remote::Update(UpdateStep::Channel(
+            one_of(&CHANNELS, channel, "channel")?,
         ))),
         ["describe", kind, thing] => Action::Remote(Remote::Describe {
-            kind: KINDS.iter().find(|k| *k == kind)?,
+            kind: one_of(&KINDS, kind, "kind describe knows")?,
             name: name(thing)?,
         }),
         ["theme", rest @ ..] => Action::Remote(Remote::Theme(theme(rest)?)),
@@ -262,138 +247,42 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["undo"] => Action::Remote(Remote::Undo { redo: false }),
         ["redo"] => Action::Remote(Remote::Undo { redo: true }),
         ["log", "--count", count] => Action::Remote(Remote::Log {
-            count: Some(number(count)?),
+            count: Some(number("--count", count)?),
         }),
         ["inspect"] => Action::Remote(Remote::Inspect { section: None }),
         ["inspect", section] => Action::Remote(Remote::Inspect {
-            section: Some(SECTIONS.iter().find(|s| *s == section)?),
+            section: Some(one_of(&SECTIONS, section, "section")?),
         }),
-        _ => return None,
+        _ => return Err(Miss::Unmatched),
+    })
+}
+
+/// What is wrong with words no form matches: an unknown command, a flag with no value at the end,
+/// the first word past the longest start that is a whole command, or that they stop short.
+fn unmatched(words: &[&str]) -> String {
+    let Some(first) = words.first() else {
+        return String::new();
     };
-    Some(Args { action, json })
-}
-
-/// `[--with-data] [--data <dir>]` in either order, for export and import.
-fn carry(rest: &[&str]) -> Option<(bool, Option<PathBuf>)> {
-    let (mut with_data, mut data) = (false, None);
-    let mut words = rest.iter();
-    while let Some(word) = words.next() {
-        match *word {
-            "--with-data" if !with_data => with_data = true,
-            "--data" if data.is_none() => data = Some(PathBuf::from(name(words.next()?)?)),
-            _ => return None,
-        }
+    if !usage::knows(first) {
+        return format!("no command '{first}'");
     }
-    Some((with_data, data))
+    let whole = (1..words.len())
+        .rev()
+        .find(|&k| action(&words[..k]).is_ok());
+    match whole {
+        Some(k) if k + 1 == words.len() && usage::takes_value(words[k]) => {
+            format!("{} needs a value", words[k])
+        }
+        Some(k) => format!(
+            "'{}' is not expected after 'desk {}'",
+            words[k],
+            words[..k].join(" ")
+        ),
+        None => format!("'desk {}' is not complete", words.join(" ")),
+    }
 }
-
-/// What `desk describe` can name.
-const KINDS: [&str; 5] = ["key", "command", "setting", "plugin", "grant"];
 
 /// The inspector's sections, in its order (`plugins/inspector/ui/sections.js`).
 pub const SECTIONS: [&str; 7] = [
     "tree", "surfaces", "commands", "grants", "settings", "plugins", "calls",
 ];
-
-/// `theme list | apply <id> | import <file> | export <id> [file] | remove <id>`.
-fn theme(rest: &[&str]) -> Option<ThemeStep> {
-    Some(match rest {
-        ["list"] => ThemeStep::List,
-        ["apply", id] => ThemeStep::Apply(name(id)?),
-        ["import", file] => ThemeStep::Import(PathBuf::from(name(file)?)),
-        ["export", id] => ThemeStep::Export {
-            id: name(id)?,
-            file: None,
-        },
-        ["export", id, file] => ThemeStep::Export {
-            id: name(id)?,
-            file: Some(PathBuf::from(name(file)?)),
-        },
-        ["remove", id] => ThemeStep::Remove(name(id)?),
-        _ => return None,
-    })
-}
-
-/// `fs history <path> [--limit <n>]` (the flag before or after the path) or `fs restore <path>
-/// <version>`.
-fn fs(rest: &[&str]) -> Option<FsStep> {
-    Some(match rest {
-        ["history", path] => FsStep::History {
-            path: PathBuf::from(name(path)?),
-            limit: None,
-        },
-        ["history", path, "--limit", limit] | ["history", "--limit", limit, path] => {
-            FsStep::History {
-                path: PathBuf::from(name(path)?),
-                limit: Some(number(limit)?),
-            }
-        }
-        ["restore", path, version] => FsStep::Restore {
-            path: PathBuf::from(name(path)?),
-            version: name(version)?,
-        },
-        _ => return None,
-    })
-}
-
-/// `mcp [--agent <id>] [--plugin <id>]...`, the flags in any order; the agent id as Desk names one.
-fn mcp(mut rest: &[&str]) -> Option<Action> {
-    let mut agent = None;
-    let mut plugins = Vec::new();
-    while let [flag, value, more @ ..] = rest {
-        match *flag {
-            "--agent" if agent.is_none() => {
-                desk_core::agent_caller(value)?;
-                agent = Some((*value).to_owned());
-            }
-            "--plugin" => plugins.push(name(value)?),
-            _ => return None,
-        }
-        rest = more;
-    }
-    rest.is_empty().then_some(Action::Mcp { agent, plugins })
-}
-
-/// A count of 1 or more.
-fn number(word: &str) -> Option<u64> {
-    word.parse().ok().filter(|n| *n > 0)
-}
-
-/// `cmd run <id> [--args <json object>] [--timeout <seconds>]`, each flag once, before or after the id.
-fn cmd_run(mut rest: &[&str]) -> Option<Remote> {
-    let (mut id, mut args, mut timeout) = (None, None, None);
-    while let [word, more @ ..] = rest {
-        rest = match (*word, more) {
-            ("--args", [value, more @ ..]) if args.is_none() => {
-                args = Some(object(value)?);
-                more
-            }
-            ("--timeout", [value, more @ ..]) if timeout.is_none() => {
-                timeout = Some(number(value)?);
-                more
-            }
-            (word, more) if id.is_none() => {
-                id = Some(name(word)?);
-                more
-            }
-            _ => return None,
-        };
-    }
-    Some(Remote::CmdRun {
-        id: id?,
-        args,
-        timeout,
-    })
-}
-
-fn object(text: &str) -> Option<Map<String, Value>> {
-    match serde_json::from_str(text) {
-        Ok(Value::Object(map)) => Some(map),
-        _ => None,
-    }
-}
-
-/// An id or a grant id: anything but a flag.
-fn name(word: &str) -> Option<String> {
-    (!word.is_empty() && !word.starts_with('-')).then(|| word.to_owned())
-}

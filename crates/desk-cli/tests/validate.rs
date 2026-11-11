@@ -44,6 +44,36 @@ fn the_github_connector_validates_as_an_http_connector_without_an_entry() {
 }
 
 #[test]
+fn with_json_validate_prints_one_json_line_either_way() {
+    let dir = repo().join("plugins/github");
+    let out = desk(&["--json", "plugin", "validate", dir.to_str().unwrap()]);
+    assert!(out.status.success());
+    let line: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(
+        line,
+        serde_json::json!({ "ok": true, "id": "desk.github", "version": "0.1.0", "kind": "connector" })
+    );
+    let empty = std::env::temp_dir().join(format!("dcli-validate-json-{}", std::process::id()));
+    fs::create_dir_all(&empty).unwrap();
+    let out = desk(&["plugin", "validate", empty.to_str().unwrap(), "--json"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        out.stderr.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let line: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(line["ok"], false);
+    assert!(
+        line["problems"][0]
+            .as_str()
+            .unwrap()
+            .contains("plugin.json"),
+        "{line}"
+    );
+}
+
+#[test]
 fn hello_connector_validates_as_a_connector_plugin() {
     let dir = repo().join("examples/plugin-hello-connector");
     let out = desk(&["plugin", "validate", dir.to_str().unwrap()]);

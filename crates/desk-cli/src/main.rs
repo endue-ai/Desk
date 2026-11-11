@@ -13,32 +13,31 @@ mod plugin_test;
 mod remote;
 mod theme;
 mod undo;
+mod usage;
 
 use std::path::Path;
 use std::process::ExitCode;
 
 use desk_bridge::{PluginKind, PluginManifest};
+use serde_json::json;
 
-use crate::args::{Action, USAGE};
+use crate::args::Action;
+use crate::usage::USAGE;
 
 fn main() -> ExitCode {
-    let Some(args) = args::parse(std::env::args().skip(1).collect()) else {
-        eprintln!("{USAGE}");
-        return ExitCode::from(2);
+    let args = match args::parse(std::env::args().skip(1).collect()) {
+        Ok(args) => args,
+        Err(wrong) => {
+            eprint!("{}", usage::wrong(&wrong));
+            return ExitCode::from(2);
+        }
     };
     match args.action {
         Action::Help => {
             println!("{USAGE}");
             ExitCode::SUCCESS
         }
-        Action::Validate(dir) => match checked(&dir) {
-            Ok(manifest) => {
-                let kind = kind_name(manifest.kind);
-                println!("ok {} {} ({kind} plugin)", manifest.id, manifest.version);
-                ExitCode::SUCCESS
-            }
-            Err(problems) => report(&dir, problems),
-        },
+        Action::Validate(dir) => validate(&dir, args.json),
         // Tests run on a plugin that validates; one that does not says why, as validate does.
         Action::Test(dir) => match checked(&dir) {
             Ok(manifest) => plugin_test::run(&dir, &manifest),
@@ -78,6 +77,28 @@ fn mcp(agent: Option<String>, plugins: Vec<String>) -> ExitCode {
             eprintln!("desk: mcp: {why}");
             ExitCode::from(1)
         }
+    }
+}
+
+/// `plugin validate`: `ok <id> <version> (<kind> plugin)`, or every problem on stderr; with `--json`
+/// one line on stdout either way, `{ ok: true, id, version, kind }` or `{ ok: false, problems }`.
+fn validate(dir: &Path, json: bool) -> ExitCode {
+    match checked(dir) {
+        Ok(manifest) => {
+            let kind = kind_name(manifest.kind);
+            if json {
+                let answer = json!({ "ok": true, "id": manifest.id, "version": manifest.version, "kind": kind });
+                println!("{answer}");
+            } else {
+                println!("ok {} {} ({kind} plugin)", manifest.id, manifest.version);
+            }
+            ExitCode::SUCCESS
+        }
+        Err(problems) if json => {
+            println!("{}", json!({ "ok": false, "problems": problems }));
+            ExitCode::from(1)
+        }
+        Err(problems) => report(dir, problems),
     }
 }
 
