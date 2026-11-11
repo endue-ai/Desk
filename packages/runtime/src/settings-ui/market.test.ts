@@ -2,7 +2,8 @@
 // Settings, Market (ADR 0107): every kind the markets offer in one list, verified or not, every
 // install asked before it runs with the permissions it adds (or none) and where an unverified one
 // comes from, code that is not verified not installable, and remove, asked too, for what the market
-// installed (07 #15). The bridge answers as the core does.
+// installed (07 #15); a theme or a design system put in force from its row (04 #19). The bridge
+// answers as the core does.
 import {
   BridgeClient,
   browserStub,
@@ -69,11 +70,27 @@ function mount() {
       if (found) Object.assign(found, { state: "available", installed: undefined });
       return {};
     },
+    "theme.remove": (params) => {
+      calls.push({ method: "theme.remove", params });
+      const found = entries.find((e) => e.entry.id === params.theme);
+      if (found) Object.assign(found, { state: "available", installed: undefined });
+      return {};
+    },
   };
   const bridge = new BridgeClient(browserStub(handlers));
-  const panel = mountMarket({ bridge, language: "en" });
+  // The commands that put a theme or a design system in force, as desk.theme and desk.design do.
+  const active = new Map<string, string>();
+  const commands = {
+    run: async (method: string, params?: { id?: string }) => {
+      calls.push({ method, params });
+      if (method === "desk.theme.use") active.set("desk.theme.active", params?.id ?? "");
+      if (method === "desk.theme.default") active.set("desk.theme.active", "");
+    },
+  };
+  const settings = { get: <T>(key: string, fallback?: T) => (active.get(key) ?? fallback) as T };
+  const panel = mountMarket({ bridge, language: "en", commands, settings });
   document.body.append(panel.el);
-  return { panel, calls };
+  return { panel, calls, active };
 }
 
 const card = (el: HTMLElement, id: string) => {
@@ -169,6 +186,39 @@ describe("Settings, Market", () => {
         },
       },
     ]);
+    panel.dispose();
+  });
+
+  // #158 finding 19: "Installed 1.0.0" and nothing more. A theme or a design system the market put
+  // on this desk is put in force from its row, says so, and can be removed, after asking as every
+  // remove does (the endue one takes over first).
+  it("uses an installed theme, says it is in use, and removes it after asking", async () => {
+    const { panel, calls, active } = mount();
+    await panel.ready;
+    const lagoon = () => card(panel.el, "market.lagoon");
+    expect(lagoon().textContent).not.toContain("In use");
+    button(lagoon(), "Use")?.click();
+    await panel.idle();
+    expect(calls.at(-1)).toEqual({ method: "desk.theme.use", params: { id: "market.lagoon" } });
+    expect(active.get("desk.theme.active")).toBe("market.lagoon");
+    expect(lagoon().textContent).toContain("In use");
+    expect(button(lagoon(), "Use")).toBeUndefined();
+    button(lagoon(), "Remove")?.click();
+    await panel.idle();
+    expect(calls.at(-1)?.method, "nothing is removed on the first press").toBe("desk.theme.use");
+    expect(lagoon().querySelector('[role="alertdialog"]')?.textContent).toContain(
+      "Remove it? You can install it again here.",
+    );
+    button(lagoon(), "Remove")?.click();
+    await panel.idle();
+    expect(calls.slice(-2)).toEqual([
+      { method: "desk.theme.default", params: undefined },
+      {
+        method: "theme.remove",
+        params: { theme: "market.lagoon", scope: { permission: "theme:manage" } },
+      },
+    ]);
+    expect(button(lagoon(), "Install")).toBeDefined();
     panel.dispose();
   });
 

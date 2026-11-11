@@ -3,7 +3,9 @@
  * with its publisher, licence, version and whether it comes from the endue index. Install always
  * asks first, saying what it would be allowed (or that it asks for nothing) and where an entry that
  * is not verified comes from, before plugin.install runs; code that is not verified does not install.
- * What the market installed can be removed (plugin.remove), after a question too.
+ * What the market installed can be removed (plugin.remove), after a question too. A theme or a design
+ * system it installed is put in force from its row, which says it is in use, and its remove
+ * (theme.remove) gives the desk back to the endue one first (#158 finding 19).
  */
 import {
   BridgeCallError,
@@ -16,8 +18,33 @@ import { h, render } from "../shell/dom";
 import type { SettingsLanguage } from "./copy";
 
 const SCOPE = { permission: "plugin:manage" } as const;
+const LOOK_SCOPE = { permission: "theme:manage" } as const;
 type Kind = MarketListing["entry"]["kind"];
 const KINDS: Kind[] = ["view", "pack", "plugin", "theme", "design-system"];
+
+/** How a look the market installed is put in force, read back and given up for the endue one. */
+interface Look {
+  setting: string;
+  use: string;
+  reset: string;
+}
+const LOOKS: Partial<Record<Kind, Look>> = {
+  theme: { setting: "desk.theme.active", use: "desk.theme.use", reset: "desk.theme.default" },
+  "design-system": {
+    setting: "desk.design.active",
+    use: "desk.design.use",
+    reset: "desk.design.default",
+  },
+};
+
+export interface MarketOptions {
+  bridge: BridgeClient;
+  language: SettingsLanguage;
+  /** Puts a theme or a design system in force; without it their rows only install. */
+  commands?: { run(id: string, args?: unknown): Promise<unknown> };
+  /** Where the theme and the design system in force are named. */
+  settings?: { get<T>(key: string, fallback?: T): T };
+}
 
 const COPY = {
   view: ["뷰", "Views"],
@@ -30,6 +57,8 @@ const COPY = {
   install: ["설치", "Install"],
   update: ["업데이트", "Update"],
   remove: ["제거", "Remove"],
+  use: ["사용", "Use"],
+  inUse: ["사용 중", "In use"],
   installed: ["설치됨", "Installed"],
   asks: ["설치하면 다음을 허락합니다:", "Installing it allows:"],
   nothing: ["허락할 권한이 없습니다.", "It asks for no permissions."],
@@ -78,13 +107,13 @@ const hostOf = (url: string) => {
   }
 };
 
-export function mountMarket(options: { bridge: BridgeClient; language: SettingsLanguage }): {
+export function mountMarket(options: MarketOptions): {
   el: HTMLElement;
   ready: Promise<void>;
   idle(): Promise<void>;
   dispose(): void;
 } {
-  const { bridge, language } = options;
+  const { bridge, language, commands, settings } = options;
   const tr = (key: Copy) => COPY[key][language === "ko" ? 0 : 1];
   const el = h("div", { class: "settings-panel-body settings-market" });
   let entries: MarketListing[] = [];
@@ -120,6 +149,18 @@ export function mountMarket(options: { bridge: BridgeClient; language: SettingsL
     });
     return pending;
   };
+  const run = (id: string, args?: unknown) => commands?.run(id, args) ?? Promise.resolve();
+  /** The look an installed theme or design system row puts in force; none without the commands. */
+  const lookOf = ({ entry, state }: MarketListing) =>
+    commands && state !== "available" ? LOOKS[entry.kind] : undefined;
+  const inUse = (listing: MarketListing) => {
+    const look = LOOKS[listing.entry.kind];
+    return (
+      look !== undefined &&
+      listing.state !== "available" &&
+      settings?.get<string>(look.setting, "") === listing.entry.id
+    );
+  };
   const install = (listing: MarketListing) => {
     asking = undefined;
     const accept = listing.entry.permissions ?? listing.added;
@@ -135,7 +176,14 @@ export function mountMarket(options: { bridge: BridgeClient; language: SettingsL
   const remove = (listing: MarketListing) => {
     asking = undefined;
     const id = listing.entry.id;
-    void queue(id, () => bridge.call("plugin.remove", { plugin: id, scope: SCOPE }));
+    const look = lookOf(listing);
+    const using = inUse(listing);
+    void queue(id, async () => {
+      if (!look) return bridge.call("plugin.remove", { plugin: id, scope: SCOPE });
+      // The endue look takes over before the one in force goes.
+      if (using) await run(look.reset);
+      return bridge.call("theme.remove", { theme: id, scope: LOOK_SCOPE });
+    });
   };
   const askFor = (listing: MarketListing, removing: boolean) => {
     asking = { id: listing.entry.id, remove: removing };
@@ -163,8 +211,22 @@ export function mountMarket(options: { bridge: BridgeClient; language: SettingsL
         ),
       );
     }
+    const look = lookOf(listing);
+    if (look && !inUse(listing))
+      buttons.push(
+        h(
+          "button",
+          {
+            type: "button",
+            class: "btn btn-xs btn-primary",
+            onClick: () => void queue(entry.id, () => run(look.use, { id: entry.id })),
+          },
+          tr("use"),
+        ),
+      );
     const removable =
-      state !== "available" && entry.kind !== "theme" && entry.kind !== "design-system";
+      look !== undefined ||
+      (state !== "available" && entry.kind !== "theme" && entry.kind !== "design-system");
     if (removable)
       buttons.push(
         h(
@@ -222,11 +284,11 @@ export function mountMarket(options: { bridge: BridgeClient; language: SettingsL
   const card = (listing: MarketListing) => {
     const { entry, verified, state, installed } = listing;
     const status =
-      state === "installed"
+      (state === "installed"
         ? `${tr("installed")} ${installed ?? entry.version}`
         : state === "update"
           ? `${tr("installed")} ${installed ?? ""} → ${entry.version}`
-          : entry.version;
+          : entry.version) + (inUse(listing) ? ` · ${tr("inUse")}` : "");
     return h(
       "div",
       { class: "settings-row market-entry", "data-entry": entry.id },

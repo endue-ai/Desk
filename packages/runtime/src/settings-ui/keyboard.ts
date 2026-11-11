@@ -1,33 +1,40 @@
 /** Core shortcut editor shared by the settings window and older saved keyboard panes. Keys are
  * sequences of chords (ADR 0118): recording reads a key as Emacs does (or chords until Enter, with
  * several keys in a row on), a key that would replace or shadow another asks first, and every
- * conflict is listed with its source line. */
+ * conflict is listed in a person's words. The list shows the commands with a shortcut, or all of
+ * them, in groups with an index (#158 findings 16 and 19). */
 import type { Commands } from "../commands";
 import { isBinding, PERSONAL_KEYS, SEQUENCE_TIMEOUT } from "../core/defaults";
-import { formatCombo, type Platform } from "../input";
+import type { Platform } from "../input";
 import type { KeysPolicy } from "../policies/keys";
 import {
   checkRebind,
   continuesKey,
-  isDefault,
   type KeyLayers,
   keysOf,
   rebind,
   reset,
   unbind,
 } from "../rebind";
+import type { Resolved } from "../sequences/conflicts";
 import { sequenceText } from "../sequences/copy";
-import {
-  askBeforeBinding,
-  conflictsSection,
-  keyNodes,
-  timeoutRow,
-} from "../sequences/keyboard-parts";
+import { askBeforeBinding, timeoutRow } from "../sequences/keyboard-parts";
 import { formatSequence } from "../sequences/parse";
 import { recordKey } from "../sequences/record";
 import type { Settings } from "../settings";
 import { h, listen, render } from "../shell/dom";
 import { type SettingsLanguage, settingsText } from "./copy";
+import { jumpIndex } from "./jump";
+import { type ConflictWords, conflictsPanel, who } from "./key-conflicts";
+import {
+  type KeyView,
+  keyGroup,
+  keyGroups,
+  keyRow,
+  matchesCommand,
+  type RowAction,
+  viewSwitch,
+} from "./key-list";
 
 export interface KeyboardOptions {
   settings: Settings;
@@ -36,9 +43,18 @@ export interface KeyboardOptions {
   keymap: KeysPolicy["keymap"];
   platform: Platform;
   language: SettingsLanguage;
+  /** A plugin's name, by its id: the list's groups and who set a conflicting key. */
+  plugin?: (id: string) => string;
 }
 
-export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; dispose(): void } {
+export interface KeyboardPane {
+  el: HTMLElement;
+  /** Put the caret in the shortcuts' own search (⌘/ opens Settings here). */
+  focusSearch(): void;
+  dispose(): void;
+}
+
+export function mountKeyboard(options: KeyboardOptions): KeyboardPane {
   const { settings, commands, keymap, platform } = options;
   const tr = (key: Parameters<typeof settingsText>[1]) => settingsText(options.language, key);
   const sq = (key: Parameters<typeof sequenceText>[1]) => sequenceText(options.language, key);
@@ -47,8 +63,15 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
     personal: settings.get<unknown[]>(PERSONAL_KEYS, []).filter(isBinding),
     platform,
   });
-  const titleOf = (id: string) => commands.list().find((c) => c.id === id)?.title ?? id;
-  const parts = { platform, language: options.language, name: titleOf };
+  const titled = (id: string) => commands.list().find((c) => c.id === id)?.title;
+  const plugin = options.plugin ?? ((id: string) => id);
+  const words: ConflictWords = { platform, language: options.language, title: titled, plugin };
+  const parts = {
+    platform,
+    language: options.language,
+    name: (id: string) => titled(id) ?? id,
+    where: (b: Resolved) => who(b, words),
+  };
   const note = h("p", {
     class: "settings-key-note keys-note",
     role: "status",
@@ -56,8 +79,13 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
   });
   const conflict = h("div", { class: "settings-conflict", hidden: true });
   const conflicts = h("div", { class: "keys-conflicts-slot" });
-  const list = h("ul", { class: "settings-key-list" });
+  const views = h("div", { class: "keys-views" });
+  const index = h("div", { class: "keys-index" });
+  const list = h("div", { class: "settings-key-groups" });
   let retainedRow: string | null = null;
+  // The commands the shortcuts view has shown since it opened: a key cleared keeps its row.
+  let view: KeyView = "shortcuts";
+  let kept = new Set<string>();
   const query = h("input", {
     type: "search",
     class: "settings-input",
@@ -85,6 +113,8 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
     note,
     conflict,
     conflicts,
+    views,
+    index,
     list,
   );
   let recording: string | null = null;
@@ -191,91 +221,51 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
     );
     draw();
   };
+  const act = (action: RowAction, id: string) => {
+    if (action === "change") return recording === id ? stop() : record(id);
+    stop();
+    settings.set(PERSONAL_KEYS, action === "remove" ? unbind(layers(), id) : reset(layers(), id));
+    focusChange(id);
+  };
+  const choose = (next: KeyView) => {
+    view = next;
+    kept = new Set();
+    retainedRow = null;
+    stop();
+  };
 
   function draw() {
     const q = query.value.trim().toLowerCase();
     const current = layers();
-    render(conflicts, () => [conflictsSection(keymap.conflicts?.() ?? [], parts)]);
-    const filtered = commands
-      .list()
-      .filter(
-        (c) =>
-          c.id === retainedRow ||
-          [
-            c.title,
-            c.id,
-            ...c.keywords,
-            ...keysOf(current, c.id).map((k) => formatCombo(k, platform)),
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(q),
-      );
+    // A search shows its matches at the top: the conflicts wait until it is cleared.
+    render(conflicts, () => [q ? null : conflictsPanel(keymap.conflicts?.() ?? [], words)]);
+    const all = commands.list();
+    const keyed = all.filter((c) => keysOf(current, c.id).length > 0);
+    if (view === "shortcuts") for (const c of keyed) kept.add(c.id);
+    const shown = all.filter(
+      (c) =>
+        c.id === retainedRow ||
+        (q
+          ? matchesCommand(c, keysOf(current, c.id), platform, q)
+          : view === "all" || kept.has(c.id)),
+    );
+    render(views, () => [
+      viewSwitch(view, { shortcuts: keyed.length, all: all.length }, options.language, choose),
+    ]);
+    const groups = keyGroups(shown, plugin, tr("deskCommands"));
+    render(index, () => [jumpIndex(tr("jumpTo"), groups, () => list)]);
+    const row = (c: (typeof all)[number]) =>
+      keyRow(c, {
+        layers: current,
+        platform,
+        language: options.language,
+        recording,
+        act: (action) => act(action, c.id),
+      });
     render(list, () =>
-      filtered.length
-        ? filtered.map((c) => {
-            const keys = keysOf(current, c.id);
-            const active = recording === c.id;
-            const button = (
-              action: "change" | "reset" | "remove",
-              click: () => void,
-              disabled = false,
-            ) =>
-              h(
-                "button",
-                {
-                  class: "settings-button",
-                  type: "button",
-                  "data-key": `keys-${action}-${c.id}`,
-                  "aria-label": `${c.title} · ${tr(action)}`,
-                  disabled,
-                  ...(action === "change" ? { "aria-pressed": String(active) } : {}),
-                  onClick: click,
-                },
-                active && action === "change" ? tr("record") : tr(action),
-              );
-            return h(
-              "li",
-              {
-                class: `settings-key-row key-row${active ? " is-recording" : ""}`,
-                "data-command": c.id,
-              },
-              h("span", { class: "settings-key-label" }, c.title, h("small", {}, c.id)),
-              h(
-                "span",
-                { class: "settings-key-combo" },
-                keys.length
-                  ? keys.map((key) =>
-                      h("span", { class: "keys-sequence" }, ...keyNodes(key, platform)),
-                    )
-                  : tr("none"),
-              ),
-              h(
-                "div",
-                { class: "settings-key-actions" },
-                button("change", () => (active ? stop() : record(c.id))),
-                button(
-                  "remove",
-                  () => {
-                    stop();
-                    settings.set(PERSONAL_KEYS, unbind(layers(), c.id));
-                    focusChange(c.id);
-                  },
-                  keys.length === 0,
-                ),
-                button(
-                  "reset",
-                  () => {
-                    stop();
-                    settings.set(PERSONAL_KEYS, reset(layers(), c.id));
-                    focusChange(c.id);
-                  },
-                  isDefault(current, c.id),
-                ),
-              ),
-            );
-          })
-        : [h("li", { class: "settings-empty" }, tr("noResults"))],
+      shown.length
+        ? groups.map((group) => keyGroup(group, row))
+        : [h("p", { class: "settings-empty" }, tr("noResults"))],
     );
   }
   draw();
@@ -283,6 +273,7 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
   const offCommands = commands.onChange(draw);
   return {
     el,
+    focusSearch: () => query.focus(),
     dispose: () => {
       stopRecording?.();
       offKeys();

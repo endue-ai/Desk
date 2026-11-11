@@ -127,9 +127,11 @@ export function findSections(
   });
 }
 
-/** What a panel shows besides its hand-written rows: General's generated rows and init.yaml. */
+/** What a panel shows besides its hand-written rows: General's generated rows and init.yaml,
+ * Appearance's way to the theme studio (in the panel, so it keeps the gap between groups). */
 export interface PanelExtras {
   general?: Child[];
+  appearance?: Child[];
 }
 
 export function settingsPanel(
@@ -243,6 +245,7 @@ export function settingsPanel(
         ),
       ),
     );
+    append(el, extras.appearance ?? []);
   } else if (section === "notifications") {
     const enabled = settings.get<boolean>("desk.notify.dnd");
     el.append(

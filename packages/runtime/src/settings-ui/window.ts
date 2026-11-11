@@ -22,6 +22,11 @@ export interface SettingsWindow {
   dispose(): void;
 }
 
+/** The plugin whose window turns plugins on and off. */
+const PLUGIN_LIST = "endue.sidebar";
+/** The palette's command: its keys leave the window for the palette (#158 finding 19). */
+const PALETTE = "desk.palette.open";
+
 export function installSettingsWindow(
   ctx: DeskContext,
   keys: KeysPolicy,
@@ -31,8 +36,20 @@ export function installSettingsWindow(
   const { hub } = ctx;
   const { commands, settings } = hub;
   const tr = (key: Parameters<typeof settingsText>[1]) => settingsText(language, key);
+  const pluginName = (id: string) => hub.plugins.find((p) => p.id === id)?.manifest?.name ?? id;
+  // Plugins are turned on and off in the Plugins window; Settings › Plugins leads there.
+  const pluginList = () =>
+    commands.has("desk.plugins.open") && hub.plugins.some((p) => p.id === PLUGIN_LIST)
+      ? () => leaveFor("desk.plugins.open", { plugin: PLUGIN_LIST })
+      : undefined;
   let selected: SettingsSection = "general";
   let lastFocus: HTMLElement | null = null;
+  /** Close the window for what `command` opens, which takes the focus: none is given back. */
+  const leaveFor = (command: string, args?: unknown) => {
+    lastFocus = null;
+    close();
+    void commands.run(command, args).catch(() => {});
+  };
   let keyboard: ReturnType<typeof mountKeyboard> | undefined;
   let connections: ReturnType<typeof mountConnections> | undefined;
   let market: ReturnType<typeof mountMarket> | undefined;
@@ -92,6 +109,7 @@ export function installSettingsWindow(
   const sidebar = h(
     "aside",
     { class: "settings-sidebar" },
+    // The one control the window has: it neither minimizes nor zooms, so it draws no buttons for that.
     h(
       "div",
       { class: "settings-window-controls" },
@@ -106,8 +124,6 @@ export function installSettingsWindow(
         },
         settingsIcon("close", 9),
       ),
-      h("span", { class: "settings-window-dot", "aria-hidden": "true" }),
-      h("span", { class: "settings-window-dot", "aria-hidden": "true" }),
     ),
     h("div", { class: "settings-sidebar-title" }, tr("title")),
     h("div", { class: "settings-search" }, settingsIcon("search", 15), search),
@@ -176,6 +192,7 @@ export function installSettingsWindow(
           keymap: keys.keymap,
           platform: ctx.shortcuts.platform,
           language,
+          plugin: pluginName,
         });
         return [keyboard.el];
       }
@@ -184,7 +201,7 @@ export function installSettingsWindow(
         return [connections.el];
       }
       if (selected === "market") {
-        market = mountMarket({ bridge: ctx.bridge, language });
+        market = mountMarket({ bridge: ctx.bridge, language, commands, settings });
         return [market.el];
       }
       if (selected === "account") {
@@ -192,13 +209,13 @@ export function installSettingsWindow(
         return [account.el];
       }
       const declared = { hub, preferences, language };
-      if (selected === "plugins") return [pluginSettings({ ...declared, query: search.value })];
+      if (selected === "plugins")
+        return [pluginSettings({ ...declared, query: search.value, openPlugins: pluginList() })];
       const general =
         selected === "general" ? [coreSettings(declared), initFileRow(ctx.bridge, language)] : [];
-      return [
-        settingsPanel(selected, settings, language, navigate, { general }),
-        selected === "appearance" ? themeSettingsEntry(commands, close, language) : null,
-      ];
+      const appearance =
+        selected === "appearance" ? [themeSettingsEntry(commands, close, language)] : [];
+      return [settingsPanel(selected, settings, language, navigate, { general, appearance })];
     });
   }
   function open(section?: SettingsSection) {
@@ -213,7 +230,9 @@ export function installSettingsWindow(
       ctx.root.append(dialog);
       dialog.showModal();
     }
-    search.focus();
+    // Opened at its shortcuts (⌘/), the caret goes where they are searched.
+    if (section === "keyboard" && keyboard) keyboard.focusSearch();
+    else search.focus();
   }
   const saved = () => {
     status.textContent = tr(preferences.state());
@@ -233,19 +252,31 @@ export function installSettingsWindow(
     e.preventDefault();
     close();
   });
-  // Modal editing never runs the desk's window/file commands behind the settings window.
+  // Modal editing never runs the desk's window/file commands behind the settings window. The
+  // palette's key is the one way out to the rest of the desk: it closes the window and opens it.
+  const opensPalette = (combo: string) =>
+    commands.has(PALETTE) &&
+    keys.keymap
+      .resolved()
+      .some((b) => b.command === PALETTE && b.chords.length === 1 && b.combo === combo);
   dialog.addEventListener("keydown", (event) => {
     event.stopPropagation();
     if (event.isComposing) return;
-    if (event.key === "Escape" || comboOf(event) === canonical("Mod+W", ctx.shortcuts.platform)) {
+    const combo = comboOf(event);
+    if (event.key === "Escape" || combo === canonical("Mod+W", ctx.shortcuts.platform)) {
       event.preventDefault();
       close();
+    } else if (opensPalette(combo)) {
+      event.preventDefault();
+      leaveFor(PALETTE);
     }
   });
   const offSettings = settings.onChange((changed) => {
     if (
       dialog.open &&
       selected !== "keyboard" &&
+      // The Market's own row puts a theme in force and goes on (removing it): it redraws itself.
+      selected !== "market" &&
       changed.some(
         (key) =>
           key.startsWith("desk.theme.") ||

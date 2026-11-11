@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import type { Commands } from "../commands";
 import { PERSONAL_KEYS, SEQUENCE_TIMEOUT } from "../core/defaults";
 import type { Keymap } from "../keymap";
@@ -142,6 +142,8 @@ describe("keyboard settings with key sequences (ADR 0118)", () => {
       language: "en",
     });
     document.body.append(keyboard.el);
+    // A command without a key yet is in All commands.
+    keyboard.el.querySelector<HTMLButtonElement>('[data-key="keys-view-all"]')?.click();
   }
   const press = (key: string, ctrl = false) =>
     window.dispatchEvent(
@@ -233,7 +235,7 @@ describe("keyboard settings with key sequences (ADR 0118)", () => {
     expect(personal()).toEqual([]);
   });
 
-  it("lists every conflict with its source line, and sets how long a prefix waits", () => {
+  it("lists every conflict in a person's words, hides them while searching, and sets how long a prefix waits", () => {
     mount(
       [],
       [
@@ -248,16 +250,120 @@ describe("keyboard settings with key sequences (ADR 0118)", () => {
         { key: "Mod+J", command, owner: "example.b" },
       ],
     );
-    const section = keyboard.el.querySelector(".keys-conflicts");
-    expect(section?.querySelector("h2")?.textContent).toBe("Shortcut conflicts (1)");
-    expect(section?.querySelector(".is-warning")?.textContent).toContain("plugin example.a");
-    expect(section?.querySelector("details .is-info")?.textContent).toContain(
-      "~/.desk/keys.yaml:4",
+    const section = () => keyboard.el.querySelector(".keys-conflicts");
+    expect(section()?.querySelector("h2")?.textContent).toBe("Shortcut conflicts (1)");
+    const warning = section()?.querySelector(".is-warning");
+    expect(warning?.querySelector("strong")?.textContent).toBe("Other command");
+    expect(warning?.textContent).toContain(
+      "“Test command” has this key too and runs instead (set by example.b).",
     );
+    expect(warning?.querySelector("small")?.textContent).toBe("Set by example.a");
+    const settled = section()?.querySelector("details .is-info");
+    expect(settled?.textContent).toContain("Ctrl+K Ctrl+S starts with this key");
+    expect(settled?.querySelector("small")?.textContent).toBe("Built in");
+    expect(section()?.textContent).not.toContain("keys.yaml");
+    // A search puts its matches at the top: the conflicts wait until it is cleared.
+    const search = keyboard.el.querySelector<HTMLInputElement>('input[type="search"]');
+    if (!search) throw new Error("Missing command search");
+    search.value = "other";
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(section()).toBeNull();
+    search.value = "";
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(section()).not.toBeNull();
     const wait = keyboard.el.querySelector<HTMLSelectElement>(`[data-key="${SEQUENCE_TIMEOUT}"]`);
     expect(wait?.value).toBe("0");
     if (wait) wait.value = "1500";
     wait?.dispatchEvent(new Event("change"));
     expect(settings.get(SEQUENCE_TIMEOUT)).toBe(1500);
+  });
+});
+
+// #158 finding 19: 378 commands made a 36,000 px list with no index. It opens on the commands that
+// have a shortcut, in groups by who provides them, with an index; a search looks in all of them.
+describe("keyboard settings' list", () => {
+  let keyboard: ReturnType<typeof mountKeyboard>;
+  const commands = [
+    { id: "desk.a.keyed", title: "Keyed", keywords: [], provider: "desk" },
+    { id: "desk.a.bare", title: "Bare", keywords: [], provider: "desk" },
+    { id: "endue.notes.new", title: "New note", keywords: [], provider: "endue.notes" },
+    { id: "endue.git.pull", title: "Pull", keywords: [], provider: "endue.git" },
+  ];
+
+  beforeEach(() => {
+    vi.stubGlobal("CSS", { escape: (value: string) => value });
+    const settings = new Settings();
+    keyboard = mountKeyboard({
+      settings,
+      commands: { list: () => commands, onChange: () => () => {} } as unknown as Commands,
+      keymap: { onChange: () => () => {} } as unknown as Keymap,
+      contributed: () => [
+        { key: "Control+K", command: "desk.a.keyed", owner: "desk" },
+        { key: "Control+Alt+N", command: "endue.notes.new", owner: "endue.notes" },
+      ],
+      platform: "other",
+      language: "en",
+      plugin: (id) => ({ "endue.notes": "Notes", "endue.git": "Git" })[id] ?? id,
+    });
+    document.body.append(keyboard.el);
+  });
+
+  afterEach(() => {
+    keyboard.dispose();
+    keyboard.el.remove();
+    vi.unstubAllGlobals();
+  });
+
+  const shown = () =>
+    [...keyboard.el.querySelectorAll<HTMLElement>("[data-command]")].map((r) => r.dataset.command);
+  const headings = () =>
+    [...keyboard.el.querySelectorAll(".settings-key-group h3")].map((h) => h.textContent);
+  const views = () =>
+    [...keyboard.el.querySelectorAll<HTMLButtonElement>(".keys-views-switch .segment")].map((b) => [
+      b.textContent,
+      b.getAttribute("aria-pressed"),
+    ]);
+  const click = (selector: string) =>
+    keyboard.el.querySelector<HTMLButtonElement>(selector)?.click();
+
+  it("opens on the commands with a shortcut, and shows every command on a switch", () => {
+    expect(views()).toEqual([
+      ["With a shortcut (2)", "true"],
+      ["All commands (4)", "false"],
+    ]);
+    expect(shown()).toEqual(["desk.a.keyed", "endue.notes.new"]);
+    expect(headings()).toEqual(["Desk", "Notes"]);
+    click('[data-key="keys-view-all"]');
+    expect(shown()).toEqual(["desk.a.keyed", "desk.a.bare", "endue.git.pull", "endue.notes.new"]);
+    expect(headings()).toEqual(["Desk", "Git", "Notes"]);
+  });
+
+  it("keeps a row whose key was cleared, and a search looks in every command", () => {
+    click('[data-key="keys-remove-desk.a.keyed"]');
+    expect(shown()).toEqual(["desk.a.keyed", "endue.notes.new"]);
+    const search = keyboard.el.querySelector<HTMLInputElement>('input[type="search"]');
+    if (!search) throw new Error("Missing command search");
+    search.value = "pull";
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(shown()).toEqual(["endue.git.pull"]);
+  });
+
+  it("jumps to a group from the index and puts the caret in its own search", () => {
+    const scrolled: string[] = [];
+    // jsdom lays nothing out and has no scrollIntoView; this one records what a link scrolls to.
+    const had = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.textContent ?? "");
+    };
+    onTestFinished(() => {
+      Element.prototype.scrollIntoView = had;
+    });
+    const index = [...keyboard.el.querySelectorAll<HTMLButtonElement>(".settings-jump button")];
+    expect(index.map((b) => b.textContent)).toEqual(["Desk", "Notes"]);
+    index[1]?.click();
+    expect(scrolled).toEqual(["Notes"]);
+    expect(document.activeElement?.textContent).toBe("Notes");
+    keyboard.focusSearch();
+    expect(document.activeElement).toBe(keyboard.el.querySelector('input[type="search"]'));
   });
 });

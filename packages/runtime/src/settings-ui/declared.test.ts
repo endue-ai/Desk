@@ -139,7 +139,17 @@ describe("Settings, Plugins", () => {
     expect(week?.querySelector(".settings-row-label p")?.textContent).toBe(
       "The first day of the week.",
     );
-    expect(week?.querySelector("code")?.textContent).toBe("endue.sample.week-start");
+    // A person reads the title and what it does (#158 finding 19); the key is the label's title.
+    expect(week?.querySelector("code")).toBeNull();
+    expect(week?.querySelector(".settings-row-label")?.getAttribute("title")).toBe(
+      "endue.sample.week-start",
+    );
+    // An index leads to each plugin's group.
+    const jump = el.querySelector("nav.settings-jump");
+    expect([...(jump?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toEqual([
+      "Notifications",
+      "Sample",
+    ]);
     const reminders = control<HTMLInputElement>(el, "endue.sample.reminders");
     expect([reminders.type, reminders.checked, reminders.getAttribute("aria-label")]).toEqual([
       "checkbox",
@@ -148,6 +158,7 @@ describe("Settings, Plugins", () => {
     ]);
     const select = control<HTMLSelectElement>(el, "endue.sample.week-start");
     expect([...select.options].map((o) => o.value)).toEqual(["locale", "sunday", "monday"]);
+    expect([...select.options].map((o) => o.textContent)).toEqual(["Locale", "Sunday", "Monday"]);
     expect(select.value).toBe("locale");
     const page = control<HTMLInputElement>(el, "endue.sample.page");
     expect([page.type, page.min, page.max, page.step, page.value]).toEqual([
@@ -161,6 +172,20 @@ describe("Settings, Plugins", () => {
     expect([zoom.type, zoom.min, zoom.max, zoom.step]).toEqual(["number", "0.5", "3", "any"]);
     expect(control<HTMLInputElement>(el, "endue.sample.signature").type).toBe("text");
     expect(el.querySelector('[data-plugin="endue.off"]')).toBeNull();
+  });
+
+  it("leads to the window that turns plugins on and off, when there is one", async () => {
+    const { hub, preferences } = await setup();
+    let opened = 0;
+    const el = shown(
+      pluginSettings({ hub, preferences, language: "en", openPlugins: () => opened++ }),
+    );
+    const open = el.querySelector<HTMLButtonElement>('[data-key="settings-open-plugins"]');
+    expect(open?.closest(".settings-row")?.textContent).toContain("Turn plugins on or off");
+    open?.click();
+    expect(opened).toBe(1);
+    const without = shown(pluginSettings({ hub, preferences, language: "en" }));
+    expect(without.querySelector('[data-key="settings-open-plugins"]')).toBeNull();
   });
 
   it("an edit applies at once and survives a reload of the preferences", async () => {

@@ -44,6 +44,17 @@ const copy = {
     "설정이 있는 플러그인이 켜져 있지 않습니다.",
     "No plugin that is on has settings.",
   ],
+  pluginsOnOff: ["플러그인 켜고 끄기", "Turn plugins on or off"],
+  pluginsOnOffHint: [
+    "설치된 플러그인은 플러그인 창에서 하나씩 켜고 끕니다.",
+    "The Plugins window lists every installed plugin and turns each on or off.",
+  ],
+  openPlugins: ["플러그인 창 열기", "Open Plugins"],
+  jumpTo: ["바로 가기", "Go to"],
+  deskCommands: ["데스크", "Desk"],
+  showCommands: ["보기", "Show"],
+  withShortcut: ["단축키가 있는 명령", "With a shortcut"],
+  allCommands: ["모든 명령", "All commands"],
   deskSettings: ["데스크", "Desk"],
   initFile: ["설정 파일", "Settings file"],
   initHint: [

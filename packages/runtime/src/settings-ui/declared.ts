@@ -11,6 +11,7 @@ import type { PolicyHub } from "../hub";
 import { fits } from "../settings";
 import { h } from "../shell/dom";
 import { type SettingsCopy, type SettingsLanguage, settingsText } from "./copy";
+import { jumpHeading, jumpIndex } from "./jump";
 import type { SettingsSection } from "./panels";
 
 export interface DeclaredDeps {
@@ -19,6 +20,8 @@ export interface DeclaredDeps {
   language: SettingsLanguage;
   /** The window's search: while it holds words, only the rows matching all of them show. */
   query?: string;
+  /** Open the window that turns plugins on and off, when there is one. */
+  openPlugins?: () => void;
 }
 
 /** Core settings a hand-written panel already shows. */
@@ -51,6 +54,12 @@ export function settingTitle(key: string, owner: string): string {
   const rest = key.startsWith(`${owner}.`) ? key.slice(owner.length + 1) : key;
   const words = rest.replace(/[-_.]+/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** A choice as a drop-down shows it: one plain word starts with a capital ("previous" reads
+ * "Previous"); a name such as `utf-8` or `euc-kr` is shown as written. The value stays as it is. */
+export function choiceText(value: string): string {
+  return /^[a-z]+$/.test(value) ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 }
 
 function entry(key: string, owner: string, setting: SettingContribution, context: string): Entry {
@@ -132,7 +141,7 @@ function control(e: Entry, commit: (value: unknown) => void) {
     const select = h(
       "select",
       { ...props, class: "input", onChange: () => commit(select.value) },
-      setting.choices.map((choice) => h("option", { value: choice }, choice)),
+      setting.choices.map((choice) => h("option", { value: choice }, choiceText(choice))),
     );
     const show = (value: unknown) => {
       select.value = String(value);
@@ -191,15 +200,15 @@ function row(e: Entry, { hub: { settings }, preferences, language }: DeclaredDep
     reset.hidden = !Object.hasOwn(settings.layer("session"), key);
   }
   sync();
+  // A person reads the title and what it does; the key init.yaml takes is the search's and the title's.
   return h(
     "div",
     { class: "settings-row", "data-setting": key },
     h(
       "div",
-      { class: "settings-row-label" },
+      { class: "settings-row-label", title: key },
       h("span", {}, e.title),
       setting.description ? h("p", {}, setting.description) : null,
-      h("code", {}, key),
     ),
     h("div", { class: "settings-declared-control" }, reset, field.el),
   );
@@ -209,11 +218,12 @@ const group = (title: string, rows: HTMLElement[], plugin?: string) =>
   h(
     "section",
     { class: "settings-group", "data-plugin": plugin },
-    h("h3", {}, title),
+    plugin ? jumpHeading("h3", plugin, title) : h("h3", {}, title),
     h("div", { class: "settings-group-rows" }, rows),
   );
 
-/** Settings › Plugins: every enabled plugin's settings, narrowed to the search's rows. */
+/** Settings › Plugins: the way to turn plugins on or off, an index of the plugins, and every
+ * enabled plugin's settings, narrowed to the search's rows. */
 export function pluginSettings(deps: DeclaredDeps): HTMLElement {
   const tr = (key: SettingsCopy) => settingsText(deps.language, key);
   const groups = pluginGroups(deps.hub);
@@ -222,17 +232,46 @@ export function pluginSettings(deps: DeclaredDeps): HTMLElement {
   // A search that found the section by its own name (Plugins) narrows nothing.
   const narrowed = groups.some((g) => g.entries.some(matching));
   const el = h("div", { class: "settings-panel-body" });
-  for (const g of groups) {
-    const entries = narrowed ? g.entries.filter(matching) : g.entries;
-    if (entries.length > 0)
-      el.append(
-        group(
-          g.name,
-          entries.map((e) => row(e, deps)),
-          g.id,
+  if (deps.openPlugins)
+    el.append(
+      h(
+        "div",
+        { class: "settings-group-rows" },
+        h(
+          "div",
+          { class: "settings-row" },
+          h(
+            "div",
+            { class: "settings-row-label" },
+            h("span", {}, tr("pluginsOnOff")),
+            h("p", {}, tr("pluginsOnOffHint")),
+          ),
+          h(
+            "button",
+            {
+              type: "button",
+              class: "btn btn-xs btn-outline",
+              "data-key": "settings-open-plugins",
+              onClick: deps.openPlugins,
+            },
+            tr("openPlugins"),
+          ),
         ),
-      );
-  }
+      ),
+    );
+  const shown = groups
+    .map((g) => ({ ...g, entries: narrowed ? g.entries.filter(matching) : g.entries }))
+    .filter((g) => g.entries.length > 0);
+  const jump = jumpIndex(tr("jumpTo"), shown, () => el);
+  if (jump) el.append(jump);
+  for (const g of shown)
+    el.append(
+      group(
+        g.name,
+        g.entries.map((e) => row(e, deps)),
+        g.id,
+      ),
+    );
   if (groups.length === 0) el.append(h("p", { class: "settings-footnote" }, tr("pluginsEmpty")));
   return el;
 }

@@ -34,8 +34,7 @@
 .settings-layout { display: grid; grid-template-columns: 215px minmax(0, 1fr); height: 100%; }
 .settings-sidebar { min-width: 0; padding: 0 12px 20px; background: var(--settings-sidebar); border-right: 1px solid var(--settings-line); overflow-y: auto; }
 .settings-window-controls { display: flex; align-items: center; gap: 8px; height: 48px; padding-left: 6px; }
-.settings-window-close, .settings-window-dot { display: grid; place-items: center; width: 12px; height: 12px; padding: 0; border: 1px solid var(--settings-line); border-radius: 50%; background: var(--settings-line); }
-.settings-window-close { background: var(--desk-danger); color: var(--desk-danger-foreground) !important; }
+.settings-window-close { display: grid; place-items: center; width: 12px; height: 12px; padding: 0; border: 1px solid var(--settings-line); border-radius: 50%; background: var(--desk-danger); color: var(--desk-danger-foreground) !important; }
 .settings-window-close svg { opacity: 0; }
 .settings-window-close:hover svg, .settings-window-close:focus-visible svg { opacity: 1; }
 .settings-sidebar-title { margin: 0 6px 12px; font-size: var(--desk-text-xl); font-weight: 700; letter-spacing: -.04em; }
@@ -64,7 +63,9 @@
 /* The design system's row (.menu-item), as tall as the identity it holds. */
 .settings-identity .settings-identity-button { gap: 10px; height: auto; min-width: 0; padding: 4px; }
 .settings-identity-button > div { min-width: 0; }
-.settings-identity-button strong, .settings-identity-button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-identity-button strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The line under the name ("Profile · Language · Notifications") wraps rather than being cut. */
+.settings-identity-button small { white-space: normal; overflow-wrap: anywhere; }
 .settings-detail { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .settings-heading { padding: 27px 28px 20px; }
 .settings-heading h1 { font-size: var(--desk-text-2xl); font-weight: 700; letter-spacing: -.04em; }
@@ -134,6 +135,20 @@
 .settings-conflict p { margin-bottom: 9px; }
 .settings-conflict button + button { margin-left: 7px; }
 .settings-empty { padding: 40px 10px; color: var(--settings-muted); text-align: center; }
+/* Keyboard: the two views, the index of groups, a group per provider; conflicts in words. */
+/* The kit's segmented control and buttons, at the window's size; they keep the design system's look. */
+.keys-views-switch { display: inline-flex; margin-bottom: 12px; padding: 0; }
+.keys-views-switch .segment { flex: none; padding: 0 var(--desk-space-3); font-size: var(--desk-text-2xs) !important; }
+.settings-jump { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.settings-jump .btn, .settings-panel-body > .settings-group-rows .btn { height: auto; min-height: 25px; padding: 3px 10px; border-radius: var(--desk-radius-sm); font-size: var(--desk-text-2xs); }
+.settings-panel-body > .settings-jump { margin-bottom: 0; }
+.settings-key-group + .settings-key-group { margin-top: 16px; }
+.settings-key-group h3 { margin: 0 2px 7px; font-size: var(--desk-text-xs); font-weight: 600; }
+[data-jump] { scroll-margin-top: 8px; }
+[data-jump]:focus { outline: none; }
+.keys-conflicts > h2.settings-key-note { margin-bottom: 4px; }
+.keys-conflict strong { display: block; font-weight: 600; color: var(--settings-text); }
+.keys-conflict-why { display: block; margin-top: 3px; }
 .settings-empty .btn { margin-top: 12px; }
 /* endue account (ADR 0130): the person on endue, and the settings endue.ai shows. */
 .settings-account-avatar { display: inline-grid; place-items: center; flex-shrink: 0; overflow: hidden; border-radius: 50%; background: var(--desk-primary); color: var(--desk-primary-foreground); font-weight: 650; }
@@ -162,7 +177,8 @@
 /* The kit's button and field, at the settings window's size: they keep the design system's colours. */
 .settings-connections .btn { height: auto; min-height: 25px; padding: 3px 10px; border-radius: var(--desk-radius-sm); font-size: var(--desk-text-2xs); }
 .settings-connections .input { height: 30px; padding: 4px 8px; border: 1px solid var(--settings-line); border-radius: var(--desk-radius-md); background: var(--settings-card); font-size: var(--desk-text-xs); }
-.connection-none { margin: 0 14px; padding: 14px 0; color: var(--settings-muted); font-size: var(--desk-text-xs); }
+/* Scoped, so the window's `p { margin: 0 }` does not set it on the card's border. */
+.settings-connections .connection-none { margin: 0 14px; padding: 14px 0; color: var(--settings-muted); font-size: var(--desk-text-xs); }
 .connection-add { margin: 0 14px; padding: 10px 0 12px; border-top: 1px solid var(--settings-line); }
 .connection-add > summary { cursor: pointer; font-weight: 500; font-size: var(--desk-text-xs); }
 .connection-form { display: grid; gap: 10px; margin-top: 10px; justify-items: start; }

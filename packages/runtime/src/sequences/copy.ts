@@ -32,12 +32,6 @@ const copy = {
   shadowAsk: ["이 키는 다음 단축키를 가립니다:", "This key would take these shortcuts away:"],
   bindAnyway: ["그래도 지정", "Bind Anyway"],
   shadowed: ["앞뒤가 겹치는 단축키를 정리했습니다.", "Shortcuts one prefix away were cleared."],
-  conflicts: ["단축키 충돌", "Shortcut conflicts"],
-  conflictsNone: ["충돌하는 단축키가 없습니다.", "No shortcuts conflict."],
-  overridden: ["우선순위로 대체된 단축키", "Replaced by precedence"],
-  error: ["오류", "error"],
-  warning: ["경고", "warning"],
-  info: ["정보", "info"],
   timeoutLabel: ["다음 키 기다리기", "Wait for the next key"],
   timeoutHint: [
     "Mod+K Mod+S처럼 이어지는 단축키에서 첫 키 다음을 기다리는 시간",
