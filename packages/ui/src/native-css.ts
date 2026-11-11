@@ -7,7 +7,7 @@
  * theme's tokens (dark before they do, as the default tokens are), thin scrollbars with a thumb of a
  * token the contrast gate holds against the page's grounds over a clear track, and the design
  * system's check accent. `tokens.css`, the one sheet every page links, carries them after the tokens
- * (ADR XXXX). Every selector is inside `:where()`, so it weighs nothing and a page's own rule wins.
+ * (ADR 0171). Every selector is inside `:where()`, so it weighs nothing and a page's own rule wins.
  * `scrollbar-color` is inherited: a box that draws its own bars with `::-webkit-scrollbar` sets it
  * to `auto`, as Chromium ignores those pseudo-elements under any other value.
  */
