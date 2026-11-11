@@ -91,10 +91,21 @@ export function createView(doc, actions, options, deps) {
     const item = shownItem();
     if (item && !item.pane.hidden && item.pane.clientWidth > 0) item.fit.fit();
   };
+  /**
+   * The desk gave this window the keys with nothing in it focused (a start, not a click): the
+   * terminal on screen takes them, as a click into it would; also when it shows after they came.
+   */
+  const claim = () => {
+    const free = !doc.activeElement || doc.activeElement === doc.body;
+    if (free && doc.hasFocus()) shownItem()?.term.focus();
+  };
   const win = doc.defaultView;
   if (win) {
     watchFit({ win, doc, target: panes, fit: fitShown });
-    win.addEventListener("focus", () => actions.attend());
+    win.addEventListener("focus", () => {
+      actions.attend();
+      claim();
+    });
   }
 
   const copy = () => doc.execCommand("copy");
@@ -316,6 +327,7 @@ export function createView(doc, actions, options, deps) {
       tabs.select(id);
       bar.switched(before === shownItem()?.search ? undefined : before);
       win?.requestAnimationFrame(fitShown);
+      claim();
     },
 
     close(/** @type {string} */ id) {
