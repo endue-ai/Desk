@@ -74,7 +74,7 @@ fn the_pointer_finds_the_plugin_in_its_pane_and_the_page_everywhere_else() {
     .unwrap()
     .shown;
     let pane = hosted.plan().unwrap().seat("endue.notes");
-    assert_eq!(pane.size, Some((400.0, 263.0)));
+    assert_eq!(pane.size, Some((379.0, 219.0)));
     let target = |at: Vec2| {
         let hit = hit_test(&scene, at)?;
         let t: &Target = &shown.iter().find(|(node, _)| *node == hit.node)?.1;
@@ -129,7 +129,7 @@ fn a_window_without_a_live_frame_shows_its_card_whose_button_runs_its_command() 
         (button.command, button.plugin.as_str()),
         ("desk.frames.reload", "endue.notes")
     );
-    let on = hit_test(&scene, Vec2::new(305.0, 408.0)).unwrap();
+    let on = hit_test(&scene, Vec2::new(295.0, 386.0)).unwrap();
     assert_eq!(on.node, button.node, "the button takes the pointer");
 }
 

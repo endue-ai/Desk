@@ -20,7 +20,7 @@ const DOCK: &str = "main.endue-dock";
 /// The dock along the bottom, clear of Notes's window.
 const DOCK_AT: [f64; 4] = [300.0, 820.0, 800.0, 60.0];
 
-/// Notes in its slot (104,190, 402 × 305), the dock along the bottom, the palette over the whole
+/// Notes in its slot (104,190, 381 × 261), the dock along the bottom, the palette over the whole
 /// app while `palette` shows, and the agent bar's part lying over Notes's window.
 fn hosted(palette: bool) -> Hosted {
     hosted_with(palette, DOCK_AT)

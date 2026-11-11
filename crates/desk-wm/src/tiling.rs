@@ -59,8 +59,9 @@ pub fn free_slot(taken: impl IntoIterator<Item = usize>) -> usize {
 
 /// The windows of plugin surfaces no layout places (`autoPlacements`), each in its slot: its own,
 /// or its place in `adopted`, in the free area it arrived in. A normal window, at its slot on
-/// screen as the canvas was when it arrived. `skip` names the plugins that have a window elsewhere: placed by the desktop's layout,
-/// in the drawer or on another desktop (the desk state decides, #79).
+/// screen as the canvas was when it arrived. `skip` names the plugins that have a window
+/// elsewhere: placed by the desktop's layout, in the drawer or on another desktop (the desk state
+/// decides, #79).
 pub fn slot_windows(adopted: &[Adopted], skip: impl Fn(&str) -> bool) -> Vec<Placement> {
     adopted
         .iter()

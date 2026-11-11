@@ -6,14 +6,13 @@
 
 use desk_wm::edits::{Edit, Kept, apply};
 use desk_wm::{
-    ArrangeKind, Desk, MIN, Rect, SAFE, Size, View, flat_slots, spread_slots, spread_stage,
+    ArrangeKind, BELOW_ERIS, Desk, MIN, Rect, SAFE, Size, View, flat_slots, spread_slots,
+    spread_stage,
 };
 
 /// The dock's band, up from the app's bottom: the bottom edge's 72 px (`plugins/display`) over the
 /// status line's 28 px track (`packages/runtime/src/desk.css`).
 const DOCK: f64 = 100.0;
-/// Where Eris sits at home ends, and where windows start under her.
-const BELOW_ERIS: f64 = 190.0;
 /// The default profile's fourteen plugin windows, in the order they mount.
 const PLUGINS: [&str; 14] = [
     "endue.calendar",
@@ -136,6 +135,18 @@ mod windows_in_their_slots {
         let place = |list: &[(String, Rect)], id: &str| list.iter().find(|(w, _)| w == id).cloned();
         assert_eq!(place(&after, PLUGINS[0]), place(&before, PLUGINS[0]));
     }
+
+    #[test]
+    fn in_the_smallest_app_they_keep_the_minimum_size_and_stay_inside_it() {
+        for screen in [size(1024.0, 500.0), size(1100.0, 600.0)] {
+            let (desk, kept) = opened(screen, &PLUGINS);
+            for (id, r) in drawn(&desk, &kept, screen) {
+                assert!(r.w >= MIN.w && r.h >= MIN.h, "{id} at {r:?}");
+                assert!(r.x >= 0.0 && r.right() <= screen.w, "{id} at {r:?}");
+                assert!(r.y >= 0.0 && r.bottom() <= screen.h, "{id} at {r:?}");
+            }
+        }
+    }
 }
 
 mod arranged {
@@ -169,17 +180,6 @@ mod arranged {
                     assert!(box_.bottom() <= above, "{n} cards: {box_:?} under the dock");
                     assert!(box_.w > 0.0 && box_.h > 0.0);
                 }
-            }
-        }
-    }
-
-    #[test]
-    fn a_window_in_a_slot_is_never_below_the_minimum_size() {
-        for screen in [size(1024.0, 500.0), size(1100.0, 600.0)] {
-            let (desk, kept) = opened(screen, &PLUGINS);
-            for (id, r) in drawn(&desk, &kept, screen) {
-                assert!(r.w >= MIN.w && r.h >= MIN.h, "{id} at {r:?}");
-                assert!(r.x >= 0.0 && r.right() <= screen.w, "{id} at {r:?}");
             }
         }
     }

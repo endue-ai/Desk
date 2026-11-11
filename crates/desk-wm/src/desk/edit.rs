@@ -205,7 +205,8 @@ impl Desk {
         let slot = known.as_ref().and_then(|a| a.slot).unwrap_or_else(|| {
             free_slot(others.iter().enumerate().map(|(i, a)| a.slot.unwrap_or(i)))
         });
-        let at = (known.as_ref())
+        let at = known
+            .as_ref()
             .and_then(|a| a.at)
             .or_else(|| self.pan.get(&self.here()).copied());
         let area = known.and_then(|a| a.area).unwrap_or(area);

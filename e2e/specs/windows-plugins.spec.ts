@@ -99,7 +99,7 @@ describe("plugins: plugin windows in the window manager (#82)", () => {
     const notes = await windowNow(NOTES);
     const { w } = (await deskNow()).screen;
     const before = await settled(w);
-    // Its slot reaches past the right edge: moved left, all of it is in sight.
+    // Moved left by its title bar, all of it still in sight.
     const from = titleAt(rectOf(win));
     await drag(from, { x: from.x - 500, y: from.y + 60 });
     const moved = await windowUntil(HELLO, (x) => x.x !== win.x, "moved");
@@ -109,9 +109,9 @@ describe("plugins: plugin windows in the window manager (#82)", () => {
     expect(difference(after, leftOf(moved), before, leftOf(win), { inset: 4 })).toBeLessThan(0.005);
     expect(await count()).toBe(kept);
     const grip = gripAt(rectOf(moved), "se");
-    await drag(grip, { x: grip.x - 60, y: grip.y - 100 });
+    await drag(grip, { x: grip.x - 60, y: grip.y - 40 });
     const resized = await windowUntil(HELLO, (x) => x.w !== moved.w, "resized");
-    expect(rectOf(resized)).toEqual({ ...rectOf(moved), w: moved.w - 60, h: moved.h - 100 });
+    expect(rectOf(resized)).toEqual({ ...rectOf(moved), w: moved.w - 60, h: moved.h - 40 });
     expect(await count()).toBe(kept);
     // The other window stayed where it was, at its size.
     expect(rectOf(await windowNow(NOTES))).toEqual(rectOf(notes));
