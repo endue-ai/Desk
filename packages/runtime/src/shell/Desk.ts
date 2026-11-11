@@ -56,7 +56,7 @@ export interface DeskOptions {
   plugins: PluginHostOptions;
   /** Native hosts may pick a file; cancellation leaves the desk unchanged. */
   pickFile?: () => Promise<string | null>;
-  /** The native host's name for a file: links followed, the home folder as `~` (#162). */
+  /** The host's name for a file, links followed and home as `~`, so one file is one buffer. */
   realPath?: (path: string) => Promise<string>;
   /** Let the native host reveal a shared picker opened by a background command. */
   onSurfaceShown?(id: string): void;

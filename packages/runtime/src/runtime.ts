@@ -64,7 +64,7 @@ export interface RuntimeOptions {
   pages?: SurfacePages;
   /** Native hosts may pick a file; null means the person cancelled. */
   pickFile?: () => Promise<string | null>;
-  /** The native host's name for a file: links followed, the home folder as `~` (#162). */
+  /** The host's name for a file, links followed and home as `~`, so one file is one buffer. */
   realPath?: (path: string) => Promise<string>;
   /** What the host found at start (ADR 0061), and how it starts the desk again without safe mode. */
   start?: StartInfo;
