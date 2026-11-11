@@ -14,6 +14,7 @@ use glam::Vec2;
 use super::cursor::{CursorChoice, Cursors};
 use super::dnd::{Broker, DndOut, DragOverlay};
 use super::events::{Input, Modifiers};
+use super::follow::PageFocus;
 use super::ime::Ime;
 use super::keymap::{KeyDecision, KeyLike, Keymap, Platform};
 use super::pointer::{Pointer, PointerSettings};
@@ -54,6 +55,9 @@ pub struct InputRouter {
     pub(super) pointer: Pointer,
     pub(super) mods: Modifiers,
     pub(super) focus: Option<String>,
+    /// Where the page's own focus rests, and the window manager's surface in use (`follow.rs`).
+    pub(super) page: PageFocus,
+    pub(super) in_use: Option<String>,
     pub(super) window_focused: bool,
     pub(super) ime: Ime,
     pub(super) ime_allowed: bool,
@@ -76,6 +80,8 @@ impl InputRouter {
             pointer: Pointer::default(),
             mods: Modifiers::default(),
             focus: None,
+            page: PageFocus::default(),
+            in_use: None,
             window_focused: true,
             ime: Ime::default(),
             ime_allowed: false,
@@ -190,7 +196,8 @@ impl InputRouter {
             if !self.keymap.pending().is_empty() {
                 self.keymap.cancel();
             }
-            out.extend(self.focus(Some(&surface)));
+            let keys = self.pressed_keys(&surface);
+            out.extend(self.focus(Some(&keys)));
         }
         out
     }

@@ -2,7 +2,9 @@
 //! window manager registers each surface quad it inserts; the hit test (`hit.rs`) finds the node
 //! under the pointer through every transform, and this turns the point into the surface's own
 //! coordinates. Each surface also keeps one mapping for points off its quads: a press's capture
-//! follows the pointer outside the surface, and a caret goes back to the screen for the IME.
+//! follows the pointer outside the surface, and a caret goes back to the screen for the IME. A
+//! window covers what lies under it: a point inside it on none of its surfaces (its frame, the
+//! divider between two panes, a corner) is the page's, never a surface of a window below.
 
 use std::collections::HashMap;
 
@@ -11,6 +13,7 @@ use glam::{Mat4, Vec2, Vec3};
 use crate::hit::hit_test;
 use crate::node::NodeId;
 use crate::scene::Scene;
+use crate::types::Rect;
 
 /// What a node shows: part of surface `surface`, whose point `origin` is at the node's top left,
 /// `per_unit` surface pixels to one of the node's units.
@@ -42,20 +45,55 @@ struct Mapping {
     target: Target,
 }
 
-/// The nodes that show surfaces and overlays, and who owns each surface.
+/// A window the window manager draws, in screen pixels, and the surfaces its panes show.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Area {
+    pub rect: Rect,
+    pub surfaces: Vec<String>,
+}
+
+/// The nodes that show surfaces and overlays, who owns each surface, and the windows.
 #[derive(Clone, Debug, Default)]
 pub struct Targets {
     nodes: HashMap<NodeId, Target>,
     overlays: HashMap<NodeId, String>,
     maps: HashMap<String, Mapping>,
     owners: HashMap<String, String>,
+    /// The windows, back to front, and the page that hears a point inside one off its surfaces.
+    areas: Vec<Area>,
+    page: Option<String>,
 }
 
 impl Targets {
-    /// Forget every node (the scene is laid out again); owners and the last mappings stay.
+    /// Forget every node and window (the scene is laid out again); owners and the last mappings
+    /// stay.
     pub fn clear(&mut self) {
         self.nodes.clear();
         self.overlays.clear();
+        self.areas.clear();
+    }
+
+    /// The windows drawn now, back to front: a point inside one that none of its surfaces shows is
+    /// `page`'s (issue 159, finding 5: the divider between two panes handed the press, and with it
+    /// the keys, to the window lying underneath).
+    pub fn set_areas(&mut self, page: &str, areas: Vec<Area>) {
+        self.page = Some(page.to_owned());
+        self.areas = areas;
+    }
+
+    /// Whether a window shows `surface`.
+    pub fn in_window(&self, surface: &str) -> bool {
+        self.areas
+            .iter()
+            .any(|a| a.surfaces.iter().any(|s| s == surface))
+    }
+
+    /// The page, when `surface` at `point` is a window's that another window above covers.
+    fn covered(&self, surface: &str, point: Vec2) -> Option<&str> {
+        let page = self.page.as_deref()?;
+        let top = self.areas.iter().rev().find(|a| a.rect.contains(point))?;
+        let own = top.surfaces.iter().any(|s| s == surface);
+        (!own && surface != page && self.in_window(surface)).then_some(page)
     }
 
     /// Node `node` of `scene` shows `target`.
@@ -107,6 +145,14 @@ impl Targets {
     pub fn at(&self, scene: &Scene, point: Vec2) -> Option<Under> {
         let hit = hit_test(scene, point)?;
         if let Some(target) = self.nodes.get(&hit.node) {
+            if let Some(page) = self.covered(&target.surface, point)
+                && let Some(at) = self.to_local(page, point)
+            {
+                return Some(Under::Surface {
+                    surface: page.to_owned(),
+                    at,
+                });
+            }
             let at = target.origin + hit.local_point * target.per_unit;
             return Some(Under::Surface {
                 surface: target.surface.clone(),
