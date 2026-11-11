@@ -79,7 +79,8 @@ test.describe("surfaces as windows", () => {
     await page.mouse.down();
     await page.mouse.move(moved.x + 600, moved.y + 100, { steps: 4 });
     await page.mouse.up();
-    await expect(divider).toHaveAttribute("aria-valuenow", "85");
+    // Short of 85 %: the second pane keeps room for its header, 120 px of the 478 px body (#159).
+    await expect(divider).toHaveAttribute("aria-valuenow", "75");
   });
 
   test("⌘W closes the focused pane, and the last pane closes the surface", async ({ page }) => {
