@@ -1,8 +1,13 @@
 // endue.memory: what Eris remembers on this computer (ADR 0095), through memory.* as any plugin with
-// memory:read and memory:write would. The tested modules take the bridge from here.
+// memory:read and memory:write would. The tested modules take the bridge and the page's dialog
+// from here.
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
+import { defineElements } from "@endue-ai/ui";
+import { createAsk } from "./ask.js";
 import { createMemory } from "./controller.js";
 import { createView } from "./view.js";
+
+defineElements();
 
 defineUiPlugin({
   async mount(ctx) {
@@ -18,7 +23,7 @@ defineUiPlugin({
       forget: (id) => void app?.forget(id),
       forgetAll: () => void app?.forgetAll(),
     });
-    app = createMemory(ctx, view, async (question) => window.confirm(question));
+    app = createMemory(ctx, view, createAsk(document));
     await app.ready;
   },
 });

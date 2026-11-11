@@ -1,5 +1,6 @@
 /* endue.memory: layout only. Colours, type and sizes are the desk's tokens (/_desk/tokens.css) over
-   the base sheet (/_desk/base.css), so the theme in force restyles the page. */
+   the base sheet (/_desk/base.css), so the theme in force restyles the page. The page fits the
+   window the desk first opens (400×263 inside its frame): two rows of header, the rest is the list. */
 body {
   display: flex;
   flex-direction: column;
@@ -11,13 +12,30 @@ body {
 #bar {
   display: grid;
   gap: var(--desk-space-2);
-  padding: var(--desk-space-3);
+  padding: var(--desk-space-2) var(--desk-space-3);
   border-bottom: var(--desk-border-width) solid var(--desk-border);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
 }
 
 h1 {
   margin: 0;
   font-size: var(--desk-text-lg);
+  white-space: nowrap;
+}
+
+#search {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+#forget-all {
+  margin-left: auto;
 }
 
 #where,
@@ -29,6 +47,17 @@ h1 {
   font-size: var(--desk-text-sm);
 }
 
+.meta {
+  font-size: var(--desk-text-xs);
+}
+
+/* A short window keeps its height for the list. */
+@media (max-height: 420px) {
+  #where {
+    display: none;
+  }
+}
+
 #kinds {
   display: flex;
   gap: var(--desk-space-1);
@@ -36,18 +65,20 @@ h1 {
 
 main {
   flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding: var(--desk-space-3);
+  padding: var(--desk-space-2) var(--desk-space-3);
 }
 
 #remember-form {
   display: flex;
   gap: var(--desk-space-2);
-  margin-bottom: var(--desk-space-3);
+  margin-bottom: var(--desk-space-2);
 }
 
 #remember-form input {
   flex: 1;
+  min-width: 0;
 }
 
 #entries {
@@ -71,6 +102,7 @@ main {
 .body,
 .editor {
   flex: 1;
+  min-width: 0;
   display: grid;
   gap: var(--desk-space-1);
 }
@@ -79,11 +111,28 @@ main {
 .answer,
 .snippet {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .answer,
 .snippet {
   color: var(--desk-text-muted);
+}
+
+/* A long entry: two lines of what was said until the person asks for all of it. */
+.clamped .text,
+.clamped .answer {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.more {
+  min-height: 0;
+  margin-left: var(--desk-space-1);
+  padding: 0 var(--desk-space-1);
+  vertical-align: baseline;
 }
 
 .tag {
@@ -102,10 +151,30 @@ main {
   color: var(--desk-text-muted);
 }
 
+/* The status line takes room only while it says something. */
 footer {
-  display: flex;
-  align-items: center;
-  gap: var(--desk-space-3);
-  padding: var(--desk-space-2) var(--desk-space-3);
+  padding: var(--desk-space-1) var(--desk-space-3);
   border-top: var(--desk-border-width) solid var(--desk-border);
+}
+
+footer:has(#status:empty) {
+  padding: 0;
+  border-top: 0;
+}
+
+#ask-title {
+  margin: 0 0 var(--desk-space-2);
+  font-size: var(--desk-text-lg);
+}
+
+#ask-text {
+  margin: 0;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--desk-space-2);
+  margin-top: var(--desk-space-3);
 }

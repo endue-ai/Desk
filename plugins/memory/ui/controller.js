@@ -1,7 +1,7 @@
 // The memory inspector's logic: what Eris remembers, through memory.* (ADR 0095), as any plugin with
-// memory:read and memory:write would call it. The view and the confirmation are handed in, so the
-// tests drive it on the SDK's test host without a DOM.
-import { emptyText, forgetAllQuestion, rows } from "./model.js";
+// memory:read and memory:write would call it. The view and the question (the page's own dialog,
+// ask.js) are handed in, so the tests drive it on the SDK's test host without a DOM.
+import { emptyText, forgetAllQuestion, forgotText, rows } from "./model.js";
 
 const READ = { permission: "memory:read" };
 const WRITE = { permission: "memory:write" };
@@ -12,16 +12,16 @@ export const PAGE = 200;
  * @typedef {import("./model.js").Filter} Filter
  * @typedef {import("./model.js").Row} Row
  * @typedef {{ rows: Row[], filter: Filter, query: string, editing: string | null, empty: string, more: boolean }} Shown
- * @typedef {{ show(shown: Shown): void, status(text: string): void }} View
+ * @typedef {{ show(shown: Shown): void, status(text: string, lasting?: boolean): void }} View
  * @typedef {{ call(method: string, params: unknown): Promise<any>, onEvent(listener: (event: any) => void): () => void }} Bridge
  */
 
 /**
  * @param {{ bridge: Bridge }} ctx
  * @param {View} view
- * @param {(question: string) => Promise<boolean>} confirm
+ * @param {(question: import("./ask.js").Question) => Promise<boolean>} ask  the page's dialog (ask.js)
  */
-export function createMemory(ctx, view, confirm) {
+export function createMemory(ctx, view, ask) {
   const { bridge } = ctx;
   /** @type {Filter} */
   let filter = "all";
@@ -66,7 +66,7 @@ export function createMemory(ctx, view, confirm) {
       if (editing && !shown.some((row) => row.id === editing)) editing = null;
       draw();
     } catch (error) {
-      if (mine === generation) view.status(`Memory could not be read: ${message(error)}`);
+      if (mine === generation) view.status(`Memory could not be read: ${message(error)}`, true);
     }
   };
 
@@ -76,7 +76,7 @@ export function createMemory(ctx, view, confirm) {
       const answer = await bridge.call(method, { ...params, scope: WRITE });
       view.status(done(answer));
     } catch (error) {
-      view.status(`That did not go through: ${message(error)}`);
+      view.status(`That did not go through: ${message(error)}`, true);
     }
     await load();
   };
@@ -121,12 +121,13 @@ export function createMemory(ctx, view, confirm) {
         answer.forgotten ? "Forgotten." : "That was already forgotten.",
       );
     },
-    /** Forget every entry of the kind shown, once the person says yes. */
+    /** Forget every entry of the kind shown, once the person says yes in the page's dialog. */
     async forgetAll() {
-      if (!(await confirm(forgetAllQuestion(filter)))) return;
-      await write("memory.forget", { all: true, ...kind() }, (answer) =>
-        answer.forgotten === 1 ? "Forgot 1 entry." : `Forgot ${answer.forgotten} entries.`,
-      );
+      // The kind the question named, whatever the list shows by the time the person answers.
+      const asked = filter;
+      const params = { all: true, ...kind() };
+      if (!(await ask(forgetAllQuestion({ filter, count: shown.length, more, query })))) return;
+      await write("memory.forget", params, (answer) => forgotText(asked, answer.forgotten));
     },
     dispose: off,
   };

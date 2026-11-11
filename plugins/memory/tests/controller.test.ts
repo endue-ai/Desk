@@ -16,6 +16,7 @@ describe("the memory inspector", () => {
     expect(last().rows[2]).toMatchObject({ tags: ["work"] });
     expect(last().rows[2]?.meta).toMatch(/^Kept by you · /);
     expect(last().rows[0]?.meta).toMatch(/^Kept by Eris · /);
+    expect(last().rows.map((row) => row.long)).toEqual([false, false, false]);
     expect(methods()).toEqual(["memory.list"]);
   });
 
@@ -60,6 +61,8 @@ describe("the memory inspector", () => {
 
     await app.add("Standup is at ten");
     expect(last().rows[0]).toMatchObject({ text: "Standup is at ten" });
+    // The core records this page as the writer; the person typed it.
+    expect(last().rows[0]?.meta).toMatch(/^Kept by you · /);
     expect(statuses.at(-1)).toBe("Eris will remember that.");
     await app.save("fact_0003", "   ");
     expect(statuses.at(-1)).toBe("A fact needs words.");
@@ -78,22 +81,41 @@ describe("the memory inspector", () => {
   it("forgets everything only once the person says yes", async () => {
     const no = await mount(fixture(), false);
     await no.app.forgetAll();
-    expect(no.asked).toEqual(["Forget everything Eris remembers? This cannot be undone."]);
+    expect(no.asked).toEqual([
+      {
+        title: "Forget everything?",
+        text: "Eris will no longer know the 3 entries she remembers, facts and conversations alike. This cannot be undone.",
+        yes: "Forget everything",
+      },
+    ]);
     expect(no.methods()).not.toContain("memory.forget");
     expect(no.last().rows).toHaveLength(3);
 
     const yes = await mount(fixture(), true);
     await yes.app.filter("episode");
     await yes.app.forgetAll();
-    expect(yes.asked[0]).toContain("every conversation");
+    expect(yes.asked[0]).toMatchObject({ title: "Forget every conversation?" });
     expect(yes.host.calls.find((c) => c.method === "memory.forget")?.params).toEqual({
       all: true,
       kind: "episode",
       scope: { permission: "memory:write" },
     });
-    expect(yes.statuses.at(-1)).toBe("Forgot 1 entry.");
+    expect(yes.statuses.at(-1)).toBe("Forgot 1 conversation.");
     await yes.app.filter("all");
     expect(ids(yes.last().rows)).toEqual(["fact_0003", "fact_0001"]);
+  });
+
+  it("forgets everything of the kind and the search the question named", async () => {
+    const { app, asked, host, statuses } = await mount();
+    await app.filter("fact");
+    await app.search("pnpm");
+    await app.forgetAll();
+    expect(asked[0]?.text).toContain("not only those that match “pnpm”");
+    expect(host.calls.find((c) => c.method === "memory.forget")?.params).toMatchObject({
+      all: true,
+      kind: "fact",
+    });
+    expect(statuses.at(-1)).toBe("Forgot 2 facts.");
   });
 
   it("reads her memory again when it changes elsewhere", async () => {

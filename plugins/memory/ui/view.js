@@ -1,8 +1,12 @@
 // The memory inspector's page: a search field, the kinds as tabs, the list with Edit and Forget on
-// each fact (Forget on each conversation), a field to add a fact, and Forget everything. Native
-// controls with the base sheet's kit classes (desk-btn, desk-field, desk-tab), so the design system in
-// force draws them. Text is set as text, never as HTML.
+// each fact (Forget on each conversation; a long entry in a few lines until Show all), a field to add
+// a fact, and Forget everything (its question is ask.js's dialog). Native controls with the base
+// sheet's kit classes (desk-btn, desk-field, desk-tab), so the design system in force draws them.
+// Text is set as text, never as HTML.
 import { FILTERS, LABELS } from "./model.js";
+
+/** How long a status line that is not an error stays, so the list gets its room back. */
+export const STATUS_MS = 6000;
 
 /**
  * @typedef {import("./controller.js").Shown} Shown
@@ -22,6 +26,8 @@ export function createView(doc, actions) {
   const status = pick("#status");
   const search = /** @type {HTMLInputElement} */ (pick("#search"));
   const fact = /** @type {HTMLInputElement} */ (pick("#new-fact"));
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let clearing;
 
   const el = (tag, props = {}, ...children) => {
     const node = doc.createElement(tag);
@@ -83,10 +89,33 @@ export function createView(doc, actions) {
     return form;
   };
 
+  /** The long rows the person opened whole, kept across redraws. */
+  const whole = new Set();
+
+  /** "Show all" on a long row: its few lines, or all of it. */
+  const toggle = (row) => {
+    const shut = () => !whole.has(row.id);
+    const control = button(shut() ? "Show all" : "Show less", undefined, {
+      class: "desk-btn desk-btn-quiet more",
+      "aria-expanded": String(!shut()),
+    });
+    control.addEventListener("click", () => {
+      if (shut()) whole.add(row.id);
+      else whole.delete(row.id);
+      control.closest("li")?.classList.toggle("clamped", shut());
+      control.textContent = shut() ? "Show all" : "Show less";
+      control.setAttribute("aria-expanded", String(!shut()));
+    });
+    return control;
+  };
+
   const item = (row, editing) =>
     el(
       "li",
-      { class: `entry entry-${row.kind}`, "data-id": row.id },
+      {
+        class: `entry entry-${row.kind}${row.long && !editing && !whole.has(row.id) ? " clamped" : ""}`,
+        "data-id": row.id,
+      },
       editing
         ? editor(row)
         : el(
@@ -100,6 +129,7 @@ export function createView(doc, actions) {
               { class: "meta" },
               row.meta,
               ...row.tags.map((tag) => el("span", { class: "tag", text: tag })),
+              row.long ? toggle(row) : null,
             ),
           ),
       editing
@@ -137,9 +167,15 @@ export function createView(doc, actions) {
           : [el("li", { class: "empty", text: shown.empty })]),
       );
       pick("#more").hidden = !shown.more;
+      // Nothing of the kind shown to forget; a search may hide what there is.
+      /** @type {HTMLButtonElement} */ (pick("#forget-all")).disabled =
+        !shown.rows.length && !shown.query;
     },
-    status(text) {
+    /** Say `text` on the status line: for a few seconds, or until the next one when `lasting`. */
+    status(text, lasting = false) {
+      clearTimeout(clearing);
       status.textContent = text;
+      if (text && !lasting) clearing = setTimeout(() => (status.textContent = ""), STATUS_MS);
     },
   };
 }

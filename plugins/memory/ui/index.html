@@ -6,22 +6,27 @@
     <link rel="stylesheet" href="/_desk/tokens.css" />
     <link rel="stylesheet" href="/_desk/base.css" />
     <script type="importmap">
-      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <header id="bar">
-      <h1>What Eris knows</h1>
+      <div class="row">
+        <h1>What Eris knows</h1>
+        <input
+          id="search"
+          class="desk-field"
+          type="search"
+          placeholder="Search her memory"
+          aria-label="Search her memory"
+        />
+      </div>
       <p id="where">Kept on this computer only. Edit a fact, or forget anything.</p>
-      <input
-        id="search"
-        class="desk-field"
-        type="search"
-        placeholder="Search her memory"
-        aria-label="Search her memory"
-      />
-      <div id="kinds" role="tablist" aria-label="What to show"></div>
+      <div class="row">
+        <div id="kinds" role="tablist" aria-label="What to show"></div>
+        <button id="forget-all" class="desk-btn desk-btn-quiet" type="button">Forget everything</button>
+      </div>
     </header>
     <main>
       <form id="remember-form">
@@ -39,9 +44,16 @@
       <p id="more" hidden>Only the newest 200 are shown. Search to find older ones.</p>
     </main>
     <footer>
-      <button id="forget-all" class="desk-btn" type="button">Forget everything</button>
       <p id="status" role="status"></p>
     </footer>
+    <desk-dialog id="ask-dialog" label="Forget everything?">
+      <h2 id="ask-title"></h2>
+      <p id="ask-text"></p>
+      <div class="dialog-actions">
+        <button id="ask-no" class="desk-btn" type="button">Cancel</button>
+        <button id="ask-yes" class="desk-btn desk-btn-danger" type="button">Forget</button>
+      </div>
+    </desk-dialog>
     <script type="module" src="./main.js"></script>
   </body>
 </html>

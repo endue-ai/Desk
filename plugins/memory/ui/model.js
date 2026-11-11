@@ -13,22 +13,33 @@
  * @property {string} meta      who and when, for people
  * @property {string[]} tags
  * @property {string} [snippet] the words a search matched
+ * @property {boolean} long     too long to show whole in the list: a few lines until asked for all
  */
 
 export const FILTERS = /** @type {const} */ (["all", "fact", "episode"]);
 
 export const LABELS = {
-  all: "Everything",
+  all: "All",
   fact: "Facts",
   episode: "Conversations",
 };
 
-/** Who wrote an entry, for people. */
+/** This plugin's id: what the person keeps or edits in this page is written by it. */
+export const SELF = "endue.memory";
+
+/** More characters than this (asked and answered together) and a row shows a few lines of them. */
+export const LONG = 200;
+
+/** Who wrote an entry, for people: another plugin by the last word of its id, never the id. */
 export function writerName(by) {
-  if (by === "person") return "you";
+  if (by === "person" || by === SELF) return "you";
   if (by === "eris") return "Eris";
   if (by.startsWith("agent:")) return `agent ${by.slice("agent:".length)}`;
-  return by;
+  const word = by
+    .slice(by.lastIndexOf(".") + 1)
+    .replace(/[-_]+/g, " ")
+    .trim();
+  return word ? `the ${word[0]?.toUpperCase()}${word.slice(1)} plugin` : by;
 }
 
 /** A date for people: "5 Nov 2026, 09:12" in the local time zone. */
@@ -61,6 +72,7 @@ export function rows(entries, snippets = new Map()) {
         text: entry.text,
         meta: `Kept by ${writerName(entry.by)} · ${when(entry.at)}${edited}`,
         tags: entry.tags ?? [],
+        long: entry.text.length > LONG,
         ...(snippet ? { snippet } : {}),
       };
     }
@@ -74,6 +86,7 @@ export function rows(entries, snippets = new Map()) {
       answer: entry.answered,
       meta: `${when(entry.at)}${steps}`,
       tags: [],
+      long: entry.asked.length + entry.answered.length > LONG,
       ...(snippet ? { snippet } : {}),
     };
   });
@@ -87,9 +100,50 @@ export function emptyText(filter, query) {
   return "Eris remembers nothing yet. What she keeps shows here, and you can edit or forget it.";
 }
 
-/** The question before forgetting everything of `filter`. */
-export function forgetAllQuestion(filter) {
-  if (filter === "fact") return "Forget every fact Eris keeps about you? This cannot be undone.";
-  if (filter === "episode") return "Forget every conversation Eris keeps? This cannot be undone.";
-  return "Forget everything Eris remembers? This cannot be undone.";
+const NOUNS = {
+  all: ["entry", "entries"],
+  fact: ["fact", "facts"],
+  episode: ["conversation", "conversations"],
+};
+
+/** `n` of what `filter` shows: "1 fact", "3 entries". */
+export function counted(filter, n) {
+  const [one, many] = NOUNS[/** @type {Filter} */ (filter)];
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/**
+ * The question before forgetting everything of `filter`. `count` entries are shown; it is said only
+ * when it is all of them (no search, no page cut short).
+ * @param {{ filter: Filter, count: number, more: boolean, query: string }} shown
+ * @returns {import("./ask.js").Question}
+ */
+export function forgetAllQuestion({ filter, count, more, query }) {
+  const known = !query && !more && count > 0;
+  const one = NOUNS[filter][0];
+  const these = !known ? "" : count === 1 ? `the one ${one}` : `the ${counted(filter, count)}`;
+  const what = {
+    all: [
+      "Forget everything?",
+      `Eris will no longer know ${these || "anything"} she remembers, facts and conversations alike.`,
+      "Forget everything",
+    ],
+    fact: [
+      "Forget every fact?",
+      `Eris will no longer know ${these || "any of the facts"} she keeps about you.`,
+      known ? `Forget ${counted(filter, count)}` : "Forget every fact",
+    ],
+    episode: [
+      "Forget every conversation?",
+      `Eris will no longer have ${these || "any of the conversations"} she keeps.`,
+      known ? `Forget ${counted(filter, count)}` : "Forget every conversation",
+    ],
+  }[filter];
+  const all = query ? ` All of them, not only those that match “${query}”.` : "";
+  return { title: what[0], text: `${what[1]}${all} This cannot be undone.`, yes: what[2] };
+}
+
+/** What the status line says once everything of `filter` is forgotten. */
+export function forgotText(filter, n) {
+  return n === 0 ? "There was nothing to forget." : `Forgot ${counted(filter, n)}.`;
 }
