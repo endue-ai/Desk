@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { $, browser, expect } from "@wdio/globals";
 import { dataDir } from "./cef";
 import { HOME_VAR, LOG_VAR } from "./driver";
+import { inPluginPage, keysWith, onAnyPage } from "./pages";
 
 /** The status line the runtime shows and `desk_ready` prints once the bridge answered. */
 export const READY = "desk ready · bridge: cef";
@@ -17,14 +18,11 @@ export const SYSTEM = '#desk.shell [data-layer="system"]';
 export const MODE = '#desk.shell [data-layer="mode"]';
 
 /**
- * A plugin's surface on the runtime under the shell's mode layer, by plugin id: the runtime's own
- * section (`.desk-surface`), which under the shell sits inside a shell window whose `data-surface`
- * is the same id (ADR 0040).
+ * A plugin's surface the desk's page lays out itself, by plugin id: the runtime's own section
+ * (`.desk-surface`) of an overlay or an edge bar. A window's lies in the window's own page (ADR
+ * 0201): `expectSurface` looks there too.
  */
 export const surface = (plugin: string) => $(`${MODE} .desk-surface[data-surface="${plugin}"]`);
-
-/** The shell window that holds a plugin's content or side panel: its title bar and tools. */
-export const windowOf = (plugin: string) => $(`${MODE} section.surface[data-surface="${plugin}"]`);
 
 /** The shell's drawer button (bottom edge); `aria-expanded` says whether the drawer is open. */
 export const drawerButton = () => $(`${MODE} .drawer-button`);
@@ -50,32 +48,23 @@ export async function shellReady(): Promise<void> {
 
 /**
  * Run `body` inside a plugin's page, then return to the shell. Each plugin's page is an off-screen
- * browser of its own (#52, ADR 0160), a DevTools page target here; the runtime's section holds only
- * the surface's place, which names its host. The place is looked up in any layer:
- * endue.permissions' prompt is an overlay surface.
+ * browser of its own (#52, ADR 0160), a DevTools page target here, whose URL names the plugin; its
+ * place lies in its window's own page (ADR 0201), or in the desk's for an overlay or an edge bar.
  */
-export async function inFrame<T>(plugin: string, body: () => Promise<T>): Promise<T> {
-  const place = $(`#desk.shell .desk-surface[data-surface="${plugin}"] [data-surface-host]`);
-  await place.waitForExist();
-  const host = (await place.getAttribute("data-surface-host")) ?? "";
-  const shell = await browser.getWindowHandle();
-  await browser.waitUntil(
-    async () => {
-      for (const handle of await browser.getWindowHandles()) {
-        if (handle === shell) continue;
-        await browser.switchToWindow(handle);
-        if ((await browser.getUrl()).startsWith(`desk-plugin://${host}/`)) return true;
-      }
-      await browser.switchToWindow(shell);
-      return false;
-    },
-    { timeout: 15_000, timeoutMsg: `${plugin} has no surface of its own` },
-  );
-  try {
-    return await body();
-  } finally {
-    await browser.switchToWindow(shell);
-  }
+export function inFrame<T>(plugin: string, body: () => Promise<T>): Promise<T> {
+  return inPluginPage(plugin, body);
+}
+
+/**
+ * Wait until plugin `plugin`'s surface is laid out (`shown`) or not: its place in a window's own
+ * page (ADR 0201), or in the desk's page for an overlay or an edge bar.
+ */
+export async function expectSurface(plugin: string, shown = true): Promise<void> {
+  const selector = `.desk-surface[data-surface="${plugin}"]`;
+  await browser.waitUntil(async () => (await onAnyPage(selector)) === shown, {
+    timeout: 15_000,
+    timeoutMsg: `${plugin}'s surface is ${shown ? "not" : "still"} laid out`,
+  });
 }
 
 /**
@@ -91,11 +80,9 @@ export async function press(selector: string): Promise<void> {
   }, selector);
 }
 
-/** The plugin whose surface holds the keyboard focus, if any. */
+/** The plugin whose surface holds the keyboard focus, as the compositor routes the keys, if any. */
 export function focusedSurface(): Promise<string | null> {
-  return browser.execute(
-    () => document.activeElement?.closest("[data-surface]")?.getAttribute("data-surface") ?? null,
-  );
+  return keysWith();
 }
 
 /** What the app printed on stdout (and stderr) so far, line by line. */

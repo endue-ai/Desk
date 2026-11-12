@@ -13,6 +13,7 @@ import { browser, expect } from "@wdio/globals";
 import { click, feed, inputState, keyPress, shellCommand } from "../support/compositor";
 import { inFrame, press, shellReady } from "../support/desk";
 import { HOME_VAR } from "../support/driver";
+import { inWindowPage } from "../support/pages";
 import { bodyAt, drag, drawerButtonAt, release, titleAt } from "../support/gestures";
 import { deskNow, inUse, rectOf, run, windowNow, windowUntil } from "../support/windows";
 
@@ -241,22 +242,26 @@ describe("keys follow the window in use", () => {
     const calendar = await windowNow("endue.calendar");
     await run("desk.display.split-right");
     await windowUntil("endue.calendar", (w) => w.panes.length === 2, "split");
-    const divider = await browser.execute(() => {
-      const r = document
-        .querySelector('section.surface[data-surface="endue.calendar"] .divider')
-        ?.getBoundingClientRect();
-      // Its first quarter: the 1 px line between the two panes' surfaces, whatever the rounding.
-      return r ? { x: r.x + r.width / 4, y: r.y + r.height / 2 } : null;
-    });
-    if (!divider) throw new Error("the split Calendar has no divider");
+    // The window lies in a page of its own (ADR 0201): the divider's place there, from its corner.
+    const local = await inWindowPage("endue.calendar", () =>
+      browser.execute(() => {
+        const r = document
+          .querySelector('section.surface[data-surface="endue.calendar"] .divider')
+          ?.getBoundingClientRect();
+        // Its first quarter: the 1 px line between the two panes' surfaces, whatever the rounding.
+        return r ? { x: r.x + r.width / 4, y: r.y + r.height / 2 } : null;
+      }),
+    );
+    if (!local) throw new Error("the split Calendar has no divider");
+    const divider = { x: calendar.x + local.x, y: calendar.y + local.y };
     const [below, y] = (await surfacesUnder(divider.x, calendar, "main.endue-calendar"))[0] ?? [];
     if (!below || y === undefined) throw new Error("no window's surface lies under the divider");
     const under = { x: divider.x, y };
     await drag(under, { x: under.x + 20, y: under.y }, { hold: true });
     const held = await inputState();
     await release();
-    // The press is the split window's, heard by the page that lays it out.
-    expect(held.pointer.capture).toBe("desk");
+    // The press is the split window's, heard by the page that lays it out: its own (ADR 0201).
+    expect(held.pointer.capture).toBe("window:endue.calendar");
     expect(held.focused).not.toBe(below);
     expect(await focused()).not.toBe(below);
   });

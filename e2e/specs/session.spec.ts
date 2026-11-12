@@ -15,18 +15,26 @@
 // runtime e2e (packages/runtime/e2e/shell*.spec.ts on the stub): no shell window is open here.
 import { $, browser, expect } from "@wdio/globals";
 import {
+  expectSurface,
   focusedSurface,
   inFrame,
   press,
   SYSTEM,
   shellReady,
-  surface,
   waitForData,
-  windowOf,
 } from "../support/desk";
+import { click, titleAt } from "../support/gestures";
+import { deskNow, onScreen } from "../support/windows";
 
 const HELLO = "e2e.hello";
 const DOCK = "endue.dock";
+
+/** A press on the title bar of plugin `plugin`'s window, as the person gives it (ADR 0201). */
+async function pressTitleOf(plugin: string): Promise<void> {
+  const win = onScreen(await deskNow()).find((w) => w.panes.some((p) => p.plugin === plugin));
+  if (!win) throw new Error(`${plugin} has no window on the desk`);
+  await click(titleAt(win, win.w / 2));
+}
 const TILE = `button.tile[data-plugin="${HELLO}"]`;
 const tile = () => $(TILE);
 const desktop = (n: number) => $(`${SYSTEM} [data-desktop="${n}"]`);
@@ -40,17 +48,17 @@ const session = (value: unknown) => (value as Store | undefined)?.desk?.session;
 describe("session: the shell across a relaunch", () => {
   it("a surface put away from the dock under the shell stays away, and one in use comes back focused", async () => {
     await shellReady();
-    await expect(surface(HELLO)).toExist();
+    await expectSurface(HELLO);
 
     // Put it away from the dock. A tile puts away the window in front and brings any other forward
     // (#158), so the window comes in front first.
-    await windowOf(HELLO).$(".surface-title").click();
+    await pressTitleOf(HELLO);
     await inFrame(DOCK, async () => {
       await expect(tile()).toHaveAttribute("aria-pressed", "true");
       await press(TILE);
       await expect(tile()).toHaveAttribute("aria-pressed", "false");
     });
-    await expect(surface(HELLO)).not.toExist();
+    await expectSurface(HELLO, false);
     await waitForData(
       "plugins.json",
       (value) => (value as Plugins | undefined)?.enabled?.[HELLO] === false,
@@ -61,13 +69,13 @@ describe("session: the shell across a relaunch", () => {
     await browser.reloadSession();
     await shellReady();
     await inFrame(DOCK, () => expect(tile()).toHaveAttribute("aria-pressed", "false"));
-    await expect(surface(HELLO)).not.toExist();
+    await expectSurface(HELLO, false);
 
     // Open it from the dock and put it in use (center surfaces open without the focus).
     await inFrame(DOCK, () => press(TILE));
-    await expect(surface(HELLO)).toExist();
+    await expectSurface(HELLO);
     // Under the shell a centre surface sits in a shell window (ADR 0040): its title bar is the window's.
-    await windowOf(HELLO).$(".surface-title").click();
+    await pressTitleOf(HELLO);
     await waitForData(
       "store.json",
       (value) => session(value)?.focused === HELLO,
@@ -77,7 +85,7 @@ describe("session: the shell across a relaunch", () => {
     // Relaunch: it is back and focused.
     await browser.reloadSession();
     await shellReady();
-    await expect(surface(HELLO)).toExist();
+    await expectSurface(HELLO);
     await browser.waitUntil(async () => (await focusedSurface()) === HELLO, {
       timeoutMsg: `${HELLO} is not focused after the relaunch`,
     });

@@ -9,6 +9,7 @@
 import { browser, expect } from "@wdio/globals";
 import { feed, inputState, keyPress, shellCommand } from "../support/compositor";
 import { shellReady } from "../support/desk";
+import { inWindowPage } from "../support/pages";
 import { deskNow, onScreen } from "../support/windows";
 
 interface Stats {
@@ -38,13 +39,25 @@ async function pages(): Promise<string[]> {
 }
 
 /** What the desk's own page holds where plugins show: frames, and surfaces' places by host. */
-const pageHolds = () =>
+/** The frames and surface places a page holds. */
+const holds = () =>
   browser.execute(() => ({
     frames: document.querySelectorAll("iframe").length,
     places: [...document.querySelectorAll<HTMLElement>("[data-surface-host]")].map(
       (p) => p.dataset.surfaceHost ?? "",
     ),
   }));
+
+/** What the desk's page and each window's own page (ADR 0201) hold, together. */
+async function pageHolds() {
+  const all = await holds();
+  for (const w of onScreen(await deskNow())) {
+    const own = await inWindowPage(w.id, holds);
+    all.frames += own?.frames ?? 0;
+    all.places.push(...(own?.places ?? []));
+  }
+  return all;
+}
 
 describe("system surfaces: the desk is the compositor and its system surfaces", () => {
   before(async () => {

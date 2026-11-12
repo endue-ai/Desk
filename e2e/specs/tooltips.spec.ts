@@ -218,13 +218,15 @@ describe("tooltips: a page's hover title is drawn by the compositor, in the them
     const grab = titleAt(rectOf(win), 60);
     const to = { x: grab.x + 60, y: grab.y + 40 };
     await drag(grab, to, { steps: 10 });
-    // Longer than the glide into place and the rest: the page said its title bar's title meanwhile.
+    // Longer than the glide into place and the rest: the window's own page (ADR 0201) said its
+    // title bar's title meanwhile.
     await browser.pause(DELAY * 3);
+    const own = `window:${win.id}`;
     const { shown, titles } = await tooltip();
-    expect(titles.desk).toBeDefined();
+    expect(titles[own]).toBeDefined();
     expect(shown).toBeNull();
     await feed([{ type: "pointerMoved", x: to.x + 12, y: to.y }]);
-    const moved = await showing(titles.desk ?? "");
-    expect(moved.surface).toBe("desk");
+    const moved = await showing(titles[own] ?? "");
+    expect(moved.surface).toBe(own);
   });
 });
