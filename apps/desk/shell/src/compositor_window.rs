@@ -222,15 +222,8 @@ impl CompositorWindow {
         self.scene.resize(physical.width, physical.height);
         let scale = self.window.scale_factor();
         let size = physical.to_logical::<f64>(scale);
-        {
-            let mut page = self.page.lock();
-            page.size = (size.width.round() as u32, size.height.round() as u32);
-            page.scale = scale as f32;
-        }
-        if let Some(host) = self.browser.as_ref().and_then(|b| b.host()) {
-            host.notify_screen_info_changed();
-            host.was_resized();
-        }
+        let size = (size.width.round() as u32, size.height.round() as u32);
+        self.page_resized(size, scale as f32);
         let outcome = self.hosted.rescale(scale, Instant::now());
         self.carry(outcome);
     }

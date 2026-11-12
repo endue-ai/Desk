@@ -9,6 +9,7 @@ use desk_web::sender::System;
 use super::{CompositorWindow, PAGE};
 use crate::web_host::render::SurfaceRender;
 use crate::web_host::top;
+use crate::web_host::view::View;
 
 impl CompositorWindow {
     /// Open the desk's system surface at `url`: the runtime's page.
@@ -51,15 +52,49 @@ impl CompositorWindow {
         self.host.clock_page(browser.clone(), self.page.clone());
         self.browser = browser;
     }
+
+    /// The app window has a new size (logical pixels) or scale: the desk's page lays out again at
+    /// it. Its browser hears the screen only for a new scale, as a plugin surface's does (ADR 0170):
+    /// told it with every resize, an app window dragged to a new size put several sizes in flight
+    /// in one frame and the desk's page never painted again (#157).
+    pub(super) fn page_resized(&mut self, size: (u32, u32), scale: f32) {
+        let rescaled = laid_out(&mut self.page.lock(), size, scale);
+        if let Some(host) = self.browser.as_ref().and_then(|b| b.host()) {
+            if rescaled {
+                host.notify_screen_info_changed();
+            }
+            host.was_resized();
+        }
+    }
+}
+
+/// `view` laid out at `size` and `scale`: whether its browser reads its screen info again.
+fn laid_out(view: &mut View, size: (u32, u32), scale: f32) -> bool {
+    view.size = size;
+    view.scale = scale;
+    view.rescaled()
 }
 
 #[cfg(test)]
 mod tests {
     use desk_web::sender::System;
 
+    use super::{View, laid_out};
+
     #[test]
     fn the_compositors_page_is_the_desks_system_surface() {
         assert_eq!(super::PAGE, System::Desk.id());
         assert_eq!(System::ALL[0], System::Desk, "the first the desk starts");
+    }
+
+    #[test]
+    fn an_app_window_resized_tells_the_desks_page_the_screen_only_for_a_new_scale() {
+        let mut page = View::new(super::PAGE, (1280, 800), 2.0, false);
+        for size in [(1300, 812), (1800, 1200), (2361, 1588)] {
+            assert!(!laid_out(&mut page, size, 2.0), "a new size alone (#157)");
+            assert_eq!(page.size, size);
+        }
+        assert!(laid_out(&mut page, (2361, 1588), 1.0), "a new scale");
+        assert!(!laid_out(&mut page, (2361, 1588), 1.0), "told once");
     }
 }
