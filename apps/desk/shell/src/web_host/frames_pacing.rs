@@ -11,12 +11,19 @@
 //! numbers, which start again from a late look (`Clock::frame`): so a blink, on a timer of the
 //! page's own, meets them at the same moment each time and keeps its rhythm. Before, a paint put a
 //! surface on every frame for a second, so a blinking caret took 60 begin frames a second for two
-//! paints (#163). With nothing painted or heard for `LONG_IDLE` it rests: no desk frame until it
-//! hears something or its page asks (#134).
+//! paints (#163). Once three lone paints came on slow frames the same time apart (a caret's blink),
+//! its slow frames skip ahead after each to one slow period before the next (`frames_rhythm.rs`):
+//! four begin frames a second for a caret where ten kept its desk busy (R1). With nothing painted
+//! or heard for `LONG_IDLE` it rests: no desk frame until it hears something or its page asks
+//! (#134).
 
 use std::time::{Duration, Instant};
 
 use super::{ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PAINTING, PROMPT, PROMPT_FOR, RATE, SLOW};
+
+#[path = "frames_rhythm.rs"]
+mod rhythm;
+use rhythm::Rhythm;
 
 /// When a press asks for its next begin frame, until when, and the paints it was heard at.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -59,6 +66,10 @@ pub struct Pacing {
     heard_at: Option<Instant>,
     /// On the slow frames, when the next one is.
     slow_at: Option<Instant>,
+    /// The last begin frame's time on the slow frames, while it was a slow one: a paint seen next
+    /// came on it, a beat of its lone paints' rhythm.
+    sent_slow: Option<Instant>,
+    rhythm: Rhythm,
     press: Option<Press>,
     asked: Option<Instant>,
 }
@@ -76,6 +87,8 @@ impl Pacing {
             shown_since_load: false,
             heard_at: None,
             slow_at: None,
+            sent_slow: None,
+            rhythm: Rhythm::default(),
             press: None,
             asked: None,
         }
@@ -143,6 +156,7 @@ impl Pacing {
             self.slow_at = None;
         }
         let asked = frame.is_some() && self.asked_at(now);
+        let mut slow = None;
         let paced = match mode {
             Mode::Every => frame.is_some_and(|k| {
                 if self.base.is_none_or(|base| base > k) {
@@ -150,12 +164,23 @@ impl Pacing {
                 }
                 self.takes(k)
             }),
-            Mode::Slow => self.slow(now) || asked,
+            Mode::Slow => {
+                slow = self.slow(now);
+                slow.is_some() || asked
+            }
             Mode::Rest => asked,
         };
         let due = self.pressed(now) || paced;
+        if due {
+            self.sent_slow = slow;
+        }
         self.fed = self.fed.saturating_add(u32::from(due));
         due
+    }
+
+    /// The period of the lone paints' rhythm it takes its slow frames at, while it holds.
+    pub fn rhythm(&self) -> Option<Duration> {
+        self.rhythm.period()
     }
 
     /// A look at `now` saw `paints` painted. A new page's first paint wakes it as input does: the
@@ -166,6 +191,16 @@ impl Pacing {
             self.painted_before = self.painted;
             self.painted = Some(now);
             self.fed = 0;
+            // On a slow frame, a beat of a rhythm; on another, none.
+            match self.sent_slow.take() {
+                Some(at) => {
+                    let step = self.slow_period();
+                    if let Some(next) = self.rhythm.painted(at, step) {
+                        self.slow_at = Some(next);
+                    }
+                }
+                None => self.rhythm.broken(),
+            }
             if !self.shown_since_load {
                 self.shown_since_load = true;
                 self.heard(now);
@@ -212,18 +247,19 @@ impl Pacing {
         FRAME * RATE.div_ceil(self.pace.min(SLOW))
     }
 
-    /// On the slow frames at `now`: whether one is due. The first comes a period after it came on
-    /// them, each later one a whole number of periods after it; a late look takes one.
-    fn slow(&mut self, now: Instant) -> bool {
+    /// On the slow frames at `now`: the time of the one due. The first comes a period after it came
+    /// on them, each later one a whole number of periods after it, or where its rhythm skipped
+    /// them to; a late look takes one.
+    fn slow(&mut self, now: Instant) -> Option<Instant> {
         let period = self.slow_period();
         let at = *self.slow_at.get_or_insert(now + period);
         if now < at {
-            return false;
+            return None;
         }
         let missed = now.duration_since(at).as_nanos() / period.as_nanos();
         let ahead = u32::try_from(missed + 1).unwrap_or(u32::MAX);
         self.slow_at = Some(at + period.saturating_mul(ahead));
-        true
+        Some(at)
     }
 
     fn pressed(&mut self, now: Instant) -> bool {

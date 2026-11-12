@@ -11,7 +11,8 @@
 //! a desk at rest has nothing on its clock (#134). An ask brings the desk frames within
 //! `ASKED_FOR`; input or a compositor message puts it back on every frame its pace takes, and so
 //! does painting (`PAINTING`), while a lone paint (a caret's blink) keeps it on slow frames
-//! (`SLOW`) for `LONG_IDLE` (#163). `Pacing` (`frames_pacing.rs`) keeps each surface's.
+//! (`SLOW`) for `LONG_IDLE` (#163), two of them a blink once its rhythm shows (R1,
+//! `frames_rhythm.rs`). `Pacing` (`frames_pacing.rs`) keeps each surface's.
 //!
 //! A press, a key, a composition or a focus change an idle surface hears (one that painted nothing
 //! for `IDLE`) is followed by a begin frame every `PROMPT` from the press on, until it paints or for
