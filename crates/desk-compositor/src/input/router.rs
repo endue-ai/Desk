@@ -222,8 +222,9 @@ impl InputRouter {
                 self.keymap.cancel();
             }
             // What a press on the page does to the keys is the page's to say (the talk pill opens
-            // its line and focuses it): what is typed next waits for its answer.
-            if self.settings.underlay.as_deref() == Some(surface.as_str()) {
+            // its line and focuses it), on one of its own pages too: what is typed next waits for
+            // its answer.
+            if self.settings.page_owned(&surface) {
                 self.hold_keys(now);
             }
             let keys = self.pressed_keys(&surface);
