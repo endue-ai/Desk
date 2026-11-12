@@ -58,25 +58,20 @@ async function keysReachTerminal(name: string): Promise<void> {
   );
 }
 
-/** The window the desk's page draws in use, read every 100 ms for `ms`: each one seen in turn. */
-const focusSeen = (ms: number) =>
-  browser.execute(
-    (ms: number) =>
-      new Promise<Array<string | null>>((resolve) => {
-        const seen: Array<string | null> = [];
-        const look = () => {
-          const id = document.querySelector<HTMLElement>("section.surface.is-focused")?.dataset
-            .surface;
-          if (seen.at(-1) !== (id ?? null)) seen.push(id ?? null);
-        };
-        const timer = setInterval(look, 100);
-        setTimeout(() => {
-          clearInterval(timer);
-          resolve(seen);
-        }, ms);
-      }),
-    ms,
-  );
+/**
+ * The window in use, read every 100 ms for `ms`: each one seen in turn. Each window lies in a page of
+ * its own (ADR 0201), so the window manager's list says it, as the page's `is-focused` did.
+ */
+async function focusSeen(ms: number): Promise<Array<string | null>> {
+  const seen: Array<string | null> = [];
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    const id = inUse(await deskNow())?.id ?? null;
+    if (seen.at(-1) !== id) seen.push(id);
+    await browser.pause(100);
+  }
+  return seen;
+}
 
 const rev = async () => (await shellCommand<{ wm: { rev: number } }>("compositor_stats")).wm.rev;
 

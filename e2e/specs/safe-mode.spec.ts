@@ -5,7 +5,7 @@
 // with the same HOME). Two such starts in a row make the third one safe mode: only the desk.* policy
 // plugins run, the system layer shows the badge, and a notice names the plugins that were on.
 import { $, browser, expect } from "@wdio/globals";
-import { appLog, dataFile, MODE, SYSTEM, surface, writeDataFile } from "../support/desk";
+import { appLog, dataFile, expectSurface, MODE, SYSTEM, writeDataFile } from "../support/desk";
 
 const HELLO = "e2e.hello";
 const BADGE = `${SYSTEM} .safe-badge`;
@@ -32,7 +32,7 @@ describe("safe mode: a crash loop counted across relaunches", () => {
   it("two starts in a row that never reached ready make the third start safe mode", async () => {
     await started();
     expect(last()?.failed).toBe(0);
-    await expect(surface(HELLO)).toExist();
+    await expectSurface(HELLO);
     const flags = JSON.stringify(dataFile("plugins.json") ?? null);
 
     neverReady();
@@ -40,7 +40,7 @@ describe("safe mode: a crash loop counted across relaunches", () => {
     await started();
     expect(last()?.failed).toBe(1);
     await expect($(BADGE)).not.toExist();
-    await expect(surface(HELLO)).toExist();
+    await expectSurface(HELLO);
 
     neverReady();
     await browser.reloadSession();
@@ -48,7 +48,7 @@ describe("safe mode: a crash loop counted across relaunches", () => {
     expect(last()?.failed).toBe(2);
     await expect($(BADGE)).toBeDisplayed();
     await expect($(`${BADGE} [data-key="start-normally"]`)).toBeDisplayed();
-    await expect(surface(HELLO)).not.toExist();
+    await expectSurface(HELLO, false);
     // The notice names the plugins that were on; the status line may clip it, so read its text.
     await expect($(`${MODE} footer.desk-status`)).toHaveElementProperty(
       "textContent",
@@ -64,6 +64,6 @@ describe("safe mode: a crash loop counted across relaunches", () => {
     await started();
     expect(last()?.failed).toBe(0);
     await expect($(BADGE)).not.toExist();
-    await expect(surface(HELLO)).toExist();
+    await expectSurface(HELLO);
   });
 });

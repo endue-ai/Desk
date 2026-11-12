@@ -21,11 +21,11 @@ import {
   drawerButton,
   focusedSurface,
   inFrame,
+  expectSurface,
   shellReady,
-  surface,
   waitForData,
-  windowOf,
 } from "../support/desk";
+import { deskNow } from "../support/windows";
 
 const HELLO = "e2e.hello";
 const SIDEBAR = "endue.sidebar";
@@ -63,8 +63,9 @@ async function tabToHello(): Promise<void> {
 describe("plugins: the Plugins list in a normal window (endue.sidebar, Default profile)", () => {
   it("a plugin from DESK_DEV_PLUGINS is listed under the shell and turned off and on from the keyboard", async () => {
     await shellReady();
-    await expect(surface(HELLO)).toExist();
-    await expect(windowOf(SIDEBAR)).toHaveAttribute("data-floating", "false");
+    await expectSurface(HELLO);
+    const sidebar = (await deskNow()).windows.find((w) => w.panes.some((p) => p.plugin === SIDEBAR));
+    expect(sidebar?.state).toBe("normal");
     await expect(drawerButton()).toHaveAttribute("aria-expanded", "false");
     await inFrame(SIDEBAR, () => expect(toggle()).toBeChecked());
 
@@ -72,7 +73,7 @@ describe("plugins: the Plugins list in a normal window (endue.sidebar, Default p
     await tabToHello();
     await inFrame(SIDEBAR, () => browser.keys("Space"));
     await inFrame(SIDEBAR, () => expect(toggle()).not.toBeChecked());
-    await expect(surface(HELLO)).not.toExist();
+    await expectSurface(HELLO, false);
     await expect(drawerButton()).toHaveAttribute("aria-expanded", "false");
     await waitForData(
       "plugins.json",
@@ -84,7 +85,7 @@ describe("plugins: the Plugins list in a normal window (endue.sidebar, Default p
     await tabToHello();
     await inFrame(SIDEBAR, () => browser.keys("Space"));
     await inFrame(SIDEBAR, () => expect(toggle()).toBeChecked());
-    await expect(surface(HELLO)).toExist();
+    await expectSurface(HELLO);
     // Mounted again: its page loaded and its bridge answered.
     await inFrame(HELLO, () =>
       expect($("[data-testid=bridge]")).toHaveText(expect.stringContaining("bridge: ok")),

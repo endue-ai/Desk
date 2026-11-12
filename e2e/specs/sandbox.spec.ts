@@ -11,7 +11,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { $, expect } from "@wdio/globals";
 import { dataDir } from "../support/cef";
-import { inFrame, press, shellReady, surface } from "../support/desk";
+import { expectSurface, inFrame, press, shellReady } from "../support/desk";
 import { appPid, HOME_VAR } from "../support/driver";
 import { deskSubprocesses, probe, probeBinary, type Subprocess } from "../support/sandbox";
 
@@ -62,7 +62,7 @@ describe("sandbox: Chromium's sandbox on the CEF desk (macOS)", () => {
 
   it("every renderer, the GPU process and each sandboxed utility run in it, and none reads the person's files", async () => {
     await shellReady();
-    await expect(surface(PLUGIN)).toExist();
+    await expectSurface(PLUGIN);
     const { files } = personsFiles();
     const desk = appPid();
     if (!desk) throw new Error("the app's pid is not known (E2E_APP_PID)");
