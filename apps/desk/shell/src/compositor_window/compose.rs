@@ -2,7 +2,10 @@
 //! surfaces attached, the spread while it is open and the canvas map with its thumbnails (refreshed
 //! here, under the compositor's lock, at most ten times a second); then what the scene drew goes to
 //! the input router, the window manager's cards, the spread, the map and accessibility, and where
-//! it drew each plugin surface to the web host, the screen its popups are placed in (#156).
+//! it drew each plugin surface to the web host, the screen its popups are placed in (#156). A frame
+//! for which only surfaces' pictures changed (a caret's blink, a page's own animation) draws the
+//! scene as it was laid out: laying it out took 30 to 40 ms of the debug build's main thread a
+//! frame, most of what a blinking caret cost a desk at rest (R1).
 
 use std::time::Instant;
 
@@ -10,6 +13,42 @@ use super::{CompositorWindow, PAGE, draw, draw_map};
 use crate::web_host::render::popup_screen::App;
 
 impl CompositorWindow {
+    /// The scene the next frame draws: laid out again when the desk changed (`Composed::dirty`),
+    /// as it was when only surfaces' pictures did (`Composed::repainted`).
+    pub(super) fn scene_for_frame(&mut self) {
+        if self.shared.lock().dirty {
+            self.compose();
+        } else {
+            self.repaint();
+        }
+    }
+
+    /// Only surfaces' pictures changed: the scene stays, and the canvas map's thumbnails of those
+    /// surfaces are drawn again from the new pictures, at most ten times a second. A thumbnail the
+    /// map had not made yet lays the scene out at the next frame.
+    fn repaint(&mut self) {
+        let scale = self.window.scale_factor() as f32;
+        // The map shows its windows (unfolded) where it drew its view.
+        let open = (self.mapping.drawn.as_ref()).is_some_and(|map| map.view.is_some());
+        let layout = self.mapping.layout.take();
+        if let Some(layout) = layout.as_ref().filter(|_| open) {
+            let mut composed = self.shared.lock();
+            let changed = composed.repainted.clone();
+            let made = (self.mapping).refresh(
+                &mut composed,
+                layout,
+                scale,
+                Instant::now(),
+                Some(&changed),
+            );
+            composed.dirty |= made;
+        }
+        self.mapping.layout = layout;
+        if !self.gpu.presents() {
+            self.shared.lock().repainted.clear();
+        }
+    }
+
     /// Lay the scene out again from the hosted desk and the frames the surfaces attached, and tell
     /// the input router what each node shows.
     pub(super) fn compose(&mut self) {
@@ -23,7 +62,7 @@ impl CompositorWindow {
             match (&layout, folded) {
                 (Some(layout), Some(false)) => {
                     self.mapping
-                        .refresh(&mut composed, layout, scale, Instant::now());
+                        .refresh(&mut composed, layout, scale, Instant::now(), None);
                 }
                 // Folded or gone, the map keeps no copies.
                 _ => self
@@ -62,7 +101,7 @@ impl CompositorWindow {
             draw::Drawn::default()
         });
         if !self.gpu.presents() {
-            self.shared.lock().dirty = false;
+            self.shared.lock().drawn();
         }
         self.a11y_drawn(&drawn);
         self.gestures.buttons = drawn.buttons;

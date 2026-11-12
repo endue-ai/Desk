@@ -323,7 +323,7 @@ impl CompositorWindow {
         if !self.due().frame().is_some_and(|at| now >= at) {
             return;
         }
-        self.compose();
+        self.scene_for_frame();
         self.composed += 1;
         self.last_frame = now;
         if !self.gpu.presents() {
@@ -337,7 +337,7 @@ impl CompositorWindow {
             Some(frame) => self.present(frame),
             // Composed for the router and captures, shown nowhere: not again until a change,
             // where it composed every desk frame for nothing (#134).
-            None if self.gpu.withheld().is_some() => self.shared.lock().dirty = false,
+            None if self.gpu.withheld().is_some() => self.shared.lock().drawn(),
             None => {}
         }
         if self.slow_presents >= SLOW_IMAGES {
@@ -360,7 +360,7 @@ impl CompositorWindow {
         let mut composed = self.shared.lock();
         composed.compositor.invalidate();
         composed.compositor.render(&self.scene, &view, size);
-        composed.dirty = false;
+        composed.drawn();
         drop(composed);
         self.window.pre_present_notify();
         self.gpu.queue.present(frame);

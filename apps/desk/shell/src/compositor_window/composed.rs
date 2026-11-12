@@ -4,7 +4,7 @@
 //! popup widget is (#156: its frames attach as a surface of their own, drawn over it). Shared by
 //! the compositor window and the surface probe.
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use desk_compositor::headless::Target;
@@ -23,8 +23,15 @@ pub struct Composed {
     pub frames: Frames,
     textures: HashMap<String, TextureId>,
     next: u64,
-    /// Something changed since the last drawn frame.
+    /// Something changed since the last drawn frame: the scene is laid out again.
     pub dirty: bool,
+    /// The textures whose pictures alone changed since the last drawn frame, each a frame of the
+    /// size it had (a caret's blink, a page's own animation): the scene is drawn again as it was
+    /// laid out (R1, `compose.rs`).
+    pub repainted: BTreeSet<TextureId>,
+    /// The pixels each texture's frames changed since the canvas map last drew its thumbnail
+    /// (`minimap.rs`): a frame of pictures alone redraws only the thumbnails much changed.
+    pub unmapped: HashMap<TextureId, u64>,
     /// Messages other than frames, for the owner to act on in order.
     pub messages: Vec<SurfaceMessage>,
     /// Frames attached and refused, by surface.
@@ -50,6 +57,30 @@ impl Composed {
         id
     }
 
+    /// A frame was drawn of everything that changed.
+    pub fn drawn(&mut self) {
+        self.dirty = false;
+        self.repainted.clear();
+    }
+
+    /// `attach` came for texture `id`, now `size` pixels, `had` before (`taken`).
+    fn took(
+        &mut self,
+        id: TextureId,
+        attach: &SurfaceAttach,
+        size: (u32, u32),
+        had: Option<(u32, u32)>,
+    ) {
+        let (picture, changed) = taken(attach, size, had);
+        let unmapped = self.unmapped.entry(id).or_default();
+        *unmapped = unmapped.saturating_add(changed);
+        if picture {
+            self.repainted.insert(id);
+        } else {
+            self.dirty = true;
+        }
+    }
+
     /// The texture id of `surface`, if it has one.
     pub fn texture_of(&self, surface: &str) -> Option<TextureId> {
         self.textures.get(surface).copied()
@@ -63,6 +94,7 @@ impl Composed {
 
     fn drop_frames(&mut self, surface: &str) {
         if let Some(id) = self.textures.remove(surface) {
+            self.unmapped.remove(&id);
             self.frames.destroy(&mut self.compositor, id);
             self.dirty = true;
         }
@@ -93,6 +125,22 @@ impl Composed {
     }
 }
 
+/// What a frame `attach` changes, its texture now `size` pixels and `had` before: whether only its
+/// picture (a frame of the size the texture had), and how many of its pixels (all of them for a
+/// frame that names no damage). The desk's page lays the windows' page parts out from its paints
+/// (`PageShown`), so each of its frames lays the scene out again, as a surface's first frame or a
+/// new size does.
+pub fn taken(attach: &SurfaceAttach, size: (u32, u32), had: Option<(u32, u32)>) -> (bool, u64) {
+    let (w, h) = (u64::from(size.0), u64::from(size.1));
+    let changed = match attach.damage.as_slice() {
+        [] => w * h,
+        damage => (damage.iter())
+            .map(|r| r.width.min(w.saturating_sub(r.x)) * r.height.min(h.saturating_sub(r.y)))
+            .sum(),
+    };
+    (attach.surface != super::PAGE && had == Some(size), changed)
+}
+
 /// The compositor's state, shared with the web host's handlers.
 #[derive(Clone)]
 pub struct Shared(Arc<Mutex<Composed>>);
@@ -105,6 +153,8 @@ impl Shared {
             textures: HashMap::new(),
             next: 0,
             dirty: true,
+            repainted: BTreeSet::new(),
+            unmapped: HashMap::new(),
             messages: Vec::new(),
             attached: HashMap::new(),
             page_damage: Vec::new(),
@@ -124,6 +174,7 @@ impl SurfaceSink for Shared {
         let mut composed = self.lock();
         let id = composed.texture(&attach.surface);
         let state = &mut *composed;
+        let had = state.frames.size(id);
         let result = state
             .frames
             .attach(&mut state.compositor, id, attach, source);
@@ -139,7 +190,9 @@ impl SurfaceSink for Shared {
             }
             state.page_damage.push(attach.damage.clone());
         }
-        state.dirty |= result.is_ok();
+        if let Ok(attached) = &result {
+            state.took(id, attach, attached.size, had);
+        }
         result
     }
 
@@ -181,3 +234,7 @@ impl SurfaceSink for Shared {
         )
     }
 }
+
+#[cfg(test)]
+#[path = "composed_tests.rs"]
+mod tests;

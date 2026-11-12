@@ -48,8 +48,11 @@ impl CompositorWindow {
 
     /// What the window's next wake-up is made of now.
     pub(super) fn due(&self) -> Due {
+        let composed = self.shared.lock();
+        let dirty = composed.dirty || !composed.repainted.is_empty();
+        drop(composed);
         Due {
-            dirty: self.shared.lock().dirty,
+            dirty,
             occluded: self.occluded,
             last_frame: self.last_frame,
             hosted: self.hosted.due(),
@@ -73,7 +76,7 @@ impl CompositorWindow {
 /// and the loop never waited.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Due {
-    /// The scene changed since the last frame.
+    /// The scene, or a picture in it, changed since the last frame.
     pub dirty: bool,
     /// The OS says the window is out of sight (winit's `Occluded`).
     pub occluded: bool,

@@ -6,11 +6,12 @@
 //! its button, which the page keeps with the session (`desk://compositor-map`), and folds by itself
 //! while a filled window is in sight; the button opens it over that window until the fill goes.
 
+use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
 
 use desk_compositor::glam::Vec2;
 use desk_compositor::input::{Button, Input};
-use desk_compositor::{NodeId, Thumbnails};
+use desk_compositor::{NodeId, TextureId, Thumbnails};
 use desk_surface::generated::SurfaceWheelUnit;
 use desk_web::sender::Role;
 use desk_wm::{
@@ -26,6 +27,16 @@ use super::draw_map::{MapDrawn, MapLayout};
 pub const MAP: &str = "desk://compositor-map";
 /// The thumbnails are drawn again at most this often.
 const REFRESH: Duration = Duration::from_millis(100);
+/// A frame of pictures alone draws a surface's thumbnail again once its frames changed this share
+/// of its pixels since the thumbnail was drawn: a caret's blink changes a few hundred of a window's
+/// hundreds of thousands, too few to see at the map's scale, where a page of new text or a video's
+/// frame changes more at once (R1). Every frame that lays the scene out draws them all.
+const MAPPED_SHARE: u64 = 32;
+
+/// Whether `changed` pixels of a `size` texture show in its thumbnail (`MAPPED_SHARE`).
+fn seen(changed: u64, size: (u32, u32)) -> bool {
+    changed.saturating_mul(MAPPED_SHARE) >= u64::from(size.0) * u64::from(size.1)
+}
 
 /// The map's state between events.
 #[derive(Default)]
@@ -43,15 +54,19 @@ pub struct Mapping {
 }
 
 impl Mapping {
-    /// Draw the thumbnails `layout` needs again, at most every `REFRESH` (at once for one not made
-    /// yet), and let go of the others.
+    /// Draw the thumbnails `layout` needs again (`only` those of these textures whose frames
+    /// changed `MAPPED_SHARE` of their pixels since), at most every `REFRESH` (at once for one not
+    /// made yet), and let go of the others; whether one is new (a scene drawn before shows none of
+    /// it).
     pub fn refresh(
         &mut self,
         composed: &mut Composed,
         layout: &MapLayout,
         scale: f32,
         now: Instant,
-    ) {
+        only: Option<&BTreeSet<TextureId>>,
+    ) -> bool {
+        let mut made = false;
         let due = self
             .refreshed
             .is_none_or(|at| now.duration_since(at) >= REFRESH);
@@ -64,14 +79,20 @@ impl Mapping {
                 continue;
             };
             keep.push(id);
-            if due || self.thumbnails.of(id).is_none() {
+            let changed = composed.unmapped.get(&id).copied().unwrap_or_default();
+            let wanted = only.is_none_or(|only| only.contains(&id) && seen(changed, source));
+            if wanted && due || self.thumbnails.of(id).is_none() {
+                composed.unmapped.remove(&id);
                 let size = (
                     (at.width * scale).ceil() as u32,
                     (at.height * scale).ceil() as u32,
                 );
                 let compositor = &mut composed.compositor;
-                self.thumbnails
-                    .refresh(compositor, id, source, (size.0.max(1), size.1.max(1)));
+                let had = self.thumbnails.of(id);
+                let thumbnail =
+                    self.thumbnails
+                        .refresh(compositor, id, source, (size.0.max(1), size.1.max(1)));
+                made |= had != Some(thumbnail);
             }
         }
         self.thumbnails
@@ -79,6 +100,7 @@ impl Mapping {
         if due {
             self.refreshed = Some(now);
         }
+        made
     }
 }
 
@@ -270,5 +292,20 @@ impl CompositorWindow {
             "outer": quad(layout.outer), "canvas": quad(layout.canvas), "button": quad(layout.button),
             "view": quad(layout.view), "windows": windows, "peek": self.mapping.peek,
             "thumbnails": self.mapping.thumbnails.len() })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::seen;
+
+    #[test]
+    fn a_carets_blink_does_not_show_in_a_thumbnail_and_a_page_of_new_text_does() {
+        let window = (656, 422);
+        assert!(!seen(17 * 34, window), "a blink");
+        assert!(!seen(17 * 34 * 14, window), "fourteen blinks");
+        assert!(seen(17 * 34 * 15, window), "fifteen add up to a 32nd");
+        assert!(seen(656 * 60, window), "a few lines of output");
+        assert!(seen(u64::MAX, window), "no overflow");
     }
 }
