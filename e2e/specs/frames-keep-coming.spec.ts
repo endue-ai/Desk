@@ -10,7 +10,9 @@
 // screen changed as well, which laid it out again past CEF's hold on a resize in flight, and after
 // a glide's resizes CEF sent it no begin frame again; its texture stayed a few pixels short of its
 // pane. Its page must draw after each gesture, at its pane's size, and the shell's watch for a page
-// that stopped painting (`web_host/stall.rs`) must have found none.
+// that stopped painting (`web_host/stall.rs`) must have found none. The app window's resize told the
+// desk's page the screen with every size as well, until #227: it grows and shrinks here, several
+// sizes a frame, and the desk's page must still draw.
 import { expect } from "@wdio/globals";
 import { feed, inSurface, shellCommand } from "../support/compositor";
 import { shellReady } from "../support/desk";
@@ -209,4 +211,63 @@ describe("frames: the desk's page never stops drawing (#157)", () => {
     await press(titleAt(await windowNow(id)), 2);
     await stillDrawing("restore");
   });
+
+  // The app window dragged to a new size by its corner: macOS's live resize sends several sizes a
+  // frame. Each told the desk's page's browser the screen as well as its size, as a plugin's
+  // glide did before ADR 0170, and the desk's page stopped for good on the person's desk
+  // (2026-11-13).
+  it("after the app window grows and shrinks back, several sizes a frame", async () => {
+    const first = await shellCommand<Frame>("compositor_window", { frame: true });
+    const at = (i: number) => ({
+      ...first,
+      width: first.width + i * 24,
+      height: first.height + i * 16,
+    });
+    const grow = [...Array(16).keys()].map((i) => i + 1);
+    for (const [step, sizes] of [
+      ["grown", grow],
+      ["shrunk back", [...grow].reverse().map((i) => i - 1)],
+    ] as const) {
+      for (let i = 0; i < sizes.length; i += 4) {
+        await resizes(sizes.slice(i, i + 4).map(at));
+        await pause(16);
+      }
+      await stillDrawing(step);
+    }
+    const { page } = await shellCommand<Stats>("compositor_stats");
+    expect(page.stalls ?? 0).toBe(0);
+  });
 });
+
+type Frame = { x: number; y: number; width: number; height: number };
+
+/** The app window set to each of `frames` at once, as one turn of a live resize sends them. */
+const resizes = (frames: Frame[]) =>
+  browser.execute(
+    (frames: Frame[]) =>
+      new Promise<void>((resolve) => {
+        type Native = { send(text: string): void; onMessage: (text: string) => void };
+        const native = (globalThis as unknown as { __deskNative: Native }).__deskNative;
+        const ids = new Set(frames.map((_, i) => 800_000 + i));
+        const original = native.onMessage;
+        const done = () => {
+          native.onMessage = original;
+          resolve();
+        };
+        const timer = setTimeout(done, 5_000);
+        native.onMessage = (text: string) => {
+          const { id } = JSON.parse(text) as { id?: number };
+          if (id === undefined || !ids.delete(id)) return original(text);
+          if (ids.size === 0) {
+            clearTimeout(timer);
+            done();
+          }
+        };
+        for (const [i, frame] of frames.entries()) {
+          native.send(
+            JSON.stringify({ id: 800_000 + i, cmd: "compositor_window", args: { frame } }),
+          );
+        }
+      }),
+    frames,
+  );
