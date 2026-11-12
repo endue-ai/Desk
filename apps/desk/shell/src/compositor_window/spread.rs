@@ -278,6 +278,10 @@ impl CompositorWindow {
     /// Each frame: the spread follows the desk under it, moves on, and once it has closed lets
     /// go; the window picked takes the focus.
     pub(super) fn spread_tick(&mut self, now: Instant) {
+        // Closed, it has nothing to follow: the windows are not gathered at every wake-up (R1).
+        if self.spreading.open.is_none() {
+            return;
+        }
         let ms = self.hosted.ms(now);
         let windows = self.spread_windows();
         let Some(open) = self.spreading.open.as_mut() else {

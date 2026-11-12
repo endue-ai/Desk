@@ -197,10 +197,12 @@ impl WebHost {
             (inner.records.values())
                 .filter(|r| r.state == State::Live { hidden: false })
                 .filter_map(|r| {
-                    let browser = r.browser.clone()?;
+                    let browser = r.browser.as_ref()?;
                     let mut view = r.view.lock();
                     let (due, paints) = (view.screen.due(now, settled(&view)), paints(&view));
-                    due.then(|| view.screen.tell(paints)).map(|_| browser)
+                    // A browser is taken (a reference CEF counts) only for a view that is due.
+                    due.then(|| view.screen.tell(paints))
+                        .map(|_| browser.clone())
                 })
                 .collect()
         };
