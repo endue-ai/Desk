@@ -7,8 +7,11 @@ import {
   mountDesk,
   type Published,
   phase,
+  popupOpener,
   realClock,
   remotePages,
+  type WindowPages,
+  windowPages,
 } from "@endue-ai/runtime";
 import "@endue-ai/runtime/desk.css";
 import "@endue-ai/runtime/shell.css";
@@ -59,9 +62,16 @@ const seam = wmSeam(
 // Every plugin surface's page is a browser of its own the compositor draws (ADR 0160): the runtime
 // keeps only its place here, and the shell carries the plugin host's messages to it and back.
 const pages = remotePages(window, shellSurfaces());
+// Each window lies in a page of its own, which the compositor draws from a texture of its own (ADR
+// 0201): no window's picture is cut out of this page's, so a move repaints nothing.
+let ownPages: WindowPages | undefined;
 const desk = mountDesk({
   windowManager: seam.host,
   pages,
+  windowPages: (layer) => {
+    ownPages = windowPages(document, layer, popupOpener(window));
+    return ownPages;
+  },
   root,
   bridge: shellBridge(core),
   core,
@@ -160,8 +170,11 @@ const focus = startCompositorFocus(window, ({ surface, own }, answer) => {
 });
 // What is typed after a key the desk runs waits until the page says where it left the keys.
 const offRuns = desk.runtime.keymap.onRun((done) => focus.ran(done));
+// Each window's own page says where its focus rests too, and answers the presses on it (ADR 0201).
+const offPageFocus = ownPages?.watch((id, own) => focus.watch(own, id)) ?? (() => {});
 const stopCompositor = () => {
-  for (const off of [stopDesk, stopKeys, offRuns, focus.stop, () => pages.dispose()]) off();
+  const offs = [stopDesk, stopKeys, offRuns, offPageFocus, focus.stop, () => pages.dispose()];
+  for (const off of offs) off();
   for (const listening of [offLive, offWm, offHeld, offRun, offMap])
     void listening.then((off) => off());
 };

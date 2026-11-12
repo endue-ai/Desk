@@ -41,7 +41,8 @@ export function append(el: Element, children: Child[]): void {
  * `data-key` so re-rendering never throws a keyboard user back to the start.
  */
 export function render(container: Element, build: () => Child[]): void {
-  const active = document.activeElement;
+  // The focus of the container's own document: a window's own page has its own (ADR 0201).
+  const active = container.ownerDocument.activeElement;
   const key = active && container.contains(active) ? active.getAttribute("data-key") : null;
   container.replaceChildren();
   append(container, build());

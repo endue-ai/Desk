@@ -8,6 +8,7 @@
 
 import { mountArrange } from "../arrange";
 import { reportFailure } from "../gesture";
+import { listenForShortcuts } from "../input";
 import type { SurfacePlacement } from "../modes/types";
 import { stash, togglePin, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
@@ -21,6 +22,7 @@ import { hostGestures } from "./host-gestures";
 import { renderPanes } from "./PaneView";
 import { findLeaf, leaves, panesOf } from "./tree";
 import { type Mounted, resolveView, viewOf } from "./views";
+import type { WindowPages } from "./window-pages";
 
 function place(el: HTMLElement, r: Rect): void {
   el.style.left = `${r.x}px`;
@@ -70,23 +72,43 @@ interface Entry {
   /** Rebuild only the panes when this changes. */
   panesKey: string;
   panes: Mounted;
+  /** Whether it lies in its own page (ADR 0201), and where its window is on the desk. */
+  own: boolean;
+  at: Rect;
   /** Refresh the key hints in the tools' labels (the keymap changed) and the pin's state. */
   relabel: () => void;
   off: () => void;
 }
 
-export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
+/**
+ * Lay the windows out in `root`; with `ownPages` each window's section lies in a page of its own
+ * (ADR 0201), at its top left, and in the page's own layer only where none opens.
+ */
+export function mountSurfaces(
+  root: HTMLElement,
+  ctx: ShellCtx,
+  ownPages?: (layer: HTMLElement) => WindowPages,
+): () => void {
   const layer = h("div", { class: "surfaces" });
   root.append(layer);
+  const pages = ownPages?.(layer);
+  // A window's own page hears the desk's keys as the page does: the same keymap decides them.
+  const offPageKeys = pages?.watch((_, win) => listenForShortcuts(win, ctx.runtime.shortcuts));
   const live = new Map<string, Entry>();
   const hint = (label: string, command: string) => {
     const key = ctx.keyOf(command);
     return key ? `${label} (${key})` : label;
   };
 
-  /** Title bar text for the active pane: icon, name, the view's own line and Eris's badge. */
+  /**
+   * Title bar text for the active pane: icon, name, the view's own line and Eris's badge; built
+   * again only when one of them changed, so a move, whose every step draws again, paints nothing.
+   */
   const drawTitle = (entry: Entry, p: SurfacePlacement) => {
     const view = viewOf(ctx, activeView(ctx, p));
+    const shows = JSON.stringify([view.icon, view.title, view.sub, view.byEris, ctx.tr("madeByEris")]);
+    if (entry.title.dataset.shows === shows) return;
+    entry.title.dataset.shows = shows;
     render(entry.title, () => [
       icon(view.icon, 16),
       h("span", { class: "surface-name" }, view.title),
@@ -185,7 +207,14 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       listen(bar, "dblclick", (e) => {
         if (!(e.target as Element).closest("button")) ctx.wm.run({ op: "maximize" }, p.id);
       }),
-      hostGestures(el, bar, () => entry.placement, ctx),
+      // A press in its own page is at that page's point: on the desk, the window's place plus it.
+      hostGestures(
+        el,
+        bar,
+        () => entry.placement,
+        ctx,
+        () => (entry.own ? entry.at : undefined),
+      ),
     ];
     const entry: Entry = {
       el,
@@ -195,6 +224,8 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       key: "",
       panesKey: "",
       panes: { el: body },
+      own: false,
+      at: { x: 0, y: 0, w: 0, h: 0 },
       relabel,
       off: () => {
         for (const off of offs) off();
@@ -215,8 +246,14 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       entry.off();
       entry.el.remove();
       live.delete(id);
+      pages?.close(id);
     }
     surfaces.forEach((p) => {
+      // The window manager's gesture holds it (ADR 0153): laid out where it is held, so what the
+      // page draws of it follows the pointer; the compositor draws the glides.
+      const held = ctx.held.rect(p.id);
+      const at = shown.get(p.id);
+      const rect = held ?? at?.rect;
       // Only the language rebuilds a window: a rebuild would reload a plugin's frame inside it.
       const key = JSON.stringify([s.lang]);
       let entry = live.get(p.id);
@@ -231,13 +268,20 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
         live.set(p.id, entry);
         layer.append(entry.el);
       }
+      // Its own page once the window manager placed it (ADR 0201).
+      const own = !entry.own && rect ? pages?.host(p.id, rect.w, rect.h) : null;
+      if (own) {
+        own.append(entry.el);
+        entry.own = true;
+      }
       entry.placement = p;
       const all = leaves(panesOf(p));
       const views = all.map((l) => resolveView(s, p, l.view));
       const panesKey = JSON.stringify([panesOf(p), views]);
       if (entry.panesKey !== panesKey) {
-        const activeSplit = entry.body.contains(document.activeElement)
-          ? document.activeElement?.getAttribute("data-split")
+        const focused = entry.el.ownerDocument.activeElement;
+        const activeSplit = entry.body.contains(focused)
+          ? focused?.getAttribute("data-split")
           : null;
         entry.panes.off?.();
         entry.panes = renderPanes(ctx, p);
@@ -261,17 +305,16 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       entry.el.dataset.floating = String(isFloating(p));
       // A window maximized before fills has a restore but no fill.
       const fill = p.fill ?? (p.restore ? "full" : undefined);
-      // The window manager's gesture holds it (ADR 0153): laid out where it is held, so what the
-      // page draws of it follows the pointer; the compositor draws the glides.
-      const held = ctx.held.rect(p.id);
       entry.el.classList.toggle("is-dragging", held !== undefined);
       if (fill) entry.el.dataset.fill = fill;
       else delete entry.el.dataset.fill;
       entry.relabel();
       drawTitle(entry, p);
-      const at = shown.get(p.id);
-      const rect = held ?? at?.rect;
-      if (rect) place(entry.el, rect);
+      if (rect) {
+        entry.at = rect;
+        // Its own page is its window's size: the section fills it from the top left.
+        place(entry.el, entry.own ? { x: 0, y: 0, w: rect.w, h: rect.h } : rect);
+      }
       entry.el.style.zIndex = String(at?.z ?? 1);
       entry.el.classList.toggle("is-focused", p.id === s.focused);
     });
@@ -306,6 +349,8 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
   return () => {
     for (const off of offs) off();
     for (const entry of live.values()) entry.off();
+    offPageKeys?.();
+    pages?.dispose();
     layer.remove();
   };
 }
