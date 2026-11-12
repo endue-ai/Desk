@@ -2,6 +2,7 @@
 // The window desk.windows.list marks in use has the keys without a click after Ctrl+Tab, a title
 // drag, a command that shows a window, a file that opens, a permission question and the palette
 // closing, and a press on a divider or on a desk button gives them to no window lying under it.
+// What is typed right after ⌘K waits for the palette to have the keys, none of it lost.
 // The Default profile's Terminal, whose shell starts in HOME, shows where the keys went: a `touch`
 // typed without a click makes its file there. The pointer and the keys are winit's, fed to the
 // compositor window (support/compositor.ts): the screen may be locked. e2e.ask (wdio.conf.ts) asks
@@ -137,6 +138,41 @@ describe("keys follow the window in use", () => {
     await holds(async () => (await focused()) === PALETTE, "the palette never had the keys");
     await feed(keyPress("Escape", "Escape"));
     await keysReachTerminal("afterpalette", "the palette closing");
+  });
+
+  it("what is typed right after ⌘K reaches the palette's field whole, and none of it the Terminal", async () => {
+    await holds(async () => (await focused()) === TERMINAL_HOST, "no keys in the Terminal");
+    const terminal = async () => ((await run("endue.terminal.output")) as { text: string }).text;
+    const before = await terminal();
+    // ⌘K, then a word typed 10 ms apart: the palette takes the keys only once it is shown, and
+    // until then they wait for the desk to say so instead of reaching the Terminal's shell.
+    const word = "zqxjv";
+    await chord(MOD, "k", "KeyK", "k");
+    for (const ch of word) {
+      await feed(keyPress(ch, `Key${ch.toUpperCase()}`, ch));
+      await browser.pause(10);
+    }
+    const query = () =>
+      browser.execute(
+        () => document.querySelector<HTMLInputElement>("[data-testid=query]")?.value ?? null,
+      );
+    // What the field reads once it reads the word, or after 5 s: what it got of it.
+    const read = await inFrame("desk.palette", async () => {
+      await browser
+        .waitUntil(async () => (await query()) === word, { timeout: 5_000 })
+        .catch(() => {});
+      return query();
+    });
+    expect(read).toBe(word);
+    expect(await focused()).toBe(PALETTE);
+    // What the shell printed since got none of it (its tail is far from the 4000 characters the
+    // command keeps).
+    const after = await terminal();
+    let same = 0;
+    while (same < before.length && before[same] === after[same]) same++;
+    expect(after.slice(same)).not.toMatch(/[zqxjv]/);
+    await feed(keyPress("Escape", "Escape"));
+    await holds(async () => (await focused()) === TERMINAL_HOST, "the keys never went back");
   });
 
   it("a command that shows a window gives it the keys", async () => {

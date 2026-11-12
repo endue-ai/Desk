@@ -92,7 +92,7 @@ describe("system parts: what the desk draws over the dock and the windows takes 
     expect(others).toEqual([]);
   });
 
-  it("puts what is typed after a press on the talk pill in its line, and presses no dock tile", async () => {
+  it("puts what is typed right after a press on the talk pill in its line, and presses no dock tile", async () => {
     const before = await windowIds();
     const pill = await box(".composer.talk-pill");
     if (!pill) throw new Error("no talk pill");
@@ -101,14 +101,22 @@ describe("system parts: what the desk draws over the dock and the windows takes 
     await browser.pause(400);
     const wide = await box(".composer.talk-pill");
     if (!wide) throw new Error("no talk pill");
-    await click([wide.cx, wide.cy]);
+    const keys = (text: string) =>
+      [...text].flatMap((c) => keyPress(c, `Key${c.toUpperCase()}`, c));
+    const type = (text: string) => feed(keys(text));
+    // A window is in use (the terminal) and has the keys. Typed at once, before the page could
+    // have opened the line or said so, they wait for the page's word on the press, not go there.
+    expect((await inputState()).focused).toMatch(/^main\./);
+    await feed([
+      { type: "pointerMoved", x: wide.cx, y: wide.cy },
+      { type: "pointerButton", button: "left", pressed: true },
+      { type: "pointerButton", button: "left", pressed: false },
+      ...keys("hel"),
+    ]);
     await browser.waitUntil(
       () => browser.execute(() => document.querySelector(".composer.is-open") !== null),
       { timeoutMsg: "the talk line never opened" },
     );
-    const type = (text: string) =>
-      feed([...text].flatMap((c) => keyPress(c, `Key${c.toUpperCase()}`, c)));
-    await type("hel");
     await browser.waitUntil(async () => (await typed()) === "hel", {
       timeoutMsg: "what was typed never reached the talk line",
     });
