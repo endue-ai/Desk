@@ -3,10 +3,11 @@ use std::time::{Duration, Instant};
 use desk_compositor::glam::Vec2;
 use desk_compositor::input::Target;
 use desk_compositor::{ChromeTheme, Color, NodeId, NodeKind, Scene, TextureId, hit_test};
+use desk_wm::Point;
 use desk_wm::host::intersect;
 use serde_json::{Value, json};
 
-use super::pieces;
+use super::{on_grip, over_windows, pieces};
 use crate::compositor_window::PAGE;
 use crate::compositor_window::draw::{Sources, Texture, draw};
 use crate::compositor_window::draw_map::{MapSource, layout};
@@ -338,4 +339,35 @@ fn the_canvas_map_lies_over_the_bars_and_under_the_settings_and_the_overlays_sur
     let at = Vec2::new(1270.0, 770.0);
     assert_eq!(seen(&palette, true, at), Some(Seen::Texture(TextureId(3))));
     assert_eq!(heard_with_map(&palette, at).as_deref(), Some(PALETTE));
+}
+
+#[test]
+fn no_windows_grip_or_title_bar_lies_over_an_overlay_or_an_edge_bar() {
+    // Notes's left edge and its title bar, clear of the agent bar's part.
+    let (grip, title) = (Point::new(106.0, 250.0), Point::new(250.0, 210.0));
+    let free = hosted(false);
+    let now = free.ms(Instant::now()) + 10_000.0;
+    assert!(on_grip(&free, grip), "a press there resizes Notes");
+    assert_eq!(free.wm.cursor_at(grip, now), Some("ew-resize"));
+    assert_eq!(free.wm.cursor_at(title, now), Some("grab"));
+    // The palette over the whole app (a permission question is such an overlay): a press there,
+    // a button over Notes's edge, is the palette's, and the cursor its own.
+    let palette = hosted(true);
+    assert!(!on_grip(&palette, grip), "the press went to the page alone");
+    assert_eq!(palette.wm.cursor_at(grip, now), None);
+    assert_eq!(palette.wm.cursor_at(title, now), None);
+    let whole = desk_wm::Rect::new(0.0, 0.0, 1440.0, 900.0);
+    assert!(over_windows(palette.report().unwrap()).contains(&whole));
+    assert!(
+        !over_windows(free.report().unwrap()).contains(&whole),
+        "hidden"
+    );
+    // The dock over Notes's lower edge hears its own presses there.
+    let docked = hosted_with(false, [300.0, 430.0, 800.0, 60.0]);
+    let edge = Point::new(350.0, 447.0);
+    assert!(!on_grip(&docked, edge), "the press went to the page alone");
+    assert!(
+        on_grip(&docked, Point::new(200.0, 447.0)),
+        "clear of the dock"
+    );
 }

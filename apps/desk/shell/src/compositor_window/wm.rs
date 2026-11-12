@@ -1,14 +1,15 @@
 //! The window manager on the compositor's input (#80, ADR 0153): every pointer event and Escape of
 //! the window reach `desk-wm`'s [`desk_wm::interact::Wm`] before the router. The page still finds
 //! what a press lands on: a press on a window's grip goes to the page, not to the plugin surface
-//! the grip lies over, and the page says with `compositor_grab` that the press starts a move, a
-//! resize or a pan; on a window still gliding, which the page lays out where the glide ends, the
-//! window manager finds that itself where the window is drawn (#124). The window manager runs the
-//! gesture; the runtime hears each change it makes (`desk://compositor-wm`) and takes it as the
-//! truth, and the page lays a held window out where it is held (`desk://compositor-held`), so what
-//! it draws of the window follows. A card's buttons are the compositor's own: they run
-//! `desk.frames.wait`, `stop` and `reload` in the page (`desk://compositor-run`). The desk's window
-//! commands come as `compositor_wm`.
+//! the grip lies over, unless a part or a surface of the system layer lies over the grip (an
+//! overlay hears its own presses, `system::on_grip`); the page says with `compositor_grab` that the
+//! press starts a move, a resize or a pan; on a window still gliding, which the page lays out where
+//! the glide ends, the window manager finds that itself where the window is drawn (#124). The
+//! window manager runs the gesture; the runtime hears each change it makes (`desk://compositor-wm`)
+//! and takes it as the truth, and the page lays a held window out where it is held
+//! (`desk://compositor-held`), so what it draws of the window follows. A card's buttons are the
+//! compositor's own: they run `desk.frames.wait`, `stop` and `reload` in the page
+//! (`desk://compositor-run`). The desk's window commands come as `compositor_wm`.
 
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -17,7 +18,7 @@ use desk_compositor::NodeId;
 use desk_compositor::glam::Vec2;
 use desk_compositor::input::{Button, Input};
 use desk_web::sender::Role;
-use desk_wm::interact::{Kind, Op, Out, grip_at};
+use desk_wm::interact::{Kind, Op, Out};
 use desk_wm::{Point, Told};
 use serde_json::{Value, json};
 
@@ -117,7 +118,7 @@ impl CompositorWindow {
                         self.gestures.pressed = button;
                         return true;
                     }
-                    let grip = self.on_grip(at);
+                    let grip = super::system::on_grip(&self.hosted, at);
                     if grip {
                         self.router.press_to(PAGE);
                     }
@@ -132,11 +133,10 @@ impl CompositorWindow {
                     };
                     // On a window still gliding, desk-wm finds what the press starts where the
                     // window is drawn (#124), its tools clear of the top chips as they are drawn,
-                    // and a press on a part of the system layer above it the page's (#139).
-                    let chrome = self.hosted.report().map(|r| {
-                        let parts: Vec<_> = r.parts.iter().filter_map(|p| p.known()).collect();
-                        (r.top, parts)
-                    });
+                    // and a press on a part or a surface of the system layer above it never the
+                    // window's (#139).
+                    let chrome =
+                        (self.hosted.report()).map(|r| (r.top, super::system::over_windows(r)));
                     if let Some((top, parts)) = chrome {
                         self.hosted.wm.set_top_chrome(top);
                         self.hosted.wm.set_system_parts(parts);
@@ -168,18 +168,6 @@ impl CompositorWindow {
             self.wm_cursor(at);
         }
         taken
-    }
-
-    /// Whether `at` is on a grip of the window topmost there.
-    fn on_grip(&self, at: Point) -> bool {
-        let Some(plan) = self.hosted.plan() else {
-            return false;
-        };
-        let inside =
-            |r: desk_wm::Rect| at.x >= r.x && at.x < r.right() && at.y >= r.y && at.y < r.bottom();
-        (plan.windows.iter().rev())
-            .find(|w| inside(w.rect))
-            .is_some_and(|w| grip_at(w.rect, at).is_some())
     }
 
     /// The card's button topmost at device point `at`, if one is.

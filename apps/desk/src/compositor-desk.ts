@@ -38,7 +38,8 @@ export interface FrameReport {
 
 /**
  * Where the page lays a surface of its system layer out, in CSS pixels, whether it shows, and its
- * layer: an edge bar lies under the system layer's own parts (`edge`), an overlay over them.
+ * layer: an edge bar lies under the system layer's own parts (`edge`), an overlay over them; `z`
+ * stacks it in its layer as the page does (an overlay shown later is raised above the others).
  */
 export interface Place {
   x: number;
@@ -47,6 +48,7 @@ export interface Place {
   height: number;
   shown: boolean;
   layer: "edge" | "overlay";
+  z: number;
 }
 
 export interface DeskReport {
@@ -142,6 +144,7 @@ function placeOf(p: Pick<RemoteSurface, "view" | "away">): Place {
     height: p.view.clientHeight,
     shown: !p.away && p.view.isConnected && !section?.closest("[hidden]"),
     layer: section?.classList.contains("desk-surface--overlay") ? "overlay" : "edge",
+    z: Number(section?.style.zIndex) || 0,
   };
 }
 

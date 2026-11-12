@@ -55,6 +55,9 @@ pub struct Place {
     pub shown: bool,
     #[serde(default)]
     pub layer: Layer,
+    /// Where the page stacks it in its layer: an overlay shown later is raised above the others.
+    #[serde(default)]
+    pub z: f64,
 }
 
 /// Where in the system layer a plugin surface of the page's goes (ADR 0160): an edge bar under the

@@ -166,6 +166,26 @@ describe("the desk the page publishes", () => {
     stop();
   });
 
+  it("stacks its overlays as it raises them: one shown later is drawn above", () => {
+    const { win, tick } = frames();
+    const r = runtime([]);
+    const p = pages();
+    const overlay = (id: string) =>
+      p.add(id, `desk-plugin://main.${id.replace(".", "-")}/`, false, "desk-surface--overlay");
+    const [palette, question] = [overlay("desk.palette"), overlay("endue.permissions")];
+    (question.view.parentElement as HTMLElement).style.zIndex = "11";
+    (palette.view.parentElement as HTMLElement).style.zIndex = "12";
+    const reports: DeskReport[] = [];
+    const stop = startCompositorDesk(win, r.desk, p, (report) => reports.push(report));
+    tick();
+    const zs = reports[0]?.frames.map((f) => [f.plugin, f.place?.z]);
+    expect(zs).toEqual([
+      ["desk.palette", 12],
+      ["endue.permissions", 11],
+    ]);
+    stop();
+  });
+
   it("reads Not responding with its actions, and nothing for a live frame", () => {
     const section = pages().add("e2e.hello").view.parentElement as HTMLElement;
     expect(cardOf(section, "live")).toBeUndefined();
