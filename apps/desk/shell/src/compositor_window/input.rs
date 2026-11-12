@@ -289,7 +289,8 @@ impl CompositorWindow {
             "pointer": { "capture": capture, "hearing": hearing, "at": [at.x, at.y] },
             "drag": { "active": broker.active(), "fromOs": broker.from_os(), "over": broker.over(),
                 "effect": broker.effect(), "settling": broker.settling(), "overlay": overlay },
-            "keys": { "pending": self.router.keymap.pending(), "bound": self.router.keymap.bindings().len() },
+            "keys": { "pending": self.router.keymap.pending(), "bound": self.router.keymap.bindings().len(),
+                "holding": self.router.holding() },
             "tooltip": self.tips.state(self.window.scale_factor() as f32),
             "scale": self.window.scale_factor(),
         })

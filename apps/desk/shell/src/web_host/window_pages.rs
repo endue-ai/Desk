@@ -98,25 +98,12 @@ impl WebHost {
     }
 
     /// A browser for `surface` was made by its page's opener rather than by the host: it is the
-    /// surface's from now on. A window page has the engine's focus from the start, as the desk's
-    /// page does, so the runtime hears the focus it moves there (the keys go where the compositor
-    /// routes them, whatever has the engine's focus).
+    /// surface's from now on.
     pub fn adopted(&self, surface: &str, browser: &Browser) {
-        let adopted = {
-            let mut inner = self.inner();
-            match inner.records.get_mut(surface) {
-                Some(record) if record.browser.is_none() => {
-                    record.browser = Some(browser.clone());
-                    true
-                }
-                _ => false,
-            }
-        };
-        if adopted
-            && is_window_page(surface)
-            && let Some(host) = browser.host()
+        if let Some(record) = self.inner().records.get_mut(surface)
+            && record.browser.is_none()
         {
-            host.set_focus(1);
+            record.browser = Some(browser.clone());
         }
     }
 
