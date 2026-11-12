@@ -7,7 +7,7 @@ decision-makers: Team endue
 Amends ADR 0164 (a paint put a surface back on every desk frame for a second) and ADR 0157 (the
 slow clock's frames, which were counted by number and shared).
 
-Status: amended by ADR XXXX: lone paints on a rhythm (a caret's blink) take two slow frames a blink
+Status: amended by ADR 0200: lone paints on a rhythm (a caret's blink) take two slow frames a blink
 once three came the same time apart, and a frame of pictures alone no longer lays the scene out.
 
 # A lone paint keeps a surface on slow frames, not on every frame
