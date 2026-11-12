@@ -36,11 +36,28 @@ export function pageFocus(doc: Document): PageFocus {
   return { surface, own: surface === null && !rest };
 }
 
+/** The start of a window's own page's surface id (`web_host/window_pages.rs`, ADR 0201). */
+export const WINDOW_PAGE = "window:";
+
+/**
+ * Where the focus rests in window `id`'s own page (ADR 0201): a surface's place there gives that
+ * surface the keys, an element of the window's own gives them to the window's page, and nothing
+ * of its own leaves them with the window in use.
+ */
+export function windowPageFocus(doc: Document, id: string): PageFocus {
+  const surface = focusedSurface(doc);
+  if (surface) return { surface, own: false };
+  const own = pageFocus(doc).own;
+  return { surface: own ? WINDOW_PAGE + id : null, own: false };
+}
+
 /** The reporter `startCompositorFocus` starts. */
 export interface CompositorFocus {
   /** A key the desk ran (`done` settles when its command has): answer it once its command moved
    * the focus, or settled without moving it. */
   ran(done: Promise<unknown>): void;
+  /** Report the focus of window `id`'s own page `page` as well, and answer presses there; the stop. */
+  watch(page: Window, id: string): () => void;
   stop(): void;
 }
 
@@ -61,16 +78,27 @@ export function startCompositorFocus(
   let released: ReturnType<typeof setTimeout> | undefined;
   /** Keys the desk ran whose answer is still to come. */
   let keys = 0;
+  /** The document the focus moved in last: the page's, or a window's own page's (ADR 0201). */
+  type From = { doc: Document; window?: string };
+  const page: From = { doc: win.document };
+  let current: From = page;
   const tell = (answer: boolean) => {
-    if (stopped || !win.document.hasFocus()) return;
-    const now = pageFocus(win.document);
+    // A window's own page has the engine's focus while it has the keys, the page then has not.
+    if (stopped || (current.window === undefined && !win.document.hasFocus())) return;
+    const now =
+      current.window === undefined
+        ? pageFocus(current.doc)
+        : windowPageFocus(current.doc, current.window);
     if (!answer && now.surface === last?.surface && now.own === last.own) return;
     last = now;
     send(now, answer);
   };
-  const moved = (event: Event) => {
+  const moved = (event: Event, from: From = page) => {
     // On its way to another element: that one's focusin says where it landed.
     if (event.type === "focusout" && (event as FocusEvent).relatedTarget) return;
+    // Where the focus lands says which page has it: another page's blur, as the focus leaves it
+    // for this one (`window-pages.ts` keeps one focus), never does.
+    if (event.type === "focusin") current = from;
     if (queued) return;
     queued = true;
     queueMicrotask(() => {
@@ -82,18 +110,32 @@ export function startCompositorFocus(
     });
   };
   // After the whole release (pointerup, then the click it makes), so what the click did counts.
-  const pressed = () => {
+  const pressed = (from: From = page) => {
+    current = from;
     if (released !== undefined) return;
     released = setTimeout(() => {
       released = undefined;
       tell(true);
     }, 0);
   };
-  win.addEventListener("focusin", moved, true);
-  win.addEventListener("focusout", moved, true);
-  win.addEventListener("blur", moved);
-  win.addEventListener("pointerup", pressed, true);
-  win.addEventListener("pointercancel", pressed, true);
+  /** Hear `target`'s focus moves and presses as coming from `from`; the stop. */
+  const hear = (target: Window, from: From) => {
+    const move = (event: Event) => moved(event, from);
+    const press = () => pressed(from);
+    target.addEventListener("focusin", move, true);
+    target.addEventListener("focusout", move, true);
+    target.addEventListener("blur", move);
+    target.addEventListener("pointerup", press, true);
+    target.addEventListener("pointercancel", press, true);
+    return () => {
+      target.removeEventListener("focusin", move, true);
+      target.removeEventListener("focusout", move, true);
+      target.removeEventListener("blur", move);
+      target.removeEventListener("pointerup", press, true);
+      target.removeEventListener("pointercancel", press, true);
+    };
+  };
+  const offPage = hear(win, page);
   return {
     ran(done) {
       keys += 1;
@@ -104,14 +146,18 @@ export function startCompositorFocus(
       };
       void done.then(settled, settled);
     },
+    watch(own, id) {
+      const from: From = { doc: own.document, window: id };
+      const off = hear(own, from);
+      return () => {
+        off();
+        if (current === from) current = page;
+      };
+    },
     stop() {
       stopped = true;
       if (released !== undefined) clearTimeout(released);
-      win.removeEventListener("focusin", moved, true);
-      win.removeEventListener("focusout", moved, true);
-      win.removeEventListener("blur", moved);
-      win.removeEventListener("pointerup", pressed, true);
-      win.removeEventListener("pointercancel", pressed, true);
+      offPage();
     },
   };
 }

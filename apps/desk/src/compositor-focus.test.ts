@@ -175,3 +175,34 @@ describe("the page's answers (what is typed waits for them in the compositor)", 
     expect(said).toHaveLength(3);
   });
 });
+
+describe("a window's own page's focus (ADR 0201)", () => {
+  it("gives the keys to the window's page for a field of its own, to a plugin for its place", async () => {
+    const frame = document.createElement("iframe");
+    document.body.append(frame);
+    const own = frame.contentWindow as Window;
+    const doc = own.document;
+    const field = doc.createElement("textarea");
+    const place = doc.createElement("div");
+    place.dataset.surfaceHost = "main.endue-terminal";
+    place.tabIndex = -1;
+    doc.body.append(field, place);
+    const sent: Array<[PageFocus, boolean]> = [];
+    const reporter = startCompositorFocus(window, (focus, answer) => sent.push([focus, answer]));
+    const stop = reporter.watch(own, "local:claude");
+    focus(field);
+    await tick();
+    focus(place);
+    await tick();
+    // A press there is answered, though the desk's page has not the engine's focus.
+    own.dispatchEvent(new Event("pointerup"));
+    await tick();
+    expect(sent).toEqual([
+      [{ surface: "window:local:claude", own: false }, false],
+      [{ surface: "main.endue-terminal", own: false }, false],
+      [{ surface: "main.endue-terminal", own: false }, true],
+    ]);
+    stop();
+    reporter.stop();
+  });
+});

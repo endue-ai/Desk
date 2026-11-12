@@ -19,14 +19,28 @@ export function hostGestures(
   bar: HTMLElement,
   placement: () => SurfacePlacement,
   ctx: Pick<ShellCtx, "wm" | "tr">,
+  /** The window's top left on the desk while it lies in a page of its own (ADR 0201). */
+  origin: () => { x: number; y: number } | undefined = () => undefined,
 ): () => void {
   const host = ctx.wm;
-  const at = (e: PointerEvent) => ({ x: e.clientX, y: e.clientY });
+  // The window manager hears the desk's point: a page of the window's own counts from its corner.
+  const at = (e: PointerEvent) => {
+    const from = origin() ?? { x: 0, y: 0 };
+    return { x: e.clientX + from.x, y: e.clientY + from.y };
+  };
+  const onButton = (e: PointerEvent) => (e.target as Element).closest("button") !== null;
   const off = [
     draggable(bar, {
       // Shift + drag on a title bar pans the canvas instead (Pan.ts).
-      accept: (e) => !e.shiftKey && !(e.target as Element).closest("button") && !placement().pinned,
+      accept: (e) => !e.shiftKey && !onButton(e) && !placement().pinned,
       press: (e) => host.grab({ kind: "move", window: placement().id }, at(e)),
+      move: nothing,
+      end: nothing,
+    }),
+    // In a page of its own the canvas's handler never hears the title bar: the pan starts here.
+    draggable(bar, {
+      accept: (e) => e.shiftKey && !onButton(e) && origin() !== undefined,
+      press: (e) => host.grab({ kind: "pan" }, at(e)),
       move: nothing,
       end: nothing,
     }),

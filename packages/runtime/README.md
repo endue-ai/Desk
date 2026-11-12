@@ -2,8 +2,8 @@
 
 The desk's system surface (ADR 0160): the page the compositor draws above every window, with the
 desk's policies, input, theme and settings (ADR 0017), the plugin host and the shell's parts (ADR 0023,
-0025). It moves no window (desk-wm does, ADR 0158) and, in the app, holds no plugin frame: each plugin
-surface is a browser of its own, reached through the shell. Plain TypeScript and DOM (ADR 0010);
+0025). It moves no window (desk-wm does, ADR 0158); in the app it holds no plugin frame (each a browser
+of its own) and lays each window out in a page of its own (`windowPages`, ADR 0201). Plain TS and DOM (ADR 0010);
 animations use an injected clock (ADR 0013). Shell decisions not in the brief: `ASSUMPTIONS.md`.
 
 ## Public API
@@ -20,7 +20,7 @@ animations use an injected clock (ADR 0013). Shell decisions not in the brief: `
   commands, keys and themes (ADR 0012, 0014); `Owners` routes events. `frames/`: the live set (ADR 0158).
 - Policies: `collect(plugins)`, `Commands`, layered `Settings`, `Keymap` (`rebind.ts`), `decide`,
   `resolveTheme`, `Notifications`, `Buffers`; `src/policies/*` applies them.
-- `mountDesk({ root, bridge, core, plugins, windowManager, pages?, clock?, lang?, platform?, epoch?, seed? })`:
+- `mountDesk({ root, bridge, core, plugins, windowManager, pages?, windowPages?, clock?, lang?, … })`:
   the shell over its runtime; `windowManager` (desk-wm) holds the windows, panes, desktops (up to 32,
   ADR 0117), the drawer and the pan (`wm/`); `localWindowManager` runs it as WebAssembly without the
   compositor. Returns `{ store, eris, runtime, ready, hold, … }`.

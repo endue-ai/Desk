@@ -20,6 +20,7 @@ import type { StartInfo } from "../start";
 import { pluginWindows } from "../surface/host";
 import { wakePlaced } from "../surface/placed";
 import { mountSurfaces } from "../surface/Surface";
+import type { WindowPages } from "../surface/window-pages";
 import { loadDirectory } from "../system/agents";
 import { loadEndue, watchEndue } from "../system/endue";
 import { mountSystemLayer } from "../system/layer";
@@ -85,6 +86,11 @@ export interface DeskOptions {
    * compositor draws (`remotePages`, ADR 0160); without it, frames of this page.
    */
   pages?: SurfacePages;
+  /**
+   * Where each window's section lies: in the app a page of the window's own, which the compositor
+   * draws from a texture of its own (ADR 0201); without it, this page.
+   */
+  windowPages?: (layer: HTMLElement) => WindowPages;
 }
 
 export interface Desk {
@@ -184,7 +190,7 @@ export function mountDesk(options: DeskOptions): Desk {
     byRole(modeLayer, "role:rail", settings, (at) => mountRail(at, ctx)),
     byRole(modeLayer, "role:dock", settings, (at) => mountBottom(at, ctx)),
     // The canvas map beside the arrange strip is the compositor's (#54, ADR 0161).
-    mountSurfaces(modeLayer, ctx),
+    mountSurfaces(modeLayer, ctx, options.windowPages),
   );
 
   const restored = keepShell(ctx);

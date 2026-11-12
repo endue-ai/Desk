@@ -127,3 +127,37 @@ describe("gestures a host runs", () => {
     expect(host.grab.mock.calls).toEqual([[{ kind: "pan" }, { x: 100, y: 700 }]]);
   });
 });
+
+// A window in a page of its own (ADR 0201): the page's points count from the window's corner, so the
+// host hears the desk's point, the window's place plus the press's; and the canvas's handler never
+// hears its title bar there, so a Shift press on it pans from here.
+describe("gestures from a window's own page", () => {
+  it("start at the desk's point, and Shift on the title bar pans", () => {
+    const host = { grab: vi.fn(), run: vi.fn() };
+    const el = document.createElement("section");
+    const bar = document.createElement("header");
+    el.append(bar);
+    document.body.append(el);
+    bar.setPointerCapture = vi.fn();
+    bar.releasePointerCapture = vi.fn();
+    const ctx = { tr: (key: string) => key, wm: host } as unknown as ShellCtx;
+    const off = hostGestures(
+      el,
+      bar,
+      () => placement,
+      ctx,
+      () => ({ x: 480, y: 240 }),
+    );
+    press(bar, 30, 20);
+    press(bar, 30, 20, true);
+    expect(host.grab.mock.calls).toEqual([
+      [
+        { kind: "move", window: "window-1" },
+        { x: 510, y: 260 },
+      ],
+      [{ kind: "pan" }, { x: 510, y: 260 }],
+    ]);
+    off();
+    el.remove();
+  });
+});

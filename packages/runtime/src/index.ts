@@ -60,6 +60,13 @@ export type { SettingsWindow } from "./settings-ui/window";
 export { type Desk, type DeskOptions, mountDesk } from "./shell/Desk";
 export { viewTitles } from "./shell/titles";
 export type { BrokenStateFile, StartInfo } from "./start";
+export {
+  type Opener,
+  PAGE_NAME,
+  popupOpener,
+  type WindowPages,
+  windowPages,
+} from "./surface/window-pages";
 export { SurfaceHost, type SurfaceSpec } from "./surfaces";
 export { applyTheme } from "./theme";
 export { PHASE_PREFIX, type Phase, phase, phases, timed } from "./timing";

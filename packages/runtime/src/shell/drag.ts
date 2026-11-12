@@ -24,13 +24,14 @@ export interface DragHandlers {
 }
 
 export function draggable(handle: HTMLElement, handlers: DragHandlers): () => void {
-  const doc = handle.ownerDocument;
-  const win = doc.defaultView ?? window;
-  const root = doc.documentElement;
   let cancel: (() => void) | undefined;
   let clearClick: (() => void) | undefined;
   const down = (e: PointerEvent) => {
     if (cancel || e.button !== 0 || !e.isPrimary || handlers.accept?.(e) === false) return;
+    // The handle's document now: a window's moves into a page of its own once placed (ADR 0201).
+    const doc = handle.ownerDocument;
+    const win = doc.defaultView ?? window;
+    const root = doc.documentElement;
     // Native selection begins on press, before the movement threshold. Cancelling only pointermove
     // is too late, especially when focusing the window redraws the title under the pointer.
     e.preventDefault();
