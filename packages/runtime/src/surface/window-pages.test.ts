@@ -138,12 +138,13 @@ describe("window pages", () => {
     expect(made.removeEventListener).toHaveBeenCalledWith("focusin", expect.any(Function), true);
   });
 
-  it("leave every window in the page where no popup opens, asking once", () => {
+  it("leave a window in the page where its popup does not open, asking once for it", () => {
     const open = vi.fn(() => null);
     const pages = windowPages(document, layer, open);
     expect(pages.host("a", 10, 10)).toBeNull();
+    expect(pages.host("a", 10, 10)).toBeNull();
     expect(pages.host("b", 10, 10)).toBeNull();
-    expect(open).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledTimes(2);
   });
 
   it("open a page as a popup of the window's size", () => {
