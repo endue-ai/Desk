@@ -20,6 +20,10 @@ use crate::scene::Scene;
 #[derive(Clone, Debug)]
 pub struct PointerSettings {
     pub underlay: Option<String>,
+    /// The start of the ids of the underlay's own pages: the windows its script lays out in pages
+    /// of their own (ADR 0201). The keys treat each as the underlay: a press on one waits for the
+    /// page's answer, and the page's keymap runs its keys.
+    pub pages: Option<String>,
     /// The OS's double-click time.
     pub double_click: Duration,
     /// How far, in screen pixels, a second press may land from the first and still count.
@@ -30,9 +34,21 @@ impl Default for PointerSettings {
     fn default() -> Self {
         PointerSettings {
             underlay: None,
+            pages: None,
             double_click: Duration::from_millis(500),
             slop: 4.0,
         }
+    }
+}
+
+impl PointerSettings {
+    /// Whether `surface` is the underlay's: the underlay, or one of its own pages.
+    pub fn page_owned(&self, surface: &str) -> bool {
+        self.underlay.as_deref() == Some(surface)
+            || self
+                .pages
+                .as_deref()
+                .is_some_and(|p| surface.starts_with(p))
     }
 }
 
@@ -68,10 +84,15 @@ impl Pointer {
         targets.surface_at(scene, self.at)
     }
 
-    /// Who hears the pointer with `main` the surface it is for: it, and the underlay when `main` is
-    /// another surface.
-    fn listeners(main: Option<&str>, settings: &PointerSettings) -> Vec<String> {
+    /// Who hears the pointer with `main` the surface it is for: it, the window's own page it lies
+    /// in (ADR 0201), and the underlay when `main` is another surface.
+    fn listeners(main: Option<&str>, settings: &PointerSettings, targets: &Targets) -> Vec<String> {
         let mut all: Vec<String> = main.map(str::to_owned).into_iter().collect();
+        if let Some(page) = main.and_then(|m| targets.page_of(m))
+            && Some(page) != main
+        {
+            all.push(page.to_owned());
+        }
         if let Some(underlay) = settings.underlay.as_deref()
             && main.is_some_and(|m| m != underlay)
         {
@@ -117,7 +138,7 @@ impl Pointer {
             .capture
             .clone()
             .or_else(|| under.as_ref().map(|(s, _)| s.clone()));
-        let listeners = Self::listeners(main.as_deref(), settings);
+        let listeners = Self::listeners(main.as_deref(), settings, targets);
         let mut out = self.hand_over(listeners.clone());
         for surface in &listeners {
             let point = self.point_in(surface, targets, under.as_ref());
@@ -153,7 +174,7 @@ impl Pointer {
             }
             self.held.push(button);
             let clicks = self.count(button, now, settings);
-            let listeners = Self::listeners(self.capture.as_deref(), settings);
+            let listeners = Self::listeners(self.capture.as_deref(), settings, targets);
             let mut out = self.hand_over(listeners.clone());
             for surface in &listeners {
                 let point = self.point_in(surface, targets, under.as_ref());
@@ -171,7 +192,7 @@ impl Pointer {
             .last
             .filter(|p| p.button == button)
             .map_or(1, |p| p.clicks);
-        let listeners = Self::listeners(self.capture.as_deref(), settings);
+        let listeners = Self::listeners(self.capture.as_deref(), settings, targets);
         let mut out: Vec<CompositorMessage> = listeners
             .iter()
             .map(|surface| {
@@ -186,7 +207,7 @@ impl Pointer {
         if self.held.is_empty() && self.capture.take().is_some() {
             // Released: the pointer belongs to what is under it again.
             let main = under.as_ref().map(|(s, _)| s.clone());
-            out.extend(self.hand_over(Self::listeners(main.as_deref(), settings)));
+            out.extend(self.hand_over(Self::listeners(main.as_deref(), settings, targets)));
         }
         (out, None)
     }

@@ -62,6 +62,8 @@ pub struct Targets {
     /// The windows, back to front, and the page that hears a point inside one off its surfaces.
     areas: Vec<Area>,
     page: Option<String>,
+    /// The window's own page each surface lies in (ADR 0201).
+    pages: HashMap<String, String>,
 }
 
 impl Targets {
@@ -71,6 +73,18 @@ impl Targets {
         self.nodes.clear();
         self.overlays.clear();
         self.areas.clear();
+        self.pages.clear();
+    }
+
+    /// Surface `surface` lies in `page`, its window's own page (ADR 0201): that page hears the
+    /// pointer on `surface` as well, as the underlay does, so it sees a press on its window.
+    pub fn set_page_of(&mut self, surface: &str, page: &str) {
+        self.pages.insert(surface.to_owned(), page.to_owned());
+    }
+
+    /// The window's own page surface `surface` lies in, if it lies in one.
+    pub fn page_of(&self, surface: &str) -> Option<&str> {
+        self.pages.get(surface).map(String::as_str)
     }
 
     /// The windows drawn now, back to front: a point inside one that none of its surfaces shows is

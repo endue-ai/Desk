@@ -64,7 +64,8 @@ impl InputRouter {
         if matches!(decision, KeyDecision::Run { .. }) {
             self.hold_keys(now);
         }
-        let underlay = self.settings.underlay.as_deref() == Some(focus.as_str());
+        // The page runs its keymap itself, on its own pages as well (ADR 0201), so its keys reach it.
+        let underlay = self.settings.page_owned(&focus);
         if decision.is_desks() && !underlay {
             self.keys_down.insert(key.code.clone(), None);
             return vec![Out::DeskKey {

@@ -75,17 +75,19 @@ impl InputRouter {
         match self.focus.as_deref() {
             None => true,
             Some(focus) => {
-                Some(focus) == self.settings.underlay.as_deref()
+                self.settings.page_owned(focus)
                     || self.targets.in_window(focus)
                     || !self.targets.shown(focus)
             }
         }
     }
 
-    /// The surface a press on `surface` gives the keys to: that surface, but a press on the page
-    /// leaves them where its focus rests (a window's title bar or divider is its window's).
+    /// The surface a press on `surface` gives the keys to: that surface, but a press on the page or
+    /// on a page of its own leaves them where its focus rests (a window's title bar or divider is
+    /// its window's) until the page says where the press put them.
     pub(super) fn pressed_keys(&self, surface: &str) -> String {
-        if Some(surface) != self.settings.underlay.as_deref() || self.page == PageFocus::Own {
+        let underlay = Some(surface) == self.settings.underlay.as_deref();
+        if !self.settings.page_owned(surface) || (underlay && self.page == PageFocus::Own) {
             return surface.to_owned();
         }
         self.at_rest().unwrap_or_else(|| surface.to_owned())
