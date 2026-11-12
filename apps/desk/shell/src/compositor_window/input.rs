@@ -177,7 +177,15 @@ impl CompositorWindow {
 
     /// The page moved the DOM's focus: to a plugin surface's place (ADR 0160), to an element of
     /// its own (`own`), or to rest on nothing of its own, where the keys follow the window in use.
-    pub fn page_focus(&mut self, event_loop: &ActiveEventLoop, surface: Option<String>, own: bool) {
+    /// An `answer` to a press on the page or a key the desk ran sends on what was typed since,
+    /// once the keys are where the window manager has the window in use now.
+    pub fn page_focus(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        surface: Option<String>,
+        own: bool,
+        answer: bool,
+    ) {
         let made = self.hosted.surfaces().made();
         let surface = surface.filter(|s| made.iter().any(|(host, _, _)| host == s));
         let said = match surface {
@@ -185,7 +193,12 @@ impl CompositorWindow {
             None if own => PageFocus::Own,
             None => PageFocus::Rest,
         };
-        let outs = self.router.page_focus(said);
+        let mut outs = self.router.page_focus(said);
+        if answer {
+            let in_use = self.surface_in_use();
+            outs.extend(self.router.in_use(in_use.as_deref()));
+            outs.extend(self.router.page_answered(Instant::now()));
+        }
         self.apply(event_loop, outs);
     }
 

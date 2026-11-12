@@ -8,6 +8,7 @@
 //! - `pointer`: hit test, capture while a press is held, leave, clicks.
 //! - `keys` and `keymap`: the shell keymap (ADR 0118) decides first; the rest goes to the focus.
 //! - `follow`: the focus follows the window in use where the page's own focus rests on nothing.
+//! - `hold`: what is typed after a press on the page or a key the desk ran waits for its answer.
 //! - `ime`: compositions and commits for the focused surface; its caret for the candidate window.
 //! - `cursor`: the cursor of the surface the pointer is for, or of a drag.
 //! - `dnd`: ADR 0119's broker, between surfaces and from the OS.
@@ -17,6 +18,7 @@ pub mod dnd;
 pub mod events;
 mod focus;
 pub mod follow;
+pub mod hold;
 pub mod ime;
 pub mod keymap;
 mod keys;

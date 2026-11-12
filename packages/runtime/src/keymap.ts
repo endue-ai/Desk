@@ -47,6 +47,7 @@ export class Keymap {
   #entries: KeyEntry[] = [];
   #unbind: Array<() => void> = [];
   readonly #listeners = new Set<() => void>();
+  readonly #runs = new Set<(done: Promise<boolean>) => void>();
 
   /** Without `notify` (a bare keymap in tests) a failed command is only logged. */
   constructor(router: ShortcutRouter, commands: Commands, notify: Notify = () => {}) {
@@ -62,7 +63,8 @@ export class Keymap {
     this.#unbind = this.#resolution.bindings.map((resolved) =>
       this.#router.bind(resolved.combo, () => {
         if (!this.#commands.has(resolved.command)) return false;
-        void runGesture(this.#desk, resolved.command, resolved.args);
+        const done = runGesture(this.#desk, resolved.command, resolved.args);
+        for (const listener of [...this.#runs]) listener(done);
       }),
     );
     for (const listener of [...this.#listeners]) listener();
@@ -72,6 +74,13 @@ export class Keymap {
   onChange(listener: () => void): () => void {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
+  }
+
+  /** Hear every key that runs its command, with what settles once the command has run: what is
+   * typed after it waits in the compositor until then (`compositor-focus.ts`). */
+  onRun(listener: (done: Promise<boolean>) => void): () => void {
+    this.#runs.add(listener);
+    return () => this.#runs.delete(listener);
   }
 
   bindings(): Binding[] {

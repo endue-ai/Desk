@@ -15,6 +15,7 @@ use super::cursor::{CursorChoice, Cursors};
 use super::dnd::{Broker, DndOut, DragOverlay};
 use super::events::{Input, Modifiers};
 use super::follow::PageFocus;
+use super::hold::Hold;
 use super::ime::Ime;
 use super::keymap::{KeyDecision, KeyLike, Keymap, Platform};
 use super::pointer::{Pointer, PointerSettings};
@@ -58,6 +59,8 @@ pub struct InputRouter {
     /// Where the page's own focus rests, and the window manager's surface in use (`follow.rs`).
     pub(super) page: PageFocus,
     pub(super) in_use: Option<String>,
+    /// What is typed while the page has yet to answer a press or a key the desk ran (`hold.rs`).
+    pub(super) hold: Hold,
     pub(super) window_focused: bool,
     pub(super) ime: Ime,
     pub(super) ime_allowed: bool,
@@ -82,6 +85,7 @@ impl InputRouter {
             focus: None,
             page: PageFocus::default(),
             in_use: None,
+            hold: Hold::default(),
             window_focused: true,
             ime: Ime::default(),
             ime_allowed: false,
@@ -106,6 +110,12 @@ impl InputRouter {
             out.extend(self.files(scene, now));
         }
         let before = (self.focus.clone(), self.broker.overlay());
+        if self.broker.active() {
+            out.extend(self.let_go(now));
+        }
+        if self.keep(input) {
+            return out;
+        }
         match input {
             Input::PointerMoved { x, y } => {
                 let at = Vec2::new(*x, *y);
@@ -132,22 +142,13 @@ impl InputRouter {
             Input::Wheel { .. } => {}
             Input::PointerLeft => out.extend(self.pointer.left().into_iter().map(Out::Send)),
             Input::Modifiers(mods) => {
-                self.mods = *mods;
+                out.extend(self.keyboard(input, now));
                 if self.broker.active() {
                     let at = self.pointer.at;
                     out.extend(dnd_outs(self.broker.hover(scene, &self.targets, at, *mods)));
                 }
             }
-            Input::Key(key) => out.extend(self.key(key, now)),
-            Input::Ime(ime) => {
-                let focus = self.focus.clone();
-                out.extend(
-                    self.ime
-                        .input(focus.as_deref(), ime)
-                        .into_iter()
-                        .map(Out::Send),
-                );
-            }
+            Input::Key(_) | Input::Ime(_) => out.extend(self.keyboard(input, now)),
             Input::FileHovered { path } => self.hovered.push(path.clone()),
             Input::FileDropped { path } => self.dropped.push(path.clone()),
             Input::FileHoverCancelled => {
@@ -155,10 +156,30 @@ impl InputRouter {
                     out.extend(dnd_outs(self.broker.cancel()));
                 }
             }
-            Input::WindowFocused { focused } => out.extend(self.window_focus(*focused)),
+            Input::WindowFocused { focused } => {
+                out.extend(self.let_go(now));
+                out.extend(self.window_focus(*focused));
+            }
         }
         out.extend(self.settle(scene, before));
         out
+    }
+
+    /// A key, the modifiers or the OS input method's text, for the surface with the focus.
+    pub(super) fn keyboard(&mut self, input: &Input, now: Instant) -> Vec<Out> {
+        match input {
+            Input::Modifiers(mods) => {
+                self.mods = *mods;
+                Vec::new()
+            }
+            Input::Key(key) => self.key(key, now),
+            Input::Ime(ime) => {
+                let focus = self.focus.clone();
+                let sent = self.ime.input(focus.as_deref(), ime);
+                sent.into_iter().map(Out::Send).collect()
+            }
+            _ => Vec::new(),
+        }
     }
 
     fn button(
@@ -169,6 +190,10 @@ impl InputRouter {
         now: Instant,
     ) -> Vec<Out> {
         let mut out = Vec::new();
+        if !pressed && self.holding() {
+            // The page answers once it handled the release: the wait counts from there.
+            self.hold_keys(now);
+        }
         if self.broker.active() && !pressed && self.pointer.held == [button] {
             let at = self.pointer.at;
             out.extend(dnd_outs(self.broker.release(
@@ -195,6 +220,11 @@ impl InputRouter {
         if let Some(surface) = pressed_on {
             if !self.keymap.pending().is_empty() {
                 self.keymap.cancel();
+            }
+            // What a press on the page does to the keys is the page's to say (the talk pill opens
+            // its line and focuses it): what is typed next waits for its answer.
+            if self.settings.underlay.as_deref() == Some(surface.as_str()) {
+                self.hold_keys(now);
             }
             let keys = self.pressed_keys(&surface);
             out.extend(self.focus(Some(&keys)));
@@ -244,6 +274,7 @@ impl InputRouter {
     pub fn tick(&mut self, scene: &Scene, now: Instant) -> Vec<Out> {
         let before = (self.focus.clone(), self.broker.overlay());
         let mut out = self.files(scene, now);
+        out.extend(self.hold_tick(now));
         out.extend(dnd_outs(self.broker.tick(&self.targets, now)));
         let ms = self.millis(now);
         self.keymap.tick(ms);

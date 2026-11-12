@@ -75,7 +75,7 @@ describe("the page's focus report (#56)", () => {
     const input = document.createElement("input");
     document.body.append(input);
     const sent: PageFocus[] = [];
-    const stop = startCompositorFocus(window, (focus) => sent.push(focus));
+    const reporter = startCompositorFocus(window, (focus) => sent.push(focus));
     focus(notes);
     await tick();
     // Out of one place and into the next in one move: only where it lands is said.
@@ -96,9 +96,82 @@ describe("the page's focus report (#56)", () => {
       { surface: null, own: true },
       { surface: null, own: false },
     ]);
-    stop();
+    reporter.stop();
     focus(notes);
     await tick();
     expect(sent).toHaveLength(4);
+  });
+});
+
+describe("the page's answers (what is typed waits for them in the compositor)", () => {
+  const said: Array<[PageFocus, boolean]> = [];
+  let reporter: ReturnType<typeof startCompositorFocus> | undefined;
+  const start = () => {
+    said.length = 0;
+    reporter = startCompositorFocus(window, (focus, answer) => said.push([focus, answer]));
+    return reporter;
+  };
+  afterEach(() => reporter?.stop());
+
+  it("says a move by the end of the task that made it, before anything later runs", async () => {
+    start();
+    const input = document.createElement("input");
+    document.body.append(input);
+    let timer = false;
+    setTimeout(() => {
+      timer = true;
+    }, 0);
+    focus(input);
+    await Promise.resolve();
+    expect(timer, "no turn passed").toBe(false);
+    expect(said).toEqual([[{ surface: null, own: true }, false]]);
+  });
+
+  it("answers a press once its release is handled, also when nothing moved", async () => {
+    start();
+    const input = document.createElement("input");
+    document.body.append(input);
+    // The talk pill's click opens its line and focuses it, after the pointer went up.
+    window.addEventListener("click", () => focus(input), { once: true });
+    window.dispatchEvent(new PointerEvent("pointerup"));
+    window.dispatchEvent(new MouseEvent("click"));
+    await tick();
+    expect(said).toEqual([
+      [{ surface: null, own: true }, false],
+      [{ surface: null, own: true }, true],
+    ]);
+    // A press on the desk that moves nothing is answered all the same.
+    window.dispatchEvent(new PointerEvent("pointerup"));
+    await tick();
+    expect(said.at(-1)).toEqual([{ surface: null, own: true }, true]);
+  });
+
+  it("answers a key the desk ran by the move its command made, or once it ran", async () => {
+    const focusing = start();
+    const palette = place("main.desk-palette").place;
+    let shown = () => {};
+    // ⌘K: the palette's place takes the page's focus while its command runs.
+    focusing.ran(
+      new Promise<void>((resolve) => {
+        shown = resolve;
+      }),
+    );
+    focus(palette);
+    await Promise.resolve();
+    expect(said).toEqual([[{ surface: "main.desk-palette", own: false }, true]]);
+    shown();
+    await tick();
+    expect(said, "answered once").toHaveLength(1);
+    // ⌘S: nothing moves; the answer comes once the save ran.
+    focusing.ran(Promise.resolve(true));
+    await tick();
+    expect(said).toEqual([
+      [{ surface: "main.desk-palette", own: false }, true],
+      [{ surface: "main.desk-palette", own: false }, true],
+    ]);
+    // A command that failed is answered too.
+    focusing.ran(Promise.reject(new Error("no")));
+    await tick();
+    expect(said).toHaveLength(3);
   });
 });

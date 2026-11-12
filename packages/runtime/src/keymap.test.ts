@@ -102,4 +102,38 @@ describe("Keymap", () => {
     expect(router.handle(press("s", { meta: true }))).toBe(true);
     await expect.poll(() => ran).toEqual(["desk.files.save-all"]);
   });
+
+  it("says when a key runs its command and when that command has run", async () => {
+    const router = new ShortcutRouter({ platform: "mac" });
+    const registry = stubCommands((event: BridgeEvent) => stub.emit(event));
+    const stub = browserStub({ ...registry.handlers });
+    const commands = new Commands(new BridgeClient(stub));
+    let finish = () => {};
+    const shown = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    commands.define("desk.palette.open", { title: "Open", owner: "desk", run: () => shown });
+    const keymap = new Keymap(router, commands);
+    keymap.apply([{ key: "Mod+K", command: "desk.palette.open", owner: "desk" }]);
+    commands.setActive(["desk"]);
+    await commands.settled();
+    const runs: Promise<boolean>[] = [];
+    const off = keymap.onRun((done) => runs.push(done));
+    // A prefix, or a key bound to nothing that is on, runs nothing: nothing to wait for.
+    expect(router.handle(press("j", { meta: true }))).toBe(false);
+    expect(runs).toHaveLength(0);
+    expect(router.handle(press("k", { meta: true }))).toBe(true);
+    expect(runs, "heard as the key runs, before its command answers").toHaveLength(1);
+    let settled = false;
+    void runs[0]?.then(() => {
+      settled = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(settled, "the palette is not shown yet").toBe(false);
+    finish();
+    await expect(runs[0]).resolves.toBe(true);
+    off();
+    router.handle(press("k", { meta: true }));
+    expect(runs).toHaveLength(1);
+  });
 });

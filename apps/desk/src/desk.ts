@@ -155,11 +155,13 @@ const keys = {
 const stopKeys = startCompositorKeys(keys, (report) => {
   void invoke("compositor_keys", report as unknown as Record<string, unknown>);
 });
-const stopFocus = startCompositorFocus(window, ({ surface, own }) => {
-  void invoke("compositor_focus", { surface, own });
+const focus = startCompositorFocus(window, ({ surface, own }, answer) => {
+  void invoke("compositor_focus", { surface, own, answer });
 });
+// What is typed after a key the desk runs waits until the page says where it left the keys.
+const offRuns = desk.runtime.keymap.onRun((done) => focus.ran(done));
 const stopCompositor = () => {
-  for (const off of [stopDesk, stopKeys, stopFocus, () => pages.dispose()]) off();
+  for (const off of [stopDesk, stopKeys, offRuns, focus.stop, () => pages.dispose()]) off();
   for (const listening of [offLive, offWm, offHeld, offRun, offMap])
     void listening.then((off) => off());
 };

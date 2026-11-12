@@ -263,6 +263,8 @@ fn the_desks_keymap_takes_its_chords_first_and_every_key_while_a_prefix_waits() 
         kinds(&palette).is_empty(),
         "a.one never hears ⌘K, its release neither"
     );
+    // What is typed next waits until the page says where ⌘K left the keys (input_hold.rs).
+    d.answer();
     // An unbound chord reaches the surface: the plugin's own ⌘B.
     assert_eq!(
         kinds(&d.key("b", "KeyB", Some("b"), META)),
@@ -287,6 +289,7 @@ fn the_desks_keymap_takes_its_chords_first_and_every_key_while_a_prefix_waits() 
         ),
         "{p:?}"
     );
+    d.answer();
     // Without a prefix, plain keys and Escape are the plugin's first, as in Stage 1.
     assert_eq!(
         kinds(&d.key("p", "KeyP", Some("p"), NO_MODS)),
@@ -316,6 +319,7 @@ fn the_underlay_runs_the_keymap_itself_so_its_keys_reach_it() {
         .apply(&[entry("Mod+K Mod+S", "desk.files.save-all", "desk")], None);
     d.click(10.0, 10.0);
     assert_eq!(d.router.focused(), Some(PAGE));
+    d.answer();
     assert_eq!(
         kinds(&d.key("k", "KeyK", Some("k"), META)),
         ["key.down@desk", "key.up@desk"]

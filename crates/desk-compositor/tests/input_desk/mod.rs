@@ -128,6 +128,10 @@ impl Desk {
     pub fn said(&mut self, message: SurfaceMessage) -> Vec<Out> {
         self.router.surface_message(&self.scene, &message, self.now)
     }
+    /// The page answers a press on it or a key the desk ran: what was typed since goes on.
+    pub fn answer(&mut self) -> Vec<Out> {
+        self.router.page_answered(self.now)
+    }
 }
 
 pub fn sent(out: &[Out]) -> Vec<serde_json::Value> {

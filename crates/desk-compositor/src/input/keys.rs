@@ -59,6 +59,11 @@ impl InputRouter {
         } else {
             KeyDecision::PassOn
         };
+        // The desk runs a command for it (⌘K opens the palette): what is typed next waits for the
+        // page to say where that left the keys (`hold.rs`).
+        if matches!(decision, KeyDecision::Run { .. }) {
+            self.hold_keys(now);
+        }
         let underlay = self.settings.underlay.as_deref() == Some(focus.as_str());
         if decision.is_desks() && !underlay {
             self.keys_down.insert(key.code.clone(), None);

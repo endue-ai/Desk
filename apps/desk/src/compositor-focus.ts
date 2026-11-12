@@ -5,6 +5,10 @@
 // settles, which surface's place has it, or whether an element of its own does (a field, a button):
 // the keys go there. When neither does, the focus rests on nothing of the page's own (its body, a
 // window's section) and the keys follow the window in use (ADR 0192).
+//
+// What is typed after a press on the page, or after a key the desk ran, waits in the compositor
+// until this page answers it (`crates/desk-compositor/src/input/hold.rs`): the talk pill opens its
+// line, ⌘K opens the palette, and only then do the keys know where to go.
 
 /** The surface host whose place has the page's focus; null when the page itself has it. */
 export function focusedSurface(doc: Document): string | null {
@@ -32,32 +36,82 @@ export function pageFocus(doc: Document): PageFocus {
   return { surface, own: surface === null && !rest };
 }
 
+/** The reporter `startCompositorFocus` starts. */
+export interface CompositorFocus {
+  /** A key the desk ran (`done` settles when its command has): answer it once its command moved
+   * the focus, or settled without moving it. */
+  ran(done: Promise<unknown>): void;
+  stop(): void;
+}
+
 /**
- * Report the page's focus when it changes, after a focus move settles (the focus leaves one
- * element before it reaches the next); returns the function that stops. Nothing is said while the
- * window is in the background: its focus did not move, the app's did.
+ * Report the page's focus when it changes, at the end of the task that moved it (the focus leaves
+ * one element before it reaches the next), and answer each press on the page once its release is
+ * handled (the talk pill's click opens and focuses its line) and each key the desk ran. Nothing is
+ * said while the window is in the background: its focus did not move, the app's did. `answer`
+ * marks an answer, said even when nothing moved.
  */
-export function startCompositorFocus(win: Window, send: (focus: PageFocus) => void): () => void {
+export function startCompositorFocus(
+  win: Window,
+  send: (focus: PageFocus, answer: boolean) => void,
+): CompositorFocus {
   let last: PageFocus | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const tell = () => {
-    timer = undefined;
-    if (!win.document.hasFocus()) return;
+  let stopped = false;
+  let queued = false;
+  let released: ReturnType<typeof setTimeout> | undefined;
+  /** Keys the desk ran whose answer is still to come. */
+  let keys = 0;
+  const tell = (answer: boolean) => {
+    if (stopped || !win.document.hasFocus()) return;
     const now = pageFocus(win.document);
-    if (now.surface === last?.surface && now.own === last.own) return;
+    if (!answer && now.surface === last?.surface && now.own === last.own) return;
     last = now;
-    send(now);
+    send(now, answer);
   };
-  const schedule = () => {
-    if (timer === undefined) timer = setTimeout(tell, 0);
+  const moved = (event: Event) => {
+    // On its way to another element: that one's focusin says where it landed.
+    if (event.type === "focusout" && (event as FocusEvent).relatedTarget) return;
+    if (queued) return;
+    queued = true;
+    queueMicrotask(() => {
+      queued = false;
+      // A key the desk ran that moved the focus (⌘K and the palette's place) is answered by it.
+      const answer = keys > 0;
+      keys = 0;
+      tell(answer);
+    });
   };
-  win.addEventListener("focusin", schedule, true);
-  win.addEventListener("focusout", schedule, true);
-  win.addEventListener("blur", schedule);
-  return () => {
-    if (timer !== undefined) clearTimeout(timer);
-    win.removeEventListener("focusin", schedule, true);
-    win.removeEventListener("focusout", schedule, true);
-    win.removeEventListener("blur", schedule);
+  // After the whole release (pointerup, then the click it makes), so what the click did counts.
+  const pressed = () => {
+    if (released !== undefined) return;
+    released = setTimeout(() => {
+      released = undefined;
+      tell(true);
+    }, 0);
+  };
+  win.addEventListener("focusin", moved, true);
+  win.addEventListener("focusout", moved, true);
+  win.addEventListener("blur", moved);
+  win.addEventListener("pointerup", pressed, true);
+  win.addEventListener("pointercancel", pressed, true);
+  return {
+    ran(done) {
+      keys += 1;
+      const settled = () => {
+        if (keys === 0) return;
+        keys = 0;
+        queueMicrotask(() => tell(true));
+      };
+      void done.then(settled, settled);
+    },
+    stop() {
+      stopped = true;
+      if (released !== undefined) clearTimeout(released);
+      win.removeEventListener("focusin", moved, true);
+      win.removeEventListener("focusout", moved, true);
+      win.removeEventListener("blur", moved);
+      win.removeEventListener("pointerup", pressed, true);
+      win.removeEventListener("pointercancel", pressed, true);
+    },
   };
 }
