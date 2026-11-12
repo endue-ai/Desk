@@ -124,5 +124,7 @@ impl CompositorWindow {
         }
         self.register(drawn.shown, &drawn.pages);
         self.tip_draw();
+        // A window's page opened since the last look is laid out and given its focus (ADR 0201).
+        self.place_window_pages();
     }
 }
