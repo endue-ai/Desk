@@ -170,18 +170,44 @@ export class SurfaceHost {
     for (const listener of [...this.#listeners]) listener();
   }
 
-  /** Show or hide a surface without unloading it; a shown surface takes the keyboard focus. */
+  /**
+   * Show or hide a surface without unloading it; a shown surface takes the keyboard focus. An
+   * overlay with the focus that hides gives it to the overlay still shown in front (a permission
+   * question answered over the palette leaves the keys with the palette, not with the window under
+   * them both).
+   */
   show(id: string, visible: boolean): void {
     const section = this.#surfaces.get(id);
     if (!section) return;
+    const had = !visible && section.contains(section.ownerDocument.activeElement);
     section.hidden = !visible;
     this.#changed();
-    if (!visible) return;
+    if (!visible) {
+      const front = had ? this.#frontOverlay() : undefined;
+      if (front) this.#focusView(front);
+      return;
+    }
     // An overlay shown over another (the palette over a view) is drawn above it.
     if (section.classList.contains("desk-surface--overlay"))
       section.style.zIndex = String(OVERLAY_Z + ++this.#raised);
+    this.#focusView(id);
+  }
+
+  #focusView(id: string): void {
     const view = this.#views.get(id);
     if (view && !this.#parked.has(id)) view.focus();
+  }
+
+  /** The overlay shown in front of the others, if one is shown. */
+  #frontOverlay(): string | undefined {
+    let front: string | undefined;
+    let top = Number.NEGATIVE_INFINITY;
+    for (const [id, section] of this.#surfaces) {
+      if (!section.classList.contains("desk-surface--overlay") || !this.visible(id)) continue;
+      const z = Number(section.style.zIndex) || 0;
+      if (z >= top) [front, top] = [id, z];
+    }
+    return front;
   }
 
   /** Shown and on the page: a section a window host put away is not one to cycle to. */
