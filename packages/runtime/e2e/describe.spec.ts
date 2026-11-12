@@ -38,6 +38,8 @@ test.describe("desk.describe", () => {
   test("Describe… from the palette describes a picked setting with its layer", async ({ page }) => {
     await open(page);
     await page.keyboard.press("Control+K");
+    // What is typed before the palette has the keyboard is the desk's (palette-order.spec.ts).
+    await expect(frame(page).getByTestId("query")).toBeFocused();
     await page.keyboard.type("Describe");
     await expect(frame(page).getByRole("option").first()).toContainText("Describe");
     await page.keyboard.press("Enter");

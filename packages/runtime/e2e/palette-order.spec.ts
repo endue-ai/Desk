@@ -38,6 +38,10 @@ test("a plugin's hit that arrives ahead of a command is the selected row, and En
   });
   await expect(page.locator('[data-surface="test.counter"]')).toHaveCount(0);
   await page.keyboard.press("Control+K");
+  // What is typed before the palette has the keyboard is the desk's. It takes the keyboard once the
+  // desk has handed it the open and the registry has answered: milliseconds no person types in, but
+  // under load Chromium ran this test's queued keys in that gap and "counter" never reached it.
+  await expect(frame(page).getByTestId("query")).toBeFocused();
   await page.keyboard.type("counter");
   const first = frame(page).getByRole("option").first();
   await expect(first).toHaveAttribute("data-id", "plugin:test.counter");

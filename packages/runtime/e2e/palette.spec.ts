@@ -41,6 +41,8 @@ test.describe("desk.palette", () => {
   }) => {
     await open(page);
     await page.keyboard.press("Control+K");
+    // What is typed before the palette has the keyboard is the desk's (palette-order.spec.ts).
+    await expect(frame(page).getByTestId("query")).toBeFocused();
     await page.keyboard.type("do not disturb");
     await page.keyboard.press("Enter");
     await expect(page.locator(palette)).toBeHidden();
@@ -170,6 +172,7 @@ test.describe("desk.palette: a command that fails", () => {
   test("a command that fails from the palette says why", async ({ page }) => {
     await open(page);
     await page.keyboard.press("Control+K");
+    await expect(frame(page).getByTestId("query")).toBeFocused();
     await page.keyboard.type("Show a plugin");
     await expect(frame(page).getByRole("option").first()).toContainText("Show a plugin's surface");
     await page.keyboard.press("Enter");
