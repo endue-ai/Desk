@@ -320,7 +320,13 @@ export function mountSurfaces(
     });
   };
   draw();
+  // A window's page that opens later (they open spaced) takes the window over on the next draw.
+  const offPageOpened = pages?.watch(() => {
+    queueMicrotask(draw);
+    return () => {};
+  });
   const offs = [
+    ...(offPageOpened ? [offPageOpened] : []),
     ctx.store.watch(
       (s) => [
         windowsOf(s),

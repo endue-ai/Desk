@@ -69,7 +69,8 @@ const desk = mountDesk({
   windowManager: seam.host,
   pages,
   windowPages: (layer) => {
-    ownPages = windowPages(document, layer, popupOpener(window));
+    // One at a time, 50 ms apart: no burst of browsers over the plugins' first frames (#157).
+    ownPages = windowPages(document, layer, popupOpener(window), { spacing: 50 });
     return ownPages;
   },
   root,

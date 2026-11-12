@@ -117,19 +117,18 @@ function mirrorStyles(from: HTMLHeadElement, to: HTMLHeadElement): () => void {
 }
 
 /**
- * Window `name`'s page fresh from its opener: the page's root, body, base and style sheets copied
- * in, and the windows' layer under copies of its ancestors. The layer copy, and the stop of the
- * mirrors. Its title is its name, so DevTools and the app e2e tell the pages apart.
+ * Window `name`'s page fresh from its opener: the page's root, body and style sheets copied in, and
+ * the windows' layer under copies of its ancestors (its base URL and its security policy are its
+ * opener's, as a blank popup's are). The layer copy, and the stop of the mirrors. Its title is its
+ * name, so DevTools and the app e2e tell the pages apart.
  */
 function furnish(win: Window, name: string, page: Document, layer: HTMLElement): Page {
   const doc = win.document;
   const offs = [mirror(page.documentElement, doc.documentElement)];
   if (page.body) offs.push(mirror(page.body, doc.body));
-  const base = doc.createElement("base");
-  base.href = page.baseURI;
   const title = doc.createElement("title");
   title.textContent = name;
-  doc.head.replaceChildren(base, title);
+  doc.head.replaceChildren(title);
   offs.push(mirrorStyles(page.head, doc.head));
   const chain: HTMLElement[] = [];
   for (let el: HTMLElement | null = layer; el && el !== page.body; el = el.parentElement) {
@@ -153,12 +152,20 @@ function furnish(win: Window, name: string, page: Document, layer: HTMLElement):
   };
 }
 
-/** The pages of the windows laid out in `layer` of `page`, each opened by `open`. */
-export function windowPages(page: Document, layer: HTMLElement, open: Opener): WindowPages {
+/**
+ * The pages of the windows laid out in `layer` of `page`, each opened by `open`; `spacing` ms apart
+ * when given, else at once.
+ */
+export function windowPages(
+  page: Document,
+  layer: HTMLElement,
+  open: Opener,
+  { spacing = 0 }: { spacing?: number } = {},
+): WindowPages {
   const pages = new Map<string, Page>();
   const hooks = new Set<Hook>();
-  // A page that cannot open (no popup here) leaves every window in the page from then on.
-  let refused = false;
+  // A window whose page cannot open (no popup here) stays in the page, and is not asked for again.
+  const refused = new Set<string>();
   const hook = (id: string, at: Page, run: Hook) => {
     if (!at.watched.has(run)) at.watched.set(run, run(id, at.win));
   };
@@ -181,35 +188,59 @@ export function windowPages(page: Document, layer: HTMLElement, open: Opener): W
   };
   const fromPage = takes(page);
   page.defaultView?.addEventListener("focusin", fromPage, true);
+  /** Open window `id`'s page now; its layer, or null where none opens. */
+  const openNow = (id: string, w: number, h: number): HTMLElement | null => {
+    let win: Window | null = null;
+    try {
+      win = open(PAGE_NAME + id, w, h);
+    } catch {
+      win = null;
+    }
+    if (!win?.document) {
+      refused.add(id);
+      return null;
+    }
+    const made = furnish(win, PAGE_NAME + id, page, layer);
+    const fromHere = takes(win.document);
+    win.addEventListener("focusin", fromHere, true);
+    const furnished = made.off;
+    made.off = () => {
+      win.removeEventListener("focusin", fromHere, true);
+      furnished();
+    };
+    pages.set(id, made);
+    for (const run of hooks) hook(id, made, run);
+    return made.layer;
+  };
+  // Spaced, the pages open one at a time: a desk that starts with many windows opens no burst of
+  // browsers over its plugins' first frames (a burst stopped the window in use's page, #157). A
+  // window waits in the page meanwhile; the watches hear its page open.
+  const waiting = new Map<string, [number, number]>();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const drain = () => {
+    timer = undefined;
+    const next = waiting.entries().next();
+    if (next.done) return;
+    const [id, [w, h]] = next.value;
+    waiting.delete(id);
+    openNow(id, w, h);
+    if (waiting.size) timer = setTimeout(drain, spacing);
+  };
   return {
     host(id, w, h) {
       const at = pages.get(id);
       if (at && !at.win.closed) return at.layer;
       if (at) close(id);
-      if (refused) return null;
-      let win: Window | null = null;
-      try {
-        win = open(PAGE_NAME + id, w, h);
-      } catch {
-        win = null;
-      }
-      if (!win?.document) {
-        refused = true;
-        return null;
-      }
-      const made = furnish(win, PAGE_NAME + id, page, layer);
-      const fromHere = takes(win.document);
-      win.addEventListener("focusin", fromHere, true);
-      const furnished = made.off;
-      made.off = () => {
-        win.removeEventListener("focusin", fromHere, true);
-        furnished();
-      };
-      pages.set(id, made);
-      for (const run of hooks) hook(id, made, run);
-      return made.layer;
+      if (refused.has(id)) return null;
+      if (!spacing) return openNow(id, w, h);
+      waiting.set(id, [w, h]);
+      if (timer === undefined) timer = setTimeout(drain, 0);
+      return null;
     },
-    close,
+    close(id) {
+      waiting.delete(id);
+      close(id);
+    },
     open: () => [...pages.keys()],
     watch(run) {
       hooks.add(run);
@@ -223,6 +254,8 @@ export function windowPages(page: Document, layer: HTMLElement, open: Opener): W
       };
     },
     dispose() {
+      if (timer !== undefined) clearTimeout(timer);
+      waiting.clear();
       page.defaultView?.removeEventListener("focusin", fromPage, true);
       for (const id of [...pages.keys()]) close(id);
     },
