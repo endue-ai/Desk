@@ -5,14 +5,22 @@
 // and Allow there takes it back. The asking caller is `cli` on a desk socket connection of its own
 // (a request waits for its answer, and one connection answers one line at a time); it asks for the
 // network, which none of its grants (ADR 0030) covers.
+//
+// Every card answers, the first or the seventh: a press on its button, Escape, Tab and Enter,
+// with a window's edge under its buttons (a press there went to the page alone, which gave the keys
+// to the window in use), after the palette opened and closed, over the palette (which has the keys
+// again once it is answered), two at once, and one right after the last one hid.
 import { $, browser, expect } from "@wdio/globals";
 import { DeskSocket, socketPath } from "../perf/support/socket";
-import { feed, inputState, keyPress, shellCommand } from "../support/compositor";
+import { click, feed, inputState, keyPress, shellCommand } from "../support/compositor";
 import { inFrame, press, shellReady } from "../support/desk";
 import { HOME_VAR } from "../support/driver";
-import { deskNow, run } from "../support/windows";
+import { drag, titleAt } from "../support/gestures";
+import { deskNow, inUse, rectOf, run, windowUntil } from "../support/windows";
 
 const PERMISSIONS = "endue.permissions";
+const PALETTE = "main.desk-palette";
+const MOD = process.platform === "darwin" ? { meta: true } : { ctrl: true };
 
 interface Stats {
   surfaces: Record<string, { plugin: string; rect: number[] | null; pieces: number[][] }>;
@@ -142,5 +150,147 @@ describe("a permission question always reaches the person", () => {
     await until("the list never took the keys", async () => (await inputState()).focused === host);
     await feed(keyPress("Escape", "Escape"));
     await until("Escape left the list up", async () => !(await overlay()).shown);
+  });
+});
+
+/** A chord through the compositor: `mods` held around one key. */
+const chord = (mods: Record<string, boolean>, key: string, code: string, text?: string) =>
+  feed([{ type: "modifiers", ...mods }, ...keyPress(key, code, text), { type: "modifiers" }]);
+
+const focused = async () => (await inputState()).focused;
+
+/** What the card in front asks for and what it says waits behind it, as its page shows them. */
+const asking = () =>
+  inFrame(PERMISSIONS, () =>
+    browser.execute(() => {
+      const prompt = document.querySelector<HTMLElement>("#prompt");
+      const text = (id: string) => document.getElementById(id)?.textContent ?? "";
+      return prompt?.hidden === false ? `${text("prompt-what")} ${text("prompt-waiting")}` : "";
+    }),
+  );
+
+/** Ask for `host` and wait for its card in front with the keys; the answer the person gives. */
+async function card(host: string): Promise<{ answer: Promise<Answer> }> {
+  const answer = ask(host);
+  await until(`${host}: its card never showed`, async () => (await asking()).includes(host));
+  await until(`${host}: its card is not drawn`, async () => (await overlay()).shown);
+  const { host: surface } = await overlay();
+  await until(`${host}: its card never had the keys`, async () => (await focused()) === surface);
+  return { answer };
+}
+
+/** `answer`, or a failure saying `what` when none comes: a card that heard nothing waits for ever. */
+async function within<T>(answer: Promise<T>, what: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, fail) => {
+    timer = setTimeout(() => fail(new Error(what)), 10_000);
+  });
+  try {
+    return await Promise.race([answer, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** The middle of the card's `text` button. */
+async function middleOf(text: string): Promise<[number, number]> {
+  const found = (await buttonsOf("#prompt")).buttons.find((b) => b.text === text);
+  const [left = 0, top = 0, right = 0, bottom = 0] = found?.rect ?? [];
+  if (!found) throw new Error(`the card has no ${text} button`);
+  return [(left + right) / 2, (top + bottom) / 2];
+}
+
+/** Whether `at` is on window `w`'s left grip: 6 px inside its 1 px border, clear of its corners. */
+const onLeftGrip = (w: { x: number; y: number; h: number }, [x, y]: [number, number]) =>
+  x >= w.x + 1 && x < w.x + 7 && y >= w.y + 17 && y < w.y + w.h - 17;
+
+describe("every card answers, the first or the seventh, by pointer and by keys", () => {
+  /** The window whose left edge runs under the card's buttons. */
+  let edge = { id: "", x: 0, y: 0, h: 0 };
+
+  /** Press the card's `text` button where the window's left grip lies under it. */
+  async function pressOverEdge(text: string): Promise<void> {
+    const [, y] = await middleOf(text);
+    const at: [number, number] = [edge.x + 4, y];
+    expect([text, onLeftGrip(edge, at)]).toEqual([text, true]);
+    await click(at);
+  }
+
+  it("a window's edge runs under the card's buttons", async () => {
+    // A first card says where its buttons are; Escape refuses it.
+    const { answer: first } = await card("one.example");
+    const [x, top] = await middleOf("Allow once");
+    const [, bottom] = await middleOf("Don't allow");
+    await feed(keyPress("Escape", "Escape"));
+    expect(await within(first, "Escape never answered")).toMatchObject({ granted: false });
+    await until("the overlay stayed up", async () => !(await overlay()).shown);
+    // The window in use, dragged by its title until its left edge runs under both buttons.
+    const w = inUse(await deskNow());
+    if (!w) throw new Error("no window in use");
+    const from = titleAt(rectOf(w));
+    const [dx, dy] = [x - 4 - w.x, (top + bottom) / 2 - w.h / 2 - w.y];
+    await drag(from, { x: from.x + dx, y: from.y + dy });
+    const moved = await windowUntil(w.id, (n) => Math.abs(n.x - (x - 4)) < 2, "dragged there");
+    edge = { id: moved.id, x: moved.x, y: moved.y, h: moved.h };
+  });
+
+  it("a press on a button over the window's edge answers the card", async () => {
+    const { answer } = await card("two.example");
+    await pressOverEdge("Allow once");
+    expect(await within(answer, "the press never reached the card")).toMatchObject({
+      granted: true,
+      grant: { duration: "once" },
+    });
+    await until("the overlay stayed up", async () => !(await overlay()).shown);
+  });
+
+  it("after the palette opened and closed, Tab and Enter answer the next card", async () => {
+    await chord(MOD, "k", "KeyK", "k");
+    await until("the palette never had the keys", async () => (await focused()) === PALETTE);
+    await feed(keyPress("Escape", "Escape"));
+    await until("the palette kept the keys", async () => (await focused()) !== PALETTE);
+    const { answer } = await card("three.example");
+    await feed(keyPress("Tab", "Tab"));
+    expect((await buttonsOf("#prompt")).focused).toBe("Allow once");
+    await feed(keyPress("Enter", "Enter", "\r"));
+    expect(await within(answer, "Enter never answered")).toMatchObject({ granted: true });
+  });
+
+  it("a card over the palette is in front with the keys; answered, the palette has them", async () => {
+    await chord(MOD, "k", "KeyK", "k");
+    await until("the palette never had the keys", async () => (await focused()) === PALETTE);
+    const { answer } = await card("four.example");
+    await pressOverEdge("Don't allow");
+    expect(await within(answer, "the press never reached the card")).toMatchObject({
+      granted: false,
+    });
+    await until("the palette never had the keys again", async () => (await focused()) === PALETTE);
+    await feed(keyPress("Escape", "Escape"));
+    await until("Escape never closed the palette", async () => (await focused()) !== PALETTE);
+  });
+
+  it("two cards at once, then one right after the last one hid", async () => {
+    const { answer: fifth } = await card("five.example");
+    const sixth = ask("six.example");
+    await until("the sixth never waited", async () => (await asking()).includes("1 more"));
+    await pressOverEdge("Allow once");
+    expect(await within(fifth, "the press never reached the card")).toMatchObject({
+      granted: true,
+    });
+    // The sixth comes up while the overlay is: it has the keys, and Escape refuses it.
+    await until("the sixth never showed", async () => (await asking()).includes("six.example"));
+    const { host } = await overlay();
+    await until("the sixth never had the keys", async () => (await focused()) === host);
+    await feed(keyPress("Escape", "Escape"));
+    expect(await within(sixth, "Escape never answered")).toMatchObject({ granted: false });
+    const { answer: seventh } = await card("seven.example");
+    await pressOverEdge("Don't allow");
+    expect(await within(seventh, "the press never reached the card")).toMatchObject({
+      granted: false,
+    });
+    await until("the overlay stayed up", async () => !(await overlay()).shown);
+    // Answered, the keys are with the window in use again.
+    await until("the keys stayed with the answered card", async () => (await focused()) !== host);
+    expect(inUse(await deskNow())?.id).toBe(edge.id);
   });
 });
