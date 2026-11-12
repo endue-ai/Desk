@@ -32,6 +32,7 @@ use super::PAGE;
 use super::draw_map::{MapDrawn, MapSource};
 pub(super) use super::draw_pane::{Into, surface};
 use super::hosted::Hosted;
+use crate::web_host::window_pages;
 
 /// A texture the compositor holds and its size in pixels.
 pub type Texture = (TextureId, (u32, u32));
@@ -85,6 +86,8 @@ pub struct Drawn {
     pub placed: Vec<(String, Rect)>,
     pub flushed: usize,
     pub popups: Vec<(String, desk_wm::Rect)>,
+    /// Each plugin surface drawn in a window drawn from its own page, and that page (ADR 0201).
+    pub pages: Vec<(String, String)>,
 }
 
 pub(super) fn rect(r: desk_wm::Rect) -> Rect {
@@ -279,11 +282,26 @@ pub(super) fn window(
             .chain(made.subtitle),
     )?;
     let local = |r: desk_wm::Rect| rect(r).translate(-at.min());
-    // What the page draws of it (its title bar's icon and tools, its own views, the headers of
-    // split panes), from where the page's picture shows it, at this window's place in the stack;
-    // the pointer on it goes to where the page's DOM has it.
+    // Its own page, once it painted (ADR 0201): its title bar's icon and tools, its own views and
+    // the headers of split panes from the window's own texture, at the window's place, and the
+    // pointer on it to that page; nothing of the window from the desk's page.
+    let own = window_pages::surface_of(&w.id);
+    let paged = (from.surface)(&own);
+    if let Some(texture) = paged {
+        let whole = Rect::new(0.0, 0.0, at.width, at.height);
+        let node = scene.insert(made.group, sampled(whole, texture, from.scale))?;
+        drawn.shown.push((node, target(&own, Vec2::ZERO)));
+        drawn.placed.push((own, at));
+    }
+    // Else what the page draws of it, from where the page's picture shows it, at this window's
+    // place in the stack; the pointer on it goes to where the page's DOM has it.
     let dom = Vec2::new((w.heard.x - w.page.x) as f32, (w.heard.y - w.page.y) as f32);
-    for (src, dst) in &w.page_parts {
+    let parts = if paged.is_some() {
+        &[][..]
+    } else {
+        &w.page_parts[..]
+    };
+    for (src, dst) in parts {
         let src = rect(*src);
         page_part_heard(
             scene,
@@ -307,6 +325,13 @@ pub(super) fn window(
                 title: &pane.title,
             };
             surface(scene, chrome, &into, plugin, hosted, from, drawn)?;
+            // Its window's page hears a press on it too: its DOM finds the pane and its window.
+            if paged.is_some()
+                && let Some(frame) = hosted.frame(plugin)
+            {
+                let own = window_pages::surface_of(&w.id);
+                drawn.pages.push((frame.host.clone(), own));
+            }
         }
     }
     // The title over the page's title bar, which hides what lies under the window in the page.

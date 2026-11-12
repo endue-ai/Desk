@@ -13,6 +13,7 @@ use cef::*;
 use desk_web::sender::Role;
 
 use super::WebHost;
+use super::window_pages::is_window_page;
 use crate::host::{self, Desk};
 use crate::renderer::{CALL, POST, WAKE};
 
@@ -114,13 +115,19 @@ wrap_life_span_handler! {
         // A new browser for the surface exports its tree if the surface does (#57).
         fn on_after_created(&self, browser: Option<&mut Browser>) {
             if let Some(browser) = browser {
+                // A window page's browser is made by its opener, the desk's page (ADR 0201).
+                self.host.adopted(&self.surface, browser);
                 self.host.a11y_created(&self.surface, browser);
             }
         }
 
         fn on_before_close(&self, browser: Option<&mut Browser>) {
             if let Some(browser) = browser {
-                self.host.closed(&self.surface, browser.identifier());
+                if is_window_page(&self.surface) {
+                    self.host.window_page_closed(&self.surface, browser.identifier());
+                } else {
+                    self.host.closed(&self.surface, browser.identifier());
+                }
             }
         }
     }
@@ -256,7 +263,7 @@ wrap_client! {
                 },
                 // Only the surface's page itself speaks for it; its drags go to the compositor's
                 // broker (#56), the rest to the runtime.
-                POST if frame.is_main() == 1 => {
+                POST if frame.is_main() == 1 && !is_window_page(&self.surface) => {
                     if !self.host.drag_up(&self.surface, &text) {
                         self.host.relay().up(&self.surface, text);
                     }
@@ -266,6 +273,12 @@ wrap_client! {
             1
         }
     }
+}
+
+/// The client of window page `surface`'s browser (ADR 0201): a surface's, but no bridge calls (no
+/// desk answers them) and no posts.
+pub fn window_page(host: &WebHost, surface: &str, render: RenderHandler) -> Client {
+    client(host, surface, render, None)
 }
 
 /// The client of surface `surface`'s browser.

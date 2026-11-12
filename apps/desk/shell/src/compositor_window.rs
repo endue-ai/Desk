@@ -157,6 +157,7 @@ impl CompositorWindow {
         let physical = window.inner_size();
         let settings = PointerSettings {
             underlay: Some(PAGE.to_owned()),
+            pages: Some(crate::web_host::window_pages::SURFACE.to_owned()),
             ..PointerSettings::default()
         };
         let mut router = InputRouter::new(Platform::current(), settings);

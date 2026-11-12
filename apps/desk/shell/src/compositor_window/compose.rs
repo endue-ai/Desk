@@ -122,7 +122,7 @@ impl CompositorWindow {
             );
             self.host.placed(&placed, app, Instant::now());
         }
-        self.register(drawn.shown);
+        self.register(drawn.shown, &drawn.pages);
         self.tip_draw();
     }
 }

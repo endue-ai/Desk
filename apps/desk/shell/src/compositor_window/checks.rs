@@ -142,8 +142,19 @@ impl CompositorWindow {
                 })
             })
             .collect();
+        // Each window's own page (ADR 0201): what it painted, and the texture the scene drew.
+        let pages: serde_json::Map<String, Value> = (self.host.surfaces().into_iter())
+            .filter(|s| crate::web_host::window_pages::is_window_page(s))
+            .filter_map(|s| {
+                let (counts, state, _) = self.host.counts(&s)?;
+                let texture = composed.texture_of(&s).and_then(|id| composed.frames.size(id));
+                let state = format!("{state:?}");
+                Some((s, json!({ "counts": counts, "state": state, "texture": texture })))
+            })
+            .collect();
         json!({
             "page": page,
+            "pages": pages,
             "system": { "surfaces": system, "parts": self.parts.0, "order": self.parts.1, "plugins": layers },
             "surfaces": surfaces,
             "popups": popups,

@@ -118,10 +118,15 @@ impl CompositorWindow {
                         self.gestures.pressed = button;
                         return true;
                     }
-                    let grip = super::system::on_grip(&self.hosted, at);
-                    if grip {
-                        self.router.press_to(PAGE);
+                    // A grip is found by the page that lays its window out: the window's own once
+                    // it is drawn from it (ADR 0201), else the desk's.
+                    let grip = super::system::grip_window(&self.hosted, at);
+                    if let Some(window) = &grip {
+                        let own = crate::web_host::window_pages::surface_of(window);
+                        let shown = self.router.targets.shown(&own);
+                        self.router.press_to(if shown { &own } else { PAGE });
                     }
+                    let grip = grip.is_some();
                     // Where the page hears it: a part of a window drawn ahead of the page (a glide)
                     // is the page's where the page lays it out.
                     let under = self.router.targets.surface_at(&self.scene, device);
