@@ -83,6 +83,9 @@ wrap_app! {
             // transition) left a begin frame that never ended, and the page never drew again
             // (#157, ADR 0165): animations run on the main thread, a main frame the display waits for.
             command_line.append_switch(Some(&"disable-threaded-animation".into()));
+            // The desk's page opens each window's own page without a press (ADR 0201); the shell
+            // decides every popup itself: a plugin's never opens, any other only on a press.
+            command_line.append_switch(Some(&"disable-popup-blocking".into()));
             // Chromium merges renderers once it counts more than its own memory-based limit; the live
             // budget (#37, ADR 0142) is what bounds them here, so the limit only keeps Chromium from
             // putting two plugins in one process (#44).

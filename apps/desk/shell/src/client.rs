@@ -16,17 +16,55 @@ use desk_web::sender::{Role, System};
 use crate::host::{self, Desk};
 use crate::pump::{Pump, Wake};
 use crate::renderer::{CALL, POST, WAKE};
-use crate::web_host::WebHost;
 use crate::web_host::relay::Relay;
+use crate::web_host::{WebHost, window_pages};
 
 wrap_life_span_handler! {
     pub struct ShellLifeSpan {
         role: Role,
         pump: Pump,
         windowless: bool,
+        // The web host the desk's page opens its windows' pages into (ADR 0201).
+        pages: Option<WebHost>,
     }
 
     impl LifeSpanHandler {
+        // A popup the desk's page names `desk-window:<id>` is that window's page, off screen (ADR
+        // 0201); any other opens only on a press, as Chromium's popup blocker had it.
+        #[allow(clippy::too_many_arguments)]
+        fn on_before_popup(
+            &self,
+            _browser: Option<&mut Browser>,
+            _frame: Option<&mut Frame>,
+            _popup_id: ::std::os::raw::c_int,
+            _target_url: Option<&CefString>,
+            target_frame_name: Option<&CefString>,
+            _target_disposition: WindowOpenDisposition,
+            user_gesture: ::std::os::raw::c_int,
+            popup_features: Option<&PopupFeatures>,
+            window_info: Option<&mut WindowInfo>,
+            client: Option<&mut Option<Client>>,
+            settings: Option<&mut BrowserSettings>,
+            _extra_info: Option<&mut Option<DictionaryValue>>,
+            _no_javascript_access: Option<&mut ::std::os::raw::c_int>,
+        ) -> ::std::os::raw::c_int {
+            let name = target_frame_name.map(|n| n.to_string()).unwrap_or_default();
+            let (Some(host), Some(window)) = (&self.pages, window_pages::window_of(&name)) else {
+                return i32::from(user_gesture == 0);
+            };
+            let (Some(info), Some(settings), Some(client)) = (window_info, settings, client) else {
+                return 1;
+            };
+            let size = popup_features.map_or((1, 1), |f| (f.width.max(1) as u32, f.height.max(1) as u32));
+            match host.window_page(window, size, info, settings) {
+                Some(page) => {
+                    *client = Some(page);
+                    0
+                }
+                None => 1,
+            }
+        }
+
         // CEF's own close would ask the browser's top-level window to close (`performClose:`,
         // `WM_CLOSE`, `delete_event`), and a winit window only reports that: the main one would
         // merely hide, and no browser would ever finish closing. The shell drops the window itself.
@@ -192,7 +230,7 @@ pub fn client(role: Role, pump: Pump, desk: Arc<Desk>) -> Client {
     let load = (cfg!(target_os = "macos") && role == Role::Eris).then(ClearBase::new);
     ShellClient::new(
         role,
-        ShellLifeSpan::new(role, pump, false),
+        ShellLifeSpan::new(role, pump, false, None),
         ShellDisplay::new(role, None),
         crate::guard::Requests::new(banner),
         load,
@@ -214,7 +252,7 @@ pub fn compositor_page(
 ) -> Client {
     ShellClient::new(
         Role::Main,
-        ShellLifeSpan::new(Role::Main, pump, true),
+        ShellLifeSpan::new(Role::Main, pump, true, Some(host.clone())),
         ShellDisplay::new(Role::Main, Some(host)),
         crate::guard::Requests::new(None),
         None,

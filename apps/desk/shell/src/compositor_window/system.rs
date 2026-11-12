@@ -113,18 +113,22 @@ pub fn over_windows(report: &DeskReport) -> Vec<desk_wm::Rect> {
 /// grip lies on. On an overlay over a window's edge it is the overlay's (a permission question's
 /// button over a grip never reached the question, and the keys went to the window in use).
 pub fn on_grip(hosted: &Hosted, at: Point) -> bool {
-    let Some(plan) = hosted.plan() else {
-        return false;
-    };
+    grip_window(hosted, at).is_some()
+}
+
+/// The window whose grip lies at `at`, as `on_grip` finds it: its page finds the grip (ADR 0201).
+pub fn grip_window(hosted: &Hosted, at: Point) -> Option<String> {
+    let plan = hosted.plan()?;
     let inside =
         |r: desk_wm::Rect| at.x >= r.x && at.x < r.right() && at.y >= r.y && at.y < r.bottom();
     let over = hosted.report().map(over_windows).unwrap_or_default();
     if over.into_iter().any(inside) {
-        return false;
+        return None;
     }
     (plan.windows.iter().rev())
         .find(|w| inside(w.rect))
-        .is_some_and(|w| grip_at(w.rect, at).is_some())
+        .filter(|w| grip_at(w.rect, at).is_some())
+        .map(|w| w.id.clone())
 }
 
 /// The boxes of the edge bars' plugin surfaces the page shows.

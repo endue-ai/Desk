@@ -26,6 +26,7 @@ use super::hosted::owner;
 use super::{CompositorWindow, PAGE, os_pointer, overlay};
 use crate::web_host::input as web_input;
 use crate::web_host::lifecycle::surface_of;
+use crate::web_host::window_pages;
 
 /// The runtime's keymap as the page reports it (`apps/desk/src/compositor-keys.ts`).
 #[derive(Debug, Deserialize)]
@@ -90,9 +91,15 @@ impl CompositorWindow {
     }
 
     /// The surface the window manager has in use: the one the pane in use of the window in use
-    /// shows, while it is made and awake; none for a pane the page draws.
+    /// shows, while it is made and awake; for a pane the page draws, its window's own page while it
+    /// has one (ADR 0201), else none.
     fn surface_in_use(&self) -> Option<String> {
-        let plugin = self.hosted.plan()?.focused_plugin.as_deref()?;
+        let plan = self.hosted.plan()?;
+        let Some(plugin) = plan.focused_plugin.as_deref() else {
+            let window = plan.windows.iter().find(|w| w.focused)?;
+            let own = window_pages::surface_of(&window.id);
+            return self.host.browser(&own).map(|_| own);
+        };
         let made = self.hosted.surfaces().made();
         let (host, _, _) = made
             .into_iter()
@@ -132,6 +139,15 @@ impl CompositorWindow {
         let Some(surface) = surface_of(message) else {
             return;
         };
+        // A window's own page keeps the engine's focus as the page does (ADR 0201): the runtime
+        // moves the DOM's focus into it, and hears where it lands.
+        let page_owned = surface == PAGE || window_pages::is_window_page(&surface);
+        if page_owned
+            && matches!(message, CompositorMessage::SurfaceFocusOut(_))
+            && self.router.window_focused()
+        {
+            return;
+        }
         if surface != PAGE {
             self.send_to(message);
             return;
@@ -187,7 +203,12 @@ impl CompositorWindow {
         answer: bool,
     ) {
         let made = self.hosted.surfaces().made();
-        let surface = surface.filter(|s| made.iter().any(|(host, _, _)| host == s));
+        // A plugin surface's place, or a window's own page with a field of its own focused (ADR 0201).
+        let known = |s: &String| {
+            made.iter().any(|(host, _, _)| host == s)
+                || (window_pages::is_window_page(s) && self.host.browser(s).is_some())
+        };
+        let surface = surface.filter(known);
         let said = match surface {
             Some(surface) => PageFocus::Place(surface),
             None if own => PageFocus::Own,
@@ -202,8 +223,9 @@ impl CompositorWindow {
         self.apply(event_loop, outs);
     }
 
-    /// Tell the router what each node shows, and draw the focus ring and the drag image (#56).
-    pub(super) fn register(&mut self, shown: Shown) {
+    /// Tell the router what each node shows and the window's own page each surface lies in (ADR
+    /// 0201), and draw the focus ring and the drag image (#56).
+    pub(super) fn register(&mut self, shown: Shown, pages: &[(String, String)]) {
         let router = &mut self.router;
         router.targets.clear();
         for (node, target) in shown {
@@ -211,6 +233,9 @@ impl CompositorWindow {
                 router.targets.set_owner(&target.surface, &plugin);
             }
             router.targets.surface(&self.scene, node, target);
+        }
+        for (surface, page) in pages {
+            router.targets.set_page_of(surface, page);
         }
         let scale = self.window.scale_factor() as f32;
         // Each window covers what lies under it (issue 159, finding 5); not on the spread's cards.

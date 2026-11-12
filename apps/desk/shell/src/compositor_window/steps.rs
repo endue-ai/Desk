@@ -10,6 +10,7 @@ use serde_json::json;
 
 use super::hosted::{Outcome, message};
 use super::{CompositorWindow, LIVE};
+use crate::web_host::window_pages::{self, Placed};
 
 impl CompositorWindow {
     /// Do what a look called for: the surfaces' steps, the live set and the window manager's
@@ -49,9 +50,29 @@ impl CompositorWindow {
                 .pages
                 .emit(Role::Main, LIVE, json!({ "live": live }));
         }
+        self.place_window_pages();
         // The next frame shows it, and the accessibility tree follows the surfaces (#155).
         self.shared.lock().dirty = true;
         self.a11y.changed();
+    }
+
+    /// Every window's own page at its window's size, hidden while its window is not drawn (ADR
+    /// 0201): a move changes nothing it lays out, so it paints nothing for one.
+    pub(super) fn place_window_pages(&self) {
+        let scale = self.window.scale_factor() as f32;
+        let px = |v: f64| v.round().max(1.0) as u32;
+        let placed: Vec<Placed> = self.hosted.plan().map_or_else(Vec::new, |plan| {
+            plan.windows
+                .iter()
+                .map(|w| Placed {
+                    surface: window_pages::surface_of(&w.id),
+                    size: (px(w.rect.w), px(w.rect.h)),
+                    scale,
+                    hidden: false,
+                })
+                .collect()
+        });
+        self.host.place_window_pages(&placed);
     }
 
     /// A message to the surface it is about: a native plugin's process, or a web surface's browser.

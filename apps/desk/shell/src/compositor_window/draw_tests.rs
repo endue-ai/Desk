@@ -99,6 +99,70 @@ fn the_pointer_finds_the_plugin_in_its_pane_and_the_page_everywhere_else() {
     }
 }
 
+/// Window pages (ADR 0201): once the window's own page painted, what the page draws of the window
+/// comes from that page's texture over the whole window, and nothing of it from the desk's page.
+#[test]
+fn a_window_with_its_own_page_is_drawn_from_it_and_never_from_the_desks_page() {
+    let hosted = hosted("live");
+    let own = |surface: &str| match surface {
+        "window:endue.notes" => Some((TextureId(5), (400, 300))),
+        other => textures(other),
+    };
+    let drawn_with = |surface: &dyn Fn(&str) -> Option<Texture>| {
+        let mut scene = Scene::new(1440, 900);
+        let drawn = draw(
+            &mut scene,
+            &ChromeTheme::default(),
+            &hosted,
+            &sources(surface),
+        )
+        .unwrap();
+        (scene, drawn)
+    };
+    let target = |(scene, drawn): &(Scene, super::Drawn), at: Vec2| {
+        let hit = hit_test(scene, at)?;
+        let t: &Target = &drawn.shown.iter().find(|(node, _)| *node == hit.node)?.1;
+        Some((t.surface.clone(), t.origin + hit.local_point * t.per_unit))
+    };
+    // The title bar's icon and its tools (the window at 104,190, 381 wide).
+    let (icon, tools) = (Vec2::new(122.0, 210.0), Vec2::new(464.0, 210.0));
+    let cut = drawn_with(&textures);
+    for at in [icon, tools] {
+        assert_eq!(
+            target(&cut, at).unwrap().0,
+            PAGE,
+            "before it painted: the page's parts"
+        );
+    }
+    let paged = drawn_with(&own);
+    for at in [icon, tools] {
+        let (surface, local) = target(&paged, at).unwrap();
+        assert_eq!(surface, "window:endue.notes", "{at}");
+        let from = at - Vec2::new(104.0, 190.0);
+        assert!(
+            local.distance(from) < 1e-3,
+            "from the window's top left: {local}"
+        );
+    }
+    // Its pane's body: the plugin, which lies in that page and is heard by it too.
+    assert_eq!(
+        target(&paged, Vec2::new(115.0, 241.0)).unwrap().0,
+        "main.endue-notes"
+    );
+    assert_eq!(
+        paged.1.pages,
+        [(
+            "main.endue-notes".to_owned(),
+            "window:endue.notes".to_owned()
+        )]
+    );
+    assert_eq!(
+        target(&paged, Vec2::new(700.0, 860.0)).unwrap().0,
+        PAGE,
+        "the wallpaper"
+    );
+}
+
 #[test]
 fn a_window_without_a_live_frame_shows_its_card_whose_button_runs_its_command() {
     let hosted = hosted("stopped");

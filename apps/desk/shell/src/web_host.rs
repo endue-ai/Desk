@@ -31,6 +31,7 @@ mod sink;
 pub mod stall;
 pub mod top;
 pub mod view;
+pub mod window_pages;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
