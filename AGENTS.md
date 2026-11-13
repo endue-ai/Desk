@@ -73,7 +73,8 @@ installs the commit identity and its hooks on a machine (see Boundaries).
   contracts (`specs/brain`) and their clients.
 - The compositor is endue's screen (ADR 0205). A change to `crates/desk-compositor`, `crates/desk-wm`,
   `apps/desk/shell/src/compositor_window*` or `apps/desk/shell/src/web_host/` keeps the motion gate
-  green once it lands (#247), and adds no millisecond threshold without a measurement in its ADR.
+  green (`just perf-motion`, ADR 0208), and adds no millisecond threshold without a measurement in
+  its ADR.
 - `docs/ko/`, `docs/reference/` and `brand/` are source material. Read them; change them only when a task
   says so.
 - `.github/workflows/`, `specs/` and `brand/` belong to the maintainers (see `.github/CODEOWNERS`).
