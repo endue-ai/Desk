@@ -1,10 +1,13 @@
 ---
-status: accepted
+status: superseded by 0203
 date: 2026-11-10
 decision-makers: Team endue
 ---
 
-Status: amended by ADR 0158: `desk-wm` holds the window manager's state too; the runtime sends it
+Status: superseded by ADR 0203: the compositor is no longer the desk; the OS places every window, and
+the runtime's page becomes home.
+
+Earlier: amended by ADR 0158: `desk-wm` holds the window manager's state too; the runtime sends it
 edits and keeps only the desk it publishes, and a desk without the compositor runs `desk-wm` as
 WebAssembly. Amended by ADR 0160: what stays web runs as system surfaces the compositor places (the
 desk's page, the palette's and Eris's windows), the page keeps no stand-in frame, and the CSS grid

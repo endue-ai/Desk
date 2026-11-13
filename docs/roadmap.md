@@ -1,10 +1,46 @@
 # endue Desk roadmap
 
-2026-11-05 · Team endue
+2026-11-05 · updated 2026-11-13 · Team endue
 
 This is the English edition of `docs/ko/desk-roadmap.md`, the source of truth for *why* Desk exists and
 *where* it goes. The structure is in `docs/architecture.md`, decisions that are hard to reverse in
-`docs/adr/` (this direction is ADR 0093). When a milestone ends or the direction changes, both files change.
+`docs/adr/` (this direction is ADR 0093, its order since 2026-11-13 ADR 0203). When a milestone ends or the
+direction changes, both files change.
+
+## 2026-11-13: the order changes (ADR 0203)
+
+The garage stays. What changes is where it stands. Since ADR 0140 the desk drew every window itself inside
+one OS window, and three days of fixes did not make that hold: on 2026-11-13 a shaken window still showed
+another window's pixels in one optimized frame in four, and the desk's page stopped painting until a
+restart in two runs of five. ADR 0203 leaves the screen to the OS.
+
+- **endue is the hub**: a resident core that holds the person's apps, agents, connections, memory and
+  grants, needs no window, and starts at login.
+- **Every app is a Chromium web app in an OS window of its own**, built in or made by the person. endue
+  is the app that makes apps.
+- **The island** floats anywhere on the desktop over every app: what the agents are doing, what waits
+  for an answer, Eris.
+- **Home** is an ordinary window with everything at a glance.
+- **The workspace** (the apps of one piece of work and where their windows stood, its agents, its
+  connections, the OS's own apps it used) is what endue owns: set up in one go, saved and recalled.
+
+The milestones below keep their goals; their order follows the migration in #232.
+
+| Step | Issue | What is true after it | Serves |
+| --- | --- | --- | --- |
+| 0 | #233 | The decision is on `main`; the compositor and the window manager are frozen | — |
+| 1 | #234 | One plugin runs in an OS window of its own, behind a switch | M1 |
+| 2 | #235 | Every plugin placed as a window opens in an OS window of its own | M1 |
+| 3 | #236 | Home is the runtime's page in an ordinary window; no compositor window is made | M1 |
+| 4 | #237 | endue runs with no window and starts at login | M1 · M2 |
+| 5 | #238 | The island floats over every app | M2 · M4 |
+| 6 | #239 | A plugin is an app: one format, no desk-frame API | M3 |
+| 7 | #240 | The compositor and the window manager leave the default build | M1 |
+
+Then the app that makes apps (M3), workspaces (M4) and every OS (M5). A screen of endue's own, a
+full-screen mode or a device where "one app that is one OS" is literal, comes last and by choice; the
+frozen compositor is kept for it. Where a milestone below asks for the compositor, the canvas, desktops
+or the spread, read it in this light.
 
 ## Why: the builder's garage
 

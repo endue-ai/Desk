@@ -1,8 +1,11 @@
 ---
-status: accepted
+status: superseded by 0203
 date: 2026-11-10
 decision-makers: Team endue
 ---
+
+Status: superseded by ADR 0203 (the OS owns the screen and endue owns the workspace): every app runs in
+an OS window of its own, and the compositor is frozen until a screen of endue's own takes it up.
 
 # Desk composites every window from its own process: a wgpu compositor over CEF off-screen surfaces
 

@@ -4,6 +4,9 @@ date: 2026-11-07
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0203: the floating Eris becomes the island, one surface over every app that also
+shows the agents' work and what waits for an answer (#238).
+
 # Eris floats over the OS while the desk is inactive, and Option+Enter summons her anywhere
 
 ## Context and Problem Statement
