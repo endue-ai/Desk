@@ -139,8 +139,26 @@ pub fn app(plugin: &str) -> Option<App> {
     app
 }
 
-/// Whether plugin `plugin`'s windows are OS windows of their own.
-pub fn handed(plugin: &str) -> bool {
+/// The plugin a window's plugin key belongs to: a plugin's window after its first is keyed
+/// `<plugin>@<n>` (ADR 0212, `packages/runtime/src/instances.ts`); any other key is its own.
+pub fn plugin_of(key: &str) -> &str {
+    match key.rsplit_once('@') {
+        Some((plugin, n))
+            if !plugin.is_empty()
+                && !n.starts_with('0')
+                && !n.is_empty()
+                && n.bytes().all(|b| b.is_ascii_digit()) =>
+        {
+            plugin
+        }
+        _ => key,
+    }
+}
+
+/// Whether the windows of the plugin keyed `key` (its id, or `<plugin>@<n>` for a window after
+/// its first) pop out into OS windows of their own when they show.
+pub fn handed(key: &str) -> bool {
+    let plugin = plugin_of(key);
     switch().wants(plugin, None, || app(plugin))
 }
 
