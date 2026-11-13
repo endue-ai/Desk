@@ -63,8 +63,6 @@ struct Record {
     drag: drag::DragIds,
     /// The text the surface's IME composes now.
     composing: Option<String>,
-    /// A window page given the engine's focus once it showed (ADR 0201).
-    focused: bool,
 }
 
 #[derive(Default)]
@@ -162,7 +160,6 @@ impl WebHost {
                     pacing: frames::Pacing::new(DEFAULT_PACE),
                     drag: drag::DragIds::default(),
                     composing: None,
-                    focused: false,
                 };
                 inner.records.insert(surface.clone(), record);
             }

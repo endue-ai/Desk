@@ -92,6 +92,17 @@ export function mountSurfaces(
   const layer = h("div", { class: "surfaces" });
   root.append(layer);
   const pages = ownPages?.(layer);
+  // A plugin's section stays in this page while its window lies in a page of its own (ADR 0201):
+  // its place never paints, and its focus is this page's, which the keys' routing, Ctrl+Tab and Tab
+  // across plugins follow as before; only what the window draws moves.
+  const anchors = h("div", { class: "surface-anchors" });
+  if (pages) layer.append(anchors);
+  const anchor = (entry: Entry) => {
+    if (!entry.own) return;
+    for (const plugin of entry.body.querySelectorAll<HTMLElement>(".desk-surface")) {
+      anchors.append(plugin);
+    }
+  };
   // A window's own page hears the desk's keys as the page does: the same keymap decides them.
   const offPageKeys = pages?.watch((_, win) => listenForShortcuts(win, ctx.runtime.shortcuts));
   const live = new Map<string, Entry>();
@@ -106,7 +117,13 @@ export function mountSurfaces(
    */
   const drawTitle = (entry: Entry, p: SurfacePlacement) => {
     const view = viewOf(ctx, activeView(ctx, p));
-    const shows = JSON.stringify([view.icon, view.title, view.sub, view.byEris, ctx.tr("madeByEris")]);
+    const shows = JSON.stringify([
+      view.icon,
+      view.title,
+      view.sub,
+      view.byEris,
+      ctx.tr("madeByEris"),
+    ]);
     if (entry.title.dataset.shows === shows) return;
     entry.title.dataset.shows = shows;
     render(entry.title, () => [
@@ -317,6 +334,7 @@ export function mountSurfaces(
       }
       entry.el.style.zIndex = String(at?.z ?? 1);
       entry.el.classList.toggle("is-focused", p.id === s.focused);
+      anchor(entry);
     });
   };
   draw();

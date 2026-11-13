@@ -139,14 +139,16 @@ impl CompositorWindow {
         let Some(surface) = surface_of(message) else {
             return;
         };
-        // A window's own page keeps the engine's focus as the page does (ADR 0201): the runtime
-        // moves the DOM's focus into it, and hears where it lands.
-        let page_owned = surface == PAGE || window_pages::is_window_page(&surface);
-        if page_owned
-            && matches!(message, CompositorMessage::SurfaceFocusOut(_))
-            && self.router.window_focused()
-        {
-            return;
+        // A window's own page has the engine's focus while it has the keys (ADR 0201): a field
+        // there shows its caret.
+        if window_pages::is_window_page(&surface) {
+            match message {
+                CompositorMessage::SurfaceFocusIn(_) => self.host.window_page_focus(&surface, true),
+                CompositorMessage::SurfaceFocusOut(_) => {
+                    self.host.window_page_focus(&surface, false)
+                }
+                _ => {}
+            }
         }
         if surface != PAGE {
             self.send_to(message);
