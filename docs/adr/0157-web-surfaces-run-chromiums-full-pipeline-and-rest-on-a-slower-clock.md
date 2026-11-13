@@ -10,6 +10,10 @@ ADR 0164: a long-idle surface takes no begin frames at all; its page asks for th
 Amended by ADR 0165: Chromium's threaded animations are off beside the full pipeline, whose begin
 frames otherwise stalled a page for good (#157). Amended by ADR 0185: slow frames come back for a
 surface whose last paint was a lone one, on times of its own rather than shared desk frames.
+Superseded in part by ADR 0210: the full pipeline is off in every process, as under it the desk's
+own page deadlocked when the app window was resized (#248); the prompt frames and the slow clock
+stay, a press's first frame a few milliseconds after it, and a press is held to the budgets ADR 0210
+measured, RT-16's 16 ms staying the target.
 
 # Web surfaces run Chromium's full pipeline, and long-idle ones rest on a slower clock
 

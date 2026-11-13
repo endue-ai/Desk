@@ -116,6 +116,12 @@ impl Watch {
         })
     }
 
+    /// The asks in a row so far that repeated an unmet one after begin frames: one short of
+    /// `AFTER` is a page about to be found stalled.
+    pub fn repeats(&self) -> u32 {
+        self.asks
+    }
+
     /// Whether it is stalled now: found, and nothing painted since.
     pub fn stalled(&self) -> bool {
         self.stalled

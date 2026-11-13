@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use cef::*;
 
+use crate::pipeline::{self, Pipeline};
 use crate::pump::Pump;
 use crate::renderer::ShellRenderer;
 use crate::{features, sandbox, scheme};
@@ -42,6 +43,16 @@ wrap_browser_process_handler! {
         fn on_schedule_message_pump_work(&self, delay_ms: i64) {
             self.pump.schedule(delay_ms);
         }
+
+        // The full pipeline's switch for a child the browser's own command line does not pass
+        // it to (`pipeline.rs`, ADR 0210).
+        fn on_before_child_process_launch(&self, command_line: Option<&mut CommandLine>) {
+            let Some(command_line) = command_line else { return };
+            let kind = CefString::from(&command_line.switch_value(Some(&"type".into()))).to_string();
+            if Pipeline::now().in_child(&kind) {
+                command_line.append_switch(Some(&pipeline::SWITCH.into()));
+            }
+        }
     }
 }
 
@@ -64,6 +75,12 @@ wrap_app! {
             if process_type.is_none_or(|kind| kind.to_string().is_empty()) {
                 sandbox::drop_weakening(command_line);
                 features::disable(command_line);
+                // Chromium's full pipeline (#117, ADR 0157) only where `pipeline.rs` says: none
+                // since ADR 0210, as the display's wait for every surface stopped the desk's page
+                // after a resize; a development build can ask for it to measure it again.
+                if Pipeline::now().in_browser() {
+                    command_line.append_switch(Some(&pipeline::SWITCH.into()));
+                }
             }
             for switch in ["no-startup-window", "noerrdialogs", "hide-crash-restore-bubble"] {
                 command_line.append_switch(Some(&switch.into()));
@@ -75,13 +92,11 @@ wrap_app! {
             // One renderer per site: every plugin surface has a site of its own (#36), so each runs
             // in its own process (ADR 0140).
             command_line.append_switch(Some(&"site-per-process".into()));
-            // Chromium's full pipeline (#117, ADR 0157): each stage of a frame waits for the one
-            // before it, so a begin frame from the desk's clock that a page has nothing to draw
-            // for ends at once, where the display held it a whole frame and CEF sent no other.
-            command_line.append_switch(Some(&"run-all-compositor-stages-before-draw".into()));
-            // With it, an animation on the compositor's thread (a popover's fade, a window's
-            // transition) left a begin frame that never ended, and the page never drew again
-            // (#157, ADR 0165): animations run on the main thread, a main frame the display waits for.
+            // With the full pipeline, an animation on the compositor's thread (a popover's fade, a
+            // window's transition) left a begin frame that never ended, and the page never drew
+            // again (#157, ADR 0165): animations run on the main thread, a main frame the display
+            // waits for. Kept without the full pipeline (ADR 0210), for a development build that
+            // asks for it and since nothing measured animations on the compositor's thread again.
             command_line.append_switch(Some(&"disable-threaded-animation".into()));
             // The desk's page opens each window's own page without a press (ADR 0201); the shell
             // decides every popup itself: a plugin's never opens, any other only on a press.

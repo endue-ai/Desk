@@ -15,12 +15,14 @@
 //! `frames_rhythm.rs`). `Pacing` (`frames_pacing.rs`) keeps each surface's.
 //!
 //! A press, a key, a composition or a focus change an idle surface hears (one that painted nothing
-//! for `IDLE`) is followed by a begin frame every `PROMPT` from the press on, until it paints or for
-//! `PROMPT_FOR`, whatever its pace: its paint then takes a few milliseconds rather than the next
-//! desk frames, one a stage of its pipeline. That holds because Chromium runs its full pipeline
-//! (ADR 0157, `app.rs`): a begin frame the renderer cannot use yet ends at once, where Chromium's
-//! display held it for a whole frame and CEF sends no begin frame while one is out, the frame #111
-//! saw one press in ten wait for (#117). Engine free: `clock.rs` sends the begin frames.
+//! for `IDLE`) is followed by a begin frame every `PROMPT`, from `PROMPT_AFTER` after the press on
+//! (`PROMPT_AFTER_REST` for a surface at rest), until it paints or `PROMPT_FOR` after the press,
+//! whatever its pace: its paint then comes from the first begin frame its page can use rather than
+//! the next desk frames. Chromium's display holds a begin frame the page has nothing for yet until
+//! its deadline, a desk frame on, and CEF sends no begin frame while one is out, so a prompt that
+//! comes before the page has handled the press costs a frame; the full pipeline that ended such a
+//! begin frame at once (ADR 0157) stopped the desk's page for good after a resize, and the desk runs
+//! without it (ADR 0210, `pipeline.rs`). Engine free: `clock.rs` sends the begin frames.
 //!
 //! Each paint is a GPU copy, and the GPU's first copy after a second or more without one takes
 //! milliseconds more: input to a desk that painted nothing for `COLD` (`Copies`, kept by
@@ -45,6 +47,14 @@ pub const RATE: u32 = 60;
 /// at most `PROMPT_FOR` (two desk frames).
 pub const PROMPT: Duration = Duration::from_millis(1);
 pub const PROMPT_FOR: Duration = Duration::from_micros(33_333);
+/// A press's first prompt comes this long after it (ADR 0210): time for the page to handle it, so
+/// the begin frame finds its change. At once, the press painted 17 to 20 ms after it at the median
+/// in the surface probe; 2 ms on, 6 to 8.
+pub const PROMPT_AFTER: Duration = Duration::from_millis(2);
+/// The same for a surface at rest (`Pacing::long_idle`), whose page takes longer to wake: a press
+/// on a desk at rest painted 35.5 ms after it at p95 with its prompts from 0 to 8 ms on, 28 to 29
+/// from 14 or 16.
+pub const PROMPT_AFTER_REST: Duration = Duration::from_millis(16);
 /// A surface that painted nothing for this long is idle: a press prompts it.
 pub const IDLE: Duration = Duration::from_micros(33_333);
 /// A surface that painted nothing and heard nothing for this long (and was sent `SLOW` begin

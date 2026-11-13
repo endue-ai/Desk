@@ -1,9 +1,10 @@
-// The motion gate's verdicts (`just perf-motion`, #247 and #258, ADR 0208 and ADR 0213): each run's
-// findings, the worst of the runs, and each check against the limits in e2e/perf/motion.json; the
-// sway's as `sway-` checks of their own. A check named in `known` fails today and an issue fixes it:
-// it is reported as known, and once it passes the gate fails until it is taken out of `known`, so the
-// fix says so. One named in `sometimes` fails today in some runs and not in others: a failure is
-// reported as known, a pass passes. Pure: motion.test.ts and motion-sway.test.ts.
+// The motion gate's verdicts (`just perf-motion`, #247, #258 and #248, ADR 0208, ADR 0213 and ADR
+// 0210): each run's findings, the worst of the runs, and each check against the limits in
+// e2e/perf/motion.json; the sway's as `sway-` checks of their own, the resize loop's as `loop`. A
+// check named in `known` fails today and an issue fixes it: it is reported as known, and once it
+// passes the gate fails until it is taken out of `known`, so the fix says so. One named in
+// `sometimes` fails today in some runs and not in others: a failure is reported as known, a pass
+// passes. Pure: motion.test.ts and motion-sway.test.ts.
 import { round1 } from "./stats.ts";
 
 /** What one run of the gate found. */
@@ -21,6 +22,9 @@ export interface RunFindings {
   restSharpness: number;
   /** Pages that stopped painting: unpainted after a poke, found stalled, replaced, or a restart. */
   stopped: string[];
+  /** Turns of the resize loop run, and the pages that stopped painting in it or after it (#248). */
+  loopTurns: number;
+  loopStopped: string[];
   /** Why the run tells nothing (the window did not move, no frames): it fails. */
   invalid?: string;
 }
@@ -37,7 +41,7 @@ export interface Limits {
 }
 
 type Shaken = "fps" | "smooth" | "own-pixels" | "painting" | "soft" | "valid";
-export type Check = Shaken | `sway-${Shaken | "sizes" | "scene" | "settled"}`;
+export type Check = Shaken | "loop" | `sway-${Shaken | "sizes" | "scene" | "settled"}`;
 
 export interface Verdict {
   check: Check;
@@ -71,6 +75,8 @@ export function worst(runs: readonly RunFindings[]): RunFindings {
     fromDeskPage: sum((r) => r.fromDeskPage),
     restSharpness: min((r) => r.restSharpness),
     stopped: runs.flatMap((r, i) => r.stopped.map((s) => `run ${i + 1}: ${s}`)),
+    loopTurns: sum((r) => r.loopTurns),
+    loopStopped: runs.flatMap((r, i) => r.loopStopped.map((s) => `run ${i + 1}: ${s}`)),
     ...(invalid.length ? { invalid: invalid.join("; ") } : {}),
   };
 }
@@ -117,6 +123,13 @@ export function verdicts(
       value: found.stopped.length ? found.stopped.join("; ") : "none",
       limit: "none",
       passed: found.stopped.length === 0,
+    },
+    {
+      check: "loop",
+      says: `pages that stopped painting in ${found.loopTurns} turns of app window resizes and window maximizes`,
+      value: found.loopStopped.length ? found.loopStopped.join("; ") : "none",
+      limit: "none",
+      passed: found.loopTurns > 0 && found.loopStopped.length === 0,
     },
     {
       check: "soft",

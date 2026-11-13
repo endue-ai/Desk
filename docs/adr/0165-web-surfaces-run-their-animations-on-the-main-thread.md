@@ -9,7 +9,10 @@ own.
 
 Status: amended by ADR 0170: the stall left on a locked screen came from a resize that told the
 page's browser the screen as well, which a resize now does only for a new scale; and the shell
-watches for a page that stops painting, says so and loads a plugin's page again.
+watches for a page that stops painting, says so and loads a plugin's page again. Amended by ADR
+0210: the full pipeline is off (its display deadlocked the desk's page on a resize); the animations
+stay on the main thread, and a press is held to the budgets ADR 0210 measured, RT-16's 16 ms the
+target.
 
 # Web surfaces run their animations on the main thread, so the full pipeline never stalls
 
