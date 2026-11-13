@@ -111,6 +111,11 @@ impl CompositorWindow {
         self.mapping.drawn = drawn.map;
         self.mapping.layout = layout;
         self.gestures.popups.boxes = drawn.popups;
+        let own = (drawn.placed.iter())
+            .filter_map(|(host, _)| host.strip_prefix(crate::web_host::window_pages::SURFACE))
+            .map(str::to_owned)
+            .collect();
+        self.hosted.own_pages(own);
         let pictures = crate::frame_trace::on().then(|| {
             let composed = self.shared.lock();
             let size = |s: &str| composed.frames.size(composed.texture_of(s)?);

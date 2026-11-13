@@ -66,6 +66,17 @@ wrap_render_handler! {
             info: Option<&AcceleratedPaintInfo>,
         ) {
             let Some(info) = info else { return };
+            // A view's picture laid out for another size than its texture is not drawn (#252). The
+            // view's lock is let go before `skipped` takes it again.
+            let take = if type_ == PaintElementType::VIEW {
+                let fills = paint::fills(&info.extra);
+                self.view.lock().skips.paint(fills)
+            } else {
+                paint::Take::Attach { whole: false }
+            };
+            let paint::Take::Attach { whole } = take else {
+                return self.skipped(&info.extra);
+            };
             let Some(painted) = paint::painted(info) else {
                 self.failed("CEF painted without a shared texture".into());
                 return;
@@ -73,7 +84,7 @@ wrap_render_handler! {
             let Some((surface, frame, generation)) = self.next_frame(type_, painted.size) else {
                 return;
             };
-            let damage = paint::damage(dirty_rects, painted.size);
+            let damage = paint::damage(dirty_rects.filter(|_| !whole), painted.size);
             let damage_px = damage.iter().map(|r| r.width * r.height).sum();
             let attach = paint::attach(&surface, frame, generation, &painted, damage);
             match import(&*self.sink, &attach, info) {
@@ -210,6 +221,21 @@ impl SurfaceRender {
         }
         let (frame, generation) = view.popup.next_frame(size)?;
         Some((popup::id(&view.surface), frame, generation))
+    }
+
+    /// A paint not drawn: its picture does not fill its texture (`paint::fills`).
+    fn skipped(&self, info: &AcceleratedPaintInfoCommon) {
+        let surface = {
+            let mut view = self.view.lock();
+            view.counts.unfilled += 1;
+            view.surface.clone()
+        };
+        let (coded, c, laid) = (&info.coded_size, &info.content_rect, &info.source_size);
+        crate::frame_trace::line(
+            "unfilled",
+            serde_json::json!({ "surface": surface, "coded": [coded.width, coded.height],
+                "content": [c.x, c.y, c.width, c.height], "source": [laid.width, laid.height] }),
+        );
     }
 
     fn failed(&self, why: String) {

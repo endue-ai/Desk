@@ -156,7 +156,7 @@ impl Screen {
 
 /// The frames a view has painted, either way.
 pub fn paints(view: &View) -> u64 {
-    view.counts.paints + view.counts.software_paints
+    view.painted()
 }
 
 /// Whether a view can hear a new screen: shown, its last paint at its size (no resize CEF holds),
