@@ -115,8 +115,11 @@ wrap_life_span_handler! {
         // A new browser for the surface exports its tree if the surface does (#57).
         fn on_after_created(&self, browser: Option<&mut Browser>) {
             if let Some(browser) = browser {
-                // A window page's browser is made by its opener, the desk's page (ADR 0201).
-                self.host.adopted(&self.surface, browser);
+                // A window page's browser is made by its opener, the desk's page (ADR 0201); a
+                // plugin surface's the host made and keeps itself (`web_host.rs`).
+                if is_window_page(&self.surface) {
+                    self.host.adopted(&self.surface, browser);
+                }
                 self.host.a11y_created(&self.surface, browser);
             }
         }

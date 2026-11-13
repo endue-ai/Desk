@@ -49,6 +49,17 @@ pub fn is_window_page(surface: &str) -> bool {
 static BROWSERS: std::sync::Mutex<std::collections::BTreeSet<i32>> =
     std::sync::Mutex::new(std::collections::BTreeSet::new());
 
+/// Browser `id`, made for `surface`, is a window's own page from now on: only a window page's is.
+/// Every surface's browser was once kept so, and a plugin's never left: a press in another plugin
+/// then counted as one in the desk's page, and the field menu stayed open (`field_menu.rs`).
+fn adopt_browser(surface: &str, id: i32) -> bool {
+    let page = is_window_page(surface);
+    if page {
+        known(id, true);
+    }
+    page
+}
+
 /// Browser `id` is a window's own page (`true`), or no more.
 fn known(id: i32, page: bool) {
     let mut browsers = BROWSERS.lock().unwrap_or_else(|e| e.into_inner());
@@ -129,12 +140,14 @@ impl WebHost {
     /// A browser for `surface` was made by its page's opener rather than by the host: it is the
     /// surface's from now on.
     pub fn adopted(&self, surface: &str, browser: &Browser) {
+        if !adopt_browser(surface, browser.identifier()) {
+            return;
+        }
         if let Some(record) = self.inner().records.get_mut(surface)
             && record.browser.is_none()
         {
             record.browser = Some(browser.clone());
         }
-        known(browser.identifier(), true);
         if let Some(host) = browser.host() {
             host.send_dev_tools_message(Some(CLEAR_BASE));
         }
@@ -263,6 +276,16 @@ mod tests {
         assert!(is_page_browser(-7));
         known(-7, false);
         assert!(!is_page_browser(-7));
+    }
+
+    #[test]
+    fn only_a_window_pages_browser_is_kept_as_one() {
+        // A plugin surface's browser stays a plugin's: a press there is no press in the desk's page.
+        assert!(!adopt_browser("main.endue-notes", -21));
+        assert!(!is_page_browser(-21));
+        assert!(adopt_browser(&surface_of("endue.notes"), -22));
+        assert!(is_page_browser(-22));
+        known(-22, false);
     }
 
     #[test]
