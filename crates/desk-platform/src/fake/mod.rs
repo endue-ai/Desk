@@ -125,12 +125,23 @@ fn read_request(reader: &mut BufReader<TcpStream>) -> Option<Seen> {
             headers.insert(name.trim().to_ascii_lowercase(), value.trim().to_owned());
         }
     }
-    let length: usize = headers
-        .get("content-length")
-        .and_then(|l| l.parse().ok())
-        .unwrap_or(0);
-    let mut bytes = vec![0; length];
-    reader.read_exact(&mut bytes).ok()?;
+    // A body without a known size comes chunked (ureq sends a POST without a body so): read it to
+    // its last chunk, or the answer's close would leave its end unread, and a socket closed with
+    // bytes unread resets the connection under the client before it reads the answer.
+    let chunked = headers
+        .get("transfer-encoding")
+        .is_some_and(|t| t.to_ascii_lowercase().contains("chunked"));
+    let bytes = if chunked {
+        read_chunked(reader)?
+    } else {
+        let length: usize = headers
+            .get("content-length")
+            .and_then(|l| l.parse().ok())
+            .unwrap_or(0);
+        let mut bytes = vec![0; length];
+        reader.read_exact(&mut bytes).ok()?;
+        bytes
+    };
     let body = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
     let (path, query) = target.split_once('?').unwrap_or((&target, ""));
     let query = query
@@ -145,6 +156,30 @@ fn read_request(reader: &mut BufReader<TcpStream>) -> Option<Seen> {
         headers,
         body,
     })
+}
+
+/// A chunked body (RFC 9112 §7.1), to its last chunk and the trailer's blank line.
+fn read_chunked(reader: &mut impl BufRead) -> Option<Vec<u8>> {
+    let mut body = Vec::new();
+    loop {
+        let mut line = String::new();
+        reader.read_line(&mut line).ok()?;
+        let size = line.trim().split(';').next()?;
+        let size = usize::from_str_radix(size.trim(), 16).ok()?;
+        if size == 0 {
+            loop {
+                let mut trailer = String::new();
+                if reader.read_line(&mut trailer).ok()? == 0 || trailer.trim().is_empty() {
+                    return Some(body);
+                }
+            }
+        }
+        let start = body.len();
+        body.resize(start + size, 0);
+        reader.read_exact(&mut body[start..]).ok()?;
+        let mut end = [0u8; 2];
+        reader.read_exact(&mut end).ok()?;
+    }
 }
 
 /// Percent-decoding of a path or query value.
@@ -187,5 +222,24 @@ fn reason(status: u16) -> &'static str {
         409 => "Conflict",
         410 => "Gone",
         _ => "Status",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::read_chunked;
+
+    #[test]
+    fn a_chunked_body_is_read_to_its_end() {
+        let wire = b"4\r\n{\"a\"\r\n3\r\n:1}\r\n0\r\n\r\nNEXT";
+        let mut reader = &wire[..];
+        assert_eq!(
+            read_chunked(&mut reader).as_deref(),
+            Some(&b"{\"a\":1}"[..])
+        );
+        assert_eq!(reader, b"NEXT", "nothing of the body left unread");
+        let mut empty = &b"0\r\n\r\n"[..];
+        assert_eq!(read_chunked(&mut empty), Some(Vec::new()));
+        assert!(empty.is_empty());
     }
 }
