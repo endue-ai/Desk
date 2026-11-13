@@ -129,21 +129,43 @@ export async function raise(host: string, local: [number, number]): Promise<[num
   return at;
 }
 
+/**
+ * The window handle each plugin surface's page was last found at. Every window's own page is a
+ * window of chromedriver's too (ADR 0201), so a look through them all for each call took seconds,
+ * and a spec's five-second waits ran past its time.
+ */
+const handles = new Map<string, string>();
+
+/** Whether `handle` is plugin surface `host`'s page; it is the current window after. */
+async function isPageOf(handle: string, host: string): Promise<boolean> {
+  try {
+    await browser.switchToWindow(handle);
+    return (await browser.getUrl()).startsWith(`desk-plugin://${host}/`);
+  } catch {
+    return false;
+  }
+}
+
 /** Evaluate `expression` in plugin surface `host`'s own page, then go back to the main page. */
 export async function inSurface<T>(host: string, expression: string): Promise<T> {
   const main = await browser.getWindowHandle();
-  for (const handle of await browser.getWindowHandles()) {
-    await browser.switchToWindow(handle);
-    if ((await browser.getUrl()).startsWith(`desk-plugin://${host}/`)) {
-      try {
-        return (await browser.execute(`return (${expression})`)) as T;
-      } finally {
-        await browser.switchToWindow(main);
+  try {
+    const known = handles.get(host);
+    let found = known !== undefined && (await isPageOf(known, host));
+    if (!found) {
+      handles.delete(host);
+      for (const handle of await browser.getWindowHandles()) {
+        if (handle === main || !(await isPageOf(handle, host))) continue;
+        handles.set(host, handle);
+        found = true;
+        break;
       }
     }
+    if (!found) throw new Error(`no page of ${host}`);
+    return (await browser.execute(`return (${expression})`)) as T;
+  } finally {
+    await browser.switchToWindow(main);
   }
-  await browser.switchToWindow(main);
-  throw new Error(`no page of ${host}`);
 }
 
 /** A key going down then up, with text when it types some. */
