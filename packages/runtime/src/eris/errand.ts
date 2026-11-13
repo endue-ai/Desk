@@ -9,6 +9,7 @@ import type { BrainStep } from "../bridge/types";
 import { cubicBezier } from "../ease";
 import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
+import type { WindowDocs } from "../surface/window-docs";
 
 /** One leg of an errand, out or back. */
 export const LEG_MS = 640;
@@ -43,21 +44,36 @@ export interface Errands {
   dispose(): void;
 }
 
-/** The centre of `el` in `host`'s coordinates. */
-function centre(el: Element, host: HTMLElement): Point {
+/**
+ * The centre of `el` in `host`'s coordinates; an element in a window's own page (ADR 0201) is
+ * measured in that page and lies at the window's place on the desk (`window-docs.ts`).
+ */
+export function centre(el: Element, host: HTMLElement, docs?: WindowDocs): Point {
   const r = el.getBoundingClientRect();
   const f = host.getBoundingClientRect();
-  return { x: r.left + r.width / 2 - f.left, y: r.top + r.height / 2 - f.top };
+  let at = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  const elsewhere = el.ownerDocument !== host.ownerDocument;
+  const page = elsewhere ? docs?.windowOf(el.ownerDocument) : undefined;
+  if (page && docs) at = docs.toDesk(page, at);
+  return { x: at.x - f.left, y: at.y - f.top };
 }
 
-/** The plugin's window on screen: its main surface, or another of its surfaces. */
-export function windowOf(host: ParentNode, provider: string): HTMLElement | null {
-  const candidates = host.querySelectorAll<HTMLElement>("[data-surface]");
-  for (const el of candidates) {
-    const id = el.dataset.surface ?? "";
-    const own = id === provider || id.startsWith(`${provider}/`) || id.startsWith(`${provider}:`);
-    const shown = !el.hidden && el.getClientRects().length > 0;
-    if (own && shown) return el;
+/**
+ * The plugin's window on screen: its main surface, or another of its surfaces; in `host`, then in
+ * the windows' own pages (ADR 0201).
+ */
+export function windowOf(
+  host: ParentNode,
+  provider: string,
+  docs?: WindowDocs,
+): HTMLElement | null {
+  for (const root of [host, ...(docs?.each() ?? []).map(([, doc]) => doc)]) {
+    for (const el of root.querySelectorAll<HTMLElement>("[data-surface]")) {
+      const id = el.dataset.surface ?? "";
+      const own = id === provider || id.startsWith(`${provider}/`) || id.startsWith(`${provider}:`);
+      const shown = !el.hidden && el.getClientRects().length > 0;
+      if (own && shown) return el;
+    }
   }
   return null;
 }
@@ -69,9 +85,13 @@ const LOCAL_AGENTS = "desk.agents.";
  * Where a step's errand goes: the plugin's window, or for the desk's local agent tools a local
  * agent's screen, else their group in the agent bar.
  */
-export function targetOf(host: ParentNode, step: Pick<BrainStep, "provider" | "command">) {
-  if (!step.command.startsWith(LOCAL_AGENTS)) return windowOf(host, step.provider);
-  const screen = windowOf(host, "local");
+export function targetOf(
+  host: ParentNode,
+  step: Pick<BrainStep, "provider" | "command">,
+  docs?: WindowDocs,
+) {
+  if (!step.command.startsWith(LOCAL_AGENTS)) return windowOf(host, step.provider, docs);
+  const screen = windowOf(host, "local", docs);
   if (screen) return screen;
   const group = host.querySelector<HTMLElement>("[data-local-agents]");
   return group && group.getClientRects().length > 0 ? group : null;
@@ -145,11 +165,11 @@ export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
     );
     host.append(el);
     const from = erisAt(host);
-    const window = targetOf(host, step);
+    const window = targetOf(host, step, ctx.pages);
     const to = ctx.reduced()
       ? { x: from.x + BESIDE.x, y: from.y + BESIDE.y }
       : window
-        ? centre(window, host)
+        ? centre(window, host, ctx.pages)
         : { x: from.x + BESIDE.x, y: from.y + BESIDE.y };
     const errand: Errand = { el, host, window, at: from, out: Promise.resolve() };
     open.set(step.callId, errand);

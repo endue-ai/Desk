@@ -99,6 +99,8 @@ export function mountSurfaces(
   const anchors = pages ? surfaceAnchors(layer) : undefined;
   // A window's own page hears the desk's keys as the page does: the same keymap decides them.
   const offPageKeys = pages?.watch((_, win) => listenForShortcuts(win, ctx.runtime.shortcuts));
+  // What reads a window's DOM elsewhere on the desk finds it in its page (`window-docs.ts`).
+  const offDocs = pages && ctx.pages?.attach(pages);
   const live = new Map<string, Entry>();
   const hint = (label: string, command: string) => {
     const key = ctx.keyOf(command);
@@ -385,6 +387,7 @@ export function mountSurfaces(
     for (const off of offs) off();
     for (const entry of live.values()) entry.off();
     offPageKeys?.();
+    offDocs?.();
     pages?.dispose();
     layer.remove();
   };

@@ -20,6 +20,7 @@ import type { StartInfo } from "../start";
 import { pluginWindows } from "../surface/host";
 import { wakePlaced } from "../surface/placed";
 import { mountSurfaces } from "../surface/Surface";
+import { windowDocs } from "../surface/window-docs";
 import type { WindowPages } from "../surface/window-pages";
 import { loadDirectory } from "../system/agents";
 import { loadEndue, watchEndue } from "../system/endue";
@@ -149,6 +150,10 @@ export function mountDesk(options: DeskOptions): Desk {
     keyOf: (command) => ctx.runtime.keymap.keysFor(command)[0],
     wm,
     held: heldWindows(),
+    // A window's place on the desk: where the gesture holds it, else where the desk draws it.
+    pages: windowDocs(
+      (id) => ctx.held.rect(id) ?? store.get().wm.front.find((w) => w.id === id)?.rect,
+    ),
     eris: { say: (text, words) => pending.say(text, words), setState: (s) => pending.setState(s) },
   };
 

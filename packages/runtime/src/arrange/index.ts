@@ -16,12 +16,15 @@ export function mountArrange(root: HTMLElement, ctx: ShellCtx): () => void {
       if (!(error instanceof CommandError)) throw error;
     });
   };
-  // A window of the shell's own views holds the keyboard itself once it is focused.
+  // A window of the shell's own views holds the keyboard itself once it is focused, in this page or
+  // in its own (ADR 0201, `window-docs.ts`).
   const keys = (window: string) => {
     const shell = root.closest<HTMLElement>(".shell") ?? root;
-    const el = [...shell.querySelectorAll<HTMLElement>(".surface[data-surface]")].find(
-      (e) => e.dataset.surface === window,
-    );
+    const el =
+      ctx.pages?.section(window, shell) ??
+      [...shell.querySelectorAll<HTMLElement>(".surface[data-surface]")].find(
+        (e) => e.dataset.surface === window,
+      );
     el?.focus({ preventScroll: true });
   };
   const offs = [defineArrangeCommands(ctx, keys), mountStrip(root, ctx, run)];

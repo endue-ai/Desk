@@ -1,6 +1,7 @@
 import type { ErisState } from "../eris/states";
 import type { Platform } from "../input";
 import type { PluginWindows } from "../surface/host";
+import type { WindowDocs } from "../surface/window-docs";
 import type { HeldWindows, WindowManagerHost } from "../wm/host";
 import type { Ctx } from "./actions";
 import type { CopyKey } from "./copy";
@@ -23,6 +24,8 @@ export interface ShellCtx extends Ctx {
   wm: WindowManagerHost;
   /** Where the page lays out the window the host's gesture holds. */
   held: HeldWindows;
+  /** Where each window's DOM lies, this page or a page of its own (ADR 0201); absent in a desk without. */
+  pages?: WindowDocs;
   /** Eris's controls for parts that make her react (the composer, the rail). */
   eris: {
     say(text: string, words?: { word: string; at: number }[]): void;

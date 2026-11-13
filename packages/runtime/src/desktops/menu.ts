@@ -164,20 +164,25 @@ export function mountMenus(root: HTMLElement, ctx: ShellCtx, switcher: HTMLEleme
         if (open && popover !== "desktop-menu" && popover !== "window-menu") close();
       },
     ),
-    // A window's menu: right-click its title bar (or the menu key on the window).
-    listen(doc, "contextmenu", (e) => {
-      const target = e.target as Element | null;
-      const surface = target?.closest?.("[data-surface]");
-      const onBar = target?.closest?.(".surface-title") && !target.closest("button");
-      if (!surface || !(onBar || target === surface) || switcher.contains(target)) return;
-      const window = surface.getAttribute("data-surface");
-      if (!window) return;
-      e.preventDefault();
-      const r = (target as Element).getBoundingClientRect();
-      const { clientX: x, clientY: y } = e as MouseEvent;
-      show({ kind: "window", window, x: x || r.left + 16, y: y || r.top + 16 });
-    }),
+    // A window's menu: right-click its title bar (or the menu key on the window), in this page or
+    // in the window's own page (ADR 0201), whose points are the window's on the desk.
+    listen(doc, "contextmenu", (e) => windowMenu(e)),
+    ctx.pages?.watch((id, win) => listen(win.document, "contextmenu", (e) => windowMenu(e, id))) ??
+      (() => {}),
   ];
+  function windowMenu(e: Event, page?: string) {
+    const target = e.target as Element | null;
+    const surface = target?.closest?.("[data-surface]");
+    const onBar = target?.closest?.(".surface-title") && !target.closest("button");
+    if (!surface || !(onBar || target === surface) || switcher.contains(target)) return;
+    const window = surface.getAttribute("data-surface");
+    if (!window) return;
+    e.preventDefault();
+    const r = (target as Element).getBoundingClientRect();
+    const { clientX, clientY } = e as MouseEvent;
+    const at = { x: clientX || r.left + 16, y: clientY || r.top + 16 };
+    show({ kind: "window", window, ...(page ? (ctx.pages?.toDesk(page, at) ?? at) : at) });
+  }
   return {
     desktop: (desktop, under) => show({ kind: "desktop", desktop, under }),
     dispose() {

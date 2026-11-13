@@ -4,9 +4,11 @@ import type { BrainStep } from "../bridge/types";
 import { mountComposer } from "../shell/Composer";
 import type { ShellCtx } from "../shell/context";
 import { Store, sampleState } from "../shell/state";
+import { windowDocs } from "../surface/window-docs";
+import type { WindowPages } from "../surface/window-pages";
 import { testWindowManager } from "../wm/testing";
 import { takeDesk } from "../wm/view";
-import { labelOf, mountErrands, nameOf, targetOf, windowOf } from "./errand";
+import { centre, labelOf, mountErrands, nameOf, targetOf, windowOf } from "./errand";
 
 const TOOL: BrainStep = {
   kind: "tool",
@@ -85,6 +87,27 @@ describe("Eris's errands", () => {
     shell.append(other, hidden, mail);
     expect(windowOf(shell, "endue.mail")).toBe(mail);
     expect(windowOf(shell, "endue.notes")).toBeNull();
+  });
+
+  it("finds a local agent's screen in its window's own page, at the window's place (ADR 0201)", () => {
+    const page = document.implementation.createHTMLDocument("");
+    const screen = at(page.createElement("section"), { left: 0, top: 0, width: 800, height: 600 });
+    screen.dataset.surface = "local:claude";
+    page.body.append(screen);
+    const docs = windowDocs((id) =>
+      id === "local:claude" ? { x: 300, y: 100, w: 800, h: 600 } : undefined,
+    );
+    docs.attach({
+      watch: (run: (id: string, win: Window) => () => void) => {
+        run("local:claude", { document: page } as unknown as Window);
+        return () => {};
+      },
+    } as unknown as WindowPages);
+    at(shell, { left: 0, top: 0, width: 1440, height: 900 });
+    const step = { provider: "desk", command: "desk.agents.ask" };
+    expect(targetOf(shell, step), "not in the desk's page").toBeNull();
+    expect(targetOf(shell, step, docs)).toBe(screen);
+    expect(centre(screen, shell, docs)).toEqual({ x: 700, y: 400 });
   });
 
   it("sends a local agent tool to the agent's screen, else to the agent bar's group", () => {
