@@ -12,6 +12,7 @@ pub mod commands;
 mod frame;
 pub mod kept;
 pub mod panel;
+mod rules;
 mod screens;
 #[cfg(test)]
 mod tests;
@@ -49,6 +50,8 @@ const MARGIN: f64 = 6.0;
 const REST: Duration = Duration::from_millis(500);
 /// Displays come and go in bursts (a begin and an end for each): place it once they have settled.
 const SETTLE: Duration = Duration::from_millis(400);
+/// Focus moves in bursts (one window blurs, then the next focuses): decide once it has settled.
+const FRONT: Duration = Duration::from_millis(150);
 
 pub struct Island {
     core: Arc<Core>,
@@ -64,6 +67,8 @@ pub struct Island {
     dragged: AtomicBool,
     keep: Sender<()>,
     displays: Sender<()>,
+    /// The desk's windows changed focus or went: whether it shows is decided once they settle.
+    front: Sender<()>,
 }
 
 /// Make the island's state and follow `desk.island.show`; the window opens the first time it is on.
@@ -74,6 +79,7 @@ pub fn setup(shell: &mut Shell, event_loop: &ActiveEventLoop) {
         .map(|text| Kept::parse(&text))
         .unwrap_or_default();
     let pump = shell.desk.pump.clone();
+    let front = shell.desk.pump.clone();
     let island = Arc::new_cyclic(|this: &std::sync::Weak<Island>| {
         let this = this.clone();
         Island {
@@ -92,6 +98,7 @@ pub fn setup(shell: &mut Shell, event_loop: &ActiveEventLoop) {
             displays: debounce("desk-island-displays", SETTLE, move || {
                 pump.run(|shell, _| displays_changed(shell));
             }),
+            front: debounce("desk-island-front", FRONT, move || front.run(follow)),
         }
     });
     let _ = shell.desk.island.set(Arc::clone(&island));
@@ -102,13 +109,14 @@ pub fn setup(shell: &mut Shell, event_loop: &ActiveEventLoop) {
     follow(shell, event_loop);
 }
 
-/// Show the island while `desk.island.show` is on, opening its window the first time; else hide it.
+/// Show the island while `desk.island.show` is on and the desk is not in front, opening its window
+/// the first time the setting is on; else hide it.
 fn follow(shell: &mut Shell, event_loop: &ActiveEventLoop) {
     let Some(state) = shell.desk.island.get().cloned() else {
         return;
     };
     // The floating Eris stays down while the island shows (`eris_window::calls::mode`).
-    crate::eris_window::main_changed(shell);
+    crate::eris_window::settle_soon(shell);
     if !shown(&state.core) {
         frame::hide(shell, &state);
         return;
@@ -116,7 +124,12 @@ fn follow(shell: &mut Shell, event_loop: &ActiveEventLoop) {
     if shell.pane(Role::Island).is_none() && !open_window(shell, event_loop) {
         return;
     }
-    frame::show(shell, &state);
+    // Over other apps only: with the desk in front, the desk shows the same (ADR 0205).
+    if desk_in_front(shell) {
+        frame::hide(shell, &state);
+    } else {
+        frame::show(shell, &state);
+    }
 }
 
 /// Option+Enter and the tray's Talk to Eris while the island shows and the desk is not in front: it
@@ -176,7 +189,7 @@ pub(crate) fn shown(core: &Core) -> bool {
         .unwrap_or(false)
 }
 
-/// desk.island.show changing while the desk runs.
+/// desk.island.show and desk.notify's rules changing while the desk runs.
 fn watch(desk: &Arc<Desk>) -> std::io::Result<()> {
     let events = desk.core.events().subscribe();
     let pump = desk.pump.clone();
@@ -184,11 +197,20 @@ fn watch(desk: &Arc<Desk>) -> std::io::Result<()> {
         .name("desk-island-events".to_owned())
         .spawn(move || {
             for event in events {
-                if let BridgeEvent::SettingsChanged(changed) = event
-                    && changed.data.owner == OWNER
-                    && changed.data.key == "show"
-                {
+                let BridgeEvent::SettingsChanged(changed) = event else {
+                    continue;
+                };
+                if changed.data.owner == OWNER && changed.data.key == "show" {
                     pump.run(follow);
+                } else if changed.data.owner == rules::OWNER {
+                    // desk.notify's rules changed: the island's notices follow them at once.
+                    pump.run(|shell, _| {
+                        let rules = rules::notify(&shell.desk.core);
+                        shell
+                            .desk
+                            .pages
+                            .emit(Role::Island, "island://notify", rules);
+                    });
                 }
             }
         })?;
@@ -203,7 +225,9 @@ pub fn moved(shell: &Shell) {
 }
 
 /// A window of `role` gained or lost the keys: the island open and losing them folds.
+/// Any of the desk's windows focused or blurred: whether the desk is in front is decided again.
 pub fn focused(shell: &mut Shell, role: Role, focused: bool) {
+    nudge(shell);
     if role != Role::Island || focused {
         return;
     }
@@ -212,6 +236,20 @@ pub fn focused(shell: &mut Shell, role: Role, focused: bool) {
     {
         frame::expand(shell, &state, false);
     }
+}
+
+/// The desk's main window was shown, hidden, minimized or brought back: decide again, soon.
+pub fn nudge(shell: &Shell) {
+    if let Some(state) = shell.desk.island.get() {
+        let _ = state.front.send(());
+    }
+}
+
+/// Whether the desk is the app in front: its main window has the keys and is on screen.
+fn desk_in_front(shell: &Shell) -> bool {
+    shell.pane(Role::Main).is_some_and(|main| {
+        main.visible() && main.window.has_focus() && !main.window.is_minimized().unwrap_or(false)
+    })
 }
 
 /// A display came or went: back on the display the person left it on, at their spot there.

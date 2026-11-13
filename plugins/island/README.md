@@ -6,10 +6,10 @@ declares what a person can change about it, so the settings view lists it like a
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `desk.island.show` | `false` | Show the island over every app, on every Space and over full-screen apps |
+| `desk.island.show` | `true` | Show the island over other apps while the desk is not in front, on every Space and over full-screen apps |
 
-The island is off by default until it can take the floating Eris's place (ADR 0121): once it talks to
-Eris, `desk.island.show` turns on by default and the floating Eris retires.
+The island has the floating Eris's place (ADR 0121, ADR 0204): it talks to Eris, and Option+Enter opens
+it from any app. Turned off, the floating Eris floats again while the desk is not in front.
 
 ```bash
 pnpm exec vitest run plugins/island

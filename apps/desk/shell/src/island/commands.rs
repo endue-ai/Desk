@@ -44,10 +44,12 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
                 }
             });
         }
-        // What the page shows of the shell: the shortcut that brings it from any app, as it reads.
+        // What the page shows of the shell: the shortcut that brings it from any app, as it reads,
+        // and the rules its notices follow.
         "island_state" => {
             let shortcut = crate::eris_window::shortcut_label(desk);
-            return Ok(serde_json::json!({ "shortcut": shortcut }));
+            let notify = super::rules::notify(&desk.core);
+            return Ok(serde_json::json!({ "shortcut": shortcut, "notify": notify }));
         }
         // Bring the desk forward.
         "island_reveal_main" => {

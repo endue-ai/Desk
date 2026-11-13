@@ -113,6 +113,19 @@ body {
   animation: none;
 }
 
+/* A notice the pill says, in its level's colour. */
+.island[data-level="warning"] .island-line {
+  color: var(--desk-warning-text);
+}
+
+.island[data-level="error"] .island-line {
+  color: var(--desk-danger-text);
+}
+
+.island[data-level="success"] .island-line {
+  color: var(--desk-success-text);
+}
+
 .island-line {
   flex: 1;
   overflow: hidden;

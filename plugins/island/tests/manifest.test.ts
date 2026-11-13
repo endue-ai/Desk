@@ -23,12 +23,12 @@ describe("desk.island", () => {
     expect(validate?.(manifest()), JSON.stringify(validate?.errors)).toBe(true);
   });
 
-  it("declares the setting the shell reads, off until the island replaces the floating Eris", () => {
+  it("declares the setting the shell reads, on: the island has the floating Eris's place", () => {
     const { kind, contributes } = manifest();
     expect(kind).toBe("policy");
     expect(contributes?.settings?.["desk.island.show"]).toMatchObject({
       kind: "boolean",
-      default: false,
+      default: true,
     });
     const shell = readFileSync(join(root, "apps/desk/shell/src/island.rs"), "utf8");
     expect(shell).toContain('const OWNER: &str = "desk.island";');
