@@ -9,6 +9,8 @@
   const post = native.post;
   const desk = Object.freeze({
     postMessage(message) {
+      // What the shim says of an OS drag (below) is the shim's alone.
+      if (String(message?.type).startsWith("desk:os-")) return;
       let text;
       try {
         text = JSON.stringify(message);
@@ -19,6 +21,45 @@
     },
   });
   Object.defineProperty(globalThis, "parent", { value: desk, enumerable: true });
+  // Files dragged in from the OS over a window out of the canvas (#235): its browser takes the OS
+  // drag itself and the shell holds the files (`app_windows/drags.rs`). The page's own handlers
+  // never see it, as on the canvas; this follows it and tells the shell where it is, and the shell
+  // asks the page's targets as the desk's broker does. A drag with no files is the page's own. An
+  // off-screen page never gets an OS drag, so this never speaks there.
+  let depth = 0;
+  let said = "";
+  const tell = (type, e) => {
+    const keys = { alt: e.altKey, shift: e.shiftKey, ctrl: e.ctrlKey, meta: e.metaKey };
+    const text = JSON.stringify({ type, x: e.clientX, y: e.clientY, keys });
+    if (type === "desk:os-dragover" && text === said) return;
+    said = text;
+    post(text);
+  };
+  const follow = (e) => {
+    if (e.dataTransfer?.types?.includes?.("Files") !== true) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.type === "dragleave") {
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) {
+        said = "";
+        post(JSON.stringify({ type: "desk:os-dragleave" }));
+      }
+      return;
+    }
+    if (e.type === "drop") {
+      depth = 0;
+      tell("desk:os-drop", e);
+      said = "";
+      return;
+    }
+    if (e.type === "dragenter") depth += 1;
+    e.dataTransfer.dropEffect = "copy";
+    tell("desk:os-dragover", e);
+  };
+  for (const type of ["dragenter", "dragover", "dragleave", "drop"]) {
+    globalThis.addEventListener(type, follow, true);
+  }
   // Tab entered the surface's place (#123): the focus goes to this page's first control (or its last, for
   // Shift+Tab), as Tab into a plugin's frame put it there; with none, it passes the page by. A text
   // field's text is selected, as Tab selects it. Chromium's own order: positive tabindex first, by
