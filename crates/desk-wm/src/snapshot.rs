@@ -29,6 +29,7 @@ use crate::desk::Desk;
 use crate::math::round;
 use crate::placed::PLUGIN_VIEW;
 use crate::types::{Fill, Offset, Placement};
+use crate::window_key::plugin_of;
 
 /// The contract's limits (`BrainDesk`).
 const WINDOWS: usize = 64;
@@ -183,18 +184,18 @@ impl Desk {
         seen: &dyn Seen,
     ) -> BrainDeskPane {
         let resolved = self.resolve(p, view);
-        let plugin = resolved
-            .strip_prefix(PLUGIN_VIEW)
-            .filter(|id| is_plugin_id(id))
-            .map(String::from);
-        let title = match &plugin {
-            Some(plugin) => Some(
-                (self.adopted.iter().find(|a| &a.id == plugin))
-                    .map_or_else(|| plugin.clone(), |a| a.title.clone()),
+        // A plugin's later window (ADR 0212) is adopted under its key: the pane names the plugin, and
+        // takes the window's title and frame by the key.
+        let key = (resolved.strip_prefix(PLUGIN_VIEW)).filter(|key| is_plugin_id(plugin_of(key)));
+        let plugin = key.map(|key| plugin_of(key).to_owned());
+        let title = match key {
+            Some(key) => Some(
+                (self.adopted.iter().find(|a| a.id == key))
+                    .map_or_else(|| plugin_of(key).to_owned(), |a| a.title.clone()),
             ),
             None => seen.title(view),
         };
-        let frame = plugin.as_deref().map_or(Frame::Live, |id| seen.frame(id));
+        let frame = key.map_or(Frame::Live, |key| seen.frame(key));
         BrainDeskPane {
             id: (!id.is_empty()).then(|| cut(id, PANE_ID)),
             view: cut(&resolved, VIEW),

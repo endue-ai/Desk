@@ -115,11 +115,13 @@ impl NativeHost {
         if let CompositorMessage::SurfaceCreate(create) = message
             && !self.owns(&surface)
         {
-            if !self.is_native(&create.plugin) {
+            // A window's key names its plugin (ADR 0212): the plugin's process draws every window.
+            let plugin = desk_wm::plugin_of(&create.plugin);
+            if !self.is_native(plugin) {
                 return false;
             }
             let record = Surface {
-                plugin: create.plugin.clone(),
+                plugin: plugin.to_owned(),
                 idle: false,
                 size: None,
                 exports: false,

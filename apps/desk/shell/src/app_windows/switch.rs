@@ -10,6 +10,8 @@ use std::sync::{Arc, Mutex, OnceLock};
 use desk_bridge::{PluginKind, PluginManifest, SurfacePlacement};
 use desk_core::Core;
 
+use desk_wm::plugin_of;
+
 /// The switch's environment variable.
 pub const SWITCH: &str = "DESK_APP_WINDOWS";
 
@@ -139,12 +141,15 @@ pub fn app(plugin: &str) -> Option<App> {
     app
 }
 
-/// Whether plugin `plugin`'s windows are OS windows of their own.
-pub fn handed(plugin: &str) -> bool {
+/// Whether window `key`'s plugin's windows are OS windows of their own (any window of a plugin,
+/// ADR 0212).
+pub fn handed(key: &str) -> bool {
+    let plugin = plugin_of(key);
     switch().wants(plugin, None, || app(plugin))
 }
 
-/// Whether plugin `plugin`'s surface `view` opens in an OS window of its own.
-pub fn handed_surface(plugin: &str, view: &str) -> bool {
+/// Whether window `key`'s plugin's surface `view` opens in an OS window of its own.
+pub fn handed_surface(key: &str, view: &str) -> bool {
+    let plugin = plugin_of(key);
     switch().wants(plugin, Some(view), || app(plugin))
 }
