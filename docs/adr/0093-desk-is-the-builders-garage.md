@@ -4,8 +4,9 @@ date: 2026-11-05
 decision-makers: Team endue
 ---
 
-Status: amended by ADR 0203: the mission stays; the milestones follow the migration to app windows,
-home, the island and a resident hub (#232), and a screen of the desk's own comes last.
+Status: amended by ADR 0205 (after ADR 0203): the mission stays; the milestones follow #232: windows
+that pop out to the OS and back, the island, a resident hub and a compositor at an OS's quality, with
+endue as the OS on Linux last.
 
 # Desk is the builder's garage: a daily workshop that Eris runs and views show
 

@@ -1,46 +1,38 @@
 # endue Desk roadmap
 
-2026-11-05 · updated 2026-11-13 · Team endue
+2026-11-05 · updated 2026-11-14 · Team endue
 
 This is the English edition of `docs/ko/desk-roadmap.md`, the source of truth for *why* Desk exists and
 *where* it goes. The structure is in `docs/architecture.md`, decisions that are hard to reverse in
-`docs/adr/` (this direction is ADR 0093, its order since 2026-11-13 ADR 0203). When a milestone ends or the
+`docs/adr/` (this direction is ADR 0093, its order since 2026-11-14 ADR 0205). When a milestone ends or the
 direction changes, both files change.
 
-## 2026-11-13: the order changes (ADR 0203)
+## 2026-11-14: the desk keeps its screen, and its windows move out (ADR 0205)
 
-The garage stays. What changes is where it stands. Since ADR 0140 the desk drew every window itself inside
-one OS window, and three days of fixes did not make that hold: on 2026-11-13 a shaken window still showed
-another window's pixels in one optimized frame in four, and the desk's page stopped painting until a
-restart in two runs of five. ADR 0203 leaves the screen to the OS.
+The garage stays, and so does its screen. On 2026-11-13 ADR 0203 left the screen to the OS after
+measurements showed the compositor desk tearing and stalling; a day later ADR 0205 kept the desk: the
+infinite canvas, desktops and the spread are what no OS window gives, and "one app that is one OS"
+needs a compositor. What changes:
 
-- **endue is the hub**: a resident core that holds the person's apps, agents, connections, memory and
-  grants, needs no window, and starts at login.
-- **Every app is a Chromium web app in an OS window of its own**, built in or made by the person. endue
-  is the app that makes apps.
-- **The island** floats anywhere on the desktop over every app: what the agents are doing, what waits
-  for an answer, Eris.
-- **Home** is an ordinary window with everything at a glance.
-- **The workspace** (the apps of one piece of work and where their windows stood, its agents, its
-  connections, the OS's own apps it used) is what endue owns: set up in one go, saved and recalled.
+- **Any window pops out** into an OS window of its own, beside the OS's apps, and docks back; endue
+  manages it in or out with one identity (#235).
+- **The island** floats over every app while the desk is not in front: what agents do, what waits for
+  an answer, Eris (#238). **The hub** keeps running with no window (#237).
+- **The compositor reaches an OS's quality by structure**, under a motion gate that judges rendered
+  pixels while windows move (#247 to #252).
+- **The end state**: on Linux endue is the session's Wayland compositor and places every app's
+  windows; on a device of its own it is the whole screen.
 
-The milestones below keep their goals; their order follows the migration in #232.
-
-| Step | Issue | What is true after it | Serves |
+| Track | Issues | What is true after it | Serves |
 | --- | --- | --- | --- |
-| 0 | #233 | The decision is on `main`; the compositor and the window manager are frozen | — |
-| 1 | #234 | One plugin runs in an OS window of its own, behind a switch | M1 |
-| 2 | #235 | Every plugin placed as a window opens in an OS window of its own | M1 |
-| 3 | #236 | Home is the runtime's page in an ordinary window; no compositor window is made | M1 |
-| 4 | #237 | endue runs with no window and starts at login | M1 · M2 |
-| 5 | #238 | The island floats over every app | M2 · M4 |
-| 6 | #239 | A plugin is an app: one format, no desk-frame API | M3 |
-| 7 | #240 | The compositor and the window manager leave the default build | M1 |
+| Pop out and dock | #235 | Any window moves out to an OS window and back, managed by endue in both | M1 |
+| Island | #238 | The island floats over every app; the floating Eris retires | M2 · M4 |
+| Resident hub | #237 | endue runs with no window and starts at login | M1 · M2 |
+| Motion gate | #247 | Every compositor change is judged on pixels in motion | M1 |
+| Compositor quality | #248 to #252 | No lost frame, the display's clock, whole pixels, one owner of focus, resizes without guesses | M1 |
+| App format | #239 | An app says how it opens in the desk and out of it | M3 |
 
-Then the app that makes apps (M3), workspaces (M4) and every OS (M5). A screen of endue's own, a
-full-screen mode or a device where "one app that is one OS" is literal, comes last and by choice; the
-frozen compositor is kept for it. Where a milestone below asks for the compositor, the canvas, desktops
-or the spread, read it in this light.
+Then the app that makes apps (M3), workspaces (M4), every OS (M5), and endue as the OS on Linux.
 
 ## Why: the builder's garage
 

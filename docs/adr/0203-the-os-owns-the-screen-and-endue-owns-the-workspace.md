@@ -1,8 +1,11 @@
 ---
-status: accepted
+status: superseded by 0205
 date: 2026-11-13
 decision-makers: Team endue
 ---
+
+Status: superseded by ADR 0205 (2026-11-14): the desk keeps its screen, and its windows move out to the
+OS and back; the resident hub and the island stay.
 
 Supersedes ADR 0140 (a wgpu compositor over CEF off-screen surfaces) and ADR 0156 (the compositor is
 the only desk) as the desk's default. The ADRs that follow from them (0149 to 0202: the compositor,

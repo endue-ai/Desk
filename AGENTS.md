@@ -71,10 +71,9 @@ installs the commit identity and its hooks on a machine (see Boundaries).
 - `brand/` is not Apache-2.0. Use the assets as they are; never edit or relicense them. Forks replace them.
 - Closed services stay outside this repository. endue AI and endue ID are reached only through public
   contracts (`specs/brain`) and their clients.
-- The screen is the OS's (ADR 0203). `crates/desk-compositor`, `crates/desk-wm`, `crates/desk-wm-wasm`,
-  `apps/desk/shell/src/compositor_window*` and the off-screen parts of `apps/desk/shell/src/web_host/`
-  are frozen: they take only a fix a person on `main` cannot work without, until #240 moves them out of
-  the default build. New work goes to app windows, home, the island and the hub (#232).
+- The compositor is endue's screen (ADR 0205). A change to `crates/desk-compositor`, `crates/desk-wm`,
+  `apps/desk/shell/src/compositor_window*` or `apps/desk/shell/src/web_host/` keeps the motion gate
+  green once it lands (#247), and adds no millisecond threshold without a measurement in its ADR.
 - `docs/ko/`, `docs/reference/` and `brand/` are source material. Read them; change them only when a task
   says so.
 - `.github/workflows/`, `specs/` and `brand/` belong to the maintainers (see `.github/CODEOWNERS`).

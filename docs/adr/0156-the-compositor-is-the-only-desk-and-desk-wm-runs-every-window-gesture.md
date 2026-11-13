@@ -1,11 +1,11 @@
 ---
-status: superseded by 0203
+status: accepted
 date: 2026-11-10
 decision-makers: Team endue
 ---
 
-Status: superseded by ADR 0203: the compositor is no longer the desk; the OS places every window, and
-the runtime's page becomes home.
+Status: superseded by ADR 0203 on 2026-11-13 and restored by ADR 0205 on 2026-11-14, amended: the desk
+is home, and a window may also move out to an OS window of its own and back.
 
 Earlier: amended by ADR 0158: `desk-wm` holds the window manager's state too; the runtime sends it
 edits and keeps only the desk it publishes, and a desk without the compositor runs `desk-wm` as
