@@ -17,6 +17,7 @@ pub mod drops;
 pub mod eris_window;
 pub mod features;
 pub mod float;
+pub mod frame_trace;
 pub mod guard;
 pub mod host;
 pub mod hotkeys;

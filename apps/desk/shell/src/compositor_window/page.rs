@@ -6,6 +6,9 @@
 use cef::*;
 use desk_web::sender::System;
 
+use std::time::Instant;
+
+use super::hosted::Outcome;
 use super::{CompositorWindow, PAGE};
 use crate::web_host::render::SurfaceRender;
 use crate::web_host::top;
@@ -51,6 +54,28 @@ impl CompositorWindow {
         self.relay.page(browser.clone());
         self.host.clock_page(browser.clone(), self.page.clone());
         self.browser = browser;
+    }
+
+    /// What the page painted since the last look: the windows its picture shows where its DOM has
+    /// them are drawn from there (`PageShown`).
+    pub(super) fn page_painted(&mut self, now: Instant) {
+        let painted = std::mem::take(&mut self.shared.lock().page_damage);
+        let scale = self.window.scale_factor().max(f64::MIN_POSITIVE);
+        for damage in painted {
+            let css: Vec<desk_wm::Rect> = (damage.iter())
+                .map(|r| {
+                    let px = |v: u64| v as f64 / scale;
+                    desk_wm::Rect::new(px(r.x), px(r.y), px(r.width), px(r.height))
+                })
+                .collect();
+            let outcome = self.hosted.page_painted(&css, now);
+            if outcome != Outcome::default() {
+                self.carry(outcome);
+            }
+        }
+        if self.hosted.take_restaged() {
+            self.shared.lock().dirty = true;
+        }
     }
 
     /// The app window has a new size (logical pixels) or scale: the desk's page lays out again at

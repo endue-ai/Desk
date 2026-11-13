@@ -34,6 +34,10 @@ impl WebHost {
     /// The watch found the page of `surface` stalled (`None`: the desk's own page).
     pub(super) fn stalled(&self, surface: Option<&str>, found: Found) {
         let what = surface.map_or_else(|| "the desk's page".to_owned(), |s| format!("surface {s}"));
+        crate::frame_trace::line(
+            "stall",
+            serde_json::json!({ "surface": surface.unwrap_or("desk") }),
+        );
         let (secs, fed) = (found.waited.as_secs_f32(), found.fed);
         let said = format!(
             "endue Desk: {what} stopped painting: its page waited {secs:.1} s for a frame \

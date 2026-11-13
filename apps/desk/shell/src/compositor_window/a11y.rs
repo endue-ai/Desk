@@ -121,6 +121,10 @@ impl CompositorWindow {
             adapter.process_event(&self.window, event);
         }
         if let Some(input) = super::winit_input::input_of(event) {
+            // A shake (`motion.rs`) hears no pointer of the OS's.
+            if crate::frame_trace::masks(&input) {
+                return;
+            }
             self.input(event_loop, input);
         }
     }

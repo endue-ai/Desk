@@ -272,6 +272,10 @@ pub(super) fn forget(inner: &mut super::Inner, surface: &str, browser: i32) -> O
 /// page go and opens its window's page anew (ADR 0201).
 pub(super) fn close_replaced(surface: &str, browser: &Browser, why: &str) {
     eprintln!("endue Desk: surface {surface} {why}; its window opens a page anew (ADR 0201)");
+    crate::frame_trace::line(
+        "replaced",
+        serde_json::json!({ "surface": surface, "why": why }),
+    );
     if let Some(host) = browser.host() {
         host.close_browser(1);
     }

@@ -111,6 +111,7 @@ impl CompositorWindow {
         self.mapping.drawn = drawn.map;
         self.mapping.layout = layout;
         self.gestures.popups.boxes = drawn.popups;
+        crate::frame_trace::laid_out(self.hosted.plan(), &drawn.placed);
         if let Some(plan) = self.hosted.plan() {
             let placed: Vec<(String, (f32, f32))> = (drawn.placed.into_iter())
                 .map(|(host, at)| (host, (at.x, at.y)))

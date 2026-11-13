@@ -180,9 +180,12 @@ impl SurfaceSink for Shared {
         let id = composed.texture(&attach.surface);
         let state = &mut *composed;
         let had = state.frames.size(id);
+        let started = std::time::Instant::now();
         let result = state
             .frames
             .attach(&mut state.compositor, id, attach, source);
+        let damage = attach.damage.len();
+        crate::frame_trace::attached(&attach.surface, started, damage, result.is_ok());
         let counts = state.attached.entry(attach.surface.clone()).or_default();
         match &result {
             Ok(_) => counts.0 += 1,

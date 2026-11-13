@@ -45,6 +45,7 @@ impl CompositorWindow {
     /// One input event of the window, routed and applied; the window manager hears it first and
     /// may take it whole (Escape cancelling a drag, a card's button).
     pub fn input(&mut self, event_loop: &ActiveEventLoop, input: Input) {
+        crate::frame_trace::input(&input);
         // A press lands on the desk as it is now. When the desk changed since the scene was last
         // laid out (the page took a desk, a window glided on), the scene the router hit-tests, and
         // where the window manager learns the page hears the press, is laid out first. Else a

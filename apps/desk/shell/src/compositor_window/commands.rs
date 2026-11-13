@@ -9,7 +9,7 @@
 //! `desk.windows.list` answers); in development builds
 //! `compositor_capture { path }` (the composed frame as a PNG), `compositor_stats` (what every surface
 //! painted), `compositor_input { events, logical? }` (events fed to the window's own input entry,
-//! `harness.rs`), `compositor_input_state` (where input goes), `compositor_a11y` (the
+//! `harness.rs`; `{ shake }` the motion gate's shake, `motion.rs`), `compositor_input_state` (where input goes), `compositor_a11y` (the
 //! accessibility tree the adapter has, and a screen reader's request, `a11y_check.rs`) and
 //! `compositor_clock { hold?, at? }` (the window manager's clock held, so a check sees a motion at a
 //! time it chooses, ADR 0013) and `compositor_window { to } | { occluded } | { frame }` (the main
@@ -134,6 +134,10 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
             answered
                 .recv_timeout(Duration::from_secs(10))
                 .map_err(|_| "the window manager did not answer".to_owned())
+        }
+        // The motion gate's shake (#247, `motion.rs`): it runs on a thread of its own.
+        "compositor_input" if cfg!(debug_assertions) && args.get("shake").is_some() => {
+            super::motion::shake(desk, args)
         }
         "compositor_capture"
         | "compositor_stats"

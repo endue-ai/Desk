@@ -33,6 +33,7 @@ pub mod harness;
 pub mod hosted;
 pub mod input;
 mod minimap;
+mod motion;
 mod os_pointer;
 pub mod overlay;
 mod page;
@@ -212,6 +213,7 @@ impl CompositorWindow {
 
     /// The shell page published its desk.
     pub fn report(&mut self, report: DeskReport) {
+        crate::frame_trace::line("report", json!({}));
         let outcome = self.hosted.apply(report, Instant::now());
         self.carry(outcome);
         self.run_deferred();
@@ -233,6 +235,8 @@ impl CompositorWindow {
     /// The window went off screen or came back: every surface is hidden, or shown again, and a
     /// window that could not present presents again.
     pub fn occluded(&mut self, occluded: bool) {
+        // A headless desk under a frame trace measures, whatever covers its window (#247).
+        let occluded = occluded && !(self.gpu.headless() && crate::frame_trace::on());
         self.occluded = occluded;
         if !occluded {
             self.gpu.resume();
@@ -318,16 +322,21 @@ impl CompositorWindow {
         if !self.due().frame().is_some_and(|at| now >= at) {
             return;
         }
+        // The motion gate's frame trace times each frame (#247, `frame_trace.rs`).
+        let mut timed = crate::frame_trace::Timed::begin(|| self.shared.lock().dirty);
         self.scene_for_frame();
+        timed.mark();
         self.composed += 1;
         self.last_frame = clock::Due::beat(self.last_frame, now);
         if !self.gpu.presents() {
-            return;
+            return self.unseen(timed);
         }
         let started = Instant::now();
         let frame = self.gpu.frame();
+        timed.mark();
         let slow = started.elapsed() > SLOW_IMAGE;
         self.slow_presents = if slow { self.slow_presents + 1 } else { 0 };
+        let shown = frame.is_some();
         match frame {
             Some(frame) => self.present(frame),
             // Composed for the router and captures, shown nowhere: not again until a change,
@@ -335,6 +344,7 @@ impl CompositorWindow {
             None if self.gpu.withheld().is_some() => self.shared.lock().drawn(),
             None => {}
         }
+        timed.end(self.composed, shown);
         if self.slow_presents >= SLOW_IMAGES {
             // A locked screen, a display going off: the images come late, each holding the loop.
             // The frame in hand went out first; its surface stays (`gpu.rs`).
@@ -360,28 +370,6 @@ impl CompositorWindow {
         self.window.pre_present_notify();
         self.gpu.queue.present(frame);
         self.presented += 1;
-    }
-
-    /// What the page painted since the last look: the windows its picture shows where its DOM has
-    /// them are drawn from there (`PageShown`).
-    fn page_painted(&mut self, now: Instant) {
-        let painted = std::mem::take(&mut self.shared.lock().page_damage);
-        let scale = self.window.scale_factor().max(f64::MIN_POSITIVE);
-        for damage in painted {
-            let css: Vec<desk_wm::Rect> = (damage.iter())
-                .map(|r| {
-                    let px = |v: u64| v as f64 / scale;
-                    desk_wm::Rect::new(px(r.x), px(r.y), px(r.width), px(r.height))
-                })
-                .collect();
-            let outcome = self.hosted.page_painted(&css, now);
-            if outcome != Outcome::default() {
-                self.carry(outcome);
-            }
-        }
-        if self.hosted.take_restaged() {
-            self.shared.lock().dirty = true;
-        }
     }
 
     /// Close the page's browser and every surface's (the desk quits).

@@ -164,6 +164,11 @@ impl Gpu {
         }
     }
 
+    /// Whether the window has no swapchain (`DESK_COMPOSITOR_HEADLESS`).
+    pub fn headless(&self) -> bool {
+        self.surface.is_none()
+    }
+
     /// Whether a composed frame goes to the window: not headless, and not stopped.
     pub fn presents(&self) -> bool {
         self.surface.is_some() && !self.paused
