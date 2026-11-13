@@ -1,15 +1,12 @@
 // The person's pointer and keys on the desk, in the window's CSS pixels, for the windows-* specs
 // (#82). Points come from desk.windows.list's rects and the chrome's metrics below, never from the
-// page. Clicks, the wheel, drags, their release and Escape go through the compositor's own input
+// page. Clicks, the wheel, drags, their release and keys go through the compositor's own input
 // (`compositor_input`, support/compositor.ts), as the person's do: desk-wm moves, resizes, snaps and
-// pans the windows (#80, ADR 0153), and a window's chrome lies in a page of its own (ADR 0201),
-// which an action in the desk's page's viewport never reaches; the composed frames are the screen. A
-// drag can be held (`hold`) so a spec looks at the desk mid-drag, then `release`d. Keys go as
-// WebDriver actions to the desk's page, whose keymap runs the desk's chords, while the desk keeps
-// drawing (frames.ts): a locked screen would hold each for seconds.
+// pans the windows (#80, ADR 0153), and a window's chrome and its own views lie in a page of its own
+// (ADR 0201), which a WebDriver action in the desk's page never reaches; the composed frames are the
+// screen. A drag can be held (`hold`) so a spec looks at the desk mid-drag, then `release`d.
 import { browser } from "@wdio/globals";
-import { feed } from "./compositor";
-import { drawing } from "./frames";
+import { feed, keyPress } from "./compositor";
 import { composedFrame } from "./pixels";
 import { type Desk, onScreen, type Rect, rectOf } from "./windows";
 
@@ -73,8 +70,6 @@ export const bodyAt = (w: Rect): Point => ({
   x: w.x + w.w / 2,
   y: w.y + TITLE_BAR + (w.h - TITLE_BAR) / 2,
 });
-
-type KeyAction = { type: "keyDown" | "keyUp"; value: string } | { type: "pause"; duration: number };
 
 /** The compositor's input events (`compositor_input`): moves, the primary button, Shift, keys. */
 const toward = (p: Point) => ({ type: "pointerMoved", x: Math.round(p.x), y: Math.round(p.y) });
@@ -164,23 +159,64 @@ export async function click(p: Point, count = 1): Promise<void> {
   await feed([toward(p), ...Array.from({ length: count }, () => one).flat()]);
 }
 
-/** Press keys together, as a chord (`chord(MOD, "n")`), without letting go of a held button. */
+/** The compositor's key and code for each named key of `KEY`. */
+const NAMED: Record<string, [string, string]> = {
+  [KEY.escape]: ["Escape", "Escape"],
+  [KEY.tab]: ["Tab", "Tab"],
+  [KEY.enter]: ["Enter", "Enter"],
+  [KEY.left]: ["ArrowLeft", "ArrowLeft"],
+  [KEY.right]: ["ArrowRight", "ArrowRight"],
+};
+/** The modifier each of `KEY`'s stands for. */
+const MODIFIER: Record<string, "shift" | "ctrl" | "alt" | "meta"> = {
+  [KEY.shift]: "shift",
+  [KEY.control]: "ctrl",
+  [KEY.alt]: "alt",
+  [KEY.meta]: "meta",
+};
+const PUNCTUATION: Record<string, string> = {
+  " ": "Space",
+  ".": "Period",
+  ",": "Comma",
+  "-": "Minus",
+  "'": "Quote",
+  "/": "Slash",
+};
+/** The DOM code of a character typed on a US layout. */
+const codeOf = (ch: string) =>
+  PUNCTUATION[ch] ?? (/\d/.test(ch) ? `Digit${ch}` : `Key${ch.toUpperCase()}`);
+
+/**
+ * Press keys together, as a chord (`chord(MOD, "n")`), without letting go of a held button: through
+ * the compositor, which hands them to what has the keys (a window's own page, ADR 0201, or a
+ * plugin) and runs the desk's own; Escape cancels desk-wm's drag first.
+ */
 export async function chord(...keys: string[]): Promise<void> {
-  // Escape is the compositor's first: it cancels desk-wm's drag.
-  if (keys.length === 1 && keys[0] === KEY.escape) {
-    await feed(ESCAPE);
-    return;
+  const mods = { shift: false, ctrl: false, alt: false, meta: false };
+  const pressed: string[] = [];
+  for (const k of keys) {
+    const modifier = MODIFIER[k];
+    if (modifier) mods[modifier] = true;
+    else pressed.push(k);
   }
-  const actions: KeyAction[] = [
-    ...keys.map((value): KeyAction => ({ type: "keyDown", value })),
-    ...[...keys].reverse().map((value): KeyAction => ({ type: "keyUp", value })),
-  ];
-  await drawing(() => browser.performActions([{ type: "key", id: "keyboard", actions }] as never));
+  const held = mods.shift || mods.ctrl || mods.alt || mods.meta;
+  const typing = !mods.ctrl && !mods.meta && !mods.alt;
+  const presses = pressed.flatMap((k) => {
+    const named = NAMED[k];
+    if (named) return keyPress(named[0], named[1]);
+    const key = mods.shift ? k.toUpperCase() : k;
+    return keyPress(key, codeOf(k), typing ? key : undefined);
+  });
+  await feed([
+    ...(held ? [{ type: "modifiers", ...mods }] : []),
+    ...presses,
+    ...(held ? [{ type: "modifiers" }] : []),
+  ]);
 }
 
-/** Type text, key by key. */
+/** Type text, key by key, through the compositor to what has the keys. */
 export async function type(text: string): Promise<void> {
-  for (const key of text) await chord(key);
+  await feed([...text].flatMap((ch) => keyPress(ch, codeOf(ch), ch)));
 }
 
 /** The wheel over `p`: `dx`, `dy` CSS pixels, as the page's wheel events read them. */
