@@ -22,7 +22,9 @@ afterEach(() => document.body.replaceChildren());
 
 describe("the desk's system parts", () => {
   it("are the ones the compositor names, in its order", () => {
-    const rust = [...readFileSync(RUST, "utf8").matchAll(/id: "(desk\.[a-z-]+)"/g)].map((m) => m[1]);
+    const rust = [...readFileSync(RUST, "utf8").matchAll(/id: "(desk\.[a-z-]+)"/g)].map(
+      (m) => m[1],
+    );
     expect(PARTS.map(([id]) => id)).toEqual(rust);
   });
 
