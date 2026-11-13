@@ -4,6 +4,7 @@
 //! the glide ends, so what its DOM finds under the press is not what the person pressed.
 
 use desk_wm::interact::{Grip, Kind, Motion, Wm};
+use desk_wm::pixels::on_pixel;
 use desk_wm::{Fill, Rect, TopChrome, snap_rect};
 
 use super::support::*;
@@ -110,14 +111,15 @@ fn a_press_on_a_grip_mid_glide_resizes_the_window_from_where_it_is_drawn() {
     let p = wm.desk().window("window-1").unwrap();
     assert_eq!(p.fill, None, "a resize ends the fill where it is");
     let r = rect_of(&wm, "window-1");
+    // Where they were drawn mid-glide, on the nearest whole pixels (#250).
     assert_eq!(
         (r.x, r.y),
-        (mid.x, mid.y),
+        (on_pixel(mid.x, 1.0), on_pixel(mid.y, 1.0)),
         "the opposite edges stay where they were drawn"
     );
     assert_eq!(
-        (r.right(), r.bottom()),
-        (mid.right() - 40.0, mid.bottom() - 30.0)
+        (r.w, r.h),
+        (on_pixel(mid.w - 40.0, 1.0), on_pixel(mid.h - 30.0, 1.0))
     );
 }
 

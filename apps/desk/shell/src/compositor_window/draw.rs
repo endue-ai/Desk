@@ -270,7 +270,14 @@ pub(super) fn window(
     from: &Sources,
     drawn: &mut Drawn,
 ) -> Result<(), SceneError> {
-    let at = rect(w.rect);
+    // At rest on whole device pixels; on its way where it is (#250, `draw_pixels.rs`).
+    let moving = hosted.on_its_way(&w.id);
+    let laid = rect(w.rect);
+    let at = if moving {
+        laid
+    } else {
+        rect(pixels::at_rest(w.rect, from.scale))
+    };
     let made = chrome.window(scene, desk, at, &w.title, None, w.focused)?;
     // The title sits between the icon and the tools the page draws, clear of the top chips.
     let (start, end) = w.title_insets();
@@ -281,7 +288,7 @@ pub(super) fn window(
             .into_iter()
             .chain(made.subtitle),
     )?;
-    let local = |r: desk_wm::Rect| rect(r).translate(-at.min());
+    let local = |r: desk_wm::Rect| rect(r).translate(-laid.min());
     // Its own page, once it painted (ADR 0201): its title bar's icon and tools, its own views and
     // the headers of split panes from the window's own texture, at the window's place, and the
     // pointer on it to that page; nothing of the window from the desk's page.
@@ -334,10 +341,19 @@ pub(super) fn window(
             }
         }
     }
+    // Its content inside the frame's rounded corners; filtered while it is on its way.
+    let radius = chrome.theme().window.radius;
+    pixels::inside_corners(scene, made.group, (at.width, at.height), radius)?;
+    if moving {
+        pixels::on_its_way(scene, made.group)?;
+    }
     // The title over the page's title bar, which hides what lies under the window in the page.
     scene.reorder(made.title, usize::MAX)?;
     Ok(())
 }
+
+#[path = "draw_pixels.rs"]
+pub(super) mod pixels;
 
 #[cfg(test)]
 #[path = "draw_tests.rs"]

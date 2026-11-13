@@ -41,11 +41,14 @@ struct Varyings {
   return out;
 }
 
-// Signed distance from p to the rounded box (negative inside).
-fn rounded_box(p: vec2f, shape: vec4f, radius: f32) -> f32 {
+// Signed distance from p to the rounded box (negative inside); `square` names the corners left
+// square, bit 0 the top left, then clockwise.
+fn rounded_box(p: vec2f, shape: vec4f, radius: f32, square: u32) -> f32 {
   let center = (shape.xy + shape.zw) * 0.5;
   let half = max((shape.zw - shape.xy) * 0.5, vec2f(0.0));
-  let r = min(radius, min(half.x, half.y));
+  let right = p.x > center.x;
+  let corner = select(select(1u, 2u, right), select(8u, 4u, right), p.y > center.y);
+  let r = select(min(radius, min(half.x, half.y)), 0.0, (square & corner) != 0u);
   let q = abs(p - center) - half + vec2f(r);
   return length(max(q, vec2f(0.0))) + min(max(q.x, q.y), 0.0) - r;
 }
@@ -77,7 +80,7 @@ fn premultiply(c: vec4f) -> vec4f {
   let px = pixel_size(v.local);
   let clip = clip_coverage(v.clip_space, pixel_size(v.clip_space));
   let opacity = item.params.z * clip;
-  let d = rounded_box(v.local, item.shape, item.params.x);
+  let d = rounded_box(v.local, item.shape, item.params.x, 0u);
   if (item.mode.x == MODE_SHADOW) {
     let sigma = item.params.w;
     var alpha = clamp(0.5 - d / px, 0.0, 1.0);
@@ -149,17 +152,30 @@ struct GlyphVaryings {
   return select(mask, premultiply(colour), v.kind == 1u) * opacity;
 }
 
+// A surface: filtered where it lands, never reading past the part `uv` cuts (half a texel in
+// from its edges); or, laid one texel to a pixel on whole pixels (ADR 0209), each pixel's texel
+// read as it is, `stroke.xy` the pixel the texture's first texel lands on.
 @fragment fn fs_surface(v: Varyings) -> @location(0) vec4f {
   let px = pixel_size(v.local);
   let clip = clip_coverage(v.clip_space, pixel_size(v.clip_space));
   let size = max(item.shape.zw - item.shape.xy, vec2f(1e-5));
   let along = (v.local - item.shape.xy) / size;
-  let uv = mix(item.uv.xy, item.uv.zw, along);
-  let sampled = textureSample(surface_texture, surface_sampler, uv);
+  let dims = vec2f(textureDimensions(surface_texture));
+  let middle = (item.uv.xy + item.uv.zw) * 0.5;
+  let inset = 0.5 / dims;
+  let lo = min(item.uv.xy + inset, middle);
+  let hi = max(item.uv.zw - inset, middle);
+  let uv = clamp(mix(item.uv.xy, item.uv.zw, along), lo, hi);
+  let filtered = textureSample(surface_texture, surface_sampler, uv);
+  let first = vec2i(floor(item.uv.xy * dims + 1e-3));
+  let last = clamp(vec2i(ceil(item.uv.zw * dims - 1e-3)) - 1, first, vec2i(dims) - 1);
+  let at = clamp(vec2i(floor(v.position.xy - item.stroke.xy)), first, last);
+  let exact = textureLoad(surface_texture, at, 0);
+  let sampled = select(filtered, exact, item.mode.z == 1u);
   // Greyed towards its luminance (Rec. 709); premultiplied stays premultiplied.
   let luma = dot(sampled.rgb, vec3f(0.2126, 0.7152, 0.0722));
   let texel = vec4f(mix(sampled.rgb, vec3f(luma), item.params.w), sampled.a);
-  let d = rounded_box(v.local, item.shape, item.params.x);
+  let d = rounded_box(v.local, item.shape, item.params.x, item.mode.y);
   let coverage = clamp(0.5 - d / px, 0.0, 1.0);
   return texel * coverage * item.params.z * clip;
 }

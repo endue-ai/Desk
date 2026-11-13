@@ -11,7 +11,6 @@
 use std::time::Instant;
 
 use cef::ImplBrowser;
-use desk_compositor::Rect;
 use desk_compositor::input::keymap::{KeyEntry, KeyLike, Platform};
 use desk_compositor::input::{Input, Out, PageFocus};
 use desk_surface::generated::{CompositorMessage, SurfaceMessage};
@@ -21,7 +20,7 @@ use serde_json::{Value, json};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event_loop::ActiveEventLoop;
 
-use super::draw::Shown;
+use super::draw::{self, Shown};
 use super::hosted::owner;
 use super::{CompositorWindow, PAGE, os_pointer, overlay};
 use crate::web_host::input as web_input;
@@ -259,22 +258,17 @@ impl CompositorWindow {
         // The ring goes round the pane the focused surface shows in, while it is drawn.
         // Not while the spread is open: the pane is on a card, not where the ring would go.
         let spreading = self.spreading.open.is_some();
+        // Where its window is drawn, inside the frame's rounded corners (#250).
         let ring = focused
             .filter(|s| !spreading && router.window_focused() && router.targets.shown(s))
             .and_then(|s| {
                 let plugin = owner(&s)?.0;
                 let plan = self.hosted.plan()?;
-                let pane = plan.panes_of(&plugin).last()?;
-                Some(pane.body)
+                let look = (self.theme.window.radius, scale);
+                draw::pixels::ring_of(plan, &plugin, look, |id| self.hosted.on_its_way(id))
             });
-        if let Some(r) = ring {
-            let device = Rect::new(
-                r.x as f32 * scale,
-                r.y as f32 * scale,
-                r.w as f32 * scale,
-                r.h as f32 * scale,
-            );
-            overlay::focus_ring(&mut self.scene, device.round_out(), scale);
+        if let Some((device, corners)) = ring {
+            overlay::focus_ring(&mut self.scene, device, scale, corners);
         }
         if let Some(drag) = router.overlay() {
             overlay::drag_image(&mut self.scene, &drag, scale);

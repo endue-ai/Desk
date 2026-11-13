@@ -19,9 +19,7 @@
     "foreignBlocks": 4,
     "minRestSharpness": 0.95
   },
-  "known": {
-    "soft": "#250"
-  },
+  "known": {},
   "baseline": {
     "optimized-offscreen": {
       "date": "2026-11-13T17:21:04.457Z",

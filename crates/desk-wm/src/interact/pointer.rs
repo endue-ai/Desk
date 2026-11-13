@@ -282,8 +282,9 @@ impl Wm {
     }
 
     /// Window `id` dropped at `rect` on screen, stored in the mode `floating` says, out of any
-    /// fill.
+    /// fill; on whole device pixels (#250).
     pub(super) fn place(&mut self, id: &str, rect: crate::types::Rect, floating: bool) -> Vec<Out> {
+        let rect = crate::pixels::on_pixels(rect, self.scale);
         let pan = self.drawn.pan_of(&self.drawn.here());
         let (vw, vh) = (self.screen.w, self.screen.h);
         let stored = crate::coordinates::stored_rect(rect, floating, pan, vw, vh);

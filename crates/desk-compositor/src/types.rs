@@ -172,6 +172,52 @@ pub(crate) fn union(a: Option<Rect>, b: Option<Rect>) -> Option<Rect> {
     }
 }
 
+/// Which corners of a box take its radius; the others are square. A window's content takes its
+/// frame's radius where it reaches the frame's corners and keeps the corners under its title bar
+/// square (#250).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Corners {
+    pub top_left: bool,
+    pub top_right: bool,
+    pub bottom_right: bool,
+    pub bottom_left: bool,
+}
+
+impl Corners {
+    pub const ALL: Corners = Corners::new(true, true, true, true);
+    pub const NONE: Corners = Corners::new(false, false, false, false);
+    pub const BOTTOM: Corners = Corners::new(false, false, true, true);
+
+    /// Clockwise from the top left.
+    pub const fn new(
+        top_left: bool,
+        top_right: bool,
+        bottom_right: bool,
+        bottom_left: bool,
+    ) -> Corners {
+        Corners {
+            top_left,
+            top_right,
+            bottom_right,
+            bottom_left,
+        }
+    }
+
+    /// The square ones as the shader reads them: bit 0 the top left, then clockwise.
+    pub(crate) fn square_bits(self) -> u32 {
+        [
+            self.top_left,
+            self.top_right,
+            self.bottom_right,
+            self.bottom_left,
+        ]
+        .iter()
+        .enumerate()
+        .map(|(i, round)| u32::from(!round) << i)
+        .sum()
+    }
+}
+
 /// The caller's name for a texture registered with the compositor (for example a surface id).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TextureId(pub u64);

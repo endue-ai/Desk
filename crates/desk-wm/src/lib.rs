@@ -48,6 +48,7 @@ pub mod minimap;
 pub mod pan;
 pub mod pane_min;
 pub mod panes;
+pub mod pixels;
 pub mod placed;
 pub mod reach;
 pub mod settle;
