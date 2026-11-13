@@ -263,6 +263,17 @@ pub fn draw(
     Ok(drawn)
 }
 
+/// `placed` sized to a picture of `size` device pixels at `scale`, from its top left; as placed while
+/// the picture is its size, to a device pixel.
+pub(super) fn pictured(placed: Rect, (tw, th): (u32, u32), scale: f32) -> Rect {
+    let (w, h) = (tw as f32 / scale, th as f32 / scale);
+    let near = |a: f32, b: f32| ((a - b) * scale).abs() <= 1.0;
+    if near(placed.width, w) && near(placed.height, h) {
+        return placed;
+    }
+    Rect::new(placed.x, placed.y, w, h)
+}
+
 pub(super) fn window(
     scene: &mut Scene,
     chrome: &mut Chrome,
@@ -275,11 +286,16 @@ pub(super) fn window(
     // At rest on whole device pixels; on its way where it is (#250, `draw_pixels.rs`).
     let moving = hosted.on_its_way(&w.id);
     let laid = rect(w.rect);
-    let at = if moving {
+    let placed = if moving {
         laid
     } else {
         rect(pixels::at_rest(w.rect, from.scale))
     };
+    let own = window_pages::surface_of(&w.id);
+    let paged = (from.surface)(&own);
+    // Drawn from its own page, its frame is its picture's size (#252, ADR 0211): a resize shows once
+    // the page has painted the new size, frame and content in the same frame, never cut or padded.
+    let at = paged.map_or(placed, |(_, size)| pictured(placed, size, from.scale));
     let made = chrome.window(scene, desk, at, &w.title, None, w.focused)?;
     // The title sits between the icon and the tools the page draws, clear of the top chips.
     let (start, end) = w.title_insets();
@@ -294,8 +310,6 @@ pub(super) fn window(
     // Its own page, once it painted (ADR 0201): its title bar's icon and tools, its own views and
     // the headers of split panes from the window's own texture, at the window's place, and the
     // pointer on it to that page; nothing of the window from the desk's page.
-    let own = window_pages::surface_of(&w.id);
-    let paged = (from.surface)(&own);
     if let Some(texture) = paged {
         let whole = Rect::new(0.0, 0.0, at.width, at.height);
         let node = scene.insert(made.group, sampled(whole, texture, from.scale))?;
@@ -364,3 +378,7 @@ mod tests;
 #[cfg(test)]
 #[path = "draw_cost_tests.rs"]
 mod cost_tests;
+
+#[cfg(test)]
+#[path = "draw_resize_tests.rs"]
+mod resize_tests;

@@ -4,7 +4,7 @@
 //! crate's importer already copied it into a texture of the compositor's device, which is sampled
 //! until the next frame replaces it (`when-replaced`).
 
-use cef::{AcceleratedPaintInfo, ColorType, Rect};
+use cef::{AcceleratedPaintInfo, AcceleratedPaintInfoCommon, ColorType, Rect};
 use desk_surface::generated::{
     SurfaceAttach, SurfaceAttachType, SurfaceFormat, SurfacePixelRect, SurfaceReleaseWhen,
     SurfaceTexture, SurfaceTextureHandle,
@@ -132,6 +132,60 @@ pub fn software_handle() -> SurfaceTextureHandle {
     }
 }
 
+/// Whether a paint's texture is its page's picture whole, laid out at the texture's size. While a
+/// view is resized, CEF's capture lags the page by a frame: the page laid out at its new size comes
+/// in a texture still the old size, scaled down to fit or centred between black bars (its
+/// `content_rect` short of the texture), or clipped by it (its `source_size`, the size the page laid
+/// out, not the texture's) (#252). A rect or size not given counts as whole.
+pub fn fills(info: &AcceleratedPaintInfoCommon) -> bool {
+    let (coded, content, source) = (&info.coded_size, &info.content_rect, &info.source_size);
+    let covers = content.width <= 0
+        || content.height <= 0
+        || (content.x == 0
+            && content.y == 0
+            && content.width == coded.width
+            && content.height == coded.height);
+    let laid = info.has_source_size == 0
+        || source.width <= 0
+        || source.height <= 0
+        || (source.width == coded.width && source.height == coded.height);
+    covers && laid
+}
+
+/// The most paints skipped in a row for not filling their texture: past it they are drawn as they
+/// come, so a page whose capture never fills (a scale's rounding) still paints.
+pub const MOST_SKIPPED: u32 = 3;
+
+/// What becomes of a paint: skipped, or attached, its damage the whole texture after a skip (the
+/// paint's damage counts from the skipped frame, which the compositor never copied).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Take {
+    Skip,
+    Attach { whole: bool },
+}
+
+/// A view's paints skipped in a row, and whether the next one attached is copied whole.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Skips {
+    run: u32,
+    whole_next: bool,
+}
+
+impl Skips {
+    /// A paint came that fills its texture or not.
+    pub fn paint(&mut self, fills: bool) -> Take {
+        if !fills && self.run < MOST_SKIPPED {
+            self.run += 1;
+            self.whole_next = true;
+            return Take::Skip;
+        }
+        self.run = 0;
+        Take::Attach {
+            whole: std::mem::take(&mut self.whole_next),
+        }
+    }
+}
+
 /// The size CEF says the shared texture has.
 fn coded_size(info: &AcceleratedPaintInfo) -> (u32, u32) {
     let size = &info.extra.coded_size;
@@ -216,8 +270,8 @@ pub fn painted(info: &AcceleratedPaintInfo) -> Option<Painted> {
 
 #[cfg(test)]
 mod tests {
-    use super::damage;
-    use cef::Rect;
+    use super::{MOST_SKIPPED, Skips, Take, damage, fills};
+    use cef::{AcceleratedPaintInfoCommon, Rect};
     use desk_surface::generated::SurfacePixelRect;
 
     fn r(x: i32, y: i32, width: i32, height: i32) -> Rect {
@@ -255,5 +309,47 @@ mod tests {
     fn more_than_thirty_two_rectangles_become_their_bounding_box() {
         let many: Vec<Rect> = (0..40).map(|i| r(i, i, 1, 1)).collect();
         assert_eq!(damage(Some(&many), (100, 50)), vec![p(0, 0, 40, 40)]);
+    }
+
+    /// A paint as CEF's capture gave it: the texture's size, where the picture lies in it, and
+    /// the size the page laid out.
+    fn info(coded: (i32, i32), content: Rect, source: (i32, i32)) -> AcceleratedPaintInfoCommon {
+        let size = |(width, height)| cef::Size { width, height };
+        AcceleratedPaintInfoCommon {
+            coded_size: size(coded),
+            visible_rect: r(0, 0, coded.0, coded.1),
+            content_rect: content,
+            source_size: size(source),
+            has_source_size: 1,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_picture_scaled_centred_or_clipped_in_a_texture_of_another_size_does_not_fill_it() {
+        // Seen on 2026-11-14 while a window was resized (main 6e75d95e).
+        assert!(fills(&info((328, 211), r(0, 0, 328, 211), (328, 211))));
+        let scaled = info((328, 211), r(0, 3, 328, 205), (337, 211));
+        let centred = info((373, 211), r(10, 0, 352, 211), (352, 211));
+        let clipped = info((400, 169), r(0, 0, 400, 169), (402, 169));
+        assert!(!fills(&scaled) && !fills(&centred) && !fills(&clipped));
+        assert!(
+            fills(&info((328, 211), r(0, 0, 0, 0), (0, 0))),
+            "none given"
+        );
+    }
+
+    #[test]
+    fn a_skipped_paint_makes_the_next_one_whole_and_three_in_a_row_are_the_most() {
+        let mut skips = Skips::default();
+        assert_eq!(skips.paint(true), Take::Attach { whole: false });
+        assert_eq!(skips.paint(false), Take::Skip);
+        assert_eq!(skips.paint(true), Take::Attach { whole: true });
+        assert_eq!(skips.paint(true), Take::Attach { whole: false });
+        for _ in 0..MOST_SKIPPED {
+            assert_eq!(skips.paint(false), Take::Skip);
+        }
+        assert_eq!(skips.paint(false), Take::Attach { whole: true });
+        assert_eq!(skips.paint(false), Take::Skip, "a new run");
     }
 }

@@ -149,7 +149,7 @@ impl WebHost {
 /// finds now, counted once in its view's counts. Only a plugin surface's page is loaded again.
 fn watch(it: &OnClock<'_>, at: Instant, waited: Duration) -> Option<Found> {
     let mut view = it.view.lock();
-    let paints = view.counts.paints + view.counts.software_paints;
+    let paints = view.painted();
     let found = view.watch.asked(at, waited, paints, it.surface.is_some());
     if found.is_some() && !view.counts.stalled {
         view.counts.stalls += 1;
@@ -161,7 +161,7 @@ fn watch(it: &OnClock<'_>, at: Instant, waited: Duration) -> Option<Found> {
 /// The frames a view has painted, either way, as its watch sees them: a paint ends a stall.
 fn painted(view: &SharedView) -> u64 {
     let mut view = view.lock();
-    let paints = view.counts.paints + view.counts.software_paints;
+    let paints = view.painted();
     view.watch.saw(paints);
     view.counts.stalled = view.watch.stalled();
     paints

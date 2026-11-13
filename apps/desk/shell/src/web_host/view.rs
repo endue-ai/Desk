@@ -38,6 +38,8 @@ pub struct Counts {
     pub stall_reloads: u64,
     /// Paints of its popup widget (a select's list, a picker: `popup.rs`) that reached the compositor.
     pub popup_paints: u64,
+    /// Paints not drawn: a picture laid out for another size than its texture (#252, `paint::fills`).
+    pub unfilled: u64,
 }
 
 /// One surface's layout and paint state.
@@ -66,6 +68,8 @@ pub struct View {
     pub popup: super::render::popup::Popup,
     /// Where the compositor draws it in the app window, its screen, and what its browser was told.
     pub screen: super::render::popup_screen::Screen,
+    /// Its paints skipped in a row for not filling their texture (#252).
+    pub skips: super::paint::Skips,
 }
 
 impl View {
@@ -85,6 +89,7 @@ impl View {
             a11y: Default::default(),
             popup: Default::default(),
             screen: Default::default(),
+            skips: Default::default(),
         }
     }
 
@@ -129,6 +134,12 @@ impl View {
         }
         self.counts.texture = Some(size);
         (self.frame, self.generation)
+    }
+
+    /// The frames its page painted, either way, the ones not drawn for not filling their texture
+    /// too (#252): what its clock, its stall watch and its screen go by.
+    pub fn painted(&self) -> u64 {
+        self.counts.paints + self.counts.software_paints + self.counts.unfilled
     }
 
     /// The view in pixels: what the texture will be.

@@ -74,6 +74,8 @@ pub struct Hosted {
     painted: PageShown,
     /// What the picture shows changed since the window last drew: draw again.
     restaged: bool,
+    /// The windows drawn from their own page, which the page's picture does not place (#252).
+    own_pages: BTreeSet<String>,
 }
 
 impl Hosted {
@@ -99,6 +101,7 @@ impl Hosted {
             held_clock: None,
             painted: PageShown::new(),
             restaged: false,
+            own_pages: BTreeSet::new(),
         }
     }
 
@@ -178,7 +181,15 @@ impl Hosted {
         let real = self.real_ms(now);
         self.on_their_way = frame.drawn.keys().cloned().collect();
         let desk = self.wm.desk();
-        let mut places = picture::places(&mut self.painted, desk, report, frame.drawn, laid, real);
+        let own = &self.own_pages;
+        let mut places = picture::places(
+            &mut self.painted,
+            (desk, report),
+            frame.drawn,
+            laid,
+            own,
+            real,
+        );
         // What lies above the windows: the system layer's parts and the snap preview, which the
         // windows' page parts leave to them (#159 findings 15 and 19).
         places.over = report.parts.iter().filter_map(|p| p.known()).collect();

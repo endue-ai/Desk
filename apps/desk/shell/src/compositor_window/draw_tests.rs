@@ -36,7 +36,7 @@ fn hosted(state: &str) -> Hosted {
 }
 
 /// The same on a display of `scale`.
-fn hosted_at(state: &str, scale: f64) -> Hosted {
+pub(super) fn hosted_at(state: &str, scale: f64) -> Hosted {
     let report: DeskReport = serde_json::from_value(json!({
         "seq": 1, "width": 1440, "height": 900,
         "frames": [{ "plugin": "endue.notes", "host": "main.endue-notes",
@@ -58,7 +58,7 @@ fn textures(surface: &str) -> Option<Texture> {
     (surface == "main.endue-notes").then_some((TextureId(2), (400, 263)))
 }
 
-fn sources(surface: &dyn Fn(&str) -> Option<Texture>) -> Sources<'_> {
+pub(super) fn sources(surface: &dyn Fn(&str) -> Option<Texture>) -> Sources<'_> {
     Sources {
         scale: 1.0,
         page: Some((TextureId(1), (1440, 900))),
@@ -346,15 +346,15 @@ fn an_open_popup_is_drawn_over_its_surface_and_the_page_s_over_everything_heard_
     );
 }
 
-/// The first surface drawn from `texture` under `id`, and where its groups put it.
-fn surface_of(scene: &Scene, id: NodeId, texture: TextureId) -> Option<(Vec2, SurfaceNode)> {
+/// The first surface drawn from texture `t` under `id`, and where its groups put it.
+pub(super) fn surface_of(scene: &Scene, id: NodeId, t: TextureId) -> Option<(Vec2, SurfaceNode)> {
     scene
         .children(id)
         .iter()
         .find_map(|child| match &scene.node(*child)?.kind {
-            NodeKind::Group(g) => surface_of(scene, *child, texture)
+            NodeKind::Group(g) => surface_of(scene, *child, t)
                 .map(|(at, s)| (at + g.transform.w_axis.truncate().truncate(), s)),
-            NodeKind::Surface(s) if s.texture == texture => Some((Vec2::ZERO, *s)),
+            NodeKind::Surface(s) if s.texture == t => Some((Vec2::ZERO, *s)),
             _ => None,
         })
 }
