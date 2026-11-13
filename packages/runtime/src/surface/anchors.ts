@@ -46,7 +46,13 @@ export function surfaceAnchors(layer: HTMLElement): Anchors {
       const name = el.getAttribute("aria-label") ?? "";
       const chrome = group.firstElementChild as HTMLElement;
       if (chrome.getAttribute("aria-label") !== name) chrome.setAttribute("aria-label", name);
+      // A move drops the focus of what it moves: a place the session gave the focus as the desk
+      // started, before its window's page opened, keeps it.
+      const active = doc.activeElement as HTMLElement | null;
       for (const plugin of plugins) group.append(plugin);
+      if (active && active !== doc.activeElement && group.contains(active)) {
+        active.focus({ preventScroll: true });
+      }
     },
     drop(id) {
       groups.get(id)?.remove();
