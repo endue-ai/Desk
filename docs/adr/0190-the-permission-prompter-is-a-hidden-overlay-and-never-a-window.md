@@ -4,6 +4,9 @@ date: 2026-11-12
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0204: a question also reaches the person on the island over every app, which takes
+the keys only when pressed; `perm.settled` takes down a card another prompter answered.
+
 # The permission prompter is a hidden overlay and never a window; a refusal is taken back in its list
 
 ## Context and Problem Statement
