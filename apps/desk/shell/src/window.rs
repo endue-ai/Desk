@@ -1,6 +1,6 @@
-//! The shell's winit application: the main window, the palette, the floating Eris, the computer-use
-//! banner and the app windows (each a `Pane`; `apps`, #234), the tray, the menu bar, the global
-//! shortcuts, and CEF's message loop work when the pump says it is due. Other threads reach it
+//! The shell's winit application: the main window, the palette, the floating Eris, the island, the
+//! computer-use banner and the app windows (each a `Pane`; `apps`, #234), the tray, the menu bar, the
+//! global shortcuts, and CEF's message loop work when the pump says it is due. Other threads reach it
 //! through the pump's jobs. Closing the main window hides it, as in the Tauri shell; the desk quits
 //! from the tray or the menu, once its page has asked about unsaved changes (`quit.rs`), closing
 //! every browser before CEF shuts down.
@@ -91,7 +91,7 @@ impl Shell {
         url: &str,
     ) -> Option<&Pane> {
         let client = crate::client::client(role, self.pump.clone(), Arc::clone(&self.desk));
-        match Pane::open(event_loop, attributes, url, client) {
+        match Pane::open(event_loop, role == Role::Island, attributes, url, client) {
             Ok(pane) => {
                 self.desk.pages.set(role, pane.browser.clone());
                 self.roles.insert(pane.window.id(), role);
@@ -169,6 +169,7 @@ impl Shell {
                 System::Desk => {}
                 System::Palette => palette::setup(self, event_loop),
                 System::Eris => eris_window::setup(self, event_loop),
+                System::Island => crate::island::setup(self, event_loop),
             }
         }
     }
@@ -377,8 +378,10 @@ impl ApplicationHandler<Wake> for Shell {
                     pane.hide();
                 }
                 eris_window::focused(self, role, focused);
+                crate::island::focused(self, role, focused);
             }
             (Role::Eris, WindowEvent::Moved(_)) => eris_window::moved(self),
+            (Role::Island, WindowEvent::Moved(_)) => crate::island::moved(self),
             (Role::Main, WindowEvent::Moved(_)) => crate::main_frame::moved(),
             _ => {}
         }

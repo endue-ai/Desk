@@ -17,10 +17,12 @@ pub enum System {
     Palette,
     /// Eris floating over the OS while the desk is inactive (ADR 0121), a window of its own.
     Eris,
+    /// The island over every app (ADR 0204), a window of its own while `desk.island.show` is on.
+    Island,
 }
 
 impl System {
-    pub const ALL: [System; 3] = [System::Desk, System::Palette, System::Eris];
+    pub const ALL: [System; 4] = [System::Desk, System::Palette, System::Eris, System::Island];
 
     /// Its surface id: the compositor's for the desk's page, the shell's for the other windows.
     pub fn id(self) -> &'static str {
@@ -28,6 +30,7 @@ impl System {
             System::Desk => "desk",
             System::Palette => "palette",
             System::Eris => "eris",
+            System::Island => "island",
         }
     }
 
@@ -37,14 +40,15 @@ impl System {
             System::Desk => Role::Main,
             System::Palette => Role::Palette,
             System::Eris => Role::Eris,
+            System::Island => Role::Island,
         }
     }
 
-    /// The caller its bridge calls run as: the desk's, the palette's, and Eris's, which is the
-    /// runtime's (she asks only for her conversation, [`Sender::may_ask`]).
+    /// The caller its bridge calls run as: the desk's, the palette's, and Eris's and the island's,
+    /// which are the runtime's (each asks only for its own part, [`Sender::may_ask`]).
     pub fn caller(self) -> &'static str {
         match self {
-            System::Desk | System::Eris => RUNTIME,
+            System::Desk | System::Eris | System::Island => RUNTIME,
             System::Palette => PALETTE,
         }
     }
@@ -203,7 +207,7 @@ mod tests {
         let ids: Vec<&str> = System::ALL.iter().map(|s| s.id()).collect();
         assert_eq!(
             ids,
-            ["desk", "palette", "eris"],
+            ["desk", "palette", "eris", "island"],
             "the order the desk starts them in"
         );
         for system in System::ALL {
@@ -218,6 +222,11 @@ mod tests {
             System::Eris.caller(),
             "desk",
             "the runtime's caller, for Eris only"
+        );
+        assert_eq!(
+            System::Island.caller(),
+            "desk",
+            "the runtime's caller, for what the island shows only"
         );
         assert_eq!(
             System::of(Role::Banner),

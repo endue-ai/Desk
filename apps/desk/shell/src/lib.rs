@@ -21,6 +21,7 @@ pub mod guard;
 pub mod host;
 pub mod hotkeys;
 pub mod instance;
+pub mod island;
 #[cfg(target_os = "macos")]
 pub mod mac;
 pub mod main_frame;

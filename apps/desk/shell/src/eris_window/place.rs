@@ -77,6 +77,20 @@ impl Positions {
     pub fn place(&self, display: &Display, size: (u32, u32), margin: u32) -> Rect {
         let area = display.area;
         let (width, height) = size;
+        let corner = Rect {
+            x: area.right() - margin as i32 - width as i32,
+            y: area.bottom() - margin as i32 - height as i32,
+            width,
+            height,
+        };
+        self.place_or(display, size, corner)
+    }
+
+    /// Where a window of `size` goes on `display`: on its kept spot, else at `otherwise`, and
+    /// always wholly on the display.
+    pub fn place_or(&self, display: &Display, size: (u32, u32), otherwise: Rect) -> Rect {
+        let area = display.area;
+        let (width, height) = size;
         let window = match self.displays.get(&display.key) {
             Some(spot) => Rect {
                 x: area.x + spot.x - (width / 2) as i32,
@@ -84,12 +98,7 @@ impl Positions {
                 width,
                 height,
             },
-            None => Rect {
-                x: area.right() - margin as i32 - width as i32,
-                y: area.bottom() - margin as i32 - height as i32,
-                width,
-                height,
-            },
+            None => otherwise,
         };
         inside(window, area)
     }

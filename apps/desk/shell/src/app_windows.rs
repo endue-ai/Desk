@@ -121,7 +121,7 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
         .with_min_inner_size(LogicalSize::new(MIN.0, MIN.1));
     let pump = shell.desk.pump.clone();
     let client = client::client(host.clone(), &ask.surface, pump, Arc::clone(&shell.desk));
-    let pane = match Pane::open(event_loop, attributes, &ask.url, client) {
+    let pane = match Pane::open(event_loop, false, attributes, &ask.url, client) {
         Ok(pane) => pane,
         Err(why) => {
             eprintln!("endue Desk: {}'s window did not open ({why})", ask.plugin);

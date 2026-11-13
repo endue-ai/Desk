@@ -71,12 +71,15 @@ describe("system surfaces: the desk is the compositor and its system surfaces", 
       { id: "desk", role: "Main", caller: "desk" },
       { id: "palette", role: "Palette", caller: "palette" },
       { id: "eris", role: "Eris", caller: "desk" },
+      { id: "island", role: "Island", caller: "desk" },
     ]);
     const urls = await pages();
     for (const view of ["", "?view=palette", "?view=eris"]) {
       const page = `desk-app://app/index.html${view}`;
       expect(urls.some((u) => u === page)).toBe(true);
     }
+    // The island's page opens only while desk.island.show is on (ADR 0204), off by default.
+    expect(urls).not.toContain("desk-app://app/index.html?view=island");
   });
 
   it("holds no plugin in the desk's page: each plugin's page is a browser of its own, reached through the shell", async () => {

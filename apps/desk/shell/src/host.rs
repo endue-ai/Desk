@@ -3,7 +3,7 @@
 //! `perm.request`, the OS calendar prompt or a file dialog, and then holds the rest up only so long),
 //! and the reply goes back to the frame it came from on CEF's UI thread. The caller comes from the
 //! window the browser is for and the frame's URL (`desk_web::sender`), never from the call (#45).
-//! Core events go to the pages of the main, palette and Eris windows, as Tauri's `emit` did.
+//! Core events go to the pages of the main, palette, Eris and island windows, as Tauri's `emit` did.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -23,6 +23,7 @@ use serde_json::Value;
 
 use crate::eris_window::ErisWindow;
 use crate::instance::Instance;
+use crate::island::Island;
 use crate::open_files::OpenFiles;
 use crate::pump::Pump;
 use crate::renderer::{MESSAGE, SURFACE};
@@ -45,6 +46,8 @@ pub struct Desk {
     pub pages: Pages,
     /// The floating Eris, once its window exists.
     pub eris: OnceLock<Arc<ErisWindow>>,
+    /// The island (ADR 0204), once the shell has started.
+    pub island: OnceLock<Arc<Island>>,
     /// This desk's hold on being the only one; let go before it starts again.
     pub instance: Mutex<Option<Instance>>,
     /// The desk's own updates, when this build updates itself (#47).
@@ -85,6 +88,7 @@ impl Desk {
             pump,
             pages: Pages::default(),
             eris: OnceLock::new(),
+            island: OnceLock::new(),
             instance: Mutex::new(instance),
             updater,
             calls: Calls::default(),
@@ -240,7 +244,7 @@ impl Pages {
 }
 
 /// The windows that hear core events: the banner is a plugin page without the bridge.
-const HEARING: [Role; 3] = [Role::Main, Role::Palette, Role::Eris];
+const HEARING: [Role; 4] = [Role::Main, Role::Palette, Role::Eris, Role::Island];
 
 /// Forward every core event to the pages as `bridge://event`, on a thread of its own.
 pub fn forward_events(events: std::sync::mpsc::Receiver<Delivery>, pages: Pages) {
