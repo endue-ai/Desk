@@ -8,8 +8,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { browser } from "@wdio/globals";
 import { inFrame, shellReady } from "./desk";
-import { hostOf } from "./pages";
 import { HOME_VAR } from "./driver";
+import { hostOf } from "./pages";
 import { byId, clearDesk, deskNow, freshDesktop, openWindow, run, until } from "./windows";
 
 export const NOTES = "endue.notes";

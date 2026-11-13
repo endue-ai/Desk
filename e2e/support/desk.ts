@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { $, browser, expect } from "@wdio/globals";
 import { dataDir } from "./cef";
 import { HOME_VAR, LOG_VAR } from "./driver";
-import { inPluginPage, keysWith, onAnyPage } from "./pages";
+import { inPluginPage, onAnyPage } from "./pages";
 
 /** The status line the runtime shows and `desk_ready` prints once the bridge answered. */
 export const READY = "desk ready · bridge: cef";
@@ -80,9 +80,14 @@ export async function press(selector: string): Promise<void> {
   }, selector);
 }
 
-/** The plugin whose surface holds the keyboard focus, as the compositor routes the keys, if any. */
+/**
+ * The plugin whose surface holds the keyboard focus, if any: its place in the desk's page, where
+ * it stays while its window lies in a page of its own (ADR 0201).
+ */
 export function focusedSurface(): Promise<string | null> {
-  return keysWith();
+  return browser.execute(
+    () => document.activeElement?.closest("[data-surface]")?.getAttribute("data-surface") ?? null,
+  );
 }
 
 /** What the app printed on stdout (and stderr) so far, line by line. */
