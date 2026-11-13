@@ -13,8 +13,8 @@ import { browser, expect } from "@wdio/globals";
 import { click, feed, inputState, keyPress, shellCommand } from "../support/compositor";
 import { inFrame, press, shellReady } from "../support/desk";
 import { HOME_VAR } from "../support/driver";
-import { inWindowPage } from "../support/pages";
 import { bodyAt, drag, drawerButtonAt, release, titleAt } from "../support/gestures";
+import { inWindowPage } from "../support/pages";
 import { deskNow, inUse, rectOf, run, windowNow, windowUntil } from "../support/windows";
 
 const TERMINAL = "endue.terminal";

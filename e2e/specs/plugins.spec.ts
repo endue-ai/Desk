@@ -19,9 +19,9 @@
 import { $, browser, expect } from "@wdio/globals";
 import {
   drawerButton,
+  expectSurface,
   focusedSurface,
   inFrame,
-  expectSurface,
   shellReady,
   waitForData,
 } from "../support/desk";
@@ -64,7 +64,9 @@ describe("plugins: the Plugins list in a normal window (endue.sidebar, Default p
   it("a plugin from DESK_DEV_PLUGINS is listed under the shell and turned off and on from the keyboard", async () => {
     await shellReady();
     await expectSurface(HELLO);
-    const sidebar = (await deskNow()).windows.find((w) => w.panes.some((p) => p.plugin === SIDEBAR));
+    const sidebar = (await deskNow()).windows.find((w) =>
+      w.panes.some((p) => p.plugin === SIDEBAR),
+    );
     expect(sidebar?.state).toBe("normal");
     await expect(drawerButton()).toHaveAttribute("aria-expanded", "false");
     await inFrame(SIDEBAR, () => expect(toggle()).toBeChecked());
