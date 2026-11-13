@@ -2,7 +2,10 @@
 //! log and in `compositor_stats` (the view's counts), and loads a plugin surface's page again in its
 //! browser, as the wake of a surface whose renderer died does (`load_again`). The new page has a new
 //! frame sink, so CEF's begin frames reach it again; the runtime gives it its last `desk:state` as
-//! after any load. The desk's own page is only reported: loading it again would restart the runtime.
+//! after any load. A window's own page (ADR 0201) is the runtime's DOM, which no load brings back,
+//! and its view stays without frames through one: its browser closes, and its window opens a page
+//! anew (`replace_window_page`). The desk's own page is only reported: loading it again would
+//! restart the runtime.
 
 use cef::*;
 
@@ -44,6 +47,11 @@ impl WebHost {
             shown.then(|| (r.view.clone(), r.browser.clone()))
         });
         match (found.verdict, live) {
+            // A window's page is the runtime's to build (ADR 0201): loaded again it would be blank.
+            (Verdict::Reload, Some((view, _))) if super::window_pages::is_window_page(surface) => {
+                view.lock().counts.stall_reloads += 1;
+                self.replace_window_page(surface, &format!("stopped painting: its page waited {secs:.1} s for a frame through {fed} begin frames (#157)"));
+            }
             (Verdict::Reload, Some((view, browser))) => {
                 eprintln!("{said}; loading it again");
                 view.lock().counts.stall_reloads += 1;

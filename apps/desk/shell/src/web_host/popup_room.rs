@@ -14,13 +14,28 @@
 //! out and painted anew, as a surface shown again after others is (`Action::Hide(false)`). A
 //! surface the compositor hid or put to sleep meanwhile stays as it is now. The desk's own page
 //! stays shown: it is not one of the host's surfaces.
+//!
+//! A window's own page (ADR 0201) does not always come back: after the first popup of a desk with
+//! its fourteen windows, five to seven of their pages took begin frames on every desk frame and
+//! painted nothing again, nor ran a frame callback, nor heard a press (the title bar's drag did
+//! nothing), and neither a later show, a resize, a delay before showing nor loading the page again
+//! brought one back. So each window page shown again is put on the clock with the others, and
+//! `LOOK` later every one that painted before and has painted nothing since is replaced: its
+//! browser closes, and its window opens a page anew from the desk's page, which draws the window
+//! meanwhile. Every page that came back had painted by then.
 
 use std::sync::{Mutex, Weak};
 
 use cef::*;
 
 use super::super::lifecycle::State;
-use super::super::{Inner, WebHost};
+use super::super::view::SharedView;
+use super::super::window_pages::{close_replaced, forget, is_window_page};
+use super::super::{Inner, WebHost, frames};
+use super::popup_screen::paints;
+
+/// How long after a window page is shown again its paint must have come (the module's doc).
+const LOOK: i64 = 500;
 
 /// A way back to the host's surfaces from a surface's render handler; nothing once the host is gone.
 #[derive(Clone)]
@@ -83,21 +98,21 @@ wrap_task! {
 
     impl Task {
         fn execute(&self) {
-            let still: Vec<Browser> = {
+            let still: Vec<(String, Browser, SharedView)> = {
                 let Some(inner) = self.inner.upgrade() else { return };
                 let inner = inner.lock().unwrap_or_else(|e| e.into_inner());
                 (self.hidden.iter())
-                    .filter(|(surface, browser)| {
-                        inner.records.get(surface).is_some_and(|r| {
-                            shown(r.state)
-                                && r.browser.as_ref().map(|b| b.identifier())
-                                    == Some(browser.identifier())
-                        })
+                    .filter_map(|(surface, browser)| {
+                        let r = inner.records.get(surface)?;
+                        let same = r.browser.as_ref().map(|b| b.identifier())
+                            == Some(browser.identifier());
+                        (shown(r.state) && same)
+                            .then(|| (surface.clone(), browser.clone(), r.view.clone()))
                     })
-                    .map(|(_, browser)| browser.clone())
                     .collect()
             };
-            for browser in still {
+            let mut pages = Vec::new();
+            for (surface, browser, view) in still {
                 if let Some(host) = browser.host() {
                     // As a surface shown again after others: its frame was evicted, so it lays out
                     // once more for a new surface id, and paints.
@@ -105,6 +120,43 @@ wrap_task! {
                     host.was_resized();
                     host.invalidate(PaintElementType::VIEW);
                 }
+                // A window page that painted before is to paint again by `LOOK` (the module's doc).
+                let painted = paints(&view.lock());
+                if is_window_page(&surface) && painted > 0 {
+                    frames::heard(browser.identifier(), false);
+                    pages.push((surface, browser.identifier(), painted, view));
+                }
+            }
+            if !pages.is_empty() {
+                let mut look = Look::new(self.inner.clone(), pages);
+                post_delayed_task(ThreadId::UI, Some(&mut look), LOOK);
+            }
+        }
+    }
+}
+
+// The window pages shown again, `LOOK` on: each (surface, browser, its paints then, its view).
+wrap_task! {
+    struct Look {
+        inner: Weak<Mutex<Inner>>,
+        pages: Vec<(String, i32, u64, SharedView)>,
+    }
+
+    impl Task {
+        fn execute(&self) {
+            let gone: Vec<(String, Browser)> = {
+                let Some(inner) = self.inner.upgrade() else { return };
+                let mut inner = inner.lock().unwrap_or_else(|e| e.into_inner());
+                (self.pages.iter())
+                    .filter(|(_, _, painted, view)| paints(&view.lock()) == *painted)
+                    .filter_map(|(surface, browser, _, _)| {
+                        Some((surface.clone(), forget(&mut inner, surface, *browser)?))
+                    })
+                    .collect()
+            };
+            for (surface, browser) in gone {
+                let why = "painted nothing again once a popup's room showed it";
+                close_replaced(&surface, &browser, why);
             }
         }
     }

@@ -86,6 +86,11 @@ impl Composed {
         self.textures.get(surface).copied()
     }
 
+    /// The surfaces with a texture here.
+    pub fn surfaces(&self) -> impl Iterator<Item = &str> + '_ {
+        self.textures.keys().map(String::as_str)
+    }
+
     /// `surface` is gone: its frames go too, and its popup's.
     pub fn destroy(&mut self, surface: &str) {
         self.close_popup(surface);

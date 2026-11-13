@@ -231,6 +231,13 @@ impl CompositorWindow {
         let router = &mut self.router;
         router.targets.clear();
         for (node, target) in shown {
+            // A window page drawn from its last picture, its page replaced (`popup_room.rs`): the
+            // pointer goes to the desk's page under it, which holds the window again meanwhile.
+            if window_pages::is_window_page(&target.surface)
+                && self.host.browser(&target.surface).is_none()
+            {
+                continue;
+            }
             if let Some((plugin, _)) = owner(&target.surface) {
                 router.targets.set_owner(&target.surface, &plugin);
             }

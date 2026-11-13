@@ -338,10 +338,19 @@ export function mountSurfaces(
     });
   };
   draw();
-  // A window's page that opens later (they open spaced) takes the window over on the next draw.
-  const offPageOpened = pages?.watch(() => {
+  // A window's page that opens later (they open spaced) takes the window over on the next draw. One
+  // that goes under a window still shown (the shell replaced it) gives it back to this page, which
+  // draws it until the page the next draw opens paints.
+  let disposed = false;
+  const offPageOpened = pages?.watch((id) => {
     queueMicrotask(draw);
-    return () => {};
+    return () => {
+      const entry = live.get(id);
+      if (disposed || !entry?.own) return;
+      entry.own = false;
+      layer.append(entry.el);
+      queueMicrotask(draw);
+    };
   });
   const offs = [
     ...(offPageOpened ? [offPageOpened] : []),
@@ -371,6 +380,7 @@ export function mountSurfaces(
     mountArrange(root, ctx),
   ];
   return () => {
+    disposed = true;
     for (const off of offs) off();
     for (const entry of live.values()) entry.off();
     offPageKeys?.();

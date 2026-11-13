@@ -27,7 +27,8 @@ export interface WindowPages {
   open(): string[];
   /**
    * Run `hook` on every page open now and every page that opens from now on (its window's id and
-   * the page's `Window`); what it returns runs when that page closes. The stop of the watch.
+   * the page's `Window`); what it returns runs when that page closes, by `close` or under its
+   * window (its document unloaded: the shell replaced it). The stop of the watch.
    */
   watch(hook: (id: string, win: Window) => () => void): () => void;
   /** Every page closes. */
@@ -203,9 +204,16 @@ export function windowPages(
     const made = furnish(win, PAGE_NAME + id, page, layer);
     const fromHere = takes(win.document);
     win.addEventListener("focusin", fromHere, true);
+    // A page that goes under its window (the shell closed it for one that paints, a load) is
+    // closed here too: the watches give the window back to the page, whose next draw opens anew.
+    const gone = () => {
+      if (pages.get(id) === made) close(id);
+    };
+    win.addEventListener("pagehide", gone);
     const furnished = made.off;
     made.off = () => {
       win.removeEventListener("focusin", fromHere, true);
+      win.removeEventListener("pagehide", gone);
       furnished();
     };
     pages.set(id, made);
