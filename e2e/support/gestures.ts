@@ -5,8 +5,8 @@
 // pans the windows (#80, ADR 0153), and a window's chrome lies in a page of its own (ADR 0201),
 // which an action in the desk's page's viewport never reaches; the composed frames are the screen. A
 // drag can be held (`hold`) so a spec looks at the desk mid-drag, then `release`d. Keys go as
-// WebDriver actions to the desk's page, whose keymap runs the desk's chords. The desk keeps drawing
-// while they run (frames.ts), or a locked screen would hold each move for seconds.
+// WebDriver actions to the desk's page, whose keymap runs the desk's chords, while the desk keeps
+// drawing (frames.ts): a locked screen would hold each for seconds.
 import { browser } from "@wdio/globals";
 import { feed } from "./compositor";
 import { drawing } from "./frames";
@@ -159,8 +159,9 @@ export async function release(): Promise<void> {
 export async function click(p: Point, count = 1): Promise<void> {
   // Through the compositor, as the person's: a window's chrome lies in a page of its own (ADR
   // 0201), where an action in the desk's page's viewport never reaches.
+  // The compositor takes them whatever the desk draws, as it takes a drag's.
   const one = [button(true), button(false)];
-  await drawing(() => feed([toward(p), ...Array.from({ length: count }, () => one).flat()]));
+  await feed([toward(p), ...Array.from({ length: count }, () => one).flat()]);
 }
 
 /** Press keys together, as a chord (`chord(MOD, "n")`), without letting go of a held button. */
@@ -185,7 +186,7 @@ export async function type(text: string): Promise<void> {
 /** The wheel over `p`: `dx`, `dy` CSS pixels, as the page's wheel events read them. */
 export async function wheel(p: Point, dx: number, dy: number): Promise<void> {
   // Through the compositor, which hands it to what is under `p`: a window's own page or the canvas.
-  await drawing(() => feed([toward(p), { type: "wheel", dx, dy, unit: "pixel" }]));
+  await feed([toward(p), { type: "wheel", dx, dy, unit: "pixel" }]);
 }
 
 /** Eris's figure, top centre: drawn above the windows, as the bars are along the edges. */
