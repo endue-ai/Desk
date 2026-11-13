@@ -2,7 +2,8 @@
 // data folder, the e2e init (no first run) and the repository's plugins, so its first layout is the
 // Default profile's 13 plugin windows; headless unless `screen` (frames rendered off screen, so no
 // screen, pointer or keyboard of the machine's is needed); with a frame trace. The shake and its
-// captures are the shell's (`compositor_input { shake }`); a poke makes every page in sight paint.
+// captures are the shell's (`compositor_input { shake }`), as is the sway of the app window
+// (`compositor_window { sway }`, #258); a poke makes every page in sight paint.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -135,6 +136,41 @@ export async function shake(run: MotionDesk, args: Record<string, unknown>): Pro
   }
 }
 
+/** The app window's frame in logical pixels, as `compositor_window { frame }` reads and sets it. */
+export interface Frame {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Start swaying the app window (#258); it answers the frame it swayed from, around and to. */
+export async function sway(
+  run: MotionDesk,
+  args: Record<string, unknown>,
+): Promise<{ from: Frame; mid: Frame; to: Frame }> {
+  return shell(run.port, "compositor_window", { sway: args });
+}
+
+/** Wait for the `n`th sway to end in the trace. */
+export async function swayed(run: MotionDesk, n: number, ms: number): Promise<boolean> {
+  const ended = () =>
+    readFileSync(run.trace, "utf8")
+      .split("\n")
+      .filter((l) => l.includes('"e":"sway"') && l.includes('"phase":"end"')).length;
+  return (await until(ms, () => ended() >= n)) === true;
+}
+
+/** Set the app window's frame, as a person's drag of its corner would. */
+export const setFrame = (port: number, frame: Frame) => shell(port, "compositor_window", { frame });
+
+/** Window `window` filling `fill` of the app (`full`, `left`, `top-right`, ...), as a snap does. */
+export const snap = (port: number, window: string, fill: string) =>
+  shell(port, "compositor_wm", { op: { op: "snap", fill }, window });
+
+/** The composed frame read back to `path`. */
+export const capture = (port: number, path: string) => shell(port, "compositor_capture", { path });
+
 /** Which surface a DevTools page target is: the desk's page, a window's page or a plugin's. */
 function surfaceOf(t: { url: string; title: string }): string {
   if (t.url === "desk-app://app/index.html") return "desk";
@@ -187,9 +223,27 @@ export async function poke(port: number): Promise<{ poked: string[]; unpainted: 
   return { poked, unpainted };
 }
 
-/** Quit the desk, then end whatever of it outlived it (a renderer helper reparented to launchd). */
-export async function stopDesk(run: MotionDesk): Promise<void> {
+/** Quit the desk, then end whatever of it outlived it: a renderer helper reparented to launchd, and
+ * a desk that started again (ADR 0202), whose pid its trace's `start` line names. */
+export async function stopDesk(run: MotionDesk, binary?: string): Promise<void> {
   await run.desk.stop();
+  const again = existsSync(run.trace)
+    ? readFileSync(run.trace, "utf8")
+        .split("\n")
+        .filter((l) => l.includes('"e":"start"'))
+        .slice(1)
+        .map((l) => Number((JSON.parse(l) as { f: { pid?: number } }).f.pid))
+    : [];
+  for (const pid of again) {
+    try {
+      const command = execFileSync("ps", ["-p", String(pid), "-o", "command="], {
+        encoding: "utf8",
+      });
+      if (!binary || command.includes(binary)) process.kill(pid, "SIGKILL");
+    } catch {
+      // Gone already.
+    }
+  }
   try {
     const left = execFileSync("pgrep", ["-f", dataDir(run.home)], { encoding: "utf8" });
     for (const pid of left.split("\n").filter(Boolean)) process.kill(Number(pid), "SIGKILL");

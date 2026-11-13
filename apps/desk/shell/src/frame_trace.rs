@@ -1,13 +1,16 @@
-//! The frame trace the motion gate reads (#247, ADR 0208): with `DESK_FRAME_TRACE=<file>` the desk
-//! appends one JSON line per event, `{ t, e, f }`, `t` the milliseconds since the trace opened.
-//! Events: `start` (the process, its pid and the wall clock), `move` and `button` (pointer input
-//! heard), `report` (the desk's page published its desk), `attach` (a surface's paint copied, and how
-//! long the copy took), `win` (a scene laid out: each window's place and whether it is drawn from its
-//! own page or from parts of the desk's, and where each surface's texture is drawn), `frame` (a frame
-//! composed and shown or rendered unseen, its parts timed), `capture` (a frame read back to a file),
-//! `stall` (a page that stopped painting) and `shake` (the shake's phases, `compositor_window/
-//! motion.rs`). Without the variable every call does nothing. The file is appended to, so a desk
-//! that starts again (ADR 0202) writes on in the same file after a second `start`.
+//! The frame trace the motion gate reads (#247, #258, ADR 0208): with `DESK_FRAME_TRACE=<file>` the
+//! desk appends one JSON line per event, `{ t, e, f }`, `t` the milliseconds since the trace
+//! opened. Events: `start` (the process, its pid and the wall clock), `move` and `button` (pointer
+//! input heard), `report` (the desk's page published its desk), `attach` (a surface's paint copied,
+//! and how long the copy took), `win` (a scene laid out: each window's place and whether it is
+//! drawn from its own page or from parts of the desk's, where each surface's texture is drawn, the
+//! size of each picture, of the window and of the scene the desk's page laid out, and where the
+//! system layer covers the windows), `frame` (a frame composed and shown or rendered unseen, its
+//! parts timed), `capture` (a frame read back to a file), `stall` (a page that stopped painting),
+//! `shake` (the shake's phases, `compositor_window/motion.rs`) and `sway` (the app window grown and
+//! shrunk on a sine, the same file). Without the variable every call does nothing. The file is
+//! appended to, so a desk that starts again (ADR 0202) writes on in the same file after a second
+//! `start`.
 
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -112,10 +115,26 @@ pub fn attached(surface: &str, started: Instant, damage: usize, ok: bool) {
     }
 }
 
+/// The pictures a scene was laid out with (#258): each drawn surface's texture and the desk's page's,
+/// and the window's size, in device pixels at `scale`; and where the system layer covers every
+/// window (logical pixels), which a window's own pixels are judged without.
+pub struct Pictures {
+    pub textures: Vec<(String, (u32, u32))>,
+    pub page: Option<(u32, u32)>,
+    pub viewport: (u32, u32),
+    pub scale: f32,
+    pub over: Vec<desk_compositor::Rect>,
+}
+
 /// A scene laid out: each window of `plan` where it is drawn, whether from its own page (ADR 0201)
-/// or from `parts` of the desk's page (where the page's picture shows it, `page`), and where each
-/// surface's texture is drawn (`placed`, logical pixels).
-pub fn laid_out(plan: Option<&desk_wm::host::Plan>, placed: &[(String, desk_compositor::Rect)]) {
+/// or from `parts` of the desk's page (where the page's picture shows it, `page`), where each
+/// surface's texture is drawn (`placed`, logical pixels) and, with `pictures`, the size of each
+/// picture drawn (`textures`, the desk's page's `pageTexture`) and of the window (`viewport`).
+pub fn laid_out(
+    plan: Option<&desk_wm::host::Plan>,
+    placed: &[(String, desk_compositor::Rect)],
+    pictures: Option<&Pictures>,
+) {
     if !on() {
         return;
     }
@@ -134,7 +153,24 @@ pub fn laid_out(plan: Option<&desk_wm::host::Plan>, placed: &[(String, desk_comp
     let surfaces: Vec<Value> = (placed.iter())
         .map(|(s, r)| json!([s, r.x, r.y, r.width, r.height]))
         .collect();
-    line("win", json!({ "windows": windows, "surfaces": surfaces }));
+    let mut fields = json!({ "windows": windows, "surfaces": surfaces });
+    if let Some(plan) = plan {
+        fields["screen"] = json!([plan.screen.w, plan.screen.h]);
+    }
+    if let Some(p) = pictures {
+        let textures: serde_json::Map<String, Value> = (p.textures.iter())
+            .map(|(s, (w, h))| (s.clone(), json!([w, h])))
+            .collect();
+        fields["textures"] = Value::Object(textures);
+        fields["pageTexture"] = json!(p.page);
+        fields["viewport"] = json!(p.viewport);
+        fields["scale"] = json!(p.scale);
+        let over: Vec<Value> = (p.over.iter())
+            .map(|r| json!([r.x, r.y, r.width, r.height]))
+            .collect();
+        fields["over"] = json!(over);
+    }
+    line("win", fields);
 }
 
 /// One frame's times: from its start, the scene (laid out again, `laidOut`, or drawn as it was),

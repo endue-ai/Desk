@@ -199,10 +199,17 @@ pub fn draw(
     }
     if let Some(map) = &from.map {
         drawn.map = Some(super::draw_map::draw(scene, chrome, desk, map)?);
+        let layout = map.layout;
+        drawn.over.push(if map.folded {
+            layout.button
+        } else {
+            layout.outer
+        });
     }
     for at in &split.scrims {
         scrim(scene, chrome, desk, *at, &mut drawn.shown)?;
         drawn.parts.push("desk.scrim".to_owned());
+        drawn.over.push(rect(*at));
     }
     for (id, boxes) in front {
         whole(scene, desk, id, boxes, from, drawn)?;
@@ -228,6 +235,7 @@ fn whole(
         }
     }
     drawn.parts.push(id.to_owned());
+    drawn.over.extend(boxes.iter().map(|at| rect(*at)));
     Ok(())
 }
 
@@ -290,6 +298,7 @@ pub(super) fn plugin_surfaces(
         };
         surface(scene, chrome, &into, &frame.plugin, hosted, from, drawn)?;
         drawn.order.push(frame.plugin.clone());
+        drawn.over.push(at);
     }
     // Their popups, whole, over the layer.
     let screen = hosted.plan().map(|p| p.screen);

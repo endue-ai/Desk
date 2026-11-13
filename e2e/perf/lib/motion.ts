@@ -138,6 +138,8 @@ export interface Drawn {
   /** Drawn from its own page (ADR 0201), or from `parts` cut from the desk's page. */
   own: boolean;
   parts: number;
+  /** Where the desk's system layer lay over every window (its bars, the map): not the window's. */
+  over: Rect[];
 }
 
 /** Each frame the shake read back, with where window `id` was drawn in it: the scene laid out last
@@ -153,6 +155,12 @@ export function captured(shake: Shake, id: string): Drawn[] {
     ).find((w) => w.id === id);
     if (!w) continue;
     const [x = 0, y = 0, width = 0, h = 0] = w.rect;
+    const over = ((laid.f.over ?? []) as number[][]).map(([x = 0, y = 0, w = 0, h = 0]) => ({
+      x,
+      y,
+      w,
+      h,
+    }));
     out.push({
       tag: line.f.tag,
       path: line.f.path,
@@ -160,6 +168,7 @@ export function captured(shake: Shake, id: string): Drawn[] {
       rect: { x, y, w: width, h },
       own: w.own,
       parts: w.parts,
+      over,
     });
   }
   return out;
@@ -178,9 +187,17 @@ export interface Strayed {
  * `block` device pixels: a block differs when its mean colour moved by more than `tolerance` on a
  * channel. Means over blocks forgive a picture drawn half a pixel off (a window in motion is drawn at
  * fractional places until #250); another window's pixels or the desk under it do not. `inset` leaves
- * out the edges, where the frame, the corners and the shadow meet what lies around.
+ * out the edges, where the frame, the corners and the shadow meet what lies around, and `cover` the
+ * blocks that lie under what is drawn over every window in `a` or in `b` (the desk's bars, #258).
  */
-export function strayed(a: Image, ra: Rect, b: Image, rb: Rect, opts = STRAY): Strayed {
+export function strayed(
+  a: Image,
+  ra: Rect,
+  b: Image,
+  rb: Rect,
+  opts = STRAY,
+  cover: { a?: readonly Rect[]; b?: readonly Rect[] } = {},
+): Strayed {
   const { block, tolerance, inset } = opts;
   const s = a.scale;
   const ax = Math.round((ra.x + inset) * s);
@@ -192,8 +209,14 @@ export function strayed(a: Image, ra: Rect, b: Image, rb: Rect, opts = STRAY): S
   let blocks = 0;
   let differing = 0;
   let worst = 0;
+  const under = (rs: readonly Rect[] | undefined, x: number, y: number, k: number) =>
+    !!rs?.some(
+      (r) =>
+        x < (r.x + r.w) * k && x + block > r.x * k && y < (r.y + r.h) * k && y + block > r.y * k,
+    );
   for (let y = 0; y + block <= h; y += block) {
     for (let x = 0; x + block <= w; x += block) {
+      if (under(cover.a, ax + x, ay + y, s) || under(cover.b, bx + x, by + y, b.scale)) continue;
       const ma = mean(a, ax + x, ay + y, block);
       const mb = mean(b, bx + x, by + y, block);
       if (!ma || !mb) continue;

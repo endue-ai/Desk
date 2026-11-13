@@ -111,7 +111,23 @@ impl CompositorWindow {
         self.mapping.drawn = drawn.map;
         self.mapping.layout = layout;
         self.gestures.popups.boxes = drawn.popups;
-        crate::frame_trace::laid_out(self.hosted.plan(), &drawn.placed);
+        let pictures = crate::frame_trace::on().then(|| {
+            let composed = self.shared.lock();
+            let size = |s: &str| composed.frames.size(composed.texture_of(s)?);
+            let textures = (drawn.placed.iter())
+                .filter_map(|(s, _)| Some((s.clone(), size(s)?)))
+                .collect();
+            let (page, viewport) = (size(PAGE), self.scene.viewport());
+            let over = drawn.over.clone();
+            crate::frame_trace::Pictures {
+                textures,
+                page,
+                viewport,
+                scale,
+                over,
+            }
+        });
+        crate::frame_trace::laid_out(self.hosted.plan(), &drawn.placed, pictures.as_ref());
         if let Some(plan) = self.hosted.plan() {
             let placed: Vec<(String, (f32, f32))> = (drawn.placed.into_iter())
                 .map(|(host, at)| (host, (at.x, at.y)))

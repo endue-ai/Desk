@@ -91,6 +91,15 @@ describe("a window's own pixels", () => {
     expect(strayed(rest, rect, other, { ...rect, x: 60 }).differing).toBeGreaterThan(4);
   });
 
+  it("leaves out what lies over every window, the desk's bars", () => {
+    const rest = image(200, 80, text);
+    const other = image(200, 80, (x, y) => (x > 90 && y < 30 ? 128 : text(x - 50, y)));
+    const bar = { x: 88, y: 0, w: 112, h: 32 };
+    const judged = strayed(rest, rect, other, { ...rect, x: 60 }, undefined, { b: [bar] });
+    expect(judged.differing).toBe(0);
+    expect(judged.blocks).toBeLessThan(strayed(rest, rect, rest, rect).blocks);
+  });
+
   it("is softer drawn at a fractional place than at a whole pixel", () => {
     // Strokes a pixel wide, as text has, drawn 0.4 px to the right.
     const stroke = (x: number, y: number) => ((x + 2 * y) % 5 === 0 ? 230 : 20);
@@ -119,6 +128,7 @@ describe("the gate's verdicts", () => {
     maxForeignFrames: 0,
     foreignBlocks: 4,
     minRestSharpness: 0.95,
+    maxUnfitFrames: 0,
   };
 
   it("takes the worst of the runs", () => {
