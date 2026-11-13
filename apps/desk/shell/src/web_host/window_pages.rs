@@ -23,6 +23,10 @@ const FOCUSED: &[u8] =
     br#"{"id":1,"method":"Emulation.setFocusEmulationEnabled","params":{"enabled":true}}"#;
 const UNFOCUSED: &[u8] =
     br#"{"id":2,"method":"Emulation.setFocusEmulationEnabled","params":{"enabled":false}}"#;
+/// A see-through base under the page (`adopted`): a popup's view keeps Chromium's opaque canvas
+/// (white, or #121212 for a dark colour scheme) whatever background its settings name, which hid
+/// the window's frame the compositor draws under it, its border and the focused one's colour.
+const CLEAR_BASE: &[u8] = br#"{"id":3,"method":"Emulation.setDefaultBackgroundColorOverride","params":{"color":{"r":0,"g":0,"b":0,"a":0}}}"#;
 /// A window page's surface id: this, then the window's id.
 pub const SURFACE: &str = "window:";
 
@@ -106,6 +110,9 @@ impl WebHost {
             && record.browser.is_none()
         {
             record.browser = Some(browser.clone());
+        }
+        if let Some(host) = browser.host() {
+            host.send_dev_tools_message(Some(CLEAR_BASE));
         }
     }
 
