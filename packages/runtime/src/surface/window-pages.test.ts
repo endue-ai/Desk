@@ -124,6 +124,22 @@ describe("window pages", () => {
     expect(stopped).toEqual(["a", "b"]);
   });
 
+  it("close a page that goes under its window, its watches' stops run, and open one anew", () => {
+    const made = [fakePage(), fakePage()];
+    const first = made[0];
+    const pages = windowPages(document, layer, () => made.shift() as unknown as Window);
+    const stopped: string[] = [];
+    pages.watch((id) => () => stopped.push(id));
+    pages.host("a", 10, 10);
+    // The shell closed it for a page that paints (`popup_room.rs`): its document unloads.
+    first?.fire("pagehide");
+    expect(stopped).toEqual(["a"]);
+    expect(pages.open()).toEqual([]);
+    const again = pages.host("a", 10, 10);
+    expect(again?.ownerDocument).not.toBe(first?.document);
+    expect(pages.open()).toEqual(["a"]);
+  });
+
   it("keep one focus on the desk: a page the focus enters takes it from the desk's page", () => {
     const made = fakePage();
     const pages = windowPages(document, layer, () => made as unknown as Window);

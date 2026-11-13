@@ -57,8 +57,34 @@ impl CompositorWindow {
     }
 
     /// Every window's own page at its window's size, hidden while its window is not drawn (ADR
-    /// 0201): a move changes nothing it lays out, so it paints nothing for one.
-    pub(super) fn place_window_pages(&self) {
+    /// 0201): a move changes nothing it lays out, so it paints nothing for one. A page replaced
+    /// (`popup_room.rs`) leaves its last picture drawn until the next one paints over it, the
+    /// pointer meanwhile to the desk's page, which holds the window again (`register`); the
+    /// texture of a window gone goes with it, so a window opened again under its id never shows
+    /// the last one's picture.
+    pub(super) fn place_window_pages(&mut self) {
+        let live: std::collections::BTreeSet<String> =
+            (self.host.surfaces().into_iter())
+                .filter(|s| window_pages::is_window_page(s))
+                .chain(self.hosted.plan().into_iter().flat_map(|plan| {
+                    (plan.windows.iter()).map(|w| window_pages::surface_of(&w.id))
+                }))
+                .collect();
+        let gone: Vec<String> = (self.shared.lock().surfaces())
+            .filter(|s| window_pages::is_window_page(s) && !live.contains(*s))
+            .map(str::to_owned)
+            .collect();
+        if !gone.is_empty() {
+            let mut composed = self.shared.lock();
+            for surface in &gone {
+                composed.destroy(surface);
+            }
+            composed.dirty = true;
+            drop(composed);
+            for surface in &gone {
+                self.forget(surface);
+            }
+        }
         let scale = self.window.scale_factor() as f32;
         let px = |v: f64| v.round().max(1.0) as u32;
         let placed: Vec<Placed> = self.hosted.plan().map_or_else(Vec::new, |plan| {

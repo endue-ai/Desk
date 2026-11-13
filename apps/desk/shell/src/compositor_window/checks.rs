@@ -147,9 +147,14 @@ impl CompositorWindow {
             .filter(|s| crate::web_host::window_pages::is_window_page(s))
             .filter_map(|s| {
                 let (counts, state, _) = self.host.counts(&s)?;
-                let texture = composed.texture_of(&s).and_then(|id| composed.frames.size(id));
+                let texture = composed
+                    .texture_of(&s)
+                    .and_then(|id| composed.frames.size(id));
                 let state = format!("{state:?}");
-                Some((s, json!({ "counts": counts, "state": state, "texture": texture })))
+                Some((
+                    s,
+                    json!({ "counts": counts, "state": state, "texture": texture }),
+                ))
             })
             .collect();
         json!({

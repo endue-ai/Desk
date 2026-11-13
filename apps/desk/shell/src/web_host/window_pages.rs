@@ -52,8 +52,9 @@ pub struct Placed {
 
 impl WebHost {
     /// The client of the page the desk's page opens for window `window` at `size`, which the host
-    /// keeps from now on; the settings and window info of its browser are set here too. `None`
-    /// while the page is open already (a name reused before its browser closed).
+    /// keeps from now on; the settings and window info of its browser are set here too. A page the
+    /// window had still (the runtime opens one only once it lost the last, which may still be
+    /// closing) closes: the new one takes the surface.
     pub fn window_page(
         &self,
         window: &str,
@@ -68,15 +69,8 @@ impl WebHost {
             .as_ref()
             .map_or(1.0, |p| p.view.lock().scale);
         let view = SharedView::new(View::new(&surface, size, scale, false));
-        {
+        let before = {
             let mut inner = self.inner();
-            if inner
-                .records
-                .get(&surface)
-                .is_some_and(|r| r.state != State::Gone)
-            {
-                return None;
-            }
             inner.records.insert(
                 surface.clone(),
                 Record {
@@ -88,7 +82,10 @@ impl WebHost {
                     drag: drag::DragIds::default(),
                     composing: None,
                 },
-            );
+            )
+        };
+        if let Some(host) = before.and_then(|r| r.browser).and_then(|b| b.host()) {
+            host.close_browser(1);
         }
         info.windowless_rendering_enabled = 1;
         info.shared_texture_enabled = i32::from(self.shared_textures);
@@ -171,6 +168,22 @@ impl WebHost {
         host.send_dev_tools_message(Some(if focused { FOCUSED } else { UNFOCUSED }));
     }
 
+    /// Window page `surface` stopped painting for good (`why`), whatever its page asks: the host
+    /// forgets it and closes its browser, and its window, back in the desk's page, opens a page
+    /// anew (`window-pages.ts`). Loading it again would leave a blank page: the runtime built it.
+    pub fn replace_window_page(&self, surface: &str, why: &str) {
+        let gone = {
+            let mut inner = self.inner();
+            let id = (inner.records.get(surface))
+                .and_then(|r| r.browser.as_ref())
+                .map(Browser::identifier);
+            id.and_then(|id| forget(&mut inner, surface, id))
+        };
+        if let Some(browser) = gone {
+            close_replaced(surface, &browser, why);
+        }
+    }
+
     /// Window `window`'s page closed with its window: the host forgets it.
     pub fn window_page_closed(&self, surface: &str, browser: i32) {
         let mut inner = self.inner();
@@ -182,6 +195,27 @@ impl WebHost {
         {
             inner.records.remove(surface);
         }
+    }
+}
+
+/// The host forgets window page `surface` while `browser` (its identifier) shows it: that
+/// browser, to close once the host's lock is let go.
+pub(super) fn forget(inner: &mut super::Inner, surface: &str, browser: i32) -> Option<Browser> {
+    let shows = (inner.records.get(surface))
+        .and_then(|r| r.browser.as_ref())
+        .is_some_and(|b| b.identifier() == browser);
+    if !shows {
+        return None;
+    }
+    inner.records.remove(surface)?.browser
+}
+
+/// Close window page `surface`'s `browser`, which stopped painting (`why`): the runtime hears its
+/// page go and opens its window's page anew (ADR 0201).
+pub(super) fn close_replaced(surface: &str, browser: &Browser, why: &str) {
+    eprintln!("endue Desk: surface {surface} {why}; its window opens a page anew (ADR 0201)");
+    if let Some(host) = browser.host() {
+        host.close_browser(1);
     }
 }
 
