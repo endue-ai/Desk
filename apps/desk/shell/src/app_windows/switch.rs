@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use desk_bridge::{PluginKind, PluginManifest, SurfacePlacement};
 use desk_core::Core;
 
-use desk_wm::plugin_of;
+pub use desk_wm::plugin_of;
 
 /// The switch's environment variable.
 pub const SWITCH: &str = "DESK_APP_WINDOWS";

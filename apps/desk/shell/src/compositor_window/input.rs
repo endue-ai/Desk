@@ -191,6 +191,9 @@ impl CompositorWindow {
             .keymap
             .apply(&report.entries, report.known.as_deref());
         self.router.keymap.set_timeout(report.timeout);
+        // Windows out of the canvas ask the same keymap before their pages hear a key (#235).
+        let known = report.known.as_deref();
+        crate::app_windows::report_keys(platform, &report.entries, known, report.timeout);
     }
 
     /// The page moved the DOM's focus: to a plugin surface's place (ADR 0160), to an element of
@@ -216,6 +219,13 @@ impl CompositorWindow {
             None if own => PageFocus::Own,
             None => PageFocus::Rest,
         };
+        // A desk key pressed in a window out of the canvas opened something of the page's own
+        // (⌘K's palette): the desk comes forward to show it (#235).
+        if said == PageFocus::Own && crate::app_windows::desk_key_lately() {
+            self.desk
+                .pump
+                .run(|shell, _| crate::palette::reveal_main(shell));
+        }
         let mut outs = self.router.page_focus(said);
         if answer {
             let in_use = self.surface_in_use();

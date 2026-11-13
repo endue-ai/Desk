@@ -119,6 +119,36 @@ fn a_kept_file_round_trips_and_a_broken_one_keeps_nothing() {
     }
 }
 
+/// Places are kept by window id (ADR 0212): a plugin's second window keeps a place of its own, and
+/// a file a desk wrote by plugin (`apps`) still opens its first window where it was.
+#[test]
+fn each_window_of_a_plugin_keeps_its_own_place_and_an_older_file_still_reads() {
+    let mut kept = Kept::default();
+    kept.keep("endue.images", &wide().key, frame(10.0, 40.0, 700.0, 450.0));
+    kept.keep(
+        "endue.images@2",
+        &wide().key,
+        frame(800.0, 40.0, 500.0, 400.0),
+    );
+    let first = kept.opening("endue.images", &[wide()], MIN).unwrap();
+    let second = kept.opening("endue.images@2", &[wide()], MIN).unwrap();
+    assert_eq!((first.at, first.size), (Some((10.0, 40.0)), (700.0, 450.0)));
+    assert_eq!(
+        (second.at, second.size),
+        (Some((800.0, 40.0)), (500.0, 400.0))
+    );
+    assert!(kept.opening("endue.images@3", &[wide()], MIN).is_none());
+    let older = serde_json::json!({ "apps": { "endue.terminal": {
+        "last": wide().key, "frames": { wide().key: { "x": 1.0, "y": 30.0, "width": 700.0, "height": 450.0 } } } } });
+    let read = Kept::parse(&older.to_string());
+    assert!(read.opening("endue.terminal", &[wide()], MIN).is_some());
+    assert!(
+        serde_json::to_string(&read)
+            .unwrap()
+            .contains("\"windows\"")
+    );
+}
+
 #[test]
 fn the_right_click_menu_keeps_only_what_edits_text() {
     use Item::{Command as C, Separator as S};
