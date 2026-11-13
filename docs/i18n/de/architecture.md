@@ -71,9 +71,13 @@ ein abgestürzter Renderer kostet also nur sein Fenster. Seit #83 ist der Compos
 dort, wo `crates/desk-wm` ihr Fenster platziert, und desk-wm führt die Fenstergesten, die Fensterbefehle
 und das Live-Budget. Was Web bleibt, läuft als Systemoberflächen, die der Compositor über jedes Fenster
 legt (ADR 0160): die eigene Seite des Desks (die Leisten, Eris, Mitteilungen, Menüs, Einstellungen und
-die Studios, jeder Teil ganz gezeichnet), das Fenster der Palette und das der schwebenden Eris, jede ruft
-als ihr Fenster auf. Kein Plugin läuft in der Seite des Desks: Ihr Plugin-Host erreicht den eigenen
-Browser jedes Plugins über die Shell.
+die Studios, jeder Teil ganz gezeichnet), das Fenster der Palette und das der Insel, jede ruft als ihr
+Fenster auf. Kein Plugin läuft in der Seite des Desks: Ihr Plugin-Host erreicht den eigenen Browser jedes
+Plugins über die Shell. Die Insel (ADR 0204) ist die eine Oberfläche über anderen Apps, solange der Desk
+nicht vorne ist: die arbeitenden Agenten, was auf eine Antwort wartet, und die Mitteilungen, einen Druck
+entfernt von der Antwort auf eine Berechtigungsanfrage oder die Freigabe eines Agenten und vom Gespräch
+mit Eris, die Option+Enter aus jeder App ruft. Sie hat den Platz der schwebenden Eris (ADR 0121)
+eingenommen.
 
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater

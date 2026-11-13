@@ -72,8 +72,12 @@ dessine là où `crates/desk-wm` place sa fenêtre, et desk-wm mène les gestes 
 et le budget des cadres actifs. Ce qui reste web tourne en surfaces système que le compositeur place
 au-dessus de toutes les fenêtres (ADR 0160) : la page du bureau lui-même (les barres, Eris, les
 notifications, les menus, les réglages et les studios, chaque partie dessinée entière), la fenêtre de la
-palette et celle d'Eris flottante, chacune appelant en tant que sa fenêtre. Aucun plugin ne tourne dans la
-page du bureau : son hôte de plugins joint le navigateur propre à chaque plugin par le shell.
+palette et celle de l'île, chacune appelant en tant que sa fenêtre. Aucun plugin ne tourne dans la page du
+bureau : son hôte de plugins joint le navigateur propre à chaque plugin par le shell. L'île (ADR 0204) est
+la seule surface au-dessus des autres applications tant que le bureau n'est pas au premier plan : les
+agents au travail, ce qui attend une réponse et les notifications, à une pression de répondre à une
+demande d'autorisation ou à l'approbation d'un agent et de parler à Eris, qu'Option+Entrée appelle depuis
+n'importe quelle application. Elle a pris la place d'Eris flottante (ADR 0121).
 
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater

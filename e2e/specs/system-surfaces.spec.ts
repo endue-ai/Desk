@@ -65,22 +65,21 @@ describe("system surfaces: the desk is the compositor and its system surfaces", 
     await feed([{ type: "windowFocused", focused: true }]);
   });
 
-  it("starts the compositor, then the desk's, the palette's and Eris's system surfaces, each calling as its window", async () => {
+  it("starts the compositor, then the desk's, the palette's and the island's system surfaces, each calling as its window", async () => {
     const { system } = await stats();
     expect(system.surfaces).toEqual([
       { id: "desk", role: "Main", caller: "desk" },
       { id: "palette", role: "Palette", caller: "palette" },
-      { id: "eris", role: "Eris", caller: "desk" },
       { id: "island", role: "Island", caller: "desk" },
     ]);
     const urls = await pages();
-    for (const view of ["", "?view=palette", "?view=eris"]) {
+    // The island's page opens while desk.island.show is on (ADR 0204), as it is by default; the
+    // island itself shows only while the desk is not in front. The floating Eris's page is gone.
+    for (const view of ["", "?view=palette", "?view=island"]) {
       const page = `desk-app://app/index.html${view}`;
       expect(urls.some((u) => u === page)).toBe(true);
     }
-    // The island's page opens while desk.island.show is on (ADR 0204), as it is by default; the
-    // island itself shows only while the desk is not in front.
-    expect(urls).toContain("desk-app://app/index.html?view=island");
+    expect(urls).not.toContain("desk-app://app/index.html?view=eris");
   });
 
   it("holds no plugin in the desk's page: each plugin's page is a browser of its own, reached through the shell", async () => {

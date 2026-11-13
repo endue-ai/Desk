@@ -5,21 +5,21 @@
 //! desk for what it shows (`desk_web::sender`). This file opens the window the first time
 //! `desk.island.show` is on and shows or hides it as the setting changes; `frame` places it, grows it
 //! open and folds it, and keeps its spot per display (`kept`) in `<data>/island.json`; `screens`
-//! hears a display come or go. Option+Enter opens it on Eris's field with the keys (`summon`), and
-//! the floating Eris stays down while it shows.
+//! hears a display come or go. Option+Enter opens it on Eris's field with the keys (`summon`).
 
 pub mod commands;
 mod frame;
 pub mod kept;
 pub mod panel;
+pub mod place;
 mod rules;
 mod screens;
 #[cfg(test)]
 mod tests;
 
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::Relaxed};
-use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
+use std::sync::mpsc::{self, Sender};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
 use desk_bridge::BridgeEvent;
@@ -29,12 +29,11 @@ use serde_json::json;
 use winit::event_loop::ActiveEventLoop;
 
 use crate::eris_window::calls::call;
-use crate::eris_window::debounce;
-use crate::eris_window::place::Rect;
 use crate::float::{self, Spaces};
 use crate::host::Desk;
 use crate::window::Shell;
 use kept::Kept;
+use place::Rect;
 
 /// Whose settings `show` is: `desk.island.show` (`plugins/island`).
 const OWNER: &str = "desk.island";
@@ -115,8 +114,6 @@ fn follow(shell: &mut Shell, event_loop: &ActiveEventLoop) {
     let Some(state) = shell.desk.island.get().cloned() else {
         return;
     };
-    // The floating Eris stays down while the island shows (`eris_window::calls::mode`).
-    crate::eris_window::settle_soon(shell);
     if !shown(&state.core) {
         frame::hide(shell, &state);
         return;
@@ -134,7 +131,7 @@ fn follow(shell: &mut Shell, event_loop: &ActiveEventLoop) {
 
 /// Option+Enter and the tray's Talk to Eris while the island shows and the desk is not in front: it
 /// opens on her field with the keys, without making the desk the active app; pressed again while
-/// it has them, it folds and gives them back. False leaves her to the floating Eris (ADR 0121).
+/// it has them, it folds and gives them back. False leaves her to the desk (`eris_window::summon`).
 pub fn summon(shell: &mut Shell) -> bool {
     let Some(state) = shell.desk.island.get().cloned() else {
         return false;
@@ -263,4 +260,27 @@ fn displays_changed(shell: &mut Shell) {
     {
         frame::place(shell, &state);
     }
+}
+
+/// Run `run` once `rest` has passed without another nudge, on a thread of its own.
+fn debounce(name: &str, rest: Duration, run: impl Fn() + Send + 'static) -> Sender<()> {
+    let (nudge, nudged) = mpsc::channel::<()>();
+    let spawned = std::thread::Builder::new()
+        .name(name.to_owned())
+        .spawn(move || {
+            while nudged.recv().is_ok() {
+                while nudged.recv_timeout(rest).is_ok() {}
+                run();
+            }
+        });
+    if let Err(why) = spawned {
+        eprintln!("island: {name} did not start ({why})");
+    }
+    nudge
+}
+
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }

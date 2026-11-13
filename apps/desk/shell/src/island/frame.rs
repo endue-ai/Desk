@@ -12,10 +12,10 @@ use desk_web::sender::Role;
 use serde_json::json;
 use winit::dpi::LogicalSize;
 
+use super::lock;
+use super::place::{Display, resize};
 use super::{CLOSED, Island, MARGIN, OPEN, TALLEST, screens};
 use crate::displays::{self, display, physical, rect_of};
-use crate::eris_window::lock;
-use crate::eris_window::place::{Display, resize};
 use crate::window::Shell;
 
 /// Show it, closed and in its place the first time, without taking the keys from the app in front.

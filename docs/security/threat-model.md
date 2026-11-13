@@ -67,11 +67,11 @@ On main:
   only call as itself.
 - Each page may run a fixed list of the shell's own commands (`crates/desk-web/src/sender.rs`, in
   place of the Tauri shell's capabilities since #97): the main page `desk_ready`, the start's commands
-  and the file dialog, the palette and the floating Eris a few of their own, a plugin frame none. Any
+  and the file dialog, the palette and the island a few of their own, a plugin frame none. Any
   page the desk knows may make a bridge call, and the shell takes its caller from the frame that sent
   it, never from the call (#43): a plugin frame on its own `desk-plugin` host calls as that plugin
-  only, the palette and Eris by the window they were made for, and a page the desk does not know is
-  refused.
+  only, the palette and the island by the window they were made for (the island as the desk, asking
+  only the methods it needs, ADR 0204), and a page the desk does not know is refused.
 - The core serves a plugin's files only from inside its folder (`crates/desk-core/src/manifest.rs`).
 
 Gaps:

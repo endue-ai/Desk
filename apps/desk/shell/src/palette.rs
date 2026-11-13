@@ -145,8 +145,8 @@ mod tests {
             "desk-app://app/index.html?view=palette"
         );
         assert_eq!(
-            view_url("desk-app://app/index.html?safe=1#x", "eris"),
-            "desk-app://app/index.html?view=eris"
+            view_url("desk-app://app/index.html?safe=1#x", "island"),
+            "desk-app://app/index.html?view=island"
         );
     }
 }

@@ -1,11 +1,11 @@
-//! Where the island sits (ADR 0204): one spot per display, as the floating Eris keeps hers
-//! (`eris_window::place`), and the display the person last left it on, so it comes back there after
+//! Where the island sits (ADR 0204): one spot per display, as the floating Eris kept hers
+//! (`place`), and the display the person last left it on, so it comes back there after
 //! a restart and when that display comes back. Everything is in physical pixels; with no spot kept
 //! on a display it sits at the top in the middle of the work area.
 
 use serde::{Deserialize, Serialize};
 
-use crate::eris_window::place::{Display, Positions, Rect, inside};
+use super::place::{Display, Positions, Rect, inside};
 
 /// The kept spots and the display they were last left on, as `<data>/island.json` holds them.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

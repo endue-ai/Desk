@@ -68,9 +68,8 @@ const BUILD: Record<string, string[]> = {
 
 /**
  * Point the session at the desk's main page. The CEF desk has a page per window (the main one, the
- * palette's `?view=palette`, the floating Eris's `?view=eris`, the island's `?view=island`), and
- * chromedriver attaches to whichever DevTools lists first, which after a relaunch is often not the
- * main one.
+ * palette's `?view=palette`, the island's `?view=island`), and chromedriver attaches to whichever
+ * DevTools lists first, which after a relaunch is often not the main one.
  */
 async function toMainPage(): Promise<void> {
   for (const handle of await browser.getWindowHandles()) {

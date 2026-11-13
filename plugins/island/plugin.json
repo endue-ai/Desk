@@ -9,7 +9,7 @@
       "desk.island.show": {
         "kind": "boolean",
         "default": true,
-        "description": "Show the island over other apps while the desk is not in front: the agents at work, the asks that wait, notices, and Eris a press or Option+Enter away, on every Space and over full-screen apps. Off, the floating Eris takes its place."
+        "description": "Show the island over other apps while the desk is not in front: the agents at work, the asks that wait, notices, and Eris a press or Option+Enter away, on every Space and over full-screen apps. Off, Option+Enter brings the desk forward with its talk line open."
       }
     }
   }

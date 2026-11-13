@@ -18,7 +18,6 @@ import {
 } from "@endue-ai/bridge";
 import { type Clock, realClock, storageChannel } from "@endue-ai/runtime";
 import "@endue-ai/runtime/shell.css";
-import type { NativeWindow } from "./eris-window";
 import "./island.css";
 import { answerCall } from "./island-card";
 import {
@@ -37,7 +36,11 @@ import { mountTalk } from "./island-talk";
 import { mountIsland } from "./island-view";
 import { followDeskTheme } from "./palette-theme";
 
-export type { NativeWindow };
+/** The shell's `invoke` and `listen` (`host.ts`), injected so tests drive the island without one. */
+export interface NativeWindow {
+  invoke(command: string, args?: Record<string, unknown>): Promise<unknown>;
+  listen<T>(event: string, handler: (event: { payload: T }) => void): Promise<() => void>;
+}
 
 /** What the island is showing, for tests and the window's own checks. */
 export interface IslandView {

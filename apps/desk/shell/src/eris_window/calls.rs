@@ -1,6 +1,6 @@
-//! What the floating Eris asks of the core (ADR 0121): her settings, desk.eris.summon in the main
-//! window and the notice that the shortcut is taken. What her window's page may ask is
-//! `desk_web::sender`'s (`Sender::may_ask`). Ported from the Tauri shell.
+//! What the shell asks of the core for Eris (ADR 0121): her shortcut's setting, desk.eris.summon in
+//! the main window, and the notice that the shortcut is taken; and `call`, a core call as a fixed
+//! caller, which the island uses too.
 
 use std::sync::atomic::Ordering::Relaxed;
 
@@ -8,11 +8,10 @@ use desk_bridge::{BridgeRequest, BridgeResponse};
 use desk_core::Core;
 use serde_json::{Value, json};
 
-use super::machine::Float;
-use super::{CALLER, ErisWindow, MAC, OWNER, SUMMON, lock, shortcut};
+use super::{CALLER, Eris, MAC, OWNER, SUMMON, lock, shortcut};
 
 /// The notice that the shortcut is taken, once the runtime can show it, once per failure.
-pub(super) fn notice(state: &ErisWindow) {
+pub(super) fn notice(state: &Eris) {
     let held = lock(&state.shortcut).clone();
     let Some(why) = held.problem else {
         return;
@@ -33,7 +32,7 @@ pub(super) fn notice(state: &ErisWindow) {
 }
 
 /// Run desk.eris.summon in the main window: open her composer there, or close it with `toggle`.
-pub(super) fn talk_in_desk(state: &ErisWindow, toggle: bool) {
+pub(super) fn talk_in_desk(state: &Eris, toggle: bool) {
     let request = json!({
         "id": 0,
         "method": "cmd.invoke",
@@ -57,12 +56,4 @@ pub(super) fn setting(core: &Core, key: &str) -> Option<String> {
     let request = json!({ "id": 0, "method": "settings.get", "params": { "key": key } });
     let value = call(core, OWNER, request).ok()?;
     value.get("value")?.as_str().map(str::to_owned)
-}
-
-/// When she floats: never while the island shows, which talks to her over every app (ADR 0204).
-pub(super) fn mode(core: &Core) -> Float {
-    if crate::island::shown(core) {
-        return Float::Never;
-    }
-    Float::parse(setting(core, "float").as_deref())
 }

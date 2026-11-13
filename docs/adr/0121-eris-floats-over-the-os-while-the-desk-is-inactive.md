@@ -1,12 +1,13 @@
 ---
-status: proposed
+status: superseded by 0204
 date: 2026-11-07
 decision-makers: Team endue
 ---
 
-Status: amended by ADR 0203: the floating Eris becomes the island, one surface over every app that also
-shows the agents' work and what waits for an answer (#238).
-ADR 0204 says what the island is; the floating Eris retires once the island talks to Eris.
+Status: superseded by ADR 0204. The island took the floating Eris's place over other apps (#238): it
+talks to her in the desk's one conversation, and Option+Enter opens it from any app while the desk is
+not in front. Her window, its page and its view are gone; her shortcut (`endue.eris.shortcut`), the
+tray's Talk to Eris and the desk's own talk line stay as this ADR made them.
 
 # Eris floats over the OS while the desk is inactive, and Option+Enter summons her anywhere
 

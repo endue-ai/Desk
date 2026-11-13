@@ -1,6 +1,6 @@
 //! One of the shell's windows: a winit window holding a windowed CEF browser (Stage 1 of #32; the
-//! compositor replaces it in Stage 2). The main window, the palette, the floating Eris and the
-//! computer-use banner are each one.
+//! compositor replaces it in Stage 2). The palette, the island, the computer-use banner and the
+//! windows popped out of the desk are each one.
 //!
 //! On macOS Chromium keeps a windowed browser's page visible whether its window is on screen or not:
 //! the palette, never summoned, took the display's 60 begin frames a second with idle pages, in its
