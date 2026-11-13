@@ -139,6 +139,26 @@ where it was.
   and an `instanceof` across the two realms holds for the runtime's own elements (made in the page)
   but not for events, which the window's page makes.
 
+### After review (2026-11-13, rebased onto main past ADR 0202)
+
+A code review before the merge found, and these commits fix with unit tests only (no app run):
+
+* Only a window page's browser is adopted as one (`client.rs`, `window_pages::adopt_browser`): every
+  plugin's browser had been, and a press in another plugin then left a field menu open.
+* The look that replaces a page without frames runs after every window page shown again, not only
+  after a popup's room (`place_window_pages`, `popup_room::look_later`), and replaces a page only
+  when it is shown still and took begin frames meanwhile (`popup_room::replace`). A window that lost
+  its page three times within a minute stays in the desk's page (`LOST_LIMIT`, `window-pages.ts`).
+* The desk's parts that read a window's DOM find it in its page and map its points to the desk
+  (`surface/window-docs.ts`): the window menu, a drop on the switcher, `desk.windows.focus` and
+  Eris's errands.
+* The copies leave the canvas pan's offsets out (`withoutPan`), so a pan lays no window page out.
+
+Left, to check in the running app first: the keys and an IME composition when a window's section
+moves into its page or a page is replaced; Tab to a window's title-bar tools; the live budget
+(ADR 0142) counts no window page; a resize still shows the old texture padded or cropped until the
+page repaints.
+
 ## More Information
 
 Issue #227, after the person's report of 2026-11-13. Amends ADR 0153, ADR 0160 and ADR 0166; ADR
