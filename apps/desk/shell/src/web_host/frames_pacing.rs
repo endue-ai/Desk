@@ -19,7 +19,10 @@
 
 use std::time::{Duration, Instant};
 
-use super::{ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PAINTING, PROMPT, PROMPT_FOR, RATE, SLOW};
+use super::{
+    ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PAINTING, PROMPT, PROMPT_AFTER, PROMPT_AFTER_REST,
+    PROMPT_FOR, RATE, SLOW,
+};
 
 #[path = "frames_rhythm.rs"]
 mod rhythm;
@@ -128,10 +131,16 @@ impl Pacing {
     }
 
     /// The surface heard a press or a key at `at`, having painted `paints` frames. An idle one
-    /// (nothing painted for `IDLE`) gets begin frames every `PROMPT` from `at` until it paints, for
-    /// at most `PROMPT_FOR`; one that paints already takes every desk frame and needs none.
+    /// (nothing painted for `IDLE`) gets begin frames every `PROMPT` from `PROMPT_AFTER` after `at`
+    /// on (`PROMPT_AFTER_REST` if it rested) until it paints, until `PROMPT_FOR` after `at` at most;
+    /// one that paints already takes every desk frame and needs none.
     pub fn press(&mut self, at: Instant, paints: u64) {
         self.saw(at, paints);
+        let first = if self.long_idle(at) {
+            PROMPT_AFTER_REST
+        } else {
+            PROMPT_AFTER
+        };
         self.heard(at);
         if self
             .painted
@@ -140,7 +149,7 @@ impl Pacing {
             return;
         }
         self.press = Some(Press {
-            next: at,
+            next: at + first,
             until: at + PROMPT_FOR,
             paints: self.paints,
         });

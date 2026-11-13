@@ -130,3 +130,21 @@ fn the_desks_page_is_reported_once_and_a_second_load_waits_its_time() {
     let again = AGAIN.as_secs() as u32 - 1;
     assert_eq!(at, [(AFTER, Verdict::Report), (again, Verdict::Reload)]);
 }
+
+#[test]
+fn the_asks_again_short_of_a_stall_are_counted_so_its_browser_hears_its_screen_first() {
+    // `clock.rs` tells a page's browser its screen again on each of these (#248, ADR 0210).
+    let t0 = Instant::now();
+    let mut watch = Watch::default();
+    watch.saw(7);
+    let repeats: Vec<u32> = (0..AFTER)
+        .map(|i| {
+            watch.asked(t0 + SECOND * i, SECOND * i, 7, true);
+            (0..3).for_each(|_| watch.fed());
+            watch.repeats()
+        })
+        .collect();
+    assert_eq!(repeats, [0, 1, 2], "a first ask, then two again");
+    watch.saw(8);
+    assert_eq!(watch.repeats(), 0, "a paint starts the count over");
+}

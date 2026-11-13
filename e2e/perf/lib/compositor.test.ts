@@ -305,10 +305,12 @@ describe("compositor budgets", () => {
       band: 0.2,
       tool: "footprint",
     });
+    // Without Chromium's full pipeline (ADR 0210) a press's paint holds measured budgets; its
+    // composed frame keeps RT-16's 16 ms.
     expect(committed.inputToPaint).toMatchObject({
-      budgetMs: 16,
+      budgetMs: 23,
       frameBudgetMs: 16,
-      caughtWaitBudgetMs: 2,
+      caughtWaitBudgetMs: 2.7,
       tries: 20,
     });
     expect(committed.deskAtRest).toMatchObject({
@@ -316,7 +318,7 @@ describe("compositor budgets", () => {
       cpuBudgetPercent: 4,
       ownChangeBudgetMs: 100,
     });
-    expect(committed.inputFromRest).toMatchObject({ budgetMs: 16, tries: 12 });
+    expect(committed.inputFromRest).toMatchObject({ budgetMs: 32, tries: 12 });
     // The desk's start is the median of ten starts again (#112), not the fastest of five.
     expect(committed.surfaceStartup).toMatchObject({ runs: 10, allowedRegression: 0.25 });
     expect(committed.surfaceStartup?.reason).toMatch(/median of ten/);

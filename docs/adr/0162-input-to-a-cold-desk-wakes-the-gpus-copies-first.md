@@ -4,6 +4,12 @@ date: 2026-11-11
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0210: without Chromium's full pipeline a begin frame the display gets before
+a page has handled a press is held to its deadline, so a press on a long-idle surface gets its
+prompts from 16 ms after it on, and paints 28 to 29 ms after it at p95 (35.5 with its prompts from
+the press); it is held to the budget ADR 0210 measured, RT-16's 16 ms staying the target. The GPU's
+copies are still woken first.
+
 # Input to a cold desk wakes the GPU's copies first
 
 ## Context and Problem Statement

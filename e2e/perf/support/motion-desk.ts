@@ -14,6 +14,8 @@ import { session, shell, targets, until } from "./devtools.ts";
 export interface MotionDesk {
   /** Whether the desk's page came to rest before the shakes. */
   rested?: boolean;
+  /** The bundle the desk runs from: a desk it started again (ADR 0202) runs from it too. */
+  app: string;
   port: number;
   home: string;
   log: string;
@@ -54,10 +56,18 @@ export async function startDesk(opts: {
     DESK_INIT: join(root, "e2e/fixtures/init-no-first-run.yaml"),
     DESK_FRAME_TRACE: trace,
     ...(opts.screen ? {} : { DESK_COMPOSITOR_HEADLESS: "1" }),
+    // Another choice of Chromium's full pipeline (`pipeline.rs`), or the desk without its catch-up
+    // (`catch_up.rs`), measured against the desk's (ADR 0210).
+    ...Object.fromEntries(
+      ["DESK_FULL_PIPELINE", "DESK_CATCH_UP"].flatMap((k) =>
+        process.env[k] ? [[k, process.env[k]]] : [],
+      ),
+    ),
   });
   const port = await freePort();
   const desk = await launchCef({ binary, env, log, home, port, timeoutMs: 90_000 });
-  const run: MotionDesk = { port, home, log, trace, desk };
+  const app = binary.slice(0, binary.indexOf(".app/") + ".app/".length);
+  const run: MotionDesk = { app, port, home, log, trace, desk };
   // No OS focus comes to a headless window or under a locked screen: the desk is told it has it,
   // so its surfaces run at the front window's pace, as the app e2e does.
   await focus(port);

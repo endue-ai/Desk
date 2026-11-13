@@ -1,5 +1,8 @@
 use super::Pacing;
-use crate::web_host::frames::{ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PROMPT, PROMPT_FOR, RATE};
+use crate::web_host::frames::{
+    ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PROMPT, PROMPT_AFTER, PROMPT_AFTER_REST, PROMPT_FOR,
+    RATE,
+};
 use std::time::{Duration, Instant};
 
 /// Which of desk `frames` a surface that painted `paints` frames takes, as `x` and `.`.
@@ -171,13 +174,19 @@ fn a_desk_at_rest_has_nothing_to_look_at_until_a_page_asks_or_a_press_comes() {
     pacing.press(after, 1);
     assert_eq!(
         pacing.next(&clock, after),
-        Some(after),
-        "a press looks at once"
+        clock.next(),
+        "a press wakes it: the next desk frame"
     );
+    let first = after + PROMPT_AFTER_REST;
+    assert!(
+        !pacing.due(first - PROMPT, None, 1),
+        "a surface at rest has no prompt until {PROMPT_AFTER_REST:?} after the press (ADR 0210)"
+    );
+    assert!(pacing.due(first, None, 1), "its first prompt");
 }
 
 #[test]
-fn a_press_on_an_idle_surface_brings_begin_frames_at_once_until_it_paints() {
+fn a_press_on_an_idle_surface_brings_begin_frames_soon_after_until_it_paints() {
     let mut pacing = Pacing::new(1);
     let t0 = Instant::now();
     assert!(pacing.due(t0, Some(0), 0), "its first frame");
@@ -185,31 +194,30 @@ fn a_press_on_an_idle_surface_brings_begin_frames_at_once_until_it_paints() {
     let pressed = t0 + FRAME;
     pacing.press(pressed, 0);
     let clock = Clock::default();
+    let first = pressed + PROMPT_AFTER;
     assert_eq!(
         pacing.next(&clock, pressed),
-        Some(pressed),
-        "from the press on"
+        Some(first),
+        "{PROMPT_AFTER:?} after the press (ADR 0210)"
     );
+    assert!(!pacing.due(pressed, None, 0), "not at the press");
     let looks = [0.0, 0.5, 1.0, 2.0, 3.0];
     let got: Vec<bool> = looks
         .iter()
-        .map(|t| pacing.due(ms(pressed, *t), None, 0))
+        .map(|t| pacing.due(ms(first, *t), None, 0))
         .collect();
     assert_eq!(got, [true, false, true, true, true], "every {PROMPT:?}");
-    assert!(!pacing.due(ms(pressed, 3.5), None, 0));
+    assert!(!pacing.due(ms(first, 3.5), None, 0));
+    assert!(pacing.due(ms(first, 9.0), None, 0), "a late look takes one");
     assert!(
-        pacing.due(ms(pressed, 9.0), None, 0),
-        "a late look takes one"
-    );
-    assert!(
-        !pacing.due(ms(pressed, 9.1), None, 0),
+        !pacing.due(ms(first, 9.1), None, 0),
         "not every one it missed"
     );
     assert!(
-        !pacing.due(ms(pressed, 10.0), None, 1),
+        !pacing.due(ms(first, 10.0), None, 1),
         "its paint came: no more"
     );
-    assert_eq!(pacing.next(&clock, ms(pressed, 10.0)), None);
+    assert_eq!(pacing.next(&clock, ms(first, 10.0)), None);
 
     let mut unanswered = Pacing::new(1);
     unanswered.due(t0, Some(0), 0);
@@ -217,7 +225,10 @@ fn a_press_on_an_idle_surface_brings_begin_frames_at_once_until_it_paints() {
     let sent = (0..60)
         .filter(|t| unanswered.due(ms(pressed, f64::from(*t)), None, 0))
         .count();
-    assert_eq!(sent, 34, "{PROMPT_FOR:?} of them when no paint comes");
+    assert_eq!(
+        sent, 32,
+        "from {PROMPT_AFTER:?} to {PROMPT_FOR:?} after the press when no paint comes"
+    );
 }
 
 #[test]
@@ -237,7 +248,7 @@ fn a_press_on_a_surface_that_paints_already_waits_for_its_desk_frames() {
     pacing.press(idle, 2);
     assert_eq!(
         pacing.next(&clock, idle),
-        Some(idle),
+        Some(idle + PROMPT_AFTER),
         "idle again after {IDLE:?}"
     );
 }

@@ -12,8 +12,8 @@ use std::time::{Duration, Instant};
 use cef::*;
 
 use super::frames::{self, Heard, Pacing};
-use super::stall::Found;
-use super::view::SharedView;
+use super::stall::{self, Found};
+use super::view::{SharedView, catch_up};
 use super::{Inner, WebHost, copy_wake};
 
 /// The compositor's shell page on the clock.
@@ -67,7 +67,7 @@ impl WebHost {
     /// (`None`: nothing is on the clock, so it sleeps until a surface is shown or woken).
     pub fn begin_frames(&self, now: Instant) -> Option<Instant> {
         let heard = frames::take_heard();
-        let (hosts, next, stalls) = {
+        let (hosts, next, stalls, tells) = {
             let mut inner = self.inner();
             let Inner {
                 records,
@@ -93,7 +93,7 @@ impl WebHost {
                     view: &p.view,
                 }))
                 .collect();
-            let mut stalls = Vec::new();
+            let (mut stalls, mut tells) = (Vec::new(), Vec::new());
             for (id, at, what) in heard {
                 if let Some(it) = on.iter_mut().find(|it| it.browser.identifier() == id) {
                     match what {
@@ -105,8 +105,11 @@ impl WebHost {
                         // From the look on: an ask that waited (the clock held, a hidden surface) still counts.
                         Heard::Asked(waited) => {
                             it.pacing.ask(now);
-                            let found = waited.and_then(|waited| watch(it, at, waited));
+                            let (found, tell) = waited.map_or((None, None), |w| watch(it, at, w));
                             stalls.extend(found.map(|f| (it.surface.map(str::to_owned), f)));
+                            tells.extend(
+                                tell.map(|last| (it.browser.clone(), it.view.clone(), last)),
+                            );
                         }
                     }
                 }
@@ -133,8 +136,17 @@ impl WebHost {
             if let Some(at) = on.iter().filter_map(|it| it.pacing.painted()).max() {
                 copy_wake::painted(at);
             }
-            (hosts, next, stalls)
+            (hosts, next, stalls, tells)
         };
+        // A page short of a stall hears its screen again first (#248, ADR 0210), and a plugin's at
+        // the last ask before its load is hidden and shown again as well.
+        for (browser, view, last) in tells {
+            if last {
+                catch_up::shown_again(&browser, view);
+            } else {
+                catch_up::tell(&browser);
+            }
+        }
         for host in hosts {
             host.send_external_begin_frame();
         }
@@ -147,15 +159,24 @@ impl WebHost {
 
 /// The page of `it` asked at `at`, having waited `waited` since its first ask: a stall its watch
 /// finds now, counted once in its view's counts. Only a plugin surface's page is loaded again.
-fn watch(it: &OnClock<'_>, at: Instant, waited: Duration) -> Option<Found> {
+fn watch(it: &OnClock<'_>, at: Instant, waited: Duration) -> (Option<Found>, Option<bool>) {
     let mut view = it.view.lock();
     let paints = view.counts.paints + view.counts.software_paints;
+    let before = view.watch.repeats();
     let found = view.watch.asked(at, waited, paints, it.surface.is_some());
     if found.is_some() && !view.counts.stalled {
         view.counts.stalls += 1;
     }
     view.counts.stalled = view.watch.stalled();
-    found
+    // Asked again through begin frames, painting nothing, and not stalled yet: its browser hears
+    // its screen again (`catch_up.rs`), and a plugin's at the last ask before a stall is hidden
+    // and shown again too (`Some(true)`).
+    let tell = found.is_none() && view.watch.repeats() > before && !view.counts.stalled;
+    let last = it.surface.is_some() && view.watch.repeats() + 1 >= stall::AFTER;
+    if tell {
+        catch_up::counted(&mut view, if last { "shown" } else { "asked" });
+    }
+    (found, tell.then_some(last))
 }
 
 /// The frames a view has painted, either way, as its watch sees them: a paint ends a stall.

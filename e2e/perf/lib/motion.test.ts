@@ -120,6 +120,8 @@ describe("the gate's verdicts", () => {
     fromDeskPage: 0,
     restSharpness: 0.73,
     stopped: [],
+    loopTurns: 100,
+    loopStopped: [],
   };
   const limits = {
     minFps: 55,
@@ -132,12 +134,17 @@ describe("the gate's verdicts", () => {
   };
 
   it("takes the worst of the runs", () => {
-    const w = worst([good, { ...good, fps: 50, foreignFrames: 2, stopped: ["desk"] }]);
+    const w = worst([
+      good,
+      { ...good, fps: 50, foreignFrames: 2, stopped: ["desk"], loopStopped: ["desk"] },
+    ]);
     expect(w).toMatchObject({
       fps: 50,
       foreignFrames: 2,
       swingFrames: 20,
       stopped: ["run 2: desk"],
+      loopTurns: 200,
+      loopStopped: ["run 2: desk"],
     });
   });
 
@@ -147,6 +154,10 @@ describe("the gate's verdicts", () => {
     expect(failed(verdicts({ ...good, fps: 54 }, limits, known))).toBe(true);
     expect(failed(verdicts({ ...good, foreignFrames: 1 }, limits, known))).toBe(true);
     expect(failed(verdicts({ ...good, stopped: ["desk"] }, limits, known))).toBe(true);
+    expect(failed(verdicts({ ...good, loopStopped: ["main.endue-terminal"] }, limits, known))).toBe(
+      true,
+    );
+    expect(failed(verdicts({ ...good, loopTurns: 0 }, limits, known)), "no loop ran").toBe(true);
     expect(failed(verdicts({ ...good, invalid: "no frames" }, limits, known))).toBe(true);
     expect(failed(verdicts(good, limits))).toBe(true);
     expect(table(verdicts(good, limits, known))).toContain("known failure (#250)");

@@ -163,10 +163,8 @@ pub fn paints(view: &View) -> u64 {
 /// a paint since it was last told (no screen CEF holds either) and no popup open (one placed in
 /// the old screen stays where it is drawn).
 fn settled(view: &View) -> bool {
-    let (want, got) = (view.pixels(), view.counts.texture);
-    let at_size = got.is_some_and(|(w, h)| w.abs_diff(want.0) <= 1 && h.abs_diff(want.1) <= 1);
     let painted = paints(view) > view.screen.painted;
-    !view.hidden && at_size && painted && view.popup.place().is_none()
+    !view.hidden && view.at_size() && painted && view.popup.place().is_none()
 }
 
 impl WebHost {

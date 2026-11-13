@@ -37,6 +37,7 @@ pub mod palette;
 pub mod palette_assets;
 pub mod pane;
 pub mod paths;
+pub mod pipeline;
 pub mod plugin_scheme;
 pub mod probe;
 pub mod process_start;

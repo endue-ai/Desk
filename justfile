@@ -166,7 +166,9 @@ perf-compositor mode="check":
 # showing pixels not its own, a page that stops painting, a window softer at rest than at a whole
 # pixel. Then the sway (#258, ADR 0213): the app window grown and shrunk on a sine (±300×±200 points, a
 # frame every 8 ms) while that window shakes, judged on the pictures' sizes, the desk's own page and the
-# windows once it rests. Limits, known failures and the baseline in e2e/perf/motion.json ("record" sets
+# windows once it rests. Last the resize loop (#248, ADR 0210): the app window resized by four sizes and
+# a plugin window maximized or restored, a turn every 100 ms for 100 turns, judged on pages that stop
+# painting and restarts. Limits, known failures and the baseline in e2e/perf/motion.json ("record" sets
 # the baseline); `--debug` measures the development build for the record, `--screen` presents to the
 # window, `--runs N`, `--no-build`. macOS. Run it before every window change lands (docs/qa/TESTING.md)
 [positional-arguments]

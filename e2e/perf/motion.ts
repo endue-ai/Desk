@@ -9,7 +9,10 @@
 // window shows pixels not its own, a page that stops painting (the desk's own included, and an ADR
 // 0202 restart), and a window at rest after a drop at a fractional place softer than at a whole
 // pixel; the sway also on a picture laid out for another size and on a window off its place once the
-// app window settles. Limits, known failures and the baseline live in e2e/perf/motion.json; results
+// app window settles. Last, the resize loop (`motion-loop.ts`, #248, ADR 0210): the app window resized
+// by four sizes and a plugin window maximized or restored, a turn every 100 ms for 100 turns; it fails
+// on any page that stops painting in or after it. Limits, known failures and the baseline live in
+// e2e/perf/motion.json; results
 // in e2e/test-results/perf-motion/<variant>. Headless by default: no screen, pointer or keyboard of
 // the machine's is used. `--debug` measures the development build for the record and never fails.
 // `--open` first opens three images, two notes and two data files, each in a window of its own (ADR
@@ -43,6 +46,7 @@ import {
   worst,
   worstSway,
 } from "./lib/motion-verdicts.ts";
+import { analyzeLoop, type LoopConfig, runLoop } from "./motion-loop.ts";
 import { analyzeSway, runSway, type SwayConfig } from "./motion-sway.ts";
 import { drag, poke, shake, startDesk, stopDesk, windows } from "./support/motion-desk.ts";
 import { openFiles } from "./support/openers.ts";
@@ -77,6 +81,7 @@ interface Config {
     drop: number[];
   };
   sway: SwayConfig;
+  loop: LoopConfig;
   limits: Limits;
   known: Record<string, string>;
   sometimes: Record<string, string>;
@@ -176,18 +181,23 @@ async function once(n: number): Promise<{
     const swayed = alive
       ? await runSway(desk, config.sway, { amp, periodMs, stepMs }, config.window, dir)
       : undefined;
-    // The trace and the log up to the sway's shake are the single shake's.
+    const looped = swayed?.alive ? await runLoop(desk, config.loop, dir) : undefined;
+    // The trace and the log up to the sway's shake are the single shake's; from the loop on, the loop's.
     const lines = parseTrace(readFileSync(trace, "utf8"));
     const text = readFileSync(log, "utf8");
     const press = (l: Line) => l.e === "shake" && l.f.phase === "press" && l.f.tag === "swayed";
     const cut = lines.findIndex(press);
     const shook = cut < 0 ? lines : lines.slice(0, cut);
     const result = analyze(shook, text.slice(0, swayed?.logFrom), poked, alive);
+    const loop = analyzeLoop(lines, text, looped);
+    result.findings.loopTurns = loop.turns;
+    result.findings.loopStopped = loop.stopped;
+    result.detail.loop = loop.detail;
     const sway = swayed
       ? analyzeSway(
-          lines,
+          lines.slice(0, looped?.linesFrom),
           cut < 0 ? lines.length : cut,
-          text,
+          text.slice(0, looped?.logFrom),
           swayed,
           config.window,
           config.limits,
@@ -219,7 +229,7 @@ async function once(n: number): Promise<{
   }
 }
 
-/** What the run's trace, frames and poke say. */
+/** What the single shakes' trace, frames and poke say. */
 function analyze(
   lines: Line[],
   log: string,
@@ -271,6 +281,8 @@ function analyze(
     fromDeskPage: frames.filter((f) => !f.own).length,
     restSharpness: restSharp ? droppedSharp / restSharp : 0,
     stopped,
+    loopTurns: 0,
+    loopStopped: [],
     ...(invalid ? { invalid } : {}),
   };
   const detail = {

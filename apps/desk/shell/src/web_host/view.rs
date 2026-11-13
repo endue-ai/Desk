@@ -4,6 +4,9 @@
 /// A surface's tree for screen readers, the protocol's `a11y.*` (#57), kept with its view.
 #[path = "a11y.rs"]
 pub mod a11y;
+/// A size its page has not painted, told again (#248, ADR 0210).
+#[path = "catch_up.rs"]
+pub mod catch_up;
 
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -36,6 +39,9 @@ pub struct Counts {
     pub stalls: u64,
     pub stalled: bool,
     pub stall_reloads: u64,
+    /// Times its browser heard its screen again for a size its page had not painted (#248,
+    /// `catch_up.rs`).
+    pub caught_up: u64,
     /// Paints of its popup widget (a select's list, a picker: `popup.rs`) that reached the compositor.
     pub popup_paints: u64,
 }
@@ -66,6 +72,8 @@ pub struct View {
     pub popup: super::render::popup::Popup,
     /// Where the compositor draws it in the app window, its screen, and what its browser was told.
     pub screen: super::render::popup_screen::Screen,
+    /// Its size, watched until its page paints it (#248).
+    pub catch_up: catch_up::CatchUp,
 }
 
 impl View {
@@ -85,6 +93,7 @@ impl View {
             a11y: Default::default(),
             popup: Default::default(),
             screen: Default::default(),
+            catch_up: Default::default(),
         }
     }
 
@@ -129,6 +138,13 @@ impl View {
         }
         self.counts.texture = Some(size);
         (self.frame, self.generation)
+    }
+
+    /// Whether its last paint is at its size, give or take a pixel: no resize in flight.
+    pub fn at_size(&self) -> bool {
+        let want = self.pixels();
+        (self.counts.texture)
+            .is_some_and(|(w, h)| w.abs_diff(want.0) <= 1 && h.abs_diff(want.1) <= 1)
     }
 
     /// The view in pixels: what the texture will be.

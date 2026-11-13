@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "The motion gate's limits (`just perf-motion`, #247 and #258, ADR 0208 and ADR 0213). A check named in `known` fails today and is fixed by the issue named: it is reported, not failed, and a run where it passes fails until it is taken out of `known`. One named in `sometimes` fails today in some runs and not in others: a failure is reported, not failed, and a pass passes; its fix takes it out. `baseline` is what `just perf-motion record` measured last.",
+  "about": "The motion gate's limits (`just perf-motion`, #247, #258 and #248, ADR 0208, ADR 0213 and ADR 0210; `loop` is the resize loop's). A check named in `known` fails today and is fixed by the issue named: it is reported, not failed, and a run where it passes fails until it is taken out of `known`. One named in `sometimes` fails today in some runs and not in others: a failure is reported, not failed, and a pass passes; its fix takes it out. `baseline` is what `just perf-motion record` measured last.",
   "window": "endue.sidebar",
   "windows": 13,
   "shake": {
@@ -27,6 +27,10 @@
       "fill": "right"
     }
   },
+  "loop": {
+    "times": 100,
+    "gapMs": 100
+  },
   "limits": {
     "minFps": 55,
     "longIntervalMs": 25,
@@ -42,8 +46,7 @@
     "sway-scene": "#252"
   },
   "sometimes": {
-    "sway-own-pixels": "#252",
-    "sway-painting": "#248"
+    "sway-own-pixels": "#252"
   },
   "baseline": {
     "optimized-offscreen": {

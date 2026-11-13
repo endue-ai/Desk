@@ -13,6 +13,7 @@ use serde_json::json;
 
 use super::CompositorWindow;
 use crate::web_host::frames::{self, FRAME};
+use crate::web_host::view::catch_up::catch_up_page;
 
 impl CompositorWindow {
     /// The clock's look at `now`: the begin frames due, and when it looks next. The pump's
@@ -22,6 +23,9 @@ impl CompositorWindow {
         self.desk.pump.looked(now, self.begin_due);
         // A page whose window came to rest somewhere new hears its screen (#156, popups).
         self.host.tell_screens(now);
+        // A page that has not painted its size hears it again (#248, ADR 0210).
+        self.host.catch_up(now);
+        catch_up_page(&self.page, self.browser.as_ref(), now);
     }
 
     /// The pump's stand-in looks at the same clock from its own thread (#129).
