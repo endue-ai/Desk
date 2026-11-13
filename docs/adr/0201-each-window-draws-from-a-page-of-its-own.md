@@ -59,7 +59,8 @@ where it was.
   app opens the pages 50 ms apart (`spacing`): fourteen opened in one burst over the plugins' first
   frames stopped the window in use's page at almost every start (#157's stall, 3 s later reloaded by
   the shell's watch); one, or fourteen spaced, never did. A window waits in the desk's page until its
-  own opens. One focus is kept across the pages, as one page had: the page the focus enters takes it
+  own opens, and moves into it only between presses held in the desk's page (1.5 s at most): moved
+  under one, the press's release found nothing where it began and the click was lost. One focus is kept across the pages, as one page had: the page the focus enters takes it
   from the others, so no two fields show a caret. A plugin's section stays in the desk's page while
   its window lies in a page of its own: its place never paints and only holds the plugin's spot in
   the focus order (ADR 0160), so Ctrl+Tab to a plugin, Tab into and out of one and the focus the
