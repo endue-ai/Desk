@@ -256,7 +256,7 @@ export function windowPages(
     return made.layer;
   };
   // Spaced, the pages open one at a time: a desk that starts with many windows opens no burst of
-  // browsers over its plugins' first frames (a burst stopped the window in use's page, #157). A
+  // browsers over its plugins' first frames (a burst stopped the window in use's page, issue 157). A
   // window waits in the page meanwhile; the watches hear its page open.
   const waiting = new Map<string, [number, number]>();
   let timer: ReturnType<typeof setTimeout> | undefined;
