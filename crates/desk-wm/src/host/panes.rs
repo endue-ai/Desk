@@ -5,6 +5,7 @@
 //! same boxes the shell page lays its panes out in, so a pane the page draws (a shell view) and a
 //! surface the compositor draws (a plugin) land on the same pixels.
 
+use crate::math::round;
 use crate::types::{PaneNode, Rect, SplitDir};
 
 /// The window's border, every side.
@@ -103,7 +104,8 @@ fn lay(node: &PaneNode, at: Rect, out: &mut Vec<Cell>) {
 }
 
 /// `at` cut at `ratio` along `dir`: the first part, the divider and the second part. The first
-/// part never takes more than there is; the second gets what the first and the divider leave.
+/// part takes a whole number of pixels, so a divider lands on whole pixels as the window does
+/// (#250), and never more than there is; the second gets what the first and the divider leave.
 fn split(at: Rect, dir: SplitDir, ratio: f64) -> (Rect, Rect, Rect) {
     let ratio = if ratio.is_finite() {
         ratio.clamp(0.0, 1.0)
@@ -112,7 +114,7 @@ fn split(at: Rect, dir: SplitDir, ratio: f64) -> (Rect, Rect, Rect) {
     };
     match dir {
         SplitDir::Row => {
-            let a = (at.w * ratio).min(at.w);
+            let a = round(at.w * ratio).min(at.w);
             let line = DIVIDER.min(at.w - a);
             let b = (at.w - a - line).max(0.0);
             (
@@ -122,7 +124,7 @@ fn split(at: Rect, dir: SplitDir, ratio: f64) -> (Rect, Rect, Rect) {
             )
         }
         SplitDir::Column => {
-            let a = (at.h * ratio).min(at.h);
+            let a = round(at.h * ratio).min(at.h);
             let line = DIVIDER.min(at.h - a);
             let b = (at.h - a - line).max(0.0);
             (
@@ -148,7 +150,7 @@ mod tests {
     }
 
     #[test]
-    fn a_row_gives_the_first_pane_its_share_then_a_divider_then_the_rest() {
+    fn a_row_gives_the_first_pane_its_share_in_whole_pixels_then_a_divider_then_the_rest() {
         let tree = PaneNode::Split {
             id: "s1".into(),
             dir: SplitDir::Row,
@@ -163,17 +165,17 @@ mod tests {
                 Cell::Pane {
                     id: "p1".into(),
                     view: "launcher".into(),
-                    rect: Rect::new(0.0, 0.0, 100.25, 100.0)
+                    rect: Rect::new(0.0, 0.0, 100.0, 100.0)
                 },
                 Cell::Divider {
                     split: "s1".into(),
                     dir: SplitDir::Row,
-                    rect: Rect::new(100.25, 0.0, 1.0, 100.0)
+                    rect: Rect::new(100.0, 0.0, 1.0, 100.0)
                 },
                 Cell::Pane {
                     id: "p2".into(),
                     view: "calendar".into(),
-                    rect: Rect::new(101.25, 0.0, 299.75, 100.0)
+                    rect: Rect::new(101.0, 0.0, 300.0, 100.0)
                 },
             ]
         );

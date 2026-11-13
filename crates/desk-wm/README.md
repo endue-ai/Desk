@@ -26,7 +26,7 @@ data; no clock (times are passed in), no I/O, no rendering. It reads and writes 
 - `host` (#81, ADR 0151): `Desk::host_plan` and `host_plan_at` with `Places` (windows back to front,
   panes' boxes, bars, what the page draws), `LiveBudget` (ADR 0134) and `Surfaces`, the protocol steps.
 - `interact` (#80, ADR 0153): `Wm`, which holds the desk (#83, ADR 0158), on the compositor's input
-  (`pressed`, `grab`, `moved`, `released`, `escape`, `run` an `Op`, `reveal`, `pan_to`, `cursor_at`, `frame`), the runtime's `edit`s
+  (`pressed`, `grab`, `moved`, `released`, `escape`, `run` an `Op`, `reveal`, `pan_to`, `cursor_at`, `frame`; `set_scale`, `pixels`: rests on whole device pixels, ADR 0209), the runtime's `edit`s
   (`edits::Edit`, the desktops' `undo`) and `took`; each change publishes the whole `Desk` with its
   `view::View` and the edits' answers (`Published`). `desk-wm-wasm` runs it where there is no compositor.
 

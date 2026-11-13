@@ -20,6 +20,8 @@ mod reach;
 mod snap;
 #[path = "interactions/support.rs"]
 mod support;
+#[path = "interactions/whole_pixels.rs"]
+mod whole_pixels;
 #[path = "interactions/wm.rs"]
 mod wm;
 

@@ -15,6 +15,7 @@ use crate::edits::Kept;
 use crate::fill::snap_rect;
 use crate::geometry::MIN;
 use crate::pane_min::window_min;
+use crate::pixels::{on_pixels, pan_on_pixels, within_a_pixel};
 use crate::reach::{top_within_reach, within_reach};
 use crate::types::{Fill, Rect, Size};
 use crate::view::View;
@@ -59,6 +60,8 @@ pub struct Wm {
     /// The arrangements' history and the desktops' undo, beside the desk.
     pub(super) kept: Kept,
     pub(super) screen: Size,
+    /// Device pixels to a CSS pixel: where a window comes to rest lands on whole ones (#250).
+    pub(super) scale: f64,
     pub(super) motion: Motion,
     rev: u64,
     /// The desks published that the page has not taken yet, by revision.
@@ -107,6 +110,7 @@ impl Wm {
             drawn: Desk::default(),
             kept: Kept::default(),
             screen,
+            scale: 1.0,
             motion: Motion::default(),
             rev: 0,
             published: Vec::new(),
@@ -153,6 +157,15 @@ impl Wm {
         self.motion
     }
 
+    /// The display's scale: a window's place at rest lands on its whole pixels (#250).
+    pub fn set_scale(&mut self, scale: f64) {
+        self.scale = if scale.is_finite() && scale > 0.0 {
+            scale
+        } else {
+            1.0
+        };
+    }
+
     /// The last revision published.
     pub fn rev(&self) -> u64 {
         self.rev
@@ -161,10 +174,11 @@ impl Wm {
     /// The runtime started again (its page loaded again): an empty desk, nothing kept beside it,
     /// no gesture. Revisions go on counting.
     pub fn reset(&mut self) {
-        let (rev, screen, motion) = (self.rev, self.screen, self.motion);
+        let (rev, screen, motion, scale) = (self.rev, self.screen, self.motion, self.scale);
         *self = Wm::new();
         self.rev = rev;
         self.motion = motion;
+        self.scale = scale;
         self.start(Desk::default(), screen);
     }
 
@@ -209,17 +223,26 @@ impl Wm {
         }))
     }
 
-    /// Make `change` on the desk and publish it.
+    /// Make `change` on the desk and publish it: a canvas comes to rest on whole device pixels.
     pub(super) fn change(&mut self, change: Change) -> Out {
+        let change = match change {
+            Change::Pan { desktop, pan } => Change::Pan {
+                desktop,
+                pan: pan_on_pixels(pan, self.scale),
+            },
+            window => window,
+        };
         change.apply(&mut self.drawn);
         self.publish(None)
     }
 
-    /// Window `id` of the desktop in front, on screen, as its placement says.
+    /// Window `id` of the desktop in front, on screen, as its placement says: where it rests, on
+    /// whole device pixels (a fill or a floating window scaled with the app lands between them).
     pub(super) fn target(&self, id: &str) -> Option<Rect> {
         let p = self.drawn.window(id)?;
         let pan = self.drawn.pan_of(&self.drawn.here());
-        Some(screen_rect(&p, pan, self.screen.w, self.screen.h))
+        let at = screen_rect(&p, pan, self.screen.w, self.screen.h);
+        Some(on_pixels(at, self.scale))
     }
 
     /// Where window `id` is drawn now: under the pointer, where a press stopped its glide, gliding,
@@ -248,7 +271,8 @@ impl Wm {
         let Some(to) = self.target(id) else {
             return;
         };
-        if from == to || self.motion.base <= 0.0 {
+        // Less than a pixel away (a drop put on whole pixels) is there already.
+        if within_a_pixel(from, to, self.scale) || self.motion.base <= 0.0 {
             self.glides.remove(id);
             return;
         }

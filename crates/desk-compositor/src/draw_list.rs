@@ -27,7 +27,9 @@ pub(crate) struct ItemUniform {
     uv: [f32; 4],
     /// Corner radius, stroke width, opacity, shadow sigma (a surface's greying).
     params: [f32; 4],
-    /// Mode (see `MODE_*`), then padding.
+    /// Mode (see `MODE_*`); a surface's square corners (bit 0 the top left, then clockwise) and
+    /// whether it is read texel for texel (`stroke.xy` is then the target pixel its first texel
+    /// lands on, ADR 0209); padding.
     mode: [u32; 4],
 }
 
@@ -273,13 +275,21 @@ impl Walk<'_> {
         if opacity <= 0.0 {
             return;
         }
-        if (self.texture_size)(node.texture).is_none() {
+        let Some(size) = (self.texture_size)(node.texture) else {
             self.counts.missing_textures += 1;
             return;
-        }
+        };
+        // One texel a pixel: on whole pixels, read as it is (#250); else filtered where it lands.
+        // Both projections show the z = 0 plane one unit a pixel, so the world is the target's.
+        let whole = (node.whole_pixels)
+            .then(|| crate::pixels::whole(&state.world, node.rect, node.uv, size))
+            .flatten();
+        let (rect, uv, origin) =
+            whole.map_or((node.rect, node.uv, [0.0; 2]), |w| (w.rect, w.uv, w.origin));
         let aa = antialias_margin(&state.world);
         let uniform = ItemUniform {
-            uv: corners(&node.uv),
+            uv: corners(&uv),
+            stroke: [origin[0], origin[1], 0.0, 0.0],
             // A surface has no shadow: the last slot is how grey it is drawn.
             params: [
                 node.radius.max(0.0),
@@ -287,8 +297,13 @@ impl Walk<'_> {
                 opacity,
                 node.grey.clamp(0.0, 1.0),
             ],
-            mode: [MODE_SURFACE, 0, 0, 0],
-            ..self.base(state, node.rect.inflate(aa), node.rect)
+            mode: [
+                MODE_SURFACE,
+                node.corners.square_bits(),
+                u32::from(whole.is_some()),
+                0,
+            ],
+            ..self.base(state, rect.inflate(aa), rect)
         };
         self.push(ItemKind::Surface(node.texture), uniform, state);
         self.counts.nodes_drawn += 1;

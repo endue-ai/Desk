@@ -46,6 +46,7 @@ mod hit;
 pub mod input;
 mod node;
 mod pipelines;
+mod pixels;
 mod scene;
 pub mod stage;
 mod text;
@@ -68,7 +69,7 @@ pub use theme::{
     TooltipStyle, WindowStyle,
 };
 pub use thumbnails::{THUMBNAIL_IDS, Thumbnails, read_texture};
-pub use types::{Color, Rect, Shadow, Stroke, TextureId};
+pub use types::{Color, Corners, Rect, Shadow, Stroke, TextureId};
 
 pub use glam;
 pub use wgpu;

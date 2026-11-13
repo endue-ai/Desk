@@ -2,7 +2,9 @@ use std::time::Instant;
 
 use desk_compositor::glam::Vec2;
 use desk_compositor::input::Target;
-use desk_compositor::{ChromeTheme, NodeKind, Rect, Scene, TextureId, hit_test};
+use desk_compositor::{
+    ChromeTheme, Corners, NodeId, NodeKind, Rect, Scene, SurfaceNode, TextureId, hit_test,
+};
 use serde_json::json;
 
 use super::{Sources, Texture, draw, sampled};
@@ -30,6 +32,11 @@ fn a_frame_fills_its_pane_and_an_older_smaller_one_is_never_stretched() {
 
 /// One plugin window, Notes, in its slot, its frame live (or `state`).
 fn hosted(state: &str) -> Hosted {
+    hosted_at(state, 1.0)
+}
+
+/// The same on a display of `scale`.
+fn hosted_at(state: &str, scale: f64) -> Hosted {
     let report: DeskReport = serde_json::from_value(json!({
         "seq": 1, "width": 1440, "height": 900,
         "frames": [{ "plugin": "endue.notes", "host": "main.endue-notes",
@@ -37,7 +44,7 @@ fn hosted(state: &str) -> Hosted {
             "card": { "title": "Notes", "line": "Stopped.", "actions": ["Reload"] } }],
     }))
     .unwrap();
-    let mut hosted = Hosted::new(1.0);
+    let mut hosted = Hosted::new(scale);
     let adopt = desk_wm::edits::Edit::Adopt {
         id: "endue.notes".into(),
         title: "Notes".into(),
@@ -337,4 +344,56 @@ fn an_open_popup_is_drawn_over_its_surface_and_the_page_s_over_everything_heard_
         (texture, surface.as_str(), at),
         (TextureId(6), PAGE, Vec2::new(650.0, 350.0))
     );
+}
+
+/// The first surface drawn from `texture` under `id`, and where its groups put it.
+fn surface_of(scene: &Scene, id: NodeId, texture: TextureId) -> Option<(Vec2, SurfaceNode)> {
+    scene
+        .children(id)
+        .iter()
+        .find_map(|child| match &scene.node(*child)?.kind {
+            NodeKind::Group(g) => surface_of(scene, *child, texture)
+                .map(|(at, s)| (at + g.transform.w_axis.truncate().truncate(), s)),
+            NodeKind::Surface(s) if s.texture == texture => Some((Vec2::ZERO, *s)),
+            _ => None,
+        })
+}
+
+/// #250, ADR 0209: at rest a window is on whole device pixels, its pane's frame inside the frame's
+/// bottom corners; held a fraction away, it is where the pointer has it, filtered.
+#[test]
+fn a_window_rests_on_whole_device_pixels_with_its_content_inside_its_corners() {
+    let (scale, theme) = (1.25, ChromeTheme::default());
+    let mut hosted = hosted_at("live", f64::from(scale));
+    hosted.wm.set_motion(desk_wm::interact::Motion::none());
+    let frame = |s: &str| (s == "main.endue-notes").then_some((TextureId(2), (474, 274)));
+    let from = Sources {
+        scale,
+        ..sources(&frame)
+    };
+    let pane = |hosted: &Hosted| {
+        let mut scene = Scene::new(1800, 1125);
+        draw(&mut scene, &theme, hosted, &from).unwrap();
+        surface_of(&scene, scene.root(), TextureId(2)).unwrap()
+    };
+    let whole = |v: f32| ((v * scale) - (v * scale).round()).abs() < 1e-3;
+    // Its slot's top, 190 CSS px, is 237.5 device pixels: drawn on a whole one.
+    let (at, drawn) = pane(&hosted);
+    assert!(whole(at.x) && whole(at.y) && drawn.whole_pixels, "{at}");
+    let radius = theme.window.radius - theme.window.border_width;
+    assert_eq!((drawn.corners, drawn.radius), (Corners::BOTTOM, radius));
+    let notes = hosted.plan().unwrap().window("endue.notes").unwrap().rect;
+    let press = desk_wm::Point::new(notes.x + 80.0, notes.y + 20.0);
+    hosted.wm.pressed(press);
+    let window = "endue.notes".to_owned();
+    hosted
+        .wm
+        .grab(desk_wm::interact::Kind::Move { window }, press, 0.0);
+    hosted
+        .wm
+        .moved(desk_wm::Point::new(press.x + 10.4, press.y + 0.6), 0.0);
+    hosted.replan(Instant::now());
+    let (held, drawn) = pane(&hosted);
+    let off = held - at - Vec2::new(10.4, 0.6);
+    assert!(off.length() < 1e-3 && !drawn.whole_pixels, "{held}");
 }

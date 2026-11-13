@@ -65,6 +65,8 @@ pub struct Hosted {
     preview: Option<(Rect, String)>,
     /// Something glides: plan again each frame.
     moving: bool,
+    /// The windows drawn elsewhere than they rest (held, gliding): filtered, not on whole pixels.
+    on_their_way: BTreeSet<String>,
     /// The spread is open: every window of the desktop in front is in sight on its card (#54).
     spreading: bool,
     /// The window manager's clock held at this many milliseconds, by a check (`compositor_clock`).
@@ -78,6 +80,8 @@ pub struct Hosted {
 
 impl Hosted {
     pub fn new(scale: f64) -> Hosted {
+        let mut wm = Wm::new();
+        wm.set_scale(scale);
         Hosted {
             report: None,
             plan: None,
@@ -90,9 +94,10 @@ impl Hosted {
             sent: None,
             next: None,
             origin: Instant::now(),
-            wm: Wm::new(),
+            wm,
             preview: None,
             moving: false,
+            on_their_way: BTreeSet::new(),
             spreading: false,
             held_clock: None,
             painted: PageShown::new(),
@@ -174,6 +179,7 @@ impl Hosted {
         }
         // Each window's parts come from where the page's picture shows it (`hosted_picture.rs`).
         let real = self.real_ms(now);
+        self.on_their_way = frame.drawn.keys().cloned().collect();
         let desk = self.wm.desk();
         let mut places = picture::places(&mut self.painted, desk, report, frame.drawn, laid, real);
         // What lies above the windows: the system layer's parts and the snap preview, which the
@@ -206,6 +212,11 @@ impl Hosted {
     /// Whether something glides, so each frame plans again.
     pub fn moving(&self) -> bool {
         self.moving
+    }
+
+    /// Whether window `id` is on its way (held, gliding) rather than where it rests (#250).
+    pub fn on_its_way(&self, id: &str) -> bool {
+        self.on_their_way.contains(id)
     }
 
     /// The budget counts every plugin window the runtime handed over, in the order they came, its
@@ -287,6 +298,7 @@ impl Hosted {
     /// The window has a new scale (another display).
     pub fn rescale(&mut self, scale: f64, now: Instant) -> Outcome {
         self.scale = scale;
+        self.wm.set_scale(scale);
         self.look(now)
     }
 

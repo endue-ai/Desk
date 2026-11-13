@@ -1,7 +1,7 @@
 //! Scene nodes: plain data the window manager and system surfaces fill in without knowing wgpu.
 
 use crate::text::TextNode;
-use crate::types::{Color, Rect, Shadow, Stroke, TextureId};
+use crate::types::{Color, Corners, Rect, Shadow, Stroke, TextureId};
 use glam::Mat4;
 
 /// A node's handle in its [`crate::Scene`]. Ids are never reused within one scene.
@@ -48,13 +48,19 @@ pub struct SurfaceNode {
     pub opacity: f32,
     /// Rounded corners, as a window's content has under a rounded frame.
     pub radius: f32,
+    /// Which corners take `radius`: all of them unless a part of a window says otherwise (#250).
+    pub corners: Corners,
     /// How far its colours are drawn towards grey, 0 (as they are) to 1 (luminance only): a sleeping
     /// window's last frame (#54).
     pub grey: f32,
+    /// Where its texels map one to one onto the target, it is drawn on whole pixels, each pixel
+    /// its texel as rendered (the default: a window at rest, ADR 0209). `false` filters it where it
+    /// lands, for a surface on its way (a window held or gliding), which then moves smoothly.
+    pub whole_pixels: bool,
 }
 
 impl SurfaceNode {
-    /// All of `texture`, opaque, square corners.
+    /// All of `texture`, opaque, square corners, on whole pixels where it maps one to one.
     pub fn new(rect: Rect, texture: TextureId) -> SurfaceNode {
         SurfaceNode {
             rect,
@@ -62,7 +68,9 @@ impl SurfaceNode {
             uv: Rect::UNIT,
             opacity: 1.0,
             radius: 0.0,
+            corners: Corners::ALL,
             grey: 0.0,
+            whole_pixels: true,
         }
     }
 }
