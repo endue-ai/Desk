@@ -44,6 +44,8 @@ pub struct Counts {
     pub caught_up: u64,
     /// Paints of its popup widget (a select's list, a picker: `popup.rs`) that reached the compositor.
     pub popup_paints: u64,
+    /// Paints not drawn: a picture laid out for another size than its texture (#252, `paint::fills`).
+    pub unfilled: u64,
 }
 
 /// One surface's layout and paint state.
@@ -74,6 +76,8 @@ pub struct View {
     pub screen: super::render::popup_screen::Screen,
     /// Its size, watched until its page paints it (#248).
     pub catch_up: catch_up::CatchUp,
+    /// Its paints skipped in a row for not filling their texture (#252).
+    pub skips: super::paint::Skips,
 }
 
 impl View {
@@ -94,6 +98,7 @@ impl View {
             popup: Default::default(),
             screen: Default::default(),
             catch_up: Default::default(),
+            skips: Default::default(),
         }
     }
 
@@ -145,6 +150,12 @@ impl View {
         let want = self.pixels();
         (self.counts.texture)
             .is_some_and(|(w, h)| w.abs_diff(want.0) <= 1 && h.abs_diff(want.1) <= 1)
+    }
+
+    /// The frames its page painted, either way, the ones not drawn for not filling their texture
+    /// too (#252): what its clock, its stall watch and its screen go by.
+    pub fn painted(&self) -> u64 {
+        self.counts.paints + self.counts.software_paints + self.counts.unfilled
     }
 
     /// The view in pixels: what the texture will be.

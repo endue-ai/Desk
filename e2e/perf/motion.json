@@ -42,8 +42,7 @@
   },
   "known": {
     "sway-smooth": "#249",
-    "sway-sizes": "#252",
-    "sway-scene": "#252"
+    "sway-scene": "#TBD"
   },
   "sometimes": {
     "sway-own-pixels": "#252"
