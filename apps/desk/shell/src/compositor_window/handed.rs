@@ -4,8 +4,9 @@
 //! `DESK_APP_WINDOWS` names pop out the first time their window shows in a session, through the
 //! runtime's `desk.windows.pop-out`, which asks the plugin for its state first. When the desk's
 //! window in use becomes one out of the canvas (`desk.windows.focus`, Eris, a reopen), its OS
-//! window comes to the front. The shell runs the window commands an OS window calls for (its frame,
-//! its focus) through here.
+//! window comes to the front; when a desk key pressed in one puts a window of the canvas in use, the
+//! desk does. The shell runs the window commands an OS window calls for (its frame, its focus)
+//! through here.
 
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Mutex, OnceLock};
@@ -73,12 +74,19 @@ impl CompositorWindow {
         }
         let mut last = raised().lock().unwrap_or_else(|e| e.into_inner());
         if *last != in_use {
+            let left = last.is_some() && in_use.is_none();
             last.clone_from(&in_use);
             if let Some(window) = in_use {
                 let job = move |shell: &mut crate::window::Shell, _: &_| {
                     crate::app_windows::raise(shell, &window);
                 };
                 self.desk.pump.run(job);
+            } else if left && crate::app_windows::desk_key_lately() {
+                // A desk key pressed in an OS window put a window of the canvas in use (Control+Tab):
+                // the desk comes forward with it.
+                self.desk
+                    .pump
+                    .run(|shell, _| crate::palette::reveal_main(shell));
             }
         }
     }

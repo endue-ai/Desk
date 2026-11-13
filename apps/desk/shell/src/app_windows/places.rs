@@ -1,9 +1,12 @@
-//! Where each app's window was (#235): its place and size per display, and the display it was on
-//! last, kept in `<data>/app-windows.json` once a window rests after a move or a resize, when it
-//! closes and when the desk quits. An app opens on the display it was on last when that display
-//! is still there, else on one it was ever on, where a display still shows its title bar
-//! (`main_frame::Frame::opening_at_least`); else where the OS puts a new window. A display is
-//! known by its name and size, so a laptop's screen and an external one keep places of their own.
+//! Where each window out of the canvas was (#235): its place and size per display, and the display
+//! it was on last, kept in `<data>/app-windows.json` once a window rests after a move or a resize,
+//! when it closes and when the desk quits. They are kept by the window manager's window id, not by
+//! plugin: an app's first window is its plugin id, so it keeps its place as before, and each other
+//! window of a plugin (`<plugin>@<n>`, ADR 0212) keeps one of its own. A window opens on the
+//! display it was on last when that display is still there, else on one it was ever on, where a
+//! display still shows its title bar (`main_frame::Frame::opening_at_least`); else where the OS
+//! puts a new window. A display is known by its name and size, so a laptop's screen and an
+//! external one keep places of their own.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -25,7 +28,7 @@ pub struct Display {
     pub area: Frame,
 }
 
-/// One app's places.
+/// One window's places.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Place {
     /// The display its window was on last.
@@ -36,11 +39,11 @@ pub struct Place {
     pub frames: BTreeMap<String, Frame>,
 }
 
-/// Every app's places.
+/// Every window's places, by window id (`apps` in the file a desk before ADR 0212 wrote).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Kept {
-    #[serde(default)]
-    pub apps: BTreeMap<String, Place>,
+    #[serde(default, alias = "apps")]
+    pub windows: BTreeMap<String, Place>,
 }
 
 impl Kept {
@@ -49,15 +52,15 @@ impl Kept {
         serde_json::from_str(text).unwrap_or_default()
     }
 
-    /// How app `plugin`'s window opens on `displays` (the primary first), never smaller than
-    /// `least`; `None` when no display it was on is there.
+    /// How window `window` opens on `displays` (the primary first), never smaller than `least`;
+    /// `None` when no display it was on is there.
     pub fn opening(
         &self,
-        plugin: &str,
+        window: &str,
         displays: &[Display],
         least: (f64, f64),
     ) -> Option<Opening> {
-        let place = self.apps.get(plugin)?;
+        let place = self.windows.get(window)?;
         let present = |key: &str| displays.iter().any(|d| d.key == key);
         let key = (place.last.as_deref())
             .filter(|key| present(key) && place.frames.contains_key(*key))
@@ -73,9 +76,9 @@ impl Kept {
         Some(frame.opening_at_least(&areas, least))
     }
 
-    /// App `plugin`'s window rests at `frame` on display `display`: whether that changed anything.
-    pub fn keep(&mut self, plugin: &str, display: &str, frame: Frame) -> bool {
-        let place = self.apps.entry(plugin.to_owned()).or_default();
+    /// Window `window` rests at `frame` on display `display`: whether that changed anything.
+    pub fn keep(&mut self, window: &str, display: &str, frame: Frame) -> bool {
+        let place = self.windows.entry(window.to_owned()).or_default();
         let before = place.clone();
         place.last = Some(display.to_owned());
         place.frames.insert(display.to_owned(), frame);
@@ -96,24 +99,24 @@ fn file() -> PathBuf {
     crate::paths::data_dir().join(FILE)
 }
 
-/// How app `plugin`'s window opens on this machine's displays now.
-pub fn opening(event_loop: &ActiveEventLoop, plugin: &str, least: (f64, f64)) -> Option<Opening> {
+/// How window `window` opens on this machine's displays now.
+pub fn opening(event_loop: &ActiveEventLoop, window: &str, least: (f64, f64)) -> Option<Opening> {
     let displays = displays(event_loop);
     let kept = kept().lock().unwrap_or_else(|e| e.into_inner());
-    kept.opening(plugin, &displays, least)
+    kept.opening(window, &displays, least)
 }
 
-/// Keep where app `plugin`'s `window` is now, when it is on a display and not away (full screen,
-/// minimized, hidden); written to the file when that changed anything.
-pub fn keep(plugin: &str, window: &Window) {
+/// Keep where window `window`'s OS window `os` is now, when it is on a display and not away (full
+/// screen, minimized, hidden); written to the file when that changed anything.
+pub fn keep(window: &str, os: &Window) {
     let (Some(frame), Some(display)) = (
-        crate::main_frame::frame_of(window),
-        window.current_monitor().map(|m| key_of(&m)),
+        crate::main_frame::frame_of(os),
+        os.current_monitor().map(|m| key_of(&m)),
     ) else {
         return;
     };
     let mut kept = kept().lock().unwrap_or_else(|e| e.into_inner());
-    if !kept.keep(plugin, &display, frame) {
+    if !kept.keep(window, &display, frame) {
         return;
     }
     let path = file();

@@ -7,20 +7,114 @@
 //! page's bridge calls as the plugin its URL names, its posts up the relay to the runtime's page,
 //! its title for the OS window, the focus once its page loaded, a page whose renderer died loaded
 //! again once, and its close, which the shell carries out (`DoClose`, as a `Pane`'s browser's).
+//! What the compositor does for an off-screen page it does here: files dragged in from the OS and
+//! the page's own drags go through the window's drags (`drags.rs`), and the desk's keys are asked
+//! first (`keys.rs`).
 
 // `wrap_client!` makes a constructor with one argument per field.
 #![allow(clippy::too_many_arguments)]
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 use cef::*;
 use desk_web::sender::Role;
+use serde_json::Value;
 
+use super::drags::{ANSWER_WAIT, Act, Drags};
+use super::keys::Keys;
 use crate::host::{self, Desk};
 use crate::pump::Pump;
 use crate::renderer::{CALL, POST, WAKE};
 use crate::web_host::WebHost;
+
+fn lock<T>(held: &Mutex<T>) -> MutexGuard<'_, T> {
+    held.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Carry out what the window's drags ask: messages to its page (`frame`), files to open, a drop
+/// to settle once the page had time to answer.
+fn apply(acts: Vec<Act>, frame: &Frame, desk: &Arc<Desk>, drags: &Arc<Mutex<Drags>>) {
+    for act in acts {
+        match act {
+            Act::Page(m) => host::send(frame.clone(), m.to_string()),
+            Act::Open(paths) => {
+                if desk.opened.push(paths) {
+                    desk.pages
+                        .emit(Role::Main, crate::open_files::EVENT, Value::Null);
+                }
+            }
+            Act::Wait => {
+                let (frame, desk, drags) = (frame.clone(), Arc::clone(desk), Arc::clone(drags));
+                let pump = desk.pump.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(ANSWER_WAIT);
+                    pump.run(move |_, _| {
+                        let acts = lock(&drags).settle();
+                        apply(acts, &frame, &desk, &drags);
+                    });
+                });
+            }
+        }
+    }
+}
+
+wrap_drag_handler! {
+    // Files dragged in from the OS: the browser takes the drag itself and says only that it
+    // entered, with the files' paths, which the window's drags hold until a drop.
+    pub struct AppDrops {
+        drags: Arc<Mutex<Drags>>,
+        desk: Arc<Desk>,
+    }
+
+    impl DragHandler {
+        fn on_drag_enter(
+            &self,
+            browser: Option<&mut Browser>,
+            drag_data: Option<&mut DragData>,
+            _mask: DragOperationsMask,
+        ) -> ::std::os::raw::c_int {
+            let (Some(data), Some(frame)) = (drag_data, browser.and_then(|b| b.main_frame()))
+            else {
+                return 0;
+            };
+            if data.is_file() == 1 {
+                let mut names = CefStringList::new();
+                data.file_names(Some(&mut names));
+                let acts = lock(&self.drags).os_enter(crate::drops::local_paths(names));
+                apply(acts, &frame, &self.desk, &self.drags);
+            }
+            // Let the drag in: the page's shim follows it (`web_host/shim.js`).
+            0
+        }
+    }
+}
+
+wrap_keyboard_handler! {
+    // The desk's keymap is asked before the page hears a key, as the compositor asks it.
+    pub struct AppKeys {
+        host: WebHost,
+        surface: String,
+        keys: Arc<Mutex<Keys>>,
+    }
+
+    impl KeyboardHandler {
+        fn on_pre_key_event(
+            &self,
+            _browser: Option<&mut Browser>,
+            event: Option<&KeyEvent>,
+            _os_event: *mut u8,
+            _is_keyboard_shortcut: Option<&mut ::std::os::raw::c_int>,
+        ) -> ::std::os::raw::c_int {
+            let Some(event) = event else { return 0 };
+            let (taken, said) = lock(&self.keys).event(event, &self.surface);
+            if let Some(said) = said {
+                self.host.relay().up(&self.surface, said.to_string());
+            }
+            ::std::os::raw::c_int::from(taken)
+        }
+    }
+}
 
 wrap_life_span_handler! {
     pub struct AppLifeSpan {
@@ -176,9 +270,12 @@ wrap_client! {
         load: LoadHandler,
         requests: RequestHandler,
         menu: ContextMenuHandler,
+        drag: DragHandler,
+        keyboard: KeyboardHandler,
         host: WebHost,
         surface: String,
         desk: Arc<Desk>,
+        drags: Arc<Mutex<Drags>>,
     }
 
     impl Client {
@@ -202,6 +299,14 @@ wrap_client! {
             Some(self.requests.clone())
         }
 
+        fn drag_handler(&self) -> Option<DragHandler> {
+            Some(self.drag.clone())
+        }
+
+        fn keyboard_handler(&self) -> Option<KeyboardHandler> {
+            Some(self.keyboard.clone())
+        }
+
         fn on_process_message_received(
             &self,
             _browser: Option<&mut Browser>,
@@ -220,8 +325,17 @@ wrap_client! {
                 WAKE => {}
                 // Straight to the core, as the plugin the frame's URL names (never as another).
                 CALL => host::receive(&self.desk, Role::Main, frame.clone(), text),
-                // Only the surface's page itself speaks for it, to the runtime.
-                POST if frame.is_main() == 1 => self.host.relay().up(&self.surface, text),
+                // Only the surface's page itself speaks for it, to the runtime; what it says of
+                // drags is the window's drags'.
+                POST if frame.is_main() == 1 => {
+                    let about = text.contains("\"desk:d") || text.contains("\"desk:os-")
+                        || text.contains("\"desk:hello");
+                    let m = about.then(|| serde_json::from_str::<Value>(&text).ok()).flatten();
+                    match m.and_then(|m| lock(&self.drags).up(&m)) {
+                        Some(acts) => apply(acts, frame, &self.desk, &self.drags),
+                        None => self.host.relay().up(&self.surface, text),
+                    }
+                }
                 _ => return 0,
             }
             1
@@ -229,8 +343,14 @@ wrap_client! {
     }
 }
 
-/// The client of the browser in surface `surface`'s app window.
-pub fn client(host: WebHost, surface: &str, pump: Pump, desk: Arc<Desk>) -> Client {
+/// The client of the browser in surface `surface`'s app window, whose drags are `drags`.
+pub fn client(
+    host: WebHost,
+    surface: &str,
+    pump: Pump,
+    desk: Arc<Desk>,
+    drags: Arc<Mutex<Drags>>,
+) -> Client {
     let s = surface.to_owned();
     AppClient::new(
         AppDisplay::new(s.clone(), pump.clone()),
@@ -238,8 +358,11 @@ pub fn client(host: WebHost, surface: &str, pump: Pump, desk: Arc<Desk>) -> Clie
         AppLoad::new(s.clone(), pump),
         AppRequests::new(s.clone(), Arc::default()),
         super::menu::AppMenu::new(),
+        AppDrops::new(Arc::clone(&drags), Arc::clone(&desk)),
+        AppKeys::new(host.clone(), s.clone(), Arc::default()),
         host,
         s,
         desk,
+        drags,
     )
 }

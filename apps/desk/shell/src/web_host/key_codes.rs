@@ -205,6 +205,73 @@ pub fn unmodified(code: &str) -> Option<char> {
     code.strip_prefix("Digit").and_then(|d| d.chars().next())
 }
 
+/// The DOM code of a key CEF reports in a windowed browser (#235): on macOS by its virtual key
+/// code, the physical key; elsewhere, or when that is unknown, by its Windows virtual key.
+pub fn code_of(native: i32, virtual_key: i32) -> Option<&'static str> {
+    if cfg!(target_os = "macos")
+        && let Ok(scancode) = u32::try_from(native)
+    {
+        let code = dom_code(PhysicalKey::from_scancode(scancode));
+        if code != "Unidentified" {
+            return Some(code);
+        }
+    }
+    (KEYS.iter())
+        .find(|(_, _, vk)| i32::from(*vk) == virtual_key && virtual_key != 0)
+        .map(|(dom, _, _)| *dom)
+}
+
+/// The DOM `key` of a key that types no character, from its code: "Escape", "ArrowUp", "F5", "Meta";
+/// " " for the space bar; `None` for a key that types one.
+pub fn named(code: &str) -> Option<&'static str> {
+    const SAME: [&str; 32] = [
+        "Enter",
+        "Escape",
+        "Backspace",
+        "Tab",
+        "CapsLock",
+        "PrintScreen",
+        "ScrollLock",
+        "Pause",
+        "Insert",
+        "Home",
+        "PageUp",
+        "Delete",
+        "End",
+        "PageDown",
+        "ArrowRight",
+        "ArrowLeft",
+        "ArrowDown",
+        "ArrowUp",
+        "NumLock",
+        "ContextMenu",
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6",
+        "F7",
+        "F8",
+        "F9",
+        "F10",
+        "F11",
+        "F12",
+    ];
+    if let Some(same) = SAME.iter().find(|name| **name == code) {
+        return Some(same);
+    }
+    Some(match code {
+        "Space" => " ",
+        "NumpadEnter" => "Enter",
+        "ShiftLeft" | "ShiftRight" => "Shift",
+        "ControlLeft" | "ControlRight" => "Control",
+        "AltLeft" | "AltRight" => "Alt",
+        "MetaLeft" | "MetaRight" => "Meta",
+        _ => return None,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -222,5 +289,14 @@ mod tests {
         }
         assert_eq!(mac_character("ArrowLeft"), Some(0xf702));
         assert_eq!(unmodified("KeyD"), Some('d'));
+        assert_eq!(code_of(-1, 0x4b), Some("KeyK"));
+        assert_eq!(code_of(-1, 0), None);
+        if cfg!(target_os = "macos") {
+            assert_eq!(code_of(native_key("KeyK", false), 0), Some("KeyK"));
+        }
+        assert_eq!(named("ArrowUp"), Some("ArrowUp"));
+        assert_eq!(named("Space"), Some(" "));
+        assert_eq!(named("MetaLeft"), Some("Meta"));
+        assert_eq!(named("KeyK"), None);
     }
 }
