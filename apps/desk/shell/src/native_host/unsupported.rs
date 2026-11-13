@@ -49,7 +49,7 @@ impl NativeHost {
             })
         };
         if let CompositorMessage::SurfaceCreate(create) = message
-            && native(&create.plugin)
+            && native(desk_wm::plugin_of(&create.plugin))
         {
             (self.surfaces.lock().unwrap_or_else(|e| e.into_inner())).insert(surface.clone());
         }

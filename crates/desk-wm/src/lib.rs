@@ -59,6 +59,7 @@ pub mod tiling;
 pub mod types;
 pub mod undo;
 pub mod view;
+pub mod window_key;
 
 pub use arrange::{
     GridShape, TARGET_ASPECT, arrange_area, cascade_rects, cascade_size, grid_shape, row_sizes,
@@ -109,3 +110,4 @@ pub use spread::windows::{SpreadWindow, asleep, spread_order};
 pub use tiling::{CASCADE, GAP, free_slot, slot_rect, slot_rect_in, slot_windows};
 pub use types::*;
 pub use view::{Shown, View};
+pub use window_key::plugin_of;

@@ -134,6 +134,15 @@ mod tests {
     }
 
     #[test]
+    fn a_later_window_of_a_plugin_is_a_surface_host_of_that_plugin() {
+        // ADR 0212: the n-th window of a per-file opener loads on `<surface>--<n>.<label>`.
+        let second = surface("main--2", "endue-images", "endue.images");
+        assert_eq!(Host::parse(Some("main--2.endue-images")), second);
+        let host = Host::parse(Some("main--2.endue-images")).expect("a surface host");
+        assert!(host.serves("endue.images") && !host.serves("endue.notes"));
+    }
+
+    #[test]
     fn refuses_a_host_that_names_no_surface_of_a_plugin() {
         for host in [
             "",
