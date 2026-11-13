@@ -113,6 +113,11 @@ describe("the window manager's seam", () => {
       command: "desk.frames.reload",
       args: { plugin: "p" },
     });
+    // The close of an OS window a plugin shows in (#234).
+    expect(cardCommand({ command: "desk.windows.close", args: { window: "w" } })).toEqual({
+      command: "desk.windows.close",
+      args: { window: "w" },
+    });
     expect(cardCommand({ command: "desk.files.delete", args: {} })).toBeUndefined();
     expect(cardCommand({ command: 3 })).toBeUndefined();
   });

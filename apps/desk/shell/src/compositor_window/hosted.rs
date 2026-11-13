@@ -49,6 +49,8 @@ pub fn motion(table: &TokenTable) -> Motion {
 pub struct Hosted {
     report: Option<DeskReport>,
     plan: Option<Plan>,
+    /// The plan drawn and routed by, when it leaves out windows shown in OS windows (#234).
+    drawn: Option<Plan>,
     budget: LiveBudget,
     surfaces: Surfaces,
     docs: Vec<FrameDoc>,
@@ -79,6 +81,7 @@ impl Hosted {
         Hosted {
             report: None,
             plan: None,
+            drawn: None,
             budget: LiveBudget::new(),
             surfaces: Surfaces::new(),
             docs: Vec::new(),
@@ -178,6 +181,7 @@ impl Hosted {
         places.over = report.parts.iter().filter_map(|p| p.known()).collect();
         places.preview = frame.preview.clone();
         let plan = desk.host_plan_at(vw, vh, report.top, report, &places);
+        self.drawn = crate::app_windows::drawn(&plan, crate::app_windows::switch());
         self.plan = Some(plan);
         self.preview = frame.preview;
         self.moving = frame.moving;
@@ -321,8 +325,10 @@ impl Hosted {
         self.surfaces.died(surface);
     }
 
+    /// The plan the compositor draws and routes input by: a window shown in an OS window of its
+    /// own (#234) is not in it, though the surfaces' lifecycle and the budget still count it.
     pub fn plan(&self) -> Option<&Plan> {
-        self.plan.as_ref()
+        self.drawn.as_ref().or(self.plan.as_ref())
     }
 
     pub fn report(&self) -> Option<&DeskReport> {

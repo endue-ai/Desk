@@ -86,8 +86,11 @@ export interface RunPayload {
   args?: unknown;
 }
 
-/** The commands the compositor's own chrome runs: a card's buttons and the spread's pick (#54). */
-const CHROME = /^desk\.(frames\.(wait|stop|reload)|windows\.focus)$/;
+/**
+ * The commands the compositor's own chrome runs: a card's buttons, the spread's pick (#54) and the
+ * close of an OS window a plugin shows in (#234).
+ */
+const CHROME = /^desk\.(frames\.(wait|stop|reload)|windows\.(focus|close))$/;
 
 /** The desk command the compositor's chrome runs, if the payload names one of those. */
 export function cardCommand(payload: RunPayload): { command: string; args: unknown } | undefined {

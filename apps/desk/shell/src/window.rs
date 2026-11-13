@@ -1,9 +1,9 @@
-//! The shell's winit application: the main window, the palette, the floating Eris and the
-//! computer-use banner (each a `Pane`), the tray, the menu bar and the global shortcuts, and CEF's
-//! message loop work when the pump says it is due. Other threads reach it through the pump's jobs.
-//! Closing the main window hides it, as in the Tauri shell; the desk quits from the tray or the
-//! menu, once its page has asked about unsaved changes (`quit.rs`), closing every browser before
-//! CEF shuts down.
+//! The shell's winit application: the main window, the palette, the floating Eris, the computer-use
+//! banner and the app windows (each a `Pane`; `apps`, #234), the tray, the menu bar, the global
+//! shortcuts, and CEF's message loop work when the pump says it is due. Other threads reach it
+//! through the pump's jobs. Closing the main window hides it, as in the Tauri shell; the desk quits
+//! from the tray or the menu, once its page has asked about unsaved changes (`quit.rs`), closing
+//! every browser before CEF shuts down.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -45,6 +45,7 @@ pub struct Shell {
     menu_bar: Option<tray_icon::menu::Menu>,
     /// The main window's scene and its off-screen surfaces (#52, #83).
     pub compositor: Option<crate::compositor_window::CompositorWindow>,
+    pub(crate) apps: crate::app_windows::Windows,
     started: bool,
     /// The browsers are closing: the desk quits.
     pub(crate) quitting: bool,
@@ -69,6 +70,7 @@ impl Shell {
             offered: None,
             menu_bar: None,
             compositor: None,
+            apps: crate::app_windows::Windows::default(),
             started: false,
             quitting: false,
             asked: crate::quit::Quit::default(),
@@ -251,6 +253,7 @@ impl Shell {
         if let Some(compositor) = &self.compositor {
             compositor.close();
         }
+        crate::app_windows::close_all(self);
         if self.done_quitting() {
             event_loop.exit();
         }
@@ -286,7 +289,7 @@ impl Shell {
 
     /// Whether every browser has closed, the compositor's surfaces' too.
     fn done_quitting(&self) -> bool {
-        let surfaces = self.compositor.as_ref().map_or(0, |c| c.host.browsers());
+        let surfaces = self.compositor.as_ref().map_or(0, |c| c.host.browsers()) + self.apps.len();
         self.quitting && self.panes.is_empty() && self.closing.is_empty() && surfaces == 0
     }
 }
@@ -309,6 +312,7 @@ impl ApplicationHandler<Wake> for Shell {
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
         let Some(&role) = self.roles.get(&id) else {
+            crate::app_windows::window_event(self, id, &event);
             return;
         };
         // Compositor mode (#56, #57): its events reach the accessibility adapter, then the router.

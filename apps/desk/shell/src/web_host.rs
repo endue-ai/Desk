@@ -10,6 +10,7 @@
 //! each one over the remote debugging port in development builds (ADR 0144); `view::a11y`: #57. A
 //! page that stops painting is found and loaded again (`stall.rs`, `revive.rs`, #157).
 
+mod app_surfaces;
 pub mod client;
 pub mod clock;
 mod copy_wake;
@@ -73,6 +74,8 @@ struct Inner {
     /// The desk's frames, and the compositor's page on them (`clock.rs`).
     clock: frames::Clock,
     page: Option<clock::Page>,
+    /// The surfaces shown in OS windows of their own instead (#234, `app_surfaces.rs`).
+    apps: app_surfaces::Apps,
 }
 
 /// The web host. Cheap to clone; every clone is the same host. Call it on CEF's UI thread.
@@ -111,9 +114,12 @@ impl WebHost {
     /// Surface `surface` shows the document at `url` (before its `create`, or a new one later: a new
     /// revision, a reload), which its browser loads when it is live.
     pub fn load(&self, surface: &str, url: &str) {
+        (self.inner().sources).insert(surface.to_owned(), url.to_owned());
+        if self.app_load(surface, url) {
+            return;
+        }
         let frame = {
-            let mut inner = self.inner();
-            inner.sources.insert(surface.to_owned(), url.to_owned());
+            let inner = self.inner();
             let record = inner.records.get(surface);
             let live = record.is_some_and(|r| matches!(r.state, State::Live { .. }));
             live.then(|| {
@@ -133,6 +139,9 @@ impl WebHost {
         let Some(surface) = surface_of(message) else {
             return;
         };
+        if self.app_message(&surface, message) {
+            return;
+        }
         if self.route(&surface, message) {
             return;
         }
