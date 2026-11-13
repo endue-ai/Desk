@@ -64,7 +64,7 @@ frame of its size.
   whole pixels. Once the page paints the new size, frame and content take it in the same frame. A
   pane's plugin, a browser of its own, is still drawn from its pane's top left, cropped or padded
   with the window's fill, while its page catches up; the desk's own page likewise (ADR 0213's
-  `sway-scene`, its own issue).
+  `sway-scene`, #269).
 * **A paint that does not fill its texture is not drawn** (`web_host/paint.rs`): `fills` says
   whether a view paint's `content_rect` is its whole `coded_size` and its `source_size` is that size
   (either not given counts as whole). One that does not is skipped, so the window keeps the last
@@ -107,7 +107,7 @@ frame of its size.
   captured frames, by up to 98 px; `sway-sizes` compares the texture with the frame and cannot
   see it. Sizing the section against its page (`100vw`, or `min(…, 100vw)`) would keep it laid out
   for its page, but the page then stopped growing once the window had been moved, and a press on
-  its corner no longer resized it; it is left for its own issue.
+  its corner no longer resized it; it is left for #270.
 
 ### Measurements
 
@@ -139,7 +139,7 @@ frame of its size.
     app window, not by the frame rule, and its texture trails the app window's size as before. In
     runs where the desk's page kept painting it was 153 of 467 here against 182 to 200 of about
     470 on #264's shell; the totals are higher here because the desk's page stopped mid-sway in
-    more of these runs (below) and every frame after counted. It stays `known`, for its own issue.
+    more of these runs (below) and every frame after counted. It stays `known`, for #269.
   * `sway-painting`: the desk's page stopped painting mid-sway (the #157 watch, then ADR 0202's
     restart) in 5 of 6 runs here and 0 of 3 on #264's shell. Run interleaved with it, one sway at
     a time from prebuilt bundles under the same load (6 to 150, other sessions' builds), it

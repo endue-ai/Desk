@@ -42,10 +42,10 @@
   },
   "known": {
     "sway-smooth": "#249",
-    "sway-scene": "#TBD"
+    "sway-scene": "#269"
   },
   "sometimes": {
-    "sway-own-pixels": "#252"
+    "sway-own-pixels": "#269"
   },
   "baseline": {
     "optimized-offscreen": {
