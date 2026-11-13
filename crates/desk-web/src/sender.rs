@@ -74,11 +74,23 @@ const ERIS_COMMANDS: &[&str] = &[
 /// What the floating Eris may ask the core as the desk: talking to Eris and her brain's status
 /// (ADR 0121). Everything else the desk may do stays with the main window.
 const ERIS_METHODS: &[&str] = &["brain.say", "brain.status"];
-const ISLAND_COMMANDS: &[&str] = &["island_open", "island_drag", "island_reveal_main"];
+const ISLAND_COMMANDS: &[&str] = &[
+    "island_open",
+    "island_fit",
+    "island_drag",
+    "island_reveal_main",
+];
 /// What the island may ask the core as the desk (ADR 0204): the agents and what they do, the runs of
-/// the agent programs on this computer, and what waits for the person. Answering, talking and
-/// notices add theirs as they land.
-const ISLAND_METHODS: &[&str] = &["agent.list", "agents.runs", "perm.pending"];
+/// the agent programs on this computer, what waits for the person and the answers to it, and the
+/// plugins' names for the callers that ask. Talking and notices add theirs as they land.
+const ISLAND_METHODS: &[&str] = &[
+    "agent.list",
+    "agents.runs",
+    "perm.pending",
+    "perm.answer",
+    "perm.approve",
+    "plugin.list",
+];
 
 /// Which of the shell's windows a browser is, set by the browser process when it makes the browser.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -357,7 +369,14 @@ mod tests {
         assert_eq!(island, Sender::Island);
         assert_eq!(island.caller(Some("endue.notes")).as_deref(), Some("desk"));
         assert_eq!(island.caller(None).as_deref(), Some("desk"));
-        for method in ["agent.list", "agents.runs", "perm.pending"] {
+        for method in [
+            "agent.list",
+            "agents.runs",
+            "perm.pending",
+            "perm.answer",
+            "perm.approve",
+            "plugin.list",
+        ] {
             assert!(island.may_ask(method).is_ok(), "{method}");
         }
         for method in [
@@ -370,7 +389,12 @@ mod tests {
             let refused = island.may_ask(method).unwrap_err();
             assert!(refused.contains(method), "{refused}");
         }
-        for cmd in ["island_open", "island_drag", "island_reveal_main"] {
+        for cmd in [
+            "island_open",
+            "island_fit",
+            "island_drag",
+            "island_reveal_main",
+        ] {
             assert!(island.may(cmd), "{cmd}");
             assert!(!Sender::Runtime.may(cmd), "{cmd}");
             assert!(!Sender::Eris.may(cmd), "{cmd}");

@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import {
   asksAfter,
   asksOf,
-  callerName,
   QUIET,
   runningOf,
   runsAfter,
@@ -38,12 +37,6 @@ const agent = (id: string, state: AgentRecord["state"], colour?: string): AgentR
 });
 
 describe("the island's model", () => {
-  it("names callers in words", () => {
-    expect(callerName("agent:mira")).toBe("mira");
-    expect(callerName("desk")).toBe("endue");
-    expect(callerName("endue.notes")).toBe("endue.notes");
-  });
-
   it("starts from what perm.pending says waits, prompts first, each in its order", () => {
     const asks = asksOf({ prompts: [prompt("p-1"), prompt("p-3")], approvals: [approval("a-2")] });
     expect(asks.map((a) => `${a.kind}:${a.id}`)).toEqual([
@@ -51,18 +44,9 @@ describe("the island's model", () => {
       "prompt:p-3",
       "approval:a-2",
     ]);
-    expect(asks[0]).toEqual({
-      kind: "prompt",
-      id: "p-1",
-      who: "endue.notes",
-      what: "asks for fs:read",
-    });
-    expect(asks[2]).toEqual({
-      kind: "approval",
-      id: "a-2",
-      who: "mira",
-      what: "waits to run fs.write on ~/Notes/a.md",
-    });
+    // Each as its event said it, for the card that answers it.
+    expect(asks[0]).toEqual({ kind: "prompt", id: "p-1", data: prompt("p-1") });
+    expect(asks[2]).toEqual({ kind: "approval", id: "a-2", data: approval("a-2") });
   });
 
   it("counts an ask when it comes and stops counting it when any prompter answered it", () => {
@@ -142,7 +126,7 @@ describe("the island's model", () => {
     ).toBe(false);
     expect(summary(QUIET)).toBe("All quiet");
     const mira = { id: "mira", name: "mira" };
-    const ask = { kind: "prompt" as const, id: "p-1", who: "x", what: "y" };
+    const ask = { kind: "prompt" as const, id: "p-1", data: prompt("p-1") };
     expect(summary({ working: [mira], asks: [] })).toBe("1 agent at work");
     expect(summary({ working: [mira, mira], asks: [ask] })).toBe("2 agents at work · 1 ask waits");
     expect(summary({ working: [], asks: [ask, ask, ask] })).toBe("3 asks wait");

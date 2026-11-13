@@ -20,15 +20,10 @@ export interface Worker {
   colour?: string;
 }
 
-/** One ask that waits for the person: a permission prompt or an agent's approval. */
-export interface Ask {
-  kind: "prompt" | "approval";
-  id: string;
-  /** Who asks, in words. */
-  who: string;
-  /** What for, in words. */
-  what: string;
-}
+/** One ask that waits for the person, as its event said it: a permission prompt or an agent's approval. */
+export type Ask =
+  | { kind: "prompt"; id: string; data: PermPromptData }
+  | { kind: "approval"; id: string; data: PermApprovalData };
 
 export interface IslandState {
   working: Worker[];
@@ -66,28 +61,12 @@ export function runsAfter(
   return next;
 }
 
-/** A caller in words: an agent by its id, the desk as the desk, a plugin by its id. */
-export function callerName(caller: string): string {
-  if (caller === "desk") return "endue";
-  return caller.startsWith("agent:") ? caller.slice("agent:".length) : caller;
-}
-
 export function promptAsk(prompt: PermPromptData): Ask {
-  return {
-    kind: "prompt",
-    id: prompt.promptId,
-    who: callerName(prompt.caller),
-    what: `asks for ${prompt.permission.permission}`,
-  };
+  return { kind: "prompt", id: prompt.promptId, data: prompt };
 }
 
 export function approvalAsk(approval: PermApprovalData): Ask {
-  return {
-    kind: "approval",
-    id: approval.approvalId,
-    who: callerName(approval.caller),
-    what: `waits to run ${approval.action} on ${approval.target}`,
-  };
+  return { kind: "approval", id: approval.approvalId, data: approval };
 }
 
 /** What perm.pending says waits, prompts first, each oldest first. */

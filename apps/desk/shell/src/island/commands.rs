@@ -1,5 +1,6 @@
 //! The island's own commands (ADR 0204), which only its page may call
-//! (`desk_web::sender::Sender::may`): open and fold it, follow the pointer, bring the desk forward.
+//! (`desk_web::sender::Sender::may`): open and fold it, fit it to what it shows open, follow the
+//! pointer, bring the desk forward.
 //! Window work runs on the event loop's thread.
 
 use std::sync::Arc;
@@ -22,6 +23,15 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
             let open = args.get("open").and_then(Value::as_bool).unwrap_or(false);
             desk.pump
                 .run(move |shell, _| frame::expand(shell, &state, open));
+        }
+        // The page's open content is this tall (CSS pixels): the window fits it.
+        "island_fit" => {
+            let height = args
+                .get("height")
+                .and_then(Value::as_f64)
+                .unwrap_or(super::OPEN.1);
+            desk.pump
+                .run(move |shell, _| frame::fit(shell, &state, height));
         }
         // A press that moves: the window follows the pointer.
         "island_drag" => {

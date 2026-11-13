@@ -10,7 +10,7 @@ use desk_web::sender::Role;
 use serde_json::json;
 use winit::dpi::LogicalSize;
 
-use super::{CLOSED, Island, MARGIN, OPEN, screens};
+use super::{CLOSED, Island, MARGIN, OPEN, TALLEST, screens};
 use crate::displays::{self, display, physical, rect_of};
 use crate::eris_window::lock;
 use crate::eris_window::place::{Display, resize};
@@ -80,7 +80,7 @@ pub(super) fn expand(shell: &mut Shell, state: &Island, open: bool) {
     let next = if open {
         state.dragged.store(false, Relaxed);
         lock(&state.folded).get_or_insert(current);
-        resize(current, physical(OPEN, scale), area)
+        resize(current, physical(open_size(state), scale), area)
     } else {
         match lock(&state.folded).take() {
             Some(folded) if !state.dragged.load(Relaxed) => folded,
@@ -91,6 +91,36 @@ pub(super) fn expand(shell: &mut Shell, state: &Island, open: bool) {
     displays::place(&pane.window, next, scale);
     *lock(&state.placed) = rect_of(&pane.window);
     tell(shell, open);
+}
+
+/// The page says how tall the open island is: it fits its window to it, keeping its top edge.
+pub(super) fn fit(shell: &mut Shell, state: &Island, height: f64) {
+    let height = height.clamp(CLOSED.1, TALLEST);
+    state.height.store(height.round() as u32, Relaxed);
+    if !state.open.load(Relaxed) {
+        return;
+    }
+    let Some(pane) = shell.pane(Role::Island) else {
+        return;
+    };
+    let (Some(monitor), Some(current)) = (pane.window.current_monitor(), rect_of(&pane.window))
+    else {
+        return;
+    };
+    let scale = monitor.scale_factor();
+    let next = resize(
+        current,
+        physical(open_size(state), scale),
+        display(&monitor).area,
+    );
+    if next != current {
+        displays::place(&pane.window, next, scale);
+        *lock(&state.placed) = rect_of(&pane.window);
+    }
+}
+
+fn open_size(state: &Island) -> (f64, f64) {
+    (OPEN.0, f64::from(state.height.load(Relaxed)))
 }
 
 /// Keep its spot when the person moved it: not while it only grew open, not where the shell put
