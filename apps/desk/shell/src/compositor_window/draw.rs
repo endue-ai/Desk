@@ -88,6 +88,8 @@ pub struct Drawn {
     pub popups: Vec<(String, desk_wm::Rect)>,
     /// Each plugin surface drawn in a window drawn from its own page, and that page (ADR 0201).
     pub pages: Vec<(String, String)>,
+    /// Where the system layer covers every window: its parts, its surfaces, scrims and the map.
+    pub over: Vec<Rect>,
 }
 
 pub(super) fn rect(r: desk_wm::Rect) -> Rect {

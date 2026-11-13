@@ -1,14 +1,18 @@
 // The motion gate (`just perf-motion [check|record] [--debug] [--screen] [--runs N] [--no-build]
-// [--home DIR]`, #247, ADR 0208): a change to the compositor, desk-wm or the off-screen host is judged
-// on rendered pixels while a window moves. It builds the optimized shell (development commands on),
-// starts it on the Default profile's 13 plugin windows, and per run shakes one window by its title
-// bar twice (2 Hz, ±200 px, a move every 8 ms): once timed, once reading frames back. It fails on
+// [--home DIR]`, #247 and #258, ADR 0208): a change to the compositor, desk-wm or the off-screen host
+// is judged on rendered pixels while windows move. It builds the optimized shell (development commands
+// on), starts it on the Default profile's 13 plugin windows, and per run shakes one window by its title
+// bar twice (2 Hz, ±200 px, a move every 8 ms): once timed, once reading frames back; then the main
+// scenario (`motion-sway.ts`): the app window itself grown and shrunk on two sines (±300 px wide,
+// ±200 px high, 1 to 1.4 Hz, a new frame every 8 ms) while the window shakes again. Each fails on
 // fewer than 55 frames a second, intervals over 25 ms beyond 2 %, a mid-motion frame where the
-// window shows pixels not its own, a page that stops painting, and a window at rest after a drop at a
-// fractional place softer than at a whole pixel (known until #250). Limits and the baseline live in
-// e2e/perf/motion.json; results in e2e/test-results/perf-motion/<variant>. Headless by default: no
-// screen, pointer or keyboard of the machine's is used. `--debug` measures the development build for
-// the record and never fails. Node strips the types.
+// window shows pixels not its own, a page that stops painting (the desk's own included, and an ADR
+// 0202 restart), and a window at rest after a drop at a fractional place softer than at a whole
+// pixel; the sway also on a picture laid out for another size and on a window off its place once the
+// app window settles. Limits, known failures and the baseline live in e2e/perf/motion.json; results
+// in e2e/test-results/perf-motion/<variant>. Headless by default: no screen, pointer or keyboard of
+// the machine's is used. `--debug` measures the development build for the record and never fails.
+// Node strips the types.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { cpus, homedir, loadavg, tmpdir } from "node:os";
@@ -30,10 +34,14 @@ import {
   failed,
   type Limits,
   type RunFindings,
+  type SwayFindings,
+  swayVerdicts,
   table,
   verdicts,
   worst,
+  worstSway,
 } from "./lib/motion-verdicts.ts";
+import { analyzeSway, runSway, type SwayConfig } from "./motion-sway.ts";
 import { drag, poke, shake, startDesk, stopDesk, windows } from "./support/motion-desk.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -64,8 +72,10 @@ interface Config {
     captures: number;
     drop: number[];
   };
+  sway: SwayConfig;
   limits: Limits;
   known: Record<string, string>;
+  sometimes: Record<string, string>;
   baseline: Record<string, unknown>;
 }
 const config = JSON.parse(readFileSync(CONFIG, "utf8")) as Config;
@@ -96,10 +106,13 @@ function build(): void {
   run("cargo", ["run", "-q", "-p", "desk-shell", ...bundle, debug ? "debug" : "release"]);
 }
 
-/** One run: a fresh desk, the window placed at whole pixels, a timed shake, a captured one, a poke. */
-async function once(
-  n: number,
-): Promise<{ findings: RunFindings; detail: Record<string, unknown> }> {
+/** One run: a fresh desk, the window placed at whole pixels, a timed shake, a captured one, a poke;
+ * then the sway. */
+async function once(n: number): Promise<{
+  findings: RunFindings;
+  sway: SwayFindings;
+  detail: Record<string, unknown>;
+}> {
   const dir = join(OUT, `run-${n}`);
   mkdirSync(dir, { recursive: true });
   const home = flag("--home") ?? mkdtempSync(join(tmpdir(), "desk-motion-"));
@@ -153,13 +166,47 @@ async function once(
     // The stall watch says a page stopped after three asks a second apart (`stall.rs`).
     await delay(4_000);
     const alive = await desk.desk.exits(0).then((gone) => !gone);
+    const swayed = alive
+      ? await runSway(desk, config.sway, { amp, periodMs, stepMs }, config.window, dir)
+      : undefined;
+    // The trace and the log up to the sway's shake are the single shake's.
     const lines = parseTrace(readFileSync(trace, "utf8"));
-    const result = analyze(lines, readFileSync(log, "utf8"), poked, alive);
+    const text = readFileSync(log, "utf8");
+    const press = (l: Line) => l.e === "shake" && l.f.phase === "press" && l.f.tag === "swayed";
+    const cut = lines.findIndex(press);
+    const shook = cut < 0 ? lines : lines.slice(0, cut);
+    const result = analyze(shook, text.slice(0, swayed?.logFrom), poked, alive);
+    const sway = swayed
+      ? analyzeSway(
+          lines,
+          cut < 0 ? lines.length : cut,
+          text,
+          swayed,
+          config.window,
+          config.limits,
+          screen,
+        )
+      : undefined;
     result.detail.rested = desk.rested;
     result.detail.load = loadavg().map((l) => Math.round(l * 10) / 10);
-    return result;
+    result.detail.sway = sway?.detail;
+    const none = { widths: [0, 0], heights: [0, 0], fps: 0, longShare: 1, intervalP95: 0 };
+    const missed: SwayFindings = {
+      ...none,
+      intervalMax: 0,
+      frames: 0,
+      unfitFrames: 0,
+      sceneFrames: 0,
+      swingFrames: 0,
+      foreignFrames: 0,
+      stopped: [],
+      unsettled: null,
+      restSharpness: null,
+      invalid: "the desk had ended before the sway",
+    };
+    return { ...result, sway: sway?.findings ?? missed };
   } finally {
-    await stopDesk(desk);
+    await stopDesk(desk, BINARY);
     if (!flag("--home")) rmSync(home, { recursive: true, force: true });
   }
 }
@@ -240,9 +287,14 @@ async function main(): Promise<void> {
     console.log(`perf-motion: ${variant}, run ${n} of ${runs}`);
     results.push(await once(n));
     console.log(`perf-motion: run ${n}: ${JSON.stringify(results.at(-1)?.findings)}`);
+    console.log(`perf-motion: run ${n}, sway: ${JSON.stringify(results.at(-1)?.sway)}`);
   }
   const found = worst(results.map((r) => r.findings));
-  const all = verdicts(found, config.limits, config.known);
+  const sway = worstSway(results.map((r) => r.sway));
+  const all = [
+    ...verdicts(found, config.limits, config.known),
+    ...swayVerdicts(sway, config.limits, config.known, config.sometimes),
+  ];
   const date = new Date().toISOString();
   const commit = spawnSync("git", ["rev-parse", "--short=8", "HEAD"], {
     cwd: root,
@@ -250,7 +302,7 @@ async function main(): Promise<void> {
   });
   const machine = `${cpus()[0]?.model ?? "?"}, ${process.platform}`;
   const load = results.map((r) => (r.detail.load as number[] | undefined)?.[0]);
-  const summary = { date, commit: commit.stdout.trim(), machine, variant, runs, load, found };
+  const summary = { date, commit: commit.stdout.trim(), machine, variant, runs, load, found, sway };
   writeFileSync(
     join(OUT, "results.json"),
     `${JSON.stringify({ ...summary, verdicts: all, runs: results }, null, 2)}\n`,

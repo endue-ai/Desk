@@ -4,6 +4,10 @@ date: 2026-11-14
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0213: the gate's main scenario grows and shrinks the app window on a sine while
+a window inside it shakes, and judges the pictures' sizes, the windows once the app window rests and
+the desk's own page too; a failure that comes and goes on `main` is listed under `sometimes`.
+
 Carries out ADR 0205's rule (a change to the compositor, `desk-wm` or the off-screen host keeps the
 motion gate green). Numbered past ADR 0206 and ADR 0207, which other open pull requests hold.
 

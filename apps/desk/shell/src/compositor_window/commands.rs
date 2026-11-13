@@ -12,10 +12,10 @@
 //! `harness.rs`; `{ shake }` the motion gate's shake, `motion.rs`), `compositor_input_state` (where input goes), `compositor_a11y` (the
 //! accessibility tree the adapter has, and a screen reader's request, `a11y_check.rs`) and
 //! `compositor_clock { hold?, at? }` (the window manager's clock held, so a check sees a motion at a
-//! time it chooses, ADR 0013) and `compositor_window { to } | { occluded } | { frame }` (the main
-//! window closed, minimized or brought back as a person does it, or what the OS says of it, #155; its
-//! frame read, or set as a drag and a resize would, #163). They run on the event loop's thread, where
-//! the compositor is.
+//! time it chooses, ADR 0013) and `compositor_window { to } | { occluded } | { frame } | { sway }`
+//! (the main window closed, minimized or brought back as a person does it, or what the OS says of it,
+//! #155; its frame read, or set as a drag and a resize would, #163; grown and shrunk on a sine, #258).
+//! They run on the event loop's thread, where the compositor is.
 
 use std::sync::mpsc;
 use std::time::Duration;
@@ -135,9 +135,13 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
                 .recv_timeout(Duration::from_secs(10))
                 .map_err(|_| "the window manager did not answer".to_owned())
         }
-        // The motion gate's shake (#247, `motion.rs`): it runs on a thread of its own.
+        // The motion gate's shake (#247) and sway (#258, `motion.rs`): each runs on a thread of
+        // its own.
         "compositor_input" if cfg!(debug_assertions) && args.get("shake").is_some() => {
             super::motion::shake(desk, args)
+        }
+        "compositor_window" if cfg!(debug_assertions) && args.get("sway").is_some() => {
+            super::motion::sway(desk, args)
         }
         "compositor_capture"
         | "compositor_stats"
