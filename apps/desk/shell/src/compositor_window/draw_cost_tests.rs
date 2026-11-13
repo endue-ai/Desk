@@ -3,10 +3,16 @@
 //! the debug app's main thread per layout with 13 windows. Run with
 //! `cargo test -p desk-shell --lib cost_tests -- --ignored --nocapture` under the profile to compare;
 //! it prints one JSON line. No GPU, no CEF: the scene is built, not rendered.
+//!
+//! The budget (not ignored): one step of a title-bar drag through desk-wm, with the plan and the
+//! scene again as the shell does for each pointer move, stays within half a 60 Hz frame at the 95th
+//! percentile, so the rest of the frame is left for CEF, the page's report and the GPU.
 
 use std::time::{Duration, Instant};
 
 use desk_compositor::{ChromeTheme, Scene, TextureId};
+use desk_wm::Point;
+use desk_wm::interact::Kind;
 use serde_json::json;
 
 use super::{Sources, Texture, draw};
@@ -101,6 +107,70 @@ fn layouts(mut hosted: Hosted, map: bool) -> Vec<Duration> {
     let mut runs: Vec<Duration> = (0..RUNS).map(|_| once()).collect();
     runs.sort();
     runs
+}
+
+/// Half a 60 Hz frame: the most one gesture step may take of the main thread.
+const STEP_BUDGET: Duration = Duration::from_micros(8_333);
+/// The pointer moves of the drag, 3 px and 8 ms apart.
+const MOVES: usize = 120;
+
+#[test]
+fn a_drag_step_of_a_thirteen_window_desk_fits_in_half_a_frame() {
+    let mut hosted = desk(true);
+    let start = Instant::now();
+    let ms = |at: Instant| at.duration_since(start).as_secs_f64() * 1000.0;
+    hosted.replan(start);
+    let window = "endue.p0";
+    let rect = hosted
+        .wm
+        .drawn_rect(window, 0.0)
+        .expect("the window is drawn");
+    let mut at = Point {
+        x: rect.x + rect.w / 2.0,
+        y: rect.y + 10.0,
+    };
+    hosted.wm.pressed(at);
+    let kind = Kind::Move {
+        window: window.into(),
+    };
+    hosted.wm.grab(kind, at, 0.0);
+    let mut scene = Scene::new(2880, 1800);
+    let theme = ChromeTheme::default();
+    let sources = Sources {
+        scale: 2.0,
+        page: Some((TextureId(1), (2880, 1800))),
+        surface: &texture,
+        popup: &crate::compositor_window::draw_popup::none,
+        spread: None,
+        map: None,
+    };
+    let mut steps: Vec<Duration> = (0..MOVES)
+        .map(|i| {
+            at.x += 3.0;
+            let now = start + Duration::from_millis(8 * (i as u64 + 1));
+            let began = Instant::now();
+            hosted.wm.moved(at, ms(now));
+            hosted.replan(now);
+            draw(&mut scene, &theme, &hosted, &sources).unwrap();
+            began.elapsed()
+        })
+        .collect();
+    assert_eq!(
+        hosted.wm.held(),
+        Some(window),
+        "the drag ran: desk-wm holds the window"
+    );
+    steps.sort();
+    let p95 = percentile(&steps, 0.95);
+    println!(
+        "drag-step-cost {}",
+        json!({ "windows": WINDOWS, "moves": MOVES, "p50Ms": percentile(&steps, 0.5),
+            "p95Ms": p95, "budgetMs": STEP_BUDGET.as_secs_f64() * 1000.0 })
+    );
+    assert!(
+        p95 <= STEP_BUDGET.as_secs_f64() * 1000.0,
+        "a drag step took {p95:.2} ms at the 95th percentile, over half a frame"
+    );
 }
 
 #[test]
