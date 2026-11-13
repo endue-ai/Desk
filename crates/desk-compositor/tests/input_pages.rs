@@ -138,6 +138,32 @@ fn a_press_on_a_plugin_in_a_window_reaches_the_windows_own_page_too_at_its_own_p
 }
 
 #[test]
+fn a_right_press_on_a_plugin_in_a_window_is_the_plugins_and_never_its_windows_page() {
+    let mut d = paged();
+    d.to(300.0, 200.0);
+    let right = |pressed| Input::PointerButton {
+        button: Button::Right,
+        pressed,
+    };
+    let mut out = d.feed(right(true));
+    out.extend(d.feed(right(false)));
+    let buttons: Vec<String> = kinds(&out)
+        .into_iter()
+        .filter(|k| k.starts_with("pointer.down") || k.starts_with("pointer.up"))
+        .collect();
+    // Its context menu (a field's menu) is the plugin's alone: the window's page would open its own.
+    assert_eq!(
+        buttons,
+        [
+            format!("pointer.down@{A}"),
+            format!("pointer.down@{PAGE}"),
+            format!("pointer.up@{A}"),
+            format!("pointer.up@{PAGE}"),
+        ]
+    );
+}
+
+#[test]
 fn a_surface_is_the_pages_own_by_the_start_of_its_id() {
     let settings = PointerSettings {
         underlay: Some(PAGE.into()),

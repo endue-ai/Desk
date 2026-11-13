@@ -101,6 +101,15 @@ impl Pointer {
         all
     }
 
+    /// Whether `surface`, a listener while `main` is pressed, hears `button`: the window's own page
+    /// a surface lies in hears its left button only, which tells its DOM the window pressed; a
+    /// right or middle press is the surface's (its context menu, a field's menu), as on the page.
+    fn hears(surface: &str, main: Option<&str>, button: Button, targets: &Targets) -> bool {
+        button == Button::Left
+            || main == Some(surface)
+            || main.and_then(|m| targets.page_of(m)) != Some(surface)
+    }
+
     /// Hand the pointer to `now`, telling the ones that lose it.
     fn hand_over(&mut self, now: Vec<String>) -> Vec<CompositorMessage> {
         let gone: Vec<CompositorMessage> = self
@@ -174,9 +183,13 @@ impl Pointer {
             }
             self.held.push(button);
             let clicks = self.count(button, now, settings);
-            let listeners = Self::listeners(self.capture.as_deref(), settings, targets);
+            let main = self.capture.clone();
+            let listeners = Self::listeners(main.as_deref(), settings, targets);
             let mut out = self.hand_over(listeners.clone());
-            for surface in &listeners {
+            for surface in listeners
+                .iter()
+                .filter(|s| Self::hears(s, main.as_deref(), button, targets))
+            {
                 let point = self.point_in(surface, targets, under.as_ref());
                 out.push(msg::pointer_button(
                     surface, point, button, true, &self.held, clicks, mods,
@@ -192,9 +205,11 @@ impl Pointer {
             .last
             .filter(|p| p.button == button)
             .map_or(1, |p| p.clicks);
-        let listeners = Self::listeners(self.capture.as_deref(), settings, targets);
+        let main = self.capture.clone();
+        let listeners = Self::listeners(main.as_deref(), settings, targets);
         let mut out: Vec<CompositorMessage> = listeners
             .iter()
+            .filter(|s| Self::hears(s, main.as_deref(), button, targets))
             .map(|surface| {
                 let point = self.point_in(surface, targets, under.as_ref());
                 msg::pointer_button(surface, point, button, false, &self.held, clicks, mods)
