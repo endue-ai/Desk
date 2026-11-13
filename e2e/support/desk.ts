@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { $, browser, expect } from "@wdio/globals";
 import { dataDir } from "./cef";
 import { HOME_VAR, LOG_VAR } from "./driver";
-import { inPluginPage, onAnyPage } from "./pages";
+import { inPluginPage } from "./pages";
 
 /** The status line the runtime shows and `desk_ready` prints once the bridge answered. */
 export const READY = "desk ready · bridge: cef";
@@ -56,12 +56,12 @@ export function inFrame<T>(plugin: string, body: () => Promise<T>): Promise<T> {
 }
 
 /**
- * Wait until plugin `plugin`'s surface is laid out (`shown`) or not: its place in a window's own
- * page (ADR 0201), or in the desk's page for an overlay or an edge bar.
+ * Wait until plugin `plugin`'s surface is laid out (`shown`) or not: its place is in the desk's page,
+ * whose window lies in a page of its own or not (ADR 0201), as an overlay's or an edge bar's is.
  */
 export async function expectSurface(plugin: string, shown = true): Promise<void> {
-  const selector = `.desk-surface[data-surface="${plugin}"]`;
-  await browser.waitUntil(async () => (await onAnyPage(selector)) === shown, {
+  const selector = `#desk.shell .desk-surface[data-surface="${plugin}"]`;
+  await browser.waitUntil(async () => (await $(selector).isExisting()) === shown, {
     timeout: 15_000,
     timeoutMsg: `${plugin}'s surface is ${shown ? "not" : "still"} laid out`,
   });
