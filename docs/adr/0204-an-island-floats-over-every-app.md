@@ -4,8 +4,9 @@ date: 2026-11-13
 decision-makers: Team endue
 ---
 
-Amends ADR 0121 (the floating Eris becomes the island's) and ADR 0190 (a question also reaches the
-person on the island, which takes the keys only when pressed). Follows ADR 0203.
+Supersedes ADR 0121 (the island takes the floating Eris's place) and amends ADR 0190 (a question also
+reaches the person on the island, which takes the keys only when pressed). Follows ADR 0203; ADR 0205
+keeps the island and the desk as endue's screen.
 
 # An island floats over every app, closed with what is going on and open where the person answers
 
@@ -59,7 +60,7 @@ over full-screen apps and answers without activating the desk, and the core alre
   `NSWindow` (checked before, else the island is a floating window). No third-party crate (ADR 0121
   left `NSPanel` as a follow-up for this reason).
 * **Its place.** The person drags it anywhere (a press that moves, as the floating Eris's); its spot
-  is kept per display (the middle of its top edge from the work area's corner, `eris_window/place.rs`)
+  is kept per display (the middle of its top edge from the work area's corner, `island/place.rs`)
   in `<data>/island.json`, so it comes back where it was after a restart and on the display it is
   shown on. With no spot kept it sits at the top in the middle of the work area.
 * **Its page** (`apps/desk/src/island.ts`) is a small host like the palette's. Closed it is a pill:
@@ -85,7 +86,7 @@ over full-screen apps and answers without activating the desk, and the core alre
   focused it steps aside, since the desk says the same on its own screen (the status line, the
   permissions overlay, the talk line), and the desk stays endue's screen (ADR 0205). The setting
   `desk.island.show` (declared by `plugins/island`) is on by default and read when it changes; off,
-  the floating Eris floats again in its place.
+  nothing of endue floats over other apps and Option+Enter brings the desk forward.
 * **Notices** (`apps/desk/src/island-notices.ts`). While it shows, the pill says what callers ask the
   desk to say (`ui.notified`) under `desk.notify`'s rules, read by the shell and sent to its page
   when they change, with the runtime's own `Notifications`: how long each level shows, do-not-disturb
@@ -99,8 +100,11 @@ over full-screen apps and answers without activating the desk, and the core alre
   Option+Enter and the tray's Talk to Eris, while the desk is not in front, open it on her field and
   give it the keys (`makeKeyAndOrderFront` on the panel, which leaves the app in front active);
   pressed again, or Escape outside a composition, fold it and give the keys back (the panel leaves
-  the screen and comes back at once, no longer key). The floating Eris stays down while the island
-  shows. Then she and the tray's status retire, and `desk.island.show` turns on by default.
+  the screen and comes back at once, no longer key). With the island on by default, the floating Eris
+  retired: her window, its page and the runtime's floating view are gone, and with the island off
+  Option+Enter brings the desk forward with its talk line open. The tray showed no status of its own,
+  only a menu, which stays: Quit and Restart to update need a place without a window, and its Talk to
+  Eris opens the island.
 * **ADR 0190.** The permissions plugin stays the desk's prompter and its overlay stays hidden until a
   question comes. The island counts the same question on its pill, without the keys; the person's
   press opens it on the card in front, in the plugin's own words and with its choices, answered with
@@ -121,8 +125,8 @@ window events.
 
 ### Consequences
 
-* Good, because one surface replaces three (the floating Eris, the tray's status, the overlay out of
-  sight) and is the only part of endue on screen while the person works elsewhere
+* Good, because one surface replaces the floating Eris and the overlay out of sight, and is the only
+  part of endue on screen while the person works elsewhere
 * Good, because a question reaches the person over a full-screen app without taking their keys
 * Good, because `perm.settled` fixes a gap that two prompters would have had anyway: the card another
   one answered
@@ -137,10 +141,10 @@ window events.
 
 ## More Information
 
-The step: #238 of #232. Its slices, each a PR: the island and its closed state (this ADR, the spec
-change, the window and the setting); permission prompts and agents' approvals answered on it; talking
-and typing to Eris with Option+Enter and Escape; notices under `desk.notify`'s rules, do-not-disturb,
-the workspace in use, and retiring the floating Eris and the tray's status. The workspace in use waits
-for the last slice: the desk has no workspace yet (ADR 0203 puts workspaces after the skeleton), and
-the nearest thing it has, the profile in force, is what turns do-not-disturb on. `docs/ko/desk-structure.md`
-(the shell's windows) and `docs/architecture.md` change with the slice that retires the floating Eris.
+The step: #238 of #232, in five PRs: the island and its closed state (#243: this ADR, the spec
+change, the window and the setting); permission prompts and agents' approvals answered on it (#244);
+talking and typing to Eris with Option+Enter and Escape (#245); notices under `desk.notify`'s rules,
+do-not-disturb, showing only while the desk is not in front, and on by default (#254); and retiring
+the floating Eris's window with `docs/architecture.md` and `docs/ko/desk-structure.md` (the PR that
+closes #238). The workspace in use is not shown: the desk has no workspace yet (ADR 0203 put
+workspaces after the skeleton, and ADR 0205 keeps that order); the pill has room for it when it does.

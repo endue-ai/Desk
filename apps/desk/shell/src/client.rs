@@ -2,8 +2,8 @@
 //! window the browser is for (`Role`, which no page can change), tells the event loop when the
 //! browser closed and, in development builds, prints the page's console to the terminal (CSP reports
 //! land there too). The main window's page, the desk's system surface, renders off screen and posts
-//! to each plugin surface through the relay (`compositor_page`, ADR 0160); the Eris window's clears the page's base colour so she stands on nothing
-//! (macOS, ADR 0121).
+//! to each plugin surface through the relay (`compositor_page`, ADR 0160); the island's clears the
+//! page's base colour so only its pill and panel show (macOS, ADR 0204).
 
 // `wrap_client!` makes a constructor with one argument per field.
 #![allow(clippy::too_many_arguments)]
@@ -133,7 +133,7 @@ wrap_display_handler! {
 }
 
 /// Chromium paints a windowed browser's page on an opaque base colour; the DevTools protocol's
-/// override makes it transparent, so the transparent window around Eris shows only her.
+/// override makes it transparent, so the transparent window around the island shows only it.
 const CLEAR_BASE: &[u8] = br#"{"id":1,"method":"Emulation.setDefaultBackgroundColorOverride","params":{"color":{"r":0,"g":0,"b":0,"a":0}}}"#;
 
 wrap_load_handler! {
@@ -223,12 +223,11 @@ wrap_client! {
     }
 }
 
-/// The client of the browser in the window of `role`: the palette, Eris, the island and the banner
+/// The client of the browser in the window of `role`: the palette, the island and the banner
 /// (the main window's page is `compositor_page`'s).
 pub fn client(role: Role, pump: Pump, desk: Arc<Desk>) -> Client {
     let banner = (role == Role::Banner).then(|| Arc::clone(&desk.core));
-    let clear = matches!(role, Role::Eris | Role::Island);
-    let load = (cfg!(target_os = "macos") && clear).then(ClearBase::new);
+    let load = (cfg!(target_os = "macos") && role == Role::Island).then(ClearBase::new);
     ShellClient::new(
         role,
         ShellLifeSpan::new(role, pump, false, None),

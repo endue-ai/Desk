@@ -1,4 +1,4 @@
-//! The displays as the palette and the floating Eris use them (Tauri's `cursor_position`,
+//! The displays as the palette and the island use them (Tauri's `cursor_position`,
 //! `monitor_from_point` and `work_area`, which winit has no call for): the display under the
 //! pointer, its work area (the screen less the menu bar, the Dock or the taskbar), and placing a
 //! window on it. Everything is in physical pixels of winit's global space, as the Tauri shell had.
@@ -9,7 +9,7 @@ use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize};
 use winit::monitor::MonitorHandle;
 use winit::window::Window;
 
-use crate::eris_window::place::{Display, Rect, display_key};
+use crate::island::place::{Display, Rect, display_key};
 
 /// The display under the pointer, else the primary one, else any.
 pub fn cursor_monitor(window: &Window) -> Option<MonitorHandle> {
@@ -28,7 +28,7 @@ pub fn cursor_monitor(window: &Window) -> Option<MonitorHandle> {
     window.primary_monitor().or_else(|| monitors.next())
 }
 
-/// The display as the floating Eris keeps her spot on it.
+/// The display as the island keeps its spot on it.
 pub fn display(monitor: &MonitorHandle) -> Display {
     let (origin, size) = (monitor.position(), monitor.size());
     Display {
@@ -102,7 +102,7 @@ mod mac {
     use winit::monitor::MonitorHandle;
     use winit::platform::macos::MonitorHandleExtMacOS;
 
-    use crate::eris_window::place::Rect;
+    use crate::island::place::Rect;
 
     /// The primary screen's height in points: AppKit's y grows up from its bottom edge.
     fn primary_height(mtm: MainThreadMarker) -> Option<f64> {

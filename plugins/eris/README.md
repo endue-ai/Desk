@@ -19,9 +19,9 @@ Eris, the secretary. Built-in UI plugin in the community folder format.
 Other plugins reuse the soul text and the orb by importing them from this folder, for example the
 onboarding plugin's import map maps `eris/` to `../../endue.eris/ui/`.
 
-The manifest declares the floating Eris's settings (ADR 0121), read by the app: `endue.eris.float`
-(`auto`, floating over other apps while the desk is not in front; `always`; `never`) and
+The manifest declares the shortcut that summons Eris from any app (ADR 0121), read by the app:
 `endue.eris.shortcut` (`Alt+Enter`, ⌥↩ on macOS; `DESK_ERIS_SHORTCUT` overrides it), set in init.yaml.
+Over other apps she is on the island (ADR 0204), which took the floating Eris's place.
 
 Attach open text file uses the saved file; unsaved edits are excluded. Its visible excerpt is sent
 only with the next message, up to the bridge's 8,000-character message limit. Failed sends retain

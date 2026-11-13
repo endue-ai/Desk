@@ -21,8 +21,8 @@ export type {
   StudioShellBridge,
 } from "./bridge/types";
 export { type Clock, ManualClock, realClock, type Tween, tween } from "./clock";
-// The floating Eris over the OS (ADR 0121): its view, and the link that hands her state between it
-// and the desk.
+// Eris over other apps (ADR 0121, ADR 0204): the link that hands her state between the desk and the
+// island, which talks to her there.
 export {
   BACK_KEY,
   type ErisLine,
@@ -39,7 +39,6 @@ export {
 // The same conversation from the island (ADR 0204): her turns and her words, without her figure.
 export { type FloatLang, floatText, statusText } from "./eris/float-copy";
 export { askEris, type BrainWatch, type FloatCore, watchBrain } from "./eris/float-turn";
-export { type ErisFloat, type FloatHost, mountErisFloat } from "./eris/float-view";
 export { comboOf, type KeyLike, type Platform, ShortcutRouter } from "./input";
 export type { Mode } from "./modes/types";
 // Notices as desk.notify shows them (durations by level, do-not-disturb), for the island too.

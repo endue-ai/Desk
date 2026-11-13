@@ -1,7 +1,7 @@
 //! The island's place and its panel without a window (ADR 0204).
 
 use super::kept::{Kept, top_middle};
-use crate::eris_window::place::{Display, Rect};
+use super::place::{Display, Rect};
 
 fn display(key: &str, x: i32) -> Display {
     Display {

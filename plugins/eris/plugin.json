@@ -14,16 +14,10 @@
   "contributes": {
     "commands": [{ "id": "endue.eris.search-open", "title": "Open a conversation from search" }],
     "settings": {
-      "endue.eris.float": {
-        "kind": "string",
-        "default": "auto",
-        "choices": ["auto", "always", "never"],
-        "description": "Whether Eris floats over other apps: while the desk is not in front (auto), all the time (always), or never. Never makes the shortcut bring the desk forward instead."
-      },
       "endue.eris.shortcut": {
         "kind": "string",
         "default": "Alt+Enter",
-        "description": "The key that summons Eris from any app (Option+Enter on macOS), read when the desk starts; DESK_ERIS_SHORTCUT overrides it. The tray's Talk to Eris works whatever the key."
+        "description": "The key that summons Eris from any app (Option+Enter on macOS): on the island over other apps, in the desk while it is in front. DESK_ERIS_SHORTCUT overrides it. The tray's Talk to Eris works whatever the key."
       }
     }
   }

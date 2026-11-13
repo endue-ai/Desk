@@ -69,9 +69,12 @@ the compositor is the only desk (ADR 0156): every plugin surface renders off scr
 own, the compositor draws it where `crates/desk-wm` places its window, and desk-wm runs the window
 gestures, the window commands and the live budget. What stays web runs as system surfaces the
 compositor places above every window (ADR 0160): the desk's own page (the bars, Eris, notices, menus,
-settings and the studios, each part drawn whole), the palette's window and floating Eris's, each calling
-as its window. No plugin runs in the desk's page: its plugin host reaches each plugin's own browser
-through the shell.
+settings and the studios, each part drawn whole), the palette's window and the island's, each calling as
+its window. No plugin runs in the desk's page: its plugin host reaches each plugin's own browser through
+the shell. The island (ADR 0204) is the one surface over other apps while the desk is not in front: the
+agents at work, what waits for an answer and the notices, a press away from answering a permission prompt
+or an agent's approval and from talking to Eris, whom Option+Enter calls from any app. It took the place
+of the floating Eris (ADR 0121).
 
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater

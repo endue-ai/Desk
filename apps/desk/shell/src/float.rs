@@ -1,6 +1,6 @@
-//! Windows that float over every app (ADR 0120, ADR 0121, ADR 0204): the floating Eris, the
-//! computer-use banner, the palette and the island. On macOS they join every Space (Eris and the banner also full-screen
-//! Spaces), stay put in Mission Control and out of ⌘` cycling, and show without taking the focus
+//! Windows that float over every app (ADR 0120, ADR 0204): the computer-use banner, the palette and
+//! the island. On macOS they join every Space (the banner and the island also full-screen Spaces),
+//! stay put in Mission Control and out of ⌘` cycling, and show without taking the focus
 //! from the app in front (`orderFrontRegardless`), the AppKit parts winit has no option for. Elsewhere
 //! winit's always-on-top level and a hidden taskbar entry are what there is.
 

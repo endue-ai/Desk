@@ -98,6 +98,17 @@ Emacs 는 작은 C 코어 위에서 거의 모든 기능이 Elisp 로 돌고, �
 
 PoC (macOS · Apple M4 Max, `spikes/compositor/README.md`): 공유 텍스처 가져오기 (첫 그림 137–248 ms, 1080p 에서 57–59 fps) · 표면 안 WebGPU · 30 표면 · 렌더러 하나 죽이기 · 한글 IME 가 모두 통과했습니다. 가벼운 렌더러는 ~40 MiB 입니다. Windows · Linux 확인은 #61 에 남아 있습니다.
 
+### 아일랜드: 데스크가 앞에 없을 때 (ADR 0204 · 0205)
+
+데스크가 앞에 없는 동안 다른 앱 위에 뜨는 endue 의 표면은 아일랜드 하나입니다. 닫혀 있으면 알약 하나에 일하는 에이전트 · 답을 기다리는 것(권한 요청과 에이전트의 승인) · 알림을 보이고, 누르면 열려서 앞에 있는 요청에 답하고 Eris 와 이야기합니다. 데스크가 앞에 오면 데스크가 같은 것을 자기 화면(상태줄 · 권한 오버레이 · 말하기 줄)에서 보이므로 아일랜드는 비켜납니다 (ADR 0205: 데스크는 endue 의 화면으로 남음).
+
+- 창: `apps/desk/shell/src/island*` 의 떠 있는 창(`float.rs`). 모든 Space 와 전체 화면 Space 에 서고, 창 순환에서 빠집니다. macOS 에서는 처음부터 비활성 패널(`NSPanel` + `NonactivatingPanel`)로 만들어서, 눌러도 앞의 앱을 비활성으로 만들지 않고 키만 받습니다 (winit 이 창을 만드는 동안만 할당과 초기화를 바꿔 끼움, `island/panel.rs`). 자리는 디스플레이마다 하나씩 `<data>/island.json` 에 남습니다.
+- 페이지: `index.html?view=island` 의 작은 호스트(`apps/desk/src/island*.ts`). 데스크로서 코어를 부르되, 보여 주고 답하는 데 필요한 메서드만 통과합니다 (`agent.list` · `agents.runs` · `perm.pending` · `perm.answer` · `perm.approve` · `plugin.list` · `brain.say`, `desk_web::sender`). 자기 권한은 없어서 코어가 프롬프트를 아일랜드로 보내지 않습니다.
+- 코어: `perm.pending` 은 지금 기다리는 프롬프트와 승인을, `perm.settled` 는 하나가 더는 기다리지 않음을, `agent.changed` 는 에이전트의 실행이 바뀌었음을 perm:manage 보유자에게 알립니다.
+- 요청에는 권한 플러그인의 말과 선택지를 그대로 쓰고, 새 요청이 아일랜드를 저절로 열지 않으며, 카드가 나타난 뒤 0.5초는 누름을 받지 않습니다. 알림은 `desk.notify` 의 규칙(수준별 시간 · 방해 금지)을 따릅니다.
+- Option+Enter(`endue.eris.shortcut`)와 트레이의 Eris 에게 말하기는 데스크가 앞에 없으면 아일랜드의 입력칸에 키를 주고, Escape 는 키를 앞의 앱에 돌려줍니다. 데스크가 앞에 있으면 데스크의 말하기 줄이 열립니다.
+- 떠 있는 Eris(ADR 0121)의 창 · 페이지 · 런타임 뷰는 아일랜드가 자리를 넘겨받으며 지웠습니다. 트레이는 상태를 보이지 않는 메뉴(검색 · Eris 에게 말하기 · 데스크 열기 · 업데이트 재시작 · 종료)로 남습니다.
+
 ## 바뀌는 범위
 
 ```text
@@ -184,7 +195,7 @@ desk/
 ├── apps/
 │   └── desk/                 # 앱. 웹 프런트엔드(src/)와 그것을 서빙하는 셸(shell/)
 │       ├── shell/            # winit · CEF 위의 Rust 바이너리 endue-desk (ADR 0143) · packager/ (번들, ADR 0145) · icons/
-│       ├── src/              # 부트스트랩: 셸(mountDesk)과 runtime 마운트 · bridge(cef) 연결 · 플러그인 로드
+│       ├── src/              # 부트스트랩: 셸(mountDesk)과 runtime 마운트 · bridge(cef) 연결 · 플러그인 로드 · ?view=palette 와 ?view=island(아일랜드, ADR 0204)
 │       └── index.html
 │
 ├── plugins/                  # endue 기본 기능. 커뮤니티 플러그인과 같은 형식
@@ -456,6 +467,7 @@ MCP 도구는 가벼운 VM 으로 격리하고, 나머지는 데스크톱 오픈
 | 질문 | 결정 | 따른 관례 | ADR |
 | --- | --- | --- | --- |
 | 앱 셸 | Tauri 2 였으나 ADR 0140 이 대체함. 1단계부터 winit 과 CEF 위의 Rust 바이너리 `apps/desk/shell` (기본 멤버 아님), 엔진과 무관한 로직은 `crates/desk-web`, Tauri crate 는 1단계가 끝나며 지웠고 (#97) 바이너리는 Tauri 앱의 이름 `endue-desk` 를 이어받음 |  | 0001 (대체됨) · 0143 |
+| 다른 앱 위의 endue | 아일랜드 하나: 데스크가 앞에 없을 때 모든 앱 위에 뜨는 비활성 패널. 무엇이 돌고 무엇이 기다리는지, 요청에 답하기, Eris 와 말하기, 알림. 떠 있는 Eris 를 대신함 | macOS 의 Spotlight 같은 비활성 패널 | 0204 · 0121 (대체됨) |
 | MCP 도구 격리 | 가벼운 Linux VM 하나에서 실행. 허락한 폴더만 virtiofs 로 넣고, 통신은 vsock, 쉬면 VM 째로 멈춤. VM 을 못 띄우는 기기는 설치 때 "격리 없음"을 고지하고 사용자 권한으로 | Claude Cowork · Docker Desktop (macOS Virtualization.framework · Windows WSL2 · Linux KVM) | 0002 |
 | 웹 런타임 번들 배포 | 앱과 함께. 따로 배포하지 않음. 플러그인만 따로 갱신 | VS Code · Electron 앱 일반 | 0003 |
 | 플러그인 API 하위 호환 | v0 는 마이너마다 깨질 수 있음을 명시. v1 부터 직전 메이저를 6개월 지원하고, 제거 한 버전 전에 경고 | semver · VS Code 확장 API | 0004 |

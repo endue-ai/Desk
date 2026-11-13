@@ -1,6 +1,6 @@
-//! The shell's winit application: the main window, palette, floating Eris, island, banner and the
-//! windows popped out (each a `Pane`; `apps`, #235), the tray, menu bar, global shortcuts and CEF's
-//! message loop work when the pump says it is due; other threads reach it through the pump's jobs.
+//! The shell's winit application: the main window, palette, island, banner and the windows popped
+//! out (each a `Pane`; `apps`, #235), the tray, menu bar, global shortcuts (Eris's: `eris_window`) and
+//! CEF's message loop work when the pump says it is due; other threads reach it through its jobs.
 //! Closing the main window hides it, as in the Tauri shell; the desk quits from the tray or menu,
 //! once its page asked about unsaved changes (`quit.rs`), closing every browser first.
 
@@ -29,7 +29,7 @@ use crate::{open_files, palette, tray};
 /// The shell's application state for winit.
 pub struct Shell {
     pub desk: Arc<Desk>,
-    /// The main window's page; the palette's and Eris's are its views.
+    /// The main window's page; the palette's and the island's are its views.
     pub url: String,
     pub hotkeys: Hotkeys,
     pump: Pump,
@@ -167,10 +167,10 @@ impl Shell {
                 // Opened with the compositor, in its window.
                 System::Desk => {}
                 System::Palette => palette::setup(self, event_loop),
-                System::Eris => eris_window::setup(self, event_loop),
                 System::Island => crate::island::setup(self, event_loop),
             }
         }
+        eris_window::setup(self, event_loop);
     }
 
     /// The tray offers to restart into `version`, or no longer offers it.
@@ -336,7 +336,6 @@ impl ApplicationHandler<Wake> for Shell {
                     pane.hide();
                 }
             }
-            (Role::Eris, WindowEvent::CloseRequested) => eris_window::dismiss(self),
             (Role::Main, WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. })
                 if self.compositor.is_some() =>
             {
@@ -377,10 +376,8 @@ impl ApplicationHandler<Wake> for Shell {
                 {
                     pane.hide();
                 }
-                eris_window::focused(self, role, focused);
                 crate::island::focused(self, role, focused);
             }
-            (Role::Eris, WindowEvent::Moved(_)) => eris_window::moved(self),
             (Role::Island, WindowEvent::Moved(_)) => crate::island::moved(self),
             (Role::Main, WindowEvent::Moved(_)) => crate::main_frame::moved(),
             _ => {}
