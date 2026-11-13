@@ -68,6 +68,14 @@ interface Page {
 
 type Hook = (id: string, win: Window) => () => void;
 
+/**
+ * A style attribute without the canvas pan's offsets (`shell/Pan.ts`): nothing in a window's page
+ * reads them, and copied there on every step of a pan they laid every window's page out again.
+ */
+export function withoutPan(style: string): string {
+  return style.replace(/\s*--pan-[xy]\s*:[^;]*;?/g, "").trim();
+}
+
 /** Copy `from`'s attributes onto `to`, now and whenever they change; the stop. */
 function mirror(from: Element, to: Element): () => void {
   const copy = () => {
@@ -75,7 +83,8 @@ function mirror(from: Element, to: Element): () => void {
       if (!from.hasAttribute(name)) to.removeAttribute(name);
     }
     for (const name of from.getAttributeNames()) {
-      const value = from.getAttribute(name) ?? "";
+      const raw = from.getAttribute(name) ?? "";
+      const value = name === "style" ? withoutPan(raw) : raw;
       if (to.getAttribute(name) !== value) to.setAttribute(name, value);
     }
   };

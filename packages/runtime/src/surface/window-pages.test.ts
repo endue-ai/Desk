@@ -4,7 +4,14 @@
 // sheets and the windows' layer's ancestors, and keeps them in step; a window gone closes its page;
 // where no popup opens every window stays in the desk's page.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LOST_LIMIT, LOST_MS, PAGE_NAME, popupOpener, windowPages } from "./window-pages";
+import {
+  LOST_LIMIT,
+  LOST_MS,
+  PAGE_NAME,
+  popupOpener,
+  windowPages,
+  withoutPan,
+} from "./window-pages";
 
 /** A page as `window.open` hands it: a document of its own, and its close. */
 function fakePage() {
@@ -92,6 +99,26 @@ describe("window pages", () => {
     added.remove();
     await settle();
     expect(made.document.head.querySelectorAll("style")).toHaveLength(1);
+  });
+
+  it("leave the canvas pan's offsets out of what it copies, so a pan lays no page out", async () => {
+    expect(withoutPan("--pan-x: 12px; --pan-y: -4px; --desk-card: #222")).toBe("--desk-card: #222");
+    expect(withoutPan("--desk-card: #222; --pan-x:3px;")).toBe("--desk-card: #222;");
+    expect(withoutPan('background: url("data:image/svg+xml;utf8,<svg/>")')).toBe(
+      'background: url("data:image/svg+xml;utf8,<svg/>")',
+    );
+    const made = fakePage();
+    const pages = windowPages(document, layer, () => made as unknown as Window);
+    pages.host("notes", 300, 200);
+    const shell = document.querySelector<HTMLElement>(".shell");
+    shell?.setAttribute("style", "--pan-x: 0px; --pan-y: 0px; --desk-gap: 8px");
+    await settle();
+    const copy = made.document.querySelector(".shell");
+    expect(copy?.getAttribute("style")).toBe("--desk-gap: 8px");
+    const set = vi.spyOn(copy as Element, "setAttribute");
+    shell?.setAttribute("style", "--pan-x: 40px; --pan-y: 12px; --desk-gap: 8px");
+    await settle();
+    expect(set, "a pan step changes nothing in the window's page").not.toHaveBeenCalled();
   });
 
   it("close a window's page with it, and with every one on dispose", () => {
