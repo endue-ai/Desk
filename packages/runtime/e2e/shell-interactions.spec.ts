@@ -23,6 +23,26 @@ test("resize keeps its diagonal cursor and losing app focus cancels it", async (
   await page.mouse.up();
 });
 
+test("a press in a window's very corner grabs it to resize, past where its rounded corner is drawn", async ({
+  page,
+}) => {
+  const surface = page.locator('[data-surface="window-1"]');
+  const grip = await surface.locator('[data-resize="se"]').boundingBox();
+  if (!grip) throw new Error("no resize grip");
+  // The grip's last pixel lies outside the window's rounded corner, where the compositor shows the
+  // resize cursor (desk-wm's grip): the grip takes the press, never the canvas under the corner,
+  // whose drag pans the desk.
+  await page.mouse.move(grip.x + grip.width - 1, grip.y + grip.height - 1);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + 48, grip.y + 48, { steps: 3 });
+  await expect(page.locator("html")).toHaveClass(/is-grabbing/);
+  const cursor = await page.evaluate(() =>
+    document.documentElement.style.getPropertyValue("--desk-drag-cursor"),
+  );
+  expect(cursor).toBe("nwse-resize");
+  await page.mouse.up();
+});
+
 test("closing a window during a drag releases the pointer and the next window works", async ({
   page,
 }) => {
