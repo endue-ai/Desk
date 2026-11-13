@@ -1,7 +1,8 @@
-// The island's DOM (ADR 0204): the pill, and under it, while open, the panel: the card in front
-// (island-card.ts), the talk with Eris (island-talk.ts), the asks waiting behind the card, the
-// agents at work, and a way to the desk.
+// The island's DOM (ADR 0204): the pill, which says a notice while one shows, and under it, while
+// open, the panel: the card in front (island-card.ts), the talk with Eris (island-talk.ts), the
+// latest notices, the asks waiting behind the card, the agents at work, and a way to the desk.
 import type { PluginInfo } from "@endue-ai/bridge";
+import { type Notice, noticeText } from "@endue-ai/runtime";
 import { cardOf, renderCard, titleOf } from "./island-card";
 import { type IslandState, summary } from "./island-model";
 
@@ -11,6 +12,10 @@ export interface IslandDraw {
   open: boolean;
   /** A line under the card: what came of the last answer, when it failed. */
   said: string;
+  /** The notice showing now, which the pill says instead of what is going on. */
+  notice: Notice | null;
+  /** The latest notices, newest first. */
+  notices: Notice[];
 }
 
 export interface IslandDom {
@@ -53,6 +58,8 @@ export function mountIsland(
   const cardSlot = el("div", "island-card-slot");
   const said = el("p", "island-said");
   said.setAttribute("role", "alert");
+  const noticesHeading = el("h2", "island-heading", "Notices");
+  const noticeList = el("ul", "island-list");
   const restHeading = el("h2", "island-heading", "Also waiting");
   const restList = el("ul", "island-list");
   const workingList = el("ul", "island-list");
@@ -62,6 +69,8 @@ export function mountIsland(
     cardSlot,
     said,
     talk,
+    noticesHeading,
+    noticeList,
     restHeading,
     restList,
     el("h2", "island-heading", "At work"),
@@ -88,10 +97,12 @@ export function mountIsland(
   /** The card on screen, by kind and id: a new draw of the same card keeps its DOM and focus. */
   let shown = "";
   let wasOpen = false;
-  const draw = ({ state, plugins, open, said: text }: IslandDraw) => {
+  const draw = ({ state, plugins, open, said: text, notice, notices }: IslandDraw) => {
     const { working, asks } = state;
-    const words = summary(state);
+    const words = notice ? noticeText(notice) : summary(state);
     line.textContent = words;
+    if (notice) island.dataset.level = notice.level;
+    else delete island.dataset.level;
     if (status.textContent !== words) status.textContent = words;
     pill.setAttribute("aria-expanded", String(open));
     pill.setAttribute("aria-label", `${words}. ${open ? "Close" : "Open"} the island`);
@@ -122,6 +133,13 @@ export function mountIsland(
     }
     said.textContent = text;
     said.hidden = !text;
+    noticesHeading.hidden = notices.length === 0;
+    noticeList.hidden = notices.length === 0;
+    rows(
+      noticeList,
+      notices.map((n) => [n.title, n.body ?? ""]),
+      "",
+    );
     restHeading.hidden = rest.length === 0;
     restList.hidden = rest.length === 0;
     rows(

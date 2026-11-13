@@ -78,8 +78,9 @@ describe("system surfaces: the desk is the compositor and its system surfaces", 
       const page = `desk-app://app/index.html${view}`;
       expect(urls.some((u) => u === page)).toBe(true);
     }
-    // The island's page opens only while desk.island.show is on (ADR 0204), off by default.
-    expect(urls).not.toContain("desk-app://app/index.html?view=island");
+    // The island's page opens while desk.island.show is on (ADR 0204), as it is by default; the
+    // island itself shows only while the desk is not in front.
+    expect(urls).toContain("desk-app://app/index.html?view=island");
   });
 
   it("holds no plugin in the desk's page: each plugin's page is a browser of its own, reached through the shell", async () => {

@@ -6,8 +6,9 @@
 // the pill counts it, and the person's press opens it and takes the keys. A card's choices take no
 // press in the first moment after it shows, so a press meant for what was there never allows
 // anything. Open, it also talks and types to Eris (island-talk.ts): Option+Enter from any app opens
-// it with the keys in her field (`island://talk`), and Escape folds it and gives the keys back. It
-// follows the theme the main window keeps (palette-theme.ts).
+// it with the keys in her field (`island://talk`), and Escape folds it and gives the keys back. While
+// it shows, the pill says callers' notices under desk.notify's rules (island-notices.ts). It follows
+// the theme the main window keeps (palette-theme.ts).
 import {
   BridgeCallError,
   BridgeClient,
@@ -15,7 +16,7 @@ import {
   cefAdapter,
   type PluginInfo,
 } from "@endue-ai/bridge";
-import { storageChannel } from "@endue-ai/runtime";
+import { type Clock, realClock, storageChannel } from "@endue-ai/runtime";
 import "@endue-ai/runtime/shell.css";
 import type { NativeWindow } from "./eris-window";
 import "./island.css";
@@ -31,6 +32,7 @@ import {
   type Worker,
   workingOf,
 } from "./island-model";
+import { type IslandNotices, islandNotices } from "./island-notices";
 import { mountTalk } from "./island-talk";
 import { mountIsland } from "./island-view";
 import { followDeskTheme } from "./palette-theme";
@@ -52,6 +54,8 @@ export interface IslandOptions {
   guard?: number;
   /** The time in ms, for the guard. */
   now?: () => number;
+  /** The clock notices keep their time by. */
+  clock?: Clock;
 }
 
 /** A press that moves this far is a drag, not a click. */
@@ -114,10 +118,16 @@ export async function startIsland(
     fitted = height;
     run("island_fit", { height });
   };
+  let notices: IslandNotices | undefined;
   const draw = () => {
-    if (dom.draw({ state: state(), plugins, open, said })) shownAt = now();
+    const notice = notices?.current() ?? null;
+    const recent = notices?.recent() ?? [];
+    const view = { state: state(), plugins, open, said, notice, notices: recent };
+    if (dom.draw(view)) shownAt = now();
     fit();
   };
+  // Notices while it shows, under desk.notify's rules; hidden, the desk's status line says them.
+  notices = islandNotices(options.clock ?? realClock(), () => doc.hidden, draw);
   // Quiet until the core has answered.
   draw();
 
@@ -193,6 +203,7 @@ export async function startIsland(
     if (nextRuns) runs = nextRuns;
     if (nextAsks || nextRuns) draw();
     if (nextAsks) asksChanged();
+    notices?.hear(event);
     if (touchesAgents(event)) readAgentsSoon();
     if (event.event === "plugin.changed") void readPlugins();
   };
@@ -206,6 +217,7 @@ export async function startIsland(
     }),
     // Option+Enter: the shell opened it and gave it the keys; they go to her field.
     native.listen("island://talk", () => talk.focus()),
+    native.listen("island://notify", ({ payload }) => notices?.configure(payload)),
   ]);
   const [pending, local] = await Promise.all([
     core.call("perm.pending", { scope: MANAGE }).catch(() => undefined),
@@ -214,8 +226,9 @@ export async function startIsland(
     readPlugins(),
     native.invoke("island_state").then(
       (held) => {
-        const label = (held as { shortcut?: unknown } | undefined)?.shortcut;
-        shortcut = typeof label === "string" ? { label } : undefined;
+        const state = held as { shortcut?: unknown; notify?: unknown } | undefined;
+        shortcut = typeof state?.shortcut === "string" ? { label: state.shortcut } : undefined;
+        if (state?.notify) notices?.configure(state.notify);
         talk.refresh();
       },
       () => {},
@@ -254,8 +267,13 @@ export async function startIsland(
     press = undefined;
   });
   on(dom.pill, "click", () => {
-    if (dragged) dragged = false;
-    else setOpen(!open);
+    if (dragged) {
+      dragged = false;
+      return;
+    }
+    // Opening it, the person has seen the notice the pill says; it stays among the latest.
+    if (!open) notices?.seen();
+    setOpen(!open);
   });
   on(win, "keydown", (event) => {
     // Escape folds it and gives the keys back, unless it ends a composition in her field.
@@ -266,6 +284,7 @@ export async function startIsland(
 
   const dispose = () => {
     talk.dispose();
+    notices?.dispose();
     offCore();
     for (const off of offs) off();
     for (const off of listeners.splice(0)) off();

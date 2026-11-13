@@ -178,6 +178,12 @@ pub fn focused(shell: &Shell, role: Role, focused: bool) {
 
 /// The main window was shown, hidden, minimized or restored: settle reads whether it is on screen.
 pub fn main_changed(shell: &Shell) {
+    settle_soon(shell);
+    crate::island::nudge(shell);
+}
+
+/// Decide again, soon, whether she floats (the island came or went).
+pub(crate) fn settle_soon(shell: &Shell) {
     if let Some(state) = shell.desk.eris.get() {
         let _ = state.settle.send(());
     }

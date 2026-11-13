@@ -5,6 +5,7 @@
 // asks, it folds when they are done; a press that moves drags it; Escape folds it; it asks the core
 // only as the desk would.
 import type { BridgeEvent } from "@endue-ai/bridge";
+import { ManualClock } from "@endue-ai/runtime";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type IslandView, type NativeWindow, startIsland } from "./island";
 
@@ -49,7 +50,16 @@ function nativeSide(answers: Record<string, Answer>) {
   const api: NativeWindow = {
     invoke: vi.fn(async (command: string, args?: Record<string, unknown>) => {
       invoked.push(args ? { command, args } : { command });
-      if (command === "island_state") return { shortcut: "⌥↩" };
+      if (command === "island_state")
+        return {
+          shortcut: "⌥↩",
+          notify: {
+            durations: { info: 4000, success: 4000, warning: 8000, error: 0 },
+            dnd: false,
+            dndAllows: ["error"],
+            history: 200,
+          },
+        };
       if (command !== "bridge_call") return undefined;
       const request = (args as { request: Request }).request;
       const answer = answers[request.method];
@@ -97,6 +107,7 @@ describe("the island", () => {
   let island: IslandView;
 
   let clock = 0;
+  let notices = new ManualClock();
   const start = async (pending: unknown[], extra: Record<string, Answer> = {}, guard = 0) => {
     document.body.innerHTML = '<div id="desk"></div>';
     native = nativeSide({
@@ -113,7 +124,12 @@ describe("the island", () => {
       "perm.approve": {},
       ...extra,
     });
-    island = await startIsland(native.api, { rest: 0, guard, now: () => clock });
+    island = await startIsland(native.api, {
+      rest: 0,
+      guard,
+      now: () => clock,
+      clock: notices,
+    });
   };
 
   afterEach(() => {
@@ -237,6 +253,50 @@ describe("the island", () => {
     input.dispatchEvent(new CompositionEvent("compositionend"));
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     expect(native.commands()).toEqual([FOLD]);
+  });
+
+  it("says a notice on the pill as desk.notify says to, and a press has seen it", async () => {
+    notices = new ManualClock();
+    await start([]);
+    native.core({
+      event: "ui.notified",
+      data: { notificationId: "n-1", caller: "endue.notes", title: "Saved", level: "info" },
+    });
+    expect($(".island-line").textContent).toBe("Saved");
+    expect($(".island").dataset.level).toBe("info");
+    notices.advance(4001);
+    expect($(".island-line").textContent).toBe("1 agent at work");
+    // Do-not-disturb from the shell: an info notice is held back, an error still says itself.
+    native.fire("island://notify", {
+      durations: { info: 4000, success: 4000, warning: 8000, error: 0 },
+      dnd: true,
+      dndAllows: ["error"],
+      history: 200,
+    });
+    native.core({
+      event: "ui.notified",
+      data: { notificationId: "n-2", caller: "endue.mail", title: "Synced", level: "info" },
+    });
+    expect($(".island-line").textContent).toBe("1 agent at work");
+    native.core({
+      event: "ui.notified",
+      data: {
+        notificationId: "n-3",
+        caller: "endue.mail",
+        title: "Sync failed",
+        body: "offline",
+        level: "error",
+      },
+    });
+    expect($(".island-line").textContent).toBe("Sync failed — offline");
+    $<HTMLButtonElement>(".island-pill").click();
+    expect($(".island-line").textContent, "seen when it opens").toBe("1 agent at work");
+    native.fire("island://open", { open: true });
+    const listed = [...document.querySelectorAll(".island-list .island-who")].map(
+      (who) => who.textContent,
+    );
+    expect(listed).toContain("Sync failed");
+    expect(listed).not.toContain("Synced");
   });
 
   it("reads the agents again when the core says one of their runs changed", async () => {

@@ -81,8 +81,18 @@ over full-screen apps and answers without activating the desk, and the core alre
   they wait. `perm.settled` tells every perm:manage holder that one stopped waiting (answered by any
   holder, withdrawn with its caller, or decided by the Prompter), so the island's count goes down and
   each prompter takes down a card another one answered.
-* **Behind a setting** until it can take the floating Eris's place: `desk.island.show` (declared by
-  `plugins/island`), off by default, read when it changes. Hiding it changes nothing else.
+* **When it shows.** Over other apps while the desk is not in front: with the desk's main window
+  focused it steps aside, since the desk says the same on its own screen (the status line, the
+  permissions overlay, the talk line), and the desk stays endue's screen (ADR 0205). The setting
+  `desk.island.show` (declared by `plugins/island`) is on by default and read when it changes; off,
+  the floating Eris floats again in its place.
+* **Notices** (`apps/desk/src/island-notices.ts`). While it shows, the pill says what callers ask the
+  desk to say (`ui.notified`) under `desk.notify`'s rules, read by the shell and sent to its page
+  when they change, with the runtime's own `Notifications`: how long each level shows, do-not-disturb
+  holding back the levels it does not allow and a line for what it held once it ends. A press has
+  seen the notice it says, and the open island lists the latest three. Notices that come while the
+  desk is in front are the desk's. Do-not-disturb holds back notices, never a question: a caller
+  waits on it.
 * **ADR 0121.** The island is where Eris is called while it shows. Open, it talks and types to her in
   the desk's one conversation, as the floating Eris does (`brain.say` as the desk, her turns from
   `brain.turn`, the lines handed to the desk through the app's storage), without her figure.

@@ -42,6 +42,14 @@ export { askEris, type BrainWatch, type FloatCore, watchBrain } from "./eris/flo
 export { type ErisFloat, type FloatHost, mountErisFloat } from "./eris/float-view";
 export { comboOf, type KeyLike, type Platform, ShortcutRouter } from "./input";
 export type { Mode } from "./modes/types";
+// Notices as desk.notify shows them (durations by level, do-not-disturb), for the island too.
+export {
+  DEFAULT_NOTIFY,
+  type Notice,
+  Notifications,
+  type NotifySettings,
+  noticeText,
+} from "./notify";
 export { framePages } from "./pages/frames";
 export {
   type RemotePages,
