@@ -347,8 +347,11 @@ export function mountSurfaces(
       queueMicrotask(draw);
     };
   });
+  // A window kept here for a press held in this page takes its page once the press ends.
+  const offFreed = pages?.freed(() => queueMicrotask(draw));
   const offs = [
     ...(offPageOpened ? [offPageOpened] : []),
+    ...(offFreed ? [offFreed] : []),
     ctx.store.watch(
       (s) => [
         windowsOf(s),
