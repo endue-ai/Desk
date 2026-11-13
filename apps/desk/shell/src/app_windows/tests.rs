@@ -1,4 +1,4 @@
-use super::{App, Registry, Switch};
+use super::{App, Registry, Switch, plugin_of};
 
 /// What the switch says of `plugin`'s surface `view`, `app` its manifest.
 fn wants(switch: &Switch, plugin: &str, view: Option<&str>, app: Option<App>) -> bool {
@@ -104,6 +104,24 @@ fn an_app_is_read_from_its_manifest() {
     }
     assert!(!manifest("logic", "center").opens(None));
     assert_eq!(manifest("ui", "center").name, "One");
+}
+
+/// A plugin's window after its first is keyed `<plugin>@<n>` (ADR 0212): the switch reads the
+/// plugin it belongs to.
+#[test]
+fn a_window_key_names_its_plugin() {
+    assert_eq!(plugin_of("endue.images"), "endue.images");
+    assert_eq!(plugin_of("endue.images@2"), "endue.images");
+    assert_eq!(plugin_of("endue.images@12"), "endue.images");
+    for own in [
+        "endue.images@",
+        "endue.images@0",
+        "endue.images@02",
+        "endue.images@x",
+        "@2",
+    ] {
+        assert_eq!(plugin_of(own), own, "{own}");
+    }
 }
 
 #[test]

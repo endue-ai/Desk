@@ -13,16 +13,20 @@
 //! Closing the OS window closes the window (`desk.windows.close`, asking about unsaved changes
 //! first); Window > Move to Desk docks it. `DESK_APP_WINDOWS` (`switch.rs`) names the plugins whose
 //! windows pop out the first time they show in a session (`on`: every app); unset or `off`, none
-//! does. Each app opens where it was last, per display (`places.rs`).
+//! does. Each window opens where it was last, per display, by its window id (`places.rs`). Files
+//! dragged in from the OS and the page's own drags land as on the canvas (`drags.rs`), and the
+//! desk's keymap hears a key before the page does (`keys.rs`).
 
 mod client;
+mod drags;
+mod keys;
 mod menu;
 mod places;
 mod registry;
 mod switch;
 
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use cef::{ImplBrowser, ImplBrowserHost};
 use desk_web::sender::Role;
@@ -38,10 +42,11 @@ use crate::pane::Pane;
 use crate::pump::Pump;
 use crate::web_host::WebHost;
 use crate::window::Shell;
+pub use keys::{lately as desk_key_lately, report as report_keys};
 pub use menu::{Item, removed};
 pub use places::{Display, Kept, Place};
 pub use registry::Registry;
-pub use switch::{App, SWITCH, Switch, app, handed, handed_surface, know, switch};
+pub use switch::{App, SWITCH, Switch, app, handed, handed_surface, know, plugin_of, switch};
 
 /// The desk command that closes the runtime's window holding a plugin.
 pub const CLOSE: &str = "desk.windows.close";
@@ -55,11 +60,13 @@ pub const MIN: (f64, f64) = (320.0, 200.0);
 /// be a crowded desk's small cell.
 const OPENS: (f64, f64) = (720.0, 450.0);
 
-/// An app window the shell holds: its pane, the window manager's window it is, and its plugin.
+/// An app window the shell holds: its pane, the window manager's window it is, its plugin's key
+/// (its id, or `<plugin>@<n>` for a window after its first, ADR 0212) and the drags over it.
 pub struct AppWindow {
     pub pane: Pane,
     pub window: String,
     pub plugin: String,
+    drags: Arc<Mutex<drags::Drags>>,
 }
 
 /// The app windows the shell holds.
@@ -85,7 +92,7 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
         .with_title(ask.title.as_str())
         .with_min_inner_size(LogicalSize::new(MIN.0, MIN.1));
     // Where it was last, else as large as the runtime's window and at least `OPENS`.
-    let attributes = match places::opening(event_loop, &ask.plugin, MIN) {
+    let attributes = match places::opening(event_loop, &ask.window, MIN) {
         Some(kept) => {
             let sized = attributes.with_inner_size(LogicalSize::new(kept.size.0, kept.size.1));
             match kept.at {
@@ -101,7 +108,9 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
         }
     };
     let pump = shell.desk.pump.clone();
-    let client = client::client(host.clone(), &ask.surface, pump, Arc::clone(&shell.desk));
+    let drags = Arc::new(Mutex::new(drags::Drags::new(&ask.plugin)));
+    let desk = Arc::clone(&shell.desk);
+    let client = client::client(host.clone(), &ask.surface, pump, desk, Arc::clone(&drags));
     let pane = match Pane::open(event_loop, false, attributes, &ask.url, client) {
         Ok(pane) => pane,
         Err(why) => {
@@ -117,10 +126,12 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
     if wanted {
         pane.show_and_focus();
     }
+    sized(&pane.window, &drags);
     let held = AppWindow {
         pane,
         window: ask.window,
         plugin: ask.plugin,
+        drags,
     };
     if let Some(old) = shell.apps.insert(&ask.surface, window, id, held) {
         close_browser(shell, old);
@@ -134,7 +145,7 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
 /// place kept.
 pub fn close(shell: &mut Shell, surface: &str) {
     if let Some(app) = shell.apps.get(surface) {
-        places::keep(&app.plugin, &app.pane.window);
+        places::keep(&app.window, &app.pane.window);
     }
     if let Some(browser) = shell.apps.ask_close(surface) {
         close_browser(shell, browser);
@@ -202,6 +213,7 @@ pub fn window_event(shell: &mut Shell, id: WindowId, event: &WindowEvent) {
         }
         WindowEvent::Resized(size) => {
             app.pane.resized(*size);
+            sized(&app.pane.window, &app.drags);
             moved(&shell.desk.pump);
         }
         WindowEvent::Moved(_) => moved(&shell.desk.pump),
@@ -215,6 +227,13 @@ pub fn window_event(shell: &mut Shell, id: WindowId, event: &WindowEvent) {
         }
         _ => {}
     }
+}
+
+/// The page of OS window `window` is as large as its inside: a drag past it is over nothing.
+fn sized(window: &Window, drags: &Mutex<drags::Drags>) {
+    let size = window.inner_size().to_logical::<f64>(window.scale_factor());
+    let mut drags = drags.lock().unwrap_or_else(|e| e.into_inner());
+    drags.set_size(size.width, size.height);
 }
 
 /// An app window moved or resized: every app window's place is kept once they rest.
@@ -232,7 +251,7 @@ fn keep_all(shell: &mut Shell) {
     let mut frames = Vec::new();
     for surface in shell.apps.surfaces() {
         if let Some(app) = shell.apps.get(&surface) {
-            places::keep(&app.plugin, &app.pane.window);
+            places::keep(&app.window, &app.pane.window);
             if let Some(f) = crate::main_frame::frame_of(&app.pane.window) {
                 frames.push((app.window.clone(), Rect::new(f.x, f.y, f.width, f.height)));
             }
