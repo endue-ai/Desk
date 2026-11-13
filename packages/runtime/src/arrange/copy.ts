@@ -10,6 +10,7 @@ const copy = {
   cascade: ["창 계단식 배열", "Cascade windows"],
   spread: ["창 펼쳐 보기", "Spread windows out"],
   focus: ["창으로 전환", "Switch to window"],
+  close: ["창 닫기", "Close window"],
   restore: ["이전 창 배치로 되돌리기", "Restore previous layout"],
   nothingToArrange: [
     "이 데스크톱에는 정리할 창이 없습니다",

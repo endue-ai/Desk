@@ -28,6 +28,7 @@ mod draw_pane;
 mod draw_popup;
 mod draw_spread;
 mod gpu;
+mod handed;
 pub mod harness;
 pub mod hosted;
 pub mod input;

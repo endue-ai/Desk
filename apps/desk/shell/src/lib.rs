@@ -5,6 +5,7 @@
 //! desk, the palette, the floating Eris and the computer-use banner; and its own updates (#47).
 
 pub mod app;
+pub mod app_windows;
 pub mod client;
 pub mod commands;
 pub mod compositor_window;

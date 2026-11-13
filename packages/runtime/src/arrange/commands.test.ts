@@ -4,7 +4,8 @@
 // one undoable step on the core's undo stack (ADR 0077), which hands the arrangement's answer back
 // to restore-arrangement, and a refusal is the command's error. desk.windows.spread asks the window
 // manager's host, whose compositor draws it (#54), and desk.windows.focus is its pick: the window
-// comes wholly into sight and takes the keys. The stub checks no args; the core does (#163), so the
+// comes wholly into sight and takes the keys; desk.windows.close closes a window of the desktop in
+// front, asking about unsaved changes first (#234). The stub checks no args; the core does (#163), so the
 // args cmd.undo hands restore-arrangement are checked here against those it declares.
 import { BridgeClient, type BridgeEvent, browserStub, stubCommands } from "@endue-ai/bridge";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -16,7 +17,7 @@ import { Store, sampleState } from "../shell/state";
 import { testWindowManager } from "../wm/testing";
 import type { Edit } from "../wm/types";
 import { takeDesk } from "../wm/view";
-import { CASCADE, defineArrangeCommands, FOCUS, RESTORE, SPREAD, TILE } from "./commands";
+import { CASCADE, CLOSE, defineArrangeCommands, FOCUS, RESTORE, SPREAD, TILE } from "./commands";
 
 const ALL = { permission: "cmd:invoke" as const, ids: ["*"] };
 const epoch = Date.parse("2026-11-07T09:00:00.000Z");
@@ -195,5 +196,39 @@ describe("the spread's commands", () => {
       /not on this desktop/,
     );
     await expect(commands.run(FOCUS, {})).rejects.toThrow(/say which/);
+  });
+});
+
+describe("desk.windows.close", () => {
+  it("closes a window of the desktop in front, once its unsaved changes were asked about", async () => {
+    const { commands, store, ctx } = await desk();
+    const asked: string[] = [];
+    let keep = true;
+    const mayGo = (why: string) => {
+      asked.push(why);
+      return Promise.resolve(!keep);
+    };
+    Object.assign(ctx.runtime, { buffers: { mayGo } });
+    // The person keeps Notes' unsaved changes: the window stays.
+    expect(await commands.run(CLOSE, { window: "notes" })).toEqual({
+      window: "notes",
+      closed: false,
+    });
+    expect(Object.keys(rects(store))).toContain("notes");
+    keep = false;
+    expect(await commands.run(CLOSE, { window: "notes" })).toEqual({
+      window: "notes",
+      closed: true,
+    });
+    expect(Object.keys(rects(store))).not.toContain("notes");
+    expect(Object.keys(rects(store))).toContain("calendar");
+    expect(asked).toEqual(["close", "close"]);
+    // Gone, or on another desktop (desk-wm closes only the desktop in front's), or unnamed.
+    await expect(commands.run(CLOSE, { window: "notes" })).rejects.toThrow(/not on this desktop/);
+    await expect(commands.run(CLOSE, { window: "tomorrow" })).rejects.toThrow(
+      /not on this desktop/,
+    );
+    expect(Object.keys(rects(store, "2"))).toContain("tomorrow");
+    await expect(commands.run(CLOSE, {})).rejects.toThrow(/say which/);
   });
 });
