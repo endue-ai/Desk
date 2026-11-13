@@ -49,6 +49,19 @@ describe("surface anchors", () => {
     expect(order(layer)[0]).toBe("Notes — today");
   });
 
+  it("keep the focus on a place it moves: a session restored it there as the desk started", () => {
+    const layer = document.createElement("div");
+    document.body.append(layer);
+    const anchors = surfaceAnchors(layer);
+    const a = window("a", "Notes", "p.a");
+    const place = a.body.querySelector<HTMLElement>("[data-surface-host]") as HTMLElement;
+    place.focus();
+    expect(document.activeElement).toBe(place);
+    anchors.hold(a.id, a.el, a.body);
+    expect(layer.contains(place)).toBe(true);
+    expect(document.activeElement).toBe(place);
+  });
+
   it("make no group for a window without plugins, and drop a window's group with it", () => {
     const layer = document.createElement("div");
     document.body.append(layer);
