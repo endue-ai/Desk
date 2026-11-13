@@ -317,3 +317,7 @@ pub(super) fn window(
 #[cfg(test)]
 #[path = "draw_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "draw_cost_tests.rs"]
+mod cost_tests;

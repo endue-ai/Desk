@@ -63,3 +63,15 @@ unsafe_code = "deny"
 [workspace.lints.clippy]
 dbg_macro = "deny"
 todo = "deny"
+
+# `just dev` runs the dev build, whose compositor, window manager and text layout lay the scene out
+# every frame a window moves. Unoptimized, one layout of a 13-window desk took 3.4 to 3.7 ms (p50) of
+# the main thread against 0.2 ms optimized (`apps/desk/shell/src/compositor_window/draw_cost_tests.rs`,
+# 2026-11-13): the desk's crates build at opt-level 1 (0.23 to 0.29 ms) and their dependencies at 2,
+# debug assertions and overflow checks still on. A rebuild after an edit took about 2 s either way;
+# the dependencies' first build takes longer.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
