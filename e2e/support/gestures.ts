@@ -159,11 +159,14 @@ export async function click(p: Point, count = 1): Promise<void> {
   await feed([toward(p), ...Array.from({ length: count }, () => one).flat()]);
 }
 
-/** The compositor's key and code for each named key of `KEY`. */
-const NAMED: Record<string, [string, string]> = {
+/**
+ * The compositor's key, code and text for each named key of `KEY`: Enter types "\r", which
+ * activates a focused button, as a keyboard's does.
+ */
+const NAMED: Record<string, [string, string, string?]> = {
   [KEY.escape]: ["Escape", "Escape"],
   [KEY.tab]: ["Tab", "Tab"],
-  [KEY.enter]: ["Enter", "Enter"],
+  [KEY.enter]: ["Enter", "Enter", "\r"],
   [KEY.left]: ["ArrowLeft", "ArrowLeft"],
   [KEY.right]: ["ArrowRight", "ArrowRight"],
 };
@@ -203,7 +206,7 @@ export async function chord(...keys: string[]): Promise<void> {
   const typing = !mods.ctrl && !mods.meta && !mods.alt;
   const presses = pressed.flatMap((k) => {
     const named = NAMED[k];
-    if (named) return keyPress(named[0], named[1]);
+    if (named) return keyPress(named[0], named[1], typing ? named[2] : undefined);
     const key = mods.shift ? k.toUpperCase() : k;
     return keyPress(key, codeOf(k), typing ? key : undefined);
   });
