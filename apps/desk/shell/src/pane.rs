@@ -11,6 +11,7 @@
 use std::sync::Arc;
 
 use cef::*;
+use desk_web::sender::Role;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowAttributes};
 
@@ -23,17 +24,22 @@ pub struct Pane {
 }
 
 impl Pane {
-    /// Make a window with `attributes` and a browser in it at `url`, answered by `client`.
+    /// Make the window of `role` with `attributes` and a browser in it at `url`, answered by
+    /// `client`.
     pub fn open(
         event_loop: &ActiveEventLoop,
+        role: Role,
         attributes: WindowAttributes,
         url: &str,
         mut client: Client,
     ) -> Result<Self, String> {
-        let window = event_loop
-            .create_window(attributes)
-            .map_err(|why| format!("no window ({why})"))?;
-        let window = Arc::new(window);
+        let create = || event_loop.create_window(attributes);
+        // The island's window is made a panel (ADR 0204).
+        let window = match role {
+            Role::Island => crate::island::panel::made_as_panel(create),
+            _ => create(),
+        };
+        let window = Arc::new(window.map_err(|why| format!("no window ({why})"))?);
         let parent = parent_handle(&window)
             .ok_or("this windowing system cannot hold a CEF browser".to_owned())?;
         let info = WindowInfo::default().set_as_child(parent, &bounds(&window));

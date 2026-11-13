@@ -1,0 +1,16 @@
+{
+  "id": "desk.island",
+  "name": "Island",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "The island over every app (ADR 0204): what the agents are doing and how many asks wait, a press away from answering. Its settings say whether it shows.",
+  "contributes": {
+    "settings": {
+      "desk.island.show": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Show the island over every app: the agents at work and the asks that wait, on every Space and over full-screen apps. Off until it can take the floating Eris's place."
+      }
+    }
+  }
+}

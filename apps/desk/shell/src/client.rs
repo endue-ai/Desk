@@ -223,11 +223,12 @@ wrap_client! {
     }
 }
 
-/// The client of the browser in the window of `role`: the palette, Eris and the banner (the main
-/// window's page is `compositor_page`'s).
+/// The client of the browser in the window of `role`: the palette, Eris, the island and the banner
+/// (the main window's page is `compositor_page`'s).
 pub fn client(role: Role, pump: Pump, desk: Arc<Desk>) -> Client {
     let banner = (role == Role::Banner).then(|| Arc::clone(&desk.core));
-    let load = (cfg!(target_os = "macos") && role == Role::Eris).then(ClearBase::new);
+    let clear = matches!(role, Role::Eris | Role::Island);
+    let load = (cfg!(target_os = "macos") && clear).then(ClearBase::new);
     ShellClient::new(
         role,
         ShellLifeSpan::new(role, pump, false, None),

@@ -300,7 +300,7 @@ fn watch(desk: &Arc<Desk>, state: &Arc<ErisWindow>) -> std::io::Result<()> {
 }
 
 /// Run `run` once `rest` has passed without another nudge, on a thread of its own.
-fn debounce(name: &str, rest: Duration, run: impl Fn() + Send + 'static) -> Sender<()> {
+pub(crate) fn debounce(name: &str, rest: Duration, run: impl Fn() + Send + 'static) -> Sender<()> {
     let (nudge, nudged) = mpsc::channel::<()>();
     let spawned = std::thread::Builder::new()
         .name(name.to_owned())
@@ -316,7 +316,7 @@ fn debounce(name: &str, rest: Duration, run: impl Fn() + Send + 'static) -> Send
     nudge
 }
 
-fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+pub(crate) fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())

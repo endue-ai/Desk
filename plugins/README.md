@@ -20,6 +20,7 @@ there were two formats, the API would have holes.
 | `views/` | The view engine (`desk.views`): opens any view by id, draws the deprecated item views (`specs/view/v0`) as surfaces over the core's `data.*` and `view.*`, and hands universal ones to `desk.universal` (ADR 0103) |
 | `universal/` | Universal View (`desk.universal`): opens a universal view (`specs/view/v0/universal.schema.json`) of inline data, a file, a URL, another plugin's command or the index, as a timeline, calendar, board, list, text, chat, agent run, chart, stat or detail, or a page of them (ADR 0087, ADR 0103) |
 | `fleet/` | The control center for agents (`desk.fleet`, ADR 0100): a data-only `policy` plugin whose command opens a universal kanban of every agent's runs, the ones waiting for approval first, with Approve, Deny and Stop |
+| `island/` | The island's settings (`desk.island`, ADR 0204): a data-only `policy` plugin; `desk.island.show` puts the shell's island over every app |
 | `today/` | The day at a glance (`desk.today`): a data-only `view` plugin, a page of universal views that `desk.universal` draws; `Mod+T` opens it |
 | `github/` | Your GitHub work as tasks (`desk.github`): an http connector the core runs (ADR 0106), the issues assigned to you, the reviews you owe and your own pull requests; the token stays in the core |
 | `pack-github/` | The GitHub pack (`desk.pack-github`, ADR 0108): data only, it brings `desk.github`, opens a board and a timeline of your GitHub work and switches to "Builder morning"; "Set up GitHub" to Eris applies it, Undo takes it back |

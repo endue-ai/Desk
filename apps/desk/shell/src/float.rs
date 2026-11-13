@@ -1,5 +1,5 @@
-//! Windows that float over every app (ADR 0120, ADR 0121): the floating Eris, the computer-use
-//! banner and the palette. On macOS they join every Space (Eris and the banner also full-screen
+//! Windows that float over every app (ADR 0120, ADR 0121, ADR 0204): the floating Eris, the
+//! computer-use banner, the palette and the island. On macOS they join every Space (Eris and the banner also full-screen
 //! Spaces), stay put in Mission Control and out of ⌘` cycling, and show without taking the focus
 //! from the app in front (`orderFrontRegardless`), the AppKit parts winit has no option for. Elsewhere
 //! winit's always-on-top level and a hidden taskbar entry are what there is.
@@ -50,7 +50,7 @@ pub fn show_quietly(window: &Window) {
 }
 
 #[cfg(target_os = "macos")]
-mod mac {
+pub(crate) mod mac {
     use objc2::rc::Retained;
     use objc2_app_kit::{NSView, NSWindow, NSWindowCollectionBehavior};
     use objc2_foundation::MainThreadMarker;
@@ -61,7 +61,7 @@ mod mac {
 
     /// The `NSWindow` around winit's view, on the main thread.
     #[allow(unsafe_code)]
-    fn ns_window(window: &Window) -> Option<Retained<NSWindow>> {
+    pub(crate) fn ns_window(window: &Window) -> Option<Retained<NSWindow>> {
         MainThreadMarker::new()?;
         let RawWindowHandle::AppKit(handle) = window.window_handle().ok()?.as_raw() else {
             return None;

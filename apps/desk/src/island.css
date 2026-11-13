@@ -1,0 +1,223 @@
+/*
+ * The island (ADR 0204): a pill at the top of a transparent window, and under it, while open, the
+ * panel that lists the agents at work and what waits for the person. Every colour, size, radius and
+ * duration is a theme token; the main window keeps the theme in force (palette-theme.ts).
+ */
+
+/* Nothing of the window shows but the island (a dark scheme would paint the page's canvas). */
+html,
+body,
+#desk {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  color-scheme: normal;
+}
+
+body {
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+  letter-spacing: var(--desk-tracking);
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.island {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  width: 100%;
+  height: 100%;
+  padding: var(--desk-space-2) var(--desk-space-3);
+}
+
+.island *,
+.island *::before,
+.island *::after {
+  box-sizing: border-box;
+}
+
+.island-pill {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--desk-space-2);
+  width: 100%;
+  height: var(--desk-control-lg);
+  padding: 0 var(--desk-space-4);
+  border: var(--desk-border-width) solid var(--desk-menu-border);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-menu-bg);
+  box-shadow: var(--desk-menu-shadow);
+  color: var(--desk-text);
+  font: inherit;
+  cursor: default;
+  transition: border-color var(--desk-motion-fast) var(--desk-easing);
+}
+
+.island-pill:hover {
+  border-color: var(--desk-primary-border);
+}
+
+.island-pill:focus-visible {
+  outline: var(--desk-focus-width) solid var(--desk-ring);
+  outline-offset: var(--desk-focus-offset);
+}
+
+.island-pill:active {
+  cursor: grabbing;
+}
+
+.island-dots {
+  display: flex;
+  flex: none;
+  gap: var(--desk-space-1);
+}
+
+.island-dots:empty::before,
+.island-dot {
+  width: var(--desk-space-2);
+  height: var(--desk-space-2);
+  border-radius: var(--desk-radius-full);
+}
+
+/* No agent at work: one quiet dot. */
+.island-dots:empty::before {
+  content: "";
+  background: var(--desk-text-muted);
+  opacity: 0.5;
+}
+
+.island-dot {
+  background: var(--island-dot, var(--desk-success));
+  animation: island-working 1.6s var(--desk-easing) infinite alternate;
+}
+
+@keyframes island-working {
+  to {
+    opacity: 0.45;
+  }
+}
+
+:root[data-motion="reduce"] .island-dot {
+  animation: none;
+}
+
+.island-line {
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.island-badge {
+  flex: none;
+  min-width: var(--desk-space-5);
+  padding: 0 var(--desk-space-2);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-warning);
+  color: var(--desk-warning-foreground);
+  font-weight: 600;
+  font-size: var(--desk-text-xs);
+  line-height: var(--desk-space-5);
+  text-align: center;
+}
+
+.island-badge[hidden] {
+  display: none;
+}
+
+/* Said to a screen reader when it changes; the pill shows it. */
+.island-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* As tall as what it lists, up to the window's height; the window is clear below it. */
+.island-panel {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--desk-space-3) var(--desk-space-4);
+  border: var(--desk-border-width) solid var(--desk-menu-border);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-menu-bg);
+  box-shadow: var(--desk-menu-shadow);
+}
+
+.island-panel[hidden] {
+  display: none;
+}
+
+.island-heading {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.island-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  margin: 0 0 var(--desk-space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.island-row {
+  display: flex;
+  gap: var(--desk-space-2);
+  min-width: 0;
+}
+
+.island-who {
+  flex: none;
+  font-weight: 600;
+}
+
+.island-what,
+.island-none {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.island-desk {
+  align-self: flex-start;
+  height: var(--desk-button-height);
+  padding: 0 var(--desk-button-padding-x);
+  border: var(--desk-border-width) solid var(--desk-button-primary-border);
+  border-radius: var(--desk-button-radius);
+  background: var(--desk-button-primary-bg);
+  color: var(--desk-button-primary-fg);
+  font: inherit;
+}
+
+.island-desk:hover {
+  background: var(--desk-button-primary-hover-bg);
+}
+
+.island-desk:focus-visible {
+  outline: var(--desk-focus-width) solid var(--desk-ring);
+  outline-offset: var(--desk-focus-offset);
+}
+
+.island-desk[hidden] {
+  display: none;
+}

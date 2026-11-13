@@ -9,6 +9,7 @@ use serde_json::{Value, json};
 
 use crate::eris_window::commands as eris;
 use crate::host::Desk;
+use crate::island::commands as island;
 
 /// The answer to `call` from `sender`.
 pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String> {
@@ -89,6 +90,7 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
             Ok(Value::Null)
         }
         cmd if cmd.starts_with(eris::PREFIX) => eris::answer(desk, cmd, &call.args),
+        cmd if cmd.starts_with(island::PREFIX) => island::answer(desk, cmd, &call.args),
         cmd if cmd.starts_with("compositor_") => {
             crate::compositor_window::commands::answer(desk, cmd, &call.args)
         }
@@ -96,8 +98,9 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
     }
 }
 
-/// A bridge call, for the runtime itself or a plugin it hosts, the palette or Eris. The core checks
-/// permissions; this names the caller and, for the Eris window, keeps her to her conversation.
+/// A bridge call, for the runtime itself or a plugin it hosts, the palette, Eris or the island. The
+/// core checks permissions; this names the caller and keeps the Eris window to her conversation and
+/// the island to what it shows.
 fn bridge_call(desk: &Desk, sender: &Sender, args: &Value) -> Result<Value, String> {
     let named = args.get("caller").and_then(Value::as_str);
     let caller = sender

@@ -45,7 +45,7 @@ pub(super) fn talk_in_desk(state: &ErisWindow, toggle: bool) {
     }
 }
 
-pub(super) fn call(core: &Core, caller: &str, request: Value) -> Result<Value, String> {
+pub(crate) fn call(core: &Core, caller: &str, request: Value) -> Result<Value, String> {
     let request: BridgeRequest = serde_json::from_value(request).map_err(|e| e.to_string())?;
     match core.handle(caller, request) {
         BridgeResponse::BridgeSuccess(answer) => Ok(answer.result),

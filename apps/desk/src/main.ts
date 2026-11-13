@@ -8,6 +8,13 @@ if (view === "palette") {
     import("./host"),
   ]);
   await startErisWindow({ invoke, listen });
+} else if (view === "island") {
+  // The island over every app (ADR 0204), on the shell's commands and events.
+  const [{ startIsland }, { invoke, listen }] = await Promise.all([
+    import("./island"),
+    import("./host"),
+  ]);
+  await startIsland({ invoke, listen });
 } else {
   await import("./desk");
 }

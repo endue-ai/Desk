@@ -1,11 +1,11 @@
 //! Who a frame is: the shell's runtime on `desk-app://app/`, one plugin on its surface host of
-//! `desk-plugin` (#36), the palette or the floating Eris window, or nobody the desk knows. The CEF
-//! shell takes a bridge call's caller from this, never from the call (#43). The palette and Eris
-//! pages load from the same `desk-app://app/` as the runtime, so their identity comes from the
-//! window the browser process made the frame's browser for ([`Role`]), which no page can claim
-//! (#45); the URL only says whether the frame is the desk's own page there. Those three are the
-//! desk's system surfaces ([`System`], #55, ADR 0160), and the parts of the desk's page that the
-//! compositor places in its system layer have stable ids too ([`PARTS`]).
+//! `desk-plugin` (#36), the palette, the floating Eris window or the island, or nobody the desk
+//! knows. The CEF shell takes a bridge call's caller from this, never from the call (#43). The
+//! palette's, Eris's and the island's pages load from the same `desk-app://app/` as the runtime, so
+//! their identity comes from the window the browser process made the frame's browser for
+//! ([`Role`]), which no page can claim (#45); the URL only says whether the frame is the desk's own
+//! page there. Those are the desk's system surfaces ([`System`], #55, ADR 0160), and the parts of
+//! the desk's page that the compositor places in its system layer have stable ids too ([`PARTS`]).
 
 use crate::plugin_scheme::hosts::Host;
 
@@ -74,6 +74,11 @@ const ERIS_COMMANDS: &[&str] = &[
 /// What the floating Eris may ask the core as the desk: talking to Eris and her brain's status
 /// (ADR 0121). Everything else the desk may do stays with the main window.
 const ERIS_METHODS: &[&str] = &["brain.say", "brain.status"];
+const ISLAND_COMMANDS: &[&str] = &["island_open", "island_drag", "island_reveal_main"];
+/// What the island may ask the core as the desk (ADR 0204): the agents and what they do, the runs of
+/// the agent programs on this computer, and what waits for the person. Answering, talking and
+/// notices add theirs as they land.
+const ISLAND_METHODS: &[&str] = &["agent.list", "agents.runs", "perm.pending"];
 
 /// Which of the shell's windows a browser is, set by the browser process when it makes the browser.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -86,6 +91,8 @@ pub enum Role {
     Eris,
     /// The computer-use banner (ADR 0120): a plugin page without the bridge.
     Banner,
+    /// The island over every app (`?view=island`, ADR 0204).
+    Island,
 }
 
 /// The origin a frame belongs to, as the bridge sees it.
@@ -97,6 +104,8 @@ pub enum Sender {
     Palette,
     /// The floating Eris window's page: it calls as the desk, to talk to Eris only.
     Eris,
+    /// The island's page: it calls as the desk, for what it shows only.
+    Island,
     /// A plugin's frame: it calls as itself, whatever it claims.
     Plugin(String),
     /// Anything else: no bridge.
@@ -131,29 +140,34 @@ impl Sender {
             (Role::Main, sender) => sender,
             (Role::Palette, Self::Runtime) => Self::Palette,
             (Role::Eris, Self::Runtime) => Self::Eris,
+            (Role::Island, Self::Runtime) => Self::Island,
             (Role::Banner, Self::Runtime) => Self::Unknown,
             (_, sender) => sender,
         }
     }
 
     /// The caller a bridge call from this sender runs as, `named` being the caller the call names:
-    /// the runtime may call for a plugin it hosts; the palette, Eris and a plugin are always
-    /// themselves; others are refused.
+    /// the runtime may call for a plugin it hosts; the palette, Eris, the island and a plugin are
+    /// always themselves; others are refused.
     pub fn caller(&self, named: Option<&str>) -> Option<String> {
         match self {
             Self::Runtime => Some(named.unwrap_or(RUNTIME).to_owned()),
             Self::Palette => Some(PALETTE.to_owned()),
-            Self::Eris => Some(RUNTIME.to_owned()),
+            Self::Eris | Self::Island => Some(RUNTIME.to_owned()),
             Self::Plugin(id) => Some(id.clone()),
             Self::Unknown => None,
         }
     }
 
-    /// Whether this sender may ask the core for `method`: the Eris window only talks to Eris.
+    /// Whether this sender may ask the core for `method`: the Eris window only talks to Eris, the
+    /// island only asks for what it shows.
     pub fn may_ask(&self, method: &str) -> Result<(), String> {
         match self {
             Self::Eris if !ERIS_METHODS.contains(&method) => Err(format!(
                 "the floating Eris window talks to Eris only, not {method}"
+            )),
+            Self::Island if !ISLAND_METHODS.contains(&method) => Err(format!(
+                "the island asks only for what it shows, not {method}"
             )),
             _ => Ok(()),
         }
@@ -165,6 +179,7 @@ impl Sender {
             Self::Runtime => MAIN_COMMANDS,
             Self::Palette => PALETTE_COMMANDS,
             Self::Eris => ERIS_COMMANDS,
+            Self::Island => ISLAND_COMMANDS,
             Self::Plugin(_) | Self::Unknown => &[],
         };
         allowed.contains(&cmd)
@@ -228,7 +243,13 @@ mod tests {
         assert_eq!(eris.caller(Some("endue.notes")).as_deref(), Some("desk"));
         // A plugin frame is itself in any window; other pages get nothing anywhere.
         let frame = "desk-plugin://main.endue-notes/endue.notes/ui/index.html";
-        for role in [Role::Main, Role::Palette, Role::Eris, Role::Banner] {
+        for role in [
+            Role::Main,
+            Role::Palette,
+            Role::Eris,
+            Role::Banner,
+            Role::Island,
+        ] {
             assert_eq!(
                 Sender::in_role(role, frame),
                 Sender::Plugin("endue.notes".to_owned()),
@@ -327,6 +348,41 @@ mod tests {
         for sender in [Sender::Plugin("endue.notes".to_owned()), Sender::Unknown] {
             assert!(!sender.may("desk_ready"));
             assert!(!sender.may("palette_hide"));
+        }
+    }
+
+    #[test]
+    fn the_island_is_its_window_and_asks_only_for_what_it_shows() {
+        let island = Sender::in_role(Role::Island, "desk-app://app/index.html?view=island");
+        assert_eq!(island, Sender::Island);
+        assert_eq!(island.caller(Some("endue.notes")).as_deref(), Some("desk"));
+        assert_eq!(island.caller(None).as_deref(), Some("desk"));
+        for method in ["agent.list", "agents.runs", "perm.pending"] {
+            assert!(island.may_ask(method).is_ok(), "{method}");
+        }
+        for method in [
+            "perm.grant",
+            "perm.revoke",
+            "fs.read",
+            "settings.set",
+            "cmd.invoke",
+        ] {
+            let refused = island.may_ask(method).unwrap_err();
+            assert!(refused.contains(method), "{refused}");
+        }
+        for cmd in ["island_open", "island_drag", "island_reveal_main"] {
+            assert!(island.may(cmd), "{cmd}");
+            assert!(!Sender::Runtime.may(cmd), "{cmd}");
+            assert!(!Sender::Eris.may(cmd), "{cmd}");
+            assert!(!Sender::Plugin("endue.notes".into()).may(cmd), "{cmd}");
+        }
+        for cmd in [
+            "desk_ready",
+            "palette_hide",
+            "plugin:eris-window|drag",
+            "desk_quit",
+        ] {
+            assert!(!island.may(cmd), "{cmd}");
         }
     }
 
