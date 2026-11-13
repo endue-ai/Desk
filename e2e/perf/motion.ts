@@ -1,6 +1,6 @@
 // The motion gate (`just perf-motion [check|record] [--debug] [--screen] [--runs N] [--no-build]
-// [--home DIR]`, #247 and #258, ADR 0208): a change to the compositor, desk-wm or the off-screen host
-// is judged on rendered pixels while windows move. It builds the optimized shell (development commands
+// [--home DIR] [--open]`, #247 and #258, ADR 0208): a change to the compositor, desk-wm or the
+// off-screen host is judged on rendered pixels while windows move. It builds the optimized shell (development commands
 // on), starts it on the Default profile's 13 plugin windows, and per run shakes one window by its title
 // bar twice (2 Hz, ±200 px, a move every 8 ms): once timed, once reading frames back; then the main
 // scenario (`motion-sway.ts`): the app window itself grown and shrunk on two sines (±300 px wide,
@@ -12,6 +12,8 @@
 // app window settles. Limits, known failures and the baseline live in e2e/perf/motion.json; results
 // in e2e/test-results/perf-motion/<variant>. Headless by default: no screen, pointer or keyboard of
 // the machine's is used. `--debug` measures the development build for the record and never fails.
+// `--open` first opens three images, two notes and two data files, each in a window of its own (ADR
+// 0212), and measures that desk under its own variant.
 // Node strips the types.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -43,6 +45,7 @@ import {
 } from "./lib/motion-verdicts.ts";
 import { analyzeSway, runSway, type SwayConfig } from "./motion-sway.ts";
 import { drag, poke, shake, startDesk, stopDesk, windows } from "./support/motion-desk.ts";
+import { openFiles } from "./support/openers.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
@@ -56,7 +59,8 @@ const mode = argv.find((a) => a === "check" || a === "record") ?? "check";
 const debug = argv.includes("--debug");
 const screen = argv.includes("--screen");
 const runs = Number(flag("--runs") ?? 3);
-const variant = `${debug ? "debug" : "optimized"}-${screen ? "screen" : "offscreen"}`;
+const open = argv.includes("--open");
+const variant = `${debug ? "debug" : "optimized"}-${screen ? "screen" : "offscreen"}${open ? "-open" : ""}`;
 const OUT = join(root, "e2e/test-results/perf-motion", variant);
 const BUNDLE = join(root, debug ? "target/bundle-motion-debug" : "target/bundle-motion");
 const BINARY = join(BUNDLE, "endue-desk.app/Contents/MacOS/endue-desk");
@@ -115,7 +119,9 @@ async function once(n: number): Promise<{
 }> {
   const dir = join(OUT, `run-${n}`);
   mkdirSync(dir, { recursive: true });
-  const home = flag("--home") ?? mkdtempSync(join(tmpdir(), "desk-motion-"));
+  // `--open` reaches the desk socket, whose path must fit a Unix socket's 104 bytes on macOS.
+  const temp = open ? "/tmp" : tmpdir();
+  const home = flag("--home") ?? mkdtempSync(join(temp, "desk-motion-"));
   if (resolve(home) === homedir()) throw new Error("--home must not be your own home");
   const trace = join(dir, "trace.jsonl");
   const log = join(dir, "desk.log");
@@ -129,6 +135,7 @@ async function once(n: number): Promise<{
     windows: config.windows,
   });
   try {
+    const opened = open ? await openFiles(desk, root, config.window) : undefined;
     const { amp, periodMs, stepMs, durationMs, captures, drop } = config.shake;
     const { screen: [sw = 0] = [], windows: all } = await windows(desk.port);
     const w = all.find((w) => w.id === config.window);
@@ -188,6 +195,7 @@ async function once(n: number): Promise<{
         )
       : undefined;
     result.detail.rested = desk.rested;
+    if (opened) result.detail.opened = opened;
     result.detail.load = loadavg().map((l) => Math.round(l * 10) / 10);
     result.detail.sway = sway?.detail;
     const none = { widths: [0, 0], heights: [0, 0], fps: 0, longShare: 1, intervalP95: 0 };

@@ -32,7 +32,8 @@ grants cover.
 ## Search
 
 `search.replace` atomically publishes the installed caller's documents (500 / 4 MiB), persisted in
-the core. `search.query` needs `search:read`; disabled plugins' documents are excluded. `search.system`
+the core; a plugin with several windows (ADR 0212) publishes every window's last set together.
+`search.query` needs `search:read`; disabled plugins' documents are excluded. `search.system`
 needs `search:system` and queries the OS index. `search.open` uses the same permission and accepts only
 a recent OS result id belonging to that caller (five-minute expiry), never a supplied path.
 

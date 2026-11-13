@@ -46,6 +46,8 @@ almost as it is: each page still holds one buffer.
 * **Runtime.** `PluginHost` keys requests, posts, state, greetings, sleepers and owned events by
   window; `bridge.forward` names the plugin. A command run's answer goes to the window that ran it; a
   command the plugin provides runs in its window in use (the one that last had the keys or called).
+  The core keeps one set of search documents per plugin, so the runtime keeps each window's last
+  `search.replace` and sends all of them (Notes publishes its open notes from every window).
 * **Files and buffers.** `desk.files` chooses the window: one of the opener's windows that holds no
   file, else a new one; a file the opener opens itself (Images walking its folder) stays in the window
   it came from; one already open shows its window. A buffer names its window (`instance`); show,
@@ -55,7 +57,8 @@ almost as it is: each page still holds one buffer.
 * **Window manager and compositor.** The adopted id, the window id and the `plugin:<key>` view are the
   window's key. desk-wm's `plugin` already means the adopted surface's id everywhere (slots, the
   drawer, panes, `Plan::seat`, `Surfaces::of`), so it seats every window by its key with no new field;
-  the shell reads the plugin from a key (`plugin_of`) where only the plugin counts.
+  `plugin_of` reads the plugin from a key where only the plugin counts: the app-window switch and its
+  manifest, the native host, and the pane a snapshot names (`desk.windows.list`).
 * **Setting.** `desk.files.window`: `per-file` (the default) or `shared`, the old one window.
 * `endue.images`, `endue.notes` and `endue.data` opt in first.
 
@@ -74,4 +77,5 @@ almost as it is: each page still holds one buffer.
 
 Issue 259; amends ADR 0129 (a plugin's frame is no longer its one window), ADR 0160 (a plugin's
 surface may have several hosts) and ADR 0186. `packages/runtime/src/instances.ts`,
-`plugins-events.ts`, `policies/files-windows.ts`.
+`plugins-events.ts`, `plugins-search.ts`, `policies/files-windows.ts`;
+`crates/desk-wm/src/window_key.rs`; `e2e/perf/support/openers.ts` (`just perf-motion --open`).

@@ -1,7 +1,7 @@
 # plugins/data
 
-`endue.data` ("Data"), structured data and configuration files in one surface, in the community
-folder format on the public SDK only. Its `contributes.files` rules open JSON, JSONC, JSON5, JSON
+`endue.data` ("Data"), structured data and configuration files, each in a window of its own (ADR 0212),
+in the community folder format on the public SDK only. Its `contributes.files` rules open JSON, JSONC, JSON5, JSON
 Lines and NDJSON, YAML, TOML, XML, XSD and XSLT, property lists (XML and binary), INI, CFG and CONF,
 Java properties, dotenv (`.env`, `.env.*`), HCL and Terraform, MessagePack, CBOR and BSON.
 

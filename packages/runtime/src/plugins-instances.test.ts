@@ -180,6 +180,47 @@ describe("PluginHost with several windows of one plugin (ADR 0212)", () => {
     expect(posted(IMAGES)).toEqual([]);
   });
 
+  it("publishes every window's search documents together, and takes a closed window's away", async () => {
+    const published: Array<{ caller?: string; ids: string[] }> = [];
+    const { host, say, hello } = await mount({
+      "search.replace": (params, caller) => {
+        const { documents } = params as { documents: Array<{ id: string }> };
+        published.push({ caller, ids: documents.map((d) => d.id) });
+        return {};
+      },
+    });
+    const second = host.another(IMAGES);
+    hello(second);
+    const replace = (id: number, ...ids: string[]) => ({
+      type: "desk:calls",
+      calls: [
+        {
+          id,
+          method: "search.replace",
+          params: { documents: ids.map((path) => ({ id: path, title: path })) },
+        },
+      ],
+    });
+    say(IMAGES, replace(1, "~/a.md"));
+    await tick();
+    say(second, replace(2, "~/b.md", "~/c.md"));
+    await tick();
+    say(IMAGES, replace(3, "~/a.md", "~/d.md"));
+    await tick();
+    host.unmount(second);
+    await tick();
+    expect(published).toEqual([
+      { caller: IMAGES, ids: ["~/a.md"] },
+      { caller: IMAGES, ids: ["~/a.md", "~/b.md", "~/c.md"] },
+      { caller: IMAGES, ids: ["~/b.md", "~/c.md", "~/a.md", "~/d.md"] },
+      { caller: IMAGES, ids: ["~/a.md", "~/d.md"] },
+    ]);
+    // The plugin turning off leaves its last documents, as one window always did.
+    host.unmount(IMAGES);
+    await tick();
+    expect(published).toHaveLength(4);
+  });
+
   it("keeps each window's state and sleep apart", async () => {
     const { host, say, hello } = await mount();
     const second = host.another(IMAGES);

@@ -1,7 +1,7 @@
 # plugins/images
 
-`endue.images` ("Images") opens every still image in one viewer, in the community folder format and
-on the public SDK only. It shows; it never writes a file (`desk.files.save` is refused).
+`endue.images` ("Images") opens each still image in a viewer window of its own (`instances: "per-file"`,
+ADR 0212; walking a folder stays in it), in the community folder format and on the public SDK only. It shows; it never writes a file (`desk.files.save` is refused).
 
 - This build's engine (Chromium, ADR 0143) decodes PNG, APNG, JPEG, GIF, WebP, AVIF, JPEG XL, BMP,
   ICO, CUR and SVG (SVGZ is gunzipped first; SVG goes into an `<img>`, so its scripts never run).

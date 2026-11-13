@@ -22,6 +22,8 @@ declare global {
       bridge: BrowserBridge;
       /** The core's stub, to emit plugin.changed and the like. */
       stub: BrowserStub;
+      /** The files on the fixture's disk (?files=1), by path, as data URLs (file-viewers.ts). */
+      files: Record<string, string>;
       step(ms: number): void;
       envelopes: { user: Envelope; eris: Envelope };
     };

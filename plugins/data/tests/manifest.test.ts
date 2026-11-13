@@ -65,7 +65,9 @@ describe("plugin.json", () => {
     expect(data.entry).toBe("ui/index.html");
     expect(existsSync(join(folder, data.entry ?? "missing"))).toBe(true);
     expect(data).toMatchObject({ id: "endue.data", name: "Data", kind: "ui" });
-    expect(data.surfaces).toEqual([{ id: "main", title: "Data", placement: "center" }]);
+    expect(data.surfaces).toEqual([
+      { id: "main", title: "Data", placement: "center", instances: "per-file" },
+    ]);
     expect(data.contributes?.files).toEqual(
       PATTERNS.map((pattern) => ({ pattern, plugin: "endue.data" })),
     );

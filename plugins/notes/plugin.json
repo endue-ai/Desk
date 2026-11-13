@@ -23,7 +23,8 @@
     {
       "id": "main",
       "title": "Notes",
-      "placement": "center"
+      "placement": "center",
+      "instances": "per-file"
     }
   ],
   "contributes": {

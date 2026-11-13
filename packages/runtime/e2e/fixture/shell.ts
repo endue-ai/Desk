@@ -37,7 +37,7 @@ import { proposalFor } from "../../src/propose/fixtures";
 import { mountDesk } from "../../src/shell/Desk";
 import { sampleState } from "../../src/shell/state";
 import testTheme from "../themes/test-theme/plugin.json";
-import { fileHandlers, grantFilePlugins } from "./file-viewers";
+import { fileHandlers, files as fixtureFiles, grantFilePlugins } from "./file-viewers";
 import { heavyHandlers } from "./heavy-files";
 import { fixtureWm } from "./wm";
 import { pageWindowManager } from "./wm-host";
@@ -227,6 +227,7 @@ window.__shell = {
   clock,
   bridge,
   stub: core.stub,
+  files: fixtureFiles,
   step,
   envelopes: { user: userHello as Envelope, eris: erisReply as Envelope },
 };

@@ -42,7 +42,9 @@ describe("plugin.json", () => {
     expect(images.entry).toBe("ui/index.html");
     expect(existsSync(join(folder, images.entry ?? "missing"))).toBe(true);
     expect(images).toMatchObject({ id: "endue.images", name: "Images", kind: "ui" });
-    expect(images.surfaces).toEqual([{ id: "main", title: "Images", placement: "center" }]);
+    expect(images.surfaces).toEqual([
+      { id: "main", title: "Images", placement: "center", instances: "per-file" },
+    ]);
     expect(images.contributes?.files).toEqual(
       EXTENSIONS.map((ext) => ({ pattern: `*.${ext}`, plugin: "endue.images" })),
     );

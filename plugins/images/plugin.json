@@ -20,7 +20,8 @@
     {
       "id": "main",
       "title": "Images",
-      "placement": "center"
+      "placement": "center",
+      "instances": "per-file"
     }
   ],
   "contributes": {

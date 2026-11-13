@@ -16,7 +16,8 @@
     {
       "id": "main",
       "title": "Data",
-      "placement": "center"
+      "placement": "center",
+      "instances": "per-file"
     }
   ],
   "contributes": {

@@ -214,6 +214,14 @@ defineUiPlugin({
 `ctx.theme` 으로 전달됩니다. 프레임 안에서 누른 키 조합은 `preventDefault()` 를 부르지 않는 한 데스크의
 키맵에 전달됩니다. 기본 정책과 각각이 정하는 것은 `plugins/README.md` 에 있습니다.
 
+한 번에 파일 하나를 보여 주는 오프너는 파일마다 자기 창에 열 수 있습니다. 첫 서피스에
+`"instances": "per-file"` 을 주세요 (ADR 0212). 그러면 데스크는 사람이 여는 파일마다 창을 하나씩 열고,
+각 창은 `<surface>--<n>.<label>` 위의 별도 페이지가 되며, 각 창에는 자기 파일의 `desk.files.visit`,
+`desk.files.revert`, `desk.buffers.show` 만 보냅니다. 이미 열린 파일을 열면 그 창이 앞으로 오고,
+페이지가 스스로 연 파일(`desk.files.open`)은 그 페이지의 창에 남습니다. `ctx.instance` 는 창의 이름입니다.
+`<plugin id>@<n>` 이고, 첫 창은 플러그인 id 입니다. 모든 창은 플러그인으로서 호출하며 그 권한·설정·커맨드를
+쓰고, 자기 `state` 를 따로 갖습니다. 설정 `desk.files.window: shared` 는 모든 파일을 창 하나로 엽니다.
+
 ## 에이전트를 위한 커맨드
 
 endue AI 의 에이전트나 로컬 두뇌는 사람이 실행하는 것과 같은 커맨드로 데스크를 다룹니다(ADR 0088). 커맨드에

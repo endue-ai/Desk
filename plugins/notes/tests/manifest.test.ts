@@ -41,7 +41,9 @@ describe("plugin.json", () => {
     expect(notes.entry).toBe("ui/index.html");
     expect(existsSync(join(folder, notes.entry ?? "missing"))).toBe(true);
     expect(notes).toMatchObject({ id: "endue.notes", name: "Notes", kind: "ui" });
-    expect(notes.surfaces).toEqual([{ id: "main", title: "Notes", placement: "center" }]);
+    expect(notes.surfaces).toEqual([
+      { id: "main", title: "Notes", placement: "center", instances: "per-file" },
+    ]);
     expect(notes.contributes?.files).toEqual([
       { pattern: "*.md", plugin: "endue.notes" },
       { pattern: "*.txt", plugin: "endue.notes" },

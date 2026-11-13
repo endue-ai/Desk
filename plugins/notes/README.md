@@ -5,8 +5,8 @@ only. Its `contributes.files` rule opens `*.md` and `*.txt` (anywhere: the grant
 where it reads without asking) in one plain text area on the grid; `Mod+O` with a path opens one.
 
 It answers the desk's `desk.files.visit`, `.save` and `.revert` (`{ buffer, path }`) and
-`desk.buffers.show` (a listed note it lost opens again) and `.closed`. Several notes can be open; the
-text area shows one. The first edit after a load or save runs `desk.buffers.update { id, modified: true }`;
+`desk.buffers.show` (a listed note it lost opens again) and `.closed`. Each note opens in a window of
+its own (ADR 0212). The first edit after a load or save runs `desk.buffers.update { id, modified: true }`;
 `fs.watch` on each open file runs `desk.files.changed { path }`, and `desk.files.on-change` decides.
 Asleep out of sight (`ui.surface.state`, ADR 0070, ADR 0176), the SDK's `keepFiles` keeps its notes, watches,
 caret, scroll and unsaved text (whole, or its change from the saved text); back, it neither asks nor takes the focus.
