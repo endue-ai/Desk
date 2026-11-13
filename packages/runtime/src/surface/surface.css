@@ -3,12 +3,16 @@
 .surfaces { position: absolute; inset: 0; pointer-events: none; }
 
 .surface {
+  /* The radius inside its border, which its title bar and body round to. */
+  --surface-inner-radius: max(0px, calc(var(--radius-lg) - var(--desk-border-width)));
   position: absolute;
   display: grid;
   grid-template-rows: 40px minmax(0, 1fr);
   /* One column the width of the surface: a long title never pushes the tools out. */
   grid-template-columns: minmax(0, 1fr);
-  overflow: hidden;
+  /* No clip here: the title bar and the body clip themselves to the rounded corners, and the
+     corner grips lie whole over them, so a press anywhere in a corner's grip resizes, where the
+     compositor shows the resize cursor (desk-wm's grip), and never pans the canvas under it. */
   border: var(--desk-border-width) solid var(--desk-border);
   border-radius: var(--radius-lg);
   /* A translucent theme sets --desk-surface (the card mixed with transparency) and a blur. */
@@ -48,6 +52,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--surface-inner-radius) var(--surface-inner-radius) 0 0;
   height: 40px;
   padding: 0 var(--space-2) 0 var(--space-3);
   border-bottom: 1px solid var(--desk-border);
@@ -86,7 +92,11 @@
 .tool:hover { color: var(--desk-text); }
 .tool[aria-pressed="true"] { color: var(--desk-accent); }
 
-.surface-body { min-height: 0; overflow: auto; }
+.surface-body {
+  min-height: 0;
+  overflow: auto;
+  border-radius: 0 0 var(--surface-inner-radius) var(--surface-inner-radius);
+}
 .surface-resize { position: absolute; z-index: 2; touch-action: none; }
 .surface-resize[data-resize="n"], .surface-resize[data-resize="s"] { left: 16px; right: 16px; height: 6px; cursor: ns-resize; }
 .surface-resize[data-resize="e"], .surface-resize[data-resize="w"] { top: 16px; bottom: 16px; width: 6px; cursor: ew-resize; }
@@ -99,9 +109,15 @@
 .surface-resize[data-resize="nw"] { left: 0; top: 0; cursor: nwse-resize; }
 .surface-resize[data-resize="ne"] { right: 0; top: 0; cursor: nesw-resize; }
 .surface-resize[data-resize="sw"] { left: 0; bottom: 0; cursor: nesw-resize; }
-.surface-resize[data-resize="se"] {
-  right: 0; bottom: 0; cursor: nwse-resize;
+.surface-resize[data-resize="se"] { right: 0; bottom: 0; cursor: nwse-resize; }
+/* Its mark is drawn inside the rounded corner; the grip takes the press all the way into it. */
+.surface-resize[data-resize="se"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-bottom-right-radius: var(--surface-inner-radius);
   background: linear-gradient(135deg, transparent 50%, var(--desk-input) 50%, var(--desk-input) 58%, transparent 58%, transparent 72%, var(--desk-input) 72%, var(--desk-input) 80%, transparent 80%);
+  pointer-events: none;
 }
 
 /* The calendar, tomorrow and notes samples: universal views (ADR 0103) that fill their pane. */
