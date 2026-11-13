@@ -297,3 +297,27 @@ fn directory_tasks_become_runs() {
         assert_eq!(agent(&core, target)["source"], "directory");
     }
 }
+
+#[test]
+fn each_change_of_a_run_tells_the_perm_manage_holders() {
+    let (core, deliveries) = core("runs-changed");
+    invoke(&core, SEARCH, json!({})).unwrap();
+    let started = wait_for(&deliveries, "agent.changed");
+    assert_eq!(started.to, strings(&["desk"]));
+    let run = runs(&core)[0]["id"].clone();
+    assert_eq!(started.data(), &json!({ "agent": "mira", "runId": run }));
+    plugin_answers(&core, &deliveries, json!({ "text": "Done." }), None);
+    let ended = wait_for(&deliveries, "agent.changed");
+    assert_eq!(ended.data(), &json!({ "agent": "mira", "runId": run }));
+    assert_eq!(agent(&core, "mira")["state"], "idle");
+
+    // A plugin's reported run too, by its registry id.
+    let report = json!({ "id": "r1", "agent": { "id": "codex", "name": "Codex" },
+        "title": "Run the tests", "state": "running", "startedAt": "2026-11-13T09:40:00Z" });
+    call(&core, "endue.local-agents", "agent.report", report).unwrap();
+    let reported = wait_for(&deliveries, "agent.changed");
+    assert_eq!(
+        reported.data(),
+        &json!({ "agent": "endue.local-agents/codex", "runId": "r1" })
+    );
+}

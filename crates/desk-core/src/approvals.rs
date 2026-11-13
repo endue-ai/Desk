@@ -15,9 +15,9 @@ use std::sync::MutexGuard;
 use std::sync::mpsc::{self, Sender};
 
 use desk_bridge::{
-    ApprovalAnswer, BridgeError, BridgeEvent, ErrorCode, GrantDuration, LogLevel,
-    PermApprovalDoneData, PermApprovalDoneEvent, PermApprovalEvent, PermApproveParams,
-    PermApproveResult, Permission,
+    ApprovalAnswer, BridgeError, BridgeEvent, ErrorCode, GrantDuration, LogLevel, PendingKind,
+    PermApprovalData, PermApprovalDoneData, PermApprovalDoneEvent, PermApprovalEvent,
+    PermApproveParams, PermApproveResult, Permission,
 };
 use serde_json::{Map, Value, json};
 
@@ -40,6 +40,9 @@ enum Verdict {
 struct Waiting {
     task: Option<String>,
     reply: Sender<Verdict>,
+    /// What its perm.approval said, for perm.pending, and its place in the order they came.
+    seq: u64,
+    data: PermApprovalData,
 }
 
 /// What a `task` answer approved: `scope` for `caller` until `task` ends.
@@ -165,6 +168,7 @@ impl Core {
             }
             waiting
         };
+        self.settled(PendingKind::Approval, &id);
         let _ = waiting.reply.send(match params.answer {
             ApprovalAnswer::Once => Verdict::Once,
             ApprovalAnswer::Task => Verdict::Task,
@@ -177,6 +181,9 @@ impl Core {
     /// False when nothing waits under that id.
     pub(crate) fn deny_approval(&self, id: &str) -> bool {
         let waiting = self.approvals().waiting.remove(id);
+        if waiting.is_some() {
+            self.settled(PendingKind::Approval, id);
+        }
         waiting.is_some_and(|w| w.reply.send(Verdict::Deny).is_ok())
     }
 
@@ -216,6 +223,14 @@ impl Core {
     /// that agent's invocation belongs to it too (ADR 0123).
     pub(crate) fn turn_of(&self, caller: &str) -> Option<String> {
         self.approvals().turns.get(caller).cloned()
+    }
+
+    /// The approvals waiting for the person, oldest first, as their perm.approval said them.
+    pub(crate) fn waiting_approvals(&self) -> Vec<PermApprovalData> {
+        let approvals = self.approvals();
+        let mut waiting: Vec<&Waiting> = approvals.waiting.values().collect();
+        waiting.sort_by_key(|w| w.seq);
+        waiting.into_iter().map(|w| w.data.clone()).collect()
     }
 
     /// With no perm:manage holder left, the Prompter decides every waiting approval.
@@ -264,24 +279,29 @@ impl Core {
         task: Option<&str>,
     ) -> (String, Verdict) {
         let holders = self.holders(&perm_manage());
-        let (id, answered) = {
+        let seq = {
             let mut approvals = self.approvals();
             approvals.next += 1;
-            let id = format!("a-{}", approvals.next);
-            if holders.is_empty() || !self.events().has_router() {
-                return (id, Verdict::Unheard);
-            }
-            let (reply, answered) = mpsc::channel();
-            let task = task.map(str::to_owned);
-            approvals
-                .waiting
-                .insert(id.clone(), Waiting { task, reply });
-            (id, answered)
+            approvals.next
         };
+        let id = format!("a-{seq}");
+        if holders.is_empty() || !self.events().has_router() {
+            return (id, Verdict::Unheard);
+        }
+        // The preview may read a file: made before the approval waits, outside the lock.
+        let data = action.data(caller, scope, &id, task);
+        let (reply, answered) = mpsc::channel();
+        let waiting = Waiting {
+            task: task.map(str::to_owned),
+            reply,
+            seq,
+            data: data.clone(),
+        };
+        self.approvals().waiting.insert(id.clone(), waiting);
         self.run_waits(&id);
         let event = BridgeEvent::PermApproval(PermApprovalEvent {
             event: Default::default(),
-            data: action.data(caller, scope, &id, task),
+            data,
         });
         if self.events().route(holders, event) == 0 {
             self.approvals().waiting.remove(&id);

@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.pending of what waits for the person, under perm:manage",
+  "instance": {
+    "id": 43,
+    "method": "perm.pending",
+    "params": {
+      "scope": {
+        "permission": "perm:manage"
+      }
+    }
+  }
+}

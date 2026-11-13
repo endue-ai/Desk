@@ -12,7 +12,7 @@ use std::sync::MutexGuard;
 use std::sync::mpsc::{self, Sender};
 
 use desk_bridge::{
-    BridgeEvent, ErrorCode, Grant, GrantDuration, PermAnswerParams, PermAnswerResult,
+    BridgeEvent, ErrorCode, Grant, GrantDuration, PendingKind, PermAnswerParams, PermAnswerResult,
     PermPromptData, PermPromptEvent, Permission,
 };
 
@@ -34,12 +34,11 @@ pub(crate) enum Outcome {
     Unheard,
 }
 
-/// A prompt that is out, with every identical request waiting for its answer.
+/// A prompt that is out, as its perm.prompt said it and in the order prompts went out, with every
+/// identical request waiting for its answer.
 struct Waiting {
-    caller: String,
-    permission: Permission,
-    duration: GrantDuration,
-    parent: Option<Permission>,
+    seq: u64,
+    data: PermPromptData,
     replies: Vec<Sender<Outcome>>,
 }
 
@@ -81,7 +80,7 @@ impl Core {
             let same = prompts
                 .waiting
                 .values_mut()
-                .find(|w| w.caller == caller && w.permission == *permission);
+                .find(|w| w.data.caller == caller && w.data.permission == *permission);
             match same {
                 Some(waiting) => waiting.replies.push(reply),
                 None => {
@@ -93,27 +92,24 @@ impl Core {
                         .filter(|offer| self.capped(caller, offer).is_none());
                     prompts.next += 1;
                     let prompt_id = format!("p-{}", prompts.next);
+                    let data = PermPromptData {
+                        prompt_id: prompt_id.clone(),
+                        caller: caller.to_owned(),
+                        permission: permission.clone(),
+                        reason: (!reason.is_empty()).then(|| reason.to_owned()),
+                        duration,
+                        parent,
+                    };
                     let event = BridgeEvent::PermPrompt(PermPromptEvent {
                         event: Default::default(),
-                        data: PermPromptData {
-                            prompt_id: prompt_id.clone(),
-                            caller: caller.to_owned(),
-                            permission: permission.clone(),
-                            reason: (!reason.is_empty()).then(|| reason.to_owned()),
-                            duration,
-                            parent: parent.clone(),
-                        },
+                        data: data.clone(),
                     });
-                    prompts.waiting.insert(
-                        prompt_id.clone(),
-                        Waiting {
-                            caller: caller.to_owned(),
-                            permission: permission.clone(),
-                            duration,
-                            parent,
-                            replies: vec![reply],
-                        },
-                    );
+                    let waiting = Waiting {
+                        seq: prompts.next,
+                        data,
+                        replies: vec![reply],
+                    };
+                    prompts.waiting.insert(prompt_id.clone(), waiting);
                     if self.events().route(holders, event) == 0 {
                         prompts.waiting.remove(&prompt_id);
                         return Outcome::Unheard;
@@ -138,31 +134,34 @@ impl Core {
                 let missing = format!("no prompt {id} is waiting");
                 return Err(error(ErrorCode::NotFound, missing));
             };
-            if widen && waiting.parent.is_none() {
+            if widen && waiting.data.parent.is_none() {
                 // The prompt keeps waiting for an answer it can take.
                 prompts.waiting.insert(id.clone(), waiting);
                 let none = format!("prompt {id} offers no parent");
                 return Err(error(ErrorCode::InvalidParams, none));
             }
             if !params.granted {
-                prompts.policy.refuse(&waiting.caller, &waiting.permission);
+                prompts
+                    .policy
+                    .refuse(&waiting.data.caller, &waiting.data.permission);
             }
             waiting
         };
+        self.settled(PendingKind::Prompt, &waiting.data.prompt_id);
         if !params.granted {
             waiting.tell(&Outcome::Refused);
             return json(PermAnswerResult {});
         }
-        let duration = params.duration.unwrap_or(waiting.duration);
-        let permission = match (widen, &waiting.parent) {
+        let duration = params.duration.unwrap_or(waiting.data.duration);
+        let permission = match (widen, &waiting.data.parent) {
             (true, Some(parent)) => parent.clone(),
-            _ => waiting.permission.clone(),
+            _ => waiting.data.permission.clone(),
         };
         let mut shared: Option<Grant> = None;
         for reply in &waiting.replies {
             let grant = match &shared {
                 Some(grant) if duration != GrantDuration::Once => grant.clone(),
-                _ => self.grant_for(&waiting.caller, permission.clone(), duration),
+                _ => self.grant_for(&waiting.data.caller, permission.clone(), duration),
             };
             shared = Some(grant.clone());
             let _ = reply.send(Outcome::Granted(grant));
@@ -182,13 +181,26 @@ impl Core {
 
     /// `caller` unloaded: its waiting requests end `cancelled` and their prompts are gone.
     pub(crate) fn withdraw_prompts(&self, caller: &str) {
-        self.prompts().waiting.retain(|_, waiting| {
-            if waiting.caller != caller {
+        let mut gone = Vec::new();
+        self.prompts().waiting.retain(|id, waiting| {
+            if waiting.data.caller != caller {
                 return true;
             }
             waiting.tell(&Outcome::Withdrawn);
+            gone.push(id.clone());
             false
         });
+        for id in gone {
+            self.settled(PendingKind::Prompt, &id);
+        }
+    }
+
+    /// The prompts waiting for the person, oldest first, as their perm.prompt said them.
+    pub(crate) fn waiting_prompts(&self) -> Vec<PermPromptData> {
+        let prompts = self.prompts();
+        let mut waiting: Vec<&Waiting> = prompts.waiting.values().collect();
+        waiting.sort_by_key(|w| w.seq);
+        waiting.into_iter().map(|w| w.data.clone()).collect()
     }
 
     /// With no perm:manage holder left, the Prompter decides every waiting prompt and approval, so no

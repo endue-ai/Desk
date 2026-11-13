@@ -2391,6 +2391,18 @@ export interface AgentCancelledEvent {
   data: AgentCancelledData;
 }
 
+/** Payload of agent.changed: the agent one of whose runs started, waits, went on or ended. */
+export interface AgentChangedData {
+  agent: AgentId;
+  runId: ItemId;
+}
+
+/** One of an agent's runs changed: kept, waiting for an approval, going on or ended. Sent to callers that hold perm:manage, so what shows the agents at work (the island, ADR 0204) reads agent.list again. */
+export interface AgentChangedEvent {
+  event: "agent.changed";
+  data: AgentChangedData;
+}
+
 /** A program the core knows: claude (Claude Code, Anthropic) or codex (Codex, OpenAI). */
 export type LocalAgentId = "claude" | "codex";
 
@@ -3083,6 +3095,7 @@ export type BridgeRequest =
   | PermListRequest
   | PermAnswerRequest
   | PermApproveRequest
+  | PermPendingRequest
   | PluginListRequest
   | PluginSetEnabledRequest
   | PluginStatsRequest
@@ -3249,6 +3262,7 @@ export type BridgeEvent =
   | PermPromptEvent
   | PermApprovalEvent
   | PermApprovalDoneEvent
+  | PermSettledEvent
   | PluginChangedEvent
   | UiNotifiedEvent
   | UiSurfaceOpenedEvent
@@ -3270,6 +3284,7 @@ export type BridgeEvent =
   | AgentsChangedEvent
   | MemoryChangedEvent
   | AgentCancelledEvent
+  | AgentChangedEvent
   | ComputerActivityEvent;
 
 /** Describe what the caller can bind, show and run. */
@@ -5272,6 +5287,39 @@ export interface PermApprovalDoneData {
   undoable?: boolean;
 }
 
+/** What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait (the island, ADR 0204). */
+export interface PermPendingRequest {
+  id: RequestId;
+  method: "perm.pending";
+  params: PermPendingParams;
+}
+
+/** Parameters of perm.pending. */
+export interface PermPendingParams {
+  scope: PermManagePermission;
+}
+
+/** Result of perm.pending: the prompts and the approvals waiting, each oldest first, as their events said them. */
+export interface PermPendingResult {
+  prompts: PermPromptData[];
+  approvals: PermApprovalData[];
+}
+
+/** A prompt or an approval stopped waiting: a holder answered it, its caller unloaded, or the Prompter decided it with nobody left to ask. Sent to callers that hold perm:manage, so every prompter takes down the card another one answered (ADR 0204). */
+export interface PermSettledEvent {
+  event: "perm.settled";
+  data: PermSettledData;
+}
+
+/** Payload of perm.settled: which card, by its kind and its id (perm.prompt's promptId or perm.approval's approvalId). */
+export interface PermSettledData {
+  kind: PendingKind;
+  id: string;
+}
+
+/** prompt: a perm.prompt (promptId). approval: a perm.approval (approvalId). */
+export type PendingKind = "prompt" | "approval";
+
 /** One of the caller's grants changed. */
 export interface PermChangedEvent {
   event: "perm.changed";
@@ -7032,6 +7080,7 @@ export interface BridgeMethodMap {
   "perm.list": { params: PermListParams; result: PermListResult };
   "perm.answer": { params: PermAnswerParams; result: PermAnswerResult };
   "perm.approve": { params: PermApproveParams; result: PermApproveResult };
+  "perm.pending": { params: PermPendingParams; result: PermPendingResult };
   "plugin.list": { params: PluginListParams; result: PluginListResult };
   "plugin.setEnabled": { params: PluginSetEnabledParams; result: PluginSetEnabledResult };
   "plugin.stats": { params: PluginStatsParams; result: PluginStatsResult };
@@ -7211,6 +7260,7 @@ export const BRIDGE_METHODS = [
   "perm.list",
   "perm.answer",
   "perm.approve",
+  "perm.pending",
   "plugin.list",
   "plugin.setEnabled",
   "plugin.stats",

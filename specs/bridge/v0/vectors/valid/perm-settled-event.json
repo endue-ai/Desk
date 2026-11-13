@@ -1,0 +1,11 @@
+{
+  "target": "BridgeEvent",
+  "description": "a prompt another prompter answered stops waiting",
+  "instance": {
+    "event": "perm.settled",
+    "data": {
+      "kind": "prompt",
+      "id": "p-3"
+    }
+  }
+}

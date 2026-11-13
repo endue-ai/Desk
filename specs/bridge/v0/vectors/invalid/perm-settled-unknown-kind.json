@@ -1,0 +1,11 @@
+{
+  "target": "BridgeEvent",
+  "description": "perm.settled names only a prompt or an approval",
+  "instance": {
+    "event": "perm.settled",
+    "data": {
+      "kind": "notice",
+      "id": "n-1"
+    }
+  }
+}
