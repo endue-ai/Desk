@@ -5,7 +5,7 @@
 import { createConnection, type Socket } from "node:net";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { dataDir } from "../../support/cef";
+import { dataDir } from "../../support/cef.ts";
 
 type Line = {
   id?: number;

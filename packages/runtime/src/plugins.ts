@@ -18,6 +18,7 @@ import {
   routeEvent,
 } from "./plugins-events";
 import { PluginGreetings } from "./plugins-greetings";
+import { WindowSearch } from "./plugins-search";
 import { now, phase } from "./timing";
 
 export type { PluginHostDeps, PluginHostOptions } from "./plugin-host-deps";
@@ -36,6 +37,7 @@ export class PluginHost {
   readonly #mounted = new Map<string, PluginInfo>();
   /** The windows of the mounted plugins: what the per-frame maps below are keyed by. */
   readonly #instances = new PluginInstances();
+  readonly #search = new WindowSearch(this.#instances, this.#mounted);
   readonly #state = new Map<string, unknown>();
   /** Turns, watches, subscriptions and processes, by window: kept while one is put away (#160). */
   readonly #owners = new Owners();
@@ -139,9 +141,7 @@ export class PluginHost {
   inUse(plugin: string): string | undefined {
     return this.#instances.inUse(plugin);
   }
-  focused(key: string): void {
-    this.#instances.touch(key);
-  }
+  readonly focused = (key: string): void => this.#instances.touch(key);
 
   /** Whether a window has no live frame until its next hello: it started asleep, or unloaded. */
   asleep(id: string): boolean {
@@ -291,7 +291,7 @@ export class PluginHost {
     const opened = !this.#sleepers.dozing(key);
     this.#sleepers.forget(key);
     this.#cancel(key, "stopped before it answered");
-    // Its key is never used again this session (`PluginInstances.mint`).
+    this.#search.closed(key, this.#deps.bridge);
     if (key !== pluginOf(key)) {
       this.#state.delete(key);
       this.#owners.drop(key);
@@ -386,7 +386,7 @@ export class PluginHost {
         void Promise.all(
           message.calls.map(async (request) => ({
             request,
-            response: await this.#deps.bridge.forward(request, pluginOf(id)),
+            response: await this.#deps.bridge.forward(...this.#search.call(id, request)),
           })),
         ).then((answers) => {
           const results = answers.map(({ request, response }) => ({ id: request.id, response }));

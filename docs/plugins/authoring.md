@@ -221,6 +221,15 @@ work with `desk.buffers.update { id, modified: true }`. The theme reaches your f
 properties and `ctx.theme`. Key chords pressed in your frame reach the desk's keymap unless you call
 `preventDefault()`. The defaults, and what each one decides, are listed in `plugins/README.md`.
 
+An opener that shows one file at a time can open each file in a window of its own: give its first
+surface `"instances": "per-file"` (ADR 0212). The desk then opens a window for each file the person
+opens, each a page of its own on `<surface>--<n>.<label>`, and sends each window only its own file's
+`desk.files.visit`, `desk.files.revert` and `desk.buffers.show`. Opening an open file brings its window
+forward, and a file your page opens itself (`desk.files.open`) stays in that page's window.
+`ctx.instance` names the window: `<plugin id>@<n>`, or your plugin id for the first. Every window calls
+as your plugin, with its grants, settings and commands, and keeps its own `state`. The setting
+`desk.files.window: shared` keeps one window for every file.
+
 ## Commands for agents
 
 An agent of endue AI, or the local brain, works the desk through the same commands people run (ADR

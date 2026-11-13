@@ -1,21 +1,27 @@
 // Real image fixtures in the real Images and Explorer frames, under the app's plugin CSP.
 import type { StubHandlers } from "@endue-ai/bridge";
 import png from "../../../../plugins/images/tests/fixtures/exif.png?inline";
+import grey from "../../../../plugins/images/tests/fixtures/grey.jpg?inline";
 import jpeg from "../../../../plugins/images/tests/fixtures/small.jpg?inline";
 import type { BrowserCore } from "../../src/bridge/core";
 
-const files = { "~/Documents/photo.jpg": jpeg, "~/Documents/picture.png": png };
+/** The files on the fixture's disk, as data URLs: a test may change one (`__shell.files`). */
+export const files: Record<string, string> = {
+  "~/Documents/photo.jpg": jpeg,
+  "~/Documents/picture.png": png,
+  "~/Documents/grey.jpg": grey,
+};
 const bytesOf = (url: string) =>
   Uint8Array.from(atob(url.split(",")[1] ?? ""), (c) => c.charCodeAt(0));
 
 export const fileHandlers: StubHandlers = {
   "fs.url": ({ path }) => {
-    const url = files[path as keyof typeof files];
+    const url = files[path];
     if (!url) throw new Error(`No fixture ${path}`);
     return { url, type: url.slice(5, url.indexOf(";")), size: bytesOf(url).length };
   },
   "fs.read": ({ path, offset = 0, length, encoding = "utf8" }) => {
-    const url = files[path as keyof typeof files];
+    const url = files[path];
     if (!url) throw new Error(`No fixture ${path}`);
     const bytes = bytesOf(url);
     const part = bytes.subarray(offset, length === undefined ? undefined : offset + length);

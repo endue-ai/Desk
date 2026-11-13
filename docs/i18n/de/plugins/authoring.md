@@ -230,6 +230,16 @@ Das Theme erreicht Ihren Frame als CSS-Eigenschaften `--desk-*` und als `ctx.the
 die in Ihrem Frame gedrückt werden, erreichen die Tastenbelegung des Desks, außer Sie rufen
 `preventDefault()` auf. Die Standardrichtlinien und was jede entscheidet, stehen in `plugins/README.md`.
 
+Ein Öffner, der jeweils eine Datei zeigt, kann jede Datei in einem eigenen Fenster öffnen: Geben Sie
+seiner ersten Oberfläche `"instances": "per-file"` (ADR 0212). Der Desk öffnet dann für jede Datei, die
+die Person öffnet, ein Fenster, jedes eine eigene Seite auf `<surface>--<n>.<label>`, und schickt jedem
+Fenster nur `desk.files.visit`, `desk.files.revert` und `desk.buffers.show` seiner eigenen Datei. Eine
+bereits offene Datei zu öffnen holt ihr Fenster nach vorn, und eine Datei, die Ihre Seite selbst öffnet
+(`desk.files.open`), bleibt im Fenster dieser Seite. `ctx.instance` benennt das Fenster:
+`<plugin id>@<n>`, oder Ihre Plugin-ID für das erste. Jedes Fenster ruft als Ihr Plugin auf, mit dessen
+Berechtigungen, Einstellungen und Befehlen, und behält seinen eigenen `state`. Die Einstellung
+`desk.files.window: shared` behält ein Fenster für alle Dateien.
+
 ## Befehle für Agenten
 
 Ein Agent von endue AI oder das lokale Gehirn arbeitet auf dem Desk mit denselben Befehlen, die Menschen

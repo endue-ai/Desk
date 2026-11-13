@@ -169,6 +169,14 @@ defineUiPlugin({
 传到你的框架。在框架里按下的组合键会传到桌面的按键映射，除非你调用了 `preventDefault()`。默认策略及其各自
 决定的内容见 `plugins/README.md`。
 
+一次只显示一个文件的打开器，可以让每个文件在自己的窗口中打开：给它的第一个界面加上
+`"instances": "per-file"`（ADR 0212）。桌面会为用户打开的每个文件开一个窗口，每个窗口都是
+`<surface>--<n>.<label>` 上独立的页面，并且只把该文件的 `desk.files.visit`、`desk.files.revert` 和
+`desk.buffers.show` 发给它。打开一个已打开的文件会把它的窗口带到前面；你的页面自己打开的文件
+（`desk.files.open`）留在该页面的窗口里。`ctx.instance` 是窗口的名字：`<plugin id>@<n>`，第一个窗口则是
+插件 ID。每个窗口都以你的插件身份调用，使用它的授权、设置和命令，并保留自己的 `state`。设置
+`desk.files.window: shared` 会让所有文件共用一个窗口。
+
 ## 供代理使用的命令
 
 endue AI 的代理或本地大脑，通过人所运行的同一套命令操作桌面（ADR 0088）。给命令标上 `agent`，并写明它做什么、

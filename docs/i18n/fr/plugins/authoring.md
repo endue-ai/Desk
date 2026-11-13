@@ -228,6 +228,16 @@ dans votre cadre sous forme de propriétés CSS `--desk-*` et de `ctx.theme`. Le
 pressées dans votre cadre atteignent le keymap du bureau, sauf si vous appelez `preventDefault()`. Les
 politiques par défaut, et ce que chacune décide, sont listées dans `plugins/README.md`.
 
+Un ouvreur qui montre un fichier à la fois peut ouvrir chaque fichier dans une fenêtre à lui : donnez à
+sa première surface `"instances": "per-file"` (ADR 0212). Le bureau ouvre alors une fenêtre pour chaque
+fichier que la personne ouvre, chacune une page à part sur `<surface>--<n>.<label>`, et n'envoie à chaque
+fenêtre que les `desk.files.visit`, `desk.files.revert` et `desk.buffers.show` de son propre fichier.
+Ouvrir un fichier déjà ouvert amène sa fenêtre au premier plan, et un fichier que votre page ouvre
+elle-même (`desk.files.open`) reste dans la fenêtre de cette page. `ctx.instance` nomme la fenêtre :
+`<plugin id>@<n>`, ou l'id de votre plugin pour la première. Chaque fenêtre appelle en tant que votre
+plugin, avec ses permissions, ses réglages et ses commandes, et garde son propre `state`. Le réglage
+`desk.files.window: shared` garde une seule fenêtre pour tous les fichiers.
+
 ## Des commandes pour les agents
 
 Un agent d'endue AI, ou le cerveau local, travaille le bureau avec les mêmes commandes que les personnes
