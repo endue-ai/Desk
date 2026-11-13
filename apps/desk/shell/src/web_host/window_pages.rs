@@ -18,11 +18,11 @@ use super::{DEFAULT_PACE, Record, WebHost, client, drag, frames, render};
 
 /// The popup name a window page opens under: this, then the window's id.
 pub const NAME: &str = "desk-window:";
-/// A popup's widget never takes the engine's focus off screen (`SetFocus` leaves its page without
-/// it), and a page without it fires no focus event, shows no caret and draws a selection greyed:
-/// the DevTools protocol's focus emulation gives a window page its focus as the desk's page has it.
+/// The DevTools protocol's focus emulation, on and off (`window_page_focus`).
 const FOCUSED: &[u8] =
     br#"{"id":1,"method":"Emulation.setFocusEmulationEnabled","params":{"enabled":true}}"#;
+const UNFOCUSED: &[u8] =
+    br#"{"id":2,"method":"Emulation.setFocusEmulationEnabled","params":{"enabled":false}}"#;
 /// A window page's surface id: this, then the window's id.
 pub const SURFACE: &str = "window:";
 
@@ -87,7 +87,6 @@ impl WebHost {
                     pacing: frames::Pacing::new(DEFAULT_PACE),
                     drag: drag::DragIds::default(),
                     composing: None,
-                    focused: false,
                 },
             );
         }
@@ -120,7 +119,6 @@ impl WebHost {
     pub fn place_window_pages(&self, placed: &[Placed]) {
         let now = std::time::Instant::now();
         let mut acts = Vec::new();
-        let mut focus = Vec::new();
         {
             let mut inner = self.inner();
             let pages = inner
@@ -142,10 +140,6 @@ impl WebHost {
                 if resized || shown_again {
                     record.pacing.heard(now);
                 }
-                if !hidden && !record.focused && record.browser.is_some() {
-                    record.focused = true;
-                    focus.extend(record.browser.as_ref().and_then(|b| b.host()));
-                }
                 for (due, action) in [
                     (resized, Action::Resize),
                     (shown_again, Action::Hide(hidden)),
@@ -164,10 +158,17 @@ impl WebHost {
         for (surface, action, view, browser) in acts {
             self.act(&surface, action, &view, browser.as_ref(), DEFAULT_PACE);
         }
-        for host in focus {
-            host.set_focus(1);
-            host.send_dev_tools_message(Some(FOCUSED));
-        }
+    }
+
+    /// Window page `surface` has the keys now (`focused`), or no more: its page has the engine's
+    /// focus while it has them. An off-screen popup's widget never takes it from `SetFocus`, and a
+    /// page without it shows no caret and draws a selection greyed, so the DevTools protocol's
+    /// focus emulation gives it; only while the keys are there, as it ends a plugin's open popup.
+    pub fn window_page_focus(&self, surface: &str, focused: bool) {
+        let Some(host) = self.browser(surface).and_then(|b| b.host()) else {
+            return;
+        };
+        host.send_dev_tools_message(Some(if focused { FOCUSED } else { UNFOCUSED }));
     }
 
     /// Window `window`'s page closed with its window: the host forgets it.
