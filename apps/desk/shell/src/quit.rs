@@ -6,11 +6,16 @@
 //! page that gives no first answer within [`ANSWER_WAIT`] (gone, hung, still starting) does not
 //! hold the quit: the desk quits as it did before. A quit asked again while the person decides
 //! asks the page again, so a page that died meanwhile cannot keep the desk from quitting.
+//!
+//! The desk's own page that stopped painting (#157) asks for a quit of its own (ADR 0202): the
+//! page hears `desk://quit` with `{ "why": "stalled" }`, asks nobody (a question it drew would not
+//! show), and answers `quit` only with nothing unsaved. That quit ends in a start of a new desk
+//! (`stall_restart.rs`); an `asking` or `stay` keeps this desk as it is.
 
 use std::time::Duration;
 
 use desk_web::sender::Role;
-use serde_json::Value;
+use serde_json::{Value, json};
 use winit::event_loop::ActiveEventLoop;
 
 use crate::window::Shell;
@@ -40,6 +45,26 @@ impl Answer {
     }
 }
 
+/// Why the desk quits.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Why {
+    /// The person asked.
+    #[default]
+    Person,
+    /// The desk's own page stopped painting: quit, then start a new desk (ADR 0202).
+    Stalled,
+}
+
+impl Why {
+    /// What the page hears with [`EVENT`].
+    pub fn payload(self) -> Value {
+        match self {
+            Why::Person => Value::Null,
+            Why::Stalled => json!({ "why": "stalled" }),
+        }
+    }
+}
+
 /// What the shell does next.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Step {
@@ -48,6 +73,7 @@ pub enum Step {
     Ask {
         n: u64,
         show: bool,
+        why: Why,
     },
     /// Bring the desk forward: the page asks the person there.
     Show,
@@ -59,43 +85,47 @@ pub enum Step {
 /// Where a quit is: none asked, or ask `n` waiting for the page, `holding` once it is asking.
 #[derive(Debug, Default)]
 pub struct Quit {
-    asked: Option<(u64, bool)>,
+    asked: Option<(u64, bool, Why)>,
     count: u64,
+    /// The quit that ended this desk was a stalled page's: start a new one.
+    restart: bool,
 }
 
 impl Quit {
-    /// The person asked to quit; `page` says whether the main page is there to ask.
-    pub fn requested(&mut self, page: bool) -> Step {
+    /// A quit is asked for `why`; `page` says whether the main page is there to ask.
+    pub fn requested(&mut self, page: bool, why: Why) -> Step {
         if !page {
             self.asked = None;
-            return Step::Quit;
+            return self.quit(why);
         }
-        let show = self.asked.is_some_and(|(_, holding)| holding);
+        let show = why == Why::Person && self.asked.is_some_and(|(_, holding, _)| holding);
         self.count += 1;
-        self.asked = Some((self.count, false));
+        self.asked = Some((self.count, false, why));
         Step::Ask {
             n: self.count,
             show,
+            why,
         }
     }
 
     /// The page answered; an answer to no quit asked (one after its wait ended) changes nothing.
     pub fn answered(&mut self, answer: Answer) -> Step {
-        let Some((n, _)) = self.asked else {
+        let Some((n, _, why)) = self.asked else {
             return Step::Nothing;
         };
-        match answer {
-            Answer::Asking => {
-                self.asked = Some((n, true));
-                Step::Show
-            }
-            Answer::Quit => {
-                self.asked = None;
-                Step::Quit
-            }
-            Answer::Stay => {
+        match (answer, why) {
+            // Nobody sees a question on a page that does not paint: the desk stays as it is.
+            (Answer::Asking, Why::Stalled) | (Answer::Stay, _) => {
                 self.asked = None;
                 Step::Nothing
+            }
+            (Answer::Asking, Why::Person) => {
+                self.asked = Some((n, true, why));
+                Step::Show
+            }
+            (Answer::Quit, _) => {
+                self.asked = None;
+                self.quit(why)
             }
         }
     }
@@ -103,22 +133,58 @@ impl Quit {
     /// The wait for ask `n`'s first answer ended: with none, the desk quits.
     pub fn waited(&mut self, n: u64) -> Step {
         match self.asked {
-            Some((asked, false)) if asked == n => {
+            Some((asked, false, why)) if asked == n => {
                 self.asked = None;
-                Step::Quit
+                self.quit(why)
             }
             _ => Step::Nothing,
         }
+    }
+
+    /// Whether the quit that ended this desk asks for a new one (a stalled page's).
+    pub fn restart(&self) -> bool {
+        self.restart
+    }
+
+    fn quit(&mut self, why: Why) -> Step {
+        self.restart = why == Why::Stalled;
+        Step::Quit
+    }
+}
+
+impl Shell {
+    /// Whether the desk quit to start again because its own page stopped painting (ADR 0202).
+    pub fn restarts_for_stall(&self) -> bool {
+        self.asked.restart()
     }
 }
 
 /// The person asked to quit.
 pub fn requested(shell: &mut Shell, event_loop: &ActiveEventLoop) {
+    ask(shell, event_loop, Why::Person);
+}
+
+/// The desk's own page stopped painting (ADR 0202): quit and start again, unless the page says
+/// something is unsaved or a desk started for a stall a short while ago already.
+pub fn stalled(shell: &mut Shell, event_loop: &ActiveEventLoop) {
+    let last = std::env::var(crate::stall_restart::ENV).ok();
+    if !crate::stall_restart::may(last.as_deref(), std::time::SystemTime::now()) {
+        eprintln!(
+            "endue Desk: this desk started for a stall less than {} min ago, so it does not start again: \
+             quit and start it by hand",
+            crate::stall_restart::BETWEEN.as_secs() / 60
+        );
+        return;
+    }
+    ask(shell, event_loop, Why::Stalled);
+}
+
+fn ask(shell: &mut Shell, event_loop: &ActiveEventLoop, why: Why) {
     if shell.quitting {
         return;
     }
     let page = shell.pane(Role::Main).is_some();
-    let step = shell.asked.requested(page);
+    let step = shell.asked.requested(page, why);
     take(shell, event_loop, step);
 }
 
@@ -141,11 +207,11 @@ fn waited(shell: &mut Shell, event_loop: &ActiveEventLoop, n: u64) {
 
 fn take(shell: &mut Shell, event_loop: &ActiveEventLoop, step: Step) {
     match step {
-        Step::Ask { n, show } => {
+        Step::Ask { n, show, why } => {
             if show {
                 shell.focus_main();
             }
-            shell.desk.pages.emit(Role::Main, EVENT, Value::Null);
+            shell.desk.pages.emit(Role::Main, EVENT, why.payload());
             let pump = shell.desk.pump.clone();
             let wait = std::thread::Builder::new()
                 .name("desk-quit-wait".to_owned())
@@ -165,61 +231,5 @@ fn take(shell: &mut Shell, event_loop: &ActiveEventLoop, step: Step) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{Answer, Quit, Step};
-
-    #[test]
-    fn a_quit_asks_the_page_and_goes_on_its_answer() {
-        let mut quit = Quit::default();
-        assert_eq!(quit.requested(true), Step::Ask { n: 1, show: false });
-        assert_eq!(quit.answered(Answer::Quit), Step::Quit);
-        // The person kept something: the desk stays, and the next quit asks again.
-        assert_eq!(quit.requested(true), Step::Ask { n: 2, show: false });
-        assert_eq!(quit.answered(Answer::Asking), Step::Show);
-        assert_eq!(
-            quit.waited(2),
-            Step::Nothing,
-            "the person takes as long as they need"
-        );
-        assert_eq!(quit.answered(Answer::Stay), Step::Nothing);
-        assert_eq!(
-            quit.answered(Answer::Quit),
-            Step::Nothing,
-            "no quit is asked now"
-        );
-    }
-
-    #[test]
-    fn a_page_that_does_not_answer_does_not_hold_the_quit() {
-        let mut quit = Quit::default();
-        assert_eq!(quit.requested(false), Step::Quit, "no page to ask");
-        assert_eq!(quit.requested(true), Step::Ask { n: 1, show: false });
-        assert_eq!(quit.waited(1), Step::Quit);
-        // A wait that ends after the page answered changes nothing.
-        assert_eq!(quit.requested(true), Step::Ask { n: 2, show: false });
-        assert_eq!(quit.answered(Answer::Stay), Step::Nothing);
-        assert_eq!(quit.waited(2), Step::Nothing);
-    }
-
-    #[test]
-    fn quitting_again_while_the_person_decides_asks_the_page_again() {
-        let mut quit = Quit::default();
-        assert_eq!(quit.requested(true), Step::Ask { n: 1, show: false });
-        assert_eq!(quit.answered(Answer::Asking), Step::Show);
-        assert_eq!(quit.requested(true), Step::Ask { n: 2, show: true });
-        assert_eq!(quit.waited(1), Step::Nothing, "the first wait is over");
-        // A page still asking says so again; one that died meanwhile says nothing, and the desk quits.
-        assert_eq!(quit.answered(Answer::Asking), Step::Show);
-        assert_eq!(quit.waited(2), Step::Nothing);
-        assert_eq!(quit.requested(true), Step::Ask { n: 3, show: true });
-        assert_eq!(quit.waited(3), Step::Quit);
-    }
-
-    #[test]
-    fn answers_read_as_the_page_sends_them() {
-        assert_eq!(Answer::parse("asking"), Some(Answer::Asking));
-        assert_eq!(Answer::parse("quit"), Some(Answer::Quit));
-        assert_eq!(Answer::parse("stay"), Some(Answer::Stay));
-        assert_eq!(Answer::parse("later"), None);
-    }
-}
+#[path = "quit_tests.rs"]
+mod tests;

@@ -12,8 +12,8 @@
 //! waiting page asks again a second on. The host says so once (the log, `compositor_stats`), and a
 //! plugin surface's page is loaded again in its browser, which gives it a new frame sink and its
 //! frames back; the runtime hands the new page its last `desk:state` as after any load. A second
-//! load waits `AGAIN` after the first. The desk's own page is only reported: loading it again would
-//! restart the runtime.
+//! load waits `AGAIN` after the first. The desk's own page is not loaded again, as that would
+//! restart the runtime: the desk quits and starts again instead (ADR 0202, `revive.rs`).
 
 use std::time::{Duration, Instant};
 

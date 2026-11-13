@@ -81,10 +81,10 @@ fn restart(pump: &Pump, relaunch: Relaunch) -> Result<(), String> {
 }
 
 /// After the desk has quit and CEF has shut down: start the updated desk when an update asked for
-/// it, once `let_go` has released what the new desk needs first.
-pub fn relaunch_if_asked(data: &Path, let_go: impl FnOnce()) {
+/// it, once `let_go` has released what the new desk needs first. Whether an update asked.
+pub fn relaunch_if_asked(data: &Path, let_go: impl FnOnce()) -> bool {
     let Some(relaunch) = lock(&RESTART).take() else {
-        return;
+        return false;
     };
     let_go();
     let log = data.join("updates").join("restart.log");
@@ -96,6 +96,7 @@ pub fn relaunch_if_asked(data: &Path, let_go: impl FnOnce()) {
         ),
         Err(why) => eprintln!("endue Desk: the updated desk did not start ({why}): start it again"),
     }
+    true
 }
 
 /// The version the tray offers to restart into: the staged build's, unless it is being applied.

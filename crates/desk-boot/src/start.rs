@@ -113,6 +113,11 @@ impl Start {
 /// give up what the new process needs first (its single-instance lock), or the new process would
 /// hand its arguments to this one and quit itself.
 pub fn relaunch(release: impl FnOnce()) {
+    relaunch_with(release, &[]);
+}
+
+/// [`relaunch`], the new desk hearing `env` as well (a start for a stall says when it was, ADR 0202).
+pub fn relaunch_with(release: impl FnOnce(), env: &[(&str, String)]) {
     let Ok(binary) = std::env::current_exe() else {
         eprintln!("endue Desk: cannot find its own binary to start again");
         return;
@@ -125,6 +130,7 @@ pub fn relaunch(release: impl FnOnce()) {
     let started = std::process::Command::new(binary)
         .args(args)
         .env_remove(SAFE_ENV)
+        .envs(env.iter().map(|(key, value)| (key, value)))
         .spawn();
     if let Err(why) = started {
         eprintln!("endue Desk: could not start again ({why})");

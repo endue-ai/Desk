@@ -2,7 +2,9 @@
 //! log and in `compositor_stats` (the view's counts), and loads a plugin surface's page again in its
 //! browser, as the wake of a surface whose renderer died does (`load_again`). The new page has a new
 //! frame sink, so CEF's begin frames reach it again; the runtime gives it its last `desk:state` as
-//! after any load. The desk's own page is only reported: loading it again would restart the runtime.
+//! after any load. The desk's own page is not loaded again, as that would restart the runtime under
+//! every plugin's page: the desk quits as the person's quit does and starts a new desk, unless the
+//! page says something is unsaved (ADR 0202, `quit.rs`, `stall_restart.rs`).
 
 use cef::*;
 
@@ -36,7 +38,10 @@ impl WebHost {
              through {fed} begin frames (#157)"
         );
         let Some(surface) = surface else {
-            eprintln!("{said}; a restart of the desk brings it back");
+            eprintln!("{said}; the desk quits to start again unless something is unsaved");
+            if let Some(desk) = &self.desk {
+                desk.pump.run(crate::quit::stalled);
+            }
             return;
         };
         let live = self.inner().records.get(surface).and_then(|r| {

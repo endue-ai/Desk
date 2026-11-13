@@ -113,6 +113,7 @@ fn main() -> ExitCode {
     let kept = std::sync::Arc::clone(&desk);
     let mut shell = Shell::new(desk, paths::start_url(), watch);
     let outcome = event_loop.run_app(&mut shell);
+    let restart = shell.restarts_for_stall();
     drop(shell);
     cef::shutdown();
     // Every quit the desk agrees to ends here (ADR 0187): the next start then has nothing to say.
@@ -120,7 +121,11 @@ fn main() -> ExitCode {
         kept.start.quit();
     }
     // An applied update quit the desk: start the new one once this one has let go.
-    update::relaunch_if_asked(&paths::data_dir(), || kept.let_go());
+    let updated = update::relaunch_if_asked(&paths::data_dir(), || kept.let_go());
+    // The desk's own page stopped painting and nothing was unsaved: start a new desk (ADR 0202).
+    if restart && !updated && outcome.is_ok() {
+        desk_shell::stall_restart::relaunch(|| kept.let_go());
+    }
     match outcome {
         Ok(()) => ExitCode::SUCCESS,
         Err(why) => {
