@@ -87,9 +87,13 @@ over full-screen apps and answers without activating the desk, and the core alre
   any app and Escape gives the keys back. Then the floating Eris and the tray's status retire, and
   `desk.island.show` turns on by default.
 * **ADR 0190.** The permissions plugin stays the desk's prompter and its overlay stays hidden until a
-  question comes. The island shows the same question while the desk is not on screen, without the
-  keys until the person presses it, and answers with `perm.answer` or `perm.approve`; `perm.settled`
-  takes the other card down.
+  question comes. The island counts the same question on its pill, without the keys; the person's
+  press opens it on the card in front, in the plugin's own words and with its choices, answered with
+  `perm.answer` or `perm.approve`; `perm.settled` takes the other card down. A new question never
+  opens the island by itself, and a card's choices take no press in the first half second after it
+  shows or comes to the front: a panel that grows under the pointer over another app's window
+  catches a press meant for that window, and a live check on 2026-11-14 saw two such presses grant
+  "Always allow" twice, the second on the card that took the first one's place.
 
 Rejected: the floating Eris's window is transparent around her figure and activates the desk when
 pressed, and the island must show what she does not (agents, asks, notices); her place and drag code

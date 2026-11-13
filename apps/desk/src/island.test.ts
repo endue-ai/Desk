@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 // The island (ADR 0204) on a fake native side: the pill says what is going on from the core's
-// answers and events, a press asks the shell to open it and the shell's word opens it, a press
-// that moves drags it, Escape folds it, and it asks the core only as the desk would.
+// answers and events; an ask never opens it, the person's press does (the shell's word opens it) and
+// the card in front is answered here, its choices taking no press in the first moment; opened for
+// asks, it folds when they are done; a press that moves drags it; Escape folds it; it asks the core
+// only as the desk would.
 import type { BridgeEvent } from "@endue-ai/bridge";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { type IslandView, type NativeWindow, startIsland } from "./island";
 
 type Handler = (event: { payload: unknown }) => void;
@@ -12,16 +14,36 @@ interface Request {
   method: string;
   params: Record<string, unknown>;
 }
+type Answer = unknown | ((params: Record<string, unknown>) => unknown);
 
-const prompt = {
-  promptId: "p-1",
+const prompt = (promptId: string) => ({
+  promptId,
   caller: "endue.notes",
   permission: { permission: "fs:read", paths: ["~/Notes/**"] },
   duration: "session",
+});
+
+const plugins = {
+  plugins: [
+    {
+      id: "endue.notes",
+      status: "ready",
+      enabled: true,
+      builtIn: true,
+      revision: 1,
+      manifest: {
+        id: "endue.notes",
+        name: "Notes",
+        version: "0.1.0",
+        kind: "ui",
+        entry: "ui/index.html",
+      },
+    },
+  ],
 };
 
 /** The shell as the island sees it: its commands, `bridge_call` and the events it hears. */
-function nativeSide(answers: Record<string, unknown>) {
+function nativeSide(answers: Record<string, Answer>) {
   const handlers = new Map<string, Set<Handler>>();
   const invoked: Array<{ command: string; args?: Record<string, unknown> }> = [];
   const api: NativeWindow = {
@@ -29,10 +51,16 @@ function nativeSide(answers: Record<string, unknown>) {
       invoked.push(args ? { command, args } : { command });
       if (command !== "bridge_call") return undefined;
       const request = (args as { request: Request }).request;
-      const result = answers[request.method];
-      if (result === undefined)
+      const answer = answers[request.method];
+      if (answer === undefined)
         return { id: request.id, ok: false, error: { code: "unsupported", message: "no" } };
-      return { id: request.id, ok: true, result };
+      try {
+        const result = typeof answer === "function" ? answer(request.params) : answer;
+        return { id: request.id, ok: true, result };
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "failed";
+        return { id: request.id, ok: false, error: { code, message: "refused" } };
+      }
     }),
     listen: vi.fn(async (event: string, handler: Handler) => {
       const set = handlers.get(event) ?? new Set<Handler>();
@@ -48,7 +76,8 @@ function nativeSide(answers: Record<string, unknown>) {
     api,
     fire,
     core: (event: BridgeEvent | Record<string, unknown>) => fire("bridge://event", event),
-    commands: () => invoked.filter((c) => c.command !== "bridge_call"),
+    commands: () =>
+      invoked.filter((c) => c.command !== "bridge_call" && c.command !== "island_fit"),
     asked: () =>
       invoked
         .filter((c) => c.command === "bridge_call")
@@ -59,12 +88,15 @@ function nativeSide(answers: Record<string, unknown>) {
 const $ = <T extends Element = HTMLElement>(selector: string) =>
   document.querySelector(selector) as T;
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+const OPEN = { command: "island_open", args: { open: true } };
+const FOLD = { command: "island_open", args: { open: false } };
 
 describe("the island", () => {
   let native: ReturnType<typeof nativeSide>;
   let island: IslandView;
 
-  beforeEach(async () => {
+  let clock = 0;
+  const start = async (pending: unknown[], extra: Record<string, Answer> = {}, guard = 0) => {
     document.body.innerHTML = '<div id="desk"></div>';
     native = nativeSide({
       "agent.list": {
@@ -74,84 +106,134 @@ describe("the island", () => {
         ],
       },
       "agents.runs": { runs: [] },
-      "perm.pending": { prompts: [prompt], approvals: [] },
+      "perm.pending": { prompts: pending, approvals: [] },
+      "plugin.list": plugins,
+      "perm.answer": {},
+      "perm.approve": {},
+      ...extra,
     });
-    island = await startIsland(native.api, { rest: 0 });
-  });
+    island = await startIsland(native.api, { rest: 0, guard, now: () => clock });
+  };
 
   afterEach(() => {
     island.dispose();
     vi.restoreAllMocks();
   });
 
-  it("starts from what the core says: the agents at work and what waits", () => {
+  it("starts from what the core says; an ask waiting does not open it, a press does", async () => {
+    await start([prompt("p-1")]);
     expect($(".island-line").textContent).toBe("1 agent at work · 1 ask waits");
     expect($(".island-badge").textContent).toBe("1");
-    expect($(".island-pill").getAttribute("aria-expanded")).toBe("false");
-    expect($<HTMLElement>(".island-panel").hidden).toBe(true);
+    expect($(".island").dataset.asks).toBe("1");
     expect($<HTMLElement>(".island-dot").style.getPropertyValue("--island-dot")).toBe("#3366ff");
+    expect(native.commands()).toEqual([]);
+    $<HTMLButtonElement>(".island-pill").click();
+    expect(native.commands()).toEqual([OPEN]);
+    expect(island.isOpen(), "the shell decides").toBe(false);
+    native.fire("island://open", { open: true });
+    expect($<HTMLElement>(".island-panel").hidden).toBe(false);
+    expect($(".island-card-title").textContent).toBe("Notes asks for permission");
     // Each call goes as the desk (the shell pins the caller) with no caller of its own.
-    const methods = native.asked().map((a) => a.request.method);
-    expect(new Set(methods)).toEqual(new Set(["agent.list", "agents.runs", "perm.pending"]));
+    const methods = new Set(native.asked().map((a) => a.request.method));
+    expect(methods).toEqual(new Set(["agent.list", "agents.runs", "perm.pending", "plugin.list"]));
     expect(native.asked().every((a) => a.caller === undefined)).toBe(true);
   });
 
-  it("counts asks as they come and go, and an agent program while it runs", async () => {
-    native.core({
-      event: "perm.approval",
-      data: {
-        approvalId: "a-1",
-        caller: "agent:mira",
-        action: "fs.write",
-        permission: { permission: "fs:write", paths: ["~/Notes/**"] },
-        target: "~/Notes/a.md",
+  it("answers the card in front and folds when the asks it was opened for are done", async () => {
+    await start([prompt("p-1"), prompt("p-2")]);
+    $<HTMLButtonElement>(".island-pill").click();
+    native.fire("island://open", { open: true });
+    expect($(".island-card").textContent).toContain("1 more waits");
+    $<HTMLButtonElement>("[data-answer=session]").click();
+    await tick();
+    const answered = native.asked().filter((a) => a.request.method === "perm.answer");
+    expect(answered.map((a) => a.request.params)).toEqual([
+      { promptId: "p-1", granted: true, duration: "session", scope: { permission: "perm:manage" } },
+    ]);
+    expect(island.state().asks.map((a) => a.id)).toEqual(["p-2"]);
+    expect(native.commands()).toEqual([OPEN]);
+    // The other one settled elsewhere (the overlay): nothing waits, and the island folds.
+    native.core({ event: "perm.settled", data: { kind: "prompt", id: "p-2" } });
+    expect(native.commands().at(-1)).toEqual(FOLD);
+  });
+
+  it("drops an ask already decided elsewhere, and says why another answer failed", async () => {
+    let refuse = "not_found";
+    await start([prompt("p-1"), prompt("p-2")], {
+      "perm.answer": () => {
+        throw new Error(refuse);
       },
     });
-    expect($(".island-line").textContent).toBe("1 agent at work · 2 asks wait");
-    native.core({ event: "perm.settled", data: { kind: "prompt", id: "p-1" } });
-    native.core({ event: "perm.settled", data: { kind: "approval", id: "a-1" } });
-    expect(island.state().asks).toEqual([]);
-    expect($<HTMLElement>(".island-badge").hidden).toBe(true);
+    $<HTMLButtonElement>(".island-pill").click();
+    native.fire("island://open", { open: true });
+    $<HTMLButtonElement>("[data-answer=once]").click();
+    await tick();
+    expect(island.state().asks.map((a) => a.id)).toEqual(["p-2"]);
+    refuse = "internal";
+    $<HTMLButtonElement>("[data-answer=once]").click();
+    await tick();
+    expect(island.state().asks.map((a) => a.id)).toEqual(["p-2"]);
+    expect($(".island-said").textContent).toBe("Could not answer: internal.");
+  });
+
+  it("stays open when the person opened it, and counts what comes and goes", async () => {
+    await start([]);
+    expect(native.commands()).toEqual([]);
+    $<HTMLButtonElement>(".island-pill").click();
+    expect(native.commands()).toEqual([OPEN]);
+    native.fire("island://open", { open: true });
+    native.core({ event: "perm.prompt", data: prompt("p-7") });
+    expect($(".island-line").textContent).toBe("1 agent at work · 1 ask waits");
+    expect(native.commands(), "already open").toEqual([OPEN]);
+    native.core({ event: "perm.settled", data: { kind: "prompt", id: "p-7" } });
+    expect(native.commands(), "the person's island stays").toEqual([OPEN]);
     native.core({ event: "agents.run", data: { runId: "r-1", agent: "claude", kind: "started" } });
     expect($(".island-line").textContent).toBe("2 agents at work");
-    native.core({ event: "agents.run", data: { runId: "r-1", agent: "claude", kind: "done" } });
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(native.commands().at(-1)).toEqual(FOLD);
+    $<HTMLButtonElement>(".island-desk").click();
+    expect(native.commands().at(-1)).toEqual({ command: "island_reveal_main" });
+  });
+
+  it("takes no press on a card in the moment after it shows, nor on the next one", async () => {
+    clock = 1000;
+    await start([prompt("p-1"), prompt("p-2")], {}, 500);
+    native.core({ event: "perm.prompt", data: prompt("p-3") });
+    expect(native.commands(), "a new ask does not open it").toEqual([]);
+    $<HTMLButtonElement>(".island-pill").click();
+    native.fire("island://open", { open: true });
+    const answered = () => native.asked().filter((a) => a.request.method === "perm.answer");
+    clock = 1200;
+    $<HTMLButtonElement>("[data-answer=always]").click();
     await tick();
-    expect($(".island-line").textContent).toBe("1 agent at work");
+    expect(answered(), "too soon after it opened").toEqual([]);
+    clock = 1600;
+    $<HTMLButtonElement>("[data-answer=once]").click();
+    await tick();
+    expect(answered().map((a) => a.request.params.promptId)).toEqual(["p-1"]);
+    // The next card came to the front at 1600: a second press at once allows nothing.
+    clock = 1700;
+    $<HTMLButtonElement>("[data-answer=always]").click();
+    await tick();
+    expect(answered()).toHaveLength(1);
+    clock = 2200;
+    $<HTMLButtonElement>("[data-answer=refuse]").click();
+    await tick();
+    expect(answered().map((a) => a.request.params.promptId)).toEqual(["p-1", "p-2"]);
   });
 
   it("reads the agents again when the core says one of their runs changed", async () => {
-    const before = native.asked().filter((a) => a.request.method === "agent.list").length;
+    await start([]);
+    const count = () => native.asked().filter((a) => a.request.method === "agent.list").length;
+    const before = count();
     native.core({ event: "agent.changed", data: { agent: "mira", runId: "run-1" } });
     await tick();
     await tick();
-    const after = native.asked().filter((a) => a.request.method === "agent.list").length;
-    expect(after).toBe(before + 1);
+    expect(count()).toBe(before + 1);
   });
 
-  it("opens when the shell says so after a press, lists both, and folds with Escape", () => {
-    $<HTMLButtonElement>(".island-pill").click();
-    expect(native.commands()).toEqual([{ command: "island_open", args: { open: true } }]);
-    expect(island.isOpen(), "the shell decides").toBe(false);
-    native.fire("island://open", { open: true });
-    expect(island.isOpen()).toBe(true);
-    expect($<HTMLElement>(".island-panel").hidden).toBe(false);
-    expect($(".island-pill").getAttribute("aria-expanded")).toBe("true");
-    const rows = [...document.querySelectorAll(".island-row")].map((row) =>
-      [...row.children].map((part) => part.textContent),
-    );
-    expect(rows).toEqual([
-      ["Mira", "working"],
-      ["endue.notes", "asks for fs:read"],
-    ]);
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
-    expect(native.commands().at(-1)).toEqual({ command: "island_open", args: { open: false } });
-    $<HTMLButtonElement>(".island-desk").click();
-    expect(native.commands().at(-1)).toEqual({ command: "island_reveal_main" });
-    native.fire("island://open", { open: false });
-    expect($<HTMLElement>(".island-panel").hidden).toBe(true);
-  });
-
-  it("drags on a press that moves, without opening", () => {
+  it("drags on a press that moves, without opening", async () => {
+    await start([]);
     const pill = $<HTMLButtonElement>(".island-pill");
     pill.dispatchEvent(new MouseEvent("pointerdown", { button: 0, screenX: 10, screenY: 10 }));
     window.dispatchEvent(new MouseEvent("pointermove", { screenX: 12, screenY: 11 }));
@@ -161,6 +243,6 @@ describe("the island", () => {
     pill.click();
     expect(native.commands()).toEqual([{ command: "island_drag" }]);
     pill.click();
-    expect(native.commands().at(-1)).toEqual({ command: "island_open", args: { open: true } });
+    expect(native.commands().at(-1)).toEqual(OPEN);
   });
 });

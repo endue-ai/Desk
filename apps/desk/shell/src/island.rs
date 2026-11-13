@@ -15,7 +15,7 @@ mod screens;
 #[cfg(test)]
 mod tests;
 
-use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::Relaxed};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -40,6 +40,8 @@ const FILE: &str = "island.json";
 /// The window closed (the pill and room for its shadow) and open, in logical pixels.
 const CLOSED: (f64, f64) = (320.0, 64.0);
 const OPEN: (f64, f64) = (380.0, 460.0);
+/// How tall the page may ask it to be open (`island_fit`), in logical pixels.
+const TALLEST: f64 = 640.0;
 /// How far below the top of the work area it sits when no spot is kept, in logical pixels.
 const MARGIN: f64 = 6.0;
 /// A drag moves the window many times a second: keep where it ended once it has rested.
@@ -55,6 +57,8 @@ pub struct Island {
     /// Where the shell last put it: the move that follows is the shell's, not the person's.
     placed: Mutex<Option<Rect>>,
     open: AtomicBool,
+    /// How tall it is open, in logical pixels: as tall as what its page shows (`island_fit`).
+    height: AtomicU32,
     /// The person dragged it since it opened.
     dragged: AtomicBool,
     keep: Sender<()>,
@@ -77,6 +81,7 @@ pub fn setup(shell: &mut Shell, event_loop: &ActiveEventLoop) {
             folded: Mutex::default(),
             placed: Mutex::default(),
             open: AtomicBool::new(false),
+            height: AtomicU32::new(OPEN.1 as u32),
             dragged: AtomicBool::new(false),
             keep: debounce("desk-island-keep", REST, move || {
                 if let Some(state) = this.upgrade() {
