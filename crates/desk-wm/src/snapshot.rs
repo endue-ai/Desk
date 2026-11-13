@@ -1,8 +1,9 @@
 //! The desk as the window manager sees it: what `desk.windows.list` answers (#82), in the
 //! contract's own type (`BrainDesk`, `specs/bridge/v0/brain.schema.json`), as `deskSnapshot` in
 //! `packages/runtime/src/shell/desk-view.ts` answers it from the DOM's store. Every window, those
-//! of the desktop in front first, front to back, then those put away in the drawer, then those of
-//! the other desktops in their order. Each says where it is on screen in whole CSS pixels (a window
+//! of the desktop in front first, front to back, then those out of the canvas in OS windows of
+//! their own with their frames (#235), then those put away in the drawer, then those of the other
+//! desktops in their order. Each says where it is on screen in whole CSS pixels (a window
 //! on another desktop: where it is when that desktop comes to the front; one in the drawer: where
 //! it comes back), its rank in its desktop's stacking order (0 at the back), how it is placed
 //! (normal, floating, snapped, filled), whether it is pinned or in use, its desktop and its panes.
@@ -18,7 +19,7 @@
 use std::collections::BTreeMap;
 
 use desk_bridge::{
-    BrainDesk, BrainDeskDesktop, BrainDeskFill, BrainDeskOffset, BrainDeskPane,
+    BrainDesk, BrainDeskDesktop, BrainDeskFill, BrainDeskOffset, BrainDeskOutFrame, BrainDeskPane,
     BrainDeskResponsiveness, BrainDeskSize, BrainDeskWindow, BrainDeskWindowState,
 };
 use serde::{Deserialize, Serialize};
@@ -218,7 +219,8 @@ impl Desk {
         seen: &dyn Seen,
     ) -> BrainDeskWindow {
         let rect = screen_rect(p, seat.pan, vw, vh);
-        let focused = seat.desktop == Some(self.here().as_str())
+        // A window out of the canvas is in use whatever desktop is in front (#235).
+        let focused = (seat.desktop == Some(self.here().as_str()) || p.out.is_some())
             && self.focused.as_deref() == Some(p.id.as_str());
         let tree = p.panes();
         let leaves: Vec<(&str, &str)> = tree.leaves().into_iter().take(PANES).collect();
@@ -260,6 +262,7 @@ impl Desk {
             focused: yes(focused),
             hidden: yes(seat.desktop.is_none()),
             desktop: seat.desktop.map(|d| cut(d, DESKTOP_ID)),
+            out: None,
             panes,
         }
     }
@@ -284,6 +287,22 @@ impl Desk {
         let mut windows: Vec<BrainDeskWindow> = (front.iter())
             .map(|(p, z)| self.window_snapshot(p, on(self, &here, *z), vw, vh, seen))
             .collect();
+        // Then the windows out of the canvas (#235), where they dock back on their desktops.
+        for (desktop, p) in self.out_windows() {
+            let seat = Seat {
+                desktop: Some(&desktop),
+                z: None,
+                pan: self.pan_of(&desktop),
+            };
+            let mut w = self.window_snapshot(&p, seat, vw, vh, seen);
+            w.out = p.out.map(|f| BrainDeskOutFrame {
+                x: int(f.x),
+                y: int(f.y),
+                w: size(f.w),
+                h: size(f.h),
+            });
+            windows.push(w);
+        }
         let away = Seat {
             desktop: None,
             z: None,

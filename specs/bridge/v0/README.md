@@ -303,8 +303,9 @@ up to 12 calls a turn, and `tool` and `tool-result` (with `tool: { callId, comma
 ok }`) mark each hand-off to a command and its return.
 
 `desk` (`BrainDesk`, ADR 0109 and ADR 0124) is what the person sees as they say the line: the screen
-and up to 64 windows, those of the desktop in front first (front to back), then the drawer's
-(`hidden`), then the other desktops' with the desktop each is on (`desktop`); the desktops in order,
+and up to 64 windows, those of the desktop in front first (front to back), then those popped out of
+the canvas into OS windows of their own (`out`, the OS window's frame in points, #235), then the
+drawer's (`hidden`), then the other desktops' with the desktop each is on (`desktop`); the desktops in order,
 `current` marking the one in front; up to 20 windows closed recently, the last first (`closed`, which
 `desk.windows.reopen` brings back); and `capabilities`, how many commands the desk knows and can run
 now and the plugins that are on (`desk.capabilities` lists every command). A pane whose plugin's frame
@@ -316,7 +317,9 @@ pixels of the desk, rounded half up; each window on a desktop has its rank in th
 order (`z`, 0 at the back), its `state` (`normal`, `floating`, `snapped`, `filled`) with the part a
 snapped or filled one takes (`fill`), and `pinned`; each pane its `id` and `asleep` when the live
 budget put its plugin's frame to sleep (ADR 0134); each desktop its canvas `pan`. Both window managers
-answer the same scene (`vectors/valid/desk-windows-list-scene.json`): the runtime's and `desk-wm`'s.
+answer the same scene (`vectors/valid/desk-windows-list-scene.json`): the runtime's and `desk-wm`'s;
+a window out of the canvas keeps its rect where it docks back and has no `z`
+(`vectors/valid/desk-windows-list-out.json`).
 The core words it before the line, each plugin on screen with its tools, within 8,192 characters:
 each part has its share and, cut short, ends with a line that names the command listing the rest.
 

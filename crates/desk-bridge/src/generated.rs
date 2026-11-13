@@ -4446,7 +4446,7 @@ pub struct BrainSayParams {
     pub scope: BrainConversePermission,
 }
 
-/// What the person sees as they say the line, as the runtime's window manager holds it (ADR 0109, ADR 0124): the screen and every window, those of the desktop in front first (front to back), then those put away in the drawer, then those of the other desktops in their order; the desktops, the current one marked; the windows closed recently; and a summary of what the person can do. The core puts it before the line, with each plugin's tools, so the brain knows which plugin a request is for, and keeps those words within a fixed size. The desk command desk.windows.list answers the same snapshot, to an agent in the middle of a turn and to the app's tests, which read windows through it rather than through the page (#82).
+/// What the person sees as they say the line, as the runtime's window manager holds it (ADR 0109, ADR 0124): the screen and every window, those of the desktop in front first (front to back), then those out of the canvas in OS windows of their own (#235), then those put away in the drawer, then those of the other desktops in their order; the desktops, the current one marked; the windows closed recently; and a summary of what the person can do. The core puts it before the line, with each plugin's tools, so the brain knows which plugin a request is for, and keeps those words within a fixed size. The desk command desk.windows.list answers the same snapshot, to an agent in the middle of a turn and to the app's tests, which read windows through it rather than through the page (#82).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainDesk {
@@ -4483,6 +4483,16 @@ pub struct BrainDeskOffset {
     pub y: i64,
 }
 
+/// Where a window out of the canvas is, in an OS window of its own (#235, ADR 0205): its frame in whole points of the OS's desktop, from the top left of the main display.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainDeskOutFrame {
+    pub x: i64,
+    pub y: i64,
+    pub w: u64,
+    pub h: u64,
+}
+
 /// The desk's size in CSS pixels.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -4491,7 +4501,7 @@ pub struct BrainDeskSize {
     pub h: u64,
 }
 
-/// One window: where the person sees it in CSS pixels from the desk's top left, each number rounded to the nearest whole pixel, halves up (a window off screen has a rect outside the screen; one on another desktop, where it is when that desktop is in front), its place in its desktop's stacking order, how it is placed (state, and the part of the app a snapped or filled one takes), whether it floats above the canvas, whether it is pinned, whether it has the focus, whether it is put away in the drawer (its rect is where it comes back), the desktop it is on, and its panes.
+/// One window: where the person sees it in CSS pixels from the desk's top left, each number rounded to the nearest whole pixel, halves up (a window off screen has a rect outside the screen; one on another desktop, where it is when that desktop is in front), its place in its desktop's stacking order, how it is placed (state, and the part of the app a snapped or filled one takes), whether it floats above the canvas, whether it is pinned, whether it has the focus, whether it is put away in the drawer (its rect is where it comes back), whether it is out of the canvas in an OS window of its own (its rect is where it docks back), the desktop it is on, and its panes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainDeskWindow {
@@ -4500,7 +4510,7 @@ pub struct BrainDeskWindow {
     pub y: i64,
     pub w: u64,
     pub h: u64,
-    /// Its place in the stacking order of its desktop, from 0 at the back: a window with a higher z is drawn above one with a lower z (floating windows above the normal ones; within each, the window in use on top and pinned ones above the rest). Absent for a window in the drawer, and from a runtime before #82.
+    /// Its place in the stacking order of its desktop, from 0 at the back: a window with a higher z is drawn above one with a lower z (floating windows above the normal ones; within each, the window in use on top and pinned ones above the rest). Absent for a window in the drawer or out of the canvas, and from a runtime before #82.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub z: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4516,9 +4526,12 @@ pub struct BrainDeskWindow {
     pub focused: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hidden: Option<bool>,
-    /// The id of the desktop it is on (BrainDeskDesktop); absent for a window in the drawer, and from a runtime before ADR 0124.
+    /// The id of the desktop it is on (BrainDeskDesktop), or docks back to when it is out of the canvas; absent for a window in the drawer, and from a runtime before ADR 0124.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub desktop: Option<String>,
+    /// Out of the canvas, in an OS window of its own, and where that is (#235): desk.windows.dock brings it back to its rect on its desktop's canvas. Absent for a window on the canvas or in the drawer, and from a runtime before #235.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub out: Option<BrainDeskOutFrame>,
     pub panes: Vec<BrainDeskPane>,
 }
 

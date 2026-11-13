@@ -45,6 +45,8 @@ pub use switch::{App, SWITCH, Switch, app, handed, handed_surface, know, switch}
 
 /// The desk command that closes the runtime's window holding a plugin.
 pub const CLOSE: &str = "desk.windows.close";
+/// The desk command that docks a window out of the canvas back.
+pub const DOCK: &str = "desk.windows.dock";
 /// The runtime's channel for the desk commands the compositor's own chrome runs.
 const RUN: &str = "desk://compositor-run";
 /// An app window is never made smaller than this, in points.
@@ -192,6 +194,11 @@ pub fn window_event(shell: &mut Shell, id: WindowId, event: &WindowEvent) {
             if let Some(host) = app.pane.host() {
                 host.set_focus(1);
             }
+            // The OS window has the keys: it is the desk's window in use.
+            let window = app.window.clone();
+            if let Some(compositor) = shell.compositor.as_mut() {
+                compositor.run_window_op(&Op::Focus, &window);
+            }
         }
         WindowEvent::Resized(size) => {
             app.pane.resized(*size);
@@ -238,6 +245,17 @@ fn keep_all(shell: &mut Shell) {
     }
 }
 
+/// Bring the OS window of window `window`, out of the canvas, to the front with the keys: the desk
+/// made it the window in use (`desk.windows.focus`, Eris, a reopen).
+pub fn raise(shell: &mut Shell, window: &str) {
+    let surface = (shell.apps.surfaces().into_iter())
+        .find(|s| shell.apps.get(s).is_some_and(|app| app.window == window));
+    if let Some(app) = surface.and_then(|s| shell.apps.get(&s)) {
+        app.pane.window.set_minimized(false);
+        app.pane.show_and_focus();
+    }
+}
+
 /// Window > Move to Desk: the app window in front docks back to its place on the canvas.
 pub fn dock_front(shell: &mut Shell) {
     let front = (shell.apps.surfaces().into_iter())
@@ -248,8 +266,10 @@ pub fn dock_front(shell: &mut Shell) {
                 .map(|app| (app.pane.window.has_focus(), app.window.clone()))
         })
         .find_map(|(focused, window)| focused.then_some(window));
-    if let (Some(window), Some(compositor)) = (front, shell.compositor.as_mut()) {
-        compositor.run_window_op(&Op::Dock, &window);
+    // Through the runtime's command: it asks the plugin for its state before its page loads again.
+    if let Some(window) = front {
+        let run = json!({ "command": DOCK, "args": { "window": window } });
+        shell.desk.pages.emit(Role::Main, RUN, run);
     }
 }
 

@@ -43,6 +43,8 @@ pub enum Op {
     Dock,
     /// The OS window of a window out of the canvas is at `frame` now (#235).
     OutFrame { frame: Rect },
+    /// The OS window of a window out of the canvas has the keys: it is the window in use (#235).
+    Focus,
 }
 
 impl Wm {
@@ -89,7 +91,9 @@ impl Wm {
                 let moved = self.in_reach(moved);
                 self.place(&id, moved, floating)
             }
-            Op::Spread | Op::PopOut { .. } | Op::Dock | Op::OutFrame { .. } => Vec::new(),
+            Op::Spread | Op::PopOut { .. } | Op::Dock | Op::OutFrame { .. } | Op::Focus => {
+                Vec::new()
+            }
             Op::Resize { dw, dh } => {
                 let (rect, floating) = self.on_screen(&p);
                 let bounds = floating.then(|| screen_area(self.screen.w, self.screen.h));

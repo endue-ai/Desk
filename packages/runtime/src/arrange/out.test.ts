@@ -11,7 +11,7 @@ import { Store, sampleState } from "../shell/state";
 import { testWindowManager } from "../wm/testing";
 import type { Edit } from "../wm/types";
 import { takeDesk } from "../wm/view";
-import { CLOSE, defineArrangeCommands } from "./commands";
+import { CLOSE, defineArrangeCommands, FOCUS } from "./commands";
 import { DOCK, defineOutCommands, outIds, POP_OUT, poppable } from "./out";
 
 const epoch = Date.parse("2026-11-14T09:00:00.000Z");
@@ -114,6 +114,17 @@ describe("desk.windows.pop-out and desk.windows.dock", () => {
     });
     expect(asked).toEqual(["close endue.notes"]);
     expect(outIds(store.get()).size).toBe(0);
+    expect(here(store)).not.toContain("notes");
+  });
+
+  it("gives a window out of the canvas the focus without bringing it back (issue 235)", async () => {
+    const { commands, store } = await desk();
+    await commands.run(POP_OUT, { window: "notes" });
+    await commands.run(FOCUS, { window: "split" });
+    expect(store.get().focused).toBe("split");
+    expect(await commands.run(FOCUS, { window: "notes" })).toEqual({ window: "notes" });
+    expect(store.get().focused).toBe("notes");
+    expect([...outIds(store.get())]).toEqual(["notes"]);
     expect(here(store)).not.toContain("notes");
   });
 });
