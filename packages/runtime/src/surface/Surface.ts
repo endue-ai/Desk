@@ -283,6 +283,9 @@ export function mountSurfaces(
       // Its own page once the window manager placed it (ADR 0201).
       const own = !entry.own && rect ? pages?.host(p.id, rect.w, rect.h) : null;
       if (own) {
+        // Its plugins' places stay in this page, with the focus one of them has, before the
+        // window goes to its own: moved there with it, a focused place lost its focus.
+        anchors?.hold(p.id, entry.el, entry.body);
         own.append(entry.el);
         entry.own = true;
       }
