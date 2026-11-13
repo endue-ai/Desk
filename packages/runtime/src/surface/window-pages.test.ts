@@ -124,6 +124,24 @@ describe("window pages", () => {
     expect(stopped).toEqual(["a", "b"]);
   });
 
+  it("keep a window in the page while a press is held there, and give it its page as the press ends", () => {
+    const pages = windowPages(document, layer, () => fakePage() as unknown as Window);
+    const freed = vi.fn();
+    pages.freed(freed);
+    // A press in the page (a window's ×) while the window's page opens: moved now, the release
+    // would find nothing where the press began.
+    window.dispatchEvent(Object.assign(new Event("pointerdown"), { pointerId: 1 }));
+    expect(pages.host("a", 10, 10)).toBeNull();
+    expect(pages.open()).toEqual(["a"]);
+    window.dispatchEvent(Object.assign(new Event("pointerup"), { pointerId: 1 }));
+    expect(freed).toHaveBeenCalledTimes(1);
+    expect(pages.host("a", 10, 10)).not.toBeNull();
+    // No press held: no call.
+    window.dispatchEvent(Object.assign(new Event("pointerup"), { pointerId: 2 }));
+    expect(freed).toHaveBeenCalledTimes(1);
+    pages.dispose();
+  });
+
   it("close a page that goes under its window, its watches' stops run, and open one anew", () => {
     const made = [fakePage(), fakePage()];
     const first = made[0];

@@ -31,9 +31,14 @@ export interface WindowPages {
    * window (its document unloaded: the shell replaced it). The stop of the watch.
    */
   watch(hook: (id: string, win: Window) => () => void): () => void;
+  /** Run `run` once a press held in the page ends after `host` kept a window there for it. */
+  freed(run: () => void): () => void;
   /** Every page closes. */
   dispose(): void;
 }
+
+/** The longest a press held in the page keeps a window from its own page. */
+const HOLD_MS = 1500;
 
 /** The page's `open`, as the app opens a window's page. */
 export const popupOpener =
@@ -189,6 +194,36 @@ export function windowPages(
   };
   const fromPage = takes(page);
   page.defaultView?.addEventListener("focusin", fromPage, true);
+  // A window's section moves into its page only between presses: moved under a press held in the
+  // page, the release found nothing where the press began and the click was lost (a window's ×
+  // right after the desk started, while its pages open one by one).
+  const pressed = new Set<number>();
+  const frees = new Set<() => void>();
+  let kept = false;
+  let giveUp: ReturnType<typeof setTimeout> | undefined;
+  const release = () => {
+    pressed.clear();
+    if (giveUp !== undefined) clearTimeout(giveUp);
+    giveUp = undefined;
+    if (!kept) return;
+    kept = false;
+    for (const run of frees) run();
+  };
+  const down = (e: PointerEvent) => {
+    pressed.add(e.pointerId);
+    giveUp ??= setTimeout(release, HOLD_MS);
+  };
+  const up = (e: PointerEvent) => {
+    pressed.delete(e.pointerId);
+    if (!pressed.size) release();
+  };
+  const view = page.defaultView;
+  const presses: Array<[string, (e: PointerEvent) => void]> = [
+    ["pointerdown", down],
+    ["pointerup", up],
+    ["pointercancel", up],
+  ];
+  for (const [type, on] of presses) view?.addEventListener(type, on as EventListener, true);
   /** Open window `id`'s page now; its layer, or null where none opens. */
   const openNow = (id: string, w: number, h: number): HTMLElement | null => {
     let win: Window | null = null;
@@ -236,14 +271,21 @@ export function windowPages(
   };
   return {
     host(id, w, h) {
-      const at = pages.get(id);
-      if (at && !at.win.closed) return at.layer;
-      if (at) close(id);
-      if (refused.has(id)) return null;
-      if (!spacing) return openNow(id, w, h);
-      waiting.set(id, [w, h]);
-      if (timer === undefined) timer = setTimeout(drain, 0);
-      return null;
+      if (pages.get(id)?.win.closed) close(id);
+      if (!pages.has(id)) {
+        if (refused.has(id)) return null;
+        if (spacing) {
+          waiting.set(id, [w, h]);
+          if (timer === undefined) timer = setTimeout(drain, 0);
+          return null;
+        }
+        if (!openNow(id, w, h)) return null;
+      }
+      if (pressed.size) {
+        kept = true;
+        return null;
+      }
+      return pages.get(id)?.layer ?? null;
     },
     close(id) {
       waiting.delete(id);
@@ -261,10 +303,17 @@ export function windowPages(
         }
       };
     },
+    freed(run) {
+      frees.add(run);
+      return () => frees.delete(run);
+    },
     dispose() {
       if (timer !== undefined) clearTimeout(timer);
+      if (giveUp !== undefined) clearTimeout(giveUp);
       waiting.clear();
+      frees.clear();
       page.defaultView?.removeEventListener("focusin", fromPage, true);
+      for (const [type, on] of presses) view?.removeEventListener(type, on as EventListener, true);
       for (const id of [...pages.keys()]) close(id);
     },
   };
