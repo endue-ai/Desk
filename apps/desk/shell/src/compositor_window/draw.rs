@@ -279,9 +279,15 @@ pub(super) fn window(
         rect(pixels::at_rest(w.rect, from.scale))
     };
     let made = chrome.window(scene, desk, at, &w.title, None, w.focused)?;
-    // The title sits between the icon and the tools the page draws, clear of the top chips.
+    let own = window_pages::surface_of(&w.id);
+    let paged = (from.surface)(&own);
+    // The title sits between the icon and the tools the page draws, clear of the top chips; while
+    // its picture is narrower than the window (#252), the tools are where the picture ends.
     let (start, end) = w.title_insets();
-    chrome.clear_title(scene, &made, start as f32, end as f32)?;
+    let short = paged.map_or(0.0, |(_, (tw, _))| {
+        (at.width - tw as f32 / from.scale).max(0.0)
+    });
+    chrome.clear_title(scene, &made, start as f32, end as f32 + short)?;
     pass(
         scene,
         [made.frame, made.divider, made.title]
@@ -291,9 +297,8 @@ pub(super) fn window(
     let local = |r: desk_wm::Rect| rect(r).translate(-laid.min());
     // Its own page, once it painted (ADR 0201): its title bar's icon and tools, its own views and
     // the headers of split panes from the window's own texture, at the window's place, and the
-    // pointer on it to that page; nothing of the window from the desk's page.
-    let own = window_pages::surface_of(&w.id);
-    let paged = (from.surface)(&own);
+    // pointer on it to that page; nothing of the window from the desk's page. A picture of another
+    // size than the window is cropped or padded with the window's fill, never stretched (#252).
     if let Some(texture) = paged {
         let whole = Rect::new(0.0, 0.0, at.width, at.height);
         let node = scene.insert(made.group, sampled(whole, texture, from.scale))?;
@@ -362,3 +367,7 @@ mod tests;
 #[cfg(test)]
 #[path = "draw_cost_tests.rs"]
 mod cost_tests;
+
+#[cfg(test)]
+#[path = "draw_resize_tests.rs"]
+mod resize_tests;
