@@ -50,6 +50,11 @@ export type HostMessage =
   | {
       type: "desk:init";
       pluginId: string;
+      /**
+       * Which of the plugin's windows this page is (ADR 0212): `<plugin id>@<n>`, or the plugin id for
+       * its first. Absent from a desk that opens one window per plugin.
+       */
+      instance?: string;
       state: unknown;
       /** What the plugin kept when the desk last unloaded this frame (ui.surface.state, ADR 0070). */
       restored?: unknown;

@@ -52,7 +52,8 @@ duplicates with the process handle it holds).
 A web plugin's page and the desk post each other messages (`desk:hello`, `desk:init`, `desk:ping`,
 `desk:state`, ...). A native plugin has no page, so they travel on its surface connection:
 `desk.message` from the desk, `plugin.message` from the plugin, each with the surface it is about.
-The plugin says `desk:hello` once it listens, and the desk answers `desk:init` with `state`, what its
+The plugin says `desk:hello` once it listens, and the desk answers `desk:init` with `pluginId`, the
+`instance` it is (ADR 0212; absent for its first window), `state`, what its
 last `desk:state` kept, and `restored`, what it answered the desk's `ui.surface.state` command with
 (`desk:command`, answered by `desk:reply`) before its surface last slept (ADR 0070). It answers every
 `desk:ping` with a `desk:pong` of the same `n` from the loop that draws: a plugin that does not answer

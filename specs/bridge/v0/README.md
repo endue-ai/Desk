@@ -42,6 +42,14 @@ Every call is made by a caller: a plugin under its plugin id, the web runtime as
 brain whose tool call the core runs as `agent:<id>` (ADR 0072). The core keeps grants, store values,
 commands, settings and log channels per caller; `core` names desk-core itself.
 
+A plugin may show in several windows at once: a file opener whose first surface says `instances:
+"per-file"` opens a window of its own for each file (ADR 0212). Each window is its own page on its own
+host, `<surface>--<n>.<plugin label>` for the second and later, and `desk:init` names it in `instance`
+(`<plugin id>@<n>`; absent for the first window, whose instance is the plugin id). Every window calls as
+the plugin: grants, store values, commands and settings stay per plugin. The runtime keys a window's
+requests, events, state and sleep by its instance: what one window started (a watch, a turn, a
+subscription) is heard by that window alone, and a command the plugin provides runs in the window in use.
+
 An agent is never granted anything outside `agents.<id>.allow` in init.yaml when that list holds
 anything: a call or `perm.request` outside it is refused at once (`perm.request` answers
 `reason: "outside-allowlist"`, any other call `permission_denied`), whatever the agent holds, and the

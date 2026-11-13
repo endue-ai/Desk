@@ -3,7 +3,7 @@
 What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
 
 ## Public API
-- `defineUiPlugin({ mount(ctx) })`: connect to the runtime, then mount. `ctx` has `pluginId`, `bridge`
+- `defineUiPlugin({ mount(ctx) })`: connect to the runtime, then mount. `ctx` has `pluginId`, `instance` (its window, ADR 0212), `bridge`
   (`call`, `onEvent`), `state` (`get`, `set`; kept across reloads), `surface`, `commands`, `theme`,
   `settings`, `log`, `events`, `perm`, `data`, `views`, `universal` and `dnd`, typed from `@endue-ai/bridge`.
 - `ctx.universal` (ADR 0087): `parse(text)` (YAML or JSON, `parseYaml`), `load(source)` (`data`, `asset`,
@@ -29,7 +29,7 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
   `byteSource(ctx, file)` (cached `read(offset, length)`), `startWorker(url)`, `fileHistory`, `restoreFile`.
 - `connect(transport?)`, `windowTransport()`, protocol and bridge types, `BridgeCallError`; one tick's calls leave
   in one message; `desk:ready`/`desk:failed` (ADR 0061); `desk:ping` answered at import (#39); at `/_desk/plugin-sdk.js`.
-- `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, state?, restored?, handlers?, commands?,
+- `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, instance?, state?, restored?, handlers?, commands?,
   settings?, grants?, callers?, prompt?, now?, refuse?, files? })` runs a plugin on the stub core:
   `transport`, `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`,
   `surfaces`, `call`, `emit`, `command`, `surfaceState`, `invoke`, `theme`, `upsert`, `remove`, `settle`; `dnd`

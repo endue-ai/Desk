@@ -46,6 +46,8 @@ export interface FrameHost {
   unloaded(id: string, state: unknown): void;
   /** Whether the plugin has no live frame until its next hello: unloaded, or loading again. */
   asleep?(id: string): boolean;
+  /** The keys went to window `id`: it is its plugin's window in use (ADR 0212). */
+  focused?(id: string): void;
 }
 
 export interface FramesDeps {
@@ -201,7 +203,8 @@ export function installFrames(
       changed();
     },
     changed,
-    focused(_id) {
+    focused(id) {
+      if (id) deps.host()?.focused?.(id);
       changed();
     },
     // A stopped frame loads only from its Reload: what waits on it waits for that.

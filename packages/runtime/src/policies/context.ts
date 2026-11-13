@@ -26,8 +26,17 @@ export interface DeskContext {
   launch(plugin: string): Promise<void>;
   /** Resolves once a mounted plugin has connected; rejects if it stops first or none is mounted. */
   whenReady(plugin: string): Promise<void>;
-  /** Take a plugin's surface away for the rest of this session. */
+  /**
+   * Take a plugin's window away for the rest of this session: by its key (ADR 0212), or the
+   * plugin's first by the plugin id. Its last window takes the plugin with it.
+   */
   unmount(plugin: string): void;
+  /** A mounted plugin's open windows by key, the first it opened first (ADR 0212). */
+  instances?(plugin: string): string[];
+  /** Open another window of a mounted plugin: its key; its frame may still be connecting. */
+  another?(plugin: string): string;
+  /** A plugin's window in use: the one that last had the focus or called the desk. */
+  inUse?(plugin: string): string | undefined;
 }
 
 /** A policy module, installed once; dispose undoes what it bound. */

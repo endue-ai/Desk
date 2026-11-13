@@ -146,6 +146,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       else if (pluginHost) pluginHost.unmount(plugin);
       else closeSurface(plugin);
     },
+    // A plugin's several windows (ADR 0212); without a plugin host, none opens.
+    instances: (plugin) => pluginHost?.instances(plugin) ?? [],
+    another: (plugin) => pluginHost?.another(plugin) ?? plugin,
+    inUse: (plugin) => pluginHost?.inUse(plugin),
   };
   const theme = installTheme(ctx, options.themeRoot, options.plugins?.url);
   const notify = installNotify(ctx, statusLine);

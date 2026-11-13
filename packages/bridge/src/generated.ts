@@ -839,14 +839,18 @@ export type ViewPath = string;
 
 /** A surface a UI or native plugin can open on the desk. */
 export interface Surface {
-  /** Unique within the plugin. */
+  /** Unique within the plugin. Two hyphens in a row are reserved: a surface's further windows are `<id>--<n>` (ADR 0212). */
   id: string;
   /** Shown where the surface needs a label. */
   title?: string;
   placement: SurfacePlacement;
   /** Mounted but not shown until the plugin shows it, like a palette. Default false. */
   hidden?: boolean;
+  instances?: SurfaceInstances;
 }
+
+/** How many windows of a surface the desk opens (ADR 0212). one: a single window, which shows every file the plugin opens (the default). per-file: a file opener's first surface opens a window of its own for each file the desk opens in it, each its own page with the plugin's permissions; the desk.files.window setting can keep one window. */
+export type SurfaceInstances = "one" | "per-file";
 
 /** Where the compositor puts the surface. */
 export type SurfacePlacement = "center" | "left" | "right" | "bottom" | "overlay" | "floating";

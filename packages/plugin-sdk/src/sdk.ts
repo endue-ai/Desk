@@ -70,6 +70,11 @@ export interface PluginTheme {
 
 export interface PluginContext {
   pluginId: string;
+  /**
+   * Which of the plugin's windows this page is (ADR 0212): the plugin id for its first, `<plugin
+   * id>@<n>` for the others a per-file opener opens. Every window calls as the plugin.
+   */
+  instance: string;
   bridge: PluginBridge;
   state: PluginState;
   surface: PluginSurface;
@@ -169,7 +174,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
     const commands = commandsFor(bridge as Parameters<typeof commandsFor>[0], mounted);
     const dnd = dndFor(transport);
 
-    const ctxFor = (pluginId: string, restored: unknown): PluginContext => {
+    const ctxFor = (pluginId: string, restored: unknown, instance = pluginId): PluginContext => {
       const { open, ...groups } = contextFor(bridge, pluginId);
       const { data, views } = dataFor(bridge);
       const universal = universalFor({
@@ -181,6 +186,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
       });
       return {
         pluginId,
+        instance,
         bridge,
         state: {
           get: <T>() => state as T | undefined,
@@ -223,7 +229,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
       switch (message.type) {
         case "desk:init":
           state = message.state;
-          ctx = ctxFor(message.pluginId, message.restored);
+          ctx = ctxFor(message.pluginId, message.restored, message.instance);
           mountedHooks.set(ctx, markMounted);
           // Without defineUiPlugin, handlers registered right after connect() count as mounted.
           setTimeout(() => {

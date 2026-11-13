@@ -4,6 +4,7 @@
 // host the site: the last label is never a known suffix, since a plugin label always holds a `-`.
 // crates/desk-web/src/plugin_scheme/hosts.rs parses the same shape and refuses a path of another plugin.
 import type { PluginInfo, PluginManifest } from "@endue-ai/bridge";
+import { instanceSurface } from "./instances";
 import type { PluginHostOptions } from "./plugin-host-deps";
 
 /** The surface a plugin that declares none opens: its frame still gets a host of its own. */
@@ -40,10 +41,13 @@ export function surfaceOf(manifest: PluginManifest | undefined): string {
   return manifest?.surfaces?.[0]?.id ?? DEFAULT_SURFACE;
 }
 
-/** A mounted plugin's page at its revision, asked for with its surface (`PluginHost`). */
-export function surfaceUrl(options: PluginHostOptions, info: PluginInfo): string {
+/**
+ * A mounted plugin's page at its revision, asked for with its surface (`PluginHost`); its `n`-th
+ * window's on that window's own host, `<surface>--<n>.<label>` (ADR 0212).
+ */
+export function surfaceUrl(options: PluginHostOptions, info: PluginInfo, n = 1): string {
   const { id, manifest, revision } = info;
-  return options.url(id, manifest?.entry ?? "", revision, surfaceOf(manifest));
+  return options.url(id, manifest?.entry ?? "", revision, instanceSurface(surfaceOf(manifest), n));
 }
 
 /**
