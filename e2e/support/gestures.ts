@@ -1,11 +1,12 @@
-// The person's pointer and keys on the desk, as WebDriver actions in the desk's viewport (CSS
-// pixels), for the windows-* specs (#82). Points come from desk.windows.list's rects and the
-// chrome's metrics below, never from the page. Drags, their release and Escape go through the
-// compositor's own input (`compositor_input`, support/compositor.ts), where desk-wm moves,
-// resizes, snaps and pans the windows (#80, ADR 0153); the composed frames are the screen. A drag can be held (`hold`) so a
-// spec looks at the desk mid-drag, then `release`d. Keys go as their own action so a held button
-// stays down (browser.keys would release it). The desk keeps drawing while they run (frames.ts),
-// or a locked screen would hold each move for seconds.
+// The person's pointer and keys on the desk, in the window's CSS pixels, for the windows-* specs
+// (#82). Points come from desk.windows.list's rects and the chrome's metrics below, never from the
+// page. Clicks, the wheel, drags, their release and Escape go through the compositor's own input
+// (`compositor_input`, support/compositor.ts), as the person's do: desk-wm moves, resizes, snaps and
+// pans the windows (#80, ADR 0153), and a window's chrome lies in a page of its own (ADR 0201),
+// which an action in the desk's page's viewport never reaches; the composed frames are the screen. A
+// drag can be held (`hold`) so a spec looks at the desk mid-drag, then `release`d. Keys go as
+// WebDriver actions to the desk's page, whose keymap runs the desk's chords. The desk keeps drawing
+// while they run (frames.ts), or a locked screen would hold each move for seconds.
 import { browser } from "@wdio/globals";
 import { feed } from "./compositor";
 import { drawing } from "./frames";
@@ -73,44 +74,7 @@ export const bodyAt = (w: Rect): Point => ({
   y: w.y + TITLE_BAR + (w.h - TITLE_BAR) / 2,
 });
 
-type PointerAction =
-  | { type: "pointerMove"; x: number; y: number; duration: number; origin: "viewport" }
-  | { type: "pointerDown" | "pointerUp"; button: number }
-  | { type: "pause"; duration: number };
 type KeyAction = { type: "keyDown" | "keyUp"; value: string } | { type: "pause"; duration: number };
-
-const at = (p: Point, duration = 0): PointerAction => ({
-  type: "pointerMove",
-  x: Math.round(p.x),
-  y: Math.round(p.y),
-  duration,
-  origin: "viewport",
-});
-
-/** Run pointer actions, with keys held down around them when `held` names some. */
-async function perform(pointer: PointerAction[], held: string[] = []): Promise<void> {
-  const sequences: object[] = [
-    { type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: pointer },
-  ];
-  if (held.length) {
-    // The keys go down before the pointer's first action and up after its last, tick for tick.
-    const keys: KeyAction[] = [
-      ...held.map((value): KeyAction => ({ type: "keyDown", value })),
-      ...pointer.map((): KeyAction => ({ type: "pause", duration: 0 })),
-      ...held.map((value): KeyAction => ({ type: "keyUp", value })),
-    ];
-    sequences[0] = {
-      ...(sequences[0] as object),
-      actions: [
-        ...held.map((): PointerAction => ({ type: "pause", duration: 0 })),
-        ...pointer,
-        ...held.map((): PointerAction => ({ type: "pause", duration: 0 })),
-      ],
-    };
-    sequences.push({ type: "key", id: "keyboard", actions: keys });
-  }
-  await drawing(() => browser.performActions(sequences as never));
-}
 
 /** The compositor's input events (`compositor_input`): moves, the primary button, Shift, keys. */
 const toward = (p: Point) => ({ type: "pointerMoved", x: Math.round(p.x), y: Math.round(p.y) });
@@ -188,18 +152,15 @@ export async function walk(
 /** Let go of a held drag where the pointer is, and forget every held input. */
 export async function release(): Promise<void> {
   await feed([button(false), shift(false)]);
-  await perform([{ type: "pointerUp", button: 0 }]);
   await browser.releaseActions();
 }
 
 /** A click, or `count` clicks in a row (2: a double-click). */
 export async function click(p: Point, count = 1): Promise<void> {
-  const one: PointerAction[] = [
-    { type: "pointerDown", button: 0 },
-    { type: "pointerUp", button: 0 },
-  ];
-  const actions = [at(p), ...Array.from({ length: count }, () => one).flat()];
-  await perform(actions);
+  // Through the compositor, as the person's: a window's chrome lies in a page of its own (ADR
+  // 0201), where an action in the desk's page's viewport never reaches.
+  const one = [button(true), button(false)];
+  await drawing(() => feed([toward(p), ...Array.from({ length: count }, () => one).flat()]));
 }
 
 /** Press keys together, as a chord (`chord(MOD, "n")`), without letting go of a held button. */
@@ -221,20 +182,10 @@ export async function type(text: string): Promise<void> {
   for (const key of text) await chord(key);
 }
 
-/** The wheel over `p`: `dx`, `dy` CSS pixels. */
+/** The wheel over `p`: `dx`, `dy` CSS pixels, as the page's wheel events read them. */
 export async function wheel(p: Point, dx: number, dy: number): Promise<void> {
-  const scroll = {
-    type: "scroll",
-    x: Math.round(p.x),
-    y: Math.round(p.y),
-    deltaX: dx,
-    deltaY: dy,
-    duration: 0,
-    origin: "viewport",
-  };
-  await drawing(() =>
-    browser.performActions([{ type: "wheel", id: "wheel", actions: [scroll] }] as never),
-  );
+  // Through the compositor, which hands it to what is under `p`: a window's own page or the canvas.
+  await drawing(() => feed([toward(p), { type: "wheel", dx, dy, unit: "pixel" }]));
 }
 
 /** Eris's figure, top centre: drawn above the windows, as the bars are along the edges. */
