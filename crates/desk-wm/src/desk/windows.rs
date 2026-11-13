@@ -183,7 +183,8 @@ impl Desk {
     /// them; the runtime unmounts them.
     pub fn close_window(&mut self, id: &str) -> Vec<String> {
         let Some(p) = self.window(id) else {
-            return Vec::new();
+            // One out of the canvas closes from whichever desktop it docks back to (#235).
+            return self.close_out(id);
         };
         let plugins = self.plugins_of(&p);
         self.close_surface(id);

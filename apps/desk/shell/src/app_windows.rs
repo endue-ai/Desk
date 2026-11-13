@@ -1,22 +1,19 @@
-//! App windows (#234, #235, ADR 0203): a plugin the switch hands over shows its surface in an OS
-//! window of its own, a windowed CEF browser in a winit window (`Pane`), instead of an off-screen
-//! surface the compositor draws. The OS places, moves, resizes, composites and focuses it; no desk
-//! code runs for a move.
+//! Windows out of the canvas (#234, #235, ADR 0205): any window of one plugin can pop out of the
+//! desk into an OS window of its own, a windowed CEF browser in a winit window (`Pane`), and dock
+//! back. The window manager (`desk-wm`) keeps the window, its id, desktop and canvas place, and
+//! says which are out; the compositor hands those to the web host (`web_host/app_surfaces.rs`),
+//! which swaps the surface's off-screen browser for this one and back. The OS places, moves,
+//! resizes, composites and focuses it; no desk code runs for a move, and its frame goes back to
+//! `desk-wm` once it rests (`OutFrame`). An app window keeps its renderer while it is out, and its
+//! page is hidden while the window is minimized or covered. Its bridge goes as an off-screen
+//! surface's does: the page's `window.parent` is the shim (`web_host/shim.js`), its posts go up the
+//! relay to the runtime's page and the runtime's come down to it (`relay.surface`), so
+//! `desk:hello`, `desk:init`, calls, the theme, the sandbox and the guard work unchanged.
 //!
-//! The switch is `DESK_APP_WINDOWS` (`switch.rs`): `on` hands over every app (a `ui` plugin placed
-//! `center` or `floating`), a comma-separated list of plugin ids only those; unset or `off`,
-//! nothing changes. The surface's lifecycle still comes from the window manager (`desk-wm`): its
-//! `create` opens the OS window at the surface's document (`web_host/app_surfaces.rs`), its
-//! `destroy` closes it, and the rest (resize, hide, sleep, wake, pace) is the OS window's own
-//! business, so it is dropped: an app window keeps its renderer while it is open, and its page is
-//! hidden while the window is minimized or covered. The compositor draws nothing for the runtime's
-//! window that holds the plugin (`drawn`) and routes no input there. Its bridge goes as an
-//! off-screen surface's does: the page's `window.parent` is the shim (`web_host/shim.js`), its
-//! posts go up the relay to the runtime's page and the runtime's come down to it
-//! (`relay.surface`), so `desk:hello`, `desk:init`, calls, the theme, the sandbox and the guard
-//! work unchanged. Closing the OS window asks the runtime to close the plugin's window
-//! (`desk.windows.close`); the runtime's close, a `destroy`, closes the OS window. Each app opens
-//! where it was last, per display (`places.rs`).
+//! Closing the OS window closes the window (`desk.windows.close`, asking about unsaved changes
+//! first); Window > Move to Desk docks it. `DESK_APP_WINDOWS` (`switch.rs`) names the plugins whose
+//! windows pop out the first time they show in a session (`on`: every app); unset or `off`, none
+//! does. Each app opens where it was last, per display (`places.rs`).
 
 mod client;
 mod menu;
@@ -29,7 +26,8 @@ use std::sync::{Arc, OnceLock};
 
 use cef::{ImplBrowser, ImplBrowserHost};
 use desk_web::sender::Role;
-use desk_wm::Plan;
+use desk_wm::Rect;
+use desk_wm::interact::Op;
 use serde_json::json;
 use winit::dpi::{LogicalPosition, LogicalSize};
 use winit::event::WindowEvent;
@@ -55,44 +53,25 @@ pub const MIN: (f64, f64) = (320.0, 200.0);
 /// be a crowded desk's small cell.
 const OPENS: (f64, f64) = (720.0, 450.0);
 
-/// The plan the compositor draws and routes input by, when it differs from `plan`: without the
-/// runtime's windows that show a plugin `handed` says is in an OS window of its own. The surfaces'
-/// lifecycle and the live budget keep reading `plan`, where those windows are.
-pub fn drawn(plan: &Plan, handed: impl Fn(&str) -> bool) -> Option<Plan> {
-    let is_handed = |w: &desk_wm::HostWindow| {
-        (w.panes.iter()).any(|p| p.plugin.as_deref().is_some_and(&handed))
-    };
-    if !plan.windows.iter().any(is_handed) {
-        return None;
-    }
-    let mut drawn = plan.clone();
-    drawn.windows.retain(|w| !is_handed(w));
-    Some(drawn)
-}
-
-/// The plan the compositor draws, under the switch this desk started with.
-pub fn drawn_now(plan: &Plan) -> Option<Plan> {
-    switch().is_on().then(|| drawn(plan, handed)).flatten()
-}
-
-/// An app window the shell holds: its pane and the plugin it shows.
+/// An app window the shell holds: its pane, the window manager's window it is, and its plugin.
 pub struct AppWindow {
     pub pane: Pane,
+    pub window: String,
     pub plugin: String,
 }
 
 /// The app windows the shell holds.
 pub type Windows = Registry<WindowId, AppWindow>;
 
-/// An app window to open: its surface's host, its plugin, its title until its page names one, its
-/// document and the size of the runtime's window it stands in for, in points.
+/// An app window to open: its surface's host, the window manager's window, its plugin, its title
+/// until its page names one, and its document.
 #[derive(Clone, Debug)]
 pub struct Open {
     pub surface: String,
+    pub window: String,
     pub plugin: String,
     pub title: String,
     pub url: String,
-    pub size: (u32, u32),
 }
 
 /// Open the OS window of `ask` with its browser, whose bridge goes through `host`'s relay.
@@ -113,7 +92,9 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
             }
         }
         None => {
-            let (w, h) = (f64::from(ask.size.0), f64::from(ask.size.1));
+            // As large as the window was on the canvas, at least `OPENS`.
+            let size = (shell.compositor.as_ref()).and_then(|c| c.out_frame(&ask.window));
+            let (w, h) = size.map_or(OPENS, |f| (f.w, f.h));
             attributes.with_inner_size(LogicalSize::new(w.max(OPENS.0), h.max(OPENS.1)))
         }
     };
@@ -136,6 +117,7 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
     }
     let held = AppWindow {
         pane,
+        window: ask.window,
         plugin: ask.plugin,
     };
     if let Some(old) = shell.apps.insert(&ask.surface, window, id, held) {
@@ -203,8 +185,8 @@ pub fn window_event(shell: &mut Shell, id: WindowId, event: &WindowEvent) {
     };
     match event {
         WindowEvent::CloseRequested if !shell.quitting => {
-            let plugin = app.plugin.clone();
-            ask_runtime_to_close(shell, &plugin);
+            let run = json!({ "command": CLOSE, "args": { "window": app.window } });
+            shell.desk.pages.emit(Role::Main, RUN, run);
         }
         WindowEvent::Focused(true) => {
             if let Some(host) = app.pane.host() {
@@ -238,28 +220,37 @@ fn moved(pump: &Pump) {
     let _ = nudge.send(());
 }
 
-/// Keep where every open app window is now.
-fn keep_all(shell: &Shell) {
+/// Keep where every open app window is now, and tell the window manager (`OutFrame`).
+fn keep_all(shell: &mut Shell) {
+    let mut frames = Vec::new();
     for surface in shell.apps.surfaces() {
         if let Some(app) = shell.apps.get(&surface) {
             places::keep(&app.plugin, &app.pane.window);
+            if let Some(f) = crate::main_frame::frame_of(&app.pane.window) {
+                frames.push((app.window.clone(), Rect::new(f.x, f.y, f.width, f.height)));
+            }
+        }
+    }
+    if let Some(compositor) = shell.compositor.as_mut() {
+        for (window, frame) in frames {
+            compositor.run_window_op(&Op::OutFrame { frame }, &window);
         }
     }
 }
 
-/// The person closed plugin `plugin`'s OS window: the runtime closes its window (asking about
-/// unsaved changes first), whose `destroy` closes the OS window.
-fn ask_runtime_to_close(shell: &Shell, plugin: &str) {
-    let window = shell
-        .compositor
-        .as_ref()
-        .and_then(|c| c.window_holding(plugin));
-    let Some(window) = window else {
-        eprintln!("endue Desk: no window of the desk's holds {plugin}");
-        return;
-    };
-    let run = json!({ "command": CLOSE, "args": { "window": window } });
-    shell.desk.pages.emit(Role::Main, RUN, run);
+/// Window > Move to Desk: the app window in front docks back to its place on the canvas.
+pub fn dock_front(shell: &mut Shell) {
+    let front = (shell.apps.surfaces().into_iter())
+        .filter_map(|s| {
+            shell
+                .apps
+                .get(&s)
+                .map(|app| (app.pane.window.has_focus(), app.window.clone()))
+        })
+        .find_map(|(focused, window)| focused.then_some(window));
+    if let (Some(window), Some(compositor)) = (front, shell.compositor.as_mut()) {
+        compositor.run_window_op(&Op::Dock, &window);
+    }
 }
 
 /// The desk quits: every app window closes.

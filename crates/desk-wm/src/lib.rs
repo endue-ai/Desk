@@ -80,8 +80,8 @@ pub use geometry::{
     screen_area, to_screen,
 };
 pub use host::{
-    Bars, Decision, FrameDoc, FrameState, HostPane, HostWindow, Laid, LiveBudget, PageShown,
-    Places, Plan, Seat, Step, Surfaces,
+    Bars, Decision, FrameDoc, FrameState, HostPane, HostWindow, Laid, LiveBudget, OutWindow,
+    PageShown, Places, Plan, Seat, Step, Surfaces,
 };
 pub use layout::{DesktopLayout, Saved, Visible};
 pub use minimap::{

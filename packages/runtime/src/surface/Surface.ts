@@ -7,6 +7,7 @@
  */
 
 import { mountArrange } from "../arrange";
+import { poppable } from "../arrange/out";
 import { reportFailure } from "../gesture";
 import { listenForShortcuts } from "../input";
 import type { SurfacePlacement } from "../modes/types";
@@ -185,6 +186,10 @@ export function mountSurfaces(
         splitDown,
         floatTool,
         pinTool,
+        // Out of the canvas into an OS window of its own (issue 235): a window of one plugin only.
+        poppable(ctx.store.get(), p.id)
+          ? tool(ctx.tr("popOut"), "pop-out", () => ctx.wm.run({ op: "pop-out" }, p.id))
+          : null,
         tool(ctx.tr("stash"), "drawer", () =>
           stash(ctx, p.id, viewOf(ctx, activeView(ctx, entry.placement)).title),
         ),

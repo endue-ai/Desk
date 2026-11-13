@@ -4,7 +4,8 @@
  * (no answer, an error, unknown_command, too much) keeps nothing, and the surface comes back cold.
  */
 import type { UiSurfaceStateParams } from "@endue-ai/bridge";
-import type { FrameTimers } from "./policy";
+import type { PluginHost } from "../plugins";
+import { type FrameTimers, realTimers } from "./policy";
 
 export const SURFACE_STATE = "ui.surface.state";
 /** The most the runtime keeps per surface, in bytes of UTF-8 JSON. */
@@ -31,6 +32,22 @@ export function askState(
       },
     );
   });
+}
+
+/**
+ * Ask plugin `id`'s frame for the state of its surface `surface` and keep it for its next page's
+ * init (`restored`), as an unload does: before its surface moves into or out of an OS window, a
+ * move that loads its page again (issue 235, ADR 0205). One that never said hello keeps nothing.
+ */
+export async function keepState(
+  host: Pick<PluginHost, "request" | "greeted" | "unloaded">,
+  id: string,
+  surface = "main",
+  timers: FrameTimers = realTimers,
+): Promise<void> {
+  const ask = (params: UiSurfaceStateParams) => host.request(id, SURFACE_STATE, params);
+  const kept = host.greeted(id) ? await askState(ask, { surface }, timers) : undefined;
+  host.unloaded(id, kept);
 }
 
 /** The `state` of an answer when it is JSON of at most 64 KiB, as a copy; else undefined. */

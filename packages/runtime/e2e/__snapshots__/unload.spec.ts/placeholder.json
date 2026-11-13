@@ -46,7 +46,7 @@
        "class": "icon-button tool",
        "aria-label": "Split right (⌘D)",
        "box": [
-        322,
+        296,
         199,
         24,
         24
@@ -66,7 +66,7 @@
        "class": "icon-button tool",
        "aria-label": "Split down (⌥⌘D)",
        "box": [
-        348,
+        322,
         199,
         24,
         24
@@ -87,7 +87,7 @@
        "aria-label": "Floating mode",
        "aria-pressed": "false",
        "box": [
-        374,
+        348,
         199,
         24,
         24
@@ -108,7 +108,7 @@
        "aria-label": "Pin",
        "aria-pressed": "false",
        "box": [
-        400,
+        374,
         199,
         24,
         24
@@ -120,6 +120,26 @@
         {
          "tag": "svg",
          "icon": "pin"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "Pop out",
+       "box": [
+        400,
+        199,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "pop-out"
         }
        ]
       },

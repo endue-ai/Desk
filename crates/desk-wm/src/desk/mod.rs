@@ -20,6 +20,7 @@ mod drawer;
 mod edit;
 mod focus;
 mod moves;
+mod out;
 mod session;
 mod windows;
 
@@ -238,9 +239,10 @@ impl Desk {
         })
     }
 
-    /// Every window on a desktop in desk order: the plugin windows in their slots, then what its
-    /// layout places and draws. What a profile, a move or an open placed lies over the slots
-    /// (#158): a profile's windows are not opened under the plugin windows already there.
+    /// Every window on a desktop's canvas in desk order: the plugin windows in their slots, then
+    /// what its layout places and draws. What a profile, a move or an open placed lies over the
+    /// slots (#158): a profile's windows are not opened under the plugin windows already there. A
+    /// window out in an OS window of its own is not on the canvas (`out_windows`, #235).
     pub fn windows_of(&self, r: impl Into<DesktopRef>) -> Vec<Placement> {
         let id = self.id_of(r);
         let mut all = self.auto_placements(id.as_str());
@@ -248,7 +250,7 @@ impl Desk {
             self.layout_of(id.as_str())
                 .surfaces
                 .into_iter()
-                .filter(|p| self.shows_something(p)),
+                .filter(|p| p.out.is_none() && self.shows_something(p)),
         );
         all
     }

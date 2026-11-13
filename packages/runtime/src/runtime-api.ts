@@ -36,6 +36,11 @@ export interface RuntimePlugins {
   unmount(id: string): void;
   /** Open the surface of a plugin that started asleep (#590), as a window placing it asks. */
   wake(id: string): void;
+  /**
+   * Ask a plugin for its surface's state and keep it for its next page, as an unload does: before
+   * its window moves into or out of an OS window (issue 235), which loads its page again.
+   */
+  keep?(id: string, surface?: string): Promise<void>;
 }
 
 export interface Runtime {

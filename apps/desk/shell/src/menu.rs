@@ -25,14 +25,17 @@ pub enum Choice {
     Update,
     /// Quit Desk.
     Quit,
+    /// Window > Move to Desk: the window out of the canvas in front docks back (#235).
+    Dock,
 }
 
-const ITEMS: [(&str, Choice); 5] = [
+const ITEMS: [(&str, Choice); 6] = [
     ("search", Choice::Search),
     ("eris", Choice::Eris),
     ("desk", Choice::Desk),
     ("update", Choice::Update),
     ("quit", Choice::Quit),
+    ("dock", Choice::Dock),
 ];
 
 impl Choice {
@@ -122,10 +125,18 @@ fn mac_menu() -> tray_icon::menu::Result<Menu> {
             &P::select_all(None),
         ],
     )?;
+    // An OS window a window popped out into goes back to the desk (#235); on the desk's own window
+    // it does nothing.
+    let dock = MenuItem::with_id(
+        Choice::Dock.id(),
+        "Move to Desk",
+        true,
+        "CmdOrCtrl+Shift+Backslash".parse::<Accelerator>().ok(),
+    );
     let window = Submenu::with_items(
         "Window",
         true,
-        &[&P::minimize(None), &P::close_window(None)],
+        &[&P::minimize(None), &dock, &P::close_window(None)],
     )?;
     Menu::with_items(&[&app, &edit, &window])
 }

@@ -335,7 +335,7 @@ impl CompositorWindow {
     }
 
     /// The same, then plan and draw again.
-    fn wm_outs(&mut self, outs: Vec<Out>, now: Instant) {
+    pub(super) fn wm_outs(&mut self, outs: Vec<Out>, now: Instant) {
         if outs.is_empty() || !self.emit_wm(outs) {
             return;
         }

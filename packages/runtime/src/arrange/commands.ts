@@ -5,12 +5,13 @@
  * restore-arrangement as their undo: each is one step on the desk's undo stack (ADR 0077). The
  * spread is the compositor's to draw (#54, ADR 0161): its command asks the window manager's host,
  * and the window picked in it takes the focus through desk.windows.focus. desk.windows.close closes
- * a window of the desktop in front by id, asking about unsaved changes first: the shell runs it when
- * the person closes the OS window a plugin shows in (#234).
+ * a window of the desktop in front, or one out of the canvas, by id, asking about unsaved changes
+ * first: the shell runs it when the person closes the OS window a window popped out into (issue 235).
  */
 import { CommandError } from "../commands";
 import { type Ctx, edit, windowsOf } from "../shell/actions";
 import { closeWindow, focusPane } from "../shell/windows";
+import { outWindows } from "../surface/placed";
 import type { Arranged } from "../wm/types";
 import { type ArrangeCopyKey, arrangeText } from "./copy";
 
@@ -177,7 +178,11 @@ export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void)
       run: async (args) => {
         const window = (args as { window?: unknown } | undefined)?.window;
         if (typeof window !== "string") throw new CommandError("failed", "say which: { window }");
-        const here = () => windowsOf(ctx.store.get()).some((p) => p.id === window);
+        // A window of the desktop in front, or one out of the canvas in an OS window (issue 235).
+        const here = () =>
+          [...windowsOf(ctx.store.get()), ...outWindows(ctx.store.get())].some(
+            (p) => p.id === window,
+          );
         if (!here()) throw new CommandError("failed", say("notHere"));
         await closeWindow(ctx, window);
         // The person may keep a window whose unsaved changes they were asked about.

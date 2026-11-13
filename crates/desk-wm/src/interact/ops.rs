@@ -33,6 +33,16 @@ pub enum Op {
     /// Fan the desktop's windows out to pick one, or close the spread (ADR 0116). It moves nothing:
     /// the compositor's shell runs it (`spread::run`) and draws it; here nothing changes.
     Spread,
+    /// Leave the canvas for an OS window of its own (#235), at `frame` when the caller knows one
+    /// (points of the OS's desktop), else wherever the shell opens it, as large as the window.
+    PopOut {
+        #[serde(default)]
+        frame: Option<Rect>,
+    },
+    /// Come back from an OS window to the window's place on its desktop's canvas (#235).
+    Dock,
+    /// The OS window of a window out of the canvas is at `frame` now (#235).
+    OutFrame { frame: Rect },
 }
 
 impl Wm {
@@ -40,6 +50,9 @@ impl Wm {
     pub fn run(&mut self, op: &Op, window: Option<&str>) -> Vec<Out> {
         if *op == Op::Spread {
             return Vec::new();
+        }
+        if let Some(out) = self.run_out(op, window) {
+            return out;
         }
         let id = window
             .map(str::to_owned)
@@ -76,7 +89,7 @@ impl Wm {
                 let moved = self.in_reach(moved);
                 self.place(&id, moved, floating)
             }
-            Op::Spread => Vec::new(),
+            Op::Spread | Op::PopOut { .. } | Op::Dock | Op::OutFrame { .. } => Vec::new(),
             Op::Resize { dw, dh } => {
                 let (rect, floating) = self.on_screen(&p);
                 let bounds = floating.then(|| screen_area(self.screen.w, self.screen.h));

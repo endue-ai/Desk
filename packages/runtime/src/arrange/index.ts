@@ -7,6 +7,7 @@
 import { CommandError } from "../commands";
 import type { ShellCtx } from "../shell/context";
 import { defineArrangeCommands } from "./commands";
+import { defineOutCommands } from "./out";
 import { mountStrip } from "./strip";
 
 export function mountArrange(root: HTMLElement, ctx: ShellCtx): () => void {
@@ -27,7 +28,11 @@ export function mountArrange(root: HTMLElement, ctx: ShellCtx): () => void {
       );
     el?.focus({ preventScroll: true });
   };
-  const offs = [defineArrangeCommands(ctx, keys), mountStrip(root, ctx, run)];
+  const offs = [
+    defineArrangeCommands(ctx, keys),
+    defineOutCommands(ctx),
+    mountStrip(root, ctx, run),
+  ];
   return () => {
     for (const off of offs) off();
   };
