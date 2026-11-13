@@ -100,11 +100,14 @@ frame of its size.
 * Bad, because a skipped paint's picture comes one paint later: a page that animates while resized
   shows its animation one frame late for each paint skipped.
 * Bad, because one fault stays inside the picture: a window's own page lays its section out at the
-  size in the desk's state, which leads the page's size by a frame or two while a corner is dragged,
-  so for those frames the title bar's tools are cut at the picture's edge. Sizing the section
-  against its page (`100vw`, or `min(…, 100vw)`) would keep them whole, but the page then stopped
-  growing once the window had been moved, and a press on its corner no longer resized it; it is
-  left for its own issue.
+  size in the desk's state, which runs ahead of the page's size while the window's size changes,
+  so the section is cut at the picture's edge as the window grows (the title bar's tools, for a
+  frame or two of a corner drag) and leaves a strip of the page's background as it shrinks. Under
+  the sway the Terminal's page and its place differed by more than a few pixels in 8 of 10
+  captured frames, by up to 98 px; `sway-sizes` compares the texture with the frame and cannot
+  see it. Sizing the section against its page (`100vw`, or `min(…, 100vw)`) would keep it laid out
+  for its page, but the page then stopped growing once the window had been moved, and a press on
+  its corner no longer resized it; it is left for its own issue.
 
 ### Measurements
 
