@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "about": "The motion gate's limits (`just perf-motion`, #247, ADR 0208). A check named in `known` fails today and is fixed by the issue named: it is reported, not failed, and a run where it passes fails until it is taken out of `known`. `baseline` is what `just perf-motion record` measured last.",
+  "window": "endue.sidebar",
+  "windows": 13,
+  "shake": {
+    "amp": 200,
+    "periodMs": 500,
+    "stepMs": 8,
+    "durationMs": 4000,
+    "captures": 10,
+    "drop": [0.4, 0.6]
+  },
+  "limits": {
+    "minFps": 55,
+    "longIntervalMs": 25,
+    "maxLongShare": 0.02,
+    "maxForeignFrames": 0,
+    "foreignBlocks": 4,
+    "minRestSharpness": 0.95
+  },
+  "known": {
+    "soft": "#250"
+  },
+  "baseline": {
+    "optimized-offscreen": {
+      "date": "2026-11-13T17:21:04.457Z",
+      "commit": "9dfca4dc",
+      "machine": "Apple M4 Max, darwin",
+      "variant": "optimized-offscreen",
+      "runs": 3,
+      "load": [25.2, 18.8, 17.4],
+      "found": {
+        "fps": 59.8,
+        "longShare": 0.0041841004184100415,
+        "intervalP95": 20.3,
+        "intervalMax": 27.5,
+        "swingFrames": 30,
+        "foreignFrames": 0,
+        "fromDeskPage": 0,
+        "restSharpness": 0.7736939716304354,
+        "stopped": []
+      }
+    },
+    "debug-offscreen": {
+      "date": "2026-11-13T17:22:44.572Z",
+      "commit": "9dfca4dc",
+      "machine": "Apple M4 Max, darwin",
+      "variant": "debug-offscreen",
+      "runs": 3,
+      "load": [14.3, 22.6, 23.7],
+      "found": {
+        "fps": 59.7,
+        "longShare": 0.0041841004184100415,
+        "intervalP95": 20.2,
+        "intervalMax": 26.6,
+        "swingFrames": 30,
+        "foreignFrames": 0,
+        "fromDeskPage": 0,
+        "restSharpness": 0.7736939716304354,
+        "stopped": ["run 2: main.endue-terminal stalled (#157 watch)"]
+      }
+    },
+    "optimized-screen": {
+      "date": "2026-11-13T17:24:20.582Z",
+      "commit": "9dfca4dc",
+      "machine": "Apple M4 Max, darwin",
+      "variant": "optimized-screen",
+      "runs": 3,
+      "load": [22.1, 35.9, 31.3],
+      "found": {
+        "fps": 59.9,
+        "longShare": 0.008368200836820083,
+        "intervalP95": 20,
+        "intervalMax": 29.4,
+        "swingFrames": 30,
+        "foreignFrames": 0,
+        "fromDeskPage": 0,
+        "restSharpness": 0.7736939716304354,
+        "stopped": []
+      }
+    }
+  }
+}

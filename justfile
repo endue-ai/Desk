@@ -160,6 +160,17 @@ perf-app mode="check":
 perf-compositor mode="check":
     node e2e/perf/compositor.ts {{mode}}
 
+# The motion gate (#247, ADR 0208): the optimized shell (development commands on) on the Default
+# profile's 13 plugin windows, one shaken by its title bar at 2 Hz ±200 px, a move every 8 ms, headless
+# (no screen, pointer or keyboard of the machine's), three runs; fails on dropped frames, a window
+# showing pixels not its own, a page that stops painting, a window softer at rest than at a whole
+# pixel. Limits, known failures and the baseline in e2e/perf/motion.json ("record" sets the baseline);
+# `--debug` measures the development build for the record, `--screen` presents to the window, `--runs N`,
+# `--no-build`. macOS. Run it before a change to the compositor, desk-wm or the off-screen host lands
+[positional-arguments]
+perf-motion *args: build-sdk build-ui
+    node e2e/perf/motion.ts "$@"
+
 # Check that this session still has its macOS login session (a WindowServer crash ends it; ADR 0018)
 doctor:
     node scripts/doctor.mjs
