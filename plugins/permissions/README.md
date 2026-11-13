@@ -3,8 +3,8 @@
 The person's side of the permission engine, in the community folder format and on the public bridge
 API only. Its one surface is a hidden overlay, never a window (ADR 0190): each `perm.prompt` and each
 `perm.approval` (an agent's irreversible call, ADR 0078) shows it in front of everything, whole at any
-size, with the keys; the answer goes back with `perm.answer` or `perm.approve`, and with no card left
-it hides. One card at a time; the rest queue, and a page that loads again shows the ones still waiting.
+size, with the keys; the answer goes back with `perm.answer` or `perm.approve`, a card answered on the
+island (ADR 0204) or withdrawn leaves with `perm.settled`, and with no card left it hides. One card at a time; the rest queue, and a page that loads again shows the ones still waiting.
 Opened by the person (the palette, Eris), it lists every caller's grants, grouped by caller, to revoke;
 the brain's agents (`agent:<id>`, ADR 0072) under their own Agents heading; and this session's
 refusals, which the core keeps (CORE-03), each with Allow (`perm.grant`) to take it back.

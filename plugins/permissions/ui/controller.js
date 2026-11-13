@@ -184,6 +184,25 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     if (text) view.status(text);
   };
 
+  /**
+   * A card that stopped waiting without this page's answer (`perm.settled`): another prompter, the
+   * island (ADR 0204), answered it, or its caller went. It leaves the queue; one on screen gives way
+   * to the next. The card this page is answering leaves with its own answer.
+   * @param {import("@endue-ai/bridge").PermSettledData} gone
+   */
+  const settledElsewhere = ({ kind, id }) => {
+    const at = queue.findIndex((c) => c.kind === kind && idOf(c) === id);
+    if (at < 0 || (at === 0 && answering)) return;
+    const [card] = queue.splice(at, 1);
+    settle(card);
+    writes.delete(id);
+    if (at === 0) moveOn("");
+    else {
+      keep();
+      showPrompt();
+    }
+  };
+
   /** @param {string} grantId */
   const revoke = async (grantId) => {
     const held = grants?.find((g) => g.grant.grantId === grantId);
@@ -364,6 +383,7 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     else if (event.event === "perm.prompt") enqueue({ kind: "prompt", data: event.data });
     else if (event.event === "perm.approval") enqueue({ kind: "approval", data: event.data });
     else if (event.event === "perm.approval.done") finished(event.data);
+    else if (event.event === "perm.settled") settledElsewhere(event.data);
     else if (event.event === "plugin.changed") void loadPlugins().then(showNames);
   });
 
