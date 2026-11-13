@@ -1,11 +1,13 @@
 //! The island's window (ADR 0204): placed on the display the person left it on, at their spot
-//! there, and shown without taking the keys; hidden; grown open and folded back; its spot kept.
+//! there, and shown without taking the keys; hidden; grown open and folded back, giving the keys back
+//! when it folds with them; given the keys for Option+Enter; its spot kept.
 //! The page hears `island://open` with whether it is open, which the shell alone decides. Runs on
 //! the event loop's thread.
 
 use std::path::Path;
 use std::sync::atomic::Ordering::Relaxed;
 
+use cef::ImplBrowserHost;
 use desk_web::sender::Role;
 use serde_json::json;
 use winit::dpi::LogicalSize;
@@ -69,6 +71,7 @@ pub(super) fn expand(shell: &mut Shell, state: &Island, open: bool) {
     };
     if state.open.load(Relaxed) == open {
         tell(shell, open);
+        keys_back(shell, open);
         return;
     }
     let (Some(monitor), Some(current)) = (pane.window.current_monitor(), rect_of(&pane.window))
@@ -91,6 +94,28 @@ pub(super) fn expand(shell: &mut Shell, state: &Island, open: bool) {
     displays::place(&pane.window, next, scale);
     *lock(&state.placed) = rect_of(&pane.window);
     tell(shell, open);
+    keys_back(shell, open);
+}
+
+/// Give it the keys and its page the focus (Option+Enter), without making the desk active.
+pub(super) fn take_keys(shell: &Shell) {
+    let Some(pane) = shell.pane(Role::Island) else {
+        return;
+    };
+    super::panel::make_key(&pane.window);
+    if let Some(host) = pane.host() {
+        host.set_focus(1);
+    }
+}
+
+/// Folded while it has the keys: they go back to the app in front.
+fn keys_back(shell: &Shell, open: bool) {
+    if let Some(pane) = shell
+        .pane(Role::Island)
+        .filter(|p| !open && p.window.has_focus())
+    {
+        super::panel::give_back(&pane.window);
+    }
 }
 
 /// The page says how tall the open island is: it fits its window to it, keeping its top edge.

@@ -5,6 +5,7 @@ import type { PluginInfo } from "@endue-ai/bridge";
 import { type ApprovalModel, approvalModel } from "../../../plugins/permissions/ui/approval.js";
 import { type PromptModel, promptModel } from "../../../plugins/permissions/ui/model.js";
 import type { Ask } from "./island-model";
+import "./island-card.css";
 
 /** One way to answer a card: what goes back to the core and the button's words. */
 export interface Choice {

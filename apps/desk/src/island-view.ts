@@ -1,5 +1,6 @@
 // The island's DOM (ADR 0204): the pill, and under it, while open, the panel: the card in front
-// (island-card.ts), the asks waiting behind it, the agents at work, and a way to the desk.
+// (island-card.ts), the talk with Eris (island-talk.ts), the asks waiting behind the card, the
+// agents at work, and a way to the desk.
 import type { PluginInfo } from "@endue-ai/bridge";
 import { cardOf, renderCard, titleOf } from "./island-card";
 import { type IslandState, summary } from "./island-model";
@@ -26,6 +27,7 @@ export function mountIsland(
   doc: Document,
   root: HTMLElement,
   answer: (choice: string) => void,
+  talk: HTMLElement,
 ): IslandDom {
   const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text = "") => {
     const node = doc.createElement(tag);
@@ -59,6 +61,7 @@ export function mountIsland(
   panel.append(
     cardSlot,
     said,
+    talk,
     restHeading,
     restList,
     el("h2", "island-heading", "At work"),

@@ -22,6 +22,28 @@ pub fn made_as_panel<T>(make: impl FnOnce() -> T) -> T {
     make()
 }
 
+/// Give the island the keys without making the desk the active app (Option+Enter); elsewhere the
+/// window takes the focus as any does.
+pub fn make_key(window: &Window) {
+    #[cfg(target_os = "macos")]
+    if let Some(ns_window) = crate::float::mac::ns_window(window) {
+        ns_window.makeKeyAndOrderFront(None);
+        return;
+    }
+    window.focus_window();
+}
+
+/// Give the keys back to the app in front (Escape): the panel leaves the screen and comes back at
+/// once, no longer key. Elsewhere the OS decides where the focus goes.
+pub fn give_back(window: &Window) {
+    #[cfg(target_os = "macos")]
+    if let Some(ns_window) = crate::float::mac::ns_window(window) {
+        ns_window.orderOut(None);
+        ns_window.orderFrontRegardless();
+    }
+    let _ = window;
+}
+
 /// After winit made it: whether the window is a panel, made non-activating and kept on screen while
 /// the desk is inactive.
 pub fn settle(window: &Window) -> Result<(), String> {

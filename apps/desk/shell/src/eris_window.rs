@@ -154,8 +154,13 @@ pub fn setup(shell: &mut Shell, event_loop: &ActiveEventLoop) {
     }
 }
 
-/// The global shortcut and the tray's Talk to Eris.
+/// The global shortcut and the tray's Talk to Eris: on the island while it shows and the desk is not
+/// in front, else as ADR 0121 says.
 pub fn summon(shell: &mut Shell) {
+    // The island talks to her over every app while it shows (ADR 0204).
+    if crate::island::summon(shell) {
+        return;
+    }
     if let Some(state) = shell.desk.eris.get().cloned() {
         let effects = state.feed(Event::Shortcut);
         apply(shell, &state, effects);
@@ -227,6 +232,13 @@ fn apply(shell: &mut Shell, state: &ErisWindow, effects: Vec<Effect>) {
             Effect::TalkInDesk { toggle } => talk_in_desk(state, toggle),
         }
     }
+}
+
+/// The shortcut that summons Eris as it reads (⌥↩), while the desk holds it.
+pub(crate) fn shortcut_label(desk: &Desk) -> Option<String> {
+    let state = desk.eris.get()?;
+    let held = lock(&state.shortcut);
+    held.registered.then(|| held.label.clone())
 }
 
 /// Hold the shortcut in force, letting go of the one before; say so when it cannot be had.

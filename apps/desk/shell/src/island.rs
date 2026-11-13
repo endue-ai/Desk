@@ -5,7 +5,8 @@
 //! desk for what it shows (`desk_web::sender`). This file opens the window the first time
 //! `desk.island.show` is on and shows or hides it as the setting changes; `frame` places it, grows it
 //! open and folds it, and keeps its spot per display (`kept`) in `<data>/island.json`; `screens`
-//! hears a display come or go.
+//! hears a display come or go. Option+Enter opens it on Eris's field with the keys (`summon`), and
+//! the floating Eris stays down while it shows.
 
 pub mod commands;
 mod frame;
@@ -106,6 +107,8 @@ fn follow(shell: &mut Shell, event_loop: &ActiveEventLoop) {
     let Some(state) = shell.desk.island.get().cloned() else {
         return;
     };
+    // The floating Eris stays down while the island shows (`eris_window::calls::mode`).
+    crate::eris_window::main_changed(shell);
     if !shown(&state.core) {
         frame::hide(shell, &state);
         return;
@@ -114,6 +117,33 @@ fn follow(shell: &mut Shell, event_loop: &ActiveEventLoop) {
         return;
     }
     frame::show(shell, &state);
+}
+
+/// Option+Enter and the tray's Talk to Eris while the island shows and the desk is not in front: it
+/// opens on her field with the keys, without making the desk the active app; pressed again while
+/// it has them, it folds and gives them back. False leaves her to the floating Eris (ADR 0121).
+pub fn summon(shell: &mut Shell) -> bool {
+    let Some(state) = shell.desk.island.get().cloned() else {
+        return false;
+    };
+    let Some(pane) = shell.pane(Role::Island).filter(|pane| pane.visible()) else {
+        return false;
+    };
+    if shell
+        .pane(Role::Main)
+        .is_some_and(|main| main.window.has_focus())
+    {
+        return false;
+    }
+    if state.open.load(Relaxed) && pane.window.has_focus() {
+        frame::expand(shell, &state, false);
+        return true;
+    }
+    frame::expand(shell, &state, true);
+    frame::take_keys(shell);
+    let talk = serde_json::Value::Null;
+    shell.desk.pages.emit(Role::Island, "island://talk", talk);
+    true
 }
 
 /// Its window, hidden: transparent around the page, on every Space and over full-screen apps.
@@ -138,7 +168,7 @@ fn open_window(shell: &mut Shell, event_loop: &ActiveEventLoop) -> bool {
 }
 
 /// Whether `desk.island.show` is on; a setting the desk cannot read is off.
-fn shown(core: &Core) -> bool {
+pub(crate) fn shown(core: &Core) -> bool {
     let request = json!({ "id": 0, "method": "settings.get", "params": { "key": "show" } });
     call(core, OWNER, request)
         .ok()

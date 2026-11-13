@@ -79,10 +79,12 @@ const ISLAND_COMMANDS: &[&str] = &[
     "island_fit",
     "island_drag",
     "island_reveal_main",
+    "island_state",
 ];
 /// What the island may ask the core as the desk (ADR 0204): the agents and what they do, the runs of
-/// the agent programs on this computer, what waits for the person and the answers to it, and the
-/// plugins' names for the callers that ask. Talking and notices add theirs as they land.
+/// the agent programs on this computer, what waits for the person and the answers to it, the
+/// plugins' names for the callers that ask, and talking to Eris in the desk's one conversation.
+/// Notices add theirs as they land.
 const ISLAND_METHODS: &[&str] = &[
     "agent.list",
     "agents.runs",
@@ -90,6 +92,7 @@ const ISLAND_METHODS: &[&str] = &[
     "perm.answer",
     "perm.approve",
     "plugin.list",
+    "brain.say",
 ];
 
 /// Which of the shell's windows a browser is, set by the browser process when it makes the browser.
@@ -376,6 +379,7 @@ mod tests {
             "perm.answer",
             "perm.approve",
             "plugin.list",
+            "brain.say",
         ] {
             assert!(island.may_ask(method).is_ok(), "{method}");
         }
@@ -385,6 +389,7 @@ mod tests {
             "fs.read",
             "settings.set",
             "cmd.invoke",
+            "brain.ask",
         ] {
             let refused = island.may_ask(method).unwrap_err();
             assert!(refused.contains(method), "{refused}");
@@ -394,6 +399,7 @@ mod tests {
             "island_fit",
             "island_drag",
             "island_reveal_main",
+            "island_state",
         ] {
             assert!(island.may(cmd), "{cmd}");
             assert!(!Sender::Runtime.may(cmd), "{cmd}");

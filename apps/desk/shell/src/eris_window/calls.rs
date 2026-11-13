@@ -59,6 +59,10 @@ pub(super) fn setting(core: &Core, key: &str) -> Option<String> {
     value.get("value")?.as_str().map(str::to_owned)
 }
 
+/// When she floats: never while the island shows, which talks to her over every app (ADR 0204).
 pub(super) fn mode(core: &Core) -> Float {
+    if crate::island::shown(core) {
+        return Float::Never;
+    }
     Float::parse(setting(core, "float").as_deref())
 }

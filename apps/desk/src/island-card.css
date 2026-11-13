@@ -1,0 +1,106 @@
+/*
+ * The card in front on the island (ADR 0204): who asks, for what, why, and the ways to answer, as the
+ * permissions overlay says them. Every colour, size and radius is a theme token.
+ */
+
+.island-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+}
+
+.island-card p {
+  margin: 0;
+}
+
+.island-card-title {
+  margin: 0;
+  font-size: var(--desk-text-base);
+  font-weight: 600;
+}
+
+.island-card-who,
+.island-card-asked {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.island-card-what {
+  overflow-wrap: anywhere;
+}
+
+.island-card-warning {
+  padding: var(--desk-space-1) var(--desk-space-2);
+  border: var(--desk-border-width) solid var(--desk-warning-border);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-warning-soft);
+  color: var(--desk-warning-text);
+}
+
+.island-card-why {
+  color: var(--desk-text-muted);
+}
+
+.island-card-preview {
+  max-height: calc(var(--desk-space-16) * 2.5);
+  margin: 0;
+  overflow: auto;
+  padding: var(--desk-space-2);
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-input);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.island-line-added {
+  color: var(--desk-success-text);
+}
+
+.island-line-removed {
+  color: var(--desk-danger-text);
+}
+
+.island-line-hunk,
+.island-line-file {
+  color: var(--desk-text-muted);
+}
+
+.island-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-2);
+  margin-top: var(--desk-space-2);
+}
+
+.island-choice {
+  height: var(--desk-button-height);
+  padding: 0 var(--desk-button-padding-x);
+  border: var(--desk-border-width) solid var(--desk-button-primary-border);
+  border-radius: var(--desk-button-radius);
+  background: var(--desk-button-primary-bg);
+  color: var(--desk-button-primary-fg);
+  font: inherit;
+}
+
+.island-choice:hover {
+  background: var(--desk-button-primary-hover-bg);
+}
+
+.island-choice.island-refuse {
+  border-color: var(--desk-button-border);
+  background: var(--desk-button-bg);
+  color: var(--desk-button-fg);
+}
+
+.island-choice.island-refuse:hover {
+  background: var(--desk-button-hover-bg);
+}
+
+.island-choice:focus-visible,
+.island-card-preview:focus-visible {
+  outline: var(--desk-focus-width) solid var(--desk-ring);
+  outline-offset: var(--desk-focus-offset);
+}

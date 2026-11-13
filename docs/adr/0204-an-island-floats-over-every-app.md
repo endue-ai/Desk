@@ -69,8 +69,8 @@ over full-screen apps and answers without activating the desk, and the core alre
   the theme the main window keeps (ADR 0056).
 * **Who it is.** Its bridge calls go to the core as the desk, as the floating Eris's do, and only the
   methods it needs pass (`desk_web::sender::Sender::may_ask`): `agent.list`, `agents.runs` and
-  `perm.pending` now,
-  `perm.answer` and `perm.approve` with answering, `brain.say` and `brain.status` with talking. It
+  `perm.pending` for what it shows, `perm.answer`, `perm.approve` and `plugin.list` for answering,
+  `brain.say` for talking. It
   hears every core event, as the desk's other windows do (`host.rs`). It holds no grant of its own,
   so the core never addresses a prompt to it.
 * **What changes** (`specs/bridge/v0/agent.schema.json`). An agent's runs were items in the index
@@ -83,9 +83,14 @@ over full-screen apps and answers without activating the desk, and the core alre
   each prompter takes down a card another one answered.
 * **Behind a setting** until it can take the floating Eris's place: `desk.island.show` (declared by
   `plugins/island`), off by default, read when it changes. Hiding it changes nothing else.
-* **ADR 0121.** The island is where Eris is called once it talks: Option+Enter opens its composer from
-  any app and Escape gives the keys back. Then the floating Eris and the tray's status retire, and
-  `desk.island.show` turns on by default.
+* **ADR 0121.** The island is where Eris is called while it shows. Open, it talks and types to her in
+  the desk's one conversation, as the floating Eris does (`brain.say` as the desk, her turns from
+  `brain.turn`, the lines handed to the desk through the app's storage), without her figure.
+  Option+Enter and the tray's Talk to Eris, while the desk is not in front, open it on her field and
+  give it the keys (`makeKeyAndOrderFront` on the panel, which leaves the app in front active);
+  pressed again, or Escape outside a composition, fold it and give the keys back (the panel leaves
+  the screen and comes back at once, no longer key). The floating Eris stays down while the island
+  shows. Then she and the tray's status retire, and `desk.island.show` turns on by default.
 * **ADR 0190.** The permissions plugin stays the desk's prompter and its overlay stays hidden until a
   question comes. The island counts the same question on its pill, without the keys; the person's
   press opens it on the card in front, in the plugin's own words and with its choices, answered with

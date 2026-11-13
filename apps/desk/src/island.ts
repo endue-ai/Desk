@@ -5,7 +5,9 @@
 // shell alone decides whether it is open and says so with `island://open`. A new ask never opens it:
 // the pill counts it, and the person's press opens it and takes the keys. A card's choices take no
 // press in the first moment after it shows, so a press meant for what was there never allows
-// anything. It follows the theme the main window keeps (palette-theme.ts).
+// anything. Open, it also talks and types to Eris (island-talk.ts): Option+Enter from any app opens
+// it with the keys in her field (`island://talk`), and Escape folds it and gives the keys back. It
+// follows the theme the main window keeps (palette-theme.ts).
 import {
   BridgeCallError,
   BridgeClient,
@@ -13,6 +15,7 @@ import {
   cefAdapter,
   type PluginInfo,
 } from "@endue-ai/bridge";
+import { storageChannel } from "@endue-ai/runtime";
 import "@endue-ai/runtime/shell.css";
 import type { NativeWindow } from "./eris-window";
 import "./island.css";
@@ -28,6 +31,7 @@ import {
   type Worker,
   workingOf,
 } from "./island-model";
+import { mountTalk } from "./island-talk";
 import { mountIsland } from "./island-view";
 import { followDeskTheme } from "./palette-theme";
 
@@ -90,15 +94,29 @@ export async function startIsland(
   /** When the card on screen showed: its choices take no press before `guard` has passed. */
   let shownAt = Number.NEGATIVE_INFINITY;
 
-  const dom = mountIsland(doc, root, (choice) => void answer(choice));
+  /** The shortcut that brings the talk from any app, as the shell holds it (`island_state`). */
+  let shortcut: { label: string } | undefined;
+  /** The open window as tall as what it shows; set once the view exists. */
+  let fit = () => {};
+  const talk = mountTalk(doc, {
+    core,
+    channel: storageChannel(win),
+    lang: win.navigator.language.startsWith("ko") ? "ko" : "en",
+    shortcut: () => shortcut,
+    changed: () => fit(),
+  });
+  const dom = mountIsland(doc, root, (choice) => void answer(choice), talk.el);
   let fitted = 0;
-  const draw = () => {
-    if (dom.draw({ state: state(), plugins, open, said })) shownAt = now();
+  fit = () => {
     if (!open) return;
     const height = dom.wanted();
     if (height === fitted) return;
     fitted = height;
     run("island_fit", { height });
+  };
+  const draw = () => {
+    if (dom.draw({ state: state(), plugins, open, said })) shownAt = now();
+    fit();
   };
   // Quiet until the core has answered.
   draw();
@@ -186,12 +204,22 @@ export async function startIsland(
       fitted = 0;
       draw();
     }),
+    // Option+Enter: the shell opened it and gave it the keys; they go to her field.
+    native.listen("island://talk", () => talk.focus()),
   ]);
   const [pending, local] = await Promise.all([
     core.call("perm.pending", { scope: MANAGE }).catch(() => undefined),
     core.call("agents.runs", { scope: AGENTS }).catch(() => undefined),
     readAgents(),
     readPlugins(),
+    native.invoke("island_state").then(
+      (held) => {
+        const label = (held as { shortcut?: unknown } | undefined)?.shortcut;
+        shortcut = typeof label === "string" ? { label } : undefined;
+        talk.refresh();
+      },
+      () => {},
+    ),
   ]);
   if (pending) asks = asksOf(pending);
   if (local) runs = runningOf(local.runs);
@@ -230,11 +258,14 @@ export async function startIsland(
     else setOpen(!open);
   });
   on(win, "keydown", (event) => {
-    if (event.key === "Escape" && open && !event.isComposing) setOpen(false);
+    // Escape folds it and gives the keys back, unless it ends a composition in her field.
+    const composing = event.isComposing || event.keyCode === 229 || talk.composing();
+    if (event.key === "Escape" && open && !composing) setOpen(false);
   });
   on(dom.desk, "click", () => run("island_reveal_main"));
 
   const dispose = () => {
+    talk.dispose();
     offCore();
     for (const off of offs) off();
     for (const off of listeners.splice(0)) off();

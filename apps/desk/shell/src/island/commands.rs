@@ -1,6 +1,6 @@
 //! The island's own commands (ADR 0204), which only its page may call
 //! (`desk_web::sender::Sender::may`): open and fold it, fit it to what it shows open, follow the
-//! pointer, bring the desk forward.
+//! pointer, bring the desk forward, and what it shows of the shell (the shortcut's label).
 //! Window work runs on the event loop's thread.
 
 use std::sync::Arc;
@@ -44,7 +44,12 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
                 }
             });
         }
-        // Bring the desk forward: what waits is answered there until the island answers it.
+        // What the page shows of the shell: the shortcut that brings it from any app, as it reads.
+        "island_state" => {
+            let shortcut = crate::eris_window::shortcut_label(desk);
+            return Ok(serde_json::json!({ "shortcut": shortcut }));
+        }
+        // Bring the desk forward.
         "island_reveal_main" => {
             desk.pump.run(|shell, _| crate::palette::reveal_main(shell));
         }

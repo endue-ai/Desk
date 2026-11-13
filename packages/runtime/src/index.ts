@@ -28,11 +28,17 @@ export {
   type ErisLine,
   type ErisSnapshot,
   type FloatStatus,
+  floatSide,
+  keepLines,
   type LinkChannel,
   pairedChannels,
   SNAPSHOT_KEY,
+  statusOf,
   storageChannel,
 } from "./eris/float";
+// The same conversation from the island (ADR 0204): her turns and her words, without her figure.
+export { type FloatLang, floatText, statusText } from "./eris/float-copy";
+export { askEris, type BrainWatch, type FloatCore, watchBrain } from "./eris/float-turn";
 export { type ErisFloat, type FloatHost, mountErisFloat } from "./eris/float-view";
 export { comboOf, type KeyLike, type Platform, ShortcutRouter } from "./input";
 export type { Mode } from "./modes/types";

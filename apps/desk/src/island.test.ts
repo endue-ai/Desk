@@ -49,6 +49,7 @@ function nativeSide(answers: Record<string, Answer>) {
   const api: NativeWindow = {
     invoke: vi.fn(async (command: string, args?: Record<string, unknown>) => {
       invoked.push(args ? { command, args } : { command });
+      if (command === "island_state") return { shortcut: "⌥↩" };
       if (command !== "bridge_call") return undefined;
       const request = (args as { request: Request }).request;
       const answer = answers[request.method];
@@ -77,7 +78,7 @@ function nativeSide(answers: Record<string, Answer>) {
     fire,
     core: (event: BridgeEvent | Record<string, unknown>) => fire("bridge://event", event),
     commands: () =>
-      invoked.filter((c) => c.command !== "bridge_call" && c.command !== "island_fit"),
+      invoked.filter((c) => !["bridge_call", "island_fit", "island_state"].includes(c.command)),
     asked: () =>
       invoked
         .filter((c) => c.command === "bridge_call")
@@ -220,6 +221,22 @@ describe("the island", () => {
     $<HTMLButtonElement>("[data-answer=refuse]").click();
     await tick();
     expect(answered().map((a) => a.request.params.promptId)).toEqual(["p-1", "p-2"]);
+  });
+
+  it("puts the keys in Eris's field for Option+Enter, and Escape gives them back", async () => {
+    await start([]);
+    native.fire("island://open", { open: true });
+    native.fire("island://talk");
+    const input = $<HTMLInputElement>(".island-talk-input");
+    expect(document.activeElement).toBe(input);
+    expect($(".island-talk-empty").textContent).toContain("⌥↩ summons her anywhere");
+    // An Escape that ends a composition in her field leaves the island open.
+    input.dispatchEvent(new CompositionEvent("compositionstart"));
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(native.commands()).toEqual([]);
+    input.dispatchEvent(new CompositionEvent("compositionend"));
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(native.commands()).toEqual([FOLD]);
   });
 
   it("reads the agents again when the core says one of their runs changed", async () => {

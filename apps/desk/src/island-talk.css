@@ -1,0 +1,86 @@
+/*
+ * Talking to Eris on the island (ADR 0204): her status, the last lines of the desk's one
+ * conversation, and her field. Every colour, size and radius is a theme token.
+ */
+
+.island-talk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+}
+
+.island-talk-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--desk-space-2);
+}
+
+.island-talk-status,
+.island-talk-empty {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.island-talk-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  max-height: calc(var(--desk-space-16) * 2);
+  margin: 0;
+  overflow-y: auto;
+  padding: 0;
+  list-style: none;
+}
+
+.island-talk-lines:empty,
+.island-talk-empty[hidden],
+.island-talk-error[hidden] {
+  display: none;
+}
+
+.island-talk-line {
+  display: flex;
+  gap: var(--desk-space-2);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.island-talk-line[data-who="you"] .island-who {
+  color: var(--desk-text-muted);
+}
+
+.island-talk-text {
+  overflow-wrap: anywhere;
+}
+
+.island-talk-error {
+  margin: 0;
+  color: var(--desk-danger-text);
+}
+
+.island-talk-form {
+  display: flex;
+  gap: var(--desk-space-2);
+}
+
+.island-talk-input {
+  flex: 1;
+  min-width: 0;
+  height: var(--desk-field-height);
+  padding: 0 var(--desk-field-padding-x);
+  border: var(--desk-field-border-width) solid var(--desk-field-border-color);
+  border-radius: var(--desk-field-radius);
+  background: var(--desk-field-bg);
+  color: var(--desk-text);
+  font: inherit;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.island-talk-input:focus-visible {
+  border-color: var(--desk-field-focus-border);
+  outline: var(--desk-focus-width) solid var(--desk-field-focus-ring);
+  outline-offset: 0;
+}
