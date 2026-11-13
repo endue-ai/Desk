@@ -78,11 +78,3 @@ export async function hostOf(plugin: string): Promise<string> {
   const { surfaces } = await shellCommand<{ surfaces: Surfaces }>("compositor_stats");
   return Object.entries(surfaces).find(([, s]) => s.plugin === plugin)?.[0] ?? "";
 }
-
-/** The plugin whose surface has the keys, as the compositor routes them; null for the pages'. */
-export async function keysWith(): Promise<string | null> {
-  const { focused } = await shellCommand<{ focused: string | null }>("compositor_input_state");
-  if (!focused) return null;
-  const { surfaces } = await shellCommand<{ surfaces: Surfaces }>("compositor_stats");
-  return surfaces[focused]?.plugin ?? null;
-}
