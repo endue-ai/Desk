@@ -268,7 +268,7 @@ fn a_windows_popup_is_drawn_whole_above_every_window_and_under_the_system_layer(
         .collect();
     assert_eq!(heard_up, [NOTES, NOTES], "heard");
     // A bar of the desk's over its lower part, and a modal's scrim over the whole app: theirs.
-    let bar = json!({ "id": "desk.notices", "x": below.x - 10.0, "y": below.y - 10.0,
+    let bar = json!({ "id": "desk.eris", "x": below.x - 10.0, "y": below.y - 10.0,
         "width": 40, "height": 40 });
     let barred = hosted(&[bar]);
     let seen = reached(&barred, picker, &[below, inside]);

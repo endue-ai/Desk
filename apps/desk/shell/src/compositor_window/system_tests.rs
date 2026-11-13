@@ -371,3 +371,18 @@ fn no_windows_grip_or_title_bar_lies_over_an_overlay_or_an_edge_bar() {
         "clear of the dock"
     );
 }
+
+#[test]
+fn the_status_lines_text_over_a_grip_leaves_it_to_the_window_and_its_buttons_take_their_own() {
+    // Drawn over a window, the line's text hears nothing: the grip under it is Notes's, whose own
+    // page has its tools (ADR 0201).
+    let edge = Point::new(200.0, 447.0);
+    let line = json!({ "id": "desk.notices", "x": 150, "y": 430, "width": 200, "height": 40 });
+    let lined = hosted_parts(false, DOCK_AT, std::slice::from_ref(&line));
+    assert!(on_grip(&lined, edge), "the window's");
+    // A notice's button there is the button's.
+    let button =
+        json!({ "id": "desk.notice-actions", "x": 190, "y": 440, "width": 20, "height": 20 });
+    let buttoned = hosted_parts(false, DOCK_AT, &[line, button]);
+    assert!(!on_grip(&buttoned, edge), "the button's");
+}

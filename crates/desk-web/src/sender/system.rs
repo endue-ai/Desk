@@ -83,10 +83,20 @@ pub enum Level {
     Front,
 }
 
+/// The parts the compositor draws over the windows that take no press of their own: one there is
+/// for what lies under it. The status line's text is drawn over a window snapped to the top, whose
+/// tools are its own page's (ADR 0201); its buttons are a part of their own.
+const UNHEARD: &[&str] = &["desk.notices"];
+
 impl SystemPart {
     /// The system surface it is a part of: the desk's, whose caller it calls as.
     pub fn surface(&self) -> System {
         System::Desk
+    }
+
+    /// Whether a press in its boxes is its own (the page's), never a window's under it.
+    pub fn hears(&self) -> bool {
+        !UNHEARD.contains(&self.id)
     }
 }
 
@@ -146,7 +156,12 @@ pub const PARTS: &[SystemPart] = &[
     },
     SystemPart {
         id: "desk.notices",
-        holds: "the status line and its notices",
+        holds: "the status line and its notices, drawn over the windows: its text hears nothing",
+        level: Level::Bar,
+    },
+    SystemPart {
+        id: "desk.notice-actions",
+        holds: "the status line's buttons, one box each: a notice's actions, its Dismiss, its Open",
         level: Level::Bar,
     },
     SystemPart {
@@ -238,6 +253,22 @@ mod tests {
         ids.sort_unstable();
         ids.dedup();
         assert_eq!(ids.len(), all, "each id once");
+    }
+
+    #[test]
+    fn the_status_line_is_drawn_over_the_windows_and_only_its_buttons_hear_the_pointer() {
+        // A window's tools under the line's text are the window's (ADR 0201): its page has them.
+        let notices = part("desk.notices").expect("the status line");
+        assert!(
+            !notices.hears(),
+            "drawn over the windows, its text takes no press"
+        );
+        let actions = part("desk.notice-actions").expect("its buttons");
+        assert!(actions.hears());
+        assert_eq!(actions.level, Level::Bar);
+        for p in PARTS.iter().filter(|p| p.id != "desk.notices") {
+            assert!(p.hears(), "{}", p.id);
+        }
     }
 
     #[test]
