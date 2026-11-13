@@ -4,6 +4,9 @@ date: 2026-11-12
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0212: one file is still one buffer, and the buffer names the window of its
+opener that shows it.
+
 # A file no rule names opens in the fallbacks, one file is one buffer, and the ring holds what shows
 
 ## Context and Problem Statement

@@ -8,7 +8,9 @@ Status: amended by ADR 0166: the page's open overlays (popovers, menus, hover ti
 are one more part, a box each; amended by ADR 0167: every control the page draws outside its
 windows is in a part (the bottom edge's, a box each, the arrange strip, the canvas button, the safe
 mode badge), and a window under an edge bar is under it whole; amended by ADR 0192: a surface the
-desk gives the focus takes the page's focus on its place, not on its section alone.
+desk gives the focus takes the page's focus on its place, not on its section alone; amended by ADR
+0212: a plugin surface may have several pages, one per window, each on its own host
+`<surface>--<n>.<label>` and reached by it.
 
 # The shell runs as system surfaces the compositor places, and no plugin runs in the desk's page
 
