@@ -4,6 +4,9 @@ date: 2026-11-09
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0212: a file opener that asks for it shows in several windows, one page each,
+so one plugin frame is no longer its one window.
+
 # endue agents and spaces open as windows whose card turns over to Studio
 
 ## Context and Problem Statement
