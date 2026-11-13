@@ -157,6 +157,12 @@ export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void)
       run: async (args) => {
         const window = (args as { window?: unknown } | undefined)?.window;
         if (typeof window !== "string") throw new CommandError("failed", "say which: { window }");
+        // A window out of the canvas (issue 235) is in use and its OS window comes to the front:
+        // the compositor's shell raises it once the desk says so.
+        if (outWindows(ctx.store.get()).some((p) => p.id === window)) {
+          await edit(ctx, { op: "focus", window });
+          return { window };
+        }
         if (!windowsOf(ctx.store.get()).some((p) => p.id === window))
           throw new CommandError("failed", say("notHere"));
         // Wholly in sight first (the canvas pans when it has to), then the keys.
@@ -167,7 +173,7 @@ export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void)
       },
       agent: {
         description:
-          "Bring a window of the current desktop wholly into sight, panning the canvas when it has to, and give it the keys: what picking a window in the spread does.",
+          "Bring a window of the current desktop wholly into sight, panning the canvas when it has to, and give it the keys: what picking a window in the spread does. A window out of the canvas (out in desk.windows.list) comes to the front in its OS window.",
         args: WINDOW_ARGS,
       },
     }),

@@ -120,7 +120,8 @@ pub(super) fn elsewhere(desk: &BrainDesk) -> String {
             (name, None) => format!("- \"{name}\": "),
         };
         let on: Vec<&BrainDeskWindow> = (desk.windows.iter())
-            .filter(|w| w.hidden != Some(true) && w.desktop.as_deref() == Some(id))
+            .filter(|w| w.hidden != Some(true) && w.out.is_none())
+            .filter(|w| w.desktop.as_deref() == Some(id))
             .collect();
         if on.is_empty() {
             part.add(&[format!("{label}no windows")]);

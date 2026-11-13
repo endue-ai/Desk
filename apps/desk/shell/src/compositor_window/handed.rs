@@ -1,23 +1,35 @@
 //! Windows out of the canvas (#235, ADR 0205): the window manager's plan lists them apart from
 //! the windows the compositor draws, and the compositor hands their surfaces to the web host,
 //! which shows them in OS windows of their own (`web_host/app_surfaces.rs`). The plugins
-//! `DESK_APP_WINDOWS` names pop out the first time their window shows in a session. The shell
-//! runs the window commands an OS window calls for (its frame, its dock) through here.
+//! `DESK_APP_WINDOWS` names pop out the first time their window shows in a session, through the
+//! runtime's `desk.windows.pop-out`, which asks the plugin for its state first. When the desk's
+//! window in use becomes one out of the canvas (`desk.windows.focus`, Eris, a reopen), its OS
+//! window comes to the front. The shell runs the window commands an OS window calls for (its frame,
+//! its focus) through here.
 
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
 
+use desk_web::sender::Role;
 use desk_wm::Rect;
 use desk_wm::interact::Op;
+use serde_json::json;
 
 use super::CompositorWindow;
+use super::wm::RUN;
 use crate::web_host::OutAsk;
 
 /// The windows popped out by the switch this session: each pops out once, so one the person
 /// docked stays on the canvas.
 fn defaulted() -> &'static Mutex<HashSet<String>> {
     static ONCE: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+    ONCE.get_or_init(Mutex::default)
+}
+
+/// The window out of the canvas last in use, as the shell raised it: one raise a change.
+fn raised() -> &'static Mutex<Option<String>> {
+    static ONCE: OnceLock<Mutex<Option<String>>> = OnceLock::new();
     ONCE.get_or_init(Mutex::default)
 }
 
@@ -53,9 +65,21 @@ impl CompositorWindow {
         } else {
             Vec::new()
         };
+        let in_use = plan.out.iter().find(|w| w.focused).map(|w| w.id.clone());
         self.host.set_out(out);
         for window in pops {
-            self.run_window_op(&Op::PopOut { frame: None }, &window);
+            let run = json!({ "command": "desk.windows.pop-out", "args": { "window": window } });
+            self.desk.pages.emit(Role::Main, RUN, run);
+        }
+        let mut last = raised().lock().unwrap_or_else(|e| e.into_inner());
+        if *last != in_use {
+            last.clone_from(&in_use);
+            if let Some(window) = in_use {
+                let job = move |shell: &mut crate::window::Shell, _: &_| {
+                    crate::app_windows::raise(shell, &window);
+                };
+                self.desk.pump.run(job);
+            }
         }
     }
 

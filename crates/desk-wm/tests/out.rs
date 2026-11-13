@@ -152,3 +152,54 @@ fn a_window_out_round_trips_through_the_saved_session() {
     let back: Desk = serde_json::from_str(&text).unwrap();
     assert_eq!(back.out_window("endue.terminal").unwrap().1.out, Some(OS));
 }
+
+/// Terminal out of the canvas on desktop 1, Notes on it, the desk on desktop 2 with Terminal in
+/// use: what `desk.windows.list` answers is the contract's vector `desk-windows-list-out.json`.
+#[test]
+fn the_window_list_names_a_window_out_with_its_frame_and_where_it_docks() {
+    let mut desk = desk();
+    desk.pop_out("endue.terminal", OS);
+    desk.set_desktop("2");
+    desk.focus_pane("endue.terminal", None);
+    assert_eq!(desk.focused.as_deref(), Some("endue.terminal"));
+    let shot = serde_json::to_value(desk.snapshot(W, H)).unwrap();
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../specs/bridge/v0/vectors/valid/desk-windows-list-out.json");
+    if std::env::var_os("DESK_WRITE_VECTOR").is_some() {
+        let vector = serde_json::json!({
+            "target": "BrainDesk",
+            "description": "a window out of the canvas (#235): Terminal in an OS window of its own, in use, listed after the windows of the desktop in front (none here) with its OS frame, where it docks back on desktop 1 and no stacking place; Notes on desktop 1's canvas; crates/desk-wm/tests/out.rs builds it",
+            "instance": shot,
+        });
+        std::fs::write(&path, serde_json::to_string_pretty(&vector).unwrap() + "\n").unwrap();
+    }
+    let vector: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    assert_eq!(vector["target"], "BrainDesk");
+    assert_eq!(shot, vector["instance"]);
+    let terminal = &shot["windows"][0];
+    assert_eq!(terminal["id"], "endue.terminal");
+    assert_eq!(
+        terminal["out"],
+        serde_json::json!({ "x": 1200, "y": 400, "w": 720, "h": 450 })
+    );
+    assert_eq!(terminal["desktop"], "1");
+    assert_eq!(terminal["focused"], true);
+    assert!(terminal.get("z").is_none());
+}
+
+#[test]
+fn an_os_window_with_the_keys_makes_its_window_the_one_in_use() {
+    let mut wm = Wm::new();
+    wm.start(desk(), Size { w: W, h: H });
+    wm.run(&Op::PopOut { frame: Some(OS) }, Some("endue.terminal"));
+    wm.run(&Op::Maximize, Some("endue.notes"));
+    let published = |outs: &[Out]| outs.iter().any(|o| matches!(o, Out::Publish(_)));
+    assert!(published(&wm.run(&Op::Focus, Some("endue.terminal"))));
+    assert_eq!(wm.desk().focused.as_deref(), Some("endue.terminal"));
+    // Already in use, or a window of the canvas (the page focuses those): nothing.
+    assert!(wm.run(&Op::Focus, Some("endue.terminal")).is_empty());
+    assert!(wm.run(&Op::Focus, Some("endue.notes")).is_empty());
+    let plan = wm.desk().host_plan(W, H, TopChrome::default(), &Unseen);
+    assert!(plan.out[0].focused);
+}

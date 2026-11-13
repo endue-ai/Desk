@@ -29,7 +29,7 @@ export type WindowOp =
    * Out of the canvas into an OS window of its own and back (issue 235), which the compositor's shell
    * opens; a host without one ignores them.
    */
-  | { op: "pop-out" }
+  | { op: "pop-out"; frame?: { x: number; y: number; w: number; h: number } }
   | { op: "dock" };
 
 export interface WindowManagerHost {

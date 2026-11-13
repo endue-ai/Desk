@@ -1,7 +1,7 @@
 /**
  * What the person sees, for Eris's brain (ADR 0109, ADR 0124) and the app's tests (#82): the screen
- * and every window, those of the desktop in front first (front to back), then the drawer's, then the
- * other desktops' in their order, each where it is on screen (when its desktop is in front) in whole
+ * and every window, those of the desktop in front first (front to back), then those out of the canvas
+ * in OS windows of their own (issue 235), then the drawer's, then the other desktops' in their order, each where it is on screen (when its desktop is in front) in whole
  * CSS pixels, its place in its desktop's stacking order, how it is placed, whether it is pinned, has
  * the focus or waits in the drawer, the desktop it is on and the panes it shows with the plugin that
  * draws each, whether that plugin's frame sleeps (ADR 0134) and whether it stopped answering (#39);
@@ -78,7 +78,7 @@ export function defineDeskView(ctx: ShellCtx): () => void {
       run: () => deskSnapshot(ctx),
       agent: {
         description:
-          "What the person sees on the desk now: the screen size and every window, those of the desktop in front first (the focused one first), then those put away in the drawer, then those of the other desktops with the desktop each is on; each with where it is in whole CSS pixels, its place in its desktop's stacking order (z, higher in front), how it is placed (state: normal, floating, snapped to a half or quarter, filled; fill names the part), whether it is pinned, and the panes it shows with the plugin that draws each, whether that plugin's frame sleeps (asleep) and whether it stopped answering (responsiveness: late or stopped, which desk.frames.wait, stop and reload act on). Also the desktops (the current one marked, each with its canvas pan), the windows closed recently and a summary of what the person can do. Look again after opening or moving something.",
+          "What the person sees on the desk now: the screen size and every window, those of the desktop in front first (the focused one first), then those popped out of the canvas into OS windows of their own (out: the OS window's frame in points; x, y, w, h where it docks back; desk.windows.dock brings one back), then those put away in the drawer, then those of the other desktops with the desktop each is on; each with where it is in whole CSS pixels, its place in its desktop's stacking order (z, higher in front), how it is placed (state: normal, floating, snapped to a half or quarter, filled; fill names the part), whether it is pinned, and the panes it shows with the plugin that draws each, whether that plugin's frame sleeps (asleep) and whether it stopped answering (responsiveness: late or stopped, which desk.frames.wait, stop and reload act on). Also the desktops (the current one marked, each with its canvas pan), the windows closed recently and a summary of what the person can do. Look again after opening or moving something.",
         readOnly: true,
       },
     }),

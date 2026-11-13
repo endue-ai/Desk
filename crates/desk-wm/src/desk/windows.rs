@@ -28,7 +28,9 @@ impl Desk {
     /// Focus a window of the desktop in front and one of its panes: the one named, else its first.
     /// A window not on the desktop in front takes no focus.
     pub fn focus_pane(&mut self, window: &str, pane: Option<&str>) {
-        let Some(p) = self.window(window) else {
+        // A window out of the canvas is in use while its OS window has the keys (#235).
+        let out = || self.out_window(window).map(|(_, p)| p);
+        let Some(p) = self.window(window).or_else(out) else {
             return;
         };
         let tree = p.panes();

@@ -1,0 +1,53 @@
+{
+  "target": "BrainDesk",
+  "description": "a window out of the canvas (#235): Terminal in an OS window of its own, in use, listed after the windows of the desktop in front (none here) with its OS frame, where it docks back on desktop 1 and no stacking place; Notes on desktop 1's canvas; crates/desk-wm/tests/out.rs builds it",
+  "instance": {
+    "screen": { "w": 1440, "h": 900 },
+    "windows": [
+      {
+        "id": "endue.terminal",
+        "x": 100,
+        "y": 100,
+        "w": 500,
+        "h": 300,
+        "state": "normal",
+        "focused": true,
+        "desktop": "1",
+        "out": { "x": 1200, "y": 400, "w": 720, "h": 450 },
+        "panes": [
+          {
+            "id": "p1",
+            "view": "plugin:endue.terminal",
+            "plugin": "endue.terminal",
+            "title": "endue.terminal",
+            "focused": true
+          }
+        ]
+      },
+      {
+        "id": "endue.notes",
+        "x": 700,
+        "y": 100,
+        "w": 400,
+        "h": 300,
+        "z": 0,
+        "state": "normal",
+        "desktop": "1",
+        "panes": [
+          {
+            "id": "p1",
+            "view": "plugin:endue.notes",
+            "plugin": "endue.notes",
+            "title": "endue.notes"
+          }
+        ]
+      }
+    ],
+    "desktops": [
+      { "id": "1", "name": "1", "pan": { "x": 0, "y": 0 } },
+      { "id": "2", "name": "2", "current": true, "pan": { "x": 0, "y": 0 } },
+      { "id": "3", "name": "3", "pan": { "x": 0, "y": 0 } },
+      { "id": "4", "name": "4", "pan": { "x": 0, "y": 0 } }
+    ]
+  }
+}

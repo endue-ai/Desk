@@ -1,5 +1,5 @@
 //! The window commands that take a window out of the canvas and back (#235, ADR 0205): pop out,
-//! dock, and the OS window's frame as the shell reports it. Each publishes the desk when it changed
+//! dock, the OS window's frame as the shell reports it, and its focus. Each publishes the desk when it changed
 //! something; a pop out or a dock also redraws. A window out of the canvas is on no desktop's
 //! canvas, so these look for it on every desktop, unlike the other commands.
 
@@ -29,7 +29,15 @@ impl Wm {
                 let same = (self.drawn.out_window(id)).is_some_and(|(_, p)| p.out == Some(*frame));
                 !same && self.drawn.set_out_frame(id, *frame)
             }
-            (Op::PopOut { .. } | Op::Dock | Op::OutFrame { .. }, None) => false,
+            (Op::Focus, Some(id)) => {
+                let out = self.drawn.out_window(id).is_some();
+                let already = self.drawn.focused.as_deref() == Some(id);
+                if out && !already {
+                    self.drawn.focus_pane(id, None);
+                }
+                out && !already
+            }
+            (Op::PopOut { .. } | Op::Dock | Op::OutFrame { .. } | Op::Focus, None) => false,
             _ => return None,
         };
         if !changed {

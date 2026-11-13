@@ -105,8 +105,10 @@ function seen(ctx: Titled, s: DeskState): Map<string, Seen> {
   const here = desktopId(s);
   const order = [here, ...desktopsOf(s).flatMap((d) => (d.id === here ? [] : [d.id]))];
   for (const desktop of order) {
-    const placed = new Set(layoutOf(s, desktop).surfaces.map((p) => p.id));
-    for (const p of windowsOf(s, desktop))
+    const layout = layoutOf(s, desktop).surfaces;
+    const placed = new Set(layout.map((p) => p.id));
+    // A window popped out of the canvas (issue 235) is still on the desk: in its OS window.
+    for (const p of [...windowsOf(s, desktop), ...layout.filter((w) => w.out)])
       if (!out.has(p.id)) out.set(p.id, seenOf(ctx, s, p, desktop, placed.has(p.id)));
   }
   for (const item of s.drawer) {

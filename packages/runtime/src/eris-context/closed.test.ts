@@ -168,6 +168,25 @@ describe("desk.windows.closed and desk.windows.reopen", () => {
     expect(log?.list()).toEqual([]);
   });
 
+  it("reopens a window closed while out of the canvas out again (issue 235), and never logs a pop out", async () => {
+    const { desk, log } = await mounted();
+    desk.adopt("endue.git");
+    await move(desk, "endue.git", { x: 100, y: 120, w: 500, h: 400 });
+    const frame = { x: 1200, y: 400, w: 720, h: 450 };
+    desk.ctx.wm.run({ op: "pop-out", frame }, "endue.git");
+    await desk.ctx.wm.edit([]);
+    expect(log?.list()).toEqual([]);
+    await closeWindow(desk.ctx, "endue.git");
+    expect(log?.list()[0]).toMatchObject({
+      id: "endue.git",
+      desktop: "1",
+      placement: { x: 100, y: 120, w: 500, h: 400, out: frame },
+    });
+    await desk.run("desk.windows.reopen");
+    const back = layoutOf(desk.store.get()).surfaces.find((p) => p.id === "endue.git");
+    expect(back).toMatchObject({ x: 100, y: 120, w: 500, h: 400, out: frame });
+  });
+
   it("starts the plugin a reopened window shows, and reopens the last closed when none is named", async () => {
     const { desk } = await mounted();
     desk.adopt("endue.git");

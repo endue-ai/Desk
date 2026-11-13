@@ -54,8 +54,12 @@ fn current(desk: &BrainDesk) -> Option<(usize, &BrainDeskDesktop)> {
     Some((at + 1, &list[at]))
 }
 
-/// Whether the person sees a window now, or could from the drawer: not one on another desktop.
+/// Whether the person sees a window now, or could from the drawer: not one on another desktop. A
+/// window popped out into an OS window of its own is on screen whatever desktop is in front.
 fn on_screen(window: &BrainDeskWindow, here: Option<&str>) -> bool {
+    if window.out.is_some() {
+        return true;
+    }
     match (here, window.desktop.as_deref()) {
         (Some(here), Some(desktop)) => window.hidden == Some(true) || here == desktop,
         _ => true,
@@ -126,7 +130,8 @@ fn screen(desk: &BrainDesk, tools_of: &dyn Fn(&str) -> Vec<String>) -> String {
     let mut part = Part::new(SCREEN, head);
     let mut said: Vec<String> = Vec::new();
     for window in windows {
-        let place = (window.hidden != Some(true)).then(|| place(window, sw, sh));
+        let on_desk = window.hidden != Some(true) && window.out.is_none();
+        let place = on_desk.then(|| place(window, sw, sh));
         let mut lines = vec![format!("- {}", line(window, place))];
         let mut new: Vec<String> = Vec::new();
         for plugin in window.panes.iter().filter_map(|p| p.plugin.as_deref()) {
@@ -166,6 +171,9 @@ fn line(window: &BrainDeskWindow, place: Option<&str>) -> String {
     }
     if window.hidden == Some(true) {
         flags.push("put away in the drawer".to_owned());
+    }
+    if window.out.is_some() {
+        flags.push("popped out into its own OS window".to_owned());
     }
     if !flags.is_empty() {
         text.push_str(&format!(" ({})", flags.join(", ")));
@@ -224,6 +232,7 @@ mod tests {
             focused: None,
             hidden: None,
             desktop: None,
+            out: None,
             panes: vec![BrainDeskPane {
                 id: None,
                 view: plugin.map_or("launcher".to_owned(), |p| format!("plugin:{p}")),
@@ -289,6 +298,21 @@ mod tests {
                 "[The person says:]",
             ]
         );
+    }
+
+    #[test]
+    fn a_window_popped_out_is_on_screen_whatever_desktop_is_in_front() {
+        let mut terminal = window("terminal", (100, 100, 500, 300), Some("endue.terminal"));
+        terminal.desktop = Some("1".to_owned());
+        terminal.out = serde_json::from_str(r#"{"x":1200,"y":400,"w":720,"h":450}"#).ok();
+        let mut d = desk(vec![terminal]);
+        let two = r#"[{"id":"1","name":"1"},{"id":"2","name":"2","current":true}]"#;
+        d.desktops = serde_json::from_str(two).ok();
+        let text = render(&d, &|_| Vec::new());
+        let line = "- terminal: terminal (endue.terminal) (popped out into its own OS window), at";
+        assert!(text.contains(line), "{text}");
+        assert!(text.contains("- \"1\" (desktop 1): no windows"), "{text}");
+        assert_eq!(plugins(&d), ["endue.terminal"]);
     }
 
     #[test]

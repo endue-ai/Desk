@@ -118,6 +118,13 @@ describe("the window manager's seam", () => {
       command: "desk.windows.close",
       args: { window: "w" },
     });
+    // An OS window's Move to Desk and a plugin's first pop out (#235).
+    for (const command of ["desk.windows.dock", "desk.windows.pop-out"])
+      expect(cardCommand({ command, args: { window: "w" } })).toEqual({
+        command,
+        args: { window: "w" },
+      });
+    expect(cardCommand({ command: "desk.windows.tile", args: {} })).toBeUndefined();
     expect(cardCommand({ command: "desk.files.delete", args: {} })).toBeUndefined();
     expect(cardCommand({ command: 3 })).toBeUndefined();
   });
