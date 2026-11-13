@@ -1,6 +1,4 @@
-use desk_wm::{Adopted, Desk, Rect, TopChrome, Unseen};
-
-use super::{App, Registry, Switch, drawn};
+use super::{App, Registry, Switch};
 
 /// What the switch says of `plugin`'s surface `view`, `app` its manifest.
 fn wants(switch: &Switch, plugin: &str, view: Option<&str>, app: Option<App>) -> bool {
@@ -106,47 +104,6 @@ fn an_app_is_read_from_its_manifest() {
     }
     assert!(!manifest("logic", "center").opens(None));
     assert_eq!(manifest("ui", "center").name, "One");
-}
-
-/// A desk of two plugin windows, the terminal's and Notes'.
-fn desk() -> Desk {
-    let mut desk = Desk::default();
-    desk.set(|d| {
-        d.adopted = ["endue.terminal", "endue.notes"]
-            .iter()
-            .enumerate()
-            .map(|(slot, id)| Adopted {
-                id: (*id).into(),
-                title: (*id).into(),
-                slot: Some(slot),
-                at: None,
-                area: None,
-            })
-            .collect();
-    });
-    desk.place("endue.terminal", Rect::new(100.0, 100.0, 500.0, 300.0));
-    desk.place("endue.notes", Rect::new(700.0, 100.0, 400.0, 300.0));
-    desk
-}
-
-#[test]
-fn the_compositor_draws_nothing_where_a_plugin_has_an_os_window() {
-    let plan = desk().host_plan(1440.0, 900.0, TopChrome::default(), &Unseen);
-    let ids = |p: &desk_wm::Plan| p.windows.iter().map(|w| w.id.clone()).collect::<Vec<_>>();
-    assert_eq!(ids(&plan).len(), 2);
-    let drawn =
-        drawn(&plan, |id| id == "endue.terminal").expect("the terminal's window is left out");
-    assert_eq!(ids(&drawn), vec!["endue.notes".to_owned()]);
-    // The surfaces and the budget still read the whole plan: the terminal keeps its seat.
-    assert!(plan.seat("endue.terminal").size.is_some());
-    assert_eq!(drawn.shown, plan.shown);
-}
-
-#[test]
-fn with_no_window_handed_the_plan_is_drawn_as_it_is() {
-    let plan = desk().host_plan(1440.0, 900.0, TopChrome::default(), &Unseen);
-    assert_eq!(drawn(&plan, |_| false), None);
-    assert_eq!(drawn(&plan, |id| id == "endue.mail"), None);
 }
 
 #[test]

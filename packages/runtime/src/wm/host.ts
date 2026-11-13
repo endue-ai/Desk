@@ -24,7 +24,13 @@ export type WindowOp =
   | { op: "move"; dx: number; dy: number }
   | { op: "resize"; dw: number; dh: number }
   /** Open or close the spread, which the compositor draws (#54); a host without one ignores it. */
-  | { op: "spread" };
+  | { op: "spread" }
+  /**
+   * Out of the canvas into an OS window of its own and back (issue 235), which the compositor's shell
+   * opens; a host without one ignores them.
+   */
+  | { op: "pop-out" }
+  | { op: "dock" };
 
 export interface WindowManagerHost {
   /** Hear each desk the window manager publishes; the runtime takes it whole. */

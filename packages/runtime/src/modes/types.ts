@@ -77,6 +77,12 @@ export interface SurfacePlacement {
     | "top-right"
     | "bottom-left"
     | "bottom-right";
+  /**
+   * Out of the canvas, in an OS window of its own at this frame (issue 235), in points of the OS's
+   * desktop; its place on the canvas stays where it docks back. A window out is in no desktop's
+   * list of windows.
+   */
+  out?: { x: number; y: number; w: number; h: number };
 }
 
 /** One pane: shows a view ("calendar", "notes", "agent:<id>", "launcher", ...). */

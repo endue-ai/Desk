@@ -4,6 +4,7 @@
  * hold is not drawn (`shell/actions.ts`). A profile's window named after its surface shows the
  * plugin it names (`surface/views.ts`), so its plugin is placed too.
  */
+import type { SurfacePlacement } from "../modes/types";
 import { layoutOf, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import type { DeskState } from "../shell/state";
@@ -11,13 +12,19 @@ import { leaves, panesOf } from "./tree";
 
 const VIEW = "plugin:";
 
+/** The windows out of the canvas, in OS windows of their own (issue 235), on every desktop. */
+export function outWindows(s: DeskState): SurfacePlacement[] {
+  return Object.values(s.wm.layouts).flatMap((l) => l.surfaces.filter((p) => p.out));
+}
+
 /**
- * The plugins window `id` of the desktop in front shows, each once: what closing it unmounts
- * (desk-wm's `plugins_of`). A pane named after its window shows the window's plugin (`resolveView`
- * in `views.ts`); one the runtime does not hold has no buffers, so it may be named either way.
+ * The plugins window `id` of the desktop in front, or out of the canvas, shows, each once: what
+ * closing it unmounts (desk-wm's `plugins_of`). A pane named after its window shows the window's
+ * plugin (`resolveView` in `views.ts`); one the runtime does not hold has no buffers, so it may be
+ * named either way.
  */
 export function windowPlugins(s: DeskState, id: string): string[] {
-  const p = windowsOf(s).find((w) => w.id === id);
+  const p = windowsOf(s).find((w) => w.id === id) ?? outWindows(s).find((w) => w.id === id);
   if (!p) return [];
   const ids = leaves(panesOf(p)).flatMap(({ view }) => {
     if (view === p.id && p.plugin) return [p.plugin];

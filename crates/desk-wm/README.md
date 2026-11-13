@@ -20,7 +20,7 @@ data; no clock (times are passed in), no I/O, no rendering. It reads and writes 
 - `Desk`, one state: `windows_of`, `layout_of`, `dirty`; `focus_pane`, `show_plugin`,
   `new_window`, `split`, `close_pane`, `close_window`, `snap_to`; `focus_order`, `focus_next`;
   `put_away`, `bring_back`, `switch_profile`; `add_desktop`, `remove_desktop`, `switch_to`,
-  `move_to_desktop`, `move_back`. `Desk::set` keeps the drawer to what is away (#4).
+  `move_to_desktop`, `move_back`; `pop_out`, `dock`, `out_windows` (out of the canvas, #235). `Desk::set` keeps the drawer to what is away (#4).
 - `Arranger` (tile, cascade, restore, ADR 0116); `Desk::snapshot` and `snapshot_seen` (titles and
   frames through `Seen`): what `desk.windows.list` answers, as the contract's `BrainDesk` (#82).
 - `host` (#81, ADR 0151): `Desk::host_plan` and `host_plan_at` with `Places` (windows back to front,

@@ -16,6 +16,8 @@ impl CompositorWindow {
     /// Do what a look called for: the surfaces' steps, the live set and the window manager's
     /// changes for the runtime.
     pub(super) fn carry(&mut self, mut outcome: Outcome) {
+        // A window that pops out leaves its off-screen browser before the steps reach it (#235).
+        self.hand_out();
         self.emit_wm(std::mem::take(&mut outcome.wm));
         for step in &outcome.steps {
             if let Step::Load { surface, url } = step {

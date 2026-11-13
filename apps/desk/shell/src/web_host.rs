@@ -48,6 +48,7 @@ use lifecycle::{Action, State, size_of, surface_of};
 use relay::Relay;
 use view::{Counts, SharedView, View};
 
+pub use app_surfaces::OutAsk;
 pub use sink::SurfaceSink;
 
 /// The most frames per second a surface paints until the compositor says otherwise.

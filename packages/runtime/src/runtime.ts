@@ -5,6 +5,7 @@ import { installDescribe } from "./describe/install";
 import { Edges, edgeOf } from "./edges";
 import { installFrames } from "./frames/install";
 import { startsAsleep } from "./frames/start-asleep";
+import { keepState } from "./frames/state";
 import { PolicyHub } from "./hub";
 import { listenForShortcuts, type Platform, ShortcutRouter } from "./input";
 import { installInspect } from "./inspect/install";
@@ -331,6 +332,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       command: (id, name, args) => host.command(id, name, args),
       unmount: (id) => host.unmount(id),
       wake: (id) => host.wake(id),
+      keep: (id, surface) => keepState(host, id, surface),
     };
   }
 

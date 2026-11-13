@@ -34,6 +34,7 @@ const PATHS: Record<string, string> = {
   "split-down": "M4 5h16v14H4zM4 12h16",
   map: "M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15",
   minus: "M5 12h14",
+  "pop-out": "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6",
 };
 
 export type IconName = keyof typeof PATHS;

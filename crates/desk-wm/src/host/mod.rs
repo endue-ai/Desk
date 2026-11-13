@@ -21,6 +21,7 @@
 mod bars;
 mod budget;
 mod cut;
+mod out;
 mod panes;
 mod parts;
 mod shown;
@@ -31,6 +32,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub use bars::{Bars, ERIS_H, ERIS_W, bars};
 pub use budget::{Decision, LiveBudget};
 pub use cut::{intersect, subtract};
+pub use out::OutWindow;
 pub use panes::{
     BORDER, Cell, DIVIDER, PANE_HEAD, TITLE, TITLE_END, TITLE_START, body_of, cells, head_of,
     title_bar_of,
@@ -156,6 +158,9 @@ pub struct Plan {
     /// page draws of a window (`HostWindow::drawn_by_page`) where another window lies over it;
     /// that is drawn with its window, at its place in the stack.
     pub page: Vec<Rect>,
+    /// The windows out of the canvas, each in an OS window of its own (#235): drawn by nobody
+    /// here, their plugins in sight and seated at their OS windows' sizes.
+    pub out: Vec<OutWindow>,
 }
 
 impl Plan {
@@ -164,6 +169,17 @@ impl Plan {
         let pane = (self.windows.iter().rev())
             .flat_map(|w| w.panes.iter())
             .find(|p| p.plugin.as_deref() == Some(plugin));
+        if pane.is_none()
+            && let Some(out) = self
+                .out
+                .iter()
+                .find(|w| w.plugins.iter().any(|p| p == plugin))
+        {
+            return Seat {
+                size: Some((out.frame.w, out.frame.h)),
+                visible: true,
+            };
+        }
         Seat {
             size: pane.map(|p| (p.body.w, p.body.h)),
             visible: pane.is_some() && self.shown.contains(plugin),
@@ -236,6 +252,8 @@ impl Desk {
                     .filter(|id| !covered.contains(id)),
             );
         }
+        let out = self.out_plan();
+        shown.extend(out.iter().flat_map(|w| w.plugins.iter().cloned()));
         // Equal levels keep desk order, as the page's stacking does.
         let stack = self.used.stack(&windows, focused);
         let hosted: Vec<HostWindow> = (stack.into_iter())
@@ -288,6 +306,7 @@ impl Desk {
             shown,
             focused_plugin: self.focused_plugin(),
             page: subtract(screen_area(vw, vh), &under),
+            out,
         }
     }
 

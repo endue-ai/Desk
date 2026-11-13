@@ -195,6 +195,10 @@ pub struct Placement {
     /// window filled before fills floated keeps the world rect it was filled to.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fill: Option<Fill>,
+    /// Out of the canvas, in an OS window of its own at this frame (#235, ADR 0205), in points of
+    /// the OS's desktop. Its place on the canvas stays where it was, for when it docks back.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub out: Option<Rect>,
 }
 
 impl Placement {
@@ -212,6 +216,7 @@ impl Placement {
             panes: None,
             restore: None,
             fill: None,
+            out: None,
         }
     }
 

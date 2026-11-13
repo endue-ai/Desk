@@ -17,7 +17,7 @@ windows placed by `desk-wm`; it starts the compositor, then the system surfaces 
 - `host`, `commands`: the bridge (`Desk`, `receive`, `Pages`) and the commands, named as Tauri's were.
 - `instance::claim`: an OS lock on `desk-instance.lock`; a second start hands its arguments over (`desk-instance.json`).
 - `tray`, `menu`, `hotkeys`, `dialog`; `palette`, `eris_window`, `island` (ADR 0204), `computer`, `float`, `displays`,
-  `app_windows` (`DESK_APP_WINDOWS`, #234): the other windows; `open_files`, `run_event`, `drops`: opened and dropped files.
+  `app_windows` (windows popped out, #235): the other windows; `open_files`, `run_event`, `drops`: opened and dropped files.
 - `scheme`, `plugin_scheme`, `guard`, `paths`, `process_start`, `renderer`, `crashes`: schemes, loads, files, start, crashes.
 - `native_host`: native plugins, each a process (#59, ADR 0154); `web_host`: a windowless browser per surface on the
   frame clock (`frames`, `clock`), input (`input`, `key_codes`, `routes`, `drag`), its tree (`view::a11y`), messages by

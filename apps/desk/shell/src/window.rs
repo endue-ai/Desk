@@ -1,9 +1,8 @@
-//! The shell's winit application: the main window, the palette, the floating Eris, the island, the
-//! computer-use banner and the app windows (each a `Pane`; `apps`, #234), the tray, the menu bar, the
-//! global shortcuts, and CEF's message loop work when the pump says it is due. Other threads reach it
-//! through the pump's jobs. Closing the main window hides it, as in the Tauri shell; the desk quits
-//! from the tray or the menu, once its page has asked about unsaved changes (`quit.rs`), closing
-//! every browser before CEF shuts down.
+//! The shell's winit application: the main window, palette, floating Eris, island, banner and the
+//! windows popped out (each a `Pane`; `apps`, #235), the tray, menu bar, global shortcuts and CEF's
+//! message loop work when the pump says it is due; other threads reach it through the pump's jobs.
+//! Closing the main window hides it, as in the Tauri shell; the desk quits from the tray or menu,
+//! once its page asked about unsaved changes (`quit.rs`), closing every browser first.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -205,6 +204,7 @@ impl Shell {
                 }
             }
             Choice::Quit => crate::quit::requested(self, event_loop),
+            Choice::Dock => crate::app_windows::dock_front(self),
         }
     }
 

@@ -23,6 +23,7 @@ pub mod gesture;
 mod mid_glide;
 pub mod motion;
 pub mod ops;
+mod out;
 pub mod pointer;
 pub mod publish;
 pub mod resize;
