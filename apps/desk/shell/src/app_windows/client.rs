@@ -1,16 +1,18 @@
-//! The client of an app window's browser (#234): an off-screen surface's (`web_host/client.rs`)
-//! without what only an off-screen page needs. No render handler (the browser paints its own view),
-//! no cursor or hover-title overrides (its view sets the cursor and draws the tooltip), no field
-//! menu (the OS's own text services and the Edit menu reach its view), no frame asks (it paints on
-//! the display's clock). It keeps the rest: no popups, the browser-process guard on every load,
-//! its page's bridge calls as the plugin its URL names, its posts up the relay to the runtime's
-//! page, its title for the OS window, the focus once its page loaded, and its close, which the
-//! shell carries out (`DoClose`, as a `Pane`'s browser's).
+//! The client of an app window's browser (#234, #235): an off-screen surface's
+//! (`web_host/client.rs`) without what only an off-screen page needs. No render handler (the
+//! browser paints its own view), no cursor or hover-title overrides (its view sets the cursor and
+//! draws the tooltip), no field menu (the OS's own text services and the Edit menu reach its view;
+//! its right-click menu keeps only the editing items, `menu.rs`), no frame asks (it paints on the
+//! display's clock). It keeps the rest: no popups, the browser-process guard on every load, its
+//! page's bridge calls as the plugin its URL names, its posts up the relay to the runtime's page,
+//! its title for the OS window, the focus once its page loaded, a page whose renderer died loaded
+//! again once, and its close, which the shell carries out (`DoClose`, as a `Pane`'s browser's).
 
 // `wrap_client!` makes a constructor with one argument per field.
 #![allow(clippy::too_many_arguments)]
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use cef::*;
 use desk_web::sender::Role;
@@ -118,23 +120,38 @@ wrap_load_handler! {
     }
 }
 
+/// A page whose renderer died loads again once; one that dies again this soon stays as it is.
+const CRASH_AGAIN: Duration = Duration::from_secs(30);
+
 wrap_request_handler! {
     pub struct AppRequests {
         surface: String,
+        // When its page last loaded again after its renderer died.
+        revived: Arc<Mutex<Option<Instant>>>,
     }
 
     impl RequestHandler {
+        // Where an off-screen page dies the compositor shows a card and the runtime loads it again
+        // (#44); a window of its own would stay blank, so it loads again here.
         fn on_render_process_terminated(
             &self,
-            _browser: Option<&mut Browser>,
+            browser: Option<&mut Browser>,
             status: TerminationStatus,
             error_code: ::std::os::raw::c_int,
             _error_string: Option<&CefString>,
         ) {
+            let now = Instant::now();
+            let mut revived = self.revived.lock().unwrap_or_else(|e| e.into_inner());
+            let again = revived.is_none_or(|at| now.duration_since(at) >= CRASH_AGAIN);
             eprintln!(
-                "endue Desk: the renderer of app window {} ended ({status:?}, {error_code})",
-                self.surface
+                "endue Desk: the renderer of app window {} ended ({status:?}, {error_code}){}",
+                self.surface,
+                if again { "; its page loads again" } else { "" }
             );
+            if again && let Some(browser) = browser {
+                *revived = Some(now);
+                browser.reload();
+            }
         }
 
         fn resource_request_handler(
@@ -158,6 +175,7 @@ wrap_client! {
         life_span: LifeSpanHandler,
         load: LoadHandler,
         requests: RequestHandler,
+        menu: ContextMenuHandler,
         host: WebHost,
         surface: String,
         desk: Arc<Desk>,
@@ -170,6 +188,10 @@ wrap_client! {
 
         fn life_span_handler(&self) -> Option<LifeSpanHandler> {
             Some(self.life_span.clone())
+        }
+
+        fn context_menu_handler(&self) -> Option<ContextMenuHandler> {
+            Some(self.menu.clone())
         }
 
         fn load_handler(&self) -> Option<LoadHandler> {
@@ -214,7 +236,8 @@ pub fn client(host: WebHost, surface: &str, pump: Pump, desk: Arc<Desk>) -> Clie
         AppDisplay::new(s.clone(), pump.clone()),
         AppLifeSpan::new(host.clone(), s.clone(), pump.clone()),
         AppLoad::new(s.clone(), pump),
-        AppRequests::new(s.clone()),
+        AppRequests::new(s.clone(), Arc::default()),
+        super::menu::AppMenu::new(),
         host,
         s,
         desk,

@@ -1,94 +1,78 @@
-//! App windows (#234, step 1 of #232, ADR 0203): a plugin the switch names shows its surface in an
-//! OS window of its own, a windowed CEF browser in a winit window (`Pane`), instead of an
-//! off-screen surface the compositor draws. The OS places, moves, resizes, composites and focuses
-//! it; no desk code runs for a move.
+//! App windows (#234, #235, ADR 0203): a plugin the switch hands over shows its surface in an OS
+//! window of its own, a windowed CEF browser in a winit window (`Pane`), instead of an off-screen
+//! surface the compositor draws. The OS places, moves, resizes, composites and focuses it; no desk
+//! code runs for a move.
 //!
-//! The switch is `DESK_APP_WINDOWS`, a comma-separated list of plugin ids (`endue.terminal`); unset,
+//! The switch is `DESK_APP_WINDOWS` (`switch.rs`): `on` hands over every app (a `ui` plugin placed
+//! `center` or `floating`), a comma-separated list of plugin ids only those; unset or `off`,
 //! nothing changes. The surface's lifecycle still comes from the window manager (`desk-wm`): its
 //! `create` opens the OS window at the surface's document (`web_host/app_surfaces.rs`), its
 //! `destroy` closes it, and the rest (resize, hide, sleep, wake, pace) is the OS window's own
-//! business, so it is dropped. The compositor draws nothing for the runtime's window that holds
-//! the plugin (`drawn`) and routes no input there. Its bridge goes as an off-screen surface's does:
-//! the page's `window.parent` is the shim (`web_host/shim.js`), its posts go up the relay to the
-//! runtime's page and the runtime's come down to it (`relay.surface`), so `desk:hello`,
-//! `desk:init`, calls, the theme, the sandbox and the guard work unchanged. Closing the OS window
-//! asks the runtime to close the plugin's window (`desk.windows.close`); the runtime's close, a
-//! `destroy`, closes the OS window.
+//! business, so it is dropped: an app window keeps its renderer while it is open, and its page is
+//! hidden while the window is minimized or covered. The compositor draws nothing for the runtime's
+//! window that holds the plugin (`drawn`) and routes no input there. Its bridge goes as an
+//! off-screen surface's does: the page's `window.parent` is the shim (`web_host/shim.js`), its
+//! posts go up the relay to the runtime's page and the runtime's come down to it
+//! (`relay.surface`), so `desk:hello`, `desk:init`, calls, the theme, the sandbox and the guard
+//! work unchanged. Closing the OS window asks the runtime to close the plugin's window
+//! (`desk.windows.close`); the runtime's close, a `destroy`, closes the OS window. Each app opens
+//! where it was last, per display (`places.rs`).
 
 mod client;
+mod menu;
+mod places;
 mod registry;
+mod switch;
 
-use std::collections::BTreeSet;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, OnceLock};
 
 use cef::{ImplBrowser, ImplBrowserHost};
 use desk_web::sender::Role;
 use desk_wm::Plan;
 use serde_json::json;
-use winit::dpi::LogicalSize;
+use winit::dpi::{LogicalPosition, LogicalSize};
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowId};
 
 use crate::pane::Pane;
+use crate::pump::Pump;
 use crate::web_host::WebHost;
 use crate::window::Shell;
+pub use menu::{Item, removed};
+pub use places::{Display, Kept, Place};
 pub use registry::Registry;
+pub use switch::{App, SWITCH, Switch, app, handed, handed_surface, know, switch};
 
-/// The switch's environment variable.
-pub const SWITCH: &str = "DESK_APP_WINDOWS";
 /// The desk command that closes the runtime's window holding a plugin.
 pub const CLOSE: &str = "desk.windows.close";
 /// The runtime's channel for the desk commands the compositor's own chrome runs.
 const RUN: &str = "desk://compositor-run";
 /// An app window is never made smaller than this, in points.
-const MIN: (f64, f64) = (320.0, 200.0);
-/// Nor does it open smaller than this: the runtime's window it stands in for may be a crowded
-/// desk's small cell.
+pub const MIN: (f64, f64) = (320.0, 200.0);
+/// Nor does it open smaller than this the first time: the runtime's window it stands in for may
+/// be a crowded desk's small cell.
 const OPENS: (f64, f64) = (720.0, 450.0);
 
-/// The plugins whose surfaces open in an OS window of their own.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Switch(BTreeSet<String>);
-
-impl Switch {
-    /// The switch's value: plugin ids separated by commas, spaces around them and empty ones
-    /// ignored; unset or empty, the switch is off.
-    pub fn parse(value: Option<&str>) -> Switch {
-        let ids = value.unwrap_or_default().split(',').map(str::trim);
-        Switch(ids.filter(|id| !id.is_empty()).map(str::to_owned).collect())
-    }
-
-    /// Whether plugin `plugin`'s surface opens in an OS window of its own.
-    pub fn has(&self, plugin: &str) -> bool {
-        self.0.contains(plugin)
-    }
-
-    /// Whether any plugin is named.
-    pub fn is_on(&self) -> bool {
-        !self.0.is_empty()
-    }
-}
-
-/// The switch, as this desk started with it.
-pub fn switch() -> &'static Switch {
-    static ON: OnceLock<Switch> = OnceLock::new();
-    ON.get_or_init(|| Switch::parse(std::env::var(SWITCH).ok().as_deref()))
-}
-
 /// The plan the compositor draws and routes input by, when it differs from `plan`: without the
-/// runtime's windows that show a plugin the switch names, which are in OS windows of their own.
-/// The surfaces' lifecycle and the live budget keep reading `plan`, where those windows are.
-pub fn drawn(plan: &Plan, switch: &Switch) -> Option<Plan> {
-    let handed = |w: &desk_wm::HostWindow| {
-        (w.panes.iter()).any(|p| p.plugin.as_deref().is_some_and(|id| switch.has(id)))
+/// runtime's windows that show a plugin `handed` says is in an OS window of its own. The surfaces'
+/// lifecycle and the live budget keep reading `plan`, where those windows are.
+pub fn drawn(plan: &Plan, handed: impl Fn(&str) -> bool) -> Option<Plan> {
+    let is_handed = |w: &desk_wm::HostWindow| {
+        (w.panes.iter()).any(|p| p.plugin.as_deref().is_some_and(&handed))
     };
-    if !switch.is_on() || !plan.windows.iter().any(handed) {
+    if !plan.windows.iter().any(is_handed) {
         return None;
     }
     let mut drawn = plan.clone();
-    drawn.windows.retain(|w| !handed(w));
+    drawn.windows.retain(|w| !is_handed(w));
     Some(drawn)
+}
+
+/// The plan the compositor draws, under the switch this desk started with.
+pub fn drawn_now(plan: &Plan) -> Option<Plan> {
+    switch().is_on().then(|| drawn(plan, handed)).flatten()
 }
 
 /// An app window the shell holds: its pane and the plugin it shows.
@@ -100,11 +84,13 @@ pub struct AppWindow {
 /// The app windows the shell holds.
 pub type Windows = Registry<WindowId, AppWindow>;
 
-/// An app window to open: its surface's host, its plugin, its document and its size in points.
+/// An app window to open: its surface's host, its plugin, its title until its page names one, its
+/// document and the size of the runtime's window it stands in for, in points.
 #[derive(Clone, Debug)]
 pub struct Open {
     pub surface: String,
     pub plugin: String,
+    pub title: String,
     pub url: String,
     pub size: (u32, u32),
 }
@@ -114,11 +100,23 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
     if shell.quitting {
         return;
     }
-    let (w, h) = (f64::from(ask.size.0), f64::from(ask.size.1));
     let attributes = Window::default_attributes()
-        .with_title(ask.plugin.as_str())
-        .with_inner_size(LogicalSize::new(w.max(OPENS.0), h.max(OPENS.1)))
+        .with_title(ask.title.as_str())
         .with_min_inner_size(LogicalSize::new(MIN.0, MIN.1));
+    // Where it was last, else as large as the runtime's window and at least `OPENS`.
+    let attributes = match places::opening(event_loop, &ask.plugin, MIN) {
+        Some(kept) => {
+            let sized = attributes.with_inner_size(LogicalSize::new(kept.size.0, kept.size.1));
+            match kept.at {
+                Some((x, y)) => sized.with_position(LogicalPosition::new(x, y)),
+                None => sized,
+            }
+        }
+        None => {
+            let (w, h) = (f64::from(ask.size.0), f64::from(ask.size.1));
+            attributes.with_inner_size(LogicalSize::new(w.max(OPENS.0), h.max(OPENS.1)))
+        }
+    };
     let pump = shell.desk.pump.clone();
     let client = client::client(host.clone(), &ask.surface, pump, Arc::clone(&shell.desk));
     let pane = match Pane::open(event_loop, false, attributes, &ask.url, client) {
@@ -148,8 +146,12 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
     }
 }
 
-/// The runtime closed the plugin's window (its surface's `destroy`): the OS window closes.
+/// The runtime closed the plugin's window (its surface's `destroy`): the OS window closes, its
+/// place kept.
 pub fn close(shell: &mut Shell, surface: &str) {
+    if let Some(app) = shell.apps.get(surface) {
+        places::keep(&app.plugin, &app.pane.window);
+    }
     if let Some(browser) = shell.apps.ask_close(surface) {
         close_browser(shell, browser);
     }
@@ -209,8 +211,39 @@ pub fn window_event(shell: &mut Shell, id: WindowId, event: &WindowEvent) {
                 host.set_focus(1);
             }
         }
-        WindowEvent::Resized(size) => app.pane.resized(*size),
+        WindowEvent::Resized(size) => {
+            app.pane.resized(*size);
+            moved(&shell.desk.pump);
+        }
+        WindowEvent::Moved(_) => moved(&shell.desk.pump),
+        // Minimized or wholly covered: its page is hidden, so it takes no frames (#147, #235).
+        WindowEvent::Occluded(occluded) => {
+            #[cfg(target_os = "macos")]
+            if let Some(host) = app.pane.host() {
+                crate::mac::set_hidden(host.window_handle(), *occluded);
+            }
+            let _ = occluded;
+        }
         _ => {}
+    }
+}
+
+/// An app window moved or resized: every app window's place is kept once they rest.
+fn moved(pump: &Pump) {
+    static NUDGE: OnceLock<Sender<()>> = OnceLock::new();
+    let nudge = NUDGE.get_or_init(|| {
+        let pump = pump.clone();
+        crate::main_frame::debounce(move || pump.run(|shell, _| keep_all(shell)))
+    });
+    let _ = nudge.send(());
+}
+
+/// Keep where every open app window is now.
+fn keep_all(shell: &Shell) {
+    for surface in shell.apps.surfaces() {
+        if let Some(app) = shell.apps.get(&surface) {
+            places::keep(&app.plugin, &app.pane.window);
+        }
     }
 }
 

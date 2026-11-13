@@ -28,16 +28,20 @@ impl WebHost {
         let mut inner = self.inner();
         let known = inner.apps.contains_key(surface);
         match message {
-            CompositorMessage::SurfaceCreate(create) if !known && switch.has(&create.plugin) => {
+            CompositorMessage::SurfaceCreate(create)
+                if !known && app_windows::handed_surface(&create.plugin, &create.view) =>
+            {
                 let Some(url) = inner.sources.get(surface).cloned() else {
                     eprintln!("endue Desk: surface {surface} has no document to show");
                     return true;
                 };
                 inner.apps.insert(surface.to_owned(), None);
                 drop(inner);
+                let title = app_windows::app(&create.plugin).map(|app| app.name);
                 let open = Open {
                     surface: surface.to_owned(),
                     plugin: create.plugin.clone(),
+                    title: title.unwrap_or_else(|| create.plugin.clone()),
                     url,
                     size: (create.size.width as u32, create.size.height as u32),
                 };

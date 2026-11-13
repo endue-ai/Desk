@@ -187,7 +187,7 @@ impl Hosted {
         places.over = report.parts.iter().filter_map(|p| p.known()).collect();
         places.preview = frame.preview.clone();
         let plan = desk.host_plan_at(vw, vh, report.top, report, &places);
-        self.drawn = crate::app_windows::drawn(&plan, crate::app_windows::switch());
+        self.drawn = crate::app_windows::drawn_now(&plan);
         self.plan = Some(plan);
         self.preview = frame.preview;
         self.moving = frame.moving;

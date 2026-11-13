@@ -94,6 +94,9 @@ impl WebHost {
     /// Input to a cold desk wakes the GPU's copies on `sink`'s device (#133, `copy_wake.rs`).
     pub fn new(sink: Arc<dyn SurfaceSink>, relay: Relay, desk: Option<Arc<Desk>>) -> WebHost {
         copy_wake::start(Arc::clone(&sink));
+        if let Some(desk) = &desk {
+            crate::app_windows::know(&desk.core);
+        }
         WebHost {
             inner: Arc::default(),
             sink,

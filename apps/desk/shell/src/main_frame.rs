@@ -58,6 +58,11 @@ impl Frame {
 
     /// How a window kept at this frame opens on `displays` (their work areas, the primary first).
     pub fn opening(self, displays: &[Frame]) -> Opening {
+        self.opening_at_least(displays, LEAST)
+    }
+
+    /// The same for a window never smaller than `least` (an app window's, #235).
+    pub fn opening_at_least(self, displays: &[Frame], least: (f64, f64)) -> Opening {
         let shows = displays.iter().find(|d| self.shown_on(d));
         let within = shows.or(displays.first());
         let fit = |kept: f64, least: f64, room: Option<f64>| {
@@ -66,8 +71,8 @@ impl Frame {
         Opening {
             at: shows.map(|d| (self.x, self.y.max(d.y))),
             size: (
-                fit(self.width, LEAST.0, within.map(|d| d.width)),
-                fit(self.height, LEAST.1, within.map(|d| d.height)),
+                fit(self.width, least.0, within.map(|d| d.width)),
+                fit(self.height, least.1, within.map(|d| d.height)),
             ),
         }
     }
@@ -224,7 +229,7 @@ fn displays(event_loop: &ActiveEventLoop) -> Vec<Frame> {
 }
 
 /// Run `run` once `REST` has passed without another nudge, on a thread of its own.
-fn debounce(run: impl Fn() + Send + 'static) -> Sender<()> {
+pub(crate) fn debounce(run: impl Fn() + Send + 'static) -> Sender<()> {
     let (nudge, nudged) = mpsc::channel::<()>();
     let spawned = std::thread::Builder::new()
         .name("desk-main-frame".to_owned())

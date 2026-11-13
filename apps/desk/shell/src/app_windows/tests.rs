@@ -1,16 +1,33 @@
 use desk_wm::{Adopted, Desk, Rect, TopChrome, Unseen};
 
-use super::{Registry, Switch, drawn};
+use super::{App, Registry, Switch, drawn};
+
+/// What the switch says of `plugin`'s surface `view`, `app` its manifest.
+fn wants(switch: &Switch, plugin: &str, view: Option<&str>, app: Option<App>) -> bool {
+    switch.wants(plugin, view, || app)
+}
+
+fn app(ui: bool, surfaces: &[(&str, bool)]) -> App {
+    App {
+        ui,
+        name: "Terminal".into(),
+        surfaces: surfaces
+            .iter()
+            .map(|(id, placed)| ((*id).into(), *placed))
+            .collect(),
+    }
+}
 
 #[test]
 fn the_switch_names_plugins_by_id_separated_by_commas() {
     let on = Switch::parse(Some(" endue.terminal , endue.notes,,"));
     assert!(on.is_on());
-    assert!(on.has("endue.terminal"));
-    assert!(on.has("endue.notes"));
-    assert!(!on.has("endue.mail"));
-    assert!(!on.has("endue"), "a whole id, never a prefix");
-    assert!(!on.has(""));
+    let named = |id: &str| wants(&on, id, None, None);
+    assert!(named("endue.terminal"));
+    assert!(named("endue.notes"));
+    assert!(!named("endue.mail"));
+    assert!(!named("endue"), "a whole id, never a prefix");
+    assert!(!named(""));
     assert_eq!(
         Switch::parse(Some("endue.terminal")),
         Switch::parse(Some("endue.terminal,"))
@@ -18,12 +35,77 @@ fn the_switch_names_plugins_by_id_separated_by_commas() {
 }
 
 #[test]
-fn the_switch_unset_or_empty_is_off() {
-    for value in [None, Some(""), Some(" "), Some(",, ,")] {
+fn the_switch_unset_empty_or_off_is_off() {
+    for value in [
+        None,
+        Some(""),
+        Some(" "),
+        Some(",, ,"),
+        Some("off"),
+        Some("OFF"),
+        Some("0"),
+    ] {
         let off = Switch::parse(value);
         assert!(!off.is_on(), "{value:?}");
-        assert!(!off.has("endue.terminal"), "{value:?}");
+        assert!(!wants(
+            &off,
+            "endue.terminal",
+            None,
+            Some(app(true, &[("main", true)]))
+        ));
     }
+}
+
+#[test]
+fn on_every_ui_plugin_placed_center_or_floating_opens_in_a_window_of_its_own() {
+    for value in ["on", "On", "apps", "1", "true"] {
+        assert_eq!(Switch::parse(Some(value)), Switch::Apps, "{value}");
+    }
+    let on = Switch::Apps;
+    let terminal = app(true, &[("main", true)]);
+    assert!(wants(&on, "endue.terminal", None, Some(terminal.clone())));
+    assert!(wants(
+        &on,
+        "endue.terminal",
+        Some("main"),
+        Some(terminal.clone())
+    ));
+    assert!(!wants(&on, "endue.terminal", Some("other"), Some(terminal)));
+    // A surface placed at an edge or over the desk, a plugin that is not `ui`, one not installed.
+    assert!(!wants(
+        &on,
+        "endue.dock",
+        None,
+        Some(app(true, &[("main", false)]))
+    ));
+    assert!(!wants(
+        &on,
+        "endue.logic",
+        None,
+        Some(app(false, &[("main", true)]))
+    ));
+    assert!(!wants(&on, "endue.gone", None, None));
+    // A plugin with a center surface and an overlay: only the center one.
+    let two = app(true, &[("main", true), ("prompt", false)]);
+    assert!(wants(&on, "p.two", Some("main"), Some(two.clone())));
+    assert!(!wants(&on, "p.two", Some("prompt"), Some(two)));
+}
+
+#[test]
+fn an_app_is_read_from_its_manifest() {
+    let manifest = |kind: &str, placement: &str| {
+        let text = format!(
+            r#"{{"id":"p.one","name":"One","version":"0.1.0","kind":"{kind}","surfaces":[{{"id":"main","placement":"{placement}"}}]}}"#
+        );
+        App::of(&serde_json::from_str(&text).expect("a manifest"))
+    };
+    assert!(manifest("ui", "center").opens(None));
+    assert!(manifest("ui", "floating").opens(Some("main")));
+    for placement in ["left", "right", "bottom", "overlay"] {
+        assert!(!manifest("ui", placement).opens(None), "{placement}");
+    }
+    assert!(!manifest("logic", "center").opens(None));
+    assert_eq!(manifest("ui", "center").name, "One");
 }
 
 /// A desk of two plugin windows, the terminal's and Notes'.
@@ -52,8 +134,8 @@ fn the_compositor_draws_nothing_where_a_plugin_has_an_os_window() {
     let plan = desk().host_plan(1440.0, 900.0, TopChrome::default(), &Unseen);
     let ids = |p: &desk_wm::Plan| p.windows.iter().map(|w| w.id.clone()).collect::<Vec<_>>();
     assert_eq!(ids(&plan).len(), 2);
-    let on = Switch::parse(Some("endue.terminal"));
-    let drawn = drawn(&plan, &on).expect("the terminal's window is left out");
+    let drawn =
+        drawn(&plan, |id| id == "endue.terminal").expect("the terminal's window is left out");
     assert_eq!(ids(&drawn), vec!["endue.notes".to_owned()]);
     // The surfaces and the budget still read the whole plan: the terminal keeps its seat.
     assert!(plan.seat("endue.terminal").size.is_some());
@@ -61,10 +143,10 @@ fn the_compositor_draws_nothing_where_a_plugin_has_an_os_window() {
 }
 
 #[test]
-fn with_the_switch_off_or_naming_no_window_the_plan_is_drawn_as_it_is() {
+fn with_no_window_handed_the_plan_is_drawn_as_it_is() {
     let plan = desk().host_plan(1440.0, 900.0, TopChrome::default(), &Unseen);
-    assert_eq!(drawn(&plan, &Switch::parse(None)), None);
-    assert_eq!(drawn(&plan, &Switch::parse(Some("endue.mail"))), None);
+    assert_eq!(drawn(&plan, |_| false), None);
+    assert_eq!(drawn(&plan, |id| id == "endue.mail"), None);
 }
 
 #[test]
@@ -126,3 +208,6 @@ fn a_browser_that_closes_by_itself_takes_its_window_with_it() {
     assert_eq!(apps.ask_close("main.endue-notes"), None);
     assert!(apps.is_empty());
 }
+
+#[path = "places_tests.rs"]
+mod places;
