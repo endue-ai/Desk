@@ -1,0 +1,11 @@
+{
+  "target": "BridgeEvent",
+  "description": "one of mira's runs changed: agent.list says what she does now",
+  "instance": {
+    "event": "agent.changed",
+    "data": {
+      "agent": "mira",
+      "runId": "run-3"
+    }
+  }
+}

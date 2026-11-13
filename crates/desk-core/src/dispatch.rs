@@ -40,6 +40,7 @@ impl Core {
             R::PermList(r) => (r.id, self.perm_list(caller, r.params)),
             R::PermAnswer(r) => (r.id, self.perm_answer(caller, r.params)),
             R::PermApprove(r) => (r.id, self.perm_approve(caller, r.params)),
+            R::PermPending(r) => (r.id, self.perm_pending(caller, r.params)),
             R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
             R::MarketList(r) => (r.id, self.market_list(caller, r.params)),

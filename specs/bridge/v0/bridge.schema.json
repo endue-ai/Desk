@@ -66,6 +66,7 @@
         { "$ref": "perm.schema.json#/$defs/PermListRequest" },
         { "$ref": "perm.schema.json#/$defs/PermAnswerRequest" },
         { "$ref": "perm.schema.json#/$defs/PermApproveRequest" },
+        { "$ref": "perm.schema.json#/$defs/PermPendingRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginListRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginStatsRequest" },
@@ -248,6 +249,7 @@
         { "$ref": "perm.schema.json#/$defs/PermPromptEvent" },
         { "$ref": "perm.schema.json#/$defs/PermApprovalEvent" },
         { "$ref": "perm.schema.json#/$defs/PermApprovalDoneEvent" },
+        { "$ref": "perm.schema.json#/$defs/PermSettledEvent" },
         { "$ref": "plugins.schema.json#/$defs/PluginChangedEvent" },
         { "$ref": "ui.schema.json#/$defs/UiNotifiedEvent" },
         { "$ref": "ui.schema.json#/$defs/UiSurfaceOpenedEvent" },
@@ -269,6 +271,7 @@
         { "$ref": "agents.schema.json#/$defs/AgentsChangedEvent" },
         { "$ref": "memory.schema.json#/$defs/MemoryChangedEvent" },
         { "$ref": "agent.schema.json#/$defs/AgentCancelledEvent" },
+        { "$ref": "agent.schema.json#/$defs/AgentChangedEvent" },
         { "$ref": "computer.schema.json#/$defs/ComputerActivityEvent" }
       ]
     }

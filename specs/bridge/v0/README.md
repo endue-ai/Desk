@@ -59,7 +59,7 @@ its processes, `net.data` and `net.closed` for its sockets, `audio.wake` for its
 `cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked, `cmd.undone` for
 the undos and redos it ran, and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
-holders of `plugin:manage`, `perm.prompt`, `perm.approval` and `perm.approval.done` to holders of `perm:manage`, `connector.changed` to holders of
+holders of `plugin:manage`, `perm.prompt`, `perm.approval`, `perm.approval.done`, `perm.settled` and `agent.changed` to holders of `perm:manage`, `connector.changed` to holders of
 `connector:manage`, `view.changed` to holders of `view:manage`, `update.changed` to holders of
 `update:manage`, `account.changed` to holders of `account:manage`, `agents.run` and `agents.changed` to holders of `agents:manage`, and `ui.notified`, `ui.surface.opened` and `ui.surface.closed` to the runtime, which
 shows the notification or mounts and unmounts the surface.
@@ -260,6 +260,13 @@ not remembered. An approval that is already decided is `not_found`. Without a `p
 core's own prompt decides, and refuses by default. Once an approved call ran, `perm.approval.done` says
 whether it succeeded, with `bytesWritten` for a write and the `error` when it failed; `undoable` will
 say when `cmd.undo` (#276) can take a write back.
+
+**perm.pending** answers what waits for the person now, under `perm:manage`: every prompt nobody has
+answered and every approval nobody has approved or denied, each oldest first and as its event said it,
+for a prompter that comes up while they wait (the island, ADR 0204). `perm.settled` (`kind` `prompt` or
+`approval`, and its `id`) tells every `perm:manage` holder that one stopped waiting: a holder answered
+it, its caller unloaded, or a waiting run was cancelled, so each prompter takes down a card another one
+answered.
 
 **plugin.list** returns every installed plugin with its status (`ready` or `failed` with a reason), whether
 it is enabled and built in, its file revision, its manifest and the folder it was installed from (an
@@ -554,7 +561,8 @@ answers every agent the desk knows as an `AgentRecord` (`specs/agent/v0`) with i
 denied, a running command answered `cancelled`, a reported run's reporter hears `agent.cancelled`. Both
 need `perm:manage`. `agent.report` keeps a run of an agent the caller runs, under the caller's own source;
 it needs no scope. Runs are items of kind `run`: the core records one for every command an agent caller
-asks for and for the brain directory's tasks.
+asks for and for the brain directory's tasks. Each time a run is kept, waits, goes on or ends,
+`agent.changed` (the agent and the run) tells every `perm:manage` holder, which reads `agent.list` again.
 
 **agents.list**, **agents.sessions**, **agents.transcript**, **agents.import**, **agents.ask**,
 **agents.runs** and **agents.stop** are the agent programs on this computer (ADR 0110): Claude Code

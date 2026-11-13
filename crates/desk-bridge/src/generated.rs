@@ -3914,6 +3914,23 @@ pub struct AgentCancelledEvent {
     pub data: AgentCancelledData,
 }
 
+/// Payload of agent.changed: the agent one of whose runs started, waits, went on or ended.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentChangedData {
+    pub agent: AgentId,
+    #[serde(rename = "runId")]
+    pub run_id: ItemId,
+}
+
+/// One of an agent's runs changed: kept, waiting for an approval, going on or ended. Sent to callers that hold perm:manage, so what shows the agents at work (the island, ADR 0204) reads agent.list again.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentChangedEvent {
+    pub event: AgentChangedEventEvent,
+    pub data: AgentChangedData,
+}
+
 /// A program the core knows: claude (Claude Code, Anthropic) or codex (Codex, OpenAI).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LocalAgentId {
@@ -4969,6 +4986,7 @@ pub enum BridgeRequest {
     PermList(PermListRequest),
     PermAnswer(PermAnswerRequest),
     PermApprove(PermApproveRequest),
+    PermPending(PermPendingRequest),
     PluginList(PluginListRequest),
     PluginSetEnabled(PluginSetEnabledRequest),
     PluginStats(PluginStatsRequest),
@@ -5165,6 +5183,7 @@ pub enum BridgeEvent {
     PermPrompt(PermPromptEvent),
     PermApproval(PermApprovalEvent),
     PermApprovalDone(PermApprovalDoneEvent),
+    PermSettled(PermSettledEvent),
     PluginChanged(PluginChangedEvent),
     UiNotified(UiNotifiedEvent),
     UiSurfaceOpened(UiSurfaceOpenedEvent),
@@ -5186,6 +5205,7 @@ pub enum BridgeEvent {
     AgentsChanged(AgentsChangedEvent),
     MemoryChanged(MemoryChangedEvent),
     AgentCancelled(AgentCancelledEvent),
+    AgentChanged(AgentChangedEvent),
     ComputerActivity(ComputerActivityEvent),
 }
 
@@ -8187,6 +8207,55 @@ pub struct PermApprovalDoneData {
     /// true when cmd.undo can take the write back (#276). Absent while the core does not serve cmd.undo.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub undoable: Option<bool>,
+}
+
+/// What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait (the island, ADR 0204).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermPendingRequest {
+    pub id: RequestId,
+    pub method: PermPendingRequestMethod,
+    pub params: PermPendingParams,
+}
+
+/// Parameters of perm.pending.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermPendingParams {
+    pub scope: PermManagePermission,
+}
+
+/// Result of perm.pending: the prompts and the approvals waiting, each oldest first, as their events said them.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermPendingResult {
+    pub prompts: Vec<PermPromptData>,
+    pub approvals: Vec<PermApprovalData>,
+}
+
+/// A prompt or an approval stopped waiting: a holder answered it, its caller unloaded, or the Prompter decided it with nobody left to ask. Sent to callers that hold perm:manage, so every prompter takes down the card another one answered (ADR 0204).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermSettledEvent {
+    pub event: PermSettledEventEvent,
+    pub data: PermSettledData,
+}
+
+/// Payload of perm.settled: which card, by its kind and its id (perm.prompt's promptId or perm.approval's approvalId).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermSettledData {
+    pub kind: PendingKind,
+    pub id: String,
+}
+
+/// prompt: a perm.prompt (promptId). approval: a perm.approval (approvalId).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PendingKind {
+    #[serde(rename = "prompt")]
+    Prompt,
+    #[serde(rename = "approval")]
+    Approval,
 }
 
 /// One of the caller's grants changed.
@@ -11407,6 +11476,14 @@ pub enum AgentCancelledEventEvent {
     AgentCancelled,
 }
 
+/// The `event` of [`AgentChangedEvent`]: always `"agent.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentChangedEventEvent {
+    #[default]
+    #[serde(rename = "agent.changed")]
+    AgentChanged,
+}
+
 /// The `method` of [`AgentsListRequest`]: always `"agents.list"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum AgentsListRequestMethod {
@@ -12301,6 +12378,22 @@ pub enum PermApprovalDoneEventEvent {
     #[default]
     #[serde(rename = "perm.approval.done")]
     PermApprovalDone,
+}
+
+/// The `method` of [`PermPendingRequest`]: always `"perm.pending"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermPendingRequestMethod {
+    #[default]
+    #[serde(rename = "perm.pending")]
+    PermPending,
+}
+
+/// The `event` of [`PermSettledEvent`]: always `"perm.settled"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermSettledEventEvent {
+    #[default]
+    #[serde(rename = "perm.settled")]
+    PermSettled,
 }
 
 /// The `event` of [`PermChangedEvent`]: always `"perm.changed"`.

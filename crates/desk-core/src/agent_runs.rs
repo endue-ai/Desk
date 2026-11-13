@@ -4,16 +4,20 @@
 //! id), and ends `done`, `failed` or `cancelled` with its answer cut short. The brain directory's A2A
 //! tasks become runs of their target agent when brain.tasks.list answers, and a plugin reports the
 //! runs of the agents it runs with agent.report (`agent_registry`). This session's runs live here and,
-//! when the desk has one, in the item index too.
+//! when the desk has one, in the item index too; each change of one is `agent.changed` to the
+//! perm:manage holders.
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::MutexGuard;
 
-use desk_bridge::{Item, ItemSource, RunItem, RunState};
+use desk_bridge::{
+    AgentChangedData, AgentChangedEvent, BridgeEvent, Item, ItemSource, RunItem, RunState,
+};
 use serde_json::{Map, Value};
 
 use crate::agents::agent_of;
+use crate::core_perm::perm_manage;
 use crate::handler::Core;
 use crate::time::rfc3339_millis;
 
@@ -258,11 +262,26 @@ impl Core {
             .collect()
     }
 
-    /// Put the run in the item index, when the desk has one.
+    /// Put the run in the item index, when the desk has one, and tell the perm:manage holders that
+    /// its agent's runs changed (`agent.changed`, ADR 0204): what shows the agents at work reads
+    /// agent.list again. Call with no lock of the runs held.
     fn publish_run(&self, item: &RunItem) {
         if let Some(index) = &self.index {
             let _ = index.upsert(&[Item::Run(item.clone())]);
         }
+        let holders = self.holders(&perm_manage());
+        if holders.is_empty() {
+            return;
+        }
+        let data = AgentChangedData {
+            agent: item.agent.clone(),
+            run_id: item.id.clone(),
+        };
+        let event = BridgeEvent::AgentChanged(AgentChangedEvent {
+            event: Default::default(),
+            data,
+        });
+        self.events().route(holders, event);
     }
 
     pub(crate) fn now_text(&self) -> String {
