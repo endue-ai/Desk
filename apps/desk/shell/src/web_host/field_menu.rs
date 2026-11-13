@@ -170,9 +170,11 @@ pub fn take(host: &BrowserHost, message: &M) -> bool {
         let shown = shown.as_mut()?;
         if shown.browser != id {
             // A press in another plugin's page puts the menu away; that page has the press. The
-            // runtime's page hears every press under the windows it holds, the menu's included.
+            // runtime's pages hear every press under the windows they hold, the menu's included:
+            // the desk's, and a window's own (ADR 0201), which hears its plugins' left presses.
             let press = matches!(input, Input::Down { .. } | Input::Wheel | Input::Key(_));
-            let away = press && !super::top::is_shell_page(id);
+            let runtime = super::top::is_shell_page(id) || super::window_pages::is_page_browser(id);
+            let away = press && !runtime;
             return Some(if away { Then::Dismiss } else { Then::Pass });
         }
         Some(shown.open.hear(input))

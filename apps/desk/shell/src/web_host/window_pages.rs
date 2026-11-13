@@ -45,6 +45,29 @@ pub fn is_window_page(surface: &str) -> bool {
     surface.starts_with(SURFACE)
 }
 
+/// The browsers that are windows' own pages now.
+static BROWSERS: std::sync::Mutex<std::collections::BTreeSet<i32>> =
+    std::sync::Mutex::new(std::collections::BTreeSet::new());
+
+/// Browser `id` is a window's own page (`true`), or no more.
+fn known(id: i32, page: bool) {
+    let mut browsers = BROWSERS.lock().unwrap_or_else(|e| e.into_inner());
+    if page {
+        browsers.insert(id);
+    } else {
+        browsers.remove(&id);
+    }
+}
+
+/// Whether browser `id` is a window's own page: the runtime's, as the desk's page is, and so it
+/// hears a press on a plugin in its window with that plugin (`field_menu.rs`).
+pub fn is_page_browser(id: i32) -> bool {
+    BROWSERS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .contains(&id)
+}
+
 /// Where a window page lies now: its window's size (logical pixels), its scale, whether it shows.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Placed {
@@ -111,6 +134,7 @@ impl WebHost {
         {
             record.browser = Some(browser.clone());
         }
+        known(browser.identifier(), true);
         if let Some(host) = browser.host() {
             host.send_dev_tools_message(Some(CLEAR_BASE));
         }
@@ -193,6 +217,7 @@ impl WebHost {
 
     /// Window `window`'s page closed with its window: the host forgets it.
     pub fn window_page_closed(&self, surface: &str, browser: i32) {
+        known(browser, false);
         let mut inner = self.inner();
         if inner
             .records
@@ -229,6 +254,16 @@ pub(super) fn close_replaced(surface: &str, browser: &Browser, why: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_windows_page_browser_is_the_runtimes_until_it_closes() {
+        // A press on a plugin's field menu reaches that window's page too: it must not put it away.
+        assert!(!is_page_browser(-7));
+        known(-7, true);
+        assert!(is_page_browser(-7));
+        known(-7, false);
+        assert!(!is_page_browser(-7));
+    }
 
     #[test]
     fn a_popup_is_a_window_page_by_its_name_alone() {
