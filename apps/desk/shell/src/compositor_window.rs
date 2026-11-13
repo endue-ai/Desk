@@ -318,7 +318,7 @@ impl CompositorWindow {
         }
         self.scene_for_frame();
         self.composed += 1;
-        self.last_frame = now;
+        self.last_frame = clock::Due::beat(self.last_frame, now);
         if !self.gpu.presents() {
             return;
         }
