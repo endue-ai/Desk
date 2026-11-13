@@ -101,7 +101,11 @@ pub fn pieces(page: &[desk_wm::Rect], hosted: &Hosted) -> Pieces {
 /// question, which cover the windows whole). A press there is theirs: no window's grip or title bar
 /// lies above them, so the window manager finds no gesture there and shows no cursor of its own.
 pub fn over_windows(report: &DeskReport) -> Vec<desk_wm::Rect> {
-    let parts = report.parts.iter().filter_map(PartReport::known);
+    // A part drawn over the windows that hears nothing (the status line's text) leaves the press
+    // to the window under it, whose own page has its tools (ADR 0201).
+    let parts = (report.parts.iter())
+        .filter(|p| desk_web::sender::part(&p.id).is_some_and(|s| s.hears()))
+        .filter_map(PartReport::known);
     let placed = (report.frames.iter())
         .filter_map(|f| f.place.filter(|p| p.shown))
         .map(|p| desk_wm::Rect::new(p.x, p.y, p.width, p.height));
@@ -215,8 +219,13 @@ fn whole(
     from: &Sources,
     drawn: &mut Drawn,
 ) -> Result<(), SceneError> {
+    let heard = desk_web::sender::part(id).is_none_or(|p| p.hears());
     for at in boxes {
-        page_part(scene, desk, rect(*at), rect(*at), from, &mut drawn.shown)?;
+        if heard {
+            page_part(scene, desk, rect(*at), rect(*at), from, &mut drawn.shown)?;
+        } else {
+            unheard(scene, desk, *at, from)?;
+        }
     }
     drawn.parts.push(id.to_owned());
     Ok(())

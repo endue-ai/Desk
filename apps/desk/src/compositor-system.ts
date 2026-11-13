@@ -27,7 +27,13 @@ export const PARTS: ReadonlyArray<readonly [id: string, selector: string, found?
   ["desk.canvas", ".canvas-reset"],
   ["desk.safe", '[data-layer="system"] .safe-badge'],
   ["desk.eris", ".eris"],
+  // The status line is drawn over the windows but hears nothing; its buttons do (ADR 0201).
   ["desk.notices", ".desk-status"],
+  [
+    "desk.notice-actions",
+    ".desk-status .desk-status-action, .desk-status .desk-status-dismiss, .desk-status .desk-status-open",
+    "every",
+  ],
   // The theme studio docked to the side while it edits dims nothing (`editor.css`).
   ["desk.scrim", ".scrim:not(.is-editing), .desk-describe, dialog[open]", "scrim"],
   ["desk.settings", "dialog.desk-settings[open]"],

@@ -22,7 +22,7 @@ afterEach(() => document.body.replaceChildren());
 
 describe("the desk's system parts", () => {
   it("are the ones the compositor names, in its order", () => {
-    const rust = [...readFileSync(RUST, "utf8").matchAll(/id: "(desk\.[a-z]+)"/g)].map((m) => m[1]);
+    const rust = [...readFileSync(RUST, "utf8").matchAll(/id: "(desk\.[a-z-]+)"/g)].map((m) => m[1]);
     expect(PARTS.map(([id]) => id)).toEqual(rust);
   });
 
@@ -61,6 +61,18 @@ describe("the desk's system parts", () => {
       { id: "desk.bottom", x: 548, y: 732, width: 184, height: 48 },
       { id: "desk.canvas", x: 148, y: 744, width: 32, height: 32 },
       { id: "desk.safe", x: 552, y: 24, width: 175, height: 35 },
+    ]);
+  });
+
+  it("report the status line, and each of its buttons in a box of its own: they alone hear the pointer", () => {
+    // Drawn over a window snapped to the top, the line's text leaves its tools to it (ADR 0201).
+    const line = at("desk-status has-actions", [400, 8, 480, 28]);
+    at("desk-status-action", [700, 10, 60, 24], line);
+    at("desk-status-dismiss", [770, 10, 20, 24], line);
+    expect(systemParts(document)).toEqual([
+      { id: "desk.notices", x: 400, y: 8, width: 480, height: 28 },
+      { id: "desk.notice-actions", x: 700, y: 10, width: 60, height: 24 },
+      { id: "desk.notice-actions", x: 770, y: 10, width: 20, height: 24 },
     ]);
   });
 
