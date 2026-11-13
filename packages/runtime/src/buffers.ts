@@ -9,12 +9,22 @@ export interface Buffer {
   name: string;
   /** The plugin that shows it. */
   plugin: string;
+  /**
+   * The plugin's window that shows it, when that is not its first (ADR 0212): `<plugin>@<n>`.
+   * Absent: the plugin's first window, whose key is the plugin id.
+   */
+  instance?: string;
   /** The file it holds, as a bridge path, when it holds one. */
   path?: string;
   /** Changed since it was opened or saved. */
   modified: boolean;
   /** The plugin's own surface rather than a buffer the plugin opened. */
   surface: boolean;
+}
+
+/** The key of the window that shows a buffer: its instance, or its plugin's first window. */
+export function windowOf(buffer: Pick<Buffer, "plugin" | "instance">): string {
+  return buffer.instance ?? buffer.plugin;
 }
 
 export type BufferPatch = Partial<Pick<Buffer, "name" | "modified" | "path">>;
@@ -95,9 +105,14 @@ export class Buffers {
     return this.list().find((buffer) => buffer.path === path);
   }
 
-  /** A plugin's buffers, most recently used first. */
+  /** A plugin's buffers, in every window of it, most recently used first. */
   ofPlugin(plugin: string): Buffer[] {
     return this.list().filter((buffer) => buffer.plugin === plugin);
+  }
+
+  /** The buffers one window of a plugin shows (by its key: the plugin id for its first). */
+  ofWindow(key: string): Buffer[] {
+    return this.list().filter((buffer) => windowOf(buffer) === key);
   }
 
   /**
@@ -129,15 +144,18 @@ export class Buffers {
   }
 
   /**
-   * Whether buffers may go: the buffers of `plugins` as the window showing them closes, or every
-   * buffer as the desk quits. Each guard is asked in turn, and the first that says no keeps them.
+   * Whether buffers may go: the buffers of `plugins` (their windows' keys) as the window showing
+   * them closes, or every buffer as the desk quits. Each guard is asked in turn, and the first that
+   * says no keeps them.
    */
   async mayGo(
     leaving: Leaving,
     options: { plugins?: readonly string[]; asking?: () => void } = {},
   ): Promise<boolean> {
     const { plugins, asking = () => {} } = options;
-    const buffers = this.list().filter((b) => plugins === undefined || plugins.includes(b.plugin));
+    const buffers = this.list().filter(
+      (b) => plugins === undefined || plugins.includes(windowOf(b)),
+    );
     if (buffers.length === 0) return true;
     for (const guard of [...this.#guards]) {
       if (!(await guard({ buffers, leaving, asking }))) return false;

@@ -18,6 +18,7 @@ the folders above it followed through their links and the home folder as `~` (`~
 | `desk.files.fallback` | `endue.data` | The plugin that opens a file no rule names (Data reads the format from the first bytes, else shows name, size, format and why); empty: it does not open |
 | `desk.files.recent-max` | 20 | How many recent files to remember (kept with `store.set`) |
 | `desk.files.on-change` | `reload` | Changed on disk: reload when there are no unsaved changes, else ask; `ask`; `ignore` |
+| `desk.files.window` | `per-file` | An opener that asks for it (Images, Notes, Data) opens each file in a window of its own (ADR 0212); `shared`: one window shows them all |
 | `desk.files.history-max-bytes` | 268435456 (256 MiB) | What the history of earlier versions holds in all; the oldest go first |
 | `desk.files.history-max-versions` | 50 | Earlier versions kept per file; `0` keeps none |
 

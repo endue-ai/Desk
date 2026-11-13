@@ -1416,7 +1416,7 @@ pub type ViewPath = String;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Surface {
-    /// Unique within the plugin.
+    /// Unique within the plugin. Two hyphens in a row are reserved: a surface's further windows are `<id>--<n>` (ADR 0212).
     pub id: String,
     /// Shown where the surface needs a label.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1425,6 +1425,17 @@ pub struct Surface {
     /// Mounted but not shown until the plugin shows it, like a palette. Default false.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hidden: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instances: Option<SurfaceInstances>,
+}
+
+/// How many windows of a surface the desk opens (ADR 0212). one: a single window, which shows every file the plugin opens (the default). per-file: a file opener's first surface opens a window of its own for each file the desk opens in it, each its own page with the plugin's permissions; the desk.files.window setting can keep one window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SurfaceInstances {
+    #[serde(rename = "one")]
+    One,
+    #[serde(rename = "per-file")]
+    PerFile,
 }
 
 /// Where the compositor puts the surface.

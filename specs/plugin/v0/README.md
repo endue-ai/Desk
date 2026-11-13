@@ -15,7 +15,7 @@ block (ADR 0056, ADR 0057), and `theme-index.schema.json` a theme market's index
 | `kind` | `ui` (sandboxed iframe), `logic` (Wasm), `tool` (MCP inside the VM), `policy` (data only), `library` (files other plugins import), `connector` (items in, actions as commands; Wasm or MCP), `view` (data only), `theme` (a theme's values and files), `native` (a program per OS in a process of its own) |
 | `entry` | Entry file relative to the plugin folder, never outside it; `policy`, `library`, `view` and `theme` plugins have none |
 | `permissions` | Everything the plugin may ask for; each is granted by the person at first use; a `library` has none |
-| `surfaces` | Surfaces a UI or native plugin can open, with a placement (`hidden` until it shows itself); other kinds declare none |
+| `surfaces` | Surfaces a UI or native plugin can open, with a placement (`hidden` until it shows itself); other kinds declare none. A file opener's first surface with `instances: "per-file"` opens a window of its own for each file (ADR 0212); `--` in a surface id is reserved for those windows' hosts |
 | `contributes` | Commands, keys, display rules, file openers, themes, settings, profiles and palette providers; required for `policy`, refused for `library` |
 | `autoload` | Off until the desk needs it, like Emacs's autoload: off at start unless a stored flag says on, its file openers count while off; `desk.files` turns it on for a file and off after its last file; default `false`; refused for `library` |
 | `provides` | The roles the plugin can fill (ADR 0104): `role:rail`, `role:agents`, `role:dock`, `role:palette`, `role:settings-ui`; the `desk.roles` setting chooses each role's provider, and a provider not chosen for a role it declares does not mount |

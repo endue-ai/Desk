@@ -4,19 +4,21 @@
  * and quitting the desk (the list's guard); after a close the previous buffer in sight shows.
  * Plugins open, rename and mark their own buffers with desk.buffers.open and desk.buffers.update. The
  * ring that switching, next, previous and Mod+W walk holds what shows something: a plugin's own
- * surface is one of its stops only while the plugin holds no buffer of its own (#162).
+ * surface is one of its stops only while the plugin holds no buffer of its own (#162). A plugin with
+ * several windows (ADR 0212) is all of this per window: each buffer names the window that shows it.
  */
-import { type Buffer, Buffers, type Going, type Leaving } from "../buffers";
+import { type Buffer, Buffers, type Going, type Leaving, windowOf } from "../buffers";
 import { type AgentSpec, CommandError } from "../commands";
+import { pluginOf } from "../instances";
 import { type DeskContext, disposer, type Installed } from "./context";
 
 export interface BuffersPolicy extends Installed {
   buffers: Buffers;
-  /** A plugin's surface opened on the grid: it becomes a buffer. */
-  surfaceOpened(plugin: string, title: string): void;
-  surfaceClosed(plugin: string): void;
-  /** The focus moved to a plugin's surface: its current buffer is in use. */
-  focused(plugin: string | null): void;
+  /** A plugin's surface (one of its windows, by key) opened on the grid: it becomes a buffer. */
+  surfaceOpened(key: string, title: string): void;
+  surfaceClosed(key: string): void;
+  /** The focus moved to a plugin's surface (by its window's key): its current buffer is in use. */
+  focused(key: string | null): void;
   /** Show a buffer: its surface, and the buffer inside it when the plugin holds several. */
   show(id: string): Promise<void>;
 }
@@ -68,14 +70,14 @@ export function installBuffers(
     for (const listener of [...closedListeners]) listener(buffer);
   };
 
-  const surfaceId = (plugin: string) => `surface:${plugin}`;
-  const inSight = (buffer: Buffer) => actions.inSight?.(buffer.plugin) ?? true;
+  const surfaceId = (key: string) => `surface:${key}`;
+  const inSight = (buffer: Buffer) => actions.inSight?.(windowOf(buffer)) ?? true;
 
-  /** A plugin's own buffers, most recently used first: what it opened, not its surface. */
-  const own = (plugin: string) => buffers.ofPlugin(plugin).filter((b) => !b.surface);
-  /** What a buffer shows: a plugin's surface, while the plugin holds buffers, shows one of them. */
+  /** A window's own buffers, most recently used first: what its plugin opened, not its surface. */
+  const own = (key: string) => buffers.ofWindow(key).filter((b) => !b.surface);
+  /** What a buffer shows: a plugin's surface, while it holds buffers, shows one of them. */
   const shown = (buffer: Buffer | undefined) =>
-    buffer?.surface ? (own(buffer.plugin)[0] ?? buffer) : buffer;
+    buffer?.surface ? (own(windowOf(buffer))[0] ?? buffer) : buffer;
   /** Whether the ring stops at a buffer: every one but a surface beside its plugin's own. */
   const inRing = (buffer: Buffer) => shown(buffer)?.id === buffer.id;
   /** The buffer in use: the most recent, as it shows. */
@@ -95,11 +97,12 @@ export function installBuffers(
     const buffer = shown(buffers.get(named));
     if (!buffer) throw new CommandError("failed", `no buffer ${named}`);
     const { id } = buffer;
-    surfaces.show(buffer.plugin, true);
-    actions.focus(buffer.plugin);
+    const window = windowOf(buffer);
+    surfaces.show(window, true);
+    actions.focus(window);
     buffers.touch(id);
     if (!buffer.surface) {
-      await ctx.request(buffer.plugin, "desk.buffers.show", { buffer: id, path: buffer.path });
+      await ctx.request(window, "desk.buffers.show", { buffer: id, path: buffer.path });
     }
   };
 
@@ -136,16 +139,13 @@ export function installBuffers(
 
   /** Close a buffer, asking first when it has unsaved changes and the person closes it. */
   const close = async (buffer: Buffer, asks: boolean): Promise<boolean> => {
-    // A plugin's own surface takes the plugin's other buffers with it.
-    const going = buffer.surface ? buffers.ofPlugin(buffer.plugin) : [buffer];
+    // A plugin's own surface takes the other buffers its window shows with it.
+    const window = windowOf(buffer);
+    const going = buffer.surface ? buffers.ofWindow(window) : [buffer];
     if (asks && !(await ask({ buffers: going, leaving: "close", asking: () => {} }))) return false;
     buffers.remove(buffer.id);
-    if (buffer.surface) ctx.unmount(buffer.plugin);
-    else {
-      await ctx
-        .request(buffer.plugin, "desk.buffers.closed", { buffer: buffer.id })
-        .catch(() => {});
-    }
+    if (buffer.surface) ctx.unmount(window);
+    else await ctx.request(window, "desk.buffers.closed", { buffer: buffer.id }).catch(() => {});
     closed(buffer);
     const next = shown(buffers.list().find(inSight));
     if (next && settings.get("desk.buffers.after-close", "previous") === "previous") {
@@ -226,10 +226,13 @@ export function installBuffers(
     const { name, path } = (args ?? {}) as { name?: string; path?: string };
     if (!caller) throw new CommandError("failed", "plugins open their own buffers");
     if (typeof name !== "string" || name === "") throw new CommandError("failed", "say its name");
+    // Every window calls as its plugin: the buffer is the window's in use, which just called.
+    const window = ctx.inUse?.(caller) ?? caller;
     const buffer = buffers.add({
       id: `${caller}:${++opened}`,
       name,
       plugin: caller,
+      ...(window === caller ? {} : { instance: window }),
       modified: false,
       surface: false,
       ...(path ? { path } : {}),
@@ -254,18 +257,26 @@ export function installBuffers(
 
   return {
     buffers,
-    surfaceOpened: (plugin, title) => {
-      if (!buffers.get(surfaceId(plugin)))
-        buffers.add({ id: surfaceId(plugin), name: title, plugin, modified: false, surface: true });
+    surfaceOpened: (key, title) => {
+      const plugin = pluginOf(key);
+      if (!buffers.get(surfaceId(key)))
+        buffers.add({
+          id: surfaceId(key),
+          name: title,
+          plugin,
+          ...(key === plugin ? {} : { instance: key }),
+          modified: false,
+          surface: true,
+        });
     },
-    surfaceClosed: (plugin) => {
-      const gone = buffers.ofPlugin(plugin);
+    surfaceClosed: (key) => {
+      const gone = buffers.ofWindow(key);
       for (const buffer of gone) buffers.remove(buffer.id);
       for (const buffer of gone) closed(buffer);
     },
-    focused: (plugin) => {
-      if (plugin === null) return;
-      const mine = shown(buffers.ofPlugin(plugin)[0]);
+    focused: (key) => {
+      if (key === null) return;
+      const mine = shown(buffers.ofWindow(key)[0]);
       if (mine) buffers.touch(mine.id);
     },
     show,

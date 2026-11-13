@@ -7,6 +7,7 @@
  * spelling before the buffer is named.
  */
 import { baseName } from "../buffers";
+import type { AgentSpec, CommandCaller } from "../commands";
 import { globMatch, type PolicySet } from "../policy";
 
 /**
@@ -62,3 +63,34 @@ export function onePath(path: string): string {
   if (segments.length === 0) return root;
   return `${root === "/" ? "" : root}/${segments.join("/")}`;
 }
+
+/**
+ * Whether an open is the person's own choice, which answers the opener's ask for the file: the desk's
+ * own (keys, the palette, the file picker, a restored session), or a plugin's on the person's click
+ * (Explorer) with the opener the desk's rules name. Never an agent's, and never a plugin naming the
+ * plugin to open with, which could name itself.
+ */
+export function personChose(from: CommandCaller, named: string | undefined): boolean {
+  const { caller } = from;
+  if (caller === undefined) return true;
+  return !caller.startsWith("agent:") && named === undefined;
+}
+
+/** The read scope an opener carries for a file: its whole folder, as the openers ask. */
+export const folderRead = (path: string) => ({
+  permission: "fs:read" as const,
+  paths: [`${path.slice(0, path.lastIndexOf("/"))}/**`],
+});
+
+/** What agents read of desk.files.open (ADR 0088). */
+export const OPEN_FOR_AGENTS: AgentSpec = {
+  description:
+    "Open a file on the desk for the person, in the plugin that opens its kind (plugin names another); answers its buffer id.",
+  args: {
+    type: "object",
+    properties: {
+      path: { type: "string", minLength: 1, description: "A bridge path, such as ~/Notes/a.md" },
+      plugin: { type: "string", minLength: 1 },
+    },
+  },
+};

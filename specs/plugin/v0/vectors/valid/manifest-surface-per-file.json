@@ -1,0 +1,18 @@
+{
+  "target": "PluginManifest",
+  "description": "a file opener whose every file opens in a window of its own",
+  "instance": {
+    "id": "example.viewer",
+    "name": "Viewer",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "surfaces": [
+      { "id": "main", "title": "Viewer", "placement": "center", "instances": "per-file" }
+    ],
+    "contributes": {
+      "files": [{ "pattern": "*.png", "plugin": "example.viewer" }]
+    },
+    "autoload": true
+  }
+}

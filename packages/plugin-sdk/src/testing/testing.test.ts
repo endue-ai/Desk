@@ -27,6 +27,25 @@ describe("createTestHost", () => {
     expect(host.batches).toBe(1);
   });
 
+  it("names the window the page is: its instance, the plugin id when the desk names none", async () => {
+    const seen: Array<[string, string]> = [];
+    for (const instance of [undefined, "example.hello-ui@2"]) {
+      const host = createTestHost({
+        pluginId: "example.hello-ui",
+        ...(instance ? { instance } : {}),
+      });
+      await defineUiPlugin(
+        { mount: (ctx) => void seen.push([ctx.pluginId, ctx.instance]) },
+        host.transport,
+      );
+      await host.settle();
+    }
+    expect(seen).toEqual([
+      ["example.hello-ui", "example.hello-ui"],
+      ["example.hello-ui", "example.hello-ui@2"],
+    ]);
+  });
+
   it("answers unsupported for a method nobody serves", async () => {
     const host = createTestHost({ pluginId: "example.hello-ui" });
     let failure: unknown;

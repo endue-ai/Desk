@@ -6,17 +6,19 @@
  * opener read access to the file's folder first (perm.grant, ADR 0131). An autoload opener that is
  * off comes on for a file and, when the desk turned it on, goes off again with its last buffer (ADR
  * 0046). A file no rule names opens in the fallbacks (`files-open.ts`), and a file is named in one
- * spelling, so it is one buffer.
+ * spelling, so it is one buffer. An opener that asks for it opens each file in a window of its own
+ * (`files-windows.ts`, ADR 0212).
  */
-import { baseName } from "../buffers";
-import { type AgentSpec, type CommandCaller, CommandError, type CommandHandler } from "../commands";
+import { baseName, windowOf } from "../buffers";
+import { type AgentSpec, CommandError, type CommandHandler } from "../commands";
 import type { NoticeInput } from "../notify";
 import { autoloads } from "../policy";
 import type { BufferEvents, BuffersPolicy } from "./buffers";
 import { type DeskContext, disposer, type Installed } from "./context";
-import { onePath, opener, openers } from "./files-open";
+import { folderRead, OPEN_FOR_AGENTS, onePath, opener, openers, personChose } from "./files-open";
+import { fileWindows } from "./files-windows";
 
-export { opener } from "./files-open";
+export { folderRead, opener, personChose } from "./files-open";
 
 export interface RecentFile {
   path: string;
@@ -39,24 +41,6 @@ const AUTOLOADED_KEY = "files.autoloaded";
 const MANAGE = { permission: "plugin:manage" } as const;
 /** How long after desk.files.save a change on disk at that path counts as the save itself. */
 const OWN_SAVE_MS = 3000;
-
-/**
- * Whether an open is the person's own choice, which answers the opener's ask for the file: the desk's
- * own (keys, the palette, the file picker, a restored session), or a plugin's on the person's click
- * (Explorer) with the opener the desk's rules name. Never an agent's, and never a plugin naming the
- * plugin to open with, which could name itself.
- */
-export function personChose(from: CommandCaller, named: string | undefined): boolean {
-  const { caller } = from;
-  if (caller === undefined) return true;
-  return !caller.startsWith("agent:") && named === undefined;
-}
-
-/** The read scope an opener carries for a file: its whole folder, as the openers ask. */
-export const folderRead = (path: string) => ({
-  permission: "fs:read" as const,
-  paths: [`${path.slice(0, path.lastIndexOf("/"))}/**`],
-});
 
 /** The message of a failed request, without the error's class name in front. */
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -122,12 +106,13 @@ export function installFiles(
     await ctx.whenReady(plugin);
   };
 
-  /** Turn off an autoload plugin the desk turned on, once it holds no buffer: its window goes now. */
+  /** Turn off an autoload plugin the desk turned on, once it holds no buffer: its windows go now. */
   const release = (plugin: string) => {
     if (!autoloaded.has(plugin) || list.ofPlugin(plugin).some((b) => !b.surface)) return;
     autoloaded.delete(plugin);
     keepAutoloaded();
-    if (ctx.mounted(plugin)) ctx.unmount(plugin);
+    if (ctx.mounted(plugin))
+      for (const key of (ctx.instances?.(plugin) ?? [plugin]).reverse()) ctx.unmount(key);
     goingOff.add(plugin);
     void bridge
       .call("plugin.setEnabled", { plugin, enabled: false, scope: MANAGE })
@@ -135,9 +120,11 @@ export function installFiles(
   };
   /** Files whose buffer has not shown yet (opened with `show: false`), by path. */
   const unshown = new Set<string>();
+  const windows = fileWindows(ctx, list);
   offs.add(
     buffers.onClosed((buffer) => {
       if (buffer.path) unshown.delete(buffer.path);
+      windows.closed(buffer);
       release(buffer.plugin);
     }),
   );
@@ -169,13 +156,19 @@ export function installFiles(
    * it. A second open while the first visit is still on its way joins that one: the plugin cannot
    * show a buffer it does not hold yet ("No note file:…").
    */
-  const open = async (given: string, by?: string, show = true, chosen = true): Promise<string> => {
+  const open = async (
+    given: string,
+    by?: string,
+    show = true,
+    chosen = true,
+    caller?: string,
+  ): Promise<string> => {
     const path = await named(given);
     const going = visiting.get(path);
     if (going) return show && !going.show ? going.opening.then(reveal) : going.opening;
     const existing = list.byPath(path);
     if (existing) return show ? reveal(existing.id) : Promise.resolve(existing.id);
-    const opening = visit(path, by, show, chosen).finally(() => {
+    const opening = visit(path, by, show, chosen, caller).finally(() => {
       if (visiting.get(path)?.opening === opening) visiting.delete(path);
     });
     visiting.set(path, { opening, show });
@@ -202,7 +195,13 @@ export function installFiles(
     return openers(hub.policy.files, path, typeof fallback === "string" ? fallback : "", installed);
   };
 
-  const visit = async (path: string, by: string | undefined, show: boolean, chosen: boolean) => {
+  const visit = async (
+    path: string,
+    by: string | undefined,
+    show: boolean,
+    chosen: boolean,
+    caller: string | undefined,
+  ) => {
     const plugins = openersOf(path, by);
     if (plugins.length === 0) {
       notify({ caller: "desk", title: `No plugin opens ${baseName(path)}`, level: "warning" });
@@ -210,13 +209,16 @@ export function installFiles(
     }
     const id = `file:${path}`;
     for (const [at, plugin] of plugins.entries()) {
-      await ready(plugin);
+      const { key, opened } = await windows.place(plugin, caller, () => ready(plugin));
       if (chosen) await allowRead(plugin, path);
-      list.add({ id, name: baseName(path), plugin, path, modified: false, surface: false });
+      const file = { id, name: baseName(path), plugin, path, modified: false, surface: false };
+      list.add(key === plugin ? file : { ...file, instance: key });
+      windows.placed(key, opened);
       try {
-        await ctx.request(plugin, "desk.files.visit", { buffer: id, path });
+        await ctx.request(key, "desk.files.visit", { buffer: id, path });
       } catch (error) {
         list.remove(id);
+        windows.placed(key, opened);
         release(plugin);
         // The text opener could not read a name without an extension: the fallback shows it.
         if (at < plugins.length - 1) continue;
@@ -244,7 +246,10 @@ export function installFiles(
 
   const revert = async (args: unknown) => {
     const buffer = fileBuffer(args);
-    await ctx.request(buffer.plugin, "desk.files.revert", { buffer: buffer.id, path: buffer.path });
+    await ctx.request(windowOf(buffer), "desk.files.revert", {
+      buffer: buffer.id,
+      path: buffer.path,
+    });
     list.update(buffer.id, { modified: false });
     return buffer.id;
   };
@@ -284,24 +289,11 @@ export function installFiles(
               recent.map((r) => ({ id: r.path, label: baseName(r.path), detail: r.path })),
               true,
             ));
-      return chosen ? open(chosen, plugin, show !== false, personChose(from, plugin)) : null;
+      if (!chosen) return null;
+      return open(chosen, plugin, show !== false, personChose(from, plugin), from.caller);
     },
     ["find-file"],
-    {
-      description:
-        "Open a file on the desk for the person, in the plugin that opens its kind (plugin names another); answers its buffer id.",
-      args: {
-        type: "object",
-        properties: {
-          path: {
-            type: "string",
-            minLength: 1,
-            description: "A bridge path, such as ~/Notes/a.md",
-          },
-          plugin: { type: "string", minLength: 1 },
-        },
-      },
-    },
+    OPEN_FOR_AGENTS,
   );
   define(
     "desk.files.recent",
@@ -320,7 +312,10 @@ export function installFiles(
     "Save the file",
     async (args) => {
       const buffer = fileBuffer(args);
-      await ctx.request(buffer.plugin, "desk.files.save", { buffer: buffer.id, path: buffer.path });
+      await ctx.request(windowOf(buffer), "desk.files.save", {
+        buffer: buffer.id,
+        path: buffer.path,
+      });
       list.update(buffer.id, { modified: false });
       savedAt.set(buffer.path, Date.now());
       notify({ caller: "desk", title: `Saved ${buffer.name}`, level: "success" });

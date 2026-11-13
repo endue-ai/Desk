@@ -32,6 +32,8 @@ export { assertMinimalEdit, assertRoundTrip, type BytesLike, type EditSpan } fro
 
 export interface TestHostOptions {
   pluginId: string;
+  /** Which of the plugin's windows the page is (ctx.instance, ADR 0212); the plugin id by default. */
+  instance?: string;
   /** State the runtime hands the plugin at init, as after a reload. */
   state?: unknown;
   /**
@@ -189,11 +191,12 @@ export function createTestHost(options: TestHostOptions): TestHost {
     send: (message: PluginMessage) => {
       if (dnd.send(message)) return;
       if (message.type === "desk:hello") {
-        const { restored } = options;
+        const { restored, instance } = options;
         toPlugin({
           type: "desk:init",
           pluginId: options.pluginId,
           state,
+          ...(instance === undefined ? {} : { instance }),
           ...(restored === undefined ? {} : { restored }),
         });
       } else if (message.type === "desk:state") {

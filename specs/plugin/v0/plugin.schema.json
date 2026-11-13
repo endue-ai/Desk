@@ -287,19 +287,25 @@
       "type": "object",
       "properties": {
         "id": {
-          "description": "Unique within the plugin.",
+          "description": "Unique within the plugin. Two hyphens in a row are reserved: a surface's further windows are `<id>--<n>` (ADR 0212).",
           "type": "string",
-          "pattern": "^[a-z][a-z0-9-]*$"
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
         },
         "title": { "description": "Shown where the surface needs a label.", "type": "string" },
         "placement": { "$ref": "#/$defs/SurfacePlacement" },
         "hidden": {
           "description": "Mounted but not shown until the plugin shows it, like a palette. Default false.",
           "type": "boolean"
-        }
+        },
+        "instances": { "$ref": "#/$defs/SurfaceInstances" }
       },
       "required": ["id", "placement"],
       "additionalProperties": false
+    },
+    "SurfaceInstances": {
+      "description": "How many windows of a surface the desk opens (ADR 0212). one: a single window, which shows every file the plugin opens (the default). per-file: a file opener's first surface opens a window of its own for each file the desk opens in it, each its own page with the plugin's permissions; the desk.files.window setting can keep one window.",
+      "type": "string",
+      "enum": ["one", "per-file"]
     },
     "SurfacePlacement": {
       "description": "Where the compositor puts the surface.",

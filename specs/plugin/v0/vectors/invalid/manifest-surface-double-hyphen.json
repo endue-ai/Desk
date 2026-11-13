@@ -1,0 +1,11 @@
+{
+  "target": "PluginManifest",
+  "description": "a surface id with two hyphens in a row, which the desk keeps for a surface's further windows",
+  "instance": {
+    "id": "example.viewer",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "surfaces": [{ "id": "main--2", "placement": "center" }]
+  }
+}
