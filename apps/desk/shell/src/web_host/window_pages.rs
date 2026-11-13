@@ -13,6 +13,7 @@ use std::sync::Arc;
 use cef::*;
 
 use super::lifecycle::{Action, State};
+use super::render::popup_room::{Shown, look_later};
 use super::view::{SharedView, View};
 use super::{DEFAULT_PACE, Record, WebHost, client, drag, frames, render};
 
@@ -157,9 +158,13 @@ impl WebHost {
     /// shown has the engine's focus from then on, as the desk's page does: one without it fires no
     /// focus event, so the focus the runtime moves into it (Ctrl+Tab to a plugin's place there, a
     /// field) would go unheard. The keys go where the compositor routes them, whatever has it.
+    /// A page shown again (its desktop in front again, its window back from the drawer) that
+    /// painted before is looked at `LOOK` on, as after a popup's room (`popup_room.rs`): five to
+    /// seven of fourteen pages hidden together came back without frames for good (ADR 0201).
     pub fn place_window_pages(&self, placed: &[Placed]) {
         let now = std::time::Instant::now();
         let mut acts = Vec::new();
+        let mut again = Vec::new();
         {
             let mut inner = self.inner();
             let pages = inner
@@ -181,6 +186,13 @@ impl WebHost {
                 if resized || shown_again {
                     record.pacing.heard(now);
                 }
+                let browser = record.browser.as_ref().map(Browser::identifier);
+                if shown_again
+                    && !hidden
+                    && let Some(page) = browser.and_then(|b| Shown::of(surface, b, &record.view))
+                {
+                    again.push(page);
+                }
                 for (due, action) in [
                     (resized, Action::Resize),
                     (shown_again, Action::Hide(hidden)),
@@ -199,6 +211,7 @@ impl WebHost {
         for (surface, action, view, browser) in acts {
             self.act(&surface, action, &view, browser.as_ref(), DEFAULT_PACE);
         }
+        look_later(Arc::downgrade(&self.inner), again, "its window shown again");
     }
 
     /// Window page `surface` has the keys now (`focused`), or no more: its page has the engine's

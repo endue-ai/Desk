@@ -121,25 +121,74 @@ wrap_task! {
                     host.invalidate(PaintElementType::VIEW);
                 }
                 // A window page that painted before is to paint again by `LOOK` (the module's doc).
-                let painted = paints(&view.lock());
-                if is_window_page(&surface) && painted > 0 {
+                if is_window_page(&surface)
+                    && let Some(page) = Shown::of(&surface, browser.identifier(), &view)
+                {
                     frames::heard(browser.identifier(), false);
-                    pages.push((surface, browser.identifier(), painted, view));
+                    pages.push(page);
                 }
             }
-            if !pages.is_empty() {
-                let mut look = Look::new(self.inner.clone(), pages);
-                post_delayed_task(ThreadId::UI, Some(&mut look), LOOK);
-            }
+            look_later(self.inner.clone(), pages, "a popup's room");
         }
     }
 }
 
-// The window pages shown again, `LOOK` on: each (surface, browser, its paints then, its view).
+/// A window page just shown again, as it was then: its surface, its browser, its paints and the
+/// begin frames the clock had sent it.
+#[derive(Clone)]
+pub(in crate::web_host) struct Shown {
+    surface: String,
+    browser: i32,
+    paints: u64,
+    fed: u64,
+    view: SharedView,
+}
+
+impl Shown {
+    /// Window page `surface` (browser `browser`) shown again now, if it painted before: one that
+    /// never painted is the stall watch's to judge (`stall.rs`).
+    pub(in crate::web_host) fn of(surface: &str, browser: i32, view: &SharedView) -> Option<Shown> {
+        let (paints, fed) = {
+            let v = view.lock();
+            (paints(&v), v.counts.begin_frames)
+        };
+        (paints > 0).then(|| Shown {
+            surface: surface.to_owned(),
+            browser,
+            paints,
+            fed,
+            view: view.clone(),
+        })
+    }
+}
+
+/// Whether a window page shown again is to be replaced `LOOK` on: it is shown still, the clock gave
+/// it begin frames meanwhile, and it painted nothing for them. A page hidden again, or one the
+/// clock left without frames (the desk out of sight, asleep), is not judged.
+pub(in crate::web_host) fn replace(shown_now: bool, paints: (u64, u64), fed: (u64, u64)) -> bool {
+    shown_now && paints.1 == paints.0 && fed.1 > fed.0
+}
+
+/// Look `LOOK` from now at the window pages shown again after `after` (a popup's room, a window
+/// shown again: `window_pages.rs`), and replace each that `replace` says.
+pub(in crate::web_host) fn look_later(
+    inner: Weak<Mutex<Inner>>,
+    pages: Vec<Shown>,
+    after: &'static str,
+) {
+    if pages.is_empty() {
+        return;
+    }
+    let mut look = Look::new(inner, pages, after);
+    post_delayed_task(ThreadId::UI, Some(&mut look), LOOK);
+}
+
+// The window pages shown again, `LOOK` on.
 wrap_task! {
     struct Look {
         inner: Weak<Mutex<Inner>>,
-        pages: Vec<(String, i32, u64, SharedView)>,
+        pages: Vec<Shown>,
+        after: &'static str,
     }
 
     impl Task {
@@ -147,16 +196,27 @@ wrap_task! {
             let gone: Vec<(String, Browser)> = {
                 let Some(inner) = self.inner.upgrade() else { return };
                 let mut inner = inner.lock().unwrap_or_else(|e| e.into_inner());
-                (self.pages.iter())
-                    .filter(|(_, _, painted, view)| paints(&view.lock()) == *painted)
-                    .filter_map(|(surface, browser, _, _)| {
-                        Some((surface.clone(), forget(&mut inner, surface, *browser)?))
+                let stalled: Vec<&Shown> = (self.pages.iter())
+                    .filter(|page| {
+                        let shown_now = inner.records.get(&page.surface).is_some_and(|r| {
+                            shown(r.state)
+                                && r.browser.as_ref().map(|b| b.identifier()) == Some(page.browser)
+                        });
+                        let v = page.view.lock();
+                        let now = (paints(&v), v.counts.begin_frames);
+                        replace(shown_now, (page.paints, now.0), (page.fed, now.1))
+                    })
+                    .collect();
+                (stalled.into_iter())
+                    .filter_map(|page| {
+                        let browser = forget(&mut inner, &page.surface, page.browser)?;
+                        Some((page.surface.clone(), browser))
                     })
                     .collect()
             };
             for (surface, browser) in gone {
-                let why = "painted nothing again once a popup's room showed it";
-                close_replaced(&surface, &browser, why);
+                let why = format!("painted nothing again once {} showed it", self.after);
+                close_replaced(&surface, &browser, &why);
             }
         }
     }
@@ -164,7 +224,7 @@ wrap_task! {
 
 #[cfg(test)]
 mod tests {
-    use super::{Room, shown};
+    use super::{Room, replace, shown};
     use crate::web_host::lifecycle::State;
 
     #[test]
@@ -179,5 +239,19 @@ mod tests {
     #[test]
     fn a_room_without_its_host_makes_none() {
         Room::none().make(7);
+    }
+
+    #[test]
+    fn a_page_shown_again_is_replaced_only_when_it_took_frames_and_painted_none() {
+        assert!(
+            replace(true, (4, 4), (10, 13)),
+            "frames came, nothing painted"
+        );
+        assert!(!replace(true, (4, 5), (10, 13)), "it painted");
+        assert!(!replace(false, (4, 4), (10, 13)), "hidden again meanwhile");
+        assert!(
+            !replace(true, (4, 4), (10, 10)),
+            "no frames: the desk out of sight or asleep"
+        );
     }
 }

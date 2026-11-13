@@ -4,7 +4,7 @@
 // sheets and the windows' layer's ancestors, and keeps them in step; a window gone closes its page;
 // where no popup opens every window stays in the desk's page.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PAGE_NAME, popupOpener, windowPages } from "./window-pages";
+import { LOST_LIMIT, LOST_MS, PAGE_NAME, popupOpener, windowPages } from "./window-pages";
 
 /** A page as `window.open` hands it: a document of its own, and its close. */
 function fakePage() {
@@ -156,6 +156,48 @@ describe("window pages", () => {
     const again = pages.host("a", 10, 10);
     expect(again?.ownerDocument).not.toBe(first?.document);
     expect(pages.open()).toEqual(["a"]);
+  });
+
+  it("keep a window in the desk's page once its page went under three times in a minute", () => {
+    let clock = 0;
+    const opened: ReturnType<typeof fakePage>[] = [];
+    const open = vi.fn(() => {
+      const made = fakePage();
+      opened.push(made);
+      return made as unknown as Window;
+    });
+    const pages = windowPages(document, layer, open, { now: () => clock });
+    for (let lost = 1; lost < LOST_LIMIT; lost++) {
+      expect(pages.host("a", 10, 10)).not.toBeNull();
+      // The shell closed it: it painted nothing (`popup_room.rs`) or stopped (`revive.rs`).
+      opened.at(-1)?.fire("pagehide");
+      clock += 1000;
+    }
+    expect(pages.host("a", 10, 10)).not.toBeNull();
+    opened.at(-1)?.fire("pagehide");
+    expect(pages.host("a", 10, 10)).toBeNull();
+    expect(open).toHaveBeenCalledTimes(LOST_LIMIT);
+  });
+
+  it("count a page's losses only within a minute, and never the person's own close", () => {
+    let clock = 0;
+    const opened: ReturnType<typeof fakePage>[] = [];
+    const open = vi.fn(() => {
+      const made = fakePage();
+      opened.push(made);
+      return made as unknown as Window;
+    });
+    const pages = windowPages(document, layer, open, { now: () => clock });
+    for (let i = 0; i < LOST_LIMIT * 2; i++) {
+      expect(pages.host("a", 10, 10)).not.toBeNull();
+      opened.at(-1)?.fire("pagehide");
+      clock += LOST_MS / (LOST_LIMIT - 1) + 1;
+    }
+    expect(pages.host("a", 10, 10), "losses a minute apart keep the page").not.toBeNull();
+    for (let i = 0; i < LOST_LIMIT; i++) {
+      pages.close("a");
+      expect(pages.host("a", 10, 10), "closed with its window, not lost").not.toBeNull();
+    }
   });
 
   it("keep one focus on the desk: a page the focus enters takes it from the desk's page", () => {

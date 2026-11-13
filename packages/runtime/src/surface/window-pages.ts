@@ -39,6 +39,14 @@ export interface WindowPages {
 
 /** The longest a press held in the page keeps a window from its own page. */
 const HOLD_MS = 1500;
+/**
+ * A window whose page the shell closed this many times within `LOST_MS` (it painted nothing, or
+ * stopped: `popup_room.rs`, `revive.rs`) stays in the desk's page from then on: a page that never
+ * paints would otherwise be replaced every few seconds for good, its window drawn from its last
+ * picture all the while.
+ */
+export const LOST_LIMIT = 3;
+export const LOST_MS = 60_000;
 
 /** The page's `open`, as the app opens a window's page. */
 export const popupOpener =
@@ -160,18 +168,27 @@ function furnish(win: Window, name: string, page: Document, layer: HTMLElement):
 
 /**
  * The pages of the windows laid out in `layer` of `page`, each opened by `open`; `spacing` ms apart
- * when given, else at once.
+ * when given, else at once. `now` is the clock the pages' losses are counted on.
  */
 export function windowPages(
   page: Document,
   layer: HTMLElement,
   open: Opener,
-  { spacing = 0 }: { spacing?: number } = {},
+  { spacing = 0, now = () => Date.now() }: { spacing?: number; now?: () => number } = {},
 ): WindowPages {
   const pages = new Map<string, Page>();
   const hooks = new Set<Hook>();
-  // A window whose page cannot open (no popup here) stays in the page, and is not asked for again.
+  // A window whose page cannot open (no popup here), or that lost its page `LOST_LIMIT` times in
+  // `LOST_MS`, stays in the page, and is not asked for again.
   const refused = new Set<string>();
+  const losses = new Map<string, number[]>();
+  const lost = (id: string) => {
+    const at = now();
+    const recent = (losses.get(id) ?? []).filter((t) => at - t < LOST_MS);
+    recent.push(at);
+    losses.set(id, recent);
+    if (recent.length >= LOST_LIMIT) refused.add(id);
+  };
   const hook = (id: string, at: Page, run: Hook) => {
     if (!at.watched.has(run)) at.watched.set(run, run(id, at.win));
   };
@@ -242,7 +259,9 @@ export function windowPages(
     // A page that goes under its window (the shell closed it for one that paints, a load) is
     // closed here too: the watches give the window back to the page, whose next draw opens anew.
     const gone = () => {
-      if (pages.get(id) === made) close(id);
+      if (pages.get(id) !== made) return;
+      close(id);
+      lost(id);
     };
     win.addEventListener("pagehide", gone);
     const furnished = made.off;
