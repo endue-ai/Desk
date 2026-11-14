@@ -46,7 +46,15 @@ fn main() -> ExitCode {
     let mut builder = EventLoop::with_user_event();
     // The shell sets its own menu bar (`menu.rs`), with Edit and its own Quit.
     #[cfg(target_os = "macos")]
-    winit::platform::macos::EventLoopBuilderExtMacOS::with_default_menu(&mut builder, false);
+    {
+        use winit::platform::macos::EventLoopBuilderExtMacOS;
+        builder.with_default_menu(false);
+        // A headless desk (the gates' and the checks') uses no keyboard of the machine's: it does
+        // not come in front of the app the person is in.
+        if desk_shell::compositor_window::headless() {
+            builder.with_activate_ignoring_other_apps(false);
+        }
+    }
     let event_loop = match builder.build() {
         Ok(event_loop) => event_loop,
         Err(why) => {

@@ -28,6 +28,7 @@ mod draw_pane;
 mod draw_popup;
 mod draw_spread;
 mod gpu;
+pub use gpu::headless;
 mod handed;
 pub mod harness;
 pub mod hosted;
@@ -134,8 +135,7 @@ impl CompositorWindow {
         window: Arc<Window>,
         desk: Arc<Desk>,
     ) -> Result<CompositorWindow, String> {
-        let headless = std::env::var_os("DESK_COMPOSITOR_HEADLESS").is_some();
-        let gpu = gpu::Gpu::new(Arc::clone(&window), headless)?;
+        let gpu = gpu::Gpu::new(Arc::clone(&window), headless())?;
         eprintln!(
             "endue Desk: compositor mode on {} ({:?})",
             gpu.adapter.name, gpu.adapter.backend

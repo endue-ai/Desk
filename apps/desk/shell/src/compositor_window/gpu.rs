@@ -28,6 +28,11 @@ pub struct Gpu {
 
 /// How long the window waits before it asks again for a frame the OS withheld.
 pub const WITHHELD: Duration = Duration::from_secs(1);
+
+/// Whether this desk composes off screen (`DESK_COMPOSITOR_HEADLESS`): the gates' and the checks'.
+pub fn headless() -> bool {
+    std::env::var_os("DESK_COMPOSITOR_HEADLESS").is_some()
+}
 /// How long a window that handed out no image in time presents nothing before it asks again: an
 /// ask that comes late holds the event loop up to a second.
 pub const PAUSED: Duration = Duration::from_secs(10);
