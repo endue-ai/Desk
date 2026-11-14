@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { Image } from "../../support/png";
-import { captured, type Line, parseTrace, shakes, sharpness, strayed, timing } from "./motion";
+import {
+  captured,
+  type Line,
+  parseTrace,
+  SHADOW,
+  shakes,
+  sharpness,
+  strayed,
+  timing,
+} from "./motion";
 import { failed, type RunFindings, table, verdicts, worst } from "./motion-verdicts";
 
 const line = (t: number, e: string, f: unknown = {}): Line => ({ t, e, f });
@@ -98,6 +107,19 @@ describe("a window's own pixels", () => {
     const judged = strayed(rest, rect, other, { ...rect, x: 60 }, undefined, { b: [bar] });
     expect(judged.differing).toBe(0);
     expect(judged.blocks).toBeLessThan(strayed(rest, rect, rest, rect).blocks);
+  });
+
+  it("takes what lies over every window with its shadow (#269)", () => {
+    const lines = [
+      line(1, "win", { ...at(100), over: [[10, 20, 30, 40]] }),
+      line(2, "capture", { tag: "swing", path: "s", ok: true }),
+    ];
+    const shake = { tag: "s", pressed: 0, swing: [0, 3] as [number, number], released: 3, done: 3 };
+    const [frame] = captured({ ...shake, lines }, "w");
+    const { above, below, side } = SHADOW;
+    expect(frame?.over).toEqual([
+      { x: 10 - side, y: 20 - above, w: 30 + 2 * side, h: 40 + above + below },
+    ]);
   });
 
   it("is softer drawn at a fractional place than at a whole pixel", () => {
