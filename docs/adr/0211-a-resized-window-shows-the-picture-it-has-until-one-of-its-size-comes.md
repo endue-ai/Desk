@@ -167,3 +167,14 @@ Issue #252. Code: `apps/desk/shell/src/web_host/{paint,render,view,clock,popup_s
 order; an own page placed at once) and `apps/desk/shell/src/web_host/paint.rs` (which paints fill,
 the skips). The gate: `e2e/perf/motion.json` takes `sway-sizes` out of `known`. No section of
 `docs/ko/desk-structure.md` changes.
+
+Since 2026-11-14 the picture is drawn from the corner of the window's place its resize left where
+it was, not always the top left (`compositor_window/draw_anchor.rs`): a window stretched by its top
+or left edge showed its old picture at the new corner, so the edges the person holds still jumped by
+the resize until the page painted, and a window pulled upward looked moved, not grown. The focus
+ring and a pane's plugin lie in the frame as drawn, each keeping its inset from the frame's right
+and bottom edges, so the ring is the size of the window that shows and nothing is drawn past the
+frame; the ring is drawn in its window's group (ADR 0219). And a view CEF still holds where its
+screen was told gets a whole frame with its next size (`popup_screen::resized`), as ADR 0214 gives a
+window's own page one at each telling: a plugin's page with nothing new to show kept its old size
+through every catch-up of ADR 0210.
