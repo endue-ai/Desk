@@ -8,6 +8,7 @@ import type { Lang } from "../shell/copy";
 
 const copy = {
   controls: ["사용자 메뉴", "User menu"],
+  launcher: ["플러그인 열기", "Open a plugin"],
   inbox: ["인박스", "Inbox"],
   settings: ["설정 열기", "Open settings"],
   account: ["사용자 정보", "User information"],

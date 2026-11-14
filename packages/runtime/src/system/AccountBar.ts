@@ -1,4 +1,4 @@
-/** Inbox, settings and the person's profile: fixed at the bottom left in every desktop and mode. */
+/** The launcher, the inbox, settings and the person's profile: fixed at the bottom left in every desktop and mode. */
 import { runGesture } from "../gesture";
 import type { ShellCtx } from "../shell/context";
 import { h, render } from "../shell/dom";
@@ -6,6 +6,9 @@ import { icon } from "../shell/icons";
 import { initial } from "../shell/state";
 import { accountText } from "./account-copy";
 import { mountEndueId } from "./endue-id";
+
+/** The command the launcher plugin answers. */
+const LAUNCHER = "endue.launcher.open";
 
 export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
   const bar = h("nav", {
@@ -55,6 +58,23 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
     const userName = shown || tr("localUser");
     bar.setAttribute("aria-label", tr("controls"));
     render(bar, () => [
+      // The launcher's grid of every plugin (endue.launcher, ADR 0217): the one place on screen
+      // that opens a plugin, since the desk has no dock.
+      h(
+        "button",
+        {
+          class: "icon-button launcher-button",
+          type: "button",
+          "data-key": "launcher",
+          "aria-label": tr("launcher"),
+          title: tr("launcher"),
+          onClick: () => {
+            ctx.store.set({ popover: null });
+            run(LAUNCHER);
+          },
+        },
+        icon("grid"),
+      ),
       h(
         "button",
         {

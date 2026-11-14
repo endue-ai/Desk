@@ -2,6 +2,7 @@
 
 const PATHS: Record<string, string> = {
   plus: "M12 5v14M5 12h14",
+  grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
   copy: "M9 9h11v11H9zM5 15H4V4h11v1",
   eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
   tasks: "M10 6h10M10 12h10M10 18h10M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18h4",

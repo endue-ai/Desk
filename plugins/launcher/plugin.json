@@ -1,0 +1,38 @@
+{
+  "id": "endue.launcher",
+  "name": "Launcher",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "A grid of every plugin that opens on the desk, over the whole app: the ones opened lately first, filtered as you type.",
+  "permissions": [
+    { "permission": "plugin:manage" },
+    { "permission": "cmd:invoke", "ids": ["desk.plugins.open"] }
+  ],
+  "surfaces": [{ "id": "main", "title": "Launcher", "placement": "overlay", "hidden": true }],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.launcher.open",
+        "title": "Launcher: Show every plugin",
+        "keywords": [
+          "launcher",
+          "launchpad",
+          "apps",
+          "plugins",
+          "grid",
+          "open",
+          "런처",
+          "앱",
+          "플러그인"
+        ]
+      },
+      {
+        "id": "endue.launcher.close",
+        "title": "Launcher: Close",
+        "keywords": ["launcher", "close", "런처", "닫기"]
+      }
+    ],
+    "keys": [{ "key": "Mod+Alt+L", "command": "endue.launcher.open" }]
+  }
+}

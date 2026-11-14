@@ -761,15 +761,35 @@
      "aria-label": "사용자 메뉴",
      "box": [
       24,
-      714,
+      666,
       56,
-      162
+      210
      ],
      "style": {
       "background": "rgb(255, 255, 255)",
       "border": "solid rgb(221, 214, 229)"
      },
      "children": [
+      {
+       "tag": "button",
+       "class": "icon-button launcher-button",
+       "aria-label": "플러그인 열기",
+       "box": [
+        32,
+        679,
+        40,
+        40
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "grid"
+        }
+       ]
+      },
       {
        "tag": "button",
        "class": "icon-button inbox-button",
