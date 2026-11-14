@@ -161,3 +161,20 @@ fn a_new_scale_tells_the_screen_with_it() {
     assert!(view.rescaled(), "CEF reads the screen now");
     assert_eq!(quad(view.screen.view_rect(view.size)), [849, 295, 326, 169]);
 }
+
+/// A view told its screen is held by CEF until it paints again: a size sent meanwhile needs a
+/// frame of the view first (`resized`).
+#[test]
+fn a_view_told_its_screen_is_held_until_it_paints_again() {
+    let mut screen = Screen::default();
+    assert!(!screen.held(0), "never told: nothing holds it");
+    screen.placed(PANE, Instant::now());
+    assert!(!screen.held(3), "placed, not told yet");
+    screen.tell(3);
+    assert!(screen.held(3), "told at its third paint, none since");
+    assert!(!screen.held(4), "it painted: the hold ended");
+    // Told again where it rests next, it is held anew.
+    screen.tell(7);
+    assert!(screen.held(7));
+    assert!(!screen.held(8));
+}

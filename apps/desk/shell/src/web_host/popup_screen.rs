@@ -114,6 +114,15 @@ impl Screen {
         self.painted = paints;
     }
 
+    /// Whether CEF holds the view's resizes: its browser was told its screen and the view, at
+    /// `paints` frames, has painted none since. A page the telling leaves looking as it did paints
+    /// nothing of its own, so the hold stays, and a size sent meanwhile waits behind it for good:
+    /// a plugin's window snapped or stretched after it had moved kept its content at the old size
+    /// through every catch-up (ADR 0210), until something else made its page paint.
+    pub fn held(&self, paints: u64) -> bool {
+        self.told.is_some() && paints <= self.painted
+    }
+
     /// The view's rect on its screen, `size` its own size (never empty, as CEF asks).
     pub fn view_rect(&self, (width, height): (u32, u32)) -> Rect {
         let (x, y) = self.told.map_or((0, 0), |p| (p.x, p.y));
@@ -167,6 +176,24 @@ pub fn paints(view: &View) -> u64 {
 fn settled(view: &View) -> bool {
     let painted = paints(view) > view.screen.painted;
     !view.hidden && view.at_size() && painted && view.popup.place().is_none()
+}
+
+/// `view` has a new size: its browser `host` hears it. The screen's info goes with it only for a
+/// new scale: with every resize it stalled a page whose window glides to a new size (#157,
+/// `View::rescaled`). While CEF still holds the view where its screen was told (`Screen::held`), a
+/// whole frame of it is asked for too: the paint ends the hold, and the size goes through after it.
+pub fn resized(host: &cef::BrowserHost, view: &super::super::view::SharedView) {
+    let (rescaled, held) = {
+        let mut view = view.lock();
+        (view.rescaled(), view.screen.held(paints(&view)))
+    };
+    if rescaled {
+        host.notify_screen_info_changed();
+    }
+    host.was_resized();
+    if held {
+        host.invalidate(PaintElementType::VIEW);
+    }
 }
 
 impl WebHost {

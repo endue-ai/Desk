@@ -222,12 +222,7 @@ impl WebHost {
             Action::Open { hidden } => self.open(surface, view, hidden, pace),
             Action::Resize => {
                 if let Some(host) = host {
-                    // The screen's info only for a new scale: with every resize it stalled a page
-                    // whose window glides to a new size (#157, `View::rescaled`).
-                    if view.lock().rescaled() {
-                        host.notify_screen_info_changed();
-                    }
-                    host.was_resized();
+                    render::popup_screen::resized(&host, view);
                 }
             }
             Action::Hide(hidden) => {
