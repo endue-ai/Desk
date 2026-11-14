@@ -33,6 +33,8 @@ impl CompositorWindow {
                 Step::Destroy { surface } => {
                     self.shared.lock().destroy(surface);
                     self.forget(surface);
+                    // Its web view goes with it (ADR 0216).
+                    self.host.web_end(surface);
                 }
                 // Its process goes: its imports with it, its last frame (a copy) stays.
                 Step::Sleep { surface } => {
@@ -42,6 +44,7 @@ impl CompositorWindow {
                     }
                     drop(composed);
                     self.forget(surface);
+                    self.host.web_end(surface);
                 }
                 _ => {}
             }
@@ -53,6 +56,7 @@ impl CompositorWindow {
                 .emit(Role::Main, LIVE, json!({ "live": live }));
         }
         self.place_window_pages();
+        self.web_swept();
         // The next frame shows it, and the accessibility tree follows the surfaces (#155).
         self.shared.lock().dirty = true;
         self.a11y.changed();

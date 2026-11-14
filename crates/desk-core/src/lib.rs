@@ -76,6 +76,7 @@ mod core_update;
 mod core_views;
 mod core_views_check;
 mod core_wasm;
+mod core_web;
 mod desk_files;
 mod dispatch;
 mod eris_context;
@@ -126,6 +127,7 @@ pub use core_snapshots::{ShotError, SurfaceShot, SurfaceSnapshots};
 pub use core_state::{QUARANTINED_KEY, SafeMode, SafeReason};
 pub use core_themes::{ThemeFetch, ThemeWatcher};
 pub use core_tools::mcp_caller;
+pub use core_web::{MAX_WEB_VIEWS, WebError, WebPlace, WebState, WebViews};
 pub use desk_files::{
     DATA_FILES, DESK_FILES, DESK_FOLDERS, DeskFile, FileState, Owner, check_desk_file, desk_files,
     desk_folder_files,

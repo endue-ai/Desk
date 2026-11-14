@@ -38,6 +38,7 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 | --- | --- | --- |
 | `display/` (`desk.display`) | `window.el`, `display-buffer-alist` | Where a new surface goes, how big, whether it takes the focus |
 | `palette/` (`desk.palette`) | `M-x`, the minibuffer | The command palette, picking one of many, run history, cancel (a UI plugin) |
+| `browser/` | Browser (`endue.browser`, autoload, ADR 0216): surf the web in a desk window. A toolbar (back, forward, reload or stop, an address field that takes an address or words to search for) over a live page, which is a web view of the desk's (`web.*` under `web:browse`): a browser of its own with nothing of the desk in it, drawn over the plugin's surface. The address comes back after a sleep. Commands `endue.browser.open`, `.go`, `.reload`; settings `endue.browser.home`, `.search` |
 | `buffers/` (`desk.buffers`) | `buffer.el`, `ibuffer` | The buffer list, switching, asking before closing unsaved work, what shows next |
 | `files/` (`desk.files`) | `files.el`, `auto-mode-alist` | Which plugin opens a file, recent files, saving, changes on disk |
 | `session/` (`desk.session`) | `desktop.el`, `savehist` | Putting the layout, open files, focus and history back at start |

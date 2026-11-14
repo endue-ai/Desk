@@ -138,6 +138,7 @@ fn drawn(hosted: &Hosted, popup: Popup) -> (Scene, Drawn) {
         page: Some((TextureId(1), (1440, 900))),
         surface: &textures,
         popup: &open,
+        web: &crate::compositor_window::draw_web::none,
         spread: None,
         map: None,
     };

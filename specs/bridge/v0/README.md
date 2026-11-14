@@ -3,7 +3,7 @@
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
 `store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
-`view`, `catalog`, `shell`, `update`, `theme`, `account`, `agent`, `agents`, `studio` (with `studio-spaces`) and `computer`. Items, views and connectors are the types of `specs/item`,
+`view`, `catalog`, `shell`, `update`, `theme`, `account`, `agent`, `agents`, `studio` (with `studio-spaces`), `computer` and `web`. Items, views and connectors are the types of `specs/item`,
 `specs/view` and `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
@@ -723,6 +723,35 @@ of the entry's id, version and kind, lands it in the market folder and grants it
 `accept`, which must hold every permission the entry asks (`permission_denied` names the rest). A
 `plugin` entry installs only from the endue index; themes and design systems go through `theme.import`.
 `plugin.remove` removes what the market installed: its folder, its record, its grants and its lock line.
+
+**web.open** opens a web view in the calling window (ADR 0216): an off-screen browser of its own
+that shows a remote page, which the desk draws over the caller's surface. It needs a `web:browse` scope;
+with a `url` (http or https only) the scope's `hosts`, when it has any, must cover the address's host,
+or the call is `permission_denied` at once. The view is hidden until `web.place` gives it a box. `surface`
+is the host of the calling window's surface: the runtime, which forwards a plugin's calls, sets it, and
+a call without one is `invalid_params`. A window has one view: opening another closes the first. A desk
+with no compositor, and a window out of the canvas in an OS window of its own, answer `unsupported`. The
+page gets nothing of the desk: no bridge, no desk scheme, no file; its cookies, cache and storage live
+apart from the desk's own pages. Downloads, permission prompts, file choosers and script dialogs are
+refused, and a link that asks for a new window loads in the same view.
+
+**web.place** says where one of the caller's views lies in its surface, in CSS pixels from the surface's
+top left, and whether it shows (`shown`, true by default). What lies past the surface's edge is not drawn.
+A view hidden rests its page. A view that is not the caller's is `not_found`.
+
+**web.load** loads an address in one of the caller's views, under the same `web:browse` scope as
+`web.open`: an address outside the scope's hosts is `permission_denied`. It answers once the view took
+the address; what becomes of the load comes in `web.changed`.
+
+**web.go** steps one of the caller's views `back` or `forward` in its history, loads its page again
+(`reload`) or stops its load (`stop`). A step its history does not have does nothing.
+
+**web.focus** gives one of the caller's views the keys, as a press in its page does: typing and the
+input method go to the page until a press on the caller's own surface, or the desk, takes them back.
+
+**web.close** closes one of the caller's views; its last `web.changed` says `closed`. Closing one that
+already ended is not an error. A view also ends when its window's surface sleeps, goes away or moves out
+of the desk, and when its plugin stops.
 
 ## Vectors
 

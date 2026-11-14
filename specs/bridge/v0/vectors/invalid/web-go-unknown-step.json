@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.go knows back, forward, reload and stop",
+  "instance": {
+    "id": 36,
+    "method": "web.go",
+    "params": {
+      "viewId": "w-1",
+      "to": "home"
+    }
+  }
+}

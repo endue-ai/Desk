@@ -121,6 +121,8 @@ pub fn surface(
     drawn
         .placed
         .push((host.to_owned(), into.to.translate(into.at)));
+    // Its web view, if it shows one, over it (ADR 0216).
+    super::draw_web::web_view(scene, into, host, from, &mut drawn.shown, &mut drawn.placed)?;
     if state == FrameState::Late {
         shows(&card(""), chrome, scene, On::Late)?;
     }

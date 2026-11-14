@@ -1,0 +1,50 @@
+{
+  "id": "endue.browser",
+  "name": "Browser",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "description": "Surf the web in a desk window: a live page under an address field, with back, forward, reload and stop. The page is its own browser, apart from the desk: it reads nothing of the desk and keeps its cookies to itself.",
+  "permissions": [{ "permission": "web:browse" }],
+  "surfaces": [{ "id": "main", "title": "Browser", "placement": "center" }],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.browser.open",
+        "title": "Browser: Open",
+        "keywords": ["browser", "web", "internet", "surf", "site", "브라우저", "웹", "인터넷"],
+        "runs": { "command": "desk.plugins.open", "args": { "plugin": "endue.browser" } }
+      },
+      {
+        "id": "endue.browser.go",
+        "title": "Browser: Go to an address",
+        "keywords": ["browser", "web", "url", "address", "search", "주소"],
+        "description": "Show a web page in the Browser: an address (example.com, https://example.com/a) or words to search for.",
+        "args": {
+          "type": "object",
+          "properties": { "url": { "type": "string", "minLength": 1, "maxLength": 8192 } },
+          "required": ["url"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.browser.reload",
+        "title": "Browser: Load the page again",
+        "keywords": ["browser", "web", "reload", "refresh", "새로고침"]
+      }
+    ],
+    "settings": {
+      "endue.browser.home": {
+        "kind": "string",
+        "default": "https://endue.ai/",
+        "description": "The page a new Browser window opens on; empty opens no page."
+      },
+      "endue.browser.search": {
+        "kind": "string",
+        "default": "https://duckduckgo.com/?q=%s",
+        "description": "Where words typed into the address field are searched for: %s is replaced by the words."
+      }
+    }
+  }
+}

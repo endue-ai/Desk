@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.go steps a view back",
+  "instance": {
+    "id": 36,
+    "method": "web.go",
+    "params": {
+      "viewId": "w-1",
+      "to": "back"
+    }
+  }
+}

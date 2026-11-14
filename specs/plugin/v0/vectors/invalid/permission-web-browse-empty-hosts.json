@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "web:browse names at least one host when it names any",
+  "instance": {
+    "permission": "web:browse",
+    "hosts": []
+  }
+}

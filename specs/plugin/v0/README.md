@@ -133,6 +133,7 @@ eight `actions` (`{ command, title, args? }`): Enter runs the first, Mod+Enter t
 | `studio:manage` | none | The person's endue AI agents and spaces through `studio.*` (`studio.agents.*`, `studio.catalog.*`, `studio.conversations.list`, `studio.spaces.*`), under the desk's endue ID (ADR 0122, ADR 0129) |
 | `computer:see` | `apps` (optional) | Screenshots, displays, windows, running apps, accessibility trees and the OS permissions through `computer.*` (ADR 0123); `apps` limits it to those bundle ids' windows and trees |
 | `computer:control` | `apps` (optional) | Mouse and keyboard input, accessibility actions, launching, activating and quitting apps and the stop through `computer.*`; `apps` limits it to input to those apps. An agent's every act waits for approval (ADR 0078) |
+| `web:browse` | `hosts` (optional) | `web.open`, `web.place`, `web.load`, `web.go`, `web.focus`, `web.close` and `web.changed` events for the caller's own web views (ADR 0216); `hosts` limits a view's own page to those hosts, absent covers every http and https site |
 
 Paths are absolute or rooted at `~`, `${plugin}`, `${workspace}` or `${home}`, with `*` within a segment
 and `**` across segments. `shell:open` schemes are the three the core ever opens: a scope narrows them,

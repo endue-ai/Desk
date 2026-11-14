@@ -268,3 +268,27 @@ fn the_clock_notes_when_a_surface_painted() {
         "only when its count moves"
     );
 }
+
+#[test]
+fn a_restless_surface_keeps_the_slow_frames_where_another_rests() {
+    // A web view's page cannot ask for frames (ADR 0216): a change of its own finds one soon.
+    let t0 = Instant::now();
+    let (mut web, mut plugin) = (Pacing::new(60).restless(), Pacing::new(60));
+    for pacing in [&mut web, &mut plugin] {
+        assert!(pacing.due(t0, Some(0), 1), "its page painted");
+        a_second_of_frames(pacing, t0, 0, 1);
+    }
+    let rest = t0 + LONG_IDLE * 3;
+    assert!(plugin.long_idle(rest) && !web.long_idle(rest));
+    let second = |pacing: &mut Pacing| -> usize {
+        (0..RATE)
+            .filter(|j| pacing.due(rest + FRAME * *j, Some(200 + u64::from(*j)), 1))
+            .count()
+    };
+    assert_eq!(second(&mut plugin), 0, "a plugin's surface rests");
+    let slow = second(&mut web);
+    assert!((9..=10).contains(&slow), "ten slow frames a second: {slow}");
+    // A press or a paint puts it back on every frame, as any surface.
+    web.heard(rest + FRAME * RATE);
+    assert_eq!(taken(&mut web, rest + FRAME * RATE, 300..303, 1), "xxx");
+}

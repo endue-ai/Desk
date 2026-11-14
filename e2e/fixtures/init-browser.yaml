@@ -1,0 +1,14 @@
+# e2e fixture for the Browser spec (#273): the first run held off, and the Browser opening on no
+# page, so the spec loads only the pages it serves itself and nothing is asked of the network.
+version: 0
+
+profile: default
+
+plugins:
+  disabled: [endue.onboarding]
+
+settings:
+  endue.browser.home: ""
+
+sync:
+  enabled: false

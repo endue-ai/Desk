@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.open carries its web:browse scope",
+  "instance": {
+    "id": 31,
+    "method": "web.open",
+    "params": {
+      "url": "https://example.com/",
+      "surface": "main.endue-browser"
+    }
+  }
+}

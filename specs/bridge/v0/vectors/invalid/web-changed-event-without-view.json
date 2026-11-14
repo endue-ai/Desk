@@ -1,0 +1,14 @@
+{
+  "target": "BridgeEvent",
+  "description": "web.changed names its view",
+  "instance": {
+    "event": "web.changed",
+    "data": {
+      "url": "https://example.com/",
+      "title": "",
+      "loading": true,
+      "canGoBack": false,
+      "canGoForward": false
+    }
+  }
+}

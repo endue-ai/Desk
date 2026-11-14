@@ -1,0 +1,7 @@
+{
+  "target": "WebOpenResult",
+  "description": "the view web.open opened",
+  "instance": {
+    "viewId": "w-1"
+  }
+}

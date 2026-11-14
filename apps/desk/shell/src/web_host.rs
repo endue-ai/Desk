@@ -32,6 +32,11 @@ mod sink;
 pub mod stall;
 pub mod top;
 pub mod view;
+mod web_client;
+mod web_keys;
+mod web_refusals;
+pub mod web_rules;
+pub mod web_views;
 pub mod window_pages;
 
 use std::collections::HashMap;
@@ -77,6 +82,8 @@ struct Inner {
     page: Option<clock::Page>,
     /// The surfaces shown in OS windows of their own instead (#234, `app_surfaces.rs`).
     apps: app_surfaces::Apps,
+    /// The web views plugins opened in their windows (#273, `web_views.rs`).
+    web: web_views::Views,
 }
 
 /// The web host. Cheap to clone; every clone is the same host. Call it on CEF's UI thread.

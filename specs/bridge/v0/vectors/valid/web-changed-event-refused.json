@@ -1,0 +1,16 @@
+{
+  "target": "BridgeEvent",
+  "description": "a view did not follow a link to a host outside its grant",
+  "instance": {
+    "event": "web.changed",
+    "data": {
+      "viewId": "w-1",
+      "url": "https://example.com/docs",
+      "title": "Docs",
+      "loading": false,
+      "canGoBack": true,
+      "canGoForward": false,
+      "refused": "https://elsewhere.example/"
+    }
+  }
+}

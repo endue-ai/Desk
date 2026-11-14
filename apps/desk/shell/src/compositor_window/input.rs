@@ -25,7 +25,7 @@ use super::hosted::owner;
 use super::{CompositorWindow, PAGE, os_pointer, overlay};
 use crate::web_host::input as web_input;
 use crate::web_host::lifecycle::surface_of;
-use crate::web_host::window_pages;
+use crate::web_host::{web_rules, window_pages};
 
 /// The runtime's keymap as the page reports it (`apps/desk/src/compositor-keys.ts`).
 #[derive(Debug, Deserialize)]
@@ -61,6 +61,7 @@ impl CompositorWindow {
         }
         let outs = self.router.handle(&self.scene, &input, Instant::now());
         let outs = if popup { Self::popup_outs(outs) } else { outs };
+        self.web_pressed(&outs);
         self.apply(event_loop, outs);
     }
 
@@ -104,7 +105,8 @@ impl CompositorWindow {
         let (host, _, _) = made
             .into_iter()
             .find(|(_, of, asleep)| of == plugin && !asleep)?;
-        Some(host)
+        // Its web view, while that has the keys (ADR 0216).
+        Some(self.host.web_stand_in(&host))
     }
 
     pub(super) fn apply(&mut self, event_loop: &ActiveEventLoop, outs: Vec<Out>) {
@@ -174,6 +176,8 @@ impl CompositorWindow {
         let press = json!({ "type": "desk:key", "key": {
             "key": key.key, "code": key.code, "metaKey": key.meta, "ctrlKey": key.ctrl,
             "altKey": key.alt, "shiftKey": key.shift, "repeat": key.repeat } });
+        // A web view's keys are its window's plugin's to the runtime (ADR 0216).
+        let surface = web_rules::host_of(surface).unwrap_or(surface);
         self.relay.up(surface, press.to_string());
     }
 
@@ -212,7 +216,7 @@ impl CompositorWindow {
         };
         let surface = surface.filter(known);
         let said = match surface {
-            Some(surface) => PageFocus::Place(surface),
+            Some(surface) => PageFocus::Place(self.host.web_stand_in(&surface)),
             None if own => PageFocus::Own,
             None => PageFocus::Rest,
         };
@@ -249,7 +253,13 @@ impl CompositorWindow {
         let scale = self.window.scale_factor() as f32;
         // Each window covers what lies under it (issue 159, finding 5); not on the spread's cards.
         if let Some(plan) = self.hosted.plan().filter(|_| self.spreading.open.is_none()) {
-            let made = self.hosted.surfaces().made();
+            let mut made = self.hosted.surfaces().made();
+            // A web view lies in its plugin's window, and covers what is under it there.
+            let views: Vec<_> = (made.iter())
+                .filter(|(host, _, _)| router.targets.shown(&web_rules::surface_of(host)))
+                .map(|(host, plugin, _)| (web_rules::surface_of(host), plugin.clone(), false))
+                .collect();
+            made.extend(views);
             let popups = &self.gestures.popups.boxes;
             let areas = popup_input::areas(&plan.windows, &made, popups, scale);
             router.targets.set_areas(PAGE, areas);
@@ -262,7 +272,7 @@ impl CompositorWindow {
         let ring = focused
             .filter(|s| !spreading && router.window_focused() && router.targets.shown(s))
             .and_then(|s| {
-                let plugin = owner(&s)?.0;
+                let plugin = owner(web_rules::host_of(&s).unwrap_or(&s))?.0;
                 let plan = self.hosted.plan()?;
                 let look = (self.theme.window.radius, scale);
                 draw::pixels::ring_of(plan, &plugin, look, |id| self.hosted.on_its_way(id))
