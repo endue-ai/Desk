@@ -43,6 +43,8 @@ pub struct Composed {
     pub popups: HashMap<String, Place>,
     /// The hover title each page said last since the window looked (`""`: none, #156).
     pub tips: HashMap<String, String>,
+    /// The page's paint of a size no report of it names yet, held aside (#269).
+    page: page::PageAside,
 }
 
 impl Composed {
@@ -165,6 +167,7 @@ impl Shared {
             page_damage: Vec::new(),
             popups: HashMap::new(),
             tips: HashMap::new(),
+            page: page::PageAside::default(),
         })))
     }
 
@@ -177,7 +180,12 @@ impl Shared {
 impl SurfaceSink for Shared {
     fn attach(&self, attach: &SurfaceAttach, source: Source<'_>) -> Result<Attached, AttachError> {
         let mut composed = self.lock();
-        let id = composed.texture(&attach.surface);
+        let size = (attach.texture.width as u32, attach.texture.height as u32);
+        let (id, aside) = if attach.surface == super::PAGE {
+            composed.page_texture(size)
+        } else {
+            (composed.texture(&attach.surface), false)
+        };
         let state = &mut *composed;
         let had = state.frames.size(id);
         let started = std::time::Instant::now();
@@ -190,6 +198,9 @@ impl SurfaceSink for Shared {
         match &result {
             Ok(_) => counts.0 += 1,
             Err(_) => counts.1 += 1,
+        }
+        if aside {
+            return result;
         }
         if result.is_ok() && attach.surface == super::PAGE {
             // A window that looks no more (the probe's) keeps the last ones only.
@@ -242,6 +253,9 @@ impl SurfaceSink for Shared {
         )
     }
 }
+
+#[path = "composed_page.rs"]
+mod page;
 
 #[cfg(test)]
 #[path = "composed_tests.rs"]

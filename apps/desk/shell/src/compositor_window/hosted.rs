@@ -14,9 +14,7 @@ use std::time::Instant;
 use desk_compositor::{ChromeTheme, Tokens};
 use desk_core::TokenTable;
 use desk_wm::interact::{Motion, Out, Wm};
-use desk_wm::{
-    FrameDoc, FrameState, LiveBudget, PageShown, Plan, Rect, Seat, Size, Step, Surfaces,
-};
+use desk_wm::{FrameDoc, FrameState, LiveBudget, PageShown, Plan, Rect, Seat, Step, Surfaces};
 
 use super::report::{DeskReport, FrameReport, Layer};
 
@@ -76,6 +74,8 @@ pub struct Hosted {
     restaged: bool,
     /// The windows drawn from their own page, which the page's picture does not place (#252).
     own_pages: BTreeSet<String>,
+    /// The page's reports laid out for another size than its picture (#269, `hosted_reports.rs`).
+    held: reports::Held,
 }
 
 impl Hosted {
@@ -102,6 +102,7 @@ impl Hosted {
             painted: PageShown::new(),
             restaged: false,
             own_pages: BTreeSet::new(),
+            held: reports::Held::default(),
         }
     }
 
@@ -125,32 +126,6 @@ impl Hosted {
     /// its card, so a covered window's surface paints again (one that sleeps stays asleep).
     pub fn set_spreading(&mut self, on: bool) {
         self.spreading = on;
-    }
-
-    /// Take the page's `report` at `now`, unless an older one; what follows.
-    pub fn apply(&mut self, report: DeskReport, now: Instant) -> Outcome {
-        if self.report.as_ref().is_some_and(|r| report.seq < r.seq) {
-            return Outcome::default();
-        }
-        self.docs = report.frames.iter().filter_map(doc).collect();
-        let screen = Size {
-            w: report.width,
-            h: report.height,
-        };
-        // What lies above every window, as the page lays it out: a drop keeps a title bar clear
-        // of the edge bars (the dock), and no window's grip or title bar lies over the system
-        // layer's parts and surfaces (an overlay is its own, ADR 0190).
-        let edges = (report.frames.iter())
-            .filter_map(|f| f.place.filter(|p| p.shown && p.layer == Layer::Edge))
-            .map(|p| Rect::new(p.x, p.y, p.width, p.height));
-        self.wm.set_edge_bars(edges.collect());
-        self.wm
-            .set_system_parts(super::system::over_windows(&report));
-        let wm = self.wm.took(report.applied, screen);
-        self.report = Some(report);
-        let mut outcome = self.replan(now);
-        outcome.wm = wm;
-        outcome
     }
 
     /// Plan again from the window manager's desk at `now`: where each window is drawn (held,
@@ -312,7 +287,8 @@ impl Hosted {
     /// The window went off screen or came back.
     pub fn occluded(&mut self, occluded: bool, now: Instant) -> Outcome {
         self.occluded = occluded;
-        self.look(now)
+        let released = occluded.then(|| self.release(now)).flatten();
+        released.unwrap_or_else(|| self.look(now))
     }
 
     /// A hidden window's time may have run out, a window glides, or the page has been quiet long
@@ -387,6 +363,9 @@ fn doc(frame: &FrameReport) -> Option<FrameDoc> {
 #[path = "hosted_picture.rs"]
 mod picture;
 
+#[path = "hosted_reports.rs"]
+mod reports;
+
 #[path = "hosted_protocol.rs"]
 mod protocol;
 pub use protocol::{message, owner};
@@ -394,3 +373,7 @@ pub use protocol::{message, owner};
 #[cfg(test)]
 #[path = "hosted_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "hosted_reports_tests.rs"]
+mod reports_tests;

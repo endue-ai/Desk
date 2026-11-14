@@ -41,12 +41,9 @@
     "maxUnfitFrames": 0
   },
   "known": {
-    "sway-smooth": "#249",
-    "sway-scene": "#269"
+    "sway-smooth": "#249"
   },
-  "sometimes": {
-    "sway-own-pixels": "#269"
-  },
+  "sometimes": {},
   "baseline": {
     "optimized-offscreen": {
       "date": "2026-11-13T20:12:08.215Z",
