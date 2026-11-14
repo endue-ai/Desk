@@ -75,6 +75,8 @@ pub struct Pacing {
     rhythm: Rhythm,
     press: Option<Press>,
     asked: Option<Instant>,
+    /// It never rests: with nothing painted or heard it keeps the slow frames (`restless`).
+    restless: bool,
 }
 
 impl Pacing {
@@ -94,7 +96,16 @@ impl Pacing {
             rhythm: Rhythm::default(),
             press: None,
             asked: None,
+            restless: false,
         }
+    }
+
+    /// The same, never resting: a page that cannot ask for frames (a web view's, which gets no
+    /// script of the desk's, ADR 0216) keeps the slow frames, so a change it makes on its own
+    /// finds a begin frame within one slow period.
+    pub fn restless(mut self) -> Pacing {
+        self.restless = true;
+        self
     }
 
     pub fn pace(&self) -> u32 {
@@ -226,7 +237,10 @@ impl Pacing {
         let painting = within(self.painted, PAINTING) && apart.is_some_and(|d| d < PAINTING);
         if painting || self.heard_at.is_none() || within(self.heard_at, LONG_IDLE) {
             Mode::Every
-        } else if within(self.painted, LONG_IDLE) || self.painted.is_some() && self.fed < SLOW {
+        } else if self.restless
+            || within(self.painted, LONG_IDLE)
+            || self.painted.is_some() && self.fed < SLOW
+        {
             Mode::Slow
         } else {
             Mode::Rest

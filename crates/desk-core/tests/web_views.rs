@@ -97,7 +97,13 @@ fn a_view_opens_in_the_callers_window_and_takes_its_calls() {
     call(&core, BROWSER, "web.place", place).unwrap();
     let load = json!({ "viewId": view, "url": "https://endue.ai/blog", "scope": any() });
     call(&core, BROWSER, "web.load", load).unwrap();
-    call(&core, BROWSER, "web.go", json!({ "viewId": view, "to": "back" })).unwrap();
+    call(
+        &core,
+        BROWSER,
+        "web.go",
+        json!({ "viewId": view, "to": "back" }),
+    )
+    .unwrap();
     call(&core, BROWSER, "web.focus", json!({ "viewId": view })).unwrap();
     call(&core, BROWSER, "web.close", json!({ "viewId": view })).unwrap();
     assert_eq!(
@@ -154,8 +160,14 @@ fn a_view_is_its_callers_alone() {
     grant(&core, OTHER, any());
     let view = open(&core, BROWSER, "https://example.com/", any()).unwrap();
     for (method, params) in [
-        ("web.place", json!({ "viewId": view, "x": 0, "y": 0, "width": 9, "height": 9 })),
-        ("web.load", json!({ "viewId": view, "url": "https://example.com/", "scope": any() })),
+        (
+            "web.place",
+            json!({ "viewId": view, "x": 0, "y": 0, "width": 9, "height": 9 }),
+        ),
+        (
+            "web.load",
+            json!({ "viewId": view, "url": "https://example.com/", "scope": any() }),
+        ),
         ("web.go", json!({ "viewId": view, "to": "reload" })),
         ("web.focus", json!({ "viewId": view })),
     ] {
@@ -206,7 +218,10 @@ fn what_the_shell_reports_reaches_the_views_caller_as_web_changed() {
     assert_eq!(last[0].data()["closed"], true);
     assert_eq!(core.web_view_count(), 0);
     core.web_changed(&view, WebState::default());
-    assert!(named(&events, "web.changed").is_empty(), "a view that ended says nothing");
+    assert!(
+        named(&events, "web.changed").is_empty(),
+        "a view that ended says nothing"
+    );
 }
 
 #[test]
@@ -223,10 +238,19 @@ fn a_window_has_one_view_and_a_lost_grant_closes_it() {
     let ended = named(&events, "web.changed");
     assert_eq!(ended[0].data()["viewId"], first.as_str());
     assert_eq!(ended[0].data()["closed"], true);
-    call(&core, BROWSER, "perm.revoke", json!({ "grantId": grant_id })).unwrap();
+    call(
+        &core,
+        BROWSER,
+        "perm.revoke",
+        json!({ "grantId": grant_id }),
+    )
+    .unwrap();
     assert_eq!(core.web_view_count(), 0, "a revoked grant closes its views");
     assert!(shown.asked().contains(&format!("close {second}")));
-    assert_eq!(named(&events, "web.changed")[0].data()["viewId"], second.as_str());
+    assert_eq!(
+        named(&events, "web.changed")[0].data()["viewId"],
+        second.as_str()
+    );
 }
 
 #[test]
@@ -240,7 +264,11 @@ fn a_desk_without_a_compositor_or_a_window_out_of_the_canvas_answers_unsupported
     let params = json!({ "url": "https://example.com/", "surface": "out", "scope": any() });
     let out = call(&core, BROWSER, "web.open", params).unwrap_err();
     assert_eq!(out.code, ErrorCode::Unsupported, "{out:?}");
-    assert_eq!(core.web_view_count(), 0, "a view that did not open is not kept");
+    assert_eq!(
+        core.web_view_count(),
+        0,
+        "a view that did not open is not kept"
+    );
     // The runtime names the window: a call without one is refused.
     let bare = json!({ "url": "https://example.com/", "scope": any() });
     let unnamed = call(&core, BROWSER, "web.open", bare).unwrap_err();

@@ -1,0 +1,57 @@
+/* Every colour, font, size and radius is a --desk-* token: /_desk/tokens.css declares the defaults and
+   the desk applies the theme in force over them. The web page itself is not this page's: the desk
+   draws it over #page, so what shows there is only what waits under it. */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) / 1.5 var(--desk-font-sans);
+}
+
+.desk-bar {
+  gap: var(--desk-space-1);
+}
+
+.step {
+  min-width: var(--desk-space-8);
+  font-size: var(--desk-text-base);
+}
+
+.address {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.address .desk-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.page {
+  position: relative;
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  place-items: center;
+}
+
+.note {
+  max-width: 34em;
+  margin: 0;
+  padding: var(--desk-space-4);
+  text-align: center;
+}
+
+.note:empty {
+  display: none;
+}

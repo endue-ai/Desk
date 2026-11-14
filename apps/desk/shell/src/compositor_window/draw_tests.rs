@@ -64,6 +64,7 @@ pub(super) fn sources(surface: &dyn Fn(&str) -> Option<Texture>) -> Sources<'_> 
         page: Some((TextureId(1), (1440, 900))),
         surface,
         popup: &crate::compositor_window::draw_popup::none,
+        web: &crate::compositor_window::draw_web::none,
         spread: None,
         map: None,
     }

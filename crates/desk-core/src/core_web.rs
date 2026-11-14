@@ -136,7 +136,11 @@ impl Core {
     }
 
     /// The shell's views and the caller's entry for `view`: its surface and its scope.
-    fn web_view(&self, caller: &str, view: &str) -> Result<Arc<dyn WebViews>, desk_bridge::BridgeError> {
+    fn web_view(
+        &self,
+        caller: &str,
+        view: &str,
+    ) -> Result<Arc<dyn WebViews>, desk_bridge::BridgeError> {
         let web = lock(&self.web);
         let owned = web.entries.get(view).is_some_and(|e| e.caller == caller);
         match (&web.views, owned) {
@@ -195,7 +199,8 @@ impl Core {
         };
         for id in &before {
             views.close(id);
-            self.events().publish_to(vec![caller.to_owned()], closed(id));
+            self.events()
+                .publish_to(vec![caller.to_owned()], closed(id));
         }
         if let Err(why) = views.open(&surface, &view_id, params.url.as_deref()) {
             lock(&self.web).entries.remove(&view_id);
@@ -304,7 +309,8 @@ impl Core {
                 views.close(id);
             }
             if tell {
-                self.events().publish_to(vec![caller.to_owned()], closed(id));
+                self.events()
+                    .publish_to(vec![caller.to_owned()], closed(id));
             }
         }
     }

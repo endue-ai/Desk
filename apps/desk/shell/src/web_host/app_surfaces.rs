@@ -37,6 +37,13 @@ pub(super) struct Apps {
     creates: HashMap<String, SurfaceCreate>,
 }
 
+impl Apps {
+    /// Whether the surface with host `surface` is out of the canvas, in an OS window of its own.
+    pub(super) fn is_out(&self, surface: &str) -> bool {
+        self.open.contains_key(surface) || self.out.contains_key(surface)
+    }
+}
+
 impl WebHost {
     /// Take compositor message `message` about surface `surface` if it is an out window's: whether
     /// it was taken (a `create` of a surface that is out, or anything about one whose OS window is
@@ -98,6 +105,8 @@ impl WebHost {
     /// Surface `surface` is out: its off-screen browser, if it has one, closes, and its OS window
     /// opens. One not created yet opens with its `create`.
     fn pop_out(&self, surface: &str, ask: OutAsk) {
+        // A web view shows in the desk only (ADR 0216): the window's ends as it moves out.
+        self.web_end(surface);
         let browser = {
             let mut inner = self.inner();
             if !inner.apps.creates.contains_key(surface) {

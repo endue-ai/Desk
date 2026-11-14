@@ -9,9 +9,7 @@
       "surface": "main.endue-browser",
       "scope": {
         "permission": "web:browse",
-        "hosts": [
-          "example.com"
-        ]
+        "hosts": ["example.com"]
       }
     }
   }

@@ -58,6 +58,7 @@ fn front(hosted: &Hosted) -> (String, Vec<String>) {
         page: Some((TextureId(1), (1280, 800))),
         surface: &textures,
         popup: &crate::compositor_window::draw_popup::none,
+        web: &crate::compositor_window::draw_web::none,
         spread: None,
         map: None,
     };

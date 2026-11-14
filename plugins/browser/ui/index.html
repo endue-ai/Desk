@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Browser</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="desk-bar" aria-label="Browser">
+      <button class="desk-btn desk-btn-quiet step" id="back" type="button" aria-label="Back" title="Back" disabled>←</button>
+      <button class="desk-btn desk-btn-quiet step" id="forward" type="button" aria-label="Forward" title="Forward" disabled>→</button>
+      <button class="desk-btn desk-btn-quiet step" id="reload" type="button" aria-label="Load again" title="Load again">↻</button>
+      <div class="address">
+        <input
+          class="desk-field"
+          id="address"
+          name="address"
+          type="text"
+          inputmode="url"
+          spellcheck="false"
+          autocapitalize="off"
+          aria-label="Address"
+          placeholder="Search or type an address"
+          autocomplete="off"
+        />
+      </div>
+    </header>
+    <main class="page" id="page" aria-label="Web page">
+      <p class="desk-empty note" id="note" role="status"></p>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

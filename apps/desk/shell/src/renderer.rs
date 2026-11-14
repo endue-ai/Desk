@@ -29,6 +29,27 @@ pub const WAKE: &str = "desk.wake";
 /// The global the page sees.
 const NATIVE: &str = "__deskNative";
 
+/// The key in a browser's extra info that marks it a web view's (#273, ADR 0216): a remote page's,
+/// so its frames get nothing of the desk's.
+pub const WEB_VIEW: &str = "desk.web";
+
+/// The browsers of this renderer process that are web views', by identifier.
+static WEB_VIEWS: std::sync::Mutex<std::collections::BTreeSet<i32>> =
+    std::sync::Mutex::new(std::collections::BTreeSet::new());
+
+fn web_views() -> std::sync::MutexGuard<'static, std::collections::BTreeSet<i32>> {
+    WEB_VIEWS.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Whether a frame at `url` of browser `browser` is a remote page's: its browser is a web view's,
+/// or its document came from the web. The desk's own pages load from its schemes alone
+/// (`desk_web::guard`), so a page from the web is never one of them, whatever browser shows it.
+fn remote(browser: Option<i32>, url: &str) -> bool {
+    let scheme = url.split_once(':').map(|(s, _)| s.to_ascii_lowercase());
+    browser.is_some_and(|id| web_views().contains(&id))
+        || matches!(scheme.as_deref(), Some("http" | "https"))
+}
+
 /// Pages may not replace `__deskNative` or its `send` (V8's `ReadOnly`).
 fn read_only() -> V8Propertyattribute {
     V8Propertyattribute::from(sys::cef_v8_propertyattribute_t::V8_PROPERTY_ATTRIBUTE_READONLY)
@@ -108,12 +129,34 @@ wrap_render_process_handler! {
     pub struct ShellRenderer;
 
     impl RenderProcessHandler {
+        fn on_browser_created(
+            &self,
+            browser: Option<&mut Browser>,
+            extra_info: Option<&mut DictionaryValue>,
+        ) {
+            let web = extra_info.is_some_and(|info| info.bool(Some(&WEB_VIEW.into())) == 1);
+            if let (true, Some(browser)) = (web, browser) {
+                web_views().insert(browser.identifier());
+            }
+        }
+
+        fn on_browser_destroyed(&self, browser: Option<&mut Browser>) {
+            if let Some(browser) = browser {
+                web_views().remove(&browser.identifier());
+            }
+        }
+
         fn on_context_created(
             &self,
-            _browser: Option<&mut Browser>,
+            browser: Option<&mut Browser>,
             frame: Option<&mut Frame>,
             context: Option<&mut V8Context>,
         ) {
+            // A remote page gets no `__deskNative`, no ask for frames and no shim (ADR 0216).
+            let url = frame.as_ref().map(|f| CefString::from(&f.url()).to_string());
+            if remote(browser.map(|b| b.identifier()), url.as_deref().unwrap_or_default()) {
+                return;
+            }
             let Some(context) = context else { return };
             let Some(global) = context.global() else { return };
             let Some(mut native) = v8_value_create_object(None, None) else { return };
@@ -197,4 +240,45 @@ fn deliver(context: &V8Context, handler: &str, strings: &[&str]) {
         let _ = on.execute_function(Some(&mut native), Some(&arguments));
     }
     context.exit();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{remote, web_views};
+
+    #[test]
+    fn a_frame_from_the_web_or_of_a_web_views_browser_gets_nothing_of_the_desk() {
+        // The desk's own pages, in a browser that is no web view's: they get the bridge.
+        for url in [
+            "desk-app://app/index.html",
+            "desk-plugin://main.endue-notes/endue.notes/ui/index.html",
+            "about:blank",
+            "",
+        ] {
+            assert!(!remote(Some(-41), url), "{url}");
+            assert!(!remote(None, url), "{url}");
+        }
+        // A document from the web is remote in any browser.
+        for url in [
+            "https://example.com/",
+            "HTTP://example.com/a",
+            "http://127.0.0.1:8787/",
+        ] {
+            assert!(remote(Some(-41), url), "{url}");
+            assert!(remote(None, url), "{url}");
+        }
+        // Every frame of a web view's browser, an empty one and one a page made itself included.
+        web_views().insert(-42);
+        for url in [
+            "about:blank",
+            "data:text/html,hi",
+            "blob:https://example.com/1",
+            "",
+        ] {
+            assert!(remote(Some(-42), url), "{url}");
+            assert!(!remote(Some(-41), url), "{url}");
+        }
+        web_views().remove(&-42);
+        assert!(!remote(Some(-42), "about:blank"));
+    }
 }

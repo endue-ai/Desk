@@ -21,6 +21,13 @@
 //! on a desktop, above the windows, and the desk's own bars, notices, dialogs and prompts are drawn
 //! above every popup (`compositor_window/draw_popup.rs`), so no page's popup covers what the desk
 //! says.
+//!
+//! Everywhere: Chromium's back/forward cache (`BackForwardCache`) keeps the page a browser left,
+//! whole, and swaps it back in on a step through its history. A web view (ADR 0216) is the one
+//! browser of the desk's that steps through a history, and it renders off screen on the desk's
+//! frame clock: the page swapped back in got no frame at all (no `requestAnimationFrame`, no
+//! paint), so the view showed the page it had left until it was loaded again (#273, CEF 156).
+//! Without the cache a step back loads the page again, as a reload does, and it paints.
 
 use cef::{CefString, ImplCommandLine};
 
@@ -30,11 +37,14 @@ pub const SWITCH: &str = "disable-features";
 /// Chromium's limit on where a page's popup widget may go.
 const POPUP_LIMIT: &str = "LimitPopupWidgetHostPosition";
 
+/// Chromium's cache of the pages a browser left, for steps through its history.
+const HISTORY_CACHE: &str = "BackForwardCache";
+
 /// The features the desk turns off on this OS, by Chromium's names.
 pub const DISABLED: &[&str] = if cfg!(target_os = "macos") {
-    &["MacAppCodeSignClone", POPUP_LIMIT]
+    &["MacAppCodeSignClone", POPUP_LIMIT, HISTORY_CACHE]
 } else {
-    &[POPUP_LIMIT]
+    &[POPUP_LIMIT, HISTORY_CACHE]
 };
 
 /// `--disable-features` holding what it held (`given`, comma-separated as Chromium writes it) and
@@ -83,6 +93,11 @@ mod tests {
     #[test]
     fn everywhere_a_pages_popup_may_open_above_the_top_of_its_view() {
         assert!(DISABLED.contains(&"LimitPopupWidgetHostPosition"));
+    }
+
+    #[test]
+    fn everywhere_a_step_back_loads_the_page_again_rather_than_swap_a_kept_one_in() {
+        assert!(DISABLED.contains(&"BackForwardCache"));
     }
 
     #[test]

@@ -1,5 +1,6 @@
+import type { BridgeRequest, PluginInfo } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
-import { deskPluginUrl, pluginLabel, surfaceHost, surfaceOf } from "./plugin-origins";
+import { deskPluginUrl, named, pluginLabel, surfaceHost, surfaceOf } from "./plugin-origins";
 
 describe("plugin origins (#36)", () => {
   it("make a plugin id one host label: hyphens doubled, dots one hyphen", () => {
@@ -57,5 +58,24 @@ describe("plugin origins (#36)", () => {
     expect(mac("xn-a.notes", "ui/index.html", 1, "main")).toBe(
       "desk-plugin://localhost/xn-a.notes/ui/index.html?v=1",
     );
+  });
+
+  it("name the calling window's surface in web.open, whatever the plugin sent (ADR 0216)", () => {
+    const scope = { permission: "web:browse" } as const;
+    const open = (params: object): BridgeRequest =>
+      ({ id: 7, method: "web.open", params: { scope, ...params } }) as BridgeRequest;
+    const info = { id: "endue.browser", manifest: { surfaces: [{ id: "main" }] } } as PluginInfo;
+    const mounted = new Map([[info.id, info]]);
+    const url = "https://example.com/";
+    expect(named("endue.browser", open({ url }), mounted)).toEqual(
+      open({ url, surface: "main.endue-browser" }),
+    );
+    // Its second window, and a plugin that names another's surface: its own all the same.
+    expect(named("endue.browser@2", open({ surface: "main.endue-notes" }), mounted)).toEqual(
+      open({ surface: "main--2.endue-browser" }),
+    );
+    // Every other call goes as it came.
+    const load = { id: 8, method: "web.load", params: { viewId: "w-1", url, scope } };
+    expect(named("endue.browser", load as BridgeRequest, mounted)).toBe(load);
   });
 });

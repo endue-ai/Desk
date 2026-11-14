@@ -27,6 +27,7 @@ mod draw_map;
 mod draw_pane;
 mod draw_popup;
 mod draw_spread;
+mod draw_web;
 mod gpu;
 pub use gpu::headless;
 mod handed;
@@ -45,6 +46,7 @@ mod spread;
 mod steps;
 pub mod system;
 mod tooltip;
+mod web;
 pub mod winit_input;
 pub mod wm;
 
@@ -208,6 +210,8 @@ impl CompositorWindow {
             .desk
             .core
             .set_surface_snapshots(Some(Arc::new(snapshots)));
+        let web = web::Web::new(opened.desk.pump.clone());
+        opened.desk.core.set_web_views(Some(Arc::new(web)));
         opened.window.set_visible(true);
         Ok(opened)
     }
@@ -388,6 +392,7 @@ impl CompositorWindow {
     /// Close the page's browser and every surface's (the desk quits).
     pub fn close(&self) {
         self.desk.core.set_surface_snapshots(None);
+        self.desk.core.set_web_views(None);
         self.host.close_all();
         self.native.close_all();
         self.relay.page(None);
