@@ -214,8 +214,20 @@ impl CompositorWindow {
     /// The shell page published its desk.
     pub fn report(&mut self, report: DeskReport) {
         crate::frame_trace::line("report", json!({}));
-        let outcome = self.hosted.apply(report, Instant::now());
+        // A picture of the page put aside for this report's size is the page's now (#269), and
+        // the report its picture was laid out for is taken with it (`page_painted`).
+        let scale = self.window.scale_factor();
+        let px = |v: f64| (v * scale).round().max(0.0) as u32;
+        let laid = self
+            .shared
+            .lock()
+            .page_laid((px(report.width), px(report.height)));
+        let now = Instant::now();
+        let outcome = self.hosted.apply(report, now);
         self.carry(outcome);
+        if laid {
+            self.page_painted(now);
+        }
         self.run_deferred();
     }
 

@@ -59,7 +59,22 @@ impl CompositorWindow {
     /// What the page painted since the last look: the windows its picture shows where its DOM has
     /// them are drawn from there (`PageShown`).
     pub(super) fn page_painted(&mut self, now: Instant) {
-        let painted = std::mem::take(&mut self.shared.lock().page_damage);
+        let (painted, picture) = {
+            let mut composed = self.shared.lock();
+            let painted = std::mem::take(&mut composed.page_damage);
+            let size = composed
+                .texture_of(PAGE)
+                .and_then(|id| composed.frames.size(id));
+            (painted, size)
+        };
+        // The report its picture was laid out for first (#269): its damage moves that scene on.
+        if let Some(size) = picture.filter(|_| !painted.is_empty()) {
+            let outcome = self.hosted.page_picture(size, now);
+            if outcome != Outcome::default() {
+                self.carry(outcome);
+            }
+            self.shared.lock().dirty = true;
+        }
         let scale = self.window.scale_factor().max(f64::MIN_POSITIVE);
         for damage in painted {
             let css: Vec<desk_wm::Rect> = (damage.iter())
