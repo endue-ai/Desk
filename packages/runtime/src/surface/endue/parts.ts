@@ -1,8 +1,9 @@
 /** Pieces both endue windows draw (ADR 0129): a notice, an avatar, Studio's facts, a list, buttons. */
 import type { ShellCtx } from "../../shell/context";
 import { type Child, h } from "../../shell/dom";
-import { openOnWeb, flipCard as turn } from "../../system/endue";
+import { flipCard as turn } from "../../system/endue";
 import type { EndueState, Read } from "../../system/endue-ids";
+import { showOnDesk } from "../../system/endue-web";
 import { type EndueKey, endueText } from "./copy";
 import type { Fact, Line } from "./model";
 
@@ -115,11 +116,17 @@ export function flipButton(ctx: ShellCtx, side: "front" | "back", view: string):
   );
 }
 
-/** A face's foot: Read again on the back, and Open in endue.ai on both. */
+/** One of endue.ai's pages a card opens: the action's name, its words and the page. */
+export type Page = [action: string, label: EndueKey, url: string];
+
+/**
+ * A face's foot: Read again on the back, and endue.ai's own pages on both, each shown in a desk
+ * window (ADR 0223).
+ */
 export function actions(
   ctx: ShellCtx,
   side: "front" | "back",
-  page: string,
+  pages: Page[],
   retry: () => void,
 ): HTMLElement {
   return h(
@@ -133,15 +140,18 @@ export function actions(
         )
       : null,
     h("span", { class: "endue-spacer" }),
-    h(
-      "button",
-      {
-        class: "btn btn-xs",
-        type: "button",
-        "data-action": "open-web",
-        onClick: () => void openOnWeb(ctx, page).catch(() => undefined),
-      },
-      text(ctx, "openWeb"),
+    pages.map(([action, label, url]) =>
+      h(
+        "button",
+        {
+          class: "btn btn-xs",
+          type: "button",
+          "data-action": action,
+          title: text(ctx, "pageHint"),
+          onClick: () => void showOnDesk(ctx, url).catch(() => undefined),
+        },
+        text(ctx, label),
+      ),
     ),
   );
 }

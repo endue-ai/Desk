@@ -10,7 +10,17 @@ import { ENDUE_SPACE_VIEW, openEndueAgent, readSpace, spacePage } from "../../sy
 import type { Mounted } from "../views";
 import { flipCard } from "./flip";
 import { type SpaceMember, spaceFront, spaceStudio } from "./model";
-import { actions, avatar, facts, flipButton, lines, notice, readLine, text } from "./parts";
+import {
+  actions,
+  avatar,
+  facts,
+  flipButton,
+  lines,
+  notice,
+  type Page,
+  readLine,
+  text,
+} from "./parts";
 
 /** Faces shown on the front before the rest count as more. */
 const FACES = 3;
@@ -61,7 +71,7 @@ export function endueSpaceBody(ctx: ShellCtx, id: string): Mounted {
     const now = ctx.wall();
     const front = spaceFront(s.lang, space, read, s.endue.agents, now);
     const studio = spaceStudio(s.lang, space, read, s.endue.agents, now);
-    const page = spacePage(id);
+    const pages: Page[] = [["open-web", "openWeb", spacePage(id)]];
     const shown = front.members.slice(0, FACES);
     const more = front.members.length - shown.length;
     render(el, () => [
@@ -118,7 +128,7 @@ export function endueSpaceBody(ctx: ShellCtx, id: string): Mounted {
               )
             : null,
           front.latest ? h("p", { class: "endue-latest" }, front.latest) : null,
-          actions(ctx, "front", page, again),
+          actions(ctx, "front", pages, again),
         ],
         back: [
           h(
@@ -148,7 +158,7 @@ export function endueSpaceBody(ctx: ShellCtx, id: string): Mounted {
           lines(text(ctx, "goingOn"), studio.work, "work"),
           lines(text(ctx, "newest"), studio.results, "results"),
           lines(text(ctx, "roomsList"), studio.rooms, "rooms"),
-          actions(ctx, "back", page, again),
+          actions(ctx, "back", pages, again),
         ],
       }),
     ]);

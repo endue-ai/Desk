@@ -5,11 +5,11 @@
  */
 import type { ShellCtx } from "../../shell/context";
 import { h, render } from "../../shell/dom";
-import { agentPage, ENDUE_AGENT_VIEW, readFacets } from "../../system/endue";
+import { agentHome, agentPage, ENDUE_AGENT_VIEW, readFacets } from "../../system/endue";
 import type { Mounted } from "../views";
 import { flipCard } from "./flip";
 import { agentFront, agentStudio } from "./model";
-import { actions, avatar, facts, flipButton, notice, readLine, text } from "./parts";
+import { actions, avatar, facts, flipButton, notice, type Page, readLine, text } from "./parts";
 
 export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
   const view = `${ENDUE_AGENT_VIEW}${id}`;
@@ -30,7 +30,11 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
     was = flipped;
     const front = agentFront(s.lang, agent, read, s.endue.conversations);
     const studio = agentStudio(s.lang, agent, read, s.endue.conversations, ctx.wall());
-    const page = agentPage(id);
+    // The agent's own page and its Studio, as endue.ai has them (ADR 0223).
+    const pages: Page[] = [
+      ["open-agent", "agentPage", agentHome(id)],
+      ["open-web", "studioPage", agentPage(id)],
+    ];
     render(el, () => [
       flipCard({
         view,
@@ -80,7 +84,7 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
                 front.chips.map((chip) => h("li", { class: "tag" }, chip)),
               )
             : null,
-          actions(ctx, "front", page, again),
+          actions(ctx, "front", pages, again),
         ],
         back: [
           h(
@@ -96,7 +100,7 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
           ),
           readLine(ctx, read, again),
           facts(studio),
-          actions(ctx, "back", page, again),
+          actions(ctx, "back", pages, again),
         ],
       }),
     ]);

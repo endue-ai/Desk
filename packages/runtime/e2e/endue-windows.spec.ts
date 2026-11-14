@@ -38,6 +38,10 @@ test.describe("endue agents and spaces as windows", () => {
     await expect(view.locator('[data-face="front"] .endue-handle')).toHaveText(
       "@miso · Keeps my calendar and sorts my mail",
     );
+    // endue.ai's own pages, one press away, in sight with the card (ADR 0223).
+    const pages = view.locator('[data-face="front"] .endue-actions [data-action^="open-"]');
+    await expect(pages).toHaveText(["Agent page", "Studio page"]);
+    await expect(pages.last()).toBeInViewport();
     await view.locator('[data-face="front"] [data-action="studio"]').click();
     await step(page, 600);
     await expect(view.locator(".endue-flip")).toHaveClass(/is-flipped/);

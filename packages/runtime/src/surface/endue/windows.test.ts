@@ -74,11 +74,21 @@ describe("an endue agent's window (ADR 0129)", () => {
     expect(document.activeElement?.getAttribute("data-action")).toBe("studio");
   });
 
-  it("opens the agent's Studio on endue.ai and nothing else", async () => {
+  it("opens the agent's own page and its Studio on endue.ai, and nothing else", async () => {
     const { el, bridge } = await mounted("agent", MISO);
+    // No Browser in this desk: the pages go to the system browser (ADR 0223).
+    click(el, "open-agent", "front");
+    await settle();
     click(el, "open-web", "front");
     await settle();
-    expect(bridge.fake.opened).toEqual([`https://endue.ai/agent/${MISO}/studio`]);
+    expect(bridge.fake.opened).toEqual([
+      `https://endue.ai/agent/${MISO}`,
+      `https://endue.ai/agent/${MISO}/studio`,
+    ]);
+    const labels = [
+      ...(face(el, "front")?.querySelectorAll(".endue-actions [data-action]") ?? []),
+    ].map((b) => b.textContent);
+    expect(labels).toEqual(["Agent page", "Studio page"]);
   });
 
   it("speaks the desk's language on both faces", async () => {

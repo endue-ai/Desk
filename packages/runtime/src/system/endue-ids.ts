@@ -75,7 +75,9 @@ export function enduePresence(
 
 /** endue.ai, the only origin the shell opens pages on. */
 export const WEB = "https://endue.ai";
+/** An agent's Studio on endue.ai, and the agent's own page (its rooms). */
 export const agentPage = (id: string) => `${WEB}/agent/${encodeURIComponent(id)}/studio`;
+export const agentHome = (id: string) => `${WEB}/agent/${encodeURIComponent(id)}`;
 export const spacePage = (id: string) => `${WEB}/spaces/${encodeURIComponent(id)}`;
 
 /** A colour that may go into a style: #rrggbb only. */
