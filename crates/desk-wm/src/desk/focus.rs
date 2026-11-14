@@ -120,7 +120,8 @@ impl Desk {
         if dx == 0.0 && dy == 0.0 {
             return false;
         }
-        self.pan.insert(here, Offset::new(pan.x + dx, pan.y + dy));
-        true
+        self.set_pan(here.clone(), Offset::new(pan.x + dx, pan.y + dy));
+        // A window past the canvas's extent stays out of sight: the pan did not move.
+        self.pan_of(&here) != pan
     }
 }

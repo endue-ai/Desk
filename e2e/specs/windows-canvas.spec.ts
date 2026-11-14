@@ -150,6 +150,34 @@ describe("canvas: resizing and the pan (#82)", () => {
     expect(rectOf(await windowNow(id))).toEqual({ ...rectOf(win), y: win.y - 120 });
   });
 
+  it("a wheel's run pans on once a window comes under the pointer, and a rest ends it", async () => {
+    const id = await openWindow();
+    await run("desk.shell.open-notes");
+    const win = await windowUntil(id, (x) => x.panes[0]?.view === "notes", "shows Notes");
+    const at = emptyAt(await deskNow());
+    const body = bodyAt(rectOf(win));
+    // The first wheel, over the empty canvas, brings the window's body under the pointer.
+    const by = { x: Math.round(at.x - body.x), y: Math.round(at.y - body.y) };
+    const panned = (pan: { x: number; y: number }, what: string) =>
+      browser.waitUntil(
+        async () => {
+          const now = panOf(await deskNow());
+          return now.x === pan.x && now.y === pan.y;
+        },
+        { interval: 20, timeoutMsg: `the canvas did not pan to ${JSON.stringify(pan)}: ${what}` },
+      );
+    await wheel(at, -by.x, -by.y);
+    await panned(by, "the wheel over the canvas");
+    // The next wheel of the run, now over the window, still pans the canvas.
+    await wheel(at, 0, 20);
+    await panned({ x: by.x, y: by.y - 20 }, "the run's next wheel, over the window");
+    // Once the run has rested, a wheel there is the window's.
+    await browser.pause(700);
+    await wheel(at, 0, 20);
+    await browser.pause(300);
+    expect(panOf(await deskNow())).toEqual({ x: by.x, y: by.y - 20 });
+  });
+
   it("maximize and restore take the whole app over a panned canvas and come back to the same place", async () => {
     const id = await openWindow();
     const start = await windowNow(id);

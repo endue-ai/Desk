@@ -1,8 +1,34 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ShellCtx } from "./context";
-import { mountPan } from "./Pan";
+import { mountPan, wheelPan } from "./Pan";
 import { Store, sampleState } from "./state";
+
+describe("the wheel's pan", () => {
+  it("sends the wheel's own step, in pixels, lines of 16 or pages", () => {
+    const sent: unknown[] = [];
+    const ctx = {
+      wm: {
+        edit: (edits: unknown[]) => {
+          sent.push(...edits);
+          return Promise.resolve([]);
+        },
+      },
+    } as unknown as ShellCtx;
+    const wheel = (init: WheelEventInit) => new WheelEvent("wheel", init);
+    // Never a pan worked out from the store's: two wheels before a publish are two steps.
+    wheelPan(ctx, wheel({ deltaX: 5, deltaY: -3 }), 800);
+    wheelPan(ctx, wheel({ deltaX: 5, deltaY: -3 }), 800);
+    wheelPan(ctx, wheel({ deltaX: 1, deltaY: 2, deltaMode: 1 }), 800);
+    wheelPan(ctx, wheel({ deltaX: 1, deltaY: 1, deltaMode: 2 }), 800);
+    expect(sent).toEqual([
+      { op: "pan-by", by: { x: -5, y: 3 } },
+      { op: "pan-by", by: { x: -5, y: 3 } },
+      { op: "pan-by", by: { x: -16, y: -32 } },
+      { op: "pan-by", by: { x: -800, y: -800 } },
+    ]);
+  });
+});
 
 describe("the canvas hint", () => {
   let root: HTMLDivElement;

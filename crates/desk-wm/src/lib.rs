@@ -91,7 +91,8 @@ pub use minimap::{
     pan_moved_by, to_map, to_world, view_rect, world_of,
 };
 pub use pan::{
-    PanDrag, PanTarget, WheelMode, drag_pans, hint_shows, reset_shows, wheel_pan, wheel_pans,
+    EXTENT, LATCH_MS, LATCH_SLOP, PanDrag, PanTarget, WheelLatch, WheelMode, bounded, drag_pans,
+    hint_shows, reset_shows, wheel_pan, wheel_pans,
 };
 pub use pane_min::{PANE_MIN, fit_panes, window_min};
 pub use placed::{PLUGIN_VIEW, placed_plugins, resolve_view, shown_plugins};

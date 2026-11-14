@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::types::Offset;
+use crate::types::{Offset, Point};
 
 /// What the pointer is over, as the pan sees it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,6 +34,73 @@ pub enum WheelMode {
 /// The height of a line, for a wheel that counts lines.
 const LINE: f64 = 16.0;
 
+/// How far a canvas goes from its origin, either way on each axis, in CSS pixels: a square two
+/// hundred thousand pixels a side, some fifty 4K screens across. A canvas without an end let a
+/// held wheel or a long drag take the windows where nothing brings them back into sight but the
+/// reset, and a pan grown past what a 32-bit float holds exactly would place windows off the
+/// pixels the compositor draws on.
+pub const EXTENT: f64 = 100_000.0;
+
+/// `pan` within the canvas's extent. Every pan the window manager keeps goes through here: a
+/// wheel's, a drag's, the map's, a reveal's, an edit's and a restored session's.
+pub fn bounded(pan: Offset) -> Offset {
+    let axis = |v: f64| {
+        if v.is_nan() {
+            0.0
+        } else {
+            v.clamp(-EXTENT, EXTENT)
+        }
+    };
+    Offset::new(axis(pan.x), axis(pan.y))
+}
+
+/// How long a run of wheels that pans the canvas lasts after its last wheel, in milliseconds: as
+/// long as Chromium keeps a mouse wheel's scroll with the scroller it began on (the wheel latching
+/// transaction of its `mouse_wheel_phase_handler.h`), within which the wheels of one gesture and
+/// its momentum, or of one turn of a mouse's wheel, all fall.
+pub const LATCH_MS: f64 = 500.0;
+
+/// How far the pointer may go from where the run began, in CSS pixels, before the next wheel is
+/// a new one's: the slop Chromium allows within one such scroll. A pointer taken to a window
+/// scrolls that window.
+pub const LATCH_SLOP: f64 = 10.0;
+
+/// A run of wheels that pans the canvas. A wheel pans where it began: over the empty background.
+/// As the canvas moves, a window comes under the pointer, and the next wheel of the same turn
+/// went to that window and the pan stopped. While the run lasts its wheels pan, whatever lies
+/// under the pointer now; it ends `LATCH_MS` after its last wheel, once the pointer has left
+/// where it began by more than `LATCH_SLOP`, or at once (`end`: a press, a pinch).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct WheelLatch {
+    /// Where the pointer was when the run began, and when its last wheel came (milliseconds).
+    run: Option<(Point, f64)>,
+}
+
+impl WheelLatch {
+    /// A wheel at `at` panned the canvas at `now`: the run goes on, or one begins there.
+    pub fn panned(&mut self, at: Point, now: f64) {
+        let from = match self.run {
+            Some((from, _)) if self.holds(at, now) => from,
+            _ => at,
+        };
+        self.run = Some((from, now));
+    }
+
+    /// Whether a wheel at `at` at `now` is the run's, and so pans whatever it is over.
+    pub fn holds(&self, at: Point, now: f64) -> bool {
+        let Some((from, last)) = self.run else {
+            return false;
+        };
+        let near = (at.x - from.x).abs() <= LATCH_SLOP && (at.y - from.y).abs() <= LATCH_SLOP;
+        near && now >= last && now - last <= LATCH_MS
+    }
+
+    /// The run is over: the next wheel goes to what it is over.
+    pub fn end(&mut self) {
+        self.run = None;
+    }
+}
+
 /// Whether a drag that starts over `target` pans: with Shift, on the background or a title bar.
 pub fn drag_pans(shift: bool, target: PanTarget) -> bool {
     shift && matches!(target, PanTarget::Background | PanTarget::TitleBar)
@@ -53,7 +120,7 @@ pub fn wheel_pan(pan: Offset, dx: f64, dy: f64, mode: WheelMode, page: f64) -> O
         WheelMode::Line => LINE,
         WheelMode::Page => page,
     };
-    Offset::new(pan.x - dx * scale, pan.y - dy * scale)
+    bounded(Offset::new(pan.x - dx * scale, pan.y - dy * scale))
 }
 
 /// Whether the pointer over `target` shows the pan hint (the root's title in the runtime): the
@@ -85,7 +152,8 @@ impl PanDrag {
 
     /// The pan with the pointer `dx`, `dy` from where it was pressed, while `desktop` is in front.
     pub fn moved(&self, dx: f64, dy: f64, desktop: &str) -> Option<Offset> {
-        (desktop == self.desktop).then_some(Offset::new(self.start.x + dx, self.start.y + dy))
+        (desktop == self.desktop)
+            .then_some(bounded(Offset::new(self.start.x + dx, self.start.y + dy)))
     }
 
     /// The desktop whose canvas it pans.

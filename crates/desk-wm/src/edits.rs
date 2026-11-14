@@ -219,6 +219,12 @@ pub enum Edit {
         desktop: Option<String>,
         to: Offset,
     },
+    /// The canvas of the desktop in front moved by `by` from where the window manager has it: a
+    /// wheel's own step. The page's copy of the pan trails the window manager's by a publish, so
+    /// a wheel's pan worked out from it (`Pan`) dropped the wheels that came meanwhile.
+    PanBy {
+        by: Offset,
+    },
     /// Pan just enough to bring window `id` wholly into sight; answers whether it panned.
     Reveal {
         id: String,
@@ -358,7 +364,12 @@ pub fn apply(desk: &mut Desk, kept: &mut Kept, edit: &Edit, screen: Size) -> Val
             let id = desktop
                 .as_deref()
                 .map_or_else(|| desk.here(), |d| desk.id_of(d));
-            desk.pan.insert(id, *to);
+            desk.set_pan(id, *to);
+        }
+        Edit::PanBy { by } => {
+            let id = desk.here();
+            let pan = desk.pan_of(&id);
+            desk.set_pan(id, Offset::new(pan.x + by.x, pan.y + by.y));
         }
         Edit::Reveal { id } => return json!(desk.reveal(id, screen.w, screen.h)),
         Edit::Arrange { kind, now } => {

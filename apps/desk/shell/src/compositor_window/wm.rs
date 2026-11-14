@@ -79,6 +79,8 @@ pub struct Gestures {
     escape: bool,
     /// The popups drawn, and a press on one, which the window manager never hears (#156).
     pub popups: super::input::popup_input::PopupPress,
+    /// The wheel's run on the canvas (`pan.rs`).
+    pub panning: super::pan::Panning,
 }
 
 impl CompositorWindow {
@@ -89,7 +91,7 @@ impl CompositorWindow {
         if let Some(taken) = self.spread_input(input) {
             return taken;
         }
-        if self.map_input(input) {
+        if self.map_input(input) || self.pan_input(input) {
             return true;
         }
         let scale = self.window.scale_factor();
@@ -223,6 +225,10 @@ impl CompositorWindow {
             self.gestures.edited = seq;
             let outs = self.hosted.wm.edit_json(seq, &edits);
             self.wm_outs(outs, now);
+            // The page's wheel panned the canvas: the wheels that follow are the window's.
+            if edits.iter().any(|e| e["op"] == "pan-by") {
+                self.wheel_panned(now);
+            }
         }
         self.run_deferred();
     }

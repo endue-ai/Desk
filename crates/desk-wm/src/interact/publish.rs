@@ -77,7 +77,7 @@ impl Change {
                 }
             }
             Change::Pan { desktop, pan } => {
-                desk.pan.insert(desktop.clone(), *pan);
+                desk.set_pan(desktop.clone(), *pan);
             }
         }
     }

@@ -302,6 +302,7 @@ impl CompositorWindow {
             "keys": { "pending": self.router.keymap.pending(), "bound": self.router.keymap.bindings().len(),
                 "holding": self.router.holding() },
             "tooltip": self.tips.state(self.window.scale_factor() as f32),
+            "panning": self.gestures.panning.running(self.pointer_css(), Instant::now()),
             "scale": self.window.scale_factor(),
         })
     }

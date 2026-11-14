@@ -16,11 +16,20 @@ export function setPan(ctx: Pick<ShellCtx, "wm">, pan: Offset): Promise<unknown[
   return edit(ctx, { op: "pan", to: pan });
 }
 
-/** The wheel moves the canvas as it would scroll a page `page` pixels high: lines are 16 pixels. */
-export function wheelPan(ctx: ShellCtx, e: WheelEvent, page: number): void {
+/**
+ * The wheel moves the canvas as it would scroll a page `page` pixels high: lines are 16 pixels. It
+ * sends its own step, which the window manager adds to the pan it holds. Worked out here from the
+ * store's pan, which trails the window manager's by a publish, a wheel that came before the last
+ * one's publish overwrote it, and a fast pan fell short. On the compositor the wheels that follow
+ * are the shell's own (`compositor_window/pan.rs`): they pan whatever comes under the pointer.
+ */
+export function wheelPan(
+  ctx: Pick<ShellCtx, "wm">,
+  e: WheelEvent,
+  page: number,
+): Promise<unknown[]> {
   const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? page : 1;
-  const pan = panOf(ctx.store.get());
-  setPan(ctx, { x: pan.x - e.deltaX * scale, y: pan.y - e.deltaY * scale });
+  return edit(ctx, { op: "pan-by", by: { x: -e.deltaX * scale, y: -e.deltaY * scale } });
 }
 
 /**

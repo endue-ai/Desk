@@ -38,6 +38,7 @@ mod motion;
 mod os_pointer;
 pub mod overlay;
 mod page;
+pub mod pan;
 pub mod report;
 mod snapshots;
 mod spread;

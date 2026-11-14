@@ -163,6 +163,12 @@ impl Desk {
         self.pan.get(id).copied().unwrap_or(ORIGIN)
     }
 
+    /// Put desktop `id`'s canvas at `pan`, within the canvas's extent (`pan::bounded`): the one
+    /// way a pan is kept.
+    pub fn set_pan(&mut self, id: DesktopId, pan: Offset) {
+        self.pan.insert(id, crate::pan::bounded(pan));
+    }
+
     /// Whether the session moved something away from what the profile saved: a layout, or the
     /// list of desktops.
     pub fn dirty(&self) -> bool {

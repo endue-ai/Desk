@@ -179,6 +179,178 @@ mod the_canvas_pan {
     }
 }
 
+/// The canvas ends: very wide, not without end. Every way a pan is kept stays within it.
+mod the_canvas_extent {
+    use super::*;
+    use desk_wm::edits::{Edit, Kept, apply};
+    use desk_wm::interact::{Out, Wm};
+    use desk_wm::{Desk, EXTENT, Size, bounded};
+    use serde_json::json;
+
+    const APP: Size = Size {
+        w: 1440.0,
+        h: 900.0,
+    };
+
+    fn edit(desk: &mut Desk, edit: serde_json::Value) -> serde_json::Value {
+        let edit: Edit = serde_json::from_value(edit).unwrap();
+        apply(desk, &mut Kept::default(), &edit, APP)
+    }
+
+    fn pan(desk: &Desk) -> Offset {
+        desk.pan_of(&desk.here())
+    }
+
+    #[test]
+    fn a_pan_past_the_extent_stops_at_it_on_each_axis() {
+        let inside = Offset::new(-40_000.0, 99_999.5);
+        assert_eq!(bounded(inside), inside);
+        assert_eq!(
+            bounded(Offset::new(-250_000.0, 1e12)),
+            Offset::new(-EXTENT, EXTENT)
+        );
+        assert_eq!(
+            bounded(Offset::new(f64::NEG_INFINITY, f64::NAN)),
+            Offset::new(-EXTENT, 0.0),
+            "no number is the origin"
+        );
+    }
+
+    #[test]
+    fn a_wheel_and_a_drag_stop_at_the_extent() {
+        let near = Offset::new(EXTENT - 10.0, -EXTENT + 10.0);
+        assert_eq!(
+            wheel_pan(near, -500.0, 500.0, WheelMode::Pixel, 800.0),
+            Offset::new(EXTENT, -EXTENT)
+        );
+        let drag = PanDrag::start(near, "1");
+        assert_eq!(
+            drag.moved(4_000.0, -4_000.0, "1"),
+            Some(Offset::new(EXTENT, -EXTENT))
+        );
+    }
+
+    #[test]
+    fn the_runtimes_edits_stop_at_the_extent() {
+        let mut desk = Desk::default();
+        edit(
+            &mut desk,
+            json!({ "op": "pan", "to": { "x": 5e6, "y": -5e6 } }),
+        );
+        assert_eq!(pan(&desk), Offset::new(EXTENT, -EXTENT));
+        // A wheel's own step moves the canvas from where the window manager has it.
+        edit(
+            &mut desk,
+            json!({ "op": "pan-by", "by": { "x": -120.0, "y": 30.0 } }),
+        );
+        assert_eq!(pan(&desk), Offset::new(EXTENT - 120.0, -EXTENT + 30.0));
+        edit(
+            &mut desk,
+            json!({ "op": "pan-by", "by": { "x": 500.0, "y": -500.0 } }),
+        );
+        assert_eq!(pan(&desk), Offset::new(EXTENT, -EXTENT));
+    }
+
+    #[test]
+    fn a_restored_session_comes_back_within_the_extent() {
+        let mut desk = Desk::default();
+        edit(
+            &mut desk,
+            json!({ "op": "restore", "desktop": 1, "pan": { "1": { "x": 9e9, "y": -12.0 } },
+                "drawer": [], "slots": {}, "now": 0 }),
+        );
+        assert_eq!(pan(&desk), Offset::new(EXTENT, -12.0));
+    }
+
+    #[test]
+    fn the_map_and_a_wheels_run_stop_at_the_extent_and_publish_no_step_past_it() {
+        let mut wm = Wm::new();
+        wm.start(Desk::default(), APP);
+        assert!(matches!(
+            wm.pan_to(Offset::new(-3e5, 40.0)).first(),
+            Some(Out::Publish(_))
+        ));
+        assert_eq!(pan(wm.desk()), Offset::new(-EXTENT, 40.0));
+        assert!(
+            wm.pan_to(Offset::new(-4e5, 40.0)).is_empty(),
+            "already at the extent"
+        );
+        // A step of less than a device pixel leaves the canvas where it is, and says nothing.
+        assert!(wm.pan_to(Offset::new(-EXTENT, 40.2)).is_empty());
+    }
+
+    #[test]
+    fn a_window_past_the_extent_is_not_revealed_and_the_pan_says_so() {
+        let mut desk = Desk::default();
+        edit(
+            &mut desk,
+            json!({ "op": "pan", "to": { "x": -EXTENT, "y": 0.0 } }),
+        );
+        let far = json!({ "id": "far", "plugin": "endue.shell", "x": 3e5, "y": 100, "w": 400,
+            "h": 300, "pinned": false });
+        edit(&mut desk, json!({ "op": "place", "placement": far }));
+        let revealed = edit(&mut desk, json!({ "op": "reveal", "id": "far" }));
+        assert_eq!(revealed, json!(false), "the canvas could not move");
+        assert_eq!(pan(&desk), Offset::new(-EXTENT, 0.0));
+    }
+}
+
+/// A wheel that pans the canvas keeps the wheels of its run, whatever comes under the pointer.
+mod a_wheels_run {
+    use super::*;
+    use desk_wm::{LATCH_MS, LATCH_SLOP, WheelLatch};
+
+    const AT: Offset = Offset::new(700.0, 400.0);
+
+    #[test]
+    fn no_wheel_is_a_runs_before_one_panned() {
+        assert!(!WheelLatch::default().holds(AT, 0.0));
+    }
+
+    #[test]
+    fn the_wheels_that_follow_a_pan_are_its_run_until_it_rests() {
+        let mut run = WheelLatch::default();
+        run.panned(AT, 1_000.0);
+        assert!(run.holds(AT, 1_016.0), "the next wheel");
+        assert!(run.holds(AT, 1_000.0 + LATCH_MS), "the last moment");
+        assert!(!run.holds(AT, 1_001.0 + LATCH_MS), "after the rest");
+        // Each wheel of the run starts the rest anew: a long pan is one run.
+        let mut now = 1_000.0;
+        for _ in 0..40 {
+            now += LATCH_MS - 20.0;
+            assert!(run.holds(AT, now), "{now}");
+            run.panned(AT, now);
+        }
+    }
+
+    #[test]
+    fn a_pointer_taken_elsewhere_ends_the_run_and_one_that_trembles_does_not() {
+        let mut run = WheelLatch::default();
+        run.panned(AT, 0.0);
+        let near = Offset::new(AT.x + LATCH_SLOP, AT.y - LATCH_SLOP);
+        assert!(run.holds(near, 10.0));
+        let away = Offset::new(AT.x + LATCH_SLOP + 1.0, AT.y);
+        assert!(!run.holds(away, 10.0));
+        // The slop is from where the run began, not from the wheel before: it never creeps.
+        run.panned(near, 10.0);
+        let crept = Offset::new(near.x + LATCH_SLOP, near.y);
+        assert!(!run.holds(crept, 20.0));
+    }
+
+    #[test]
+    fn a_press_ends_the_run_at_once() {
+        let mut run = WheelLatch::default();
+        run.panned(AT, 0.0);
+        run.end();
+        assert!(!run.holds(AT, 1.0));
+        // And a wheel that pans afterwards begins one where it is.
+        let there = Offset::new(100.0, 100.0);
+        run.panned(there, 2.0);
+        assert!(run.holds(there, 3.0));
+        assert!(!run.holds(AT, 3.0));
+    }
+}
+
 /// The cases of `packages/runtime/src/shell/Minimap.test.ts` (#54) that are the window manager's:
 /// when the map shows, when it folds by itself, and a drag in it.
 mod the_canvas_map_on_the_desk {

@@ -97,7 +97,7 @@ impl Desk {
         let pans = read_pan(pan);
         self.pan = list
             .iter()
-            .filter_map(|d| pans.get(&d.id).map(|p| (d.id.clone(), *p)))
+            .filter_map(|d| (pans.get(&d.id)).map(|p| (d.id.clone(), crate::pan::bounded(*p))))
             .collect();
         if let Some(items) = drawer.as_array() {
             self.drawer = items.iter().filter_map(|d| drawer_item(d, now)).collect();

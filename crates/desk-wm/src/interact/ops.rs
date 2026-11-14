@@ -115,9 +115,12 @@ impl Wm {
         vec![self.publish(None), Out::Redraw]
     }
 
-    /// The canvas of the desktop in front at `pan`, as the canvas map moves it (ADR 0082).
+    /// The canvas of the desktop in front at `pan`, as the canvas map and a wheel's run move it
+    /// (ADR 0082), within the canvas's extent and on whole device pixels: a step that leaves it
+    /// where it is (one past the extent, one of less than a pixel) publishes nothing.
     pub fn pan_to(&mut self, pan: Offset) -> Vec<Out> {
         let desktop = self.drawn.here();
+        let pan = crate::pixels::pan_on_pixels(crate::pan::bounded(pan), self.scale);
         if self.drawn.pan_of(&desktop) == pan {
             return Vec::new();
         }

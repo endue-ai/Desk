@@ -256,7 +256,8 @@ impl CompositorWindow {
         self.shared.lock().dirty = true;
     }
 
-    fn map_pan(&mut self, pan: Offset) {
+    /// The canvas of the desktop in front at `pan`: the map's, and a wheel's run's (`pan.rs`).
+    pub(super) fn map_pan(&mut self, pan: Offset) {
         let outs = self.hosted.wm.pan_to(pan);
         if !outs.is_empty() && self.emit_wm(outs) {
             let outcome = self.hosted.replan(Instant::now());
