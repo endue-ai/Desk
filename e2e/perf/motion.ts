@@ -25,6 +25,7 @@ import { dirname, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { decodePng } from "../support/png.ts";
+import { described } from "./lib/bundle-processes.ts";
 import {
   captured,
   type Line,
@@ -48,7 +49,16 @@ import {
 } from "./lib/motion-verdicts.ts";
 import { analyzeLoop, type LoopConfig, runLoop } from "./motion-loop.ts";
 import { analyzeSway, runSway, type SwayConfig } from "./motion-sway.ts";
-import { drag, poke, shake, startDesk, stopDesk, windows } from "./support/motion-desk.ts";
+import {
+  bundleProcesses,
+  drag,
+  endBundle,
+  poke,
+  shake,
+  startDesk,
+  stopDesk,
+  windows,
+} from "./support/motion-desk.ts";
 import { openFiles } from "./support/openers.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -67,7 +77,8 @@ const open = argv.includes("--open");
 const variant = `${debug ? "debug" : "optimized"}-${screen ? "screen" : "offscreen"}${open ? "-open" : ""}`;
 const OUT = join(root, "e2e/test-results/perf-motion", variant);
 const BUNDLE = join(root, debug ? "target/bundle-motion-debug" : "target/bundle-motion");
-const BINARY = join(BUNDLE, "endue-desk.app/Contents/MacOS/endue-desk");
+const APP = join(BUNDLE, "endue-desk.app");
+const BINARY = join(APP, "Contents/MacOS/endue-desk");
 
 interface Config {
   window: string;
@@ -224,7 +235,13 @@ async function once(n: number): Promise<{
     };
     return { ...result, sway: sway?.findings ?? missed };
   } finally {
-    await stopDesk(desk, BINARY);
+    const ended = await stopDesk(desk);
+    const desks = ended.filter((p) => !p.command.includes("--type="));
+    if (ended.length) {
+      console.log(
+        `perf-motion: run ${n}: ended ${ended.length} processes its desk left, desks ${described(desks, APP) || "none"}`,
+      );
+    }
     if (!flag("--home")) rmSync(home, { recursive: true, force: true });
   }
 }
@@ -298,6 +315,16 @@ function analyze(
 async function main(): Promise<void> {
   if (mode !== "check" && mode !== "record")
     throw new Error(`mode is check or record, not ${mode}`);
+  // A run stopped before its end (a killed gate) can leave its desks: they would run beside this one's.
+  const earlier = await endBundle(APP);
+  if (earlier.length) {
+    console.log(
+      `perf-motion: ended ${earlier.length} processes an earlier run of this bundle left`,
+    );
+  }
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.once(signal, () => void endBundle(APP).finally(() => process.exit(1)));
+  }
   if (!argv.includes("--no-build")) build();
   rmSync(OUT, { recursive: true, force: true });
   mkdirSync(OUT, { recursive: true });
@@ -335,6 +362,17 @@ async function main(): Promise<void> {
     console.log("perf-motion: the machine was busy (load above half its cores): timings run slow");
   }
   console.log(table(all));
+  // No process of the bundle outlives the gate, a desk started again for a stall (ADR 0202) included.
+  const left = bundleProcesses(APP);
+  if (left.length) {
+    await endBundle(APP);
+    console.error(
+      `perf-motion: processes of the bundle left after the gate: ${described(left, APP)}`,
+    );
+    process.exitCode = 1;
+  } else {
+    console.log("perf-motion: no process of the bundle is left running");
+  }
   if (mode === "record") {
     config.baseline[variant] = summary;
     writeFileSync(CONFIG, `${JSON.stringify(config, null, 2)}\n`);
@@ -352,5 +390,5 @@ async function main(): Promise<void> {
 
 main().catch((why: unknown) => {
   console.error(`perf-motion: ${why instanceof Error ? why.message : String(why)}`);
-  process.exit(1);
+  void endBundle(APP).finally(() => process.exit(1));
 });
