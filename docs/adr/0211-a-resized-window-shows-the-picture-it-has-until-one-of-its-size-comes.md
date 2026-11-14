@@ -107,7 +107,7 @@ frame of its size.
   captured frames, by up to 98 px; `sway-sizes` compares the texture with the frame and cannot
   see it. Sizing the section against its page (`100vw`, or `min(…, 100vw)`) would keep it laid out
   for its page, but the page then stopped growing once the window had been moved, and a press on
-  its corner no longer resized it; it is left for #270.
+  its corner no longer resized it; it is left for #270 (ADR 0214).
 
 ### Measurements
 
