@@ -168,7 +168,7 @@ test.describe("the agent bar reads the agent directory", () => {
       return {
         fits: el.scrollHeight <= el.clientHeight,
         scrollbar: style.scrollbarWidth,
-        gutter: el.offsetWidth - el.clientWidth - borders,
+        gutter: (el as HTMLElement).offsetWidth - el.clientWidth - borders,
       };
     });
     expect(seen.fits).toBe(false);
