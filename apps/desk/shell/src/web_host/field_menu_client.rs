@@ -1,13 +1,41 @@
 //! An off-screen browser's client with the text field's menu (#156): every handler and message is
 //! its own client's, and its context menus are the field menu's. A wrapper, so the clients that
 //! make the pages' browsers (`client.rs`, `crate::client`) stay as they are.
+//!
+//! On macOS it also ends a key its page left alone. CEF offers such a key to the app's menu bar
+//! itself (`[[NSApp mainMenu] performKeyEquivalent:]`), and asked that way AppKit matches a bare
+//! key to an item whose key is the Globe key's: `e` opened Emoji & Symbols (🌐E) and `d` started
+//! dictation (🌐D), on every such key typed in a page. The menu bar had its turn before the key
+//! reached the window, so the key ends here.
 
 use cef::*;
+
+/// Whether a key its off-screen page left alone ends here, not in CEF's own offer of it to the
+/// app's menu bar: on macOS, where that offer matches a bare key to a Globe-key item.
+pub const fn ends_unhandled_keys() -> bool {
+    cfg!(target_os = "macos")
+}
+
+wrap_keyboard_handler! {
+    pub struct PageKeys;
+
+    impl KeyboardHandler {
+        fn on_key_event(
+            &self,
+            _browser: Option<&mut Browser>,
+            _event: Option<&KeyEvent>,
+            _os_event: *mut u8,
+        ) -> ::std::os::raw::c_int {
+            ::std::os::raw::c_int::from(ends_unhandled_keys())
+        }
+    }
+}
 
 wrap_client! {
     pub struct WithMenu {
         inner: Client,
         menu: ContextMenuHandler,
+        keys: KeyboardHandler,
     }
 
     impl Client {
@@ -60,7 +88,11 @@ wrap_client! {
         }
 
         fn keyboard_handler(&self) -> Option<KeyboardHandler> {
-            self.inner.keyboard_handler()
+            if ends_unhandled_keys() {
+                Some(self.keys.clone())
+            } else {
+                self.inner.keyboard_handler()
+            }
         }
 
         fn life_span_handler(&self) -> Option<LifeSpanHandler> {

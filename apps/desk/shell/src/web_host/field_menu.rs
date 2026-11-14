@@ -43,7 +43,7 @@ thread_local! {
 
 /// `inner`, the client of the off-screen browser whose view is `view`, with the field menu.
 pub fn client(inner: Client, view: SharedView) -> Client {
-    client::WithMenu::new(inner, FieldMenus::new(view))
+    client::WithMenu::new(inner, FieldMenus::new(view), client::PageKeys::new())
 }
 
 wrap_context_menu_handler! {
