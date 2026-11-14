@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.load takes a view to an address",
+  "instance": {
+    "id": 35,
+    "method": "web.load",
+    "params": {
+      "viewId": "w-1",
+      "url": "http://127.0.0.1:8787/a?b=c#d",
+      "scope": {
+        "permission": "web:browse"
+      }
+    }
+  }
+}

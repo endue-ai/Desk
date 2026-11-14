@@ -1,0 +1,16 @@
+{
+  "target": "BridgeEvent",
+  "description": "a view's last event",
+  "instance": {
+    "event": "web.changed",
+    "data": {
+      "viewId": "w-1",
+      "url": "",
+      "title": "",
+      "loading": false,
+      "canGoBack": false,
+      "canGoForward": false,
+      "closed": true
+    }
+  }
+}

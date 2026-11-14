@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.place hides a view",
+  "instance": {
+    "id": 34,
+    "method": "web.place",
+    "params": {
+      "viewId": "w-1",
+      "x": 0.0,
+      "y": 40.0,
+      "width": 0.0,
+      "height": 0.0,
+      "shown": false
+    }
+  }
+}

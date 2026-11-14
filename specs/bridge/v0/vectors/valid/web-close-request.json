@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.close closes a view",
+  "instance": {
+    "id": 38,
+    "method": "web.close",
+    "params": {
+      "viewId": "w-1"
+    }
+  }
+}

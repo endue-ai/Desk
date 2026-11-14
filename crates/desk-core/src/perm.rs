@@ -231,6 +231,10 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
             .hosts
             .iter()
             .all(|a| g.hosts.iter().any(|h| endpoint_covers(h, a))),
+        // web:browse without hosts covers every site (ADR 0216).
+        (Permission::WebBrowse(g), Permission::WebBrowse(s)) => {
+            narrows(g.hosts.as_deref(), s.hosts.as_deref(), |g, a| host_covers(g, a))
+        }
         (Permission::AudioCapture(g), Permission::AudioCapture(s)) => {
             s.wake_word != Some(true) || g.wake_word == Some(true)
         }
@@ -316,6 +320,10 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
         (Permission::NetConnect(s), Target::Endpoint { host, port }) => {
             s.hosts.iter().any(|h| endpoint_match(h, host, *port))
         }
+        // web.open and web.load: the address's host; a view with no address yet has no target.
+        (Permission::WebBrowse(s), Target::Url(url)) => (s.hosts.as_ref())
+            .is_none_or(|hosts| desk_sys::net::host_allowed(hosts, url)),
+        (Permission::WebBrowse(_), Target::None) => true,
         (Permission::CmdInvoke(s), Target::CommandId(id)) => {
             s.ids.iter().any(|p| star_match(p, id))
         }

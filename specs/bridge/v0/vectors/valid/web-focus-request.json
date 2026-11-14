@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.focus gives a view the keys",
+  "instance": {
+    "id": 37,
+    "method": "web.focus",
+    "params": {
+      "viewId": "w-1"
+    }
+  }
+}

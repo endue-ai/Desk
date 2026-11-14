@@ -177,7 +177,13 @@
         { "$ref": "computer.schema.json#/$defs/ComputerInputScrollRequest" },
         { "$ref": "computer.schema.json#/$defs/ComputerInputTypeRequest" },
         { "$ref": "computer.schema.json#/$defs/ComputerInputKeysRequest" },
-        { "$ref": "computer.schema.json#/$defs/ComputerStopRequest" }
+        { "$ref": "computer.schema.json#/$defs/ComputerStopRequest" },
+        { "$ref": "web.schema.json#/$defs/WebOpenRequest" },
+        { "$ref": "web.schema.json#/$defs/WebPlaceRequest" },
+        { "$ref": "web.schema.json#/$defs/WebLoadRequest" },
+        { "$ref": "web.schema.json#/$defs/WebGoRequest" },
+        { "$ref": "web.schema.json#/$defs/WebFocusRequest" },
+        { "$ref": "web.schema.json#/$defs/WebCloseRequest" }
       ]
     },
     "BridgeResponse": {
@@ -237,7 +243,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, socket data, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, and what is being done to the computer.",
+      "description": "Something the core reports without being asked: file changes, process output, socket data, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -272,7 +278,8 @@
         { "$ref": "memory.schema.json#/$defs/MemoryChangedEvent" },
         { "$ref": "agent.schema.json#/$defs/AgentCancelledEvent" },
         { "$ref": "agent.schema.json#/$defs/AgentChangedEvent" },
-        { "$ref": "computer.schema.json#/$defs/ComputerActivityEvent" }
+        { "$ref": "computer.schema.json#/$defs/ComputerActivityEvent" },
+        { "$ref": "web.schema.json#/$defs/WebChangedEvent" }
       ]
     }
   }

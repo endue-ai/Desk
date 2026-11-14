@@ -38,7 +38,8 @@
         { "$ref": "#/$defs/MemoryWritePermission" },
         { "$ref": "#/$defs/StudioManagePermission" },
         { "$ref": "#/$defs/ComputerSeePermission" },
-        { "$ref": "#/$defs/ComputerControlPermission" }
+        { "$ref": "#/$defs/ComputerControlPermission" },
+        { "$ref": "#/$defs/WebBrowsePermission" }
       ]
     },
     "SearchReadPermission": {
@@ -329,6 +330,21 @@
         { "properties": { "schemes": true }, "required": ["schemes"] },
         { "properties": { "paths": true }, "required": ["paths"] }
       ]
+    },
+    "WebBrowsePermission": {
+      "description": "Show live web pages in web views (web.open, web.load) and receive web.changed for them. With hosts, only pages of the listed hosts: the view's own page goes nowhere else, though a page still loads what it embeds from other hosts. Without hosts, any http or https site.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "web:browse" },
+        "hosts": {
+          "description": "Host patterns a view's page may be on; absent covers every host.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/HostPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
     },
     "UpdateManagePermission": {
       "description": "See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person.",

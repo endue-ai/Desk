@@ -1,0 +1,10 @@
+{
+  "target": "Permission",
+  "description": "web:browse hosts are host patterns, not addresses",
+  "instance": {
+    "permission": "web:browse",
+    "hosts": [
+      "https://example.com/"
+    ]
+  }
+}
