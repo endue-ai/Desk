@@ -90,6 +90,8 @@ pub struct Drawn {
     pub pages: Vec<(String, String)>,
     /// Where the system layer covers every window: its parts, its surfaces, scrims and the map.
     pub over: Vec<Rect>,
+    /// Each window, by id, and where its frame is drawn: its picture's size while it is resized.
+    pub windows: Vec<(String, Rect)>,
 }
 
 pub(super) fn rect(r: desk_wm::Rect) -> Rect {
@@ -263,17 +265,6 @@ pub fn draw(
     Ok(drawn)
 }
 
-/// `placed` sized to a picture of `size` device pixels at `scale`, from its top left; as placed while
-/// the picture is its size, to a device pixel.
-pub(super) fn pictured(placed: Rect, (tw, th): (u32, u32), scale: f32) -> Rect {
-    let (w, h) = (tw as f32 / scale, th as f32 / scale);
-    let near = |a: f32, b: f32| ((a - b) * scale).abs() <= 1.0;
-    if near(placed.width, w) && near(placed.height, h) {
-        return placed;
-    }
-    Rect::new(placed.x, placed.y, w, h)
-}
-
 pub(super) fn window(
     scene: &mut Scene,
     chrome: &mut Chrome,
@@ -294,8 +285,13 @@ pub(super) fn window(
     let own = window_pages::surface_of(&w.id);
     let paged = (from.surface)(&own);
     // Drawn from its own page, its frame is its picture's size (#252, ADR 0211): a resize shows once
-    // the page has painted the new size, frame and content in the same frame, never cut or padded.
-    let at = paged.map_or(placed, |(_, size)| pictured(placed, size, from.scale));
+    // the page has painted the new size, frame and content in the same frame, never cut or padded,
+    // from the corner the resize left where it was (`draw_anchor.rs`).
+    let corner = hosted.anchor(&w.id);
+    let at = paged.map_or(placed, |(_, size)| {
+        anchor::pictured(placed, size, from.scale, corner)
+    });
+    drawn.windows.push((w.id.clone(), at));
     let made = chrome.window(scene, desk, at, &w.title, None, w.focused)?;
     // The title sits between the icon and the tools the page draws, clear of the top chips.
     let (start, end) = w.title_insets();
@@ -339,11 +335,13 @@ pub(super) fn window(
         let line = RectNode::new(local(*divider), chrome.theme().window.divider);
         scene.insert(made.group, Node::from(line).with_hit(false))?;
     }
+    let sizes = ((laid.width, laid.height), (at.width, at.height));
     for pane in &w.panes {
         if let Some(plugin) = &pane.plugin {
+            // In the frame as drawn: never past a frame that still shows another size.
             let into = Into {
                 group: made.group,
-                to: local(pane.body),
+                to: anchor::within(local(pane.body), sizes.0, sizes.1),
                 at: at.min(),
                 title: &pane.title,
             };
@@ -367,6 +365,9 @@ pub(super) fn window(
     scene.reorder(made.title, usize::MAX)?;
     Ok(())
 }
+
+#[path = "draw_anchor.rs"]
+pub mod anchor;
 
 #[path = "draw_pixels.rs"]
 pub(super) mod pixels;

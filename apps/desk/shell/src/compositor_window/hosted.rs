@@ -76,6 +76,8 @@ pub struct Hosted {
     restaged: bool,
     /// The windows drawn from their own page, which the page's picture does not place (#252).
     own_pages: BTreeSet<String>,
+    /// The corner each window's picture of another size is drawn from (`draw_anchor.rs`).
+    anchors: super::draw::anchor::Anchors,
 }
 
 impl Hosted {
@@ -102,6 +104,7 @@ impl Hosted {
             painted: PageShown::new(),
             restaged: false,
             own_pages: BTreeSet::new(),
+            anchors: Default::default(),
         }
     }
 

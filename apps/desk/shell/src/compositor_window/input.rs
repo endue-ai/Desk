@@ -227,7 +227,12 @@ impl CompositorWindow {
 
     /// Tell the router what each node shows and the window's own page each surface lies in (ADR
     /// 0201), and draw the focus ring and the drag image (#56).
-    pub(super) fn register(&mut self, shown: Shown, pages: &[(String, String)]) {
+    pub(super) fn register(
+        &mut self,
+        shown: Shown,
+        pages: &[(String, String)],
+        frames: &[(String, desk_compositor::Rect)],
+    ) {
         let router = &mut self.router;
         router.targets.clear();
         for (node, target) in shown {
@@ -247,9 +252,9 @@ impl CompositorWindow {
             router.targets.set_page_of(surface, page);
         }
         let scale = self.window.scale_factor() as f32;
+        let made = self.hosted.surfaces().made();
         // Each window covers what lies under it (issue 159, finding 5); not on the spread's cards.
         if let Some(plan) = self.hosted.plan().filter(|_| self.spreading.open.is_none()) {
-            let made = self.hosted.surfaces().made();
             let popups = &self.gestures.popups.boxes;
             let areas = popup_input::areas(&plan.windows, &made, popups, scale);
             router.targets.set_areas(PAGE, areas);
@@ -258,14 +263,15 @@ impl CompositorWindow {
         // The ring goes round the pane the focused surface shows in, while it is drawn.
         // Not while the spread is open: the pane is on a card, not where the ring would go.
         let spreading = self.spreading.open.is_some();
-        // Where its window is drawn, inside the frame's rounded corners (#250).
+        // Where its window's frame is drawn, inside the frame's rounded corners (#250); the surface's
+        // own window, by its key: a plugin's second window is not its first (ADR 0212).
         let ring = focused
             .filter(|s| !spreading && router.window_focused() && router.targets.shown(s))
             .and_then(|s| {
-                let plugin = owner(&s)?.0;
+                let (_, key, _) = made.iter().find(|(host, _, _)| *host == s)?;
                 let plan = self.hosted.plan()?;
                 let look = (self.theme.window.radius, scale);
-                draw::pixels::ring_of(plan, &plugin, look, |id| self.hosted.on_its_way(id))
+                draw::pixels::ring_of(plan, key, look, frames)
             });
         if let Some((device, corners)) = ring {
             overlay::focus_ring(&mut self.scene, device, scale, corners);

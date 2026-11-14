@@ -90,6 +90,19 @@ impl Hosted {
     }
 
     /// Whether what the page's picture shows changed since the last ask: the scene is drawn again.
+    /// The scene is laid out from the plan now: each window's anchor follows from where the last
+    /// layout had it (`draw_anchor.rs`).
+    pub fn follow_anchors(&mut self) {
+        if let Some(plan) = &self.plan {
+            self.anchors.follow(plan);
+        }
+    }
+
+    /// The corner window `id`'s picture is drawn from while it is another size than the window.
+    pub fn anchor(&self, id: &str) -> super::super::draw::anchor::Anchor {
+        self.anchors.of(id)
+    }
+
     pub fn take_restaged(&mut self) -> bool {
         std::mem::take(&mut self.restaged)
     }

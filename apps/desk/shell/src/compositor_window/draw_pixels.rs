@@ -39,30 +39,31 @@ pub fn inside_corners(
     })
 }
 
-/// The focus ring round the pane showing `plugin` in the frontmost window that has one (device
-/// pixels, rounded out), where that window is drawn, with the radius (device pixels) and corners
-/// it shares with the window's frame of `radius`.
+/// The focus ring round the pane showing the plugin window keyed `key` (ADR 0212: a plugin's
+/// second window is `<plugin>@2`, and the ring goes round the one with the keys, not the plugin's
+/// first) in the frontmost window that has one (device pixels, rounded out), with the radius
+/// (device pixels) and corners it shares with the window's frame of `radius`. It lies in the frame
+/// as drawn (`frames`: each window and where its frame is, `Drawn::windows`), so it is the size of
+/// the window that shows while a resize is ahead of the window's picture (`draw_anchor.rs`).
 pub fn ring_of(
     plan: &desk_wm::host::Plan,
-    plugin: &str,
+    key: &str,
     (radius, scale): (f32, f32),
-    on_its_way: impl Fn(&str) -> bool,
+    frames: &[(String, Rect)],
 ) -> Option<(Rect, (f32, Corners))> {
     let (w, pane) = plan.windows.iter().rev().find_map(|w| {
         let pane = w
             .panes
             .iter()
             .rev()
-            .find(|p| p.plugin.as_deref() == Some(plugin))?;
+            .find(|p| p.plugin.as_deref() == Some(key))?;
         Some((w, pane))
     })?;
     let laid = super::rect(w.rect);
-    let at = if on_its_way(&w.id) {
-        laid
-    } else {
-        super::rect(at_rest(w.rect, scale))
-    };
-    let body = super::rect(pane.body).translate(at.min() - laid.min());
+    let at = frames.iter().find(|(id, _)| *id == w.id)?.1;
+    let local = super::rect(pane.body).translate(-laid.min());
+    let sizes = ((laid.width, laid.height), (at.width, at.height));
+    let body = super::anchor::within(local, sizes.0, sizes.1).translate(at.min());
     let window = Rect::new(0.0, 0.0, at.width, at.height);
     let (r, corners) =
         corners_of(window, body.translate(-at.min()), radius).unwrap_or((0.0, Corners::NONE));
@@ -152,6 +153,71 @@ mod tests {
         assert_eq!(corners_of(window, right, 12.0), Some((11.0, br)));
         let top = Rect::new(1.0, 41.0, 398.0, 100.0);
         assert_eq!(corners_of(window, top, 12.0), None);
+    }
+
+    /// The fixture's Notes window, and a second window of Notes (ADR 0212) in front of it.
+    fn two_windows_of_notes() -> desk_wm::host::Plan {
+        let hosted = super::super::tests::hosted_at("live", 1.0);
+        let mut plan = hosted.plan().unwrap().clone();
+        let mut second = plan.windows[0].clone();
+        second.id = "endue.notes@2".into();
+        second.panes[0].plugin = Some("endue.notes@2".into());
+        let (dx, dy) = (500.0, 300.0);
+        second.rect.x += dx;
+        second.rect.y += dy;
+        second.panes[0].body.x += dx;
+        second.panes[0].body.y += dy;
+        plan.windows.push(second);
+        plan
+    }
+
+    /// Each window of `plan` drawn where it is placed.
+    fn as_placed(plan: &desk_wm::host::Plan) -> Vec<(String, Rect)> {
+        (plan.windows.iter())
+            .map(|w| (w.id.clone(), super::super::rect(w.rect)))
+            .collect()
+    }
+
+    #[test]
+    fn the_ring_goes_round_the_window_with_the_keys_not_the_plugins_first() {
+        let plan = two_windows_of_notes();
+        let frames = as_placed(&plan);
+        let body = |i: usize| super::super::rect(plan.windows[i].panes[0].body);
+        let (first, _) = ring_of(&plan, "endue.notes", (12.0, 1.0), &frames).unwrap();
+        assert_eq!(first, body(0));
+        let (second, _) = ring_of(&plan, "endue.notes@2", (12.0, 1.0), &frames).unwrap();
+        assert_eq!(second, body(1), "the second window's pane");
+        assert_eq!(ring_of(&plan, "endue.notes@3", (12.0, 1.0), &frames), None);
+    }
+
+    #[test]
+    fn the_ring_is_the_size_of_the_frame_drawn_while_a_resize_is_ahead_of_the_picture() {
+        let plan = two_windows_of_notes();
+        let w = &plan.windows[0];
+        let (r, body) = (
+            super::super::rect(w.rect),
+            super::super::rect(w.panes[0].body),
+        );
+        // The frame still shows the picture from before a growth of 120 by 80 from the top left
+        // corner: drawn at the place's bottom right, 120 narrower and 80 lower than the place.
+        let frame = Rect::new(r.x + 120.0, r.y + 80.0, r.width - 120.0, r.height - 80.0);
+        let frames = vec![(w.id.clone(), frame)];
+        let (ring, (radius, corners)) =
+            ring_of(&plan, "endue.notes", (12.0, 1.0), &frames).unwrap();
+        let inset = (body.x - r.x, body.y - r.y);
+        assert_eq!(
+            ring,
+            Rect::new(
+                frame.x + inset.0,
+                frame.y + inset.1,
+                body.width - 120.0,
+                body.height - 80.0
+            ),
+            "in the frame drawn, its border in from each edge"
+        );
+        assert_eq!((radius, corners), (11.0, Corners::BOTTOM));
+        // A window not drawn (the spread's cards) has no ring.
+        assert_eq!(ring_of(&plan, "endue.notes", (12.0, 1.0), &[]), None);
     }
 
     #[test]

@@ -1,8 +1,10 @@
 //! #252, ADR 0211: while a window is resized its pictures (its own page's, its pane's plugin's)
 //! come in old and new sizes in any order. The window is drawn at its own page's picture's size,
-//! frame and picture together, from its place's top left; its pane's plugin is cropped or padded
-//! with the window's fill; neither is stretched, and the title keeps clear of the page's tools. A
-//! window drawn from its own page waits for no paint of the desk's page to be placed.
+//! frame and picture together, from the corner of its place the resize left where it was (the top
+//! left unless its top or left edge moved, `draw_anchor.rs`); its pane's plugin lies in the frame
+//! as drawn, cropped or padded with the window's fill; neither is stretched, and the title keeps
+//! clear of the page's tools. A window drawn from its own page waits for no paint of the desk's
+//! page to be placed.
 
 use std::time::Instant;
 
@@ -111,11 +113,16 @@ fn a_resize_draws_the_window_at_its_pictures_size_and_its_panes_cropped_never_st
             (bx, by),
             "{plugin:?}: at the pane's top left"
         );
+        // The pane lies in the frame as drawn: its border in from the frame's right and bottom.
         let (pw, ph) = (plugin.0 as f32 / SCALE, plugin.1 as f32 / SCALE);
+        let pane = (
+            body.w as f32 + (w - r.w as f32),
+            body.h as f32 + (h - r.h as f32),
+        );
         assert_eq!(
             (drawn.width, drawn.height),
-            (pw.min(body.w as f32), ph.min(body.h as f32)),
-            "{plugin:?}: cropped to the pane"
+            (pw.min(pane.0), ph.min(pane.1)),
+            "{plugin:?}: cropped to the pane the frame has"
         );
         // The title ends before the tools, which are where the picture ends.
         let (at, title) = text_of(&scene, scene.root(), "Notes").expect("its title");
@@ -126,6 +133,109 @@ fn a_resize_draws_the_window_at_its_pictures_size_and_its_panes_cropped_never_st
             "{own:?}: the title ends at {right}, the tools at {tools}"
         );
     }
+}
+
+/// Notes given `rect` by an edit of the runtime's, which the page reports it took.
+fn place_notes(
+    hosted: &mut crate::compositor_window::hosted::Hosted,
+    seq: u64,
+    rect: desk_wm::Rect,
+) {
+    let geometry = desk_wm::interact::Geometry {
+        id: "endue.notes".into(),
+        x: rect.x,
+        y: rect.y,
+        w: rect.w,
+        h: rect.h,
+        floating: None,
+        fill: None,
+        restore: None,
+    };
+    hosted
+        .wm
+        .edit(seq, &[desk_wm::edits::Edit::SetGeometry { geometry }]);
+    let report: DeskReport = serde_json::from_value(json!({
+        "seq": seq, "width": 1440, "height": 900, "applied": 1000,
+        "frames": [{ "plugin": "endue.notes", "host": "main.endue-notes",
+            "src": "desk-plugin://main.endue-notes/index.html", "loads": 1, "state": "live" }],
+    }))
+    .unwrap();
+    hosted.apply(report, Instant::now());
+}
+
+/// A window stretched up and to the left showed its old picture at the new corner: its bottom and
+/// right edges, which the person holds still, jumped by the resize until the page painted.
+#[test]
+fn a_window_grown_by_its_top_left_corner_keeps_its_bottom_right_until_its_page_paints() {
+    let mut hosted = hosted_at("live", f64::from(SCALE));
+    let theme = ChromeTheme::default();
+    // Somewhere with room up and to the left, then the scene laid out, as `compose` does.
+    place_notes(
+        &mut hosted,
+        2,
+        desk_wm::Rect::new(400.0, 300.0, 380.0, 260.0),
+    );
+    let r = hosted.plan().unwrap().window("endue.notes").unwrap().rect;
+    assert_eq!((r.x, r.y, r.w, r.h), (400.0, 300.0, 380.0, 260.0));
+    let was = hosted.plan().unwrap().window("endue.notes").unwrap().panes[0].body;
+    hosted.follow_anchors();
+    place_notes(
+        &mut hosted,
+        3,
+        desk_wm::Rect::new(280.0, 220.0, 500.0, 340.0),
+    );
+    hosted.follow_anchors();
+    let px = |w: f64, h: f64| ((w * 2.0).round() as u32, (h * 2.0).round() as u32);
+    let now = hosted.plan().unwrap().window("endue.notes").unwrap().panes[0].body;
+    // Its own page still shows the size it had; its pane's plugin has painted the new one already.
+    let (own, plugin) = (px(380.0, 260.0), px(now.w, now.h));
+    let textures = |surface: &str| -> Option<Texture> {
+        match surface {
+            "window:endue.notes" => Some((OWN, own)),
+            "main.endue-notes" => Some((PANE, plugin)),
+            _ => None,
+        }
+    };
+    let from = Sources {
+        scale: SCALE,
+        ..sources(&textures)
+    };
+    let mut scene = Scene::new(2880, 1800);
+    let made = draw(&mut scene, &theme, &hosted, &from).unwrap();
+    let before = Rect::new(400.0, 300.0, 380.0, 260.0);
+    let frame = made.windows.iter().find(|(id, _)| id == "endue.notes");
+    assert_eq!(
+        frame.map(|(_, at)| *at),
+        Some(before),
+        "where it was: its bottom right corner has not moved"
+    );
+    assert_eq!(unstretched(&scene, OWN, own), before);
+    // Its pane's plugin lies in the frame as drawn, cut where the frame ends: nothing past it.
+    let pane = unstretched(&scene, PANE, plugin);
+    assert_eq!(
+        (pane.x, pane.y, pane.width, pane.height),
+        (was.x as f32, was.y as f32, was.w as f32, was.h as f32),
+        "the pane the old frame had"
+    );
+    // Once its page paints the new size, the window is drawn as placed.
+    let fit = px(500.0, 340.0);
+    let textures = |surface: &str| -> Option<Texture> {
+        match surface {
+            "window:endue.notes" => Some((OWN, fit)),
+            "main.endue-notes" => Some((PANE, plugin)),
+            _ => None,
+        }
+    };
+    let from = Sources {
+        scale: SCALE,
+        ..sources(&textures)
+    };
+    let made = draw(&mut scene, &theme, &hosted, &from).unwrap();
+    let frame = made.windows.iter().find(|(id, _)| id == "endue.notes");
+    assert_eq!(
+        frame.map(|(_, at)| *at),
+        Some(Rect::new(280.0, 220.0, 500.0, 340.0))
+    );
 }
 
 #[test]
