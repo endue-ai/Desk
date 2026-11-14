@@ -4,7 +4,7 @@
  * laid out for the size the page has, never for the place, which runs ahead of the page's size
  * while the window is resized (desk-wm's place, then the compositor's plan, then the page's resize,
  * then its paint). Sized from the place, the section was cut at the page's edge (a title bar's ✕
- * during a corner drag) or left the page's background past it until the page caught up (#270).
+ * during a corner drag) or left the page's background past it until the page caught up (issue 270).
  */
 import type { Rect } from "../wm/types";
 
