@@ -5,7 +5,8 @@ decision-makers: Team endue
 ---
 
 Amends ADR 0082 (floating windows stack above every normal window, focused or pinned), ADR 0116 (a
-cascade in desk order) and ADR 0128 (a snapped window floats above every normal window).
+cascade in desk order) and ADR 0128 (a snapped window floats above every normal window). Amended by
+ADR 0219: the window in use on the canvas stays under the windows floating by choice.
 
 # Windows stack in the order of use, and the window in use is on top of every other
 

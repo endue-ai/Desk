@@ -214,7 +214,7 @@ mod the_stacking_order {
     }
 
     #[test]
-    fn puts_the_window_in_use_above_a_floating_and_a_filled_one() {
+    fn puts_the_window_in_use_above_the_others_of_the_canvas_and_under_a_floating_one() {
         let normal = Placement {
             pinned: true,
             ..at("n")
@@ -228,9 +228,23 @@ mod the_stacking_order {
             fill: Some(Fill::Full),
             ..at("full")
         };
-        assert!(z_of(&normal, 0, Some("n")) > z_of(&floating, 1, Some("n")));
+        let pinned = Placement {
+            pinned: true,
+            ..at("p")
+        };
+        // In use on the canvas, a normal or a filled window is above every other there, the
+        // pinned and the most recent too, and under a window floating by choice (ADR 0219).
         assert!(z_of(&normal, 0, Some("n")) > z_of(&filled, 2, Some("n")));
-        assert!(z_of(&filled, 0, Some("full")) > z_of(&floating, 1, Some("full")));
+        assert!(z_of(&at("a"), 0, Some("a")) > z_of(&pinned, 63, Some("a")));
+        assert!(z_of(&normal, 0, Some("n")) < z_of(&floating, 0, Some("n")));
+        assert!(z_of(&filled, 0, Some("full")) < z_of(&floating, 0, Some("full")));
+        // A floating window in use is above every other, a pinned floating one too.
+        let other = Placement {
+            floating: Some(true),
+            pinned: true,
+            ..at("g")
+        };
+        assert!(z_of(&floating, 0, Some("f")) > z_of(&other, 40, Some("f")));
     }
 
     #[test]

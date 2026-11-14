@@ -132,14 +132,21 @@ mod the_window_in_use {
     }
 
     #[test]
-    fn is_above_a_window_floating_by_choice_which_stays_above_the_normal_ones() {
+    fn on_the_canvas_stays_under_a_window_floating_by_choice_and_above_the_rest() {
         let mut d = desk();
         d.toggle_floating("p.b", W, H);
         d.focus_pane("p.b", None);
+        // A window moved, opened or pressed under a floating one does not cover it (ADR 0219).
         d.focus_pane("p.c", None);
-        assert_eq!(top(&d, 2), ["p.c", "p.b"]);
+        assert_eq!(top(&d, 2), ["p.b", "p.c"]);
         d.focus_pane("p.d", None);
-        assert_eq!(top(&d, 3), ["p.d", "p.b", "p.c"]);
+        assert_eq!(top(&d, 3), ["p.b", "p.d", "p.c"]);
+        // Of two floating windows the one in use is on top.
+        d.toggle_floating("p.a", W, H);
+        d.focus_pane("p.a", None);
+        assert_eq!(top(&d, 3), ["p.a", "p.b", "p.d"]);
+        d.focus_pane("p.b", None);
+        assert_eq!(top(&d, 3), ["p.b", "p.a", "p.d"]);
     }
 }
 

@@ -1,10 +1,11 @@
 //! The order the windows stack in, and which plugin surfaces the windows hide
 //! (`packages/runtime/src/surface/cover.ts`, ADR 0070).
 //!
-//! The windows stack in the order of use (ADR 0168): the window in use on top of every other, then
-//! the windows floating by choice, then the rest (normal and filled ones), each kind in the order
-//! it was last in use; those never in use since the desk started stack under the others as they
-//! did before it kept that order, floating and filled ones above the rest, in desk order.
+//! The windows stack in the order of use (ADR 0168), the ones floating by choice above the ones on
+//! the canvas (ADR 0219): the floating windows, then the rest (normal and filled ones); within each
+//! kind the window in use on top, then the others in the order they were last in use; those never
+//! in use since the desk started stack under the others as they did before it kept that order,
+//! floating and filled ones above the rest, in desk order.
 //! A plugin shown only in windows that are wholly covered by windows drawn above them, or off the
 //! screen, is out of sight, and the live budget may put its process to sleep. Pure, from the
 //! windows in desk order, the order of use and the screen's size.
@@ -21,8 +22,12 @@ use crate::types::{Offset, Placement, Rect};
 const FLOATING: usize = 200;
 /// Added to a pinned window's rank: above the unpinned ones of its kind.
 const PINNED: usize = 50;
-/// The window in use: above every other, whatever it is (ADR 0168).
+/// The window in use while it floats by choice: above every other (ADR 0168).
 const IN_USE: usize = 300;
+/// The window in use on the canvas (a normal or a filled one): above every other window there,
+/// pinned ones too, and under the ones floating by choice (ADR 0219). A floating window is one
+/// the person put above the canvas; a window moved or opened under it does not cover it.
+const IN_USE_ON_CANVAS: usize = FLOATING - 1;
 /// How many windows the order of use remembers; one that falls out was the least recent, and
 /// stacks with the windows never in use, which are under every other anyway.
 const REMEMBERED: usize = 64;
@@ -101,12 +106,16 @@ fn floats_above(p: &Placement) -> bool {
     is_floating(p) && p.fill.is_none()
 }
 
-/// A window's stacking level from its place in the order of use (`rank`, `UseOrder::ranks`): the
-/// focused one above every other; windows floating by choice above the normal and filled ones;
-/// within each, pinned ones above the rest, then the order of use.
+/// A window's stacking level from its place in the order of use (`rank`, `UseOrder::ranks`):
+/// windows floating by choice above the normal and filled ones; within each kind the focused one
+/// above the others, then pinned ones above the rest, then the order of use.
 pub fn z_of(p: &Placement, rank: usize, focused: Option<&str>) -> usize {
     if focused == Some(p.id.as_str()) {
-        return IN_USE;
+        return if floats_above(p) {
+            IN_USE
+        } else {
+            IN_USE_ON_CANVAS
+        };
     }
     let level = if p.pinned { PINNED + rank } else { 1 + rank };
     if floats_above(p) {

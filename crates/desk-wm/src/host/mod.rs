@@ -117,8 +117,8 @@ impl HostPane {
 pub struct HostWindow {
     pub id: String,
     pub rect: Rect,
-    /// Its stacking level (`cover::z_of`): the focused one on top, windows floating by choice
-    /// above the rest, pinned ones above the unpinned, then the order of use.
+    /// Its stacking level (`cover::z_of`): windows floating by choice above the rest; within
+    /// each kind the focused one on top, pinned ones above the unpinned, then the order of use.
     pub level: usize,
     pub focused: bool,
     pub pinned: bool,

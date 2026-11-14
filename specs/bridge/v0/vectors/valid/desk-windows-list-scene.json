@@ -8,12 +8,32 @@
     },
     "windows": [
       {
+        "id": "endue.notes",
+        "x": 40,
+        "y": 60,
+        "w": 600,
+        "h": 400,
+        "z": 4,
+        "state": "floating",
+        "floating": true,
+        "desktop": "1",
+        "panes": [
+          {
+            "id": "p1",
+            "view": "plugin:endue.notes",
+            "plugin": "endue.notes",
+            "title": "Notes",
+            "responsiveness": "late"
+          }
+        ]
+      },
+      {
         "id": "window-1",
         "x": 607,
         "y": 316,
         "w": 480,
         "h": 320,
-        "z": 4,
+        "z": 3,
         "state": "normal",
         "focused": true,
         "desktop": "1",
@@ -28,26 +48,6 @@
             "id": "p2",
             "view": "launcher",
             "title": "launcherTitle"
-          }
-        ]
-      },
-      {
-        "id": "endue.notes",
-        "x": 40,
-        "y": 60,
-        "w": 600,
-        "h": 400,
-        "z": 3,
-        "state": "floating",
-        "floating": true,
-        "desktop": "1",
-        "panes": [
-          {
-            "id": "p1",
-            "view": "plugin:endue.notes",
-            "plugin": "endue.notes",
-            "title": "Notes",
-            "responsiveness": "late"
           }
         ]
       },
