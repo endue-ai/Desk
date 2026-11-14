@@ -157,6 +157,29 @@ test.describe("the agent bar reads the agent directory", () => {
     await expect(page.locator('[data-surface="agent:ag_extra_4"]')).toBeVisible();
   });
 
+  test("a bar taller than its place scrolls, and draws no scrollbar", async ({ page }) => {
+    // The shortest app: the bar's place is shorter than the bar.
+    await page.setViewportSize({ width: 1100, height: 520 });
+    const bar = page.locator(".sidebar");
+    const seen = await bar.evaluate((el) => {
+      const style = getComputedStyle(el);
+      const borders =
+        Number.parseFloat(style.borderLeftWidth) + Number.parseFloat(style.borderRightWidth);
+      return {
+        fits: el.scrollHeight <= el.clientHeight,
+        scrollbar: style.scrollbarWidth,
+        gutter: el.offsetWidth - el.clientWidth - borders,
+      };
+    });
+    expect(seen.fits).toBe(false);
+    expect(seen.scrollbar).toBe("none");
+    expect(seen.gutter).toBe(0);
+    await bar.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+    expect(await bar.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  });
+
   test("an agent's screen shows its A2A card and the tasks it is doing", async ({ page }) => {
     await page.click(`.sidebar [data-agent="${id(1)}"]`);
     const screen = page.locator(`[data-surface="agent:${id(1)}"]`);

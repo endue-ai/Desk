@@ -37,12 +37,16 @@
    159). Centred 88 px above
    the middle, no taller than keeps its top at 116 (408 = 2 × (88 + 116)), while the bar as it
    comes (220 px) fits so: from 628 px up. A shorter app hangs it from under the switcher, closer
-   set, and what still does not fit scrolls. */
+   set, and what still does not fit scrolls, by the wheel or the trackpad and the keys: no scrollbar
+   is drawn, which in a bar 56 px wide took a quarter of it and sat on the avatars. */
 .layer-system .sidebar {
   top: calc(50% - 88px);
   max-height: calc(100% - 408px);
   overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
 }
+.layer-system .sidebar::-webkit-scrollbar { display: none; }
 @media (max-height: 627px) {
   .layer-system .sidebar {
     top: 116px;
