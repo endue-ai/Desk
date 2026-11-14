@@ -41,7 +41,7 @@ export interface Limits {
 }
 
 type Shaken = "fps" | "smooth" | "own-pixels" | "painting" | "soft" | "valid";
-export type Check = Shaken | "loop" | `sway-${Shaken | "sizes" | "scene" | "settled"}`;
+export type Check = Shaken | "loop" | `sway-${Shaken | "sizes" | "scene" | "sections" | "settled"}`;
 
 export interface Verdict {
   check: Check;
@@ -170,6 +170,10 @@ export interface SwayFindings {
   frames: number;
   unfitFrames: number;
   sceneFrames: number;
+  /** Frames the windows' own pages laid out, and those whose section did not fill its page: laid
+   * out for another size than the page has (#270, `motion-sections.ts`). */
+  sectionFrames?: number;
+  unfitSections?: number;
   /** Captures of the shaken window mid-motion compared with it at rest at its size, and those
    * where it showed pixels not its own. */
   swingFrames: number;
@@ -207,6 +211,8 @@ export function worstSway(runs: readonly SwayFindings[]): SwayFindings {
     frames: sum((r) => r.frames),
     unfitFrames: sum((r) => r.unfitFrames),
     sceneFrames: sum((r) => r.sceneFrames),
+    sectionFrames: sum((r) => r.sectionFrames ?? 0),
+    unfitSections: sum((r) => r.unfitSections ?? 0),
     swingFrames: sum((r) => r.swingFrames),
     foreignFrames: sum((r) => r.foreignFrames),
     stopped: each((r) => r.stopped),
@@ -270,6 +276,14 @@ export function swayVerdicts(
         value: found.sceneFrames,
         limit: `<= ${limits.maxUnfitFrames}`,
         passed: found.frames > 0 && found.sceneFrames <= limits.maxUnfitFrames,
+      },
+      {
+        check: "sway-sections",
+        says: `frames where a window's own page lays its section out for another size than the page has (of ${found.sectionFrames ?? 0})`,
+        value: found.unfitSections ?? 0,
+        limit: `<= ${limits.maxUnfitFrames}`,
+        passed:
+          (found.sectionFrames ?? 0) > 0 && (found.unfitSections ?? 0) <= limits.maxUnfitFrames,
       },
       {
         check: "sway-painting",
