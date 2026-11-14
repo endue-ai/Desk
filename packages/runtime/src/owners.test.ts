@@ -160,4 +160,35 @@ describe("Owners", () => {
     expect(route(owners, closed)).toBe("endue.screens");
     expect(route(owners, bytes)).toBeUndefined();
   });
+
+  it("routes a web view's changes to the window that opened it, until it closes (ADR 0216)", () => {
+    const webOpen: BridgeRequest = {
+      id: 9,
+      method: "web.open",
+      params: { url: "https://example.com/", scope: { permission: "web:browse" } },
+    };
+    const shows = (viewId: string, closed?: true): BridgeEvent => ({
+      event: "web.changed",
+      data: {
+        viewId,
+        url: "https://example.com/",
+        title: "Example",
+        loading: false,
+        canGoBack: false,
+        canGoForward: false,
+        ...(closed ? { closed } : {}),
+      },
+    });
+    expect(eventKey(shows("w-1"))).toBe("web:w-1");
+    expect(claimKey(webOpen, ok(9, { viewId: "w-1" }))).toBe("web:w-1");
+    const owners = new Owners();
+    // Its first change may come before the call's answer: it waits, then goes to the opener.
+    expect(owners.route(shows("w-1"), "web:w-1")).toBeUndefined();
+    expect(owners.claim(webOpen, ok(9, { viewId: "w-1" }), "endue.browser@2")).toEqual([
+      shows("w-1"),
+    ]);
+    expect(owners.route(shows("w-1"), "web:w-1")).toBe("endue.browser@2");
+    expect(owners.route(shows("w-1", true), "web:w-1")).toBe("endue.browser@2");
+    expect(owners.route(shows("w-1"), "web:w-1")).toBeUndefined();
+  });
 });

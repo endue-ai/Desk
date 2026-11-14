@@ -57,6 +57,8 @@ impl CompositorWindow {
         let held = self.mapping.held();
         let layout = folded.and_then(|_| draw_map::layout(&self.hosted, held));
         let at = self.hosted.ms(Instant::now());
+        let boxes = self.host.web_boxes();
+        let web = |host: &str| boxes.get(host).copied();
         let drawn = {
             let mut composed = self.shared.lock();
             match (&layout, folded) {
@@ -91,6 +93,7 @@ impl CompositorWindow {
                 page: texture(PAGE),
                 surface: &texture,
                 popup: &popup,
+                web: &web,
                 spread: self.spreading.open.as_ref().map(|s| (s, at)),
                 map,
             };
@@ -133,6 +136,7 @@ impl CompositorWindow {
             }
         });
         crate::frame_trace::laid_out(self.hosted.plan(), &drawn.placed, pictures.as_ref());
+        let live = drawn.placed.iter().map(|(host, _)| host.clone()).collect();
         if let Some(plan) = self.hosted.plan() {
             let placed: Vec<(String, (f32, f32))> = (drawn.placed.into_iter())
                 .map(|(host, at)| (host, (at.x, at.y)))
@@ -148,5 +152,7 @@ impl CompositorWindow {
         self.tip_draw();
         // A window's page opened since the last look is laid out and given its focus (ADR 0201).
         self.place_window_pages();
+        // Each web view at its box, shown while its plugin's surface is drawn (ADR 0216).
+        self.web_laid_out(&live);
     }
 }

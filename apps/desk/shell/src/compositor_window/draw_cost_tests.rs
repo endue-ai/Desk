@@ -91,6 +91,7 @@ fn layouts(mut hosted: Hosted, map: bool) -> Vec<Duration> {
             page: Some((TextureId(1), (2880, 1800))),
             surface: &texture,
             popup: &crate::compositor_window::draw_popup::none,
+            web: &crate::compositor_window::draw_web::none,
             spread: None,
             map: layout.as_ref().map(|layout| draw_map::MapSource {
                 layout,
@@ -141,6 +142,7 @@ fn a_drag_step_of_a_thirteen_window_desk_fits_in_half_a_frame() {
         page: Some((TextureId(1), (2880, 1800))),
         surface: &texture,
         popup: &crate::compositor_window::draw_popup::none,
+        web: &crate::compositor_window::draw_web::none,
         spread: None,
         map: None,
     };

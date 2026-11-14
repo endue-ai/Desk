@@ -7,7 +7,7 @@ import { Owners } from "./owners";
 import { PluginCommands } from "./plugin-commands";
 import type { PluginHostDeps, PluginHostOptions } from "./plugin-host-deps";
 import type { PluginMessage } from "./plugin-messages";
-import { surfaceUrl } from "./plugin-origins";
+import { named, surfaceUrl } from "./plugin-origins";
 import { PluginAsks } from "./plugins-asks";
 import {
   broadcast,
@@ -386,7 +386,9 @@ export class PluginHost {
         void Promise.all(
           message.calls.map(async (request) => ({
             request,
-            response: await this.#deps.bridge.forward(...this.#search.call(id, request)),
+            response: await this.#deps.bridge.forward(
+              ...this.#search.call(id, named(id, request, this.#mounted)),
+            ),
           })),
         ).then((answers) => {
           const results = answers.map(({ request, response }) => ({ id: request.id, response }));
