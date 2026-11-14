@@ -522,7 +522,8 @@ export type Permission =
   | MemoryWritePermission
   | StudioManagePermission
   | ComputerSeePermission
-  | ComputerControlPermission;
+  | ComputerControlPermission
+  | WebBrowsePermission;
 
 /** Search explicitly published plugin documents and installed plugin launchers. */
 export interface SearchReadPermission {
@@ -665,6 +666,13 @@ export interface ShellOpenPermission {
   schemes?: ShellScheme[];
   /** Path patterns whose files and folders the permission shows in the file manager. */
   paths?: PathPattern[];
+}
+
+/** Show live web pages in web views (web.open, web.load) and receive web.changed for them. With hosts, only pages of the listed hosts: the view's own page goes nowhere else, though a page still loads what it embeds from other hosts. Without hosts, any http or https site. */
+export interface WebBrowsePermission {
+  permission: "web:browse";
+  /** Host patterns a view's page may be on; absent covers every host. */
+  hosts?: HostPattern[];
 }
 
 /** See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person. */
@@ -3220,7 +3228,13 @@ export type BridgeRequest =
   | ComputerInputScrollRequest
   | ComputerInputTypeRequest
   | ComputerInputKeysRequest
-  | ComputerStopRequest;
+  | ComputerStopRequest
+  | WebOpenRequest
+  | WebPlaceRequest
+  | WebLoadRequest
+  | WebGoRequest
+  | WebFocusRequest
+  | WebCloseRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -3264,7 +3278,7 @@ export type ErrorCode =
   | "offline"
   | "forbidden";
 
-/** Something the core reports without being asked: file changes, process output, socket data, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, and what is being done to the computer. */
+/** Something the core reports without being asked: file changes, process output, socket data, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
@@ -3299,7 +3313,8 @@ export type BridgeEvent =
   | MemoryChangedEvent
   | AgentCancelledEvent
   | AgentChangedEvent
-  | ComputerActivityEvent;
+  | ComputerActivityEvent
+  | WebChangedEvent;
 
 /** Describe what the caller can bind, show and run. */
 export interface CatalogGetRequest {
@@ -7055,6 +7070,140 @@ export interface ViewChangedData {
 /** What happened to the view. */
 export type ViewChange = "saved" | "removed";
 
+/** A web view of the caller's, as web.open named it. */
+export type WebViewId = string;
+
+/** An absolute http or https URL. */
+export type WebUrl = string;
+
+/** Open a web view in the calling window, hidden until web.place gives it a box. A window has one web view: opening another closes the first. */
+export interface WebOpenRequest {
+  id: RequestId;
+  method: "web.open";
+  params: WebOpenParams;
+}
+
+/** Parameters of web.open. */
+export interface WebOpenParams {
+  url?: WebUrl;
+  /** The host of the calling window's surface. The runtime, which forwards a plugin's calls, sets it; whatever a plugin sends here is replaced. */
+  surface?: string;
+  scope: WebBrowsePermission;
+}
+
+/** Result of web.open: the view, loading its page if one was named. */
+export interface WebOpenResult {
+  viewId: WebViewId;
+}
+
+/** Say where a web view lies in the caller's surface, and whether it shows. */
+export interface WebPlaceRequest {
+  id: RequestId;
+  method: "web.place";
+  params: WebPlaceParams;
+}
+
+/** Parameters of web.place: a box in CSS pixels from the top left of the caller's surface. What lies past the surface's edge is not drawn. */
+export interface WebPlaceParams {
+  viewId: WebViewId;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** false hides the view and rests its page; true by default. */
+  shown?: boolean;
+}
+
+/** Result of web.place. */
+export type WebPlaceResult = Record<string, never>;
+
+/** Load an address in a web view. */
+export interface WebLoadRequest {
+  id: RequestId;
+  method: "web.load";
+  params: WebLoadParams;
+}
+
+/** Parameters of web.load. */
+export interface WebLoadParams {
+  viewId: WebViewId;
+  url: WebUrl;
+  scope: WebBrowsePermission;
+}
+
+/** Result of web.load: the view took the address. What becomes of the load comes in web.changed. */
+export type WebLoadResult = Record<string, never>;
+
+/** Step through a web view's history, load its page again or stop its load. */
+export interface WebGoRequest {
+  id: RequestId;
+  method: "web.go";
+  params: WebGoParams;
+}
+
+/** Parameters of web.go. */
+export interface WebGoParams {
+  viewId: WebViewId;
+  to: WebStep;
+}
+
+/** What web.go does: a step back or forward in the view's history, its page loaded again, or its load stopped. */
+export type WebStep = "back" | "forward" | "reload" | "stop";
+
+/** Result of web.go. */
+export type WebGoResult = Record<string, never>;
+
+/** Give a web view's page the keys, as a press in it does. A press on the caller's own surface takes them back. */
+export interface WebFocusRequest {
+  id: RequestId;
+  method: "web.focus";
+  params: WebFocusParams;
+}
+
+/** Parameters of web.focus. */
+export interface WebFocusParams {
+  viewId: WebViewId;
+}
+
+/** Result of web.focus. */
+export type WebFocusResult = Record<string, never>;
+
+/** Close a web view: its page ends and its last web.changed says closed. */
+export interface WebCloseRequest {
+  id: RequestId;
+  method: "web.close";
+  params: WebCloseParams;
+}
+
+/** Parameters of web.close. */
+export interface WebCloseParams {
+  viewId: WebViewId;
+}
+
+/** Result of web.close. */
+export type WebCloseResult = Record<string, never>;
+
+/** A web view's page changed: its address, its title, whether it loads, where its history can go. Sent to the window that opened the view. */
+export interface WebChangedEvent {
+  event: "web.changed";
+  data: WebChangedData;
+}
+
+/** Payload of web.changed: the view as it is now. */
+export interface WebChangedData {
+  viewId: WebViewId;
+  /** The address the view shows; empty before its first page. */
+  url: string;
+  title: string;
+  loading: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
+  /** An address the view did not go to: its host is outside the caller's web:browse grant, or it is not an http or https address. */
+  refused?: string;
+  /** true in the view's last event: the caller closed it, or its window's surface slept, went away or moved out of the desk. */
+  closed?: boolean;
+}
+
 /** Params and result of each bridge method. */
 export interface BridgeMethodMap {
   "search.replace": { params: SearchReplaceParams; result: SearchReplaceResult };
@@ -7230,6 +7379,12 @@ export interface BridgeMethodMap {
   "computer.input.type": { params: ComputerInputTypeParams; result: ComputerInputTypeResult };
   "computer.input.keys": { params: ComputerInputKeysParams; result: ComputerInputKeysResult };
   "computer.stop": { params: ComputerStopParams; result: ComputerStopResult };
+  "web.open": { params: WebOpenParams; result: WebOpenResult };
+  "web.place": { params: WebPlaceParams; result: WebPlaceResult };
+  "web.load": { params: WebLoadParams; result: WebLoadResult };
+  "web.go": { params: WebGoParams; result: WebGoResult };
+  "web.focus": { params: WebFocusParams; result: WebFocusResult };
+  "web.close": { params: WebCloseParams; result: WebCloseResult };
 }
 
 /** A bridge method name. */
@@ -7386,4 +7541,10 @@ export const BRIDGE_METHODS = [
   "computer.input.type",
   "computer.input.keys",
   "computer.stop",
+  "web.open",
+  "web.place",
+  "web.load",
+  "web.go",
+  "web.focus",
+  "web.close",
 ] as const satisfies readonly BridgeMethod[];

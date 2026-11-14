@@ -1,0 +1,11 @@
+{
+  "target": "Permission",
+  "description": "web:browse for one site and its subdomains",
+  "instance": {
+    "permission": "web:browse",
+    "hosts": [
+      "example.com",
+      "*.example.com"
+    ]
+  }
+}

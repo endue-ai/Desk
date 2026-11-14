@@ -160,6 +160,7 @@ const WORDS: Record<Permission["permission"], string> = {
   "studio:manage": "create and manage your endue agents",
   "computer:see": "see your screen and the apps on it",
   "computer:control": "operate your computer's apps with the mouse and keyboard",
+  "web:browse": "show web pages",
 };
 
 /** A permission's scope: "paths: ~/Notes/**", or "" when it has none. */

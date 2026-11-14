@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "web:browse for every site",
+  "instance": {
+    "permission": "web:browse"
+  }
+}

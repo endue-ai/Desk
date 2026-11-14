@@ -288,6 +288,7 @@ impl Core {
         self.prune_data(caller);
         self.prune_processes(caller);
         self.prune_sockets(caller);
+        self.prune_web(caller);
         self.settle_unheard();
     }
 

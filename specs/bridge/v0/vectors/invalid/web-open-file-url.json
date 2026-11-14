@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.open takes http and https addresses only",
+  "instance": {
+    "id": 31,
+    "method": "web.open",
+    "params": {
+      "url": "file:///etc/passwd",
+      "surface": "main.endue-browser",
+      "scope": {
+        "permission": "web:browse"
+      }
+    }
+  }
+}

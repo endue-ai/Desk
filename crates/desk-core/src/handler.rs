@@ -115,6 +115,8 @@ pub struct Core {
     pub(crate) theme_tokens: crate::theme::ThemeTokens,
     /// What takes surfaces' snapshots: the shell's compositor, once it is up (ADR 0161).
     pub(crate) snapshots: crate::core_snapshots::Snapshots,
+    /// The web views callers opened, and the shell that shows them (ADR 0216).
+    pub(crate) web: Mutex<crate::core_web::Web>,
     pub(crate) start: Mutex<crate::core_state::StartState>,
 }
 
@@ -171,6 +173,7 @@ impl Core {
             themes: Default::default(),
             theme_tokens: Default::default(),
             snapshots: Default::default(),
+            web: Default::default(),
             start: Mutex::default(),
         }
     }

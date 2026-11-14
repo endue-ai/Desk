@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.open opens an empty view under a web:browse scope for every host",
+  "instance": {
+    "id": 32,
+    "method": "web.open",
+    "params": {
+      "surface": "main--2.endue-browser",
+      "scope": {
+        "permission": "web:browse"
+      }
+    }
+  }
+}

@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/web.schema.json",
+  "title": "Desk bridge v0: web",
+  "description": "Show a live web page in the caller's window: a web view is a browser of its own that the desk draws over the caller's surface at the box the caller gives. The page gets nothing of the desk and keeps its cookies apart from the desk's own pages. Scoped by web:browse hosts.",
+  "$defs": {
+    "WebViewId": {
+      "description": "A web view of the caller's, as web.open named it.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "WebUrl": {
+      "description": "An absolute http or https URL.",
+      "type": "string",
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://[^\\s]+$",
+      "maxLength": 8192
+    },
+    "WebOpenRequest": {
+      "description": "Open a web view in the calling window, hidden until web.place gives it a box. A window has one web view: opening another closes the first.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "web.open" },
+        "params": { "$ref": "#/$defs/WebOpenParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "WebOpenParams": {
+      "description": "Parameters of web.open.",
+      "type": "object",
+      "properties": {
+        "url": { "$ref": "#/$defs/WebUrl" },
+        "surface": {
+          "description": "The host of the calling window's surface. The runtime, which forwards a plugin's calls, sets it; whatever a plugin sends here is replaced.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/WebBrowsePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "WebOpenResult": {
+      "description": "Result of web.open: the view, loading its page if one was named.",
+      "type": "object",
+      "properties": {
+        "viewId": { "$ref": "#/$defs/WebViewId" }
+      },
+      "required": ["viewId"],
+      "additionalProperties": false
+    },
+    "WebPlaceRequest": {
+      "description": "Say where a web view lies in the caller's surface, and whether it shows.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "web.place" },
+        "params": { "$ref": "#/$defs/WebPlaceParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "WebPlaceParams": {
+      "description": "Parameters of web.place: a box in CSS pixels from the top left of the caller's surface. What lies past the surface's edge is not drawn.",
+      "type": "object",
+      "properties": {
+        "viewId": { "$ref": "#/$defs/WebViewId" },
+        "x": { "type": "number", "minimum": -100000, "maximum": 100000 },
+        "y": { "type": "number", "minimum": -100000, "maximum": 100000 },
+        "width": { "type": "number", "minimum": 0, "maximum": 100000 },
+        "height": { "type": "number", "minimum": 0, "maximum": 100000 },
+        "shown": {
+          "description": "false hides the view and rests its page; true by default.",
+          "type": "boolean"
+        }
+      },
+      "required": ["viewId", "x", "y", "width", "height"],
+      "additionalProperties": false
+    },
+    "WebPlaceResult": {
+      "description": "Result of web.place.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "WebLoadRequest": {
+      "description": "Load an address in a web view.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "web.load" },
+        "params": { "$ref": "#/$defs/WebLoadParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "WebLoadParams": {
+      "description": "Parameters of web.load.",
+      "type": "object",
+      "properties": {
+        "viewId": { "$ref": "#/$defs/WebViewId" },
+        "url": { "$ref": "#/$defs/WebUrl" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/WebBrowsePermission" }
+      },
+      "required": ["viewId", "url", "scope"],
+      "additionalProperties": false
+    },
+    "WebLoadResult": {
+      "description": "Result of web.load: the view took the address. What becomes of the load comes in web.changed.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "WebGoRequest": {
+      "description": "Step through a web view's history, load its page again or stop its load.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "web.go" },
+        "params": { "$ref": "#/$defs/WebGoParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "WebGoParams": {
+      "description": "Parameters of web.go.",
+      "type": "object",
+      "properties": {
+        "viewId": { "$ref": "#/$defs/WebViewId" },
+        "to": { "$ref": "#/$defs/WebStep" }
+      },
+      "required": ["viewId", "to"],
+      "additionalProperties": false
+    },
+    "WebStep": {
+      "description": "What web.go does: a step back or forward in the view's history, its page loaded again, or its load stopped.",
+      "type": "string",
+      "enum": ["back", "forward", "reload", "stop"]
+    },
+    "WebGoResult": {
+      "description": "Result of web.go.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "WebFocusRequest": {
+      "description": "Give a web view's page the keys, as a press in it does. A press on the caller's own surface takes them back.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "web.focus" },
+        "params": { "$ref": "#/$defs/WebFocusParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "WebFocusParams": {
+      "description": "Parameters of web.focus.",
+      "type": "object",
+      "properties": {
+        "viewId": { "$ref": "#/$defs/WebViewId" }
+      },
+      "required": ["viewId"],
+      "additionalProperties": false
+    },
+    "WebFocusResult": {
+      "description": "Result of web.focus.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "WebCloseRequest": {
+      "description": "Close a web view: its page ends and its last web.changed says closed.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "web.close" },
+        "params": { "$ref": "#/$defs/WebCloseParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "WebCloseParams": {
+      "description": "Parameters of web.close.",
+      "type": "object",
+      "properties": {
+        "viewId": { "$ref": "#/$defs/WebViewId" }
+      },
+      "required": ["viewId"],
+      "additionalProperties": false
+    },
+    "WebCloseResult": {
+      "description": "Result of web.close.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "WebChangedEvent": {
+      "description": "A web view's page changed: its address, its title, whether it loads, where its history can go. Sent to the window that opened the view.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "web.changed" },
+        "data": { "$ref": "#/$defs/WebChangedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "WebChangedData": {
+      "description": "Payload of web.changed: the view as it is now.",
+      "type": "object",
+      "properties": {
+        "viewId": { "$ref": "#/$defs/WebViewId" },
+        "url": {
+          "description": "The address the view shows; empty before its first page.",
+          "type": "string",
+          "maxLength": 8192
+        },
+        "title": { "type": "string", "maxLength": 1024 },
+        "loading": { "type": "boolean" },
+        "canGoBack": { "type": "boolean" },
+        "canGoForward": { "type": "boolean" },
+        "refused": {
+          "description": "An address the view did not go to: its host is outside the caller's web:browse grant, or it is not an http or https address.",
+          "type": "string",
+          "maxLength": 8192
+        },
+        "closed": {
+          "description": "true in the view's last event: the caller closed it, or its window's surface slept, went away or moved out of the desk.",
+          "type": "boolean"
+        }
+      },
+      "required": ["viewId", "url", "title", "loading", "canGoBack", "canGoForward"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -168,6 +168,7 @@ impl Core {
         self.drop_data(id);
         self.drop_processes(id);
         self.drop_sockets(id);
+        self.drop_web(id);
         self.drop_surfaces(id);
         self.drop_file_urls(id);
         self.settle_unheard();

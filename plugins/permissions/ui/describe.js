@@ -18,6 +18,7 @@ const WORDS = {
   "proc:spawn": ["Run programs", (p) => list([...p.commands, ...(p.pty ? ["in a terminal"] : [])])],
   "net:fetch": ["Use the network", (p) => list(p.hosts)],
   "net:connect": ["Connect to other computers", (p) => list(p.hosts)],
+  "web:browse": ["Show web pages", (p) => (p.hosts ? list(p.hosts) : "any site")],
   "audio:capture": ["Use the microphone", (p) => (p.wakeWord ? "with the wake word" : "")],
   "ui:surface": ["Open its surfaces", () => ""],
   "ui:notify": ["Show notifications", () => ""],

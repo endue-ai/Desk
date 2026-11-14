@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.place lays a view out under a toolbar",
+  "instance": {
+    "id": 33,
+    "method": "web.place",
+    "params": {
+      "viewId": "w-1",
+      "x": 0.0,
+      "y": 40.5,
+      "width": 960.0,
+      "height": 600.0
+    }
+  }
+}

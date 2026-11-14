@@ -930,6 +930,7 @@ pub enum Permission {
     StudioManage(StudioManagePermission),
     ComputerSee(ComputerSeePermission),
     ComputerControl(ComputerControlPermission),
+    WebBrowse(WebBrowsePermission),
 }
 
 /// Search explicitly published plugin documents and installed plugin launchers.
@@ -1125,6 +1126,16 @@ pub struct ShellOpenPermission {
     /// Path patterns whose files and folders the permission shows in the file manager.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub paths: Option<Vec<PathPattern>>,
+}
+
+/// Show live web pages in web views (web.open, web.load) and receive web.changed for them. With hosts, only pages of the listed hosts: the view's own page goes nowhere else, though a page still loads what it embeds from other hosts. Without hosts, any http or https site.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebBrowsePermission {
+    pub permission: WebBrowsePermissionPermission,
+    /// Host patterns a view's page may be on; absent covers every host.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hosts: Option<Vec<HostPattern>>,
 }
 
 /// See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person.
@@ -5122,6 +5133,12 @@ pub enum BridgeRequest {
     ComputerInputType(ComputerInputTypeRequest),
     ComputerInputKeys(ComputerInputKeysRequest),
     ComputerStop(ComputerStopRequest),
+    WebOpen(WebOpenRequest),
+    WebPlace(WebPlaceRequest),
+    WebLoad(WebLoadRequest),
+    WebGo(WebGoRequest),
+    WebFocus(WebFocusRequest),
+    WebClose(WebCloseRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -5193,7 +5210,7 @@ pub enum ErrorCode {
     Forbidden,
 }
 
-/// Something the core reports without being asked: file changes, process output, socket data, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, and what is being done to the computer.
+/// Something the core reports without being asked: file changes, process output, socket data, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -5231,6 +5248,7 @@ pub enum BridgeEvent {
     AgentCancelled(AgentCancelledEvent),
     AgentChanged(AgentChangedEvent),
     ComputerActivity(ComputerActivityEvent),
+    WebChanged(WebChangedEvent),
 }
 
 /// Describe what the caller can bind, show and run.
@@ -10980,6 +10998,204 @@ pub enum ViewChange {
     Removed,
 }
 
+/// A web view of the caller's, as web.open named it.
+pub type WebViewId = String;
+
+/// An absolute http or https URL.
+pub type WebUrl = String;
+
+/// Open a web view in the calling window, hidden until web.place gives it a box. A window has one web view: opening another closes the first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebOpenRequest {
+    pub id: RequestId,
+    pub method: WebOpenRequestMethod,
+    pub params: WebOpenParams,
+}
+
+/// Parameters of web.open.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebOpenParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<WebUrl>,
+    /// The host of the calling window's surface. The runtime, which forwards a plugin's calls, sets it; whatever a plugin sends here is replaced.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub surface: Option<String>,
+    pub scope: WebBrowsePermission,
+}
+
+/// Result of web.open: the view, loading its page if one was named.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebOpenResult {
+    #[serde(rename = "viewId")]
+    pub view_id: WebViewId,
+}
+
+/// Say where a web view lies in the caller's surface, and whether it shows.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebPlaceRequest {
+    pub id: RequestId,
+    pub method: WebPlaceRequestMethod,
+    pub params: WebPlaceParams,
+}
+
+/// Parameters of web.place: a box in CSS pixels from the top left of the caller's surface. What lies past the surface's edge is not drawn.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebPlaceParams {
+    #[serde(rename = "viewId")]
+    pub view_id: WebViewId,
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+    /// false hides the view and rests its page; true by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shown: Option<bool>,
+}
+
+/// Result of web.place.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebPlaceResult {}
+
+/// Load an address in a web view.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebLoadRequest {
+    pub id: RequestId,
+    pub method: WebLoadRequestMethod,
+    pub params: WebLoadParams,
+}
+
+/// Parameters of web.load.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebLoadParams {
+    #[serde(rename = "viewId")]
+    pub view_id: WebViewId,
+    pub url: WebUrl,
+    pub scope: WebBrowsePermission,
+}
+
+/// Result of web.load: the view took the address. What becomes of the load comes in web.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebLoadResult {}
+
+/// Step through a web view's history, load its page again or stop its load.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebGoRequest {
+    pub id: RequestId,
+    pub method: WebGoRequestMethod,
+    pub params: WebGoParams,
+}
+
+/// Parameters of web.go.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebGoParams {
+    #[serde(rename = "viewId")]
+    pub view_id: WebViewId,
+    pub to: WebStep,
+}
+
+/// What web.go does: a step back or forward in the view's history, its page loaded again, or its load stopped.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum WebStep {
+    #[serde(rename = "back")]
+    Back,
+    #[serde(rename = "forward")]
+    Forward,
+    #[serde(rename = "reload")]
+    Reload,
+    #[serde(rename = "stop")]
+    Stop,
+}
+
+/// Result of web.go.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebGoResult {}
+
+/// Give a web view's page the keys, as a press in it does. A press on the caller's own surface takes them back.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebFocusRequest {
+    pub id: RequestId,
+    pub method: WebFocusRequestMethod,
+    pub params: WebFocusParams,
+}
+
+/// Parameters of web.focus.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebFocusParams {
+    #[serde(rename = "viewId")]
+    pub view_id: WebViewId,
+}
+
+/// Result of web.focus.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebFocusResult {}
+
+/// Close a web view: its page ends and its last web.changed says closed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebCloseRequest {
+    pub id: RequestId,
+    pub method: WebCloseRequestMethod,
+    pub params: WebCloseParams,
+}
+
+/// Parameters of web.close.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebCloseParams {
+    #[serde(rename = "viewId")]
+    pub view_id: WebViewId,
+}
+
+/// Result of web.close.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebCloseResult {}
+
+/// A web view's page changed: its address, its title, whether it loads, where its history can go. Sent to the window that opened the view.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebChangedEvent {
+    pub event: WebChangedEventEvent,
+    pub data: WebChangedData,
+}
+
+/// Payload of web.changed: the view as it is now.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebChangedData {
+    #[serde(rename = "viewId")]
+    pub view_id: WebViewId,
+    /// The address the view shows; empty before its first page.
+    pub url: String,
+    pub title: String,
+    pub loading: bool,
+    #[serde(rename = "canGoBack")]
+    pub can_go_back: bool,
+    #[serde(rename = "canGoForward")]
+    pub can_go_forward: bool,
+    /// An address the view did not go to: its host is outside the caller's web:browse grant, or it is not an http or https address.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refused: Option<String>,
+    /// true in the view's last event: the caller closed it, or its window's surface slept, went away or moved out of the desk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub closed: Option<bool>,
+}
+
 /// The `permission` of [`SearchReadPermission`]: always `"search:read"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum SearchReadPermissionPermission {
@@ -11162,6 +11378,14 @@ pub enum ShellOpenPermissionPermission {
     #[default]
     #[serde(rename = "shell:open")]
     ShellOpen,
+}
+
+/// The `permission` of [`WebBrowsePermission`]: always `"web:browse"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebBrowsePermissionPermission {
+    #[default]
+    #[serde(rename = "web:browse")]
+    WebBrowse,
 }
 
 /// The `permission` of [`UpdateManagePermission`]: always `"update:manage"`.
@@ -12932,6 +13156,62 @@ pub enum ViewChangedEventEvent {
     ViewChanged,
 }
 
+/// The `method` of [`WebOpenRequest`]: always `"web.open"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebOpenRequestMethod {
+    #[default]
+    #[serde(rename = "web.open")]
+    WebOpen,
+}
+
+/// The `method` of [`WebPlaceRequest`]: always `"web.place"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebPlaceRequestMethod {
+    #[default]
+    #[serde(rename = "web.place")]
+    WebPlace,
+}
+
+/// The `method` of [`WebLoadRequest`]: always `"web.load"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebLoadRequestMethod {
+    #[default]
+    #[serde(rename = "web.load")]
+    WebLoad,
+}
+
+/// The `method` of [`WebGoRequest`]: always `"web.go"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebGoRequestMethod {
+    #[default]
+    #[serde(rename = "web.go")]
+    WebGo,
+}
+
+/// The `method` of [`WebFocusRequest`]: always `"web.focus"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebFocusRequestMethod {
+    #[default]
+    #[serde(rename = "web.focus")]
+    WebFocus,
+}
+
+/// The `method` of [`WebCloseRequest`]: always `"web.close"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebCloseRequestMethod {
+    #[default]
+    #[serde(rename = "web.close")]
+    WebClose,
+}
+
+/// The `event` of [`WebChangedEvent`]: always `"web.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebChangedEventEvent {
+    #[default]
+    #[serde(rename = "web.changed")]
+    WebChanged,
+}
+
 /// The JSON value `true`, as a type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct True;
@@ -13174,5 +13454,9 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/view.schema.json",
         include_str!("../../../specs/bridge/v0/view.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/web.schema.json",
+        include_str!("../../../specs/bridge/v0/web.schema.json"),
     ),
 ];

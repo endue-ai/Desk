@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.place names the whole box",
+  "instance": {
+    "id": 33,
+    "method": "web.place",
+    "params": {
+      "viewId": "w-1",
+      "x": 0,
+      "y": 40
+    }
+  }
+}

@@ -180,6 +180,12 @@ impl Core {
             | R::ComputerInputType(_)
             | R::ComputerInputKeys(_)
             | R::ComputerStop(_)) => self.computer_call(caller, r),
+            R::WebOpen(r) => (r.id, self.web_open(caller, r.params)),
+            R::WebPlace(r) => (r.id, self.web_place(caller, r.params)),
+            R::WebLoad(r) => (r.id, self.web_load(caller, r.params)),
+            R::WebGo(r) => (r.id, self.web_go(caller, r.params)),
+            R::WebFocus(r) => (r.id, self.web_focus(caller, r.params)),
+            R::WebClose(r) => (r.id, self.web_close(caller, r.params)),
         }
     }
 }

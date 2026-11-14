@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.open opens a view on an address under a web:browse scope, in the window the runtime names",
+  "instance": {
+    "id": 31,
+    "method": "web.open",
+    "params": {
+      "url": "https://example.com/docs?page=2",
+      "surface": "main.endue-browser",
+      "scope": {
+        "permission": "web:browse",
+        "hosts": [
+          "example.com"
+        ]
+      }
+    }
+  }
+}

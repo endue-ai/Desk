@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.load never takes a view to one of the desk's own schemes",
+  "instance": {
+    "id": 35,
+    "method": "web.load",
+    "params": {
+      "viewId": "w-1",
+      "url": "desk-plugin://main.endue-notes/endue.notes/ui/index.html",
+      "scope": {
+        "permission": "web:browse"
+      }
+    }
+  }
+}
