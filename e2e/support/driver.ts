@@ -13,8 +13,8 @@ import { setTimeout as delay } from "node:timers/promises";
 import { type CefDesk, cefBinary, dataDir, freePort, launchCef } from "./cef";
 import { ensureChromedriver } from "./chrome-for-testing";
 
-/** The bottom-edge plugin every spec's app runs with: the dock the desk no longer ships (#276). */
-export const DOCK_FIXTURE = "e2e/fixtures/plugin-dock";
+/** A folder of plugins every spec's app installs as built in: the dock the desk no longer ships (#276). */
+export const BUILT_IN_FIXTURES = "e2e/fixtures/built-in";
 
 /**
  * chromedriver's port. Two runs on one machine need two ports: `DESK_E2E_DRIVER_PORT` names another
@@ -65,18 +65,16 @@ export function appEnv(
     ...env,
     HOME: appHome,
     DESK_INIT: join(root, "e2e/fixtures", init),
-    DESK_PLUGIN_DIRS: join(root, "plugins"),
+    // The desk ships no dock (#276). The specs keep one on the bottom edge, installed as a
+    // built-in plugin is (its manifest's permissions granted): the edge bar the window manager
+    // keeps windows clear of, and the tiles a surface is put away and opened with.
+    DESK_PLUGIN_DIRS: [join(root, "plugins"), join(root, BUILT_IN_FIXTURES)].join(delimiter),
     DESK_DEV_PLUGINS: join(root, "e2e/fixtures/plugin-e2e-hello"),
   };
   for (const [key, value] of Object.entries(extra)) {
     if (value === undefined) delete spec[key];
     else spec[key] = value;
   }
-  // The desk ships no dock (#276). The specs keep one on the bottom edge, a fixture beside
-  // whatever plugins a spec names: the edge bar the window manager keeps windows clear of, and
-  // the tiles a surface is put away and opened with.
-  const dev = [spec.DESK_DEV_PLUGINS, join(root, DOCK_FIXTURE)].filter(Boolean);
-  spec.DESK_DEV_PLUGINS = dev.join(delimiter);
   return spec;
 }
 

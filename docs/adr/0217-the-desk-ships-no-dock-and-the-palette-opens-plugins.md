@@ -46,9 +46,10 @@ lately, and leaves nothing on the screen.
   or closed opens from it, and one under other windows comes forward.
 * `role:dock` and the bottom edge stay in the spec and the runtime: a plugin someone makes can sit
   there. No built-in plugin fills the role (`roles.test.ts`).
-* The dock's folder moves to `e2e/fixtures/plugin-dock` under its id: the app e2e's driver adds it to
-  every spec's dev plugins, and the runtime's edges page serves it, so the specs of the bottom edge
-  bar and of putting a surface away keep the plugin they were written on.
+* The dock's folder moves to `e2e/fixtures/built-in/dock` under its id: the app e2e's driver
+  installs that folder's plugins as built in beside `plugins/`, and the runtime's edges page serves
+  it, so the specs of the bottom edge bar and of putting a surface away keep the plugin they were
+  written on.
 
 ### Consequences
 
