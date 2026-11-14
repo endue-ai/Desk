@@ -178,3 +178,22 @@ fn a_view_told_its_screen_is_held_until_it_paints_again() {
     assert!(screen.held(7));
     assert!(!screen.held(8));
 }
+
+/// A resize asks a held view for a whole frame once a telling: a page that paints nothing for it
+/// is not asked again at every size of a glide.
+#[test]
+fn a_held_view_is_asked_for_one_frame_a_telling() {
+    let mut screen = Screen::default();
+    assert!(!screen.ask_frame(0), "never told");
+    screen.placed(PANE, Instant::now());
+    screen.tell(3);
+    assert!(screen.ask_frame(3), "the first resize after the telling");
+    assert!(!screen.ask_frame(3), "the sizes that follow, no paint yet");
+    assert!(!screen.ask_frame(3));
+    assert!(screen.held(3), "still held: its paint has not come");
+    // It painted, then is told again: asked once more at its next resize.
+    assert!(!screen.ask_frame(4));
+    screen.tell(4);
+    assert!(screen.ask_frame(4));
+    assert!(!screen.ask_frame(4));
+}

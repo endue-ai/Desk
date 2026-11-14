@@ -88,6 +88,8 @@ pub struct Screen {
     /// until the page paints at the surface id the telling gave it, and a screen told meanwhile
     /// never reaches the page (`CefRenderWidgetHostViewOSR::ResizeRootLayer`).
     painted: u64,
+    /// A whole frame was asked of the view since its browser was last told (`ask_frame`).
+    asked: bool,
 }
 
 impl Screen {
@@ -112,6 +114,7 @@ impl Screen {
     pub fn tell(&mut self, paints: u64) {
         self.told = self.now.map(|(p, _)| p).or(self.told);
         self.painted = paints;
+        self.asked = false;
     }
 
     /// Whether CEF holds the view's resizes: its browser was told its screen and the view, at
@@ -121,6 +124,16 @@ impl Screen {
     /// through every catch-up (ADR 0210), until something else made its page paint.
     pub fn held(&self, paints: u64) -> bool {
         self.told.is_some() && paints <= self.painted
+    }
+
+    /// Whether a resize of the view, at `paints` frames, asks it for a whole frame: CEF holds it
+    /// (`held`) and none was asked of it since its screen was told. Once a telling, as ADR 0214
+    /// gives a window's own page one: a page that paints nothing for it (covered, asleep) was
+    /// asked again at every size of a glide, 274 times in a second of the motion gate's loop.
+    pub fn ask_frame(&mut self, paints: u64) -> bool {
+        let ask = self.held(paints) && !self.asked;
+        self.asked |= ask;
+        ask
     }
 
     /// The view's rect on its screen, `size` its own size (never empty, as CEF asks).
@@ -181,17 +194,22 @@ fn settled(view: &View) -> bool {
 /// `view` has a new size: its browser `host` hears it. The screen's info goes with it only for a
 /// new scale: with every resize it stalled a page whose window glides to a new size (#157,
 /// `View::rescaled`). While CEF still holds the view where its screen was told (`Screen::held`), a
-/// whole frame of it is asked for too: the paint ends the hold, and the size goes through after it.
+/// whole frame of it is asked for too, once a telling and of a view that shows (one shown again is
+/// asked for one anyway, `Action::Hide`): the paint ends the hold, and the size goes through after
+/// it. Each such frame is traced (`held`).
 pub fn resized(host: &cef::BrowserHost, view: &super::super::view::SharedView) {
     let (rescaled, held) = {
         let mut view = view.lock();
-        (view.rescaled(), view.screen.held(paints(&view)))
+        let painted = paints(&view);
+        let ask = !view.hidden && view.screen.ask_frame(painted);
+        (view.rescaled(), ask.then(|| view.surface.clone()))
     };
     if rescaled {
         host.notify_screen_info_changed();
     }
     host.was_resized();
-    if held {
+    if let Some(surface) = held {
+        crate::frame_trace::line("held", serde_json::json!({ "surface": surface }));
         host.invalidate(PaintElementType::VIEW);
     }
 }
