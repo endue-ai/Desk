@@ -222,14 +222,11 @@ pub fn draw(
         None => Projection::Orthographic,
     };
     scene.set_projection(lens);
-    let desk = scene.insert(
-        root,
-        GroupNode {
-            transform: Mat4::from_scale(Vec3::new(s, s, 1.0)),
-            opacity: 1.0,
-            clip: None,
-        },
-    )?;
+    let scaled = GroupNode {
+        transform: Mat4::from_scale(Vec3::new(s, s, 1.0)),
+        ..GroupNode::default()
+    };
+    let desk = scene.insert(root, scaled)?;
     // Under everything, unseen: the page takes the pointer wherever no surface is above it.
     let whole = Rect::new(0.0, 0.0, plan.screen.w as f32, plan.screen.h as f32);
     if let Some((id, _)) = from.page {
@@ -253,6 +250,8 @@ pub fn draw(
         on.draw(spread, now)?;
         return Ok(drawn);
     }
+    // The desktop that left slides out under the one coming in (ADR 0222).
+    super::draw_slide::leaving(scene, &mut chrome, desk, hosted, from)?;
     for w in &plan.windows {
         // Where a drop would snap: under the window dragged there.
         if let Some((at, _)) = hosted.preview().filter(|(_, under)| *under == w.id) {

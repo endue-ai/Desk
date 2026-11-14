@@ -10,6 +10,7 @@
 //!   resizing from a grip, Shift + drag panning the canvas.
 //! - `motion`: the desk's easing, a rect gliding, the snap preview growing and gliding.
 //! - `mid_glide`: a press on a window mid-glide, found where the window is drawn (#124).
+//! - `slide`: a desktop coming in front slides in from its side (ADR 0222).
 //! - `wm`, `pointer`, `ops`: [`Wm`], the window manager the compositor drives: the runtime's desk
 //!   with what it changed since, the compositor's pointer and keys, the `desk.display.*` window
 //!   commands, and each frame's places.
@@ -27,6 +28,7 @@ mod out;
 pub mod pointer;
 pub mod publish;
 pub mod resize;
+mod slide;
 pub mod wm;
 
 pub use drag::{DRAG_THRESHOLD, Drag, Phase, Step};
@@ -36,4 +38,5 @@ pub use ops::Op;
 pub use pointer::PressLog;
 pub use publish::{Answered, Change, Geometry, Published};
 pub use resize::{GRIPS, Grip, grip_at, resize_rect, resize_rect_min};
+pub use slide::Slide;
 pub use wm::{Frame, Out, Wm};

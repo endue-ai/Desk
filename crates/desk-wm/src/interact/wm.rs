@@ -49,6 +49,11 @@ pub struct Frame {
     pub preview: Option<(Rect, String)>,
     /// Something is still on its way: draw again.
     pub moving: bool,
+    /// While a desktop slides in (`slide.rs`): how far to the side it is drawn, which `drawn`
+    /// holds already, and how far the desktop that left is.
+    pub slide: Option<(f64, f64)>,
+    /// Another desktop is in front than at the last frame.
+    pub switched: bool,
 }
 
 /// The window manager on the compositor's input.
@@ -91,6 +96,8 @@ pub struct Wm {
     last: BTreeMap<String, (Rect, Option<Fill>)>,
     /// The desktop those were drawn on: another desktop's windows glide from nowhere.
     last_desktop: String,
+    /// The desktop in front sliding in after a switch (`slide.rs`).
+    pub(super) slide: Option<super::slide::Slide>,
 }
 
 impl Default for Wm {
@@ -127,6 +134,7 @@ impl Wm {
             clock: 0.0,
             last: BTreeMap::new(),
             last_desktop: String::new(),
+            slide: None,
         }
     }
 
@@ -246,8 +254,14 @@ impl Wm {
     }
 
     /// Where window `id` is drawn now: under the pointer, where a press stopped its glide, gliding,
-    /// or at its placement.
+    /// or at its placement; to the side of there while its desktop slides in (`slide.rs`).
     pub fn drawn_rect(&self, id: &str, now: f64) -> Option<Rect> {
+        let at = self.own_rect(id, now)?;
+        let aside = self.sliding(now).map_or(0.0, |(aside, _)| aside);
+        Some(Rect::new(at.x + aside, at.y, at.w, at.h))
+    }
+
+    fn own_rect(&self, id: &str, now: f64) -> Option<Rect> {
         if let Some(Live::Window { id: held, rect, .. }) =
             self.gesture.as_ref().and_then(Gesture::live)
             && held == id
@@ -295,13 +309,18 @@ impl Wm {
     pub fn frame(&mut self, now: f64) -> Frame {
         self.clock = now;
         let here = self.drawn.here();
-        if here != self.last_desktop {
+        let switched = here != self.last_desktop;
+        if switched {
+            let before = std::mem::replace(&mut self.last_desktop, here.clone());
+            self.slide_from(&before, &here, now);
             self.last.clear();
-            self.last_desktop = here;
         }
         let held = self.held().map(str::to_owned);
         let windows = self.drawn.windows();
-        let mut frame = Frame::default();
+        let mut frame = Frame {
+            switched,
+            ..Frame::default()
+        };
         let mut last = BTreeMap::new();
         for p in &windows {
             let Some(target) = self.target(&p.id) else {
@@ -332,7 +351,12 @@ impl Wm {
         self.last = last;
         frame.preview = (self.preview.at(now)).zip(held.clone());
         let sizing = (self.gesture.as_ref()).is_some_and(|g| g.sizing(now, self.motion));
-        frame.moving = !self.glides.is_empty() || self.preview.moving(now) || sizing;
+        frame.slide = self.sliding(now);
+        if frame.slide.is_none() {
+            self.slide = None;
+        }
+        let moving = !self.glides.is_empty() || frame.slide.is_some();
+        frame.moving = moving || self.preview.moving(now) || sizing;
         frame
     }
 

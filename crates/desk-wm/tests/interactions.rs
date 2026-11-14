@@ -16,6 +16,8 @@ mod mid_glide;
 mod panes;
 #[path = "interactions/reach.rs"]
 mod reach;
+#[path = "interactions/slide.rs"]
+mod slide;
 #[path = "interactions/snap.rs"]
 mod snap;
 #[path = "interactions/support.rs"]

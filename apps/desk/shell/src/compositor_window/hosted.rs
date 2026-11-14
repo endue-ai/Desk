@@ -78,6 +78,8 @@ pub struct Hosted {
     anchors: super::draw::anchor::Anchors,
     /// The page's reports laid out for another size than its picture (#269, `hosted_reports.rs`).
     held: reports::Held,
+    /// The desktop that left, while the one in front slides in (`hosted_slide.rs`).
+    leaving: Option<slide::Leaving>,
 }
 
 impl Hosted {
@@ -106,6 +108,7 @@ impl Hosted {
             own_pages: BTreeSet::new(),
             anchors: Default::default(),
             held: reports::Held::default(),
+            leaving: None,
         }
     }
 
@@ -146,6 +149,8 @@ impl Hosted {
             return Outcome::default();
         };
         let frame = self.wm.frame(self.ms(now));
+        let (kept, plan) = (self.leaving.take(), self.plan.as_ref());
+        self.leaving = slide::Leaving::follow(kept, &frame, plan);
         let page = self.wm.page();
         let pan = page.pan_of(&page.here());
         let (vw, vh) = (report.width, report.height);
@@ -368,6 +373,9 @@ mod picture;
 
 #[path = "hosted_reports.rs"]
 mod reports;
+
+#[path = "hosted_slide.rs"]
+mod slide;
 
 #[path = "hosted_protocol.rs"]
 mod protocol;
