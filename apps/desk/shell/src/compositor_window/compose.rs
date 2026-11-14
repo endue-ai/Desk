@@ -116,7 +116,12 @@ impl CompositorWindow {
             .filter_map(|(host, _)| host.strip_prefix(crate::web_host::window_pages::SURFACE))
             .map(str::to_owned)
             .collect();
-        self.hosted.own_pages(own);
+        // A window took to its own page, or lost it: the plan again, and the scene from it.
+        if self.hosted.own_pages(own) {
+            let outcome = self.hosted.replan(Instant::now());
+            self.carry(outcome);
+            self.shared.lock().dirty = true;
+        }
         let pictures = crate::frame_trace::on().then(|| {
             let composed = self.shared.lock();
             let size = |s: &str| composed.frames.size(composed.texture_of(s)?);
@@ -145,7 +150,7 @@ impl CompositorWindow {
             );
             self.host.placed(&placed, app, Instant::now());
         }
-        self.register(drawn.shown, &drawn.pages, &drawn.windows);
+        self.register(drawn.shown, &drawn.pages, &drawn.windows, &drawn.groups);
         self.tip_draw();
         // A window's page opened since the last look is laid out and given its focus (ADR 0201).
         self.place_window_pages();

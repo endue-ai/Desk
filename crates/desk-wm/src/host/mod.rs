@@ -220,6 +220,9 @@ pub struct Places {
     /// The snap preview and the window it lies under: what the page draws of the windows below
     /// it is drawn with them, under it (#159 finding 19).
     pub preview: Option<(Rect, String)>,
+    /// The windows drawn from a page of their own (ADR 0201): the desk's page draws nothing of
+    /// them, so nothing of it is kept under the windows for their sake.
+    pub own: BTreeSet<String>,
 }
 
 impl Desk {
@@ -278,12 +281,22 @@ impl Desk {
         // its views), drawing it again above every window would put that part over the other.
         // Each title's text is the compositor's own, drawn over the page's title bar. A window
         // the page lays out elsewhere than it is drawn leaves all of that place to its window.
-        let mut under: Vec<Rect> = hosted.iter().map(HostWindow::title_text).collect();
+        // A window drawn from its own page has none of this in the desk's page: kept out of the
+        // system layer all the same, its title's box and what lay under the windows above it cut
+        // the soft shadow of a pill or a notice lying over them into rectangles, stepped like the
+        // windows piled under it.
+        let paged = |w: &&HostWindow| !places.own.contains(&w.id);
+        let mut under: Vec<Rect> = (hosted.iter().filter(paged))
+            .map(HostWindow::title_text)
+            .collect();
         under.extend(places.stale.iter().copied());
         // The snap preview is drawn over every window but the one it lies under.
         let preview =
             (places.preview.as_ref()).filter(|(_, by)| hosted.iter().any(|w| &w.id == by));
         for (i, w) in hosted.iter().enumerate() {
+            if places.own.contains(&w.id) {
+                continue;
+            }
             let moved = w.page != w.rect;
             let tinted = preview.filter(|(_, by)| *by != w.id).map(|(r, _)| *r);
             for (part, _) in &w.page_parts {

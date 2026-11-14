@@ -54,6 +54,56 @@ fn a_windows_page_parts_leave_out_the_system_layer_above_it() {
     );
 }
 
+/// A pill's or a notice's soft shadow lying over the windows was cut into rectangles: each
+/// window's title, and what lay under the windows above it, was kept out of the system layer,
+/// though the desk's page draws nothing of a window drawn from its own page (ADR 0201).
+#[test]
+fn the_system_layer_is_whole_over_the_windows_drawn_from_their_own_page() {
+    let mut desk = desk_of_two();
+    // Mail over Notes' title bar and body.
+    desk.place("endue.mail", Rect::new(400.0, 110.0, 400.0, 300.0));
+    let whole = W * H;
+    let plain = desk.host_plan_at(W, H, TopChrome::default(), &Unseen, &Places::default());
+    assert!(
+        area(plain.page.iter().copied()) < whole,
+        "the page keeps the titles under its windows"
+    );
+    // Notes alone from its own page: only Mail's title is still kept under the windows.
+    let one = Places {
+        own: ["endue.notes".to_owned()].into(),
+        ..Places::default()
+    };
+    let p = desk.host_plan_at(W, H, TopChrome::default(), &Unseen, &one);
+    let notes = p.window("endue.notes").unwrap();
+    let mail = p.window("endue.mail").unwrap();
+    assert!(
+        p.page
+            .iter()
+            .any(|piece| piece.overlaps(&notes.title_text()))
+    );
+    assert!(
+        p.page
+            .iter()
+            .all(|piece| !piece.overlaps(&mail.title_text()))
+    );
+    assert_eq!(
+        area(p.page.iter().copied()),
+        whole - mail.title_text().w * mail.title_text().h
+    );
+    // Both from their own pages: the system layer is the whole screen.
+    let both = Places {
+        own: ["endue.notes".to_owned(), "endue.mail".to_owned()].into(),
+        ..Places::default()
+    };
+    let p = desk.host_plan_at(W, H, TopChrome::default(), &Unseen, &both);
+    assert_eq!(p.page, vec![Rect::new(0.0, 0.0, W, H)]);
+    // What the page would draw of them is still there for a window that loses its page.
+    assert_eq!(
+        p.window("endue.notes").unwrap().page_parts,
+        plain.window("endue.notes").unwrap().page_parts
+    );
+}
+
 #[test]
 fn a_part_moved_ahead_of_the_page_is_cut_where_the_page_shows_it() {
     let parts = vec![(

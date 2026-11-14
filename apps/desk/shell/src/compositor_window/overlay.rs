@@ -1,21 +1,31 @@
-//! What the compositor draws above the surfaces for input (#56): the focus ring round the plugin
-//! surface with the keyboard focus, and the drag image under the pointer with the effect its target
+//! What the compositor draws over the surfaces for input (#56): the focus ring round the plugin
+//! surface with the keyboard focus, in its window, and above everything the drag image under the
+//! pointer with the effect its target
 //! answered (`+` copy, `↗` link, `⊘` refused). Neither takes the pointer: hit testing passes
 //! through them, and during a drag the broker owns the pointer anyway. The colours are fixed until
 //! the compositor draws the chrome from the token table (#53).
 
 use desk_compositor::input::DragOverlay;
 use desk_compositor::{
-    Color, Corners, GroupNode, Node, Rect, RectNode, Scene, Shadow, Stroke, TextNode, TextStyle,
+    Color, Corners, GroupNode, Node, NodeId, Rect, RectNode, Scene, Shadow, Stroke, TextNode,
+    TextStyle,
 };
 use desk_surface::generated::SurfaceDropAnswer;
 
 /// The ring's colour: the desk's accent.
 const RING: u32 = 0x4c8dff;
 
-/// The focus ring round `rect` (device pixels), two logical pixels wide inside it, rounded by
-/// `radius` (device pixels) on the `corners` its pane shares with its window's frame (#250).
-pub fn focus_ring(scene: &mut Scene, rect: Rect, scale: f32, (radius, corners): (f32, Corners)) {
+/// The focus ring round `rect` in `parent` (its units, `scale` device pixels each), two logical
+/// pixels wide inside it, rounded by `radius` on the `corners` its pane shares with its window's
+/// frame (#250). In its window's group it is drawn with the window: what lies above the window, a
+/// floating one or a bar, lies above its ring too (ADR 0219).
+pub fn focus_ring(
+    scene: &mut Scene,
+    parent: NodeId,
+    rect: Rect,
+    scale: f32,
+    (radius, corners): (f32, Corners),
+) {
     let ring = |radius: f32| {
         let ring = RectNode {
             rect,
@@ -29,9 +39,8 @@ pub fn focus_ring(scene: &mut Scene, rect: Rect, scale: f32, (radius, corners): 
         };
         Node::from(ring).with_hit(false)
     };
-    let root = scene.root();
     if radius <= 0.0 || corners == Corners::NONE {
-        let _ = scene.insert(root, ring(0.0));
+        let _ = scene.insert(parent, ring(0.0));
         return;
     }
     // A shape has one radius: each quarter, clipped on whole pixels, takes its own corner's.
@@ -49,7 +58,7 @@ pub fn focus_ring(scene: &mut Scene, rect: Rect, scale: f32, (radius, corners): 
             clip: Some(clip),
             ..GroupNode::default()
         };
-        if let Ok(quarter) = scene.insert(root, Node::from(group).with_hit(false)) {
+        if let Ok(quarter) = scene.insert(parent, Node::from(group).with_hit(false)) {
             let _ = scene.insert(quarter, ring(if rounded { radius } else { 0.0 }));
         }
     }
@@ -206,14 +215,15 @@ mod tests {
     #[test]
     fn neither_mark_takes_the_pointer() {
         let mut scene = Scene::new(400, 300);
+        let root = scene.root();
         focus_ring(
             &mut scene,
+            root,
             Rect::new(10.0, 10.0, 100.0, 100.0),
             2.0,
             (0.0, Corners::NONE),
         );
         drag_image(&mut scene, &overlay(SurfaceDropAnswer::Copy, 1), 2.0);
-        let root = scene.root();
         assert_eq!(scene.children(root).len(), 3);
         assert!(
             scene
@@ -259,7 +269,8 @@ mod tests {
         let mut compositor = desk_compositor::Compositor::new(&gpu.device, &gpu.queue, format);
         let mut scene = Scene::new(120, 100);
         let ring = Rect::new(10.0, 10.0, 101.0, 80.0);
-        focus_ring(&mut scene, ring, 1.0, (11.0, Corners::BOTTOM));
+        let root = scene.root();
+        focus_ring(&mut scene, root, ring, 1.0, (11.0, Corners::BOTTOM));
         let target = desk_compositor::headless::Target::new(&gpu.device, (120, 100), format);
         compositor.render(&scene, &target.view, target.size);
         let rgba = target.read_rgba(&gpu.device, &gpu.queue).unwrap();

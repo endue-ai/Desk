@@ -92,6 +92,8 @@ pub struct Drawn {
     pub over: Vec<Rect>,
     /// Each window, by id, and where its frame is drawn: its picture's size while it is resized.
     pub windows: Vec<(String, Rect)>,
+    /// Each window's group, at its place in the stack: the focus ring is drawn in it.
+    pub groups: Vec<(String, NodeId)>,
 }
 
 pub(super) fn rect(r: desk_wm::Rect) -> Rect {
@@ -293,6 +295,7 @@ pub(super) fn window(
     });
     drawn.windows.push((w.id.clone(), at));
     let made = chrome.window(scene, desk, at, &w.title, None, w.focused)?;
+    drawn.groups.push((w.id.clone(), made.group));
     // The title sits between the icon and the tools the page draws, clear of the top chips.
     let (start, end) = w.title_insets();
     chrome.clear_title(scene, &made, start as f32, end as f32)?;

@@ -53,6 +53,7 @@ pub(super) fn places(
         drawn,
         heard: laid,
         stale: painted.stale(),
+        own: own.clone(),
         ..Places::default()
     };
     for w in &first.windows {
@@ -84,12 +85,15 @@ impl Hosted {
     }
 
     /// The windows drawn from their own page in the last scene (ADR 0201): no paint of the desk's
-    /// page decides where they are (#252).
-    pub fn own_pages(&mut self, own: BTreeSet<String>) {
+    /// page decides where they are (#252), and the desk's page draws nothing of them. Whether the
+    /// set changed: the plan is then made again, since what the system layer leaves to the
+    /// windows follows it (`Places::own`).
+    pub fn own_pages(&mut self, own: BTreeSet<String>) -> bool {
+        let changed = self.own_pages != own;
         self.own_pages = own;
+        changed
     }
 
-    /// Whether what the page's picture shows changed since the last ask: the scene is drawn again.
     /// The scene is laid out from the plan now: each window's anchor follows from where the last
     /// layout had it (`draw_anchor.rs`).
     pub fn follow_anchors(&mut self) {
@@ -103,6 +107,7 @@ impl Hosted {
         self.anchors.of(id)
     }
 
+    /// Whether what the page's picture shows changed since the last ask: the scene is drawn again.
     pub fn take_restaged(&mut self) -> bool {
         std::mem::take(&mut self.restaged)
     }

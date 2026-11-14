@@ -13,6 +13,7 @@ use std::time::Instant;
 use cef::ImplBrowser;
 use desk_compositor::input::keymap::{KeyEntry, KeyLike, Platform};
 use desk_compositor::input::{Input, Out, PageFocus};
+use desk_compositor::{NodeId, Rect};
 use desk_surface::generated::{CompositorMessage, SurfaceMessage};
 use desk_web::sender::Role;
 use serde::Deserialize;
@@ -226,12 +227,14 @@ impl CompositorWindow {
     }
 
     /// Tell the router what each node shows and the window's own page each surface lies in (ADR
-    /// 0201), and draw the focus ring and the drag image (#56).
+    /// 0201), and draw the focus ring, in its window (`frames`, `groups`: where each window's frame
+    /// is drawn and the group it is drawn in), and the drag image (#56).
     pub(super) fn register(
         &mut self,
         shown: Shown,
         pages: &[(String, String)],
-        frames: &[(String, desk_compositor::Rect)],
+        frames: &[(String, Rect)],
+        groups: &[(String, NodeId)],
     ) {
         let router = &mut self.router;
         router.targets.clear();
@@ -273,8 +276,12 @@ impl CompositorWindow {
                 let look = (self.theme.window.radius, scale);
                 draw::pixels::ring_of(plan, key, look, frames)
             });
-        if let Some((device, corners)) = ring {
-            overlay::focus_ring(&mut self.scene, device, scale, corners);
+        // In its window's group, in the group's CSS pixels: drawn with the window, under whatever
+        // lies above it (a floating window, a bar).
+        if let Some(ring) = ring
+            && let Some((_, group)) = groups.iter().find(|(id, _)| *id == ring.window)
+        {
+            overlay::focus_ring(&mut self.scene, *group, ring.rect, 1.0, ring.rounded);
         }
         if let Some(drag) = router.overlay() {
             overlay::drag_image(&mut self.scene, &drag, scale);
