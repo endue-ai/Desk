@@ -20,7 +20,7 @@ import type { Lang } from "./copy";
 
 export type { DrawerItem };
 
-export type RailId = "brain" | "sees" | "tasks" | "desks" | "vm" | "listen";
+export type RailId = "brain" | "sees" | "tasks" | "desks" | "vm" | "listen" | "arrange";
 
 /** Something that needs the person, in the inbox; `action` is a button that runs a command. */
 export interface AttentionItem {

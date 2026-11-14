@@ -1,39 +1,25 @@
-/* Arranging windows (ADR 0116): the right-edge strip. */
+/* Arranging windows (ADR 0116): the actions the right rail's Arrange button shows (ADR 0220). */
 
-/* The strip: a column of the design system's icon buttons under the status rail, above the
-   running chips (bottom 20 + 32 + 12). A short app lays it out as a row so it never meets the rail. */
-.arrange-strip {
-  right: var(--space-6);
-  top: auto;
-  bottom: calc(var(--space-5) + var(--control-sm) + var(--space-3));
-  gap: var(--space-1);
-  width: auto;
-  padding: var(--space-1);
-  transform: none;
+/* The actions open beside their button, their bottom level with its bottom: the button is the
+   rail's last, and a list hung from its top would run down over the canvas map. Narrower than the
+   rail's other popovers: four short rows. */
+.rail-popover.is-arrange {
+  width: 240px;
+  transform: translateY(-100%);
 }
-.arrange-strip .icon-button {
-  width: var(--control-sm);
-  height: var(--control-sm);
+.arrange-item {
+  gap: var(--space-2);
 }
-.arrange-strip .icon-button[aria-disabled="true"] {
+.arrange-item svg { flex: none; }
+.arrange-item .pop-text { flex: 1; text-align: left; }
+.arrange-item[aria-disabled="true"] {
   color: var(--desk-text-muted);
   cursor: default;
   opacity: 0.5;
 }
-.arrange-strip .icon-button[aria-disabled="true"]:hover { background: var(--desk-icon-button-bg); }
-.arrange-strip .icon-button:focus-visible {
-  outline: var(--desk-focus-width) solid var(--desk-ring);
-  outline-offset: var(--desk-focus-offset);
-}
-.arrange-divider {
-  width: 20px;
+.arrange-item[aria-disabled="true"]:hover { background: transparent; }
+.pop-divider {
   height: 1px;
-  margin: 2px 0;
+  margin: 2px var(--space-2);
   background: var(--desk-border);
-}
-.arrange-tip.is-above { transform: translate(50%, calc(-100% - var(--space-2))); }
-
-@media (max-height: 719px) {
-  .arrange-strip { flex-direction: row; }
-  .arrange-divider { width: 1px; height: 20px; margin: 0 2px; }
 }

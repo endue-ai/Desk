@@ -4,7 +4,8 @@ date: 2026-11-08
 decision-makers: Team endue
 ---
 
-Status: amended by ADR 0158: `desk-wm` tiles, cascades and restores; the spread, which the page drew
+Status: amended by ADR 0220: the strip is gone; the right rail's one Arrange button shows the four
+actions. Amended by ADR 0158: `desk-wm` tiles, cascades and restores; the spread, which the page drew
 over windows the compositor now draws, waits for the compositor to draw it (#54), its command, key
 and strip button with it.
 Amended by ADR 0161: the compositor draws the spread from the windows' live textures, its controller is

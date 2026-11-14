@@ -7,9 +7,8 @@
 //! tooltip stays away after a click): not until the page says another title, as the page says the
 //! pressed element's late, and a dragged window's page says the titles of its grips and its body as
 //! it catches up with the pointer. The wheel, the pointer leaving the window and the window losing
-//! the focus put it away too. The desk's page labels some controls itself (the rail's and the
-//! arrange strip's `.tooltip`, drawn in the `desk.overlays` part): those carry no `title`, so none
-//! is labelled twice.
+//! the focus put it away too. The desk's page labels some controls itself (the rail's `.tooltip`,
+//! drawn in the `desk.overlays` part): those carry no `title`, so none is labelled twice.
 
 use std::collections::{BTreeMap, HashMap};
 use std::time::{Duration, Instant};

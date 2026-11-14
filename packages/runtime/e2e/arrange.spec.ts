@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import type { SurfacePlacement } from "../src/modes/types";
-import { DESK, openShell, step } from "./shell-helpers";
+import { DESK, openShell } from "./shell-helpers";
 import { shellTree } from "./shell-tree";
 
 test.use({ viewport: DESK });
@@ -49,29 +49,68 @@ const boxes = (page: Page) =>
       }),
     ),
   );
-const strip = (page: Page) => page.locator(".arrange-strip");
-const button = (page: Page, key: string) => page.locator(`.arrange-strip [data-arrange="${key}"]`);
+const arrange = (page: Page) => page.locator('.rail [data-rail="arrange"]');
+const actions = (page: Page) => page.locator('.rail-popover[data-popover="arrange"]');
+const button = (page: Page, key: string) => actions(page).locator(`[data-arrange="${key}"]`);
+/** Show the actions as a pointer does, and wait for them. */
+async function show(page: Page) {
+  await arrange(page).hover();
+  await expect(actions(page)).toBeVisible();
+}
 
-test.describe("the right-edge strip", () => {
-  test("labels its buttons, names each key in a tooltip and takes one Tab stop", async ({
+test.describe("the rail's Arrange button", () => {
+  test("shows its actions under the pointer, each with its key, and puts them away once it has left", async ({
     page,
   }) => {
     await openShell(page, "?lang=en");
     await seed(page);
-    await expect(strip(page)).toHaveAttribute("role", "toolbar");
-    await expect(button(page, "tile")).toHaveAttribute("aria-label", "Tile windows");
+    await expect(page.locator(".arrange-strip")).toHaveCount(0);
+    await expect(arrange(page)).toHaveAttribute("aria-label", "Arrange windows");
+    await expect(arrange(page)).toHaveAttribute("aria-expanded", "false");
+    await show(page);
+    await expect(arrange(page)).toHaveAttribute("aria-expanded", "true");
+    await expect(button(page, "tile")).toHaveText("Tile windows⌥⌘G");
     await expect(button(page, "tile")).toHaveAttribute("aria-keyshortcuts", "Meta+Alt+G");
     await expect(button(page, "restore")).toHaveAttribute("aria-disabled", "true");
-    await button(page, "tile").hover();
-    await expect(page.locator(".arrange-tip")).toHaveText("Tile windows (⌥⌘G)");
-    await button(page, "tile").focus();
-    await page.keyboard.press("ArrowDown");
-    await expect(button(page, "cascade")).toBeFocused();
-    await page.keyboard.press("End");
-    await expect(button(page, "restore")).toBeFocused();
-    await expect(button(page, "tile")).toHaveAttribute("tabindex", "-1");
+    expect(await shellTree(page, '.rail-popover[data-popover="arrange"]')).toMatchSnapshot(
+      "actions.json",
+    );
+    // Across to the actions: they stay under the pointer.
+    await button(page, "spread").hover();
+    await page.waitForTimeout(500);
+    await expect(actions(page)).toBeVisible();
     await page.mouse.move(700, 120);
-    expect(await shellTree(page, ".arrange-strip")).toMatchSnapshot("strip.json");
+    await expect(actions(page)).toHaveCount(0);
+  });
+
+  test("keeps its actions open after a press, as the rail's other buttons do, and a second press closes them", async ({
+    page,
+  }) => {
+    await openShell(page, "?lang=en");
+    await seed(page);
+    await show(page);
+    await arrange(page).click();
+    await page.mouse.move(700, 120);
+    await page.waitForTimeout(500);
+    await expect(actions(page)).toBeVisible();
+    await arrange(page).click();
+    await expect(actions(page)).toHaveCount(0);
+    // From the keyboard: Enter opens them, with no pointer near.
+    await page.mouse.move(700, 120);
+    await arrange(page).focus();
+    await page.keyboard.press("Enter");
+    await expect(actions(page)).toBeVisible();
+    await page.keyboard.press("Tab");
+    await expect(button(page, "tile")).toBeFocused();
+  });
+
+  test("leaves another popover of the rail open when the pointer crosses it", async ({ page }) => {
+    await openShell(page, "?lang=en");
+    await page.locator('.rail [data-rail="tasks"]').click();
+    await arrange(page).hover();
+    await page.waitForTimeout(100);
+    await expect(page.locator('.rail-popover[data-popover="tasks"]')).toBeVisible();
+    await expect(actions(page)).toHaveCount(0);
   });
 
   for (const viewport of [
@@ -80,31 +119,20 @@ test.describe("the right-edge strip", () => {
     { width: 1024, height: 768 },
     { width: 1024, height: 640 },
   ]) {
-    test(`meets neither the rail nor the running work at ${viewport.width}×${viewport.height}`, async ({
+    test(`shows every action inside the app at ${viewport.width}×${viewport.height}`, async ({
       page,
     }) => {
       await page.setViewportSize(viewport);
       await openShell(page, "?lang=en");
-      await page.evaluate(() => window.__shell.wm.desktop(2));
-      await step(page, 100);
-      const hits = await page.evaluate(() => {
-        const box = (el: Element) => el.getBoundingClientRect();
-        const own = box(document.querySelector(".arrange-strip") as Element);
-        return [".rail", ".running > li", ".desktops", ".composer"].flatMap((sel) =>
-          [...document.querySelectorAll(sel)]
-            .map(box)
-            .filter(
-              (r) =>
-                r.width > 0 &&
-                own.x < r.right &&
-                r.x < own.right &&
-                own.y < r.bottom &&
-                r.y < own.bottom,
-            )
-            .map(() => sel),
-        );
-      });
-      expect(hits).toEqual([]);
+      await seed(page);
+      await show(page);
+      const box = await actions(page).boundingBox();
+      const rail = await page.locator(".rail").boundingBox();
+      if (!box || !rail) throw new Error("no actions or no rail");
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+      // Beside the rail, not over it.
+      expect(box.x + box.width).toBeLessThanOrEqual(rail.x);
     });
   }
 });
@@ -116,7 +144,10 @@ test.describe("arranging", () => {
     await openShell(page, "?lang=en");
     await seed(page);
     const before = await boxes(page);
+    await show(page);
     await button(page, "tile").click();
+    // A choice puts the actions away.
+    await expect(actions(page)).toHaveCount(0);
     await expect.poll(() => boxes(page)).not.toEqual(before);
     const tiled = await boxes(page);
     // Three columns across the free area (104 to 1336) under Eris and above the dock, 12 px apart.
@@ -125,6 +156,8 @@ test.describe("arranging", () => {
     expect(tiled.tomorrow).toEqual([933, 190, 403, 598]);
     expect(tiled["window-1"]).toEqual(before["window-1"]);
     expect(await shellTree(page, ".surfaces")).toMatchSnapshot("tiled.json");
+    await page.mouse.move(700, 120);
+    await show(page);
     await expect(button(page, "restore")).toHaveAttribute("aria-disabled", "false");
     await button(page, "restore").click();
     await expect.poll(() => boxes(page)).toEqual(before);

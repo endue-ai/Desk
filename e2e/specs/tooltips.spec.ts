@@ -3,7 +3,7 @@
 // has rested on it, in the theme's tooltip look, and puts it away on a move, and on a press until
 // the pointer moves on (nothing shows where a dragged window is dropped). The desk's
 // own page says its titles and its CSS cursor the same way; the controls it labels itself (the
-// rail's and the arrange strip's tooltips) carry no `title`, so each is labelled once. The events
+// rail's tooltips) carry no `title`, so each is labelled once. The events
 // are winit's, fed to the compositor window's own input entry (support/compositor.ts): the screen
 // may be locked. What shows is the compositor's `compositor_input_state.tooltip`, and its frame.
 import { browser, expect } from "@wdio/globals";
@@ -178,16 +178,13 @@ describe("tooltips: a page's hover title is drawn by the compositor, in the them
 
   it("labels each control the desk labels itself once: its own tooltip, no title", async () => {
     const own = await browser.execute(() =>
-      [...document.querySelectorAll<HTMLElement>(".rail-button, .arrange-button")]
+      [...document.querySelectorAll<HTMLElement>(".rail-button")]
         .filter((b) => b.checkVisibility())
-        .map((b) => ({
-          key: b.dataset.key ?? b.dataset.arrange ?? "",
-          titled: !!b.closest("[title]"),
-        })),
+        .map((b) => ({ key: b.dataset.key ?? "", titled: !!b.closest("[title]") })),
     );
-    expect(own.some((b) => b.key === "tile")).toBe(true);
+    expect(own.some((b) => b.key === "rail-arrange")).toBe(true);
     expect(own.filter((b) => b.titled)).toEqual([]);
-    for (const selector of ['[data-arrange="tile"]', '[data-key^="rail-"]']) {
+    for (const selector of ['[data-key^="rail-"]']) {
       const at = await middle(selector);
       if (!at) continue;
       await arrive(at);

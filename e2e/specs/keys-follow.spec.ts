@@ -276,10 +276,19 @@ describe("keys follow the window in use", () => {
     const others = (await windowHosts()).filter((h) => h !== TERMINAL_HOST);
     expect(others).not.toContain(await focused());
     await feed(keyPress("Escape", "Escape"));
-    const tile = await browser.execute(() => {
-      const r = document.querySelector('button[data-arrange="tile"]')?.getBoundingClientRect();
-      return r ? [r.x + r.width / 2, r.y + r.height / 2] : null;
+    const middleOf = (selector: string) =>
+      browser.execute((selector: string) => {
+        const r = document.querySelector(selector)?.getBoundingClientRect();
+        return r ? [r.x + r.width / 2, r.y + r.height / 2] : null;
+      }, selector);
+    // Tile is one of the actions the rail's Arrange button shows.
+    const arrange = await middleOf('.rail [data-rail="arrange"]');
+    if (!arrange) throw new Error("no Arrange button");
+    await click(arrange as [number, number]);
+    await browser.waitUntil(async () => (await middleOf('button[data-arrange="tile"]')) !== null, {
+      timeoutMsg: "the Arrange actions never showed",
     });
+    const tile = await middleOf('button[data-arrange="tile"]');
     if (!tile) throw new Error("no Tile windows button");
     await click(tile as [number, number]);
     await browser.pause(600);

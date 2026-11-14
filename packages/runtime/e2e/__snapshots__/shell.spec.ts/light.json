@@ -1123,14 +1123,14 @@
      "aria-label": "Status",
      "box": [
       1360,
-      311,
+      289,
       56,
-      278
+      322
      ],
      "style": {
       "background": "rgb(255, 255, 255)",
       "border": "solid rgb(221, 214, 229)",
-      "transform": "matrix(1, 0, 0, 1, 0, -139)"
+      "transform": "matrix(1, 0, 0, 1, 0, -161)"
      },
      "children": [
       {
@@ -1141,7 +1141,7 @@
        "data-rail": "brain",
        "box": [
         1368,
-        320,
+        298,
         40,
         40
        ],
@@ -1171,7 +1171,7 @@
        "data-rail": "sees",
        "box": [
         1368,
-        364,
+        342,
         40,
         40
        ],
@@ -1193,7 +1193,7 @@
        "data-rail": "tasks",
        "box": [
         1368,
-        408,
+        386,
         40,
         40
        ],
@@ -1225,7 +1225,7 @@
        "data-rail": "desks",
        "box": [
         1368,
-        452,
+        430,
         40,
         40
        ],
@@ -1247,7 +1247,7 @@
        "data-rail": "vm",
        "box": [
         1368,
-        496,
+        474,
         40,
         40
        ],
@@ -1269,7 +1269,7 @@
        "data-rail": "listen",
        "box": [
         1368,
-        540,
+        518,
         40,
         40
        ],
@@ -1288,6 +1288,28 @@
           "background": "rgb(95, 208, 190)",
           "color": "rgb(30, 24, 51)"
          }
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button rail-button",
+       "aria-label": "창 정리",
+       "aria-expanded": "false",
+       "data-rail": "arrange",
+       "box": [
+        1368,
+        562,
+        40,
+        40
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "arrange-tile"
         }
        ]
       }
@@ -2262,124 +2284,6 @@
        ]
       }
      ]
-    },
-    {
-     "tag": "aside",
-     "class": "arrange-strip float-bar",
-     "role": "toolbar",
-     "aria-label": "창 정리",
-     "box": [
-      1374,
-      677,
-      42,
-      159
-     ],
-     "style": {
-      "background": "rgb(255, 255, 255)",
-      "border": "solid rgb(221, 214, 229)"
-     },
-     "children": [
-      {
-       "tag": "button",
-       "class": "icon-button arrange-button",
-       "aria-label": "창 바둑판 배열",
-       "box": [
-        1379,
-        682,
-        32,
-        32
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "arrange-tile"
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "icon-button arrange-button",
-       "aria-label": "창 계단식 배열",
-       "box": [
-        1379,
-        718,
-        32,
-        32
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "arrange-cascade"
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "icon-button arrange-button",
-       "aria-label": "창 펼쳐 보기",
-       "box": [
-        1379,
-        754,
-        32,
-        32
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "arrange-spread"
-        }
-       ]
-      },
-      {
-       "tag": "span",
-       "class": "arrange-divider",
-       "style": {
-        "background": "rgb(221, 214, 229)",
-        "color": "rgb(30, 24, 51)"
-       }
-      },
-      {
-       "tag": "button",
-       "class": "icon-button arrange-button is-restore",
-       "aria-label": "이전 창 배치로 되돌리기",
-       "box": [
-        1379,
-        799,
-        32,
-        32
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)",
-        "opacity": "0.5"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "arrange-restore"
-        }
-       ]
-      }
-     ]
-    },
-    {
-     "tag": "div",
-     "class": "tooltip arrange-tip",
-     "role": "tooltip",
-     "hidden": "",
-     "style": {
-      "display": "none",
-      "background": "rgb(30, 24, 51)",
-      "color": "rgb(242, 240, 245)"
-     }
     }
    ]
   }

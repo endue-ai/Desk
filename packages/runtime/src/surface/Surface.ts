@@ -378,7 +378,7 @@ export function mountSurfaces(
     listen(window, "resize", draw),
     ctx.held.onChange(draw),
     trackTopChrome(layer, root.closest(".shell") ?? root),
-    // Tile, cascade and spread, with the strip on the right edge (ADR 0116).
+    // Tile, cascade and spread, with their button in the right rail (ADR 0116, ADR 0220).
     mountArrange(root, ctx),
   ];
   return () => {

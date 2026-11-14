@@ -1,4 +1,13 @@
-/** Right status rail: six icon buttons with a dot and a count, a tooltip on hover, a popover on click. */
+/**
+ * Right status rail: six icon buttons with a dot and a count, a tooltip on hover, a popover on
+ * click; and one more, Arrange windows, whose actions (Tile, Cascade, Spread, Restore) show as
+ * soon as the pointer is on it (ADR 0220), stay while the pointer is on them, and go once it has
+ * left both. A click or Enter keeps them open, as the other buttons' popovers are.
+ */
+
+import { arrangeText } from "../arrange/copy";
+import { arrangeIcon } from "../arrange/icons";
+import { arrangeActions, arrangeWatch, runArrange } from "../arrange/menu";
 import type { BrainName } from "../bridge/types";
 import { toggleListening } from "../eris/hey";
 import { agentName, isOpen } from "../system/agents";
@@ -15,6 +24,10 @@ interface Item {
   dot?: "success" | "info" | "warning" | "active" | "attention";
   count?: number;
 }
+
+/** How long the pointer may be off both the Arrange button and its actions before they go: the
+ * time to cross the gap between the rail and its popover, where the pointer is over a window. */
+const LEAVE_MS = 350;
 
 function items(ctx: ShellCtx, s: DeskState): Item[] {
   const b = s.brain;
@@ -66,6 +79,7 @@ function items(ctx: ShellCtx, s: DeskState): Item[] {
       label: ctx.tr(s.listening ? "listenOn" : "listenOff"),
       dot: s.listening ? "active" : undefined,
     },
+    { id: "arrange", icon: "arrange", label: arrangeText(s.lang, "strip") },
   ];
 }
 
@@ -181,6 +195,28 @@ function body(ctx: ShellCtx, id: RailId, s: DeskState): Child[] {
           ctx.tr(v === "on" ? "vmOn" : v === "none" ? "vmNone" : "vmResting"),
         ),
       );
+    case "arrange":
+      return arrangeActions(ctx, s).flatMap((action) => [
+        action.apart ? h("div", { class: "pop-divider", role: "separator" }) : null,
+        h(
+          "button",
+          {
+            class: "menu-item arrange-item",
+            type: "button",
+            "data-arrange": action.key,
+            "aria-disabled": String(action.disabled),
+            "aria-keyshortcuts": action.combo,
+            onClick: () => {
+              if (action.disabled) return;
+              set({ popover: null });
+              runArrange(ctx, action.command);
+            },
+          },
+          arrangeIcon(action.key, 16),
+          h("span", { class: "pop-text" }, action.label),
+          action.shortcut ? muted(action.shortcut) : null,
+        ),
+      ]);
     default:
       return [];
   }
@@ -192,6 +228,30 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
   const pop = h("div", { class: "rail-popover-slot" });
   root.append(el, tooltip, pop);
   let tipFor: RailId | null = null;
+  /** The Arrange actions show because the pointer is on them: they go when it has left. */
+  let hovered = false;
+  let leaving: number | undefined;
+  const stay = () => {
+    window.clearTimeout(leaving);
+    leaving = undefined;
+  };
+  /** The pointer came onto the Arrange button: its actions show, unless something else is open. */
+  const hover = () => {
+    stay();
+    const open = ctx.store.get().popover;
+    if (open !== null) return;
+    hovered = true;
+    ctx.store.set({ popover: "arrange" });
+  };
+  /** The pointer left the button or the actions: they go unless it comes back within `LEAVE_MS`. */
+  const leave = () => {
+    if (!hovered || leaving !== undefined) return;
+    leaving = window.setTimeout(() => {
+      leaving = undefined;
+      if (hovered && ctx.store.get().popover === "arrange") ctx.store.set({ popover: null });
+      hovered = false;
+    }, LEAVE_MS);
+  };
 
   const showTip = (button: HTMLElement | null) => {
     const s = ctx.store.get();
@@ -229,27 +289,39 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
             "aria-pressed": item.id === "listen" ? String(s.listening) : undefined,
             onClick: () => {
               if (item.id === "listen") return void toggleListening(ctx);
+              // A press on Arrange while its actions show under the pointer keeps them.
+              if (item.id === "arrange" && hovered && s.popover === "arrange") {
+                hovered = false;
+                return stay();
+              }
+              hovered = false;
               ctx.store.set({ popover: s.popover === item.id ? null : item.id });
             },
           },
-          icon(item.icon, 20),
+          item.id === "arrange" ? arrangeIcon("tile", 20) : icon(item.icon, 20),
           item.dot ? h("span", { class: `dot dot-${item.dot} rail-dot` }) : null,
           item.count ? h("span", { class: "badge rail-badge" }, item.count) : null,
         ),
       ),
     );
     const open = list.find((i) => i.id === s.popover);
+    if (s.popover !== "arrange") hovered = false;
+    // The Arrange actions lie level with their button, so the pointer goes straight across.
+    const button = open?.id === "arrange" ? el.querySelector('[data-rail="arrange"]') : null;
+    const top = button
+      ? button.getBoundingClientRect().bottom - root.getBoundingClientRect().top
+      : el.offsetTop;
     render(pop, () =>
       open
         ? [
             h(
               "div",
               {
-                class: "popover rail-popover",
+                class: `popover rail-popover${button ? " is-arrange" : ""}`,
                 role: "dialog",
                 "aria-label": open.label,
                 "data-popover": open.id,
-                style: { top: `${el.offsetTop}px` },
+                style: { top: `${top}px` },
               },
               h("div", { class: "pop-title" }, open.label),
               ...body(ctx, open.id, s),
@@ -275,15 +347,28 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
         s.popover,
         s.lang,
         layoutOf(s).rail,
+        arrangeWatch(s),
       ],
       draw,
     ),
-    listen(el, "pointerover", (e) => showTip(target(e))),
-    listen(el, "pointerleave", () => showTip(null)),
+    ctx.runtime.keymap.onChange(draw),
+    listen(el, "pointerover", (e) => {
+      const over = target(e);
+      showTip(over);
+      if (over?.dataset.rail === "arrange") hover();
+      else leave();
+    }),
+    listen(el, "pointerleave", () => {
+      showTip(null);
+      leave();
+    }),
+    listen(pop, "pointerenter", stay),
+    listen(pop, "pointerleave", leave),
     listen(el, "focusin", (e) => showTip(target(e))),
     listen(el, "focusout", () => showTip(null)),
   ];
   return () => {
+    stay();
     for (const off of offs) off();
     el.remove();
     tooltip.remove();

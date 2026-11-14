@@ -1,0 +1,144 @@
+{
+ "tag": "div",
+ "class": "popover rail-popover is-arrange",
+ "role": "dialog",
+ "aria-label": "Arrange windows",
+ "data-popover": "arrange",
+ "box": [
+  1108,
+  412,
+  240,
+  190
+ ],
+ "style": {
+  "background": "rgb(43, 39, 49)",
+  "border": "solid rgb(51, 49, 54)",
+  "transform": "matrix(1, 0, 0, 1, 0, -189.797)"
+ },
+ "children": [
+  {
+   "tag": "div",
+   "class": "pop-title",
+   "style": {
+    "color": "rgb(176, 173, 183)"
+   },
+   "text": "Arrange windows"
+  },
+  {
+   "tag": "button",
+   "class": "menu-item arrange-item",
+   "children": [
+    {
+     "tag": "svg",
+     "icon": "arrange-tile"
+    },
+    {
+     "tag": "span",
+     "class": "pop-text",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     },
+     "text": "Tile windows"
+    },
+    {
+     "tag": "span",
+     "class": "pop-muted",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "⌥⌘G"
+    }
+   ]
+  },
+  {
+   "tag": "button",
+   "class": "menu-item arrange-item",
+   "children": [
+    {
+     "tag": "svg",
+     "icon": "arrange-cascade"
+    },
+    {
+     "tag": "span",
+     "class": "pop-text",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     },
+     "text": "Cascade windows"
+    },
+    {
+     "tag": "span",
+     "class": "pop-muted",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "⌥⌘C"
+    }
+   ]
+  },
+  {
+   "tag": "button",
+   "class": "menu-item arrange-item",
+   "children": [
+    {
+     "tag": "svg",
+     "icon": "arrange-spread"
+    },
+    {
+     "tag": "span",
+     "class": "pop-text",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     },
+     "text": "Spread windows out"
+    },
+    {
+     "tag": "span",
+     "class": "pop-muted",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "⌥⌘S"
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "pop-divider",
+   "role": "separator",
+   "style": {
+    "background": "rgb(51, 49, 54)",
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "button",
+   "class": "menu-item arrange-item",
+   "style": {
+    "opacity": "0.5"
+   },
+   "children": [
+    {
+     "tag": "svg",
+     "icon": "arrange-restore"
+    },
+    {
+     "tag": "span",
+     "class": "pop-text",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     },
+     "text": "Restore previous layout"
+    },
+    {
+     "tag": "span",
+     "class": "pop-muted",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "⌥⌘Z"
+    }
+   ]
+  }
+ ]
+}

@@ -129,11 +129,6 @@ pub const PARTS: &[SystemPart] = &[
         level: Level::Bar,
     },
     SystemPart {
-        id: "desk.arrange",
-        holds: "the arrange strip beside the canvas map: tile, cascade, spread, restore",
-        level: Level::Bar,
-    },
-    SystemPart {
         id: "desk.bottom",
         holds: "the bottom edge's controls, one box each: the drawer button, the talk pill and its \
                 line, the running chips",
@@ -238,7 +233,6 @@ mod tests {
             "desk.agents",
             "desk.rail",
             // What the page draws over the dock takes its own presses (#158, #159).
-            "desk.arrange",
             "desk.bottom",
             "desk.canvas",
             "desk.eris",
@@ -275,7 +269,7 @@ mod tests {
     fn the_bars_go_under_the_canvas_map_and_a_scrim_and_what_the_desk_opens_over_them() {
         // A dialog over the map and the pill, its scrim over every window (#158, #161).
         let level = |id: &str| part(id).map(|p| p.level);
-        for bar in ["desk.bottom", "desk.arrange", "desk.eris", "desk.notices"] {
+        for bar in ["desk.bottom", "desk.rail", "desk.eris", "desk.notices"] {
             assert_eq!(level(bar), Some(Level::Bar), "{bar}");
         }
         assert_eq!(level("desk.scrim"), Some(Level::Scrim));

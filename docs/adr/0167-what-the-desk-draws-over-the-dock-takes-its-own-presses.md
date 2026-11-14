@@ -5,7 +5,8 @@ decision-makers: Team endue
 ---
 
 Amends ADR 0160 (every control the desk's page draws outside its windows is in a part, and a window
-under an edge bar is under it whole).
+under an edge bar is under it whole). Amended by ADR 0220: the arrange strip and its `desk.arrange`
+part are gone; the actions are a popover of the rail's.
 
 # What the desk draws over the dock takes its own presses
 

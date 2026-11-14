@@ -14,7 +14,6 @@ const PARTS: ReadonlyArray<readonly [id: string, selector: string]> = [
   ["desk.agents", '[data-layer="system"] .sidebar'],
   ["desk.account", '[data-layer="system"] .account-bar'],
   ["desk.rail", ".rail"],
-  ["desk.arrange", ".arrange-strip"],
   ["desk.bottom", "footer.bottom > *"],
   ["desk.canvas", ".canvas-reset"],
   ["desk.safe", '[data-layer="system"] .safe-badge'],

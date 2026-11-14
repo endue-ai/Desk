@@ -1,6 +1,6 @@
 /**
  * desk.windows.*: tile, cascade, spread and restore as the desk's own commands (ADR 0017, 0116), so
- * keys, the palette, the right-edge strip and Eris run the same thing. The window manager arranges
+ * keys, the palette, the rail's Arrange button and Eris run the same thing. The window manager arranges
  * and keeps what each arrangement replaced (crates/desk-wm `Arranger`, #83); tile and cascade name
  * restore-arrangement as their undo: each is one step on the desk's undo stack (ADR 0077). The
  * spread is the compositor's to draw (#54, ADR 0161): its command asks the window manager's host,
@@ -54,7 +54,7 @@ const ARRANGED = {
   required: ["desktop", "entry", "kind", "windows"],
 };
 /**
- * Restore's args: none from the strip, keys, the palette or an agent; from cmd.undo, the
+ * Restore's args: none from the rail, keys, the palette or an agent; from cmd.undo, the
  * arrangement's own `{ args, result }` (ADR 0077). The core checks an undo's args against these
  * as it checks any invocation's, so they name both, or no tile or cascade could be undone (#163).
  */

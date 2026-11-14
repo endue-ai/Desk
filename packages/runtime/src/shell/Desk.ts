@@ -194,7 +194,7 @@ export function mountDesk(options: DeskOptions): Desk {
   parts.push(
     byRole(modeLayer, "role:rail", settings, (at) => mountRail(at, ctx)),
     byRole(modeLayer, "role:dock", settings, (at) => mountBottom(at, ctx)),
-    // The canvas map beside the arrange strip is the compositor's (#54, ADR 0161).
+    // The canvas map under the right rail is the compositor's (#54, ADR 0161).
     mountSurfaces(modeLayer, ctx, options.windowPages),
   );
 

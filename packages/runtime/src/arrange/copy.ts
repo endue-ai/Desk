@@ -1,5 +1,6 @@
 /**
- * What arranging windows says (ADR 0116): the right-edge strip, its commands and the spread, whose
+ * What arranging windows says (ADR 0116): the rail's Arrange button (`strip`, ADR 0220), its
+ * actions, their commands and the spread, whose
  * chrome the compositor draws in the desk's language (`spreadCopy`, sent with the page's report).
  */
 import type { Lang } from "../shell/copy";

@@ -21,7 +21,6 @@ export const PARTS: ReadonlyArray<readonly [id: string, selector: string, found?
   ["desk.agents", '[data-layer="system"] .sidebar'],
   ["desk.account", '[data-layer="system"] .account-bar'],
   ["desk.rail", ".rail"],
-  ["desk.arrange", ".arrange-strip"],
   // The bottom edge has no box of its own: each of its controls is placed on its own.
   ["desk.bottom", "footer.bottom > *", "every"],
   ["desk.canvas", ".canvas-reset"],

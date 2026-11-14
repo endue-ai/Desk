@@ -6,7 +6,7 @@
 //! - the desk's system surface, the page's pixels: wherever no window lies over a part of another
 //!   window that the page draws (`Plan::page`) and no edge bar lies over a window, and, whole, the
 //!   box of each part of its system layer it names (`desk_web::sender::PARTS`: the bars' content,
-//!   the bottom edge's controls, the arrange strip, Eris, the notices), whatever lies under it, so
+//!   the bottom edge's controls, Eris, the notices), whatever lies under it, so
 //!   a bar over a window's part is never cut;
 //! - the canvas map (`draw_map.rs`), over the bars;
 //! - each modal's scrim the page has open: the theme's dialog scrim over everything drawn so far,

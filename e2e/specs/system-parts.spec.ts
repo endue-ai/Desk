@@ -1,5 +1,5 @@
 // What the desk's page draws over the dock and the windows takes its own presses (#158, #159): the
-// talk pill and its line, the Drawer button, the arrange strip and every other control of the page
+// talk pill and its line, the Drawer button, the rail's buttons and every other control of the page
 // outside its windows is a part of the system layer (ADR 0160), so the compositor gives the press
 // and the keys to the page alone, never also to the dock's tile or the window lying under it. The
 // pointer and the keys are fed as winit would hand them over; who hears the pointer is the
@@ -72,7 +72,7 @@ describe("system parts: what the desk draws over the dock and the windows takes 
   before(async () => {
     await shellReady();
     await feed([{ type: "windowFocused", focused: true }]);
-    // The dock lies along the bottom edge, under the pill, the Drawer button and the strip's end.
+    // The dock lies along the bottom edge, under the pill and the Drawer button.
     await browser.waitUntil(async () => (await box("[data-surface-host*='endue-dock']")) !== null, {
       timeoutMsg: "the dock never showed",
     });
@@ -81,7 +81,7 @@ describe("system parts: what the desk draws over the dock and the windows takes 
   it("lets only the desk hear the pointer on each control it draws outside its windows", async () => {
     const found = await controls();
     const names = found.map((c) => c.name).join("\n");
-    for (const want of ["drawer-button", "talk-launch", "arrange-button"])
+    for (const want of ["drawer-button", "talk-launch", "rail-button"])
       expect(names).toContain(want);
     const others: string[] = [];
     for (const control of found) {
@@ -148,13 +148,23 @@ describe("system parts: what the desk draws over the dock and the windows takes 
     expect(await windowIds()).toEqual(before);
   });
 
-  it("gives the keys to the desk for a press on the Drawer button, and presses no dock tile for Restore", async () => {
+  it("gives the keys to the desk for a press on the Drawer button, and a press on Restore in the rail's Arrange actions reaches nothing under it", async () => {
     const before = await windowIds();
-    const restore = await box(".arrange-button.is-restore");
-    if (!restore) throw new Error("no Restore button");
+    const arrange = await box('.rail [data-rail="arrange"]');
+    if (!arrange) throw new Error("no Arrange button");
+    await click([arrange.cx, arrange.cy]);
+    await browser.waitUntil(
+      async () => (await box('.rail-popover [data-arrange="restore"]')) !== null,
+      { timeoutMsg: "the Arrange actions never showed" },
+    );
+    const restore = await box('.rail-popover [data-arrange="restore"]');
+    if (!restore) throw new Error("no Restore action");
+    // Nothing was arranged, so Restore is off: the press is the desk's all the same.
     await click([restore.cx, restore.cy]);
     await browser.pause(400);
     expect(await windowIds()).toEqual(before);
+    expect((await inputState()).focused).toBe("desk");
+    await feed(keyPress("Escape", "Escape"));
     const drawer = await box(".drawer-button");
     if (!drawer) throw new Error("no Drawer button");
     await click([drawer.cx, drawer.cy]);

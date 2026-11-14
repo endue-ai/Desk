@@ -178,11 +178,11 @@ fn a_sleeping_window_shows_its_last_frame_greyed_under_its_card_with_reload() {
 fn the_canvas_map_sits_in_the_bottom_right_from_the_panes_thumbnails_or_folded_to_its_button() {
     let hosted = hosted("live");
     let laid = layout(&hosted, None).unwrap();
-    // 70 px from the right and 64 from the bottom, 192 by 120 inside 5 px.
+    // 24 px from the right, as the bars are, and 64 from the bottom, 192 by 120 inside 5 px.
     assert_eq!(
         laid.canvas,
         Rect::new(
-            1440.0 - 70.0 - 5.0 - 192.0,
+            1440.0 - 24.0 - 5.0 - 192.0,
             900.0 - 64.0 - 5.0 - 120.0,
             192.0,
             120.0
@@ -190,7 +190,7 @@ fn the_canvas_map_sits_in_the_bottom_right_from_the_panes_thumbnails_or_folded_t
     );
     assert_eq!(
         laid.button,
-        Rect::new(1440.0 - 70.0 - 32.0, 900.0 - 64.0 - 32.0, 32.0, 32.0)
+        Rect::new(1440.0 - 24.0 - 32.0, 900.0 - 64.0 - 32.0, 32.0, 32.0)
     );
     assert_eq!(laid.windows.len(), 2);
     for w in &laid.windows {

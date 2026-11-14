@@ -1,8 +1,8 @@
 //! The canvas map's scene (ADR 0082, #54; the runtime's `shell/Minimap.ts` and `minimap.css`, which
-//! it replaces): in the bottom right beside the arrange strip, the desktop in front drawn whole in
+//! it replaces): in the bottom right, under the right rail, the desktop in front drawn whole in
 //! its box, every normal window to scale from its panes' thumbnails (downscaled surface textures,
 //! `minimap.rs`), the focused one marked, and the part in sight as a frame; or, folded, its button
-//! alone between the strip and the free area. Floating windows are always in sight, so it leaves
+//! alone beside the free area. Floating windows are always in sight, so it leaves
 //! them out. Units are CSS pixels in the desk's group.
 
 use desk_compositor::{Chrome, GroupNode, NodeId, Rect, Scene, SceneError, SurfaceNode, TextureId};
@@ -11,10 +11,13 @@ use desk_wm::{Fit, MAP, fit_world, is_floating, to_map, view_rect, world_of};
 use super::draw::{pass, rect};
 use super::hosted::Hosted;
 
-/// From the app's right edge to the map's (the strip's column and its gap), and from the bottom.
-const RIGHT: f32 = 70.0;
-/// A short app lays the strip out as a row: the map goes left of it.
-const RIGHT_SHORT: f32 = 195.0;
+/// From the app's right edge to the map's, as the bars keep from it, and from the bottom.
+const RIGHT: f32 = 24.0;
+/// In an app too short for the map to lie under the right rail, it goes left of the rail's column
+/// (the rail's 24 and 56, then 12).
+const RIGHT_SHORT: f32 = 92.0;
+/// The shortest app whose rail (322 px, centred) ends 12 px above the map's box (130 px, 64 up).
+const TALL: f32 = 734.0;
 const BOTTOM: f32 = 64.0;
 /// Round the canvas: the box's padding, and its border.
 const PAD: f32 = 5.0;
@@ -65,7 +68,7 @@ pub struct MapDrawn {
 pub fn layout(hosted: &Hosted, held: Option<Fit>) -> Option<MapLayout> {
     let plan = hosted.plan()?;
     let (vw, vh) = (plan.screen.w as f32, plan.screen.h as f32);
-    let right = if vh < 720.0 { RIGHT_SHORT } else { RIGHT };
+    let right = if vh < TALL { RIGHT_SHORT } else { RIGHT };
     let (mw, mh) = (MAP.w as f32, MAP.h as f32);
     let canvas = Rect::new(vw - right - PAD - mw, vh - BOTTOM - PAD - mh, mw, mh);
     let outer = canvas.inflate(PAD);
