@@ -263,6 +263,14 @@ settled, 0.99 sharp. The second, started at 11.5, went 2.1 % over 25 ms in the s
 Terminal's plugin page in the loop's first run (ADR 0210's stall, seen in 1 of 23 runs of other builds
 that day).
 
+Since #269 (ADR 0215: the desk's page drawn with the scene its picture was laid out for) `sway-scene`
+left `known` and `sway-own-pixels` left `sometimes`, and `sway-own-pixels` also leaves out the reach of
+a floating part's shadow past its box (`SHADOW` in `e2e/perf/lib/motion.ts`, the talk pill's
+`--desk-shadow-md`). On `main` 858309f2 with that change, two sets of five runs at a load average of 2
+to 5: `sway-scene` 0 of 2309 and 0 of 2304 frames (337 of 1352 on `main`), `sway-own-pixels` 0 of 50,
+the sway 56.9 frames a second, `sway-smooth` 13.6 and 17.1 % (known, #249); the loop failed in one run of
+ten, a plugin page held at one size until the stall watch loaded it again (ADR 0210's fault).
+
 ## Usability checks
 
 These checks cover the usability changes merged in November 2026. Linked PRs retain the detailed
