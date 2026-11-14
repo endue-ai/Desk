@@ -23,12 +23,13 @@ if (!existsSync(app)) {
 mkdirSync(results, { recursive: true });
 
 /**
- * The init.yaml in e2e/fixtures each spec starts with: only the launch spec wants the first run, and
- * the settings spec starts on values that fail their settings.
+ * The init.yaml in e2e/fixtures each spec starts with: only the launch spec wants the first run, the
+ * settings spec starts on values that fail their settings, and the Browser's opens on no page (#273).
  */
 const INIT: Record<string, string> = {
   "launch.spec.ts": "init.yaml",
   "settings.spec.ts": "init-bad-values.yaml",
+  "browser.spec.ts": "init-browser.yaml",
 };
 const DEFAULT_INIT = "init-no-first-run.yaml";
 

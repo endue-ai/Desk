@@ -103,5 +103,8 @@ and painted, text typed into a field of the page arrived with the input method a
 scrolled, a list opened over the page and took a choice by key, Mod+K ran from the page, a link for a
 new window loaded in the view, and closing the window ended the view and its renderer. Two things the
 check found are in the decision above: the back/forward cache, and a sweep of ended views' pictures that
-took an open list's picture with it (`web_swept` leaves `#popup` pictures to their view). The remote
-page read `typeof __deskNative` as `undefined`. Tests: `docs/qa/TESTING.md`.
+took an open list's picture with it (`web_swept` leaves `#popup` pictures to their view). The app e2e
+found a third: a view opened as its plugin started got no browser, since CEF makes none at once in a
+request context that is still starting, so a view's browser is made without waiting and joins its view
+when it comes (`web_created`), with the address it was sent meanwhile. The remote page read
+`typeof __deskNative` as `undefined`. Tests: `docs/qa/TESTING.md`.

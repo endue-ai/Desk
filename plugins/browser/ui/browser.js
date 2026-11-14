@@ -63,7 +63,10 @@ export function createBrowser(desk, view) {
       view.note("The Browser may not show web pages. Allow it to try again.");
     else if (code === "unsupported")
       view.note("A web page shows in the desk only. Dock this window to browse here.");
-    else view.note("The page could not be opened.");
+    else {
+      const why = error instanceof Error ? error.message : String(code ?? error);
+      view.note(`The page could not be opened (${why}).`);
+    }
   }
 
   /** Tell the desk where the page lies, when that changed. */
