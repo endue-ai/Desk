@@ -240,6 +240,14 @@ laid out for another size (known, #252), no page stopped and no restart, every w
 sharp; the loop's 500 turns: no page stopped, none loaded again, no restart (94 to 125 catch-ups a run).
 With the full pipeline the desk's page stopped in the loop in every run.
 
+Since #269 (ADR 0215: the desk's page drawn with the scene its picture was laid out for) `sway-scene`
+left `known` and `sway-own-pixels` left `sometimes`, and `sway-own-pixels` also leaves out the reach of
+a floating part's shadow past its box (`SHADOW` in `e2e/perf/lib/motion.ts`, the talk pill's
+`--desk-shadow-md`). On `main` 858309f2 with that change, two sets of five runs at a load average of 2
+to 5: `sway-scene` 0 of 2309 and 0 of 2304 frames (337 of 1352 on `main`), `sway-own-pixels` 0 of 50,
+the sway 56.9 frames a second, `sway-smooth` 13.6 and 17.1 % (known, #249); the loop failed in one run of
+ten, a plugin page held at one size until the stall watch loaded it again (ADR 0210's fault).
+
 ## Usability checks
 
 These checks cover the usability changes merged in November 2026. Linked PRs retain the detailed
