@@ -16,8 +16,7 @@
 // ?endue=signed-in starts signed in. ?account=1 serves account.* from src/bridge/account-stub.ts,
 // signed in with the sample account (ADR 0130); ?account=signedout starts signed out. ?many=<n>
 // (with ?plugins=1) adds n more centre windows, test.many-1 to test.many-<n>, each the hello-ui page
-// whose count lives in desk:state, for the live budget (#37). ?dock=1 installs the dock plugin
-// (endue.dock), which the sample profiles turn off. With ?files=1 and ?apps=1, ?heavy=1
+// whose count lives in desk:state, for the live budget (#37). With ?files=1 and ?apps=1, ?heavy=1
 // adds a long note and a large image (heavy-files.ts, #38). ?hang=1 adds test.hang, a window whose
 // frame stops answering the desk on command and whose net.fetch the core never answers (#39);
 // ?hang=late wedges it once mounted and ?hang=stopped stops it once late (for screenshots). Never
@@ -131,8 +130,6 @@ const core = browserCore({
     ...(params.has("edges")
       ? Object.values(manifests).filter((m) => ["endue.sidebar", "endue.toolbar"].includes(m.id))
       : []),
-    // ?dock=1: the dock plugin on the bottom edge, as the app has it beside the shell (#158).
-    ...(params.has("dock") ? Object.values(manifests).filter((m) => m.id === "endue.dock") : []),
     ...(params.has("themes") ? [testTheme as PluginManifest] : []),
     // ?designs=1: the built-in design systems (ADR 0090).
     ...(params.has("designs")

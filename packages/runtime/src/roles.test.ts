@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PluginInfo, PluginManifest } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
@@ -59,8 +59,22 @@ describe("roles", () => {
       };
     expect(read("toolbar").provides).toEqual(["role:rail"]);
     expect(read("sidebar").provides).toEqual(["role:agents"]);
-    expect(read("dock").provides).toEqual(["role:dock"]);
     expect(read("palette").provides).toEqual(["role:palette"]);
     expect(read("shell").contributes?.settings?.["desk.roles"]?.kind).toBe("object");
+  });
+
+  it("the desk ships no dock: no built-in plugin sits on the bottom edge or fills role:dock (#276)", () => {
+    const plugins = join(import.meta.dirname, "../../../plugins");
+    const manifests = readdirSync(plugins)
+      .filter((name) => existsSync(join(plugins, name, "plugin.json")))
+      .map((name) => JSON.parse(readFileSync(join(plugins, name, "plugin.json"), "utf8")));
+    const bottom = manifests.filter(
+      (m: PluginManifest) =>
+        m.provides?.includes("role:dock") || m.surfaces?.some((s) => s.placement === "bottom"),
+    );
+    expect(bottom.map((m: PluginManifest) => m.id)).toEqual([]);
+    // Nor does a sample profile name one to turn off.
+    const shell = readFileSync(join(plugins, "shell/plugin.json"), "utf8");
+    expect(shell).not.toContain("endue.dock");
   });
 });

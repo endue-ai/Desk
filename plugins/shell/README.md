@@ -8,8 +8,8 @@ contributes in `plugin.json`. The shell itself is `mountDesk` in `packages/runti
   (ADR 0117); a profile that names none has four, named 1 to 4. The samples keep the four-desktop
   form (layouts by number), which still loads. A profile's `desk.shell.mode` layers over the
   setting's default, which is what every profile starts from (the old `base` mode). The
-  samples turn off `endue.dock`, `endue.sidebar` and `endue.toolbar`: the shell's agent bar, rail and
-  bottom edge hold those places. A profile's windows open in front, the last one in use; leaving it,
+  samples turn off `endue.sidebar` and `endue.toolbar`: the shell's agent bar and rail hold those
+  places, and its bottom edge has no plugin over it (the desk ships no dock, ADR 0217). A profile's windows open in front, the last one in use; leaving it,
   they go with it and each plugin's own window is back in its slot (ADR 0181).
 - **Settings.** `desk.shell.mode`; `desk.shell.layouts` (the desktops and layouts changed since the
   profile was saved, as a `desktops` list); `desk.shell.density` (Eris's mesh: airy, balanced,

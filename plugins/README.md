@@ -8,7 +8,6 @@ there were two formats, the API would have holes.
 | `eris/` | The secretary (assets are under the `brand/` licence) |
 | `sidebar/` | Left bar: agents and spaces |
 | `toolbar/` | Right status panel: the drawer list (plugins, access) |
-| `dock/` | Bottom dock: open and put away the plugins that open on the desk |
 | `terminal/` | The person's shell in a PTY the core runs: several as tabs and desk buffers (`endue.terminal`, ADR 0037) |
 | `onboarding/` | First-run scenario |
 | `explorer/` | The folders the person allows as a tree (`endue.explorer`); files open through `desk.files` |
