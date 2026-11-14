@@ -6,7 +6,7 @@
 // back is the seam's (compositor-wm.test.ts). A surface moved in the page is the same surface; one
 // released is not named.
 import type { RemoteSurface } from "@endue-ai/runtime";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cardOf, type DeskReport, startCompositorDesk } from "./compositor-desk";
 
 const HOST = "main.endue-notes";
@@ -203,5 +203,46 @@ describe("the desk the page publishes", () => {
       line: "Hello has not answered.",
       actions: ["Wait", "Stop"],
     });
+  });
+});
+
+describe("the canvas map while a window fills the app (ADR 0221)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.replaceChildren();
+    document.documentElement.classList.remove("desk-compositor");
+  });
+
+  it("goes with the right rail: how far the rail has slid, and away once it is out", () => {
+    const { win, tick } = frames();
+    const r = runtime([]);
+    const reports: DeskReport[] = [];
+    const rail = document.createElement("aside");
+    rail.className = "rail";
+    document.body.append(rail);
+    let style = { translate: "none", visibility: "visible" };
+    vi.spyOn(win, "getComputedStyle").mockImplementation(() => style as CSSStyleDeclaration);
+    const stop = startCompositorDesk(win, r.desk, pages(), (report) => reports.push(report));
+    tick();
+    // A rail that goes nowhere: the map is the session's alone.
+    const gone = () => {
+      const { shift, away } = reports.at(-1)?.map ?? {};
+      return [shift, away];
+    };
+    expect(gone()).toEqual([undefined, undefined]);
+    rail.dataset.away = "right";
+    rail.classList.add("is-out");
+    style = { translate: "37.6px", visibility: "visible" };
+    tick();
+    expect(gone()).toEqual([38, undefined]);
+    style = { translate: "96px", visibility: "hidden" };
+    tick();
+    expect(gone()).toEqual([96, true]);
+    // Back in sight and at rest.
+    rail.classList.remove("is-out");
+    style = { translate: "0px", visibility: "visible" };
+    tick();
+    expect(gone()).toEqual([undefined, undefined]);
+    stop();
   });
 });

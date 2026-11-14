@@ -33,6 +33,7 @@ import { heldWindows, noWindowManager, type WindowManagerHost } from "../wm/host
 import type { Rect } from "../wm/types";
 import { takeDesk } from "../wm/view";
 import { layoutOf } from "./actions";
+import { mountAway } from "./away";
 import { mountBottom } from "./Bottom";
 import { defineCommands, dismiss } from "./commands";
 import type { ShellCtx } from "./context";
@@ -197,6 +198,9 @@ export function mountDesk(options: DeskOptions): Desk {
     // The canvas map under the right rail is the compositor's (#54, ADR 0161).
     mountSurfaces(modeLayer, ctx, options.windowPages),
   );
+
+  // A window that fills the app sends the desk's chrome past its edges (ADR 0221).
+  parts.push(mountAway(root, ctx));
 
   const restored = keepShell(ctx);
   // A plugin that started asleep (ADR 0070) wakes when a window of the desktop in front places it.

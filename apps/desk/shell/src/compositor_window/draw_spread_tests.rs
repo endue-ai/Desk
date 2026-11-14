@@ -14,19 +14,25 @@ use crate::compositor_window::hosted::Hosted;
 use crate::compositor_window::report::DeskReport;
 
 /// Notes and Files, two plugin windows in their slots; Files' frame in `files` state.
-fn hosted(files: &str) -> Hosted {
+/// The page's report `seq`, Files' page in state `files` and the map as the page says it.
+fn report(seq: u64, files: &str, map: serde_json::Value) -> DeskReport {
     let frame = |plugin: &str, host: &str, state: &str| {
         json!({ "plugin": plugin, "host": host, "src": format!("desk-plugin://{host}/index.html"),
             "loads": 1, "state": state, "card": { "title": "Files",
             "line": "Unloaded while out of sight.", "actions": ["Reload"] } })
     };
-    let report: DeskReport = serde_json::from_value(json!({
-        "seq": 1, "width": 1440, "height": 900,
+    serde_json::from_value(json!({
+        "seq": seq, "width": 1440, "height": 900,
         "frames": [frame("endue.notes", "main.endue-notes", "live"),
             frame("endue.files", "main.endue-files", files)],
         "copy": { "spread": { "count": "{n} windows", "filter": "Type to filter by title" } },
+        "map": map,
     }))
-    .unwrap();
+    .unwrap()
+}
+
+fn hosted(files: &str) -> Hosted {
+    let report = report(1, files, json!({}));
     let mut hosted = Hosted::new(1.0);
     let adopt = |id: &str, title: &str| desk_wm::edits::Edit::Adopt {
         id: id.into(),
@@ -172,6 +178,31 @@ fn a_sleeping_window_shows_its_last_frame_greyed_under_its_card_with_reload() {
             .any(|(_, t)| t.surface == "main.endue-files"),
         "a sleeping surface takes no input"
     );
+}
+
+#[test]
+fn the_canvas_map_goes_toward_the_right_edge_as_far_as_the_page_says_the_rail_has() {
+    let mut hosted = hosted("live");
+    let rest = layout(&hosted, None).unwrap();
+    hosted.apply(report(2, "live", json!({ "shift": 40 })), Instant::now());
+    let slid = layout(&hosted, None).unwrap();
+    for (now, before) in [
+        (slid.outer, rest.outer),
+        (slid.canvas, rest.canvas),
+        (slid.button, rest.button),
+        (slid.view, rest.view),
+    ] {
+        assert_eq!(
+            now,
+            Rect::new(before.x + 40.0, before.y, before.width, before.height)
+        );
+    }
+    // Away with the rail, the report says so, and the shell draws no map (`map_folded`).
+    hosted.apply(
+        report(3, "live", json!({ "shift": 96, "away": true })),
+        Instant::now(),
+    );
+    assert!(hosted.report().is_some_and(|r| r.map.away));
 }
 
 #[test]

@@ -16,6 +16,7 @@ import type { Desktop, DesktopId, DesktopRef, Mode } from "../modes/types";
 import { type EndueState, emptyEndue } from "../system/endue-ids";
 import type { Adopted, DrawerItem, WmView } from "../wm/types";
 import { emptyView } from "../wm/view";
+import type { Edge } from "./away";
 import type { Lang } from "./copy";
 
 export type { DrawerItem };
@@ -63,6 +64,12 @@ export interface DeskState {
    * (#54) and says when the person folds or opens it (`desk://compositor-map`).
    */
   mapFolded: boolean;
+  /**
+   * The edges of the app the pointer is at, as the compositor says where a window's page has
+   * the pointer (`desk://compositor-edge`): the chrome a filled window sent away comes back
+   * there (ADR 0221).
+   */
+  edges: Edge[];
   /** The window (and pane) each desktop had in use when the person left it, by id. */
   focusBy: Partial<Record<DesktopId, { window: string; pane: string | null }>>;
   modesOpen: boolean;
@@ -161,6 +168,7 @@ export function emptyState(lang: Lang): DeskState {
     desktops: null,
     pan: {},
     mapFolded: false,
+    edges: [],
     focusBy: {},
     modesOpen: false,
     spaces: [],

@@ -55,6 +55,7 @@ impl CompositorWindow {
             self.compose();
         }
         self.tip_input(&input);
+        self.edge_input(&input);
         // A press on a popup widget, and what follows it, is its surface's alone (#156).
         let popup = self.popup_input(&input);
         if !popup && self.wm_input(&input) {

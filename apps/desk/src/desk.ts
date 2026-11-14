@@ -157,6 +157,13 @@ const offMap = listen<{ folded?: unknown }>("desk://compositor-map", ({ payload 
   if (typeof payload?.folded === "boolean") desk.store.set({ mapFolded: payload.folded });
   stopDesk.wake();
 });
+// The pointer came to an edge of the app, or left one, over a window's page: the chrome a
+// filled window sent away comes back there (ADR 0221).
+const EDGES = ["left", "right", "top", "bottom"] as const;
+const offEdge = listen<{ edges?: unknown }>("desk://compositor-edge", ({ payload }) => {
+  const said = Array.isArray(payload?.edges) ? payload.edges : [];
+  desk.store.set({ edges: EDGES.filter((edge) => said.includes(edge)) });
+});
 const keys = {
   platform: desk.runtime.shortcuts.platform,
   keymap: desk.runtime.keymap,
@@ -176,7 +183,7 @@ const offPageFocus = ownPages?.watch((id, own) => focus.watch(own, id)) ?? (() =
 const stopCompositor = () => {
   const offs = [stopDesk, stopKeys, offRuns, offPageFocus, focus.stop, () => pages.dispose()];
   for (const off of offs) off();
-  for (const listening of [offLive, offWm, offHeld, offRun, offMap])
+  for (const listening of [offLive, offWm, offHeld, offRun, offMap, offEdge])
     void listening.then((off) => off());
 };
 window.addEventListener("pagehide", stopCompositor, { once: true });

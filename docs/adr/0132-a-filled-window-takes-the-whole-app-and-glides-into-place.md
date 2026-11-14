@@ -4,6 +4,9 @@ date: 2026-11-09
 decision-makers: Team endue
 ---
 
+Amended by ADR 0221: while a window fills the whole app the bars slide out past its edges, all but
+the account bar and the Drawer button, and come back while the pointer is at an edge.
+
 # A filled window takes the whole app, under the floating bars, and glides into place
 
 ## Context and Problem Statement

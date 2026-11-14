@@ -113,10 +113,11 @@ impl Mapping {
 
 impl CompositorWindow {
     /// Whether the map shows, and folded: the person folded it, or a fill is in sight and they did
-    /// not open it over it.
+    /// not open it over it. It does not show while it is away with the right rail (ADR 0221).
     pub(super) fn map_folded(&mut self) -> Option<bool> {
         let desk = self.hosted.wm.desk();
-        if !map_shows(desk) || self.spreading.open.is_some() {
+        let away = self.hosted.report().is_some_and(|r| r.map.away);
+        if away || !map_shows(desk) || self.spreading.open.is_some() {
             return None;
         }
         let screen = self.hosted.wm.screen();

@@ -1,0 +1,18 @@
+/* The desk's chrome while a window fills the whole app (ADR 0221, `away.ts`): each part slides out
+   past the edge `away.ts` names for it (`data-away`, with how far in `--away-x` and `--away-y`),
+   and back while something holds it in sight. `translate`, not `transform`: the bars are centred
+   by a transform of their own. A part out of the app is hidden once it is there, so the page
+   reports no part for it (`compositor-system.ts`) and nothing of it takes the pointer; coming
+   back, it shows from the first frame. Reduced motion zeroes `--motion-base`: it is there or not. */
+.shell [data-away] {
+  transition:
+    translate var(--motion-base) var(--ease-out-expo),
+    visibility 0s;
+}
+.shell [data-away].is-out {
+  translate: var(--away-x, 0) var(--away-y, 0);
+  visibility: hidden;
+  transition:
+    translate var(--motion-base) var(--ease-out-expo),
+    visibility 0s linear var(--motion-base);
+}

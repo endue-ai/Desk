@@ -81,6 +81,8 @@ pub struct Gestures {
     pub popups: super::input::popup_input::PopupPress,
     /// The wheel's run on the canvas (`pan.rs`).
     pub panning: super::pan::Panning,
+    /// The edges of the app the pointer is at, as the page was last told (`edges.rs`).
+    pub edges: super::edges::Edges,
 }
 
 impl CompositorWindow {

@@ -150,11 +150,15 @@ pub struct MapCopy {
     pub fold: String,
 }
 
-/// The canvas map as the person left it: folded to its button (the session keeps it).
+/// The canvas map as the person left it: folded to its button (the session keeps it). While a
+/// window fills the whole app the map goes with the right rail (ADR 0221): `shift` is how far
+/// the rail has slid toward the edge, in CSS pixels, and `away` that it is out of the app.
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct MapState {
     pub folded: bool,
+    pub shift: f32,
+    pub away: bool,
 }
 
 /// The shell page's report.

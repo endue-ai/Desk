@@ -68,8 +68,9 @@ export interface DeskReport {
     spread: Record<string, string>;
     map: { label: string; show: string; fold: string };
   };
-  /** The canvas map folded to its button, as the session keeps it. */
-  map: { folded: boolean };
+  /** The canvas map folded to its button, as the session keeps it; gone with the right rail
+   * while a window fills the app, `shift` pixels toward the edge or `away` (ADR 0221). */
+  map: { folded: boolean; shift?: number; away?: true };
   /** The last desk desk-wm published that the page took. */
   applied: number;
   /** The window the page lays out where desk-wm's gesture holds it. */
@@ -154,6 +155,19 @@ function inset(layer: HTMLElement | null, name: string): number | undefined {
   return Number.isFinite(value) ? value : undefined;
 }
 
+/**
+ * The canvas map goes with the right rail while a window fills the whole app (ADR 0221,
+ * `shell/away.ts`): how far the rail has slid toward the edge now, and whether it is out.
+ */
+function mapAway(doc: Document): { shift?: number; away?: true } {
+  const rail = doc.querySelector<HTMLElement>('.rail[data-away="right"]');
+  const style = rail && doc.defaultView?.getComputedStyle(rail);
+  if (!rail || !style) return {};
+  const shift = Math.round(Number.parseFloat(style.translate) || 0);
+  const away = rail.classList.contains("is-out") && style.visibility === "hidden";
+  return { ...(shift ? { shift } : {}), ...(away ? { away: true as const } : {}) };
+}
+
 /** Frames in a row that changed nothing, after which the page stops looking every frame. */
 const QUIET = 30;
 /** How often the page looks while it does not look every frame: for what no event says. */
@@ -219,7 +233,7 @@ export function startCompositorDesk(
         afterMs: typeof after === "number" && after >= 0 ? after * 1000 : 0,
       },
       copy: { ...COPY[lang], spread: spreadCopy(lang) },
-      map: { folded: s.mapFolded },
+      map: { folded: s.mapFolded, ...mapAway(doc) },
       ...wm(),
     };
     const json = JSON.stringify(body);

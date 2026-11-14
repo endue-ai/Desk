@@ -68,7 +68,9 @@ pub struct MapDrawn {
 pub fn layout(hosted: &Hosted, held: Option<Fit>) -> Option<MapLayout> {
     let plan = hosted.plan()?;
     let (vw, vh) = (plan.screen.w as f32, plan.screen.h as f32);
-    let right = if vh < TALL { RIGHT_SHORT } else { RIGHT };
+    // The map goes with the right rail while a window fills the app (ADR 0221).
+    let shift = hosted.report().map_or(0.0, |r| r.map.shift);
+    let right = if vh < TALL { RIGHT_SHORT } else { RIGHT } - shift;
     let (mw, mh) = (MAP.w as f32, MAP.h as f32);
     let canvas = Rect::new(vw - right - PAD - mw, vh - BOTTOM - PAD - mh, mw, mh);
     let outer = canvas.inflate(PAD);

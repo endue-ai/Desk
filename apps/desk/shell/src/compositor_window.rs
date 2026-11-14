@@ -28,6 +28,7 @@ mod draw_pane;
 mod draw_popup;
 mod draw_spread;
 mod draw_web;
+mod edges;
 mod gpu;
 pub use gpu::headless;
 mod handed;
@@ -50,8 +51,7 @@ mod web;
 pub mod winit_input;
 pub mod wm;
 
-use std::sync::Arc;
-use std::sync::mpsc::Receiver;
+use std::sync::{Arc, mpsc::Receiver};
 use std::time::{Duration, Instant};
 
 use cef::*;
@@ -67,10 +67,9 @@ use winit::window::Window;
 
 use crate::host::Desk;
 use crate::native_host::NativeHost;
-use crate::web_host::frames::FRAME;
-use crate::web_host::relay::Relay;
 use crate::web_host::view::{SharedView, View};
 use crate::web_host::{WebHost, top};
+use crate::web_host::{frames::FRAME, relay::Relay};
 use composed::Shared;
 use hosted::{Hosted, Outcome, look, motion, owner};
 use report::DeskReport;
