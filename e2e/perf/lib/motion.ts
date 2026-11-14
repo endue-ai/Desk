@@ -142,8 +142,13 @@ export interface Drawn {
   over: Rect[];
 }
 
+/** How far what lies over every window shades the windows past its box: a floating part's shadow,
+ * the theme's `--desk-shadow-md` (0 8px 24px), reaches 16 px above it, 32 px below and 24 px to its
+ * sides. Under the sway the talk pill's shadow lies on the shaken window (#269, ADR 0215). */
+export const SHADOW = { above: 16, below: 32, side: 24 };
+
 /** Each frame the shake read back, with where window `id` was drawn in it: the scene laid out last
- * before the capture's line (the capture lays it out). */
+ * before the capture's line (the capture lays it out); what lies over every window with its shadow. */
 export function captured(shake: Shake, id: string): Drawn[] {
   const out: Drawn[] = [];
   let laid: Line | undefined;
@@ -156,10 +161,10 @@ export function captured(shake: Shake, id: string): Drawn[] {
     if (!w) continue;
     const [x = 0, y = 0, width = 0, h = 0] = w.rect;
     const over = ((laid.f.over ?? []) as number[][]).map(([x = 0, y = 0, w = 0, h = 0]) => ({
-      x,
-      y,
-      w,
-      h,
+      x: x - SHADOW.side,
+      y: y - SHADOW.above,
+      w: w + 2 * SHADOW.side,
+      h: h + SHADOW.above + SHADOW.below,
     }));
     out.push({
       tag: line.f.tag,
