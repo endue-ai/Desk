@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { type CefDesk, dataDir, freePort, launchCef } from "../../support/cef.ts";
+import { type BundleProcess, ofBundle } from "../lib/bundle-processes.ts";
 import { session, shell, targets, until } from "./devtools.ts";
 
 export interface MotionDesk {
@@ -233,31 +234,36 @@ export async function poke(port: number): Promise<{ poked: string[]; unpainted: 
   return { poked, unpainted };
 }
 
-/** Quit the desk, then end whatever of it outlived it: a renderer helper reparented to launchd, and
- * a desk that started again (ADR 0202), whose pid its trace's `start` line names. */
-export async function stopDesk(run: MotionDesk, binary?: string): Promise<void> {
+/** Quit the desk, then end whatever of its bundle outlived it (what it ended): a renderer helper
+ * reparented to launchd, and a desk that started again (ADR 0202), whose parent has quit and which
+ * may still be starting, before its trace's `start` line names it. */
+export async function stopDesk(run: MotionDesk): Promise<BundleProcess[]> {
   await run.desk.stop();
-  const again = existsSync(run.trace)
-    ? readFileSync(run.trace, "utf8")
-        .split("\n")
-        .filter((l) => l.includes('"e":"start"'))
-        .slice(1)
-        .map((l) => Number((JSON.parse(l) as { f: { pid?: number } }).f.pid))
-    : [];
-  for (const pid of again) {
-    try {
-      const command = execFileSync("ps", ["-p", String(pid), "-o", "command="], {
-        encoding: "utf8",
-      });
-      if (!binary || command.includes(binary)) process.kill(pid, "SIGKILL");
-    } catch {
-      // Gone already.
+  return endBundle(run.app);
+}
+
+/** Every process that runs from the bundle `app` now, whatever its parent. */
+export function bundleProcesses(app: string): BundleProcess[] {
+  const ps = execFileSync("ps", ["-axww", "-o", "pid=,ppid=,command="], { encoding: "utf8" });
+  return ofBundle(ps, app);
+}
+
+/** End every process of the bundle `app` until none is found three looks in a row, 250 ms apart
+ * (a desk started again may start after the one before it quit), within `ms`: what it ended. */
+export async function endBundle(app: string, ms = 10_000): Promise<BundleProcess[]> {
+  const ended: BundleProcess[] = [];
+  const until = Date.now() + ms;
+  for (let quiet = 0; quiet < 3 && Date.now() < until; await delay(250)) {
+    const left = bundleProcesses(app);
+    quiet = left.length ? 0 : quiet + 1;
+    for (const p of left) {
+      try {
+        process.kill(p.pid, "SIGKILL");
+        ended.push(p);
+      } catch {
+        // Gone already.
+      }
     }
   }
-  try {
-    const left = execFileSync("pgrep", ["-f", dataDir(run.home)], { encoding: "utf8" });
-    for (const pid of left.split("\n").filter(Boolean)) process.kill(Number(pid), "SIGKILL");
-  } catch {
-    // Nothing left.
-  }
+  return ended;
 }
