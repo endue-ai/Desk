@@ -22,16 +22,10 @@ import { trackTopChrome } from "./clearance";
 import { isFloating } from "./coordinates";
 import { hostGestures } from "./host-gestures";
 import { renderPanes } from "./PaneView";
+import { placeSection } from "./section-place";
 import { findLeaf, leaves, panesOf } from "./tree";
 import { type Mounted, resolveView, viewOf } from "./views";
 import type { WindowPages } from "./window-pages";
-
-function place(el: HTMLElement, r: Rect): void {
-  el.style.left = `${r.x}px`;
-  el.style.top = `${r.y}px`;
-  el.style.width = `${r.w}px`;
-  el.style.height = `${r.h}px`;
-}
 
 /** The pane whose view the title bar names: the focused one, else the first. */
 function activeLeaf(ctx: ShellCtx, p: SurfacePlacement) {
@@ -333,9 +327,9 @@ export function mountSurfaces(
       entry.relabel();
       drawTitle(entry, p);
       if (rect) {
+        // Where a press in its own page lies on the desk (`hostGestures`).
         entry.at = rect;
-        // Its own page is its window's size: the section fills it from the top left.
-        place(entry.el, entry.own ? { x: 0, y: 0, w: rect.w, h: rect.h } : rect);
+        placeSection(entry.el, rect, entry.own);
       }
       entry.el.style.zIndex = String(at?.z ?? 1);
       entry.el.classList.toggle("is-focused", p.id === s.focused);

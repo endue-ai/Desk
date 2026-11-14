@@ -14,21 +14,23 @@
 //! (`WebHost::placed`); a browser hears it only once the view rests there (`SETTLE`), its last
 //! paint at its size and another since it was last told, with no popup open
 //! (`WebHost::tell_screens`, on each turn of the event loop), through `NotifyScreenInfoChanged`,
-//! and gets desk frames to paint with it: a window dragged or gliding tells its page nothing until
-//! it stops, a resize in flight is never laid out again past CEF's hold by it (ADR 0170), and no
-//! screen is told while CEF still holds the last one; a new scale tells it with the scale
-//! (`View::rescaled`). What a browser was told is what its handler answers from then on
+//! and gets desk frames to paint with it, a window's own page a whole frame of its view too, which
+//! ends the hold CEF puts on the view's next resize (#270): a window dragged or gliding tells its
+//! page nothing until it stops, a resize in flight is never laid out again past CEF's hold by it
+//! (ADR 0170), and no screen is told while CEF still holds the last one; a new scale tells it with
+//! the scale (`View::rescaled`). What a browser was told is what its handler answers from then on
 //! (`Screen::tell`), a new browser of the surface included, so the place Chromium hands back is in
 //! the view it placed the popup from. Until the compositor has drawn a view, its screen is itself,
 //! as before.
 
 use std::time::{Duration, Instant};
 
-use cef::{ImplBrowser, ImplBrowserHost, Rect};
+use cef::{ImplBrowser, ImplBrowserHost, PaintElementType, Rect};
 
 use super::super::WebHost;
 use super::super::lifecycle::State;
 use super::super::view::View;
+use super::super::window_pages::is_window_page;
 
 /// How long a view rests at a new place before its browser hears it.
 pub const SETTLE: Duration = Duration::from_millis(150);
@@ -190,26 +192,35 @@ impl WebHost {
 
     /// Tell every shown browser whose view rests somewhere new its screen (on the UI thread).
     pub fn tell_screens(&self, now: Instant) {
-        let browsers: Vec<cef::Browser> = {
+        let browsers: Vec<(cef::Browser, bool)> = {
             let inner = self.inner();
-            (inner.records.values())
-                .filter(|r| r.state == State::Live { hidden: false })
-                .filter_map(|r| {
+            (inner.records.iter())
+                .filter(|(_, r)| r.state == State::Live { hidden: false })
+                .filter_map(|(surface, r)| {
                     let browser = r.browser.as_ref()?;
                     let mut view = r.view.lock();
                     let (due, paints) = (view.screen.due(now, settled(&view)), paints(&view));
                     // A browser is taken (a reference CEF counts) only for a view that is due.
                     due.then(|| view.screen.tell(paints))
-                        .map(|_| browser.clone())
+                        .map(|_| (browser.clone(), is_window_page(surface)))
                 })
                 .collect()
         };
-        for browser in browsers {
+        for (browser, window_page) in browsers {
             if let Some(host) = browser.host() {
                 // Its screen rects and info again: the view's place, the app window; no new size.
                 host.notify_screen_info_changed();
+                // CEF holds every resize from now on until the view paints again
+                // (`ResizeRootLayer`), and a window's page the telling leaves looking as it did
+                // paints nothing of its own: its section fills it, its title bar is still. A whole
+                // frame of it ends the hold. Without one, a window moved and then resized kept its
+                // page at the old size (#270). A plugin's page is left as it was: it paints of its
+                // own, and ADR 0210 catches up one that does not.
+                if window_page {
+                    host.invalidate(PaintElementType::VIEW);
+                }
             }
-            // Frames for it to paint at the surface id that came with it, which ends CEF's hold.
+            // Frames for it to paint at the surface id that came with it.
             super::super::frames::heard(browser.identifier(), false);
         }
     }

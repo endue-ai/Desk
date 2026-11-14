@@ -2,12 +2,14 @@
 // (`compositor_window { sway }`) while a window inside the desk shakes at another rhythm, both fed
 // through the event loop; then, the app window at rest, where each window sits, how sharp the shaken
 // one is after its drop, and whether every page still paints. motion.ts runs it after the single
-// shake; what the trace says of it is lib/motion-sway.ts.
+// shake; what the trace says of it is lib/motion-sway.ts, what the windows' own pages note of their
+// sections through it lib/motion-sections.ts (#270).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { decodePng } from "../support/png.ts";
 import { captured, type Line, type Rect, STRAY, sharpness, strayed, timing } from "./lib/motion.ts";
+import { type SectionSample, sectionFit } from "./lib/motion-sections.ts";
 import { lastLaid, overlap, pictures, shakeOf, swayOf, unsettled } from "./lib/motion-sway.ts";
 import type { Limits, SwayFindings } from "./lib/motion-verdicts.ts";
 import {
@@ -22,6 +24,7 @@ import {
   swayed,
   windows,
 } from "./support/motion-desk.ts";
+import { readSections, watchSections } from "./support/sections.ts";
 
 export interface SwayConfig {
   ampW: number;
@@ -48,6 +51,9 @@ export interface SwayRun {
   /** The shaken window dragged on by whole pixels after the sway: the drop's sharpness against it. */
   ref?: { path: string; rect: Rect };
   poked: { poked: string[]; unpainted: string[] };
+  /** The windows whose own page watched its section in the sway, and what each noted (#270). */
+  watched?: string[];
+  sections?: Record<string, SectionSample[]>;
   alive: boolean;
   /** Why the run stopped short (a desk that restarted mid-sway, say). */
   error?: string;
@@ -88,6 +94,7 @@ export async function runSway(
   try {
     await snap(desk.port, cfg.fill.window, cfg.fill.fill);
     await delay(1_000);
+    run.watched = await watchSections(desk.port);
     const { at } = await grip(desk.port, id);
     const { ampW, ampH, periodMs, periodHMs, stepMs, durationMs, delayMs } = cfg;
     const sways = { ampW, ampH, periodMs, periodHMs, stepMs, durationMs, delayMs, tag: "sway" };
@@ -113,6 +120,7 @@ export async function runSway(
     if (!(await swayed(desk, 1, 5_000))) throw new Error("the sway did not end");
     await delay(cfg.settleMs);
     if (restarted(desk.trace)) throw new Error("the desk started again (ADR 0202)");
+    run.sections = await readSections(desk.port);
     run.settledLines = lineCount(desk.trace);
     const before = await grip(desk.port, id);
     await drag(desk.port, before.at, [(before.at[0] ?? 0) + 8, before.at[1] ?? 0]);
@@ -186,6 +194,7 @@ export function analyzeSway(
   ];
   const settled =
     run.settledLines === undefined ? null : unsettled(lastLaid(trace.slice(0, run.settledLines)));
+  const fit = sectionFit(run.sections ?? {});
   const span = (pics?.widths[1] ?? 0) - (pics?.widths[0] ?? 0);
   const invalid = !s
     ? `the sway did not run${run.error ? ` (${run.error})` : ""}`
@@ -208,6 +217,8 @@ export function analyzeSway(
     frames: pics?.frames ?? 0,
     unfitFrames: pics?.unfit ?? 0,
     sceneFrames: pics?.deskUnfit ?? 0,
+    sectionFrames: fit.frames,
+    unfitSections: fit.unfit,
     swingFrames: compared.length,
     foreignFrames: foreign.length,
     stopped,
@@ -216,7 +227,8 @@ export function analyzeSway(
     ...(invalid ? { invalid } : {}),
   };
   const detail = {
-    run,
+    run: { ...run, sections: undefined },
+    sections: { watched: run.watched, ...fit },
     timing: t,
     pictures: pics,
     captures: inside.length,
