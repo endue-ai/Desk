@@ -1,6 +1,6 @@
 // One driver and one app per spec file; wdio.conf.ts starts them in beforeSession and ends them in
 // afterSession. Each spec runs the app with a fresh HOME (the data folder lives under it), its own
-// init.yaml, the built-in plugins, the e2e test plugin, and no brain (ADR 0144). This module starts
+// init.yaml, the built-in plugins, the e2e test plugin, the dock fixture, and no brain (ADR 0144). This module starts
 // the desk itself (cef.ts) with DESK_REMOTE_DEBUGGING_PORT and a chromedriver
 // (chrome-for-testing.ts) that attaches to that port (`goog:chromeOptions.debuggerAddress`). A
 // relaunch (browser.reloadSession) quits the app and starts it again with the same HOME and port:
@@ -8,10 +8,13 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { cpSync, createWriteStream, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { type CefDesk, cefBinary, dataDir, freePort, launchCef } from "./cef";
 import { ensureChromedriver } from "./chrome-for-testing";
+
+/** A folder of plugins every spec's app installs as built in: the dock the desk no longer ships (#276). */
+export const BUILT_IN_FIXTURES = "e2e/fixtures/built-in";
 
 /**
  * chromedriver's port. Two runs on one machine need two ports: `DESK_E2E_DRIVER_PORT` names another
@@ -62,7 +65,10 @@ export function appEnv(
     ...env,
     HOME: appHome,
     DESK_INIT: join(root, "e2e/fixtures", init),
-    DESK_PLUGIN_DIRS: join(root, "plugins"),
+    // The desk ships no dock (#276). The specs keep one on the bottom edge, installed as a
+    // built-in plugin is (its manifest's permissions granted): the edge bar the window manager
+    // keeps windows clear of, and the tiles a surface is put away and opened with.
+    DESK_PLUGIN_DIRS: [join(root, "plugins"), join(root, BUILT_IN_FIXTURES)].join(delimiter),
     DESK_DEV_PLUGINS: join(root, "e2e/fixtures/plugin-e2e-hello"),
   };
   for (const [key, value] of Object.entries(extra)) {

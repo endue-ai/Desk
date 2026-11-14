@@ -36,7 +36,8 @@ const plugins: Record<string, string> = {
   "endue.images": join(repo, "plugins/images"),
   "endue.player": join(repo, "plugins/player"),
   "endue.explorer": join(repo, "plugins/explorer"),
-  "endue.dock": join(repo, "plugins/dock"),
+  // The bottom dock is no built-in plugin (#276): the edges page keeps it as its bottom-edge fixture.
+  "endue.dock": join(repo, "e2e/fixtures/built-in/dock"),
   "endue.agents": join(repo, "plugins/agents"),
   "endue.memory": join(repo, "plugins/memory"),
   "endue.database": join(repo, "plugins/database"),

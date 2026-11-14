@@ -34,6 +34,23 @@ function setup(name = "Mira") {
 }
 
 describe("the person's controls (ADR 0111)", () => {
+  it("opens the launcher from its button, the first of the bar (ADR 0217)", async () => {
+    const { commands, root, unmount } = setup();
+    const ran: string[] = [];
+    commands.set("endue.launcher.open", () => void ran.push("open"));
+    const buttons = [...root.querySelectorAll<HTMLElement>(".account-bar button")];
+    expect(buttons.map((b) => b.dataset.key)).toEqual([
+      "launcher",
+      "inbox",
+      "account-settings",
+      "account-profile",
+    ]);
+    expect(buttons[0]?.getAttribute("aria-label")).toBe("Open a plugin");
+    buttons[0]?.click();
+    await vi.waitFor(() => expect(ran).toEqual(["open"]));
+    unmount();
+  });
+
   it("shows the endue profile once signed in: name, email and picture", async () => {
     const { bridge, commands, profile, popover, unmount } = setup();
     await commands.get("desk.account.open")?.();

@@ -8,11 +8,11 @@ there were two formats, the API would have holes.
 | `eris/` | The secretary (assets are under the `brand/` licence) |
 | `sidebar/` | Left bar: agents and spaces |
 | `toolbar/` | Right status panel: the drawer list (plugins, access) |
-| `dock/` | Bottom dock: open and put away the plugins that open on the desk |
 | `terminal/` | The person's shell in a PTY the core runs: several as tabs and desk buffers (`endue.terminal`, ADR 0037) |
 | `onboarding/` | First-run scenario |
 | `explorer/` | The folders the person allows as a tree (`endue.explorer`); files open through `desk.files` |
 | `calendar/` | iCalendar (RFC 5545) files in month, week, day and agenda views (`endue.calendar`), with reminders and commands for agents |
+| `launcher/` | Launcher (`endue.launcher`, ADR 0217): a grid of every plugin that opens on the desk, over the whole app, the ones opened lately first, filtered as you type; shown by the account bar's first button, `Mod+Alt+L` or the palette. The desk has no dock |
 | `mail/` | The person's mail from the index as threads in mailboxes, invitations read and answered (iTIP, iMIP), changes through the connector's commands (`endue.mail`) |
 | `chat/` | Every chat service in one interface (`endue.chat`): Slack, Discord, Teams and any chat connector's messages by service and workspace, threads, reactions, replies, edits; four layouts (Conversation, Inbox, Timeline, Columns), changes through each connector's `chat.*` commands |
 | `chat-digest/` | Chats at a glance (`endue.chat-digest`): a data-only `view` plugin, a page of universal views: unread counts, mentions, direct messages and the latest across every service |

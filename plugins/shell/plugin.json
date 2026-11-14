@@ -185,7 +185,7 @@
         "id": "morning",
         "name": "Morning",
         "plugins": {
-          "disabled": ["endue.dock", "endue.sidebar", "endue.toolbar"]
+          "disabled": ["endue.sidebar", "endue.toolbar"]
         },
         "settings": {
           "desk.shell.mode": {
@@ -245,7 +245,7 @@
         "id": "deep-work",
         "name": "Deep work",
         "plugins": {
-          "disabled": ["endue.dock", "endue.sidebar", "endue.toolbar"]
+          "disabled": ["endue.sidebar", "endue.toolbar"]
         },
         "settings": {
           "desk.shell.mode": {
@@ -300,7 +300,7 @@
         "id": "review",
         "name": "Review",
         "plugins": {
-          "disabled": ["endue.dock", "endue.sidebar", "endue.toolbar"]
+          "disabled": ["endue.sidebar", "endue.toolbar"]
         },
         "settings": {
           "desk.shell.mode": {
@@ -343,7 +343,7 @@
         "id": "studio",
         "name": "Studio",
         "plugins": {
-          "disabled": ["endue.dock", "endue.sidebar", "endue.toolbar"]
+          "disabled": ["endue.sidebar", "endue.toolbar"]
         },
         "settings": {
           "desk.shell.mode": {
@@ -395,7 +395,7 @@
         "id": "night",
         "name": "Night",
         "plugins": {
-          "disabled": ["endue.dock", "endue.sidebar", "endue.toolbar"]
+          "disabled": ["endue.sidebar", "endue.toolbar"]
         },
         "settings": {
           "desk.shell.mode": {

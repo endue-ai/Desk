@@ -13,10 +13,12 @@ for (const viewport of [
     await openShell(page);
     const bar = page.locator(".account-bar");
     const buttons = bar.getByRole("button");
-    await expect(buttons).toHaveCount(3);
-    await expect(buttons.nth(0)).toHaveAccessibleName("인박스 · 2");
-    await expect(buttons.nth(1)).toHaveAccessibleName("설정 열기");
-    await expect(buttons.nth(2)).toHaveAccessibleName("사용자 정보");
+    // The launcher's button first (ADR 0217): the one place on screen that opens a plugin.
+    await expect(buttons).toHaveCount(4);
+    await expect(buttons.nth(0)).toHaveAccessibleName("플러그인 열기");
+    await expect(buttons.nth(1)).toHaveAccessibleName("인박스 · 2");
+    await expect(buttons.nth(2)).toHaveAccessibleName("설정 열기");
+    await expect(buttons.nth(3)).toHaveAccessibleName("사용자 정보");
     const box = await bar.boundingBox();
     expect(box?.x).toBe(24);
     expect((box?.y ?? 0) + (box?.height ?? 0)).toBe(viewport.height - 24);

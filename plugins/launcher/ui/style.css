@@ -1,0 +1,103 @@
+/* Every colour, font, size and radius is a --desk-* token: /_desk/tokens.css declares the defaults and
+   the desk applies the theme in force over them. The page covers the whole app: its ground is the
+   theme's scrim, so the desk shows dimly under the grid. */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: auto;
+  /* Nearly the desk's own ground: the windows under the grid stay a hint, not a pattern behind it. */
+  background: color-mix(in srgb, var(--desk-background) 92%, transparent);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) / 1.5 var(--desk-font-sans);
+}
+
+.launcher {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-6);
+  max-width: 920px;
+  margin: 0 auto;
+  padding: var(--desk-space-16) var(--desk-space-6) var(--desk-space-12);
+}
+
+.find {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  font-size: var(--desk-text-xs);
+}
+
+.find .desk-field {
+  height: var(--desk-space-12);
+  font-size: var(--desk-text-base);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+}
+
+.group h2 {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: var(--desk-space-4);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: 0;
+  padding: var(--desk-space-4) var(--desk-space-2);
+  background: var(--desk-card);
+  text-align: center;
+}
+
+.tile .initial {
+  display: grid;
+  width: var(--desk-space-12);
+  height: var(--desk-space-12);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-primary-soft);
+  color: var(--desk-primary-text);
+  font-size: var(--desk-text-xl);
+  font-weight: 600;
+  place-items: center;
+}
+
+.tile .name {
+  overflow: hidden;
+  max-width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tile[aria-selected="true"] {
+  border-color: var(--desk-primary);
+  background: var(--desk-primary-soft);
+}
+
+.tile[aria-disabled="true"] {
+  border-style: dashed;
+  color: var(--desk-text-muted);
+}
+
+.hint {
+  margin: 0;
+  text-align: center;
+}

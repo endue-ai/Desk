@@ -178,14 +178,16 @@ describe("cef-package", () => {
     assert.deepEqual(picked, ["plugins/dock/plugin.json", "plugins/dock/ui/main.js"]);
   });
 
-  it("stages the repository's built-in plugins: the dock, the explorer and Eris among them", () => {
+  it("stages the repository's built-in plugins: the palette, the explorer and Eris among them", () => {
     const stage = mkdtempSync(join(tmpdir(), "cef-plugins-"));
     try {
       assert.ok(stagePlugins(stage) > 100);
-      for (const id of ["dock", "explorer", "eris"]) {
+      for (const id of ["palette", "explorer", "eris"]) {
         assert.ok(existsSync(join(stage, "plugins", id, "plugin.json")), id);
       }
-      assert.equal(existsSync(join(stage, "plugins/dock/tests")), false, "no tests ship");
+      assert.equal(existsSync(join(stage, "plugins/palette/tests")), false, "no tests ship");
+      // The dock is the tests' fixture now, not the desk's (#276): it never ships.
+      assert.equal(existsSync(join(stage, "plugins/dock")), false, "no dock ships");
       assert.equal(existsSync(join(stage, "plugins/terminal/node_modules")), false);
     } finally {
       rmSync(stage, { recursive: true, force: true });

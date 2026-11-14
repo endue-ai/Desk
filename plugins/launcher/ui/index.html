@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Launcher</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="launcher" id="launcher" aria-label="Launcher">
+      <label class="find">
+        <span class="desk-muted">Find a plugin</span>
+        <input
+          class="desk-field"
+          id="find"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          autocapitalize="off"
+          placeholder="Type a name"
+        />
+      </label>
+      <section class="group" id="recent-group" aria-labelledby="recent-title" hidden>
+        <h2 id="recent-title">Recent</h2>
+        <div class="grid" id="recent"></div>
+      </section>
+      <section class="group" aria-labelledby="all-title">
+        <h2 id="all-title">All</h2>
+        <div class="grid" id="all"></div>
+        <p class="desk-empty" id="none" hidden>No plugin has that name.</p>
+      </section>
+      <p class="desk-muted hint" role="status" id="status">Enter opens, the arrows move, Escape closes.</p>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
