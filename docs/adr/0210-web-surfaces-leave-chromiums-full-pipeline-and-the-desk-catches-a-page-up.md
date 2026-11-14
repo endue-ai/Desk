@@ -6,7 +6,7 @@ decision-makers: Team endue
 
 Supersedes ADR 0157's choice of Chromium's full pipeline (its slower clock for long-idle surfaces and
 its prompt frames stay). Amends ADR 0159, ADR 0162 and ADR 0165 where they hold a press to RT-16's
-16 ms: the measured budgets below hold it instead, and 16 ms stays the target (#249).
+16 ms: the measured budgets below hold it instead, and 16 ms stays the target (#268, under #249).
 
 # Web surfaces leave Chromium's full pipeline, and the desk catches a page up
 
@@ -72,26 +72,38 @@ its frames) the desk can see and answer, and a press's first frame waits a few m
   again (ADR 0170), and the desk's page restarts the desk (ADR 0202). Each telling is counted
   (`caught_up` in `compositor_stats`) and traced with why (`size`, `asked`, `shown`).
   `DESK_CATCH_UP=off` (development builds) turns them all off, to compare.
-* **A press's first frame** (`web_host/frames.rs`, `PROMPT_AFTER`, `PROMPT_AFTER_REST`): without the
+* **A press's first frame** (`web_host/frames.rs`, `frames_pacing.rs`, `PROMPT_AFTER`): without the
   full pipeline, a begin frame the display gets before the page has handled the press is held to its
-  deadline, a desk frame on, and CEF sends none meanwhile, so a press's prompts from the press on
-  (ADR 0157's) lose that frame. They now start 2 ms after the press, and 16 ms after it on a surface
-  at rest (`Pacing::long_idle`), whose page takes longer to wake. The surface probe without the full
+  deadline, a desk frame on, and CEF sends none meanwhile, so a press's prompts from the press on (ADR
+  0157's) lose that frame. They now start 2 ms after the press, and the pressed surface takes no desk
+  frame before them: the clock looks at a press at once, and on a desk at rest that look is a desk
+  frame, whose begin frame went out with the press and was held. The surface probe without the full
   pipeline, its prompts' first delay set by hand (a load average of 3 to 25): a press beside two
   animating surfaces (`perf_input_to_paint`, the median of four to six runs a delay) painted 18.2 ms
   after it at the median with its prompts from the press, 6.4 at 1 ms, 7.1 at 2, 7.9 at 3 and 9.5 to
-  11.8 at 4 to 6; at p95 22.5, 21.3, 18.3, 19.3 and 18.7 to 20.0 (each run's p95 is its second
-  slowest of twenty, so runs at one delay spread 4 to 8 ms); the desk's frame holding it, at the
-  median, 23.2, 15.7, 14.5, 15.7 and 17 to 18. A press on a desk at rest (`perf_input_from_rest`,
-  one run a delay, two at 16) read 35.5 to 35.9 ms at p95 with its prompts at 0, 2, 3, 5 or 8 ms,
-  36.0 at 12, 29.1 at 14, 28.4 and 29.3 at 16, 31.0 at 20.
-* **The budgets** (`e2e/perf/budgets.json`): set from what this change measured, each with its
-  margin. A press to its paint, p95: 23 ms, the median of seven runs (18.3) plus 25 %, as a run's p95
-  is its second slowest of twenty and moves 4 ms run to run. Its composed frame, the median: RT-16's
-  16 ms still (13.3 to 16.0). A caught press's wait after CEF's busy-wait (ADR 0159): 2.7 ms, the
-  slowest of seven runs (2.16) plus 25 %, as a run's median of five lands near 0 or near 2 ms. A
-  press on a desk at rest, p95: 32 ms, four runs' median (29.2) plus 10 %, so that prompts from the
-  press (35.5 to 35.9) fail it. The report prints RT-16's 16 ms beside them, the target.
+  11.8 at 4 to 6; at p95 22.5, 21.3, 18.3, 19.3 and 18.7 to 20.0 (each run's p95 is its second slowest
+  of twenty, so runs at one delay spread 4 to 8 ms); the desk's frame holding it, at the median, 23.2,
+  15.7, 14.5, 15.7 and 17 to 18. A press on a desk at rest (`perf_input_from_rest`) on a quiet machine
+  read 34.8 to 35.4 ms at p95 in eight runs with the desk frame at the press, and 21.3 to 25.9 in
+  thirteen without it on `main` 9eabfa87, 13.1 to 24.3 in eleven on `main` 858309f2 (#263 in); with
+  the full pipeline 13.6 to 16.3 in three runs between those eleven, and 21.7 to 24.7 in eight quieter
+  runs of `main` before this change. A first prompt 4, 6 or 8 ms after a press at rest painted later,
+  not sooner (the median 23.7 to 25.3, against 11.3 to 16.9 at 2 ms): a page at rest that misses the
+  first prompt's frame paints about 25 ms after the press whenever the prompt comes. This change first
+  waited 16 ms on a surface at rest; the probe's press is a down and an up at once, and the up, heard
+  on a surface no longer at rest, started the prompts 2 ms after it, so the gate never measured that
+  wait. It is gone.
+* **The budgets** (`e2e/perf/budgets.json`): set on a quiet machine (a load average under 6 at each
+  run's start), from eleven runs on `main` 858309f2 with this change (five of `just perf-compositor`,
+  six of its press probes alone), each the slowest plus 10 %, rounded up to the half millisecond;
+  eighteen runs on `main` 9eabfa87 fall within them too. A press to its paint, p95: 22.5 ms (15.6 to
+  20.4; 15.1 to 20.9 on 9eabfa87). A caught press's wait after CEF's busy-wait (ADR 0159): 8 ms (0.38
+  to 7.26; 0.01 to 6.86): a caught press paints 10 to 20 ms after it on a quiet machine, in the
+  busy-wait's 10 ms or up to 7 ms after it, and a run's median of five moves with that. A press on a
+  desk at rest, p95: 27 ms (13.1 to 24.3; 21.3 to 25.9). The composed frame's median keeps RT-16's
+  16 ms and fails in some runs: without the full pipeline a run reads about 13 to 17 ms or about 24 to
+  27, a few between, on every commit measured (More Information), and what decides which is #268's
+  first target.
 * **The gate** (`just perf-motion`, ADR 0208, ADR 0213): after the sway, the resize loop
   (`e2e/perf/motion-loop.ts`): the app window resized by four sizes at once and a plugin window
   maximized or restored, each in turn, a turn every 100 ms, 100 turns, then a poke. Check `loop`: no
@@ -110,17 +122,22 @@ and the desk started again. It must pass the loop and the sway in every run, and
 
 ### Consequences
 
-* Good, because no page stops for good: in five runs of `just perf-motion` on `main` 4d76dcaa with this
-  change (the sway and 500 turns of the loop), no page stopped painting, none was loaded again and
-  the desk never started again, where with the full pipeline the desk's page stopped in every run.
-  `sway-painting` is no longer a check that comes and goes (#248 had it under `sometimes`).
+* Good, because no page stops for good: in five runs of `just perf-motion` on `main` 4d76dcaa with
+  this change (the sway and 500 turns of the loop) no page stopped painting, none was loaded again and
+  the desk never started again, where with the full pipeline the desk's page stopped in every run. In
+  ten more on `main` 858309f2 with the press's wait for its first prompt, the stall watch caught one
+  terminal page once, in the loop at a load average of 14, and nothing else. `sway-painting` is no
+  longer a check that comes and goes (#248 had it under `sometimes`).
 * Good, because what is left is counted: 94 to 125 catch-ups a run, almost all for a size (`size`), a
   few for a page that asked again (`asked`), one hide and show (`shown`) that brought back a page
   the tellings had not.
-* Bad, because a press paints later than with the full pipeline (below): RT-16's 16 ms still holds
-  for the median composed frame on a busy desk, but not at p95 and not on a desk at rest. The
-  budgets hold the measured values with a margin, and regaining 16 ms is a follow-up under #249 ("a
-  press paints within RT-16 again without Chromium's full pipeline").
+* Bad, because a press paints later than with the full pipeline (below): on a quiet machine a press
+  beside animating surfaces paints 15 to 21 ms after it at p95, against 6.6 to 10.7 with it, and
+  RT-16's 16 ms is met at the median, not at p95. A press on a desk at rest paints 13.1 to 24.3 ms
+  after it at p95 on `main` 858309f2, where the full pipeline beside it read 13.6 to 16.3: a page at
+  rest that misses a press's first begin frame paints about 25 ms after the press. The budgets hold
+  the measured values with a margin, and regaining 16 ms is #268 ("a press paints within RT-16 again
+  without Chromium's full pipeline"), under #249.
 * Bad, because the catch-up works around CEF's resize hold and a page's stop rather than ending
   them: each is a telling on a timer, and a hidden and shown page fires `visibilitychange` twice.
 * Neutral: `--disable-threaded-animation` (ADR 0165) stays: nothing measured animations on the
@@ -154,11 +171,45 @@ Without the full pipeline, the stall watch telling a page at its asks: three run
 hide and show at its last ask, five runs on `main` 4d76dcaa (a load average of 6 to 40): no page
 stopped, none loaded again, no restart, in the sway and the loop alike (`just perf-motion --runs 5`:
 every check passes but the known `sway-smooth` #249, `sway-sizes` and `sway-scene` #252, and
-`sway-own-pixels` #252 at times).
+`sway-own-pixels` #252 at times). On `main` 858309f2 (#263 in) with the press's wait for its first
+prompt, ten runs in two batches at a load average of 4.5 to 15.9: no page stopped in the shake or the
+sway and no restart; in the loop the stall watch caught one terminal page once, at a load average of
+14; one run's desk was ended from outside mid-sway (no restart, no crash report, nothing in its log);
+`sway-fps` read 52.4 to 57.6, under its 55 only at a load average of 14 and 16 (58.4 with the full
+pipeline on 6e75d95e).
 
-`just perf-compositor` on `main` 4d76dcaa with this change (a load average of 10 to 40): a press to its
-paint 18.02 ms at p95 (median 7.42), its composed frame 13.28 at the median, a caught press's wait
-1.95, a press on a desk at rest 29.28 at p95 (its blocks 29.28, 28.53, 34.30); the desk at rest, the
-desk's start and memory per surface within their budgets. The compositor's own start to its first
-frame (`composeStartup`, `crates/desk-compositor`, which this change does not touch) read 38.1 ms
-against 34.1 at that load.
+`just perf-compositor` and its two press probes alone on a quiet machine (a load average under 6 at
+each run's start), the reference Mac; ranges over the runs, each run's p95 its second slowest press;
+`main` with the full pipeline as the coordinator measured it the same day:
+
+| | a press to its paint, p95 | its composed frame, median | a press on a desk at rest, p95 |
+| --- | --- | --- | --- |
+| full pipeline: `main` 6e75d95e, 4d76dcaa and 9eabfa87 (eight runs, a load average of 3 to 5) | 6.6 to 10.7 ms | 13.2 to 17.6 | 21.7 to 24.7 |
+| none, the desk frame at the press (#248 as first merged, 0b1b46ac) | 16.5 to 24.7 (5 runs) | 14.2 to 27.0 (6 runs) | 34.8 to 35.4 (15 runs) |
+| none, no desk frame before the first prompt, on `main` 9eabfa87 | 15.1 to 20.9 (18 runs) | 13.0 to 27.1 | 21.3 to 25.9 (13 runs; 9.7 once, warm) |
+| the same on `main` 858309f2 (#263 in) | 15.6 to 20.4 (11 runs) | 15.7 to 27.2 | 13.1 to 24.3 (11 runs) |
+| full pipeline on `main` 858309f2, between the last six of those (3 runs, a load average of 3 to 7) | 6.6 to 8.0 | 13.4 to 15.4 | 13.6 to 16.3 |
+
+Without the full pipeline the composed frame's median reads about 13 to 17 ms in a run or about 24 to
+27, a few runs between, on every commit measured (with it, 13.2 to 17.6 in eleven runs). Within a run
+each press's composed frame comes a nearly constant time after its paint (2 to 6 ms in one run, 14 to
+16 in another): the probe's presses keep their phase against the desk's 60 Hz frames from the run's
+start, and in a late run a paint just misses the frame that would show it. One or two runs a commit
+cannot tell those commits apart: 14.21 on 0b1b46ac and 26.65 on 858309f2 in the coordinator's runs;
+27.01 with 0b1b46ac's change, 13.0 to 27.1 with this change on 9eabfa87 and 15.7 to 27.2 on 858309f2
+in mine. The budget keeps RT-16's 16 ms; what decides the phase is #268's first target.
+
+A press on a desk at rest is read in three blocks of twelve presses, and the gate takes the block
+whose p95 is the median. Without the full pipeline a block reads about 13 to 17 ms or about 21 to 25:
+on 9eabfa87 most read about 25; on 858309f2, 14 of 33 did, so a run's median block read 20.5 or more
+in three of eleven runs. The full pipeline's nine blocks between them read 13.1 to 18.4.
+
+With these budgets, five runs of `just perf-compositor` in a row on `main` 858309f2 at a load average
+under 6 passed every check but the composed frame's median in its late runs (a press to its paint
+15.6 to 20.2 ms at p95, its composed frame 15.7 to 27.2 at the median, a caught press's wait 0.38 to
+2.15, a press on a desk at rest 16.45 to 17.09). The rest of `just perf-compositor` is not this
+change's: the desk's start read 250.2 ms at its slowest once in eight runs on 9eabfa87, against 234.4
+(`surfaceStartup`, a load average of 11.6 at that run's end), and 296 in one more run that another
+gate's run beside it took to a load average of 16; every other value was within its budget or
+baseline. Earlier, at a load average of 10 to 40, the compositor's own start to its first frame
+(`composeStartup`, `crates/desk-compositor`) read 38.1 ms against 34.1.
