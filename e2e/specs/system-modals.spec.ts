@@ -189,4 +189,17 @@ describe("system modals: what the desk opens lies whole over every window, its s
     await feed(keyPress("Escape", "Escape"));
     await gone("dialog.desk-settings[open]");
   });
+
+  it("closes the settings at a press outside them, which raises no window", async () => {
+    const box = await opened("desk.settings.open", "dialog.desk-settings[open]");
+    const away = await windowOutside(box);
+    const was = await order();
+    await feed([pointer(away)]);
+    expect((await inputState()).pointer.hearing).toEqual(["desk"]);
+    // A press on the scrim, over a window: the settings', and it closes them.
+    await feed([pointer(away), button(true), button(false)]);
+    await gone("dialog.desk-settings[open]");
+    await browser.pause(450);
+    expect(await order()).toEqual(was);
+  });
 });

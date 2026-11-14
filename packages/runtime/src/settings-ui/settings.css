@@ -34,9 +34,10 @@
 .settings-layout { display: grid; grid-template-columns: 215px minmax(0, 1fr); height: 100%; }
 .settings-sidebar { min-width: 0; padding: 0 12px 20px; background: var(--settings-sidebar); border-right: 1px solid var(--settings-line); overflow-y: auto; }
 .settings-window-controls { display: flex; align-items: center; gap: 8px; height: 48px; padding-left: 6px; }
-.settings-window-close { display: grid; place-items: center; width: 12px; height: 12px; padding: 0; border: 1px solid var(--settings-line); border-radius: 50%; background: var(--desk-danger); color: var(--desk-danger-foreground) !important; }
-.settings-window-close svg { opacity: 0; }
-.settings-window-close:hover svg, .settings-window-close:focus-visible svg { opacity: 1; }
+/* The close control is a plain ✕, as on the desk's windows: no coloured dot that shows its mark
+   only under the pointer. */
+.settings-window-close { display: grid; place-items: center; width: 24px; height: 24px; margin-left: -6px; padding: 0; border: 0; border-radius: var(--desk-radius-md); background: transparent; color: var(--settings-muted) !important; }
+.settings-window-close:hover { background: var(--desk-hover); color: inherit !important; }
 .settings-sidebar-title { margin: 0 6px 12px; font-size: var(--desk-text-xl); font-weight: 700; letter-spacing: -.04em; }
 .settings-search { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 7px; background: var(--desk-hover); border: 1px solid var(--settings-line); border-radius: var(--desk-radius-md); color: var(--settings-muted); }
 .settings-search input { width: 100%; min-width: 0; background: transparent; border: 0; outline: 0; font-size: var(--desk-text-xs); }
@@ -50,16 +51,11 @@
 .settings-nav-item { display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 8px; min-height: 36px; border: 0; border-radius: var(--desk-radius-md); text-align: left; background: transparent; }
 .settings-nav-item:hover { background: var(--desk-hover); }
 .settings-nav-item.selected { background: var(--settings-accent); color: var(--settings-on-accent); }
-.settings-category-icon { display: inline-grid; place-items: center; flex: 0 0 25px; width: 25px; height: 25px; border-radius: var(--desk-radius-md); color: var(--desk-primary-foreground); box-shadow: var(--desk-shadow-sm); }
-.settings-category-icon.general { background: var(--desk-chart-8); }
-.settings-category-icon.appearance { background: var(--desk-chart-5); }
-.settings-category-icon.keyboard { background: var(--desk-chart-3); }
-.settings-category-icon.notifications { background: var(--desk-danger); }
-.settings-category-icon.accessibility { background: var(--desk-info); }
-.settings-category-icon.connections { background: var(--desk-chart-2); }
-.settings-category-icon.market { background: var(--desk-chart-4); }
-.settings-category-icon.plugins { background: var(--desk-chart-6); }
-.settings-category-icon.account { background: var(--desk-primary); }
+/* A section's icon is its glyph alone, in the text's muted colour: no tile, no colour of its own.
+   Each section had a coloured tile, as an OS's settings do; on the desk they read as nine
+   colours that mean nothing. The selected row's icon takes the row's colour. */
+.settings-category-icon { display: inline-grid; place-items: center; flex: 0 0 25px; width: 25px; height: 25px; color: var(--settings-muted); }
+.settings-nav-item.selected .settings-category-icon { color: inherit; }
 /* The design system's row (.menu-item), as tall as the identity it holds. */
 .settings-identity .settings-identity-button { gap: 10px; height: auto; min-width: 0; padding: 4px; }
 .settings-identity-button > div { min-width: 0; }
@@ -90,7 +86,7 @@
 .settings-about { display: grid; justify-items: center; gap: 7px; padding: 12px 0 18px; }
 .settings-about h2 { font-size: var(--desk-text-2xl); font-weight: 650; }
 .settings-about p { font-size: var(--desk-text-xs); color: var(--settings-muted); }
-.settings-app-icon { display: grid; place-items: center; width: 76px; height: 76px; margin-bottom: 8px; border-radius: var(--desk-radius-lg); background: var(--desk-primary); color: var(--desk-primary-foreground); box-shadow: var(--desk-shadow-md); }
+.settings-app-icon { display: grid; place-items: center; width: 76px; height: 76px; margin-bottom: 8px; border: 1px solid var(--settings-line); border-radius: var(--desk-radius-lg); color: var(--settings-muted); }
 .settings-link { display: flex; align-items: center; gap: 10px; width: 100%; padding: 13px 14px; border: 0; background: transparent; text-align: left; }
 .settings-link + .settings-link { border-top: 1px solid var(--settings-line); }
 .settings-link > svg:last-child { margin-left: auto; color: var(--settings-muted); }

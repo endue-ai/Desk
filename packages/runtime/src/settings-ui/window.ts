@@ -122,7 +122,7 @@ export function installSettingsWindow(
           title: tr("close"),
           onClick: close,
         },
-        settingsIcon("close", 9),
+        settingsIcon("close", 13),
       ),
     ),
     h("div", { class: "settings-sidebar-title" }, tr("title")),
@@ -251,6 +251,18 @@ export function installSettingsWindow(
   dialog.addEventListener("cancel", (e) => {
     e.preventDefault();
     close();
+  });
+  // A press outside the window closes it, as it does every other dialog of the desk (ADR 0180). The
+  // window's layout fills the dialog, so a press whose target is the dialog itself landed on its
+  // backdrop. Both ends of the press: a selection dragged out of a field past the window's edge
+  // leaves it open.
+  let pressedOutside = false;
+  dialog.addEventListener("pointerdown", (event) => {
+    pressedOutside = event.target === dialog;
+  });
+  dialog.addEventListener("click", (event) => {
+    if (pressedOutside && event.target === dialog) close();
+    pressedOutside = false;
   });
   // Modal editing never runs the desk's window/file commands behind the settings window. The
   // palette's key is the one way out to the rest of the desk: it closes the window and opens it.

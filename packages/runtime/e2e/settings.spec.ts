@@ -61,6 +61,53 @@ test.describe("core settings", () => {
     await expect(page.getByRole("button", { name: "설정 열기", exact: true })).toBeFocused();
   });
 
+  test("a press outside the window closes it, and one that only ends outside does not", async ({
+    page,
+  }) => {
+    await open(page);
+    await page.getByRole("button", { name: "설정 열기", exact: true }).focus();
+    await page.keyboard.press("Meta+,");
+    await expect(dialog(page)).toBeVisible();
+    const box = await dialog(page).boundingBox();
+    if (!box) throw new Error("the settings window has no box");
+    const outside = { x: box.x / 2, y: box.y + box.height / 2 };
+    // A selection dragged from the search field out past the window's edge: still open.
+    const field = await dialog(page).getByRole("searchbox", { name: "설정 검색" }).boundingBox();
+    if (!field) throw new Error("the search field has no box");
+    await page.mouse.move(field.x + field.width / 2, field.y + field.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(outside.x, outside.y, { steps: 4 });
+    await page.mouse.up();
+    await expect(dialog(page)).toBeVisible();
+    // A press on a control inside leaves it open too.
+    await dialog(page).getByRole("button", { name: "키보드", exact: true }).click();
+    await expect(dialog(page).getByRole("heading", { name: "키보드", exact: true })).toBeVisible();
+    // A press on the backdrop closes it, and the focus goes back where it was.
+    await page.mouse.click(outside.x, outside.y);
+    await expect(dialog(page)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "설정 열기", exact: true })).toBeFocused();
+  });
+
+  test("a section's icon is its glyph alone: no tile and no colour of its own", async ({
+    page,
+  }) => {
+    await open(page);
+    await page.keyboard.press("Meta+,");
+    await expect(dialog(page)).toBeVisible();
+    const looks = await dialog(page)
+      .locator(".settings-nav-item:not(.selected) .settings-category-icon")
+      .evaluateAll((icons) =>
+        icons.map((icon) => {
+          const style = getComputedStyle(icon);
+          return `${style.backgroundColor} ${style.boxShadow} ${style.color}`;
+        }),
+      );
+    expect(looks.length).toBeGreaterThan(5);
+    // No background, no shadow, and one colour for them all.
+    expect(new Set(looks).size).toBe(1);
+    expect(looks[0]).toMatch(/^rgba\(0, 0, 0, 0\) none /);
+  });
+
   test("records, confirms conflicts, clears and resets core bindings", async ({ page }, info) => {
     await open(page);
     await page.keyboard.press("Meta+,");
