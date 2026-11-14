@@ -37,14 +37,18 @@ const inThePage = () =>
     ),
   );
 
-/** Whether window `id`'s own page holds its section, at its top left. */
+/** How window `id`'s own page holds its section: its style, and whether it fills the page (#270). */
 const ownPageHolds = (id: string) =>
   browser.execute((id: string) => {
     const page = window.open("", `desk-window:${id}`);
     const section = page?.document.querySelector<HTMLElement>(
       `section.surface[data-surface="${CSS.escape(id)}"]`,
     );
-    return section ? [section.style.left, section.style.top] : null;
+    if (!page || !section) return null;
+    const { left, top, width, height } = section.style;
+    const r = section.getBoundingClientRect();
+    const off = [r.x, r.y, r.width - page.innerWidth, r.height - page.innerHeight];
+    return { style: [left, top, width, height], fills: off.every((d) => Math.abs(d) <= 1) };
   }, id);
 
 /** What window `id`'s own page painted so far, and the texture the compositor holds of it. */
@@ -77,7 +81,11 @@ describe("window pages: each window draws from a page of its own (#227)", () => 
     const id = await openWindow();
     await pause(500);
     expect(await inThePage()).toEqual([]);
-    expect(await ownPageHolds(id)).toEqual(["0px", "0px"]);
+    // Sized by its page, not by its window's rect: the two never part for a frame.
+    expect(await ownPageHolds(id)).toEqual({
+      style: ["0px", "0px", "100vw", "100vh"],
+      fills: true,
+    });
     const { texture } = await painted(id);
     const win = await windowNow(id);
     const scale = await browser.execute(() => window.devicePixelRatio);

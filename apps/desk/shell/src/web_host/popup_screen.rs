@@ -14,7 +14,8 @@
 //! (`WebHost::placed`); a browser hears it only once the view rests there (`SETTLE`), its last
 //! paint at its size and another since it was last told, with no popup open
 //! (`WebHost::tell_screens`, on each turn of the event loop), through `NotifyScreenInfoChanged`,
-//! and gets desk frames to paint with it: a window dragged or gliding tells its page nothing until
+//! and gets desk frames and a whole frame of its view to paint with it, which ends the hold CEF
+//! puts on the view's next resize (#270): a window dragged or gliding tells its page nothing until
 //! it stops, a resize in flight is never laid out again past CEF's hold by it (ADR 0170), and no
 //! screen is told while CEF still holds the last one; a new scale tells it with the scale
 //! (`View::rescaled`). What a browser was told is what its handler answers from then on
@@ -24,7 +25,7 @@
 
 use std::time::{Duration, Instant};
 
-use cef::{ImplBrowser, ImplBrowserHost, Rect};
+use cef::{ImplBrowser, ImplBrowserHost, PaintElementType, Rect};
 
 use super::super::WebHost;
 use super::super::lifecycle::State;
@@ -208,8 +209,14 @@ impl WebHost {
             if let Some(host) = browser.host() {
                 // Its screen rects and info again: the view's place, the app window; no new size.
                 host.notify_screen_info_changed();
+                // CEF holds every resize from now on until the view paints again
+                // (`ResizeRootLayer`), and a page the telling leaves looking as it did paints
+                // nothing of its own: a whole frame of it ends the hold. Without one, a window
+                // moved and then resized kept its page at the old size until its look changed
+                // (#270): a section sized by its page never did.
+                host.invalidate(PaintElementType::VIEW);
             }
-            // Frames for it to paint at the surface id that came with it, which ends CEF's hold.
+            // Frames for it to paint at the surface id that came with it.
             super::super::frames::heard(browser.identifier(), false);
         }
     }
