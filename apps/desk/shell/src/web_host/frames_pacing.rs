@@ -20,8 +20,8 @@
 use std::time::{Duration, Instant};
 
 use super::{
-    ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PAINTING, PROMPT, PROMPT_AFTER, PROMPT_AFTER_REST,
-    PROMPT_FOR, RATE, SLOW,
+    ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PAINTING, PROMPT, PROMPT_AFTER, PROMPT_FOR, RATE,
+    SLOW,
 };
 
 #[path = "frames_rhythm.rs"]
@@ -132,15 +132,10 @@ impl Pacing {
 
     /// The surface heard a press or a key at `at`, having painted `paints` frames. An idle one
     /// (nothing painted for `IDLE`) gets begin frames every `PROMPT` from `PROMPT_AFTER` after `at`
-    /// on (`PROMPT_AFTER_REST` if it rested) until it paints, until `PROMPT_FOR` after `at` at most;
-    /// one that paints already takes every desk frame and needs none.
+    /// on until it paints, until `PROMPT_FOR` after `at` at most, and no desk frame before the first
+    /// (`due`); one that paints already takes every desk frame and needs none.
     pub fn press(&mut self, at: Instant, paints: u64) {
         self.saw(at, paints);
-        let first = if self.long_idle(at) {
-            PROMPT_AFTER_REST
-        } else {
-            PROMPT_AFTER
-        };
         self.heard(at);
         if self
             .painted
@@ -149,7 +144,7 @@ impl Pacing {
             return;
         }
         self.press = Some(Press {
-            next: at + first,
+            next: at + PROMPT_AFTER,
             until: at + PROMPT_FOR,
             paints: self.paints,
         });
@@ -179,7 +174,12 @@ impl Pacing {
             }
             Mode::Rest => asked,
         };
-        let due = self.pressed(now) || paced;
+        let prompt = self.pressed(now);
+        // A press's desk frames wait for its first prompt: a begin frame before its page handled
+        // the press finds nothing to draw, Chromium's display holds it to its deadline, and CEF
+        // sends none while it is out, so the prompt would wait a frame behind it (ADR 0210).
+        let held = !prompt && self.press.is_some_and(|p| now < p.next);
+        let due = prompt || paced && !held;
         if due {
             self.sent_slow = slow;
         }
@@ -293,9 +293,13 @@ impl Pacing {
     }
 
     /// When it wants its next look on `clock` at `now` (`None` while the clock is stopped): a press's
-    /// next begin frame, or the next desk frame its pace takes, or the next slow one, or, resting,
-    /// none; short of every frame, the next desk frame while its page's ask holds.
+    /// next begin frame (its desk frames wait for it), or the next desk frame its pace takes, or the
+    /// next slow one, or, resting, none; short of every frame, the next desk frame while its page's
+    /// ask holds.
     pub fn next(&self, clock: &Clock, now: Instant) -> Option<Instant> {
+        if let Some(press) = self.press {
+            return Some(press.next);
+        }
         let last = clock.last();
         let mode = self.mode(now);
         let paced = match mode {
@@ -311,10 +315,7 @@ impl Pacing {
         let asked = clock
             .next()
             .filter(|at| mode != Mode::Every && self.asked_at(now) && self.asked_at(*at));
-        [self.press.map(|p| p.next), paced, asked]
-            .into_iter()
-            .flatten()
-            .min()
+        [paced, asked].into_iter().flatten().min()
     }
 }
 

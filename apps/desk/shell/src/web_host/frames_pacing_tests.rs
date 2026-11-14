@@ -1,7 +1,6 @@
 use super::Pacing;
 use crate::web_host::frames::{
-    ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PROMPT, PROMPT_AFTER, PROMPT_AFTER_REST, PROMPT_FOR,
-    RATE,
+    ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PROMPT, PROMPT_AFTER, PROMPT_FOR, RATE,
 };
 use std::time::{Duration, Instant};
 
@@ -171,17 +170,21 @@ fn a_desk_at_rest_has_nothing_to_look_at_until_a_page_asks_or_a_press_comes() {
     );
     let k = clock.frame(after);
     assert!(!pacing.due(after, k, 1));
-    pacing.press(after, 1);
-    assert_eq!(
-        pacing.next(&clock, after),
-        clock.next(),
-        "a press wakes it: the next desk frame"
-    );
-    let first = after + PROMPT_AFTER_REST;
+    let pressed = after + FRAME;
+    let k = clock.frame(pressed);
+    assert!(k.is_some(), "the look at the press is a desk frame");
+    pacing.press(pressed, 1);
     assert!(
-        !pacing.due(first - PROMPT, None, 1),
-        "a surface at rest has no prompt until {PROMPT_AFTER_REST:?} after the press (ADR 0210)"
+        !pacing.due(pressed, k, 1),
+        "a press wakes it, but not on the desk frame at the press (ADR 0210)"
     );
+    let first = pressed + PROMPT_AFTER;
+    assert_eq!(
+        pacing.next(&clock, pressed),
+        Some(first),
+        "its first prompt"
+    );
+    assert!(!pacing.due(first - PROMPT / 2, None, 1));
     assert!(pacing.due(first, None, 1), "its first prompt");
 }
 
@@ -228,6 +231,33 @@ fn a_press_on_an_idle_surface_brings_begin_frames_soon_after_until_it_paints() {
     assert_eq!(
         sent, 32,
         "from {PROMPT_AFTER:?} to {PROMPT_FOR:?} after the press when no paint comes"
+    );
+}
+
+#[test]
+fn a_press_holds_its_surfaces_desk_frames_until_its_first_prompt() {
+    let mut pacing = Pacing::new(60);
+    let t0 = Instant::now();
+    assert!(pacing.due(t0, Some(0), 1), "it painted");
+    let pressed = t0 + IDLE + FRAME;
+    pacing.press(pressed, 1);
+    let clock = Clock::default();
+    assert!(
+        !pacing.due(pressed, Some(3), 1),
+        "a desk frame before its page handled the press would be held a frame (ADR 0210)"
+    );
+    assert_eq!(pacing.next(&clock, pressed), Some(pressed + PROMPT_AFTER));
+    assert!(
+        pacing.due(pressed + PROMPT_AFTER, None, 1),
+        "its first prompt"
+    );
+    assert!(
+        pacing.due(pressed + FRAME, Some(4), 1),
+        "the desk frames again, its prompts on"
+    );
+    assert!(
+        pacing.due(pressed + FRAME * 2, Some(5), 2),
+        "and once it painted"
     );
 }
 
