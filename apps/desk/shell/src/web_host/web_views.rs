@@ -24,11 +24,13 @@ use super::{DEFAULT_PACE, Record, WebHost, drag, frames, render, web_client};
 pub(super) struct WebView {
     /// The id the core gave it.
     pub(super) id: String,
-    place: WebPlace,
+    pub(super) place: WebPlace,
     /// The keys go to its page rather than to its window's plugin: a press in it or `web.focus`
     /// gave them, a press on the plugin's own surface takes them back.
-    keys: bool,
+    pub(super) keys: bool,
     pub(super) state: WebState,
+    /// Where it was sent before its browser was made.
+    pending: Option<String>,
 }
 
 /// The web views, by their window's surface host, and the request context they share.
@@ -39,7 +41,7 @@ pub(super) struct Views {
 }
 
 impl Views {
-    fn host_of(&self, view: &str) -> Option<String> {
+    pub(super) fn host_of(&self, view: &str) -> Option<String> {
         (self.by_host.iter())
             .find(|(_, v)| v.id == view)
             .map(|(host, _)| host.clone())
@@ -53,11 +55,11 @@ fn size_of(place: &WebPlace) -> (u32, u32) {
 }
 
 /// Whether a view at `place` shows at all.
-fn shows(place: &WebPlace) -> bool {
+pub(super) fn shows(place: &WebPlace) -> bool {
     place.shown && place.width >= 1.0 && place.height >= 1.0
 }
 
-fn missing(view: &str) -> WebError {
+pub(super) fn missing(view: &str) -> WebError {
     WebError::NotFound(format!("no web view {view} is open"))
 }
 
@@ -128,6 +130,7 @@ impl WebHost {
                 place,
                 keys: false,
                 state: WebState::default(),
+                pending: None,
             };
             inner.web.by_host.insert(host.to_owned(), web);
         }
@@ -153,8 +156,11 @@ impl WebHost {
             extra.set_bool(Some(&crate::renderer::WEB_VIEW.into()), 1);
         }
         shared.lock().restart();
+        // Not `create_browser_sync`: the views' request context may still be starting (a first
+        // view opened as its plugin starts), and CEF makes no browser in one that is not up yet.
+        // Made this way the browser comes once the context is, in `web_created`.
         let mut context = self.web_context();
-        let browser = browser_host_create_browser_sync(
+        let made = browser_host_create_browser(
             Some(&info),
             Some(&mut client),
             Some(&url.unwrap_or(BLANK).into()),
@@ -162,17 +168,42 @@ impl WebHost {
             extra.as_mut(),
             context.as_mut(),
         );
-        let Some(browser) = browser else {
+        if made != 1 {
             self.web_drop(host);
             return Err(WebError::Failed("the view's browser did not open".into()));
-        };
-        if let Some(host) = browser.host() {
-            host.was_hidden(1);
-        }
-        if let Some(record) = self.inner().records.get_mut(&surface) {
-            record.browser = Some(browser);
         }
         Ok(())
+    }
+
+    /// The browser of view surface `surface` was made: it is the view's from now on, hidden or
+    /// shown as the view is now, and goes where the view was sent meanwhile. One made for a view
+    /// that ended before it came closes.
+    pub(super) fn web_created(&self, surface: &str, browser: &Browser) {
+        let (hidden, pending) = {
+            let mut inner = self.inner();
+            let pending = super::web_rules::host_of(surface)
+                .and_then(|host| inner.web.by_host.get_mut(host))
+                .and_then(|view| view.pending.take());
+            let Some(record) = inner
+                .records
+                .get_mut(surface)
+                .filter(|r| r.browser.is_none())
+            else {
+                drop(inner);
+                if let Some(host) = browser.host() {
+                    host.close_browser(1);
+                }
+                return;
+            };
+            record.browser = Some(browser.clone());
+            (record.state.hidden(), pending)
+        };
+        if let Some(host) = browser.host() {
+            host.was_hidden(i32::from(hidden));
+        }
+        if let (Some(url), Some(frame)) = (pending, browser.main_frame()) {
+            frame.load_url(Some(&url.as_str().into()));
+        }
     }
 
     /// View `view` lies at `place` in its window's surface from now on; the next look lays its
@@ -195,10 +226,18 @@ impl WebHost {
             .ok_or_else(|| missing(view))
     }
 
+    /// Load `url` in view `view`: now, or once its browser is made.
     pub fn web_load(&self, view: &str, url: &str) -> Result<(), WebError> {
-        let frame = self.web_browser(view)?.main_frame();
-        let frame = frame.ok_or_else(|| missing(view))?;
-        frame.load_url(Some(&url.into()));
+        if let Ok(browser) = self.web_browser(view) {
+            let frame = browser.main_frame().ok_or_else(|| missing(view))?;
+            frame.load_url(Some(&url.into()));
+            return Ok(());
+        }
+        let mut inner = self.inner();
+        let host = inner.web.host_of(view).ok_or_else(|| missing(view))?;
+        if let Some(web) = inner.web.by_host.get_mut(&host) {
+            web.pending = Some(url.to_owned());
+        }
         Ok(())
     }
 
@@ -210,16 +249,6 @@ impl WebHost {
             S::Forward => browser.go_forward(),
             S::Reload => browser.reload(),
             S::Stop => browser.stop_load(),
-        }
-        Ok(())
-    }
-
-    /// View `view` has the keys from now on, as after a press in it.
-    pub fn web_focus(&self, view: &str) -> Result<(), WebError> {
-        let mut inner = self.inner();
-        let host = inner.web.host_of(view).ok_or_else(|| missing(view))?;
-        if let Some(web) = inner.web.by_host.get_mut(&host) {
-            web.keys = true;
         }
         Ok(())
     }
@@ -330,34 +359,6 @@ impl WebHost {
         }
         for (surface, action, view, browser) in acts {
             self.act(&surface, action, &view, browser.as_ref(), DEFAULT_PACE);
-        }
-    }
-
-    /// A press went to `surface`: on a view it gives the view the keys, on a window's own
-    /// surface it takes them back from that window's view.
-    pub fn web_pressed(&self, surface: &str) {
-        let mut inner = self.inner();
-        let (host, keys) = match super::web_rules::host_of(surface) {
-            Some(host) => (host, true),
-            None => (surface, false),
-        };
-        if let Some(web) = inner.web.by_host.get_mut(host) {
-            web.keys = keys;
-        }
-    }
-
-    /// The surface the keys go to when the desk gives them to the surface with host `host`: its
-    /// view, while that has them and shows; else the surface itself.
-    pub fn web_stand_in(&self, host: &str) -> String {
-        let inner = self.inner();
-        let surface = surface_of(host);
-        let has = (inner.web.by_host.get(host)).is_some_and(|v| v.keys && shows(&v.place));
-        let live = (inner.records.get(&surface))
-            .is_some_and(|r| r.browser.is_some() && r.state == State::Live { hidden: false });
-        if has && live {
-            surface
-        } else {
-            host.to_owned()
         }
     }
 }

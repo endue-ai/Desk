@@ -35,6 +35,7 @@ fn a_view_is_found_by_the_id_the_core_gave_it() {
         place: place(1.0, 1.0, true),
         keys: false,
         state: WebState::default(),
+        pending: None,
     };
     views.by_host.insert("main.endue-browser".into(), web);
     assert_eq!(views.host_of("w-3").as_deref(), Some("main.endue-browser"));

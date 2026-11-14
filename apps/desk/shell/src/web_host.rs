@@ -33,6 +33,7 @@ pub mod stall;
 pub mod top;
 pub mod view;
 mod web_client;
+mod web_keys;
 mod web_refusals;
 pub mod web_rules;
 pub mod web_views;

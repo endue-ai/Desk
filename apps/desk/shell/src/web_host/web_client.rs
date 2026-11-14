@@ -1,10 +1,9 @@
-//! The client of a web view's browser (#273, ADR 0216): a remote page's, so it is none of the
-//! desk's. It answers no process message (no bridge call, no post, no ask for frames); every load
-//! passes `web_rules::loads`; its own page goes only where the core allows (`web_may_visit`), and
-//! a link that asks for a new window or tab loads in the view; what a page asks of the person is
-//! refused (`web_refusals.rs`), and with no download handler nothing is downloaded. Its address, title and load
-//! go to the view's caller (`web_state`); its cursor and hover title to the compositor, as a
-//! plugin surface's do.
+//! The client of a web view's browser (#273, ADR 0216): a remote page's, so none of the desk's.
+//! It answers no process message (no bridge call, no post, no ask for frames); every load passes
+//! `web_rules::loads`; its own page goes only where the core allows (`web_may_visit`), and a link
+//! for a new window or tab loads in the view; what a page asks of the person is refused
+//! (`web_refusals.rs`), and with no download handler nothing is downloaded. Its address, title
+//! and load go to the view's caller (`web_state`); its cursor and hover title to the compositor.
 
 // `wrap_client!` makes a constructor with one argument per field.
 #![allow(clippy::too_many_arguments)]
@@ -102,6 +101,12 @@ wrap_life_span_handler! {
             1
         }
 
+        fn on_after_created(&self, browser: Option<&mut Browser>) {
+            if let Some(browser) = browser {
+                self.host.web_created(&self.surface, browser);
+            }
+        }
+
         fn on_before_close(&self, browser: Option<&mut Browser>) {
             if let Some(browser) = browser {
                 self.host.web_closed(&self.surface, browser.identifier());
@@ -196,8 +201,7 @@ wrap_request_handler! {
     }
 
     impl RequestHandler {
-        // The view's own page goes only where its caller's grant covers; a frame in it goes
-        // wherever the web lets it.
+        // Its own page goes only where its caller's grant covers; a frame in it, anywhere.
         fn on_before_browse(
             &self,
             _browser: Option<&mut Browser>,
