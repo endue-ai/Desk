@@ -143,6 +143,62 @@ describe("the agent bar unfolds (issue 294)", () => {
     expect(unfolded()).toBe(false);
   });
 
+  it("a control the pointer pressed has the focus and holds nothing, until a key is pressed", async () => {
+    const { store, clock, rest, leave, one, unfolded } = await setup();
+    const space = () => one('[data-space="sp_studio"]');
+    // An engine gives the pressed button the focus: the bar must still fold once the pointer left.
+    rest();
+    space().dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    space().focus();
+    space().dispatchEvent(new Event("pointerup", { bubbles: true }));
+    space().click();
+    expect(store.get().spaceId).toBe("sp_studio");
+    expect(document.activeElement).toBe(space());
+    leave();
+    clock.advance(FOLD_MS - 1);
+    expect(unfolded()).toBe(true);
+    clock.advance(1);
+    expect(unfolded()).toBe(false);
+    // The focus is still there. A key pressed in the bar makes it the keyboard's, which holds.
+    expect(document.activeElement).toBe(space());
+    rest();
+    space().dispatchEvent(new Event("keydown", { bubbles: true }));
+    leave();
+    clock.advance(FOLD_MS * 2);
+    expect(unfolded()).toBe(true);
+    space().blur();
+    clock.advance(FOLD_MS);
+    expect(unfolded()).toBe(false);
+  });
+
+  it("stays while its list of the rest is open past it", async () => {
+    const { store, clock, rest, leave, one, unfolded } = await setup();
+    const [first] = store.get().agents;
+    if (!first) throw new Error("no sample agent");
+    const more = ["Ada", "Bo", "Cy", "Dee"].map((name, n) => ({
+      ...first,
+      id: `ag_extra_${n}`,
+      name,
+    }));
+    store.set({
+      agents: [...store.get().agents, ...more],
+      spaceAgents: [...store.get().spaceAgents, ...more.map((a) => a.id)],
+    });
+    rest();
+    one('[data-key="agents-more"]').click();
+    expect(store.get().popover).toBe("agents-more");
+    // The pointer goes to the list, which stands past the unfolded bar: the bar does not fold
+    // from under it.
+    leave();
+    clock.advance(FOLD_MS * 2);
+    expect(unfolded()).toBe(true);
+    store.set({ popover: null });
+    clock.advance(FOLD_MS - 1);
+    expect(unfolded()).toBe(true);
+    clock.advance(1);
+    expect(unfolded()).toBe(false);
+  });
+
   it("the unfold control, the bar's first, unfolds and folds from the keyboard", async () => {
     const { clock, bar, control, unfolded } = await setup();
     expect(bar.querySelector("button")).toBe(control());
