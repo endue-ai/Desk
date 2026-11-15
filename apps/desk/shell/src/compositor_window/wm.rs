@@ -83,6 +83,8 @@ pub struct Gestures {
     pub panning: super::pan::Panning,
     /// The edges of the app the pointer is at, as the page was last told (`edges.rs`).
     pub edges: super::edges::Edges,
+    /// What the router was last told of the window manager's focus (`focus.rs`).
+    pub focus: focus::Told,
 }
 
 impl CompositorWindow {
@@ -143,14 +145,11 @@ impl CompositorWindow {
                     // On a window still gliding, desk-wm finds what the press starts where the
                     // window is drawn (#124), its tools clear of the top chips as they are drawn,
                     // and a press on a part or a surface of the system layer above it never the
-                    // window's (#139).
-                    let chrome =
-                        (self.hosted.report()).map(|r| (r.top, super::system::over_windows(r)));
-                    if let Some((top, parts)) = chrome {
-                        self.hosted.wm.set_top_chrome(top);
-                        self.hosted.wm.set_system_parts(parts);
-                    }
-                    (self.hosted.wm.pressed_at(at, page), false)
+                    // window's (#139). The window under the press is in use from here (#251).
+                    self.wm_sees_chrome();
+                    let outs = self.hosted.wm.pressed_at(at, page);
+                    self.window_pressed(at);
+                    (outs, false)
                 } else if let Some(held) = self.gestures.pressed.take() {
                     if button == Some(held) {
                         self.run_button(held);
@@ -159,6 +158,14 @@ impl CompositorWindow {
                 } else {
                     (self.hosted.wm.released(at, ms), false)
                 }
+            }
+            // Any other button's press puts the window under it in use as well.
+            Input::PointerButton { pressed: true, .. } => {
+                let at = css(self.router.pointer_state().2);
+                self.wm_sees_chrome();
+                let outs = self.hosted.wm.press_focus(at);
+                self.window_pressed(at);
+                (outs, false)
             }
             Input::Key(key) if key.key == "Escape" => {
                 if key.pressed {
@@ -349,6 +356,8 @@ impl CompositorWindow {
         }
         let outcome = self.hosted.replan(now);
         self.carry(outcome);
+        // The router reads what the window manager has in use now, in the same turn (#251).
+        self.tell_focus();
     }
 
     /// The window manager's state, for checks (development builds).
@@ -361,6 +370,9 @@ impl CompositorWindow {
             "map": self.map_state() })
     }
 }
+
+#[path = "focus.rs"]
+pub(super) mod focus;
 
 #[cfg(test)]
 mod tests {

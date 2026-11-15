@@ -21,7 +21,7 @@ input too. No windowing, no CEF: it runs inside any shell and headless.
 - `hit_test(&scene, point) -> Option<Hit>`; `headless`: `headless_device()`, `Target`, `read_rgba`. `stage`
   (ADR 0161): the spread's perspective and poses; `Thumbnails` (box-filtered copies), `read_texture`.
 - `input` (ADR 0150): `InputRouter::handle(&scene, &Input, now) -> Vec<Out>`, winit-like events to the
-  surfaces in their own pixels, the keymap (ADR 0118) first; `surface_message`; ADR 0119's broker.
+  surfaces in their own pixels, the keymap (ADR 0118) first; `surface_message`; ADR 0119's broker; `decided`: the keys read the window manager's window in use (ADR 0230).
 - `a11y` (ADR 0155): `DeskA11y`, the chrome and each surface's `a11y.update` grafted where drawn; `flush`, `request`.
 
 Straight alpha, premultiplied textures. Not yet: D3D11/DMA-BUF import (#61), shadow knockout, group opacity as a

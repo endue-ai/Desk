@@ -4,9 +4,9 @@
 //! says: protocol messages to the page's browser or to a plugin surface's (the web host), keys the
 //! desk's keymap takes to the runtime as the focused frame's (`desk:key` from its surface, as
 //! the SDK forwarded them in Stage 1), the cursor and the OS input method to the window, files from
-//! the OS nobody took to the open-files queue. The keys follow the window in use (ADR 0192): the
-//! router hears the window manager's surface in use and the windows that cover what lies under
-//! them, and where the page's own focus rests.
+//! the OS nobody took to the open-files queue. The keys follow the window in use (ADR 0192), which
+//! the window manager decides (`focus.rs`, ADR 0230): the router hears its surface in use and the
+//! windows that cover what lies under them, and from the page only what its own fields hold.
 
 use std::time::Instant;
 
@@ -61,8 +61,14 @@ impl CompositorWindow {
         if !popup && self.wm_input(&input) {
             return;
         }
-        let outs = self.router.handle(&self.scene, &input, Instant::now());
-        let outs = if popup { Self::popup_outs(outs) } else { outs };
+        // What the window manager decided for this press reached the router first (`focus.rs`).
+        let mut outs = self.focus_outs();
+        let routed = self.router.handle(&self.scene, &input, Instant::now());
+        outs.extend(if popup {
+            Self::popup_outs(routed)
+        } else {
+            routed
+        });
         self.web_pressed(&outs);
         self.apply(event_loop, outs);
     }
@@ -87,55 +93,46 @@ impl CompositorWindow {
                 self.input(event_loop, Input::PointerMoved { x, y });
             }
         }
-        let in_use = self.surface_in_use();
-        let mut outs = self.router.in_use(in_use.as_deref());
+        self.tell_focus();
+        let mut outs = self.focus_outs();
         outs.extend(self.router.tick(&self.scene, Instant::now()));
         self.apply(event_loop, outs);
     }
 
-    /// The surface the window manager has in use: the one the pane in use of the window in use
-    /// shows, while it is made and awake; for a pane the page draws, its window's own page while it
-    /// has one (ADR 0201), else none.
-    fn surface_in_use(&self) -> Option<String> {
-        let plan = self.hosted.plan()?;
-        let Some(plugin) = plan.focused_plugin.as_deref() else {
-            let window = plan.windows.iter().find(|w| w.focused)?;
-            let own = window_pages::surface_of(&window.id);
-            return self.host.browser(&own).map(|_| own);
-        };
-        let made = self.hosted.surfaces().made();
-        let (host, _, _) = made
-            .into_iter()
-            .find(|(_, of, asleep)| of == plugin && !asleep)?;
-        // Its web view, while that has the keys (ADR 0216).
-        Some(self.host.web_stand_in(&host))
-    }
-
     pub(super) fn apply(&mut self, event_loop: &ActiveEventLoop, outs: Vec<Out>) {
         for out in outs {
-            match out {
-                Out::Send(message) => self.deliver(&message),
-                Out::DeskKey { surface, key, .. } => self.desk_key(&surface, &key),
-                Out::Cursor(choice) => self.cursors.show(&self.window, event_loop, &choice),
-                Out::ImeAllowed(allowed) => self.window.set_ime_allowed(allowed),
-                Out::ImeArea(r) => self.window.set_ime_cursor_area(
-                    PhysicalPosition::new(f64::from(r.x), f64::from(r.y)),
-                    PhysicalSize::new(f64::from(r.width), f64::from(r.height)),
-                ),
-                Out::ImeReset => {
-                    // Off and on again: the OS input method drops what it composed.
-                    self.window.set_ime_allowed(false);
-                    self.window.set_ime_allowed(self.router.ime_state().0);
-                }
-                Out::OpenFiles(paths) => {
-                    if self.desk.opened.push(paths) {
-                        let event = crate::open_files::EVENT;
-                        self.desk.pages.emit(Role::Main, event, Value::Null);
-                    }
-                }
-                Out::Redraw => self.shared.lock().dirty = true,
+            if let Some(Out::Cursor(choice)) = self.apply_now(out) {
+                self.cursors.show(&self.window, event_loop, &choice);
             }
         }
+    }
+
+    /// Apply `out` where the event loop is not at hand (a page's call, the window manager's
+    /// change); a cursor needs the loop and comes back.
+    pub(super) fn apply_now(&mut self, out: Out) -> Option<Out> {
+        match out {
+            Out::Send(message) => self.deliver(&message),
+            Out::DeskKey { surface, key, .. } => self.desk_key(&surface, &key),
+            Out::Cursor(_) => return Some(out),
+            Out::ImeAllowed(allowed) => self.window.set_ime_allowed(allowed),
+            Out::ImeArea(r) => self.window.set_ime_cursor_area(
+                PhysicalPosition::new(f64::from(r.x), f64::from(r.y)),
+                PhysicalSize::new(f64::from(r.width), f64::from(r.height)),
+            ),
+            Out::ImeReset => {
+                // Off and on again: the OS input method drops what it composed.
+                self.window.set_ime_allowed(false);
+                self.window.set_ime_allowed(self.router.ime_state().0);
+            }
+            Out::OpenFiles(paths) => {
+                if self.desk.opened.push(paths) {
+                    let event = crate::open_files::EVENT;
+                    self.desk.pages.emit(Role::Main, event, Value::Null);
+                }
+            }
+            Out::Redraw => self.shared.lock().dirty = true,
+        }
+        None
     }
 
     /// A protocol message to its surface: the page's browser, or a plugin surface's.
@@ -202,10 +199,11 @@ impl CompositorWindow {
         crate::app_windows::report_keys(platform, &report.entries, known, report.timeout);
     }
 
-    /// The page moved the DOM's focus: to a plugin surface's place (ADR 0160), to an element of
-    /// its own (`own`), or to rest on nothing of its own, where the keys follow the window in use.
-    /// An `answer` to a press on the page or a key the desk ran sends on what was typed since,
-    /// once the keys are where the window manager has the window in use now.
+    /// The page says what its own fields hold: an element of its own has its focus (`own`), the
+    /// place of a surface it shows outside every window has (ADR 0160), or neither, where the keys
+    /// are the window in use's. Its focus on a window's surface decides nothing (ADR 0230). An
+    /// `answer` to a press on the page or a key the desk ran sends on what was typed since, once
+    /// the keys are where the window manager has the window in use now.
     pub fn page_focus(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -234,8 +232,8 @@ impl CompositorWindow {
         }
         let mut outs = self.router.page_focus(said);
         if answer {
-            let in_use = self.surface_in_use();
-            outs.extend(self.router.in_use(in_use.as_deref()));
+            self.tell_focus();
+            outs.extend(self.focus_outs());
             outs.extend(self.router.page_answered(Instant::now()));
         }
         self.apply(event_loop, outs);
@@ -322,6 +320,7 @@ impl CompositorWindow {
         });
         json!({
             "focused": self.router.focused(),
+            "inUse": self.focus_state(),
             "windowFocused": self.router.window_focused(),
             "cursor": format!("{:?}", self.cursors.shown(self.router.cursor())),
             "ime": { "allowed": allowed, "area": area.map(|r| [r.x, r.y, r.width, r.height]),

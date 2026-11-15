@@ -1,7 +1,10 @@
-//! What is typed waits for the page's answer. The router hears a press on the page, or a key the
-//! desk's keymap runs, at once; where that leaves the keys is the page's to say a moment later:
-//! the talk pill opens its line and focuses it, ⌘K opens the palette and its place takes the
-//! page's focus. Until the page says so (`apps/desk/src/compositor-focus.ts`) the keys would still
+//! What is typed waits for the page's answer, where only the page knows the answer (ADR 0199, kept
+//! by ADR 0230 for these two cases alone). The router hears a press on the page that is no
+//! window's (the desk, a bar of the system layer), or a key the desk's keymap runs, at once; where
+//! that leaves the keys is the page's to say a moment later: the talk pill opens its line and
+//! focuses it, ⌘K opens the palette and its place takes the page's focus. A press in a window
+//! waits for nothing: the window manager decided the keys before it was routed (`follow.rs`).
+//! Until the page says so (`apps/desk/src/compositor-focus.ts`) the keys would still
 //! go to the window in use, and what the person typed right away landed there (the terminal ran
 //! it). So the keys, the modifiers and the OS input method's text typed in between wait here, in
 //! order, and go on when the page answers, when the window loses the OS focus, when a drag starts,

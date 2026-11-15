@@ -129,7 +129,8 @@ fn a_press_on_the_page_leaves_the_keys_with_the_window_in_use() {
     d.router.page_focus(PageFocus::Own);
     d.click(10.0, 10.0);
     assert_eq!(d.router.focused(), Some(PAGE));
-    // A press on a surface is that surface's, as before.
+    // A press on a window's surface: the window manager decided its window first (#251).
+    d.router.decided(Some(B));
     d.click(700.0, 100.0);
     assert_eq!(d.router.focused(), Some(B));
 }
