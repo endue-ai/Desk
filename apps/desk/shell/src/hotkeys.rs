@@ -1,5 +1,5 @@
 //! Global shortcuts (`global-hotkey`, as `tauri-plugin-global-shortcut` was): Search Desk's
-//! (`DESK_PALETTE_SHORTCUT`, else ⌘⇧Space), Eris's (ADR 0121, `shortcut.rs`) and the computer-use
+//! (`DESK_PALETTE_SHORTCUT`, else `desk.palette.shortcut`, else ⌘⇧Space; `palette/shortcut.rs`), Eris's (ADR 0121, `shortcut.rs`) and the computer-use
 //! stop key while an agent acts (ADR 0123). Shortcuts are written as Tauri's plugin read them
 //! (`CommandOrControl+Shift+Space`, `Alt+Enter`, `Escape`): the same parser. Presses reach the event
 //! loop as jobs; which action a press is lives in [`Table`], tested without the OS.
@@ -11,8 +11,8 @@ use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
 
 use crate::pump::Pump;
 
-/// Search Desk's shortcut unless `DESK_PALETTE_SHORTCUT` names another: it leaves macOS Spotlight's
-/// and the input-source shortcuts alone.
+/// Search Desk's shortcut unless `DESK_PALETTE_SHORTCUT` or the setting names another: it leaves
+/// macOS Spotlight's and the input-source shortcuts alone.
 pub const PALETTE_DEFAULT: &str = "CommandOrControl+Shift+Space";
 
 /// What a global shortcut does.

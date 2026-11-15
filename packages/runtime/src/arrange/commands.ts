@@ -9,7 +9,7 @@
  * first: the shell runs it when the person closes the OS window a window popped out into (issue 235).
  */
 import { CommandError } from "../commands";
-import { type Ctx, edit, windowsOf } from "../shell/actions";
+import { type Ctx, desktopsOf, edit, windowsOf } from "../shell/actions";
 import { closeWindow, focusPane } from "../shell/windows";
 import { outWindows } from "../surface/placed";
 import type { Arranged } from "../wm/types";
@@ -163,8 +163,13 @@ export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void)
           await edit(ctx, { op: "focus", window });
           return { window };
         }
-        if (!windowsOf(ctx.store.get()).some((p) => p.id === window))
-          throw new CommandError("failed", say("notHere"));
+        // A window of another desktop (the palette's Windows group, #304): that desktop first.
+        const s = ctx.store.get();
+        if (!windowsOf(s).some((p) => p.id === window)) {
+          const there = desktopsOf(s).find((d) => windowsOf(s, d.id).some((p) => p.id === window));
+          if (!there) throw new CommandError("failed", say("notHere"));
+          await edit(ctx, { op: "switch-to", desktop: there.id });
+        }
         // Wholly in sight first (the canvas pans when it has to), then the keys.
         await edit(ctx, { op: "reveal", id: window });
         await focusPane(ctx, window);
@@ -173,7 +178,7 @@ export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void)
       },
       agent: {
         description:
-          "Bring a window of the current desktop wholly into sight, panning the canvas when it has to, and give it the keys: what picking a window in the spread does. A window out of the canvas (out in desk.windows.list) comes to the front in its OS window.",
+          "Bring a window wholly into sight, switching to its desktop first when it is on another and panning the canvas when it has to, and give it the keys: what picking a window in the spread or the palette's Windows group does. A window out of the canvas (out in desk.windows.list) comes to the front in its OS window.",
         args: WINDOW_ARGS,
       },
     }),
