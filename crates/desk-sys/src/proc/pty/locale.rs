@@ -30,7 +30,9 @@ fn utf8_lang() -> String {
 
     let id = NSLocale::currentLocale().localeIdentifier().to_string();
     macos_lang(&id, |name| {
-        std::path::Path::new("/usr/share/locale").join(name).is_dir()
+        std::path::Path::new("/usr/share/locale")
+            .join(name)
+            .is_dir()
     })
 }
 
