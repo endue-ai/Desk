@@ -13,7 +13,8 @@ surface whose last paint was a lone one, on times of its own rather than shared 
 Superseded in part by ADR 0210: the full pipeline is off in every process, as under it the desk's
 own page deadlocked when the app window was resized (#248); the prompt frames and the slow clock
 stay, a press's first frame a few milliseconds after it, and a press is held to the budgets ADR 0210
-measured, RT-16's 16 ms staying the target.
+measured, RT-16's 16 ms staying the target. Amended by ADR 0231: input brings a surface the next
+desk frame, the two after a paint and the slow frames, not every desk frame for a second.
 
 # Web surfaces run Chromium's full pipeline, and long-idle ones rest on a slower clock
 
