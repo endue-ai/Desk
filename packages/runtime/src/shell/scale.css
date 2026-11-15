@@ -51,7 +51,9 @@
 
   /* One shape for every floating bar (the agent bar, the account bar, the rail). With the default
      theme: 16 from the app's edge, 52 wide, a 16 radius; a button 36 with a 10 radius, an avatar
-     34, a rule 20; a bar's popovers and its tooltip start 12 past it, 80 from the edge. */
+     34, a rule 20; a bar's popovers and its tooltip start 12 past it, 80 from the edge. A button's
+     corners follow the design system's icon button (its bare 0 for no corners is no length to
+     multiply, which leaves them square all the same). */
   --bar-inset: var(--desk-space-4);
   --bar-width: calc(var(--desk-control-lg) + var(--desk-space-1));
   --bar-radius: calc(var(--desk-radius-md) * 2);
