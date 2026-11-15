@@ -116,7 +116,10 @@ impl PageWait {
     /// A scene is laid out: the newest picture aside whose size `ready` finds every pane a picture
     /// for, or the newest once `MOST_LOOKS` scenes have waited. Returns that picture and the older
     /// ones it leaves behind.
-    pub fn pick(&mut self, ready: impl Fn((u32, u32)) -> bool) -> Option<(TextureId, Vec<TextureId>)> {
+    pub fn pick(
+        &mut self,
+        ready: impl Fn((u32, u32)) -> bool,
+    ) -> Option<(TextureId, Vec<TextureId>)> {
         if self.aside.is_empty() {
             return None;
         }

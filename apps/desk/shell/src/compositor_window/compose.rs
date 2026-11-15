@@ -12,8 +12,8 @@ use std::time::Instant;
 use super::composed::window::Paned;
 use super::hosted::Hosted;
 use super::{CompositorWindow, PAGE, draw, draw_map};
-use crate::web_host::window_pages;
 use crate::web_host::render::popup_screen::App;
+use crate::web_host::window_pages;
 
 impl CompositorWindow {
     /// The scene the next frame draws: laid out again when the desk changed (`Composed::dirty`),

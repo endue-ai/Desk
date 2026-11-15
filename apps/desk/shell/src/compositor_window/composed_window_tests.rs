@@ -15,7 +15,10 @@ fn terminal() -> Paned {
         placed: Rect::new(100.0, 50.0, 600.0, 400.0),
         laid: (600.0, 400.0),
         corner: Anchor::default(),
-        panes: vec![("plugin:endue.terminal".into(), Rect::new(1.0, 36.0, 598.0, 363.0))],
+        panes: vec![(
+            "plugin:endue.terminal".into(),
+            Rect::new(1.0, 36.0, 598.0, 363.0),
+        )],
     }
 }
 
@@ -24,10 +27,17 @@ fn a_paint_of_a_new_size_waits_aside_only_in_a_window_with_a_plugin_pane() {
     let mut page = PageWait::default();
     assert_eq!(page.paint((1200, 800), None, true), To::Shown, "its first");
     assert_eq!(page.paint((1200, 800), SHOWN, true), To::Shown, "its size");
-    assert_eq!(page.paint((1280, 800), SHOWN, false), To::Shown, "no pane to wait for");
+    assert_eq!(
+        page.paint((1280, 800), SHOWN, false),
+        To::Shown,
+        "no pane to wait for"
+    );
     assert_eq!(page.paint((1280, 800), SHOWN, true), To::Aside(None));
     assert_eq!(page.keep((1280, 800), TextureId(7)), None);
-    assert_eq!(page.paint((1280, 800), SHOWN, true), To::Aside(Some(TextureId(7))));
+    assert_eq!(
+        page.paint((1280, 800), SHOWN, true),
+        To::Aside(Some(TextureId(7)))
+    );
     assert!(page.waits());
 }
 
@@ -38,7 +48,11 @@ fn a_picture_aside_shows_once_its_panes_plugins_have_their_sizes() {
         assert_eq!(page.paint((w, 800), SHOWN, true), To::Aside(None));
         page.keep((w, 800), TextureId(10 + i as u64));
     }
-    assert_eq!(page.pick(|_| false), None, "no plugin has painted a size of them");
+    assert_eq!(
+        page.pick(|_| false),
+        None,
+        "no plugin has painted a size of them"
+    );
     // The plugin has painted the second size: that one shows, the first is left behind.
     let found = page.pick(|(w, _)| w == 1360);
     assert_eq!(found, Some((TextureId(11), vec![TextureId(10)])));
@@ -56,8 +70,15 @@ fn the_newest_sizes_wait_and_a_repainted_one_is_the_newest() {
         let gone = page.keep(size, TextureId(20 + i as u64));
         assert_eq!(gone, (i == KEPT).then_some(TextureId(20)), "{i}");
     }
-    assert_eq!(page.paint((1360, 800), SHOWN, true), To::Aside(Some(TextureId(21))));
-    assert_eq!(page.pick(|_| true).map(|f| f.0), Some(TextureId(21)), "repainted last");
+    assert_eq!(
+        page.paint((1360, 800), SHOWN, true),
+        To::Aside(Some(TextureId(21)))
+    );
+    assert_eq!(
+        page.pick(|_| true).map(|f| f.0),
+        Some(TextureId(21)),
+        "repainted last"
+    );
 }
 
 #[test]
@@ -68,7 +89,11 @@ fn a_page_whose_panes_never_take_its_size_still_shows_by_a_count() {
     for i in 0..MOST_LOOKS {
         assert_eq!(page.pick(|_| false), None, "scene {i}");
     }
-    assert_eq!(page.pick(|_| false), Some((TextureId(7), vec![])), "a count of scenes");
+    assert_eq!(
+        page.pick(|_| false),
+        Some((TextureId(7), vec![])),
+        "a count of scenes"
+    );
     // A count of paints aside in a row draws the next as it comes.
     let mut page = PageWait::default();
     for i in 0..MOST_ASIDE {
@@ -76,7 +101,11 @@ fn a_page_whose_panes_never_take_its_size_still_shows_by_a_count() {
         assert!(matches!(page.paint(size, SHOWN, true), To::Aside(_)), "{i}");
         page.keep(size, TextureId(30 + i as u64));
     }
-    assert_eq!(page.paint((1400, 800), SHOWN, true), To::Shown, "a count, not a time");
+    assert_eq!(
+        page.paint((1400, 800), SHOWN, true),
+        To::Shown,
+        "a count, not a time"
+    );
     assert_eq!(page.clear().len(), KEPT, "the older ones go");
 }
 
