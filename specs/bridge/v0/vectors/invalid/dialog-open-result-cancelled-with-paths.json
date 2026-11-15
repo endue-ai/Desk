@@ -1,0 +1,5 @@
+{
+  "target": "DialogOpenResult",
+  "description": "a cancelled dialog chose nothing",
+  "instance": { "cancelled": true, "paths": ["/Users/person/Notes/today.md"] }
+}

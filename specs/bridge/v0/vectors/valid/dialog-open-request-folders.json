@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "dialog.open asks for several folders",
+  "instance": {
+    "id": 42,
+    "method": "dialog.open",
+    "params": { "kind": "folders", "multiple": true }
+  }
+}

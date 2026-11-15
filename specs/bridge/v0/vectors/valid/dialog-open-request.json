@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "dialog.open asks for one Markdown or text file, starting in a folder",
+  "instance": {
+    "id": 41,
+    "method": "dialog.open",
+    "params": {
+      "title": "Open a note",
+      "startIn": "~/Notes",
+      "filters": [
+        { "name": "Markdown", "extensions": ["md"] },
+        { "name": "Text", "extensions": ["txt"] }
+      ]
+    }
+  }
+}

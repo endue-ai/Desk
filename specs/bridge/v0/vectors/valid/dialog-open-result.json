@@ -1,0 +1,8 @@
+{
+  "target": "DialogOpenResult",
+  "description": "the files the person chose",
+  "instance": {
+    "cancelled": false,
+    "paths": ["/Users/person/Notes/today.md", "/Users/person/Notes/later.txt"]
+  }
+}

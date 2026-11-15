@@ -753,6 +753,20 @@ input method go to the page until a press on the caller's own surface, or the de
 already ended is not an error. A view also ends when its window's surface sleeps, goes away or moves out
 of the desk, and when its plugin stops.
 
+**dialog.open** asks the person for files (`kind: files`, the default) or folders (`kind: folders`) to
+open, one or (`multiple`) several, through the OS's own dialog attached to the desk window, starting in
+`startIn` and showing `filters`. It answers the absolute `paths` chosen, or `cancelled: true` with none;
+cancelling is not an error. No permission is needed to ask: the person's choice is the consent. Each
+chosen file is granted to the caller as `fs:read` on that path, a chosen folder as `fs:read` on the folder
+and `<folder>/**`, for the session, as any other grant (`perm.list` shows it, `perm.revoke` ends it).
+Nothing else is granted. An agent's call is `permission_denied`; a desk without a window to attach the
+dialog to answers `unsupported`.
+
+**dialog.save** asks the person for a place to save one file, suggesting `suggestedName` in `startIn`.
+It answers the absolute `path` chosen, or `cancelled: true` without one. The path is granted to the
+caller as `fs:write` on that path alone, for the session; the caller then writes it with `fs.write`. It
+grants no `fs:read`. Agents and windowless desks are answered as for `dialog.open`.
+
 ## Vectors
 
 `vectors/valid` and `vectors/invalid` hold `{ target, description, instance }` files. Rust
