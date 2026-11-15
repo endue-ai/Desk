@@ -6,8 +6,9 @@
 
 /* As wide as the bar inside its border, a face over its name. Over the kit's .icon-button and
    .add-button (kit.css, shell.css), whose size, border and fill are a lone button's: here the face
-   carries them and the button is only the place. */
-.float-bar .bar-labeled {
+   carries them and the button is only the place. `button.` to outweigh shell.css's colour for a
+   button outside the kit (`.shell button:not(…)`), which .add-button is. */
+.float-bar button.bar-labeled {
   flex: none;
   display: flex;
   flex-direction: column;
