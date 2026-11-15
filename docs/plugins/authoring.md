@@ -153,6 +153,59 @@ On your origin a path under another plugin's id answers 403, except a library's 
 plugins your manifest names in `imports` (`"imports": ["endue.eris"]`), whose code then runs as yours. Build
 URLs from relative paths, never from the origin.
 
+## How an app's window opens
+
+A plugin whose surface is placed `center` or `floating` is an app: its window opens on the desk's
+canvas or in an OS window of its own (ADR 0205). Your page and its calls are the same in both. The
+surface's `window` block says how the window opens (ADR 0226):
+
+```json
+"surfaces": [{
+  "id": "main", "title": "My plugin", "placement": "center",
+  "window": {
+    "size": { "width": 480, "height": 360 },
+    "minSize": { "width": 320, "height": 240 },
+    "resizable": true,
+    "opens": "canvas"
+  }
+}]
+```
+
+| Hint | Meaning |
+| --- | --- |
+| `size` | Your page the first time its window opens, in CSS pixels; on the canvas the desk's title bar and border come on top. Later the window opens where the person left it |
+| `minSize` | The smallest the person can make your page, at least 240 × 160 |
+| `resizable` | `false`: the window has no edge to drag and keeps the size it opened with |
+| `opens` | `canvas` (the default): on the desk. `out`: in an OS window of its own, the first time the window shows in a session |
+
+These are hints. A place that a profile or a session saved, and the person's own arranging (a fill, a
+snap, tile), size a window on the canvas whatever they say, and a window split into panes follows its
+panes. The person moves any window out and back (the palette's "Pop out window", Window > Move to
+Desk). `DESK_APP_WINDOWS` overrides the manifests for one run: `off` keeps every window on the canvas,
+`on` opens every app out, and a list of plugin ids opens those out. `examples/plugin-hello-window`
+runs both ways with one command each.
+
+A move out or back loads your page again, as a wake does: `state` comes back, and so does what
+`surface.onUnload` kept. Out of the canvas, three things differ:
+
+* A drag (`ctx.dnd`) does not cross the OS window's edge. Drags inside your page and files from the
+  operating system land as on the canvas; a drag let go outside the window ends with the effect
+  `none`, and a drag that starts on the canvas never reaches an OS window.
+* What the desk asks the person shows in the desk's window, not in yours. `desk.palette.pick` brings
+  the desk forward and its answer comes back to your page; a permission's question waits in the desk,
+  or in the island while the desk is not in front.
+* A web view (`web.*`) shows in the desk only: it ends when its window moves out.
+
+`desk.files.*` and `desk.buffers.*` work as on the canvas: a file opened in your opener, or a buffer
+shown, goes to the OS window where it is and puts it in use.
+
+An app that is not a file opener can have several windows: give its first surface
+`"instances": "many"`, and run `desk.plugins.open` with `{ plugin: ctx.pluginId, another: true }`
+(it needs `cmd:invoke` for that id). The answer names the new window, `{ window: "<plugin id>@<n>" }`.
+Each is a page of its own, as a file opener's windows are (see `per-file` under Contributions): it
+calls as your plugin, keeps its own `state`, reads its name in `ctx.instance` and closes on its own.
+The desk does not open them again after a restart.
+
 ## Permissions
 
 Your frame runs sandboxed with scripts only: no access to the desk's page, no top-level navigation, no

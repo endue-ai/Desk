@@ -79,6 +79,19 @@ agents au travail, ce qui attend une réponse et les notifications, à une press
 demande d'autorisation ou à l'approbation d'un agent et de parler à Eris, qu'Option+Entrée appelle depuis
 n'importe quelle application. Elle a pris la place d'Eris flottante (ADR 0121).
 
+Une fenêtre du bureau peut aussi vivre dans une fenêtre du système à elle (ADR 0205, #235). Toute
+fenêtre qui montre un seul plugin sort du canevas dans un navigateur fenêtré et revient à sa place.
+`crates/desk-wm` lui garde un seul id, dedans comme dehors, si bien que `desk.windows.*` et les outils
+d'Eris agissent sur les deux ; une fenêtre sortie garde sa place par écran et quitte la mosaïque, la
+cascade, l'étalement et la carte. Chaque sortie ou retour recharge la page du plugin avec l'état
+qu'elle a gardé. Le manifeste d'un plugin dit comment sa fenêtre s'ouvre (ADR 0226, #239) : le bloc
+`window` d'une surface donne la première taille de la page et sa plus petite, si la personne peut la
+redimensionner, et si elle s'ouvre sur le canevas ou dehors. Le gestionnaire de fenêtres et le shell
+lisent les mêmes indications, donc une application s'ouvre de la même façon dans les deux, et
+`instances: "many"` laisse une application ouvrir plusieurs fenêtres sur les clés qu'ont les fenêtres
+d'un ouvreur de fichiers (ADR 0212). La page d'un plugin et ses appels au pont sont les mêmes sur le
+canevas et hors de lui ; seul un glisser s'arrête au bord d'une fenêtre du système.
+
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
         │ surface             │ surface             │ surface              │ no surface

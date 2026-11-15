@@ -79,6 +79,20 @@ entfernt von der Antwort auf eine Berechtigungsanfrage oder die Freigabe eines A
 mit Eris, die Option+Enter aus jeder App ruft. Sie hat den Platz der schwebenden Eris (ADR 0121)
 eingenommen.
 
+Ein Fenster des Desks kann auch in einem eigenen Fenster des Betriebssystems leben (ADR 0205, #235).
+Jedes Fenster, das ein einzelnes Plugin zeigt, geht aus dem Canvas in einen Browser mit eigenem Fenster
+und kehrt an seinen Platz zurück. `crates/desk-wm` behält dafür eine ID, drinnen wie draußen, sodass
+`desk.windows.*` und die Werkzeuge von Eris auf beide wirken; ein Fenster draußen behält seinen Platz
+je Bildschirm und verlässt Kacheln, Kaskade, die Auffächerung und die Karte. Jeder Wechsel hinein oder
+hinaus lädt die Seite des Plugins mit dem Zustand neu, den sie behalten hat. Das Manifest eines Plugins
+sagt, wie sich sein Fenster öffnet (ADR 0226, #239): Der Block `window` einer Oberfläche nennt die
+erste und die kleinste Größe der Seite, ob die Person sie in der Größe ändern kann und ob sie sich auf
+dem Canvas oder außerhalb öffnet. Der Fenstermanager und die Shell lesen dieselben Hinweise, also
+öffnet sich eine App in beiden gleich, und `instances: "many"` lässt eine App mehrere Fenster auf den
+Schlüsseln öffnen, die die Fenster eines Datei-Öffners haben (ADR 0212). Die Seite eines Plugins und
+ihre Bridge-Aufrufe sind auf dem Canvas und außerhalb gleich; nur ein Ziehen endet am Rand eines
+Betriebssystemfensters.
+
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
         │ surface             │ surface             │ surface              │ no surface

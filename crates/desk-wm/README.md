@@ -10,7 +10,7 @@ data; no clock (times are passed in), no I/O, no rendering. It reads and writes 
   `Adopted`; `DesktopLayout`, and `Saved`, what the profile in force saved.
 - Geometry, snap and fill (ADR 0128, ADR 0132): `screen_rect`, `stored_rect`, `free_area`,
   `snap_for`, `Aim`, `fill_with`, `unfilled`, `own_floating`, `toggle_maximize`, `toggle_floating`, `Settle`; `within_reach`.
-- Tiling and the spread (ADR 0040, ADR 0116): `slot_rect`, `slot_windows`, `tile_rects`, `cascade_rects`,
+- Tiling and the spread (ADR 0040, ADR 0116): `slot_rect`, `slot_windows` (a plugin's `WindowHints`, ADR 0226), `tile_rects`, `cascade_rects`,
   `SpreadModel`, `spread_slots`, `fitted_stage`, `drawn_box`, `Spread` (on the caller's clock, ADR 0161); `covered_plugins`.
 - Canvas (ADR 0082): `drag_pans`, `wheel_pan`, `PanDrag`; the map's `fit_world`, `map_shows`, `MapDrag`.
 - `panes`: `split`, `close`, `set_view`, `set_ratio`, `key_ratio`, `drag_ratio`; `window_min`, `fit_panes`.
