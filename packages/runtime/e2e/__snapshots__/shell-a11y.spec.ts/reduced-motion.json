@@ -560,14 +560,14 @@
      "aria-label": "에이전트 · 스페이스",
      "box": [
       16,
-      244,
+      172,
       52,
-      237
+      380
      ],
      "style": {
       "background": "rgb(30, 29, 33)",
       "border": "solid rgb(51, 49, 54)",
-      "transform": "matrix(1, 0, 0, 1, 0, -118.5)"
+      "transform": "matrix(1, 0, 0, 1, 0, -189.875)"
      },
      "children": [
       {
@@ -583,7 +583,7 @@
          "aria-pressed": "true",
          "box": [
           25,
-          253,
+          181,
           34,
           34
          ],
@@ -607,7 +607,7 @@
          "aria-pressed": "false",
          "box": [
           25,
-          297,
+          225,
           34,
           34
          ],
@@ -631,7 +631,7 @@
          "aria-pressed": "false",
          "box": [
           25,
-          341,
+          269,
           34,
           34
          ],
@@ -645,6 +645,40 @@
             "color": "rgb(228, 215, 255)"
            },
            "text": "J"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "add-button bar-labeled bar-new bar-new-agent",
+         "aria-label": "새 에이전트 만들기",
+         "box": [
+          17,
+          312,
+          50,
+          63
+         ],
+         "children": [
+          {
+           "tag": "span",
+           "class": "bar-face",
+           "style": {
+            "border": "dashed rgb(131, 121, 145)"
+           },
+           "children": [
+            {
+             "tag": "svg",
+             "icon": "plus"
+            }
+           ]
+          },
+          {
+           "tag": "span",
+           "class": "bar-caption",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "새 에이전트"
           }
          ]
         }
@@ -710,6 +744,40 @@
             "color": "rgb(228, 215, 255)"
            },
            "text": "S"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "add-button bar-labeled bar-new bar-new-space",
+         "aria-label": "새 스페이스 만들기",
+         "box": [
+          17,
+          481,
+          50,
+          63
+         ],
+         "children": [
+          {
+           "tag": "span",
+           "class": "bar-face",
+           "style": {
+            "border": "dashed rgb(131, 121, 145)"
+           },
+           "children": [
+            {
+             "tag": "svg",
+             "icon": "plus"
+            }
+           ]
+          },
+          {
+           "tag": "span",
+           "class": "bar-caption",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "새 스페이스"
           }
          ]
         }
