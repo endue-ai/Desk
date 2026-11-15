@@ -1,0 +1,20 @@
+{
+  "target": "PluginManifest",
+  "description": "a window that opens somewhere the desk does not know",
+  "instance": {
+    "id": "example.app",
+    "name": "App",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "surfaces": [
+      {
+        "id": "main",
+        "placement": "center",
+        "window": {
+          "opens": "tab"
+        }
+      }
+    ]
+  }
+}

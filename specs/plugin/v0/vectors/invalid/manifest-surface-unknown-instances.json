@@ -6,6 +6,6 @@
     "version": "0.1.0",
     "kind": "ui",
     "entry": "ui/index.html",
-    "surfaces": [{ "id": "main", "placement": "center", "instances": "many" }]
+    "surfaces": [{ "id": "main", "placement": "center", "instances": "tabs" }]
   }
 }

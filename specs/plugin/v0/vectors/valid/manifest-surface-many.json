@@ -1,0 +1,19 @@
+{
+  "target": "PluginManifest",
+  "description": "an app whose first surface opens in several windows",
+  "instance": {
+    "id": "example.app",
+    "name": "App",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "surfaces": [
+      {
+        "id": "main",
+        "title": "App",
+        "placement": "center",
+        "instances": "many"
+      }
+    ]
+  }
+}
