@@ -4409,7 +4409,7 @@ export interface DialogSaveParams {
   filters?: DialogFilters;
 }
 
-/** Result of dialog.save: the absolute path the person chose, now writable by the caller, or cancelled without one. */
+/** Result of dialog.save: the absolute path the person chose, now readable and writable by the caller, or cancelled without one. */
 export interface DialogSaveResult {
   cancelled: boolean;
   path?: Path;

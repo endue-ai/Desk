@@ -6903,7 +6903,7 @@ pub struct DialogSaveParams {
     pub filters: Option<DialogFilters>,
 }
 
-/// Result of dialog.save: the absolute path the person chose, now writable by the caller, or cancelled without one.
+/// Result of dialog.save: the absolute path the person chose, now readable and writable by the caller, or cancelled without one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DialogSaveResult {
