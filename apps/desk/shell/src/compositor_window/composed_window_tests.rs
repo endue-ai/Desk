@@ -8,14 +8,14 @@ use crate::compositor_window::draw::anchor::Anchor;
 
 const SHOWN: Option<(u32, u32)> = Some((1200, 800));
 
-/// The Terminal's window at 600×400 CSS pixels, its one pane under a 36-pixel title bar, 8 in.
+/// The Terminal's window at 600×400 CSS pixels, its one pane under a 36-pixel title bar, 1 in.
 fn terminal() -> Paned {
     Paned {
         page: "window:endue.terminal".into(),
         placed: Rect::new(100.0, 50.0, 600.0, 400.0),
         laid: (600.0, 400.0),
         corner: Anchor::default(),
-        panes: vec![("plugin:endue.terminal".into(), Rect::new(8.0, 36.0, 584.0, 356.0))],
+        panes: vec![("plugin:endue.terminal".into(), Rect::new(1.0, 36.0, 598.0, 363.0))],
     }
 }
 
@@ -86,16 +86,16 @@ fn a_picture_leaves_each_pane_what_its_frame_holds() {
     // At the window's size: the pane's body.
     assert_eq!(
         terminal.leaves((1200, 800), 2.0),
-        vec![("plugin:endue.terminal", (1168, 712))]
+        vec![("plugin:endue.terminal", (1196, 726))]
     );
     // A picture 40 CSS pixels wider and 20 higher: the pane at the frame's edges keeps its inset.
     assert_eq!(
         terminal.leaves((1280, 840), 2.0),
-        vec![("plugin:endue.terminal", (1248, 752))]
+        vec![("plugin:endue.terminal", (1276, 766))]
     );
     // Narrower: cut at the frame's edge with its inset still.
     assert_eq!(
         terminal.leaves((1100, 800), 2.0),
-        vec![("plugin:endue.terminal", (1068, 712))]
+        vec![("plugin:endue.terminal", (1096, 726))]
     );
 }
