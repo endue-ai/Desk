@@ -12,6 +12,11 @@ export const OPEN_PLUGIN: AgentSpec = {
     properties: {
       plugin: { type: "string", description: "The plugin's id, for example endue.git." },
       waitForReady: { type: "boolean", description: "Answer once the plugin has started." },
+      another: {
+        type: "boolean",
+        description:
+          "Open one more window of a plugin that has several (its manifest says instances: many) and answer its id; any other plugin refuses.",
+      },
     },
     additionalProperties: false,
   },

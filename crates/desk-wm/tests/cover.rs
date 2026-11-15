@@ -45,6 +45,7 @@ fn desk(windows: Vec<Placement>, focused: Option<&str>) -> Desk {
             slot: None,
             at: None,
             area: None,
+            hints: None,
         })
         .to_vec();
     Desk {

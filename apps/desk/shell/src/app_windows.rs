@@ -12,8 +12,10 @@
 //!
 //! Closing the OS window closes the window (`desk.windows.close`, asking about unsaved changes
 //! first); Window > Move to Desk docks it. `DESK_APP_WINDOWS` (`switch.rs`) names the plugins whose
-//! windows pop out the first time they show in a session (`on`: every app); unset or `off`, none
-//! does. Each window opens where it was last, per display, by its window id (`places.rs`). Files
+//! windows pop out the first time they show in a session (`on`: every app; `off`: none); unset, the
+//! apps whose manifests say `opens: "out"` do, and each opens as large as its manifest asks
+//! (`hints.rs`, ADR 0226). Each window opens where it was last, per display, by its window id
+//! (`places.rs`). Files
 //! dragged in from the OS and the page's own drags land as on the canvas (`drags.rs`), and the
 //! desk's keymap hears a key before the page does (`keys.rs`). Development builds answer a check
 //! what OS windows are open, and close or move one as a person would (`check.rs`).
@@ -21,6 +23,7 @@
 mod check;
 mod client;
 mod drags;
+mod hints;
 mod keys;
 mod menu;
 mod places;
@@ -45,6 +48,7 @@ use crate::pump::Pump;
 use crate::web_host::WebHost;
 use crate::window::Shell;
 pub use check::answer as check;
+pub use hints::Hints;
 pub use keys::{lately as desk_key_lately, report as report_keys};
 pub use menu::{Item, removed};
 pub use places::{Display, Kept, Place};
@@ -57,7 +61,7 @@ pub const CLOSE: &str = "desk.windows.close";
 pub const DOCK: &str = "desk.windows.dock";
 /// The runtime's channel for the desk commands the compositor's own chrome runs.
 const RUN: &str = "desk://compositor-run";
-/// An app window is never made smaller than this, in points.
+/// An app window is never made smaller than this, in points, unless its app asks (`hints.rs`).
 pub const MIN: (f64, f64) = (320.0, 200.0);
 /// Nor does it open smaller than this the first time: the runtime's window it stands in for may
 /// be a crowded desk's small cell.
@@ -91,24 +95,20 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
     if shell.quitting {
         return;
     }
+    // What its manifest asks of its window (ADR 0226), and where it was last.
+    let hints = app(plugin_of(&ask.plugin)).map_or_else(Hints::default, |app| app.hints());
+    let least = hints.least();
+    let kept = places::opening(event_loop, &ask.window, least);
+    let canvas = (shell.compositor.as_ref()).and_then(|c| c.out_frame(&ask.window));
+    let (w, h) = hints.first(kept.map(|k| k.size), canvas.map(|f| (f.w, f.h)));
     let attributes = Window::default_attributes()
         .with_title(ask.title.as_str())
-        .with_min_inner_size(LogicalSize::new(MIN.0, MIN.1));
-    // Where it was last, else as large as the runtime's window and at least `OPENS`.
-    let attributes = match places::opening(event_loop, &ask.window, MIN) {
-        Some(kept) => {
-            let sized = attributes.with_inner_size(LogicalSize::new(kept.size.0, kept.size.1));
-            match kept.at {
-                Some((x, y)) => sized.with_position(LogicalPosition::new(x, y)),
-                None => sized,
-            }
-        }
-        None => {
-            // As large as the window was on the canvas, at least `OPENS`.
-            let size = (shell.compositor.as_ref()).and_then(|c| c.out_frame(&ask.window));
-            let (w, h) = size.map_or(OPENS, |f| (f.w, f.h));
-            attributes.with_inner_size(LogicalSize::new(w.max(OPENS.0), h.max(OPENS.1)))
-        }
+        .with_min_inner_size(LogicalSize::new(least.0, least.1))
+        .with_inner_size(LogicalSize::new(w, h))
+        .with_resizable(!hints.fixed);
+    let attributes = match kept.and_then(|k| k.at) {
+        Some((x, y)) => attributes.with_position(LogicalPosition::new(x, y)),
+        None => attributes,
     };
     let pump = shell.desk.pump.clone();
     let drags = Arc::new(Mutex::new(drags::Drags::new(&ask.plugin)));

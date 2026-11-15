@@ -59,6 +59,7 @@ fn desk(parts: bool) -> Hosted {
         .map(|i| desk_wm::edits::Edit::Adopt {
             id: format!("endue.p{i}"),
             title: format!("Window {i} with a title of some length"),
+            window: None,
         })
         .collect();
     hosted.wm.edit(1, &adopt);

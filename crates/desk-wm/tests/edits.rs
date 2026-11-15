@@ -120,6 +120,7 @@ mod the_records {
                 &[Edit::Adopt {
                     id: id.into(),
                     title: id.into(),
+                    window: None,
                 }],
             );
         }
@@ -242,6 +243,7 @@ mod the_desktops_undo {
             Edit::Adopt {
                 id: "p.a".into(),
                 title: "A".into(),
+                window: None,
             },
             Edit::SwitchTo {
                 desktop: "2".into(),
@@ -283,6 +285,7 @@ mod closing {
             Edit::Adopt {
                 id: "p.a".into(),
                 title: "A".into(),
+                window: None,
             },
             Edit::TogglePin { id: "p.a".into() },
         ];

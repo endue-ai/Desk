@@ -43,6 +43,14 @@ export interface Adopted {
   title: string;
   slot?: number;
   at?: Offset;
+  hints?: WindowHints;
+}
+
+/** desk-wm's `WindowHints` (ADR 0226): a plugin's page at first, at its smallest, and kept as it is. */
+export interface WindowHints {
+  size?: { w: number; h: number };
+  min?: { w: number; h: number };
+  fixed?: boolean;
 }
 
 /** The window, and the pane in it, a desktop had in use when the person left it. */
@@ -146,7 +154,7 @@ export type Edit =
       now: number;
     }
   | { op: "drawer"; items: DrawerItem[] }
-  | { op: "adopt"; id: string; title: string }
+  | { op: "adopt"; id: string; title: string; window?: WindowHints }
   | { op: "release"; id: string }
   | { op: "open"; id: string; placement?: SurfacePlacement }
   | { op: "place"; desktop?: DesktopId; placement: SurfacePlacement }

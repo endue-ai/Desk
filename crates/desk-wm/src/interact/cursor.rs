@@ -34,7 +34,8 @@ impl Wm {
             return None;
         }
         let (p, drawn) = self.topmost_at(at, now)?;
-        if let Some(grip) = grip_at(drawn, at) {
+        // A window whose plugin keeps its size has no grip (ADR 0226).
+        if let Some(grip) = grip_at(drawn, at).filter(|_| self.drawn.resizable(&p)) {
             return Some(grip.cursor());
         }
         (!p.pinned && inside(self.title_stretch(&p, drawn), at)).then_some(GRAB)

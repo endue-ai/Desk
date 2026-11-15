@@ -17,6 +17,7 @@ use crate::arrange::arrange_area;
 use crate::desk::{ArrangeKind, Arranged, Arranger, Desk, OnRemove};
 use crate::desktops::DesktopRef;
 use crate::drawer::DrawerItem;
+use crate::hints::WindowHints;
 use crate::interact::{Change, Geometry};
 use crate::layout::Saved;
 use crate::tiling::GAP;
@@ -75,6 +76,9 @@ pub enum Edit {
     Adopt {
         id: String,
         title: String,
+        /// What its manifest asks of its window (ADR 0226).
+        #[serde(default)]
+        window: Option<WindowHints>,
     },
     Release {
         id: String,
@@ -268,9 +272,10 @@ pub fn apply(desk: &mut Desk, kept: &mut Kept, edit: &Edit, screen: Size) -> Val
             now,
         } => desk.restore_session(desktop, pan, drawer, slots, *now),
         Edit::Drawer { items } => desk.set(|d| d.drawer = items.clone()),
-        Edit::Adopt { id, title } => {
+        Edit::Adopt { id, title, window } => {
             let eris_home = desk.layout().eris.is_none();
             desk.adopt(id, title, arrange_area(screen.w, screen.h, eris_home));
+            desk.hint(id, *window);
         }
         Edit::Release { id } => desk.release(id),
         Edit::Open { id, placement } => desk.open_surface(id, placement.clone()),

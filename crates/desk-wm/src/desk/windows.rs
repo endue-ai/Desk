@@ -84,13 +84,19 @@ impl Desk {
             .map(|(pane, _)| pane.to_string())
     }
 
-    /// Reveal plugin `id`: its pane on the desktop in front, else on the desktop that shows it
-    /// (the desk goes there, ADR 0117), else from the drawer, else in a new window.
+    /// Reveal plugin `id`: its pane on the desktop in front, else its window out of the canvas
+    /// (#239), else on the desktop that shows it (the desk goes there, ADR 0117), else from the
+    /// drawer, else in a new window.
     pub fn show_plugin(&mut self, id: &str) {
         let shown = self
             .windows()
             .into_iter()
             .find_map(|p| self.pane_showing(&p, id).map(|pane| (p.id, pane)));
+        // Out of the canvas, in an OS window of its own: that window is in use, where it is.
+        let shown = shown.or_else(|| {
+            (self.out_windows().into_iter())
+                .find_map(|(_, p)| self.pane_showing(&p, id).map(|pane| (p.id, pane)))
+        });
         if let Some((window, pane)) = shown {
             self.focus_pane(&window, Some(&pane));
             return;

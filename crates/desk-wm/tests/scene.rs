@@ -52,6 +52,7 @@ fn scene() -> Desk {
                 slot: Some(slot),
                 at: None,
                 area: None,
+                hints: None,
             })
             .collect();
     });

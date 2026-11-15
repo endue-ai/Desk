@@ -260,6 +260,7 @@ export class PluginHost {
         src: surfaceUrl(this.#options, this.#mounted.get(info.id) ?? info, instanceNumber(key)),
         ...(surface ? { surface: surface.id, placement: surface.placement } : {}),
         ...(surface?.hidden ? { hidden: true } : {}),
+        ...(surface?.window ? { window: surface.window } : {}),
       });
     };
     if (asleep) this.#sleepers.doze(key, open);
@@ -340,10 +341,7 @@ export class PluginHost {
     switch (message?.type) {
       case "desk:hello": {
         const mounting = this.#mounting.get(id);
-        if (mounting !== undefined) {
-          this.#mounting.delete(id);
-          phase(`mount ${id}`, mounting);
-        }
+        if (this.#mounting.delete(id) && mounting !== undefined) phase(`mount ${id}`, mounting);
         // A new page: what the one it replaced was asked and did not answer, it never will.
         this.#asks.cancel(id, `${id} reloaded before it answered`, "left");
         const { restored, waited } = this.#sleepers.woke(id);

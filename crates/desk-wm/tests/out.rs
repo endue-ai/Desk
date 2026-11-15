@@ -203,3 +203,23 @@ fn an_os_window_with_the_keys_makes_its_window_the_one_in_use() {
     let plan = wm.desk().host_plan(W, H, TopChrome::default(), &Unseen);
     assert!(plan.out[0].focused);
 }
+
+/// #239: what shows a plugin (`desk.display.show`, `desk.plugins.open`, a file or a buffer of its
+/// own shown) finds its window out of the canvas and puts it in use, where it is.
+#[test]
+fn showing_a_plugin_whose_window_is_out_puts_that_window_in_use_and_opens_no_other() {
+    let mut desk = desk();
+    assert!(desk.pop_out("endue.terminal", OS));
+    desk.focus_pane("endue.notes", None);
+    desk.show_plugin("endue.terminal");
+    assert_eq!(desk.focused.as_deref(), Some("endue.terminal"));
+    assert_eq!(ids(&desk.windows()), vec!["endue.notes".to_owned()]);
+    assert_eq!(desk.out_windows().len(), 1);
+    assert_eq!(desk.out_window("endue.terminal").unwrap().1.out, Some(OS));
+    // From another desktop too: the desk stays where it is, as the OS window is on none.
+    desk.switch_to("2");
+    desk.show_plugin("endue.terminal");
+    assert_eq!(desk.here(), "2");
+    assert_eq!(desk.focused.as_deref(), Some("endue.terminal"));
+    assert!(desk.windows().is_empty());
+}

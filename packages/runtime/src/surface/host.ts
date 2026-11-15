@@ -9,6 +9,7 @@ import type { WindowHost } from "../runtime";
 import { windowsOf } from "../shell/actions";
 import { h } from "../shell/dom";
 import type { Store } from "../shell/state";
+import { windowHints } from "../wm/hints";
 import type { WindowManagerHost } from "../wm/host";
 
 export interface PluginWindows extends WindowHost {
@@ -35,7 +36,8 @@ export function pluginWindows(
       const container = containers.get(spec.id);
       if (container && section.parentElement !== container) container.append(section);
       // A surface handed over again keeps its slot; a new one takes the first slot left free.
-      void wm().edit([{ op: "adopt", id: spec.id, title: spec.title }]);
+      const window = windowHints(spec.window);
+      void wm().edit([{ op: "adopt", id: spec.id, title: spec.title, ...(window && { window }) }]);
     },
     release(id) {
       sections.delete(id);

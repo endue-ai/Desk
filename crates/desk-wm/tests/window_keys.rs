@@ -28,6 +28,7 @@ fn three_images() -> Desk {
                 slot: Some(slot),
                 at: None,
                 area: None,
+                hints: None,
             })
             .collect();
     });

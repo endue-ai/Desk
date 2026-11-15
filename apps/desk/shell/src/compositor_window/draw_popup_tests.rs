@@ -113,6 +113,7 @@ fn hosted(parts: &[Value]) -> Hosted {
         let adopt = desk_wm::edits::Edit::Adopt {
             id: id.into(),
             title: title.into(),
+            window: None,
         };
         hosted.wm.edit(1, &[adopt]);
     }

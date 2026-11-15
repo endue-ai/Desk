@@ -7,6 +7,7 @@ import {
 } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { PluginHost } from "./plugins";
+import { anotherWindow } from "./plugins-open";
 import type { SurfaceSpec } from "./surfaces";
 
 const IMAGES = "endue.images";
@@ -79,6 +80,24 @@ async function mount(handlers: StubHandlers = {}) {
 }
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+describe("PluginHost with an app's window hints (ADR 0226)", () => {
+  it("opens each window of an app with what its manifest asks of its window", async () => {
+    const window = { size: { width: 480, height: 360 }, opens: "out" } as const;
+    const app = opener();
+    const surface = { id: "main", placement: "center", instances: "many", window } as const;
+    const manifest = { ...app.manifest, surfaces: [surface] } as PluginInfo["manifest"];
+    const { host, frames } = await mount({
+      "plugin.list": () => ({ plugins: [{ ...app, manifest }] }),
+    });
+    expect(frames.get(IMAGES)?.spec.window).toEqual(window);
+    const second = anotherWindow(host);
+    expect(await second("endue.gone", false)).toBeUndefined();
+    const key = await second(IMAGES, false);
+    expect(key).toBe(`${IMAGES}@2`);
+    expect(frames.get(`${IMAGES}@2`)?.spec.window).toEqual(window);
+  });
+});
 
 describe("PluginHost with several windows of one plugin (ADR 0212)", () => {
   it("opens another window on a host of its own and tells its page which window it is", async () => {

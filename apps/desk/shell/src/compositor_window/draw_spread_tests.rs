@@ -37,6 +37,7 @@ fn hosted(files: &str) -> Hosted {
     let adopt = |id: &str, title: &str| desk_wm::edits::Edit::Adopt {
         id: id.into(),
         title: title.into(),
+        window: None,
     };
     hosted.wm.edit(
         1,

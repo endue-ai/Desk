@@ -50,6 +50,7 @@ fn opened(screen: Size, ids: &[&str]) -> (Desk, Kept) {
         let edit = Edit::Adopt {
             id: (*id).into(),
             title: (*id).into(),
+            window: None,
         };
         apply(&mut desk, &mut kept, &edit, screen);
     }
@@ -112,6 +113,7 @@ mod windows_in_their_slots {
         let edit = Edit::Adopt {
             id: "endue.notes".into(),
             title: "Notes".into(),
+            window: None,
         };
         apply(&mut desk, &mut kept, &edit, large);
         let now = drawn(&desk, &kept, large);
@@ -129,6 +131,7 @@ mod windows_in_their_slots {
         let again = Edit::Adopt {
             id: PLUGINS[0].into(),
             title: "Calendar".into(),
+            window: None,
         };
         apply(&mut desk, &mut kept, &again, size(1728.0, 1000.0));
         let after = drawn(&desk, &kept, first);

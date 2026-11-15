@@ -217,6 +217,8 @@ impl Desk {
             slot: Some(slot),
             at,
             area: Some(area),
+            // The edit that hands it over says them again (`Desk::hint`).
+            hints: None,
         });
     }
 
