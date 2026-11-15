@@ -4,7 +4,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
 import { canonical, DESK_KEYS } from "../ui/keys.js";
-import { PREFIX, SHELLS } from "../ui/shell.js";
+import { DEFAULTS, PREFIX, SHELLS } from "../ui/shell.js";
 
 const root = join(import.meta.dirname, "../../..");
 const folder = join(root, "plugins/terminal");
@@ -81,7 +81,7 @@ describe("plugin.json", () => {
     for (const name of Object.keys(contributes?.settings ?? {})) {
       expect(name.startsWith(PREFIX)).toBe(true);
     }
-    expect(Object.keys(contributes?.settings ?? {})).toHaveLength(17);
+    expect(Object.keys(contributes?.settings ?? {})).toHaveLength(19);
   });
 
   it("declares the settings for notifications, pastes and new tabs, with the defaults shell.js keeps", () => {
@@ -100,6 +100,18 @@ describe("plugin.json", () => {
       kind: "string",
       default: "current",
       choices: ["current", "setting"],
+    });
+  });
+
+  it("declares program copies and event commands, with the defaults shell.js keeps (#319)", () => {
+    const settings = manifest().contributes?.settings ?? {};
+    expect(settings["endue.terminal.program-copy"]).toMatchObject({
+      kind: "boolean",
+      default: DEFAULTS.programCopy,
+    });
+    expect(settings["endue.terminal.event-commands"]).toMatchObject({
+      kind: "object",
+      default: DEFAULTS.eventCommands,
     });
   });
 
