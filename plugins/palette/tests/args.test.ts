@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { answer, back, questions, start } from "../ui/args.js";
 import { commandEntries } from "../ui/match.js";
@@ -19,6 +20,12 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** The question an answer moved to; it fails when the answer ran the command instead. */
+function asked(step: ReturnType<typeof answer>) {
+  if (!("asking" in step) || !step.asking) throw new Error("the command ran");
+  return step.asking;
+}
+
 describe("a command's arguments", () => {
   it("a command with required args is listed", () => {
     const entries = commandEntries([{ ...rename, provider: "desk" }], [], new Set());
@@ -34,29 +41,31 @@ describe("a command's arguments", () => {
     expect(asked[2]).toMatchObject({ name: "count", type: "integer", pick: null });
     expect(questions({ type: "object" })).toEqual([]);
     expect(questions(undefined)).toEqual([]);
-    expect(questions({ type: "object", properties: { on: { type: "boolean" } }, required: ["on"] })[0])
-      .toMatchObject({ pick: ["true", "false"] });
+    expect(
+      questions({ type: "object", properties: { on: { type: "boolean" } }, required: ["on"] })[0],
+    ).toMatchObject({ pick: ["true", "false"] });
   });
 
   it("Enter on the last argument runs the command with them", () => {
-    let asking = start({ id: rename.id, label: rename.title, argsSchema: schema });
-    let step = answer(asking, "Work");
+    const first = start({ id: rename.id, label: rename.title, argsSchema: schema });
+    const step = answer(first, "Work");
     expect(step.run).toBeUndefined();
-    asking = step.asking;
-    expect(asking.at).toBe(1);
-    step = answer(asking, "right");
-    asking = step.asking;
+    const second = asked(step);
+    expect(second.at).toBe(1);
+    const third = asked(answer(second, "right"));
     // An integer that does not read as one is asked again, saying why.
-    const wrong = answer(asking, "three");
-    expect(wrong.asking.at).toBe(2);
-    expect(wrong.invalid).toMatch(/whole number/);
-    step = answer(asking, "3");
-    expect(step).toEqual({ run: rename.id, args: { name: "Work", side: "right", count: 3 } });
+    const wrong = answer(third, "three");
+    expect(asked(wrong).at).toBe(2);
+    expect("invalid" in wrong && wrong.invalid).toMatch(/whole number/);
+    expect(answer(third, "3")).toEqual({
+      run: rename.id,
+      args: { name: "Work", side: "right", count: 3 },
+    });
   });
 
   it("Escape steps back one argument, then out", () => {
     const first = start({ id: rename.id, label: rename.title, argsSchema: schema });
-    const second = answer(first, "Work").asking;
+    const second = asked(answer(first, "Work"));
     const before = back(second);
     expect(before?.at).toBe(0);
     // The answer given stays, to change or keep.

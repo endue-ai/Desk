@@ -148,6 +148,21 @@ const copy = {
   behavior: ["알림 동작", "Notification behavior"],
   personalization: ["개인화", "Personalization"],
   openHint: ["설정 열기", "Open settings"],
+  openInSettings: ["설정에서 열기", "Open in Settings"],
+  paletteKey: ["어느 앱에서나 Desk 검색", "Search Desk from any app"],
+  paletteKeyHint: [
+    "다른 앱을 쓰는 중에도 이 키로 Desk 검색을 엽니다. 바꾸면 바로 적용됩니다.",
+    "Opens Search Desk while you use any app. A change applies at once.",
+  ],
+  paletteKeyEris: [
+    "{key} 는 어느 앱에서나 Eris 를 부르는 키입니다. 다른 키를 고르세요.",
+    "{key} already summons Eris from any app. Choose another key.",
+  ],
+  paletteKeyDesk: [
+    "{key} 는 Desk 에서 “{command}” 도 실행합니다. 이제 어느 앱에서나 Desk 검색을 엽니다.",
+    "{key} also runs “{command}” in the desk; from now on it opens Search Desk instead, from any app.",
+  ],
+  paletteKeyFailed: ["키를 저장하지 못했습니다: {why}", "The key was not saved: {why}"],
 } as const;
 export type SettingsCopy = keyof typeof copy;
 export const settingsText = (lang: SettingsLanguage, key: SettingsCopy): string =>

@@ -24,6 +24,7 @@ import { recordKey } from "../sequences/record";
 import type { Settings } from "../settings";
 import { h, listen, render } from "../shell/dom";
 import { type SettingsLanguage, settingsText } from "./copy";
+import { globalKeyRow } from "./global-key";
 import { jumpIndex } from "./jump";
 import { type ConflictWords, conflictsPanel, who } from "./key-conflicts";
 import {
@@ -45,6 +46,8 @@ export interface KeyboardOptions {
   language: SettingsLanguage;
   /** A plugin's name, by its id: the list's groups and who set a conflicting key. */
   plugin?: (id: string) => string;
+  /** The core, where the key that opens Search Desk from any app is kept (`global-key.ts`). */
+  bridge?: { call(method: string, params?: unknown): Promise<unknown> };
 }
 
 export interface KeyboardPane {
@@ -104,9 +107,21 @@ export function mountKeyboard(options: KeyboardOptions): KeyboardPane {
   );
   // Off: a chord ends the key unless keys in force continue it (Emacs). On: chords until Enter.
   const several = h("input", { type: "checkbox", class: "desk-check", "data-key": "keys-several" });
+  // The key that opens Search Desk from any app, above the desk's own (#304).
+  const global = options.bridge
+    ? globalKeyRow({
+        bridge: options.bridge,
+        settings,
+        platform,
+        language: options.language,
+        bindings: () => keymap.resolved(),
+        title: titled,
+      })
+    : undefined;
   const el = h(
     "div",
     { class: "settings-keyboard" },
+    global?.el ?? null,
     h("div", { class: "settings-key-tools" }, query, restoreAll),
     h("label", { class: "keys-several" }, several, " ", sq("several")),
     timeoutRow(settings, SEQUENCE_TIMEOUT, options.language),
@@ -276,6 +291,7 @@ export function mountKeyboard(options: KeyboardOptions): KeyboardPane {
     focusSearch: () => query.focus(),
     dispose: () => {
       stopRecording?.();
+      global?.dispose();
       offKeys();
       offCommands();
     },

@@ -135,7 +135,7 @@ export function rank(query, commands, hits, history = []) {
   return [...found, ...listed].sort(better).map((row) => row.entry);
 }
 
-/** Whether the palette can run a command as it is, with no args: its argsSchema requires none. */
+/** Whether the palette can run a command as it is, asking nothing: its argsSchema requires none. */
 export function runnable(command) {
   const required = command.argsSchema?.required;
   return !Array.isArray(required) || required.length === 0;
@@ -145,18 +145,19 @@ const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "bas
 
 /**
  * The registry's commands (cmd.list) as the palette lists them: A to Z by title, numbers by value,
- * whatever order the plugins registered them in; with their keys (desk.keys.list); without `hidden`
- * and without those it cannot run (they need args).
+ * whatever order the plugins registered them in; with their keys (desk.keys.list); without `hidden`.
+ * One that needs args keeps its argsSchema: choosing it asks for them (args.js).
  */
 export function commandEntries(commands, bindings, hidden) {
   return commands
-    .filter((command) => !hidden.has(command.id) && runnable(command))
+    .filter((command) => !hidden.has(command.id))
     .map((command) => ({
       id: command.id,
       provider: command.provider,
       label: command.title,
       keywords: command.keywords ?? [],
       keys: bindings.filter((b) => b.command === command.id).map((b) => b.key),
+      ...(command.argsSchema ? { argsSchema: command.argsSchema } : {}),
     }))
     .sort((a, b) => collator.compare(a.label, b.label) || (a.id < b.id ? -1 : 1));
 }

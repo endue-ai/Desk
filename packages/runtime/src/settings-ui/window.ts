@@ -9,6 +9,7 @@ import { mountAccountIdentity } from "./account-identity";
 import { type ConnectionsFocus, mountConnections } from "./connections";
 import { type SettingsLanguage, settingsText } from "./copy";
 import { coreSettings, declaredSearch, pluginSettings } from "./declared";
+import { FIND as FIND_SETTINGS, revealRow, settingsResults } from "./find";
 import { settingsIcon } from "./icons";
 import { initFileRow } from "./init-file";
 import { mountKeyboard } from "./keyboard";
@@ -193,6 +194,7 @@ export function installSettingsWindow(
           platform: ctx.shortcuts.platform,
           language,
           plugin: pluginName,
+          bridge: ctx.bridge,
         });
         return [keyboard.el];
       }
@@ -218,7 +220,7 @@ export function installSettingsWindow(
       return [settingsPanel(selected, settings, language, navigate, { general, appearance })];
     });
   }
-  function open(section?: SettingsSection) {
+  function open(section?: SettingsSection, row?: string) {
     if (!dialog.open) lastFocus = ctx.root.ownerDocument.activeElement as HTMLElement | null;
     if (section) {
       selected = section;
@@ -230,7 +232,9 @@ export function installSettingsWindow(
       ctx.root.append(dialog);
       dialog.showModal();
     }
-    // Opened at its shortcuts (⌘/), the caret goes where they are searched.
+    // Opened at a row (the palette's Settings group, #304), the row; at its shortcuts (⌘/), the
+    // caret goes where they are searched.
+    if (row && revealRow(body, row)) return;
     if (section === "keyboard" && keyboard) keyboard.focusSearch();
     else search.focus();
   }
@@ -316,8 +320,22 @@ export function installSettingsWindow(
     // desk.keys.quit from the CLI, an agent or Eris: no key reaches the window's own handler.
     keys.onQuit(close),
     define("desk.settings.open", tr("title"), (args) => {
-      const section = (args as { section?: SettingsSection } | undefined)?.section;
-      open(section && SECTIONS.includes(section) ? section : undefined);
+      const { section, row } = (args ?? {}) as { section?: SettingsSection; row?: unknown };
+      const known = section && SECTIONS.includes(section) ? section : undefined;
+      open(known, known && typeof row === "string" ? row : undefined);
+    }),
+    // The palette's Settings group (#304): the sections and rows, each opening here.
+    commands.define(FIND_SETTINGS, {
+      title: tr("search"),
+      keywords: ["settings", "find", "설정", "찾기"],
+      owner: "desk",
+      run: (args) => {
+        const { query, limit } = (args ?? {}) as { query?: unknown; limit?: unknown };
+        const n = typeof limit === "number" && Number.isInteger(limit) ? limit : undefined;
+        return {
+          results: settingsResults(typeof query === "string" ? query : "", { hub, language }, n),
+        };
+      },
     }),
     define("desk.settings.keyboard", tr("shortcuts"), () => open("keyboard")),
     // Projects, views and connectors lead here to connect a source (ADR 0106).

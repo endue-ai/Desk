@@ -98,7 +98,7 @@ describe("commandEntries", () => {
     },
   ];
 
-  it("lists them A to Z by title, numbers by value, without the hidden and those that need args", () => {
+  it("lists them A to Z by title, numbers by value, without the hidden", () => {
     const bindings = [{ key: "⌃2", command: "desk.shell.desktop-2" }];
     const entries = commandEntries(listed, bindings, new Set(["desk.palette.open"]));
     expect(ids(entries)).toEqual([
@@ -106,6 +106,7 @@ describe("commandEntries", () => {
       "desk.shell.desktop-10",
       "desk.inbox.open",
       "desk.keys.list",
+      "desk.frames.stop",
     ]);
     expect(entries[0]).toEqual({
       id: "desk.shell.desktop-2",
@@ -123,7 +124,7 @@ describe("commandEntries", () => {
     );
   });
 
-  it("runs a command as it is only when its argsSchema requires nothing", () => {
+  it("runs a command as it is, asking nothing, only when its argsSchema requires nothing", () => {
     expect(runnable({ argsSchema: needs })).toBe(false);
     expect(runnable({ argsSchema: { type: "object", required: [] } })).toBe(true);
     expect(runnable({})).toBe(true);

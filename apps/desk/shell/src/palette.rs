@@ -1,26 +1,42 @@
 //! Search Desk over every app (the Tauri shell's `palette.rs`): a window of its own holding the
 //! shipped palette (`index.html?view=palette`, which frames `/_desk/palette/` from the binary,
-//! `palette_assets.rs`), with the fixed caller `palette` and its three grants. Its shortcut
-//! (`DESK_PALETTE_SHORTCUT`, else ⌘⇧Space) and the tray's Search Desk show and hide it; it hides when
+//! `palette_assets.rs`), with the fixed caller `palette` and its grants. Its shortcut
+//! (`DESK_PALETTE_SHORTCUT`, else the setting `desk.palette.shortcut`, else ⌘⇧Space; `shortcut.rs`,
+//! followed while the desk runs) and the tray's Search Desk show and hide it; it hides when
 //! it loses the focus. Its commands (`palette_hide`, `palette_present`, `palette_reveal_main`,
 //! `palette_prepare_main`) are answered here, on the event loop's thread.
 
-use desk_bridge::{CmdInvokePermission, Permission, SearchReadPermission, SearchSystemPermission};
+pub mod shortcut;
+
+use desk_bridge::{
+    BridgeEvent, CmdInvokePermission, Permission, SearchReadPermission, SearchSystemPermission,
+    UiNotifyPermission,
+};
 use desk_core::Core;
 use desk_web::sender::{PALETTE, Role};
-use serde_json::Value;
+use serde_json::{Value, json};
 use winit::dpi::PhysicalPosition;
 use winit::event_loop::ActiveEventLoop;
 
+use crate::eris_window::calls::call;
 use crate::float::{self, Spaces};
-use crate::hotkeys::{Action, PALETTE_DEFAULT};
+use crate::host::Desk;
+use crate::hotkeys::Action;
 use crate::window::Shell;
 
 /// The palette's size, in logical pixels, as the Tauri shell's.
 const SIZE: (f64, f64) = (680.0, 480.0);
 
-/// The palette's fixed caller may search and run commands; nothing else.
+const MAC: bool = cfg!(target_os = "macos");
+
+/// The palette's fixed caller may search, run commands and say its key is taken; nothing else.
 pub fn grant(core: &Core) {
+    core.grant(
+        PALETTE,
+        Permission::UiNotify(UiNotifyPermission {
+            permission: Default::default(),
+        }),
+    );
     core.grant(
         PALETTE,
         Permission::SearchRead(SearchReadPermission {
@@ -56,12 +72,57 @@ pub fn setup(shell: &mut Shell, event_loop: &ActiveEventLoop) {
     if let Some(pane) = shell.open_pane(event_loop, Role::Palette, attributes, &url) {
         float::join(&pane.window, Spaces::All);
     }
-    // Preserve macOS Spotlight and input-source shortcuts. This can be changed before app startup.
-    let shortcut =
-        std::env::var("DESK_PALETTE_SHORTCUT").unwrap_or_else(|_| PALETTE_DEFAULT.to_owned());
-    if let Err(why) = shell.hotkeys.register(Action::Palette, &shortcut) {
-        eprintln!("Search Desk shortcut unavailable ({shortcut}): {why}. Use the tray menu.");
+    register(shell);
+    if let Err(why) = watch(&shell.desk) {
+        eprintln!("Search Desk: its key's setting is not followed ({why})");
     }
+}
+
+/// The setting in force (the runtime's own `palette.shortcut`), if any.
+fn setting(core: &Core) -> Option<String> {
+    let request = json!({ "id": 0, "method": "settings.get", "params": { "key": shortcut::KEY } });
+    let value = call(core, shortcut::OWNER, request).ok()?;
+    value.get("value")?.as_str().map(str::to_owned)
+}
+
+/// Hold the key in force; the one held before is let go once the new one is had, and kept when it
+/// cannot be (another app holds it), which a notice says.
+fn register(shell: &mut Shell) {
+    // ⌘⇧Space leaves macOS Spotlight's and the input-source shortcuts alone.
+    let env = std::env::var("DESK_PALETTE_SHORTCUT").ok();
+    let wanted = shortcut::chosen(env.as_deref(), setting(&shell.desk.core).as_deref());
+    if let Err(why) = shell.hotkeys.register(Action::Palette, &wanted) {
+        eprintln!("Search Desk shortcut unavailable ({wanted}): {why}. Use the tray menu.");
+        let (title, body) = shortcut::taken(&wanted, MAC, &why);
+        let request = json!({
+            "id": 0,
+            "method": "ui.notify",
+            "params": { "title": title, "body": body, "level": "warning",
+                        "scope": { "permission": "ui:notify" } },
+        });
+        if let Err(why) = call(&shell.desk.core, PALETTE, request) {
+            eprintln!("Search Desk: the notice was not shown ({why})");
+        }
+    }
+}
+
+/// desk.palette.shortcut changing while the desk runs: Settings › Keyboard, or init.yaml.
+fn watch(desk: &Desk) -> std::io::Result<()> {
+    let events = desk.core.events().subscribe();
+    let pump = desk.pump.clone();
+    std::thread::Builder::new()
+        .name("desk-palette-events".to_owned())
+        .spawn(move || {
+            for event in events {
+                if let BridgeEvent::SettingsChanged(changed) = event
+                    && changed.data.owner == shortcut::OWNER
+                    && changed.data.key == shortcut::KEY
+                {
+                    pump.run(|shell, _| register(shell));
+                }
+            }
+        })?;
+    Ok(())
 }
 
 /// The shortcut: hide the palette when it shows, else show it.
