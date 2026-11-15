@@ -5,7 +5,7 @@
 // whatever the notification settings say. A flood is held back as notices are (flood.js). A
 // command outside the plugin's cmd:invoke grant is asked for once (perm.request); a refusal or a
 // failure is said once on the status line. Each run is a cmd.invoked event on the core's bus, so
-// another plugin hears the terminal's events by subscribing to those (ADR 0250). No DOM.
+// another plugin hears the terminal's events by subscribing to those (ADR 0258). No DOM.
 import { createFlood } from "./flood.js";
 import { codeOf } from "./spawn.js";
 
