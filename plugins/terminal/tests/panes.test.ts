@@ -185,7 +185,7 @@ describe("split panes", () => {
     });
     for (const press of [
       key("\\", { metaKey: true }),
-      key("|", { metaKey: true, shiftKey: true }),
+      key("Enter", { metaKey: true, shiftKey: true }),
       key("ArrowLeft", { metaKey: true, shiftKey: true }),
       key("ArrowDown", { metaKey: true, shiftKey: true }),
     ]) {
