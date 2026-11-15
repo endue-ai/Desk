@@ -145,7 +145,7 @@ impl WebHost {
         }
     }
 
-    /// A message from the compositor; any for a surface wakes it onto every desk frame (#117).
+    /// A message from the compositor; any for a surface but input wakes it onto every desk frame.
     pub fn send(&self, message: &CompositorMessage) {
         let Some(surface) = surface_of(message) else {
             return;
@@ -187,7 +187,9 @@ impl WebHost {
                 return;
             };
             record.state = next.unwrap_or(record.state);
-            record.pacing.heard(std::time::Instant::now());
+            record
+                .pacing
+                .told(std::time::Instant::now(), input::is_input(message));
             {
                 let mut view = record.view.lock();
                 if let Some((size, scale)) = size_of(message) {

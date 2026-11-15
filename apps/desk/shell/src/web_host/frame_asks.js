@@ -7,9 +7,12 @@
 // page asks the desk, and again a second on while none came (an ask lost while its surface was
 // hidden or the desk's clock held). So a page that waits on a frame asks until one comes, wherever
 // its frames stopped: a want made in a frame, after the frame met the earlier ones (a
-// requestAnimationFrame loop's next frame), waits for the next one. Each ask says how long the page
-// has waited since its first ask for the want still unmet (0: a first ask): one that repeats an ask
-// the desk answered with begin frames tells it that its frames stopped (#157, `stall.rs`).
+// requestAnimationFrame loop's next frame), waits for the next one. A want that comes when no frame
+// met one for that long finds a page whose frames stopped already (its surface rests, or takes only
+// the frames input brings and the slow ones, ADR 0231): the page asks at once, so a change a reply
+// or a timer made shows a desk frame on, not three. Each ask says how long the page has waited
+// since its first ask for the want still unmet (0: a first ask): one that repeats an ask the desk
+// answered with begin frames tells it that its frames stopped (#157, `stall.rs`).
 (() => {
   const native = globalThis.__deskNative;
   const raf = globalThis.requestAnimationFrame;
@@ -35,10 +38,13 @@
   let timerAt = Number.POSITIVE_INFINITY;
   // When the page first asked for the wants still unmet (undefined: it has not asked).
   let asked;
+  // When a frame last met a want (0: none has).
+  let framed = 0;
   const met = () => {
     waiting = false;
     due = 0;
     asked = undefined;
+    framed = now();
   };
   // An unmet want's frame is due by `at`: the timer looks then, or sooner if it was set to.
   const expect = (at) => {
@@ -48,7 +54,13 @@
     timerAt = at;
     timer = later.call(globalThis, look, Math.max(0, Math.ceil(at - now())));
   };
-  // No frame came by `due` for an unmet want: the page asks, and a second on again.
+  // The page asks, and a second on again while no frame comes.
+  const ask = () => {
+    if (asked === undefined) asked = now();
+    wake(Math.round(now() - asked));
+    expect(now() + AGAIN_MS);
+  };
+  // No frame came by `due` for an unmet want: the page asks.
   const look = () => {
     timer = undefined;
     timerAt = Number.POSITIVE_INFINITY;
@@ -57,16 +69,18 @@
       expect(due);
       return;
     }
-    if (asked === undefined) asked = now();
-    wake(Math.round(now() - asked));
-    expect(now() + AGAIN_MS);
+    ask();
   };
   const want = () => {
     if (!waiting) {
       waiting = true;
       raf.call(globalThis, met);
     }
-    if (!due) expect(now() + WAIT_MS);
+    if (due) return;
+    // A frame came within the wait: the next is due by the same. None did: its frames have stopped,
+    // and the page asks now, not from a timer, which a page handling input runs late.
+    if (now() - framed > WAIT_MS) ask();
+    else expect(now() + WAIT_MS);
   };
   // Each wrapped call wants a frame first; the page's own function does the rest, as it would.
   const wrap = (owner, name) => {

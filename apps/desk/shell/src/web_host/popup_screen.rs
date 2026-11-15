@@ -266,7 +266,7 @@ impl WebHost {
                 }
             }
             // Frames for it to paint at the surface id that came with it.
-            super::super::frames::heard(browser.identifier(), false);
+            super::super::frames::woken(browser.identifier());
         }
     }
 }

@@ -135,7 +135,7 @@ pub(crate) fn tell(browser: &Browser) {
         host.notify_screen_info_changed();
         host.was_resized();
     }
-    frames::heard(browser.identifier(), false);
+    frames::woken(browser.identifier());
 }
 
 /// The last try before the stall watch loads a plugin's page again (`clock.rs`): hide `browser`

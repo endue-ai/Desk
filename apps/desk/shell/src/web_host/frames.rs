@@ -9,13 +9,15 @@
 //! until it hears something (input, a compositor message for it), or its page asks for frames
 //! (`frame_asks.js`: a change of its own, or one a message to it made, that no frame came for), so
 //! a desk at rest has nothing on its clock (#134). An ask brings the desk frames within
-//! `ASKED_FOR`; input or a compositor message puts it back on every frame its pace takes, and so
-//! does painting (`PAINTING`), while a lone paint (a caret's blink) keeps it on slow frames
+//! `ASKED_FOR`; a compositor message that is not input puts it back on every frame its pace takes,
+//! and so does painting (`PAINTING`), while a lone paint (a caret's blink) keeps it on slow frames
 //! (`SLOW`) for `LONG_IDLE` (#163), two of them a blink once its rhythm shows (R1,
-//! `frames_rhythm.rs`). `Pacing` (`frames_pacing.rs`) keeps each surface's.
+//! `frames_rhythm.rs`). Input brings the next desk frame, the two after a paint and the slow
+//! frames, not every one (ADR 0231). `Pacing` (`frames_pacing.rs`) keeps each surface's.
 //!
 //! A press, a key, a composition or a focus change an idle surface hears (one that painted nothing
 //! for `IDLE`) is followed by a begin frame every `PROMPT`, from `PROMPT_AFTER` after the press on,
+//! or from its page's ask if that comes first (the page handled the press and changed for it),
 //! until it paints or `PROMPT_FOR` after the press, whatever its pace: its paint then comes from the
 //! first begin frame its page can use rather than the next desk frames. Chromium's display holds a
 //! begin frame the page has nothing for yet until its deadline, a desk frame on, and CEF sends no
@@ -66,6 +68,9 @@ pub const SLOW: u32 = 10;
 /// When the page of a surface resting or on the slow frames asks for frames, it takes the desk
 /// frames within this long: two or three, the renderer's frame and the display's.
 pub const ASKED_FOR: Duration = Duration::from_micros(41_667);
+/// The desk frames a surface takes after a paint that followed input (`Pacing::input`): the first
+/// may find a press's last prompt still out, the second is the next frame of a change that goes on.
+pub const AFTER_PAINT: u32 = 2;
 /// The GPU's first copy after about a second without one takes milliseconds more, in the desk's
 /// process and in Chromium's GPU process alike (#133): input to a desk that painted nothing for
 /// this long wakes the GPU's copies first (`clock.rs`).
@@ -100,6 +105,7 @@ pub fn prompts(message: &M) -> bool {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Heard {
     Woken,
+    Input,
     Prompt,
     Asked(Option<Duration>),
 }
@@ -112,10 +118,16 @@ static HEARD: Mutex<Vec<(i32, Instant, Heard)>> = Mutex::new(Vec::new());
 /// The most kept for the next look: the oldest go first.
 const KEPT: usize = 64;
 
+/// Browser `browser` heard something that is not input now (its screen, a size): it wakes onto
+/// every desk frame.
+pub fn woken(browser: i32) {
+    hear(browser, Heard::Woken);
+}
+
 /// Browser `browser` heard input now; `prompt`: input whose paint should follow at once
-/// (`prompts`), else it only wakes the surface onto every desk frame.
+/// (`prompts`), else its surface takes the next desk frame (`Pacing::input`).
 pub fn heard(browser: i32, prompt: bool) {
-    hear(browser, if prompt { Heard::Prompt } else { Heard::Woken });
+    hear(browser, if prompt { Heard::Prompt } else { Heard::Input });
 }
 
 /// Browser `browser`'s page asked for frames now (`frame_asks.js`), having waited `waited`.

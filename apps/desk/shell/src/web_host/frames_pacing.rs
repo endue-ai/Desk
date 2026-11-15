@@ -1,8 +1,12 @@
 //! One surface's place on the desk's frame clock (`frames.rs`): which desk frames its pace takes,
 //! when it rests, its page's asks and a press's prompt frames.
 //!
-//! It takes every desk frame its pace takes while it heard something within `LONG_IDLE`, or while
-//! it paints (`PAINTING`: an animation, a video). A lone paint, a change no paint follows soon (a
+//! It takes every desk frame its pace takes while it heard something that is not input (a size, its
+//! screen, a load) within `LONG_IDLE`, or while it paints (`PAINTING`: an animation, a video).
+//! Input brings it the next desk frame, the `AFTER_PAINT` after a paint and the slow frames, not
+//! every desk frame: Chromium's display holds a begin frame its page had nothing for to its
+//! deadline, a desk frame on, and CEF sends none meanwhile, so a press waited for the one out (ADR
+//! 0231). A lone paint, a change no paint follows soon (a
 //! caret's blink every half second), keeps it on slow frames (`SLOW` a second) for `LONG_IDLE`, and
 //! until `SLOW` begin frames went out after it: Chromium asks the desk for nothing, so a change its
 //! page cannot see (the next blink) still finds a begin frame within a tenth of a second, and an
@@ -20,8 +24,8 @@
 use std::time::{Duration, Instant};
 
 use super::{
-    ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PAINTING, PROMPT, PROMPT_AFTER, PROMPT_FOR, RATE,
-    SLOW,
+    AFTER_PAINT, ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PAINTING, PROMPT, PROMPT_AFTER,
+    PROMPT_FOR, RATE, SLOW,
 };
 
 #[path = "frames_rhythm.rs"]
@@ -65,8 +69,11 @@ pub struct Pacing {
     /// whose start-up script holds its thread past `LONG_IDLE` (and with it the ask's timers) still
     /// gets them once it rests.
     shown_since_load: bool,
-    /// When it last heard something (`None`: not looked at yet).
+    /// When it last heard something that is not input (`None`: not looked at yet).
     heard_at: Option<Instant>,
+    /// When it last heard input, and whether a begin frame went out since.
+    input_at: Option<Instant>,
+    input_fed: bool,
     /// On the slow frames, when the next one is.
     slow_at: Option<Instant>,
     /// The last begin frame's time on the slow frames, while it was a slow one: a paint seen next
@@ -91,6 +98,8 @@ impl Pacing {
             fed: 0,
             shown_since_load: false,
             heard_at: None,
+            input_at: None,
+            input_fed: true,
             slow_at: None,
             sent_slow: None,
             rhythm: Rhythm::default(),
@@ -128,6 +137,22 @@ impl Pacing {
         self.heard_at = Some(self.heard_at.map_or(at, |t| t.max(at)));
     }
 
+    /// The compositor told the surface something at `at`. Input is heard where it reaches its
+    /// browser (`input::deliver`); anything else wakes it.
+    pub fn told(&mut self, at: Instant, input: bool) {
+        if !input {
+            self.heard(at);
+        }
+    }
+
+    /// The surface heard input at `at` (a move, a wheel, a press, a key): it takes the next desk
+    /// frame and, for `LONG_IDLE`, the slow frames, counted from here (its own frame comes first).
+    pub fn input(&mut self, at: Instant) {
+        self.input_at = Some(self.input_at.map_or(at, |t| t.max(at)));
+        self.input_fed = false;
+        self.slow_at = None;
+    }
+
     /// Its page started loading at `at` (a first load, a restart, a reload in place): until the new
     /// page paints, it counts as asking for frames.
     pub fn loading(&mut self, at: Instant) {
@@ -136,9 +161,13 @@ impl Pacing {
     }
 
     /// Its page asked for frames at `at` (`frame_asks.js`): resting or on the slow frames, it takes
-    /// the desk frames within `ASKED_FOR`.
+    /// the desk frames within `ASKED_FOR`. A press that waits for its first prompt gets it now: its
+    /// page has handled the press and changed for it.
     pub fn ask(&mut self, at: Instant) {
         self.asked = Some(at + ASKED_FOR);
+        if let Some(press) = &mut self.press {
+            press.next = press.next.min(at);
+        }
     }
 
     /// The surface heard a press or a key at `at`, having painted `paints` frames. An idle one
@@ -147,7 +176,7 @@ impl Pacing {
     /// (`due`); one that paints already takes every desk frame and needs none.
     pub fn press(&mut self, at: Instant, paints: u64) {
         self.saw(at, paints);
-        self.heard(at);
+        self.input(at);
         if self
             .painted
             .is_some_and(|t| at.saturating_duration_since(t) < IDLE)
@@ -170,7 +199,10 @@ impl Pacing {
         if mode != Mode::Slow {
             self.slow_at = None;
         }
-        let asked = frame.is_some() && self.asked_at(now);
+        // Short of every frame, a desk frame for its page's ask, for input heard since its last
+        // begin frame, and after a paint that followed input.
+        let wanted =
+            frame.is_some() && (self.asked_at(now) || !self.input_fed || self.follows(now));
         let mut slow = None;
         let paced = match mode {
             Mode::Every => frame.is_some_and(|k| {
@@ -181,9 +213,9 @@ impl Pacing {
             }),
             Mode::Slow => {
                 slow = self.slow(now);
-                slow.is_some() || asked
+                slow.is_some() || wanted
             }
-            Mode::Rest => asked,
+            Mode::Rest => wanted,
         };
         let prompt = self.pressed(now);
         // A press's desk frames wait for its first prompt: a begin frame before its page handled
@@ -193,6 +225,7 @@ impl Pacing {
         let due = prompt || paced && !held;
         if due {
             self.sent_slow = slow;
+            self.input_fed = true;
         }
         self.fed = self.fed.saturating_add(u32::from(due));
         due
@@ -208,7 +241,9 @@ impl Pacing {
     fn saw(&mut self, now: Instant, paints: u64) {
         if paints != self.paints {
             self.paints = paints;
-            self.painted_before = self.painted;
+            // The paint a press waited for answers the press: no sign that the surface paints on
+            // its own, however soon after the last one it came (typing, a few keys a second).
+            self.painted_before = self.painted.filter(|_| self.press.is_none());
             self.painted = Some(now);
             self.fed = 0;
             // On a slow frame, a beat of a rhythm; on another, none.
@@ -238,6 +273,7 @@ impl Pacing {
         if painting || self.heard_at.is_none() || within(self.heard_at, LONG_IDLE) {
             Mode::Every
         } else if self.restless
+            || within(self.input_at, LONG_IDLE)
             || within(self.painted, LONG_IDLE)
             || self.painted.is_some() && self.fed < SLOW
         {
@@ -257,6 +293,14 @@ impl Pacing {
     /// asks may not have run yet).
     fn asked_at(&self, now: Instant) -> bool {
         !self.shown_since_load || self.asked.is_some_and(|until| now <= until)
+    }
+
+    /// Whether it takes the desk frame at `now` for a paint that followed input (`AFTER_PAINT`
+    /// begin frames, input within `LONG_IDLE`): a change that goes on by itself (a transition a
+    /// hover started) gets its second frame a desk frame on, and then paints (`PAINTING`).
+    fn follows(&self, now: Instant) -> bool {
+        let heard = (self.input_at).is_some_and(|t| now.saturating_duration_since(t) < LONG_IDLE);
+        heard && self.painted.is_some() && self.fed < AFTER_PAINT
     }
 
     /// Whether desk frame `k` is one its pace takes, counted from its base.
@@ -329,7 +373,10 @@ impl Pacing {
         let asked = clock
             .next()
             .filter(|at| mode != Mode::Every && self.asked_at(now) && self.asked_at(*at));
-        [paced, asked].into_iter().flatten().min()
+        let wanted = clock
+            .next()
+            .filter(|_| mode != Mode::Every && (!self.input_fed || self.follows(now)));
+        [paced, asked, wanted].into_iter().flatten().min()
     }
 }
 
@@ -346,3 +393,7 @@ mod tests;
 #[cfg(test)]
 #[path = "frames_slow_tests.rs"]
 mod slow_tests;
+
+#[cfg(test)]
+#[path = "frames_input_tests.rs"]
+mod input_tests;

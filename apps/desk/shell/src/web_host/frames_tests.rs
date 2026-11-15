@@ -1,5 +1,6 @@
 use super::{
     COLD, Clock, Copies, FRAME, Heard, LONG_IDLE, asked, heard, on_clock, prompts, take_heard,
+    woken,
 };
 use crate::web_host::lifecycle::State;
 use std::time::{Duration, Instant};
@@ -57,11 +58,13 @@ fn only_visible_awake_surfaces_are_on_the_clock_presses_prompt_and_the_clock_hea
         !prompts(&message(moved)),
         "moves paint on the desk's frames"
     );
+    // Input brings its surface the next desk frame; its screen or a size wakes it onto every one.
     // Other tests may hear too: look for this one's browser only.
     heard(-117, true);
     heard(-118, false);
     asked(-119, Some(Duration::from_millis(2000)));
     asked(-120, None);
+    woken(-121);
     let got: Vec<(i32, Heard)> = take_heard()
         .into_iter()
         .filter(|(id, _, _)| *id <= -117)
@@ -71,9 +74,10 @@ fn only_visible_awake_surfaces_are_on_the_clock_presses_prompt_and_the_clock_hea
         got,
         [
             (-117, Heard::Prompt),
-            (-118, Heard::Woken),
+            (-118, Heard::Input),
             (-119, Heard::Asked(Some(Duration::from_millis(2000)))),
-            (-120, Heard::Asked(None))
+            (-120, Heard::Asked(None)),
+            (-121, Heard::Woken),
         ]
     );
 }

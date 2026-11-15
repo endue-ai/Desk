@@ -124,7 +124,7 @@ wrap_task! {
                 if is_window_page(&surface)
                     && let Some(page) = Shown::of(&surface, browser.identifier(), &view)
                 {
-                    frames::heard(browser.identifier(), false);
+                    frames::woken(browser.identifier());
                     pages.push(page);
                 }
             }
