@@ -306,6 +306,9 @@
 .agents-popover-item {
   gap: var(--space-2);
 }
+/* Past the unfolded bar (issue 294): the list of the rest, and the bar's tooltip. */
+.sidebar.is-unfolded + .agents-more-slot .agents-popover,
+.sidebar.is-unfolded + .agents-more-slot + .tooltip { left: var(--bar-list-reach); }
 
 .kbd {
   display: inline-flex;

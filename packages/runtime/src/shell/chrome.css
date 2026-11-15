@@ -143,7 +143,7 @@
   font-size: var(--text-sm);
   font-weight: 600;
 }
-.float-bar :is(.avatar, .space):hover:not(:disabled) {
+.float-bar button:is(.avatar, .space):hover:not(:disabled) {
   background: linear-gradient(var(--desk-hover), var(--desk-hover)) var(--face);
 }
 /* An agent is round; a space and an agent program on this computer have a button's corners. */
@@ -167,7 +167,8 @@
 /* The selected agent or space: a 3 by 18 bar at the agent bar's inner left edge. A pseudo-element,
    so the desk keeps its one primary fill. The selected space keeps its soft fill too. */
 .float-bar .avatar.is-selected::before,
-.float-bar .space.is-selected::before {
+.float-bar .space.is-selected::before,
+.float-bar .bar-row.is-selected::before {
   content: "";
   position: absolute;
   top: calc(50% - 9px);
@@ -177,7 +178,107 @@
   border-radius: 0 var(--radius-full) var(--radius-full) 0;
   background: var(--desk-primary);
 }
-.float-bar .space.is-selected { --face: var(--desk-primary-soft); color: var(--desk-text); }
+.float-bar .space.is-selected,
+.float-bar .bar-row.is-selected .space { --face: var(--desk-primary-soft); color: var(--desk-text); }
+
+/* The agent bar's controls keep to its left edge, a button's inset from it as when they were
+   centred, so they stand still while the bar changes its width (issue 294). */
+.float-bar.sidebar {
+  align-items: flex-start;
+  padding-inline: calc((var(--bar-width) - var(--bar-button)) / 2 - 1px);
+  transition: width var(--motion-base) var(--ease-out-expo);
+}
+.sidebar .bar-divider { margin-inline: calc((var(--bar-button) - var(--bar-divider)) / 2); }
+/* A part that slides away names its own transitions over the bar's (away.css, which has the bar
+   once a window has filled the app): the bar keeps its width's beside them. */
+.shell .sidebar[data-away] {
+  transition:
+    translate var(--motion-base) var(--ease-out-expo),
+    visibility 0s,
+    width var(--motion-base) var(--ease-out-expo);
+}
+.shell .sidebar[data-away].is-out {
+  transition:
+    translate var(--motion-base) var(--ease-out-expo),
+    visibility 0s linear var(--motion-base),
+    width var(--motion-base) var(--ease-out-expo);
+}
+
+/* The unfold control (bar-unfold.ts), the bar's first: out of sight and out of the bar's column
+   until the keyboard's focus is on it. */
+.sidebar .bar-unfold:not(:focus-visible) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* Unfolded (issue 294): a list in the bar's place, at its left, its centre and its largest
+   height, over the windows. The width's time is the motion token's, which reduced motion zeroes. */
+.sidebar.is-unfolded {
+  align-items: stretch;
+  width: var(--bar-list-width);
+  overflow-x: hidden;
+}
+.sidebar.is-unfolded .bar-group {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: stretch;
+  gap: 0;
+}
+.sidebar.is-unfolded .bar-divider { width: auto; }
+/* The pin, at the list's top right: level with the first caption, a button high. */
+.sidebar.is-unfolded .bar-pin {
+  position: absolute;
+  top: calc((var(--bar-width) - var(--bar-button)) / 2 - 1px);
+  right: calc((var(--bar-width) - var(--bar-button)) / 2 - 1px);
+}
+.bar-caption {
+  display: flex;
+  align-items: center;
+  height: var(--bar-button);
+  padding: 0 calc((var(--bar-button) - var(--bar-avatar)) / 2);
+  color: var(--desk-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* A row (bar-list.ts): the kit's row with the avatar's face where the avatar stood and its ring,
+   the name over what the agent does, and the time at the right; a space's is lower, the selected
+   one checked. Its focus ring is drawn inside it: the bar clips what goes past its edge. */
+.sidebar .bar-row {
+  position: relative;
+  gap: var(--space-3);
+  width: auto;
+  height: var(--bar-row);
+  margin-inline: calc(var(--space-1) * -1);
+  padding: 0 var(--space-2) 0 var(--space-1);
+}
+.sidebar .bar-row-space { height: var(--bar-row-space); }
+.sidebar .bar-row:focus-visible { outline-offset: calc(var(--desk-focus-width) * -1); }
+.float-bar .bar-row.is-selected::before {
+  left: calc(var(--space-1) - (var(--bar-width) - var(--bar-button)) / 2 + 1px);
+}
+.bar-face { display: grid; flex: none; place-items: center; }
+.float-bar .bar-face.is-paused { opacity: 0.5; }
+.bar-row[data-endue-space] .bar-face {
+  background: color-mix(in srgb, var(--endue-accent, transparent) 18%, transparent);
+}
+.bar-row-text {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  line-height: 1.25;
+}
+.bar-row-name, .bar-row-note { overflow: hidden; text-overflow: ellipsis; }
+.bar-row-name { font-weight: 500; }
+.bar-row-note, .bar-row-time { color: var(--desk-text-muted); font-size: var(--text-xs); }
+.bar-row-time { flex: none; font-variant-numeric: tabular-nums; }
+.bar-row > svg { flex: none; color: var(--desk-row-selected-fg); }
 
 /* Rail */
 
