@@ -77,7 +77,13 @@ export interface Runtime {
   readonly designs: RuntimeDesigns;
   openSurface(spec: SurfaceSpec): void;
   closeSurface(id: string): void;
-  focusSurface(id: string | null): void;
+  /** Ask for surface `id` in use; settles once the window manager that holds its window said. */
+  focusSurface(id: string | null): undefined | Promise<unknown>;
+  /**
+   * The window manager has surface `id` in use: the page's focus goes along, asking nothing.
+   * `told`: it decided unasked, so an overlay with the page's focus keeps it.
+   */
+  followSurface(id: string | null, told?: boolean): void;
   /** The status line text. */
   status(): string;
   dispose(): void;

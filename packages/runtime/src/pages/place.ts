@@ -1,8 +1,10 @@
 /**
  * A remote surface's place in the desk's page (ADR 0160): the box its section keeps where the
  * compositor draws the surface, which never paints and holds the surface's spot in the page's own
- * focus order. Its element (`data-surface-host`) having the page's focus gives the keys to the
- * surface (the compositor's router follows it, ADR 0150).
+ * focus order. Its element (`data-surface-host`) having the page's focus gives the keys to a
+ * surface shown outside every window (an overlay, an edge bar: the compositor's router follows it,
+ * ADR 0150); a window's surface has the keys while the window manager has its window in use, and
+ * the page's focus goes to its place as the page follows that (ADR 0230).
  *
  * Tab (#123): the page's focus navigation enters the place at its first edge (Tab) or its last
  * (Shift+Tab); the surface's page then focuses its first or last control, and the focus here rests
@@ -23,6 +25,7 @@ export function makePlace(
   title: string,
   host: string,
   tell: (text: string) => void,
+  entered?: () => void,
 ): Place {
   const element = doc.createElement("div");
   element.className = "desk-surface-frame";
@@ -51,6 +54,8 @@ export function makePlace(
       if (moving) return;
       tell(JSON.stringify({ type: "desk:surface-enter", edge: span.dataset.edge }));
       rest(element);
+      // The person tabbed in: its window is asked for (the window manager decides, ADR 0230).
+      entered?.();
     });
   }
   return {

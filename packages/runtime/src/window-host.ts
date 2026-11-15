@@ -5,5 +5,6 @@ import type { SurfaceSpec } from "./surfaces";
 export interface WindowHost extends WindowVisibility {
   adopt(spec: SurfaceSpec, section: HTMLElement): void;
   release(id: string): void;
-  show?(id: string): void;
+  /** Reveal surface `id`'s window and put it in use; settles once the window manager said. */
+  show?(id: string): undefined | Promise<unknown>;
 }

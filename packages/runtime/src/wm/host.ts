@@ -33,6 +33,11 @@ export type WindowOp =
   | { op: "dock" };
 
 export interface WindowManagerHost {
+  /**
+   * The host hears every press itself and puts the window under it in use before the page hears
+   * it (the compositor, ADR 0230): the page then asks for no window on a press, only follows.
+   */
+  decidesPress?: boolean;
   /** Hear each desk the window manager publishes; the runtime takes it whole. */
   connect(take: (published: Published) => void): void;
   /** The runtime's `edits`, applied in order; each one's answer once the desk they made is in. */

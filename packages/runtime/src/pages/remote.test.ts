@@ -48,7 +48,7 @@ function shell() {
   };
 }
 
-async function desk() {
+async function desk(entered?: (id: string) => void) {
   const root = document.createElement("div");
   document.body.replaceChildren(root);
   const stub = browserStub({
@@ -56,7 +56,7 @@ async function desk() {
     "perm.query": () => ({ grants: [] }),
   });
   const s = shell();
-  const pages = remotePages(window, s.transport);
+  const pages = remotePages(window, s.transport, entered);
   const runtime = createRuntime({
     root,
     bridge: new BridgeClient(stub),
@@ -148,6 +148,19 @@ describe("remote surface pages", () => {
     section?.append(view);
     d.pages.back("test.notes", view, true);
     expect(document.activeElement).toBe(place);
+    d.runtime.dispose();
+  });
+
+  it("ask for a surface's window when the person tabs into its place, and not when the desk puts the focus there (#251)", async () => {
+    const asked: string[] = [];
+    const d = await desk((id) => asked.push(id));
+    const place = d.root.querySelector<HTMLElement>("[data-surface-host]");
+    // The desk following the window manager: nobody asked for a window.
+    d.runtime.followSurface("test.notes");
+    expect(document.activeElement).toBe(place);
+    expect(asked).toEqual([]);
+    place?.querySelector<HTMLElement>('[data-edge="first"]')?.focus();
+    expect(asked).toEqual(["test.notes"]);
     d.runtime.dispose();
   });
 

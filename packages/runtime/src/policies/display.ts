@@ -16,7 +16,8 @@ export interface DisplayPolicy extends Installed {
 
 /** What the runtime does for the display commands. */
 export interface DisplayActions {
-  focus(id: string): void;
+  /** Ask for surface or view `id` in use; settles once the window manager that holds it said. */
+  focus(id: string): void | Promise<unknown>;
   /** Surfaces that can take the focus now, in reading order. */
   visible(): string[];
   focused(): string | null;
@@ -27,21 +28,23 @@ export function installDisplay(ctx: DeskContext, actions: DisplayActions): Displ
   const { commands } = hub;
   const offs = disposer();
 
-  const cycle = (step: number) => {
+  // Answered once the window manager put the next one in use (ADR 0230): whoever ran the command
+  // reads the desk it made, and what is typed after its key goes to that window.
+  const cycle = async (step: number) => {
     const ids = actions.visible();
     if (ids.length === 0) return null;
     const at = ids.indexOf(actions.focused() ?? "");
     const next = ids[(at + step + ids.length) % ids.length] ?? ids[0];
-    if (next) actions.focus(next);
+    if (next) await actions.focus(next);
     return next ?? null;
   };
   const define = (id: string, title: string, run: (args: unknown) => unknown, keywords: string[]) =>
     offs.add(commands.define(id, { title, keywords, owner: "desk.display", run }));
   /** Show a running plugin's surface and give it the focus, which raises its window; false: none. */
-  const bring = (plugin: string) => {
+  const bring = async (plugin: string) => {
     if (!surfaces.get(plugin)) return false;
     surfaces.show(plugin, true);
-    actions.focus(plugin);
+    await actions.focus(plugin);
     return true;
   };
 
@@ -51,7 +54,7 @@ export function installDisplay(ctx: DeskContext, actions: DisplayActions): Displ
   // that asked waiting (#17).
   offs.add(
     bridge.onEvent((event) => {
-      if (event.event === "ui.surface.opened") bring(event.data.caller);
+      if (event.event === "ui.surface.opened") void bring(event.data.caller);
     }),
   );
 
@@ -63,7 +66,7 @@ export function installDisplay(ctx: DeskContext, actions: DisplayActions): Displ
     async (args) => {
       const plugin = (args as { plugin?: string } | undefined)?.plugin;
       if (!plugin) throw new Error("say which plugin: { plugin }");
-      if (bring(plugin)) return "shown";
+      if (await bring(plugin)) return "shown";
       // Not running: turning it on mounts it where the rules say.
       await bridge.call("plugin.setEnabled", {
         plugin,

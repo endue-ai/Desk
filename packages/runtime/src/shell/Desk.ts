@@ -31,7 +31,6 @@ import { timed } from "../timing";
 import { mountWallpaper } from "../wallpaper/wallpaper";
 import { heldWindows, noWindowManager, type WindowManagerHost } from "../wm/host";
 import type { Rect } from "../wm/types";
-import { takeDesk } from "../wm/view";
 import { layoutOf } from "./actions";
 import { mountAway } from "./away";
 import { mountBottom } from "./Bottom";
@@ -47,7 +46,7 @@ import { mountRail } from "./Rail";
 import { byRole } from "./roles";
 import { type DeskState, emptyState, Store } from "./state";
 import { Ticker } from "./ticker";
-import { showPlugin } from "./windows";
+import { isFollowing, showPlugin, takeAndFollow } from "./windows";
 
 export interface DeskOptions {
   root: HTMLElement;
@@ -124,17 +123,11 @@ export function mountDesk(options: DeskOptions): Desk {
     setState: () => undefined,
   };
   const wm = options.windowManager ?? noWindowManager();
-  // Every desk the window manager publishes is the store's, whole.
-  wm.connect((published) => takeDesk(store, published));
-  // A seeded drawer (the dev page's and the fixtures' sample desk) is the window manager's too.
-  const seeded = options.seed?.drawer;
-  if (seeded?.length) {
-    void wm.edit([{ op: "drawer", items: seeded.map((d) => ({ ...d, at: Math.round(d.at) })) }]);
-  }
   const windows = pluginWindows(
     store,
     () => wm,
-    (id) => void showPlugin(ctx, id),
+    // Not while the page follows a desk it was told: that asks the window manager for nothing.
+    (id) => (isFollowing(ctx) ? undefined : showPlugin(ctx, id)),
   );
   // The runtime is created below; nothing reads it before then.
   const ctx: ShellCtx = {
@@ -157,6 +150,15 @@ export function mountDesk(options: DeskOptions): Desk {
     ),
     eris: { say: (text, words) => pending.say(text, words), setState: (s) => pending.setState(s) },
   };
+
+  // Every desk the window manager publishes is the store's, whole, and the page's focus follows
+  // the window it has in use (ADR 0230).
+  wm.connect((published) => takeAndFollow(ctx, published));
+  // A seeded drawer (the dev page's and the fixtures' sample desk) is the window manager's too.
+  const seeded = options.seed?.drawer;
+  if (seeded?.length) {
+    void wm.edit([{ op: "drawer", items: seeded.map((d) => ({ ...d, at: Math.round(d.at) })) }]);
+  }
 
   const glow = h("div", { class: "shell-glow", "aria-hidden": "true" });
   const modeLayer = h("div", { class: "layer layer-mode", "data-layer": "mode" });

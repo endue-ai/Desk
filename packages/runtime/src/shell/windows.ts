@@ -9,7 +9,8 @@
 import type { PaneSplit } from "../modes/types";
 import { windowPlugins } from "../surface/placed";
 import { leaves, panesOf } from "../surface/tree";
-import type { Edit } from "../wm/types";
+import type { Edit, Published } from "../wm/types";
+import { takeDesk } from "../wm/view";
 import { type Ctx, edit, settled, windowsOf } from "./actions";
 
 /**
@@ -20,10 +21,44 @@ function follow(ctx: Ctx): void {
   const s = ctx.store.get();
   if (s.focused === null) return;
   const plugin = s.wm.focusedPlugin;
+  // Following asks for nothing (ADR 0230): the window manager has this pane in use already, and
+  // asking for its window again could take the window in use back from a later press.
   if (plugin) {
-    if (ctx.runtime.shortcuts.focused !== plugin) ctx.runtime.focusSurface(plugin);
+    if (ctx.runtime.shortcuts.focused !== plugin) ctx.runtime.followSurface(plugin);
   } else if (ctx.runtime.shortcuts.focused) {
-    ctx.runtime.focusSurface(null);
+    ctx.runtime.followSurface(null);
+  }
+}
+
+/** The desks (by their store) taking what the window manager published now. */
+const taking = new WeakSet<object>();
+
+/**
+ * Whether the desk is taking a desk the window manager published: a focus the page moves
+ * meanwhile is the page following, never the person asking for a window.
+ */
+export const isFollowing = (ctx: Pick<Ctx, "store">): boolean => taking.has(ctx.store);
+
+/**
+ * Take a desk the window manager published; when it put another window or pane in use (a press
+ * it heard, a close, an agent's call), the page's focus goes along (ADR 0230). The page asks for
+ * nothing here. While a move the runtime asked for is on its way, its own desk is the one to
+ * follow (`focusing`): one that answers an earlier move names a focus already given away.
+ */
+export function takeAndFollow(ctx: Ctx, published: Published): void {
+  const was = ctx.store.get();
+  taking.add(ctx.store);
+  try {
+    takeDesk(ctx.store, published);
+    const s = ctx.store.get();
+    const same =
+      s.focused === was.focused &&
+      s.pane === was.pane &&
+      s.wm.focusedPlugin === was.wm.focusedPlugin;
+    if (same || s.focused === null || movesOf(ctx).going > 0) return;
+    ctx.runtime?.followSurface(s.wm.focusedPlugin, true);
+  } finally {
+    taking.delete(ctx.store);
   }
 }
 

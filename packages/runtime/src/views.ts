@@ -14,7 +14,7 @@ export interface HostViews {
    * the one in use, whichever way the focus came, so Mod+W closes what shows as focused (#163).
    */
   inUse?(): string | null;
-  focus(id: string): void;
+  focus(id: string): void | Promise<unknown>;
   /** What a view shows, as the buffer list names it. */
   title(id: string): string;
   /** Close a view: desk.buffers.close on its buffer. */

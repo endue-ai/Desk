@@ -23,7 +23,11 @@ export function testDesk(lang: "en" | "ko" = "en") {
     store,
     wm,
     bridge,
-    runtime: { shortcuts: { focused: null }, focusSurface: () => undefined },
+    runtime: {
+      shortcuts: { focused: null },
+      focusSurface: () => undefined,
+      followSurface: () => undefined,
+    },
     tr: (key: Parameters<typeof t>[1], vars?: Record<string, string | number>) =>
       t(lang, key, vars),
     wall: () => EPOCH,

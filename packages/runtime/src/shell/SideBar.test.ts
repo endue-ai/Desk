@@ -27,7 +27,11 @@ async function setup() {
     store,
     wm,
     bridge: { localAgents: local },
-    runtime: { shortcuts: { focused: null }, focusSurface: () => undefined },
+    runtime: {
+      shortcuts: { focused: null },
+      focusSurface: () => undefined,
+      followSurface: () => undefined,
+    },
     tr: (key: Parameters<typeof t>[1], vars?: Record<string, string | number>) =>
       t("en", key, vars),
   } as unknown as ShellCtx;
