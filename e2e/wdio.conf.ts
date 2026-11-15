@@ -37,8 +37,9 @@ const DEFAULT_INIT = "init-no-first-run.yaml";
  * The app's environment a spec adds: persist.spec.ts and keys-follow.spec.ts ask for permissions
  * from e2e.ask, sandbox.spec.ts runs e2e.sandbox's checks in its renderer, the input specs (the
  * editing keys' and the hover titles' too, #156) run with the input and drag fixtures (#56), the
- * native plugin spec with the native example (#59), and the accessibility and popup specs with
- * their own fixtures (#57, #156).
+ * native plugin spec with the native example (#59), the accessibility and popup specs with
+ * their own fixtures (#57, #156), and the windows out of the canvas with a floating plugin, or with the
+ * switch that opens a plugin out (#235).
  */
 const ENV: Record<string, Record<string, string>> = {
   "ime.spec.ts": compositorEnv(root),
@@ -60,6 +61,13 @@ const ENV: Record<string, Record<string, string>> = {
     DESK_DEV_PLUGINS: join(root, "examples/plugin-native-wgpu"),
   },
   "popups.spec.ts": { DESK_DEV_PLUGINS: join(root, "e2e/fixtures/plugin-e2e-popup") },
+  "windows-out-switch.spec.ts": { DESK_APP_WINDOWS: "e2e.hello" },
+  "windows-out.spec.ts": {
+    DESK_DEV_PLUGINS: [
+      join(root, "e2e/fixtures/plugin-e2e-hello"),
+      join(root, "e2e/fixtures/plugin-e2e-float"),
+    ].join(delimiter),
+  },
 };
 
 /** What a spec builds before its app starts: the native example's program (#59). */

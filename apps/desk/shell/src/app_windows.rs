@@ -15,8 +15,10 @@
 //! windows pop out the first time they show in a session (`on`: every app); unset or `off`, none
 //! does. Each window opens where it was last, per display, by its window id (`places.rs`). Files
 //! dragged in from the OS and the page's own drags land as on the canvas (`drags.rs`), and the
-//! desk's keymap hears a key before the page does (`keys.rs`).
+//! desk's keymap hears a key before the page does (`keys.rs`). Development builds answer a check
+//! what OS windows are open, and close or move one as a person would (`check.rs`).
 
+mod check;
 mod client;
 mod drags;
 mod keys;
@@ -42,6 +44,7 @@ use crate::pane::Pane;
 use crate::pump::Pump;
 use crate::web_host::WebHost;
 use crate::window::Shell;
+pub use check::answer as check;
 pub use keys::{lately as desk_key_lately, report as report_keys};
 pub use menu::{Item, removed};
 pub use places::{Display, Kept, Place};

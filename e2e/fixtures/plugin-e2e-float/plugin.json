@@ -1,0 +1,9 @@
+{
+  "id": "e2e.float",
+  "name": "E2E Float",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The app e2e's floating plugin: one surface placed floating, for the windows out of the canvas (#235).",
+  "surfaces": [{ "id": "main", "title": "E2E Float", "placement": "floating" }]
+}
