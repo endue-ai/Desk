@@ -153,16 +153,34 @@ describe("frame_asks.js", () => {
     expect(p.waited.slice(4), "its frames came, then stopped again: a first ask").toEqual([0]);
   });
 
-  it("asks within 40 ms for a change after an answered ask, not a second on", () => {
+  it("asks within 40 ms for a change soon after an answered ask, not a second on", () => {
     const p = page();
     p.mutate();
     p.advance(50);
     expect(p.wakes).toEqual([40]);
     p.frame();
-    p.advance(450);
+    p.advance(30);
     p.mutate();
     p.advance(100);
-    expect(p.wakes).toEqual([40, 540]);
+    expect(p.wakes).toEqual([40, 120]);
+  });
+
+  it("asks at once for a change when no frame came for 40 ms: its frames stopped already", () => {
+    const p = page();
+    p.mutate();
+    p.advance(50);
+    p.frame();
+    expect(p.wakes, "a new page waits for its first frames").toEqual([40]);
+    // A reply or a timer changes the page long after its last frame.
+    p.advance(450);
+    const changed = p.now();
+    p.mutate();
+    p.mutate();
+    p.advance(30);
+    expect(p.wakes.slice(1), "one ask, at the change").toEqual([changed]);
+    expect(p.waited.slice(1), "a first ask").toEqual([0]);
+    p.advance(1000);
+    expect(p.wakes.slice(2), "again a second on while no frame comes").toEqual([changed + 1000]);
   });
 
   it("asks for nothing while frames come, or once the page wants none", () => {

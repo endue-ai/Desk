@@ -76,7 +76,7 @@ fn a_long_idle_surface_rests_until_it_hears_something_paints_or_its_page_asks() 
         "no frame at rest"
     );
     assert_eq!(taken(&mut b, rest, 60..73, 1), ".............");
-    // Input or a message puts it back on every frame.
+    // A message puts it back on every frame (input: `frames_input_tests.rs`).
     a.heard(rest);
     assert!(!a.long_idle(rest));
     assert_eq!(taken(&mut a, rest, 73..76, 1), "xxx");
