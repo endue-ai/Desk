@@ -103,6 +103,27 @@ describe("the palette's global key", () => {
     );
   });
 
+  it("says in words when DESK_PALETTE_SHORTCUT sets the key, and a recorded key is kept", async () => {
+    const { press, shown, row, answer, call } = mount();
+    await flush();
+    const env = () => row.el.querySelector<HTMLElement>(".settings-key-env");
+    expect(env()?.hidden).toBe(true);
+    answer({ shortcut: "Alt+Space", refused: null, env: true });
+    expect(shown()).toBe(formatSequence("Alt+Space", "mac"));
+    expect(env()?.hidden).toBe(false);
+    expect(env()?.textContent).toMatch(/DESK_PALETTE_SHORTCUT sets this key/);
+    // Recorded anyway: saved for a desk without the variable; the shell still holds the env's.
+    press({ key: "k", code: "KeyK", metaKey: true, altKey: true });
+    await flush();
+    expect(call).toHaveBeenCalledWith("settings.set", {
+      key: CORE_KEY,
+      value: "CommandOrControl+Alt+KeyK",
+    });
+    answer({ shortcut: "Alt+Space", refused: null, env: true });
+    expect(shown()).toBe(formatSequence("Alt+Space", "mac"));
+    expect(env()?.hidden).toBe(false);
+  });
+
   it("without a shell to answer, the key saved shows after a moment", async () => {
     vi.useFakeTimers();
     const { press, shown, note } = mount();

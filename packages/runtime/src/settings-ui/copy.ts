@@ -164,6 +164,10 @@ const copy = {
   ],
   paletteKeyFailed: ["키를 저장하지 못했습니다: {why}", "The key was not saved: {why}"],
   paletteKeyTaking: ["{key} 를 잡는 중…", "Taking {key}…"],
+  paletteKeyEnv: [
+    "환경 변수 DESK_PALETTE_SHORTCUT 이 이 키를 정합니다. 여기서 고른 키는 저장되고, 그 변수가 없을 때 쓰입니다.",
+    "The environment variable DESK_PALETTE_SHORTCUT sets this key. A key chosen here is saved and used without it.",
+  ],
   paletteKeyRefused: [
     "{key} 는 쓸 수 없습니다: {why}. 전에 쓰던 키가 그대로 남습니다.",
     "{key} can't be used: {why}. The key held before stays.",
