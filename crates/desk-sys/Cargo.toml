@@ -15,8 +15,9 @@ publish.workspace = true
 ## File primitives: read, list, stat, atomic write, mkdir, rename, copy, trash (the trash crate) and
 ## watch.
 fs = ["dep:notify", "dep:trash"]
-## Processes: spawn without a shell, in pipes or a PTY, write, resize, signals.
-proc = ["dep:portable-pty", "dep:shared_child", "dep:libc"]
+## Processes: spawn without a shell, in pipes or a PTY (with a UTF-8 `LANG` when no locale is set), write,
+## resize, signals.
+proc = ["dep:portable-pty", "dep:shared_child", "dep:libc", "dep:objc2-foundation"]
 ## HTTP(S) fetch, WebSocket (tungstenite) and server-sent event streams over rustls, with a host
 ## allowlist checked on every redirect, through the system proxy and PAC (boa) or the environment's.
 net = [
@@ -95,7 +96,8 @@ keyring-core = { version = "1", optional = true }
 libc = { version = "0.2", optional = true }
 
 # EventKit, for `calendar` on macOS; AppKit for a calendar's color and, for `clipboard`, NSPasteboard;
-# the dynamic store's proxy settings, for `net`; AVFoundation's microphone grant, for `audio`.
+# the dynamic store's proxy settings, for `net`; AVFoundation's microphone grant, for `audio`;
+# NSLocale, for the locale a `proc` PTY starts in.
 [target.'cfg(target_os = "macos")'.dependencies]
 system-configuration = { version = "0.7", optional = true }
 block2 = { version = "0.6", optional = true }
@@ -130,6 +132,7 @@ objc2-foundation = { version = "0.3.2", optional = true, default-features = fals
   "NSDate",
   "NSEnumerator",
   "NSError",
+  "NSLocale",
   "NSString",
   "NSTimeZone",
   "NSValue",

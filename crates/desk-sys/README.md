@@ -9,9 +9,9 @@ Primitives behind cargo features (Linux `audio` needs `libasound2-dev`), no perm
   permissions, links copied as links); `mkdir(path, parents)` (the folders made); `rename(from, to)`;
   `copy` and `rename` never overwrite; `trash(path)` (trash crate, NSFileManager on macOS, no delete);
   `watch_debounced(path, WatchOptions, on_changes)`, `watch_changes` and `watch` (dropping stops it).
-- `proc`: `spawn(&SpawnOptions { program, args, cwd, env, pty }, on_event) -> Process`: no shell, PATH
-  lookup, `Event::Output { stream, data }`, `Event::Exit(Exit { code, signal })` last; `write`, `resize`
-  (PTY), `kill(Signal)`; always reaped, drop kills; a Windows PTY answers `ESC[6n` and closes at exit.
+- `proc`: `spawn(&SpawnOptions { program, args, cwd, env, pty }, on_event) -> Process`: no shell, PATH lookup,
+  `Event::Output { stream, data }`, `Event::Exit(Exit { code, signal })` last; `write`, `resize`,
+  `kill(Signal)`; reaped, drop kills; a unix PTY without a locale gets UTF-8 `LANG`.
 - `net`: `fetch(&Request) -> Response` (any status), `ws::connect(..) -> Socket`, `sse::open(..) ->
   Stream` (`on_event`, `Closed` last, drop closes); rustls, OS roots; each URL and redirect must match
   `allowed_hosts` or it is `permission_denied`. `proxy::Resolver`: env, else system PAC (boa) or proxy.
