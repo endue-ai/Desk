@@ -2,6 +2,7 @@
 // (apps/desk/shell/packager/packager.json) with its relative paths made absolute, plus what each OS
 // needs. Nothing here touches the disk, so `--dry-run` and the tests render it on any OS.
 import { isAbsolute, join, resolve } from "node:path";
+import { windowsRegistrations } from "../../apps/desk/shell/packager/windows/registrations.mjs";
 
 export const ROOT = resolve(import.meta.dirname, "../..");
 export const PACKAGER = join(ROOT, "apps/desk/shell/packager");
@@ -157,8 +158,12 @@ export function packagerConfig({ base, pin, target, version, paths, hook, signCo
       // where a Tauri desk that installed this .deb as its update restarts (#47).
       config.resources.unshift({ src: join(paths.binaries, MAIN), target: MAIN });
     }
-    if (os === "windows" && signCommand) {
-      config.windows = { ...config.windows, signCommand };
+    if (os === "windows") {
+      // The endue:// scheme and "Open with" entries that never take an extension's default (#310).
+      const { nsis, wix } = windowsRegistrations(PACKAGER);
+      config.nsis = { ...config.nsis, ...nsis };
+      config.wix = { ...config.wix, ...wix };
+      if (signCommand) config.windows = { ...config.windows, signCommand };
     }
   }
   return config;
