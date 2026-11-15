@@ -764,8 +764,9 @@ dialog to answers `unsupported`.
 
 **dialog.save** asks the person for a place to save one file, suggesting `suggestedName` in `startIn`.
 It answers the absolute `path` chosen, or `cancelled: true` without one. The path is granted to the
-caller as `fs:write` on that path alone, for the session; the caller then writes it with `fs.write`. It
-grants no `fs:read`. Agents and windowless desks are answered as for `dialog.open`.
+caller as `fs:write` and `fs:read` on that path alone, for the session, so the caller writes it with
+`fs.write` and can open it again; nothing beside it is granted. Agents and windowless desks are answered
+as for `dialog.open`.
 
 ## Vectors
 
