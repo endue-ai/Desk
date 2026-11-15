@@ -28,6 +28,8 @@ export interface RecordingView {
   badges: Array<{ id: string; count: number }>;
   ended: Array<{ id: string; text: string | null }>;
   moved: Array<{ id: string; index: number }>;
+  /** Each tab's split layout as the view was given it (#315). */
+  layouts: Array<{ tab: string; layout: unknown }>;
   /** What went in through each terminal's paste guard, and the questions it asked. */
   pasted: Array<{ id: string; text: string }>;
   asked: Array<{ id: string; lines: number }>;
@@ -50,6 +52,7 @@ export interface RecordingView {
   badge(id: string, count: number): void;
   end(id: string, text: string | null): void;
   move(id: string, index: number): void;
+  layout(tab: string, layout: unknown): void;
   pasteGuard(id: string): { paste(text: string): Promise<boolean> };
 }
 
@@ -68,6 +71,7 @@ export function recordingView(size = { cols: 80, rows: 24 }): RecordingView {
     badges: [],
     ended: [],
     moved: [],
+    layouts: [],
     pasted: [],
     asked: [],
     bracketed: false,
@@ -90,6 +94,7 @@ export function recordingView(size = { cols: 80, rows: 24 }): RecordingView {
     badge: (id, count) => view.badges.push({ id, count }),
     end: (id, text) => view.ended.push({ id, text }),
     move: (id, index) => view.moved.push({ id, index }),
+    layout: (tab, layout) => view.layouts.push({ tab, layout }),
     pasteGuard: (id) =>
       createPasteGuard({
         paste: (text) => view.pasted.push({ id, text }),
@@ -139,6 +144,20 @@ export function processes(): Handlers {
     "proc.resize": () => ({}),
     "proc.kill": () => ({}),
   };
+}
+
+/** store.* answered as desk-core's storage would, from `kept` (key -> value); `sets` records writes. */
+export function store(kept: Record<string, unknown> = {}) {
+  const sets: Array<{ key: string; value: unknown }> = [];
+  const handlers: Handlers = {
+    "store.get": ({ key }) => (key in kept ? { value: kept[key] } : {}),
+    "store.set": ({ key, value }) => {
+      sets.push({ key, value });
+      kept[key] = value;
+      return {};
+    },
+  };
+  return { handlers, sets, kept };
 }
 
 /** The desk commands the terminal runs, answered as the desk would. */

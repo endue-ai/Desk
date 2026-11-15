@@ -1,8 +1,7 @@
 # desk-sys
 
-Primitives behind cargo features (on Linux, `audio` needs `libasound2-dev`). Layer: the shell. No
-permission checks: desk-core authorizes every call first. Calls return `Error { code, message }` (bridge
-`ErrorCode`); `Error::from` maps fs `io::Error`s, OS permission ones to `io_error`. `NAME`: crate name.
+Primitives behind cargo features (Linux `audio` needs `libasound2-dev`), no permission checks. Calls return
+`Error { code, message }` (bridge `ErrorCode`); OS permission `io::Error`s are `io_error`.
 
 ## Features and public API
 - `fs`: `read`, `list` (sorted `Entry`s) and `stat` (`Stat { kind, size, modified, readonly }`), links
@@ -33,8 +32,9 @@ permission checks: desk-core authorizes every call first. Calls return `Error { 
 - `audio`: `AudioInput` (`authorization`, `request_access`, `devices`, `capture(&CaptureOptions,
   on_event) -> Capture`): mono `i16` `Frame { samples, level, at_ms }`s of 20 ms at 8 to 48 kHz, `End`
   last, `stop` or drop; `permission_denied` until `Authorized`. `os()`: cpal; `fake::FakeInput`.
+- `keychain` (ADR 0239): `Keychain` (`get` (`None` if missing), `set`, `delete` per account); `os(SERVICE)`
+  over keyring-core, `unsupported` when no keychain answers; `fake::FakeKeychain` (`unavailable()`).
 
 ## Testing
-`cargo test -p desk-sys --all-features`; `docs/qa/TESTING.md` says what each file proves. proc, Linux
-trash and net_proxy run the test binary as the child (`DESK_SYS_TEST_CHILD`); the rest use fakes, local
-servers, temp folders, a test key; ignored: EventKit, OS mic, clipboard and proxies, Mac/Windows trash.
+`cargo test -p desk-sys --all-features` (`docs/qa/TESTING.md`): fakes, local servers, temp dirs, the test
+binary as child; ignored: EventKit, OS mic, clipboard, proxies, Mac/Windows trash.

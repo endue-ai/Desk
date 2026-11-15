@@ -1,4 +1,4 @@
-// The terminal's right-click menu (Copy, Paste, Select all, Clear, Find), from the base kit's
+// The terminal's right-click menu (Copy, Paste, Select all, Clear, Find, the splits), from the base kit's
 // .desk-menu: arrows and Home/End move, Enter or a click runs an item, Escape, a click elsewhere or
 // leaving it closes the menu and gives the focus back.
 
@@ -93,4 +93,43 @@ export function createMenu(doc) {
     close,
     isOpen: () => open !== null,
   };
+}
+
+/**
+ * The items of a pane's menu, and of its tab's: the clipboard, the scrollback, the tab's name and the
+ * pane's splits (issue 315).
+ * @param {{
+ *   term: { hasSelection(): boolean, focus(): void, selectAll(): void, clear(): void },
+ *   chord(key: string): string, copy(): unknown, paste(): unknown, find(): unknown,
+ *   rename(): unknown, split(direction: "right" | "down"): unknown, close(): unknown,
+ * }} the
+ * @returns {MenuItem[]}
+ */
+export function paneItems({ term, chord, copy, paste, find, rename, split, close }) {
+  return [
+    {
+      label: "Copy",
+      keys: chord("C"),
+      disabled: !term.hasSelection(),
+      run: () => {
+        term.focus();
+        copy();
+      },
+    },
+    {
+      label: "Paste",
+      keys: chord("V"),
+      run: () => {
+        term.focus();
+        paste();
+      },
+    },
+    { label: "Select all", run: () => term.selectAll() },
+    { label: "Clear", run: () => term.clear() },
+    { label: "Find", keys: chord("F"), run: find },
+    { label: "Rename tab", run: rename },
+    { label: "Split right", run: () => split("right") },
+    { label: "Split down", run: () => split("down") },
+    { label: "Close pane", run: close },
+  ];
 }

@@ -1,5 +1,6 @@
 // The DOM for the terminal plugin: a tab strip (tabs.js), a search bar (searchbar.js), one xterm.js
-// terminal per session in a pane of its own, a right-click menu (menu.js) and a status live region.
+// terminal per session in a pane of its own, a tab's panes split in its panel (split-view.js, issue 315),
+// a right-click menu (menu.js) and a status live region.
 // Each terminal hands what programs say in OSC sequences to the actions, keeps IME composition whole
 // (ime.js), asks before a risky paste (paste.js), opens links through shell.open (links.js) and
 // refits when its box or its cells change (fit.js). Keys go to the shell unless keys.js hands them to
@@ -8,12 +9,14 @@ import { createDrops } from "./drops.js";
 import { watchFit } from "./fit.js";
 import { createImeGuard } from "./ime.js";
 import { createLinks } from "./links.js";
-import { createMenu } from "./menu.js";
+import { createMenu, paneItems } from "./menu.js";
+import { createNotes } from "./notes.js";
 import { CODES } from "./osc.js";
 import { createPasteGuard } from "./paste.js";
 import { createSearch } from "./search.js";
 import { createSearchBar } from "./searchbar.js";
-import { createTabs } from "./tabs.js";
+import { createSplits } from "./split-view.js";
+import { createStrip } from "./strip.js";
 import { LIVE, searchDecorations, xtermOptions } from "./theme.js";
 import { FitAddon } from "./vendor/addon-fit.mjs";
 import { SearchAddon } from "./vendor/addon-search.mjs";
@@ -33,12 +36,14 @@ import { Terminal } from "./vendor/xterm.mjs";
  *   osc(id: string, code: number, data: string): unknown, rename(id: string, title: string): unknown,
  *   move(id: string, index: number): unknown, restart(id: string): unknown, attend(): unknown,
  *   session?(id: string): import("./types.js").Session | undefined,
+ *   split?(id: string, direction: import("./layout.js").Split): unknown,
+ *   ratio?(tab: string, path: string, ratio: number, min: import("./layout.js").Min): unknown,
  * }} Actions
  * @typedef {{
  *   bridge: Parameters<typeof createLinks>[0]["bridge"], platform: import("./shell.js").Platform,
  *   pasteWarning(): import("./paste.js").Warn, dnd?: import("@endue-ai/plugin-sdk").PluginDnd,
  * }} Deps
- * @typedef {{ term: Terminal, fit: FitAddon, search: ReturnType<typeof createSearch>, pane: HTMLElement, note: HTMLElement | null, guard: ReturnType<typeof createPasteGuard> | null }} Item
+ * @typedef {{ term: Terminal, fit: FitAddon, search: ReturnType<typeof createSearch>, pane: HTMLElement, note: HTMLElement | null, guard: ReturnType<typeof createPasteGuard> | null, tab: string, title: string, unread: number, ended: boolean }} Item
  */
 
 /**
@@ -63,7 +68,32 @@ export function createView(doc, actions, options, deps) {
     status.textContent = text;
   };
   const shownItem = () => (shown === null ? undefined : items.get(shown));
-  const tabs = createTabs(doc, byId("tabs"), actions, deps.dnd);
+  const { tabs, paneIds, inUse, using, tabState } = createStrip(
+    doc,
+    byId("tabs"),
+    actions,
+    items,
+    deps.dnd,
+  );
+  const fitTab = (/** @type {string} */ tab) => {
+    for (const id of paneIds(tab)) {
+      const item = items.get(id);
+      if (item && !item.pane.hidden && item.pane.clientWidth > 0) item.fit.fit();
+    }
+  };
+  const splits = createSplits(doc, panes, {
+    ratio: (tab, path, ratio, min) => actions.ratio?.(tab, path, ratio, min),
+    // No pane under 8 columns or 3 rows: a cell's size from a terminal of the tab.
+    min: (tab) => {
+      const item = items.get(inUse(tab));
+      const box = panes.getBoundingClientRect();
+      if (!item || item.term.cols < 1 || item.term.rows < 1 || !box.width || !box.height)
+        return { width: 0.05, height: 0.05 };
+      const cell = item.pane.clientWidth / item.term.cols;
+      const line = item.pane.clientHeight / item.term.rows;
+      return { width: (8 * cell) / box.width, height: (3 * line) / box.height };
+    },
+  });
   const menu = createMenu(doc);
   const links = createLinks({ bridge: deps.bridge, say, platform: deps.platform });
   const bar = createSearchBar(doc, byId("search"), {
@@ -72,7 +102,7 @@ export function createView(doc, actions, options, deps) {
   });
   const fitShown = () => {
     const item = shownItem();
-    if (item && !item.pane.hidden && item.pane.clientWidth > 0) item.fit.fit();
+    if (item) fitTab(item.tab);
   };
   /**
    * The desk gave this window the keys with nothing in it focused (a start, not a click): the
@@ -128,102 +158,48 @@ export function createView(doc, actions, options, deps) {
     }
   };
 
-  /** A line of question or state over the bottom of a pane, with its buttons. */
-  const note = (
-    /** @type {Item} */ item,
-    /** @type {string} */ text,
-    /** @type {Array<[string, boolean, () => void]>} */ buttons,
-  ) => {
-    item.note?.remove();
-    const bar = doc.createElement("div");
-    bar.className = "pane-note";
-    bar.setAttribute("role", "status");
-    const words = doc.createElement("span");
-    words.textContent = text;
-    bar.append(words);
-    for (const [label, primary, run] of buttons) {
-      const button = doc.createElement("button");
-      button.type = "button";
-      button.className = "desk-btn";
-      if (primary) button.classList.add("desk-btn-primary");
-      button.textContent = label;
-      button.addEventListener("click", run);
-      bar.append(button);
-    }
-    item.pane.append(bar);
-    item.note = bar;
-    return bar;
-  };
-  const unnote = (/** @type {Item} */ item) => {
-    item.note?.remove();
-    item.note = null;
-  };
+  const { note, unnote, ask } = createNotes(doc);
 
-  /** Several lines into a program that does not bracket pastes: paste them, or not. */
-  const ask = (/** @type {Item} */ item, /** @type {number} */ lines) =>
-    new Promise((resolve) => {
-      const answer = (/** @type {boolean} */ yes) => {
-        unnote(item);
-        item.term.focus();
-        resolve(yes);
-      };
-      const bar = note(item, `Paste ${lines} lines? Each one runs as it arrives.`, [
-        ["Paste", true, () => answer(true)],
-        ["Cancel", false, () => answer(false)],
-      ]);
-      bar.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") answer(false);
-      });
-      bar.querySelector("button")?.focus();
-    });
-
-  const contextMenu = (
-    /** @type {string} */ id,
-    /** @type {Item} */ item,
-    /** @type {MouseEvent} */ event,
-  ) => {
+  const contextMenu = (/** @type {string} */ id, /** @type {MouseEvent} */ event) => {
+    const item = items.get(id);
+    if (!item) return;
     const { term } = item;
-    menu.show(
-      event.clientX,
-      event.clientY,
-      [
-        {
-          label: "Copy",
-          keys: chord("C"),
-          disabled: !term.hasSelection(),
-          run: () => {
-            term.focus();
-            copy();
-          },
-        },
-        {
-          label: "Paste",
-          keys: chord("V"),
-          run: () => {
-            term.focus();
-            if (!doc.execCommand("paste")) say(`Press ${chord("V")} to paste.`);
-          },
-        },
-        { label: "Select all", run: () => term.selectAll() },
-        { label: "Clear", run: () => term.clear() },
-        { label: "Find", keys: chord("F"), run: find },
-        { label: "Rename tab", run: () => tabs.rename(id) },
-      ],
-      () => term.focus(),
-    );
+    const items_ = paneItems({
+      term,
+      chord,
+      copy,
+      paste: () => {
+        if (!doc.execCommand("paste")) say(`Press ${chord("V")} to paste.`);
+      },
+      find,
+      rename: () => tabs.rename(item.tab),
+      split: (direction) => actions.split?.(id, direction),
+      close: () => actions.close(id),
+    });
+    menu.show(event.clientX, event.clientY, items_, () => term.focus());
   };
 
   return {
-    /** @param {string} id @param {string} title */
-    open(id, title) {
+    /** A pane for `id` in the tab `tab` (a new tab when it has none yet). */
+    open(/** @type {string} */ id, /** @type {string} */ title, tab = id) {
       const pane = doc.createElement("div");
       pane.className = "pane";
       pane.id = `pane-${id}`;
-      pane.setAttribute("role", "tabpanel");
-      pane.hidden = true;
-      const tab = tabs.add(id, title, pane.id);
-      pane.setAttribute("aria-labelledby", tab.label.id);
-      panes.append(pane);
+      const fresh = paneIds(tab).length === 0;
+      const panel = splits.panel(tab);
+      if (fresh) {
+        const t = tabs.add(tab, title, panel.id);
+        // The tab's own menu: the pane in use's, from a right-click on its label.
+        t.label.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          contextMenu(inUse(tab), event);
+        });
+      }
+      panel.append(pane);
+      // A press in a pane makes it the one in use; xterm takes the focus itself.
+      pane.addEventListener("pointerdown", () => {
+        if (shown !== id) actions.activate(id);
+      });
 
       const term = new Terminal({ ...xtermOptions(current), linkHandler: links.handler });
       const fit = new FitAddon();
@@ -239,7 +215,10 @@ export function createView(doc, actions, options, deps) {
         render: (state) => shown === id && bar.render(state.label),
       });
       /** @type {Item} */
-      const item = { term, fit, search, pane, note: null, guard: null };
+      const item = {
+        ...{ term, fit, search, pane, note: null, guard: null, tab, title },
+        ...{ unread: 0, ended: false },
+      };
       const ime = createImeGuard({ send: (data) => actions.input(id, data) });
       term.onData((data) => ime.data(data));
       const area = term.textarea;
@@ -281,16 +260,24 @@ export function createView(doc, actions, options, deps) {
         (event) => {
           event.preventDefault();
           event.stopPropagation();
-          contextMenu(id, item, event);
+          contextMenu(id, event);
         },
         true,
       );
       items.set(id, item);
-      // Fit needs a visible pane: show this one for a moment, size it, and let the caller decide.
-      pane.hidden = false;
+      if (fresh) using.set(tab, id);
+      // Fit needs a visible panel: show the tab's for a moment, size the pane, let the caller decide.
+      const hidden = panel.hidden;
+      panel.hidden = false;
       if (pane.clientWidth > 0) fit.fit();
-      pane.hidden = shown !== id;
+      panel.hidden = hidden;
       return { cols: term.cols, rows: term.rows };
+    },
+
+    /** The tab's panes placed as `layout` says, and refitted when the tab is on screen. */
+    layout(/** @type {string} */ tab, /** @type {import("./layout.js").Layout} */ layout) {
+      splits.arrange(tab, layout, (id) => items.get(id)?.pane);
+      if (splits.visible(tab)) fitTab(tab);
     },
 
     /** @param {string} id @param {string | Uint8Array} data */
@@ -303,11 +290,19 @@ export function createView(doc, actions, options, deps) {
       items.get(id)?.term.write(`\r\n\x1b[2m${text}\x1b[0m\r\n`);
     },
 
+    /** Show the tab `id` is in, `id` its pane in use, marked when the tab is split. */
     show(/** @type {string} */ id) {
+      const item = items.get(id);
+      if (!item) return;
       const before = shownItem()?.search;
       shown = id;
-      for (const [other, item] of items) item.pane.hidden = other !== id;
-      tabs.select(id);
+      using.set(item.tab, id);
+      splits.show(item.tab);
+      for (const [other, it] of items) {
+        if (it.tab === item.tab) it.pane.classList.toggle("is-active", other === id);
+      }
+      tabs.select(item.tab);
+      tabState(item.tab);
       bar.switched(before === shownItem()?.search ? undefined : before);
       win?.requestAnimationFrame(fitShown);
       claim();
@@ -319,7 +314,12 @@ export function createView(doc, actions, options, deps) {
       items.delete(id);
       item.term.dispose();
       item.pane.remove();
-      tabs.remove(id);
+      if (using.get(item.tab) === id) using.delete(item.tab);
+      if (paneIds(item.tab).length === 0) {
+        tabs.remove(item.tab);
+        splits.remove(item.tab);
+        using.delete(item.tab);
+      } else tabState(item.tab);
       if (shown === id) shown = null;
     },
 
@@ -327,7 +327,12 @@ export function createView(doc, actions, options, deps) {
       items.get(id)?.term.clear();
     },
 
-    retitle: (/** @type {string} */ id, /** @type {string} */ title) => tabs.retitle(id, title),
+    retitle(/** @type {string} */ id, /** @type {string} */ title) {
+      const item = items.get(id);
+      if (!item) return;
+      item.title = title;
+      tabState(item.tab);
+    },
 
     focus(/** @type {string} */ id) {
       items.get(id)?.term.focus();
@@ -352,13 +357,19 @@ export function createView(doc, actions, options, deps) {
       setTimeout(() => pane.classList.remove("is-bell"), 150);
     },
 
-    badge: (/** @type {string} */ id, /** @type {number} */ count) => tabs.badge(id, count),
+    badge(/** @type {string} */ id, /** @type {number} */ count) {
+      const item = items.get(id);
+      if (!item) return;
+      item.unread = count;
+      tabState(item.tab);
+    },
 
     /** The program ended (`text` says how) or started again (null): a banner with Restart. */
     end(/** @type {string} */ id, /** @type {string | null} */ text) {
       const item = items.get(id);
       if (!item) return;
-      tabs.ended(id, text !== null);
+      item.ended = text !== null;
+      tabState(item.tab);
       if (text === null) {
         unnote(item);
         return;
