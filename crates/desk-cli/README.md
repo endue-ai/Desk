@@ -22,9 +22,10 @@ desk fs history|restore <path> ...    # [--limit <n>]: id, at, caller, size per 
 desk log [--count <n>] | undo | redo  # the log, oldest first; or what was undone or redone (ADR 0077)
 desk doctor --trace <file>             # a DESK_TRACE=1 trace.json: phases, totals, the five longest
 desk mcp [--agent <id>] [--plugin <id>]...   # an MCP server on stdio as agent:<id> (crates/desk-mcp)
+desk open <path|endue://v1/…>          # start the desk with it (DESK_APP: its executable); a running one takes it (ADR 0244)
 ```
 
-All but `plugin validate`, `plugin test`, `plugin list --lock`, `doctor`, `export` and `import` reach the running desk over its
+All but `plugin validate`, `plugin test`, `plugin list --lock`, `doctor`, `export`, `import` and `open` reach the running desk over its
 socket (`crates/desk-ipc`, ADR 0030) as `cli`; `mcp` runs its client's calls as an agent (ADR 0086). `DESK_SOCKET` names another
 socket. `--json` prints the answer as it came (`cmd run`, `describe`: `cmd.answered`; `perm log`: each entry; `doctor`, `plugin
 validate`: JSON) or, when none came, `{ ok: false, error: { code, message } }`; `inspect` prints JSON either way. Exit codes: 0
@@ -36,5 +37,4 @@ connectors, `tests/*.test.{js,ts}` with vitest on the SDK's test host for the ot
 or in `DESK_REPO`). An export is `~/.desk` with `desk.json` (`{ version: 0, os, exportedAt }`, this CLI's own manifest) at its root
 and, with `--with-data`, `data/` (store, grants, settings, plugins, brain: never secrets or account).
 ## Testing
-`cargo test -p desk-cli`: a scripted server (`socket.rs`, `perm_log.rs`, `describe.rs`, `inspect.rs`), a
-real socket and `Core` (`round_trip.rs`, `fs_history.rs`, `mcp.rs`), and the rest of `tests/` on files.
+`cargo test -p desk-cli`: a scripted server (`socket.rs`, `perm_log.rs`, `describe.rs`, `inspect.rs`), a real socket and `Core` (`round_trip.rs`, `mcp.rs`), the rest on files.

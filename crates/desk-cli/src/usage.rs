@@ -46,6 +46,8 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   undo | redo                           the desk's undo stack: what was undone or redone, if anything
   doctor --trace <file>                 summarize a start-up trace (DESK_TRACE=1): phases, totals,
                                         the five longest
+  open <path|link>                      hand a file or an endue://v1/ link to the running desk, or
+                                        start the desk with it (DESK_APP names its executable)
   mcp [--agent <id>] [--plugin <id>]... serve the running desk to another app over MCP on stdin and
                                         stdout, as the agent <id> (mcp); each --plugin (or *) gives
                                         that plugin's commands tools of their own
