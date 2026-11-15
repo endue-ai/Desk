@@ -305,12 +305,12 @@ describe("compositor budgets", () => {
       band: 0.2,
       tool: "footprint",
     });
-    // Without Chromium's full pipeline (ADR 0210) a press's paint holds budgets measured on a quiet
-    // machine; its composed frame keeps RT-16's 16 ms, the target (#268).
+    // A press beside animating surfaces is held to RT-16's 16 ms again without Chromium's full
+    // pipeline (ADR 0231, #268); a press on a desk at rest keeps ADR 0210's measured budget.
     expect(committed.inputToPaint).toMatchObject({
-      budgetMs: 22.5,
+      budgetMs: 16,
       frameBudgetMs: 16,
-      caughtWaitBudgetMs: 8,
+      caughtWaitBudgetMs: 2,
       tries: 20,
     });
     expect(committed.deskAtRest).toMatchObject({
