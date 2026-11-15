@@ -52,15 +52,20 @@ file before the branch becomes a PR. No issue exists for it yet.
   `shell-a11y.spec.ts:123` (`.surface × .rail` at 1024 wide), `shell-system.spec.ts:47` and
   `shell.spec.ts:183` (30 s timeouts), `shell-eris.spec.ts:20,33` (timeouts under load). #301's lane.
 
-## To do
+## To do (issue #320, ai:ready; order #303 → this → ai/endue-agent-studio → #295)
 
-1. `cargo test -p desk-shell` (the second half of `just check-shell`).
-2. `just perf-motion` for the compositor change (AGENTS.md boundary). It needs a quiet machine: it
-   fails under 55 fps, and three sessions were building at once there.
-3. **Look at it** in `just dev`: caption sizes in a 52 wide bar ("새 에이전트" breaks after "새"),
-   the dashed faces, "+N more" with one to four faces, light and dark. Then decide whether the words
-   move into `copy.ts` once #294 lands.
-4. Open the PR (issue to file first, or none), and delete this file before it.
+The orchestrator session (session_01AxsEpT8uvA5vNmLfXk16qb) gives the build slots: no cargo,
+perf-motion or full e2e on that Mac until it says #303 has merged.
+
+1. `git merge origin/main` once #303 is in. The conflicts (SideBar.ts, SideBarEndue.ts, their tests,
+   shell-bars.spec.ts) are already resolved on the local branch `wip/320-on-294` (a trial merge of
+   `ai/294-the-agent-bar-unfolds` at eba8735e): take its versions of those files and of `bar-new.*`
+   and `SideBar.list.test.ts`, and check them against what #303 merged.
+2. Gates: `just check`, `just test-unit`, `just check-shell`, `just perf-motion`, and `just test-e2e`
+   with `--update-snapshots` for `shell.spec.ts` and `shell-a11y.spec.ts`; read the trees' diff.
+3. `just dev`: look at the folded and unfolded bar, light and dark ("새 에이전트" wraps after "새").
+4. Delete this file; open the PR (body drafted to the template: Closes #320); send the orchestrator
+   "ready to merge #<PR>". People merge.
 
 ## Watch out
 
