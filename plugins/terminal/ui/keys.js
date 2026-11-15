@@ -61,11 +61,11 @@ export const DESK_KEYS = Object.freeze([
   "Control+2",
   "Control+3",
   "Control+4",
-  // Split panes (issue 315): split right and down, and the focus to the pane beside. Elsewhere than macOS
-  // Control+\ is the shell's quit, so splits take Alt too; with Shift the browser names \ as |.
+  // Split panes (issue 315): split right and down, and the focus to the pane beside. On macOS
+  // ⌘⇧\ is the desktops overview, so split down is ⌘⇧↩. Elsewhere Control+\ is the shell's quit,
+  // so splits take Alt too; with Shift the browser names \ as |.
   "Meta+\\",
-  "Meta+Shift+\\",
-  "Meta+Shift+|",
+  "Meta+Shift+Enter",
   "Control+Alt+\\",
   "Control+Alt+Shift+\\",
   "Control+Alt+Shift+|",

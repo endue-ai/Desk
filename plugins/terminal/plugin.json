@@ -356,7 +356,7 @@
       },
       {
         "key": "Control+Alt+Shift+\\",
-        "mac": "Mod+Shift+\\",
+        "mac": "Mod+Shift+Enter",
         "command": "endue.terminal.split",
         "args": {
           "direction": "down"
