@@ -62,6 +62,15 @@ clipboard = ["dep:objc2", "dep:objc2-app-kit", "dep:objc2-foundation"]
 ## (8 to 48 kHz) with a level meter, after the OS grants the microphone. cpal (CoreAudio, WASAPI,
 ## ALSA: Linux builds need libasound2-dev), AVFoundation's grant on macOS, and a fake.
 audio = ["dep:cpal", "dep:block2", "dep:objc2", "dep:objc2-av-foundation"]
+## Secrets in the OS keychain: get, set and delete one string under a service and an account.
+## keyring-core over the Keychain on macOS, Credential Manager on Windows, the Secret Service on
+## Linux (zbus, pure Rust crypto), and a fake (ADR 0239).
+keychain = [
+  "dep:keyring-core",
+  "dep:apple-native-keyring-store",
+  "dep:windows-native-keyring-store",
+  "dep:zbus-secret-service-keyring-store",
+]
 
 [dependencies]
 desk-bridge.workspace = true
@@ -80,6 +89,7 @@ boa_engine = { version = "0.22", optional = true, default-features = false }
 time = { version = "0.3.47", optional = true, default-features = false, features = ["formatting", "parsing"] }
 # Default features only: CoreAudio, WASAPI and ALSA; no JACK, PulseAudio, PipeWire or ASIO.
 cpal = { version = "0.18", optional = true }
+keyring-core = { version = "1", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 libc = { version = "0.2", optional = true }
@@ -130,6 +140,8 @@ objc2-av-foundation = { version = "0.3.2", optional = true, default-features = f
   "AVCaptureDevice",
   "AVMediaFormat",
 ] }
+# The login Keychain, for `keychain` on macOS.
+apple-native-keyring-store = { version = "1", optional = true, features = ["keychain"] }
 # UserNotifications, for `notification` on macOS.
 objc2-user-notifications = { version = "0.3.2", optional = true, default-features = false, features = [
   "std",
@@ -148,6 +160,8 @@ objc2-user-notifications = { version = "0.3.2", optional = true, default-feature
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", optional = true, features = ["Data_Xml_Dom", "Foundation", "UI_Notifications"] }
 windows-registry = { version = "0.6", optional = true }
+# Credential Manager, for `keychain` on Windows.
+windows-native-keyring-store = { version = "1", optional = true, default-features = false }
 
 # The login test's own key, deleted after it.
 [target.'cfg(windows)'.dev-dependencies]
@@ -158,6 +172,8 @@ windows-registry = "0.6"
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = { version = "6.2", optional = true, default-features = false, features = ["tokio", "service"] }
 futures-core = { version = "0.3", optional = true }
+# The Secret Service, for `keychain` on Linux: zbus on tokio with pure-Rust crypto, no libdbus.
+zbus-secret-service-keyring-store = { version = "1", optional = true, features = ["rt-tokio-crypto-rust"] }
 
 # The tests' org.freedesktop.Notifications server: a peer-to-peer connection serving an interface.
 [target.'cfg(target_os = "linux")'.dev-dependencies]
@@ -218,6 +234,10 @@ required-features = ["clipboard"]
 [[test]]
 name = "audio"
 required-features = ["audio"]
+
+[[test]]
+name = "keychain"
+required-features = ["keychain"]
 
 [[test]]
 name = "shell"

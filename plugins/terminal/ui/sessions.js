@@ -1,19 +1,24 @@
 // The terminal plugin without its DOM: sessions (one program each, in a PTY the core runs), their
 // output and input over the bridge's proc.* (pipe.js sends a process's calls in order), what
 // programs say in OSC sequences (the folder, the shell's marks, notifications: notices.js), a desk
-// buffer for each (names.js), and the snapshot the surface comes back from after a reload.
+// buffer for each (names.js), the tabs as split layouts of them (panes.js), the snapshot the
+// surface comes back from after a reload and the layout kept for a restart (restore.js, keep.js).
 // commands.js answers the plugin's commands and the desk's requests on top. It talks only to
 // ctx.bridge, ctx.commands, ctx.state, ctx.surface and a view, so the SDK's test host runs it with a
 // recording view.
 
+import { createKeeper, whereOf } from "./keep.js";
+import { createLaunch } from "./launch.js";
 import { createNames, programName } from "./names.js";
 import { createNotices } from "./notices.js";
 import { cwdOf } from "./osc.js";
 import { decode, exitText, keep } from "./output.js";
+import { createTabSet } from "./panes.js";
 import { createPipes } from "./pipe.js";
-import { candidates, DEFAULTS, environment, PREFIX, parseSettings } from "./shell.js";
-import { blankSession, reorder, restoredSession, snapshotOf } from "./snapshot.js";
-import { codeOf, scopeOf, spawnProgram } from "./spawn.js";
+import { createRestore } from "./restore.js";
+import { candidates, DEFAULTS, PREFIX, parseSettings } from "./shell.js";
+import { blankSession } from "./snapshot.js";
+import { scopeOf } from "./spawn.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -24,6 +29,8 @@ import { codeOf, scopeOf, spawnProgram } from "./spawn.js";
  * @typedef {import("./types.js").Session} Session
  * @typedef {import("./types.js").Snapshot} Snapshot
  * @typedef {import("./types.js").View} View
+ * @typedef {import("./layout.js").Split} Split
+ * @typedef {import("./layout.js").Direction} Direction
  */
 
 /**
@@ -37,6 +44,8 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
   const sessions = new Map();
   /** Process id -> the session it runs in. @type {Map<string, string>} */
   const byProc = new Map();
+  /** The tabs, each a split layout of sessions (panes). */
+  const tabset = createTabSet();
   /** @type {Settings} */
   let settings = { ...DEFAULTS };
   /** The settings as init.get and settings.changed name them (`endue.terminal.*`). */
@@ -58,22 +67,24 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     if (!session) throw new Error(`No terminal ${id}.`);
     return session;
   };
-  const order = () => [...sessions.keys()];
+  /** The sessions tab by tab, each tab's panes in layout order. */
+  const order = () => tabset.panes();
   /** The person sees the tab: it is shown, and the frame is visible and has the focus. */
   const looks = (/** @type {string} */ id) => shown === id && looking(id);
   const notices = createNotices({
     bridge: /** @type {any} */ (bridge),
-    view,
+    ...{ view, commands, say },
     title: (id) => sessions.get(id)?.title ?? "Terminal",
     looking: looks,
     now,
     settings: () => settings,
   });
 
-  /** The snapshot the runtime keeps for this surface across a reload, written when things settle. */
+  const keeper = createKeeper({ state, bridge });
+  /** The reload snapshot and the layout kept for a restart, written when things settle (keep.js). */
   const snapshot = () => {
     timer = null;
-    state.set(snapshotOf(next, shown, sessions.values()));
+    keeper.write(next, shown, tabset, held);
   };
   const changed = () => {
     if (timer === null) timer = setTimeout(snapshot, snapshotMs);
@@ -81,49 +92,22 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
 
   const { retitle, rename } = createNames({ view, commands, sessions, held, changed });
 
-  const ended = (/** @type {Session} */ session, /** @type {string | null} */ text) => {
-    if (session.ended === text) return;
-    session.ended = text;
-    view.end(session.id, text);
-  };
-
-  /** Start the first of the session's programs that is there; a failure is written in the terminal. */
-  const launch = async (/** @type {Session} */ session) => {
-    for (const [index, program] of session.programs.entries()) {
-      try {
-        const size = { cols: session.cols, rows: session.rows };
-        const { procId } = await spawnProgram(bridge, program, {
-          env: environment(settings),
-          ...size,
-        });
-        session.program = program;
-        session.procId = procId;
-        session.exit = null;
-        ended(session, null);
-        byProc.set(procId, session.id);
-        retitle(session.id, programName(program, sessions.values(), session.id));
-        changed();
-        return;
-      } catch (error) {
-        const code = codeOf(error);
-        if (code === "not_found" && index < session.programs.length - 1) continue;
-        const text =
-          code === "permission_denied"
-            ? `Not allowed to run ${program.command}.`
-            : `Could not start ${program.command}: ${code}.`;
-        session.exit = text;
-        view.line(session.id, text);
-        ended(session, text);
-        say(text);
-        changed();
-        return;
-      }
-    }
-  };
+  const { ended, launch, signal } = createLaunch({
+    bridge,
+    view,
+    held,
+    byProc,
+    sessions,
+    settings: () => settings,
+    retitle,
+    say,
+    changed,
+  });
 
   const show = (/** @type {string} */ id) => {
     held(id);
     shown = id;
+    tabset.focus(id);
     view.show(id);
     if (looking(id)) notices.seen(id);
     say("");
@@ -140,16 +124,28 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     surface.show();
   };
 
+  /** A desk buffer for the session, renamed with it (names.js). */
+  const buffer = async (/** @type {Session} */ session) => {
+    session.buffer = await commands.run("desk.buffers.open", { name: session.title }).then(
+      (b) => (typeof b === "string" ? b : null),
+      () => null,
+    );
+  };
+
   /** Where a new terminal starts: the folder the one on screen is in (OSC 7), else the setting. */
   const folder = () => {
     const current = shown === null ? undefined : sessions.get(shown);
     return settings.newTabFolder === "current" && current?.cwd ? current.cwd : settings.cwd;
   };
 
-  /** A new terminal: the settings' shell, or `program`. Resolves once it has started, or failed. */
+  /**
+   * A new terminal: the settings' shell, or `program`; in a tab of its own, or beside the pane
+   * `beside` in its tab (issue 315). Resolves once it has started, or failed.
+   */
   const open = async (
     /** @type {Program | undefined} */ program = undefined,
     /** @type {string | undefined} */ cwd = undefined,
+    /** @type {{ beside: string, direction: Split } | undefined} */ place = undefined,
   ) => {
     next += 1;
     const id = `t-${next}`;
@@ -159,34 +155,20 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
       : candidates(platform, settings).map((p) => ({ ...p, cwd: where }));
     const session = blankSession(id, programName(programs[0], sessions.values(), id), programs);
     sessions.set(id, session);
-    const size = view.open(id, session.title);
+    const tab = (place && tabset.split(place.beside, place.direction, id)) ?? tabset.add(id);
+    const size = view.open(id, session.title, tab.id);
     session.cols = size.cols;
     session.rows = size.rows;
+    view.layout(tab.id, tab.layout);
     show(id);
-    session.buffer = await commands.run("desk.buffers.open", { name: session.title }).then(
-      (buffer) => (typeof buffer === "string" ? buffer : null),
-      () => null,
-    );
+    await buffer(session);
     await launch(session);
     return session;
   };
 
-  /** Send `signal` to the session's program; false when none runs. */
-  const signal = (
-    /** @type {string} */ id,
-    /** @type {"term" | "kill" | "int" | "hup"} */ signal,
-  ) => {
-    const session = held(id);
-    if (!session.procId || !session.program) return Promise.resolve(false);
-    const params = { procId: session.procId, signal, scope: scopeOf(session.program.command) };
-    return bridge.call("proc.kill", params).then(
-      () => true,
-      (error) => {
-        say(`Could not signal ${session.title}: ${codeOf(error)}.`);
-        return false;
-      },
-    );
-  };
+  /** A shell beside the pane `id`, in its folder, in its tab. */
+  const split = (/** @type {string} */ id, /** @type {Split} */ direction) =>
+    open(undefined, whereOf(held(id)) ?? undefined, { beside: id, direction });
 
   /** Forget a session: its program gets a hang-up, as when a terminal window closes. */
   const remove = (/** @type {string} */ id) => {
@@ -198,9 +180,12 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     }
     sessions.delete(id);
     notices.forget(id);
+    const left = tabset.remove(id);
     view.close(id);
+    if (left && !left.closed) view.layout(left.tab.id, left.tab.layout);
     if (shown === id) {
-      shown = order().at(-1) ?? null;
+      // The pane beside it in its tab, else the last tab's pane in use.
+      shown = left && !left.closed ? left.tab.focused : (tabset.all().at(-1)?.focused ?? null);
       if (shown !== null) view.show(shown);
       else say("No terminal is open.");
     }
@@ -225,7 +210,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     await launch(session);
   };
 
-  const input = (/** @type {string} */ id, /** @type {string} */ data) => {
+  const input = (/** @type {string} */ id, /** @type {import("./pipe.js").Input} */ data) => {
     const session = held(id);
     if (!session.procId || !session.program) {
       if (data === "\r") void restart(id);
@@ -265,11 +250,33 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     notices.osc(id, code, data);
   };
 
-  /** Move a tab to `index` among the tabs. */
+  /** Move the tab `id` is in to `index` among the tabs. */
   const move = (/** @type {string} */ id, /** @type {number} */ index) => {
-    const to = reorder(sessions, id, index);
-    if (to < 0) return;
-    view.move(id, to);
+    const tab = tabset.tabOf(id);
+    const to = tab ? tabset.move(tab.id, index) : -1;
+    if (!tab || to < 0) return;
+    view.move(tab.id, to);
+    changed();
+  };
+
+  /** The focus to the pane beside the one on screen, on `direction`'s side; the pane it is on. */
+  const focusPane = (/** @type {Direction} */ direction) => {
+    if (shown === null) throw new Error("No terminal is open.");
+    const id = tabset.neighbour(shown, direction);
+    present(id);
+    return id;
+  };
+
+  /** A divider of `tab` dragged to `ratio` of its split, no pane smaller than `min` (layout.js). */
+  const ratio = (
+    /** @type {string} */ tab,
+    /** @type {string} */ path,
+    /** @type {number} */ value,
+    /** @type {import("./layout.js").Min} */ min,
+  ) => {
+    const t = tabset.ratio(tab, path, value, min);
+    if (!t) return;
+    view.layout(t.id, t.layout);
     changed();
   };
 
@@ -317,30 +324,26 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     exited(session, event.data);
   });
 
-  /**
-   * The terminals a reload or a closed window left behind: their programs still run in the core,
-   * so attach again; one that ended meanwhile answers `not_found` to the resize (`exited`).
-   */
-  const restore = (/** @type {Snapshot} */ saved) => {
-    next = Math.max(next, saved.next);
-    for (const kept of saved.sessions) {
-      const programs = kept.program
-        ? [kept.program]
-        : candidates(platform, settings).map((p) => ({ ...p, cwd: settings.cwd }));
-      const session = restoredSession(kept, programs);
-      sessions.set(session.id, session);
-      const size = view.open(session.id, session.title);
-      for (const chunk of kept.tail) view.write(session.id, decode(chunk));
-      if (session.procId) {
-        byProc.set(session.procId, session.id);
-        resize(session.id, size.cols, size.rows, true);
-      } else if (session.exit) {
-        view.end(session.id, session.ended ?? session.exit);
-      }
-    }
-    const first = saved.shown !== null && sessions.has(saved.shown) ? saved.shown : order().at(-1);
-    if (first !== undefined) show(first);
-  };
+  const restoring = createRestore({
+    bridge: /** @type {any} */ (bridge),
+    sessions,
+    byProc,
+    tabset,
+    view,
+    platform,
+    settings: () => settings,
+    id: () => {
+      next += 1;
+      return `t-${next}`;
+    },
+    seen: (n) => {
+      next = Math.max(next, n);
+    },
+    resize,
+    show,
+    buffer,
+    launch,
+  });
 
   return {
     /** Read the settings, then come back to the terminals a reload left, or open the first one. */
@@ -348,9 +351,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
       const init = await bridge.call("init.get", {}).catch(() => ({ settings: {} }));
       raw = { .../** @type {Record<string, unknown>} */ (init.settings ?? {}) };
       settings = parseSettings(raw);
-      const saved = /** @type {Snapshot | undefined} */ (state.get());
-      if (saved?.sessions?.length) restore(saved);
-      else await open();
+      await restoring.begin(/** @type {Snapshot | undefined} */ (state.get()), () => open());
     },
     /** One of the plugin's settings changed while it runs (its key with or without the prefix). */
     configure(/** @type {string} */ key, /** @type {unknown} */ value) {
@@ -359,6 +360,11 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
       return settings;
     },
     open,
+    split,
+    focusPane,
+    ratio,
+    /** The tabs in order, each with its layout and its pane in use. */
+    tabs: () => tabset.all().map(({ id, layout, focused }) => ({ id, layout, focused })),
     show,
     close,
     remove,

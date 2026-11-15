@@ -7,9 +7,10 @@
 //! token that lives 300 s and the `endue_rt` refresh cookie (`cookie.rs`); the keeper
 //! (`keeper.rs`) renews it before it expires, one refresh at a time because every refresh rotates
 //! the cookie. The profile comes from `/api/v1/users/me` (`profile.rs`). The brain gets the access
-//! token as its bearer token (`token`); no token crosses the bridge.
+//! token as its bearer token (`token`); no token crosses the bridge. The tokens are kept in the OS
+//! keychain and the rest in `account.json` (`vault.rs`, ADR 0239).
 
-use std::fs;
+use std::fmt;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -26,10 +27,13 @@ mod keeper;
 mod pkce;
 mod profile;
 mod session;
+mod vault;
 
 use bff::Bff;
+pub use desk_sys::keychain::Keychain;
 use keeper::Wake;
 use session::Session;
+use vault::Vault;
 
 /// The platform's public API and endue ID's realm, unless `DESK_ENDUE_PLATFORM_URL` and
 /// `DESK_ENDUE_AUTH_URL` say otherwise.
@@ -47,6 +51,10 @@ pub struct AccountOptions {
     pub auth_url: String,
     /// The session file; `None` keeps the session in memory.
     pub file: Option<PathBuf>,
+    /// Where the tokens are kept; `None`, or one that does not answer, keeps them in `file`.
+    pub keychain: Option<Arc<dyn Keychain>>,
+    /// Where the account says what the person should know of how it keeps the session.
+    pub log: AccountLog,
     /// How long one second of endue's poll interval lasts; tests shorten it.
     pub interval_unit: Duration,
     /// The waits before each retry of a failure other than 400, 401 and 403.
@@ -63,6 +71,8 @@ impl AccountOptions {
             platform_url: trimmed(platform_url.into()),
             auth_url: trimmed(auth_url.into()),
             file: None,
+            keychain: None,
+            log: AccountLog::default(),
             interval_unit: Duration::from_secs(1),
             retry: [400, 1200, 3000].map(Duration::from_millis).to_vec(),
             lead: Duration::from_secs(90),
@@ -86,6 +96,32 @@ impl AccountOptions {
         };
         let auth = set("DESK_ENDUE_AUTH_URL").unwrap_or_else(|| realm.to_owned());
         Self::new(platform, auth)
+    }
+}
+
+/// A line for the desk's log; standard error unless a caller says otherwise.
+#[derive(Clone)]
+pub struct AccountLog(Arc<dyn Fn(&str) + Send + Sync>);
+
+impl AccountLog {
+    pub fn new(say: impl Fn(&str) + Send + Sync + 'static) -> Self {
+        Self(Arc::new(say))
+    }
+
+    pub(crate) fn say(&self, line: &str) {
+        (self.0)(line);
+    }
+}
+
+impl Default for AccountLog {
+    fn default() -> Self {
+        Self::new(|line| eprintln!("desk: account: {line}"))
+    }
+}
+
+impl fmt::Debug for AccountLog {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("AccountLog")
     }
 }
 
@@ -193,6 +229,7 @@ type Listener = Box<dyn Fn(&Snapshot) + Send + Sync>;
 
 pub struct Account {
     options: AccountOptions,
+    vault: Vault,
     client: Box<dyn IdClient>,
     inner: Mutex<Inner>,
     /// Held for the whole of a refresh: only one runs at a time.
@@ -203,11 +240,13 @@ pub struct Account {
 }
 
 impl Account {
-    /// The account whose session is in `options.file`, if one is there.
+    /// The account whose session is kept on this desk, if one is.
     pub fn open(options: AccountOptions, client: impl IdClient + 'static) -> Arc<Self> {
-        let session = options.file.as_deref().and_then(Session::read);
+        let vault = Vault::new(&options);
+        let session = vault.load();
         Arc::new(Self {
             options,
+            vault,
             client: Box::new(client),
             inner: Mutex::new(Inner {
                 session,
@@ -272,15 +311,11 @@ impl Account {
     }
 
     fn save(&self, session: &Session) {
-        if let Some(path) = &self.options.file {
-            session.write(path);
-        }
+        self.vault.save(session);
     }
 
     fn forget_file(&self) {
-        if let Some(path) = &self.options.file {
-            let _ = fs::remove_file(path);
-        }
+        self.vault.forget();
     }
 
     fn changed(&self) {

@@ -1,6 +1,7 @@
 // The plugin's commands (endue.terminal.*, from the palette, keys, Eris and agents; agent.js the
 // ones only agents need) and the desk's buffer requests, answered on the sessions. No DOM.
 import { wireAgent } from "./agent.js";
+import { DIRECTIONS, panesOf } from "./layout.js";
 import { findTerminals } from "./palette.js";
 import { basename, isShell } from "./shell.js";
 
@@ -29,11 +30,13 @@ export function wireCommands(commands, app) {
     if (id === null) throw new Error("No terminal is open.");
     return id;
   };
+  /** The tab `by` along from the one on screen, at its pane in use. */
   const step = (/** @type {number} */ by) => {
-    const ids = app.ids();
+    const tabs = app.tabs();
     const shown = app.shown();
-    if (ids.length === 0 || shown === null) throw new Error("No terminal is open.");
-    const id = ids[(ids.indexOf(shown) + by + ids.length) % ids.length];
+    if (tabs.length === 0 || shown === null) throw new Error("No terminal is open.");
+    const at = tabs.findIndex((tab) => panesOf(tab.layout).includes(shown));
+    const id = tabs[(at + by + tabs.length) % tabs.length]?.focused;
     if (id === undefined) return null;
     app.present(id);
     return id;
@@ -72,6 +75,22 @@ export function wireCommands(commands, app) {
     return id;
   });
   commands.on("endue.terminal.close", (args) => app.close(current(args)));
+  // Split panes (issue 315): a shell beside the pane named, else the one in use, in its folder.
+  commands.on("endue.terminal.split", async (args) => {
+    const { direction } = /** @type {{ direction?: unknown }} */ (args ?? {});
+    if (direction !== "right" && direction !== "down") {
+      throw new Error("Say which way to split: right or down.");
+    }
+    const session = await app.split(current(args), direction);
+    app.present(session.id);
+    return session.id;
+  });
+  commands.on("endue.terminal.focus-pane", (args) => {
+    const { direction } = /** @type {{ direction?: unknown }} */ (args ?? {});
+    const way = DIRECTIONS.find((d) => d === direction);
+    if (!way) throw new Error("Say which pane to go to: left, right, up or down.");
+    return app.focusPane(way);
+  });
   commands.on("endue.terminal.next", () => step(1));
   commands.on("endue.terminal.previous", () => step(-1));
   commands.on("endue.terminal.clear", (args) => app.clear(current(args)));

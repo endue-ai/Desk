@@ -1,5 +1,6 @@
 // The default shell and how it starts, per platform, and the terminal's settings with their
 // defaults and limits. No DOM and no SDK, so the tests run it in Node.
+import { EVENTS } from "./hooks.js";
 
 /** @typedef {"mac" | "linux" | "windows"} Platform */
 /** @typedef {{ command: string, args: string[] }} Program */
@@ -10,6 +11,7 @@
  *   cursorStyle: "block" | "underline" | "bar", cursorBlink: boolean, bell: "notify" | "none",
  *   copyOnSelect: boolean, keysToDesk: string[], programNotify: boolean, notifyAfter: number,
  *   pasteWarning: "auto" | "always" | "never", newTabFolder: "current" | "setting",
+ *   programCopy: boolean, eventCommands: Partial<Record<import("./hooks.js").Kind, string>>,
  * }} Settings
  */
 
@@ -38,7 +40,12 @@ export const DEFAULTS = Object.freeze({
   notifyAfter: 10,
   pasteWarning: "auto",
   newTabFolder: "current",
+  programCopy: true,
+  eventCommands: {},
 });
+
+/** A command id, as the plugin manifest's schema writes one. */
+const COMMAND_ID = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/u;
 
 /** @returns {Platform} */
 export function platformOf(/** @type {string | undefined} */ navigatorPlatform) {
@@ -156,6 +163,18 @@ export function parseSettings(raw) {
           ),
         )
       : DEFAULTS.env;
+  const hooks = get("event-commands");
+  const eventCommands =
+    hooks && typeof hooks === "object" && !Array.isArray(hooks)
+      ? Object.fromEntries(
+          Object.entries(hooks).filter(
+            ([event, id]) =>
+              EVENTS.includes(/** @type {any} */ (event)) &&
+              typeof id === "string" &&
+              COMMAND_ID.test(id),
+          ),
+        )
+      : DEFAULTS.eventCommands;
   return {
     shell: string("shell", DEFAULTS.shell).trim(),
     args: strings(get("args")) ?? DEFAULTS.args,
@@ -186,5 +205,7 @@ export function parseSettings(raw) {
       /** @type {const} */ (["current", "setting"]),
       DEFAULTS.newTabFolder,
     ),
+    programCopy: boolean("program-copy", DEFAULTS.programCopy),
+    eventCommands,
   };
 }
