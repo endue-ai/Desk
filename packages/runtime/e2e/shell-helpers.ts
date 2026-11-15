@@ -24,9 +24,10 @@ export function putAway(page: Page, id?: string): Promise<unknown> {
   );
 }
 
-/** The theme studio lives in Settings > Appearance. */
+/** The theme studio lives in Settings > Appearance; Settings is a row of the avatar's menu. */
 export async function openThemes(page: Page): Promise<void> {
-  await page.locator(".account-settings-button").click();
+  await page.locator(".account-profile").click();
+  await page.locator('.account-popover [data-key="account-settings"]').click();
   const settings = page.locator(".desk-settings");
   await settings.locator('[data-key="settings-appearance"]').click();
   await settings.locator('[data-key="settings-themes"]').click();
