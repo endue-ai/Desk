@@ -26,11 +26,15 @@ function manifest({ id, name, description }: PluginOptions): string {
     kind: "ui",
     entry: "ui/index.html",
     ...(description === undefined ? {} : { description }),
-    surfaces: [{ id: "main", title: name, placement: "center" }],
+    // How its window opens (ADR 0226): on the canvas at this size; `opens: "out"` is the other way.
+    surfaces: [{ id: "main", title: name, placement: "center", window: WINDOW }],
     contributes: { commands: [{ id: `${id}.count`, title: `${name}: count` }] },
   };
   return `${JSON.stringify(value, null, 2)}\n`;
 }
+
+/** The window the new plugin asks for: a small page on the canvas. */
+const WINDOW = { size: { width: 480, height: 360 }, opens: "canvas" } as const;
 
 function readme(options: PluginOptions): string {
   return [
@@ -41,6 +45,17 @@ function readme(options: PluginOptions): string {
         `lives in plugin state rather than in the page. \`desk cmd run ${options.id}.count\` counts too.`,
       ].join("\n"),
     ),
+    "## Its window",
+    "",
+    "`plugin.json` says how the window opens, under the surface's `window`: `size` is the page the",
+    "first time (480 × 360 px here), `minSize` the smallest the person can make it, `resizable:",
+    'false` keeps its size, and `opens` is where it opens: `"canvas"`, on the desk, or `"out"`, in',
+    "an OS window of its own. The page and its calls are the same in both, and the person moves a",
+    'window out and back (the palette\'s "Pop out window", Window > Move to Desk); each move loads the page',
+    `again, so keep what must stay in plugin state. \`DESK_APP_WINDOWS=${options.id}\` before the`,
+    "command above opens it out without changing the manifest, and `DESK_APP_WINDOWS=off` keeps it",
+    "on the canvas.",
+    "",
     "## Permissions",
     "",
     "None yet. Declare each one in `plugin.json` `permissions`, ask for it when you need it",
@@ -50,7 +65,7 @@ function readme(options: PluginOptions): string {
     "",
     "| File | Purpose |",
     "| --- | --- |",
-    "| `plugin.json` | The manifest (specs/plugin v0): id, version, kind `ui`, entry, one surface, one command |",
+    "| `plugin.json` | The manifest (specs/plugin v0): id, version, kind `ui`, entry, one surface and its window, one command |",
     "| `ui/index.html` | The entry page; its import map points `@endue-ai/plugin-sdk` and `@endue-ai/ui` at `/_desk/` |",
     "| `ui/main.js` | `defineUiPlugin(plugin)`: connects the plugin to the desk |",
     "| `ui/plugin.js` | The plugin's `mount`: state, a button, a command, a bridge call |",

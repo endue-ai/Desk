@@ -1,0 +1,20 @@
+{
+  "id": "example.hello-window",
+  "name": "Hello Window",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The smallest app that says how its window opens: its first and smallest size, and out of the canvas.",
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Hello Window",
+      "placement": "center",
+      "window": {
+        "size": { "width": 480, "height": 360 },
+        "minSize": { "width": 320, "height": 240 },
+        "opens": "out"
+      }
+    }
+  ]
+}
