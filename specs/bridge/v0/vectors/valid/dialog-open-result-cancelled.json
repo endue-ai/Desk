@@ -1,0 +1,5 @@
+{
+  "target": "DialogOpenResult",
+  "description": "the person cancelled: no paths",
+  "instance": { "cancelled": true, "paths": [] }
+}

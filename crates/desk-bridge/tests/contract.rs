@@ -403,6 +403,8 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "ComputerInputClickResult" => roundtrip::<ComputerInputClickResult>(vector),
                 "NetConnectResult" => roundtrip::<NetConnectResult>(vector),
                 "WebOpenResult" => roundtrip::<desk_bridge::WebOpenResult>(vector),
+                "DialogOpenResult" => roundtrip::<desk_bridge::DialogOpenResult>(vector),
+                "DialogSaveResult" => roundtrip::<desk_bridge::DialogSaveResult>(vector),
                 "BrainDesk" => roundtrip::<BrainDesk>(vector),
                 other => panic!("{}: no Rust type mapped for {other}", vector.file),
             }

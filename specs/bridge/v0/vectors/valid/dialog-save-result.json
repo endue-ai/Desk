@@ -1,0 +1,5 @@
+{
+  "target": "DialogSaveResult",
+  "description": "the place the person chose",
+  "instance": { "cancelled": false, "path": "/Users/person/Documents/today.md" }
+}

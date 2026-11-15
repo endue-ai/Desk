@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "a filter names at least one extension",
+  "instance": {
+    "id": 45,
+    "method": "dialog.open",
+    "params": { "filters": [{ "name": "Nothing", "extensions": [] }] }
+  }
+}

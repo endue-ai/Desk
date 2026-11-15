@@ -3253,7 +3253,9 @@ export type BridgeRequest =
   | WebLoadRequest
   | WebGoRequest
   | WebFocusRequest
-  | WebCloseRequest;
+  | WebCloseRequest
+  | DialogOpenRequest
+  | DialogSaveRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -4350,6 +4352,67 @@ export interface DataChangedEvent {
 export interface DataChangedData {
   subscriptionId: string;
   changes: ItemChange[];
+}
+
+/** A named set of file extensions the dialog shows, without the dot: { name: Markdown, extensions: [md] }. */
+export interface DialogFilter {
+  name: string;
+  extensions: string[];
+}
+
+export type DialogFilters = DialogFilter[];
+
+/** The dialog's title, where the OS shows one. */
+export type DialogTitle = string;
+
+/** What the person picks: files (the default) or folders. */
+export type DialogOpenKind = "files" | "folders";
+
+/** Ask the person for files or folders to open. */
+export interface DialogOpenRequest {
+  id: RequestId;
+  method: "dialog.open";
+  params: DialogOpenParams;
+}
+
+/** Parameters of dialog.open. */
+export interface DialogOpenParams {
+  kind?: DialogOpenKind;
+  /** Whether the person may pick several; false by default. */
+  multiple?: boolean;
+  title?: DialogTitle;
+  /** The folder the dialog starts in. */
+  startIn?: Path;
+  filters?: DialogFilters;
+}
+
+/** Result of dialog.open: the absolute paths the person chose, now readable by the caller, or cancelled with none. */
+export interface DialogOpenResult {
+  cancelled: boolean;
+  paths: Path[];
+}
+
+/** Ask the person for a place to save one file. */
+export interface DialogSaveRequest {
+  id: RequestId;
+  method: "dialog.save";
+  params: DialogSaveParams;
+}
+
+/** Parameters of dialog.save. */
+export interface DialogSaveParams {
+  title?: DialogTitle;
+  /** The file name the dialog suggests, without a folder. */
+  suggestedName?: string;
+  /** The folder the dialog starts in. */
+  startIn?: Path;
+  filters?: DialogFilters;
+}
+
+/** Result of dialog.save: the absolute path the person chose, now writable by the caller, or cancelled without one. */
+export interface DialogSaveResult {
+  cancelled: boolean;
+  path?: Path;
 }
 
 /** Start receiving the named events about every caller. */
@@ -7404,6 +7467,8 @@ export interface BridgeMethodMap {
   "web.go": { params: WebGoParams; result: WebGoResult };
   "web.focus": { params: WebFocusParams; result: WebFocusResult };
   "web.close": { params: WebCloseParams; result: WebCloseResult };
+  "dialog.open": { params: DialogOpenParams; result: DialogOpenResult };
+  "dialog.save": { params: DialogSaveParams; result: DialogSaveResult };
 }
 
 /** A bridge method name. */
@@ -7566,4 +7631,6 @@ export const BRIDGE_METHODS = [
   "web.go",
   "web.focus",
   "web.close",
+  "dialog.open",
+  "dialog.save",
 ] as const satisfies readonly BridgeMethod[];
