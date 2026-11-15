@@ -61,6 +61,8 @@ pub struct InputRouter {
     pub(super) in_use: Option<String>,
     /// What is typed while the page has yet to answer a press or a key the desk ran (`hold.rs`).
     pub(super) hold: Hold,
+    /// The window manager decided the keys for the next press (`follow.rs`).
+    pub(super) window_press: bool,
     pub(super) window_focused: bool,
     pub(super) ime: Ime,
     pub(super) ime_allowed: bool,
@@ -86,6 +88,7 @@ impl InputRouter {
             page: PageFocus::default(),
             in_use: None,
             hold: Hold::default(),
+            window_press: false,
             window_focused: true,
             ime: Ime::default(),
             ime_allowed: false,
@@ -207,6 +210,7 @@ impl InputRouter {
         if pressed {
             out.extend(self.ime.finish().into_iter().map(Out::Send));
         }
+        let decided = pressed && std::mem::take(&mut self.window_press);
         let (messages, pressed_on) = self.pointer.button(
             scene,
             &self.targets,
@@ -222,9 +226,9 @@ impl InputRouter {
                 self.keymap.cancel();
             }
             // What a press on the page does to the keys is the page's to say (the talk pill opens
-            // its line and focuses it), on one of its own pages too: what is typed next waits for
-            // its answer.
-            if self.settings.page_owned(&surface) {
+            // its line and focuses it): what is typed next waits for its answer. Not a press the
+            // window manager took as a window's: it decided the keys already (ADR 0230).
+            if self.settings.page_owned(&surface) && !decided {
                 self.hold_keys(now);
             }
             let keys = self.pressed_keys(&surface);

@@ -68,7 +68,8 @@ fn a_press_that_leaves_the_keys_where_they_were_sends_them_on_there() {
     let mut d = desk();
     windows(&mut d);
     d.router.in_use(Some(A));
-    // A title bar: the window in use keeps the keys; the page's answer says nothing moved.
+    // The desk under the windows: the window in use keeps the keys; the page's answer says
+    // nothing moved.
     d.click(10.0, 10.0);
     assert!(typed(&mut d).is_empty());
     d.router.page_focus(PageFocus::Rest);
@@ -76,7 +77,9 @@ fn a_press_that_leaves_the_keys_where_they_were_sends_them_on_there() {
         kinds(&d.answer()),
         ["key.down@a.one", "key.char@a.one", "key.up@a.one"]
     );
-    // A press on a surface is the surface's: nothing waits.
+    // A press on a window's surface, whose window the window manager put in use first (#251):
+    // nothing waits.
+    d.router.decided(Some(B));
     d.click(700.0, 100.0);
     assert!(!d.router.holding());
     assert_eq!(typed(&mut d)[0], "key.down@b.two");
