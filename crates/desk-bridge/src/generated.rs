@@ -9794,6 +9794,124 @@ pub struct StudioTrait {
     pub updated_at: Option<String>,
 }
 
+/// How a channel stands: pending (the bot's invitation waits to be approved), active (the agent answers there), inactive (turned off) or revoked.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StudioChannelStatus {
+    #[serde(rename = "pending")]
+    Pending,
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "inactive")]
+    Inactive,
+    #[serde(rename = "revoked")]
+    Revoked,
+}
+
+/// A channel the agent is reached through: the pairing's id, the provider (discord, slack, kakao, navertalk, whatsapp), the name endue AI shows for it, how it stands and when it was last used. No secret and no webhook address crosses the bridge.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioChannel {
+    pub id: String,
+    pub provider: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub status: StudioChannelStatus,
+    #[serde(
+        rename = "lastActiveAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_active_at: Option<String>,
+}
+
+/// An API key the person made for this agent alone: its name, when it stops working (absent: never), when it was last used and when it was made. Keys for all of the person's agents are not listed, and no key's secret or prefix crosses the bridge.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioApiKey {
+    pub id: String,
+    pub name: String,
+    #[serde(rename = "expiresAt", default, skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<String>,
+    #[serde(
+        rename = "lastUsedAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_used_at: Option<String>,
+    #[serde(rename = "createdAt", default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+}
+
+/// What a device is, as Studio names it: a computer (Linux, macOS, Windows, or a Linux workspace), Chrome, or Android.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StudioDeviceKind {
+    #[serde(rename = "computer")]
+    Computer,
+    #[serde(rename = "chrome")]
+    Chrome,
+    #[serde(rename = "android")]
+    Android,
+}
+
+/// A device the agent works on: one of the person's endue OS devices attached to it, by the name the agent calls it, or a workspace endue AI runs for the agent alone (workspace).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioDevice {
+    pub id: String,
+    pub kind: StudioDeviceKind,
+    pub name: String,
+    pub workspace: bool,
+}
+
+/// What the agent remembers, counted over its newest 200 memories, archived ones left out: how many, how many of them are rules (procedural), and whether it has more than were counted. No memory's content crosses the bridge.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioMemory {
+    pub memories: u64,
+    pub rules: u64,
+    pub more: bool,
+}
+
+/// What the agent made (its artifacts on endue AI): how many, and when the newest last changed (absent while there are none).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioOutputs {
+    pub count: u64,
+    #[serde(rename = "latestAt", default, skip_serializing_if = "Option::is_none")]
+    pub latest_at: Option<String>,
+}
+
+/// Where a wallpaper comes from: one endue.ai ships (builtin, its id the engine: glyphs, constellation, flow, ripple, nebula, image), one the person made (mine), or one from the gallery.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StudioWallpaperSource {
+    #[serde(rename = "builtin")]
+    Builtin,
+    #[serde(rename = "mine")]
+    Mine,
+    #[serde(rename = "gallery")]
+    Gallery,
+}
+
+/// The wallpaper behind the agent's chat: where it comes from, its id, and its name and author when endue AI says. The desk draws no wallpaper; it names it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioWallpaper {
+    pub source: StudioWallpaperSource,
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+}
+
+/// How the agent's chat looks: its wallpaper, absent while none is chosen.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioTheme {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wallpaper: Option<StudioWallpaper>,
+}
+
 /// A part of what Studio shows of an agent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum StudioFacet {
@@ -9811,6 +9929,18 @@ pub enum StudioFacet {
     Connectors,
     #[serde(rename = "traits")]
     Traits,
+    #[serde(rename = "channels")]
+    Channels,
+    #[serde(rename = "apiKeys")]
+    ApiKeys,
+    #[serde(rename = "devices")]
+    Devices,
+    #[serde(rename = "memory")]
+    Memory,
+    #[serde(rename = "outputs")]
+    Outputs,
+    #[serde(rename = "theme")]
+    Theme,
 }
 
 /// A facet endue AI did not answer for: the bridge error code it would have been, and a sentence for people.
@@ -9822,7 +9952,7 @@ pub struct StudioFacetProblem {
     pub message: String,
 }
 
-/// Everything Studio shows of one agent, read at once: identity, settings, the prompt in force and its revisions (the newest 50), skills, connectors and traits. The agent itself must answer; a facet that does not is left out and named in problems.
+/// Everything Studio shows of one agent, read at once: identity, settings, the prompt in force and its revisions (the newest 50), skills, connectors, traits, the channels it is reached through, the API keys made for it, the devices it works on, what it remembers and what it made (counted), and its chat's wallpaper. The agent itself must answer; a facet that does not is left out and named in problems.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StudioAgentsFacetsRequest {
@@ -9831,7 +9961,7 @@ pub struct StudioAgentsFacetsRequest {
     pub params: StudioAgentParams,
 }
 
-/// Result of studio.agents.facets. prompt is absent when the agent has none yet; a facet in problems is absent (identity, settings) or empty (the lists).
+/// Result of studio.agents.facets. prompt is absent when the agent has none yet; a facet in problems is absent (identity, settings, memory, outputs, theme) or empty (the lists).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StudioAgentsFacetsResult {
@@ -9846,6 +9976,16 @@ pub struct StudioAgentsFacetsResult {
     pub skills: Vec<StudioSkill>,
     pub connectors: Vec<StudioConnector>,
     pub traits: Vec<StudioTrait>,
+    pub channels: Vec<StudioChannel>,
+    #[serde(rename = "apiKeys")]
+    pub api_keys: Vec<StudioApiKey>,
+    pub devices: Vec<StudioDevice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory: Option<StudioMemory>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outputs: Option<StudioOutputs>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<StudioTheme>,
     pub problems: Vec<StudioFacetProblem>,
 }
 

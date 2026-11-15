@@ -607,8 +607,12 @@ bridge's camelCase. `studio.agents.list` pages through every agent and leaves th
 `model` after, a failure of which is a warning, not an error; `update` changes only the fields given
 (identity through the agent, `model` and `visibility` through its settings); `setStatus` to the status
 an agent already has succeeds; `remove` deletes softly (purged after 30 days). `facets` reads identity,
-settings, the prompt and its newest 50 revisions, skills, connectors and traits at once: the agent must
-answer, and any other facet that does not is named in `problems`. `picture` answers an agent's face as
+settings, the prompt and its newest 50 revisions, skills, connectors and traits at once, and the rest of
+what Studio's board shows (ADR 0232): the channels the agent is reached through, the API keys made for
+it alone, its endue OS devices and workspaces, how many memories (and rules) it keeps among its newest
+200 and how many things it made, and its chat's wallpaper. No secret, key prefix, memory or wallpaper
+manifest crosses the bridge. The agent must answer, and any other facet that does not is named in
+`problems`. `picture` answers an agent's face as
 endue.ai shows it (its character, else its picture, else the one drawn from its slug) as a data: URL
 of at most 512 KB, read by the core over https without the token, or nothing when it could not be
 read (ADR 0232). `prompt.update` saves `content` as a

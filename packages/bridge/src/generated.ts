@@ -6261,6 +6261,67 @@ export interface StudioTrait {
   updatedAt?: string;
 }
 
+/** How a channel stands: pending (the bot's invitation waits to be approved), active (the agent answers there), inactive (turned off) or revoked. */
+export type StudioChannelStatus = "pending" | "active" | "inactive" | "revoked";
+
+/** A channel the agent is reached through: the pairing's id, the provider (discord, slack, kakao, navertalk, whatsapp), the name endue AI shows for it, how it stands and when it was last used. No secret and no webhook address crosses the bridge. */
+export interface StudioChannel {
+  id: string;
+  provider: string;
+  name?: string;
+  status: StudioChannelStatus;
+  lastActiveAt?: string;
+}
+
+/** An API key the person made for this agent alone: its name, when it stops working (absent: never), when it was last used and when it was made. Keys for all of the person's agents are not listed, and no key's secret or prefix crosses the bridge. */
+export interface StudioApiKey {
+  id: string;
+  name: string;
+  expiresAt?: string;
+  lastUsedAt?: string;
+  createdAt?: string;
+}
+
+/** What a device is, as Studio names it: a computer (Linux, macOS, Windows, or a Linux workspace), Chrome, or Android. */
+export type StudioDeviceKind = "computer" | "chrome" | "android";
+
+/** A device the agent works on: one of the person's endue OS devices attached to it, by the name the agent calls it, or a workspace endue AI runs for the agent alone (workspace). */
+export interface StudioDevice {
+  id: string;
+  kind: StudioDeviceKind;
+  name: string;
+  workspace: boolean;
+}
+
+/** What the agent remembers, counted over its newest 200 memories, archived ones left out: how many, how many of them are rules (procedural), and whether it has more than were counted. No memory's content crosses the bridge. */
+export interface StudioMemory {
+  memories: number;
+  rules: number;
+  more: boolean;
+}
+
+/** What the agent made (its artifacts on endue AI): how many, and when the newest last changed (absent while there are none). */
+export interface StudioOutputs {
+  count: number;
+  latestAt?: string;
+}
+
+/** Where a wallpaper comes from: one endue.ai ships (builtin, its id the engine: glyphs, constellation, flow, ripple, nebula, image), one the person made (mine), or one from the gallery. */
+export type StudioWallpaperSource = "builtin" | "mine" | "gallery";
+
+/** The wallpaper behind the agent's chat: where it comes from, its id, and its name and author when endue AI says. The desk draws no wallpaper; it names it. */
+export interface StudioWallpaper {
+  source: StudioWallpaperSource;
+  id: string;
+  name?: string;
+  author?: string;
+}
+
+/** How the agent's chat looks: its wallpaper, absent while none is chosen. */
+export interface StudioTheme {
+  wallpaper?: StudioWallpaper;
+}
+
 /** A part of what Studio shows of an agent. */
 export type StudioFacet =
   | "identity"
@@ -6269,7 +6330,13 @@ export type StudioFacet =
   | "revisions"
   | "skills"
   | "connectors"
-  | "traits";
+  | "traits"
+  | "channels"
+  | "apiKeys"
+  | "devices"
+  | "memory"
+  | "outputs"
+  | "theme";
 
 /** A facet endue AI did not answer for: the bridge error code it would have been, and a sentence for people. */
 export interface StudioFacetProblem {
@@ -6278,14 +6345,14 @@ export interface StudioFacetProblem {
   message: string;
 }
 
-/** Everything Studio shows of one agent, read at once: identity, settings, the prompt in force and its revisions (the newest 50), skills, connectors and traits. The agent itself must answer; a facet that does not is left out and named in problems. */
+/** Everything Studio shows of one agent, read at once: identity, settings, the prompt in force and its revisions (the newest 50), skills, connectors, traits, the channels it is reached through, the API keys made for it, the devices it works on, what it remembers and what it made (counted), and its chat's wallpaper. The agent itself must answer; a facet that does not is left out and named in problems. */
 export interface StudioAgentsFacetsRequest {
   id: RequestId;
   method: "studio.agents.facets";
   params: StudioAgentParams;
 }
 
-/** Result of studio.agents.facets. prompt is absent when the agent has none yet; a facet in problems is absent (identity, settings) or empty (the lists). */
+/** Result of studio.agents.facets. prompt is absent when the agent has none yet; a facet in problems is absent (identity, settings, memory, outputs, theme) or empty (the lists). */
 export interface StudioAgentsFacetsResult {
   agent: StudioAgent;
   identity?: StudioIdentity;
@@ -6295,6 +6362,12 @@ export interface StudioAgentsFacetsResult {
   skills: StudioSkill[];
   connectors: StudioConnector[];
   traits: StudioTrait[];
+  channels: StudioChannel[];
+  apiKeys: StudioApiKey[];
+  devices: StudioDevice[];
+  memory?: StudioMemory;
+  outputs?: StudioOutputs;
+  theme?: StudioTheme;
   problems: StudioFacetProblem[];
 }
 

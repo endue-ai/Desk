@@ -1,0 +1,10 @@
+{
+  "target": "StudioDevice",
+  "description": "a device is a computer, Chrome or Android",
+  "instance": {
+    "id": "dev_1",
+    "kind": "toaster",
+    "name": "Kitchen",
+    "workspace": false
+  }
+}
