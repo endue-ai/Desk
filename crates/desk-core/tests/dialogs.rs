@@ -42,7 +42,12 @@ impl Dialogs for Person {
 
     fn save(&self, params: &DialogSaveParams) -> Result<Option<PathBuf>, DialogError> {
         self.asked.lock().unwrap().push(format!("save {params:?}"));
-        Ok(self.chosen.lock().unwrap().clone().and_then(|p| p.into_iter().next()))
+        Ok(self
+            .chosen
+            .lock()
+            .unwrap()
+            .clone()
+            .and_then(|p| p.into_iter().next()))
     }
 }
 
@@ -61,7 +66,12 @@ fn slashed(path: &Path) -> String {
 fn read(core: &Core, caller: &str, path: &Path) -> Result<Value, desk_bridge::BridgeError> {
     let path = slashed(path);
     let scope = json!({ "permission": "fs:read", "paths": [path] });
-    call(core, caller, "fs.read", json!({ "path": path, "scope": scope }))
+    call(
+        core,
+        caller,
+        "fs.read",
+        json!({ "path": path, "scope": scope }),
+    )
 }
 
 fn write(core: &Core, caller: &str, path: &Path) -> Result<Value, desk_bridge::BridgeError> {
@@ -79,13 +89,20 @@ fn denied(result: Result<Value, desk_bridge::BridgeError>) {
 #[test]
 fn open_grants_the_chosen_files_to_read_and_nothing_else() {
     let (core, person, home) = desk("dialog-open");
-    let (hello, today) = (home.join("Documents/hello.md"), home.join("Calendar/today.ics"));
+    let (hello, today) = (
+        home.join("Documents/hello.md"),
+        home.join("Calendar/today.ics"),
+    );
     std::fs::write(home.join("Documents/sibling.md"), "# Not chosen").unwrap();
     denied(read(&core, NOTES, &hello));
     person.choose(&[hello.clone(), today.clone()]);
-    let params = json!({ "multiple": true, "filters": [{ "name": "Notes", "extensions": ["md", "ics"] }] });
+    let params =
+        json!({ "multiple": true, "filters": [{ "name": "Notes", "extensions": ["md", "ics"] }] });
     let answer = call(&core, NOTES, "dialog.open", params).unwrap();
-    assert_eq!(answer, json!({ "cancelled": false, "paths": [slashed(&hello), slashed(&today)] }));
+    assert_eq!(
+        answer,
+        json!({ "cancelled": false, "paths": [slashed(&hello), slashed(&today)] })
+    );
     assert_eq!(person.asked().len(), 1);
     assert_eq!(read(&core, NOTES, &hello).unwrap()["content"], "# Hello");
     assert!(read(&core, NOTES, &today).is_ok());
@@ -104,10 +121,21 @@ fn open_of_a_folder_grants_what_lies_inside() {
     assert!(read(&core, NOTES, &folder.join("hello.md")).is_ok());
     let inside = slashed(&folder.join("**"));
     let list = json!({ "path": slashed(&folder), "scope": { "permission": "fs:read", "paths": [slashed(&folder)] } });
-    assert!(call(&core, NOTES, "fs.list", list).is_ok(), "the folder itself");
+    assert!(
+        call(&core, NOTES, "fs.list", list).is_ok(),
+        "the folder itself"
+    );
     let deep = json!({ "permission": "fs:read", "paths": [inside] });
     let path = slashed(&folder.join("hello.md"));
-    assert!(call(&core, NOTES, "fs.read", json!({ "path": path, "scope": deep })).is_ok());
+    assert!(
+        call(
+            &core,
+            NOTES,
+            "fs.read",
+            json!({ "path": path, "scope": deep })
+        )
+        .is_ok()
+    );
     denied(read(&core, NOTES, &home.join("Calendar/today.ics")));
     denied(write(&core, NOTES, &folder.join("new.md")));
 }
@@ -117,9 +145,13 @@ fn save_grants_the_chosen_path_to_write() {
     let (core, person, home) = desk("dialog-save");
     let place = home.join("Documents/saved.md");
     person.choose(std::slice::from_ref(&place));
-    let params = json!({ "suggestedName": "saved.md", "startIn": slashed(&home.join("Documents")) });
+    let params =
+        json!({ "suggestedName": "saved.md", "startIn": slashed(&home.join("Documents")) });
     let answer = call(&core, NOTES, "dialog.save", params).unwrap();
-    assert_eq!(answer, json!({ "cancelled": false, "path": slashed(&place) }));
+    assert_eq!(
+        answer,
+        json!({ "cancelled": false, "path": slashed(&place) })
+    );
     write(&core, NOTES, &place).unwrap();
     assert_eq!(std::fs::read_to_string(&place).unwrap(), "# Saved");
     assert_eq!(read(&core, NOTES, &place).unwrap()["content"], "# Saved");
@@ -183,7 +215,11 @@ fn an_agent_cannot_open_a_dialog() {
     person.choose(&[home.join("Documents/hello.md")]);
     for method in ["dialog.open", "dialog.save"] {
         let error = call(&core, "agent:mira", method, json!({})).unwrap_err();
-        assert_eq!(error.code, ErrorCode::PermissionDenied, "{method}: {error:?}");
+        assert_eq!(
+            error.code,
+            ErrorCode::PermissionDenied,
+            "{method}: {error:?}"
+        );
     }
     assert!(person.asked().is_empty());
 }
