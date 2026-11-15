@@ -69,8 +69,12 @@ describe("plugin.json", () => {
       "endue.notes.new",
       "endue.notes.find",
       "endue.notes.search-open",
+      "endue.notes.open",
+      "endue.notes.save-as",
     ]);
     expect(contributes?.commands?.[0]).toMatchObject({ title: "New note" });
+    expect(contributes?.commands?.[3]).toMatchObject({ title: "Open a note…" });
+    expect(contributes?.commands?.[4]).toMatchObject({ title: "Save the note as…" });
     expect(contributes?.keys).toEqual([{ key: "Mod+Alt+N", command: "endue.notes.new" }]);
     expect(contributes?.paletteProviders).toEqual([
       { command: "endue.notes.find", title: "Notes" },
