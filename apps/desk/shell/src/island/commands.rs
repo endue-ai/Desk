@@ -1,6 +1,7 @@
 //! The island's own commands (ADR 0204), which only its page may call
 //! (`desk_web::sender::Sender::may`): open and fold it, fit it to what it shows open, follow the
-//! pointer, bring the desk forward, and what it shows of the shell (the shortcut's label).
+//! pointer, bring the desk forward, quit endue (#237), and what it shows of the shell (the
+//! shortcut's label).
 //! Window work runs on the event loop's thread.
 
 use std::sync::Arc;
@@ -54,6 +55,10 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
         // Bring the desk forward.
         "island_reveal_main" => {
             desk.pump.run(|shell, _| crate::palette::reveal_main(shell));
+        }
+        // Quit endue, as the menu's Quit does: its page is asked about unsaved changes first.
+        "island_quit" => {
+            desk.pump.run(crate::quit::requested);
         }
         other => return Err(format!("the island has no command {other}")),
     }

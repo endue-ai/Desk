@@ -79,6 +79,8 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
                 .run(move |shell, event_loop| crate::quit::answered(shell, event_loop, answer));
             Ok(Value::Null)
         }
+        // What `desk.login.start` is, from the page that reads it (`login.rs`, #237).
+        "desk_login" => crate::login::answer(&call.args),
         "desk_crash" => Ok(json!(crash.record(&text("message"), &text("stack")))),
         "take_last_crash" => Ok(crash.take_last().unwrap_or(Value::Null)),
         "plugin:dialog|open" => crate::dialog::open(desk, &call.args),

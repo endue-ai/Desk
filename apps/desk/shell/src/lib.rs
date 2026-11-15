@@ -23,6 +23,7 @@ pub mod host;
 pub mod hotkeys;
 pub mod instance;
 pub mod island;
+pub mod login;
 #[cfg(target_os = "macos")]
 pub mod mac;
 pub mod main_frame;
@@ -46,6 +47,7 @@ pub mod quit;
 pub mod real_path;
 pub mod release;
 pub mod renderer;
+pub mod resident;
 pub mod run_event;
 pub mod sandbox;
 pub mod scheme;

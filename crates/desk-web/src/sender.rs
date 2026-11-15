@@ -33,6 +33,7 @@ const MAIN_COMMANDS: &[&str] = &[
     "plugin:dialog|open",
     // The answer to a quit the person asked for: asking about unsaved changes, quit or stay (#163).
     "desk_quit",
+    "desk_login", // what desk.login.start is: the shell registers the desk to match (#237)
     // Compositor mode (#52, #81): the desk the runtime keeps; captures and counts for checks in
     // development builds. Input (#56): the keymap's entries and the page's focus; events fed to the
     // window's input and where input goes, for checks in development builds.
@@ -69,6 +70,7 @@ const ISLAND_COMMANDS: &[&str] = &[
     "island_fit",
     "island_drag",
     "island_reveal_main",
+    "island_quit",
     "island_state",
 ];
 /// What the island may ask the core as the desk (ADR 0204): the agents and what they do, the runs of
@@ -367,6 +369,7 @@ mod tests {
             "island_fit",
             "island_drag",
             "island_reveal_main",
+            "island_quit",
             "island_state",
         ] {
             assert!(island.may(cmd), "{cmd}");

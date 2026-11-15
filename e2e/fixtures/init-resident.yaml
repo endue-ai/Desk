@@ -1,0 +1,14 @@
+# e2e fixture for the resident spec (#237): init-no-first-run.yaml with the start at login on, so the
+# desk writes its login item (under the spec's own HOME, DESK_LOGIN_ITEMS).
+version: 0
+
+profile: default
+
+plugins:
+  disabled: [endue.onboarding]
+
+settings:
+  desk.login.start: true
+
+sync:
+  enabled: false

@@ -1,8 +1,9 @@
 //! The shell's winit application: the main window, palette, island, banner and the windows popped
 //! out (each a `Pane`; `apps`, #235), the tray, menu bar, global shortcuts (Eris's: `eris_window`) and
 //! CEF's message loop work when the pump says it is due; other threads reach it through its jobs.
-//! Closing the main window hides it, as in the Tauri shell; the desk quits from the tray or menu,
-//! once its page asked about unsaved changes (`quit.rs`), closing every browser first.
+//! Closing the main window hides it and the desk runs on (`resident.rs`); it quits from the tray,
+//! the menu or the island, once its page asked about unsaved changes (`quit.rs`), closing every
+//! browser first.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -159,6 +160,10 @@ impl Shell {
             event_loop.exit();
             return;
         }
+        // Started by the login item: the window stays hidden, and nothing tells the scene so.
+        if crate::resident::background() {
+            self.main_seen(false);
+        }
         menu::listen(&self.pump);
         self.menu_bar = menu::app_menu();
         self.tray = tray::setup(self.offered.as_deref());
@@ -218,8 +223,12 @@ impl Shell {
         }
     }
 
-    /// A second start handed over its arguments: its files, and the desk in front either way.
+    /// A second start handed over its arguments: its files, and the desk in front either way,
+    /// unless it was the login item's start.
     pub fn handed(&mut self, args: Vec<String>) {
+        if crate::resident::handed_in_background(&args) {
+            return;
+        }
         self.open_files(open_files::argument_paths(args));
         self.focus_main();
     }
@@ -229,14 +238,6 @@ impl Shell {
         let main_visible = self.pane(Role::Main).is_some_and(Pane::visible);
         if crate::run_event::reopen_shows_main(main_visible, has_visible_windows) {
             palette::reveal_main(self);
-        }
-    }
-
-    pub(crate) fn focus_main(&self) {
-        if let Some(main) = self.pane(Role::Main) {
-            main.window.set_minimized(false);
-            main.show_and_focus();
-            eris_window::main_changed(self);
         }
     }
 
@@ -324,12 +325,9 @@ impl ApplicationHandler<Wake> for Shell {
         }
         match (role, event) {
             (Role::Main, WindowEvent::CloseRequested) => {
-                // Closing the window only hides it: the tray, the Dock and a second start bring it
-                // back (#583).
-                if let Some(main) = self.pane(Role::Main) {
-                    main.hide();
-                }
-                eris_window::main_changed(self);
+                // Closing the window only hides it and the desk runs on (#583, `resident.rs`):
+                // the island, the tray, the Dock and a second start bring it back.
+                self.hide_main();
             }
             (Role::Palette, WindowEvent::CloseRequested) => {
                 if let Some(pane) = self.pane(Role::Palette) {

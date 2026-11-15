@@ -24,12 +24,14 @@ mkdirSync(results, { recursive: true });
 
 /**
  * The init.yaml in e2e/fixtures each spec starts with: only the launch spec wants the first run, the
- * settings spec starts on values that fail their settings, and the Browser's opens on no page (#273).
+ * settings spec starts on values that fail their settings, the Browser's opens on no page (#273), and
+ * the resident spec starts with the start at login on (#237).
  */
 const INIT: Record<string, string> = {
   "launch.spec.ts": "init.yaml",
   "settings.spec.ts": "init-bad-values.yaml",
   "browser.spec.ts": "init-browser.yaml",
+  "resident.spec.ts": "init-resident.yaml",
 };
 const DEFAULT_INIT = "init-no-first-run.yaml";
 
@@ -75,6 +77,9 @@ const ENV: Record<string, Record<string, string>> = {
     DESK_APP_WINDOWS: "off",
   },
 };
+
+/** The app's own arguments: the resident spec's desk starts as its login item starts it (#237). */
+const ARGS: Record<string, string[]> = { "resident.spec.ts": ["--background"] };
 
 /** What a spec builds before its app starts: the native example's program (#59). */
 const BUILD: Record<string, string[]> = {
@@ -141,6 +146,7 @@ export const config: WebdriverIO.Config = {
       spec,
       init: INIT[spec] ?? DEFAULT_INIT,
       env: ENV[spec],
+      args: ARGS[spec],
     });
     Object.assign(caps, extra);
   },
@@ -158,7 +164,10 @@ export const config: WebdriverIO.Config = {
   async afterTest(test, _context, { passed }) {
     if (passed) return;
     const name = `${spec}-${slug(test.title)}`;
-    await browser.saveScreenshot(join(results, `${name}.png`)).catch(() => {});
+    // A desk whose window is closed gives no picture, and chromedriver asks again for minutes
+    // (#237): the failure is not kept waiting for one.
+    const shot = browser.saveScreenshot(join(results, `${name}.png`)).catch(() => {});
+    await Promise.race([shot, new Promise((done) => setTimeout(done, 15_000))]);
     saveData(join(results, `${name}-data`));
   },
   async afterSession() {

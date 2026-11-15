@@ -3,10 +3,12 @@
 // does it. Measured: the app's own process's CPU as a share of one core, the event loop's turns a
 // second (`compositor_stats`' pump.turns), and from the window brought back to its first composed
 // frame. The window goes out of sight through the CEF shell's development command
-// `compositor_window` (`to`: what the red button, the minimize button and the Dock icon do). Where
-// the OS says nothing of a window out of sight (a locked screen; X11 without a window manager), the
-// spec feeds the shell the event the OS would have sent (`compositor_window { occluded }`, winit's
-// `Occluded`) and keeps `told: false` beside the values: what it checks is the desk's own wait.
+// `compositor_window` (`to`: what the red button, the minimize button and the Dock icon do). The
+// shell says itself that a window it closed went and that one it brought back came (#237); of a
+// minimized one the OS says it. Where the OS says nothing of a window out of sight (a locked screen;
+// X11 without a window manager), the spec feeds the shell the event the OS would have sent
+// (`compositor_window { occluded }`, winit's `Occluded`) and keeps `told: false` beside the values:
+// what it checks is the desk's own wait.
 import { execFileSync } from "node:child_process";
 import { browser } from "@wdio/globals";
 import { shellCommand } from "../support/compositor";
@@ -52,7 +54,7 @@ interface Sight {
   treePercent: number;
   turnsPerSecond: number;
   shownFrameMs: number | null;
-  /** Whether the OS said the window went out of sight (else the spec said it). */
+  /** Whether the shell or the OS said the window went out of sight (else the spec said it). */
   told: boolean;
   /** Whether the window presented its first frame once back (a locked screen withholds them). */
   presented: boolean;

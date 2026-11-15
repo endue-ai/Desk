@@ -284,6 +284,7 @@ export async function startIsland(
     if (event.key === "Escape" && open && !composing) setOpen(false);
   });
   on(dom.desk, "click", () => run("island_reveal_main"));
+  on(dom.quit, "click", () => run("island_quit"));
 
   const dispose = () => {
     talk.dispose();

@@ -24,6 +24,7 @@ import "./compositor.css";
 import { reportCrashes, showLastCrash } from "./crashes";
 import "./crashes.css";
 import { adapter, invoke, listen } from "./host";
+import { followLogin } from "./login";
 import { pickNativeFile, realNativePath } from "./native-files";
 import { installOpenedFiles } from "./open-files";
 import { sendThemeToPalette } from "./palette-theme";
@@ -121,6 +122,16 @@ const disposeQuit = installQuit({
     }),
 });
 window.addEventListener("pagehide", disposeQuit, { once: true });
+
+// Start at login (#237): the shell registers the desk with the OS as desk.login.start says.
+void desk.ready.then(() => {
+  const stopLogin = followLogin({
+    settings: desk.runtime.settings,
+    tell: (start) => invoke("desk_login", { start }),
+    report: (error) => console.error("desk_login:", error),
+  });
+  window.addEventListener("pagehide", stopLogin, { once: true });
+});
 
 // The page reports what only it knows (ADR 0151); the CEF shell answers with the windows that keep
 // a live frame, which the runtime carries out, and with each desk desk-wm publishes, which the

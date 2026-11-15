@@ -211,7 +211,7 @@ impl CompositorWindow {
             .set_surface_snapshots(Some(Arc::new(snapshots)));
         let web = web::Web::new(opened.desk.pump.clone());
         opened.desk.core.set_web_views(Some(Arc::new(web)));
-        opened.window.set_visible(true);
+        opened.window.set_visible(!crate::resident::background());
         Ok(opened)
     }
 

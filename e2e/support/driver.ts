@@ -44,7 +44,12 @@ export interface DriverOptions {
   init: string;
   /** Variables to set for the app on top of the spec's (undefined leaves one out): e2e/perf. */
   env?: Record<string, string | undefined>;
+  /** The app's own arguments (`--background`: as its login item starts it, #237). */
+  args?: string[];
 }
+
+/** Where the spec's app keeps its login item: `<HOME>/Library/LaunchAgents`, as macOS names it. */
+export const loginItems = (appHome: string) => join(appHome, "Library/LaunchAgents");
 
 let driver: ChildProcess | undefined;
 let home: string | undefined;
@@ -70,6 +75,9 @@ export function appEnv(
     // keeps windows clear of, and the tiles a surface is put away and opened with.
     DESK_PLUGIN_DIRS: [join(root, "plugins"), join(root, BUILT_IN_FIXTURES)].join(delimiter),
     DESK_DEV_PLUGINS: join(root, "e2e/fixtures/plugin-e2e-hello"),
+    // The one place a development build writes a login item (#237): under the spec's HOME, never
+    // among the person's.
+    DESK_LOGIN_ITEMS: loginItems(appHome),
   };
   for (const [key, value] of Object.entries(extra)) {
     if (value === undefined) delete spec[key];
@@ -83,7 +91,7 @@ export function appEnv(
  * session needs on top of wdio.conf.ts's: the app's DevTools address.
  */
 export async function startDriver(options: DriverOptions): Promise<Record<string, unknown>> {
-  const { root, results, spec, init, env } = options;
+  const { root, results, spec, init, env, args } = options;
   // A short HOME on macOS: the desk socket's path must stay under its 104 bytes (Library/Application
   // Support/... is long, and the system temp folder is too).
   home = mkdtempSync(join(process.platform === "darwin" ? "/tmp" : tmpdir(), "desk-e2e-"));
@@ -100,6 +108,7 @@ export async function startDriver(options: DriverOptions): Promise<Record<string
       log,
       home: appHome,
       port,
+      args,
     });
   const binary = await ensureChromedriver();
   const driverLog = join(results, `${spec}.chromedriver.log`);

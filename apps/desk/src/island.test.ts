@@ -210,6 +210,9 @@ describe("the island", () => {
     expect(native.commands().at(-1)).toEqual(FOLD);
     $<HTMLButtonElement>(".island-desk").click();
     expect(native.commands().at(-1)).toEqual({ command: "island_reveal_main" });
+    // With every window closed the island is where endue quits (#237).
+    $<HTMLButtonElement>(".island-quit").click();
+    expect(native.commands().at(-1)).toEqual({ command: "island_quit" });
   });
 
   it("takes no press on a card in the moment after it shows, nor on the next one", async () => {

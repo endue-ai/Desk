@@ -228,8 +228,14 @@ body {
   color: var(--desk-danger-text);
 }
 
-/* The way to the desk is quiet: the card's answers come first. */
-.island-desk {
+.island-ways {
+  display: flex;
+  gap: var(--desk-space-2);
+}
+
+/* The way to the desk and Quit are quiet: the card's answers come first. */
+.island-desk,
+.island-quit {
   align-self: flex-start;
   height: var(--desk-button-height);
   padding: 0 var(--desk-button-padding-x);
@@ -240,11 +246,13 @@ body {
   font: inherit;
 }
 
-.island-desk:hover {
+.island-desk:hover,
+.island-quit:hover {
   background: var(--desk-button-quiet-hover-bg);
 }
 
-.island-desk:focus-visible {
+.island-desk:focus-visible,
+.island-quit:focus-visible {
   outline: var(--desk-focus-width) solid var(--desk-ring);
   outline-offset: var(--desk-focus-offset);
 }

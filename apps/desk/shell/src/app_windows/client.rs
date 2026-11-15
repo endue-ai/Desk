@@ -39,10 +39,7 @@ fn apply(acts: Vec<Act>, frame: &Frame, desk: &Arc<Desk>, drags: &Arc<Mutex<Drag
         match act {
             Act::Page(m) => host::send(frame.clone(), m.to_string()),
             Act::Open(paths) => {
-                if desk.opened.push(paths) {
-                    desk.pages
-                        .emit(Role::Main, crate::open_files::EVENT, Value::Null);
-                }
+                desk.pump.run(move |shell, _| shell.open_dropped(paths));
             }
             Act::Wait => {
                 let (frame, desk, drags) = (frame.clone(), Arc::clone(desk), Arc::clone(drags));

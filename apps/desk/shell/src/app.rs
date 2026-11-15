@@ -85,6 +85,11 @@ wrap_app! {
             for switch in ["no-startup-window", "noerrdialogs", "hide-crash-restore-bubble"] {
                 command_line.append_switch(Some(&switch.into()));
             }
+            // The desk runs on with its window closed (#237): a hidden page's timers and its
+            // renderer keep their pace (`resident.rs`).
+            for switch in crate::resident::SWITCHES {
+                command_line.append_switch(Some(&switch.into()));
+            }
             // A keychain prompt for Chromium's own password store would be the desk's, not the
             // person's; the desk keeps secrets in the core (ADR 0099).
             #[cfg(target_os = "macos")]

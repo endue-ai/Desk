@@ -51,6 +51,8 @@ export interface CefOptions {
   log: string;
   home: string;
   port: number;
+  /** The desk's own arguments: `--background`, as its login item starts it (#237). */
+  args?: string[];
   timeoutMs?: number;
 }
 
@@ -120,12 +122,12 @@ async function devtoolsAnswer(port: number): Promise<boolean> {
 
 /** Start the CEF desk and wait until it is in: the ready line and its DevTools page. */
 export async function launchCef(options: CefOptions): Promise<CefDesk> {
-  const { binary, env, log, home, port, timeoutMs = 60_000 } = options;
+  const { binary, env, log, home, port, args = [], timeoutMs = 60_000 } = options;
   const from = sizeOf(log);
   const out = openSync(log, "a");
   let child: ChildProcess;
   try {
-    child = spawn(binary, [], {
+    child = spawn(binary, args, {
       env: { ...env, DESK_REMOTE_DEBUGGING_PORT: String(port) },
       stdio: ["ignore", out, out],
     });

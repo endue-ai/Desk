@@ -97,18 +97,12 @@ pub fn reveal_main(shell: &mut Shell) {
     if let Some(pane) = shell.pane(Role::Palette) {
         pane.hide();
     }
-    if let Some(main) = shell.pane(Role::Main) {
-        main.window.set_minimized(false);
-        main.show_and_focus();
-    }
+    shell.focus_main();
 }
 
 /// A command may open a picker in the main window: show it while the palette keeps the focus.
 pub fn prepare_main(shell: &mut Shell) {
-    if let Some(main) = shell.pane(Role::Main) {
-        main.window.set_minimized(false);
-        main.window.set_visible(true);
-    }
+    shell.show_main();
 }
 
 /// Show the palette again after a failed native action, keeping its query and error.

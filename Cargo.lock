@@ -1857,6 +1857,7 @@ dependencies = [
  "desk-computer",
  "desk-core",
  "desk-surface",
+ "desk-sys",
  "desk-trace",
  "desk-update",
  "desk-web",

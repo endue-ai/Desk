@@ -50,6 +50,8 @@ desk-computer = { path = "../../../crates/desk-computer" }
 desk-compositor.workspace = true
 desk-surface = { workspace = true, features = ["native"] }
 desk-core.workspace = true
+# Start at login (#237): the login item the setting registers, and the start it makes.
+desk-sys = { workspace = true, features = ["login"] }
 desk-trace.workspace = true
 # The desk's own updates (ADR 0054, ADR 0147): the updater, its HTTPS origin and the installer.
 desk-update = { workspace = true, features = ["https", "install"] }

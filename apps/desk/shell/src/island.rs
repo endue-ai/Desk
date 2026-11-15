@@ -111,6 +111,11 @@ pub fn setup(shell: &mut Shell, event_loop: &ActiveEventLoop) {
 /// Show the island while `desk.island.show` is on and the desk is not in front, opening its window
 /// the first time the setting is on; else hide it.
 fn follow(shell: &mut Shell, event_loop: &ActiveEventLoop) {
+    // A desk that quits opens no window: the focus its closing windows lose would bring a new
+    // island, whose browser nothing closes, and the desk would never end (#237).
+    if shell.quitting {
+        return;
+    }
     let Some(state) = shell.desk.island.get().cloned() else {
         return;
     };
@@ -212,6 +217,12 @@ fn watch(desk: &Arc<Desk>) -> std::io::Result<()> {
             }
         })?;
     Ok(())
+}
+
+/// Whether the island is open, for development checks.
+pub(crate) fn is_open(shell: &Shell) -> bool {
+    let island = shell.desk.island.get();
+    island.is_some_and(|state| state.open.load(Relaxed))
 }
 
 /// Its window moved: a drag, the shell placing it, or the OS moving it off a display that went.

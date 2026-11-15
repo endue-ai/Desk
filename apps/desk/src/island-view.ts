@@ -1,6 +1,6 @@
 // The island's DOM (ADR 0204): the pill, which says a notice while one shows, and under it, while
 // open, the panel: the card in front (island-card.ts), the talk with Eris (island-talk.ts), the
-// latest notices, the asks waiting behind the card, the agents at work, and a way to the desk.
+// latest notices, the asks waiting behind the card, the agents at work, a way to the desk and Quit.
 import type { PluginInfo } from "@endue-ai/bridge";
 import { type Notice, noticeText } from "@endue-ai/runtime";
 import { cardOf, renderCard, titleOf } from "./island-card";
@@ -21,6 +21,8 @@ export interface IslandDraw {
 export interface IslandDom {
   pill: HTMLButtonElement;
   desk: HTMLButtonElement;
+  /** Quit endue: with every window closed, the island is where it ends (#237). */
+  quit: HTMLButtonElement;
   panel: HTMLElement;
   /** Draw it; true when the card in front is a new one (or none). */
   draw(view: IslandDraw): boolean;
@@ -65,6 +67,10 @@ export function mountIsland(
   const workingList = el("ul", "island-list");
   const desk = el("button", "island-desk", "Open the desk");
   desk.type = "button";
+  const quit = el("button", "island-quit", "Quit endue");
+  quit.type = "button";
+  const ways = el("div", "island-ways");
+  ways.append(desk, quit);
   panel.append(
     cardSlot,
     said,
@@ -75,7 +81,7 @@ export function mountIsland(
     restList,
     el("h2", "island-heading", "At work"),
     workingList,
-    desk,
+    ways,
   );
   island.append(pill, status, panel);
   root.replaceChildren(island);
@@ -161,5 +167,5 @@ export function mountIsland(
     return Math.ceil(panel.offsetTop + panel.scrollHeight + bottom + 2);
   };
 
-  return { pill, desk, panel, draw, wanted };
+  return { pill, desk, quit, panel, draw, wanted };
 }

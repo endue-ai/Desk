@@ -12,7 +12,7 @@
 //! `harness.rs`; `{ shake }` the motion gate's shake, `motion.rs`), `compositor_input_state` (where input goes), `compositor_a11y` (the
 //! accessibility tree the adapter has, and a screen reader's request, `a11y_check.rs`) and
 //! `compositor_clock { hold?, at? }` (the window manager's clock held, so a check sees a motion at a
-//! time it chooses, ADR 0013) and `compositor_window { to } | { occluded } | { frame } | { sway }`
+//! time it chooses, ADR 0013) and `compositor_window { to } | { occluded } | { frame } | { sway } | { shortcut } | { seen }`
 //! (the main window closed, minimized or brought back as a person does it, or what the OS says of it,
 //! #155; its frame read, or set as a drag and a resize would, #163; grown and shrunk on a sine, #258).
 //! They run on the event loop's thread, where the compositor is.
@@ -203,12 +203,30 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
 /// The main window out of sight as a person puts it there, or back (development builds, #155):
 /// `{ to }` is `closed` (its red button, which only hides it, #583), `minimized` or `front` (the
 /// Dock icon, a second start); `{ occluded }` is what the OS says of a window out of sight or back,
-/// fed as its event, where it says nothing (a locked screen).
+/// fed as its event, where it says nothing (a locked screen). `{ shortcut }` runs what a global
+/// shortcut does (`search`, `eris`); it and `{ seen }` say which of the shell's windows show (#237).
 fn main_window(
     shell: &mut Shell,
     event_loop: &ActiveEventLoop,
     args: &Value,
 ) -> Result<Value, String> {
+    // A global shortcut's action, without the machine's keyboard, and which of the shell's
+    // windows show right after it, before a window that loses the keys hides or folds (#237).
+    let shortcut = args.get("shortcut").and_then(Value::as_str);
+    match shortcut {
+        Some("search") => crate::palette::toggle(shell),
+        Some("eris") => crate::eris_window::summon(shell),
+        Some(other) => return Err(format!("not a shortcut's action: {other}")),
+        None => {}
+    }
+    if shortcut.is_some() || args.get("seen").is_some() {
+        let seen = |role| shell.pane(role).is_some_and(crate::pane::Pane::visible);
+        let [main, palette, island] = [Role::Main, Role::Palette, Role::Island].map(seen);
+        let open = crate::island::is_open(shell);
+        return Ok(serde_json::json!(
+            { "main": main, "palette": palette, "island": island, "islandOpen": open }
+        ));
+    }
     let main = shell.pane(Role::Main).ok_or("no main window")?;
     if let Some(occluded) = args.get("occluded").and_then(Value::as_bool) {
         let id = main.window.id();
@@ -224,11 +242,13 @@ fn main_window(
         return serde_json::to_value(now).map_err(|why| why.to_string());
     }
     match args.get("to").and_then(Value::as_str).unwrap_or_default() {
-        "closed" => main.hide(),
-        "minimized" => main.window.set_minimized(true),
+        "closed" => shell.hide_main(),
+        "minimized" => {
+            main.window.set_minimized(true);
+            crate::eris_window::main_changed(shell);
+        }
         "front" => crate::palette::reveal_main(shell),
         other => return Err(format!("not a way to show the main window: {other}")),
     }
-    crate::eris_window::main_changed(shell);
     Ok(Value::Null)
 }

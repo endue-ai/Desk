@@ -50,8 +50,8 @@ fn main() -> ExitCode {
         use winit::platform::macos::EventLoopBuilderExtMacOS;
         builder.with_default_menu(false);
         // A headless desk (the gates' and the checks') uses no keyboard of the machine's: it does
-        // not come in front of the app the person is in.
-        if desk_shell::compositor_window::headless() {
+        // not come in front of the app the person is in. Nor does a start at login (`resident.rs`).
+        if desk_shell::compositor_window::headless() || desk_shell::resident::background() {
             builder.with_activate_ignoring_other_apps(false);
         }
     }
