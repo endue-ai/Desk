@@ -89,6 +89,10 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
             Ok(Value::Null)
         }
         cmd if cmd.starts_with(island::PREFIX) => island::answer(desk, cmd, &call.args),
+        // The windows out of the canvas, for checks in development builds (#235).
+        "compositor_window" if cfg!(debug_assertions) && call.args.get("app").is_some() => {
+            crate::app_windows::check(desk, &call.args)
+        }
         cmd if cmd.starts_with("compositor_") => {
             crate::compositor_window::commands::answer(desk, cmd, &call.args)
         }
