@@ -77,11 +77,11 @@ test("the agent bar, the account bar and the rail have one shape", async ({ page
   expect(account?.bottom).toBe(16);
   expect(rail?.right).toBe(16);
 
-  // A button is 36 square with a 10 radius: four of the account bar less the person's own avatar,
-  // and the rail's seven.
+  // A button is 36 square with a 10 radius: the account bar's launcher (its other control is the
+  // person's own avatar) and the rail's seven.
   const avatars = ".avatar, .space, .account-profile";
   const buttons = await sizes(page, `.float-bar button:not(${avatars})`);
-  expect(buttons).toHaveLength(10);
+  expect(buttons).toHaveLength(8);
   for (const button of buttons)
     expect([button.size, button.radius], button.name).toEqual([[36, 36], "10px"]);
 

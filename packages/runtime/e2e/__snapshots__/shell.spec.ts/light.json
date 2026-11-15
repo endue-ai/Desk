@@ -741,9 +741,9 @@
      "aria-label": "사용자 메뉴",
      "box": [
       16,
-      712,
+      792,
       52,
-      172
+      92
      ],
      "style": {
       "background": "rgb(255, 255, 255)",
@@ -756,7 +756,7 @@
        "aria-label": "플러그인 열기",
        "box": [
         24,
-        720,
+        800,
         36,
         36
        ],
@@ -772,59 +772,8 @@
       },
       {
        "tag": "button",
-       "class": "icon-button inbox-button",
-       "aria-label": "인박스 · 2",
-       "aria-expanded": "false",
-       "box": [
-        24,
-        760,
-        36,
-        36
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "inbox"
-        },
-        {
-         "tag": "span",
-         "class": "badge",
-         "style": {
-          "background": "rgb(242, 239, 246)",
-          "color": "rgb(30, 24, 51)",
-          "border": "solid rgb(221, 214, 229)"
-         },
-         "text": "2"
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "icon-button account-settings-button",
-       "aria-label": "설정 열기",
-       "box": [
-        24,
-        800,
-        36,
-        36
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "settings"
-        }
-       ]
-      },
-      {
-       "tag": "button",
        "class": "icon-button account-profile",
-       "aria-label": "사용자 정보",
+       "aria-label": "사용자 정보 · 인박스 · 2",
        "aria-expanded": "false",
        "box": [
         25,
