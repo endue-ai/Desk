@@ -3,6 +3,12 @@
 //! calls both shells alike. The dialog starts on the event loop's thread, as a sheet on the main
 //! window, and the bridge call waits for the person's choice on its own thread; the loop keeps
 //! running (and CEF keeps pumping) meanwhile. The answer is `null`, one path, or a list of paths.
+//! The same dialogs answer plugins' `dialog.open` and `dialog.save` (#308) through [`ShellDialogs`],
+//! which the shell gives the core (`save.rs` holds the save dialog and the bridge's side of both).
+
+mod save;
+
+pub use save::ShellDialogs;
 
 use std::future::Future;
 use std::path::PathBuf;
@@ -15,6 +21,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::host::Desk;
+use crate::pump::Pump;
 
 /// What `open()` asks for (`OpenDialogOptions`, camelCase).
 #[derive(Debug, Default, Deserialize, PartialEq)]
@@ -63,17 +70,32 @@ type Picking = Pin<Box<dyn Future<Output = Option<Vec<PathBuf>>> + Send>>;
 pub fn open(desk: &Desk, args: &Value) -> Result<Value, String> {
     let options = options(args)?;
     let multiple = options.multiple;
-    let (started, picking) = mpsc::channel::<Picking>();
-    desk.pump.run(move |shell, _| {
+    Ok(answer(pick(&desk.pump, options)?, multiple))
+}
+
+/// Show the open dialog `options` asks for over the main window and wait for the person's choice.
+pub(crate) fn pick(pump: &Pump, options: Options) -> Result<Option<Vec<PathBuf>>, String> {
+    on_the_loop(pump, move |parent| start(options, parent))
+}
+
+/// Start a dialog on the event loop's thread, over the main window, and wait for its answer here.
+pub(crate) fn on_the_loop<T: Send + 'static>(
+    pump: &Pump,
+    start: impl FnOnce(Option<&winit::window::Window>) -> Pin<Box<dyn Future<Output = T> + Send>>
+    + Send
+    + 'static,
+) -> Result<T, String> {
+    let (started, picking) = mpsc::channel();
+    pump.run(move |shell, _| {
         let parent = shell
             .pane(Role::Main)
             .map(|pane| std::sync::Arc::clone(&pane.window));
-        let _ = started.send(start(options, parent.as_deref()));
+        let _ = started.send(start(parent.as_deref()));
     });
     let picking = picking
         .recv_timeout(Duration::from_secs(10))
         .map_err(|_| "the file dialog did not open".to_owned())?;
-    Ok(answer(pollster::block_on(picking), multiple))
+    Ok(pollster::block_on(picking))
 }
 
 /// Start the dialog `options` asks for, over `parent`. Call on the event loop's thread.
