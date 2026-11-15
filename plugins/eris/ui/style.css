@@ -139,10 +139,15 @@ body {
   grid-column: 2;
 }
 
-.say :focus-visible,
-#conversation:focus-visible {
+.say :focus-visible {
   outline: 2px solid var(--desk-ring);
   outline-offset: 1px;
+}
+
+/* The history takes the focus so the keys scroll it; a ring round the whole of it only got in the
+   way of reading it. */
+#conversation:focus-visible {
+  outline: none;
 }
 
 

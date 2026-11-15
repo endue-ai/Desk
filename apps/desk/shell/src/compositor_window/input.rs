@@ -13,7 +13,6 @@ use std::time::Instant;
 use cef::ImplBrowser;
 use desk_compositor::input::keymap::{KeyEntry, KeyLike, Platform};
 use desk_compositor::input::{Input, Out, PageFocus};
-use desk_compositor::{NodeId, Rect};
 use desk_surface::generated::{CompositorMessage, SurfaceMessage};
 use desk_web::sender::Role;
 use serde::Deserialize;
@@ -21,7 +20,7 @@ use serde_json::{Value, json};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event_loop::ActiveEventLoop;
 
-use super::draw::{self, Shown};
+use super::draw::Shown;
 use super::hosted::owner;
 use super::{CompositorWindow, PAGE, os_pointer, overlay};
 use crate::web_host::input as web_input;
@@ -240,15 +239,9 @@ impl CompositorWindow {
     }
 
     /// Tell the router what each node shows and the window's own page each surface lies in (ADR
-    /// 0201), and draw the focus ring, in its window (`frames`, `groups`: where each window's frame
-    /// is drawn and the group it is drawn in), and the drag image (#56).
-    pub(super) fn register(
-        &mut self,
-        shown: Shown,
-        pages: &[(String, String)],
-        frames: &[(String, Rect)],
-        groups: &[(String, NodeId)],
-    ) {
+    /// 0201), and draw the drag image (#56). No ring goes round the pane with the keys: the frame of
+    /// the window in use says which window has them.
+    pub(super) fn register(&mut self, shown: Shown, pages: &[(String, String)]) {
         let router = &mut self.router;
         router.targets.clear();
         for (node, target) in shown {
@@ -269,8 +262,7 @@ impl CompositorWindow {
         }
         let scale = self.window.scale_factor() as f32;
         let mut made = self.hosted.surfaces().made();
-        // A web view lies in its plugin's window, and covers what is under it there; with the
-        // keys, the ring goes round that window's pane.
+        // A web view lies in its plugin's window, and covers what is under it there.
         let views: Vec<_> = (made.iter())
             .filter(|(host, _, _)| router.targets.shown(&web_rules::surface_of(host)))
             .map(|(host, plugin, _)| (web_rules::surface_of(host), plugin.clone(), false))
@@ -281,28 +273,6 @@ impl CompositorWindow {
             let popups = &self.gestures.popups.boxes;
             let areas = popup_input::areas(&plan.windows, &made, popups, scale);
             router.targets.set_areas(PAGE, areas);
-        }
-        let focused = router.focused().filter(|s| *s != PAGE).map(str::to_owned);
-        // The ring goes round the pane the focused surface shows in, while it is drawn.
-        // Not while the spread is open: the pane is on a card, not where the ring would go.
-        let spreading = self.spreading.open.is_some();
-        // Where its window's frame is drawn, inside the frame's rounded corners (#250); the surface's
-        // own window, by its key: a plugin's second window is not its first (ADR 0212).
-        let ring = focused
-            .filter(|s| !spreading && router.window_focused() && router.targets.shown(s))
-            .and_then(|s| {
-                // A plugin's surface or its web view (`made` holds both), by its window's key.
-                let (_, key, _) = made.iter().find(|(host, _, _)| *host == s)?;
-                let plan = self.hosted.plan()?;
-                let look = (self.theme.window.radius, scale);
-                draw::pixels::ring_of(plan, key, look, frames)
-            });
-        // In its window's group, in the group's CSS pixels: drawn with the window, under whatever
-        // lies above it (a floating window, a bar).
-        if let Some(ring) = ring
-            && let Some((_, group)) = groups.iter().find(|(id, _)| *id == ring.window)
-        {
-            overlay::focus_ring(&mut self.scene, *group, ring.rect, 1.0, ring.rounded);
         }
         if let Some(drag) = router.overlay() {
             overlay::drag_image(&mut self.scene, &drag, scale);
