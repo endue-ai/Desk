@@ -38,8 +38,9 @@ const DEFAULT_INIT = "init-no-first-run.yaml";
  * from e2e.ask, sandbox.spec.ts runs e2e.sandbox's checks in its renderer, the input specs (the
  * editing keys' and the hover titles' too, #156) run with the input and drag fixtures (#56), the
  * native plugin spec with the native example (#59), the accessibility and popup specs with
- * their own fixtures (#57, #156), and the windows out of the canvas with a floating plugin, or with the
- * switch that opens a plugin out (#235).
+ * their own fixtures (#57, #156), the windows out of the canvas with a floating plugin, or with the
+ * switch that opens a plugin out (#235), and the app specs with the app example, as its manifest
+ * says and with every window kept on the canvas (#239).
  */
 const ENV: Record<string, Record<string, string>> = {
   "ime.spec.ts": compositorEnv(root),
@@ -67,6 +68,11 @@ const ENV: Record<string, Record<string, string>> = {
       join(root, "e2e/fixtures/plugin-e2e-hello"),
       join(root, "e2e/fixtures/plugin-e2e-float"),
     ].join(delimiter),
+  },
+  "app-opens-out.spec.ts": { DESK_DEV_PLUGINS: join(root, "examples/plugin-hello-window") },
+  "app-opens-canvas.spec.ts": {
+    DESK_DEV_PLUGINS: join(root, "examples/plugin-hello-window"),
+    DESK_APP_WINDOWS: "off",
   },
 };
 

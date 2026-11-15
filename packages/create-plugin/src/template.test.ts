@@ -47,9 +47,28 @@ describe("renderPlugin", () => {
       version: "0.1.0",
       kind: "ui",
       entry: "ui/index.html",
-      surfaces: [{ id: "main", title: "My plugin", placement: "center" }],
+      surfaces: [
+        {
+          id: "main",
+          title: "My plugin",
+          placement: "center",
+          window: { size: { width: 480, height: 360 }, opens: "canvas" },
+        },
+      ],
       contributes: { commands: [{ id: "example.my-plugin.count", title: "My plugin: count" }] },
     });
+  });
+
+  it("says how the window opens, and shows the other way (ADR 0226)", () => {
+    const files = renderPlugin({ id: "example.my-plugin", name: "My plugin" });
+    const out = manifestOf(files);
+    const [surface] = out.surfaces ?? [];
+    if (surface) surface.window = { ...surface.window, opens: "out" };
+    expect(validate(out), JSON.stringify(validate.errors)).toBe(true);
+    const readme = files["README.md"] ?? "";
+    expect(readme).toContain("## Its window");
+    expect(readme).toContain('`"canvas"`, on the desk, or `"out"`, in');
+    expect(readme).toContain("`DESK_APP_WINDOWS=example.my-plugin`");
   });
 
   it("writes a manifest that can grow commands and keys under its own id (ADR 0017)", () => {

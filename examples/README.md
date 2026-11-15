@@ -6,6 +6,7 @@ AI agents both start by copying from here.
 | Example | Shows |
 | --- | --- |
 | `plugin-hello-ui/` | The smallest UI plugin (sandboxed iframe) |
+| `plugin-hello-window/` | The smallest app that says how its window opens: on the canvas and in an OS window of its own (ADR 0226) |
 | `plugin-hello-wasm/` | The smallest logic plugin (Wasm) |
 | `plugin-hello-connector/` | The smallest connector (Wasm): markdown files in a folder as `note` items |
 | `plugin-hello-view/` | The smallest view plugin: a view as data, and a command that opens it |
@@ -17,6 +18,8 @@ AI agents both start by copying from here.
 
 Status: `plugin-hello-ui` and `plugin-hello-view` run with `just dev`, `plugin-hello-theme` with
 `DESK_DEV_PLUGINS=$PWD/examples/plugin-hello-theme just dev` (`plugin-hello-universal` likewise),
+`plugin-hello-window` with `just example plugin-hello-window` (out of the canvas) and
+`DESK_APP_WINDOWS=off just example plugin-hello-window` (on it),
 `plugin-native-wgpu` with `just example plugin-native-wgpu` (macOS), `brain-echo` with
 `just brain-echo` and `plugin-hello-connector` with
 `cargo test -p desk-plugin-host --test hello_connector`; `plugin-hello-mcp` is a folder only. Each
