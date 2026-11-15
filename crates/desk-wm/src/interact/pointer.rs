@@ -59,6 +59,8 @@ impl Wm {
     /// for it (`mid_glide.rs`).
     pub fn pressed_at(&mut self, at: Point, page: Point) -> Vec<Out> {
         let mut out = self.cancel_gesture();
+        // The window under the press is in use before anything hears it (`focus.rs`).
+        out.extend(self.press_focus(at));
         // A grab still waiting is for an earlier press.
         self.waiting.retain(|w| !matches!(w, Waiting::Grab { .. }));
         let taken = self.press_mid_glide(at);
