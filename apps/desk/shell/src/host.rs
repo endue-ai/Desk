@@ -78,6 +78,9 @@ impl Desk {
         } = booted;
         let queue = OpenFiles::default();
         queue.push(opened);
+        // Plugins' dialog.open and dialog.save show the OS's dialogs over the main window (#308).
+        let dialogs = crate::dialog::ShellDialogs::new(pump.clone(), crate::paths::home_dir());
+        core.set_dialogs(Some(Arc::new(dialogs)));
         let desk = Self {
             core,
             start,

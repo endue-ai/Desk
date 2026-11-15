@@ -117,6 +117,8 @@ pub struct Core {
     pub(crate) snapshots: crate::core_snapshots::Snapshots,
     /// The web views callers opened, and the shell that shows them (ADR 0216).
     pub(crate) web: Mutex<crate::core_web::Web>,
+    /// The OS dialogs the shell shows for dialog.* (#308).
+    pub(crate) dialogs: crate::core_dialog::DialogHost,
     pub(crate) start: Mutex<crate::core_state::StartState>,
 }
 
@@ -174,6 +176,7 @@ impl Core {
             theme_tokens: Default::default(),
             snapshots: Default::default(),
             web: Default::default(),
+            dialogs: Default::default(),
             start: Mutex::default(),
         }
     }
