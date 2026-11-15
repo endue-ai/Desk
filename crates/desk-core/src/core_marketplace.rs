@@ -189,8 +189,8 @@ impl Core {
         }
         let dir = self.market_dir()?;
         let _ = fs::remove_file(self.record_file(&dir, &id));
+        // Takes back its grants and its nested plugins' too.
         self.remove_plugin(&id);
-        self.revoke_all(&id);
         let folder = dir.join(&id);
         if folder.exists() {
             fs::remove_dir_all(&folder).map_err(io_error)?;
@@ -371,8 +371,8 @@ impl Core {
         })
     }
 
-    /// Take back every grant `caller` holds.
-    fn revoke_all(&self, caller: &str) {
+    /// Take back every grant `caller` holds, session and `always` (the grant file loses the latter).
+    pub(crate) fn revoke_all(&self, caller: &str) {
         let mut permissions = self.permissions();
         let ids: Vec<String> = permissions
             .list()
