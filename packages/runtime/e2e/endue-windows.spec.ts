@@ -1,5 +1,6 @@
 // The person's endue agents and spaces on the desk (ADR 0129): signed in, the agent bar lists them
-// from studio.*, each opens as a window with a card, and Studio turns the card over to its status.
+// from studio.* with their faces (ADR 0232), each opens as a window with a card, and Studio turns an
+// agent's card over to its Studio board, a space's to its status.
 import { expect, test } from "@playwright/test";
 import { DESK, openShell, step } from "./shell-helpers";
 
@@ -26,6 +27,10 @@ test.describe("endue agents and spaces as windows", () => {
       "data-presence",
       "working",
     );
+    // Each agent's face, read by the core and handed over as a data: URL (ADR 0232).
+    const faces = page.locator(".sidebar [data-endue-agent] img.avatar-face");
+    await expect(faces).toHaveCount(3);
+    await expect(faces.first()).toHaveAttribute("src", /^data:image\//);
   });
 
   test("an agent opens as a window whose card Studio turns over", async ({ page }) => {
@@ -45,10 +50,19 @@ test.describe("endue agents and spaces as windows", () => {
     await view.locator('[data-face="front"] [data-action="studio"]').click();
     await step(page, 600);
     await expect(view.locator(".endue-flip")).toHaveClass(/is-flipped/);
-    await expect(view.locator('[data-face="back"] [data-fact="status"] dd')).toHaveText("Active");
-    await expect(view.locator('[data-face="back"] [data-fact="model"] dd')).toHaveText(
+    // The back is the Studio board (ADR 0232): the ways in, the agent's sheet, what it reaches.
+    const back = view.locator('[data-face="back"]');
+    await expect(back.locator(".studio-name")).toHaveText("Miso");
+    await expect(back.locator('[data-col="in"] [data-row]')).toHaveCount(5);
+    await expect(back.locator('[data-section="model"] .studio-sheet-value')).toHaveText(
       "claude-sonnet-4.5",
     );
+    // Its lines are drawn from what was laid out: in a window this narrow, down a trunk at the left.
+    await expect(back.locator("svg.studio-lines")).toHaveAttribute("data-layout", "stacked");
+    await expect(back.locator('svg.studio-lines [data-line="console:branch"]')).toBeAttached();
+    // A way in unfolds where it stands.
+    await back.locator('[data-row="live"] [data-row-head]').click();
+    await expect(back.locator('[data-row="live"] .studio-row-body')).toBeVisible();
     await expect(view.locator('[data-face="front"]')).toHaveAttribute("aria-hidden", "true");
     await view.locator('[data-face="back"] [data-action="card"]').click();
     await step(page, 600);

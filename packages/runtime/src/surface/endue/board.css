@@ -1,0 +1,221 @@
+/* An endue agent's Studio board (ADR 0232), the back of its card: three columns and their lines.
+   The grid lays it out; the lines are drawn over it from what was laid out (board-lines.ts). Under
+   840 wide (a window of the usual size) the columns stack and the lines run down a trunk at the
+   left, in the columns' left gutter. */
+.studio-board {
+  --studio-line: var(--desk-accent);
+  --studio-line-off: color-mix(in srgb, var(--desk-text) 28%, var(--desk-card));
+  position: relative;
+  container: studio / inline-size;
+  padding: var(--space-2) 0 var(--space-3);
+}
+.studio-grid {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(40px, 64px) minmax(320px, 2fr) minmax(40px, 64px) minmax(200px, 1fr);
+  align-items: start;
+}
+.studio-gap { min-height: 1px; }
+.studio-col,
+.studio-hub-col { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.studio-col-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  color: var(--desk-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.studio-col-head.is-hub { justify-content: center; }
+.studio-col-index { font-family: var(--font-mono); font-weight: 400; }
+
+@container studio (max-width: 839px) {
+  .studio-grid { grid-template-columns: minmax(0, 1fr); row-gap: var(--space-5); }
+  .studio-gap { display: none; }
+  .studio-col,
+  .studio-hub-col { padding-left: var(--space-6); }
+  .studio-col-head.is-hub { justify-content: flex-start; }
+}
+
+/* A row: a way in, or a thing the agent reaches. Its border says its line's state too. */
+.studio-row {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--radius-lg);
+  background: var(--desk-card);
+}
+.studio-row[data-state="off"],
+.studio-row[data-state="unknown"] { border-style: dashed; }
+.studio-row[data-state="bad"] { border-color: var(--desk-danger-text); }
+/* A row's head, a line of the sheet and the agent's name are the kit's rows (kit.css), each in
+   the size its place asks for. */
+.studio-row-head {
+  gap: var(--space-2);
+  height: auto;
+  min-height: 52px;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  border-radius: inherit;
+  white-space: normal;
+  cursor: pointer;
+}
+.studio-row-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  color: var(--desk-text-muted);
+}
+.studio-row[data-row="console"] .studio-row-icon { color: var(--desk-accent); }
+.studio-row-icon.is-mono {
+  border: 1px solid var(--desk-border);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
+.studio-row-text { display: grid; gap: 2px; flex: 1; min-width: 0; line-height: 1.25; }
+.studio-row-title,
+.studio-row-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio-row-title { font-size: var(--text-sm); font-weight: 600; }
+.studio-row-sub { color: var(--desk-text-muted); font-size: var(--text-xs); }
+.studio-row-sub[data-tone="ok"] { color: var(--desk-success-text); }
+.studio-row-sub[data-tone="bad"] { color: var(--desk-danger-text); }
+.studio-row-meta { flex: none; color: var(--desk-text-muted); font-size: var(--text-xs); white-space: nowrap; }
+.studio-row-body { display: grid; gap: var(--space-2); padding: 0 var(--space-3) var(--space-3); font-size: var(--text-xs); }
+.studio-row-body p { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.studio-actions { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.studio-group-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--desk-text-muted);
+  font-size: var(--text-xs);
+}
+.studio-wide { width: 100%; justify-content: center; }
+.studio-hint { color: var(--desk-text-muted); }
+.studio-roadmap { display: flex; align-items: center; gap: var(--space-2); color: var(--desk-text-muted); font-size: var(--text-xs); }
+
+/* The agent's sheet. */
+.studio-hub {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  container: studio-hub / inline-size;
+  padding: var(--space-4);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--radius-lg);
+  background: var(--desk-card);
+  box-shadow: var(--desk-shadow-sm);
+}
+.studio-hub-head { display: flex; gap: var(--space-4); min-width: 0; }
+.studio-portrait {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 104px;
+  height: 128px;
+  overflow: hidden;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--endue-accent, var(--desk-accent)) 16%, var(--desk-card));
+}
+.studio-portrait-face { width: 100%; height: 100%; object-fit: cover; }
+.studio-portrait-initial { font-size: var(--text-2xl); font-weight: 600; }
+.studio-portrait-action {
+  position: absolute;
+  right: var(--space-1);
+  bottom: var(--space-1);
+  left: var(--space-1);
+  justify-content: center;
+  background: color-mix(in srgb, var(--desk-card) 82%, transparent);
+}
+.studio-who { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.studio-name-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+.studio-name {
+  display: block;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  overflow: hidden;
+  padding: 0 var(--space-1);
+  margin-left: calc(-1 * var(--space-1));
+  font-size: var(--text-xl);
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.studio-status { display: inline-flex; flex: none; align-items: center; gap: 6px; color: var(--desk-text-muted); font-size: var(--text-xs); }
+.studio-status:is([data-presence="online"], [data-presence="working"]) { color: var(--desk-success-text); }
+.studio-handle { overflow: hidden; color: var(--desk-text-muted); font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.studio-desc {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.studio-sentence { margin: 0; font-size: var(--text-sm); line-height: 1.6; overflow-wrap: anywhere; }
+.studio-sentence .is-hl { color: var(--desk-accent); font-weight: 600; }
+.studio-sentence .is-warn { color: var(--desk-danger-text); }
+.studio-sheet { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3) var(--space-4); min-width: 0; }
+@container studio-hub (min-width: 440px) {
+  .studio-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.studio-group { display: flex; flex-direction: column; min-width: 0; }
+.studio-group-head { padding: 0 var(--space-1) var(--space-1); color: var(--desk-text-muted); font-size: var(--text-xs); font-weight: 600; }
+.studio-sheet-row,
+.studio-skills {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: auto;
+  padding: var(--space-2) var(--space-1);
+  border-top: 1px solid var(--desk-border);
+  border-radius: 0;
+}
+.studio-sheet-row { cursor: pointer; }
+.studio-sheet-row.is-stack,
+.studio-skills { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-1); }
+.studio-sheet-row.is-stack .studio-sheet-value,
+.studio-skills .studio-chips { order: 1; grid-column: 1 / -1; }
+.studio-sheet-key { font-size: var(--text-sm); font-weight: 600; }
+.studio-sheet-value { min-width: 0; overflow: hidden; font-size: var(--text-sm); text-overflow: ellipsis; white-space: nowrap; }
+.studio-sheet-value.is-muted { color: var(--desk-text-muted); }
+.studio-sheet-end { color: var(--desk-text-muted); font-size: var(--text-xs); }
+.studio-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); min-width: 0; }
+.studio-chips .tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--space-2); min-width: 0; }
+.studio-badge { display: grid; flex: none; place-items: center; width: 18px; height: 18px; color: var(--desk-text-muted); }
+.studio-badge[data-on] { color: var(--desk-success-text); }
+.studio-hub-foot {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--desk-border);
+}
+.studio-hub-foot .btn { justify-content: center; }
+
+/* The lines: drawn over the board, never in the way of a press. */
+.studio-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.studio-line { fill: none; stroke: var(--studio-line); transition: stroke-width var(--motion-fast) ease; }
+.studio-line[data-dashed] { stroke-dasharray: 5 5; }
+.studio-port,
+.studio-arrow { fill: var(--studio-line); }
+.studio-port { stroke: var(--desk-card); stroke-width: 2; }
+.studio-line:is([data-state="off"], [data-state="unknown"]) { stroke: var(--studio-line-off); }
+.studio-line[data-state="bad"] { stroke: var(--desk-danger-text); }
+:is(.studio-port, .studio-arrow):is([data-state="off"], [data-state="unknown"]) { fill: var(--studio-line-off); }
+:is(.studio-port, .studio-arrow)[data-state="bad"] { fill: var(--desk-danger-text); }

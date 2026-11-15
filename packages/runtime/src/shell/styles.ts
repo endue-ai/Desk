@@ -13,6 +13,7 @@ import "../surface/surface.css";
 import "../surface/panes.css";
 import "../surface/local-agent/local-agent.css";
 import "../surface/endue/endue.css";
+import "../surface/endue/board.css";
 import "../arrange/arrange.css";
 import "./away.css";
 import "../theme-studio/studio.css";
