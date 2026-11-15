@@ -70,6 +70,14 @@ describe("the sway in the trace", () => {
     // The page's picture behind the app window is drawn cropped or padded; behind its own scene,
     // the frame shows the page laid out for another size.
     expect(seen).toMatchObject({ frames: 4, unfit: 2, deskUnfit: 1, deskStale: 3 });
+    // The sidebar's picture is not its pane's size in any of them (ADR 0227).
+    expect(seen.paneUnfit).toBe(4);
+    const fits = lines.map((l) =>
+      l.e === "win"
+        ? { ...l, f: { ...l.f, textures: { ...l.f.textures, "endue.sidebar": [20, 20] } } }
+        : l,
+    );
+    expect(pictures(fits, 15, 75).paneUnfit).toBe(0);
     expect(seen.windows).toEqual({ "window:w": { cut: 2, padded: 0 } });
     expect(seen.widths).toEqual([1000, 1200]);
     expect(seen.heights).toEqual([700, 800]);
@@ -106,6 +114,7 @@ describe("the sway's verdicts", () => {
     foreignBlocks: 4,
     minRestSharpness: 0.95,
     maxUnfitFrames: 0,
+    maxPaneShare: 0.1,
   };
   const good: SwayFindings = {
     widths: [1024, 1624],
@@ -155,6 +164,7 @@ describe("the sway's verdicts", () => {
       { foreignFrames: 1 },
       { swingFrames: 0 },
       { unfitFrames: 1 },
+      { paneFrames: 29 },
       { sceneFrames: 1 },
       { unfitSections: 1 },
       { sectionFrames: 0 },

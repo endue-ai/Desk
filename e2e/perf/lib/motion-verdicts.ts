@@ -38,10 +38,16 @@ export interface Limits {
   minRestSharpness: number;
   /** Frames of the sway where a window's picture was laid out for another size. */
   maxUnfitFrames: number;
+  /** The share of the sway's frames where a pane's plugin may show a picture of another size
+   * than its pane (ADR 0227: its page trailing its frame is left). */
+  maxPaneShare?: number;
 }
 
 type Shaken = "fps" | "smooth" | "own-pixels" | "painting" | "soft" | "valid";
-export type Check = Shaken | "loop" | `sway-${Shaken | "sizes" | "scene" | "sections" | "settled"}`;
+export type Check =
+  | Shaken
+  | "loop"
+  | `sway-${Shaken | "sizes" | "panes" | "scene" | "sections" | "settled"}`;
 
 export interface Verdict {
   check: Check;
@@ -170,6 +176,8 @@ export interface SwayFindings {
   frames: number;
   unfitFrames: number;
   sceneFrames: number;
+  /** Frames where a pane's plugin showed a picture of another size than its pane (ADR 0227). */
+  paneFrames?: number;
   /** Frames the windows' own pages laid out, and those whose section did not fill its page: laid
    * out for another size than the page has (#270, `motion-sections.ts`). */
   sectionFrames?: number;
@@ -211,6 +219,7 @@ export function worstSway(runs: readonly SwayFindings[]): SwayFindings {
     frames: sum((r) => r.frames),
     unfitFrames: sum((r) => r.unfitFrames),
     sceneFrames: sum((r) => r.sceneFrames),
+    paneFrames: sum((r) => r.paneFrames ?? 0),
     sectionFrames: sum((r) => r.sectionFrames ?? 0),
     unfitSections: sum((r) => r.unfitSections ?? 0),
     swingFrames: sum((r) => r.swingFrames),
@@ -269,6 +278,14 @@ export function swayVerdicts(
         value: found.unfitFrames,
         limit: `<= ${limits.maxUnfitFrames}`,
         passed: found.frames > 0 && found.unfitFrames <= limits.maxUnfitFrames,
+      },
+      {
+        check: "sway-panes",
+        says: `frames where a pane's plugin shows a picture of another size than its pane, ahead of its frame or behind it (${found.paneFrames ?? 0} of ${found.frames})`,
+        value: pct((found.paneFrames ?? 0) / Math.max(found.frames, 1)),
+        limit: `<= ${pct(limits.maxPaneShare ?? 1)}`,
+        passed:
+          found.frames > 0 && (found.paneFrames ?? 0) / found.frames <= (limits.maxPaneShare ?? 1),
       },
       {
         check: "sway-scene",

@@ -45,6 +45,8 @@ pub struct Composed {
     pub tips: HashMap<String, String>,
     /// The page's paint of a size no report of it names yet, held aside (#269).
     page: page::PageAside,
+    /// Each plugin's paints of a size its pane is not drawn at yet, held aside (ADR 0227).
+    panes: pane::Panes,
 }
 
 impl Composed {
@@ -96,6 +98,7 @@ impl Composed {
     /// `surface` is gone: its frames go too, and its popup's.
     pub fn destroy(&mut self, surface: &str) {
         self.close_popup(surface);
+        self.pane_gone(surface);
         self.drop_frames(surface);
     }
 
@@ -168,6 +171,7 @@ impl Shared {
             popups: HashMap::new(),
             tips: HashMap::new(),
             page: page::PageAside::default(),
+            panes: pane::Panes::default(),
         })))
     }
 
@@ -181,11 +185,18 @@ impl SurfaceSink for Shared {
     fn attach(&self, attach: &SurfaceAttach, source: Source<'_>) -> Result<Attached, AttachError> {
         let mut composed = self.lock();
         let size = (attach.texture.width as u32, attach.texture.height as u32);
-        let (id, aside) = if attach.surface == super::PAGE {
-            composed.page_texture(size)
+        let (id, aside, whole) = if attach.surface == super::PAGE {
+            let (id, aside) = composed.page_texture(size);
+            (id, aside, false)
         } else {
-            (composed.texture(&attach.surface), false)
+            composed.pane_texture(&attach.surface, size)
         };
+        // A paint to another texture than the one before it carries that one's damage only.
+        let all = whole.then(|| SurfaceAttach {
+            damage: Vec::new(),
+            ..attach.clone()
+        });
+        let attach = all.as_ref().unwrap_or(attach);
         let state = &mut *composed;
         let had = state.frames.size(id);
         let started = std::time::Instant::now();
@@ -256,6 +267,8 @@ impl SurfaceSink for Shared {
 
 #[path = "composed_page.rs"]
 mod page;
+#[path = "composed_pane.rs"]
+mod pane;
 
 #[cfg(test)]
 #[path = "composed_tests.rs"]

@@ -217,6 +217,7 @@ export function analyzeSway(
     frames: pics?.frames ?? 0,
     unfitFrames: pics?.unfit ?? 0,
     sceneFrames: pics?.deskUnfit ?? 0,
+    paneFrames: pics?.paneUnfit ?? 0,
     sectionFrames: fit.frames,
     unfitSections: fit.unfit,
     swingFrames: compared.length,

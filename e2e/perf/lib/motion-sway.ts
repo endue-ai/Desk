@@ -70,6 +70,9 @@ export interface Pictures {
   unfit: number;
   /** By window surface, the frames its picture was cut and padded. */
   windows: Record<string, { cut: number; padded: number }>;
+  /** Frames where a pane's plugin showed a picture of another size than its pane, cut or padded
+   * in a frame of another size (ADR 0227). */
+  paneUnfit: number;
   /** Frames where the desk's own page was laid out for another size than the scene drawn with it
    * (its windows' places, its bars' boxes). */
   deskUnfit: number;
@@ -97,6 +100,7 @@ export function pictures(lines: readonly Line[], from: number, to: number): Pict
   const out: Pictures = {
     frames: 0,
     unfit: 0,
+    paneUnfit: 0,
     windows: {},
     deskUnfit: 0,
     deskStale: 0,
@@ -113,9 +117,14 @@ export function pictures(lines: readonly Line[], from: number, to: number): Pict
     out.widths = [Math.min(out.widths[0], vw), Math.max(out.widths[1], vw)];
     out.heights = [Math.min(out.heights[0], vh), Math.max(out.heights[1], vh)];
     let unfit = false;
+    let pane = false;
     for (const [surface, , , w, h] of laid.surfaces) {
-      if (!surface.startsWith("window:")) continue;
       const f = fitted(textures[surface], w, h, scale);
+      if (!surface.startsWith("window:")) {
+        // A web view is drawn by its own rule (ADR 0216).
+        pane ||= !surface.startsWith("web:") && (f === "cut" || f === "padded");
+        continue;
+      }
       if (f !== "cut" && f !== "padded") continue;
       unfit = true;
       out.windows[surface] ??= { cut: 0, padded: 0 };
@@ -125,6 +134,7 @@ export function pictures(lines: readonly Line[], from: number, to: number): Pict
     const [sw = vw, sh = vh] = laid.screen ?? [];
     if (fitted(page, sw, sh, scale) !== "fits") out.deskUnfit++;
     if (unfit) out.unfit++;
+    if (pane) out.paneUnfit++;
     if (fitted(page, vw, vh, scale) !== "fits") out.deskStale++;
   }
   if (!out.frames) out.widths = out.heights = [0, 0];

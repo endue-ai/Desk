@@ -60,45 +60,57 @@ impl CompositorWindow {
         self.hosted.follow_anchors();
         let boxes = self.host.web_boxes();
         let web = |host: &str| boxes.get(host).copied();
-        let drawn = {
-            let mut composed = self.shared.lock();
-            match (&layout, folded) {
-                (Some(layout), Some(false)) => {
-                    self.mapping
-                        .refresh(&mut composed, layout, scale, Instant::now(), None);
+        let mut first = true;
+        let drawn = loop {
+            let drawn = {
+                let mut composed = self.shared.lock();
+                match (&layout, folded) {
+                    (Some(layout), Some(false)) => {
+                        self.mapping
+                            .refresh(&mut composed, layout, scale, Instant::now(), None);
+                    }
+                    // Folded or gone, the map keeps no copies.
+                    _ => self
+                        .mapping
+                        .thumbnails
+                        .retain(&mut composed.compositor, |_| false),
                 }
-                // Folded or gone, the map keeps no copies.
-                _ => self
-                    .mapping
-                    .thumbnails
-                    .retain(&mut composed.compositor, |_| false),
+                let texture = |surface: &str| {
+                    let id = composed.texture_of(surface)?;
+                    Some((id, composed.frames.size(id)?))
+                };
+                let popup = |surface: &str| {
+                    let (place, id, size) = composed.popup_of(surface)?;
+                    let at =
+                        desk_compositor::Rect::new(place.x, place.y, place.width, place.height);
+                    Some((at, (id, size)))
+                };
+                let thumbnails = &self.mapping.thumbnails;
+                let thumbnail = |host: &str| thumbnails.of(composed.texture_of(host)?);
+                let map = (layout.as_ref()).map(|layout| draw_map::MapSource {
+                    layout,
+                    folded: folded.unwrap_or(true),
+                    thumbnail: &thumbnail,
+                });
+                let sources = draw::Sources {
+                    scale,
+                    page: texture(PAGE),
+                    surface: &texture,
+                    popup: &popup,
+                    web: &web,
+                    spread: self.spreading.open.as_ref().map(|s| (s, at)),
+                    map,
+                };
+                draw::draw(&mut self.scene, &self.theme, &self.hosted, &sources)
+            };
+            // A plugin's picture of the size its pane is drawn at now waited aside: the scene
+            // again, once, with it (ADR 0227).
+            let panes = drawn
+                .as_ref()
+                .map_or_else(|_| Vec::new(), |d| panes_of(d, scale));
+            if !(std::mem::take(&mut first) && self.shared.lock().panes_drawn(&panes)) {
+                break drawn;
             }
-            let texture = |surface: &str| {
-                let id = composed.texture_of(surface)?;
-                Some((id, composed.frames.size(id)?))
-            };
-            let popup = |surface: &str| {
-                let (place, id, size) = composed.popup_of(surface)?;
-                let at = desk_compositor::Rect::new(place.x, place.y, place.width, place.height);
-                Some((at, (id, size)))
-            };
-            let thumbnails = &self.mapping.thumbnails;
-            let thumbnail = |host: &str| thumbnails.of(composed.texture_of(host)?);
-            let map = (layout.as_ref()).map(|layout| draw_map::MapSource {
-                layout,
-                folded: folded.unwrap_or(true),
-                thumbnail: &thumbnail,
-            });
-            let sources = draw::Sources {
-                scale,
-                page: texture(PAGE),
-                surface: &texture,
-                popup: &popup,
-                web: &web,
-                spread: self.spreading.open.as_ref().map(|s| (s, at)),
-                map,
-            };
-            draw::draw(&mut self.scene, &self.theme, &self.hosted, &sources)
         };
         let drawn = drawn.unwrap_or_else(|why| {
             eprintln!("endue Desk: the compositor's scene did not build ({why:?})");
@@ -161,4 +173,15 @@ impl CompositorWindow {
         // Each web view at its box, shown while its plugin's surface is drawn (ADR 0216).
         self.web_laid_out(&live);
     }
+}
+
+/// The plugin panes `drawn` placed and their sizes in device pixels: no window's own page and no
+/// web view, which are drawn by other rules.
+fn panes_of(drawn: &draw::Drawn, scale: f32) -> Vec<(String, (u32, u32))> {
+    let px = |v: f32| (v * scale).round().max(1.0) as u32;
+    (drawn.placed.iter())
+        .filter(|(host, _)| !crate::web_host::window_pages::is_window_page(host))
+        .filter(|(host, _)| !host.starts_with("web:"))
+        .map(|(host, at)| (host.clone(), (px(at.width), px(at.height))))
+        .collect()
 }
