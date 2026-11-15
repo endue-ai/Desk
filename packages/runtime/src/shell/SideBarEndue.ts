@@ -3,9 +3,11 @@
  * the ones that work or wait for them first, and the spaces they can open. Choosing either opens
  * its window. An agent's state is `data-presence` (the ring the stylesheet draws), and the bar's
  * tooltip names it with the conversation it works on (bar-tip.ts). Past six agents the last place
- * opens the rest in a popover, as the directory's does.
+ * opens the rest in a popover, as the directory's does. Unfolded, each is a row of the bar's list
+ * (bar-list.ts): an agent's says the conversation it works on and for how long, or its presence
+ * in endue's own words.
  */
-import type { StudioAgent } from "@endue-ai/bridge";
+import type { StudioAgent, StudioSpace } from "@endue-ai/bridge";
 import { endueText } from "../surface/endue/copy";
 import { initialOf, presenceText } from "../surface/endue/model";
 import {
@@ -17,7 +19,8 @@ import {
   openEndueAgent,
   openEndueSpace,
 } from "../system/endue";
-import { withTip, workLine } from "./bar-tip";
+import { type BarEntry, barCaption, barControl, oneLine } from "./bar-list";
+import { workLine } from "./bar-tip";
 import type { ShellCtx } from "./context";
 import { type Child, h } from "./dom";
 import { icon } from "./icons";
@@ -42,36 +45,68 @@ const DOT: Partial<Record<EnduePresence, string>> = {
   waiting: "dot-attention",
 };
 
-function avatarButton(ctx: ShellCtx, s: DeskState, agent: StudioAgent, presence: EnduePresence) {
-  const label = endueText(s.lang, "barAgent", {
-    name: agent.name,
-    presence: presenceText(s.lang, presence),
-  });
+function agentEntry(
+  ctx: ShellCtx,
+  s: DeskState,
+  agent: StudioAgent,
+  presence: EnduePresence,
+): BarEntry {
+  const word = presenceText(s.lang, presence);
+  const label = endueText(s.lang, "barAgent", { name: agent.name, presence: word });
   const open = s.focused === `${ENDUE_AGENT_VIEW}${agent.id}` || s.endue.agent === agent.id;
   const colour = hexColour(agent.personalColor);
-  const button = h(
-    "button",
-    {
-      class: `icon-button avatar${open ? " is-selected" : ""}${presence === "paused" ? " is-paused" : ""}`,
-      type: "button",
+  // The conversation that runs: its title, and the time since its last message.
+  const running = () =>
+    presence === "working"
+      ? ctx.store
+          .get()
+          .endue.conversations.find((c) => c.agentId === agent.id && c.activity === "active")
+      : undefined;
+  const runs = running();
+  return {
+    face: "avatar",
+    glyph: initialOf(agent.name || agent.slug),
+    attrs: {
       "data-key": `endue-agent-${agent.id}`,
       "data-endue-agent": agent.id,
       "data-presence": presence,
       "aria-label": label,
       "aria-pressed": String(open),
       ...(colour ? { style: { "--endue-accent": colour } } : {}),
-      onClick: () => openEndueAgent(ctx, agent.id),
     },
-    h("span", { "aria-hidden": "true" }, initialOf(agent.name || agent.slug)),
-  );
-  return withTip(button, () => {
-    // The conversation that runs: its title, and the time since its last message.
-    const running = ctx.store
-      .get()
-      .endue.conversations.find((c) => c.agentId === agent.id && c.activity === "active");
-    if (presence !== "working" || !running) return [label];
-    return [label, workLine(running.title, running.lastMessageAt ?? "", ctx.wall())];
-  });
+    selected: open,
+    paused: presence === "paused",
+    name: agent.name,
+    note: (runs && oneLine(runs.title)) ?? word,
+    since: runs?.lastMessageAt,
+    tip: () => {
+      const now = running();
+      return now ? [label, workLine(now.title, now.lastMessageAt ?? "", ctx.wall())] : [label];
+    },
+    onClick: () => openEndueAgent(ctx, agent.id),
+  };
+}
+
+function spaceEntry(ctx: ShellCtx, s: DeskState, sp: StudioSpace): BarEntry {
+  const open = s.focused === `${ENDUE_SPACE_VIEW}${sp.id}` || s.endue.space === sp.id;
+  const label = endueText(s.lang, "barSpace", { name: sp.name });
+  const colour = hexColour(sp.avatarColor);
+  return {
+    face: "space",
+    glyph: sp.avatarGlyph || initialOf(sp.name || sp.key),
+    attrs: {
+      "data-key": `endue-space-${sp.id}`,
+      "data-endue-space": sp.id,
+      "aria-label": label,
+      "aria-pressed": String(open),
+      ...(colour ? { style: { "--endue-accent": colour } } : {}),
+    },
+    selected: open,
+    name: sp.name,
+    space: true,
+    tip: () => (sp.goal ? [label, sp.goal] : [label]),
+    onClick: () => openEndueSpace(ctx, sp.id),
+  };
 }
 
 /** The bar's endue groups, and the popover's items when the agents overflow. */
@@ -82,11 +117,25 @@ export interface BarGroups {
   moreLabel: string;
 }
 
-export function endueGroups(ctx: ShellCtx, s: DeskState): BarGroups {
+export function endueGroups(ctx: ShellCtx, s: DeskState, unfolded: boolean): BarGroups {
+  const now = ctx.wall();
   const agents = barAgents(s);
   const shown = agents.length > VISIBLE ? agents.slice(0, VISIBLE - 1) : agents;
   const hidden = agents.slice(shown.length);
   const moreLabel = endueText(s.lang, "moreAgents", { n: hidden.length });
+  const rest: BarEntry = {
+    face: "avatar avatar-more",
+    glyph: `+${hidden.length}`,
+    attrs: {
+      "data-key": "endue-agents-more",
+      "aria-label": moreLabel,
+      "aria-expanded": String(s.popover === "agents-more"),
+    },
+    name: moreLabel,
+    // Open, the list says it.
+    tip: () => (s.popover === "agents-more" ? [] : [moreLabel]),
+    onClick: () => ctx.store.set({ popover: s.popover === "agents-more" ? null : "agents-more" }),
+  };
   const status =
     s.endue.state === "offline"
       ? h(
@@ -110,26 +159,11 @@ export function endueGroups(ctx: ShellCtx, s: DeskState): BarGroups {
         "aria-busy": String(s.endue.state === "loading"),
         "data-endue-agents": "",
       },
-      shown.map(({ agent, presence }) => avatarButton(ctx, s, agent, presence)),
-      hidden.length
-        ? withTip(
-            h(
-              "button",
-              {
-                class: "icon-button avatar avatar-more",
-                type: "button",
-                "data-key": "endue-agents-more",
-                "aria-label": moreLabel,
-                "aria-expanded": String(s.popover === "agents-more"),
-                onClick: () =>
-                  ctx.store.set({ popover: s.popover === "agents-more" ? null : "agents-more" }),
-              },
-              `+${hidden.length}`,
-            ),
-            // Open, the list says it.
-            () => (s.popover === "agents-more" ? [] : [moreLabel]),
-          )
-        : null,
+      barCaption(unfolded, ctx.tr("agents")),
+      shown.map(({ agent, presence }) =>
+        barControl(agentEntry(ctx, s, agent, presence), unfolded, now),
+      ),
+      hidden.length ? barControl(rest, unfolded, now) : null,
       status,
     ),
     h("div", { class: "bar-divider", role: "separator" }),
@@ -141,26 +175,8 @@ export function endueGroups(ctx: ShellCtx, s: DeskState): BarGroups {
         "aria-label": ctx.tr("spaces"),
         "data-endue-spaces": "",
       },
-      s.endue.spaces.map((sp) => {
-        const open = s.focused === `${ENDUE_SPACE_VIEW}${sp.id}` || s.endue.space === sp.id;
-        const label = endueText(s.lang, "barSpace", { name: sp.name });
-        const colour = hexColour(sp.avatarColor);
-        const button = h(
-          "button",
-          {
-            class: `icon-button space${open ? " is-selected" : ""}`,
-            type: "button",
-            "data-key": `endue-space-${sp.id}`,
-            "data-endue-space": sp.id,
-            "aria-label": label,
-            "aria-pressed": String(open),
-            ...(colour ? { style: { "--endue-accent": colour } } : {}),
-            onClick: () => openEndueSpace(ctx, sp.id),
-          },
-          h("span", { "aria-hidden": "true" }, sp.avatarGlyph || initialOf(sp.name || sp.key)),
-        );
-        return withTip(button, () => (sp.goal ? [label, sp.goal] : [label]));
-      }),
+      barCaption(unfolded, ctx.tr("spaces")),
+      s.endue.spaces.map((sp) => barControl(spaceEntry(ctx, s, sp), unfolded, now)),
     ),
   ];
   const more =
