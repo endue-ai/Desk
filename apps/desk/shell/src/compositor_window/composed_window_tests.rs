@@ -153,7 +153,18 @@ const PLUGIN: &str = "plugin:endue.terminal";
 
 /// The compositor's state on the headless GPU, or `None` on a machine without one.
 fn shared() -> Option<(Shared, wgpu::Device, wgpu::Queue)> {
-    let gpu = headless_device().ok()?;
+    let gpu = match headless_device() {
+        Ok(gpu) => gpu,
+        // As the compositor's own GPU tests: a skip, or a failure where a GPU is required.
+        Err(why) if std::env::var_os("DESK_COMPOSITOR_REQUIRE_GPU").is_some() => {
+            panic!("no GPU: {why} (DESK_COMPOSITOR_REQUIRE_GPU is set)")
+        }
+        Err(why) => {
+            eprintln!("composed::window: skipped, {why}");
+            return None;
+        }
+    };
+    eprintln!("composed::window: on {:?}", gpu.adapter.backend);
     let format = wgpu::TextureFormat::Rgba8Unorm;
     let compositor = Compositor::new(&gpu.device, &gpu.queue, format);
     Some((Shared::new(compositor), gpu.device, gpu.queue))
