@@ -58,12 +58,15 @@ impl Core {
     }
 
     /// Remove an installed plugin: it unloads, leaves the registry and plugin.list, its views go, and
-    /// `plugin.changed` says `removed`. Its folder stays on disk. Returns whether it was installed.
+    /// `plugin.changed` says `removed`. Every grant it held, session and `always`, is taken back, as
+    /// are those of each plugin a pack brought, so a plugin installed later under the same id starts
+    /// with none (issue 328). Its folder stays on disk. Returns whether it was installed.
     pub fn remove_plugin(&self, id: &str) -> bool {
         let Some(mut info) = self.registry().get(id) else {
             return false;
         };
         self.remove_pack_plugins(&info);
+        self.revoke_all(id);
         self.unloaded(id);
         if let Some(host) = self.connector_host() {
             host.remove(id);
