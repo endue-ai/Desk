@@ -1,17 +1,18 @@
 // The DOM for the terminal plugin: a tab strip (tabs.js), a search bar (searchbar.js), one xterm.js
 // terminal per session in a pane of its own, a tab's panes split in its panel (split-view.js, issue 315),
 // a right-click menu (menu.js) and a status live region.
-// Each terminal hands what programs say in OSC sequences to the actions, keeps IME composition whole
+// Each terminal hands what programs say besides their text to the actions (wire.js: OSC sequences,
+// OSC 52's copies through clipboard.js, binary mouse reports), keeps IME composition whole
 // (ime.js), asks before a risky paste (paste.js), opens links through shell.open (links.js) and
 // refits when its box or its cells change (fit.js). Keys go to the shell unless keys.js hands them to
 // the desk, the clipboard or search. The emulator is vendored in ./vendor (ADR 0037).
+import { createProgramCopy } from "./clipboard.js";
 import { createDrops } from "./drops.js";
 import { watchFit } from "./fit.js";
 import { createImeGuard } from "./ime.js";
 import { createLinks } from "./links.js";
 import { createMenu, paneItems } from "./menu.js";
 import { createNotes } from "./notes.js";
-import { CODES } from "./osc.js";
 import { createPasteGuard } from "./paste.js";
 import { createSearch } from "./search.js";
 import { createSearchBar } from "./searchbar.js";
@@ -23,13 +24,15 @@ import { SearchAddon } from "./vendor/addon-search.mjs";
 import { Unicode11Addon } from "./vendor/addon-unicode11.mjs";
 import { WebLinksAddon } from "./vendor/addon-web-links.mjs";
 import { Terminal } from "./vendor/xterm.mjs";
+import { wireProgram } from "./wire.js";
 
 /**
  * @typedef {import("./keys.js").KeyPress} KeyPress
  * @typedef {import("./keys.js").Decision} Decision
  * @typedef {ReturnType<typeof import("./theme.js").terminalOptions>} Options
  * @typedef {{
- *   input(id: string, data: string): unknown, resize(id: string, cols: number, rows: number): unknown,
+ *   input(id: string, data: import("./pipe.js").Input): unknown,
+ *   resize(id: string, cols: number, rows: number): unknown,
  *   select(id: string): unknown, activate(id: string): unknown, close(id: string): unknown,
  *   retitle(id: string, title: string): unknown, bell(id: string): unknown,
  *   key(press: KeyPress, hasSelection: boolean): Decision,
@@ -42,6 +45,7 @@ import { Terminal } from "./vendor/xterm.mjs";
  * @typedef {{
  *   bridge: Parameters<typeof createLinks>[0]["bridge"], platform: import("./shell.js").Platform,
  *   pasteWarning(): import("./paste.js").Warn, dnd?: import("@endue-ai/plugin-sdk").PluginDnd,
+ *   programCopy?(): boolean,
  * }} Deps
  * @typedef {{ term: Terminal, fit: FitAddon, search: ReturnType<typeof createSearch>, pane: HTMLElement, note: HTMLElement | null, guard: ReturnType<typeof createPasteGuard> | null, tab: string, title: string, unread: number, ended: boolean }} Item
  */
@@ -122,6 +126,9 @@ export function createView(doc, actions, options, deps) {
   }
 
   const copy = () => doc.execCommand("copy");
+  const title = (/** @type {string} */ id) => items.get(id)?.title ?? "The program";
+  const enabled = deps.programCopy ?? (() => true);
+  const programCopy = createProgramCopy({ doc, say, title, enabled, chord: chord("C") });
   const find = () => bar.show(shownItem()?.term.getSelection() ?? "");
 
   /** xterm asks before it handles a key: false leaves the key to the browser, and so to the desk. */
@@ -225,15 +232,8 @@ export function createView(doc, actions, options, deps) {
       area?.addEventListener("compositionstart", () => ime.start());
       area?.addEventListener("compositionupdate", (e) => ime.update(e.data ?? ""));
       area?.addEventListener("compositionend", (e) => ime.end(e.data ?? ""));
-      for (const code of CODES) {
-        term.parser.registerOscHandler(code, (data) => {
-          actions.osc(id, code, data);
-          return true;
-        });
-      }
+      wireProgram(term, id, actions, programCopy);
       term.onResize(({ cols, rows }) => actions.resize(id, cols, rows));
-      term.onTitleChange((next) => actions.retitle(id, next));
-      term.onBell(() => actions.bell(id));
       term.onSelectionChange(() => {
         if (current.copyOnSelect && term.hasSelection()) copy();
       });
