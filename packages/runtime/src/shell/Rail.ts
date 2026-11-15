@@ -2,7 +2,9 @@
  * Right status rail: six icon buttons with a dot and a count, a tooltip on hover, a popover on
  * click; and one more, Arrange windows, whose actions (Tile, Cascade, Spread, Restore) show as
  * soon as the pointer is on it (ADR 0220), stay while the pointer is on them, and go once it has
- * left both. A click or Enter keeps them open, as the other buttons' popovers are.
+ * left both. A click or Enter keeps them open, as the other buttons' popovers are. The buttons
+ * stand in three groups with a rule between: what the desk thinks with and sees, where it runs
+ * and whether it listens, and Arrange. A button whose state is on is filled.
  */
 
 import { arrangeText } from "../arrange/copy";
@@ -12,6 +14,7 @@ import type { BrainName } from "../bridge/types";
 import { toggleListening } from "../eris/hey";
 import { agentName, isOpen } from "../system/agents";
 import { layoutOf } from "./actions";
+import { mountBarTip, withTip } from "./bar-tip";
 import type { ShellCtx } from "./context";
 import { type Child, h, listen, render } from "./dom";
 import { icon } from "./icons";
@@ -23,7 +26,12 @@ interface Item {
   label: string;
   dot?: "success" | "info" | "warning" | "active" | "attention";
   count?: number;
+  /** Its state is on: the button is filled. */
+  on?: boolean;
 }
+
+/** The buttons a rule stands before: each starts a group. */
+const GROUP_STARTS: readonly RailId[] = ["desks", "arrange"];
 
 /** How long the pointer may be off both the Arrange button and its actions before they go: the
  * time to cross the gap between the rail and its popover, where the pointer is over a window. */
@@ -78,6 +86,7 @@ function items(ctx: ShellCtx, s: DeskState): Item[] {
       icon: "mic",
       label: ctx.tr(s.listening ? "listenOn" : "listenOff"),
       dot: s.listening ? "active" : undefined,
+      on: s.listening,
     },
     { id: "arrange", icon: "arrange", label: arrangeText(s.lang, "strip") },
   ];
@@ -224,10 +233,10 @@ function body(ctx: ShellCtx, id: RailId, s: DeskState): Child[] {
 
 export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
   const el = h("aside", { class: "rail float-bar", "aria-label": "Status" });
-  const tooltip = h("div", { class: "tooltip", role: "tooltip", id: "rail-tooltip", hidden: true });
+  root.append(el);
+  const tip = mountBarTip(root, el, { id: "rail-tooltip", edge: "right", controls: "[data-rail]" });
   const pop = h("div", { class: "rail-popover-slot" });
-  root.append(el, tooltip, pop);
-  let tipFor: RailId | null = null;
+  root.append(pop);
   /** The Arrange actions show because the pointer is on them: they go when it has left. */
   let hovered = false;
   let leaving: number | undefined;
@@ -253,63 +262,53 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
     }, LEAVE_MS);
   };
 
-  const showTip = (button: HTMLElement | null) => {
-    const s = ctx.store.get();
-    const item = button ? items(ctx, s).find((i) => i.id === button.dataset.rail) : undefined;
-    tipFor = item?.id ?? null;
-    if (!button || !item || s.popover === item.id) {
-      tooltip.hidden = true;
-      return;
-    }
-    tooltip.textContent = item.label;
-    tooltip.hidden = false;
-    // Level with the button as drawn: the rail is centred by a transform that offsetTop leaves out.
-    const at = button.getBoundingClientRect();
-    tooltip.style.top = `${at.top + at.height / 2 - root.getBoundingClientRect().top}px`;
-  };
-
   const draw = () => {
     const s = ctx.store.get();
     const visible = layoutOf(s).rail.visible;
     el.hidden = !visible;
     pop.hidden = !visible;
-    if (!visible) tooltip.hidden = true;
     const list = items(ctx, s);
-    render(el, () =>
-      list.map((item) =>
-        h(
-          "button",
-          {
-            class: `icon-button rail-button${s.popover === item.id ? " is-open" : ""}`,
-            type: "button",
-            "data-key": `rail-${item.id}`,
-            "data-rail": item.id,
-            "aria-label": item.label,
-            "aria-expanded": item.id === "listen" ? undefined : String(s.popover === item.id),
-            "aria-pressed": item.id === "listen" ? String(s.listening) : undefined,
-            onClick: () => {
-              if (item.id === "listen") return void toggleListening(ctx);
-              // A press on Arrange while its actions show under the pointer keeps them.
-              if (item.id === "arrange" && hovered && s.popover === "arrange") {
-                hovered = false;
-                return stay();
-              }
+    const button = (item: Item) =>
+      h(
+        "button",
+        {
+          class: `icon-button rail-button${s.popover === item.id ? " is-open" : ""}${item.on ? " is-on" : ""}`,
+          type: "button",
+          "data-key": `rail-${item.id}`,
+          "data-rail": item.id,
+          "aria-label": item.label,
+          "aria-expanded": item.id === "listen" ? undefined : String(s.popover === item.id),
+          "aria-pressed": item.id === "listen" ? String(s.listening) : undefined,
+          onClick: () => {
+            if (item.id === "listen") return void toggleListening(ctx);
+            // A press on Arrange while its actions show under the pointer keeps them.
+            if (item.id === "arrange" && hovered && s.popover === "arrange") {
               hovered = false;
-              ctx.store.set({ popover: s.popover === item.id ? null : item.id });
-            },
+              return stay();
+            }
+            hovered = false;
+            ctx.store.set({ popover: s.popover === item.id ? null : item.id });
           },
-          item.id === "arrange" ? arrangeIcon("tile", 20) : icon(item.icon, 20),
-          item.dot ? h("span", { class: `dot dot-${item.dot} rail-dot` }) : null,
-          item.count ? h("span", { class: "badge rail-badge" }, item.count) : null,
-        ),
-      ),
+        },
+        item.id === "arrange" ? arrangeIcon("tile", 20) : icon(item.icon, 20),
+        item.dot ? h("span", { class: `dot dot-${item.dot} rail-dot` }) : null,
+        item.count ? h("span", { class: "badge rail-badge" }, item.count) : null,
+      );
+    render(el, () =>
+      list.map((item) => [
+        GROUP_STARTS.includes(item.id)
+          ? h("div", { class: "bar-divider", role: "separator" })
+          : null,
+        // The tooltip says the button's name, and nothing while the button's popover says it.
+        withTip(button(item), () => (visible && s.popover !== item.id ? [item.label] : [])),
+      ]),
     );
     const open = list.find((i) => i.id === s.popover);
     if (s.popover !== "arrange") hovered = false;
     // The Arrange actions lie level with their button, so the pointer goes straight across.
-    const button = open?.id === "arrange" ? el.querySelector('[data-rail="arrange"]') : null;
-    const top = button
-      ? button.getBoundingClientRect().bottom - root.getBoundingClientRect().top
+    const arrange = open?.id === "arrange" ? el.querySelector('[data-rail="arrange"]') : null;
+    const top = arrange
+      ? arrange.getBoundingClientRect().bottom - root.getBoundingClientRect().top
       : el.offsetTop;
     render(pop, () =>
       open
@@ -317,7 +316,7 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
             h(
               "div",
               {
-                class: `popover rail-popover${button ? " is-arrange" : ""}`,
+                class: `popover rail-popover${arrange ? " is-arrange" : ""}`,
                 role: "dialog",
                 "aria-label": open.label,
                 "data-popover": open.id,
@@ -329,7 +328,7 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
           ]
         : [],
     );
-    if (tipFor) showTip(el.querySelector(`[data-rail="${tipFor}"]`));
+    tip.refresh();
   };
   draw();
   const target = (e: Event) =>
@@ -353,25 +352,18 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
     ),
     ctx.runtime.keymap.onChange(draw),
     listen(el, "pointerover", (e) => {
-      const over = target(e);
-      showTip(over);
-      if (over?.dataset.rail === "arrange") hover();
+      if (target(e)?.dataset.rail === "arrange") hover();
       else leave();
     }),
-    listen(el, "pointerleave", () => {
-      showTip(null);
-      leave();
-    }),
+    listen(el, "pointerleave", leave),
     listen(pop, "pointerenter", stay),
     listen(pop, "pointerleave", leave),
-    listen(el, "focusin", (e) => showTip(target(e))),
-    listen(el, "focusout", () => showTip(null)),
   ];
   return () => {
     stay();
     for (const off of offs) off();
+    tip.dispose();
     el.remove();
-    tooltip.remove();
     pop.remove();
   };
 }
