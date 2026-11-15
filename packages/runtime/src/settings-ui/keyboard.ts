@@ -24,7 +24,7 @@ import { recordKey } from "../sequences/record";
 import type { Settings } from "../settings";
 import { h, listen, render } from "../shell/dom";
 import { type SettingsLanguage, settingsText } from "./copy";
-import { globalKeyRow } from "./global-key";
+import { type GlobalKeyOptions, globalKeyRow } from "./global-key";
 import { jumpIndex } from "./jump";
 import { type ConflictWords, conflictsPanel, who } from "./key-conflicts";
 import {
@@ -47,7 +47,7 @@ export interface KeyboardOptions {
   /** A plugin's name, by its id: the list's groups and who set a conflicting key. */
   plugin?: (id: string) => string;
   /** The core, where the key that opens Search Desk from any app is kept (`global-key.ts`). */
-  bridge?: { call(method: string, params?: unknown): Promise<unknown> };
+  bridge?: GlobalKeyOptions["bridge"];
 }
 
 export interface KeyboardPane {

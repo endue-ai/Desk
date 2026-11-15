@@ -17,8 +17,13 @@ const TITLES: Record<string, string> = {
   calendar: "Calendar",
   notes: "Meeting notes",
   tomorrow: "Plan for tomorrow",
+  song: "Morning song",
 };
-const PLUGINS: Record<string, string> = { "endue.notes": "Notes", "endue.calendar": "Calendar" };
+const PLUGINS: Record<string, string> = {
+  "endue.notes": "Notes",
+  "endue.calendar": "Calendar",
+  "endue.player": "Player",
+};
 
 const at = (id: string, plugin: string): SurfacePlacement => ({
   id,
@@ -46,6 +51,8 @@ async function desk() {
     place("1", at("calendar", "endue.calendar")),
     place("1", at("notes", "endue.notes")),
     place("2", at("tomorrow", "endue.notes")),
+    // Popped out of the canvas into an OS window of its own (issue 235).
+    place("2", { ...at("song", "endue.player"), out: { x: 40, y: 40, w: 300, h: 200 } }),
     { op: "rename-desktop", desktop: "2", name: "Home" },
   ]);
   const ctx = { store, wm, runtime: { commands } } as unknown as Ctx;
@@ -77,6 +84,18 @@ describe("desk.windows.find", () => {
     // By the desktop's name.
     const home = (await commands.run(FIND, { query: "home" })) as { results: { id: string }[] };
     expect(home.results.map((r) => r.id)).toEqual(["tomorrow"]);
+    // A window popped out of the canvas is found too, said to be in a window of its own.
+    expect(await commands.run(FIND, { query: "song" })).toEqual({
+      results: [
+        {
+          id: "song",
+          title: "Morning song",
+          detail: "Player · in a window of its own",
+          kind: "window",
+          actions: [{ command: FOCUS, title: "Switch to window", args: { window: "song" } }],
+        },
+      ],
+    });
     // At most `limit`, and nothing for nothing typed.
     const one = (await commands.run(FIND, { query: "e", limit: 1 })) as { results: unknown[] };
     expect(one.results).toHaveLength(1);

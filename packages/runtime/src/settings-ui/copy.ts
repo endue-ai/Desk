@@ -163,6 +163,11 @@ const copy = {
     "{key} also runs “{command}” in the desk; from now on it opens Search Desk instead, from any app.",
   ],
   paletteKeyFailed: ["키를 저장하지 못했습니다: {why}", "The key was not saved: {why}"],
+  paletteKeyTaking: ["{key} 를 잡는 중…", "Taking {key}…"],
+  paletteKeyRefused: [
+    "{key} 는 쓸 수 없습니다: {why}. 전에 쓰던 키가 그대로 남습니다.",
+    "{key} can't be used: {why}. The key held before stays.",
+  ],
 } as const;
 export type SettingsCopy = keyof typeof copy;
 export const settingsText = (lang: SettingsLanguage, key: SettingsCopy): string =>

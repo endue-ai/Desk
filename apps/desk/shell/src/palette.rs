@@ -8,9 +8,12 @@
 
 pub mod shortcut;
 
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+use std::sync::{Arc, Mutex, MutexGuard};
+
 use desk_bridge::{
-    BridgeEvent, CmdInvokePermission, Permission, SearchReadPermission, SearchSystemPermission,
-    UiNotifyPermission,
+    BridgeEvent, CmdInvokePermission, CommandChange, Permission, SearchReadPermission,
+    SearchSystemPermission, UiNotifyPermission,
 };
 use desk_core::Core;
 use desk_web::sender::{PALETTE, Role};
@@ -21,13 +24,15 @@ use winit::event_loop::ActiveEventLoop;
 use crate::eris_window::calls::call;
 use crate::float::{self, Spaces};
 use crate::host::Desk;
-use crate::hotkeys::Action;
+use crate::hotkeys::{Action, PALETTE_DEFAULT};
 use crate::window::Shell;
 
 /// The palette's size, in logical pixels, as the Tauri shell's.
 const SIZE: (f64, f64) = (680.0, 480.0);
 
 const MAC: bool = cfg!(target_os = "macos");
+/// A command the runtime defines once it is up and its notices show (`settings-ui/window.ts`).
+const RUNTIME_UP: &str = "desk.settings.open";
 
 /// The palette's fixed caller may search, run commands and say its key is taken; nothing else.
 pub fn grant(core: &Core) {
@@ -85,44 +90,117 @@ fn setting(core: &Core) -> Option<String> {
     value.get("value")?.as_str().map(str::to_owned)
 }
 
-/// Hold the key in force; the one held before is let go once the new one is had, and kept when it
-/// cannot be (another app holds it), which a notice says.
+/// The key the desk holds for the palette now, as written.
+static HELD: Mutex<Option<String>> = Mutex::new(None);
+/// The runtime is up and shows notices: desk.settings.open is registered.
+static READY: AtomicBool = AtomicBool::new(false);
+/// A notice that came before the runtime could show it, sent once it can.
+static PENDING: Mutex<Option<(String, String)>> = Mutex::new(None);
+
+/// Hold the key in force. When it cannot be had (another app holds it, or it does not read as a
+/// key) the one held before stays; at start, with none held yet, ⌘⇧Space is taken instead, so
+/// Search Desk always has a key. A notice says so, held until the runtime can show it, and Settings
+/// › Keyboard learns what is held from `palette.shortcut.held` (`shortcut::held_report`).
 fn register(shell: &mut Shell) {
-    // ⌘⇧Space leaves macOS Spotlight's and the input-source shortcuts alone.
     let env = std::env::var("DESK_PALETTE_SHORTCUT").ok();
     let wanted = shortcut::chosen(env.as_deref(), setting(&shell.desk.core).as_deref());
-    if let Err(why) = shell.hotkeys.register(Action::Palette, &wanted) {
-        eprintln!("Search Desk shortcut unavailable ({wanted}): {why}. Use the tray menu.");
-        let (title, body) = shortcut::taken(&wanted, MAC, &why);
-        let request = json!({
-            "id": 0,
-            "method": "ui.notify",
-            "params": { "title": title, "body": body, "level": "warning",
-                        "scope": { "permission": "ui:notify" } },
-        });
-        if let Err(why) = call(&shell.desk.core, PALETTE, request) {
-            eprintln!("Search Desk: the notice was not shown ({why})");
+    let before = lock(&HELD).clone();
+    let refused = match shell.hotkeys.register(Action::Palette, &wanted) {
+        Ok(()) => {
+            *lock(&HELD) = Some(wanted.clone());
+            None
+        }
+        Err(why) => {
+            eprintln!("Search Desk shortcut unavailable ({wanted}): {why}. Use the tray menu.");
+            if before.is_none()
+                && wanted != PALETTE_DEFAULT
+                && shell
+                    .hotkeys
+                    .register(Action::Palette, PALETTE_DEFAULT)
+                    .is_ok()
+            {
+                *lock(&HELD) = Some(PALETTE_DEFAULT.to_owned());
+            }
+            Some(why)
+        }
+    };
+    // A key refused while the desk runs is not kept for the next start: the setting goes back to
+    // the key held. One refused at start stays chosen; the other app may let it go by then.
+    if let (Some(_), Some(before), None) = (&refused, &before, &env) {
+        let request = json!({ "id": 0, "method": "settings.set",
+                              "params": { "key": shortcut::KEY, "value": before } });
+        if let Err(why) = call(&shell.desk.core, shortcut::OWNER, request) {
+            eprintln!("Search Desk: the refused key stays saved ({why})");
+        }
+    }
+    let held = lock(&HELD).clone();
+    let report = shortcut::held_report(
+        held.as_deref(),
+        refused.as_deref().map(|why| (&*wanted, why)),
+    );
+    let request = json!({ "id": 0, "method": "settings.set",
+                          "params": { "key": shortcut::HELD_KEY, "value": report } });
+    if let Err(why) = call(&shell.desk.core, shortcut::OWNER, request) {
+        eprintln!("Search Desk: what its key is was not said to Settings ({why})");
+    }
+    if let Some(why) = refused {
+        *lock(&PENDING) = Some(shortcut::taken(&wanted, MAC, &why));
+        if READY.load(Relaxed) {
+            notice(&shell.desk.core);
         }
     }
 }
 
-/// desk.palette.shortcut changing while the desk runs: Settings › Keyboard, or init.yaml.
+/// The notice waiting, if any, as the palette's caller.
+fn notice(core: &Core) {
+    let Some((title, body)) = lock(&PENDING).take() else {
+        return;
+    };
+    let request = json!({
+        "id": 0,
+        "method": "ui.notify",
+        "params": { "title": title, "body": body, "level": "warning",
+                    "scope": { "permission": "ui:notify" } },
+    });
+    if let Err(why) = call(core, PALETTE, request) {
+        eprintln!("Search Desk: the notice was not shown ({why})");
+    }
+}
+
+/// The runtime coming up (its notices can show from then on), and desk.palette.shortcut changing
+/// while the desk runs: Settings › Keyboard writes it with settings.set, which says so.
 fn watch(desk: &Desk) -> std::io::Result<()> {
     let events = desk.core.events().subscribe();
-    let pump = desk.pump.clone();
+    let (pump, core) = (desk.pump.clone(), Arc::clone(&desk.core));
     std::thread::Builder::new()
         .name("desk-palette-events".to_owned())
         .spawn(move || {
             for event in events {
-                if let BridgeEvent::SettingsChanged(changed) = event
-                    && changed.data.owner == shortcut::OWNER
-                    && changed.data.key == shortcut::KEY
-                {
-                    pump.run(|shell, _| register(shell));
+                match event {
+                    BridgeEvent::CmdChanged(changed)
+                        if changed.data.id == RUNTIME_UP
+                            && changed.data.change == CommandChange::Registered =>
+                    {
+                        READY.store(true, Relaxed);
+                        notice(&core);
+                    }
+                    BridgeEvent::SettingsChanged(changed)
+                        if changed.data.owner == shortcut::OWNER
+                            && changed.data.key == shortcut::KEY =>
+                    {
+                        pump.run(|shell, _| register(shell));
+                    }
+                    _ => {}
                 }
             }
         })?;
     Ok(())
+}
+
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// The shortcut: hide the palette when it shows, else show it.

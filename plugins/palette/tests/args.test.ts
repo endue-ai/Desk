@@ -33,6 +33,21 @@ describe("a command's arguments", () => {
     expect(entries[0].argsSchema).toEqual(schema);
   });
 
+  it("leaves out a command whose required args cannot be typed: a list or an object", () => {
+    const dispatch = {
+      id: "desk.agents.dispatch",
+      title: "Dispatch tasks",
+      provider: "desk",
+      argsSchema: {
+        type: "object",
+        properties: { tasks: { type: "array" }, note: { type: "string" } },
+        required: ["tasks"],
+      },
+    };
+    const entries = commandEntries([dispatch, { ...rename, provider: "desk" }], [], new Set());
+    expect(entries.map((e: { id: string }) => e.id)).toEqual([rename.id]);
+  });
+
   it("asks each required argument in order", () => {
     const asked = questions(schema);
     expect(asked.map((q: { name: string }) => q.name)).toEqual(["name", "side", "count"]);
@@ -110,6 +125,20 @@ describe("the palette asks for them", () => {
       name: "Work",
       side: "right",
     });
+  });
+
+  it("Enter with nothing typed says what the question needs", async () => {
+    const palette = await mount({ commands });
+    palette.type("rename");
+    await vi.advanceTimersByTimeAsync(0);
+    palette.key("Enter");
+    await vi.advanceTimersByTimeAsync(0);
+    palette.key("Enter");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(document.querySelector('[data-testid="status"]')?.textContent).toBe(
+      "name: type something",
+    );
+    expect(palette.run).not.toHaveBeenCalledWith("desk.shell.desktop-rename", expect.anything());
   });
 
   it("Escape on the first argument goes back to the commands", async () => {

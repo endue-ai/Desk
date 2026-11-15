@@ -5,7 +5,10 @@
  * restart (`apps/desk/shell/src/palette.rs`); `DESK_PALETTE_SHORTCUT` still wins there. It is
  * recorded as any other key, one chord, and kept in the shell's shortcut syntax
  * (`CommandOrControl+Shift+Space`, as `endue.eris.shortcut` is). A key Eris summons with is refused;
- * one the desk binds is kept, saying in words that the desk gives it up.
+ * one the desk binds is kept, saying in words that the desk gives it up. The row shows the key the
+ * shell holds, which the shell reports in `palette.shortcut.held`: a key another app holds, or one
+ * the shell cannot read, is said in words and the key held before stays. A desk without the shell
+ * (the browser) never answers; after a moment the row shows the key saved.
  */
 import type { Platform } from "../input";
 import { splitChord } from "../sequences/chord";
@@ -19,6 +22,10 @@ import { type SettingsLanguage, settingsText } from "./copy";
 /** The person's name for the setting, and the runtime's own key in the core. */
 export const PALETTE_KEY = "desk.palette.shortcut";
 export const CORE_KEY = "palette.shortcut";
+/** What the shell holds: `{ shortcut, refused: { shortcut, why } | null }`, owner `desk`. */
+export const HELD_KEY = "palette.shortcut.held";
+/** How long the row waits for the shell's answer before it shows the key saved. */
+export const ANSWER_MS = 3000;
 /** The shell's default (`hotkeys.rs`, PALETTE_DEFAULT). */
 export const DEFAULT = "CommandOrControl+Shift+Space";
 const ERIS = "endue.eris.shortcut";
@@ -84,8 +91,17 @@ export function toChord(accelerator: string, platform: Platform): string {
   return [...ORDER.filter((m) => held.has(m)), name].join("+");
 }
 
+interface Held {
+  shortcut?: unknown;
+  refused?: { shortcut?: unknown; why?: unknown } | null;
+}
+
 export interface GlobalKeyOptions {
-  bridge: { call(method: string, params?: unknown): Promise<unknown> };
+  bridge: {
+    call(method: string, params?: unknown): Promise<unknown>;
+    /** The core's events: the shell's answer comes as settings.changed of HELD_KEY. */
+    onEvent?(listener: (event: { event: string; data?: unknown }) => void): () => void;
+  };
   /** The runtime's settings, where Eris's key is read. */
   settings: Pick<Settings, "get">;
   platform: Platform;
@@ -109,6 +125,9 @@ export function globalKeyRow(options: GlobalKeyOptions): GlobalKeyRow {
   const tr = (key: Parameters<typeof settingsText>[1]) => settingsText(language, key);
   let held = DEFAULT;
   let stop: (() => void) | undefined;
+  /** The key just saved, waiting for the shell's answer, and what to say once it holds it. */
+  let pending: { accelerator: string; said: string; timer: ReturnType<typeof setTimeout> } | null =
+    null;
   const keys = h("span", { class: "keys", tabindex: "-1", "data-key": `setting-${PALETTE_KEY}` });
   const note = h("p", { class: "settings-key-note", role: "status", "aria-live": "polite" });
   const read = (text: string) => formatSequence(toChord(text, platform), platform);
@@ -133,15 +152,45 @@ export function globalKeyRow(options: GlobalKeyOptions): GlobalKeyRow {
       });
       return;
     }
-    held = accelerator;
-    show();
-    note.textContent = taken
+    const said = taken
       ? fill(tr("paletteKeyDesk"), {
           key: formatSequence(chord, platform),
           command: options.title(taken.command) ?? taken.command,
         })
       : "";
+    if (pending) clearTimeout(pending.timer);
+    note.textContent = fill(tr("paletteKeyTaking"), { key: formatSequence(chord, platform) });
+    // No shell answers in the browser: the key saved is the one in force next time the shell runs.
+    const timer = setTimeout(() => {
+      if (pending?.accelerator !== accelerator) return;
+      pending = null;
+      held = accelerator;
+      show();
+      note.textContent = said;
+    }, ANSWER_MS);
+    pending = { accelerator, said, timer };
   };
+  /** The shell's answer: the key it holds, and the one it refused with why. */
+  const answered = (value: unknown) => {
+    const report = (value ?? {}) as Held;
+    if (typeof report.shortcut === "string" && report.shortcut.trim()) held = report.shortcut;
+    show();
+    const refused = report.refused;
+    const was = pending;
+    if (was) clearTimeout(was.timer);
+    pending = null;
+    if (refused && typeof refused.shortcut === "string")
+      note.textContent = fill(tr("paletteKeyRefused"), {
+        key: read(refused.shortcut),
+        why: String(refused.why ?? ""),
+      });
+    else if (was) note.textContent = was.said;
+  };
+  const offEvents = bridge.onEvent?.((event) => {
+    if (event.event !== "settings.changed") return;
+    const data = event.data as { owner?: unknown; key?: unknown; value?: unknown } | undefined;
+    if (data?.owner === "desk" && data.key === HELD_KEY) answered(data.value);
+  });
   const record = () => {
     stop?.();
     note.textContent = tr("record");
@@ -208,19 +257,28 @@ export function globalKeyRow(options: GlobalKeyOptions): GlobalKeyRow {
     ),
   );
   show();
-  void bridge
-    .call("settings.get", { key: CORE_KEY })
-    .then((answer) => {
-      const value = (answer as { value?: unknown } | undefined)?.value;
-      if (typeof value === "string" && value.trim()) held = value;
-      show();
-    })
-    .catch(() => {});
+  const value = (answer: unknown) => (answer as { value?: unknown } | undefined)?.value;
+  void Promise.all([
+    bridge.call("settings.get", { key: CORE_KEY }).catch(() => undefined),
+    bridge.call("settings.get", { key: HELD_KEY }).catch(() => undefined),
+  ]).then(([saved, report]) => {
+    const text = value(saved);
+    if (typeof text === "string" && text.trim()) held = text;
+    // What the shell holds wins over what was saved: it may have refused it at start.
+    if (value(report) !== undefined) {
+      answered(value(report));
+      return;
+    }
+    show();
+  });
   return {
     el,
     dispose: () => {
       stop?.();
       stop = undefined;
+      offEvents?.();
+      if (pending) clearTimeout(pending.timer);
+      pending = null;
     },
   };
 }
