@@ -21,6 +21,7 @@ import {
   isAt,
   moveAppWindow,
   outOf,
+  windowMenu,
 } from "../support/out";
 import { hostOf } from "../support/pages";
 import {
@@ -212,6 +213,20 @@ const mac = process.platform === "darwin";
       expect((await appWindow(HELLO))?.frame).toEqual(PLACE);
     });
 
+    it("out, it is listed in the Window menu by its title, and no floating window is", async () => {
+      await browser.waitUntil(async () => (await windowMenu())?.includes("E2E Hello") === true, {
+        timeoutMsg: "the Window menu does not list the window out of the canvas",
+      });
+      // Search Desk shown, then hidden again: the palette and the island float, and are not listed.
+      const toggle = () => shellCommand("compositor_window", { shortcut: "search" });
+      await toggle();
+      const listed = await windowMenu();
+      await toggle();
+      expect(listed).not.toContain("Search Desk");
+      expect(listed).not.toContain("endue island");
+      expect(listed).not.toContain("Eris is using your computer");
+    });
+
     it("docked, it is back at its place on the canvas with its state", async () => {
       const out = byId(await deskNow(), HELLO) as Window;
       await countUp(1);
@@ -232,6 +247,12 @@ const mac = process.platform === "darwin";
       expect(await count()).toBe("3");
       // A window not out does not dock.
       await expect(run(DOCK, { window: HELLO })).rejects.toThrow();
+    });
+
+    it("docked, it leaves the Window menu", async () => {
+      await browser.waitUntil(async () => !(await windowMenu()).includes("E2E Hello"), {
+        timeoutMsg: "the Window menu still lists the docked window",
+      });
     });
 
     it("after a restart it comes back out where it was, with the canvas's windows on the canvas", async () => {
