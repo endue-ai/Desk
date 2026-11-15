@@ -9,6 +9,7 @@ mod export;
 mod files;
 mod health;
 mod lock;
+mod open;
 mod plugin_test;
 mod remote;
 mod theme;
@@ -59,6 +60,7 @@ fn main() -> ExitCode {
         Action::LastCrash(data) => health::last_crash(data, args.json),
         Action::Remote(remote) => remote::run(remote, args.json),
         Action::Mcp { agent, plugins } => mcp(agent, plugins),
+        Action::Open(target) => open::run(&target),
     }
 }
 
