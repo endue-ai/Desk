@@ -60,6 +60,7 @@ fn hosted_parts(palette: bool, dock: [f64; 4], more: &[Value]) -> Hosted {
     let adopt = desk_wm::edits::Edit::Adopt {
         id: "endue.notes".into(),
         title: "Notes".into(),
+        window: None,
     };
     hosted.wm.edit(1, &[adopt]);
     let now = Instant::now();

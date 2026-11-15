@@ -36,6 +36,7 @@ fn hosted(palette: f64, question: f64) -> Hosted {
     let adopt = desk_wm::edits::Edit::Adopt {
         id: "endue.notes".into(),
         title: "Notes".into(),
+        window: None,
     };
     hosted.wm.edit(1, &[adopt]);
     hosted.apply(report, Instant::now());

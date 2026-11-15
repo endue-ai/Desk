@@ -70,7 +70,7 @@ async function desk() {
   defineOutCommands(ctx);
   defineArrangeCommands(ctx);
   await commands.settled();
-  return { store, commands, asked, kept };
+  return { store, commands, asked, kept, wm };
 }
 
 const here = (store: Store) => windowsOf(store.get()).map((p) => p.id);
@@ -126,5 +126,19 @@ describe("desk.windows.pop-out and desk.windows.dock", () => {
     expect(store.get().focused).toBe("notes");
     expect([...outIds(store.get())]).toEqual(["notes"]);
     expect(here(store)).not.toContain("notes");
+  });
+
+  it("shows a plugin whose window is out where it is, and opens no window for it (issue 239)", async () => {
+    // What desk.display.show, desk.plugins.open, desk.files.* and desk.buffers.show ask of the
+    // window manager for a plugin's window (`showPlugin`, shell/windows.ts).
+    const { commands, store, wm } = await desk();
+    await wm.edit([{ op: "adopt", id: "endue.notes", title: "Notes" }]);
+    await commands.run(POP_OUT, { window: "notes" });
+    await commands.run(FOCUS, { window: "split" });
+    const before = here(store);
+    await wm.edit([{ op: "show-plugin", id: "endue.notes" }]);
+    expect(store.get().focused).toBe("notes");
+    expect(here(store)).toEqual(before);
+    expect([...outIds(store.get())]).toEqual(["notes"]);
   });
 });

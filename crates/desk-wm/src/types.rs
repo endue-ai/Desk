@@ -254,6 +254,9 @@ pub struct Adopted {
     /// The free area its slot is laid in; `None`: the reference frame's (`geometry::FREE`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub area: Option<Rect>,
+    /// What its manifest asks of its window (`hints.rs`, ADR 0226).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hints: Option<crate::hints::WindowHints>,
 }
 
 /// A key as the DOM names it (`KeyboardEvent.key`: `"ArrowLeft"`, `"Tab"`, `"Enter"`, ...), with

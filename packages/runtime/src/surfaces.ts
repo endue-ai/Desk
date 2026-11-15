@@ -1,3 +1,4 @@
+import type { SurfaceWindow } from "@endue-ai/bridge";
 import { type Edges, edgeOf } from "./edges";
 import { framePages } from "./pages/frames";
 import type { SurfacePages } from "./pages/types";
@@ -21,6 +22,8 @@ export interface SurfaceSpec {
   placement?: string;
   /** Mounted but not shown until `show` (a palette waits for its command). */
   hidden?: boolean;
+  /** What the plugin's manifest asks of its window (ADR 0226); the window host reads it. */
+  window?: SurfaceWindow;
 }
 
 /**

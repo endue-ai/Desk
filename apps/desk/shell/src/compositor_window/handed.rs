@@ -1,7 +1,8 @@
 //! Windows out of the canvas (#235, ADR 0205): the window manager's plan lists them apart from
 //! the windows the compositor draws, and the compositor hands their surfaces to the web host,
-//! which shows them in OS windows of their own (`web_host/app_surfaces.rs`). The plugins
-//! `DESK_APP_WINDOWS` names pop out the first time their window shows in a session, through the
+//! which shows them in OS windows of their own (`web_host/app_surfaces.rs`). The apps whose
+//! manifests say `opens: "out"` (ADR 0226) and the plugins `DESK_APP_WINDOWS` names pop out the
+//! first time their window shows in a session, through the
 //! runtime's `desk.windows.pop-out`, which asks the plugin for its state first. When the desk's
 //! window in use becomes one out of the canvas (`desk.windows.focus`, Eris, a reopen), its OS
 //! window comes to the front; when a desk key pressed in one puts a window of the canvas in use, the
@@ -36,7 +37,7 @@ fn raised() -> &'static Mutex<Option<String>> {
 
 impl CompositorWindow {
     /// Hand the windows out of the canvas to the web host, by surface host, and pop out the
-    /// windows of the plugins the switch names, once a session.
+    /// windows of the apps that open out and of the plugins the switch names, once a session.
     pub(super) fn hand_out(&mut self) {
         let Some(plan) = self.hosted.plan() else {
             return;

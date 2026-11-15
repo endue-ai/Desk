@@ -58,13 +58,22 @@ async function setup(plugins: PluginInfo[]) {
   });
   const launched: Array<{ id: string; wait: boolean }> = [];
   const focused: string[] = [];
+  /** The windows each running plugin has, as PluginHost numbers them (ADR 0212). */
+  const windows = new Map<string, number>();
   defineOpenPlugin({
     commands: hub.commands,
     bridge: client,
     launch: async (id, wait) => {
       launched.push({ id, wait });
+      windows.set(id, Math.max(1, windows.get(id) ?? 0));
     },
     focus: (id) => focused.push(id),
+    another: async (id) => {
+      const open = windows.get(id);
+      if (open === undefined) return undefined;
+      windows.set(id, open + 1);
+      return `${id}@${open + 1}`;
+    },
   });
   await hub.commands.settled();
   const open = (args: unknown) => hub.commands.run("desk.plugins.open", args);
@@ -107,6 +116,34 @@ describe("desk.plugins.open", () => {
     await open({ plugin: "endue.git", waitForReady: true });
     expect(launched).toEqual([{ id: "endue.git", wait: true }]);
     expect(focused).toEqual(["endue.git"]);
+  });
+
+  it("opens an app that has many windows in one more, and its first as always (ADR 0226)", async () => {
+    const many: PluginManifest = {
+      ...git,
+      id: "example.app",
+      surfaces: [{ id: "main", placement: "center", instances: "many" }],
+    };
+    const { open, launched, focused } = await setup([installed(many)]);
+    // Not running yet: its first window opens.
+    expect(await open({ plugin: "example.app", another: true })).toBeUndefined();
+    expect(launched).toEqual([{ id: "example.app", wait: false }]);
+    expect(await open({ plugin: "example.app", another: true })).toEqual({
+      window: "example.app@2",
+    });
+    expect(await open({ plugin: "example.app", another: true })).toEqual({
+      window: "example.app@3",
+    });
+    expect(focused).toEqual(["example.app", "example.app@2", "example.app@3"]);
+    expect(launched).toHaveLength(1);
+  });
+
+  it("refuses one more window of a plugin that has one, and says why", async () => {
+    const { open, launched } = await setup([installed(git)]);
+    await expect(open({ plugin: "endue.git", another: true })).rejects.toThrow(
+      'endue.git opens in one window: its manifest\'s first surface does not say instances: "many"',
+    );
+    expect(launched).toEqual([]);
   });
 
   it("leaves a plugin it does not know to the launcher, which says so", async () => {

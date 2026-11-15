@@ -59,7 +59,7 @@ pub fn free_slot(taken: impl IntoIterator<Item = usize>) -> usize {
 
 /// The windows of plugin surfaces no layout places (`autoPlacements`), each in its slot: its own,
 /// or its place in `adopted`, in the free area it arrived in. A normal window, at its slot on
-/// screen as the canvas was when it arrived. `skip` names the plugins that have a window
+/// screen as the canvas was when it arrived, as large as its manifest asks (`hints.rs`). `skip` names the plugins that have a window
 /// elsewhere: placed by the desktop's layout, in the drawer or on another desktop (the desk state
 /// decides, #79).
 pub fn slot_windows(adopted: &[Adopted], skip: impl Fn(&str) -> bool) -> Vec<Placement> {
@@ -68,7 +68,10 @@ pub fn slot_windows(adopted: &[Adopted], skip: impl Fn(&str) -> bool) -> Vec<Pla
         .enumerate()
         .filter(|(_, a)| !skip(&a.id))
         .map(|(i, a)| {
-            let rect = slot_rect_in(a.slot.unwrap_or(i), a.area.unwrap_or(FREE));
+            let area = a.area.unwrap_or(FREE);
+            let slot = slot_rect_in(a.slot.unwrap_or(i), area);
+            // The size its manifest asks for, where it asks (ADR 0226).
+            let rect = a.hints.map_or(slot, |h| h.first(slot, area, MIN));
             let at = a.at.unwrap_or(ORIGIN);
             let mut p = Placement::new(
                 a.id.clone(),
@@ -116,6 +119,7 @@ mod tests {
             slot: None,
             at: None,
             area: None,
+            hints: None,
         });
         let windows = slot_windows(&adopted, |id| id == "b");
         let ids: Vec<&str> = windows.iter().map(|p| p.id.as_str()).collect();

@@ -12,7 +12,7 @@ import { installInspect } from "./inspect/install";
 import type { Notice } from "./notify";
 import type { SurfacePages } from "./pages/types";
 import { PluginHost, type PluginHostOptions } from "./plugins";
-import { defineOpenPlugin } from "./plugins-open";
+import { anotherWindow, defineOpenPlugin } from "./plugins-open";
 import { installAliases } from "./policies/aliases";
 import { installBuffers } from "./policies/buffers";
 import type { DeskContext } from "./policies/context";
@@ -321,6 +321,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       bridge,
       launch: (id, waitForReady) => host.launch(id, waitForReady),
       focus: focusSurface,
+      another: anotherWindow(host),
     });
     plugins = {
       // A desk without plugin:manage still works: it shows no plugins and says why (start.failed).

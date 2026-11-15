@@ -209,6 +209,7 @@ mod what_the_spread_shows {
             slot: Some(slot),
             at: None,
             area: None,
+            hints: None,
         });
         let mut desk = layout();
         desk.extend(slot_windows(&adopted, |_| false));

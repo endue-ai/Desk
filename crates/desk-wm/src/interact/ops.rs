@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 use crate::coordinates::screen_rect;
 use crate::fill::own_floating;
 use crate::geometry::{clamp_rect, screen_area};
-use crate::pane_min::window_min;
 use crate::types::{Fill, Offset, Rect};
 
 use super::publish::Change;
@@ -94,10 +93,12 @@ impl Wm {
             Op::Spread | Op::PopOut { .. } | Op::Dock | Op::OutFrame { .. } | Op::Focus => {
                 Vec::new()
             }
+            // A window whose plugin keeps its size is not resized (ADR 0226).
+            Op::Resize { .. } if !self.drawn.resizable(&p) => Vec::new(),
             Op::Resize { dw, dh } => {
                 let (rect, floating) = self.on_screen(&p);
                 let bounds = floating.then(|| screen_area(self.screen.w, self.screen.h));
-                let least = window_min(&p.panes());
+                let least = self.drawn.least_of(&p);
                 let resized = resize_rect_min(rect, Grip::Se, *dw, *dh, bounds, least);
                 self.place(&id, resized, floating)
             }

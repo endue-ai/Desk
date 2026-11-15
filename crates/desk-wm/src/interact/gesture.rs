@@ -23,7 +23,6 @@ use crate::fill::{own_floating, unfilled};
 use crate::geometry::{MIN, clamp_rect, screen_area};
 use crate::math::round;
 use crate::pan::PanDrag;
-use crate::pane_min::window_min;
 use crate::snap::Aim;
 use crate::types::{Fill, Offset, Placement, Point, Rect, Size};
 
@@ -146,7 +145,8 @@ impl Gesture {
                 true
             }
             Kind::Resize { .. } => {
-                let Some(p) = self.placement(desk) else {
+                // A window whose plugin keeps its size has no edge to drag (ADR 0226).
+                let Some(p) = self.placement(desk).filter(|p| desk.resizable(p)) else {
                     return false;
                 };
                 self.window = Some(Window {
@@ -154,7 +154,7 @@ impl Gesture {
                     floating: own_floating(&p),
                     aim: None,
                     unsnap: None,
-                    least: window_min(&p.panes()),
+                    least: desk.least_of(&p),
                 });
                 true
             }

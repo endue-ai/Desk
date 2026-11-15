@@ -10,6 +10,8 @@
 //! - `snap`, `settle`, `fill`: 8-way snap (ADR 0128), the glide into a part, filling and coming
 //!   back.
 //! - `tiling`, `arrange`: slots for unplaced windows (ADR 0040), tile and cascade (ADR 0116).
+//! - `hints`: what a plugin's manifest asks of its window: first size, smallest size, fixed (ADR
+//!   0226).
 //! - `spread`: the spread's places, poses and model, and its motions on the caller's clock (ADR
 //!   0116).
 //! - `cover`, `placed`: which plugins are out of sight (ADR 0070) and which a layout places.
@@ -39,6 +41,7 @@ pub mod drawer;
 pub mod edits;
 pub mod fill;
 pub mod geometry;
+pub mod hints;
 pub mod host;
 pub mod interact;
 pub mod layout;
@@ -81,6 +84,7 @@ pub use geometry::{
     BELOW_ERIS, DOCK_BAND, FREE, MIN, REF, SAFE, clamp_rect, free_area, free_top, from_screen,
     screen_area, to_screen,
 };
+pub use hints::WindowHints;
 pub use host::{
     Bars, Decision, FrameDoc, FrameState, HostPane, HostWindow, Laid, LiveBudget, OutWindow,
     PageShown, Places, Plan, Seat, Step, Surfaces,

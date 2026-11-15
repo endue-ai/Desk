@@ -68,6 +68,7 @@ mod normal_and_floating_windows {
             slot: Some(0),
             at: Some(pan),
             area: None,
+            hints: None,
         }];
         let windows = slot_windows(&adopted, |_| false);
         assert_eq!(windows.len(), 1);

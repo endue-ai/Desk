@@ -13,6 +13,7 @@ fn app(ui: bool, surfaces: &[(&str, bool)]) -> App {
             .iter()
             .map(|(id, placed)| ((*id).into(), *placed))
             .collect(),
+        window: None,
     }
 }
 
@@ -33,25 +34,60 @@ fn the_switch_names_plugins_by_id_separated_by_commas() {
 }
 
 #[test]
-fn the_switch_unset_empty_or_off_is_off() {
-    for value in [
-        None,
-        Some(""),
-        Some(" "),
-        Some(",, ,"),
-        Some("off"),
-        Some("OFF"),
-        Some("0"),
-    ] {
-        let off = Switch::parse(value);
+fn the_switch_off_keeps_every_window_on_the_canvas_whatever_its_manifest_says() {
+    for value in ["off", "OFF", "0", "false", "no"] {
+        let off = Switch::parse(Some(value));
         assert!(!off.is_on(), "{value:?}");
-        assert!(!wants(
-            &off,
-            "endue.terminal",
-            None,
-            Some(app(true, &[("main", true)]))
-        ));
+        let terminal = app(true, &[("main", true)]);
+        assert!(!wants(&off, "endue.terminal", None, Some(terminal)));
+        assert!(!wants(&off, "p.out", None, Some(out_app("center"))));
     }
+}
+
+/// An app whose first surface, placed `placement`, says it opens out of the canvas.
+fn out_app(placement: &str) -> App {
+    let text = format!(
+        r#"{{"id":"p.out","version":"0.1.0","kind":"ui","surfaces":[{{"id":"main","placement":"{placement}","window":{{"opens":"out","size":{{"width":480,"height":360}}}}}},{{"id":"side","placement":"center"}}]}}"#
+    );
+    App::of(&serde_json::from_str(&text).expect("a manifest"))
+}
+
+/// ADR 0226: with the switch unset an app opens where its manifest says.
+#[test]
+fn unset_the_apps_whose_manifests_say_out_open_in_a_window_of_their_own() {
+    for value in [None, Some(""), Some(" "), Some(",, ,")] {
+        let unset = Switch::parse(value);
+        assert_eq!(unset, Switch::Manifests, "{value:?}");
+        assert!(unset.is_on(), "{value:?}");
+        assert!(wants(&unset, "p.out", None, Some(out_app("center"))));
+        assert!(wants(
+            &unset,
+            "p.out",
+            Some("main"),
+            Some(out_app("floating"))
+        ));
+        // Its other surfaces, an app that says nothing or `canvas`, and a surface that is no window.
+        assert!(!wants(
+            &unset,
+            "p.out",
+            Some("side"),
+            Some(out_app("center"))
+        ));
+        let plain = app(true, &[("main", true)]);
+        assert!(!wants(&unset, "endue.terminal", None, Some(plain)));
+        assert!(!wants(&unset, "p.out", None, Some(out_app("left"))));
+        assert!(!wants(&unset, "p.gone", None, None));
+    }
+    let canvas = App {
+        window: serde_json::from_str(r#"{"opens":"canvas"}"#).ok(),
+        ..app(true, &[("main", true)])
+    };
+    assert!(!wants(&Switch::Manifests, "p.canvas", None, Some(canvas)));
+    // Plugins the switch names open out beside the apps that say so.
+    let named = Switch::parse(Some("endue.terminal"));
+    assert!(wants(&named, "p.out", None, Some(out_app("center"))));
+    assert!(wants(&named, "endue.terminal", None, None));
+    assert_eq!(out_app("center").hints().size, Some((480.0, 360.0)));
 }
 
 #[test]
