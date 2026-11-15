@@ -155,10 +155,12 @@
   box-shadow: var(--desk-tab-selected-shadow);
 }
 
+/* A floating bar's tooltip (bar-tip.ts): beside the bar, past the side away from the app's edge
+   the bar is at, level with the control it names; a line for the name and one for what it does. */
 .tooltip {
   position: absolute;
-  right: 92px;
   z-index: var(--z-tooltip);
+  max-width: 320px;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--desk-tooltip-radius);
   background: var(--desk-tooltip);
@@ -170,6 +172,9 @@
   pointer-events: none;
   box-shadow: var(--desk-tooltip-shadow);
 }
+.tooltip[data-edge="left"] { left: var(--bar-reach); }
+.tooltip[data-edge="right"] { right: var(--bar-reach); }
+.tip-line { display: block; overflow: hidden; text-overflow: ellipsis; }
 
 /* A modal: the design system's dialog and its scrim. */
 .scrim {

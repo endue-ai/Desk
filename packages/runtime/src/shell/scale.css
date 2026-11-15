@@ -1,8 +1,8 @@
 /*
  * The shell's scale, read from the design tokens (@endue-ai/ui tokens.css, --desk-*) under the names
  * the shell's sheets use, so the shell and every plugin page measure alike. Colours are theme tokens
- * too (desk.theme, with the shell's own from plugins/shell). Only the layers and the heading metrics
- * are the shell's alone.
+ * too (desk.theme, with the shell's own from plugins/shell). Only the layers, the heading metrics
+ * and the floating bars' shape are the shell's alone, the shape worked out from the tokens.
  */
 
 :root {
@@ -48,6 +48,18 @@
   --radius-md: var(--desk-radius-md);
   --radius-lg: var(--desk-radius-lg);
   --radius-full: var(--desk-radius-full);
+
+  /* One shape for every floating bar (the agent bar, the account bar, the rail). With the default
+     theme: 16 from the app's edge, 52 wide, a 16 radius; a button 36 with a 10 radius, an avatar
+     34, a rule 20; a bar's popovers and its tooltip start 12 past it, 80 from the edge. */
+  --bar-inset: var(--desk-space-4);
+  --bar-width: calc(var(--desk-control-lg) + var(--desk-space-1));
+  --bar-radius: calc(var(--desk-radius-md) * 2);
+  --bar-button: calc(var(--desk-control-md) - var(--desk-space-1));
+  --bar-button-radius: calc(var(--desk-icon-button-radius) * 1.25);
+  --bar-avatar: calc(var(--bar-button) - 2px);
+  --bar-divider: var(--desk-space-5);
+  --bar-reach: calc(var(--bar-inset) + var(--bar-width) + var(--desk-space-3));
 
   --motion-fast: var(--desk-motion-fast);
   --motion-base: var(--desk-motion-base);

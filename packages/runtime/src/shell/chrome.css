@@ -124,48 +124,76 @@
 .mini-dot { width: 4px; height: 4px; border-radius: 1px; border: 1px solid currentColor; }
 .mini-dot.is-on { background: currentColor; }
 
-/* Left bar */
+/* Left bar: the agent bar. An avatar is a bar's button (kit.css, shell.css) with a face: it
+   stands in a button's place, a little smaller, so the ring around it has room. */
 
-.sidebar { left: var(--space-6); }
-.bar-group { display: grid; justify-items: center; gap: var(--space-2); }
-.bar-divider { width: 28px; height: 1px; margin: var(--space-1) 0; background: var(--desk-border); }
+.sidebar { left: var(--bar-inset); }
+.bar-group { display: grid; flex: none; justify-items: center; gap: var(--space-2); }
 
-.avatar,
-.space {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 2px solid transparent;
-  background: var(--desk-secondary);
+.float-bar .avatar,
+.float-bar .space {
+  /* The face's colour, kept under the hover's tint. */
+  --face: var(--desk-secondary);
+  width: var(--bar-avatar);
+  height: var(--bar-avatar);
+  margin: calc((var(--bar-button) - var(--bar-avatar)) / 2);
+  border: 0;
+  background: var(--face);
   color: var(--desk-secondary-foreground);
   font-size: var(--text-sm);
   font-weight: 600;
 }
-.avatar { border-radius: var(--radius-full); }
-.avatar.is-selected { border-color: var(--desk-accent); }
-.avatar.is-waiting { border: 2px dashed var(--desk-input); opacity: 0.5; }
-.avatar-dot {
-  position: absolute;
-  right: -3px;
-  bottom: -3px;
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--desk-card);
+.float-bar :is(.avatar, .space):hover:not(:disabled) {
+  background: linear-gradient(var(--desk-hover), var(--desk-hover)) var(--face);
 }
-.space { border-radius: 10px; }
-.space.is-selected { border-color: var(--desk-accent); background: var(--desk-primary-soft); color: var(--desk-text); }
+/* An agent is round; a space and an agent program on this computer have a button's corners. */
+.float-bar .avatar { border-radius: var(--radius-full); }
+.float-bar .space,
+.float-bar .local-avatar { border-radius: var(--bar-button-radius); }
+
+/* An agent's state is a ring of the avatar's own, with nothing laid over the avatar: a gap in the
+   bar's colour, then the state's (working, or waiting for an answer). At rest there is no ring
+   and the ink is muted. */
+.float-bar .avatar[data-presence] { color: var(--desk-text-muted); }
+.float-bar .avatar[data-presence="working"],
+.float-bar .avatar[data-presence="waiting"] { color: var(--desk-secondary-foreground); }
+.float-bar .avatar[data-presence="working"] {
+  box-shadow: 0 0 0 2px var(--desk-card), 0 0 0 3.5px var(--desk-info);
+}
+.float-bar .avatar[data-presence="waiting"] {
+  box-shadow: 0 0 0 2px var(--desk-card), 0 0 0 3.5px var(--desk-warning);
+}
+
+/* The selected agent or space: a 3 by 18 bar at the agent bar's inner left edge. A pseudo-element,
+   so the desk keeps its one primary fill. The selected space keeps its soft fill too. */
+.float-bar .avatar.is-selected::before,
+.float-bar .space.is-selected::before {
+  content: "";
+  position: absolute;
+  top: calc(50% - 9px);
+  left: calc((var(--bar-avatar) - var(--bar-width)) / 2 + 1px);
+  width: 3px;
+  height: 18px;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  background: var(--desk-primary);
+}
+.float-bar .space.is-selected { --face: var(--desk-primary-soft); color: var(--desk-text); }
 
 /* Rail */
 
-.rail { right: var(--space-6); gap: var(--space-1); padding: var(--space-2) 0; }
-.rail-dot { position: absolute; right: 7px; bottom: 7px; }
-.rail-badge { top: 2px; right: 0; }
+.rail { right: var(--bar-inset); }
+/* A state dot at the button's bottom right, ringed 2px in the bar's colour so it reads over the
+   icon; a theme's outline of its dots (a light one's) stays next to the dot. */
+.rail-dot {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  box-shadow: 0 0 0 1px var(--desk-dot-outline), 0 0 0 2px var(--desk-card);
+}
+.rail-badge { top: 0; right: -2px; }
 .rail-popover {
   position: absolute;
-  right: 92px;
+  right: var(--bar-reach);
   width: 280px;
   padding: var(--space-2);
   display: grid;
