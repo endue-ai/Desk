@@ -39,7 +39,7 @@ fn key(bff: &Bff) -> String {
     format!("endue-id@127.0.0.1:{}", bff.port)
 }
 
-fn sign_in(account: &Account) {
+fn sign_in(account: &Arc<Account>) {
     account.sign_in(Screen::SignIn);
     let until = Instant::now() + Duration::from_secs(5);
     while matches!(account.status().state, State::SigningIn(_)) && Instant::now() < until {
