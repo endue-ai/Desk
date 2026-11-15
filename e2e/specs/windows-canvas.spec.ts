@@ -83,7 +83,7 @@ describe("canvas: resizing and the pan (#82)", () => {
     const floating = await openWindow();
     const unfloated = await windowNow(floating);
     expect(unfloated.state).toBe("normal");
-    await click(toolAt(rectOf(unfloated), "floating"));
+    await click(toolAt(rectOf(unfloated), "floating", false));
     const fixed = await windowUntil(floating, (x) => x.state === "floating", "floating");
     expect(rectOf(fixed)).toEqual(rectOf(unfloated));
     // A plain drag on the canvas does not pan.
@@ -98,7 +98,7 @@ describe("canvas: resizing and the pan (#82)", () => {
     expect(panOf(await deskNow())).toEqual({ x: -120, y: 60 });
     // Floated where it is now, the normal window keeps its place on screen.
     await click(toolAt(rectOf(fixed), "close"));
-    await click(toolAt(rectOf(moved), "floating"));
+    await click(toolAt(rectOf(moved), "floating", false));
     const floated = await windowUntil(canvas, (x) => x.state === "floating", "floating");
     expect(rectOf(floated)).toEqual(rectOf(moved));
   });

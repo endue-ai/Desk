@@ -13,7 +13,7 @@ AT-SPI on Linux), built only while an assistive technology is active:
 - the window `endue Desk`, then:
   - `Desk`: the shell page's own tree (the bars, Eris, menus, the system layer);
   - `Windows`: a list, back to front; each window has its title bar (its title), the tools the page draws
-    in its title bar (Split right, Split down, Floating mode, Pin, Put in drawer, Close: the page's
+    in its title bar (Split right, Split down, Floating mode, Pin, Pop out, Close: the page's
     buttons, pressed as the page's own), and its content: the plugin's tree, or the card the compositor
     draws (asleep, stopped, crashed, loading, not responding) with its buttons (Wait, Stop, Reload);
     a window of several panes has a group per pane;

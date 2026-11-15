@@ -21,6 +21,7 @@ import { launcherBody } from "./samples/launcher";
 import { notesBody } from "./samples/notes";
 import { tomorrowView } from "./samples/tomorrow";
 import { universalBody } from "./samples/universal";
+import { findLeaf, leaves, panesOf } from "./tree";
 
 /** Where a view is shown: its surface and pane. */
 export interface Where {
@@ -54,6 +55,18 @@ export function resolveView(
 ): string {
   if (view === p.id && s.adopted.some((a) => a.id === p.plugin)) return `plugin:${p.plugin}`;
   return view;
+}
+
+/** The pane whose view the title bar names: the focused one, else the first. */
+export function activeLeaf(ctx: Pick<ShellCtx, "store">, p: SurfacePlacement) {
+  const s = ctx.store.get();
+  const tree = panesOf(p);
+  return (s.focused === p.id && s.pane ? findLeaf(tree, s.pane) : undefined) ?? leaves(tree)[0];
+}
+
+/** The view the title bar names, as the pane resolves it (a plugin's surface when it holds one). */
+export function activeView(ctx: Pick<ShellCtx, "store">, p: SurfacePlacement): string {
+  return resolveView(ctx.store.get(), p, activeLeaf(ctx, p)?.view ?? p.id);
 }
 
 export function viewOf(ctx: ShellCtx, view: string): View {

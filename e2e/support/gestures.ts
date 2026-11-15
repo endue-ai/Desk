@@ -30,22 +30,31 @@ export const MOD = process.platform === "darwin" ? KEY.meta : KEY.control;
 
 /**
  * Where the shell draws a window's chrome today (`surface/Surface.ts`, `surface.css`): a 40 px title
- * bar, its six tools 24 px wide every 26 px from 21 px inside the right edge, and the resize grips
+ * bar, its tools 24 px wide every 26 px from 21 px inside the right edge, and the resize grips
  * along the edges (6 px) and in the corners (16 px). The compositor's chrome keeps them (#81).
+ * A window that shows one plugin has six tools; a split window and one of the desk's own views have
+ * no pop-out (#235), so theirs past Close sit one place nearer the edge (`toolAt`'s `popOut`).
+ * No tool puts a window in the drawer (#280): `putAway` runs the command.
  */
 export const TITLE_BAR = 40;
-const TOOLS = ["close", "drawer", "pin", "floating", "split-down", "split-right"] as const;
+const TOOLS = ["close", "pop-out", "pin", "floating", "split-down", "split-right"] as const;
 export type Tool = (typeof TOOLS)[number];
 export type Grip = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
 /** A point on a window's title bar, `dx` from its left edge (past its icon by default). */
 export const titleAt = (w: Rect, dx = 80): Point => ({ x: w.x + dx, y: w.y + TITLE_BAR / 2 });
 
-/** The middle of one of a window's title bar tools. */
-export const toolAt = (w: Rect, tool: Tool): Point => ({
-  x: w.x + w.w - 21 - 26 * TOOLS.indexOf(tool),
-  y: w.y + TITLE_BAR / 2,
-});
+/**
+ * The middle of one of a window's title bar tools: `popOut` false for a window with no pop-out
+ * tool (a split window, or one of the desk's own views).
+ */
+export const toolAt = (w: Rect, tool: Tool, popOut = true): Point => {
+  const place = TOOLS.indexOf(tool);
+  return {
+    x: w.x + w.w - 21 - 26 * (popOut || place === 0 ? place : place - 1),
+    y: w.y + TITLE_BAR / 2,
+  };
+};
 
 /** The middle of one of a window's resize grips. */
 export function gripAt(w: Rect, grip: Grip): Point {

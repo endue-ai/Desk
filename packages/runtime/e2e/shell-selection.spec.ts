@@ -41,7 +41,7 @@ for (const finish of ["drop", "Escape"] as const) {
       await notes.evaluate((el: HTMLTextAreaElement) => el.selectionEnd - el.selectionStart),
     ).toBeGreaterThan(0);
     // A title bar's controls still respond to clicks.
-    await surface.getByRole("button", { name: "Put in drawer" }).click();
+    await surface.getByRole("button", { name: "Close", exact: true }).click();
     await expect(surface).toHaveCount(0);
   });
 }

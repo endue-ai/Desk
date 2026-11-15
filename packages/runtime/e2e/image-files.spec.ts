@@ -57,7 +57,7 @@ test("a tree click opens Images from off, and opens it again after its window cl
 test("opening an existing image brings its window out of the drawer", async ({ page }) => {
   await run(page, "desk.files.open", { path: "~/Documents/photo.jpg" });
   await shown(page, "photo.jpg");
-  await viewer(page).getByRole("button", { name: "Put in drawer", exact: true }).click();
+  await run(page, "desk.windows.put-away", { window: "endue.images" });
   await expect(viewer(page)).toHaveCount(0);
   await run(page, "desk.files.open", { path: "~/Documents/photo.jpg" });
   await shown(page, "photo.jpg");
@@ -71,7 +71,7 @@ test("opening another image brings the viewer out of the drawer before reading i
   );
   await run(page, "desk.files.open", { path: "~/Documents/photo.jpg" });
   await shown(page, "photo.jpg");
-  await viewer(page).getByRole("button", { name: "Put in drawer", exact: true }).click();
+  await run(page, "desk.windows.put-away", { window: "endue.images" });
   await expect(viewer(page)).toHaveCount(0);
   await run(page, "desk.files.open", { path: "~/Documents/picture.png" });
   await shown(page, "picture.png");

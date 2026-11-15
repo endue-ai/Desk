@@ -22,6 +22,7 @@ import {
   onScreen,
   openWindow,
   partOf,
+  putAway,
   rectOf,
   run,
   until,
@@ -137,10 +138,10 @@ describe("plugins: plugin windows in the window manager (#82)", () => {
   });
 
   it("put in the drawer its window goes; shown again, the plugin is back with its state", async () => {
-    const win = await show(HELLO);
+    await show(HELLO);
     await countUp(1);
     const kept = await count();
-    await click(toolAt(rectOf(win), "drawer"));
+    await putAway(HELLO);
     const away = await until(
       (d) => d.windows.some((w) => w.id === HELLO && w.hidden === true),
       "Hello in the drawer",
@@ -152,14 +153,14 @@ describe("plugins: plugin windows in the window manager (#82)", () => {
     });
   });
 
-  it("one click on the drawer tool of a window not in use puts it away (#159)", async () => {
-    // The window put away is the one whose tools are in sight (a slot may reach past the right
-    // edge); the other is in use, shown last.
+  it("one click on the Floating tool of a window not in use floats it (#159)", async () => {
+    // The window floated is the one whose tools are in sight (a slot may reach past the right
+    // edge); the other is in use, shown last. No tool puts a window in the drawer (#280).
     const { w } = (await deskNow()).screen;
-    const inSight = async (id: string) => toolAt(rectOf(await show(id)), "drawer").x < w - 12;
+    const inSight = async (id: string) => toolAt(rectOf(await show(id)), "close").x < w - 12;
     const [away, other] = (await inSight(HELLO)) ? [HELLO, NOTES] : [NOTES, HELLO];
     const using = rectOf(await show(other));
-    const tool = toolAt(rectOf(await windowNow(away)), "drawer");
+    const tool = toolAt(rectOf(await windowNow(away)), "floating");
     const under =
       tool.x >= using.x &&
       tool.x < using.x + using.w &&
@@ -168,15 +169,12 @@ describe("plugins: plugin windows in the window manager (#82)", () => {
     expect({ tool, under }).toMatchObject({ under: false });
     expect(tool.x).toBeLessThan(w - 12);
     await click(tool);
-    const put = await until(
-      (d) => d.windows.some((x) => x.id === away && x.hidden === true),
-      `${away} in the drawer after one click`,
-    );
-    expect(onScreen(put).some((x) => x.id === away)).toBe(false);
-    // It stays there: nothing that followed the press shows it again.
+    await windowUntil(away, (x) => x.state === "floating", "floating after one click");
+    // It stays so: nothing that followed the press pressed the tool again.
     await browser.pause(800);
-    expect(onScreen(await deskNow()).some((x) => x.id === away)).toBe(false);
-    await show(away);
+    expect((await windowNow(away)).state).toBe("floating");
+    await click(toolAt(rectOf(await windowNow(away)), "floating"));
+    await windowUntil(away, (x) => x.state !== "floating", "back to normal");
   });
 
   it("turned off its window goes and the other stays; turned on it comes back", async () => {
@@ -199,12 +197,12 @@ describe("plugins: plugin windows in the window manager (#82)", () => {
 
   it("a plugin that shows its surface comes in front with the focus, from the drawer too", async () => {
     const notes = await show(NOTES);
-    const hello = await show(HELLO);
+    await show(HELLO);
     const desk = await deskNow();
     expect(inUse(desk)?.id).toBe(HELLO);
     expect(byId(desk, HELLO)?.z ?? 0).toBeGreaterThan(byId(desk, NOTES)?.z ?? 0);
     expect(byId(desk, NOTES)?.focused).toBeUndefined();
-    await click(toolAt(rectOf(hello), "drawer"));
+    await putAway(HELLO);
     await until((d) => !onScreen(d).some((w) => w.id === HELLO), "Hello in the drawer");
     await show(HELLO);
     expect(rectOf(await windowNow(NOTES))).toEqual(rectOf(notes));

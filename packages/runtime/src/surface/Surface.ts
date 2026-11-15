@@ -11,7 +11,7 @@ import { poppable } from "../arrange/out";
 import { reportFailure } from "../gesture";
 import { listenForShortcuts } from "../input";
 import type { SurfacePlacement } from "../modes/types";
-import { stash, togglePin, windowsOf } from "../shell/actions";
+import { togglePin, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen, render } from "../shell/dom";
 import { icon } from "../shell/icons";
@@ -23,21 +23,9 @@ import { isFloating } from "./coordinates";
 import { hostGestures } from "./host-gestures";
 import { renderPanes } from "./PaneView";
 import { placeSection } from "./section-place";
-import { findLeaf, leaves, panesOf } from "./tree";
-import { type Mounted, resolveView, viewOf } from "./views";
+import { leaves, panesOf } from "./tree";
+import { activeLeaf, activeView, type Mounted, resolveView, viewOf } from "./views";
 import type { WindowPages } from "./window-pages";
-
-/** The pane whose view the title bar names: the focused one, else the first. */
-function activeLeaf(ctx: ShellCtx, p: SurfacePlacement) {
-  const s = ctx.store.get();
-  const tree = panesOf(p);
-  return (s.focused === p.id && s.pane ? findLeaf(tree, s.pane) : undefined) ?? leaves(tree)[0];
-}
-
-/** The view the title bar names, as the pane resolves it (a plugin's surface when it holds one). */
-function activeView(ctx: ShellCtx, p: SurfacePlacement): string {
-  return resolveView(ctx.store.get(), p, activeLeaf(ctx, p)?.view ?? p.id);
-}
 
 function tool(label: string, name: string, run: () => void, pressed?: boolean) {
   return h(
@@ -181,12 +169,10 @@ export function mountSurfaces(
         floatTool,
         pinTool,
         // Out of the canvas into an OS window of its own (issue 235): a window of one plugin only.
+        // Putting a window away is a command, not a tool here (issue 280, `arrange/away.ts`).
         poppable(ctx.store.get(), p.id)
           ? tool(ctx.tr("popOut"), "pop-out", () => ctx.wm.run({ op: "pop-out" }, p.id))
           : null,
-        tool(ctx.tr("stash"), "drawer", () =>
-          stash(ctx, p.id, viewOf(ctx, activeView(ctx, entry.placement)).title),
-        ),
         // A save the person chose before the close can fail: the window stays, and the desk says why.
         tool(ctx.tr("close"), "close", () => {
           closeWindow(ctx, p.id).catch((error) =>

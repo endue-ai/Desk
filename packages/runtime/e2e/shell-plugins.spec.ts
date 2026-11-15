@@ -6,7 +6,7 @@
 // page asks its desk-wm for them (`fixture/wm.ts`). Which windows the budget keeps is desk-wm's to
 // decide too (crates/desk-wm tests/host.rs, #83): this page names the set, the runtime carries it out.
 import { expect, type Page, test } from "@playwright/test";
-import { DESK, openShell, step } from "./shell-helpers";
+import { DESK, openShell, putAway, step } from "./shell-helpers";
 
 test.use({ viewport: DESK });
 
@@ -48,7 +48,7 @@ test.describe("plugin surfaces as shell windows", () => {
   test("putting it in the drawer takes the frame away and raising it brings the plugin back", async ({
     page,
   }) => {
-    await window_(page).locator('.tool[aria-label="Put in drawer"]').click();
+    await putAway(page, COUNTER);
     await expect(window_(page)).toHaveCount(0);
     await expect(page.locator(".drawer-button .badge")).toHaveText("4");
     await page.click(".drawer-button");
@@ -103,7 +103,7 @@ test.describe("plugin surfaces as shell windows", () => {
     await expect(window_(page)).toHaveClass(/is-focused/);
     await expect(window_(page, HELLO)).not.toHaveClass(/is-focused/);
     expect(await z(COUNTER)).toBeGreaterThan(await z(HELLO));
-    await window_(page).locator('.tool[aria-label="Put in drawer"]').click();
+    await putAway(page, COUNTER);
     await expect(window_(page)).toHaveCount(0);
     await opened(COUNTER);
     await expect(window_(page)).toHaveClass(/is-focused/);

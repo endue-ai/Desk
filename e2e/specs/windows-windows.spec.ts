@@ -8,7 +8,7 @@
 // stay there.
 import { browser, expect } from "@wdio/globals";
 import { shellReady } from "../support/desk";
-import { chord, click, drawerButtonAt, KEY, MOD, toolAt, type } from "../support/gestures";
+import { chord, click, drawerButtonAt, KEY, MOD, type } from "../support/gestures";
 import {
   byId,
   clearDesk,
@@ -18,6 +18,7 @@ import {
   inUse,
   onScreen,
   openWindow,
+  putAway,
   rectOf,
   run,
   topZ,
@@ -107,7 +108,7 @@ describe("windows: surfaces as windows (#82)", () => {
     await run("desk.shell.open-notes");
     await run("desk.display.split-right");
     const split = await windowUntil(id, (w) => w.panes.length === 2, "two panes");
-    await click(toolAt(rectOf(split), "drawer"));
+    await putAway(id);
     const away = await until(
       (d) => d.windows.some((w) => w.id === id && w.hidden === true),
       "the window in the drawer",
