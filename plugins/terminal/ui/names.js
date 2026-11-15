@@ -42,10 +42,15 @@ export function createNames({ view, commands, sessions, held, changed }) {
     changed();
   };
   return {
-    /** The program set a title (OSC 0 or 2), or started; a name the person gave the tab wins. */
+    /**
+     * The program set a title (OSC 0 or 2), or started; a name the person gave the tab wins. An
+     * empty one gives the program's name back: vim popping the title a shell never set (issue 319).
+     */
     retitle(/** @type {string} */ id, /** @type {string} */ title) {
       const session = held(id);
-      if (!session.named) name(session, title);
+      if (session.named) return;
+      const program = session.program ?? session.programs[0];
+      name(session, title.trim() ? title : programName(program, sessions.values(), id));
     },
     /** The person names the tab; an empty name gives it back to the program. */
     rename(/** @type {string} */ id, /** @type {string} */ title) {

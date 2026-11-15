@@ -44,9 +44,13 @@ because both work on the bridge as it is and keep every action a command or a ke
   whether or not the person looks and whatever `bell` and `program-notify` say; the args carry
   `{ event, session, tab, looking, level }` and the details (`title`, `body`; `commandLine`, `exit`,
   `seconds`; `code` or `signal`), and `held` when a flood held runs back.
-* **Flood.** Five a tab and ten a desk in ten seconds, as notices (`flood.js`, shared).
+* **Flood.** Five a tab and ten a desk in ten seconds, as notices (`flood.js`, shared). Repeats are
+  not skipped as notices skip them (the same tab, title and body once in thirty seconds): every bell
+  or notice is an event a command may count, so a program that says the same thing every two seconds
+  runs its command five times in ten. A command that wants only news compares its args itself.
 * **Permission.** A command outside the plugin's `cmd:invoke` grant is asked for once with
-  `perm.request`; a refusal or a failure is said once on the status line.
+  `perm.request`; a refusal or a failure is said once on the status line. A grant that no longer
+  holds (one for once, or one taken back) is asked for again at the next event.
 * **Hearing them elsewhere.** Every run is a `cmd.invoked` event on the core's bus, which a plugin
   with `events:subscribe` hears.
 * **OSC 52.** Base64 text is copied through `document.execCommand("copy")` with a copy event the

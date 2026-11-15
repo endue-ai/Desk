@@ -40,7 +40,7 @@ const NOUN = {
 /** @param {Deps} deps */
 export function createHooks(deps) {
   const flood = createFlood(deps.now);
-  /** Command id -> whether the person lets the plugin run it, asked once. */
+  /** Command id -> whether the person lets the plugin run it, asked once while the grant holds. */
   const asked = /** @type {Map<string, Promise<boolean>>} */ (new Map());
   const said = new Set();
   const sayOnce = (/** @type {string} */ text) => {
@@ -75,7 +75,13 @@ export function createHooks(deps) {
       if (codeOf(error) !== "permission_denied") throw error;
     }
     if (!(await ask(command, kind))) throw Object.assign(new Error("refused"), { code: "refused" });
-    await deps.commands.run(command, args);
+    try {
+      await deps.commands.run(command, args);
+    } catch (error) {
+      // A grant for once, or one taken back since: the next event asks again.
+      if (codeOf(error) === "permission_denied") asked.delete(command);
+      throw error;
+    }
   };
 
   return {
