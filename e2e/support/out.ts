@@ -22,8 +22,18 @@ export interface AppWindow {
   browser: boolean;
 }
 
-const check = async (args: Record<string, unknown>) =>
-  (await shellCommand<{ windows: AppWindow[] }>("compositor_window", args)).windows;
+/** The check's answer: the OS windows, and the titles the app's Window menu lists. */
+interface Answer {
+  windows: AppWindow[];
+  windowMenu: string[];
+}
+
+const answer = (args: Record<string, unknown>) =>
+  shellCommand<Answer>("compositor_window", args);
+const check = async (args: Record<string, unknown>) => (await answer(args)).windows;
+
+/** The titles of the windows the app's Window menu lists, as AppKit keeps them. */
+export const windowMenu = async () => (await answer({ app: true })).windowMenu;
 
 /** The OS windows the shell holds now, by window id. */
 export const appWindows = () => check({ app: true });
