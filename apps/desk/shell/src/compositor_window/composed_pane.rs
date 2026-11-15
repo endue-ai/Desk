@@ -182,6 +182,11 @@ impl Composed {
         changed
     }
 
+    /// Whether plugin `surface` has a picture of `size` device pixels aside (ADR 0233).
+    pub(super) fn pane_aside_of(&self, surface: &str, size: (u32, u32)) -> bool {
+        (self.panes.0.get(surface)).is_some_and(|p| p.aside.iter().any(|(s, _)| near(*s, size)))
+    }
+
     /// `surface`'s picture takes a paint of `size`: one of that size aside is its past.
     fn pane_stale(&mut self, surface: &str, size: (u32, u32)) {
         let Some(pane) = self.panes.0.get_mut(surface) else {
