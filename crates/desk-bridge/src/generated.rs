@@ -6866,7 +6866,7 @@ pub struct DialogOpenParams {
     pub filters: Option<DialogFilters>,
 }
 
-/// Result of dialog.open: the absolute paths the person chose, now readable by the caller, or cancelled with none.
+/// Result of dialog.open: the paths the person chose (from ~ under the home folder), now readable by the caller, or cancelled with none.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DialogOpenResult {
@@ -6903,7 +6903,7 @@ pub struct DialogSaveParams {
     pub filters: Option<DialogFilters>,
 }
 
-/// Result of dialog.save: the absolute path the person chose, now readable and writable by the caller, or cancelled without one.
+/// Result of dialog.save: the path the person chose (from ~ under the home folder), now readable and writable by the caller, or cancelled without one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DialogSaveResult {

@@ -65,7 +65,7 @@
       "additionalProperties": false
     },
     "DialogOpenResult": {
-      "description": "Result of dialog.open: the absolute paths the person chose, now readable by the caller, or cancelled with none.",
+      "description": "Result of dialog.open: the paths the person chose (from ~ under the home folder), now readable by the caller, or cancelled with none.",
       "type": "object",
       "properties": {
         "cancelled": { "type": "boolean" },
@@ -117,7 +117,7 @@
       "additionalProperties": false
     },
     "DialogSaveResult": {
-      "description": "Result of dialog.save: the absolute path the person chose, now readable and writable by the caller, or cancelled without one.",
+      "description": "Result of dialog.save: the path the person chose (from ~ under the home folder), now readable and writable by the caller, or cancelled without one.",
       "type": "object",
       "properties": {
         "cancelled": { "type": "boolean" },
