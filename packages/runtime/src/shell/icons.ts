@@ -36,6 +36,8 @@ const PATHS: Record<string, string> = {
   map: "M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15",
   minus: "M5 12h14",
   "pop-out": "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6",
+  check: "M5 12.5l4.5 4.5L19 7",
+  panel: "M4 5h16v14H4zM9 5v14M13 10h4M13 14h4",
 };
 
 export type IconName = keyof typeof PATHS;

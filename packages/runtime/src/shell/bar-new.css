@@ -42,9 +42,20 @@
   background: var(--desk-hover);
 }
 
-/* New agent and New space: a dashed "+", round for an agent, with a button's corners for a space. */
-.bar-new .bar-place-face { border: 1px dashed var(--desk-input); }
-.bar-new-space .bar-place-face { border-radius: var(--bar-button-radius); }
+/* New agent and New space: a dashed "+", round for an agent, with a button's corners for a space.
+   In the unfolded list (bar-list.ts) the face stands where an avatar's does in its row, in the
+   muted ink; the row is the kit's menu item. */
+.bar-new-face {
+  border: 1px dashed var(--desk-input);
+  border-radius: var(--radius-full);
+}
+.bar-new-space .bar-new-face { border-radius: var(--bar-button-radius); }
+.bar-row .bar-new-face {
+  width: var(--bar-avatar);
+  height: var(--bar-avatar);
+  margin: calc((var(--bar-button) - var(--bar-avatar)) / 2);
+  color: var(--desk-text-muted);
+}
 
 /* The rest of the agents: up to four of their faces, two by two, in a ring on the bar's card. A
    face with no colour of its own takes one of the chart's, in turn. */

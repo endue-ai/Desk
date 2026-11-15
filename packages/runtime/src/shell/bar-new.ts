@@ -1,13 +1,16 @@
 /**
  * The agent bar's last places, as endue.ai's own left bar has them: past six agents, the rest as
  * their faces in one place; New agent at the end of the agents and New space at the end of the
- * spaces. Each is a face with its name under it, so the bar says what they do without a hover.
+ * spaces. Folded, each is a face with its name under it, so the bar says what they do without a
+ * hover; unfolded (bar-unfold.ts), each is a row of the list (bar-list.ts), the rest's the list's own.
  * New agent opens the Agents plugin on its New agent page (`endue.agents.new`), or endue.ai's when
  * the desk has no Agents; New space opens endue.ai's own page for it in a desk window (ADR 0223),
  * as the desk makes no space of its own.
  */
 import { WEB } from "../system/endue";
 import { showOnDesk } from "../system/endue-web";
+import { type BarEntry, barControl } from "./bar-list";
+import { withTip } from "./bar-tip";
 import type { ShellCtx } from "./context";
 import type { Lang } from "./copy";
 import { h } from "./dom";
@@ -45,28 +48,30 @@ export interface Face {
 }
 
 export interface MoreOptions {
-  key: string;
-  /** Its accessible name: how many agents it holds. */
-  label: string;
-  /** The name under it. */
+  /** The name under it: "+N more". */
   caption: string;
+  /** The rest's faces, in their order. */
   faces: readonly Face[];
-  expanded: boolean;
-  onClick: () => void;
+  /** Whether the bar is unfolded into its list, and the wall clock its rows count from. */
+  unfolded: boolean;
+  now: number;
 }
 
-/** The place past six agents: up to four of the rest's faces in a circle, its name under it. */
-export function moreControl(o: MoreOptions): HTMLButtonElement {
+/**
+ * The place past six agents, from the list's entry for it (`rest`: its key, its name, its state,
+ * its tooltip and what a press does, the same in both forms). Folded, up to four of the rest's
+ * faces in a circle, its name under it; unfolded, the list's own row.
+ */
+export function barMore(rest: BarEntry, o: MoreOptions): HTMLButtonElement {
+  if (o.unfolded) return barControl(rest, true, o.now);
   const faces = o.faces.slice(0, FACES);
-  return h(
+  const button = h(
     "button",
     {
       class: "icon-button bar-place avatar-more",
       type: "button",
-      "data-key": o.key,
-      "aria-label": o.label,
-      "aria-expanded": String(o.expanded),
-      onClick: o.onClick,
+      ...rest.attrs,
+      onClick: rest.onClick,
     },
     h(
       "span",
@@ -80,16 +85,39 @@ export function moreControl(o: MoreOptions): HTMLButtonElement {
     ),
     h("span", { class: "bar-place-name", "aria-hidden": "true" }, o.caption),
   );
+  return withTip(button, rest.tip);
 }
 
-/** A dashed face with a plus, round for an agent and with a button's corners for a space. */
+/**
+ * A dashed face with a plus, round for an agent and with a button's corners for a space: folded,
+ * its name under it; unfolded, a row of the list with its name beside it, a space's lower.
+ */
 function newControl(
   kind: "agent" | "space",
   key: string,
   label: string,
   caption: string,
+  unfolded: boolean,
   onClick: () => void,
 ): HTMLButtonElement {
+  // The face in either form: the list's row face (bar-list.ts) or the place's.
+  const face = (form: string, size: number) =>
+    h("span", { class: `${form} bar-new-face`, "aria-hidden": "true" }, icon("plus", size));
+  if (unfolded) {
+    const space = kind === "space" ? " bar-row-space" : "";
+    return h(
+      "button",
+      {
+        class: `menu-item bar-row${space} bar-new bar-new-${kind}`,
+        type: "button",
+        "data-key": key,
+        "aria-label": label,
+        onClick,
+      },
+      face("bar-face", 16),
+      h("span", { class: "bar-row-text" }, h("span", { class: "bar-row-name" }, caption)),
+    );
+  }
   return h(
     "button",
     {
@@ -99,7 +127,7 @@ function newControl(
       "aria-label": label,
       onClick,
     },
-    h("span", { class: "bar-place-face", "aria-hidden": "true" }, icon("plus", 18)),
+    face("bar-place-face", 18),
     h("span", { class: "bar-place-name", "aria-hidden": "true" }, caption),
   );
 }
@@ -131,13 +159,14 @@ export async function openNewAgent(ctx: ShellCtx): Promise<void> {
   await showOnDesk(ctx, NEW_AGENT_PAGE);
 }
 
-/** New agent, last in the agents' group. */
-export function newAgentControl(ctx: ShellCtx, lang: Lang): HTMLButtonElement {
+/** New agent, last in the agents' group, in the bar's form (`unfolded`). */
+export function newAgentControl(ctx: ShellCtx, lang: Lang, unfolded = false): HTMLButtonElement {
   return newControl(
     "agent",
     "agents-new",
     barWord(lang, "newAgentLabel"),
     barWord(lang, "newAgent"),
+    unfolded,
     () => {
       ctx.store.set({ popover: null });
       void openNewAgent(ctx).catch(() => undefined);
@@ -146,12 +175,13 @@ export function newAgentControl(ctx: ShellCtx, lang: Lang): HTMLButtonElement {
 }
 
 /** New space, last in the spaces' group: endue.ai's page, in a desk window. */
-export function newSpaceControl(ctx: ShellCtx, lang: Lang): HTMLButtonElement {
+export function newSpaceControl(ctx: ShellCtx, lang: Lang, unfolded = false): HTMLButtonElement {
   return newControl(
     "space",
     "spaces-new",
     barWord(lang, "newSpaceLabel"),
     barWord(lang, "newSpace"),
+    unfolded,
     () => {
       ctx.store.set({ popover: null });
       void showOnDesk(ctx, NEW_SPACE_PAGE).catch(() => undefined);

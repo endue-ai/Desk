@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ManualClock } from "../clock";
 import { settle, testDesk } from "../surface/endue/test-desk";
 import { watchEndue } from "../system/endue";
-import { barWord, moreControl, NEW_AGENT_PAGE, NEW_SPACE_PAGE } from "./bar-new";
+import type { BarEntry } from "./bar-list";
+import { barMore, barWord, NEW_AGENT_PAGE, NEW_SPACE_PAGE } from "./bar-new";
 import { mountSideBar } from "./SideBar";
+import type { DeskState } from "./state";
+import { Ticker } from "./ticker";
 
 type Run = (command: string, args?: unknown) => Promise<unknown>;
 
@@ -14,10 +18,13 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** The agent bar on the test desk, its commands answering as `run` does; what ran, and what the
- *  system browser opened. */
-function mounted(run?: Run, lang: "en" | "ko" = "en") {
+/** The agent bar on the test desk, its commands answering as `run` does, from `seed`; what ran,
+ *  and what the system browser opened. */
+function mounted(run?: Run, lang: "en" | "ko" = "en", seed: Partial<DeskState> = {}) {
   const desk = testDesk(lang);
+  desk.store.set(seed);
+  const ticker = new Ticker(new ManualClock());
+  desk.ctx.ticker = ticker;
   const ran: Array<[string, unknown]> = [];
   if (run) {
     const commands = {
@@ -30,7 +37,7 @@ function mounted(run?: Run, lang: "en" | "ko" = "en") {
   }
   const root = document.createElement("div");
   document.body.append(root);
-  offs.push(mountSideBar(root, desk.ctx), watchEndue(desk.ctx));
+  offs.push(mountSideBar(root, desk.ctx), watchEndue(desk.ctx), () => ticker.dispose());
   return { ...desk, root, ran, opened: () => desk.bridge.fake.opened };
 }
 
@@ -123,17 +130,49 @@ describe("the agent bar's New agent and New space", () => {
     ]);
     expect(NEW_SPACE_PAGE).toBe("https://endue.ai/spaces/new");
   });
+
+  it("unfolded, they are rows of the list, each named beside its dashed face", () => {
+    const { root, ran } = mounted(async () => undefined, "en", { agentsPinned: true });
+    expect(root.querySelector(".sidebar.is-unfolded")).not.toBeNull();
+    const agent = control(root, "agents-new");
+    expect(agent.classList.contains("bar-row")).toBe(true);
+    expect(agent.classList.contains("menu-item")).toBe(true);
+    expect(agent.querySelector(".bar-row-name")?.textContent).toBe("New agent");
+    expect(agent.querySelector(".bar-new-face")).not.toBeNull();
+    expect(groupOf(agent)).toEqual({ name: "Agents", last: agent });
+    const space = control(root, "spaces-new");
+    expect(space.classList.contains("bar-row-space")).toBe(true);
+    expect(groupOf(space)).toEqual({ name: "Spaces", last: space });
+    // The same press in either form.
+    space.click();
+    expect(ran[0]).toEqual(["desk.plugins.open", { plugin: "endue.browser" }]);
+  });
 });
 
 describe("the place past six agents", () => {
-  const more = (faces: { colour?: string }[]) =>
-    moreControl({
-      key: "agents-more",
-      label: `${faces.length} more agents`,
+  /** The list's entry for the rest of `n` agents (SideBar.ts), and what pressing it did. */
+  const rest = (n: number) => {
+    const pressed: number[] = [];
+    const entry: BarEntry = {
+      face: "avatar avatar-more",
+      glyph: `+${n}`,
+      attrs: {
+        "data-key": "agents-more",
+        "aria-label": `${n} more agents`,
+        "aria-expanded": "false",
+      },
+      name: `${n} more agents`,
+      tip: () => [`${n} more agents`],
+      onClick: () => pressed.push(n),
+    };
+    return { entry, pressed };
+  };
+  const more = (faces: { colour?: string }[], unfolded = false) =>
+    barMore(rest(faces.length).entry, {
       caption: barWord("en", "more", faces.length),
       faces,
-      expanded: false,
-      onClick: () => undefined,
+      unfolded,
+      now: 0,
     });
 
   it("shows up to four of the rest's faces, each in its own colour when it has one", () => {
@@ -145,6 +184,18 @@ describe("the place past six agents", () => {
     expect(six.querySelector(".bar-more-faces")?.getAttribute("data-count")).toBe("4");
     expect(six.textContent).toBe("+6 more");
     expect(six.getAttribute("aria-label")).toBe("6 more agents");
+    expect(six.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("unfolded, is the list's own row for the rest, with the same key and press", () => {
+    const { entry, pressed } = rest(3);
+    const row = barMore(entry, { caption: "+3 more", faces: [{}, {}, {}], unfolded: true, now: 0 });
+    expect(row.classList.contains("bar-row")).toBe(true);
+    expect(row.dataset.key).toBe("agents-more");
+    expect(row.querySelector(".bar-more-faces")).toBeNull();
+    expect(row.querySelector(".bar-row-name")?.textContent).toBe("3 more agents");
+    row.click();
+    expect(pressed).toEqual([3]);
   });
 
   it("says how many in either language", () => {
