@@ -48,6 +48,12 @@ export async function run(command: string, args?: Record<string, unknown>): Prom
   return (await socket()).run(command, args);
 }
 
+/**
+ * Put window `id` of the desktop in front in the drawer (desk.windows.put-away): what the palette
+ * runs, since no title bar's tool does (#280).
+ */
+export const putAway = (id: string) => run("desk.windows.put-away", { window: id });
+
 /** One bridge call as the caller `cli`. */
 export async function call(method: string, params: unknown): Promise<unknown> {
   return (await socket()).call(method, params);

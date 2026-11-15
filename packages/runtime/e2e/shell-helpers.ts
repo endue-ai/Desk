@@ -9,6 +9,21 @@ export async function openShell(page: Page, query = ""): Promise<void> {
   await page.evaluate(() => window.__shell.desk.ready);
 }
 
+/**
+ * Put a window in the drawer, the one in use when none is named: desk.windows.put-away, as the
+ * palette runs it. No title bar's tool does (issue 280).
+ */
+export function putAway(page: Page, id?: string): Promise<unknown> {
+  return page.evaluate(
+    (window_) =>
+      window.__shell.desk.runtime.commands.run(
+        "desk.windows.put-away",
+        window_ ? { window: window_ } : {},
+      ),
+    id,
+  );
+}
+
 /** The theme studio lives in Settings > Appearance. */
 export async function openThemes(page: Page): Promise<void> {
   await page.locator(".account-settings-button").click();

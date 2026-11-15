@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { DESK, openShell, primaryFills, step } from "./shell-helpers";
+import { DESK, openShell, primaryFills, putAway, step } from "./shell-helpers";
 import { shellTree } from "./shell-tree";
 
 test.use({ viewport: DESK });
@@ -232,7 +232,7 @@ test.describe("the desk shell", () => {
     );
     await expect(calendar).toHaveCSS("width", "600px");
     await expect(calendar).toHaveCSS("height", "420px");
-    await calendar.getByRole("button", { name: "서랍에 넣기" }).click();
+    await putAway(page, "calendar");
     await expect(calendar).toHaveCount(0);
     await expect(page.locator(".drawer-button .badge")).toHaveText("4");
   });

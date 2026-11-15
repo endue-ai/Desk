@@ -16,6 +16,7 @@ import {
   type Desk,
   deskNow,
   onScreen,
+  putAway,
   type Rect,
   rectOf,
   run,
@@ -90,9 +91,9 @@ describe("session: what the person closed, put away and placed stays so", () => 
 
   it("a window in the drawer stays there when ⌘W closes another, and ⌘W after a title-bar press closes that window", async () => {
     await shellReady();
-    // Notes is used, then put away in the drawer by its own tool.
+    // Notes is used, then put away in the drawer (desk.windows.put-away, #280).
     await press(bodyAt(await inFront(NOTES)));
-    await press(toolAt(rectOf(await windowUntil(NOTES, () => true, "is gone")), "drawer"));
+    await putAway(NOTES);
     await until((d) => byId(d, NOTES)?.hidden === true, "Notes never went to the drawer");
     // Mail is used and closed with ⌘W: the window shown next is not the one in the drawer.
     await press(bodyAt(await inFront(MAIL)));

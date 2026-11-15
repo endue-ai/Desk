@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { DESK, openShell } from "./shell-helpers";
+import { DESK, openShell, putAway } from "./shell-helpers";
 import { shellTree } from "./shell-tree";
 
 test.use({ viewport: DESK });
@@ -96,7 +96,7 @@ test.describe("surfaces as windows", () => {
   test("a split surface keeps its panes through the drawer", async ({ page }) => {
     await newSurfaceWith(page, "notes");
     await page.keyboard.press("Meta+d");
-    await surface(page).getByRole("button", { name: "서랍에 넣기" }).click();
+    await putAway(page, "window-1");
     await expect(surface(page)).toHaveCount(0);
     await page.click(".drawer-button");
     await page.locator('[data-item="surface-window-1"] button').click();

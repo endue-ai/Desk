@@ -23,7 +23,6 @@ import {
   closeShellWindows,
   deskNow,
   freshDesktop,
-  onScreen,
   openWindow,
   type Rect,
   rectOf,
@@ -82,8 +81,8 @@ describe("selection: dragging a title selects nothing (#82)", () => {
       const selected = await settled(w);
       expect(difference(selected, row, still, row, { tolerance: 2 })).toBeGreaterThan(0.05);
       // A title bar's tools still answer the pointer.
-      await click(toolAt(rectOf(after), "drawer"));
-      await until((d) => !onScreen(d).some((x) => x.id === id), "put in the drawer");
+      await click(toolAt(rectOf(after), "close"));
+      await until((d) => !d.windows.some((x) => x.id === id), "closed by its tool");
     });
   }
 });

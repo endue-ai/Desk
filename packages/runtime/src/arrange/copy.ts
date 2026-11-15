@@ -14,6 +14,7 @@ const copy = {
   close: ["창 닫기", "Close window"],
   popOut: ["창으로 꺼내기", "Pop out window"],
   dock: ["데스크로 되돌리기", "Move window back to the desk"],
+  putAway: ["창을 서랍에 넣기", "Put window in the drawer"],
   notOut: ["창으로 꺼낸 창이 아닙니다", "That window is not popped out"],
   notOne: [
     "플러그인 하나만 보이는 창만 꺼낼 수 있습니다",

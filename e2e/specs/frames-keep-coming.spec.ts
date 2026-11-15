@@ -202,9 +202,9 @@ describe("frames: the desk's page never stops drawing (#157)", () => {
   it("after a window's Floating mode, there and back, and a maximize and restore", async () => {
     const id = await openWindow();
     const win = await windowNow(id);
-    await press(toolAt(win, "floating"));
+    await press(toolAt(win, "floating", false));
     await stillDrawing("floating on");
-    await press(toolAt(await windowNow(id), "floating"));
+    await press(toolAt(await windowNow(id), "floating", false));
     await stillDrawing("floating off");
     await press(titleAt(await windowNow(id)), 2);
     await stillDrawing("maximize");

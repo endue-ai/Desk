@@ -58,7 +58,7 @@
          "class": "icon-button tool",
          "aria-label": "Split right (⌘D)",
          "box": [
-          654,
+          680,
           199,
           24,
           24
@@ -78,7 +78,7 @@
          "class": "icon-button tool",
          "aria-label": "Split down (⌥⌘D)",
          "box": [
-          680,
+          706,
           199,
           24,
           24
@@ -99,7 +99,7 @@
          "aria-label": "Floating mode",
          "aria-pressed": "false",
          "box": [
-          706,
+          732,
           199,
           24,
           24
@@ -120,7 +120,7 @@
          "aria-label": "Pin",
          "aria-pressed": "false",
          "box": [
-          732,
+          758,
           199,
           24,
           24
@@ -140,26 +140,6 @@
          "class": "icon-button tool",
          "aria-label": "Pop out",
          "box": [
-          758,
-          199,
-          24,
-          24
-         ],
-         "style": {
-          "border": "solid rgba(0, 0, 0, 0)"
-         },
-         "children": [
-          {
-           "tag": "svg",
-           "icon": "pop-out"
-          }
-         ]
-        },
-        {
-         "tag": "button",
-         "class": "icon-button tool",
-         "aria-label": "Put in drawer",
-         "box": [
           784,
           199,
           24,
@@ -171,7 +151,7 @@
          "children": [
           {
            "tag": "svg",
-           "icon": "drawer"
+           "icon": "pop-out"
           }
          ]
         },
@@ -346,7 +326,7 @@
          "class": "icon-button tool",
          "aria-label": "Split right (⌘D)",
          "box": [
-          718,
+          744,
           263,
           24,
           24
@@ -366,7 +346,7 @@
          "class": "icon-button tool",
          "aria-label": "Split down (⌥⌘D)",
          "box": [
-          744,
+          770,
           263,
           24,
           24
@@ -387,7 +367,7 @@
          "aria-label": "Floating mode",
          "aria-pressed": "false",
          "box": [
-          770,
+          796,
           263,
           24,
           24
@@ -408,7 +388,7 @@
          "aria-label": "Pin",
          "aria-pressed": "false",
          "box": [
-          796,
+          822,
           263,
           24,
           24
@@ -428,26 +408,6 @@
          "class": "icon-button tool",
          "aria-label": "Pop out",
          "box": [
-          822,
-          263,
-          24,
-          24
-         ],
-         "style": {
-          "border": "solid rgba(0, 0, 0, 0)"
-         },
-         "children": [
-          {
-           "tag": "svg",
-           "icon": "pop-out"
-          }
-         ]
-        },
-        {
-         "tag": "button",
-         "class": "icon-button tool",
-         "aria-label": "Put in drawer",
-         "box": [
           848,
           263,
           24,
@@ -459,7 +419,7 @@
          "children": [
           {
            "tag": "svg",
-           "icon": "drawer"
+           "icon": "pop-out"
           }
          ]
         },
@@ -659,7 +619,7 @@
          "class": "icon-button tool",
          "aria-label": "Split right (⌘D)",
          "box": [
-          686,
+          712,
           231,
           24,
           24
@@ -679,7 +639,7 @@
          "class": "icon-button tool",
          "aria-label": "Split down (⌥⌘D)",
          "box": [
-          712,
+          738,
           231,
           24,
           24
@@ -700,7 +660,7 @@
          "aria-label": "Floating mode",
          "aria-pressed": "false",
          "box": [
-          738,
+          764,
           231,
           24,
           24
@@ -721,7 +681,7 @@
          "aria-label": "Pin",
          "aria-pressed": "false",
          "box": [
-          764,
+          790,
           231,
           24,
           24
@@ -741,26 +701,6 @@
          "class": "icon-button tool",
          "aria-label": "Pop out",
          "box": [
-          790,
-          231,
-          24,
-          24
-         ],
-         "style": {
-          "border": "solid rgba(0, 0, 0, 0)"
-         },
-         "children": [
-          {
-           "tag": "svg",
-           "icon": "pop-out"
-          }
-         ]
-        },
-        {
-         "tag": "button",
-         "class": "icon-button tool",
-         "aria-label": "Put in drawer",
-         "box": [
           816,
           231,
           24,
@@ -772,7 +712,7 @@
          "children": [
           {
            "tag": "svg",
-           "icon": "drawer"
+           "icon": "pop-out"
           }
          ]
         },
@@ -947,7 +887,7 @@
          "class": "icon-button tool",
          "aria-label": "Split right (⌘D)",
          "box": [
-          577,
+          603,
           429,
           24,
           24
@@ -967,7 +907,7 @@
          "class": "icon-button tool",
          "aria-label": "Split down (⌥⌘D)",
          "box": [
-          603,
+          629,
           429,
           24,
           24
@@ -988,7 +928,7 @@
          "aria-label": "Floating mode",
          "aria-pressed": "true",
          "box": [
-          629,
+          655,
           429,
           24,
           24
@@ -1009,26 +949,6 @@
          "aria-label": "Pin",
          "aria-pressed": "false",
          "box": [
-          655,
-          429,
-          24,
-          24
-         ],
-         "style": {
-          "border": "solid rgba(0, 0, 0, 0)"
-         },
-         "children": [
-          {
-           "tag": "svg",
-           "icon": "pin"
-          }
-         ]
-        },
-        {
-         "tag": "button",
-         "class": "icon-button tool",
-         "aria-label": "Put in drawer",
-         "box": [
           681,
           429,
           24,
@@ -1040,7 +960,7 @@
          "children": [
           {
            "tag": "svg",
-           "icon": "drawer"
+           "icon": "pin"
           }
          ]
         },

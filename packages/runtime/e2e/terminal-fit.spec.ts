@@ -5,7 +5,7 @@
 // terminal's id (shell.html?apps=1), so this measures the runtime; plugins/terminal/tests cover the
 // terminal's own fit and the PTY size.
 import { expect, type Page, test } from "@playwright/test";
-import { DESK, openShell } from "./shell-helpers";
+import { DESK, openShell, putAway } from "./shell-helpers";
 
 test.use({ viewport: DESK });
 
@@ -88,7 +88,7 @@ test("a terminal window fills its pane at every size", async ({ page }) => {
   sizes.restored = await expectFilled(page, "restored");
 
   // Put away and raised again: the frame comes back into the same pane.
-  await window_(page).locator('.tool[aria-label="Put in drawer"]').click();
+  await putAway(page, ID);
   await expect(window_(page)).toHaveCount(0);
   await page.click(".drawer-button");
   await page.click(`[data-key="raise-surface-${ID}"]`);

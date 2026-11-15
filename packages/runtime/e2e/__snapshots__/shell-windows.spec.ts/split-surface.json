@@ -63,7 +63,7 @@
        "class": "icon-button tool",
        "aria-label": "오른쪽으로 나누기 (⌘D)",
        "box": [
-        797,
+        823,
         249,
         24,
         24
@@ -83,7 +83,7 @@
        "class": "icon-button tool",
        "aria-label": "아래로 나누기 (⌥⌘D)",
        "box": [
-        823,
+        849,
         249,
         24,
         24
@@ -104,7 +104,7 @@
        "aria-label": "플로팅 모드",
        "aria-pressed": "false",
        "box": [
-        849,
+        875,
         249,
         24,
         24
@@ -125,26 +125,6 @@
        "aria-label": "고정",
        "aria-pressed": "false",
        "box": [
-        875,
-        249,
-        24,
-        24
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "pin"
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "icon-button tool",
-       "aria-label": "서랍에 넣기",
-       "box": [
         901,
         249,
         24,
@@ -156,7 +136,7 @@
        "children": [
         {
          "tag": "svg",
-         "icon": "drawer"
+         "icon": "pin"
         }
        ]
       },
