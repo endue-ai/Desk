@@ -9,7 +9,7 @@ import type { Ctx } from "../shell/actions";
 import { openView } from "../shell/windows";
 import { LOCAL_VIEW } from "./local-ids";
 
-export { isLocalAgent, LOCAL_VIEW, localName } from "./local-ids";
+export { badgeOf, isLocalAgent, LOCAL_VIEW, localName } from "./local-ids";
 
 /** The longest answer a run keeps, as the core cuts it. */
 const TEXT_MAX = 8000;

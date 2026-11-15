@@ -3,12 +3,14 @@ import type { A2ATask, LocalAgentRun } from "@endue-ai/bridge";
 import { afterEach, describe, expect, it } from "vitest";
 import { agentId, sampleDirectory } from "../bridge/directory";
 import { localAgentsStub } from "../bridge/local-agents";
+import { ManualClock } from "../clock";
 import { testWindowManager } from "../wm/testing";
 import { takeDesk } from "../wm/view";
 import type { ShellCtx } from "./context";
 import { t } from "./copy";
 import { mountSideBar } from "./SideBar";
 import { emptyState, Store } from "./state";
+import { Ticker } from "./ticker";
 
 /** The wall clock of these tests: a minute and five seconds into Codex's run. */
 const NOW = Date.parse("2026-11-05T09:01:05Z");
@@ -27,9 +29,11 @@ async function setup() {
   store.set({ localAgents: await local.list() });
   const root = document.createElement("div");
   document.body.append(root);
+  const ticker = new Ticker(new ManualClock());
   const ctx = {
     store,
     wm,
+    ticker,
     bridge: { localAgents: local },
     runtime: {
       shortcuts: { focused: null },
@@ -40,7 +44,7 @@ async function setup() {
       t("en", key, vars),
     wall: () => NOW,
   } as unknown as ShellCtx;
-  cleanups.push(mountSideBar(root, ctx));
+  cleanups.push(mountSideBar(root, ctx), () => ticker.dispose());
   return { store, root };
 }
 
@@ -82,7 +86,7 @@ const lines = (root: HTMLElement) => [...tooltip(root).children].map((line) => l
 const over = (el: Element) => el.dispatchEvent(new Event("pointerover", { bubbles: true }));
 
 describe("the agent bar's local agents", () => {
-  it("registers every agent program the core found, each under its program's mark", async () => {
+  it("registers every agent program the core found, above the directory's agents, each under its program's mark", async () => {
     const { root } = await setup();
     const group = root.querySelector("[data-local-agents]");
     expect(group?.getAttribute("aria-label")).toBe("Agents on this computer");
@@ -97,24 +101,11 @@ describe("the agent bar's local agents", () => {
       ["claude", "claude", "Claude Code · on this computer"],
       ["codex", "codex", "Codex · on this computer"],
     ]);
-    // A mark is a picture: the name is the button's, and no letters stand in for it.
+    // A mark is a picture (ADR 0232): the name is the button's, and no letters stand in for it.
     for (const avatar of avatars) {
       expect(avatar.textContent).toBe("");
       expect(avatar.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
     }
-  });
-
-  it("stands under the spaces, after a rule (ADR 0232)", async () => {
-    const { store, root } = await setup();
-    withDirectory(store);
-    const parts = [...one(root, ".sidebar").children];
-    expect(parts.at(-1)?.hasAttribute("data-local-agents")).toBe(true);
-    expect(parts.at(-2)?.getAttribute("role")).toBe("separator");
-    const order = [...root.querySelectorAll(".sidebar button")].map(
-      (b) => b.getAttribute("data-key")?.split("-")[0],
-    );
-    expect(order.lastIndexOf("space")).toBeLessThan(order.indexOf("local"));
-    expect(order.lastIndexOf("agent")).toBeLessThan(order.indexOf("space"));
   });
 
   it("lights an agent while a run of it goes on", async () => {
@@ -146,20 +137,30 @@ describe("the agent bar's local agents", () => {
 });
 
 describe("the agent bar at rest (#292)", () => {
-  it("shows no caption, and rules divide the agents, the spaces and the local programs", async () => {
+  it("shows no caption, and rules divide the local programs, the agents and the spaces", async () => {
     const { store, root } = await setup();
     withDirectory(store);
     const bar = one(root, ".sidebar");
     expect(bar.querySelector(".rail-label")).toBeNull();
     const words = (bar.textContent ?? "").split(/[^A-Za-z]+/);
-    for (const caption of ["Local", "Agents", "Spaces"]) expect(words).not.toContain(caption);
+    for (const caption of ["Local", "This", "Agents", "Spaces"])
+      expect(words).not.toContain(caption);
+    expect(bar.querySelector(".bar-caption")).toBeNull();
+    // The unfold control first (issue 294), then the groups with a rule between them.
     expect(
       [...bar.children].map((part) =>
         part.getAttribute("role") === "group"
           ? part.getAttribute("aria-label")
-          : part.getAttribute("role"),
+          : (part.getAttribute("role") ?? part.getAttribute("data-key")),
       ),
-    ).toEqual(["Agents", "separator", "Spaces", "separator", "Agents on this computer"]);
+    ).toEqual([
+      "agents-unfold",
+      "Agents on this computer",
+      "separator",
+      "Agents",
+      "separator",
+      "Spaces",
+    ]);
   });
 
   it("says an agent's state in `data-presence` and draws no dot", async () => {
@@ -228,7 +229,8 @@ describe("the agent bar at rest (#292)", () => {
     claude.dispatchEvent(new Event("focusout", { bubbles: true }));
     expect(tooltip(root).hidden).toBe(true);
     // Labelled once (ADR 0193): the page's tooltip, and no `title` the compositor would draw too.
-    expect(root.querySelectorAll(".sidebar button")).toHaveLength(7);
+    // Seven avatars and spaces, and the unfold control before them.
+    expect(root.querySelectorAll(".sidebar button")).toHaveLength(8);
     expect(root.querySelector(".sidebar button[title]")).toBeNull();
   });
 

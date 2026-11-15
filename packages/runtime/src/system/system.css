@@ -33,12 +33,13 @@
 }
 
 /* The agent bar lies between the profile switcher with its "+" (24 + 32 + 8 + 32, then 20: 116)
-   and the account bar (16 + 172 with its four buttons, then 12: 200), never on them (issue 159).
-   Centred 88 px above the middle, no taller than keeps its top at 116 (408 = 2 × (88 + 116)), in
-   an app 628 px high or more. A shorter app hangs it from under the switcher, down to the account
-   bar (316 = 116 + 200), and what still does not fit scrolls, by the wheel or the trackpad and the
-   keys: no scrollbar is drawn, which in a bar this narrow took a quarter of it and sat on the
-   avatars. */
+   and the account bar, never on them (issue 159). It keeps clear of 200 px from the bottom, the
+   room the account bar took with four buttons; with its two the bar is 16 + 92, and the agent bar
+   is not moved yet. Centred 88 px above the middle, no taller than keeps its top at 116
+   (408 = 2 × (88 + 116)), in an app 628 px high or more. A shorter app hangs it from under the
+   switcher, down to those 200 px (316 = 116 + 200), and what still does not fit scrolls, by the
+   wheel or the trackpad and the keys: no scrollbar is drawn, which in a bar this narrow took a
+   quarter of it and sat on the avatars. */
 .layer-system .sidebar {
   top: calc(50% - 88px);
   max-height: calc(100% - 408px);
@@ -67,6 +68,19 @@
   margin: calc((var(--bar-button) - var(--bar-avatar)) / 2);
   border-radius: var(--radius-full);
 }
+/* While the inbox holds something: a dot at the avatar's top right, ringed 2px in the bar's colour
+   as the rail's dots are. The avatar's own ::after, so the desk keeps its one primary fill. */
+.account-bar .account-profile[data-attention]::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--desk-primary);
+  box-shadow: 0 0 0 2px var(--desk-card);
+}
 .account-avatar {
   display: grid;
   place-items: center;
@@ -91,6 +105,13 @@
   overflow-y: auto;
   overflow-wrap: anywhere;
 }
+/* The dialog holds the focus itself while none of its buttons does: no ring around the whole of it. */
+.shell .account-popover:focus-visible { outline: none; }
+/* The avatar's menu: Inbox with its count and Settings with its key, over the person's profile. */
+.account-menu { display: grid; gap: 2px; }
+.account-row { gap: var(--space-2); }
+.account-row svg { flex: none; }
+.account-row .badge { position: static; flex: none; }
 .account-identity { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2); }
 .account-identity > div { min-width: 0; }
 .account-identity strong, .account-identity small { display: block; }
@@ -285,6 +306,9 @@
 .agents-popover-item {
   gap: var(--space-2);
 }
+/* Past the unfolded bar (issue 294): the list of the rest, and the bar's tooltip. */
+.sidebar.is-unfolded + .agents-more-slot .agents-popover,
+.sidebar.is-unfolded + .agents-more-slot + .tooltip { left: var(--bar-list-reach); }
 
 .kbd {
   display: inline-flex;

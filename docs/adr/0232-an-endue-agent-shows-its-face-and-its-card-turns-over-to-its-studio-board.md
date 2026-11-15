@@ -5,8 +5,8 @@ decision-makers: Team endue
 ---
 
 Amends ADR 0129 (no remote picture; the back of an agent's card lists its status; the endue half
-of the agent bar) and ADR 0110 (the agent programs on this computer come first in the agent bar).
-Amends ADR 0223: an agent's Studio is also drawn on the desk, as a board; its pages still open live.
+of the agent bar). Amends ADR 0223: an agent's Studio is also drawn on the desk, as a board; its
+pages still open live.
 
 # An endue agent shows its face, and its card turns over to its Studio board
 
@@ -15,9 +15,10 @@ Amends ADR 0223: an agent's Studio is also drawn on the desk, as a board; its pa
 Signed in, the agent bar listed the person's endue agents as initials, the agent programs on this
 computer above them as two letters (CC, Cx), and an agent's card turned over to a list of facts.
 The person asked for three things: the agents' own profiles in the bar, from endue's server; the
-programs on this computer under the spaces, each under its own mark; and the back of the card
-laid out as endue.ai's Studio is, so that choosing an agent and turning its card is where it is set
-up. The desk's page loads no remote image (its CSP), ADR 0129 let no picture across the bridge, and
+programs on this computer each under its own mark; and the back of the card laid out as endue.ai's
+Studio is, so that choosing an agent and turning its card is where it is set up. (They had also
+asked for the programs to stand under the spaces; the bar's design, #291 and #292, keeps them
+first, and that stands.) The desk's page loads no remote image (its CSP), ADR 0129 let no picture across the bridge, and
 ADR 0223 chose to show endue.ai's Studio only as a live page, because the web's code is closed.
 
 ## Decision Drivers
@@ -45,9 +46,10 @@ is, a web view cannot turn with a card, and the board is the part of Studio the 
   else the one endue.ai draws from the slug (DiceBear, the same seed). It reads https only, sends
   no token, allows no host but the picture's own, keeps PNG, JPEG, GIF, WebP and SVG up to 512 KB,
   and remembers 128 faces by address. A face that cannot be read leaves the initial.
-* **Agent bar.** The endue agents show their faces; the shell reads them four at a time after the
-  list. The programs on this computer stand under the spaces, after a rule, under Claude's and
-  OpenAI's marks (Simple Icons' path data, CC0), drawn in the text's colour.
+* **Agent bar.** The endue agents show their faces, in the bar and in its unfolded list; the shell
+  reads them four at a time after the list. The programs on this computer keep their place (first,
+  before a rule, #292) and their avatar (#291), with Claude's and OpenAI's marks (Simple Icons' path
+  data, CC0) drawn inside in the text's colour instead of two letters.
 * **Board.** The back of an agent's card is the Studio board: where requests come in (console
   chat, channel, Live, API, MCP), the agent's sheet (face, name, state, what it does in a sentence,
   prompt, memory, traits, model, wallpaper, skills, built-in tools), and what it reaches

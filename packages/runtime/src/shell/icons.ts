@@ -36,6 +36,8 @@ const PATHS: Record<string, string> = {
   map: "M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15",
   minus: "M5 12h14",
   "pop-out": "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6",
+  check: "M5 12.5l4.5 4.5L19 7",
+  panel: "M4 5h16v14H4zM9 5v14M13 10h4M13 14h4",
   // An endue agent's Studio board (ADR 0232): the ways in, what it reaches, its traits and tools.
   chat: "M3 20.5h11.9A9 9 0 1 0 4.9 17.5z",
   channel: "M4 5h10v7H8l-3 3v-3H4zM10 15v2h6l3 3v-3h1v-7h-3",

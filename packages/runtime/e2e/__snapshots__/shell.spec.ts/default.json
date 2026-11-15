@@ -571,6 +571,24 @@
      },
      "children": [
       {
+       "tag": "button",
+       "class": "icon-button bar-unfold",
+       "aria-label": "이름 보기",
+       "aria-expanded": "false",
+       "box": [
+        17,
+        245,
+        1,
+        1
+       ],
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "panel"
+        }
+       ]
+      },
+      {
        "tag": "div",
        "class": "bar-group",
        "role": "group",
@@ -741,9 +759,9 @@
      "aria-label": "사용자 메뉴",
      "box": [
       16,
-      712,
+      792,
       52,
-      172
+      92
      ],
      "style": {
       "background": "rgb(30, 29, 33)",
@@ -756,7 +774,7 @@
        "aria-label": "플러그인 열기",
        "box": [
         24,
-        720,
+        800,
         36,
         36
        ],
@@ -772,59 +790,8 @@
       },
       {
        "tag": "button",
-       "class": "icon-button inbox-button",
-       "aria-label": "인박스 · 2",
-       "aria-expanded": "false",
-       "box": [
-        24,
-        760,
-        36,
-        36
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "inbox"
-        },
-        {
-         "tag": "span",
-         "class": "badge",
-         "style": {
-          "background": "rgb(36, 33, 39)",
-          "color": "rgb(242, 240, 245)",
-          "border": "solid rgb(51, 49, 54)"
-         },
-         "text": "2"
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "icon-button account-settings-button",
-       "aria-label": "설정 열기",
-       "box": [
-        24,
-        800,
-        36,
-        36
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "settings"
-        }
-       ]
-      },
-      {
-       "tag": "button",
        "class": "icon-button account-profile",
-       "aria-label": "사용자 정보",
+       "aria-label": "사용자 정보 · 인박스 · 2",
        "aria-expanded": "false",
        "box": [
         25,

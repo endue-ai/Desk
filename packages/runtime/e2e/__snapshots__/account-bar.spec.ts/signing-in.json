@@ -11,11 +11,78 @@
  "children": [
   {
    "tag": "div",
-   "class": "pop-title",
+   "class": "account-menu",
+   "role": "menu",
+   "aria-label": "User menu",
+   "children": [
+    {
+     "tag": "button",
+     "class": "menu-item account-row",
+     "role": "menuitem",
+     "aria-label": "Inbox · 2",
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "inbox"
+      },
+      {
+       "tag": "span",
+       "class": "pop-text",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "Inbox"
+      },
+      {
+       "tag": "span",
+       "class": "badge",
+       "style": {
+        "background": "rgb(36, 33, 39)",
+        "color": "rgb(242, 240, 245)",
+        "border": "solid rgb(51, 49, 54)"
+       },
+       "text": "2"
+      }
+     ]
+    },
+    {
+     "tag": "button",
+     "class": "menu-item account-row",
+     "role": "menuitem",
+     "aria-label": "Open settings",
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "settings"
+      },
+      {
+       "tag": "span",
+       "class": "pop-text",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "Open settings"
+      },
+      {
+       "tag": "span",
+       "class": "pop-muted",
+       "style": {
+        "color": "rgb(176, 173, 183)"
+       },
+       "text": "⌘,"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "pop-divider",
+   "role": "separator",
    "style": {
-    "color": "rgb(176, 173, 183)"
-   },
-   "text": "User information"
+    "background": "rgb(51, 49, 54)",
+    "color": "rgb(242, 240, 245)"
+   }
   },
   {
    "tag": "div",

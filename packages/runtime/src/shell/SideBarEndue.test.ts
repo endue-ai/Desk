@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
 import { sampleAgentId } from "../bridge/studio-fixtures";
+import { ManualClock } from "../clock";
 import { settle, testDesk } from "../surface/endue/test-desk";
 import { loadEndue, watchEndue } from "../system/endue";
 import { mountSideBar } from "./SideBar";
+import { Ticker } from "./ticker";
 
 const offs: (() => void)[] = [];
 afterEach(() => {
@@ -15,7 +17,9 @@ function mounted() {
   const desk = testDesk();
   const root = document.createElement("div");
   document.body.append(root);
-  offs.push(mountSideBar(root, desk.ctx), watchEndue(desk.ctx));
+  const ticker = new Ticker(new ManualClock());
+  desk.ctx.ticker = ticker;
+  offs.push(mountSideBar(root, desk.ctx), watchEndue(desk.ctx), () => ticker.dispose());
   return { ...desk, root };
 }
 
@@ -79,35 +83,12 @@ describe("the agent bar once signed in to endue (ADR 0129)", () => {
     await settle();
     await settle();
     expect(avatar(scout)?.querySelector("img.avatar-face")).not.toBeNull();
-  });
-
-  it("puts the programs on this computer under the endue spaces", async () => {
-    const { root, signIn, store } = mounted();
-    store.set({
-      localAgents: [
-        {
-          id: "claude",
-          name: "Claude Code",
-          vendor: "Anthropic",
-          home: "/Users/you/.claude",
-          sessions: 0,
-          archived: 0,
-          imported: 0,
-          running: 0,
-        },
-      ],
-    });
-    signIn();
-    await settle();
-    await settle();
-    const parts = [...(root.querySelector(".sidebar")?.children ?? [])];
-    expect(
-      parts.map((part) =>
-        part.getAttribute("role") === "group"
-          ? part.getAttribute("aria-label")
-          : part.getAttribute("role"),
-      ),
-    ).toEqual(["Agents", "separator", "Spaces", "separator", "Agents on this computer"]);
+    // Unfolded, a row shows the same face beside the name.
+    store.set({ agentsPinned: true });
+    const row = root.querySelector<HTMLElement>(`.bar-row[data-endue-agent="${miso}"]`);
+    expect(row?.querySelector(".bar-face img.avatar-face")?.getAttribute("src")).toBe(
+      studio.pictures[miso],
+    );
   });
 
   it("signed in, the bar has no caption and no dot, and the ring's state is `data-presence`", async () => {
@@ -124,7 +105,8 @@ describe("the agent bar once signed in to endue (ADR 0129)", () => {
           ? part.getAttribute("aria-label")
           : part.getAttribute("role"),
       ),
-    ).toEqual(["Agents", "separator", "Spaces"]);
+    ).toEqual([null, "Agents", "separator", "Spaces"]);
+    expect(bar?.firstElementChild?.getAttribute("data-key")).toBe("agents-unfold");
     const presence = (n: number) =>
       root.querySelector<HTMLElement>(`[data-endue-agent="${sampleAgentId(n)}"]`)?.dataset.presence;
     // As `enduePresence` says: Miso's conversation runs, Scout is online, Mailie is disabled.
@@ -149,8 +131,62 @@ describe("the agent bar once signed in to endue (ADR 0129)", () => {
     expect(lines()).toEqual(["Scout · Online"]);
     over('[data-endue-space="sp_sample001"]');
     expect(lines()).toEqual(["Launch space", "Ship the launch page and its first mail"]);
-    expect(root.querySelectorAll(".sidebar button")).toHaveLength(5);
+    // Three agents and two spaces, and the unfold control before them.
+    expect(root.querySelectorAll(".sidebar button")).toHaveLength(6);
     expect(root.querySelector(".sidebar button[title]")).toBeNull();
+  });
+
+  it("signed in, the list names the endue agents with their presence and the conversation one works on", async () => {
+    const { root, store, signIn } = mounted();
+    signIn();
+    await settle();
+    await settle();
+    expect(root.querySelector(".bar-row")).toBeNull();
+    store.set({ agentsPinned: true });
+    const says = (selector: string) => {
+      const row = root.querySelector<HTMLElement>(`.bar-row${selector}`);
+      return [".bar-row-name", ".bar-row-note", ".bar-row-time"].map(
+        (part) => row?.querySelector(part)?.textContent ?? null,
+      );
+    };
+    // Miso's conversation runs, its last message 2 minutes before; the others say their presence.
+    expect(says(`[data-endue-agent="${sampleAgentId(1)}"]`)).toEqual([
+      "Miso",
+      "Move Friday's dentist",
+      "2:00",
+    ]);
+    expect(says(`[data-endue-agent="${sampleAgentId(3)}"]`)).toEqual(["Scout", "Online", null]);
+    expect(says(`[data-endue-agent="${sampleAgentId(2)}"]`)).toEqual(["Mailie", "Paused", null]);
+    // A row is the avatar's own control: its key, its name, its state and its colour.
+    const miso = root.querySelector<HTMLElement>(
+      `.bar-row[data-endue-agent="${sampleAgentId(1)}"]`,
+    );
+    expect(miso?.dataset.key).toBe(`endue-agent-${sampleAgentId(1)}`);
+    expect(miso?.getAttribute("aria-label")).toBe("Miso · Working");
+    expect(miso?.querySelector<HTMLElement>(".bar-face")?.dataset.presence).toBe("working");
+    expect(miso?.style.getPropertyValue("--endue-accent")).toBe("#B6A3F5");
+    // A space's row says its name, under the caption its group has.
+    expect(says('[data-endue-space="sp_sample001"]')).toEqual(["Launch", null, null]);
+    expect(
+      root.querySelector('.bar-row[data-endue-space="sp_sample001"]')?.getAttribute("aria-label"),
+    ).toBe("Launch space");
+    expect([...root.querySelectorAll(".bar-caption")].map((c) => c.textContent)).toEqual([
+      "Agents",
+      "Spaces",
+    ]);
+    // The words are endue's own for the others: an agent that waits for the person, one offline.
+    store.set((s) => ({
+      endue: {
+        ...s.endue,
+        conversations: s.endue.conversations.map((c) =>
+          c.agentId === sampleAgentId(3) ? { ...c, activity: "waiting" as const } : c,
+        ),
+      },
+    }));
+    expect(says(`[data-endue-agent="${sampleAgentId(3)}"]`)).toEqual(["Scout", "Needs you", null]);
+    // Pressing a row opens the window its avatar opens.
+    root.querySelector<HTMLElement>(`.bar-row[data-endue-agent="${sampleAgentId(3)}"]`)?.click();
+    expect(store.get().focused).toBe(`endue-agent:${sampleAgentId(3)}`);
   });
 
   it("opens an agent's or a space's window on a click", async () => {

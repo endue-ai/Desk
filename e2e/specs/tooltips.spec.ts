@@ -168,10 +168,11 @@ describe("tooltips: a page's hover title is drawn by the compositor, in the them
   });
 
   it("shows the desk's own titles, and its page's cursor reaches the window", async () => {
-    const gear = await middle('[title="Open settings"]');
-    if (!gear) throw new Error("no settings button in sight");
-    await arrive(gear);
-    const shown = await showing("Open settings");
+    // The launcher: the account bar's button with a title (Settings is in the avatar's menu, #293).
+    const launcher = await middle('[title="Open a plugin"]');
+    if (!launcher) throw new Error("no launcher button in sight");
+    await arrive(launcher);
+    const shown = await showing("Open a plugin");
     expect(shown.surface).toBe("desk");
     expect((await inputState()).cursor).toContain("Pointer");
   });
