@@ -70,36 +70,56 @@ type Picking = Pin<Box<dyn Future<Output = Option<Vec<PathBuf>>> + Send>>;
 pub fn open(desk: &Desk, args: &Value) -> Result<Value, String> {
     let options = options(args)?;
     let multiple = options.multiple;
-    Ok(answer(pick(&desk.pump, options)?, multiple))
+    let picked = on_the_loop(&desk.pump, false, move |parent| start(options, parent));
+    Ok(answer(picked.map_err(|why| why.to_string())?, multiple))
 }
 
-/// Show the open dialog `options` asks for over the main window and wait for the person's choice.
-pub(crate) fn pick(pump: &Pump, options: Options) -> Result<Option<Vec<PathBuf>>, String> {
-    on_the_loop(pump, move |parent| start(options, parent))
+/// Why a dialog did not get to ask the person.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum NotShown {
+    /// There is no main window to attach it to: the desk runs without one.
+    NoWindow,
+    /// The event loop did not start it in time.
+    DidNotOpen,
+}
+
+impl std::fmt::Display for NotShown {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            NotShown::NoWindow => "the desk has no window to show a dialog over",
+            NotShown::DidNotOpen => "the file dialog did not open",
+        })
+    }
 }
 
 /// Start a dialog on the event loop's thread, over the main window, and wait for its answer here.
+/// With `window`, a desk without a main window shows none (rfd would run it modally on the loop).
 pub(crate) fn on_the_loop<T: Send + 'static>(
     pump: &Pump,
+    window: bool,
     start: impl FnOnce(Option<&winit::window::Window>) -> Pin<Box<dyn Future<Output = T> + Send>>
     + Send
     + 'static,
-) -> Result<T, String> {
+) -> Result<T, NotShown> {
     let (started, picking) = mpsc::channel();
     pump.run(move |shell, _| {
         let parent = shell
             .pane(Role::Main)
             .map(|pane| std::sync::Arc::clone(&pane.window));
-        let _ = started.send(start(parent.as_deref()));
+        let picking = match (&parent, window) {
+            (None, true) => None,
+            _ => Some(start(parent.as_deref())),
+        };
+        let _ = started.send(picking);
     });
-    let picking = picking
-        .recv_timeout(Duration::from_secs(10))
-        .map_err(|_| "the file dialog did not open".to_owned())?;
+    let picking = (picking.recv_timeout(Duration::from_secs(10)))
+        .map_err(|_| NotShown::DidNotOpen)?
+        .ok_or(NotShown::NoWindow)?;
     Ok(pollster::block_on(picking))
 }
 
 /// Start the dialog `options` asks for, over `parent`. Call on the event loop's thread.
-fn start(options: Options, parent: Option<&winit::window::Window>) -> Picking {
+pub(crate) fn start(options: Options, parent: Option<&winit::window::Window>) -> Picking {
     let mut dialog = rfd::AsyncFileDialog::new();
     if let Some(parent) = parent {
         dialog = dialog.set_parent(parent);

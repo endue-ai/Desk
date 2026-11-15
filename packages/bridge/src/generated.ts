@@ -4386,7 +4386,7 @@ export interface DialogOpenParams {
   filters?: DialogFilters;
 }
 
-/** Result of dialog.open: the absolute paths the person chose, now readable by the caller, or cancelled with none. */
+/** Result of dialog.open: the paths the person chose (from ~ under the home folder), now readable by the caller, or cancelled with none. */
 export interface DialogOpenResult {
   cancelled: boolean;
   paths: Path[];
@@ -4409,7 +4409,7 @@ export interface DialogSaveParams {
   filters?: DialogFilters;
 }
 
-/** Result of dialog.save: the absolute path the person chose, now readable and writable by the caller, or cancelled without one. */
+/** Result of dialog.save: the path the person chose (from ~ under the home folder), now readable and writable by the caller, or cancelled without one. */
 export interface DialogSaveResult {
   cancelled: boolean;
   path?: Path;

@@ -1,24 +1,44 @@
 //! The bridge's side of the dialogs (#308): `dialog.open` and `dialog.save` from plugins, shown as the
 //! desk's own open dialog is (`super::start`) and as an `rfd` save dialog, both over the main window.
 //! The core grants what the person chose; this only shows the dialogs and says what was chosen.
+//! Each title says who asks (`Notes: Open a note`), one dialog shows at a time (a second waits),
+//! and a desk without a main window answers `unsupported` rather than show one unattached.
 
 use std::path::PathBuf;
 
 use desk_bridge::{DialogFilter, DialogOpenKind, DialogOpenParams, DialogSaveParams};
-use desk_core::{DialogError, Dialogs};
+use desk_core::{Asker, DialogError, Dialogs};
 
-use super::{Filter, Options, on_the_loop, pick};
+use super::{Filter, NotShown, Options, on_the_loop, start};
 use crate::pump::Pump;
 
 /// The dialogs the shell gives the core once the desk is up.
 pub struct ShellDialogs {
     pump: Pump,
     home: PathBuf,
+    /// Held while a dialog shows: the next one waits for the person's answer to this one.
+    one: std::sync::Mutex<()>,
 }
 
 impl ShellDialogs {
     pub fn new(pump: Pump, home: PathBuf) -> Self {
-        Self { pump, home }
+        Self {
+            pump,
+            home,
+            one: std::sync::Mutex::new(()),
+        }
+    }
+}
+
+/// A dialog's title: who asks, then what for (`what` when the caller names nothing).
+pub(crate) fn titled(asker: &Asker, title: Option<&str>, what: &str) -> String {
+    format!("{}: {}", asker.name, title.unwrap_or(what))
+}
+
+fn not_shown(why: NotShown) -> DialogError {
+    match why {
+        NotShown::NoWindow => DialogError::Unsupported(why.to_string()),
+        NotShown::DidNotOpen => DialogError::Failed(why.to_string()),
     }
 }
 
@@ -43,36 +63,59 @@ fn filters(filters: Option<&Vec<DialogFilter>>) -> Vec<Filter> {
 }
 
 /// The desk's open options for a plugin's `dialog.open`.
-pub(crate) fn open_options(params: &DialogOpenParams, home: &std::path::Path) -> Options {
+pub(crate) fn open_options(
+    asker: &Asker,
+    params: &DialogOpenParams,
+    home: &std::path::Path,
+) -> Options {
     Options {
         multiple: params.multiple == Some(true),
         directory: params.kind == Some(DialogOpenKind::Folders),
-        title: params.title.clone(),
+        title: Some(titled(asker, params.title.as_deref(), "Open")),
         default_path: (params.start_in.as_deref()).map(|p| local(p, home).to_string_lossy().into()),
         filters: filters(params.filters.as_ref()),
     }
 }
 
-/// The save dialog `params` asks for, over `parent`. Call on the event loop's thread.
+/// What the save dialog is told: its title, folder, suggested name and filters.
+#[derive(Debug, PartialEq)]
+pub(crate) struct SaveOptions {
+    pub title: String,
+    pub directory: Option<PathBuf>,
+    pub file_name: Option<String>,
+    pub filters: Vec<Filter>,
+}
+
+/// The save options for a plugin's `dialog.save`.
+pub(crate) fn save_options(
+    asker: &Asker,
+    params: &DialogSaveParams,
+    home: &std::path::Path,
+) -> SaveOptions {
+    SaveOptions {
+        title: titled(asker, params.title.as_deref(), "Save"),
+        directory: (params.start_in.as_deref()).map(|p| local(p, home)),
+        file_name: params.suggested_name.clone(),
+        filters: filters(params.filters.as_ref()),
+    }
+}
+
+/// The save dialog `options` asks for, over `parent`. Call on the event loop's thread.
 fn start_save(
-    params: DialogSaveParams,
-    home: PathBuf,
+    options: SaveOptions,
     parent: Option<&winit::window::Window>,
 ) -> std::pin::Pin<Box<dyn Future<Output = Option<PathBuf>> + Send>> {
-    let mut dialog = rfd::AsyncFileDialog::new();
+    let mut dialog = rfd::AsyncFileDialog::new().set_title(&options.title);
     if let Some(parent) = parent {
         dialog = dialog.set_parent(parent);
     }
-    if let Some(title) = &params.title {
-        dialog = dialog.set_title(title);
+    if let Some(folder) = &options.directory {
+        dialog = dialog.set_directory(folder);
     }
-    if let Some(folder) = &params.start_in {
-        dialog = dialog.set_directory(local(folder, &home));
-    }
-    if let Some(name) = &params.suggested_name {
+    if let Some(name) = &options.file_name {
         dialog = dialog.set_file_name(name);
     }
-    for filter in filters(params.filters.as_ref()) {
+    for filter in &options.filters {
         dialog = dialog.add_filter(&filter.name, &filter.extensions);
     }
     let saving = dialog.save_file();
@@ -80,14 +123,24 @@ fn start_save(
 }
 
 impl Dialogs for ShellDialogs {
-    fn open(&self, params: &DialogOpenParams) -> Result<Option<Vec<PathBuf>>, DialogError> {
-        pick(&self.pump, open_options(params, &self.home)).map_err(DialogError::Failed)
+    fn open(
+        &self,
+        asker: &Asker,
+        params: &DialogOpenParams,
+    ) -> Result<Option<Vec<PathBuf>>, DialogError> {
+        let _one = self.one.lock().unwrap_or_else(|e| e.into_inner());
+        let options = open_options(asker, params, &self.home);
+        on_the_loop(&self.pump, true, move |parent| start(options, parent)).map_err(not_shown)
     }
 
-    fn save(&self, params: &DialogSaveParams) -> Result<Option<PathBuf>, DialogError> {
-        let (params, home) = (params.clone(), self.home.clone());
-        on_the_loop(&self.pump, move |parent| start_save(params, home, parent))
-            .map_err(DialogError::Failed)
+    fn save(
+        &self,
+        asker: &Asker,
+        params: &DialogSaveParams,
+    ) -> Result<Option<PathBuf>, DialogError> {
+        let _one = self.one.lock().unwrap_or_else(|e| e.into_inner());
+        let options = save_options(asker, params, &self.home);
+        on_the_loop(&self.pump, true, move |parent| start_save(options, parent)).map_err(not_shown)
     }
 }
 
@@ -95,29 +148,76 @@ impl Dialogs for ShellDialogs {
 mod tests {
     use std::path::{Path, PathBuf};
 
-    use desk_bridge::DialogOpenParams;
+    use desk_bridge::{DialogOpenParams, DialogSaveParams};
+    use desk_core::{Asker, DialogError};
     use serde_json::json;
 
-    use super::{Filter, local, open_options};
+    use super::{Filter, NotShown, SaveOptions, local, not_shown, open_options, save_options};
+
+    fn notes() -> Asker {
+        Asker {
+            caller: "endue.notes".into(),
+            name: "Notes".into(),
+        }
+    }
+
+    fn markdown() -> Filter {
+        Filter {
+            name: "Markdown".into(),
+            extensions: vec!["md".into()],
+        }
+    }
 
     #[test]
-    fn a_plugins_open_asks_for_what_its_params_say() {
+    fn a_plugins_open_asks_for_what_its_params_say_under_its_name() {
         let params: DialogOpenParams = serde_json::from_value(json!({
             "kind": "folders", "multiple": true, "title": "Pick", "startIn": "~/Notes",
             "filters": [{ "name": "Markdown", "extensions": ["md"] }],
         }))
         .unwrap();
-        let options = open_options(&params, Path::new("/Users/person"));
+        let options = open_options(&notes(), &params, Path::new("/Users/person"));
         assert!(options.multiple && options.directory);
-        assert_eq!(options.title.as_deref(), Some("Pick"));
+        assert_eq!(options.title.as_deref(), Some("Notes: Pick"));
         assert_eq!(options.default_path.as_deref(), Some("/Users/person/Notes"));
-        let markdown = Filter {
-            name: "Markdown".into(),
-            extensions: vec!["md".into()],
-        };
-        assert_eq!(options.filters, [markdown]);
-        let none = open_options(&serde_json::from_value(json!({})).unwrap(), Path::new("/h"));
+        assert_eq!(options.filters, [markdown()]);
+        let none: DialogOpenParams = serde_json::from_value(json!({})).unwrap();
+        let none = open_options(&notes(), &none, Path::new("/h"));
         assert!(!none.multiple && !none.directory && none.default_path.is_none());
+        assert_eq!(none.title.as_deref(), Some("Notes: Open"));
+    }
+
+    #[test]
+    fn a_plugins_save_suggests_its_name_in_its_folder_under_its_name() {
+        let params: DialogSaveParams = serde_json::from_value(json!({
+            "title": "Save the note as", "suggestedName": "a.md", "startIn": "${home}/Notes",
+            "filters": [{ "name": "Markdown", "extensions": ["md"] }],
+        }))
+        .unwrap();
+        assert_eq!(
+            save_options(&notes(), &params, Path::new("/Users/person")),
+            SaveOptions {
+                title: "Notes: Save the note as".into(),
+                directory: Some(PathBuf::from("/Users/person/Notes")),
+                file_name: Some("a.md".into()),
+                filters: vec![markdown()],
+            }
+        );
+        let none: DialogSaveParams = serde_json::from_value(json!({})).unwrap();
+        let none = save_options(&notes(), &none, Path::new("/h"));
+        assert_eq!(none.title, "Notes: Save");
+        assert!(none.directory.is_none() && none.file_name.is_none() && none.filters.is_empty());
+    }
+
+    #[test]
+    fn no_window_is_unsupported_and_a_dialog_that_did_not_open_failed() {
+        assert!(matches!(
+            not_shown(NotShown::NoWindow),
+            DialogError::Unsupported(_)
+        ));
+        assert!(matches!(
+            not_shown(NotShown::DidNotOpen),
+            DialogError::Failed(_)
+        ));
     }
 
     #[test]

@@ -5,8 +5,10 @@ const FILTERS = [
   { name: "Markdown", extensions: ["md"] },
   { name: "Text", extensions: ["txt"] },
 ];
-const CHOSEN = "/Users/person/Documents/plan.md";
-const AWAY = "/Users/person/Desktop/copy.md";
+// The core answers paths under home as the desk's buffers spell them (`~/…`), so the file Notes then
+// visits is the one the dialog granted, not its folder.
+const CHOSEN = "~/Documents/plan.md";
+const AWAY = "~/Desktop/copy.md";
 
 const readOnly = (path: string) => ({ permission: "fs:read", paths: [path] });
 const writeOnly = (path: string) => ({ permission: "fs:write", paths: [path] });
@@ -65,6 +67,19 @@ it("Save as… asks dialog.save with the note's name and writes the note there",
   // The saved copy opens in Notes, read under the dialog's grant of that file.
   expect(m.ran("desk.files.open")).toEqual([{ path: AWAY }]);
   expect(m.view.notes.at(-1)).toMatchObject({ path: AWAY, text: "# A\nedited\n", modified: false });
+  expect(m.params("perm.request")).toEqual([]);
+
+  // Edited and saved again (Mod+S): written under the dialog's grant of that file, with no ask.
+  m.app.edit("# A\nedited again\n");
+  await m.settle();
+  await expect(m.host.command("desk.files.save", note(AWAY))).resolves.toBeUndefined();
+  expect(m.params("fs.write").at(-1)).toEqual({
+    path: AWAY,
+    content: "# A\nedited again\n",
+    encoding: "utf8",
+    scope: writeOnly(AWAY),
+  });
+  expect(files[AWAY]).toBe("# A\nedited again\n");
   expect(m.params("perm.request")).toEqual([]);
 });
 

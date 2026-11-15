@@ -3,7 +3,7 @@
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
 `store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
-`view`, `catalog`, `shell`, `update`, `theme`, `account`, `agent`, `agents`, `studio` (with `studio-spaces`), `computer` and `web`. Items, views and connectors are the types of `specs/item`,
+`view`, `catalog`, `shell`, `update`, `theme`, `account`, `agent`, `agents`, `studio` (with `studio-spaces`), `computer`, `web` and `dialog`. Items, views and connectors are the types of `specs/item`,
 `specs/view` and `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
@@ -754,17 +754,21 @@ already ended is not an error. A view also ends when its window's surface sleeps
 of the desk, and when its plugin stops.
 
 **dialog.open** asks the person for files (`kind: files`, the default) or folders (`kind: folders`) to
-open, one or (`multiple`) several, through the OS's own dialog attached to the desk window, starting in
-`startIn` and showing `filters`. It answers the absolute `paths` chosen, or `cancelled: true` with none;
-cancelling is not an error. No permission is needed to ask: the person's choice is the consent. Each
+open, one or (`multiple`) several, through the OS's own dialog attached to the desk window, its title
+naming the plugin that asks, starting in `startIn` and showing `filters`; one dialog shows at a time. It
+answers the `paths` chosen, absolute or, under the home folder, from `~` as the desk's buffers name them,
+or `cancelled: true` with none; cancelling is not an error. No permission is needed to ask: the person's
+choice is the consent, and only the desk's page and installed plugins may ask. Each
 chosen file is granted to the caller as `fs:read` on that path, a chosen folder as `fs:read` on the folder
 and `<folder>/**`, for the session, as any other grant (`perm.list` shows it, `perm.revoke` ends it).
-Nothing else is granted. A chosen path holding `*` or `?`, which a grant would read as a pattern, is left
-out of the answer and not granted (none left reads as cancelled). An agent's or an MCP server's call is
+Nothing else is granted. A chosen path is granted only as the OS named it: one that is not valid UTF-8,
+holds a `\` outside Windows, is not in normal form (`.`, `..`, an empty segment, a UNC prefix) or holds
+`*` or `?`, which a grant would read as a pattern, is left out of the answer and not granted (none left
+reads as cancelled). Any other caller (an agent, an MCP server, `cli`, the palette) is
 `permission_denied`; a desk without a window to attach the dialog to answers `unsupported`.
 
 **dialog.save** asks the person for a place to save one file, suggesting `suggestedName` in `startIn`.
-It answers the absolute `path` chosen, or `cancelled: true` without one. The path is granted to the
+It answers the `path` chosen, written as for `dialog.open`, or `cancelled: true` without one. The path is granted to the
 caller as `fs:write` and `fs:read` on that path alone, for the session, so the caller writes it with
 `fs.write` and can open it again; nothing beside it is granted. Agents and windowless desks are answered
 as for `dialog.open`.
