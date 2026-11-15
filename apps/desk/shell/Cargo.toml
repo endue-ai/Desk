@@ -48,6 +48,8 @@ desk-bridge.workspace = true
 desk-computer = { path = "../../../crates/desk-computer" }
 # Compositor mode (#52): off-screen surfaces composited by desk-compositor over specs/surface.
 desk-compositor.workspace = true
+# endue:// links (#310): their v1 grammar.
+desk-link = { path = "../../../crates/desk-link" }
 desk-surface = { workspace = true, features = ["native"] }
 desk-core.workspace = true
 # Start at login (#237): the login item the setting registers, and the start it makes.

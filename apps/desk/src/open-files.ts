@@ -4,6 +4,8 @@ interface OpenFilesHost {
   ready: Promise<void>;
   commands: { run(id: string, args: { path: string }): Promise<unknown> };
   report(error: unknown): void;
+  /** An endue:// link the shell queued among the files, in its place (#310, open-links.ts). */
+  link?(entry: string): Promise<void>;
 }
 
 /** Events only signal pending work. The host queue consumes each path in one serialized drain. */
@@ -26,7 +28,8 @@ export function installOpenedFiles(host: OpenFilesHost): () => void {
         for (const path of paths) {
           if (!active) return;
           try {
-            await host.commands.run("desk.files.open", { path });
+            if (path.startsWith("endue:")) await host.link?.(path);
+            else await host.commands.run("desk.files.open", { path });
           } catch (error) {
             report(error);
           }

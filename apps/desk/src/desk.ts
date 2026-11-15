@@ -27,6 +27,7 @@ import { adapter, invoke, listen } from "./host";
 import { followLogin } from "./login";
 import { pickNativeFile, realNativePath } from "./native-files";
 import { installOpenedFiles } from "./open-files";
+import { openLink } from "./open-links";
 import { sendThemeToPalette } from "./palette-theme";
 import { installQuit } from "./quit";
 import { shellBridge } from "./shell-bridge";
@@ -98,6 +99,9 @@ void desk.runtime.ready.then(() => phase("desk mount", booted));
 const disposeOpened = installOpenedFiles({
   ready: desk.ready,
   commands: desk.runtime.commands,
+  // endue:// links, queued in their place among the files (#310).
+  link: (entry) =>
+    openLink({ commands: desk.runtime.commands, notify: (n) => desk.runtime.notify(n) }, entry),
   report: (error) =>
     desk.runtime.notify({
       caller: "desk",

@@ -1,5 +1,6 @@
 //! The app's run events from the OS (the Tauri shell's `run_event.rs`). On macOS, files opened with
-//! the desk from Finder or the Dock (`application:openURLs:`) go to the open-files queue, and a click
+//! the desk from Finder or the Dock, and `endue://` links (`application:openURLs:`), go to the
+//! open-files queue (#310), and a click
 //! on the Dock icon (`applicationShouldHandleReopen:hasVisibleWindows:`) shows the main window again,
 //! since closing it only hides it. winit's application delegate answers neither, so the shell adds
 //! the two methods to its class before the app finishes launching, the way `mac.rs` adds Chromium's.
@@ -43,7 +44,7 @@ mod mac {
         let paths: Vec<String> = urls
             .iter()
             .filter_map(|url| url.absoluteString())
-            .filter_map(|text| crate::open_files::file_url(&text.to_string()))
+            .filter_map(|text| crate::open_files::url_entry(&text.to_string()))
             .collect();
         if let Some(pump) = PUMP.get() {
             pump.run(move |shell, _| shell.open_files(paths));
