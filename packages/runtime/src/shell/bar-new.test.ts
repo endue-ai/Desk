@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ManualClock } from "../clock";
+import { endueText } from "../surface/endue/copy";
 import { settle, testDesk } from "../surface/endue/test-desk";
 import { watchEndue } from "../system/endue";
 import type { BarEntry } from "./bar-list";
 import { barMore, barWord, NEW_AGENT_PAGE, NEW_SPACE_PAGE } from "./bar-new";
+import { t } from "./copy";
 import { mountSideBar } from "./SideBar";
 import type { DeskState } from "./state";
 import { Ticker } from "./ticker";
@@ -110,7 +112,23 @@ describe("the agent bar's New agent and New space", () => {
     expect(ran.filter(([command]) => command === "endue.agents.new")).toHaveLength(3);
   });
 
-  it("New agent opens endue.ai's page where the desk has no Agents", async () => {
+  it("New agent opens endue.ai's page in a desk window where the desk has no Agents", async () => {
+    const { root, ran, opened } = mounted(async (command, args) => {
+      if (command === "desk.plugins.open" && (args as { plugin: string }).plugin === "endue.agents")
+        throw new Error("no plugin endue.agents");
+    });
+    control(root, "agents-new").click();
+    await settle();
+    await settle();
+    expect(ran).toEqual([
+      ["desk.plugins.open", { plugin: "endue.agents" }],
+      ["desk.plugins.open", { plugin: "endue.browser" }],
+      ["endue.browser.go", { url: NEW_AGENT_PAGE }],
+    ]);
+    expect(opened()).toEqual([]);
+  });
+
+  it("New agent opens endue.ai's page in the system browser where the desk has no windows for it", async () => {
     const { root, opened } = mounted(async (command) => {
       if (command === "desk.plugins.open") throw new Error("no plugin");
     });
@@ -198,8 +216,15 @@ describe("the place past six agents", () => {
     expect(pressed).toEqual([3]);
   });
 
-  it("says how many in either language", () => {
+  it("says how many in either language, inside the name of the rest (WCAG 2.5.3)", () => {
+    for (const lang of ["ko", "en"] as const) {
+      const shown = (key: "more" | "moreEndue") => barWord(lang, key, 3).replace(/^\+/, "");
+      expect(t(lang, "moreAgents", { n: 3 })).toContain(shown("more"));
+      expect(endueText(lang, "moreAgents", { n: 3 })).toContain(shown("moreEndue"));
+    }
     expect(barWord("en", "more", 3)).toBe("+3 more");
-    expect(barWord("ko", "more", 3)).toBe("+3 더보기");
+    expect(barWord("ko", "more", 3)).toBe("+3명 더");
+    expect(barWord("ko", "moreEndue", 3)).toBe("+3개 더");
+    expect(barWord("en", "moreEndue", 3)).toBe("+3 more");
   });
 });

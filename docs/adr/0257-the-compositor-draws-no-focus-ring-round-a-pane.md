@@ -59,5 +59,5 @@ had the compositor guess a page's focus modality, which the page knows and draws
 
 ## More Information
 
-Issue #320; the ring came with #56 (ADR 0150) and its corners with #250 (ADR 0209). The motion gate
-(`just perf-motion`, ADR 0208) holds for the change, which only removes drawing.
+Issue #320; the ring came with #56 (ADR 0150) and its corners with #250 (ADR 0209). The change only
+removes drawing; the motion gate (`just perf-motion`, ADR 0208) is to pass on it before it lands.

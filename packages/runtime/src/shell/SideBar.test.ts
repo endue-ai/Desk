@@ -251,10 +251,12 @@ describe("the agent bar at rest (#292)", () => {
     const directory = withDirectory(store);
     const [first] = directory.agents;
     if (!first) throw new Error("no sample agent");
+    // Cy, past the sixth place, has a colour of their own.
     const more = ["Ada", "Bo", "Cy", "Dee"].map((name, n) => ({
       ...first.agent,
       id: `ag_extra_${n}`,
       name,
+      ...(name === "Cy" ? { personalColor: "#5FD0BE" } : {}),
     }));
     store.set({
       agents: [...store.get().agents, ...more],
@@ -262,8 +264,13 @@ describe("the agent bar at rest (#292)", () => {
     });
     expect(root.querySelectorAll(".sidebar [data-agent]")).toHaveLength(5);
     const rest = one(root, ".avatar-more");
-    // Their faces, two of them, and how many under them.
-    expect(rest.querySelectorAll(".bar-more-face")).toHaveLength(2);
+    // Their faces, two of them, each in its agent's own colour when it has one, and how many
+    // under them.
+    const faces = [...rest.querySelectorAll<HTMLElement>(".bar-more-face")];
+    expect(faces.map((face) => face.style.getPropertyValue("--face-colour"))).toEqual([
+      "#5FD0BE",
+      "",
+    ]);
     expect(rest.textContent).toBe("+2 more");
     expect(rest.getAttribute("aria-label")).toBe("2 more agents");
     expect(rest.hasAttribute("title")).toBe(false);

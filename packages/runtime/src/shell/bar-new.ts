@@ -16,8 +16,12 @@ import type { Lang } from "./copy";
 import { h } from "./dom";
 import { icon } from "./icons";
 
+/** The bar's words. The place of the rest's name holds what it shows (WCAG 2.5.3): its caption is
+ *  the tail of its group's name for the rest, the directory's (copy.ts `moreAgents`) or endue's
+ *  (surface/endue/copy.ts), which count agents differently in Korean. */
 const words = {
-  more: ["+{n} 더보기", "+{n} more"],
+  more: ["+{n}명 더", "+{n} more"],
+  moreEndue: ["+{n}개 더", "+{n} more"],
   newAgent: ["새 에이전트", "New agent"],
   newAgentLabel: ["새 에이전트 만들기", "Create a new agent"],
   newSpace: ["새 스페이스", "New space"],

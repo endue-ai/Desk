@@ -15,6 +15,7 @@
 import type { A2ATask, Agent, LocalAgent, Space } from "@endue-ai/bridge";
 import { localText } from "../surface/local-agent/copy";
 import { type Presence, presenceOf, selectAgent, selectSpace, spaceAgents } from "../system/agents";
+import { hexColour } from "../system/endue-ids";
 import {
   badgeOf,
   isRunning,
@@ -169,8 +170,8 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
         hidden.length
           ? barMore(rest, {
               caption: barWord(s.lang, "more", hidden.length),
-              // The directory gives its agents no colour: the stylesheet gives each face one.
-              faces: hidden.map(() => ({})),
+              // Each agent's own colour; one with none takes the chart's, in turn (bar-new.css).
+              faces: hidden.map((a) => ({ colour: hexColour(a.personalColor) })),
               unfolded,
               now,
             })

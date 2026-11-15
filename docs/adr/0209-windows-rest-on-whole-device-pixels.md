@@ -6,6 +6,8 @@ decision-makers: Team endue
 
 Part of ADR 0205's quality track (#232, #250). Numbered past 0206 to 0208, which other sessions hold.
 
+Status: amended by ADR 0257: no focus ring is drawn round a pane, so none follows its corners.
+
 # Windows rest on whole device pixels, and their pages are read texel for texel there
 
 ## Context and Problem Statement

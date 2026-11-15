@@ -166,7 +166,7 @@ export function endueGroups(ctx: ShellCtx, s: DeskState, unfolded: boolean): Bar
       ),
       hidden.length
         ? barMore(rest, {
-            caption: barWord(s.lang, "more", hidden.length),
+            caption: barWord(s.lang, "moreEndue", hidden.length),
             faces: hidden.map(({ agent }) => ({ colour: hexColour(agent.personalColor) })),
             unfolded,
             now,

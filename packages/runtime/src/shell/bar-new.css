@@ -29,6 +29,9 @@
   background: transparent;
   color: var(--desk-text);
 }
+/* The bar scrolls, so it clips what lies past its edge: a place as wide as the bar draws its focus
+   ring inside itself, as a row of the unfolded list does (chrome.css). */
+.sidebar .bar-place:focus-visible { outline-offset: calc(var(--desk-focus-width) * -1); }
 
 /* The face: an avatar's size and place (chrome.css), round for agents. */
 .bar-place .bar-place-face {

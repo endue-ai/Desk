@@ -6,6 +6,9 @@ decision-makers: Team endue
 
 Amends ADR 0211 (a pane's plugin is no longer drawn as it comes while its window's size changes).
 
+Status: amended by ADR 0257: no focus ring is drawn round the pane; the frame and the content change
+size together.
+
 # A plugin's picture waits for its window's frame
 
 ## Context and Problem Statement
