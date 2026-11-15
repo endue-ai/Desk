@@ -3,6 +3,7 @@ import { type Clock, realClock, tween } from "./clock";
 import { Preferences } from "./core/preferences";
 import { installDescribe } from "./describe/install";
 import { Edges, edgeOf } from "./edges";
+import { surfaceFocus } from "./focus-surface";
 import { installFrames } from "./frames/install";
 import { startsAsleep } from "./frames/start-asleep";
 import { keepState } from "./frames/state";
@@ -159,22 +160,17 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   // Contributed commands with `runs`, and the palette's providers, are the desk's to answer.
   const aliases = installAliases(ctx);
   const palette = installPalette(ctx);
-  const focusSurface = (id: string | null) => {
-    shortcuts.focus(id);
-    focusMoved(id);
-    if (id) {
-      options.windows?.show?.(id);
-      surfaces.focus(id);
-    }
-  };
+  const show = (id: string) => options.windows?.show?.(id) ?? undefined;
+  const moved = (id: string | null) => focusMoved(id);
+  const focusing = surfaceFocus({ root, shortcuts, surfaces, show, moved });
+  const { focus: focusSurface, follow: followSurface } = focusing;
   const { views, windows, language } = options;
   // Set once desk.buffers is installed: which ids are the host's views.
   let routing: ViewRouting = { owns: () => false, dispose: () => {} };
   const focusAny = (id: string | null) => {
-    if (id && routing.owns(id)) {
-      focusSurface(null);
-      views?.focus(id);
-    } else focusSurface(id);
+    if (!id || !routing.owns(id)) return focusSurface(id);
+    focusSurface(null);
+    return views?.focus(id) ?? undefined;
   };
   const display = installDisplay(ctx, {
     focus: focusAny,
@@ -368,6 +364,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     openSurface,
     closeSurface,
     focusSurface,
+    followSurface,
     status: () => notify.text(),
     dispose() {
       settingsWindow.dispose();

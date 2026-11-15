@@ -1,17 +1,26 @@
-// The compositor owns the keyboard focus (#56), and a press on a plugin surface gives it that
-// surface. The runtime moves the focus too (opening a window, Ctrl+Tab, the which-key overlay taking
-// it for a prefix and giving it back), by focusing a surface's place here (ADR 0160), where the
-// compositor draws the surface's own browser. So this page tells the CEF shell, whenever its focus
-// settles, which surface's place has it, or whether an element of its own does (a field, a button):
-// the keys go there. When neither does, the focus rests on nothing of the page's own (its body, a
-// window's section) and the keys follow the window in use (ADR 0192).
+// The window manager decides which window is in use, and the keys are that window's (ADR 0230):
+// on a press before this page hears it, and for a key, a command or an agent's call when it
+// applies them. This page is told (the desk it publishes) and moves its focus along. It tells the
+// CEF shell only what its own fields hold, whenever its focus settles: whether an element of its own
+// has it (a field, a button), or the place of a surface it shows outside every window (the
+// palette, a question, the which-key overlay, an edge bar), where the compositor draws that
+// surface's own browser (ADR 0160): the keys go there. Its focus on a window's surface says
+// nothing: the keys are with the window in use whatever this page's focus does (ADR 0192).
 //
 // What is typed after a press on the page, or after a key the desk ran, waits in the compositor
 // until this page answers it (`crates/desk-compositor/src/input/hold.rs`): the talk pill opens its
 // line, ⌘K opens the palette, and only then do the keys know where to go.
 
-/** The surface host whose place has the page's focus; null when the page itself has it. */
+/** Whether the page's focus is in a surface a window shows: the window manager's to name. */
+const inWindow = (doc: Document): boolean =>
+  doc.activeElement?.closest(".desk-surface--windowed") != null;
+
+/**
+ * The surface host, shown outside every window, whose place has the page's focus; null when the
+ * page itself has it, or a window's surface does.
+ */
 export function focusedSurface(doc: Document): string | null {
+  if (inWindow(doc)) return null;
   const place = doc.activeElement?.closest<HTMLElement>("[data-surface-host]");
   return place?.dataset.surfaceHost || null;
 }
@@ -32,7 +41,8 @@ export function pageFocus(doc: Document): PageFocus {
     !active ||
     active === doc.body ||
     active === doc.documentElement ||
-    active.matches("[data-surface]");
+    active.matches("[data-surface]") ||
+    inWindow(doc);
   return { surface, own: surface === null && !rest };
 }
 

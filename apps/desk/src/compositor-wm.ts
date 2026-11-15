@@ -41,6 +41,8 @@ export function wmSeam(send: Send, ask: Ask): WmSeam {
   const pending = answers();
   return {
     host: {
+      // desk-wm hears every press on the compositor's input and decides the window in use (ADR 0230).
+      decidesPress: true,
       connect(next) {
         take = next;
       },

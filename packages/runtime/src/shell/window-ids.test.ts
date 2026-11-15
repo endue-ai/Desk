@@ -27,6 +27,7 @@ function ctx() {
     runtime: {
       shortcuts: { focused: null },
       focusSurface() {},
+      followSurface() {},
       plugins: { unmount },
       buffers: new Buffers(),
     } as never,

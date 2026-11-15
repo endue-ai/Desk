@@ -9,7 +9,7 @@ animations use an injected clock (ADR 0013). Shell decisions not in the brief: `
 ## Public API
 
 - `createRuntime({ root, bridge, clock?, platform?, language?, plugins?, pages?, themeRoot?, views?, windows?, pickFile? })`
-  returns `Runtime`: `ready`, `openSurface`, `closeSurface`, `focusSurface`, `status()`, `shortcuts`,
+  returns `Runtime`: `ready`, `openSurface`, `closeSurface`, `focusSurface` (asks) and `followSurface` (told, ADR 0230), `status()`, `shortcuts`,
   `commands`, `settings`, `preferences`, `settingsWindow`, `keymap`, `buffers`, `profiles`, `policy()`,
   `notify`, `theme()`, `themes` (ADR 0056), `onQuit`, `keep(name, part)`, `plugins`, `dispose()`. Without
   a window host its surfaces sit side by side in the order they opened; edge bars hold the dock.

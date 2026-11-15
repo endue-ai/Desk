@@ -14,10 +14,12 @@ import {
   closePane,
   closeWindow,
   focusPane,
+  isFollowing,
   newWindow,
   showInPane,
   showPlugin,
   splitPane,
+  takeAndFollow,
 } from "./windows";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
@@ -40,7 +42,14 @@ async function ctx(wm = testWindowManager()) {
     focusSurface,
     shortcuts,
     buffers,
-    runtime: { shortcuts, focusSurface, plugins: { unmount }, buffers } as never,
+    // Following is the same fake: the tests read which surface the runtime followed.
+    runtime: {
+      shortcuts,
+      focusSurface,
+      followSurface: focusSurface,
+      plugins: { unmount },
+      buffers,
+    } as never,
     bridge: undefined as never,
     now: () => 1000,
     wall: () => epoch + 1000,
@@ -181,7 +190,11 @@ describe("a press that focuses a window and puts it in the drawer", () => {
     const c = {
       store,
       wm,
-      runtime: { shortcuts, focusSurface: (id: string | null) => focus(id) } as never,
+      runtime: {
+        shortcuts,
+        focusSurface: (id: string | null) => focus(id),
+        followSurface: (id: string | null) => focus(id),
+      } as never,
       bridge: undefined as never,
       now: () => 1000,
       wall: () => epoch + 1000,
@@ -264,5 +277,75 @@ describe("closing a window with unsaved changes (#160, #162)", () => {
     await splitPane(c, "row");
     await closePane(c);
     expect(guard).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the page follows the window the window manager put in use (#251)", () => {
+  /** The shell over a desk-wm whose desks are taken as the app takes them, the page following. */
+  async function told() {
+    const wm = testWindowManager();
+    const c = await ctx(wm);
+    const followed: Array<string | null> = [];
+    const during: boolean[] = [];
+    const runtime = c.runtime as unknown as Record<string, unknown>;
+    runtime.followSurface = (id: string | null, told?: boolean) => {
+      followed.push(id);
+      during.push(isFollowing(c) && told === true);
+      c.shortcuts.focused = id;
+    };
+    wm.connect((published) => takeAndFollow(c, published));
+    return { c, wm, followed, during };
+  }
+
+  it("a window desk-wm put in use is followed, and nothing is asked of it", async () => {
+    const { c, wm, followed, during } = await told();
+    // Another client of the window manager (a press it heard itself): the page only hears the desk.
+    const edit = vi.spyOn(c.wm, "edit");
+    await wm.edit([{ op: "focus", window: "p.b" }]);
+    expect(c.store.get().focused).toBe("p.b");
+    expect(followed).toEqual(["p.b"]);
+    expect(during).toEqual([true]);
+    expect(isFollowing(c)).toBe(false);
+    // Only the edit above: following asked for no window, and the runtime's own way of giving a
+    // surface the focus, which does ask, never ran.
+    expect(edit).toHaveBeenCalledTimes(1);
+    expect(c.focusSurface).not.toHaveBeenCalled();
+  });
+
+  it("a move the runtime asked for is followed by its own desk, not by one that answers an earlier move", async () => {
+    const wm = lateWindowManager();
+    const c = await ctx(wm);
+    const followed: Array<[string | null, boolean | undefined]> = [];
+    (c.runtime as unknown as Record<string, unknown>).followSurface = (
+      id: string | null,
+      told?: boolean,
+    ) => followed.push([id, told]);
+    wm.connect((published) => takeAndFollow(c, published));
+    // Two moves asked before the first one's desk is in (Ctrl+Tab twice): the desk of the first
+    // must not take the page's focus back to it.
+    const first = showPlugin(c, "p.a");
+    const second = showPlugin(c, "p.b");
+    await Promise.all([first, second]);
+    expect(c.store.get().focused).toBe("p.b");
+    // Once, for the last move, as one the runtime asked for (no overlay keeps the focus from it),
+    // and without asking for the window again.
+    expect(followed).toEqual([["p.b", undefined]]);
+    expect(c.focusSurface).not.toHaveBeenCalled();
+  });
+
+  it("a desk that leaves the same window and pane in use moves nothing", async () => {
+    const { wm, followed } = await told();
+    await wm.edit([{ op: "focus", window: "p.a" }]);
+    await wm.edit([{ op: "toggle-pin", id: "p.b" }]);
+    await wm.edit([{ op: "focus", window: "p.a" }]);
+    expect(followed).toEqual(["p.a"]);
+  });
+
+  it("a pane of the shell's own in use takes the page's focus from the plugins", async () => {
+    const { c, wm, followed } = await told();
+    await wm.edit([{ op: "focus", window: "p.a" }]);
+    await wm.edit([{ op: "new-window" }]);
+    expect(c.store.get().wm.focusedPlugin).toBeNull();
+    expect(followed).toEqual(["p.a", null]);
   });
 });

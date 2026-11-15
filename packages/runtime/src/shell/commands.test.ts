@@ -171,6 +171,7 @@ function fakeShell() {
       settings: { set: () => {} },
       shortcuts: { focused: null },
       focusSurface: () => {},
+      followSurface: () => {},
       notify: () => undefined,
     },
     tr: (key: string, vars?: Record<string, string | number>) =>

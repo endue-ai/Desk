@@ -62,7 +62,8 @@ const seam = wmSeam(
 );
 // Every plugin surface's page is a browser of its own the compositor draws (ADR 0160): the runtime
 // keeps only its place here, and the shell carries the plugin host's messages to it and back.
-const pages = remotePages(window, shellSurfaces());
+// A Tab into a window's plugin asks the window manager for its window (ADR 0230).
+const pages = remotePages(window, shellSurfaces(), (id) => void desk.runtime.focusSurface(id));
 // Each window lies in a page of its own, which the compositor draws from a texture of its own (ADR
 // 0201): no window's picture is cut out of this page's, so a move repaints nothing.
 let ownPages: WindowPages | undefined;

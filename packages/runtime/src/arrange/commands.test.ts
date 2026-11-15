@@ -65,7 +65,7 @@ async function desk(keys?: (window: string) => void) {
   const ctx = {
     store,
     wm,
-    runtime: { commands, shortcuts: { focused: null }, focusSurface() {} },
+    runtime: { commands, shortcuts: { focused: null }, focusSurface() {}, followSurface() {} },
     bridge: undefined,
     now: () => 0,
     wall: () => epoch,

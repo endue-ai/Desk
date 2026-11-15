@@ -86,7 +86,7 @@ function setup() {
     platform: "mac",
     keyOf: () => undefined,
     tr: (key: Parameters<typeof t>[1]) => t("en", key),
-    runtime: { commands, settings, keymap, focusSurface: () => {} },
+    runtime: { commands, settings, keymap, focusSurface: () => {}, followSurface: () => {} },
     bridge: { agents: { card: async () => ({}) } },
   } as unknown as ShellCtx;
   cleanups.push(mountComposer(root, ctx), mountTalkChrome(root, ctx), () => ticker.dispose());

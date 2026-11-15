@@ -27,6 +27,7 @@ function ctx(frames?: { state(id: string): string }) {
     runtime: {
       shortcuts: { focused: null },
       focusSurface() {},
+      followSurface() {},
       plugins: { unmount() {} },
       buffers: new Buffers(),
       ...(frames ? { frames } : {}),

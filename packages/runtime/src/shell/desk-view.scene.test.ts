@@ -43,6 +43,7 @@ async function scene() {
     runtime: {
       shortcuts: { focused: null },
       focusSurface() {},
+      followSurface() {},
       plugins: { unmount() {} },
       frames,
     } as never,

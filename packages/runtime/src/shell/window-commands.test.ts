@@ -27,7 +27,12 @@ function ctx(wm: LocalWindowManager = testWindowManager()) {
   });
   const c = {
     store,
-    runtime: { shortcuts: { focused: null }, focusSurface() {}, plugins: {} } as never,
+    runtime: {
+      shortcuts: { focused: null },
+      focusSurface() {},
+      followSurface() {},
+      plugins: {},
+    } as never,
     bridge: undefined as never,
     now: () => 1000,
     wall: () => epoch + 1000,

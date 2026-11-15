@@ -61,6 +61,7 @@ function setup() {
       shortcuts,
       keymap,
       focusSurface: () => {},
+      followSurface: () => {},
     },
     bridge: { agents: { card: async () => ({}) } },
   } as unknown as ShellCtx;

@@ -69,6 +69,23 @@ describe("the page's focus report (#56)", () => {
     expect(pageFocus(document), "a closed palette leaves the body").toEqual(rest);
   });
 
+  it("says nothing of a window's surface: the window manager names the window in use (#251)", () => {
+    const notes = place("main.endue-notes");
+    // A plugin's section in a window, as the runtime marks it (`surfaces.ts`).
+    notes.section.classList.add("desk-surface--windowed");
+    const rest: PageFocus = { surface: null, own: false };
+    notes.place.focus();
+    expect(focusedSurface(document)).toBeNull();
+    expect(pageFocus(document), "its place").toEqual(rest);
+    notes.edge.focus();
+    expect(pageFocus(document), "an edge of its place").toEqual(rest);
+    // An overlay's place is the page's own to say.
+    const palette = place("main.desk-palette");
+    palette.section.classList.add("desk-surface--overlay");
+    palette.place.focus();
+    expect(pageFocus(document)).toEqual({ surface: "main.desk-palette", own: false });
+  });
+
   it("says where the focus settled, once per move", async () => {
     const notes = place("main.endue-notes").place;
     const files = place("main.endue-files").place;

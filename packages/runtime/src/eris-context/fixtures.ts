@@ -49,6 +49,7 @@ export function fakeDesk(options: FakeOptions = {}) {
     ready: Promise.resolve(),
     shortcuts: { focused: null },
     focusSurface() {},
+    followSurface() {},
     notify() {},
     // No buffer with unsaved changes: a window closes without a question.
     buffers: new Buffers(),

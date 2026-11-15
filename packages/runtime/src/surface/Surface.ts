@@ -15,7 +15,7 @@ import { togglePin, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen, render } from "../shell/dom";
 import { icon } from "../shell/icons";
-import { closeWindow, focusPane, splitPane, toggleFloating } from "../shell/windows";
+import { closeWindow, focusPane, isFollowing, splitPane, toggleFloating } from "../shell/windows";
 import type { Rect } from "../wm/types";
 import { surfaceAnchors } from "./anchors";
 import { trackTopChrome } from "./clearance";
@@ -199,9 +199,19 @@ export function mountSurfaces(
       const s = ctx.store.get();
       focusPane(ctx, p.id, pane ?? (s.focused === p.id ? (s.pane ?? undefined) : undefined));
     };
+    // A host that hears the presses put the window pressed in use before this page heard it (the
+    // compositor, ADR 0230): the press asks nothing here, nor does the focus it moves, which may
+    // be heard after the person pressed another window. A focus the keys move still asks.
+    let pressing = false;
+    const press = (down: boolean) => (e: Event) => {
+      pressing = down && ctx.wm.decidesPress === true;
+      if (down && !pressing) focusFrom(e.target);
+    };
     const offs = [
-      listen(el, "pointerdown", (e) => focusFrom(e.target)),
-      listen(el, "focusin", (e) => focusFrom(e.target)),
+      listen(el, "pointerdown", press(true)),
+      ...["pointerup", "pointercancel"].map((type) => listen(el, type, press(false))),
+      // The focus the page moves as it follows a desk it was told asks nothing either.
+      listen(el, "focusin", (e) => !pressing && !isFollowing(ctx) && focusFrom(e.target)),
       listen(bar, "dblclick", (e) => {
         if (!(e.target as Element).closest("button")) ctx.wm.run({ op: "maximize" }, p.id);
       }),

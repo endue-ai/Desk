@@ -22,14 +22,12 @@ export interface PluginWindows extends WindowHost {
 export function pluginWindows(
   store: Store,
   wm: () => WindowManagerHost,
-  show?: (id: string) => void,
+  show?: (id: string) => undefined | Promise<unknown>,
 ): PluginWindows {
   const sections = new Map<string, HTMLElement>();
   const containers = new Map<string, HTMLElement>();
   return {
-    show: (id) => {
-      if (sections.has(id)) show?.(id);
-    },
+    show: (id) => (sections.has(id) ? show?.(id) : undefined),
     adopt(spec, section) {
       sections.set(spec.id, section);
       // A pane already waiting for it (a profile placed the plugin before it mounted) takes it now.

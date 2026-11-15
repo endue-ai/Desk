@@ -55,7 +55,15 @@ interface Kept extends RemoteSurface {
   place: Place;
 }
 
-export function remotePages(win: Window, transport: SurfaceTransport): RemotePages {
+/**
+ * `entered`: the person tabbed into surface `id`'s place from the page's own focus order, so the
+ * desk asks the window manager for its window (ADR 0230).
+ */
+export function remotePages(
+  win: Window,
+  transport: SurfaceTransport,
+  entered?: (id: string) => void,
+): RemotePages {
   const kept = new Map<string, Kept>();
   const byHost = new Map<string, Kept>();
   const port = (host: string): Window =>
@@ -96,7 +104,7 @@ export function remotePages(win: Window, transport: SurfaceTransport): RemotePag
       // The host its URL names in the app; a page served from elsewhere (a fixture's) has the same.
       const host = surfaceHostOf(src) ?? surfaceHost(spec.id, spec.surface) ?? "";
       const tell = (text: string) => host && transport.post(host, text);
-      const place = makePlace(doc, spec.title, host, tell);
+      const place = makePlace(doc, spec.title, host, tell, () => entered?.(spec.id));
       const surface: Kept = {
         id: spec.id,
         host,
@@ -135,9 +143,9 @@ export function remotePages(win: Window, transport: SurfaceTransport): RemotePag
     },
     // The page takes no focus back: a surface's own page focusing itself moves nothing here.
     focusin: () => false,
-    // The desk gave the surface the focus (Ctrl+Tab, a window shown, a file opened, a question):
-    // its place takes the page's focus, so the compositor gives the surface the keys and a Tab past
-    // its page's end goes on from there (ADR 0192). Its section alone kept them on this page.
+    // The desk gave the surface the focus (Ctrl+Tab, a window shown, a file opened, a question), or
+    // follows the window manager that did: its place takes the page's focus, so a Tab past its
+    // page's end goes on from there (ADR 0192), and an overlay's surface has the keys (ADR 0230).
     focused: (id) => {
       const surface = kept.get(id);
       if (surface && !surface.away && surface.view.isConnected)
