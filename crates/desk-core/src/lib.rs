@@ -122,7 +122,7 @@ mod watch;
 pub use agents::agent_caller;
 pub use brain_choice::{Brains, DEFAULT_LOCAL_MODEL, LocalBrains};
 pub use brain_options::{BrainMode, BrainOptions};
-pub use core_dialog::{DialogError, Dialogs};
+pub use core_dialog::{Asker, DialogError, Dialogs};
 pub use core_fs_url::FileUrl;
 pub use core_perm::{Prompter, RefuseAll};
 pub use core_snapshots::{ShotError, SurfaceShot, SurfaceSnapshots};
