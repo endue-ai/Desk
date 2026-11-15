@@ -30,7 +30,7 @@ pub enum DialogError {
     Failed(String),
 }
 
-/// Who asks, for the dialog's title: the plugin's name (or id), or the desk.
+/// Who asks, for the dialog's title: `Notes (endue.notes)` for a plugin, `endue Desk` for the desk.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Asker {
     pub caller: String,
@@ -77,7 +77,7 @@ pub(crate) fn bridge_path(path: &Path, home: &Path) -> Option<String> {
     let home = home.to_str()?.replace('\\', "/");
     let under = text
         .strip_prefix(home.trim_end_matches('/'))
-        .filter(|rest| rest.starts_with('/'));
+        .filter(|rest| rest.is_empty() || rest.starts_with('/'));
     Some(match under {
         Some(rest) => format!("~{rest}"),
         None => text,
@@ -122,10 +122,13 @@ impl Core {
         } else if agent_of(caller).is_some() || caller.contains(':') {
             None
         } else {
+            // A plugin's own name is its to choose, so its id always goes with it: no plugin's
+            // dialog reads as the desk's own.
             (self.registry().get(caller)).map(|info| {
-                info.manifest
-                    .and_then(|m| m.name)
-                    .unwrap_or_else(|| caller.to_owned())
+                match info.manifest.and_then(|m| m.name).filter(|n| n != caller) {
+                    Some(name) => format!("{name} ({caller})"),
+                    None => caller.to_owned(),
+                }
             })
         };
         let Some(name) = name else {
