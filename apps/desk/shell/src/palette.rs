@@ -137,6 +137,7 @@ fn register(shell: &mut Shell) {
     let report = shortcut::held_report(
         held.as_deref(),
         refused.as_deref().map(|why| (&*wanted, why)),
+        shortcut::from_env(env.as_deref()),
     );
     let request = json!({ "id": 0, "method": "settings.set",
                           "params": { "key": shortcut::HELD_KEY, "value": report } });

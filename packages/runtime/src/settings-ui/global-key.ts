@@ -22,7 +22,8 @@ import { type SettingsLanguage, settingsText } from "./copy";
 /** The person's name for the setting, and the runtime's own key in the core. */
 export const PALETTE_KEY = "desk.palette.shortcut";
 export const CORE_KEY = "palette.shortcut";
-/** What the shell holds: `{ shortcut, refused: { shortcut, why } | null }`, owner `desk`. */
+/** What the shell holds: `{ shortcut, refused: { shortcut, why } | null, env }`, owner `desk`;
+ * `env` when `DESK_PALETTE_SHORTCUT` chose the key, so the setting is not in force. */
 export const HELD_KEY = "palette.shortcut.held";
 /** How long the row waits for the shell's answer before it shows the key saved. */
 export const ANSWER_MS = 3000;
@@ -94,6 +95,7 @@ export function toChord(accelerator: string, platform: Platform): string {
 interface Held {
   shortcut?: unknown;
   refused?: { shortcut?: unknown; why?: unknown } | null;
+  env?: unknown;
 }
 
 export interface GlobalKeyOptions {
@@ -129,6 +131,8 @@ export function globalKeyRow(options: GlobalKeyOptions): GlobalKeyRow {
   let pending: { accelerator: string; said: string; timer: ReturnType<typeof setTimeout> } | null =
     null;
   const keys = h("span", { class: "keys", tabindex: "-1", "data-key": `setting-${PALETTE_KEY}` });
+  /** The environment chose the key: a key recorded here is kept, in force once it no longer does. */
+  const env = h("p", { class: "settings-key-env", hidden: true }, tr("paletteKeyEnv"));
   const note = h("p", { class: "settings-key-note", role: "status", "aria-live": "polite" });
   const read = (text: string) => formatSequence(toChord(text, platform), platform);
   const show = () => {
@@ -174,6 +178,7 @@ export function globalKeyRow(options: GlobalKeyOptions): GlobalKeyRow {
   const answered = (value: unknown) => {
     const report = (value ?? {}) as Held;
     if (typeof report.shortcut === "string" && report.shortcut.trim()) held = report.shortcut;
+    env.hidden = report.env !== true;
     show();
     const refused = report.refused;
     const was = pending;
@@ -231,6 +236,7 @@ export function globalKeyRow(options: GlobalKeyOptions): GlobalKeyRow {
         { class: "settings-row-label" },
         h("span", {}, tr("paletteKey")),
         h("p", {}, tr("paletteKeyHint")),
+        env,
         note,
       ),
       keys,
