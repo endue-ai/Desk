@@ -6,8 +6,8 @@
 import { describe, expect, it } from "vitest";
 import { copied, createProgramCopy, OSC_COPY } from "../ui/clipboard.js";
 import { DEFAULTS, parseSettings } from "../ui/shell.js";
-import { Terminal } from "../ui/vendor/xterm.mjs";
 import { wireProgram } from "../ui/wire.js";
+import { emulator, written } from "./xterm";
 
 const b64 = (text: string) => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
 
@@ -99,13 +99,13 @@ describe("a program's copy", () => {
   });
 
   it("is what xterm.js hands over for OSC 52", async () => {
-    const term = new Terminal({ allowProposedApi: true });
+    const term = emulator();
     const asked: Array<[string, string]> = [];
     const none = () => {};
     wireProgram(term, "t-3", { input: none, osc: none, retitle: none, bell: none }, (id, data) =>
       asked.push([id, data]),
     );
-    await new Promise<void>((resolve) => term.write(`\x1b]52;c;${b64("hi")}\x07`, resolve));
+    await written(term, `\x1b]52;c;${b64("hi")}\x07`);
     expect(asked).toEqual([["t-3", `c;${b64("hi")}`]]);
     term.dispose();
   });

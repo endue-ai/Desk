@@ -6,12 +6,9 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULTS } from "../ui/shell.js";
 import { terminalOptions, WINDOW_OPTIONS, xtermOptions } from "../ui/theme.js";
-import { Terminal } from "../ui/vendor/xterm.mjs";
+import { emulator, written } from "./xterm";
 
 const theme = { scheme: "dark", contrast: "normal", reducedMotion: false, variables: {} } as const;
-
-const written = (term: Terminal, data: string) =>
-  new Promise<void>((resolve) => term.write(data, resolve));
 
 describe("the terminal's window operations", () => {
   it("are the title stack and the size reports, nothing else", () => {
@@ -28,7 +25,7 @@ describe("the terminal's window operations", () => {
   });
 
   it("give the title back when an editor quits", async () => {
-    const term = new Terminal(xtermOptions(terminalOptions(DEFAULTS, theme)));
+    const term = emulator(xtermOptions(terminalOptions(DEFAULTS, theme)));
     const titles: string[] = [];
     term.onTitleChange((title) => titles.push(title));
     await written(term, "\x1b]2;~/src\x07"); // the shell's prompt
@@ -39,7 +36,7 @@ describe("the terminal's window operations", () => {
   });
 
   it("answer the size in characters", async () => {
-    const term = new Terminal({ ...xtermOptions(terminalOptions(DEFAULTS, theme)), cols: 100 });
+    const term = emulator({ ...xtermOptions(terminalOptions(DEFAULTS, theme)), cols: 100 });
     const answers: string[] = [];
     term.onData((data) => answers.push(data));
     await written(term, "\x1b[18t");
@@ -48,7 +45,7 @@ describe("the terminal's window operations", () => {
   });
 
   it("move, resize and raise nothing", async () => {
-    const term = new Terminal(xtermOptions(terminalOptions(DEFAULTS, theme)));
+    const term = emulator(xtermOptions(terminalOptions(DEFAULTS, theme)));
     const answers: string[] = [];
     term.onData((data) => answers.push(data));
     // Iconify, move, resize in pixels and characters, raise, the title back (21 t).

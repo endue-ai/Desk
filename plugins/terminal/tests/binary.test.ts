@@ -5,34 +5,13 @@
 // bytes (base64), in order with the keys around them.
 import { describe, expect, it } from "vitest";
 import { createPipes } from "../ui/pipe.js";
-import { Terminal } from "../ui/vendor/xterm.mjs";
 import { wireProgram } from "../ui/wire.js";
 import { mount, scope } from "./harness";
-
-/** A press of the left button at column 10, row 5 (xterm.js's own mouse service). */
-const press = (term: Terminal, col = 9) =>
-  (
-    term as unknown as {
-      _core: { coreMouseService: { triggerMouseEvent(event: object): boolean } };
-    }
-  )._core.coreMouseService.triggerMouseEvent({
-    col,
-    row: 4,
-    x: 0,
-    y: 0,
-    button: 0,
-    action: 1,
-    ctrl: false,
-    alt: false,
-    shift: false,
-  });
-
-const written = (term: Terminal, data: string) =>
-  new Promise<void>((resolve) => term.write(data, resolve));
+import { emulator, press, written } from "./xterm";
 
 describe("mouse reports in the X10 encoding", () => {
   it("come from xterm.js as binary, and the terminal hands them on as such", async () => {
-    const term = new Terminal({ allowProposedApi: true });
+    const term = emulator();
     const inputs: Array<{ id: string; data: unknown }> = [];
     wireProgram(
       term,
