@@ -1,0 +1,95 @@
+/*
+ * The agent bar's labelled places (bar-new.ts): past six agents the rest's faces, New agent and New
+ * space. Each is a face with its name under it, as endue.ai's own left bar has them, so the bar says
+ * what they do without a hover.
+ */
+
+/* As wide as the bar inside its border, a face over its name. Over the kit's .icon-button and
+   .add-button (kit.css, shell.css), whose size, border and fill are a lone button's: here the face
+   carries them and the button is only the place. */
+.float-bar .bar-labeled {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: calc(var(--bar-width) - 2px);
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--bar-button-radius);
+  background: transparent;
+  color: var(--desk-text-muted);
+}
+.float-bar .bar-labeled:hover:not(:disabled) {
+  background: transparent;
+  color: var(--desk-text);
+}
+
+/* The face: an avatar's size and place (chrome.css), round for agents. */
+.bar-labeled .bar-face {
+  display: grid;
+  place-items: center;
+  width: var(--bar-avatar);
+  height: var(--bar-avatar);
+  margin: calc((var(--bar-button) - var(--bar-avatar)) / 2) 0 0;
+  border-radius: var(--radius-full);
+  transition: background-color var(--motion-fast) ease;
+}
+.bar-labeled:hover:not(:disabled) .bar-face,
+.bar-labeled[aria-expanded="true"] .bar-face {
+  background: var(--desk-hover);
+}
+
+/* New agent and New space: a dashed "+", round for an agent, with a button's corners for a space. */
+.bar-new .bar-face { border: 1px dashed var(--desk-input); }
+.bar-new-space .bar-face { border-radius: var(--bar-button-radius); }
+
+/* The rest of the agents: up to four of their faces, two by two, in a ring on the bar's card. A
+   face with no colour of its own takes one of the chart's, in turn. */
+.bar-more-faces {
+  --dot: 11px;
+  grid-template-columns: repeat(2, var(--dot));
+  place-content: center;
+  gap: 2px;
+  border: 1px solid var(--desk-border);
+  background: var(--desk-card);
+}
+.bar-labeled:hover:not(:disabled) .bar-more-faces,
+.bar-labeled[aria-expanded="true"] .bar-more-faces {
+  background: linear-gradient(var(--desk-hover), var(--desk-hover)) var(--desk-card);
+}
+.bar-more-face {
+  width: var(--dot);
+  height: var(--dot);
+  border-radius: var(--radius-full);
+  background: var(--face-colour, var(--desk-chart-1));
+}
+.bar-more-face:nth-child(2) { background: var(--face-colour, var(--desk-chart-2)); }
+.bar-more-face:nth-child(3) { background: var(--face-colour, var(--desk-chart-3)); }
+.bar-more-face:nth-child(4) { background: var(--face-colour, var(--desk-chart-4)); }
+/* One face alone is larger; the third of three sits centred under the first two. */
+.bar-more-faces[data-count="1"] {
+  --dot: 16px;
+  grid-template-columns: var(--dot);
+}
+.bar-more-faces[data-count="3"] .bar-more-face:nth-child(3) {
+  grid-column: 1 / -1;
+  justify-self: center;
+}
+
+/* The name under the face: small, centred, at most two lines. "New agent" does not fit one line
+   in a 52 wide bar; Korean breaks between words only. */
+.bar-caption {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  line-height: var(--leading-heading);
+  text-align: center;
+  word-break: keep-all;
+  font-variant-numeric: tabular-nums;
+}

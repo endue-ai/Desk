@@ -207,7 +207,7 @@ test.describe("the agent bar reads the agent directory", () => {
     });
     await expect(page.locator(".sidebar [data-agent]")).toHaveCount(5);
     const more = page.locator(".avatar-more");
-    await expect(more).toHaveText("+3");
+    await expect(more).toHaveText("+3 더보기");
     await expect(more).toHaveAttribute("aria-label", "에이전트 3명 더");
     await more.click();
     const list = page.getByRole("dialog", { name: "에이전트 3명 더" });

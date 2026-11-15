@@ -247,7 +247,9 @@ describe("the agent bar at rest (#292)", () => {
     });
     expect(root.querySelectorAll(".sidebar [data-agent]")).toHaveLength(5);
     const rest = one(root, ".avatar-more");
-    expect(rest.textContent).toBe("+2");
+    // Their faces, two of them, and how many under them.
+    expect(rest.querySelectorAll(".bar-more-face")).toHaveLength(2);
+    expect(rest.textContent).toBe("+2 more");
     expect(rest.getAttribute("aria-label")).toBe("2 more agents");
     expect(rest.hasAttribute("title")).toBe(false);
     over(rest);

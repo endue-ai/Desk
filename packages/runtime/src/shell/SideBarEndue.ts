@@ -3,7 +3,8 @@
  * the ones that work or wait for them first, and the spaces they can open. Choosing either opens
  * its window. An agent's state is `data-presence` (the ring the stylesheet draws), and the bar's
  * tooltip names it with the conversation it works on (bar-tip.ts). Past six agents the last place
- * opens the rest in a popover, as the directory's does.
+ * opens the rest in a popover, and New agent and New space end the groups, as the directory's do
+ * (bar-new.ts).
  */
 import type { StudioAgent } from "@endue-ai/bridge";
 import { endueText } from "../surface/endue/copy";

@@ -277,14 +277,8 @@
   z-index: var(--z-modal);
 }
 
-/* Agent bar extras: more agents than fit, and a directory that could not be read. */
-
-.float-bar .avatar-more {
-  --face: var(--desk-muted);
-  color: var(--desk-text);
-  font-size: var(--text-xs);
-  font-variant-numeric: tabular-nums;
-}
+/* Agent bar extras: a directory that could not be read, and the agents past the bar's six (their
+   place is bar-new.css's). */
 
 .bar-offline {
   display: grid;

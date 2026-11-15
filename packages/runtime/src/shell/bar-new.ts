@@ -61,7 +61,7 @@ export function moreControl(o: MoreOptions): HTMLButtonElement {
   return h(
     "button",
     {
-      class: "bar-labeled avatar-more",
+      class: "icon-button bar-labeled avatar-more",
       type: "button",
       "data-key": o.key,
       "aria-label": o.label,
@@ -93,7 +93,7 @@ function newControl(
   return h(
     "button",
     {
-      class: `bar-labeled bar-new bar-new-${kind}`,
+      class: `add-button bar-labeled bar-new bar-new-${kind}`,
       type: "button",
       "data-key": key,
       "aria-label": label,

@@ -41,6 +41,12 @@
             "plugin": "endue.agents"
           }
         }
+      },
+      {
+        "id": "endue.agents.new",
+        "title": "Agents: New agent",
+        "keywords": ["agent", "new", "create", "새 에이전트"],
+        "description": "Show the New agent page in an open Agents window, as the agent bar's New agent does."
       }
     ]
   }

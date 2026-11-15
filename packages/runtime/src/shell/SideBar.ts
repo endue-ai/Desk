@@ -1,13 +1,14 @@
 /**
  * The agent bar (system layer, left): the agent programs on this computer first (Claude Code, Codex:
  * every one the core found registers itself, ADR 0110), then the current space's agents from the
- * agent directory, the spaces below, a rule between the groups and no caption. Signed in to endue,
+ * agent directory, the spaces below and a rule between the groups. Signed in to endue,
  * the person's endue agents and spaces take the directory's place and open as windows
  * (SideBarEndue.ts, ADR 0129). An agent's state is `data-presence`, which the stylesheet draws as a
  * ring around the avatar: working with a working A2A task or a run going on, waiting while it is
  * inactive or a task waits on it for an answer. The bar's tooltip names each control, and says
  * what a working agent does and for how long (bar-tip.ts). Past six agents, the last place opens
- * the rest in a popover.
+ * the rest in a popover. New agent ends the agents and New space the spaces: they and the place of
+ * the rest are the only ones with their name under them (bar-new.ts).
  */
 import type { A2ATask, Agent, LocalAgent } from "@endue-ai/bridge";
 import { localText } from "../surface/local-agent/copy";
