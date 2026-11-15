@@ -17,6 +17,7 @@ import {
   openEndueAgent,
   openEndueSpace,
 } from "../system/endue";
+import { barWord, moreControl, newAgentControl, newSpaceControl } from "./bar-new";
 import { withTip, workLine } from "./bar-tip";
 import type { ShellCtx } from "./context";
 import { type Child, h } from "./dom";
@@ -113,24 +114,21 @@ export function endueGroups(ctx: ShellCtx, s: DeskState): BarGroups {
       shown.map(({ agent, presence }) => avatarButton(ctx, s, agent, presence)),
       hidden.length
         ? withTip(
-            h(
-              "button",
-              {
-                class: "icon-button avatar avatar-more",
-                type: "button",
-                "data-key": "endue-agents-more",
-                "aria-label": moreLabel,
-                "aria-expanded": String(s.popover === "agents-more"),
-                onClick: () =>
-                  ctx.store.set({ popover: s.popover === "agents-more" ? null : "agents-more" }),
-              },
-              `+${hidden.length}`,
-            ),
+            moreControl({
+              key: "endue-agents-more",
+              label: moreLabel,
+              caption: barWord(s.lang, "more", hidden.length),
+              faces: hidden.map(({ agent }) => ({ colour: hexColour(agent.personalColor) })),
+              expanded: s.popover === "agents-more",
+              onClick: () =>
+                ctx.store.set({ popover: s.popover === "agents-more" ? null : "agents-more" }),
+            }),
             // Open, the list says it.
             () => (s.popover === "agents-more" ? [] : [moreLabel]),
           )
         : null,
       status,
+      newAgentControl(ctx, s.lang),
     ),
     h("div", { class: "bar-divider", role: "separator" }),
     h(
@@ -161,6 +159,7 @@ export function endueGroups(ctx: ShellCtx, s: DeskState): BarGroups {
         );
         return withTip(button, () => (sp.goal ? [label, sp.goal] : [label]));
       }),
+      newSpaceControl(ctx, s.lang),
     ),
   ];
   const more =

@@ -19,6 +19,7 @@ import {
   localPresence,
   selectLocalAgent,
 } from "../system/local-agents";
+import { barWord, moreControl, newAgentControl, newSpaceControl } from "./bar-new";
 import { mountBarTip, withTip, workLine } from "./bar-tip";
 import type { ShellCtx } from "./context";
 import { type Child, h, render } from "./dom";
@@ -125,19 +126,16 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
         shown.map(avatar),
         hidden.length
           ? withTip(
-              h(
-                "button",
-                {
-                  class: "icon-button avatar avatar-more",
-                  type: "button",
-                  "data-key": "agents-more",
-                  "aria-label": moreLabel,
-                  "aria-expanded": String(s.popover === "agents-more"),
-                  onClick: () =>
-                    ctx.store.set({ popover: s.popover === "agents-more" ? null : "agents-more" }),
-                },
-                `+${hidden.length}`,
-              ),
+              moreControl({
+                key: "agents-more",
+                label: moreLabel,
+                caption: barWord(s.lang, "more", hidden.length),
+                // The directory gives its agents no colour: the stylesheet gives each face one.
+                faces: hidden.map(() => ({})),
+                expanded: s.popover === "agents-more",
+                onClick: () =>
+                  ctx.store.set({ popover: s.popover === "agents-more" ? null : "agents-more" }),
+              }),
               // Open, the list says it.
               () => (s.popover === "agents-more" ? [] : [moreLabel]),
             )
@@ -154,6 +152,7 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
               icon("link", 16),
             )
           : null,
+        newAgentControl(ctx, s.lang),
       ),
       h("div", { class: "bar-divider", role: "separator" }),
       h(
@@ -177,6 +176,7 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
             () => (sp.description ? [sp.name, sp.description] : [sp.name]),
           ),
         ),
+        newSpaceControl(ctx, s.lang),
       ),
     ];
     const more =
