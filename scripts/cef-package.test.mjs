@@ -106,6 +106,17 @@ describe("cef-package", () => {
     );
   });
 
+  it("registers endue:// and Open with entries in both Windows installers, never a default (#310)", () => {
+    const config = render("x86_64-pc-windows-msvc");
+    assert.match(config.nsis.preinstallSection, /^Section DeskRegistrations\n/u);
+    assert.match(config.nsis.preinstallSection, /OpenWithProgids" "ai\.endue\.desk\.file" ""/u);
+    assert.ok(config.wix.fragmentPaths[0].endsWith("windows/registrations.wxs"));
+    assert.deepEqual(config.wix.componentGroupRefs, ["DeskRegistrations"]);
+    assert.equal(config.fileAssociations, undefined, "cargo-packager's would take the defaults");
+    const mac = render("aarch64-apple-darwin");
+    assert.equal(mac.nsis?.preinstallSection, undefined);
+  });
+
   it("puts the executable beside libcef.so in /usr/lib on Linux, with a launcher on PATH", () => {
     const config = render("x86_64-unknown-linux-gnu");
     assert.deepEqual(config.formats, ["deb", "appimage"]);

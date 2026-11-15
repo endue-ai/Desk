@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
 // The files the OS offers to open with the desk (the CEF desk's packages, #46): common built-in
 // formats as a viewer that never takes them from their default app, on macOS (Info.plist) and Linux
-// (the desktop entry). Windows registers none yet (#61).
+// (the desktop entry), and on Windows as "Open with" entries that never take a default; and the
+// endue:// scheme on all three (#310).
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
+import {
+  EXTENSIONS,
+  nsisSection,
+  PROGID,
+  windowsRegistrations,
+} from "../shell/packager/windows/registrations.mjs";
 
 const root = join(import.meta.dirname, "../../..");
 const packager = join(root, "apps/desk/shell/packager");
@@ -94,7 +101,8 @@ it("passes local file lists through the Linux desktop entry the .deb and the App
   );
   const desktop = readFileSync(join(packager, "linux/desk.desktop"), "utf8");
   const lines = desktop.split("\n");
-  expect(lines.find((line) => line.startsWith("Exec="))).toBe("Exec={{exec}} %F");
+  // %U: files arrive as file:// URLs, links as they are (#310).
+  expect(lines.find((line) => line.startsWith("Exec="))).toBe("Exec={{exec}} %U");
   expect(desktop).toContain("Name={{name}}");
   expect(desktop).toContain("Icon={{icon}}");
   expect(desktop).toContain("Type=Application");
@@ -120,4 +128,43 @@ it("runs the shell's native gates for the shell and the primitives it links", ()
   ])
     expect(filter.test(path), path).toBe(true);
   expect(filter.test("packages/runtime/src/main.ts")).toBe(false);
+});
+
+it("registers the endue:// scheme on macOS and Linux", () => {
+  const schemes = (
+    (infoPlist().CFBundleURLTypes ?? []) as { CFBundleURLSchemes: string[] }[]
+  ).flatMap((type) => type.CFBundleURLSchemes);
+  expect(schemes).toEqual(["endue"]);
+  const desktop = readFileSync(join(packager, "linux/desk.desktop"), "utf8");
+  const mime = desktop.split("\n").find((line) => line.startsWith("MimeType=")) ?? "";
+  expect(mime.split(/[=;]/u)).toContain("x-scheme-handler/endue");
+});
+
+it("offers the macOS document types on Windows as Open with entries and registers endue://", () => {
+  const macos = documentTypes().flatMap((type) => type.CFBundleTypeExtensions);
+  expect([...EXTENSIONS].sort()).toEqual([...macos].sort());
+  const nsis = nsisSection();
+  const command = `'"$INSTDIR\\endue-desk.exe" "%1"'`;
+  expect(nsis).toContain('WriteRegStr HKCU "Software\\Classes\\endue" "URL Protocol" ""');
+  expect(nsis).toContain(
+    `WriteRegStr HKCU "Software\\Classes\\endue\\shell\\open\\command" "" ${command}`,
+  );
+  for (const ext of EXTENSIONS)
+    expect(nsis).toContain(`"Software\\Classes\\.${ext}\\OpenWithProgids" "${PROGID}" ""`);
+  // Never an extension's default: no value is written to .<ext> itself.
+  expect(nsis).not.toMatch(/Classes\\\.[a-z0-9]+" ""/u);
+  const wxs = readFileSync(join(packager, "windows/registrations.wxs"), "utf8");
+  const document = new DOMParser().parseFromString(wxs, "application/xml");
+  expect(document.querySelector("parsererror")).toBeNull();
+  const keys = [...document.querySelectorAll("RegistryValue")].map((v) => v.getAttribute("Key"));
+  for (const ext of EXTENSIONS) expect(keys).toContain(`.${ext}\\OpenWithProgids`);
+  expect(keys.filter((key) => key?.startsWith(".") && !key.endsWith("OpenWithProgids"))).toEqual(
+    [],
+  );
+  const scheme = document.querySelector('RegistryKey[Key="endue"]');
+  expect(scheme?.querySelector('RegistryValue[Name="URL Protocol"]')).not.toBeNull();
+  const { nsis: n, wix } = windowsRegistrations(packager);
+  expect(n.preinstallSection).toBe(nsis);
+  expect(wix.componentGroupRefs).toEqual(["DeskRegistrations"]);
+  expect(wix.fragmentPaths).toEqual([join(packager, "windows/registrations.wxs")]);
 });
