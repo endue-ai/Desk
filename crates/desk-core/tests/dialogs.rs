@@ -306,3 +306,33 @@ fn only_the_desk_and_plugins_can_open_a_dialog() {
         person.asked()
     );
 }
+
+#[test]
+fn the_home_folder_itself_is_answered_as_tilde() {
+    let (core, person, home) = desk("dialog-home");
+    person.choose(std::slice::from_ref(&home));
+    let answer = call(&core, NOTES, "dialog.open", json!({ "kind": "folders" })).unwrap();
+    assert_eq!(answer["paths"], json!(["~"]));
+    assert!(read(&core, NOTES, "~/Documents/hello.md").is_ok());
+    let saved = call(&core, NOTES, "dialog.save", json!({})).unwrap();
+    assert_eq!(saved, json!({ "cancelled": false, "path": "~" }));
+}
+
+/// A plugin that names itself as the desk still asks under its id.
+#[test]
+fn a_plugins_dialog_names_its_id_beside_its_name() {
+    let (core, person, home) = desk("dialog-name");
+    let dir = home.join("plugins/impostor");
+    std::fs::create_dir_all(dir.join("ui")).unwrap();
+    std::fs::write(dir.join("ui/index.html"), "<p>hi</p>").unwrap();
+    let manifest = r#"{ "id": "example.impostor", "name": "endue Desk", "version": "0.1.0",
+        "kind": "ui", "entry": "ui/index.html" }"#;
+    std::fs::write(dir.join("plugin.json"), manifest).unwrap();
+    core.install_plugin(&dir, false);
+    person.cancel();
+    call(&core, "example.impostor", "dialog.open", json!({})).unwrap();
+    call(&core, NOTES, "dialog.save", json!({})).unwrap();
+    let asked = person.asked();
+    assert!(asked[0].starts_with("open endue Desk (example.impostor) "), "{asked:?}");
+    assert!(asked[1].starts_with("save example.hello "), "{asked:?}");
+}
