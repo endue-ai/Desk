@@ -8,6 +8,11 @@ Supersedes ADR 0157's choice of Chromium's full pipeline (its slower clock for l
 its prompt frames stay). Amends ADR 0159, ADR 0162 and ADR 0165 where they hold a press to RT-16's
 16 ms: the measured budgets below hold it instead, and 16 ms stays the target (#268, under #249).
 
+Status: amended by ADR 0231 (#268): what a press waited for was a begin frame sent before it, to a
+surface that took every desk frame for a second after input; a press beside animating surfaces is
+held to 16 ms again, and a run's composed frame has no phase. A press on a desk at rest keeps the
+budget below: it waits for the GPU to wake (ADR 0162), not for a begin frame.
+
 # Web surfaces leave Chromium's full pipeline, and the desk catches a page up
 
 ## Context and Problem Statement
