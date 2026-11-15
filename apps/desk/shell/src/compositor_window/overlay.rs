@@ -91,10 +91,10 @@ pub fn drag_image(scene: &mut Scene, overlay: &DragOverlay, scale: f32) {
 
 #[cfg(test)]
 mod tests {
+    use desk_compositor::Scene;
     use desk_compositor::glam::Vec2;
     use desk_compositor::input::DragOverlay;
     use desk_compositor::input::dnd::DragLook;
-    use desk_compositor::Scene;
     use desk_surface::generated::SurfaceDropAnswer;
 
     use super::{caption, drag_image};

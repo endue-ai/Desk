@@ -39,21 +39,23 @@ const control = (root: HTMLElement, key: string) => {
   if (!el) throw new Error(`no ${key}`);
   return el;
 };
-/** The keys of a bar group's controls, in order. */
-const keys = (group: Element | null | undefined) =>
-  [...(group?.querySelectorAll("button") ?? [])].map((b) => b.dataset.key);
+/** The bar group `el` is in, and that group's last control. */
+const groupOf = (el: HTMLElement) => {
+  const group = el.closest<HTMLElement>(".bar-group");
+  const controls = [...(group?.querySelectorAll(":scope > button") ?? [])];
+  return { name: group?.getAttribute("aria-label"), last: controls.at(-1) };
+};
 
 describe("the agent bar's New agent and New space", () => {
   it("ends the agents' group with New agent and the spaces' with New space, each named", () => {
     const { root } = mounted();
-    const [agents, spaces] = root.querySelectorAll(".sidebar .bar-group");
-    expect(keys(agents).at(-1)).toBe("agents-new");
-    expect(keys(spaces).at(-1)).toBe("spaces-new");
     const agent = control(root, "agents-new");
+    expect(groupOf(agent)).toEqual({ name: "Agents", last: agent });
     expect(agent.getAttribute("aria-label")).toBe("Create a new agent");
     expect(agent.textContent).toBe("New agent");
     expect(agent.classList.contains("add-button")).toBe(true);
     const space = control(root, "spaces-new");
+    expect(groupOf(space)).toEqual({ name: "Spaces", last: space });
     expect(space.getAttribute("aria-label")).toBe("Create a new space");
     expect(space.textContent).toBe("New space");
   });
@@ -63,11 +65,12 @@ describe("the agent bar's New agent and New space", () => {
     signIn();
     await settle();
     await settle();
-    const [agents, spaces] = root.querySelectorAll(".sidebar .bar-group");
-    expect(agents?.querySelector("[data-endue-agent]")).not.toBeNull();
-    expect(keys(agents).at(-1)).toBe("agents-new");
-    expect(spaces?.querySelector("[data-endue-space]")).not.toBeNull();
-    expect(keys(spaces).at(-1)).toBe("spaces-new");
+    const agent = control(root, "agents-new");
+    expect(groupOf(agent).last).toBe(agent);
+    expect(agent.closest(".bar-group")?.querySelector("[data-endue-agent]")).not.toBeNull();
+    const space = control(root, "spaces-new");
+    expect(groupOf(space).last).toBe(space);
+    expect(space.closest(".bar-group")?.querySelector("[data-endue-space]")).not.toBeNull();
   });
 
   it("says them in Korean on a Korean desk", () => {

@@ -206,7 +206,8 @@ describe("the agent bar at rest (#292)", () => {
     claude.dispatchEvent(new Event("focusout", { bubbles: true }));
     expect(tooltip(root).hidden).toBe(true);
     // Labelled once (ADR 0193): the page's tooltip, and no `title` the compositor would draw too.
-    expect(root.querySelectorAll(".sidebar button")).toHaveLength(7);
+    // Seven avatars and spaces, then New agent and New space.
+    expect(root.querySelectorAll(".sidebar button")).toHaveLength(9);
     expect(root.querySelector(".sidebar button[title]")).toBeNull();
   });
 
