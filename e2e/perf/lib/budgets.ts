@@ -1,7 +1,8 @@
 // The app's performance budgets in e2e/perf/budgets.json: second-start times, idle memory and input
 // latency, each compared with its baseline (recorded on the CI runner) and failing past the
-// section's allowedRegression, and a fresh desk's CPU at rest (#134) and a desk out of sight's CPU,
-// event loop and first frame once shown again (#155) against budgets they stay under. Without a
+// section's allowedRegression, and a fresh desk's CPU at rest (#134), a desk out of sight's CPU,
+// event loop and first frame once shown again (#155) and endue's CPU and memory at rest with no
+// window (#237) against budgets they stay under. Without a
 // baseline or a budget a value is reported, never failed. The RT-16
 // targets (`targetMs`) are printed beside the values and are not gates. `openingFrameTime` belongs
 // to `just perf-opening` and is left as it is. Pure: budgets.test.ts.
@@ -12,7 +13,8 @@ export type Section =
   | "idleMemory"
   | "inputLatency"
   | "freshDeskAtRest"
-  | "deskOutOfSight";
+  | "deskOutOfSight"
+  | "residentAtRest";
 
 export interface Measure {
   section: Section;
@@ -67,6 +69,27 @@ export const MEASURES: readonly Measure[] = [
     label: "shown again, to its first frame",
     unit: "ms",
     budgetKey: "shownBudgetMs",
+  },
+  {
+    section: "residentAtRest",
+    key: "cpuPercent",
+    label: "no window, its own process's CPU",
+    unit: "%",
+    budgetKey: "budgetPercent",
+  },
+  {
+    section: "residentAtRest",
+    key: "treePercent",
+    label: "no window, its whole tree's CPU",
+    unit: "%",
+    budgetKey: "treeBudgetPercent",
+  },
+  {
+    section: "residentAtRest",
+    key: "rssMb",
+    label: "no window, its tree's RSS",
+    unit: "MB",
+    budgetKey: "rssBudgetMb",
   },
 ];
 

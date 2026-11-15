@@ -45,6 +45,16 @@ function budgets(): Budgets {
       platform: null,
       recorded: null,
     },
+    residentAtRest: {
+      cpuPercent: null,
+      budgetPercent: 2,
+      treePercent: null,
+      treeBudgetPercent: 6,
+      rssMb: null,
+      rssBudgetMb: 4000,
+      platform: null,
+      recorded: null,
+    },
   };
 }
 
@@ -54,15 +64,16 @@ const measured = {
   inputLatency: { paletteP95Ms: 40, focusP95Ms: 20 },
   freshDeskAtRest: { cpuPercent: 2.4, treePercent: 6.1 },
   deskOutOfSight: { cpuPercent: 0.8, turnsPerSecond: 21, shownFrameMs: 40 },
+  residentAtRest: { cpuPercent: 0.9, treePercent: 2.1, rssMb: 1800 },
 };
 
-/** The budgets' verdicts: the five without a baseline, then the four the budgets gate. */
-const FIRST_RUN = [...Array(5).fill("no-baseline"), ...Array(4).fill("ok")];
+/** The budgets' verdicts: the five without a baseline, then the seven the budgets gate. */
+const FIRST_RUN = [...Array(5).fill("no-baseline"), ...Array(7).fill("ok")];
 /** The RT-16 targets, by measure. */
-const TARGETS = [1200, 1200, null, 16, 16, null, null, null, null];
+const TARGETS = [1200, 1200, null, 16, 16, null, null, null, null, null, null, null];
 
 describe("budgets", () => {
-  it("measures nine values in five sections", () => {
+  it("measures twelve values in six sections", () => {
     expect(MEASURES.map((m) => `${m.section}.${m.key}`)).toEqual([
       "startup.readyMs",
       "startup.firstFrameMs",
@@ -73,6 +84,9 @@ describe("budgets", () => {
       "deskOutOfSight.cpuPercent",
       "deskOutOfSight.turnsPerSecond",
       "deskOutOfSight.shownFrameMs",
+      "residentAtRest.cpuPercent",
+      "residentAtRest.treePercent",
+      "residentAtRest.rssMb",
     ]);
   });
 
@@ -146,6 +160,23 @@ describe("budgets", () => {
     expect(compare(budgets(), late).find((v) => v.key === "shownFrameMs")?.status).toBe("over");
   });
 
+  it("fails endue at rest with no window past its CPU or its memory, from the first run (#237)", () => {
+    const busy = {
+      ...measured,
+      residentAtRest: { cpuPercent: 12.5, treePercent: 30, rssMb: 4200 },
+    };
+    const verdicts = compare(budgets(), busy).filter((v) => v.section === "residentAtRest");
+    expect(verdicts.map((v) => [v.key, v.status, v.limit])).toEqual([
+      ["cpuPercent", "over", 2],
+      ["treePercent", "over", 6],
+      ["rssMb", "over", 4000],
+    ]);
+    expect(failed(compare(budgets(), busy))).toBe(true);
+    expect(report(verdicts)).toMatch(/no window, its tree's RSS.*4200.0 MB.*over/);
+    const rest = compare(budgets(), measured).filter((v) => v.section === "residentAtRest");
+    expect(rest.map((v) => v.status)).toEqual(["ok", "ok", "ok"]);
+  });
+
   it("a measurement that is missing is reported as missing", () => {
     const verdicts = compare(budgets(), { startup: measured.startup });
     expect(verdicts.find((v) => v.section === "idleMemory")?.status).toBe("missing");
@@ -188,6 +219,11 @@ describe("budgets", () => {
       budgetPercent: 5,
       turnsBudget: 50,
       shownBudgetMs: 500,
+    });
+    expect(committed.residentAtRest).toMatchObject({
+      budgetPercent: 2,
+      treeBudgetPercent: 6,
+      rssBudgetMb: 4000,
     });
     const verdicts = compare(committed, measured);
     expect(verdicts.map((v) => v.status)).toEqual(FIRST_RUN);
