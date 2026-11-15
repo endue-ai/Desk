@@ -115,10 +115,53 @@ body {
   overflow: hidden;
 }
 
+/* A tab's panel holds its panes, each placed in percent from the tab's split layout (split-view.js). */
+.tab-panel {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
 .pane {
   position: absolute;
   inset: 0;
   overflow: hidden;
+}
+
+/* The pane in use, when its tab is split: a thin edge in the primary colour. */
+.tab-panel.is-split .pane.is-active {
+  box-shadow: inset 0 0 0 1px var(--desk-primary-border);
+}
+
+/* A divider between two panes: a line the pointer drags, wider than it looks. */
+.pane-divider {
+  position: absolute;
+  z-index: 5;
+  background: var(--desk-border);
+  touch-action: none;
+}
+
+.pane-divider[aria-orientation="vertical"] {
+  width: 1px;
+  margin-left: -0.5px;
+  cursor: col-resize;
+}
+
+.pane-divider[aria-orientation="horizontal"] {
+  height: 1px;
+  margin-top: -0.5px;
+  cursor: row-resize;
+}
+
+.pane-divider::before {
+  position: absolute;
+  inset: -3px;
+  content: "";
+}
+
+.pane-divider:hover,
+.pane-divider.is-dragging {
+  background: var(--desk-primary);
 }
 
 /* The gap sits on xterm's own element, which the fit addon subtracts; on the pane it counted as room

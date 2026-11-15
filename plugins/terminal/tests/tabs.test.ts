@@ -290,6 +290,9 @@ describe("terminal tabs", () => {
       "Clear",
       "Find",
       "Rename tab",
+      "Split right",
+      "Split down",
+      "Close pane",
     ]);
     expect(items[0]?.disabled).toBe(true);
     expect(document.activeElement).toBe(items[1]);

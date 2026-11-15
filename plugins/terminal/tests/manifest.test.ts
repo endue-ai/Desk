@@ -54,6 +54,8 @@ describe("plugin.json", () => {
       "endue.terminal.new",
       "endue.terminal.focus",
       "endue.terminal.close",
+      "endue.terminal.split",
+      "endue.terminal.focus-pane",
       "endue.terminal.next",
       "endue.terminal.previous",
       "endue.terminal.clear",
@@ -105,7 +107,8 @@ describe("plugin.json", () => {
     for (const binding of manifest().contributes?.keys ?? []) {
       for (const platform of ["mac", "linux", "windows"] as const) {
         const reach = DESK_KEYS.map((chord) => canonical(chord, platform));
-        expect(reach, `${binding.key} on ${platform}`).toContain(canonical(binding.key, platform));
+        const key = (platform === "mac" && binding.mac) || binding.key;
+        expect(reach, `${key} on ${platform}`).toContain(canonical(key, platform));
       }
     }
   });

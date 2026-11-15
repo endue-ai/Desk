@@ -245,7 +245,7 @@ describe("split panes in the page", () => {
     for (let i = 0; i < 3; i++) await host.settle();
     expect($("#pane-t-1").style.width).toBe("25%");
     expect($("#pane-t-2").style).toMatchObject({ left: "25%", width: "75%" });
-    mocks.terminals.forEach((t, i) => expect(t.fits).toBeGreaterThan(before[i] ?? 0));
+    for (const [i, t] of mocks.terminals.entries()) expect(t.fits).toBeGreaterThan(before[i] ?? 0);
     const sizes = host.calls
       .filter((c) => c.method === "proc.resize")
       .map((c) => c.params as { procId: string; size: { cols: number } });

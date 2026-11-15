@@ -37,11 +37,12 @@ export function blankSession(
   return session;
 }
 
-/** What the runtime keeps for the surface across a reload. */
+/** What the runtime keeps for the surface across a reload: the sessions, and the tabs' layouts. */
 export function snapshotOf(
   /** @type {number} */ next,
   /** @type {string | null} */ shown,
   /** @type {Iterable<Session>} */ sessions,
+  /** @type {Array<{ id: string, layout: import("./layout.js").Layout, focused: string }>} */ tabs = [],
 ) {
   const saved = [...sessions].map(
     ({ id, title, program, procId, buffer, exit, ended, cwd, named, chunks }) => ({
@@ -49,7 +50,8 @@ export function snapshotOf(
       tail: chunks,
     }),
   );
-  return /** @type {Snapshot} */ ({ next, shown, sessions: saved });
+  const kept = tabs.map(({ id, layout, focused }) => ({ id, layout, focused }));
+  return /** @type {Snapshot} */ ({ next, shown, sessions: saved, tabs: kept });
 }
 
 /** A session from what a reload kept; one kept by an older version has no folder, name or banner. */
@@ -67,22 +69,4 @@ export function restoredSession(/** @type {Saved} */ kept, /** @type {Program[]}
     relaunch: false,
   };
   return session;
-}
-
-/** Move `id` to `index` in the sessions' order: the index it took, or -1 when it did not move. */
-export function reorder(
-  /** @type {Map<string, Session>} */ sessions,
-  /** @type {string} */ id,
-  /** @type {number} */ index,
-) {
-  const ids = [...sessions.keys()];
-  const from = ids.indexOf(id);
-  const to = Math.max(0, Math.min(ids.length - 1, Math.trunc(index)));
-  if (from < 0 || from === to) return -1;
-  ids.splice(from, 1);
-  ids.splice(to, 0, id);
-  const all = ids.map((key) => /** @type {Session} */ (sessions.get(key)));
-  sessions.clear();
-  for (const session of all) sessions.set(session.id, session);
-  return to;
 }
