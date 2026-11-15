@@ -81,8 +81,11 @@ async function setup() {
     if (!el) throw new Error(`no ${selector}`);
     return el;
   };
-  /** Unfold or fold the bar from its control, with no clock. */
-  const toggle = () => one('[data-key="agents-unfold"]').click();
+  /** Unfold or fold the bar from its control, as the keyboard does: the focus on it, no clock. */
+  const toggle = () => {
+    one('[data-key="agents-unfold"]').focus();
+    one('[data-key="agents-unfold"]').click();
+  };
   /** What a row says: its name, its note and its time; null where it has none. */
   const says = (selector: string) =>
     [".bar-row-name", ".bar-row-note", ".bar-row-time"].map(
