@@ -117,7 +117,7 @@
       "additionalProperties": false
     },
     "DialogSaveResult": {
-      "description": "Result of dialog.save: the absolute path the person chose, now writable by the caller, or cancelled without one.",
+      "description": "Result of dialog.save: the absolute path the person chose, now readable and writable by the caller, or cancelled without one.",
       "type": "object",
       "properties": {
         "cancelled": { "type": "boolean" },
