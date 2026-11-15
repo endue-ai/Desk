@@ -1,4 +1,5 @@
-//! A process in a PTY (portable-pty): one merged output stream, typed input, a resizable size.
+//! A process in a PTY (portable-pty): one merged output stream, typed input, a resizable size, and
+//! on unix a UTF-8 `LANG` when the environment names no locale (`locale.rs`).
 
 use std::io::{self, Write as _};
 use std::path::Path;
@@ -10,6 +11,9 @@ use portable_pty::{CommandBuilder, MasterPty, native_pty_system};
 use super::events::{self, Message, OnEvent};
 use super::{PtySize, Signal, SpawnOptions, Stream};
 use crate::{Error, ErrorCode};
+
+#[cfg(unix)]
+mod locale;
 
 pub(super) struct Pty {
     /// None once the program has exited on Windows, where the console is then closed.
@@ -34,6 +38,10 @@ pub(super) fn spawn(
     command.cwd(cwd);
     for (key, value) in &options.env {
         command.env(key, value);
+    }
+    #[cfg(unix)]
+    if let Some(lang) = locale::lang_for(&options.env, |name| std::env::var_os(name)) {
+        command.env("LANG", lang);
     }
     let child = pair
         .slave
