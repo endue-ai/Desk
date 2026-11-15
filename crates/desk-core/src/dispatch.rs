@@ -152,6 +152,7 @@ impl Core {
             R::StudioAgentsSetStatus(r) => (r.id, self.studio_agents_set_status(caller, r.params)),
             R::StudioAgentsRemove(r) => (r.id, self.studio_agents_remove(caller, r.params)),
             R::StudioAgentsFacets(r) => (r.id, self.studio_agents_facets(caller, r.params)),
+            R::StudioAgentsPicture(r) => (r.id, self.studio_agents_picture(caller, r.params)),
             R::StudioAgentsPromptUpdate(r) => (r.id, self.studio_prompt_update(caller, r.params)),
             R::StudioCatalogList(r) => (r.id, self.studio_catalog_list(caller, r.params)),
             R::StudioCatalogRecommend(r) => (r.id, self.studio_catalog_recommend(caller, r.params)),

@@ -35,6 +35,9 @@ pub struct FakeAgent {
     pub skills: Vec<Value>,
     pub connectors: Vec<Value>,
     pub traits: Vec<Value>,
+    /// Further keys of the agent's own answer (`avatar_url`, `character_image_url`,
+    /// `live_enabled`, `mcp_enabled`), as an object.
+    pub more: Value,
 }
 
 #[derive(Debug)]
@@ -54,6 +57,8 @@ pub struct State {
     pub fail_at: BTreeMap<String, (u16, String, String)>,
     /// How long every answer waits.
     pub delay: Option<Duration>,
+    /// Pictures served without a token, by path: the media type and the bytes.
+    pub pictures: BTreeMap<String, (String, Vec<u8>)>,
     pub(super) clock: u64,
 }
 
@@ -70,6 +75,7 @@ impl State {
             fail_next: None,
             fail_at: BTreeMap::new(),
             delay: None,
+            pictures: BTreeMap::new(),
             clock: 0,
         }
     }
@@ -131,6 +137,7 @@ impl State {
             skills: Vec::new(),
             connectors: Vec::new(),
             traits: Vec::new(),
+            more: Value::Null,
         });
         id
     }

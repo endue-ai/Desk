@@ -89,23 +89,35 @@ fn serve(stream: TcpStream, state: &Mutex<State>) {
     let Some(seen) = read_request(&mut reader) else {
         return;
     };
-    let (delay, (status, body)) = {
+    let (delay, picture, (status, body)) = {
         let mut state = state.lock().unwrap_or_else(|p| p.into_inner());
         state.seen.push(seen.clone());
-        (state.delay, routes::answer(&mut state, &seen))
+        let picture = state.pictures.get(&seen.path).cloned();
+        let answer = match picture {
+            Some(_) => (200, None),
+            None => routes::answer(&mut state, &seen),
+        };
+        (state.delay, picture, answer)
     };
     if let Some(delay) = delay {
         thread::sleep(delay);
     }
-    let payload = body.map(|b| b.to_string()).unwrap_or_default();
+    // A picture is its bytes under its own media type; everything else is JSON.
+    let (kind, payload) = match picture {
+        Some((kind, bytes)) => (kind, bytes),
+        None => (
+            "application/json".to_owned(),
+            body.map(|b| b.to_string().into_bytes()).unwrap_or_default(),
+        ),
+    };
     let head = format!(
-        "HTTP/1.1 {status} {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\
+        "HTTP/1.1 {status} {}\r\nContent-Type: {kind}\r\nContent-Length: {}\r\n\
          Connection: close\r\n\r\n",
         reason(status),
         payload.len()
     );
     let _ = writer.write_all(head.as_bytes());
-    let _ = writer.write_all(payload.as_bytes());
+    let _ = writer.write_all(&payload);
     let _ = writer.flush();
 }
 

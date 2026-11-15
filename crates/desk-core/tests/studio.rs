@@ -7,6 +7,8 @@ mod support;
 
 #[path = "studio/board.rs"]
 mod board;
+#[path = "studio/faces.rs"]
+mod faces;
 #[path = "studio/spaces.rs"]
 mod spaces;
 
@@ -71,6 +73,7 @@ fn every_call(agent: &str) -> Vec<(&'static str, Value)> {
         ),
         ("studio.agents.remove", json!({ "agentId": agent })),
         ("studio.agents.facets", json!({ "agentId": agent })),
+        ("studio.agents.picture", json!({ "agentId": agent })),
         (
             "studio.agents.prompt.update",
             json!({ "agentId": agent, "content": "Be brief." }),

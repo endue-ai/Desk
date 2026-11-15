@@ -11,6 +11,7 @@ use crate::account::Account;
 
 pub(crate) mod map;
 pub(crate) mod map_catalog;
+mod picture;
 mod serve;
 mod spaces;
 
@@ -39,6 +40,8 @@ pub fn studio_tokens(account: &Arc<Account>) -> Arc<dyn Tokens> {
 pub(crate) struct Studio {
     given: Option<Arc<Platform>>,
     built: OnceLock<Option<Arc<Platform>>>,
+    /// The faces read, by address (studio.agents.picture, ADR 0232).
+    pub(crate) faces: picture::Faces,
 }
 
 impl Studio {
@@ -46,6 +49,7 @@ impl Studio {
         Self {
             given: Some(Arc::new(platform)),
             built: OnceLock::new(),
+            faces: Default::default(),
         }
     }
 
