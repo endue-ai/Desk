@@ -114,13 +114,20 @@ test("an editor gives the tab the shell's name back when the shell set no title"
 test("the size reports answer in pixels, cells and characters", async ({ page }) => {
   await open(page);
   await print(page, "\x1b[14t\x1b[16t\x1b[18t");
-  const answers = () => page.evaluate(() => window.__terminal.writes.map((w) => w.data).join(""));
-  await expect.poll(answers).toMatch(/\x1b\[8;\d+;\d+t/);
+  // What the terminal wrote back, ESC shown as "ESC" so the patterns hold no control character.
+  const answers = () =>
+    page.evaluate(() =>
+      window.__terminal.writes
+        .map((w) => w.data)
+        .join("")
+        .replaceAll("\x1b", "ESC"),
+    );
+  await expect.poll(answers).toMatch(/ESC\[8;\d+;\d+t/);
   const text = await answers();
   // The text area in pixels (4), a cell in pixels (6) and the text area in characters (8).
-  expect(text).toMatch(/\x1b\[4;[1-9]\d*;[1-9]\d*t/);
-  expect(text).toMatch(/\x1b\[6;[1-9]\d*;[1-9]\d*t/);
-  expect(text).toMatch(/\x1b\[8;[1-9]\d*;[1-9]\d*t/);
+  expect(text).toMatch(/ESC\[4;[1-9]\d*;[1-9]\d*t/);
+  expect(text).toMatch(/ESC\[6;[1-9]\d*;[1-9]\d*t/);
+  expect(text).toMatch(/ESC\[8;[1-9]\d*;[1-9]\d*t/);
 });
 
 test("a click reaches a program that asked for X10 mouse reports", async ({ page }) => {
