@@ -152,7 +152,8 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Floating bars */
+/* Floating bars: one shape for the agent bar, the account bar and the rail (scale.css). The card's
+   colour inside a 1px border, no shadow at rest and no caption: the tooltip names each control. */
 
 .float-bar {
   position: absolute;
@@ -161,23 +162,34 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  width: 56px;
-  padding: var(--space-3) 0;
+  gap: var(--space-1);
+  width: var(--bar-width);
+  /* A button is as far from the bar's top and bottom as from its sides. */
+  padding: calc((var(--bar-width) - var(--bar-button)) / 2 - 1px) 0;
   border: 1px solid var(--desk-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--bar-radius);
   background: var(--desk-card);
-  box-shadow: var(--desk-shadow-md);
   transform: translateY(-50%);
 }
-
-.rail-label {
-  color: var(--desk-text-muted);
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  line-height: 16px;
-  text-align: center;
-  white-space: nowrap;
+/* Over the kit's .icon-button, whose size and corners are the design system's. */
+.float-bar .icon-button {
+  flex: none;
+  width: var(--bar-button);
+  height: var(--bar-button);
+  border-radius: var(--bar-button-radius);
+}
+/* A button whose state is on (the rail's Listen while the desk listens). */
+.float-bar .icon-button.is-on { background: var(--desk-primary-soft); }
+.float-bar .icon-button.is-on:hover:not(:disabled) {
+  background: linear-gradient(var(--desk-hover), var(--desk-hover)) var(--desk-primary-soft);
+}
+/* The rule between a bar's groups. Never shrunk away in a bar that scrolls. */
+.bar-divider {
+  flex: none;
+  width: var(--bar-divider);
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--desk-border);
 }
 
 /* Popovers, menus, tooltip */

@@ -33,12 +33,12 @@
 }
 
 /* The agent bar lies between the profile switcher with its "+" (24 + 32 + 8 + 32, then 20: 116)
-   and the account bar (24 + 210 with the launcher's button, then 12: 246), never on them (issue
-   159). Centred 88 px above
-   the middle, no taller than keeps its top at 116 (408 = 2 × (88 + 116)), while the bar as it
-   comes (220 px) fits so: from 628 px up. A shorter app hangs it from under the switcher, closer
-   set, and what still does not fit scrolls, by the wheel or the trackpad and the keys: no scrollbar
-   is drawn, which in a bar 56 px wide took a quarter of it and sat on the avatars. */
+   and the account bar (16 + 172 with its four buttons, then 12: 200), never on them (issue 159).
+   Centred 88 px above the middle, no taller than keeps its top at 116 (408 = 2 × (88 + 116)), in
+   an app 628 px high or more. A shorter app hangs it from under the switcher, down to the account
+   bar (316 = 116 + 200), and what still does not fit scrolls, by the wheel or the trackpad and the
+   keys: no scrollbar is drawn, which in a bar this narrow took a quarter of it and sat on the
+   avatars. */
 .layer-system .sidebar {
   top: calc(50% - 88px);
   max-height: calc(100% - 408px);
@@ -50,19 +50,23 @@
 @media (max-height: 627px) {
   .layer-system .sidebar {
     top: 116px;
-    gap: var(--space-1);
-    max-height: calc(100% - 362px);
-    padding: var(--space-2) 0;
+    max-height: calc(100% - 316px);
     transform: none;
   }
 }
 .account-bar {
-  left: var(--space-6);
+  left: var(--bar-inset);
   top: auto;
-  bottom: var(--space-6);
+  bottom: var(--bar-inset);
   transform: none;
 }
-.account-profile { border-radius: var(--radius-full); }
+/* The person's own avatar: round and an avatar's size, in a button's place as the agents' are. */
+.account-bar .account-profile {
+  width: var(--bar-avatar);
+  height: var(--bar-avatar);
+  margin: calc((var(--bar-button) - var(--bar-avatar)) / 2);
+  border-radius: var(--radius-full);
+}
 .account-avatar {
   display: grid;
   place-items: center;
@@ -77,8 +81,8 @@
 }
 .account-popover {
   position: absolute;
-  left: 92px;
-  bottom: var(--space-6);
+  left: var(--bar-reach);
+  bottom: var(--bar-inset);
   display: grid;
   gap: var(--space-1);
   width: 280px;
@@ -148,16 +152,17 @@
 }
 
 /* No bar hides another. The side bars start under the profile switcher and the desktops (24 + 32 +
-   16) and beside the agent bar and the rail (24 + 56 + 12), as margins so a width the display
-   policy sets stays the surfaces' own. The shell's bottom chrome (drawer button, composer, running
-   chips) sits over the runtime's bottom 72px; the side bars stop above it (issue 131). */
+   16) and beside the agent bar and the rail (their inset and width, then the edge's own 12 of
+   padding: where a bar's popovers start), as margins so a width the display policy sets stays the
+   surfaces' own. The shell's bottom chrome (drawer button, composer, running chips) sits over the
+   runtime's bottom 72px; the side bars stop above it (issue 131). */
 .layer-desk .desk-edge--left,
 .layer-desk .desk-edge--right {
   margin-top: 60px;
   padding-bottom: 72px;
 }
-.layer-desk .desk-edge--left { margin-left: 80px; }
-.layer-desk .desk-edge--right { margin-right: 80px; }
+.layer-desk .desk-edge--left { margin-left: calc(var(--bar-inset) + var(--bar-width)); }
+.layer-desk .desk-edge--right { margin-right: calc(var(--bar-inset) + var(--bar-width)); }
 
 /* The status line is the echo area: one quiet line at the top, above Eris, between the profiles and
    the desktops. Centred by its margins, not a transform: a translate of -50% would be half the
@@ -253,8 +258,8 @@
 
 /* Agent bar extras: more agents than fit, and a directory that could not be read. */
 
-.avatar-more {
-  background: var(--desk-muted);
+.float-bar .avatar-more {
+  --face: var(--desk-muted);
   color: var(--desk-text);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
@@ -263,14 +268,14 @@
 .bar-offline {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: var(--bar-button);
+  height: var(--bar-button);
   color: var(--desk-warning);
 }
 
 .agents-popover {
   position: absolute;
-  left: 92px;
+  left: var(--bar-reach);
   display: grid;
   gap: 2px;
   width: 220px;
