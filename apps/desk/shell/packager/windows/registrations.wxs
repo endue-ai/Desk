@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the MSI registers (#310, registrations.mjs): the endue URL scheme and an "Open with" entry
+     for each document type macOS names, under a ProgID that is never an extension's default. -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <ComponentGroup Id="DeskRegistrations">
+      <Component Id="DeskUrlScheme" Directory="INSTALLDIR" Guid="*">
+        <RegistryKey Root="HKCR" Key="endue">
+          <RegistryValue Type="string" Value="URL:endue Desk link" KeyPath="yes" />
+          <RegistryValue Name="URL Protocol" Type="string" Value="" />
+          <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[INSTALLDIR]endue-desk.exe&quot; &quot;%1&quot;" />
+        </RegistryKey>
+      </Component>
+      <Component Id="DeskOpenWith" Directory="INSTALLDIR" Guid="*">
+        <RegistryKey Root="HKCR" Key="ai.endue.desk.file">
+          <RegistryValue Type="string" Value="endue Desk document" KeyPath="yes" />
+          <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[INSTALLDIR]endue-desk.exe&quot; &quot;%1&quot;" />
+        </RegistryKey>
+          <RegistryValue Root="HKCR" Key=".md\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".txt\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".csv\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".xlsx\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".docx\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".pptx\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".pdf\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".png\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".jpg\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".jpeg\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".gif\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".webp\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".mp3\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".mp4\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".zip\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".html\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>
