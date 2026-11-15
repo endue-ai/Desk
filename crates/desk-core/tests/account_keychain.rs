@@ -53,14 +53,25 @@ fn file(home: &Path) -> Value {
 }
 
 fn secret(keychain: &FakeKeychain, bff: &Bff) -> Value {
-    let kept = keychain.secrets().get(&key(bff)).cloned().expect("no keychain entry");
+    let kept = keychain
+        .secrets()
+        .get(&key(bff))
+        .cloned()
+        .expect("no keychain entry");
     serde_json::from_str(&kept).unwrap()
 }
 
 /// The file holds no token: neither field, nor any token's text.
 fn assert_tokenless(home: &Path) {
     let text = fs::read_to_string(home.join("account.json")).unwrap();
-    for word in ["accessToken", "refreshCookie", "access1", "rt1", "access2", "rt2"] {
+    for word in [
+        "accessToken",
+        "refreshCookie",
+        "access1",
+        "rt1",
+        "access2",
+        "rt2",
+    ] {
         assert!(!text.contains(word), "{word} in account.json: {text}");
     }
 }
@@ -158,7 +169,10 @@ fn without_a_keychain_the_file_stays_private() {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mode = fs::metadata(home.join("account.json")).unwrap().permissions().mode();
+        let mode = fs::metadata(home.join("account.json"))
+            .unwrap()
+            .permissions()
+            .mode();
         assert_eq!(mode & 0o777, 0o600);
     }
     // Several saves, one line, and it names the keychain.

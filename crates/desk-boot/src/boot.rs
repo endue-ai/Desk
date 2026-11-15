@@ -133,7 +133,9 @@ pub fn boot(input: BootInput) -> Booted {
     // Its tokens in the OS keychain (ADR 0239); without one, the private file as before.
     match desk_sys::keychain::os(desk_sys::keychain::SERVICE) {
         Ok(keychain) => account.keychain = Some(Arc::new(keychain)),
-        Err(err) => eprintln!("desk: account: no OS keychain ({err}); the session stays in account.json"),
+        Err(err) => {
+            eprintln!("desk: account: no OS keychain ({err}); the session stays in account.json")
+        }
     }
     let account = Account::open(account, NetIdClient);
     core = core.with_account(account.clone());
