@@ -65,6 +65,11 @@ export interface DeskState {
    */
   mapFolded: boolean;
   /**
+   * The agent bar is pinned unfolded to its list of names (issue 294): the person's choice, kept
+   * with the session (link.ts). Not pinned, it unfolds while the pointer rests on it.
+   */
+  agentsPinned: boolean;
+  /**
    * The edges of the app the pointer is at, as the compositor says where a window's page has
    * the pointer (`desk://compositor-edge`): the chrome a filled window sent away comes back
    * there (ADR 0221).
@@ -168,6 +173,7 @@ export function emptyState(lang: Lang): DeskState {
     desktops: null,
     pan: {},
     mapFolded: false,
+    agentsPinned: false,
     edges: [],
     focusBy: {},
     modesOpen: false,
