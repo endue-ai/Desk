@@ -1,14 +1,16 @@
 //! endue AI's platform API (`/api/v1`), the subset specs/platform/v0 writes down: the person's endue
 //! AI agents, what Studio shows of them, the agent catalog, the conversations of the Home board
 //! (ADR 0122), the spaces the person can open (ADR 0129), the person's own account settings (ADR
-//! 0130) and an agent's face (ADR 0232). Every call carries the endue ID access token `Tokens` hands out, sends no Origin
-//! header, waits 15 s at most and, after a 401, refreshes the token once and tries once more. The
-//! error envelope `{ error: { code, message } }` becomes a typed `PlatformError`.
+//! 0130), and an agent's face and the rest of what Studio's board shows (ADR 0232). Every call
+//! carries the endue ID access token `Tokens` hands out, sends no Origin header, waits 15 s at most
+//! and, after a 401, refreshes the token once and tries once more. The error envelope
+//! `{ error: { code, message } }` becomes a typed `PlatformError`.
 
 use std::sync::Arc;
 use std::time::Duration;
 
 mod agents;
+mod board;
 mod catalog;
 mod error;
 mod facets;
@@ -20,10 +22,12 @@ mod pictures;
 mod spaces;
 pub mod wire;
 pub mod wire_account;
+pub mod wire_board;
 pub mod wire_catalog;
 pub mod wire_spaces;
 
 pub use agents::Switch;
+pub use board::MEMORIES;
 pub use error::{ErrorKind, PlatformError, Result, SIGN_IN};
 pub use pictures::{DRAWN_URL, Face, MAX_PICTURE, Picture};
 

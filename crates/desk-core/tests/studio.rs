@@ -9,6 +9,8 @@ mod support;
 mod board;
 #[path = "studio/faces.rs"]
 mod faces;
+#[path = "studio/rows.rs"]
+mod rows;
 #[path = "studio/spaces.rs"]
 mod spaces;
 

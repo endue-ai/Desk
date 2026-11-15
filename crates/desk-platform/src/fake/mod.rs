@@ -14,6 +14,7 @@ use std::time::Duration;
 use serde_json::Value;
 
 mod account;
+mod board;
 mod routes;
 mod spaces;
 mod state;

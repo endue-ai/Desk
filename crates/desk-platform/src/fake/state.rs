@@ -59,6 +59,9 @@ pub struct State {
     pub delay: Option<Duration>,
     /// Pictures served without a token, by path: the media type and the bytes.
     pub pictures: BTreeMap<String, (String, Vec<u8>)>,
+    /// Bodies the board's reads answer, by path (`fake/board.rs`); a path without one answers
+    /// what endue AI answers for an agent with nothing of the kind.
+    pub answers: BTreeMap<String, Value>,
     pub(super) clock: u64,
 }
 
@@ -76,6 +79,7 @@ impl State {
             fail_at: BTreeMap::new(),
             delay: None,
             pictures: BTreeMap::new(),
+            answers: BTreeMap::new(),
             clock: 0,
         }
     }
@@ -106,6 +110,11 @@ impl State {
     pub fn fail_at(&mut self, path: &str, status: u16, code: &str, message: &str) {
         let error = (status, code.to_owned(), message.to_owned());
         self.fail_at.insert(path.to_owned(), error);
+    }
+
+    /// Answer a GET of `path` (without query) with `body`, as endue AI would.
+    pub fn answer_at(&mut self, path: &str, body: Value) {
+        self.answers.insert(path.to_owned(), body);
     }
 
     /// Seed an agent of the person's with `name` and role; its id.

@@ -12,6 +12,7 @@ use crate::account::Account;
 pub(crate) mod map;
 pub(crate) mod map_catalog;
 mod picture;
+mod rows;
 mod serve;
 mod spaces;
 
