@@ -37,16 +37,29 @@ file before the branch becomes a PR. No issue exists for it yet.
 - **Tests**: `bar-new.test.ts` (new); `SideBar.test.ts` expects `+2 more` and two faces;
   `e2e/shell-system.spec.ts` expects `+3 더보기`. `docs/qa/TESTING.md` lists `bar-new.test.ts`.
 
+## Verified (dongsoolee's Mac, macOS 26.2, 2026-11-15)
+
+- `cargo fmt --all -- --check`, `biome ci .`, `tsc -p tsconfig.json`, `ui-lint`, `ds-lint`: clean.
+- vitest: `packages/runtime/src/{shell,system,surface,wallpaper}`, `core/keys.test.ts`,
+  `plugins/{agents,eris}`, `e2e/perf/lib`: 79 files, 503 tests pass. (`plugins/agents/tests/
+  manifest.test.ts` passes alone; under a load average of 60 its first test overran vitest's 5 s.)
+- `just check-shell`: clippy `-p desk-shell --all-targets --all-features -D warnings` passes (CEF's
+  wrapper needs `cmake` and `ninja`: now in `~/.local/bin` on that Mac).
+- `just test-e2e`: `shell-bars`, `account-bar`, `arrange`, `shell-sizes`, `eris` and the snapshot tests
+  of `shell` and `shell-a11y` pass; the render trees `shell.spec.ts/{default,light,working}.json` and
+  `shell-a11y.spec.ts/reduced-motion.json` were rewritten by that run, the agent bar's subtree alone.
+- Failing on `main` as well, with the same symptoms (checked in a worktree of `21b7200d`):
+  `shell-a11y.spec.ts:123` (`.surface × .rail` at 1024 wide), `shell-system.spec.ts:47` and
+  `shell.spec.ts:183` (30 s timeouts), `shell-eris.spec.ts:20,33` (timeouts under load). #301's lane.
+
 ## To do
 
-1. **Run everything once** (none of it has run): `just check` (biome, tsc, ui-lint, ds-lint, docs),
-   `just test-unit`, `just check-shell` (clippy + tests for `desk-shell`). The compositor change needs
-   `just perf-motion` green (AGENTS.md boundary; macOS 13+).
-2. **Snapshots**: `packages/runtime/e2e/__snapshots__/shell.spec.ts/{default,light,working}.json` and
-   `shell-a11y.spec.ts/reduced-motion.json` change (two new buttons, the more control). They hold
-   laid-out boxes: regenerate with `just test-e2e` on a machine where it runs (not macOS 12; see #301).
-3. **Look at it** in `just dev`: caption sizes in a 52 wide bar, the dashed faces, "+N more" with one
-   to four faces, light and dark. Then decide whether the words move into `copy.ts` once #294 lands.
+1. `cargo test -p desk-shell` (the second half of `just check-shell`).
+2. `just perf-motion` for the compositor change (AGENTS.md boundary). It needs a quiet machine: it
+   fails under 55 fps, and three sessions were building at once there.
+3. **Look at it** in `just dev`: caption sizes in a 52 wide bar ("새 에이전트" breaks after "새"),
+   the dashed faces, "+N more" with one to four faces, light and dark. Then decide whether the words
+   move into `copy.ts` once #294 lands.
 4. Open the PR (issue to file first, or none), and delete this file before it.
 
 ## Watch out
