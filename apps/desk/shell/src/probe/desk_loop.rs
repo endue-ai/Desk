@@ -75,6 +75,11 @@ impl DeskLoop {
         self.next.set(if due > start { due } else { start + FRAME });
     }
 
+    /// The moment `part` of `of` parts of a frame after the desk's next frame.
+    pub fn in_frame(&self, part: u32, of: u32) -> Instant {
+        self.next.get() + FRAME * part / of.max(1)
+    }
+
     /// The desk composed nothing for a while (at rest, as the window composes only what changed):
     /// its next frame is a frame from now, not at once (#129).
     pub fn rested(&self) {

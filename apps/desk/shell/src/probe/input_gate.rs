@@ -6,7 +6,7 @@
 //! frame against RT-16's 16 ms; `tests/isolation.rs` presses a surface whose neighbour's renderer
 //! was killed.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use cef::*;
 use serde_json::{Value, json};
@@ -21,6 +21,8 @@ const TRIES: usize = 20;
 pub const CAUGHT: usize = 5;
 /// How long after such a press the delayed task is due: within the slice of the call it starts.
 const NAP_MS: i64 = 5;
+/// The desk's run between two presses, before the next one's place in the desk's frame.
+const BETWEEN: Duration = Duration::from_millis(120);
 /// The longest a press may wait for its paint before the try counts as lost.
 const LOST: Duration = Duration::from_secs(1);
 
@@ -127,13 +129,15 @@ pub fn input(probe: &mut Probe) -> Value {
     probe.run_desk(&desk, &all, Duration::from_secs(1));
     let mut tries = Vec::new();
     for i in 0..TRIES {
+        // Each press a twentieth of a desk frame later in the frame than the one before: the
+        // composed frame waits for the desk's next one, so where a run's presses fell in the frame
+        // decided its median (12.0 to 16.0 ms on one build, ADR 0231).
+        let at = desk.in_frame(i as u32, TRIES as u32);
+        probe.run_desk(&desk, &all, at.saturating_duration_since(Instant::now()));
         tries.push(to_paint(probe, &desk, &all, "click"));
-        // A different moment of the desk's frame for each press.
-        probe.run_desk(
-            &desk,
-            &all,
-            Duration::from_millis(150 + (i as u64 * 7) % 17),
-        );
+        // The next press within 200 ms: before the second of the slow frames input brings, whose
+        // begin frame a press would wait for (one press in six later than that, ADR 0231).
+        probe.run_desk(&desk, &all, BETWEEN);
     }
     let pick = |key: &str| -> Vec<f64> { tries.iter().filter_map(|t| t[key].as_f64()).collect() };
     let (mut paints, mut frames) = (pick("paint_ms"), pick("frame_ms"));
