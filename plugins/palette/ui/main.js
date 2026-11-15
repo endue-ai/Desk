@@ -217,6 +217,8 @@ defineUiPlugin({
     /** Run a command, published document, OS hit, or provider action. */
     const choose = async (mod = false) => {
       const row = shown[selected];
+      // Enter on a question with nothing typed: the answer says what it needs.
+      if (!row && mode?.kind === "args" && !choosing) return answered(input.value);
       if (!row || choosing || !mode) return;
       const entry = row.entry;
       if (mode.kind === "pick") {

@@ -1,16 +1,19 @@
 // @vitest-environment jsdom
 // Settings › Keyboard's row for the key that opens Search Desk from any app (#304): the runtime's
 // own core setting `palette.shortcut` (the person's `desk.palette.shortcut`), recorded as any other
-// key and saved in the shell's shortcut syntax, which the shell follows without a restart. A key
-// Eris holds is refused in words; one the desk binds is saved, saying the desk gives it up.
+// key and saved in the shell's shortcut syntax, which the shell follows without a restart. The row
+// shows the key the shell says it holds (`palette.shortcut.held`), not the one saved: a key another
+// app holds is said in words. A key Eris holds is refused in words; one the desk binds is saved,
+// saying the desk gives it up.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Resolved } from "../sequences/conflicts";
 import { formatSequence } from "../sequences/parse";
 import { Settings } from "../settings";
-import { CORE_KEY, globalKeyRow, toAccelerator, toChord } from "./global-key";
+import { ANSWER_MS, CORE_KEY, globalKeyRow, HELD_KEY, toAccelerator, toChord } from "./global-key";
 
 afterEach(() => {
   document.body.replaceChildren();
+  vi.useRealTimers();
 });
 
 const flush = () => new Promise((done) => setTimeout(done, 0));
@@ -18,11 +21,25 @@ const flush = () => new Promise((done) => setTimeout(done, 0));
 function mount(options: { held?: string; eris?: string; bindings?: Partial<Resolved>[] } = {}) {
   const settings = new Settings();
   if (options.eris) settings.set("endue.eris.shortcut", options.eris);
-  const call = vi.fn(async (method: string, _params?: unknown) =>
-    method === "settings.get" ? (options.held ? { value: options.held } : {}) : {},
-  );
+  const call = vi.fn(async (method: string, params?: unknown) => {
+    const key = (params as { key?: string } | undefined)?.key;
+    if (method !== "settings.get") return {};
+    return key === CORE_KEY && options.held ? { value: options.held } : {};
+  });
+  const listeners: ((event: { event: string; data?: unknown }) => void)[] = [];
+  /** The shell's answer: the key it holds, and the one it refused. */
+  const answer = (value: unknown) => {
+    for (const listener of listeners)
+      listener({ event: "settings.changed", data: { owner: "desk", key: HELD_KEY, value } });
+  };
   const row = globalKeyRow({
-    bridge: { call },
+    bridge: {
+      call,
+      onEvent: (listener) => {
+        listeners.push(listener);
+        return () => {};
+      },
+    },
     settings,
     platform: "mac",
     language: "en",
@@ -36,7 +53,7 @@ function mount(options: { held?: string; eris?: string; bindings?: Partial<Resol
   };
   const shown = () => row.el.querySelector(".keys")?.textContent;
   const note = () => row.el.querySelector('[role="status"]')?.textContent ?? "";
-  return { row, call, press, shown, note };
+  return { row, call, press, shown, note, answer };
 }
 
 describe("the palette's global key", () => {
@@ -53,7 +70,7 @@ describe("the palette's global key", () => {
   });
 
   it("Settings › Keyboard has a row for the palette's global key", async () => {
-    const { call, press, shown, note } = mount();
+    const { call, press, shown, note, answer } = mount();
     await flush();
     expect(call).toHaveBeenCalledWith("settings.get", { key: CORE_KEY });
     expect(shown()).toBe(formatSequence("Meta+Shift+Space", "mac"));
@@ -63,6 +80,37 @@ describe("the palette's global key", () => {
       key: CORE_KEY,
       value: "CommandOrControl+Alt+KeyK",
     });
+    // Saved, not held yet: the shell says when it has the key.
+    expect(shown()).toBe(formatSequence("Meta+Shift+Space", "mac"));
+    expect(note()).toMatch(/^Taking /);
+    answer({ shortcut: "CommandOrControl+Alt+KeyK", refused: null });
+    expect(shown()).toBe(formatSequence("Meta+Alt+K", "mac"));
+    expect(note()).toBe("");
+  });
+
+  it("a key the shell cannot have is said in words, and the key held before stays", async () => {
+    const { press, shown, note, answer } = mount();
+    await flush();
+    press({ key: "k", code: "KeyK", metaKey: true, altKey: true });
+    await flush();
+    answer({
+      shortcut: "CommandOrControl+Shift+Space",
+      refused: { shortcut: "CommandOrControl+Alt+KeyK", why: "another app holds it" },
+    });
+    expect(shown()).toBe(formatSequence("Meta+Shift+Space", "mac"));
+    expect(note()).toBe(
+      `${formatSequence("Meta+Alt+K", "mac")} can't be used: another app holds it. The key held before stays.`,
+    );
+  });
+
+  it("without a shell to answer, the key saved shows after a moment", async () => {
+    vi.useFakeTimers();
+    const { press, shown, note } = mount();
+    await vi.advanceTimersByTimeAsync(0);
+    press({ key: "k", code: "KeyK", metaKey: true, altKey: true });
+    await vi.advanceTimersByTimeAsync(ANSWER_MS - 1);
+    expect(shown()).toBe(formatSequence("Meta+Shift+Space", "mac"));
+    await vi.advanceTimersByTimeAsync(1);
     expect(shown()).toBe(formatSequence("Meta+Alt+K", "mac"));
     expect(note()).toBe("");
   });
@@ -91,6 +139,7 @@ describe("the palette's global key", () => {
       key: CORE_KEY,
       value: "CommandOrControl+Alt+KeyK",
     });
+    desk.answer({ shortcut: "CommandOrControl+Alt+KeyK", refused: null });
     expect(desk.note()).toMatch(/“New note”/);
   });
 });
