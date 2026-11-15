@@ -6,8 +6,8 @@ import { keptOf, readKept } from "../ui/keep.js";
 import {
   boxes,
   dividers,
-  leaf,
   type Layout,
+  leaf,
   neighbour,
   panesOf,
   remove,
