@@ -12,8 +12,11 @@ test.use({ viewport: { width: 1100, height: 640 }, deviceScaleFactor: 2 });
 /** The terminal's window, as large as one a person would give a terminal. */
 const SIZE = { width: 900, height: 470 };
 
-/** Open the fixture page and the terminal at SIZE, print the pattern, resolve with its frame. */
-async function open(page: Page): Promise<Frame> {
+/**
+ * Open the fixture page and the terminal at SIZE, print the pattern (unless told not to: a shell
+ * that has set no title yet), resolve with its frame.
+ */
+async function open(page: Page, { pattern = true } = {}): Promise<Frame> {
   await page.goto("/terminal.html");
   await page.waitForFunction(() => window.__desk !== undefined);
   await page.evaluate(() => window.__desk.runtime.plugins?.ready);
@@ -34,6 +37,7 @@ async function open(page: Page): Promise<Frame> {
   if (!frame) throw new Error("no terminal frame");
   await expect.poll(() => frame.evaluate(() => innerWidth)).toBeGreaterThan(SIZE.width - 40);
   await expect(frame.locator(".xterm-rows")).toBeVisible();
+  if (!pattern) return frame;
   await page.evaluate(() => window.__terminal.print(window.__terminal.pattern));
   await expect(frame.locator(".xterm-rows")).toContainText("test pattern");
   return frame;
@@ -71,10 +75,12 @@ test("the terminal draws colours, styles, boxes and wide characters", async ({ p
     .screenshot({ path: info.outputPath("terminal-pattern.png") });
 });
 
-test("a program's notification reaches the desk's status line", async ({ page }, info) => {
+test("OSC 9 and OSC 777 notices reach the desk's status line", async ({ page }, info) => {
   await open(page);
-  await print(page, "\x1b]777;notify;Build;All 42 tests passed\x07");
   const status = page.locator(".desk-status");
+  await print(page, "\x1b]9;Deploy finished\x07");
+  await expect(status).toContainText("Deploy finished");
+  await print(page, "\x1b]777;notify;Build;All 42 tests passed\x07");
   await expect(status).toContainText("Build");
   await expect(status).toContainText("All 42 tests passed");
   await page.screenshot({ path: info.outputPath("terminal-notification.png") });
@@ -89,6 +95,32 @@ test("an editor gives the tab its title back when it quits", async ({ page }) =>
   await expect(title).toHaveText("notes.md - VIM");
   await print(page, "\x1b[23;0t");
   await expect(title).toHaveText("~/demo");
+});
+
+test("an editor gives the tab the shell's name back when the shell set no title", async ({
+  page,
+}) => {
+  const frame = await open(page, { pattern: false });
+  const title = frame.locator(".tab-title").first();
+  // The shell's own name, zsh or bash, as the tab got it when the shell started.
+  const shell = (await title.textContent()) ?? "";
+  expect(shell).toMatch(/^(zsh|bash|sh)$/);
+  await print(page, "\x1b[22;0t\x1b]2;notes.md - NVIM\x07");
+  await expect(title).toHaveText("notes.md - NVIM");
+  await print(page, "\x1b[23;0t");
+  await expect(title).toHaveText(shell);
+});
+
+test("the size reports answer in pixels, cells and characters", async ({ page }) => {
+  await open(page);
+  await print(page, "\x1b[14t\x1b[16t\x1b[18t");
+  const answers = () => page.evaluate(() => window.__terminal.writes.map((w) => w.data).join(""));
+  await expect.poll(answers).toMatch(/\x1b\[8;\d+;\d+t/);
+  const text = await answers();
+  // The text area in pixels (4), a cell in pixels (6) and the text area in characters (8).
+  expect(text).toMatch(/\x1b\[4;[1-9]\d*;[1-9]\d*t/);
+  expect(text).toMatch(/\x1b\[6;[1-9]\d*;[1-9]\d*t/);
+  expect(text).toMatch(/\x1b\[8;[1-9]\d*;[1-9]\d*t/);
 });
 
 test("a click reaches a program that asked for X10 mouse reports", async ({ page }) => {

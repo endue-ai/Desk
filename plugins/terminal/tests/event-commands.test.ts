@@ -144,7 +144,7 @@ describe("the terminal's events", () => {
 
 describe("a command outside the plugin's grant", () => {
   /** createHooks with a grant the person gives (or not) when asked. */
-  function hooks(answer: boolean, fails = "") {
+  function hooks(answer: boolean, fails = "", revoked = false) {
     let granted = false;
     const runs: Array<[string, unknown]> = [];
     const requests: unknown[] = [];
@@ -153,7 +153,7 @@ describe("a command outside the plugin's grant", () => {
     const made = createHooks({
       commands: {
         run: async (id: string, args: unknown) => {
-          if (!granted) throw deny("permission_denied");
+          if (!granted || revoked) throw deny("permission_denied");
           if (fails) throw deny(fails);
           runs.push([id, args]);
         },
@@ -201,6 +201,19 @@ describe("a command outside the plugin's grant", () => {
     expect(requests).toHaveLength(1);
     expect(runs).toEqual([]);
     expect(said).toEqual(["Not allowed to run example.ring for the terminal's bell."]);
+  });
+
+  it("is asked for again when a grant no longer holds (once, or taken back)", async () => {
+    const { made, runs, requests, said, settle } = hooks(true, "", true);
+    made.fire("t-1", "bell");
+    await settle();
+    made.fire("t-1", "bell");
+    await settle();
+    expect(requests).toHaveLength(2);
+    expect(runs).toEqual([]);
+    expect(said).toEqual([
+      "Could not run example.ring for the terminal's bell: permission_denied.",
+    ]);
   });
 
   it("says a failure once", async () => {

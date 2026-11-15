@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULTS } from "../ui/shell.js";
 import { terminalOptions, WINDOW_OPTIONS, xtermOptions } from "../ui/theme.js";
+import { mount } from "./harness";
 import { emulator, written } from "./xterm";
 
 const theme = { scheme: "dark", contrast: "normal", reducedMotion: false, variables: {} } as const;
@@ -33,6 +34,22 @@ describe("the terminal's window operations", () => {
     await written(term, "\x1b[23;0t"); // vim quits
     expect(titles).toEqual(["~/src", "notes.md - VIM", "~/src"]);
     term.dispose();
+  });
+
+  it("give the program's name back when the shell never set a title", async () => {
+    // Stock zsh and bash send no OSC 0 or 2: what vim pushes, and pops at its end, is "".
+    const term = emulator(xtermOptions(terminalOptions(DEFAULTS, theme)));
+    const titles: string[] = [];
+    term.onTitleChange((title) => titles.push(title));
+    await written(term, "\x1b[22;0t\x1b]2;notes.md - NVIM\x07\x1b[23;0t");
+    expect(titles).toEqual(["notes.md - NVIM", ""]);
+    term.dispose();
+    // The terminal takes that empty title as the program's name, for the tab and the buffer.
+    const { app, view, ran, settle } = await mount();
+    for (const title of titles) app.retitle("t-1", title);
+    await settle();
+    expect(view.titles.map(({ title }) => title)).toEqual(["notes.md - NVIM", "zsh"]);
+    expect(ran("desk.buffers.update").at(-1)).toMatchObject({ name: "zsh" });
   });
 
   it("answer the size in characters", async () => {
