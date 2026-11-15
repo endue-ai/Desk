@@ -93,7 +93,7 @@ describe("an endue agent's window (ADR 0129)", () => {
       "@miso · Keeps my calendar and sorts my mail",
     );
     expect(hub?.querySelector(".studio-sentence")?.textContent).toBe(
-      "Takes requests from Console chat, handles them with 2 built-in tools, and leaves results in Outputs.",
+      "Takes requests from Console chat · Acme · API, handles them with 2 built-in tools, and leaves results in Outputs.",
     );
     expect(hub?.querySelector('[data-section="prompt"] .studio-sheet-value')?.textContent).toBe(
       "“Answer briefly, in Korean.”",

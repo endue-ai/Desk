@@ -57,6 +57,16 @@ test.describe("endue agents and spaces as windows", () => {
     await expect(back.locator('[data-section="model"] .studio-sheet-value')).toHaveText(
       "claude-sonnet-4.5",
     );
+    // The rows the desk reads say what is there, not "see it on endue.ai" (studio.agents.facets).
+    await expect(back.locator('[data-row="channel"]')).toHaveAttribute("data-state", "on");
+    await expect(back.locator('[data-row="channel"] .studio-row-sub')).toHaveText("Acme");
+    await expect(back.locator('[data-row="devices"] .studio-row-meta')).toHaveText("1");
+    await expect(back.locator('[data-section="memory"] .studio-sheet-value')).toHaveText(
+      "12 memories · 3 rules",
+    );
+    await expect(back.locator('[data-section="wallpaper"] .studio-sheet-value')).toHaveText(
+      "Constellation · Built-in",
+    );
     // Its lines are drawn from what was laid out: in a window this narrow, down a trunk at the left.
     await expect(back.locator("svg.studio-lines")).toHaveAttribute("data-layout", "stacked");
     await expect(back.locator('svg.studio-lines [data-line="console:branch"]')).toBeAttached();

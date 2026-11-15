@@ -53,6 +53,7 @@ export function studioBoardView(ctx: ShellCtx, board: Board, view: BoardView): H
         type: "button",
         "data-key": `studio-${row}-${a.key}`,
         "data-row-action": a.key,
+        ...(a.tone ? { "data-tone": a.tone } : {}),
         title: opens(a.label),
         onClick: () => (a.section ? open(a.section) : show(agentHome(view.agentId))),
       },
@@ -108,6 +109,13 @@ export function studioBoardView(ctx: ShellCtx, board: Board, view: BoardView): H
             "div",
             { class: "studio-row-body", id: body },
             row.body.text.map((line) => h("p", {}, line)),
+            row.body.items?.length
+              ? h(
+                  "div",
+                  { class: "studio-actions", "data-items": "" },
+                  row.body.items.map((a) => action(row.id, a)),
+                )
+              : null,
             h(
               "div",
               { class: "studio-actions" },

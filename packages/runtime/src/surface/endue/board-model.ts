@@ -1,15 +1,15 @@
 /**
  * What an endue agent's Studio board shows, without a DOM (ADR 0232): the ways requests come in,
  * the agent's own sheet, and what it reaches, each row with the state its line is drawn in. It
- * reads the agent and its facets (studio.*) and nothing else; what the bridge does not read
- * (channels, API keys, devices, outputs, memory, wallpaper) is `unknown`, never guessed: the row
- * says to look on endue.ai and opens that part of Studio there.
+ * reads the agent and its facets (studio.*) and nothing else. The outer columns are `board-rows`;
+ * here is the sheet in the middle: who the agent is, what it remembers, how it is set up, what it
+ * can use, and the sentence that says what it does. A facet not read is never guessed: it says so.
  */
 import type {
   StudioAgent,
   StudioAgentsFacetsResult,
-  StudioConnector,
   StudioConversation,
+  StudioWallpaper,
 } from "@endue-ai/bridge";
 import type { Lang } from "../../shell/copy";
 import { type EnduePresence, enduePresence, type Read } from "../../system/endue-ids";
@@ -21,37 +21,19 @@ import {
   isBoardKey,
   type Seg,
 } from "./board-copy";
+import {
+  type BoardRow,
+  connectorState,
+  inboundRows,
+  inputsOn,
+  MAX_CONNECTORS,
+  outboundRows,
+  type RowFacts,
+} from "./board-rows";
 import { initialOf, presenceText, shortModel } from "./model";
 
-/** A line's state: on (solid), off (dashed), a problem, or not read by the desk (dashed, muted). */
-export type LineState = "on" | "off" | "bad" | "unknown";
-
-/** Something a row offers: it opens a part of endue.ai's Studio, or the agent's own page. */
-export interface RowAction {
-  key: string;
-  label: string;
-  /** The Studio section it opens (`channel`, `prompt`); the agent's own page without one. */
-  section?: string;
-  primary?: boolean;
-}
-
-export interface BoardRow {
-  id: string;
-  side: "in" | "out";
-  /** An icon's name, or two letters for a connector. */
-  icon?: string;
-  mono?: string;
-  title: string;
-  sub: string;
-  subTone?: "ok" | "bad";
-  state: LineState;
-  /** Words at the row's right end: On, Off. */
-  meta?: string;
-  /** What unfolds under the row; a row without it opens its section at once. */
-  body?: { text: string[]; actions: RowAction[] };
-  /** The Studio section a press opens when nothing unfolds. */
-  section: string;
-}
+export type { BoardRow, LineState, RowAction } from "./board-rows";
+export { connectorState, MAX_CONNECTORS } from "./board-rows";
 
 /** A trait or a group of built-in tools on the sheet: an icon, green while on. */
 export interface Badge {
@@ -91,8 +73,6 @@ export interface Board {
   };
 }
 
-/** The connector rows the board shows; the rest are one "more" line. */
-export const MAX_CONNECTORS = 6;
 /** The skill chips the sheet shows. */
 export const MAX_CHIPS = 6;
 
@@ -121,169 +101,35 @@ const TOOLS: [key: string, icon: string][] = [
 
 const ready = <T>(read: Read<T> | undefined) => (read?.state === "ready" ? read.value : undefined);
 
-/** A connector's line: off while turned off, a problem while its sign-in has expired. */
-export function connectorState(c: Pick<StudioConnector, "enabled" | "status">): LineState {
-  if (!c.enabled) return "off";
-  return c.status === "expired" ? "bad" : "on";
+/** A wallpaper's name and where it comes from: "Constellation · Built-in", "Dusk · by Mina". */
+function wallpaperText(lang: Lang, w: StudioWallpaper): string {
+  const t = (key: BoardKey, vars?: Record<string, string>) => boardText(lang, key, vars);
+  const engine = `wp_${w.id}`;
+  const name = w.source === "builtin" ? (isBoardKey(engine) ? t(engine) : w.id) : (w.name ?? w.id);
+  const from =
+    w.source === "builtin"
+      ? t("builtinSource")
+      : w.source === "mine"
+        ? t("mineSource")
+        : w.author
+          ? t("byAuthor", { author: w.author })
+          : t("gallerySource");
+  return `${name} · ${from}`;
 }
-
-const switched = (value: boolean | undefined): LineState =>
-  value === undefined ? "unknown" : value ? "on" : "off";
 
 export function studioBoard(
   lang: Lang,
   agent: StudioAgent,
   read: Read<StudioAgentsFacetsResult> | undefined,
   conversations: readonly StudioConversation[],
+  now: number = Date.now(),
 ): Board {
   const t = (key: BoardKey, vars?: Record<string, string | number>) => boardText(lang, key, vars);
   const facets = ready(read);
   const waiting = read?.state === "loading" ? "…" : "—";
   const missing = (facet: string) => !facets || facets.problems.some((p) => p.facet === facet);
-  const address = `endue.live/@${agent.slug}`;
-  const live = switched(agent.liveEnabled);
-  const mcp = switched(agent.mcpEnabled);
-  const word = (state: LineState) =>
-    state === "on" ? t("on") : state === "off" ? t("off") : undefined;
-  const details = (section: string): RowAction => ({
-    key: "details",
-    label: t("details"),
-    section,
-  });
-
-  const inbound: BoardRow[] = [
-    {
-      id: "console",
-      side: "in",
-      icon: "chat",
-      title: t("consoleTitle"),
-      sub: t("consoleSub"),
-      state: "on",
-      section: "canvas",
-      body: {
-        text: [t("consoleBody")],
-        actions: [{ key: "open", label: t("consoleOpen"), primary: true }],
-      },
-    },
-    {
-      id: "channel",
-      side: "in",
-      icon: "channel",
-      title: t("channelTitle"),
-      sub: t("channelSub"),
-      state: "unknown",
-      section: "channel",
-      body: {
-        text: [t("channelBody")],
-        actions: [
-          { key: "add", label: t("channelAdd"), section: "channel", primary: true },
-          details("channel"),
-        ],
-      },
-    },
-    {
-      id: "live",
-      side: "in",
-      icon: "radio",
-      title: t("liveTitle"),
-      sub: live === "unknown" ? t("liveSub") : address,
-      state: live,
-      ...(word(live) ? { meta: word(live) } : {}),
-      section: "live",
-      body: {
-        text: [
-          live === "on" ? t("liveOn") : t("liveOff", { address }),
-          ...(live === "on" ? [address] : []),
-        ],
-        actions: [details("live")],
-      },
-    },
-    {
-      id: "api",
-      side: "in",
-      icon: "key",
-      title: t("apiTitle"),
-      sub: t("apiSub"),
-      state: "unknown",
-      section: "api",
-      body: {
-        text: [t("apiBody")],
-        actions: [
-          { key: "add", label: t("apiCreate"), section: "api", primary: true },
-          details("api"),
-        ],
-      },
-    },
-    {
-      id: "mcp",
-      side: "in",
-      icon: "link",
-      title: t("mcpTitle"),
-      sub: t("mcpSub"),
-      state: mcp,
-      ...(word(mcp) ? { meta: word(mcp) } : {}),
-      section: "mcp",
-      body: {
-        text: [mcp === "on" ? t("mcpOn") : t("mcpOff")],
-        actions: [{ key: "details", label: t("mcpConnect"), section: "mcp" }],
-      },
-    },
-  ];
-
+  const rows: RowFacts = { lang, agent, facets, waiting, now };
   const bound = facets?.connectors ?? [];
-  const shown = bound.slice(0, MAX_CONNECTORS);
-  const outbound: BoardRow[] = [
-    ...shown.map((c): BoardRow => {
-      const state = connectorState(c);
-      const name = c.name || c.type || t("connectorsGroup", { n: "" }).trim();
-      return {
-        id: `connector-${c.id}`,
-        side: "out",
-        mono: [...name].slice(0, 2).join("").toUpperCase(),
-        title: name,
-        sub:
-          state === "off"
-            ? t("connectorOff")
-            : state === "bad"
-              ? t("connectorAttention")
-              : c.status === "active"
-                ? t("connectorActive")
-                : t("connectorUnverified"),
-        ...(state === "bad"
-          ? { subTone: "bad" as const }
-          : state === "on" && c.status === "active"
-            ? { subTone: "ok" as const }
-            : {}),
-        state,
-        section: "connectors",
-      };
-    }),
-    {
-      id: "devices",
-      side: "out",
-      icon: "device",
-      title: t("devicesTitle"),
-      sub: t("devicesSub"),
-      state: "unknown",
-      section: "devices",
-    },
-    {
-      id: "outputs",
-      side: "out",
-      icon: "box",
-      title: t("outputsTitle"),
-      sub: t("outputsSub"),
-      state: "on",
-      section: "artifacts",
-      body: {
-        text: [],
-        actions: [
-          { key: "outputs", label: t("outputsView"), section: "artifacts" },
-          { key: "workspace", label: t("workspaceOpen"), section: "workspaces" },
-        ],
-      },
-    },
-  ];
 
   // The agent's sheet.
   const settings = facets?.settings;
@@ -309,6 +155,8 @@ export function studioBoard(
     .find(Boolean);
   const model = shortModel(settings?.model.default);
   const skills = (facets?.skills ?? []).filter((s) => s.enabled).map((s) => s.name || s.slug || "");
+  const memory = missing("memory") ? undefined : facets?.memory;
+  const theme = missing("theme") ? undefined : facets?.theme;
   const identity: SheetRow[] = [
     {
       section: "prompt",
@@ -316,7 +164,16 @@ export function studioBoard(
       value: missing("prompt") ? waiting : first ? `“${first}”` : t("noPrompt"),
       muted: missing("prompt") || !first,
     },
-    { section: "memory", label: t("memory"), value: t("onEndue"), muted: true },
+    {
+      section: "memory",
+      label: t("memory"),
+      value: !memory
+        ? waiting
+        : memory.memories
+          ? t("memoryValue", { m: `${memory.memories}${memory.more ? "+" : ""}`, r: memory.rules })
+          : t("noMemory"),
+      muted: !memory?.memories,
+    },
     {
       section: "trait",
       label: t("traits"),
@@ -330,7 +187,16 @@ export function studioBoard(
       value: missing("settings") ? waiting : model || t("defaultModel"),
       muted: missing("settings"),
     },
-    { section: "wallpaper", label: t("wallpaper"), value: t("onEndue"), muted: true },
+    {
+      section: "wallpaper",
+      label: t("wallpaper"),
+      value: !theme
+        ? waiting
+        : theme.wallpaper
+          ? wallpaperText(lang, theme.wallpaper)
+          : t("noWallpaper"),
+      muted: !theme?.wallpaper,
+    },
   ];
 
   const presence = enduePresence(agent, conversations);
@@ -338,11 +204,7 @@ export function studioBoard(
     .filter((c) => connectorState(c) === "on")
     .map((c) => c.name || c.type || "");
   const facts: Capability = {
-    inputs: [
-      t("consoleTitle"),
-      ...(live === "on" ? [t("liveTitle")] : []),
-      ...(mcp === "on" ? [t("mcpTitle")] : []),
-    ],
+    inputs: [t("consoleTitle"), ...inputsOn(rows)],
     skills: skills.length,
     tools: tools.filter((x) => x.on).length,
     outputs: healthy.slice(0, 2),
@@ -351,9 +213,9 @@ export function studioBoard(
   };
   const name = agent.name || agent.slug;
   return {
-    inbound,
-    outbound,
-    connectors: { count: bound.length, more: bound.length - shown.length },
+    inbound: inboundRows(rows),
+    outbound: outboundRows(rows),
+    connectors: { count: bound.length, more: Math.max(0, bound.length - MAX_CONNECTORS) },
     hub: {
       name,
       initial: initialOf(name),

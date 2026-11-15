@@ -90,6 +90,9 @@ export function studioHandlers(over: StudioHandlers = {}): StudioHandlers {
         skills: [],
         connectors: [],
         traits: [],
+        channels: [],
+        apiKeys: [],
+        devices: [],
         problems: [],
       };
     },

@@ -17,6 +17,7 @@ import {
 } from "@endue-ai/bridge";
 import {
   DEFAULT_PERSONALITY,
+  EMPTY_ROWS,
   type StudioRecord,
   sampleCatalog,
   sampleConversations,
@@ -228,6 +229,7 @@ export function studioHandlers(options: StudioStubOptions = {}): StudioStub {
         skills: [],
         connectors: [],
         traits: [{ key: "personality", enabled: true }],
+        ...copy(record.rows ?? EMPTY_ROWS),
         problems: [],
       };
     },

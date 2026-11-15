@@ -23,6 +23,9 @@ const facets: StudioAgentsFacetsResult = {
   ],
   connectors: [],
   traits: [],
+  channels: [],
+  apiKeys: [],
+  devices: [],
   problems: [{ facet: "settings", code: "offline", message: "down" }],
 };
 const space: StudioSpace = {
