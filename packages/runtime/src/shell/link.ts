@@ -92,6 +92,8 @@ interface SavedShell {
   talkPlace?: TalkPlace;
   /** The canvas map is folded to its button; absent while it is open (the compositor's, #54). */
   mapFolded?: true;
+  /** The agent bar is pinned unfolded to its list (issue 294); absent while it is not. */
+  agentsPinned?: true;
   /**
    * The plugin windows open and not in the drawer, by surface id (#76): desk.session counts a part's
    * `shows`, so they mount at the next start instead of starting asleep (ADR 0070).
@@ -132,6 +134,7 @@ export function keepShell(ctx: ShellCtx): { off(): void; done(): Promise<void> }
         ...(typeof layer[SOUL] === "string" ? { soul: layer[SOUL] } : {}),
         ...(placeOf(layer[PLACE]) ? { talkPlace: placeOf(layer[PLACE]) as TalkPlace } : {}),
         ...(s.mapFolded ? { mapFolded: true as const } : {}),
+        ...(s.agentsPinned ? { agentsPinned: true as const } : {}),
         ...openWindows(s),
       };
     },
@@ -150,6 +153,7 @@ export function keepShell(ctx: ShellCtx): { off(): void; done(): Promise<void> }
             s.spaceId,
             s.pan,
             s.mapFolded,
+            s.agentsPinned,
             openWindows(s),
           ],
           listener,
@@ -188,6 +192,7 @@ async function restore(ctx: ShellCtx, saved: Partial<SavedShell> | null): Promis
   store.set((s) => ({
     spaceId: typeof saved.spaceId === "string" ? saved.spaceId : s.spaceId,
     mapFolded: saved.mapFolded === true,
+    agentsPinned: saved.agentsPinned === true,
   }));
   // The desktop in front, the pans, the drawer and the windows' slots: the window manager reads
   // them as they were kept, a session dated by the clock (before wall-clock ages) dated now.
