@@ -127,4 +127,16 @@ describe("OS file delivery", () => {
     await vi.waitFor(() => expect(h.commands.run).toHaveBeenCalledOnce());
     dispose();
   });
+
+  it("hands endue:// links to the link opener in their place among the files (#310)", async () => {
+    native.invoke.mockResolvedValueOnce(["/a.md", "endue://v1/plugin/endue.notes", "/b.md"]);
+    const order: string[] = [];
+    const h = { ...host(), link: vi.fn(async (entry: string) => void order.push(entry)) };
+    h.commands.run.mockImplementation(async (_id, args) => void order.push(args.path));
+    const dispose = installOpenedFiles(h);
+    await vi.waitFor(() => expect(order).toHaveLength(3));
+    expect(order).toEqual(["/a.md", "endue://v1/plugin/endue.notes", "/b.md"]);
+    expect(h.commands.run).toHaveBeenCalledTimes(2);
+    dispose();
+  });
 });
