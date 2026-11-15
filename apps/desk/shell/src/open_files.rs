@@ -2,6 +2,9 @@
 //! arguments) are a queue of local paths, never file contents or authority to read them. The page
 //! hears `desk://open-files` and drains the queue with `take_open_files` (`apps/desk/src/open-files.ts`).
 //! Ported from the Tauri shell's `open_files.rs`.
+//! `endue://` links (#310, ADR 0244) ride the same queue, in their place among the files: a link the
+//! v1 grammar reads is queued in its canonical form, one it refuses as [`REFUSED`] and the sentence
+//! why, so the page says so and runs nothing. The page tells them from paths by the `endue:` scheme.
 
 use std::sync::Mutex;
 
@@ -31,11 +34,37 @@ impl OpenFiles {
     }
 }
 
-/// Preserve argv boundaries. The executable and options are never treated as files.
+/// What the queue holds for a link the grammar refused: this, then the percent-encoded reason.
+pub const REFUSED: &str = "endue:refused?why=";
+
+/// The queue's entry for an `endue:` link: its canonical form, or why it was refused.
+pub fn link_entry(text: &str) -> String {
+    match desk_link::parse(text) {
+        Ok(link) => link.to_string(),
+        Err(why) => format!("{REFUSED}{}", desk_link::encode(&why.0)),
+    }
+}
+
+/// The queue's entry for a URL the OS hands over (Finder, a browser): a file's path or a link.
+pub fn url_entry(text: &str) -> Option<String> {
+    if desk_link::is_link(text) {
+        return Some(link_entry(text));
+    }
+    file_url(text)
+}
+
+/// Preserve argv boundaries. The executable and options are never treated as files; an `endue:`
+/// argument is a link (Windows and Linux hand links over as arguments).
 pub fn argument_paths(args: impl IntoIterator<Item = String>) -> Vec<String> {
     args.into_iter()
         .skip(1)
-        .filter_map(|arg| local_path(&arg))
+        .filter_map(|arg| {
+            if desk_link::is_link(&arg) {
+                Some(link_entry(&arg))
+            } else {
+                local_path(&arg)
+            }
+        })
         .collect()
 }
 
@@ -104,6 +133,35 @@ pub fn local_path(value: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn links_take_their_place_among_the_files() {
+        let entries = argument_paths(
+            [
+                "endue-desk",
+                "/Docs/a.md",
+                "ENDUE://v1/Plugin/endue.notes",
+                "endue://v1/settings/theme",
+                "file:///Docs/b%20c.md",
+            ]
+            .map(str::to_owned),
+        );
+        let refused = desk_link::encode("This link asks for something the desk does not do.");
+        let mut expected = vec![
+            "endue://v1/plugin/endue.notes".to_owned(),
+            format!("{REFUSED}{refused}"),
+        ];
+        if !cfg!(windows) {
+            expected.insert(0, "/Docs/a.md".to_owned());
+            expected.push("/Docs/b c.md".to_owned());
+        }
+        assert_eq!(entries, expected);
+        assert_eq!(
+            url_entry("endue://v1/command/endue.notes.new").as_deref(),
+            Some("endue://v1/command/endue.notes.new")
+        );
+        assert_eq!(url_entry("https://example.com/"), None);
+    }
 
     #[test]
     fn arguments_preserve_spaces_unicode_and_windows_boundaries() {
