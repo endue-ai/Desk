@@ -11,7 +11,7 @@ comes while a pane's plugin has none of the size it leaves it).
 
 ## Context and Problem Statement
 
-A window drawn from its own page has its frame, title bar and focus ring at the size of that page's
+A window drawn from its own page has its frame and title bar at the size of that page's
 picture (ADR 0211), and each pane in it at what that frame leaves. ADR 0227 keeps a plugin's paint
 of a size its pane is not drawn at aside until the frame is of its size, which ended the content
 running ahead of its frame. The other way was left: when the window's page paints a new size before
@@ -23,7 +23,7 @@ How does a window's frame wait for its panes' plugins without waiting on a clock
 
 ## Decision Drivers
 
-* A window's frame, its ring and the plugin in each pane change size in the same frame, either way
+* A window's frame and the plugin in each pane change size in the same frame, either way
 * Counts, not times (ADR 0205, ADR 0208)
 * A plugin that never paints its size, or a window whose page does not, still shows
 * What ADR 0227 holds stays: a plugin's paint ahead of its pane waits for the frame
@@ -72,7 +72,7 @@ paint's size, each plugin's pictures aside (ADR 0227) and where a frame of a siz
 
 ### Consequences
 
-* Good, because a window's frame, its ring and the plugin inside it change size together whichever
+* Good, because a window's frame and the plugin inside it change size together whichever
   of its page and its plugin paints first
 * Good, because nothing waits on a clock: a slow plugin holds its window's frame longer, not wrongly
 * Bad, because a window being resized shows each size up to its slowest plugin's paint later
