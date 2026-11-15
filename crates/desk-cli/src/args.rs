@@ -46,6 +46,8 @@ pub enum Action {
         agent: Option<String>,
         plugins: Vec<String>,
     },
+    /// `open <path|link>`: hand it to the running desk, or start the desk with it (#310).
+    Open(String),
     Remote(Remote),
 }
 
@@ -197,6 +199,7 @@ fn action(words: &[&str]) -> Parsed<Action> {
                 data,
             }
         }
+        ["open", target] => Action::Open((*target).to_owned()),
         ["mcp", rest @ ..] => mcp(rest)?,
         ["ping"] => Action::Remote(Remote::Ping),
         ["cmd", "list"] => Action::Remote(Remote::CmdList),
