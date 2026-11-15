@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // A shell button whose command fails says why (#582): one error notice naming the command and the
-// reason; `cancelled` says nothing. The account bar and the safe-mode badge, over a real registry.
+// reason; `cancelled` says nothing. The avatar's menu and the safe-mode badge, over a real registry.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { browserBridge } from "../bridge/browser";
 import { browserCore } from "../bridge/core";
@@ -41,7 +41,17 @@ async function shell(id: string, title: string, run: () => unknown) {
   log.mockClear();
   const click = (key: string) =>
     root.querySelector<HTMLButtonElement>(`[data-key=${key}]`)?.click();
-  return { ctx, root, notices, log, click, ran: () => ran };
+  /** Press the avatar, then the row `key` of its menu, once the menu shows it. */
+  const choose = async (key: string) => {
+    click("account-profile");
+    const row = await vi.waitFor(() => {
+      const found = root.querySelector<HTMLElement>(`[role="menuitem"][data-key="${key}"]`);
+      if (!found) throw new Error(`no ${key} row in the avatar's menu`);
+      return found;
+    });
+    row.click();
+  };
+  return { ctx, root, notices, log, click, choose, ran: () => ran };
 }
 
 const fails = (why: string) => () => {
@@ -57,10 +67,10 @@ afterEach(() => {
 });
 
 describe("a shell button whose command fails", () => {
-  it("the account bar's Settings button that fails shows one error notice; a cancelled one shows none", async () => {
+  it("the avatar's menu's Settings row that fails shows one error notice; a cancelled one shows none", async () => {
     const failing = await shell("desk.settings.open", "Open settings", fails("no settings window"));
     const unmount = mountAccountBar(failing.root, failing.ctx);
-    failing.click("account-settings");
+    await failing.choose("account-settings");
     await vi.waitFor(() => expect(failing.notices).toHaveLength(1));
     expect(failing.notices[0]).toEqual({
       caller: "desk",
@@ -73,7 +83,7 @@ describe("a shell button whose command fails", () => {
 
     const cancelled = await shell("desk.settings.open", "Open settings", cancels);
     const off = mountAccountBar(cancelled.root, cancelled.ctx);
-    cancelled.click("account-settings");
+    await cancelled.choose("account-settings");
     await vi.waitFor(() => expect(cancelled.ran()).toBe(1));
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(cancelled.notices).toEqual([]);
