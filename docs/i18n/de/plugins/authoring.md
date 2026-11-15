@@ -158,6 +158,64 @@ eines anderen Plugins mit 403, außer dem einer Bibliothek (ADR 0049) und denen 
 unter `imports` nennt (`"imports": ["endue.eris"]`); deren Code läuft dann als Ihrer. Bauen Sie URLs aus relativen Pfaden,
 nie aus dem Origin.
 
+## Wie sich das Fenster einer App öffnet
+
+Ein Plugin, dessen Oberfläche bei `center` oder `floating` liegt, ist eine App: Ihr Fenster öffnet sich
+auf dem Canvas des Desks oder in einem eigenen Fenster des Betriebssystems (ADR 0205). Ihre Seite und
+ihre Aufrufe sind in beiden gleich. Der Block `window` der Oberfläche sagt, wie sich das Fenster öffnet
+(ADR 0226):
+
+```json
+"surfaces": [{
+  "id": "main", "title": "My plugin", "placement": "center",
+  "window": {
+    "size": { "width": 480, "height": 360 },
+    "minSize": { "width": 320, "height": 240 },
+    "resizable": true,
+    "opens": "canvas"
+  }
+}]
+```
+
+| Hinweis | Bedeutung |
+| --- | --- |
+| `size` | Ihre Seite beim ersten Öffnen des Fensters, in CSS-Pixeln; auf dem Canvas kommen Titelleiste und Rahmen des Desks hinzu. Danach öffnet sich das Fenster dort, wo die Person es gelassen hat |
+| `minSize` | Die kleinste Größe, auf die die Person Ihre Seite bringen kann, mindestens 240 × 160 |
+| `resizable` | `false`: Das Fenster hat keinen Rand zum Ziehen und behält die Größe, mit der es sich geöffnet hat |
+| `opens` | `canvas` (die Vorgabe): auf dem Desk. `out`: in einem eigenen Fenster des Betriebssystems, wenn das Fenster in einer Sitzung zum ersten Mal erscheint |
+
+Das sind Hinweise. Ein Platz, den ein Profil oder eine Sitzung gespeichert hat, und das eigene Anordnen
+der Person (Füllen, Einrasten, Kacheln) bestimmen die Größe eines Fensters auf dem Canvas, was immer
+die Hinweise sagen, und ein in Bereiche geteiltes Fenster folgt seinen Bereichen. Die Person holt jedes
+Fenster heraus und wieder zurück („Pop out window“ in der Palette, Window > Move to Desk).
+`DESK_APP_WINDOWS` geht für einen Start über die Manifeste: `off` lässt jedes Fenster auf dem Canvas,
+`on` öffnet jede App außerhalb, und eine Liste von Plugin-IDs öffnet diese außerhalb.
+`examples/plugin-hello-window` läuft auf beide Arten, mit je einem Befehl.
+
+Ein Wechsel nach draußen oder zurück lädt Ihre Seite neu, wie ein Aufwecken: `state` kommt zurück, und
+ebenso, was `surface.onUnload` behalten hat. Außerhalb des Canvas ist dreierlei anders:
+
+* Ein Ziehen (`ctx.dnd`) überschreitet den Rand des Betriebssystemfensters nicht. Ziehen innerhalb
+  Ihrer Seite und Dateien aus dem Betriebssystem landen wie auf dem Canvas; ein Ziehen, das außerhalb
+  des Fensters losgelassen wird, endet mit dem Effekt `none`, und ein Ziehen, das auf dem Canvas
+  beginnt, erreicht kein Betriebssystemfenster.
+* Was der Desk die Person fragt, erscheint im Fenster des Desks, nicht in Ihrem. `desk.palette.pick`
+  holt den Desk nach vorn, und die Antwort kommt zu Ihrer Seite zurück; die Frage einer Berechtigung
+  wartet im Desk, oder in der Insel, solange der Desk nicht vorn ist.
+* Eine Webansicht (`web.*`) erscheint nur im Desk: Sie endet, wenn ihr Fenster herausgeht.
+
+`desk.files.*` und `desk.buffers.*` arbeiten wie auf dem Canvas: Eine Datei, die in Ihrem Öffner
+geöffnet wird, oder ein gezeigter Puffer geht zum Betriebssystemfenster, wo es ist, und macht es zum
+Fenster in Benutzung.
+
+Eine App, die kein Datei-Öffner ist, kann mehrere Fenster haben: Geben Sie ihrer ersten Oberfläche
+`"instances": "many"` und führen Sie `desk.plugins.open` mit `{ plugin: ctx.pluginId, another: true }`
+aus (dafür braucht es `cmd:invoke` für diese ID). Die Antwort nennt das neue Fenster,
+`{ window: "<plugin id>@<n>" }`. Jedes ist eine eigene Seite, wie die Fenster eines Datei-Öffners
+(siehe `per-file` unter Beiträge): Es ruft als Ihr Plugin auf, behält seinen eigenen `state`, liest
+seinen Namen in `ctx.instance` und schließt für sich. Nach einem Neustart öffnet der Desk sie nicht
+wieder.
+
 ## Berechtigungen
 
 Der Frame des Plugins läuft in einer Sandbox, die nur Skripte erlaubt: kein Zugriff auf die Seite von Desk,

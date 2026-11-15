@@ -109,6 +109,17 @@ PoC (macOS · Apple M4 Max, `spikes/compositor/README.md`): 공유 텍스처 가
 - Option+Enter(`endue.eris.shortcut`)와 트레이의 Eris 에게 말하기는 데스크가 앞에 없으면 아일랜드의 입력칸에 키를 주고, Escape 는 키를 앞의 앱에 돌려줍니다. 데스크가 앞에 있으면 데스크의 말하기 줄이 열립니다.
 - 떠 있는 Eris(ADR 0121)의 창 · 페이지 · 런타임 뷰는 아일랜드가 자리를 넘겨받으며 지웠습니다. 트레이는 상태를 보이지 않는 메뉴(검색 · Eris 에게 말하기 · 데스크 열기 · 업데이트 재시작 · 종료)로 남습니다.
 
+### 창 꺼내기와 앱 형식 (ADR 0205 · 0212 · 0226)
+
+데스크의 창은 캔버스 위에만 살지 않습니다. 플러그인 하나를 보여 주는 창은 어느 것이든 자기 OS 창으로 나갔다가 제자리로 돌아옵니다 (#235). 그리고 플러그인은 자기 창이 어떻게 열리는지를 매니페스트로 말합니다 (#239). 페이지와 브리지 호출은 양쪽에서 같습니다.
+
+- 꺼내기와 되돌리기 (#235): `desk.windows.pop-out` · `desk.windows.dock` (`packages/runtime/src/arrange/out.ts`). `crates/desk-wm` 이 안에 있든 밖에 있든 창의 id · 데스크톱 · 캔버스 자리를 지키고(`Placement::out`), 컴포지터가 밖에 있는 창의 서피스를 웹 호스트에 넘기면(`compositor_window/handed.rs` → `web_host/app_surfaces.rs`) 셸이 창이 있는 CEF 브라우저를 winit 창에 엽니다 (`apps/desk/shell/src/app_windows*`). 창이 없는 브라우저는 창이 있는 브라우저가 될 수 없어서 옮길 때마다 페이지를 다시 불러오고, 플러그인은 잠에서 깰 때처럼 상태를 되찾습니다. 밖에 있는 창은 디스플레이마다 자리를 기억하고(`<data>/app-windows.json`), 타일 · 캐스케이드 · 스프레드 · 지도에서 빠지며, `desk.windows.*` 와 Eris 의 도구는 양쪽에 똑같이 작용합니다.
+- 창 힌트 (#239, `specs/plugin/v0` 의 `SurfaceWindow`): 서피스의 `window` 블록이 페이지의 처음 크기(`size`) · 최소 크기(`minSize`) · 크기를 바꿀 수 있는지(`resizable`) · 어디에 열리는지(`opens`: `canvas` 또는 `out`)를 말합니다. 런타임은 서피스를 넘길 때 힌트를 창 관리자에 함께 넘기고(`adopt`, `crates/desk-wm/src/hints.rs`), 셸은 같은 매니페스트를 OS 창에 읽습니다(`app_windows/hints.rs`). 그래서 앱은 캔버스에서나 밖에서나 같은 크기로 열립니다. 힌트일 뿐이라, 프로필이나 세션이 저장한 자리와 사람이 한 채우기 · 스냅 · 타일이 우선합니다.
+- 밖에 열기: `opens: "out"` 인 앱은 세션에서 창이 처음 보일 때 밖으로 나갑니다. `DESK_APP_WINDOWS` 는 한 번의 실행 동안 매니페스트를 덮어씁니다 (설정 없음: 매니페스트대로 · `off`: 모두 캔버스 · `on`: 모든 앱 · id 목록: 그 플러그인들).
+- 창 여러 개: 파일 오프너는 `instances: "per-file"` 로 파일마다 창을 엽니다 (ADR 0212). 파일 오프너가 아닌 앱은 `instances: "many"` 를 말하고 `desk.plugins.open { plugin, another: true }` 로 창을 하나 더 엽니다. 같은 키(`<plugin>@<n>`)와 호스트를 쓰므로 두 번째 장치는 없습니다.
+- 캔버스를 전제하던 API: 밖에 있는 창의 플러그인을 보이라는 요청(`desk.display.show` · `desk.plugins.open` · `desk.files.*` · `desk.buffers.show`)은 그 OS 창을 사용 중인 창으로 만듭니다 (전에는 캔버스에 창을 하나 더 열었음). `desk.palette.pick` 은 데스크의 창에 보이고 데스크가 앞으로 옵니다. 드래그(`ctx.dnd`)는 OS 창의 가장자리를 넘지 않고, 웹 뷰(ADR 0216)는 데스크 안에서만 보입니다.
+- 예제: `examples/plugin-hello-window` (`just example plugin-hello-window` 는 밖에, `DESK_APP_WINDOWS=off` 를 붙이면 캔버스에).
+
 ## 바뀌는 범위
 
 ```text
@@ -221,6 +232,7 @@ desk/
 │
 ├── examples/                 # 한 명령으로 도는 최소 예제
 │   ├── plugin-hello-ui/
+│   ├── plugin-hello-window/  # 창이 어떻게 열리는지 말하는 가장 작은 앱: 캔버스에도 OS 창에도 (ADR 0226)
 │   ├── plugin-hello-wasm/    # Rust wasm32-wasip2 컴포넌트, 빌드한 결과도 커밋 (#68)
 │   ├── plugin-hello-connector/ # 가장 작은 Wasm 커넥터: 폴더의 *.md 를 note 항목으로 (desk:connector), 빌드한 결과도 커밋 (ADR 0034)
 │   ├── plugin-hello-mcp/     # README 만, 계획

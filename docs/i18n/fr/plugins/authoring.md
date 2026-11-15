@@ -156,6 +156,64 @@ plugin répond 403, sauf celui d'une bibliothèque (ADR 0049) et ceux des plugin
 dans `imports` (`"imports": ["endue.eris"]`), dont le code s'exécute alors comme le vôtre. Construisez les URL à partir de chemins
 relatifs, jamais à partir de l'origine.
 
+## Comment s'ouvre la fenêtre d'une application
+
+Un plugin dont la surface est placée `center` ou `floating` est une application : sa fenêtre s'ouvre
+sur le canevas du bureau ou dans une fenêtre du système à elle (ADR 0205). Votre page et ses appels
+sont les mêmes dans les deux cas. Le bloc `window` de la surface dit comment la fenêtre s'ouvre
+(ADR 0226) :
+
+```json
+"surfaces": [{
+  "id": "main", "title": "My plugin", "placement": "center",
+  "window": {
+    "size": { "width": 480, "height": 360 },
+    "minSize": { "width": 320, "height": 240 },
+    "resizable": true,
+    "opens": "canvas"
+  }
+}]
+```
+
+| Indication | Sens |
+| --- | --- |
+| `size` | Votre page la première fois que sa fenêtre s'ouvre, en pixels CSS ; sur le canevas, la barre de titre et la bordure du bureau s'y ajoutent. Ensuite la fenêtre s'ouvre là où la personne l'a laissée |
+| `minSize` | La plus petite taille que la personne peut donner à votre page, au moins 240 × 160 |
+| `resizable` | `false` : la fenêtre n'a pas de bord à tirer et garde la taille de son ouverture |
+| `opens` | `canvas` (par défaut) : sur le bureau. `out` : dans une fenêtre du système à elle, la première fois que la fenêtre s'affiche dans une session |
+
+Ce sont des indications. Une place enregistrée par un profil ou une session, et le rangement que fait
+la personne elle-même (un remplissage, un ancrage, la mosaïque), fixent la taille d'une fenêtre sur le
+canevas quoi qu'elles disent, et une fenêtre divisée en volets suit ses volets. La personne sort
+n'importe quelle fenêtre et la ramène (« Pop out window » dans la palette, Window > Move to Desk).
+`DESK_APP_WINDOWS` l'emporte sur les manifestes pour un lancement : `off` garde toutes les fenêtres sur
+le canevas, `on` ouvre toutes les applications dehors, et une liste d'ids de plugins ouvre ceux-là
+dehors. `examples/plugin-hello-window` s'exécute des deux façons, avec une commande pour chacune.
+
+Une sortie ou un retour recharge votre page, comme un réveil : `state` revient, et ce que
+`surface.onUnload` a gardé aussi. Hors du canevas, trois choses diffèrent :
+
+* Un glisser (`ctx.dnd`) ne franchit pas le bord de la fenêtre du système. Les glisser à l'intérieur de
+  votre page et les fichiers venus du système arrivent comme sur le canevas ; un glisser lâché hors de
+  la fenêtre se termine avec l'effet `none`, et un glisser commencé sur le canevas n'atteint jamais une
+  fenêtre du système.
+* Ce que le bureau demande à la personne s'affiche dans la fenêtre du bureau, pas dans la vôtre.
+  `desk.palette.pick` amène le bureau au premier plan et sa réponse revient à votre page ; la question
+  d'une permission attend dans le bureau, ou dans l'îlot tant que le bureau n'est pas au premier plan.
+* Une vue web (`web.*`) ne s'affiche que dans le bureau : elle se termine quand sa fenêtre sort.
+
+`desk.files.*` et `desk.buffers.*` fonctionnent comme sur le canevas : un fichier ouvert dans votre
+ouvreur, ou un tampon affiché, va à la fenêtre du système là où elle est et en fait la fenêtre en
+cours d'utilisation.
+
+Une application qui n'est pas un ouvreur de fichiers peut avoir plusieurs fenêtres : donnez à sa
+première surface `"instances": "many"`, et lancez `desk.plugins.open` avec
+`{ plugin: ctx.pluginId, another: true }` (il faut `cmd:invoke` pour cet id). La réponse nomme la
+nouvelle fenêtre, `{ window: "<plugin id>@<n>" }`. Chacune est une page à part, comme les fenêtres
+d'un ouvreur de fichiers (voir `per-file` sous Contributions) : elle appelle en tant que votre plugin,
+garde son propre `state`, lit son nom dans `ctx.instance` et se ferme seule. Le bureau ne les rouvre
+pas après un redémarrage.
+
 ## Permissions
 
 Votre cadre s'exécute dans une sandbox qui n'autorise que les scripts : aucun accès à la page de Desk, aucune

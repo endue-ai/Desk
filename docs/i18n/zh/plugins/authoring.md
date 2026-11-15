@@ -114,6 +114,54 @@ SDK 从加载那一刻起就自行回应 Desk 的 ping（`desk:ping`），所以
 
 每个表面都在自己的源上加载，这样按站点隔离的引擎就能让每个窗口各占一个进程：macOS 和 Linux 上是 `desk-plugin://<surface>.<label>/<id>/<path>`，Windows 上是 `http://desk-plugin.<surface>.<label>.localhost/<id>/<path>`。`<surface>` 是表面的 `id`（未声明时为 `main`）；`<label>` 是把插件 id 中的每个 `-` 写成两个、再把每个 `.` 写成一个 `-` 得到的结果，因此 `example.my-plugin` 变为 `example-my--plugin`。路径仍保留 `/<id>/`，所以相对 URL、`import.meta.url`、导入映射中的 `/_desk/` 路径和 `fs.url` 的 URL 都照旧解析。在你的源上请求其他插件 id 下的路径会得到 403，库（ADR 0049）和清单 `imports` 中列出的插件（`"imports": ["endue.eris"]`）除外，这些代码随后以你的插件身份运行。请用相对路径构造 URL，不要从源拼接。
 
+## 应用的窗口如何打开
+
+界面放在 `center` 或 `floating` 的插件就是一个应用：它的窗口打开在桌面的画布上，或者打开在自己的操作系统
+窗口里（ADR 0205）。你的页面和它的调用在两处完全一样。界面的 `window` 块说明窗口如何打开（ADR 0226）：
+
+```json
+"surfaces": [{
+  "id": "main", "title": "My plugin", "placement": "center",
+  "window": {
+    "size": { "width": 480, "height": 360 },
+    "minSize": { "width": 320, "height": 240 },
+    "resizable": true,
+    "opens": "canvas"
+  }
+}]
+```
+
+| 提示 | 含义 |
+| --- | --- |
+| `size` | 窗口第一次打开时页面的大小（CSS 像素）；在画布上，桌面的标题栏和边框另加在外面。之后窗口打开在用户上次放置的位置 |
+| `minSize` | 用户能把页面缩到的最小大小，至少 240 × 160 |
+| `resizable` | `false`：窗口没有可拖动的边，保持打开时的大小 |
+| `opens` | `canvas`（默认）：在桌面上。`out`：在一次会话中窗口第一次显示时，打开在自己的操作系统窗口里 |
+
+这些只是提示。配置文件或会话保存的位置，以及用户自己的排布（填充、吸附、平铺），无论提示怎么说都会决定
+画布上窗口的大小；分成多个窗格的窗口则跟随它的窗格。用户可以把任何窗口移出去再移回来（面板里的
+“Pop out window”，Window > Move to Desk）。`DESK_APP_WINDOWS` 在一次运行中覆盖清单：`off` 让所有窗口留在
+画布上，`on` 让所有应用打开在外面，插件 ID 列表则让这些插件打开在外面。`examples/plugin-hello-window`
+用各一条命令演示两种方式。
+
+移出或移回会重新加载你的页面，和唤醒时一样：`state` 会回来，`surface.onUnload` 保存的内容也会回来。
+在画布之外有三点不同：
+
+* 拖放（`ctx.dnd`）不会越过操作系统窗口的边缘。页面内的拖放和来自操作系统的文件与在画布上一样落下；
+  在窗口外松开的拖放以效果 `none` 结束，从画布开始的拖放到不了操作系统窗口。
+* 桌面向用户提出的询问显示在桌面的窗口里，而不是你的窗口里。`desk.palette.pick` 会把桌面带到前面，
+  答案回到你的页面；权限询问在桌面里等待，桌面不在前面时则在岛（island）里等待。
+* Web 视图（`web.*`）只显示在桌面里：窗口移出去时它就结束。
+
+`desk.files.*` 和 `desk.buffers.*` 与在画布上一样工作：在你的打开器里打开的文件，或被显示的缓冲区，
+会到达操作系统窗口所在的位置，并让它成为正在使用的窗口。
+
+不是文件打开器的应用也可以有多个窗口：给它的第一个界面加上 `"instances": "many"`，然后用
+`{ plugin: ctx.pluginId, another: true }` 运行 `desk.plugins.open`（需要对该 ID 的 `cmd:invoke`）。
+答案是新窗口的名字：`{ window: "<plugin id>@<n>" }`。每个窗口都是独立的页面，和文件打开器的窗口一样
+（见贡献项里的 `per-file`）：它以你的插件身份调用，保留自己的 `state`，在 `ctx.instance` 里读到自己的
+名字，并单独关闭。重启之后桌面不会重新打开它们。
+
 ## 权限
 
 你的框架运行在只允许脚本的沙箱中：不能访问 Desk 的页面，不能进行顶层导航，不能使用表单或弹出窗口，也不能自行建立网络连接。每项能力都要经过桥接层，除 `perm.*` 之外的每次桥接调用都携带它所需的权限范围（`params.scope`）。只有当用户授予了覆盖该范围的权限时，核心才会响应。

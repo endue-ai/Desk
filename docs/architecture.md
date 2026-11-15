@@ -76,6 +76,17 @@ agents at work, what waits for an answer and the notices, a press away from answ
 or an agent's approval and from talking to Eris, whom Option+Enter calls from any app. It took the place
 of the floating Eris (ADR 0121).
 
+A window of the desk can also live in an OS window of its own (ADR 0205, #235). Any window that shows
+one plugin pops out of the canvas into a windowed browser and docks back to its place. `crates/desk-wm`
+keeps one id for it in or out, so `desk.windows.*` and Eris's tools act on both; a window out keeps its
+place per display and leaves tile, cascade, the spread and the map. A move in or out loads the plugin's
+page again with the state it kept. A plugin's manifest says how its window opens (ADR 0226, #239): a
+surface's `window` block gives the page's first and smallest size, whether the person can resize it,
+and whether it opens on the canvas or out. The window manager and the shell read the same hints, so an
+app opens alike in both, and `instances: "many"` lets an app open several windows on the keys a file
+opener's windows have (ADR 0212). A plugin's page and its bridge calls are the same on the canvas and
+out of it; only a drag stops at an OS window's edge.
+
 ```text
  desk (Rust, one process): winit · compositor (wgpu) · CEF host · core · updater
         │ surface             │ surface             │ surface              │ no surface
