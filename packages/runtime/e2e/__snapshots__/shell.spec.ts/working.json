@@ -571,6 +571,24 @@
      },
      "children": [
       {
+       "tag": "button",
+       "class": "icon-button bar-unfold",
+       "aria-label": "이름 보기",
+       "aria-expanded": "false",
+       "box": [
+        17,
+        245,
+        1,
+        1
+       ],
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "panel"
+        }
+       ]
+      },
+      {
        "tag": "div",
        "class": "bar-group",
        "role": "group",

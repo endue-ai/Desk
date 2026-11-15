@@ -62,6 +62,12 @@
   --bar-avatar: calc(var(--bar-button) - 2px);
   --bar-divider: var(--desk-space-5);
   --bar-reach: calc(var(--bar-inset) + var(--bar-width) + var(--desk-space-3));
+  /* The agent bar unfolded to its list (issue 294). With the default theme: 256 wide, an agent's
+     row 44 high and a space's 40; its popover and its tooltip start 12 past it, 284 from the edge. */
+  --bar-list-width: calc(var(--desk-space-16) * 4);
+  --bar-row: calc(var(--desk-control-md) + var(--desk-space-1));
+  --bar-row-space: var(--desk-control-md);
+  --bar-list-reach: calc(var(--bar-inset) + var(--bar-list-width) + var(--desk-space-3));
 
   --motion-fast: var(--desk-motion-fast);
   --motion-base: var(--desk-motion-base);

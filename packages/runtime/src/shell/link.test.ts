@@ -142,6 +142,34 @@ describe("the shell's part of desk.session keeps the windows open", () => {
     ]);
   });
 
+  it("the shell's part keeps the agent bar's pin and gives it back", async () => {
+    const { store, part, kept } = await shell();
+    // Not pinned, the record has no such key: a session saved before the pin reads the same.
+    expect("agentsPinned" in (part.save() as object)).toBe(false);
+    let heard = 0;
+    const off = part.onChange(() => heard++);
+    store.set({ agentsPinned: true });
+    expect(heard).toBe(1);
+    expect((part.save() as { agentsPinned?: true }).agentsPinned).toBe(true);
+    const pinned = JSON.parse(JSON.stringify(part.save()));
+    store.set({ agentsPinned: false });
+    expect(heard).toBe(2);
+    expect("agentsPinned" in (part.save() as object)).toBe(false);
+    off();
+
+    part.restore(pinned);
+    await kept.done();
+    expect(store.get().agentsPinned).toBe(true);
+    // A record without it clears it.
+    const { agentsPinned: _, ...before } = pinned;
+    part.restore(before);
+    await kept.done();
+    expect(store.get().agentsPinned).toBe(false);
+    part.restore({ agentsPinned: true });
+    await kept.done();
+    expect(store.get().agentsPinned).toBe(true);
+  });
+
   it("a window opened or closed saves the session soon", async () => {
     const { wm, part } = await shell(OPEN);
     let heard = 0;

@@ -3,12 +3,14 @@ import type { A2ATask, LocalAgentRun } from "@endue-ai/bridge";
 import { afterEach, describe, expect, it } from "vitest";
 import { agentId, sampleDirectory } from "../bridge/directory";
 import { localAgentsStub } from "../bridge/local-agents";
+import { ManualClock } from "../clock";
 import { testWindowManager } from "../wm/testing";
 import { takeDesk } from "../wm/view";
 import type { ShellCtx } from "./context";
 import { t } from "./copy";
 import { mountSideBar } from "./SideBar";
 import { emptyState, Store } from "./state";
+import { Ticker } from "./ticker";
 
 /** The wall clock of these tests: a minute and five seconds into Codex's run. */
 const NOW = Date.parse("2026-11-05T09:01:05Z");
@@ -27,9 +29,11 @@ async function setup() {
   store.set({ localAgents: await local.list() });
   const root = document.createElement("div");
   document.body.append(root);
+  const ticker = new Ticker(new ManualClock());
   const ctx = {
     store,
     wm,
+    ticker,
     bridge: { localAgents: local },
     runtime: {
       shortcuts: { focused: null },
@@ -40,7 +44,7 @@ async function setup() {
       t("en", key, vars),
     wall: () => NOW,
   } as unknown as ShellCtx;
-  cleanups.push(mountSideBar(root, ctx));
+  cleanups.push(mountSideBar(root, ctx), () => ticker.dispose());
   return { store, root };
 }
 
@@ -130,14 +134,24 @@ describe("the agent bar at rest (#292)", () => {
     const bar = one(root, ".sidebar");
     expect(bar.querySelector(".rail-label")).toBeNull();
     const words = (bar.textContent ?? "").split(/[^A-Za-z]+/);
-    for (const caption of ["Local", "Agents", "Spaces"]) expect(words).not.toContain(caption);
+    for (const caption of ["Local", "This", "Agents", "Spaces"])
+      expect(words).not.toContain(caption);
+    expect(bar.querySelector(".bar-caption")).toBeNull();
+    // The unfold control first (issue 294), then the groups with a rule between them.
     expect(
       [...bar.children].map((part) =>
         part.getAttribute("role") === "group"
           ? part.getAttribute("aria-label")
-          : part.getAttribute("role"),
+          : (part.getAttribute("role") ?? part.getAttribute("data-key")),
       ),
-    ).toEqual(["Agents on this computer", "separator", "Agents", "separator", "Spaces"]);
+    ).toEqual([
+      "agents-unfold",
+      "Agents on this computer",
+      "separator",
+      "Agents",
+      "separator",
+      "Spaces",
+    ]);
   });
 
   it("says an agent's state in `data-presence` and draws no dot", async () => {
@@ -206,7 +220,8 @@ describe("the agent bar at rest (#292)", () => {
     claude.dispatchEvent(new Event("focusout", { bubbles: true }));
     expect(tooltip(root).hidden).toBe(true);
     // Labelled once (ADR 0193): the page's tooltip, and no `title` the compositor would draw too.
-    expect(root.querySelectorAll(".sidebar button")).toHaveLength(7);
+    // Seven avatars and spaces, and the unfold control before them.
+    expect(root.querySelectorAll(".sidebar button")).toHaveLength(8);
     expect(root.querySelector(".sidebar button[title]")).toBeNull();
   });
 
