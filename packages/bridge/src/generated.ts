@@ -3222,6 +3222,7 @@ export type BridgeRequest =
   | StudioAgentsSetStatusRequest
   | StudioAgentsRemoveRequest
   | StudioAgentsFacetsRequest
+  | StudioAgentsPictureRequest
   | StudioAgentsPromptUpdateRequest
   | StudioCatalogListRequest
   | StudioCatalogRecommendRequest
@@ -6018,7 +6019,7 @@ export interface StudioSourceCatalog {
   version: number;
 }
 
-/** One of the person's agents as endue AI lists it. slug is the handle endue AI derived from the first name; it never changes. avatarUrl is absent when none was set: draw one from the slug. The list carries no description; studio.agents.facets has it. */
+/** One of the person's agents as endue AI lists it. slug is the handle endue AI derived from the first name; it never changes. avatarUrl is where endue AI keeps the picture the person set, absent when none was set; a page shows the agent's face from studio.agents.picture, never from this address. description, liveEnabled and mcpEnabled are absent when endue AI does not say. */
 export interface StudioAgent {
   id: StudioAgentId;
   slug: string;
@@ -6026,6 +6027,12 @@ export interface StudioAgent {
   status: StudioAgentStatus;
   avatarUrl?: string;
   personalColor?: string;
+  /** The profile's one-line introduction. */
+  description?: string;
+  /** Whether the agent is public on endue.live. */
+  liveEnabled?: boolean;
+  /** Whether other agents and apps may run the agent over MCP. */
+  mcpEnabled?: boolean;
   /** ISO 3166-2, where it was created (KR-11). */
   region?: string;
   sourceCatalog?: StudioSourceCatalog;
@@ -6060,7 +6067,7 @@ export interface StudioParams {
   scope: StudioManagePermission;
 }
 
-/** Parameters of a call about one agent: studio.agents.get, studio.agents.remove and studio.agents.facets. */
+/** Parameters of a call about one agent: studio.agents.get, studio.agents.remove, studio.agents.facets and studio.agents.picture. */
 export interface StudioAgentParams {
   agentId: StudioAgentId;
   scope: StudioManagePermission;
@@ -6289,6 +6296,24 @@ export interface StudioAgentsFacetsResult {
   connectors: StudioConnector[];
   traits: StudioTrait[];
   problems: StudioFacetProblem[];
+}
+
+/** Which picture an agent's face is, as endue.ai chooses it: its character while one is on (character), else the picture the person set (photo), else the one endue.ai draws from the slug (drawn). */
+export type StudioPictureSource = "character" | "photo" | "drawn";
+
+/** An agent's face as endue.ai shows it, for a page that loads no remote image: the core reads the picture and answers it as a data: URL. It reads only https addresses, sends no token with the read, keeps PNG, JPEG, GIF, WebP and SVG of at most 512 KB, and remembers what it read until the picture's address changes. Another person's agent is forbidden; one that is not there is not_found. */
+export interface StudioAgentsPictureRequest {
+  id: RequestId;
+  method: "studio.agents.picture";
+  params: StudioAgentParams;
+}
+
+/** Result of studio.agents.picture. picture and source are absent when the picture could not be read, was too large or was no image: draw the agent's initial. */
+export interface StudioAgentsPictureResult {
+  agentId: StudioAgentId;
+  /** The picture as a data: URL (image/png, image/jpeg, image/gif, image/webp or image/svg+xml, base64). Show it only as an image. */
+  picture?: string;
+  source?: StudioPictureSource;
 }
 
 /** Save the agent's instructions as a new revision in force (content), or put an earlier revision back in force as a new one (restore). */
@@ -7354,6 +7379,7 @@ export interface BridgeMethodMap {
   };
   "studio.agents.remove": { params: StudioAgentParams; result: StudioAgentsRemoveResult };
   "studio.agents.facets": { params: StudioAgentParams; result: StudioAgentsFacetsResult };
+  "studio.agents.picture": { params: StudioAgentParams; result: StudioAgentsPictureResult };
   "studio.agents.prompt.update": {
     params: StudioAgentsPromptUpdateParams;
     result: StudioAgentsPromptUpdateResult;
@@ -7534,6 +7560,7 @@ export const BRIDGE_METHODS = [
   "studio.agents.setStatus",
   "studio.agents.remove",
   "studio.agents.facets",
+  "studio.agents.picture",
   "studio.agents.prompt.update",
   "studio.catalog.list",
   "studio.catalog.recommend",

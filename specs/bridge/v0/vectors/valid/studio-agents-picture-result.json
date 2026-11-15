@@ -1,0 +1,9 @@
+{
+  "target": "StudioAgentsPictureResult",
+  "description": "the agent's character as a data: URL",
+  "instance": {
+    "agentId": "ag_01JC0Q4MR00000000000000001",
+    "picture": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "source": "character"
+  }
+}

@@ -9,7 +9,7 @@ served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `ac
 
 | Area | Operations |
 | --- | --- |
-| Agents | `listAgents`, `createAgent`, `getAgent`, `updateAgent`, `deleteAgent` (soft), `setAgentStatus` |
+| Agents | `listAgents`, `createAgent`, `getAgent` (with the addresses of its face, ADR 0232), `updateAgent`, `deleteAgent` (soft), `setAgentStatus` |
 | Studio facets | `getAgentIdentity`, `getAgentSettings`, `updateAgentSettings`, `getAgentPrompt`, `saveAgentPrompt`, `listPromptRevisions`, `restorePromptRevision`, `listAgentSkills`, `listAgentConnectors`, `listAgentTraits` |
 | Catalog | `listCatalogAgents`, `recommendCatalogAgents`, `useCatalogAgent` |
 | Conversations | `listConversations` (the Home board) |

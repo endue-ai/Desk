@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/studio.schema.json",
   "title": "Desk bridge v0: studio",
-  "description": "The person's endue AI agents, created and managed through endue AI's platform API (/api/v1, specs/platform/v0) with the desk's endue ID token, as endue.ai's Home and Studio do (ADR 0122). studio.agents.* lists, reads, creates, changes, turns off and on and deletes agents; studio.agents.facets reads what Studio shows of one; studio.catalog.* finds a published agent and starts one from it; studio.conversations.list lists conversations for the Home board. Every call needs studio:manage. The token never crosses the bridge. Signed out is signed_out, endue AI out of reach (or silent for 15 s) is offline, endue AI refusing the person is forbidden, an agent that is not there (or was deleted) is not_found, and a value endue AI refuses is invalid_params.",
+  "description": "The person's endue AI agents, created and managed through endue AI's platform API (/api/v1, specs/platform/v0) with the desk's endue ID token, as endue.ai's Home and Studio do (ADR 0122). studio.agents.* lists, reads, creates, changes, turns off and on and deletes agents; studio.agents.facets reads what Studio shows of one and studio.agents.picture its face; studio.catalog.* finds a published agent and starts one from it; studio.conversations.list lists conversations for the Home board. Every call needs studio:manage. The token never crosses the bridge. Signed out is signed_out, endue AI out of reach (or silent for 15 s) is offline, endue AI refusing the person is forbidden, an agent that is not there (or was deleted) is not_found, and a value endue AI refuses is invalid_params.",
   "$defs": {
     "StudioAgentId": {
       "description": "An agent's id on endue AI (ag_ followed by a ULID today).",
@@ -57,7 +57,7 @@
       "additionalProperties": false
     },
     "StudioAgent": {
-      "description": "One of the person's agents as endue AI lists it. slug is the handle endue AI derived from the first name; it never changes. avatarUrl is absent when none was set: draw one from the slug. The list carries no description; studio.agents.facets has it.",
+      "description": "One of the person's agents as endue AI lists it. slug is the handle endue AI derived from the first name; it never changes. avatarUrl is where endue AI keeps the picture the person set, absent when none was set; a page shows the agent's face from studio.agents.picture, never from this address. description, liveEnabled and mcpEnabled are absent when endue AI does not say.",
       "type": "object",
       "properties": {
         "id": {
@@ -82,6 +82,19 @@
         "personalColor": {
           "type": "string",
           "maxLength": 32
+        },
+        "description": {
+          "description": "The profile's one-line introduction.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "liveEnabled": {
+          "description": "Whether the agent is public on endue.live.",
+          "type": "boolean"
+        },
+        "mcpEnabled": {
+          "description": "Whether other agents and apps may run the agent over MCP.",
+          "type": "boolean"
         },
         "region": {
           "description": "ISO 3166-2, where it was created (KR-11).",
@@ -197,7 +210,7 @@
       "additionalProperties": false
     },
     "StudioAgentParams": {
-      "description": "Parameters of a call about one agent: studio.agents.get, studio.agents.remove and studio.agents.facets.",
+      "description": "Parameters of a call about one agent: studio.agents.get, studio.agents.remove, studio.agents.facets and studio.agents.picture.",
       "type": "object",
       "properties": {
         "agentId": {
@@ -887,6 +900,48 @@
         }
       },
       "required": ["agent", "revisions", "skills", "connectors", "traits", "problems"],
+      "additionalProperties": false
+    },
+    "StudioPictureSource": {
+      "description": "Which picture an agent's face is, as endue.ai chooses it: its character while one is on (character), else the picture the person set (photo), else the one endue.ai draws from the slug (drawn).",
+      "type": "string",
+      "enum": ["character", "photo", "drawn"]
+    },
+    "StudioAgentsPictureRequest": {
+      "description": "An agent's face as endue.ai shows it, for a page that loads no remote image: the core reads the picture and answers it as a data: URL. It reads only https addresses, sends no token with the read, keeps PNG, JPEG, GIF, WebP and SVG of at most 512 KB, and remembers what it read until the picture's address changes. Another person's agent is forbidden; one that is not there is not_found.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.agents.picture"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioAgentParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioAgentsPictureResult": {
+      "description": "Result of studio.agents.picture. picture and source are absent when the picture could not be read, was too large or was no image: draw the agent's initial.",
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "$ref": "#/$defs/StudioAgentId"
+        },
+        "picture": {
+          "description": "The picture as a data: URL (image/png, image/jpeg, image/gif, image/webp or image/svg+xml, base64). Show it only as an image.",
+          "type": "string",
+          "pattern": "^data:image/(png|jpeg|gif|webp|svg\\+xml);base64,[A-Za-z0-9+/=]+$",
+          "maxLength": 700000
+        },
+        "source": {
+          "$ref": "#/$defs/StudioPictureSource"
+        }
+      },
+      "required": ["agentId"],
       "additionalProperties": false
     },
     "StudioAgentsPromptUpdateRequest": {

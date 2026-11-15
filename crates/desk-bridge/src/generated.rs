@@ -5143,6 +5143,7 @@ pub enum BridgeRequest {
     StudioAgentsSetStatus(StudioAgentsSetStatusRequest),
     StudioAgentsRemove(StudioAgentsRemoveRequest),
     StudioAgentsFacets(StudioAgentsFacetsRequest),
+    StudioAgentsPicture(StudioAgentsPictureRequest),
     StudioAgentsPromptUpdate(StudioAgentsPromptUpdateRequest),
     StudioCatalogList(StudioCatalogListRequest),
     StudioCatalogRecommend(StudioCatalogRecommendRequest),
@@ -9375,7 +9376,7 @@ pub struct StudioSourceCatalog {
     pub version: u64,
 }
 
-/// One of the person's agents as endue AI lists it. slug is the handle endue AI derived from the first name; it never changes. avatarUrl is absent when none was set: draw one from the slug. The list carries no description; studio.agents.facets has it.
+/// One of the person's agents as endue AI lists it. slug is the handle endue AI derived from the first name; it never changes. avatarUrl is where endue AI keeps the picture the person set, absent when none was set; a page shows the agent's face from studio.agents.picture, never from this address. description, liveEnabled and mcpEnabled are absent when endue AI does not say.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StudioAgent {
@@ -9391,6 +9392,23 @@ pub struct StudioAgent {
         skip_serializing_if = "Option::is_none"
     )]
     pub personal_color: Option<String>,
+    /// The profile's one-line introduction.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Whether the agent is public on endue.live.
+    #[serde(
+        rename = "liveEnabled",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub live_enabled: Option<bool>,
+    /// Whether other agents and apps may run the agent over MCP.
+    #[serde(
+        rename = "mcpEnabled",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub mcp_enabled: Option<bool>,
     /// ISO 3166-2, where it was created (KR-11).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub region: Option<String>,
@@ -9451,7 +9469,7 @@ pub struct StudioParams {
     pub scope: StudioManagePermission,
 }
 
-/// Parameters of a call about one agent: studio.agents.get, studio.agents.remove and studio.agents.facets.
+/// Parameters of a call about one agent: studio.agents.get, studio.agents.remove, studio.agents.facets and studio.agents.picture.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StudioAgentParams {
@@ -9829,6 +9847,39 @@ pub struct StudioAgentsFacetsResult {
     pub connectors: Vec<StudioConnector>,
     pub traits: Vec<StudioTrait>,
     pub problems: Vec<StudioFacetProblem>,
+}
+
+/// Which picture an agent's face is, as endue.ai chooses it: its character while one is on (character), else the picture the person set (photo), else the one endue.ai draws from the slug (drawn).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StudioPictureSource {
+    #[serde(rename = "character")]
+    Character,
+    #[serde(rename = "photo")]
+    Photo,
+    #[serde(rename = "drawn")]
+    Drawn,
+}
+
+/// An agent's face as endue.ai shows it, for a page that loads no remote image: the core reads the picture and answers it as a data: URL. It reads only https addresses, sends no token with the read, keeps PNG, JPEG, GIF, WebP and SVG of at most 512 KB, and remembers what it read until the picture's address changes. Another person's agent is forbidden; one that is not there is not_found.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioAgentsPictureRequest {
+    pub id: RequestId,
+    pub method: StudioAgentsPictureRequestMethod,
+    pub params: StudioAgentParams,
+}
+
+/// Result of studio.agents.picture. picture and source are absent when the picture could not be read, was too large or was no image: draw the agent's initial.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioAgentsPictureResult {
+    #[serde(rename = "agentId")]
+    pub agent_id: StudioAgentId,
+    /// The picture as a data: URL (image/png, image/jpeg, image/gif, image/webp or image/svg+xml, base64). Show it only as an image.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub picture: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<StudioPictureSource>,
 }
 
 /// Save the agent's instructions as a new revision in force (content), or put an earlier revision back in force as a new one (restore).
@@ -12934,6 +12985,14 @@ pub enum StudioAgentsFacetsRequestMethod {
     #[default]
     #[serde(rename = "studio.agents.facets")]
     StudioAgentsFacets,
+}
+
+/// The `method` of [`StudioAgentsPictureRequest`]: always `"studio.agents.picture"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum StudioAgentsPictureRequestMethod {
+    #[default]
+    #[serde(rename = "studio.agents.picture")]
+    StudioAgentsPicture,
 }
 
 /// The `method` of [`StudioAgentsPromptUpdateRequest`]: always `"studio.agents.prompt.update"`.

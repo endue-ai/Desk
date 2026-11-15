@@ -643,7 +643,10 @@ components:
         version: { type: integer, minimum: 1 }
       required: [catalog_agent_id, version]
     AgentGetResponse:
-      description: One agent. avatar_url is absent when none is set.
+      description: >-
+        One agent. avatar_url is the picture the person set and character_image_url the still of
+        the character that is on; each is absent when there is none. description, live_enabled and
+        mcp_enabled are absent on a platform that does not say them yet.
       type: object
       properties:
         id: { type: string, minLength: 1 }
@@ -653,6 +656,10 @@ components:
         region: { type: [string, "null"] }
         personal_color: { type: [string, "null"] }
         avatar_url: { type: [string, "null"] }
+        character_image_url: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        live_enabled: { type: [boolean, "null"] }
+        mcp_enabled: { type: [boolean, "null"] }
         source_catalog: { $ref: "#/components/schemas/AgentSourceCatalog" }
         created_at: { type: string }
         updated_at: { type: string }
