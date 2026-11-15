@@ -196,6 +196,10 @@ name = "proc"
 required-features = ["proc"]
 
 [[test]]
+name = "proc_locale"
+required-features = ["proc"]
+
+[[test]]
 name = "net"
 required-features = ["net"]
 
