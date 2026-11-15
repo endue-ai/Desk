@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { browserBridge } from "../bridge/browser";
 import type { ShellCtx } from "../shell/context";
-import { Store, sampleState } from "../shell/state";
+import { type DeskState, Store, sampleState } from "../shell/state";
 import { mountAccountBar } from "./AccountBar";
 
 /** Settings' key, as the keymap would say it on a Mac. */
@@ -88,7 +88,10 @@ describe("the person's controls (ADR 0111)", () => {
   });
 
   it("the avatar's menu starts with Inbox and Settings, then what the account popover held", async () => {
-    const { popover, profile, open, unmount } = setup();
+    const { store, popover, profile, open, unmount } = setup();
+    // A profile in force and a space, so the popover holds a row for each.
+    const spaces = [{ id: "home", name: "Home" }] as DeskState["spaces"];
+    store.set({ modeId: "base", spaces, spaceId: "home" });
     expect(profile()?.getAttribute("aria-expanded")).toBe("false");
     await open();
     expect(profile()?.getAttribute("aria-expanded")).toBe("true");
@@ -119,6 +122,7 @@ describe("the person's controls (ADR 0111)", () => {
             ? "actions"
             : (el.firstChild?.textContent ?? "");
     expect(held.map(what)).toEqual(["identity", "endue ID", "actions", "Profile", "Space"]);
+    expect(held.slice(3).map((el) => el.textContent)).toEqual(["ProfileBase", "SpaceHome"]);
     unmount();
   });
 

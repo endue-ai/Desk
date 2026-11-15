@@ -1,10 +1,15 @@
-/** The launcher, the inbox, settings and the person's profile: fixed at the bottom left in every desktop and mode. */
+/**
+ * The account bar: the launcher and the person's avatar, fixed at the bottom left in every desktop
+ * and mode. The inbox, Settings and the person's profile are in the avatar's popover
+ * (account-menu.ts); this keeps the bar, its two commands and the focus as the popover comes and goes.
+ */
 import { runGesture } from "../gesture";
 import type { ShellCtx } from "../shell/context";
 import { h, render } from "../shell/dom";
 import { icon } from "../shell/icons";
 import { initial } from "../shell/state";
 import { accountText } from "./account-copy";
+import { type AccountView, accountPopover, viewOf, walkButtons } from "./account-menu";
 import { mountEndueId } from "./endue-id";
 
 /** The command the launcher plugin answers. */
@@ -17,10 +22,25 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
     // replacing its focused button before pointerup would lose that click.
     onPointerdown: (event: PointerEvent) => event.stopPropagation(),
   });
-  const slot = h("div", { class: "account-popover-slot" });
+  const slot = h("div", {
+    class: "account-popover-slot",
+    // Escape closes the popover (draw gives the focus back to the avatar); the arrows, Home and
+    // End walk its buttons. Tab is the browser's.
+    onKeydown: (event: KeyboardEvent) => {
+      const popover = slot.querySelector<HTMLElement>(".account-popover");
+      if (!popover || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key === "Escape") ctx.store.set({ popover: null });
+      else if (!walkButtons(popover, event.key)) return;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+  });
   root.append(bar, slot);
+  const face = () => bar.querySelector<HTMLElement>(".account-profile");
   let name = "";
   let generation = 0;
+  /** The view the popover showed when it was last drawn. */
+  let last: AccountView | null = null;
   const tr = (key: Parameters<typeof accountText>[1]) => accountText(ctx.store.get().lang, key);
   // A button whose command fails says why (gesture.ts).
   const run = (command: string) => void runGesture(ctx.runtime, command);
@@ -52,10 +72,13 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
   };
   const draw = () => {
     const s = ctx.store.get();
-    const inbox = `${tr("inbox")} · ${s.attention.length}`;
+    const view = viewOf(s);
+    const count = s.attention.length;
     // Signed in, the account's name stands for the person; the first-run name otherwise.
-    const shown = endue.profile()?.displayName?.trim() || name;
-    const userName = shown || tr("localUser");
+    const shownName = endue.profile()?.displayName?.trim() || name;
+    const userName = shownName || tr("localUser");
+    // Whether the popover had the focus before it is drawn anew.
+    const held = slot.contains(root.ownerDocument.activeElement);
     bar.setAttribute("aria-label", tr("controls"));
     render(bar, () => [
       // The launcher's grid of every plugin (endue.launcher, ADR 0217): the one place on screen
@@ -75,119 +98,57 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
         },
         icon("grid"),
       ),
+      // The person. While the inbox holds something the avatar shows a dot, its own ::after on
+      // [data-attention] (system.css), and its name says how many.
       h(
         "button",
         {
-          class: `icon-button inbox-button${s.popover === "attention" ? " is-open" : ""}`,
-          type: "button",
-          "data-key": "inbox",
-          "aria-label": inbox,
-          "aria-expanded": String(s.popover === "attention"),
-          title: inbox,
-          onClick: () => run("desk.inbox.open"),
-        },
-        icon("inbox"),
-        s.attention.length ? h("span", { class: "badge" }, s.attention.length) : null,
-      ),
-      h(
-        "button",
-        {
-          class: "icon-button account-settings-button",
-          type: "button",
-          "data-key": "account-settings",
-          "aria-label": tr("settings"),
-          title: tr("settings"),
-          onClick: () => {
-            ctx.store.set({ popover: null });
-            run("desk.settings.open");
-          },
-        },
-        icon("settings"),
-      ),
-      h(
-        "button",
-        {
-          class: `icon-button account-profile${s.popover === "account" ? " is-open" : ""}`,
+          class: `icon-button account-profile${view ? " is-open" : ""}`,
           type: "button",
           "data-key": "account-profile",
-          "aria-label": tr("account"),
-          "aria-expanded": String(s.popover === "account"),
+          "data-attention": count || undefined,
+          "aria-label": count ? `${tr("account")} · ${tr("inbox")} · ${count}` : tr("account"),
+          "aria-expanded": String(view !== null),
           title: `${tr("account")} · ${userName}`,
           onClick: () => run("desk.account.open"),
         },
-        avatar(shown),
+        avatar(shownName),
       ),
     ]);
-    render(slot, () => {
-      if (s.popover !== "attention" && s.popover !== "account") return [];
-      const isInbox = s.popover === "attention";
-      const profile = s.modes.find((mode) => mode.manifest.id === s.modeId)?.manifest.name;
-      const space = s.spaces.find((entry) => entry.id === s.spaceId)?.name;
-      return [
-        h(
-          "section",
-          {
-            class: "popover account-popover",
-            role: "dialog",
-            "aria-label": tr(isInbox ? "inbox" : "account"),
-            "data-popover": s.popover,
-          },
-          h("div", { class: "pop-title" }, tr(isInbox ? "inbox" : "account")),
-          isInbox
-            ? s.attention.length
-              ? s.attention.map((item) =>
-                  h(
-                    "div",
-                    { class: "inbox-item" },
-                    h(
-                      "div",
-                      { class: "pop-row" },
-                      h("span", { class: "dot dot-attention" }),
-                      h("span", {}, item.text),
-                    ),
-                    item.action
-                      ? h(
-                          "button",
-                          {
-                            class: "btn btn-outline pop-action",
-                            type: "button",
-                            "data-key": `attention-${item.id}`,
-                            onClick: () => item.action && run(item.action.command),
-                          },
-                          item.action.label,
-                        )
-                      : null,
-                  ),
-                )
-              : h("p", { class: "account-empty" }, ctx.tr("empty"))
-            : [
-                h(
-                  "div",
-                  { class: "account-identity" },
-                  avatar(shown),
-                  h("div", {}, h("strong", {}, userName), h("small", {}, endue.where())),
-                ),
-                ...endue.rows(),
-                profile
-                  ? h(
-                      "div",
-                      { class: "pop-row" },
-                      tr("profile"),
-                      h("span", { class: "pop-muted" }, profile),
-                    )
-                  : null,
-                space
-                  ? h(
-                      "div",
-                      { class: "pop-row" },
-                      tr("space"),
-                      h("span", { class: "pop-muted" }, space),
-                    )
-                  : null,
-              ],
-        ),
-      ];
-    });
+    render(slot, () =>
+      view
+        ? [
+            accountPopover(
+              {
+                ctx,
+                tr,
+                run,
+                face: () => avatar(shownName),
+                userName,
+                endue,
+                // Settings goes back to what had the focus when it opened: the avatar.
+                settings: () => {
+                  ctx.store.set({ popover: null });
+                  face()?.focus();
+                  run("desk.settings.open");
+                },
+              },
+              s,
+              view,
+            ),
+          ]
+        : [],
+    );
+    // The focus follows the popover. Opened, the menu's first row has it; the inbox's list, or a
+    // popover whose focused button a redraw took away, holds it itself, so Escape and the arrows
+    // still reach it. Closed with the focus inside and nothing else opened, the avatar has it back.
+    const popover = slot.querySelector<HTMLElement>(".account-popover");
+    if (popover && view !== last) {
+      const first = view === "account" ? popover.querySelector<HTMLElement>("button") : null;
+      (first ?? popover).focus();
+    } else if (popover && held && !slot.contains(root.ownerDocument.activeElement)) popover.focus();
+    else if (!popover && held && s.popover === null) face()?.focus();
+    last = view;
   };
   const commands = [
     ctx.runtime.commands.define("desk.inbox.open", {

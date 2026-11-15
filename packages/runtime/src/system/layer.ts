@@ -31,12 +31,13 @@ export function mountSystemLayer(
     mountAccountBar(layer, ctx),
   ];
   parts.push(mountSafeBadge(layer, ctx, safe));
-  // The theme studio is the desk's own window too (ADR 0056); desk.theme.studio opens it.
+  // The theme studio is the desk's own window too (ADR 0056); desk.theme.studio opens it. Closed
+  // with nothing to go back to, it leaves the focus on the avatar, whose menu holds Settings.
   const studio = mountThemeStudio(root, {
     themes: ctx.runtime.themes,
     commands: ctx.runtime.commands,
     lang: () => ctx.store.get().lang,
-    fallback: () => layer.querySelector<HTMLElement>(".account-settings-button") ?? root,
+    fallback: () => layer.querySelector<HTMLElement>(".account-profile") ?? root,
     io: () => ctx.runtime.themes.io(),
   });
   // The design system studio beside it (ADR 0090); desk.design.studio opens it.
@@ -44,7 +45,7 @@ export function mountSystemLayer(
     designs: ctx.runtime.designs,
     commands: ctx.runtime.commands,
     lang: () => ctx.store.get().lang,
-    fallback: () => layer.querySelector<HTMLElement>(".account-settings-button") ?? root,
+    fallback: () => layer.querySelector<HTMLElement>(".account-profile") ?? root,
     brain: () => ctx.runtime.themes.brain(),
   });
   return () => {

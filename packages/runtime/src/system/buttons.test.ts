@@ -31,6 +31,7 @@ async function shell(id: string, title: string, run: () => unknown) {
     store: new Store(sampleState("en", 0)),
     bridge,
     tr: (key: string) => key,
+    keyOf: () => undefined,
     eris: { say: vi.fn(), setState: vi.fn() },
     runtime: { commands, notify: (input: NoticeInput) => void notices.push(input) },
   } as unknown as ShellCtx;
@@ -43,6 +44,8 @@ async function shell(id: string, title: string, run: () => unknown) {
     root.querySelector<HTMLButtonElement>(`[data-key=${key}]`)?.click();
   /** Press the avatar, then the row `key` of its menu, once the menu shows it. */
   const choose = async (key: string) => {
+    // The bar's own commands are in the registry once it has caught up with the mount.
+    await commands.settled();
     click("account-profile");
     const row = await vi.waitFor(() => {
       const found = root.querySelector<HTMLElement>(`[role="menuitem"][data-key="${key}"]`);
