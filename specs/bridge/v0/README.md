@@ -759,8 +759,9 @@ open, one or (`multiple`) several, through the OS's own dialog attached to the d
 cancelling is not an error. No permission is needed to ask: the person's choice is the consent. Each
 chosen file is granted to the caller as `fs:read` on that path, a chosen folder as `fs:read` on the folder
 and `<folder>/**`, for the session, as any other grant (`perm.list` shows it, `perm.revoke` ends it).
-Nothing else is granted. An agent's call is `permission_denied`; a desk without a window to attach the
-dialog to answers `unsupported`.
+Nothing else is granted. A chosen path holding `*` or `?`, which a grant would read as a pattern, is left
+out of the answer and not granted (none left reads as cancelled). An agent's or an MCP server's call is
+`permission_denied`; a desk without a window to attach the dialog to answers `unsupported`.
 
 **dialog.save** asks the person for a place to save one file, suggesting `suggestedName` in `startIn`.
 It answers the absolute `path` chosen, or `cancelled: true` without one. The path is granted to the
