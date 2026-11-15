@@ -76,7 +76,11 @@ describe("cef-fetch", () => {
     const pin = readPin();
     assert.equal(cefVersion(pin), crateCefVersion(readFileSync(join(ROOT, "Cargo.lock"), "utf8")));
     const build = parse(readFileSync(join(ROOT, ".github/workflows/release-build.yml"), "utf8"));
-    for (const { rust } of build.jobs.build.strategy.matrix.include) {
+    // The matrix is an expression that picks one of two JSON lists; the last holds every target.
+    const lists = [...build.jobs.build.strategy.matrix.include.matchAll(/'(\[.*?\])'/gu)];
+    const targets = JSON.parse(lists.at(-1)[1]);
+    assert.equal(targets.length, 4);
+    for (const { rust } of targets) {
       assert.ok(pin.archives[rust], `cef.json pins an archive for ${rust}`);
       assert.match(pin.archives[rust].name, /_minimal\.tar\.bz2$/u, "the minimal distribution");
     }

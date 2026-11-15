@@ -27,7 +27,7 @@ release pipeline's steps (ADR 0054, ADR 0092): the build version of a canary, a 
 final, each target's bundles under canonical names, `release.json`, the channel indexes and their rollout
 shares, and the upload to R2 in the order that keeps every listed build whole. The `release-build`,
 `canary`, `release-cut`, `release`, `release-final`, `rollout` and `rollback` workflows call them
-(`docs/releasing.md`).
+(`docs/releasing.md`); `release-assets.mjs` names what `release-macos` attaches (ADR 0229).
 
 `ui-lint.mjs` (in `just check`) keeps every UI on the theme's tokens: no literal colours, fonts, text
 sizes, radii or durations outside `theme: content` marks, as a ratchet over

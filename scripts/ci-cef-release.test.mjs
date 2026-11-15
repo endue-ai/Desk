@@ -56,7 +56,8 @@ test("release-build builds the CEF desk and refuses any other", () => {
     "updater signatures name their version",
   );
   assert.match(runs, /e2e\/smoke\/install-and-launch\.sh/u, "the smoke installs every package");
-  assert.match(runs, /release-collect\.mjs .*--shell cef/u);
+  assert.match(runs, /--out dist --shell cef\)/u);
+  assert.match(runs, /node scripts\/release-collect\.mjs "\$\{args\[@\]\}"/u);
   const cache = cef.find((step) => String(step.uses ?? "").startsWith("actions/cache/restore"));
   assert.ok(cache, "the CEF archive is cached");
   assert.match(

@@ -1,0 +1,112 @@
+name: release-macos
+
+# A GitHub Release a person publishes builds the macOS app and attaches it (ADR 0229): the CEF desk
+# (release-build.yml) at the tag's commit, with the tag's version, for darwin-aarch64 and darwin-x86_64,
+# and each target's .dmg on the release under its canonical name, with SHA256SUMS-macos and a macOS
+# section in the notes. With the Apple secrets in the signing environment the app and the disk image
+# are signed with the Developer ID, notarised and stapled; without them the build is ad-hoc signed,
+# and the run and the notes say so. It needs no updater key and no R2 credentials: nothing goes to R2
+# and no channel lists the build. A final's release is release-final's (ADR 0092), made by the release
+# app: its build is on R2 already, so this builds nothing for it. By hand, with a tag, it builds an
+# existing release again and replaces what it attached.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The tag of an existing GitHub Release (vX.Y.Z)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-macos-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: gate
+    if: github.event_name != 'release' || github.event.release.author.type != 'Bot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: signing
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      commit: ${{ steps.version.outputs.commit }}
+      signed: ${{ steps.apple.outputs.signed }}
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: version
+        name: The tag's version and commit
+        run: |
+          version="$(node scripts/release-assets.mjs version "$TAG")"
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName > /dev/null; then
+            echo "::error::$TAG has no GitHub Release: publish one, then run this again"
+            exit 1
+          fi
+          git fetch --quiet --depth 1 origin "refs/tags/$TAG"
+          commit="$(git rev-parse 'FETCH_HEAD^{commit}')"
+          { echo "version=$version"; echo "commit=$commit"; } | tee -a "$GITHUB_OUTPUT"
+      - id: apple
+        name: Is the build signed with the Developer ID?
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        # The same two secrets release-build.yml asks for; with them a build that is not notarised fails.
+        run: |
+          if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_SIGNING_IDENTITY" ]; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No Apple signing secrets in signing: $TAG gets an ad-hoc signed macOS app that Gatekeeper refuses until the person allows it (docs/releasing.md)"
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: gate
+    uses: ./.github/workflows/release-build.yml
+    with:
+      version: ${{ needs.gate.outputs.version }}
+      ref: ${{ needs.gate.outputs.commit }}
+      targets: darwin
+      installers-only: true
+    secrets: inherit
+
+  attach:
+    name: attach
+    needs: [gate, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      VERSION: ${{ needs.gate.outputs.version }}
+      SIGNED: ${{ needs.gate.outputs.signed }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: desk-darwin-*
+          path: dist
+          merge-multiple: true
+      - name: Attach the disk images and their checksums
+        run: |
+          (cd dist && sha256sum endue-desk_*.dmg > SHA256SUMS-macos)
+          files="$(node scripts/release-assets.mjs files dist --version "$VERSION")"
+          mapfile -t files <<<"$files"
+          gh release upload "$TAG" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+      - name: Say in the notes where they are and whether Apple knows the build
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > body.md
+          node scripts/release-assets.mjs notes body.md --repo "$GITHUB_REPOSITORY" --tag "$TAG" \
+            --version "$VERSION" --signed "$SIGNED" > notes.md
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file notes.md
+          if [ "$SIGNED" = true ]; then state="signed with the Developer ID and notarised"; else state="ad-hoc signed, not notarised"; fi
+          echo "::notice::$TAG carries the macOS app for Apple silicon and Intel ($state)"
