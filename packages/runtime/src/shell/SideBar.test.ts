@@ -82,17 +82,39 @@ const lines = (root: HTMLElement) => [...tooltip(root).children].map((line) => l
 const over = (el: Element) => el.dispatchEvent(new Event("pointerover", { bubbles: true }));
 
 describe("the agent bar's local agents", () => {
-  it("registers every agent program the core found, above the directory's agents", async () => {
+  it("registers every agent program the core found, each under its program's mark", async () => {
     const { root } = await setup();
     const group = root.querySelector("[data-local-agents]");
     expect(group?.getAttribute("aria-label")).toBe("Agents on this computer");
     const avatars = [...root.querySelectorAll<HTMLButtonElement>("[data-local-agent]")];
     expect(
-      avatars.map((a) => [a.dataset.localAgent, a.textContent, a.getAttribute("aria-label")]),
+      avatars.map((a) => [
+        a.dataset.localAgent,
+        a.querySelector("svg")?.getAttribute("data-mark"),
+        a.getAttribute("aria-label"),
+      ]),
     ).toEqual([
-      ["claude", "CC", "Claude Code · on this computer"],
-      ["codex", "Cx", "Codex · on this computer"],
+      ["claude", "claude", "Claude Code · on this computer"],
+      ["codex", "codex", "Codex · on this computer"],
     ]);
+    // A mark is a picture: the name is the button's, and no letters stand in for it.
+    for (const avatar of avatars) {
+      expect(avatar.textContent).toBe("");
+      expect(avatar.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    }
+  });
+
+  it("stands under the spaces, after a rule (ADR 0232)", async () => {
+    const { store, root } = await setup();
+    withDirectory(store);
+    const parts = [...one(root, ".sidebar").children];
+    expect(parts.at(-1)?.hasAttribute("data-local-agents")).toBe(true);
+    expect(parts.at(-2)?.getAttribute("role")).toBe("separator");
+    const order = [...root.querySelectorAll(".sidebar button")].map(
+      (b) => b.getAttribute("data-key")?.split("-")[0],
+    );
+    expect(order.lastIndexOf("space")).toBeLessThan(order.indexOf("local"));
+    expect(order.lastIndexOf("agent")).toBeLessThan(order.indexOf("space"));
   });
 
   it("lights an agent while a run of it goes on", async () => {
@@ -124,7 +146,7 @@ describe("the agent bar's local agents", () => {
 });
 
 describe("the agent bar at rest (#292)", () => {
-  it("shows no caption, and rules divide the local programs, the agents and the spaces", async () => {
+  it("shows no caption, and rules divide the agents, the spaces and the local programs", async () => {
     const { store, root } = await setup();
     withDirectory(store);
     const bar = one(root, ".sidebar");
@@ -137,7 +159,7 @@ describe("the agent bar at rest (#292)", () => {
           ? part.getAttribute("aria-label")
           : part.getAttribute("role"),
       ),
-    ).toEqual(["Agents on this computer", "separator", "Agents", "separator", "Spaces"]);
+    ).toEqual(["Agents", "separator", "Spaces", "separator", "Agents on this computer"]);
   });
 
   it("says an agent's state in `data-presence` and draws no dot", async () => {

@@ -1,6 +1,7 @@
 /**
  * The agent bar's endue half while the desk is signed in (ADR 0129): the person's endue agents,
- * the ones that work or wait for them first, and the spaces they can open. Choosing either opens
+ * each with the face endue.ai shows (ADR 0232) or its initial until that is read, the ones that
+ * work or wait for them first, and the spaces they can open. Choosing either opens
  * its window. An agent's state is `data-presence` (the ring the stylesheet draws), and the bar's
  * tooltip names it with the conversation it works on (bar-tip.ts). Past six agents the last place
  * opens the rest in a popover, as the directory's does.
@@ -13,6 +14,7 @@ import {
   ENDUE_SPACE_VIEW,
   type EnduePresence,
   enduePresence,
+  facePicture,
   hexColour,
   openEndueAgent,
   openEndueSpace,
@@ -42,6 +44,13 @@ const DOT: Partial<Record<EnduePresence, string>> = {
   waiting: "dot-attention",
 };
 
+/** An agent's face: its picture as the core handed it over, else the initial of its name. */
+export function faceOf(s: DeskState, agent: StudioAgent): HTMLElement {
+  const picture = facePicture(s.endue.pictures[agent.id]);
+  if (!picture) return h("span", { "aria-hidden": "true" }, initialOf(agent.name || agent.slug));
+  return h("img", { class: "avatar-face", src: picture, alt: "", draggable: "false" });
+}
+
 function avatarButton(ctx: ShellCtx, s: DeskState, agent: StudioAgent, presence: EnduePresence) {
   const label = endueText(s.lang, "barAgent", {
     name: agent.name,
@@ -62,7 +71,7 @@ function avatarButton(ctx: ShellCtx, s: DeskState, agent: StudioAgent, presence:
       ...(colour ? { style: { "--endue-accent": colour } } : {}),
       onClick: () => openEndueAgent(ctx, agent.id),
     },
-    h("span", { "aria-hidden": "true" }, initialOf(agent.name || agent.slug)),
+    faceOf(s, agent),
   );
   return withTip(button, () => {
     // The conversation that runs: its title, and the time since its last message.
@@ -174,11 +183,7 @@ export function endueGroups(ctx: ShellCtx, s: DeskState): BarGroups {
               "data-endue-agent": agent.id,
               onClick: () => openEndueAgent(ctx, agent.id),
             },
-            h(
-              "span",
-              { class: "run-avatar", "aria-hidden": "true" },
-              initialOf(agent.name || agent.slug),
-            ),
+            h("span", { class: "run-avatar", "aria-hidden": "true" }, faceOf(s, agent)),
             agent.name,
             DOT[presence] ? h("span", { class: `dot ${DOT[presence]}` }) : null,
           ),

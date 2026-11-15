@@ -1,28 +1,23 @@
 /**
- * The agent bar (system layer, left): the agent programs on this computer first (Claude Code, Codex:
- * every one the core found registers itself, ADR 0110), then the current space's agents from the
- * agent directory, the spaces below, a rule between the groups and no caption. Signed in to endue,
- * the person's endue agents and spaces take the directory's place and open as windows
- * (SideBarEndue.ts, ADR 0129). An agent's state is `data-presence`, which the stylesheet draws as a
- * ring around the avatar: working with a working A2A task or a run going on, waiting while it is
- * inactive or a task waits on it for an answer. The bar's tooltip names each control, and says
- * what a working agent does and for how long (bar-tip.ts). Past six agents, the last place opens
- * the rest in a popover.
+ * The agent bar (system layer, left): the current space's agents from the agent directory, the
+ * spaces below, and last the agent programs on this computer (Claude Code, Codex: every one the
+ * core found registers itself, ADR 0110), each under its program's mark (ADR 0232); a rule between
+ * the groups and no caption. Signed in to endue, the person's endue agents and spaces take the
+ * directory's place and open as windows (SideBarEndue.ts, ADR 0129). An agent's state is
+ * `data-presence`, which the stylesheet draws as a ring around the avatar: working with a working
+ * A2A task or a run going on, waiting while it is inactive or a task waits on it for an answer. The
+ * bar's tooltip names each control, and says what a working agent does and for how long
+ * (bar-tip.ts). Past six agents, the last place opens the rest in a popover.
  */
 import type { A2ATask, Agent, LocalAgent } from "@endue-ai/bridge";
 import { localText } from "../surface/local-agent/copy";
 import { type Presence, presenceOf, selectAgent, selectSpace, spaceAgents } from "../system/agents";
-import {
-  badgeOf,
-  isRunning,
-  LOCAL_VIEW,
-  localPresence,
-  selectLocalAgent,
-} from "../system/local-agents";
+import { isRunning, LOCAL_VIEW, localPresence, selectLocalAgent } from "../system/local-agents";
 import { mountBarTip, withTip, workLine } from "./bar-tip";
 import type { ShellCtx } from "./context";
 import { type Child, h, render } from "./dom";
 import { icon } from "./icons";
+import { localMark } from "./marks";
 import { type BarGroups, endueGroups } from "./SideBarEndue";
 import { type DeskState, initial } from "./state";
 
@@ -99,7 +94,7 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
         "aria-pressed": String(open),
         onClick: () => selectLocalAgent(ctx, a.id),
       },
-      h("span", { "aria-hidden": "true" }, badgeOf(a.id)),
+      localMark(a.id),
     );
     return withTip(button, () => {
       const run = ctx.store.get().localRuns.find((r) => r.agent === a.id && isRunning(r));
@@ -207,8 +202,11 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
     // Signed in, the person's endue agents and spaces take the directory's place (ADR 0129).
     const groups = s.endue.state === "off" ? directoryGroups(s) : endueGroups(ctx, s);
     render(el, () => [
+      ...groups.bar,
+      // The programs on this computer stand under the spaces (ADR 0232).
       s.localAgents.length
         ? [
+            h("div", { class: "bar-divider", role: "separator" }),
             h(
               "div",
               {
@@ -219,10 +217,8 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
               },
               s.localAgents.map(local),
             ),
-            h("div", { class: "bar-divider", role: "separator" }),
           ]
         : null,
-      ...groups.bar,
     ]);
     render(more, () =>
       groups.more
@@ -259,6 +255,7 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
       s.focused?.startsWith(LOCAL_VIEW) || s.focused?.startsWith("endue-") ? s.focused : null,
       s.endue.state,
       s.endue.agents,
+      s.endue.pictures,
       s.endue.spaces,
       s.endue.conversations.map((c) => [c.agentId, c.activity, c.activity === "active" && c.title]),
       s.endue.agent,

@@ -51,6 +51,65 @@ describe("the agent bar once signed in to endue (ADR 0129)", () => {
     expect(root.querySelector("[data-agent], [data-space]")).toBeNull();
   });
 
+  it("shows each agent's face as the core hands it over, and its initial until then (ADR 0232)", async () => {
+    const { root, signIn, studio, store, ctx } = mounted();
+    const miso = sampleAgentId(1);
+    const scout = sampleAgentId(3);
+    // Scout's picture cannot be read; Mailie's is not a picture at all.
+    delete studio.pictures[scout];
+    studio.pictures[sampleAgentId(2)] = "https://cdn.endue.ai/c/mailie.png";
+    signIn();
+    await settle();
+    await settle();
+    await settle();
+    const avatar = (id: string) => root.querySelector<HTMLElement>(`[data-endue-agent="${id}"]`);
+    const face = avatar(miso)?.querySelector<HTMLImageElement>("img.avatar-face");
+    expect(face?.getAttribute("src")).toBe(studio.pictures[miso]);
+    expect(face?.getAttribute("src")).toMatch(/^data:image\/svg\+xml;base64,/);
+    // The button's name says who it is: the picture adds nothing for a screen reader.
+    expect(face?.getAttribute("alt")).toBe("");
+    expect(avatar(miso)?.textContent).toBe("");
+    expect(avatar(scout)?.querySelector("img")).toBeNull();
+    expect(avatar(scout)?.textContent).toBe("S");
+    expect(avatar(sampleAgentId(2))?.querySelector("img")).toBeNull();
+    expect(Object.keys(store.get().endue.pictures)).toEqual([miso]);
+    // A face that changed is drawn on the next read.
+    studio.pictures[scout] = studio.pictures[miso] ?? "";
+    await loadEndue(ctx);
+    await settle();
+    await settle();
+    expect(avatar(scout)?.querySelector("img.avatar-face")).not.toBeNull();
+  });
+
+  it("puts the programs on this computer under the endue spaces", async () => {
+    const { root, signIn, store } = mounted();
+    store.set({
+      localAgents: [
+        {
+          id: "claude",
+          name: "Claude Code",
+          vendor: "Anthropic",
+          home: "/Users/you/.claude",
+          sessions: 0,
+          archived: 0,
+          imported: 0,
+          running: 0,
+        },
+      ],
+    });
+    signIn();
+    await settle();
+    await settle();
+    const parts = [...(root.querySelector(".sidebar")?.children ?? [])];
+    expect(
+      parts.map((part) =>
+        part.getAttribute("role") === "group"
+          ? part.getAttribute("aria-label")
+          : part.getAttribute("role"),
+      ),
+    ).toEqual(["Agents", "separator", "Spaces", "separator", "Agents on this computer"]);
+  });
+
   it("signed in, the bar has no caption and no dot, and the ring's state is `data-presence`", async () => {
     const { root, signIn } = mounted();
     signIn();

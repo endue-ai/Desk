@@ -4,6 +4,7 @@ import { settle, testDesk } from "../surface/endue/test-desk";
 import {
   agentPage,
   enduePresence,
+  facePicture,
   flipCard,
   hexColour,
   loadEndue,
@@ -11,6 +12,7 @@ import {
   openEndueSpace,
   openOnWeb,
   readFacets,
+  readPictures,
   spacePage,
   watchEndue,
 } from "./endue";
@@ -83,6 +85,48 @@ describe("the person's endue agents and spaces in the shell (ADR 0129)", () => {
     studio.setSignedIn(true);
     await readFacets(ctx, sampleAgentId(1));
     expect(store.get().endue.facets[sampleAgentId(1)]?.state).toBe("ready");
+  });
+
+  it("reads the agents' faces after the list, and keeps only what an image may show (ADR 0232)", async () => {
+    const { ctx, store, signIn, studio } = testDesk();
+    const [miso, mailie, scout] = [sampleAgentId(1), sampleAgentId(2), sampleAgentId(3)];
+    studio.pictures[mailie] = "https://cdn.endue.ai/c/mailie.png";
+    delete studio.pictures[scout];
+    signIn();
+    await loadEndue(ctx);
+    await settle();
+    expect(store.get().endue.pictures).toEqual({ [miso]: studio.pictures[miso] });
+
+    // A face endue AI no longer has is cleared; one that cannot be asked for stays in sight.
+    delete studio.pictures[miso];
+    studio.pictures[scout] = "data:image/png;base64,AAAA";
+    await readPictures(ctx);
+    expect(store.get().endue.pictures).toEqual({ [scout]: "data:image/png;base64,AAAA" });
+    studio.setSignedIn(false);
+    await readPictures(ctx);
+    expect(store.get().endue.pictures).toEqual({ [scout]: "data:image/png;base64,AAAA" });
+  });
+
+  it("forgets the faces with the session", async () => {
+    const { ctx, store, signIn, bridge } = testDesk();
+    signIn();
+    await loadEndue(ctx);
+    await settle();
+    expect(Object.keys(store.get().endue.pictures)).toHaveLength(3);
+    await bridge.account.signOut();
+    await loadEndue(ctx);
+    expect(store.get().endue.pictures).toEqual({});
+  });
+
+  it("lets a face into an image only as a base64 data: URL of an image", () => {
+    expect(facePicture("data:image/svg+xml;base64,PHN2Zy8+")).toBe(
+      "data:image/svg+xml;base64,PHN2Zy8+",
+    );
+    expect(facePicture("data:image/webp;base64,AAAA")).toBeDefined();
+    expect(facePicture("https://cdn.endue.ai/a.png")).toBeUndefined();
+    expect(facePicture("data:text/html;base64,PGI+")).toBeUndefined();
+    expect(facePicture('data:image/png;base64,AAAA" onerror="x')).toBeUndefined();
+    expect(facePicture(undefined)).toBeUndefined();
   });
 
   it("turns a window's card over and back", () => {

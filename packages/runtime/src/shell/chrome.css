@@ -151,6 +151,10 @@
 .float-bar .space,
 .float-bar .local-avatar { border-radius: var(--bar-button-radius); }
 
+/* A face endue.ai shows (ADR 0232) fills its avatar; a program's mark is drawn in the text's colour. */
+.avatar-face { display: block; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.float-bar .avatar.local-avatar[data-presence] { color: var(--desk-text); }
+
 /* An agent's state is a ring of the avatar's own, with nothing laid over the avatar: a gap in the
    bar's colour, then the state's (working, or waiting for an answer). At rest there is no ring
    and the ink is muted. */

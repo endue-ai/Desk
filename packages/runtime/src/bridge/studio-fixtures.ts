@@ -41,6 +41,15 @@ export const slugOf = (name: string, n: number) =>
 const iso = (epoch: number, minutesAgo: number) =>
   new Date(epoch - minutesAgo * 60_000).toISOString().replace(/\.\d{3}Z$/, "Z");
 /** The id of sample agent `n`: 1 Miso, 2 Mailie, 3 Scout. */
+/** A sample face as the core hands one over (ADR 0232): a robot on `colour`, as a data: URL. */
+export function sampleFace(colour: string): string {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="${colour}"/>` +
+    `<rect x="8" y="12" width="5" height="5" rx="1"/><rect x="19" y="12" width="5" height="5" rx="1"/>` +
+    `<rect x="11" y="22" width="10" height="2" rx="1"/></svg>`;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
+}
+
 export const sampleAgentId = (n: number) => `ag_sample${String(n).padStart(19, "0")}`;
 const AG = sampleAgentId;
 const both = (en: string, ko: string) => ({ en, ko });

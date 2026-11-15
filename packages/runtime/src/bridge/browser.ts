@@ -145,6 +145,7 @@ function studioShell(stub: StudioStub, opened: string[]): StudioShellBridge {
     conversations: async () =>
       (await on("studio.conversations.list")({ limit: 50, scope }, "desk")).conversations,
     facets: async (agentId) => on("studio.agents.facets")({ agentId, scope }, "desk"),
+    picture: async (agentId) => on("studio.agents.picture")({ agentId, scope }, "desk"),
     spaces: async () => (await on("studio.spaces.list")({ scope }, "desk")).spaces,
     space: async (spaceId) => on("studio.spaces.get")({ spaceId, scope }, "desk"),
     async open(url) {

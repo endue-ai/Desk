@@ -5,7 +5,6 @@ import type { Ctx } from "../shell/actions";
 import { emptyState, Store } from "../shell/state";
 import {
   applyRunStep,
-  badgeOf,
   loadLocalAgents,
   localName,
   localPresence,
@@ -36,9 +35,8 @@ function setup() {
 }
 
 describe("local agents in the shell", () => {
-  it("names each program and gives Claude Code and Codex two letters apart", () => {
-    expect(badgeOf("claude")).toBe("CC");
-    expect(badgeOf("codex")).toBe("Cx");
+  it("names each program, also one the core has not listed yet", () => {
+    expect(localName([], "claude")).toBe("Claude Code");
     expect(localName([], "codex")).toBe("Codex");
   });
 
