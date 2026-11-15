@@ -122,7 +122,10 @@ test("the agent bar's tooltip stands to the right of the avatar it names", async
   await expect(tip).toBeVisible();
   await expect(tip).toHaveRole("tooltip");
   // The name as the avatar says it, then what it works on and for how long.
-  await expect(tip.locator("> *")).toHaveText(["Mira · 일하는 중", /^Sort the inbox · \d+:\d\d$/]);
+  await expect(tip.locator(".tip-line")).toHaveText([
+    "Mira · 일하는 중",
+    /^Sort the inbox · \d+:\d\d$/,
+  ]);
   await expect(tip).toHaveCSS("pointer-events", "none");
   await beside();
   await expect(avatar).not.toHaveAttribute("title");
@@ -134,7 +137,7 @@ test("the agent bar's tooltip stands to the right of the avatar it names", async
   await expect(tip).toBeVisible();
   await beside();
   await page.keyboard.press("Tab");
-  await expect(tip.locator("> *")).toHaveText(["Theo"]);
+  await expect(tip.locator(".tip-line")).toHaveText(["Theo"]);
   await avatar.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await expect(tip).toBeHidden();
 });

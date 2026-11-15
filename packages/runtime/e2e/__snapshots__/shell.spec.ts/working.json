@@ -559,25 +559,17 @@
      "class": "sidebar float-bar",
      "aria-label": "에이전트 · 스페이스",
      "box": [
-      24,
-      211,
-      56,
-      303
+      16,
+      244,
+      52,
+      237
      ],
      "style": {
       "background": "rgb(30, 29, 33)",
       "border": "solid rgb(51, 49, 54)",
-      "transform": "matrix(1, 0, 0, 1, 0, -151.5)"
+      "transform": "matrix(1, 0, 0, 1, 0, -118.5)"
      },
      "children": [
-      {
-       "tag": "div",
-       "class": "rail-label",
-       "style": {
-        "color": "rgb(176, 173, 183)"
-       },
-       "text": "에이전트"
-      },
       {
        "tag": "div",
        "class": "bar-group",
@@ -586,58 +578,47 @@
        "children": [
         {
          "tag": "button",
-         "class": "avatar is-selected",
+         "class": "icon-button avatar is-selected",
          "aria-label": "Mira · 일하는 중",
          "aria-pressed": "true",
          "box": [
+          25,
+          253,
           34,
-          248,
-          36,
-          36
+          34
          ],
          "style": {
-          "background": "rgb(48, 40, 62)",
-          "border": "solid rgb(182, 163, 245)"
+          "background": "rgb(48, 40, 62)"
          },
          "children": [
           {
            "tag": "span",
            "style": {
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(228, 215, 255)"
            },
            "text": "M"
-          },
-          {
-           "tag": "span",
-           "class": "dot dot-active avatar-dot",
-           "style": {
-            "background": "rgb(95, 208, 190)",
-            "color": "rgb(242, 240, 245)",
-            "border": "solid rgb(30, 29, 33)"
-           }
           }
          ]
         },
         {
          "tag": "button",
-         "class": "avatar",
+         "class": "icon-button avatar",
          "aria-label": "Theo",
          "aria-pressed": "false",
          "box": [
+          25,
+          297,
           34,
-          292,
-          36,
-          36
+          34
          ],
          "style": {
-          "background": "rgb(48, 40, 62)",
-          "border": "solid rgba(0, 0, 0, 0)"
+          "background": "rgb(48, 40, 62)"
          },
          "children": [
           {
            "tag": "span",
            "style": {
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(176, 173, 183)"
            },
            "text": "T"
           }
@@ -645,25 +626,23 @@
         },
         {
          "tag": "button",
-         "class": "avatar is-waiting",
+         "class": "icon-button avatar",
          "aria-label": "Juno · 대기 중",
          "aria-pressed": "false",
          "box": [
+          25,
+          341,
           34,
-          336,
-          36,
-          36
+          34
          ],
          "style": {
-          "background": "rgb(48, 40, 62)",
-          "border": "dashed rgb(131, 121, 145)",
-          "opacity": "0.5"
+          "background": "rgb(48, 40, 62)"
          },
          "children": [
           {
            "tag": "span",
            "style": {
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(228, 215, 255)"
            },
            "text": "J"
           }
@@ -682,32 +661,23 @@
       },
       {
        "tag": "div",
-       "class": "rail-label",
-       "style": {
-        "color": "rgb(176, 173, 183)"
-       },
-       "text": "스페이스"
-      },
-      {
-       "tag": "div",
        "class": "bar-group",
        "role": "group",
        "aria-label": "스페이스",
        "children": [
         {
          "tag": "button",
-         "class": "space is-selected",
+         "class": "icon-button space is-selected",
          "aria-label": "Home",
          "aria-pressed": "true",
          "box": [
+          25,
+          394,
           34,
-          421,
-          36,
-          36
+          34
          ],
          "style": {
-          "background": "rgba(182, 163, 245, 0.12)",
-          "border": "solid rgb(182, 163, 245)"
+          "background": "rgba(182, 163, 245, 0.12)"
          },
          "children": [
           {
@@ -721,24 +691,23 @@
         },
         {
          "tag": "button",
-         "class": "space",
+         "class": "icon-button space",
          "aria-label": "Studio",
          "aria-pressed": "false",
          "box": [
+          25,
+          438,
           34,
-          465,
-          36,
-          36
+          34
          ],
          "style": {
-          "background": "rgb(48, 40, 62)",
-          "border": "solid rgba(0, 0, 0, 0)"
+          "background": "rgb(48, 40, 62)"
          },
          "children": [
           {
            "tag": "span",
            "style": {
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(228, 215, 255)"
            },
            "text": "S"
           }
@@ -756,14 +725,25 @@
      }
     },
     {
+     "tag": "div",
+     "class": "tooltip",
+     "role": "tooltip",
+     "hidden": "",
+     "style": {
+      "display": "none",
+      "background": "rgb(64, 58, 73)",
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
      "tag": "nav",
      "class": "account-bar float-bar",
      "aria-label": "사용자 메뉴",
      "box": [
-      24,
-      666,
-      56,
-      210
+      16,
+      712,
+      52,
+      172
      ],
      "style": {
       "background": "rgb(30, 29, 33)",
@@ -775,10 +755,10 @@
        "class": "icon-button launcher-button",
        "aria-label": "플러그인 열기",
        "box": [
-        32,
-        679,
-        40,
-        40
+        24,
+        720,
+        36,
+        36
        ],
        "style": {
         "border": "solid rgba(0, 0, 0, 0)"
@@ -796,10 +776,10 @@
        "aria-label": "인박스 · 2",
        "aria-expanded": "false",
        "box": [
-        32,
-        727,
-        40,
-        40
+        24,
+        760,
+        36,
+        36
        ],
        "style": {
         "border": "solid rgba(0, 0, 0, 0)"
@@ -826,10 +806,10 @@
        "class": "icon-button account-settings-button",
        "aria-label": "설정 열기",
        "box": [
-        32,
-        775,
-        40,
-        40
+        24,
+        800,
+        36,
+        36
        ],
        "style": {
         "border": "solid rgba(0, 0, 0, 0)"
@@ -847,10 +827,10 @@
        "aria-label": "사용자 정보",
        "aria-expanded": "false",
        "box": [
-        32,
-        823,
-        40,
-        40
+        25,
+        841,
+        34,
+        34
        ],
        "style": {
         "border": "solid rgba(0, 0, 0, 0)"
@@ -1122,15 +1102,15 @@
      "class": "rail float-bar",
      "aria-label": "Status",
      "box": [
-      1360,
-      289,
-      56,
-      322
+      1372,
+      291,
+      52,
+      318
      ],
      "style": {
       "background": "rgb(30, 29, 33)",
       "border": "solid rgb(51, 49, 54)",
-      "transform": "matrix(1, 0, 0, 1, 0, -161)"
+      "transform": "matrix(1, 0, 0, 1, 0, -159)"
      },
      "children": [
       {
@@ -1140,10 +1120,10 @@
        "aria-expanded": "false",
        "data-rail": "brain",
        "box": [
-        1368,
-        298,
-        40,
-        40
+        1380,
+        299,
+        36,
+        36
        ],
        "style": {
         "border": "solid rgba(0, 0, 0, 0)"
@@ -1170,10 +1150,10 @@
        "aria-expanded": "false",
        "data-rail": "sees",
        "box": [
-        1368,
-        342,
-        40,
-        40
+        1380,
+        339,
+        36,
+        36
        ],
        "style": {
         "border": "solid rgba(0, 0, 0, 0)"
@@ -1192,10 +1172,10 @@
        "aria-expanded": "true",
        "data-rail": "tasks",
        "box": [
-        1368,
-        386,
-        40,
-        40
+        1380,
+        379,
+        36,
+        36
        ],
        "style": {
         "background": "rgb(55, 49, 63)",
@@ -1219,16 +1199,25 @@
        ]
       },
       {
+       "tag": "div",
+       "class": "bar-divider",
+       "role": "separator",
+       "style": {
+        "background": "rgb(51, 49, 54)",
+        "color": "rgb(242, 240, 245)"
+       }
+      },
+      {
        "tag": "button",
        "class": "icon-button rail-button",
        "aria-label": "다른 데스크 · 1",
        "aria-expanded": "false",
        "data-rail": "desks",
        "box": [
-        1368,
-        430,
-        40,
-        40
+        1380,
+        432,
+        36,
+        36
        ],
        "style": {
         "border": "solid rgba(0, 0, 0, 0)"
@@ -1247,10 +1236,10 @@
        "aria-expanded": "false",
        "data-rail": "vm",
        "box": [
-        1368,
-        474,
-        40,
-        40
+        1380,
+        472,
+        36,
+        36
        ],
        "style": {
         "border": "solid rgba(0, 0, 0, 0)"
@@ -1264,17 +1253,18 @@
       },
       {
        "tag": "button",
-       "class": "icon-button rail-button",
+       "class": "icon-button rail-button is-on",
        "aria-label": "듣기 · Hey Eris 듣는 중",
        "aria-pressed": "true",
        "data-rail": "listen",
        "box": [
-        1368,
-        518,
-        40,
-        40
+        1380,
+        512,
+        36,
+        36
        ],
        "style": {
+        "background": "rgba(182, 163, 245, 0.12)",
         "border": "solid rgba(0, 0, 0, 0)"
        },
        "children": [
@@ -1293,16 +1283,25 @@
        ]
       },
       {
+       "tag": "div",
+       "class": "bar-divider",
+       "role": "separator",
+       "style": {
+        "background": "rgb(51, 49, 54)",
+        "color": "rgb(242, 240, 245)"
+       }
+      },
+      {
        "tag": "button",
        "class": "icon-button rail-button",
        "aria-label": "창 정리",
        "aria-expanded": "false",
        "data-rail": "arrange",
        "box": [
-        1368,
-        562,
-        40,
-        40
+        1380,
+        565,
+        36,
+        36
        ],
        "style": {
         "border": "solid rgba(0, 0, 0, 0)"
@@ -1325,8 +1324,7 @@
       "display": "none",
       "background": "rgb(64, 58, 73)",
       "color": "rgb(242, 240, 245)"
-     },
-     "text": "작업 · 진행 2 · 대기 1"
+     }
     },
     {
      "tag": "div",
@@ -1339,7 +1337,7 @@
        "aria-label": "작업 · 진행 2 · 대기 1",
        "data-popover": "tasks",
        "box": [
-        1068,
+        1080,
         450,
         280,
         149
