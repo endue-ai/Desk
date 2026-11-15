@@ -1,8 +1,8 @@
 /**
- * What the avatar's popover holds (#293, design #291). At first a menu of two rows, Inbox with its
- * count and Settings with its key, over what the account popover always held: the person, endue ID,
- * the profile and the space. Once Inbox is chosen, the inbox's list stands in the same place. The
- * arrows, Home and End walk the popover's buttons.
+ * What the avatar's popover holds (issue 293, design issue 291). At first a menu of two rows, Inbox
+ * with its count and Settings with its key, over what the account popover always held: the person,
+ * endue ID, the profile and the space. Once Inbox is chosen, the inbox's list stands in the same
+ * place. The arrows, Home and End walk the popover's buttons.
  */
 import type { ShellCtx } from "../shell/context";
 import { type Child, h } from "../shell/dom";
