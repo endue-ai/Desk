@@ -7,7 +7,9 @@
 /* As wide as the bar inside its border, a face over its name. Over the kit's .icon-button and
    .add-button (kit.css, shell.css), whose size, border and fill are a lone button's: here the face
    carries them and the button is only the place. `button.` to outweigh shell.css's colour for a
-   button outside the kit (`.shell button:not(…)`), which .add-button is. */
+   button outside the kit (`.shell button:not(…)`), which .add-button is. The agent bar keeps its
+   controls a button's inset from its edge (chrome.css, issue 294): a place takes that inset back
+   on both sides, so its column stays a button wide and the avatars stay where they stand. */
 .float-bar button.bar-place {
   flex: none;
   display: flex;
@@ -16,6 +18,7 @@
   gap: 2px;
   width: calc(var(--bar-width) - 2px);
   height: auto;
+  margin-inline: calc((var(--bar-button) - var(--bar-width)) / 2 + 1px);
   padding: 0;
   border: 0;
   border-radius: var(--bar-button-radius);

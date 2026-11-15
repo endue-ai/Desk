@@ -577,7 +577,7 @@
        "aria-expanded": "false",
        "box": [
         17,
-        245,
+        173,
         1,
         1
        ],
@@ -679,7 +679,7 @@
          "children": [
           {
            "tag": "span",
-           "class": "bar-place-face",
+           "class": "bar-place-face bar-new-face",
            "style": {
             "border": "dashed rgb(131, 121, 145)"
            },
@@ -778,7 +778,7 @@
          "children": [
           {
            "tag": "span",
-           "class": "bar-place-face",
+           "class": "bar-place-face bar-new-face",
            "style": {
             "border": "dashed rgb(131, 121, 145)"
            },
