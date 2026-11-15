@@ -58,6 +58,15 @@ impl Paned {
     }
 }
 
+/// Whether a window of `panes` panes waits for its plugin: one pane only. A lone pane lies at fixed
+/// insets from the frame, so `Paned::leaves` is what its plugin was told for each size; a split's
+/// panes take a share of the body (`desk_wm::host::panes`), which the scene draws from the newest
+/// plan's (`anchor::within`), so for a size before it no pane's size is what its plugin painted,
+/// and the wait would end only by its counts.
+pub fn waits_for(panes: usize) -> bool {
+    panes == 1
+}
+
 /// Where a paint of a window's page goes.
 #[derive(Debug, PartialEq, Eq)]
 pub enum To {
@@ -230,6 +239,17 @@ impl Composed {
         // One still waiting looks again at the next scene: a count of scenes ends the wait.
         self.dirty |= changed || self.pages_waiting();
         changed
+    }
+
+    /// `surface`'s paint into `id`, a texture aside, failed: that picture goes, a window page's or
+    /// a plugin's (ADR 0227), so none is shown that holds no paint.
+    pub(super) fn aside_failed(&mut self, surface: &str, id: TextureId) {
+        if let Some(wait) = self.pages.waits.get_mut(surface) {
+            wait.aside.retain(|(_, a)| *a != id);
+            wait.last = None;
+        }
+        self.pane_aside_failed(surface, id);
+        self.frames.destroy(&mut self.compositor, id);
     }
 
     /// Window page `surface` is gone: its pictures aside go.

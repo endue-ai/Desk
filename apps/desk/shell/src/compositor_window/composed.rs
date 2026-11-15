@@ -64,9 +64,10 @@ impl Composed {
         id
     }
 
-    /// A frame was drawn of everything that changed.
+    /// A frame was drawn of everything that changed. A window's page's picture still waiting
+    /// asks for the next one, whose scene counts towards ending its wait (ADR 0233).
     pub fn drawn(&mut self) {
-        self.dirty = false;
+        self.dirty = self.pages_waiting();
         self.repainted.clear();
     }
 
@@ -220,6 +221,10 @@ impl SurfaceSink for Shared {
             Err(_) => counts.1 += 1,
         }
         if aside {
+            // A picture aside that did not take the paint goes, never to be shown at 0×0.
+            if result.is_err() {
+                state.aside_failed(&attach.surface, id);
+            }
             return result;
         }
         if result.is_ok() && attach.surface == super::PAGE {

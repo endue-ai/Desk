@@ -9,7 +9,7 @@
 
 use std::time::Instant;
 
-use super::composed::window::Paned;
+use super::composed::window::{Paned, waits_for};
 use super::hosted::Hosted;
 use super::{CompositorWindow, PAGE, draw, draw_map};
 use crate::web_host::render::popup_screen::App;
@@ -200,10 +200,13 @@ fn paned(hosted: &Hosted, scale: f32) -> Vec<Paned> {
     };
     let live = |plugin: &Option<String>| {
         let frame = hosted.frame(plugin.as_deref()?)?;
-        let dead = frame.state.away() || hosted.surfaces().dead(&frame.host);
+        // Asleep, stopped, crashed or not answering: nothing to wait for.
+        let late = frame.state == desk_wm::FrameState::Late;
+        let dead = late || frame.state.away() || hosted.surfaces().dead(&frame.host);
         (!dead).then(|| frame.host.clone())
     };
     (plan.windows.iter())
+        .filter(|w| waits_for(w.panes.len()))
         .filter_map(|w| {
             let laid = draw::rect(w.rect);
             let placed = if hosted.on_its_way(&w.id) {

@@ -199,6 +199,15 @@ impl Composed {
         self.frames.destroy(&mut self.compositor, id);
     }
 
+    /// `surface`'s paint into `id` aside failed: that picture aside goes.
+    pub(super) fn pane_aside_failed(&mut self, surface: &str, id: TextureId) {
+        let Some(pane) = self.panes.0.get_mut(surface) else {
+            return;
+        };
+        pane.aside.retain(|(_, a)| *a != id);
+        pane.last = None;
+    }
+
     /// `surface` is drawn no more, or gone: its pictures aside go.
     pub(super) fn pane_gone(&mut self, surface: &str) {
         let Some(pane) = self.panes.0.remove(surface) else {

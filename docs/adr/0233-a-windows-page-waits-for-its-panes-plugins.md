@@ -55,11 +55,18 @@ paint's size, each plugin's pictures aside (ADR 0227) and where a frame of a siz
   pane's size in the same frame.
 * **Counts, not times**: four sizes wait at most, the newest (`KEPT`); after eight paints aside in a
   row (`MOST_ASIDE`) the next is drawn as it comes; after eight scenes laid out with a picture
-  waiting (`MOST_LOOKS`) the newest is shown. While one waits each scene asks for the next, and each
-  plugin paint lays the scene out again.
-* **What it covers**: windows drawn from their own page with a plugin pane that is awake and not
-  crashed. A plugin with no picture yet is not waited for; a window with no such pane draws its page
-  as it comes.
+  waiting (`MOST_LOOKS`) the newest is shown. While one waits each frame drawn asks for the next
+  (`Composed::drawn` leaves the scene dirty), so the count of scenes runs on a desk at rest too, and
+  each plugin paint lays the scene out again. A paint aside that the compositor could not take is
+  dropped, never shown.
+* **What it covers**: windows drawn from their own page with one pane, a plugin's that is awake,
+  answering and not crashed. A plugin with no picture yet is not waited for; another window draws
+  its page as it comes. A lone pane lies at fixed insets from the frame, so the size worked out for
+  a picture is the size its plugin was told with it. A split's panes take a share of the body
+  (`desk_wm::host::panes`), and the scene draws them from the newest plan (`anchor::within`): for a
+  size before it no pane's size is the one its plugin painted, and the wait would end only by its
+  counts, the frame changing about once in nine paints. Splits wait once the scene lays their
+  panes out by share at the frame's size (a follow-up).
 * **In the gate**: `sway-panes` gets a limit, `maxPaneShare` in `e2e/perf/motion.json`, from the
   runs below.
 
