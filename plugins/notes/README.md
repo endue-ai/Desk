@@ -12,9 +12,9 @@ Asleep out of sight (`ui.surface.state`, ADR 0070, ADR 0176), the SDK's `keepFil
 caret, scroll and unsaved text (whole, or its change from the saved text); back, it neither asks nor takes the focus.
 A dropped path becomes a link at the caret (ADR 0119; Markdown, relative to the note's folder, in a `.md` note), dropped
 text goes in as text, and with no note open dropped files open; reading a dropped path still needs a grant.
-New note (`endue.notes.new`, `Mod+Alt+N`) writes an empty `~/Notes/<YYYY-MM-DD>.md`, `-2`, `-3` on the
-same day, and opens it. Open notes (the last 30) go to search; every other `*.md` and `*.txt` under
-`~/Notes` is the palette's Notes group (`endue.notes.find`) by name and text, read again only when changed.
+New note (`endue.notes.new`, `Mod+Alt+N`) writes and opens an empty `~/Notes/<YYYY-MM-DD>.md` (`-2`, `-3`).
+Open… and Save as… (`.open`, `.save-as`) use `dialog.*`, granted that file alone. The last 30 open notes go
+to search; other `*.md`/`*.txt` under `~/Notes` are the palette's Notes group (`endue.notes.find`), read when changed.
 
 A file outside its grants: `fs.read` or `fs.write` is refused, notes asks with `perm.request` for the
 file's folder (`<folder>/**`) and tries once more. A refusal is said in words on its status line and in

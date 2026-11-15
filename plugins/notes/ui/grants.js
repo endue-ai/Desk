@@ -1,5 +1,6 @@
-// Notes' file calls under its grants: notes ask for, and work under, whole folders. A call the grants
-// do not cover asks once for the file's folder (perm.request) and tries again; every failure is an
+// Notes' file calls under its grants: notes ask for, and work under, whole folders, but for a file the
+// person chose in a dialog, which is granted alone (dialog.open, dialog.save) and called under a scope
+// of that file. A call the grants do not cover asks once for the file's folder (perm.request) and tries again; every failure is an
 // Error whose message is the sentence the person reads. A quiet read never asks.
 
 /**
@@ -36,6 +37,28 @@ const codeOf = (/** @type {unknown} */ error) =>
 
 /** @param {PluginContext["bridge"]} bridge */
 export function createGrants(bridge) {
+  /** Files a dialog granted, with what it granted. @type {Map<string, Set<FsPermission>>} */
+  const chosen = new Map();
+  /**
+   * A dialog granted `permission` on `path` alone.
+   * @param {FsPermission} permission
+   * @param {string} path
+   */
+  const chose = (permission, path) => {
+    const held = chosen.get(path) ?? new Set();
+    held.add(permission);
+    chosen.set(path, held);
+  };
+  /**
+   * The scope a call on `path` carries: the file alone when a dialog granted it, else its folder.
+   * @template {FsPermission} P
+   * @param {P} permission
+   * @param {string} path
+   * @returns {FsScope<P>}
+   */
+  const scopeFor = (permission, path) =>
+    chosen.get(path)?.has(permission) ? { permission, paths: [path] } : scopeOf(permission, path);
+
   /**
    * One fs call, asking once for the folder when the grants do not cover the file.
    * @template T
@@ -48,7 +71,7 @@ export function createGrants(bridge) {
    */
   const withGrant = async (permission, path, call, why) => {
     const verb = permission === "fs:read" ? "read" : "write";
-    const scope = scopeOf(permission, path);
+    const scope = scopeFor(permission, path);
     const refused = new Error(`Not allowed to ${verb} ${path}.`);
     const failed = (/** @type {unknown} */ error) =>
       codeOf(error) === "permission_denied"
@@ -82,10 +105,10 @@ export function createGrants(bridge) {
 
   /** A file's text without asking (a note coming back from a sleep), or undefined. */
   const quietly = (/** @type {string} */ path) =>
-    bridge.call("fs.read", { path, encoding: "utf8", scope: scopeOf("fs:read", path) }).then(
+    bridge.call("fs.read", { path, encoding: "utf8", scope: scopeFor("fs:read", path) }).then(
       ({ content }) => content,
       () => undefined,
     );
 
-  return { withGrant, read, quietly };
+  return { withGrant, read, quietly, chose, scopeFor };
 }

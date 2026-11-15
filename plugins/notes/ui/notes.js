@@ -5,8 +5,9 @@
 // SDK's test host runs it with a recording view. A note the desk lists and the frame lost (it slept,
 // or its page loaded again) opens again from what the sleep kept (keep.js), or from disk.
 
+import { createDialogs } from "./dialogs.js";
 import { createDrops } from "./drops.js";
-import { createGrants, scopeOf } from "./grants.js";
+import { createGrants } from "./grants.js";
 import { keptText, openFiles, readEdit, readPlace } from "./keep.js";
 import { createLibrary } from "./library.js";
 import { createSearch } from "./search.js";
@@ -93,12 +94,13 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
   });
   /** Buffers this frame closed: a show of one does not open it again. @type {Set<string>} */
   const closed = new Set();
-  const { withGrant, read, quietly } = createGrants(bridge);
+  const grants = createGrants(bridge);
+  const { withGrant, read, quietly, scopeFor } = grants;
 
   /** Follow the file on disk. Without a watch the note still works; changes just go unnoticed. */
   const watch = async (/** @type {Note} */ note) => {
     const { path } = note;
-    await bridge.call("fs.watch", { path, scope: scopeOf("fs:read", path) }).then(
+    await bridge.call("fs.watch", { path, scope: scopeFor("fs:read", path) }).then(
       ({ watchId }) => {
         if (notes.get(note.buffer) !== note) return;
         note.watchId = watchId;
@@ -243,6 +245,11 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
       `To make the new note ${path}`,
     );
     await commands.run("desk.files.open", { path });
+  });
+  // Open… and Save as…, through the OS's own dialogs.
+  createDialogs({ bridge, commands }, grants, {
+    answer,
+    shown: () => (shown === null ? undefined : notes.get(shown)),
   });
   commands.on("endue.notes.find", (args) =>
     library.find(args, new Set(published().map((note) => note.path))),

@@ -52,6 +52,16 @@
       {
         "id": "endue.notes.search-open",
         "title": "Open a note from search"
+      },
+      {
+        "id": "endue.notes.open",
+        "title": "Open a note…",
+        "keywords": ["note", "open", "file", "markdown", "text"]
+      },
+      {
+        "id": "endue.notes.save-as",
+        "title": "Save the note as…",
+        "keywords": ["note", "save", "as", "copy"]
       }
     ],
     "keys": [{ "key": "Mod+Alt+N", "command": "endue.notes.new" }],

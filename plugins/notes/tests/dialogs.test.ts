@@ -36,7 +36,9 @@ it("Open… asks dialog.open for Markdown and text and opens the chosen file", a
   expect(m.params("dialog.open")).toEqual([{ title: "Open a note", filters: FILTERS }]);
   expect(m.ran("desk.files.open")).toEqual([{ path: CHOSEN }]);
   // The dialog granted the file itself, so Notes reads and follows it under that scope, not its folder's.
-  expect(m.params("fs.read")).toEqual([{ path: CHOSEN, encoding: "utf8", scope: readOnly(CHOSEN) }]);
+  expect(m.params("fs.read")).toEqual([
+    { path: CHOSEN, encoding: "utf8", scope: readOnly(CHOSEN) },
+  ]);
   expect(m.params("fs.watch")).toEqual([{ path: CHOSEN, scope: readOnly(CHOSEN) }]);
   expect(m.params("perm.request")).toEqual([]);
   expect(m.view.notes.at(-1)).toMatchObject({ path: CHOSEN, text: "# Plan\n" });
