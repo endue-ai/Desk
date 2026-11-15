@@ -26,7 +26,7 @@ file before the branch becomes a PR. No issue exists for it yet.
 - **Agent bar** (`packages/runtime/src/shell/bar-new.ts`, `bar-new.css`): `moreControl` (up to four
   of the hidden agents' faces over "+N more"), `newAgentControl`, `newSpaceControl`, `openNewAgent`,
   `barWord` (own ko/en words, to stay out of `copy.ts`). Kit classes for ds-lint (`icon-button`,
-  `add-button`), overridden by `.float-bar .bar-labeled`. Wired into `SideBar.ts` (signed out: faces
+  `add-button`), overridden by `.float-bar .bar-place`. Wired into `SideBar.ts` (signed out: faces
   take the chart colours in turn) and `SideBarEndue.ts` (signed in: faces take `personalColor`).
   `.float-bar .avatar-more` is gone from `system.css`.
   - New agent: `desk.plugins.open {plugin: "endue.agents"}`, then `endue.agents.new` retried 20 × 150

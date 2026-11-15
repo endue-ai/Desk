@@ -650,7 +650,7 @@
         },
         {
          "tag": "button",
-         "class": "add-button bar-labeled bar-new bar-new-agent",
+         "class": "add-button bar-place bar-new bar-new-agent",
          "aria-label": "새 에이전트 만들기",
          "box": [
           17,
@@ -661,7 +661,7 @@
          "children": [
           {
            "tag": "span",
-           "class": "bar-face",
+           "class": "bar-place-face",
            "style": {
             "border": "dashed rgb(131, 121, 145)"
            },
@@ -674,7 +674,7 @@
           },
           {
            "tag": "span",
-           "class": "bar-caption",
+           "class": "bar-place-name",
            "style": {
             "color": "rgb(176, 173, 183)"
            },
@@ -749,7 +749,7 @@
         },
         {
          "tag": "button",
-         "class": "add-button bar-labeled bar-new bar-new-space",
+         "class": "add-button bar-place bar-new bar-new-space",
          "aria-label": "새 스페이스 만들기",
          "box": [
           17,
@@ -760,7 +760,7 @@
          "children": [
           {
            "tag": "span",
-           "class": "bar-face",
+           "class": "bar-place-face",
            "style": {
             "border": "dashed rgb(131, 121, 145)"
            },
@@ -773,7 +773,7 @@
           },
           {
            "tag": "span",
-           "class": "bar-caption",
+           "class": "bar-place-name",
            "style": {
             "color": "rgb(176, 173, 183)"
            },

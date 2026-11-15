@@ -61,7 +61,7 @@ export function moreControl(o: MoreOptions): HTMLButtonElement {
   return h(
     "button",
     {
-      class: "icon-button bar-labeled avatar-more",
+      class: "icon-button bar-place avatar-more",
       type: "button",
       "data-key": o.key,
       "aria-label": o.label,
@@ -70,7 +70,7 @@ export function moreControl(o: MoreOptions): HTMLButtonElement {
     },
     h(
       "span",
-      { class: "bar-face bar-more-faces", "data-count": faces.length, "aria-hidden": "true" },
+      { class: "bar-place-face bar-more-faces", "data-count": faces.length, "aria-hidden": "true" },
       faces.map((face) =>
         h("span", {
           class: "bar-more-face",
@@ -78,7 +78,7 @@ export function moreControl(o: MoreOptions): HTMLButtonElement {
         }),
       ),
     ),
-    h("span", { class: "bar-caption", "aria-hidden": "true" }, o.caption),
+    h("span", { class: "bar-place-name", "aria-hidden": "true" }, o.caption),
   );
 }
 
@@ -93,14 +93,14 @@ function newControl(
   return h(
     "button",
     {
-      class: `add-button bar-labeled bar-new bar-new-${kind}`,
+      class: `add-button bar-place bar-new bar-new-${kind}`,
       type: "button",
       "data-key": key,
       "aria-label": label,
       onClick,
     },
-    h("span", { class: "bar-face", "aria-hidden": "true" }, icon("plus", 18)),
-    h("span", { class: "bar-caption", "aria-hidden": "true" }, caption),
+    h("span", { class: "bar-place-face", "aria-hidden": "true" }, icon("plus", 18)),
+    h("span", { class: "bar-place-name", "aria-hidden": "true" }, caption),
   );
 }
 

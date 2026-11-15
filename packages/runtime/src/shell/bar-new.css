@@ -8,7 +8,7 @@
    .add-button (kit.css, shell.css), whose size, border and fill are a lone button's: here the face
    carries them and the button is only the place. `button.` to outweigh shell.css's colour for a
    button outside the kit (`.shell button:not(…)`), which .add-button is. */
-.float-bar button.bar-labeled {
+.float-bar button.bar-place {
   flex: none;
   display: flex;
   flex-direction: column;
@@ -22,13 +22,13 @@
   background: transparent;
   color: var(--desk-text-muted);
 }
-.float-bar .bar-labeled:hover:not(:disabled) {
+.float-bar .bar-place:hover:not(:disabled) {
   background: transparent;
   color: var(--desk-text);
 }
 
 /* The face: an avatar's size and place (chrome.css), round for agents. */
-.bar-labeled .bar-face {
+.bar-place .bar-place-face {
   display: grid;
   place-items: center;
   width: var(--bar-avatar);
@@ -37,14 +37,14 @@
   border-radius: var(--radius-full);
   transition: background-color var(--motion-fast) ease;
 }
-.bar-labeled:hover:not(:disabled) .bar-face,
-.bar-labeled[aria-expanded="true"] .bar-face {
+.bar-place:hover:not(:disabled) .bar-place-face,
+.bar-place[aria-expanded="true"] .bar-place-face {
   background: var(--desk-hover);
 }
 
 /* New agent and New space: a dashed "+", round for an agent, with a button's corners for a space. */
-.bar-new .bar-face { border: 1px dashed var(--desk-input); }
-.bar-new-space .bar-face { border-radius: var(--bar-button-radius); }
+.bar-new .bar-place-face { border: 1px dashed var(--desk-input); }
+.bar-new-space .bar-place-face { border-radius: var(--bar-button-radius); }
 
 /* The rest of the agents: up to four of their faces, two by two, in a ring on the bar's card. A
    face with no colour of its own takes one of the chart's, in turn. */
@@ -56,8 +56,8 @@
   border: 1px solid var(--desk-border);
   background: var(--desk-card);
 }
-.bar-labeled:hover:not(:disabled) .bar-more-faces,
-.bar-labeled[aria-expanded="true"] .bar-more-faces {
+.bar-place:hover:not(:disabled) .bar-more-faces,
+.bar-place[aria-expanded="true"] .bar-more-faces {
   background: linear-gradient(var(--desk-hover), var(--desk-hover)) var(--desk-card);
 }
 .bar-more-face {
@@ -81,7 +81,7 @@
 
 /* The name under the face: small, centred, at most two lines. "New agent" does not fit one line
    in a 52 wide bar; Korean breaks between words only. */
-.bar-caption {
+.bar-place-name {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;

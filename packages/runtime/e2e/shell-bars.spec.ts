@@ -81,7 +81,7 @@ test("the agent bar, the account bar and the rail have one shape", async ({ page
   // person's own avatar) and the rail's seven. The agent bar's labelled places are not buttons of
   // that shape (below).
   const avatars = ".avatar, .space, .account-profile";
-  const buttons = await sizes(page, `.float-bar button:not(${avatars}, .bar-labeled)`);
+  const buttons = await sizes(page, `.float-bar button:not(${avatars}, .bar-place)`);
   expect(buttons).toHaveLength(8);
   for (const button of buttons)
     expect([button.size, button.radius], button.name).toEqual([[36, 36], "10px"]);
@@ -99,19 +99,19 @@ test("the agent bar, the account bar and the rail have one shape", async ({ page
   // New agent ends the agents and New space the spaces: each the bar's inside wide, a dashed face
   // an avatar's size, round for an agent and with a button's corners for a space, over its name in
   // the muted ink (bar-new.ts).
-  const places = await sizes(page, ".sidebar .bar-labeled");
+  const places = await sizes(page, ".sidebar .bar-place");
   expect(places.map((place) => [place.name, place.size[0]])).toEqual([
     ["새 에이전트 만들기", 50],
     ["새 스페이스 만들기", 50],
   ]);
-  const plus = await sizes(page, ".sidebar .bar-new .bar-face");
+  const plus = await sizes(page, ".sidebar .bar-new .bar-place-face");
   expect(plus.map((face) => face.size)).toEqual([
     [34, 34],
     [34, 34],
   ]);
   expect(Number.parseFloat(plus[0]?.radius ?? "0")).toBeGreaterThanOrEqual(17);
   expect(plus[1]?.radius).toBe("10px");
-  await expect(page.locator(".sidebar .bar-new .bar-face").first()).toHaveCSS(
+  await expect(page.locator(".sidebar .bar-new .bar-place-face").first()).toHaveCSS(
     "border-style",
     "dashed",
   );
