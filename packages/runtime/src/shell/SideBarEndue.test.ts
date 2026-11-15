@@ -41,9 +41,7 @@ describe("the agent bar once signed in to endue (ADR 0129)", () => {
       sampleAgentId(2), // Mailie: disabled
     ]);
     const miso = root.querySelector<HTMLElement>(`[data-endue-agent="${sampleAgentId(1)}"]`);
-    expect(miso?.dataset.presence).toBe("working");
-    expect(miso?.title).toBe("Miso · Working");
-    expect(miso?.querySelector(".avatar-dot")).not.toBeNull();
+    expect(miso?.getAttribute("aria-label")).toBe("Miso · Working");
     expect(miso?.style.getPropertyValue("--endue-accent")).toBe("#B6A3F5");
     const mailie = root.querySelector(`[data-endue-agent="${sampleAgentId(2)}"]`);
     expect(mailie?.classList.contains("is-paused")).toBe(true);
@@ -51,8 +49,49 @@ describe("the agent bar once signed in to endue (ADR 0129)", () => {
     expect(root.querySelector('[data-endue-space="sp_sample001"]')?.textContent).toBe("🚀");
     // The directory's own agents and spaces give way.
     expect(root.querySelector("[data-agent], [data-space]")).toBeNull();
-    const labels = [...root.querySelectorAll(".rail-label")].map((l) => l.textContent);
-    expect(labels).toEqual(["Agents", "Spaces"]);
+  });
+
+  it("signed in, the bar has no caption and no dot, and the ring's state is `data-presence`", async () => {
+    const { root, signIn } = mounted();
+    signIn();
+    await settle();
+    await settle();
+    const bar = root.querySelector<HTMLElement>(".sidebar");
+    expect(bar?.querySelector(".rail-label")).toBeNull();
+    expect(bar?.querySelector(".avatar-dot, .dot")).toBeNull();
+    expect(
+      [...(bar?.children ?? [])].map((part) =>
+        part.getAttribute("role") === "group"
+          ? part.getAttribute("aria-label")
+          : part.getAttribute("role"),
+      ),
+    ).toEqual(["Agents", "separator", "Spaces"]);
+    const presence = (n: number) =>
+      root.querySelector<HTMLElement>(`[data-endue-agent="${sampleAgentId(n)}"]`)?.dataset.presence;
+    // As `enduePresence` says: Miso's conversation runs, Scout is online, Mailie is disabled.
+    expect([presence(1), presence(3), presence(2)]).toEqual(["working", "online", "paused"]);
+  });
+
+  it("an endue agent's tooltip says its name and, while it works, the conversation and its time", async () => {
+    const { root, signIn } = mounted();
+    signIn();
+    await settle();
+    await settle();
+    const tooltip = root.querySelector<HTMLElement>('[role="tooltip"]');
+    const lines = () => [...(tooltip?.children ?? [])].map((line) => line.textContent);
+    const over = (selector: string) =>
+      root.querySelector(selector)?.dispatchEvent(new Event("pointerover", { bubbles: true }));
+    expect(tooltip?.hidden).toBe(true);
+    over(`[data-endue-agent="${sampleAgentId(1)}"]`);
+    expect(tooltip?.hidden).toBe(false);
+    // The wall clock stands at the fixture's epoch: the conversation's last message was 2 minutes ago.
+    expect(lines()).toEqual(["Miso · Working", "Move Friday's dentist · 2:00"]);
+    over(`[data-endue-agent="${sampleAgentId(3)}"]`);
+    expect(lines()).toEqual(["Scout · Online"]);
+    over('[data-endue-space="sp_sample001"]');
+    expect(lines()).toEqual(["Launch space", "Ship the launch page and its first mail"]);
+    expect(root.querySelectorAll(".sidebar button")).toHaveLength(5);
+    expect(root.querySelector(".sidebar button[title]")).toBeNull();
   });
 
   it("opens an agent's or a space's window on a click", async () => {

@@ -19,9 +19,10 @@ for (const viewport of [
     await expect(buttons.nth(1)).toHaveAccessibleName("인박스 · 2");
     await expect(buttons.nth(2)).toHaveAccessibleName("설정 열기");
     await expect(buttons.nth(3)).toHaveAccessibleName("사용자 정보");
+    // 16 from the app's left and bottom edges, as every floating bar is from its edge (#292).
     const box = await bar.boundingBox();
-    expect(box?.x).toBe(24);
-    expect((box?.y ?? 0) + (box?.height ?? 0)).toBe(viewport.height - 24);
+    expect(box?.x).toBe(16);
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBe(viewport.height - 16);
     const agents = await page.locator(".sidebar").boundingBox();
     expect((agents?.y ?? 0) + (agents?.height ?? 0)).toBeLessThan(box?.y ?? 0);
     const drawer = await page.locator(".drawer").boundingBox();

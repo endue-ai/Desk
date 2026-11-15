@@ -17,6 +17,23 @@ async function switchMode(page: Page, mode: string) {
   await step(page, 400);
 }
 
+/** A colour token as the engine computes it. */
+const colourOf = (page: Page, token: string) =>
+  page.evaluate((name) => {
+    const probe = document.createElement("span");
+    probe.style.backgroundColor = `var(${name})`;
+    document.body.append(probe);
+    const colour = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return colour;
+  }, token);
+
+/** The ring around an agent's avatar: its computed box shadow, "none" without one. */
+const ringOf = (page: Page, agent: string) =>
+  page
+    .locator(`.sidebar [data-agent="${agent}"]`)
+    .evaluate((avatar) => getComputedStyle(avatar).boxShadow);
+
 /** Top-left corners of the system layer's parts. */
 const corners = (page: Page) =>
   page.evaluate(() =>
@@ -91,16 +108,57 @@ test.describe("the agent bar reads the agent directory", () => {
       "data-presence",
       "working",
     );
-    await expect(page.locator(`[data-agent="${id(1)}"] .avatar-dot`)).toHaveCount(1);
     await expect(page.locator(`[data-agent="${id(1)}"]`)).toHaveAttribute(
       "aria-label",
       "Mira · 일하는 중",
     );
-    await expect(page.locator(`[data-agent="${id(3)}"]`)).toHaveClass(/is-waiting/);
+    await expect(page.locator(`[data-agent="${id(2)}"]`)).toHaveAttribute("data-presence", "idle");
+    await expect(page.locator(`[data-agent="${id(3)}"]`)).toHaveAttribute(
+      "data-presence",
+      "waiting",
+    );
     await expect(page.locator(`[data-agent="${id(3)}"]`)).toHaveAttribute(
       "aria-label",
       "Juno · 대기 중",
     );
+    // The state is a ring of the avatar's own (#292): info while it works, warning while it
+    // waits, none at rest; nothing is laid over the avatar.
+    const card = await colourOf(page, "--desk-card");
+    expect(await ringOf(page, id(1))).toBe(
+      `${card} 0px 0px 0px 2px, ${await colourOf(page, "--desk-info")} 0px 0px 0px 3.5px`,
+    );
+    expect(await ringOf(page, id(3))).toBe(
+      `${card} 0px 0px 0px 2px, ${await colourOf(page, "--desk-warning")} 0px 0px 0px 3.5px`,
+    );
+    expect(await ringOf(page, id(2))).toBe("none");
+    await expect(page.locator(".avatar-dot")).toHaveCount(0);
+    // The selected one has a 3 by 18 bar in the primary colour at the bar's inner left edge.
+    const mark = (selector: string) =>
+      page.evaluate((sel) => {
+        const el = document.querySelector<HTMLElement>(`.sidebar ${sel}`);
+        const bar = document.querySelector<HTMLElement>(".sidebar");
+        if (!el || !bar) throw new Error(`no ${sel}`);
+        const before = getComputedStyle(el, "::before");
+        if (before.content === "none") return null;
+        return {
+          size: [before.width, before.height],
+          colour: before.backgroundColor,
+          fromBar:
+            el.getBoundingClientRect().left +
+            Number.parseFloat(before.left) -
+            bar.getBoundingClientRect().left,
+        };
+      }, selector);
+    const selected = {
+      size: ["3px", "18px"],
+      colour: await colourOf(page, "--desk-primary"),
+      // Inside the bar's 1px border.
+      fromBar: 1,
+    };
+    expect(await mark(`[data-agent="${id(1)}"]`)).toEqual(selected);
+    expect(await mark('[data-space="sp_home"]')).toEqual(selected);
+    expect(await mark(`[data-agent="${id(2)}"]`)).toBeNull();
+    expect(await mark('[data-space="sp_studio"]')).toBeNull();
     await page.click('[data-space="sp_studio"]');
     await expect(avatars).toHaveCount(2);
     await expect(page.locator(`[data-agent="${id(4)}"]`)).toHaveAttribute(
@@ -110,8 +168,11 @@ test.describe("the agent bar reads the agent directory", () => {
     await expect(page.locator(`[data-agent="${id(5)}"]`)).toHaveAttribute("data-presence", "idle");
   });
 
-  test("follows the directory: a new working A2A task lights the agent's dot", async ({ page }) => {
+  test("follows the directory: a new working A2A task lights the agent's ring", async ({
+    page,
+  }) => {
     await expect(page.locator(`[data-agent="${id(2)}"]`)).toHaveAttribute("data-presence", "idle");
+    expect(await ringOf(page, id(2))).toBe("none");
     await page.evaluate(async () => {
       const { desk, bridge } = window.__shell;
       const task = bridge.fake.directory.tasks.find((t) => t.goal === "Tidy meeting notes");
@@ -122,6 +183,7 @@ test.describe("the agent bar reads the agent directory", () => {
       "data-presence",
       "working",
     );
+    expect(await ringOf(page, id(2))).toContain(await colourOf(page, "--desk-info"));
     await expect(page.locator(".run-chip")).toHaveCount(3);
   });
 

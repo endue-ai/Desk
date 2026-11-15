@@ -259,3 +259,84 @@ describe("the Arrange button (ADR 0220)", () => {
     expect(run).toHaveBeenCalledWith("desk.windows.restore-arrangement");
   });
 });
+
+describe("the rail's shape (#292)", () => {
+  let root: HTMLDivElement;
+  let store: Store;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    store = new Store(sampleState("en", 0));
+    root = document.createElement("div");
+    document.body.append(root);
+    const ctx = {
+      store,
+      bridge: { brain: { use: vi.fn() } },
+      runtime: runtimeOf(),
+      keyOf,
+      tr: (key: string) => key,
+    } as unknown as ShellCtx;
+    dispose = mountRail(root, ctx);
+  });
+
+  afterEach(() => {
+    dispose();
+    root.remove();
+  });
+
+  it("stands in three groups", () => {
+    const parts = [...root.querySelectorAll<HTMLElement>(".rail > *")].map(
+      (part) => part.dataset.rail ?? part.getAttribute("role"),
+    );
+    expect(parts).toEqual([
+      "brain",
+      "sees",
+      "tasks",
+      "separator",
+      "desks",
+      "vm",
+      "listen",
+      "separator",
+      "arrange",
+    ]);
+    expect(root.querySelectorAll(".rail button[data-rail]")).toHaveLength(7);
+    expect(root.querySelectorAll('.rail [role="separator"]')).toHaveLength(2);
+  });
+
+  it("the button whose state is on takes the fill", () => {
+    const on = () =>
+      [...root.querySelectorAll<HTMLElement>(".rail .is-on")].map((b) => b.dataset.rail);
+    const listen = () => root.querySelector<HTMLElement>('[data-rail="listen"]');
+    // The sample desk listens.
+    expect(on()).toEqual(["listen"]);
+    expect(listen()?.getAttribute("aria-pressed")).toBe("true");
+    store.set({ listening: false });
+    expect(on()).toEqual([]);
+    expect(listen()?.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("names a button in its tooltip on hover and on focus, not while its popover is open", () => {
+    const tooltip = root.querySelector<HTMLElement>("#rail-tooltip");
+    const sees = () => root.querySelector<HTMLElement>('[data-rail="sees"]');
+    expect(tooltip?.getAttribute("role")).toBe("tooltip");
+    expect(tooltip?.hidden).toBe(true);
+    sees()?.dispatchEvent(new Event("pointerover", { bubbles: true }));
+    expect(tooltip?.hidden).toBe(false);
+    expect(tooltip?.textContent).toBe("sees · 3");
+    expect(tooltip?.dataset.edge).toBe("right");
+    // The label follows what the button says now.
+    store.set({ sees: { ...store.get().sees, mail: true } });
+    expect(tooltip?.textContent).toBe("sees · 4");
+    sees()?.click();
+    expect(tooltip?.hidden).toBe(true);
+    sees()?.click();
+    expect(tooltip?.hidden).toBe(false);
+    root.querySelector(".rail")?.dispatchEvent(new Event("pointerleave"));
+    expect(tooltip?.hidden).toBe(true);
+    sees()?.dispatchEvent(new Event("focusin", { bubbles: true }));
+    expect(tooltip?.hidden).toBe(false);
+    sees()?.dispatchEvent(new Event("focusout", { bubbles: true }));
+    expect(tooltip?.hidden).toBe(true);
+    expect(root.querySelector(".rail [title]")).toBeNull();
+  });
+});
