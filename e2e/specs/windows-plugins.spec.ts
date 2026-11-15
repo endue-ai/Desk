@@ -153,14 +153,14 @@ describe("plugins: plugin windows in the window manager (#82)", () => {
     });
   });
 
-  it("one click on the Floating tool of a window not in use floats it (#159)", async () => {
-    // The window floated is the one whose tools are in sight (a slot may reach past the right
+  it("one click on the Pin tool of a window not in use pins it (#159)", async () => {
+    // The window pinned is the one whose tools are in sight (a slot may reach past the right
     // edge); the other is in use, shown last. No tool puts a window in the drawer (#280).
     const { w } = (await deskNow()).screen;
     const inSight = async (id: string) => toolAt(rectOf(await show(id)), "close").x < w - 12;
     const [away, other] = (await inSight(HELLO)) ? [HELLO, NOTES] : [NOTES, HELLO];
     const using = rectOf(await show(other));
-    const tool = toolAt(rectOf(await windowNow(away)), "floating");
+    const tool = toolAt(rectOf(await windowNow(away)), "pin");
     const under =
       tool.x >= using.x &&
       tool.x < using.x + using.w &&
@@ -169,12 +169,12 @@ describe("plugins: plugin windows in the window manager (#82)", () => {
     expect({ tool, under }).toMatchObject({ under: false });
     expect(tool.x).toBeLessThan(w - 12);
     await click(tool);
-    await windowUntil(away, (x) => x.state === "floating", "floating after one click");
+    await windowUntil(away, (x) => x.pinned === true, "pinned after one click");
     // It stays so: nothing that followed the press pressed the tool again.
     await browser.pause(800);
-    expect((await windowNow(away)).state).toBe("floating");
-    await click(toolAt(rectOf(await windowNow(away)), "floating"));
-    await windowUntil(away, (x) => x.state !== "floating", "back to normal");
+    expect((await windowNow(away)).pinned).toBe(true);
+    await click(toolAt(rectOf(await windowNow(away)), "pin"));
+    await windowUntil(away, (x) => !x.pinned, "unpinned again");
   });
 
   it("turned off its window goes and the other stays; turned on it comes back", async () => {
