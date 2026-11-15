@@ -5,13 +5,53 @@ export interface Clock {
   requestFrame(callback: (now: number) => void): () => void;
 }
 
-/** The browser's clock: performance.now and requestAnimationFrame. */
-export function realClock(): Clock {
+/** How far apart a hidden page's frames are: nobody sees them, and what waits on one still ends. */
+export const HIDDEN_FRAME_MS = 50;
+
+/** What `realClock` reads of the page: whether it is hidden, and when that changes. */
+export type ClockPage = Pick<Document, "hidden" | "addEventListener">;
+
+/**
+ * The browser's clock: performance.now and requestAnimationFrame. A hidden page gets no animation
+ * frames (the desk's window closed, #237), so a frame asked for there, or still out when the page
+ * goes out of sight, runs on a timer: a tween ends and what waits for it goes on.
+ */
+export function realClock(page: ClockPage = document): Clock {
+  interface Waiting {
+    callback: (now: number) => void;
+    cancel: () => void;
+  }
+  const waiting = new Map<number, Waiting>();
+  let nextId = 1;
+  const schedule = (id: number, callback: (now: number) => void): (() => void) => {
+    const run = (now: number) => {
+      waiting.delete(id);
+      callback(now);
+    };
+    if (page.hidden) {
+      const timer = setTimeout(() => run(performance.now()), HIDDEN_FRAME_MS);
+      return () => clearTimeout(timer);
+    }
+    const handle = requestAnimationFrame(run);
+    return () => cancelAnimationFrame(handle);
+  };
+  // Shown again, the timers still out run within HIDDEN_FRAME_MS: only going out of sight moves frames.
+  page.addEventListener("visibilitychange", () => {
+    if (!page.hidden) return;
+    for (const [id, frame] of waiting) {
+      frame.cancel();
+      frame.cancel = schedule(id, frame.callback);
+    }
+  });
   return {
     now: () => performance.now(),
     requestFrame: (callback) => {
-      const handle = requestAnimationFrame(callback);
-      return () => cancelAnimationFrame(handle);
+      const id = nextId++;
+      waiting.set(id, { callback, cancel: schedule(id, callback) });
+      return () => {
+        waiting.get(id)?.cancel();
+        waiting.delete(id);
+      };
     },
   };
 }
