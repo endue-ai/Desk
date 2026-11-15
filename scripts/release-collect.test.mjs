@@ -36,6 +36,42 @@ describe("release-collect", () => {
     assert.equal(signature, "macos/endue Desk.app.tar.gz.sig");
   });
 
+  it("takes the disk image alone, without a signature, when asked for installers", () => {
+    const root = bundle({
+      macos: ["endue Desk.app.tar.gz"],
+      dmg: ["endue Desk_0.2.0_aarch64.dmg"],
+    });
+    const out = join(root, "dist");
+    const names = collect({
+      bundle: root,
+      version: "0.2.0",
+      target: "darwin-aarch64",
+      out,
+      shell: "cef",
+      installers: true,
+    });
+    assert.deepEqual(names, ["endue-desk_0.2.0_darwin-aarch64.dmg"]);
+    assert.deepEqual(readdirSync(out), names);
+    assert.throws(
+      () =>
+        collect({ bundle: root, version: "0.2.0", target: "darwin-aarch64", out, shell: "cef" }),
+      /no signature beside/u,
+      "an updater archive still needs its signature",
+    );
+    assert.throws(
+      () =>
+        collect({
+          bundle: root,
+          version: "0.2.0",
+          target: "linux-x86_64",
+          out,
+          shell: "cef",
+          installers: true,
+        }),
+      /no first-install image/u,
+    );
+  });
+
   it("takes the NSIS installer on Windows and the AppImage, deb and rpm on Linux", () => {
     const windows = bundle({
       nsis: ["endue Desk_0.2.0_x64-setup.exe", "endue Desk_0.2.0_x64-setup.exe.sig"],

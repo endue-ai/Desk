@@ -12,6 +12,8 @@ name: release-build
 # Each target leaves as the artifact desk-<target>, canonical names from scripts/release-collect.mjs.
 # A dry run (release-dry-run.yml) stays out of the signing environment, signs with the run's
 # throwaway key, embeds no key in the binary and labels its artifacts desk-<target>-unsigned.
+# release-macos.yml (ADR 0229) asks for the two macOS targets and their first-install images only:
+# no updater signature is made, so that build needs no updater key.
 on:
   workflow_call:
     inputs:
@@ -29,6 +31,16 @@ on:
         required: false
         type: string
         default: ""
+      targets:
+        description: all four targets, or darwin for the two macOS ones.
+        required: false
+        type: string
+        default: all
+      installers-only:
+        description: Collect the first-install images only (the .dmg), with no updater signature.
+        required: false
+        type: boolean
+        default: false
       dry-run:
         description: Sign with the run's throwaway key (artifact dry-run-key) and stay out of signing.
         required: false
@@ -46,19 +58,12 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        include:
-          - target: darwin-aarch64
-            os: macos-latest
-            rust: aarch64-apple-darwin
-          - target: darwin-x86_64
-            os: macos-latest
-            rust: x86_64-apple-darwin
-          - target: windows-x86_64
-            os: windows-latest
-            rust: x86_64-pc-windows-msvc
-          - target: linux-x86_64
-            os: ubuntu-22.04
-            rust: x86_64-unknown-linux-gnu
+        # Each row is a target, its runner and its Rust triple: the two macOS rows for targets:
+        # darwin, else all four (scripts/ci-release-macos.test.mjs holds the two lists together).
+        include: >-
+          ${{ fromJSON(inputs.targets == 'darwin'
+          && '[{"target":"darwin-aarch64","os":"macos-latest","rust":"aarch64-apple-darwin"},{"target":"darwin-x86_64","os":"macos-latest","rust":"x86_64-apple-darwin"}]'
+          || '[{"target":"darwin-aarch64","os":"macos-latest","rust":"aarch64-apple-darwin"},{"target":"darwin-x86_64","os":"macos-latest","rust":"x86_64-apple-darwin"},{"target":"windows-x86_64","os":"windows-latest","rust":"x86_64-pc-windows-msvc"},{"target":"linux-x86_64","os":"ubuntu-22.04","rust":"x86_64-unknown-linux-gnu"}]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     defaults:
@@ -186,7 +191,7 @@ jobs:
           if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then export DESK_REQUIRE_NOTARISATION=1; fi
           node scripts/cef-package.mjs --target "${{ matrix.rust }}" --version "$VERSION" --out target/packager
       - name: Sign the CEF desk's updater artifacts
-        if: inputs.shell == 'cef'
+        if: inputs.shell == 'cef' && !inputs.installers-only
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -198,7 +203,8 @@ jobs:
       - name: Install smoke on every CEF desk package
         if: inputs.shell == 'cef'
         env:
-          DESK_UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY }}
+          # Installers only: nothing carries an updater signature, so none is checked (empty is none).
+          DESK_UPDATER_PUBKEY: ${{ !inputs.installers-only && (inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY) || '' }}
           WINDOWS_SIGNED: ${{ !inputs.dry-run && vars.DESK_WINDOWS_SIGN_COMMAND || '' }}
         run: |
           shopt -s nullglob
@@ -210,7 +216,12 @@ jobs:
           done
       - name: Collect the CEF desk's packages under canonical names
         if: inputs.shell == 'cef'
-        run: node scripts/release-collect.mjs --bundle target/packager/bundle --version "$VERSION" --target "${{ matrix.target }}" --out dist --shell cef
+        env:
+          INSTALLERS_ONLY: ${{ inputs.installers-only }}
+        run: |
+          args=(--bundle target/packager/bundle --version "$VERSION" --target "${{ matrix.target }}" --out dist --shell cef)
+          if [ "$INSTALLERS_ONLY" = true ]; then args+=(--installers); fi
+          node scripts/release-collect.mjs "${args[@]}"
       - name: Check the .deb against the updater key
         if: runner.os == 'Linux'
         env:

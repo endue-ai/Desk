@@ -1,9 +1,37 @@
 # Releasing endue Desk
 
 How a build reaches installed desks, and what a maintainer does at each step. The decisions are ADR
-0054 (R2, signed indexes, the staging updater), ADR 0081 (which OS runs where) and ADR 0092 (release
-lines, candidates on beta, stable in steps). Agents stop at the cherry-pick pull request: every run
-below waits for a person in the `stable` environment.
+0054 (R2, signed indexes, the staging updater), ADR 0081 (which OS runs where), ADR 0092 (release
+lines, candidates on beta, stable in steps) and ADR 0229 (a GitHub Release a person publishes carries
+the macOS app). Agents stop at the cherry-pick pull request: every run of the line pipeline waits for
+a person in the `stable` environment.
+
+## Publish a GitHub Release with the macOS app
+
+The short way to a macOS app, with no updater key, R2 bucket or release app (ADR 0229). It lists the
+build on no channel; the line pipeline below is how builds reach installed desks.
+
+1. Publish a GitHub Release for a tag `vX.Y.Z` (or `vX.Y.Z-<pre>`) on the commit to ship:
+   `gh release create v0.1.0 --target <commit> --title "endue Desk 0.1.0" --generate-notes`, or
+   Releases → Draft a new release → Publish.
+2. **release-macos** starts on its own. It builds the CEF desk at the tag's commit for Apple silicon
+   and Intel (`release-build.yml`), runs the install smoke on each package, and
+   attaches `endue-desk_<version>_darwin-aarch64.dmg`, `endue-desk_<version>_darwin-x86_64.dmg` and
+   `SHA256SUMS-macos` to the release. The notes get a macOS section with the links.
+3. With `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` and the
+   notarisation secrets in `signing` (below), the app and the disk image are signed with the Developer
+   ID, notarised and stapled, and a build that is not fails. Without them the build is ad-hoc signed
+   and still attached: the run warns, and the notes tell the person to allow the app once in System
+   Settings > Privacy & Security, or to run `xattr -dr com.apple.quarantine "/Applications/endue Desk.app"`.
+4. To build a release again (a failed run, new secrets, a release from before this workflow):
+   `gh workflow run release-macos -f tag=v0.1.0`. It replaces what the earlier run attached.
+
+A release made by `release-final` is left alone: its build is on R2 and its notes link there. The tag
+counts as a release for the line pipeline's versions (`scripts/release-version.mjs`). On a Mac,
+`just package-shell 0.1.0` makes the same `.app` and `.dmg` for that machine's architecture in
+`target/packager/<triple>/bundle` (cargo-packager 0.11.8 on the `PATH`). Its disk image step lays
+the window out through Finder, which times out in a locked session; with `CI=true` it skips that,
+as it does on the runners.
 
 ## Branches and channels
 
@@ -168,7 +196,7 @@ Nothing below is in git, and nothing checks it; set it once, and keep it in step
 
 | Where | Setting |
 | --- | --- |
-| Environment `signing` | deployment branches: custom, `main` and `release/v*`; no reviewers |
+| Environment `signing` | deployment branches and tags: custom, branches `main` and `release/v*`, tags `v*` (a run a published release starts is on its tag; **release-macos** creates the environment, open to every ref, when it does not exist); no reviewers |
 | Environment `stable` | deployment branches: custom, `main` and `release/v*`; required reviewers (maintainers), prevent self-review |
 | `signing` secrets | `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`; for macOS `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` and either `APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_P8` (preferred) or `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` |
 | `stable` secrets | the updater key and its password, the R2 secrets (a token of its own), `RELEASE_APP_KEY` |
@@ -188,6 +216,8 @@ Signing, which accepts organisations in South Korea; wiring it is a task of its 
 
 | Message | Why | Do |
 | --- | --- | --- |
+| `is not a release tag` | **release-macos** met a release whose tag is not `vX.Y.Z` or `vX.Y.Z-<pre>` | publish the release under such a tag |
+| `has no GitHub Release` | **release-macos** was run by hand for a tag without a release | publish the release first |
 | `builds no candidate: … not set` | a secret or variable is missing in `signing` | set it, push again or re-run |
 | `is not a release line` | the branch is `release/vX.Y.Z` or another name | lines are `release/vX.Y` only |
 | `No candidate of … has been on beta N days` | the newest candidate is younger | wait, or lower `soak-days` |

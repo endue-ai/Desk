@@ -5,8 +5,11 @@
 // does cargo-packager for the CEF desk (scripts/cef-package.mjs, same folder layout); R2 keys and URLs
 // should not have them. The two shells ship slightly different sets: the CEF desk adds an MSI (#46),
 // which updates the desks installed from it (#47), and, with no .rpm in cargo-packager, drops the .rpm.
+// `--installers` takes the first-install images only (the .dmg), which need no updater signature:
+// what a GitHub Release a person published carries (release-macos.yml, ADR 0229).
 //   node scripts/release-collect.mjs --bundle <bundle folder> --version V
 //     --target darwin-aarch64|darwin-x86_64|windows-x86_64|linux-x86_64 --out dist [--shell tauri|cef]
+//     [--installers]
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -41,13 +44,16 @@ export const TARGETS = ["darwin-aarch64", "darwin-x86_64", "windows-x86_64", "li
 export const SHELLS = ["tauri", "cef"];
 
 /** Copy `target`'s bundles from `bundle` into `out`; answers the names written. */
-export function collect({ bundle, version, target, out, shell = "tauri" }) {
+export function collect({ bundle, version, target, out, shell = "tauri", installers = false }) {
   if (!TARGETS.includes(target)) throw new Error(`unknown target ${target}`);
   if (!SHELLS.includes(shell)) throw new Error(`unknown shell ${shell}`);
+  const kinds = KINDS[target.split("-")[0]].filter((kind) => !installers || !kind.signed);
+  if (kinds.length === 0)
+    throw new Error(`${target} has no first-install image apart from its updater artifacts`);
   mkdirSync(out, { recursive: true });
   const written = [];
   const preRelease = version.includes("-");
-  for (const kind of KINDS[target.split("-")[0]]) {
+  for (const kind of kinds) {
     if (kind.releasesOnly && preRelease) continue;
     if (kind.shells && !kind.shells.includes(shell)) continue;
     const folder = join(bundle, kind.folder);
@@ -82,6 +88,7 @@ function main(args) {
     target: value("--target"),
     out: value("--out"),
     shell: args.includes("--shell") ? value("--shell") : "tauri",
+    installers: args.includes("--installers"),
   });
   for (const name of names) console.log(name);
 }
