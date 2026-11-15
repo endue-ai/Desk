@@ -199,3 +199,49 @@ describe("the sway's verdicts", () => {
     expect(table(clean)).toContain("pass (fails at times: #248)");
   });
 });
+
+describe("the gate's limit for a pane's plugin (ADR 0233)", () => {
+  it("gives sway-panes a limit, and fails a sway past it", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const config = JSON.parse(
+      await readFile(new URL("../motion.json", import.meta.url), "utf8"),
+    ) as { limits: { maxPaneShare?: number } };
+    const limit = config.limits.maxPaneShare;
+    expect(limit, "motion.json's limits.maxPaneShare").toBeTypeOf("number");
+    expect(limit).toBeLessThan(1);
+    const frames = 1000;
+    const at = Math.floor((limit ?? 1) * frames);
+    const panes = (paneFrames: number) =>
+      swayVerdicts(
+        {
+          widths: [1024, 1624],
+          heights: [600, 1000],
+          fps: 59.8,
+          longShare: 0,
+          intervalP95: 17,
+          intervalMax: 20,
+          frames,
+          unfitFrames: 0,
+          sceneFrames: 0,
+          paneFrames,
+          swingFrames: 4,
+          foreignFrames: 0,
+          stopped: [],
+          unsettled: [],
+          restSharpness: 1,
+        },
+        {
+          ...config.limits,
+          minFps: 55,
+          longIntervalMs: 25,
+          maxLongShare: 0.02,
+          maxForeignFrames: 0,
+          foreignBlocks: 4,
+          minRestSharpness: 0.95,
+          maxUnfitFrames: 0,
+        },
+      ).find((v) => v.check === "sway-panes");
+    expect(panes(at)?.passed).toBe(true);
+    expect(panes(at + 1)?.passed).toBe(false);
+  });
+});
