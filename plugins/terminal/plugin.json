@@ -500,6 +500,16 @@
         "default": "current",
         "choices": ["current", "setting"],
         "description": "Where a new terminal starts: current, the folder the terminal on screen is in when its shell says (OSC 7); setting, endue.terminal.cwd."
+      },
+      "endue.terminal.program-copy": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Let programs copy text to the clipboard with OSC 52, as neovim, tmux and programs over ssh do; the status line says what was copied. Programs can never read the clipboard."
+      },
+      "endue.terminal.event-commands": {
+        "kind": "object",
+        "default": {},
+        "description": "Desk commands a terminal's events run, by event: bell, notification (OSC 9, 777, 99), command (one that ran notify-after seconds or more, OSC 133) and exit, each to a command id such as endue.terminal.focus. The command gets { event, session, tab, looking, level } and what happened; one outside the terminal's grants is asked for once."
       }
     }
   }

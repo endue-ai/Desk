@@ -73,7 +73,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
   const looks = (/** @type {string} */ id) => shown === id && looking(id);
   const notices = createNotices({
     bridge: /** @type {any} */ (bridge),
-    view,
+    ...{ view, commands, say },
     title: (id) => sessions.get(id)?.title ?? "Terminal",
     looking: looks,
     now,
@@ -210,7 +210,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     await launch(session);
   };
 
-  const input = (/** @type {string} */ id, /** @type {string} */ data) => {
+  const input = (/** @type {string} */ id, /** @type {import("./pipe.js").Input} */ data) => {
     const session = held(id);
     if (!session.procId || !session.program) {
       if (data === "\r") void restart(id);

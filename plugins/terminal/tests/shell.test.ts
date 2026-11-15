@@ -107,6 +107,8 @@ describe("the settings", () => {
         "endue.terminal.notify-after": 30,
         "endue.terminal.paste-warning": "always",
         "endue.terminal.new-tab-folder": "setting",
+        "endue.terminal.program-copy": false,
+        "endue.terminal.event-commands": { bell: "endue.terminal.focus" },
       }),
     ).toEqual({
       shell: "fish",
@@ -126,6 +128,8 @@ describe("the settings", () => {
       notifyAfter: 30,
       pasteWarning: "always",
       newTabFolder: "setting",
+      programCopy: false,
+      eventCommands: { bell: "endue.terminal.focus" },
     });
   });
 
