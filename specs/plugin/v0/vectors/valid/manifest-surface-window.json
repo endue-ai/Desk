@@ -1,0 +1,30 @@
+{
+  "target": "PluginManifest",
+  "description": "an app that says its window's first and smallest size, that it keeps its size, and that it opens out of the canvas",
+  "instance": {
+    "id": "example.app",
+    "name": "App",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "surfaces": [
+      {
+        "id": "main",
+        "title": "App",
+        "placement": "center",
+        "window": {
+          "size": {
+            "width": 480,
+            "height": 360
+          },
+          "minSize": {
+            "width": 320,
+            "height": 240
+          },
+          "resizable": false,
+          "opens": "out"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "target": "PluginManifest",
+  "description": "a window's smallest size under the desk's own minimum",
+  "instance": {
+    "id": "example.app",
+    "name": "App",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "surfaces": [
+      {
+        "id": "main",
+        "placement": "center",
+        "window": {
+          "minSize": {
+            "width": 100,
+            "height": 80
+          }
+        }
+      }
+    ]
+  }
+}

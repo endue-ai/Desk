@@ -1438,15 +1438,51 @@ pub struct Surface {
     pub hidden: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instances: Option<SurfaceInstances>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window: Option<SurfaceWindow>,
 }
 
-/// How many windows of a surface the desk opens (ADR 0212). one: a single window, which shows every file the plugin opens (the default). per-file: a file opener's first surface opens a window of its own for each file the desk opens in it, each its own page with the plugin's permissions; the desk.files.window setting can keep one window.
+/// How many windows of a surface the desk opens (ADR 0212, ADR 0226). one: a single window, which shows every file the plugin opens (the default). per-file: a file opener's first surface opens a window of its own for each file the desk opens in it, each its own page with the plugin's permissions; the desk.files.window setting can keep one window. many: the first surface opens in a further window, a page of its own with the plugin's permissions, each time desk.plugins.open is run for the plugin with another: true.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SurfaceInstances {
     #[serde(rename = "one")]
     One,
     #[serde(rename = "per-file")]
     PerFile,
+    #[serde(rename = "many")]
+    Many,
+}
+
+/// What a plugin's first surface asks of its window, on the canvas and in an OS window of its own alike (ADR 0226). Hints: a place a profile or a session saved, and the person's own arranging (a fill, a snap, tile), size the window on the canvas whatever they say. A surface placed left, right, bottom or overlay is no window, and its hints are not read. size: the plugin's page the first time its window opens; without it the window takes its slot's size on the canvas and the desk's own first size out of it. minSize: the smallest the person can make the page; without it, the desk's own minimum.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SurfaceWindow {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<WindowSize>,
+    #[serde(rename = "minSize", default, skip_serializing_if = "Option::is_none")]
+    pub min_size: Option<WindowSize>,
+    /// False: the person cannot resize the window by its edges; it keeps the size it opened with until the desk arranges it. Default true.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resizable: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opens: Option<SurfaceOpens>,
+}
+
+/// A size of a plugin's page in CSS pixels, without the desk's title bar and border.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WindowSize {
+    pub width: u64,
+    pub height: u64,
+}
+
+/// Where the plugin's window opens the first time it shows in a session. canvas: on the desk's canvas (the default). out: in an OS window of its own (ADR 0205), on a desk that can open one; the person docks it back, and DESK_APP_WINDOWS=off keeps every window on the canvas.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SurfaceOpens {
+    #[serde(rename = "canvas")]
+    Canvas,
+    #[serde(rename = "out")]
+    Out,
 }
 
 /// Where the compositor puts the surface.

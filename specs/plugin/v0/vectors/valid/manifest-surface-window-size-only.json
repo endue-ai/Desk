@@ -1,0 +1,23 @@
+{
+  "target": "PluginManifest",
+  "description": "an app that says only its window's first size",
+  "instance": {
+    "id": "example.app",
+    "name": "App",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "surfaces": [
+      {
+        "id": "main",
+        "placement": "floating",
+        "window": {
+          "size": {
+            "width": 900,
+            "height": 600
+          }
+        }
+      }
+    ]
+  }
+}
