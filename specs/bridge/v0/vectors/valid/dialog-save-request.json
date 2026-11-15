@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "dialog.save suggests a name and a filter",
+  "instance": {
+    "id": 43,
+    "method": "dialog.save",
+    "params": {
+      "title": "Save the note as",
+      "suggestedName": "today.md",
+      "startIn": "~/Notes",
+      "filters": [{ "name": "Markdown", "extensions": ["md"] }]
+    }
+  }
+}

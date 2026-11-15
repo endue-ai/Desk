@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "dialog.save is for one file: it takes no multiple",
+  "instance": {
+    "id": 44,
+    "method": "dialog.save",
+    "params": { "multiple": true }
+  }
+}

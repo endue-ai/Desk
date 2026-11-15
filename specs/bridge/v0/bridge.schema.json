@@ -183,7 +183,9 @@
         { "$ref": "web.schema.json#/$defs/WebLoadRequest" },
         { "$ref": "web.schema.json#/$defs/WebGoRequest" },
         { "$ref": "web.schema.json#/$defs/WebFocusRequest" },
-        { "$ref": "web.schema.json#/$defs/WebCloseRequest" }
+        { "$ref": "web.schema.json#/$defs/WebCloseRequest" },
+        { "$ref": "dialog.schema.json#/$defs/DialogOpenRequest" },
+        { "$ref": "dialog.schema.json#/$defs/DialogSaveRequest" }
       ]
     },
     "BridgeResponse": {

@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/dialog.schema.json",
+  "title": "Desk bridge v0: dialog",
+  "description": "Ask the person, through the OS's own dialogs attached to the desk window, for files or folders to open or for a place to save. What the person chose is granted to the caller for the matching fs access and nothing else; no permission is needed to ask.",
+  "$defs": {
+    "DialogFilter": {
+      "description": "A named set of file extensions the dialog shows, without the dot: { name: Markdown, extensions: [md] }.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "extensions": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9_+-]{1,32}$" },
+          "minItems": 1,
+          "maxItems": 64
+        }
+      },
+      "required": ["name", "extensions"],
+      "additionalProperties": false
+    },
+    "DialogFilters": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/DialogFilter" },
+      "maxItems": 32
+    },
+    "DialogTitle": {
+      "description": "The dialog's title, where the OS shows one.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "DialogOpenKind": {
+      "description": "What the person picks: files (the default) or folders.",
+      "type": "string",
+      "enum": ["files", "folders"]
+    },
+    "DialogOpenRequest": {
+      "description": "Ask the person for files or folders to open.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "dialog.open" },
+        "params": { "$ref": "#/$defs/DialogOpenParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DialogOpenParams": {
+      "description": "Parameters of dialog.open.",
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "#/$defs/DialogOpenKind" },
+        "multiple": {
+          "description": "Whether the person may pick several; false by default.",
+          "type": "boolean"
+        },
+        "title": { "$ref": "#/$defs/DialogTitle" },
+        "startIn": {
+          "description": "The folder the dialog starts in.",
+          "$ref": "bridge.schema.json#/$defs/Path"
+        },
+        "filters": { "$ref": "#/$defs/DialogFilters" }
+      },
+      "additionalProperties": false
+    },
+    "DialogOpenResult": {
+      "description": "Result of dialog.open: the absolute paths the person chose, now readable by the caller, or cancelled with none.",
+      "type": "object",
+      "properties": {
+        "cancelled": { "type": "boolean" },
+        "paths": {
+          "type": "array",
+          "items": { "$ref": "bridge.schema.json#/$defs/Path" },
+          "maxItems": 10000
+        }
+      },
+      "required": ["cancelled", "paths"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "cancelled": { "const": true } } },
+          "then": { "properties": { "paths": { "maxItems": 0 } } },
+          "else": { "properties": { "paths": { "minItems": 1 } } }
+        }
+      ]
+    },
+    "DialogSaveRequest": {
+      "description": "Ask the person for a place to save one file.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "dialog.save" },
+        "params": { "$ref": "#/$defs/DialogSaveParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DialogSaveParams": {
+      "description": "Parameters of dialog.save.",
+      "type": "object",
+      "properties": {
+        "title": { "$ref": "#/$defs/DialogTitle" },
+        "suggestedName": {
+          "description": "The file name the dialog suggests, without a folder.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[^/\\\\\\u0000]+$"
+        },
+        "startIn": {
+          "description": "The folder the dialog starts in.",
+          "$ref": "bridge.schema.json#/$defs/Path"
+        },
+        "filters": { "$ref": "#/$defs/DialogFilters" }
+      },
+      "additionalProperties": false
+    },
+    "DialogSaveResult": {
+      "description": "Result of dialog.save: the absolute path the person chose, now writable by the caller, or cancelled without one.",
+      "type": "object",
+      "properties": {
+        "cancelled": { "type": "boolean" },
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" }
+      },
+      "required": ["cancelled"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "cancelled": { "const": true } } },
+          "then": { "properties": { "path": false } },
+          "else": { "required": ["path"] }
+        }
+      ]
+    }
+  }
+}

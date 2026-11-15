@@ -5175,6 +5175,8 @@ pub enum BridgeRequest {
     WebGo(WebGoRequest),
     WebFocus(WebFocusRequest),
     WebClose(WebCloseRequest),
+    DialogOpen(DialogOpenRequest),
+    DialogSave(DialogSaveRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -6813,6 +6815,101 @@ pub struct DataChangedData {
     #[serde(rename = "subscriptionId")]
     pub subscription_id: String,
     pub changes: Vec<ItemChange>,
+}
+
+/// A named set of file extensions the dialog shows, without the dot: { name: Markdown, extensions: [md] }.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DialogFilter {
+    pub name: String,
+    pub extensions: Vec<String>,
+}
+
+pub type DialogFilters = Vec<DialogFilter>;
+
+/// The dialog's title, where the OS shows one.
+pub type DialogTitle = String;
+
+/// What the person picks: files (the default) or folders.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DialogOpenKind {
+    #[serde(rename = "files")]
+    Files,
+    #[serde(rename = "folders")]
+    Folders,
+}
+
+/// Ask the person for files or folders to open.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DialogOpenRequest {
+    pub id: RequestId,
+    pub method: DialogOpenRequestMethod,
+    pub params: DialogOpenParams,
+}
+
+/// Parameters of dialog.open.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DialogOpenParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<DialogOpenKind>,
+    /// Whether the person may pick several; false by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub multiple: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<DialogTitle>,
+    /// The folder the dialog starts in.
+    #[serde(rename = "startIn", default, skip_serializing_if = "Option::is_none")]
+    pub start_in: Option<Path>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub filters: Option<DialogFilters>,
+}
+
+/// Result of dialog.open: the absolute paths the person chose, now readable by the caller, or cancelled with none.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DialogOpenResult {
+    pub cancelled: bool,
+    pub paths: Vec<Path>,
+}
+
+/// Ask the person for a place to save one file.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DialogSaveRequest {
+    pub id: RequestId,
+    pub method: DialogSaveRequestMethod,
+    pub params: DialogSaveParams,
+}
+
+/// Parameters of dialog.save.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DialogSaveParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<DialogTitle>,
+    /// The file name the dialog suggests, without a folder.
+    #[serde(
+        rename = "suggestedName",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub suggested_name: Option<String>,
+    /// The folder the dialog starts in.
+    #[serde(rename = "startIn", default, skip_serializing_if = "Option::is_none")]
+    pub start_in: Option<Path>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub filters: Option<DialogFilters>,
+}
+
+/// Result of dialog.save: the absolute path the person chose, now writable by the caller, or cancelled without one.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DialogSaveResult {
+    pub cancelled: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<Path>,
 }
 
 /// Start receiving the named events about every caller.
@@ -12312,6 +12409,22 @@ pub enum DataChangedEventEvent {
     DataChanged,
 }
 
+/// The `method` of [`DialogOpenRequest`]: always `"dialog.open"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DialogOpenRequestMethod {
+    #[default]
+    #[serde(rename = "dialog.open")]
+    DialogOpen,
+}
+
+/// The `method` of [`DialogSaveRequest`]: always `"dialog.save"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DialogSaveRequestMethod {
+    #[default]
+    #[serde(rename = "dialog.save")]
+    DialogSave,
+}
+
 /// The `method` of [`EventsSubscribeRequest`]: always `"events.subscribe"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum EventsSubscribeRequestMethod {
@@ -13410,6 +13523,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/data.schema.json",
         include_str!("../../../specs/bridge/v0/data.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/dialog.schema.json",
+        include_str!("../../../specs/bridge/v0/dialog.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/events.schema.json",
