@@ -53,8 +53,17 @@ is, a web view cannot turn with a card, and the board is the part of Studio the 
   prompt, memory, traits, model, wallpaper, skills, built-in tools), and what it reaches
   (connectors, devices, outputs), with a line from each row to the agent. A line is solid while on,
   dashed while off, red for a problem. The agent's answer now carries `description`, `liveEnabled`
-  and `mcpEnabled`. Channels, API keys, devices, outputs, memory and the wallpaper are not read:
-  their rows are drawn as not read, say to look on endue.ai, and count nothing.
+  and `mcpEnabled`.
+* **Every row read.** `studio.agents.facets` also reads what the rest of the board shows, through
+  the same gateway and token: the channel pairings, the API keys made for this agent alone (keys
+  for every agent are the account's, not the board's), the endue OS devices attached to it and its
+  workspaces (a workspace's own device counted once, workspaces turned off read as none), how many
+  of its newest 200 memories are live and how many of those are rules, how many artifacts it made
+  and when the newest changed, and its chat's wallpaper by name. Only what a row shows crosses the
+  bridge: no secret, key prefix or scope, memory, wallpaper manifest or artifact name. A row whose
+  facet endue AI did not answer is drawn as not read, says to look on endue.ai, and counts nothing;
+  the board decides on and off as endue.ai's does (a channel while one is active, the API while a
+  key has not expired).
 * **Setting up.** The board only reads. Every row, every line of the sheet and every action opens
   that part of endue.ai's Studio (`/agent/<id>/studio/<section>`) in a desk window (ADR 0223).
 * **Built here.** The board's layout, its words and the order of its rows follow endue.ai's Studio.
@@ -71,15 +80,17 @@ is, a web view cannot turn with a card, and the board is the part of Studio the 
   set out to avoid; when endue.ai's board changes, this one follows late.
 * Bad, because for an agent without a picture the core asks api.dicebear.com with the agent's slug,
   as endue.ai's web does for everyone who sees the agent.
-* Bad, because half of the board's rows say "see it on endue.ai" until `studio.*` reads them, and
-  nothing is changed on the board itself.
+* Bad, because turning a card asks endue AI fourteen things at once after the agent itself (each
+  on its own thread, 15 s at most), where Studio's page asks for them as its panels need them.
+* Bad, because nothing is changed on the board itself: every change is made on endue.ai.
 * Bad, because the marks are Anthropic's and OpenAI's: they name whose program a button opens, and
   a fork that may not show them replaces `packages/runtime/src/shell/marks.ts`.
 
 ## More Information
 
-Spec: `specs/bridge/v0/studio.schema.json` (`studio.agents.picture`, `StudioAgent`),
-`specs/platform/v0/openapi.yaml` (`AgentGetResponse`). Client: `crates/desk-platform/src/pictures.rs`.
-Core: `crates/desk-core/src/studio/picture.rs`. Runtime: `packages/runtime/src/system/endue.ts`
+Spec: `specs/bridge/v0/studio.schema.json` (`studio.agents.picture`, `StudioAgent`, the board's
+facets), `specs/platform/v0/openapi.yaml` (`AgentGetResponse` and the seven reads of the board).
+Client: `crates/desk-platform/src/pictures.rs`, `board.rs`, `wire_board.rs`. Core:
+`crates/desk-core/src/studio/picture.rs`, `rows.rs`. Runtime: `packages/runtime/src/system/endue.ts`
 (`readPictures`), `shell/SideBar.ts`, `shell/SideBarEndue.ts`, `shell/marks.ts`,
-`surface/endue/board*.ts` and `board.css`. Builds on ADR 0110, 0122, 0129 and 0223.
+`surface/endue/board*.ts` (the columns in `board-rows.ts`) and `board.css`. Builds on ADR 0110, 0122, 0129 and 0223.
