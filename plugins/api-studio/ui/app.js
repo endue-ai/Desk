@@ -10,7 +10,8 @@ import { clone, newRequest, normalize, same } from "./model.js";
  * @typedef {import("./send.js").Response} Response
  * @typedef {{ id: string, req: Request, saved: string | null, ref?: { collection: string, path: string },
  *   response?: Response, running?: { cancel(): void }, reqTab: string, resTab: string,
- *   kind?: "group", preview?: boolean }} Tab
+ *   kind?: "group" | "env", extra?: Record<string, string>,
+ *   lastCaptures?: { name: string, value?: string, error?: string }[], preview?: boolean }} Tab
  * @typedef {{ id: string, at: number, method: string, url: string, name: string, status: number,
  *   time: number, size: number, error?: string, req: Request }} HistoryEntry
  * @typedef {"tabs" | "tab" | "req" | "url" | "response" | "sending" | "side" | "history" |
@@ -31,7 +32,8 @@ export function createApp(persist = {}) {
       req: normalize(t.req),
       saved: typeof t.saved === "string" ? t.saved : null,
       ...(t.ref ? { ref: t.ref } : {}),
-      ...(t.kind === "group" ? { kind: "group" } : {}),
+      ...(t.kind === "group" || t.kind === "env" ? { kind: t.kind } : {}),
+      ...(t.extra ? { extra: t.extra } : {}),
       reqTab: t.reqTab ?? (t.kind === "group" ? "overview" : "params"),
       resTab: t.resTab ?? "body",
     })),
@@ -71,6 +73,7 @@ export function createApp(persist = {}) {
           saved: t.saved,
           ref: t.ref,
           kind: t.kind,
+          extra: t.extra,
           reqTab: t.reqTab,
           resTab: t.resTab,
         })),
@@ -89,7 +92,7 @@ export function createApp(persist = {}) {
 
   /**
    * Open a request (or a folder's settings) in a tab: the tab that already shows it, or a new one.
-   * @param {Request} req @param {Tab["ref"]} [ref] @param {{ saved?: boolean, kind?: "group" }} [options]
+   * @param {Request} req @param {Tab["ref"]} [ref] @param {{ saved?: boolean, kind?: "group" | "env" }} [options]
    */
   const open = (req, ref, options = { saved: true }) => {
     const existing =
@@ -107,7 +110,7 @@ export function createApp(persist = {}) {
       saved: ref && options.saved ? JSON.stringify(req) : null,
       ...(ref ? { ref } : {}),
       ...(options.kind ? { kind: options.kind } : {}),
-      reqTab: options.kind === "group" ? "overview" : "params",
+      reqTab: options.kind === "group" ? "overview" : options.kind === "env" ? "vars" : "params",
       resTab: "body",
     };
     const at = state.tabs.findIndex((t) => t.id === state.active);
