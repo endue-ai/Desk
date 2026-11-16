@@ -34,6 +34,8 @@ pub struct Counts {
     pub damage_px: u64,
     /// Begin frames the desk's clock sent it (`clock.rs`): none while hidden or asleep.
     pub begin_frames: u64,
+    /// Begin frames the clock held because the last one was still out (#339, ADR 0261).
+    pub held: u64,
     /// Times its page stopped painting though it took begin frames and asked for them (#157,
     /// `stall.rs`); whether it is stalled now; and the loads that brought it back.
     pub stalls: u64,
@@ -78,6 +80,8 @@ pub struct View {
     pub catch_up: catch_up::CatchUp,
     /// Its paints skipped in a row for not filling their texture (#252).
     pub skips: super::paint::Skips,
+    /// Its last begin frame, until it ends (#339).
+    flight: super::frames::Flight,
 }
 
 impl View {
@@ -99,6 +103,7 @@ impl View {
             screen: Default::default(),
             catch_up: Default::default(),
             skips: Default::default(),
+            flight: Default::default(),
         }
     }
 
@@ -108,6 +113,7 @@ impl View {
         self.counts.first_paint_ms = None;
         self.counts.stalled = false;
         self.watch.restart();
+        self.flight.restart();
         self.screen_scale = self.scale;
         self.popup = Default::default();
     }
@@ -156,6 +162,20 @@ impl View {
     /// too (#252): what its clock, its stall watch and its screen go by.
     pub fn painted(&self) -> u64 {
         self.counts.paints + self.counts.software_paints + self.counts.unfilled
+    }
+
+    /// The clock is due to send its browser a begin frame at `now`: `Ok` when it may (counted, and
+    /// its stall watch fed), or until when it holds it, its last one still out (#339, ADR 0261).
+    pub fn begin_frame(&mut self, now: Instant) -> Result<(), Instant> {
+        let paints = self.painted();
+        if let Some(until) = self.flight.out(now, paints) {
+            self.counts.held += 1;
+            return Err(until);
+        }
+        self.flight.sent(now, paints);
+        self.counts.begin_frames += 1;
+        self.watch.fed();
+        Ok(())
     }
 
     /// The view in pixels: what the texture will be.
