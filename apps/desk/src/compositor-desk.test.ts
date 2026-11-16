@@ -213,36 +213,73 @@ describe("the canvas map while a window fills the app (ADR 0221)", () => {
     document.documentElement.classList.remove("desk-compositor");
   });
 
-  it("goes with the right rail: how far the rail has slid, and away once it is out", () => {
+  it("goes with the strip under it: how far the strip has slid, and away once it is out", () => {
     const { win, tick } = frames();
     const r = runtime([]);
     const reports: DeskReport[] = [];
     const rail = document.createElement("aside");
     rail.className = "rail";
-    document.body.append(rail);
-    let style = { translate: "none", visibility: "visible" };
-    vi.spyOn(win, "getComputedStyle").mockImplementation(() => style as CSSStyleDeclaration);
+    const strip = document.createElement("div");
+    strip.className = "map-strip";
+    document.body.append(rail, strip);
+    // Each slides by its own box: the map's strip further than the rail.
+    let styles = new Map<Element, { translate: string; visibility: string }>();
+    const rest = { translate: "none", visibility: "visible" };
+    vi.spyOn(win, "getComputedStyle").mockImplementation(
+      (el) => (styles.get(el) ?? rest) as CSSStyleDeclaration,
+    );
     const stop = startCompositorDesk(win, r.desk, pages(), (report) => reports.push(report));
     tick();
-    // A rail that goes nowhere: the map is the session's alone.
+    // A strip that goes nowhere: the map is the session's alone.
     const gone = () => {
       const { shift, away } = reports.at(-1)?.map ?? {};
       return [shift, away];
     };
     expect(gone()).toEqual([undefined, undefined]);
-    rail.dataset.away = "right";
-    rail.classList.add("is-out");
-    style = { translate: "37.6px", visibility: "visible" };
+    for (const el of [rail, strip]) {
+      el.dataset.away = "right";
+      el.classList.add("is-out");
+    }
+    styles = new Map([
+      [rail, { translate: "37.6px", visibility: "visible" }],
+      [strip, { translate: "120.4px", visibility: "visible" }],
+    ]);
     tick();
-    expect(gone()).toEqual([38, undefined]);
-    style = { translate: "96px", visibility: "hidden" };
+    expect(gone()).toEqual([120, undefined]);
+    styles = new Map([
+      [rail, { translate: "96px", visibility: "hidden" }],
+      [strip, { translate: "242px", visibility: "hidden" }],
+    ]);
     tick();
-    expect(gone()).toEqual([96, true]);
+    expect(gone()).toEqual([242, true]);
     // Back in sight and at rest.
-    rail.classList.remove("is-out");
-    style = { translate: "0px", visibility: "visible" };
+    for (const el of [rail, strip]) el.classList.remove("is-out");
+    styles = new Map();
     tick();
     expect(gone()).toEqual([undefined, undefined]);
+    stop();
+  });
+
+  it("goes with the right rail where the page has no strip of its own", () => {
+    const { win, tick } = frames();
+    const r = runtime([]);
+    const reports: DeskReport[] = [];
+    const rail = document.createElement("aside");
+    rail.className = "rail";
+    rail.dataset.away = "right";
+    rail.classList.add("is-out");
+    // A plugin holds the dock's role: the shell's strip is there, yielded, and not drawn.
+    const strip = document.createElement("div");
+    strip.className = "map-strip";
+    strip.toggleAttribute("data-role-yielded", true);
+    document.body.append(rail, strip);
+    vi.spyOn(win, "getComputedStyle").mockImplementation(
+      () => ({ translate: "96px", visibility: "hidden" }) as CSSStyleDeclaration,
+    );
+    const stop = startCompositorDesk(win, r.desk, pages(), (report) => reports.push(report));
+    tick();
+    const { shift, away } = reports.at(-1)?.map ?? {};
+    expect([shift, away]).toEqual([96, true]);
     stop();
   });
 });
