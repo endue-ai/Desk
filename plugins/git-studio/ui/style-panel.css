@@ -1,5 +1,14 @@
 /* The right panel: a commit's detail, the files it changes, and (style-wip.css) the working copy. */
 
+.panel-page {
+  height: 100%;
+  overflow: auto;
+}
+
+.panel-page[hidden] {
+  display: none;
+}
+
 .panel-empty {
   display: grid;
   place-items: center;

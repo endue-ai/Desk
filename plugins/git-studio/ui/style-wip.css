@@ -1,0 +1,236 @@
+/* The working copy panel and the composer; the dialogs and context menus that float over it all. */
+
+.wip {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.wip-lists {
+  flex: 1;
+  overflow: auto;
+  padding: var(--desk-space-3) var(--desk-space-3) var(--desk-space-2);
+}
+
+.wip-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--desk-space-2);
+  margin-bottom: var(--desk-space-2);
+}
+
+.wip-head h2 {
+  margin: 0;
+  font-size: var(--desk-text-lg);
+}
+
+.wip-head p {
+  margin: 2px 0 0;
+  font-size: var(--desk-text-xs);
+}
+
+.wip-section {
+  margin-top: var(--desk-space-3);
+}
+
+.wip-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  height: 30px;
+  padding: 0 var(--desk-space-1);
+}
+
+.wip-section-title {
+  font-size: var(--desk-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--desk-text-muted);
+}
+
+.wip-section.is-staged .wip-section-title {
+  color: var(--desk-success-text);
+}
+
+.wip-section.is-conflict .wip-section-title {
+  color: var(--desk-danger-text);
+}
+
+.wip-bulk {
+  display: flex;
+  gap: 4px;
+}
+
+.desk-btn.mini {
+  height: 24px;
+  padding: 0 8px;
+  gap: 4px;
+  font-size: var(--desk-text-xs);
+}
+
+.wip-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 2px;
+  border: 1px solid var(--gs-line);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+}
+
+.wip-row {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  height: 30px;
+  padding: 0 4px 0 var(--desk-space-2);
+  border-radius: var(--desk-radius-sm);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.wip-row:hover,
+.wip-row:focus-visible {
+  background: var(--gs-softer);
+  outline: none;
+}
+
+.wip-row.is-selected {
+  background: var(--gs-select);
+}
+
+.wip-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+}
+
+.wip-row:hover .wip-actions,
+.wip-row:focus-visible .wip-actions,
+.wip-row.is-selected .wip-actions {
+  opacity: 1;
+}
+
+.desk-icon-btn.mini-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.desk-icon-btn.mini-icon.is-stage:hover {
+  color: var(--desk-success-text);
+}
+
+.wip-label {
+  font-size: var(--desk-text-2xs);
+  color: var(--desk-danger-text);
+}
+
+.desk-btn.wip-resolve {
+  height: 24px;
+  padding: 0 10px;
+  font-size: var(--desk-text-xs);
+}
+
+.wip-none {
+  margin: 0;
+  padding: var(--desk-space-3);
+  border: 1px dashed var(--gs-line);
+  border-radius: var(--desk-radius-md);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  text-align: center;
+}
+
+/* ── composer ───────────────────────────────────────────────────────────── */
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-3);
+  border-top: 1px solid var(--gs-line);
+  background: var(--desk-card);
+  box-shadow: var(--desk-shadow-md);
+}
+
+.composer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.composer-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.desk-btn.composer-ai {
+  height: 26px;
+  padding: 0 8px;
+  gap: 5px;
+  font-size: var(--desk-text-xs);
+  color: var(--desk-primary-text);
+}
+
+.desk-btn.composer-ai.is-busy .icon {
+  animation: spin var(--desk-motion-slow) linear infinite;
+}
+
+.composer-summary-wrap {
+  position: relative;
+}
+
+.desk-field.composer-summary {
+  width: 100%;
+  padding-right: 40px;
+  font-weight: 500;
+}
+
+.composer-count {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--desk-text-2xs);
+  color: var(--desk-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.composer-count.is-over {
+  color: var(--desk-danger-text);
+  font-weight: 700;
+}
+
+.desk-field.composer-body {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+  line-height: 1.45;
+}
+
+.composer-options {
+  display: flex;
+  gap: var(--desk-space-4);
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+}
+
+.composer-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.composer-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--desk-space-2);
+}
+
+.composer-actions .desk-btn {
+  gap: 6px;
+}
