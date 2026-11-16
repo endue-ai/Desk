@@ -2,8 +2,8 @@
 // the frame, and the page on screen. Pages are made when they show and dropped when they leave;
 // each hears the store's changes and draws only what changed.
 
-import { createActions } from "./actions.js";
 import { createEngine } from "./engine.js";
+import { installFeatures } from "./features.js";
 import { createLive } from "./live.js";
 import { stacksOf } from "./model.js";
 import { createOverlay } from "./overlay.js";
@@ -81,7 +81,6 @@ export function createStudio(ctx, doc, pages) {
     shell.current(id);
     shell.search.value = "";
     store.set({ page: id, detail: to });
-    live.wantStats(page.stats === true);
     page.update(store.state, new Set(Object.keys(store.state)));
     persist();
   };
@@ -175,13 +174,20 @@ export function createStudio(ctx, doc, pages) {
     },
     // Filled in by the features (actions.js, dialogs, ai.js).
     act: /** @type {any} */ ({}),
+    images: /** @type {any} */ ({}),
+    menus: /** @type {any} */ ({}),
     dialogs: /** @type {any} */ ({}),
-    ai: /** @type {any} */ ({ open() {}, diagnose() {}, explainLogs() {} }),
+    ai: /** @type {any} */ ({ open() {}, diagnose() {}, explainLogs() {}, optimizeImage() {} }),
     start() {
-      app.act = createActions(app);
+      installFeatures(app);
       show(saved.page ?? "dashboard", saved.detail ?? null);
       shell.engine(store.state);
       void live.start();
+      // One docker stats stream feeds the status bar and every chart; it rests while the page is hidden.
+      live.wantStats(doc.visibilityState !== "hidden");
+      doc.addEventListener("visibilitychange", () =>
+        live.wantStats(doc.visibilityState !== "hidden"),
+      );
     },
   };
   return app;
