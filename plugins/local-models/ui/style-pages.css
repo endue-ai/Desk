@@ -1,0 +1,146 @@
+/* Full pages beside the chat: My models, and later Discover and Server. */
+
+.lm-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  background: var(--desk-background);
+}
+
+.lm-page-head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--desk-space-3);
+  padding: var(--desk-space-6) var(--desk-space-8) var(--desk-space-4);
+}
+
+.lm-page-title {
+  margin: 0;
+  font-size: var(--desk-text-2xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.lm-page-sub {
+  margin: var(--desk-space-1) 0 0;
+  color: var(--desk-text-muted);
+}
+
+.lm-page-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-4);
+  padding: 0 var(--desk-space-8) var(--desk-space-8);
+}
+
+.lm-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--desk-space-3);
+}
+
+.lm-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lm-stat-value {
+  font-size: var(--desk-text-xl);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.lm-stat-label {
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+}
+
+.lm-server-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.lm-server-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+  padding: var(--desk-space-3) var(--desk-space-4);
+  border-bottom: var(--desk-border-width) solid var(--lm-line-soft);
+  background: var(--lm-panel);
+}
+
+.lm-server-name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--desk-space-2);
+}
+
+.lm-server-name .lm-muted {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.lm-server-note {
+  margin: 0;
+  padding: var(--desk-space-4);
+}
+
+.lm-model-table {
+  width: 100%;
+}
+
+.lm-model-table td,
+.lm-model-table th {
+  vertical-align: middle;
+}
+
+.lm-model-table tr[data-current] td:first-child {
+  box-shadow: inset 3px 0 0 var(--desk-primary);
+}
+
+.lm-model-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+}
+
+.lm-model-name {
+  font-weight: 600;
+}
+
+.lm-row-actions {
+  text-align: right;
+}
+
+.lm-add-server {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+}
+
+.lm-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  margin: 0;
+  font-size: var(--desk-text-base);
+  font-weight: 650;
+}
+
+.lm-add-server > .lm-muted {
+  margin: 0;
+}
+
+.lm-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.lm-form-row > input:first-child {
+  flex: 1;
+  min-width: 220px;
+}
