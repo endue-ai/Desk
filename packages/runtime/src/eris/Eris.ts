@@ -21,7 +21,7 @@ import { palette } from "./figure";
 import { linkDesk } from "./float-desk";
 import { basisFor, DENSITIES, type DensityName, generateMesh, type Mesh } from "./mesh";
 import { speakAloud } from "./mouth";
-import { atWork, overPill, Rest, showRest, watchCard } from "./rest";
+import { atWork, homeOf, pillOf, Rest, showRest, watchCard } from "./rest";
 import { SoulText } from "./SoulText";
 import { mountSaid } from "./said";
 import {
@@ -110,7 +110,7 @@ export function mountEris(
   let last = ctx.ticker.now();
   let dragging: { x: number; y: number } | null = null;
   const rest = new Rest();
-  const pill = () => root.querySelector<HTMLElement>(".talk-pill");
+  const pill = () => pillOf(root);
   // Since when nothing has moved her: idle, silent, settled and not dragged (`REST_MS`).
   let quiet: number | undefined;
   const wake = () => {
@@ -192,11 +192,8 @@ export function mountEris(
   });
   const position = () => {
     const { width: vw, height: vh } = size();
-    const at = pill();
-    const home = at
-      ? overPill(at, root, BODY)
-      : { x: Math.round((vw - BODY.width) / 2), y: DEFAULT_TOP };
-    const p = dragging ?? layout() ?? home;
+    const p =
+      dragging ?? layout() ?? homeOf(root, BODY, { x: (vw - BODY.width) / 2, y: DEFAULT_TOP });
     return {
       x: Math.max(0, Math.min(p.x, vw - BODY.width)),
       y: Math.max(0, Math.min(p.y, vh - BODY.height)),
@@ -374,6 +371,8 @@ export function mountEris(
       moveEris(ctx, { x: p.x + (step[0] ?? 0), y: p.y + (step[1] ?? 0) });
     }),
   ];
+  // The bottom edge mounts after her (Desk.ts): her first frame that sees the talk pill.
+  queueMicrotask(() => frame(ctx.ticker.now()));
 
   return {
     say(text, words) {
