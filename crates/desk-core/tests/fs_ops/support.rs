@@ -156,3 +156,24 @@ pub fn names(dir: &Path) -> Vec<String> {
     names.sort();
     names
 }
+
+/// `caller`'s fs.rename under the `~/work/**` scope, joining `group` when given (ADR 0247).
+pub fn rename_as(
+    core: &Core,
+    caller: &str,
+    (from, to): (&str, &str),
+    group: Option<&str>,
+) -> Result<Value, ErrorCode> {
+    let mut params = json!({ "from": from, "to": to, "scope": write(&["~/work/**"]) });
+    if let Some(group) = group {
+        params["group"] = json!(group);
+    }
+    call(core, caller, "fs.rename", params)
+}
+
+/// FILES' fs.copy under the `~/work/**` scopes, joining `group` when given (ADR 0247).
+pub fn copy_in(core: &Core, (from, to): (&str, &str), group: &str) -> Result<Value, ErrorCode> {
+    let params = json!({ "from": from, "to": to, "group": group,
+        "scope": write(&["~/work/**"]), "fromScope": read(&["~/work/**"]) });
+    call(core, FILES, "fs.copy", params)
+}

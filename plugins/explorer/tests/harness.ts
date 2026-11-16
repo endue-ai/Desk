@@ -12,18 +12,20 @@ export type Handlers = NonNullable<Options["handlers"]>;
 export type Commands = NonNullable<Options["commands"]>;
 
 export interface RecordingView {
-  trees: Array<{ rows: Row[]; selected: string | null }>;
+  trees: Array<{ rows: Row[]; selected: string | null; marked: string[] }>;
   headers: Header[];
   statuses: string[];
   /** Every row the plugin moved the keyboard focus to (null: the tree itself). */
   focused: Array<string | null>;
-  tree(rows: Row[], selected: string | null): void;
+  tree(rows: Row[], selected: string | null, marked?: ReadonlySet<string>): void;
   header(header: Header): void;
   status(text: string): void;
   focus(id: string | null): void;
   /** The latest tree, one line per row: `depth:kind:name`, `+` when expanded, `!` on an error. */
   shown(): string[];
   selected(): string | null;
+  /** The rows selected together in the latest tree, in the order they are shown (#313). */
+  marked(): string[];
   /** Where drops land: the tree's stand-in, and a folder row on it for `host.dnd.drop({ over })`. */
   dropTarget: object;
   landing(element: unknown): unknown;
@@ -36,7 +38,12 @@ export function recordingView(): RecordingView {
     headers: [],
     statuses: [],
     focused: [],
-    tree: (rows, selected) => view.trees.push({ rows, selected }),
+    tree: (rows, selected, marked) =>
+      view.trees.push({
+        rows,
+        selected,
+        marked: rows.filter((row) => marked?.has(row.id)).map((row) => row.id),
+      }),
     header: (header) => view.headers.push(header),
     status: (text) => view.statuses.push(text),
     focus: (id) => view.focused.push(id),
@@ -49,6 +56,7 @@ export function recordingView(): RecordingView {
           `${row.depth}:${row.kind}:${row.name}${row.expanded ? "+" : ""}${row.error ? "!" : ""}`,
       ),
     selected: () => view.trees.at(-1)?.selected ?? null,
+    marked: () => view.trees.at(-1)?.marked ?? [],
   };
   return view;
 }

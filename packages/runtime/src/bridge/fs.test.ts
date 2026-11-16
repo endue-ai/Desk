@@ -109,6 +109,25 @@ describe("the browser stub's file tree (ADR 0125)", () => {
     expect(refuse.handlers["fs.rename"](inside, "desk")).toEqual({ crossedDevices: false });
   });
 
+  it("fs.rename and fs.copy accept a group", () => {
+    // The changes of one action share a group (ADR 0247); like desk-core, it is 1 to 128 characters.
+    const { handlers, tree: files } = tree();
+    const grouped = { from: "~/Documents/plan.md", to: "~/Desktop/plan.md", scope: WRITE };
+    expect(handlers["fs.rename"]({ ...grouped, group: "paste-1" }, "p")).toEqual({
+      crossedDevices: false,
+    });
+    const copy = { from: "~/Desktop/plan.md", to: "~/Desktop/copy.md", scope: WRITE, fromScope: READ };
+    expect(handlers["fs.copy"]({ ...copy, group: "paste-1" }, "p")).toEqual({ bytesCopied: 6 });
+    const back = { from: "~/Desktop/plan.md", to: "~/Documents/plan.md", scope: WRITE };
+    expect(code(() => handlers["fs.rename"]({ ...back, group: "" }, "p"))).toBe("invalid_params");
+    const twice = { ...copy, to: "~/Desktop/again.md" };
+    expect(code(() => handlers["fs.copy"]({ ...twice, group: "g".repeat(129) }, "p"))).toBe(
+      "invalid_params",
+    );
+    expect(files.read("~/Desktop/plan.md")).toBe("# plan");
+    expect(files.read("~/Desktop/again.md")).toBeUndefined();
+  });
+
   it("fs.copy copies a folder tree and answers the bytes copied", () => {
     const { handlers, tree: files } = tree();
     const copied = handlers["fs.copy"](
