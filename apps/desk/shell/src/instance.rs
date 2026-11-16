@@ -38,9 +38,8 @@ impl Handoff {
     /// This process's own arguments and folder.
     pub fn this_process() -> Self {
         Self {
-            args: std::env::args_os()
-                .map(|arg| arg.to_string_lossy().into_owned())
-                .collect(),
+            // On Windows the raw rest after --single-argument is one argument (#310).
+            args: crate::open_files::process_args(),
             cwd: std::env::current_dir()
                 .unwrap_or_default()
                 .to_string_lossy()

@@ -41,11 +41,15 @@ const picked = (h: Host) =>
   };
 
 describe("endue:// links the shell queued", () => {
-  it("a file link asks first, no first, and opens the file only on yes", async () => {
+  it("a file link asks first, no first, and opens the file only on yes, granting nothing", async () => {
     const yes = host("yes");
     await openLink(yes, "endue://v1/open?path=%2FUsers%2Fa%2Fb%20c.md");
     expect(ran(yes)).toEqual(["desk.palette.pick", "desk.files.open"]);
-    expect(yes.commands.run).toHaveBeenCalledWith("desk.files.open", { path: "/Users/a/b c.md" });
+    // Even on yes the opener is granted nothing: it asks for its read as usual.
+    expect(yes.commands.run).toHaveBeenCalledWith("desk.files.open", {
+      path: "/Users/a/b c.md",
+      grant: false,
+    });
     expect(picked(yes).title).toBe("A link asks to open /Users/a/b c.md. Open it?");
     expect(picked(yes).items.map((i) => i.id)).toEqual(["no", "yes"]);
     for (const answer of ["no", undefined]) {
@@ -125,6 +129,10 @@ describe("endue:// links the shell queued", () => {
   it("text from a link reaches a notice without control or bidi characters, and short", () => {
     expect(shown("a‮gpj.exe\u0007")).toBe("agpj.exe");
     expect(shown("x".repeat(500))).toHaveLength(120);
+    const long = `/Users/a/${"deep/".repeat(40)}report.md`;
+    expect(shown(long)).toHaveLength(120);
+    expect(shown(long).startsWith("/Users/a/deep/")).toBe(true);
+    expect(shown(long).endsWith("…report.md")).toBe(true);
     expect(readLink(`${REFUSED}${encodeURIComponent("bad‮\n")}`)).toEqual({ refused: "bad" });
   });
 });
