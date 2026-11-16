@@ -1,6 +1,6 @@
 # endue Desk 터미널 요구사항
 
-2026-10-31 · Team endue · 2026-11-07 알림 · 창 맞춤 · 검색 · 링크 · 붙이기 · 탭 (#538, ADR 0113)
+2026-10-31 · Team endue · 2026-11-07 알림 · 창 맞춤 · 검색 · 링크 · 붙이기 · 탭 (#538, ADR 0113) · 2026-11-16 X10 마우스 · OSC 52 · 제목 스택 · 이벤트 커맨드 (issue 319, ADR 0258)
 
 > 터미널 플러그인(`plugins/terminal`, `endue.terminal`)이 프로덕션 수준에서 갖춰야 할 것을 번호를 붙여 적은 문서입니다. `desk-requirements.md` 의 SYSP `terminal`(2단계) · SYS-02 · CORE-01 을 한 플러그인 단위로 펼친 것이고, 그 문서의 ID 를 그대로 가리킵니다. 왜 xterm.js 를 폴더 안에 복사해 두는지는 ADR 0037 이, 코드가 하는 일은 `plugins/terminal/README.md` 가 말합니다. 코드와 어긋나면 이 문서를 고치고, 되돌리기 어려운 갈림길은 ADR 로 남깁니다.
 
@@ -72,6 +72,7 @@
 | TERM-S08 | 작업 폴더: 셸이 OSC 7(`file://host/path`, ConEmu 의 `9;9`)로 알린 폴더를 세션이 기억하고, 새 탭은 화면의 탭이 있는 폴더에서 연다(`endue.terminal.new-tab-folder`: `current` · `setting`). 재시작 뒤 복원: `desk.session` 이 표면을 되살릴 때 마지막 cwd 로 새 셸을 띄운다. 스크롤백은 되살리지 않는다 | 일부 (새 탭 · 리로드 스냅샷의 cwd 있음, 재시작 뒤 복원 없음) | 1 · 2 |
 | TERM-S09 | 닫기 전 확인: 전경 프로세스가 있으면(셸 통합이 알려 줄 때) `desk.buffers.confirm-unsaved` 처럼 묻는다 | 없음 | 2 |
 | TERM-S10 | Windows: ConPTY(desk-sys) 위에서 pwsh · powershell · cmd, `-NoLogo`, `.exe` 이름, 역슬래시 경로. 실기 검증과 CI | 일부 (코드 경로는 있음, 실기 미검증) | 1 |
+| TERM-S12 | 로케일: 앱이 `LANG` 없이 뜨면(Finder · 로그인 항목, launchd 는 넘기지 않는다) 셸이 C 로케일로 돌아 한글 입력 · 파일 이름이 깨진다. `LC_ALL` · `LC_CTYPE` · `LANG` 이 모두 없으면 PTY 에 UTF-8 로케일을 준다(Terminal.app · iTerm2 · Alacritty 처럼). 샌드박스 프레임은 환경을 못 보므로 desk-sys `proc/pty.rs` 의 일 | 없음 (별도 작업, desk-sys 레인) | 1 |
 | TERM-S11 | 탭: 이름 바꾸기(F2 · 두 번 클릭 · `endue.terminal.rename`; 사람이 붙인 이름은 셸의 제목이 바꾸지 못하고, 빈 이름이면 프로그램 이름으로), 순서 바꾸기(Shift+←/→ · 끌기). 순서와 이름은 리로드 스냅샷에 남는다 | 있음 | 1 |
 
 ### 에뮬레이션과 표시 (TERM-E)
@@ -87,6 +88,7 @@
 | TERM-E07 | 링크: OSC 8 하이퍼링크(xterm 의 linkHandler)와 일반 텍스트의 URL(web-links 애드온)을 Mod+클릭(macOS ⌘, 그 밖은 Ctrl)으로 `shell.open` 에 넘긴다. 그냥 클릭 · 올려 두기는 상태 줄에 방법을 말한다. http · https · mailto 만 열고(매니페스트의 `shell:open` 범위), 거절은 문장으로 | 있음 | 2 |
 | TERM-E08 | 검색: 스크롤백 안에서 다음 · 이전, 대소문자 · 정규식 · 단어 단위, 몇 번째/몇 개(search 애드온). 터미널 안의 `Mod+F`(macOS) · `Control+Shift+F`(그 밖) 와 `endue.terminal.find`. 잘못된 정규식은 문장으로. 선택 복사, 선택 즉시 복사 설정(`copy-on-select`) | 있음 | 2 |
 | TERM-E09 | 접근성: 탭은 `role=tab` · `tabpanel`, 상태는 live region, xterm 스크린 리더 모드를 설정으로, 키보드만으로 탭 이동(커맨드) | 일부 (스크린 리더 모드 설정은 없음) | 1 |
+| TERM-E11 | 창 동작(CSI t): vim · neovim 이 쓰는 제목 스택(22 · 23 t, 끝나면 탭과 버퍼가 셸의 제목으로 돌아온다)과 크기 보고(18 · 14 · 16 t)만 켠다. 창을 옮기고 · 크기를 바꾸고 · 올리고 · 접고 · 제목을 읽어 가는 동작은 끈 채로 둔다(`theme.js` 의 `WINDOW_OPTIONS`) | 있음 (issue 319) | 1 |
 | TERM-E10 | 성능 예산: `yes` · 큰 파일 `cat` 같은 폭주 출력에 UI 가 멈추지 않는다(입력→화면 p95 50 ms 아래, 10 MB/s 소화), 메모리는 스크롤백 상한에 묶인다. 기준값은 첫 측정으로 고정(RT-16) | 없음 (측정 없음) | 1 · 4 |
 
 ### 입력 · 키 · 클립보드 (TERM-I)
@@ -96,8 +98,9 @@
 | TERM-I01 | 키 소유: Escape 와 Control 코드는 셸의 것(vim · Ctrl+C · Ctrl+R). 데스크 고유 코드(팔레트 · 버퍼 · 창 · 데스크톱 · 터미널 키, `keys.js` 의 목록)는 데스크로 가고, `endue.terminal.keys-to-desk` 가 더한다. macOS 는 그 밖의 Command 코드도 데스크로. 매니페스트가 묶는 키는 그 목록에 있어야 한다(테스트가 검사) | 있음 | 0 |
 | TERM-I02 | 복사 · 붙이기: `Mod+C`(선택이 있을 때) · `Mod+V`, Linux · Windows 는 `Control+Shift+C` · `Control+Shift+V` 도. 붙이기는 브라우저의 paste 이벤트(샌드박스 프레임에서 Clipboard API 없이 되는 길), 괄호 붙이기는 xterm 이. 붙이는 글에서 괄호 붙이기 표식(`ESC[200~` · `ESC[201~`)을 빼고, 괄호 붙이기를 켜지 않은 프로그램에 여러 줄을 붙이면 먼저 묻는다(`endue.terminal.paste-warning`: `auto` · `always` · `never`) | 있음 (코드) — WKWebView · WebKitGTK · WebView2 에서 실기 검증 | 0 · 1 |
 | TERM-I03 | 클립보드 권한 어휘(BR-06 `clipboard:read` · `clipboard:write`)가 생기면 붙이기를 브리지 API 로 옮긴다. 그때까지 Clipboard API 를 부르지 않는다 | 없음 | 2 |
-| TERM-I04 | 마우스: 선택 · 휠 스크롤 · 마우스 리포팅(프로그램이 켠 경우) · Alt+클릭 커서 이동(xterm 기본) | 일부 (xterm 기본, 미검증) | 1 |
+| TERM-I04 | 마우스: 선택 · 휠 스크롤 · 마우스 리포팅(프로그램이 켠 경우) · Alt+클릭 커서 이동(xterm 기본). 리포팅은 SGR(1006)과 X10 인코딩 둘 다: 1006 없이 1000 · 1002 · 1003 만 켠 프로그램(macOS 기본 terminfo 의 ncurses 프로그램 전부)의 보고는 xterm 이 `onBinary` 로 넘기는 바이트라 base64 `proc.write` 로 보낸다. 전에는 듣지 않아 클릭 · 휠이 모두 사라졌다 | 있음 (런타임 e2e 의 실제 클릭, issue 319) | 1 |
 | TERM-I05 | 키 힌트 · describe(RT-05 · 06): 터미널 안에서 데스크 키가 왜 안 먹는지, 어느 키가 셸로 가는지를 보인다 | 없음 | 2 |
+| TERM-I07 | 프로그램의 복사(OSC 52): neovim · tmux · helix · ssh 너머 프로그램이 보낸 base64 글을 웹뷰의 복사(터미널이 채우는 copy 이벤트)로 클립보드에 넣고 상태 줄에 몇 글자인지 말한다. 읽기(`?`)에는 답하지 않는다. `endue.terminal.program-copy` 로 끈다. 최근의 키 · 클릭 없이 온 복사는 웹뷰가 거절하고, 그때는 선택해 복사하라고 말한다(ADR 0258) | 있음 (issue 319) | 1 |
 | TERM-I06 | 우클릭 메뉴: Copy(선택이 있을 때) · Paste · Select all · Clear · Find · Rename tab, 키 표시와 함께. 화살표 · Home/End · Enter · Escape. Paste 는 웹뷰의 붙이기(`execCommand`)로, 막히면 키를 말한다 | 있음 | 1 |
 
 ### 권한과 보안 (TERM-P)
@@ -139,6 +142,7 @@
 | TERM-N05 | 문구: 제목은 `<탭 제목> — <프로그램의 제목>`(없으면 탭 제목), 본문은 이스케이프 · 제어 문자를 빼고 공백을 접어 300자로 자른다(넘으면 `…`) | 있음 | 1 |
 | TERM-N06 | 폭주: 탭마다 10초에 5개, 데스크 전체 10초에 10개. 같은 탭 · 제목 · 본문은 30초에 한 번. 막힌 것은 세어 두었다가 그 탭의 다음 알림이 `(and N more held back)` 으로 말한다 | 있음 | 1 |
 | TERM-N07 | 안 읽음: 안 보는 탭의 알림은 그 탭의 배지(`desk-badge`, 스크린 리더에는 `zsh, 2 unread`)로 세고, 그 탭을 보이거나 포커스하면 지운다 | 있음 | 1 |
+| TERM-N09 | 이벤트 커맨드: 벨 · 프로그램의 알림 · 긴 명령 · 프로그램의 끝이 `endue.terminal.event-commands` 가 그 이벤트에 붙인 데스크 커맨드를 `{ event, session, tab, looking, level, … }` 인자로 돌린다(Emacs 의 `ring-bell-function` 처럼). 보든 안 보든, `bell` · `program-notify` 와 상관없이. 폭주는 알림처럼 막고(`held`), grant 밖 커맨드는 `perm.request` 로 한 번 묻는다. 돌 때마다 코어 버스의 `cmd.invoked` 라 다른 플러그인도 듣는다(ADR 0258) | 있음 (issue 319) | 1 |
 | TERM-N08 | 클릭: 상태 줄의 플러그인 알림(글이 곧 단추), 알림 기록에서 고르기 → 런타임이 `desk.display.show { plugin }` 다음 데스크 요청 `desk.notify.open { notificationId }`. 터미널은 그 알림을 보낸 탭을 보이고 포커스한다. OS 알림(#521)의 클릭도 같은 요청 | 있음 | 1 |
 
 ### 설정 (TERM-SET)
@@ -159,6 +163,8 @@
 | `notify-after` | 10 | 이 초 이상 걸린 명령의 끝을 알림(0 ~ 86400, 0 이면 끔) |
 | `paste-warning` | `auto` | 여러 줄 붙이기 전에 묻기: `auto`(괄호 붙이기가 꺼진 프로그램만) · `always` · `never` |
 | `new-tab-folder` | `current` | 새 탭의 폴더: 화면의 탭이 있는 폴더(OSC 7) 또는 `setting`(`cwd`) |
+| `program-copy` | true | 프로그램이 OSC 52 로 클립보드에 쓰게 한다(읽기는 언제나 안 됨) |
+| `event-commands` | `{}` | 이벤트(`bell` · `notification` · `command` · `exit`)마다 돌릴 데스크 커맨드 id |
 
 ### 테스트 (TERM-T)
 
@@ -166,7 +172,7 @@
 | --- | --- | --- | --- |
 | 통합 (Rust) | `proc.*` 가 권한 엔진을 지나고(명령 · pty · 소유), 출력과 종료가 호출자에게 순서대로 가고, off · 회수가 프로세스를 끝낸다. 자식은 테스트 바이너리 자신이라 3 OS 에서 돈다 | `crates/desk-core/tests/proc.rs`(10) · `core_proc.rs` 단위(UTF-8 쪼개짐, 2) | 있음 |
 | 단위 (TS) | 세션(시작 · 후보 · 묻기 · 출력 · 입력 · 종료 · 재시작 · 탭 · 버퍼 · run · 리로드), 기본 셸 · 설정, 키 소유, 테마, 매니페스트 | `plugins/terminal/tests`(52) · `packages/runtime/src/owners.test.ts`(7) · `scripts/vendor-xterm.test.mjs`(3) | 있음 |
-| 런타임 (웹) | 실제 iframe 에서 xterm 이 뜨고 키 · 크기 · 테마가 가는지. 브라우저 스텁에 가짜 `proc`(BR-07)이 있어야 한다. 터미널 창이 여러 크기(열기 · 크기 바꾸기 · 반쪽 · 최대화 · 서랍에서 다시)에서 판을 채우는지는 측정과 스냅샷으로(픽스처의 터미널은 카운터 페이지) | `packages/runtime/e2e/terminal-fit.spec.ts` | 일부 (창 맞춤만) → 1 |
+| 런타임 (웹) | 실제 iframe 에서 xterm 이 뜨고 키 · 크기 · 테마가 가는지. 브라우저 스텁에 가짜 `proc`(BR-07)이 있어야 한다. 터미널 창이 여러 크기(열기 · 크기 바꾸기 · 반쪽 · 최대화 · 서랍에서 다시)에서 판을 채우는지는 측정과 스냅샷으로(픽스처의 터미널은 카운터 페이지) | `packages/runtime/e2e/terminal-fit.spec.ts` · `terminal-render.spec.ts`(실제 플러그인을 `test.terminal` 로, 대본 PTY 가 지어낸 테스트 패턴을 찍는다: 색 · 밑줄 모양 · 박스 · 넓은 글자 · 상태 줄의 알림 · 제목 스택 · X10 클릭 · OSC 52) | 일부 (창 맞춤 · 그리기 · 알림, 키 입력은 아직) → 1 |
 | 앱 e2e | 실제 셸에서 `echo hello` 가 화면에 보이고, 닫으면 프로세스가 없다(Linux) | `e2e/specs` | 없음 → 1 |
 | 성능 | TERM-E10 의 예산 | 야간 | 없음 → 1 · 4 |
 

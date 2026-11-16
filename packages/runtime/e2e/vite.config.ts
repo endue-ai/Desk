@@ -25,6 +25,8 @@ const plugins: Record<string, string> = {
   "test.lazy": here("./fixture/plugins/test-echo"),
   // The shell page's terminal (?apps=1) is the counter under the terminal's id.
   "endue.terminal": here("./fixture/plugins/test-counter"),
+  // The real terminal on its own page (terminal.html), under an id of its own (issue 319).
+  "test.terminal": join(repo, "plugins/terminal"),
   "desk.palette": join(repo, "plugins/palette"),
   "desk.views": join(repo, "plugins/views"),
   "desk.universal": join(repo, "plugins/universal"),
@@ -105,6 +107,8 @@ const pluginLabel = (id: string) => id.replaceAll("-", "--").replaceAll(".", "-"
 const types: Record<string, string> = {
   ".html": "text/html",
   ".js": "text/javascript",
+  // The terminal's vendored xterm.js and its addons (issue 319).
+  ".mjs": "text/javascript",
   ".css": "text/css",
   ".json": "application/json",
   ".svg": "image/svg+xml",

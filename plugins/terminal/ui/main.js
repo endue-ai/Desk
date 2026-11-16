@@ -70,6 +70,7 @@ defineUiPlugin({
         bridge: ctx.bridge,
         platform,
         pasteWarning: () => settings().pasteWarning,
+        programCopy: () => settings().programCopy,
         dnd: ctx.dnd,
       },
     );

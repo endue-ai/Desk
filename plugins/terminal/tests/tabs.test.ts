@@ -61,6 +61,7 @@ vi.mock("../ui/vendor/xterm.mjs", () => ({
       this.titleChanged = callback;
     }
     onBell() {}
+    onBinary() {}
     onSelectionChange() {}
     attachCustomKeyEventHandler() {}
     focus() {
