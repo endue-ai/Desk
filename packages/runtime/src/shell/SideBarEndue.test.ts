@@ -95,8 +95,8 @@ describe("the agent bar once signed in to endue (ADR 0129)", () => {
     expect(lines()).toEqual(["Scout · Online"]);
     over('[data-endue-space="sp_sample001"]');
     expect(lines()).toEqual(["Launch space", "Ship the launch page and its first mail"]);
-    // Three agents and two spaces, and the unfold control before them.
-    expect(root.querySelectorAll(".sidebar button")).toHaveLength(6);
+    // The unfold control, three agents and two spaces, then New agent and New space.
+    expect(root.querySelectorAll(".sidebar button")).toHaveLength(8);
     expect(root.querySelector(".sidebar button[title]")).toBeNull();
   });
 

@@ -135,8 +135,9 @@ describe("the agent bar's unfolded list (issue 294)", () => {
       ]),
     ).toEqual([
       ["group", "Agents on this computer", ["This computer"], 2, 2],
-      ["group", "Agents", ["Agents"], 3, 3],
-      ["group", "Spaces", ["Spaces"], 2, 2],
+      // Each group of the directory ends with its New row (bar-new.ts).
+      ["group", "Agents", ["Agents"], 4, 4],
+      ["group", "Spaces", ["Spaces"], 3, 3],
     ]);
     // The group has the name already: its caption is for the eye.
     for (const caption of bar.querySelectorAll(".bar-caption"))
@@ -252,7 +253,8 @@ describe("the agent bar's unfolded list (issue 294)", () => {
     const { store, root, bar, one, toggle } = await setup();
     crowd(store);
     const folded = controls(bar);
-    expect(folded).toHaveLength(2 + 6 + 2);
+    // The programs, six agent places and New agent, two spaces and New space.
+    expect(folded).toHaveLength(2 + 6 + 1 + 2 + 1);
     expect(folded.at(7)).toEqual(["agents-more", "2 more agents"]);
     toggle();
     expect(controls(bar)).toEqual(folded);
