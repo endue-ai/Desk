@@ -2,7 +2,7 @@
 import type { Commands } from "../commands";
 import { h } from "../shell/dom";
 import { icon } from "../shell/icons";
-import type { SettingsLanguage } from "./copy";
+import { type SettingsLanguage, settingsText } from "./copy";
 import { settingsIcon } from "./icons";
 
 export function themeSettingsEntry(
@@ -11,7 +11,7 @@ export function themeSettingsEntry(
   language: SettingsLanguage,
 ): HTMLElement | null {
   if (!commands.has("desk.theme.studio")) return null;
-  const title = language === "ko" ? "테마" : "Themes";
+  const title = settingsText(language, "themes");
   return h(
     "section",
     { class: "settings-group" },

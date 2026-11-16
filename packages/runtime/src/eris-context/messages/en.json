@@ -1,0 +1,7 @@
+{
+  "erisContext.cmdClosed": "Windows · Closed recently",
+  "erisContext.cmdReopen": "Windows · Reopen a closed window",
+  "erisContext.cmdCapabilities": "What can I do here",
+  "erisContext.noneClosed": "No window was closed recently.",
+  "erisContext.notClosed": "{id} is not among the windows closed recently."
+}

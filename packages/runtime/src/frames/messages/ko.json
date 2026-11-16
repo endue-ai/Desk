@@ -1,0 +1,13 @@
+{
+  "frames.notResponding": "응답 없음",
+  "frames.notRespondingLine": "{title} 창이 5초 넘게 응답하지 않습니다. 기다리거나 멈출 수 있습니다.",
+  "frames.wait": "기다리기",
+  "frames.stop": "멈추기",
+  "frames.stoppedLine": "응답하지 않아 멈췄습니다. 다시 불러오면 마지막 상태로 돌아옵니다.",
+  "frames.reload": "다시 불러오기",
+  "frames.crashedLine": "{title}의 프로세스가 멈춰 다시 불러오는 중입니다.",
+  "frames.heldLine": "1분 안에 두 번 멈춰, 다시 불러올 때까지 꺼 둡니다. 다른 창에는 영향이 없습니다.",
+  "frames.cmdWait": "응답 없는 창 · 기다리기",
+  "frames.cmdStop": "응답 없는 창 · 멈추기",
+  "frames.cmdReload": "멈춘 창 · 다시 불러오기"
+}

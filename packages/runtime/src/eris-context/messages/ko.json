@@ -1,0 +1,7 @@
+{
+  "erisContext.cmdClosed": "창 · 최근에 닫은 창",
+  "erisContext.cmdReopen": "창 · 닫은 창 다시 열기",
+  "erisContext.cmdCapabilities": "여기서 할 수 있는 일",
+  "erisContext.noneClosed": "최근에 닫은 창이 없어요.",
+  "erisContext.notClosed": "최근에 닫은 창 중에 {id} 이(가) 없어요."
+}

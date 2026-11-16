@@ -9,6 +9,7 @@ import type { KeyBinding } from "@endue-ai/bridge";
 import { isBinding, PERSONAL_KEYS, SEQUENCE_TIMEOUT } from "../core/defaults";
 import { DEFAULT_KEYS } from "../core/keys";
 import type { Notify } from "../gesture";
+import { moduleText } from "../i18n/messages";
 import { formatCombo } from "../input";
 import { Keymap } from "../keymap";
 import type { PolicySet } from "../policy";
@@ -18,9 +19,13 @@ import { conflictText, lintLines, sourceText } from "../sequences/report";
 import { personalSources, withSources } from "../sequences/sources";
 import { mountWhichKey } from "../sequences/which-key";
 import { type DeskContext, disposer, type Installed } from "./context";
+import en from "./messages/en.json";
+import ko from "./messages/ko.json";
 
 /** The setting that holds the person's layer of the keymap. */
 export { PERSONAL_KEYS } from "../core/defaults";
+
+const text = moduleText("policies", { en, ko });
 
 export interface KeysPolicy extends Installed {
   keymap: Keymap;
@@ -110,7 +115,7 @@ export function installKeys(
 
   offs.add(
     commands.define("desk.keys.quit", {
-      title: language === "ko" ? "진행 중인 작업 닫기" : "Quit what is in progress",
+      title: text(language, "keysQuit"),
       keywords: ["cancel", "escape", "keyboard-quit"],
       owner: "desk",
       run: () => {
@@ -120,7 +125,7 @@ export function installKeys(
   );
   offs.add(
     commands.define("desk.keys.list", {
-      title: language === "ko" ? "단축키 목록 보기" : "List key bindings",
+      title: text(language, "keysList"),
       // Emacs's describe-bindings, but "describe" alone finds desk.describe.open (Describe…) first.
       keywords: ["keys", "shortcuts", "bindings", "describe-bindings"],
       owner: "desk",
@@ -136,7 +141,7 @@ export function installKeys(
   );
   offs.add(
     commands.define("desk.keys.conflicts", {
-      title: language === "ko" ? "단축키 충돌 보기" : "List key binding conflicts",
+      title: text(language, "keysConflicts"),
       keywords: ["keys", "shortcuts", "conflicts", "shadowed", "lint"],
       owner: "desk",
       run: () => {
