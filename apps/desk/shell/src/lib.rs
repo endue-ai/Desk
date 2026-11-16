@@ -34,6 +34,7 @@ pub mod native_host;
 #[path = "native_host/unsupported.rs"]
 pub mod native_host;
 pub mod open_files;
+pub mod os_dnd;
 pub mod palette;
 pub mod palette_assets;
 pub mod pane;

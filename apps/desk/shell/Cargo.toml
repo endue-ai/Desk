@@ -80,7 +80,7 @@ wgpu.workspace = true
 # When the OS started the process (`proc_pidinfo`): the start-up trace's origin (#112).
 libc = "0.2"
 objc2 = "0.6"
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSEvent", "NSGraphics", "NSResponder", "NSScreen", "NSView", "NSWindow"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSDragging", "NSDraggingItem", "NSDraggingSession", "NSEvent", "NSGraphics", "NSImage", "NSPasteboard", "NSResponder", "NSScreen", "NSView", "NSWindow", "NSWorkspace"] }
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSDictionary", "NSEnumerator", "NSGeometry", "NSString", "NSURL", "NSValue"] }
 # A paint's IOSurface, named by its IOSurfaceID in the surface protocol's attach (#52).
 objc2-io-surface = { version = "0.3", default-features = false, features = ["std", "IOSurfaceRef", "IOSurfaceTypes", "objc2"] }

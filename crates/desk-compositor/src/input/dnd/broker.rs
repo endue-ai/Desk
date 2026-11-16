@@ -31,6 +31,12 @@ pub enum DndOut {
     Send(M),
     /// A drop from the OS that no surface took: the desk opens the files, as before.
     Open(Vec<String>),
+    /// A surface's drag of these paths left the window: the shell starts an OS drag with them,
+    /// offering these effects, and says how it ended (`Broker::os_ended`, #309).
+    HandOff {
+        paths: Vec<String>,
+        allowed: Vec<SurfaceDropEffect>,
+    },
 }
 
 /// The drag image the compositor draws above every window: for a drag from a surface, the image
@@ -79,6 +85,9 @@ pub struct Broker {
     pub(super) drag: Option<Drag>,
     pub(super) settling: Option<(Drag, Instant)>,
     pub(super) drops: Vec<Dropped>,
+    /// A drag handed to the OS (`os.rs`): its source surface and the effects it allowed, until the
+    /// OS says how it ended.
+    pub(super) handed: Option<(String, Vec<SurfaceDropEffect>)>,
 }
 
 pub(super) fn send(m: M) -> DndOut {
@@ -206,7 +215,7 @@ impl Broker {
         out
     }
 
-    fn begin(
+    pub(super) fn begin(
         &mut self,
         source: Option<String>,
         from: String,
