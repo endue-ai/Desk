@@ -36,7 +36,8 @@ export const SECRET_HEADERS =
 /**
  * Turn the editor's request into what curl sends.
  * @param {Request} req
- * @param {{ scopes: Scope[], parentAuth?: import("./model.js").Auth[], parentHeaders?: import("./model.js").Pair[] }} ctx
+ * @param {{ scopes: Scope[], parentAuth?: import("./model.js").Auth[], parentHeaders?: import("./model.js").Pair[],
+ *   tokenFor?: (auth: import("./model.js").Auth) => string, cookies?: (url: string) => string }} ctx
  * @returns {{ prep: Prepared, missing: string[], bodyText: string }}
  */
 export function prepare(req, ctx) {
@@ -44,7 +45,7 @@ export function prepare(req, ctx) {
   const missing = new Set();
   const fill = (/** @type {string} */ text) => resolve(text, ctx.scopes, missing);
   const { auth } = effectiveAuth(req.auth, ctx.parentAuth ?? []);
-  const applied = applyAuth(auth, fill);
+  const applied = applyAuth(auth, fill, ctx.tokenFor);
   const query = active(req.params).map((p) => ({ key: fill(p.key), value: fill(p.value) }));
   query.push(...applied.query);
   const path = new Map(active(req.pathParams).map((p) => [p.key, fill(p.value)]));
@@ -71,6 +72,10 @@ export function prepare(req, ctx) {
     else add(key, fill(h.value));
   }
   for (const h of applied.headers) add(h.key, h.value);
+  if (req.settings.cookies && ctx.cookies && !headers.some((h) => /^cookie$/i.test(h.key))) {
+    const jar = ctx.cookies(url);
+    if (jar) headers.push({ key: "Cookie", value: jar });
+  }
 
   const b = req.body;
   /** @type {Prepared["body"]} */

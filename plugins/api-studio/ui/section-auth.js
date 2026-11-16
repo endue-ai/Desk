@@ -141,8 +141,10 @@ function drawAuth(S, tab) {
     );
     const state = h("div.as-token-state");
     const drawState = () => {
-      const has = !!o.token;
-      const left = o.expires ? Math.round((o.expires - Date.now()) / 60000) : undefined;
+      const held = S.tokens?.heldFor(tab);
+      const has = !!(o.token || held);
+      const expires = o.token ? undefined : held?.expires;
+      const left = expires ? Math.round((expires - Date.now()) / 60000) : undefined;
       state.replaceChildren(
         has ? icon("check", 14) : icon("info", 14),
         h(

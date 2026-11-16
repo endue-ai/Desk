@@ -29,6 +29,17 @@
   "contributes": {
     "commands": [],
     "keys": [],
-    "settings": {}
+    "settings": {
+      "endue.api-studio.curl": {
+        "kind": "string",
+        "default": "",
+        "description": "The curl program requests go through: a path, or empty for curl on the desk's PATH (then where it is usually installed)."
+      },
+      "endue.api-studio.history": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Keep the last requests sent in the History panel."
+      }
+    }
   }
 }

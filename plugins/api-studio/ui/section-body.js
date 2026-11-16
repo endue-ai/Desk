@@ -3,7 +3,7 @@
 // be tidied; JSON is checked as it is typed, {{variables}} allowed where a value goes.
 
 import { codeEditor } from "./code-editor.js";
-import { button, h, icon } from "./dom.js";
+import { button, fill, h, icon } from "./dom.js";
 import { prettyJson, prettyXml } from "./highlight.js";
 import { kvTable } from "./kv-table.js";
 import { BODY_MODES } from "./model.js";
@@ -57,7 +57,7 @@ export function drawBody(S, tab) {
     const lang = b.mode === "text" ? "text" : b.mode;
     const check = () => {
       const problem = b.mode === "json" ? jsonProblem(b.json) : undefined;
-      status.replaceChildren(problem ? h("span.as-bad", null, icon("alert", 13), problem) : null);
+      fill(status, problem ? h("span.as-bad", null, icon("alert", 13), problem) : null);
     };
     const ed = codeEditor({
       value: b[b.mode],

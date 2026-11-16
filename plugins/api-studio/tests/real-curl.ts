@@ -82,6 +82,20 @@ export async function testServer(): Promise<{
       setTimeout(() => res.end("late"), 5000);
       return;
     }
+    if (url.pathname === "/token") {
+      const ok =
+        req.headers.authorization === `Basic ${Buffer.from("app:shh").toString("base64")}` &&
+        /grant_type=client_credentials/.test(body);
+      res.writeHead(ok ? 200 : 401, { "content-type": "application/json" });
+      res.end(
+        JSON.stringify(
+          ok
+            ? { access_token: "tok-1", token_type: "Bearer", expires_in: 60 }
+            : { error: "invalid_client" },
+        ),
+      );
+      return;
+    }
     if (url.pathname.startsWith("/status/")) {
       res.writeHead(Number(url.pathname.slice(8)), { "content-type": "text/plain" });
       res.end("status");
