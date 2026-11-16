@@ -37,6 +37,28 @@ export interface AudioLevels {
   eris: Bands;
 }
 
+/** 20 ms of the microphone: mono LINEAR16 samples at `sampleRate`, and their level in dBFS. */
+export interface CaptureFrame {
+  samples: Int16Array;
+  sampleRate: number;
+  rmsDb: number;
+  peakDb: number;
+  /** Milliseconds since the capture started. */
+  atMs: number;
+}
+
+/** A capture the runtime started. */
+export interface MicCapture {
+  readonly captureId: string;
+  stop(): Promise<void>;
+}
+
+/** A capture in force and who started it: a plugin id, or `desk` for the runtime. */
+export interface CaptureInForce {
+  captureId: string;
+  caller: string;
+}
+
 /** A brain the desk can choose for Eris (ADR 0094); claude is the person's Claude Code (ADR 0109). */
 export type BrainName = "endue" | "local" | "echo" | "claude";
 
@@ -201,6 +223,16 @@ export interface ShellBridge {
   audio: {
     /** Band energies right now, before smoothing. Silent bands are 0. */
     levels(): AudioLevels;
+    /**
+     * Capture the microphone as the runtime (audio.capture, ADR 0245): `onFrame` hears every 20 ms
+     * frame until `stop`. Null when the person or the OS refuses, or there is no microphone. Hosts
+     * without a core leave it out.
+     */
+    capture?(onFrame: (frame: CaptureFrame) => void): Promise<MicCapture | null>;
+    /** Hear the captures in force, whoever started them, on every change; returns the unsubscribe. */
+    captures?(listener: (captures: readonly CaptureInForce[]) => void): () => void;
+    /** Stop any capture, for the person (the rail's microphone). */
+    stopCapture?(captureId: string): Promise<void>;
   };
   brain: {
     status(): Promise<BrainStatus>;
