@@ -7,6 +7,9 @@ decision-makers: Team endue
 Amends ADR 0132 (a filled window takes the whole app under the floating bars, which stay where they
 are).
 
+Amended by ADR 0253: the Drawer button moves into the strip under the canvas map and goes with it,
+so the account bar alone stays.
+
 # A window that fills the app sends the desk's chrome past its edges
 
 ## Context and Problem Statement
