@@ -1,0 +1,139 @@
+/* The map: a roof line over a floor plan, the router in the middle cell, a wire from it to every
+   device, each device a cell with its mark, its name, its IP address and its status. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-2);
+  margin: 0 0 var(--desk-space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.plan {
+  max-width: 960px;
+}
+
+.roof {
+  display: block;
+  width: 100%;
+  height: 40px;
+}
+
+.roof path {
+  fill: none;
+  stroke: var(--desk-border);
+  stroke-width: 2;
+}
+
+.house {
+  position: relative;
+  border: 2px solid var(--desk-border);
+  border-top: none;
+  border-radius: 0 0 var(--desk-radius-md) var(--desk-radius-md);
+  padding: var(--desk-space-3);
+}
+
+.wires {
+  position: absolute;
+  inset: var(--desk-space-3);
+  width: calc(100% - 2 * var(--desk-space-3));
+  height: calc(100% - 2 * var(--desk-space-3));
+  pointer-events: none;
+}
+
+.wire {
+  stroke: var(--desk-border);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.wire.status-caution {
+  stroke: var(--net-caution);
+}
+
+.floor {
+  position: relative;
+  display: grid;
+  gap: var(--desk-space-3);
+}
+
+.room {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--desk-space-1);
+  min-height: 96px;
+  padding: var(--desk-space-3) var(--desk-space-2);
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  /* The card's colour over the page's, so the wires behind never show through. */
+  background: linear-gradient(var(--desk-card), var(--desk-card)), var(--desk-background);
+  color: var(--desk-text);
+  text-align: center;
+  white-space: normal;
+  height: auto;
+}
+
+.room .kind-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.room.status-known {
+  border-left: 4px solid var(--net-known);
+}
+
+.room.status-new {
+  border-left: 4px solid var(--net-new);
+  border-style: dashed;
+}
+
+.room.status-caution {
+  border-left: 4px solid var(--net-caution);
+  border-width: 2px;
+}
+
+.room.hub {
+  background: linear-gradient(var(--desk-primary-soft), var(--desk-primary-soft)), var(--desk-background);
+  border: 2px solid var(--desk-primary);
+}
+
+.room[aria-pressed="true"] {
+  outline: var(--desk-focus-width) solid var(--desk-ring);
+  outline-offset: var(--desk-focus-offset);
+}
+
+.room-name {
+  max-width: 100%;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.room-ip {
+  color: var(--desk-text-muted);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.devices {
+  margin-top: var(--desk-space-4);
+}
+
+.devices table {
+  width: 100%;
+}
+
+.devices td {
+  white-space: nowrap;
+}
+
+.devices tr.away {
+  color: var(--desk-text-muted);
+}
+
+.row-open {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  text-align: left;
+}
