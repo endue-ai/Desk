@@ -100,3 +100,29 @@ fn values_over_64_kib_are_refused() {
     );
     assert_eq!(result, Err(ErrorCode::InvalidParams));
 }
+
+/// The store holds plugins' secrets (API Studio's secret variables, tokens, cookies), so its file
+/// is this user's only, as secrets.json and account.json are; one that was readable by others
+/// becomes private at the next write.
+#[cfg(unix)]
+#[test]
+fn the_store_file_is_readable_by_this_user_only() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let file = temp_file();
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    std::fs::write(&file, "{}").unwrap();
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
+    call(
+        &core(&file),
+        "endue.api-studio",
+        json!({ "id": 5, "method": "store.set", "params": { "key": "secrets.x", "value": { "token": "t" } } }),
+    )
+    .unwrap();
+    let mode = std::fs::metadata(&file).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600, "store.json is {mode:o}");
+    assert_eq!(
+        get(&core(&file), "endue.api-studio", "secrets.x"),
+        json!({ "value": { "token": "t" } })
+    );
+}
