@@ -77,7 +77,6 @@ export interface DeskState {
   edges: Edge[];
   /** The window (and pane) each desktop had in use when the person left it, by id. */
   focusBy: Partial<Record<DesktopId, { window: string; pane: string | null }>>;
-  modesOpen: boolean;
   /** The agent directory (specs/brain/v0), loaded through the bridge. */
   spaces: Space[];
   spaceId: string;
@@ -176,7 +175,6 @@ export function emptyState(lang: Lang): DeskState {
     agentsPinned: false,
     edges: [],
     focusBy: {},
-    modesOpen: false,
     spaces: [],
     spaceId: "",
     agents: [],

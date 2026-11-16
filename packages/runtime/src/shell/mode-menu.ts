@@ -1,30 +1,39 @@
 /**
- * A profile's menu, under its chip. The profile in force saves its layout, saves it as a new profile
- * and reverts it; every profile renames, the person's own deletes, and a plugin's profile the person
- * saved over restores. The arrow keys walk it; Esc and Tab close it, back to its chip.
+ * The profile menu, under the chip of the profile in force (issue 295): every other profile to switch
+ * to, "New profile", then the profile in force's own rows. It saves its layout and reverts it,
+ * renames, deletes the person's own, and restores a plugin's profile the person saved over; another
+ * profile is changed after switching to it. The arrow keys walk it; Esc and Tab close it, back to
+ * the chip.
  */
 import type { Mode } from "../modes/types";
-import { revert, saveIntoMode } from "./actions";
+import { revert, saveIntoMode, switchMode } from "./actions";
 import type { ShellCtx } from "./context";
-import { h } from "./dom";
+import { type Child, h } from "./dom";
+import { icon } from "./icons";
 import { originOf } from "./mode-edit";
 
 export interface ModeMenuUi {
   rename(id: string): void;
   remove(id: string): void;
-  /** Close the menu; `refocus` gives the focus back to its chip. */
+  /** Close the menu; `refocus` gives the focus back to the chip. */
   close(refocus: boolean): void;
 }
 
 export function modeMenu(
   ctx: ShellCtx,
-  mode: Mode,
-  current: boolean,
+  current: Mode,
+  others: Mode[],
   changed: boolean,
   ui: ModeMenuUi,
 ): HTMLElement {
-  const { id } = mode.manifest;
-  const item = (label: string, key: string, run: () => void, enabled = true) =>
+  const { id } = current.manifest;
+  const item = (
+    label: Child,
+    key: string,
+    run: () => void,
+    enabled = true,
+    extra: Record<string, string> = {},
+  ) =>
     h(
       "button",
       {
@@ -34,33 +43,54 @@ export function modeMenu(
         "data-key": key,
         disabled: !enabled,
         onClick: run,
+        ...extra,
       },
       label,
     );
+  const rule = () => h("div", { class: "mode-menu-rule", role: "separator" });
   const then = (run: (id: string) => void) => () => {
     ui.close(false);
     run(id);
   };
+  const profile = (mode: Mode) => {
+    const { id: other, name, copiedFrom } = mode.manifest;
+    return item(
+      [
+        icon(mode.manifest.icon, 16),
+        h("span", { class: "mode-name" }, name),
+        copiedFrom
+          ? h("span", { class: "mode-copied" }, icon("copy", 12), copiedFrom.author)
+          : null,
+      ],
+      `menu-switch-${other}`,
+      () => {
+        ui.close(true);
+        switchMode(ctx, other);
+      },
+      true,
+      {
+        "data-mode": other,
+        ...(copiedFrom
+          ? { "aria-label": `${name} · ${ctx.tr("copiedFrom", { author: copiedFrom.author })}` }
+          : {}),
+      },
+    );
+  };
   const origin = originOf(ctx, id);
-  const own = current
-    ? [
-        item(ctx.tr("saveInto"), "menu-save", () => saveIntoMode(ctx), changed),
-        item(ctx.tr("saveAsNew"), "menu-new", () =>
-          ctx.store.set({ dialog: "new-mode", popover: null }),
-        ),
-        item(ctx.tr("revert"), "menu-revert", () => revert(ctx), changed),
-        h("div", { class: "mode-menu-rule", role: "separator" }),
-      ]
-    : [];
   const el = h(
     "div",
     {
       class: "popover mode-menu",
       role: "menu",
-      "aria-label": `${ctx.tr("modes")} · ${mode.manifest.name}`,
+      "aria-label": `${ctx.tr("modes")} · ${current.manifest.name}`,
       "data-menu-for": id,
     },
-    ...own,
+    ...others.map(profile),
+    others.length ? rule() : null,
+    item(ctx.tr("newMode"), "menu-new", () => ctx.store.set({ dialog: "new-mode", popover: null })),
+    rule(),
+    item(ctx.tr("saveInto"), "menu-save", () => saveIntoMode(ctx), changed),
+    item(ctx.tr("revert"), "menu-revert", () => revert(ctx), changed),
     item(ctx.tr("renameMode"), "menu-rename", then(ui.rename)),
     origin === "own" ? item(ctx.tr("removeMode"), "menu-remove", then(ui.remove)) : null,
     origin === "changed" ? item(ctx.tr("restoreMode"), "menu-restore", then(ui.remove)) : null,
