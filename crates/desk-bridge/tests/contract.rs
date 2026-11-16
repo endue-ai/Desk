@@ -407,6 +407,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "DialogOpenResult" => roundtrip::<desk_bridge::DialogOpenResult>(vector),
                 "DialogSaveResult" => roundtrip::<desk_bridge::DialogSaveResult>(vector),
                 "BrainDesk" => roundtrip::<BrainDesk>(vector),
+                "MessageCatalog" => roundtrip::<desk_bridge::MessageCatalog>(vector),
                 other => panic!("{}: no Rust type mapped for {other}", vector.file),
             }
         }
