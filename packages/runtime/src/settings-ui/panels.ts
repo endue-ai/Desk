@@ -2,6 +2,7 @@ import type { Settings } from "../settings";
 import { append, type Child, h } from "../shell/dom";
 import { type SettingsCopy, type SettingsLanguage, settingsText } from "./copy";
 import { settingsIcon } from "./icons";
+import { systemNoticesRow } from "./system-notices-row";
 
 export const SECTIONS = [
   "account",
@@ -23,7 +24,7 @@ const TERMS: Record<SettingsSection, string> = {
   appearance:
     "appearance theme light dark system dark mode wallpaper live pond aurora 화면 테마 라이트 다크 자동 배경화면 라이브 연못 오로라",
   keyboard: "keyboard keys shortcuts bindings 키보드 단축키 키바인딩",
-  notifications: "notifications focus do not disturb 알림 방해금지 집중",
+  notifications: "notifications focus do not disturb system background 알림 방해금지 집중 시스템",
   accessibility: "accessibility contrast motion animation 손쉬운 사용 대비 동작 애니메이션",
   plugins: "plugins plugin extensions options 플러그인 확장 옵션",
   connections:
@@ -268,6 +269,7 @@ export function settingsPanel(
             h("span", {}),
           ),
         ),
+        systemNoticesRow(settings, language),
       ),
       h("p", { class: "settings-footnote" }, tr("historyHint")),
     );
