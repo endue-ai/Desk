@@ -202,6 +202,8 @@ export function docker(world, argv, io) {
       return runContainer(world, cmd, [sub, ...more], io);
     case "cp":
       return ok(io, "Successfully copied 4.1kB");
+    case "builder":
+      return ok(io, "Deleted build cache objects:\nk8f2d0x\n\nTotal:\t1.87GB");
     case "rename": {
       const c = container(sub);
       if (c) c.name = more[0] ?? c.name;

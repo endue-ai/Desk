@@ -206,7 +206,7 @@ export async function build(
         "68 packages are looking for funding",
         "found 0 vulnerabilities",
       ]) {
-        await sleep(350);
+        await sleep(700);
         io.err(`#${n} ${(Number(secs) * 0.6).toFixed(2)} ${line}\n`);
       }
     }
@@ -220,7 +220,7 @@ export async function build(
         io.err(`#${n} ${(Number(secs) * 0.7).toFixed(2)} ${line}\n`);
       }
     }
-    await sleep(Math.min(700, Number(secs) * 80 + 120));
+    await sleep(Math.min(1500, Number(secs) * 160 + 200));
     if (String(name).startsWith("exporting")) {
       io.err(
         `#${n} exporting layers 0.9s done\n#${n} writing image sha256:${hex(`built-${tag}`)} done\n#${n} naming to docker.io/library/${tag} done\n`,
