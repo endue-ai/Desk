@@ -54,7 +54,7 @@ describe("stage and unstage", () => {
     await expect(host.command("endue.git.stage")).rejects.toThrow("Select a file to stage.");
     view.selected = { kind: "hunk", path: "x", index: 0 };
     await app.stage();
-    expect(view.said.at(-1)).toMatch(/^Staging part of a file needs git to read a patch/);
+    expect(view.said.at(-1)).toBe("Open the diff to stage part of a file.");
   });
 
   it("unstage restores the index from HEAD, or removes the entry before the first commit", async () => {

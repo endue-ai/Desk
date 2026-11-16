@@ -21,6 +21,11 @@ describe("the keys inside the Git surface", () => {
     expect(actionFor("log", press("+"))).toBe("more");
     expect(actionFor("log", press("q"))).toBe("status");
     expect(actionFor("diff", press("q"))).toBe("back");
+    expect(actionFor("diff", press("s"))).toBe("stage");
+    expect(actionFor("diff", press("u"))).toBe("unstage");
+    expect(actionFor("diff", press("k"))).toBe("discard");
+    expect(actionFor("diff", press("v"))).toBe("mark");
+    expect(actionFor("diff", press("Escape"))).toBe("unmark");
     expect(actionFor("status", press("z"))).toBeUndefined();
   });
 

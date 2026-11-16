@@ -33,6 +33,8 @@ const COMMANDS = [
   "stage",
   "unstage",
   "discard",
+  "discard-patch",
+  "restore-patch",
   "commit",
   "log",
   "diff",
@@ -58,7 +60,13 @@ describe("plugin.json", () => {
       { permission: "proc:spawn", commands: ["git"] },
       {
         permission: "cmd:invoke",
-        ids: ["desk.files.open", "desk.palette.pick", "desk.buffers.open", "desk.buffers.update"],
+        ids: [
+          "desk.files.open",
+          "desk.palette.pick",
+          "desk.buffers.open",
+          "desk.buffers.update",
+          "endue.git.discard-patch",
+        ],
       },
     ]);
   });
@@ -80,6 +88,14 @@ describe("plugin.json", () => {
       kind: "boolean",
       default: true,
     });
+  });
+
+  it("a discard of part of a file is undone by its inverse; a whole file's is not", () => {
+    const commands = manifest().contributes?.commands ?? [];
+    const byId = (id: string) => commands.find((c) => c.id === id);
+    expect(byId("endue.git.discard-patch")?.undo).toBe("endue.git.restore-patch");
+    expect(byId("endue.git.restore-patch")).toBeDefined();
+    expect(byId("endue.git.discard")?.undo).toBeUndefined();
   });
 
   it("keeps every source file under 400 lines", () => {
