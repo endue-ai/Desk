@@ -30,12 +30,17 @@ export const atWork = (w: Work) => w.state !== "idle" || TURN.has(w.phase) || w.
 export class Rest {
   #out = false;
   #since: number | undefined;
+  /** Her first frame comes before the bottom edge mounts (Desk.ts): she takes the pill is coming,
+   * so the page never draws her out at load; the next frame sees whether it is there. */
+  #first = true;
 
   /**
-   * Whether she rests in the pill at `now`. `home` is false when she has a place of her own or there
-   * is no pill: then she never rests in it, and comes back from nothing.
+   * Whether she rests in the pill at `now`. With a place of her own (`own`) or no pill she never
+   * rests in it, and comes back from nothing.
    */
-  resting(home: boolean, working: boolean, now: number): boolean {
+  resting(own: boolean, pill: boolean, working: boolean, now: number): boolean {
+    const home = !own && (pill || this.#first);
+    this.#first = false;
     if (!home || working) {
       this.#out = home;
       this.#since = undefined;

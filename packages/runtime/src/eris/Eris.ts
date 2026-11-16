@@ -271,7 +271,7 @@ export function mountEris(
     const shown = soul.visible(now);
     const words = shown || said.kept() !== "";
     const work = { state, phase: talk.phase, words, dragging: dragging !== null };
-    showRest(el, rest.resting(!layout() && !!pill(), atWork(work), now), reduced);
+    showRest(el, rest.resting(layout() !== null, pill() !== null, atWork(work), now), reduced);
     const p = position();
     el.style.left = `${p.x}px`;
     el.style.top = `${p.y}px`;
@@ -371,8 +371,6 @@ export function mountEris(
       moveEris(ctx, { x: p.x + (step[0] ?? 0), y: p.y + (step[1] ?? 0) });
     }),
   ];
-  // The bottom edge mounts after her (Desk.ts): her first frame that sees the talk pill.
-  queueMicrotask(() => frame(ctx.ticker.now()));
 
   return {
     say(text, words) {
