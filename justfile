@@ -67,6 +67,7 @@ check:
     node scripts/spec-lint.mjs
     node scripts/ui-lint.mjs
     node scripts/ds-lint.mjs
+    node scripts/copy-lint.mjs
     node scripts/theme-market.mjs
     pnpm exec spectral lint specs/brain/v0/openapi.yaml --fail-severity=warn --quiet
 
