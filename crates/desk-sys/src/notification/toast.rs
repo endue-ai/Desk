@@ -1,7 +1,8 @@
 //! The Windows notifier over WinRT toasts, for one AppUserModelID. Windows has no permission prompt:
 //! the person turns an app's notifications on or off in Settings, which `ToastNotifier::Setting`
 //! reports. A toast's `Tag` and `launch` argument are the desk's id, and its `Activated` event is the
-//! click; the toasts posted last are kept so a click from the Action Center still reaches it.
+//! click, on its button when the event's arguments are the button's; the toasts posted last are
+//! kept so a click from the Action Center still reaches it.
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
@@ -9,15 +10,18 @@ use std::sync::{Arc, Mutex};
 use windows::Data::Xml::Dom::XmlDocument;
 use windows::Foundation::TypedEventHandler;
 use windows::UI::Notifications::{
-    NotificationSetting, ToastNotification, ToastNotificationManager, ToastNotifier,
+    NotificationSetting, ToastActivatedEventArgs, ToastNotification, ToastNotificationManager,
+    ToastNotifier,
 };
-use windows::core::{HSTRING, IInspectable, Ref};
+use windows::core::{HSTRING, IInspectable, Interface, Ref};
 
 use super::{Authorization, Click, ClickHandler, ClickSlot, Notification, Notifier, denied};
 use crate::{Error, ErrorCode};
 
 /// How many posted toasts stay referenced for their `Activated` event.
 const KEPT: usize = 64;
+/// The `arguments` of a toast's button, which its `Activated` event reports.
+const ACTION: &str = "desk-action";
 
 pub(super) struct Toast {
     app_id: HSTRING,
@@ -47,8 +51,17 @@ impl Toast {
         let clicks = Arc::clone(&self.clicks);
         let id = notification.id.clone();
         toast.Activated(&TypedEventHandler::<ToastNotification, IInspectable>::new(
-            move |_: Ref<ToastNotification>, _: Ref<IInspectable>| {
-                clicks.fire(Click { id: id.clone() });
+            move |_: Ref<ToastNotification>, args: Ref<IInspectable>| {
+                // The button's `arguments` are `ACTION`; the body's are the toast's `launch` (its id).
+                let action = args
+                    .as_ref()
+                    .and_then(|args| args.cast::<ToastActivatedEventArgs>().ok())
+                    .and_then(|args| args.Arguments().ok())
+                    .is_some_and(|arguments| arguments == ACTION);
+                clicks.fire(Click {
+                    id: id.clone(),
+                    action,
+                });
                 Ok(())
             },
         ))?;
@@ -96,15 +109,25 @@ impl Notifier for Toast {
 }
 
 /// The toast's XML: the generic template with the title and the body, the id as its `launch`
-/// argument, every value escaped.
+/// argument, its button (if any) in the foreground, every value escaped.
 pub fn toast_xml(notification: &Notification) -> String {
     let body = notification
         .body
         .as_deref()
         .map(|body| format!("<text>{}</text>", escape(body)))
         .unwrap_or_default();
+    let actions = notification
+        .action
+        .as_deref()
+        .map(|label| {
+            format!(
+                r#"<actions><action content="{}" arguments="{ACTION}" activationType="foreground"/></actions>"#,
+                escape(label)
+            )
+        })
+        .unwrap_or_default();
     format!(
-        r#"<toast launch="{}"><visual><binding template="ToastGeneric"><text>{}</text>{body}</binding></visual></toast>"#,
+        r#"<toast launch="{}"><visual><binding template="ToastGeneric"><text>{}</text>{body}</binding></visual>{actions}</toast>"#,
         escape(&notification.id),
         escape(&notification.title),
     )
