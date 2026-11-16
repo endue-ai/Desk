@@ -50,6 +50,8 @@ export function sendContext(S, tab) {
     scopes: S.scopes(tab),
     parentAuth: S.parentAuth(tab),
     parentHeaders: S.parentHeaders(tab),
+    tokenFor: S.tokens?.lookup(tab),
+    cookies: S.jar ? (/** @type {string} */ url) => S.jar.header(url) : undefined,
   };
 }
 

@@ -224,3 +224,70 @@
   font-size: var(--desk-text-xs);
   word-break: break-all;
 }
+
+/* ── settings, the cookie jar, pasting a command ────────────────────── */
+.as-setting-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--as-line-soft);
+}
+.as-setting-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.as-paste.desk-field {
+  min-height: 180px;
+  padding: 10px 12px;
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-xs);
+  line-height: 1.6;
+  resize: vertical;
+}
+.as-jar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 60vh;
+  overflow: auto;
+}
+.as-jar-domain {
+  overflow: hidden;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-md);
+}
+.as-jar-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  background: var(--as-soft);
+}
+.as-jar-head strong {
+  flex: 1;
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-xs);
+}
+.as-jar-row {
+  display: grid;
+  grid-template-columns: minmax(80px, auto) minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 4px 12px;
+  border-top: 1px solid var(--as-line-soft);
+  font-size: var(--desk-text-xs);
+}
+.as-jar-value {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-family: var(--as-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.as-jar .desk-icon-btn {
+  border-color: transparent;
+  background: transparent;
+  color: var(--desk-text-muted);
+}

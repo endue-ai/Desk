@@ -44,10 +44,12 @@ export function effectiveAuth(own, parents) {
 }
 
 /**
- * What an auth adds to a request, its texts already resolved by `fill`.
- * @param {Auth} auth @param {(text: string) => string} fill @returns {Applied}
+ * What an auth adds to a request, its texts already resolved by `fill`. `tokenFor` gives the
+ * OAuth 2.0 token fetched for an auth, when its own token field is empty.
+ * @param {Auth} auth @param {(text: string) => string} fill @param {(auth: Auth) => string} [tokenFor]
+ * @returns {Applied}
  */
-export function applyAuth(auth, fill) {
+export function applyAuth(auth, fill, tokenFor = (/** @type {Auth} */ _a) => "") {
   /** @type {Applied} */
   const out = { headers: [], query: [] };
   const f = (/** @type {unknown} */ v) => fill(String(v ?? ""));
@@ -73,7 +75,7 @@ export function applyAuth(auth, fill) {
       break;
     }
     case "oauth2": {
-      const token = f(auth.oauth2?.token).trim();
+      const token = f(auth.oauth2?.token).trim() || tokenFor(auth);
       const prefix = f(auth.oauth2?.prefix ?? "Bearer").trim();
       if (token)
         out.headers.push({ key: "Authorization", value: prefix ? `${prefix} ${token}` : token });

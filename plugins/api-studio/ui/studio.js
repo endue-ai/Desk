@@ -20,6 +20,7 @@ import "./section-basic.js";
 import "./section-auth.js";
 import "./section-settings.js";
 import "./section-vars.js";
+import { installAuth } from "./features-auth.js";
 import { installEnvironments } from "./features-env.js";
 
 /**
@@ -128,6 +129,7 @@ export function createStudio(ctx, doc) {
 
   installCollections(S);
   installEnvironments(S);
+  const auth = installAuth(S);
 
   // ── the window ──────────────────────────────────────────────────────────
   const side = sideBar(S);
@@ -315,6 +317,7 @@ export function createStudio(ctx, doc) {
       }
       await S.collections.start();
       await S.envs.start();
+      await auth.start();
       app.on("history", () => {
         if (!S.settings.history) return;
         void ctx.bridge
