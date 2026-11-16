@@ -11,23 +11,35 @@ import type { ShellCtx } from "./context";
 import { t } from "./copy";
 import { emptyState, Store } from "./state";
 import { mountTalkChrome } from "./TalkChrome";
-import { PLACE, pillBox, placeAt, placeOf } from "./talk-place";
+import { PLACE, pillBox, pillSize, placeAt, placeOf } from "./talk-place";
 import { Ticker } from "./ticker";
 
 const APP = { vw: 1440, vh: 900 };
 
 describe("where the pill is drawn", () => {
+  it("folded it is 440 by 40, at rest and under the pointer; open as before", () => {
+    expect(pillSize("idle", 1440)).toEqual({ w: 440, h: 40 });
+    expect(pillSize("hover", 1440)).toEqual({ w: 440, h: 40 });
+    // No wider than the app leaves beside the bars.
+    expect(pillSize("idle", 600)).toEqual({ w: 320, h: 40 });
+    expect(pillSize("hover", 600)).toEqual({ w: 320, h: 40 });
+    expect(pillSize("edit", 1440)).toEqual({ w: 640, h: 72 });
+    expect(pillSize("edit", 800)).toEqual({ w: 520, h: 72 });
+  });
+
   it("at its bottom centre, inside the app however it grows", () => {
     expect(pillBox({ x: 0.5, y: 0.5 }, "idle", APP)).toEqual({
-      left: 628,
+      left: 500,
       bottom: 450,
-      w: 184,
-      h: 48,
+      w: 440,
+      h: 40,
       high: false,
     });
-    // Near the right edge it grows leftwards; open, it keeps 8 px from the edge.
-    expect(pillBox({ x: 0.99, y: 0.95 }, "idle", APP).left).toBe(1440 - 184 - 8);
-    expect(pillBox({ x: 0.99, y: 0.95 }, "hover", APP).left).toBe(1440 - 400 - 8);
+    // Near an edge it stays 8 px inside the app at its new size; open, it grows leftwards.
+    expect(pillBox({ x: 0.99, y: 0.95 }, "idle", APP).left).toBe(1440 - 440 - 8);
+    expect(pillBox({ x: 0.99, y: 0.95 }, "hover", APP).left).toBe(1440 - 440 - 8);
+    expect(pillBox({ x: 0.01, y: 0.95 }, "idle", APP).left).toBe(8);
+    expect(pillBox({ x: 0.5, y: 0 }, "idle", APP).bottom).toBe(900 - 40 - 8);
     expect(pillBox({ x: 0.99, y: 0.95 }, "edit", APP)).toMatchObject({
       left: 1440 - 640 - 8,
       h: 72,
@@ -122,7 +134,7 @@ describe("dragging the pill", () => {
     drag(root.querySelector(".talk-launch") as Element, 512, 384);
     expect(settings.get(PLACE)).toEqual({ x: 0.5, y: 0.5 });
     expect(pill.classList.contains("is-placed")).toBe(true);
-    expect(pill.style.left).toBe(`${512 - 92}px`);
+    expect(pill.style.left).toBe(`${512 - 220}px`);
     expect(pill.style.bottom).toBe("384px");
     expect(store.get().composer.open).toBe(false);
   });
