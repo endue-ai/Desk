@@ -93,3 +93,36 @@ describe("the microphone on the rail", () => {
     expect(store.get().listening).toBe(true);
   });
 });
+
+describe("a rail mounted while something captures", () => {
+  it("shows the microphone on from the list the bridge hands it", () => {
+    const store = new Store(sampleState("en", 0));
+    store.set({ listening: false, popover: null });
+    const root = document.createElement("div");
+    document.body.append(root);
+    const inForce = [{ captureId: "c1", caller: "example.notes" }];
+    const ctx = {
+      store,
+      bridge: {
+        perm: { request: vi.fn(async () => true) },
+        audio: {
+          levels: () => ({ user: [], eris: [] }),
+          // As the shell bridge does: the list in force at once, then each change.
+          captures: (listener: (captures: readonly CaptureInForce[]) => void) => {
+            listener(inForce);
+            return () => {};
+          },
+          stopCapture: vi.fn(async () => {}),
+        },
+      },
+      runtime,
+      keyOf: () => "",
+      tr: (key: string) => key,
+    } as unknown as ShellCtx;
+    const dispose = mountRail(root, ctx);
+    const button = root.querySelector('[data-rail="listen"]');
+    expect(button?.classList.contains("is-on")).toBe(true);
+    dispose();
+    root.remove();
+  });
+});
