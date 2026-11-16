@@ -131,8 +131,9 @@ describe("OS file delivery", () => {
   it("hands endue:// links to the link opener in their place among the files (#310)", async () => {
     native.invoke.mockResolvedValueOnce(["/a.md", "endue://v1/plugin/endue.notes", "/b.md"]);
     const order: string[] = [];
-    const h = { ...host(), link: vi.fn(async (entry: string) => void order.push(entry)) };
-    h.commands.run.mockImplementation(async (_id, args) => void order.push(args.path));
+    const run = vi.fn(async (_id: string, args: { path: string }) => void order.push(args.path));
+    const link = vi.fn(async (entry: string) => void order.push(entry));
+    const h = { ...host(), commands: { run }, link };
     const dispose = installOpenedFiles(h);
     await vi.waitFor(() => expect(order).toHaveLength(3));
     expect(order).toEqual(["/a.md", "endue://v1/plugin/endue.notes", "/b.md"]);
