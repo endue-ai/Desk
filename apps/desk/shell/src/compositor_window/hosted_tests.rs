@@ -182,7 +182,13 @@ fn a_desk_out_of_sight_keeps_only_the_live_budget_and_wakes_what_shows_again() {
             "budget": { "live": 1, "afterMs": 60_000.0 }
         }))
         .unwrap();
-        hosted.wm.start(desk(false), Size { w: 1440.0, h: 900.0 });
+        hosted.wm.start(
+            desk(false),
+            Size {
+                w: 1440.0,
+                h: 900.0,
+            },
+        );
         hosted.apply(report, now)
     };
     let out = budget(&mut hosted, 1, both("live"));
@@ -196,7 +202,11 @@ fn a_desk_out_of_sight_keeps_only_the_live_budget_and_wakes_what_shows_again() {
     let out = budget(&mut hosted, 2, both("asleep"));
     assert!(kinds(&out).contains(&format!("sleep {NOTES}")));
     // Past desk.display.unload-after the one kept goes too.
-    assert!(hosted.due().is_some_and(|due| due <= now + std::time::Duration::from_secs(60)));
+    assert!(
+        hosted
+            .due()
+            .is_some_and(|due| due <= now + std::time::Duration::from_secs(60))
+    );
     let out = hosted.tick(now + std::time::Duration::from_secs(61));
     assert_eq!(out.live, Some(vec![]));
     // The window back: both windows are in sight again and kept, and Notes wakes once the runtime
