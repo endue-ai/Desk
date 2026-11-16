@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Git Studio</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./style-graph.css" />
+    <link rel="stylesheet" href="./style-panel.css" />
+  </head>
+  <body>
+    <div id="studio" class="studio no-repo">
+      <header id="toolbar" class="toolbar" role="toolbar" aria-label="Git"></header>
+      <div class="workspace">
+        <aside id="sidebar" class="sidebar" aria-label="Branches, tags and stashes"></aside>
+        <main id="center" class="center">
+          <div id="banner" class="banner" hidden></div>
+          <div id="graph-host" class="graph-host"></div>
+          <div id="view-host" class="view-host" hidden></div>
+        </main>
+        <aside id="panel" class="panel" aria-label="Details"></aside>
+      </div>
+      <div id="welcome" class="welcome-host"></div>
+      <footer id="statusbar" class="statusbar" role="status"></footer>
+    </div>
+    <div id="layer" class="layer"></div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

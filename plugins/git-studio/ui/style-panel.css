@@ -1,0 +1,264 @@
+/* The right panel: a commit's detail, the files it changes, and (style-wip.css) the working copy. */
+
+.panel-empty {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--desk-space-2);
+  height: 100%;
+  color: var(--desk-text-muted);
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+  padding: var(--desk-space-3) var(--desk-space-4) var(--desk-space-6);
+}
+
+.detail-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detail-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--desk-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--desk-text-muted);
+}
+
+.desk-btn.sha-chip {
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.detail-summary {
+  margin: 0;
+  font-size: var(--desk-text-lg);
+  line-height: 1.35;
+  font-weight: 650;
+}
+
+.detail-body {
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-left: 3px solid var(--gs-line);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: color-mix(in srgb, var(--desk-text) 85%, transparent);
+}
+
+.detail-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--desk-radius-full);
+  background: var(--avatar);
+  color: var(--desk-primary-foreground);
+  font-size: var(--desk-text-xs);
+  font-weight: 700;
+}
+
+.person-name {
+  font-weight: 600;
+}
+
+.person-email,
+.person-when {
+  font-weight: 400;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.detail-parents {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--desk-space-2);
+  font-size: var(--desk-text-xs);
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1);
+  padding: var(--desk-space-2) 0;
+  border-top: 1px solid var(--gs-line);
+  border-bottom: 1px solid var(--gs-line);
+}
+
+.files-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  font-size: var(--desk-text-xs);
+}
+
+.files-title {
+  font-weight: 600;
+}
+
+.stat-add {
+  color: var(--desk-success-text);
+  font-family: var(--desk-font-mono);
+}
+
+.stat-del {
+  color: var(--desk-danger-text);
+  font-family: var(--desk-font-mono);
+}
+
+.desk-tabs.mini-tabs .desk-tab {
+  height: 24px;
+  padding: 0 6px;
+}
+
+.files {
+  display: flex;
+  flex-direction: column;
+  margin: 0 calc(-1 * var(--desk-space-2));
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  height: 28px;
+  padding: 0 var(--desk-space-2) 0 calc(var(--desk-space-2) + var(--depth, 0) * 14px);
+  border-radius: var(--desk-radius-sm);
+  cursor: default;
+  white-space: nowrap;
+}
+
+.file-row:hover,
+.file-row:focus-visible {
+  background: var(--gs-softer);
+  outline: none;
+}
+
+.file-row.is-selected {
+  background: var(--gs-select);
+}
+
+.file-row.is-folder {
+  color: var(--desk-text-muted);
+}
+
+.change {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--desk-radius-sm);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-2xs);
+  font-weight: 700;
+  color: var(--desk-warning-text);
+  background: var(--desk-warning-soft);
+}
+
+.change.is-A,
+.change.is-\? {
+  color: var(--desk-success-text);
+  background: var(--desk-success-soft);
+}
+
+.change.is-D {
+  color: var(--desk-danger-text);
+  background: var(--desk-danger-soft);
+}
+
+.change.is-R,
+.change.is-C {
+  color: var(--desk-info-text);
+  background: var(--desk-info-soft);
+}
+
+.change.is-U {
+  color: var(--desk-danger-foreground);
+  background: var(--desk-danger);
+}
+
+.file-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: ltr;
+}
+
+.file-dir {
+  color: var(--desk-text-muted);
+}
+
+.file-base {
+  font-weight: 500;
+}
+
+.file-stat {
+  display: flex;
+  align-items: center;
+}
+
+.bar {
+  display: flex;
+  width: 48px;
+  height: 6px;
+  gap: 1px;
+  border-radius: var(--desk-radius-full);
+  overflow: hidden;
+  background: var(--gs-softer);
+}
+
+.bar-add {
+  background: var(--desk-success);
+}
+
+.bar-del {
+  background: var(--desk-danger);
+}
+
+.bar-none {
+  flex: 1;
+}
+
+.file-bin {
+  font-size: var(--desk-text-2xs);
+}
+
+/* In a light scheme the chart colours are deep, so the ink on them is the page's own. */
+:where([data-scheme="light"]) .node-text {
+  fill: var(--desk-background);
+}
+
+:where([data-scheme="light"]) .avatar,
+:where([data-scheme="light"]) .ref-pill.is-current,
+:where([data-scheme="light"]) .welcome-mark {
+  color: var(--desk-background);
+}

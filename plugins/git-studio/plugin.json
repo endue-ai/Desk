@@ -1,0 +1,42 @@
+{
+  "id": "endue.git-studio",
+  "name": "Git Studio",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "A graphical Git client: the commit graph of every branch with the work in progress on top, staging by file, hunk or line, diffs side by side, branches, tags, stashes and worktrees, merge, rebase, cherry-pick, revert and reset from the graph, a merge conflict tool, file history and blame, and AI that writes commit messages and explains changes. Every operation runs the git program without a shell.",
+  "permissions": [
+    {
+      "permission": "proc:spawn",
+      "commands": ["git"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Git Studio",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.git-studio.open",
+        "title": "Git Studio: open a repository",
+        "keywords": ["git", "graph", "repository", "client", "history"],
+        "description": "Open the repository a folder is in, in Git Studio (the last one when path is absent).",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A folder inside the repository"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    ]
+  }
+}
