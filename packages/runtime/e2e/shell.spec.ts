@@ -29,24 +29,31 @@ test.describe("the desk shell", () => {
     expect(await shellTree(page)).toMatchSnapshot("default.json");
   });
 
-  test("profiles that lay the desk out unfold on hover and fold away again", async ({ page }) => {
+  test("the profile menu lists the profiles that lay the desk out, and Default", async ({
+    page,
+  }) => {
+    // Nothing unfolds on hover: one chip, the profile in force.
     await page.hover(".mode-chip.is-current");
     await step(page, 400);
+    await expect(page.locator(".modes .mode-chip")).toHaveCount(1);
+    await expect(page.locator(".mode-menu")).toHaveCount(0);
+    await page.click(".mode-chip.is-current");
+    await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("aria-expanded", "true");
     // Deep work, Review, Studio, Night and Default, the way home.
-    await expect(page.locator(".modes-more .mode-chip")).toHaveCount(5);
-    // As wide as its chips: every one in sight, none cut off.
-    expect(
-      await page.locator(".modes-more").evaluate((el) => el.scrollWidth - el.clientWidth),
-    ).toBe(0);
-    await expect(page.locator('[data-mode="studio"] .mode-copied')).toHaveText("jin");
+    await expect(page.locator('.mode-menu [data-key^="menu-switch-"]')).toHaveCount(5);
+    await expect(page.locator('.mode-menu [data-mode="studio"] .mode-copied')).toHaveText("jin");
     expect(await shellTree(page, ".modes")).toMatchSnapshot("modes-open.json");
-    await page.mouse.move(700, 600);
-    await step(page, 400);
-    await expect(page.locator(".modes-more")).toHaveCSS("max-width", "0px");
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".mode-menu")).toHaveCount(0);
+    await expect(page.locator(".mode-chip.is-current")).toBeFocused();
   });
 
-  test("+ saves the desk as it is as a new profile, asking only for a name", async ({ page }) => {
-    await page.click(".mode-add");
+  test("New profile saves the desk as it is, asking only for a name", async ({ page }) => {
+    const create = async () => {
+      await page.click(".mode-chip.is-current");
+      await page.click('.mode-menu [data-key="menu-new"]');
+    };
+    await create();
     const dialog = page.getByRole("dialog", { name: "지금 이대로 저장" });
     await expect(dialog.locator("input")).toHaveCount(1);
     await expect(dialog.locator("input")).toBeFocused();
@@ -55,13 +62,13 @@ test.describe("the desk shell", () => {
     await page.keyboard.press("Enter");
     await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", "quiet");
     // A name desk.profiles already has gets a number.
-    await page.click(".mode-add");
+    await create();
     await page.keyboard.type("Focus");
     await page.keyboard.press("Enter");
     await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", "focus-2");
   });
 
-  test("a changed layout shows the dot and offers save, save as new, revert", async ({ page }) => {
+  test("a changed layout shows the dot and offers save, new profile, revert", async ({ page }) => {
     await page.click('[data-desktop="2"]');
     // The window manager moves it (desk-wm on the compositor, ADR 0153): the runtime takes it.
     const dragBy = (dx: number) =>
@@ -70,12 +77,9 @@ test.describe("the desk shell", () => {
     const dot = page.locator(".mode-chip.is-current .mode-dirty");
     await expect(dot).toBeVisible();
     await page.click(".mode-chip.is-current");
-    await expect(page.getByRole("menuitem")).toHaveText([
-      "이 프로필에 저장",
-      "새 프로필로",
-      "되돌리기",
-      "이름 바꾸기…",
-    ]);
+    await expect(
+      page.locator('.mode-menu [role="menuitem"]:not([data-key^="menu-switch-"])'),
+    ).toHaveText(["새 프로필", "이 프로필에 저장", "되돌리기", "이름 바꾸기…"]);
     await page.getByRole("menuitem", { name: "되돌리기", exact: true }).click();
     await expect(dot).toHaveCount(0);
     await expect(page.locator('[data-surface="calendar"]')).toHaveCSS("left", "120px");
@@ -86,7 +90,7 @@ test.describe("the desk shell", () => {
     await expect(page.locator('[data-surface="calendar"]')).toHaveCSS("left", "220px");
     await dragBy(40);
     await page.click(".mode-chip.is-current");
-    await page.getByRole("menuitem", { name: "새 프로필로" }).click();
+    await page.locator('.mode-menu [data-key="menu-new"]').click();
     await expect(page.getByRole("dialog", { name: "지금 이대로 저장" })).toBeVisible();
   });
 
@@ -94,9 +98,8 @@ test.describe("the desk shell", () => {
     page,
   }) => {
     await page.click('[data-desktop="2"]');
-    await page.hover(".mode-chip.is-current");
-    await step(page, 400);
-    await page.click('[data-mode="deep-work"]');
+    await page.click(".mode-chip.is-current");
+    await page.click('.mode-menu [data-mode="deep-work"]');
     await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", "deep-work");
     // Morning lays them out again when it is back (#158): the drawer keeps its three items.
     await expect(page.locator(".surface")).toHaveCount(0);
@@ -108,9 +111,8 @@ test.describe("the desk shell", () => {
   }) => {
     await page.click('[data-desktop="2"]');
     for (const mode of ["deep-work", "morning"]) {
-      await page.hover(".mode-chip.is-current");
-      await step(page, 400);
-      await page.click(`[data-mode="${mode}"]`);
+      await page.click(".mode-chip.is-current");
+      await page.click(`.mode-menu [data-mode="${mode}"]`);
       await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", mode);
     }
     await expect(page.locator(".surface")).toHaveCount(2);
@@ -292,11 +294,10 @@ test.describe("the profile switcher's way home", () => {
     await openShell(page);
   });
 
-  test("the Default chip is offered while another profile is in force", async ({ page }) => {
-    await page.hover(".mode-chip.is-current");
-    await step(page, 400);
-    await expect(page.locator('.modes-more [data-mode="default"]')).toHaveCount(1);
-    await page.click('.modes-more [data-mode="default"]');
+  test("the Default row is offered while another profile is in force", async ({ page }) => {
+    await page.click(".mode-chip.is-current");
+    await expect(page.locator('.mode-menu [data-mode="default"]')).toHaveCount(1);
+    await page.click('.mode-menu [data-mode="default"]');
     await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", "default");
   });
 });

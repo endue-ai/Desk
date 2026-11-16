@@ -1,6 +1,6 @@
 {
  "tag": "nav",
- "class": "modes",
+ "class": "modes has-menu",
  "aria-label": "프로필",
  "children": [
   {
@@ -8,51 +8,55 @@
    "class": "modes-row",
    "children": [
     {
-     "tag": "div",
-     "class": "modes-current",
+     "tag": "button",
+     "class": "mode-chip is-current",
+     "aria-label": "Morning",
+     "aria-expanded": "true",
+     "data-mode": "morning",
+     "style": {
+      "background": "rgb(30, 29, 33)",
+      "border": "solid rgb(182, 163, 245)"
+     },
      "children": [
       {
-       "tag": "button",
-       "class": "mode-chip is-current",
-       "aria-label": "Morning",
-       "aria-pressed": "true",
-       "aria-expanded": "false",
-       "data-mode": "morning",
+       "tag": "svg",
+       "icon": "sunrise"
+      },
+      {
+       "tag": "span",
+       "class": "mode-name",
        "style": {
-        "background": "rgb(30, 29, 33)",
-        "border": "solid rgb(182, 163, 245)"
+        "color": "rgb(242, 240, 245)"
        },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "sunrise"
-        },
-        {
-         "tag": "span",
-         "class": "mode-name",
-         "style": {
-          "color": "rgb(242, 240, 245)"
-         },
-         "text": "Morning"
-        }
-       ]
+       "text": "Morning"
+      },
+      {
+       "tag": "svg",
+       "icon": "chevron-down"
       }
      ]
-    },
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "modes-menu-slot",
+   "children": [
     {
      "tag": "div",
-     "class": "modes-more",
+     "class": "popover mode-menu",
+     "role": "menu",
+     "aria-label": "프로필 · Morning",
+     "style": {
+      "background": "rgb(43, 39, 49)",
+      "border": "solid rgb(51, 49, 54)"
+     },
      "children": [
       {
        "tag": "button",
-       "class": "mode-chip",
-       "aria-label": "Deep work",
-       "aria-pressed": "false",
+       "class": "menu-item",
+       "role": "menuitem",
        "data-mode": "deep-work",
-       "style": {
-        "background": "rgb(30, 29, 33)",
-        "border": "solid rgb(51, 49, 54)"
-       },
        "children": [
         {
          "tag": "svg",
@@ -70,14 +74,9 @@
       },
       {
        "tag": "button",
-       "class": "mode-chip",
-       "aria-label": "Review",
-       "aria-pressed": "false",
+       "class": "menu-item",
+       "role": "menuitem",
        "data-mode": "review",
-       "style": {
-        "background": "rgb(30, 29, 33)",
-        "border": "solid rgb(51, 49, 54)"
-       },
        "children": [
         {
          "tag": "svg",
@@ -95,14 +94,10 @@
       },
       {
        "tag": "button",
-       "class": "mode-chip",
+       "class": "menu-item",
+       "role": "menuitem",
        "aria-label": "Studio · jin 님의 프로필",
-       "aria-pressed": "false",
        "data-mode": "studio",
-       "style": {
-        "background": "rgb(30, 29, 33)",
-        "border": "solid rgb(51, 49, 54)"
-       },
        "children": [
         {
          "tag": "svg",
@@ -134,14 +129,9 @@
       },
       {
        "tag": "button",
-       "class": "mode-chip",
-       "aria-label": "Night",
-       "aria-pressed": "false",
+       "class": "menu-item",
+       "role": "menuitem",
        "data-mode": "night",
-       "style": {
-        "background": "rgb(30, 29, 33)",
-        "border": "solid rgb(51, 49, 54)"
-       },
        "children": [
         {
          "tag": "svg",
@@ -159,14 +149,9 @@
       },
       {
        "tag": "button",
-       "class": "mode-chip",
-       "aria-label": "Default",
-       "aria-pressed": "false",
+       "class": "menu-item",
+       "role": "menuitem",
        "data-mode": "default",
-       "style": {
-        "background": "rgb(30, 29, 33)",
-        "border": "solid rgb(51, 49, 54)"
-       },
        "children": [
         {
          "tag": "svg",
@@ -181,38 +166,68 @@
          "text": "Default"
         }
        ]
+      },
+      {
+       "tag": "div",
+       "class": "mode-menu-rule",
+       "role": "separator",
+       "style": {
+        "background": "rgb(51, 49, 54)",
+        "color": "rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "button",
+       "class": "menu-item",
+       "role": "menuitem",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "새 프로필"
+      },
+      {
+       "tag": "div",
+       "class": "mode-menu-rule",
+       "role": "separator",
+       "style": {
+        "background": "rgb(51, 49, 54)",
+        "color": "rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "button",
+       "class": "menu-item",
+       "role": "menuitem",
+       "disabled": "",
+       "style": {
+        "color": "rgb(242, 240, 245)",
+        "opacity": "0.5"
+       },
+       "text": "이 프로필에 저장"
+      },
+      {
+       "tag": "button",
+       "class": "menu-item",
+       "role": "menuitem",
+       "disabled": "",
+       "style": {
+        "color": "rgb(242, 240, 245)",
+        "opacity": "0.5"
+       },
+       "text": "되돌리기"
+      },
+      {
+       "tag": "button",
+       "class": "menu-item",
+       "role": "menuitem",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "이름 바꾸기…"
       }
      ]
     }
    ]
-  },
-  {
-   "tag": "button",
-   "class": "add-button mode-add",
-   "aria-label": "새 프로필",
-   "box": [
-    24,
-    64,
-    32,
-    32
-   ],
-   "style": {
-    "background": "rgb(30, 29, 33)",
-    "border": "dashed rgb(131, 121, 145)"
-   },
-   "children": [
-    {
-     "tag": "svg",
-     "icon": "plus"
-    }
-   ]
-  },
-  {
-   "tag": "div",
-   "class": "modes-menu-slot",
-   "style": {
-    "color": "rgb(242, 240, 245)"
-   }
   }
  ]
 }
