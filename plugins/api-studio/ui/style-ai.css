@@ -1,0 +1,182 @@
+/* The Assistant panel: the conversation, the reply and its action cards, the quick questions
+   and the box to ask in. */
+
+.ai-panel {
+  --ai: color-mix(in srgb, var(--desk-chart-1) 70%, var(--desk-chart-2));
+}
+.ai-log {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: 4px 12px 12px;
+  overflow: auto;
+}
+.ai-hello {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: auto 0;
+  padding: 24px 12px;
+  text-align: center;
+}
+.ai-hello-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--desk-radius-lg);
+  background: color-mix(in srgb, var(--ai) 18%, transparent);
+  color: var(--ai);
+}
+.ai-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ai-q {
+  align-self: flex-end;
+  max-width: 88%;
+  padding: 8px 12px;
+  border-radius: var(--desk-radius-lg);
+  border-bottom-right-radius: var(--desk-radius-sm);
+  background: var(--as-select);
+  font-size: var(--desk-text-xs);
+  line-height: 1.5;
+}
+.ai-a {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-lg);
+  border-bottom-left-radius: var(--desk-radius-sm);
+  background: var(--desk-card);
+  font-size: var(--desk-text-xs);
+}
+.ai-a .md {
+  font-size: var(--desk-text-xs);
+}
+.ai-a .md-p:last-child {
+  margin-bottom: 0;
+}
+.ai-a.is-busy,
+.ai-a.is-error {
+  flex-direction: row;
+  align-items: center;
+  color: var(--desk-text-muted);
+}
+.ai-a.is-error {
+  color: var(--desk-danger);
+}
+.ai-action {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--ai) 35%, transparent);
+  border-radius: var(--desk-radius-md);
+  background: color-mix(in srgb, var(--ai) 7%, transparent);
+}
+.ai-action.is-done {
+  border-color: color-mix(in srgb, var(--desk-success) 35%, transparent);
+  background: color-mix(in srgb, var(--desk-success) 7%, transparent);
+}
+.ai-action-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ai);
+}
+.ai-action-head strong {
+  color: var(--desk-text);
+  font-weight: 600;
+}
+.ai-req {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ai-req-url,
+.ai-checks code {
+  overflow: hidden;
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ai-code {
+  max-height: 140px;
+  margin: 0;
+  padding: 6px 8px;
+  overflow: auto;
+  border-radius: var(--desk-radius-sm);
+  background: var(--as-sunk);
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-2xs);
+  white-space: pre-wrap;
+}
+.ai-apply.desk-btn {
+  align-self: flex-start;
+  min-height: 26px;
+  padding: 0 10px;
+  font-size: var(--desk-text-xs);
+}
+.ai-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--desk-success);
+  font-size: var(--desk-text-2xs);
+}
+.ai-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--as-line);
+}
+.ai-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ai-chip.desk-btn {
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-full);
+  font-size: var(--desk-text-2xs);
+}
+.ai-box {
+  position: relative;
+}
+.ai-input.desk-field {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 64px;
+  padding: 8px 44px 8px 10px;
+  border-radius: var(--desk-radius-lg);
+  font-size: var(--desk-text-xs);
+  line-height: 1.5;
+  resize: none;
+}
+.ai-send.desk-icon-btn {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-button-primary-bg);
+  color: var(--desk-button-primary-fg);
+}

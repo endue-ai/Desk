@@ -22,6 +22,8 @@ import "./section-auth.js";
 import "./section-settings.js";
 import "./section-vars.js";
 import "./section-docs.js";
+import { createAsker } from "./ai-ask.js";
+import { installAssistant } from "./assistant.js";
 import { installAuth } from "./features-auth.js";
 import { installEnvironments } from "./features-env.js";
 import { installImport } from "./features-import.js";
@@ -155,6 +157,8 @@ export function createStudio(ctx, doc) {
   installScripts(S);
   installRunner(S);
   installImport(S);
+  S.asker = createAsker(ctx.bridge);
+  installAssistant(S);
 
   // ── the window ──────────────────────────────────────────────────────────
   const side = sideBar(S);
