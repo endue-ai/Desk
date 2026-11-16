@@ -81,11 +81,11 @@ impl Core {
         if params.wake_word == Some(true) {
             return Err(error(
                 ErrorCode::Unsupported,
-                "the desk has no wake-word engine yet; capture without wakeWord",
+                "the desk has no wake-word engine yet; capture without wakeWord".to_owned(),
             ));
         }
         let input = self.audio.input.clone().ok_or_else(|| {
-            error(ErrorCode::Unsupported, "this desk has no microphone input")
+            error(ErrorCode::Unsupported, "this desk has no microphone input".to_owned())
         })?;
         let scope = Permission::AudioCapture(params.scope);
         self.check_or_ask(caller, &scope, &Target::None, REASON)?;
