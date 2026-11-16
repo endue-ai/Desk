@@ -90,11 +90,16 @@ export function createAssistant(app) {
     panel.hidden = true;
     document.body.classList.remove("ai-open");
   };
-  const open = () => {
+  /** Show the panel; with a question, ask it at once. */
+  const open = (question = "") => {
     panel.hidden = false;
     document.body.classList.add("ai-open");
     drawChips();
     box.focus();
+    if (question) {
+      box.value = question;
+      send();
+    }
   };
   box.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
