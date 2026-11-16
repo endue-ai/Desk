@@ -9,6 +9,7 @@ import { createEngine } from "./engine.js";
 import { installCollections } from "./features-collections.js";
 import { groupPane } from "./group-pane.js";
 import { closeMenus } from "./menu.js";
+import { pair } from "./model.js";
 import { drawBody } from "./section-body.js";
 import { scope } from "./vars.js";
 import { requestPane } from "./view-request.js";
@@ -20,6 +21,7 @@ import "./section-basic.js";
 import "./section-auth.js";
 import "./section-settings.js";
 import "./section-vars.js";
+import "./section-docs.js";
 import { installAuth } from "./features-auth.js";
 import { installEnvironments } from "./features-env.js";
 
@@ -37,6 +39,8 @@ export function createStudio(ctx, doc) {
   });
   /** @type {Map<string, string>} */
   const resViews = new Map();
+  /** @type {Map<string, string>} */
+  const resFilters = new Map();
 
   const S = {
     ctx,
@@ -99,6 +103,20 @@ export function createStudio(ctx, doc) {
     importCurl: (_tab, _text) => false,
     /** @param {Tab} tab */
     resView: (tab) => resViews.get(tab.id) ?? "pretty",
+    /** @param {Tab} tab */
+    resFilter: (tab) => resFilters.get(tab.id) ?? "",
+    /** @param {Tab} tab @param {string} filter */
+    setResFilter: (tab, filter) => resFilters.set(tab.id, filter),
+    /** Capture the value at a path of the response as a variable of the request. @param {Tab} tab @param {string} path */
+    captureFrom(tab, path) {
+      const last = /([A-Za-z_][\w]*)\W*$/.exec(path.replace(/\[\d+\]$/, ""))?.[1] ?? "value";
+      let name = last === "body" ? "value" : last;
+      const taken = new Set(tab.req.vars.post.map((p) => p.key));
+      for (let i = 2; taken.has(name); i++) name = `${last}${i}`;
+      tab.req.vars.post = [...tab.req.vars.post, pair({ key: name, value: path })];
+      app.emit("req", { field: "vars" });
+      app.toast(`Each response now sets {{${name}}} from ${path}`, "ok");
+    },
     /** @param {Tab} tab @param {string} view */
     setResView(tab, view) {
       resViews.set(tab.id, view);

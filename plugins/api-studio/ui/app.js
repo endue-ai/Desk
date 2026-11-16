@@ -11,7 +11,8 @@ import { clone, newRequest, normalize, same } from "./model.js";
  * @typedef {{ id: string, req: Request, saved: string | null, ref?: { collection: string, path: string },
  *   response?: Response, running?: { cancel(): void }, reqTab: string, resTab: string,
  *   kind?: "group" | "env", extra?: Record<string, string>,
- *   lastCaptures?: { name: string, value?: string, error?: string }[], preview?: boolean }} Tab
+ *   lastCaptures?: { name: string, value?: string, error?: string }[], received?: number,
+ *   preview?: boolean }} Tab
  * @typedef {{ id: string, at: number, method: string, url: string, name: string, status: number,
  *   time: number, size: number, error?: string, req: Request }} HistoryEntry
  * @typedef {"tabs" | "tab" | "req" | "url" | "response" | "sending" | "side" | "history" |

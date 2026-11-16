@@ -73,9 +73,11 @@ export function responsePane(S, tab) {
   const sending = () => {
     const started = Date.now();
     const clock = h("span.as-sending-time", null, "0 ms");
+    const got = h("span.as-hint");
     clearInterval(ticker);
     ticker = setInterval(() => {
       clock.textContent = duration(Date.now() - started);
+      got.textContent = tab.received ? `${bytes(tab.received)} received` : "";
       if (!tab.running) clearInterval(ticker);
     }, 61);
     return h(
@@ -84,6 +86,7 @@ export function responsePane(S, tab) {
       h("span.as-spin.is-big"),
       h("h3", null, "Sending…"),
       clock,
+      got,
       button({ label: "Cancel", icon: "stop", onClick: () => S.cancel(tab) }),
     );
   };
@@ -175,9 +178,16 @@ export function responsePane(S, tab) {
             view: S.resView(tab),
             wrap: S.app.state.layout.wrap,
             onView: (v) => S.setResView(tab, v),
-            onWrap: (w) => S.app.layout({ wrap: w }),
+            onWrap: (w) => {
+              S.app.layout({ wrap: w });
+              S.app.emit("response", tab);
+            },
+            filter: S.resFilter(tab),
+            onFilter: (f) => S.setResFilter(tab, f),
             onSave: () => S.saveBody(tab),
-            onCopy: (t) => S.copy(t, "Body copied"),
+            onCopy: (t, said) => S.copy(t, said ?? "Copied"),
+            onCapture: (path) => S.captureFrom(tab, path),
+            onAssert: S.assertFrom ? (path, value) => S.assertFrom(tab, path, value) : undefined,
           }),
       },
       {

@@ -4,6 +4,7 @@
 
 import { button, h, icon, keys, methodBadge } from "./dom.js";
 import { methodClass } from "./model.js";
+import { docsEditor } from "./section-docs.js";
 import { addSections, requestPane } from "./view-request.js";
 
 /**
@@ -50,18 +51,7 @@ function overview(S, tab) {
   const { coll, nodes } = childrenOf(S, tab);
   const counts = countNodes(nodes);
   const isRoot = coll && tab.ref?.path === coll.path;
-  const docs = /** @type {HTMLTextAreaElement} */ (
-    h("textarea.desk-field.as-docs-input", {
-      "aria-label": "Notes",
-      placeholder: "What this is for, how to get a key, which environment to use… (Markdown)",
-      spellcheck: "true",
-    })
-  );
-  docs.value = tab.req.docs;
-  docs.addEventListener("input", () => {
-    tab.req.docs = docs.value;
-    S.app.emit("req", { field: "docs" });
-  });
+  const docs = docsEditor(S, tab, { minLines: 12 });
   const stat = (/** @type {string} */ n, /** @type {string} */ label) =>
     h("div.as-stat-card", null, h("strong", null, n), h("span", null, label));
   const list = h(

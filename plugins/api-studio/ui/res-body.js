@@ -1,19 +1,30 @@
-// A response's body: Pretty (indented and coloured, with line numbers), Raw (as it came), and
-// Preview (a page drawn in a sealed frame, an image as an image). Find highlights matches; Wrap
-// folds long lines. Bodies past a size are shown plain, and binary ones are described, not drawn.
+// A response's body. JSON shows Pretty (indented, coloured, numbered), Tree (folding, each value
+// with its path) and Raw, and a filter narrows it to a path ($.data[*].name); a page adds
+// Preview (drawn in a sealed frame), an image shows as itself, an event stream as its events.
+// Find marks matches; Wrap folds long lines. Large bodies draw plain; binary ones are described.
 
-import { button, h, icon } from "./dom.js";
+import { button, fill, h, icon } from "./dom.js";
+import { asText, read } from "./expr.js";
 import { bytes, contentKind } from "./format.js";
 import { paint, prettyJson, prettyXml, runs } from "./highlight.js";
+import { mark, parseEvents } from "./res-find.js";
+import { jsonTree } from "./res-tree.js";
 import { bodyText } from "./send.js";
 
-/** @typedef {import("./send.js").Response} Response */
+/**
+ * @typedef {import("./send.js").Response} Response
+ * @typedef {{ view: string, wrap: boolean, filter: string, onView(view: string): void,
+ *   onWrap(wrap: boolean): void, onFilter(filter: string): void, onSave(): void,
+ *   onCopy(text: string, said?: string): void, onCapture?(path: string): void,
+ *   onAssert?(path: string, value: unknown): void }} BodyOptions
+ */
 
 const PLAIN_PAST = 2_000_000;
 
 /** What a body is and how to draw it. @param {Response} res */
 export function bodyInfo(res) {
   let kind = contentKind(res.contentType);
+  if (/event-stream/i.test(res.contentType)) kind = "events";
   const text = kind === "image" || kind === "binary" ? "" : bodyText(res);
   if (kind === "unknown" || kind === "text") {
     const t = text.trim();
@@ -41,21 +52,60 @@ function isBinary(body) {
   return head.length > 0 && control / head.length > 0.1;
 }
 
-/** @param {Response} res @param {{ view: string, wrap: boolean, onView(view: string): void, onWrap(wrap: boolean): void, onSave(): void, onCopy(text: string): void }} opts */
-export function responseBody(res, opts) {
-  const { kind, text } = bodyInfo(res);
-  const pretty =
-    kind === "json" ? prettyJson(text) : kind === "xml" || kind === "html" ? prettyXml(text) : text;
-  const views = [
+/** The views a kind of body offers, first the default. @param {string} kind */
+export function viewsOf(kind) {
+  if (kind === "json")
+    return [
+      ["pretty", "Pretty"],
+      ["tree", "Tree"],
+      ["raw", "Raw"],
+    ];
+  if (kind === "html")
+    return [
+      ["pretty", "Pretty"],
+      ["preview", "Preview"],
+      ["raw", "Raw"],
+    ];
+  if (kind === "image") return [["preview", "Preview"]];
+  if (kind === "events")
+    return [
+      ["events", "Events"],
+      ["raw", "Raw"],
+    ];
+  return [
     ["pretty", "Pretty"],
     ["raw", "Raw"],
-    ...(kind === "html" || kind === "image" ? [["preview", "Preview"]] : []),
   ];
-  const view = views.some(([v]) => v === opts.view)
-    ? opts.view
-    : kind === "image"
-      ? "preview"
-      : "pretty";
+}
+
+/** Numbered, coloured (or plain) text. @param {string} shown @param {string} lang @param {boolean} wrap @param {boolean} colour */
+function codeBox(shown, lang, wrap, colour) {
+  const code = h("pre.as-code");
+  const lines = shown.split("\n").length;
+  const gutter = h(
+    "div.as-gutter",
+    { "aria-hidden": "true" },
+    Array.from({ length: Math.min(lines, 20000) }, (_, i) => `${i + 1}`).join("\n"),
+  );
+  if (colour && shown.length < PLAIN_PAST) paint(code, runs(shown, lang));
+  else code.textContent = shown;
+  return { el: h(`div.as-codebox${wrap ? ".is-wrap" : ""}`, null, gutter, code), code };
+}
+
+/** An event's data, as JSON when it is JSON. @param {string} data */
+function eventData(data) {
+  const pre = h("pre.as-event-data");
+  const isJson = /^[[{]/.test(data.trim());
+  paint(pre, runs(isJson ? prettyJson(data) : data, isJson ? "json" : "text"));
+  return pre;
+}
+
+/** @param {Response} res @param {BodyOptions} opts */
+export function responseBody(res, opts) {
+  const { kind, text } = bodyInfo(res);
+  const views = viewsOf(kind);
+  const view = views.some(([v]) => v === opts.view) ? opts.view : (views[0]?.[0] ?? "raw");
+  const json = kind === "json";
   const seg = h(
     "div.desk-tabs.as-seg",
     { role: "tablist" },
@@ -65,6 +115,7 @@ export function responseBody(res, opts) {
         {
           type: "button",
           "aria-pressed": String(v === view),
+          dataset: { view: v },
           onClick: () => opts.onView(v ?? "pretty"),
         },
         label,
@@ -79,25 +130,205 @@ export function responseBody(res, opts) {
     })
   );
   const found = h("span.as-find-count");
+  const filter = /** @type {HTMLInputElement} */ (
+    h("input.desk-field.as-filter", {
+      type: "text",
+      value: opts.filter,
+      placeholder: "Filter: $.data[*].name",
+      "aria-label": "Filter by a path",
+      spellcheck: "false",
+    })
+  );
+  const filterNote = h("span.as-filter-note");
+  const content = h("div.as-res-content");
+  /** @type {ReturnType<typeof jsonTree> | undefined} */
+  let tree;
+  /** @type {HTMLElement | undefined} */
+  let code;
+
+  /** The value the views show: the whole body, or what the filter reads. */
+  const value = () => {
+    const parsed = (() => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return undefined;
+      }
+    })();
+    const q = filter.value.trim();
+    if (!json || !q) return { value: parsed };
+    try {
+      const got = read(
+        q.startsWith("$") || q.startsWith("res") ? q : `$.${q.replace(/^\./, "")}`,
+        res,
+      );
+      return got === undefined
+        ? { value: undefined, problem: "Nothing at that path" }
+        : { value: got };
+    } catch (error) {
+      return { value: undefined, problem: String(/** @type {Error} */ (error).message) };
+    }
+  };
+
+  const draw = () => {
+    tree = undefined;
+    code = undefined;
+    if (kind === "binary") {
+      fill(
+        content,
+        h(
+          "div.as-binary",
+          null,
+          icon("file", 28),
+          h(
+            "p",
+            null,
+            `${bytes(res.size)} of binary data (${res.contentType || "no content type"}).`,
+          ),
+          h("p.as-hint", null, "Save it to a file to open it with another program."),
+        ),
+      );
+      return;
+    }
+    if (kind === "image") {
+      const url = URL.createObjectURL(
+        new Blob([/** @type {BlobPart} */ (res.body)], { type: res.contentType }),
+      );
+      fill(
+        content,
+        h("div.as-preview-image", null, h("img", { src: url, alt: "The response's image" })),
+      );
+      return;
+    }
+    if (view === "preview") {
+      const frame = /** @type {HTMLIFrameElement} */ (
+        h("iframe.as-preview-frame", {
+          sandbox: "",
+          title: "The response drawn as a page",
+          referrerpolicy: "no-referrer",
+        })
+      );
+      frame.srcdoc = text;
+      fill(content, h("div.as-preview", null, frame));
+      return;
+    }
+    if (view === "events") {
+      const events = parseEvents(text);
+      fill(
+        content,
+        h(
+          "div.as-events",
+          null,
+          ...events.map((e, i) =>
+            h(
+              "div.as-event",
+              null,
+              h(
+                "div.as-event-head",
+                null,
+                h("span.as-event-n", null, String(i + 1)),
+                h("span.as-event-name", null, e.event),
+                e.id ? h("span.as-hint", null, `id ${e.id}`) : null,
+              ),
+              eventData(e.data),
+            ),
+          ),
+          events.length ? null : h("p.as-hint", null, "No events in the body."),
+        ),
+      );
+      return;
+    }
+    const got = value();
+    filterNote.textContent = got.problem ?? (filter.value.trim() ? "Filtered" : "");
+    filterNote.classList.toggle("is-bad", !!got.problem);
+    if (json && view === "tree") {
+      if (got.value === undefined)
+        return fill(content, h("p.as-res-note", null, got.problem ?? "Nothing to show."));
+      tree = jsonTree(got.value, {
+        onCopy: opts.onCopy,
+        onCapture: opts.onCapture,
+        onAssert: opts.onAssert,
+      });
+      fill(content, h(`div.as-treebox${opts.wrap ? ".is-wrap" : ""}`, null, tree.el));
+      return;
+    }
+    const filtered = json && filter.value.trim() && view !== "raw";
+    const shown =
+      view === "raw"
+        ? text
+        : filtered
+          ? got.value === undefined
+            ? ""
+            : JSON.stringify(got.value, null, 2)
+          : json
+            ? prettyJson(text)
+            : kind === "xml" || kind === "html"
+              ? prettyXml(text)
+              : text;
+    const box = codeBox(shown, kind === "html" ? "html" : kind, opts.wrap, view !== "raw");
+    code = box.code;
+    fill(content, box.el);
+  };
+
+  find.addEventListener("input", () => {
+    if (!code) return;
+    draw();
+    const q = find.value;
+    if (!q || !code) {
+      found.textContent = "";
+      return;
+    }
+    const n = mark(code, q);
+    found.textContent = n ? `${n}` : "None";
+    code.querySelector("mark")?.scrollIntoView({ block: "center" });
+  });
+  filter.addEventListener("input", () => {
+    opts.onFilter(filter.value);
+    draw();
+  });
+
+  const shownText = () => (code ? (code.textContent ?? "") : text);
   const bar = h(
     "div.as-res-bar",
     null,
     seg,
-    h("span.as-kind", null, kind === "unknown" ? "text" : kind.toUpperCase()),
+    h("span.as-kind", null, kind === "unknown" ? "TEXT" : kind.toUpperCase()),
     h("span.as-grow"),
-    view !== "preview" ? h("div.as-find-box", null, icon("search", 14), find, found) : null,
+    view === "tree"
+      ? h(
+          "div.as-tree-tools",
+          null,
+          button({
+            label: "Expand",
+            icon: "plus",
+            kind: "desk-btn-quiet as-tree-btn",
+            title: "Open every level",
+            onClick: () => tree?.all(true),
+          }),
+          button({
+            label: "Collapse",
+            icon: "chevronRight",
+            kind: "desk-btn-quiet as-tree-btn",
+            title: "Close every level",
+            onClick: () => tree?.all(false),
+          }),
+        )
+      : view !== "preview" && view !== "events"
+        ? h("div.as-find-box", null, icon("search", 14), find, found)
+        : null,
     button({
       label: "Wrap lines",
       icon: "wrap",
       hideLabel: true,
-      kind: `as-wrap${opts.wrap ? ".is-on" : ""}`,
+      kind: `as-wrap${opts.wrap ? " is-on" : ""}`,
       onClick: () => opts.onWrap(!opts.wrap),
     }),
     button({
       label: "Copy body",
       icon: "copy",
       hideLabel: true,
-      onClick: () => opts.onCopy(view === "pretty" ? pretty : text),
+      onClick: () =>
+        opts.onCopy(view === "tree" ? asText(value().value) : shownText(), "Body copied"),
     }),
     button({
       label: "Save body to a file",
@@ -106,86 +337,10 @@ export function responseBody(res, opts) {
       onClick: opts.onSave,
     }),
   );
-
-  /** @type {HTMLElement} */
-  let content;
-  if (kind === "binary" && view !== "preview") {
-    content = h(
-      "div.as-binary",
-      null,
-      icon("file", 28),
-      h("p", null, `${bytes(res.size)} of binary data (${res.contentType || "no content type"}).`),
-      h("p.as-hint", null, "Save it to a file to open it with another program."),
-    );
-  } else if (view === "preview" && kind === "image") {
-    const url = URL.createObjectURL(
-      new Blob([/** @type {BlobPart} */ (res.body)], { type: res.contentType }),
-    );
-    content = h("div.as-preview-image", null, h("img", { src: url, alt: "The response's image" }));
-  } else if (view === "preview") {
-    const frame = /** @type {HTMLIFrameElement} */ (
-      h("iframe.as-preview-frame", {
-        sandbox: "",
-        title: "The response drawn as a page",
-        referrerpolicy: "no-referrer",
-      })
-    );
-    frame.srcdoc = text;
-    content = h("div.as-preview", null, frame);
-  } else {
-    const shown = view === "pretty" ? pretty : text;
-    const code = h("pre.as-code");
-    const lines = shown.split("\n").length;
-    const gutter = h(
-      "div.as-gutter",
-      { "aria-hidden": "true" },
-      Array.from({ length: Math.min(lines, 20000) }, (_, i) => `${i + 1}`).join("\n"),
-    );
-    if (view === "pretty" && shown.length < PLAIN_PAST)
-      paint(code, runs(shown, kind === "html" ? "html" : kind));
-    else code.textContent = shown;
-    content = h(`div.as-codebox${opts.wrap ? ".is-wrap" : ""}`, null, gutter, code);
-    const base = /** @type {Element} */ (code.cloneNode(true));
-    const restore = () =>
-      code.replaceChildren(.../** @type {Element} */ (base.cloneNode(true)).childNodes);
-    find.addEventListener("input", () => {
-      const q = find.value;
-      restore();
-      if (!q) {
-        found.textContent = "";
-        return;
-      }
-      const n = mark(code, q);
-      found.textContent = n ? `${n}` : "None";
-      code.querySelector("mark")?.scrollIntoView({ block: "center" });
-    });
-  }
-  return h("div.as-res-body", null, bar, content);
-}
-
-/** Mark every match of a text in an element's text nodes; returns how many. @param {Element} root @param {string} query */
-function mark(root, query) {
-  const needle = query.toLowerCase();
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  /** @type {Text[]} */
-  const nodes = [];
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(/** @type {Text} */ (n));
-  let count = 0;
-  for (const node of nodes) {
-    const text = node.data;
-    const lower = text.toLowerCase();
-    let at = lower.indexOf(needle);
-    if (at < 0) continue;
-    const frag = document.createDocumentFragment();
-    let from = 0;
-    while (at >= 0 && count < 5000) {
-      frag.append(text.slice(from, at), h("mark.as-hit", null, text.slice(at, at + query.length)));
-      count++;
-      from = at + query.length;
-      at = lower.indexOf(needle, from);
-    }
-    frag.append(text.slice(from));
-    node.replaceWith(frag);
-  }
-  return count;
+  draw();
+  const filterRow =
+    json && view !== "raw"
+      ? h("div.as-filter-box", null, icon("filter", 14), filter, filterNote)
+      : null;
+  return h("div.as-res-body", null, bar, filterRow, content);
 }
