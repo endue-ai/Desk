@@ -36,7 +36,7 @@ export interface ConnectionsPanel {
 
 const text = moduleText("settingsUi", { en, ko });
 type Id = KeyOf<keyof typeof en, "settingsUi">;
-type Copy = Id extends `connections.${infer K}` ? (K extends `kind.${string}` ? never : K) : never;
+type Copy = Exclude<KeyOf<Id, "connections">, `kind.${string}`>;
 
 /** An instance id from the name the person gave: lowercase words joined by `-`, or `default`. */
 export function instanceIdOf(title: string, taken: string[]): string {
