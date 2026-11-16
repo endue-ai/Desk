@@ -129,9 +129,31 @@ impl CompositorWindow {
                     self.desk.pages.emit(Role::Main, event, Value::Null);
                 }
             }
+            Out::HandOff { paths, allowed } => self.hand_off(&paths, &allowed),
             Out::Redraw => self.shared.lock().dirty = true,
         }
         None
+    }
+
+    /// A desk drag of `paths` left the window: the OS drags them now, and says how it ended (#309).
+    fn hand_off(
+        &mut self,
+        paths: &[String],
+        allowed: &[desk_surface::generated::SurfaceDropEffect],
+    ) {
+        let home = crate::paths::home_dir();
+        let local: Vec<std::path::PathBuf> = paths
+            .iter()
+            .map(|p| crate::os_dnd::local_path(p, &home))
+            .collect();
+        let pump = self.desk.pump.clone();
+        crate::os_dnd::hand_off(&self.window, &local, allowed, move |effect| {
+            pump.run(move |shell, event_loop| {
+                if let Some(compositor) = shell.compositor.as_mut() {
+                    compositor.input(event_loop, Input::HandOffEnded { effect });
+                }
+            });
+        });
     }
 
     /// A protocol message to its surface: the page's browser, or a plugin surface's.

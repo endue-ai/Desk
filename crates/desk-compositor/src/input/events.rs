@@ -2,7 +2,9 @@
 //! turns each window event into one of these, and a test harness feeds the same ones. Positions are
 //! the scene's units (the window's device pixels, origin top left).
 
-use desk_surface::generated::{SurfaceModifier, SurfacePointerButton, SurfaceWheelUnit};
+use desk_surface::generated::{
+    SurfaceDropAnswer, SurfaceModifier, SurfacePointerButton, SurfaceWheelUnit,
+};
 use serde::{Deserialize, Serialize};
 
 use super::keymap::KeyLike;
@@ -122,6 +124,27 @@ pub enum Input {
         path: String,
     },
     FileHoverCancelled,
+    /// Text or links (or both) from an OS drag are over the window, all at once (#309). An OS drag
+    /// of text or links leaving the window is `FileHoverCancelled`, as one of files is.
+    OsDataHovered {
+        #[serde(default)]
+        text: Option<String>,
+        #[serde(default)]
+        uris: Vec<String>,
+    },
+    /// The OS drag of text or links dropped.
+    OsDataDropped {
+        #[serde(default)]
+        text: Option<String>,
+        #[serde(default)]
+        uris: Vec<String>,
+    },
+    /// The OS drag a hand-off started (`Out::HandOff`) ended: what the OS performed with its files,
+    /// or `None` when it was cancelled or could not start.
+    HandOffEnded {
+        #[serde(default)]
+        effect: Option<SurfaceDropAnswer>,
+    },
     /// The window got or lost the OS focus.
     WindowFocused {
         focused: bool,

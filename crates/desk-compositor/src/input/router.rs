@@ -44,6 +44,12 @@ pub enum Out {
     ImeReset,
     /// Files dropped from the OS that no surface took.
     OpenFiles(Vec<String>),
+    /// A surface's drag of these paths left the window: start an OS drag with them, offering these
+    /// effects, and send `Input::HandOffEnded` once it ends (#309).
+    HandOff {
+        paths: Vec<String>,
+        allowed: Vec<desk_surface::generated::SurfaceDropEffect>,
+    },
     /// What the compositor draws itself changed: the focus ring, the drag image.
     Redraw,
 }
@@ -126,6 +132,7 @@ impl InputRouter {
                     self.pointer.at = at;
                     let dnd = self.broker.hover(scene, &self.targets, at, self.mods);
                     out.extend(dnd_outs(dnd));
+                    out.extend(self.leave_window(scene, at));
                 } else {
                     let moved =
                         self.pointer
@@ -154,6 +161,13 @@ impl InputRouter {
             Input::Key(_) | Input::Ime(_) => out.extend(self.keyboard(input, now)),
             Input::FileHovered { path } => self.hovered.push(path.clone()),
             Input::FileDropped { path } => self.dropped.push(path.clone()),
+            Input::OsDataHovered { text, uris } => {
+                out.extend(self.os_data(scene, text.as_deref(), uris, false, now));
+            }
+            Input::OsDataDropped { text, uris } => {
+                out.extend(self.os_data(scene, text.as_deref(), uris, true, now));
+            }
+            Input::HandOffEnded { effect } => out.extend(self.hand_off_ended(*effect)),
             Input::FileHoverCancelled => {
                 if self.broker.from_os() {
                     out.extend(dnd_outs(self.broker.cancel()));
@@ -370,6 +384,7 @@ pub(super) fn dnd_outs(dnd: Vec<DndOut>) -> Vec<Out> {
         .map(|d| match d {
             DndOut::Send(m) => Out::Send(m),
             DndOut::Open(paths) => Out::OpenFiles(paths),
+            DndOut::HandOff { paths, allowed } => Out::HandOff { paths, allowed },
         })
         .collect()
 }

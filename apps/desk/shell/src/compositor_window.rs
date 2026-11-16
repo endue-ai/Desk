@@ -209,8 +209,8 @@ impl CompositorWindow {
             .desk
             .core
             .set_surface_snapshots(Some(Arc::new(snapshots)));
-        let web = web::Web::new(opened.desk.pump.clone());
-        opened.desk.core.set_web_views(Some(Arc::new(web)));
+        (opened.desk.core).set_web_views(Some(Arc::new(web::Web::new(opened.desk.pump.clone()))));
+        crate::os_dnd::listen(&opened.window, &opened.desk.pump); // OS text and links (#309)
         opened.window.set_visible(!crate::resident::background());
         Ok(opened)
     }

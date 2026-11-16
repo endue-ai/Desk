@@ -25,6 +25,7 @@ mod keys;
 pub mod messages;
 pub mod pointer;
 pub mod router;
+mod router_os;
 mod said;
 pub mod targets;
 
