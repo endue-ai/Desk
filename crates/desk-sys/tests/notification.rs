@@ -18,6 +18,7 @@ fn notification(id: &str, body: Option<&str>, level: NotifyLevel) -> Notificatio
         title: format!("title of {id}"),
         body: body.map(str::to_owned),
         level,
+        action: None,
     }
 }
 
@@ -95,7 +96,8 @@ fn a_click_reaches_the_handler_with_the_notification_id() {
     assert_eq!(
         *first.lock().unwrap(),
         vec![Click {
-            id: "n-2".to_owned()
+            id: "n-2".to_owned(),
+            action: false,
         }]
     );
 
@@ -117,8 +119,42 @@ fn a_click_reaches_the_handler_with_the_notification_id() {
     assert_eq!(
         *second.lock().unwrap(),
         vec![Click {
-            id: "n-1".to_owned()
+            id: "n-1".to_owned(),
+            action: false,
         }]
+    );
+}
+
+#[test]
+fn a_notification_carries_one_action_and_its_click_says_whether_it_was_pressed() {
+    let fake = authorized();
+    let with_button = Notification {
+        action: Some("Restart".to_owned()),
+        ..notification("n-1", Some("body"), NotifyLevel::Info)
+    };
+    fake.post(&with_button).unwrap();
+    fake.post(&notification("n-2", None, NotifyLevel::Info))
+        .unwrap();
+    assert_eq!(fake.posted()[0].action.as_deref(), Some("Restart"));
+    let (clicks, handler) = recorder();
+    fake.on_click(handler);
+
+    fake.press("n-1");
+    fake.click("n-1");
+    fake.press("n-2");
+    assert_eq!(
+        *clicks.lock().unwrap(),
+        vec![
+            Click {
+                id: "n-1".to_owned(),
+                action: true,
+            },
+            Click {
+                id: "n-1".to_owned(),
+                action: false,
+            },
+        ],
+        "a press on a notification without a button calls nothing"
     );
 }
 
@@ -142,6 +178,7 @@ fn toast_xml_carries_the_id_and_escapes_the_text() {
         title: "a <b> & c".to_owned(),
         body: Some("\"x\" > 'y'".to_owned()),
         level: NotifyLevel::Info,
+        action: None,
     });
 
     assert!(xml.starts_with("<toast "), "{xml}");
@@ -152,4 +189,21 @@ fn toast_xml_carries_the_id_and_escapes_the_text() {
         "{xml}"
     );
     assert!(!xml.contains("<b>"), "{xml}");
+    assert!(!xml.contains("<actions>"), "no button, no actions: {xml}");
+}
+
+#[cfg(windows)]
+#[test]
+fn toast_xml_carries_the_button_label() {
+    let xml = desk_sys::notification::toast_xml(&Notification {
+        id: "n-1".to_owned(),
+        title: "Update ready".to_owned(),
+        body: None,
+        level: NotifyLevel::Info,
+        action: Some("Restart & update".to_owned()),
+    });
+    assert!(
+        xml.contains(r#"<action content="Restart &amp; update" arguments="desk-action""#),
+        "{xml}"
+    );
 }
