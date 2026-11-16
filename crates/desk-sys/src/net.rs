@@ -66,6 +66,13 @@ pub struct Response {
 /// into a GET without a body, 303 does that for every method but HEAD, and 307 and 308 keep both.
 /// `Authorization`, `Cookie` and `Proxy-Authorization` are dropped when a redirect leaves the origin.
 pub fn fetch(request: &Request) -> Result<Response, Error> {
+    fetch_at_most(request, MAX_BODY_BYTES)
+}
+
+/// `fetch`, with a body of at most `max` bytes: a larger one fails as soon as it passes `max`,
+/// without being read to its end (a picture, issue 352).
+pub fn fetch_at_most(request: &Request, max: u64) -> Result<Response, Error> {
+    let max = max.min(MAX_BODY_BYTES);
     let deadline = request.timeout.map(|timeout| Instant::now() + timeout);
     let mut url = parse(&request.url)?;
     let mut method = request.method;
@@ -74,7 +81,7 @@ pub fn fetch(request: &Request) -> Result<Response, Error> {
     for _ in 0..=MAX_REDIRECTS {
         hosts::check(&request.allowed_hosts, &url, &request.url)?;
         let left = left(deadline, &request.url)?;
-        let response = send(&url, method, &headers, body.as_deref(), left)?;
+        let response = send(&url, method, &headers, body.as_deref(), left, max)?;
         let Some(next) = redirect(&url, &response)? else {
             return Ok(response);
         };
@@ -170,6 +177,7 @@ fn send(
     headers: &BTreeMap<String, String>,
     body: Option<&[u8]>,
     timeout: Option<Duration>,
+    max: u64,
 ) -> Result<Response, Error> {
     let mut builder = http::Request::builder()
         .method(method.as_http())
@@ -220,7 +228,7 @@ fn send(
     let body = response
         .body_mut()
         .with_config()
-        .limit(MAX_BODY_BYTES)
+        .limit(max)
         .read_to_vec()
         .map_err(|err| call_error(url, &err))?;
     Ok(Response {

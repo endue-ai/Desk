@@ -274,9 +274,11 @@ export function studioBoardView(ctx: ShellCtx, board: Board, view: BoardView): H
           h(
             "span",
             { class: "studio-chips" },
-            hub.skills.chips.length
-              ? hub.skills.chips.map((chip) => h("span", { class: "tag", title: chip }, chip))
-              : h("span", { class: "studio-sheet-value is-muted" }, t("noSkills")),
+            !hub.skills.read
+              ? h("span", { class: "studio-sheet-value is-muted" }, hub.skills.value)
+              : hub.skills.chips.length
+                ? hub.skills.chips.map((chip) => h("span", { class: "tag", title: chip }, chip))
+                : h("span", { class: "studio-sheet-value is-muted" }, t("noSkills")),
             hub.skills.more ? h("span", { class: "tag" }, `+${hub.skills.more}`) : null,
           ),
         ),
@@ -304,11 +306,18 @@ export function studioBoardView(ctx: ShellCtx, board: Board, view: BoardView): H
   );
 
   const outbound: Child[] = [
-    board.connectors.count
+    // Not read: the group says so, with no count (issue 352).
+    board.connectors.count || !board.connectors.read
       ? h(
           "div",
           { class: "studio-group-line" },
-          h("span", {}, t("connectorsGroup", { n: board.connectors.count })),
+          h(
+            "span",
+            {},
+            t("connectorsGroup", {
+              n: board.connectors.read ? board.connectors.count : board.connectors.value,
+            }),
+          ),
           h(
             "button",
             {
