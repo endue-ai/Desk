@@ -121,6 +121,11 @@ pub fn boot(input: BootInput) -> Booted {
     if let Ok(calendar) = desk_sys::calendar::os() {
         core = core.with_calendar(Arc::from(calendar));
     }
+    // The microphones audio.capture.* reads (ADR 0245): cpal, with AVFoundation's grant on macOS.
+    // Nothing opens a device or asks the OS until a capture starts.
+    if let Ok(input) = desk_sys::audio::os() {
+        core = core.with_audio(Arc::from(input));
+    }
     // Before plugins install, so a setup pulled from another desk applies from this start.
     sync_init(&core);
     // The person's own themes (ADR 0058) and what the market installed (ADR 0107).
