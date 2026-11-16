@@ -114,9 +114,14 @@ export function mountWhichKey(options: WhichKeyOptions): { dispose(): void } {
         i ? [" ", h("kbd", {}, chord)] : [h("kbd", {}, chord)],
       );
       const words = h("span", {}, tr(event.capturing ? "describing" : "after"));
-      // "Keys after ⌘K" in English; "⌘K 다음 키" in Korean.
+      // "Keys after ⌘K" in English; "⌘K 다음 키" in Korean: the catalog's keysTitle orders them.
+      const order = tr("keysTitle")
+        .split(/(\{\w+\})/)
+        .filter(Boolean);
       title.replaceChildren(
-        ...(options.language === "ko" ? [...prefix, " ", words] : [words, " ", ...prefix]),
+        ...order.flatMap((part) =>
+          part === "{keys}" ? prefix : part === "{words}" ? [words] : [part],
+        ),
       );
       items = itemsOf(options.bindings(), event.chords, { platform, ...options.facts });
       search.value = "";

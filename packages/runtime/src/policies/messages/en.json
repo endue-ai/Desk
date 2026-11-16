@@ -1,0 +1,5 @@
+{
+  "policies.keysQuit": "Quit what is in progress",
+  "policies.keysList": "List key bindings",
+  "policies.keysConflicts": "List key binding conflicts"
+}

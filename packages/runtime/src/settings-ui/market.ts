@@ -14,8 +14,11 @@ import {
   type Permission,
 } from "@endue-ai/bridge";
 import { permissionWords } from "../describe/words";
+import { type KeyOf, moduleText } from "../i18n/messages";
 import { h, render } from "../shell/dom";
 import type { SettingsLanguage } from "./copy";
+import en from "./messages/en.json";
+import ko from "./messages/ko.json";
 
 const SCOPE = { permission: "plugin:manage" } as const;
 const LOOK_SCOPE = { permission: "theme:manage" } as const;
@@ -46,59 +49,36 @@ export interface MarketOptions {
   settings?: { get<T>(key: string, fallback?: T): T };
 }
 
-const COPY = {
-  view: ["뷰", "Views"],
-  pack: ["팩", "Packs"],
-  plugin: ["플러그인", "Plugins"],
-  theme: ["테마", "Themes"],
-  "design-system": ["디자인 시스템", "Design systems"],
-  verified: ["확인됨", "Verified"],
-  unverified: ["확인되지 않음", "Not verified"],
-  install: ["설치", "Install"],
-  update: ["업데이트", "Update"],
-  remove: ["제거", "Remove"],
-  use: ["사용", "Use"],
-  inUse: ["사용 중", "In use"],
-  installed: ["설치됨", "Installed"],
-  asks: ["설치하면 다음을 허락합니다:", "Installing it allows:"],
-  nothing: ["허락할 권한이 없습니다.", "It asks for no permissions."],
-  from: ["확인되지 않은 마켓에서 옵니다:", "Not verified: it comes from"],
-  allow: ["허락하고 설치", "Allow and install"],
-  removeAsk: [
-    "제거할까요? 여기서 다시 설치할 수 있습니다.",
-    "Remove it? You can install it again here.",
-  ],
-  cancel: ["취소", "Cancel"],
-  empty: ["마켓에 아무것도 없습니다.", "The markets offer nothing yet."],
-  code: ["코드는 endue 마켓에서만 설치합니다.", "Code installs from the endue market only."],
-} as const;
-type Copy = keyof typeof COPY;
+const text = moduleText("settingsUi", { en, ko });
+type Id = KeyOf<keyof typeof en, "settingsUi">;
+type Copy = Id extends `market.${infer K}` ? K : never;
+const say = (language: SettingsLanguage, key: Copy, vars?: Record<string, string>) =>
+  text(language, `market.${key}` as Id, vars);
 
 /** One permission in words a person reads before allowing it. */
 export function permissionText(permission: Permission, language: SettingsLanguage): string {
-  const ko = language === "ko";
   const p = permission as Permission & Record<string, unknown>;
   const list = (value: unknown) => (Array.isArray(value) ? value.join(", ") : "");
   switch (p.permission) {
     case "data:read":
-      return ko
-        ? `${list(p.kinds) || "모든"} 항목 읽기`
-        : `Read your ${list(p.kinds) ? `${list(p.kinds)}s` : "items"}`;
+      return list(p.kinds)
+        ? say(language, "dataRead", { kinds: list(p.kinds) })
+        : say(language, "dataReadAll");
     case "net:fetch":
-      return ko ? `${list(p.hosts)} 에 접속` : `Reach ${list(p.hosts)}`;
+      return say(language, "netFetch", { hosts: list(p.hosts) });
     case "fs:read":
-      return ko ? `파일 읽기: ${list(p.paths)}` : `Read files: ${list(p.paths)}`;
+      return say(language, "fsRead", { paths: list(p.paths) });
     case "fs:write":
-      return ko ? `파일 쓰기: ${list(p.paths)}` : `Write files: ${list(p.paths)}`;
+      return say(language, "fsWrite", { paths: list(p.paths) });
     default: {
-      if (ko) return p.permission;
       const words = permissionWords(permission);
-      return words.charAt(0).toUpperCase() + words.slice(1);
+      return say(language, "otherPermission", {
+        words: words.charAt(0).toUpperCase() + words.slice(1),
+      });
     }
   }
 }
 
-/** Where a market index is, by its host. */
 const hostOf = (url: string) => {
   try {
     return new URL(url).host;
@@ -114,7 +94,7 @@ export function mountMarket(options: MarketOptions): {
   dispose(): void;
 } {
   const { bridge, language, commands, settings } = options;
-  const tr = (key: Copy) => COPY[key][language === "ko" ? 0 : 1];
+  const tr = (key: Copy) => say(language, key);
   const el = h("div", { class: "settings-panel-body settings-market" });
   let entries: MarketListing[] = [];
   /** The entry whose question is open: to install it, or to remove it. */
@@ -322,7 +302,7 @@ export function mountMarket(options: MarketOptions): {
         h(
           "section",
           { class: "settings-group", "data-kind": kind },
-          h("h2", {}, tr(kind)),
+          h("h2", {}, tr(kind === "design-system" ? "designSystem" : kind)),
           h(
             "div",
             { class: "settings-group-rows" },

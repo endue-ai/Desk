@@ -11,10 +11,12 @@ import {
   type ConnectorInfo,
   type ConnectorInstance,
   type ConnectorSetting,
-  type ItemKind,
 } from "@endue-ai/bridge";
+import { type KeyOf, moduleText } from "../i18n/messages";
 import { h, render } from "../shell/dom";
 import type { SettingsLanguage } from "./copy";
+import en from "./messages/en.json";
+import ko from "./messages/ko.json";
 
 const SCOPE = { permission: "connector:manage" } as const;
 
@@ -32,41 +34,9 @@ export interface ConnectionsPanel {
   dispose(): void;
 }
 
-const COPY = {
-  brings: ["가져오는 항목:", "Brings in"],
-  connect: ["연결", "Connect"],
-  another: ["하나 더 연결", "Connect another"],
-  name: ["이름", "Name"],
-  sync: ["지금 동기화", "Sync now"],
-  disconnect: ["연결 해제", "Disconnect"],
-  none: ["아직 연결된 계정이 없습니다.", "Nothing connected yet."],
-  empty: ["설치된 커넥터가 없습니다.", "No connectors are installed."],
-  synced: ["마지막 동기화", "Last synced"],
-  secret: [
-    "이 컴퓨터에만 보관하며 다시 보여주지 않습니다.",
-    "Kept on this computer only and never shown again.",
-  ],
-  connected: ["연결됨", "Connected"],
-  syncing: ["동기화 중", "Syncing"],
-  stale: ["오래됨", "Out of date"],
-  error: ["오류", "Error"],
-  paused: ["일시 중지됨", "Paused"],
-  reauth: ["토큰을 새로 넣어 다시 연결하세요.", "Connect again with a new token."],
-} as const;
-type Copy = keyof typeof COPY;
-
-const KINDS: Record<ItemKind, [string, string]> = {
-  event: ["일정", "events"],
-  message: ["메시지", "messages"],
-  task: ["할 일", "tasks"],
-  note: ["노트", "notes"],
-  file: ["파일", "files"],
-  person: ["사람", "people"],
-  entry: ["기록", "entries"],
-  metric: ["지표", "metrics"],
-  record: ["레코드", "records"],
-  run: ["실행", "runs"],
-};
+const text = moduleText("settingsUi", { en, ko });
+type Id = KeyOf<keyof typeof en, "settingsUi">;
+type Copy = Id extends `connections.${infer K}` ? (K extends `kind.${string}` ? never : K) : never;
 
 /** An instance id from the name the person gave: lowercase words joined by `-`, or `default`. */
 export function instanceIdOf(title: string, taken: string[]): string {
@@ -92,7 +62,8 @@ export function mountConnections(options: {
   focus?: ConnectionsFocus;
 }): ConnectionsPanel {
   const { bridge, language, focus = {} } = options;
-  const tr = (key: Copy) => COPY[key][language === "ko" ? 0 : 1];
+  const tr = (key: Copy, vars?: Record<string, string>) =>
+    text(language, `connections.${key}` as Id, vars);
   const el = h("div", { class: "settings-panel-body settings-connections" });
   let connectors: ConnectorInfo[] = [];
   let pending: Promise<void> = Promise.resolve();
@@ -121,11 +92,10 @@ export function mountConnections(options: {
     draw();
   }
   const kindsText = (info: ConnectorInfo) => {
-    const names = info.resources.map((r) => KINDS[r.kind][language === "ko" ? 0 : 1]);
-    if (language === "ko") return names.join(", ");
+    const names = info.resources.map((r) => text(language, `connections.kind.${r.kind}` as Id));
     return names.length < 2
       ? names.join("")
-      : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+      : `${names.slice(0, -1).join(", ")}${tr("lastAnd")}${names.at(-1)}`;
   };
   const wanted = (info: ConnectorInfo) =>
     info.id === focus.connector ||
@@ -271,7 +241,7 @@ export function mountConnections(options: {
               h(
                 "p",
                 { class: "settings-footnote" },
-                `${tr("brings")} ${kindsText(info)}${language === "ko" ? "" : "."}`,
+                tr("bringsLine", { brings: tr("brings"), kinds: kindsText(info) }),
               ),
               h(
                 "div",

@@ -1,0 +1,13 @@
+{
+  "frames.notResponding": "Not responding",
+  "frames.notRespondingLine": "{title} has not answered for 5 seconds. Wait for it, or stop it.",
+  "frames.wait": "Wait",
+  "frames.stop": "Stop",
+  "frames.stoppedLine": "Stopped because it was not responding. Reload brings back its last state.",
+  "frames.reload": "Reload",
+  "frames.crashedLine": "{title} stopped working and is loading again.",
+  "frames.heldLine": "It stopped twice within a minute, so it stays off until you reload it. No other window is affected.",
+  "frames.cmdWait": "Not responding · wait",
+  "frames.cmdStop": "Not responding · stop",
+  "frames.cmdReload": "Stopped window · reload"
+}

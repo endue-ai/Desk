@@ -68,7 +68,7 @@ export function accountRows(deps: AccountRowsDeps): Child[] {
     );
   };
   const user = settings.user;
-  const joined = new Intl.DateTimeFormat(language === "ko" ? "ko-KR" : "en-US", {
+  const joined = new Intl.DateTimeFormat(tr("dateLocale"), {
     year: "numeric",
     month: "long",
     day: "numeric",
