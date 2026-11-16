@@ -293,3 +293,67 @@
   font-size: var(--desk-text-2xs);
   color: var(--lm-faint);
 }
+
+/* Attachments waiting in the composer */
+
+.lm-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-2);
+  padding-bottom: var(--desk-space-2);
+}
+
+.lm-tray[hidden] {
+  display: none;
+}
+
+.lm-chip-file {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  max-width: 280px;
+  padding: 4px 2px 4px 4px;
+  border: var(--desk-border-width) solid var(--lm-line);
+  border-radius: var(--desk-radius-md);
+  background: var(--lm-panel);
+  font-size: var(--desk-text-xs);
+}
+
+.lm-chip-file img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: var(--desk-radius-sm);
+}
+
+.lm-chip-file-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--lm-select);
+  color: var(--desk-primary-text);
+}
+
+.lm-chip-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 550;
+}
+
+.lm-tray-warn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  font-size: var(--desk-text-2xs);
+  color: var(--desk-warning-text);
+}
+
+.lm-composer-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

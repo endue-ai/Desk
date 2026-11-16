@@ -234,3 +234,14 @@ export async function chat(sockets, server, req, onDelta) {
     },
   };
 }
+
+/** Vectors for texts, from an embedding model. @param {Sockets} sockets @param {ServerRef} server @param {string} model @param {string[]} input @returns {Promise<number[][]>} */
+export async function embed(sockets, server, model, input) {
+  const answer = await fetchJson(sockets, `${server.baseUrl}/v1/embeddings`, {
+    json: { model, input },
+    headers: auth(server),
+    timeoutMs: 30000,
+  });
+  if (!Array.isArray(answer?.data)) throw new HttpError("The server answered no vectors");
+  return [...answer.data].sort((a, b) => (a.index ?? 0) - (b.index ?? 0)).map((d) => d.embedding);
+}

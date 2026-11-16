@@ -10,6 +10,8 @@ kept as files, answers streaming in as markdown over `net.connect` sockets with 
 speed and token counts, every version kept; questions edited, answers corrected or continued, chats
 branched, named by their model and exported. The inspector (`Mod+.`) holds each chat's preset, system
 prompt, sampling, context, reasoning switch, JSON output and stop strings; the composer meters context.
+Images go to models that see; text files go whole, or, when long, their passages closest to each
+question are found with an embedding model (vectors kept in `rag/`) and shown as the question's sources.
 
 | Permission | Why |
 | --- | --- |
@@ -26,7 +28,7 @@ prompt, sampling, context, reasoning switch, JSON output and stop strings; the c
 | `ui/app.js`, `run.js`, `edit.js`, `state.js`, `store.js`, `threads.js`, `think.js` | State, answers, edits, files, threads as trees of versions, inline reasoning |
 | `ui/presets.js`, `sampling.js`, `controls.js`, `context.js` | Presets (yours in `presets.json`), the inspector's controls, the context count |
 | `ui/gguf.js`, `library.js`, `memory.js`, `proc.js`, `engine.js`, `local.js` | GGUF headers, the model files, fits, programs, llama-server |
-| `ui/hub.js`, `downloads.js` | Hugging Face search and files; downloads and Ollama pulls |
+| `ui/hub.js`, `downloads.js`, `attach.js`, `rag.js` | Hugging Face; downloads and pulls; attachments; passages |
 | `ui/view-*.js`, `message.js`, `markdown.js`, `highlight.js`, `menu.js` | The window, messages, markdown and code colours |
 | `dev/` | The preview: `serve.mjs`, the SDK shim, made-up servers and llama-server, GGUF files, `shot.mjs` |
 

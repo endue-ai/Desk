@@ -58,6 +58,43 @@ function reasoningBlock(text, { live, ms }) {
   );
 }
 
+/** The passages a question was sent with, folded: which files, how they were found. @param {Node} node */
+function sourcesBlock(node) {
+  const sources = node.sources ?? [];
+  const files = [...new Set(sources.map((s) => s.doc))];
+  return h(
+    "details.lm-sources",
+    null,
+    h(
+      "summary",
+      null,
+      icon("search"),
+      h("span", null, `${sources.length} passages from ${files.join(", ")}`),
+      h(
+        "span.lm-muted",
+        null,
+        node.searched === "words"
+          ? " · by its words"
+          : node.searched
+            ? ` · by ${node.searched}`
+            : "",
+      ),
+    ),
+    h(
+      "ol.lm-source-list",
+      null,
+      sources.map((s) =>
+        h(
+          "li",
+          null,
+          h("span.lm-source-doc", null, s.doc),
+          h("span.lm-source-text", null, `${s.excerpt.replace(/\s+/g, " ")}…`),
+        ),
+      ),
+    ),
+  );
+}
+
 /** A JSON answer as a fenced block, indented once it parses. @param {string} text @param {boolean} live */
 function jsonBlock(text, live) {
   let body = text.trim().replace(/^```(?:json)?\s*|```\s*$/g, "");
@@ -174,6 +211,7 @@ export function drawMessage(app, thread, node, el, o = {}) {
             )
           : null,
         node.content ? h("div.lm-bubble", null, node.content) : null,
+        node.sources?.length ? sourcesBlock(node) : null,
         actions(app, thread, node, live),
       ),
     );
