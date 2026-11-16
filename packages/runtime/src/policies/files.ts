@@ -275,10 +275,12 @@ export function installFiles(
     "desk.files.open",
     "Open a file",
     async (args, from) => {
-      const { path, plugin, show } = (args ?? {}) as {
+      const { path, plugin, show, grant } = (args ?? {}) as {
         path?: string;
         plugin?: string;
         show?: boolean;
+        /** false: grant the opener nothing, so it asks for its read as usual (a link's open, #310). */
+        grant?: boolean;
       };
       const chosen =
         path ??
@@ -290,7 +292,8 @@ export function installFiles(
               true,
             ));
       if (!chosen) return null;
-      return open(chosen, plugin, show !== false, personChose(from, plugin), from.caller);
+      const chose = personChose(from, plugin) && grant !== false;
+      return open(chosen, plugin, show !== false, chose, from.caller);
     },
     ["find-file"],
     OPEN_FOR_AGENTS,
