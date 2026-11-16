@@ -153,6 +153,7 @@ fn notification(id: &str, title: &str, body: Option<&str>, level: NotifyLevel) -
         title: title.to_owned(),
         body: body.map(str::to_owned),
         level,
+        action: None,
     }
 }
 
@@ -251,7 +252,8 @@ fn action_invoked_default_reaches_the_click_handler_with_the_desk_id() {
     assert_eq!(
         clicked.recv_timeout(WAIT),
         Ok(Click {
-            id: "n-1".to_owned()
+            id: "n-1".to_owned(),
+            action: false,
         })
     );
 
@@ -270,8 +272,35 @@ fn action_invoked_default_reaches_the_click_handler_with_the_desk_id() {
     assert_eq!(
         clicked.recv_timeout(WAIT),
         Ok(Click {
-            id: "n-2".to_owned()
+            id: "n-2".to_owned(),
+            action: false,
         })
     );
     assert!(clicked.try_recv().is_err(), "one call per click");
+}
+
+#[test]
+fn a_notifications_button_is_an_action_and_its_press_says_so() {
+    let server = Server::new(&["actions", "body"], 7);
+    let (server_connection, client) = connect(server.clone());
+    let notifier = Freedesktop::new(client, "endue Desk").unwrap();
+    let clicked = clicks(&notifier);
+    let with_button = Notification {
+        action: Some("Restart".to_owned()),
+        ..notification("n-1", "Update ready", None, NotifyLevel::Info)
+    };
+    notifier.post(&with_button).unwrap();
+    assert_eq!(
+        server.notifies()[0].actions,
+        ["default", "Open", "desk-action", "Restart"]
+    );
+
+    action_invoked(&server_connection, 7, "desk-action");
+    assert_eq!(
+        clicked.recv_timeout(WAIT),
+        Ok(Click {
+            id: "n-1".to_owned(),
+            action: true,
+        })
+    );
 }
