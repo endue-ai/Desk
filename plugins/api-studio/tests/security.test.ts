@@ -146,6 +146,11 @@ describe("secret names and values", () => {
       "password",
       "key",
       "Ocp-Apim-Subscription-Key",
+      "x-functions-key",
+      "DD-APPLICATION-KEY",
+      "X-Mashape-Key",
+      "X-Amz-Server-Side-Encryption-Customer-Key",
+      "encryption_key",
     ])
       expect(isSecretName(name), name).toBe(true);
     for (const name of [
@@ -163,6 +168,9 @@ describe("secret names and values", () => {
       "X-Session-Language",
       "tokenUrl",
       "token_type",
+      "AccountSid",
+      "AccessKeyId",
+      "partition_key",
     ])
       expect(isSecretName(name), name).toBe(false);
     expect(varName("X-API-Key")).toBe("xApiKey");

@@ -1,10 +1,11 @@
 // A browser's HAR file as a collection of the requests it recorded. A recording holds the
 // session it was made in (Authorization, Cookie, API keys, tokens in the query or the form), so
 // those values do not go into the request files: each becomes a secret variable of a "Recorded"
-// environment, kept in the desk, and the request says {{name}} where the value was.
+// environment, kept in the desk, and the request says {{name}} where the value was. That holds for
+// headers, the query, a user or password in the URL, and bodies as fields or as text.
 
 import { newRequest, pair } from "./model.js";
-import { isSecretName, varName } from "./secret-names.js";
+import { isSecretField, isSecretName, varName } from "./secret-names.js";
 import { paramsFromUrl, urlFromParams } from "./url.js";
 
 /** @typedef {import("./openapi.js").Imported} Imported */
@@ -57,13 +58,14 @@ export function fromHar(har) {
     let url = r.url;
     try {
       const u = new URL(r.url);
-      if (u.password) {
+      if (u.password || u.username) {
+        // https://user:pw@host, or a token alone as the user (https://ghp_x@host).
+        const name = decodeURIComponent(u.username);
         req.auth = {
           type: "basic",
-          basic: {
-            username: decodeURIComponent(u.username),
-            password: keeper.ref("password", decodeURIComponent(u.password)),
-          },
+          basic: u.password
+            ? { username: name, password: keeper.ref("password", decodeURIComponent(u.password)) }
+            : { username: keeper.ref("token", name), password: "" },
         };
         u.username = "";
         u.password = "";
@@ -110,8 +112,9 @@ export function fromHar(har) {
           pair({ key: k, value: hide(k, v) }),
         );
       } else if (post.text) {
+        // Any other text: JSON sent as text, a multipart body recorded whole, name=value pairs.
         req.body.mode = "text";
-        req.body.text = post.text;
+        req.body.text = hideTextFields(post.text, hide);
       }
     }
     requests.push(req);
@@ -134,8 +137,33 @@ function hideFields(v, hide) {
     return Object.fromEntries(
       Object.entries(v).map(([k, x]) => [
         k,
-        typeof x === "string" ? hide(k, x) : hideFields(x, hide),
+        typeof x === "string" ? (isSecretField(k) ? hide(k, x) : x) : hideFields(x, hide),
       ]),
     );
   return v;
+}
+
+/**
+ * A body kept as text with its secret fields swapped for references: JSON by its fields, a
+ * multipart body by its parts, any other text by its name=value pairs.
+ * @param {string} text @param {(name: string, value: string) => string} hide
+ */
+function hideTextFields(text, hide) {
+  try {
+    return JSON.stringify(hideFields(JSON.parse(text), hide));
+  } catch {
+    /* not JSON */
+  }
+  return (
+    text
+      .replace(
+        /(name="([^"]+)"[^\r\n]*\r?\n(?:[^\r\n]+\r?\n)*\r?\n)([^\r\n]*)/g,
+        (_m, head, name, value) => `${head}${hide(name, value)}`,
+      )
+      // The value as the text holds it (encoded or not), so filling it back in sends the same.
+      .replace(
+        /(^|[&\s])([A-Za-z][\w.-]*)=([^&\s]+)/g,
+        (_m, lead, name, value) => `${lead}${name}=${hide(name, value)}`,
+      )
+  );
 }

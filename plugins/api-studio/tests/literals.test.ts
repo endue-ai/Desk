@@ -133,4 +133,74 @@ describe("typed secrets", () => {
       ["password", "pw1", true],
     ]);
   });
+
+  it("moves a JSON value without touching the rest, and keeps a URL password as typed", () => {
+    const json =
+      '{\n  "n": 12345678901234567890,\n  "price": 10.50,\n  "password": "pw",\n  "fields": {"project": {"key": "PROJ"}}\n}';
+    const req = normalize({ url: "https://me:a%2Fb@host/", body: { mode: "json", json } });
+    const found = literalSecrets(req);
+    expect(found.map((l) => [l.label, l.value])).toEqual([
+      ["Password in the URL", "a%2Fb"],
+      ["Body field password", "pw"],
+    ]);
+    for (const l of found) l.put(`{{${l.name}}}`);
+    expect(req.body.json).toBe(json.replace('"pw"', '"{{password}}"'));
+    expect(req.url).toBe("https://me:{{password}}@host/");
+  });
+
+  it("empties for the history the bodies not in use too", () => {
+    const kept = withoutLiterals(
+      normalize({
+        body: {
+          mode: "json",
+          json: '{"a":1}',
+          form: [pair({ key: "password", value: "form-SECRET" })],
+          multipart: [pair({ key: "token", value: "part-SECRET" })],
+        },
+      }),
+    );
+    expect(JSON.stringify(kept)).not.toContain("SECRET");
+    expect(kept.body.mode).toBe("json");
+  });
+
+  it("takes secrets out of a HAR file's text bodies and a token given as the URL's user", () => {
+    const imp = fromHar({
+      log: {
+        entries: [
+          {
+            request: {
+              method: "POST",
+              url: "https://ghp_TOKEN@h.test/a",
+              headers: [],
+              postData: { mimeType: "text/plain", text: '{"password":"pwJSON","key":"PROJ"}' },
+            },
+          },
+          {
+            request: {
+              method: "POST",
+              url: "https://h.test/b",
+              headers: [],
+              postData: {
+                mimeType: "multipart/form-data; boundary=x",
+                text: '--x\r\nContent-Disposition: form-data; name="password"\r\n\r\npwMULTI\r\n--x--',
+              },
+            },
+          },
+          {
+            request: {
+              method: "POST",
+              url: "https://h.test/c",
+              headers: [],
+              postData: { mimeType: "text/plain", text: "user=ann&password=pw%2BPLAIN" },
+            },
+          },
+        ],
+      },
+    });
+    const files = JSON.stringify(imp.requests);
+    for (const value of ["TOKEN", "pwJSON", "pwMULTI", "PLAIN"]) expect(files).not.toContain(value);
+    expect(files).toContain("PROJ");
+    expect(imp.requests[2]?.body.text).toBe("user=ann&password={{password3}}");
+    expect(imp.envs[0]?.vars.find((v) => v.key === "password3")?.value).toBe("pw%2BPLAIN");
+  });
 });

@@ -3,10 +3,11 @@
 // like), so such a request does not let curl follow: the studio follows each hop itself. On every
 // hop to another origin it drops the secret headers (the jar's cookies for the origin left among
 // them), the credentials and the secrets in the query, and takes the jar's cookies for the new
-// origin only when the request uses the jar. A 307 or 308 to another origin would send the body
-// again, so a body with a secret stops there. The hops, their time and the last answer read as one
+// origin only when the request uses the jar. A hop to another origin that would send the body
+// again (a 307 or 308, or a 301 or 302 of anything but a POST) is not taken with a secret in it. The hops, their time and the last answer read as one
 // response, as curl's own would.
 
+import { hasSecretFields, isSecretName } from "./secret-names.js";
 import { readResponse } from "./send.js";
 
 /**
@@ -22,14 +23,27 @@ const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 const holds = (text, secrets) =>
   secrets.some((v) => v && (text.includes(v) || text.includes(encodeURIComponent(v))));
 
-/** Whether a request's body carries a secret. @param {Prepared} prep */
+/**
+ * Whether a request's body carries a secret: a secret's value, or a field whose name says secret
+ * with a value typed in (a password in a login form). @param {Prepared} prep
+ */
 export function bodyHoldsSecret(prep) {
   const secrets = prep.secrets ?? [];
-  if (prep.body.kind === "raw") return holds(prep.body.text, secrets);
+  if (prep.body.kind === "raw")
+    return holds(prep.body.text, secrets) || hasSecretFields(prep.body.text);
   if (prep.body.kind === "multipart")
-    return prep.body.parts.some((p) => !p.file && holds(p.value, secrets));
+    return prep.body.parts.some(
+      (p) => !p.file && (holds(p.value, secrets) || (isSecretName(p.name) && p.value !== "")),
+    );
   return false;
 }
+
+/** Whether a method and a redirect's status send the body again (curl's and browsers' rule). @param {number} status @param {string} method */
+export const keepsBody = (status, method) =>
+  !(
+    (status === 303 && method !== "HEAD") ||
+    ((status === 301 || status === 302) && method === "POST")
+  );
 
 /**
  * Whether a request must follow its redirects in the studio rather than in curl: it follows them,
@@ -62,9 +76,7 @@ export function originOf(url) {
  * @returns {Prepared}
  */
 export function nextHop(prep, status, next, away, cookies) {
-  const toGet =
-    (status === 303 && prep.method !== "HEAD") ||
-    ((status === 301 || status === 302) && prep.method === "POST");
+  const toGet = !keepsBody(status, prep.method);
   let headers = prep.headers;
   if (toGet) headers = headers.filter((h) => !/^content-(type|length)$/i.test(h.key));
   let url = next;
@@ -134,7 +146,14 @@ export function sendFollowing(engine, prep, options = {}) {
       }
       if (!/^https?:/i.test(next)) return { run, prep: at, hops, redirectMs };
       const away = originOf(next) !== originOf(at.url);
-      if (away && (res.status === 307 || res.status === 308) && bodyHoldsSecret(at))
+      // The body would go along to another origin (a 307 or 308, or a 301 or 302 of anything but
+      // a POST): not with a secret in it.
+      if (
+        away &&
+        at.body.kind !== "none" &&
+        keepsBody(res.status, at.method) &&
+        bodyHoldsSecret(at)
+      )
         return { run, prep: at, hops, redirectMs };
       hops.push({ status: res.status, reason: res.reason, location });
       redirectMs += res.timings.total;

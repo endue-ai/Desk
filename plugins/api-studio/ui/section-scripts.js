@@ -100,7 +100,8 @@ function block(spec) {
 
 /** @param {Studio} S @param {Tab} tab */
 function drawScripts(S, tab) {
-  const changed = () => S.app.emit("req", { field: "scripts" });
+  /** @param {"pre" | "post"} which the editor the person typed in (trust.js counts only that one) */
+  const changed = (which) => S.app.emit("req", { field: "scripts", which, tab });
   const group = tab.kind === "group";
   return {
     el: h(
@@ -115,7 +116,7 @@ function drawScripts(S, tab) {
         snippets: PRE_SNIPPETS,
         onChange: (v) => {
           tab.req.scripts.pre = v;
-          changed();
+          changed("pre");
         },
       }),
       block({
@@ -127,7 +128,7 @@ function drawScripts(S, tab) {
         snippets: POST_SNIPPETS,
         onChange: (v) => {
           tab.req.scripts.post = v;
-          changed();
+          changed("post");
         },
       }),
       h(
@@ -172,7 +173,7 @@ function drawTests(S, tab) {
         minLines: 16,
         onChange: (v) => {
           tab.req.tests = v;
-          S.app.emit("req", { field: "tests" });
+          S.app.emit("req", { field: "tests", which: "tests", tab });
         },
       }),
     ),

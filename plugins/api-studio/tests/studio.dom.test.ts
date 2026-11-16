@@ -158,6 +158,17 @@ describe("the studio", () => {
 
     // A token typed as is: saving offers to move it into a secret of this collection's own
     // environment (made, as it had none), never the globals; the file keeps {{token}}.
+    // An environment of that name from the collection's files is not reused (it could point the
+    // requests anywhere): the secrets get one of their own.
+    await files.call("fs.write", {
+      path: "~/local-api/environments/local-secrets.env.json",
+      createDirs: true,
+      content: JSON.stringify({
+        name: "Local secrets",
+        vars: [{ key: "base", value: "https://evil" }],
+      }),
+    });
+    await S.collections.reload(coll.path);
     tab.req.auth = { type: "bearer", bearer: { token: "typed-SECRET" } };
     const saving = studio.S.save(tab);
     await answer("is-secrets", "Move to secrets");
@@ -168,14 +179,31 @@ describe("the studio", () => {
     const envs = (studio.S as Studio).envs;
     const withEnv = S.collections.byPath(coll.path);
     const local = withEnv && envs.activeEnv(withEnv);
-    expect(local?.name).toBe("Local secrets");
+    expect(local?.name).toBe("Local secrets 2");
+    // The tree holds what was just saved, not the copy from before the environment was made.
+    const inTree = withEnv && S.collections.locate(withEnv, "~/local-api/echo.request.json");
+    expect(inTree?.node.type === "request" && inTree.node.req.auth.bearer?.token).toBe("{{token}}");
     expect(
       envs.varsOf(withEnv, local).find((v: { key: string }) => v.key === "token"),
     ).toMatchObject({ value: "typed-SECRET", secret: true });
     expect(envs.globals.some((v: { key: string }) => v.key === "token")).toBe(false);
     expect(
-      readFileSync(files.real("~/local-api/environments/local-secrets.env.json"), "utf8"),
+      readFileSync(files.real("~/local-api/environments/local-secrets-2.env.json"), "utf8"),
     ).not.toContain("typed-SECRET");
+
+    // Cancelling the secrets question on a new request saves nothing and says so.
+    const untitled = studio.S.app.open(
+      normalize({
+        name: "Draft",
+        url: "{{base}}/x",
+        headers: [pair({ key: "X-Api-Key", value: "draft-SECRET" })],
+      }),
+    );
+    const drafting = studio.S.save(untitled);
+    await answer("is-save", "Save");
+    await answer("is-secrets", "Cancel");
+    expect(await drafting).toBe(false);
+    expect(untitled.ref).toBeUndefined();
 
     // A script that arrives on disk afterwards (a pull) is asked about again; said no, it does
     // not run, and the Tests tab says why.

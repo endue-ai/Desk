@@ -11,7 +11,9 @@ import { clone } from "./model.js";
  * @typedef {import("./collection-fs.js").Node} Node
  * @typedef {{ path: string, name: string, method: string, folder: string, req: import("./model.js").Request }} RunItem
  * @typedef {{ iteration: number, item: RunItem, status: number, reason: string, time: number,
- *   size: number, passed: number, failed: number, error?: string, failures: string[], at: number }} RunRow
+ *   size: number, passed: number, failed: number, error?: string, failures: string[], at: number,
+ *   secrets?: string[] }} RunRow
+ *   `secrets`: what the send carried that is secret, so an agent's answer can hide it.
  * @typedef {{ iterations: number, delayMs: number, stopOnFail: boolean, data: Record<string, string>[] }} RunOptions
  */
 
@@ -139,6 +141,7 @@ export function startRun(S, coll, items, options, hooks) {
           failures,
           ...(res?.error ? { error: res.error } : {}),
           at: Date.now(),
+          secrets: tab.sentSecrets ?? [],
         };
         rows.push(row);
         hooks.onRow(row);

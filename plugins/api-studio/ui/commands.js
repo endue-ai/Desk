@@ -224,10 +224,11 @@ export function wireCommands(ctx, S) {
         resTab: "",
       }),
     );
-    /** A runner's line ("target: message") as an agent may read it. @param {string} line */
-    const safe = (line) => {
+    /** A runner's line ("target: message") as an agent may read it. @param {string} line @param {string[]} sent */
+    const safe = (line, sent) => {
+      const all = [...values, ...sent];
       const target = /^([\w$.[\]'"-]+): /.exec(line)?.[1];
-      return target ? hideFailure(target, line, values) : hideText(line, values);
+      return target ? hideFailure(target, line, all) : hideText(line, all);
     };
     return {
       ...sum,
@@ -237,7 +238,9 @@ export function wireCommands(ctx, S) {
           request: r.item.name,
           iteration: r.iteration,
           status: r.status,
-          problems: [...(r.error ? [r.error] : []), ...r.failures].map(safe),
+          problems: [...(r.error ? [r.error] : []), ...r.failures].map((line) =>
+            safe(line, r.secrets ?? []),
+          ),
         })),
     };
   });

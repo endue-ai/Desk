@@ -67,14 +67,16 @@ curl runs as the person, so the studio, not the desk's grants, decides what it m
 * A script runs only when the person wrote it here or allowed it. The studio keeps the SHA-256 of
   every allowed script in the desk's store and checks each script a send would run by its text,
   wherever the tab came from (a collection, the history, a copy), so a script that arrives or
-  changes on disk (a pull) is asked about again. Scripts the person types or applies in a script
-  editor are theirs and stay allowed. "Stop running its scripts" in the collection's menu takes a
+  changes on disk (a pull) is asked about again. A script the person types in its own editor is
+  theirs and stays allowed (only that one: typing a Before script allows no After script), and so
+  are tests the assistant adds when the tests they join were theirs or allowed. "Stop running its scripts" in the collection's menu takes a
   collection's allowance back.
 * A secret typed as it is into what a request's, folder's or collection's file keeps (the auth's
   passwords, tokens and keys when the auth is written, a password in the URL, secret headers, query
   pairs, fields of the body in use, variables) is found before the file is written, and the person
   is offered to move it into a secret variable of that collection's environment in use (or of a new
-  `Local secrets` one), leaving `{{name}}` in the file. Never into the globals, which fill into every
+  `Local secrets` one made for them, never one of that name from the files), leaving `{{name}}` in
+  the file; a JSON value is rewritten alone, the rest of the body as typed. Never into the globals, which fill into every
   collection's requests. A HAR import puts the recording's session (Authorization, Cookie, tokens,
   a password in the URL, secret form fields) into secrets of a `Recorded` environment. The history
   keeps no typed secret.
@@ -83,8 +85,9 @@ curl runs as the person, so the studio, not the desk's grants, decides what it m
   credentials, a secret in the query or the body) does not let curl follow: the studio follows each
   hop, and on every hop to another origin drops the secret headers (the jar's cookies for the origin
   left among them), the credentials and the secrets in the query, taking the jar's cookies for the
-  new origin only when the request uses the jar. A 307 or 308 to another origin with a secret in the
-  body is not followed.
+  new origin only when the request uses the jar. A hop to another origin that would send the body
+  again (a 307 or 308, or a 301 or 302 of anything but a POST) is not taken when the body holds a
+  secret, a secret's value or a typed password alike.
 * A request an agent writes itself (`send` with a url) fills in no secret variable, no variable whose
   name says secret, no value set while running (a capture may be a token under any name) and no
   cookie from the jar; it names any host. A saved request sent by name is the person's and gets its
@@ -124,5 +127,5 @@ folder, as connector secrets are until the desk keeps them in the OS keychain (A
 `ui/script-prelude.js`; the assistant `ui/ai-context.js` and `ui/ai-actions.js`; the guards
 `ui/guards.js`, `ui/trust.js`, `ui/file-guard.js`, `ui/literal-secrets.js`, `ui/redirects.js` and
 `ui/secret-names.js` (tested in `tests/security.test.ts`, `tests/redirects.test.ts`,
-`tests/literals.test.ts` and `tests/studio.dom.test.ts`). ADR 0088
+`tests/literals.test.ts`, `tests/trust.dom.test.ts` and `tests/studio.dom.test.ts`). ADR 0088
 (commands as agents' tools).

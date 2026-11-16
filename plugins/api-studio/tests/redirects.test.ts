@@ -138,4 +138,33 @@ describe("redirects", () => {
     expect(readResponse(followed.run, followed.prep, "", []).status).toBe(307);
     expect(followed.hops).toEqual([]);
   });
+
+  it("takes no body with a secret to another origin on a 302 of a PUT, nor a typed password", async () => {
+    const url = `${one.url}/away?status=302&to=${encodeURIComponent(`${other.url}/echo`)}`;
+    const put = prepare(
+      normalize({
+        method: "PUT",
+        url,
+        params: paramsFromUrl(url, []),
+        body: { mode: "json", json: '{"password":"{{key}}"}' },
+      }),
+      { scopes: scopesIn(["key-SECRET"]) },
+    ).prep;
+    const followed = await sendFollowing(createEngine(curlBridge()), put).promise;
+    expect(readResponse(followed.run, followed.prep, "", []).status).toBe(302);
+
+    const typedUrl = `${one.url}/away?status=307&to=${encodeURIComponent(`${other.url}/echo`)}`;
+    const typed = prepare(
+      normalize({
+        method: "POST",
+        url: typedUrl,
+        params: paramsFromUrl(typedUrl, []),
+        body: { mode: "form", form: [pair({ key: "password", value: "hunter2" })] },
+      }),
+      { scopes: [] },
+    ).prep;
+    expect(followsItself(typed)).toBe(true);
+    const stopped = await sendFollowing(createEngine(curlBridge()), typed).promise;
+    expect(readResponse(stopped.run, stopped.prep, "", []).status).toBe(307);
+  });
 });

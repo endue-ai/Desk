@@ -368,7 +368,7 @@ Notes opens a 4 MiB note and types in it and while Explorer previews a 7.1 MiB i
 | Plugin | Heavy path | Where it runs now | After | Fixture size tested |
 | --- | --- | --- | --- | --- |
 | `agents` | Chat transcript (≤ 200 turns × 8000 chars); every turn redrawn with its markdown on each streamed step | Frame (DOM) | Stays: bounded input; the redraw is DOM work, not a worker's (follow-up: redraw the streaming turn only) | Read, not run |
-| `api-studio` | Response bodies (curl stops at 64 MiB), pretty JSON and its colours, the JSON tree, test scripts | Frame; scripts in a blob worker (ten seconds) | Stays: bodies past 2 MB draw plain, the tree draws 2,000 children a node until asked, find marks at most 5,000 matches | `engine.test.ts` (real curl), `viewer.dom.test.ts`, `scripts.test.ts`, `studio.dom.test.ts`, `security.test.ts`, `redirects.test.ts`, `literals.test.ts` |
+| `api-studio` | Response bodies (curl stops at 64 MiB), pretty JSON and its colours, the JSON tree, test scripts | Frame; scripts in a blob worker (ten seconds) | Stays: bodies past 2 MB draw plain, the tree draws 2,000 children a node until asked, find marks at most 5,000 matches | `engine.test.ts` (real curl), `viewer.dom.test.ts`, `scripts.test.ts`, `studio.dom.test.ts`, `security.test.ts`, `redirects.test.ts`, `literals.test.ts`, `trust.dom.test.ts` |
 | `archives` | Listings and extraction (ZIP, 7z, RAR, disk images) through `endue.formats` | Library worker; the frame only when no worker starts | Unchanged (confirmed) | PR #261 fixtures |
 | `browser` | None: the page is a web view of the desk's in a browser of its own (ADR 0216); the frame holds a toolbar and parses one address | — | — | — |
 | `buffers` | None: a policy, no frame | — | — | — |
