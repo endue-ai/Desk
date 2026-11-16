@@ -6,7 +6,10 @@
  * desk without a window manager host that decides (the runtime's tests and fixture pages) every
  * window keeps its frame. Every surface's frame is also watched for answers (#39, `watch.ts`); one
  * the person stopped stays unloaded until they reload it. A plugin's reload waits for what its
- * frame already sent, its last desk:state with it (`reload.ts`).
+ * frame already sent, its last desk:state with it (`reload.ts`). In the app a hidden overlay (the
+ * launcher, the palette's plugin, a permission prompt not asked yet) sleeps too while the desk's page
+ * is hidden, its window closed or out of sight, and loads again when the page shows or the overlay
+ * does (#312, ADR 0246): nobody can see it, and each is a renderer of its own.
  */
 import { LIVE_SURFACES } from "../core/defaults";
 import type { DeskContext } from "../policies/context";
@@ -90,6 +93,10 @@ export function installFrames(
   const loaded = new Map<string, number>();
   /** The surfaces the unload policy counts: the windows. */
   const windowed = new Set<string>();
+  /** And the overlays, in the app only: one hidden sleeps while the desk is out of sight. */
+  const overlays = new Set<string>();
+  const doc = win.document;
+  const overlayKept = (id: string) => !doc.hidden || surfaces.visible(id);
   /** desk.surfaces.live, for the inspector: the window manager's budget reads it. */
   const budget = () => {
     const value = settings.get<unknown>(LIVE_SURFACES, 8);
@@ -129,6 +136,7 @@ export function installFrames(
   const policy = new FramePolicy({
     // The window manager's set; with none decided, every window keeps its frame.
     live: (id) => {
+      if (overlays.has(id)) return overlayKept(id) || loading(id);
       const live = windows?.live?.();
       return live ? live.has(id) || loading(id) : true;
     },
@@ -154,6 +162,10 @@ export function installFrames(
     });
   };
   const offs = [surfaces.onChange(changed), windows?.onChange?.(changed)];
+  if (windows) {
+    doc.addEventListener("visibilitychange", changed);
+    offs.push(() => doc.removeEventListener("visibilitychange", changed));
+  }
   const watch = watchFrames(ctx, {
     host: deps.host,
     timers,
@@ -162,7 +174,7 @@ export function installFrames(
     // A stopped frame is the person's to load again: the policy neither counts nor loads it.
     stopped: (id) => policy.untrack(id),
     reloaded: (id) => {
-      if (windowed.has(id)) policy.track(id);
+      if (windowed.has(id) || overlays.has(id)) policy.track(id);
       changed();
     },
   });
@@ -188,6 +200,12 @@ export function installFrames(
     opened(spec, inWindow) {
       specs.set(spec.id, spec);
       watch.track(spec.id);
+      if (windows && spec.placement === "overlay") {
+        overlays.add(spec.id);
+        policy.track(spec.id);
+        changed();
+        return;
+      }
       if (!inWindow && spec.placement !== "center" && spec.placement !== "floating") return;
       windowed.add(spec.id);
       policy.track(spec.id);
@@ -197,6 +215,7 @@ export function installFrames(
       specs.delete(id);
       loaded.delete(id);
       windowed.delete(id);
+      overlays.delete(id);
       reloads.forget(id);
       watch.untrack(id);
       policy.untrack(id);
