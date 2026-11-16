@@ -44,9 +44,7 @@ fn serve() -> Desk {
         sample_rate: 16_000,
         channels: 1,
     }]));
-    let core = Arc::new(
-        Core::new(Roots { home: home.clone() }).with_audio(input.clone()),
-    );
+    let core = Arc::new(Core::new(Roots { home: home.clone() }).with_audio(input.clone()));
     for permission in desk_ipc::grants() {
         core.grant(CALLER, permission);
     }
@@ -140,7 +138,11 @@ impl Conn {
     fn wait_for(&mut self, name: &str) {
         let deadline = Instant::now() + Duration::from_secs(10);
         while !self.events.iter().any(|e| e["event"] == name) {
-            assert!(Instant::now() < deadline, "no {name} within 10 s: {:?}", self.events);
+            assert!(
+                Instant::now() < deadline,
+                "no {name} within 10 s: {:?}",
+                self.events
+            );
             if let Some(value) = self.next() {
                 self.events.push(value);
             }
@@ -151,7 +153,12 @@ impl Conn {
 #[test]
 fn a_cli_connection_hears_only_its_own_command_answer() {
     let desk = serve();
-    call(&desk.core, NOTES, "cmd.register", json!({ "id": "example.notes.count", "title": "Count" }));
+    call(
+        &desk.core,
+        NOTES,
+        "cmd.register",
+        json!({ "id": "example.notes.count", "title": "Count" }),
+    );
     let mut running = Conn::open(&desk.path);
     let mut other = Conn::open(&desk.path);
     other.ask(json!({ "id": 1, "method": "init.get", "params": {} }));
@@ -159,12 +166,28 @@ fn a_cli_connection_hears_only_its_own_command_answer() {
     let invoked = running.ask(json!({ "id": 2, "method": "cmd.invoke", "params": {
         "id": "example.notes.count", "args": {},
         "scope": { "permission": "cmd:invoke", "ids": ["example.notes.count"] } } }));
-    let invocation = invoked["result"]["invocationId"].as_str().unwrap().to_owned();
-    call(&desk.core, NOTES, "cmd.answer", json!({ "invocationId": invocation, "result": 3 }));
+    let invocation = invoked["result"]["invocationId"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    call(
+        &desk.core,
+        NOTES,
+        "cmd.answer",
+        json!({ "invocationId": invocation, "result": 3 }),
+    );
 
     running.wait_for("cmd.answered");
-    let answered = running.events.iter().find(|e| e["event"] == "cmd.answered").unwrap();
-    assert_eq!(answered["data"]["invocationId"], invocation.as_str(), "{answered}");
+    let answered = running
+        .events
+        .iter()
+        .find(|e| e["event"] == "cmd.answered")
+        .unwrap();
+    assert_eq!(
+        answered["data"]["invocationId"],
+        invocation.as_str(),
+        "{answered}"
+    );
     let overheard = other.heard();
     assert!(
         !overheard.iter().any(|e| e == "cmd.answered"),
