@@ -26,7 +26,8 @@ type State = "idle" | "hover" | "edit";
 /** The pill's size in a state, as bottom.css draws it on an app `vw` wide. */
 export function pillSize(state: State, vw: number): { w: number; h: number } {
   if (state === "edit") return { w: Math.min(640, vw - 280), h: 72 };
-  return { w: state === "hover" ? 400 : 184, h: 48 };
+  // Folded, at rest or under the pointer, it is one size: the small orb, the hint and the key.
+  return { w: Math.min(440, vw - 280), h: 40 };
 }
 
 /** A stored place, or null for the default (missing, malformed or out of range). */
