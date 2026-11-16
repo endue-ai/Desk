@@ -8,9 +8,16 @@ import { nameOf } from "./repo.js";
  * @typedef {import("./app.js").App} App
  * @typedef {"repo" | "branch" | "undo" | "redo" | "fetch" | "pull" | "push" | "new-branch" | "stash"
  *   | "pop" | "ai" | "sidebar" | "refresh" | "search"} ToolAction
+ * @typedef {"text" | "code" | "path"} SearchMode
  * @typedef {{ onTool(action: ToolAction, event: MouseEvent): void, onOpen(path: string): void,
- *   onSearch(query: string): void }} Hooks
+ *   onSearch(query: string, mode: SearchMode): void, onJump?(step: number): void }} Hooks
  */
+
+const PLACEHOLDERS = Object.freeze({
+  text: "Search commits  ( / )",
+  code: "Text added or removed…",
+  path: "Part of a file path…",
+});
 
 /** @param {App} app @param {HTMLElement} host @param {Hooks} hooks */
 export function createToolbar(app, host, hooks) {
@@ -37,13 +44,36 @@ export function createToolbar(app, host, hooks) {
   });
   const pullBadge = h("span.tool-badge", { hidden: true });
   const pushBadge = h("span.tool-badge", { hidden: true });
-  const search = h("input.desk-field.tool-search", {
-    type: "search",
-    placeholder: "Search commits  ( / )",
-    "aria-label": "Search commits by message, author or id",
-    onInput: (/** @type {Event} */ e) =>
-      hooks.onSearch(/** @type {HTMLInputElement} */ (e.target).value),
-  });
+  const search = /** @type {HTMLInputElement} */ (
+    h("input.desk-field.tool-search", {
+      type: "search",
+      placeholder: "Search commits  ( / )",
+      "aria-label": "Search commits",
+      onInput: () => hooks.onSearch(search.value, /** @type {SearchMode} */ (mode.value)),
+      onKeydown: (/** @type {KeyboardEvent} */ e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          hooks.onJump?.(e.shiftKey ? -1 : 1);
+        }
+      },
+    })
+  );
+  const mode = /** @type {HTMLSelectElement} */ (
+    h(
+      "select.desk-field.tool-mode",
+      {
+        "aria-label": "What to search",
+        onChange: () => {
+          search.placeholder = PLACEHOLDERS[/** @type {SearchMode} */ (mode.value)];
+          hooks.onSearch(search.value, /** @type {SearchMode} */ (mode.value));
+        },
+      },
+      h("option", { value: "text" }, "Message, author, id"),
+      h("option", { value: "code" }, "Code changes"),
+      h("option", { value: "path" }, "File path"),
+    )
+  );
+  const count = h("span.tool-count", { "aria-live": "polite" });
   const pull = tool("pull", "pull", "Pull");
   pull.append(pullBadge);
   const push = tool("push", "push", "Push");
@@ -71,7 +101,12 @@ export function createToolbar(app, host, hooks) {
       tool("pop", "pop", "Pop", "Apply the latest stash and drop it"),
     ),
     h("div.tool-spacer"),
-    h("div.tool-search-wrap", null, icon("search", 14), search),
+    h(
+      "div.tool-search-wrap",
+      null,
+      mode,
+      h("span.tool-search-box", null, icon("search", 14), search, count),
+    ),
     h(
       "div.tool-group",
       null,
@@ -118,7 +153,13 @@ export function createToolbar(app, host, hooks) {
   draw();
   return {
     focusSearch: () => search.focus(),
-    setSearch: (/** @type {string} */ q) => (search.value = q),
+    setSearch: (/** @type {string} */ q) => {
+      search.value = q;
+    },
+    /** `3 of 12`, `none`, or nothing while there is no query. */
+    setCount: (/** @type {string} */ text) => {
+      count.textContent = text;
+    },
   };
 }
 

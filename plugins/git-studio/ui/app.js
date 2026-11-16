@@ -44,6 +44,8 @@ export function createApp(ctx, options = {}) {
     notice: null,
     recent: kept.recent ?? [],
     query: "",
+    searchMode: "text",
+    deep: null,
     scope: kept.scope ?? "all",
     sidebar: kept.sidebar ?? true,
     limit: PAGE,

@@ -55,7 +55,12 @@ export function createStudio(ctx, doc) {
   const toolbar = createToolbar(app, $("toolbar"), {
     onTool: (action, event) => void tool(action, event),
     onOpen: (path) => void openRepo(path),
-    onSearch: (query) => app.set({ query }),
+    onSearch: (query, mode) =>
+      app.set({ query, searchMode: mode, deep: mode === "text" ? null : app.get().deep }),
+    onJump: (step) => {
+      const where = graph.jump(step);
+      if (where) toolbar.setCount(`${where.at} of ${where.total}`);
+    },
   });
   createStatusbar(app, $("statusbar"));
   createBanner(app, $("banner"), {
@@ -324,5 +329,5 @@ export function createStudio(ctx, doc) {
 
   const last = app.restore();
   if (last) void openRepo(last);
-  return { app, graph, actions, history, center, diff, extra, layer };
+  return { app, graph, actions, history, center, diff, extra, layer, toolbar };
 }

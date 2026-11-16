@@ -79,7 +79,11 @@ export function createGraphView(app, host, hooks = {}) {
       lanes = Math.min(MAX_LANES, Math.max(1, layout.width));
       refs = refsByCommit(snapshot.refs);
     }
-    matches = matchSet(items, query);
+    const deep = /** @type {Set<string> | null | undefined} */ (app.get().deep);
+    matches =
+      app.get().searchMode !== "text" && query.trim()
+        ? (deep ?? new Set())
+        : matchSet(items, query);
     const graphWidth = PAD * 2 + lanes * LANE;
     host.style.setProperty("--graph-width", `${graphWidth}px`);
     spacer.style.height = `${items.length * ROW + (snapshot?.more ? ROW * 2 : 0)}px`;
@@ -293,12 +297,39 @@ export function createGraphView(app, host, hooks = {}) {
     return true;
   }
 
+  /**
+   * Select the next (or previous) match after the selection, wrapping round; resolves with where it
+   * is among the matches, or null when nothing matches.
+   */
+  function jump(/** @type {number} */ step) {
+    if (!matches || matches.size === 0) return null;
+    const found = items.filter((item) => matches?.has(item.sha));
+    const at = found.findIndex((item) => item.sha === app.get().selected);
+    const next = found[(at + step + found.length) % found.length] ?? found[0];
+    if (!next) return null;
+    void app.select(next.sha);
+    reveal(next.sha);
+    return { at: found.indexOf(next) + 1, total: found.length };
+  }
+
   app.subscribe((state, previous) => {
-    if (state.snapshot !== previous.snapshot || state.query !== previous.query) rebuild();
+    if (
+      state.snapshot !== previous.snapshot ||
+      state.query !== previous.query ||
+      state.deep !== previous.deep
+    )
+      rebuild();
     else if (state.selected !== previous.selected) schedule();
   });
   rebuild();
-  return { reveal, focus: () => scroller.focus(), items: () => items };
+  return {
+    reveal,
+    jump,
+    focus: () => scroller.focus(),
+    items: () => items,
+    /** How many loaded commits match, or null when nothing is searched. */
+    matchCount: () => (matches ? items.filter((item) => matches?.has(item.sha)).length : null),
+  };
 }
 
 /** The ids of the commits whose message, author, id or refs hold every word of `query`. */

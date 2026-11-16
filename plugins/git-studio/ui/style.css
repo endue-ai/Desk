@@ -137,21 +137,42 @@ body {
 }
 
 .tool-search-wrap {
-  position: relative;
   display: flex;
   align-items: center;
+  gap: 4px;
   color: var(--desk-text-muted);
 }
 
-.tool-search-wrap .icon {
+.tool-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.tool-search-box .icon {
   position: absolute;
   left: 10px;
 }
 
 .desk-field.tool-search {
-  width: 260px;
+  width: 240px;
   padding-left: 30px;
+  padding-right: 64px;
   height: var(--desk-control-sm);
+}
+
+.desk-field.tool-mode {
+  height: var(--desk-control-sm);
+  width: auto;
+  font-size: var(--desk-text-xs);
+}
+
+.tool-count {
+  position: absolute;
+  right: 10px;
+  font-size: var(--desk-text-2xs);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
 
 /* ── workspace ───────────────────────────────────────────────────────────── */
