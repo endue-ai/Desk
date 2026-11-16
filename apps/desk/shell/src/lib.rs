@@ -53,6 +53,7 @@ pub mod run_event;
 pub mod sandbox;
 pub mod scheme;
 pub mod stall_restart;
+pub mod system_notices;
 pub mod tray;
 pub mod update;
 pub mod web_host;
