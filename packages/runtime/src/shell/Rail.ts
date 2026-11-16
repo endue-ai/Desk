@@ -4,13 +4,14 @@
  * soon as the pointer is on it (ADR 0220), stay while the pointer is on them, and go once it has
  * left both. A click or Enter keeps them open, as the other buttons' popovers are. The buttons
  * stand in three groups with a rule between: what the desk thinks with and sees, where it runs
- * and whether it listens, and Arrange. A button whose state is on is filled.
+ * and whether it listens, and Arrange. A button whose state is on is filled. While anything
+ * captures the microphone, the Listen button says so and stops it (`mic.ts`, ADR 0245).
  */
 
 import { arrangeText } from "../arrange/copy";
 import { arrangeIcon } from "../arrange/icons";
 import { arrangeActions, arrangeWatch, runArrange } from "../arrange/menu";
-import type { BrainName } from "../bridge/types";
+import type { BrainName, CaptureInForce } from "../bridge/types";
 import { toggleListening } from "../eris/hey";
 import { agentName, isOpen } from "../system/agents";
 import { layoutOf } from "./actions";
@@ -18,6 +19,7 @@ import { mountBarTip, withTip } from "./bar-tip";
 import type { ShellCtx } from "./context";
 import { type Child, h, listen, render } from "./dom";
 import { icon } from "./icons";
+import { micLabel, stopEveryCapture, watchMic } from "./mic";
 import type { DeskState, RailId } from "./state";
 
 interface Item {
@@ -37,7 +39,7 @@ const GROUP_STARTS: readonly RailId[] = ["desks", "arrange"];
  * time to cross the gap between the rail and its popover, where the pointer is over a window. */
 const LEAVE_MS = 350;
 
-function items(ctx: ShellCtx, s: DeskState): Item[] {
+function items(ctx: ShellCtx, s: DeskState, captures: readonly CaptureInForce[]): Item[] {
   const b = s.brain;
   const open = s.tasks.filter(isOpen);
   const running = open.filter((t) => t.status === "working").length;
@@ -81,13 +83,15 @@ function items(ctx: ShellCtx, s: DeskState): Item[] {
       : s.vm === "none"
         ? { id: "vm", icon: "box", label: ctx.tr("vmNone"), dot: "warning" }
         : { id: "vm", icon: "box", label: ctx.tr("vmResting") },
-    {
-      id: "listen",
-      icon: "mic",
-      label: ctx.tr(s.listening ? "listenOn" : "listenOff"),
-      dot: s.listening ? "active" : undefined,
-      on: s.listening,
-    },
+    captures.length > 0
+      ? { id: "listen", icon: "mic", label: micLabel(ctx, captures), dot: "active", on: true }
+      : {
+          id: "listen",
+          icon: "mic",
+          label: ctx.tr(s.listening ? "listenOn" : "listenOff"),
+          dot: s.listening ? "active" : undefined,
+          on: s.listening,
+        },
     { id: "arrange", icon: "arrange", label: arrangeText(s.lang, "strip") },
   ];
 }
@@ -237,6 +241,7 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
   const tip = mountBarTip(root, el, { id: "rail-tooltip", edge: "right", controls: "[data-rail]" });
   const pop = h("div", { class: "rail-popover-slot" });
   root.append(pop);
+  const mic = watchMic(ctx, () => draw());
   /** The Arrange actions show because the pointer is on them: they go when it has left. */
   let hovered = false;
   let leaving: number | undefined;
@@ -267,7 +272,8 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
     const visible = layoutOf(s).rail.visible;
     el.hidden = !visible;
     pop.hidden = !visible;
-    const list = items(ctx, s);
+    const captures = mic.captures();
+    const list = items(ctx, s, captures);
     const button = (item: Item) =>
       h(
         "button",
@@ -278,8 +284,11 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
           "data-rail": item.id,
           "aria-label": item.label,
           "aria-expanded": item.id === "listen" ? undefined : String(s.popover === item.id),
-          "aria-pressed": item.id === "listen" ? String(s.listening) : undefined,
+          "aria-pressed": item.id === "listen" ? String(item.on === true) : undefined,
           onClick: () => {
+            if (item.id === "listen" && captures.length > 0) {
+              return void stopEveryCapture(ctx, captures);
+            }
             if (item.id === "listen") return void toggleListening(ctx);
             // A press on Arrange while its actions show under the pointer keeps them.
             if (item.id === "arrange" && hovered && s.popover === "arrange") {
@@ -361,6 +370,7 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
   ];
   return () => {
     stay();
+    mic.dispose();
     for (const off of offs) off();
     tip.dispose();
     el.remove();

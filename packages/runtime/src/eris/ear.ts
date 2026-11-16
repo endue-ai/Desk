@@ -1,16 +1,14 @@
 /**
  * Eris's ear for a spoken turn: the microphone through Web Audio (an AnalyserNode, fftSize 256, into
- * the nine sound bands) plus the platform's speech recognition when the page has it, or a recorded
- * sample voice replayed on the shell's clock when there is no microphone.
+ * the nine sound bands) plus the platform's speech recognition when the page has it; the bridge's
+ * microphone (`ear-capture.ts`) when the page has no speech recognition; or a recorded sample voice
+ * replayed on the shell's clock when there is no microphone.
  */
 import { type Envelope, sampleEnvelope } from "../bridge/browser";
-import type { Bands } from "../bridge/types";
+import type { Bands, ShellBridge } from "../bridge/types";
+import { captureEar, MAX_DB, MIN_DB } from "./ear-capture";
 import type { Ear, TalkLang } from "./talk";
 import { bandsFromSpectrum } from "./voice";
-
-/** The analyser's byte range in dBFS: a quiet room reads 0, a near voice about two thirds. */
-const MIN_DB = -90;
-const MAX_DB = -25;
 /** After asking recognition to stop, its final words are awaited this long. */
 const FINAL_WORDS_MS = 900;
 const LOCALE: Record<TalkLang, string> = { ko: "ko-KR", en: "en-US" };
@@ -40,10 +38,15 @@ interface Recognition {
   stop(): void;
 }
 
+/** The page's speech recognition, if it has one. */
+function recognition(): (new () => Recognition) | undefined {
+  const w = globalThis as unknown as Record<string, (new () => Recognition) | undefined>;
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition;
+}
+
 /** The platform's speech recognition, listening in `lang`; null when the page has none. */
 function recognise(lang: TalkLang): { stop(): Promise<string> } | null {
-  const w = globalThis as unknown as Record<string, (new () => Recognition) | undefined>;
-  const Make = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+  const Make = recognition();
   if (!Make) return null;
   let text = "";
   let ended = false;
@@ -80,11 +83,19 @@ function recognise(lang: TalkLang): { stop(): Promise<string> } | null {
   }
 }
 
-/** The microphone; null when there is none, it was refused, or Web Audio is missing. */
+/**
+ * The microphone; null when there is none, it was refused, or Web Audio is missing. Without speech
+ * recognition the page's microphone would hear no words either, so `bridge`'s capture listens.
+ */
 export async function openMic(
   lang: TalkLang,
   audio: AudioContext | undefined,
+  bridge?: ShellBridge["audio"],
 ): Promise<Ear | null> {
+  if (!recognition() && bridge?.capture) {
+    void audio?.close();
+    return captureEar(bridge.capture);
+  }
   const devices = typeof navigator === "undefined" ? undefined : navigator.mediaDevices;
   if (!audio || !devices?.getUserMedia) {
     void audio?.close();
