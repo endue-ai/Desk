@@ -24,6 +24,7 @@ import "./section-vars.js";
 import "./section-docs.js";
 import { installAuth } from "./features-auth.js";
 import { installEnvironments } from "./features-env.js";
+import { installRunner } from "./features-runner.js";
 import { installScripts } from "./features-scripts.js";
 
 /**
@@ -56,6 +57,7 @@ export function createStudio(ctx, doc) {
     scopes(tab) {
       return [
         S.runtime,
+        ...(tab.data ? [scope("data", "Data row", tab.data)] : []),
         scope("request", "Request", tab.req.vars.pre),
         ...S.scopeProviders.flatMap((p) => p(tab)),
       ];
@@ -150,6 +152,7 @@ export function createStudio(ctx, doc) {
   installEnvironments(S);
   const auth = installAuth(S);
   installScripts(S);
+  installRunner(S);
 
   // ── the window ──────────────────────────────────────────────────────────
   const side = sideBar(S);
