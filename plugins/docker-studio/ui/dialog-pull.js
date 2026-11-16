@@ -65,7 +65,7 @@ export function progressView() {
 }
 
 /** @param {App} app @param {string} [preset] A reference to pull at once. */
-export function openPullDialog(app, preset = "") {
+export function openPullDialog(app, preset = "", auto = true) {
   let ref = preset;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
@@ -221,7 +221,7 @@ export function openPullDialog(app, preset = "") {
   };
 
   sync();
-  if (preset) void go();
+  if (preset && auto) void go();
   else void search(preset);
 }
 

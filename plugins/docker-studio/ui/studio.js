@@ -8,6 +8,7 @@ import { createLive } from "./live.js";
 import { stacksOf } from "./model.js";
 import { createOverlay } from "./overlay.js";
 import { createRunner } from "./run.js";
+import { DEFAULTS, loadSettings } from "./settings.js";
 import { createStore } from "./store.js";
 import { createShell } from "./view-shell.js";
 
@@ -31,7 +32,8 @@ export function createStudio(ctx, doc, pages) {
     context: () => store.state.context,
     path: () => settings.path,
   });
-  const settings = { path: "", stopTimeout: 10, logTail: 500, shell: "/bin/sh", confirm: true };
+  /** @type {import("./settings.js").Settings} */
+  const settings = { ...DEFAULTS };
   /** docker that also says when the engine went away. */
   const docker = (/** @type {string[]} */ args, /** @type {any} */ options) =>
     runner.run(args, options);
@@ -187,7 +189,26 @@ export function createStudio(ctx, doc, pages) {
       explainBuild() {},
       tailorScaffold() {},
     }),
-    start() {
+    /** Talk to another engine (for the studio alone), and read everything again. @param {string} name */
+    useContext(name) {
+      store.set({
+        context: name,
+        containers: [],
+        images: [],
+        volumes: [],
+        networks: [],
+        projects: [],
+        disk: [],
+        activity: [],
+      });
+      app.savePrefs("context", { name });
+      live.stop();
+      app.toast(`The studio now uses ${name}.`, "success");
+      void live.start();
+    },
+    async start() {
+      await loadSettings(ctx, settings);
+      store.state.context = app.prefs("context", { name: "" }).name;
       installFeatures(app);
       show(saved.page ?? "dashboard", saved.detail ?? null);
       shell.engine(store.state);

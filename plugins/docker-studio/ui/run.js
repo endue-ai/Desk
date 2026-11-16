@@ -9,7 +9,7 @@ import { explain, kindOf } from "./errors.js";
 /**
  * @typedef {{ code: number | null, signal: string | null, stdout: string, stderr: string }} Outcome
  * @typedef {"stdout" | "stderr"} Stream
- * @typedef {{ cwd?: string, timeoutMs?: number, ok?: number[], input?: string,
+ * @typedef {{ cwd?: string, timeoutMs?: number, ok?: number[], input?: string, context?: string,
  *   onLine?(stream: Stream, line: string): void }} RunOptions
  * @typedef {{ cwd?: string, onLine(stream: Stream, line: string): void,
  *   onExit?(outcome: Outcome): void }} StreamOptions
@@ -87,10 +87,11 @@ export function createRunner(bridge, options = {}) {
     early.delete(procId);
   };
 
-  /** @param {string[]} args @param {string | undefined} cwd */
-  const spawn = async (args, cwd) => {
+  /** @param {string[]} args @param {string | undefined} cwd @param {string} [only] Another context, for this call alone. */
+  const spawn = async (args, cwd, only) => {
     const chosen = path() || (fallback ? FALLBACK_PATH : "");
-    const flags = context() ? ["--context", context()] : [];
+    const use = only ?? context();
+    const flags = use ? ["--context", use] : [];
     const params = {
       command: "docker",
       args: [...flags, ...args],
@@ -147,7 +148,7 @@ export function createRunner(bridge, options = {}) {
    * @param {string[]} args @param {RunOptions} [options] @returns {Promise<Outcome>}
    */
   const run = async (args, options = {}) => {
-    const { procId } = await spawn(args, options.cwd);
+    const { procId } = await spawn(args, options.cwd, options.context);
     const timeoutMs = options.timeoutMs ?? TIMEOUT_MS;
     /** @type {Outcome} */
     const outcome = await new Promise((resolve, reject) => {

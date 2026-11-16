@@ -78,6 +78,38 @@
         "key": "Mod+Alt+K",
         "command": "endue.docker-studio.open"
       }
-    ]
+    ],
+    "settings": {
+      "endue.docker-studio.path": {
+        "kind": "string",
+        "default": "",
+        "description": "The PATH docker is looked up on and runs with (folders separated by :), for a desk started without the shell's PATH. Empty: the desk's PATH, then where docker is usually installed."
+      },
+      "endue.docker-studio.stop-timeout": {
+        "kind": "integer",
+        "default": 10,
+        "description": "Seconds a stop or restart waits before docker kills the container (0 to 600)."
+      },
+      "endue.docker-studio.log-tail": {
+        "kind": "integer",
+        "default": 500,
+        "description": "How many of the last log lines open with the logs (0 to 100000)."
+      },
+      "endue.docker-studio.log-max": {
+        "kind": "integer",
+        "default": 5000,
+        "description": "How many log lines a log view keeps while following (100 to 100000)."
+      },
+      "endue.docker-studio.shell": {
+        "kind": "string",
+        "default": "/bin/sh",
+        "description": "The shell a terminal or the Exec tab starts in a container: a path or name inside it, like /bin/bash."
+      },
+      "endue.docker-studio.confirm": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Ask before removing, killing, taking down or pruning."
+      }
+    }
   }
 }

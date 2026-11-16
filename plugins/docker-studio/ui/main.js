@@ -9,7 +9,8 @@ defineUiPlugin({
   mount(ctx) {
     const app = createStudio(ctx, document, PAGES);
     wireCommands(ctx, app);
-    app.start();
-    document.body.dataset.ready = "1";
+    void app.start().then(() => {
+      document.body.dataset.ready = "1";
+    });
   },
 });

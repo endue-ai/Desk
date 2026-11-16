@@ -68,6 +68,8 @@ export function docker(world, argv, io) {
   const container = (/** @type {string} */ ref) => findContainer(world, ref);
   switch (cmd) {
     case "version":
+      // A Go template of one field prints that field; anything else, the whole JSON.
+      if (args.includes("{{.Server.Version}}")) return ok(io, J.VERSION.Server.Version);
       return ok(io, JSON.stringify(J.VERSION));
     case "info":
       return ok(io, JSON.stringify(J.info(world)));
