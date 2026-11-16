@@ -333,6 +333,9 @@ fn a_plugins_dialog_names_its_id_beside_its_name() {
     call(&core, "example.impostor", "dialog.open", json!({})).unwrap();
     call(&core, NOTES, "dialog.save", json!({})).unwrap();
     let asked = person.asked();
-    assert!(asked[0].starts_with("open endue Desk (example.impostor) "), "{asked:?}");
+    assert!(
+        asked[0].starts_with("open endue Desk (example.impostor) "),
+        "{asked:?}"
+    );
     assert!(asked[1].starts_with("save example.hello "), "{asked:?}");
 }
