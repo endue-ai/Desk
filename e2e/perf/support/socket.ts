@@ -102,6 +102,26 @@ export class DeskSocket {
     }
   }
 
+  /**
+   * `run`, failing after `ms` with `what` instead of waiting for
+   * mocha's timeout: a desk that stopped painting quits to start again (#157), and an open it was
+   * asked for then never answers (#339).
+   */
+  async runWithin(ms: number, what: string, command: string, args: unknown): Promise<unknown> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`${what}: no answer to ${command} in ${ms / 1000} s`)),
+        ms,
+      );
+    });
+    try {
+      return await Promise.race([this.run(command, args), late]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   /** Answer every permission prompt from now on: granted, `always`. */
   answerPrompts(): void {
     this.#listen((line) => {
