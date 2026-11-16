@@ -1322,51 +1322,6 @@
      "children": [
       {
        "tag": "div",
-       "class": "drawer",
-       "children": [
-        {
-         "tag": "div",
-         "class": "drawer-slot",
-         "style": {
-          "color": "rgb(242, 240, 245)"
-         }
-        },
-        {
-         "tag": "button",
-         "class": "icon-button drawer-button",
-         "aria-label": "서랍 · 3",
-         "aria-expanded": "false",
-         "box": [
-          92,
-          840,
-          40,
-          40
-         ],
-         "style": {
-          "background": "rgb(30, 29, 33)",
-          "border": "solid rgb(51, 49, 54)"
-         },
-         "children": [
-          {
-           "tag": "svg",
-           "icon": "drawer"
-          },
-          {
-           "tag": "span",
-           "class": "badge",
-           "style": {
-            "background": "rgb(36, 33, 39)",
-            "color": "rgb(242, 240, 245)",
-            "border": "solid rgb(51, 49, 54)"
-           },
-           "text": "3"
-          }
-         ]
-        }
-       ]
-      },
-      {
-       "tag": "div",
        "class": "composer talk-pill",
        "data-state": "idle",
        "style": {
@@ -1649,6 +1604,91 @@
            ]
           }
          ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "map-strip",
+     "role": "group",
+     "aria-label": "캔버스",
+     "style": {
+      "background": "rgb(30, 29, 33)"
+     },
+     "children": [
+      {
+       "tag": "span",
+       "class": "map-strip-name",
+       "style": {
+        "color": "rgb(176, 173, 183)"
+       },
+       "text": "데스크톱 2"
+      },
+      {
+       "tag": "div",
+       "class": "drawer",
+       "children": [
+        {
+         "tag": "div",
+         "class": "drawer-slot",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         }
+        },
+        {
+         "tag": "button",
+         "class": "icon-button drawer-button",
+         "aria-label": "서랍 · 3",
+         "aria-expanded": "false",
+         "box": [
+          1356,
+          838,
+          28,
+          28
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "drawer"
+          },
+          {
+           "tag": "span",
+           "class": "badge",
+           "style": {
+            "background": "rgb(36, 33, 39)",
+            "color": "rgb(242, 240, 245)",
+            "border": "solid rgb(51, 49, 54)"
+           },
+           "text": "3"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "canvas-reset icon-button",
+       "aria-label": "배경 위치 초기화",
+       "disabled": "",
+       "box": [
+        1386,
+        838,
+        28,
+        28
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)",
+        "opacity": "0.5"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "target"
         }
        ]
       }

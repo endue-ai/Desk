@@ -23,7 +23,8 @@ export const PARTS: ReadonlyArray<readonly [id: string, selector: string, found?
   ["desk.rail", ".rail"],
   // The bottom edge has no box of its own: each of its controls is placed on its own.
   ["desk.bottom", "footer.bottom > *", "every"],
-  ["desk.canvas", ".canvas-reset"],
+  // The strip under the canvas map, its Drawer and origin buttons in it, is one part (issue 296).
+  ["desk.canvas", ".map-strip"],
   ["desk.safe", '[data-layer="system"] .safe-badge'],
   ["desk.eris", ".eris"],
   // The status line is drawn over the windows but hears nothing; its buttons do (ADR 0201).

@@ -1,12 +1,12 @@
 /**
  * The desk's chrome goes away while a window fills the whole app (ADR 0221): the agent bar, the
- * rail, the profile switcher, the desktops, Eris, the talk pill and the running work each slide
- * out past the app's edge, and the window has the app to itself. The account bar and the Drawer
- * button, bottom left, stay. What went past an edge comes back while the pointer is at that edge
- * of the app (the compositor says so where a window's page has the pointer, `edges`; this page's
- * own pointer says so where it hears it), while the pointer or the keyboard's focus is on it, and
- * while something of it is open; it goes again `LEAVE_MS` after none of these holds. The slide is
- * CSS's (`away.css`): reduced motion zeroes its time.
+ * rail, the strip under the canvas map, the profile switcher, the desktops, Eris, the talk pill and
+ * the running work each slide out past the app's edge, and the window has the app to itself. The
+ * account bar, bottom left, stays alone (ADR 0253). What went past an edge comes back while the
+ * pointer is at that edge of the app (the compositor says so where a window's page has the pointer,
+ * `edges`; this page's own pointer says so where it hears it), while the pointer or the keyboard's
+ * focus is on it, and while something of it is open; it goes again `LEAVE_MS` after none of these
+ * holds. The slide is CSS's (`away.css`): reduced motion zeroes its time.
  */
 import { windowsOf } from "./actions";
 import type { ShellCtx } from "./context";
@@ -29,6 +29,8 @@ const PAST = 16;
 const PARTS: ReadonlyArray<readonly [selector: string, side: Edge | "nearest"]> = [
   ['[data-layer="system"] .sidebar', "left"],
   [".rail", "right"],
+  // The map's strip with its Drawer and origin buttons: the compositor slides the map by its shift.
+  [".map-strip", "right"],
   ['[data-layer="system"] .modes', "top"],
   ['[data-layer="system"] .desktops', "top"],
   [".eris", "nearest"],
@@ -39,7 +41,7 @@ const PARTS: ReadonlyArray<readonly [selector: string, side: Edge | "nearest"]> 
 /** The popovers that belong to each edge's parts: one open keeps its part in sight. */
 const OPEN: Record<Edge, readonly Popover[]> = {
   left: ["agents-more"],
-  right: ["brain", "sees", "tasks", "desks", "vm", "listen", "arrange"],
+  right: ["brain", "sees", "tasks", "desks", "vm", "listen", "arrange", "drawer"],
   top: ["mode-menu", "desktop-menu", "desktops-overview"],
   bottom: [],
 };

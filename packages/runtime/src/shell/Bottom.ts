@@ -1,10 +1,14 @@
-/** The bottom edge, the person's place: drawer, the line you talk on, what is running, the drop zone. */
+/**
+ * The bottom edge, the person's place: the line you talk on, what is running, the drop zone, and
+ * beside the footer the strip under the canvas map with the desktop's name, the Drawer and the way
+ * back to the origin (`MapStrip.ts`, issue 296). One role, `role:dock`, holds them all.
+ */
 import { edit } from "./actions";
 import { mountComposer } from "./Composer";
 import type { ShellCtx } from "./context";
-import { mountDrawer } from "./Drawer";
 import { h, listen } from "./dom";
 import { icon } from "./icons";
+import { mountMapStrip } from "./MapStrip";
 import { mountRunning } from "./Running";
 import { mountTalkChrome } from "./TalkChrome";
 
@@ -16,9 +20,11 @@ export function mountBottom(root: HTMLElement, ctx: ShellCtx): () => void {
     icon("sparkle", 20),
     h("span", {}, ctx.tr("dropHere")),
   );
-  root.append(el, drop);
-  const parts = [mountDrawer(el, ctx), mountComposer(el, ctx), mountRunning(el, ctx)];
-  parts.push(mountTalkChrome(el, ctx));
+  root.append(el);
+  const parts = [mountComposer(el, ctx), mountRunning(el, ctx), mountTalkChrome(el, ctx)];
+  // After the footer: the tab order meets the strip after the talk pill and the running work.
+  parts.push(mountMapStrip(root, ctx));
+  root.append(drop);
   const inBottomThird = (e: DragEvent) => e.clientY > (window.innerHeight * 2) / 3;
   const hasFiles = (e: DragEvent) => [...(e.dataTransfer?.types ?? [])].includes("Files");
   const offs = [

@@ -1,4 +1,7 @@
-/** Bottom left: the drawer. Put-away surfaces, dropped files, and Eris's temporary screens ("recent"). */
+/**
+ * The drawer, in the strip under the canvas map (`MapStrip.ts`, issue 296): put-away surfaces, dropped
+ * files, and Eris's temporary screens ("recent"). Its panel opens above the strip.
+ */
 import { layoutOf, raise } from "./actions";
 import type { ShellCtx } from "./context";
 import { h, render } from "./dom";
