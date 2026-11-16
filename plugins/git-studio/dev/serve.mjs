@@ -106,6 +106,7 @@ createServer(async (req, res) => {
     }
     let file;
     if (url.pathname === "/_desk/plugin-sdk.js") file = join(HERE, "sdk.js");
+    else if (url.pathname === "/_desk/brain-demo.js") file = join(HERE, "brain-demo.js");
     else if (url.pathname === "/_desk/tokens.css") file = join(KIT, "tokens.css");
     else if (url.pathname === "/_desk/base.css") file = join(KIT, "base.css");
     else {

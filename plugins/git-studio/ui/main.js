@@ -6,7 +6,7 @@ import { createStudio } from "./studio.js";
 
 defineUiPlugin({
   mount(ctx) {
-    installFeatures(createStudio(ctx, document));
+    installFeatures(createStudio(ctx, document), ctx);
     document.body.dataset.ready = "1";
   },
 });

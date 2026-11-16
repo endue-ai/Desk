@@ -3,6 +3,8 @@
 // ask the person granted. `?scheme=dark|light` picks the theme; `?repo=` the repository; `?brain=demo`
 // answers brain.ask with the canned answers in window.__brainAnswers (screenshots only).
 
+import { DEMO_ANSWERS } from "./brain-demo.js";
+
 const query = new URLSearchParams(location.search);
 const params = query;
 document.documentElement.dataset.scheme = query.get("scheme") ?? "dark";
@@ -69,7 +71,7 @@ async function call(method, params) {
   if (method === "perm.request") return { granted: true };
   if (method === "brain.ask") {
     const turnId = `t${++next}`;
-    const answers = /** @type {any} */ (window).__brainAnswers ?? {};
+    const answers = /** @type {any} */ (window).__brainAnswers ?? DEMO_ANSWERS;
     const answer = answers[params.tool.name];
     setTimeout(() => {
       emit({ event: "brain.turn", data: { turnId, kind: "started" } });
