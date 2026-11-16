@@ -24,6 +24,7 @@ import "./section-vars.js";
 import "./section-docs.js";
 import { installAuth } from "./features-auth.js";
 import { installEnvironments } from "./features-env.js";
+import { installScripts } from "./features-scripts.js";
 
 /**
  * @typedef {import("./app.js").Tab} Tab
@@ -148,6 +149,7 @@ export function createStudio(ctx, doc) {
   installCollections(S);
   installEnvironments(S);
   const auth = installAuth(S);
+  installScripts(S);
 
   // ── the window ──────────────────────────────────────────────────────────
   const side = sideBar(S);
