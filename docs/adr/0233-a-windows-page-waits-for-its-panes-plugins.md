@@ -67,8 +67,8 @@ paint's size, each plugin's pictures aside (ADR 0227) and where a frame of a siz
   size before it no pane's size is the one its plugin painted, and the wait would end only by its
   counts, the frame changing about once in nine paints. Splits wait once the scene lays their
   panes out by share at the frame's size (a follow-up).
-* **In the gate**: `sway-panes` gets a limit, `maxPaneShare` in `e2e/perf/motion.json`, from the
-  runs below.
+* **In the gate**: `sway-panes` gets a limit, `maxPaneShare` in `e2e/perf/motion.json`: 1.5 % of
+  the sway's frames, from the runs below.
 
 ### Consequences
 
@@ -83,8 +83,29 @@ paint's size, each plugin's pictures aside (ADR 0227) and where a frame of a siz
 
 ### Measurements
 
-To be recorded on a quiet machine: the motion gate's sway on `main` and with this change, the
-layouts where a plugin's picture is of another size than its pane, ahead and behind, and
-`sway-panes`.
+The motion gate's sway (`just perf-motion`, optimized, off screen, an M4 Max, 2026-11-16), three runs
+a batch, read from each layout of the Terminal's window, which fills the app's right half: the
+frames where its plugin's picture is of another size than its pane (`sway-panes`). The builds of a
+pair are the same tree, with only this change's files swapped for `main`'s, run back to back.
+
+| batch | load average at each run | `main` | this change |
+| --- | --- | --- | --- |
+| on `main` 3aece0b4 | 2.8 to 4.9 | 207 of 1317 (15.7 %), 172 of 1314 (13.1 %) | 16 of 1306 (1.2 %) |
+| on `main` 55ed3326 | 4.5 to 7.3 | 259 of 1227 (21.1 %) | 10 of 1183 (0.8 %) |
+
+* One more batch with this change on 3aece0b4 read 411 of 1283: in its first run the Terminal's
+  window page painted nothing for 15 s (CEF; the wait held its next picture 34 ms), and its plugin's
+  pictures were of the new sizes against the old frame throughout. Its other two runs read 3.
+* `sway-sizes`, `sway-scene`, `sway-sections` and `sway-settled` read 0 or none in every run of both
+  builds.
+* `maxPaneShare` is the worst batch without a page that stopped painting, plus 10 %, rounded up to
+  the half percent: 1.5 %. A run where a window's page stops painting fails it, as it should.
+* The resize loop: on 3aece0b4 this change's runs stalled the Terminal's plugin (#157 watch) in 5 of
+  6 and `main`'s in none of 6. On 55ed3326 both did in 3 of 3, back to back, with the screen tellings
+  each view hears and the Terminal's placements traced: the plugin was told its screen 5 to 13 times
+  a run on `main` and 9 to 14 with this change, its place changed 521 to 680 and 486 to 554 times.
+  The wait adds neither, and the stall is `main`'s since the terminal's changes after 3aece0b4.
+* The single shake fails on `main` and with this change alike ("the window did not move with the
+  pointer", #331).
 
 Issue #284.
