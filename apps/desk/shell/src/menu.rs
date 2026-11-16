@@ -77,8 +77,11 @@ pub fn app_menu() -> Option<Menu> {
     #[cfg(target_os = "macos")]
     {
         let menu = mac_menu().map_err(|why| eprintln!("endue Desk: no menu bar ({why})"));
-        let menu = menu.ok()?;
+        let (menu, window) = menu.ok()?;
         menu.init_for_nsapp();
+        // AppKit lists the desk's window and its windows out of the canvas under Window (#235);
+        // the floating ones keep out of it (`float.rs`).
+        window.set_as_windows_menu_for_nsapp();
         eprintln!(
             "endue Desk: the menu bar is set (Edit: Undo, Redo, Cut, Copy, Paste, Select All)"
         );
@@ -88,8 +91,53 @@ pub fn app_menu() -> Option<Menu> {
     None
 }
 
+/// The titles of the windows the app's Window menu lists, as AppKit keeps them: the items it adds
+/// for its windows bring one in front (`makeKeyAndOrderFront:`). For the app e2e's check.
+pub fn listed_windows() -> Vec<String> {
+    #[cfg(target_os = "macos")]
+    return mac_listed_windows();
+    #[cfg(not(target_os = "macos"))]
+    Vec::new()
+}
+
 #[cfg(target_os = "macos")]
-fn mac_menu() -> tray_icon::menu::Result<Menu> {
+#[allow(unsafe_code)]
+fn mac_listed_windows() -> Vec<String> {
+    use objc2::rc::Retained;
+    use objc2::runtime::{AnyObject, Sel};
+    use objc2::{msg_send, sel};
+    use objc2_app_kit::NSApplication;
+    use objc2_foundation::{MainThreadMarker, NSString};
+
+    let Some(mtm) = MainThreadMarker::new() else {
+        return Vec::new();
+    };
+    let app = NSApplication::sharedApplication(mtm);
+    // SAFETY: `windowsMenu` (NSApplication), `numberOfItems` and `itemAtIndex:` (NSMenu), `action`
+    // and `title` (NSMenuItem) return what they are declared to, read on the main thread.
+    unsafe {
+        let menu: Option<Retained<AnyObject>> = msg_send![&app, windowsMenu];
+        let Some(menu) = menu else {
+            return Vec::new();
+        };
+        let count: isize = msg_send![&menu, numberOfItems];
+        (0..count)
+            .filter_map(|i| {
+                let item: Option<Retained<AnyObject>> = msg_send![&menu, itemAtIndex: i];
+                let item = item?;
+                let action: Option<Sel> = msg_send![&item, action];
+                if action != Some(sel!(makeKeyAndOrderFront:)) {
+                    return None;
+                }
+                let title: Retained<NSString> = msg_send![&item, title];
+                Some(title.to_string())
+            })
+            .collect()
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn mac_menu() -> tray_icon::menu::Result<(Menu, tray_icon::menu::Submenu)> {
     use tray_icon::menu::{PredefinedMenuItem as P, Submenu, accelerator::Accelerator};
     let quit = MenuItem::with_id(
         Choice::Quit.id(),
@@ -138,7 +186,7 @@ fn mac_menu() -> tray_icon::menu::Result<Menu> {
         true,
         &[&P::minimize(None), &dock, &P::close_window(None)],
     )?;
-    Menu::with_items(&[&app, &edit, &window])
+    Ok((Menu::with_items(&[&app, &edit, &window])?, window))
 }
 
 #[cfg(test)]
