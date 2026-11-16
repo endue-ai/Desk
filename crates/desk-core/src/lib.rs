@@ -31,6 +31,7 @@ mod desk_context;
 pub mod lock;
 
 mod core_ask;
+mod core_audio;
 mod core_brain;
 mod core_builtins;
 mod core_catalog;
