@@ -186,7 +186,10 @@ impl Core {
         };
         for listed in host.instances(id).unwrap_or_default() {
             if let Err(why) = host.remove_instance(id, &listed.instance) {
-                eprintln!("desk: {id}/{} was not fully removed: {why}", listed.instance);
+                eprintln!(
+                    "desk: {id}/{} was not fully removed: {why}",
+                    listed.instance
+                );
             }
         }
     }
