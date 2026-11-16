@@ -23,11 +23,22 @@ export interface TalkPlace {
 
 type State = "idle" | "hover" | "edit";
 
-/** The pill's size in a state, as bottom.css draws it on an app `vw` wide. */
-export function pillSize(state: State, vw: number): { w: number; h: number } {
-  if (state === "edit") return { w: Math.min(640, vw - 280), h: 72 };
+/**
+ * How far from the app's right edge what lies left of the strip under the canvas map ends: the
+ * strip's 24 (92 under 734 high), its 202 and 12 (bottom.css' `--running-right`, issue 296).
+ */
+const besideStrip = (vh: number) => (vh < 734 ? 92 : 24) + 202 + 12;
+
+/**
+ * The pill's size in a state, as bottom.css draws it on an app `vw` wide and `vh` high: centred, it
+ * keeps clear of the strip under the map on both sides (issue 367). Without a height, only the bars'
+ * 280 counts.
+ */
+export function pillSize(state: State, vw: number, vh?: number): { w: number; h: number } {
+  const room = Math.min(vw - 280, vh === undefined ? Infinity : vw - 2 * besideStrip(vh));
+  if (state === "edit") return { w: Math.min(640, room), h: 72 };
   // Folded, at rest or under the pointer, it is one size: the small orb, the hint and the key.
-  return { w: Math.min(440, vw - 280), h: 40 };
+  return { w: Math.min(440, room), h: 40 };
 }
 
 /** A stored place, or null for the default (missing, malformed or out of range). */
@@ -42,7 +53,7 @@ export function placeOf(value: unknown): TalkPlace | null {
  * pixels, kept inside the app; `high` when its top half sits in the app's top half.
  */
 export function pillBox(place: TalkPlace, state: State, size: { vw: number; vh: number }) {
-  const { w, h } = pillSize(state, size.vw);
+  const { w, h } = pillSize(state, size.vw, size.vh);
   const clamp = (n: number, lo: number, hi: number) => Math.min(Math.max(n, lo), Math.max(lo, hi));
   const left = clamp(place.x * size.vw - w / 2, MARGIN, size.vw - w - MARGIN);
   const bottom = clamp(size.vh - place.y * size.vh, MARGIN, size.vh - h - MARGIN);
