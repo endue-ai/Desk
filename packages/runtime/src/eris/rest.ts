@@ -55,6 +55,12 @@ export class Rest {
   }
 }
 
+/** The talk pill in her root, unless a plugin holds the dock's role (roles.ts yields the bottom). */
+export function pillOf(root: HTMLElement): HTMLElement | null {
+  const pill = root.querySelector<HTMLElement>(".talk-pill");
+  return pill && !pill.closest("[data-role-yielded]") ? pill : null;
+}
+
 type Box = { left: number; top: number; width: number; height: number };
 
 /**
@@ -73,6 +79,16 @@ export function overPill(
     ? p.top - r.top + p.height + GAP
     : p.top - r.top - GAP - body.height;
   return { x: Math.round(x), y: Math.round(y) };
+}
+
+/** Her place with none of her own: over the pill, or `top` (the top centre) with no pill. */
+export function homeOf(
+  root: HTMLElement,
+  body: { width: number; height: number },
+  top: { x: number; y: number },
+) {
+  const pill = pillOf(root);
+  return pill ? overPill(pill, root, body) : { x: Math.round(top.x), y: top.y };
 }
 
 /** Draw her resting or out: hidden from the pointer, the keyboard and the accessibility tree. */
