@@ -4,7 +4,7 @@
 // sends proc.spawn here, where the real curl runs (only curl, without a shell), and fs.* to a
 // folder of its own. A made-up shop API answers on the next port, for requests to try.
 //
-//   node plugins/api-studio/dev/serve.mjs [--port 4338] [--root <folder for collections>]
+//   node plugins/api-studio/dev/serve.mjs [--port 4338] [--root <folder for collections>] [--reseed]
 //
 // For people working on the plugin; the desk itself never loads anything from dev/.
 import { spawn } from "node:child_process";
@@ -14,6 +14,7 @@ import { homedir } from "node:os";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startDemoApi } from "./demo-api.mjs";
+import { seedShop } from "./seed.mjs";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const UI = join(HERE, "../ui");
@@ -148,6 +149,11 @@ async function themeCss(/** @type {string} */ id) {
 }
 
 await mkdir(ROOT, { recursive: true });
+if (
+  process.argv.includes("--reseed") ||
+  !(await stat(join(ROOT, "shop-api")).catch(() => undefined))
+)
+  await seedShop(ROOT);
 await startDemoApi(demoPort);
 
 createServer(async (req, res) => {

@@ -17,6 +17,12 @@ if (query.has("fresh"))
   for (const key of Object.keys(localStorage))
     if (key.startsWith(PREFIX)) localStorage.removeItem(key);
 
+if (query.has("seed"))
+  localStorage.setItem(`${PREFIX}store:collections`, JSON.stringify(["~/shop-api"]));
+/** Folder pickers answer the preview's own folder unless a step sets another answer. */
+/** @type {any} */ (window).__pick ??= (/** @type {any} */ p) =>
+  p?.kind === "folders" ? "~" : undefined;
+
 /** @type {Set<(event: unknown) => void>} */
 const listeners = new Set();
 const emit = (/** @type {unknown} */ event) => {
