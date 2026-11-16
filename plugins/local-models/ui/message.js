@@ -58,6 +58,16 @@ function reasoningBlock(text, { live, ms }) {
   );
 }
 
+/** A JSON answer as a fenced block, indented once it parses. @param {string} text @param {boolean} live */
+function jsonBlock(text, live) {
+  let body = text.trim().replace(/^```(?:json)?\s*|```\s*$/g, "");
+  if (!live)
+    try {
+      body = JSON.stringify(JSON.parse(body), null, 2);
+    } catch {}
+  return `\`\`\`json\n${body}${live ? "" : "\n```"}`;
+}
+
 /** @param {App} app @param {Thread} thread @param {Node} node @param {DrawOptions} [o] */
 export function messageEl(app, thread, node, o = {}) {
   const el = h("article.lm-msg", { dataset: { role: node.role, id: node.id } });
@@ -180,7 +190,11 @@ export function drawMessage(app, thread, node, el, o = {}) {
     drawn.set(node.id, cache);
   }
   if (split.content)
-    renderMarkdown(body, split.content, { live, cache, onLink: (url) => void app.openLink(url) });
+    renderMarkdown(body, node.format ? jsonBlock(split.content, live) : split.content, {
+      live,
+      cache,
+      onLink: (url) => void app.openLink(url),
+    });
   else if (live && !split.reasoning)
     body.append(h("div.lm-typing", { "aria-label": "Writing" }, h("i"), h("i"), h("i")));
   fill(

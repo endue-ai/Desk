@@ -78,6 +78,16 @@ export const OPENAI_MODEL = {
 
 const sleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 
+/** What a model held to JSON answers. @param {{ role: string, content: unknown }[]} messages */
+function jsonAnswer(messages) {
+  const asked = String(messages.findLast((m) => m.role === "user")?.content ?? "");
+  return JSON.stringify({
+    answer: `A structured answer to: ${asked.slice(0, 60)}`,
+    confidence: 0.82,
+    tags: ["local", "structured"],
+  });
+}
+
 /** @param {import("node:http").IncomingMessage} req */
 async function readBody(req) {
   const chunks = [];
@@ -112,7 +122,7 @@ export function fakeEmbedding(text) {
   return v.map((x) => x / norm);
 }
 
-/** @param {{ tokenMs: number }} o */
+/** @param {{ tokenMs: number, requests: { path: string, body: any }[] }} o */
 function ollamaHandler(o) {
   /** @type {Set<string>} */
   const loaded = new Set(OLLAMA_MODELS.filter((m) => m.loaded).map((m) => m.name));
@@ -122,6 +132,7 @@ function ollamaHandler(o) {
   ) => {
     const url = new URL(req.url ?? "/", "http://x");
     const body = req.method === "POST" ? await readBody(req) : {};
+    o.requests.push({ path: url.pathname, body });
     if (url.pathname === "/api/version") return json(res, 200, { version: "0.12.6" });
     if (url.pathname === "/api/tags")
       return json(res, 200, {
@@ -190,7 +201,9 @@ function ollamaHandler(o) {
       if (m.caps.includes("embedding"))
         return json(res, 400, { error: `"${body.model}" does not support chat` });
       loaded.add(m.name);
-      const { answer, thought } = answerFor(body.messages ?? []);
+      const said = answerFor(body.messages ?? []);
+      const thought = said.thought;
+      const answer = body.format ? jsonAnswer(body.messages ?? []) : said.answer;
       res.writeHead(200, {
         "content-type": "application/x-ndjson",
         "transfer-encoding": "chunked",
@@ -240,7 +253,7 @@ function ollamaHandler(o) {
         done_reason: count >= limit ? "length" : "stop",
         total_duration: (count * o.tokenMs + 180) * 1e6,
         load_duration: 42e6,
-        prompt_eval_count: 24 + JSON.stringify(body.messages ?? []).length / 4,
+        prompt_eval_count: 24 + Math.round(JSON.stringify(body.messages ?? []).length / 4),
         prompt_eval_duration: 95e6,
         eval_count: count,
         eval_duration: count * o.tokenMs * 1e6,
@@ -252,7 +265,7 @@ function ollamaHandler(o) {
   };
 }
 
-/** @param {{ tokenMs: number }} o */
+/** @param {{ tokenMs: number, requests: { path: string, body: any }[] }} o */
 function openaiHandler(o) {
   return async (
     /** @type {import("node:http").IncomingMessage} */ req,
@@ -260,6 +273,7 @@ function openaiHandler(o) {
   ) => {
     const url = new URL(req.url ?? "/", "http://x");
     const body = req.method === "POST" ? await readBody(req) : {};
+    o.requests.push({ path: url.pathname, body });
     if (url.pathname === "/health") return json(res, 200, { status: "ok" });
     if (url.pathname === "/props")
       return json(res, 200, {
@@ -302,7 +316,9 @@ function openaiHandler(o) {
         return json(res, 404, {
           error: { message: `model ${body.model} not loaded`, type: "not_found_error" },
         });
-      const { answer } = answerFor(body.messages ?? []);
+      const answer = body.response_format
+        ? jsonAnswer(body.messages ?? [])
+        : answerFor(body.messages ?? []).answer;
       res.writeHead(200, {
         "content-type": "text/event-stream",
         "cache-control": "no-cache",
@@ -373,15 +389,18 @@ function listen(port, handler) {
 /** @param {{ ollamaPort?: number, openaiPort?: number, tokenMs?: number }} [options] */
 export async function startFakeLlm(options = {}) {
   const tokenMs = options.tokenMs ?? 14;
+  /** @type {{ path: string, body: any }[]} */
+  const requests = [];
   const ollama = /** @type {import("node:http").Server} */ (
-    await listen(options.ollamaPort ?? 0, ollamaHandler({ tokenMs }))
+    await listen(options.ollamaPort ?? 0, ollamaHandler({ tokenMs, requests }))
   );
   const openai = /** @type {import("node:http").Server} */ (
-    await listen(options.openaiPort ?? 0, openaiHandler({ tokenMs }))
+    await listen(options.openaiPort ?? 0, openaiHandler({ tokenMs, requests }))
   );
   const portOf = (/** @type {import("node:http").Server} */ s) =>
     /** @type {import("node:net").AddressInfo} */ (s.address()).port;
   return {
+    requests,
     ollamaPort: portOf(ollama),
     openaiPort: portOf(openai),
     async close() {
