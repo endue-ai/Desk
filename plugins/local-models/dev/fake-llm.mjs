@@ -138,6 +138,28 @@ function ollamaHandler(o) {
         response: "",
       });
     }
+    if (url.pathname === "/api/pull") {
+      res.writeHead(200, {
+        "content-type": "application/x-ndjson",
+        "transfer-encoding": "chunked",
+      });
+      const write = (/** @type {object} */ x) => res.write(`${JSON.stringify(x)}\n`);
+      write({ status: "pulling manifest" });
+      const total = 2_019_393_189;
+      for (let i = 1; i <= 10; i++) {
+        await sleep(o.tokenMs * 12);
+        write({
+          status: "pulling dde5aa3fc5ff",
+          digest: "sha256:dde5aa3fc5ff",
+          total,
+          completed: Math.round((total * i) / 10),
+        });
+      }
+      write({ status: "verifying sha256 digest" });
+      write({ status: "writing manifest" });
+      write({ status: "success" });
+      return res.end();
+    }
     if (url.pathname === "/api/embed") {
       const inputs = Array.isArray(body.input) ? body.input : [body.input ?? ""];
       return json(res, 200, {

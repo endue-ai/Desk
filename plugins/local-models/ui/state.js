@@ -28,6 +28,7 @@
  *   folders: string[],
  *   libraryScanning: boolean,
  *   enginePath: string,
+ *   downloads: import("./downloads.js").Download[],
  * }} State
  */
 
@@ -54,6 +55,7 @@ export function initialState() {
     folders: [],
     libraryScanning: false,
     enginePath: "",
+    downloads: [],
   };
 }
 

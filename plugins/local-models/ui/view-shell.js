@@ -2,6 +2,7 @@
 // section draws itself into its own element and redraws on the state keys it reads.
 import { fill, h, icon, iconButton } from "./dom.js";
 import { chatView } from "./view-chat.js";
+import { discoverView } from "./view-discover.js";
 import { modelsView } from "./view-models.js";
 import { pickerView } from "./view-picker.js";
 
@@ -14,6 +15,7 @@ import { pickerView } from "./view-picker.js";
 export const SECTIONS = [
   { id: "chat", label: "Chat", short: "Chat", icon: "chat" },
   { id: "models", label: "My models", short: "Models", icon: "cube" },
+  { id: "discover", label: "Discover", short: "Discover", icon: "compass" },
 ];
 
 /** @param {App} app @param {HTMLElement} root */
@@ -29,11 +31,15 @@ export function mountShell(app, root) {
   const views = new Map();
   const make = (/** @type {ViewName} */ id) => {
     if (id === "models") return modelsView(app);
+    if (id === "discover") return discoverView(app);
     return chatView(app);
   };
 
   function drawRail() {
-    const { view, servers, scanning } = S.get();
+    const { view, servers, scanning, downloads } = S.get();
+    const downloading = downloads.filter(
+      (d) => d.state === "running" || d.state === "queued",
+    ).length;
     const online = servers.filter((s) => s.status === "online").length;
     fill(
       rail,
@@ -52,6 +58,13 @@ export function mountShell(app, root) {
               onClick: () => S.set({ view: s.id }),
             },
             icon(s.icon),
+            s.id === "discover" && downloading
+              ? h(
+                  "span.lm-rail-badge",
+                  { title: `${downloading} downloading` },
+                  String(downloading),
+                )
+              : null,
             h("span.lm-rail-label", null, s.short),
           ),
         ),
@@ -110,7 +123,7 @@ export function mountShell(app, root) {
     toastTimer = setTimeout(() => S.set({ toast: null }), toast.level === "error" ? 7000 : 3500);
   }
 
-  S.on(["view", "servers", "scanning"], drawRail);
+  S.on(["view", "servers", "scanning", "downloads"], drawRail);
   S.on(["view"], drawStage);
   S.on(["toast"], drawToast);
   drawRail();

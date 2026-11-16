@@ -242,3 +242,51 @@ export async function unload(sockets, server, id) {
     headers: auth(server),
   });
 }
+
+/**
+ * Pull a model into Ollama, telling its progress (bytes of all its layers) as it streams.
+ * @param {Sockets} sockets @param {ServerRef} server @param {string} name
+ * @param {(p: { total: number, completed: number, status: string }) => void} onProgress @param {AbortSignal} [signal]
+ */
+export async function pull(sockets, server, name, onProgress, signal) {
+  const response = await request(sockets, `${server.baseUrl}/api/pull`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...auth(server) },
+    body: JSON.stringify({ model: name, stream: true }),
+    signal,
+    timeoutMs: 10000,
+  });
+  if (response.status >= 400) {
+    const text = await response.text().catch(() => "");
+    throw new HttpError(errorText(response.status, text), { status: response.status, body: text });
+  }
+  /** @type {Map<string, { total: number, completed: number }>} */
+  const layers = new Map();
+  for await (const p of ndjson(response.body)) {
+    if (p.error) throw new HttpError(String(p.error), { code: "refused" });
+    if (p.digest && p.total) layers.set(p.digest, { total: p.total, completed: p.completed ?? 0 });
+    let total = 0;
+    let completed = 0;
+    for (const l of layers.values()) {
+      total += l.total;
+      completed += l.completed;
+    }
+    onProgress({ total, completed, status: String(p.status ?? "") });
+    if (p.status === "success") return;
+  }
+  throw new HttpError("Ollama stopped before the pull finished");
+}
+
+/** Remove a model from Ollama. @param {Sockets} sockets @param {ServerRef} server @param {string} name */
+export async function remove(sockets, server, name) {
+  const response = await request(sockets, `${server.baseUrl}/api/delete`, {
+    method: "DELETE",
+    headers: { "content-type": "application/json", ...auth(server) },
+    body: JSON.stringify({ model: name }),
+  });
+  if (response.status >= 400)
+    throw new HttpError(errorText(response.status, await response.text()), {
+      status: response.status,
+    });
+  await response.text();
+}

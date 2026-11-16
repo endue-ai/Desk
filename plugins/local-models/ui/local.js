@@ -1,9 +1,11 @@
 // Models on this computer, run by the built-in engine: the library of .gguf files, this computer's
 // memory, each model's load settings (kept per file), loading one with llama-server and choosing it,
 // ejecting it, and the models folders.
+import { createDownloads } from "./downloads.js";
 import { createEngine } from "./engine.js";
 import { createLibrary, MODELS_DIR } from "./library.js";
 import { fitOf, gpuLayersFor, needBytes, systemMemory } from "./memory.js";
+import * as ollama from "./ollama.js";
 import { createProcs } from "./proc.js";
 
 /**
@@ -53,6 +55,31 @@ export function createLocal(app) {
       })),
   );
 
+  const downloads = createDownloads({
+    S,
+    bridge,
+    procs,
+    store,
+    toast: app.toast,
+    pull: async (d, onProgress, signal) => {
+      const server = S.get().servers.find((s) => s.id === d.server && s.kind === "ollama");
+      if (!server) throw new Error("Ollama is not answering.");
+      await ollama.pull(app.sockets, server, d.name, onProgress, signal);
+    },
+    onDone: (d) => {
+      if (d.kind === "ollama") {
+        void app.refreshModels(/** @type {string} */ (d.server));
+        app.toast(`${d.name} is in Ollama.`, "success");
+      } else {
+        void scan();
+        app.toast(
+          `${d.name} is downloaded. Load it from My models or the model picker.`,
+          "success",
+        );
+      }
+    },
+  });
+
   async function scan() {
     S.set({ libraryScanning: true });
     const folders = [MODELS_DIR, ...S.get().folders.filter((f) => f !== MODELS_DIR)];
@@ -79,7 +106,7 @@ export function createLocal(app) {
     });
     const memory = await systemMemory((c, a) => procs.run(c, a)).catch(() => undefined);
     S.set({ memory });
-    await scan();
+    await Promise.all([scan(), downloads.start()]);
   }
 
   /** The settings a model loads with: the person's for that file, else ones that fit. @param {LocalModel} m @returns {LoadConfig} */
@@ -195,6 +222,7 @@ export function createLocal(app) {
     logOf: (id) => engine.get(id)?.log ?? [],
     dismiss: (/** @type {string} */ id) => engine.dismiss(id),
     procs,
+    downloads,
   };
 }
 

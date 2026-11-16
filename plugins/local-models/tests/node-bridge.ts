@@ -9,6 +9,7 @@ import {
   readdirSync,
   readFileSync,
   readSync,
+  renameSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -16,7 +17,9 @@ import {
 import { connect, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { startFakeCurl } from "../dev/fake-curl.mjs";
 import { startFakeEngine } from "../dev/fake-engine.mjs";
+import { hubAnswer } from "../dev/fake-hub.mjs";
 
 // biome-ignore lint/suspicious/noExplicitAny: bridge parameters and results take any JSON shape
 type Json = any;
@@ -40,6 +43,7 @@ export function nodeBridge(
     engine?: boolean;
     memory?: number;
     pick?: string;
+    offline?: boolean;
   } = {},
 ): NodeBridge {
   const root = mkdtempSync(join(process.env.LM_TMP ?? tmpdir(), "lm-test-"));
@@ -86,6 +90,12 @@ export function nodeBridge(
             done({ socketId: id });
           });
         });
+      }
+      case "net.fetch": {
+        if (!String(params.url).startsWith("https://huggingface.co/"))
+          throw fail("permission_denied", "not in scope");
+        if (options.offline) throw fail("io_error", "offline");
+        return hubAnswer(params.url);
       }
       case "net.send": {
         const socket = sockets.get(params.socketId);
@@ -169,6 +179,13 @@ export function nodeBridge(
       case "fs.mkdir":
         mkdirSync(inside(params.path), { recursive: true });
         return { created: [] };
+      case "fs.rename":
+        try {
+          renameSync(inside(params.from), inside(params.to));
+        } catch {
+          throw fail("not_found", params.from);
+        }
+        return {};
       case "fs.trash":
         rmSync(inside(params.path), { recursive: true, force: true });
         return {};
@@ -196,6 +213,15 @@ export function nodeBridge(
             tokenMs: 0,
           });
           procs.set(id, () => engine.kill());
+        } else if (name === "curl") {
+          const cwd = params.cwd ? inside(params.cwd) : root;
+          const curl = startFakeCurl(params.args, cwd, {
+            onLine: out,
+            onExit: exit,
+            steps: 3,
+            stepMs: 20,
+          });
+          procs.set(id, () => curl.kill());
         } else if (name === "sysctl" && options.memory) {
           setTimeout(() => {
             out("stdout", `${options.memory}\n1`);

@@ -4,15 +4,19 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
-  "description": "A client for language models that run on this computer: it finds the model servers already running here (Ollama, llama.cpp and any OpenAI-compatible server), runs .gguf model files itself with llama.cpp's llama-server, lists every model with what it is, can do and needs in memory, and chats with them in threads kept as files, the answers streaming in with their speed. Nothing leaves the computer: every request goes to a local address.",
+  "description": "A client for language models that run on this computer: it finds the model servers already running here (Ollama, llama.cpp and any OpenAI-compatible server), runs .gguf model files itself with llama.cpp's llama-server, finds and downloads models from Hugging Face, lists every model with what it is, can do and needs in memory, and chats with them in threads kept as files, the answers streaming in with their speed. Chats never leave the computer: only a search or a download reaches Hugging Face.",
   "permissions": [
     {
       "permission": "net:connect",
       "hosts": ["localhost", "127.0.0.1"]
     },
     {
+      "permission": "net:fetch",
+      "hosts": ["huggingface.co"]
+    },
+    {
       "permission": "proc:spawn",
-      "commands": ["llama-server", "sysctl", "nvidia-smi"]
+      "commands": ["llama-server", "curl", "sysctl", "nvidia-smi"]
     },
     {
       "permission": "fs:read",
