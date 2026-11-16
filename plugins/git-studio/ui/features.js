@@ -3,7 +3,10 @@
 
 import { WIP } from "./app.js";
 import { shortSha } from "./format.js";
+import { deepSearch } from "./history.js";
+import { createBlameView } from "./view-blame.js";
 import { createConflictView } from "./view-conflict.js";
+import { createHistoryView } from "./view-history.js";
 
 /** @param {ReturnType<typeof import("./studio.js").createStudio>} studio */
 export function installFeatures(studio) {
@@ -41,5 +44,70 @@ export function installFeatures(studio) {
     void conflict.open(path);
   };
 
-  return { conflict };
+  /** Show a commit in the graph; one older than the loaded page is said, not lost silently. */
+  const reveal = (/** @type {string} */ sha) => {
+    center.back();
+    void app.select(sha);
+    if (!studio.graph.reveal(sha))
+      app.say("That commit is older than the commits loaded: load more to see it.");
+  };
+  const fileLog = createHistoryView(app, center.page("history"), {
+    onBack: () => center.back(),
+    onReveal: reveal,
+    onBlame: (path, rev) => extra.blame(path, rev),
+  });
+  const blameView = createBlameView(app, center.page("blame"), {
+    onBack: () => center.back(),
+    onReveal: reveal,
+    onHistory: (path) => extra.history(path),
+  });
+  extra.history = (path) => {
+    center.show("history");
+    void fileLog.open(path);
+  };
+  extra.blame = (path, rev = null) => {
+    center.show("blame");
+    void blameView.open(path, rev);
+  };
+
+  // Deep search: code changes (the pickaxe) or file paths, asked of git a moment after typing stops.
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer;
+  let seq = 0;
+  /** @param {import("./app.js").State} state */
+  function searchDeep(state) {
+    if (timer !== undefined) clearTimeout(timer);
+    const query = state.query.trim();
+    const mode = /** @type {"text" | "code" | "path"} */ (state.searchMode);
+    if (mode === "text" || query.length < 2 || !state.repo) return;
+    const root = state.repo;
+    timer = setTimeout(async () => {
+      const mine = ++seq;
+      try {
+        const found = await deepSearch(app.git, root, mode, query);
+        if (mine === seq) app.set({ deep: found });
+      } catch (error) {
+        app.say(error instanceof Error ? error.message : String(error), "danger");
+      }
+    }, 350);
+  }
+  app.subscribe((state, previous) => {
+    if (
+      state.query !== previous.query ||
+      state.searchMode !== previous.searchMode ||
+      state.repo !== previous.repo
+    )
+      searchDeep(state);
+    if (
+      state.query !== previous.query ||
+      state.deep !== previous.deep ||
+      state.snapshot !== previous.snapshot ||
+      state.searchMode !== previous.searchMode
+    ) {
+      const count = state.query.trim() ? studio.graph.matchCount() : null;
+      studio.toolbar.setCount(count === null ? "" : count === 0 ? "none" : `${count} found`);
+    }
+  });
+
+  return { conflict, fileLog, blameView };
 }
