@@ -7,6 +7,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import {
+  COMMAND,
   EXTENSIONS,
   nsisSection,
   PROGID,
@@ -144,7 +145,10 @@ it("offers the macOS document types on Windows as Open with entries and register
   const macos = documentTypes().flatMap((type) => type.CFBundleTypeExtensions);
   expect([...EXTENSIONS].sort()).toEqual([...macos].sort());
   const nsis = nsisSection();
-  const command = `'"$INSTDIR\\endue-desk.exe" "%1"'`;
+  // Everything after --single-argument is one argument: a link holding `"` adds no switch.
+  const command = `'"$INSTDIR\\endue-desk.exe" --single-argument %1'`;
+  expect(COMMAND).toBe('"$INSTDIR\\endue-desk.exe" --single-argument %1');
+  expect(nsisSection()).not.toContain('"%1"');
   expect(nsis).toContain('WriteRegStr HKCU "Software\\Classes\\endue" "URL Protocol" ""');
   expect(nsis).toContain(
     `WriteRegStr HKCU "Software\\Classes\\endue\\shell\\open\\command" "" ${command}`,
@@ -161,6 +165,10 @@ it("offers the macOS document types on Windows as Open with entries and register
   expect(keys.filter((key) => key?.startsWith(".") && !key.endsWith("OpenWithProgids"))).toEqual(
     [],
   );
+  const commands = [...document.querySelectorAll('RegistryValue[Key="shell\\open\\command"]')];
+  expect(commands).toHaveLength(2);
+  for (const value of commands)
+    expect(value.getAttribute("Value")).toBe('"[INSTALLDIR]endue-desk.exe" --single-argument %1');
   const scheme = document.querySelector('RegistryKey[Key="endue"]');
   expect(scheme?.querySelector('RegistryValue[Name="URL Protocol"]')).not.toBeNull();
   const { nsis: n, wix } = windowsRegistrations(packager);

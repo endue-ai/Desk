@@ -30,7 +30,12 @@ export const PROGID = "ai.endue.desk.file";
 export const WIX_GROUP = "DeskRegistrations";
 
 const classes = "Software\\Classes";
-const command = '"$INSTDIR\\endue-desk.exe" "%1"';
+/**
+ * How Windows starts the desk for a link or a file: `--single-argument` (as Chrome and Edge register)
+ * makes everything after it one argument, so a link holding `"` can add no switch of its own (the
+ * class of CVE-2018-1000006). The shell reads what follows as the link or path (`open_files.rs`).
+ */
+export const COMMAND = '"$INSTDIR\\endue-desk.exe" --single-argument %1';
 
 /** The NSIS section that registers the scheme and the "Open with" entries for the current user. */
 export function nsisSection() {
@@ -38,9 +43,9 @@ export function nsisSection() {
     "Section DeskRegistrations",
     `  WriteRegStr HKCU "${classes}\\${SCHEME}" "" "URL:endue Desk link"`,
     `  WriteRegStr HKCU "${classes}\\${SCHEME}" "URL Protocol" ""`,
-    `  WriteRegStr HKCU "${classes}\\${SCHEME}\\shell\\open\\command" "" '${command}'`,
+    `  WriteRegStr HKCU "${classes}\\${SCHEME}\\shell\\open\\command" "" '${COMMAND}'`,
     `  WriteRegStr HKCU "${classes}\\${PROGID}" "" "endue Desk document"`,
-    `  WriteRegStr HKCU "${classes}\\${PROGID}\\shell\\open\\command" "" '${command}'`,
+    `  WriteRegStr HKCU "${classes}\\${PROGID}\\shell\\open\\command" "" '${COMMAND}'`,
     ...EXTENSIONS.map(
       (ext) => `  WriteRegStr HKCU "${classes}\\.${ext}\\OpenWithProgids" "${PROGID}" ""`,
     ),

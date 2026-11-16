@@ -92,6 +92,21 @@ fn desk_open_hands_a_path_or_link_to_the_desk() {
         "a refused link starts nothing"
     );
 
+    // A relative DESK_APP could name a program planted in the folder desk runs in: refused.
+    let out = Command::new(env!("CARGO_BIN_EXE_desk"))
+        .args(["open", "notes.md"])
+        .env("DESK_APP", "fake-desk.sh")
+        .current_dir(&dir)
+        .output()
+        .expect("desk runs");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("absolute path"));
+    std::thread::sleep(Duration::from_millis(200));
+    assert!(
+        !dir.join("started").exists(),
+        "a relative DESK_APP starts nothing"
+    );
+
     let out = desk_open(&app, &dir, &[]);
     assert_eq!(out.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&out.stderr).contains("  open <path|link>"));
