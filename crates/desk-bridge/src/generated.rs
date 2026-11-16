@@ -8832,6 +8832,9 @@ pub struct ProcWriteParams {
     pub data: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub encoding: Option<Encoding>,
+    /// Close stdin after data is written, so the program sees the end of its input.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub close: Option<bool>,
     pub scope: ProcSpawnPermission,
 }
 

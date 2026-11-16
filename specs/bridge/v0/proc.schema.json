@@ -79,6 +79,10 @@
         "procId": { "type": "string", "minLength": 1 },
         "data": { "type": "string" },
         "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
+        "close": {
+          "description": "Close stdin after data is written, so the program sees the end of its input.",
+          "type": "boolean"
+        },
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ProcSpawnPermission" }
       },
       "required": ["procId", "data", "scope"],

@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "proc.write hands a patch to git and closes stdin",
+  "instance": {
+    "id": 12,
+    "method": "proc.write",
+    "params": {
+      "procId": "p1",
+      "data": "diff --git a/x b/x\n",
+      "close": true,
+      "scope": {
+        "permission": "proc:spawn",
+        "commands": ["git"]
+      }
+    }
+  }
+}

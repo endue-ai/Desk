@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "proc.write's close is a boolean, not a word",
+  "instance": {
+    "id": 12,
+    "method": "proc.write",
+    "params": {
+      "procId": "p1",
+      "data": "",
+      "close": "yes",
+      "scope": {
+        "permission": "proc:spawn",
+        "commands": ["git"]
+      }
+    }
+  }
+}
