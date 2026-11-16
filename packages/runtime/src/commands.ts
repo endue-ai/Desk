@@ -14,7 +14,8 @@ export interface CommandCaller {
 export type CommandHandler = (args: unknown, from: CommandCaller) => unknown;
 
 export interface CommandSpec {
-  title: string;
+  /** Its title, or a function read at each registration: a title in the desk's language (ADR 0250). */
+  title: string | (() => string);
   keywords?: string[];
   /** The policy plugin the command belongs to; `desk` is the runtime itself and is always on. */
   owner: string;
@@ -70,8 +71,8 @@ type Waiter = { resolve(data: CmdAnsweredData): void };
 export class Commands {
   readonly #bridge: BridgeClient;
   readonly #builtIn = new Map<string, CommandSpec>();
-  /** Built-ins the core holds for the desk now. */
-  readonly #registered = new Set<string>();
+  /** Built-ins the core holds for the desk now, by id, with the title they were registered with. */
+  readonly #registered = new Map<string, string>();
   #active: ReadonlySet<string> = new Set([DESK]);
   /** The core's registry as last listed. */
   #known = new Map<string, CommandInfo>();
@@ -103,6 +104,11 @@ export class Commands {
   /** The plugins that are on: their built-in commands are registered, the others unregistered. */
   setActive(plugins: Iterable<string>): void {
     this.#active = new Set([DESK, ...plugins]);
+    this.#schedule();
+  }
+
+  /** Register again each built-in whose title is now another (the desk's language changed). */
+  retitle(): void {
     this.#schedule();
   }
 
@@ -245,7 +251,7 @@ export class Commands {
    * the answer of the one before took the core's round trip that many times.
    */
   async #sync(): Promise<void> {
-    const gone = [...this.#registered].filter((id) => {
+    const gone = [...this.#registered.keys()].filter((id) => {
       const spec = this.#builtIn.get(id);
       return !(spec && this.#active.has(spec.owner));
     });
@@ -253,15 +259,17 @@ export class Commands {
     await Promise.all(
       gone.map((id) => this.#bridge.call("cmd.unregister", { id }).catch(() => {})),
     );
+    // cmd.register updates a command the desk already registered: a new title goes out again.
     const due = [...this.#builtIn].filter(
-      ([id, spec]) => !this.#registered.has(id) && this.#active.has(spec.owner),
+      ([id, spec]) => this.#active.has(spec.owner) && this.#registered.get(id) !== titleOf(spec),
     );
     await Promise.all(
       due.map(async ([id, spec]) => {
         const agent = spec.agent;
+        const title = titleOf(spec);
         const params = {
           id,
-          title: spec.title,
+          title,
           ...(spec.keywords ? { keywords: spec.keywords } : {}),
           ...(agent ? { agent: true, description: agent.description } : {}),
           ...(agent?.args ? { argsSchema: agent.args } : {}),
@@ -274,7 +282,7 @@ export class Commands {
           () => true,
           () => false,
         );
-        if (ok) this.#registered.add(id);
+        if (ok) this.#registered.set(id, title);
       }),
     );
     const listed = await this.#bridge.call("cmd.list", { scope: ALL }).catch(() => undefined);
@@ -288,3 +296,6 @@ export class Commands {
     for (const listener of this.#changes) listener();
   }
 }
+
+const titleOf = (spec: CommandSpec): string =>
+  typeof spec.title === "function" ? spec.title() : spec.title;

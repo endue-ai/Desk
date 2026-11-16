@@ -2,7 +2,7 @@
  * What every policy module gets from the runtime: the hub (commands, settings, policies), the page,
  * the clock, the bridge and the hosts. Each module in this folder applies one desk.* policy.
  */
-import type { BridgeClient } from "@endue-ai/bridge";
+import type { BridgeClient, Language } from "@endue-ai/bridge";
 import type { Clock } from "../clock";
 import type { PolicyHub } from "../hub";
 import type { ShortcutRouter } from "../input";
@@ -37,6 +37,8 @@ export interface DeskContext {
   another?(plugin: string): string;
   /** A plugin's window in use: the one that last had the focus or called the desk. */
   inUse?(plugin: string): string | undefined;
+  /** The desk's language in force (desk.language, ADR 0250), once its policy is installed. */
+  language?(): Language;
 }
 
 /** A policy module, installed once; dispose undoes what it bound. */

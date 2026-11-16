@@ -44,12 +44,14 @@ const ACTS: Record<Act, { title: FramesCopyKey; words: string[]; does: string; r
 export function defineFrameCommands(
   commands: Commands,
   responses: FrameResponses,
-  lang: Lang,
+  /** The desk's language now, read at each registration (ADR 0250). */
+  lang: Lang | (() => Lang),
 ): () => void {
+  const now = () => (typeof lang === "function" ? lang() : lang);
   const offs = (Object.keys(ACTS) as Act[]).map((act) => {
     const spec = ACTS[act];
     return commands.define(`desk.frames.${act}`, {
-      title: framesText(lang, spec.title),
+      title: () => framesText(now(), spec.title),
       keywords: spec.words,
       owner: "desk",
       run: (args) => {

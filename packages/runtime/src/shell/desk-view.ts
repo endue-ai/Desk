@@ -72,7 +72,7 @@ export async function deskSnapshot(ctx: Seen): Promise<BrainDesk> {
 export function defineDeskView(ctx: ShellCtx): () => void {
   const offs = [
     ctx.runtime.commands.define("desk.windows.list", {
-      title: ctx.tr("cmdWindowsList"),
+      title: () => ctx.tr("cmdWindowsList"),
       keywords: ["windows", "plugins", "open", "창", "목록"],
       owner: "desk.display",
       run: () => deskSnapshot(ctx),

@@ -115,7 +115,7 @@ export function installKeys(
 
   offs.add(
     commands.define("desk.keys.quit", {
-      title: text(language, "keysQuit"),
+      title: () => text(ctx.language?.() ?? language, "keysQuit"),
       keywords: ["cancel", "escape", "keyboard-quit"],
       owner: "desk",
       run: () => {
@@ -125,7 +125,7 @@ export function installKeys(
   );
   offs.add(
     commands.define("desk.keys.list", {
-      title: text(language, "keysList"),
+      title: () => text(ctx.language?.() ?? language, "keysList"),
       // Emacs's describe-bindings, but "describe" alone finds desk.describe.open (Describe…) first.
       keywords: ["keys", "shortcuts", "bindings", "describe-bindings"],
       owner: "desk",
@@ -141,7 +141,7 @@ export function installKeys(
   );
   offs.add(
     commands.define("desk.keys.conflicts", {
-      title: text(language, "keysConflicts"),
+      title: () => text(ctx.language?.() ?? language, "keysConflicts"),
       keywords: ["keys", "shortcuts", "conflicts", "shadowed", "lint"],
       owner: "desk",
       run: () => {

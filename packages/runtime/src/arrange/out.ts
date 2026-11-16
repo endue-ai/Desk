@@ -45,7 +45,7 @@ export function defineOutCommands(ctx: Ctx): () => void {
   };
   const offs = [
     commands.define(POP_OUT, {
-      title: say("popOut"),
+      title: () => say("popOut"),
       keywords: ["pop out", "detach", "window", "os", "꺼내기", "창", "분리"],
       owner: "desk",
       run: async (args) => {
@@ -67,7 +67,7 @@ export function defineOutCommands(ctx: Ctx): () => void {
       },
     }),
     commands.define(DOCK, {
-      title: say("dock"),
+      title: () => say("dock"),
       keywords: ["dock", "back", "window", "desk", "되돌리기", "창", "데스크"],
       owner: "desk",
       run: async (args) => {

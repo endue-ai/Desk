@@ -61,7 +61,7 @@ function defaultNames(ctx: ShellCtx): WindowNames {
 export function defineFindWindows(ctx: Ctx, names?: WindowNames): () => void {
   const named = names ?? defaultNames(ctx as ShellCtx);
   return ctx.runtime.commands.define(FIND, {
-    title: arrangeText(ctx.store.get().lang, "find"),
+    title: () => arrangeText(ctx.store.get().lang, "find"),
     keywords: ["windows", "find", "switch", "창", "찾기"],
     owner: "desk",
     run: (args) => {
