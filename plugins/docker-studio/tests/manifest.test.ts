@@ -25,7 +25,7 @@ function validator() {
 
 type Manifest = {
   id: string;
-  permissions: { permission: string; commands?: string[] }[];
+  permissions: { permission: string; commands?: string[]; paths?: string[] }[];
   contributes: { commands: { id: string }[] };
 };
 const manifest = readJson(join(folder, "plugin.json")) as Manifest;
@@ -39,9 +39,13 @@ describe("plugin.json", () => {
   it("spawns only docker, without a broad grant", () => {
     const spawn = manifest.permissions.filter((p) => p.permission === "proc:spawn");
     expect(spawn).toEqual([{ permission: "proc:spawn", commands: ["docker"] }]);
-    expect(
-      manifest.permissions.map((p) => p.permission).filter((p) => p.startsWith("fs:")),
-    ).toEqual([]);
+    // Files only under the home folder, to write a Dockerfile where the person says; each use asks
+    // for that one folder.
+    const fs = manifest.permissions.filter((p) => p.permission.startsWith("fs:"));
+    expect(fs).toEqual([
+      { permission: "fs:read", paths: ["${home}/**"] },
+      { permission: "fs:write", paths: ["${home}/**"] },
+    ]);
   });
 
   it("answers every command it declares", () => {

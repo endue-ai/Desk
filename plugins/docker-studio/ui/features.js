@@ -2,12 +2,15 @@
 // images, the menus, and the dialogs. Installed once the app exists, since each needs it.
 
 import { createActions } from "./actions.js";
+import { createBuilds } from "./actions-build.js";
 import { createImageActions } from "./actions-images.js";
 import { createObjectActions } from "./actions-objects.js";
+import { openBuildDialog } from "./dialog-build.js";
 import { openComposeDialog } from "./dialog-compose.js";
 import { openNetworkDialog, openVolumeDialog } from "./dialog-objects.js";
 import { openPullDialog, openTagDialog } from "./dialog-pull.js";
 import { openRunDialog } from "./dialog-run.js";
+import { openScaffoldDialog } from "./dialog-scaffold.js";
 import { containerMenu, imageMenu, stackMenu } from "./menus.js";
 
 /** @param {import("./studio.js").App} app */
@@ -15,6 +18,7 @@ export function installFeatures(app) {
   const images = createImageActions(app);
   app.images = images;
   app.objects = createObjectActions(app);
+  app.builds = createBuilds(app);
   app.act = {
     ...createActions(app),
     removeImages: images.removeImages,
@@ -34,9 +38,9 @@ export function installFeatures(app) {
     tag: (/** @type {any} */ image) => openTagDialog(app, image),
     createVolume: () => openVolumeDialog(app),
     createNetwork: () => openNetworkDialog(app),
-    build: soon("Building"),
+    build: (/** @type {any} */ preset) => openBuildDialog(app, preset),
     composeUp: () => openComposeDialog(app),
-    scaffold: soon("Writing a Dockerfile"),
+    scaffold: () => openScaffoldDialog(app),
     cleanup: soon("Clean up"),
   };
 }

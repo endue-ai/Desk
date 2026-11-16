@@ -112,8 +112,9 @@ async function evaluate(session, expression) {
   return result.result?.value;
 }
 /** Wait until the page is mounted, no docker runs, and `extra` holds. */
-async function settle(/** @type {string} */ session, extra = "true") {
-  const ready = `document.body?.dataset.ready === "1" && !document.querySelector(".sb-busy") && (${extra})`;
+async function settle(/** @type {string} */ session, extra = "true", busy = false) {
+  // A shot of work in progress (a build, a pull) says busy: true and does not wait for it to end.
+  const ready = `document.body?.dataset.ready === "1" && (${busy} || !document.querySelector(".sb-busy")) && (${extra})`;
   for (let i = 0; i < 100; i++) {
     if (await evaluate(session, ready).catch(() => false)) {
       await sleep(250);
@@ -151,9 +152,9 @@ try {
       if (said !== undefined)
         console.log(`${shot.name}:`, typeof said === "string" ? said : JSON.stringify(said));
       await sleep(150);
-      await settle(sessionId);
+      await settle(sessionId, "true", shot.busy === true);
     }
-    if (shot.wait) await settle(sessionId, shot.wait);
+    if (shot.wait) await settle(sessionId, shot.wait, shot.busy === true);
     const { data } = await send("Page.captureScreenshot", { format: "png" }, sessionId);
     const file = join(outDir, `${shot.name}.png`);
     writeFileSync(file, Buffer.from(data, "base64"));
