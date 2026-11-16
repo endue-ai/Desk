@@ -1,0 +1,66 @@
+{
+  "id": "endue.local-models",
+  "name": "Local models",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "A client for language models that run on this computer: it finds the model servers already running here (Ollama, llama.cpp and any OpenAI-compatible server), lists their models, and chats with them in threads kept as files, the answers streaming in with their speed. Nothing leaves the computer: every request goes to a local address.",
+  "permissions": [
+    {
+      "permission": "net:connect",
+      "hosts": ["localhost", "127.0.0.1"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["${home}/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["${home}/**"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Local models",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.local-models.open",
+        "title": "Local models: open",
+        "keywords": ["llm", "ai", "chat", "ollama", "llama", "offline", "local"],
+        "description": "Open Local models, on a thread when one is named."
+      },
+      {
+        "id": "endue.local-models.new-chat",
+        "title": "Local models: new chat",
+        "keywords": ["llm", "chat", "new", "thread"],
+        "description": "Start a new chat, with a model when one is named.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A model's name, as its server lists it"
+            },
+            "prompt": {
+              "type": "string",
+              "description": "The first message, sent at once"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    ],
+    "keys": [
+      {
+        "key": "Mod+Alt+M",
+        "command": "endue.local-models.open"
+      }
+    ]
+  }
+}

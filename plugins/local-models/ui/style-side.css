@@ -1,0 +1,135 @@
+/* The thread list beside the chat: search, groups, rows, rename. */
+
+.lm-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-right: var(--desk-border-width) solid var(--lm-line);
+  background: var(--lm-panel);
+}
+
+.lm-side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--desk-space-3) var(--desk-space-3) var(--desk-space-2) var(--desk-space-4);
+  min-height: 52px;
+}
+
+.lm-side-title {
+  margin: 0;
+  font-size: var(--desk-text-base);
+  font-weight: 650;
+}
+
+.lm-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 var(--desk-space-3) var(--desk-space-2);
+  color: var(--desk-text-muted);
+}
+
+.lm-search-wrap > .lm-icon {
+  position: absolute;
+  left: 10px;
+  width: 15px;
+  height: 15px;
+  pointer-events: none;
+}
+
+.lm-search {
+  width: 100%;
+  padding-left: 32px;
+}
+
+.lm-thread-list {
+  flex: 1;
+  overflow: auto;
+  padding: 0 var(--desk-space-2) var(--desk-space-4);
+}
+
+.lm-thread-group + .lm-thread-group {
+  margin-top: var(--desk-space-2);
+}
+
+.lm-group-title {
+  margin: var(--desk-space-3) var(--desk-space-2) var(--desk-space-1);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lm-faint);
+}
+
+.lm-thread {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  margin-bottom: 1px;
+  cursor: pointer;
+}
+
+.lm-thread:hover {
+  background: var(--lm-hover);
+}
+
+.lm-thread[data-active] {
+  background: var(--lm-select);
+}
+
+.lm-thread-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.lm-thread-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 550;
+}
+
+.lm-thread-title > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lm-thread-pin {
+  width: 12px;
+  height: 12px;
+  color: var(--desk-text-muted);
+}
+
+.lm-thread-preview {
+  margin-top: 1px;
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lm-thread-more {
+  opacity: 0;
+}
+
+.lm-thread:hover .lm-thread-more,
+.lm-thread[data-active] .lm-thread-more,
+.lm-thread-more:focus-visible {
+  opacity: 1;
+}
+
+.lm-rename {
+  flex: 1;
+}
+
+.lm-side-empty {
+  padding: var(--desk-space-6) var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+  line-height: 1.5;
+  color: var(--desk-text-muted);
+  text-align: center;
+}

@@ -1,0 +1,262 @@
+/* Answers as markdown: text, lists, tables, quotes and code blocks with their colours. */
+
+.lm-md > :first-child {
+  margin-top: 0;
+}
+
+.lm-md > :last-child {
+  margin-bottom: 0;
+}
+
+.lm-md p,
+.lm-md ul,
+.lm-md ol,
+.lm-md blockquote,
+.lm-md .lm-table-wrap,
+.lm-md .lm-code,
+.lm-md .lm-math-block {
+  margin: 0 0 var(--desk-space-3);
+}
+
+.lm-md .lm-h {
+  margin: var(--desk-space-5) 0 var(--desk-space-2);
+  line-height: 1.3;
+  font-weight: 650;
+}
+
+.lm-md h2.lm-h {
+  font-size: var(--desk-text-xl);
+}
+
+.lm-md h3.lm-h {
+  font-size: var(--desk-text-lg);
+}
+
+.lm-md h4.lm-h,
+.lm-md h5.lm-h,
+.lm-md h6.lm-h {
+  font-size: var(--desk-text-base);
+}
+
+.lm-md ul,
+.lm-md ol {
+  padding-left: var(--desk-space-6);
+}
+
+.lm-md li {
+  margin: var(--desk-space-1) 0;
+}
+
+.lm-md li > ul,
+.lm-md li > ol,
+.lm-md li > p {
+  margin: var(--desk-space-1) 0 0;
+}
+
+.lm-md li[data-task] {
+  list-style: none;
+  margin-left: calc(-1 * var(--desk-space-5));
+}
+
+.lm-task {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  margin-right: var(--desk-space-2);
+  vertical-align: -2px;
+  border: 1.5px solid var(--lm-faint);
+  border-radius: var(--desk-radius-sm);
+}
+
+li[data-task="done"] > .lm-task {
+  border-color: var(--desk-primary);
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
+}
+
+.lm-task .lm-icon {
+  width: 11px;
+  height: 11px;
+  stroke-width: 3;
+}
+
+.lm-md blockquote {
+  padding: var(--desk-space-1) var(--desk-space-4);
+  border-left: 3px solid var(--lm-select-line);
+  color: var(--desk-text-muted);
+}
+
+.lm-md hr {
+  border: 0;
+  border-top: var(--desk-border-width) solid var(--lm-line);
+  margin: var(--desk-space-5) 0;
+}
+
+.lm-md strong {
+  font-weight: 650;
+}
+
+.lm-link {
+  color: var(--desk-primary-text);
+  text-decoration: underline;
+  text-decoration-color: var(--lm-select-line);
+  text-underline-offset: 2px;
+}
+
+.lm-code-inline {
+  padding: 1px 5px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--lm-raised);
+  font-family: var(--desk-font-mono);
+  font-size: 0.88em;
+}
+
+.lm-math {
+  font-family: var(--desk-font-mono);
+  font-size: 0.92em;
+  color: var(--desk-chart-4);
+}
+
+.lm-math-block {
+  padding: var(--desk-space-3) var(--desk-space-4);
+  border-radius: var(--desk-radius-md);
+  background: var(--lm-panel);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-sm);
+  text-align: center;
+  color: var(--desk-chart-4);
+  white-space: pre-wrap;
+}
+
+.lm-table-wrap {
+  overflow: auto;
+  border: var(--desk-border-width) solid var(--lm-line);
+  border-radius: var(--desk-radius-md);
+}
+
+.lm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--desk-text-sm);
+}
+
+.lm-table th,
+.lm-table td {
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-bottom: var(--desk-border-width) solid var(--lm-line-soft);
+}
+
+.lm-table th {
+  background: var(--lm-panel);
+  font-weight: 600;
+}
+
+.lm-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.lm-code {
+  overflow: hidden;
+  border: var(--desk-border-width) solid var(--lm-line);
+  border-radius: var(--desk-radius-md);
+  background: var(--lm-sunk);
+}
+
+.lm-code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--desk-space-1) var(--desk-space-1) var(--desk-space-1) var(--desk-space-3);
+  border-bottom: var(--desk-border-width) solid var(--lm-line-soft);
+  background: var(--lm-panel);
+}
+
+.lm-code-lang {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-2xs);
+  color: var(--desk-text-muted);
+}
+
+.lm-code-copy {
+  height: 26px;
+  gap: 6px;
+  font-size: var(--desk-text-xs);
+}
+
+.lm-code-copy .lm-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.lm-code pre {
+  margin: 0;
+  padding: var(--desk-space-3) var(--desk-space-4);
+  overflow: auto;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.lm-tk-keyword {
+  color: var(--desk-chart-4);
+}
+
+.lm-tk-string {
+  color: var(--desk-chart-2);
+}
+
+.lm-tk-number {
+  color: var(--desk-chart-3);
+}
+
+.lm-tk-comment {
+  color: var(--lm-faint);
+  font-style: italic;
+}
+
+.lm-tk-call {
+  color: var(--desk-chart-1);
+}
+
+.lm-tk-type {
+  color: var(--desk-chart-5);
+}
+
+.lm-tk-prop,
+.lm-tk-attr {
+  color: var(--desk-chart-6);
+}
+
+.lm-tk-tag {
+  color: var(--desk-chart-4);
+}
+
+.lm-tk-variable {
+  color: var(--desk-chart-3);
+}
+
+.lm-tk-punct {
+  color: var(--desk-text-muted);
+}
+
+.lm-md .lm-tail::after,
+.lm-code[data-open] pre code::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -2px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-primary);
+  animation: lm-pulse calc(var(--desk-motion-slow) * 2.25) steps(2) infinite;
+}
+
+.lm-md .lm-tail.lm-code::after,
+.lm-md ul.lm-tail::after,
+.lm-md ol.lm-tail::after,
+.lm-md .lm-table-wrap.lm-tail::after {
+  display: none;
+}
