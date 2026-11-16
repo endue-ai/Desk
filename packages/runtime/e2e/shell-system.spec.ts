@@ -10,9 +10,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function switchMode(page: Page, mode: string) {
-  await page.hover(".mode-chip.is-current");
-  await step(page, 400);
-  await page.click(`[data-mode="${mode}"]`);
+  await page.click(".mode-chip.is-current");
+  await page.click(`.mode-menu [data-mode="${mode}"]`);
   await page.mouse.move(720, 600);
   await step(page, 400);
 }
@@ -37,7 +36,7 @@ const ringOf = (page: Page, agent: string) =>
 /** Top-left corners of the system layer's parts. */
 const corners = (page: Page) =>
   page.evaluate(() =>
-    [".modes", ".mode-chip.is-current", ".mode-add", ".desktops", ".sidebar"].map((sel) => {
+    [".modes", ".mode-chip.is-current", ".desktops", ".sidebar"].map((sel) => {
       const r = document.querySelector(sel)?.getBoundingClientRect();
       return [sel, Math.round(r?.x ?? -1), Math.round(r?.y ?? -1)];
     }),

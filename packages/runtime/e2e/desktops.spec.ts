@@ -32,6 +32,37 @@ test.describe("desktops are a named, open-ended list", () => {
     await expect(desktop(page, 1)).toHaveAttribute("aria-label", "Desktop 1 · empty (⌃1)");
   });
 
+  test("the desktops are segments of one pill, the one in front filled", async ({ page }) => {
+    const pill = page.locator(".desktops > .desktops-pill");
+    await expect(pill).toHaveCount(1);
+    const box = await pill.evaluate((el) => {
+      const c = getComputedStyle(el);
+      return [c.borderTopWidth, c.paddingTop, c.paddingLeft];
+    });
+    expect(box).toEqual(["1px", "2px", "2px"]);
+    const segment = await desktop(page, 2).boundingBox();
+    expect([segment?.width, segment?.height]).toEqual([32, 26]);
+    // The one in front is the primary's soft colour over the card's; the others show the card's.
+    const fill = (n: number) =>
+      desktop(page, n).evaluate((el) => getComputedStyle(el).backgroundImage);
+    const card = await pill.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(await fill(1)).toContain("linear-gradient");
+    expect(await fill(2)).toBe("none");
+    expect(await desktop(page, 2).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(
+      card,
+    );
+    const soft = await page.evaluate(() => {
+      const probe = document.createElement("div");
+      probe.style.color = "var(--desk-primary-soft)";
+      document.body.append(probe);
+      const colour = getComputedStyle(probe).color;
+      probe.remove();
+      return colour;
+    });
+    expect(await fill(1)).toContain(soft);
+    await expect(pill.locator(":scope > *").last()).toHaveClass(/desktop-add/);
+  });
+
   test("the switcher shows six named desktops, each with its map", async ({ page }) => {
     await sixNamed(page);
     await expect(names(page)).toHaveText(["Mail", "Plan", "3", "4", "Research", "Write"]);
@@ -54,7 +85,8 @@ test.describe("desktops are a named, open-ended list", () => {
   }) => {
     for (let n = 5; n <= 20; n++) await run(page, "desk.shell.desktop-new");
     await expect(names(page)).toHaveCount(20);
-    const switcher = page.locator(".desktops");
+    // The pill is the list that scrolls; the switcher round it is the box that is placed.
+    const switcher = page.locator(".desktops-pill");
     const sizes = await switcher.evaluate((el) => [el.scrollWidth, el.clientWidth]);
     expect(sizes[0]).toBeGreaterThan(sizes[1] ?? 0);
     await expect(desktop(page, 20)).toBeInViewport({ ratio: 1 });

@@ -84,7 +84,9 @@ test("split dividers keep keyboard focus across repeated arrow adjustments", asy
 test("profile dialogs contain focus, block background shortcuts and return to the trigger", async ({
   page,
 }) => {
-  await page.locator(".mode-add").click();
+  const chip = page.locator(".mode-chip.is-current");
+  await chip.click();
+  await page.locator('.mode-menu [data-key="menu-new"]').click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.locator("input")).toBeFocused();
   const save = dialog.getByRole("button", { name: "Save", exact: true });
@@ -99,7 +101,7 @@ test("profile dialogs contain focus, block background shortcuts and return to th
   await expect(page.locator('[data-surface="window-2"]')).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  await expect(page.locator(".mode-add")).toBeFocused();
+  await expect(chip).toBeFocused();
   await page.keyboard.press("Meta+n");
   await expect(page.locator('[data-surface="window-2"]')).toBeVisible();
 });

@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { DESK, openShell, step } from "./shell-helpers";
+import { DESK, openShell } from "./shell-helpers";
 
-// The profile switcher, top left: the canvas hint kept off its chips, a row of many profiles, and
-// each profile's menu (rename, delete, restore). shell.spec.ts covers unfolding, saving and switching.
+// The profile switcher, top left: the canvas hint kept off its chip, a menu of many profiles, and the
+// rows of the profile in force (rename, delete, restore). shell.spec.ts covers the menu's profiles,
+// saving and switching.
 test.use({ viewport: DESK });
 
 test.describe("the profile switcher", () => {
@@ -24,7 +25,7 @@ test.describe("the profile switcher", () => {
     await expect(page.locator("#desk")).not.toHaveAttribute("title", /./);
   });
 
-  test("a row of many profiles stops before the desktops and scrolls to every one", async ({
+  test("a menu of many profiles scrolls to every one and stays inside the app", async ({
     page,
   }) => {
     await page.evaluate(async () => {
@@ -39,6 +40,10 @@ test.describe("the profile switcher", () => {
         ["planning", "Planning"],
         ["travel", "Travel"],
         ["scratch", "ㅎㅇㅎㅇ"],
+        ["errands", "Errands"],
+        ["guests", "Guests"],
+        ["music", "Music"],
+        ["taxes", "Taxes"],
       ];
       for (const [id, name] of names) {
         await runtime.commands.run("desk.profiles.save", {
@@ -49,49 +54,45 @@ test.describe("the profile switcher", () => {
         });
       }
     });
-    await page.hover(".mode-chip.is-current");
-    await step(page, 400);
-    const more = page.locator(".modes-more");
-    const inRow = (mode: string) =>
+    await page.click(".mode-chip.is-current");
+    const menu = page.locator(".mode-menu");
+    const inMenu = (mode: string) =>
       page.evaluate((id) => {
-        const row = document.querySelector(".modes-more")?.getBoundingClientRect();
-        const chip = document.querySelector(`.modes-more [data-mode="${id}"]`);
-        const r = chip?.getBoundingClientRect();
-        return !!row && !!r && r.left >= row.left - 0.5 && r.right <= row.right + 0.5;
+        const box = document.querySelector(".mode-menu")?.getBoundingClientRect();
+        const row = document.querySelector(`.mode-menu [data-mode="${id}"]`);
+        const r = row?.getBoundingClientRect();
+        return !!box && !!r && r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5;
       }, mode);
-    const room = await page.evaluate(() => {
-      const row = document.querySelector(".modes-more")?.getBoundingClientRect();
-      return (
-        (document.querySelector(".desktops")?.getBoundingClientRect().left ?? 0) - (row?.right ?? 0)
-      );
-    });
-    expect(room).toBeGreaterThanOrEqual(16);
-    await expect(more).toHaveAttribute("data-more", "end");
-    // Default, the way home, sits last: past the room until the row scrolls.
-    expect(await inRow("default")).toBe(false);
-    await page.hover('.modes-more [data-mode="writing"]');
+    // The menu stops inside the app and scrolls.
+    const fits = await menu.evaluate((el) => ({
+      bottom: el.getBoundingClientRect().bottom,
+      height: window.innerHeight,
+      scrolls: el.scrollHeight > el.clientHeight,
+    }));
+    expect(fits.bottom).toBeLessThanOrEqual(fits.height);
+    expect(fits.scrolls).toBe(true);
+    // Default, the way home, sits last among the profiles: past the menu's end until it scrolls.
+    expect(await inMenu("default")).toBe(false);
+    await page.hover('.mode-menu [data-mode="writing"]');
     await page.mouse.wheel(0, 2000);
-    await expect(more).toHaveAttribute("data-more", "start");
-    expect(await inRow("default")).toBe(true);
-    await page.click('.modes-more [data-mode="default"]');
+    await expect.poll(() => inMenu("default")).toBe(true);
+    await page.click('.mode-menu [data-mode="default"]');
     await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", "default");
   });
 
   test("renames and deletes a profile of one's own from its menu", async ({ page }) => {
     const current = page.locator(".mode-chip.is-current");
-    await page.click(".mode-add");
+    await current.click();
+    await page.click('.mode-menu [data-key="menu-new"]');
     await page.keyboard.type("Scratch");
     await page.keyboard.press("Enter");
     await expect(current).toHaveAttribute("data-mode", "scratch");
     await current.click();
-    await expect(page.getByRole("menuitem")).toHaveText([
-      "이 프로필에 저장",
-      "새 프로필로",
-      "되돌리기",
-      "이름 바꾸기…",
-      "프로필 지우기…",
-    ]);
-    await expect(page.getByRole("menuitem", { name: "새 프로필로" })).toBeFocused();
+    await expect(
+      page.locator('.mode-menu [role="menuitem"]:not([data-key^="menu-switch-"])'),
+    ).toHaveText(["새 프로필", "이 프로필에 저장", "되돌리기", "이름 바꾸기…", "프로필 지우기…"]);
+    // The first row, the first profile to switch to, has the focus.
+    await expect(page.locator('.mode-menu [role="menuitem"]').first()).toBeFocused();
     await page.getByRole("menuitem", { name: "이름 바꾸기…" }).click();
     const rename = page.getByRole("dialog", { name: "프로필 이름 바꾸기" });
     await expect(rename.locator("input")).toHaveValue("Scratch");
@@ -117,31 +118,37 @@ test.describe("the profile switcher", () => {
     await expect(page.locator('[data-mode="scratch"]')).toHaveCount(0);
   });
 
-  test("right-click opens any profile's menu; a plugin's profile renamed restores", async ({
+  test("right-click opens the menu of the profile in force; a plugin's profile renamed restores", async ({
     page,
   }) => {
-    const deep = page.locator('.modes-more [data-mode="deep-work"]');
-    const menu = page.getByRole("menu");
-    const unfold = async () => {
-      await page.hover(".mode-chip.is-current");
-      await step(page, 400);
-    };
-    await unfold();
-    await deep.click({ button: "right" });
-    await expect(menu.getByRole("menuitem")).toHaveText(["이름 바꾸기…"]);
+    const chip = page.locator(".mode-chip.is-current");
+    const own = page.locator(
+      '.mode-menu [role="menuitem"]:not([data-key^="menu-switch-"]):not([data-key="menu-new"])',
+    );
+    // Another profile is changed after switching to it: a row of the menu has no menu of its own.
+    await chip.click();
+    await page.click('.mode-menu [data-mode="deep-work"]');
+    await expect(chip).toHaveAttribute("data-mode", "deep-work");
+    await chip.click({ button: "right" });
+    await expect(own).toHaveText(["이 프로필에 저장", "되돌리기", "이름 바꾸기…"]);
     await page.keyboard.press("Escape");
-    await expect(menu).toHaveCount(0);
-    await expect(deep).toBeFocused();
-    await deep.click({ button: "right" });
+    await expect(page.locator(".mode-menu")).toHaveCount(0);
+    await expect(chip).toBeFocused();
+    await chip.click({ button: "right" });
     await page.getByRole("menuitem", { name: "이름 바꾸기…" }).click();
     await page.keyboard.type("Deep focus");
     await page.keyboard.press("Enter");
-    await expect(deep.locator(".mode-name")).toHaveText("Deep focus");
-    await unfold();
-    await deep.click({ button: "right" });
-    await expect(menu.getByRole("menuitem")).toHaveText(["이름 바꾸기…", "처음 상태로 되돌리기…"]);
+    await expect(chip.locator(".mode-name")).toHaveText("Deep focus");
+    await chip.click({ button: "right" });
+    await expect(own).toHaveText([
+      "이 프로필에 저장",
+      "되돌리기",
+      "이름 바꾸기…",
+      "처음 상태로 되돌리기…",
+    ]);
     await page.getByRole("menuitem", { name: "처음 상태로 되돌리기…" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "되돌리기", exact: true }).click();
-    await expect(deep.locator(".mode-name")).toHaveText("Deep work");
+    await expect(chip.locator(".mode-name")).toHaveText("Deep work");
+    await expect(chip).toHaveAttribute("data-mode", "deep-work");
   });
 });

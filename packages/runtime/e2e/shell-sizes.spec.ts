@@ -91,7 +91,7 @@ for (const size of SIZES) {
       );
       expect(collisions(boxes)).toEqual([]);
       expect(outside(boxes, size.width, size.height)).toEqual([]);
-      expect(await onTop(page, '[data-layer="system"] .modes .add-button')).toBe(true);
+      expect(await onTop(page, '[data-layer="system"] .modes .mode-chip')).toBe(true);
     });
 
     test("on a panned canvas the reset button is whole, bottom left, and takes its press", async ({

@@ -44,206 +44,33 @@
        "class": "modes-row",
        "children": [
         {
-         "tag": "div",
-         "class": "modes-current",
-         "children": [
-          {
-           "tag": "button",
-           "class": "mode-chip is-current",
-           "aria-label": "Morning",
-           "aria-pressed": "true",
-           "aria-expanded": "false",
-           "data-mode": "morning",
-           "style": {
-            "background": "rgb(30, 29, 33)",
-            "border": "solid rgb(182, 163, 245)"
-           },
-           "children": [
-            {
-             "tag": "svg",
-             "icon": "sunrise"
-            },
-            {
-             "tag": "span",
-             "class": "mode-name",
-             "style": {
-              "color": "rgb(242, 240, 245)"
-             },
-             "text": "Morning"
-            }
-           ]
-          }
-         ]
-        },
-        {
-         "tag": "div",
-         "class": "modes-more",
+         "tag": "button",
+         "class": "mode-chip is-current",
+         "aria-label": "Morning",
+         "aria-expanded": "false",
+         "data-mode": "morning",
          "style": {
-          "opacity": "0",
-          "maxWidth": "0px"
+          "background": "rgb(30, 29, 33)",
+          "border": "solid rgb(182, 163, 245)"
          },
          "children": [
           {
-           "tag": "button",
-           "class": "mode-chip",
-           "aria-label": "Deep work",
-           "aria-pressed": "false",
-           "data-mode": "deep-work",
-           "style": {
-            "background": "rgb(30, 29, 33)",
-            "border": "solid rgb(51, 49, 54)"
-           },
-           "children": [
-            {
-             "tag": "svg",
-             "icon": "target"
-            },
-            {
-             "tag": "span",
-             "class": "mode-name",
-             "style": {
-              "color": "rgb(242, 240, 245)"
-             },
-             "text": "Deep work"
-            }
-           ]
+           "tag": "svg",
+           "icon": "sunrise"
           },
           {
-           "tag": "button",
-           "class": "mode-chip",
-           "aria-label": "Review",
-           "aria-pressed": "false",
-           "data-mode": "review",
+           "tag": "span",
+           "class": "mode-name",
            "style": {
-            "background": "rgb(30, 29, 33)",
-            "border": "solid rgb(51, 49, 54)"
+            "color": "rgb(242, 240, 245)"
            },
-           "children": [
-            {
-             "tag": "svg",
-             "icon": "review"
-            },
-            {
-             "tag": "span",
-             "class": "mode-name",
-             "style": {
-              "color": "rgb(242, 240, 245)"
-             },
-             "text": "Review"
-            }
-           ]
+           "text": "Morning"
           },
           {
-           "tag": "button",
-           "class": "mode-chip",
-           "aria-label": "Studio · jin 님의 프로필",
-           "aria-pressed": "false",
-           "data-mode": "studio",
-           "style": {
-            "background": "rgb(30, 29, 33)",
-            "border": "solid rgb(51, 49, 54)"
-           },
-           "children": [
-            {
-             "tag": "svg",
-             "icon": "palette"
-            },
-            {
-             "tag": "span",
-             "class": "mode-name",
-             "style": {
-              "color": "rgb(242, 240, 245)"
-             },
-             "text": "Studio"
-            },
-            {
-             "tag": "span",
-             "class": "mode-copied",
-             "style": {
-              "color": "rgb(176, 173, 183)"
-             },
-             "text": "jin",
-             "children": [
-              {
-               "tag": "svg",
-               "icon": "copy"
-              }
-             ]
-            }
-           ]
-          },
-          {
-           "tag": "button",
-           "class": "mode-chip",
-           "aria-label": "Night",
-           "aria-pressed": "false",
-           "data-mode": "night",
-           "style": {
-            "background": "rgb(30, 29, 33)",
-            "border": "solid rgb(51, 49, 54)"
-           },
-           "children": [
-            {
-             "tag": "svg",
-             "icon": "moon"
-            },
-            {
-             "tag": "span",
-             "class": "mode-name",
-             "style": {
-              "color": "rgb(242, 240, 245)"
-             },
-             "text": "Night"
-            }
-           ]
-          },
-          {
-           "tag": "button",
-           "class": "mode-chip",
-           "aria-label": "Default",
-           "aria-pressed": "false",
-           "data-mode": "default",
-           "style": {
-            "background": "rgb(30, 29, 33)",
-            "border": "solid rgb(51, 49, 54)"
-           },
-           "children": [
-            {
-             "tag": "svg",
-             "icon": "sparkle"
-            },
-            {
-             "tag": "span",
-             "class": "mode-name",
-             "style": {
-              "color": "rgb(242, 240, 245)"
-             },
-             "text": "Default"
-            }
-           ]
+           "tag": "svg",
+           "icon": "chevron-down"
           }
          ]
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "add-button mode-add",
-       "aria-label": "새 프로필",
-       "box": [
-        24,
-        64,
-        32,
-        32
-       ],
-       "style": {
-        "background": "rgb(30, 29, 33)",
-        "border": "dashed rgb(131, 121, 145)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "plus"
         }
        ]
       },
@@ -269,286 +96,291 @@
      "aria-label": "데스크톱",
      "children": [
       {
-       "tag": "button",
-       "class": "desktop-button is-active",
-       "aria-label": "데스크톱 1 · 비어 있음 (⌃1)",
-       "aria-pressed": "true",
-       "data-desktop": "1",
-       "box": [
-        1176,
-        24,
-        44,
-        32
-       ],
-       "style": {
-        "background": "rgb(30, 29, 33)",
-        "border": "solid rgb(182, 163, 245)"
-       },
-       "children": [
-        {
-         "tag": "span",
-         "class": "desktop-number",
-         "style": {
-          "color": "rgb(242, 240, 245)"
-         },
-         "text": "1"
-        },
-        {
-         "tag": "span",
-         "class": "mini-grid",
-         "children": [
-          {
-           "tag": "span",
-           "class": "mini-dot",
-           "style": {
-            "color": "rgb(242, 240, 245)",
-            "border": "solid rgb(242, 240, 245)"
-           }
-          },
-          {
-           "tag": "span",
-           "class": "mini-dot",
-           "style": {
-            "color": "rgb(242, 240, 245)",
-            "border": "solid rgb(242, 240, 245)"
-           }
-          },
-          {
-           "tag": "span",
-           "class": "mini-dot",
-           "style": {
-            "color": "rgb(242, 240, 245)",
-            "border": "solid rgb(242, 240, 245)"
-           }
-          },
-          {
-           "tag": "span",
-           "class": "mini-dot",
-           "style": {
-            "color": "rgb(242, 240, 245)",
-            "border": "solid rgb(242, 240, 245)"
-           }
-          }
-         ]
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "desktop-button",
-       "aria-label": "데스크톱 2 (⌃2)",
-       "aria-pressed": "false",
-       "data-desktop": "2",
-       "box": [
-        1228,
-        24,
-        44,
-        32
-       ],
+       "tag": "div",
+       "class": "desktops-pill",
        "style": {
         "background": "rgb(30, 29, 33)",
         "border": "solid rgb(51, 49, 54)"
        },
        "children": [
         {
-         "tag": "span",
-         "class": "desktop-number",
+         "tag": "button",
+         "class": "desktop-button is-active",
+         "aria-label": "데스크톱 1 · 비어 있음 (⌃1)",
+         "aria-pressed": "true",
+         "data-desktop": "1",
+         "box": [
+          1253,
+          27,
+          32,
+          26
+         ],
          "style": {
-          "color": "rgb(176, 173, 183)"
+          "background": "rgb(30, 29, 33)"
          },
-         "text": "2"
-        },
-        {
-         "tag": "span",
-         "class": "mini-grid",
          "children": [
           {
            "tag": "span",
-           "class": "mini-dot is-on",
+           "class": "desktop-number",
            "style": {
-            "background": "rgb(176, 173, 183)",
-            "color": "rgb(176, 173, 183)",
-            "border": "solid rgb(176, 173, 183)"
-           }
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "1"
           },
           {
            "tag": "span",
-           "class": "mini-dot is-on",
-           "style": {
-            "background": "rgb(176, 173, 183)",
-            "color": "rgb(176, 173, 183)",
-            "border": "solid rgb(176, 173, 183)"
-           }
-          },
-          {
-           "tag": "span",
-           "class": "mini-dot",
-           "style": {
-            "color": "rgb(176, 173, 183)",
-            "border": "solid rgb(176, 173, 183)"
-           }
-          },
-          {
-           "tag": "span",
-           "class": "mini-dot",
-           "style": {
-            "color": "rgb(176, 173, 183)",
-            "border": "solid rgb(176, 173, 183)"
-           }
+           "class": "mini-grid",
+           "children": [
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(242, 240, 245)",
+              "border": "solid rgb(242, 240, 245)"
+             }
+            },
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(242, 240, 245)",
+              "border": "solid rgb(242, 240, 245)"
+             }
+            },
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(242, 240, 245)",
+              "border": "solid rgb(242, 240, 245)"
+             }
+            },
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(242, 240, 245)",
+              "border": "solid rgb(242, 240, 245)"
+             }
+            }
+           ]
           }
          ]
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "desktop-button",
-       "aria-label": "데스크톱 3 (⌃3)",
-       "aria-pressed": "false",
-       "data-desktop": "3",
-       "box": [
-        1280,
-        24,
-        44,
-        32
-       ],
-       "style": {
-        "background": "rgb(30, 29, 33)",
-        "border": "solid rgb(51, 49, 54)"
-       },
-       "children": [
-        {
-         "tag": "span",
-         "class": "desktop-number",
-         "style": {
-          "color": "rgb(176, 173, 183)"
-         },
-         "text": "3"
         },
         {
-         "tag": "span",
-         "class": "mini-grid",
+         "tag": "button",
+         "class": "desktop-button",
+         "aria-label": "데스크톱 2 (⌃2)",
+         "aria-pressed": "false",
+         "data-desktop": "2",
+         "box": [
+          1285,
+          27,
+          32,
+          26
+         ],
+         "style": {
+          "background": "rgb(30, 29, 33)"
+         },
          "children": [
           {
            "tag": "span",
-           "class": "mini-dot is-on",
+           "class": "desktop-number",
            "style": {
-            "background": "rgb(176, 173, 183)",
-            "color": "rgb(176, 173, 183)",
-            "border": "solid rgb(176, 173, 183)"
-           }
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "2"
           },
           {
            "tag": "span",
-           "class": "mini-dot",
-           "style": {
-            "color": "rgb(176, 173, 183)",
-            "border": "solid rgb(176, 173, 183)"
-           }
-          },
-          {
-           "tag": "span",
-           "class": "mini-dot",
-           "style": {
-            "color": "rgb(176, 173, 183)",
-            "border": "solid rgb(176, 173, 183)"
-           }
-          },
-          {
-           "tag": "span",
-           "class": "mini-dot",
-           "style": {
-            "color": "rgb(176, 173, 183)",
-            "border": "solid rgb(176, 173, 183)"
-           }
+           "class": "mini-grid",
+           "children": [
+            {
+             "tag": "span",
+             "class": "mini-dot is-on",
+             "style": {
+              "background": "rgb(176, 173, 183)",
+              "color": "rgb(176, 173, 183)",
+              "border": "solid rgb(176, 173, 183)"
+             }
+            },
+            {
+             "tag": "span",
+             "class": "mini-dot is-on",
+             "style": {
+              "background": "rgb(176, 173, 183)",
+              "color": "rgb(176, 173, 183)",
+              "border": "solid rgb(176, 173, 183)"
+             }
+            },
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(176, 173, 183)",
+              "border": "solid rgb(176, 173, 183)"
+             }
+            },
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(176, 173, 183)",
+              "border": "solid rgb(176, 173, 183)"
+             }
+            }
+           ]
           }
          ]
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "desktop-button",
-       "aria-label": "데스크톱 4 · 비어 있음 (⌃4)",
-       "aria-pressed": "false",
-       "data-desktop": "4",
-       "box": [
-        1332,
-        24,
-        44,
-        32
-       ],
-       "style": {
-        "background": "rgb(30, 29, 33)",
-        "border": "solid rgb(51, 49, 54)"
-       },
-       "children": [
-        {
-         "tag": "span",
-         "class": "desktop-number",
-         "style": {
-          "color": "rgb(176, 173, 183)"
-         },
-         "text": "4"
         },
         {
-         "tag": "span",
-         "class": "mini-grid",
+         "tag": "button",
+         "class": "desktop-button",
+         "aria-label": "데스크톱 3 (⌃3)",
+         "aria-pressed": "false",
+         "data-desktop": "3",
+         "box": [
+          1317,
+          27,
+          32,
+          26
+         ],
+         "style": {
+          "background": "rgb(30, 29, 33)"
+         },
          "children": [
           {
            "tag": "span",
-           "class": "mini-dot",
+           "class": "desktop-number",
            "style": {
-            "color": "rgb(176, 173, 183)",
-            "border": "solid rgb(176, 173, 183)"
-           }
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "3"
           },
           {
            "tag": "span",
-           "class": "mini-dot",
-           "style": {
-            "color": "rgb(176, 173, 183)",
-            "border": "solid rgb(176, 173, 183)"
-           }
-          },
-          {
-           "tag": "span",
-           "class": "mini-dot",
-           "style": {
-            "color": "rgb(176, 173, 183)",
-            "border": "solid rgb(176, 173, 183)"
-           }
-          },
-          {
-           "tag": "span",
-           "class": "mini-dot",
-           "style": {
-            "color": "rgb(176, 173, 183)",
-            "border": "solid rgb(176, 173, 183)"
-           }
+           "class": "mini-grid",
+           "children": [
+            {
+             "tag": "span",
+             "class": "mini-dot is-on",
+             "style": {
+              "background": "rgb(176, 173, 183)",
+              "color": "rgb(176, 173, 183)",
+              "border": "solid rgb(176, 173, 183)"
+             }
+            },
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(176, 173, 183)",
+              "border": "solid rgb(176, 173, 183)"
+             }
+            },
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(176, 173, 183)",
+              "border": "solid rgb(176, 173, 183)"
+             }
+            },
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(176, 173, 183)",
+              "border": "solid rgb(176, 173, 183)"
+             }
+            }
+           ]
           }
          ]
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "add-button desktop-add",
-       "aria-label": "빈 데스크톱으로",
-       "box": [
-        1384,
-        24,
-        32,
-        32
-       ],
-       "style": {
-        "background": "rgb(30, 29, 33)",
-        "border": "dashed rgb(131, 121, 145)"
-       },
-       "children": [
+        },
         {
-         "tag": "svg",
-         "icon": "plus"
+         "tag": "button",
+         "class": "desktop-button",
+         "aria-label": "데스크톱 4 · 비어 있음 (⌃4)",
+         "aria-pressed": "false",
+         "data-desktop": "4",
+         "box": [
+          1349,
+          27,
+          32,
+          26
+         ],
+         "style": {
+          "background": "rgb(30, 29, 33)"
+         },
+         "children": [
+          {
+           "tag": "span",
+           "class": "desktop-number",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "4"
+          },
+          {
+           "tag": "span",
+           "class": "mini-grid",
+           "children": [
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(176, 173, 183)",
+              "border": "solid rgb(176, 173, 183)"
+             }
+            },
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(176, 173, 183)",
+              "border": "solid rgb(176, 173, 183)"
+             }
+            },
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(176, 173, 183)",
+              "border": "solid rgb(176, 173, 183)"
+             }
+            },
+            {
+             "tag": "span",
+             "class": "mini-dot",
+             "style": {
+              "color": "rgb(176, 173, 183)",
+              "border": "solid rgb(176, 173, 183)"
+             }
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "add-button desktop-add",
+         "aria-label": "빈 데스크톱으로",
+         "box": [
+          1381,
+          27,
+          32,
+          26
+         ],
+         "style": {
+          "background": "rgb(30, 29, 33)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "plus"
+          }
+         ]
         }
        ]
       }
