@@ -192,9 +192,8 @@ describe("the spread's commands", () => {
     expect(store.get().pan["1"]).toEqual({ x: -300, y: 0 });
     expect(store.get().focused).toBe("notes");
     expect(keys).toHaveBeenCalledWith("notes");
-    await expect(commands.run(FOCUS, { window: "tomorrow" })).rejects.toThrow(
-      /not on this desktop/,
-    );
+    // A window of another desktop brings its desktop first (focus-desktop.test.ts); one nowhere is refused.
+    await expect(commands.run(FOCUS, { window: "gone" })).rejects.toThrow(/not on this desktop/);
     await expect(commands.run(FOCUS, {})).rejects.toThrow(/say which/);
   });
 });

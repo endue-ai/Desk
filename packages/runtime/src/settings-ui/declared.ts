@@ -105,6 +105,34 @@ export function declaredSearch(
   };
 }
 
+/** A row the window draws from what is declared, as the palette finds it (`find.ts`, #304). */
+export interface DeclaredRow {
+  key: string;
+  title: string;
+  /** The plugin's name; empty for General's rows. */
+  group: string;
+  section: "plugins" | "general";
+  words: string;
+}
+
+/** Every row Settings › Plugins and General draw from what is declared. */
+export function declaredRows(
+  hub: DeclaredDeps["hub"],
+  declared: Record<string, SettingContribution> = CORE_SETTINGS,
+): DeclaredRow[] {
+  const row = (e: Entry, group: string, section: DeclaredRow["section"]) => ({
+    key: e.key,
+    title: e.title,
+    group,
+    section,
+    words: e.words,
+  });
+  return [
+    ...pluginGroups(hub).flatMap((g) => g.entries.map((e) => row(e, g.name, "plugins"))),
+    ...coreEntries(declared).map((e) => row(e, "", "general")),
+  ];
+}
+
 /** Whether `value` is one the declaration allows: its kind and choices, range and pattern. */
 function allowed(setting: SettingContribution, value: unknown): boolean {
   if (!fits(setting, value)) return false;

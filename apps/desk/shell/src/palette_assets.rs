@@ -18,6 +18,8 @@ pub fn file(path: &str) -> Option<&'static [u8]> {
         "index.html" => asset!("index.html"),
         "main.js" => asset!("main.js"),
         "keys.js" => asset!("keys.js"),
+        "args.js" => asset!("args.js"),
+        "dom.js" => asset!("dom.js"),
         "match.js" => asset!("match.js"),
         "search.js" => asset!("search.js"),
         "providers.js" => asset!("providers.js"),
@@ -34,6 +36,8 @@ mod tests {
             "index.html",
             "main.js",
             "keys.js",
+            "args.js",
+            "dom.js",
             "providers.js",
             "search.js",
             "match.js",
@@ -53,6 +57,8 @@ mod tests {
             "search.js",
             "match.js",
             "keys.js",
+            "args.js",
+            "dom.js",
         ] {
             let text =
                 String::from_utf8_lossy(super::file(&format!("_desk/palette/{name}")).unwrap());
