@@ -3,6 +3,8 @@
 
 import { createActions } from "./actions.js";
 import { createImageActions } from "./actions-images.js";
+import { createObjectActions } from "./actions-objects.js";
+import { openNetworkDialog, openVolumeDialog } from "./dialog-objects.js";
 import { openPullDialog, openTagDialog } from "./dialog-pull.js";
 import { openRunDialog } from "./dialog-run.js";
 import { containerMenu, imageMenu, stackMenu } from "./menus.js";
@@ -11,6 +13,7 @@ import { containerMenu, imageMenu, stackMenu } from "./menus.js";
 export function installFeatures(app) {
   const images = createImageActions(app);
   app.images = images;
+  app.objects = createObjectActions(app);
   app.act = {
     ...createActions(app),
     removeImages: images.removeImages,
@@ -28,6 +31,8 @@ export function installFeatures(app) {
     pull: () => openPullDialog(app),
     pullRef: (/** @type {string} */ ref) => openPullDialog(app, ref),
     tag: (/** @type {any} */ image) => openTagDialog(app, image),
+    createVolume: () => openVolumeDialog(app),
+    createNetwork: () => openNetworkDialog(app),
     build: soon("Building"),
     composeUp: soon("Compose up from a file"),
     scaffold: soon("Writing a Dockerfile"),
