@@ -1,0 +1,145 @@
+/* The Headers, Cookies and Timeline tabs: tables, the timing and connection cards, the redirects,
+   and curl's own lines. */
+
+.as-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+.as-tl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+}
+.as-tl-card {
+  padding: 12px 14px;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+}
+.as-tl-card h3,
+.as-hops h3 {
+  margin: 0 0 10px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.as-facts {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0;
+  font-size: var(--desk-text-xs);
+}
+.as-facts dt {
+  color: var(--desk-text-muted);
+}
+.as-facts dd {
+  margin: 0;
+  font-family: var(--as-mono);
+  word-break: break-all;
+}
+.as-hops {
+  padding: 12px 14px;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-lg);
+}
+.as-hop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: var(--desk-text-xs);
+}
+.as-hop-n {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--as-raised);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}
+.as-hop-to {
+  font-family: var(--as-mono);
+  word-break: break-all;
+}
+.as-log {
+  max-height: 420px;
+  overflow: auto;
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-2xs);
+  line-height: 1.7;
+}
+.as-log-line {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.as-log-mark {
+  color: var(--as-faint);
+}
+.as-log-line.k-out {
+  color: var(--desk-chart-4);
+}
+.as-log-line.k-in {
+  color: var(--desk-chart-2);
+}
+.as-log-line.k-info {
+  color: var(--desk-text-muted);
+}
+
+/* ── headers, cookies ───────────────────────────────────────────────── */
+.as-headers {
+  padding: 12px;
+}
+.as-table.desk-table {
+  width: 100%;
+  overflow: hidden;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-md);
+  font-size: var(--desk-text-xs);
+}
+.as-table th {
+  background: var(--as-soft);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-align: left;
+  text-transform: uppercase;
+}
+.as-table td,
+.as-table th {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--as-line-soft);
+  vertical-align: top;
+}
+.as-table tr:last-child td {
+  border-bottom: 0;
+}
+.as-hname {
+  width: 34%;
+  font-family: var(--as-mono);
+  font-weight: 600;
+}
+.as-hvalue {
+  font-family: var(--as-mono);
+  word-break: break-all;
+}
+.as-sent {
+  margin-top: 14px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+.as-sent summary {
+  margin-bottom: 8px;
+  cursor: pointer;
+}
