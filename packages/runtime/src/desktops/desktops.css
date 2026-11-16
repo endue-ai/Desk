@@ -1,23 +1,39 @@
 /* Desktops as a named list (ADR 0117): the switcher scrolling, its menus, the preview and the overview. */
 
-/* The switcher scrolls sideways when the list is long. The padding (taken back by the margin) leaves
-   room for the focus ring, which the scroll box would otherwise cut. */
-.desktops {
-  --desktops-ring: calc(var(--desk-focus-width) + var(--desk-focus-offset));
-  max-width: min(44vw, 640px);
-  margin: calc(-1 * var(--desktops-ring));
-  padding: var(--desktops-ring);
+/* The desktops are segments of one pill (issue 295): a 1 border and 2 of padding round them, the one
+   in front filled, "+" the last. The pill is the list that scrolls sideways when it is long, "+"
+   stuck to its end; a segment's focus ring is drawn inside it, which the scroll box would cut. */
+.desktops-pill {
+  display: flex;
+  gap: 0;
+  /* Whole pixels: the scroll range is whole, so a fraction would leave the last desktop under "+". */
+  max-width: round(down, min(44vw, 640px), 1px);
+  padding: var(--desktops-pad);
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desktops-radius);
+  background: var(--desk-card);
   scrollbar-width: none;
 }
-.desktops::-webkit-scrollbar { display: none; }
-.desktops .add-button { position: sticky; right: 0; flex: none; }
+.desktops-pill::-webkit-scrollbar { display: none; }
+.desktops-pill .desktop-button,
+.desktops-pill .add-button {
+  flex: none;
+  width: var(--desktop-segment);
+  height: var(--desktop-segment-height);
+  border: 0;
+  border-radius: var(--desk-button-radius);
+}
+.desktops-pill .desktop-button:focus-visible,
+.desktops-pill .add-button:focus-visible {
+  outline-offset: calc(var(--desk-focus-width) * -1);
+}
+.desktops-pill .add-button { position: sticky; right: 0; }
 
-/* A desktop named by a number or two characters keeps its 44px; a longer name takes a wider chip and
-   is cut with an ellipsis (its whole name is in its label and its preview). */
-.desktops .desktop-button { flex: none; }
-.desktops .desktop-button.is-named {
+/* A desktop named by a number or two characters keeps its segment; a longer name takes a wider one
+   and is cut with an ellipsis (its whole name is in its label and its preview). */
+.desktops-pill .desktop-button.is-named {
   justify-content: space-between;
   width: 96px;
   padding: 0 var(--space-2);
@@ -26,8 +42,7 @@
 .desktops .desktop-button.is-moving { position: relative; z-index: 1; opacity: 0.85; }
 .desktops .desktop-button.is-drop-target,
 .desktops .add-button.is-drop-target {
-  border-color: var(--desk-accent);
-  box-shadow: 0 0 0 var(--desk-focus-width) var(--desk-ring);
+  box-shadow: inset 0 0 0 var(--desk-focus-width) var(--desk-ring);
 }
 
 /* A desktop drawn small: its windows to scale. */
