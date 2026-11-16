@@ -6,7 +6,7 @@
 import { fromBase64 } from "./net.js";
 
 /** The programs the plugin may run. */
-export const PROGRAMS = Object.freeze(["llama-server", "sysctl", "nvidia-smi"]);
+export const PROGRAMS = Object.freeze(["llama-server", "curl", "sysctl", "nvidia-smi"]);
 export const PROC_SCOPE = Object.freeze({ permission: "proc:spawn", commands: [...PROGRAMS] });
 export const FALLBACK_PATH = [
   "/opt/homebrew/bin",

@@ -91,6 +91,7 @@ async function call(method, params) {
     return result;
   }
   if (method === "net.send") return devCall("/_dev/net/send", params);
+  if (method === "net.fetch") return devCall("/_dev/net/fetch", params);
   if (method === "proc.spawn") {
     const result = await devCall("/_dev/proc/spawn", params);
     void follow(result.procId);
