@@ -279,3 +279,67 @@ header,
   overflow-wrap: anywhere;
 }
 .context-menu button:focus { background: var(--desk-hover); }
+
+/* The find bar (find-view.js): a filter field, the "below" toggle and close, under the tools. */
+#find {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+#find[hidden],
+#results[hidden] {
+  display: none;
+}
+
+#find-query {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: inherit;
+}
+
+#find-query:focus-visible {
+  outline: var(--desk-border-width) solid var(--desk-primary);
+  outline-offset: -1px;
+}
+
+/* What a search below found: the name, then its folder, faint, and the button that reveals it. */
+#results {
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.found {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 12px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.found:hover,
+.found:focus {
+  background: var(--desk-hover);
+  outline: none;
+}
+
+.found .folder {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}

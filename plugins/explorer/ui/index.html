@@ -53,8 +53,14 @@
         </button>
       </div>
     </header>
+    <form id="find" role="search" aria-label="Find by name" hidden>
+      <input id="find-query" type="search" aria-label="Filter this folder" placeholder="Filter by name" autocomplete="off" spellcheck="false" />
+      <button id="find-below" class="desk-btn" type="button" aria-pressed="false" aria-label="Search below" title="Search the folders below too">Below</button>
+      <button id="find-close" class="desk-icon-btn" type="button" title="Close (Escape)" aria-label="Close find">×</button>
+    </form>
     <main>
-      <ul id="tree" role="tree" aria-labelledby="title" tabindex="0"></ul>
+      <ul id="results" role="listbox" aria-label="Found below" hidden></ul>
+      <ul id="tree" role="tree" aria-labelledby="title" aria-multiselectable="true" tabindex="0"></ul>
       <p id="empty" hidden>Nothing to show.</p>
     </main>
     <section id="preview" role="region" aria-labelledby="preview-title" hidden>

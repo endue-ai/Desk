@@ -86,6 +86,12 @@ describe("plugin.json", () => {
       `${ID}.new-folder`,
       `${ID}.rename`,
       `${ID}.trash`,
+      `${ID}.select-all`,
+      `${ID}.copy`,
+      `${ID}.cut`,
+      `${ID}.paste`,
+      `${ID}.find`,
+      `${ID}.find-below`,
     ]);
     for (const key of contributes?.keys ?? []) expect(ids).toContain(key.command);
     expect(contributes?.keys?.map((k) => k.key)).toEqual(["Mod+Shift+E", "Mod+Shift+R"]);

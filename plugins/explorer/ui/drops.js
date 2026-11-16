@@ -1,7 +1,8 @@
-// Paths dropped on a folder (ADR 0119): a drop moves them there, Alt copies, and a drop from another
+// Paths dropped on a folder (ADR 0119), or pasted in it (many.js): a drop moves them there, Alt copies, and a drop from another
 // volume or from the OS copies, as Finder does (Mod moves anyway). Moves go through fs.rename and
 // copies through fs.copy, which the desk's undo reverses; a name already in the folder asks first
 // (keep both, replace, skip), before anything is written, and a replaced entry goes to the OS trash.
+// The moves and copies of one drop share an undo group, so the desk's undo takes them back at once.
 // The drop hands over paths only: every call carries the explorer's own scopes, asked for once with
 // perm.request when they do not cover a path. A file of a container (Docker's `docker/file`, #550)
 // has no path here: the folder copies it in with the Docker plugin's endue.docker.copy-out, the
@@ -17,6 +18,10 @@ import { isUnder, joinPath, nameOf, parentOf, patternOf } from "./tree.js";
  * @typedef {{ dropTarget?: object, landing?(element: unknown): unknown }} DropView
  * @typedef {{ container: string, path: string, name: string }} ContainerFile
  */
+
+/** One undo group per drop or paste: unique across reloads, so two never join (ADR 0247). */
+let drops = 0;
+const nextGroup = () => `drop-${Date.now().toString(36)}-${++drops}`;
 
 /** Docker's command that copies a container's file or folder to this computer. */
 const COPY_OUT = "endue.docker.copy-out";
@@ -100,20 +105,30 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
   };
 
   /** fs.copy: a file or a folder, read under the source's scope and written under the folder's. */
-  const copy = (/** @type {string} */ from, /** @type {string} */ to) =>
+  const copy = (
+    /** @type {string} */ from,
+    /** @type {string} */ to,
+    /** @type {string} */ group,
+  ) =>
     bridge.call("fs.copy", {
       from,
       to,
       scope: scopeOf("fs:write", to),
       fromScope: scopeOf("fs:read", from),
+      group,
     });
   /** fs.rename: within a volume or across (the core copies, then trashes the source). */
-  const move = (/** @type {string} */ from, /** @type {string} */ to) =>
+  const move = (
+    /** @type {string} */ from,
+    /** @type {string} */ to,
+    /** @type {string} */ group,
+  ) =>
     bridge.call("fs.rename", {
       from,
       to,
       scope: scopeOf("fs:write", to),
       fromScope: scopeOf("fs:write", from),
+      group,
     });
   const trash = (/** @type {string} */ path) =>
     bridge.call("fs.trash", { path, scope: scopeOf("fs:write", path) });
@@ -184,6 +199,8 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
         replace: clash && answer === "replace",
       });
     }
+    // Every move and copy of this drop is one step for the desk's undo.
+    const group = nextGroup();
     let done = 0;
     let copied = false;
     /** Why a step failed: said after what went before it is listed again. */
@@ -193,8 +210,8 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
       const reason = `To ${verb} ${nameOf(step.from)} to ${folder}`;
       try {
         if (step.replace) await withGrant(reason, () => trash(step.to));
-        if (step.how === "copy") await withGrant(reason, () => copy(step.from, step.to));
-        else await withGrant(reason, () => move(step.from, step.to));
+        if (step.how === "copy") await withGrant(reason, () => copy(step.from, step.to, group));
+        else await withGrant(reason, () => move(step.from, step.to, group));
         done++;
         copied ||= step.how === "copy";
       } catch (error) {

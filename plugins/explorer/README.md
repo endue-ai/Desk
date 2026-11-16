@@ -5,15 +5,13 @@ first in natural order, dotfiles on request, 500 entries a page. A file opens th
 Space shows a bounded quick preview, the selected row kept in sight above it. Each row's icon says what it is (folder, code, image, archive, ...) in the theme's colours; each tool's icon says what it does.
 
 Keyboard: the WAI-ARIA tree pattern. Arrows move, `→` expands or steps in, `←` collapses or steps out,
-Home/End jump, Space previews, Enter opens, Escape closes the preview; letters jump by name; F2 renames, Delete or Cmd+Backspace trashes.
+Home/End jump, Space previews, Enter opens, Escape closes the preview; letters jump by name; F2 renames, Delete or Cmd+Backspace trashes. Several rows: Shift-click and Shift+arrows extend a range, Mod-click toggles, Mod+A selects all, the count said on the status line; Mod+C/X/V copy, cut and paste them (one undo step, ADR 0247), a drag or Move to Trash takes them all. Mod+F filters the folder by name; "Below" searches the folders under it (1000 results, 10 000 folders, Escape stops); Enter opens a result, Shift+Enter shows it in its folder.
 One click selects and opens a file or toggles a folder; rows never select their text, and a row drags its path (`desk/paths`, ADR 0119) past 6 px. Right-click or Shift+F10 offers Open, terminal, Git, system reveal, Copy path, New file, New folder, Rename and Move to Trash, in compact rows that all fit the first window size, beside the press or on its other side.
 Each change asks one question in the palette (the name, from the old one for Rename; Move to Trash every time, opening on "Keep it"), never overwrites, and is one `fs.write`, `fs.mkdir`, `fs.rename` or `fs.trash` (ADR 0125): the desk's undo takes back a rename or a new folder, the OS Trash keeps what is trashed. The explorer's own folders are never renamed or trashed.
-A drop on a folder moves there (`fs.rename`; Alt, the OS or another volume copy with `fs.copy`); a taken name asks
-to keep both, replace (the old one goes to the Trash) or skip; a container's file (`docker/file`) copies in through Docker's `endue.docker.copy-out`. Preview: 64 KiB of UTF-8 text, or images to 8 MiB.
+A drop on a folder moves there (`fs.rename`; Alt, the OS or another volume copy with `fs.copy`); a taken name asks to keep both, replace (the old one goes to the Trash) or skip; a container's file (`docker/file`) copies in through Docker's `endue.docker.copy-out`. Preview: 64 KiB of UTF-8 text, or images to 8 MiB.
 
 A listing outside its grants is refused: the explorer asks with `perm.request` for that folder (`<folder>/**`)
-and tries once more; a refusal or failure is said briefly on the row (`not allowed`, `not there`) and in a sentence
-on the status line (`Not allowed to list ~/Documents.`), which keeps what the last action did until the next one; drops ask the same way.
+and tries once more; a refusal or failure is said briefly on the row (`not allowed`, `not there`) and in a sentence on the status line (`Not allowed to list ~/Documents.`), which keeps what the last action did until the next one; drops ask the same way.
 Expanded folders are watched (`fs.watch`, 64 at most) and listed again when they change; expanded folders and the selection live in the store, the rest in settings (`endue.explorer.*`).
 
 | Permission | Why |
@@ -28,10 +26,12 @@ Expanded folders are watched (`fs.watch`, 64 at most) and listed again when they
 | `endue.explorer.reveal` | `Mod+Shift+R` | Expand down to the file in use, or to `{ path }` |
 | `.refresh` · `.toggle-hidden` · `.add-folder` · `.remove-folder` · `.new-file` · `.new-folder` | | List again; dotfiles; a root (`{ path }` or typed); a file or folder (`{ folder, name }` or asked) |
 | `.open-selected` · `.copy-path` · `.terminal-here` · `.git-here` · `.show-in-file-manager` · `.rename` · `.trash` | menu; F2; Delete | Act on selection, or `{ path }` (and `{ name }` for Rename); terminal/Git use a file's parent. Missing providers and refused grants are reported |
+| `.select-all` · `.copy` · `.cut` · `.paste` · `.find` · `.find-below` | Mod+A/C/X/V/F in the tree | The selected rows; paste into `{ folder }` or the selection's; filter by `{ query }`, or search below and answer the results |
 | File | Purpose |
 | --- | --- |
+| `ui/selection.js` · `ui/many.js` · `ui/find.js` · `ui/finding.js` · `ui/find-view.js` · `ui/together.js` | Several rows selected, what acts on all of them, the filter and search below, and their commands (#313) |
 | `ui/tree.js` · `ui/file-icons.js` · `ui/glyphs.js` | Paths, the order of entries, the rows on screen, where a key moves the selection; each row's icon (glyph and theme tone by kind, name and extension) as inline SVG |
-| `ui/disk.js` · `ui/desk.js` · `ui/drops.js` · `ui/edits.js` · `ui/explorer.js` · `ui/command-registry.js` · `ui/status.js` | Scoped disk and desk calls, drops on folders, edits on disk, tree state, commands, store and settings, the status line |
+| `ui/disk.js` · `ui/desk.js` · `ui/drops.js` · `ui/edits.js` · `ui/explorer.js` · `ui/command-registry.js` · `ui/status.js` · `ui/reach.js` | Scoped disk and desk calls, reveal and the root folders, drops on folders, edits on disk, tree state, commands, store and settings, the status line |
 | `ui/view.js` · `ui/main.js` · `ui/context-*.js` · `ui/size.js` · `ui/style.css` | Tree DOM, keyboard menu, selection actions and mount; the look, from the theme's `--desk-*` tokens only |
 | `ui/preview.js` · `ui/preview-view.js` | Bounded text reads; images from their `fs.url` URL, never decoded in the frame (#38); stale results; safe DOM |
 ```bash
