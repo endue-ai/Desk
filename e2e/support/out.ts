@@ -28,8 +28,7 @@ interface Answer {
   windowMenu: string[];
 }
 
-const answer = (args: Record<string, unknown>) =>
-  shellCommand<Answer>("compositor_window", args);
+const answer = (args: Record<string, unknown>) => shellCommand<Answer>("compositor_window", args);
 const check = async (args: Record<string, unknown>) => (await answer(args)).windows;
 
 /** The titles of the windows the app's Window menu lists, as AppKit keeps them. */
