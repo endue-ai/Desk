@@ -6,7 +6,14 @@
  * apply asked by anyone but the person (a plugin, an agent) waits for the person to say yes. A
  * build that does not update itself shows nothing and registers nothing.
  */
-import type { BridgeClient, BridgeEvent, UpdateStatus } from "@endue-ai/bridge";
+import {
+  type BridgeClient,
+  type BridgeEvent,
+  messageText,
+  type UpdateStatus,
+} from "@endue-ai/bridge";
+import en from "./messages/en.json";
+import ko from "./messages/ko.json";
 
 /** The attention row's id. */
 export const ROW = "desk.update";
@@ -58,50 +65,20 @@ export interface UpdatesHost {
   memory: { get(): string | null; set(version: string): void };
 }
 
-const COPY = {
-  en: {
-    downloading: "Downloading Desk {v} · {p}%",
-    available: "Desk {v} is available",
-    download: "Download",
-    ready: "Desk {v} is ready",
-    restart: "Restart to update",
-    applying: "Restarting into Desk {v}…",
-    failed: "Desk {v} did not install: {r}",
-    retry: "Try again",
-    readyBody: "Restart to update when it suits you.",
-    confirm: "{caller} asks to restart Desk into {v}",
-    restartNow: "Restart now",
-    notNow: "Not now",
-    later: "Later",
-    refused: "Desk {v} was not installed",
-    about: "endue Desk {v}",
-    channel: "Channel: {c}.",
-    stagedAbout: "Desk {v} is ready: restart to update.",
-    upToDate: "Up to date.",
-    noUpdates: "This build does not update itself.",
-  },
-  ko: {
-    downloading: "Desk {v} 받는 중 · {p}%",
-    available: "Desk {v} 가 나왔습니다",
-    download: "받기",
-    ready: "Desk {v} 준비됨",
-    restart: "다시 시작해 업데이트",
-    applying: "Desk {v} 로 다시 시작하는 중…",
-    failed: "Desk {v} 를 설치하지 못했습니다: {r}",
-    retry: "다시 시도",
-    readyBody: "편할 때 다시 시작하면 업데이트됩니다.",
-    confirm: "{caller} 가 Desk 를 {v} 로 다시 시작하려 합니다",
-    restartNow: "지금 다시 시작",
-    notNow: "나중에",
-    later: "나중에",
-    refused: "Desk {v} 를 설치하지 않았습니다",
-    about: "endue Desk {v}",
-    channel: "채널: {c}.",
-    stagedAbout: "Desk {v} 준비됨: 다시 시작하면 업데이트됩니다.",
-    upToDate: "최신입니다.",
-    noUpdates: "이 빌드는 스스로 업데이트하지 않습니다.",
-  },
-} as const;
+/** The words of updates, from the app's catalogs (messages/, ADR 0250), English for a missing one. */
+const PREFIX = "desk.updates.";
+type UpdateWord = keyof typeof en extends infer K
+  ? K extends `desk.updates.${infer W}`
+    ? W
+    : never
+  : never;
+function wordsOf(lang: Lang): Record<UpdateWord, string> {
+  const keys = Object.keys(en).filter((id) => id.startsWith(PREFIX));
+  return Object.fromEntries(
+    keys.map((id) => [id.slice(PREFIX.length), messageText({ en, ko }, lang, id)]),
+  ) as Record<UpdateWord, string>;
+}
+const COPY: Record<Lang, Record<UpdateWord, string>> = { en: wordsOf("en"), ko: wordsOf("ko") };
 
 const fill = (text: string, values: Record<string, string | number>) =>
   text.replace(/\{(\w+)\}/gu, (_, key: string) => String(values[key] ?? ""));

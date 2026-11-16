@@ -12,27 +12,18 @@ import { showOnDesk } from "../system/endue-web";
 import { type BarEntry, barControl } from "./bar-list";
 import { withTip } from "./bar-tip";
 import type { ShellCtx } from "./context";
-import type { Lang } from "./copy";
+import { type Lang, shellText } from "./copy";
 import { h } from "./dom";
 import { icon } from "./icons";
 
-/** The bar's words. The place of the rest's name holds what it shows (WCAG 2.5.3): its caption is
- *  the tail of its group's name for the rest, the directory's (copy.ts `moreAgents`) or endue's
- *  (surface/endue/copy.ts), which count agents differently in Korean. */
-const words = {
-  more: ["+{n}명 더", "+{n} more"],
-  moreEndue: ["+{n}개 더", "+{n} more"],
-  newAgent: ["새 에이전트", "New agent"],
-  newAgentLabel: ["새 에이전트 만들기", "Create a new agent"],
-  newSpace: ["새 스페이스", "New space"],
-  newSpaceLabel: ["새 스페이스 만들기", "Create a new space"],
-} as const;
-
-/** One of the bar's words in `lang`, `n` in place of `{n}`. */
-export function barWord(lang: Lang, key: keyof typeof words, n = 0): string {
-  const [ko, en] = words[key];
-  return (lang === "ko" ? ko : en).replace("{n}", String(n));
+/** One of the bar's words in `lang`, `n` in place of `{n}` (the shell's catalog, `shell.bar.*`). The
+ *  place of the rest's name holds what it shows (WCAG 2.5.3): its caption is the tail of its group's
+ *  name for the rest, the directory's (copy.ts `moreAgents`) or endue's (surface/endue/copy.ts),
+ *  which count agents differently in Korean. */
+export function barWord(lang: Lang, key: BarWord, n = 0): string {
+  return shellText(lang, `bar.${key}`, { n });
 }
+type BarWord = "more" | "moreEndue" | "newAgent" | "newAgentLabel" | "newSpace" | "newSpaceLabel";
 
 /** The Agents plugin, and its command that opens its New agent page. */
 export const AGENTS = "endue.agents";

@@ -108,11 +108,10 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
         .map((b) => b.combo)
         .join(" "),
     );
-    input.placeholder = s.lang === "ko" ? "Eris에게 계속 말해 보세요" : "Keep talking with Eris";
+    input.placeholder = ctx.tr("talkPlaceholder");
     const available = spaceAgents(s);
     const names = available.map((a) => a.name).join(", ");
-    preview.textContent =
-      names || (s.lang === "ko" ? "오늘 호출할 수 있는 에이전트들…" : "Agents you can call today…");
+    preview.textContent = names || ctx.tr("talkPreview");
     preview.title = names;
     agentButton.hidden = !open;
     agentButton.setAttribute("aria-label", ctx.tr("agents"));

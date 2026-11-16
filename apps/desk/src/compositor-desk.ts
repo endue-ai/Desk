@@ -11,9 +11,12 @@
 // compositor. It looks on every frame while the desk changes, and stops after `QUIET` frames that
 // changed nothing (ADR 0164): a change to the page, a new size, the compositor's word (`wake`) or a
 // look every `SAFETY_MS` start it again, so a desk at rest runs no frame loop here.
+import { messageText } from "@endue-ai/bridge";
 import type { Desk, RemotePages, RemoteSurface } from "@endue-ai/runtime";
 import { spreadCopy, viewTitles } from "@endue-ai/runtime";
 import { type PartReport, systemParts } from "./compositor-system";
+import en from "./messages/en.json";
+import ko from "./messages/ko.json";
 
 export type FrameState = "live" | "asleep" | "late" | "stopped";
 
@@ -100,18 +103,15 @@ export type CompositorDesk = (() => void) & {
 };
 
 /** The compositor's own placeholders and the canvas map's labels, in the desk's language. */
-const COPY = {
-  ko: {
-    crashed: "멈춰서 다시 불러오는 중입니다.",
-    loading: "불러오는 중…",
-    map: { label: "캔버스 지도", show: "캔버스 지도 보기", fold: "캔버스 지도 접기" },
-  },
-  en: {
-    crashed: "It stopped working and is loading again.",
-    loading: "Loading…",
-    map: { label: "Canvas map", show: "Show the canvas map", fold: "Fold the canvas map" },
-  },
-} as const;
+const COPY = { en: placeholders("en"), ko: placeholders("ko") };
+function placeholders(lang: "en" | "ko") {
+  const say = (key: string) => messageText({ en, ko }, lang, `desk.compositor.${key}`);
+  return {
+    crashed: say("crashed"),
+    loading: say("loading"),
+    map: { label: say("mapLabel"), show: say("mapShow"), fold: say("mapFold") },
+  };
+}
 
 const texts = (root: Element | null, selector: string) =>
   [...(root?.querySelectorAll(selector) ?? [])].map((el) => el.textContent?.trim() ?? "");
@@ -188,7 +188,7 @@ export function startCompositorDesk(
   const doc = win.document;
   doc.documentElement.classList.add("desk-compositor");
   const { frames, settings } = desk.runtime;
-  const lang = desk.store.get().lang === "ko" ? "ko" : "en";
+  const lang = desk.store.get().lang;
   let seq = 0;
   let sent = "";
   let frame = 0;
