@@ -10,6 +10,7 @@
 import type { ShellCtx } from "../shell/context";
 import { h, listen } from "../shell/dom";
 import { icon } from "../shell/icons";
+import { erisText } from "./float-copy";
 import { prose } from "./prose";
 
 /** A line longer than this, or of more than one line, is kept in the card as text. */
@@ -22,21 +23,6 @@ const GAP = 12;
 const WIDTH = 480;
 /** Below her unless less than this is left there and more above. */
 const ROOM = 120;
-
-const COPY = {
-  en: {
-    label: "What Eris said",
-    close: "Close",
-    title: "Show what Eris said",
-    none: "Eris has said nothing yet.",
-  },
-  ko: {
-    label: "Eris가 한 말",
-    close: "닫기",
-    title: "Eris가 한 말 다시 보기",
-    none: "Eris가 아직 아무 말도 하지 않았어요.",
-  },
-} as const;
 
 export const isLong = (text: string): boolean => {
   const line = text.trim();
@@ -87,8 +73,8 @@ export interface Said {
 }
 
 export function mountSaid(root: HTMLElement, ctx: ShellCtx, soul: HTMLElement): Said {
-  const tr = (key: keyof (typeof COPY)["en"]) =>
-    COPY[ctx.store.get().lang === "ko" ? "ko" : "en"][key];
+  const tr = (key: "label" | "close" | "title" | "none") =>
+    erisText(ctx.store.get().lang, `said.${key}`);
   const text = h("div", { class: "eris-said-text", hidden: true });
   const close = h(
     "button",

@@ -10,6 +10,7 @@
  */
 import { wordTimes } from "../bridge/browser";
 import type { Bands, WordTime } from "../bridge/types";
+import { erisText } from "./float-copy";
 import { syllablePulses } from "./mouth";
 import type { ErisState } from "./states";
 
@@ -78,24 +79,21 @@ const TAIL_MS = 400;
 /** A voice that never says it finished is given up on this long after the estimate. */
 export const SPEECH_GRACE_MS = 6000;
 
+/** One of her lines in both languages, from Eris's catalogs (`eris.talk.*`). */
+const both = (key: "heard" | "nothing" | "sample" | "refused") => ({
+  ko: erisText("ko", `talk.${key}`),
+  en: erisText("en", `talk.${key}`),
+});
+
 /** What she says when no words were recognised; short enough for one line of soul text. */
 export const SAMPLE_LINES = {
-  heard: { ko: "잘 들었어요. 지금은 샘플 답이에요.", en: "I heard you. This is a sample answer." },
-  nothing: {
-    ko: "잘 안 들렸어요. 다시 말해 주세요.",
-    en: "I didn't catch that. Tap and try again.",
-  },
-  sample: {
-    ko: "샘플 목소리를 들었어요. 이렇게 말해요.",
-    en: "I heard a sample voice. This is how I talk.",
-  },
+  heard: both("heard"),
+  nothing: both("nothing"),
+  sample: both("sample"),
 } as const;
 
 /** What she says when the person did not allow the microphone. */
-export const REFUSED_LINES: Record<TalkLang, string> = {
-  ko: "마이크 없이는 들을 수 없어요. 대신 입력해 주세요.",
-  en: "I need the microphone to hear you. You can type instead.",
-};
+export const REFUSED_LINES: Record<TalkLang, string> = both("refused");
 
 const SILENT: Bands = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0]);
 const mean = (b: Bands) => b.reduce((a, v) => a + v, 0) / Math.max(1, b.length);
