@@ -8,7 +8,7 @@ import { active } from "./model.js";
 /**
  * @typedef {import("./app.js").Tab} Tab
  * @typedef {import("./studio.js").Studio} Studio
- * @typedef {{ id: string, label: string, badge?(tab: Tab): number | boolean,
+ * @typedef {{ id: string, label: string, group?: boolean | "only", badge?(tab: Tab): number | boolean,
  *   draw(S: Studio, tab: Tab): { el: HTMLElement, syncUrl?(): void, redraw?(): void } }} Section
  */
 
@@ -17,6 +17,7 @@ export const SECTIONS = [];
 
 /** The order sections stand in, whichever file brings them first. */
 const ORDER = [
+  "overview",
   "params",
   "body",
   "headers",
@@ -41,6 +42,10 @@ export function addSections(list) {
   SECTIONS.sort((a, b) => rank(a.id) - rank(b.id));
 }
 
+/** The sections a tab shows: a folder's or collection's tab only those that apply to groups. @param {Tab} tab */
+export const shownSections = (tab) =>
+  SECTIONS.filter((s) => (tab.kind === "group" ? s.group : s.group !== "only"));
+
 /** How many rows count in a request's list. @param {import("./model.js").Pair[]} list */
 export const counted = (list) => active(list).length;
 
@@ -56,7 +61,7 @@ export function requestPane(S, tab) {
 
   const drawStrip = () => {
     strip.replaceChildren(
-      ...SECTIONS.map((s) => {
+      ...shownSections(tab).map((s) => {
         const badge = s.badge?.(tab);
         return h(
           `button.desk-tab.as-subtab${tab.reqTab === s.id ? ".is-selected" : ""}`,
@@ -83,7 +88,8 @@ export function requestPane(S, tab) {
     );
   };
   const drawPanel = () => {
-    const section = SECTIONS.find((s) => s.id === tab.reqTab) ?? SECTIONS[0];
+    const list = shownSections(tab);
+    const section = list.find((s) => s.id === tab.reqTab) ?? list[0];
     if (!section) return;
     shown = section.draw(S, tab);
     panel.replaceChildren(shown.el);

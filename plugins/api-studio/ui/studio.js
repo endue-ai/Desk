@@ -6,6 +6,8 @@ import { createActions } from "./actions.js";
 import { createApp } from "./app.js";
 import { h, icon, keys } from "./dom.js";
 import { createEngine } from "./engine.js";
+import { installCollections } from "./features-collections.js";
+import { groupPane } from "./group-pane.js";
 import { closeMenus } from "./menu.js";
 import { drawBody } from "./section-body.js";
 import { scope } from "./vars.js";
@@ -68,6 +70,10 @@ export function createStudio(ctx, doc) {
         : []),
     ],
     drawBody: (/** @type {Tab} */ tab) => drawBody(S, tab),
+    /** Environment scopes for a tab (the environments feature replaces this). @param {Tab} _tab @returns {Scope[]} */
+    envScopes: (_tab) => [],
+    /** The global variables' scope (the environments feature replaces this). @returns {Scope[]} */
+    globalScopes: () => [],
     /** Save a tab to its collection; collections replace this. @param {Tab} _tab @returns {Promise<boolean>} */
     save: async (_tab) => {
       app.toast("Open or make a collection to save requests in.", "info");
@@ -105,6 +111,19 @@ export function createStudio(ctx, doc) {
   };
   Object.assign(S, createActions(S));
 
+  /** The cards the home page offers; features add theirs. @type {() => { icon: import("./dom.js").IconName, label: string, text: string, keys?: string, run(): void }[]} */
+  S.homeActions = () => [
+    {
+      icon: "plus",
+      label: "New request",
+      text: "Start from an empty request",
+      keys: "Mod+T",
+      run: () => app.blank(),
+    },
+  ];
+
+  installCollections(S);
+
   // ── the window ──────────────────────────────────────────────────────────
   const side = sideBar(S);
   const tabs = tabStrip(S);
@@ -114,7 +133,7 @@ export function createStudio(ctx, doc) {
   const root = h("div.as-app", null, side.rail, side.panel, side.grip, main, toast);
   doc.body.append(root);
 
-  /** @type {{ url: ReturnType<typeof urlBar>, req: ReturnType<typeof requestPane>, res: ReturnType<typeof responsePane>, tab: Tab } | undefined} */
+  /** @type {{ url?: ReturnType<typeof urlBar>, req: ReturnType<typeof requestPane>, res?: ReturnType<typeof responsePane>, tab: Tab } | undefined} */
   let view;
 
   const home = () =>
@@ -155,6 +174,12 @@ export function createStudio(ctx, doc) {
     if (!tab) {
       view = undefined;
       work.replaceChildren(home());
+      return;
+    }
+    if (tab.kind === "group") {
+      const group = groupPane(S, tab);
+      work.replaceChildren(group.el);
+      view = { req: group.pane, tab };
       return;
     }
     const url = urlBar(S, tab);
@@ -208,18 +233,18 @@ export function createStudio(ctx, doc) {
   });
   app.on("url", (d) => {
     if (!view) return;
-    if (d?.from === "params") view.url.syncUrl();
+    if (d?.from === "params") view.url?.syncUrl();
     else view.req.syncUrl();
   });
   app.on("req", () => view?.req.badges());
   app.on("sending", (tab) => {
     if (view && tab === view.tab) {
-      view.url.drawSend();
-      view.res.redraw();
+      view.url?.drawSend();
+      view.res?.redraw();
     }
   });
   app.on("response", (tab) => {
-    if (view && tab === view.tab) view.res.redraw();
+    if (view && tab === view.tab) view.res?.redraw();
   });
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let toastTimer;
@@ -268,17 +293,6 @@ export function createStudio(ctx, doc) {
   });
   doc.addEventListener("scroll", closeMenus, true);
 
-  /** The cards the home page offers; features add theirs. @type {() => { icon: import("./dom.js").IconName, label: string, text: string, keys?: string, run(): void }[]} */
-  S.homeActions = () => [
-    {
-      icon: "plus",
-      label: "New request",
-      text: "Start from an empty request",
-      keys: "Mod+T",
-      run: () => app.blank(),
-    },
-  ];
-
   return {
     S,
     tabs,
@@ -292,6 +306,7 @@ export function createStudio(ctx, doc) {
       } catch {
         /* no store: the history lives for this session only */
       }
+      await S.collections.start();
       app.on("history", () => {
         if (!S.settings.history) return;
         void ctx.bridge

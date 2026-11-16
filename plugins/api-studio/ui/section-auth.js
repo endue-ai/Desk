@@ -210,6 +210,7 @@ addSections([
   {
     id: "auth",
     label: "Auth",
+    group: true,
     badge: (tab) => tab.req.auth.type !== "inherit" && tab.req.auth.type !== "none",
     draw: drawAuth,
   },

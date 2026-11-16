@@ -3,7 +3,7 @@
 // end becomes a real one as soon as something is typed in it. Bulk edit swaps the table for text,
 // one `name: value` per line, `//` in front of a row that is off.
 
-import { button, h, icon } from "./dom.js";
+import { append, button, h, icon } from "./dom.js";
 import { pair } from "./model.js";
 import { varField } from "./var-field.js";
 
@@ -11,7 +11,7 @@ import { varField } from "./var-field.js";
  * @typedef {import("./model.js").Pair & { kind?: "text" | "file" }} Row
  * @typedef {{ rows: Row[], scopes: () => import("./vars.js").Scope[], onChange(rows: Row[]): void,
  *   keyLabel?: string, valueLabel?: string, keyHint?: string, valueHint?: string,
- *   files?: boolean, secret?: (row: Row) => boolean, notes?: boolean, title?: string,
+ *   files?: boolean, secret?: (row: Row) => boolean, notes?: boolean, title?: string, fixed?: boolean,
  *   onPickFile?(): Promise<string | undefined> }} TableSpec
  */
 
@@ -168,13 +168,13 @@ export function kvTable(spec) {
         emit();
       },
     });
-    el.append(
+    append(el, [
       h("span.kv-cell.kv-on", null, check),
       h("span.kv-cell", null, key.el),
       valueCell,
       spec.notes === false ? null : h("span.kv-cell.kv-note-cell", null, note),
-      h("span.kv-cell.kv-act", null, ghost ? null : remove),
-    );
+      h("span.kv-cell.kv-act", null, ghost || spec.fixed ? null : remove),
+    ]);
     if (spec.notes === false) el.classList.add("no-notes");
     return el;
   };
@@ -214,7 +214,7 @@ export function kvTable(spec) {
     }
     body.replaceChildren(
       ...rows.map((r) => line(r, false)),
-      line(pair(spec.files ? { kind: "text" } : {}), true),
+      spec.fixed ? "" : line(pair(spec.files ? { kind: "text" } : {}), true),
     );
     root.replaceChildren(
       h("div.kv-bar", null, spec.title ? h("span.kv-title", null, spec.title) : null, toggle),

@@ -78,7 +78,13 @@ export function tabStrip(S) {
               if (e.key === "Enter") S.app.activate(tab.id);
             },
           },
-          methodBadge(tab.req.method, methodClass(tab.req.method)),
+          tab.kind === "group"
+            ? h(
+                "span.as-tab-icon",
+                null,
+                icon(tab.ref?.path === tab.ref?.collection ? "collections" : "folder", 14),
+              )
+            : methodBadge(tab.req.method, methodClass(tab.req.method)),
           h("span.as-tab-name", null, tab.req.name || "Untitled request"),
           tab.running ? h("span.as-spin.is-small") : null,
           h(

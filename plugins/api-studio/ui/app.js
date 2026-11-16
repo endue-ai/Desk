@@ -10,7 +10,7 @@ import { clone, newRequest, normalize, same } from "./model.js";
  * @typedef {import("./send.js").Response} Response
  * @typedef {{ id: string, req: Request, saved: string | null, ref?: { collection: string, path: string },
  *   response?: Response, running?: { cancel(): void }, reqTab: string, resTab: string,
- *   preview?: boolean }} Tab
+ *   kind?: "group", preview?: boolean }} Tab
  * @typedef {{ id: string, at: number, method: string, url: string, name: string, status: number,
  *   time: number, size: number, error?: string, req: Request }} HistoryEntry
  * @typedef {"tabs" | "tab" | "req" | "url" | "response" | "sending" | "side" | "history" |
@@ -31,7 +31,8 @@ export function createApp(persist = {}) {
       req: normalize(t.req),
       saved: typeof t.saved === "string" ? t.saved : null,
       ...(t.ref ? { ref: t.ref } : {}),
-      reqTab: t.reqTab ?? "params",
+      ...(t.kind === "group" ? { kind: "group" } : {}),
+      reqTab: t.reqTab ?? (t.kind === "group" ? "overview" : "params"),
       resTab: t.resTab ?? "body",
     })),
     /** @type {string | null} */
@@ -45,6 +46,8 @@ export function createApp(persist = {}) {
       split: saved.layout?.split === "v" ? "v" : "h",
       ratio: Number(saved.layout?.ratio) || 0.5,
       wrap: saved.layout?.wrap === true,
+      /** @type {string[]} */
+      expanded: Array.isArray(saved.layout?.expanded) ? saved.layout.expanded.map(String) : [],
     },
   };
   if (!state.tabs.some((t) => t.id === state.active)) state.active = state.tabs[0]?.id ?? null;
@@ -67,6 +70,7 @@ export function createApp(persist = {}) {
           req: t.req,
           saved: t.saved,
           ref: t.ref,
+          kind: t.kind,
           reqTab: t.reqTab,
           resTab: t.resTab,
         })),
@@ -83,7 +87,10 @@ export function createApp(persist = {}) {
 
   const current = () => state.tabs.find((t) => t.id === state.active);
 
-  /** Open a request in a tab: the tab that already shows it, or a new one. @param {Request} req @param {Tab["ref"]} [ref] */
+  /**
+   * Open a request (or a folder's settings) in a tab: the tab that already shows it, or a new one.
+   * @param {Request} req @param {Tab["ref"]} [ref] @param {{ saved?: boolean, kind?: "group" }} [options]
+   */
   const open = (req, ref, options = { saved: true }) => {
     const existing =
       ref &&
@@ -99,7 +106,8 @@ export function createApp(persist = {}) {
       req: clone(req),
       saved: ref && options.saved ? JSON.stringify(req) : null,
       ...(ref ? { ref } : {}),
-      reqTab: "params",
+      ...(options.kind ? { kind: options.kind } : {}),
+      reqTab: options.kind === "group" ? "overview" : "params",
       resTab: "body",
     };
     const at = state.tabs.findIndex((t) => t.id === state.active);

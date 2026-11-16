@@ -1,0 +1,300 @@
+/* Collections: the tree in the side panel, a folder's or collection's page, and the list of
+   places in the Save dialog. */
+
+.as-tree {
+  padding-top: 2px;
+}
+.as-coll,
+.as-node.desk-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 4px 0 calc(6px + var(--depth, 0) * 14px);
+  border-radius: var(--desk-radius-sm);
+  cursor: pointer;
+  user-select: none;
+}
+.as-coll {
+  margin-top: 4px;
+  font-weight: 600;
+}
+.as-coll:hover,
+.as-node.desk-row:hover {
+  background: var(--desk-hover);
+}
+.as-coll.is-selected,
+.as-node.desk-row.is-selected {
+  background: var(--as-select);
+  color: var(--desk-text);
+}
+.as-node.desk-row.is-selected::before {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 2px;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-primary);
+  content: "";
+}
+.as-chev {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 14px;
+  color: var(--desk-text-muted);
+}
+.as-coll-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--as-select);
+  color: var(--desk-primary);
+}
+.as-node-icon {
+  display: inline-grid;
+  place-items: center;
+  color: var(--desk-chart-3);
+}
+.as-node .method {
+  min-width: 32px;
+  font-size: var(--desk-text-2xs);
+}
+.as-coll-name,
+.as-node-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--desk-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.as-coll-name {
+  font-size: var(--desk-text-sm);
+}
+.as-coll-warn {
+  color: var(--desk-warning);
+}
+.as-node-more.desk-icon-btn {
+  width: 24px;
+  height: 24px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--desk-text-muted);
+  opacity: 0;
+}
+.as-coll:hover .as-node-more.desk-icon-btn,
+.as-node:hover .as-node-more.desk-icon-btn {
+  opacity: 1;
+}
+.as-node.is-dragging {
+  opacity: 0.4;
+}
+.as-node[data-drop="before"] {
+  box-shadow: inset 0 2px 0 var(--desk-primary);
+}
+.as-node[data-drop="after"] {
+  box-shadow: inset 0 -2px 0 var(--desk-primary);
+}
+.as-node[data-drop="into"] {
+  background: var(--as-select);
+  box-shadow: inset 0 0 0 1px var(--as-select-line);
+}
+.as-tree-empty {
+  padding: 4px 0 8px 34px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+.as-link.desk-btn {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--desk-primary);
+  font-size: var(--desk-text-xs);
+}
+
+/* ── a folder's or collection's page ────────────────────────────────── */
+.as-group {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.as-group-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px 8px;
+}
+.as-group-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--desk-radius-md);
+  background: var(--as-select);
+  color: var(--desk-primary);
+}
+.as-group-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.as-group-name.desk-field {
+  min-height: 30px;
+  padding: 0 6px;
+  margin-left: -6px;
+  border-color: transparent;
+  background: transparent;
+  font-size: var(--desk-text-lg);
+  font-weight: 600;
+}
+.as-group-name.desk-field:hover {
+  border-color: var(--as-line);
+}
+.as-group-path {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.as-group-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 18px 4px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+.as-group-body {
+  flex: 1;
+}
+.as-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+}
+.as-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 110px;
+  padding: 12px 14px;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+}
+.as-stat-card strong {
+  font-size: var(--desk-text-xl);
+  font-weight: 650;
+}
+.as-stat-card span {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+.as-methods .method {
+  min-width: 0;
+  margin-right: 4px;
+}
+.as-methods {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 6px 14px;
+  padding: 0 8px;
+}
+.as-method-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+.as-over-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 16px;
+}
+.as-over-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.as-over-col h3 {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.as-docs-input.desk-field {
+  min-height: 260px;
+  padding: 12px 14px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.as-over-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-lg);
+}
+.as-over-row.desk-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--desk-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.as-over-name {
+  flex: 1;
+  font-size: var(--desk-text-xs);
+}
+.as-over-meta {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}
+
+/* ── the Save dialog's places ───────────────────────────────────────── */
+.as-dest-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+  padding: 4px;
+  overflow: auto;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-md);
+}
+.as-dest.desk-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: calc(10px + var(--depth, 0) * 16px);
+  border: 0;
+  background: transparent;
+  color: var(--desk-text);
+  font: inherit;
+  font-size: var(--desk-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.as-dest.desk-row.is-selected {
+  background: var(--as-select);
+  color: var(--desk-primary);
+}

@@ -37,6 +37,7 @@ function params(S, tab) {
         scopes: () => S.scopes(tab),
         title: "Path variables",
         notes: false,
+        fixed: true,
         onChange: (next) => {
           tab.req.pathParams = next.filter((p) => names.includes(p.key));
           S.app.emit("req", { field: "pathParams" });
@@ -91,7 +92,7 @@ function headers(S, tab) {
       ),
     ),
   );
-  return { el: h("div.as-section", null, list, table.el, auto) };
+  return { el: h("div.as-section", null, list, table.el, tab.kind === "group" ? null : auto) };
 }
 
 addSections([
@@ -102,5 +103,11 @@ addSections([
     badge: (tab) => tab.req.body.mode !== "none",
     draw: (S, tab) => S.drawBody(tab),
   },
-  { id: "headers", label: "Headers", badge: (tab) => counted(tab.req.headers), draw: headers },
+  {
+    id: "headers",
+    label: "Headers",
+    group: true,
+    badge: (tab) => counted(tab.req.headers),
+    draw: headers,
+  },
 ]);

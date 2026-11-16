@@ -13,7 +13,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  width: 60px;
+  width: 68px;
   padding: 10px 0 12px;
   border-right: 1px solid var(--as-line);
   background: var(--as-soft);
@@ -32,9 +32,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  width: 48px;
-  height: 48px;
+  gap: 4px;
+  width: 60px;
+  height: 52px;
   border-color: transparent;
   border-radius: var(--desk-radius-md);
   background: transparent;
@@ -241,6 +241,11 @@
   height: 2px;
   background: var(--desk-primary);
   content: "";
+}
+.as-tab-icon {
+  display: inline-grid;
+  place-items: center;
+  color: var(--desk-primary);
 }
 .as-tab-name {
   overflow: hidden;
