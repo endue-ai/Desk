@@ -11,7 +11,9 @@ import {
   type Grant,
   type Item,
   type ItemSource,
+  type Language,
   type LogEntry,
+  type MessageCatalog,
   type ParamsOf,
   type Permission,
   type PermPromptData,
@@ -70,6 +72,10 @@ export interface TestHostOptions {
    * fs.url gives a `data:` URL, and a write keeps what it replaces as a version (ADR 0076).
    */
   files?: StubFiles;
+  /** The desk's language at start (desk.language, ADR 0250); English by default. */
+  language?: Language;
+  /** The plugin's catalogs, as its manifest's `messages` folder holds them: one per language. */
+  messages?: { folder: string; catalogs: Partial<Record<Language, MessageCatalog>> };
 }
 
 export interface TestHost {
@@ -117,6 +123,8 @@ export interface TestHost {
   invoke(id: string, args?: Record<string, unknown>): Promise<unknown>;
   /** Hand the plugin a theme, as the runtime does at start and on every change. */
   theme(theme: ThemeState): void;
+  /** Change the desk's language, as desk.language does: the plugin hears desk:language. */
+  language(language: Language): void;
   /** Put an item in the stub's index, or replace it, as a sync would: subscribers hear data.changed. */
   upsert(item: Item): void;
   /** Take an item out of the index (false when it was not there); subscribers hear data.changed. */
@@ -188,16 +196,25 @@ export function createTestHost(options: TestHostOptions): TestHost {
 
   const transport: Transport = {
     ...dnd.transport,
+    // The plugin's own files, as its frame fetches them: only its catalogs are there.
+    catalog: async (pluginId, path) => {
+      const { folder, catalogs } = options.messages ?? { folder: "", catalogs: {} };
+      if (pluginId !== me || !folder) return undefined;
+      const language = path.slice(folder.length + 1).replace(/\.json$/, "") as Language;
+      return path.startsWith(`${folder}/`) ? catalogs[language] : undefined;
+    },
     send: (message: PluginMessage) => {
       if (dnd.send(message)) return;
       if (message.type === "desk:hello") {
-        const { restored, instance } = options;
+        const { restored, instance, language, messages } = options;
         toPlugin({
           type: "desk:init",
           pluginId: options.pluginId,
           state,
           ...(instance === undefined ? {} : { instance }),
           ...(restored === undefined ? {} : { restored }),
+          ...(language === undefined ? {} : { language }),
+          ...(messages === undefined ? {} : { messages: messages.folder }),
         });
       } else if (message.type === "desk:state") {
         state = message.state;
@@ -284,6 +301,7 @@ export function createTestHost(options: TestHostOptions): TestHost {
       throw new Error(`${data.error?.code}: ${data.error?.message}`);
     },
     theme: (theme) => toPlugin({ type: "desk:theme", theme }),
+    language: (language) => toPlugin({ type: "desk:language", language }),
     get state() {
       return state;
     },

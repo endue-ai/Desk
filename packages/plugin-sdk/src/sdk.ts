@@ -21,6 +21,7 @@ import { dataFor, type PluginData, type PluginViews } from "./data";
 import { dndFor } from "./dnd";
 import type { PluginDnd } from "./dnd/types";
 import { frameForms } from "./forms";
+import { messagesFor, type PluginMessages } from "./messages";
 import { framePings } from "./ping";
 import { type HostMessage, type ThemeState, type Transport, windowTransport } from "./protocol";
 import { frameStart } from "./ready";
@@ -81,6 +82,8 @@ export interface PluginContext {
   commands: PluginCommands;
   search: PluginSearch;
   theme: PluginTheme;
+  /** The plugin's words from its catalogs, in the desk's language (manifest `messages`, ADR 0250). */
+  messages: PluginMessages;
   settings: PluginSettings;
   log: PluginLog;
   events: PluginEvents;
@@ -174,6 +177,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
     const commands = commandsFor(bridge as Parameters<typeof commandsFor>[0], mounted);
     const dnd = dndFor(transport);
 
+    let messages = messagesFor({});
     const ctxFor = (pluginId: string, restored: unknown, instance = pluginId): PluginContext => {
       const { open, ...groups } = contextFor(bridge, pluginId);
       const { data, views } = dataFor(bridge);
@@ -212,6 +216,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
         views,
         universal,
         dnd: dnd.api,
+        messages,
         theme: {
           get: () => theme,
           on: (listener) => {
@@ -229,6 +234,11 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
       switch (message.type) {
         case "desk:init":
           state = message.state;
+          messages = messagesFor({
+            language: message.language,
+            folder: message.messages,
+            load: transport.catalog && ((path) => transport.catalog?.(message.pluginId, path)),
+          });
           ctx = ctxFor(message.pluginId, message.restored, message.instance);
           mountedHooks.set(ctx, markMounted);
           // Without defineUiPlugin, handlers registered right after connect() count as mounted.
@@ -253,6 +263,9 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
           });
           break;
         }
+        case "desk:language":
+          messages.set(message.language);
+          break;
         case "desk:theme":
           theme = message.theme;
           transport.theme?.(message.theme);
@@ -274,6 +287,8 @@ export async function defineUiPlugin(
   const ctx = await connect(transport);
   usedByDefine.add(ctx);
   try {
+    // The plugin mounts with its words in: its catalogs in the desk's language.
+    await ctx.messages.ready;
     await plugin.mount(ctx);
   } catch (failure) {
     report(transport, failure);
