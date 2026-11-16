@@ -239,9 +239,18 @@ impl Hosted {
             return Outcome::default();
         };
         let ms = now.duration_since(self.origin).as_secs_f64() * 1000.0;
+        // A desk nobody sees (its window closed, minimized or covered) has no window in sight: the
+        // budget keeps the most recent and `unload-after` runs, as on a desktop out of sight
+        // (#312, ADR 0246). The plan still says what shows once the window is back.
+        let nothing = BTreeSet::new();
+        let (shown, focused) = if self.occluded {
+            (&nothing, None)
+        } else {
+            (&plan.shown, plan.focused_plugin.as_deref())
+        };
         let decision = self.budget.decide(
-            &plan.shown,
-            plan.focused_plugin.as_deref(),
+            shown,
+            focused,
             report.budget.live,
             report.budget.after_ms,
             ms,
