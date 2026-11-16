@@ -3,7 +3,7 @@
  * come in (console chat, channels, Live, API, MCP) and what the agent reaches (connectors, devices,
  * outputs), each row in the state its line is drawn in, as endue.ai's board decides it. A row reads
  * its facet; one not read yet, or not answered by endue AI, is `unknown`: never guessed, never
- * counted, and it says to look on endue.ai.
+ * counted, and it says to look in Studio.
  */
 import type {
   StudioAgent,
@@ -20,11 +20,11 @@ import { type BoardKey, boardText, isBoardKey } from "./board-copy";
 /** A line's state: on (solid), off (dashed), a problem, or not read by the desk (dashed, muted). */
 export type LineState = "on" | "off" | "bad" | "unknown";
 
-/** Something a row offers: it opens a part of endue.ai's Studio, or the agent's own page. */
+/** Something a row offers: it opens a part of the agent's Studio in the Agents plugin. */
 export interface RowAction {
   key: string;
   label: string;
-  /** The Studio section it opens (`channel`, `prompt`); the agent's own page without one. */
+  /** The Studio section it opens (`channel`, `prompt`); the agent's identity without one. */
   section?: string;
   primary?: boolean;
   /** How an item stands, when it is not simply on: about to stop (warn) or done (muted). */

@@ -84,7 +84,7 @@ export function endueFacets(detail) {
     {
       id: "channels",
       label: "Channels",
-      hint: "Paired on endue.ai",
+      hint: "Where people reach it",
       place: "card",
       caption: "Pairing",
     },
@@ -225,7 +225,7 @@ export function endueInspector(detail, facet) {
           detail: s.slug ?? "",
           state: onOff(s.enabled),
         })),
-        "No skills yet. Add them on endue.ai.",
+        "No skills yet.",
       );
     case "connectors":
       return list(
@@ -237,16 +237,16 @@ export function endueInspector(detail, facet) {
           detail: [c.type, c.status].filter(Boolean).join(" · "),
           state: onOff(c.enabled),
         })),
-        "No connectors yet. Connect them on endue.ai.",
+        "No connectors yet.",
       );
     case "channels":
       return {
         facet,
         title: "Channels",
         intro:
-          "Where people reach it: Slack, Discord, KakaoTalk, NaverTalk, WhatsApp and Telegram. Pair them on endue.ai.",
+          "Where people reach it: Slack, Discord, KakaoTalk, NaverTalk, WhatsApp and Telegram.",
         fields: [],
-        actions: [{ id: "open-web", label: "Open in endue.ai" }],
+        actions: [],
       };
     case "status":
       return {
@@ -300,10 +300,7 @@ export function endueInspector(detail, facet) {
             ]
           : [],
         ...(settings ? { save: "Save" } : {}),
-        actions: [
-          { id: "open-web", label: "Open in endue.ai" },
-          { id: "delete", label: "Delete agent", variant: "danger" },
-        ],
+        actions: [{ id: "delete", label: "Delete agent", variant: "danger" }],
         ...note,
       };
   }

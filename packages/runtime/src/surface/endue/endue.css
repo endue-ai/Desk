@@ -1,10 +1,10 @@
 /* The person's endue agents and spaces in their windows (ADR 0129): a card that Studio turns over. */
+/* The window is the card, as on the web: its faces add no border, accent or shadow of their own. */
 .endue-view {
   box-sizing: border-box;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  padding: var(--space-3);
 }
 
 /* The card is the window's size; a face longer than it scrolls inside, its head and foot in place. */
@@ -29,11 +29,7 @@
   min-height: 0;
   overflow: auto;
   padding: var(--space-4);
-  border: var(--desk-border-width, 1px) solid var(--desk-border);
-  border-top: 3px solid var(--endue-accent, var(--desk-accent));
-  border-radius: var(--radius-lg);
   background: var(--desk-card);
-  box-shadow: var(--desk-shadow-sm);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }

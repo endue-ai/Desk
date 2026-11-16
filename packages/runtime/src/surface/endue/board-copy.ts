@@ -15,11 +15,8 @@ const copy = {
   none: ["없음", "None"],
   active: ["활성", "Active"],
   inactive: ["비활성", "Inactive"],
-  onEndue: ["endue.ai 에서 확인", "See it on endue.ai"],
-  opens: [
-    "endue.ai 의 {name} 을 데스크 창에서 엽니다",
-    "Shows {name} of endue.ai in a desk window",
-  ],
+  onEndue: ["스튜디오에서 확인", "See it in Studio"],
+  opens: ["스튜디오에서 {name} 을 엽니다", "Opens {name} in Studio"],
   // Where requests come in.
   consoleTitle: ["콘솔 채팅", "Console chat"],
   consoleSub: ["기본 · 늘 켜짐", "Default · always on"],

@@ -29,7 +29,6 @@ defineUiPlugin({
       boardAgent: (key) => on().boardAgent(key),
       openRow: (row) => void on().openRow(row),
       stopRun: (runId) => void on().stopRun(runId),
-      openWeb: (id) => void on().studioActions.act(id, "open-web"),
       save: (facet, values) => {
         const key = on().route.key ?? "";
         if (key.startsWith("local:")) on().local(shownId(), facet, values);
@@ -61,7 +60,11 @@ defineUiPlugin({
         use: (slug) => void on().flow.use(slug),
         build: (fields) => void on().flow.build(fields),
       },
-      catalogPage: () => void on().studioActions.link("https://endue.ai/agents"),
+      // The whole catalog, here: the query cleared and every published agent read again.
+      catalogPage: () => {
+        void on().flow.find("");
+        void on().flow.browse();
+      },
     });
     app = createApp(ctx, view, {
       confirm: (text) => ask({ title: "Are you sure?", text, yes: "Disable", danger: true }),
@@ -75,6 +78,14 @@ defineUiPlugin({
     });
     // The agent bar's New agent (and the palette) asks for the New agent page.
     ctx.commands.on("endue.agents.new", () => on().create());
+    // An agent window's Studio board asks for one endue agent's Studio, at a facet: the desk
+    // never sends the person to endue.ai for it.
+    ctx.commands.on("endue.agents.studio", (args) => {
+      const { agent, facet } = /** @type {{ agent?: unknown, facet?: unknown }} */ (args ?? {});
+      if (typeof agent !== "string" || !agent)
+        throw new Error("endue.agents.studio needs an agent");
+      on().studio(`endue:${agent}`, typeof facet === "string" ? facet : "");
+    });
     // Signing in happens in the desk's account menu: look again when the person comes back.
     window.addEventListener("focus", () => {
       if (on().sides.endue.state === "signed-out") void on().refreshEndue();

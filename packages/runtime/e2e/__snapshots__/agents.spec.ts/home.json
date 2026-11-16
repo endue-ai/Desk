@@ -273,8 +273,8 @@
                           "tag": "button",
                           "type": "button",
                           "class": "desk-btn desk-btn-quiet",
-                          "aria-label": "Open Miso in endue.ai",
-                          "text": "Open in endue.ai"
+                          "aria-label": "Open Miso in Studio",
+                          "text": "Studio"
                         }
                       ]
                     }
@@ -455,8 +455,8 @@
                           "tag": "button",
                           "type": "button",
                           "class": "desk-btn desk-btn-quiet",
-                          "aria-label": "Open Scout in endue.ai",
-                          "text": "Open in endue.ai"
+                          "aria-label": "Open Scout in Studio",
+                          "text": "Studio"
                         }
                       ]
                     }
@@ -550,8 +550,8 @@
                           "tag": "button",
                           "type": "button",
                           "class": "desk-btn desk-btn-quiet",
-                          "aria-label": "Open Mailie in endue.ai",
-                          "text": "Open in endue.ai"
+                          "aria-label": "Open Mailie in Studio",
+                          "text": "Studio"
                         }
                       ]
                     }

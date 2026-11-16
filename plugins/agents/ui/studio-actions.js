@@ -1,9 +1,8 @@
 // What Studio does for an endue agent, without a DOM: read its detail, save an inspector's fields,
-// enable or disable it, delete it once its name is typed, open it on endue.ai (shell.open), and
-// sign in to endue ID (desk.account.sign-in). Every change reads the detail again, as the web
+// enable or disable it, delete it once its name is typed, and sign in to endue ID (desk.account.sign-in). Every change reads the detail again, as the web
 // refetches after each mutation; there is no Save-all.
 
-import { deleteConfirmed, NAME_MAX, webStudio } from "./studio.js";
+import { deleteConfirmed, NAME_MAX } from "./studio.js";
 
 /**
  * @typedef {import("./studio-api.js").StudioApi} StudioApi
@@ -131,7 +130,7 @@ export function createStudioActions({ ctx, studio, confirm, redraw, say, gone })
     /** Put an earlier prompt revision back in force. */
     restore: (/** @type {string} */ id, /** @type {number} */ rev) =>
       change(id, () => studio.restorePrompt(id, rev), `Revision ${rev} is in force again.`),
-    /** An inspector's button: enable, disable, open on endue.ai, or start deleting. */
+    /** An inspector's button: enable, disable, or start deleting. */
     async act(/** @type {string} */ id, /** @type {string} */ action) {
       if (action === "enable") return change(id, () => studio.setStatus(id, "active"), "Enabled.");
       if (action === "disable") {
@@ -140,7 +139,6 @@ export function createStudioActions({ ctx, studio, confirm, redraw, say, gone })
         if (!(await confirm(question))) return;
         return change(id, () => studio.setStatus(id, "inactive"), "Disabled.");
       }
-      if (action === "open-web") return open(webStudio(id));
       if (action === "delete") {
         stateOf(id).deleting = true;
         redraw();

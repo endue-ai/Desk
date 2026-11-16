@@ -6,7 +6,7 @@
  */
 import type { ShellCtx } from "../../shell/context";
 import { type Child, h, render } from "../../shell/dom";
-import { ENDUE_SPACE_VIEW, openEndueAgent, readSpace, spacePage } from "../../system/endue";
+import { ENDUE_SPACE_VIEW, openEndueAgent, readSpace } from "../../system/endue";
 import type { Mounted } from "../views";
 import { flipCard } from "./flip";
 import { type SpaceMember, spaceFront, spaceStudio } from "./model";
@@ -71,7 +71,8 @@ export function endueSpaceBody(ctx: ShellCtx, id: string): Mounted {
     const now = ctx.wall();
     const front = spaceFront(s.lang, space, read, s.endue.agents, now);
     const studio = spaceStudio(s.lang, space, read, s.endue.agents, now);
-    const pages: Page[] = [["open-web", "openWeb", spacePage(id)]];
+    // Nothing of endue.ai opens from the desk: the space is read here, in its window.
+    const pages: Page[] = [];
     const shown = front.members.slice(0, FACES);
     const more = front.members.length - shown.length;
     render(el, () => [
