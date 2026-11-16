@@ -12,6 +12,7 @@
  * does (#312, ADR 0246): nobody can see it, and each is a renderer of its own.
  */
 import { LIVE_SURFACES } from "../core/defaults";
+import { pluginMic } from "../plugin-mic";
 import type { DeskContext } from "../policies/context";
 import type { Lang } from "../shell/copy";
 import type { SurfaceSpec } from "../surfaces";
@@ -81,12 +82,14 @@ export interface Frames {
 }
 
 export function installFrames(
-  ctx: Pick<DeskContext, "surfaces" | "hub" | "win" | "shortcuts">,
+  ctx: Pick<DeskContext, "surfaces" | "hub" | "win" | "shortcuts" | "bridge">,
   deps: FramesDeps,
 ): Frames {
   const { surfaces, win, shortcuts } = ctx;
   const { settings } = ctx.hub;
   const { windows } = deps;
+  // A plugin's captures end with its page: a window closed, a frame reloaded, unloaded or stopped.
+  const mic = ctx.bridge ? pluginMic(ctx.bridge) : undefined;
   const timers = deps.timers ?? realTimers;
   const specs = new Map<string, SurfaceSpec>();
   /** When each frame loaded again, for LOADING_MS. */
@@ -123,6 +126,7 @@ export function installFrames(
     const reload = framesText(deps.lang ?? "ko", "reload");
     const stand = doc && placeholder(doc, spec?.title ?? id, use, reload);
     if (!stand || !surfaces.unload(id, stand)) return false;
+    mic?.gone(id);
     host?.unloaded(id, kept);
     return true;
   };
@@ -172,7 +176,10 @@ export function installFrames(
     lang: deps.lang ?? "ko",
     title: (id) => specs.get(id)?.title ?? id,
     // A stopped frame is the person's to load again: the policy neither counts nor loads it.
-    stopped: (id) => policy.untrack(id),
+    stopped: (id) => {
+      mic?.gone(id);
+      policy.untrack(id);
+    },
     reloaded: (id) => {
       if (windowed.has(id) || overlays.has(id)) policy.track(id);
       changed();
@@ -212,6 +219,7 @@ export function installFrames(
       changed();
     },
     closed(id) {
+      mic?.gone(id);
       specs.delete(id);
       loaded.delete(id);
       windowed.delete(id);
@@ -228,12 +236,16 @@ export function installFrames(
     },
     // A stopped frame loads only from its Reload: what waits on it waits for that.
     wake: (id) => watch.responses.state(id) !== "stopped" && policy.wake(id),
-    reload: (id, src) => reloads.reload(id, src),
+    reload: (id, src) => {
+      mic?.gone(id);
+      reloads.reload(id, src);
+    },
     counts: () => ({ ...policy.counts(), budget: Math.floor(budget()) }),
     responses,
     dispose() {
       for (const off of offs) off?.();
       for (const cancel of graces) cancel();
+      mic?.dispose();
       reloads.dispose();
       watch.dispose();
       policy.dispose();

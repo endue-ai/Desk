@@ -49,9 +49,15 @@ export async function captureEar(
 ): Promise<Ear | null> {
   let latest: Bands = SILENT;
   let closed = false;
-  const mic = await capture((frame) => {
-    if (!closed) latest = bandsFromSpectrum(spectrumOf(frame.samples), frame.sampleRate);
-  }).catch(() => null);
+  const mic = await capture(
+    (frame) => {
+      if (!closed) latest = bandsFromSpectrum(spectrumOf(frame.samples), frame.sampleRate);
+    },
+    // Stopped from the rail, or the device went: the level falls silent, not on its last frame.
+    () => {
+      latest = SILENT;
+    },
+  ).catch(() => null);
   if (!mic) return null;
   return {
     live: true,

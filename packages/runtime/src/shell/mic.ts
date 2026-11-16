@@ -16,13 +16,18 @@ export interface MicWatch {
   dispose(): void;
 }
 
-/** Follow the captures in force; `changed` runs after each change. */
+/**
+ * Follow the captures in force, from the list the bridge hands over now; `changed` runs after each
+ * later change (the caller draws once itself after this returns).
+ */
 export function watchMic(ctx: ShellCtx, changed: () => void): MicWatch {
   let now: readonly CaptureInForce[] = [];
+  let watching = false;
   const off = ctx.bridge.audio?.captures?.((captures) => {
     now = captures;
-    changed();
+    if (watching) changed();
   });
+  watching = true;
   return {
     captures: () => now,
     dispose: () => off?.(),

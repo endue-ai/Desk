@@ -86,7 +86,9 @@ function recognise(lang: TalkLang): { stop(): Promise<string> } | null {
 
 /**
  * The microphone; null when there is none, it was refused, or Web Audio is missing. Without speech
- * recognition the page's microphone would hear no words either, so `bridge`'s capture listens.
+ * recognition the page's microphone would hear no words either, so `bridge`'s capture listens; and
+ * where the page has recognition but no microphone of its own (CEF may name Web Speech without
+ * serving it), the capture listens too, for the level.
  */
 export async function openMic(
   lang: TalkLang,
@@ -97,10 +99,11 @@ export async function openMic(
     void audio?.close();
     return captureEar(bridge.capture);
   }
+  const fallback = () => (bridge?.capture ? captureEar(bridge.capture) : Promise.resolve(null));
   const devices = typeof navigator === "undefined" ? undefined : navigator.mediaDevices;
   if (!audio || !devices?.getUserMedia) {
     void audio?.close();
-    return null;
+    return fallback();
   }
   let stream: MediaStream;
   try {
@@ -109,7 +112,7 @@ export async function openMic(
     });
   } catch {
     void audio.close();
-    return null;
+    return fallback();
   }
   void audio.resume().catch(() => {});
   const analyser = audio.createAnalyser();
