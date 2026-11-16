@@ -3,6 +3,7 @@
 // XML, an image, a GraphQL query, a server-sent event stream, an echo). Data lives in memory.
 //
 //   import { startDemoApi } from "./demo-api.mjs"; await startDemoApi(4339);
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 
 const TOKEN = "demo-7f3c9a1e5b2d48c6";
@@ -97,6 +98,10 @@ export function startDemoApi(port = 4339) {
     // A little latency, so timings look like a network's.
     await new Promise((r) => setTimeout(r, 18 + Math.random() * 40));
 
+    if (path === "/openapi.yaml") {
+      res.writeHead(200, { "content-type": "application/yaml" });
+      return res.end(await readFile(new URL("./demo-openapi.yaml", import.meta.url)));
+    }
     if (path === "/v1/health")
       return json(res, 200, { status: "ok", version: "2.4.1", uptime_s: 86_412 });
     if (path === "/v1/auth/login" && req.method === "POST") {
