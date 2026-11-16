@@ -4,7 +4,11 @@ import { defineUiPlugin } from "./sdk";
 import { createTestHost } from "./testing";
 
 const catalogs = {
-  en: { hello: "Hello", named: "Hello, {name}", files: { one: "{count} file", other: "{count} files" } },
+  en: {
+    hello: "Hello",
+    named: "Hello, {name}",
+    files: { one: "{count} file", other: "{count} files" },
+  },
   ko: { hello: "안녕하세요", named: "{name}님, 안녕하세요" },
 };
 
@@ -17,7 +21,11 @@ describe("ctx.messages", () => {
     });
     let seen: string | undefined;
     const ctx: PluginContext = await defineUiPlugin(
-      { mount: (c) => void (seen = c.messages.t("hello")) },
+      {
+        mount: (c) => {
+          seen = c.messages.t("hello");
+        },
+      },
       host.transport,
     );
     expect(seen).toBe("안녕하세요");

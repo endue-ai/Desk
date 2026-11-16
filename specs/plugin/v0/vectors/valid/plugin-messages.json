@@ -1,5 +1,12 @@
 {
   "target": "PluginManifest",
   "description": "a UI plugin that ships its words in catalogs under messages/",
-  "instance": { "id": "example.greeter", "name": "Greeter", "version": "0.1.0", "kind": "ui", "entry": "ui/index.html", "messages": "messages" }
+  "instance": {
+    "id": "example.greeter",
+    "name": "Greeter",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "messages": "messages"
+  }
 }
