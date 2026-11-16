@@ -189,6 +189,7 @@ Emacs 에서 *작은 코어 + 모든 것은 커맨드 + 실행 중에 고친다*
 | `git` | 키보드 중심 Git 표면: 상태 · 스테이징 · 커밋 · 로그 그래프 · diff. 모든 동작이 커맨드. 요구사항은 `git-plugin-requirements.md` | 2 |
 | `database` | PostgreSQL · MySQL / MariaDB · SQLite 클라이언트: 연결 · 탐색기 · SQL 콘솔 · 결과 · 읽기 전용과 운영 DB 보호. 엔진의 공식 CLI 를 셸 없이(ADR 0038). 요구사항은 `database-plugin-requirements.md` | 2 |
 | `docker` | 컨테이너 관리 표면: 컨테이너 · Compose · 이미지 · 볼륨 · 네트워크, 따라가는 로그 · 상세 · 셸 · 정리 · 실패 알림. 모든 동작이 커맨드. 요구사항은 `docker-plugin-requirements.md`, CLI 를 쓰는 이유는 ADR 0039 | 2 |
+| `network` | 우리 집 네트워크 표면: 지금 붙은 사설 대역에 누가 있는지(공유기를 가운데 둔 지도 · IP 주소 · MAC 주소 · 제조사 · 핑), 얼마나 안전한지(100점 점수와 할 일 카드 · 포트 점검), Wi-Fi 가 왜 느린지(대역별 채널 혼잡도와 권장 채널), 오가는 기기의 일지와 알림. macOS 기본 프로그램만 셸 없이, 관리자라고 답한 네트워크만 훑는다. 요구사항은 `network-plugin-requirements.md`, 이유는 ADR 0266 | 2 |
 | `sheets` | 스프레드시트를 한 그리드로: Excel(xlsx · xls · xlsb) · Numbers · ODS · CSV/TSV(구분자 · 인코딩 자동, EUC-KR 포함) · DIF · SYLK · Lotus · Quattro · Google Sheets 바로가기. 시트 탭 · 수식 바 · 찾기. SheetJS 를 vendoring(ADR 0043). 큰 통합 문서는 범위 읽기와 워커 파싱, `<desk-progress>` 와 취소 | 2 |
 | `docs` | 워드 문서를 한 페이지 뷰로: Word(docx · doc) · ODF · RTF · HWPX · HWP 5.0 · AbiWord 는 서식 그대로, WordPerfect/Works 는 텍스트, Pages 는 미리보기, Google Docs 는 바로가기. 개요 · 주석 · 찾기, 링크는 `shell.open` 으로. 한 문서 모델과 자체 리더, 범위 읽기 · `<desk-progress>` · 8 MiB 넘는 파일은 워커 | 2 |
 | `slides` | 프레젠테이션을 한 뷰어로: PowerPoint(pptx · ppt, 둘 다 보이는 그대로) · ODP · Keynote(미리보기) · Google Slides 바로가기. 썸네일 레일 · 발표자 노트 · 재생 모드, pptx · ODP 의 링크는 `shell.open` 으로, 슬라이드 이동은 덱 안에서. 범위 읽기 · `<desk-progress>` · 8 MiB 넘는 파일은 워커 | 2 |

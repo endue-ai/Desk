@@ -59,6 +59,7 @@ The base plugins a person works with from the first day (requirements, BASE):
 | `git-studio/` (`endue.git-studio`) | A graphical Git client: the commit graph with the work in progress on top, branches, tags, stashes and worktrees, staging, diffs, history operations from the graph, a conflict tool, blame, and AI for messages and explanations |
 | `database/` (`endue.database`) | A client for PostgreSQL, MySQL / MariaDB and SQLite through their own command-line clients (ADR 0038): connections, an explorer, SQL consoles, exact results, guards for read-only and production connections |
 | `docker/` (`endue.docker`) | Containers, Compose projects, images, volumes and networks: logs that follow, a container's detail, a shell, clean-up; every operation a command |
+| `network/` (`endue.network`) | Who is on the network this computer is on, how safe it is and why it is slow: a map around the router, a checkup scored out of 100 with what to do, the Wi-Fi channels' congestion, a log of devices that come and go; macOS's own programs only, the private network only (autoload, ADR 0266) |
 
 The agent programs a person already has, attached as a plugin (AG-09) and off until the person turns
 it on (`autoload`: Claude and Codex are not on by default, ADR 0084):
