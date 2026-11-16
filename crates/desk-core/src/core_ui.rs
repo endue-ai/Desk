@@ -102,7 +102,12 @@ impl Core {
             })?;
         let closed = surfaces.open.remove(index);
         self.surface_closed(closed);
+        let last = !surfaces.open.iter().any(|s| s.caller == caller);
         drop(surfaces);
+        // A plugin whose last surface closed no longer shows anyone it listens (ADR 0245).
+        if last {
+            self.surfaces_gone(caller);
+        }
         json(UiSurfaceCloseResult {})
     }
 
