@@ -278,3 +278,12 @@
 .banner-text {
   flex: 1;
 }
+
+.desk-btn.banner-file {
+  height: auto;
+  padding: 0 4px;
+  color: inherit;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  text-decoration: underline;
+}
