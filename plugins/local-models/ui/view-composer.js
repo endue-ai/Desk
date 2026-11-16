@@ -3,6 +3,7 @@
 import { compact, contextUse } from "./context.js";
 import { fill, h, icon } from "./dom.js";
 import { editLastQuestion } from "./message.js";
+import { attachView } from "./view-attach.js";
 
 /** @typedef {import("./app.js").App} App */
 
@@ -22,9 +23,11 @@ export function composerView(app) {
   const meterText = h("span.lm-ctx-text");
   const meter = h("div.lm-ctx", { role: "meter", "aria-label": "Context used" }, ring, meterText);
   const tools = h("div.lm-composer-tools");
-  const box = h(
-    "div.lm-composer",
-    null,
+  const box = h("div.lm-composer");
+  const attach = attachView(app, { field, box, onChange: () => drawButton() });
+  tools.append(attach.button);
+  box.append(
+    attach.tray,
     field,
     h("div.lm-composer-bar", null, tools, h("div.lm-composer-spacer"), hint, meter, send),
   );
@@ -46,10 +49,10 @@ export function composerView(app) {
       return;
     }
     const text = field.value;
-    if (!text.trim()) return;
+    if (!text.trim() && !attach.count) return;
     field.value = "";
     grow();
-    void app.send(text);
+    void app.send(text, attach.take());
   }
 
   field.addEventListener("input", () => {
@@ -88,19 +91,20 @@ export function composerView(app) {
   }
 
   function drawButton() {
-    const { generating, selected, thread } = S.get();
+    const { generating, selected, thread, preparing } = S.get();
     const busy = Boolean(generating);
     const model = thread?.model ?? selected;
     fill(send, icon(busy ? "stop" : "send"));
     send.title = busy ? "Stop (Esc)" : "Send (Enter)";
     send.setAttribute("aria-label", busy ? "Stop" : "Send");
     send.dataset.busy = busy ? "1" : "";
-    /** @type {HTMLButtonElement} */ (send).disabled = !busy && (!model || !field.value.trim());
+    /** @type {HTMLButtonElement} */ (send).disabled =
+      !busy && (!model || Boolean(preparing) || (!field.value.trim() && !attach.count));
     box.dataset.busy = busy ? "1" : "";
-    fill(hint, busy ? "Writing… Esc to stop" : "");
+    fill(hint, preparing ? [h("span.lm-spinner"), preparing] : busy ? "Writing… Esc to stop" : "");
   }
 
-  S.on(["generating", "selected", "thread"], drawButton);
+  S.on(["generating", "selected", "thread", "preparing"], drawButton);
   S.on(["generating", "selected", "thread", "models", "servers"], drawMeter);
   S.onSignal("settings", drawMeter);
   drawButton();

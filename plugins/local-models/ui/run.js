@@ -25,7 +25,9 @@ export function messagesFor(thread, upTo) {
   if (thread.system?.trim()) out.push({ role: "system", content: thread.system.trim() });
   for (const node of pathTo(thread, upTo)) {
     if (node.error && !node.content) continue;
-    const content = node.role === "assistant" ? splitThink(node.content).content : node.content;
+    const said = node.role === "assistant" ? splitThink(node.content).content : node.content;
+    // What the question was sent with (a file, the passages found) goes before its words.
+    const content = node.context ? `${node.context}\n\n${said}` : said;
     out.push({
       role: node.role,
       content,

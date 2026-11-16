@@ -95,13 +95,13 @@ const UNIX = `The Unix philosophy in five points:
 - **Build early, refine often.** Prototype quickly; throw away what doesn't work.
 - **Favour simplicity over cleverness.** Clear code beats fast code until it's proven too slow.`;
 
-const IMAGE = `The image shows a **desk by a window** in soft morning light:
+const IMAGE = `The picture is a simple, calm **landscape**:
 
-- A laptop with a code editor open, dark theme
-- A ceramic mug on the left, still steaming
-- A small potted plant and a notebook with handwritten notes
+- A **rolling green valley** across the lower third, its hills in two soft waves
+- A **clear sky** that fades from blue at the top to a pale haze near the hills
+- A **bright yellow sun** in the upper right
 
-The overall mood is calm and focused — it looks like a home office early in the day.`;
+There are no people or buildings; the flat colours make it look like an illustration rather than a photo.`;
 
 /** @type {Record<string, string>} */
 const THOUGHTS = {
@@ -131,12 +131,29 @@ export function answerFor(messages) {
           ? "Friendly Review Request Email"
           : /unix/.test(asked)
             ? "The Unix Philosophy"
-            : "A Quick Question";
+            : /guide|context|quantiz/.test(asked)
+              ? "Context Length and Quantization"
+              : /image|picture|landscape|valley/.test(asked)
+                ? "A Calm Valley Landscape"
+                : "A Quick Question";
     return { answer: `"${title}"`, thought: "A short title." };
   }
   const last = [...messages].reverse().find((m) => m.role === "user");
   const text =
     typeof last?.content === "string" ? last.content : JSON.stringify(last?.content ?? "");
+  if (/Passages from the files attached|<file name=/.test(text)) {
+    const files = [
+      ...new Set(
+        [...text.matchAll(/\((?<f>[^)\n]+\.[a-z]+)\)\n|<file name="(?<g>[^"]+)"/g)].map(
+          (m) => m.groups?.f ?? m.groups?.g,
+        ),
+      ),
+    ];
+    return {
+      answer: `From ${files.join(" and ") || "the file"}:\n\n- **Local models** run entirely on this computer, so nothing you write is sent anywhere [1].\n- A **quantized** file trades a little quality for a much smaller size; Q4_K_M is the usual balance [2].\n- The **context length** decides how much of a conversation the model can see at once [3].\n\nThe passages do not say how fast it runs on your machine; the stats under each answer show that.`,
+      thought: "Read the passages, answer from them, cite each point.",
+    };
+  }
   const hasImage = Boolean(last?.images?.length) || /image_url/.test(text);
   const q = text.toLowerCase();
   const system = messages.find((m) => m.role === "system");

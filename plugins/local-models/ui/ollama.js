@@ -290,3 +290,14 @@ export async function remove(sockets, server, name) {
     });
   await response.text();
 }
+
+/** Vectors for texts, from an embedding model. @param {Sockets} sockets @param {ServerRef} server @param {string} model @param {string[]} input @returns {Promise<number[][]>} */
+export async function embed(sockets, server, model, input) {
+  const answer = await fetchJson(sockets, `${server.baseUrl}/api/embed`, {
+    json: { model, input },
+    headers: auth(server),
+    timeoutMs: 30000,
+  });
+  if (!Array.isArray(answer?.embeddings)) throw new HttpError("Ollama answered no vectors");
+  return answer.embeddings;
+}
