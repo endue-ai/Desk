@@ -146,7 +146,11 @@ fn removing_a_pack_takes_back_every_grant_of_its_nested_plugins() {
     assert!(filed(&home).contains(&NESTED.to_owned()));
 
     assert!(core.remove_plugin(PACK));
-    assert_eq!(held(&core, NESTED), Vec::<Value>::new(), "the nested plugin");
+    assert_eq!(
+        held(&core, NESTED),
+        Vec::<Value>::new(),
+        "the nested plugin"
+    );
     assert_eq!(held(&core, PACK), Vec::<Value>::new(), "the pack");
     assert!(
         !filed(&home).contains(&NESTED.to_owned()),
@@ -159,7 +163,10 @@ fn removing_a_pack_takes_back_every_grant_of_its_nested_plugins() {
 fn removing_a_plugin_takes_back_its_grants_and_a_new_one_under_its_id_starts_with_none() {
     let home = home("remove-grants-plain");
     let core = desk(&home);
-    core.install_plugin(&plain_dir(&home.join("plugins"), "files", "acme.files"), false);
+    core.install_plugin(
+        &plain_dir(&home.join("plugins"), "files", "acme.files"),
+        false,
+    );
     grant(&core, "acme.files", net());
     always(&core, "acme.files", notes_read());
     assert_eq!(held(&core, "acme.files").len(), 2);
@@ -169,10 +176,17 @@ fn removing_a_plugin_takes_back_its_grants_and_a_new_one_under_its_id_starts_wit
     assert!(!filed(&home).contains(&"acme.files".to_owned()));
 
     // Another folder under the same id (a local folder, another market) inherits nothing.
-    core.install_plugin(&plain_dir(&home.join("other"), "files", "acme.files"), false);
+    core.install_plugin(
+        &plain_dir(&home.join("other"), "files", "acme.files"),
+        false,
+    );
     assert_eq!(held(&core, "acme.files"), Vec::<Value>::new());
     let again = desk(&home);
-    assert_eq!(held(&again, "acme.files"), Vec::<Value>::new(), "after a restart");
+    assert_eq!(
+        held(&again, "acme.files"),
+        Vec::<Value>::new(),
+        "after a restart"
+    );
 }
 
 #[derive(Clone, Default)]
