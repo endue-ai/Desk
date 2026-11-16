@@ -50,7 +50,8 @@ what `desk-sys` already produces and what a recogniser needs, at 50 small events
   menu's first row stops every capture. The shell bridge hands a late listener the list in force.
 * **What ends a capture.** A stop needs only ownership, as net.close (a `once` grant the start spent
   must not keep a plugin from stopping its own capture). The runtime stops a plugin's captures when
-  one of its windows closes, or its frame loads again or is unloaded (`plugin-mic.ts`); the core
+  one of its windows closes, or its frame loads again, is unloaded or is stopped (`plugin-mic.ts`,
+  called from `frames/install.ts`); the core
   ends a socket caller's (`cli`, `agent:<id>`) when its last connection closes (`Core::caller_left`).
   A caller holds at most four captures; a fifth is `forbidden`. desk-mcp opens one connection per call, so an agent's
   capture ends as soon as the call that started it returns: it fails safe, and an agent cannot keep
