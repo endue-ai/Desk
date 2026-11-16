@@ -114,10 +114,13 @@ export function caption(photo) {
   return ${next ? CAPTION : "photo.title"};
 }
 `;
-const config = (accent) => `export const theme = {
+const config = (accent, radius = 8, font = "Inter") => `export const theme = {
+  // The colour of links, buttons and the selection.
   accent: "${accent}",
-  radius: 8,
-  font: "Inter",
+  // Corners of cards and buttons, in pixels.
+  radius: ${radius},
+  // The body text.
+  font: "${font}",
 };
 `;
 
@@ -189,7 +192,9 @@ commit(
 );
 git(work, ["tag", "-a", "v0.2.0", "-m", "Albums, auth and thumbnails"], "mira");
 git(work, ["switch", "-q", "-c", "feature/theme-colors", "v0.2.0"]);
-commit(work, "ana", "Warmer accent colour for the gallery", { "src/config.js": config("#f97316") });
+commit(work, "ana", "Warmer accent colour for the gallery", {
+  "src/config.js": config("#f97316", 8, "Nunito"),
+});
 git(work, ["switch", "-q", "develop"]);
 commit(work, "kenji", "Paginate album listings", {
   "src/routes/albums.js": "export const PAGE = 50;\n",
@@ -226,7 +231,7 @@ commit(
   work,
   "mira",
   "Cooler accent colour and a larger radius",
-  { "src/config.js": config("#14b8a6").replace("radius: 8", "radius: 12") },
+  { "src/config.js": config("#14b8a6", 12, "Inter Display") },
   20,
 );
 git(work, ["switch", "-q", "-c", "feature/search"]);
@@ -243,13 +248,23 @@ git(work, ["switch", "-q", "main"]);
 write(work, { "src/routes/albums.js": "export const PAGE = 25;\n" });
 git(work, ["add", "src/routes/albums.js"]);
 git(work, ["stash", "push", "-q", "-m", "Half-done pagination"]);
-write(work, { "src/server.js": server(8080, 'import { log } from "./log.js";\n') });
-write(work, { "src/gallery.js": gallery(true) });
-write(work, {
-  "src/log.js":
-    "export function log(message) {\n  console.log(new Date().toISOString(), message);\n}\n",
-});
-git(work, ["add", "src/log.js"]);
-write(work, { "docs/notes.md": "- try WebP thumbnails\n" });
 rmSync(other, { recursive: true, force: true });
+
+if (process.argv.includes("--conflict")) {
+  // Stop half way through merging the theme branch: two conflicts in src/config.js.
+  try {
+    git(work, ["merge", "--no-edit", "feature/theme-colors"]);
+  } catch {
+    // The merge stops on its conflicts, which is the point.
+  }
+} else {
+  write(work, { "src/server.js": server(8080, 'import { log } from "./log.js";\n') });
+  write(work, { "src/gallery.js": gallery(true) });
+  write(work, {
+    "src/log.js":
+      "export function log(message) {\n  console.log(new Date().toISOString(), message);\n}\n",
+  });
+  git(work, ["add", "src/log.js"]);
+  write(work, { "docs/notes.md": "- try WebP thumbnails\n" });
+}
 console.log(work);

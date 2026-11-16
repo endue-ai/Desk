@@ -1,0 +1,243 @@
+/* The merge conflict tool: two sides over the output. Ours and theirs are two chart colours, and
+   the output shows each resolved conflict in the colour of the side it came from. */
+
+.cf {
+  --ours: var(--desk-chart-1);
+  --theirs: var(--desk-warning);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1.1fr) minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+
+.cf-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: 46px;
+  padding: var(--desk-space-1) var(--desk-space-3);
+  border-bottom: 1px solid var(--gs-line);
+  background: var(--gs-soft);
+  flex-wrap: wrap;
+}
+
+.cf-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+}
+
+.cf-progress {
+  padding: 1px 8px;
+  border-radius: var(--desk-radius-full);
+  font-size: var(--desk-text-2xs);
+  font-weight: 700;
+  background: var(--desk-warning-soft);
+  color: var(--desk-warning-text);
+}
+
+.cf-progress.is-done {
+  background: var(--desk-success-soft);
+  color: var(--desk-success-text);
+}
+
+.desk-btn.cf-ai {
+  color: var(--desk-primary-text);
+}
+
+.cf-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+  border-bottom: 1px solid var(--gs-line);
+}
+
+.cf-pane {
+  overflow: auto;
+  min-height: 0;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  line-height: 20px;
+}
+
+.cf-pane.is-ours {
+  border-right: 1px solid var(--gs-line);
+  --side: var(--ours);
+}
+
+.cf-pane.is-theirs {
+  --side: var(--theirs);
+}
+
+.cf-pane-head,
+.cf-output-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  height: 34px;
+  padding: 0 var(--desk-space-3);
+  border-bottom: 1px solid var(--gs-line);
+  background: var(--desk-card);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-xs);
+}
+
+.cf-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--desk-radius-full);
+  background: var(--side);
+}
+
+.cf-pane-title {
+  font-weight: 700;
+}
+
+.cf-line {
+  min-height: 20px;
+  padding: 0 var(--desk-space-3);
+  white-space: pre;
+}
+
+.cf-line.is-same {
+  color: color-mix(in srgb, var(--desk-text) 62%, transparent);
+}
+
+.cf-line.is-pad {
+  background: repeating-linear-gradient(135deg, transparent 0 6px, var(--gs-soft) 6px 12px);
+}
+
+.cf-block {
+  margin: 2px 0;
+  border-left: 3px solid var(--side);
+  background: color-mix(in srgb, var(--side) 10%, var(--desk-background));
+}
+
+.cf-block.is-taken {
+  background: color-mix(in srgb, var(--side) 22%, var(--desk-background));
+}
+
+.desk-row.cf-take {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  width: 100%;
+  height: 24px;
+  padding: 0 var(--desk-space-2);
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--side) 18%, var(--desk-card));
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-2xs);
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cf-box {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--side);
+  border-radius: var(--desk-radius-sm);
+}
+
+.cf-block.is-taken .cf-box {
+  background: var(--side);
+  color: var(--desk-primary-foreground);
+}
+
+.cf-output {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.cf-output-body {
+  flex: 1;
+  overflow: auto;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  line-height: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cf-chosen {
+  border-left: 3px solid var(--desk-success);
+  background: color-mix(in srgb, var(--desk-success) 8%, var(--desk-background));
+}
+
+.cf-chosen.is-ours {
+  border-left-color: var(--ours);
+  background: color-mix(in srgb, var(--ours) 12%, var(--desk-background));
+}
+
+.cf-chosen.is-theirs {
+  border-left-color: var(--theirs);
+  background: color-mix(in srgb, var(--theirs) 12%, var(--desk-background));
+}
+
+.cf-chosen.is-both,
+.cf-chosen.is-both-theirs-first {
+  border-image: linear-gradient(var(--ours), var(--theirs)) 1;
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+
+.cf-chosen.is-custom {
+  border-left-color: var(--desk-primary);
+  background: var(--desk-primary-soft);
+}
+
+.cf-open {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  margin: 4px var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border: 1px dashed var(--desk-danger-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-danger-soft);
+  font-family: var(--desk-font-sans);
+}
+
+.cf-open > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  font-weight: 700;
+  color: var(--desk-danger-text);
+}
+
+.desk-field.cf-editor {
+  flex: 1;
+  width: 100%;
+  min-height: 100%;
+  border: 0;
+  border-radius: 0;
+  resize: none;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  line-height: 20px;
+  white-space: pre;
+}
+
+.cf-binary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-5);
+  font-family: var(--desk-font-sans);
+}
