@@ -61,6 +61,8 @@ export function createView(doc, act) {
   const places = { status: { at: 0, key: "" }, log: { at: 0, key: "" }, diff: { at: 0, key: "" } };
   const listOf = (/** @type {ViewName} */ name) => (name === "commit" ? "status" : name);
   const folded = new Set();
+  /** The diff row `v` marked: lines from it to the cursor, inside one hunk, are the selection. */
+  let mark = -1;
 
   const keyOf = (/** @type {RowSpec | undefined} */ spec) =>
     spec?.fold ?? spec?.activate ?? (spec?.item ? JSON.stringify(spec.item) : "");
@@ -86,6 +88,30 @@ export function createView(doc, act) {
     tree.replaceChildren(...rows.map((spec) => spec.el));
     tree.setAttribute("aria-label", `Git ${shown}`);
     if (hadFocus) rows[cursor]?.el.focus();
+    if (mark >= rows.length) mark = -1;
+    paintMark();
+  };
+
+  /** The marked lines as one item, or undefined when the cursor left the mark's hunk. */
+  const marked = () => {
+    const [from, to] = [rows[mark]?.item, rows[cursor]?.item];
+    if (from?.kind !== "line" || to?.kind !== "line") return undefined;
+    if (from.path !== to.path || from.index !== to.index) return undefined;
+    const [a, b] = [Math.min(from.line, to.line), Math.max(from.line, to.line)];
+    return { kind: /** @type {const} */ ("lines"), path: to.path, index: to.index, from: a, to: b };
+  };
+  const paintMark = () => {
+    const range = mark >= 0 ? marked() : undefined;
+    for (const spec of rows) {
+      const item = spec.item;
+      const on = range && item?.kind === "line" && item.path === range.path && item.index === range.index && item.line >= range.from && item.line <= range.to;
+      spec.el.classList.toggle("marked", on === true);
+    }
+  };
+  /** `v`: mark the line under the cursor, or drop the mark; Escape drops it. */
+  const toggleMark = (/** @type {boolean} */ on) => {
+    mark = on && mark < 0 && rows[cursor]?.item?.kind === "line" ? cursor : -1;
+    paintMark();
   };
 
   const moveTo = (/** @type {number} */ index) => {
@@ -101,6 +127,7 @@ export function createView(doc, act) {
     spec.el.setAttribute("aria-selected", "true");
     spec.el.focus();
     spec.el.scrollIntoView({ block: "nearest" });
+    if (mark >= 0) paintMark();
   };
 
   const move = (/** @type {string} */ action) => {
@@ -142,11 +169,13 @@ export function createView(doc, act) {
   tree.addEventListener("keydown", (event) => {
     if (current === "commit") return;
     const action = actionFor(current, pressOf(event));
-    if (!action) return;
+    // Escape without a mark is the desk's.
+    if (!action || (action === "unmark" && mark < 0)) return;
     event.preventDefault();
     if (MOVES.has(action)) move(action);
     else if (action === "fold") fold();
     else if (action === "help") toggleKeys();
+    else if (action === "mark" || action === "unmark") toggleMark(action === "mark");
     else if (current === "log" && action === "diff" && rows[cursor]?.activate)
       void act(rows[cursor].activate);
     else if (current === "log" && action === "diff" && !rows[cursor]?.item) return;
@@ -223,6 +252,7 @@ export function createView(doc, act) {
     },
     diff(model) {
       models.diff = model;
+      mark = -1;
       if (current === "diff") render();
       else places.diff = { at: 0, key: "" };
     },
@@ -247,7 +277,7 @@ export function createView(doc, act) {
       else tree.focus();
     },
     selection() {
-      return rows[cursor]?.item;
+      return (mark >= 0 ? marked() : undefined) ?? rows[cursor]?.item;
     },
   };
 }

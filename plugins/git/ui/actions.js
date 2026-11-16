@@ -1,9 +1,10 @@
 // What the Git surface does to a repository: stage, unstage, discard, commit, fetch, pull, push and
-// switch branches. Every action runs git without a shell with `--` before any path, confirms what
+// switch branches; a hunk or chosen lines go to hunks.js. Every action runs git without a shell with `--` before any path, confirms what
 // cannot be undone through the desk's pick, and ends with a refresh. No DOM: the view and the
 // controller hand in what it needs, so the SDK's test host runs it against a scripted git.
 
 import { listBranches } from "./branches.js";
+import { createHunkActions, isPart } from "./hunks.js";
 
 /**
  * @typedef {import("./parse-status.js").StatusModel} StatusModel
@@ -15,13 +16,16 @@ import { listBranches } from "./branches.js";
  *   | { kind: "commit", sha: string }
  *   | { kind: "stash", ref: string }
  *   | { kind: "hunk", path: string, index: number }
- *   | { kind: "line", path: string, index: number }} Item
+ *   | { kind: "line", path: string, index: number, line: number }
+ *   | { kind: "lines", path: string, index: number, from: number, to: number }} Item
  * @typedef {{ amend: boolean, signOff: boolean, staged: number, message: string }} CommitEditor
  * @typedef {{ id: string, label: string, detail?: string }} PickItem
  * @typedef {{
  *   git(args: string[], options?: RunOptions): Promise<Outcome>,
  *   cancel(): void,
  *   status(): StatusModel,
+ *   diff(): import("./git.js").DiffView | null,
+ *   invoke(id: string, args: unknown): Promise<unknown>,
  *   settings(): Settings,
  *   selection(): Item | undefined,
  *   refresh(): Promise<void>,
@@ -32,9 +36,6 @@ import { listBranches } from "./branches.js";
  *   cancelled(message: string): Error,
  * }} Deps
  */
-
-const NO_STDIN =
-  "Staging part of a file needs git to read a patch, which bridge v0 cannot close: stage the whole file.";
 
 /** @param {Deps} deps */
 export function createActions(deps) {
@@ -47,7 +48,6 @@ export function createActions(deps) {
   ) => {
     if (args?.path) return { kind: "file", path: args.path, section: "unstaged" };
     const item = deps.selection();
-    if (item?.kind === "hunk" || item?.kind === "line") throw new Error(NO_STDIN);
     if (item?.kind === "file" || item?.kind === "section") return item;
     throw new Error(`Select a file to ${what}.`);
   };
@@ -76,8 +76,17 @@ export function createActions(deps) {
     say(words);
   };
 
+  const hunks = createHunkActions({ ...deps, confirm, done });
+  /** The hunk or lines under the cursor, when an action without a path names part of a file. */
+  const partOf = (/** @type {{ path?: string, all?: boolean } | undefined} */ args) => {
+    const item = args?.path || args?.all ? undefined : deps.selection();
+    return isPart(item) ? item : undefined;
+  };
+
   /** @param {{ path?: string, all?: boolean }} [args] */
   const stage = async (args) => {
+    const part = partOf(args);
+    if (part) return hunks.stage(part);
     if (args?.all) {
       await git(["add", "-A"]);
       return done("Staged everything.");
@@ -103,6 +112,8 @@ export function createActions(deps) {
 
   /** @param {{ path?: string, all?: boolean }} [args] */
   const unstage = async (args) => {
+    const part = partOf(args);
+    if (part) return hunks.unstage(part);
     if (args?.all) {
       await git(unstageArgs([]));
       return done("Unstaged everything.");
@@ -119,6 +130,8 @@ export function createActions(deps) {
 
   /** @param {{ path?: string }} [args] */
   const discard = async (args) => {
+    const part = partOf(args);
+    if (part) return hunks.discard(part);
     const target = fileOf(args, "discard");
     const status = deps.status();
     if (target.kind === "section") {
@@ -290,6 +303,8 @@ export function createActions(deps) {
     unstage,
     unstageAll: () => unstage({ all: true }),
     discard,
+    discardPatch: hunks.discardPatch,
+    restorePatch: hunks.restorePatch,
     commit,
     amend: () => commit({ amend: true }),
     submitCommit,

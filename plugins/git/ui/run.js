@@ -7,7 +7,8 @@
  * @typedef {import("@endue-ai/plugin-sdk").PluginBridge} PluginBridge
  * @typedef {import("@endue-ai/bridge").BridgeEvent} BridgeEvent
  * @typedef {{ code: number | null, signal: string | null, stdout: string, stderr: string }} Outcome
- * @typedef {{ cwd?: string, timeoutMs?: number, ok?: number[] }} RunOptions
+ * @typedef {{ cwd?: string, timeoutMs?: number, ok?: number[], input?: string }} RunOptions
+ *   `input` is written to git's stdin, which then closes (`proc.write` with `close`), for `apply -`.
  * @typedef {{ chunks: Uint8Array[], size: number }} Sink
  * @typedef {{ out: Sink, err: Sink, timer: ReturnType<typeof setTimeout> | undefined, settle(outcome: Outcome): void, fail(error: Error, signal?: "term" | "kill"): void }} Job
  */
@@ -172,6 +173,12 @@ export function createRunner(bridge, options = {}) {
       }
       for (const event of early.get(procId) ?? []) feed(job, event);
       early.delete(procId);
+      if (options.input !== undefined) {
+        const scope = { ...GIT_SCOPE, commands: [...GIT_SCOPE.commands] };
+        bridge
+          .call("proc.write", { procId, data: options.input, close: true, scope })
+          .catch((error) => job.fail(new GitError(`Could not hand git its input: ${codeOf(error)}.`)));
+      }
     });
     if (outcome.code === 0 || (options.ok ?? []).includes(outcome.code ?? -1)) return outcome;
     throw new GitError(explain(args, outcome), outcome);
