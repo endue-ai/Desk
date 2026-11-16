@@ -131,3 +131,27 @@
 .soul-glyph { display: inline-block; white-space: pre; }
 .soul-glyph.is-eris { color: var(--desk-eris); }
 .soul-glyph.is-user { text-shadow: none; }
+
+/* At rest in the talk line (rest.ts, ADR 0254): the large orb fades and sinks into the pill, and is
+   hidden once its leave is over, so the page reports no part for it and nothing of it takes the
+   pointer; coming out, it shows from the first frame. away.css slides her by `translate` too, so
+   both lists name it, and its slide wins while she is away. Reduced motion zeroes --motion-base:
+   she is there or not. */
+.shell .eris,
+.shell .eris[data-away] {
+  transition:
+    opacity var(--motion-base) var(--ease-out-expo),
+    translate var(--motion-base) var(--ease-out-expo),
+    visibility 0s;
+}
+.shell .eris.is-resting {
+  opacity: 0;
+  translate: 0 var(--space-3);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-base) var(--ease-out-expo),
+    translate var(--motion-base) var(--ease-out-expo),
+    visibility 0s linear var(--motion-base);
+}
+.shell .eris[data-motion="none"] { transition-duration: 0s; transition-delay: 0s; }
