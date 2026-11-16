@@ -78,7 +78,7 @@ export function image(
     );
   }
   if (sub === "pull") return S.pull(world, io, rest[0] ?? "");
-  if (sub === "push") return S.pull(world, io, rest[0] ?? "");
+  if (sub === "push") return S.push(io, rest[0] ?? "");
   return fail(io, `docker image ${sub}: not in the preview`);
 }
 

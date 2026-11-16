@@ -1,0 +1,340 @@
+/* Images: the list's name and size cells, an image's layers, and the pull's results and progress.
+   Theme tokens only. */
+
+.list-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+}
+
+.image-badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--desk-radius-md);
+  background: var(--ds-select);
+  color: var(--desk-primary-text);
+}
+
+.image-badge.dangling {
+  background: var(--ds-softer);
+  color: var(--desk-text-muted);
+}
+
+.tag {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--ds-softer);
+  color: var(--desk-text-muted);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-2xs);
+  font-weight: 500;
+}
+
+.more-tags {
+  color: var(--desk-primary-text);
+}
+
+.size-cell {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.size-bar,
+.layer-bar,
+.mini-bar {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--desk-radius-full);
+  background: color-mix(in srgb, var(--desk-chart-1) 12%, transparent);
+}
+
+.size-bar > span,
+.layer-bar > span,
+.mini-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-chart-1);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* ── layers ────────────────────────────────────────────────────────────── */
+.layers-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+}
+
+.layers {
+  display: flex;
+  flex-direction: column;
+  padding: var(--desk-space-1) 0;
+  overflow: auto;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 28px 72px minmax(0, 1fr) 160px 72px;
+  align-items: center;
+  gap: var(--desk-space-3);
+  min-height: 36px;
+  padding: 0 var(--desk-space-4);
+  font-size: var(--desk-text-xs);
+}
+
+.step + .step {
+  border-top: 1px solid color-mix(in srgb, var(--ds-line) 50%, transparent);
+}
+
+.step.empty {
+  color: var(--desk-text-muted);
+}
+
+.step.heavy .layer-bar > span {
+  background: var(--desk-chart-5);
+}
+
+.step.heavy .layer-size {
+  font-weight: 650;
+}
+
+.layer-n {
+  color: var(--desk-text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.layer-verb {
+  justify-self: start;
+  padding: 1px 6px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--ds-softer);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+}
+
+.layer-by {
+  overflow: hidden;
+  font-family: var(--desk-font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-size {
+  text-align: right;
+}
+
+.details-view.one {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* ── pull ──────────────────────────────────────────────────────────────── */
+.pull-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+}
+
+.search-wrap.wide {
+  max-width: none;
+  margin: 0;
+}
+
+.search-wrap.wide .desk-field {
+  width: 100%;
+  padding-left: 32px;
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  height: 300px;
+  padding: var(--desk-space-1);
+  overflow: auto;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+}
+
+.desk-btn.result {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  justify-content: stretch;
+  gap: var(--desk-space-3);
+  min-height: 52px;
+  padding: var(--desk-space-1) var(--desk-space-3);
+  border-radius: var(--desk-radius-sm);
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
+}
+
+.desk-btn.result.chosen {
+  background: var(--ds-select);
+  box-shadow: inset 2px 0 0 var(--desk-primary);
+}
+
+.result-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--desk-radius-md);
+  background: var(--ds-softer);
+  color: var(--desk-primary-text);
+}
+
+.result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.result-text b {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  font-weight: 600;
+}
+
+.result-text small {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-3);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-md);
+  background: var(--ds-soft);
+}
+
+.progress-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.progress-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.progress-view.ok .progress-label {
+  color: var(--desk-success-text);
+}
+
+.progress-view.failed .progress-label {
+  color: var(--desk-danger-text);
+}
+
+.progress-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--desk-radius-full);
+  background: color-mix(in srgb, var(--desk-primary) 14%, transparent);
+}
+
+.progress-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-primary);
+  transition: width var(--desk-motion-base) ease;
+}
+
+.layer-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.layer-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 120px 130px;
+  align-items: center;
+  gap: var(--desk-space-2);
+  font-size: var(--desk-text-2xs);
+}
+
+.layer-row.done .mini-bar > span {
+  background: var(--ds-ok);
+}
+
+.layer-status {
+  color: var(--desk-text-muted);
+}
+
+.progress-said {
+  margin: 0;
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.confirm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  overflow: auto;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-md);
+  background: var(--ds-soft);
+  list-style: none;
+  font-size: var(--desk-text-xs);
+}
+
+.confirm-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--desk-space-3);
+}
+
+.confirm-list small {
+  color: var(--desk-text-muted);
+}

@@ -1,0 +1,146 @@
+/* The dialogs' forms: fields, rows to add and remove, checks, and the command line they make.
+   Theme tokens only. */
+
+.run-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-4);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--desk-space-3) var(--desk-space-4);
+}
+
+.span2 {
+  grid-column: 1 / -1;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field-label {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.field-hint {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}
+
+.desk-field.mono {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.rows-set {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.rows-set legend {
+  margin-bottom: var(--desk-space-2);
+  padding: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.rows-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+}
+
+.rows-item {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.rows-item .desk-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.rows-item select.desk-field {
+  flex: none;
+  width: 90px;
+}
+
+.rows-arrow {
+  color: var(--desk-text-muted);
+  font-family: var(--desk-font-mono);
+}
+
+.rows-empty {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.rows-set > .desk-btn.link {
+  align-self: flex-start;
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-4);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  font-size: var(--desk-text-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cmd-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cmd-box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-2) var(--desk-space-2) var(--desk-space-3);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+}
+
+.cmd-line {
+  flex: 1;
+  padding-top: 5px;
+  color: var(--desk-success-text);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.form-error {
+  margin: 0;
+  color: var(--desk-danger-text);
+  font-size: var(--desk-text-xs);
+}
+
+.form-error:empty {
+  display: none;
+}
