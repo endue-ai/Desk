@@ -1,0 +1,34 @@
+{
+  "id": "endue.api-studio",
+  "name": "API Studio",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "An HTTP client for building, sending and testing API requests: a request editor with params, body, headers and auth, {{variables}} with their values under the pointer, and a response viewer with pretty bodies, headers, cookies and a timing waterfall. Requests go out through the curl program, without a shell, their contents on its standard input.",
+  "permissions": [
+    {
+      "permission": "proc:spawn",
+      "commands": ["curl"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["${home}/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["${home}/**"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "API Studio",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [],
+    "keys": [],
+    "settings": {}
+  }
+}

@@ -1,0 +1,226 @@
+/* What floats over the window: menus, dialogs, toasts and the variable tooltip. */
+
+/* ── menus ──────────────────────────────────────────────────────────── */
+.as-menu {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  max-height: 70vh;
+  padding: 4px;
+  overflow: auto;
+  border: 1px solid var(--desk-menu-border);
+  border-radius: var(--desk-menu-radius);
+  background: var(--desk-menu-bg);
+  box-shadow: var(--desk-menu-shadow);
+}
+.as-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--desk-radius-sm);
+  background: transparent;
+  color: var(--desk-text);
+  font: inherit;
+  font-size: var(--desk-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.as-menu-item:hover:not(:disabled),
+.as-menu-item:focus-visible {
+  outline: none;
+  background: var(--desk-hover);
+}
+.as-menu-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.as-menu-item.is-danger {
+  color: var(--desk-danger);
+}
+.as-menu-label {
+  flex: 1;
+}
+.as-menu-hint {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+.as-menu-check {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  color: var(--desk-primary);
+}
+.as-menu-method .as-menu-label {
+  color: var(--m);
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-xs);
+  font-weight: 700;
+}
+.as-menu-sep {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--as-line);
+}
+.as-menu-heading {
+  padding: 6px 10px 2px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ── dialogs ────────────────────────────────────────────────────────── */
+.as-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: var(--desk-dialog-scrim);
+  backdrop-filter: var(--desk-dialog-scrim-filter);
+}
+.as-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(460px, calc(100vw - 48px));
+  max-height: calc(100vh - 64px);
+  border: 1px solid var(--desk-dialog-border);
+  border-radius: var(--desk-dialog-radius);
+  background: var(--desk-dialog-bg);
+  box-shadow: var(--desk-dialog-shadow);
+}
+.as-dialog.is-wide {
+  width: min(760px, calc(100vw - 48px));
+}
+.as-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 6px 20px;
+}
+.as-dialog-head h2 {
+  margin: 0;
+  font-size: var(--desk-text-base);
+  font-weight: 600;
+}
+.as-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 20px 4px;
+  overflow: auto;
+}
+.as-dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px 18px;
+}
+.as-dialog-label {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+.as-dialog-text {
+  margin: 0;
+  color: var(--desk-text-muted);
+  line-height: 1.5;
+}
+.as-dialog-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── toasts ─────────────────────────────────────────────────────────── */
+.as-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  z-index: 60;
+  transform: translate(-50%, 12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--desk-motion-base) ease, transform var(--desk-motion-base) ease;
+}
+.as-toast.is-shown {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+.as-toast-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid var(--desk-toast-border);
+  border-radius: var(--desk-toast-radius);
+  background: var(--desk-toast-bg);
+  box-shadow: var(--desk-toast-shadow);
+  color: var(--desk-toast-fg);
+  font-size: var(--desk-text-sm);
+}
+.as-toast-box.is-ok .icon {
+  color: var(--desk-success);
+}
+.as-toast-box.is-error .icon {
+  color: var(--desk-danger);
+}
+.as-toast-box.is-info .icon {
+  color: var(--desk-info);
+}
+
+/* ── variable tooltip and completion ────────────────────────────────── */
+.var-tip {
+  position: fixed;
+  z-index: 70;
+  width: 300px;
+  padding: 10px 12px;
+  border: 1px solid var(--desk-menu-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-menu-bg);
+  box-shadow: var(--desk-menu-shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--desk-motion-fast) ease;
+}
+.var-tip.is-shown {
+  opacity: 1;
+}
+.var-tip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.var-tip-name {
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+.var-tip-scope {
+  padding: 1px 8px;
+  border-radius: var(--desk-radius-full);
+  background: color-mix(in srgb, var(--desk-success) 16%, transparent);
+  color: var(--desk-success);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+}
+.var-tip-scope.s-missing {
+  background: color-mix(in srgb, var(--desk-danger) 16%, transparent);
+  color: var(--desk-danger);
+}
+.var-tip-scope.s-dynamic {
+  background: color-mix(in srgb, var(--desk-info) 16%, transparent);
+  color: var(--desk-info);
+}
+.var-tip-value {
+  color: var(--desk-text-muted);
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-xs);
+  word-break: break-all;
+}

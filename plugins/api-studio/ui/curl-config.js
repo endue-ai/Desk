@@ -1,0 +1,145 @@
+// A prepared request as curl's config, written to curl's stdin (`curl -q -K -`): the URL, headers,
+// body and credentials never appear in the process's arguments, where other programs could read
+// them. stdout carries the response's header blocks then its body; stderr the verbose timeline,
+// then a marker line and curl's own JSON report of the transfer (timings, sizes, addresses, TLS).
+
+/**
+ * @typedef {{ key: string, value: string }} Header
+ * @typedef {{ kind: "none" } | { kind: "raw", text: string } | { kind: "file", path: string }
+ *   | { kind: "multipart", parts: { name: string, value: string, file?: boolean, type?: string }[] }} WireBody
+ * @typedef {{ mode: "digest" | "ntlm" | "awsv4", user: string, provider?: string }} CurlAuth
+ * @typedef {{ method: string, url: string, headers: Header[], body: WireBody,
+ *   auth?: CurlAuth, settings: import("./model.js").Settings, proxy?: string,
+ *   cookieJar?: string }} Prepared
+ */
+
+/** The line curl writes before its JSON report on stderr. */
+export const MARKER = "@@endue-api-studio:report@@";
+
+/** The arguments: no .curlrc (-q must come first), the config from stdin. */
+export const ARGS = Object.freeze(["-q", "-K", "-"]);
+
+/** A config value in double quotes, with the escapes curl's config reader knows. @param {string} text */
+export function quote(text) {
+  return `"${text
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t")
+    .replace(/\v/g, "\\v")}"`;
+}
+
+/** A header line curl will send as is; a header with an empty value needs curl's `;` form. @param {Header} h */
+function headerLine(h) {
+  const name = h.key.trim().replace(/[\r\n:]/g, "");
+  const value = h.value.replace(/[\r\n]+/g, " ");
+  return value === "" ? `${name};` : `${name}: ${value}`;
+}
+
+/** A multipart part: `form-string` for a text value (no @ or < tricks), `form` for a file. */
+function partLine(
+  /** @type {{ name: string, value: string, file?: boolean, type?: string }} */ part,
+) {
+  const name = part.name.replace(/[=;"\r\n]/g, "_");
+  if (part.file) {
+    const path = part.value.replace(/[;"\r\n]/g, "");
+    return `form = ${quote(`${name}=@"${path}"${part.type ? `;type=${part.type}` : ""}`)}`;
+  }
+  return `form-string = ${quote(`${name}=${part.value}`)}`;
+}
+
+/**
+ * The config curl reads for one request. `verbose` adds the timeline; HEAD asks with `head`, and
+ * every other method is named with `request` so curl never guesses one from the body.
+ * @param {Prepared} prep @param {{ verbose?: boolean }} [options] @returns {string}
+ */
+export function curlConfig(prep, options = {}) {
+  const s = prep.settings;
+  const lines = ["silent", "show-error"];
+  if (options.verbose !== false) lines.push("verbose");
+  const head = prep.method.toUpperCase() === "HEAD";
+  if (head) lines.push("head");
+  else {
+    lines.push('dump-header = "-"');
+    lines.push(`request = ${quote(prep.method.toUpperCase())}`);
+  }
+  lines.push(`url = ${quote(prep.url)}`);
+  lines.push(`write-out = ${quote(`%{stderr}\n${MARKER}\n%{json}`)}`);
+  if (s.followRedirects) {
+    lines.push("location");
+    lines.push(`max-redirs = ${Math.max(0, Math.min(50, Math.floor(s.maxRedirects)))}`);
+  }
+  if (!s.verifyTls) lines.push("insecure");
+  if (s.timeoutMs > 0) lines.push(`max-time = ${(s.timeoutMs / 1000).toFixed(3)}`);
+  if (s.httpVersion === "1.1") lines.push("http1.1");
+  else if (s.httpVersion === "2") lines.push("http2");
+  else if (s.httpVersion === "3") lines.push("http3");
+  if (s.decompress) lines.push("compressed");
+  if (prep.proxy) lines.push(`proxy = ${quote(prep.proxy)}`);
+  if (prep.cookieJar) {
+    lines.push(`cookie = ${quote(prep.cookieJar)}`);
+    lines.push(`cookie-jar = ${quote(prep.cookieJar)}`);
+  }
+  for (const h of prep.headers) if (h.key.trim()) lines.push(`header = ${quote(headerLine(h))}`);
+  // A body curl would otherwise send with `Expect: 100-continue` goes at once.
+  if (prep.body.kind !== "none") lines.push(`header = ${quote("Expect:")}`);
+  if (prep.body.kind === "raw") lines.push(`data-raw = ${quote(prep.body.text)}`);
+  else if (prep.body.kind === "file") lines.push(`data-binary = ${quote(`@${prep.body.path}`)}`);
+  else if (prep.body.kind === "multipart")
+    for (const part of prep.body.parts) lines.push(partLine(part));
+  if (prep.auth) {
+    if (prep.auth.mode === "digest") lines.push("digest");
+    else if (prep.auth.mode === "ntlm") lines.push("ntlm");
+    else if (prep.auth.mode === "awsv4")
+      lines.push(`aws-sigv4 = ${quote(prep.auth.provider ?? "aws:amz")}`);
+    lines.push(`user = ${quote(prep.auth.user)}`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+/** A shell-quoted word for a copied command line: plain when safe, single quotes otherwise. @param {string} word */
+export function shellWord(word) {
+  return /^[A-Za-z0-9_@%+=:,./-]+$/.test(word) ? word : `'${word.replace(/'/g, `'\\''`)}'`;
+}
+
+/**
+ * The same request as one curl command line a person can paste in a terminal (secrets included,
+ * since that is what was asked for), wrapped one option per line.
+ * @param {Prepared} prep
+ */
+export function curlCommand(prep) {
+  const first = ["curl"];
+  const head = prep.method.toUpperCase() === "HEAD";
+  if (head) first.push("--head");
+  else if (prep.method.toUpperCase() !== "GET" || prep.body.kind !== "none")
+    first.push("-X", prep.method.toUpperCase());
+  first.push(shellWord(prep.url));
+  const words = [first];
+  for (const h of prep.headers) if (h.key.trim()) words.push(["-H", shellWord(headerLine(h))]);
+  if (prep.body.kind === "raw") words.push(["--data-raw", shellWord(prep.body.text)]);
+  else if (prep.body.kind === "file")
+    words.push(["--data-binary", shellWord(`@${prep.body.path}`)]);
+  else if (prep.body.kind === "multipart")
+    for (const part of prep.body.parts)
+      words.push(
+        part.file
+          ? ["-F", shellWord(`${part.name}=@${part.value}${part.type ? `;type=${part.type}` : ""}`)]
+          : ["--form-string", shellWord(`${part.name}=${part.value}`)],
+      );
+  if (prep.auth) {
+    if (prep.auth.mode === "digest") words.push(["--digest"]);
+    if (prep.auth.mode === "ntlm") words.push(["--ntlm"]);
+    if (prep.auth.mode === "awsv4")
+      words.push(["--aws-sigv4", shellWord(prep.auth.provider ?? "aws:amz")]);
+    words.push(["--user", shellWord(prep.auth.user)]);
+  }
+  const s = prep.settings;
+  if (s.followRedirects) words.push(["-L"]);
+  if (!s.verifyTls) words.push(["-k"]);
+  if (s.httpVersion === "1.1") words.push(["--http1.1"]);
+  if (s.httpVersion === "2") words.push(["--http2"]);
+  if (s.httpVersion === "3") words.push(["--http3"]);
+  if (s.decompress) words.push(["--compressed"]);
+  return words.map((w) => w.join(" ")).join(" \\\n  ");
+}
