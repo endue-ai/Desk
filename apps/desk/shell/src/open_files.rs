@@ -53,19 +53,35 @@ pub fn url_entry(text: &str) -> Option<String> {
     file_url(text)
 }
 
+/// The switch Windows' registrations put before `%1` (`packager/windows/registrations.mjs`): what
+/// follows it is one argument, however the command line splits, so a link holding `"` adds nothing.
+pub const SINGLE_ARGUMENT: &str = "--single-argument";
+
+/// One argument as a queue entry: a link (`endue:`), a path, or nothing.
+fn entry(arg: &str) -> Option<String> {
+    if desk_link::is_link(arg) {
+        Some(link_entry(arg))
+    } else {
+        local_path(arg)
+    }
+}
+
 /// Preserve argv boundaries. The executable and options are never treated as files; an `endue:`
-/// argument is a link (Windows and Linux hand links over as arguments).
+/// argument is a link (Windows and Linux hand links over as arguments). After `--single-argument`
+/// the rest is one argument, joined back with spaces: a link split at a quote then holds a space,
+/// which no link has, and is refused whole.
 pub fn argument_paths(args: impl IntoIterator<Item = String>) -> Vec<String> {
-    args.into_iter()
-        .skip(1)
-        .filter_map(|arg| {
-            if desk_link::is_link(&arg) {
-                Some(link_entry(&arg))
-            } else {
-                local_path(&arg)
-            }
-        })
-        .collect()
+    let mut args = args.into_iter().skip(1);
+    let mut entries = Vec::new();
+    while let Some(arg) = args.next() {
+        if arg == SINGLE_ARGUMENT {
+            let rest: Vec<String> = args.by_ref().collect();
+            entries.extend(entry(&rest.join(" ")));
+            break;
+        }
+        entries.extend(entry(&arg));
+    }
+    entries
 }
 
 fn absolute_path(value: &str) -> Option<String> {
@@ -133,6 +149,26 @@ pub fn local_path(value: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn what_follows_single_argument_is_one_argument() {
+        let args = |rest: &[&str]| {
+            let mut all = vec!["endue-desk".to_owned(), SINGLE_ARGUMENT.to_owned()];
+            all.extend(rest.iter().map(|s| (*s).to_owned()));
+            argument_paths(all)
+        };
+        assert_eq!(
+            args(&["endue://v1/plugin/endue.notes"]),
+            ["endue://v1/plugin/endue.notes"]
+        );
+        // `endue://x" --gpu-launcher="cmd /c calc" --x="` as Windows splits it: one refused link.
+        let split = args(&["endue://x", "--gpu-launcher=cmd", "/c", "calc", "--x="]);
+        assert_eq!(split.len(), 1, "{split:?}");
+        assert!(split[0].starts_with(REFUSED), "{split:?}");
+        assert!(args(&[]).is_empty());
+        let file = args(&["C:\\Users\\P\\a b.md"]);
+        assert_eq!(file, ["C:/Users/P/a b.md"]);
+    }
 
     #[test]
     fn links_take_their_place_among_the_files() {

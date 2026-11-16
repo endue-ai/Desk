@@ -114,10 +114,8 @@ fn only<'a>(
     pairs: &'a [(String, String)],
     known: &[&str],
 ) -> Result<Vec<Option<&'a str>>, Refused> {
-    if let Some((key, _)) = pairs.iter().find(|(k, _)| !known.contains(&k.as_str())) {
-        return refuse(format!(
-            "This link asks for something the desk does not know ({key})."
-        ));
+    if pairs.iter().any(|(k, _)| !known.contains(&k.as_str())) {
+        return refuse("This link asks for something the desk does not know.");
     }
     let value = |name: &str| {
         pairs
@@ -128,12 +126,23 @@ fn only<'a>(
     Ok(known.iter().map(|name| value(name)).collect())
 }
 
-/// Read `text` as a link, or say why it is not one.
+/// A character that changes how text around it reads without showing itself: bidirectional controls
+/// and other invisible format characters (`U+202E` turns `gpj.exe` into `exe.jpg`).
+pub(crate) fn hidden(c: char) -> bool {
+    matches!(c as u32,
+        0x00AD | 0x061C | 0x180E | 0x200B..=0x200F | 0x202A..=0x202E | 0x2060..=0x2064
+        | 0x2066..=0x206F | 0xFEFF | 0xFFF9..=0xFFFB)
+}
+
+/// Read `text` as a link, or say why it is not one. No sentence repeats any of the link's text.
 pub fn parse(text: &str) -> Result<Link, Refused> {
     if text.len() > MAX_LEN {
         return refuse("This link is too long to be one the desk opens.");
     }
-    if text.chars().any(|c| c.is_control() || c.is_whitespace()) {
+    if text
+        .chars()
+        .any(|c| c.is_control() || c.is_whitespace() || hidden(c))
+    {
         return refuse("This link has spaces or control characters in it.");
     }
     let Some((scheme, rest)) = text.split_once(':') else {
@@ -154,10 +163,7 @@ pub fn parse(text: &str) -> Result<Link, Refused> {
         return refuse("An endue link names no user or port.");
     }
     if !version.eq_ignore_ascii_case(VERSION) {
-        return refuse(format!(
-            "This link is for another version of endue Desk ({}); this one opens v1 links.",
-            if version.is_empty() { "none" } else { version }
-        ));
+        return refuse("This link is for another version of endue Desk; this one opens v1 links.");
     }
     let pairs = query(query_text)?;
     let mut parts = path.split('/');
@@ -173,11 +179,11 @@ pub fn parse(text: &str) -> Result<Link, Refused> {
         ("plugin", [id]) => {
             let id = decode(id)?;
             if !id_holds(&id) {
-                return refuse(format!("{id} is not a plugin id."));
+                return refuse("This link does not name a plugin.");
             }
             let surface = only(&pairs, &["surface"])?[0];
             if let Some(surface) = surface.filter(|s| !surface_holds(s)) {
-                return refuse(format!("{surface} is not a surface id."));
+                return refuse("This link does not name a surface of a plugin.");
             }
             Ok(Link::Plugin {
                 id,
@@ -187,7 +193,7 @@ pub fn parse(text: &str) -> Result<Link, Refused> {
         ("command", [id]) => {
             let id = decode(id)?;
             if !id_holds(&id) {
-                return refuse(format!("{id} is not a command id."));
+                return refuse("This link does not name a command.");
             }
             only(&pairs, &[])?;
             Ok(Link::Command { id })

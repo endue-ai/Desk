@@ -85,10 +85,6 @@ fn unknown_and_malformed_links_are_refused() {
         };
         assert!(why.ends_with('.') && why.len() > 10, "{link}: {why}");
     }
-    let Err(Refused(why)) = parse("endue://v2/open?path=/a.md") else {
-        unreachable!()
-    };
-    assert!(why.contains("v2"), "{why}");
 }
 
 #[test]
@@ -118,5 +114,41 @@ fn a_link_round_trips() {
         let link = parse(given).unwrap_or_else(|why| panic!("{given}: {why}"));
         assert_eq!(link.to_string(), canonical);
         assert_eq!(parse(canonical), Ok(link), "{canonical}");
+    }
+}
+
+#[test]
+fn hidden_characters_and_loose_escapes_are_refused() {
+    for link in [
+        "endue://v1/open?path=/a%E2%80%AEgpj.exe",
+        "endue://v1/open?path=/a\u{202E}gpj.exe",
+        "endue://v1/open?path=/a%E2%80%8B.md",
+        "endue://v1/open?path=/a%0A.md",
+        "endue://v1/open?path=/a%+A.md",
+        "endue://v1/open?path=/a%-1.md",
+        "endue://v1/plugin/endue.notes?surface=%EF%BB%BFmain",
+    ] {
+        assert!(parse(link).is_err(), "{link} was not refused");
+    }
+}
+
+/// A refusal is the desk's own sentence: nothing of the link, which anyone could have written,
+/// reaches the notice.
+#[test]
+fn refusals_never_repeat_the_link() {
+    let bait = "PleaseCallSupportAt5550100";
+    for link in [
+        format!("endue://{bait}/open?path=/a.md"),
+        format!("endue://v1/open?path=/a.md&{bait}=1"),
+        format!("endue://v1/plugin/{bait}"),
+        format!("endue://v1/plugin/endue.notes?surface={bait}"),
+        format!("endue://v1/command/{bait}"),
+        format!("endue://v1/{bait}"),
+    ] {
+        let Err(Refused(why)) = parse(&link) else {
+            panic!("{link} was not refused")
+        };
+        assert!(!why.contains(bait), "{link}: {why}");
+        assert!(why.len() < 120, "{why}");
     }
 }

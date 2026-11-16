@@ -1,21 +1,30 @@
 /**
  * endue:// links (#310, ADR 0244), as the shell queues them among the opened files: the canonical
  * form of a link the v1 grammar reads (`crates/desk-link`), or `endue:refused?why=…` for one it
- * refused. A file link opens as a double-click does and grants nothing more; a plugin link brings the
- * plugin up; a command link runs only once the person says yes. Anything else is said in a plain
- * notice and run never.
+ * refused. Anyone can write a link, so none acts unasked: a file link opens only once the person
+ * says yes (then as a double-click does, and grants nothing more), a command link runs only on yes,
+ * and a plugin link brings up a plugin that is on, never turning one on. Each question offers "no"
+ * first, so a link that lands while the person types is not answered by their next Enter. Anything
+ * else is said in a plain notice, in the desk's words, and run never.
  */
 
 /** The queue's mark for a link the shell refused, followed by the percent-encoded reason. */
 export const REFUSED = "endue:refused?why=";
+/** How long a link that started the desk waits for what it needs (the palette, its command). */
+export const WAIT_MS = 15_000;
 
 export interface LinksHost {
   commands: {
     run(id: string, args?: unknown): Promise<unknown>;
     has(id: string): boolean;
     list(): Array<{ id: string; title: string }>;
+    onChange(listener: () => void): () => void;
   };
+  /** Whether plugin `id` is installed and on: undefined when it is not installed. */
+  pluginOn(id: string): Promise<boolean | undefined>;
   notify(input: { caller: string; title: string; body?: string; level?: "info" | "warning" }): void;
+  /** How long to wait for a command to appear; WAIT_MS unless a test says otherwise. */
+  waitMs?: number;
 }
 
 export type Link =
@@ -23,18 +32,28 @@ export type Link =
   | { kind: "plugin"; id: string; surface?: string }
   | { kind: "command"; id: string };
 
+/** Text from a link fit for a notice: no control or invisible format characters, at most 120. */
+export function shown(text: string): string {
+  const clean = [...text]
+    .filter((c) => !/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(c))
+    .join("")
+    .trim();
+  return clean.length > 120 ? `${clean.slice(0, 119)}…` : clean;
+}
+
+const NOT_ONE = "This link is not one the desk opens.";
+
 /** A canonical link as the shell queued it, or the sentence that says why it is not one. */
 export function readLink(entry: string): Link | { refused: string } {
   if (entry.startsWith(REFUSED)) {
-    const why = entry.slice(REFUSED.length);
     try {
-      return { refused: decodeURIComponent(why) };
+      return { refused: shown(decodeURIComponent(entry.slice(REFUSED.length))) || NOT_ONE };
     } catch {
-      return { refused: "This link is not one the desk opens." };
+      return { refused: NOT_ONE };
     }
   }
   const match = /^endue:\/\/v1\/(open|plugin|command)(?:\/([^/?#]+))?(?:\?([^#]*))?$/u.exec(entry);
-  if (!match) return { refused: "This link is not one the desk opens." };
+  if (!match) return { refused: NOT_ONE };
   const [, verb, id, query = ""] = match;
   const params = new URLSearchParams(query);
   if (verb === "open" && !id) {
@@ -46,35 +65,81 @@ export function readLink(entry: string): Link | { refused: string } {
     return surface ? { kind: "plugin", id, surface } : { kind: "plugin", id };
   }
   if (verb === "command" && id && query === "") return { kind: "command", id };
-  return { refused: "This link is not one the desk opens." };
+  return { refused: NOT_ONE };
+}
+
+/** Wait until every command in `ids` is registered, or `ms` pass: whether they all are. */
+function registered(host: LinksHost, ids: string[], ms: number): Promise<boolean> {
+  const all = () => ids.every((id) => host.commands.has(id));
+  if (all()) return Promise.resolve(true);
+  return new Promise((done) => {
+    const finish = (value: boolean) => {
+      clearTimeout(timer);
+      off();
+      done(value);
+    };
+    const off = host.commands.onChange(() => {
+      if (all()) finish(true);
+    });
+    const timer = setTimeout(() => finish(all()), ms);
+  });
+}
+
+/** Ask the person `title`, "no" first: whether they chose `yes`. */
+async function asked(host: LinksHost, title: string, yes: string, no: string): Promise<boolean> {
+  const choice = await host.commands
+    .run("desk.palette.pick", {
+      title,
+      items: [
+        { id: "no", label: no },
+        { id: "yes", label: yes },
+      ],
+    })
+    .catch(() => undefined);
+  return choice === "yes";
 }
 
 /** Open one queued link. Resolves once it ran, was declined, or was refused with a notice. */
 export async function openLink(host: LinksHost, entry: string): Promise<void> {
-  const link = readLink(entry);
+  const ms = host.waitMs ?? WAIT_MS;
   const refuse = (body: string) =>
     host.notify({ caller: "desk", title: "This link was not opened", body, level: "warning" });
+  const link = readLink(entry);
   if ("refused" in link) return refuse(link.refused);
-  if (link.kind === "open") {
-    await host.commands.run("desk.files.open", { path: link.path });
-    return;
-  }
   if (link.kind === "plugin") {
-    // desk.plugins.open brings the plugin up at its first window; the surface is kept for later.
+    // desk.plugins.open turns a plugin the person turned off back on: a link must not.
+    const on = await host.pluginOn(link.id).catch(() => undefined);
+    if (on === undefined) return refuse(`No plugin ${link.id} is installed.`);
+    if (!on) return refuse(`${link.id} is turned off; a link does not turn it on.`);
+    // It opens at its first window; the surface is kept for when desk.plugins.open takes one.
     await host.commands.run("desk.plugins.open", { plugin: link.id });
     return;
   }
-  if (!host.commands.has(link.id)) return refuse(`The desk has no command ${link.id}.`);
-  if (!host.commands.has("desk.palette.pick")) return refuse("The desk cannot ask you now.");
-  const title = host.commands.list().find((c) => c.id === link.id)?.title ?? link.id;
-  const choice = await host.commands
-    .run("desk.palette.pick", {
-      title: `A link asks to run "${title}". Run it?`,
-      items: [
-        { id: "run", label: `Run "${title}"` },
-        { id: "no", label: "Don't run it" },
-      ],
-    })
-    .catch(() => undefined);
-  if (choice === "run") await host.commands.run(link.id);
+  const needs = link.kind === "command" ? ["desk.palette.pick", link.id] : ["desk.palette.pick"];
+  if (!(await registered(host, needs, ms))) {
+    return refuse(
+      link.kind === "command" && host.commands.has("desk.palette.pick")
+        ? `The desk has no command ${link.id}.`
+        : "The desk could not ask you about this link.",
+    );
+  }
+  if (link.kind === "open") {
+    const path = shown(link.path);
+    const yes = await asked(
+      host,
+      `A link asks to open ${path}. Open it?`,
+      "Open it",
+      "Don't open it",
+    );
+    if (yes) await host.commands.run("desk.files.open", { path: link.path });
+    return;
+  }
+  const title = shown(host.commands.list().find((c) => c.id === link.id)?.title ?? link.id);
+  const yes = await asked(
+    host,
+    `A link asks to run "${title}". Run it?`,
+    `Run "${title}"`,
+    "Don't run it",
+  );
+  if (yes) await host.commands.run(link.id);
 }

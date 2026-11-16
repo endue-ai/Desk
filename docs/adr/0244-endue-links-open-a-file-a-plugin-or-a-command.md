@@ -32,18 +32,26 @@ person would by hand. What grammar do links have, and what may each do?
 Chosen option: "a version segment first", as the person chose on #310, because a later grammar can
 change what a verb takes without guessing at an old link's meaning. Version `v1` is closed:
 
-* `endue://v1/open?path=<percent-encoded absolute path>` opens a file or folder exactly as a
-  double-click does (`desk.files.open`) and grants nothing more.
-* `endue://v1/plugin/<plugin-id>[?surface=<surface-id>]` brings a plugin up (`desk.plugins.open`).
+* `endue://v1/open?path=<percent-encoded absolute path>` opens a file or folder only after the
+  person says yes, showing the path; then exactly as a double-click does (`desk.files.open`),
+  granting nothing more. A link alone never grants a read: a double-click's folder grant follows the
+  person's yes, not the link.
+* `endue://v1/plugin/<plugin-id>[?surface=<surface-id>]` brings up a plugin that is on
+  (`desk.plugins.open`); one the person turned off is refused with a notice, never turned on.
 * `endue://v1/command/<command-id>` runs a command without arguments, only after the person says
   yes each time (`desk.palette.pick`).
+* Every question offers "no" first, so a link that lands while the person types is not answered by
+  their next Enter. A notice says why in the desk's words; it never repeats the link's text, and
+  link text shown in a question loses control and bidi characters and is cut to 120 characters.
 * `auth` and `install` are reserved for the login callback and install links, and refused until
   they exist. An unknown version, verb or query key, a repeated key, a fragment, a user or port, a
   relative or `..` path and a link over 8 KiB are refused whole with a notice; nothing is run.
 
 The parser is `crates/desk-link`. macOS registers the scheme in `CFBundleURLTypes` and hands links
 over through `application:openURLs:`; Windows (NSIS and MSI) and Linux (`x-scheme-handler/endue`,
-`Exec=… %U`) hand them over as arguments. Windows also lists the macOS document types as "Open
+`Exec=… %U`) hand them over as arguments. Windows registers `"…\endue-desk.exe" --single-argument
+%1`, as Chrome and Edge do: everything after the switch is one argument, so a link holding `"` adds
+no switch of its own (the class of CVE-2018-1000006); the shell reads the rest as one link or path. Windows also lists the macOS document types as "Open
 with" entries under the ProgID `ai.endue.desk.file`, never an extension's default.
 
 ### Consequences
