@@ -45,7 +45,8 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
     ctx.store.set((s) => ({ composer: { ...s.composer, open: true } }));
     input.focus();
   };
-  const launchText = h("span", {});
+  // At rest the pill is the small orb, this hint and the key (ADR 0254): Eris's one place on the desk.
+  const launchText = h("span", { class: "talk-hint" });
   const launch = h(
     "button",
     {

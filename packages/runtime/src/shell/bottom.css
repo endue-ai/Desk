@@ -2,8 +2,12 @@
    with the desktop's name, the drawer and the way back to the origin. */
 
 /* What lies left of the map's strip ends 12 before it: the running chips, the open talk line. */
+/* The talk pill at rest (issue 297, ADR 0254): with the default theme 440 by 40, Eris's small orb 18. */
 .bottom {
   --running-right: calc(var(--map-right) + var(--map-width) + var(--space-3));
+  --talk-rest-width: calc(var(--desk-control-md) * 11);
+  --talk-rest-height: var(--desk-control-md);
+  --talk-orb: calc(var(--desk-space-4) + var(--desk-space-1) / 2);
   position: absolute;
   inset: auto 0 0;
   pointer-events: none;
@@ -146,19 +150,20 @@
 .composer-option:hover,
 .composer-option.is-selected { background: var(--desk-hover); }
 
-/* The talk bar has a quiet pill, an unfocused hover preview, and a full editing state. It is a pill
+/* The talk bar has a quiet pill (Eris's place at rest: her small orb, the hint and the key), an
+   unfocused hover preview of the same size, and a full editing state. It is a pill
    while buttons have corners and square where the design system or the theme makes them square
    (Blueprint, Amber CRT): a square button's radius times anything is 0. */
 .talk-pill {
-  width: 184px;
-  height: 48px;
+  width: min(var(--talk-rest-width), calc(100vw - 280px));
+  height: var(--talk-rest-height);
   border: 1px solid var(--desk-primary-border);
   border-radius: calc(var(--desk-button-radius) * 999);
   background: var(--desk-card);
   box-shadow: var(--desk-shadow-md);
   transition: width var(--motion-base) ease, height var(--motion-base) ease, border-radius var(--motion-base) ease;
 }
-.talk-pill[data-state="hover"] { z-index: var(--z-float-top); width: 400px; border-color: var(--desk-accent); }
+.talk-pill[data-state="hover"] { z-index: var(--z-float-top); border-color: var(--desk-accent); }
 .talk-pill.is-open { width: min(640px, calc(100vw - 280px), calc(100vw - 2 * var(--running-right))); height: 72px; border-radius: min(var(--radius-lg), calc(var(--desk-button-radius) * 999)); border-color: var(--desk-accent); }
 .talk-pill .composer-hint { display: none; }
 .talk-pill .composer-field {
@@ -190,12 +195,13 @@
   background: transparent;
   white-space: nowrap;
 }
-.talk-orb { width: 24px; height: 24px; flex: none; fill: none; stroke: var(--desk-eris-frost); stroke-width: 0.22; }
+.talk-hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.talk-orb { width: var(--talk-orb); height: var(--talk-orb); flex: none; fill: none; stroke: var(--desk-eris-frost); stroke-width: 0.22; }
 .talk-preview {
   position: absolute;
   left: 150px;
   right: 82px;
-  top: 13px;
+  top: 8px;
   height: 22px;
   padding: 2px 9px;
   overflow: hidden;
@@ -213,17 +219,14 @@
 .talk-shortcut {
   position: absolute;
   right: 12px;
-  top: 14px;
+  top: 9px;
   padding: 0 4px;
   border: 1px solid var(--desk-border);
   border-radius: var(--radius-sm);
   color: var(--desk-text-muted);
   font: inherit;
   font-size: var(--text-xs);
-  opacity: 0;
 }
-.talk-pill[data-state="hover"] .talk-shortcut,
-.talk-pill.is-open .talk-shortcut { opacity: 1; }
 .talk-pill.is-open .talk-shortcut { top: 25px; }
 .talk-grip { display: none; position: absolute; left: 14px; top: 24px; color: var(--desk-text-muted); cursor: grab; }
 .talk-pill.is-open .talk-grip { display: block; }
@@ -241,8 +244,8 @@
 .talk-pill.is-high .composer-list { top: calc(100% + var(--space-2)); bottom: auto; }
 .talk-pill.is-high .talk-agent-list { top: calc(100% + 12px); bottom: auto; }
 
-/* Clear of the map's strip, 12 past it, and of the talk pill at rest, 16 past its half (184 / 2,
-   issue 296); the pill under the pointer is drawn over them. While the line is open it reaches the
+/* Clear of the map's strip, 12 past it, and of the talk pill at rest, 16 past its half (440 / 2,
+   issue 297); the pill under the pointer is drawn over them. While the line is open it reaches the
    strip's 12 and leaves no room beside it: the chips rise above the line, clear of the left bars'
    reach. */
 .running {
@@ -253,7 +256,7 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-  max-width: calc(50% - var(--running-right) - var(--space-4) - 92px);
+  max-width: calc(50% - var(--running-right) - var(--space-4) - var(--talk-rest-width) / 2);
   margin: 0;
   padding: 0;
   overflow: hidden;
