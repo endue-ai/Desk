@@ -2,10 +2,13 @@
 // sent to the made-up servers when a remap is given), fs.* works under a temporary folder, store.*
 // keeps values in memory, and perm.request answers as told.
 import {
+  closeSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readdirSync,
   readFileSync,
+  readSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -13,6 +16,7 @@ import {
 import { connect, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { startFakeEngine } from "../dev/fake-engine.mjs";
 
 // biome-ignore lint/suspicious/noExplicitAny: bridge parameters and results take any JSON shape
 type Json = any;
@@ -30,13 +34,20 @@ export type NodeBridge = {
 const fail = (code: string, message: string) => Object.assign(new Error(message), { code });
 
 export function nodeBridge(
-  options: { remap?: Map<number, number>; grant?: boolean } = {},
+  options: {
+    remap?: Map<number, number>;
+    grant?: boolean;
+    engine?: boolean;
+    memory?: number;
+    pick?: string;
+  } = {},
 ): NodeBridge {
   const root = mkdtempSync(join(process.env.LM_TMP ?? tmpdir(), "lm-test-"));
   const listeners = new Set<Listener>();
   const sockets = new Map<string, Socket>();
   const store = new Map<string, unknown>();
   const calls: { method: string; params: Json }[] = [];
+  const procs = new Map<string, () => void>();
   let next = 0;
   const emit = (event: string, data: Record<string, unknown>) => {
     for (const l of listeners) l({ event, data });
@@ -55,7 +66,8 @@ export function nodeBridge(
         const local = params.host === "127.0.0.1" || params.host === "localhost";
         if (!local && !granted.has(`${params.host}:${params.port}`))
           throw fail("permission_denied", "not granted");
-        const port = options.remap ? options.remap.get(params.port) : params.port;
+        const port =
+          options.remap && params.port < 39281 ? options.remap.get(params.port) : params.port;
         if (port === undefined) throw fail("io_error", "connection refused");
         return await new Promise((done, reject) => {
           const socket = connect({ host: "127.0.0.1", port });
@@ -92,19 +104,28 @@ export function nodeBridge(
         return { granted: options.grant !== false };
       }
       case "fs.read": {
-        let data: Buffer;
+        const full = inside(params.path);
+        let size: number;
         try {
-          data = readFileSync(inside(params.path));
+          size = statSync(full).size;
         } catch {
           throw fail("not_found", params.path);
         }
-        const slice =
-          params.offset !== undefined
-            ? data.subarray(params.offset, params.offset + (params.length ?? data.length))
-            : data;
+        let data: Buffer;
+        if (params.offset !== undefined || params.length !== undefined) {
+          const start = Math.min(params.offset ?? 0, size);
+          const length = Math.max(0, Math.min(params.length ?? size - start, size - start));
+          data = Buffer.alloc(length);
+          const fd = openSync(full, "r");
+          try {
+            readSync(fd, data, 0, length, start);
+          } finally {
+            closeSync(fd);
+          }
+        } else data = readFileSync(full);
         return params.encoding === "base64"
-          ? { content: slice.toString("base64"), encoding: "base64", size: data.length }
-          : { content: slice.toString("utf8"), encoding: "utf8", size: data.length };
+          ? { content: data.toString("base64"), encoding: "base64", size }
+          : { content: data.toString("utf8"), encoding: "utf8", size };
       }
       case "fs.write": {
         const full = inside(params.path);
@@ -151,6 +172,46 @@ export function nodeBridge(
       case "fs.trash":
         rmSync(inside(params.path), { recursive: true, force: true });
         return {};
+      case "proc.spawn": {
+        const name = String(params.command).split("/").pop();
+        const id = `p${++next}`;
+        const out = (stream: string, text: string) =>
+          emit("proc.output", {
+            procId: id,
+            stream,
+            data: Buffer.from(`${text}\n`).toString("base64"),
+            encoding: "base64",
+          });
+        const exit = (code: number | null) =>
+          emit("proc.exit", { procId: id, ...(code === null ? { signal: "term" } : { code }) });
+        if (name === "llama-server" && options.engine !== false) {
+          const cwd = params.cwd ? inside(params.cwd) : root;
+          const args = (params.args as string[]).map((a, i, all) =>
+            all[i - 1] === "-m" || all[i - 1] === "--mmproj" ? resolve(cwd, a) : a,
+          );
+          const engine = await startFakeEngine(args, {
+            onLine: out,
+            onExit: exit,
+            loadMs: 150,
+            tokenMs: 0,
+          });
+          procs.set(id, () => engine.kill());
+        } else if (name === "sysctl" && options.memory) {
+          setTimeout(() => {
+            out("stdout", `${options.memory}\n1`);
+            exit(0);
+          }, 5);
+        } else throw fail("not_found", `${params.command} is not installed`);
+        return { procId: id };
+      }
+      case "proc.kill":
+        procs.get(params.procId)?.();
+        procs.delete(params.procId);
+        return {};
+      case "dialog.open":
+        return options.pick
+          ? { cancelled: false, paths: [options.pick] }
+          : { cancelled: true, paths: [] };
       case "dialog.save":
         mkdirSync(join(root, "Downloads"), { recursive: true });
         return { cancelled: false, path: `~/Downloads/${params.suggestedName}` };

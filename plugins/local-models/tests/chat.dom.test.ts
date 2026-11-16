@@ -134,6 +134,13 @@ describe("markdown", () => {
     ]);
   });
 
+  it("nests bold inside italics", () => {
+    const el = document.createElement("div");
+    renderMarkdown(el, 'In *"the cat because **it** was tired"*, see.');
+    expect(el.querySelector("em strong")?.textContent).toBe("it");
+    expect(el.querySelector("em")?.textContent).toBe('"the cat because it was tired"');
+  });
+
   it("draws an unclosed fence as code while streaming, and never HTML", () => {
     const el = document.createElement("div");
     renderMarkdown(el, "Here:\n\n```python\nprint('<b>hi</b>')", { live: true });

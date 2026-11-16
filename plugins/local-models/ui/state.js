@@ -22,6 +22,12 @@
  *   sidebar: boolean,
  *   toast: { text: string, level: "info" | "error" | "success", at: number } | null,
  *   ready: boolean,
+ *   local: import("./library.js").LocalModel[],
+ *   engines: import("./local.js").EngineView[],
+ *   memory: import("./memory.js").Memory | undefined,
+ *   folders: string[],
+ *   libraryScanning: boolean,
+ *   enginePath: string,
  * }} State
  */
 
@@ -42,6 +48,12 @@ export function initialState() {
     sidebar: true,
     toast: null,
     ready: false,
+    local: [],
+    engines: [],
+    memory: undefined,
+    folders: [],
+    libraryScanning: false,
+    enginePath: "",
   };
 }
 
