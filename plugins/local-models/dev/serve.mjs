@@ -7,12 +7,15 @@
 //   node plugins/local-models/dev/serve.mjs [--port 4340] [--real] [--root <folder>] [--token-ms 14]
 //
 // For people working on the plugin; the desk itself never loads anything from dev/.
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { connect } from "node:net";
+import { totalmem } from "node:os";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { startFakeEngine } from "./fake-engine.mjs";
 import { startFakeLlm } from "./fake-llm.mjs";
+import { seedModels } from "./seed.mjs";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const UI = join(HERE, "../ui");
@@ -67,7 +70,7 @@ function openSocket(p) {
       });
       return;
     }
-    const to = real ? p.port : remap.get(p.port);
+    const to = real || enginePorts.has(p.port) ? p.port : remap.get(p.port);
     if (to === undefined) {
       done({ error: { code: "io_error", message: "connection refused" } });
       return;
@@ -105,6 +108,59 @@ function openSocket(p) {
   });
 }
 
+/** Programs the page started: their output waits here until its stream reads it. */
+/** @type {Map<string, { queue: string[], wake?: () => void, ended?: boolean, kill: () => void }>} */
+const procs = new Map();
+/** Ports the made-up engine listens on, open to the page's sockets. @type {Set<number>} */
+const enginePorts = new Set();
+let nextProc = 0;
+
+/** Start a program for the page: the made-up llama-server, or sysctl's memory answer. @param {{ command: string, args?: string[] }} p */
+async function startProc(p) {
+  const id = `p${++nextProc}`;
+  const entry = {
+    queue: /** @type {string[]} */ ([]),
+    wake: /** @type {(() => void) | undefined} */ (undefined),
+    ended: false,
+    kill: () => {},
+  };
+  procs.set(id, entry);
+  const push = (/** @type {object} */ x) => {
+    entry.queue.push(JSON.stringify(x));
+    entry.wake?.();
+  };
+  const out = (/** @type {string} */ stream, /** @type {string} */ text) =>
+    push({ stream, data: Buffer.from(`${text}\n`).toString("base64") });
+  const exit = (/** @type {number | null} */ code) => {
+    push({ exit: code ?? undefined });
+    entry.ended = true;
+    entry.wake?.();
+  };
+  const name = p.command.split("/").pop();
+  if (name === "llama-server" && !real) {
+    const cwd = /** @type {any} */ (p).cwd ? inside(/** @type {any} */ (p).cwd) : ROOT;
+    const args = (p.args ?? []).map((a, i, all) =>
+      all[i - 1] === "-m" || all[i - 1] === "--mmproj" ? resolve(cwd, a) : a,
+    );
+    const port = Number(args[args.indexOf("--port") + 1]);
+    enginePorts.add(port);
+    const engine = await startFakeEngine(args, {
+      onLine: out,
+      onExit: (code) => {
+        enginePorts.delete(port);
+        exit(code);
+      },
+    });
+    entry.kill = () => engine.kill();
+  } else if (name === "sysctl") {
+    setTimeout(() => {
+      out("stdout", `${totalmem()}\n1`);
+      exit(0);
+    }, 20);
+  } else return { error: { code: "not_found", message: `${p.command} is not in the preview` } };
+  return { result: { procId: id } };
+}
+
 /** A path the page names (~/x or /x), kept inside ROOT. @param {string} path */
 function inside(path) {
   const rel = path.replace(/^~\/?/, "").replace(/^\/+/, "");
@@ -117,14 +173,23 @@ function inside(path) {
 /** The fs.* calls the window makes, on files under ROOT. @param {string} method @param {any} p */
 async function fsCall(method, p) {
   if (method === "fs.read") {
-    const data = await readFile(inside(p.path));
-    const slice =
-      p.offset !== undefined
-        ? data.subarray(p.offset, p.length !== undefined ? p.offset + p.length : undefined)
-        : data;
+    const full = inside(p.path);
+    const size = (await stat(full)).size;
+    let data;
+    if (p.offset !== undefined || p.length !== undefined) {
+      const start = Math.min(p.offset ?? 0, size);
+      const length = Math.max(0, Math.min(p.length ?? size - start, size - start));
+      const handle = await open(full, "r");
+      try {
+        data = Buffer.alloc(length);
+        await handle.read(data, 0, length, start);
+      } finally {
+        await handle.close();
+      }
+    } else data = await readFile(full);
     return p.encoding === "base64"
-      ? { content: slice.toString("base64"), encoding: "base64", size: data.length }
-      : { content: slice.toString("utf8"), encoding: "utf8", size: data.length };
+      ? { content: data.toString("base64"), encoding: "base64", size }
+      : { content: data.toString("utf8"), encoding: "utf8", size };
   }
   if (method === "fs.write") {
     const full = inside(p.path);
@@ -187,6 +252,7 @@ const codeOf = (/** @type {any} */ e) =>
   e.code === "ENOENT" ? "not_found" : e.code === "EEXIST" ? "exists" : (e.code ?? "io_error");
 
 await mkdir(ROOT, { recursive: true });
+if (!real) await seedModels(ROOT);
 createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
   const send = (/** @type {unknown} */ value) => {
@@ -220,6 +286,30 @@ createServer(async (req, res) => {
           sockets.delete(url.searchParams.get("id") ?? "");
           return;
         }
+        await new Promise((r) => {
+          entry.wake = () => {
+            entry.wake = undefined;
+            r(undefined);
+          };
+        });
+      }
+    }
+    if (req.method === "POST" && url.pathname === "/_dev/proc/spawn")
+      return send(await startProc(await body(req)));
+    if (req.method === "POST" && url.pathname === "/_dev/proc/kill") {
+      const p = await body(req);
+      procs.get(p.procId)?.kill();
+      return send({ result: {} });
+    }
+    if (url.pathname === "/_dev/proc/read") {
+      const entry = procs.get(url.searchParams.get("id") ?? "");
+      res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store" });
+      if (!entry) return res.end(`${JSON.stringify({ exit: -1 })}\n`);
+      // A page that goes away takes its programs with it, as the desk does when a plugin unloads.
+      req.on("close", () => entry.kill());
+      for (;;) {
+        while (entry.queue.length) res.write(`${entry.queue.shift()}\n`);
+        if (entry.ended) return res.end();
         await new Promise((r) => {
           entry.wake = () => {
             entry.wake = undefined;

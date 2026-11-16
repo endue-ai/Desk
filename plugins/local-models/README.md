@@ -11,13 +11,17 @@ model, and exported as Markdown or JSON. The inspector (`Mod+.`) holds each chat
 sampling, context length, reasoning switch, JSON or schema output and stop strings; the composer shows
 how much of the context the chat fills (`Mod+Alt+M`).
 
-Requests are HTTP/1.1 over `net.connect` sockets (`ui/http.js`), so tokens show as the server writes
-them; plugin frames cannot reach other origins themselves, and nothing goes to the internet.
+Model files (`.gguf`) in `~/.endue/local-models/models` and the folders added are read for what they are
+from their headers and run by the built-in engine, llama.cpp's `llama-server`, with each file's load
+settings (context, GPU layers, threads, cache type, flash attention) and a check of what fits in memory.
+
+Requests are HTTP/1.1 over `net.connect` sockets (`ui/http.js`), so tokens show as they are written.
 
 | Permission | Why |
 | --- | --- |
 | `net:connect` (`localhost`, `127.0.0.1`) | Talk to the model servers on this computer; another computer is asked for once |
-| `fs:read`, `fs:write` (`${home}/**`) | Threads under `~/.endue/local-models/` |
+| `proc:spawn` (`llama-server`, `sysctl`, `nvidia-smi`) | Run model files; read this computer's memory |
+| `fs:read`, `fs:write` (`${home}/**`) | Threads, presets and model files under `~/.endue/local-models/`, and the folders added |
 | `shell:open` (`http`, `https`) | Open a link from an answer in the browser |
 
 | File | Purpose |
@@ -26,8 +30,9 @@ them; plugin frames cannot reach other origins themselves, and nothing goes to t
 | `ui/servers.js`, `ollama.js`, `openai.js`, `models.js` | Finding servers, each API, models as the window shows them |
 | `ui/app.js`, `run.js`, `edit.js`, `state.js`, `store.js`, `threads.js`, `think.js` | State, answers, edits, files, threads as trees of versions, inline reasoning |
 | `ui/presets.js`, `sampling.js`, `controls.js`, `context.js` | Presets (yours in `presets.json`), the inspector's controls, the context count |
+| `ui/gguf.js`, `library.js`, `memory.js`, `proc.js`, `engine.js`, `local.js` | GGUF headers, the model files, fits, programs, llama-server |
 | `ui/view-*.js`, `message.js`, `markdown.js`, `highlight.js`, `menu.js` | The window, messages, markdown and code colours |
-| `dev/` | The preview: `serve.mjs`, the SDK shim, made-up Ollama and llama.cpp servers, `shot.mjs` |
+| `dev/` | The preview: `serve.mjs`, the SDK shim, made-up servers and llama-server, GGUF files, `shot.mjs` |
 
 ```bash
 pnpm exec vitest run plugins/local-models

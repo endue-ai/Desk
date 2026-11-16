@@ -91,7 +91,7 @@ export function pickerView(app) {
       (m) => !q || `${m.name} ${m.id} ${m.family ?? ""}`.toLowerCase().includes(q),
     );
     active = Math.max(0, Math.min(active, rows.length - 1));
-    if (!rows.length) {
+    if (!rows.length && !S.get().local.length) {
       fill(
         list,
         h(
@@ -158,6 +158,64 @@ export function pickerView(app) {
           ),
         );
       }
+    }
+    const files = S.get().local.filter(
+      (f) =>
+        !f.error &&
+        !app.local.instanceOf(f.path) &&
+        (!q || `${f.name} ${f.file}`.toLowerCase().includes(q)),
+    );
+    if (files.length) {
+      out.push(
+        h(
+          "div.lm-picker-group",
+          null,
+          icon("cpu"),
+          "On this computer · loads in the built-in engine",
+        ),
+      );
+      for (const f of files)
+        out.push(
+          h(
+            "button.desk-row.lm-picker-row.lm-picker-file",
+            {
+              type: "button",
+              role: "option",
+              "aria-selected": "false",
+              onClick: () => {
+                S.set({ picker: false });
+                void app.local.load(f);
+              },
+            },
+            h("span.lm-pill-dot", { dataset: { state: "ready" }, title: "On disk" }),
+            h(
+              "span.lm-picker-main",
+              null,
+              h("span.lm-picker-name", null, f.name),
+              h("span.lm-picker-id", null, f.file),
+            ),
+            h(
+              "span.lm-picker-caps",
+              null,
+              f.projector
+                ? h("span.lm-cap", { title: "Vision", dataset: { cap: "vision" } }, icon("eye"))
+                : null,
+            ),
+            h(
+              "span.lm-picker-meta",
+              null,
+              [
+                f.info?.sizeLabel,
+                f.info?.quant,
+                formatBytes(f.size),
+                f.info?.ctx ? `${formatContext(f.info.ctx)} ctx` : "",
+              ]
+                .filter(Boolean)
+                .map((t) => h("span", null, t)),
+            ),
+            h("span.lm-picker-load", null, icon("play")),
+          ),
+        );
     }
     fill(list, out);
     list.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
