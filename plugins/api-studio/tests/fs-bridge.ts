@@ -1,12 +1,23 @@
 // A bridge whose fs.* calls work on a temporary folder standing in for the home folder (paths
 // start with ~), store.* in memory, and perm.request granted, for the collection tests.
-import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 export async function fsBridge() {
   const home = await mkdtemp(join(process.env.AS_TMP ?? tmpdir(), "api-studio-"));
-  const real = (path: string) => join(home, path.replace(/^~\/?/, ""));
+  const real = (path: string) =>
+    path.startsWith(home) ? path : join(home, path.replace(/^~\/?/, ""));
   const store = new Map<string, unknown>();
   const calls: string[] = [];
   const listeners = new Set<(event: unknown) => void>();
@@ -45,6 +56,11 @@ export async function fsBridge() {
               entries.push({ name, kind: s.isDirectory() ? "dir" : "file" });
             }
             return { entries };
+          }
+          case "fs.stat": {
+            const s = await lstat(real(p.path));
+            const kind = s.isSymbolicLink() ? "symlink" : s.isDirectory() ? "dir" : "file";
+            return { kind, size: s.size };
           }
           case "fs.mkdir":
             await mkdir(real(p.path), { recursive: !!p.parents });

@@ -70,13 +70,52 @@ describe("the assistant", () => {
     const prompt = promptFor(S as never, tab, "Why so slow?");
     expect(prompt).toContain("GET {{baseUrl}}/users");
     expect(prompt).toContain("X-Trace: abc");
-    expect(prompt).toContain("Authorization: (secret)");
+    expect(prompt).toContain("Authorization: (hidden)");
     expect(prompt).toContain('{"items":[1,2]}');
     expect(prompt).toContain("token (secret)");
     expect(prompt).toContain("GET List — {{baseUrl}}/users");
     expect(prompt).toContain("The person asks: Why so slow?");
     expect(prompt).not.toMatch(/SECRET/);
     expect(ANSWER_TOOL.schema.required).toEqual(["reply"]);
+  });
+
+  it("hides secret headers, query pairs, body fields and secret values by their names", () => {
+    const S = studio();
+    const tab = S.app.open(
+      normalize({
+        name: "Login",
+        method: "POST",
+        url: "{{baseUrl}}/login?api_key=key-SECRET&page=2&token={{token}}",
+        headers: [
+          pair({ key: "Private-Token", value: "pt-SECRET" }),
+          pair({ key: "X-Access-Token", value: "{{token}}" }),
+        ],
+        body: { mode: "json", json: '{"user":"ann","password":"pw-SECRET"}' },
+      }),
+      { collection: "/c", path: "/c/a.request.json" },
+    );
+    tab.response = {
+      ...failure(""),
+      error: undefined,
+      status: 200,
+      reason: "OK",
+      headers: [["X-Session-Token", "st-SECRET"]],
+      body: new TextEncoder().encode(
+        '{"access_token":"at-SECRET","user":{"name":"Ann","clientSecret":"cs-SECRET"},"echo":"tok-SECRET"}',
+      ),
+    };
+    const withScopes = {
+      ...S,
+      scopes: () => [scope("env", "Local", { token: "tok-SECRET" }, new Set(["token"]))],
+    };
+    const prompt = promptFor(withScopes as never, tab, "Why 401?");
+    expect(prompt).not.toMatch(/SECRET/);
+    expect(prompt).toContain("api_key=(hidden)&page=2&token={{token}}");
+    expect(prompt).toContain("Private-Token: (hidden)");
+    expect(prompt).toContain("X-Access-Token: {{token}}");
+    expect(prompt).toContain('"user":"ann"');
+    expect(prompt).toContain('"name":"Ann"');
+    expect(prompt).toContain('"echo":"(hidden)"');
   });
 
   it("applies actions only to what they name", () => {

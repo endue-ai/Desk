@@ -1,6 +1,7 @@
 // The line at the top of a request: its method (a coloured menu that also takes a custom one),
 // the URL with its {{variables}}, Send (Cancel while it runs) and Save. Pasting a curl command
-// into the URL turns it into the whole request.
+// into the URL turns it into the whole request. A request that does not check the server's
+// certificate says so beside the URL, wherever that setting came from (a collection's file too).
 
 import { button, h, icon, keys } from "./dom.js";
 import { ask, showMenu } from "./menu.js";
@@ -114,7 +115,29 @@ export function urlBar(S, tab) {
       ),
   });
 
-  const el = h("div.as-urlbar", null, h("div.as-urlbox", null, method, url.el), send, save, more);
+  const tls = h(
+    "span.as-tls-off",
+    {
+      role: "status",
+      title: "This request does not check the server's certificate (Settings)",
+    },
+    icon("unlock", 14),
+    h("span", null, "TLS not checked"),
+  );
+  const drawTls = () => {
+    tls.hidden = tab.req.settings.verifyTls !== false;
+  };
+  drawTls();
+
+  const el = h(
+    "div.as-urlbar",
+    null,
+    h("div.as-urlbox", null, method, url.el),
+    tls,
+    send,
+    save,
+    more,
+  );
   return {
     el,
     focus: () => url.focus(),
@@ -124,7 +147,9 @@ export function urlBar(S, tab) {
       url.redraw();
       drawMethod();
       drawSend();
+      drawTls();
     },
     drawSend,
+    drawTls,
   };
 }

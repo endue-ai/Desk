@@ -2,15 +2,18 @@
 // body and credentials never appear in the process's arguments, where other programs could read
 // them. stdout carries the response's header blocks then its body; stderr the verbose timeline,
 // then a marker line and curl's own JSON report of the transfer (timings, sizes, addresses, TLS).
+// curl speaks only HTTP and HTTPS here, redirects included: a file:// URL or another protocol
+// would let a collection read this computer's files through curl, outside the desk's grants.
 
 /**
- * @typedef {{ key: string, value: string }} Header
+ * @typedef {{ key: string, value: string, secret?: boolean }} Header
  * @typedef {{ kind: "none" } | { kind: "raw", text: string } | { kind: "file", path: string }
  *   | { kind: "multipart", parts: { name: string, value: string, file?: boolean, type?: string }[] }} WireBody
  * @typedef {{ mode: "digest" | "ntlm" | "awsv4", user: string, provider?: string }} CurlAuth
  * @typedef {{ method: string, url: string, headers: Header[], body: WireBody,
  *   auth?: CurlAuth, settings: import("./model.js").Settings, proxy?: string,
- *   cookieJar?: string }} Prepared
+ *   cookieJar?: string, secrets?: string[] }} Prepared
+ *   `secrets`: the values that must not reach another host (secret variables', the auth's).
  */
 
 /** The line curl writes before its JSON report on stderr. */
@@ -30,12 +33,23 @@ export function quote(text) {
     .replace(/\v/g, "\\v")}"`;
 }
 
-/** A header line curl will send as is; a header with an empty value needs curl's `;` form. @param {Header} h */
-function headerLine(h) {
-  const name = h.key.trim().replace(/[\r\n:]/g, "");
+/** The protocols curl may use, for the request and for every redirect. */
+export const PROTOCOLS = "=http,https";
+
+/**
+ * A header line curl will send as is; a header with an empty value needs curl's `;` form. The name
+ * keeps only the characters a header name may have, so it never starts with curl's `@file` form.
+ * @param {Header} h
+ */
+export function headerLine(h) {
+  const name = h.key.trim().replace(/[^!#$%&'*+.^_`|~0-9A-Za-z-]/g, "");
   const value = h.value.replace(/[\r\n]+/g, " ");
+  if (!name) return "";
   return value === "" ? `${name};` : `${name}: ${value}`;
 }
+
+/** The path curl reads for a multipart file part. @param {string} value */
+export const filePart = (value) => value.replace(/[;"\r\n]/g, "");
 
 /** A multipart part: `form-string` for a text value (no @ or < tricks), `form` for a file. */
 function partLine(
@@ -43,8 +57,9 @@ function partLine(
 ) {
   const name = part.name.replace(/[=;"\r\n]/g, "_");
   if (part.file) {
-    const path = part.value.replace(/[;"\r\n]/g, "");
-    return `form = ${quote(`${name}=@"${path}"${part.type ? `;type=${part.type}` : ""}`)}`;
+    const path = filePart(part.value);
+    const type = (part.type ?? "").replace(/[;"\r\n]/g, "");
+    return `form = ${quote(`${name}=@"${path}"${type ? `;type=${type}` : ""}`)}`;
   }
   return `form-string = ${quote(`${name}=${part.value}`)}`;
 }
@@ -64,6 +79,8 @@ export function curlConfig(prep, options = {}) {
     lines.push('dump-header = "-"');
     lines.push(`request = ${quote(prep.method.toUpperCase())}`);
   }
+  lines.push(`proto = ${quote(PROTOCOLS)}`);
+  lines.push(`proto-redir = ${quote(PROTOCOLS)}`);
   lines.push(`url = ${quote(prep.url)}`);
   lines.push(`write-out = ${quote(`%{stderr}\n${MARKER}\n%{json}`)}`);
   if (s.followRedirects) {
@@ -81,7 +98,7 @@ export function curlConfig(prep, options = {}) {
     lines.push(`cookie = ${quote(prep.cookieJar)}`);
     lines.push(`cookie-jar = ${quote(prep.cookieJar)}`);
   }
-  for (const h of prep.headers) if (h.key.trim()) lines.push(`header = ${quote(headerLine(h))}`);
+  for (const line of prep.headers.map(headerLine)) if (line) lines.push(`header = ${quote(line)}`);
   // A body curl would otherwise send with `Expect: 100-continue` goes at once.
   if (prep.body.kind !== "none") lines.push(`header = ${quote("Expect:")}`);
   if (prep.body.kind === "raw") lines.push(`data-raw = ${quote(prep.body.text)}`);
@@ -113,10 +130,10 @@ export function curlCommand(prep) {
   const head = prep.method.toUpperCase() === "HEAD";
   if (head) first.push("--head");
   else if (prep.method.toUpperCase() !== "GET" || prep.body.kind !== "none")
-    first.push("-X", prep.method.toUpperCase());
+    first.push("-X", shellWord(prep.method.toUpperCase()));
   first.push(shellWord(prep.url));
   const words = [first];
-  for (const h of prep.headers) if (h.key.trim()) words.push(["-H", shellWord(headerLine(h))]);
+  for (const line of prep.headers.map(headerLine)) if (line) words.push(["-H", shellWord(line)]);
   if (prep.body.kind === "raw") words.push(["--data-raw", shellWord(prep.body.text)]);
   else if (prep.body.kind === "file")
     words.push(["--data-binary", shellWord(`@${prep.body.path}`)]);

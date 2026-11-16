@@ -174,7 +174,7 @@ describe("code", () => {
     expect(GENERATORS.python?.make(prep)).toContain('"tags": None');
     expect(GENERATORS.fetch?.make(prep)).toContain("body: JSON.stringify({");
     expect(GENERATORS.go?.make(prep)).toContain('http.NewRequest("POST"');
-    const hidden = GENERATORS.curl?.make(hideSecrets(prep, /^authorization$/i)) ?? "";
+    const hidden = GENERATORS.curl?.make(hideSecrets(prep)) ?? "";
     expect(hidden).toContain("Bearer <token>");
     expect(hidden).not.toContain("s3cret");
   });

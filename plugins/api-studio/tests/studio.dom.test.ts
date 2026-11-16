@@ -4,13 +4,15 @@
 // a request in it is opened, sent with the button, its checks and tests run (scripts in a vm
 // standing in for the worker), the history keeps it, and Save writes its file.
 import { readFileSync } from "node:fs";
+import { symlink } from "node:fs/promises";
 import vm from "node:vm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { requestFile, text } from "../ui/collection-fs.js";
 import type { Collections } from "../ui/collections.js";
+import { wireCommands } from "../ui/commands.js";
 import { normalize, pair } from "../ui/model.js";
 import type { Spawn } from "../ui/scripts.js";
-import { createStudio } from "../ui/studio.js";
+import { createStudio, type Studio } from "../ui/studio.js";
 import { fsBridge } from "./fs-bridge";
 import { curlBridge, testServer } from "./real-curl";
 
@@ -39,6 +41,17 @@ const until = async (check: () => boolean, ms = 8000) => {
     if (Date.now() > end) throw new Error("timed out");
     await new Promise((r) => setTimeout(r, 25));
   }
+};
+
+/** Wait for a dialog and press one of its buttons. */
+const answer = async (dialogClass: string, label: string) => {
+  await until(() => !!document.querySelector(`.as-dialog.${dialogClass}`));
+  const box = document.querySelector(`.as-dialog.${dialogClass}`);
+  const button = [...(box?.querySelectorAll<HTMLButtonElement>("button") ?? [])].find(
+    (b) => b.textContent?.trim() === label,
+  );
+  if (!button) throw new Error(`no ${label} in ${dialogClass}`);
+  button.click();
 };
 
 let server: Awaited<ReturnType<typeof testServer>>;
@@ -116,6 +129,8 @@ describe("the studio", () => {
     await until(() => !!document.querySelector(".as-send"));
     expect(document.querySelector(".as-url input")?.getAttribute("aria-label")).toBe("URL");
     document.querySelector<HTMLButtonElement>(".as-send")?.click();
+    // Its tests came from the collection's files, so the person is asked before they run.
+    await answer("is-trust", "Run scripts");
     await until(() => !!document.querySelector(".as-status .status-pill"));
     expect(document.querySelector(".as-status .status-pill")?.textContent).toBe("200 OK");
 
@@ -140,5 +155,157 @@ describe("the studio", () => {
       JSON.parse(readFileSync(files.real("~/local-api/echo.request.json"), "utf8")).method,
     ).toBe("PUT");
     expect(studio.S.app.dirty(tab)).toBe(false);
+
+    // A token typed as is: saving offers to move it into a secret, and the file keeps {{token}}.
+    tab.req.auth = { type: "bearer", bearer: { token: "typed-SECRET" } };
+    const saving = studio.S.save(tab);
+    await answer("is-secrets", "Move to secrets");
+    expect(await saving).toBe(true);
+    const file = readFileSync(files.real("~/local-api/echo.request.json"), "utf8");
+    expect(file).not.toContain("typed-SECRET");
+    expect(JSON.parse(file).auth.bearer.token).toBe("{{token}}");
+    expect(
+      (studio.S as Studio).envs.globals.find((v: { key: string }) => v.key === "token")?.value,
+    ).toBe("typed-SECRET");
+
+    // A script that arrives on disk afterwards (a pull) is asked about again; said no, it does
+    // not run, and the Tests tab says why.
+    await files.call("fs.write", {
+      path: "~/local-api/echo.request.json",
+      content: text(
+        requestFile({ ...tab.req, scripts: { pre: 'api.set("pulled", "1");', post: "" } }),
+      ),
+    });
+    await S.collections.reload(coll.path);
+    const fresh = [...document.querySelectorAll<HTMLElement>(".as-node")].find((n) =>
+      n.textContent?.includes("Echo"),
+    );
+    fresh?.click();
+    const pulled = studio.S.app.current();
+    if (!pulled) throw new Error("no tab");
+    pulled.req = normalize({
+      ...pulled.req,
+      scripts: { pre: 'api.set("pulled", "1");', post: "" },
+    });
+    const sending = studio.S.send(pulled);
+    await answer("is-trust", "Don't run");
+    await sending;
+    expect(studio.S.runtime.values.get("pulled")).toBeUndefined();
+    expect(pulled.results?.errors.map((e: { text: string }) => e.text).join(" ")).toContain(
+      "not allowed",
+    );
+  });
+
+  it("asks before a request sends a file from outside its collection, and refuses file URLs", async () => {
+    const curl = curlBridge();
+    const bridge = {
+      onEvent: (l: (e: unknown) => void) => {
+        const offs = [curl.onEvent(l as never), files.onEvent(l)];
+        return () => {
+          for (const off of offs) off();
+        };
+      },
+      call: (method: string, params: Record<string, unknown>) =>
+        method.startsWith("proc.") ? curl.call(method, params) : files.call(method, params),
+    };
+    document.body.replaceChildren();
+    const studio = createStudio(
+      {
+        pluginId: "endue.api-studio",
+        bridge,
+        state: { get: () => undefined, set: () => {} },
+        commands: { on: () => {} },
+        surface: {},
+      },
+      document,
+    );
+    await studio.start();
+    const coll = await (studio.S as Studio).collections.create("~", "Files API");
+    if (!coll) throw new Error("no collection");
+    const outside = files.real("outside.txt");
+    await files.call("fs.write", { path: "~/outside.txt", content: "private" });
+    const tab = studio.S.app.open(
+      normalize({
+        name: "Upload",
+        method: "POST",
+        url: `${server.url}/echo`,
+        body: { mode: "file", file: outside },
+      }),
+      { collection: coll.path, path: `${coll.path}/upload.request.json` },
+    );
+    const refused = studio.S.send(tab);
+    await answer("is-file-guard", "Don't send");
+    await refused;
+    expect(tab.response?.status).toBe(0);
+    expect(tab.response?.error).toContain("not allowed");
+    expect(curl.calls.some((c) => c.method === "proc.spawn")).toBe(false);
+
+    const sent = studio.S.send(tab);
+    await answer("is-file-guard", "Send the file");
+    await sent;
+    expect(tab.response?.status).toBe(200);
+    expect(JSON.parse(new TextDecoder().decode(tab.response?.body)).body).toBe("private");
+
+    // Inside the collection it goes without asking, unless a symlink there points elsewhere.
+    await files.call("fs.write", { path: "~/files-api/data.txt", content: "own" });
+    tab.req.body = { ...tab.req.body, file: files.real("files-api/data.txt") };
+    tab.ref = {
+      collection: files.real("files-api"),
+      path: files.real("files-api/up.request.json"),
+    };
+    await studio.S.send(tab);
+    expect(JSON.parse(new TextDecoder().decode(tab.response?.body)).body).toBe("own");
+    await symlink(files.real("outside.txt"), files.real("files-api/link.txt"));
+    tab.req.body = { ...tab.req.body, file: files.real("files-api/link.txt") };
+    const linked = studio.S.send(tab);
+    await answer("is-file-guard", "Don't send");
+    await linked;
+    expect(tab.response?.error).toContain("not allowed");
+
+    tab.req.url = "file:///etc/hosts";
+    tab.req.body = normalize({}).body;
+    await studio.S.send(tab);
+    expect(tab.response?.error).toBe("Only http:// and https:// URLs can be sent.");
+  });
+
+  it("fills no secret into a request an agent writes, and hides secrets in its answer", async () => {
+    const curl = curlBridge();
+    const bridge = {
+      onEvent: (l: (e: unknown) => void) => {
+        const offs = [curl.onEvent(l as never), files.onEvent(l)];
+        return () => {
+          for (const off of offs) off();
+        };
+      },
+      call: (method: string, params: Record<string, unknown>) =>
+        method.startsWith("proc.") ? curl.call(method, params) : files.call(method, params),
+    };
+    document.body.replaceChildren();
+    const handlers = new Map<string, (args: unknown) => Promise<Record<string, unknown>>>();
+    const ctx = {
+      pluginId: "endue.api-studio",
+      bridge,
+      state: { get: () => undefined, set: () => {} },
+      commands: { on: (id: string, fn: never) => handlers.set(id, fn) },
+      surface: {},
+    };
+    const studio = createStudio(ctx, document);
+    wireCommands(ctx, studio.S);
+    await studio.start();
+    await (studio.S as Studio).envs.saveGlobals([
+      { id: "g1", on: true, key: "token", value: "g-SECRET", secret: true },
+      { id: "g2", on: true, key: "who", value: "ada" },
+    ]);
+    const send = handlers.get("endue.api-studio.send");
+    if (!send) throw new Error("no send command");
+    const answered = await send({
+      url: `${server.url}/echo?t={{token}}&w={{who}}`,
+      headers: { "X-Token": "{{token}}" },
+    });
+    expect(JSON.stringify(answered)).not.toContain("g-SECRET");
+    expect(answered.secretsNotFilled).toEqual(["token"]);
+    const echoed = JSON.parse(String(answered.body));
+    expect(echoed.query.w).toBe("ada");
+    expect(echoed.headers["x-token"]).toBe("{{token}}");
   });
 });

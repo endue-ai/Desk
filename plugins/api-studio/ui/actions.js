@@ -7,7 +7,8 @@ import { copyText, h } from "./dom.js";
 import { EngineError } from "./engine.js";
 import { ask, confirm } from "./menu.js";
 import { clone, newRequest } from "./model.js";
-import { prepare, readResponse } from "./send.js";
+import { followsItself, sendFollowing } from "./redirects.js";
+import { markSecrets, prepare, readResponse } from "./send.js";
 
 /**
  * @typedef {import("./studio.js").Studio} Studio
@@ -20,6 +21,11 @@ import { prepare, readResponse } from "./send.js";
 
 /** Hooks other features add around a send, run in the order added. @type {SendHook[]} */
 export const SEND_HOOKS = [];
+
+/** A send stopped before it went out, said to the person as it is. */
+export class Refused extends Error {
+  plain = true;
+}
 
 /** A response that never reached a server. @param {string} error @param {string[]} [missing] @returns {Response} */
 export function failure(error, missing = []) {
@@ -50,8 +56,8 @@ export function sendContext(S, tab) {
     scopes: S.scopes(tab),
     parentAuth: S.parentAuth(tab),
     parentHeaders: S.parentHeaders(tab),
-    tokenFor: S.tokens?.lookup(tab),
-    cookies: S.jar ? (/** @type {string} */ url) => S.jar.header(url) : undefined,
+    tokenFor: tab.agent ? undefined : S.tokens?.lookup(tab),
+    cookies: S.jar && !tab.agent ? (/** @type {string} */ url) => S.jar.header(url) : undefined,
   };
 }
 
@@ -75,18 +81,38 @@ export function createActions(S) {
     let res;
     try {
       for (const hook of SEND_HOOKS) await hook.before?.(S, tab);
-      const { prep, missing, bodyText } = prepare(tab.req, sendContext(S, tab));
+      const context = sendContext(S, tab);
+      const { prep, missing, bodyText } = prepare(tab.req, context);
       for (const hook of SEND_HOOKS) await hook.prepared?.(S, tab, prep);
+      markSecrets(prep);
+      if (!/^https?:\/\//i.test(prep.url))
+        throw new Refused("Only http:// and https:// URLs can be sent.");
+      if (S.filesAllowed && !(await S.filesAllowed(tab, prep)))
+        throw new Refused("Not sent: the file it would send was not allowed.");
       if (tab.running !== placeholder) return;
       tab.received = 0;
-      const running = S.engine.send(prep, {
+      const hooks = {
         verbose: true,
         onProgress: (/** @type {number} */ n) => {
           tab.received = n;
         },
-      });
-      tab.running = running;
-      res = readResponse(await running.promise, prep, bodyText, missing);
+      };
+      if (followsItself(prep)) {
+        const running = sendFollowing(S.engine, prep, { hooks, cookies: context.cookies });
+        tab.running = running;
+        const last = await running.promise;
+        res = readResponse(last.run, last.prep, bodyText, missing);
+        res.hops = [...last.hops, ...res.hops];
+        res.timings = {
+          ...res.timings,
+          redirect: res.timings.redirect + last.redirectMs,
+          total: res.timings.total + last.redirectMs,
+        };
+      } else {
+        const running = S.engine.send(prep, hooks);
+        tab.running = running;
+        res = readResponse(await running.promise, prep, bodyText, missing);
+      }
     } catch (error) {
       const text =
         error instanceof EngineError || /** @type {any} */ (error)?.plain

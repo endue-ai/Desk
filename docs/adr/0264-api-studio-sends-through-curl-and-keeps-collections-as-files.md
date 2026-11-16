@@ -23,6 +23,8 @@ where scripts run, and what an assistant may change.
 * The desk's plugin pages forbid `eval` and frames (`script-src` without `'unsafe-eval'`,
   `frame-src 'none'`), and allow `blob:` workers
 * An assistant may propose; the person decides
+* A collection can come from anyone (a clone, a download, a HAR recording), and curl reads files and
+  speaks protocols past the desk's own grants
 
 ## Considered Options
 
@@ -50,6 +52,44 @@ Chosen options: curl, folders of files, blob workers, and cards applied one by o
   person presses Apply, and nothing is saved by it. Prompts carry variable names, never secret values.
   The commands that send or run (`send`, `run`) are marked irreversible, so an agent's call waits.
 
+### What a collection, a server or an agent cannot make a request do
+
+curl runs as the person, so the studio, not the desk's grants, decides what it may reach:
+
+* curl speaks only HTTP and HTTPS (`proto` and `proto-redir` `=http,https` in every config), and a
+  URL with another scheme is refused before curl starts: a `file://` URL would read this computer's
+  files into a response. A header's name keeps only token characters, so it never reaches curl's
+  `@file` form.
+* A body file (a file body, a multipart file part) goes out without asking only when the person chose
+  it in this session or it lies inside the request's collection folder with no symlink on the way
+  (`fs.stat` on each step); any other path asks first, once per path for the session.
+* A script that came from a collection's files runs only once the person allowed it. The studio keeps
+  the SHA-256 of each allowed script per collection in the desk's store, and asks again when one
+  arrives or changes on disk (a pull). Scripts the person writes in the studio run, and saving one
+  allows it. "Stop running its scripts" in the collection's menu takes the allowance back.
+* A secret typed as it is into a request, folder or collection (auth passwords, tokens and keys,
+  secret headers, query pairs, form fields, variables) is found when saving, and the person is
+  offered to move it into a secret variable (the active environment's, else the globals'), leaving
+  `{{name}}` in the file. A HAR import puts the recording's session (Authorization, Cookie, tokens)
+  into secrets of a `Recorded` environment. The history keeps no typed secret.
+* curl sends custom headers to another host when it follows a redirect (only Authorization and Cookie
+  are dropped), so a request carrying a secret (a header by its name or by a secret's value, curl's
+  credentials, a secret in the query) does not let curl follow: the studio follows each hop and drops
+  the secrets from the first hop that leaves the origin.
+* A request an agent writes itself (`send` with a url) fills in no secret variable, no variable whose
+  name says secret (a captured `token`), and no cookie from the jar; it names any host. A saved
+  request sent by name is the person's and gets its environment.
+* What an assistant or an agent reads (the prompt, the commands' answers) has secret headers, query
+  pairs and JSON fields hidden, and every secret variable's value wherever it turns up. A name is
+  secret when it says so in any spelling (`Private-Token`, `x-api-key`, `access_token`,
+  `clientSecret`); generated code hides the same, and its string literals cannot run what a value
+  holds (Kotlin's `$`, PowerShell's typographic quotes, a method in a shell command).
+* A request that does not check the server's certificate says so beside its URL, wherever the
+  setting came from.
+
+The desk's store, where secrets, tokens and cookies live, is a plain JSON file in the desk's data
+folder, as connector secrets are until the desk keeps them in the OS keychain (ADR 0036, ADR 0239).
+
 ### Consequences
 
 * Good, because any host works at once, and the response shows where its time went
@@ -59,10 +99,15 @@ Chosen options: curl, folders of files, blob workers, and cards applied one by o
   names another path)
 * Bad, because the cookie jar, OAuth tokens and secrets stay on one desk: a second machine sets them
   again
+* Bad, because a shared collection's scripts wait for a yes on each desk, and again after each change
+  that arrives on disk
+* Bad, because a request with a secret follows its redirects one curl at a time, a little slower
 
 ## More Information
 
 `plugins/api-studio/README.md`; the transport is `ui/engine.js`, `ui/curl-config.js` and
 `ui/curl-parse.js`; the files `ui/collection-fs.js`; scripts `ui/scripts.js` and
-`ui/script-prelude.js`; the assistant `ui/ai-context.js` and `ui/ai-actions.js`. ADR 0088 (commands
-as agents' tools).
+`ui/script-prelude.js`; the assistant `ui/ai-context.js` and `ui/ai-actions.js`; the guards
+`ui/guards.js`, `ui/trust.js`, `ui/file-guard.js`, `ui/literal-secrets.js`, `ui/redirects.js` and
+`ui/secret-names.js` (tested in `tests/security.test.ts` and `tests/studio.dom.test.ts`). ADR 0088
+(commands as agents' tools).

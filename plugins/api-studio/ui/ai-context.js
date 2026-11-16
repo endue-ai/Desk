@@ -1,9 +1,19 @@
 // What the assistant is told, and the shape its answer must take. The prompt carries the request
 // in front (secret header values and auth secrets left out), its last response (cut short), its
 // test results, the collection's outline and the environment's variable names; never a secret's
-// value. The answer is a tool call: a short reply and actions the person can apply one by one.
+// value: secret headers, query pairs and JSON fields are hidden, in the request and in the
+// response, and so is every secret variable's value wherever it turns up. The answer is a tool
+// call: a short reply and actions the person can apply one by one.
 
-import { bodyText, SECRET_HEADERS } from "./send.js";
+import {
+  HIDDEN,
+  hideText,
+  hideUrl,
+  hideValues,
+  isSecretName,
+  secretValues,
+} from "./secret-names.js";
+import { bodyText } from "./send.js";
 
 /**
  * @typedef {import("./studio.js").Studio} Studio
@@ -114,12 +124,15 @@ const GUIDE = `You are the assistant inside API Studio, an HTTP client on the pe
   isTruthy, isFalsy, isNumber, isString, isBoolean, isArray, isObject) and value.
 - Propose actions only when they help; keep the reply short and concrete. Never ask for or invent secrets: use {{variables}}.`;
 
-/** The request in front, as the brain may see it. @param {Tab} tab */
-export function describeRequest(tab) {
+/** The request in front, as the brain may see it. @param {Tab} tab @param {string[]} [values] secret values to hide */
+export function describeRequest(tab, values = []) {
   const r = tab.req;
   const headers = r.headers
     .filter((h) => h.on && h.key)
-    .map((h) => `${h.key}: ${SECRET_HEADERS.test(h.key) ? "(secret)" : h.value}`);
+    .map(
+      (h) =>
+        `${h.key}: ${isSecretName(h.key) && !/^\{\{[^{}]+\}\}$/.test(h.value.trim()) ? HIDDEN : hideValues(h.value, values)}`,
+    );
   const body =
     r.body.mode === "none"
       ? ""
@@ -127,9 +140,9 @@ export function describeRequest(tab) {
         ? r.body.graphql.query
         : String(/** @type {any} */ (r.body)[r.body.mode] ?? "");
   return [
-    `Request "${r.name}": ${r.method} ${r.url}`,
+    `Request "${r.name}": ${r.method} ${hideUrl(r.url, values)}`,
     headers.length ? `Headers:\n${headers.join("\n")}` : "",
-    r.body.mode !== "none" ? `Body (${r.body.mode}):\n${cut(body, 4000)}` : "",
+    r.body.mode !== "none" ? `Body (${r.body.mode}):\n${cut(hideText(body, values), 4000)}` : "",
     `Auth: ${r.auth.type}`,
     r.asserts.length
       ? `Checks: ${r.asserts.map((a) => `${a.target} ${a.op} ${a.value}`).join("; ")}`
@@ -140,13 +153,15 @@ export function describeRequest(tab) {
     .join("\n");
 }
 
-/** The last response, cut short. @param {Tab} tab */
-export function describeResponse(tab) {
+/** The last response, cut short. @param {Tab} tab @param {string[]} [values] secret values to hide */
+export function describeResponse(tab, values = []) {
   const res = tab.response;
   if (!res) return "Not sent yet.";
-  if (!res.status) return `It failed before any answer: ${res.error ?? "unknown error"}`;
+  if (!res.status)
+    return `It failed before any answer: ${hideValues(res.error ?? "unknown error", values)}`;
   const headers = res.headers.map(
-    ([k, v]) => `${k}: ${/^set-cookie$/i.test(k) ? `${v.split("=")[0]}=(value)` : v}`,
+    ([k, v]) =>
+      `${k}: ${/^set-cookie$/i.test(k) ? `${v.split("=")[0]}=(value)` : isSecretName(k) ? HIDDEN : hideValues(v, values)}`,
   );
   const results = tab.results;
   const failed = results
@@ -159,7 +174,7 @@ export function describeResponse(tab) {
   return [
     `Response: ${res.status} ${res.reason}, ${Math.round(res.timings.total)} ms, ${res.size} bytes${res.hops.length ? `, after ${res.hops.length} redirects` : ""}`,
     `Headers:\n${headers.slice(0, 30).join("\n")}`,
-    `Body:\n${cut(bodyText(res), 6000)}`,
+    `Body:\n${cut(hideText(bodyText(res), values), 6000)}`,
     failed.length
       ? `Failing:\n${failed.join("\n")}`
       : results
@@ -185,14 +200,16 @@ export function describeWorkspace(S, tab) {
       if (n.type === "folder") {
         lines.push(`${pad}${n.name}/`);
         walk(n.children, `${pad}  `);
-      } else lines.push(`${pad}${n.method} ${n.name} — ${n.req.url}`);
+      } else lines.push(`${pad}${n.method} ${n.name} — ${hideUrl(n.req.url)}`);
     }
   };
   walk(coll.children, "  ");
   const env = S.envs?.activeEnv(coll);
   const vars = env
     ? env.vars
-        .map((v) => (v.secret ? `${v.key} (secret)` : `${v.key}=${cut(v.value, 80)}`))
+        .map((v) =>
+          v.secret || isSecretName(v.key) ? `${v.key} (secret)` : `${v.key}=${cut(v.value, 80)}`,
+        )
         .join(", ")
     : "";
   return [
@@ -209,14 +226,15 @@ export function describeWorkspace(S, tab) {
 
 /** The whole prompt for a question. @param {Studio} S @param {Tab | undefined} tab @param {string} question */
 export function promptFor(S, tab, question) {
+  const values = tab ? secretValues(S.scopes?.(tab) ?? []) : [];
   return [
     GUIDE,
     "",
     describeWorkspace(S, tab),
     "",
-    tab && !tab.kind ? describeRequest(tab) : "No request is open.",
+    tab && !tab.kind ? describeRequest(tab, values) : "No request is open.",
     "",
-    tab && !tab.kind ? describeResponse(tab) : "",
+    tab && !tab.kind ? describeResponse(tab, values) : "",
     "",
     `The person asks: ${question}`,
   ].join("\n");
