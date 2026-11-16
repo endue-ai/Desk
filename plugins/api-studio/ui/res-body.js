@@ -92,6 +92,31 @@ function codeBox(shown, lang, wrap, colour) {
   return { el: h(`div.as-codebox${wrap ? ".is-wrap" : ""}`, null, gutter, code), code };
 }
 
+/**
+ * A page drawn as a picture: the HTML is parsed, stripped of what could run or fetch, and put in
+ * an SVG image's foreignObject, which draws it with its own styles but runs no script and loads
+ * nothing, and needs no frame (the desk allows plugins none).
+ * @param {string} html
+ */
+export function pagePicture(html, width = 960, height = 1600) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  for (const el of doc.querySelectorAll("script, iframe, object, embed, link, meta, base, form"))
+    el.remove();
+  for (const el of doc.querySelectorAll("*"))
+    for (const attr of [...el.attributes])
+      if (/^on/i.test(attr.name) || /^(src|href|srcset|action)$/i.test(attr.name))
+        el.removeAttribute(attr.name);
+  const styles = [...doc.querySelectorAll("style")]
+    .map((s) => new XMLSerializer().serializeToString(s))
+    .join("");
+  const body = doc.body
+    ? [...doc.body.childNodes].map((n) => new XMLSerializer().serializeToString(n)).join("")
+    : "";
+  const xhtml = `<div xmlns="http://www.w3.org/1999/xhtml" class="page">${styles}${body}</div>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%">${xhtml}</foreignObject></svg>`;
+  return URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+}
+
 /** An event's data, as JSON when it is JSON. @param {string} data */
 function eventData(data) {
   const pre = h("pre.as-event-data");
@@ -201,15 +226,14 @@ export function responseBody(res, opts) {
       return;
     }
     if (view === "preview") {
-      const frame = /** @type {HTMLIFrameElement} */ (
-        h("iframe.as-preview-frame", {
-          sandbox: "",
-          title: "The response drawn as a page",
-          referrerpolicy: "no-referrer",
-        })
+      fill(
+        content,
+        h(
+          "div.as-preview",
+          null,
+          h("img.as-preview-page", { src: pagePicture(text), alt: "The response drawn as a page" }),
+        ),
       );
-      frame.srcdoc = text;
-      fill(content, h("div.as-preview", null, frame));
       return;
     }
     if (view === "events") {

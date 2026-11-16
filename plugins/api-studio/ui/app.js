@@ -12,6 +12,7 @@ import { clone, newRequest, normalize, same } from "./model.js";
  *   response?: Response, running?: { cancel(): void }, reqTab: string, resTab: string,
  *   kind?: "group" | "env", extra?: Record<string, string>,
  *   lastCaptures?: { name: string, value?: string, error?: string }[], received?: number,
+ *   results?: import("./features-scripts.js").Results,
  *   preview?: boolean }} Tab
  * @typedef {{ id: string, at: number, method: string, url: string, name: string, status: number,
  *   time: number, size: number, error?: string, req: Request }} HistoryEntry

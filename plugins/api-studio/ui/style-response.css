@@ -266,16 +266,17 @@
   display: flex;
   flex: 1;
   margin: 0 12px 12px;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid var(--as-line);
   border-radius: var(--desk-radius-md);
   background: var(--desk-card);
 }
-.as-preview-frame {
-  flex: 1;
+.as-preview-page {
+  display: block;
   width: 100%;
-  border: 0;
-  background: var(--desk-card);
+  max-width: 960px;
+  height: auto;
+  background: white; /* theme: content — a page is drawn on its own white, as a browser would */
 }
 .as-preview-image {
   display: grid;

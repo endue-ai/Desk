@@ -89,7 +89,7 @@ export function createActions(S) {
       res = readResponse(await running.promise, prep, bodyText, missing);
     } catch (error) {
       const text =
-        error instanceof EngineError
+        error instanceof EngineError || /** @type {any} */ (error)?.plain
           ? error.message
           : `The request could not be made: ${String(/** @type {Error} */ (error)?.message ?? error)}`;
       res = failure(text);
