@@ -116,7 +116,12 @@ describe("the browser stub's file tree (ADR 0125)", () => {
     expect(handlers["fs.rename"]({ ...grouped, group: "paste-1" }, "p")).toEqual({
       crossedDevices: false,
     });
-    const copy = { from: "~/Desktop/plan.md", to: "~/Desktop/copy.md", scope: WRITE, fromScope: READ };
+    const copy = {
+      from: "~/Desktop/plan.md",
+      to: "~/Desktop/copy.md",
+      scope: WRITE,
+      fromScope: READ,
+    };
     expect(handlers["fs.copy"]({ ...copy, group: "paste-1" }, "p")).toEqual({ bytesCopied: 6 });
     const back = { from: "~/Desktop/plan.md", to: "~/Documents/plan.md", scope: WRITE };
     expect(code(() => handlers["fs.rename"]({ ...back, group: "" }, "p"))).toBe("invalid_params");

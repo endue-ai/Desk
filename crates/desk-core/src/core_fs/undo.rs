@@ -63,7 +63,14 @@ impl Core {
         let mut args = Map::new();
         args.insert("path".to_owned(), json!(path));
         args.insert("parents".to_owned(), json!(parents));
-        self.push_fs_op(caller, MKDIR, args, json!({ "created": created }), RMDIR, None);
+        self.push_fs_op(
+            caller,
+            MKDIR,
+            args,
+            json!({ "created": created }),
+            RMDIR,
+            None,
+        );
     }
 
     fn push_fs_op(

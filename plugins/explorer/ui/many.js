@@ -98,7 +98,8 @@ export function createMany(act, state) {
       }
     }
     for (const path of gone) {
-      for (const folder of [...state.expanded]) if (isUnder(path, folder)) state.expanded.delete(folder);
+      for (const folder of [...state.expanded])
+        if (isUnder(path, folder)) state.expanded.delete(folder);
       for (const folder of [...state.folders.keys()])
         if (isUnder(path, folder)) state.folders.delete(folder);
     }

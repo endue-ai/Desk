@@ -40,14 +40,20 @@ beforeEach(() => {
     togglePreview: vi.fn(),
     context: vi.fn(),
   };
-  const dnd = { draggable: (_el: unknown, options: Draggable) => void (draggable = options) };
+  const dnd = {
+    draggable: (_el: unknown, options: Draggable) => {
+      draggable = options;
+    },
+  };
   view = createView(document, actions, dnd as never);
   view.tree(rows, "~/notes/b.md", new Set(["~/notes/a.md", "~/notes/b.md"]));
 });
 const items = () => [...document.querySelectorAll<HTMLElement>("[role=treeitem]")];
 const tree = () => document.getElementById("tree") as HTMLElement;
 const press = (key: string, more: KeyboardEventInit = {}) =>
-  tree().dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...more }));
+  tree().dispatchEvent(
+    new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...more }),
+  );
 
 describe("a tree of several selected rows", () => {
   it("is multi-select, and every selected row says so", () => {

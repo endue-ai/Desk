@@ -30,7 +30,9 @@ describe("the shell's words in catalogs", () => {
     expect(dt("en", "newDesktop")).toBe("New desktop");
     expect(floatText("en", "hint", { key: "⌥↩" })).toBe("⌥↩ summons her anywhere");
     expect(statusText("ko", "listening")).toBe("듣는 중…");
-    expect(arrangeText("ko", "foundOn", { plugin: "Notes", desktop: 2 })).toBe("Notes · 데스크톱 2");
+    expect(arrangeText("ko", "foundOn", { plugin: "Notes", desktop: 2 })).toBe(
+      "Notes · 데스크톱 2",
+    );
     expect(arrangeText("en", "tile")).toBe("Tile windows");
     // The compositor fills the spread's words itself.
     expect(spreadCopy("en").count).toContain("{");
