@@ -2,6 +2,7 @@
 // the kind of the object opened.
 
 import { h, icon } from "./dom.js";
+import { createContainers } from "./view-containers.js";
 import { createDashboard } from "./view-dashboard.js";
 
 /** A section still to come: says so rather than showing nothing. */
@@ -20,7 +21,7 @@ const later = (/** @type {string} */ title) => () => ({
 /** @type {Record<string, (app: any, target?: any) => any>} */
 export const PAGES = {
   dashboard: createDashboard,
-  containers: later("Containers"),
+  containers: createContainers,
   images: later("Images"),
   volumes: later("Volumes"),
   networks: later("Networks"),
@@ -29,5 +30,10 @@ export const PAGES = {
   hub: later("Explore images"),
   contexts: later("Contexts"),
   settings: later("Settings"),
+  container: later("Container"),
+  image: later("Image"),
+  project: later("Stack"),
+  volume: later("Volume"),
+  network: later("Network"),
   missing: later("Not found"),
 };

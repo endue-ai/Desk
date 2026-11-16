@@ -2,7 +2,7 @@
 // wrong with it, which images and volumes are in use, the Compose stacks gathered from labels.
 // Pure.
 
-import { duration } from "./format.js";
+import { ago, duration } from "./format.js";
 
 /** @typedef {import("./parse.js").Container} Container */
 
@@ -24,7 +24,7 @@ export function dotState(/** @type {Container} */ c) {
 export function since(/** @type {Container} */ c, now = Date.now()) {
   if (c.state === "running" || c.state === "paused")
     return c.startedAt ? `Up ${duration(now - c.startedAt)}` : "Up";
-  if (c.finishedAt) return `${duration(now - c.finishedAt)} ago`;
+  if (c.finishedAt) return `Stopped ${ago(c.finishedAt, now)}`;
   return "Never started";
 }
 

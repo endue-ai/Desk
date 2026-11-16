@@ -2,8 +2,10 @@
 // the frame, and the page on screen. Pages are made when they show and dropped when they leave;
 // each hears the store's changes and draws only what changed.
 
+import { createActions } from "./actions.js";
 import { createEngine } from "./engine.js";
 import { createLive } from "./live.js";
+import { stacksOf } from "./model.js";
 import { createOverlay } from "./overlay.js";
 import { createRunner } from "./run.js";
 import { createStore } from "./store.js";
@@ -46,6 +48,14 @@ export function createStudio(ctx, doc, pages) {
   /** @type {Target | null} */
   let target = null;
   const saved = ctx.state?.get?.() ?? {};
+  /** Each section's own choices (filter, grouping, sort), kept across reloads. */
+  /** @type {Record<string, any>} */
+  const prefs = { ...(saved.prefs ?? {}) };
+  const persist = () =>
+    ctx.state?.set?.({ page: store.state.page, detail: store.state.detail, prefs });
+  /** The stacks, made once per change of the containers or the projects. */
+  /** @type {{ containers: unknown, projects: unknown, value: ReturnType<typeof stacksOf> } | null} */
+  let stackMemo = null;
 
   const overlay = createOverlay(doc);
 
@@ -73,7 +83,7 @@ export function createStudio(ctx, doc, pages) {
     store.set({ page: id, detail: to });
     live.wantStats(page.stats === true);
     page.update(store.state, new Set(Object.keys(store.state)));
-    ctx.state?.set?.({ page: id, detail: to });
+    persist();
   };
 
   store.on(null, (state, changed) => {
@@ -121,6 +131,25 @@ export function createStudio(ctx, doc, pages) {
     live,
     overlay,
     settings,
+    /** Stacks being changed now (a spinner on their row). @type {Set<string>} */
+    pending: new Set(),
+    /** The Compose stacks, from compose ls and the containers' labels. */
+    stacks() {
+      const { containers, projects } = store.state;
+      if (stackMemo?.containers !== containers || stackMemo?.projects !== projects)
+        stackMemo = { containers, projects, value: stacksOf(containers, projects) };
+      return stackMemo.value;
+    },
+    /** A section's saved choices, with defaults. @template T @param {string} name @param {T} defaults @returns {T} */
+    prefs(name, defaults) {
+      prefs[name] = { ...defaults, ...(prefs[name] ?? {}) };
+      return prefs[name];
+    },
+    /** @param {string} name @param {unknown} value */
+    savePrefs(name, value) {
+      prefs[name] = value;
+      persist();
+    },
     /** Show a section. @param {string} id */
     go(id) {
       show(id, null);
@@ -149,6 +178,7 @@ export function createStudio(ctx, doc, pages) {
     dialogs: /** @type {any} */ ({}),
     ai: /** @type {any} */ ({ open() {}, diagnose() {} }),
     start() {
+      app.act = createActions(app);
       show(saved.page ?? "dashboard", saved.detail ?? null);
       shell.engine(store.state);
       void live.start();
