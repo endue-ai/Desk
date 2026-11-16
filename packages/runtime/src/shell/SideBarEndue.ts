@@ -3,9 +3,9 @@
  * the ones that work or wait for them first, and the spaces they can open. Choosing either opens
  * its window. An agent's state is `data-presence` (the ring the stylesheet draws), and the bar's
  * tooltip names it with the conversation it works on (bar-tip.ts). Past six agents the last place
- * opens the rest in a popover, as the directory's does. Unfolded, each is a row of the bar's list
- * (bar-list.ts): an agent's says the conversation it works on and for how long, or its presence
- * in endue's own words.
+ * opens the rest in a popover, as the directory's does, and New agent and New space end the groups
+ * (bar-new.ts). Unfolded, each is a row of the bar's list (bar-list.ts): an agent's says the
+ * conversation it works on and for how long, or its presence in endue's own words.
  */
 import type { StudioAgent, StudioSpace } from "@endue-ai/bridge";
 import { endueText } from "../surface/endue/copy";
@@ -20,6 +20,7 @@ import {
   openEndueSpace,
 } from "../system/endue";
 import { type BarEntry, barCaption, barControl, oneLine } from "./bar-list";
+import { barMore, barWord, newAgentControl, newSpaceControl } from "./bar-new";
 import { workLine } from "./bar-tip";
 import type { ShellCtx } from "./context";
 import { type Child, h } from "./dom";
@@ -163,8 +164,16 @@ export function endueGroups(ctx: ShellCtx, s: DeskState, unfolded: boolean): Bar
       shown.map(({ agent, presence }) =>
         barControl(agentEntry(ctx, s, agent, presence), unfolded, now),
       ),
-      hidden.length ? barControl(rest, unfolded, now) : null,
+      hidden.length
+        ? barMore(rest, {
+            caption: barWord(s.lang, "moreEndue", hidden.length),
+            faces: hidden.map(({ agent }) => ({ colour: hexColour(agent.personalColor) })),
+            unfolded,
+            now,
+          })
+        : null,
       status,
+      newAgentControl(ctx, s.lang, unfolded),
     ),
     h("div", { class: "bar-divider", role: "separator" }),
     h(
@@ -177,6 +186,7 @@ export function endueGroups(ctx: ShellCtx, s: DeskState, unfolded: boolean): Bar
       },
       barCaption(unfolded, ctx.tr("spaces")),
       s.endue.spaces.map((sp) => barControl(spaceEntry(ctx, s, sp), unfolded, now)),
+      newSpaceControl(ctx, s.lang, unfolded),
     ),
   ];
   const more =

@@ -99,10 +99,10 @@ test("the agent bar, the account bar and the rail have one shape", async ({ page
   expect(rail?.right).toBe(16);
 
   // A button is 36 square with a 10 radius: the account bar's launcher (its other control is the
-  // person's own avatar) and the rail's seven.
-  // The agent bar's unfold control is out of sight until the keyboard's focus is on it.
+  // person's own avatar) and the rail's seven. The agent bar's unfold control is out of sight until
+  // the keyboard's focus is on it, and its labelled places are not buttons of that shape (below).
   const avatars = ".avatar, .space, .account-profile";
-  const buttons = await sizes(page, `.float-bar button:not(${avatars}, .bar-unfold)`);
+  const buttons = await sizes(page, `.float-bar button:not(${avatars}, .bar-unfold, .bar-place)`);
   expect(buttons).toHaveLength(8);
   for (const button of buttons)
     expect([button.size, button.radius], button.name).toEqual([[36, 36], "10px"]);
@@ -117,7 +117,31 @@ test("the agent bar, the account bar and the rail have one shape", async ({ page
     expect(radius).toBeGreaterThanOrEqual(17);
   expect(await radii(".sidebar :is(.space, [data-local-agent])")).toEqual([10, 10, 10, 10]);
 
-  // No caption; a 20 wide rule between the programs, the agents and the spaces.
+  // New agent ends the agents and New space the spaces: each the bar's inside wide, a dashed face
+  // an avatar's size, round for an agent and with a button's corners for a space, over its name in
+  // the muted ink (bar-new.ts).
+  const places = await sizes(page, ".sidebar .bar-place");
+  expect(places.map((place) => [place.name, place.size[0]])).toEqual([
+    ["새 에이전트 만들기", 50],
+    ["새 스페이스 만들기", 50],
+  ]);
+  const plus = await sizes(page, ".sidebar .bar-new .bar-place-face");
+  expect(plus.map((face) => face.size)).toEqual([
+    [34, 34],
+    [34, 34],
+  ]);
+  expect(Number.parseFloat(plus[0]?.radius ?? "0")).toBeGreaterThanOrEqual(17);
+  expect(plus[1]?.radius).toBe("10px");
+  await expect(page.locator(".sidebar .bar-new .bar-place-face").first()).toHaveCSS(
+    "border-style",
+    "dashed",
+  );
+  await expect(page.locator(".sidebar .bar-new").first()).toHaveCSS(
+    "color",
+    await colourOf(page, "--desk-text-muted"),
+  );
+
+  // No caption under an avatar; a 20 wide rule between the programs, the agents and the spaces.
   await expect(page.locator(".sidebar .rail-label")).toHaveCount(0);
   const rules = await sizes(page, ".sidebar .bar-divider");
   expect(rules.map((rule) => rule.size)).toEqual([

@@ -1,18 +1,21 @@
 /**
  * The agent bar (system layer, left): the agent programs on this computer first (Claude Code, Codex:
  * every one the core found registers itself, ADR 0110), then the current space's agents from the
- * agent directory, the spaces below, a rule between the groups and no caption. Signed in to endue,
+ * agent directory, the spaces below and a rule between the groups. Signed in to endue,
  * the person's endue agents and spaces take the directory's place and open as windows
  * (SideBarEndue.ts, ADR 0129). An agent's state is `data-presence`, which the stylesheet draws as a
  * ring around the avatar: working with a working A2A task or a run going on, waiting while it is
  * inactive or a task waits on it for an answer. The bar's tooltip names each control, and says
  * what a working agent does and for how long (bar-tip.ts). Past six agents, the last place opens
  * the rest in a popover. The bar unfolds into a list that says all of it at once, each avatar a
- * row under its group's caption (bar-unfold.ts, bar-list.ts).
+ * row under its group's caption (bar-unfold.ts, bar-list.ts). New agent ends the agents and New
+ * space the spaces (bar-new.ts): folded, they and the place of the rest are the only ones with
+ * their name under them; unfolded, they are rows of the list.
  */
 import type { A2ATask, Agent, LocalAgent, Space } from "@endue-ai/bridge";
 import { localText } from "../surface/local-agent/copy";
 import { type Presence, presenceOf, selectAgent, selectSpace, spaceAgents } from "../system/agents";
+import { hexColour } from "../system/endue-ids";
 import {
   badgeOf,
   isRunning,
@@ -21,6 +24,7 @@ import {
   selectLocalAgent,
 } from "../system/local-agents";
 import { type BarEntry, barCaption, barControl, oneLine, tickTimes } from "./bar-list";
+import { barMore, barWord, newAgentControl, newSpaceControl } from "./bar-new";
 import { mountBarTip, workLine } from "./bar-tip";
 import { mountBarUnfold } from "./bar-unfold";
 import type { ShellCtx } from "./context";
@@ -163,7 +167,15 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
         },
         barCaption(unfolded, ctx.tr("agents")),
         shown.map((a) => barControl(agent(a, s), unfolded, now)),
-        hidden.length ? barControl(rest, unfolded, now) : null,
+        hidden.length
+          ? barMore(rest, {
+              caption: barWord(s.lang, "more", hidden.length),
+              // Each agent's own colour; one with none takes the chart's, in turn (bar-new.css).
+              faces: hidden.map((a) => ({ colour: hexColour(a.personalColor) })),
+              unfolded,
+              now,
+            })
+          : null,
         s.directory === "offline"
           ? h(
               "span",
@@ -176,6 +188,7 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
               icon("link", 16),
             )
           : null,
+        newAgentControl(ctx, s.lang, unfolded),
       ),
       h("div", { class: "bar-divider", role: "separator" }),
       h(
@@ -183,6 +196,7 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
         { class: "bar-group", role: "group", "aria-label": ctx.tr("spaces") },
         barCaption(unfolded, ctx.tr("spaces")),
         s.spaces.map((sp) => barControl(space(sp, s), unfolded, now)),
+        newSpaceControl(ctx, s.lang, unfolded),
       ),
     ];
     const more =
