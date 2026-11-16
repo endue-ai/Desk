@@ -57,6 +57,7 @@ describe("Eris's ear through audio.capture", () => {
     vi.stubGlobal("webkitSpeechRecognition", undefined);
     const mic = fakeMic(true);
     await expect(openMic("en", undefined, mic.audio)).resolves.toBeNull();
+    expect(mic.audio.capture).toHaveBeenCalledTimes(1);
   });
 
   it("with Web Speech the ear keeps the page's microphone", async () => {
