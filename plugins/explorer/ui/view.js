@@ -4,9 +4,11 @@
 // Rows are never the browser's draggables: in WebKit a click that moved a few
 // pixels on one became a drag, and the file did not open. They drag their path as desk data through
 // ctx.dnd instead, past the SDK's movement threshold, and folders take drops (ADR 0119). Desk chords
-// pass through, but for Cmd+Backspace, which trashes as F2 renames; Escape first closes a visible
-// preview.
+// pass through, but for Cmd+Backspace, which trashes as F2 renames, and Mod+A, C, X, V and F, which
+// select all, copy, cut, paste and find (#313); Escape first closes a visible preview. Several rows
+// can be selected (aria-multiselectable): Shift and Mod clicks pick, and a selected row drags them all.
 import { contextMenu, keyCommand } from "./context-menu.js";
+import { findView } from "./find-view.js";
 import { iconOf } from "./file-icons.js";
 import { drawIcon } from "./glyphs.js";
 import { previewView } from "./preview-view.js";
@@ -18,11 +20,22 @@ import { parentOf } from "./tree.js";
  * @typedef {import("./explorer.js").Header} Header
  * @typedef {{
  *   select(id: string): unknown, activate(id: string): unknown,
- *   key(name: string): unknown, type(letter: string): boolean, togglePreview(): unknown,
+ *   pick?(id: string, mods: { shift: boolean, mod: boolean }): unknown,
+ *   key(name: string, mods?: { shift: boolean }): unknown, type(letter: string): boolean,
+ *   togglePreview(): unknown,
  *   addFolder(): unknown, newFile(): unknown, refresh(): unknown, toggleHidden(): unknown,
- *   context?(command: string): unknown,
+ *   context?(command: string): unknown, find?: import("./find-view.js").FindActions,
  * }} Actions
  */
+
+/** Mod chords the tree runs as the explorer's commands. */
+const CHORDS = /** @type {Record<string, string>} */ ({
+  a: "endue.explorer.select-all",
+  c: "endue.explorer.copy",
+  x: "endue.explorer.cut",
+  v: "endue.explorer.paste",
+  f: "endue.explorer.find",
+});
 
 /**
  * @param {Document} doc
@@ -39,6 +52,8 @@ export function createView(doc, actions, dnd) {
   const items = new Map();
   /** @type {string | null} */
   let selected = null;
+  /** @type {ReadonlySet<string>} */
+  let marks = new Set();
   const menu = contextMenu(
     doc,
     (id) => actions.context?.(id),
@@ -82,6 +97,11 @@ export function createView(doc, actions, dnd) {
     if (id === undefined) return;
     // The second click of a double click must not start a second file read or toggle a folder twice.
     if (event.detail > 1) return;
+    const mod = event.metaKey || event.ctrlKey;
+    if (event.shiftKey || mod) {
+      void actions.pick?.(id, { shift: event.shiftKey, mod });
+      return;
+    }
     actions.select(id);
     void actions.activate(id);
   });
@@ -106,6 +126,12 @@ export function createView(doc, actions, dnd) {
       void actions.context?.(edit);
       return;
     }
+    const chord = CHORDS[event.key.toLowerCase()];
+    if (chord && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
+      event.preventDefault();
+      void actions.context?.(chord);
+      return;
+    }
     // The desk's chords pass; the tree takes its own keys, and letters for type-ahead.
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
@@ -120,7 +146,8 @@ export function createView(doc, actions, dnd) {
       if (actions.type(event.key)) event.preventDefault();
     } else if (TREE_KEYS.includes(event.key)) {
       event.preventDefault();
-      void actions.key(event.key);
+      if (event.shiftKey) void actions.key(event.key, { shift: true });
+      else void actions.key(event.key);
     }
   });
   // Nothing in the tree is the browser's draggable (an icon, a name): a press is a click.
@@ -134,9 +161,15 @@ export function createView(doc, actions, dnd) {
     item: (target) => {
       const item = rowOf(target);
       if (!item?.dataset.path) return undefined;
-      const kind = item.dataset.kind === "dir" ? "folder" : "file";
+      const kindOf = (/** @type {HTMLElement} */ el) =>
+        el.dataset.kind === "dir" ? "folder" : "file";
+      // A selected row carries the whole selection; any other row, itself.
+      const dragged = marks.has(item.dataset.id ?? "")
+        ? [...items.values()].filter((el) => marks.has(el.dataset.id ?? "") && el.dataset.path)
+        : [item];
+      const paths = dragged.map((el) => ({ path: el.dataset.path ?? "", kind: kindOf(el) }));
       return {
-        items: [{ type: "desk/paths", paths: [{ path: item.dataset.path, kind }] }],
+        items: [{ type: "desk/paths", paths }],
         image: { label: item.querySelector(".name")?.textContent ?? "" },
       };
     },
@@ -148,6 +181,7 @@ export function createView(doc, actions, dnd) {
     const parent = item?.dataset.path === undefined ? undefined : parentOf(item.dataset.path);
     return (parent !== undefined && items.get(parent)) || null;
   };
+  const finder = actions.find && findView(doc, actions.find, () => focus(selected));
   // The surface becomes visible after show() reaches the desk, which then focuses this frame.
   doc.defaultView?.addEventListener("focus", () => focus(selected));
 
@@ -171,7 +205,7 @@ export function createView(doc, actions, dnd) {
     item.setAttribute("aria-level", String(model.depth + 1));
     item.setAttribute("aria-posinset", String(index + 1));
     item.setAttribute("aria-setsize", String(of));
-    item.setAttribute("aria-selected", String(model.id === selected));
+    item.setAttribute("aria-selected", String(marks.has(model.id) || model.id === selected));
     item.tabIndex = model.id === selected ? 0 : -1;
     if (model.kind === "dir") {
       item.setAttribute("aria-expanded", String(model.expanded === true));
@@ -198,21 +232,26 @@ export function createView(doc, actions, dnd) {
     return item;
   };
 
-  const selection = (/** @type {string | null} */ id) => {
+  const selection = (
+    /** @type {string | null} */ id,
+    /** @type {ReadonlySet<string>} */ picked = new Set(id === null ? [] : [id]),
+  ) => {
     selected = id;
+    marks = picked;
     for (const [key, item] of items) {
-      item.setAttribute("aria-selected", String(key === id));
+      item.setAttribute("aria-selected", String(marks.has(key) || key === id));
       item.tabIndex = key === id ? 0 : -1;
     }
     tree.tabIndex = id === null || !items.has(id) ? 0 : -1;
   };
   return {
     selection,
-    /** @param {Row[]} rows @param {string | null} picked */
-    tree(rows, picked) {
+    /** @param {Row[]} rows @param {string | null} picked @param {ReadonlySet<string>} [together] */
+    tree(rows, picked, together) {
       menu.close(true);
       const heldFocus = tree.contains(doc.activeElement);
       selected = picked;
+      marks = together ?? new Set(picked === null ? [] : [picked]);
       items.clear();
       const nodes = rows.map((model, index) => {
         const item = row(model, index, rows.length);
@@ -246,6 +285,8 @@ export function createView(doc, actions, dnd) {
       if (model !== null && selected !== null)
         items.get(selected)?.scrollIntoView?.({ block: "nearest" });
     },
+    /** The find bar: shown for a model, hidden for null. */
+    find: (/** @type {import("./finding.js").FindModel | null} */ model) => finder?.render(model),
     focus,
     dropTarget: tree,
     landing,

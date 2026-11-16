@@ -75,13 +75,14 @@ describe("copy, cut and paste", () => {
   });
 
   it("a folder and an entry inside it go as the folder alone", async () => {
-    const { app, host, params } = await explorer();
+    // Pasted beside itself, the copy keeps both: Work 2.
+    const { app, host, params, tree } = await explorer({ pick: () => "keep" });
     app.pick(WORK, {});
     app.pick(`${WORK}/c.md`, { mod: true });
     await host.command("endue.explorer.copy");
-    app.pick(`${DOCS}/a2.md`, {});
-    await host.command("endue.explorer.paste", { folder: `${WORK}/deep` });
+    await host.command("endue.explorer.paste", { folder: DOCS });
     expect(params("fs.copy").map((c) => (c as { from: string }).from)).toEqual([WORK]);
+    expect(tree.read(`${DOCS}/Work 2/c.md`)).toBe("c");
   });
 });
 

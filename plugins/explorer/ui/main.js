@@ -15,8 +15,9 @@ defineUiPlugin({
       document,
       {
         select: (id) => app?.select(id),
+        pick: (id, mods) => app?.pick(id, mods),
         activate: (id) => app?.activate(id),
-        key: (name) => app?.key(name),
+        key: (name, mods) => app?.key(name, mods),
         togglePreview: () => app?.togglePreview(),
         type: (letter) => app?.type(letter) === true,
         context: (id) => own(id)(),
@@ -24,6 +25,14 @@ defineUiPlugin({
         newFile: own("endue.explorer.new-file"),
         refresh: own("endue.explorer.refresh"),
         toggleHidden: own("endue.explorer.toggle-hidden"),
+        find: {
+          filter: (query) => app?.filter(query),
+          below: (query) => app?.searchBelow(query)?.catch(() => {}),
+          stop: () => app?.stopFind(),
+          close: () => app?.closeFind(),
+          openFound: (path) => app?.openFound(path),
+          revealFound: (path) => app?.revealFound(path)?.catch(() => {}),
+        },
       },
       ctx.dnd,
     );

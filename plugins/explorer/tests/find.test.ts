@@ -1,7 +1,7 @@
 // Finding files by name (#313): a filter narrows the current folder as the person types, and "search
 // below" walks its sub-folders by name, with a limit and a way to stop, listing each result with its
 // folder; Enter opens one, and reveal shows it in its folder.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { narrow, searchBelow } from "../ui/find.js";
 import { rows } from "../ui/tree.js";
 import { DOCS, dir, disk, file, mount, sample, type Tree } from "./harness";
@@ -37,6 +37,7 @@ describe("search below", () => {
   it("walks the sub-folders by name, breadth first, and gives each result its folder", async () => {
     const found = await searchBelow(lister(deep()), DOCS, "x", { showHidden: false });
     expect(found.results.map((r) => [r.name, r.folder])).toEqual([
+      ["b.txt", DOCS],
       ["notes-x.txt", `${DOCS}/Work/deep`],
       ["x.md", `${DOCS}/Work/deep`],
       ["X-ray.png", `${DOCS}/Work/deep/more`],
@@ -53,7 +54,7 @@ describe("search below", () => {
     expect(one.results).toHaveLength(1);
     expect(one.stopped).toBe("limit");
     const few = await searchBelow(lister(tree), DOCS, "x", { showHidden: false, folders: 2 });
-    expect(few.results).toEqual([]);
+    expect(few.results.map((r) => r.name)).toEqual(["b.txt"]);
     expect(few.stopped).toBe("folders");
     const stop = new AbortController();
     const walking = searchBelow(
@@ -90,9 +91,10 @@ describe("finding in the explorer", () => {
     const { app, host, view, ran } = await mount({ handlers: disk(tree) });
     const results = await host.command("endue.explorer.find-below", { query: "x" });
     expect(results).toEqual([
+      { path: `${DOCS}/b.txt`, name: "b.txt", kind: "file", folder: DOCS },
       { path: `${WORK}/deep/x.md`, name: "x.md", kind: "file", folder: `${WORK}/deep` },
     ]);
-    expect(view.statuses.at(-1)).toBe("1 found below Documents.");
+    expect(view.statuses.at(-1)).toBe("2 found below Documents.");
     await app.openFound(`${WORK}/deep/x.md`);
     expect(ran("desk.files.open")).toEqual([{ path: `${WORK}/deep/x.md` }]);
     await app.revealFound(`${WORK}/deep/x.md`);
@@ -101,9 +103,29 @@ describe("finding in the explorer", () => {
   });
 
   it("a search can be stopped, and says so", async () => {
-    const { app, host, view } = await mount({ handlers: disk(sample()) });
+    // Work lists only when the test lets it, so the search is still walking when it is stopped.
+    const tree = sample();
+    const plain = disk(tree);
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const list = plain["fs.list"] as (params: { path: string }) => unknown;
+    const { app, host, view, params } = await mount({
+      handlers: {
+        ...plain,
+        "fs.list": async (p) => {
+          if (p.path === WORK) await held;
+          return list(p);
+        },
+      } as typeof plain,
+    });
     const searching = host.command("endue.explorer.find-below", { query: "x" });
+    await vi.waitFor(() =>
+      expect(params("fs.list")).toContainEqual(expect.objectContaining({ path: WORK })),
+    );
     app.stopFind();
+    release();
     await searching;
     expect(view.statuses.at(-1)).toBe("Search stopped.");
   });

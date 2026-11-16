@@ -112,6 +112,36 @@
         "id": "endue.explorer.trash",
         "title": "Move the Explorer selection to the Trash",
         "keywords": ["files", "selection", "explorer", "delete", "remove", "trash", "bin"]
+      },
+      {
+        "id": "endue.explorer.select-all",
+        "title": "Select every row in the explorer",
+        "keywords": ["files", "selection", "explorer", "all"]
+      },
+      {
+        "id": "endue.explorer.copy",
+        "title": "Copy the Explorer selection to paste in a folder",
+        "keywords": ["files", "selection", "explorer", "copy", "duplicate"]
+      },
+      {
+        "id": "endue.explorer.cut",
+        "title": "Cut the Explorer selection to paste in a folder",
+        "keywords": ["files", "selection", "explorer", "cut", "move"]
+      },
+      {
+        "id": "endue.explorer.paste",
+        "title": "Paste what was copied or cut into the Explorer folder",
+        "keywords": ["files", "explorer", "paste", "move", "copy"]
+      },
+      {
+        "id": "endue.explorer.find",
+        "title": "Filter the Explorer folder by name",
+        "keywords": ["files", "explorer", "find", "filter", "search", "name"]
+      },
+      {
+        "id": "endue.explorer.find-below",
+        "title": "Find files by name in the Explorer folder and below",
+        "keywords": ["files", "explorer", "find", "search", "name", "recursive"]
       }
     ],
     "keys": [

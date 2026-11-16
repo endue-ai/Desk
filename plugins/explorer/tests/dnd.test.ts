@@ -71,7 +71,14 @@ describe("dropping paths on an explorer folder", () => {
     expect(await drop(`${WORK}/deep`, [`${DOCS}/b.txt`])).toBe("move");
     // One fs.rename per path: the core keeps it for the desk's undo (ADR 0077, ADR 0125).
     expect(params("fs.rename")).toEqual([
-      { from: `${DOCS}/b.txt`, to: `${WORK}/deep/b.txt`, scope: WRITE, fromScope: WRITE },
+      // One undo group per drop (ADR 0247).
+      {
+        from: `${DOCS}/b.txt`,
+        to: `${WORK}/deep/b.txt`,
+        scope: WRITE,
+        fromScope: WRITE,
+        group: expect.any(String),
+      },
     ]);
     expect(tree.read(`${WORK}/deep/b.txt`)).toBe("bi");
     expect(tree.read(`${DOCS}/b.txt`)).toBeUndefined();
@@ -85,7 +92,13 @@ describe("dropping paths on an explorer folder", () => {
     const { drop, params, tree } = await explorer();
     expect(await drop(`${WORK}/deep`, [`${DOCS}/b.txt`], { keys: { alt: true } })).toBe("copy");
     expect(params("fs.copy")).toEqual([
-      { from: `${DOCS}/b.txt`, to: `${WORK}/deep/b.txt`, scope: WRITE, fromScope: READ },
+      {
+        from: `${DOCS}/b.txt`,
+        to: `${WORK}/deep/b.txt`,
+        scope: WRITE,
+        fromScope: READ,
+        group: expect.any(String),
+      },
     ]);
     expect(tree.read(`${WORK}/deep/b.txt`)).toBe("bi");
     expect(tree.read(`${DOCS}/b.txt`)).toBe("bi");
