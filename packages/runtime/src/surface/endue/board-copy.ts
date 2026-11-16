@@ -105,6 +105,7 @@ const copy = {
   model: ["모델", "Model"],
   wallpaper: ["배경", "Wallpaper"],
   skills: ["스킬 {n}", "Skills {n}"],
+  skillsUnread: ["스킬", "Skills"],
   tools: ["내장 도구", "Built-in tools"],
   noPrompt: ["아직 쓰지 않았어요", "Not written yet"],
   memoryValue: ["기억 {m} · 규칙 {r}", "{m} memories · {r} rules"],

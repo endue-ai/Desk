@@ -130,7 +130,7 @@ impl Core {
             channels: keep(StudioFacet::Channels, channels, problems)
                 .unwrap_or_default()
                 .into_iter()
-                .map(rows::channel)
+                .filter_map(rows::channel)
                 .collect(),
             api_keys: rows::api_keys(
                 keep(StudioFacet::ApiKeys, keys, problems).unwrap_or_default(),

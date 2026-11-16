@@ -1,12 +1,13 @@
 //! An agent's face as endue.ai shows it (ADR 0232): the still of the character that is on, else
 //! the picture the person set, else the one endue.ai draws from the slug. The picture is read
 //! without the token, from its own host alone, and only when it is an image of a size a page can
-//! carry as a data: URL.
+//! carry as a data: URL. It is never read from an IP literal, a private name or a port but 443
+//! (issue 352), save on the platform's own host, and the read stops once it passes `MAX_PICTURE`.
 
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use desk_sys::net::{Method, Request, fetch};
+use desk_sys::net::{Method, Request, fetch_at_most};
 
 use crate::Platform;
 use crate::http::encode;
@@ -58,6 +59,27 @@ fn host_of(url: &str) -> Option<String> {
     (!host.is_empty() && !host.contains('@')).then(|| host.to_ascii_lowercase())
 }
 
+/// Whether `host` (lowercase, with its port when it has one) is a public name on port 443: not an
+/// IP literal, not `localhost` and not under a name only a local network answers.
+fn public_host(host: &str) -> bool {
+    if host.starts_with('[') {
+        return false; // An IPv6 literal.
+    }
+    let (name, port) = match host.rsplit_once(':') {
+        Some((name, port)) => (name, Some(port)),
+        None => (host, None),
+    };
+    if port.is_some_and(|p| p != "443") || name.parse::<std::net::Ipv4Addr>().is_ok() {
+        return false;
+    }
+    let name = name.trim_end_matches('.');
+    let local = ["localhost", "local", "internal", "home.arpa", "lan"];
+    name.contains('.')
+        && !local
+            .iter()
+            .any(|l| name == *l || name.ends_with(&format!(".{l}")))
+}
+
 impl Platform {
     /// Draw the faces of agents without a picture from `url` instead of DiceBear (tests).
     pub fn with_drawn(mut self, url: &str) -> Self {
@@ -83,14 +105,25 @@ impl Platform {
         (drawn, Face::Drawn)
     }
 
-    /// The picture at `url`: https only (http on the platform's own host, for one on this
-    /// machine), no token, no host but the picture's own, an image of at most `MAX_PICTURE`.
+    /// Whether a picture may be read from `url`: https from a public name on port 443, or the
+    /// platform's own host (http too when the platform is on this machine).
+    pub fn may_read_picture(&self, url: &str) -> bool {
+        let Some(host) = host_of(url) else {
+            return false;
+        };
+        if host == self.host {
+            return url.starts_with("https://") || self.base.starts_with("http://");
+        }
+        url.starts_with("https://") && public_host(&host)
+    }
+
+    /// The picture at `url`, when `may_read_picture` allows it: no token, no host but the
+    /// picture's own, an image of at most `MAX_PICTURE`, its read stopped once it passes that.
     pub fn picture(&self, url: &str) -> Option<Picture> {
-        let host = host_of(url)?;
-        let own = host == self.host && self.base.starts_with("http://");
-        if !url.starts_with("https://") && !own {
+        if !self.may_read_picture(url) {
             return None;
         }
+        let host = host_of(url)?;
         let request = Request {
             url: url.to_owned(),
             method: Method::Get,
@@ -102,7 +135,9 @@ impl Platform {
             timeout: Some(PICTURE_TIMEOUT.min(self.timeout)),
             allowed_hosts: vec![host],
         };
-        let response = fetch(&request).ok().filter(|r| r.status == 200)?;
+        let response = fetch_at_most(&request, MAX_PICTURE as u64)
+            .ok()
+            .filter(|r| r.status == 200)?;
         let kind = response
             .headers
             .get("content-type")?

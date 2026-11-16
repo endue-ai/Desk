@@ -57,8 +57,12 @@ export interface SheetRow {
 export interface Board {
   inbound: BoardRow[];
   outbound: BoardRow[];
-  /** How many connectors there are in all, and how many the board leaves to "more". */
-  connectors: { count: number; more: number };
+  /**
+   * How many connectors there are in all, and how many the board leaves to "more"; `read` false
+   * while the facet is on its way or was not answered, when there is no count to show and
+   * `value` is the waiting mark instead.
+   */
+  connectors: { count: number; more: number; read: boolean; value: string };
   hub: {
     name: string;
     initial: string;
@@ -68,7 +72,8 @@ export interface Board {
     presenceLabel: string;
     sentence: Seg[];
     identity: SheetRow[];
-    skills: { label: string; chips: string[]; more: number };
+    /** `value` is the waiting mark ("…" or "—") while `read` is false, and empty once read. */
+    skills: { label: string; chips: string[]; more: number; read: boolean; value: string };
     tools: SheetRow;
   };
 }
@@ -129,7 +134,10 @@ export function studioBoard(
   const waiting = read?.state === "loading" ? "…" : "—";
   const missing = (facet: string) => !facets || facets.problems.some((p) => p.facet === facet);
   const rows: RowFacts = { lang, agent, facets, waiting, now };
-  const bound = facets?.connectors ?? [];
+  // Connectors and skills read as the other facets do: not read, not guessed (issue 352).
+  const connectorsRead = !missing("connectors");
+  const skillsRead = !missing("skills");
+  const bound = connectorsRead ? (facets?.connectors ?? []) : [];
 
   // The agent's sheet.
   const settings = facets?.settings;
@@ -154,7 +162,9 @@ export function studioBoard(
     .map((line) => line.trim())
     .find(Boolean);
   const model = shortModel(settings?.model.default);
-  const skills = (facets?.skills ?? []).filter((s) => s.enabled).map((s) => s.name || s.slug || "");
+  const skills = (skillsRead ? (facets?.skills ?? []) : [])
+    .filter((s) => s.enabled)
+    .map((s) => s.name || s.slug || "");
   const memory = missing("memory") ? undefined : facets?.memory;
   const theme = missing("theme") ? undefined : facets?.theme;
   const identity: SheetRow[] = [
@@ -215,7 +225,12 @@ export function studioBoard(
   return {
     inbound: inboundRows(rows),
     outbound: outboundRows(rows),
-    connectors: { count: bound.length, more: Math.max(0, bound.length - MAX_CONNECTORS) },
+    connectors: {
+      count: bound.length,
+      more: Math.max(0, bound.length - MAX_CONNECTORS),
+      read: connectorsRead,
+      value: connectorsRead ? "" : waiting,
+    },
     hub: {
       name,
       initial: initialOf(name),
@@ -226,9 +241,11 @@ export function studioBoard(
       sentence: capability(lang, facts),
       identity,
       skills: {
-        label: t("skills", { n: skills.length }),
+        label: skillsRead ? t("skills", { n: skills.length }) : t("skillsUnread"),
         chips: skills.slice(0, MAX_CHIPS),
         more: Math.max(0, skills.length - MAX_CHIPS),
+        read: skillsRead,
+        value: skillsRead ? "" : waiting,
       },
       tools: {
         section: "tools",
