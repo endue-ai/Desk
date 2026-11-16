@@ -86,19 +86,19 @@ export function mountEndueId(ctx: ShellCtx, redraw: () => void): EndueId {
     ? [
         account.onChange((next) => changed(next, true)),
         ctx.runtime.commands.define("desk.account.sign-in", {
-          title: tr("signIn"),
+          title: () => tr("signIn"),
           keywords: ["sign in", "login", "endue", "로그인"],
           owner: "desk",
           run: () => signIn("sign-in"),
         }),
         ctx.runtime.commands.define("desk.account.create", {
-          title: tr("createAccount"),
+          title: () => tr("createAccount"),
           keywords: ["sign up", "create account", "register", "endue", "회원가입", "가입"],
           owner: "desk",
           run: () => signIn("sign-up"),
         }),
         ctx.runtime.commands.define("desk.account.sign-out", {
-          title: tr("signOut"),
+          title: () => tr("signOut"),
           keywords: ["sign out", "logout", "endue", "로그아웃"],
           owner: "desk",
           run: signOut,

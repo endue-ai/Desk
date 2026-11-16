@@ -68,17 +68,17 @@ function queryOf(args: unknown): CatalogueQuery {
 
 export function defineContextCommands(ctx: ShellCtx, log: ClosedLog): () => void {
   const { commands } = ctx.runtime;
-  const lang = ctx.store.get().lang;
+  const lang = () => ctx.store.get().lang;
   const offs = [
     commands.define("desk.windows.closed", {
-      title: ec(lang, "cmdClosed"),
+      title: () => ec(lang(), "cmdClosed"),
       keywords: ["closed", "windows", "recent", "history", "닫은", "창"],
       owner: "desk.display",
       run: () => ({ closed: closedForBrain(ctx.store.get(), log.list()) }),
       agent: CLOSED,
     }),
     commands.define("desk.windows.reopen", {
-      title: ec(lang, "cmdReopen"),
+      title: () => ec(lang(), "cmdReopen"),
       keywords: ["reopen", "undo close", "restore", "closed", "다시 열기", "닫은 창"],
       owner: "desk.display",
       run: (args) => {
@@ -88,7 +88,7 @@ export function defineContextCommands(ctx: ShellCtx, log: ClosedLog): () => void
       agent: REOPEN,
     }),
     commands.define("desk.capabilities", {
-      title: ec(lang, "cmdCapabilities"),
+      title: () => ec(lang(), "cmdCapabilities"),
       keywords: ["capabilities", "commands", "what can I do", "help", "할 수 있는 일", "명령"],
       owner: "desk",
       run: (args) => query(catalogue(sourceOf(ctx)), queryOf(args)),

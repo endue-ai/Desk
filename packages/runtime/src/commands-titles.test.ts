@@ -21,7 +21,7 @@ describe("live command titles", () => {
     const registered = () =>
       stub.calls
         .filter((c) => c.method === "cmd.register")
-        .map((c) => c.params as Record<string, unknown>);
+        .map((c) => c.params as unknown as Record<string, unknown>);
     const client = new BridgeClient(stub);
     const commands = new Commands(client);
     let title = "Open the thing";
@@ -34,7 +34,11 @@ describe("live command titles", () => {
     });
     commands.define("desk.fixed", { title: "Stay as you are", owner: "desk", run: () => 1 });
     await commands.settled();
-    expect(registered().map((r) => r.id).sort()).toEqual(["desk.fixed", "desk.thing"]);
+    expect(
+      registered()
+        .map((r) => r.id)
+        .sort(),
+    ).toEqual(["desk.fixed", "desk.thing"]);
 
     title = "그것 열기";
     commands.retitle();
@@ -65,8 +69,7 @@ describe("live command titles", () => {
     const offFrames = defineFrameCommands(hub.commands, responses, () => ctx.language?.() ?? "en");
     await hub.commands.settled();
     const title = async (id: string) =>
-      (await core.client.call("cmd.list", { scope: ALL })).commands.find((c) => c.id === id)
-        ?.title;
+      (await core.client.call("cmd.list", { scope: ALL })).commands.find((c) => c.id === id)?.title;
     expect(await title("desk.keys.list")).toBe("List key bindings");
     expect(await title("desk.frames.wait")).toBe("Not responding · wait");
 

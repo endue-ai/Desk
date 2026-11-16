@@ -163,14 +163,14 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
   };
   const commands = [
     ctx.runtime.commands.define("desk.inbox.open", {
-      title: tr("inbox"),
+      title: () => tr("inbox"),
       keywords: ["inbox", "notifications", "인박스", "알림"],
       owner: "desk",
       run: () =>
         ctx.store.set((s) => ({ popover: s.popover === "attention" ? null : "attention" })),
     }),
     ctx.runtime.commands.define("desk.account.open", {
-      title: tr("account"),
+      title: () => tr("account"),
       keywords: ["account", "user", "사용자", "계정"],
       owner: "desk",
       run: () => {

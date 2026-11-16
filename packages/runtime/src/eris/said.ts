@@ -130,7 +130,7 @@ export function mountSaid(root: HTMLElement, ctx: ShellCtx, soul: HTMLElement): 
   if (commands)
     offs.push(
       commands.define(SAID, {
-        title: tr("title"),
+        title: () => tr("title"),
         owner: "desk",
         keywords: ["eris", "said", "answer", "again", "last", "history", "에리스", "답", "말"],
         run: () => recall(),

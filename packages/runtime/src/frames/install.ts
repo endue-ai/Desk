@@ -82,7 +82,7 @@ export interface Frames {
 }
 
 export function installFrames(
-  ctx: Pick<DeskContext, "surfaces" | "hub" | "win" | "shortcuts" | "bridge">,
+  ctx: Pick<DeskContext, "surfaces" | "hub" | "win" | "shortcuts" | "bridge" | "language">,
   deps: FramesDeps,
 ): Frames {
   const { surfaces, win, shortcuts } = ctx;
@@ -192,7 +192,9 @@ export function installFrames(
     // A stopped frame loads again; a sleeping one wakes now, as a press on it does (#54).
     reload: (id) => watch.responses.reload(id) || (responses.asleep(id) && frames.wake(id)),
   };
-  offs.push(defineFrameCommands(ctx.hub.commands, responses, deps.lang ?? "ko"));
+  offs.push(
+    defineFrameCommands(ctx.hub.commands, responses, () => ctx.language?.() ?? deps.lang ?? "ko"),
+  );
   const reloads = frameReloads({
     win,
     timers,

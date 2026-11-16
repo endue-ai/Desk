@@ -3,7 +3,7 @@
  * all run these ids. Pane commands belong to desk.display; desktops, views, profiles, agents and
  * Eris's settings to desk.shell. Profiles and agents come and go, so their commands follow them.
  */
-import type { CommandInfo } from "../commands";
+import type { CommandInfo, CommandSpec } from "../commands";
 import { defineDesktopCommands, defineNumbered } from "../desktops/commands";
 import { selectAgent, spaceAgents } from "../system/agents";
 import { desktopsOf } from "./actions";
@@ -36,7 +36,7 @@ export function defineCommands(ctx: ShellCtx): () => void {
   const define = (
     id: string,
     owner: string,
-    title: string,
+    title: CommandSpec["title"],
     keywords: string[],
     run: (args: unknown) => unknown,
     into = fixed,
@@ -54,28 +54,41 @@ export function defineCommands(ctx: ShellCtx): () => void {
   };
   const shell = (
     id: string,
-    title: string,
+    title: CommandSpec["title"],
     keywords: string[],
     run: (args: unknown) => unknown,
     into = fixed,
   ) => define(`desk.shell.${id}`, "desk.shell", title, keywords, run, into);
-  const display = (id: string, title: string, keywords: string[], run: () => unknown) =>
-    define(`desk.display.${id}`, "desk.display", title, keywords, run);
+  const display = (
+    id: string,
+    title: CommandSpec["title"],
+    keywords: string[],
+    run: () => unknown,
+  ) => define(`desk.display.${id}`, "desk.display", title, keywords, run);
 
   display(
     "new-surface",
-    ctx.tr("cmdNewSurface"),
+    () => ctx.tr("cmdNewSurface"),
     ["new", "window", "surface", "새", "표면", "창"],
     () => newWindow(ctx),
   );
-  display("split-right", ctx.tr("cmdSplitRight"), ["split", "right", "나누기", "오른쪽"], () =>
-    splitPane(ctx, "row"),
+  display(
+    "split-right",
+    () => ctx.tr("cmdSplitRight"),
+    ["split", "right", "나누기", "오른쪽"],
+    () => splitPane(ctx, "row"),
   );
-  display("split-down", ctx.tr("cmdSplitDown"), ["split", "down", "나누기", "아래"], () =>
-    splitPane(ctx, "column"),
+  display(
+    "split-down",
+    () => ctx.tr("cmdSplitDown"),
+    ["split", "down", "나누기", "아래"],
+    () => splitPane(ctx, "column"),
   );
-  display("close-pane", ctx.tr("cmdClosePane"), ["close", "pane", "닫기", "칸"], () =>
-    closePane(ctx),
+  display(
+    "close-pane",
+    () => ctx.tr("cmdClosePane"),
+    ["close", "pane", "닫기", "칸"],
+    () => closePane(ctx),
   );
   // Maximize, the eight snaps, and moving and resizing by a step (ADR 0128, ADR 0153).
   defineWindowCommands(ctx, display);
@@ -85,17 +98,25 @@ export function defineCommands(ctx: ShellCtx): () => void {
   );
   for (const [id, key, words] of VIEWS) {
     const name = ctx.tr(key);
-    shell(`open-${id}`, ctx.tr("cmdOpen", { x: name }), [...words, name], () => openView(ctx, id));
+    shell(
+      `open-${id}`,
+      () => ctx.tr("cmdOpen", { x: ctx.tr(key) }),
+      [...words, name],
+      () => openView(ctx, id),
+    );
   }
   for (const soul of ["wisp", "solemn"] as const) {
-    shell(`soul-${soul}`, ctx.tr("cmdSoul", { x: soul }), [soul, "soul", "소울", "설정"], () =>
-      settings.set("desk.shell.soul", soul),
+    shell(
+      `soul-${soul}`,
+      () => ctx.tr("cmdSoul", { x: soul }),
+      [soul, "soul", "소울", "설정"],
+      () => settings.set("desk.shell.soul", soul),
     );
   }
   for (const density of ["airy", "balanced", "dense"] as const) {
     shell(
       `density-${density}`,
-      ctx.tr("cmdDensity", { x: density }),
+      () => ctx.tr("cmdDensity", { x: density }),
       [density, "density", "mesh", "밀도", "설정"],
       () => settings.set("desk.shell.density", density),
     );

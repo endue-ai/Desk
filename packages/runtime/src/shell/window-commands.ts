@@ -5,6 +5,7 @@
  * ADR 0153) runs them, and they come back as its changes (#83: the runtime runs none itself).
  */
 
+import type { CommandSpec } from "../commands";
 import type { WindowOp } from "../wm/host";
 import type { Fill } from "../wm/types";
 import type { ShellCtx } from "./context";
@@ -67,12 +68,22 @@ export const WINDOW_COMMANDS: Spec[] = [
 /** Define the window commands through `display` (desk.display.<id>). */
 export function defineWindowCommands(
   ctx: ShellCtx,
-  display: (id: string, title: string, keywords: string[], run: () => unknown) => void,
+  display: (
+    id: string,
+    title: CommandSpec["title"],
+    keywords: string[],
+    run: () => unknown,
+  ) => void,
 ): void {
   for (const [id, title, words, op] of WINDOW_COMMANDS) {
-    display(id, ctx.tr(title), words, () => {
-      const window = focusedWindow(ctx);
-      if (window) ctx.wm.run(op, window);
-    });
+    display(
+      id,
+      () => ctx.tr(title),
+      words,
+      () => {
+        const window = focusedWindow(ctx);
+        if (window) ctx.wm.run(op, window);
+      },
+    );
   }
 }

@@ -100,7 +100,7 @@ export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void)
   const offs = (Object.keys(ARRANGE) as Kind[]).map((kind) => {
     const spec = ARRANGE[kind];
     return commands.define(spec.id, {
-      title: say(spec.title),
+      title: () => say(spec.title),
       keywords: spec.words,
       owner: "desk",
       undo: RESTORE,
@@ -118,7 +118,7 @@ export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void)
   });
   offs.push(
     commands.define(RESTORE, {
-      title: say("restore"),
+      title: () => say("restore"),
       keywords: ["restore", "undo", "previous", "layout", "windows", "되돌리기", "이전", "배치"],
       owner: "desk",
       run: async (args) => {
@@ -140,7 +140,7 @@ export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void)
       },
     }),
     commands.define(SPREAD, {
-      title: say("spread"),
+      title: () => say("spread"),
       keywords: ["spread", "expose", "overview", "mission control", "windows", "펼치기", "창"],
       owner: "desk",
       run: () => ctx.wm.run({ op: "spread" }),
@@ -151,7 +151,7 @@ export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void)
       },
     }),
     commands.define(FOCUS, {
-      title: say("focus"),
+      title: () => say("focus"),
       keywords: ["focus", "switch", "window", "go to", "창", "전환"],
       owner: "desk",
       run: async (args) => {
@@ -183,7 +183,7 @@ export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void)
       },
     }),
     commands.define(CLOSE, {
-      title: say("close"),
+      title: () => say("close"),
       keywords: ["close", "window", "닫기", "창"],
       owner: "desk",
       run: async (args) => {

@@ -144,7 +144,7 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
   };
   const offs = [
     ctx.runtime.commands.define(TALK, {
-      title: ctx.tr("cmdComposer"),
+      title: () => ctx.tr("cmdComposer"),
       owner: "desk.shell",
       keywords: ["talk", "eris", "말하기"],
       run: () => {

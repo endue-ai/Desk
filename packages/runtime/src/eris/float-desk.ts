@@ -104,7 +104,7 @@ export function linkDesk(ctx: ShellCtx, eris: DeskEris, options: DeskLinkOptions
   if (ctx.runtime.commands) {
     offs.push(
       ctx.runtime.commands.define(SUMMON, {
-        title: floatText(ctx.store.get().lang, "summon"),
+        title: () => floatText(ctx.store.get().lang, "summon"),
         owner: "desk",
         keywords: ["eris", "talk", "summon", "option enter", "에리스", "말하기"],
         run: (args) => {

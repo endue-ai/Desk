@@ -42,9 +42,13 @@ export interface DeskLanguage extends Installed {
   onChange(listener: (language: Language) => void): () => void;
 }
 
-/** desk.language for the runtime: kept current, and shared with every plugin frame. */
+/**
+ * desk.language for the runtime: kept current, shared with every plugin frame, put on the policy
+ * context (`ctx.language()`) for modules installed before a change, and each change re-titles the
+ * desk's own commands (#359).
+ */
 export function installLanguage(
-  ctx: Pick<DeskContext, "hub" | "share">,
+  ctx: Pick<DeskContext, "hub" | "share" | "language">,
   system: Language = osLanguage(),
 ): DeskLanguage {
   const offs = disposer();
@@ -55,10 +59,13 @@ export function installLanguage(
     followLanguage(ctx.hub.settings, system, (language) => {
       current = language;
       ctx.share({ type: "desk:language", language });
-      if (started) for (const listener of [...listeners]) listener(language);
+      if (!started) return;
+      ctx.hub.commands.retitle();
+      for (const listener of [...listeners]) listener(language);
     }),
   );
   started = true;
+  ctx.language = () => current;
   return {
     current: () => current,
     onChange: (listener) => {
