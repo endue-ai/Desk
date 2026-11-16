@@ -267,6 +267,15 @@
   bottom: calc(var(--space-5) + 72px + var(--space-2));
   max-width: calc(100% - var(--running-right) - var(--bar-reach));
 }
+/* Where the pill at rest would leave them less than 120 beside it (an app under 1188 wide, or under
+   1324 in one under 734 high, whose map sits 92 from the right: scale.css), they rise above it as
+   they do above the open line. */
+@media (width < 1188px), (width < 1324px) and (height < 734px) {
+  .bottom:has(.composer:not(.is-placed)) .running {
+    bottom: calc(var(--space-5) + var(--talk-rest-height) + var(--space-2));
+    max-width: calc(100% - var(--running-right) - var(--bar-reach));
+  }
+}
 .run-chip {
   position: relative;
   min-width: 0;
