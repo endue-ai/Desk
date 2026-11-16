@@ -1,5 +1,6 @@
-// The app's memory from `ps -A -o pid=,ppid=,rss=,comm=`: the app's RSS summed with its
-// descendants' (its CEF helpers: GPU, network, renderers). Pure: memory.test.ts.
+// The app's memory from `ps -A -o pid=,ppid=,rss=,comm=` (`command=` for `kinds`): the app's RSS
+// summed with its descendants' (its CEF helpers: GPU, network, renderers), and by kind of
+// process. Pure: memory.test.ts.
 import { round1 } from "./stats";
 
 export interface Proc {
@@ -36,4 +37,33 @@ export function treeOf(procs: readonly Proc[], pid: number): Proc[] {
 /** The summed RSS of `procs` in MB (MiB), one decimal. */
 export function rssMb(procs: readonly Proc[]): number {
   return round1(procs.reduce((sum, p) => sum + p.rssKb, 0) / 1024);
+}
+
+/** What one kind of process holds: how many, and their summed RSS in MB. */
+export interface Kind {
+  processes: number;
+  rssMb: number;
+}
+
+/**
+ * A process's kind: the tree's root is the browser; a CEF helper's is its `--type`, a utility's
+ * with its sub-type; anything else (a process the desk started itself) is other. Needs `command=`.
+ */
+function kindOf(proc: Proc, root: Proc): string {
+  if (proc === root) return "browser";
+  const type = /--type=(\S+)/.exec(proc.name)?.[1];
+  if (!type) return "other";
+  if (type !== "utility") return type;
+  return `utility:${/--utility-sub-type=(\S+)/.exec(proc.name)?.[1] ?? "unknown"}`;
+}
+
+/** The tree `procs` (root first, as `treeOf` gives it) by kind (#312, ADR 0246). */
+export function kinds(procs: readonly Proc[]): Record<string, Kind> {
+  const root = procs[0];
+  if (!root) return {};
+  const by: Record<string, Proc[]> = {};
+  for (const proc of procs) (by[kindOf(proc, root)] ??= []).push(proc);
+  return Object.fromEntries(
+    Object.entries(by).map(([kind, of]) => [kind, { processes: of.length, rssMb: rssMb(of) }]),
+  );
 }
