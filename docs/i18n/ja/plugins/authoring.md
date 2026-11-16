@@ -114,6 +114,18 @@ SDK は読み込まれた瞬間から Desk の ping（`desk:ping`）に自分で
 
 サイトを分離するエンジンがウィンドウごとにプロセスを分けられるよう、サーフェスはそれぞれ専用のオリジンで読み込まれます。macOS と Linux では `desk-plugin://<surface>.<label>/<id>/<path>`、Windows では `http://desk-plugin.<surface>.<label>.localhost/<id>/<path>` です。`<surface>` はサーフェスの `id`（宣言がなければ `main`）、`<label>` はプラグイン ID の `-` をすべて二重にしてから `.` をひとつの `-` にしたもので、`example.my-plugin` は `example-my--plugin` になります。パスは `/<id>/` を保つので、相対 URL、`import.meta.url`、インポートマップの `/_desk/` パス、`fs.url` の URL はこれまでどおり解決されます。自分のオリジンで別のプラグインの ID の下のパスを求めると 403 が返ります（ライブラリ〔ADR 0049〕と、マニフェストの `imports` に挙げたプラグイン〔`"imports": ["endue.eris"]`〕は除く。その場合、そのコードはあなたのプラグインとして動きます）。URL はオリジンからではなく、相対パスから組み立ててください。
 
+### デスクの言語で表示する言葉
+
+デスクは英語と韓国語を話し、どちらを使うかは `desk.language` 設定が決めます(既定の `system` はコンピュータの
+言語に従います)。言葉はメッセージカタログとして同梱します(ADR 0250)。マニフェストで指定したフォルダ
+(`"messages": "messages"`)に言語ごとの JSON ファイルを 1 つずつ置き、`en.json` は必須です。カタログは
+メッセージ ID(`greeting.hello`)をテキストに、または `count` パラメータで選ぶ複数形
+(`{ "one": "{count} file", "other": "{count} files" }`)に対応させます。`{name}` には同じ名前のパラメータが
+入ります。ページでは `ctx.messages.t("greeting.hello", { name })` がデスクの言語、次に英語、最後に ID の
+順で読みます。`ctx.messages.language()` は言語を返し、`ctx.messages.onChange` は変更を毎回知らせるので、
+言葉を描き直せます。`defineUiPlugin` はカタログが揃ってからマウントします。形式は
+`specs/plugin/v0/messages.schema.json` です。
+
 ## アプリのウィンドウの開き方
 
 サーフェスを `center` か `floating` に置くプラグインはアプリです。そのウィンドウはデスクのキャンバス上に開くか、
