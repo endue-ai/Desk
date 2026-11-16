@@ -1,7 +1,8 @@
 //! Development builds' look at the windows out of the canvas (#235), for the app e2e
 //! (`e2e/specs/windows-out.spec.ts`): the machine running it may have its screen locked, where no
 //! pointer reaches an OS window's red button or its title bar. `compositor_window { app }` answers
-//! the OS windows the shell holds, each with its window, its plugin, its title and its frame;
+//! the OS windows the shell holds, each with its window, its plugin, its title and its frame, and
+//! the titles the app's Window menu lists (`windowMenu`);
 //! `{ app: "<window>", close: true }` first hands that window the OS's close request, as its red
 //! button does, and `{ app: "<window>", frame }` first puts it at `frame`, as a drag and a resize
 //! would. The answer is read before the event's work is done: a check waits on
@@ -94,7 +95,7 @@ fn run(shell: &mut Shell, event_loop: &ActiveEventLoop, ask: Ask) -> Result<Valu
         })
         .collect();
     windows.sort_by_key(|w| w["window"].as_str().map(str::to_owned));
-    Ok(json!({ "windows": windows }))
+    Ok(json!({ "windows": windows, "windowMenu": crate::menu::listed_windows() }))
 }
 
 #[cfg(test)]
