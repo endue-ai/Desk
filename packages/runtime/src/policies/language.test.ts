@@ -8,7 +8,11 @@ import { followLanguage, installLanguage, LANGUAGE_SETTING } from "./language";
 function context(shared: unknown[] = []): DeskContext {
   const bridge = new BridgeClient(browserStub({}));
   const hub = new PolicyHub(bridge);
-  return { hub, bridge, share: (message: unknown) => shared.push(message) } as unknown as DeskContext;
+  return {
+    hub,
+    bridge,
+    share: (message: unknown) => shared.push(message),
+  } as unknown as DeskContext;
 }
 
 describe("desk.language", () => {
