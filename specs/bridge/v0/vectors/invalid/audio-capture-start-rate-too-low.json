@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "a capture's sample rate is at least 8000",
+  "instance": {
+    "id": 8,
+    "method": "audio.capture.start",
+    "params": {
+      "sampleRate": 4000,
+      "scope": { "permission": "audio:capture" }
+    }
+  }
+}

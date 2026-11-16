@@ -1,0 +1,14 @@
+{
+  "target": "BridgeEvent",
+  "description": "an audio.frame carries its samples",
+  "instance": {
+    "event": "audio.frame",
+    "data": {
+      "captureId": "c1",
+      "atMs": 0,
+      "sampleRate": 16000,
+      "rmsDb": -40,
+      "peakDb": -30
+    }
+  }
+}

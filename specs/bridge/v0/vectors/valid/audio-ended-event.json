@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "a capture ended because the microphone went away",
+  "instance": {
+    "event": "audio.ended",
+    "data": {
+      "captureId": "c1",
+      "reason": "device",
+      "message": "the input device is gone"
+    }
+  }
+}

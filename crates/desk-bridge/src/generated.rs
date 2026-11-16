@@ -4440,7 +4440,7 @@ pub struct AudioCaptureStartResult {
     pub capture_id: String,
 }
 
-/// Stop a capture.
+/// Stop a capture. A caller stops its own captures; the runtime may stop any caller's, as the person does from the chrome. Another caller's captureId is not_found.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AudioCaptureStopRequest {
@@ -4462,6 +4462,95 @@ pub struct AudioCaptureStopParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AudioCaptureStopResult {}
+
+/// 20 ms of captured audio, for the caller that started the capture, in order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AudioFrameEvent {
+    pub event: AudioFrameEventEvent,
+    pub data: AudioFrameData,
+}
+
+/// Payload of audio.frame: mono signed 16-bit little-endian PCM (LINEAR16) at sampleRate, sampleRate / 50 samples, and how loud it is in dBFS (silence reads -100).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AudioFrameData {
+    #[serde(rename = "captureId")]
+    pub capture_id: String,
+    /// Milliseconds since the capture started, of the first sample. Input the desk had no room for shows as a gap.
+    #[serde(rename = "atMs")]
+    pub at_ms: u64,
+    #[serde(rename = "sampleRate")]
+    pub sample_rate: u64,
+    /// The samples, base64.
+    pub pcm: String,
+    #[serde(rename = "rmsDb")]
+    pub rms_db: f64,
+    #[serde(rename = "peakDb")]
+    pub peak_db: f64,
+}
+
+/// A capture ended; no audio.frame for it follows. Comes once per capture.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AudioEndedEvent {
+    pub event: AudioEndedEventEvent,
+    pub data: AudioEndedData,
+}
+
+/// Payload of audio.ended.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AudioEndedData {
+    #[serde(rename = "captureId")]
+    pub capture_id: String,
+    pub reason: AudioEndReason,
+    /// What went wrong, for reason device.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+/// Why a capture ended: its caller stopped it, the person stopped it from the chrome, the caller stopped, the caller's last surface closed, its grant was revoked, or the device failed or vanished.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AudioEndReason {
+    #[serde(rename = "stopped")]
+    Stopped,
+    #[serde(rename = "stopped_by_person")]
+    StoppedByPerson,
+    #[serde(rename = "plugin_stopped")]
+    PluginStopped,
+    #[serde(rename = "surface_closed")]
+    SurfaceClosed,
+    #[serde(rename = "revoked")]
+    Revoked,
+    #[serde(rename = "device")]
+    Device,
+}
+
+/// The captures in force changed. Only the runtime hears it, so the chrome shows that the microphone is on.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AudioCapturingEvent {
+    pub event: AudioCapturingEventEvent,
+    pub data: AudioCapturingData,
+}
+
+/// Payload of audio.capturing: every capture in force, in the order they started; empty when nothing captures.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AudioCapturingData {
+    pub captures: Vec<AudioCaptureInForce>,
+}
+
+/// One running capture and who started it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AudioCaptureInForce {
+    #[serde(rename = "captureId")]
+    pub capture_id: String,
+    /// The plugin id, or desk for the runtime.
+    pub caller: String,
+}
 
 /// The wake word was heard.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -5248,7 +5337,7 @@ pub enum ErrorCode {
     Forbidden,
 }
 
-/// Something the core reports without being asked: file changes, process output, socket data, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows.
+/// Something the core reports without being asked: file changes, process output, socket data, captured audio and who captures, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -5257,6 +5346,9 @@ pub enum BridgeEvent {
     ProcExit(ProcExitEvent),
     NetData(NetDataEvent),
     NetClosed(NetClosedEvent),
+    AudioFrame(AudioFrameEvent),
+    AudioEnded(AudioEndedEvent),
+    AudioCapturing(AudioCapturingEvent),
     AudioWake(AudioWakeEvent),
     PermChanged(PermChangedEvent),
     PermPrompt(PermPromptEvent),
@@ -11951,6 +12043,30 @@ pub enum AudioCaptureStopRequestMethod {
     #[default]
     #[serde(rename = "audio.capture.stop")]
     AudioCaptureStop,
+}
+
+/// The `event` of [`AudioFrameEvent`]: always `"audio.frame"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AudioFrameEventEvent {
+    #[default]
+    #[serde(rename = "audio.frame")]
+    AudioFrame,
+}
+
+/// The `event` of [`AudioEndedEvent`]: always `"audio.ended"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AudioEndedEventEvent {
+    #[default]
+    #[serde(rename = "audio.ended")]
+    AudioEnded,
+}
+
+/// The `event` of [`AudioCapturingEvent`]: always `"audio.capturing"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AudioCapturingEventEvent {
+    #[default]
+    #[serde(rename = "audio.capturing")]
+    AudioCapturing,
 }
 
 /// The `event` of [`AudioWakeEvent`]: always `"audio.wake"`.
