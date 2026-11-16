@@ -93,3 +93,60 @@ export function parseLs(/** @type {string} */ stdout, /** @type {string} */ dir)
 
 /** Whether what `head` read is text (no NUL in it). */
 export const isText = (/** @type {string} */ text) => !text.includes("\0");
+
+/** Images a helper container can list a volume with, smallest first: they all have ls and head. */
+const HELPERS = [
+  /^(docker\.io\/)?(library\/)?busybox:/,
+  /^(docker\.io\/)?(library\/)?alpine:/,
+  /-alpine$/,
+  /^(docker\.io\/)?(library\/)?(debian|ubuntu):/,
+  /-slim$/,
+];
+
+/** The local image a helper container should use for a volume, or "" when there is none. */
+export function helperImage(/** @type {import("./parse.js").Image[]} */ images) {
+  const refs = images.flatMap((i) => i.refs.map((ref) => ({ ref, size: i.size })));
+  for (const pattern of HELPERS) {
+    const found = refs.filter((r) => pattern.test(r.ref)).sort((a, b) => a.size - b.size)[0];
+    if (found) return found.ref;
+  }
+  return "";
+}
+
+/**
+ * Where a volume's files are read: in a running container that mounts it (docker exec, under
+ * its mount point), or else in a helper container that mounts it read-only, with no network,
+ * and is removed when it is done (docker run --rm).
+ * @param {string} volume @param {import("./parse.js").Container | undefined} running
+ * @param {string} helper
+ */
+export function volumeTarget(volume, running, helper) {
+  const mount = running?.mounts.find((m) => m.type === "volume" && m.name === volume);
+  if (running && mount) {
+    const base = containerPath(mount.destination);
+    return {
+      root: base,
+      ls: (/** @type {string} */ path) => lsArgs(running.id, path),
+      read: (/** @type {string} */ path) => readArgs(running.id, path),
+    };
+  }
+  const run = (/** @type {string} */ tool, /** @type {string[]} */ rest) => [
+    "run",
+    "--rm",
+    "--network",
+    "none",
+    "--volume",
+    `${objectRef(volume, "The volume")}:/volume:ro`,
+    "--entrypoint",
+    tool,
+    "--",
+    helper,
+    ...rest,
+  ];
+  return {
+    root: "/volume",
+    ls: (/** @type {string} */ path) => run("ls", ["-lA", "--", containerPath(path)]),
+    read: (/** @type {string} */ path) =>
+      run("head", ["-c", String(PREVIEW_BYTES), "--", containerPath(path)]),
+  };
+}

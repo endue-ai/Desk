@@ -160,7 +160,13 @@ export function docker(world, argv, io) {
       if (flags["-i"] || flags["--interactive"]) return S.shell(world, io, c);
       const [, program, ...rest2] = rest;
       if (program === "ls") {
-        const listing = F.ls(rest2.at(-1) ?? "/");
+        const at = rest2.at(-1) ?? "/";
+        const mount = c.volume?.[1];
+        const listing =
+          F.ls(at) ??
+          (mount && at.startsWith(mount)
+            ? F.lsVolume(`/volume${at.slice(mount.length)}`)
+            : undefined);
         if (listing === undefined)
           return fail(io, `ls: ${rest2.at(-1)}: No such file or directory`);
         return ok(io, listing);
@@ -330,6 +336,14 @@ function runContainer(
 ) {
   const { flags, rest } = parse(args);
   const [ref = "", ...command] = rest;
+  const tool = flags["--entrypoint"]?.[0];
+  if (flags["--rm"] && (tool === "ls" || tool === "head")) {
+    if (tool === "head") return ok(io, "# a file in the volume\n");
+    const listing = F.lsVolume(command.at(-1) ?? "/volume");
+    return listing === undefined
+      ? fail(io, `ls: ${command.at(-1)}: No such file or directory`)
+      : ok(io, listing);
+  }
   const img = findImage(world, ref);
   if (!img)
     return fail(

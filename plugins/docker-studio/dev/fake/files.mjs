@@ -82,3 +82,27 @@ export function ls(/** @type {string} */ path) {
 export function read(/** @type {string} */ path) {
   return FILES[path] ?? `// ${path}\n`;
 }
+
+/** What a volume holds, by the folder under its mount point, for a helper container's ls. */
+const VOLUME_FILES = {
+  "": [D("models"), D("blobs"), F("id_ed25519", 387), F("history", 2810)],
+  "/models": [
+    D("manifests"),
+    F("llama3.2-3b.gguf", 2_019_000_000),
+    F("nomic-embed-text.gguf", 274_000_000),
+  ],
+  "/blobs": [F("sha256-74701a8c35f6", 2_019_000_000), F("sha256-970aa74c0a90", 274_000_000)],
+};
+
+/** `ls -lA` of a folder in a volume (any volume reads the same in the preview). */
+export function lsVolume(/** @type {string} */ path) {
+  const rel = path.replace(/^\/volume/, "");
+  const list = /** @type {Record<string, Array<[string, string, number]>>} */ (VOLUME_FILES)[rel];
+  if (!list) return undefined;
+  return list
+    .map(
+      ([type, name, size]) =>
+        `${type}${type === "d" ? "rwxr-xr-x" : "rw-r--r--"}    ${type === "d" ? 2 : 1} root     root      ${String(size).padStart(10)} Nov 12 18:40 ${name}`,
+    )
+    .join("\n");
+}

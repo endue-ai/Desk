@@ -1,0 +1,150 @@
+/* Volumes and networks: the chips of who mounts or joins, the network map, the volume's files.
+   Theme tokens only. */
+
+.users {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.desk-btn.user-chip,
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 var(--desk-space-2);
+  overflow: hidden;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-full);
+  background: var(--ds-soft);
+  font-size: var(--desk-text-2xs);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-chip .dot {
+  width: 7px;
+  height: 7px;
+  box-shadow: none;
+}
+
+.head-note {
+  margin: 0;
+  font-size: var(--desk-text-xs);
+}
+
+.files-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  min-height: 0;
+}
+
+.files-wrap > .files-view {
+  flex: 1;
+}
+
+.files-note {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: var(--desk-text-xs);
+}
+
+.net-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+  overflow: auto;
+}
+
+.net-card {
+  padding: var(--desk-space-3);
+}
+
+.net-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 380px;
+}
+
+.net-edge {
+  stroke: color-mix(in srgb, var(--desk-primary) 35%, transparent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.net-node {
+  cursor: pointer;
+}
+
+.net-node rect {
+  fill: var(--desk-card);
+  stroke: var(--ds-line);
+  stroke-width: 1;
+}
+
+.net-node:hover rect,
+.net-node:focus-visible rect {
+  stroke: var(--desk-primary);
+}
+
+.net-dot {
+  fill: var(--ds-ok);
+}
+
+.net-node.st-paused .net-dot,
+.net-node.st-unhealthy .net-dot {
+  fill: var(--ds-warn);
+}
+
+.net-name {
+  fill: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.net-ip {
+  fill: var(--desk-text-muted);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-2xs);
+}
+
+.net-hub circle {
+  fill: color-mix(in srgb, var(--desk-primary) 18%, var(--desk-card));
+  stroke: var(--desk-primary);
+  stroke-width: 1.5;
+}
+
+.net-hub text {
+  text-anchor: middle;
+}
+
+.net-hub-name {
+  fill: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-xs);
+  font-weight: 650;
+}
+
+.net-hub-sub {
+  fill: var(--desk-text-muted);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-2xs);
+}
+
+.connect {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.connect select.desk-field {
+  min-width: 200px;
+}
