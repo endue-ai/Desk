@@ -31,13 +31,17 @@ pub struct Notification {
     pub body: Option<String>,
     /// Linux shows `error` as critical; macOS and Windows show every level alike.
     pub level: NotifyLevel,
+    /// The label of its one button, if it has one; a click on it reports `Click::action`.
+    pub action: Option<String>,
 }
 
-/// The person clicked a notification (the OS's default action, not a button).
+/// The person clicked a notification: its body (the OS's default action) or its button.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Click {
     /// The `Notification::id` it was posted with.
     pub id: String,
+    /// Whether it was the notification's button (`Notification::action`), not its body.
+    pub action: bool,
 }
 
 /// Whether the OS lets the desk show notifications.
