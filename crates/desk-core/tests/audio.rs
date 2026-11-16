@@ -385,3 +385,96 @@ fn the_runtime_hears_who_captures() {
         ]
     );
 }
+
+#[test]
+fn a_capture_allowed_once_can_still_be_stopped() {
+    let input = Arc::new(fake_mic());
+    let core = core_with(&input).with_prompter(SayYes);
+    let once = json!({ "permission": scope(), "reason": "listen once", "duration": "once" });
+    call(&core, HELLO, "perm.request", once).unwrap();
+    let deliveries = core.events().subscribe_addressed();
+    let capture = start_plain(&core, HELLO).unwrap();
+    assert_eq!(
+        stop(&core, HELLO, &capture).unwrap(),
+        json!({}),
+        "the spent grant does not stand between a plugin and its own stop"
+    );
+    assert_eq!(input.open_captures(MIC), 0);
+    assert_eq!(ended(&deliveries, &capture).data()["reason"], "stopped");
+}
+
+#[test]
+fn a_callers_captures_end_when_it_leaves() {
+    let input = Arc::new(fake_mic());
+    let core = core_with(&input);
+    grant(&core, "agent:x", scope());
+    grant(&core, HELLO, scope());
+    let deliveries = core.events().subscribe_addressed();
+    let agents = start_plain(&core, "agent:x").unwrap();
+    start_plain(&core, HELLO).unwrap();
+    core.caller_left("agent:x");
+    assert_eq!(input.open_captures(MIC), 1, "only agent:x's capture ends");
+    assert_eq!(
+        ended(&deliveries, &agents).data()["reason"],
+        "plugin_stopped"
+    );
+}
+
+#[test]
+fn a_caller_holds_at_most_four_captures() {
+    let input = Arc::new(fake_mic());
+    let core = core_with(&input);
+    grant(&core, HELLO, scope());
+    grant(&core, OTHER, scope());
+    let held: Vec<String> = (0..4).map(|_| start_plain(&core, HELLO).unwrap()).collect();
+    let refused = start_plain(&core, HELLO).unwrap_err();
+    assert_eq!(refused.code, ErrorCode::Forbidden, "{refused:?}");
+    assert_eq!(input.open_captures(MIC), 4, "the fifth opens nothing");
+    start_plain(&core, OTHER).expect("another caller is not held back");
+    stop(&core, HELLO, &held[0]).unwrap();
+    start_plain(&core, HELLO).expect("one ended, so one more may start");
+}
+
+#[test]
+fn a_48_khz_stereo_microphone_arrives_as_16_khz_mono_frames() {
+    let input = Arc::new(FakeInput::new().with_devices(vec![InputDevice {
+        id: MIC.to_owned(),
+        name: "Studio mic".to_owned(),
+        default: true,
+        sample_rate: 48_000,
+        channels: 2,
+    }]));
+    let core = core_with(&input);
+    grant(&core, HELLO, scope());
+    let deliveries = core.events().subscribe_addressed();
+    let capture = start_plain(&core, HELLO).unwrap();
+    // One second of a quiet 440 Hz tone, both channels alike, in 10 ms pushes.
+    let tone: Vec<f32> = (0..48_000)
+        .flat_map(|i| {
+            let s = 0.25 * (i as f32 * 440.0 * std::f32::consts::TAU / 48_000.0).sin();
+            [s, s]
+        })
+        .collect();
+    for part in tone.chunks(960) {
+        input.push(MIC, part);
+    }
+    stop(&core, HELLO, &capture).unwrap();
+    let frames: Vec<Seen> = drain(&deliveries)
+        .into_iter()
+        .filter(|s| s.name() == "audio.frame")
+        .collect();
+    assert!((49..=51).contains(&frames.len()), "{} frames", frames.len());
+    for frame in &frames {
+        assert_eq!(frame.data()["sampleRate"], 16_000);
+        let pcm = base64::engine::general_purpose::STANDARD
+            .decode(frame.data()["pcm"].as_str().unwrap())
+            .unwrap();
+        assert_eq!(pcm.len(), 640, "320 mono samples");
+    }
+    let middle = &frames[frames.len() / 2];
+    let rms = middle.data()["rmsDb"].as_f64().unwrap();
+    assert!(
+        (rms + 15.05).abs() < 1.0,
+        "a 0.25 sine reads about -15 dBFS: {rms}"
+    );
+}
