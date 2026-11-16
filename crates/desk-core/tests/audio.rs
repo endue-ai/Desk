@@ -19,7 +19,9 @@ use desk_sys::audio::fake::FakeInput;
 use desk_sys::audio::{Authorization, InputDevice};
 use desk_sys::{Error, ErrorCode as SysCode};
 use serde_json::{Value, json};
-use support::{Seen, SayYes, call, drain, grant, home, plugin_manage, roots, set_enabled, wait_for};
+use support::{
+    SayYes, Seen, call, drain, grant, home, plugin_manage, roots, set_enabled, wait_for,
+};
 
 const MIC: &str = "fake:mic";
 const HELLO: &str = "example.hello";
@@ -120,16 +122,26 @@ fn start_without_the_permission_is_denied() {
 fn first_capture_asks_through_the_prompt() {
     let input = Arc::new(fake_mic());
     let asked = Arc::new(AtomicUsize::new(0));
-    let core = core_with(&input).with_prompter(Counting { asked: asked.clone(), yes: true });
+    let core = core_with(&input).with_prompter(Counting {
+        asked: asked.clone(),
+        yes: true,
+    });
     let first = start_plain(&core, HELLO).unwrap();
     let second = start_plain(&core, HELLO).unwrap();
     assert_ne!(first, second);
-    assert_eq!(asked.load(Ordering::SeqCst), 1, "asked once, then the grant holds");
+    assert_eq!(
+        asked.load(Ordering::SeqCst),
+        1,
+        "asked once, then the grant holds"
+    );
     assert_eq!(input.open_captures(MIC), 2);
 
     let refusing = Arc::new(fake_mic());
     let asked = Arc::new(AtomicUsize::new(0));
-    let core = core_with(&refusing).with_prompter(Counting { asked: asked.clone(), yes: false });
+    let core = core_with(&refusing).with_prompter(Counting {
+        asked: asked.clone(),
+        yes: false,
+    });
     let refused = start_plain(&core, HELLO).unwrap_err();
     assert_eq!(refused.code, ErrorCode::PermissionDenied);
     assert_eq!(asked.load(Ordering::SeqCst), 1);
@@ -176,10 +188,17 @@ fn frames_arrive_as_audio_frame_events() {
     // `stop` waits for the end, so every frame and the end are delivered by now.
     let seen = drain(&deliveries);
     assert!(seen.iter().any(|s| s.name() == "audio.ended"), "{seen:?}");
-    let frames: Vec<Seen> = seen.into_iter().filter(|s| s.name() == "audio.frame").collect();
+    let frames: Vec<Seen> = seen
+        .into_iter()
+        .filter(|s| s.name() == "audio.frame")
+        .collect();
     assert_eq!(frames.len(), 2, "{frames:?}");
     for (i, frame) in frames.iter().enumerate() {
-        assert_eq!(frame.to, Some(vec![HELLO.to_owned()]), "only the caller hears it");
+        assert_eq!(
+            frame.to,
+            Some(vec![HELLO.to_owned()]),
+            "only the caller hears it"
+        );
         let data = frame.data();
         assert_eq!(data["captureId"], capture);
         assert_eq!(data["atMs"], 20 * i as u64);
@@ -210,7 +229,10 @@ fn stop_ends_the_capture() {
         json!({}),
         "stopping an ended capture is not an error"
     );
-    assert!(drain(&deliveries).iter().all(|s| s.name() != "audio.ended"), "ended comes once");
+    assert!(
+        drain(&deliveries).iter().all(|s| s.name() != "audio.ended"),
+        "ended comes once"
+    );
     let unknown = stop(&core, HELLO, "no-such-capture").unwrap_err();
     assert_eq!(unknown.code, ErrorCode::NotFound);
 }
@@ -252,7 +274,10 @@ fn unload_stops_the_plugins_captures() {
     let capture = start_plain(&core, HELLO).unwrap();
     set_enabled(&core, HELLO, false);
     assert_eq!(input.open_captures(MIC), 0);
-    assert_eq!(ended(&deliveries, &capture).data()["reason"], "plugin_stopped");
+    assert_eq!(
+        ended(&deliveries, &capture).data()["reason"],
+        "plugin_stopped"
+    );
 }
 
 #[test]
@@ -281,7 +306,10 @@ fn last_surface_closing_stops_captures() {
     assert_eq!(input.open_captures(MIC), 1, "the panel is still open");
     close(&panel);
     assert_eq!(input.open_captures(MIC), 0);
-    assert_eq!(ended(&deliveries, &capture).data()["reason"], "surface_closed");
+    assert_eq!(
+        ended(&deliveries, &capture).data()["reason"],
+        "surface_closed"
+    );
 }
 
 #[test]
@@ -303,7 +331,10 @@ fn device_failure_ends_with_the_error() {
     grant(&core, HELLO, scope());
     let deliveries = core.events().subscribe_addressed();
     let capture = start_plain(&core, HELLO).unwrap();
-    input.fail(MIC, Error::new(SysCode::IoError, "the input device is gone"));
+    input.fail(
+        MIC,
+        Error::new(SysCode::IoError, "the input device is gone"),
+    );
     let end = ended(&deliveries, &capture);
     assert_eq!(end.data()["reason"], "device");
     assert!(
@@ -340,7 +371,10 @@ fn the_runtime_hears_who_captures() {
         .into_iter()
         .filter(|seen| seen.name() == "audio.capturing")
         .collect();
-    assert!(seen.iter().all(|s| s.to == Some(vec!["desk".to_owned()])), "{seen:?}");
+    assert!(
+        seen.iter().all(|s| s.to == Some(vec!["desk".to_owned()])),
+        "{seen:?}"
+    );
     let lists: Vec<Value> = seen.iter().map(|s| s.data()["captures"].clone()).collect();
     assert_eq!(
         lists,
