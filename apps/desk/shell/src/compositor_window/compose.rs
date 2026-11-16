@@ -9,8 +9,11 @@
 
 use std::time::Instant;
 
+use super::composed::window::{Paned, waits_for};
+use super::hosted::Hosted;
 use super::{CompositorWindow, PAGE, draw, draw_map};
 use crate::web_host::render::popup_screen::App;
+use crate::web_host::window_pages;
 
 impl CompositorWindow {
     /// The scene the next frame draws: laid out again when the desk changed (`Composed::dirty`),
@@ -58,6 +61,9 @@ impl CompositorWindow {
         let layout = folded.and_then(|_| draw_map::layout(&self.hosted, held));
         let at = self.hosted.ms(Instant::now());
         self.hosted.follow_anchors();
+        // A window's page's picture whose panes' plugins have theirs shows now (ADR 0233).
+        let paned = paned(&self.hosted, scale);
+        self.shared.lock().pages_wait(&paned, scale);
         let boxes = self.host.web_boxes();
         let web = |host: &str| boxes.get(host).copied();
         let mut first = true;
@@ -183,5 +189,41 @@ fn panes_of(drawn: &draw::Drawn, scale: f32) -> Vec<(String, (u32, u32))> {
         .filter(|(host, _)| !crate::web_host::window_pages::is_window_page(host))
         .filter(|(host, _)| !host.starts_with("web:"))
         .map(|(host, at)| (host.clone(), (px(at.width), px(at.height))))
+        .collect()
+}
+
+/// The windows of the plan drawn from their own page with a live plugin pane, as `draw::window`
+/// draws them: where a picture of the page of another size leaves each pane (ADR 0233).
+fn paned(hosted: &Hosted, scale: f32) -> Vec<Paned> {
+    let Some(plan) = hosted.plan() else {
+        return Vec::new();
+    };
+    let live = |plugin: &Option<String>| {
+        let frame = hosted.frame(plugin.as_deref()?)?;
+        // Asleep, stopped, crashed or not answering: nothing to wait for.
+        let late = frame.state == desk_wm::FrameState::Late;
+        let dead = late || frame.state.away() || hosted.surfaces().dead(&frame.host);
+        (!dead).then(|| frame.host.clone())
+    };
+    (plan.windows.iter())
+        .filter(|w| waits_for(w.panes.len()))
+        .filter_map(|w| {
+            let laid = draw::rect(w.rect);
+            let placed = if hosted.on_its_way(&w.id) {
+                laid
+            } else {
+                draw::rect(draw::pixels::at_rest(w.rect, scale))
+            };
+            let panes: Vec<_> = (w.panes.iter())
+                .filter_map(|p| Some((live(&p.plugin)?, draw::rect(p.body).translate(-laid.min()))))
+                .collect();
+            (!panes.is_empty()).then(|| Paned {
+                page: window_pages::surface_of(&w.id),
+                placed,
+                laid: (laid.width, laid.height),
+                corner: hosted.anchor(&w.id),
+                panes,
+            })
+        })
         .collect()
 }

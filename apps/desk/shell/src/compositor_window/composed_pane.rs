@@ -182,6 +182,11 @@ impl Composed {
         changed
     }
 
+    /// Whether plugin `surface` has a picture of `size` device pixels aside (ADR 0233).
+    pub(super) fn pane_aside_of(&self, surface: &str, size: (u32, u32)) -> bool {
+        (self.panes.0.get(surface)).is_some_and(|p| p.aside.iter().any(|(s, _)| near(*s, size)))
+    }
+
     /// `surface`'s picture takes a paint of `size`: one of that size aside is its past.
     fn pane_stale(&mut self, surface: &str, size: (u32, u32)) {
         let Some(pane) = self.panes.0.get_mut(surface) else {
@@ -192,6 +197,15 @@ impl Composed {
         };
         let id = pane.aside.remove(at).1;
         self.frames.destroy(&mut self.compositor, id);
+    }
+
+    /// `surface`'s paint into `id` aside failed: that picture aside goes.
+    pub(super) fn pane_aside_failed(&mut self, surface: &str, id: TextureId) {
+        let Some(pane) = self.panes.0.get_mut(surface) else {
+            return;
+        };
+        pane.aside.retain(|(_, a)| *a != id);
+        pane.last = None;
     }
 
     /// `surface` is drawn no more, or gone: its pictures aside go.

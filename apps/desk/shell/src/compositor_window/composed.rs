@@ -47,6 +47,9 @@ pub struct Composed {
     page: page::PageAside,
     /// Each plugin's paints of a size its pane is not drawn at yet, held aside (ADR 0227).
     panes: pane::Panes,
+    /// Each window's own page's paints of a size its panes' plugins have no picture of yet, held
+    /// aside (ADR 0233).
+    pages: window::Pages,
 }
 
 impl Composed {
@@ -61,9 +64,10 @@ impl Composed {
         id
     }
 
-    /// A frame was drawn of everything that changed.
+    /// A frame was drawn of everything that changed. A window's page's picture still waiting
+    /// asks for the next one, whose scene counts towards ending its wait (ADR 0233).
     pub fn drawn(&mut self) {
-        self.dirty = false;
+        self.dirty = self.pages_waiting();
         self.repainted.clear();
     }
 
@@ -99,6 +103,7 @@ impl Composed {
     pub fn destroy(&mut self, surface: &str) {
         self.close_popup(surface);
         self.pane_gone(surface);
+        self.page_wait_gone(surface);
         self.drop_frames(surface);
     }
 
@@ -172,6 +177,7 @@ impl Shared {
             tips: HashMap::new(),
             page: page::PageAside::default(),
             panes: pane::Panes::default(),
+            pages: window::Pages::default(),
         })))
     }
 
@@ -188,7 +194,11 @@ impl SurfaceSink for Shared {
         let (id, aside, whole) = if attach.surface == super::PAGE {
             let (id, aside) = composed.page_texture(size);
             (id, aside, false)
+        } else if crate::web_host::window_pages::is_window_page(&attach.surface) {
+            composed.page_wait_texture(&attach.surface, size)
         } else {
+            // A window's page may wait for this plugin's picture: the next scene looks.
+            composed.dirty |= composed.pages_waiting();
             composed.pane_texture(&attach.surface, size)
         };
         // A paint to another texture than the one before it carries that one's damage only.
@@ -211,6 +221,10 @@ impl SurfaceSink for Shared {
             Err(_) => counts.1 += 1,
         }
         if aside {
+            // A picture aside that did not take the paint goes, never to be shown at 0×0.
+            if result.is_err() {
+                state.aside_failed(&attach.surface, id);
+            }
             return result;
         }
         if result.is_ok() && attach.surface == super::PAGE {
@@ -269,6 +283,8 @@ impl SurfaceSink for Shared {
 mod page;
 #[path = "composed_pane.rs"]
 mod pane;
+#[path = "composed_window.rs"]
+pub mod window;
 
 #[cfg(test)]
 #[path = "composed_tests.rs"]
