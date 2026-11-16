@@ -471,6 +471,28 @@ export type DesignThickness = "thin" | "normal" | "thick";
 /** The focus ring's distance: none, near or far. */
 export type DesignFocusOffset = "none" | "near" | "far";
 
+/** Message id to message, in one language. */
+export type MessageCatalog = Record<string, Message>;
+
+/** A message's id: camelCase words joined by dots, the first naming the module or area (frames.notResponding). */
+export type MessageId = string;
+
+/** One message: a text, or a plural message whose form the count parameter picks. */
+export type Message = MessageText | PluralMessage;
+
+/** A message's text. {name} is replaced by the parameter of that name; a parameter not given reads as nothing. */
+export type MessageText = string;
+
+/** A message in plural forms, keyed by the Intl.PluralRules categories of the catalog's language; the count parameter picks the form, and other is the form for any count the language has no other category for. */
+export interface PluralMessage {
+  zero?: MessageText;
+  one?: MessageText;
+  two?: MessageText;
+  few?: MessageText;
+  many?: MessageText;
+  other: MessageText;
+}
+
 /** What a pack brings and does when it is applied. */
 export interface PackBlock {
   /** The plugins it brings, by id: each nested in the pack folder under plugins/<folder>/ (installed and removed with the pack) or a plugin the desk has. Connectors first: Apply opens Settings, Connections on the first connector. */
@@ -792,6 +814,8 @@ export interface PluginManifest {
   /** A design-system plugin's design system: what each component of the desk is made of (ADR 0090). */
   designSystem?: DesignSystemPackage;
   native?: NativeBlock;
+  /** The folder, relative to the plugin folder and without .. segments, that holds the plugin's message catalogs: one <language>.json each (messages.schema.json, ADR 0250), en.json among them. The plugin SDK reads them in the desk's language (ctx.messages). */
+  messages?: MessagesPath;
 }
 
 /** Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui. */
@@ -838,6 +862,9 @@ export interface NativeBinaries {
 
 /** Path to the entry file, relative to the plugin folder, without .. segments. */
 export type EntryPath = string;
+
+/** A folder relative to the plugin folder, without .. segments. */
+export type MessagesPath = string;
 
 /** A view a plugin provides: a universal view or a page of them (ADR 0087, ADR 0103), with its id, or an item view (ADR 0032; deprecated, read through v0). */
 export type PluginView = View | UniversalView | UniversalPage;

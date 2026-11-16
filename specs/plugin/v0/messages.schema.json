@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/plugin/v0/messages.schema.json",
+  "title": "messages v0",
+  "description": "A message catalog: the words of the desk or of one plugin in one language (ADR 0250). A catalog is one JSON file named by its language (en.json, ko.json) in the folder a plugin's manifest names as messages, or in a runtime module's messages folder. English is required and complete; another language may lack ids, which then read in English.",
+  "$ref": "#/$defs/MessageCatalog",
+  "$defs": {
+    "MessageCatalog": {
+      "description": "Message id to message, in one language.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/MessageId" },
+      "additionalProperties": { "$ref": "#/$defs/Message" }
+    },
+    "MessageId": {
+      "description": "A message's id: camelCase words joined by dots, the first naming the module or area (frames.notResponding).",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z][a-zA-Z0-9]*(\\.[a-z][a-zA-Z0-9]*)*$"
+    },
+    "Message": {
+      "description": "One message: a text, or a plural message whose form the count parameter picks.",
+      "oneOf": [{ "$ref": "#/$defs/MessageText" }, { "$ref": "#/$defs/PluralMessage" }]
+    },
+    "MessageText": {
+      "description": "A message's text. {name} is replaced by the parameter of that name; a parameter not given reads as nothing.",
+      "type": "string"
+    },
+    "PluralMessage": {
+      "description": "A message in plural forms, keyed by the Intl.PluralRules categories of the catalog's language; the count parameter picks the form, and other is the form for any count the language has no other category for.",
+      "type": "object",
+      "properties": {
+        "zero": { "$ref": "#/$defs/MessageText" },
+        "one": { "$ref": "#/$defs/MessageText" },
+        "two": { "$ref": "#/$defs/MessageText" },
+        "few": { "$ref": "#/$defs/MessageText" },
+        "many": { "$ref": "#/$defs/MessageText" },
+        "other": { "$ref": "#/$defs/MessageText" }
+      },
+      "required": ["other"],
+      "additionalProperties": false
+    }
+  }
+}

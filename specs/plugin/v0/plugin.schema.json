@@ -71,7 +71,11 @@
           "description": "A design-system plugin's design system: what each component of the desk is made of (ADR 0090).",
           "$ref": "design-system.schema.json#/$defs/DesignSystemPackage"
         },
-        "native": { "$ref": "#/$defs/NativeBlock" }
+        "native": { "$ref": "#/$defs/NativeBlock" },
+        "messages": {
+          "description": "The folder, relative to the plugin folder and without .. segments, that holds the plugin's message catalogs: one <language>.json each (messages.schema.json, ADR 0250), en.json among them. The plugin SDK reads them in the desk's language (ctx.messages).",
+          "$ref": "#/$defs/MessagesPath"
+        }
       },
       "required": ["id", "version", "kind"],
       "additionalProperties": false,
@@ -265,6 +269,12 @@
     },
     "EntryPath": {
       "description": "Path to the entry file, relative to the plugin folder, without .. segments.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\\\]+$"
+    },
+    "MessagesPath": {
+      "description": "A folder relative to the plugin folder, without .. segments.",
       "type": "string",
       "minLength": 1,
       "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\\\]+$"
