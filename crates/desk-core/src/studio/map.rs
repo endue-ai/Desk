@@ -31,6 +31,12 @@ pub(crate) fn agent(agent: Agent) -> StudioAgent {
         status,
         avatar_url: agent.avatar_url.filter(|u| !u.is_empty()),
         personal_color: agent.personal_color.filter(|c| !c.is_empty()),
+        description: agent
+            .description
+            .filter(|d| !d.trim().is_empty())
+            .map(|d| cut(d.trim(), 2000)),
+        live_enabled: agent.live_enabled,
+        mcp_enabled: agent.mcp_enabled,
         region: agent.region.filter(|r| !r.is_empty()),
         source_catalog: agent.source_catalog.map(|s| StudioSourceCatalog {
             catalog_agent_id: s.catalog_agent_id,

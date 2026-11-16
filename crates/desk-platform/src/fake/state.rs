@@ -35,6 +35,9 @@ pub struct FakeAgent {
     pub skills: Vec<Value>,
     pub connectors: Vec<Value>,
     pub traits: Vec<Value>,
+    /// Further keys of the agent's own answer (`avatar_url`, `character_image_url`,
+    /// `live_enabled`, `mcp_enabled`), as an object.
+    pub more: Value,
 }
 
 #[derive(Debug)]
@@ -54,6 +57,11 @@ pub struct State {
     pub fail_at: BTreeMap<String, (u16, String, String)>,
     /// How long every answer waits.
     pub delay: Option<Duration>,
+    /// Pictures served without a token, by path: the media type and the bytes.
+    pub pictures: BTreeMap<String, (String, Vec<u8>)>,
+    /// Bodies the board's reads answer, by path (`fake/board.rs`); a path without one answers
+    /// what endue AI answers for an agent with nothing of the kind.
+    pub answers: BTreeMap<String, Value>,
     pub(super) clock: u64,
 }
 
@@ -70,6 +78,8 @@ impl State {
             fail_next: None,
             fail_at: BTreeMap::new(),
             delay: None,
+            pictures: BTreeMap::new(),
+            answers: BTreeMap::new(),
             clock: 0,
         }
     }
@@ -102,6 +112,11 @@ impl State {
         self.fail_at.insert(path.to_owned(), error);
     }
 
+    /// Answer a GET of `path` (without query) with `body`, as endue AI would.
+    pub fn answer_at(&mut self, path: &str, body: Value) {
+        self.answers.insert(path.to_owned(), body);
+    }
+
     /// Seed an agent of the person's with `name` and role; its id.
     pub fn add_agent(&mut self, name: &str, role: &str) -> String {
         let id = format!("ag_{:026}", self.agents.len() + 1);
@@ -131,6 +146,7 @@ impl State {
             skills: Vec::new(),
             connectors: Vec::new(),
             traits: Vec::new(),
+            more: Value::Null,
         });
         id
     }
