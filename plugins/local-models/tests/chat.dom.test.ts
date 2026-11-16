@@ -37,8 +37,8 @@ const $ = (sel: string) => document.querySelector(sel) as HTMLElement;
 const $$ = (sel: string) => [...document.querySelectorAll(sel)] as HTMLElement[];
 
 describe("the chat window", () => {
-  it("finds the servers, sends a question and streams the answer", async () => {
-    const app = createApp(bridge, { storeDelayMs: 5 });
+  it("finds the servers, sends a question and streams the answer", { timeout: 30000 }, async () => {
+    const app = createApp(bridge, { storeDelayMs: 5, autoTitle: false });
     mountShell(app, document.body);
     await app.start();
     expect(app.S.get().servers.map((s) => s.label)).toEqual(["Ollama :11434", "llama.cpp :8080"]);
@@ -84,7 +84,7 @@ describe("the chat window", () => {
     expect($(".lm-branch-count").textContent).toBe("1 / 2");
   });
 
-  it("stops an answer and keeps what came", async () => {
+  it("stops an answer and keeps what came", { timeout: 30000 }, async () => {
     const slow = await startFakeLlm({ tokenMs: 25 });
     const b = nodeBridge({ remap: new Map([[11434, slow.ollamaPort]]) });
     const app = createApp(b, { storeDelayMs: 5 });

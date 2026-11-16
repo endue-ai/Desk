@@ -160,6 +160,10 @@ export function threadsView(app) {
     );
   }
 
+  S.onSignal("rename", (/** @type {string} */ id) => {
+    renaming = id;
+    draw();
+  });
   S.on(["threads", "thread", "search", "generating"], draw);
   draw();
   return { el, focusSearch: () => search.focus() };

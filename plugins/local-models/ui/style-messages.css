@@ -230,3 +230,110 @@
   color: var(--desk-text-muted);
   font-weight: 600;
 }
+
+.lm-live-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: var(--desk-radius-full);
+  background: var(--lm-select);
+  color: var(--desk-primary-text);
+  font-size: var(--desk-text-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.lm-live-speed .lm-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.lm-continue {
+  height: 28px;
+  gap: 6px;
+  font-size: var(--desk-text-xs);
+}
+
+.lm-continue .lm-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.lm-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-3);
+  border: var(--desk-border-width) solid var(--lm-select-line);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+  box-shadow: 0 0 0 3px var(--lm-select);
+}
+
+.lm-editor[data-role="user"] {
+  margin-left: 15%;
+}
+
+.lm-edit-field {
+  width: 100%;
+  min-height: 72px;
+  height: auto;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  resize: none;
+  line-height: 1.55;
+}
+
+.lm-edit-field:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.lm-editor-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.lm-editor-hint {
+  flex: 1;
+  font-size: var(--desk-text-2xs);
+  color: var(--desk-text-muted);
+}
+
+.lm-msg-files {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--desk-space-1);
+}
+
+.lm-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: var(--desk-border-width) solid var(--lm-line);
+  border-radius: var(--desk-radius-full);
+  background: var(--lm-panel);
+  font-size: var(--desk-text-xs);
+}
+
+.lm-jump {
+  position: absolute;
+  left: 50%;
+  bottom: 132px;
+  z-index: 5;
+  transform: translateX(-50%);
+  border: var(--desk-border-width) solid var(--lm-line);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-card);
+  box-shadow: var(--desk-shadow-md);
+}
+
+.lm-jump[hidden] {
+  display: none;
+}

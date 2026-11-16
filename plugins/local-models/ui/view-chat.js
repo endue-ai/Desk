@@ -2,6 +2,8 @@
 // title), the composer under it. While an answer streams only its message redraws, and the view
 // follows it down unless the person scrolled up to read.
 import { fill, h, icon, iconButton } from "./dom.js";
+import { exportThread } from "./edit.js";
+import { openMenu } from "./menu.js";
 import { drawMessage, messageEl } from "./message.js";
 import { path } from "./threads.js";
 import { composerView } from "./view-composer.js";
@@ -34,6 +36,48 @@ const SUGGESTIONS = [
   },
 ];
 
+/** The open chat's menu: rename, pin, export, remove. @param {App} app @param {MouseEvent} e */
+function threadMenu(app, e) {
+  const thread = app.S.get().thread;
+  const saved = Boolean(thread && Object.keys(thread.nodes).length);
+  if (!thread) return;
+  openMenu(e, [
+    {
+      label: "Rename",
+      icon: "edit",
+      disabled: !saved,
+      run: () => app.S.signal("rename", thread.id),
+    },
+    {
+      label: thread.pinned ? "Unpin" : "Pin",
+      icon: "pin",
+      disabled: !saved,
+      run: () => void app.updateThread(thread.id, { pinned: !thread.pinned }),
+    },
+    { separator: true },
+    {
+      label: "Export as Markdown",
+      icon: "download",
+      disabled: !saved,
+      run: () => void exportThread(app, "md"),
+    },
+    {
+      label: "Export as JSON",
+      icon: "code",
+      disabled: !saved,
+      run: () => void exportThread(app, "json"),
+    },
+    { separator: true },
+    {
+      label: "Move to Trash",
+      icon: "trash",
+      danger: true,
+      disabled: !saved,
+      run: () => void app.deleteThread(thread.id),
+    },
+  ]);
+}
+
 /** @param {App} app */
 export function chatView(app) {
   const { S } = app;
@@ -57,14 +101,25 @@ export function chatView(app) {
     pickerButton,
     title,
     h("div.lm-head-spacer"),
+    iconButton("more", "Chat options", (e) => threadMenu(app, e), { class: "lm-head-more" }),
     iconButton("newChat", "New chat", () => app.newChat(), { class: "lm-head-new" }),
   );
-  const main = h("main.lm-main", null, header, scroller, composer.el);
+  const jump = iconButton(
+    "chevronDown",
+    "Scroll to the end",
+    () => {
+      follow = true;
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+    },
+    { class: "lm-jump", hidden: true },
+  );
+  const main = h("main.lm-main", null, header, scroller, jump, composer.el);
   const el = h("section.lm-chat", null, threads.el, main);
 
   let follow = true;
   scroller.addEventListener("scroll", () => {
     follow = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 80;
+    jump.hidden = follow;
   });
   const toBottom = () => {
     if (follow) scroller.scrollTop = scroller.scrollHeight;
@@ -206,13 +261,17 @@ export function chatView(app) {
     requestAnimationFrame(toBottom);
   }
 
-  S.onSignal("stream", (/** @type {import("./threads.js").Node} */ node) => {
-    const thread = S.get().thread;
-    const el2 = shown.get(node.id);
-    if (!thread || !el2) return;
-    drawMessage(app, thread, node, el2, { live: true });
-    toBottom();
-  });
+  S.onSignal(
+    "stream",
+    (/** @type {{ node: import("./threads.js").Node, speed?: number }} */ { node, speed }) => {
+      const thread = S.get().thread;
+      const el2 = shown.get(node.id);
+      // A frame that comes after the answer ended would draw it as still writing.
+      if (!thread || !el2 || S.get().generating?.nodeId !== node.id) return;
+      drawMessage(app, thread, node, el2, { live: true, speed });
+      toBottom();
+    },
+  );
 
   S.on(["thread", "selected", "models", "servers", "sidebar"], drawHeader);
   S.on(["thread", "generating", "models", "servers", "scanning", "ready"], (_s, changed) => {

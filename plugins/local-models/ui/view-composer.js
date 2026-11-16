@@ -1,6 +1,7 @@
 // Where the person writes: a field that grows with the text, Enter to send and Shift+Enter for a
 // new line, and one button that sends or, while an answer streams, stops it.
 import { fill, h, icon } from "./dom.js";
+import { editLastQuestion } from "./message.js";
 
 /** @typedef {import("./app.js").App} App */
 
@@ -55,6 +56,8 @@ export function composerView(app) {
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       submit();
+    } else if (e.key === "ArrowUp" && !field.value && editLastQuestion(app)) {
+      e.preventDefault();
     } else if (e.key === "Escape" && S.get().generating) {
       e.preventDefault();
       app.stop();

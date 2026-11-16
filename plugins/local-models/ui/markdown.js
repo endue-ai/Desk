@@ -5,7 +5,8 @@ import { copyText, h, icon } from "./dom.js";
 import { highlight } from "./highlight.js";
 
 /**
- * @typedef {{ live?: boolean, onLink?: (url: string) => void }} Options
+ * @typedef {{ keys: string[], els: HTMLElement[] }} BlockCache
+ * @typedef {{ live?: boolean, onLink?: (url: string) => void, cache?: BlockCache }} Options
  * @typedef {{ type: "code", lang: string, text: string, open: boolean }
  *   | { type: "heading", level: number, text: string }
  *   | { type: "hr" }
@@ -326,7 +327,24 @@ function blockEl(b, o) {
 /** Draw markdown into an element, replacing what it held. @param {HTMLElement} el @param {string} text @param {Options} [o] */
 export function renderMarkdown(el, text, o = {}) {
   const blocks = parseBlocks(text);
-  el.replaceChildren(...blocks.map((b) => blockEl(b, o)));
+  const cache = o.cache;
+  const keys = blocks.map(
+    (b, i) => `${JSON.stringify(b)}${o.live && i === blocks.length - 1 ? "~" : ""}`,
+  );
+  // While an answer streams only its last block changes: the blocks before it are kept as drawn.
+  const els = blocks.map((b, i) => {
+    const kept = cache && cache.keys[i] === keys[i] ? cache.els[i] : undefined;
+    if (kept) {
+      kept.classList.remove("lm-tail");
+      return kept;
+    }
+    return blockEl(b, o);
+  });
+  if (cache) {
+    cache.keys = keys;
+    cache.els = els;
+  }
+  el.replaceChildren(...els);
   el.classList.add("lm-md");
   if (o.live) el.lastElementChild?.classList.add("lm-tail");
   return el;
