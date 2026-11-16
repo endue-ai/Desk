@@ -1,7 +1,9 @@
 //! The session the desk keeps for the person: the access token (which lives 300 s), the `endue_rt`
-//! refresh cookie, when the token was issued and expires, and the profile, in one file readable by
-//! this user only (`<data>/account.json`, mode 0600) until the OS keychain (SYS-06). A version 1
-//! file, from the endpoints endue ID never served, is not read.
+//! refresh cookie, when the token was issued and expires, and the profile. `vault.rs` keeps the
+//! tokens in the OS keychain (ADR 0239); this is the version 2 file that holds them in plain text,
+//! readable by this user only (`<data>/account.json`, mode 0600), which a desk without a keychain
+//! still writes and one with a keychain moves into it. A version 1 file, from the endpoints endue ID
+//! never served, is not read.
 //!
 //! ```json
 //! { "version": 2, "note": "...", "accessToken": "...", "refreshCookie": "...",
@@ -18,7 +20,7 @@ use super::{Profile, now};
 use crate::secrets::write_private;
 
 const VERSION: u32 = 2;
-const NOTE: &str = "the endue ID session in plain text until Desk uses the OS keychain; readable by this user only";
+const NOTE: &str = "the endue ID session in plain text, as the OS keychain did not answer; readable by this user only";
 /// A token this close to its expiry is renewed before it is handed out.
 const EARLY: u64 = 30;
 
@@ -46,6 +48,25 @@ impl Session {
             issued_at,
             expires_at: issued_at + expires_in,
             profile: None,
+        }
+    }
+
+    /// The session the keychain's tokens and the file's times and profile make up.
+    pub fn restore(
+        access_token: String,
+        refresh_cookie: String,
+        issued_at: u64,
+        expires_at: u64,
+        profile: Option<Profile>,
+    ) -> Self {
+        Self {
+            version: VERSION,
+            note: NOTE.to_owned(),
+            access_token,
+            refresh_cookie,
+            issued_at,
+            expires_at,
+            profile,
         }
     }
 

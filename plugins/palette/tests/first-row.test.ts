@@ -107,7 +107,13 @@ describe("the first list", () => {
       ["Plugins", ["plugin:endue.calendar", "plugin:endue.terminal"]],
       [
         "Commands",
-        ["desk.shell.desktop-2", "desk.shell.desktop-10", "desk.inbox.open", "desk.keys.conflicts"],
+        [
+          "desk.shell.desktop-2",
+          "desk.shell.desktop-10",
+          "desk.inbox.open",
+          "desk.keys.conflicts",
+          "desk.frames.stop",
+        ],
       ],
     ]);
     expect(palette.selected()?.dataset.id).toBe("desk.settings.open");
@@ -119,10 +125,10 @@ describe("the first list", () => {
     });
   });
 
-  it("does not list a command the palette cannot run: one that needs args", async () => {
+  it("lists a command that needs args: choosing it asks for them (args.test.ts)", async () => {
     const palette = await mount({ commands, pluginSearch: index });
     palette.type("not responding");
-    expect(palette.ids()).not.toContain("desk.frames.stop");
+    expect(palette.ids()).toContain("desk.frames.stop");
   });
 
   it("puts a plugin opened from here first next time", async () => {

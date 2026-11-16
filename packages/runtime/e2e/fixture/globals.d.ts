@@ -9,6 +9,13 @@ declare global {
   interface Window {
     /** Test handle installed by the fixture pages only. */
     __desk: { clock: ManualClock; runtime: Runtime; stub: BrowserStub; commands: string[] };
+    /** The terminal fixture (terminal.html): what its PTY was written, and printing more to it. */
+    __terminal: {
+      writes: Array<{ data: string; encoding: string }>;
+      print(text: string): void;
+      /** What a plain modern terminal draws (terminal-pattern.ts). */
+      pattern: string;
+    };
     /** The onboarding fixture's in-memory store.get/store.set backing. */
     __deskStore: Record<string, unknown>;
     /** The onboarding fixture's open microphone question (?mic=ask): the person's answer to it. */

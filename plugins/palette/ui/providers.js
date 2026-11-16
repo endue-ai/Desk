@@ -220,3 +220,17 @@ export function createAsker(run, changed) {
     },
   };
 }
+
+/**
+ * What a row is, whatever arrives around it: a provider's result, a search hit or a command. The
+ * selection stays on it while the list changes.
+ * @param {any} row
+ */
+export function rowIdentity(row) {
+  if (!row) return null;
+  if (row.type === "result") return JSON.stringify(["provider", row.provider, row.result.id]);
+  const entry = row.entry;
+  return entry.hit
+    ? JSON.stringify(["search", entry.source, entry.hit.plugin ?? entry.hit.kind, entry.id])
+    : JSON.stringify(["command", entry.provider ?? "", entry.id]);
+}

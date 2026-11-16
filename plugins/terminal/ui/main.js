@@ -59,12 +59,18 @@ defineUiPlugin({
         restart: (id) => app?.restart(id),
         attend: () => app?.attend(),
         session: (id) => app?.sessions().find((s) => s.id === id),
+        split: async (id, direction) => {
+          const session = await app?.split(id, direction);
+          if (session) app?.focus(session.id);
+        },
+        ratio: (tab, path, ratio, min) => app?.ratio(tab, path, ratio, min),
       },
       options(),
       {
         bridge: ctx.bridge,
         platform,
         pasteWarning: () => settings().pasteWarning,
+        programCopy: () => settings().programCopy,
         dnd: ctx.dnd,
       },
     );

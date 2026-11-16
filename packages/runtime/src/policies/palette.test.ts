@@ -68,4 +68,32 @@ describe("desk.palette's policy", () => {
     });
     policy.dispose();
   });
+
+  it("the desk's Windows and Settings providers come before the plugins'", async () => {
+    const registry = stubCommands((event: BridgeEvent) => stub.emit(event));
+    const stub = browserStub({ ...registry.handlers });
+    const hub = new PolicyHub(new BridgeClient(stub));
+    const files = plugin("example.files", {
+      paletteProviders: [{ command: "example.files.find", title: "Files" }],
+    });
+    const palette = plugin("desk.palette", {});
+    const policy = installPalette({ hub });
+    hub.apply([files, palette]);
+    await hub.commands.settled();
+    // Only the desk's providers whose commands are there: the shell's windows define them.
+    expect(await hub.commands.run("desk.palette.providers")).toEqual([
+      { command: "example.files.find", title: "Files", owner: "example.files" },
+    ]);
+    const find = (id: string) =>
+      hub.commands.define(id, { title: id, owner: "desk", run: () => ({ results: [] }) });
+    const offs = [find("desk.settings.find"), find("desk.windows.find")];
+    await hub.commands.settled();
+    expect(await hub.commands.run("desk.palette.providers")).toEqual([
+      { command: "desk.windows.find", title: "Windows", owner: "desk" },
+      { command: "desk.settings.find", title: "Settings", owner: "desk" },
+      { command: "example.files.find", title: "Files", owner: "example.files" },
+    ]);
+    for (const off of offs) off();
+    policy.dispose();
+  });
 });

@@ -91,6 +91,19 @@ export function searchDecorations(/** @type {{ theme?: Record<string, string> }}
 }
 
 /**
+ * The window operations (CSI t) a plain terminal answers, which xterm keeps off: the title stack
+ * that vim and neovim push and pop (22, 23), and the text area's and a cell's size (18, 14, 16).
+ * Nothing that moves, resizes, raises or iconifies the window, or reads its title back (issue 319).
+ */
+export const WINDOW_OPTIONS = Object.freeze({
+  pushTitle: true,
+  popTitle: true,
+  getWinSizeChars: true,
+  getWinSizePixels: true,
+  getCellSizePixels: true,
+});
+
+/**
  * The options every terminal is made with, and given again when the settings or the theme change.
  * Reduced motion stops the cursor blinking; high contrast asks xterm for a 7:1 ratio on every cell.
  * The Unicode 11 addon is proposed API in xterm, so loading it needs allowProposedApi.
@@ -108,6 +121,7 @@ export function terminalOptions(settings, theme, fallback = {}) {
     scrollback: settings.scrollback,
     minimumContrastRatio: theme.contrast === "high" ? 7 : 1,
     theme: xtermTheme(theme, fallback),
+    windowOptions: { ...WINDOW_OPTIONS },
   };
 }
 
@@ -122,8 +136,11 @@ export const LIVE = [
   "theme",
 ];
 
+/** Options xterm takes only when a terminal is made. */
+const MADE_WITH = ["allowProposedApi", "windowOptions"];
+
 /** xterm's own options, without the plugin's (copyOnSelect): xterm refuses keys it does not know. */
 export const xtermOptions = (/** @type {Record<string, unknown>} */ options) =>
   Object.fromEntries(
-    Object.entries(options).filter(([name]) => name === "allowProposedApi" || LIVE.includes(name)),
+    Object.entries(options).filter(([name]) => MADE_WITH.includes(name) || LIVE.includes(name)),
   );

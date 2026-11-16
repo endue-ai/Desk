@@ -4,10 +4,13 @@
 // also asks the palette providers (desk.palette.providers), its own item search among them, whose
 // results follow the commands in one group each. The first row is the selected one until the
 // person moves the selection; the first list is what they used last, the plugins, then the commands.
+// A command that needs args asks for each in turn (args.js) before it runs.
 import { CommandFailed, defineUiPlugin } from "@endue-ai/plugin-sdk";
+import { answer, askingMode, back, start } from "./args.js";
+import { element, reportFailure } from "./dom.js";
 import { keyHint } from "./keys.js";
-import { commandEntries, filter, rank, remember } from "./match.js";
-import { actionOf, createAsker, rows, searchItems } from "./providers.js";
+import { commandEntries, filter, rank, remember, runnable } from "./match.js";
+import { actionOf, createAsker, rowIdentity, rows, searchItems } from "./providers.js";
 import { createSearch, openSearchHit, searchEntry } from "./search.js";
 
 const OWN = new Set([
@@ -68,13 +71,6 @@ defineUiPlugin({
     const loaded = await ctx.bridge.call("store.get", { key: "history" }).catch(() => ({}));
     if (Array.isArray(loaded.value)) history = loaded.value;
 
-    const element = (tag, attributes = {}, text) => {
-      const el = document.createElement(tag);
-      for (const [name, value] of Object.entries(attributes)) el.setAttribute(name, value);
-      if (text !== undefined) el.textContent = text;
-      return el;
-    };
-
     /** One row as an option: a command with its keys, or a provider's result with its detail. */
     const option = (row, index) => {
       const item = element("li", {
@@ -119,14 +115,7 @@ defineUiPlugin({
       );
     };
 
-    const identity = (row) => {
-      if (!row) return null;
-      if (row.type === "result") return JSON.stringify(["provider", row.provider, row.result.id]);
-      const entry = row.entry;
-      return entry.hit
-        ? JSON.stringify(["search", entry.source, entry.hit.plugin ?? entry.hit.kind, entry.id])
-        : JSON.stringify(["command", entry.provider ?? "", entry.id]);
-    };
+    const identity = rowIdentity;
 
     const render = () => {
       const previous = identity(shown[selected]);
@@ -217,24 +206,7 @@ defineUiPlugin({
       return was;
     };
 
-    /**
-     * A command run from here that failed is reported on the status line: its title, then why. A
-     * cancelled one (the person backed out of a pick) is not.
-     * @param {string} what
-     * @param {unknown} error
-     */
-    const report = (what, error) => {
-      const message = error instanceof Error ? error.message : String(error);
-      if (/^[^:]+: cancelled: /.test(message)) return;
-      void ctx.bridge
-        .call("ui.notify", {
-          title: `${what} failed`,
-          body: message.replace(/^[^:]+: (?:failed|unknown_command): /, ""),
-          level: "error",
-          scope: { permission: "ui:notify" },
-        })
-        .catch(() => {});
-    };
+    const report = (what, error) => reportFailure(ctx.bridge, what, error);
 
     /** What was run or opened from here comes first in the next first list. */
     const keep = (/** @type {string} */ id) => {
@@ -245,15 +217,45 @@ defineUiPlugin({
     /** Run a command, published document, OS hit, or provider action. */
     const choose = async (mod = false) => {
       const row = shown[selected];
+      // Enter on a question with nothing typed: the answer says what it needs.
+      if (!row && mode?.kind === "args" && !choosing) return answered(input.value);
       if (!row || choosing || !mode) return;
       const entry = row.entry;
       if (mode.kind === "pick") {
         close()?.resolve(entry.id);
         return;
       }
+      if (mode.kind === "args") return answered(entry.id);
+      // A command that needs args asks for them first; Escape on the first goes back here.
+      if (row.type === "command" && !entry.hit && !runnable(entry))
+        return ask(start(entry), { ...mode, query: input.value });
+      const action = row.type === "result" ? actionOf(row.result, mod) : null;
+      await run(row, action?.command ?? entry.id, action?.args ?? {}, action);
+    };
+
+    /** Show the question `asking` asks now; `from` is the list Escape on the first goes back to. */
+    const ask = (asking, from) => show({ ...askingMode(asking), from });
+
+    /** The answer to the question asked now: the next one, the command run, or why not. */
+    const answered = async (/** @type {string} */ text) => {
+      const step = answer(mode.asking, text);
+      if (step.run !== undefined)
+        await run({ type: "command", entry: mode.asking }, step.run, step.args);
+      else if (step.invalid) status.textContent = step.invalid;
+      else ask(step.asking, mode.from);
+    };
+
+    /** Escape while asking: the question before, or the list the command was chosen from. */
+    const stepBack = () => {
+      const before = back(mode.asking);
+      if (before) ask(before, mode.from);
+      else show(mode.from);
+    };
+
+    const run = async (row, command, args, action = null) => {
+      const entry = row.entry;
       choosing = true;
       const was = mode;
-      const action = row.type === "result" ? actionOf(row.result, mod) : null;
       const label = action?.title ?? entry?.label ?? "Search result";
       try {
         if (entry?.hit) {
@@ -265,9 +267,9 @@ defineUiPlugin({
         } else {
           if (!native) close();
           else window.parent.postMessage({ type: "desk:palette-command" }, "*");
-          await ctx.commands.run(action?.command ?? entry.id, action?.args ?? {});
+          await ctx.commands.run(command, args);
           if (native && mode === was) close();
-          if (!action) keep(entry.id);
+          if (!action) keep(command);
         }
       } catch (error) {
         if (native || entry?.hit) {
@@ -315,7 +317,8 @@ defineUiPlugin({
       } else if (event.key === "Enter") {
         choose(event.metaKey || event.ctrlKey);
       } else if (event.key === "Escape") {
-        cancel();
+        if (mode?.kind === "args") stepBack();
+        else cancel();
       } else {
         return;
       }
@@ -333,7 +336,7 @@ defineUiPlugin({
       if (!native && mode?.kind === "commands" && !document.hidden && args?.query === undefined)
         return cancel();
       const [listed, bindings, init, providers] = await Promise.all([
-        // The registry itself, for each command's argsSchema: one that needs args is not listed.
+        // The registry itself, for each command's argsSchema: one that needs args asks for them.
         ctx.bridge.call("cmd.list", { scope: { permission: "cmd:invoke", ids: ["*"] } }),
         ctx.commands.run("desk.keys.list").catch(() => []),
         ctx.bridge.call("init.get", {}).catch(() => ({ settings: {} })),

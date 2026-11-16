@@ -3,6 +3,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { vi } from "vitest";
+import * as args from "../ui/args.js";
+import * as dom from "../ui/dom.js";
 import * as keys from "../ui/keys.js";
 import * as match from "../ui/match.js";
 import * as providers from "../ui/providers.js";
@@ -87,6 +89,8 @@ export async function mount(options: Options = {}) {
   );
   let registered: { mount: (context: unknown) => Promise<void> } | undefined;
   const supplied: Record<string, unknown> = {
+    ...args,
+    ...dom,
     ...keys,
     ...match,
     ...providers,

@@ -83,6 +83,44 @@
         "agent": true
       },
       {
+        "id": "endue.terminal.split",
+        "title": "Split the terminal",
+        "keywords": ["pane", "split right", "split down", "side by side"],
+        "description": "Start a shell beside a terminal's pane, in its folder and its tab: right puts it beside, down below; answers its session id.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "direction": {
+              "enum": ["right", "down"],
+              "description": "right: side by side; down: one above the other"
+            },
+            "session": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A terminal's session id, as endue.terminal.sessions lists it; the one on screen when absent"
+            }
+          },
+          "required": ["direction"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.terminal.focus-pane",
+        "title": "Go to the pane beside",
+        "keywords": ["pane", "split", "focus"],
+        "description": "Give the focus to the pane beside the one in use in the terminal's tab; at an edge it stays.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "direction": {
+              "enum": ["left", "right", "up", "down"]
+            }
+          },
+          "required": ["direction"],
+          "additionalProperties": false
+        }
+      },
+      {
         "id": "endue.terminal.next",
         "title": "Next terminal"
       },
@@ -307,6 +345,50 @@
       {
         "key": "Mod+Shift+T",
         "command": "endue.terminal.new"
+      },
+      {
+        "key": "Control+Alt+\\",
+        "mac": "Mod+\\",
+        "command": "endue.terminal.split",
+        "args": {
+          "direction": "right"
+        }
+      },
+      {
+        "key": "Control+Alt+Shift+\\",
+        "mac": "Mod+Shift+Enter",
+        "command": "endue.terminal.split",
+        "args": {
+          "direction": "down"
+        }
+      },
+      {
+        "key": "Mod+Shift+ArrowLeft",
+        "command": "endue.terminal.focus-pane",
+        "args": {
+          "direction": "left"
+        }
+      },
+      {
+        "key": "Mod+Shift+ArrowRight",
+        "command": "endue.terminal.focus-pane",
+        "args": {
+          "direction": "right"
+        }
+      },
+      {
+        "key": "Mod+Shift+ArrowUp",
+        "command": "endue.terminal.focus-pane",
+        "args": {
+          "direction": "up"
+        }
+      },
+      {
+        "key": "Mod+Shift+ArrowDown",
+        "command": "endue.terminal.focus-pane",
+        "args": {
+          "direction": "down"
+        }
       }
     ],
     "paletteProviders": [
@@ -418,6 +500,16 @@
         "default": "current",
         "choices": ["current", "setting"],
         "description": "Where a new terminal starts: current, the folder the terminal on screen is in when its shell says (OSC 7); setting, endue.terminal.cwd."
+      },
+      "endue.terminal.program-copy": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Let programs copy text to the clipboard with OSC 52, as neovim, tmux and programs over ssh do; the status line says what was copied. Programs can never read the clipboard."
+      },
+      "endue.terminal.event-commands": {
+        "kind": "object",
+        "default": {},
+        "description": "Desk commands a terminal's events run, by event: bell, notification (OSC 9, 777, 99), command (one that ran notify-after seconds or more, OSC 133) and exit, each to a command id such as endue.terminal.focus. The command gets { event, session, tab, looking, level } and what happened; one outside the terminal's grants is asked for once."
       }
     }
   }

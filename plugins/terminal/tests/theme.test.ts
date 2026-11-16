@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { cssVariables, tokens } from "../../../packages/ui/src/tokens";
 import { DEFAULTS } from "../ui/shell.js";
-import { MONOSPACE, THEME_VARIABLES, terminalOptions, withAlpha, xtermTheme } from "../ui/theme.js";
+import {
+  MONOSPACE,
+  THEME_VARIABLES,
+  terminalOptions,
+  WINDOW_OPTIONS,
+  withAlpha,
+  xtermTheme,
+} from "../ui/theme.js";
 
 const dark = { scheme: "dark", contrast: "normal", reducedMotion: false, variables: {} } as const;
 
@@ -77,6 +84,7 @@ describe("the terminal's options", () => {
       scrollback: 10000,
       minimumContrastRatio: 1,
       theme: xtermTheme(dark, page),
+      windowOptions: WINDOW_OPTIONS,
     });
     expect(
       terminalOptions(
