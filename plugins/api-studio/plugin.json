@@ -17,6 +17,10 @@
     {
       "permission": "fs:write",
       "paths": ["${home}/**"]
+    },
+    {
+      "permission": "shell:open",
+      "schemes": ["http", "https"]
     }
   ],
   "surfaces": [

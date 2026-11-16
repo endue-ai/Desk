@@ -78,7 +78,13 @@ export function createActions(S) {
       const { prep, missing, bodyText } = prepare(tab.req, sendContext(S, tab));
       for (const hook of SEND_HOOKS) await hook.prepared?.(S, tab, prep);
       if (tab.running !== placeholder) return;
-      const running = S.engine.send(prep, { verbose: true });
+      tab.received = 0;
+      const running = S.engine.send(prep, {
+        verbose: true,
+        onProgress: (/** @type {number} */ n) => {
+          tab.received = n;
+        },
+      });
       tab.running = running;
       res = readResponse(await running.promise, prep, bodyText, missing);
     } catch (error) {
