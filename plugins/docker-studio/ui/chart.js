@@ -43,7 +43,7 @@ export function areaChart(first) {
     const top = Math.max(0, ...spec.series.flatMap((s) => s.values));
     // Headroom over the highest point, and never a scale so small that noise fills it.
     const max = spec.max ?? niceMax(Math.max(top * 1.2, spec.floor ?? 0));
-    const pad = { t: 8, b: 4, l: 0, r: 6 };
+    const pad = { t: 18, b: 4, l: 0, r: 6 };
     const x = (/** @type {number} */ i, /** @type {number} */ n) =>
       pad.l + (width - pad.l - pad.r) * ((points - n + i) / Math.max(1, points - 1));
     const y = (/** @type {number} */ v) =>
@@ -51,6 +51,12 @@ export function areaChart(first) {
     for (let g = 0; g <= (spec.grid ?? 2); g++) {
       const gy = pad.t + ((height - pad.t - pad.b) * g) / (spec.grid ?? 2);
       plot.append(svg("line", { class: "grid", x1: 0, x2: width, y1: gy, y2: gy }));
+      // The value of each grid line but the baseline, at its left end, above the line.
+      if (g < (spec.grid ?? 2)) {
+        const label = svg("text", { class: "tick", x: 2, y: gy - 4 });
+        label.textContent = spec.format((max * ((spec.grid ?? 2) - g)) / (spec.grid ?? 2));
+        plot.append(label);
+      }
     }
     for (const s of spec.series) {
       const n = s.values.length;
