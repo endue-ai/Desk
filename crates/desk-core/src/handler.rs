@@ -282,7 +282,6 @@ pub(crate) fn denied(denied: Denied) -> BridgeError {
     }
 }
 
-
 /// A primitive's error, whose code is already the bridge's.
 pub(crate) fn sys_error(err: desk_sys::Error) -> BridgeError {
     error(err.code, err.message)

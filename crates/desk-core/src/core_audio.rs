@@ -16,7 +16,9 @@ use desk_bridge::{
     AudioEndedData, AudioEndedEvent, AudioFrameData, AudioFrameEvent, BridgeEvent, ErrorCode,
     Permission,
 };
-use desk_sys::audio::{AudioInput, Authorization, Capture, CaptureOptions, DEFAULT_SAMPLE_RATE, Event};
+use desk_sys::audio::{
+    AudioInput, Authorization, Capture, CaptureOptions, DEFAULT_SAMPLE_RATE, Event,
+};
 
 use crate::events::EventBus;
 use crate::handler::{Answer, Core, error, json, sys_error};
@@ -77,7 +79,11 @@ impl Core {
         self
     }
 
-    pub(crate) fn audio_capture_start(&self, caller: &str, params: AudioCaptureStartParams) -> Answer {
+    pub(crate) fn audio_capture_start(
+        &self,
+        caller: &str,
+        params: AudioCaptureStartParams,
+    ) -> Answer {
         if params.wake_word == Some(true) {
             return Err(error(
                 ErrorCode::Unsupported,
@@ -85,7 +91,10 @@ impl Core {
             ));
         }
         let input = self.audio.input.clone().ok_or_else(|| {
-            error(ErrorCode::Unsupported, "this desk has no microphone input".to_owned())
+            error(
+                ErrorCode::Unsupported,
+                "this desk has no microphone input".to_owned(),
+            )
         })?;
         let scope = Permission::AudioCapture(params.scope);
         self.check_or_ask(caller, &scope, &Target::None, REASON)?;
@@ -132,9 +141,17 @@ impl Core {
         json(AudioCaptureStartResult { capture_id })
     }
 
-    pub(crate) fn audio_capture_stop(&self, caller: &str, params: AudioCaptureStopParams) -> Answer {
+    pub(crate) fn audio_capture_stop(
+        &self,
+        caller: &str,
+        params: AudioCaptureStopParams,
+    ) -> Answer {
         if caller != RUNTIME {
-            self.check(caller, &Permission::AudioCapture(params.scope), &Target::None)?;
+            self.check(
+                caller,
+                &Permission::AudioCapture(params.scope),
+                &Target::None,
+            )?;
         }
         let id = params.capture_id;
         let taken = {
@@ -145,11 +162,16 @@ impl Core {
             match owned {
                 Some(key) => captures.entries.remove(&key).map(|(_, entry)| entry),
                 None if captures.ended.contains(&(caller.to_owned(), id.clone())) => None,
-                None if caller == RUNTIME && captures.ended.iter().any(|(_, ended)| *ended == id) => {
+                None if caller == RUNTIME
+                    && captures.ended.iter().any(|(_, ended)| *ended == id) =>
+                {
                     None
                 }
                 None => {
-                    return Err(error(ErrorCode::NotFound, format!("{caller} has no capture {id}")));
+                    return Err(error(
+                        ErrorCode::NotFound,
+                        format!("{caller} has no capture {id}"),
+                    ));
                 }
             }
         };
@@ -166,12 +188,16 @@ impl Core {
 
     /// The caller unloaded: its captures end.
     pub(crate) fn drop_captures(&self, caller: &str) {
-        self.end_captures(AudioEndReason::PluginStopped, |entry| entry.caller == caller);
+        self.end_captures(AudioEndReason::PluginStopped, |entry| {
+            entry.caller == caller
+        });
     }
 
     /// The caller's last surface closed: its captures end.
     pub(crate) fn surfaces_gone(&self, caller: &str) {
-        self.end_captures(AudioEndReason::SurfaceClosed, |entry| entry.caller == caller);
+        self.end_captures(AudioEndReason::SurfaceClosed, |entry| {
+            entry.caller == caller
+        });
     }
 
     /// End the caller's captures that its grants no longer cover.
@@ -182,7 +208,9 @@ impl Core {
             .iter()
             .filter(|(_, (_, entry))| {
                 entry.caller == caller
-                    && permissions.authorize(caller, &entry.scope, &Target::None).is_err()
+                    && permissions
+                        .authorize(caller, &entry.scope, &Target::None)
+                        .is_err()
             })
             .map(|(key, _)| *key)
             .collect();
