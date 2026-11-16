@@ -22,7 +22,15 @@ describe("the filter", () => {
     expect(names("A")).toEqual(["Documents", "a2.md", "a10.md"]);
     // A folder that matches keeps what is open under it.
     expect(names("wor")).toEqual(["Documents", "Work", "deep", "c.md"]);
-    expect(names("c", WORK)).toEqual(["Documents", "Work", "c.md", "a2.md", "a10.md", "b.txt", "zed"]);
+    expect(names("c", WORK)).toEqual([
+      "Documents",
+      "Work",
+      "c.md",
+      "a2.md",
+      "a10.md",
+      "b.txt",
+      "zed",
+    ]);
     expect(names("")).toHaveLength(list.length);
   });
 });

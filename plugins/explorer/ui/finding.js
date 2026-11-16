@@ -63,7 +63,10 @@ export function createFinding(act, state) {
     else if (found.stopped === "limit") act.say(`Stopped at ${count} found below ${where}.`);
     else if (found.stopped === "folders")
       act.say(`Stopped after ${FOLDERS} folders: ${count} found below ${where}.`);
-    else act.say(count === 0 ? `Nothing is named so below ${where}.` : `${count} found below ${where}.`);
+    else
+      act.say(
+        count === 0 ? `Nothing is named so below ${where}.` : `${count} found below ${where}.`,
+      );
     return found.results;
   };
 

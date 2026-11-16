@@ -8,7 +8,9 @@ import { aboutText, rowFor } from "./updates";
 
 const repo = join(import.meta.dirname, "../../..");
 const read = (path: string) => JSON.parse(readFileSync(join(repo, path), "utf8")) as object;
-const validate = new Ajv2020({ strict: true }).compile(read("specs/plugin/v0/messages.schema.json"));
+const validate = new Ajv2020({ strict: true }).compile(
+  read("specs/plugin/v0/messages.schema.json"),
+);
 
 describe("the app's catalogs", () => {
   it("the app's words come from its catalogs", () => {

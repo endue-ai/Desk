@@ -294,22 +294,13 @@ header,
   display: none;
 }
 
+/* The find box is the design system's field (.desk-field); here only its place in the bar. */
 #find-query {
   flex: 1;
   min-width: 0;
   height: 24px;
   box-sizing: border-box;
-  padding: 0 6px;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-background);
-  color: var(--desk-text);
   font: inherit;
-}
-
-#find-query:focus-visible {
-  outline: var(--desk-border-width) solid var(--desk-primary);
-  outline-offset: -1px;
 }
 
 /* What a search below found: the name, then its folder, faint, and the button that reveals it. */

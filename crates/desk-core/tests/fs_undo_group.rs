@@ -28,10 +28,16 @@ fn grouped_renames_undo_and_redo_as_one_step() {
     let (core, _) = core(&home);
     three(&home);
     for name in ["one", "two", "three"] {
-        let ends = (&*format!("~/work/{name}.txt"), &*format!("~/work/in/{name}.txt"));
+        let ends = (
+            &*format!("~/work/{name}.txt"),
+            &*format!("~/work/in/{name}.txt"),
+        );
         rename_as(&core, FILES, ends, Some("paste-1")).unwrap();
     }
-    assert_eq!(names(&home.join("work/in")), ["one.txt", "three.txt", "two.txt"]);
+    assert_eq!(
+        names(&home.join("work/in")),
+        ["one.txt", "three.txt", "two.txt"]
+    );
 
     let undone = undo(&core).unwrap();
     // One call takes the three back; the answer names the newest, with its group.
@@ -46,7 +52,10 @@ fn grouped_renames_undo_and_redo_as_one_step() {
 
     // One redo puts all three back, and one undo takes them back again.
     redo(&core).unwrap();
-    assert_eq!(names(&home.join("work/in")), ["one.txt", "three.txt", "two.txt"]);
+    assert_eq!(
+        names(&home.join("work/in")),
+        ["one.txt", "three.txt", "two.txt"]
+    );
     assert_eq!(redo(&core).unwrap(), json!({}));
     undo(&core).unwrap();
     assert!(names(&home.join("work/in")).is_empty());
@@ -58,7 +67,10 @@ fn grouped_copies_undo_as_one_step() {
     let (core, trash) = core(&home);
     three(&home);
     for name in ["one", "two", "three"] {
-        let ends = (&*format!("~/work/{name}.txt"), &*format!("~/work/in/{name}.txt"));
+        let ends = (
+            &*format!("~/work/{name}.txt"),
+            &*format!("~/work/in/{name}.txt"),
+        );
         copy_in(&core, ends, "drop-1").unwrap();
     }
     undo(&core).unwrap();
@@ -79,7 +91,13 @@ fn ungrouped_and_other_callers_stay_separate_steps() {
     // No group, then two groups, then the same group from another caller.
     rename_as(&core, FILES, ("~/work/one.txt", "~/work/in/one.txt"), None).unwrap();
     rename_as(&core, FILES, ("~/work/two.txt", "~/work/in/two.txt"), None).unwrap();
-    rename_as(&core, FILES, ("~/work/three.txt", "~/work/in/three.txt"), Some("g")).unwrap();
+    rename_as(
+        &core,
+        FILES,
+        ("~/work/three.txt", "~/work/in/three.txt"),
+        Some("g"),
+    )
+    .unwrap();
     rename_as(&core, OTHER, ("~/work/a.txt", "~/work/in/a.txt"), Some("g")).unwrap();
     rename_as(&core, FILES, ("~/work/docs", "~/work/in/docs"), Some("h")).unwrap();
 
@@ -105,9 +123,15 @@ fn a_group_is_one_to_128_characters() {
     let (core, _) = core(&home);
     three(&home);
     let ends = ("~/work/one.txt", "~/work/in/one.txt");
-    assert_eq!(rename_as(&core, FILES, ends, Some("")), Err(ErrorCode::InvalidParams));
+    assert_eq!(
+        rename_as(&core, FILES, ends, Some("")),
+        Err(ErrorCode::InvalidParams)
+    );
     let long = "g".repeat(129);
-    assert_eq!(rename_as(&core, FILES, ends, Some(&long)), Err(ErrorCode::InvalidParams));
+    assert_eq!(
+        rename_as(&core, FILES, ends, Some(&long)),
+        Err(ErrorCode::InvalidParams)
+    );
     // Refused before anything moved.
     assert_eq!(text(&home.join("work/one.txt")), "one");
     rename_as(&core, FILES, ends, Some(&"g".repeat(128))).unwrap();

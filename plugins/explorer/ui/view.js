@@ -8,8 +8,8 @@
 // select all, copy, cut, paste and find (#313); Escape first closes a visible preview. Several rows
 // can be selected (aria-multiselectable): Shift and Mod clicks pick, and a selected row drags them all.
 import { contextMenu, keyCommand } from "./context-menu.js";
-import { findView } from "./find-view.js";
 import { iconOf } from "./file-icons.js";
+import { findView } from "./find-view.js";
 import { drawIcon } from "./glyphs.js";
 import { previewView } from "./preview-view.js";
 import { sizeOf } from "./size.js";

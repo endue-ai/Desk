@@ -13,14 +13,7 @@ import { createReach } from "./reach.js";
 import { createPicking, createTypeAhead, pickable } from "./selection.js";
 import { statusLine } from "./status.js";
 import { answerTogether } from "./together.js";
-import {
-  rows as flatten,
-  folderList,
-  isUnder,
-  jump,
-  move,
-  nameOf,
-} from "./tree.js";
+import { rows as flatten, folderList, isUnder, jump, move, nameOf } from "./tree.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
