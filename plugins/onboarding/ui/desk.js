@@ -9,13 +9,14 @@ import { AGENT_SAY, AGENTS, SAY, SOURCES, SOURCES_NOTE } from "./script.js";
 
 /**
  * The frame, in the order it boots: each piece forms in the middle of the screen (how: `from`; a
- * line draws itself along its long side) and flies out to its place. The desktops' buttons follow
- * their box one at a time, `step` ms after the piece before.
+ * line draws itself along its long side) and flies out to its place, `step` ms after the piece
+ * before. The desktops' buttons follow one at a time once their box has landed (`landed`): a button
+ * that left while its box still flew would carry the box's flight on top of its own.
  */
 const PIECES = [
   { find: ".mode", from: "scaleX(0)", step: 0 },
   { find: ".desktops", from: "scaleX(0)", step: 600 },
-  { find: '.desktops [data-desktop="1"]', step: 600 },
+  { find: '.desktops [data-desktop="1"]', landed: true },
   { find: '.desktops [data-desktop="2"]', step: 420 },
   { find: '.desktops [data-desktop="3"]', step: 420 },
   { find: ".toolbar", from: "scaleY(0)", step: 600 },
@@ -41,10 +42,12 @@ export function buildFrame(d, at, { instant = false } = {}) {
   frame.replaceChildren(mode, desktops, element("div", "toolbar"), element("div", "dock"), bar);
   if (instant) return at;
   let when = at;
+  let lands = at;
   let end = at;
   for (const piece of PIECES) {
-    when += piece.step;
-    end = Math.max(end, boot(d, frame.querySelector(piece.find), when, { from: piece.from }));
+    when = piece.landed ? lands : when + piece.step;
+    lands = boot(d, frame.querySelector(piece.find), when, { from: piece.from });
+    end = Math.max(end, lands);
   }
   return end;
 }
@@ -180,9 +183,10 @@ function later(d, stopped, placed, teamOut) {
   stopped.now = true;
   const now = d.timeline.time;
   $("edge").replaceChildren();
-  for (const agent of AGENTS) {
-    if (!placed.has(agent.id)) placeAgent(d, agent, now, { dim: true });
-  }
+  // One after another, so two never stand in the middle on top of each other.
+  AGENTS.filter((agent) => !placed.has(agent.id)).forEach((agent, i) => {
+    placeAgent(d, agent, now + i * 500, { dim: true });
+  });
   // One line at a time: if Eris is still saying she brings in the team, this comes after it.
   const line = d.say(SAY.edge, Math.max(now + 300, teamOut + 300));
   d.advance(line.out + 300);
