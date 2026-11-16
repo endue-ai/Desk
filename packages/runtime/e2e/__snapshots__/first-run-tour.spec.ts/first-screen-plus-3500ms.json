@@ -57,7 +57,7 @@
             "display": "block",
             "visibility": "visible",
             "opacity": "1",
-            "transform": "matrix(1, 0, 0, 1, 0, 0)",
+            "transform": "none",
             "filter": "none",
             "color": "rgb(242, 240, 245)"
           },
@@ -70,7 +70,7 @@
             "display": "flex",
             "visibility": "visible",
             "opacity": "1",
-            "transform": "matrix(1, 0, 0, 1, 0, 0)",
+            "transform": "none",
             "filter": "none",
             "color": "rgb(176, 173, 183)"
           },
@@ -121,7 +121,7 @@
             "display": "flex",
             "visibility": "visible",
             "opacity": "1",
-            "transform": "matrix(1, 0, 0, 1, 0, 0)",
+            "transform": "none",
             "filter": "none",
             "color": "rgb(176, 173, 183)"
           },
@@ -148,7 +148,7 @@
             "display": "flex",
             "visibility": "visible",
             "opacity": "1",
-            "transform": "matrix(1, 0, 0, 1, 0, 0)",
+            "transform": "none",
             "filter": "none",
             "color": "rgb(176, 173, 183)"
           }
@@ -160,7 +160,7 @@
             "display": "flex",
             "visibility": "visible",
             "opacity": "1",
-            "transform": "matrix(1, 0, 0, 1, 0, 0)",
+            "transform": "none",
             "filter": "none",
             "color": "rgb(176, 173, 183)"
           },

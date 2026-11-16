@@ -8,7 +8,7 @@ surface. It closes itself when it is done.
 | 1 Arrival | Warp, a count of three, the floor unfolding, a beam that becomes the core, polygons locking in (gold last), Dysnomia; Web Audio cues | `ui/arrival.js`, `ui/sound.js` |
 | 2–4 | Greeting; the microphone, asked of the person (Use my microphone, Not now) and only after a yes of the desk (`perm.request`, "Waiting for your approval" while it asks), so she says she listens only after both; name | `ui/meet.js` |
 | 5 | endue ID at auth.endue.ai (ADR 0111): the web's entry with Sign in, Create account, its note and Skip for now in one block; `account.signIn` opens the browser, the code waits with Open browser again and Cancel, `account.changed` ends it; every failure worded with a retry | `ui/account.js`, `ui/sign-in.js` |
-| 6–7 | The desk's frame switches on; cards choose sources and a second press takes one back (stub: sample data, said so); Tin and Seed join and speak, Muse waits | `ui/desk.js` |
+| 6–7 | The desk boots like a heads-up display: each frame piece (mode, desktops and their buttons 1·2·3, toolbar, dock, bar) and then each agent forms in the middle inside a ring, holds, and flies to its edge; cards choose sources and a second press takes one back (stub: sample data, said so); Tin and Seed join and speak, Muse waits | `ui/desk.js`, `ui/boot.js`, `ui/boot-frames.js` |
 | 8–10 | The first task builds a screen (sample data, or `brain.say`); the layout is named into the dock; Eris settles in the left bar | `ui/work.js`, `ui/panels.js` |
 
 `ui/director.js` holds the timeline, soul text and voice, questions, poses and the store; `ui/fit.js`
