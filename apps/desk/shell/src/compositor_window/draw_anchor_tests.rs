@@ -1,5 +1,5 @@
 //! A window resized by its top or left edge keeps its bottom or right edge where it is while its
-//! page has yet to paint the new size; the ring and the panes lie in the frame as drawn.
+//! page has yet to paint the new size; the panes lie in the frame as drawn.
 
 use desk_compositor::Rect;
 

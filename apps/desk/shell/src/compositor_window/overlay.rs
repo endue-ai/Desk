@@ -1,68 +1,12 @@
-//! What the compositor draws over the surfaces for input (#56): the focus ring round the plugin
-//! surface with the keyboard focus, in its window, and above everything the drag image under the
-//! pointer with the effect its target
-//! answered (`+` copy, `↗` link, `⊘` refused). Neither takes the pointer: hit testing passes
-//! through them, and during a drag the broker owns the pointer anyway. The colours are fixed until
-//! the compositor draws the chrome from the token table (#53).
+//! What the compositor draws over the surfaces for input (#56): above everything, the drag image
+//! under the pointer with the effect its target answered (`+` copy, `↗` link, `⊘` refused). It
+//! takes no pointer: hit testing passes through it, and during a drag the broker owns the pointer
+//! anyway. Its colours are fixed until the compositor draws the chrome from the token table (#53).
+//! No ring marks the surface with the keys: the frame of the window in use says it.
 
 use desk_compositor::input::DragOverlay;
-use desk_compositor::{
-    Color, Corners, GroupNode, Node, NodeId, Rect, RectNode, Scene, Shadow, Stroke, TextNode,
-    TextStyle,
-};
+use desk_compositor::{Color, Node, Rect, RectNode, Scene, Shadow, Stroke, TextNode, TextStyle};
 use desk_surface::generated::SurfaceDropAnswer;
-
-/// The ring's colour: the desk's accent.
-const RING: u32 = 0x4c8dff;
-
-/// The focus ring round `rect` in `parent` (its units, `scale` device pixels each), two logical
-/// pixels wide inside it, rounded by `radius` on the `corners` its pane shares with its window's
-/// frame (#250). In its window's group it is drawn with the window: what lies above the window, a
-/// floating one or a bar, lies above its ring too (ADR 0219).
-pub fn focus_ring(
-    scene: &mut Scene,
-    parent: NodeId,
-    rect: Rect,
-    scale: f32,
-    (radius, corners): (f32, Corners),
-) {
-    let ring = |radius: f32| {
-        let ring = RectNode {
-            rect,
-            fill: Color::TRANSPARENT,
-            stroke: Some(Stroke {
-                width: 2.0 * scale,
-                color: Color::hex(RING),
-            }),
-            radius,
-            shadow: None,
-        };
-        Node::from(ring).with_hit(false)
-    };
-    if radius <= 0.0 || corners == Corners::NONE {
-        let _ = scene.insert(parent, ring(0.0));
-        return;
-    }
-    // A shape has one radius: each quarter, clipped on whole pixels, takes its own corner's.
-    let middle = (rect.min() + rect.max()) * 0.5;
-    let (mx, my) = (middle.x.round(), middle.y.round());
-    let (x0, y0, x1, y1) = (rect.x, rect.y, rect.x + rect.width, rect.y + rect.height);
-    let quarters = [
-        (Rect::new(x0, y0, mx - x0, my - y0), corners.top_left),
-        (Rect::new(mx, y0, x1 - mx, my - y0), corners.top_right),
-        (Rect::new(mx, my, x1 - mx, y1 - my), corners.bottom_right),
-        (Rect::new(x0, my, mx - x0, y1 - my), corners.bottom_left),
-    ];
-    for (clip, rounded) in quarters {
-        let group = GroupNode {
-            clip: Some(clip),
-            ..GroupNode::default()
-        };
-        if let Ok(quarter) = scene.insert(parent, Node::from(group).with_hit(false)) {
-            let _ = scene.insert(quarter, ring(if rounded { radius } else { 0.0 }));
-        }
-    }
-}
 
 /// The text the drag image shows: the effect's mark, the label, how many; for files from the OS
 /// that no surface takes there, that a drop opens them (#162).
@@ -147,13 +91,13 @@ pub fn drag_image(scene: &mut Scene, overlay: &DragOverlay, scale: f32) {
 
 #[cfg(test)]
 mod tests {
+    use desk_compositor::Scene;
     use desk_compositor::glam::Vec2;
     use desk_compositor::input::DragOverlay;
     use desk_compositor::input::dnd::DragLook;
-    use desk_compositor::{Corners, Rect, Scene};
     use desk_surface::generated::SurfaceDropAnswer;
 
-    use super::{caption, drag_image, focus_ring};
+    use super::{caption, drag_image};
 
     fn overlay(effect: SurfaceDropAnswer, count: usize) -> DragOverlay {
         let look = DragLook {
@@ -213,26 +157,20 @@ mod tests {
     }
 
     #[test]
-    fn neither_mark_takes_the_pointer() {
+    fn the_drag_image_takes_no_pointer() {
         let mut scene = Scene::new(400, 300);
         let root = scene.root();
-        focus_ring(
-            &mut scene,
-            root,
-            Rect::new(10.0, 10.0, 100.0, 100.0),
-            2.0,
-            (0.0, Corners::NONE),
-        );
         drag_image(&mut scene, &overlay(SurfaceDropAnswer::Copy, 1), 2.0);
-        assert_eq!(scene.children(root).len(), 3);
+        assert_eq!(scene.children(root).len(), 2);
         assert!(
             scene
                 .children(root)
                 .iter()
                 .all(|n| !scene.node(*n).unwrap().hit)
         );
+        // Inside the pill, below and right of the pointer at (100, 100).
         assert_eq!(
-            desk_compositor::hit_test(&scene, Vec2::new(50.0, 50.0)),
+            desk_compositor::hit_test(&scene, Vec2::new(150.0, 140.0)),
             None
         );
     }
@@ -258,28 +196,5 @@ mod tests {
             light > 20,
             "the caption's glyphs show white on the pill: {light}"
         );
-    }
-
-    #[test]
-    fn the_ring_round_a_pane_keeps_inside_its_windows_rounded_bottom_corners() {
-        let Ok(gpu) = desk_compositor::headless::headless_device() else {
-            return;
-        };
-        let format = desk_compositor::wgpu::TextureFormat::Rgba8Unorm;
-        let mut compositor = desk_compositor::Compositor::new(&gpu.device, &gpu.queue, format);
-        let mut scene = Scene::new(120, 100);
-        let ring = Rect::new(10.0, 10.0, 101.0, 80.0);
-        let root = scene.root();
-        focus_ring(&mut scene, root, ring, 1.0, (11.0, Corners::BOTTOM));
-        let target = desk_compositor::headless::Target::new(&gpu.device, (120, 100), format);
-        compositor.render(&scene, &target.view, target.size);
-        let rgba = target.read_rgba(&gpu.device, &gpu.queue).unwrap();
-        let blue = |x: usize, y: usize| rgba[(y * 120 + x) * 4 + 2] > 200;
-        assert!(blue(10, 10) && blue(110, 10), "square under the title bar");
-        assert!(!blue(10, 89) && !blue(110, 89), "rounded at the bottom");
-        // The sides and edges run on through the quarters' seams, at full strength.
-        for (x, y) in [(10, 50), (110, 50), (60, 10), (60, 89), (10, 70), (60, 11)] {
-            assert!(blue(x, y), "({x}, {y})");
-        }
     }
 }

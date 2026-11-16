@@ -1,9 +1,9 @@
 //! A plugin's picture held aside until its window's frame is of its size (ADR 0227). A window's
-//! frame, its focus ring with it, is drawn at the size of its own page's picture (ADR 0211), and a
+//! frame is drawn at the size of its own page's picture (ADR 0211), and a
 //! pane in it at what that frame leaves. The pane's plugin is told each new size in the same step
 //! as the window's page, but paints it sooner: CEF holds a page's next size until it has painted
 //! the last, and the window's page takes about a step of a fast resize longer. Drawn as it came,
-//! the plugin's picture ran a step ahead of the frame and the ring around it. So a plugin's paint
+//! the plugin's picture ran a step ahead of the frame around it. So a plugin's paint
 //! of a size other than its pane's, as last drawn, is copied into a texture aside, and its picture
 //! stays the one of the frame's size; the scene that draws its pane at a size aside shows that
 //! picture (`Composed::panes_drawn`). A paint of a size the pane has left is drawn as it comes: there
