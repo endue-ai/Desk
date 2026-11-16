@@ -16,6 +16,7 @@
  *   caps: Capability[],
  *   loaded?: boolean,
  *   vram?: number,
+ *   loadedCtx?: number,
  *   format?: string,
  *   modified?: string,
  * }} Model

@@ -84,6 +84,7 @@ export function createRunner({ S, sockets, resolve, toast, persist }) {
         content: "",
         model: id,
         modelName: model?.name ?? id,
+        ...(thread.format ? { format: thread.format === "json" ? "json" : "schema" } : {}),
       });
     const before = { tokens: node.stats?.tokens ?? 0, content: node.content };
     const messages = messagesFor(thread, o.into ? o.into.id : parentId);
@@ -118,6 +119,7 @@ export function createRunner({ S, sockets, resolve, toast, persist }) {
           messages,
           params: thread.params,
           think: thinkOf(target, thread),
+          format: thread.format,
           signal: controller.signal,
           ...o.extra,
         },

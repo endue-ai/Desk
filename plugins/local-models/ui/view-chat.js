@@ -7,6 +7,7 @@ import { openMenu } from "./menu.js";
 import { drawMessage, messageEl } from "./message.js";
 import { path } from "./threads.js";
 import { composerView } from "./view-composer.js";
+import { inspectorView } from "./view-inspector.js";
 import { modelLabel } from "./view-picker.js";
 import { threadsView } from "./view-threads.js";
 
@@ -102,6 +103,15 @@ export function chatView(app) {
     title,
     h("div.lm-head-spacer"),
     iconButton("more", "Chat options", (e) => threadMenu(app, e), { class: "lm-head-more" }),
+    iconButton(
+      "sliders",
+      "Chat settings (Mod+.)",
+      () => {
+        S.set({ inspector: !S.get().inspector });
+        app.savePrefs();
+      },
+      { class: "lm-head-insp" },
+    ),
     iconButton("newChat", "New chat", () => app.newChat(), { class: "lm-head-new" }),
   );
   const jump = iconButton(
@@ -114,7 +124,8 @@ export function chatView(app) {
     { class: "lm-jump", hidden: true },
   );
   const main = h("main.lm-main", null, header, scroller, jump, composer.el);
-  const el = h("section.lm-chat", null, threads.el, main);
+  const inspector = inspectorView(app);
+  const el = h("section.lm-chat", null, threads.el, main, inspector.el);
 
   let follow = true;
   scroller.addEventListener("scroll", () => {
@@ -153,6 +164,10 @@ export function chatView(app) {
       : "Choose a model (Mod+L)";
     fill(title, thread && Object.keys(thread.nodes).length ? thread.title : "");
     el.dataset.sidebar = S.get().sidebar ? "1" : "0";
+    el.dataset.inspector = S.get().inspector ? "1" : "0";
+    header
+      .querySelector(".lm-head-insp")
+      ?.setAttribute("aria-pressed", S.get().inspector ? "true" : "false");
   }
 
   function emptyState() {
@@ -273,7 +288,7 @@ export function chatView(app) {
     },
   );
 
-  S.on(["thread", "selected", "models", "servers", "sidebar"], drawHeader);
+  S.on(["thread", "selected", "models", "servers", "sidebar", "inspector"], drawHeader);
   S.on(["thread", "generating", "models", "servers", "scanning", "ready"], (_s, changed) => {
     if (changed.has("thread")) follow = true;
     drawConversation();
@@ -293,6 +308,10 @@ export function chatView(app) {
     } else if (mod && e.key.toLowerCase() === "b") {
       e.preventDefault();
       S.set({ sidebar: !S.get().sidebar });
+      app.savePrefs();
+    } else if (mod && e.key === ".") {
+      e.preventDefault();
+      S.set({ inspector: !S.get().inspector });
       app.savePrefs();
     } else if (mod && e.key.toLowerCase() === "k") {
       e.preventDefault();

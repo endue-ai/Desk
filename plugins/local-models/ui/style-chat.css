@@ -1,14 +1,20 @@
 /* The chat: its grid, the header with the model pill, the conversation, the empty state, the composer. */
 
 .lm-chat {
+  --lm-insp-w: 0px;
+  --lm-side-w: var(--lm-side);
   display: grid;
-  grid-template-columns: var(--lm-side) minmax(0, 1fr);
+  grid-template-columns: var(--lm-side-w) minmax(0, 1fr) var(--lm-insp-w);
   height: 100%;
   min-height: 0;
 }
 
+.lm-chat[data-inspector="1"] {
+  --lm-insp-w: 320px;
+}
+
 .lm-chat[data-sidebar="0"] {
-  grid-template-columns: 0 minmax(0, 1fr);
+  --lm-side-w: 0px;
 }
 
 .lm-chat[data-sidebar="0"] .lm-side {

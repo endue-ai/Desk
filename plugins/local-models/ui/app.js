@@ -5,6 +5,7 @@
 import { nameThread } from "./edit.js";
 import { modelKey, splitKey } from "./models.js";
 import { createSockets } from "./net.js";
+import { createPresets, settingsOf } from "./presets.js";
 import { createRunner } from "./run.js";
 import { clientOf, discover } from "./servers.js";
 import { createState } from "./state.js";
@@ -30,6 +31,9 @@ export function createApp(bridge, options = {}) {
   /** @type {import("./servers.js").ServerSpec[]} */
   let added = [];
   let autoTitle = options.autoTitle ?? true;
+  const presets = createPresets(store);
+  /** @type {import("./presets.js").Settings & { format?: any }} */
+  let defaults = {};
 
   const toast = (
     /** @type {string} */ text,
@@ -80,6 +84,22 @@ export function createApp(bridge, options = {}) {
     }
   }
 
+  /** Ask one server for its models again (which are in memory changes as they answer). @param {string} serverId */
+  async function refreshModels(serverId) {
+    const server = S.get().servers.find((s) => s.id === serverId);
+    if (server?.status !== "online") return;
+    const fresh = await clientOf(server.kind)
+      .listModels(sockets, server)
+      .catch(() => undefined);
+    if (!fresh) return;
+    const known = new Map(S.get().models.map((m) => [modelKey(m), m]));
+    const merged = fresh.map((m) => {
+      const old = known.get(modelKey(m));
+      return old ? { ...m, ctx: m.ctx ?? old.ctx, caps: old.ctx ? old.caps : m.caps } : m;
+    });
+    S.set({ models: [...S.get().models.filter((m) => m.serverId !== serverId), ...merged] });
+  }
+
   function saveIndex() {
     const { threads } = S.get();
     store.saveIndex(threads);
@@ -108,6 +128,8 @@ export function createApp(bridge, options = {}) {
   function newChat(model) {
     const key = model ?? S.get().selected;
     const thread = createThread({ model: key || undefined });
+    const preset = presets.get(defaults.preset);
+    Object.assign(thread, preset ? settingsOf(preset) : {}, structuredClone(defaults));
     S.set({ thread, view: "chat" });
     return thread;
   }
@@ -148,6 +170,8 @@ export function createApp(bridge, options = {}) {
     S.set({ thread });
     persist(thread);
     const answer = await runner.generate(thread, user.id);
+    const sid = thread.model ? splitKey(thread.model).serverId : "";
+    if (answer && sid) void refreshModels(sid);
     if (fresh && answer?.content && autoTitle) void nameThread(api, thread);
   }
 
@@ -201,17 +225,21 @@ export function createApp(bridge, options = {}) {
       if (Object.keys(thread.nodes).length) persist(thread);
     }
     S.set({ selected: key, picker: false });
+    void describe(key);
     S.touch("thread");
     void store.set("selected", key);
   }
 
   async function start() {
-    const [threads, selected, prefs, servers] = await Promise.all([
+    const [threads, selected, prefs, servers, saved] = await Promise.all([
       store.index().catch(() => []),
       store.get("selected"),
       store.get("prefs"),
       store.get("servers"),
+      store.get("defaults"),
+      presets.load(),
     ]);
+    defaults = saved && typeof saved === "object" ? saved : {};
     added = Array.isArray(servers) ? servers : [];
     S.set({
       threads,
@@ -220,6 +248,7 @@ export function createApp(bridge, options = {}) {
     });
     await scan();
     S.set({ ready: true });
+    void describe(S.get().selected);
   }
 
   /** Read the added servers again, then look at every server. */
@@ -227,6 +256,35 @@ export function createApp(bridge, options = {}) {
     const servers = await store.get("servers");
     added = Array.isArray(servers) ? servers : [];
     await scan();
+  }
+
+  /** Keep a chat's settings as what new chats start with. @param {Thread} thread */
+  async function saveDefaults(thread) {
+    defaults = structuredClone({
+      system: thread.system || undefined,
+      params: thread.params,
+      preset: thread.preset,
+      think: thread.think,
+      format: thread.format,
+    });
+    await store.set("defaults", defaults);
+    toast("New chats start with these settings.", "success");
+  }
+
+  /** What the server says about a model it lists by name only: its context length and abilities. @param {string} key */
+  async function describe(key) {
+    const target = resolve(key);
+    if (target?.server?.kind !== "ollama" || !target.model || target.model.ctx) return;
+    const info = await clientOf("ollama")
+      .showModel(sockets, target.server, target.id)
+      .catch(() => undefined);
+    if (!info) return;
+    const models = S.get().models.map((m) =>
+      m === target.model
+        ? { ...m, ctx: info.ctx ?? m.ctx, caps: info.caps.length ? info.caps : m.caps }
+        : m,
+    );
+    S.set({ models });
   }
 
   /** Open a link from an answer in the browser. @param {string} url */
@@ -261,6 +319,10 @@ export function createApp(bridge, options = {}) {
     choose,
     toast,
     savePrefs,
+    saveDefaults,
+    describe,
+    refreshModels,
+    presets,
     openLink,
     persist,
     runner,

@@ -1,5 +1,6 @@
 // Where the person writes: a field that grows with the text, Enter to send and Shift+Enter for a
 // new line, and one button that sends or, while an answer streams, stops it.
+import { compact, contextUse } from "./context.js";
 import { fill, h, icon } from "./dom.js";
 import { editLastQuestion } from "./message.js";
 
@@ -17,12 +18,15 @@ export function composerView(app) {
   );
   const send = h("button.desk-btn.desk-btn-primary.lm-send", { type: "button" });
   const hint = h("div.lm-composer-hint");
+  const ring = h("span.lm-ctx-ring");
+  const meterText = h("span.lm-ctx-text");
+  const meter = h("div.lm-ctx", { role: "meter", "aria-label": "Context used" }, ring, meterText);
   const tools = h("div.lm-composer-tools");
   const box = h(
     "div.lm-composer",
     null,
     field,
-    h("div.lm-composer-bar", null, tools, h("div.lm-composer-spacer"), hint, send),
+    h("div.lm-composer-bar", null, tools, h("div.lm-composer-spacer"), hint, meter, send),
   );
   const el = h(
     "div.lm-composer-wrap",
@@ -51,6 +55,7 @@ export function composerView(app) {
   field.addEventListener("input", () => {
     grow();
     drawButton();
+    drawMeter();
   });
   field.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
@@ -68,6 +73,20 @@ export function composerView(app) {
     if (e.target === box) field.focus();
   });
 
+  function drawMeter() {
+    const { used, limit, exact } = contextUse(S.get(), field.value);
+    const share = limit ? Math.min(1, used / limit) : 0;
+    meter.hidden = !used && !limit;
+    meter.dataset.level = share > 0.9 ? "full" : share > 0.7 ? "high" : "";
+    ring.style.setProperty("--lm-share", `${Math.round(share * 100)}%`);
+    fill(meterText, limit ? `${compact(used)} / ${compact(limit)}` : `${compact(used)} tokens`);
+    meter.title = `${exact ? "" : "About "}${used.toLocaleString()} tokens${limit ? ` of the ${limit.toLocaleString()} the model holds` : ""}${share > 0.9 ? ". Older messages may fall out of what the model sees." : ""}`;
+    if (limit) {
+      meter.setAttribute("aria-valuenow", String(used));
+      meter.setAttribute("aria-valuemax", String(limit));
+    }
+  }
+
   function drawButton() {
     const { generating, selected, thread } = S.get();
     const busy = Boolean(generating);
@@ -82,7 +101,10 @@ export function composerView(app) {
   }
 
   S.on(["generating", "selected", "thread"], drawButton);
+  S.on(["generating", "selected", "thread", "models", "servers"], drawMeter);
+  S.onSignal("settings", drawMeter);
   drawButton();
+  drawMeter();
   return {
     el,
     field,
