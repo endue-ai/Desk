@@ -28,6 +28,8 @@ export interface WindowAt {
   id: string;
   rect: number[];
   focused: boolean;
+  /** Its title's free room, from its left and its right edge: where its title bar drags. */
+  titleInsets?: number[];
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: compositor_stats is the shell's free-form JSON

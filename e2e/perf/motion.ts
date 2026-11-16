@@ -28,6 +28,7 @@ import { decodePng } from "../support/png.ts";
 import { described } from "./lib/bundle-processes.ts";
 import {
   captured,
+  gripOf,
   type Line,
   parseTrace,
   type Rect,
@@ -158,7 +159,8 @@ async function once(n: number): Promise<{
     if (!w) throw new Error(`no window ${config.window} on the desk: ${all.map((w) => w.id)}`);
     const [x = 0, y = 0, width = 0] = w.rect;
     // Its title bar, clear of the icon and the tools; the window to whole pixels first.
-    const grip = [x + Math.round(width * 0.4), y + 16];
+    const grip = gripOf(w.rect, w.titleInsets);
+    if (!grip) throw new Error(`${config.window} has no title bar to grip: ${w.rect}`);
     const whole = [Math.round(x) - x, Math.round(y) - y];
     if (whole[0] || whole[1]) {
       await drag(desk.port, grip, [
