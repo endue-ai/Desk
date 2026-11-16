@@ -80,6 +80,17 @@ impl Secrets {
         self.save()
     }
 
+    /// Forget the secrets of every instance of `connector`, in one write: its plugin was removed.
+    pub(crate) fn remove_connector(&mut self, connector: &str) -> io::Result<()> {
+        let prefix = format!("{connector}/");
+        let before = self.secrets.len();
+        self.secrets.retain(|key, _| !key.starts_with(&prefix));
+        if self.secrets.len() == before {
+            return Ok(());
+        }
+        self.save()
+    }
+
     fn save(&self) -> io::Result<()> {
         let Some(path) = &self.path else {
             return Ok(());

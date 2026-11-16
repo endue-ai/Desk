@@ -44,6 +44,11 @@ impl Core {
         self.kv().set(caller, key, value)
     }
 
+    /// Forget `caller`'s whole namespace (a removed plugin's own keys and the core's records of it).
+    pub(crate) fn forget_store(&self, caller: &str) {
+        self.kv().remove_caller(caller);
+    }
+
     fn kv(&self) -> MutexGuard<'_, Store> {
         self.store
             .lock()

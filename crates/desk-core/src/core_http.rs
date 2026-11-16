@@ -157,6 +157,25 @@ impl Core {
         answer(ConnectorDisconnectResult {})
     }
 
+    /// The plugin is being removed: its instances leave memory, so nothing syncs them again, and their
+    /// items leave the index. Their records and secrets go with the plugin's store and secrets.
+    pub(crate) fn forget_http(&self, id: &str) {
+        let names: Vec<String> = self
+            .http()
+            .0
+            .remove(id)
+            .map(|instances| instances.into_keys().collect())
+            .unwrap_or_default();
+        let Ok(index) = self.index() else {
+            return;
+        };
+        for name in names {
+            if let Err(why) = index.clear(&source(id, &name)) {
+                eprintln!("desk: the index kept {id}/{name}'s items: {}", why.message);
+            }
+        }
+    }
+
     /// connector.sync of an http connector: the sync runs now, before this answers.
     pub(crate) fn sync_http_now(&self, id: &str, name: &str) -> Answer {
         if !self.http().0.get(id).is_some_and(|i| i.contains_key(name)) {
