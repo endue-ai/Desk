@@ -2,10 +2,16 @@
    with the desktop's name, the drawer and the way back to the origin. */
 
 /* What lies left of the map's strip ends 12 before it: the running chips, the open talk line. */
-/* The talk pill at rest (issue 297, ADR 0254): with the default theme 440 by 40, Eris's small orb 18. */
+/* The talk pill at rest (issue 297, ADR 0254): with the default theme 440 by 40, Eris's small orb 18;
+   narrower where 440 would not keep 12 clear of the map's strip on both sides (issue 367). */
 .bottom {
   --running-right: calc(var(--map-right) + var(--map-width) + var(--space-3));
   --talk-rest-width: calc(var(--desk-control-md) * 11);
+  --talk-rest-shown: min(
+    var(--talk-rest-width),
+    calc(100vw - 280px),
+    calc(100vw - 2 * var(--running-right))
+  );
   --talk-rest-height: var(--desk-control-md);
   --talk-orb: calc(var(--desk-space-4) + var(--desk-space-1) / 2);
   position: absolute;
@@ -155,7 +161,7 @@
    while buttons have corners and square where the design system or the theme makes them square
    (Blueprint, Amber CRT): a square button's radius times anything is 0. */
 .talk-pill {
-  width: min(var(--talk-rest-width), calc(100vw - 280px));
+  width: var(--talk-rest-shown);
   height: var(--talk-rest-height);
   border: 1px solid var(--desk-primary-border);
   border-radius: calc(var(--desk-button-radius) * 999);
@@ -256,7 +262,7 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-  max-width: calc(50% - var(--running-right) - var(--space-4) - var(--talk-rest-width) / 2);
+  max-width: calc(50% - var(--running-right) - var(--space-4) - var(--talk-rest-shown) / 2);
   margin: 0;
   padding: 0;
   overflow: hidden;
