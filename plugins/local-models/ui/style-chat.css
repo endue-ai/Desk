@@ -1,0 +1,289 @@
+/* The chat: its grid, the header with the model pill, the conversation, the empty state, the composer. */
+
+.lm-chat {
+  display: grid;
+  grid-template-columns: var(--lm-side) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.lm-chat[data-sidebar="0"] {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.lm-chat[data-sidebar="0"] .lm-side {
+  visibility: hidden;
+}
+
+/* The main column */
+
+.lm-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--desk-background);
+}
+
+.lm-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: 52px;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-bottom: var(--desk-border-width) solid var(--lm-line-soft);
+}
+
+.lm-head-spacer {
+  flex: 1;
+}
+
+.lm-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-sm);
+}
+
+.lm-model-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  max-width: 420px;
+  height: 34px;
+  padding: 0 var(--desk-space-3);
+  border: var(--desk-border-width) solid var(--lm-line);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-card);
+  font-weight: 600;
+}
+
+.lm-model-pill:hover {
+  border-color: var(--lm-select-line);
+}
+
+.lm-pill-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lm-pill-meta {
+  font-weight: 400;
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+  white-space: nowrap;
+}
+
+.lm-caret {
+  width: 14px;
+  height: 14px;
+  color: var(--desk-text-muted);
+}
+
+.lm-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scroll-behavior: auto;
+}
+
+.lm-conv {
+  width: min(var(--lm-read), 100%);
+  margin: 0 auto;
+  padding: var(--desk-space-8) var(--desk-space-6) var(--desk-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-6);
+}
+
+.lm-conv[data-empty="1"] {
+  min-height: 100%;
+  justify-content: center;
+}
+
+/* Empty state */
+
+.lm-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--desk-space-3);
+  padding-bottom: var(--desk-space-8);
+}
+
+.lm-empty-mark {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--desk-radius-lg);
+  color: var(--desk-primary-text);
+  background: var(--lm-select);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--desk-primary) 6%, transparent);
+}
+
+.lm-empty-mark .lm-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.lm-empty-title {
+  margin: var(--desk-space-3) 0 0;
+  font-size: var(--desk-text-2xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.lm-empty-text {
+  margin: 0;
+  max-width: 520px;
+  color: var(--desk-text-muted);
+  line-height: 1.55;
+}
+
+.lm-empty-actions {
+  display: flex;
+  gap: var(--desk-space-2);
+  margin-top: var(--desk-space-3);
+}
+
+.lm-suggest {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--desk-space-3);
+  width: 100%;
+  margin-top: var(--desk-space-6);
+}
+
+.lm-suggest-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: var(--desk-space-3);
+  row-gap: 2px;
+  height: auto;
+  padding: var(--desk-space-3) var(--desk-space-4);
+  border-radius: var(--desk-radius-lg);
+  text-align: left;
+  white-space: normal;
+  background: var(--desk-card);
+}
+
+.lm-suggest-card > .lm-icon {
+  grid-row: span 2;
+  margin-top: 2px;
+  color: var(--desk-primary-text);
+}
+
+.lm-suggest-title {
+  font-weight: 600;
+}
+
+.lm-suggest-text {
+  font-weight: 400;
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Composer */
+
+.lm-composer-wrap {
+  width: min(var(--lm-read), 100%);
+  margin: 0 auto;
+  padding: 0 var(--desk-space-6) var(--desk-space-3);
+}
+
+.lm-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  padding: var(--desk-space-3) var(--desk-space-3) var(--desk-space-2) var(--desk-space-4);
+  border: var(--desk-border-width) solid var(--lm-line);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+  box-shadow: var(--desk-shadow-md);
+  transition: border-color var(--desk-motion-fast) var(--desk-easing),
+    box-shadow var(--desk-motion-fast) var(--desk-easing);
+}
+
+.lm-composer:focus-within {
+  border-color: var(--lm-select-line);
+  box-shadow: var(--desk-shadow-md), 0 0 0 3px var(--lm-select);
+}
+
+.lm-input {
+  width: 100%;
+  min-height: 26px;
+  max-height: 280px;
+  padding: var(--desk-space-1) 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  resize: none;
+  font-size: var(--desk-text-base);
+  line-height: 1.5;
+  height: auto;
+}
+
+.lm-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.lm-composer-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.lm-composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.lm-composer-spacer {
+  flex: 1;
+}
+
+.lm-composer-hint {
+  font-size: var(--desk-text-2xs);
+  color: var(--desk-text-muted);
+}
+
+.lm-send {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: var(--desk-radius-full);
+}
+
+.lm-send .lm-icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.2;
+}
+
+.lm-send[data-busy="1"] .lm-icon {
+  fill: currentColor;
+  width: 14px;
+  height: 14px;
+}
+
+.lm-footnote {
+  padding-top: var(--desk-space-2);
+  text-align: center;
+  font-size: var(--desk-text-2xs);
+  color: var(--lm-faint);
+}
