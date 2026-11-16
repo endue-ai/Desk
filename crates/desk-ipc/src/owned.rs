@@ -3,10 +3,15 @@
 //! process, a socket, a web view) goes only to the connection whose call started it, which its
 //! answer names, as the runtime routes them to plugins (`packages/runtime/src/owners.ts`): the core
 //! sends most of these to nobody in particular. A command's answer goes to the callers named in it.
-//! Every other event still reaches every connection (ADR 0030).
+//! Every `cli` connection is the same caller, so what one of them started for `cli` is keyed too
+//! (#377): a command it ran answers only that connection, and its capture's frames reach only it,
+//! while what `cli` hears as a holder of grants still reaches every `cli` connection. Every other
+//! event still reaches every connection (ADR 0030).
 
 use desk_bridge::{BrainTurnKind, BridgeEvent, BridgeRequest, BridgeResponse};
 use desk_core::Delivery;
+
+use crate::CALLER;
 
 /// Who may hear one delivery over the socket.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,6 +36,13 @@ pub(crate) fn hears(delivery: &Delivery) -> Hears {
             key,
             to: delivery.to.clone(),
             last: ends(&delivery.event),
+        };
+    }
+    if let Some((key, last)) = cli_key(delivery) {
+        return Hears::Owner {
+            key,
+            to: delivery.to.clone(),
+            last,
         };
     }
     match (&delivery.event, &delivery.to) {
@@ -60,6 +72,30 @@ pub(crate) fn event_key(event: &BridgeEvent) -> Option<String> {
     })
 }
 
+/// The key of an event that one `cli` connection's call started, and whether it is its last: the
+/// answer of a command `cli` ran, and the frames of a capture the core addressed to `cli`. Other
+/// callers' are routed by name: an agent's connection is the only one that calls as it.
+fn cli_key(delivery: &Delivery) -> Option<(String, bool)> {
+    let for_cli = || {
+        delivery
+            .to
+            .as_ref()
+            .is_some_and(|to| to.iter().any(|c| c == CALLER))
+    };
+    match &delivery.event {
+        BridgeEvent::CmdAnswered(e) if e.data.caller == CALLER => {
+            Some((format!("inv:{}", e.data.invocation_id), true))
+        }
+        BridgeEvent::AudioFrame(e) if for_cli() => {
+            Some((format!("audio:{}", e.data.capture_id), false))
+        }
+        BridgeEvent::AudioEnded(e) if for_cli() => {
+            Some((format!("audio:{}", e.data.capture_id), true))
+        }
+        _ => None,
+    }
+}
+
 /// Whether no event follows `event` for its key.
 fn ends(event: &BridgeEvent) -> bool {
     match event {
@@ -73,8 +109,19 @@ fn ends(event: &BridgeEvent) -> bool {
 }
 
 /// What a request's answer would name: its key's prefix and the result's field that holds the id.
-pub(crate) fn claims(request: &BridgeRequest) -> Option<(&'static str, &'static str)> {
+/// A command's invocation and a capture are claimed for `cli` alone (`cli_key`).
+pub(crate) fn claims(
+    request: &BridgeRequest,
+    caller: &str,
+) -> Option<(&'static str, &'static str)> {
+    let cli = caller == CALLER;
     Some(match request {
+        BridgeRequest::CmdInvoke(_) | BridgeRequest::CmdUndo(_) | BridgeRequest::CmdRedo(_)
+            if cli =>
+        {
+            ("inv", "invocationId")
+        }
+        BridgeRequest::AudioCaptureStart(_) if cli => ("audio", "captureId"),
         BridgeRequest::BrainSay(_) => ("turn", "turnId"),
         BridgeRequest::FsWatch(_) => ("watch", "watchId"),
         BridgeRequest::DataSubscribe(_) => ("sub", "subscriptionId"),
@@ -125,25 +172,25 @@ mod tests {
             "params": { "path": "~/a", "scope": { "permission": "fs:read", "paths": ["~/**"] } } }));
         let answer = success(json!({ "watchId": "w-1" }));
         assert_eq!(
-            claimed(claims(&watch), &answer).as_deref(),
+            claimed(claims(&watch, CALLER), &answer).as_deref(),
             Some("watch:w-1")
         );
         let say = request(json!({ "id": 2, "method": "brain.say",
             "params": { "text": "hi", "scope": { "permission": "brain:converse" } } }));
         assert_eq!(
-            claimed(claims(&say), &success(json!({ "turnId": "t-9" }))).as_deref(),
+            claimed(claims(&say, CALLER), &success(json!({ "turnId": "t-9" }))).as_deref(),
             Some("turn:t-9")
         );
         let failure: BridgeResponse = serde_json::from_value(json!({ "id": 2, "ok": false,
             "error": { "code": "permission_denied", "message": "no" } }))
         .unwrap();
         assert_eq!(
-            claimed(claims(&say), &failure),
+            claimed(claims(&say, CALLER), &failure),
             None,
             "a failure claims nothing"
         );
         let init = request(json!({ "id": 3, "method": "init.get", "params": {} }));
-        assert_eq!(claims(&init), None);
+        assert_eq!(claims(&init, CALLER), None);
     }
 
     #[test]

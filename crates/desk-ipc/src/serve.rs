@@ -1,7 +1,8 @@
 //! Serving connections: a reader and a writer thread per connection, and one fan-out thread that
 //! copies each core event to the connections that may hear it (`owned.rs`, ADR 0262): an addressed
 //! event to the callers it names, an owned one (a turn, a watch, a process...) to the connection
-//! whose call started it, a command's answer to its caller, and the rest to everyone. An owned
+//! whose call started it, a command's answer to its caller (for `cli`, to the connection that ran
+//! it, as a `cli` capture's frames), and the rest to everyone. An owned
 //! event that comes before the answer that claims it waits, a few per key and for a few keys. The
 //! desk never waits on a client: each connection has a queue of [`QUEUE`] lines, and a client that
 //! lets it fill is dropped. When a connection ends and no other one calls as its caller, the core
@@ -272,7 +273,7 @@ fn read(
             None => continue,
             Some(Asked::Bridge(request)) => {
                 // What the answer starts is this connection's: claimed before the answer goes out.
-                let claims = owned::claims(&request);
+                let claims = owned::claims(&request, &caller);
                 let answer = core.handle(&caller, *request);
                 if let Some(key) = owned::claimed(claims, &answer) {
                     claim(key);
