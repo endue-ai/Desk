@@ -9,7 +9,7 @@
       "sampleRate": 16000,
       "pcm": "AAD/fwCA",
       "rmsDb": -3.01,
-      "peakDb": 0
+      "peakDb": -0.5
     }
   }
 }
