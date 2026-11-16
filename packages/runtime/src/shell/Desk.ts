@@ -14,6 +14,7 @@ import { type ErisHandle, mountEris } from "../eris/Eris";
 import { detectPlatform, type Platform } from "../input";
 import type { SurfacePages } from "../pages/types";
 import type { PluginHostOptions } from "../plugins";
+import { followLanguage, osLanguage } from "../policies/language";
 import { installProposals } from "../propose/install";
 import { createRuntime, type Runtime } from "../runtime";
 import type { StartInfo } from "../start";
@@ -112,7 +113,9 @@ export function mountDesk(options: DeskOptions): Desk {
   const clock = options.clock ?? realClock();
   const ticker = new Ticker(clock);
   const epoch = options.epoch ?? Date.now();
-  const store = new Store({ ...emptyState(options.lang ?? "ko"), ...options.seed });
+  // The OS's language, which desk.language's `system` follows (ADR 0250).
+  const system = options.lang ?? options.seed?.lang ?? osLanguage();
+  const store = new Store({ ...emptyState(system), ...options.seed });
   const platform = options.platform ?? detectPlatform();
   const root = options.root;
   root.classList.add("shell");
@@ -170,7 +173,7 @@ export function mountDesk(options: DeskOptions): Desk {
     bridge: options.core,
     clock,
     platform,
-    language: options.lang ?? "ko",
+    language: system,
     plugins: options.plugins,
     pickFile: options.pickFile,
     ...(options.realPath ? { realPath: options.realPath } : {}),
@@ -203,6 +206,8 @@ export function mountDesk(options: DeskOptions): Desk {
 
   // A window that fills the app sends the desk's chrome past its edges (ADR 0221).
   parts.push(mountAway(root, ctx));
+  // desk.language chosen while the desk runs: the shell's words follow at once.
+  parts.push(followLanguage(runtime.settings, system, (lang) => store.set({ lang })));
 
   const restored = keepShell(ctx);
   // A plugin that started asleep (ADR 0070) wakes when a window of the desktop in front places it.

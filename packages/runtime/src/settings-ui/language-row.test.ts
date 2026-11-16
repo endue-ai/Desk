@@ -21,7 +21,7 @@ describe("Settings › General", () => {
     const { hub, preferences, saved } = setup();
     const row = languageRow({ settings: hub.settings, preferences, language: "en" });
     document.body.append(row);
-    expect(row.dataset.setting).toBe("desk.language");
+    expect(row.querySelector('[data-setting="desk.language"]')).not.toBeNull();
     expect(row.querySelector(".settings-row-label > span")?.textContent).toBe("Language");
     const select = row.querySelector("select");
     if (!select) throw new Error("no select");

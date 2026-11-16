@@ -13,6 +13,7 @@ import { FIND as FIND_SETTINGS, revealRow, settingsResults } from "./find";
 import { settingsIcon } from "./icons";
 import { initFileRow } from "./init-file";
 import { mountKeyboard } from "./keyboard";
+import { languageRow } from "./language-row";
 import { mountMarket } from "./market";
 import { description, findSections, SECTIONS, type SettingsSection, settingsPanel } from "./panels";
 import { themeSettingsEntry } from "./theme-entry";
@@ -20,6 +21,8 @@ import { themeSettingsEntry } from "./theme-entry";
 export interface SettingsWindow {
   open(section?: SettingsSection): void;
   close(): void;
+  /** The section shown while the window is open; undefined while it is closed. */
+  showing(): SettingsSection | undefined;
   dispose(): void;
 }
 
@@ -214,7 +217,13 @@ export function installSettingsWindow(
       if (selected === "plugins")
         return [pluginSettings({ ...declared, query: search.value, openPlugins: pluginList() })];
       const general =
-        selected === "general" ? [coreSettings(declared), initFileRow(ctx.bridge, language)] : [];
+        selected === "general"
+          ? [
+              languageRow({ settings, preferences, language }),
+              coreSettings(declared),
+              initFileRow(ctx.bridge, language),
+            ]
+          : [];
       const appearance =
         selected === "appearance" ? [themeSettingsEntry(commands, close, language)] : [];
       return [settingsPanel(selected, settings, language, navigate, { general, appearance })];
@@ -349,15 +358,12 @@ export function installSettingsWindow(
     }),
     // Every kind the markets offer (ADR 0107).
     define("desk.market.open", tr("market"), () => open("market")),
-    define(
-      "desk.shell.open-keys",
-      language === "ko" ? "설정 · 단축키" : "Settings · keyboard shortcuts",
-      () => open("keyboard"),
-    ),
+    define("desk.shell.open-keys", tr("openKeysCommand"), () => open("keyboard")),
   ];
   return {
     open,
     close,
+    showing: () => (dialog.open ? selected : undefined),
     dispose: () => {
       close();
       panels();

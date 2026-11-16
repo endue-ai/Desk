@@ -18,6 +18,7 @@ import {
   routeEvent,
 } from "./plugins-events";
 import { PluginGreetings } from "./plugins-greetings";
+import { initMessage } from "./plugins-init";
 import { WindowSearch } from "./plugins-search";
 import { now, phase } from "./timing";
 
@@ -345,13 +346,7 @@ export class PluginHost {
         // A new page: what the one it replaced was asked and did not answer, it never will.
         this.#asks.cancel(id, `${id} reloaded before it answered`, "left");
         const { restored, waited } = this.#sleepers.woke(id);
-        this.#post(id, {
-          type: "desk:init",
-          pluginId: pluginOf(id),
-          ...(id === pluginOf(id) ? {} : { instance: id }),
-          state: this.#state.get(id),
-          ...(restored === undefined ? {} : { restored }),
-        });
+        this.#post(id, initMessage(id, this.#state.get(id), restored, this.#shared, this.#mounted));
         for (const shared of this.#shared.values()) this.#post(id, shared);
         for (const held of waited) this.#post(id, held);
         this.#greetings.hello(id, this.#deps.frame(id));

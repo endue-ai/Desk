@@ -23,6 +23,7 @@ import { installDisplay } from "./policies/display";
 import { installFiles } from "./policies/files";
 import { installKeys } from "./policies/keys";
 import { installKeysFile } from "./policies/keys-file";
+import { installLanguage } from "./policies/language";
 import { installNotify } from "./policies/notify";
 import { installPalette } from "./policies/palette";
 import { installProfiles } from "./policies/profiles";
@@ -31,7 +32,7 @@ import { installTheme } from "./policies/theme";
 import { chosenOf, mayMount, ROLES_SETTING } from "./roles";
 import type { Runtime, RuntimePlugins } from "./runtime-api";
 import type { SettingsLanguage } from "./settings-ui/copy";
-import { installSettingsWindow } from "./settings-ui/window";
+import { installLiveSettingsWindow } from "./settings-ui/live-window";
 import { brokenRecordNotice, installStart, type StartInfo } from "./start";
 import { SurfaceHost, type SurfaceSpec } from "./surfaces";
 import { applyTheme } from "./theme";
@@ -154,9 +155,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   };
   const theme = installTheme(ctx, options.themeRoot, options.plugins?.url);
   const notify = installNotify(ctx, statusLine);
-  const keys = installKeys(ctx, options.language ?? "ko", notify.notify);
+  const speech = installLanguage(ctx, options.language);
+  const keys = installKeys(ctx, speech.current(), notify.notify);
   const preferences = new Preferences(hub.settings, bridge);
-  const settingsWindow = installSettingsWindow(ctx, keys, preferences, options.language ?? "ko");
+  const settingsWindow = installLiveSettingsWindow(ctx, keys, preferences, speech);
   // Contributed commands with `runs`, and the palette's providers, are the desk's to answer.
   const aliases = installAliases(ctx);
   const palette = installPalette(ctx);
@@ -164,7 +166,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const moved = (id: string | null) => focusMoved(id);
   const focusing = surfaceFocus({ root, shortcuts, surfaces, show, moved });
   const { focus: focusSurface, follow: followSurface } = focusing;
-  const { views, windows, language } = options;
+  const { views, windows } = options;
   // Set once desk.buffers is installed: which ids are the host's views.
   let routing: ViewRouting = { owns: () => false, dispose: () => {} };
   const focusAny = (id: string | null) => {
@@ -181,7 +183,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     focused: () => shortcuts.focused ?? views?.focused() ?? null,
   });
   // Windows out of sight are unloaded, their state kept (ADR 0070); every frame is watched (#39).
-  const frames = installFrames(ctx, { windows, host: () => pluginHost, lang: language });
+  const frames = installFrames(ctx, { windows, host: () => pluginHost, lang: speech.current() });
   focusMoved = (id) => frames.focused(id);
   // A host's view is a buffer only while in sight; a surface is when shown and on the page.
   const inSight = (id: string) => surfaces.get(id) === undefined || surfaces.visible(id);
@@ -372,6 +374,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       frames.dispose();
       routing.dispose();
       const policies = [
+        speech,
         start,
         profiles,
         keysFile,
