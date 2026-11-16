@@ -30,7 +30,7 @@ fn scope() -> Value {
 }
 
 /// A 16 kHz mono microphone, so frames pass through without resampling.
-fn input() -> FakeInput {
+fn fake_mic() -> FakeInput {
     FakeInput::new().with_devices(vec![InputDevice {
         id: MIC.to_owned(),
         name: "Fake mic".to_owned(),
@@ -109,7 +109,7 @@ impl Prompter for Counting {
 
 #[test]
 fn start_without_the_permission_is_denied() {
-    let input = Arc::new(input());
+    let input = Arc::new(fake_mic());
     let core = core_with(&input);
     let refused = start_plain(&core, HELLO).unwrap_err();
     assert_eq!(refused.code, ErrorCode::PermissionDenied, "{refused:?}");
@@ -118,7 +118,7 @@ fn start_without_the_permission_is_denied() {
 
 #[test]
 fn first_capture_asks_through_the_prompt() {
-    let input = Arc::new(input());
+    let input = Arc::new(fake_mic());
     let asked = Arc::new(AtomicUsize::new(0));
     let core = core_with(&input).with_prompter(Counting { asked: asked.clone(), yes: true });
     let first = start_plain(&core, HELLO).unwrap();
@@ -127,7 +127,7 @@ fn first_capture_asks_through_the_prompt() {
     assert_eq!(asked.load(Ordering::SeqCst), 1, "asked once, then the grant holds");
     assert_eq!(input.open_captures(MIC), 2);
 
-    let refusing = Arc::new(input());
+    let refusing = Arc::new(fake_mic());
     let asked = Arc::new(AtomicUsize::new(0));
     let core = core_with(&refusing).with_prompter(Counting { asked: asked.clone(), yes: false });
     let refused = start_plain(&core, HELLO).unwrap_err();
@@ -138,21 +138,21 @@ fn first_capture_asks_through_the_prompt() {
 
 #[test]
 fn os_refusal_is_permission_denied() {
-    let denied = Arc::new(input().with_authorization(Authorization::Denied));
+    let denied = Arc::new(fake_mic().with_authorization(Authorization::Denied));
     let core = core_with(&denied);
     grant(&core, HELLO, scope());
     let refused = start_plain(&core, HELLO).unwrap_err();
     assert_eq!(refused.code, ErrorCode::PermissionDenied, "{refused:?}");
     assert_eq!(denied.captures_opened(MIC), 0);
 
-    let asks = Arc::new(input().with_authorization(Authorization::NotDetermined));
+    let asks = Arc::new(fake_mic().with_authorization(Authorization::NotDetermined));
     let core = core_with(&asks);
     grant(&core, HELLO, scope());
     start_plain(&core, HELLO).expect("the OS was asked and said yes");
     assert_eq!(asks.open_captures(MIC), 1);
 
     let says_no = Arc::new(
-        input()
+        fake_mic()
             .with_authorization(Authorization::NotDetermined)
             .with_answer(Authorization::Denied),
     );
@@ -165,19 +165,18 @@ fn os_refusal_is_permission_denied() {
 
 #[test]
 fn frames_arrive_as_audio_frame_events() {
-    let input = Arc::new(input());
+    let input = Arc::new(fake_mic());
     let core = core_with(&input);
     grant(&core, HELLO, scope());
     let deliveries = core.events().subscribe_addressed();
     let capture = start_plain(&core, HELLO).unwrap();
     input.push(MIC, &sine(640));
     stop(&core, HELLO, &capture).unwrap();
-    ended(&deliveries, &capture);
 
-    let frames: Vec<Seen> = drain(&deliveries)
-        .into_iter()
-        .filter(|seen| seen.name() == "audio.frame")
-        .collect();
+    // `stop` waits for the end, so every frame and the end are delivered by now.
+    let seen = drain(&deliveries);
+    assert!(seen.iter().any(|s| s.name() == "audio.ended"), "{seen:?}");
+    let frames: Vec<Seen> = seen.into_iter().filter(|s| s.name() == "audio.frame").collect();
     assert_eq!(frames.len(), 2, "{frames:?}");
     for (i, frame) in frames.iter().enumerate() {
         assert_eq!(frame.to, Some(vec![HELLO.to_owned()]), "only the caller hears it");
@@ -196,7 +195,7 @@ fn frames_arrive_as_audio_frame_events() {
 
 #[test]
 fn stop_ends_the_capture() {
-    let input = Arc::new(input());
+    let input = Arc::new(fake_mic());
     let core = core_with(&input);
     grant(&core, HELLO, scope());
     let deliveries = core.events().subscribe_addressed();
@@ -218,7 +217,7 @@ fn stop_ends_the_capture() {
 
 #[test]
 fn another_callers_capture_is_not_found() {
-    let input = Arc::new(input());
+    let input = Arc::new(fake_mic());
     let core = core_with(&input);
     grant(&core, HELLO, scope());
     grant(&core, OTHER, scope());
@@ -230,7 +229,7 @@ fn another_callers_capture_is_not_found() {
 
 #[test]
 fn the_runtime_stops_any_capture() {
-    let input = Arc::new(input());
+    let input = Arc::new(fake_mic());
     let core = core_with(&input);
     grant(&core, HELLO, scope());
     grant(&core, "desk", scope());
@@ -245,7 +244,7 @@ fn the_runtime_stops_any_capture() {
 
 #[test]
 fn unload_stops_the_plugins_captures() {
-    let input = Arc::new(input());
+    let input = Arc::new(fake_mic());
     let core = core_with(&input);
     grant(&core, HELLO, scope());
     grant(&core, "desk", plugin_manage());
@@ -258,7 +257,7 @@ fn unload_stops_the_plugins_captures() {
 
 #[test]
 fn last_surface_closing_stops_captures() {
-    let input = Arc::new(input());
+    let input = Arc::new(fake_mic());
     let core = core_with(&input);
     grant(&core, HELLO, scope());
     grant(&core, HELLO, json!({ "permission": "ui:surface" }));
@@ -287,7 +286,7 @@ fn last_surface_closing_stops_captures() {
 
 #[test]
 fn revoke_stops_captures() {
-    let input = Arc::new(input());
+    let input = Arc::new(fake_mic());
     let core = core_with(&input);
     let grant_id = grant(&core, HELLO, scope());
     let deliveries = core.events().subscribe_addressed();
@@ -299,7 +298,7 @@ fn revoke_stops_captures() {
 
 #[test]
 fn device_failure_ends_with_the_error() {
-    let input = Arc::new(input());
+    let input = Arc::new(fake_mic());
     let core = core_with(&input);
     grant(&core, HELLO, scope());
     let deliveries = core.events().subscribe_addressed();
@@ -317,7 +316,7 @@ fn device_failure_ends_with_the_error() {
 
 #[test]
 fn wake_word_is_unsupported() {
-    let input = Arc::new(input());
+    let input = Arc::new(fake_mic());
     let core = core_with(&input).with_prompter(SayYes);
     let wake = json!({ "permission": "audio:capture", "wakeWord": true });
     grant(&core, HELLO, wake.clone());
@@ -328,7 +327,7 @@ fn wake_word_is_unsupported() {
 
 #[test]
 fn the_runtime_hears_who_captures() {
-    let input = Arc::new(input());
+    let input = Arc::new(fake_mic());
     let core = core_with(&input);
     grant(&core, HELLO, scope());
     grant(&core, OTHER, scope());
