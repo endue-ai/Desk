@@ -1,17 +1,18 @@
 // Idle memory on the Default profile (fresh data folder, no dev plugin): the summed RSS of the app
-// and its descendants five minutes after the app started, as `ps` reports it. The app is the process
-// support/driver.ts started; its CEF helpers are under it.
+// and its descendants five minutes after the app started, as `ps` reports it, and by kind of
+// process (#312). The app is the process support/driver.ts started; its CEF helpers are under it.
 import { execFileSync } from "node:child_process";
 import { browser } from "@wdio/globals";
 import { shellReady } from "../support/desk";
 import { APP_STARTED_VAR, appPid } from "../support/driver";
-import { type Proc, parsePs, rssMb, treeOf } from "./lib/memory";
+import { kinds, type Proc, parsePs, rssMb, treeOf } from "./lib/memory";
 import { measured } from "./support/out";
 
 const AFTER_S = 300;
 
+// The whole command line, so each helper's kind (its --type) is known (#312).
 const ps = () =>
-  parsePs(execFileSync("ps", ["-A", "-o", "pid=,ppid=,rss=,comm="], { encoding: "utf8" }));
+  parsePs(execFileSync("ps", ["-A", "-o", "pid=,ppid=,rss=,command="], { encoding: "utf8" }));
 
 /** The app's process and how many seconds it has run. */
 function theApp(procs: readonly Proc[]): { app: Proc; elapsed: number } {
@@ -32,6 +33,7 @@ describe("idle memory: the Default profile five minutes after start", () => {
       idleMemory: {
         rssMb: rssMb(tree),
         afterMs: AFTER_S * 1000,
+        kinds: kinds(tree),
         processes: tree.map((p) => ({ pid: p.pid, name: p.name, rssMb: rssMb([p]) })),
       },
     });

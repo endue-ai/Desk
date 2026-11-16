@@ -1,7 +1,7 @@
 // endue at rest with no window (#237, ADR 0225): the Default profile, its main window closed with
 // its red button (the desk runs on, the island over other apps), left alone twenty seconds, then
 // measured for thirty with `ps`: the app's own process's CPU as a share of one core, its whole
-// tree's, and the tree's summed RSS at the end. The app is the process support/driver.ts started.
+// tree's, and the tree's summed RSS at the end, by kind of process beside it (#312). The app is the process support/driver.ts started.
 // The window is closed through the shell's development command, as hidden.perf.ts closes it.
 import { execFileSync } from "node:child_process";
 import { loadavg } from "node:os";
@@ -10,7 +10,7 @@ import { shellCommand } from "../support/compositor";
 import { shellReady } from "../support/desk";
 import { appPid } from "../support/driver";
 import { cpuPercent, parseCpu } from "./lib/cpu";
-import { parsePs, rssMb, treeOf } from "./lib/memory";
+import { kinds, parsePs, rssMb, treeOf } from "./lib/memory";
 import { round1 } from "./lib/stats";
 import { measured } from "./support/out";
 
@@ -19,8 +19,9 @@ const WINDOW_MS = 30_000;
 
 const cpu = () =>
   parseCpu(execFileSync("ps", ["-A", "-o", "pid=,ppid=,time=,comm="], { encoding: "utf8" }));
+// The whole command line, so each helper's kind (its --type) is known (#312).
 const memory = () =>
-  parsePs(execFileSync("ps", ["-A", "-o", "pid=,ppid=,rss=,comm="], { encoding: "utf8" }));
+  parsePs(execFileSync("ps", ["-A", "-o", "pid=,ppid=,rss=,command="], { encoding: "utf8" }));
 
 describe("endue at rest with no window", () => {
   it("costs its own process under a share of a core, and its tree a known memory", async () => {
@@ -45,6 +46,7 @@ describe("endue at rest with no window", () => {
         treePercent: tree,
         rssMb: rssMb(procs),
         processes: procs.length,
+        kinds: kinds(procs),
         island: seen.island,
         loadAverage: round1(loadavg()[0] ?? 0),
         settleMs: SETTLE_MS,
