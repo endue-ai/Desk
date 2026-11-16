@@ -210,7 +210,10 @@ fn a_command_answer_reaches_only_the_caller_that_ran_it() {
     let provider = "example.notes";
     core.handle(
         provider,
-        request("cmd.register", json!({ "id": "example.notes.count", "title": "Count" })),
+        request(
+            "cmd.register",
+            json!({ "id": "example.notes.count", "title": "Count" }),
+        ),
     );
     let invoked = cli.ask(json!({ "id": 3, "method": "cmd.invoke", "params": {
         "id": "example.notes.count", "args": {},
@@ -218,7 +221,10 @@ fn a_command_answer_reaches_only_the_caller_that_ran_it() {
     let invocation = invoked["result"]["invocationId"].clone();
     core.handle(
         provider,
-        request("cmd.answer", json!({ "invocationId": invocation, "result": 3 })),
+        request(
+            "cmd.answer",
+            json!({ "invocationId": invocation, "result": 3 }),
+        ),
     );
     cli.wait_for("cmd.answered");
     let heard: Vec<&Value> = cli
