@@ -597,7 +597,7 @@ and no flag that widens the program's own permission settings is ever passed. Ea
 
 **studio.agents.list**, **studio.agents.get**, **studio.agents.create**, **studio.agents.update**,
 **studio.agents.setStatus**, **studio.agents.remove**, **studio.agents.facets**,
-**studio.agents.prompt.update**, **studio.catalog.list**, **studio.catalog.recommend**,
+**studio.agents.picture**, **studio.agents.prompt.update**, **studio.catalog.list**, **studio.catalog.recommend**,
 **studio.catalog.use** and **studio.conversations.list** are the person's endue AI agents, created and
 managed through endue AI's platform API (`specs/platform/v0`, ADR 0122) as endue.ai's Home and Studio
 do. Each needs `studio:manage`; a built-in plugin that declares it holds it, anyone else asks. The core
@@ -607,8 +607,15 @@ bridge's camelCase. `studio.agents.list` pages through every agent and leaves th
 `model` after, a failure of which is a warning, not an error; `update` changes only the fields given
 (identity through the agent, `model` and `visibility` through its settings); `setStatus` to the status
 an agent already has succeeds; `remove` deletes softly (purged after 30 days). `facets` reads identity,
-settings, the prompt and its newest 50 revisions, skills, connectors and traits at once: the agent must
-answer, and any other facet that does not is named in `problems`. `prompt.update` saves `content` as a
+settings, the prompt and its newest 50 revisions, skills, connectors and traits at once, and the rest of
+what Studio's board shows (ADR 0232): the channels the agent is reached through, the API keys made for
+it alone, its endue OS devices and workspaces, how many memories (and rules) it keeps among its newest
+200 and how many things it made, and its chat's wallpaper. No secret, key prefix, memory or wallpaper
+manifest crosses the bridge. The agent must answer, and any other facet that does not is named in
+`problems`. `picture` answers an agent's face as
+endue.ai shows it (its character, else its picture, else the one drawn from its slug) as a data: URL
+of at most 512 KB, read by the core over https without the token, or nothing when it could not be
+read (ADR 0232). `prompt.update` saves `content` as a
 new revision, or `restore`s an earlier one. `catalog.use` starts an agent from a catalog agent (30 s at
 most) and answers the new agent with what was and was not set up. `conversations.list` answers one page,
 each conversation with its Home board column (`activity`: `waiting`, `active`, `failed`, `done`).

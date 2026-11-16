@@ -20,13 +20,13 @@ use desk_bridge::{
     PluginContributes, PluginListResult, PluginManifest, PluginStatsResult, PluginsLock,
     ProfileFile, RefusalReason, SettingsListResult, ShellOpenResult, StoreGetResult,
     StudioAgentsCreateResult, StudioAgentsFacetsResult, StudioAgentsListResult,
-    StudioAgentsPromptUpdateResult, StudioAgentsRemoveResult, StudioCatalogListResult,
-    StudioCatalogRecommendResult, StudioCatalogUseResult, StudioConversationsListResult,
-    StudioSpacesGetResult, StudioSpacesListResult, ThemeBundle, ThemeExportResult, ThemeIndex,
-    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeTokensResult, ThemeType,
-    ThemeVariant, UiSurfaceSnapshotResult, UiSurfaceStateRequest, UiSurfaceStateResult,
-    UniversalData, UniversalPage, UniversalSource, UniversalView, View, ViewGetResult,
-    ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
+    StudioAgentsPictureResult, StudioAgentsPromptUpdateResult, StudioAgentsRemoveResult,
+    StudioCatalogListResult, StudioCatalogRecommendResult, StudioCatalogUseResult,
+    StudioConversationsListResult, StudioSpacesGetResult, StudioSpacesListResult, ThemeBundle,
+    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
+    ThemeTokensResult, ThemeType, ThemeVariant, UiSurfaceSnapshotResult, UiSurfaceStateRequest,
+    UiSurfaceStateResult, UniversalData, UniversalPage, UniversalSource, UniversalView, View,
+    ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -383,6 +383,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "StudioAgentsCreateResult" => roundtrip::<StudioAgentsCreateResult>(vector),
                 "StudioAgentsRemoveResult" => roundtrip::<StudioAgentsRemoveResult>(vector),
                 "StudioAgentsFacetsResult" => roundtrip::<StudioAgentsFacetsResult>(vector),
+                "StudioAgentsPictureResult" => roundtrip::<StudioAgentsPictureResult>(vector),
                 "StudioAgentsPromptUpdateResult" => {
                     roundtrip::<StudioAgentsPromptUpdateResult>(vector)
                 }

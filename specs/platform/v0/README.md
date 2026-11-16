@@ -9,8 +9,9 @@ served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `ac
 
 | Area | Operations |
 | --- | --- |
-| Agents | `listAgents`, `createAgent`, `getAgent`, `updateAgent`, `deleteAgent` (soft), `setAgentStatus` |
+| Agents | `listAgents`, `createAgent`, `getAgent` (with the addresses of its face, ADR 0232), `updateAgent`, `deleteAgent` (soft), `setAgentStatus` |
 | Studio facets | `getAgentIdentity`, `getAgentSettings`, `updateAgentSettings`, `getAgentPrompt`, `saveAgentPrompt`, `listPromptRevisions`, `restorePromptRevision`, `listAgentSkills`, `listAgentConnectors`, `listAgentTraits` |
+| Studio's board (ADR 0232) | `listChannelPairings`, `listAgentOsDevices`, `listAgentWorkspaces`, `getAgentTheme`, `listAgentMemories` (counted), `listApiKeys` (the agent's own), `listArtifacts` (counted) |
 | Catalog | `listCatalogAgents`, `recommendCatalogAgents`, `useCatalogAgent` |
 | Conversations | `listConversations` (the Home board) |
 | Spaces (read only) | `listSpaces` (with summaries), `getSpace`, `getSpaceOverview`, `listSpaceRooms` |
@@ -28,6 +29,9 @@ served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `ac
   answers `{ success: true, data }`. user-service answers the bare body; notification-service answers
   `{ data, meta }`. Errors are `{ error: { code, message, details?, suggest? }, meta }`.
   The space list and one space answer the bare body; a space's overview and rooms `{ data, meta }`.
+  Channel pairings, devices and workspaces answer the bare body; an agent's theme the bare body or
+  `{ data }`; artifact-service `{ data, meta: { pagination } }`, whose total Desk counts. Workspaces
+  answer 404 `FEATURE_DISABLED` while endue AI has them turned off, which Desk reads as none.
 - Bodies are snake_case. Readers ignore fields this document does not name and read `null` as absent,
   so endue AI can add fields without breaking Desk.
 - Only what a card shows is named. People's ids, room members, a viewer's capabilities, attention

@@ -9,6 +9,9 @@
         "name": "Miso",
         "status": "active",
         "personalColor": "#B6A3F5",
+        "description": "Keeps my calendar and sorts my mail",
+        "liveEnabled": true,
+        "mcpEnabled": false,
         "createdAt": "2026-11-01T09:00:00Z",
         "updatedAt": "2026-11-02T09:00:00Z"
       },

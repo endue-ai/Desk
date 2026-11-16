@@ -1,0 +1,21 @@
+{
+  "target": "StudioAgentsFacetsResult",
+  "description": "the lists are always there, empty when endue AI did not answer for them",
+  "instance": {
+    "agent": {
+      "id": "ag_01JC0Q4MR00000000000000001",
+      "slug": "miso",
+      "name": "Miso",
+      "status": "active",
+      "createdAt": "2026-11-01T09:00:00Z",
+      "updatedAt": "2026-11-02T09:00:00Z"
+    },
+    "revisions": [],
+    "skills": [],
+    "connectors": [],
+    "traits": [],
+    "apiKeys": [],
+    "devices": [],
+    "problems": []
+  }
+}

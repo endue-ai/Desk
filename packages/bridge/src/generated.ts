@@ -3222,6 +3222,7 @@ export type BridgeRequest =
   | StudioAgentsSetStatusRequest
   | StudioAgentsRemoveRequest
   | StudioAgentsFacetsRequest
+  | StudioAgentsPictureRequest
   | StudioAgentsPromptUpdateRequest
   | StudioCatalogListRequest
   | StudioCatalogRecommendRequest
@@ -6081,7 +6082,7 @@ export interface StudioSourceCatalog {
   version: number;
 }
 
-/** One of the person's agents as endue AI lists it. slug is the handle endue AI derived from the first name; it never changes. avatarUrl is absent when none was set: draw one from the slug. The list carries no description; studio.agents.facets has it. */
+/** One of the person's agents as endue AI lists it. slug is the handle endue AI derived from the first name; it never changes. avatarUrl is where endue AI keeps the picture the person set, absent when none was set; a page shows the agent's face from studio.agents.picture, never from this address. description, liveEnabled and mcpEnabled are absent when endue AI does not say. */
 export interface StudioAgent {
   id: StudioAgentId;
   slug: string;
@@ -6089,6 +6090,12 @@ export interface StudioAgent {
   status: StudioAgentStatus;
   avatarUrl?: string;
   personalColor?: string;
+  /** The profile's one-line introduction. */
+  description?: string;
+  /** Whether the agent is public on endue.live. */
+  liveEnabled?: boolean;
+  /** Whether other agents and apps may run the agent over MCP. */
+  mcpEnabled?: boolean;
   /** ISO 3166-2, where it was created (KR-11). */
   region?: string;
   sourceCatalog?: StudioSourceCatalog;
@@ -6123,7 +6130,7 @@ export interface StudioParams {
   scope: StudioManagePermission;
 }
 
-/** Parameters of a call about one agent: studio.agents.get, studio.agents.remove and studio.agents.facets. */
+/** Parameters of a call about one agent: studio.agents.get, studio.agents.remove, studio.agents.facets and studio.agents.picture. */
 export interface StudioAgentParams {
   agentId: StudioAgentId;
   scope: StudioManagePermission;
@@ -6317,6 +6324,67 @@ export interface StudioTrait {
   updatedAt?: string;
 }
 
+/** How a channel stands: pending (the bot's invitation waits to be approved), active (the agent answers there), inactive (turned off) or revoked. */
+export type StudioChannelStatus = "pending" | "active" | "inactive" | "revoked";
+
+/** A channel the agent is reached through: the pairing's id, the provider (discord, slack, kakao, navertalk, whatsapp), the name endue AI shows for it, how it stands and when it was last used. No secret and no webhook address crosses the bridge. */
+export interface StudioChannel {
+  id: string;
+  provider: string;
+  name?: string;
+  status: StudioChannelStatus;
+  lastActiveAt?: string;
+}
+
+/** An API key the person made for this agent alone: its name, when it stops working (absent: never), when it was last used and when it was made. Keys for all of the person's agents are not listed, and no key's secret or prefix crosses the bridge. */
+export interface StudioApiKey {
+  id: string;
+  name: string;
+  expiresAt?: string;
+  lastUsedAt?: string;
+  createdAt?: string;
+}
+
+/** What a device is, as Studio names it: a computer (Linux, macOS, Windows, or a Linux workspace), Chrome, or Android. */
+export type StudioDeviceKind = "computer" | "chrome" | "android";
+
+/** A device the agent works on: one of the person's endue OS devices attached to it, by the name the agent calls it, or a workspace endue AI runs for the agent alone (workspace). */
+export interface StudioDevice {
+  id: string;
+  kind: StudioDeviceKind;
+  name: string;
+  workspace: boolean;
+}
+
+/** What the agent remembers, counted over its newest 200 memories, archived ones left out: how many, how many of them are rules (procedural), and whether it has more than were counted. No memory's content crosses the bridge. */
+export interface StudioMemory {
+  memories: number;
+  rules: number;
+  more: boolean;
+}
+
+/** What the agent made (its artifacts on endue AI): how many, and when the newest last changed (absent while there are none). */
+export interface StudioOutputs {
+  count: number;
+  latestAt?: string;
+}
+
+/** Where a wallpaper comes from: one endue.ai ships (builtin, its id the engine: glyphs, constellation, flow, ripple, nebula, image), one the person made (mine), or one from the gallery. */
+export type StudioWallpaperSource = "builtin" | "mine" | "gallery";
+
+/** The wallpaper behind the agent's chat: where it comes from, its id, and its name and author when endue AI says. The desk draws no wallpaper; it names it. */
+export interface StudioWallpaper {
+  source: StudioWallpaperSource;
+  id: string;
+  name?: string;
+  author?: string;
+}
+
+/** How the agent's chat looks: its wallpaper, absent while none is chosen. */
+export interface StudioTheme {
+  wallpaper?: StudioWallpaper;
+}
+
 /** A part of what Studio shows of an agent. */
 export type StudioFacet =
   | "identity"
@@ -6325,7 +6393,13 @@ export type StudioFacet =
   | "revisions"
   | "skills"
   | "connectors"
-  | "traits";
+  | "traits"
+  | "channels"
+  | "apiKeys"
+  | "devices"
+  | "memory"
+  | "outputs"
+  | "theme";
 
 /** A facet endue AI did not answer for: the bridge error code it would have been, and a sentence for people. */
 export interface StudioFacetProblem {
@@ -6334,14 +6408,14 @@ export interface StudioFacetProblem {
   message: string;
 }
 
-/** Everything Studio shows of one agent, read at once: identity, settings, the prompt in force and its revisions (the newest 50), skills, connectors and traits. The agent itself must answer; a facet that does not is left out and named in problems. */
+/** Everything Studio shows of one agent, read at once: identity, settings, the prompt in force and its revisions (the newest 50), skills, connectors, traits, the channels it is reached through, the API keys made for it, the devices it works on, what it remembers and what it made (counted), and its chat's wallpaper. The agent itself must answer; a facet that does not is left out and named in problems. */
 export interface StudioAgentsFacetsRequest {
   id: RequestId;
   method: "studio.agents.facets";
   params: StudioAgentParams;
 }
 
-/** Result of studio.agents.facets. prompt is absent when the agent has none yet; a facet in problems is absent (identity, settings) or empty (the lists). */
+/** Result of studio.agents.facets. prompt is absent when the agent has none yet; a facet in problems is absent (identity, settings, memory, outputs, theme) or empty (the lists). */
 export interface StudioAgentsFacetsResult {
   agent: StudioAgent;
   identity?: StudioIdentity;
@@ -6351,7 +6425,31 @@ export interface StudioAgentsFacetsResult {
   skills: StudioSkill[];
   connectors: StudioConnector[];
   traits: StudioTrait[];
+  channels: StudioChannel[];
+  apiKeys: StudioApiKey[];
+  devices: StudioDevice[];
+  memory?: StudioMemory;
+  outputs?: StudioOutputs;
+  theme?: StudioTheme;
   problems: StudioFacetProblem[];
+}
+
+/** Which picture an agent's face is, as endue.ai chooses it: its character while one is on (character), else the picture the person set (photo), else the one endue.ai draws from the slug (drawn). */
+export type StudioPictureSource = "character" | "photo" | "drawn";
+
+/** An agent's face as endue.ai shows it, for a page that loads no remote image: the core reads the picture and answers it as a data: URL. It reads only https addresses, sends no token with the read, keeps PNG, JPEG, GIF, WebP and SVG of at most 512 KB, and remembers what it read until the picture's address changes. Another person's agent is forbidden; one that is not there is not_found. */
+export interface StudioAgentsPictureRequest {
+  id: RequestId;
+  method: "studio.agents.picture";
+  params: StudioAgentParams;
+}
+
+/** Result of studio.agents.picture. picture and source are absent when the picture could not be read, was too large or was no image: draw the agent's initial. */
+export interface StudioAgentsPictureResult {
+  agentId: StudioAgentId;
+  /** The picture as a data: URL (image/png, image/jpeg, image/gif, image/webp or image/svg+xml, base64). Show it only as an image. */
+  picture?: string;
+  source?: StudioPictureSource;
 }
 
 /** Save the agent's instructions as a new revision in force (content), or put an earlier revision back in force as a new one (restore). */
@@ -7417,6 +7515,7 @@ export interface BridgeMethodMap {
   };
   "studio.agents.remove": { params: StudioAgentParams; result: StudioAgentsRemoveResult };
   "studio.agents.facets": { params: StudioAgentParams; result: StudioAgentsFacetsResult };
+  "studio.agents.picture": { params: StudioAgentParams; result: StudioAgentsPictureResult };
   "studio.agents.prompt.update": {
     params: StudioAgentsPromptUpdateParams;
     result: StudioAgentsPromptUpdateResult;
@@ -7599,6 +7698,7 @@ export const BRIDGE_METHODS = [
   "studio.agents.setStatus",
   "studio.agents.remove",
   "studio.agents.facets",
+  "studio.agents.picture",
   "studio.agents.prompt.update",
   "studio.catalog.list",
   "studio.catalog.recommend",

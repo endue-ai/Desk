@@ -1,0 +1,9 @@
+{
+  "target": "StudioAgentsPictureResult",
+  "description": "a picture is a data: URL, never an address a page would load",
+  "instance": {
+    "agentId": "ag_01JC0Q4MR00000000000000001",
+    "picture": "https://cdn.endue.ai/c/mailie.png",
+    "source": "photo"
+  }
+}
