@@ -154,7 +154,7 @@ export function mountEris(
         void audio?.close();
         return "refused";
       }
-      return (await openMic(ctx.store.get().lang, audio)) ?? "none";
+      return (await openMic(ctx.store.get().lang, audio, ctx.bridge.audio)) ?? "none";
     },
     sampleEar: (at) => sampleEar(userHello, at),
     // A spoken line runs the same agentic loop as a typed one, so its hand-offs are drawn too
