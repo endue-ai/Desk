@@ -1,7 +1,8 @@
 // The preview engine's Compose: `config --format json` of each stack (services, their images,
 // ports, dependencies, networks and volumes) and the operations that start, stop and remove them.
 
-import { record } from "./world.mjs";
+import { history, lineOf } from "./logs.mjs";
+import { record, seeded } from "./world.mjs";
 
 /** @typedef {import("./world.mjs").World} World @typedef {import("./streams.mjs").Io} Io */
 
@@ -95,8 +96,29 @@ export async function composeOp(
     return io.exit(0);
   }
   if (op === "logs") {
-    for (const c of members) io.out(`${c.service}-1  | ready\n`);
-    return io.exit(0);
+    // Every service's lines merged by time, each prefixed with its service, then new ones.
+    const width = Math.max(...members.map((c) => c.service.length)) + 2;
+    const prefix = (/** @type {any} */ c) => `${`${c.service}-1`.padEnd(width + 2)}| `;
+    const all = members.flatMap((c) =>
+      history(c, 60).map(([stream, text, t]) => ({ c, stream, text, t })),
+    );
+    all.sort((a, b) => a.t - b.t);
+    for (const l of all) io.out(`${prefix(l.c)}${new Date(l.t).toISOString()} ${l.text}\n`);
+    if (!flags["--follow"]) return io.exit(0);
+    const rnd = seeded(3);
+    let n = 0;
+    const timer = setInterval(() => {
+      const c = members.filter((m) => m.state === "running")[n % Math.max(1, members.length)];
+      n += 1;
+      if (!c) return;
+      const [, text] = lineOf(c, rnd, Date.now(), n);
+      io.out(`${prefix(c)}${new Date().toISOString()} ${text}\n`);
+    }, 700);
+    io.onKill(() => {
+      clearInterval(timer);
+      io.exit(143);
+    });
+    return;
   }
   if (op === "pull") {
     for (const c of members) {

@@ -4,6 +4,7 @@
 import { createActions } from "./actions.js";
 import { createImageActions } from "./actions-images.js";
 import { createObjectActions } from "./actions-objects.js";
+import { openComposeDialog } from "./dialog-compose.js";
 import { openNetworkDialog, openVolumeDialog } from "./dialog-objects.js";
 import { openPullDialog, openTagDialog } from "./dialog-pull.js";
 import { openRunDialog } from "./dialog-run.js";
@@ -34,7 +35,7 @@ export function installFeatures(app) {
     createVolume: () => openVolumeDialog(app),
     createNetwork: () => openNetworkDialog(app),
     build: soon("Building"),
-    composeUp: soon("Compose up from a file"),
+    composeUp: () => openComposeDialog(app),
     scaffold: soon("Writing a Dockerfile"),
     cleanup: soon("Clean up"),
   };

@@ -174,5 +174,14 @@ export function createActions(app) {
     }
   };
 
-  return { container, compose, shell, browse, copy, busy };
+  /** Open a file (a Compose file, a Dockerfile) in the desk's editor. */
+  const openFile = async (/** @type {string} */ path) => {
+    try {
+      await app.ctx.commands.run("desk.files.open", { path });
+    } catch {
+      app.toast(`Could not open ${path}.`, "danger");
+    }
+  };
+
+  return { container, compose, shell, browse, copy, openFile, busy };
 }
