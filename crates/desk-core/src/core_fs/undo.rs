@@ -49,25 +49,34 @@ pub(crate) fn is_fs_op(entry: &UndoEntry) -> bool {
 }
 
 impl Core {
-    pub(super) fn push_rename(&self, caller: &str, from: &str, to: &str, crossed: bool) {
+    pub(super) fn push_rename(&self, caller: &str, ends: Ends, crossed: bool, group: Group) {
         let result = json!({ "crossedDevices": crossed });
-        self.push_fs_op(caller, RENAME, ends(from, to), result, RENAME);
+        self.push_fs_op(caller, RENAME, both(ends), result, RENAME, group);
     }
 
-    pub(super) fn push_copy(&self, caller: &str, from: &str, to: &str, bytes: u64) {
+    pub(super) fn push_copy(&self, caller: &str, ends: Ends, bytes: u64, group: Group) {
         let result = json!({ "bytesCopied": bytes });
-        self.push_fs_op(caller, COPY, ends(from, to), result, TRASH);
+        self.push_fs_op(caller, COPY, both(ends), result, TRASH, group);
     }
 
     pub(super) fn push_mkdir(&self, caller: &str, path: &str, parents: bool, created: &[String]) {
         let mut args = Map::new();
         args.insert("path".to_owned(), json!(path));
         args.insert("parents".to_owned(), json!(parents));
-        self.push_fs_op(caller, MKDIR, args, json!({ "created": created }), RMDIR);
+        self.push_fs_op(caller, MKDIR, args, json!({ "created": created }), RMDIR, None);
     }
 
-    fn push_fs_op(&self, caller: &str, command: &str, args: Args, result: Value, inverse: &str) {
-        let entry = self.command_entry(command, Some(args), Some(result), caller, inverse);
+    fn push_fs_op(
+        &self,
+        caller: &str,
+        command: &str,
+        args: Args,
+        result: Value,
+        inverse: &str,
+        group: Group,
+    ) {
+        let mut entry = self.command_entry(command, Some(args), Some(result), caller, inverse);
+        entry.group = group;
         self.push_undo(entry, true);
     }
 
@@ -142,8 +151,26 @@ impl Core {
 }
 
 type Args = Map<String, Value>;
+/// A rename's or a copy's two ends, `from` and `to`.
+type Ends<'a> = (&'a str, &'a str);
+/// The group a rename or a copy joins: its undo entries and the others of the group are one step.
+type Group = Option<String>;
 
-fn ends(from: &str, to: &str) -> Args {
+/// The longest group a caller may give (specs/bridge/v0 `UndoGroup`).
+const GROUP_MAX: usize = 128;
+
+/// A rename's or a copy's `group`, checked before anything changes: 1 to 128 characters.
+pub(super) fn checked_group(group: Group) -> Result<Group, BridgeError> {
+    match group {
+        Some(name) if name.is_empty() || name.chars().count() > GROUP_MAX => {
+            let why = format!("a group is 1 to {GROUP_MAX} characters");
+            Err(error(ErrorCode::InvalidParams, why))
+        }
+        group => Ok(group),
+    }
+}
+
+fn both((from, to): Ends) -> Args {
     let mut args = Map::new();
     args.insert("from".to_owned(), json!(from));
     args.insert("to".to_owned(), json!(to));

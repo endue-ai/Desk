@@ -7,7 +7,8 @@
 //! but a redone command's answer lands on the stack again. A command's entry whose inverse cannot
 //! start for any reason but a refusal to the caller (it is not registered any more, it does not
 //! accept the args) leaves the stack with the error, so it never blocks the entries before it.
-//! Kept in memory: 200 entries.
+//! File operations a caller gave one `group` and that sit next to each other are one step: undone
+//! newest first and redone oldest first by one call (ADR 0247). Kept in memory: 200 entries.
 
 use std::collections::VecDeque;
 use std::sync::MutexGuard;
@@ -49,6 +50,15 @@ fn stays(entry: &UndoEntry, why: &BridgeError) -> bool {
     is_write(entry) || is_fs_op(entry) || why.code == ErrorCode::PermissionDenied
 }
 
+/// Whether `next` is one step with `first`: file operations of the same caller and group.
+fn same_group(next: &UndoEntry, first: &UndoEntry) -> bool {
+    first.group.is_some()
+        && next.group == first.group
+        && next.caller == first.caller
+        && is_fs_op(next)
+        && is_fs_op(first)
+}
+
 /// `entry` with `result.version` set to `version`.
 fn with_version(entry: &UndoEntry, version: String) -> UndoEntry {
     let mut next = entry.clone();
@@ -85,6 +95,7 @@ impl Core {
             caller: caller.to_owned(),
             at: rfc3339(self.clock.now()),
             inverse: inverse.to_owned(),
+            group: None,
         }
     }
 
@@ -130,7 +141,10 @@ impl Core {
                 return Err(BridgeError { message, ..why });
             }
         };
+        // The rest of its group goes with it (ADR 0247); a failure there leaves what was undone so.
+        let rest = self.undo_group(caller, &scope, &entry);
         self.undone(caller, &entry, false);
+        rest?;
         answer(CmdUndoResult {
             undone: Some(entry),
             invocation_id,
@@ -181,11 +195,66 @@ impl Core {
                 return Err(why);
             }
         };
+        let rest = self.redo_group(caller, &scope, &entry);
         self.undone(caller, &entry, true);
+        rest?;
         answer(CmdRedoResult {
             undone: Some(entry),
             invocation_id,
         })
+    }
+
+    /// Undo the entries under `first` that share its group, newest first. One that is refused or
+    /// fails stays on the undo side with those under it, and its error is the answer.
+    fn undo_group(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        first: &UndoEntry,
+    ) -> Result<(), BridgeError> {
+        loop {
+            let top = self.stacks().undo.back().cloned();
+            let Some(next) = top.filter(|next| same_group(next, first)) else {
+                return Ok(());
+            };
+            self.check(caller, scope, &Target::CommandId(&next.inverse))?;
+            let Some(entry) = self.stacks().undo.pop_back() else {
+                return Ok(());
+            };
+            match self.undo_fs_op(&entry) {
+                Ok(()) => self.stacks().redo.push(entry),
+                Err(why) => {
+                    self.stacks().undo.push_back(entry);
+                    return Err(why);
+                }
+            }
+        }
+    }
+
+    /// Redo the entries after `first` that share its group, oldest first, as undo_group undid them.
+    fn redo_group(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        first: &UndoEntry,
+    ) -> Result<(), BridgeError> {
+        loop {
+            let top = self.stacks().redo.last().cloned();
+            let Some(next) = top.filter(|next| same_group(next, first)) else {
+                return Ok(());
+            };
+            self.check(caller, scope, &Target::CommandId(&next.command))?;
+            let Some(entry) = self.stacks().redo.pop() else {
+                return Ok(());
+            };
+            match self.redo_fs_op(&entry) {
+                Ok(again) => self.push_undo(again, false),
+                Err(why) => {
+                    self.stacks().redo.push(entry);
+                    return Err(why);
+                }
+            }
+        }
     }
 
     /// Run `entry`'s inverse as `caller`: the invocation it started, if any, and what goes on the

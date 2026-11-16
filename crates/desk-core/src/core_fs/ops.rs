@@ -15,6 +15,7 @@ use desk_plugin_host::rfc3339;
 use desk_sys::fs as sysfs;
 
 use super::moves::sys;
+use super::undo::checked_group;
 use crate::handler::{Answer, Core, denied, error, json};
 use crate::paths::normalize;
 use crate::perm::{Denied, Target, scope_allows};
@@ -66,22 +67,24 @@ impl Core {
 
     fn fs_rename(&self, caller: &str, params: FsRenameParams) -> Answer {
         not_a_root(&params.from)?;
+        let group = checked_group(params.group)?;
         let scope = Permission::FsWrite(params.scope);
         let from_scope = params.from_scope.map(Permission::FsWrite);
         let source = (from_scope.as_ref().unwrap_or(&scope), params.from.as_str());
         let (from, to) = self.authorize_ends(caller, source, (&scope, &params.to))?;
         let crossed_devices = self.move_path(&from, &to)?;
-        self.push_rename(caller, &params.from, &params.to, crossed_devices);
+        self.push_rename(caller, (&params.from, &params.to), crossed_devices, group);
         json(FsRenameResult { crossed_devices })
     }
 
     fn fs_copy(&self, caller: &str, params: FsCopyParams) -> Answer {
+        let group = checked_group(params.group)?;
         let scope = Permission::FsWrite(params.scope);
         let from_scope = Permission::FsRead(params.from_scope);
         let source = (&from_scope, params.from.as_str());
         let (from, to) = self.authorize_ends(caller, source, (&scope, &params.to))?;
         let bytes_copied = sysfs::copy(&from, &to).map_err(sys)?;
-        self.push_copy(caller, &params.from, &params.to, bytes_copied);
+        self.push_copy(caller, (&params.from, &params.to), bytes_copied, group);
         json(FsCopyResult { bytes_copied })
     }
 
