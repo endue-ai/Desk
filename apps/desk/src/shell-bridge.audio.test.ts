@@ -1,11 +1,15 @@
 // The shell bridge's microphone over the core (#311): audio.capture.start and stop as the runtime,
 // audio.frame decoded for the listener, and audio.capturing for the chrome's indicator.
 import { type BridgeAdapter, BridgeClient, browserStub } from "@endue-ai/bridge";
-import type { CaptureFrame, CaptureInForce } from "@endue-ai/runtime";
+import type { ShellBridge } from "@endue-ai/runtime";
 import { describe, expect, test } from "vitest";
 import { shellBridge } from "./shell-bridge";
 
 const SCOPE = { permission: "audio:capture" };
+
+type Audio = Required<ShellBridge["audio"]>;
+type CaptureFrame = Parameters<Parameters<Audio["capture"]>[0]>[0];
+type CaptureInForce = Parameters<Parameters<Audio["captures"]>[0]>[0][number];
 
 function setup() {
   const stub = browserStub({

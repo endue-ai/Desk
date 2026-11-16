@@ -1,8 +1,8 @@
 // The shell's host over the core: what mountDesk asks of its ShellBridge, answered with bridge calls
-// as the runtime (`desk`). Audio levels are silent until the core captures audio. A turn's tool steps
-// (Eris's errands, ADR 0089) reach the shell as they happen; account.* is the desk's endue ID,
-// agents.* the agent programs on this computer (ADR 0110), and studio.* the person's endue agents
-// and spaces once signed in (ADR 0129, shell-studio.ts).
+// as the runtime (`desk`). Audio levels are silent; the microphone is audio.capture (ADR 0245). A
+// turn's tool steps (Eris's errands, ADR 0089) reach the shell as they happen; account.* is the
+// desk's endue ID, agents.* the agent programs on this computer (ADR 0110), and studio.* the
+// person's endue agents and spaces once signed in (ADR 0129, shell-studio.ts).
 import type {
   A2ATaskList,
   AgentCard,
@@ -22,6 +22,8 @@ import type {
   LocalAgentsBridge,
   ShellBridge,
 } from "@endue-ai/runtime";
+
+type Audio = Required<ShellBridge["audio"]>;
 import { studioShell } from "./shell-studio";
 
 type BrainReply = Awaited<ReturnType<ShellBridge["brain"]["say"]>>;
@@ -29,6 +31,7 @@ type BrainReply = Awaited<ReturnType<ShellBridge["brain"]["say"]>>;
 const SCOPE = { permission: "brain:converse" } as const;
 const ACCOUNT = { scope: { permission: "account:manage" } } as const;
 const AGENTS = { scope: { permission: "agents:manage" } } as const;
+const MIC = { permission: "audio:capture" } as const;
 /** The shell's keys in the runtime's store, apart from the runtime's own (session, profiles). */
 const PREFIX = "shell.";
 const SILENT = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0]);
@@ -147,6 +150,47 @@ function say(
   });
 }
 
+/** LINEAR16 little-endian from base64, as audio.frame carries it. */
+function samplesOf(pcm: string): Int16Array {
+  const bytes = Uint8Array.from(atob(pcm), (c) => c.charCodeAt(0));
+  const view = new DataView(bytes.buffer);
+  return Int16Array.from({ length: bytes.length >> 1 }, (_, i) => view.getInt16(i * 2, true));
+}
+
+/** The microphone as the runtime (ADR 0245): a capture with its frames, and every capture in force. */
+function microphone(core: BridgeClient): Pick<Audio, "capture" | "captures" | "stopCapture"> {
+  const stopCapture = async (captureId: string) => {
+    await core.call("audio.capture.stop", { captureId, scope: MIC });
+  };
+  return {
+    async capture(onFrame) {
+      let captureId: string;
+      try {
+        ({ captureId } = await core.call("audio.capture.start", { scope: MIC }));
+      } catch {
+        return null;
+      }
+      const off = core.onEvent((event) => {
+        if (event.event !== "audio.frame" || event.data.captureId !== captureId) return;
+        const { pcm, sampleRate, rmsDb, peakDb, atMs } = event.data;
+        onFrame({ samples: samplesOf(pcm), sampleRate, rmsDb, peakDb, atMs });
+      });
+      return {
+        captureId,
+        async stop() {
+          off();
+          await stopCapture(captureId).catch(() => {});
+        },
+      };
+    },
+    captures: (listener) =>
+      core.onEvent((event) => {
+        if (event.event === "audio.capturing") listener(event.data.captures);
+      }),
+    stopCapture,
+  };
+}
+
 /** agents.* as the runtime: every call under agents:manage, steps and imports as one listener. */
 function localAgents(core: BridgeClient): LocalAgentsBridge {
   return {
@@ -207,6 +251,7 @@ export function shellBridge(core: BridgeClient): ShellBridge {
     },
     audio: {
       levels: () => ({ user: SILENT, eris: SILENT }),
+      ...microphone(core),
     },
     brain: {
       status,
