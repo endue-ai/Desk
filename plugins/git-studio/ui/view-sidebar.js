@@ -11,7 +11,7 @@ import { relativeTime } from "./format.js";
  * @typedef {{ kind: "ref", ref: Ref } | { kind: "stash", stash: import("./parse.js").Stash } |
  *   { kind: "worktree", worktree: import("./parse.js").Worktree } | { kind: "remote", name: string }} Entry
  * @typedef {{ onReveal?(sha: string): void, onCheckout?(ref: Ref): void,
- *   onMenu?(event: MouseEvent, entry: Entry): void, onDropRef?(ref: string, target: Ref): void,
+ *   onMenu?(event: MouseEvent, entry: Entry): void, onDropRef?(ref: string, target: Ref, event: DragEvent): void,
  *   onStash?(stash: import("./parse.js").Stash): void }} Hooks
  */
 
@@ -257,7 +257,7 @@ export function createSidebar(app, host, hooks = {}) {
         onDrop: (/** @type {DragEvent} */ e) => {
           el.classList.remove("is-drop");
           const name = e.dataTransfer?.getData("application/x-git-ref");
-          if (name && name !== ref.name) hooks.onDropRef?.(name, ref);
+          if (name && name !== ref.name) hooks.onDropRef?.(name, ref, e);
         },
       },
       icon(ref.current ? "check" : ref.kind === "tag" ? "tag" : "branch", 14),

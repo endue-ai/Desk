@@ -20,7 +20,7 @@ const OVERSCAN = 12;
  * @typedef {import("./parse.js").Commit} Commit
  * @typedef {{ sha: string, parents: string[], commit: Commit | null }} Item
  * @typedef {{ onMenu?(event: MouseEvent, item: Item): void, onOpen?(item: Item): void,
- *   onDropRef?(ref: string, target: Item): void }} Hooks
+ *   onDropRef?(ref: string, target: Item, event: DragEvent): void }} Hooks
  */
 
 /** @param {App} app @param {HTMLElement} host @param {Hooks} [hooks] */
@@ -150,7 +150,7 @@ export function createGraphView(app, host, hooks = {}) {
         onDrop: (/** @type {DragEvent} */ event) => {
           el.classList.remove("is-drop");
           const ref = event.dataTransfer?.getData("application/x-git-ref");
-          if (ref) hooks.onDropRef?.(ref, item);
+          if (ref) hooks.onDropRef?.(ref, item, event);
         },
       },
       h("span.col-refs", null, refCell(item, row)),

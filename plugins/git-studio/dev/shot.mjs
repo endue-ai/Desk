@@ -143,6 +143,8 @@ try {
   }
 } finally {
   ws.close();
+  const exited = new Promise((resolve) => browser.once("exit", resolve));
   browser.kill();
-  rmSync(profile, { recursive: true, force: true });
+  await Promise.race([exited, sleep(3000)]);
+  rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }
