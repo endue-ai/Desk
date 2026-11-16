@@ -5,7 +5,8 @@
 //! wakes them, or, for a page that asked (`frame_asks.js`), gives a resting surface the next desk
 //! frames; the next look is the soonest any of them wants, none while every one rests (#134). Each
 //! view's watch counts the begin frames sent and its page's asks, and finds a page that stopped
-//! painting (#157, `stall.rs`), which the host reports and loads again (`revive.rs`).
+//! painting (#157, `stall.rs`), which the host reports and loads again (`revive.rs`). A browser
+//! whose last begin frame is still out gets none until it ends (#339, ADR 0261, `frames_flight.rs`).
 
 use std::time::{Duration, Instant};
 
@@ -122,17 +123,21 @@ impl WebHost {
                 clock.frame(now)
             };
             let mut hosts = Vec::new();
+            // A browser whose last begin frame is still out gets none now: the clock looks again
+            // when it ends (`Flight`, ADR 0261).
+            let mut held = None;
             for it in &mut on {
                 if !it.pacing.due(now, frame, painted(it.view)) {
                     continue;
                 }
-                let mut view = it.view.lock();
-                view.counts.begin_frames += 1;
-                view.watch.fed();
-                drop(view);
-                hosts.extend(it.browser.host());
+                match it.view.lock().begin_frame(now) {
+                    Ok(()) => hosts.extend(it.browser.host()),
+                    Err(until) => held = Some(held.map_or(until, |h: Instant| h.min(until))),
+                }
             }
-            let next = on.iter().filter_map(|it| it.pacing.next(clock, now)).min();
+            let next = (on.iter().filter_map(|it| it.pacing.next(clock, now)))
+                .chain(held)
+                .min();
             // Each paint is a copy: input soon after finds the GPU's copies awake (#133).
             if let Some(at) = on.iter().filter_map(|it| it.pacing.painted()).max() {
                 copy_wake::painted(at);

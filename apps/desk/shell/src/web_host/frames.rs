@@ -25,7 +25,8 @@
 //! costs a frame: until the first prompt the surface takes no desk frame either (the look at a press
 //! on a desk at rest is one). The full pipeline that ended such a begin frame at once (ADR 0157)
 //! stopped the desk's page for good after a resize, and the desk runs without it (ADR 0210,
-//! `pipeline.rs`). Engine free: `clock.rs` sends the begin frames.
+//! `pipeline.rs`). Engine free: `clock.rs` sends the begin frames, and none to a browser whose last
+//! one is still out (`Flight`, `frames_flight.rs`, ADR 0261).
 //!
 //! Each paint is a GPU copy, and the GPU's first copy after a second or more without one takes
 //! milliseconds more: input to a desk that painted nothing for `COLD` (`Copies`, kept by
@@ -41,6 +42,9 @@ use super::lifecycle::State;
 #[path = "frames_pacing.rs"]
 mod pacing;
 pub use pacing::Pacing;
+#[path = "frames_flight.rs"]
+mod flight;
+pub use flight::Flight;
 
 /// One desk frame: the display's rate.
 pub const FRAME: Duration = Duration::from_micros(16_667);
