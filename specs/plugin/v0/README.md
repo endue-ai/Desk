@@ -32,7 +32,7 @@ block (ADR 0056, ADR 0057), and `theme-index.schema.json` a theme market's index
 A message catalog is one JSON file per language, named by the language (`en.json`, `ko.json`), in the
 folder `messages` names (ADR 0250). It maps a message id (dotted camelCase, `greeting.hello`) to a text
 or to a plural message. A text's `{name}` is replaced by the parameter of that name; one not given
-reads as nothing. A plural message has the Intl.PluralRules forms of its language (`zero`, `one`,
+reads as nothing, and a lookup with no parameters at all leaves the text as written. A plural message has the Intl.PluralRules forms of its language (`zero`, `one`,
 `two`, `few`, `many`, `other`; `other` required), and the `count` parameter picks the form. English is
 required and complete. Another language may lack ids: a missing id reads in English, and an id English
 lacks too reads as the id. The desk's language is the `desk.language` setting: `system` (the OS's
