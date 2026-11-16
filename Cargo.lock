@@ -1859,6 +1859,7 @@ version = "0.0.0"
 dependencies = [
  "desk-bridge",
  "desk-core",
+ "desk-sys",
  "dirs",
  "serde_json",
 ]
