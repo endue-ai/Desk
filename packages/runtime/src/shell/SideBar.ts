@@ -1,16 +1,16 @@
 /**
  * The agent bar (system layer, left): the agent programs on this computer first (Claude Code, Codex:
- * every one the core found registers itself, ADR 0110), then the current space's agents from the
- * agent directory, the spaces below and a rule between the groups. Signed in to endue,
- * the person's endue agents and spaces take the directory's place and open as windows
- * (SideBarEndue.ts, ADR 0129). An agent's state is `data-presence`, which the stylesheet draws as a
- * ring around the avatar: working with a working A2A task or a run going on, waiting while it is
- * inactive or a task waits on it for an answer. The bar's tooltip names each control, and says
- * what a working agent does and for how long (bar-tip.ts). Past six agents, the last place opens
- * the rest in a popover. The bar unfolds into a list that says all of it at once, each avatar a
- * row under its group's caption (bar-unfold.ts, bar-list.ts). New agent ends the agents and New
- * space the spaces (bar-new.ts): folded, they and the place of the rest are the only ones with
- * their name under them; unfolded, they are rows of the list.
+ * every one the core found registers itself, ADR 0110), each under its program's mark (ADR 0232),
+ * then the current space's agents from the agent directory, the spaces below and a rule between the
+ * groups. Signed in to endue, the person's endue agents and spaces take the directory's place and
+ * open as windows (SideBarEndue.ts, ADR 0129). An agent's state is `data-presence`, which the
+ * stylesheet draws as a ring around the avatar: working with a working A2A task or a run going on,
+ * waiting while it is inactive or a task waits on it for an answer. The bar's tooltip names each
+ * control, and says what a working agent does and for how long (bar-tip.ts). Past six agents, the
+ * last place opens the rest in a popover. The bar unfolds into a list that says all of it at once,
+ * each avatar a row under its group's caption (bar-unfold.ts, bar-list.ts). New agent ends the
+ * agents and New space the spaces (bar-new.ts): folded, they and the place of the rest are the only
+ * ones with their name under them; unfolded, they are rows of the list.
  */
 import type { A2ATask, Agent, LocalAgent, Space } from "@endue-ai/bridge";
 import { localText } from "../surface/local-agent/copy";
@@ -30,6 +30,7 @@ import { mountBarUnfold } from "./bar-unfold";
 import type { ShellCtx } from "./context";
 import { type Child, h, render } from "./dom";
 import { icon } from "./icons";
+import { localMark } from "./marks";
 import { type BarGroups, endueGroups } from "./SideBarEndue";
 import { type DeskState, initial } from "./state";
 
@@ -101,6 +102,8 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
     return {
       face: "avatar local-avatar",
       glyph: badgeOf(a.id),
+      // The program's own mark in its avatar (ADR 0232); the badge's letters name it to no one.
+      art: () => localMark(a.id),
       attrs: {
         "data-key": `local-${a.id}`,
         "data-local-agent": a.id,
@@ -289,6 +292,7 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
         s.focused?.startsWith(LOCAL_VIEW) || s.focused?.startsWith("endue-") ? s.focused : null,
         s.endue.state,
         s.endue.agents,
+        s.endue.pictures,
         s.endue.spaces,
         s.endue.conversations.map((c) => [
           c.agentId,

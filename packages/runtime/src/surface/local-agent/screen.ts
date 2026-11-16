@@ -13,7 +13,8 @@ import type {
 } from "@endue-ai/bridge";
 import type { ShellCtx } from "../../shell/context";
 import { h, render } from "../../shell/dom";
-import { badgeOf, localName } from "../../system/local-ids";
+import { localMark } from "../../shell/marks";
+import { localName } from "../../system/local-ids";
 import type { Mounted } from "../views";
 import { mountComposer } from "./composer";
 import { localText } from "./copy";
@@ -203,7 +204,7 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
       h(
         "span",
         { class: "avatar agent-avatar local-badge", "aria-hidden": "true" },
-        badgeOf(agent),
+        localMark(agent),
       ),
       h(
         "div",

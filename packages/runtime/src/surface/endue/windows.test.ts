@@ -31,6 +31,10 @@ const click = (el: HTMLElement, action: string, side: "front" | "back") =>
   face(el, side)?.querySelector<HTMLButtonElement>(`[data-action="${action}"]`)?.click();
 const fact = (el: HTMLElement, key: string) =>
   el.querySelector(`[data-fact="${key}"] dd`)?.textContent;
+const boardRow = (el: HTMLElement, id: string) =>
+  face(el, "back")?.querySelector<HTMLElement>(`[data-row="${id}"]`);
+const press = (el: HTMLElement, selector: string) =>
+  face(el, "back")?.querySelector<HTMLButtonElement>(selector)?.click();
 
 describe("an endue agent's window (ADR 0129)", () => {
   it("shows the agent's card: name, handle and role, presence, description and chips", async () => {
@@ -50,7 +54,15 @@ describe("an endue agent's window (ADR 0129)", () => {
     expect(face(el, "back")?.getAttribute("aria-hidden")).toBe("true");
   });
 
-  it("turns over to Studio on Studio, with its status, and back on Card", async () => {
+  it("shows the agent's face on its card once the core has read it (ADR 0232)", async () => {
+    const { el, studio } = await mounted("agent", MISO);
+    await settle();
+    const picture = face(el, "front")?.querySelector<HTMLImageElement>(".endue-avatar img");
+    expect(picture?.getAttribute("src")).toBe(studio.pictures[MISO]);
+    expect(face(el, "front")?.querySelector(".endue-avatar")?.textContent).toBe("");
+  });
+
+  it("turns over to the Studio board on Studio, and back on Card", async () => {
     const { el, store } = await mounted("agent", MISO);
     click(el, "studio", "front");
     await settle();
@@ -59,12 +71,42 @@ describe("an endue agent's window (ADR 0129)", () => {
     expect(store.get().endue.flipped).toEqual([`endue-agent:${MISO}`]);
     expect(face(el, "front")?.hasAttribute("inert")).toBe(true);
     expect(face(el, "back")?.hasAttribute("inert")).toBe(false);
-    expect(fact(el, "status")).toBe("Active");
-    expect(fact(el, "presence")).toBe("Working");
-    expect(fact(el, "model")).toBe("claude-sonnet-4.5");
-    expect(fact(el, "visibility")).toBe("Private");
-    expect(fact(el, "prompt")).toBe("Revision 1");
-    expect(fact(el, "conversations")).toBe("1 active · 0 waiting · 0 failed · 1 done");
+    const back = face(el, "back");
+    // Three columns, as endue.ai's Studio has them, the agent's sheet in the middle.
+    expect(
+      [...(back?.querySelectorAll(".studio-col-head") ?? [])].map((h) => h.textContent),
+    ).toEqual(["01Where requests come in", "02Where the agent handles them", "03What it reaches"]);
+    expect(
+      [...(back?.querySelectorAll("[data-col='in'] [data-row]") ?? [])].map((r) =>
+        r.getAttribute("data-row"),
+      ),
+    ).toEqual(["console", "channel", "live", "api", "mcp"]);
+    expect(
+      [...(back?.querySelectorAll("[data-col='out'] [data-row]") ?? [])].map((r) =>
+        r.getAttribute("data-row"),
+      ),
+    ).toEqual(["devices", "outputs"]);
+    const hub = back?.querySelector("[data-hub]");
+    expect(hub?.querySelector(".studio-name")?.textContent).toBe("Miso");
+    expect(hub?.querySelector(".studio-status")?.textContent).toBe("Working");
+    expect(hub?.querySelector(".studio-handle")?.textContent).toBe(
+      "@miso · Keeps my calendar and sorts my mail",
+    );
+    expect(hub?.querySelector(".studio-sentence")?.textContent).toBe(
+      "Takes requests from Console chat · Acme · API, handles them with 2 built-in tools, and leaves results in Outputs.",
+    );
+    expect(hub?.querySelector('[data-section="prompt"] .studio-sheet-value')?.textContent).toBe(
+      "“Answer briefly, in Korean.”",
+    );
+    expect(hub?.querySelector('[data-section="model"] .studio-sheet-value')?.textContent).toBe(
+      "claude-sonnet-4.5",
+    );
+    expect(hub?.querySelector(".studio-portrait img")?.getAttribute("src")).toMatch(
+      /^data:image\//,
+    );
+    // The lines' layer is there, drawn over the board and out of a screen reader's way.
+    expect(back?.querySelector("svg.studio-lines")?.getAttribute("aria-hidden")).toBe("true");
+    expect(back?.querySelectorAll("svg.studio-lines [data-line]").length).toBeGreaterThan(0);
     // The focus follows the turn to the face now in front.
     expect(document.activeElement?.getAttribute("data-action")).toBe("card");
 
@@ -72,6 +114,54 @@ describe("an endue agent's window (ADR 0129)", () => {
     await settle();
     expect(el.querySelector(".endue-flip")?.classList.contains("is-flipped")).toBe(false);
     expect(document.activeElement?.getAttribute("data-action")).toBe("studio");
+  });
+
+  it("unfolds a way in where it stands, one at a time, and keeps the focus on it", async () => {
+    const { el } = await mounted("agent", MISO);
+    click(el, "studio", "front");
+    await settle();
+    const head = (id: string) =>
+      boardRow(el, id)?.querySelector<HTMLButtonElement>("[data-row-head]");
+    expect(head("live")?.getAttribute("aria-expanded")).toBe("false");
+    head("live")?.focus();
+    head("live")?.click();
+    expect(head("live")?.getAttribute("aria-expanded")).toBe("true");
+    expect(boardRow(el, "live")?.querySelector(".studio-row-body p")?.textContent).toBe(
+      "Turn it on to chat at endue.live/@miso.",
+    );
+    expect(document.activeElement).toBe(head("live"));
+    head("mcp")?.click();
+    expect(head("live")?.getAttribute("aria-expanded")).toBe("false");
+    expect(boardRow(el, "live")?.querySelector(".studio-row-body")).toBeNull();
+    expect(boardRow(el, "mcp")?.hasAttribute("data-expanded")).toBe(true);
+    head("mcp")?.click();
+    expect(boardRow(el, "mcp")?.hasAttribute("data-expanded")).toBe(false);
+  });
+
+  it("opens each part of endue.ai's Studio from the board, and nothing off endue.ai", async () => {
+    const { el, bridge } = await mounted("agent", MISO);
+    click(el, "studio", "front");
+    await settle();
+    const studio = `https://endue.ai/agent/${MISO}/studio`;
+    press(el, '[data-section="prompt"]');
+    await settle();
+    press(el, '[data-row="devices"] [data-row-head]');
+    await settle();
+    press(el, '[data-key="studio-foot-settings"]');
+    await settle();
+    press(el, '[data-row="channel"] [data-row-head]');
+    press(el, '[data-row="channel"] [data-row-action="add"]');
+    await settle();
+    press(el, '[data-row="console"] [data-row-head]');
+    press(el, '[data-row="console"] [data-row-action="open"]');
+    await settle();
+    expect(bridge.fake.opened).toEqual([
+      `${studio}/prompt`,
+      `${studio}/devices`,
+      `${studio}/settings`,
+      `${studio}/channel`,
+      `https://endue.ai/agent/${MISO}`,
+    ]);
   });
 
   it("opens the agent's own page and its Studio on endue.ai, and nothing else", async () => {
@@ -100,7 +190,12 @@ describe("an endue agent's window (ADR 0129)", () => {
     click(el, "studio", "front");
     await settle();
     expect(face(el, "back")?.querySelector('[data-action="card"]')?.textContent).toBe("카드로");
-    expect(fact(el, "status")).toBe("켜짐");
+    expect(face(el, "back")?.querySelector(".studio-col-head")?.textContent).toBe(
+      "01요청이 들어오는 곳",
+    );
+    expect(boardRow(el, "console")?.querySelector(".studio-row-title")?.textContent).toBe(
+      "콘솔 채팅",
+    );
   });
 
   it("shows a notice once the desk is signed out", async () => {

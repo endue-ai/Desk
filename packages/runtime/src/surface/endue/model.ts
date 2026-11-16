@@ -1,7 +1,8 @@
 /**
  * What an endue agent's or space's window shows, without a DOM (ADR 0129). The front of the card
  * follows endue.ai's agent card and space list: who it is, what it is for, and how it is right now.
- * Its back, Studio, is the status: every fact as a label and a value, read from studio.* only.
+ * A space's back, Studio, is the status: every fact as a label and a value, read from studio.*
+ * only. An agent's back is its Studio board (board-model.ts, ADR 0232).
  */
 import type {
   StudioAgent,
@@ -80,6 +81,14 @@ const PRESENCE: Record<EnduePresence, EndueKey> = {
 export const presenceText = (lang: Lang, presence: EnduePresence) =>
   endueText(lang, PRESENCE[presence]);
 
+/** The shell's dot for a presence: working and waiting stand out, the rest are quiet. */
+export function dotOf(presence: string): string {
+  if (presence === "working") return "dot-active";
+  if (presence === "waiting") return "dot-attention";
+  if (presence === "online") return "dot-success";
+  return "dot-idle";
+}
+
 /** A day as people read it: 2026. 11. 9. or Nov 9, 2026. */
 function day(lang: Lang, at: string | undefined): string {
   const time = at ? Date.parse(at) : Number.NaN;
@@ -124,119 +133,6 @@ export function agentFront(
       model,
     ].filter(Boolean),
   };
-}
-
-/** Studio for an agent: its status, presence, settings, abilities and conversations. */
-export function agentStudio(
-  lang: Lang,
-  agent: StudioAgent,
-  read: Read<StudioAgentsFacetsResult> | undefined,
-  conversations: readonly StudioConversation[],
-  now: number,
-): Fact[] {
-  const t = (key: EndueKey, vars?: Record<string, string | number>) => endueText(lang, key, vars);
-  const facets = ready(read);
-  const missing = (facet: string) => facets?.problems.some((p) => p.facet === facet);
-  const unknown = facets ? t("notAnswered") : read?.state === "loading" ? t("reading") : "";
-  const presence = enduePresence(agent, conversations);
-  const own = conversations.filter((c) => c.agentId === agent.id);
-  const columns = { active: 0, waiting: 0, failed: 0, done: 0 };
-  for (const c of own) columns[c.activity] += 1;
-  const last = own
-    .map((c) => c.lastMessageAt ?? c.updatedAt)
-    .sort()
-    .at(-1);
-  const settings = facets?.settings;
-  const skills = facets?.skills ?? [];
-  const connectors = facets?.connectors ?? [];
-  const traits = facets?.traits.filter((x) => x.enabled).length ?? 0;
-  const status: Record<StudioAgent["status"], [EndueKey, Fact["tone"]]> = {
-    active: ["statusActive", "good"],
-    inactive: ["statusInactive", "muted"],
-    archived: ["statusArchived", "muted"],
-    deleted: ["statusArchived", "muted"],
-  };
-  const [statusKey, statusTone] = status[agent.status];
-  const facts: (Fact | false)[] = [
-    { key: "status", label: t("status"), value: t(statusKey), tone: statusTone },
-    {
-      key: "presence",
-      label: t("rightNow"),
-      value: presenceText(lang, presence),
-      ...(presence === "waiting" ? { tone: "attention" as const } : {}),
-    },
-    {
-      key: "model",
-      label: t("model"),
-      value: settings
-        ? shortModel(settings.model.default) || t("modelDefault")
-        : missing("settings")
-          ? t("notAnswered")
-          : unknown,
-    },
-    {
-      key: "visibility",
-      label: t("visibility"),
-      value: settings ? t(settings.visibility) : missing("settings") ? t("notAnswered") : unknown,
-    },
-    {
-      key: "prompt",
-      label: t("prompt"),
-      value: facets?.prompt
-        ? t("promptRev", { n: facets.prompt.rev })
-        : missing("prompt")
-          ? t("notAnswered")
-          : facets
-            ? t("none")
-            : unknown,
-    },
-    {
-      key: "skills",
-      label: t("skills"),
-      value: missing("skills")
-        ? t("notAnswered")
-        : facets
-          ? skills.length
-            ? t("onOf", { on: skills.filter((s) => s.enabled).length, n: skills.length })
-            : t("none")
-          : unknown,
-    },
-    {
-      key: "connectors",
-      label: t("connectors"),
-      value: missing("connectors")
-        ? t("notAnswered")
-        : facets
-          ? connectors.length
-            ? t("onOf", { on: connectors.filter((c) => c.enabled).length, n: connectors.length })
-            : t("none")
-          : unknown,
-    },
-    {
-      key: "traits",
-      label: t("traits"),
-      value: missing("traits")
-        ? t("notAnswered")
-        : facets
-          ? traits
-            ? t("traitsOn", { n: traits })
-            : t("none")
-          : unknown,
-    },
-    facets?.identity?.languages.length
-      ? { key: "languages", label: t("languages"), value: facets.identity.languages.join(" · ") }
-      : false,
-    {
-      key: "conversations",
-      label: t("conversations"),
-      value: t("conversationCounts", columns),
-      ...(columns.waiting ? { tone: "attention" as const } : {}),
-    },
-    { key: "last", label: t("lastActivity"), value: ago(lang, last, now) || t("none") },
-    { key: "created", label: t("created"), value: day(lang, agent.createdAt) },
-    { key: "updated", label: t("updated"), value: day(lang, agent.updatedAt) },
-  ];
-  return facts.filter((f): f is Fact => Boolean(f));
 }
 
 /** The people's names for a space's agents: the person's own by name, anyone else's as such. */

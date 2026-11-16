@@ -1,5 +1,5 @@
 // studio.* for the shell's agent bar and its endue windows (ADR 0129): the person's endue agents,
-// their conversations and facets, and the spaces they can open, called as the runtime under
+// their conversations, facets and faces, and the spaces they can open, called as the runtime under
 // studio:manage. The core holds the token; only endue.ai's own https pages are opened.
 import type { BridgeClient, ShellOpenPermission } from "@endue-ai/bridge";
 import type { StudioShellBridge } from "@endue-ai/runtime";
@@ -18,6 +18,7 @@ export function studioShell(core: BridgeClient): StudioShellBridge {
       (await core.call("studio.conversations.list", { limit: CONVERSATIONS, ...STUDIO }))
         .conversations,
     facets: (agentId) => core.call("studio.agents.facets", { agentId, ...STUDIO }),
+    picture: (agentId) => core.call("studio.agents.picture", { agentId, ...STUDIO }),
     spaces: async () => (await core.call("studio.spaces.list", STUDIO)).spaces,
     space: (spaceId) => core.call("studio.spaces.get", { spaceId, ...STUDIO }),
     async open(url) {

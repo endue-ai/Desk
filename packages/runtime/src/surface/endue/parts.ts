@@ -1,7 +1,7 @@
 /** Pieces both endue windows draw (ADR 0129): a notice, an avatar, Studio's facts, a list, buttons. */
 import type { ShellCtx } from "../../shell/context";
 import { type Child, h } from "../../shell/dom";
-import { flipCard as turn } from "../../system/endue";
+import { facePicture, flipCard as turn } from "../../system/endue";
 import type { EndueState, Read } from "../../system/endue-ids";
 import { showOnDesk } from "../../system/endue-web";
 import { type EndueKey, endueText } from "./copy";
@@ -46,15 +46,22 @@ export function readLine(ctx: ShellCtx, read: Read<unknown> | undefined, retry: 
   );
 }
 
-export function avatar(initial: string, colour: string | undefined, big = false): HTMLElement {
+/** An avatar: the face the core read (ADR 0232) when there is one, else the initial on its colour. */
+export function avatar(
+  initial: string,
+  colour: string | undefined,
+  big = false,
+  picture?: string,
+): HTMLElement {
+  const face = facePicture(picture);
   return h(
     "span",
     {
-      class: `endue-avatar${big ? " is-big" : ""}`,
+      class: `endue-avatar${big ? " is-big" : ""}${face ? " has-face" : ""}`,
       "aria-hidden": "true",
       ...(colour ? { style: { "--endue-accent": colour } } : {}),
     },
-    initial,
+    face ? h("img", { class: "avatar-face", src: face, alt: "", draggable: "false" }) : initial,
   );
 }
 

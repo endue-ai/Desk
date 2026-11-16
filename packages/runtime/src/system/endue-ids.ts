@@ -31,6 +31,8 @@ export interface EndueState {
   /** The most recently active conversations: who works, and who waits for the person. */
   conversations: StudioConversation[];
   spaces: StudioSpace[];
+  /** The agents' faces as data: URLs, by agent id (ADR 0232); an agent without one shows its initial. */
+  pictures: Record<string, string>;
   facets: Record<string, Read<StudioAgentsFacetsResult>>;
   details: Record<string, Read<StudioSpacesGetResult>>;
   /** The agent and the space last chosen in the agent bar. */
@@ -46,6 +48,7 @@ export function emptyEndue(): EndueState {
     agents: [],
     conversations: [],
     spaces: [],
+    pictures: {},
     facets: {},
     details: {},
     agent: null,
@@ -79,6 +82,12 @@ export const WEB = "https://endue.ai";
 export const agentPage = (id: string) => `${WEB}/agent/${encodeURIComponent(id)}/studio`;
 export const agentHome = (id: string) => `${WEB}/agent/${encodeURIComponent(id)}`;
 export const spacePage = (id: string) => `${WEB}/spaces/${encodeURIComponent(id)}`;
+
+/** A face that may go into an image: a base64 data: URL of an image, as the core hands one over. */
+export const facePicture = (picture: string | undefined) =>
+  picture && /^data:image\/(png|jpeg|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(picture)
+    ? picture
+    : undefined;
 
 /** A colour that may go into a style: #rrggbb only. */
 export const hexColour = (colour: string | undefined) =>

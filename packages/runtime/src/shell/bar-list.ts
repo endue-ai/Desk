@@ -9,7 +9,7 @@
  */
 import { withTip } from "./bar-tip";
 import type { ShellCtx } from "./context";
-import { h, type Props } from "./dom";
+import { type Child, h, type Props } from "./dom";
 import { icon } from "./icons";
 import { elapsed } from "./Running";
 import { IDLE } from "./ticker";
@@ -20,6 +20,9 @@ export interface BarEntry {
   face: string;
   /** What the face shows: an initial, a program's badge, a space's glyph, a count. */
   glyph: string;
+  /** Drawn in the face instead of the glyph, fresh for each form: an agent's picture, a program's
+   * mark (ADR 0232). */
+  art?: () => Child;
   /** The button's own attributes, the same in both forms: its key, its data, its name, its state. */
   attrs: Props;
   selected?: boolean;
@@ -45,7 +48,9 @@ function avatar(e: BarEntry): HTMLButtonElement {
   const button = h(
     "button",
     { class: `icon-button ${e.face}${marks}`, type: "button", ...e.attrs, onClick: e.onClick },
-    h("span", { "aria-hidden": "true" }, e.glyph),
+    // Art fills the face itself, so a picture takes the avatar's corners; it hides itself from
+    // screen readers (an empty alt, an aria-hidden mark), as the glyph's span does.
+    e.art ? e.art() : h("span", { "aria-hidden": "true" }, e.glyph),
   );
   return withTip(button, e.tip);
 }
@@ -64,7 +69,7 @@ function row(e: BarEntry, now: number): HTMLButtonElement {
         "data-presence": e.attrs["data-presence"],
         "aria-hidden": "true",
       },
-      e.glyph,
+      e.art ? e.art() : e.glyph,
     ),
     h(
       "span",

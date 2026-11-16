@@ -86,17 +86,26 @@ const lines = (root: HTMLElement) => [...tooltip(root).children].map((line) => l
 const over = (el: Element) => el.dispatchEvent(new Event("pointerover", { bubbles: true }));
 
 describe("the agent bar's local agents", () => {
-  it("registers every agent program the core found, above the directory's agents", async () => {
+  it("registers every agent program the core found, above the directory's agents, each under its program's mark", async () => {
     const { root } = await setup();
     const group = root.querySelector("[data-local-agents]");
     expect(group?.getAttribute("aria-label")).toBe("Agents on this computer");
     const avatars = [...root.querySelectorAll<HTMLButtonElement>("[data-local-agent]")];
     expect(
-      avatars.map((a) => [a.dataset.localAgent, a.textContent, a.getAttribute("aria-label")]),
+      avatars.map((a) => [
+        a.dataset.localAgent,
+        a.querySelector("svg")?.getAttribute("data-mark"),
+        a.getAttribute("aria-label"),
+      ]),
     ).toEqual([
-      ["claude", "CC", "Claude Code · on this computer"],
-      ["codex", "Cx", "Codex · on this computer"],
+      ["claude", "claude", "Claude Code · on this computer"],
+      ["codex", "codex", "Codex · on this computer"],
     ]);
+    // A mark is a picture (ADR 0232): the name is the button's, and no letters stand in for it.
+    for (const avatar of avatars) {
+      expect(avatar.textContent).toBe("");
+      expect(avatar.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    }
   });
 
   it("lights an agent while a run of it goes on", async () => {

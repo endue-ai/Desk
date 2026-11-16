@@ -1,35 +1,47 @@
 /**
- * An endue agent's window (ADR 0129): a card after endue.ai's agent card (who it is, its role, what
- * it is like now, its skills and model) that Studio turns over to the agent's status. It reads the
- * agent's facets on the way in and redraws as they, the agents or the conversations change.
+ * An endue agent's window (ADR 0129): a card after endue.ai's agent card (who it is, with its face,
+ * its role, what it is like now, its skills and model) that Studio turns over to the agent's
+ * Studio board (ADR 0232): where requests come in, the agent's sheet, and what it reaches. It reads
+ * the agent's facets on the way in and redraws as they, the agents, the faces or the conversations
+ * change.
  */
 import type { ShellCtx } from "../../shell/context";
 import { h, render } from "../../shell/dom";
 import { agentHome, agentPage, ENDUE_AGENT_VIEW, readFacets } from "../../system/endue";
 import type { Mounted } from "../views";
+import { lineSpecs, studioBoardView } from "./board";
+import { boardLines } from "./board-lines";
+import { studioBoard } from "./board-model";
 import { flipCard } from "./flip";
-import { agentFront, agentStudio } from "./model";
-import { actions, avatar, facts, flipButton, notice, type Page, readLine, text } from "./parts";
+import { agentFront, dotOf } from "./model";
+import { actions, avatar, flipButton, notice, type Page, readLine, text } from "./parts";
+
+export { dotOf } from "./model";
 
 export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
   const view = `${ENDUE_AGENT_VIEW}${id}`;
   const el = h("div", { class: "endue-view", "data-endue-agent-view": id });
   const again = () => void readFacets(ctx, id, true);
+  const lines = boardLines();
   let was: boolean | undefined;
+  /** The row of the board that is unfolded: this window's own, gone with it. */
+  let expanded: string | null = null;
   const draw = () => {
     const s = ctx.store.get();
     const agent = s.endue.agents.find((a) => a.id === id);
     if (!agent) {
       was = undefined;
+      lines.dispose();
       render(el, () => [notice(ctx, s.endue, again)]);
       return;
     }
     const read = s.endue.facets[id];
+    const picture = s.endue.pictures[id];
     const flipped = s.endue.flipped.includes(view);
     const turned = was !== undefined && was !== flipped;
     was = flipped;
     const front = agentFront(s.lang, agent, read, s.endue.conversations);
-    const studio = agentStudio(s.lang, agent, read, s.endue.conversations, ctx.wall());
+    const board = studioBoard(s.lang, agent, read, s.endue.conversations);
     // The agent's own page and its Studio, as endue.ai has them (ADR 0223).
     const pages: Page[] = [
       ["open-agent", "agentPage", agentHome(id)],
@@ -41,13 +53,13 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
         flipped,
         turned,
         frontLabel: front.name,
-        backLabel: text(ctx, "studioTitle"),
+        backLabel: text(ctx, "studio"),
         ...(front.colour ? { colour: front.colour } : {}),
         front: [
           h(
             "header",
             { class: "endue-head" },
-            avatar(front.initial, front.colour, true),
+            avatar(front.initial, front.colour, true, picture),
             h(
               "div",
               { class: "endue-who" },
@@ -93,38 +105,45 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
             h(
               "div",
               { class: "endue-who" },
-              h("h2", { class: "endue-name" }, text(ctx, "studioTitle")),
+              h("h2", { class: "endue-name" }, text(ctx, "studio")),
               h("p", { class: "endue-handle" }, front.name),
             ),
             flipButton(ctx, "back", view),
           ),
           readLine(ctx, read, again),
-          facts(studio),
+          studioBoardView(ctx, board, {
+            agentId: id,
+            ...(picture ? { picture } : {}),
+            expanded,
+            toggle: (row) => {
+              expanded = expanded === row ? null : row;
+              draw();
+            },
+          }),
           actions(ctx, "back", pages, again),
         ],
       }),
     ]);
+    const drawn = el.querySelector<HTMLElement>("[data-studio-board]");
+    if (drawn) lines.attach(drawn, lineSpecs(board, expanded));
   };
   draw();
   void readFacets(ctx, id);
-  const off = ctx.store.watch(
+  const unwatch = ctx.store.watch(
     (s) => [
       s.endue.state,
       s.endue.agents.find((a) => a.id === id),
       s.endue.facets[id],
+      s.endue.pictures[id],
       s.endue.conversations,
       s.endue.flipped.includes(view),
       s.lang,
     ],
     draw,
   );
+  const off = () => {
+    unwatch();
+    lines.dispose();
+  };
   return { el, off };
-}
-
-/** The shell's dot for a presence: working and waiting stand out, the rest are quiet. */
-export function dotOf(presence: string): string {
-  if (presence === "working") return "dot-active";
-  if (presence === "waiting") return "dot-attention";
-  if (presence === "online") return "dot-success";
-  return "dot-idle";
 }
