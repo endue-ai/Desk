@@ -175,9 +175,7 @@ pub fn parse(text: &str) -> Result<Link, Refused> {
             if !id_holds(&id) {
                 return refuse(format!("{id} is not a plugin id."));
             }
-            let [surface] = only(&pairs, &["surface"])?[..] else {
-                unreachable!()
-            };
+            let surface = only(&pairs, &["surface"])?[0];
             if let Some(surface) = surface.filter(|s| !surface_holds(s)) {
                 return refuse(format!("{surface} is not a surface id."));
             }
