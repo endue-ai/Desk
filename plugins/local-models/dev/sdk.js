@@ -58,6 +58,31 @@ async function pump(socketId) {
   emit({ event: "net.closed", data: { socketId, reason: "io_error" } });
 }
 
+/** A program's output as proc.output events, and its end as proc.exit. @param {string} procId */
+async function follow(procId) {
+  const response = await fetch(`/_dev/proc/read?id=${encodeURIComponent(procId)}`);
+  const reader = /** @type {ReadableStream<Uint8Array>} */ (response.body).getReader();
+  const decoder = new TextDecoder();
+  let rest = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    rest += decoder.decode(value, { stream: true });
+    let at = rest.indexOf("\n");
+    while (at >= 0) {
+      const line = JSON.parse(rest.slice(0, at));
+      rest = rest.slice(at + 1);
+      if (line.data)
+        emit({
+          event: "proc.output",
+          data: { procId, stream: line.stream, data: line.data, encoding: "base64" },
+        });
+      if ("exit" in line) emit({ event: "proc.exit", data: { procId, code: line.exit } });
+      at = rest.indexOf("\n");
+    }
+  }
+}
+
 /** @param {string} method @param {any} params */
 async function call(method, params) {
   if (method === "net.connect") {
@@ -66,6 +91,12 @@ async function call(method, params) {
     return result;
   }
   if (method === "net.send") return devCall("/_dev/net/send", params);
+  if (method === "proc.spawn") {
+    const result = await devCall("/_dev/proc/spawn", params);
+    void follow(result.procId);
+    return result;
+  }
+  if (method === "proc.kill") return devCall("/_dev/proc/kill", params);
   if (method === "net.close") return devCall("/_dev/net/close", params);
   if (method === "perm.request") return { granted: true };
   if (method === "store.get")

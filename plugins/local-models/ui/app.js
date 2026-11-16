@@ -3,6 +3,7 @@
 // node being written, the stats kept with it, stopped when asked.
 
 import { nameThread } from "./edit.js";
+import { createLocal } from "./local.js";
 import { modelKey, splitKey } from "./models.js";
 import { createSockets } from "./net.js";
 import { createPresets, settingsOf } from "./presets.js";
@@ -31,6 +32,8 @@ export function createApp(bridge, options = {}) {
   /** @type {import("./servers.js").ServerSpec[]} */
   let added = [];
   let autoTitle = options.autoTitle ?? true;
+  /** @type {() => (import("./servers.js").ServerSpec & { managed?: boolean })[]} */
+  let extraServers = () => [];
   const presets = createPresets(store);
   /** @type {import("./presets.js").Settings & { format?: any }} */
   let defaults = {};
@@ -44,9 +47,12 @@ export function createApp(bridge, options = {}) {
   function resolve(key) {
     const { servers, models } = S.get();
     if (!key) return undefined;
-    const model = models.find((m) => modelKey(m) === key);
     const { serverId, id } = splitKey(key);
-    const server = servers.find((s) => s.id === serverId);
+    let model = models.find((m) => modelKey(m) === key);
+    // A model loaded again by the built-in engine answers on another port: the same name still finds it.
+    if (!model && !servers.some((s) => s.id === serverId && s.status === "online"))
+      model = models.find((m) => m.id === id && servers.find((s) => s.id === m.serverId)?.managed);
+    const server = servers.find((s) => s.id === (model?.serverId ?? serverId));
     return { model, server, id };
   }
 
@@ -54,7 +60,11 @@ export function createApp(bridge, options = {}) {
   async function scan() {
     S.set({ scanning: true });
     try {
-      const servers = await discover(sockets, added);
+      const extra = extraServers();
+      const servers = (await discover(sockets, [...added, ...extra])).map((s) => {
+        const managed = extra.find((e) => e.port === s.port && e.host === s.host);
+        return managed ? { ...s, managed: true, label: managed.label ?? s.label, added: false } : s;
+      });
       const lists = await Promise.all(
         servers
           .filter((s) => s.status === "online")
@@ -247,6 +257,7 @@ export function createApp(bridge, options = {}) {
       ...(prefs && typeof prefs === "object" ? prefs : {}),
     });
     await scan();
+    await local.start().catch(() => {});
     S.set({ ready: true });
     void describe(S.get().selected);
   }
@@ -328,12 +339,17 @@ export function createApp(bridge, options = {}) {
     runner,
     indexThread,
     saveIndex,
+    /** Servers the window started itself, looked at with the others. @param {typeof extraServers} fn */
+    setExtraServers(fn) {
+      extraServers = fn;
+    },
     /** @param {boolean} on */
     setAutoTitle(on) {
       autoTitle = on;
     },
   };
-  return api;
+  const local = createLocal(api);
+  return Object.assign(api, { local });
 }
 
 /** @typedef {ReturnType<typeof createApp>} App */

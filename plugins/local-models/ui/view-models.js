@@ -2,6 +2,7 @@
 // way to add a server the window does not find by itself (another port, a computer on the network).
 import { fill, h, icon, iconButton } from "./dom.js";
 import { formatBytes, formatContext, modelKey } from "./models.js";
+import { libraryView } from "./view-library.js";
 import { capBadges } from "./view-picker.js";
 
 /** @typedef {import("./app.js").App} App */
@@ -10,6 +11,36 @@ import { capBadges } from "./view-picker.js";
 export function modelsView(app) {
   const { S } = app;
   const body = h("div.lm-page-body");
+  const library = libraryView(app);
+  /** @type {"local" | "servers"} */
+  let tab = "local";
+  const tabs = h("div.desk-tabs.lm-page-tabs", { role: "tablist" });
+  const drawTabs = () => {
+    fill(
+      tabs,
+      [
+        ["local", "On this computer", "cpu"],
+        ["servers", "Servers", "server"],
+      ].map(([id, label, ic]) =>
+        h(
+          "button.desk-tab",
+          {
+            type: "button",
+            role: "tab",
+            "aria-selected": tab === id ? "true" : "false",
+            onClick: () => {
+              tab = /** @type {"local" | "servers"} */ (id);
+              drawTabs();
+            },
+          },
+          icon(/** @type {any} */ (ic)),
+          label,
+        ),
+      ),
+    );
+    library.el.hidden = tab !== "local";
+    body.hidden = tab !== "servers";
+  };
   const el = h(
     "section.lm-page",
     null,
@@ -23,20 +54,29 @@ export function modelsView(app) {
         h(
           "p.lm-page-sub",
           null,
-          "The models of every server answering on this computer, and on the ones you added.",
+          "Model files the built-in engine runs, and the models of every server answering.",
         ),
       ),
       h("div.lm-head-spacer"),
       h(
         "button.desk-btn",
-        { type: "button", onClick: () => void app.scan() },
+        {
+          type: "button",
+          onClick: () => {
+            void app.scan();
+            void app.local.scan();
+          },
+        },
         icon("refresh"),
         "Look again",
       ),
     ),
+    tabs,
+    library.el,
     body,
   );
   const form = addServerForm(app);
+  drawTabs();
 
   function draw() {
     const { servers, models, scanning, selected } = S.get();
