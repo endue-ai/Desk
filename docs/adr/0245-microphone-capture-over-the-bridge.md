@@ -52,9 +52,13 @@ what `desk-sys` already produces and what a recogniser needs, at 50 small events
   must not keep a plugin from stopping its own capture). The runtime stops a plugin's captures when
   one of its windows closes, or its frame loads again or is unloaded (`plugin-mic.ts`); the core
   ends a socket caller's (`cli`, `agent:<id>`) when its last connection closes (`Core::caller_left`).
-  A caller holds at most four captures; a fifth is `forbidden`.
+  A caller holds at most four captures; a fifth is `forbidden`. desk-mcp opens one connection per call, so an agent's
+  capture ends as soon as the call that started it returns: it fails safe, and an agent cannot keep
+  the microphone open between calls.
 * **The socket.** desk-ipc sends `audio.frame` and `audio.ended` only to a connection whose caller
-  they name, and `audio.capturing` to none, whoever else is connected. Every other event still
+  they name, and `audio.capturing` to none, whoever else is connected. Delivery goes by caller name, so every
+  `cli` connection hears a capture another `cli` connection started (it needs `audio:capture`
+  granted to `cli`); #347 folds that in. Every other event still
   reaches every connection; giving each event only to whom it names is #347.
 * **Eris.** Without `SpeechRecognition` her ear captures through the bridge and draws the level from
   each frame's spectrum. `specs/brain` has no speech-to-text, so she hears no words that way yet.
