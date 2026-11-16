@@ -1756,6 +1756,7 @@ dependencies = [
  "desk-core",
  "desk-crash",
  "desk-ipc",
+ "desk-link",
  "desk-mcp",
  "desk-plugin-host",
  "desk-trace",
@@ -1863,6 +1864,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "desk-link"
+version = "0.0.0"
+
+[[package]]
 name = "desk-mcp"
 version = "0.0.0"
 dependencies = [
@@ -1933,6 +1938,7 @@ dependencies = [
  "desk-compositor",
  "desk-computer",
  "desk-core",
+ "desk-link",
  "desk-surface",
  "desk-sys",
  "desk-trace",
