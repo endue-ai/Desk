@@ -27,6 +27,8 @@ const FILES: Record<string, string> = {
   "letter.rtf": "endue.docs",
 };
 const RUNS = 3;
+/** How long one open may take on the first start, its plugin's first load and prompt included. */
+const OPEN_MS = 60_000;
 
 type Store = { desk?: { session?: { files?: Array<{ path: string }> } } };
 const savedFiles = (value: unknown) => (value as Store | undefined)?.desk?.session?.files ?? [];
@@ -60,8 +62,11 @@ describe("start-up: a second start with a saved session of six surfaces", () => 
     cpSync(FIXTURES, folder, { recursive: true });
     const desk = await DeskSocket.connect(socketPath(home));
     desk.answerPrompts();
+    // Each open answers within OPEN_MS, or the spec says which did not and why (#339).
     for (const file of Object.keys(FILES)) {
-      await desk.run("desk.files.open", { path: join(folder, file) });
+      await desk.runWithin(OPEN_MS, `opening ${file}`, "desk.files.open", {
+        path: join(folder, file),
+      });
     }
     desk.close();
     await waitForData(
