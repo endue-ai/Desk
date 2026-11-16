@@ -141,14 +141,18 @@ for (const size of SIZES) {
       expect(collisions(rest)).toEqual([]);
       await page.locator(".talk-launch").click();
       await expect(page.locator(".composer.is-open")).toBeVisible();
-      // Once the line has opened to its width: two looks a frame apart that agree.
+      // Once the line has opened to its width (bottom.css: 640, but 280 less than the app and 12
+      // clear of the map's strip on both sides; in the smallest app as wide as at rest, issue 367):
+      // two looks a frame apart that agree.
+      const beside = (size.height < 734 ? 92 : 24) + 202 + 12;
+      const open = Math.min(640, size.width - 280, size.width - 2 * beside);
       await expect
         .poll(async () => {
           const a = (await box(".composer")).w;
           await page.waitForTimeout(100);
           return a === (await box(".composer")).w ? a : -1;
         })
-        .toBeGreaterThan(440);
+        .toBe(open);
       const [running, first, pill, strip] = await Promise.all([
         box(".running"),
         box(".running > li:first-child .run-chip"),
