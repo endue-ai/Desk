@@ -2,6 +2,7 @@
 // the kind of the object opened.
 
 import { h, icon } from "./dom.js";
+import { createContainerPage } from "./view-container.js";
 import { createContainers } from "./view-containers.js";
 import { createDashboard } from "./view-dashboard.js";
 
@@ -30,7 +31,7 @@ export const PAGES = {
   hub: later("Explore images"),
   contexts: later("Contexts"),
   settings: later("Settings"),
-  container: later("Container"),
+  container: createContainerPage,
   image: later("Image"),
   project: later("Stack"),
   volume: later("Volume"),

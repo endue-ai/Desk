@@ -3,6 +3,7 @@
 // streams.mjs. Unknown commands fail the way docker does.
 
 import { composeConfig, composeOp } from "./compose.mjs";
+import * as F from "./files.mjs";
 import * as J from "./inspect.mjs";
 import { image, network, volume } from "./objects.mjs";
 import * as S from "./streams.mjs";
@@ -157,6 +158,14 @@ export function docker(world, argv, io) {
       if (c?.state !== "running")
         return fail(io, `Error response from daemon: container ${rest[0]} is not running`);
       if (flags["-i"] || flags["--interactive"]) return S.shell(world, io, c);
+      const [, program, ...rest2] = rest;
+      if (program === "ls") {
+        const listing = F.ls(rest2.at(-1) ?? "/");
+        if (listing === undefined)
+          return fail(io, `ls: ${rest2.at(-1)}: No such file or directory`);
+        return ok(io, listing);
+      }
+      if (program === "head") return ok(io, F.read(rest2.at(-1) ?? ""));
       return ok(io, `${rest.slice(1).join(" ")}: ran\n`);
     }
     case "top": {
