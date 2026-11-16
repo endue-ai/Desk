@@ -178,6 +178,19 @@ impl Core {
         json(ConnectorDisconnectResult {})
     }
 
+    /// The plugin is being removed: each of its instances goes through the host, which drops its
+    /// items, record and cursor, before the host forgets the plugin.
+    pub(crate) fn forget_wasm(&self, id: &str) {
+        let Some(host) = self.connector_host() else {
+            return;
+        };
+        for listed in host.instances(id).unwrap_or_default() {
+            if let Err(why) = host.remove_instance(id, &listed.instance) {
+                eprintln!("desk: {id}/{} was not fully removed: {why}", listed.instance);
+            }
+        }
+    }
+
     /// connector.sync of a plugin's connector: the sync runs now, before this answers.
     pub(crate) fn sync_wasm(&self, id: &str, instance: &str) -> Answer {
         let host = self.installed_host(id)?;

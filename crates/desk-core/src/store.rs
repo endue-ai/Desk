@@ -70,6 +70,13 @@ impl Store {
         Ok(())
     }
 
+    /// Forget every value `caller` kept, in one write: its plugin was removed.
+    pub(crate) fn remove_caller(&mut self, caller: &str) {
+        if self.data.remove(caller).is_some() {
+            self.save();
+        }
+    }
+
     fn save(&self) {
         let Some(path) = &self.path else { return };
         if let Some(parent) = path.parent() {

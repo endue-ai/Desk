@@ -60,7 +60,9 @@ impl Core {
     /// Remove an installed plugin: it unloads, leaves the registry and plugin.list, its views go, and
     /// `plugin.changed` says `removed`. Every grant it held, session and `always`, is taken back, as
     /// are those of each plugin a pack brought, so a plugin installed later under the same id starts
-    /// with none (issue 328). Its folder stays on disk. Returns whether it was installed.
+    /// with none (issue 328). Its connectors' instances, items and secrets go, and its whole store, so
+    /// nothing it kept reaches a plugin installed later under its id (issue 338). An install over
+    /// it (an update) keeps all of these. Its folder stays on disk. Returns whether it was installed.
     pub fn remove_plugin(&self, id: &str) -> bool {
         let Some(mut info) = self.registry().get(id) else {
             return false;
@@ -68,9 +70,15 @@ impl Core {
         self.remove_pack_plugins(&info);
         self.revoke_all(id);
         self.unloaded(id);
+        self.forget_wasm(id);
+        self.forget_http(id);
         if let Some(host) = self.connector_host() {
             host.remove(id);
         }
+        if let Err(why) = self.lock_secrets().remove_connector(id) {
+            eprintln!("desk: secrets.json kept {id}'s secrets: {why}");
+        }
+        self.forget_store(id);
         self.registry().remove(id);
         self.lock_state().digests.remove(id);
         info.enabled = false;
