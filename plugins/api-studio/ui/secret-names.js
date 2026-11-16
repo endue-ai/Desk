@@ -3,16 +3,35 @@
 // access_token, clientSecret, password…); what an assistant or an agent reads, and what a copied
 // snippet shows, has those values and every secret variable's value swapped for a stand-in.
 
-/** Secret words between separators, after camelCase is split: x-api-key, access_token, clientSecret. */
-const WORDS =
-  /(^|[-_.\s])(authorization|cookie|token|secret|password|passwd|pwd|apikey|api[-_]key|auth|session|signature|credentials?|jwt)($|[-_.\s])|(^|[-_.\s])key$/i;
+const SEP = "[-_.\\s]";
+/**
+ * Secret words between separators, after camelCase is split: x-api-key, access_token, clientSecret.
+ * A key is secret only as an API, access, secret, private, client or subscription key (or a bare
+ * `key`, as in `?key=`), a session only as itself or its id or token, and a token not when it is a
+ * page's or a cursor's (`page_token`, `nextPageToken`).
+ */
+const WORDS = new RegExp(
+  [
+    `(^|${SEP})(authorization|cookie|token|secret|password|passwd|pwd|apikey|signature|credentials?|jwt|bearer|sid)($|${SEP})`,
+    `(^|${SEP})(api|access|secret|private|client|subscription|license|master|signing|auth)${SEP}?key($|${SEP})`,
+    `(^|${SEP})session(${SEP}?(id|token|key))?$`,
+    `(^|${SEP})auth$`,
+    "^key$",
+  ].join("|"),
+  "i",
+);
+/** Tokens that only page through results, and names about a token rather than holding one. */
+const NOT_SECRET = new RegExp(
+  `(page|next|continuation|cursor|sync)${SEP}?(page${SEP}?)?token$|token${SEP}(url|uri|endpoint|type|ttl|expires?(${SEP}(in|at))?)$`,
+  "i",
+);
 
 /** Whether a header's, parameter's or field's name says it holds a secret. @param {string} name */
 export function isSecretName(name) {
   const split = String(name)
     .trim()
     .replace(/([a-z0-9])([A-Z])/g, "$1-$2");
-  return split !== "" && WORDS.test(split);
+  return split !== "" && WORDS.test(split) && !NOT_SECRET.test(split);
 }
 
 /** Whether a value is only a {{variable}}, which names a secret without holding it. @param {string} v */
@@ -60,11 +79,32 @@ export function withoutSecrets(scopes) {
   });
 }
 
-/** A text with each of `values` replaced by the stand-in. @param {string} text @param {string[]} values */
+/**
+ * A text with each of `values` replaced by the stand-in, as typed and as a URL or a form would
+ * carry it (percent-encoded, spaces as +). @param {string} text @param {string[]} values
+ */
 export function hideValues(text, values) {
   let out = text;
-  for (const v of values) out = out.split(v).join(HIDDEN);
+  for (const v of values) {
+    const encoded = encodeURIComponent(v);
+    for (const form of new Set([v, encoded, encoded.replace(/%20/g, "+")]))
+      out = out.split(form).join(HIDDEN);
+  }
   return out;
+}
+
+/**
+ * A check's or test's failure as an agent or the assistant may read it: hidden whole when what it
+ * checks is a secret (res.body.access_token, res.headers.authorization), else with secret values
+ * and pairs hidden. @param {string} target @param {string} message @param {string[]} values
+ */
+export function hideFailure(target, message, values) {
+  const last =
+    target
+      .split(/[.[\]'"]+/)
+      .filter(Boolean)
+      .pop() ?? "";
+  return isSecretName(last) ? `${target}: failed (its value is hidden)` : hideText(message, values);
 }
 
 /** A JSON value with the values of secret keys hidden, all the way down. @param {unknown} value @returns {unknown} */

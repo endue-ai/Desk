@@ -13,8 +13,9 @@ import { clone, newRequest, normalize, same } from "./model.js";
  *   kind?: "group" | "env" | "runner", extra?: Record<string, string>,
  *   lastCaptures?: { name: string, value?: string, error?: string }[], received?: number,
  *   results?: import("./features-scripts.js").Results, quiet?: boolean, data?: Record<string, string>,
- *   preview?: boolean, agent?: boolean }} Tab
+ *   preview?: boolean, agent?: boolean, sentSecrets?: string[] }} Tab
  *   `agent`: a request an agent wrote itself, which gets no secret variables and no cookies.
+ *   `sentSecrets`: the secret values the last send carried, to hide wherever they turn up.
  * @typedef {{ id: string, at: number, method: string, url: string, name: string, status: number,
  *   time: number, size: number, error?: string, req: Request }} HistoryEntry
  * @typedef {"tabs" | "tab" | "req" | "url" | "response" | "sending" | "side" | "history" |

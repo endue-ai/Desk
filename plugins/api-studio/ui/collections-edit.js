@@ -1,6 +1,8 @@
 // The edits a collection takes, each one file operation (or a few) on its folder: save a
 // request in place or somewhere new, add requests and folders, rename, duplicate, move (with the
-// order written back as seq numbers), delete, and the settings of a folder or collection.
+// order written back as seq numbers), delete, and the settings of a folder or collection. Before a
+// request's or group's file is written, S.beforeWrite may change the tab or stop the save
+// (literal-secrets.js).
 
 import {
   COLLECTION_FILE,
@@ -38,6 +40,7 @@ export function editOps(c) {
       if (!tab.ref) return false;
       const coll = byPath(tab.ref.collection);
       if (!coll) return false;
+      if (S.beforeWrite && !(await S.beforeWrite(tab, coll, "inherit"))) return false;
       wrote();
       await files.write(tab.ref.path, text(requestFile(tab.req)), coll.path);
       tab.saved = JSON.stringify(tab.req);
@@ -53,6 +56,7 @@ export function editOps(c) {
     },
     /** Save a tab as a new request in a folder of a collection. @param {Tab} tab @param {Collection} coll @param {string} dir */
     async saveAs(tab, coll, dir) {
+      if (S.beforeWrite && !(await S.beforeWrite(tab, coll, "inherit"))) return false;
       const path = await freeName(files, dir, tab.req.name, REQUEST_EXT, coll.path);
       tab.req.seq = nextSeq(coll, dir);
       tab.ref = { collection: coll.path, path };
@@ -219,6 +223,8 @@ export function editOps(c) {
       const coll = tab.ref && byPath(tab.ref.collection);
       if (!coll || !tab.ref) return false;
       const root = tab.ref.path === coll.path;
+      if (S.beforeWrite && !(await S.beforeWrite(tab, coll, root ? "none" : "inherit")))
+        return false;
       const found = root ? undefined : locate(coll, tab.ref.path)?.node;
       const old = root ? coll.meta : found?.type === "folder" ? found.meta : undefined;
       /** @type {Group} */

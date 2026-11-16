@@ -1,10 +1,11 @@
-// Secrets typed as they are (no {{variable}}) into a request, a folder's or a collection's
-// settings: the auth's passwords, tokens and keys, secret headers, query pairs, form fields and
-// variables. literal-secrets.js offers to move them out of the files when saving; the history
-// keeps none of them in the desk's store.
+// Secrets typed as they are (no {{variable}}) into what a request's, a folder's or a collection's
+// file holds: the auth's passwords, tokens and keys (when the auth is written: not when it
+// inherits), a password in the URL, secret headers, query pairs, fields of the body in use (form,
+// multipart, JSON, GraphQL variables) and variables. literal-secrets.js offers to move them out of
+// the files when saving; the history keeps none of them in the desk's store.
 
 import { clone } from "./model.js";
-import { isSecretName, varName } from "./secret-names.js";
+import { hideText, isSecretName, varName } from "./secret-names.js";
 import { urlFromParams } from "./url.js";
 
 /**
@@ -16,11 +17,16 @@ import { urlFromParams } from "./url.js";
 /** Whether a value is typed as is: not empty and naming no variable. @param {unknown} v */
 export const typed = (v) => typeof v === "string" && v.trim() !== "" && !/\{\{[^{}]+\}\}/.test(v);
 
-/** The secrets a request (or a folder's or collection's settings) holds typed as they are. @param {Request} req @returns {Literal[]} */
-export function literalSecrets(req) {
+/**
+ * The secrets a request (or a folder's or collection's settings) holds typed as they are.
+ * `authDefault` is the auth type its file leaves out (inherit, or none for a collection).
+ * @param {Request} req @param {{ authDefault?: string }} [options] @returns {Literal[]}
+ */
+export function literalSecrets(req, options = {}) {
   /** @type {Literal[]} */
   const out = [];
-  const a = /** @type {any} */ (req.auth ?? {});
+  const written = (req.auth?.type ?? "inherit") !== (options.authDefault ?? "inherit");
+  const a = /** @type {any} */ (written ? (req.auth ?? {}) : {});
   /** @param {any} obj @param {string} key @param {string} label @param {string} name */
   const field = (obj, key, label, name) => {
     if (obj && typed(obj[key]))
@@ -36,6 +42,16 @@ export function literalSecrets(req) {
   field(a.oauth2, "clientSecret", "OAuth 2.0 client secret", "clientSecret");
   field(a.oauth2, "password", "OAuth 2.0 password", "password");
   field(a.oauth2, "token", "OAuth 2.0 token", "accessToken");
+  const user = /^([a-z][a-z0-9+.-]*:\/\/[^/?#@:]*):([^/?#@]+)@/i.exec(req.url ?? "");
+  if (user && typed(user[2]))
+    out.push({
+      label: "Password in the URL",
+      name: "password",
+      value: decode(user[2] ?? ""),
+      put: (ref) => {
+        req.url = req.url.replace(`${user[1]}:${user[2]}@`, `${user[1]}:${ref}@`);
+      },
+    });
   for (const row of req.headers ?? []) {
     if (!isSecretName(row.key) || !typed(row.value)) continue;
     const scheme = /^(Bearer|Basic|Token|Digest|Bot)\s+(\S.*)$/i.exec(row.value);
@@ -58,7 +74,9 @@ export function literalSecrets(req) {
         },
       });
   const body = req.body;
-  for (const rows of body ? [body.form, body.multipart] : [])
+  const rowsInUse =
+    body?.mode === "form" ? body.form : body?.mode === "multipart" ? body.multipart : [];
+  for (const rows of [rowsInUse])
     for (const row of rows ?? [])
       if (/** @type {any} */ (row).kind !== "file" && isSecretName(row.key) && typed(row.value))
         out.push({
@@ -67,6 +85,16 @@ export function literalSecrets(req) {
           value: row.value,
           put: (ref) => (row.value = ref),
         });
+  if (body?.mode === "json")
+    out.push(...jsonFields(body.json, (text) => (body.json = text), "Body field"));
+  if (body?.mode === "graphql")
+    out.push(
+      ...jsonFields(
+        body.graphql.variables,
+        (text) => (body.graphql.variables = text),
+        "GraphQL variable",
+      ),
+    );
   for (const list of [req.vars?.pre ?? []])
     for (const row of [...list])
       if (isSecretName(row.key) && typed(row.value))
@@ -84,9 +112,59 @@ export function literalSecrets(req) {
   return out;
 }
 
-/** A copy of a request with every secret typed as is left empty, for keeping. @param {Request} req */
+/**
+ * The secret fields of a JSON text, each written back into the text when moved; nothing when the
+ * text is not JSON (one with {{variables}} outside strings, say).
+ * @param {string} text @param {(text: string) => void} write @param {string} label @returns {Literal[]}
+ */
+function jsonFields(text, write, label) {
+  let doc;
+  try {
+    doc = JSON.parse(text);
+  } catch {
+    return [];
+  }
+  /** @type {Literal[]} */
+  const out = [];
+  const indent = /\n(\s+)/.exec(text)?.[1]?.length ?? (text.includes("\n") ? 2 : 0);
+  const walk = (/** @type {any} */ node) => {
+    if (!node || typeof node !== "object") return;
+    for (const [k, v] of Object.entries(node)) {
+      if (typeof v === "string" && isSecretName(k) && typed(v))
+        out.push({
+          label: `${label} ${k}`,
+          name: varName(k),
+          value: v,
+          put: (ref) => {
+            node[k] = ref;
+            write(JSON.stringify(doc, null, indent || undefined));
+          },
+        });
+      else walk(v);
+    }
+  };
+  walk(doc);
+  return out;
+}
+
+/** @param {string} text */
+function decode(text) {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+}
+
+/**
+ * A copy of a request with every secret typed as is left empty, and text bodies' secret pairs
+ * hidden, for keeping in the history. @param {Request} req
+ */
 export function withoutLiterals(req) {
   const copy = clone(req);
-  for (const lit of literalSecrets(copy)) lit.put("");
+  for (const lit of literalSecrets(copy, { authDefault: "" })) lit.put("");
+  const b = copy.body;
+  for (const mode of /** @type {const} */ (["text", "xml"]))
+    if (b?.[mode]) b[mode] = hideText(b[mode]);
   return copy;
 }

@@ -85,6 +85,7 @@ export function createActions(S) {
       const { prep, missing, bodyText } = prepare(tab.req, context);
       for (const hook of SEND_HOOKS) await hook.prepared?.(S, tab, prep);
       markSecrets(prep);
+      tab.sentSecrets = prep.secrets ?? [];
       if (!/^https?:\/\//i.test(prep.url))
         throw new Refused("Only http:// and https:// URLs can be sent.");
       if (S.filesAllowed && !(await S.filesAllowed(tab, prep)))

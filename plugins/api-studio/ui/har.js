@@ -53,10 +53,30 @@ export function fromHar(har) {
       url: r.url,
       seq: n + 1,
     });
-    const params = paramsFromUrl(r.url, []);
+    // A password in the URL (https://user:pw@host) becomes Basic auth with a secret.
+    let url = r.url;
+    try {
+      const u = new URL(r.url);
+      if (u.password) {
+        req.auth = {
+          type: "basic",
+          basic: {
+            username: decodeURIComponent(u.username),
+            password: keeper.ref("password", decodeURIComponent(u.password)),
+          },
+        };
+        u.username = "";
+        u.password = "";
+        url = u.href;
+      }
+    } catch {
+      /* as written */
+    }
+    req.url = url;
+    const params = paramsFromUrl(url, []);
     req.params = params.map((p) => ({ ...p, value: hide(p.key, p.value) }));
     if (req.params.some((p, i) => p.value !== params[i]?.value))
-      req.url = urlFromParams(r.url, req.params);
+      req.url = urlFromParams(url, req.params);
     for (const h of r.headers ?? [])
       if (!/^(:|content-length$|host$|connection$|accept-encoding$)/i.test(h.name)) {
         const value = String(h.value ?? "");
@@ -83,6 +103,12 @@ export function fromHar(har) {
         );
         if (req.body.mode === "multipart") req.body.multipart = rows;
         else req.body.form = rows;
+      } else if (post.text && /x-www-form-urlencoded/i.test(post.mimeType ?? "")) {
+        // A form recorded as its text only: its fields, each secret one kept apart.
+        req.body.mode = "form";
+        req.body.form = [...new URLSearchParams(post.text)].map(([k, v]) =>
+          pair({ key: k, value: hide(k, v) }),
+        );
       } else if (post.text) {
         req.body.mode = "text";
         req.body.text = post.text;

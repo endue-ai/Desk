@@ -1,12 +1,11 @@
-// Which collections' scripts may run. A collection opened from a folder can come from anyone (a
-// clone, a download), and its scripts read every variable, secrets included, and can change where
-// a request goes. So a script that came from the collection's files runs only once the person has
-// allowed it: the studio keeps the SHA-256 of each script they allowed, per collection, in the
-// desk's store, and asks again when a script arrives or changes on disk (a pull, a download).
-// What the person writes in the studio is theirs: an edited script runs, and saving one allows it.
+// Which scripts may run. A collection opened from a folder can come from anyone (a clone, a
+// download), and its scripts read every variable, secrets included, and can change where a
+// request goes. So a script runs only when the person wrote it here or allowed it: the studio
+// keeps the SHA-256 of every allowed script in the desk's store, and checks each script a send
+// would run by its text, wherever the tab came from (a collection, the history, a duplicate). A
+// script that arrives or changes on disk (a pull) has a new hash and is asked about again.
 
 import { h } from "./dom.js";
-import { hashKey } from "./environments.js";
 import { dialog } from "./menu.js";
 import { sha256 } from "./sha256.js";
 
@@ -15,31 +14,29 @@ import { sha256 } from "./sha256.js";
  * @typedef {import("./app.js").Tab} Tab
  * @typedef {import("./collection-fs.js").Collection} Collection
  * @typedef {import("./collection-fs.js").Node} Node
- * @typedef {{ pre: string, post: string, tests: string }} Scripts
  */
 
-/** The most hashes kept for one collection (the store keeps 64 KiB a key). */
-const KEEP = 800;
+/** The most hashes kept (the store keeps 64 KiB a key). */
+const KEEP = 900;
+const KEY = "trust";
 
-/** A request's or group's scripts. @param {any} r @returns {Scripts} */
-const scriptsOf = (r) => ({
-  pre: String(r?.scripts?.pre ?? ""),
-  post: String(r?.scripts?.post ?? ""),
-  tests: String(r?.tests ?? ""),
-});
+/** A request's or group's scripts. @param {any} r @returns {string[]} */
+const scriptsOf = (r) => [
+  String(r?.scripts?.pre ?? ""),
+  String(r?.scripts?.post ?? ""),
+  String(r?.tests ?? ""),
+];
 
 /** Every script a collection's files hold. @param {Collection} coll @returns {string[]} */
 export function scriptsIn(coll) {
   /** @type {string[]} */
-  const out = [];
-  const add = (/** @type {Scripts} */ s) => out.push(s.pre, s.post, s.tests);
-  add(scriptsOf(coll.meta));
+  const out = [...scriptsOf(coll.meta)];
   const walk = (/** @type {Node[]} */ nodes) => {
     for (const n of nodes) {
       if (n.type === "folder") {
-        add(scriptsOf(n.meta));
+        out.push(...scriptsOf(n.meta));
         walk(n.children);
-      } else add(scriptsOf(n.req));
+      } else out.push(...scriptsOf(n.req));
     }
   };
   walk(coll.children);
@@ -48,76 +45,88 @@ export function scriptsIn(coll) {
 
 /** @param {Studio} S */
 export function installTrust(S) {
-  /** @type {Map<string, string[]>} collection path → hashes allowed, oldest first */
-  const allowed = new Map();
-  /** Collections the person said no to in this session. @type {Set<string>} */
+  /** @type {string[] | undefined} hashes allowed, oldest first */
+  let allowed;
+  /** Which of a tab's scripts the person edited in this session ("scripts", "tests"): theirs. @type {Map<string, Set<string>>} */
+  const edited = new Map();
+  /** The scripts of a tab the person edited. @param {Tab} tab */
+  const theirs = (tab) => {
+    const fields = edited.get(tab.id);
+    if (!fields) return [];
+    const [pre, post, tests] = scriptsOf(tab.req);
+    return [...(fields.has("scripts") ? [pre, post] : []), ...(fields.has("tests") ? [tests] : [])]
+      .map(String)
+      .filter((t) => t.trim());
+  };
+  /** Collections, or tabs, the person said no to in this session. @type {Set<string>} */
   const declined = new Set();
   /** @type {Map<string, Promise<boolean>>} */
   const asking = new Map();
-  const key = (/** @type {string} */ path) => `trust.${hashKey(path)}`;
 
-  /** @param {string} path */
-  const load = async (path) => {
-    if (!allowed.has(path)) {
+  const load = async () => {
+    if (!allowed) {
       let kept;
       try {
-        kept = (await S.ctx.bridge.call("store.get", { key: key(path) }))?.value;
+        kept = (await S.ctx.bridge.call("store.get", { key: KEY }))?.value;
       } catch {
         kept = undefined;
       }
-      allowed.set(path, kept?.path === path && Array.isArray(kept.hashes) ? kept.hashes : []);
+      allowed = Array.isArray(kept?.hashes) ? kept.hashes.map(String) : [];
     }
-    return /** @type {string[]} */ (allowed.get(path));
+    return /** @type {string[]} */ (allowed);
   };
-  /** @param {string} path @param {string[]} texts */
-  const allow = async (path, texts) => {
+  const keep = () =>
+    S.ctx.bridge.call("store.set", { key: KEY, value: { hashes: allowed } }).catch(() => {});
+  /** Allow these scripts from now on. @param {string[]} texts */
+  const allow = async (texts) => {
     const fresh = new Set(texts.filter((t) => t.trim()).map(sha256));
-    const kept = [...(await load(path)).filter((x) => !fresh.has(x)), ...fresh].slice(-KEEP);
-    allowed.set(path, kept);
-    declined.delete(path);
-    await S.ctx.bridge
-      .call("store.set", { key: key(path), value: { path, hashes: kept } })
-      .catch(() => {});
+    if (!fresh.size) return;
+    allowed = [...(await load()).filter((x) => !fresh.has(x)), ...fresh].slice(-KEEP);
+    await keep();
   };
 
-  /**
-   * The scripts a send of `tab` runs that came from files: its folders' and collection's, and its
-   * own wherever the tab still holds what the file holds (an edit in the studio is the person's).
-   * @param {Tab} tab @param {Collection} coll
-   */
-  const fromFiles = (tab, coll) => {
-    const texts = (S.collections.parents(tab) ?? []).flatMap((/** @type {any} */ g) => [
+  // What the person types or applies in a script editor is theirs.
+  S.app.on("req", (/** @type {any} */ d) => {
+    if (d?.field !== "scripts" && d?.field !== "tests") return;
+    const tab = d.tab ?? S.app.current();
+    if (!tab) return;
+    const fields = edited.get(tab.id) ?? new Set();
+    fields.add(d.field);
+    edited.set(tab.id, fields);
+  });
+
+  /** Every script a send of `tab` runs: its folders' and collection's, then its own. @param {Tab} tab */
+  const toRun = (tab) => {
+    const groups = (S.collections.parents(tab) ?? []).flatMap((/** @type {any} */ g) => [
       String(g.scripts?.pre ?? ""),
       String(g.scripts?.post ?? ""),
     ]);
-    const node = tab.ref ? S.collections.locate(coll, tab.ref.path)?.node : undefined;
-    const own = scriptsOf(tab.req);
-    const disk = node?.type === "request" ? scriptsOf(node.req) : undefined;
-    for (const k of /** @type {const} */ (["pre", "post", "tests"]))
-      if (!disk || disk[k] === own[k]) texts.push(own[k]);
-    return texts.filter((t) => t.trim());
+    return {
+      groups: groups.filter((t) => t.trim()),
+      own: scriptsOf(tab.req).filter((t) => t.trim()),
+    };
   };
 
-  /** @param {Collection} coll @param {boolean} changed */
-  const ask = (coll, changed) =>
+  /** @param {string} name @param {string} where @param {boolean} changed */
+  const ask = (name, where, changed) =>
     dialog({
-      title: "Run this collection's scripts?",
+      title: changed ? "Run these changed scripts?" : "Run these scripts?",
       className: "is-trust",
       body: [
         h(
           "p.as-dialog-text",
           null,
           changed
-            ? `The scripts of “${coll.name}” changed on disk since you allowed them.`
-            : `“${coll.name}” has scripts that run before and after its requests.`,
+            ? `Scripts of “${name}” changed since you allowed them.`
+            : `“${name}” has scripts that you did not write here.`,
         ),
-        h("p.as-dialog-text", null, h("code", null, coll.path)),
+        where ? h("p.as-dialog-text", null, h("code", null, where)) : null,
         h(
           "p.as-dialog-text",
           null,
-          "Scripts read every variable, secrets included, and can change where a request goes. Run them only if you trust where this collection came from.",
+          "Scripts read every variable, secrets included, and can change where a request goes. Run them only if you trust where they came from.",
         ),
-      ],
+      ].filter(Boolean),
       actions: [
         { label: "Don't run", value: () => false },
         { label: "Run scripts", kind: "desk-btn-primary", value: () => true },
@@ -125,67 +134,53 @@ export function installTrust(S) {
     }).then((yes) => yes === true);
 
   S.trust = {
-    /** Whether the scripts a send of `tab` would run may run; asks once when they are new. @param {Tab} tab */
+    /** Whether the scripts a send of `tab` would run may run; asks once for new ones. @param {Tab} tab */
     async allows(tab) {
+      const { groups, own } = toRun(tab);
+      // The person's own edits are theirs to run, and stay allowed.
+      await allow(theirs(tab));
+      const hashes = await load();
+      const unknown = [...groups, ...own].filter((t) => !hashes.includes(sha256(t)));
+      if (!unknown.length) return true;
       const coll = tab.ref ? S.collections.byPath(tab.ref.collection) : undefined;
-      if (!coll) return true;
-      const texts = fromFiles(tab, coll);
-      const hashes = await load(coll.path);
-      if (texts.every((t) => hashes.includes(sha256(t)))) return true;
-      if (declined.has(coll.path)) return false;
-      const pending = asking.get(coll.path);
+      const key = coll ? coll.path : `tab:${tab.id}`;
+      if (declined.has(key)) return false;
+      const pending = asking.get(key);
       if (pending) return pending;
-      const answer = ask(coll, hashes.length > 0).then(async (yes) => {
-        if (yes) await allow(coll.path, [...scriptsIn(coll), ...texts]);
-        else declined.add(coll.path);
-        return yes;
-      });
-      asking.set(coll.path, answer);
+      const changed = !!coll && scriptsIn(coll).some((t) => hashes.includes(sha256(t)));
+      const answer = ask(coll?.name ?? tab.req.name, coll?.path ?? "", changed).then(
+        async (yes) => {
+          if (yes) await allow([...(coll ? scriptsIn(coll) : []), ...unknown]);
+          else declined.add(key);
+          return yes;
+        },
+      );
+      asking.set(key, answer);
       try {
         return await answer;
       } finally {
-        asking.delete(coll.path);
+        asking.delete(key);
       }
     },
-    /** Whether every script in a collection's files is allowed. @param {Collection} coll */
-    async allowed(coll) {
-      const hashes = await load(coll.path);
-      return scriptsIn(coll).every((t) => hashes.includes(sha256(t)));
-    },
     /** Allow every script a collection holds now. @param {Collection} coll */
-    allowAll: (coll) => allow(coll.path, scriptsIn(coll)),
-    /** Allow scripts the person wrote. @param {string} path @param {string[]} texts */
-    allow,
+    async allowAll(coll) {
+      declined.delete(coll.path);
+      await allow(scriptsIn(coll));
+    },
     /** Stop running a collection's scripts until the person allows them again. @param {Collection} coll */
     async revoke(coll) {
-      allowed.set(coll.path, []);
+      const gone = new Set(scriptsIn(coll).map(sha256));
+      allowed = (await load()).filter((x) => !gone.has(x));
       declined.add(coll.path);
-      await S.ctx.bridge
-        .call("store.set", { key: key(coll.path), value: { path: coll.path, hashes: [] } })
-        .catch(() => {});
+      await keep();
     },
   };
 
-  // Saving a script the person changed allows it.
+  // Saving scripts the person edited keeps them allowed after a restart.
   const save = S.save;
   S.save = async (/** @type {Tab} */ tab) => {
-    const before = tab.ref ? S.collections.byPath(tab.ref.collection) : undefined;
-    const node = before && tab.ref ? S.collections.locate(before, tab.ref.path)?.node : undefined;
-    const old =
-      tab.kind === "group"
-        ? scriptsOf(node?.type === "folder" ? node.meta : before?.meta)
-        : node?.type === "request"
-          ? scriptsOf(node.req)
-          : undefined;
     const ok = await save(tab);
-    const coll = ok && tab.ref ? S.collections.byPath(tab.ref.collection) : undefined;
-    if (coll) {
-      const now = scriptsOf(tab.req);
-      const changed = /** @type {const} */ (["pre", "post", "tests"])
-        .filter((k) => !old || old[k] !== now[k])
-        .map((k) => now[k]);
-      if (changed.some((t) => t.trim())) await allow(coll.path, changed);
-    }
+    if (ok) await allow(theirs(tab));
     return ok;
   };
 

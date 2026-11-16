@@ -61,29 +61,42 @@ curl runs as the person, so the studio, not the desk's grants, decides what it m
   files into a response. A header's name keeps only token characters, so it never reaches curl's
   `@file` form.
 * A body file (a file body, a multipart file part) goes out without asking only when the person chose
-  it in this session or it lies inside the request's collection folder with no symlink on the way
-  (`fs.stat` on each step); any other path asks first, once per path for the session.
-* A script that came from a collection's files runs only once the person allowed it. The studio keeps
-  the SHA-256 of each allowed script per collection in the desk's store, and asks again when one
-  arrives or changes on disk (a pull). Scripts the person writes in the studio run, and saving one
-  allows it. "Stop running its scripts" in the collection's menu takes the allowance back.
-* A secret typed as it is into a request, folder or collection (auth passwords, tokens and keys,
-  secret headers, query pairs, form fields, variables) is found when saving, and the person is
-  offered to move it into a secret variable (the active environment's, else the globals'), leaving
-  `{{name}}` in the file. A HAR import puts the recording's session (Authorization, Cookie, tokens)
-  into secrets of a `Recorded` environment. The history keeps no typed secret.
+  it in this session or it lies inside the request's collection folder as a plain path (no `.` or
+  `..`, which curl resolves through symlinks) with no symlink on the way (`fs.stat` on each step);
+  any other path asks first, once per path for the session.
+* A script runs only when the person wrote it here or allowed it. The studio keeps the SHA-256 of
+  every allowed script in the desk's store and checks each script a send would run by its text,
+  wherever the tab came from (a collection, the history, a copy), so a script that arrives or
+  changes on disk (a pull) is asked about again. Scripts the person types or applies in a script
+  editor are theirs and stay allowed. "Stop running its scripts" in the collection's menu takes a
+  collection's allowance back.
+* A secret typed as it is into what a request's, folder's or collection's file keeps (the auth's
+  passwords, tokens and keys when the auth is written, a password in the URL, secret headers, query
+  pairs, fields of the body in use, variables) is found before the file is written, and the person
+  is offered to move it into a secret variable of that collection's environment in use (or of a new
+  `Local secrets` one), leaving `{{name}}` in the file. Never into the globals, which fill into every
+  collection's requests. A HAR import puts the recording's session (Authorization, Cookie, tokens,
+  a password in the URL, secret form fields) into secrets of a `Recorded` environment. The history
+  keeps no typed secret.
 * curl sends custom headers to another host when it follows a redirect (only Authorization and Cookie
   are dropped), so a request carrying a secret (a header by its name or by a secret's value, curl's
-  credentials, a secret in the query) does not let curl follow: the studio follows each hop and drops
-  the secrets from the first hop that leaves the origin.
+  credentials, a secret in the query or the body) does not let curl follow: the studio follows each
+  hop, and on every hop to another origin drops the secret headers (the jar's cookies for the origin
+  left among them), the credentials and the secrets in the query, taking the jar's cookies for the
+  new origin only when the request uses the jar. A 307 or 308 to another origin with a secret in the
+  body is not followed.
 * A request an agent writes itself (`send` with a url) fills in no secret variable, no variable whose
-  name says secret (a captured `token`), and no cookie from the jar; it names any host. A saved
-  request sent by name is the person's and gets its environment.
+  name says secret, no value set while running (a capture may be a token under any name) and no
+  cookie from the jar; it names any host. A saved request sent by name is the person's and gets its
+  environment.
 * What an assistant or an agent reads (the prompt, the commands' answers) has secret headers, query
-  pairs and JSON fields hidden, and every secret variable's value wherever it turns up. A name is
-  secret when it says so in any spelling (`Private-Token`, `x-api-key`, `access_token`,
-  `clientSecret`); generated code hides the same, and its string literals cannot run what a value
-  holds (Kotlin's `$`, PowerShell's typographic quotes, a method in a shell command).
+  pairs and JSON fields hidden, every secret's value wherever it turns up (as typed or as a URL or
+  form carries it; the last send's credentials too), the `Location` header's secret query pairs, and
+  failures of checks and tests on a secret. A name is secret when it says so in any spelling
+  (`Private-Token`, `x-api-key`, `access_token`, `clientSecret`), not when it only pages or names a
+  token (`page_token`, `tokenUrl`, `Idempotency-Key`); generated code hides the same, and its string
+  literals cannot run what a value holds (Kotlin's `$`, PowerShell's typographic quotes, a method in
+  a shell command).
 * A request that does not check the server's certificate says so beside its URL, wherever the
   setting came from.
 
@@ -100,7 +113,8 @@ folder, as connector secrets are until the desk keeps them in the OS keychain (A
 * Bad, because the cookie jar, OAuth tokens and secrets stay on one desk: a second machine sets them
   again
 * Bad, because a shared collection's scripts wait for a yes on each desk, and again after each change
-  that arrives on disk
+  that arrives on disk; a copy or a history entry of a request whose scripts were never allowed asks
+  too
 * Bad, because a request with a secret follows its redirects one curl at a time, a little slower
 
 ## More Information
@@ -109,5 +123,6 @@ folder, as connector secrets are until the desk keeps them in the OS keychain (A
 `ui/curl-parse.js`; the files `ui/collection-fs.js`; scripts `ui/scripts.js` and
 `ui/script-prelude.js`; the assistant `ui/ai-context.js` and `ui/ai-actions.js`; the guards
 `ui/guards.js`, `ui/trust.js`, `ui/file-guard.js`, `ui/literal-secrets.js`, `ui/redirects.js` and
-`ui/secret-names.js` (tested in `tests/security.test.ts` and `tests/studio.dom.test.ts`). ADR 0088
+`ui/secret-names.js` (tested in `tests/security.test.ts`, `tests/redirects.test.ts`,
+`tests/literals.test.ts` and `tests/studio.dom.test.ts`). ADR 0088
 (commands as agents' tools).
