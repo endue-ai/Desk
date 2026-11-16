@@ -18,8 +18,9 @@ animations use an injected clock (ADR 0013). Shell decisions not in the brief: `
   host); `framePages()`, sandboxed frames of this page, without the compositor. `surfaceHostOf(src)`.
 - `PluginHost`: mounts UI plugins, relays calls as their caller, reloads on `plugin.changed`, carries
   commands, keys and themes (ADR 0012, 0014); `Owners` routes events. `frames/`: the live set (ADR 0158).
-- Policies: `collect(plugins)`, `Commands`, layered `Settings`, `Keymap` (`rebind.ts`), `decide`,
-  `resolveTheme`, `Notifications`, `Buffers`; `src/policies/*` applies them.
+- Policies: `collect(plugins)`, `Commands`, layered `Settings`, `Keymap` (`rebind.ts`), `decide`, `resolveTheme`,
+  `Notifications`, `Buffers`; `src/policies/*` applies them; `desk.language` (`policies/language.ts`, ADR 0250).
+  Words: `<module>/messages/{en,ko}.json` catalogs read with `moduleText` (`i18n/messages.ts`); `language` is the OS's.
 - `mountDesk({ root, bridge, core, plugins, windowManager, pages?, windowPages?, clock?, lang?, … })`:
   the shell over its runtime; `windowManager` (desk-wm) holds the windows, panes, desktops (up to 32,
   ADR 0117), the drawer and the pan (`wm/`); `localWindowManager` runs it as WebAssembly without the
@@ -34,7 +35,6 @@ pnpm exec vitest run packages/runtime      # unit; builds desk-wm as WebAssembly
 just test-e2e                             # Playwright on stubs, never directly; macOS: Linux (ADR 0018)
 ```
 
-Fixtures: `system.html` (the system surface as the app runs it, the fixture playing the shell),
-`desk.html` (desk.* policies, test plugins), `shell.html` (`?lang=en`, `?persist=1`, `?reduced=1`,
+Fixtures: `system.html` (the system surface as the app runs it), `desk.html` (desk.* policies, test plugins), `shell.html` (`?lang=en`, `?persist=1`, `?reduced=1`,
 `?init=`, `?views=1`, `?apps=1`; desk-wm from `/desk-wm.wasm`, `__shell.wm`), `views.html`,
 `safe-mode.html` (ADR 0061). Render trees: `--update-snapshots`.
