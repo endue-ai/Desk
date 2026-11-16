@@ -82,3 +82,38 @@ fn a_picture_is_read_without_the_token_and_only_when_it_is_an_image_that_fits() 
     assert_eq!(client.picture("file:///etc/hosts"), None);
     assert_eq!(client.picture("/p/dot.png"), None);
 }
+
+/// Issue 352: a picture comes only from a public name over https (port 443), or from the
+/// platform's own host. An IP literal, a private name or another port is never asked.
+#[test]
+fn a_picture_is_never_read_from_an_ip_literal_or_a_private_name() {
+    let fake = FakePlatform::start();
+    let client = platform(&fake);
+    for url in [
+        "https://10.0.0.1/a.png",
+        "https://192.168.1.2/a.png",
+        "https://127.0.0.1/a.png",
+        "https://[::1]/a.png",
+        "https://[fd00::1]/a.png",
+        "https://localhost/a.png",
+        "https://printer.local/a.png",
+        "https://db.internal/a.png",
+        "https://app.localhost/a.png",
+        "https://cdn.example:8443/a.png",
+        "http://cdn.endue.ai/a.png",
+    ] {
+        assert!(!client.may_read_picture(url), "{url}");
+        assert_eq!(client.picture(url), None, "{url}");
+    }
+    for url in [
+        "https://cdn.endue.ai/a/miso.png",
+        "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=miso",
+        "https://cdn.endue.ai:443/a.png",
+    ] {
+        assert!(client.may_read_picture(url), "{url}");
+    }
+    assert!(
+        client.may_read_picture(&format!("{}/p/dot.png", fake.url())),
+        "the platform's own host, as in development"
+    );
+}
