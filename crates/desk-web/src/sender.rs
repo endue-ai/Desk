@@ -34,6 +34,8 @@ const MAIN_COMMANDS: &[&str] = &[
     // The answer to a quit the person asked for: asking about unsaved changes, quit or stay (#163).
     "desk_quit",
     "desk_login", // what desk.login.start is: the shell registers the desk to match (#237)
+    // A notice for the OS's notifications while endue is out of sight (#306).
+    "desk_notice_post",
     // Compositor mode (#52, #81): the desk the runtime keeps; captures and counts for checks in
     // development builds. Input (#56): the keymap's entries and the page's focus; events fed to the
     // window's input and where input goes, for checks in development builds.
