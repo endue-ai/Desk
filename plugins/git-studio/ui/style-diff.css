@@ -1,0 +1,266 @@
+/* The diff viewer: its head, hunks, unified and side-by-side lines, changed words, syntax colours.
+   Additions are the theme's success colour, removals its danger colour. */
+
+.diff {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  --add-bg: color-mix(in srgb, var(--desk-success) 13%, var(--desk-background));
+  --add-word: color-mix(in srgb, var(--desk-success) 34%, var(--desk-background));
+  --del-bg: color-mix(in srgb, var(--desk-danger) 13%, var(--desk-background));
+  --del-word: color-mix(in srgb, var(--desk-danger) 34%, var(--desk-background));
+  --pick: color-mix(in srgb, var(--desk-primary) 30%, var(--desk-background));
+}
+
+.diff-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: 46px;
+  padding: var(--desk-space-1) var(--desk-space-3);
+  border-bottom: 1px solid var(--gs-line);
+  background: var(--gs-soft);
+  flex-wrap: wrap;
+}
+
+.diff-title {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-width: 0;
+}
+
+.diff-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-sm);
+}
+
+.diff-badge {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: var(--desk-radius-full);
+  font-size: var(--desk-text-2xs);
+  font-weight: 700;
+  background: var(--desk-warning-soft);
+  color: var(--desk-warning-text);
+}
+
+.diff-badge.is-staged {
+  background: var(--desk-success-soft);
+  color: var(--desk-success-text);
+}
+
+.diff-badge.is-commit {
+  background: var(--desk-info-soft);
+  color: var(--desk-info-text);
+}
+
+.diff-stat {
+  font-size: var(--desk-text-xs);
+}
+
+.diff-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--desk-text-xs);
+}
+
+.desk-btn.mini.is-danger {
+  color: var(--desk-danger-text);
+}
+
+.desk-btn.mini[aria-pressed="true"] {
+  background: var(--gs-select);
+}
+
+.diff-body {
+  flex: 1;
+  overflow: auto;
+  padding: var(--desk-space-3);
+  outline: none;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  line-height: 20px;
+}
+
+.diff-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-8);
+  color: var(--desk-text-muted);
+  font-family: var(--desk-font-sans);
+}
+
+.diff-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-4);
+  font-family: var(--desk-font-sans);
+}
+
+.hunk {
+  margin-bottom: var(--desk-space-3);
+  border: 1px solid var(--gs-line);
+  border-radius: var(--desk-radius-md);
+  overflow: hidden;
+  background: var(--desk-background);
+}
+
+.hunk-bar {
+  position: sticky;
+  top: calc(-1 * var(--desk-space-3));
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: 34px;
+  padding: 0 var(--desk-space-2) 0 var(--desk-space-3);
+  border-bottom: 1px solid var(--gs-line);
+  background: color-mix(in srgb, var(--desk-info) 8%, var(--desk-card));
+  font-family: var(--desk-font-sans);
+}
+
+.hunk-range {
+  font-family: var(--desk-font-mono);
+  color: var(--desk-info-text);
+}
+
+.hunk-section {
+  color: var(--desk-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hunk-lines {
+  overflow-x: auto;
+}
+
+.dl {
+  display: grid;
+  grid-template-columns: 48px 48px 18px minmax(0, 1fr);
+  min-width: max-content;
+}
+
+.dl.is-pair {
+  grid-template-columns: 48px minmax(0, 1fr) 48px minmax(0, 1fr);
+  min-width: 0;
+}
+
+.ln {
+  padding: 0 8px;
+  text-align: right;
+  color: color-mix(in srgb, var(--desk-text-muted) 75%, transparent);
+  user-select: none;
+  border-right: 1px solid var(--gs-line);
+  cursor: default;
+}
+
+.dl.is-add .ln,
+.dl.is-del .ln,
+.ln.is-add,
+.ln.is-del {
+  cursor: pointer;
+}
+
+.sign {
+  text-align: center;
+  user-select: none;
+  color: var(--desk-text-muted);
+}
+
+.code {
+  padding: 0 var(--desk-space-3) 0 4px;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.dl.is-pair .code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-right: 1px solid var(--gs-line);
+}
+
+.dl.is-add,
+.code.is-add,
+.ln.is-add {
+  background: var(--add-bg);
+}
+
+.dl.is-del,
+.code.is-del,
+.ln.is-del {
+  background: var(--del-bg);
+}
+
+.dl.is-add .sign {
+  color: var(--desk-success-text);
+}
+
+.dl.is-del .sign {
+  color: var(--desk-danger-text);
+}
+
+.dl.is-picked,
+.code.is-picked,
+.ln.is-picked {
+  background: var(--pick);
+}
+
+.dl.is-picked .ln:first-child,
+.ln.is-picked {
+  box-shadow: inset 3px 0 0 var(--desk-primary);
+}
+
+.is-blank {
+  background: repeating-linear-gradient(135deg, transparent 0 6px, var(--gs-soft) 6px 12px);
+}
+
+.dl.is-note .code {
+  color: var(--desk-text-muted);
+  font-style: italic;
+}
+
+.dl.is-add .word,
+.code.is-add .word {
+  background: var(--add-word);
+  border-radius: var(--desk-radius-sm);
+}
+
+.dl.is-del .word,
+.code.is-del .word {
+  background: var(--del-word);
+  border-radius: var(--desk-radius-sm);
+}
+
+/* ── syntax ─────────────────────────────────────────────────────────────── */
+.syn-comment {
+  color: var(--desk-text-muted);
+  font-style: italic;
+}
+
+.syn-string {
+  color: var(--desk-chart-3);
+}
+
+.syn-number {
+  color: var(--desk-chart-6);
+}
+
+.syn-keyword {
+  color: var(--desk-chart-5);
+  font-weight: 600;
+}
+
+.syn-type {
+  color: var(--desk-chart-2);
+}

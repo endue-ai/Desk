@@ -63,6 +63,7 @@ export const ICONS = /** @type {const} */ ({
   reset: ["M12 3v4", "M12 17v4", "M5 12a7 7 0 0 1 14 0", "M9 12l3 3 3-3"],
   terminal: ["M4 5h16v14H4z", "M7 9l3 3-3 3", "M12 15h5"],
   arrowUp: ["M12 19V5", "M6 11l6-6 6 6"],
+  arrowLeft: ["M19 12H5", "M11 18l-6-6 6-6"],
   arrowDown: ["M12 5v14", "M6 13l6 6 6-6"],
   target: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"],
   settings: [
