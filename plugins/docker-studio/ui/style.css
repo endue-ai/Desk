@@ -1,0 +1,243 @@
+/* Docker Studio's base: the studio's own derived tones, the page, cards, pills, dots and the empty
+   states. Every colour, size, radius and duration is a theme token (scripts/ui-lint.mjs). */
+
+:root {
+  --ds-line: color-mix(in srgb, var(--desk-border) 78%, transparent);
+  --ds-soft: color-mix(in srgb, var(--desk-text) 3.5%, var(--desk-background));
+  --ds-softer: color-mix(in srgb, var(--desk-text) 7%, var(--desk-background));
+  --ds-raised: color-mix(in srgb, var(--desk-text) 5%, var(--desk-card));
+  --ds-select: color-mix(in srgb, var(--desk-primary) 15%, transparent);
+  --ds-select-line: color-mix(in srgb, var(--desk-primary) 55%, transparent);
+  --ds-ok: var(--desk-success);
+  --ds-warn: var(--desk-warning);
+  --ds-bad: var(--desk-danger);
+  --ds-idle: color-mix(in srgb, var(--desk-text-muted) 70%, transparent);
+  --ds-side: 236px;
+  --ds-ai: color-mix(in srgb, var(--desk-chart-5) 70%, var(--desk-primary));
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--desk-background);
+}
+
+.icon {
+  flex: none;
+}
+
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-sm);
+  background: var(--ds-soft);
+  color: var(--desk-text-muted);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-2xs);
+  line-height: 1;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-4);
+  min-height: 100%;
+  padding: var(--desk-space-5) var(--desk-space-6) var(--desk-space-8);
+}
+
+/* ── cards ─────────────────────────────────────────────────────────────── */
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+  box-shadow: var(--desk-shadow-sm);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: 44px;
+  padding: var(--desk-space-2) var(--desk-space-4);
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.card-head h2 {
+  margin: 0;
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+}
+
+.card-sub {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.card-head > :last-child:not(h2):not(.card-sub) {
+  margin-left: auto;
+}
+
+.card-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  margin: 0;
+  padding: var(--desk-space-5) var(--desk-space-4);
+  color: var(--desk-text-muted);
+}
+
+.card-empty .icon {
+  color: var(--ds-ok);
+}
+
+/* ── dots and pills ────────────────────────────────────────────────────── */
+.dot {
+  display: inline-block;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ds-idle);
+  box-shadow: 0 0 0 2px var(--desk-card);
+}
+
+.dot.st-running,
+.dot.st-healthy {
+  background: var(--ds-ok);
+}
+
+.dot.st-paused,
+.dot.st-partial,
+.dot.st-restarting,
+.dot.st-unhealthy,
+.dot.st-starting {
+  background: var(--ds-warn);
+}
+
+.dot.st-dead,
+.dot.st-failed,
+.dot.st-removing {
+  background: var(--ds-bad);
+}
+
+.dot.st-running.pulse {
+  animation: ds-pulse calc(var(--desk-motion-slow) * 6) ease-in-out infinite;
+}
+
+@keyframes ds-pulse {
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--ds-ok) 25%, transparent);
+  }
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 var(--desk-space-2);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-full);
+  background: var(--ds-soft);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.pill.ok {
+  border-color: color-mix(in srgb, var(--ds-ok) 40%, transparent);
+  background: color-mix(in srgb, var(--ds-ok) 12%, transparent);
+  color: var(--desk-success-text);
+}
+
+.pill.warn {
+  border-color: color-mix(in srgb, var(--ds-warn) 40%, transparent);
+  background: color-mix(in srgb, var(--ds-warn) 12%, transparent);
+  color: var(--desk-warning-text);
+}
+
+.pill.bad {
+  border-color: color-mix(in srgb, var(--ds-bad) 40%, transparent);
+  background: color-mix(in srgb, var(--ds-bad) 12%, transparent);
+  color: var(--desk-danger-text);
+}
+
+.pill.accent {
+  border-color: var(--ds-select-line);
+  background: var(--ds-select);
+  color: var(--desk-primary-text);
+}
+
+.mono {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.muted {
+  color: var(--desk-text-muted);
+}
+
+.desk-btn.link {
+  min-height: 26px;
+  padding: 0 var(--desk-space-2);
+  color: var(--desk-primary-text);
+  font-size: var(--desk-text-xs);
+}
+
+.desk-btn.ai {
+  color: var(--ds-ai);
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid color-mix(in srgb, var(--desk-text) 20%, transparent);
+  border-top-color: var(--desk-primary);
+  border-radius: 50%;
+  animation: ds-spin calc(var(--desk-motion-slow) * 2.5) linear infinite;
+}
+
+@keyframes ds-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── empty pages ───────────────────────────────────────────────────────── */
+.empty-page {
+  align-items: center;
+  justify-content: center;
+  color: var(--desk-text-muted);
+  text-align: center;
+}
+
+.empty-page h2 {
+  margin: 0;
+  color: var(--desk-text);
+  font-size: var(--desk-text-lg);
+}
+
+.empty-page p {
+  margin: 0;
+}
+
+.empty-art {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--desk-radius-full);
+  background: var(--ds-soft);
+  color: var(--desk-primary-text);
+}

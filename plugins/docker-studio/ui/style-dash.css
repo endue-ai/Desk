@@ -1,0 +1,300 @@
+/* The dashboard: quick starts, tiles, the two charts and the cards' grid. Theme tokens only. */
+
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-2);
+}
+
+.desk-btn.quick {
+  min-height: 34px;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-card);
+}
+
+.desk-btn.quick .icon {
+  color: var(--desk-primary-text);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--desk-space-3);
+}
+
+.desk-btn.tile {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  justify-content: stretch;
+  justify-items: start;
+  align-content: start;
+  gap: 2px;
+  width: 100%;
+  min-height: 104px;
+  padding: var(--desk-space-4);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+  box-shadow: var(--desk-shadow-sm);
+  text-align: left;
+  white-space: normal;
+}
+
+.desk-btn.tile:hover:not(:disabled) {
+  border-color: var(--ds-select-line);
+  background: var(--ds-raised);
+}
+
+.tile-label {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 500;
+}
+
+.tile-value {
+  font-size: var(--desk-text-3xl);
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.tile-sub {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.tile-icon {
+  position: absolute;
+  top: var(--desk-space-4);
+  right: var(--desk-space-4);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--desk-radius-md);
+  background: var(--ds-select);
+  color: var(--desk-primary-text);
+}
+
+.charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--desk-space-3);
+}
+
+.chart-card .area-chart {
+  margin: var(--desk-space-3) var(--desk-space-4) var(--desk-space-4);
+}
+
+.figure {
+  margin-left: auto;
+  font-size: var(--desk-text-lg);
+  font-weight: 650;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--desk-space-3);
+  align-items: stretch;
+}
+
+.dash-grid .consumers {
+  grid-column: 1 / span 2;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: var(--desk-space-1) 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: 46px;
+  padding: 0 var(--desk-space-3) 0 var(--desk-space-4);
+}
+
+.row + .row {
+  border-top: 1px solid color-mix(in srgb, var(--ds-line) 60%, transparent);
+}
+
+.desk-btn.row-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 var(--desk-space-2);
+  text-align: left;
+}
+
+.row-main b,
+.row-main small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-main b {
+  font-weight: 600;
+}
+
+.row-main small {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 400;
+}
+
+.attention .row {
+  padding-right: var(--desk-space-2);
+}
+
+.attention .row-main small {
+  color: var(--desk-danger-text);
+}
+
+.consumer-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px 210px;
+  gap: var(--desk-space-4);
+  padding: var(--desk-space-2) var(--desk-space-4) 0 var(--desk-space-6);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.row.consumer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px 210px;
+  gap: var(--desk-space-4);
+}
+
+.consumer .use {
+  display: grid;
+  grid-template-columns: 72px minmax(40px, 1fr) 64px;
+  align-items: center;
+  gap: var(--desk-space-2);
+  font-size: var(--desk-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.consumer .use b {
+  font-weight: 500;
+  text-align: right;
+}
+
+.service-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.stack-count {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  white-space: nowrap;
+}
+
+.disk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+  padding: var(--desk-space-4);
+}
+
+.disk-total {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+.disk-total b {
+  color: var(--desk-text);
+  font-size: var(--desk-text-xl);
+  font-weight: 650;
+}
+
+.disk .desk-btn-primary {
+  align-self: flex-start;
+}
+
+.activity {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: var(--desk-space-2) 0;
+  list-style: none;
+}
+
+.act {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--desk-space-2);
+  padding: 6px var(--desk-space-4);
+  font-size: var(--desk-text-xs);
+}
+
+.act-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--desk-radius-full);
+  background: var(--ds-soft);
+  color: var(--desk-text-muted);
+}
+
+.act-start .act-icon,
+.act-unpause .act-icon,
+.act-pull .act-icon {
+  background: color-mix(in srgb, var(--ds-ok) 14%, transparent);
+  color: var(--desk-success-text);
+}
+
+.act-die .act-icon,
+.act-kill .act-icon,
+.act-oom .act-icon,
+.act-destroy .act-icon {
+  background: color-mix(in srgb, var(--ds-bad) 14%, transparent);
+  color: var(--desk-danger-text);
+}
+
+.act-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.act-text b {
+  font-weight: 600;
+}
+
+.act-text small {
+  color: var(--desk-text-muted);
+}
+
+.act time {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dash-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
