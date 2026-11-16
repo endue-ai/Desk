@@ -186,8 +186,8 @@ desk (ADR 0133).
 `not_found`.
 
 **audio.capture.start** opens the microphone under an `audio:capture` scope and returns a `captureId`.
-A caller that declares the scope without a grant is asked once, as `perm.request` asks; then the OS's own
-microphone permission. The caller hears `audio.frame` every 20 ms: mono LINEAR16 at `sampleRate` (16000
+A caller without a grant is asked once, as `perm.request` asks (the core does not read the manifest for
+it); then the OS's own microphone permission. The caller hears `audio.frame` every 20 ms: mono LINEAR16 at `sampleRate` (16000
 by default), base64, with its level. `audio.ended` comes once, last, with its reason: a stop, the person,
 the caller stopping, its last surface closing, a revoke, or the device. The runtime hears
 `audio.capturing`, every capture in force and its caller, on each change, so the chrome shows the
