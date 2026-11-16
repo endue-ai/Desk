@@ -201,8 +201,8 @@ pub fn boot(input: BootInput) -> Booted {
     // Subscribing also tells the core a router listens: without one it never sends a prompt and the
     // Prompter decides alone.
     let events = core.events().subscribe_addressed();
-    // The desk CLI reaches the core over a same-user socket as `cli`, and hears every core event too
-    // (ADR 0030).
+    // The desk CLI reaches the core over a same-user socket as `cli`, and hears the core events for
+    // it, for its own calls and for nobody in particular (ADR 0030, ADR 0262).
     let socket = socket::serve(&core);
     // MCP servers from init.yaml attach once the runtime is ready (ADR 0098).
     let mcp = McpServers::new(&core, home);
