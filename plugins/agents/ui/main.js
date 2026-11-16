@@ -73,6 +73,8 @@ defineUiPlugin({
           yes: "Allow and send",
         }),
     });
+    // The agent bar's New agent (and the palette) asks for the New agent page.
+    ctx.commands.on("endue.agents.new", () => on().create());
     // Signing in happens in the desk's account menu: look again when the person comes back.
     window.addEventListener("focus", () => {
       if (on().sides.endue.state === "signed-out") void on().refreshEndue();

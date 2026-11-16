@@ -4,7 +4,7 @@
 (`studio.*`, ADR 0122) and the agent programs the core finds on this computer (`agents.*`, ADR 0110)
 come out as one card with a source badge (endue or Local), a presence, a status line and the last
 activity, laid out after the endue.ai web. On the public SDK and bridge only; autoload, off until
-"Agents: Home" (`endue.agents.open`) opens it.
+"Agents: Home" (`endue.agents.open`) opens it. `endue.agents.new` shows New agent (the agent bar's).
 
 - **Home**: the card grid with source and status chips and search; the Activity tab, every
   conversation in Waiting · Active · Failed · Done with agent chips. Signed out, offline, a desk

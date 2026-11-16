@@ -50,7 +50,11 @@ describe("plugin.json", () => {
         id: "endue.agents.open",
         runs: { command: "desk.plugins.open", args: { plugin: "endue.agents" } },
       }),
+      expect.objectContaining({ id: "endue.agents.new", title: "Agents: New agent" }),
     ]);
+    // New agent is the plugin's own command, no alias: the desk sends it to the plugin's window.
+    expect(manifest.contributes?.commands?.[1]).toMatchObject({ id: "endue.agents.new" });
+    expect(manifest.contributes?.commands?.[1]?.runs).toBeUndefined();
     // A short description: every built-in plugin's text goes into one prompt (32000 characters).
     expect(manifest.description?.length ?? 0).toBeLessThan(200);
   });
