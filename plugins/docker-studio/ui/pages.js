@@ -2,6 +2,7 @@
 // the kind of the object opened.
 
 import { h, icon } from "./dom.js";
+import { createCompose } from "./view-compose.js";
 import { createContainerPage } from "./view-container.js";
 import { createContainers } from "./view-containers.js";
 import { createDashboard } from "./view-dashboard.js";
@@ -10,6 +11,7 @@ import { createImages } from "./view-images.js";
 import { createNetworkPage } from "./view-network.js";
 import { createNetworks } from "./view-networks.js";
 import { createVolumePage } from "./view-objects.js";
+import { createStackPage } from "./view-stack.js";
 import { createVolumes } from "./view-volumes.js";
 
 /** A section still to come: says so rather than showing nothing. */
@@ -32,14 +34,14 @@ export const PAGES = {
   images: createImages,
   volumes: createVolumes,
   networks: createNetworks,
-  compose: later("Compose"),
+  compose: createCompose,
   builds: later("Builds"),
   hub: later("Explore images"),
   contexts: later("Contexts"),
   settings: later("Settings"),
   container: createContainerPage,
   image: createImagePage,
-  project: later("Stack"),
+  project: createStackPage,
   volume: createVolumePage,
   network: createNetworkPage,
   missing: later("Not found"),
