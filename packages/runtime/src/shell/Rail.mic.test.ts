@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CaptureInForce } from "../bridge/types";
 import type { ShellCtx } from "./context";
 import { mountRail } from "./Rail";
-import { sampleState, Store } from "./state";
+import { Store, sampleState } from "./state";
 
 const runtime = {
   keymap: { onChange: () => () => {}, bindings: () => [] },

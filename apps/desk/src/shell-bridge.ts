@@ -24,6 +24,7 @@ import type {
 } from "@endue-ai/runtime";
 
 type Audio = Required<ShellBridge["audio"]>;
+
 import { studioShell } from "./shell-studio";
 
 type BrainReply = Awaited<ReturnType<ShellBridge["brain"]["say"]>>;

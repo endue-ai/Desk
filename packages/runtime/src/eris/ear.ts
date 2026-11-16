@@ -9,6 +9,7 @@ import type { Bands, ShellBridge } from "../bridge/types";
 import { captureEar, MAX_DB, MIN_DB } from "./ear-capture";
 import type { Ear, TalkLang } from "./talk";
 import { bandsFromSpectrum } from "./voice";
+
 /** After asking recognition to stop, its final words are awaited this long. */
 const FINAL_WORDS_MS = 900;
 const LOCALE: Record<TalkLang, string> = { ko: "ko-KR", en: "en-US" };
