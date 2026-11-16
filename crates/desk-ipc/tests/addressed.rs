@@ -6,7 +6,7 @@
 use std::fs;
 use std::io::{BufRead, BufReader, ErrorKind, Write};
 use std::os::unix::net::UnixStream;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
@@ -25,8 +25,10 @@ fn home() -> PathBuf {
     dir
 }
 
-fn serve(home: &PathBuf) -> (Arc<Core>, Listener, PathBuf) {
-    let core = Arc::new(Core::new(Roots { home: home.clone() }));
+fn serve(home: &Path) -> (Arc<Core>, Listener, PathBuf) {
+    let core = Arc::new(Core::new(Roots {
+        home: home.to_path_buf(),
+    }));
     for permission in desk_ipc::grants() {
         core.grant(CALLER, permission);
     }
