@@ -61,8 +61,10 @@ fn an_agent_without_a_picture_gets_the_one_drawn_from_its_slug() {
     assert_eq!(seed, "miso-7c9aa2bd");
 }
 
+/// Issue 352: a picture that cannot be read (not an image, too large, not there) is asked for once
+/// a session; the board's every load asks again, so a refusal is kept beside the pictures read.
 #[test]
-fn a_picture_that_cannot_be_read_is_left_out_and_asked_for_again() {
+fn a_refused_picture_is_asked_for_once_a_session() {
     let fake = FakePlatform::start();
     let core = desk_with_faces("studio-face-none", &fake);
     let id = fake.state().add_agent("Miso", "Mail");
@@ -73,14 +75,16 @@ fn a_picture_that_cannot_be_read_is_left_out_and_asked_for_again() {
     assert_eq!(none, json!({ "agentId": id }));
 
     serve(&fake, "/c/miso.png", "image/png", PNG);
+    let again = studio(&core, "studio.agents.picture", json!({ "agentId": id })).unwrap();
+    assert_eq!(again, json!({ "agentId": id }), "refused for this session");
+    assert_eq!(fake.seen_at("GET", "/c/miso.png").len(), 1, "asked once");
+
+    // Another address (endue AI named another picture) is asked for.
+    let other = format!("{}/c/miso-2.png", fake.url());
+    fake.state().agents[0].more = json!({ "avatar_url": other });
+    serve(&fake, "/c/miso-2.png", "image/png", PNG);
     let face = studio(&core, "studio.agents.picture", json!({ "agentId": id })).unwrap();
     assert_eq!(face["source"], "photo");
-    assert!(
-        face["picture"]
-            .as_str()
-            .unwrap()
-            .starts_with("data:image/png;base64,")
-    );
 }
 
 #[test]

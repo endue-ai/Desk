@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { StudioAgent, StudioAgentsFacetsResult } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { connectorState, MAX_CONNECTORS, studioBoard } from "./board-model";
@@ -169,6 +170,49 @@ describe("an endue agent's Studio board, without a DOM (ADR 0232)", () => {
       muted: true,
     });
     expect(board.hub.tools.value).toBe("—");
+  });
+});
+
+// Issue 352: connectors and skills read as the other facets do. The canonical vector, with both
+// facets refused, draws "—" and no count; while the read is on its way, "…".
+describe("an unread connectors or skills facet (issue 352)", () => {
+  const vector = JSON.parse(
+    readFileSync(
+      new URL(
+        "../../../../../specs/bridge/v0/vectors/valid/studio-agents-facets-result.json",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ).instance as StudioAgentsFacetsResult;
+
+  it("is drawn as not read, with no count, failed or still loading", () => {
+    const failed: StudioAgentsFacetsResult = {
+      ...vector,
+      connectors: [],
+      skills: [],
+      problems: [
+        { facet: "connectors", code: "offline", message: "down" },
+        { facet: "skills", code: "offline", message: "down" },
+      ],
+    };
+    for (const [read, mark] of [
+      [{ state: "ready" as const, value: failed }, "—"],
+      [{ state: "loading" as const }, "…"],
+    ] as const) {
+      const board = studioBoard("en", vector.agent ?? agent, read, []);
+      expect(board.connectors).toMatchObject({ read: false, count: 0 });
+      expect(board.hub.skills).toMatchObject({ read: false, value: mark, chips: [] });
+      expect(board.hub.skills.label).toBe("Skills");
+      expect(board.outbound.filter((r) => r.id.startsWith("connector-"))).toEqual([]);
+    }
+  });
+
+  it("still says none when the facet was read and holds none", () => {
+    const none = { ...vector, connectors: [], skills: [], problems: [] };
+    const board = studioBoard("en", vector.agent ?? agent, { state: "ready", value: none }, []);
+    expect(board.connectors).toMatchObject({ read: true, count: 0 });
+    expect(board.hub.skills).toMatchObject({ read: true, label: "Skills 0", chips: [] });
   });
 });
 

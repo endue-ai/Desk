@@ -120,3 +120,49 @@ fn wallpaper(w: WallpaperSource) -> Option<StudioWallpaper> {
         author: word(w.author, 200),
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::{Value, json};
+
+    use super::*;
+
+    fn wire<T: serde::de::DeserializeOwned>(value: Value) -> T {
+        serde_json::from_value(value).unwrap()
+    }
+
+    const LONG: &str = "x";
+
+    #[test]
+    fn a_channel_without_a_provider_says_unknown() {
+        let pairing = wire(json!({ "id": "cp_1", "provider": "  ", "status": "active" }));
+        let channel = channel(pairing).expect("the channel");
+        assert_eq!(channel.provider, "unknown");
+        let slack = wire(json!({ "id": "cp_2", "provider": "slack", "status": "active" }));
+        assert_eq!(channel(slack).unwrap().provider, "slack");
+    }
+
+    #[test]
+    fn rows_whose_ids_pass_128_characters_are_left_out() {
+        let long = LONG.repeat(129);
+        let fits = LONG.repeat(128);
+        let pairing = |id: &str| wire(json!({ "id": id, "provider": "slack", "status": "active" }));
+        assert!(channel(pairing(&long)).is_none());
+        assert_eq!(channel(pairing(&fits)).unwrap().id, fits);
+
+        let key = |id: &str| wire(json!({ "id": id, "name": "Shop", "agent_id": "ag_1" }));
+        let keys = api_keys(vec![key(&long), key(&fits)], "ag_1");
+        assert_eq!(keys.iter().map(|k| k.id.as_str()).collect::<Vec<_>>(), [fits.as_str()]);
+
+        let device = |id: &str| wire(json!({ "device_id": id, "kind": "computer", "alias": "Mac" }));
+        let space = |id: &str| {
+            wire(json!({ "id": id, "environment": "chrome", "name": "Research", "state": "ready" }))
+        };
+        let listed = devices(
+            vec![device(&long), device(&fits)],
+            vec![space(&long), space("w1")],
+        );
+        let ids: Vec<&str> = listed.iter().map(|d| d.id.as_str()).collect();
+        assert_eq!(ids, [fits.as_str(), "w1"]);
+    }
+}
