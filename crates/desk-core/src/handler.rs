@@ -1,5 +1,5 @@
 //! `Core::handle`: one bridge request in, one bridge response out. Every primitive call passes the
-//! permission engine first (`Core::check`); methods the core does not serve yet answer `unsupported`.
+//! permission engine first (`Core::check`).
 //! The integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) holds the item index
 //! as `Arc<dyn ItemIndex>`, the OS calendar as a `CalendarSource` and one connector host.
 
@@ -99,6 +99,8 @@ pub struct Core {
     pub(crate) connectors: Connectors,
     pub(crate) views: Mutex<ViewsSeen>,
     pub(crate) processes: Arc<Mutex<Processes>>,
+    /// The microphones and the captures callers started (ADR 0245).
+    pub(crate) audio: crate::core_audio::Audio,
     pub(crate) sockets: Arc<Mutex<Sockets>>,
     pub(crate) provided_views: Mutex<ProvidedViews>,
     pub(crate) surfaces: Mutex<Surfaces>,
@@ -163,6 +165,7 @@ impl Core {
             connectors: Connectors::default(),
             views: Mutex::new(ViewsSeen::default()),
             processes: Arc::new(Mutex::new(Processes::default())),
+            audio: Default::default(),
             sockets: Arc::new(Mutex::new(Sockets::default())),
             provided_views: Mutex::new(ProvidedViews::default()),
             surfaces: Mutex::new(Surfaces::default()),
@@ -279,12 +282,6 @@ pub(crate) fn denied(denied: Denied) -> BridgeError {
     }
 }
 
-pub(crate) fn unsupported(method: &str) -> Answer {
-    Err(error(
-        ErrorCode::Unsupported,
-        format!("{method} is not served by the core yet"),
-    ))
-}
 
 /// A primitive's error, whose code is already the bridge's.
 pub(crate) fn sys_error(err: desk_sys::Error) -> BridgeError {
