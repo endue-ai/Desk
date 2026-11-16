@@ -17,8 +17,18 @@ if (query.has("fresh"))
   for (const key of Object.keys(localStorage))
     if (key.startsWith(PREFIX)) localStorage.removeItem(key);
 
-if (query.has("seed"))
-  localStorage.setItem(`${PREFIX}store:collections`, JSON.stringify(["~/shop-api"]));
+if (query.has("seed")) {
+  // The example collection, its Local environment in use, and a password for it kept as a secret
+  // (the store key is environments.js's hash of the collection's path).
+  let h = 2166136261;
+  for (const ch of "~/shop-api") h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+  const put = (/** @type {string} */ key, /** @type {unknown} */ value) =>
+    localStorage.setItem(`${PREFIX}store:${key}`, JSON.stringify(value));
+  put("collections", ["~/shop-api"]);
+  put("active-envs", { "~/shop-api": "Local" });
+  put(`secrets.${h.toString(36)}`, { Local: { password: "correct-horse-battery" } });
+  put("globals", [{ key: "userAgent", value: "api-studio-preview" }]);
+}
 /** Folder pickers answer the preview's own folder unless a step sets another answer. */
 /** @type {any} */ (window).__pick ??= (/** @type {any} */ p) =>
   p?.kind === "folders" ? "~" : undefined;

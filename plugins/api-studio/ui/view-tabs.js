@@ -84,7 +84,11 @@ export function tabStrip(S) {
                 null,
                 icon(tab.ref?.path === tab.ref?.collection ? "collections" : "folder", 14),
               )
-            : methodBadge(tab.req.method, methodClass(tab.req.method)),
+            : tab.kind === "env"
+              ? tab.ref?.path === "globals"
+                ? h("span.as-tab-icon", null, icon("globe", 14))
+                : h(`span.as-env-dot.env-${tab.extra?.color ?? "gray"}`)
+              : methodBadge(tab.req.method, methodClass(tab.req.method)),
           h("span.as-tab-name", null, tab.req.name || "Untitled request"),
           tab.running ? h("span.as-spin.is-small") : null,
           h(

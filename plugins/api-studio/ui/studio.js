@@ -19,6 +19,8 @@ import { urlBar } from "./view-urlbar.js";
 import "./section-basic.js";
 import "./section-auth.js";
 import "./section-settings.js";
+import "./section-vars.js";
+import { installEnvironments } from "./features-env.js";
 
 /**
  * @typedef {import("./app.js").Tab} Tab
@@ -70,6 +72,8 @@ export function createStudio(ctx, doc) {
         : []),
     ],
     drawBody: (/** @type {Tab} */ tab) => drawBody(S, tab),
+    /** What draws a tab of another kind than a request. @type {Record<string, (S: any, tab: Tab) => { el: HTMLElement, pane?: any }>} */
+    panes: { group: groupPane },
     /** Environment scopes for a tab (the environments feature replaces this). @param {Tab} _tab @returns {Scope[]} */
     envScopes: (_tab) => [],
     /** The global variables' scope (the environments feature replaces this). @returns {Scope[]} */
@@ -123,17 +127,19 @@ export function createStudio(ctx, doc) {
   ];
 
   installCollections(S);
+  installEnvironments(S);
 
   // ── the window ──────────────────────────────────────────────────────────
   const side = sideBar(S);
   const tabs = tabStrip(S);
+  tabs.setRight(S.envPicker());
   const work = h("div.as-work");
   const toast = h("div.as-toast", { role: "status", "aria-live": "polite" });
   const main = h("main.as-main", null, tabs.el, work);
   const root = h("div.as-app", null, side.rail, side.panel, side.grip, main, toast);
   doc.body.append(root);
 
-  /** @type {{ url?: ReturnType<typeof urlBar>, req: ReturnType<typeof requestPane>, res?: ReturnType<typeof responsePane>, tab: Tab } | undefined} */
+  /** @type {{ url?: ReturnType<typeof urlBar>, req?: ReturnType<typeof requestPane>, res?: ReturnType<typeof responsePane>, tab: Tab } | undefined} */
   let view;
 
   const home = () =>
@@ -176,10 +182,11 @@ export function createStudio(ctx, doc) {
       work.replaceChildren(home());
       return;
     }
-    if (tab.kind === "group") {
-      const group = groupPane(S, tab);
-      work.replaceChildren(group.el);
-      view = { req: group.pane, tab };
+    const custom = tab.kind ? S.panes[tab.kind] : undefined;
+    if (custom) {
+      const pane = custom(S, tab);
+      work.replaceChildren(pane.el);
+      view = { req: pane.pane, tab };
       return;
     }
     const url = urlBar(S, tab);
@@ -234,9 +241,9 @@ export function createStudio(ctx, doc) {
   app.on("url", (d) => {
     if (!view) return;
     if (d?.from === "params") view.url?.syncUrl();
-    else view.req.syncUrl();
+    else view.req?.syncUrl();
   });
-  app.on("req", () => view?.req.badges());
+  app.on("req", () => view?.req?.badges());
   app.on("sending", (tab) => {
     if (view && tab === view.tab) {
       view.url?.drawSend();
@@ -307,6 +314,7 @@ export function createStudio(ctx, doc) {
         /* no store: the history lives for this session only */
       }
       await S.collections.start();
+      await S.envs.start();
       app.on("history", () => {
         if (!S.settings.history) return;
         void ctx.bridge

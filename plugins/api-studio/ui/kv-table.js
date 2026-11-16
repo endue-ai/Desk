@@ -12,6 +12,7 @@ import { varField } from "./var-field.js";
  * @typedef {{ rows: Row[], scopes: () => import("./vars.js").Scope[], onChange(rows: Row[]): void,
  *   keyLabel?: string, valueLabel?: string, keyHint?: string, valueHint?: string,
  *   files?: boolean, secret?: (row: Row) => boolean, notes?: boolean, title?: string, fixed?: boolean,
+ *   locks?: boolean,
  *   onPickFile?(): Promise<string | undefined> }} TableSpec
  */
 
@@ -56,6 +57,7 @@ export function kvTable(spec) {
     h("span.kv-cell", null, spec.keyLabel ?? "Name"),
     h("span.kv-cell", null, spec.valueLabel ?? "Value"),
     spec.notes === false ? null : h("span.kv-cell.kv-note-head", null, "Description"),
+    spec.locks ? h("span.kv-cell.kv-act") : null,
     h("span.kv-cell.kv-act"),
   );
 
@@ -101,7 +103,7 @@ export function kvTable(spec) {
       label: spec.valueLabel ?? "Value",
       placeholder: ghost ? (spec.valueHint ?? "Value") : fileMode ? "Path of a file" : "",
       scopes: spec.scopes,
-      secret: spec.secret?.(row),
+      secret: spec.secret?.(row) || (spec.locks && /** @type {any} */ (row).secret === true),
       className: "kv-value",
       onChange: (v) => {
         row.value = v;
@@ -157,6 +159,26 @@ export function kvTable(spec) {
       promote();
       emit();
     });
+    const lock = spec.locks
+      ? h(
+          `button.desk-icon-btn.kv-lock${/** @type {any} */ (row).secret ? ".is-on" : ""}`,
+          {
+            type: "button",
+            "aria-label": "Secret",
+            "aria-pressed": String(/** @type {any} */ (row).secret === true),
+            title:
+              "Secret: the value stays on this desk and is never written to the collection's files",
+            onClick: () => {
+              const r = /** @type {any} */ (row);
+              r.secret = !r.secret;
+              promote();
+              emit();
+              el.replaceWith(line(row, ghost));
+            },
+          },
+          icon(/** @type {any} */ (row).secret ? "lock" : "unlock", 14),
+        )
+      : null;
     const remove = button({
       label: "Remove",
       icon: "x",
@@ -173,9 +195,11 @@ export function kvTable(spec) {
       h("span.kv-cell", null, key.el),
       valueCell,
       spec.notes === false ? null : h("span.kv-cell.kv-note-cell", null, note),
+      spec.locks ? h("span.kv-cell.kv-act", null, lock) : null,
       h("span.kv-cell.kv-act", null, ghost || spec.fixed ? null : remove),
     ]);
     if (spec.notes === false) el.classList.add("no-notes");
+    if (spec.locks) el.classList.add("has-lock");
     return el;
   };
 
@@ -221,6 +245,7 @@ export function kvTable(spec) {
       h("div.kv-grid", null, head, body),
     );
     if (spec.notes === false) head.classList.add("no-notes");
+    if (spec.locks) head.classList.add("has-lock");
   };
   draw();
 
