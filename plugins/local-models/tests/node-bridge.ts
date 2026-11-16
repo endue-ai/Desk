@@ -151,6 +151,11 @@ export function nodeBridge(
       case "fs.trash":
         rmSync(inside(params.path), { recursive: true, force: true });
         return {};
+      case "dialog.save":
+        mkdirSync(join(root, "Downloads"), { recursive: true });
+        return { cancelled: false, path: `~/Downloads/${params.suggestedName}` };
+      case "shell.open":
+        return { opened: true };
       case "store.get":
         return { value: store.get(params.key) };
       case "store.set":

@@ -21,6 +21,7 @@
  *   toolCalls?: ToolCall[],
  *   toolCallId?: string,
  *   reasoningMs?: number,
+ *   edited?: boolean,
  *   createdAt: number,
  *   children: string[],
  *   pick: number,
@@ -179,7 +180,13 @@ export function entryOf(thread) {
     updatedAt: thread.updatedAt,
     model: thread.model,
     pinned: thread.pinned,
-    preview: last?.content.replace(/\s+/g, " ").slice(0, 120),
+    preview: last?.content
+      .replace(/<think>[\s\S]*?<\/think>/g, "")
+      .replace(/```[\s\S]*?(```|$)/g, " ")
+      .replace(/[*_`#>|]+/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 120),
   };
 }
 

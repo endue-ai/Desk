@@ -52,6 +52,7 @@ export function createStore(bridge, { delayMs = 400 } = {}) {
   };
 
   return {
+    bridge,
     readJson,
     writeJson,
     /** The thread list, newest first. @returns {Promise<ThreadEntry[]>} */

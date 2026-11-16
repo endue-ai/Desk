@@ -120,6 +120,20 @@ const THOUGHTS = {
  * @param {{ role: string, content: unknown, images?: unknown[] }[]} messages
  */
 export function answerFor(messages) {
+  const sys = messages.find((m) => m.role === "system");
+  if (typeof sys?.content === "string" && /title of at most/i.test(sys.content)) {
+    const asked = String(messages.at(-1)?.content ?? "").toLowerCase();
+    const title = /transformer/.test(asked)
+      ? "Transformers in Plain Words"
+      : /python|dedupe|duplicate/.test(asked)
+        ? "Deduplicating Lines in Python"
+        : /email|review/.test(asked)
+          ? "Friendly Review Request Email"
+          : /unix/.test(asked)
+            ? "The Unix Philosophy"
+            : "A Quick Question";
+    return { answer: `"${title}"`, thought: "A short title." };
+  }
   const last = [...messages].reverse().find((m) => m.role === "user");
   const text =
     typeof last?.content === "string" ? last.content : JSON.stringify(last?.content ?? "");
