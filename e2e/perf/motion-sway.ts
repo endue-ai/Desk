@@ -8,7 +8,16 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { decodePng } from "../support/png.ts";
-import { captured, type Line, type Rect, STRAY, sharpness, strayed, timing } from "./lib/motion.ts";
+import {
+  captured,
+  gripOf,
+  type Line,
+  type Rect,
+  STRAY,
+  sharpness,
+  strayed,
+  timing,
+} from "./lib/motion.ts";
 import { type SectionSample, sectionFit } from "./lib/motion-sections.ts";
 import { lastLaid, overlap, pictures, shakeOf, swayOf, unsettled } from "./lib/motion-sway.ts";
 import type { Limits, SwayFindings } from "./lib/motion-verdicts.ts";
@@ -70,10 +79,9 @@ async function grip(port: number, id: string): Promise<{ at: number[]; rect: Rec
   const w = (await windows(port)).windows.find((w) => w.id === id);
   if (!w) throw new Error(`no window ${id} on the desk`);
   const [x = 0, y = 0, width = 0, h = 0] = w.rect;
-  return {
-    at: [Math.round(x + width * 0.4), Math.round(y + 16)],
-    rect: { x, y, w: width, h },
-  };
+  const at = gripOf(w.rect, w.titleInsets);
+  if (!at) throw new Error(`${id} has no title bar to grip: ${w.rect}`);
+  return { at, rect: { x, y, w: width, h } };
 }
 
 /** Sway the app window while window `id` shakes, then let it settle, drag the window on by whole

@@ -112,8 +112,10 @@ impl CompositorWindow {
                 let panes: Vec<Value> = (w.panes.iter())
                     .map(|p| json!({ "id": p.id, "plugin": p.plugin, "rect": quad(p.rect) }))
                     .collect();
+                // Where its title bar drags: between its icon and its tools (the motion gate's grip).
+                let (start, end) = w.title_insets();
                 json!({ "id": w.id, "rect": quad(w.rect), "focused": w.focused, "title": w.title,
-                    "panes": panes })
+                    "titleInsets": [start, end], "panes": panes })
             })
             .collect();
         let page = self.page.lock().counts.clone();

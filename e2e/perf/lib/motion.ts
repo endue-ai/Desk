@@ -277,3 +277,24 @@ export function sharpness(img: Image, r: Rect, inset = STRAY.inset): number {
   }
   return n ? sum / n : 0;
 }
+
+/** How far down a window's title bar the shake grips it, in logical pixels. */
+const GRIP_DOWN = 16;
+
+/**
+ * Where the shake grips a window at `rect` ([x, y, w, h]): the middle of its title's free room,
+ * between the icon and the tools its page draws (`titleInsets` from the shell's stats, as the
+ * window manager drags there), `GRIP_DOWN` down. None when the window has no such room or the
+ * shell named none: a press elsewhere on the title bar reaches a tool, not the drag (#331).
+ */
+export function gripOf(
+  rect: readonly number[],
+  insets: readonly number[] | undefined,
+): [number, number] | undefined {
+  const [x = 0, y = 0, width = 0] = rect;
+  const [start, end] = insets ?? [];
+  if (start === undefined || end === undefined) return undefined;
+  const room = width - start - end;
+  if (room < 1) return undefined;
+  return [Math.round(x + start + room / 2), Math.round(y + GRIP_DOWN)];
+}
