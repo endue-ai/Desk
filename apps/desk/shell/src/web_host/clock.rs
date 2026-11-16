@@ -130,7 +130,9 @@ impl WebHost {
                 if !it.pacing.due(now, frame, painted(it.view)) {
                     continue;
                 }
-                match it.view.lock().begin_frame(now) {
+                // The view's lock goes before the call into CEF.
+                let sent = it.view.lock().begin_frame(now);
+                match sent {
                     Ok(()) => hosts.extend(it.browser.host()),
                     Err(until) => held = Some(held.map_or(until, |h: Instant| h.min(until))),
                 }
