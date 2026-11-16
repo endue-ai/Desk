@@ -60,4 +60,10 @@ had the compositor guess a page's focus modality, which the page knows and draws
 ## More Information
 
 Issue #320; the ring came with #56 (ADR 0150) and its corners with #250 (ADR 0209). The change only
-removes drawing; the motion gate (`just perf-motion`, ADR 0208) is to pass on it before it lands.
+removes drawing. The motion gate (`just perf-motion`, ADR 0208) was run on it six times and on `main`
+(115db4db) three times, on darwin-arm64 at a 1-minute load of 2 to 4 (2026-11-16): both fail and pass
+the same checks. Both fail the single shake (#331: 9 to 28 frames a second here, 17 to 28 on `main`)
+and at times the loop, where the Terminal's page stalls (3 runs of 6 here, 1 of 3 on `main`). The
+sway ran at 50.6 to 56.7 frames a second here, its slowest run the one whose shake was disturbed
+too, and 55.5 to 56.2 on `main`. Every check the ring touched passes in every run: the sway's own
+pixels, sizes, scene and sections, the windows settled, the pages painting, the sharpness at rest.
