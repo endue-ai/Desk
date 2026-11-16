@@ -38,7 +38,8 @@
     "maxForeignFrames": 0,
     "foreignBlocks": 4,
     "minRestSharpness": 0.95,
-    "maxUnfitFrames": 0
+    "maxUnfitFrames": 0,
+    "maxPaneShare": 0.015
   },
   "known": {
     "sway-smooth": "#249"
