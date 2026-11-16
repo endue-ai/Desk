@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "audio.capture.stop",
+  "instance": {
+    "id": 7,
+    "method": "audio.capture.stop",
+    "params": {
+      "captureId": "c1",
+      "scope": { "permission": "audio:capture" }
+    }
+  }
+}

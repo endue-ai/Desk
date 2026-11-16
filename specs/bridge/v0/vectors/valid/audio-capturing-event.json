@@ -1,0 +1,10 @@
+{
+  "target": "BridgeEvent",
+  "description": "the runtime hears which captures are in force",
+  "instance": {
+    "event": "audio.capturing",
+    "data": {
+      "captures": [{ "captureId": "c1", "caller": "com.example.notes" }]
+    }
+  }
+}
