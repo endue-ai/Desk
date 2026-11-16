@@ -1,0 +1,191 @@
+/* What floats over the window: dialogs and context menus. */
+
+/* ── dialogs ────────────────────────────────────────────────────────────── */
+.layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.layer > * {
+  pointer-events: auto;
+}
+
+.dialog-scrim {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.desk-dialog.dialog {
+  width: min(460px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+}
+
+.dialog-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+}
+
+.dialog-head h2 {
+  margin: 0;
+  font-size: var(--desk-text-lg);
+}
+
+.dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-primary-soft);
+  color: var(--desk-primary-text);
+}
+
+.dialog-icon.is-danger {
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+}
+
+.dialog-body {
+  color: var(--desk-text-muted);
+  line-height: 1.5;
+}
+
+.dialog-body code,
+.is-mono {
+  font-family: var(--desk-font-mono);
+}
+
+.dialog-body code {
+  color: var(--desk-text);
+  font-size: var(--desk-text-xs);
+  padding: 1px 5px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--gs-softer);
+}
+
+.dialog-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+}
+
+.dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.dialog-field .desk-field {
+  width: 100%;
+  font-weight: 400;
+}
+
+.dialog-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--desk-space-2);
+  font-size: var(--desk-text-sm);
+}
+
+.dialog-check small {
+  display: block;
+}
+
+.dialog-error {
+  margin: 0;
+  color: var(--desk-danger-text);
+  font-size: var(--desk-text-xs);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--desk-space-2);
+}
+
+/* ── context menus ──────────────────────────────────────────────────────── */
+.desk-menu.ctx-menu {
+  position: fixed;
+  min-width: 230px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.desk-row.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--desk-space-2);
+  border: 0;
+  background: none;
+  color: var(--desk-text);
+  font: inherit;
+  text-align: left;
+  border-radius: var(--desk-radius-sm);
+  cursor: default;
+}
+
+.desk-row.ctx-item:hover,
+.desk-row.ctx-item:focus-visible {
+  background: var(--desk-hover);
+  outline: none;
+}
+
+.desk-row.ctx-item[disabled] {
+  opacity: 0.45;
+}
+
+.desk-row.ctx-item.is-danger {
+  color: var(--desk-danger-text);
+}
+
+.ctx-blank {
+  width: 15px;
+}
+
+.ctx-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ctx-hint {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-family: var(--desk-font-mono);
+}
+
+.ctx-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--gs-line);
+}
+
+.ctx-parent {
+  position: relative;
+}
+
+.desk-menu.ctx-sub {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: -4px;
+}
+
+.ctx-parent:hover > .ctx-sub,
+.ctx-parent:focus-within > .ctx-sub {
+  display: flex;
+}

@@ -1,27 +1,30 @@
 // The window put together: the controller (app.js), the views, and what their buttons, menus and
-// keys do. Operations that change the repository go through app.act, so each one is said on the
-// status bar and the window reads the repository again after it.
+// keys do (actions.js). Operations that change the repository go through app.act, so each one is
+// said on the status bar and the window reads the repository again after it.
 
+import { createActions } from "./actions.js";
 import { createApp, WIP } from "./app.js";
 import { fill } from "./dom.js";
-import { createOps } from "./ops.js";
 import { createStatusbar, createToolbar, welcome } from "./view-chrome.js";
 import { createDetail } from "./view-detail.js";
 import { createGraphView } from "./view-graph.js";
 import { createSidebar } from "./view-sidebar.js";
+import { createWip } from "./view-wip.js";
 
 /**
- * @param {Pick<import("@endue-ai/plugin-sdk").PluginContext, "bridge" | "state"> & Partial<Pick<import("@endue-ai/plugin-sdk").PluginContext, "commands">>} ctx
+ * @typedef {Pick<import("@endue-ai/plugin-sdk").PluginContext, "bridge" | "state"> &
+ *   Partial<Pick<import("@endue-ai/plugin-sdk").PluginContext, "commands">>} Ctx
+ * @param {Ctx} ctx
  * @param {Document} doc
  */
 export function createStudio(ctx, doc) {
   const app = createApp(ctx);
   const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const shell = $("studio");
-  const center = $("center");
-  const graphHost = $("graph-host");
-  const panel = $("panel");
-  const ops = () => createOps(app.git, /** @type {string} */ (app.get().repo));
+  const layer = $("layer");
+  const detailPage = $("detail");
+  const wipPage = $("wip");
+  const actions = createActions(app, layer);
 
   const toolbar = createToolbar(app, $("toolbar"), {
     onTool: (action) => void tool(action),
@@ -29,45 +32,67 @@ export function createStudio(ctx, doc) {
     onSearch: (query) => app.set({ query }),
   });
   createStatusbar(app, $("statusbar"));
-  const sidebar = createSidebar(app, $("sidebar"), {
+  createSidebar(app, $("sidebar"), {
     onReveal: (sha) => {
       void app.select(sha);
       graph.reveal(sha);
     },
-    onCheckout: (ref) =>
-      void app.act(`Switched to ${ref.name}`, () =>
-        ops().checkout({
-          ref: ref.name,
-          remote: ref.kind === "remote",
-          detach: ref.kind === "tag",
-        }),
-      ),
+    onCheckout: (ref) => void actions.checkout(ref),
+    onStash: (stash) => {
+      void app.select(stash.parents[0] ?? null);
+      if (stash.parents[0]) graph.reveal(stash.parents[0]);
+    },
   });
-  const graph = createGraphView(app, graphHost, {});
-  const detail = createDetail(app, panel, {
+  const graph = createGraphView(app, $("graph-host"), {});
+  const detail = createDetail(app, detailPage, {
     onCopy: (text) => {
       void navigator.clipboard?.writeText(text).catch(() => {});
       app.say("Copied");
     },
+    onFile: () => app.say("Diffs come next"),
+    onAction: (action) => app.say(`${action}: coming soon`),
+  });
+  createWip(app, wipPage, {
+    onStage: (paths) => void actions.stage(paths),
+    onUnstage: (paths) => void actions.unstage(paths),
+    onDiscard: (files) => void actions.discard(files),
+    onFile: () => app.say("Diffs come next"),
+    onResolve: () => app.say("The conflict tool comes next"),
+    onCommit: (draft) => actions.commit(draft),
+    onAmend: (on) => actions.amendMessage(on),
+    onAi: async () => {
+      app.say("AI comes next");
+      return null;
+    },
+    onStash: () => void actions.stash(),
+    onMenu: () => {},
   });
 
   /** @param {import("./view-chrome.js").ToolAction} action */
   async function tool(action) {
-    if (action === "refresh") return app.refresh();
-    if (action === "sidebar") {
-      app.set({ sidebar: !app.get().sidebar });
-      app.keep();
-      return;
+    switch (action) {
+      case "refresh":
+        return app.refresh();
+      case "sidebar":
+        app.set({ sidebar: !app.get().sidebar });
+        return app.keep();
+      case "repo":
+        return app.set({ repo: null, snapshot: null });
+      case "search":
+        return toolbar.focusSearch();
+      case "fetch":
+        return actions.fetch();
+      case "pull":
+        return actions.pull();
+      case "push":
+        return actions.push();
+      case "stash":
+        return actions.stash();
+      case "pop":
+        return actions.pop();
+      default:
+        app.say(`${action}: coming soon`);
     }
-    if (action === "repo") {
-      app.set({ repo: null, snapshot: null });
-      return;
-    }
-    if (action === "search") return toolbar.focusSearch();
-    if (action === "fetch") return app.act("Fetched every remote", () => ops().fetch());
-    if (action === "pull") return app.act("Pulled", () => ops().pull());
-    if (action === "push") return app.act("Pushed", () => ops().push());
-    app.say(`${action}: not available yet`);
   }
 
   async function openRepo(/** @type {string} */ path) {
@@ -84,6 +109,11 @@ export function createStudio(ctx, doc) {
         welcome(app, (path) => void openRepo(path)),
       );
   }
+  function panel() {
+    const wip = app.get().selected === WIP;
+    wipPage.hidden = !wip;
+    detailPage.hidden = wip;
+  }
   app.subscribe((state, previous) => {
     if (
       state.repo !== previous.repo ||
@@ -91,13 +121,17 @@ export function createStudio(ctx, doc) {
       state.error !== previous.error
     )
       layout();
-    if (state.selected !== previous.selected && state.selected !== WIP) detail.draw();
+    if (state.selected !== previous.selected) {
+      panel();
+      if (state.selected !== WIP) detail.draw();
+    }
   });
   layout();
+  panel();
 
   doc.addEventListener("keydown", (event) => {
     const target = /** @type {HTMLElement} */ (event.target);
-    const typing = target.closest("input, textarea, [contenteditable]");
+    const typing = target.closest("input, textarea, select, [contenteditable]");
     if (event.key === "/" && !typing) {
       event.preventDefault();
       toolbar.focusSearch();
@@ -117,9 +151,7 @@ export function createStudio(ctx, doc) {
     },
   );
 
-  void center;
-  void sidebar;
   const last = app.restore();
   if (last) void openRepo(last);
-  return { app, graph };
+  return { app, graph, actions };
 }

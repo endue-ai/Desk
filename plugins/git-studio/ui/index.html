@@ -11,6 +11,9 @@
     <link rel="stylesheet" href="./style.css" />
     <link rel="stylesheet" href="./style-graph.css" />
     <link rel="stylesheet" href="./style-panel.css" />
+    <link rel="stylesheet" href="./style-wip.css" />
+    <link rel="stylesheet" href="./style-side.css" />
+    <link rel="stylesheet" href="./style-overlay.css" />
   </head>
   <body>
     <div id="studio" class="studio no-repo">
@@ -22,7 +25,10 @@
           <div id="graph-host" class="graph-host"></div>
           <div id="view-host" class="view-host" hidden></div>
         </main>
-        <aside id="panel" class="panel" aria-label="Details"></aside>
+        <aside id="panel" class="panel" aria-label="Details">
+          <div id="detail" class="panel-page"></div>
+          <div id="wip" class="panel-page" hidden></div>
+        </aside>
       </div>
       <div id="welcome" class="welcome-host"></div>
       <footer id="statusbar" class="statusbar" role="status"></footer>
