@@ -404,6 +404,10 @@
         "fromScope": {
           "description": "Covers from, when the grant that covers it is not the one that covers to.",
           "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsWritePermission"
+        },
+        "group": {
+          "description": "Joins this change to the caller's others with the same group: cmd.undo and cmd.redo take them as one step.",
+          "$ref": "cmd.schema.json#/$defs/UndoGroup"
         }
       },
       "required": ["from", "to", "scope"],
@@ -451,6 +455,10 @@
         "fromScope": {
           "description": "Covers from: the copy reads it.",
           "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsReadPermission"
+        },
+        "group": {
+          "description": "Joins this change to the caller's others with the same group: cmd.undo and cmd.redo take them as one step.",
+          "$ref": "cmd.schema.json#/$defs/UndoGroup"
         }
       },
       "required": ["from", "to", "scope", "fromScope"],

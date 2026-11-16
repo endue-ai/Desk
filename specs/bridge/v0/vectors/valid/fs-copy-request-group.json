@@ -1,0 +1,21 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.copy joins a group: the copies of one drop are undone together",
+  "instance": {
+    "id": 62,
+    "method": "fs.copy",
+    "params": {
+      "from": "~/Pictures/Holiday",
+      "to": "~/Documents/Holiday",
+      "scope": {
+        "permission": "fs:write",
+        "paths": ["~/Documents/**"]
+      },
+      "fromScope": {
+        "permission": "fs:read",
+        "paths": ["~/Pictures/**"]
+      },
+      "group": "endue.explorer/drop-3"
+    }
+  }
+}

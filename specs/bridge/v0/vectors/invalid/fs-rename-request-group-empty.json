@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.rename's group is a name, never empty",
+  "instance": {
+    "id": 63,
+    "method": "fs.rename",
+    "params": {
+      "from": "~/Downloads/report.pdf",
+      "to": "~/Documents/report.pdf",
+      "scope": {
+        "permission": "fs:write",
+        "paths": ["~/**"]
+      },
+      "group": ""
+    }
+  }
+}

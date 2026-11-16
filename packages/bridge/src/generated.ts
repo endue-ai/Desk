@@ -3715,6 +3715,9 @@ export interface CmdAnsweredData {
   error?: CommandFailure;
 }
 
+/** A name the caller chooses for several file changes that are one step for the person (a paste, a drop of several entries). */
+export type UndoGroup = string;
+
 /** One invocation on the desk's undo stack: what ran, with what, what it answered, who ran it and when, and the command that undoes it. */
 export interface UndoEntry {
   /** The command that ran; fs.write or fs.restore for a write the core kept a version of. */
@@ -3728,6 +3731,8 @@ export interface UndoEntry {
   at: string;
   /** The command that undoes it: its `undo`, or fs.restore for a write. */
   inverse: CommandId;
+  /** The group the caller gave a rename or a copy: entries next to each other on the stack with the same caller and group are undone and redone as one step. */
+  group?: UndoGroup;
 }
 
 /** Undo the newest entry of the desk's undo stack, whoever pushed it: run its inverse with { args, result }. */
@@ -4766,6 +4771,8 @@ export interface FsRenameParams {
   scope: FsWritePermission;
   /** Covers from, when the grant that covers it is not the one that covers to. */
   fromScope?: FsWritePermission;
+  /** Joins this change to the caller's others with the same group: cmd.undo and cmd.redo take them as one step. */
+  group?: UndoGroup;
 }
 
 /** Result of fs.rename. */
@@ -4791,6 +4798,8 @@ export interface FsCopyParams {
   scope: FsWritePermission;
   /** Covers from: the copy reads it. */
   fromScope: FsReadPermission;
+  /** Joins this change to the caller's others with the same group: cmd.undo and cmd.redo take them as one step. */
+  group?: UndoGroup;
 }
 
 /** Result of fs.copy. */
