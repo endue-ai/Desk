@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/studio.schema.json",
   "title": "Desk bridge v0: studio",
-  "description": "The person's endue AI agents, created and managed through endue AI's platform API (/api/v1, specs/platform/v0) with the desk's endue ID token, as endue.ai's Home and Studio do (ADR 0122). studio.agents.* lists, reads, creates, changes, turns off and on and deletes agents; studio.agents.facets reads what Studio shows of one; studio.catalog.* finds a published agent and starts one from it; studio.conversations.list lists conversations for the Home board. Every call needs studio:manage. The token never crosses the bridge. Signed out is signed_out, endue AI out of reach (or silent for 15 s) is offline, endue AI refusing the person is forbidden, an agent that is not there (or was deleted) is not_found, and a value endue AI refuses is invalid_params.",
+  "description": "The person's endue AI agents, created and managed through endue AI's platform API (/api/v1, specs/platform/v0) with the desk's endue ID token, as endue.ai's Home and Studio do (ADR 0122). studio.agents.* lists, reads, creates, changes, turns off and on and deletes agents; studio.agents.facets reads what Studio shows of one and studio.agents.picture its face; studio.catalog.* finds a published agent and starts one from it; studio.conversations.list lists conversations for the Home board. Every call needs studio:manage. The token never crosses the bridge. Signed out is signed_out, endue AI out of reach (or silent for 15 s) is offline, endue AI refusing the person is forbidden, an agent that is not there (or was deleted) is not_found, and a value endue AI refuses is invalid_params.",
   "$defs": {
     "StudioAgentId": {
       "description": "An agent's id on endue AI (ag_ followed by a ULID today).",
@@ -57,7 +57,7 @@
       "additionalProperties": false
     },
     "StudioAgent": {
-      "description": "One of the person's agents as endue AI lists it. slug is the handle endue AI derived from the first name; it never changes. avatarUrl is absent when none was set: draw one from the slug. The list carries no description; studio.agents.facets has it.",
+      "description": "One of the person's agents as endue AI lists it. slug is the handle endue AI derived from the first name; it never changes. avatarUrl is where endue AI keeps the picture the person set, absent when none was set; a page shows the agent's face from studio.agents.picture, never from this address. description, liveEnabled and mcpEnabled are absent when endue AI does not say.",
       "type": "object",
       "properties": {
         "id": {
@@ -82,6 +82,19 @@
         "personalColor": {
           "type": "string",
           "maxLength": 32
+        },
+        "description": {
+          "description": "The profile's one-line introduction.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "liveEnabled": {
+          "description": "Whether the agent is public on endue.live.",
+          "type": "boolean"
+        },
+        "mcpEnabled": {
+          "description": "Whether other agents and apps may run the agent over MCP.",
+          "type": "boolean"
         },
         "region": {
           "description": "ISO 3166-2, where it was created (KR-11).",
@@ -197,7 +210,7 @@
       "additionalProperties": false
     },
     "StudioAgentParams": {
-      "description": "Parameters of a call about one agent: studio.agents.get, studio.agents.remove and studio.agents.facets.",
+      "description": "Parameters of a call about one agent: studio.agents.get, studio.agents.remove, studio.agents.facets and studio.agents.picture.",
       "type": "object",
       "properties": {
         "agentId": {
@@ -799,10 +812,189 @@
       "required": ["key", "enabled"],
       "additionalProperties": false
     },
+    "StudioChannelStatus": {
+      "description": "How a channel stands: pending (the bot's invitation waits to be approved), active (the agent answers there), inactive (turned off) or revoked.",
+      "type": "string",
+      "enum": ["pending", "active", "inactive", "revoked"]
+    },
+    "StudioChannel": {
+      "description": "A channel the agent is reached through: the pairing's id, the provider (discord, slack, kakao, navertalk, whatsapp), the name endue AI shows for it, how it stands and when it was last used. No secret and no webhook address crosses the bridge.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "status": {
+          "$ref": "#/$defs/StudioChannelStatus"
+        },
+        "lastActiveAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "provider", "status"],
+      "additionalProperties": false
+    },
+    "StudioApiKey": {
+      "description": "An API key the person made for this agent alone: its name, when it stops working (absent: never), when it was last used and when it was made. Keys for all of the person's agents are not listed, and no key's secret or prefix crosses the bridge.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastUsedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name"],
+      "additionalProperties": false
+    },
+    "StudioDeviceKind": {
+      "description": "What a device is, as Studio names it: a computer (Linux, macOS, Windows, or a Linux workspace), Chrome, or Android.",
+      "type": "string",
+      "enum": ["computer", "chrome", "android"]
+    },
+    "StudioDevice": {
+      "description": "A device the agent works on: one of the person's endue OS devices attached to it, by the name the agent calls it, or a workspace endue AI runs for the agent alone (workspace).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "kind": {
+          "$ref": "#/$defs/StudioDeviceKind"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "workspace": {
+          "type": "boolean"
+        }
+      },
+      "required": ["id", "kind", "name", "workspace"],
+      "additionalProperties": false
+    },
+    "StudioMemory": {
+      "description": "What the agent remembers, counted over its newest 200 memories, archived ones left out: how many, how many of them are rules (procedural), and whether it has more than were counted. No memory's content crosses the bridge.",
+      "type": "object",
+      "properties": {
+        "memories": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rules": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "more": {
+          "type": "boolean"
+        }
+      },
+      "required": ["memories", "rules", "more"],
+      "additionalProperties": false
+    },
+    "StudioOutputs": {
+      "description": "What the agent made (its artifacts on endue AI): how many, and when the newest last changed (absent while there are none).",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "latestAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["count"],
+      "additionalProperties": false
+    },
+    "StudioWallpaperSource": {
+      "description": "Where a wallpaper comes from: one endue.ai ships (builtin, its id the engine: glyphs, constellation, flow, ripple, nebula, image), one the person made (mine), or one from the gallery.",
+      "type": "string",
+      "enum": ["builtin", "mine", "gallery"]
+    },
+    "StudioWallpaper": {
+      "description": "The wallpaper behind the agent's chat: where it comes from, its id, and its name and author when endue AI says. The desk draws no wallpaper; it names it.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/StudioWallpaperSource"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": ["source", "id"],
+      "additionalProperties": false
+    },
+    "StudioTheme": {
+      "description": "How the agent's chat looks: its wallpaper, absent while none is chosen.",
+      "type": "object",
+      "properties": {
+        "wallpaper": {
+          "$ref": "#/$defs/StudioWallpaper"
+        }
+      },
+      "additionalProperties": false
+    },
     "StudioFacet": {
       "description": "A part of what Studio shows of an agent.",
       "type": "string",
-      "enum": ["identity", "settings", "prompt", "revisions", "skills", "connectors", "traits"]
+      "enum": [
+        "identity",
+        "settings",
+        "prompt",
+        "revisions",
+        "skills",
+        "connectors",
+        "traits",
+        "channels",
+        "apiKeys",
+        "devices",
+        "memory",
+        "outputs",
+        "theme"
+      ]
     },
     "StudioFacetProblem": {
       "description": "A facet endue AI did not answer for: the bridge error code it would have been, and a sentence for people.",
@@ -823,7 +1015,7 @@
       "additionalProperties": false
     },
     "StudioAgentsFacetsRequest": {
-      "description": "Everything Studio shows of one agent, read at once: identity, settings, the prompt in force and its revisions (the newest 50), skills, connectors and traits. The agent itself must answer; a facet that does not is left out and named in problems.",
+      "description": "Everything Studio shows of one agent, read at once: identity, settings, the prompt in force and its revisions (the newest 50), skills, connectors, traits, the channels it is reached through, the API keys made for it, the devices it works on, what it remembers and what it made (counted), and its chat's wallpaper. The agent itself must answer; a facet that does not is left out and named in problems.",
       "type": "object",
       "properties": {
         "id": {
@@ -840,7 +1032,7 @@
       "additionalProperties": false
     },
     "StudioAgentsFacetsResult": {
-      "description": "Result of studio.agents.facets. prompt is absent when the agent has none yet; a facet in problems is absent (identity, settings) or empty (the lists).",
+      "description": "Result of studio.agents.facets. prompt is absent when the agent has none yet; a facet in problems is absent (identity, settings, memory, outputs, theme) or empty (the lists).",
       "type": "object",
       "properties": {
         "agent": {
@@ -879,6 +1071,33 @@
             "$ref": "#/$defs/StudioTrait"
           }
         },
+        "channels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioChannel"
+          }
+        },
+        "apiKeys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioApiKey"
+          }
+        },
+        "devices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioDevice"
+          }
+        },
+        "memory": {
+          "$ref": "#/$defs/StudioMemory"
+        },
+        "outputs": {
+          "$ref": "#/$defs/StudioOutputs"
+        },
+        "theme": {
+          "$ref": "#/$defs/StudioTheme"
+        },
         "problems": {
           "type": "array",
           "items": {
@@ -886,7 +1105,59 @@
           }
         }
       },
-      "required": ["agent", "revisions", "skills", "connectors", "traits", "problems"],
+      "required": [
+        "agent",
+        "revisions",
+        "skills",
+        "connectors",
+        "traits",
+        "channels",
+        "apiKeys",
+        "devices",
+        "problems"
+      ],
+      "additionalProperties": false
+    },
+    "StudioPictureSource": {
+      "description": "Which picture an agent's face is, as endue.ai chooses it: its character while one is on (character), else the picture the person set (photo), else the one endue.ai draws from the slug (drawn).",
+      "type": "string",
+      "enum": ["character", "photo", "drawn"]
+    },
+    "StudioAgentsPictureRequest": {
+      "description": "An agent's face as endue.ai shows it, for a page that loads no remote image: the core reads the picture and answers it as a data: URL. It reads only https addresses, sends no token with the read, keeps PNG, JPEG, GIF, WebP and SVG of at most 512 KB, and remembers what it read until the picture's address changes. Another person's agent is forbidden; one that is not there is not_found.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.agents.picture"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioAgentParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioAgentsPictureResult": {
+      "description": "Result of studio.agents.picture. picture and source are absent when the picture could not be read, was too large or was no image: draw the agent's initial.",
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "$ref": "#/$defs/StudioAgentId"
+        },
+        "picture": {
+          "description": "The picture as a data: URL (image/png, image/jpeg, image/gif, image/webp or image/svg+xml, base64). Show it only as an image.",
+          "type": "string",
+          "pattern": "^data:image/(png|jpeg|gif|webp|svg\\+xml);base64,[A-Za-z0-9+/=]+$",
+          "maxLength": 700000
+        },
+        "source": {
+          "$ref": "#/$defs/StudioPictureSource"
+        }
+      },
+      "required": ["agentId"],
       "additionalProperties": false
     },
     "StudioAgentsPromptUpdateRequest": {

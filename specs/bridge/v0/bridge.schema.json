@@ -152,6 +152,7 @@
         { "$ref": "studio.schema.json#/$defs/StudioAgentsSetStatusRequest" },
         { "$ref": "studio.schema.json#/$defs/StudioAgentsRemoveRequest" },
         { "$ref": "studio.schema.json#/$defs/StudioAgentsFacetsRequest" },
+        { "$ref": "studio.schema.json#/$defs/StudioAgentsPictureRequest" },
         { "$ref": "studio.schema.json#/$defs/StudioAgentsPromptUpdateRequest" },
         { "$ref": "studio.schema.json#/$defs/StudioCatalogListRequest" },
         { "$ref": "studio.schema.json#/$defs/StudioCatalogRecommendRequest" },

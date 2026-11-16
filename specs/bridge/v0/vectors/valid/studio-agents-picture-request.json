@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "an agent's face, read by the core for a page that loads no remote image",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.picture",
+    "params": {
+      "agentId": "ag_01JC0Q4MR00000000000000001",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

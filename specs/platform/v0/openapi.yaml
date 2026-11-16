@@ -33,8 +33,13 @@ tags:
     description: >-
       Under /api/v1/spaces, read only. The list and one space answer the bare body; the overview and
       the rooms answer an envelope.
+  - name: memories
+    description: ai-agent-service, under /api/v1/ai. Every answer is a success envelope.
+  - name: artifacts
+    description: artifact-service. A list answers its rows in data, with meta.pagination.
   - name: users
-    description: user-service. The account and its preferences answer the bare body.
+    description: >-
+      user-service. The account, its preferences and the person's API keys answer the bare body.
   - name: notifications
     description: notification-service. Every answer is an envelope.
 paths:
@@ -305,6 +310,137 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AgentTraitsResponse" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/channel-pairings:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: listChannelPairings
+      tags: [agents]
+      summary: The channels the agent is reached through
+      description: >-
+        The agent's channel pairings (Discord, Slack, KakaoTalk, NAVER TalkTalk, WhatsApp), each with
+        how it stands. A list never carries a secret or a webhook address.
+      responses:
+        "200":
+          description: The pairings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChannelPairingList" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/os-devices:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: listAgentOsDevices
+      tags: [agents]
+      summary: The endue OS devices attached to the agent
+      description: >-
+        The person's endue OS devices attached to the agent, by the name the agent calls each one.
+        A workspace's own device is listed with its workspace_id; none attached is an empty list.
+      responses:
+        "200":
+          description: The devices.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentOsDeviceList" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/workspaces:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: listAgentWorkspaces
+      tags: [agents]
+      summary: The workspaces endue AI runs for the agent alone
+      description: >-
+        The workspaces endue AI runs for the agent alone (a Linux computer or Chrome). While endue AI
+        has workspaces turned off, every workspace path is 404 FEATURE_DISABLED, which Desk reads as
+        none.
+      responses:
+        "200":
+          description: The workspaces.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentWorkspaceList" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/theme:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: getAgentTheme
+      tags: [agents]
+      summary: How the agent's chat looks, its wallpaper included
+      description: >-
+        How the agent's chat looks: its accent and its wallpaper, null while none is chosen. The
+        owner alone may read it. endue AI answers the state bare or in a data envelope.
+      responses:
+        "200":
+          description: The theme.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentThemeAnswer" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/ai/agents/{agent_id}/memories:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: listAgentMemories
+      tags: [memories]
+      summary: One page of the agent's memories, the newest first
+      description: >-
+        One page of the agent's memories, the newest first. Desk asks for the newest 200 and reads
+        only each one's category and whether it is archived, to count them; no memory's value is
+        read.
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200 }
+      responses:
+        "200":
+          description: The page, in a success envelope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemoryListEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/me/api-keys:
+    get:
+      operationId: listApiKeys
+      tags: [users]
+      summary: The person's API keys, for calling their agents from outside
+      description: >-
+        The API keys endue AI issued to the person for calling their agents from their own
+        services: keys for one agent (agent_id) and keys for all of them (agent_id null). A list
+        never carries a secret; Desk reads neither the prefix nor the scopes.
+      responses:
+        "200":
+          description: The keys.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiKeyList" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/artifacts:
+    get:
+      operationId: listArtifacts
+      tags: [artifacts]
+      summary: One page of what the person's agents made, the most recently changed first
+      description: >-
+        One page of the artifacts the person owns, the most recently changed first; one agent's when
+        agent_id is given. Desk asks for one, to read how many there are and when the newest changed.
+      parameters:
+        - name: agent_id
+          in: query
+          schema: { type: string }
+        - $ref: "#/components/parameters/Page"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: The page, in an envelope with its pagination.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ArtifactListEnvelope" }
         default: { $ref: "#/components/responses/Error" }
   /api/v1/agent-catalog/agents:
     get:
@@ -643,7 +779,10 @@ components:
         version: { type: integer, minimum: 1 }
       required: [catalog_agent_id, version]
     AgentGetResponse:
-      description: One agent. avatar_url is absent when none is set.
+      description: >-
+        One agent. avatar_url is the picture the person set and character_image_url the still of
+        the character that is on; each is absent when there is none. description, live_enabled and
+        mcp_enabled are absent on a platform that does not say them yet.
       type: object
       properties:
         id: { type: string, minLength: 1 }
@@ -653,6 +792,10 @@ components:
         region: { type: [string, "null"] }
         personal_color: { type: [string, "null"] }
         avatar_url: { type: [string, "null"] }
+        character_image_url: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        live_enabled: { type: [boolean, "null"] }
+        mcp_enabled: { type: [boolean, "null"] }
         source_catalog: { $ref: "#/components/schemas/AgentSourceCatalog" }
         created_at: { type: string }
         updated_at: { type: string }
@@ -963,6 +1106,207 @@ components:
           type: array
           items: { $ref: "#/components/schemas/AgentTrait" }
       required: [traits]
+    ChannelPairing:
+      description: >-
+        A channel the agent is reached through. pending waits for the bot's invitation to be
+        approved; only active answers there.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        agent_id: { type: string }
+        provider: { type: string, description: "discord, slack, kakao, navertalk, whatsapp." }
+        display_name: { type: [string, "null"] }
+        server_name: { type: [string, "null"] }
+        status:
+          type: string
+          enum: [pending, active, inactive, revoked]
+        last_active_at: { type: [string, "null"] }
+        created_at: { type: string }
+        updated_at: { type: string }
+      required: [id, provider, status]
+    ChannelPairingList:
+      description: The agent's pairings; none is an empty list.
+      type: object
+      properties:
+        pairings:
+          type: array
+          items: { $ref: "#/components/schemas/ChannelPairing" }
+        total: { type: integer, minimum: 0 }
+      required: [pairings]
+    AgentOsDevice:
+      description: >-
+        An endue OS device attached to the agent. kind is the tool it is driven with (workspace for
+        a computer, chrome, android); os_kind is endue OS's own (linux, mac, windows, chrome,
+        android).
+      type: object
+      properties:
+        device_id: { type: string, minLength: 1 }
+        station_id: { type: string }
+        kind:
+          type: string
+          enum: [workspace, chrome, android]
+        os_kind: { type: string }
+        device_type:
+          type: string
+          enum: [actual, virtual]
+        alias: { type: string }
+        is_default: { type: boolean }
+        workspace_id: { type: [string, "null"] }
+        created_at: { type: string }
+      required: [device_id, kind, alias]
+    AgentOsDeviceList:
+      description: The devices attached to the agent.
+      type: object
+      properties:
+        devices:
+          type: array
+          items: { $ref: "#/components/schemas/AgentOsDevice" }
+      required: [devices]
+    AgentWorkspace:
+      description: A workspace endue AI runs for one agent, and how it stands.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        agent_id: { type: string }
+        environment:
+          type: string
+          enum: [linux, chrome]
+        name: { type: string }
+        state:
+          type: string
+          enum: [creating, ready, deleting, failed]
+        os_status: { type: [string, "null"] }
+      required: [id, environment, name, state]
+    AgentWorkspaceList:
+      description: The agent's workspaces; none is an empty list.
+      type: object
+      properties:
+        workspaces:
+          type: array
+          items: { $ref: "#/components/schemas/AgentWorkspace" }
+      required: [workspaces]
+    WallpaperSource:
+      description: >-
+        Where a wallpaper comes from: one endue.ai ships (builtin; id is its engine), one the person
+        made (mine) or one from the gallery; its name and author when endue AI says.
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [builtin, mine, gallery]
+        id: { type: string, minLength: 1 }
+        revision: { type: integer }
+        name: { type: string }
+        author: { type: string }
+      required: [kind, id]
+    AgentWallpaper:
+      description: The agent's wallpaper. Desk reads its source, never its manifest.
+      type: object
+      properties:
+        source: { $ref: "#/components/schemas/WallpaperSource" }
+        manifest: { type: object }
+      required: [source]
+    AgentTheme:
+      description: How the agent's chat looks.
+      type: object
+      properties:
+        v: { type: integer }
+        accent: { type: string }
+        wallpaper:
+          oneOf:
+            - $ref: "#/components/schemas/AgentWallpaper"
+            - type: "null"
+    AgentThemeState:
+      description: >-
+        The agent's theme, whether the owner ever saved one, and whether endue AI keeps themes
+        (supported false: none is kept).
+      type: object
+      properties:
+        supported: { type: boolean }
+        saved: { type: boolean }
+        theme: { $ref: "#/components/schemas/AgentTheme" }
+    AgentThemeAnswer:
+      description: The theme state, bare or in a data envelope.
+      oneOf:
+        - $ref: "#/components/schemas/AgentThemeState"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/AgentThemeState" }
+          required: [data]
+    Memory:
+      description: >-
+        One of the agent's memories, as far as Desk reads it: its kind (procedural ones are rules)
+        and when it was archived (null or absent: it is live).
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        category:
+          type: string
+          enum: [episodic, semantic, procedural, prospective]
+        archived_at: { type: [string, "null"] }
+      required: [id, category]
+    MemoryList:
+      description: One page of memories, and how many there are in all.
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Memory" }
+        total: { type: integer, minimum: 0 }
+      required: [items, total]
+    MemoryListEnvelope:
+      description: The page in ai-agent-service's success envelope.
+      type: object
+      properties:
+        success: { const: true }
+        data: { $ref: "#/components/schemas/MemoryList" }
+      required: [success, data]
+    ApiKey:
+      description: >-
+        An API key of the person's: its name, the agent it is for (null: all of them), when it stops
+        working (null: never) and when it was last used.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        name: { type: [string, "null"] }
+        agent_id: { type: [string, "null"] }
+        expires_at: { type: [string, "null"] }
+        last_used_at: { type: [string, "null"] }
+        created_at: { type: string }
+      required: [id]
+    ApiKeyList:
+      description: The person's keys.
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ApiKey" }
+    Artifact:
+      description: Something an agent made, as far as Desk reads it.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        agent_id: { type: [string, "null"] }
+        updated_at: { type: string }
+      required: [id, updated_at]
+    ArtifactListEnvelope:
+      description: One page of artifacts, with where it is in the whole list.
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Artifact" }
+        meta:
+          type: object
+          properties:
+            pagination:
+              type: object
+              properties:
+                total: { type: integer, minimum: 0 }
+                page: { type: integer, minimum: 1 }
+                limit: { type: integer, minimum: 1 }
+                has_next_page: { type: boolean }
+      required: [data]
     CatalogL10n:
       description: Text in English and Korean.
       type: object

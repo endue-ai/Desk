@@ -78,6 +78,57 @@
         "updatedAt": "2026-11-01T09:00:00Z"
       }
     ],
+    "channels": [
+      {
+        "id": "cp_1",
+        "provider": "slack",
+        "name": "Acme",
+        "status": "active",
+        "lastActiveAt": "2026-11-02T08:00:00Z"
+      },
+      {
+        "id": "cp_2",
+        "provider": "discord",
+        "status": "pending"
+      }
+    ],
+    "apiKeys": [
+      {
+        "id": "key_1",
+        "name": "Shop",
+        "expiresAt": "2027-01-01T00:00:00Z",
+        "createdAt": "2026-11-01T09:00:00Z"
+      }
+    ],
+    "devices": [
+      {
+        "id": "dev_1",
+        "kind": "computer",
+        "name": "My Mac",
+        "workspace": false
+      },
+      {
+        "id": "wsp_1",
+        "kind": "chrome",
+        "name": "Research",
+        "workspace": true
+      }
+    ],
+    "memory": {
+      "memories": 12,
+      "rules": 3,
+      "more": false
+    },
+    "outputs": {
+      "count": 4,
+      "latestAt": "2026-11-02T07:00:00Z"
+    },
+    "theme": {
+      "wallpaper": {
+        "source": "builtin",
+        "id": "constellation"
+      }
+    },
     "problems": [
       {
         "facet": "connectors",
