@@ -135,7 +135,7 @@ for (const size of SIZES) {
           const r = el.getBoundingClientRect();
           return { id: el.className, x: r.x, y: r.y, w: r.width, h: r.height };
         });
-      // At rest, beside the pill.
+      // At rest, beside the pill, or above it where the 440 pill leaves them no room (bottom.css).
       const rest = await Promise.all([box(".running"), box(".composer"), box(".map-strip")]);
       expect(rest[0].w).toBeGreaterThan(0);
       expect(collisions(rest)).toEqual([]);
@@ -148,7 +148,7 @@ for (const size of SIZES) {
           await page.waitForTimeout(100);
           return a === (await box(".composer")).w ? a : -1;
         })
-        .toBeGreaterThan(184);
+        .toBeGreaterThan(440);
       const [running, first, pill, strip] = await Promise.all([
         box(".running"),
         box(".running > li:first-child .run-chip"),
@@ -205,7 +205,7 @@ test.describe("a notice that stays", () => {
     const [x, y, w, h] = card.r as [number, number, number, number];
     expect(outside([{ id: "status", x, y, w, h }], 1024, 500)).toEqual([]);
     expect(await onTop(page, ".desk-status-text")).toBe(true);
-    // One line above Eris while it is not pointed at: no part lies on another.
+    // One line while it is not pointed at, Eris in the talk line (ADR 0254): no part lies on another.
     expect(collisions(await parts(page))).toEqual([]);
 
     // Pointed at, it shows the whole of its text.
