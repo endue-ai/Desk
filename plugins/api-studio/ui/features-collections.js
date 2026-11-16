@@ -88,7 +88,7 @@ export function installCollections(S) {
     });
     if (!ok || !chosen) return false;
     tab.req.name = name.value.trim() || tab.req.name || "Untitled request";
-    await collections.saveAs(tab, chosen.coll, chosen.dir);
+    if (!(await collections.saveAs(tab, chosen.coll, chosen.dir))) return false;
     S.app.toast(`Saved to ${chosen.label}`, "ok");
     return true;
   };

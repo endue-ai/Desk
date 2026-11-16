@@ -92,11 +92,13 @@ export function applyAction(S, tab, a) {
     }
     case "add_tests": {
       const t = needTab();
+      const before = t.req.tests;
       t.req.tests = `${t.req.tests.trim() ? `${t.req.tests.trimEnd()}\n\n` : ""}${String(a.code ?? "").trim()}\n`;
       t.reqTab = "tests";
       S.app.emit("tab");
-      // Applied by the person: their own, as if typed (trust.js).
-      S.app.emit("req", { field: "tests", tab: t });
+      // Applied by the person: their own, as if typed, when what it adds to is theirs too
+      // (empty or allowed); added to tests that came from a file, it is asked about (trust.js).
+      S.app.emit("req", { field: "tests", which: "tests", tab: t, before });
       return "Added the tests; send to run them.";
     }
     case "add_checks": {

@@ -5,7 +5,7 @@
 // the files when saving; the history keeps none of them in the desk's store.
 
 import { clone } from "./model.js";
-import { hideText, isSecretName, varName } from "./secret-names.js";
+import { hideText, isSecretField, isSecretName, varName } from "./secret-names.js";
 import { urlFromParams } from "./url.js";
 
 /**
@@ -47,7 +47,8 @@ export function literalSecrets(req, options = {}) {
     out.push({
       label: "Password in the URL",
       name: "password",
-      value: decode(user[2] ?? ""),
+      // As the URL holds it (percent-encoded), so filling it back in gives the same URL.
+      value: user[2] ?? "",
       put: (ref) => {
         req.url = req.url.replace(`${user[1]}:${user[2]}@`, `${user[1]}:${ref}@`);
       },
@@ -86,11 +87,17 @@ export function literalSecrets(req, options = {}) {
           put: (ref) => (row.value = ref),
         });
   if (body?.mode === "json")
-    out.push(...jsonFields(body.json, (text) => (body.json = text), "Body field"));
+    out.push(
+      ...jsonFields(
+        () => body.json,
+        (text) => (body.json = text),
+        "Body field",
+      ),
+    );
   if (body?.mode === "graphql")
     out.push(
       ...jsonFields(
-        body.graphql.variables,
+        () => body.graphql.variables,
         (text) => (body.graphql.variables = text),
         "GraphQL variable",
       ),
@@ -113,31 +120,40 @@ export function literalSecrets(req, options = {}) {
 }
 
 /**
- * The secret fields of a JSON text, each written back into the text when moved; nothing when the
- * text is not JSON (one with {{variables}} outside strings, say).
- * @param {string} text @param {(text: string) => void} write @param {string} label @returns {Literal[]}
+ * The secret fields of a JSON text. Moving one rewrites only that value in the text, so the rest
+ * (its numbers, order and spacing) stays as typed; nothing when the text is not JSON (one with
+ * {{variables}} outside strings, say).
+ * @param {() => string} read @param {(text: string) => void} write @param {string} label
+ * @returns {Literal[]}
  */
-function jsonFields(text, write, label) {
+function jsonFields(read, write, label) {
   let doc;
   try {
-    doc = JSON.parse(text);
+    doc = JSON.parse(read());
   } catch {
     return [];
   }
   /** @type {Literal[]} */
   const out = [];
-  const indent = /\n(\s+)/.exec(text)?.[1]?.length ?? (text.includes("\n") ? 2 : 0);
   const walk = (/** @type {any} */ node) => {
     if (!node || typeof node !== "object") return;
     for (const [k, v] of Object.entries(node)) {
-      if (typeof v === "string" && isSecretName(k) && typed(v))
+      if (typeof v === "string" && isSecretField(k) && typed(v))
         out.push({
           label: `${label} ${k}`,
           name: varName(k),
           value: v,
           put: (ref) => {
-            node[k] = ref;
-            write(JSON.stringify(doc, null, indent || undefined));
+            const text = read();
+            const pair = new RegExp(
+              `(${literally(JSON.stringify(k))}\\s*:\\s*)${literally(JSON.stringify(v))}`,
+            );
+            if (pair.test(text))
+              write(text.replace(pair, (_m, head) => `${head}${JSON.stringify(ref)}`));
+            else {
+              node[k] = ref;
+              write(JSON.stringify(doc, null, text.includes("\n") ? 2 : undefined));
+            }
           },
         });
       else walk(v);
@@ -147,14 +163,8 @@ function jsonFields(text, write, label) {
   return out;
 }
 
-/** @param {string} text */
-function decode(text) {
-  try {
-    return decodeURIComponent(text);
-  } catch {
-    return text;
-  }
-}
+/** A text as a regular expression that matches it as is. @param {string} text */
+const literally = (text) => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 /**
  * A copy of a request with every secret typed as is left empty, and text bodies' secret pairs
@@ -162,8 +172,15 @@ function decode(text) {
  */
 export function withoutLiterals(req) {
   const copy = clone(req);
-  for (const lit of literalSecrets(copy, { authDefault: "" })) lit.put("");
   const b = copy.body;
+  // Every body the request keeps, not only the one in use: the history keeps them all.
+  const mode = b?.mode;
+  for (const each of /** @type {const} */ (["form", "multipart", "json", "graphql"])) {
+    if (!b) break;
+    b.mode = each;
+    for (const lit of literalSecrets(copy, { authDefault: "" })) lit.put("");
+  }
+  if (b && mode) b.mode = mode;
   for (const mode of /** @type {const} */ (["text", "xml"]))
     if (b?.[mode]) b[mode] = hideText(b[mode]);
   return copy;

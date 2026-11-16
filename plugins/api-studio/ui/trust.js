@@ -47,14 +47,18 @@ export function scriptsIn(coll) {
 export function installTrust(S) {
   /** @type {string[] | undefined} hashes allowed, oldest first */
   let allowed;
-  /** Which of a tab's scripts the person edited in this session ("scripts", "tests"): theirs. @type {Map<string, Set<string>>} */
+  /** Which of a tab's scripts the person edited in this session (pre, post, tests): theirs. @type {Map<string, Set<string>>} */
   const edited = new Map();
   /** The scripts of a tab the person edited. @param {Tab} tab */
   const theirs = (tab) => {
     const fields = edited.get(tab.id);
     if (!fields) return [];
     const [pre, post, tests] = scriptsOf(tab.req);
-    return [...(fields.has("scripts") ? [pre, post] : []), ...(fields.has("tests") ? [tests] : [])]
+    return [
+      ...(fields.has("pre") ? [pre] : []),
+      ...(fields.has("post") ? [post] : []),
+      ...(fields.has("tests") ? [tests] : []),
+    ]
       .map(String)
       .filter((t) => t.trim());
   };
@@ -89,9 +93,17 @@ export function installTrust(S) {
   S.app.on("req", (/** @type {any} */ d) => {
     if (d?.field !== "scripts" && d?.field !== "tests") return;
     const tab = d.tab ?? S.app.current();
-    if (!tab) return;
+    const which = d.which ?? (d.field === "tests" ? "tests" : undefined);
+    if (!tab || !which) return;
+    // Tests the assistant added onto tests that came from a file stay the file's.
+    if (
+      typeof d.before === "string" &&
+      d.before.trim() &&
+      !(allowed ?? []).includes(sha256(d.before))
+    )
+      return;
     const fields = edited.get(tab.id) ?? new Set();
-    fields.add(d.field);
+    fields.add(which);
     edited.set(tab.id, fields);
   });
 

@@ -6,23 +6,29 @@
 const SEP = "[-_.\\s]";
 /**
  * Secret words between separators, after camelCase is split: x-api-key, access_token, clientSecret.
- * A key is secret only as an API, access, secret, private, client or subscription key (or a bare
- * `key`, as in `?key=`), a session only as itself or its id or token, and a token not when it is a
- * page's or a cursor's (`page_token`, `nextPageToken`).
+ * Any name ending in a key is secret (X-Functions-Key, DD-Application-Key, encryption_key, `?key=`)
+ * but the keys that only name or order something; a session only as itself or its id or token; a
+ * token not when it pages through results or names a token's URL or type.
  */
 const WORDS = new RegExp(
   [
-    `(^|${SEP})(authorization|cookie|token|secret|password|passwd|pwd|apikey|signature|credentials?|jwt|bearer|sid)($|${SEP})`,
+    `(^|${SEP})(authorization|cookie|token|secret|password|passwd|pwd|apikey|signature|credentials?|jwt|bearer)($|${SEP})`,
     `(^|${SEP})(api|access|secret|private|client|subscription|license|master|signing|auth)${SEP}?key($|${SEP})`,
+    `(^|${SEP})key$`,
     `(^|${SEP})session(${SEP}?(id|token|key))?$`,
     `(^|${SEP})auth$`,
-    "^key$",
+    "^sid$",
   ].join("|"),
   "i",
 );
-/** Tokens that only page through results, and names about a token rather than holding one. */
+/** Names that only look secret: paging tokens, a token's URL or type, keys that name or order things. */
 const NOT_SECRET = new RegExp(
-  `(page|next|continuation|cursor|sync)${SEP}?(page${SEP}?)?token$|token${SEP}(url|uri|endpoint|type|ttl|expires?(${SEP}(in|at))?)$`,
+  [
+    `(page|next|continuation|cursor|sync)${SEP}?(page${SEP}?)?token$`,
+    `token${SEP}(url|uri|endpoint|type|ttl|expires?(${SEP}(in|at))?)$`,
+    `(^|${SEP})(idempotency|websocket|socket|sort|partition|primary|foreign|cache|routing|group|object|lookup|unique|index|hash|range|row|composite|public|issue|project|item|message|dedup|deduplication)${SEP}key$`,
+    `key${SEP}id$`,
+  ].join("|"),
   "i",
 );
 
@@ -32,6 +38,15 @@ export function isSecretName(name) {
     .trim()
     .replace(/([a-z0-9])([A-Z])/g, "$1-$2");
   return split !== "" && WORDS.test(split) && !NOT_SECRET.test(split);
+}
+
+/**
+ * Whether a field of a JSON body is secret: as a name is, but a bare `key`, `auth` or `sid` there
+ * is mostly an identifier (`{"project": {"key": "PROJ"}}`), so it is not taken for one.
+ * @param {string} name
+ */
+export function isSecretField(name) {
+  return isSecretName(name) && !/^(key|auth|sid)$/i.test(String(name).trim());
 }
 
 /** Whether a value is only a {{variable}}, which names a secret without holding it. @param {string} v */
@@ -120,6 +135,30 @@ export function hideJson(value) {
       ]),
     );
   return value;
+}
+
+/**
+ * Whether a body's text has a secret field with a value in it: a JSON field (as isSecretField
+ * reads it) or a `name=value` pair. @param {string} text
+ */
+export function hasSecretFields(text) {
+  const t = text.trim();
+  if (/^[[{]/.test(t))
+    try {
+      /** @param {unknown} v @returns {boolean} */
+      const walk = (v) =>
+        !!v &&
+        typeof v === "object" &&
+        Object.entries(v).some(([k, x]) =>
+          typeof x === "string" ? isSecretField(k) && x !== "" : walk(x),
+        );
+      return walk(JSON.parse(t));
+    } catch {
+      /* not JSON */
+    }
+  return [...text.matchAll(/(?:^|[&\s])([A-Za-z][\w.-]*)=([^&\s]+)/g)].some(([, k]) =>
+    isSecretName(k ?? ""),
+  );
 }
 
 /** `name=value`, `"name": "value"` and `name: value` pairs whose name is secret. */

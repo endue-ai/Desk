@@ -38,9 +38,11 @@ export function editOps(c) {
     /** Write a request tab to its file, or ask where when it has none. @param {Tab} tab */
     async saveRequest(tab) {
       if (!tab.ref) return false;
-      const coll = byPath(tab.ref.collection);
-      if (!coll) return false;
-      if (S.beforeWrite && !(await S.beforeWrite(tab, coll, "inherit"))) return false;
+      const before = byPath(tab.ref.collection);
+      if (!before) return false;
+      if (S.beforeWrite && !(await S.beforeWrite(tab, before, "inherit"))) return false;
+      // beforeWrite may have written an environment, which rereads the collection.
+      const coll = byPath(before.path) ?? before;
       wrote();
       await files.write(tab.ref.path, text(requestFile(tab.req)), coll.path);
       tab.saved = JSON.stringify(tab.req);
@@ -54,9 +56,10 @@ export function editOps(c) {
       S.app.emit("req", { field: "saved" });
       return true;
     },
-    /** Save a tab as a new request in a folder of a collection. @param {Tab} tab @param {Collection} coll @param {string} dir */
-    async saveAs(tab, coll, dir) {
-      if (S.beforeWrite && !(await S.beforeWrite(tab, coll, "inherit"))) return false;
+    /** Save a tab as a new request in a folder of a collection. @param {Tab} tab @param {Collection} chosen @param {string} dir */
+    async saveAs(tab, chosen, dir) {
+      if (S.beforeWrite && !(await S.beforeWrite(tab, chosen, "inherit"))) return false;
+      const coll = byPath(chosen.path) ?? chosen;
       const path = await freeName(files, dir, tab.req.name, REQUEST_EXT, coll.path);
       tab.req.seq = nextSeq(coll, dir);
       tab.ref = { collection: coll.path, path };
@@ -220,11 +223,12 @@ export function editOps(c) {
     },
     /** Write a folder's or collection's settings from its tab. @param {Tab} tab */
     async saveGroup(tab) {
-      const coll = tab.ref && byPath(tab.ref.collection);
-      if (!coll || !tab.ref) return false;
-      const root = tab.ref.path === coll.path;
-      if (S.beforeWrite && !(await S.beforeWrite(tab, coll, root ? "none" : "inherit")))
+      const before = tab.ref && byPath(tab.ref.collection);
+      if (!before || !tab.ref) return false;
+      const root = tab.ref.path === before.path;
+      if (S.beforeWrite && !(await S.beforeWrite(tab, before, root ? "none" : "inherit")))
         return false;
+      const coll = byPath(before.path) ?? before;
       const found = root ? undefined : locate(coll, tab.ref.path)?.node;
       const old = root ? coll.meta : found?.type === "folder" ? found.meta : undefined;
       /** @type {Group} */
