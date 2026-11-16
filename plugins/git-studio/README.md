@@ -1,29 +1,34 @@
 # plugins/git-studio
 
-`endue.git-studio`, Git Studio: a graphical Git client in the community folder format, on the public
-SDK only. Where `endue.git` is a keyboard-first status buffer, Git Studio is the whole repository in one
-window: the commit graph of every branch with the work in progress on top, the sidebar's branches, remotes,
-tags, stashes and worktrees, and a panel with the selected commit or the staging area.
+`endue.git-studio`, Git Studio: a graphical Git client in the community folder format, on the public SDK
+only. Where `endue.git` is a keyboard-first status buffer, Git Studio is the repository in one window:
+the commit graph of every branch with the work in progress on top; the sidebar's branches, remotes, tags,
+stashes and worktrees; a panel with the selected commit or the working copy and its composer. In the
+centre: diffs (unified or side by side, words marked, hunks and lines staged), the conflict tool (ours,
+theirs, the output, by hand or with AI), a file's history and blame. Right-click anything for its
+operations; drop a branch on another to merge or rebase; Mod+Z undoes the last move of HEAD.
 
-Every operation is the git program run through `proc.spawn` without a shell (`ui/run.js`, the same runner
-as `endue.git`), `--` before paths, `GIT_TERMINAL_PROMPT=0`. No `fs:*` grant: files are read and written
-through git itself.
+Every operation is the git program through `proc.spawn` without a shell (`ui/run.js`, `endue.git`'s
+runner), `--` before paths. No `fs:*` grant: files are read and written through git (conflicts resolve
+with `hash-object` and `update-index`). AI is `brain.ask` with a tool per question (`ui/ai.js`).
+Commands `endue.git-studio.*` (state, open, refresh, fetch, pull, push, stage, commit, branch, switch,
+search, history, blame, graph) serve the palette and agents; `Mod+Alt+G` opens it. Discards, force
+pushes and resets stay in the window, behind its questions.
 
 | Permission | Why |
 | --- | --- |
 | `proc:spawn` (`git`) | Run the git program, and only it, in the repository |
+| `brain:ask` | Write commit messages, explain commits, suggest conflict resolutions, describe branches |
 
 | File | Purpose |
 | --- | --- |
-| `ui/run.js` | git over the bridge: spawn, output by process id, timeout, cancel |
-| `ui/parse.js`, `parse-status.js` | Refs, log records, stashes, worktrees, changed files, porcelain v2 status |
-| `ui/graph.js` | The lane layout: per-row segments, so rows draw themselves (virtualised) |
-| `ui/repo.js`, `ops.js` | The reads (a snapshot in parallel, a commit) and the writes, as git arguments |
-| `ui/app.js` | The controller without DOM: state, selection, `act` (say, refresh) |
-| `ui/studio.js` | The window put together: views, hooks, keys, commands |
-| `ui/view-*.js`, `refs.js`, `dom.js`, `icons.js` | Toolbar, sidebar, graph, detail; pills; DOM helpers; icons |
-| `ui/style*.css` | Theme tokens only (`--desk-*`; lanes are `chart-1…8`) |
-| `dev/` | The preview outside the desk: `serve.mjs`, the SDK shim, a demo repository, screenshots |
+| `ui/run.js`, `repo.js`, `history.js` | git over the bridge; the reads: snapshot, commit, diff, file log, blame, deep search |
+| `ui/parse*.js`, `graph.js`, `conflict.js` | Parsers, the lane layout (per-row segments), conflict chunks |
+| `ui/ops.js`, `ops-history.js` | The writes as git arguments |
+| `ui/app.js`, `actions*.js`, `menus.js`, `commands.js` | State without DOM; what clicks, menus and commands do |
+| `ui/studio.js`, `features*.js`, `center.js` | The window put together; conflict, history, blame, AI |
+| `ui/view-*.js`, `diff-*.js`, `overlay.js`, `dom.js` | The views, dialogs and menus; `style*.css` theme tokens only |
+| `dev/` | The preview outside the desk: `serve.mjs`, the SDK shim, a demo repository, `shot.mjs` |
 
 ```bash
 pnpm exec vitest run plugins/git-studio

@@ -39,6 +39,176 @@
           },
           "additionalProperties": false
         }
+      },
+      {
+        "id": "endue.git-studio.state",
+        "title": "Git Studio: the repository as data",
+        "keywords": ["git", "status", "branches"],
+        "description": "The repository open in Git Studio: root, branch, upstream, ahead and behind, an operation in progress, staged, unstaged and conflicted files, branches, tags, stashes and the latest commits.",
+        "args": { "type": "object", "properties": {}, "additionalProperties": false },
+        "result": {
+          "type": "object",
+          "properties": {
+            "root": { "type": "string" },
+            "branch": { "type": ["string", "null"] },
+            "head": { "type": ["string", "null"] },
+            "upstream": { "type": ["string", "null"] },
+            "ahead": { "type": "integer" },
+            "behind": { "type": "integer" },
+            "operation": { "type": ["string", "null"] },
+            "changes": { "type": "integer" },
+            "staged": { "type": "array" },
+            "unstaged": { "type": "array" },
+            "conflicts": { "type": "array" },
+            "branches": { "type": "array" },
+            "tags": { "type": "array" },
+            "stashes": { "type": "array" },
+            "recent": { "type": "array" }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.git-studio.refresh",
+        "title": "Git Studio: refresh",
+        "keywords": ["git", "reload"],
+        "description": "Read the open repository again: status, branches, the graph and stashes.",
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.git-studio.fetch",
+        "title": "Git Studio: fetch",
+        "keywords": ["git", "remote", "prune"],
+        "description": "Fetch every remote of the open repository and prune what is gone.",
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.pull",
+        "title": "Git Studio: pull",
+        "keywords": ["git", "remote", "fast-forward", "rebase"],
+        "description": "Pull the current branch from its upstream; when it cannot fast-forward the person chooses rebase or merge.",
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.push",
+        "title": "Git Studio: push",
+        "keywords": ["git", "remote", "upstream"],
+        "description": "Push the current branch; a new branch asks for its remote, and a rejected push asks the person before forcing with lease.",
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.git-studio.stage",
+        "title": "Git Studio: stage",
+        "keywords": ["git", "add", "index"],
+        "description": "Stage files of the open repository, or every change when paths is absent.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "description": "Paths relative to the repository's root"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.commit",
+        "title": "Git Studio: commit",
+        "keywords": ["git", "amend", "sign-off", "message"],
+        "description": "Commit what is staged with message (without one, the composer takes the focus); all stages every change first, amend rewrites the last commit, signOff adds a Signed-off-by line.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string", "minLength": 1 },
+            "all": { "type": "boolean" },
+            "amend": { "type": "boolean" },
+            "signOff": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.branch",
+        "title": "Git Studio: create a branch",
+        "keywords": ["git", "branch", "new"],
+        "description": "Create a branch named name at start (HEAD when absent) and switch to it unless checkout is false; without a name, a dialog asks.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "start": { "type": "string", "minLength": 1 },
+            "checkout": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.switch",
+        "title": "Git Studio: switch branch",
+        "keywords": ["git", "checkout", "branch"],
+        "description": "Switch to the branch, remote branch or tag named ref; git refuses to overwrite uncommitted changes.",
+        "args": {
+          "type": "object",
+          "properties": { "ref": { "type": "string", "minLength": 1 } },
+          "required": ["ref"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.search",
+        "title": "Git Studio: search commits",
+        "keywords": ["git", "find", "pickaxe", "grep"],
+        "description": "Search the graph: text in messages, authors and ids, code changes that add or remove the text (mode code), or commits that touched a path (mode path).",
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string" },
+            "mode": { "type": "string", "enum": ["text", "code", "path"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.git-studio.history",
+        "title": "Git Studio: file history",
+        "keywords": ["git", "log", "follow"],
+        "args": {
+          "type": "object",
+          "properties": { "path": { "type": "string", "minLength": 1 } },
+          "required": ["path"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.git-studio.blame",
+        "title": "Git Studio: blame a file",
+        "keywords": ["git", "annotate", "who"],
+        "args": {
+          "type": "object",
+          "properties": { "path": { "type": "string", "minLength": 1 } },
+          "required": ["path"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.git-studio.graph",
+        "title": "Git Studio: show the graph",
+        "keywords": ["git", "log", "commits"]
+      }
+    ],
+    "keys": [
+      {
+        "key": "Mod+Alt+G",
+        "command": "endue.git-studio.open"
       }
     ]
   }

@@ -51,7 +51,10 @@ describe("plugin.json", () => {
       .join("\n");
     for (const { id } of manifest.contributes.commands) {
       expect(id.startsWith("endue.git-studio.")).toBe(true);
-      expect(sources, id).toContain(`"${id}"`);
+      // commands.js registers on("<name>", …) under the plugin's prefix; studio.js the full id.
+      const name = id.slice("endue.git-studio.".length);
+      const answered = sources.includes(`"${id}"`) || sources.includes(`on("${name}",`);
+      expect(answered, id).toBe(true);
     }
   });
 });

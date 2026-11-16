@@ -2,6 +2,7 @@
 // history and blame, and the AI. Kept apart so studio.js stays the window's frame.
 
 import { WIP } from "./app.js";
+import { registerCommands } from "./commands.js";
 import { installAi } from "./features-ai.js";
 import { shortSha } from "./format.js";
 import { deepSearch } from "./history.js";
@@ -11,7 +12,7 @@ import { createHistoryView } from "./view-history.js";
 
 /**
  * @param {ReturnType<typeof import("./studio.js").createStudio>} studio
- * @param {Pick<import("@endue-ai/plugin-sdk").PluginContext, "bridge">} [ctx]
+ * @param {Pick<import("@endue-ai/plugin-sdk").PluginContext, "bridge"> & Partial<Pick<import("@endue-ai/plugin-sdk").PluginContext, "commands">>} [ctx]
  */
 export function installFeatures(studio, ctx) {
   const { app, center, extra } = studio;
@@ -115,5 +116,6 @@ export function installFeatures(studio, ctx) {
   });
 
   const ai = ctx ? installAi(studio, ctx.bridge, { labels }) : null;
+  if (ctx?.commands) registerCommands(studio, ctx.commands);
   return { conflict, fileLog, blameView, ai };
 }
