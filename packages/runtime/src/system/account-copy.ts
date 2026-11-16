@@ -12,7 +12,7 @@ import ko from "./messages/ko.json";
 const text = moduleText("system", { en, ko });
 
 type Id = KeyOf<keyof typeof en, "system">;
-export type AccountKey = Id extends `account.${infer K}` ? K : never;
+export type AccountKey = KeyOf<Id, "account">;
 
 export const accountText = (lang: Lang, key: AccountKey): string =>
   text(lang, `account.${key}` as Id);

@@ -12,11 +12,7 @@ import ko from "./messages/ko.json";
 const text = moduleText("settingsUi", { en, ko });
 
 type Id = KeyOf<keyof typeof en, "settingsUi">;
-export type AccountCopy = Id extends `account.${infer K}`
-  ? K extends `kind.${string}` | `kindHint.${string}`
-    ? never
-    : K
-  : never;
+export type AccountCopy = Exclude<KeyOf<Id, "account">, `kind.${string}` | `kindHint.${string}`>;
 
 export const accountText = (
   lang: SettingsLanguage,

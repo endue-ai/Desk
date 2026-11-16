@@ -51,7 +51,7 @@ export interface MarketOptions {
 
 const text = moduleText("settingsUi", { en, ko });
 type Id = KeyOf<keyof typeof en, "settingsUi">;
-type Copy = Id extends `market.${infer K}` ? K : never;
+type Copy = KeyOf<Id, "market">;
 const say = (language: SettingsLanguage, key: Copy, vars?: Record<string, string>) =>
   text(language, `market.${key}` as Id, vars);
 

@@ -22,7 +22,7 @@ export interface PluginMessages {
 }
 
 /** Reads one catalog file by its path under the plugin's folder; undefined when there is none. */
-export type CatalogLoader = (path: string) => Promise<unknown>;
+export type CatalogLoader = (path: string) => Promise<unknown> | undefined;
 
 const isLanguage = (value: unknown): value is Language =>
   (LANGUAGES as readonly unknown[]).includes(value);
@@ -40,15 +40,14 @@ export function messagesFor(options: {
   let asked = current;
   const fetchOne = async (language: Language) => {
     if (!folder || !load || catalogs[language]) return;
-    const catalog = await load(`${folder.replace(/\/+$/, "")}/${language}.json`).catch(
-      () => undefined,
-    );
+    const path = `${folder.replace(/\/+$/, "")}/${language}.json`;
+    const catalog = await Promise.resolve(load(path)).catch(() => undefined);
     if (catalog && typeof catalog === "object") catalogs[language] = catalog as MessageCatalog;
   };
   // English is every other language's fallback, so it comes in too.
   const bring = (language: Language) => Promise.all([fetchOne("en"), fetchOne(language)]);
   const api = {
-    ready: bring(current).then(() => undefined),
+    ready: bring(current).then((): void => undefined) as Promise<void>,
     t: (id: string, params?: MessageParams) => messageText(catalogs, current, id, params),
     language: () => current,
     onChange: (listener: (language: Language) => void) => {

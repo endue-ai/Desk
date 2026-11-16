@@ -25,7 +25,7 @@ export interface ConflictWords {
 
 const text = moduleText("settingsUi", { en, ko });
 type Id = KeyOf<keyof typeof en, "settingsUi">;
-type Copy = Id extends `conflicts.${infer K}` ? K : never;
+type Copy = KeyOf<Id, "conflicts">;
 const say = (words: ConflictWords, key: Copy, vars?: Record<string, string>) =>
   text(words.language, `conflicts.${key}` as Id, vars);
 
@@ -39,9 +39,9 @@ const keyOf = (phrase: string) =>
 
 /** What the system does with a reserved chord: from the catalog, else `Reserved.does` as is. */
 function doesText(words: ConflictWords, does: string): string {
-  const id = `conflicts.does.${keyOf(does)}` as Copy;
-  const said = say(words, id);
-  return said === `settingsUi.${id}` ? does : said;
+  const key = `does.${keyOf(does)}` as Copy;
+  const said = say(words, key);
+  return said === `settingsUi.conflicts.${key}` ? does : said;
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
