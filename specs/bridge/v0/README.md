@@ -64,7 +64,7 @@ holds the call after the cap and the permission check and sends `perm.approval` 
 A caller that is not an agent is never held.
 
 An event about the caller's own work reaches it without asking: `fs.changed` for its watches, `proc.*` for
-its processes, `net.data` and `net.closed` for its sockets, `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
+its processes, `net.data` and `net.closed` for its sockets, `audio.frame`, `audio.ended` and `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
 `cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked, `cmd.undone` for
 the undos and redos it ran, and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
@@ -186,10 +186,15 @@ desk (ADR 0133).
 `not_found`.
 
 **audio.capture.start** opens the microphone under an `audio:capture` scope and returns a `captureId`.
-With `wakeWord` (allowed by the scope) the core listens for the wake word and sends `audio.wake` events;
-audio itself never leaves the core through the bridge in v0.
+A caller that declares the scope without a grant is asked once, as `perm.request` asks; then the OS's own
+microphone permission. The caller hears `audio.frame` every 20 ms: mono LINEAR16 at `sampleRate` (16000
+by default), base64, with its level. `audio.ended` comes once, last, with its reason: a stop, the person,
+the caller stopping, its last surface closing, a revoke, or the device. The runtime hears
+`audio.capturing`, every capture in force and its caller, on each change, so the chrome shows the
+microphone is on. `wakeWord` answers `unsupported` until the core has a wake-word engine (ADR 0245).
 
-**audio.capture.stop** closes a capture. Stopping a capture that already ended is not an error.
+**audio.capture.stop** closes a capture. Stopping a capture that already ended is not an error. Another
+caller's capture is `not_found`, except for the runtime, which may stop any (the person's stop).
 
 **ui.surface.open** opens one of the surfaces the caller's manifest declares, optionally at a placement
 and with a title, and returns a handle. It needs `ui:surface`. A surface the manifest does not declare is

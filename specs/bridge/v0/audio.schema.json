@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/audio.schema.json",
   "title": "Desk bridge v0: audio",
-  "description": "Microphone capture and wake-word events. Scoped by audio:capture.",
+  "description": "Microphone capture: audio.frame events carry the captured audio, audio.ended says a capture ended, audio.capturing tells the runtime who captures, and audio.wake the wake word. Scoped by audio:capture.",
   "$defs": {
     "AudioCaptureStartRequest": {
       "description": "Start capturing the microphone. With wakeWord, audio.wake events arrive when the wake word is heard.",
@@ -41,7 +41,7 @@
       "additionalProperties": false
     },
     "AudioCaptureStopRequest": {
-      "description": "Stop a capture.",
+      "description": "Stop a capture. A caller stops its own captures; the runtime may stop any caller's, as the person does from the chrome. Another caller's captureId is not_found.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
@@ -65,6 +65,101 @@
       "description": "Result of audio.capture.stop.",
       "type": "object",
       "properties": {},
+      "additionalProperties": false
+    },
+    "AudioFrameEvent": {
+      "description": "20 ms of captured audio, for the caller that started the capture, in order.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "audio.frame" },
+        "data": { "$ref": "#/$defs/AudioFrameData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "AudioFrameData": {
+      "description": "Payload of audio.frame: mono signed 16-bit little-endian PCM (LINEAR16) at sampleRate, sampleRate / 50 samples, and how loud it is in dBFS (silence reads -100).",
+      "type": "object",
+      "properties": {
+        "captureId": { "type": "string", "minLength": 1 },
+        "atMs": {
+          "description": "Milliseconds since the capture started, of the first sample. Input the desk had no room for shows as a gap.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "sampleRate": { "type": "integer", "minimum": 8000, "maximum": 48000 },
+        "pcm": {
+          "description": "The samples, base64.",
+          "type": "string",
+          "contentEncoding": "base64",
+          "minLength": 1
+        },
+        "rmsDb": { "type": "number", "minimum": -100, "maximum": 0 },
+        "peakDb": { "type": "number", "minimum": -100, "maximum": 0 }
+      },
+      "required": ["captureId", "atMs", "sampleRate", "pcm", "rmsDb", "peakDb"],
+      "additionalProperties": false
+    },
+    "AudioEndedEvent": {
+      "description": "A capture ended; no audio.frame for it follows. Comes once per capture.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "audio.ended" },
+        "data": { "$ref": "#/$defs/AudioEndedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "AudioEndedData": {
+      "description": "Payload of audio.ended.",
+      "type": "object",
+      "properties": {
+        "captureId": { "type": "string", "minLength": 1 },
+        "reason": { "$ref": "#/$defs/AudioEndReason" },
+        "message": { "description": "What went wrong, for reason device.", "type": "string" }
+      },
+      "required": ["captureId", "reason"],
+      "additionalProperties": false
+    },
+    "AudioEndReason": {
+      "description": "Why a capture ended: its caller stopped it, the person stopped it from the chrome, the caller stopped, the caller's last surface closed, its grant was revoked, or the device failed or vanished.",
+      "type": "string",
+      "enum": [
+        "stopped",
+        "stopped_by_person",
+        "plugin_stopped",
+        "surface_closed",
+        "revoked",
+        "device"
+      ]
+    },
+    "AudioCapturingEvent": {
+      "description": "The captures in force changed. Only the runtime hears it, so the chrome shows that the microphone is on.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "audio.capturing" },
+        "data": { "$ref": "#/$defs/AudioCapturingData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "AudioCapturingData": {
+      "description": "Payload of audio.capturing: every capture in force, in the order they started; empty when nothing captures.",
+      "type": "object",
+      "properties": {
+        "captures": { "type": "array", "items": { "$ref": "#/$defs/AudioCaptureInForce" } }
+      },
+      "required": ["captures"],
+      "additionalProperties": false
+    },
+    "AudioCaptureInForce": {
+      "description": "One running capture and who started it.",
+      "type": "object",
+      "properties": {
+        "captureId": { "type": "string", "minLength": 1 },
+        "caller": { "description": "The plugin id, or desk for the runtime.", "type": "string", "minLength": 1 }
+      },
+      "required": ["captureId", "caller"],
       "additionalProperties": false
     },
     "AudioWakeEvent": {

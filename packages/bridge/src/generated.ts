@@ -2743,7 +2743,7 @@ export interface AudioCaptureStartResult {
   captureId: string;
 }
 
-/** Stop a capture. */
+/** Stop a capture. A caller stops its own captures; the runtime may stop any caller's, as the person does from the chrome. Another caller's captureId is not_found. */
 export interface AudioCaptureStopRequest {
   id: RequestId;
   method: "audio.capture.stop";
@@ -2758,6 +2758,65 @@ export interface AudioCaptureStopParams {
 
 /** Result of audio.capture.stop. */
 export type AudioCaptureStopResult = Record<string, never>;
+
+/** 20 ms of captured audio, for the caller that started the capture, in order. */
+export interface AudioFrameEvent {
+  event: "audio.frame";
+  data: AudioFrameData;
+}
+
+/** Payload of audio.frame: mono signed 16-bit little-endian PCM (LINEAR16) at sampleRate, sampleRate / 50 samples, and how loud it is in dBFS (silence reads -100). */
+export interface AudioFrameData {
+  captureId: string;
+  /** Milliseconds since the capture started, of the first sample. Input the desk had no room for shows as a gap. */
+  atMs: number;
+  sampleRate: number;
+  /** The samples, base64. */
+  pcm: string;
+  rmsDb: number;
+  peakDb: number;
+}
+
+/** A capture ended; no audio.frame for it follows. Comes once per capture. */
+export interface AudioEndedEvent {
+  event: "audio.ended";
+  data: AudioEndedData;
+}
+
+/** Payload of audio.ended. */
+export interface AudioEndedData {
+  captureId: string;
+  reason: AudioEndReason;
+  /** What went wrong, for reason device. */
+  message?: string;
+}
+
+/** Why a capture ended: its caller stopped it, the person stopped it from the chrome, the caller stopped, the caller's last surface closed, its grant was revoked, or the device failed or vanished. */
+export type AudioEndReason =
+  | "stopped"
+  | "stopped_by_person"
+  | "plugin_stopped"
+  | "surface_closed"
+  | "revoked"
+  | "device";
+
+/** The captures in force changed. Only the runtime hears it, so the chrome shows that the microphone is on. */
+export interface AudioCapturingEvent {
+  event: "audio.capturing";
+  data: AudioCapturingData;
+}
+
+/** Payload of audio.capturing: every capture in force, in the order they started; empty when nothing captures. */
+export interface AudioCapturingData {
+  captures: AudioCaptureInForce[];
+}
+
+/** One running capture and who started it. */
+export interface AudioCaptureInForce {
+  captureId: string;
+  /** The plugin id, or desk for the runtime. */
+  caller: string;
+}
 
 /** The wake word was heard. */
 export interface AudioWakeEvent {
@@ -3327,13 +3386,16 @@ export type ErrorCode =
   | "offline"
   | "forbidden";
 
-/** Something the core reports without being asked: file changes, process output, socket data, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows. */
+/** Something the core reports without being asked: file changes, process output, socket data, captured audio and who captures, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
   | ProcExitEvent
   | NetDataEvent
   | NetClosedEvent
+  | AudioFrameEvent
+  | AudioEndedEvent
+  | AudioCapturingEvent
   | AudioWakeEvent
   | PermChangedEvent
   | PermPromptEvent

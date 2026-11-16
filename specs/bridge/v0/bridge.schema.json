@@ -246,13 +246,16 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, socket data, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows.",
+      "description": "Something the core reports without being asked: file changes, process output, socket data, captured audio and who captures, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcExitEvent" },
         { "$ref": "net.schema.json#/$defs/NetDataEvent" },
         { "$ref": "net.schema.json#/$defs/NetClosedEvent" },
+        { "$ref": "audio.schema.json#/$defs/AudioFrameEvent" },
+        { "$ref": "audio.schema.json#/$defs/AudioEndedEvent" },
+        { "$ref": "audio.schema.json#/$defs/AudioCapturingEvent" },
         { "$ref": "audio.schema.json#/$defs/AudioWakeEvent" },
         { "$ref": "perm.schema.json#/$defs/PermChangedEvent" },
         { "$ref": "perm.schema.json#/$defs/PermPromptEvent" },
