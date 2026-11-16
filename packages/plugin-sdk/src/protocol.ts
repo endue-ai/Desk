@@ -1,4 +1,4 @@
-import type { BridgeEvent, BridgeRequest, BridgeResponse } from "@endue-ai/bridge";
+import type { BridgeEvent, BridgeRequest, BridgeResponse, Language } from "@endue-ai/bridge";
 import {
   DND_HOST_TYPES,
   type DndHostMessage,
@@ -58,11 +58,17 @@ export type HostMessage =
       state: unknown;
       /** What the plugin kept when the desk last unloaded this frame (ui.surface.state, ADR 0070). */
       restored?: unknown;
+      /** The desk's language (desk.language, ADR 0250); desk:language follows each change. */
+      language?: Language;
+      /** The manifest's `messages`: the folder of the plugin's catalogs, when it ships them. */
+      messages?: string;
     }
   | { type: "desk:results"; results: Array<{ id: number; response: BridgeResponse }> }
   | { type: "desk:event"; event: BridgeEvent }
   | { type: "desk:command"; name: string; args?: unknown; call?: number }
   | { type: "desk:theme"; theme: ThemeState }
+  /** The desk's language, at start and on each change (desk.language, ADR 0250). */
+  | { type: "desk:language"; language: Language }
   /** Whether the frame still takes messages: the SDK answers it by itself (`ping.ts`), never the plugin. */
   | { type: "desk:ping"; n: number }
   | DndHostMessage;
@@ -83,6 +89,8 @@ export interface Transport {
   listen(handler: (message: HostMessage) => void): () => void;
   /** Report chords pressed where the plugin runs (a frame), for the desk's keymap. */
   keys?(handler: (key: KeyPress) => void): () => void;
+  /** Read a file of the plugin's own folder as JSON (its catalogs); undefined when there is none. */
+  catalog?(pluginId: string, path: string): Promise<unknown>;
   /** Apply the desk's theme where the plugin runs (a frame's root element). */
   theme?(theme: ThemeState): void;
   /** Follow the pointer and the keys while a drag from here lasts; returns the function that stops. */
@@ -113,6 +121,7 @@ const HOST_TYPES = new Set([
   "desk:event",
   "desk:command",
   "desk:theme",
+  "desk:language",
   ...DND_HOST_TYPES,
 ]);
 
@@ -140,6 +149,11 @@ export function windowTransport(win: Window = window): Transport {
       };
       win.addEventListener("keydown", onKey);
       return () => win.removeEventListener("keydown", onKey);
+    },
+    // A plugin's files are served at /<plugin id>/<path> on its own origin (plugin-origins.ts).
+    catalog: async (pluginId, path) => {
+      const response = await win.fetch(new URL(`/${pluginId}/${path}`, win.location.href));
+      return response.ok ? response.json() : undefined;
     },
     theme: (theme) => {
       const root = win.document.documentElement;

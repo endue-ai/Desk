@@ -24,15 +24,15 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
   answer (needs `cmd:invoke` for the id); `list()`; `tools(query?)` (ADR 0088); `on(name, handler)`
   answers this plugin's commands and the desk's requests, after `mount`. Failures are `CommandFailed`
   (`unknown_command`, `failed`, `cancelled`). `ctx.search.replace(documents)`: 500 / 4 MiB; `[]` clears.
-- `ctx.theme`: `get()`, `on(listener)` (`--desk-*`, `data-scheme`, `-contrast`, `-motion`). `readBytes(ctx,
-  { path, scope }, { onProgress?, signal? })`: 2 MiB `Range` requests to `fs.url` (else `fs.read`);
-  `byteSource(ctx, file)` (cached `read(offset, length)`), `startWorker(url)`, `fileHistory`, `restoreFile`.
-- `connect(transport?)`, `windowTransport()`, protocol and bridge types, `BridgeCallError`; one tick's calls leave
-  in one message; `desk:ready`/`desk:failed` (ADR 0061); `desk:ping` answered at import (#39); at `/_desk/plugin-sdk.js`.
+- `ctx.theme`: `get()`, `on(listener)` (`--desk-*`, `data-scheme`, ...). `ctx.messages` (ADR 0250): the manifest's
+  `messages` catalogs in the desk's language: `t(id, params?)`, `language()`, `onChange`, `ready`. `readBytes(ctx, file,
+  options?)`: 2 MiB `Range`s of `fs.url`; `byteSource(ctx, file)`, `startWorker(url)`, `fileHistory`, `restoreFile`.
+- `connect(transport?)`, `windowTransport()`, protocol and bridge types, `BridgeCallError`; one tick's calls leave in
+  one message; `desk:ready`/`desk:failed` (ADR 0061); `desk:ping` answered at import (#39); `/_desk/plugin-sdk.js`.
 - `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, instance?, state?, restored?, handlers?, commands?,
-  settings?, grants?, callers?, prompt?, now?, refuse?, files? })` runs a plugin on the stub core:
-  `transport`, `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`,
-  `surfaces`, `call`, `emit`, `command`, `surfaceState`, `invoke`, `theme`, `upsert`, `remove`, `settle`; `dnd`
+  settings?, grants?, callers?, prompt?, now?, refuse?, files?, language?, messages? })` runs a plugin on the stub
+  core: `transport`, `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`,
+  `surfaces`, `call`, `emit`, `command`, `surfaceState`, `invoke`, `theme`, `language`, `upsert`, `remove`, `settle`; `dnd`
   plays the broker (`drags`, `accepts`, `hover`, `drop`, `move`, `release`, `end`, `cancel`). Byte checks
   (ADR 0071): `assertRoundTrip(bytes, parse, serialize)`, `assertMinimalEdit(before, after, edit)`.
 

@@ -13,8 +13,11 @@ export type {
   ItemPage,
   ItemQuery,
   ItemSource,
+  Language,
   LogEntry,
   LogLevel,
+  MessageCatalog,
+  MessageParams,
   ParamsOf,
   Permission,
   PermRequestResult,
@@ -74,6 +77,7 @@ export {
   fileHistory,
   restoreFile,
 } from "./history";
+export type { CatalogLoader, PluginMessages } from "./messages";
 export {
   fitFiles,
   type KeepFilesOptions,
