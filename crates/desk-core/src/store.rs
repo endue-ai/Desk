@@ -1,5 +1,7 @@
-//! desk-core storage for store.get and store.set: one JSON value per caller and key, in one file.
-//! settings.set keeps its values the same way, in a file of its own (`core_settings`).
+//! desk-core storage for store.get and store.set: one JSON value per caller and key, in one file
+//! readable by this user only (mode 0600 on Unix; the profile folder's ACL on Windows), as
+//! connector secrets are until Desk uses the OS keychain (ADR 0036). settings.set keeps its values
+//! the same way, in a file of its own (`core_settings`).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -77,13 +79,12 @@ impl Store {
         }
     }
 
+    /// Write the whole file, readable by this user only: plugins keep secrets here (secret
+    /// variables, tokens, cookies). Through a temp file and a rename, so a crash leaves the old one.
     fn save(&self) {
         let Some(path) = &self.path else { return };
-        if let Some(parent) = path.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
         if let Ok(text) = serde_json::to_string_pretty(&self.data) {
-            let _ = fs::write(path, text);
+            let _ = crate::secrets::write_private(path, text.as_bytes());
         }
     }
 }
