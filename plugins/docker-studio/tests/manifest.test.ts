@@ -42,9 +42,10 @@ describe("plugin.json", () => {
     // Files only under the home folder, to write a Dockerfile where the person says; each use asks
     // for that one folder.
     const fs = manifest.permissions.filter((p) => p.permission.startsWith("fs:"));
+    const home = ["$", "{home}/**"].join("");
     expect(fs).toEqual([
-      { permission: "fs:read", paths: ["${home}/**"] },
-      { permission: "fs:write", paths: ["${home}/**"] },
+      { permission: "fs:read", paths: [home] },
+      { permission: "fs:write", paths: [home] },
     ]);
   });
 
