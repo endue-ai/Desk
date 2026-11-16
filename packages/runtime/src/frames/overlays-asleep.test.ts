@@ -95,9 +95,7 @@ async function desk(overlays: string[], windows: string[]) {
     started = true;
   });
   for (let i = 0; i < 50 && !started; i++) await flush(10);
-  const plugins = Object.fromEntries(
-    [...overlays, ...windows].map((id) => [id, new Plugin(id)]),
-  );
+  const plugins = Object.fromEntries([...overlays, ...windows].map((id) => [id, new Plugin(id)]));
   for (const plugin of Object.values(plugins)) plugin.connect();
   await flush();
   const asleep = (id: string) => plugins[id]?.frame() === null;
