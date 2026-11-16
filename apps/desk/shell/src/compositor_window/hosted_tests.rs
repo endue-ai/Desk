@@ -164,3 +164,46 @@ fn a_window_whose_frame_the_page_never_showed_is_kept_in_sight_so_its_frame_come
     assert_eq!(out.live, Some(vec!["endue.mail".into()]));
     assert!(out.steps.is_empty());
 }
+
+#[test]
+fn a_desk_out_of_sight_keeps_only_the_live_budget_and_wakes_what_shows_again() {
+    let mut hosted = Hosted::new(1.0);
+    let now = Instant::now();
+    let both = |state: &str| {
+        vec![
+            frame("endue.notes", NOTES, state, 1),
+            frame("endue.mail", MAIL, "live", 1),
+        ]
+    };
+    // Both windows in sight, one may stay live out of sight, and one out of sight for a minute goes.
+    let budget = |hosted: &mut Hosted, seq, frames| {
+        let report = serde_json::from_value(json!({
+            "seq": seq, "width": 1440, "height": 900, "frames": frames,
+            "budget": { "live": 1, "afterMs": 60_000.0 }
+        }))
+        .unwrap();
+        hosted.wm.start(desk(false), Size { w: 1440.0, h: 900.0 });
+        hosted.apply(report, now)
+    };
+    let out = budget(&mut hosted, 1, both("live"));
+    assert_eq!(
+        out.live,
+        Some(vec!["endue.mail".into(), "endue.notes".into()])
+    );
+    // The window closed (ADR 0225): nobody sees either window, so the budget keeps the most recent.
+    let out = hosted.occluded(true, now);
+    assert_eq!(out.live, Some(vec!["endue.mail".into()]));
+    let out = budget(&mut hosted, 2, both("asleep"));
+    assert!(kinds(&out).contains(&format!("sleep {NOTES}")));
+    // Past desk.display.unload-after the one kept goes too.
+    assert!(hosted.due().is_some_and(|due| due <= now + std::time::Duration::from_secs(60)));
+    let out = hosted.tick(now + std::time::Duration::from_secs(61));
+    assert_eq!(out.live, Some(vec![]));
+    // The window back: both windows are in sight again and kept, Notes wakes.
+    let out = hosted.occluded(false, now + std::time::Duration::from_secs(62));
+    assert_eq!(
+        out.live,
+        Some(vec!["endue.mail".into(), "endue.notes".into()])
+    );
+    assert!(kinds(&out).contains(&format!("wake {NOTES}")));
+}
