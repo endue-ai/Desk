@@ -140,4 +140,20 @@ describe("OS file delivery", () => {
     expect(h.commands.run).toHaveBeenCalledTimes(2);
     dispose();
   });
+
+  it("handles a link handed over before the page is ready once it is (#310)", async () => {
+    const ready = deferred<void>();
+    native.invoke.mockResolvedValueOnce(["endue://v1/command/endue.notes.new"]);
+    const link = vi.fn(async (_entry: string) => {});
+    const h = { ...host(), ready: ready.promise, link };
+    const dispose = installOpenedFiles(h);
+    signal();
+    await Promise.resolve();
+    expect(native.invoke).not.toHaveBeenCalled();
+    expect(link).not.toHaveBeenCalled();
+    ready.resolve();
+    await vi.waitFor(() => expect(link).toHaveBeenCalledOnce());
+    expect(link).toHaveBeenCalledWith("endue://v1/command/endue.notes.new");
+    dispose();
+  });
 });

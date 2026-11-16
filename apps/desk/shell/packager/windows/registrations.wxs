@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- What the MSI registers (#310, registrations.mjs): the endue URL scheme and an "Open with" entry
-     for each document type macOS names, under a ProgID that is never an extension's default. -->
+     for each document type macOS names, under a ProgID that is never an extension's default. The
+     command ends in the single-argument switch before %1, so a link holding a quote adds no switch. -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Fragment>
     <ComponentGroup Id="DeskRegistrations">
@@ -8,13 +9,13 @@
         <RegistryKey Root="HKCR" Key="endue">
           <RegistryValue Type="string" Value="URL:endue Desk link" KeyPath="yes" />
           <RegistryValue Name="URL Protocol" Type="string" Value="" />
-          <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[INSTALLDIR]endue-desk.exe&quot; &quot;%1&quot;" />
+          <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[INSTALLDIR]endue-desk.exe&quot; --single-argument %1" />
         </RegistryKey>
       </Component>
       <Component Id="DeskOpenWith" Directory="INSTALLDIR" Guid="*">
         <RegistryKey Root="HKCR" Key="ai.endue.desk.file">
           <RegistryValue Type="string" Value="endue Desk document" KeyPath="yes" />
-          <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[INSTALLDIR]endue-desk.exe&quot; &quot;%1&quot;" />
+          <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[INSTALLDIR]endue-desk.exe&quot; --single-argument %1" />
         </RegistryKey>
           <RegistryValue Root="HKCR" Key=".md\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
           <RegistryValue Root="HKCR" Key=".txt\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />

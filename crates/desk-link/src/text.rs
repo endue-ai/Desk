@@ -25,6 +25,10 @@ pub fn decode(text: &str) -> Result<String, Refused> {
     while i < bytes.len() {
         if bytes[i] == b'%' {
             let hex = text.get(i + 1..i + 3).ok_or_else(broken)?;
+            // Two hex digits exactly: from_str_radix alone would take `+A`.
+            if !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+                return Err(broken());
+            }
             out.push(u8::from_str_radix(hex, 16).map_err(|_| broken())?);
             i += 3;
         } else {
@@ -32,5 +36,11 @@ pub fn decode(text: &str) -> Result<String, Refused> {
             i += 1;
         }
     }
-    String::from_utf8(out).map_err(|_| broken())
+    let text = String::from_utf8(out).map_err(|_| broken())?;
+    if text.chars().any(|c| c.is_control() || crate::hidden(c)) {
+        return Err(Refused(
+            "This link has control characters in it.".to_owned(),
+        ));
+    }
+    Ok(text)
 }
