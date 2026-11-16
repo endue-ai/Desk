@@ -1,5 +1,6 @@
 // The diff view's rows: a heading per file and per hunk (both foldable) and the lines with their
-// old and new numbers. Lines are items too, so `s` on one stages its file.
+// old and new numbers. Lines are items too: `s` on one stages its hunk, and lines marked with `v`
+// are staged on their own.
 
 import { el, row, span } from "./dom.js";
 import { stats } from "./parse-diff.js";
@@ -70,9 +71,10 @@ export function renderDiff(doc, model, folded) {
         ),
       );
       if (!hunkOpen) return;
-      for (const line of hunk.lines) {
+      hunk.lines.forEach((line, at) => {
+        const item = { kind: "line", path: file.path, index, line: at };
         rows.push(
-          row(doc, `line ${line.kind}`, { kind: "line", path: file.path, index }, 3, [
+          row(doc, `line ${line.kind}`, /** @type {const} */ (item), 3, [
             span(doc, "no", line.oldNo === null ? "" : String(line.oldNo)),
             span(doc, "no", line.newNo === null ? "" : String(line.newNo)),
             el(
@@ -83,7 +85,7 @@ export function renderDiff(doc, model, folded) {
             ),
           ]),
         );
-      }
+      });
     });
   }
   return rows;

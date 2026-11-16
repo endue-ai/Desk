@@ -118,6 +118,26 @@ impl Process {
         }
     }
 
+    /// Whether the process runs in a PTY.
+    pub fn has_pty(&self) -> bool {
+        matches!(self.inner, Inner::Pty(_))
+    }
+
+    /// Close stdin, so a program that reads to the end of its input sees it; a later write is
+    /// `IoError`. A PTY has no stdin apart from the terminal: `Unsupported`.
+    pub fn close_stdin(&self) -> Result<(), Error> {
+        match &self.inner {
+            Inner::Pipe(pipe) => {
+                pipe.close_stdin();
+                Ok(())
+            }
+            Inner::Pty(_) => Err(Error::new(
+                ErrorCode::Unsupported,
+                "a process in a PTY has no stdin to close",
+            )),
+        }
+    }
+
     /// Resize the PTY. A process started without one gives `unsupported`.
     pub fn resize(&self, size: PtySize) -> Result<(), Error> {
         check_size(size)?;

@@ -99,8 +99,19 @@ impl Core {
                 .decode(params.data)
                 .map_err(|e| error(ErrorCode::InvalidParams, format!("not base64: {e}")))?,
         };
+        let close = params.close == Some(true);
         self.with_process(caller, &params.proc_id, params.scope, |process| {
-            process.write(&bytes)
+            if !close {
+                return process.write(&bytes);
+            }
+            // A PTY answers `unsupported` before any byte is written, so nothing is half done.
+            if process.has_pty() {
+                return process.close_stdin();
+            }
+            if !bytes.is_empty() {
+                process.write(&bytes)?;
+            }
+            process.close_stdin()
         })?;
         json(ProcWriteResult {})
     }

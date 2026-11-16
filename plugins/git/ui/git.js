@@ -17,6 +17,7 @@ import {
   RECENT_FORMAT,
   STASH_FORMAT,
 } from "./parse-status.js";
+import { createPick } from "./pick.js";
 import { createRecent, nameOf } from "./recent.js";
 import { createRunner } from "./run.js";
 import { DEFAULTS, loadSettings } from "./settings.js";
@@ -92,20 +93,7 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
   /** @param {string[]} args @param {import("./run.js").RunOptions} [runOptions] */
   const git = (args, runOptions = {}) => runner.run(args, { cwd: opened().root, ...runOptions });
 
-  /** @type {import("./actions.js").Deps["pick"]} */
-  const pick = async (title, items, free = false, placeholder = "") => {
-    try {
-      const picked = await commands.run("desk.palette.pick", {
-        title,
-        items,
-        ...(free ? { free, placeholder } : {}),
-      });
-      return typeof picked === "string" && picked !== "" ? picked : undefined;
-    } catch (error) {
-      if (codeOf(error) === "cancelled") return undefined;
-      throw new Error("Cannot ask: the palette is off.");
-    }
-  };
+  const pick = createPick(commands);
 
   const show = (/** @type {ViewName} */ name) => {
     current = name;
@@ -261,6 +249,8 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     git,
     cancel: () => runner.cancel(),
     status: () => statusView.status,
+    diff: () => diffView,
+    invoke: (id, args) => commands.run(id, args),
     settings: () => settings,
     selection: () => view.selection(),
     refresh,
@@ -316,6 +306,8 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
   answer("endue.git.stage", actions.stage);
   answer("endue.git.unstage", actions.unstage);
   answer("endue.git.discard", actions.discard);
+  answer("endue.git.discard-patch", actions.discardPatch);
+  answer("endue.git.restore-patch", actions.restorePatch);
   answer("endue.git.commit", actions.commit);
   answer("endue.git.fetch", actions.fetch);
   answer("endue.git.pull", actions.pull);

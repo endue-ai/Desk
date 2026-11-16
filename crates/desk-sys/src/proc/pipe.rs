@@ -79,6 +79,11 @@ impl Pipe {
             .map_err(|err| Error::io(&err, "stdin"))
     }
 
+    /// Close stdin so a program reading to the end sees it. Closing twice does nothing more.
+    pub(super) fn close_stdin(&self) {
+        self.stdin.lock().unwrap_or_else(|e| e.into_inner()).take();
+    }
+
     pub(super) fn kill(&self, signal: Signal) -> Result<(), Error> {
         signal_child(&self.child, signal).map_err(|err| Error::io(&err, "kill"))
     }

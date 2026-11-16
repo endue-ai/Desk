@@ -337,3 +337,8 @@ footer p {
 #status:empty {
   display: none;
 }
+
+/* Lines marked with `v`: a bar at the start, so the add and delete colours still show. */
+.row.line.marked {
+  box-shadow: inset 3px 0 0 var(--desk-accent);
+}
