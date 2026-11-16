@@ -18,6 +18,7 @@ import * as openai from "./openai.js";
  *   managed?: boolean,
  *   flavor?: string,
  *   version?: string,
+ *   ctx?: number,
  *   status: "online" | "offline" | "checking",
  *   error?: string,
  *   checkedAt?: number,
@@ -66,6 +67,7 @@ export async function check(sockets, spec) {
         ...base,
         kind,
         flavor: "flavor" in found ? found.flavor : undefined,
+        ctx: "ctx" in found ? found.ctx : undefined,
         version: found.version,
         label:
           spec.label ||

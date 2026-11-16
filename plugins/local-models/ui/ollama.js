@@ -70,6 +70,7 @@ export async function listModels(sockets, server) {
       caps: capsOf(m.capabilities, id),
       loaded: Boolean(live),
       vram: live?.size_vram,
+      loadedCtx: live?.context_length,
     };
   });
 }

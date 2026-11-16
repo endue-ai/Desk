@@ -1,0 +1,296 @@
+/* The chat settings beside the conversation: folding sections, sliders, fields, switches, chips,
+   and the context meter in the composer. */
+
+.lm-insp {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-left: var(--desk-border-width) solid var(--lm-line);
+  background: var(--lm-panel);
+}
+
+.lm-insp[hidden] {
+  display: none;
+}
+
+.lm-insp-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: 52px;
+  padding: var(--desk-space-2) var(--desk-space-2) var(--desk-space-2) var(--desk-space-4);
+  border-bottom: var(--desk-border-width) solid var(--lm-line-soft);
+}
+
+.lm-insp-title {
+  margin: 0;
+  font-size: var(--desk-text-sm);
+  font-weight: 650;
+}
+
+.lm-insp-body {
+  flex: 1;
+  overflow: auto;
+  padding: var(--desk-space-2) 0 var(--desk-space-4);
+}
+
+.lm-sec {
+  border-bottom: var(--desk-border-width) solid var(--lm-line-soft);
+}
+
+.lm-sec-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-3) var(--desk-space-4);
+  font-size: var(--desk-text-xs);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--desk-text-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.lm-sec-head::-webkit-details-marker {
+  display: none;
+}
+
+.lm-sec-head > span {
+  flex: 1;
+}
+
+.lm-sec[open] > .lm-sec-head .lm-caret {
+  transform: rotate(180deg);
+}
+
+.lm-sec-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-4);
+  padding: 0 var(--desk-space-4) var(--desk-space-4);
+}
+
+.lm-ctl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+}
+
+.lm-ctl-row {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: 24px;
+}
+
+.lm-ctl-label {
+  flex: 1;
+  font-size: var(--desk-text-xs);
+  font-weight: 550;
+}
+
+.lm-ctl-value {
+  font-size: var(--desk-text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--desk-primary-text);
+}
+
+.lm-ctl-value[data-unset] {
+  color: var(--lm-faint);
+}
+
+.lm-ctl-hint {
+  font-size: var(--desk-text-2xs);
+  line-height: 1.45;
+  color: var(--desk-text-muted);
+}
+
+.lm-ctl-reset .lm-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.lm-ctl-reset[hidden] {
+  display: none;
+}
+
+.lm-range {
+  --lm-fill: 0%;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+
+.lm-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--desk-radius-full);
+  background: linear-gradient(90deg, var(--desk-primary) var(--lm-fill), var(--lm-raised) var(--lm-fill));
+}
+
+.lm-range[data-unset="1"]::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, var(--lm-faint) var(--lm-fill), var(--lm-raised) var(--lm-fill));
+  opacity: 0.6;
+}
+
+.lm-range::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border: 2px solid var(--desk-card);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-primary);
+  box-shadow: var(--desk-shadow-sm);
+  appearance: none;
+}
+
+.lm-range[data-unset="1"]::-webkit-slider-thumb {
+  background: var(--lm-faint);
+}
+
+.lm-ctl-num {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+}
+
+.lm-num {
+  width: 104px;
+  height: var(--desk-control-sm);
+  text-align: right;
+}
+
+.lm-ctl-toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--desk-space-3);
+  cursor: pointer;
+}
+
+.lm-ctl-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lm-system,
+.lm-schema {
+  width: 100%;
+  min-height: 96px;
+  height: auto;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.lm-schema {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.lm-preset {
+  width: 100%;
+}
+
+.lm-save-preset > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.lm-seg {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.lm-seg > .desk-tab {
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--desk-space-2);
+  font-size: var(--desk-text-xs);
+}
+
+.lm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1);
+}
+
+.lm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px 0 8px;
+  border: var(--desk-border-width) solid var(--lm-line);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-card);
+  font-size: var(--desk-text-xs);
+}
+
+.lm-chip .lm-icon-btn {
+  width: 22px;
+  height: 22px;
+}
+
+.lm-chip .lm-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.lm-insp-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-3) var(--desk-space-3) 0;
+}
+
+.lm-bad {
+  color: var(--desk-danger-text);
+}
+
+.lm-head-insp[aria-pressed="true"] {
+  color: var(--desk-primary-text);
+  background: var(--lm-select);
+}
+
+/* The context meter in the composer */
+
+.lm-ctx {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 4px;
+  border-radius: var(--desk-radius-full);
+  font-size: var(--desk-text-2xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--desk-text-muted);
+}
+
+.lm-ctx[hidden] {
+  display: none;
+}
+
+.lm-ctx-ring {
+  --lm-share: 0%;
+  --lm-ring: var(--desk-primary);
+  width: 16px;
+  height: 16px;
+  border-radius: var(--desk-radius-full);
+  background: conic-gradient(var(--lm-ring) var(--lm-share), var(--lm-raised) 0);
+  mask: radial-gradient(circle, transparent 4px, var(--desk-text) 4.5px);
+}
+
+.lm-ctx[data-level="high"] .lm-ctx-ring {
+  --lm-ring: var(--desk-warning);
+}
+
+.lm-ctx[data-level="full"] {
+  color: var(--desk-danger-text);
+}
+
+.lm-ctx[data-level="full"] .lm-ctx-ring {
+  --lm-ring: var(--desk-danger);
+}
