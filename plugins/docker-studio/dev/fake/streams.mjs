@@ -300,3 +300,24 @@ export function shell(/** @type {World} */ _world, /** @type {Io} */ io, /** @ty
 }
 
 export { sleep };
+
+/** `docker push ref`: each layer prepared and pushed, then the digest. */
+export async function push(/** @type {Io} */ io, /** @type {string} */ ref) {
+  let killed = false;
+  io.onKill(() => {
+    killed = true;
+  });
+  const layers = [0, 1, 2].map((i) => hex(`push-${ref}-${i}`, 12));
+  io.out(`The push refers to repository [${ref.split(":")[0]}]\n`);
+  for (const l of layers) io.out(`${l}: Preparing\n`);
+  for (let step = 1; step <= 4 && !killed; step++) {
+    await sleep(240);
+    for (const [i, l] of layers.entries())
+      io.out(
+        `${l}: Pushing  ${(((8 + i * 6) * step) / 4).toFixed(1)}MB/${(8 + i * 6).toFixed(1)}MB\n`,
+      );
+  }
+  for (const l of layers) io.out(`${l}: Pushed\n`);
+  io.out(`${ref.split(":")[1] ?? "latest"}: digest: sha256:${hex(`pushed-${ref}`)} size: 1572\n`);
+  io.exit(killed ? 143 : 0);
+}

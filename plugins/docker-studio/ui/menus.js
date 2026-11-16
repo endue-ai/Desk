@@ -143,3 +143,48 @@ export function stackMenu(app, s, at) {
   });
   app.overlay.menu(items, at);
 }
+
+/** @param {App} app @param {import("./parse.js").Image[]} rows @param {{ x: number, y: number } | HTMLElement} at */
+export function imageMenu(app, rows, at) {
+  const one = rows.length === 1 ? rows[0] : undefined;
+  /** @type {Items} */
+  const items = [];
+  if (one) {
+    const ref = one.refs[0] ?? one.id;
+    items.push(
+      { label: "Run…", icon: "play", run: () => app.dialogs.run(ref) },
+      { label: "Open", icon: "image", run: () => app.open({ kind: "image", id: one.id }) },
+      {
+        label: "Layers",
+        icon: "layers",
+        run: () => app.open({ kind: "image", id: one.id, tab: "layers" }),
+      },
+      "-",
+    );
+    if (one.refs[0])
+      items.push({
+        label: "Pull again",
+        icon: "download",
+        run: () => app.dialogs.pullRef(one.refs[0] ?? ""),
+      });
+    items.push(
+      { label: "Tag or push…", icon: "tag", run: () => app.dialogs.tag(one) },
+      {
+        label: "How to make it smaller",
+        icon: "sparkle",
+        run: () => app.open({ kind: "image", id: one.id, tab: "layers" }),
+      },
+      "-",
+      { label: "Copy the name", icon: "copy", run: () => void app.act.copy(ref, "the name") },
+      { label: "Copy the id", icon: "copy", run: () => void app.act.copy(one.id, "the id") },
+      "-",
+    );
+  }
+  items.push({
+    label: rows.length > 1 ? `Remove ${rows.length} images` : "Remove",
+    icon: "trash",
+    danger: true,
+    run: () => void app.act.removeImages(rows),
+  });
+  app.overlay.menu(items, at);
+}

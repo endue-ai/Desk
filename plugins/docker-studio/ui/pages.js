@@ -5,6 +5,8 @@ import { h, icon } from "./dom.js";
 import { createContainerPage } from "./view-container.js";
 import { createContainers } from "./view-containers.js";
 import { createDashboard } from "./view-dashboard.js";
+import { createImagePage } from "./view-image.js";
+import { createImages } from "./view-images.js";
 
 /** A section still to come: says so rather than showing nothing. */
 const later = (/** @type {string} */ title) => () => ({
@@ -23,7 +25,7 @@ const later = (/** @type {string} */ title) => () => ({
 export const PAGES = {
   dashboard: createDashboard,
   containers: createContainers,
-  images: later("Images"),
+  images: createImages,
   volumes: later("Volumes"),
   networks: later("Networks"),
   compose: later("Compose"),
@@ -32,7 +34,7 @@ export const PAGES = {
   contexts: later("Contexts"),
   settings: later("Settings"),
   container: createContainerPage,
-  image: later("Image"),
+  image: createImagePage,
   project: later("Stack"),
   volume: later("Volume"),
   network: later("Network"),
