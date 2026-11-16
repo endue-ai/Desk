@@ -105,6 +105,19 @@ describe("opening a file the person chose", () => {
   });
 });
 
+describe("an open that grants nothing", () => {
+  it("gives the opener nothing with grant: false, as an endue:// link's open asks (#310)", async () => {
+    const d = await desk();
+    await d.hub.commands.run("desk.files.open", { path: PATH, grant: false });
+    expect(d.heldAtVisit).toEqual([[]]);
+    expect(await d.held(IMAGES)).toEqual([]);
+    // grant: true asks for nothing more than the person's own open gives.
+    const own = await desk();
+    await own.hub.commands.run("desk.files.open", { path: PATH, grant: true });
+    expect(own.heldAtVisit).toEqual([[FOLDER]]);
+  });
+});
+
 describe("who chose", () => {
   it("is the person for the desk's own opens and a plugin's with the desk's opener", () => {
     expect(personChose({}, undefined)).toBe(true);

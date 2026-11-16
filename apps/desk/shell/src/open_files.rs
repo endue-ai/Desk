@@ -39,9 +39,50 @@ pub const REFUSED: &str = "endue:refused?why=";
 
 /// The queue's entry for an `endue:` link: its canonical form, or why it was refused.
 pub fn link_entry(text: &str) -> String {
+    let refused = |why: &str| format!("{REFUSED}{}", desk_link::encode(why));
     match desk_link::parse(text) {
+        // A file link names a file that is there, or nobody is asked about it (#310).
+        Ok(desk_link::Link::Open { path }) if !std::path::Path::new(&path).exists() => {
+            refused("The file this link names is not there.")
+        }
         Ok(link) => link.to_string(),
-        Err(why) => format!("{REFUSED}{}", desk_link::encode(&why.0)),
+        Err(why) => refused(&why.0),
+    }
+}
+
+/// What follows `--single-argument` on a raw Windows command line, exactly as it was written
+/// (double spaces and tabs kept), as Chromium reads it; `None` without the switch.
+pub fn single_argument_rest(raw: &str) -> Option<&str> {
+    let at = raw.find(&format!(" {SINGLE_ARGUMENT} "))?;
+    Some(&raw[at + SINGLE_ARGUMENT.len() + 2..])
+}
+
+/// This process's arguments, the program first. On Windows, after `--single-argument` the raw rest
+/// of the command line is the one argument, so a path's double spaces survive the split.
+pub fn process_args() -> Vec<String> {
+    let split: Vec<String> = std::env::args_os()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect();
+    #[cfg(windows)]
+    if let Some(rest) = raw_command_line().as_deref().and_then(single_argument_rest) {
+        let program = split.first().cloned().unwrap_or_default();
+        return vec![program, SINGLE_ARGUMENT.to_owned(), rest.to_owned()];
+    }
+    split
+}
+
+#[cfg(windows)]
+#[allow(unsafe_code)]
+fn raw_command_line() -> Option<String> {
+    // SAFETY: GetCommandLineW returns this process's command line, NUL-terminated, valid for its
+    // lifetime; it is only read here.
+    unsafe {
+        let line = windows_sys::Win32::System::Environment::GetCommandLineW();
+        if line.is_null() {
+            return None;
+        }
+        let len = (0..).take_while(|&i| *line.add(i) != 0).count();
+        String::from_utf16(std::slice::from_raw_parts(line, len)).ok()
     }
 }
 
@@ -149,6 +190,32 @@ pub fn local_path(value: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_raw_rest_after_single_argument_keeps_its_spaces() {
+        let raw =
+            r#""C:\Program Files\endue Desk\endue-desk.exe" --single-argument C:\a  b\c	d.md"#;
+        assert_eq!(single_argument_rest(raw), Some("C:\\a  b\\c\td.md"));
+        assert_eq!(single_argument_rest(r#""C:\x.exe" C:\a.md"#), None);
+        let payload = r#""x.exe" --single-argument endue://x" --gpu-launcher="cmd /c calc" --x=""#;
+        let rest = single_argument_rest(payload).unwrap();
+        let entries = argument_paths(["x.exe", SINGLE_ARGUMENT, rest].map(str::to_owned));
+        assert_eq!(entries.len(), 1, "{entries:?}");
+        assert!(entries[0].starts_with(REFUSED), "{entries:?}");
+    }
+
+    #[test]
+    fn a_file_link_names_a_file_that_is_there() {
+        let file = std::env::temp_dir().join(format!("desk-link-{}.md", std::process::id()));
+        std::fs::write(&file, "# here").unwrap();
+        let path = file.to_string_lossy().replace('\\', "/");
+        let link = format!("endue://v1/open?path={}", desk_link::encode(&path));
+        assert_eq!(link_entry(&link), link);
+        std::fs::remove_file(&file).unwrap();
+        assert!(link_entry(&link).starts_with(REFUSED));
+        let gone = desk_link::encode("The file this link names is not there.");
+        assert_eq!(link_entry(&link), format!("{REFUSED}{gone}"));
+    }
 
     #[test]
     fn what_follows_single_argument_is_one_argument() {

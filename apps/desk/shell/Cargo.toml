@@ -91,7 +91,7 @@ objc2-io-surface = { version = "0.3", default-features = false, features = ["std
 cef = { workspace = true, features = ["accelerated_osr"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Environment", "Win32_UI_WindowsAndMessaging"] }
 
 [lints]
 workspace = true

@@ -32,10 +32,11 @@ person would by hand. What grammar do links have, and what may each do?
 Chosen option: "a version segment first", as the person chose on #310, because a later grammar can
 change what a verb takes without guessing at an old link's meaning. Version `v1` is closed:
 
-* `endue://v1/open?path=<percent-encoded absolute path>` opens a file or folder only after the
-  person says yes, showing the path; then exactly as a double-click does (`desk.files.open`),
-  granting nothing more. A link alone never grants a read: a double-click's folder grant follows the
-  person's yes, not the link.
+* `endue://v1/open?path=<percent-encoded absolute path>` names a file or folder that is there (the
+  shell refuses one that is not, before anyone is asked) and opens it only after the person says
+  yes, showing the path. Even then it grants nothing: the open says `grant: false`, so the opener
+  gets no folder read (a double-click's ADR 0131 grant) and asks for its read as for any file it
+  was not handed. No link, answered or not, grants a permission.
 * `endue://v1/plugin/<plugin-id>[?surface=<surface-id>]` brings up a plugin that is on
   (`desk.plugins.open`); one the person turned off is refused with a notice, never turned on.
 * `endue://v1/command/<command-id>` runs a command without arguments, only after the person says
@@ -51,7 +52,8 @@ The parser is `crates/desk-link`. macOS registers the scheme in `CFBundleURLType
 over through `application:openURLs:`; Windows (NSIS and MSI) and Linux (`x-scheme-handler/endue`,
 `Exec=… %U`) hand them over as arguments. Windows registers `"…\endue-desk.exe" --single-argument
 %1`, as Chrome and Edge do: everything after the switch is one argument, so a link holding `"` adds
-no switch of its own (the class of CVE-2018-1000006); the shell reads the rest as one link or path. Windows also lists the macOS document types as "Open
+no switch of its own (the class of CVE-2018-1000006); the shell reads the raw rest of the command
+line as one link or path, as Chromium does, so a path's spaces are kept. Windows also lists the macOS document types as "Open
 with" entries under the ProgID `ai.endue.desk.file`, never an extension's default.
 
 ### Consequences

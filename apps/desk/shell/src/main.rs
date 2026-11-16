@@ -194,7 +194,7 @@ fn boot(
         plugin_dirs: paths::plugin_dirs(),
         dev_plugins: desk_boot::boot::env_paths("DESK_DEV_PLUGINS"),
     });
-    let opened = open_files::argument_paths(std::env::args());
+    let opened = open_files::argument_paths(open_files::process_args());
     let (desk, events) = Desk::new(booted, opened, pump, instance, updater);
     let watching = watch
         .lock()

@@ -1,8 +1,9 @@
 /**
  * endue:// links (#310, ADR 0244), as the shell queues them among the opened files: the canonical
  * form of a link the v1 grammar reads (`crates/desk-link`), or `endue:refused?why=…` for one it
- * refused. Anyone can write a link, so none acts unasked: a file link opens only once the person
- * says yes (then as a double-click does, and grants nothing more), a command link runs only on yes,
+ * refused. Anyone can write a link, so none acts unasked: a file link (one the shell found on disk)
+ * opens only once the person says yes, and even then grants its opener nothing (`grant: false`: the
+ * opener asks for its read as for any file it was not handed), a command link runs only on yes,
  * and a plugin link brings up a plugin that is on, never turning one on. Each question offers "no"
  * first, so a link that lands while the person types is not answered by their next Enter. Anything
  * else is said in a plain notice, in the desk's words, and run never.
@@ -32,13 +33,16 @@ export type Link =
   | { kind: "plugin"; id: string; surface?: string }
   | { kind: "command"; id: string };
 
-/** Text from a link fit for a notice: no control or invisible format characters, at most 120. */
+/** Text from a link fit for a notice: no control or invisible format characters, at most 120, the end (a file's name) kept. */
 export function shown(text: string): string {
   const clean = [...text]
     .filter((c) => !/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(c))
     .join("")
     .trim();
-  return clean.length > 120 ? `${clean.slice(0, 119)}…` : clean;
+  // Cut from the middle: a long path keeps where it starts and the file's own name.
+  if (clean.length <= 120) return clean;
+  const tail = clean.slice(clean.lastIndexOf("/") + 1).slice(-70);
+  return `${clean.slice(0, 119 - tail.length)}…${tail}`;
 }
 
 const NOT_ONE = "This link is not one the desk opens.";
@@ -131,7 +135,8 @@ export async function openLink(host: LinksHost, entry: string): Promise<void> {
       "Open it",
       "Don't open it",
     );
-    if (yes) await host.commands.run("desk.files.open", { path: link.path });
+    // Not the person's own open: the opener gets no folder grant and asks for its read as usual.
+    if (yes) await host.commands.run("desk.files.open", { path: link.path, grant: false });
     return;
   }
   const title = shown(host.commands.list().find((c) => c.id === link.id)?.title ?? link.id);
