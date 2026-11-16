@@ -791,16 +791,19 @@
     },
     {
      "tag": "div",
-     "class": "eris",
+     "class": "eris is-resting",
      "role": "button",
      "aria-label": "Eris",
      "data-state": "idle",
      "box": [
       656,
-      40,
+      702,
       128,
       138
      ],
+     "style": {
+      "opacity": "0"
+     },
      "children": [
       {
        "tag": "span",
@@ -1210,7 +1213,7 @@
        "style": {
         "background": "rgb(255, 255, 255)",
         "border": "solid rgba(182, 163, 245, 0.3)",
-        "transform": "matrix(1, 0, 0, 1, -92, 0)"
+        "transform": "matrix(1, 0, 0, 1, -220, 0)"
        },
        "children": [
         {
@@ -1238,9 +1241,9 @@
          "tag": "div",
          "class": "composer-field",
          "box": [
-          897,
+          769,
           865,
-          0,
+          94,
           2
          ],
          "style": {
@@ -1274,6 +1277,7 @@
           },
           {
            "tag": "span",
+           "class": "talk-hint",
            "style": {
             "color": "rgb(30, 24, 51)"
            },
@@ -1328,8 +1332,7 @@
          "class": "talk-shortcut",
          "style": {
           "color": "rgb(103, 95, 112)",
-          "border": "solid rgb(221, 214, 229)",
-          "opacity": "0"
+          "border": "solid rgb(221, 214, 229)"
          },
          "text": "⌥Space"
         },
