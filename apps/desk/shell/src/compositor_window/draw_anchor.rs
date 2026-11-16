@@ -7,9 +7,8 @@
 //! drawn from the corner the resize left where it was instead: the edges that stay put stay put,
 //! and the edge dragged shows the new size once the page has painted it.
 //!
-//! The focus ring and a pane's plugin lie in the frame as drawn, not in the place the page has yet
-//! to paint: at the frame's far edges they keep their inset from it, so the ring is the size of the
-//! window that shows, and no content is drawn past the frame.
+//! A pane's plugin lies in the frame as drawn, not in the place the page has yet to paint: at the
+//! frame's far edges it keeps its inset from it, so no content is drawn past the frame.
 
 use std::collections::BTreeMap;
 

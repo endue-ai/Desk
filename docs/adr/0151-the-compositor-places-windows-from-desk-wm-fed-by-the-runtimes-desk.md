@@ -16,6 +16,7 @@ parts, an overlay above them) and the parts of its system layer, which the compo
 every window; the Bad consequence "the page is one picture" holds now only where a part's box ends.
 Amended by ADR 0161: a sleeping window shows its surface's last frame greyed under its card, with
 Reload (`desk.frames.reload`).
+Amended by ADR 0257: no focus ring goes round the focused plugin's pane.
 
 # The compositor places windows from desk-wm, fed by the desk the runtime keeps, and keeps the live budget
 
