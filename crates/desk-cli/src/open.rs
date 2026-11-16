@@ -5,7 +5,7 @@
 //! (`apps/desk/shell/src/instance.rs`); on macOS `open` hands it over as the OS does from Finder.
 //! `DESK_APP` names the desk's executable instead of the installed one.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, ExitCode};
 
 /// What the desk is handed for `arg`: a canonical link, or an absolute path.
@@ -55,7 +55,7 @@ fn installed(target: &str) -> Command {
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn installed(target: &str) -> Command {
-    let mut command = Command::new(PathBuf::from("endue-desk"));
+    let mut command = Command::new("endue-desk");
     command.arg(target);
     command
 }
