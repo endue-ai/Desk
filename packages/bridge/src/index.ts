@@ -26,6 +26,17 @@ export {
 } from "./fixtures";
 export * from "./generated";
 export {
+  type Catalogs,
+  fill,
+  LANGUAGES,
+  type Language,
+  type LanguageChoice,
+  type MessageParams,
+  mergeCatalogs,
+  messageText,
+  resolveLanguage,
+} from "./messages";
+export {
   type StubCommands,
   type StubOptions,
   type StubState,

@@ -22,7 +22,7 @@
       "oneOf": [{ "$ref": "#/$defs/MessageText" }, { "$ref": "#/$defs/PluralMessage" }]
     },
     "MessageText": {
-      "description": "A message's text. {name} is replaced by the parameter of that name; a parameter not given reads as nothing.",
+      "description": "A message's text. {name} is replaced by the parameter of that name; a parameter not given reads as nothing. A lookup with no parameters at all leaves the text as written.",
       "type": "string"
     },
     "PluralMessage": {

@@ -480,7 +480,7 @@ export type MessageId = string;
 /** One message: a text, or a plural message whose form the count parameter picks. */
 export type Message = MessageText | PluralMessage;
 
-/** A message's text. {name} is replaced by the parameter of that name; a parameter not given reads as nothing. */
+/** A message's text. {name} is replaced by the parameter of that name; a parameter not given reads as nothing. A lookup with no parameters at all leaves the text as written. */
 export type MessageText = string;
 
 /** A message in plural forms, keyed by the Intl.PluralRules categories of the catalog's language; the count parameter picks the form, and other is the form for any count the language has no other category for. */

@@ -26,14 +26,16 @@ describe("messageText", () => {
   it("parameters fill {name} and a missing one stays empty", () => {
     expect(messageText(catalogs, "en", "greet.named", { name: "Eris" })).toBe("Hello, Eris");
     expect(messageText(catalogs, "ko", "greet.named", { name: "Eris" })).toBe("Eris님, 안녕하세요");
-    expect(messageText(catalogs, "en", "greet.named")).toBe("Hello, ");
+    expect(messageText(catalogs, "en", "greet.named", {})).toBe("Hello, ");
+    // Without parameters the text stays as written, for a caller that fills it later.
+    expect(messageText(catalogs, "en", "greet.named")).toBe("Hello, {name}");
   });
 
   it("a plural message picks its form by count", () => {
     expect(messageText(catalogs, "en", "inbox.unread", { count: 1 })).toBe("1 unread notice");
     expect(messageText(catalogs, "en", "inbox.unread", { count: 2 })).toBe("2 unread notices");
     expect(messageText(catalogs, "ko", "inbox.unread", { count: 1 })).toBe("읽지 않은 알림 1개");
-    expect(messageText(catalogs, "en", "inbox.unread")).toBe(" unread notices");
+    expect(messageText(catalogs, "en", "inbox.unread", {})).toBe(" unread notices");
   });
 });
 
