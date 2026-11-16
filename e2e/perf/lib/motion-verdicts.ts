@@ -39,7 +39,7 @@ export interface Limits {
   /** Frames of the sway where a window's picture was laid out for another size. */
   maxUnfitFrames: number;
   /** The share of the sway's frames where a pane's plugin may show a picture of another size
-   * than its pane (ADR 0227: its page trailing its frame is left). */
+   * than its pane, ahead of its frame (ADR 0227) or behind it (ADR 0233). */
   maxPaneShare?: number;
 }
 
