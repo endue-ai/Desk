@@ -45,7 +45,17 @@ what `desk-sys` already produces and what a recogniser needs, at 50 small events
   perm.request asks), then the OS (`request_access`) if it was never asked; `NSMicrophoneUsageDescription`
   is in the macOS Info.plist. desk-boot injects `desk_sys::audio::os()`; tests inject `FakeInput`.
 * **The chrome.** The rail's Listen button (composition D, #291) is on with a dot while anything
-  captures, names who listens, and stops every capture when pressed.
+  captures, names who listens, and stops every capture when pressed. The account bar, which stays
+  when the rail is hidden or another plugin holds `role:rail`, shows it on the avatar too, and its
+  menu's first row stops every capture. The shell bridge hands a late listener the list in force.
+* **What ends a capture.** A stop needs only ownership, as net.close (a `once` grant the start spent
+  must not keep a plugin from stopping its own capture). The runtime stops a plugin's captures when
+  one of its windows closes, or its frame loads again or is unloaded (`plugin-mic.ts`); the core
+  ends a socket caller's (`cli`, `agent:<id>`) when its last connection closes (`Core::caller_left`).
+  A caller holds at most four captures; a fifth is `forbidden`.
+* **The socket.** desk-ipc sends `audio.frame` and `audio.ended` only to a connection whose caller
+  they name, and `audio.capturing` to none, whoever else is connected. Every other event still
+  reaches every connection; giving each event only to whom it names is #347.
 * **Eris.** Without `SpeechRecognition` her ear captures through the bridge and draws the level from
   each frame's spectrum. `specs/brain` has no speech-to-text, so she hears no words that way yet.
 * **Wake word.** `wakeWord: true` answers `unsupported` until the core has a wake-word engine.
@@ -57,6 +67,9 @@ what `desk-sys` already produces and what a recogniser needs, at 50 small events
 * Bad, because 20 ms frames cost about 50 events a second for each capture on the bridge.
 * Bad, because without Web Speech the ear shows the level but hears no words: transcription and the
   wake word are follow-ups.
+* Bad, because CEF's own reload of a stalled plugin page (`web_host/revive.rs`) does not tell the
+  runtime, so a capture made by the page before it stalled ends only from the chrome; the shell
+  saying so to the runtime is a follow-up.
 * Bad, because Windows and Linux capture is tested only through the fake: cpal serves them, but no
   real device there was tried for this change.
 
