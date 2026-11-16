@@ -23,7 +23,8 @@ Layer: Rust core. Status: Unix sockets on macOS and Linux; Windows answers `Unsu
 One compact JSON document per `\n`-terminated UTF-8 line; no handshake, version line or wrapper.
 
 - In: a `BridgeRequest` (`specs/bridge/v0`). Out: its `BridgeResponse`, and the core `BridgeEvent`s
-  for its caller, for its own calls and for nobody in particular (`{event, data}`, ADR 0262).
+  for its caller, its own calls (a `cli` connection: its own answers and captures, #377) and for
+  nobody in particular (`{event, data}`, ADR 0262).
 - A line that is not a `BridgeRequest` is answered `invalid_params` with its `id`, or `0` when the id
   cannot be read; the connection stays open. Empty lines are ignored. Clients count ids from 1.
 - `AGENT_METHOD`, the socket's own `{ id, method: "socket.agent", params: { agent } }`, answers
@@ -36,4 +37,4 @@ One compact JSON document per `\n`-terminated UTF-8 line; no handshake, version 
 
 `cargo test -p desk-ipc`: `tests/socket.rs` puts an in-process `Core` behind the socket and speaks raw
 lines (Unix only); `tests/agent.rs` covers agent connections; `tests/grants.rs` the grants and the
-socket path.
+socket path; `tests/cli_connections.rs` what one `cli` connection hears of another's.
