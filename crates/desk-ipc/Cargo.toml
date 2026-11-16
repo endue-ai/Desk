@@ -14,5 +14,9 @@ desk-core.workspace = true
 dirs = "7"
 serde_json.workspace = true
 
+[dev-dependencies]
+# The microphone's tests use desk-sys's fake input (ADR 0245).
+desk-sys = { workspace = true, features = ["audio"] }
+
 [lints]
 workspace = true

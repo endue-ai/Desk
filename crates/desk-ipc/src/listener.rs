@@ -25,7 +25,8 @@ pub struct Listener {
 
 impl Listener {
     /// Bind `path` and serve `core` on it: every connection is the caller `cli` and hears every core
-    /// event. `AddrInUse` when another desk serves the path or the path is not a socket.
+    /// event but the microphone's of other callers (`serve.rs`). `AddrInUse` when another desk serves
+    /// the path or the path is not a socket.
     pub fn bind(path: &Path, core: Arc<Core>) -> io::Result<Self> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
@@ -42,7 +43,7 @@ impl Listener {
             clients: Clients::default(),
         };
         serve::fan_out(
-            core.events().subscribe(),
+            core.events().subscribe_addressed(),
             listener.clients.clone(),
             Arc::clone(&listener.stop),
         )?;
