@@ -72,19 +72,16 @@ test("at rest Eris is in the talk line, and comes out above it while she speaks"
 });
 
 test("a profile that places Eris keeps her there at rest", async ({ page }) => {
-  await page.evaluate(() => {
-    const { desk } = window.__shell;
-    desk.store.set((s) => ({
-      session: {
-        ...s.session,
-        1: {
-          surfaces: [],
-          eris: { x: 200, y: 300 },
-          rail: { visible: true },
-          drawer: { visible: true },
-        },
+  // As the desk takes a place: through the window manager's session (`layoutOf` reads its view).
+  await page.evaluate(async () => {
+    await window.__shell.wm.session({
+      1: {
+        surfaces: [],
+        eris: { x: 200, y: 300 },
+        rail: { visible: true },
+        drawer: { visible: true },
       },
-    }));
+    });
   });
   await step(page, 16);
   const eris = page.locator(".eris");
