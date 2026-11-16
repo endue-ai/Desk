@@ -95,6 +95,8 @@ export function applyAction(S, tab, a) {
       t.req.tests = `${t.req.tests.trim() ? `${t.req.tests.trimEnd()}\n\n` : ""}${String(a.code ?? "").trim()}\n`;
       t.reqTab = "tests";
       S.app.emit("tab");
+      // Applied by the person: their own, as if typed (trust.js).
+      S.app.emit("req", { field: "tests", tab: t });
       return "Added the tests; send to run them.";
     }
     case "add_checks": {

@@ -24,21 +24,23 @@ export function filesRead(prep) {
 }
 
 /**
- * A path's segments with `.` and `..` worked out, `/` and `\` alike; undefined when it is not
- * absolute (curl would read it from a folder nobody chose). `~` counts as a root.
+ * A path's segments, `/`-separated (and `\\` too on a Windows path, one with a drive letter);
+ * undefined when it is not absolute, or names `.` or `..` anywhere: curl resolves those through
+ * symlinks on the way, so only a plain path can be checked. `~` counts as a root.
  * @param {string} path @returns {string[] | undefined}
  */
 export function segments(path) {
-  const p = path.trim().replace(/\\/g, "/");
+  const raw = path.trim();
+  const windows = /^[A-Za-z]:[\\/]/.test(raw);
+  const p = windows ? raw.replace(/\\/g, "/") : raw;
   const root = /^(~|[A-Za-z]:)?\//.exec(p);
   if (!root) return undefined;
   /** @type {string[]} */
   const out = [root[1] ?? ""];
   for (const part of p.slice(root[0].length).split("/")) {
-    if (part === "" || part === ".") continue;
-    if (part === "..") {
-      if (out.length > 1) out.pop();
-    } else out.push(part);
+    if (part === "") continue;
+    if (part === "." || part === "..") return undefined;
+    out.push(part);
   }
   return out;
 }
@@ -59,7 +61,7 @@ export function inside(path, root) {
 async function linked(S, path, root) {
   const r = segments(root) ?? [];
   const p = segments(path) ?? [];
-  const base = root.trim().replace(/\\/g, "/").replace(/\/+$/, "");
+  const base = root.trim().replace(/\/+$/, "");
   for (let i = r.length; i < p.length; i++) {
     const at = `${base}/${p.slice(r.length, i + 1).join("/")}`;
     try {

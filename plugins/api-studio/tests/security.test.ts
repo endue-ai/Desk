@@ -1,35 +1,28 @@
 // What keeps a request from carrying more than the person meant, without DOM: curl speaks only
-// HTTP(S), header names cannot reach curl's @file form, secrets do not follow a redirect to
-// another host, generated code cannot run what a value holds, secret names and values are hidden
-// from what an assistant or agent reads, typed secrets are found before they reach a file, a HAR
-// file's session goes to secrets, and the hashes scripts are allowed by are SHA-256.
+// HTTP(S), header names cannot reach curl's @file form, only plain paths count as inside a
+// collection, generated code cannot run what a value holds, secret names and values are hidden
+// from what an assistant or agent reads, and the hashes scripts are allowed by are SHA-256.
+// Redirects are in redirects.test.ts, typed secrets and HAR files in literals.test.ts.
 import { createHash } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { GENERATORS, hideSecrets } from "../ui/codegen.js";
 import { curlCommand, curlConfig, headerLine } from "../ui/curl-config.js";
 import { createEngine } from "../ui/engine.js";
 import { filesRead, inside, segments } from "../ui/file-guard.js";
-import { fromHar } from "../ui/har.js";
-import { literalSecrets, withoutLiterals } from "../ui/literals.js";
 import { normalize, pair } from "../ui/model.js";
-import { followsItself, nextHop, sendFollowing } from "../ui/redirects.js";
-import { hideText, hideUrl, isSecretName, varName, withoutSecrets } from "../ui/secret-names.js";
-import { bodyJson, prepare, readResponse } from "../ui/send.js";
+import {
+  hideFailure,
+  hideText,
+  hideUrl,
+  hideValues,
+  isSecretName,
+  varName,
+  withoutSecrets,
+} from "../ui/secret-names.js";
+import { prepare } from "../ui/send.js";
 import { sha256 } from "../ui/sha256.js";
-import { paramsFromUrl } from "../ui/url.js";
-import { curlBridge, testServer } from "./real-curl";
+import { curlBridge } from "./real-curl";
 import { scopesIn } from "./scopes";
-
-let one: Awaited<ReturnType<typeof testServer>>;
-let other: Awaited<ReturnType<typeof testServer>>;
-beforeAll(async () => {
-  one = await testServer();
-  other = await testServer();
-});
-afterAll(async () => {
-  await one.close();
-  await other.close();
-});
 
 const settings = normalize({}).settings;
 
@@ -80,76 +73,19 @@ describe("curl's config", () => {
 
 describe("paths inside a collection", () => {
   it("works out . and .. and needs an absolute path", () => {
-    expect(segments("/a/./b/../c")).toEqual(["", "a", "c"]);
-    expect(segments("~/x/../y")).toEqual(["~", "y"]);
+    expect(segments("/a/b/c")).toEqual(["", "a", "b", "c"]);
     expect(segments("C:\\Users\\a")).toEqual(["C:", "Users", "a"]);
+    // curl resolves . and .. through symlinks, so a path naming them is never taken as inside.
+    expect(segments("/a/./b")).toBeUndefined();
+    expect(segments("~/x/../y")).toBeUndefined();
     expect(segments("data.bin")).toBeUndefined();
+    // A backslash is a name's own character on macOS and Linux, not a separator.
+    expect(segments("/c/a\\b/x")).toEqual(["", "c", "a\\b", "x"]);
+    expect(inside("/c/l/../hosts", "/c")).toBe(false);
     expect(inside("~/api/data/in.bin", "~/api")).toBe(true);
     expect(inside("~/api/../.ssh/id_rsa", "~/api")).toBe(false);
     expect(inside("~/api-other/x", "~/api")).toBe(false);
     expect(inside("~/api", "~/api")).toBe(false);
-  });
-});
-
-describe("redirects", () => {
-  const send = async (
-    url: string,
-    headers: { key: string; value: string }[],
-    secrets: string[],
-  ) => {
-    const req = normalize({
-      url,
-      params: paramsFromUrl(url, []),
-      headers: headers.map((h) => pair(h)),
-    });
-    const { prep } = prepare(req, { scopes: scopesIn(secrets) });
-    expect(followsItself(prep)).toBe(true);
-    const followed = await sendFollowing(createEngine(curlBridge()), prep).promise;
-    const res = readResponse(followed.run, followed.prep, "", []);
-    return { res, followed, echoed: bodyJson(res)?.value };
-  };
-
-  it("keeps secret headers on the same origin and drops them for another", async () => {
-    const same = await send(
-      `${one.url}/away?to=/echo`,
-      [
-        { key: "X-API-Key", value: "{{key}}" },
-        { key: "X-Trace", value: "t1" },
-      ],
-      ["key-SECRET"],
-    );
-    expect(same.echoed.headers["x-api-key"]).toBe("key-SECRET");
-    expect(same.followed.hops).toEqual([{ status: 302, reason: "Found", location: "/echo" }]);
-
-    const away = await send(
-      `${one.url}/away?to=${encodeURIComponent(`${other.url}/echo`)}`,
-      [
-        { key: "X-Custom", value: "{{key}}" },
-        { key: "X-Trace", value: "t1" },
-      ],
-      ["key-SECRET"],
-    );
-    expect(away.res.status).toBe(200);
-    expect(away.echoed.headers["x-custom"]).toBeUndefined();
-    expect(away.echoed.headers["x-trace"]).toBe("t1");
-    expect(away.followed.hops).toHaveLength(1);
-  });
-
-  it("turns a POST into a GET on 303 and keeps the body on 307", () => {
-    const prep = prepare(
-      normalize({
-        method: "POST",
-        url: "https://a.test/x",
-        body: { mode: "json", json: "{}" },
-        headers: [pair({ key: "Authorization", value: "Bearer t" })],
-      }),
-      { scopes: [] },
-    ).prep;
-    const seeOther = nextHop(prep, 303, "https://a.test/y", false, undefined);
-    expect([seeOther.method, seeOther.body.kind]).toEqual(["GET", "none"]);
-    const again = nextHop(prep, 307, "https://b.test/y", true, () => "c=1");
-    expect([again.method, again.body.kind]).toEqual(["POST", "raw"]);
-    expect(again.headers.map((h) => h.key)).toEqual(["Content-Type", "Cookie"]);
   });
 });
 
@@ -212,7 +148,22 @@ describe("secret names and values", () => {
       "Ocp-Apim-Subscription-Key",
     ])
       expect(isSecretName(name), name).toBe(true);
-    for (const name of ["Content-Type", "Accept", "author", "monkey", "WWW-Authenticate", "page"])
+    for (const name of [
+      "Content-Type",
+      "Accept",
+      "author",
+      "monkey",
+      "WWW-Authenticate",
+      "page",
+      "Idempotency-Key",
+      "Sec-WebSocket-Key",
+      "page_token",
+      "nextPageToken",
+      "sort_key",
+      "X-Session-Language",
+      "tokenUrl",
+      "token_type",
+    ])
       expect(isSecretName(name), name).toBe(false);
     expect(varName("X-API-Key")).toBe("xApiKey");
   });
@@ -224,6 +175,15 @@ describe("secret names and values", () => {
     expect(hideText("password=hunter2&user=ann")).toBe("password=(hidden)&user=ann");
     expect(hideText("Authorization: Bearer abc def\nX: 1")).toBe("Authorization: (hidden)\nX: 1");
     expect(hideText("echo v-SECRET here", ["v-SECRET"])).toBe("echo (hidden) here");
+    expect(hideValues("q=Ab%2BcD%2FeF%3D%3D&n=a+b", ["Ab+cD/eF==", "a b c"])).toBe(
+      "q=(hidden)&n=a+b",
+    );
+    expect(hideFailure("res.body.access_token", "res.body.access_token isEmpty: at1", [])).toBe(
+      "res.body.access_token: failed (its value is hidden)",
+    );
+    expect(hideFailure("res.status", 'res.status eq "sk-SECRET", got 200', ["sk-SECRET"])).toBe(
+      'res.status eq "(hidden)", got 200',
+    );
     expect(hideUrl("https://x/?token=abc&q=1&key={{k}}")).toBe(
       "https://x/?token=(hidden)&q=1&key={{k}}",
     );
@@ -239,81 +199,6 @@ describe("secret names and values", () => {
     );
     expect(JSON.stringify(prep)).not.toMatch(/SECRET|captured/);
     expect(missing.sort()).toEqual(["key", "token"]);
-  });
-});
-
-describe("typed secrets", () => {
-  it("finds them in auth, headers, the query, form fields and variables, and empties them", () => {
-    const req = normalize({
-      url: "https://x/?api_key=k1&page=2",
-      params: [pair({ key: "api_key", value: "k1" }), pair({ key: "page", value: "2" })],
-      headers: [
-        pair({ key: "Authorization", value: "Bearer t1" }),
-        pair({ key: "X-Token", value: "{{token}}" }),
-      ],
-      auth: { type: "basic", basic: { username: "ann", password: "pw" } },
-      body: { mode: "form", form: [pair({ key: "client_secret", value: "cs" })] },
-      vars: { pre: [pair({ key: "token", value: "v1" })], post: [] },
-    });
-    const found = literalSecrets(req);
-    expect(found.map((l) => [l.label, l.value])).toEqual([
-      ["Basic auth password", "pw"],
-      ["Header Authorization", "t1"],
-      ["Query api_key", "k1"],
-      ["Body field client_secret", "cs"],
-      ["Variable token", "v1"],
-    ]);
-    for (const l of found) l.put(`{{${l.name}}}`);
-    expect(req.headers[0]?.value).toBe("Bearer {{authorization}}");
-    expect(req.url).toBe("https://x/?api_key={{apiKey}}&page=2");
-    expect(req.vars.pre).toHaveLength(0);
-    const kept = withoutLiterals(
-      normalize({ auth: { type: "bearer", bearer: { token: "b-SECRET" } } }),
-    );
-    expect(JSON.stringify(kept)).not.toContain("b-SECRET");
-  });
-
-  it("takes a HAR file's session out of its requests", () => {
-    const imp = fromHar({
-      log: {
-        entries: [
-          {
-            request: {
-              method: "POST",
-              url: "https://shop.test/api?access_token=at1&page=1",
-              headers: [
-                { name: "Authorization", value: "Bearer jwt1" },
-                { name: "Cookie", value: "sid=s1" },
-                { name: "Accept", value: "*/*" },
-              ],
-              postData: { mimeType: "application/json", text: '{"password":"pw1","n":1}' },
-            },
-          },
-          {
-            request: {
-              method: "GET",
-              url: "https://shop.test/me",
-              headers: [{ name: "Authorization", value: "Bearer jwt1" }],
-            },
-          },
-        ],
-      },
-    });
-    const files = JSON.stringify(imp.requests);
-    for (const value of ["at1", "jwt1", "sid=s1", "pw1"]) expect(files).not.toContain(value);
-    expect(imp.requests[0]?.headers.map((h) => h.value)).toEqual([
-      "Bearer {{authorization}}",
-      "{{cookie}}",
-      "*/*",
-    ]);
-    expect(imp.requests[1]?.headers[0]?.value).toBe("Bearer {{authorization}}");
-    expect(imp.envs[0]?.name).toBe("Recorded");
-    expect(imp.envs[0]?.vars.map((v) => [v.key, v.value, v.secret])).toEqual([
-      ["accessToken", "at1", true],
-      ["authorization", "jwt1", true],
-      ["cookie", "sid=s1", true],
-      ["password", "pw1", true],
-    ]);
   });
 });
 

@@ -156,7 +156,8 @@ describe("the studio", () => {
     ).toBe("PUT");
     expect(studio.S.app.dirty(tab)).toBe(false);
 
-    // A token typed as is: saving offers to move it into a secret, and the file keeps {{token}}.
+    // A token typed as is: saving offers to move it into a secret of this collection's own
+    // environment (made, as it had none), never the globals; the file keeps {{token}}.
     tab.req.auth = { type: "bearer", bearer: { token: "typed-SECRET" } };
     const saving = studio.S.save(tab);
     await answer("is-secrets", "Move to secrets");
@@ -164,9 +165,17 @@ describe("the studio", () => {
     const file = readFileSync(files.real("~/local-api/echo.request.json"), "utf8");
     expect(file).not.toContain("typed-SECRET");
     expect(JSON.parse(file).auth.bearer.token).toBe("{{token}}");
+    const envs = (studio.S as Studio).envs;
+    const withEnv = S.collections.byPath(coll.path);
+    const local = withEnv && envs.activeEnv(withEnv);
+    expect(local?.name).toBe("Local secrets");
     expect(
-      (studio.S as Studio).envs.globals.find((v: { key: string }) => v.key === "token")?.value,
-    ).toBe("typed-SECRET");
+      envs.varsOf(withEnv, local).find((v: { key: string }) => v.key === "token"),
+    ).toMatchObject({ value: "typed-SECRET", secret: true });
+    expect(envs.globals.some((v: { key: string }) => v.key === "token")).toBe(false);
+    expect(
+      readFileSync(files.real("~/local-api/environments/local-secrets.env.json"), "utf8"),
+    ).not.toContain("typed-SECRET");
 
     // A script that arrives on disk afterwards (a pull) is asked about again; said no, it does
     // not run, and the Tests tab says why.
@@ -194,6 +203,15 @@ describe("the studio", () => {
     expect(pulled.results?.errors.map((e: { text: string }) => e.text).join(" ")).toContain(
       "not allowed",
     );
+
+    // A copy of it, which belongs to no collection, is asked about too.
+    studio.S.duplicate(pulled);
+    const copy = studio.S.app.current();
+    if (!copy || copy === pulled) throw new Error("no copy");
+    const copying = studio.S.send(copy);
+    await answer("is-trust", "Don't run");
+    await copying;
+    expect(studio.S.runtime.values.get("pulled")).toBeUndefined();
   });
 
   it("asks before a request sends a file from outside its collection, and refuses file URLs", async () => {
@@ -298,10 +316,13 @@ describe("the studio", () => {
     ]);
     const send = handlers.get("endue.api-studio.send");
     if (!send) throw new Error("no send command");
+    // A value captured at runtime may be a token under a plain name: not filled in either.
+    studio.S.runtime.values.set("x", "captured-SECRET");
     const answered = await send({
-      url: `${server.url}/echo?t={{token}}&w={{who}}`,
+      url: `${server.url}/echo?t={{token}}&w={{who}}&x={{x}}`,
       headers: { "X-Token": "{{token}}" },
     });
+    expect(JSON.stringify(answered)).not.toContain("captured-SECRET");
     expect(JSON.stringify(answered)).not.toContain("g-SECRET");
     expect(answered.secretsNotFilled).toEqual(["token"]);
     const echoed = JSON.parse(String(answered.body));

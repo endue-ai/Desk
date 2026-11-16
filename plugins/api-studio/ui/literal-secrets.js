@@ -1,9 +1,11 @@
 // Secrets typed as they are into what is saved as files. A request, folder or collection is a
 // plain file meant for Git, so a password, token or key typed into its auth, a secret header, a
-// secret query pair, a form field or a variable would be committed with it. Saving such a tab
-// asks first, and offers to move each value into a secret variable (the active environment's, or
-// the globals'), kept in the desk and never in the files, leaving {{name}} in its place. An
-// environment's variable whose name says secret is offered to be kept as a secret, too.
+// secret query pair, a body field or a variable would be committed with it. Before such a file is
+// written (S.beforeWrite, once the collection is known), the person is asked, and offered to move
+// each value into a secret variable of that collection's environment in use (or of a new "Local
+// secrets" one), kept in the desk and never in the files, leaving {{name}} in its place. Never
+// into the globals: those fill into every collection's requests. An environment's variable whose
+// name says secret is offered to be kept as a secret, too.
 
 import { h } from "./dom.js";
 import { literalSecrets, typed } from "./literals.js";
@@ -14,31 +16,33 @@ import { isSecretName } from "./secret-names.js";
 /**
  * @typedef {import("./studio.js").Studio} Studio
  * @typedef {import("./app.js").Tab} Tab
+ * @typedef {import("./collection-fs.js").Collection} Collection
  * @typedef {import("./literals.js").Literal} Literal
  */
 
+/** The environment moved secrets go to when a collection uses none. */
+export const LOCAL = "Local secrets";
+
 /** @param {Studio} S */
 export function installLiteralSecrets(S) {
-  /** Where moved secrets go for a tab: its collection's active environment, else the globals. @param {Tab} tab */
-  const target = (tab) => {
-    const coll = tab.ref ? S.collections.byPath(tab.ref.collection) : undefined;
-    const env = coll ? S.envs.activeEnv(coll) : undefined;
-    return coll && env
-      ? {
-          label: `the environment “${env.name}”`,
-          vars: S.envs.varsOf(coll, env).map((/** @type {any} */ v) => ({ ...v })),
-          write: (/** @type {any[]} */ vars) => S.envs.save(coll, env, vars),
-        }
-      : {
-          label: "the global variables",
-          vars: S.envs.globals.map((/** @type {any} */ v) => ({ ...v })),
-          write: (/** @type {any[]} */ vars) => S.envs.saveGlobals(vars),
-        };
+  /** The environment a collection's moved secrets go to: the one in use, else Local secrets. @param {Collection} coll */
+  const target = async (coll) => {
+    let env = S.envs.activeEnv(coll) ?? coll.envs.find((e) => e.name === LOCAL);
+    if (!env) env = await S.envs.create(coll, LOCAL, { vars: [] });
+    const fresh = S.collections.byPath(coll.path) ?? coll;
+    if (!env) throw new Error("could not make an environment for the secrets");
+    if (!S.envs.activeEnv(fresh)) await S.envs.use(fresh, env.name);
+    const chosen = env;
+    return {
+      label: `the environment “${chosen.name}”`,
+      vars: S.envs.varsOf(fresh, chosen).map((/** @type {any} */ v) => ({ ...v })),
+      write: (/** @type {any[]} */ vars) => S.envs.save(fresh, chosen, vars),
+    };
   };
 
-  /** Move each literal into a secret variable and leave {{name}} behind. @param {Tab} tab @param {Literal[]} found */
-  const move = async (tab, found) => {
-    const to = target(tab);
+  /** Move each literal into a secret variable and leave {{name}} behind. @param {Collection} coll @param {Literal[]} found */
+  const move = async (coll, found) => {
+    const to = await target(coll);
     for (const lit of found) {
       let name = lit.name;
       for (let n = 2; ; n++) {
@@ -105,17 +109,24 @@ export function installLiteralSecrets(S) {
       }
       return save(tab);
     }
-    if (tab.kind === "runner") return save(tab);
-    const found = literalSecrets(tab.req);
-    if (found.length) {
-      const answer = await ask(
-        tab,
-        found.map((l) => l.label),
-        target(tab).label,
-      );
-      if (answer === undefined || answer === "cancel") return false;
-      if (answer === "move") await move(tab, found);
-    }
     return save(tab);
+  };
+
+  S.beforeWrite = async (
+    /** @type {Tab} */ tab,
+    /** @type {Collection} */ coll,
+    /** @type {string} */ authDefault,
+  ) => {
+    const found = literalSecrets(tab.req, { authDefault });
+    if (!found.length) return true;
+    const where = S.envs.activeEnv(coll)?.name ?? LOCAL;
+    const answer = await ask(
+      tab,
+      found.map((l) => l.label),
+      `the environment “${where}”`,
+    );
+    if (answer === undefined || answer === "cancel") return false;
+    if (answer === "move") await move(coll, found);
+    return true;
   };
 }

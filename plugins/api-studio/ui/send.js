@@ -54,7 +54,11 @@ export function prepare(req, ctx) {
   const url = wireUrl(filled, query, req.settings.encodeUrl !== false);
   // What must not leave for another host: the secret variables' values and the auth's own.
   const secrets = secretValues(ctx.scopes);
-  for (const h of [...applied.headers, ...applied.query]) if (h.value) secrets.push(h.value);
+  for (const h of [...applied.headers, ...applied.query]) {
+    if (h.value) secrets.push(h.value);
+    const bare = /^\S+\s+(\S{4,})$/.exec(h.value)?.[1];
+    if (bare) secrets.push(bare);
+  }
 
   /** @type {import("./curl-config.js").Header[]} */
   const headers = [];

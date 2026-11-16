@@ -7,6 +7,7 @@
 
 import {
   HIDDEN,
+  hideFailure,
   hideText,
   hideUrl,
   hideValues,
@@ -161,14 +162,18 @@ export function describeResponse(tab, values = []) {
     return `It failed before any answer: ${hideValues(res.error ?? "unknown error", values)}`;
   const headers = res.headers.map(
     ([k, v]) =>
-      `${k}: ${/^set-cookie$/i.test(k) ? `${v.split("=")[0]}=(value)` : isSecretName(k) ? HIDDEN : hideValues(v, values)}`,
+      `${k}: ${/^set-cookie$/i.test(k) ? `${v.split("=")[0]}=(value)` : isSecretName(k) ? HIDDEN : /^location$/i.test(k) ? hideUrl(v, values) : hideValues(v, values)}`,
   );
   const results = tab.results;
   const failed = results
     ? [
-        ...results.tests.filter((t) => !t.ok).map((t) => `test "${t.name}": ${t.error}`),
-        ...results.asserts.filter((a) => !a.ok).map((a) => `check ${a.target}: ${a.message}`),
-        ...results.errors.map((e) => `script ${e.from}: ${e.text}`),
+        ...results.tests
+          .filter((t) => !t.ok)
+          .map((t) => `test "${t.name}": ${hideText(String(t.error ?? ""), values)}`),
+        ...results.asserts
+          .filter((a) => !a.ok)
+          .map((a) => `check ${hideFailure(a.target, `${a.target}: ${a.message}`, values)}`),
+        ...results.errors.map((e) => `script ${e.from}: ${hideText(e.text, values)}`),
       ]
     : [];
   return [
@@ -226,7 +231,7 @@ export function describeWorkspace(S, tab) {
 
 /** The whole prompt for a question. @param {Studio} S @param {Tab | undefined} tab @param {string} question */
 export function promptFor(S, tab, question) {
-  const values = tab ? secretValues(S.scopes?.(tab) ?? []) : [];
+  const values = tab ? [...secretValues(S.scopes?.(tab) ?? []), ...(tab.sentSecrets ?? [])] : [];
   return [
     GUIDE,
     "",

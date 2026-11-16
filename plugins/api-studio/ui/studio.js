@@ -67,7 +67,9 @@ export function createStudio(ctx, doc) {
         scope("request", "Request", tab.req.vars.pre),
         ...S.scopeProviders.flatMap((p) => p(tab)),
       ];
-      return tab.agent ? withoutSecrets(all) : all;
+      // A request an agent writes gets no runtime values (captures, script results): any of them
+      // may be a token under a plain name.
+      return tab.agent ? withoutSecrets(all.filter((s) => s !== S.runtime)) : all;
     },
     /** The auth of a request's folders and collection, nearest first. @param {Tab} _tab @returns {import("./model.js").Auth[]} */
     parentAuth: (_tab) => [],
@@ -371,7 +373,8 @@ export function fitHistory(list) {
   const out = [];
   let size = 2;
   for (const listed of list) {
-    const entry = listed.req ? { ...listed, req: withoutLiterals(listed.req) } : listed;
+    const req = listed.req ? withoutLiterals(listed.req) : undefined;
+    const entry = req ? { ...listed, req, url: req.url } : listed;
     const n = JSON.stringify(entry).length + 1;
     if (size + n > 60_000) break;
     size += n;

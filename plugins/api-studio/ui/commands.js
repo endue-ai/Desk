@@ -10,6 +10,7 @@ import { clone, newRequest, pair } from "./model.js";
 import { requestsOf, startRun, summarize } from "./runner.js";
 import {
   HIDDEN,
+  hideFailure,
   hideText,
   hideUrl,
   hideValues,
@@ -151,7 +152,7 @@ export function wireCommands(ctx, S) {
     if (!res) throw new Error("The request did not run.");
     const r = tab.results;
     const scopes = S.scopes(tab);
-    const values = secretValues(scopes);
+    const values = [...secretValues(scopes), ...(tab.sentSecrets ?? [])];
     const held = tab.agent
       ? res.missing.filter((name) => scopes.some((s) => s.secret?.has(name)))
       : [];
@@ -168,15 +169,25 @@ export function wireCommands(ctx, S) {
       timeMs: Math.round(res.timings.total),
       size: res.size,
       headers: Object.fromEntries(
-        res.headers.map(([k, v]) => [k, isSecretName(k) ? HIDDEN : hideValues(v, values)]),
+        res.headers.map(([k, v]) => [
+          k,
+          isSecretName(k)
+            ? HIDDEN
+            : /^location$/i.test(k)
+              ? hideUrl(v, values)
+              : hideValues(v, values),
+        ]),
       ),
       body: hideText(bodyText(res).slice(0, 20_000), values),
       tests: r
         ? {
             passed: [...r.tests, ...r.asserts].filter((t) => t.ok).length,
             failed: [
-              ...r.tests.filter((t) => !t.ok).map((t) => `${t.name}: ${t.error}`),
-              ...r.asserts.filter((a) => !a.ok).map((a) => `${a.target}: ${a.message}`),
+              ...r.tests.filter((t) => !t.ok).map((t) => hideText(`${t.name}: ${t.error}`, values)),
+              ...r.asserts
+                .filter((a) => !a.ok)
+                .map((a) => hideFailure(a.target, `${a.target}: ${a.message}`, values)),
+              ...r.errors.map((e) => hideText(`${e.from}: ${e.text}`, values)),
             ],
           }
         : null,
@@ -203,6 +214,21 @@ export function wireCommands(ctx, S) {
       { onRow: () => {} },
     ).promise;
     const sum = summarize(rows);
+    const values = secretValues(
+      S.scopes({
+        id: "run",
+        req: newRequest(),
+        saved: null,
+        ref: { collection: coll.path, path: coll.path },
+        reqTab: "",
+        resTab: "",
+      }),
+    );
+    /** A runner's line ("target: message") as an agent may read it. @param {string} line */
+    const safe = (line) => {
+      const target = /^([\w$.[\]'"-]+): /.exec(line)?.[1];
+      return target ? hideFailure(target, line, values) : hideText(line, values);
+    };
     return {
       ...sum,
       failures: rows
@@ -211,7 +237,7 @@ export function wireCommands(ctx, S) {
           request: r.item.name,
           iteration: r.iteration,
           status: r.status,
-          problems: [...(r.error ? [r.error] : []), ...r.failures],
+          problems: [...(r.error ? [r.error] : []), ...r.failures].map(safe),
         })),
     };
   });
