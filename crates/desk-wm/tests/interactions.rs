@@ -10,6 +10,8 @@
 mod common;
 #[path = "interactions/cursor.rs"]
 mod cursor;
+#[path = "interactions/magnet.rs"]
+mod magnet;
 #[path = "interactions/mid_glide.rs"]
 mod mid_glide;
 #[path = "interactions/panes.rs"]
