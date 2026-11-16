@@ -10,10 +10,22 @@ fn a_begin_frame_waits_while_the_last_one_is_out() {
     let mut flight = Flight::default();
     assert_eq!(flight.out(now, 0), None, "nothing sent yet");
     flight.sent(now, 0);
-    assert_eq!(flight.out(now, 0), Some(now + FRAME), "out until a desk frame on");
+    assert_eq!(
+        flight.out(now, 0),
+        Some(now + FRAME),
+        "out until a desk frame on"
+    );
     let soon = now + Duration::from_millis(1);
-    assert_eq!(flight.out(soon, 0), Some(now + FRAME), "a prompt's next is held too");
-    assert_eq!(flight.out(now + FRAME, 0), None, "a frame with nothing to draw ended");
+    assert_eq!(
+        flight.out(soon, 0),
+        Some(now + FRAME),
+        "a prompt's next is held too"
+    );
+    assert_eq!(
+        flight.out(now + FRAME, 0),
+        None,
+        "a frame with nothing to draw ended"
+    );
     flight.restart();
     assert_eq!(flight.out(soon, 0), None, "a new browser has nothing out");
 }
