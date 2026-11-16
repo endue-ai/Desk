@@ -57,6 +57,12 @@ export interface FileTree {
 
 const encoder = new TextEncoder();
 
+/** A rename's or a copy's undo group, as desk-core checks it: 1 to 128 characters (ADR 0247). */
+const grouped = (group: string | undefined) => {
+  if (group !== undefined && (group === "" || [...group].length > 128))
+    throw new StubError("invalid_params", "a group is 1 to 128 characters");
+};
+
 /** `path` as desk-core normalizes it: `.`, `..` and empty segments collapsed, `${home}` as `~`. */
 export function normalizePath(path: string): string {
   const home = path.replace(/^\$\{home\}(?=\/|$)/, "~");
@@ -262,13 +268,15 @@ export function stubFileTree(options: FileTreeOptions = {}): {
       }
       return { created };
     },
-    "fs.rename": ({ from, to, scope, fromScope }, caller) => {
+    "fs.rename": ({ from, to, scope, fromScope, group }, caller) => {
+      grouped(group);
       movable(from);
       const [source, target] = ends(caller, [fromScope ?? scope, from], [scope, to]);
       carry(source, target, false);
       return { crossedDevices: false };
     },
-    "fs.copy": ({ from, to, scope, fromScope }, caller) => {
+    "fs.copy": ({ from, to, scope, fromScope, group }, caller) => {
+      grouped(group);
       const [source, target] = ends(caller, [fromScope, from], [scope, to]);
       return { bytesCopied: carry(source, target, true) };
     },
