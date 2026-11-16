@@ -96,7 +96,7 @@ async function call(method, params) {
   }
   if (method === "perm.request") return { granted: true };
   if (method === "shell.open") {
-    console.log("shell.open", params.url);
+    console.log("shell.open", params.target);
     return {};
   }
   if (method === "ui.notify") return {};

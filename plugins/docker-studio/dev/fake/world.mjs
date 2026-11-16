@@ -18,7 +18,6 @@ export function seeded(seed = 7) {
   };
 }
 
-
 /** The world as docker would hold it, made fresh. */
 export function createWorld(now = Date.now()) {
   const images = IMAGES.map(([ref, size, age, kind, exposed, cmd]) => ({
