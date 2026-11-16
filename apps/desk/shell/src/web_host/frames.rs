@@ -242,3 +242,6 @@ impl Clock {
 #[cfg(test)]
 #[path = "frames_tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "frames_flight_tests.rs"]
+mod flight_tests;
