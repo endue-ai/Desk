@@ -33,6 +33,11 @@ describe("studio for the shell (ADR 0129)", () => {
         ],
       }),
       "studio.conversations.list": () => ({ conversations: [], total: 0, hasMore: false }),
+      "studio.agents.picture": ({ agentId }) => ({
+        agentId,
+        picture: "data:image/png;base64,AAAA",
+        source: "photo",
+      }),
       "studio.spaces.list": () => ({
         spaces: [
           {
@@ -63,11 +68,14 @@ describe("studio for the shell (ADR 0129)", () => {
     });
     expect((await studio.agents()).map((a) => a.name)).toEqual(["Miso"]);
     expect(await studio.conversations()).toEqual([]);
+    // An agent's face comes from the core as a data: URL (ADR 0232).
+    expect((await studio.picture?.("ag_1"))?.picture).toBe("data:image/png;base64,AAAA");
     expect((await studio.spaces()).map((s) => s.id)).toEqual(["sp_1"]);
     expect((await studio.space("sp_1")).space.name).toBe("Launch");
     expect(calls()).toEqual([
       { method: "studio.agents.list", params: { scope: STUDIO } },
       { method: "studio.conversations.list", params: { limit: 50, scope: STUDIO } },
+      { method: "studio.agents.picture", params: { agentId: "ag_1", scope: STUDIO } },
       { method: "studio.spaces.list", params: { scope: STUDIO } },
       { method: "studio.spaces.get", params: { spaceId: "sp_1", scope: STUDIO } },
     ]);

@@ -12,6 +12,7 @@ import {
   ENDUE_SPACE_VIEW,
   type EndueState,
   emptyEndue,
+  facePicture,
   type Read,
   WEB,
 } from "./endue-ids";
@@ -57,10 +58,48 @@ export async function loadEndue(ctx: Ctx): Promise<void> {
       // Presence only: the agents and spaces show without it.
       studio.conversations().catch(() => []),
     ]);
-    if (latest()) set(ctx, () => ({ state: "ready", agents, spaces, conversations }));
+    if (!latest()) return;
+    set(ctx, () => ({ state: "ready", agents, spaces, conversations }));
+    void readPictures(ctx, latest);
   } catch {
     if (latest()) set(ctx, () => ({ state: "offline" }));
   }
+}
+
+/** Faces read side by side: the bar fills in without a burst of calls. */
+const SIDE_BY_SIDE = 4;
+
+/**
+ * Read the faces of the agents the bar lists (ADR 0232), a few at a time, each kept as it comes.
+ * The core remembers a picture by its address, so reading again costs one call an agent. An agent
+ * endue AI has no readable picture for shows its initial; `latest` stops a read an account change
+ * has overtaken.
+ */
+export async function readPictures(ctx: Ctx, latest: () => boolean = () => true): Promise<void> {
+  const studio = ctx.bridge.studio;
+  if (!studio?.picture) return;
+  const picture = (agentId: string) => studio.picture?.(agentId) ?? Promise.reject();
+  const waiting = ctx.store
+    .get()
+    .endue.agents.filter((a) => a.status === "active" || a.status === "inactive")
+    .map((a) => a.id);
+  const next = async (): Promise<void> => {
+    for (let id = waiting.shift(); id && latest(); id = waiting.shift()) {
+      const agentId = id;
+      // An answer without a picture clears the face; a call that failed keeps the one in sight.
+      const got = await picture(agentId).then(
+        (answer) => ({ face: facePicture(answer.picture) }),
+        () => undefined,
+      );
+      if (!latest()) return;
+      if (!got || got.face === ctx.store.get().endue.pictures[agentId]) continue;
+      set(ctx, (e) => {
+        const { [agentId]: _gone, ...rest } = e.pictures;
+        return { pictures: got.face ? { ...rest, [agentId]: got.face } : rest };
+      });
+    }
+  };
+  await Promise.all(Array.from({ length: SIDE_BY_SIDE }, next));
 }
 
 /** Read again whenever the desk signs in or out. Returns the unsubscribe. */

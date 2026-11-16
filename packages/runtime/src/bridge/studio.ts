@@ -17,9 +17,11 @@ import {
 } from "@endue-ai/bridge";
 import {
   DEFAULT_PERSONALITY,
+  EMPTY_ROWS,
   type StudioRecord,
   sampleCatalog,
   sampleConversations,
+  sampleFace,
   sampleStudio,
   slugOf,
 } from "./studio-fixtures";
@@ -44,6 +46,8 @@ export interface StudioStub {
   records: StudioRecord[];
   conversations: StudioConversation[];
   catalog: StudioCatalogAgent[];
+  /** The agents' faces as data: URLs, by agent id (ADR 0232); tests edit them in place. */
+  pictures: Record<string, string>;
   /** The spaces studio.spaces.* answers (ADR 0129); tests edit them in place. */
   spaces: StudioSpaceRecord[];
   /** Sign the stub in or out, as account.signIn and account.signOut would. */
@@ -63,6 +67,9 @@ export function studioHandlers(options: StudioStubOptions = {}): StudioStub {
   const conversations = options.agents === false ? [] : sampleConversations(epoch);
   const catalog = sampleCatalog(epoch);
   const spaces = options.agents === false ? [] : sampleSpaces(epoch);
+  const pictures: Record<string, string> = Object.fromEntries(
+    records.map((r) => [r.agent.id, sampleFace(r.agent.personalColor ?? "#B6A3F5")]),
+  );
 
   /** The checks every call passes, as the core makes them. */
   const gate = (caller: string | undefined) => {
@@ -192,6 +199,13 @@ export function studioHandlers(options: StudioStubOptions = {}): StudioStub {
       touch(record);
       return { agentId };
     },
+    "studio.agents.picture": ({ agentId }, caller) => {
+      gate(caller);
+      const { agent } = find(agentId);
+      const picture = pictures[agentId];
+      const source = agent.avatarUrl ? "photo" : "drawn";
+      return picture ? { agentId, picture, source } : { agentId };
+    },
     "studio.agents.facets": ({ agentId }, caller) => {
       gate(caller);
       const record = find(agentId);
@@ -215,6 +229,7 @@ export function studioHandlers(options: StudioStubOptions = {}): StudioStub {
         skills: [],
         connectors: [],
         traits: [{ key: "personality", enabled: true }],
+        ...copy(record.rows ?? EMPTY_ROWS),
         problems: [],
       };
     },
@@ -297,6 +312,7 @@ export function studioHandlers(options: StudioStubOptions = {}): StudioStub {
     records,
     conversations,
     catalog,
+    pictures,
     spaces,
     setSignedIn: (next) => {
       signedIn = next;

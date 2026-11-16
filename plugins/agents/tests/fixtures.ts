@@ -215,6 +215,9 @@ export const misoFacets = () => ({
   ],
   connectors: [],
   traits: [{ key: "self_evolving", enabled: true }],
+  channels: [],
+  apiKeys: [],
+  devices: [],
   problems: [
     { facet: "connectors", code: "offline", message: "endue AI did not answer within 15 s." },
   ],

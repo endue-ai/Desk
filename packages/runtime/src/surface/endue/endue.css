@@ -79,6 +79,8 @@
   font-weight: 600;
 }
 .endue-avatar.is-big { width: var(--control-lg); height: var(--control-lg); font-size: var(--text-base); }
+/* The face endue.ai shows (ADR 0232) fills the avatar. */
+.endue-avatar.has-face { overflow: hidden; background: none; }
 
 .endue-presence { display: flex; align-items: center; gap: 6px; margin: 0; font-size: var(--text-sm); }
 .endue-desc { margin: 0; font-size: var(--text-sm); line-height: 1.5; }

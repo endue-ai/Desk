@@ -17,6 +17,7 @@ import type {
   SpaceList,
   StudioAgent,
   StudioAgentsFacetsResult,
+  StudioAgentsPictureResult,
   StudioConversation,
   StudioSpace,
   StudioSpacesGetResult,
@@ -179,6 +180,8 @@ export interface StudioShellBridge {
   conversations(): Promise<StudioConversation[]>;
   /** What Studio shows of one agent. */
   facets(agentId: string): Promise<StudioAgentsFacetsResult>;
+  /** An agent's face as a data: URL, read by the core (ADR 0232); absent on an older host. */
+  picture?(agentId: string): Promise<StudioAgentsPictureResult>;
   /** The spaces the person can open, the most recently active first. */
   spaces(): Promise<StudioSpace[]>;
   /** What one space is doing. */

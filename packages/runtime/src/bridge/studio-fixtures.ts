@@ -4,6 +4,7 @@
  */
 import type {
   StudioAgent,
+  StudioAgentsFacetsResult,
   StudioCatalogAgent,
   StudioConversation,
   StudioIdentity,
@@ -12,13 +13,31 @@ import type {
   StudioSettings,
 } from "@endue-ai/bridge";
 
+/** The rows of Studio's board beyond its facets (ADR 0232). */
+export type StudioRows = Pick<
+  StudioAgentsFacetsResult,
+  "channels" | "apiKeys" | "devices" | "memory" | "outputs" | "theme"
+>;
+
 /** One agent with what Studio shows of it. */
 export interface StudioRecord {
   agent: StudioAgent;
   identity: StudioIdentity;
   settings: StudioSettings;
   revisions: StudioPrompt[];
+  /** What the board reads beyond the facets; none for an agent with nothing of the kind. */
+  rows?: StudioRows;
 }
+
+/** What endue AI answers for an agent with no channel, key or device, nothing kept or made. */
+export const EMPTY_ROWS: StudioRows = {
+  channels: [],
+  apiKeys: [],
+  devices: [],
+  memory: { memories: 0, rules: 0, more: false },
+  outputs: { count: 0 },
+  theme: {},
+};
 
 /** endue.ai's defaults for an agent built from scratch. */
 export const DEFAULT_PERSONALITY: StudioPersonality = {
@@ -41,6 +60,15 @@ export const slugOf = (name: string, n: number) =>
 const iso = (epoch: number, minutesAgo: number) =>
   new Date(epoch - minutesAgo * 60_000).toISOString().replace(/\.\d{3}Z$/, "Z");
 /** The id of sample agent `n`: 1 Miso, 2 Mailie, 3 Scout. */
+/** A sample face as the core hands one over (ADR 0232): a robot on `colour`, as a data: URL. */
+export function sampleFace(colour: string): string {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="${colour}"/>` +
+    `<rect x="8" y="12" width="5" height="5" rx="1"/><rect x="19" y="12" width="5" height="5" rx="1"/>` +
+    `<rect x="11" y="22" width="10" height="2" rx="1"/></svg>`;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
+}
+
 export const sampleAgentId = (n: number) => `ag_sample${String(n).padStart(19, "0")}`;
 const AG = sampleAgentId;
 const both = (en: string, ko: string) => ({ en, ko });
@@ -81,6 +109,22 @@ export function sampleStudio(epoch: number): StudioRecord[] {
     createdAt: iso(epoch, 90),
   });
   miso.settings.model = { default: "anthropic/claude-sonnet-4.5", routing: "balanced" };
+  miso.rows = {
+    channels: [
+      {
+        id: "cp_sample1",
+        provider: "slack",
+        name: "Acme",
+        status: "active",
+        lastActiveAt: iso(epoch, 30),
+      },
+    ],
+    apiKeys: [{ id: "key_sample1", name: "Calendar sync", createdAt: iso(epoch, 60 * 24 * 3) }],
+    devices: [{ id: "dev_sample1", kind: "computer", name: "MacBook", workspace: false }],
+    memory: { memories: 12, rules: 3, more: false },
+    outputs: { count: 4, latestAt: iso(epoch, 45) },
+    theme: { wallpaper: { source: "builtin", id: "constellation" } },
+  };
   const mailie = record(2, "Mailie", "Answers customer mail", {
     status: "inactive",
     personalColor: "#7FB3D5",
