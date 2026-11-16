@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
-use desk_bridge::BridgeEvent;
+use desk_bridge::{BridgeEvent, BridgeRequest};
 use desk_core::{Core, Roots};
 use desk_ipc::{AGENT_METHOD, CALLER, Listener};
 use serde_json::{Value, json};
@@ -201,8 +201,33 @@ fn a_command_answer_reaches_only_the_caller_that_ran_it() {
     core.events().publish(answered("agent:x", 1));
     agent.wait_for("cmd.answered");
     assert!(cli.heard().is_empty(), "agent:x's answer is its own");
+    // A published answer for cli that no cli connection asked for is nobody's here (#377).
     core.events().publish(answered(CALLER, 2));
+    // cli's own answer: a command it ran on this connection, answered by its provider.
+    let request = |method: &str, params: Value| -> BridgeRequest {
+        serde_json::from_value(json!({ "id": 1, "method": method, "params": params })).unwrap()
+    };
+    let provider = "example.notes";
+    core.handle(
+        provider,
+        request("cmd.register", json!({ "id": "example.notes.count", "title": "Count" })),
+    );
+    let invoked = cli.ask(json!({ "id": 3, "method": "cmd.invoke", "params": {
+        "id": "example.notes.count", "args": {},
+        "scope": { "permission": "cmd:invoke", "ids": ["example.notes.count"] } } }));
+    let invocation = invoked["result"]["invocationId"].clone();
+    core.handle(
+        provider,
+        request("cmd.answer", json!({ "invocationId": invocation, "result": 3 })),
+    );
     cli.wait_for("cmd.answered");
+    let heard: Vec<&Value> = cli
+        .events
+        .iter()
+        .filter(|e| e["event"] == "cmd.answered")
+        .collect();
+    assert_eq!(heard.len(), 1, "only its own invocation's: {heard:?}");
+    assert_eq!(heard[0]["data"]["invocationId"], invocation);
     let agents: Vec<&Value> = agent
         .events
         .iter()
