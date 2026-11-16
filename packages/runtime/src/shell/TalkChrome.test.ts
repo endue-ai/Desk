@@ -141,3 +141,17 @@ it("opens from a plugin's forwarded shortcut and honors a personal replacement b
   ).toBe(true);
   expect(document.activeElement).toBe(input);
 });
+it("at rest the pill shows the small orb, the hint and the key", () => {
+  const { root, input, store, keymap } = setup();
+  const pill = get(root, ".talk-pill");
+  expect(pill.dataset.state).toBe("idle");
+  const launch = get<HTMLButtonElement>(root, ".talk-launch");
+  expect(launch.firstElementChild?.matches("svg.talk-orb")).toBe(true);
+  expect(get(launch, ".talk-hint").textContent).toBe(t("en", "composerLabel"));
+  const key = get(root, ".talk-shortcut");
+  expect(key.textContent).toBe(keymap.keysFor("desk.shell.talk")[0]);
+  expect(key.hidden).toBe(false);
+  launch.click();
+  expect(store.get().composer.open).toBe(true);
+  expect(document.activeElement).toBe(input);
+});
