@@ -43,10 +43,16 @@ test.describe("endue agents and spaces as windows", () => {
     await expect(view.locator('[data-face="front"] .endue-handle')).toHaveText(
       "@miso · Keeps my calendar and sorts my mail",
     );
-    // endue.ai's own pages, one press away, in sight with the card (ADR 0223).
+    // The agent's Studio in the Agents plugin, one press away, in sight with the card; no link
+    // leads to endue.ai.
     const pages = view.locator('[data-face="front"] .endue-actions [data-action^="open-"]');
-    await expect(pages).toHaveText(["Agent page", "Studio page"]);
+    await expect(pages).toHaveText(["Edit in Studio"]);
     await expect(pages.last()).toBeInViewport();
+    // The window is the card: its face draws no border or accent line of its own.
+    const edge = await view
+      .locator('[data-face="front"]')
+      .evaluate((f) => getComputedStyle(f).borderTopWidth);
+    expect(edge).toBe("0px");
     await view.locator('[data-face="front"] [data-action="studio"]').click();
     await step(page, 600);
     await expect(view.locator(".endue-flip")).toHaveClass(/is-flipped/);

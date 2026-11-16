@@ -47,6 +47,12 @@
         "title": "Agents: New agent",
         "keywords": ["agent", "new", "create", "새 에이전트"],
         "description": "Show the New agent page in an open Agents window, as the agent bar's New agent does."
+      },
+      {
+        "id": "endue.agents.studio",
+        "title": "Agents: Studio",
+        "keywords": ["agent", "studio", "edit", "스튜디오"],
+        "description": "Show one endue agent's Studio ({ agent, facet }) in an open Agents window, as an agent window's Studio board does."
       }
     ]
   }

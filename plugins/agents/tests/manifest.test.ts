@@ -35,7 +35,7 @@ describe("plugin.json", () => {
     });
   });
 
-  it("asks for endue agents, local agents, endue.ai's pages and signing in, and nothing more", () => {
+  it("asks for endue agents, local agents, links in answers and signing in, and nothing more", () => {
     expect(manifest.permissions).toEqual([
       { permission: "studio:manage" },
       { permission: "agents:manage" },
@@ -51,7 +51,10 @@ describe("plugin.json", () => {
         runs: { command: "desk.plugins.open", args: { plugin: "endue.agents" } },
       }),
       expect.objectContaining({ id: "endue.agents.new", title: "Agents: New agent" }),
+      expect.objectContaining({ id: "endue.agents.studio", title: "Agents: Studio" }),
     ]);
+    // An agent window's Studio board opens an agent's Studio here, not on endue.ai.
+    expect(manifest.contributes?.commands?.[2]?.runs).toBeUndefined();
     // New agent is the plugin's own command, no alias: the desk sends it to the plugin's window.
     expect(manifest.contributes?.commands?.[1]).toMatchObject({ id: "endue.agents.new" });
     expect(manifest.contributes?.commands?.[1]?.runs).toBeUndefined();

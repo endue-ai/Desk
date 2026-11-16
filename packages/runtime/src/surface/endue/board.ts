@@ -2,22 +2,19 @@
  * An endue agent's Studio board (ADR 0232), the back of its card: the ways requests come in at the
  * left, the agent's own sheet in the middle, what it reaches at the right, and lines between them.
  * It follows endue.ai's Studio. A row with more to say unfolds where it stands; every row, every
- * line of the sheet and every action opens its part of endue.ai's Studio in a desk window (ADR
- * 0223), where the person changes it: the board itself only reads.
+ * line of the sheet and every action opens its part of the agent's Studio in the Agents plugin
+ * (endue-studio.ts), where the person changes it, inside the desk: the board itself only reads and
+ * never sends the person to endue.ai.
  */
 import type { ShellCtx } from "../../shell/context";
 import { type Child, h } from "../../shell/dom";
 import { icon } from "../../shell/icons";
-import { agentHome, facePicture, WEB } from "../../system/endue";
-import { showOnDesk } from "../../system/endue-web";
+import { facePicture } from "../../system/endue";
+import { openAgentStudio } from "../../system/endue-studio";
 import { type BoardKey, boardText } from "./board-copy";
 import { type LineSpec, linesLayer } from "./board-lines";
 import type { Badge, Board, BoardRow, RowAction, SheetRow } from "./board-model";
 import { dotOf } from "./model";
-
-/** A part of an agent's Studio on endue.ai: `https://endue.ai/agent/<id>/studio/<section>`. */
-export const studioSection = (id: string, section: string) =>
-  `${WEB}/agent/${encodeURIComponent(id)}/studio/${encodeURIComponent(section)}`;
 
 export interface BoardView {
   agentId: string;
@@ -41,8 +38,8 @@ export function lineSpecs(board: Board, expanded: string | null): LineSpec[] {
 export function studioBoardView(ctx: ShellCtx, board: Board, view: BoardView): HTMLElement {
   const lang = ctx.store.get().lang;
   const t = (key: BoardKey, vars?: Record<string, string | number>) => boardText(lang, key, vars);
-  const show = (url: string) => void showOnDesk(ctx, url).catch(() => undefined);
-  const open = (section: string) => show(studioSection(view.agentId, section));
+  const open = (section?: string) =>
+    void openAgentStudio(ctx, view.agentId, section).catch(() => undefined);
   const opens = (name: string) => t("opens", { name });
 
   const action = (row: string, a: RowAction) =>
@@ -55,7 +52,7 @@ export function studioBoardView(ctx: ShellCtx, board: Board, view: BoardView): H
         "data-row-action": a.key,
         ...(a.tone ? { "data-tone": a.tone } : {}),
         title: opens(a.label),
-        onClick: () => (a.section ? open(a.section) : show(agentHome(view.agentId))),
+        onClick: () => open(a.section),
       },
       a.label,
       a.key === "details" ? " ›" : null,

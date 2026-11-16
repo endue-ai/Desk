@@ -16,7 +16,6 @@ import { arrows, avatar, button, el, presence, sourceBadge } from "./dom.js";
  * @property {(key: string) => void} boardAgent
  * @property {(row: Row) => void} openRow
  * @property {(runId: string) => void} stopRun
- * @property {(id: string) => void} openWeb
  * @property {() => void} create
  */
 
@@ -128,9 +127,9 @@ export function createHomeView(doc, actions) {
                   },
                 },
               )
-            : button(doc, "Open in endue.ai", () => actions.openWeb(c.id), {
+            : button(doc, "Studio", () => actions.studio(c.key), {
                 variant: "quiet",
-                attrs: { "aria-label": `Open ${c.name} in endue.ai` },
+                attrs: { "aria-label": `Open ${c.name} in Studio` },
               }),
         ),
       ),

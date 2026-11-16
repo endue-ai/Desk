@@ -207,11 +207,6 @@ export function deleteConfirmed(/** @type {string} */ typed, /** @type {string} 
   return name.length > 0 && typed.trim() === name.trim();
 }
 
-/** The web's Studio page for an endue agent. */
-export function webStudio(/** @type {string} */ id) {
-  return `https://endue.ai/agent/${encodeURIComponent(id)}/studio`;
-}
-
 /** The one Card a key names, or undefined. */
 export function cardFor(/** @type {Card[]} */ cards, /** @type {string | undefined} */ key) {
   return key ? cards.find((card) => card.key === key) : undefined;

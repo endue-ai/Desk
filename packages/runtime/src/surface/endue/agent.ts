@@ -7,7 +7,8 @@
  */
 import type { ShellCtx } from "../../shell/context";
 import { h, render } from "../../shell/dom";
-import { agentHome, agentPage, ENDUE_AGENT_VIEW, readFacets } from "../../system/endue";
+import { ENDUE_AGENT_VIEW, readFacets } from "../../system/endue";
+import { openAgentStudio } from "../../system/endue-studio";
 import type { Mounted } from "../views";
 import { lineSpecs, studioBoardView } from "./board";
 import { boardLines } from "./board-lines";
@@ -42,10 +43,9 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
     was = flipped;
     const front = agentFront(s.lang, agent, read, s.endue.conversations);
     const board = studioBoard(s.lang, agent, read, s.endue.conversations);
-    // The agent's own page and its Studio, as endue.ai has them (ADR 0223).
+    // The agent's Studio in the Agents plugin, inside the desk: never endue.ai's pages.
     const pages: Page[] = [
-      ["open-agent", "agentPage", agentHome(id)],
-      ["open-web", "studioPage", agentPage(id)],
+      ["open-studio", "editInStudio", () => void openAgentStudio(ctx, id).catch(() => undefined)],
     ];
     render(el, () => [
       flipCard({

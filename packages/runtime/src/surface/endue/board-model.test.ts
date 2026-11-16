@@ -306,7 +306,7 @@ describe("the rows the board reads beyond Studio's facets (ADR 0232)", () => {
     };
     const b = studioBoard("en", agent, { state: "ready", value: failed }, [], now);
     expect(row(b.inbound, "channel")).toMatchObject({ state: "unknown", meta: "—" });
-    expect(row(b.inbound, "channel")?.body?.text).toEqual(["See it on endue.ai"]);
+    expect(row(b.inbound, "channel")?.body?.text).toEqual(["See it in Studio"]);
     expect(b.hub.identity.find((r) => r.section === "memory")).toMatchObject({
       value: "—",
       muted: true,
