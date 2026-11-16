@@ -1,0 +1,253 @@
+/* The Network plugin's page: the bar, the tabs, the banner and the question, the panels beside the
+   device card, the status line. Every value is a --desk-* token, so the theme reaches all of it. */
+:root {
+  /* Status colours: known, new and needing attention, as the theme's success, warning and danger. */
+  --net-known: var(--desk-success);
+  --net-known-soft: var(--desk-success-soft);
+  --net-known-text: var(--desk-success-text);
+  --net-new: var(--desk-warning);
+  --net-new-soft: var(--desk-warning-soft);
+  --net-new-text: var(--desk-warning-text);
+  --net-caution: var(--desk-danger);
+  --net-caution-soft: var(--desk-danger-soft);
+  --net-caution-text: var(--desk-danger-text);
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+}
+
+.top {
+  gap: var(--desk-space-3);
+}
+
+.here {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.busy-text {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.desk-tabs {
+  margin: var(--desk-space-2) var(--desk-space-4) 0;
+  align-self: flex-start;
+}
+
+.problem,
+.ask {
+  margin: var(--desk-space-3) var(--desk-space-4) 0;
+}
+
+.problem p,
+.ask p {
+  margin: var(--desk-space-1) 0;
+}
+
+.ask h2 {
+  margin: 0 0 var(--desk-space-2);
+  font-size: var(--desk-text-base);
+}
+
+.split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: var(--desk-space-4);
+  padding: var(--desk-space-3) var(--desk-space-4);
+}
+
+.panels {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--desk-space-3);
+}
+
+.panel-title {
+  margin: 0 0 var(--desk-space-2);
+  font-size: var(--desk-text-lg);
+}
+
+.device {
+  width: min(340px, 40%);
+  flex: none;
+  overflow: auto;
+  align-self: flex-start;
+  max-height: 100%;
+  box-sizing: border-box;
+}
+
+.device-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.device-head h3 {
+  flex: 1;
+  margin: 0;
+  font-size: var(--desk-text-base);
+  overflow-wrap: anywhere;
+}
+
+.device-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+  margin: var(--desk-space-2) 0;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--desk-space-1) var(--desk-space-3);
+  margin: var(--desk-space-3) 0;
+}
+
+.facts dt {
+  color: var(--desk-text-muted);
+}
+
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.mono {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-2);
+  margin: var(--desk-space-3) 0 0;
+}
+
+.who {
+  display: grid;
+  gap: var(--desk-space-2);
+  margin-top: var(--desk-space-3);
+  padding-top: var(--desk-space-3);
+  border-top: var(--desk-border-width) solid var(--desk-border);
+}
+
+.who h4,
+.said h4,
+.device h4 {
+  margin: var(--desk-space-2) 0 var(--desk-space-1);
+  font-size: var(--desk-text-sm);
+}
+
+.who label {
+  display: grid;
+  gap: var(--desk-space-1);
+}
+
+.who label.check {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.said {
+  margin-top: var(--desk-space-3);
+}
+
+.term {
+  font-style: normal;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: help;
+}
+
+.glossary dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--desk-space-1) var(--desk-space-3);
+}
+
+.glossary dd {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+footer {
+  padding: var(--desk-space-2) var(--desk-space-4);
+  border-top: var(--desk-border-width) solid var(--desk-border);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+footer p {
+  margin: 0;
+}
+
+.kind-icon,
+.status-icon,
+.port-icon {
+  width: 1.25em;
+  height: 1.25em;
+  flex: none;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  padding: 0 var(--desk-space-2);
+  border-radius: var(--desk-radius-full);
+  font-size: var(--desk-text-xs);
+  border: var(--desk-border-width) solid transparent;
+}
+
+.badge.status-known {
+  background: var(--net-known-soft);
+  color: var(--net-known-text);
+  border-color: var(--net-known);
+}
+
+.badge.status-new {
+  background: var(--net-new-soft);
+  color: var(--net-new-text);
+  border-color: var(--net-new);
+}
+
+.badge.status-caution {
+  background: var(--net-caution-soft);
+  color: var(--net-caution-text);
+  border-color: var(--net-caution);
+}
