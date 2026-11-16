@@ -42,6 +42,17 @@ pub struct Agent {
     pub personal_color: Option<String>,
     #[serde(default)]
     pub avatar_url: Option<String>,
+    /// The still of the character that is on; absent without one.
+    #[serde(default)]
+    pub character_image_url: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    /// Public on endue.live; absent on a platform that does not say.
+    #[serde(default)]
+    pub live_enabled: Option<bool>,
+    /// May be run over MCP; absent on a platform that does not say.
+    #[serde(default)]
+    pub mcp_enabled: Option<bool>,
     #[serde(default)]
     pub source_catalog: Option<SourceCatalog>,
     pub created_at: String,

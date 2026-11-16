@@ -12,8 +12,11 @@ conversations, the spaces the person can open (ADR 0129) and the person's own ac
 - `Tokens`: where the bearer token comes from (`token`) and the one retry after a 401 (`refresh`).
 - Agents: `list_agents` (every page, deleted ones left out), `list_agents_page`, `get_agent`,
   `create_agent`, `update_agent`, `set_status` (`Switch`), `delete_agent` (soft).
+- Faces (ADR 0232): `face_of(agent)` (the character, the picture or the drawn one, and its
+  address), `picture(url)` (https, no token, an image of at most 512 KB).
 - Facets: `identity`, `settings`, `update_settings`, `prompt`, `save_prompt`, `restore_prompt`,
-  `prompt_revisions`, `skills`, `connectors`, `traits`.
+  `prompt_revisions`, `skills`, `connectors`, `traits`; for Studio's board (ADR 0232, `wire_board`):
+  `channel_pairings`, `os_devices`, `workspaces`, `theme`, `memories`, `api_keys`, `outputs`.
 - Catalog and conversations: `catalog`, `recommend`, `use_catalog` (30 s), `conversations`.
 - Spaces, read only: `spaces(archived)` (with summaries), `space`, `space_overview`, `space_rooms`.
 - Account: `me`, `update_me`, `preferences`, `update_preferences`, `notifications`,

@@ -42,6 +42,9 @@ pub(super) fn answer(state: &mut State, seen: &Seen) -> Answer {
     if let Some(answer) = account::answer(state, seen, &parts) {
         return answer;
     }
+    if let Some(answer) = super::board::answer(state, seen, &parts) {
+        return answer;
+    }
     match (seen.method.as_str(), parts.as_slice()) {
         ("GET", ["api", "v1", "agents"]) => list(state, seen),
         ("POST", ["api", "v1", "agents"]) => create(state, &seen.body, None),
@@ -89,12 +92,17 @@ fn list(state: &State, seen: &Seen) -> Answer {
 }
 
 fn get_response(agent: &FakeAgent) -> Value {
-    json!({
+    let mut answer = json!({
         "id": agent.id, "slug": agent.slug, "name": agent.name, "status": agent.status,
         "personal_color": agent.personal_color, "avatar_url": null,
+        "description": agent.description,
         "source_catalog": agent.source_catalog,
         "created_at": agent.created_at, "updated_at": agent.updated_at
-    })
+    });
+    if let (Some(answer), Some(more)) = (answer.as_object_mut(), agent.more.as_object()) {
+        answer.extend(more.clone());
+    }
+    answer
 }
 
 fn create(state: &mut State, body: &Value, catalog: Option<Value>) -> Answer {

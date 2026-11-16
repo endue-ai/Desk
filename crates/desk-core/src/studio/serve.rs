@@ -1,6 +1,7 @@
 //! studio.agents.facets, studio.agents.prompt.update, studio.catalog.* and studio.conversations.list
-//! (ADR 0122). Facets are read side by side, each on its own thread, and one endue AI does not
-//! answer for is named in `problems` instead of failing the call.
+//! (ADR 0122). Facets, the board's rows among them (ADR 0232), are read side by side, each on its
+//! own thread, and one endue AI does not answer for is named in `problems` instead of failing the
+//! call.
 
 use std::thread;
 
@@ -11,10 +12,10 @@ use desk_bridge::{
     StudioCatalogUseResult, StudioConversationsListParams, StudioConversationsListResult,
     StudioFacet, StudioFacetProblem,
 };
-use desk_platform::Result as Platform;
 use desk_platform::wire_catalog::{CatalogQuery, ConversationQuery};
+use desk_platform::{MEMORIES, Result as Platform};
 
-use super::{map, map_catalog};
+use super::{map, map_catalog, rows};
 use crate::core_studio::{failed, invalid, words};
 use crate::handler::{Answer, Core, json};
 
@@ -60,25 +61,43 @@ impl Core {
         let id = params.agent_id.as_str();
         let agent = platform.get_agent(id).map_err(failed)?;
         let p = platform.as_ref();
-        let (identity, settings, prompt, revisions, skills, connectors, traits) =
-            thread::scope(|s| {
-                let identity = s.spawn(|| p.identity(id));
-                let settings = s.spawn(|| p.settings(id));
-                let prompt = s.spawn(|| p.prompt(id));
-                let revisions = s.spawn(|| p.prompt_revisions(id, REVISIONS));
-                let skills = s.spawn(|| p.skills(id));
-                let connectors = s.spawn(|| p.connectors(id));
-                let traits = s.spawn(|| p.traits(id));
-                (
-                    joined(identity),
-                    joined(settings),
-                    joined(prompt),
-                    joined(revisions),
-                    joined(skills),
-                    joined(connectors),
-                    joined(traits),
-                )
-            });
+        let (studio, board) = thread::scope(|s| {
+            let identity = s.spawn(|| p.identity(id));
+            let settings = s.spawn(|| p.settings(id));
+            let prompt = s.spawn(|| p.prompt(id));
+            let revisions = s.spawn(|| p.prompt_revisions(id, REVISIONS));
+            let skills = s.spawn(|| p.skills(id));
+            let connectors = s.spawn(|| p.connectors(id));
+            let traits = s.spawn(|| p.traits(id));
+            let channels = s.spawn(|| p.channel_pairings(id));
+            let keys = s.spawn(|| p.api_keys());
+            let attached = s.spawn(|| p.os_devices(id));
+            let workspaces = s.spawn(|| p.workspaces(id));
+            let memories = s.spawn(|| p.memories(id, MEMORIES));
+            let outputs = s.spawn(|| p.outputs(id));
+            let theme = s.spawn(|| p.theme(id));
+            let (attached, workspaces) = (joined(attached), joined(workspaces));
+            let studio = (
+                joined(identity),
+                joined(settings),
+                joined(prompt),
+                joined(revisions),
+                joined(skills),
+                joined(connectors),
+                joined(traits),
+            );
+            let board = (
+                joined(channels),
+                joined(keys),
+                attached.and_then(|a| workspaces.map(|w| (a, w))),
+                joined(memories),
+                joined(outputs),
+                joined(theme),
+            );
+            (studio, board)
+        });
+        let (identity, settings, prompt, revisions, skills, connectors, traits) = studio;
+        let (channels, keys, devices, memory, outputs, theme) = board;
         let mut problems = Vec::new();
         let problems = &mut problems;
         let result = StudioAgentsFacetsResult {
@@ -108,6 +127,21 @@ impl Core {
                 .into_iter()
                 .map(map::trait_of)
                 .collect(),
+            channels: keep(StudioFacet::Channels, channels, problems)
+                .unwrap_or_default()
+                .into_iter()
+                .map(rows::channel)
+                .collect(),
+            api_keys: rows::api_keys(
+                keep(StudioFacet::ApiKeys, keys, problems).unwrap_or_default(),
+                id,
+            ),
+            devices: keep(StudioFacet::Devices, devices, problems)
+                .map(|(attached, workspaces)| rows::devices(attached, workspaces))
+                .unwrap_or_default(),
+            memory: keep(StudioFacet::Memory, memory, problems).map(rows::memory),
+            outputs: keep(StudioFacet::Outputs, outputs, problems).map(rows::outputs),
+            theme: keep(StudioFacet::Theme, theme, problems).map(rows::theme),
             problems: std::mem::take(problems),
         };
         json(result)

@@ -88,6 +88,17 @@ impl Platform {
         serde_json::from_value(unwrap(value)?).map_err(|e| PlatformError::unexpected(what, e))
     }
 
+    /// Call `path` and read its whole body as `T`, envelope and all (a page whose `meta` counts).
+    pub(crate) fn read_whole<T: DeserializeOwned>(
+        &self,
+        method: Method,
+        path: &str,
+        what: &str,
+    ) -> Result<T> {
+        let bytes = self.call(method, path, None, self.timeout)?;
+        serde_json::from_slice(&bytes).map_err(|e| PlatformError::unexpected(what, e))
+    }
+
     /// Call `path` for its status alone (204 and the like).
     pub(crate) fn send(&self, method: Method, path: &str, body: Option<&Value>) -> Result<()> {
         self.call(method, path, body, self.timeout).map(drop)
