@@ -6,6 +6,9 @@ decision-makers: Team endue
 
 # The CLI reaches a running desk over a same-user local socket, as the caller `cli`
 
+Status: amended by ADR 0262: a connection hears only the events for its caller, for its own calls
+and for nobody in particular, not every core event.
+
 ## Context and Problem Statement
 
 AI agents and scripts need the running desk's commands, plugins and grants without a webview
