@@ -46,7 +46,7 @@ fn installed(target: &str) -> Command {
 #[cfg(target_os = "windows")]
 fn installed(target: &str) -> Command {
     let base = std::env::var_os("LOCALAPPDATA")
-        .map(PathBuf::from)
+        .map(std::path::PathBuf::from)
         .unwrap_or_default();
     let mut command = Command::new(base.join("endue Desk").join("endue-desk.exe"));
     command.arg(target);
