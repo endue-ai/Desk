@@ -7,6 +7,7 @@ import { createImageActions } from "./actions-images.js";
 import { createObjectActions } from "./actions-objects.js";
 import { createAssistant } from "./assistant.js";
 import { openBuildDialog } from "./dialog-build.js";
+import { openCleanupDialog } from "./dialog-cleanup.js";
 import { openComposeDialog } from "./dialog-compose.js";
 import { openNetworkDialog, openVolumeDialog } from "./dialog-objects.js";
 import { openPullDialog, openTagDialog } from "./dialog-pull.js";
@@ -31,11 +32,9 @@ export function installFeatures(app) {
     stack: (/** @type {any} */ s, /** @type {any} */ at) => stackMenu(app, s, at),
     image: (/** @type {any[]} */ rows, /** @type {any} */ at) => imageMenu(app, rows, at),
   };
-  const soon = (/** @type {string} */ what) => () =>
-    app.toast(`${what} comes in a later step of this branch.`, "info");
   app.dialogs = {
     run: (/** @type {string} */ ref) => openRunDialog(app, ref),
-    pull: () => openPullDialog(app),
+    pull: (/** @type {string | undefined} */ ref) => openPullDialog(app, ref ?? "", false),
     pullRef: (/** @type {string} */ ref) => openPullDialog(app, ref),
     tag: (/** @type {any} */ image) => openTagDialog(app, image),
     createVolume: () => openVolumeDialog(app),
@@ -43,6 +42,6 @@ export function installFeatures(app) {
     build: (/** @type {any} */ preset) => openBuildDialog(app, preset),
     composeUp: () => openComposeDialog(app),
     scaffold: () => openScaffoldDialog(app),
-    cleanup: soon("Clean up"),
+    cleanup: () => openCleanupDialog(app),
   };
 }
