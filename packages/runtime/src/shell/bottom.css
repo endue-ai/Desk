@@ -1,15 +1,60 @@
-/* Bottom edge: drawer, composer, running work, drop zone, the absorbed line. */
+/* Bottom edge: composer, running work, drop zone, the absorbed line; the strip under the canvas map
+   with the desktop's name, the drawer and the way back to the origin. */
 
-.bottom { position: absolute; inset: auto 0 0; pointer-events: none; }
+/* What lies left of the map's strip ends 12 before it: the running chips, the open talk line. */
+.bottom {
+  --running-right: calc(var(--map-right) + var(--map-width) + var(--space-3));
+  position: absolute;
+  inset: auto 0 0;
+  pointer-events: none;
+}
 .bottom > * { pointer-events: auto; }
 
-/* No z-index on .drawer: its panel must rise above the system layer's agent bar. */
-.drawer { position: absolute; left: var(--space-6); bottom: var(--space-5); }
-.drawer-button { z-index: var(--z-float); background: var(--desk-card); border-color: var(--desk-border); }
+/* The strip under the map the compositor draws (issue 296, scale.css' --map-*): the bars' card in a
+   1 border, its top corners square and its bottom ones the map's, laid against the map's box. While
+   the map is folded to its button the strip is a card of its own. Above the rail, which comes
+   first: the drawer's panel opens over it. */
+.map-strip {
+  position: absolute;
+  right: var(--map-right);
+  bottom: var(--map-strip-bottom);
+  z-index: var(--z-float);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: var(--map-width);
+  height: var(--map-strip);
+  padding: 0 1px 0 var(--space-3);
+  border: 1px solid var(--desk-border);
+  border-top-width: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: var(--desk-card);
+  pointer-events: auto;
+}
+.map-strip.is-map-folded { border-top-width: 1px; border-radius: var(--radius-lg); }
+.map-strip-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-strip .icon-button {
+  flex: none;
+  width: var(--control-xs);
+  height: var(--control-xs);
+  border-color: transparent;
+  background: transparent;
+}
+.map-strip .icon-button:hover:not(:disabled) { background: var(--desk-hover); }
+.map-strip .canvas-reset:disabled { color: var(--desk-text-muted); cursor: default; }
+/* The drawer's panel opens above the strip, its right edge on the strip's. */
 .drawer-panel {
   position: absolute;
-  bottom: 48px;
-  left: 0;
+  right: -1px;
+  bottom: calc(100% + var(--space-2));
   width: 360px;
   padding: var(--space-2);
 }
@@ -113,8 +158,8 @@
   box-shadow: var(--desk-shadow-md);
   transition: width var(--motion-base) ease, height var(--motion-base) ease, border-radius var(--motion-base) ease;
 }
-.talk-pill[data-state="hover"] { width: 400px; border-color: var(--desk-accent); }
-.talk-pill.is-open { width: min(640px, calc(100vw - 280px)); height: 72px; border-radius: min(var(--radius-lg), calc(var(--desk-button-radius) * 999)); border-color: var(--desk-accent); }
+.talk-pill[data-state="hover"] { z-index: var(--z-float-top); width: 400px; border-color: var(--desk-accent); }
+.talk-pill.is-open { width: min(640px, calc(100vw - 280px), calc(100vw - 2 * var(--running-right))); height: 72px; border-radius: min(var(--radius-lg), calc(var(--desk-button-radius) * 999)); border-color: var(--desk-accent); }
 .talk-pill .composer-hint { display: none; }
 .talk-pill .composer-field {
   position: absolute;
@@ -196,22 +241,29 @@
 .talk-pill.is-high .composer-list { top: calc(100% + var(--space-2)); bottom: auto; }
 .talk-pill.is-high .talk-agent-list { top: calc(100% + 12px); bottom: auto; }
 
+/* Clear of the map's strip, 12 past it, and of the talk pill at rest, 16 past its half (184 / 2,
+   issue 296); the pill under the pointer is drawn over them. While the line is open it reaches the
+   strip's 12 and leaves no room beside it: the chips rise above the line, clear of the left bars'
+   reach. */
 .running {
   position: absolute;
-  right: var(--space-6);
+  right: var(--running-right);
   bottom: var(--space-5);
   z-index: var(--z-float);
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-  max-width: calc(50% - 40px - min(280px, 50% - 320px));
+  max-width: calc(50% - var(--running-right) - var(--space-4) - 92px);
   margin: 0;
   padding: 0;
   overflow: hidden;
   list-style: none;
 }
 .running > li { display: flex; min-width: 0; }
-.bottom:has(.composer.is-open:not(.is-placed)) .running { max-width: calc(50% - 360px); }
+.bottom:has(.composer.is-open:not(.is-placed)) .running {
+  bottom: calc(var(--space-5) + 72px + var(--space-2));
+  max-width: calc(100% - var(--running-right) - var(--bar-reach));
+}
 .run-chip {
   position: relative;
   min-width: 0;

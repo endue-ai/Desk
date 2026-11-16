@@ -68,8 +68,8 @@ export interface DeskReport {
     spread: Record<string, string>;
     map: { label: string; show: string; fold: string };
   };
-  /** The canvas map folded to its button, as the session keeps it; gone with the right rail
-   * while a window fills the app, `shift` pixels toward the edge or `away` (ADR 0221). */
+  /** The canvas map folded to its button, as the session keeps it; gone with the strip under it
+   * while a window fills the app, `shift` pixels toward the edge or `away` (ADR 0221, ADR 0253). */
   map: { folded: boolean; shift?: number; away?: true };
   /** The last desk desk-wm published that the page took. */
   applied: number;
@@ -156,15 +156,19 @@ function inset(layer: HTMLElement | null, name: string): number | undefined {
 }
 
 /**
- * The canvas map goes with the right rail while a window fills the whole app (ADR 0221,
- * `shell/away.ts`): how far the rail has slid toward the edge now, and whether it is out.
+ * The canvas map goes with the strip under it while a window fills the whole app (ADR 0221, ADR
+ * 0253, `shell/away.ts`): how far the strip has slid toward the edge now, and whether it is out, so
+ * map and strip move as one. A page with no strip of its own (a plugin holds the dock's role) has
+ * the map go with the right rail, as it did.
  */
 function mapAway(doc: Document): { shift?: number; away?: true } {
-  const rail = doc.querySelector<HTMLElement>('.rail[data-away="right"]');
-  const style = rail && doc.defaultView?.getComputedStyle(rail);
-  if (!rail || !style) return {};
+  const part =
+    doc.querySelector<HTMLElement>(".map-strip:not([data-role-yielded])") ??
+    doc.querySelector<HTMLElement>(".rail");
+  const style = part?.dataset.away === "right" && doc.defaultView?.getComputedStyle(part);
+  if (!part || !style) return {};
   const shift = Math.round(Number.parseFloat(style.translate) || 0);
-  const away = rail.classList.contains("is-out") && style.visibility === "hidden";
+  const away = part.classList.contains("is-out") && style.visibility === "hidden";
   return { ...(shift ? { shift } : {}), ...(away ? { away: true as const } : {}) };
 }
 

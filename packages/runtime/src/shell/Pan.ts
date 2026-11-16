@@ -1,9 +1,8 @@
 import type { Offset } from "../wm/types";
 import { desktopId, edit } from "./actions";
 import type { ShellCtx } from "./context";
-import { h, listen } from "./dom";
+import { listen } from "./dom";
 import { draggable } from "./drag";
-import { icon } from "./icons";
 import type { DeskState } from "./state";
 
 const ORIGIN: Offset = { x: 0, y: 0 };
@@ -38,7 +37,8 @@ export function wheelPan(
  * the empty background moves it too. Windows' contents, inputs and plugin scroll areas keep their
  * input, and a plain drag never pans. Over the empty canvas the pointer shows how (the root's title,
  * only there). The window manager (crates/desk-wm on the compositor, ADR 0153) pans from the press
- * the page found, and publishes the pan; the wheel's pan is the page's.
+ * the page found, and publishes the pan; the wheel's pan is the page's. The way back to the origin
+ * is the strip's under the canvas map (`MapStrip.ts`, issue 296).
  */
 export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
   const background = (target: EventTarget | null) =>
@@ -50,25 +50,11 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
   /** Holding Shift shows the hand over what a drag would pan. */
   const shift = (e: KeyboardEvent | FocusEvent) =>
     root.classList.toggle("pan-ready", e instanceof KeyboardEvent && e.shiftKey);
-  const reset = h(
-    "button",
-    {
-      class: "canvas-reset icon-button",
-      type: "button",
-      onClick: () => setPan(ctx, ORIGIN),
-    },
-    icon("target", 18),
-  );
   const draw = () => {
     const pan = panOf(ctx.store.get());
     root.classList.add("has-canvas");
     root.style.setProperty("--pan-x", `${pan.x}px`);
     root.style.setProperty("--pan-y", `${pan.y}px`);
-    reset.title = ctx.tr("resetPan");
-    reset.setAttribute("aria-label", ctx.tr("resetPan"));
-    if (pan.x || pan.y) {
-      if (reset.parentElement !== root) root.append(reset);
-    } else reset.remove();
   };
   const off = [
     draggable(root, {
@@ -97,7 +83,7 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
       if (background(e.target)) root.title = ctx.tr("panHint");
       else root.removeAttribute("title");
     }),
-    ctx.store.watch((s) => [s.pan, s.desktop, s.lang], draw),
+    ctx.store.watch((s) => [s.pan, s.desktop], draw),
     listen(window, "keydown", shift),
     listen(window, "keyup", shift),
     listen(window, "blur", shift),
@@ -105,7 +91,6 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
   draw();
   return () => {
     for (const dispose of off) dispose();
-    reset.remove();
     root.classList.remove("has-canvas", "pan-ready");
     root.style.removeProperty("--pan-x");
     root.style.removeProperty("--pan-y");

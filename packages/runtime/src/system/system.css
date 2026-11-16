@@ -145,8 +145,6 @@
 .inbox-item .dot { flex: none; }
 /* The shell supplies the single settings entry; the bare runtime keeps its own launcher. */
 .shell .desk-settings-launcher { display: none; }
-.shell .drawer { left: 92px; }
-.shell .canvas-reset { left: 148px; }
 
 .surfaces {
   z-index: 0;
@@ -175,7 +173,7 @@
 /* No bar hides another. The side bars start under the profile switcher and the desktops (24 + 32 +
    16) and beside the agent bar and the rail (their inset and width, then the edge's own 12 of
    padding: where a bar's popovers start), as margins so a width the display policy sets stays the
-   surfaces' own. The shell's bottom chrome (drawer button, composer, running chips) sits over the
+   surfaces' own. The shell's bottom chrome (composer, running chips, the map's strip) sits over the
    runtime's bottom 72px; the side bars stop above it (issue 131). */
 .layer-desk .desk-edge--left,
 .layer-desk .desk-edge--right {
