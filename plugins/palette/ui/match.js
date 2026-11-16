@@ -135,28 +135,48 @@ export function rank(query, commands, hits, history = []) {
   return [...found, ...listed].sort(better).map((row) => row.entry);
 }
 
-/** Whether the palette can run a command as it is, with no args: its argsSchema requires none. */
+/** Whether the palette can run a command as it is, asking nothing: its argsSchema requires none. */
 export function runnable(command) {
   const required = command.argsSchema?.required;
   return !Array.isArray(required) || required.length === 0;
+}
+
+/** Types a person cannot type in the palette's input: a list or a structure of args. */
+const UNASKABLE = new Set(["array", "object"]);
+
+/**
+ * Whether the palette can ask for every arg a command requires: none of them is a list or an
+ * object, which only an agent or a key with its args can give.
+ */
+export function askable(command) {
+  const required = command.argsSchema?.required;
+  if (!Array.isArray(required)) return true;
+  const props = command.argsSchema?.properties ?? {};
+  return required.every((name) => {
+    const type = props?.[name]?.type;
+    const types = Array.isArray(type) ? type : [type];
+    return !types.some((t) => UNASKABLE.has(t));
+  });
 }
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
 /**
  * The registry's commands (cmd.list) as the palette lists them: A to Z by title, numbers by value,
- * whatever order the plugins registered them in; with their keys (desk.keys.list); without `hidden`
- * and without those it cannot run (they need args).
+ * whatever order the plugins registered them in; with their keys (desk.keys.list); without `hidden`.
+ * One that needs args keeps its argsSchema: choosing it asks for them (args.js); one whose args
+ * cannot be typed (a list, an object) is left out.
  */
 export function commandEntries(commands, bindings, hidden) {
   return commands
-    .filter((command) => !hidden.has(command.id) && runnable(command))
+    .filter((command) => !hidden.has(command.id) && askable(command))
     .map((command) => ({
       id: command.id,
       provider: command.provider,
       label: command.title,
       keywords: command.keywords ?? [],
       keys: bindings.filter((b) => b.command === command.id).map((b) => b.key),
+      ...(command.argsSchema ? { argsSchema: command.argsSchema } : {}),
     }))
     .sort((a, b) => collator.compare(a.label, b.label) || (a.id < b.id ? -1 : 1));
 }
