@@ -69,6 +69,15 @@ const measured = {
 
 /** The budgets' verdicts: the five without a baseline, then the seven the budgets gate. */
 const FIRST_RUN = [...Array(5).fill("no-baseline"), ...Array(7).fill("ok")];
+/** The committed budgets.json's verdicts: start-up and input latency wait for a baseline (#339). */
+const COMMITTED = [
+  "no-baseline",
+  "no-baseline",
+  "ok",
+  "no-baseline",
+  "no-baseline",
+  ...Array(7).fill("ok"),
+];
 /** The RT-16 targets, by measure. */
 const TARGETS = [1200, 1200, null, 16, 16, null, null, null, null, null, null, null];
 
@@ -223,10 +232,12 @@ describe("budgets", () => {
     expect(committed.residentAtRest).toMatchObject({
       budgetPercent: 2,
       treeBudgetPercent: 6,
-      rssBudgetMb: 4000,
+      rssBudgetMb: 2500,
     });
+    // Idle memory's baseline is the Default profile's in sight (#312, ADR 0246).
+    expect(committed.idleMemory).toMatchObject({ rssMb: 3560.3, platform: "darwin-arm64" });
     const verdicts = compare(committed, measured);
-    expect(verdicts.map((v) => v.status)).toEqual(FIRST_RUN);
+    expect(verdicts.map((v) => v.status)).toEqual(COMMITTED);
     expect(verdicts.map((v) => v.target)).toEqual(TARGETS);
   });
 });
