@@ -246,16 +246,17 @@ export async function build(
 /** `docker exec -i c sh`: a shell without a terminal that answers a few commands. */
 export function shell(/** @type {World} */ _world, /** @type {Io} */ io, /** @type {any} */ c) {
   let cwd = c.kind === "node" ? "/app" : "/";
+  let last = 0;
   let buffer = "";
   const run = (/** @type {string} */ line) => {
     const cmd = line.trim();
     if (cmd.startsWith("printf")) {
-      const code = /\$\?/.test(cmd) ? 0 : 0;
-      io.out(`\n\u001e${code} ${cwd}\u001e\n`);
+      io.out(`\n\u001e${last} ${cwd}\u001e\n`);
       return;
     }
     if (cmd === "") return;
     const [name, ...args] = cmd.split(/\s+/);
+    last = 0;
     if (name === "cd")
       cwd = args[0]?.startsWith("/") ? args[0] : `${cwd.replace(/\/$/, "")}/${args[0] ?? ""}`;
     else if (name === "pwd") io.out(`${cwd}\n`);
@@ -283,7 +284,10 @@ export function shell(/** @type {World} */ _world, /** @type {Io} */ io, /** @ty
       io.out(
         "Filesystem     Size  Used Avail Use% Mounted on\noverlay         59G   21G   35G  38% /\ntmpfs           64M     0   64M   0% /dev\n",
       );
-    else io.err(`sh: ${name}: not found\n`);
+    else {
+      io.err(`sh: ${name}: not found\n`);
+      last = 127;
+    }
   };
   io.onInput((data, close) => {
     buffer += data;

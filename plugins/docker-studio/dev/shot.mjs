@@ -147,7 +147,9 @@ try {
     );
     await settle(sessionId);
     for (const step of shot.steps ?? []) {
-      await evaluate(sessionId, `(async () => { ${step} })()`);
+      const said = await evaluate(sessionId, `(async () => { ${step} })()`);
+      if (said !== undefined)
+        console.log(`${shot.name}:`, typeof said === "string" ? said : JSON.stringify(said));
       await sleep(150);
       await settle(sessionId);
     }

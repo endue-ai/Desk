@@ -236,6 +236,7 @@
 }
 
 .banner {
+  grid-row: 2;
   display: flex;
   align-items: center;
   gap: var(--desk-space-3);
@@ -254,6 +255,7 @@
 }
 
 .content {
+  grid-row: 3;
   min-height: 0;
   overflow: auto;
   outline: none;

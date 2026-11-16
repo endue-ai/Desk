@@ -176,7 +176,7 @@ export function createStudio(ctx, doc, pages) {
     // Filled in by the features (actions.js, dialogs, ai.js).
     act: /** @type {any} */ ({}),
     dialogs: /** @type {any} */ ({}),
-    ai: /** @type {any} */ ({ open() {}, diagnose() {} }),
+    ai: /** @type {any} */ ({ open() {}, diagnose() {}, explainLogs() {} }),
     start() {
       app.act = createActions(app);
       show(saved.page ?? "dashboard", saved.detail ?? null);

@@ -50,6 +50,8 @@ const procs = new Map();
 /** Start docker (fake or real) for one /_dev/spawn and stream what it writes as NDJSON. */
 function start(/** @type {any} */ job, /** @type {import("node:http").ServerResponse} */ res) {
   res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store" });
+  // A process that prints nothing yet (a shell waiting for input) still has started.
+  res.flushHeaders();
   let ended = false;
   const send = (/** @type {object} */ frame) => {
     if (!ended) res.write(`${JSON.stringify(frame)}\n`);

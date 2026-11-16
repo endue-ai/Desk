@@ -38,6 +38,13 @@
   stroke-width: 2;
 }
 
+.area-svg .tick {
+  fill: var(--desk-text-muted);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
 .area-svg .cross {
   stroke: color-mix(in srgb, var(--desk-text) 35%, transparent);
   stroke-width: 1;
