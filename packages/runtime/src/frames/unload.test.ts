@@ -110,6 +110,8 @@ async function desk(ids: string[], bare = false) {
   const runtime = createRuntime({
     root,
     bridge: core.client,
+    // The desk speaks Korean here: desk.language's system follows it (ADR 0250).
+    language: "ko",
     plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
     ...(bare ? {} : { windows: host }),
   });

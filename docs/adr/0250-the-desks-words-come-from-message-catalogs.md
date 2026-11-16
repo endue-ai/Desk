@@ -71,9 +71,11 @@ Chosen option: 1. The person accepted it on #316.
 * Bad: plurals and parameters are all the format does. There is no select, gender, or number or
   date formatting; ICU MessageFormat would have given those. A later version can add a message
   shape without breaking these files.
-* Bad: a change applies at once to the shell, the settings window and the plugins. Words a module
-  fixed when it was installed (command titles, the frames' and the keys' notices) follow at the
-  next start, until their modules read the language live.
+* Good: a change applies at once to the shell, the settings window, the plugins and the desk's
+  own command titles. A built-in's title may be a function, and each change registers again the
+  commands whose title changed (#359).
+* Bad: notices already shown keep their language, and the frames' and the keys' notices follow at
+  the next start.
 * Bad: part of the runtime still holds pairs inline, in the files the baseline lists, until
   follow-ups move them.
 
