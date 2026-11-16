@@ -5,6 +5,7 @@ import { createActions } from "./actions.js";
 import { createBuilds } from "./actions-build.js";
 import { createImageActions } from "./actions-images.js";
 import { createObjectActions } from "./actions-objects.js";
+import { createAssistant } from "./assistant.js";
 import { openBuildDialog } from "./dialog-build.js";
 import { openComposeDialog } from "./dialog-compose.js";
 import { openNetworkDialog, openVolumeDialog } from "./dialog-objects.js";
@@ -19,6 +20,7 @@ export function installFeatures(app) {
   app.images = images;
   app.objects = createObjectActions(app);
   app.builds = createBuilds(app);
+  app.ai = createAssistant(app);
   app.act = {
     ...createActions(app),
     removeImages: images.removeImages,

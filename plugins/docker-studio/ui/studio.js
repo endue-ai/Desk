@@ -114,7 +114,7 @@ export function createStudio(ctx, doc, pages) {
       shell.search.focus();
     } else if (event.key === "a" || event.key === "A") {
       event.preventDefault();
-      app.ai.open();
+      app.ai.toggle();
     } else if (event.key === "Escape" && target) {
       event.preventDefault();
       app.back();

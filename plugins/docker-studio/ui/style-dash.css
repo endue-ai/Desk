@@ -290,11 +290,32 @@
   white-space: nowrap;
 }
 
-@media (max-width: 1180px) {
+/* The content's own width decides, so the assistant's panel narrows it as a small window would. */
+@container content (max-width: 1240px) {
   .tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .dash-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dash-grid .consumers {
+    grid-column: 1 / -1;
+  }
+}
+
+@container content (max-width: 760px) {
+  .charts,
+  .dash-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.attention {
+  container-type: inline-size;
+}
+
+@container (max-width: 520px) {
+  .attention .desk-btn.ai .label {
+    display: none;
   }
 }

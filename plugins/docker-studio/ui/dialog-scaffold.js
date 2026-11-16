@@ -65,6 +65,9 @@ export function openScaffoldDialog(app) {
   const o = scaffoldFor("node");
   let folder = "";
   let tab = "Dockerfile";
+  /** Files AI tailored, shown until an option changes. @type {Array<[string, string]> | null} */
+  let custom = null;
+  const current = () => custom ?? filesFor(o);
   const tabs = h("nav.desk-tabs.file-tabs", { role: "tablist" });
   const code = h("pre.code.scaffold-code");
   const entry = input({
@@ -73,7 +76,7 @@ export function openScaffoldDialog(app) {
     label: "Starts",
     onInput: (v) => {
       o.entry = v;
-      draw();
+      changed();
     },
   });
   const entryHint = h("small.field-hint", null, PLATFORMS[o.platform].hint);
@@ -83,7 +86,7 @@ export function openScaffoldDialog(app) {
     label: "Port",
     onInput: (v) => {
       o.port = Number(v) || 0;
-      draw();
+      changed();
     },
   });
   const version = input({
@@ -92,12 +95,12 @@ export function openScaffoldDialog(app) {
     label: "Version",
     onInput: (v) => {
       o.version = v;
-      draw();
+      changed();
     },
   });
 
   const draw = () => {
-    const files = filesFor(o);
+    const files = current();
     if (!files.some(([n]) => n === tab)) tab = "Dockerfile";
     tabs.replaceChildren(
       ...files.map(([name]) =>
@@ -128,6 +131,11 @@ export function openScaffoldDialog(app) {
     );
   };
 
+  const changed = () => {
+    custom = null;
+    draw();
+  };
+
   const platform = (/** @type {Platform} */ id) => {
     Object.assign(o, scaffoldFor(id, o.name), { compose: o.compose, db: o.db, cache: o.cache });
     entry.value = o.entry;
@@ -136,7 +144,7 @@ export function openScaffoldDialog(app) {
     entryHint.textContent = PLATFORMS[id].hint;
     for (const b of choices.querySelectorAll("button"))
       b.setAttribute("aria-pressed", String(/** @type {HTMLElement} */ (b).dataset.id === id));
-    draw();
+    changed();
   };
   const choices = h(
     "div.platforms",
@@ -161,9 +169,9 @@ export function openScaffoldDialog(app) {
     kind: "desk-btn-primary",
     onClick: async () => {
       try {
-        if (!(await saveFiles(app, folder.trim(), filesFor(o)))) return;
+        if (!(await saveFiles(app, folder.trim(), current()))) return;
         app.toast(
-          `Wrote ${filesFor(o)
+          `Wrote ${current()
             .map(([n]) => n)
             .join(", ")} into ${folder}.`,
           "success",
@@ -206,7 +214,7 @@ export function openScaffoldDialog(app) {
             label: "Service name",
             onInput: (v) => {
               o.name = v.trim() || "app";
-              draw();
+              changed();
             },
           }),
         ),
@@ -219,19 +227,19 @@ export function openScaffoldDialog(app) {
         null,
         check("Run as a user that is not root", o.nonRoot, (on) => {
           o.nonRoot = on;
-          draw();
+          changed();
         }),
         check("Check its health", o.health, (on) => {
           o.health = on;
-          draw();
+          changed();
         }),
         check("A compose.yaml too", o.compose, (on) => {
           o.compose = on;
-          draw();
+          changed();
         }),
         check("With a Redis cache", o.cache, (on) => {
           o.cache = on;
-          draw();
+          changed();
         }),
       ),
       field(
@@ -245,7 +253,7 @@ export function openScaffoldDialog(app) {
           o.db,
           (v) => {
             o.db = /** @type {any} */ (v);
-            draw();
+            changed();
           },
           "Database",
         ),
@@ -276,16 +284,20 @@ export function openScaffoldDialog(app) {
         label: "Tailor with AI",
         icon: "sparkle",
         kind: "desk-btn-quiet ai lead",
-        onClick: () => app.ai.tailorScaffold(o, filesFor(o)),
+        onClick: () =>
+          app.ai.tailorScaffold(o, current(), (/** @type {Array<[string, string]>} */ files) => {
+            custom = files;
+            draw();
+          }),
       }),
       button({
         label: "Copy",
         icon: "copy",
         kind: "desk-btn-quiet",
-        onClick: () => void app.act.copy(filesFor(o).find(([n]) => n === tab)?.[1] ?? "", tab),
+        onClick: () => void app.act.copy(current().find(([n]) => n === tab)?.[1] ?? "", tab),
       }),
       save,
     ],
   });
-  draw();
+  changed();
 }
