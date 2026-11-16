@@ -4,7 +4,8 @@
 //! the desk as it is when the press becomes a drag.
 //!
 //! - A move takes the window with the pointer; a floating one stays inside the app. Dragged to an
-//!   edge or a corner it aims at that part (`snap::Aim`, ADR 0128), and the drop snaps it there; a
+//!   edge or a corner it aims at that part (`snap::Aim`, ADR 0128), and the drop snaps it there;
+//!   its edges pull flush with a neighbour's or the app's within 10 px (`magnet.rs`); a
 //!   filled window comes off its fill as the drag starts, its own size again with the pointer at
 //!   the same share of its width, its size gliding back (ADR 0132). A pinned window does not move.
 //! - A resize moves the grabbed edges, the opposite ones anchored; a floating window's stop at the
@@ -21,6 +22,7 @@ use crate::coordinates::{is_floating, screen_rect};
 use crate::desk::Desk;
 use crate::fill::{own_floating, unfilled};
 use crate::geometry::{MIN, clamp_rect, screen_area};
+use crate::magnet::{Edges, magnet_move, magnet_resize};
 use crate::math::round;
 use crate::pan::PanDrag;
 use crate::snap::Aim;
@@ -83,6 +85,8 @@ struct Window {
     unsnap: Option<(Size, f64)>,
     /// The smallest a resize leaves it: room for each of its panes.
     least: Size,
+    /// The other windows on screen, whose edges its edges pull to (`magnet.rs`).
+    others: Vec<Rect>,
 }
 
 /// One gesture, from its press.
@@ -138,6 +142,11 @@ impl Gesture {
     fn begin(&mut self, desk: &Desk, drawn: Rect, screen: Size, now: f64) -> bool {
         let press = self.drag.from;
         let area = screen_area(screen.w, screen.h);
+        let pan = desk.pan_of(&desk.here());
+        let others: Vec<Rect> = (desk.windows().iter())
+            .filter(|p| Some(p.id.as_str()) != self.window_id())
+            .map(|p| screen_rect(p, pan, screen.w, screen.h))
+            .collect();
         match &self.kind {
             Kind::Pan => {
                 let here = desk.here();
@@ -155,6 +164,7 @@ impl Gesture {
                     aim: None,
                     unsnap: None,
                     least: desk.least_of(&p),
+                    others,
                 });
                 true
             }
@@ -168,12 +178,12 @@ impl Gesture {
                     aim: Some(Aim::new(press, area)),
                     unsnap: None,
                     least: MIN,
+                    others,
                 };
                 if p.restore.is_some() {
                     // Off its fill as the drag starts: its own size again, the pointer at the same
                     // share of its width, so the title bar stays under it.
                     let own = unfilled(&p);
-                    let pan = desk.pan_of(&desk.here());
                     let back = screen_rect(&own, pan, screen.w, screen.h);
                     let share = if drawn.w > 0.0 {
                         (press.x - drawn.x) / drawn.w
@@ -201,13 +211,34 @@ impl Gesture {
     fn rect(&self, dx: f64, dy: f64, screen: Size) -> Option<Rect> {
         let w = self.window.as_ref()?;
         let s = w.start;
+        let area = screen_area(screen.w, screen.h);
         Some(match &self.kind {
             Kind::Resize { grip, .. } => {
-                let bounds = w.floating.then(|| screen_area(screen.w, screen.h));
-                resize_rect_min(s, *grip, dx, dy, bounds, w.least)
+                let bounds = w.floating.then_some(area);
+                let r = resize_rect_min(s, *grip, dx, dy, bounds, w.least);
+                let edges = Edges {
+                    left: grip.west(),
+                    right: grip.east(),
+                    top: grip.north(),
+                    bottom: grip.south(),
+                };
+                let pulled = magnet_resize(r, edges, &w.others, area, w.least);
+                let inside = |q: Rect| {
+                    q.x >= area.x
+                        && q.y >= area.y
+                        && q.right() <= area.right()
+                        && q.bottom() <= area.bottom()
+                };
+                // A floating window's edges stop at the app's: no pull takes them past.
+                if w.floating && inside(r) && !inside(pulled) {
+                    r
+                } else {
+                    pulled
+                }
             }
             _ => {
                 let r = Rect::new(s.x + dx, s.y + dy, s.w, s.h);
+                let r = magnet_move(r, &w.others, area);
                 if w.floating {
                     clamp_rect(r, screen.w, screen.h)
                 } else {

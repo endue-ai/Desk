@@ -8,7 +8,7 @@
 //! - `geometry`, `coordinates`, `clearance`: the reference frame, the free area, normal and
 //!   floating windows' spaces, a filled window's title clear of the top chips.
 //! - `snap`, `settle`, `fill`: 8-way snap (ADR 0128), the glide into a part, filling and coming
-//!   back.
+//!   back; `magnet`: edges pulled flush with a neighbour's or the area's while dragging.
 //! - `tiling`, `arrange`: slots for unplaced windows (ADR 0040), tile and cascade (ADR 0116).
 //! - `hints`: what a plugin's manifest asks of its window: first size, smallest size, fixed (ADR
 //!   0226).
@@ -45,6 +45,7 @@ pub mod hints;
 pub mod host;
 pub mod interact;
 pub mod layout;
+pub mod magnet;
 mod math;
 pub mod migrate;
 pub mod minimap;
@@ -90,6 +91,7 @@ pub use host::{
     PageShown, Places, Plan, Seat, Step, Surfaces,
 };
 pub use layout::{DesktopLayout, Saved, Visible};
+pub use magnet::MAGNET;
 pub use minimap::{
     Fit, MAP, MapDrag, fill_in_sight, fit_world, map_shows, pan_by_key, pan_centred_on,
     pan_moved_by, to_map, to_world, view_rect, world_of,
