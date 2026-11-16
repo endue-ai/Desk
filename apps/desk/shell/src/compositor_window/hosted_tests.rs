@@ -199,11 +199,17 @@ fn a_desk_out_of_sight_keeps_only_the_live_budget_and_wakes_what_shows_again() {
     assert!(hosted.due().is_some_and(|due| due <= now + std::time::Duration::from_secs(60)));
     let out = hosted.tick(now + std::time::Duration::from_secs(61));
     assert_eq!(out.live, Some(vec![]));
-    // The window back: both windows are in sight again and kept, Notes wakes.
+    // The window back: both windows are in sight again and kept, and Notes wakes once the runtime
+    // put its frame back on its second page.
     let out = hosted.occluded(false, now + std::time::Duration::from_secs(62));
     assert_eq!(
         out.live,
         Some(vec!["endue.mail".into(), "endue.notes".into()])
     );
+    let back = vec![
+        frame("endue.notes", NOTES, "live", 2),
+        frame("endue.mail", MAIL, "live", 1),
+    ];
+    let out = budget(&mut hosted, 3, back);
     assert!(kinds(&out).contains(&format!("wake {NOTES}")));
 }
