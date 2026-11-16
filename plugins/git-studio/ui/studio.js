@@ -4,9 +4,11 @@
 
 import { createActions } from "./actions.js";
 import { createApp, WIP } from "./app.js";
+import { createCenter } from "./center.js";
 import { fill } from "./dom.js";
 import { createStatusbar, createToolbar, welcome } from "./view-chrome.js";
 import { createDetail } from "./view-detail.js";
+import { createDiffView } from "./view-diff.js";
 import { createGraphView } from "./view-graph.js";
 import { createSidebar } from "./view-sidebar.js";
 import { createWip } from "./view-wip.js";
@@ -44,19 +46,68 @@ export function createStudio(ctx, doc) {
     },
   });
   const graph = createGraphView(app, $("graph-host"), {});
+  const center = createCenter(app, $("graph-host"), $("view-host"));
+  const diff = createDiffView(app, center.page("diff"), {
+    onBack: () => center.back(),
+    onPatch: (patch, op, what) => actions.patch(patch, op, what),
+    onFile: async (op, target) => {
+      const file = { path: target.path, change: target.untracked ? "?" : "M" };
+      if (op === "stage") await actions.stage([target.path]);
+      else if (op === "unstage") await actions.unstage([target.path]);
+      else await actions.discard([file]);
+      const s = app.get().snapshot?.status;
+      const still = op === "stage" ? s?.staged : s?.unstaged;
+      if (still?.some((f) => f.path === target.path))
+        void diff.show({
+          ...target,
+          kind: op === "stage" ? "staged" : "unstaged",
+          untracked: false,
+        });
+      else center.back();
+    },
+  });
+  /** Open the diff of a working copy file; prev and next walk every changed file. */
+  function openWipDiff(/** @type {import("./view-wip.js").WipFile} */ item) {
+    const s = app.get().snapshot?.status;
+    if (!s) return;
+    /** @param {import("./parse-status.js").FileChange} f @param {boolean} staged */
+    const targetOf = (f, staged) => ({
+      kind: /** @type {"staged" | "unstaged"} */ (staged ? "staged" : "unstaged"),
+      path: f.path,
+      ...(staged && f.origPath ? { origPath: f.origPath } : {}),
+      untracked: f.change === "?",
+    });
+    const list = [
+      ...s.unstaged.map((f) => targetOf(f, false)),
+      ...s.staged.map((f) => targetOf(f, true)),
+    ];
+    center.show("diff");
+    void diff.show(targetOf(item.file, item.staged), list);
+  }
   const detail = createDetail(app, detailPage, {
     onCopy: (text) => {
       void navigator.clipboard?.writeText(text).catch(() => {});
       app.say("Copied");
     },
-    onFile: () => app.say("Diffs come next"),
+    onFile: (file, commit) => {
+      /** @param {import("./parse.js").ChangedFile} f */
+      const targetOf = (f) => ({
+        kind: /** @type {"commit"} */ ("commit"),
+        path: f.path,
+        ...(f.origPath ? { origPath: f.origPath } : {}),
+        sha: commit.sha,
+        parent: commit.parents[0] ?? null,
+      });
+      center.show("diff");
+      void diff.show(targetOf(file), commit.files.map(targetOf));
+    },
     onAction: (action) => app.say(`${action}: coming soon`),
   });
   createWip(app, wipPage, {
     onStage: (paths) => void actions.stage(paths),
     onUnstage: (paths) => void actions.unstage(paths),
     onDiscard: (files) => void actions.discard(files),
-    onFile: () => app.say("Diffs come next"),
+    onFile: (item) => openWipDiff(item),
     onResolve: () => app.say("The conflict tool comes next"),
     onCommit: (draft) => actions.commit(draft),
     onAmend: (on) => actions.amendMessage(on),
@@ -135,6 +186,9 @@ export function createStudio(ctx, doc) {
     if (event.key === "/" && !typing) {
       event.preventDefault();
       toolbar.focusSearch();
+    } else if (event.key === "Escape" && !typing && app.get().center !== "graph") {
+      center.back();
+      graph.focus();
     } else if (event.key === "Escape" && typing && target.classList.contains("tool-search")) {
       toolbar.setSearch("");
       app.set({ query: "" });

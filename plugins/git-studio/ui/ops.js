@@ -109,6 +109,25 @@ export function createOps(git, root) {
 
     /** The last commit's message, for amending it. */
     lastMessage: async () => (await run(["log", "-1", "--format=%B"])).stdout.replace(/\s+$/, ""),
+
+    /**
+     * Apply a patch (parse-diff's hunkPatch) on git's stdin: to the index (`cached`), backwards
+     * (`reverse`, to unstage or discard), or to the working copy.
+     */
+    applyPatch: (
+      /** @type {string} */ patch,
+      /** @type {{ cached?: boolean, reverse?: boolean }} */ options = {},
+    ) =>
+      run(
+        [
+          "apply",
+          ...(options.cached ? ["--cached"] : []),
+          ...(options.reverse ? ["--reverse"] : []),
+          "--whitespace=nowarn",
+          "-",
+        ],
+        { cwd: root, input: patch },
+      ),
   };
 }
 

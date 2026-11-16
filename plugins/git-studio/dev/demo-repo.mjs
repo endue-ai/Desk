@@ -82,6 +82,38 @@ export function start(port = ${port}) {
   return server;
 }
 `;
+/** The new caption line of the demo's own source: a template literal, so it is built from parts. */
+const CAPTION = ["`$", "{photo.title} · $", '{photo.place ?? "somewhere"}`'].join("");
+/** A gallery module; `next` is the version in the working copy (two hunks change). */
+const gallery = (next = false) => `// The gallery: photos in a grid, newest first.
+import { theme } from "./config.js";
+
+const COLUMNS = ${next ? 4 : 3};
+const GAP = theme.radius * 2;
+
+/** Sort photos so the newest comes first. */
+export function newestFirst(photos) {
+  return [...photos].sort((a, b) => b.takenAt - a.takenAt);
+}
+
+/** Lay photos out in rows of COLUMNS. */
+export function grid(photos) {
+  const rows = [];
+  for (let i = 0; i < photos.length; i += COLUMNS) {
+    rows.push(photos.slice(i, i + COLUMNS));
+  }
+  return rows;
+}
+
+/** The size of one cell for a given width. */
+export function cellSize(width) {
+${next ? "  const inner = width - GAP * (COLUMNS + 1);\n  return Math.floor(inner / COLUMNS);" : "  return Math.floor((width - GAP * (COLUMNS - 1)) / COLUMNS);"}
+}
+
+export function caption(photo) {
+  return ${next ? CAPTION : "photo.title"};
+}
+`;
 const config = (accent) => `export const theme = {
   accent: "${accent}",
   radius: 8,
@@ -100,7 +132,10 @@ commit(work, "mira", "Add the HTTP server", {
 commit(work, "jonas", "Add the users route", {
   "src/routes/users.js": "export const users = [];\n",
 });
-commit(work, "mira", "Theme settings for the gallery", { "src/config.js": config("#3b82f6") });
+commit(work, "mira", "Theme settings for the gallery", {
+  "src/config.js": config("#3b82f6"),
+  "src/gallery.js": gallery(),
+});
 git(work, ["tag", "-a", "v0.1.0", "-m", "First release"], "mira");
 git(work, ["switch", "-q", "-c", "develop"]);
 commit(work, "ana", "Album model and storage", {
@@ -209,6 +244,7 @@ write(work, { "src/routes/albums.js": "export const PAGE = 25;\n" });
 git(work, ["add", "src/routes/albums.js"]);
 git(work, ["stash", "push", "-q", "-m", "Half-done pagination"]);
 write(work, { "src/server.js": server(8080, 'import { log } from "./log.js";\n') });
+write(work, { "src/gallery.js": gallery(true) });
 write(work, {
   "src/log.js":
     "export function log(message) {\n  console.log(new Date().toISOString(), message);\n}\n",

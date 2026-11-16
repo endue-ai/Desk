@@ -236,6 +236,28 @@ export function createActions(app, layer) {
         ops().checkout(spec),
       );
     },
+
+    /** Stage, unstage or (after asking) discard a hunk or lines: a patch on git apply's stdin. */
+    async patch(
+      /** @type {string} */ patch,
+      /** @type {"stage" | "unstage" | "discard"} */ op,
+      what = "hunk",
+    ) {
+      if (op === "discard") {
+        const ok = await confirm(layer, {
+          title: `Discard this ${what}?`,
+          icon: "trash",
+          danger: true,
+          body: "The working copy loses these lines. This cannot be undone.",
+          confirm: "Discard",
+        });
+        if (!ok) return;
+      }
+      const done = op === "stage" ? "Staged" : op === "unstage" ? "Unstaged" : "Discarded";
+      await app.act(`${done} the ${what}`, () =>
+        ops().applyPatch(patch, { cached: op !== "discard", reverse: op !== "stage" }),
+      );
+    },
   };
   return actions;
 }

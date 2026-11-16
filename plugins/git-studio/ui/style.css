@@ -199,8 +199,16 @@ body {
 }
 
 .graph-host[hidden],
-.view-host[hidden] {
+.view-host[hidden],
+.view-page[hidden] {
   display: none;
+}
+
+.view-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel {
