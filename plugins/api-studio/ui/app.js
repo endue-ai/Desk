@@ -10,9 +10,9 @@ import { clone, newRequest, normalize, same } from "./model.js";
  * @typedef {import("./send.js").Response} Response
  * @typedef {{ id: string, req: Request, saved: string | null, ref?: { collection: string, path: string },
  *   response?: Response, running?: { cancel(): void }, reqTab: string, resTab: string,
- *   kind?: "group" | "env", extra?: Record<string, string>,
+ *   kind?: "group" | "env" | "runner", extra?: Record<string, string>,
  *   lastCaptures?: { name: string, value?: string, error?: string }[], received?: number,
- *   results?: import("./features-scripts.js").Results,
+ *   results?: import("./features-scripts.js").Results, quiet?: boolean, data?: Record<string, string>,
  *   preview?: boolean }} Tab
  * @typedef {{ id: string, at: number, method: string, url: string, name: string, status: number,
  *   time: number, size: number, error?: string, req: Request }} HistoryEntry
@@ -34,7 +34,7 @@ export function createApp(persist = {}) {
       req: normalize(t.req),
       saved: typeof t.saved === "string" ? t.saved : null,
       ...(t.ref ? { ref: t.ref } : {}),
-      ...(t.kind === "group" || t.kind === "env" ? { kind: t.kind } : {}),
+      ...(t.kind === "group" || t.kind === "env" || t.kind === "runner" ? { kind: t.kind } : {}),
       ...(t.extra ? { extra: t.extra } : {}),
       reqTab: t.reqTab ?? (t.kind === "group" ? "overview" : "params"),
       resTab: t.resTab ?? "body",
@@ -94,12 +94,17 @@ export function createApp(persist = {}) {
 
   /**
    * Open a request (or a folder's settings) in a tab: the tab that already shows it, or a new one.
-   * @param {Request} req @param {Tab["ref"]} [ref] @param {{ saved?: boolean, kind?: "group" | "env" }} [options]
+   * @param {Request} req @param {Tab["ref"]} [ref] @param {{ saved?: boolean, kind?: "group" | "env" | "runner" }} [options]
    */
   const open = (req, ref, options = { saved: true }) => {
     const existing =
       ref &&
-      state.tabs.find((t) => t.ref?.collection === ref.collection && t.ref?.path === ref.path);
+      state.tabs.find(
+        (t) =>
+          t.ref?.collection === ref.collection &&
+          t.ref?.path === ref.path &&
+          (t.kind ?? "") === (options.kind ?? ""),
+      );
     if (existing) {
       state.active = existing.id;
       emit("tab");

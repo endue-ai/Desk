@@ -103,7 +103,7 @@ export function createActions(S) {
         console.warn("api-studio: after-send hook failed", error);
       }
     }
-    if (!res.cancelled) app.remember(tab, res);
+    if (!res.cancelled && !tab.quiet) app.remember(tab, res);
     app.emit("sending", tab);
     app.emit("response", tab);
   };
