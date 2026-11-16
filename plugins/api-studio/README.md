@@ -29,7 +29,7 @@ secrets are offered a move into secret variables, and secrets never follow a red
 | `ui/curl-*.js`, `engine.js`, `send.js`, `expr.js`, `assert.js` | curl in and out, a request to a response, reading and checking it |
 | `ui/collection-fs.js`, `collections*.js`, `environments.js`, `runner.js` | Files on disk, collection edits, environments and secrets, runs |
 | `ui/scripts.js`, `script-prelude.js`, `openapi.js`, `har.js`, `yaml.js`, `codegen.js` | Scripts in workers; imports; code |
-| `ui/guards.js`, `trust.js`, `file-guard.js`, `literal*.js`, `redirects.js`, `secret-names.js` | What a request may carry (ADR 0264) |
+| `ui/guards.js`, `trust.js`, `file-guard.js`, `literal*.js`, `redirects.js`, `runtime.js`, `secret-names.js` | What a request may carry (ADR 0264) |
 | `ui/app.js`, `actions.js`, `studio.js`, `features-*.js`, `commands.js`, `ai-*.js` | State, sending, the window, features, commands, AI |
 | `ui/view-*.js`, `section-*.js`, `res-*.js`, `*-pane.js`, `assistant.js` | Side panels, tabs, request sections, the response, other tabs |
 | `dev/` | The preview: `serve.mjs` (real curl, a made-up shop API, an example collection), the SDK shim, `shot.mjs` |

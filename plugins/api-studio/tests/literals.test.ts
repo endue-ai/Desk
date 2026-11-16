@@ -203,4 +203,13 @@ describe("typed secrets", () => {
     expect(imp.requests[2]?.body.text).toBe("user=ann&password={{password3}}");
     expect(imp.envs[0]?.vars.find((v) => v.key === "password3")?.value).toBe("pw%2BPLAIN");
   });
+
+  it("keeps values moved before when a later one is written with an escape", () => {
+    const req = normalize({
+      body: { mode: "json", json: '{"password":"hunter2","apiKey":"ab\\/cd"}' },
+    });
+    for (const l of literalSecrets(req)) l.put(`{{${l.name}}}`);
+    expect(req.body.json).not.toContain("hunter2");
+    expect(JSON.parse(req.body.json)).toEqual({ password: "{{password}}", apiKey: "{{apikey}}" });
+  });
 });

@@ -135,9 +135,10 @@ function jsonFields(read, write, label) {
   }
   /** @type {Literal[]} */
   const out = [];
-  const walk = (/** @type {any} */ node) => {
+  const walk = (/** @type {any} */ node, /** @type {(string | number)[]} */ path) => {
     if (!node || typeof node !== "object") return;
     for (const [k, v] of Object.entries(node)) {
+      const at = [...path, Array.isArray(node) ? Number(k) : k];
       if (typeof v === "string" && isSecretField(k) && typed(v))
         out.push({
           label: `${label} ${k}`,
@@ -148,18 +149,23 @@ function jsonFields(read, write, label) {
             const pair = new RegExp(
               `(${literally(JSON.stringify(k))}\\s*:\\s*)${literally(JSON.stringify(v))}`,
             );
-            if (pair.test(text))
+            if (pair.test(text)) {
               write(text.replace(pair, (_m, head) => `${head}${JSON.stringify(ref)}`));
-            else {
-              node[k] = ref;
-              write(JSON.stringify(doc, null, text.includes("\n") ? 2 : undefined));
+              return;
             }
+            // Written another way (an escape): set it in the text as it is now, so values moved
+            // before stay moved.
+            const now = JSON.parse(text);
+            let parent = now;
+            for (const step of at.slice(0, -1)) parent = parent?.[step];
+            if (parent && typeof parent === "object") parent[/** @type {any} */ (at.at(-1))] = ref;
+            write(JSON.stringify(now, null, text.includes("\n") ? 2 : undefined));
           },
         });
-      else walk(v);
+      else walk(v, at);
     }
   };
-  walk(doc);
+  walk(doc, []);
   return out;
 }
 

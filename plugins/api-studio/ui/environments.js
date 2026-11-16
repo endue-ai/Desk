@@ -155,7 +155,8 @@ export function createEnvironments(S) {
         kept[env.name] = { ...(kept[env.name] ?? {}), [key]: value };
         secrets.set(coll.path, kept);
         void store(`secrets.${hashKey(coll.path)}`, kept);
-      } else S.runtime.values.set(key, value);
+      } else if (S.setRuntime) S.setRuntime(tab, key, value);
+      else S.runtime.values.set(key, value);
       S.app.emit("env");
     },
   };
