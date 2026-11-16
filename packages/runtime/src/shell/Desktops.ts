@@ -1,6 +1,7 @@
 /**
- * Top right: the current profile's desktops (ADR 0117), each with its name and a 2×2 map of where its
- * windows sit, scrolling when there are many. Hover shows a desktop's windows to scale; right-click
+ * Top right: the current profile's desktops (ADR 0117), segments of one pill (issue 295), each with its
+ * name and a 2×2 map of where its windows sit, the one in front filled and "+" the last; the pill
+ * scrolls when there are many. Hover shows a desktop's windows to scale; right-click
  * (or the menu key) opens its menu; dragging one reorders it, and dropping a window on one moves the
  * window there. "+" goes to an empty desktop, a new one when none is free.
  */
@@ -62,7 +63,14 @@ function keepInSight(el: HTMLElement, front: HTMLElement): void {
 }
 
 export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
-  const el = h("nav", { class: "desktops", "aria-label": ctx.tr("desktop", { n: "" }).trim() });
+  // `.desktops` is the box that is placed and that a window's title keeps clear of; the pill in it is
+  // the list that scrolls.
+  const pill = h("div", { class: "desktops-pill" });
+  const el = h(
+    "nav",
+    { class: "desktops", "aria-label": ctx.tr("desktop", { n: "" }).trim() },
+    pill,
+  );
   root.append(el);
   const peek = mountPeek(root, ctx);
   const menus = mountMenus(root, ctx, el);
@@ -139,7 +147,7 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
         ),
       );
     });
-    render(el, () => [
+    render(pill, () => [
       ...buttons,
       h(
         "button",
@@ -161,7 +169,7 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
     ]);
     reorders = buttons.map((b, i) => reorderable(b, list[i]?.id ?? ""));
     const front = buttons[list.findIndex((d) => d.id === here)];
-    if (front) keepInSight(el, front);
+    if (front) keepInSight(pill, front);
   };
   draw();
   const offs = [
@@ -181,12 +189,12 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
     ctx.runtime.keymap.onChange(draw),
     // A wheel scrolls a long list sideways.
     listen(
-      el,
+      pill,
       "wheel",
       (e) => {
-        if (el.scrollWidth <= el.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+        if (pill.scrollWidth <= pill.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
         e.preventDefault();
-        el.scrollLeft += e.deltaY;
+        pill.scrollLeft += e.deltaY;
       },
       { passive: false },
     ),

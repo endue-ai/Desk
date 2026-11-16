@@ -9,35 +9,8 @@
   justify-items: start;
   gap: var(--space-2);
 }
-.modes-row { display: flex; align-items: center; gap: var(--space-2); }
-.modes-current { display: flex; }
-/* The other profiles: as wide as their chips up to the desktops (Modes.ts), then sideways by wheel or
-   trackpad, the hidden end faded. The padding keeps the focus ring of a chip inside the clip. */
-.modes-more {
-  display: flex;
-  gap: var(--space-2);
-  margin: calc(var(--space-1) * -1);
-  padding: var(--space-1);
-  overflow: auto hidden;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-}
-.modes-more::-webkit-scrollbar { display: none; }
-.modes-more[data-more="end"] {
-  mask-image: linear-gradient(to right, black calc(100% - var(--space-8)), transparent);
-}
-.modes-more[data-more="start"] {
-  mask-image: linear-gradient(to left, black calc(100% - var(--space-8)), transparent);
-}
-.modes-more[data-more="both"] {
-  mask-image: linear-gradient(
-    to right,
-    transparent,
-    black var(--space-8),
-    black calc(100% - var(--space-8)),
-    transparent
-  );
-}
+/* One chip, the profile in force, with a chevron; its menu opens under it (issue 295). */
+.modes-row { display: flex; align-items: center; }
 
 .mode-chip {
   position: relative;
@@ -67,8 +40,22 @@
   font-size: var(--text-2xs);
   font-weight: 600;
 }
+.mode-chip > [data-icon="chevron-down"] {
+  margin-right: calc(var(--space-1) * -1);
+  color: var(--desk-text-muted);
+}
 .mode-dirty { position: absolute; top: -3px; right: -3px; width: 6px; height: 6px; }
-.mode-menu { position: absolute; top: 40px; left: 0; width: 200px; padding: var(--space-1); }
+.mode-menu {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  width: 240px;
+  max-height: min(60vh, 420px);
+  padding: var(--space-1);
+  overflow-y: auto;
+}
+.mode-menu .menu-item { gap: var(--space-2); }
+.mode-menu .menu-item > svg { flex: none; }
 .mode-menu-rule { height: 1px; margin: var(--space-1) 0; background: var(--desk-border); }
 
 .desktops {
@@ -77,7 +64,6 @@
   right: var(--space-6);
   z-index: var(--z-float-top);
   display: flex;
-  gap: var(--space-2);
 }
 .desktop-button {
   display: inline-flex;
@@ -105,13 +91,11 @@
 /* The switcher and the desktops float over the windows: every chip is the opaque card under its
    tint, so a window under it never shows through and the chip always reads. */
 .modes .mode-chip,
-.modes .add-button,
 .desktops .desktop-button,
 .desktops .add-button {
   background-color: var(--desk-card);
 }
 .modes .mode-chip:hover,
-.modes .add-button:hover:not(:disabled),
 .desktops .desktop-button:hover,
 .desktops .add-button:hover:not(:disabled) {
   background: linear-gradient(var(--desk-hover), var(--desk-hover)) var(--desk-card);

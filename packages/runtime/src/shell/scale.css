@@ -68,6 +68,13 @@
   --bar-row: calc(var(--desk-control-md) + var(--desk-space-1));
   --bar-row-space: var(--desk-control-md);
   --bar-list-reach: calc(var(--bar-inset) + var(--bar-list-width) + var(--desk-space-3));
+  /* The desktops' pill at the top right (issue 295). With the default theme: 2 of padding inside a 1
+     border, a segment 32 by 26 with the design system's button corners, the pill's corners a
+     segment's plus its padding, 32 high in all. */
+  --desktops-pad: calc(var(--desk-space-1) / 2);
+  --desktop-segment: var(--desk-control-sm);
+  --desktop-segment-height: calc(var(--desk-control-sm) - 2 * var(--desktops-pad) - 2px);
+  --desktops-radius: calc(var(--desk-button-radius) + var(--desktops-pad));
 
   --motion-fast: var(--desk-motion-fast);
   --motion-base: var(--desk-motion-base);
