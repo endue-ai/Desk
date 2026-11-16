@@ -1,11 +1,22 @@
 // The studio's commands for the palette and agents: reads answer with plain data (what is open,
 // the requests of a collection); sending a request and running a collection go through the same
 // send as the window (scripts, checks and tests included) and are marked irreversible in the
-// manifest, so an agent's call waits for the person. Secrets never appear in what they return.
+// manifest, so an agent's call waits for the person. Secrets never appear in what they return:
+// secret headers, query pairs and JSON fields are hidden, and so is every secret's value. A
+// request the agent writes itself (a url rather than a saved request's name) gets no secret
+// variables filled in and no cookies from the jar: it could name any host.
 
 import { clone, newRequest, pair } from "./model.js";
 import { requestsOf, startRun, summarize } from "./runner.js";
-import { bodyText, SECRET_HEADERS } from "./send.js";
+import {
+  HIDDEN,
+  hideText,
+  hideUrl,
+  hideValues,
+  isSecretName,
+  secretValues,
+} from "./secret-names.js";
+import { bodyText } from "./send.js";
 import { paramsFromUrl } from "./url.js";
 
 /** @typedef {import("./studio.js").Studio} Studio */
@@ -80,7 +91,7 @@ export function wireCommands(ctx, S) {
     tabs: S.app.state.tabs.map((/** @type {any} */ t) => ({
       name: t.req.name,
       method: t.req.method,
-      url: t.req.url,
+      url: hideUrl(t.req.url),
       unsaved: S.app.dirty(t),
       status: t.response?.status ?? null,
     })),
@@ -94,7 +105,7 @@ export function wireCommands(ctx, S) {
         folder: i.folder || null,
         name: i.name,
         method: i.method,
-        url: i.req.url,
+        url: hideUrl(i.req.url),
       })),
     };
   });
@@ -125,25 +136,41 @@ export function wireCommands(ctx, S) {
         if (req.body.mode === "json") req.body.json = JSON.stringify(args.body, null, 2);
         else req.body.text = String(args.body);
       }
-      tab = { id: `cmd-${Date.now()}`, req, saved: null, reqTab: "params", resTab: "body" };
+      req.settings.cookies = false;
+      tab = {
+        id: `cmd-${Date.now()}`,
+        req,
+        saved: null,
+        reqTab: "params",
+        resTab: "body",
+        agent: true,
+      };
     } else throw new Error("Name a request, or give a url.");
     await S.send(tab);
     const res = tab.response;
     if (!res) throw new Error("The request did not run.");
     const r = tab.results;
+    const scopes = S.scopes(tab);
+    const values = secretValues(scopes);
+    const held = tab.agent
+      ? res.missing.filter((name) => scopes.some((s) => s.secret?.has(name)))
+      : [];
     return {
       status: res.status,
       reason: res.reason,
-      error: res.error ?? null,
+      error: res.error ? hideValues(res.error, values) : null,
+      ...(held.length
+        ? {
+            secretsNotFilled: held,
+            note: "Secret variables are not filled in for a request given as a url. Send a saved request by name to use them.",
+          }
+        : {}),
       timeMs: Math.round(res.timings.total),
       size: res.size,
       headers: Object.fromEntries(
-        res.headers.map(([k, v]) => [
-          k,
-          SECRET_HEADERS.test(k) || /^set-cookie$/i.test(k) ? "(hidden)" : v,
-        ]),
+        res.headers.map(([k, v]) => [k, isSecretName(k) ? HIDDEN : hideValues(v, values)]),
       ),
-      body: bodyText(res).slice(0, 20_000),
+      body: hideText(bodyText(res).slice(0, 20_000), values),
       tests: r
         ? {
             passed: [...r.tests, ...r.asserts].filter((t) => t.ok).length,

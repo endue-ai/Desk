@@ -3,11 +3,19 @@
 // wire-level request, so variables are already filled in; secrets can be hidden first.
 
 import { curlCommand, shellWord } from "./curl-config.js";
+import { HIDDEN, hideText, hideUrl, hideValues, isSecretName } from "./secret-names.js";
 
 /** @typedef {import("./curl-config.js").Prepared} Prepared */
 
 /** A string literal in a C-like language. @param {string} s */
 const q = (s) => JSON.stringify(s);
+/** A Kotlin string literal: `$` starts a template there, so it is escaped too. @param {string} s */
+const kq = (s) => q(s).replace(/\$/g, "\\$");
+/**
+ * A PowerShell single-quoted string. PowerShell also ends one at the typographic single quotes,
+ * so each of those is doubled as well. @param {string} s
+ */
+const ps = (s) => `'${s.replace(/['\u2018\u2019\u201A\u201B]/g, (c) => c + c)}'`;
 /** @param {Prepared} p */
 const bodyOf = (p) =>
   p.body.kind === "raw" ? p.body.text : p.body.kind === "file" ? `@${p.body.path}` : "";
@@ -25,7 +33,7 @@ export const GENERATORS = {
     label: "HTTPie",
     lang: "text",
     make: (p) => {
-      const parts = ["http", p.method, shellWord(p.url)];
+      const parts = ["http", shellWord(p.method), shellWord(p.url)];
       for (const h of p.headers) parts.push(shellWord(`${h.key}:${h.value}`));
       if (hasBody(p) && p.body.kind === "raw")
         return `printf %s ${shellWord(p.body.text)} | ${parts.join(" ")}`;
@@ -194,16 +202,16 @@ export const GENERATORS = {
       const type = p.headers.find((h) => /^content-type$/i.test(h.key))?.value ?? "text/plain";
       const body =
         hasBody(p) && p.body.kind === "raw"
-          ? `${q(p.body.text)}.toRequestBody(${q(type)}.toMediaType())`
+          ? `${kq(p.body.text)}.toRequestBody(${kq(type)}.toMediaType())`
           : p.method === "GET" || p.method === "HEAD"
             ? "null"
             : '"".toRequestBody()';
       return [
         "val client = OkHttpClient()",
         "val request = Request.Builder()",
-        `    .url(${q(p.url)})`,
-        `    .method(${q(p.method)}, ${body})`,
-        ...p.headers.map((h) => `    .addHeader(${q(h.key)}, ${q(h.value)})`),
+        `    .url(${kq(p.url)})`,
+        `    .method(${kq(p.method)}, ${body})`,
+        ...p.headers.map((h) => `    .addHeader(${kq(h.key)}, ${kq(h.value)})`),
         "    .build()",
         `client.newCall(request).execute().use { println("\${it.code} \${it.body?.string()}") }`,
       ].join("\n");
@@ -213,13 +221,12 @@ export const GENERATORS = {
     label: "PowerShell",
     lang: "text",
     make: (p) => {
-      const ps = (/** @type {string} */ s) => `'${s.replace(/'/g, "''")}'`;
       const lines = [];
       if (p.headers.length)
         lines.push(
           `$headers = @{\n${p.headers.map((h) => `  ${ps(h.key)} = ${ps(h.value)}`).join("\n")}\n}`,
         );
-      const args = [`-Uri ${ps(p.url)}`, `-Method ${p.method}`];
+      const args = [`-Uri ${ps(p.url)}`, `-Method ${ps(p.method)}`];
       if (p.headers.length) args.push("-Headers $headers");
       if (hasBody(p) && p.body.kind === "raw") args.push(`-Body ${ps(p.body.text)}`);
       lines.push(`Invoke-RestMethod ${args.join(" ")}`);
@@ -270,24 +277,38 @@ function goString(text) {
 }
 
 /**
- * The request with secret values swapped for named stand-ins, for code that will be shared.
- * @param {Prepared} p @param {RegExp} secretHeaders
+ * The request with secret values swapped for stand-ins, for code that will be shared: headers
+ * that carry a secret (by name or by holding a secret's value), secret query pairs, credentials
+ * curl answers a challenge with, secret fields of the body, and every secret value left anywhere.
+ * @param {Prepared} p
  */
-export function hideSecrets(p, secretHeaders) {
+export function hideSecrets(p) {
+  const values = p.secrets ?? [];
+  const stand = (/** @type {import("./curl-config.js").Header} */ h) =>
+    /^bearer /i.test(h.value)
+      ? "Bearer <token>"
+      : /^basic /i.test(h.value)
+        ? "Basic <credentials>"
+        : `<${h.key.toLowerCase()}>`;
+  /** @type {Prepared["body"]} */
+  let body = p.body;
+  if (body.kind === "raw") body = { kind: "raw", text: hideText(body.text, values) };
+  else if (body.kind === "multipart")
+    body = {
+      kind: "multipart",
+      parts: body.parts.map((part) =>
+        !part.file && isSecretName(part.name)
+          ? { ...part, value: HIDDEN }
+          : { ...part, value: hideValues(part.value, values) },
+      ),
+    };
   return {
     ...p,
+    url: hideUrl(p.url, values),
     headers: p.headers.map((h) =>
-      secretHeaders.test(h.key)
-        ? {
-            key: h.key,
-            value: /^bearer /i.test(h.value)
-              ? "Bearer <token>"
-              : /^basic /i.test(h.value)
-                ? "Basic <credentials>"
-                : `<${h.key.toLowerCase()}>`,
-          }
-        : h,
+      h.secret || isSecretName(h.key) ? { key: h.key, value: stand(h) } : h,
     ),
+    body,
     ...(p.auth ? { auth: { ...p.auth, user: "<user>:<password>" } } : {}),
   };
 }

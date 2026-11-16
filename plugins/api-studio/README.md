@@ -12,7 +12,9 @@ desk's store. Also: a runner with iterations and data rows, OpenAPI/Swagger/HAR/
 eleven languages, an Assistant whose changes apply only on Apply, and commands for agents (`Mod+Alt+A`).
 
 Every request is the curl program through `proc.spawn` without a shell, its whole request on curl's stdin
-(`curl -q -K -`); scripts run in a worker made from a blob (the desk allows no eval and no frames).
+(`curl -q -K -`), HTTP and HTTPS only; scripts run in a worker made from a blob (the desk allows no eval
+and no frames). A collection's scripts run once allowed, files outside it go out after a yes, typed
+secrets are offered a move into secret variables, and secrets never follow a redirect to another host.
 
 | Permission | Why |
 | --- | --- |
@@ -26,7 +28,8 @@ Every request is the curl program through `proc.spawn` without a shell, its whol
 | `ui/model.js`, `url.js`, `vars.js`, `auth.js`, `oauth.js`, `cookies.js` | Requests as data, URL rows, variables, auth, tokens, the jar |
 | `ui/curl-*.js`, `engine.js`, `send.js`, `expr.js`, `assert.js` | curl in and out, a request to a response, reading and checking it |
 | `ui/collection-fs.js`, `collections*.js`, `environments.js`, `runner.js` | Files on disk, collection edits, environments and secrets, runs |
-| `ui/scripts.js`, `script-prelude.js`, `openapi.js`, `yaml.js`, `codegen.js` | Scripts in workers; imports; code |
+| `ui/scripts.js`, `script-prelude.js`, `openapi.js`, `har.js`, `yaml.js`, `codegen.js` | Scripts in workers; imports; code |
+| `ui/guards.js`, `trust.js`, `file-guard.js`, `literal*.js`, `redirects.js`, `secret-names.js` | What a request may carry (ADR 0264) |
 | `ui/app.js`, `actions.js`, `studio.js`, `features-*.js`, `commands.js`, `ai-*.js` | State, sending, the window, features, commands, AI |
 | `ui/view-*.js`, `section-*.js`, `res-*.js`, `*-pane.js`, `assistant.js` | Side panels, tabs, request sections, the response, other tabs |
 | `dev/` | The preview: `serve.mjs` (real curl, a made-up shop API, an example collection), the SDK shim, `shot.mjs` |

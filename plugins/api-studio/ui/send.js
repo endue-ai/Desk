@@ -13,6 +13,7 @@ import {
 } from "./curl-parse.js";
 import { reasonOf } from "./format.js";
 import { active, CONTENT_TYPES } from "./model.js";
+import { isSecretName, secretValues } from "./secret-names.js";
 import { wireUrl } from "./url.js";
 import { resolve } from "./vars.js";
 
@@ -28,10 +29,6 @@ import { resolve } from "./vars.js";
  *   cert?: ReturnType<typeof certificate>, error?: string, cancelled?: boolean, at: number,
  *   missing: string[] }} Response
  */
-
-/** Headers that hold secrets, masked wherever a request is shown or kept. */
-export const SECRET_HEADERS =
-  /^(authorization|proxy-authorization|cookie|x-api-key|api-key|x-auth-token|x-amz-security-token)$/i;
 
 /**
  * Turn the editor's request into what curl sends.
@@ -55,8 +52,11 @@ export function prepare(req, ctx) {
       : whole,
   );
   const url = wireUrl(filled, query, req.settings.encodeUrl !== false);
+  // What must not leave for another host: the secret variables' values and the auth's own.
+  const secrets = secretValues(ctx.scopes);
+  for (const h of [...applied.headers, ...applied.query]) if (h.value) secrets.push(h.value);
 
-  /** @type {{ key: string, value: string }[]} */
+  /** @type {import("./curl-config.js").Header[]} */
   const headers = [];
   const add = (/** @type {string} */ key, /** @type {string} */ value) => {
     const at = headers.findIndex((h) => h.key.toLowerCase() === key.toLowerCase());
@@ -127,17 +127,32 @@ export function prepare(req, ctx) {
   )
     headers.push({ key: "Content-Type", value: type });
   return {
-    prep: {
+    prep: markSecrets({
       method: req.method.toUpperCase(),
       url,
       headers,
       body,
       ...(applied.curl ? { auth: applied.curl } : {}),
       settings: req.settings,
-    },
+      secrets,
+    }),
     missing: [...missing],
     bodyText,
   };
+}
+
+/**
+ * Mark the headers that carry a secret: by their name, or because a secret's value is in them.
+ * Run again once scripts have changed the headers. @param {Prepared} prep @returns {Prepared}
+ */
+export function markSecrets(prep) {
+  const values = prep.secrets ?? [];
+  prep.headers = prep.headers.map((h) => {
+    const secret = isSecretName(h.key) || values.some((v) => v && h.value.includes(v));
+    const { secret: _old, ...plain } = h;
+    return secret ? { ...plain, secret: true } : plain;
+  });
+  return prep;
 }
 
 /** @param {import("./model.js").Body} b */

@@ -40,6 +40,20 @@ export function installScripts(S) {
   S.spawn = browserSpawn;
   /** @param {Tab} tab */
   const groups = (tab) => S.collections?.parents(tab) ?? [];
+  /**
+   * Whether this send's scripts may run: a collection's scripts run once the person allowed them
+   * (trust.js); when they may not, the Tests tab says so once.
+   * @param {Tab} tab
+   */
+  const mayRun = async (tab) => {
+    if (!S.trust || (await S.trust.allows(tab))) return true;
+    const results = /** @type {Results} */ (tab.results);
+    const said =
+      "Scripts did not run: this collection's scripts are not allowed. Allow them from the collection's menu.";
+    if (!results.errors.some((e) => e.text === said))
+      results.errors.push({ from: "Scripts", text: said });
+    return false;
+  };
   /** @param {Tab} tab @param {import("./scripts.js").ScriptResult} r @param {string} from */
   const keep = (tab, r, from) => {
     const results = /** @type {Results} */ (tab.results);
@@ -61,6 +75,7 @@ export function installScripts(S) {
         .map((g) => ({ from: g.name, code: g.scripts.pre }))
         .concat([{ from: tab.req.name, code: tab.req.scripts.pre }])
         .filter((x) => x.code.trim());
+      if (list.length && !(await mayRun(tab))) return;
       for (const item of list) {
         const request = {
           method: prep.method,
@@ -105,17 +120,19 @@ export function installScripts(S) {
         { from: tab.req.name, code: tab.req.scripts.post },
         ...groups(tab).map((g) => ({ from: g.name, code: g.scripts.post })),
       ].filter((x) => x.code.trim());
-      for (const item of posts)
-        keep(
-          tab,
-          await runScript(
-            item.code,
-            { phase: "post", name: item.from, vars: flatVars(S, tab), response },
-            { spawn: S.spawn },
-          ),
-          item.from,
-        );
-      if (tab.req.tests.trim())
+      const runs = (posts.length > 0 || !!tab.req.tests.trim()) && (await mayRun(tab));
+      if (runs)
+        for (const item of posts)
+          keep(
+            tab,
+            await runScript(
+              item.code,
+              { phase: "post", name: item.from, vars: flatVars(S, tab), response },
+              { spawn: S.spawn },
+            ),
+            item.from,
+          );
+      if (runs && tab.req.tests.trim())
         keep(
           tab,
           await runScript(

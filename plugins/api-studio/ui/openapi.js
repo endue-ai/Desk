@@ -1,11 +1,14 @@
 // An API description (OpenAPI 3 or Swagger 2, JSON or YAML) as a collection: a folder per tag, a
 // request per operation with its path, query and header parameters, an example body made from
 // the schema, the auth its security scheme asks for, the servers as environments, and the
-// descriptions as docs. A browser's HAR file becomes a collection of the requests it recorded.
+// descriptions as docs. A browser's HAR file becomes a collection of the requests it recorded
+// (har.js).
 
 import { newRequest, pair } from "./model.js";
 import { paramsFromUrl } from "./url.js";
 import { parseYaml } from "./yaml.js";
+
+export { fromHar } from "./har.js";
 
 /**
  * @typedef {import("./model.js").Request} Request
@@ -319,64 +322,5 @@ export function fromSpec(doc) {
     })),
     requests: loose,
     envs,
-  };
-}
-
-/** A collection of the requests a HAR file recorded. @param {any} har @returns {Imported} */
-export function fromHar(har) {
-  const entries = Array.isArray(har?.log?.entries) ? har.log.entries : [];
-  /** @type {Request[]} */
-  const requests = [];
-  for (const [n, e] of entries.entries()) {
-    const r = e.request;
-    if (!r?.url || !r.method) continue;
-    let path = r.url;
-    try {
-      const u = new URL(r.url);
-      path = `${u.host}${u.pathname}`;
-    } catch {
-      /* as written */
-    }
-    const req = newRequest({
-      name: `${path}`.slice(0, 80),
-      method: String(r.method).toUpperCase(),
-      url: r.url,
-      seq: n + 1,
-    });
-    req.params = paramsFromUrl(r.url, []);
-    for (const h of r.headers ?? [])
-      if (!/^(:|content-length$|host$|connection$|accept-encoding$)/i.test(h.name))
-        req.headers.push(pair({ key: h.name, value: String(h.value ?? "") }));
-    const post = r.postData;
-    if (post) {
-      if (/json/i.test(post.mimeType ?? "")) {
-        req.body.mode = "json";
-        try {
-          req.body.json = JSON.stringify(JSON.parse(post.text ?? ""), null, 2);
-        } catch {
-          req.body.json = post.text ?? "";
-        }
-      } else if (Array.isArray(post.params) && post.params.length) {
-        req.body.mode = /multipart/i.test(post.mimeType ?? "") ? "multipart" : "form";
-        const rows = post.params.map((/** @type {any} */ p) =>
-          pair({ key: p.name, value: String(p.value ?? "") }),
-        );
-        if (req.body.mode === "multipart") req.body.multipart = rows;
-        else req.body.form = rows;
-      } else if (post.text) {
-        req.body.mode = "text";
-        req.body.text = post.text;
-      }
-    }
-    requests.push(req);
-  }
-  return {
-    name: "Recorded requests",
-    docs: `Imported from a HAR file: ${requests.length} requests.`,
-    auth: { type: "none" },
-    vars: [],
-    folders: [],
-    requests,
-    envs: [],
   };
 }

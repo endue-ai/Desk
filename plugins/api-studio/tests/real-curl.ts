@@ -78,6 +78,13 @@ export async function testServer(): Promise<{
       res.end();
       return;
     }
+    if (url.pathname === "/away") {
+      res.writeHead(Number(url.searchParams.get("status") ?? 302), {
+        location: url.searchParams.get("to") ?? "/echo",
+      });
+      res.end();
+      return;
+    }
     if (url.pathname === "/slow") {
       setTimeout(() => res.end("late"), 5000);
       return;

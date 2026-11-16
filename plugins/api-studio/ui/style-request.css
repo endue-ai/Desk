@@ -271,3 +271,22 @@
   display: flex;
   justify-content: flex-end;
 }
+
+/* A request that does not check the server's certificate. */
+.as-tls-off {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  height: 28px;
+  border-radius: var(--desk-radius-md);
+  color: var(--desk-warning);
+  background: color-mix(in srgb, var(--desk-warning) 12%, transparent);
+  font-size: var(--desk-text-xs);
+  white-space: nowrap;
+}
+
+.as-tls-off[hidden] {
+  display: none;
+}

@@ -200,6 +200,19 @@ export function installImport(S) {
     try {
       const coll = await writeImport(S, parent, imp);
       if (coll) {
+        // Secret values go to the desk's store; the environment files hold only their names.
+        for (const made of imp.envs) {
+          const env = coll.envs.find((e) => e.name === made.name);
+          if (env && made.vars.some((v) => v.secret && v.value))
+            await S.envs?.save(
+              coll,
+              env,
+              env.vars.map((v) => ({
+                ...v,
+                value: made.vars.find((m) => m.key === v.key)?.value ?? v.value,
+              })),
+            );
+        }
         S.collections.openGroup(coll, coll.path);
         if (coll.envs[0]) await S.envs?.use(coll, coll.envs[0].name);
       }

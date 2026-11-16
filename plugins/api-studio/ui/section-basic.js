@@ -4,7 +4,7 @@
 import { h } from "./dom.js";
 import { COMMON_HEADERS, kvTable } from "./kv-table.js";
 import { pair } from "./model.js";
-import { SECRET_HEADERS } from "./send.js";
+import { isSecretName } from "./secret-names.js";
 import { pathVariables, urlFromParams } from "./url.js";
 import { addSections, counted } from "./view-request.js";
 
@@ -67,7 +67,7 @@ function headers(S, tab) {
     scopes: () => S.scopes(tab),
     title: "Headers",
     keyHint: "Add a header",
-    secret: (row) => SECRET_HEADERS.test(row.key),
+    secret: (row) => isSecretName(row.key),
     onChange: (rows) => {
       tab.req.headers = rows;
       S.app.emit("req", { field: "headers" });

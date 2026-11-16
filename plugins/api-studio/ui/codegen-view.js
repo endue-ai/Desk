@@ -4,7 +4,6 @@
 import { GENERATORS, hideSecrets } from "./codegen.js";
 import { button, h } from "./dom.js";
 import { paint, runs } from "./highlight.js";
-import { SECRET_HEADERS } from "./send.js";
 
 /** @param {import("./curl-config.js").Prepared} prep @param {{ missing: string[], onCopy(text: string): void }} opts */
 export function codeGen(prep, opts) {
@@ -17,7 +16,7 @@ export function codeGen(prep, opts) {
   );
   const text = () => {
     const gen = GENERATORS[chosen] ?? GENERATORS.curl;
-    return gen ? gen.make(showSecrets ? prep : hideSecrets(prep, SECRET_HEADERS)) : "";
+    return gen ? gen.make(showSecrets ? prep : hideSecrets(prep)) : "";
   };
   const draw = () => {
     list.replaceChildren(

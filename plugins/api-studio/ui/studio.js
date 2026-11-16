@@ -10,6 +10,7 @@ import { installCollections } from "./features-collections.js";
 import { groupPane } from "./group-pane.js";
 import { closeMenus } from "./menu.js";
 import { pair } from "./model.js";
+import { withoutSecrets } from "./secret-names.js";
 import { drawBody } from "./section-body.js";
 import { scope } from "./vars.js";
 import { requestPane } from "./view-request.js";
@@ -29,6 +30,8 @@ import { installEnvironments } from "./features-env.js";
 import { installImport } from "./features-import.js";
 import { installRunner } from "./features-runner.js";
 import { installScripts } from "./features-scripts.js";
+import { installGuards } from "./guards.js";
+import { withoutLiterals } from "./literals.js";
 
 /**
  * @typedef {import("./app.js").Tab} Tab
@@ -58,12 +61,13 @@ export function createStudio(ctx, doc) {
     runtime: scope("runtime", "Runtime", {}),
     /** @param {Tab} tab @returns {Scope[]} */
     scopes(tab) {
-      return [
+      const all = [
         S.runtime,
         ...(tab.data ? [scope("data", "Data row", tab.data)] : []),
         scope("request", "Request", tab.req.vars.pre),
         ...S.scopeProviders.flatMap((p) => p(tab)),
       ];
+      return tab.agent ? withoutSecrets(all) : all;
     },
     /** The auth of a request's folders and collection, nearest first. @param {Tab} _tab @returns {import("./model.js").Auth[]} */
     parentAuth: (_tab) => [],
@@ -157,6 +161,7 @@ export function createStudio(ctx, doc) {
   installScripts(S);
   installRunner(S);
   installImport(S);
+  installGuards(S);
   S.asker = createAsker(ctx.bridge);
   installAssistant(S);
 
@@ -274,7 +279,10 @@ export function createStudio(ctx, doc) {
     if (d?.from === "params") view.url?.syncUrl();
     else view.req?.syncUrl();
   });
-  app.on("req", () => view?.req?.badges());
+  app.on("req", () => {
+    view?.req?.badges();
+    view?.url?.drawTls();
+  });
   app.on("sending", (tab) => {
     if (view && tab === view.tab) {
       view.url?.drawSend();
@@ -358,11 +366,12 @@ export function createStudio(ctx, doc) {
   };
 }
 
-/** The history as it is stored: the newest entries that fit in the store's 64 KiB. @param {import("./app.js").HistoryEntry[]} list */
+/** The history as it is stored: the newest entries that fit in the store's 64 KiB, with no secret typed as is. @param {import("./app.js").HistoryEntry[]} list */
 export function fitHistory(list) {
   const out = [];
   let size = 2;
-  for (const entry of list) {
+  for (const listed of list) {
+    const entry = listed.req ? { ...listed, req: withoutLiterals(listed.req) } : listed;
     const n = JSON.stringify(entry).length + 1;
     if (size + n > 60_000) break;
     size += n;
