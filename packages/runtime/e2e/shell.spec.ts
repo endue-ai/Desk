@@ -15,7 +15,6 @@ test.describe("the desk shell", () => {
       ".modes",
       ".desktops",
       ".sidebar",
-      ".eris",
       ".rail",
       ".map-strip",
       ".drawer",
@@ -24,6 +23,9 @@ test.describe("the desk shell", () => {
     ]) {
       await expect(page.locator(selector)).toBeVisible();
     }
+    // Eris rests in the talk line, its small orb hers, until she has something to do (ADR 0254).
+    await expect(page.locator(".eris")).toBeHidden();
+    await expect(page.locator(".talk-pill .talk-orb")).toBeVisible();
     await expect(page.locator(".rail-button")).toHaveCount(7);
     await expect(page.locator(".surface")).toHaveCount(0);
     expect(await primaryFills(page)).toBeLessThanOrEqual(1);
@@ -273,17 +275,28 @@ test("Eris drags anywhere on screen and the place is kept in the profile", async
   await page.evaluate(() => localStorage.clear());
   await openShell(page, "?persist=1");
   const eris = page.locator(".eris");
+  // At rest she is in the talk line: a heads-up brings her out above it, at (656, 690).
+  await page.evaluate(() => window.__shell.desk.eris.setState("heads-up"));
+  await step(page, 16);
+  await expect(eris).toBeVisible();
+  await expect(eris).toHaveCSS("top", "690px");
+  await expect.poll(async () => (await eris.boundingBox())?.y).toBe(690);
   const box = await eris.boundingBox();
   if (!box) throw new Error("no Eris");
   await page.mouse.move(box.x + 64, box.y + 60);
   await page.mouse.down();
-  await page.mouse.move(box.x + 64 - 400, box.y + 60 + 300, { steps: 6 });
+  await page.mouse.move(box.x + 64 - 400, box.y + 60 - 350, { steps: 6 });
   await page.mouse.up();
   await step(page, 16);
   await expect(eris).toHaveCSS("left", "256px");
   await expect(eris).toHaveCSS("top", "340px");
   await expect(page.locator(".mode-chip.is-current .mode-dirty")).toBeVisible();
-  await page.mouse.move(box.x + 64 - 400, box.y + 360);
+  // Placed, she stays there in sight once she is done.
+  await page.evaluate(() => window.__shell.desk.eris.setState("idle"));
+  await step(page, 3000);
+  await expect(eris).toBeVisible();
+  await expect(eris).toHaveCSS("top", "340px");
+  await page.mouse.move(box.x + 64 - 400, box.y + 60 - 350);
   await page.mouse.down();
   await page.mouse.move(-500, 5000, { steps: 4 });
   await page.mouse.up();

@@ -35,6 +35,23 @@ async function tell(page: Page, text: string): Promise<void> {
   await step(page, 2500);
 }
 
+/** Whether Eris stands over the talk pill, centred on it with 12 between (ADR 0254). */
+const overPill = (page: Page) =>
+  page.evaluate(() => {
+    const eris = document.querySelector(".eris")?.getBoundingClientRect();
+    const pill = document.querySelector(".talk-pill")?.getBoundingClientRect();
+    if (!eris || !pill) return false;
+    const centred = Math.abs(eris.left + eris.width / 2 - (pill.left + pill.width / 2)) < 1;
+    return centred && Math.round(pill.top - eris.bottom) === 12;
+  });
+
+/** Bring her out of the pill (a state other than idle), so she can be pressed or dragged. */
+async function bringOut(page: Page): Promise<void> {
+  await page.evaluate(() => window.__shell.desk.eris.setState("heads-up"));
+  await step(page, 16);
+  await expect.poll(() => overPill(page)).toBe(true);
+}
+
 /** Her card's text, its lines and whether every one of their boxes is inside the desk. */
 function card(page: Page) {
   return page.evaluate(() => {
@@ -61,12 +78,18 @@ test("an answer of 240 characters wraps inside the desk and is still there after
   page,
 }) => {
   await openShell(page, "?lang=en");
+  await expect(page.locator(".eris")).toBeHidden();
   await tell(page, PROMPT);
+  // A typed line brings her out above the pill, her words above her, inside the app.
+  await expect(page.locator(".eris")).toBeVisible();
+  await expect.poll(() => overPill(page)).toBe(true);
   const shown = await card(page);
   expect(shown).toMatchObject({ text: REPLY, inside: true, overlay: true });
   expect(shown?.lines).toBeGreaterThanOrEqual(3);
   await step(page, 10_000);
   expect(await card(page)).toEqual(shown);
+  // While her answer is kept she stays out with it.
+  await expect(page.locator(".eris")).toBeVisible();
   // Screen readers hear it once.
   await expect(page.locator(".soul-live")).toHaveText(REPLY);
 });
@@ -88,6 +111,7 @@ test("closed, her answer comes back with Show what Eris said", async ({ page }) 
 test("a short line wraps inside the desk wherever she floats", async ({ page }) => {
   await openShell(page, "?lang=en");
   const eris = page.locator(".eris");
+  await bringOut(page);
   const at = await eris.boundingBox();
   if (!at) throw new Error("no Eris");
   await page.mouse.move(at.x + 64, at.y + 69);
@@ -95,6 +119,7 @@ test("a short line wraps inside the desk wherever she floats", async ({ page }) 
   await page.mouse.move(1200, 300, { steps: 8 });
   await page.mouse.move(1270, 300, { steps: 4 });
   await page.mouse.up();
+  await page.evaluate(() => window.__shell.desk.eris.setState("idle"));
   await step(page, 100);
   await page.evaluate((line) => window.__shell.desk.eris.say(line), FAILED);
   await step(page, 3000);
@@ -113,7 +138,10 @@ test("nothing says she listens until the microphone is allowed", async ({ page }
     perm.request = () => new Promise<boolean>((answer) => (window.__mic = answer));
   });
   const eris = page.locator(".eris");
+  await bringOut(page);
   await eris.click();
+  // Back to idle, so only the question is hers: she waits for its answer.
+  await page.evaluate(() => window.__shell.desk.eris.setState("idle"));
   await step(page, 500);
   await expect(eris).toHaveAttribute("data-talk", "asking");
   await expect(eris).not.toHaveAttribute("data-state", "listening");

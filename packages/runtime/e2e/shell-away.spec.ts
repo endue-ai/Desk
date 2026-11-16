@@ -11,7 +11,11 @@ const AWAY = [".sidebar", ".rail", ".map-strip", ".modes", ".desktops", ".eris",
 // The account bar alone (#296): the Drawer and the origin button go with the map's strip.
 const STAY = [".account-bar"];
 
-/** Two of the shell's own windows on desktop 1, Notes in use. */
+/**
+ * Two of the shell's own windows on desktop 1, Notes in use; Eris placed at the top centre, so she
+ * is in sight at rest (at rest with no place of her own she is in the talk line, ADR 0254) and goes
+ * past the top edge. One frame lays her there.
+ */
 async function seed(page: Page) {
   await page.evaluate(async () => {
     const at = (id: string, x: number, y: number): SurfacePlacement => ({
@@ -27,12 +31,13 @@ async function seed(page: Page) {
     await window.__shell.wm.session({
       1: {
         surfaces: [at("calendar", 140, 230), at("notes", 600, 300)],
-        eris: null,
+        eris: { x: 656, y: 40 },
         rail: { visible: true },
         drawer: { visible: true },
       },
     });
     await window.__shell.wm.focus("notes");
+    window.__shell.step(16);
   });
 }
 

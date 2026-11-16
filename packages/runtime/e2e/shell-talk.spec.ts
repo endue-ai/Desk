@@ -30,8 +30,14 @@ test("the folded pill moves where it is dropped, stays there across a reload, an
   const pill = page.locator(".talk-pill");
   const home = await pill.boundingBox();
   if (!home) throw new Error("no pill");
+  // Folded it is 440 by 40, Eris's small orb, the hint and the key (ADR 0254); the pointer on it
+  // changes its border, not its size.
+  expect([Math.round(home.width), Math.round(home.height)]).toEqual([440, 40]);
+  await pill.hover();
+  await expect(pill).toHaveAttribute("data-state", "hover");
+  expect(await pill.boundingBox()).toEqual(home);
   // From the bottom centre to the upper right.
-  await drag(page, home.x + 40, home.y + 24, 420, -560);
+  await drag(page, home.x + 40, home.y + 20, 420, -560);
   await expect(pill).toHaveClass(/is-placed/);
   await expect(pill).not.toHaveClass(/is-open/);
   await page.mouse.move(700, 600);
@@ -59,11 +65,12 @@ test("near an edge it grows inwards; open, the grip moves it and a double-click 
   const pill = page.locator(".talk-pill");
   const home = await pill.boundingBox();
   if (!home) throw new Error("no pill");
-  // Dropped past the right edge: it stays 8 px inside, and grows leftwards on hover.
-  await drag(page, home.x + 40, home.y + 24, 1000, -300);
+  // Dropped past the right edge: it stays 8 px inside at its folded size, and grows leftwards open.
+  await drag(page, home.x + 40, home.y + 20, 1000, -300);
   await page.mouse.move(700, 500);
   const folded = await pill.boundingBox();
   expect(folded && Math.round(folded.x + folded.width)).toBe(DESK.width - 8);
+  expect(folded && [Math.round(folded.width), Math.round(folded.height)]).toEqual([440, 40]);
   await page.getByRole("button", { name: "Talk to Eris", exact: true }).click();
   await step(page, 240);
   await expect(pill).toHaveAttribute("data-state", "edit");

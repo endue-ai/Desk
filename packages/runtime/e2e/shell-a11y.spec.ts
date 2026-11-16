@@ -70,31 +70,46 @@ test.describe("at 1440×900", () => {
     expect(unlabelled).toBe(0);
     // WebKit only tabs to buttons with Safari's "Tab highlights each item" on, so check the
     // sequential focus order the DOM defines (no positive tabindex anywhere) instead of pressing Tab.
-    const order = await page.evaluate(() => {
-      const parts = [
-        ".modes",
-        ".desktops",
-        ".sidebar",
-        ".account-bar",
-        ".eris",
-        ".rail",
-        ".bottom",
-        ".map-strip",
-      ];
-      const focusable = [
-        ...document.querySelectorAll<HTMLElement>("#desk button, #desk input, #desk [tabindex]"),
-      ].filter((el) => el.tabIndex >= 0 && !el.closest("[inert]"));
-      const seen: string[] = [];
-      for (const el of focusable) {
-        const part = parts.find((p) => el.closest(p));
-        if (part && seen.at(-1) !== part) seen.push(part);
-      }
-      const positive = [...document.querySelectorAll<HTMLElement>("[tabindex]")].some(
-        (el) => el.tabIndex > 0,
-      );
-      return positive ? ["positive tabindex"] : seen;
-    });
-    expect(order).toEqual([
+    const order = () =>
+      page.evaluate(() => {
+        const parts = [
+          ".modes",
+          ".desktops",
+          ".sidebar",
+          ".account-bar",
+          ".eris",
+          ".rail",
+          ".bottom",
+          ".map-strip",
+        ];
+        const focusable = [
+          ...document.querySelectorAll<HTMLElement>("#desk button, #desk input, #desk [tabindex]"),
+        ].filter((el) => el.tabIndex >= 0 && !el.closest("[inert]"));
+        const seen: string[] = [];
+        for (const el of focusable) {
+          const part = parts.find((p) => el.closest(p));
+          if (part && seen.at(-1) !== part) seen.push(part);
+        }
+        const positive = [...document.querySelectorAll<HTMLElement>("[tabindex]")].some(
+          (el) => el.tabIndex > 0,
+        );
+        return positive ? ["positive tabindex"] : seen;
+      });
+    // At rest Eris is in the talk line and out of the order (ADR 0254); out, she is between the
+    // account bar and the rail, as before.
+    await step(page, 16);
+    expect(await order()).toEqual([
+      ".modes",
+      ".desktops",
+      ".sidebar",
+      ".account-bar",
+      ".rail",
+      ".bottom",
+      ".map-strip",
+    ]);
+    await page.evaluate(() => window.__shell.desk.eris.setState("heads-up"));
+    await step(page, 16);
+    expect(await order()).toEqual([
       ".modes",
       ".desktops",
       ".sidebar",
