@@ -58,6 +58,7 @@ The base plugins a person works with from the first day (requirements, BASE):
 | `git/` (`endue.git`) | A keyboard-first front for Git: status, staging, commits, the log as a graph, diffs; every operation a command |
 | `git-studio/` (`endue.git-studio`) | A graphical Git client: the commit graph with the work in progress on top, branches, tags, stashes and worktrees, staging, diffs, history operations from the graph, a conflict tool, blame, and AI for messages and explanations |
 | `database/` (`endue.database`) | A client for PostgreSQL, MySQL / MariaDB and SQLite through their own command-line clients (ADR 0038): connections, an explorer, SQL consoles, exact results, guards for read-only and production connections |
+| `api-studio/` (`endue.api-studio`) | An HTTP client: requests with params, bodies, headers and auth; collections as folders of plain files in Git; environments with secrets kept off disk; scripts, checks and tests; a runner with data rows; OpenAPI, HAR and curl import; code in a dozen languages; and an assistant that explains failures and writes tests |
 | `docker/` (`endue.docker`) | Containers, Compose projects, images, volumes and networks: logs that follow, a container's detail, a shell, clean-up; every operation a command |
 
 The agent programs a person already has, attached as a plugin (AG-09) and off until the person turns

@@ -1,33 +1,37 @@
 # plugins/api-studio
 
 `endue.api-studio`, API Studio: an HTTP client for building, sending and testing API requests, in the
-community folder format, on the public SDK only. A request has Params (the URL follows them), Body
-(JSON, text, XML, a form, a multipart form, a file, GraphQL), Headers, Auth (Basic, Bearer, API key,
-OAuth 2.0, Digest, NTLM, AWS Signature v4, or inherited) and Settings. `{{variables}}` are coloured by
-whether they resolve, show their value under the pointer and complete after `{{`. The response shows
-its status, time and size; the body pretty, raw or previewed, with find; headers, cookies, and a
-timeline with the phases' waterfall, the connection, the certificate and what curl saw.
+community folder format, on the public SDK only (ADR 0264). Requests have Params (the URL follows them),
+Body (JSON, text, XML, form, multipart, file, GraphQL), Headers, Auth (Basic, Bearer, API key, OAuth 2.0
+with its token fetched and refreshed, Digest, NTLM, AWS Signature v4, inherited), Vars (captures read from
+the response), Scripts, Assert, Tests, Docs and Settings. Responses show Pretty, Tree (paths, capture),
+Raw or Preview, filtered by a path, with headers, cookies, a timing waterfall, the timeline, test results
+and the console. Collections are folders of plain files (`collection.json`, `environments/*.env.json`,
+`folder.json`, `*.request.json`) to keep in Git; secret values, OAuth tokens and cookies stay in the
+desk's store. Also: a runner with iterations and data rows, OpenAPI/Swagger/HAR/curl import, code in
+eleven languages, an Assistant whose changes apply only on Apply, and commands for agents (`Mod+Alt+A`).
 
-Every request is the curl program through `proc.spawn` without a shell (`ui/engine.js`): curl reads
-its whole request from stdin (`curl -q -K -`, `ui/curl-config.js`), so URLs, headers and secrets never
-appear in a process's arguments; stdout carries the header blocks and the body, stderr the verbose
-timeline and curl's JSON report (`ui/curl-parse.js`).
+Every request is the curl program through `proc.spawn` without a shell, its whole request on curl's stdin
+(`curl -q -K -`); scripts run in a worker made from a blob (the desk allows no eval and no frames).
 
 | Permission | Why |
 | --- | --- |
 | `proc:spawn` (`curl`) | Send requests with curl, and only curl |
-| `fs:read`, `fs:write` (`${home}/**`) | Read files a body sends; save responses where the person chooses |
+| `brain:ask` | The Assistant: explain, write requests, tests, checks and docs |
+| `fs:read`, `fs:write` (`${home}/**`) | Collections' files; bodies sent from files; saved responses and imports |
+| `shell:open` (`http`, `https`) | Open a link in the docs |
 
 | File | Purpose |
 | --- | --- |
-| `ui/model.js`, `url.js`, `vars.js`, `auth.js` | Requests as data; the URL and its rows; variables; auth on the wire |
-| `ui/curl-*.js`, `engine.js`, `send.js` | curl's config and output; curl over the bridge; a request in, a response out |
-| `ui/app.js`, `actions.js`, `studio.js` | State without DOM; what sending, saving and closing do; the window |
-| `ui/view-*.js`, `section-*.js`, `res-*.js` | The side, the tabs, the URL bar, the request's sections, the response |
-| `ui/var-field.js`, `code-editor.js`, `kv-table.js`, `highlight.js`, `menu.js` | Fields, the editor, tables, syntax colours, menus and dialogs |
-| `dev/` | The preview: `serve.mjs` (real curl, a made-up shop API), the SDK shim, `shot.mjs` |
+| `ui/model.js`, `url.js`, `vars.js`, `auth.js`, `oauth.js`, `cookies.js` | Requests as data, URL rows, variables, auth, tokens, the jar |
+| `ui/curl-*.js`, `engine.js`, `send.js`, `expr.js`, `assert.js` | curl in and out, a request to a response, reading and checking it |
+| `ui/collection-fs.js`, `collections*.js`, `environments.js`, `runner.js` | Files on disk, collection edits, environments and secrets, runs |
+| `ui/scripts.js`, `script-prelude.js`, `openapi.js`, `yaml.js`, `codegen.js` | Scripts in workers; imports; code |
+| `ui/app.js`, `actions.js`, `studio.js`, `features-*.js`, `commands.js`, `ai-*.js` | State, sending, the window, features, commands, AI |
+| `ui/view-*.js`, `section-*.js`, `res-*.js`, `*-pane.js`, `assistant.js` | Side panels, tabs, request sections, the response, other tabs |
+| `dev/` | The preview: `serve.mjs` (real curl, a made-up shop API, an example collection), the SDK shim, `shot.mjs` |
 
 ```bash
 pnpm exec vitest run plugins/api-studio
-node plugins/api-studio/dev/serve.mjs     # http://127.0.0.1:4338/, the shop API on :4339; ?scheme=light
+node plugins/api-studio/dev/serve.mjs   # http://127.0.0.1:4338/?seed, the shop API on :4339; &scheme=light, &brain=demo
 ```
