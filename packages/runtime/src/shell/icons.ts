@@ -38,6 +38,7 @@ const PATHS: Record<string, string> = {
   "pop-out": "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6",
   check: "M5 12.5l4.5 4.5L19 7",
   panel: "M4 5h16v14H4zM9 5v14M13 10h4M13 14h4",
+  "chevron-down": "M6 9l6 6 6-6",
 };
 
 export type IconName = keyof typeof PATHS;

@@ -100,7 +100,6 @@ export function mountAway(root: HTMLElement, ctx: ShellCtx): () => void {
     if (s.edges.includes(edge) || own.includes(edge) || over === edge) return true;
     if (edgeOf(root.querySelector(":focus-visible")) === edge) return true;
     if (s.popover !== null && OPEN[edge].includes(s.popover)) return true;
-    if (edge === "top" && s.modesOpen) return true;
     // Eris at work and the talk line open stay in sight wherever the person put them.
     const eris = edgeOf(root.querySelector(".eris"));
     if (eris === edge && (s.eris.state !== "idle" || s.eris.saying !== "")) return true;
@@ -144,15 +143,7 @@ export function mountAway(root: HTMLElement, ctx: ShellCtx): () => void {
 
   const offs = [
     ctx.store.watch(
-      (s) => [
-        filled(s),
-        s.edges,
-        s.popover,
-        s.modesOpen,
-        s.composer.open,
-        s.eris.state,
-        s.eris.saying,
-      ],
+      (s) => [filled(s), s.edges, s.popover, s.composer.open, s.eris.state, s.eris.saying],
       update,
     ),
     listen(root, "pointermove", (e) => {

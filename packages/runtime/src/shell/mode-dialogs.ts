@@ -10,7 +10,7 @@ import { containModal } from "./modal";
 import { homeFor, MODE_NAME_LIMIT, modeName, originOf, removeMode, renameMode } from "./mode-edit";
 
 export interface ModeDialogs {
-  /** "+" and "Save as new profile": what store.dialog "new-mode" opens. */
+  /** The profile menu's "New profile": what store.dialog "new-mode" opens. */
   create(): void;
   rename(id: string): void;
   /** Delete the person's own profile, or restore a plugin's they saved over; nothing for a plugin's. */
@@ -44,7 +44,18 @@ export function mountModeDialogs(
       form,
     );
     slot.append(el);
-    current = { el, offs, release: containModal(form, close, fallback()) };
+    const release = containModal(form, close, fallback());
+    current = {
+      el,
+      offs,
+      release: () => {
+        release();
+        // The element to fall back to is read again as the dialog closes: a draw may have replaced it.
+        const doc = slot.ownerDocument;
+        const at = doc.activeElement;
+        if (!at || at === doc.body || !at.isConnected) fallback().focus();
+      },
+    };
     focus.focus();
   };
   const dialog = (titleId: string, title: string, hint: string | null, submit: () => void) =>

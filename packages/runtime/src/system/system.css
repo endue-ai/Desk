@@ -32,14 +32,14 @@
   z-index: var(--z-popover);
 }
 
-/* The agent bar lies between the profile switcher with its "+" (24 + 32 + 8 + 32, then 20: 116)
-   and the account bar, never on them (issue 159). It keeps clear of 200 px from the bottom, the
-   room the account bar took with four buttons; with its two the bar is 16 + 92, and the agent bar
-   is not moved yet. Centred 88 px above the middle, no taller than keeps its top at 116
-   (408 = 2 × (88 + 116)), in an app 628 px high or more. A shorter app hangs it from under the
-   switcher, down to those 200 px (316 = 116 + 200), and what still does not fit scrolls, by the
-   wheel or the trackpad and the keys: no scrollbar is drawn, which in a bar this narrow took a
-   quarter of it and sat on the avatars. */
+/* The agent bar lies between the profile switcher (24 + 32, the 8 + 32 its "+" took until issue
+   295, kept, then 20: 116) and the account bar, never on them (issue 159). It keeps clear of 200
+   px from the bottom, the room the account bar took with four buttons; with its two the bar is
+   16 + 92, and the agent bar is not moved yet. Centred 88 px above the middle, no taller than
+   keeps its top at 116 (408 = 2 × (88 + 116)), in an app 628 px high or more. A shorter app hangs
+   it from under the switcher, down to those 200 px (316 = 116 + 200), and what still does not fit
+   scrolls, by the wheel or the trackpad and the keys: no scrollbar is drawn, which in a bar this
+   narrow took a quarter of it and sat on the avatars. */
 .layer-system .sidebar {
   top: calc(50% - 88px);
   max-height: calc(100% - 408px);
@@ -265,10 +265,6 @@
 .layer-desk .desk-status .desk-status-dismiss:hover {
   background: var(--desk-hover);
   color: var(--desk-text);
-}
-/* While the other profiles unfold along the top, the line gives way to them. */
-.layer-system:has(.modes:is(:hover, :focus-within) .modes-more > *) ~ .layer-mode .desk-status {
-  visibility: hidden;
 }
 
 /* The palette (an overlay plugin) comes over the whole shell, the system layer included. */
