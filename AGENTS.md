@@ -105,6 +105,13 @@ Several agents work at once on one trunk (ADR 0015).
 - One task, one worktree: `just task-start <issue>` claims the issue (`ai:in-progress`) and creates
   `.claude/worktrees/ai-<issue>` on `ai/<issue>-<slug>`. Never work in the main checkout or in another
   task's worktree. `just task-gc` removes merged ones.
+- **IMPORTANT: clean up after yourself.** Every worktree's `target/` holds a full build of 10 to 30 GB,
+  and the disk once filled with them. When your task's PR merges or the task is dropped, remove your
+  worktree and everything the work produced, in that same session: `just task-gc`, or, when it keeps
+  yours (a renamed branch, a worktree outside `ai-*`), `git worktree remove` it yourself. A measurement,
+  bisect or prep copy (`measure-*`, `bisect-*`, `prep-*`, `/tmp/*`) goes as soon as its numbers are
+  written down. Delete leftover build outputs and temporary files (`target/`, bundles, traces) too.
+  Never remove another session's worktree, or an unmerged task's, without asking whoever runs it.
 - Don't rebase because `main` moved; the merge queue tests each PR on top of it. Update a branch only
   for a conflict, a failing gate or a queue ejection, and never rerun CI to turn it green.
 - People approve PRs and add them to the merge queue. Agents never merge or enqueue.
