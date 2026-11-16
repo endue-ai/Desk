@@ -1,6 +1,7 @@
 //! The desk socket (ADR 0030): an in-process `Core` behind `Listener::bind`, spoken to in raw
-//! newline-delimited JSON over a `UnixStream`. Every request is the caller `cli`; every core event
-//! reaches every connected client; a malformed line is answered and the connection stays open.
+//! newline-delimited JSON over a `UnixStream`. Every request is the caller `cli`; an event for `cli`
+//! reaches every `cli` connection (who hears what else: `addressed.rs`, ADR 0262); a malformed line
+//! is answered and the connection stays open.
 
 #[cfg(windows)]
 #[test]
@@ -196,13 +197,13 @@ mod unix {
     }
 
     #[test]
-    fn a_core_event_reaches_every_connected_client() {
+    fn an_event_for_cli_reaches_every_cli_connection() {
         let (core, _listener, path) = serve();
         let mut a = Conn::open(&path);
         let mut b = Conn::open(&path);
         a.ping(1);
         b.ping(1);
-        let grant = core.grant("desk", permission(json!({ "permission": "plugin:manage" })));
+        let grant = core.grant(CALLER, permission(json!({ "permission": "plugin:manage" })));
         for conn in [&mut a, &mut b] {
             let event = conn.line();
             assert_eq!(event["event"], "perm.changed", "{event}");
@@ -310,7 +311,7 @@ mod unix {
             BridgeResponse::BridgeFailure(err) => panic!("{err:?}"),
         }
 
-        let grant = core.grant("desk", permission(json!({ "permission": "plugin:manage" })));
+        let grant = core.grant(CALLER, permission(json!({ "permission": "plugin:manage" })));
         // The event may arrive before or after this answer; the client keeps it either way.
         assert!(matches!(
             client.call(init_get(2)).unwrap(),

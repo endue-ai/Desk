@@ -1,10 +1,13 @@
 //! Serving connections: a reader and a writer thread per connection, and one fan-out thread that
-//! copies every core event to every connection, except the microphone's: `audio.frame` and
-//! `audio.ended` reach only the connection whose caller they name, and `audio.capturing` (the
-//! runtime's) none (ADR 0245). The desk never waits on a client: each connection has a queue of
-//! [`QUEUE`] lines, and a client that lets it fill is dropped. When a connection ends and no other
-//! one calls as its caller, the core ends what that caller started there (`Core::caller_left`).
+//! copies each core event to the connections that may hear it (`owned.rs`, ADR 0262): an addressed
+//! event to the callers it names, an owned one (a turn, a watch, a process...) to the connection
+//! whose call started it, a command's answer to its caller, and the rest to everyone. An owned
+//! event that comes before the answer that claims it waits, a few per key and for a few keys. The
+//! desk never waits on a client: each connection has a queue of [`QUEUE`] lines, and a client that
+//! lets it fill is dropped. When a connection ends and no other one calls as its caller, the core
+//! ends what that caller started there (`Core::caller_left`).
 
+use std::collections::{HashSet, VecDeque};
 use std::io::{BufRead, BufReader, Write};
 use std::net::Shutdown;
 use std::os::unix::net::UnixStream;
@@ -13,15 +16,19 @@ use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::{io, thread};
 
-use desk_bridge::{BridgeEvent, BridgeResponse, BridgeSuccess, RequestId, True};
+use desk_bridge::{BridgeResponse, BridgeSuccess, RequestId, True};
 use desk_core::{Core, Delivery};
 use serde_json::json;
 
 use crate::CALLER;
+use crate::owned::{self, Hears};
 use crate::wire::{self, Asked};
 
 /// Lines that may wait for one client before it is dropped.
 pub(crate) const QUEUE: usize = 1000;
+/// Keys whose events may wait for the answer that claims them, and lines each may hold.
+const EARLY_KEYS: usize = 64;
+const EARLY_LINES: usize = 64;
 
 type Line = Arc<str>;
 
@@ -29,6 +36,8 @@ struct Entry {
     id: u64,
     /// Who the connection calls as: `cli`, or the agent it became.
     caller: Caller,
+    /// The keys its calls' answers claimed (`owned::claimed`), until their last event.
+    owns: HashSet<String>,
     queue: SyncSender<Line>,
     stream: UnixStream,
 }
@@ -43,79 +52,133 @@ fn name(caller: &Caller) -> String {
         .clone()
 }
 
-/// Who may hear `delivery` over the socket: everyone, the callers it names, or nobody.
-enum Hears {
-    Everyone,
-    Named(Vec<String>),
-    Nobody,
-}
-
-fn hears(delivery: &Delivery) -> Hears {
-    match (&delivery.event, &delivery.to) {
-        // The runtime's alone: no socket connection calls as `desk`.
-        (BridgeEvent::AudioCapturing(_), _) => Hears::Nobody,
-        // The microphone's audio is its caller's alone, whoever else listens on the socket.
-        (BridgeEvent::AudioFrame(_) | BridgeEvent::AudioEnded(_), Some(to)) => {
-            Hears::Named(to.clone())
-        }
-        (BridgeEvent::AudioFrame(_) | BridgeEvent::AudioEnded(_), None) => Hears::Nobody,
-        _ => Hears::Everyone,
-    }
+#[derive(Default)]
+struct State {
+    entries: Vec<Entry>,
+    /// Owned events nobody has claimed yet, oldest key first.
+    early: VecDeque<(String, Vec<Line>)>,
 }
 
 /// The connections the fan-out thread writes to.
 #[derive(Clone, Default)]
-pub(crate) struct Clients(Arc<Mutex<Vec<Entry>>>);
+pub(crate) struct Clients(Arc<Mutex<State>>);
+
+/// Queue `line` for `entry`; false when it is to be dropped (its queue is full or its writer ended).
+fn send(entry: &Entry, line: &Line) -> bool {
+    match entry.queue.try_send(Arc::clone(line)) {
+        Ok(()) => true,
+        Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {
+            let _ = entry.stream.shutdown(Shutdown::Both);
+            false
+        }
+    }
+}
 
 impl Clients {
     fn add(&self, entry: Entry) {
-        self.lock().push(entry);
+        self.lock().entries.push(entry);
     }
 
     /// Forget connection `id`; whether another connection still calls as `caller`.
     fn remove(&self, id: u64, caller: &str) -> bool {
-        let mut entries = self.lock();
-        entries.retain(|entry| entry.id != id);
-        entries.iter().any(|entry| name(&entry.caller) == caller)
+        let mut state = self.lock();
+        state.entries.retain(|entry| entry.id != id);
+        state
+            .entries
+            .iter()
+            .any(|entry| name(&entry.caller) == caller)
     }
 
-    /// Queue `line` for every client that `who` lets hear it; drop the ones whose queue is full or
-    /// whose writer ended.
-    fn broadcast(&self, line: &Line, who: &Hears) {
-        self.lock().retain(|entry| {
-            let heard = match who {
-                Hears::Everyone => true,
-                Hears::Named(to) => to.contains(&name(&entry.caller)),
-                Hears::Nobody => false,
-            };
-            if !heard {
-                return true;
-            }
-            match entry.queue.try_send(Arc::clone(line)) {
-                Ok(()) => true,
-                Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {
-                    let _ = entry.stream.shutdown(Shutdown::Both);
-                    false
+    /// Connection `id` claimed `key`: it hears the key's events from now on, those that came early
+    /// first. Called before the answer that claims it is queued.
+    fn claim(&self, id: u64, key: String) {
+        let mut state = self.lock();
+        let early = match state.early.iter().position(|(k, _)| *k == key) {
+            Some(at) => state
+                .early
+                .remove(at)
+                .map(|(_, lines)| lines)
+                .unwrap_or_default(),
+            None => Vec::new(),
+        };
+        let Some(at) = state.entries.iter().position(|entry| entry.id == id) else {
+            return;
+        };
+        if early.iter().all(|line| send(&state.entries[at], line)) {
+            state.entries[at].owns.insert(key);
+        } else {
+            state.entries.remove(at);
+        }
+    }
+
+    /// Queue `line` for the clients `who` lets hear; drop the ones whose queue is full or whose
+    /// writer ended.
+    fn deliver(&self, line: &Line, who: Hears) {
+        let mut state = self.lock();
+        match who {
+            Hears::Everyone => state.entries.retain(|entry| send(entry, line)),
+            Hears::Named(to) => state
+                .entries
+                .retain(|entry| !to.contains(&name(&entry.caller)) || send(entry, line)),
+            Hears::Owner { key, to, last } => {
+                let owner = state
+                    .entries
+                    .iter()
+                    .position(|entry| entry.owns.contains(&key));
+                match owner {
+                    Some(at) => {
+                        let entry = &mut state.entries[at];
+                        let may = to
+                            .as_ref()
+                            .is_none_or(|to| to.contains(&name(&entry.caller)));
+                        if last {
+                            entry.owns.remove(&key);
+                        }
+                        if may && !send(entry, line) {
+                            state.entries.remove(at);
+                        }
+                    }
+                    None => wait(&mut state.early, key, line),
                 }
             }
-        });
+        }
     }
 
     /// End every connection (the listener is going away).
     pub(crate) fn close_all(&self) {
-        for entry in self.lock().drain(..) {
+        for entry in self.lock().entries.drain(..) {
             let _ = entry.stream.shutdown(Shutdown::Both);
         }
     }
 
-    fn lock(&self) -> MutexGuard<'_, Vec<Entry>> {
+    fn lock(&self) -> MutexGuard<'_, State> {
         self.0
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
-/// Copy every core event to the clients that may hear it until `stop` is set (checked at each event).
+/// Keep an owned event nobody claimed yet, for the answer that may claim it: the oldest key goes
+/// when too many wait, and a key's oldest line when it holds too many. Most never get claimed
+/// (they are the runtime's and its plugins'), so this stays small and bounded.
+fn wait(early: &mut VecDeque<(String, Vec<Line>)>, key: String, line: &Line) {
+    match early.iter_mut().find(|(k, _)| *k == key) {
+        Some((_, lines)) => {
+            if lines.len() == EARLY_LINES {
+                lines.remove(0);
+            }
+            lines.push(Arc::clone(line));
+        }
+        None => {
+            if early.len() == EARLY_KEYS {
+                early.pop_front();
+            }
+            early.push_back((key, vec![Arc::clone(line)]));
+        }
+    }
+}
+
+/// Copy each core event to the clients that may hear it until `stop` is set (checked at each event).
 pub(crate) fn fan_out(
     events: Receiver<Delivery>,
     clients: Clients,
@@ -128,12 +191,8 @@ pub(crate) fn fan_out(
                 if stop.load(Ordering::SeqCst) {
                     break;
                 }
-                let who = hears(&delivery);
-                if matches!(who, Hears::Nobody) {
-                    continue;
-                }
                 if let Some(line) = wire::event_line(&delivery.event) {
-                    clients.broadcast(&Line::from(line), &who);
+                    clients.deliver(&Line::from(line), owned::hears(&delivery));
                 }
             }
         })
@@ -154,6 +213,7 @@ pub(crate) fn connection(
     clients.add(Entry {
         id,
         caller: Arc::clone(&caller),
+        owns: HashSet::new(),
         queue: queue.clone(),
         stream,
     });
@@ -165,7 +225,9 @@ pub(crate) fn connection(
             thread::Builder::new()
                 .name("desk-ipc-read".to_owned())
                 .spawn(move || {
-                    read(reader, &core, &queue, &caller);
+                    read(reader, &core, &queue, &caller, &|key| {
+                        clients.claim(id, key)
+                    });
                     let gone = name(&caller);
                     if !clients.remove(id, &gone) {
                         core.caller_left(&gone);
@@ -190,7 +252,13 @@ fn write(mut stream: UnixStream, lines: Receiver<Line>) {
 
 /// Answer each line through `Core::handle` until the client hangs up: as [`CALLER`], or as the agent
 /// the connection asked to call as (ADR 0086).
-fn read(stream: UnixStream, core: &Core, queue: &SyncSender<Line>, shared: &Caller) {
+fn read(
+    stream: UnixStream,
+    core: &Core,
+    queue: &SyncSender<Line>,
+    shared: &Caller,
+    claim: &dyn Fn(String),
+) {
     let mut reader = BufReader::new(stream);
     let mut line = Vec::new();
     let mut caller = CALLER.to_owned();
@@ -202,7 +270,15 @@ fn read(stream: UnixStream, core: &Core, queue: &SyncSender<Line>, shared: &Call
         }
         let answer = match wire::request(&line) {
             None => continue,
-            Some(Asked::Bridge(request)) => core.handle(&caller, *request),
+            Some(Asked::Bridge(request)) => {
+                // What the answer starts is this connection's: claimed before the answer goes out.
+                let claims = owned::claims(&request);
+                let answer = core.handle(&caller, *request);
+                if let Some(key) = owned::claimed(claims, &answer) {
+                    claim(key);
+                }
+                answer
+            }
             Some(Asked::Agent { id, agent }) => {
                 let answer = become_agent(&mut caller, id, &agent);
                 *shared.lock().unwrap_or_else(|p| p.into_inner()) = caller.clone();

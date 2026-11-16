@@ -1,4 +1,6 @@
-//! Changes: a `cli` connection hears the desk's events, and a command registered, updated or removed
+//! Changes: a `cli` connection subscribes to `cmd.changed` (the core addresses it to a command's
+//! provider, and the socket gives an event only to whom it is for, ADR 0262) and hears
+//! `plugin.changed` as a plugin:manage holder; a command registered, updated or removed
 //! or a plugin installed, changed or removed tells the client its lists changed, once per burst:
 //! `notifications/tools/list_changed` when commands have tools of their own, and
 //! `notifications/resources/list_changed`. The desk starting or stopping is a change too; while it is
@@ -11,6 +13,7 @@ use std::thread;
 use std::time::Duration;
 
 use desk_bridge::BridgeEvent;
+use serde_json::json;
 
 use crate::desk::Desk;
 use crate::rpc::{Out, notification};
@@ -59,6 +62,14 @@ fn listen(desk: &Desk, changes: &Sender<Change>, stop: &AtomicBool) {
             thread::sleep(RETRY);
             continue;
         };
+        let scope = json!({ "permission": "events:subscribe", "names": ["cmd.changed"] });
+        let subscribe = json!({ "names": ["cmd.changed"], "scope": scope });
+        if let Err(why) = conn.call("events.subscribe", subscribe) {
+            eprintln!(
+                "desk-mcp: no cmd.changed from the desk, the tool list may lag: {}",
+                why.json()
+            );
+        }
         if !std::mem::replace(&mut up, true) && changes.send(EVERYTHING).is_err() {
             return;
         }

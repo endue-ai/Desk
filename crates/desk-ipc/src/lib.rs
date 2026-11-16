@@ -1,9 +1,10 @@
 //! The desk socket (ADR 0030): the desk CLI and scripts reach a running desk over a local socket that
 //! only the same OS user can open. Each line is one `specs/bridge/v0` document: a `BridgeRequest` in,
-//! its `BridgeResponse` and every core `BridgeEvent` out, on the same connection. Every request goes
-//! through `Core::handle` as the caller [`CALLER`], so the permission engine applies, or as the agent
-//! a connection asked to call as with [`AGENT_METHOD`] (ADR 0086): an MCP server for another app
-//! does, so that app's calls are an agent's.
+//! its `BridgeResponse` and the core `BridgeEvent`s it may hear out, on the same connection: those the
+//! core addresses to its caller, those its own calls started, and those for nobody in particular
+//! (ADR 0262). Every request goes through `Core::handle` as the caller [`CALLER`], so the permission
+//! engine applies, or as the agent a connection asked to call as with [`AGENT_METHOD`] (ADR 0086):
+//! an MCP server for another app does, so that app's calls are an agent's.
 //!
 //! Unix sockets only for now: on Windows `Listener::bind` and `Client::connect` answer
 //! `io::ErrorKind::Unsupported` with [`UNSUPPORTED`].
@@ -12,15 +13,17 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 use std::path::PathBuf;
 
 use desk_bridge::{
-    CmdInvokePermission, FsReadPermission, FsWritePermission, LogReadPermission,
-    PermManagePermission, Permission, PluginManagePermission, ThemeManagePermission,
-    UiSurfacePermission, UpdateManagePermission,
+    CmdInvokePermission, EventName, EventsSubscribePermission, FsReadPermission, FsWritePermission,
+    LogReadPermission, PermManagePermission, Permission, PluginManagePermission,
+    ThemeManagePermission, UiSurfacePermission, UpdateManagePermission,
 };
 
 #[cfg(unix)]
 mod client;
 #[cfg(unix)]
 mod listener;
+#[cfg(unix)]
+mod owned;
 #[cfg(unix)]
 mod serve;
 #[cfg(not(unix))]
@@ -72,7 +75,8 @@ pub fn data_dir() -> Option<PathBuf> {
 /// What the app grants [`CALLER`] at start, session-long: run any command, list and toggle plugins,
 /// see and revoke every grant, read the log (ADR 0030), drive the desk's updates (ADR 0054), manage
 /// the person's themes for `desk theme` (ADR 0058), read and write files, for `desk fs history`
-/// and `desk fs restore` (ADR 0076), and snapshot any surface (ADR 0161). Only the same OS user can open the socket, and that user can
+/// and `desk fs restore` (ADR 0076), snapshot any surface (ADR 0161), and hear `cmd.changed`, which
+/// the core addresses to a command's provider, so desk-mcp can refresh its tools (ADR 0262). Only the same OS user can open the socket, and that user can
 /// already do all of this through the desk itself, or read and write those files directly.
 pub fn grants() -> Vec<Permission> {
     vec![
@@ -106,6 +110,10 @@ pub fn grants() -> Vec<Permission> {
         Permission::FsWrite(FsWritePermission {
             permission: Default::default(),
             paths: everywhere(),
+        }),
+        Permission::EventsSubscribe(EventsSubscribePermission {
+            permission: Default::default(),
+            names: vec![EventName::CmdChanged],
         }),
     ]
 }
