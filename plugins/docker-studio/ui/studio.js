@@ -10,7 +10,8 @@ import { createOverlay } from "./overlay.js";
 import { createRunner } from "./run.js";
 import { DEFAULTS, loadSettings } from "./settings.js";
 import { createStore } from "./store.js";
-import { createShell } from "./view-shell.js";
+import { openKeys } from "./view-keys.js";
+import { createShell, SECTIONS } from "./view-shell.js";
 
 /**
  * @typedef {{ element: HTMLElement, title: string, subtitle?: string, stats?: boolean,
@@ -117,6 +118,12 @@ export function createStudio(ctx, doc, pages) {
     } else if (event.key === "a" || event.key === "A") {
       event.preventDefault();
       app.ai.toggle();
+    } else if (/^[1-9]$/.test(event.key) && SECTIONS[Number(event.key) - 1]) {
+      event.preventDefault();
+      app.go(SECTIONS[Number(event.key) - 1]?.id ?? "dashboard");
+    } else if (event.key === "?") {
+      event.preventDefault();
+      openKeys(app);
     } else if (event.key === "Escape" && target) {
       event.preventDefault();
       app.back();

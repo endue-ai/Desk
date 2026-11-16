@@ -252,3 +252,30 @@
   margin-left: auto;
   font-size: var(--desk-text-xs);
 }
+
+/* ── keys ──────────────────────────────────────────────────────────────── */
+.keys-group h3 {
+  margin: 0 0 var(--desk-space-2);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.keys-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--desk-space-2) var(--desk-space-4);
+  align-items: center;
+  margin: 0;
+  font-size: var(--desk-text-xs);
+}
+
+.keys-list dd {
+  margin: 0;
+}
+
+.keys-list kbd {
+  min-width: 26px;
+  padding: 0 6px;
+}
