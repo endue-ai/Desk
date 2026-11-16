@@ -13,6 +13,7 @@ import { wireCommands } from "../ui/commands.js";
 import { normalize, pair } from "../ui/model.js";
 import type { Spawn } from "../ui/scripts.js";
 import { createStudio, type Studio } from "../ui/studio.js";
+import { resolve } from "../ui/vars.js";
 import { fsBridge } from "./fs-bridge";
 import { curlBridge, testServer } from "./real-curl";
 
@@ -139,7 +140,10 @@ describe("the studio", () => {
     expect(tab?.results?.tests.map((t: { name: string; ok: boolean }) => [t.name, t.ok])).toEqual([
       ["echoes the header", true],
     ]);
-    expect(studio.S.runtime.values.get("echoed")).toBe('{"hello": "ada"}');
+    if (!tab) throw new Error("no tab");
+    expect(studio.S.runtimeOf(tab).values.get("echoed")).toBe('{"hello": "ada"}');
+    // Kept for this collection's requests only: none outside it reads it.
+    expect(studio.S.runtime.values.has("echoed")).toBe(false);
     expect(
       document.querySelector('.as-res .as-subtab[data-section="tests"]')?.textContent,
     ).toContain("✓ 2/2");
@@ -227,7 +231,7 @@ describe("the studio", () => {
     const sending = studio.S.send(pulled);
     await answer("is-trust", "Don't run");
     await sending;
-    expect(studio.S.runtime.values.get("pulled")).toBeUndefined();
+    expect(studio.S.runtimeOf(pulled).values.get("pulled")).toBeUndefined();
     expect(pulled.results?.errors.map((e: { text: string }) => e.text).join(" ")).toContain(
       "not allowed",
     );
@@ -239,7 +243,7 @@ describe("the studio", () => {
     const copying = studio.S.send(copy);
     await answer("is-trust", "Don't run");
     await copying;
-    expect(studio.S.runtime.values.get("pulled")).toBeUndefined();
+    expect(studio.S.runtimeOf(copy).values.get("pulled")).toBeUndefined();
   });
 
   it("asks before a request sends a file from outside its collection, and refuses file URLs", async () => {
@@ -344,6 +348,19 @@ describe("the studio", () => {
     ]);
     const send = handlers.get("endue.api-studio.send");
     if (!send) throw new Error("no send command");
+    // What one collection's run sets (a capture of baseUrl, say) never fills another's requests.
+    const mine = studio.S.app.open(normalize({ url: "{{baseUrl}}/me" }), {
+      collection: "~/mine",
+      path: "~/mine/me.request.json",
+    });
+    const theirs = studio.S.app.open(normalize({ url: "{{baseUrl}}/x" }), {
+      collection: "~/cloned",
+      path: "~/cloned/x.request.json",
+    });
+    studio.S.setRuntime(theirs, "baseUrl", "https://evil.example");
+    expect(resolve("{{baseUrl}}", studio.S.scopes(theirs))).toBe("https://evil.example");
+    expect(resolve("{{baseUrl}}", studio.S.scopes(mine))).toBe("{{baseUrl}}");
+
     // A value captured at runtime may be a token under a plain name: not filled in either.
     studio.S.runtime.values.set("x", "captured-SECRET");
     const answered = await send({

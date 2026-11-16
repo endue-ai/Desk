@@ -69,7 +69,9 @@ export function createTokens(S) {
           : []),
       ],
       body: { kind: "raw", text: grantBody(auth, fill) },
-      settings: tab.req.settings,
+      // A token URL is asked directly: a redirect would take the client secret's body (and a
+      // password grant's password) wherever it pointed, so none is followed.
+      settings: { ...tab.req.settings, followRedirects: false },
     };
     const res = readResponse(await S.engine.send(prep, { verbose: false }).promise, prep, "", []);
     if (res.error) throw new Error(res.error);

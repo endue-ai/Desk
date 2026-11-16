@@ -58,6 +58,25 @@ describe("curl's config", () => {
     expect(new TextDecoder().decode(run.stdout)).not.toMatch(/localhost/);
   });
 
+  it("sends a part's content type only as type/subtype, so it cannot name one more file", () => {
+    const config = curlConfig({
+      method: "POST",
+      url: "https://x.test/",
+      headers: [],
+      settings,
+      body: {
+        kind: "multipart",
+        parts: [
+          { name: "f", value: "/tmp/a", file: true, type: "text/plain,/Users/x/.ssh/id_rsa" },
+          { name: "g", value: "/tmp/b", file: true, type: "image/png" },
+        ],
+      },
+    });
+    expect(config).not.toContain("id_rsa");
+    expect(config).toContain('form = "f=@\\"/tmp/a\\""');
+    expect(config).toContain(";type=image/png");
+  });
+
   it("lists the files a body makes curl read", () => {
     expect(
       filesRead({

@@ -126,7 +126,9 @@ export function applyAction(S, tab, a) {
     }
     case "set_variable": {
       if (!a.variable?.name) throw new Error("The action names no variable.");
-      S.runtime.values.set(a.variable.name, String(a.variable.value ?? ""));
+      const value = String(a.variable.value ?? "");
+      if (S.setRuntime && tab) S.setRuntime(tab, a.variable.name, value);
+      else S.runtime.values.set(a.variable.name, value);
       S.app.emit("env");
       return `Set {{${a.variable.name}}} for this session.`;
     }

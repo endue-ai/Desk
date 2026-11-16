@@ -48,6 +48,12 @@ export function headerLine(h) {
   return value === "" ? `${name};` : `${name}: ${value}`;
 }
 
+/** A part's content type when it is a plain type/subtype, else none. @param {string | undefined} type */
+export const mimeType = (type) => {
+  const t = String(type ?? "").trim();
+  return /^[A-Za-z0-9][\w!#$&^.+-]*\/[A-Za-z0-9][\w!#$&^.+-]*$/.test(t) ? t : "";
+};
+
 /** The path curl reads for a multipart file part. @param {string} value */
 export const filePart = (value) => value.replace(/[;"\r\n]/g, "");
 
@@ -58,7 +64,9 @@ function partLine(
   const name = part.name.replace(/[=;"\r\n]/g, "_");
   if (part.file) {
     const path = filePart(part.value);
-    const type = (part.type ?? "").replace(/[;"\r\n]/g, "");
+    // A content type is type/subtype and nothing more: in curl's form syntax a comma after it
+    // names one more file to send, and a ; more options.
+    const type = mimeType(part.type);
     return `form = ${quote(`${name}=@"${path}"${type ? `;type=${type}` : ""}`)}`;
   }
   return `form-string = ${quote(`${name}=${part.value}`)}`;
@@ -141,7 +149,12 @@ export function curlCommand(prep) {
     for (const part of prep.body.parts)
       words.push(
         part.file
-          ? ["-F", shellWord(`${part.name}=@${part.value}${part.type ? `;type=${part.type}` : ""}`)]
+          ? [
+              "-F",
+              shellWord(
+                `${part.name}=@${part.value}${mimeType(part.type) ? `;type=${mimeType(part.type)}` : ""}`,
+              ),
+            ]
           : ["--form-string", shellWord(`${part.name}=${part.value}`)],
       );
   if (prep.auth) {

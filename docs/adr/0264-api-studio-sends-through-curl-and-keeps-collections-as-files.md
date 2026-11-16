@@ -88,6 +88,13 @@ curl runs as the person, so the studio, not the desk's grants, decides what it m
   new origin only when the request uses the jar. A hop to another origin that would send the body
   again (a 307 or 308, or a 301 or 302 of anything but a POST) is not taken when the body holds a
   secret, a secret's value or a typed password alike.
+* Values set while running (what scripts set, what responses' captures read) are kept per
+  collection: a capture runs unasked (it is data from the files), so one in a cloned collection
+  that reads `baseUrl` from its server must not point your own collection's requests, and their
+  tokens, elsewhere. Requests outside any collection share a scope of their own.
+* A multipart file part's content type is sent only as `type/subtype`: in curl's form syntax a comma
+  after it names one more file. An OAuth 2.0 token URL is asked directly, following no redirect, so
+  the client secret and a password grant's password go nowhere else.
 * A request an agent writes itself (`send` with a url) fills in no secret variable, no variable whose
   name says secret, no value set while running (a capture may be a token under any name) and no
   cookie from the jar; it names any host. A saved request sent by name is the person's and gets its
@@ -125,7 +132,7 @@ folder, as connector secrets are until the desk keeps them in the OS keychain (A
 `plugins/api-studio/README.md`; the transport is `ui/engine.js`, `ui/curl-config.js` and
 `ui/curl-parse.js`; the files `ui/collection-fs.js`; scripts `ui/scripts.js` and
 `ui/script-prelude.js`; the assistant `ui/ai-context.js` and `ui/ai-actions.js`; the guards
-`ui/guards.js`, `ui/trust.js`, `ui/file-guard.js`, `ui/literal-secrets.js`, `ui/redirects.js` and
-`ui/secret-names.js` (tested in `tests/security.test.ts`, `tests/redirects.test.ts`,
+`ui/guards.js`, `ui/trust.js`, `ui/file-guard.js`, `ui/literal-secrets.js`, `ui/redirects.js`,
+`ui/runtime.js` and `ui/secret-names.js` (tested in `tests/security.test.ts`, `tests/redirects.test.ts`,
 `tests/literals.test.ts`, `tests/trust.dom.test.ts` and `tests/studio.dom.test.ts`). ADR 0088
 (commands as agents' tools).

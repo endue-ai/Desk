@@ -10,6 +10,7 @@ import { installCollections } from "./features-collections.js";
 import { groupPane } from "./group-pane.js";
 import { closeMenus } from "./menu.js";
 import { pair } from "./model.js";
+import { createRuntime } from "./runtime.js";
 import { withoutSecrets } from "./secret-names.js";
 import { drawBody } from "./section-body.js";
 import { scope } from "./vars.js";
@@ -50,6 +51,7 @@ export function createStudio(ctx, doc) {
   /** @type {Map<string, string>} */
   const resFilters = new Map();
 
+  const runtime = createRuntime();
   const S = {
     ctx,
     app,
@@ -57,19 +59,22 @@ export function createStudio(ctx, doc) {
     settings: { curl: "", history: true },
     /** Scope providers other features add (environments, collections, globals), narrowest last. @type {((tab: Tab) => Scope[])[]} */
     scopeProviders: [],
-    /** Values set while running (scripts, captured values), shared by every tab. */
-    runtime: scope("runtime", "Runtime", {}),
+    /** Values set while running (scripts, captures), per collection (runtime.js). */
+    runtime: runtime.loose,
+    runtimeOf: runtime.of,
+    setRuntime: runtime.set,
+    clearRuntime: runtime.clear,
     /** @param {Tab} tab @returns {Scope[]} */
     scopes(tab) {
       const all = [
-        S.runtime,
+        runtime.of(tab),
         ...(tab.data ? [scope("data", "Data row", tab.data)] : []),
         scope("request", "Request", tab.req.vars.pre),
         ...S.scopeProviders.flatMap((p) => p(tab)),
       ];
       // A request an agent writes gets no runtime values (captures, script results): any of them
       // may be a token under a plain name.
-      return tab.agent ? withoutSecrets(all.filter((s) => s !== S.runtime)) : all;
+      return tab.agent ? withoutSecrets(all.filter((s) => s.name !== "runtime")) : all;
     },
     /** The auth of a request's folders and collection, nearest first. @param {Tab} _tab @returns {import("./model.js").Auth[]} */
     parentAuth: (_tab) => [],

@@ -249,7 +249,7 @@ export function installAuth(S) {
         label: "Clear runtime values",
         icon: "broom",
         onClick: () => {
-          S.runtime.values.clear();
+          S.clearRuntime();
           S.app.emit("env");
           S.app.toast("Runtime values cleared", "ok");
         },

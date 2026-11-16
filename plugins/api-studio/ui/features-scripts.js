@@ -60,7 +60,7 @@ export function installScripts(S) {
     for (const l of r.logs) results.logs.push({ ...l, from });
     for (const t of r.tests) results.tests.push({ ...t, from });
     if (r.error) results.errors.push({ from, text: r.error });
-    for (const [k, v] of Object.entries(r.vars)) S.runtime.values.set(k, v);
+    for (const [k, v] of Object.entries(r.vars)) S.setRuntime(tab, k, v);
     for (const [k, v] of Object.entries(r.env)) S.envs?.setFromRun(tab, k, v);
     if (Object.keys(r.vars).length || Object.keys(r.env).length) S.app.emit("env");
   };
