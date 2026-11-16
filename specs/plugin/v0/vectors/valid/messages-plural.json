@@ -1,0 +1,7 @@
+{
+  "target": "MessageCatalog",
+  "description": "a plural message whose count picks one or other",
+  "instance": {
+    "inbox.unread": { "one": "{count} unread notice", "other": "{count} unread notices" }
+  }
+}

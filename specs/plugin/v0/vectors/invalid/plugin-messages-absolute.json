@@ -1,0 +1,5 @@
+{
+  "target": "PluginManifest",
+  "description": "a messages folder given as an absolute path",
+  "instance": { "id": "example.greeter", "name": "Greeter", "version": "0.1.0", "kind": "ui", "entry": "ui/index.html", "messages": "/etc/messages" }
+}

@@ -1,0 +1,5 @@
+{
+  "target": "MessageCatalog",
+  "description": "a plural message without its other form",
+  "instance": { "inbox.unread": { "one": "{count} unread notice" } }
+}

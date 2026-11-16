@@ -1,0 +1,5 @@
+{
+  "target": "MessageCatalog",
+  "description": "a message id that is not dotted camelCase",
+  "instance": { "Frames.not-responding": "Not responding" }
+}

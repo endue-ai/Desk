@@ -869,6 +869,40 @@ pub enum DesignFocusOffset {
     Far,
 }
 
+/// Message id to message, in one language.
+pub type MessageCatalog = BTreeMap<String, Message>;
+
+/// A message's id: camelCase words joined by dots, the first naming the module or area (frames.notResponding).
+pub type MessageId = String;
+
+/// One message: a text, or a plural message whose form the count parameter picks.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Message {
+    MessageText(MessageText),
+    Plural(PluralMessage),
+}
+
+/// A message's text. {name} is replaced by the parameter of that name; a parameter not given reads as nothing.
+pub type MessageText = String;
+
+/// A message in plural forms, keyed by the Intl.PluralRules categories of the catalog's language; the count parameter picks the form, and other is the form for any count the language has no other category for.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluralMessage {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub zero: Option<MessageText>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub one: Option<MessageText>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub two: Option<MessageText>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub few: Option<MessageText>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub many: Option<MessageText>,
+    pub other: MessageText,
+}
+
 /// What a pack brings and does when it is applied.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -1315,6 +1349,9 @@ pub struct PluginManifest {
     pub design_system: Option<DesignSystemPackage>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native: Option<NativeBlock>,
+    /// The folder, relative to the plugin folder and without .. segments, that holds the plugin's message catalogs: one <language>.json each (messages.schema.json, ADR 0250), en.json among them. The plugin SDK reads them in the desk's language (ctx.messages).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub messages: Option<MessagesPath>,
 }
 
 /// Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui.
@@ -1410,6 +1447,9 @@ pub struct NativeBinaries {
 
 /// Path to the entry file, relative to the plugin folder, without .. segments.
 pub type EntryPath = String;
+
+/// A folder relative to the plugin folder, without .. segments.
+pub type MessagesPath = String;
 
 /// A view a plugin provides: a universal view or a page of them (ADR 0087, ADR 0103), with its id, or an item view (ADR 0032; deprecated, read through v0).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -13610,6 +13650,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/plugin/v0/design-system.schema.json",
         include_str!("../../../specs/plugin/v0/design-system.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/plugin/v0/messages.schema.json",
+        include_str!("../../../specs/plugin/v0/messages.schema.json"),
     ),
     (
         "https://endue.ai/specs/plugin/v0/pack.schema.json",

@@ -1,0 +1,8 @@
+{
+  "target": "MessageCatalog",
+  "description": "a catalog of plain texts with parameters",
+  "instance": {
+    "frames.notResponding": "Not responding",
+    "frames.notRespondingLine": "{title} has not answered for 5 seconds. Wait for it, or stop it."
+  }
+}

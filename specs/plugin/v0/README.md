@@ -5,6 +5,7 @@ plugins alike. `permission.schema.json` is the permission vocabulary: plugin man
 permissions, and every bridge call carries the one that covers it. `contributes.schema.json` is what a
 plugin adds to the desk's policies as data (ADR 0017). `theme.schema.json` is a theme plugin's `theme`
 block (ADR 0056, ADR 0057), and `theme-index.schema.json` a theme market's index (ADR 0060).
+`messages.schema.json` is a message catalog: a plugin's or the desk's words in one language (ADR 0250).
 
 ## Manifest
 
@@ -24,6 +25,18 @@ block (ADR 0056, ADR 0057), and `theme-index.schema.json` a theme market's index
 | `connector` | A `connector` plugin's connector block (`specs/connector/v0`); required for that kind, refused for others |
 | `theme` | A `theme` plugin's theme block (`theme.schema.json`); required for that kind, refused for others |
 | `native` | A `native` plugin's programs: `binaries` (one per `<os>-<arch>`, inside the folder), `args`, `graceMs`; required for that kind, refused for others, and no `entry` |
+| `messages` | The folder of the plugin's message catalogs, relative to the plugin folder and never outside it: one `<language>.json` per language (`messages.schema.json`), `en.json` required. The SDK reads them in the desk's language (`ctx.messages`) |
+
+## Messages
+
+A message catalog is one JSON file per language, named by the language (`en.json`, `ko.json`), in the
+folder `messages` names (ADR 0250). It maps a message id (dotted camelCase, `greeting.hello`) to a text
+or to a plural message. A text's `{name}` is replaced by the parameter of that name; one not given
+reads as nothing. A plural message has the Intl.PluralRules forms of its language (`zero`, `one`,
+`two`, `few`, `many`, `other`; `other` required), and the `count` parameter picks the form. English is
+required and complete. Another language may lack ids: a missing id reads in English, and an id English
+lacks too reads as the id. The desk's language is the `desk.language` setting: `system` (the OS's
+language), `en` or `ko`.
 
 ## Libraries
 
