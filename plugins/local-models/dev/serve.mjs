@@ -13,7 +13,9 @@ import { connect } from "node:net";
 import { totalmem } from "node:os";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { startFakeCurl } from "./fake-curl.mjs";
 import { startFakeEngine } from "./fake-engine.mjs";
+import { hubAnswer } from "./fake-hub.mjs";
 import { startFakeLlm } from "./fake-llm.mjs";
 import { seedModels } from "./seed.mjs";
 
@@ -152,6 +154,10 @@ async function startProc(p) {
       },
     });
     entry.kill = () => engine.kill();
+  } else if (name === "curl" && !real) {
+    const cwd = /** @type {any} */ (p).cwd ? inside(/** @type {any} */ (p).cwd) : ROOT;
+    const curl = startFakeCurl(p.args ?? [], cwd, { onLine: out, onExit: exit });
+    entry.kill = () => curl.kill();
   } else if (name === "sysctl") {
     setTimeout(() => {
       out("stdout", `${totalmem()}\n1`);
@@ -293,6 +299,21 @@ createServer(async (req, res) => {
           };
         });
       }
+    }
+    if (req.method === "POST" && url.pathname === "/_dev/net/fetch") {
+      const p = await body(req);
+      if (!/^https:\/\/huggingface\.co\//.test(p.url))
+        return send({ error: { code: "permission_denied", message: "huggingface.co only" } });
+      if (!real) return send({ result: hubAnswer(p.url) });
+      const r = await fetch(p.url, { headers: p.headers });
+      return send({
+        result: {
+          status: r.status,
+          headers: Object.fromEntries(r.headers),
+          body: await r.text(),
+          bodyEncoding: "utf8",
+        },
+      });
     }
     if (req.method === "POST" && url.pathname === "/_dev/proc/spawn")
       return send(await startProc(await body(req)));
