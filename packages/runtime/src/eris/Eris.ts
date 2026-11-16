@@ -4,7 +4,8 @@
  * saved in the current mode); a click (or Enter) starts a spoken turn (talk.ts), a drag never does.
  * Everything runs on the ticker. Idle, silent and settled for `REST_MS`, she rests (ADR 0164): her
  * last frame stays and her tick tells the ticker it is idle, so a desk at rest draws nothing; a new
- * state, a line, a turn, a drag, a pointer on her or a new size wakes her.
+ * state, a line, a turn, a drag, a pointer on her or a new size wakes her. With no place of her own
+ * she rests in the talk line and comes out above it while she is at work (rest.ts, ADR 0254).
  */
 import userHello from "../bridge/envelopes/user-hello.json";
 import type { Bands, WordTime } from "../bridge/types";
@@ -20,6 +21,7 @@ import { palette } from "./figure";
 import { linkDesk } from "./float-desk";
 import { basisFor, DENSITIES, type DensityName, generateMesh, type Mesh } from "./mesh";
 import { speakAloud } from "./mouth";
+import { atWork, overPill, Rest, showRest, watchCard } from "./rest";
 import { SoulText } from "./SoulText";
 import { mountSaid } from "./said";
 import {
@@ -107,6 +109,8 @@ export function mountEris(
   let spin = 0;
   let last = ctx.ticker.now();
   let dragging: { x: number; y: number } | null = null;
+  const rest = new Rest();
+  const pill = () => root.querySelector<HTMLElement>(".talk-pill");
   // Since when nothing has moved her: idle, silent, settled and not dragged (`REST_MS`).
   let quiet: number | undefined;
   const wake = () => {
@@ -188,7 +192,11 @@ export function mountEris(
   });
   const position = () => {
     const { width: vw, height: vh } = size();
-    const p = dragging ?? layout() ?? { x: Math.round((vw - BODY.width) / 2), y: DEFAULT_TOP };
+    const at = pill();
+    const home = at
+      ? overPill(at, root, BODY)
+      : { x: Math.round((vw - BODY.width) / 2), y: DEFAULT_TOP };
+    const p = dragging ?? layout() ?? home;
     return {
       x: Math.max(0, Math.min(p.x, vw - BODY.width)),
       y: Math.max(0, Math.min(p.y, vh - BODY.height)),
@@ -263,10 +271,14 @@ export function mountEris(
     el.dataset.state = state;
     if (talk.phase === "off") delete el.dataset.talk;
     else el.dataset.talk = talk.phase;
+    const shown = soul.visible(now);
+    const words = shown || said.kept() !== "";
+    const work = { state, phase: talk.phase, words, dragging: dragging !== null };
+    showRest(el, rest.resting(!layout() && !!pill(), atWork(work), now), reduced);
     const p = position();
     el.style.left = `${p.x}px`;
     el.style.top = `${p.y}px`;
-    said.update(soul.visible(now));
+    said.update(shown);
     said.place({ x: p.x, y: p.y, width: BODY.width, height: BODY.height }, size());
 
     // While the microphone question is open she does nothing and waits: its answer wakes her.
@@ -276,7 +288,8 @@ export function mountEris(
       rings.mode === "idle" &&
       (talk.phase === "off" || talk.phase === "asking") &&
       !busy &&
-      !dragging;
+      !dragging &&
+      !rest.waiting;
     if (!still) {
       quiet = undefined;
       return;
@@ -296,6 +309,7 @@ export function mountEris(
     ctx.store.watch(() => layout(), wake),
     listen(window, "resize", wake),
     listen(el, "pointerenter", wake),
+    watchCard(said.el, wake),
     // The floating window over the OS shows her while the desk is inactive (ADR 0121).
     linkDesk(ctx, { phase: () => talk.phase, say: (text) => speakLine(text, undefined), setState }),
     // Every theme applied: a desk.theme.* setting, a preview, a theme plugin installed or edited, the
