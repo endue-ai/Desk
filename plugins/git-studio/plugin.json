@@ -9,6 +9,9 @@
     {
       "permission": "proc:spawn",
       "commands": ["git"]
+    },
+    {
+      "permission": "brain:ask"
     }
   ],
   "surfaces": [

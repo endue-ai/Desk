@@ -2,14 +2,18 @@
 // history and blame, and the AI. Kept apart so studio.js stays the window's frame.
 
 import { WIP } from "./app.js";
+import { installAi } from "./features-ai.js";
 import { shortSha } from "./format.js";
 import { deepSearch } from "./history.js";
 import { createBlameView } from "./view-blame.js";
 import { createConflictView } from "./view-conflict.js";
 import { createHistoryView } from "./view-history.js";
 
-/** @param {ReturnType<typeof import("./studio.js").createStudio>} studio */
-export function installFeatures(studio) {
+/**
+ * @param {ReturnType<typeof import("./studio.js").createStudio>} studio
+ * @param {Pick<import("@endue-ai/plugin-sdk").PluginContext, "bridge">} [ctx]
+ */
+export function installFeatures(studio, ctx) {
   const { app, center, extra } = studio;
   const snap = () => app.get().snapshot;
 
@@ -31,6 +35,7 @@ export function installFeatures(studio) {
   const conflict = createConflictView(app, center.page("conflict"), {
     onBack: () => center.back(),
     labels,
+    onAi: (file, chunk) => extra.resolveWithAi?.(file, chunk) ?? Promise.resolve(null),
     onSaved: async (path) => {
       await app.refresh();
       const next = snap()?.status.conflicts.find((c) => c.path !== path);
@@ -109,5 +114,6 @@ export function installFeatures(studio) {
     }
   });
 
-  return { conflict, fileLog, blameView };
+  const ai = ctx ? installAi(studio, ctx.bridge, { labels }) : null;
+  return { conflict, fileLog, blameView, ai };
 }

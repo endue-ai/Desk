@@ -44,6 +44,11 @@ export function createStudio(ctx, doc) {
     blame: (/** @type {string} */ _path) => {},
     resolve: (/** @type {string} */ _path) => {},
     writeMessage: async () => /** @type {string | null} */ (null),
+    /** @type {(sha: string) => HTMLElement | null} */
+    aiCard: () => null,
+    /** @type {((file: import("./conflict.js").ConflictFile, chunk: import("./conflict.js").ConflictChunk) => Promise<string[] | null>) | null} */
+    resolveWithAi: null,
+    describeBranch: async () => {},
   };
   const menus = createMenus(app, layer, actions, history, {
     copy,
@@ -138,6 +143,7 @@ export function createStudio(ctx, doc) {
 
   const detail = createDetail(app, detailPage, {
     onCopy: copy,
+    aiCard: (sha) => extra.aiCard(sha),
     onFile: (file, commit) => {
       /** @param {import("./parse.js").ChangedFile} f */
       const targetOf = (f) => ({
@@ -166,7 +172,7 @@ export function createStudio(ctx, doc) {
       }
     },
   });
-  createWip(app, wipPage, {
+  const wip = createWip(app, wipPage, {
     onStage: (paths) => void actions.stage(paths),
     onUnstage: (paths) => void actions.unstage(paths),
     onDiscard: (files) => void actions.discard(files),
@@ -252,7 +258,7 @@ export function createStudio(ctx, doc) {
         disabled: !snap()?.status.staged.length,
         run: () => {
           void app.select(WIP);
-          void extra.writeMessage();
+          void extra.writeMessage().then((message) => message && wip.setMessage(message));
         },
       },
       {
@@ -260,6 +266,12 @@ export function createStudio(ctx, doc) {
         icon: "sparkle",
         disabled: !selected || selected === WIP,
         run: () => extra.explain(selected ?? ""),
+      },
+      {
+        label: "Describe this branch as a pull request",
+        icon: "sparkle",
+        disabled: !snap()?.status.branch,
+        run: () => void extra.describeBranch(),
       },
     ]);
   }
@@ -329,5 +341,5 @@ export function createStudio(ctx, doc) {
 
   const last = app.restore();
   if (last) void openRepo(last);
-  return { app, graph, actions, history, center, diff, extra, layer, toolbar };
+  return { app, graph, actions, history, center, diff, extra, layer, toolbar, detail, wip };
 }

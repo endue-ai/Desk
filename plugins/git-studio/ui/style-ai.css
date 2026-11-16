@@ -1,0 +1,94 @@
+/* What the AI writes: the explanation card in the commit panel, its risk badge and the shimmer
+   while it is asked. The brand's primary colour marks everything the AI made. */
+
+.ai-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-3);
+  border: 1px solid var(--desk-primary-border);
+  border-radius: var(--desk-radius-lg);
+  background:
+    linear-gradient(135deg, var(--desk-primary-soft), transparent 70%),
+    var(--desk-card);
+}
+
+.ai-card.is-failed {
+  border-color: var(--desk-danger-border);
+  background: var(--desk-danger-soft);
+}
+
+.ai-card p {
+  margin: 0;
+}
+
+.ai-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--desk-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--desk-primary-text);
+}
+
+.ai-summary {
+  line-height: 1.5;
+}
+
+.ai-points {
+  margin: 0;
+  padding-left: var(--desk-space-5);
+  line-height: 1.5;
+  font-size: var(--desk-text-sm);
+}
+
+.ai-reason {
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+}
+
+.ai-risk {
+  padding: 1px 8px;
+  border-radius: var(--desk-radius-full);
+  letter-spacing: 0;
+  text-transform: none;
+  background: var(--desk-success-soft);
+  color: var(--desk-success-text);
+}
+
+.ai-risk.is-medium {
+  background: var(--desk-warning-soft);
+  color: var(--desk-warning-text);
+}
+
+.ai-risk.is-high {
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+}
+
+.ai-shimmer {
+  height: 12px;
+  border-radius: var(--desk-radius-sm);
+  background: linear-gradient(90deg, var(--gs-softer), var(--desk-primary-soft), var(--gs-softer));
+  background-size: 200% 100%;
+  animation: ai-shimmer var(--desk-motion-slow) linear infinite;
+}
+
+.ai-shimmer.short {
+  width: 60%;
+}
+
+@keyframes ai-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.dialog .dialog-field textarea.desk-field {
+  min-height: 180px;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  line-height: 1.5;
+}

@@ -20,7 +20,8 @@ import { refPill, refsByCommit } from "./refs.js";
  * @typedef {import("./repo.js").CommitDetail} CommitDetail
  * @typedef {import("./parse.js").ChangedFile} ChangedFile
  * @typedef {{ onFile?(file: ChangedFile, detail: CommitDetail): void,
- *   onAction?(action: string, detail: CommitDetail): void, onCopy?(text: string): void }} Hooks
+ *   onAction?(action: string, detail: CommitDetail): void, onCopy?(text: string): void,
+ *   aiCard?(sha: string): HTMLElement | null }} Hooks
  */
 
 /** `Authored 3 hours ago · Nov 17, 2026, 11:02`, or only the date when that is what "ago" says. */
@@ -104,6 +105,7 @@ export function createDetail(app, host, hooks = {}) {
             ),
           ),
         ),
+        hooks.aiCard?.(detail.sha) ?? null,
         h(
           "div.detail-actions",
           null,

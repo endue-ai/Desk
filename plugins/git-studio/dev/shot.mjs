@@ -127,7 +127,11 @@ try {
       sessionId,
     );
     await send("Page.enable", {}, sessionId);
-    await send("Page.navigate", { url: `${plan.base}?${shot.query ?? ""}` }, sessionId);
+    await send(
+      "Page.navigate",
+      { url: `${shot.base ?? plan.base}?${shot.query ?? ""}` },
+      sessionId,
+    );
     await settle(sessionId);
     for (const step of shot.steps ?? []) {
       await evaluate(sessionId, `(async () => { ${step} })()`);
