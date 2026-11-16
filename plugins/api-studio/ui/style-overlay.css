@@ -291,3 +291,65 @@
   background: transparent;
   color: var(--desk-text-muted);
 }
+
+/* ── the code dialog ────────────────────────────────────────────────── */
+.as-dialog.is-code {
+  width: min(980px, calc(100vw - 48px));
+}
+.as-gen {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 420px;
+}
+.as-gen-langs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 8px;
+  border-right: 1px solid var(--as-line);
+}
+.as-gen-lang.desk-row {
+  border: 0;
+  background: transparent;
+  color: var(--desk-text-muted);
+  font: inherit;
+  font-size: var(--desk-text-xs);
+  text-align: left;
+  cursor: pointer;
+}
+.as-gen-lang.desk-row.is-selected {
+  background: var(--as-select);
+  color: var(--desk-primary);
+}
+.as-gen-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.as-gen-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.as-gen-secret {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--desk-text-xs);
+}
+.as-gen-code {
+  flex: 1;
+  max-height: 60vh;
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  border: 1px solid var(--as-line-soft);
+  border-radius: var(--desk-radius-md);
+  background: var(--as-sunk);
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-xs);
+  line-height: 1.6;
+  white-space: pre;
+}

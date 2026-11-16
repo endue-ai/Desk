@@ -65,7 +65,7 @@ export function envPicker(S) {
             { width: 230 },
           ),
       },
-      h(`span.as-env-dot.env-${env?.color ?? "none"}`),
+      h(`span.as-env-dot.env-${env ? (env.color ?? "gray") : "none"}`),
       h("span.label", null, env?.name ?? "No environment"),
       icon("chevronDown", 13),
     );

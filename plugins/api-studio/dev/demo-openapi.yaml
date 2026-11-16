@@ -1,0 +1,110 @@
+openapi: 3.1.0
+info:
+  title: Shop API (described)
+  version: 2.4.1
+  description: |
+    The made-up shop the preview answers on port 4339.
+    Log in for a token, then list users and orders.
+servers:
+  - url: http://127.0.0.1:4339/v1
+    description: Local
+  - url: https://staging.shop.example.com/v1
+    description: Staging
+security:
+  - bearer: []
+tags:
+  - name: Auth
+    description: Tokens for everything else.
+  - name: Users
+  - name: Orders
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Login"
+      responses:
+        "200":
+          description: A token
+  /users:
+    get:
+      tags: [Users]
+      summary: List users
+      parameters:
+        - name: page
+          in: query
+          required: true
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 5 }
+          description: How many per page
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [admin, member, viewer]
+      responses:
+        "200": { description: A page of users }
+    post:
+      tags: [Users]
+      summary: Create a user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewUser"
+      responses:
+        "201": { description: Created }
+  /users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, example: 1003 }
+    get:
+      tags: [Users]
+      summary: Get a user
+      responses:
+        "200": { description: The user }
+    delete:
+      tags: [Users]
+      summary: Delete a user
+      responses:
+        "204": { description: Gone }
+  /orders:
+    get:
+      tags: [Orders]
+      summary: List orders
+      responses:
+        "200": { description: Orders }
+  /health:
+    get:
+      summary: Health
+      security: []
+      responses:
+        "200": { description: OK }
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+  schemas:
+    Login:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+    NewUser:
+      type: object
+      properties:
+        name: { type: string, example: Mina Kim }
+        email: { type: string, format: email }
+        role: { type: string, enum: [member, admin] }
+        id: { type: integer, readOnly: true }

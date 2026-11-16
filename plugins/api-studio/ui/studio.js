@@ -24,6 +24,7 @@ import "./section-vars.js";
 import "./section-docs.js";
 import { installAuth } from "./features-auth.js";
 import { installEnvironments } from "./features-env.js";
+import { installImport } from "./features-import.js";
 import { installRunner } from "./features-runner.js";
 import { installScripts } from "./features-scripts.js";
 
@@ -153,6 +154,7 @@ export function createStudio(ctx, doc) {
   const auth = installAuth(S);
   installScripts(S);
   installRunner(S);
+  installImport(S);
 
   // ── the window ──────────────────────────────────────────────────────────
   const side = sideBar(S);
