@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Image } from "../../support/png";
 import {
   captured,
+  gripOf,
   type Line,
   parseTrace,
   SHADOW,
@@ -191,5 +192,15 @@ describe("the gate's verdicts", () => {
     expect(failed(all)).toBe(true);
     expect(table(all)).toContain("FIXED: take it out of known (#250)");
     expect(failed(verdicts(fixed, limits))).toBe(false);
+  });
+});
+
+describe("the shake's grip", () => {
+  it("grips a window's title bar between its icon and its tools", () => {
+    // The Plugins window of 2026-11-16: 40 % of its width, x 513, lay on its tools (#331).
+    expect(gripOf([409, 445, 261, 211], [37, 171])).toEqual([473, 461]);
+    expect(gripOf([100, 50, 800, 400], [37, 171])).toEqual([433, 66]);
+    expect(gripOf([100, 50, 200, 400], [37, 171]), "no room between them").toBeUndefined();
+    expect(gripOf([100, 50, 800, 400], undefined), "the shell named no room").toBeUndefined();
   });
 });
