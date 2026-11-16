@@ -257,6 +257,7 @@
 .content {
   grid-row: 3;
   min-height: 0;
+  container: content / inline-size;
   overflow: auto;
   outline: none;
 }
