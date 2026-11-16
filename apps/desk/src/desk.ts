@@ -68,7 +68,6 @@ const pages = remotePages(window, shellSurfaces(), (id) => void desk.runtime.foc
 // Each window lies in a page of its own, which the compositor draws from a texture of its own (ADR
 // 0201): no window's picture is cut out of this page's, so a move repaints nothing.
 let ownPages: WindowPages | undefined;
-const bridge = shellBridge(core);
 const desk = mountDesk({
   windowManager: seam.host,
   pages,
@@ -78,7 +77,7 @@ const desk = mountDesk({
     return ownPages;
   },
   root,
-  bridge,
+  bridge: shellBridge(core),
   core,
   // Native plugins draw only through the compositor (#59), which is the desk (#83).
   plugins: { url: pluginUrl, native: true },
@@ -108,7 +107,7 @@ const disposeOpened = installOpenedFiles({
         notify: (n) => desk.runtime.notify(n),
         pluginOn: async (id) => {
           const scope = { permission: "plugin:manage" } as const;
-          const { plugins } = await bridge.call("plugin.list", { scope });
+          const { plugins } = await core.call("plugin.list", { scope });
           return plugins.find((p) => p.id === id)?.enabled;
         },
       },
