@@ -623,6 +623,12 @@
       "required": ["invocationId", "id", "caller", "ok"],
       "additionalProperties": false
     },
+    "UndoGroup": {
+      "description": "A name the caller chooses for several file changes that are one step for the person (a paste, a drop of several entries).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
     "UndoEntry": {
       "description": "One invocation on the desk's undo stack: what ran, with what, what it answered, who ran it and when, and the command that undoes it.",
       "type": "object",
@@ -649,6 +655,10 @@
         "inverse": {
           "description": "The command that undoes it: its `undo`, or fs.restore for a write.",
           "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "group": {
+          "description": "The group the caller gave a rename or a copy: entries next to each other on the stack with the same caller and group are undone and redone as one step.",
+          "$ref": "#/$defs/UndoGroup"
         }
       },
       "required": ["command", "caller", "at", "inverse"],

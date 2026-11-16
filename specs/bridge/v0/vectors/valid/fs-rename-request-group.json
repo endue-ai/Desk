@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.rename joins a group: the other moves of one paste are undone with it as one step",
+  "instance": {
+    "id": 61,
+    "method": "fs.rename",
+    "params": {
+      "from": "~/Downloads/report.pdf",
+      "to": "~/Documents/report.pdf",
+      "scope": {
+        "permission": "fs:write",
+        "paths": ["~/Downloads/**", "~/Documents/**"]
+      },
+      "group": "endue.explorer/paste-7"
+    }
+  }
+}

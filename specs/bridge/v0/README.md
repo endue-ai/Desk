@@ -141,6 +141,9 @@ are copied as links, never followed; files keep their permissions. It never over
 a folder copied into itself and a FIFO, socket or device file are `invalid_params`, and the copy appears
 at `to` only once complete.
 
+A rename or a copy may name a `group` (1 to 128 characters, ADR 0247): the changes one action of the
+person makes (a paste, a drop of several entries) share it, and their undo entries carry it.
+
 **fs.trash** moves a file, a folder or a link to the OS trash: the macOS Trash, the Windows Recycle Bin,
 the freedesktop trash. It needs an `fs:write` scope. It never deletes for good: when the path cannot go to
 a trash (none on its volume, or the trash refused), the answer is `unsupported` and the path stays.
@@ -438,7 +441,11 @@ pushes nothing. A new entry clears what `cmd.redo` could redo, and the stack kee
 it was). For a command, the core invokes the inverse with `{ args, result }` and answers its
 `invocationId` (its answer reaches the caller as `cmd.answered`); for a write, it restores the version
 before answering, and for a rename, a copy or a new folder it runs the inverse itself before answering. `undone` is the entry, absent when the stack is empty. `cmd.undone { entry, by, redo }`
-goes to the caller and to subscribers. An inverse run by cmd.undo pushes nothing.
+goes to the caller and to subscribers. An inverse run by cmd.undo pushes nothing. Entries next to
+each other on the stack with the same `caller` and `group` are one step: cmd.undo undoes them all, newest
+first, and cmd.redo redoes them all, oldest first, with one `cmd.undone` that names the newest. When one
+of them fails, those already undone (or redone) stay so, the rest stay on their side as a group, and the
+answer is the error.
 
 **cmd.redo** runs the entry cmd.undo undid last again: the command with its args, answered as cmd.undo
 answers (a write: the core puts back what the undo replaced; a rename, a copy or a new folder: the core

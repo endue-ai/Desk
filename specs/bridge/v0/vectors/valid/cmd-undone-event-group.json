@@ -1,0 +1,25 @@
+{
+  "target": "BridgeEvent",
+  "description": "cmd.undone names the newest entry of a group the core undid as one step",
+  "instance": {
+    "event": "cmd.undone",
+    "data": {
+      "entry": {
+        "command": "fs.rename",
+        "args": {
+          "from": "~/Downloads/b.pdf",
+          "to": "~/Documents/b.pdf"
+        },
+        "result": {
+          "crossedDevices": false
+        },
+        "caller": "endue.explorer",
+        "at": "2026-11-16T09:01:00Z",
+        "inverse": "fs.rename",
+        "group": "endue.explorer/paste-7"
+      },
+      "by": "desk",
+      "redo": false
+    }
+  }
+}

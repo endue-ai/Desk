@@ -5862,6 +5862,9 @@ pub struct CmdAnsweredData {
     pub error: Option<CommandFailure>,
 }
 
+/// A name the caller chooses for several file changes that are one step for the person (a paste, a drop of several entries).
+pub type UndoGroup = String;
+
 /// One invocation on the desk's undo stack: what ran, with what, what it answered, who ran it and when, and the command that undoes it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -5879,6 +5882,9 @@ pub struct UndoEntry {
     pub at: String,
     /// The command that undoes it: its `undo`, or fs.restore for a write.
     pub inverse: CommandId,
+    /// The group the caller gave a rename or a copy: entries next to each other on the stack with the same caller and group are undone and redone as one step.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<UndoGroup>,
 }
 
 /// Undo the newest entry of the desk's undo stack, whoever pushed it: run its inverse with { args, result }.
@@ -7414,6 +7420,9 @@ pub struct FsRenameParams {
     /// Covers from, when the grant that covers it is not the one that covers to.
     #[serde(rename = "fromScope", default, skip_serializing_if = "Option::is_none")]
     pub from_scope: Option<FsWritePermission>,
+    /// Joins this change to the caller's others with the same group: cmd.undo and cmd.redo take them as one step.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<UndoGroup>,
 }
 
 /// Result of fs.rename.
@@ -7447,6 +7456,9 @@ pub struct FsCopyParams {
     /// Covers from: the copy reads it.
     #[serde(rename = "fromScope")]
     pub from_scope: FsReadPermission,
+    /// Joins this change to the caller's others with the same group: cmd.undo and cmd.redo take them as one step.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<UndoGroup>,
 }
 
 /// Result of fs.copy.
