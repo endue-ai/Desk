@@ -4,11 +4,14 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
-  "description": "An HTTP client for building, sending and testing API requests: a request editor with params, body, headers and auth, {{variables}} with their values under the pointer, and a response viewer with pretty bodies, headers, cookies and a timing waterfall. Requests go out through the curl program, without a shell, their contents on its standard input.",
+  "description": "An HTTP client for building, sending and testing API requests. Collections are folders of plain files kept in Git, with environments and secrets that never reach those files. Requests have params, bodies, headers, auth (Basic, Bearer, API key, OAuth 2.0, Digest, NTLM, AWS Signature v4), scripts, checks and tests. Responses show pretty, as a tree or a preview, with headers, cookies, a timing waterfall and the test results. A runner runs collections with data rows; OpenAPI, Swagger, HAR and curl import; code in a dozen languages; and an assistant that explains failures and writes requests, tests and docs. Requests go out through the curl program, without a shell, their contents on its standard input.",
   "permissions": [
     {
       "permission": "proc:spawn",
       "commands": ["curl"]
+    },
+    {
+      "permission": "brain:ask"
     },
     {
       "permission": "fs:read",
@@ -31,8 +34,172 @@
     }
   ],
   "contributes": {
-    "commands": [],
-    "keys": [],
+    "commands": [
+      {
+        "id": "endue.api-studio.open",
+        "title": "API Studio: open",
+        "keywords": ["api", "http", "rest", "requests", "client"],
+        "description": "Open API Studio, on a saved request when one is named.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A request's name, \"Folder / Name\", or its file's path"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.api-studio.new-request",
+        "title": "API Studio: new request",
+        "keywords": ["api", "http", "request", "new"],
+        "description": "Open a new request, with a method and URL when given.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "method": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.api-studio.state",
+        "title": "API Studio: what is open",
+        "keywords": ["api", "collections", "environments"],
+        "description": "The open collections (their requests, environments and the one in use), the open tabs and their last statuses.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.api-studio.requests",
+        "title": "API Studio: list a collection's requests",
+        "keywords": ["api", "requests", "list"],
+        "description": "Every request of a collection (the first open one unless named), with its folder, method and URL.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "collection": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.api-studio.send",
+        "title": "API Studio: send a request",
+        "keywords": ["api", "http", "send", "call"],
+        "description": "Send a saved request by name (or a method, url, headers and body), with its environment, scripts, checks and tests; answers with the status, time, headers (secrets hidden), the body and the test results.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A request's name, \"Folder / Name\", or its file's path"
+            },
+            "method": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string",
+              "pattern": "^\\S+$"
+            },
+            "headers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "body": {}
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.api-studio.run",
+        "title": "API Studio: run a collection",
+        "keywords": ["api", "run", "test", "runner"],
+        "description": "Run a collection's requests in order (a folder's when named), as many iterations as asked, and answer with the totals and every failure.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "folder": {
+              "type": "string"
+            },
+            "iterations": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "stopOnFail": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.api-studio.import-curl",
+        "title": "API Studio: import a curl command",
+        "keywords": ["api", "curl", "import", "paste"],
+        "description": "Open a curl command as a request.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["command"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.api-studio.ask",
+        "title": "API Studio: ask the assistant",
+        "keywords": ["api", "ai", "assistant", "explain"],
+        "description": "Open the assistant, asking about the request in front when a question is given.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    ],
+    "keys": [
+      {
+        "key": "Mod+Alt+A",
+        "command": "endue.api-studio.open"
+      }
+    ],
     "settings": {
       "endue.api-studio.curl": {
         "kind": "string",
