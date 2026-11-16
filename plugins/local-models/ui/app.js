@@ -2,13 +2,14 @@
 // and run an answer — the request built from the path of the thread, the tokens streamed into the
 // node being written, the stats kept with it, stopped when asked.
 
+import { nameThread } from "./edit.js";
 import { modelKey, splitKey } from "./models.js";
 import { createSockets } from "./net.js";
+import { createRunner } from "./run.js";
 import { clientOf, discover } from "./servers.js";
 import { createState } from "./state.js";
 import { createStore } from "./store.js";
-import { splitThink } from "./think.js";
-import { addNode, createThread, entryOf, leaf, pathTo, removeNode, titleFrom } from "./threads.js";
+import { addNode, createThread, entryOf, leaf, removeNode, titleFrom } from "./threads.js";
 
 /**
  * @typedef {import("./net.js").Bridge} Bridge
@@ -21,15 +22,14 @@ import { addNode, createThread, entryOf, leaf, pathTo, removeNode, titleFrom } f
 
 const message = (/** @type {unknown} */ e) => (e instanceof Error ? e.message : String(e));
 
-/** @param {Bridge} bridge @param {{ storeDelayMs?: number }} [options] */
+/** @param {Bridge} bridge @param {{ storeDelayMs?: number, autoTitle?: boolean }} [options] */
 export function createApp(bridge, options = {}) {
   const S = createState();
   const sockets = createSockets(bridge);
   const store = createStore(bridge, { delayMs: options.storeDelayMs });
-  /** @type {AbortController | null} */
-  let running = null;
   /** @type {import("./servers.js").ServerSpec[]} */
   let added = [];
+  let autoTitle = options.autoTitle ?? true;
 
   const toast = (
     /** @type {string} */ text,
@@ -102,6 +102,8 @@ export function createApp(bridge, options = {}) {
       .catch((e) => toast(`Could not save: ${message(e)}`, "error"));
   }
 
+  const runner = createRunner({ S, sockets, resolve, toast, persist });
+
   /** A new, empty thread on the model chosen (not saved until it has a message). @param {string} [model] */
   function newChat(model) {
     const key = model ?? S.get().selected;
@@ -125,117 +127,6 @@ export function createApp(bridge, options = {}) {
     return thread;
   }
 
-  /** The messages a request sends: the system prompt, then the path up to a node. @param {Thread} thread @param {string} upTo */
-  function messagesFor(thread, upTo) {
-    /** @type {ChatMessage[]} */
-    const out = [];
-    if (thread.system?.trim()) out.push({ role: "system", content: thread.system.trim() });
-    for (const node of pathTo(thread, upTo)) {
-      if (node.error && !node.content) continue;
-      const content = node.role === "assistant" ? splitThink(node.content).content : node.content;
-      out.push({
-        role: node.role,
-        content,
-        ...(node.images?.length ? { images: node.images } : {}),
-        ...(node.toolCalls?.length ? { toolCalls: node.toolCalls } : {}),
-        ...(node.toolCallId ? { toolCallId: node.toolCallId } : {}),
-      });
-    }
-    return out;
-  }
-
-  /**
-   * Write an answer under `parentId`, streaming it into a new assistant node.
-   * @param {Thread} thread @param {string} parentId
-   */
-  async function generate(thread, parentId) {
-    const target = resolve(thread.model ?? S.get().selected);
-    if (target?.server?.status !== "online") {
-      toast(
-        target?.server ? `${target.server.label} is not answering.` : "Pick a model first.",
-        "error",
-      );
-      return undefined;
-    }
-    const { server, id, model } = target;
-    const node = addNode(thread, parentId, {
-      role: "assistant",
-      content: "",
-      model: id,
-      modelName: model?.name ?? id,
-    });
-    const controller = new AbortController();
-    running = controller;
-    S.set({ generating: { threadId: thread.id, nodeId: node.id } });
-    S.touch("thread");
-    const started = Date.now();
-    /** @type {number | undefined} */
-    let thinkingFrom;
-    let frame = 0;
-    const redraw = () => {
-      if (frame) return;
-      frame = 1;
-      queueMicrotask(() => {
-        frame = 0;
-        S.signal("stream", node);
-      });
-    };
-    try {
-      const result = await clientOf(server.kind).chat(
-        sockets,
-        server,
-        {
-          model: id,
-          messages: messagesFor(thread, parentId),
-          params: thread.params,
-          think:
-            server.kind === "ollama" && model?.caps.includes("reasoning")
-              ? thread.think !== false
-              : undefined,
-          signal: controller.signal,
-        },
-        (delta) => {
-          if (delta.reasoning) {
-            thinkingFrom ??= Date.now();
-            node.reasoning = (node.reasoning ?? "") + delta.reasoning;
-          }
-          if (delta.content) {
-            if (thinkingFrom !== undefined && node.reasoningMs === undefined && node.reasoning)
-              node.reasoningMs = Date.now() - thinkingFrom;
-            node.content += delta.content;
-            if (!node.reasoning && node.reasoningMs === undefined) {
-              const inline = splitThink(node.content);
-              if (inline.open) thinkingFrom ??= Date.now();
-              else if (inline.reasoning && thinkingFrom !== undefined)
-                node.reasoningMs = Date.now() - thinkingFrom;
-            }
-          }
-          redraw();
-        },
-      );
-      node.stats = result.stats;
-      if (result.toolCalls.length) node.toolCalls = result.toolCalls;
-    } catch (e) {
-      const code = /** @type {{ code?: string }} */ (e)?.code;
-      if (controller.signal.aborted || code === "aborted")
-        node.stats = { ...node.stats, stopReason: "stopped", totalMs: Date.now() - started };
-      else node.error = message(e);
-    } finally {
-      if (!node.reasoning) {
-        const split = splitThink(node.content);
-        if (split.reasoning) {
-          node.reasoning = split.reasoning;
-          node.content = split.content;
-        }
-      }
-      if (running === controller) running = null;
-      S.set({ generating: null });
-      S.touch("thread");
-      persist(thread, true);
-    }
-    return node;
-  }
-
   /**
    * Send what the person wrote, then answer it.
    * @param {string} text @param {{ images?: Image[] }} [extra]
@@ -256,12 +147,13 @@ export function createApp(bridge, options = {}) {
     });
     S.set({ thread });
     persist(thread);
-    await generate(thread, user.id);
+    const answer = await runner.generate(thread, user.id);
+    if (fresh && answer?.content && autoTitle) void nameThread(api, thread);
   }
 
   /** Stop the answer being written; what came so far stays. */
   function stop() {
-    running?.abort();
+    runner.stop();
   }
 
   /** Ask again for the answer to the question above `nodeId`: a sibling of it. @param {string} nodeId */
@@ -271,7 +163,7 @@ export function createApp(bridge, options = {}) {
     if (!thread || !node || S.get().generating) return;
     const parent = node.role === "assistant" ? node.parent : node.id;
     if (!parent) return;
-    await generate(thread, parent);
+    await runner.generate(thread, parent);
   }
 
   /** @param {string} id */
@@ -337,13 +229,20 @@ export function createApp(bridge, options = {}) {
     await scan();
   }
 
+  /** Open a link from an answer in the browser. @param {string} url */
+  async function openLink(url) {
+    await bridge
+      .call("shell.open", { target: url })
+      .catch(() => toast("The desk did not open the link.", "error"));
+  }
+
   /** Remember the window's layout. */
   function savePrefs() {
     const { inspector, sidebar } = S.get();
     void store.set("prefs", { inspector, sidebar });
   }
 
-  return {
+  const api = {
     S,
     sockets,
     store,
@@ -362,10 +261,17 @@ export function createApp(bridge, options = {}) {
     choose,
     toast,
     savePrefs,
+    openLink,
     persist,
-    generate,
-    messagesFor,
+    runner,
+    indexThread,
+    saveIndex,
+    /** @param {boolean} on */
+    setAutoTitle(on) {
+      autoTitle = on;
+    },
   };
+  return api;
 }
 
 /** @typedef {ReturnType<typeof createApp>} App */
