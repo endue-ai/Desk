@@ -1,0 +1,15 @@
+{
+  "target": "BridgeEvent",
+  "description": "20 ms of captured audio (abbreviated: the core sends sampleRate / 50 samples)",
+  "instance": {
+    "event": "audio.frame",
+    "data": {
+      "captureId": "c1",
+      "atMs": 20,
+      "sampleRate": 16000,
+      "pcm": "AAD/fwCA",
+      "rmsDb": -3.01,
+      "peakDb": 0
+    }
+  }
+}
