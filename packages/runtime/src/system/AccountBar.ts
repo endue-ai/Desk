@@ -2,11 +2,14 @@
  * The account bar: the launcher and the person's avatar, fixed at the bottom left in every desktop
  * and mode. The inbox, Settings and the person's profile are in the avatar's popover
  * (account-menu.ts); this keeps the bar, its two commands and the focus as the popover comes and goes.
+ * It stays when the rail is hidden or another plugin holds `role:rail`, so while anything captures
+ * the microphone the avatar says so too, and its menu's first row stops it (ADR 0245).
  */
 import { runGesture } from "../gesture";
 import type { ShellCtx } from "../shell/context";
 import { h, render } from "../shell/dom";
 import { icon } from "../shell/icons";
+import { micLabel, stopEveryCapture, watchMic } from "../shell/mic";
 import { initial } from "../shell/state";
 import { accountText } from "./account-copy";
 import { type AccountView, accountPopover, viewOf, walkButtons } from "./account-menu";
@@ -70,10 +73,14 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
           : icon("user", 18),
     );
   };
+  const mic = watchMic(ctx, () => draw());
   const draw = () => {
     const s = ctx.store.get();
     const view = viewOf(s);
     const count = s.attention.length;
+    const captures = mic.captures();
+    const listening = captures.length > 0 ? micLabel(ctx, captures) : undefined;
+    const said = count ? `${tr("account")} · ${tr("inbox")} · ${count}` : tr("account");
     // Signed in, the account's name stands for the person; the first-run name otherwise.
     const shownName = endue.profile()?.displayName?.trim() || name;
     const userName = shownName || tr("localUser");
@@ -98,16 +105,17 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
         },
         icon("grid"),
       ),
-      // The person. While the inbox holds something the avatar shows a dot, its own ::after on
-      // [data-attention] (system.css), and its name says how many.
+      // The person. While the inbox holds something, or the microphone is on, the avatar shows a
+      // dot, its own ::after on [data-attention] (system.css), and its name says why.
       h(
         "button",
         {
           class: `icon-button account-profile${view ? " is-open" : ""}`,
           type: "button",
           "data-key": "account-profile",
-          "data-attention": count || undefined,
-          "aria-label": count ? `${tr("account")} · ${tr("inbox")} · ${count}` : tr("account"),
+          "data-attention": count || (listening ? "mic" : undefined),
+          "data-mic": listening ? "on" : undefined,
+          "aria-label": listening ? `${said} · ${listening}` : said,
           "aria-expanded": String(view !== null),
           title: `${tr("account")} · ${userName}`,
           onClick: () => run("desk.account.open"),
@@ -126,6 +134,9 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
                 face: () => avatar(shownName),
                 userName,
                 endue,
+                mic: listening
+                  ? { label: listening, stop: () => void stopEveryCapture(ctx, captures) }
+                  : undefined,
                 // Settings goes back to what had the focus when it opened: the avatar.
                 settings: () => {
                   ctx.store.set({ popover: null });
@@ -177,6 +188,7 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
   return () => {
     generation++;
     off();
+    mic.dispose();
     endue.dispose();
     for (const undo of commands) undo();
     bar.remove();

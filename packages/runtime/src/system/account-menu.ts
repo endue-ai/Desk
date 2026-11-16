@@ -26,6 +26,8 @@ export interface AccountMenu {
   endue: EndueId;
   /** Close the menu, give the focus back to the avatar and open Settings. */
   settings(): void;
+  /** While anything captures the microphone: what the row says, and stopping every capture. */
+  mic?: { label: string; stop(): void };
 }
 
 /** Which of the avatar's views `s` shows, if any. */
@@ -62,6 +64,10 @@ function menu(view: AccountMenu, s: DeskState): Child[] {
     h(
       "div",
       { class: "account-menu", role: "menu", "aria-label": tr("controls") },
+      // The microphone, first while it is on: the rail may be hidden or another plugin's (ADR 0245).
+      view.mic
+        ? row("account-mic", view.mic.label, "mic", view.mic.label, view.mic.stop, null)
+        : null,
       // The name says the count at every number; the badge shows only while there is something.
       row(
         "account-inbox",

@@ -7,18 +7,20 @@ import { openMic } from "./ear";
 /** A bridge microphone the test plays: it hands frames to the ear's listener. */
 function fakeMic(refuse = false) {
   let onFrame: ((frame: CaptureFrame) => void) | undefined;
+  let onEnded: (() => void) | undefined;
   const stop = vi.fn(async () => {});
   const audio: ShellBridge["audio"] = {
     levels: () => ({ user: [], eris: [] }),
-    capture: vi.fn(async (listener: (frame: CaptureFrame) => void) => {
+    capture: vi.fn(async (listener: (frame: CaptureFrame) => void, ended?: () => void) => {
       if (refuse) return null;
       onFrame = listener;
+      onEnded = ended;
       return { captureId: "c1", stop } satisfies MicCapture;
     }),
   };
   const frame = (samples: Int16Array, rmsDb: number) =>
     onFrame?.({ samples, sampleRate: 16000, rmsDb, peakDb: rmsDb + 3, atMs: 0 });
-  return { audio, stop, frame };
+  return { audio, stop, frame, end: () => onEnded?.() };
 }
 
 /** 20 ms of a 500 Hz tone at `amplitude` (0..1), 16 kHz. */
@@ -52,6 +54,17 @@ describe("Eris's ear through audio.capture", () => {
     expect(mic.stop).toHaveBeenCalledTimes(1);
   });
 
+  it("an ended capture goes silent at once", async () => {
+    vi.stubGlobal("SpeechRecognition", undefined);
+    vi.stubGlobal("webkitSpeechRecognition", undefined);
+    const mic = fakeMic();
+    const ear = await openMic("en", undefined, mic.audio);
+    mic.frame(tone(0.5), -9);
+    expect(sum(ear?.bands(0) ?? [])).toBeGreaterThan(0);
+    mic.end();
+    expect(sum(ear?.bands(20) ?? [])).toBe(0);
+  });
+
   it("a refused capture is no ear", async () => {
     vi.stubGlobal("SpeechRecognition", undefined);
     vi.stubGlobal("webkitSpeechRecognition", undefined);
@@ -60,7 +73,7 @@ describe("Eris's ear through audio.capture", () => {
     expect(mic.audio.capture).toHaveBeenCalledTimes(1);
   });
 
-  it("with Web Speech the ear keeps the page's microphone", async () => {
+  it("with Web Speech but no microphone of the page's own, the ear captures for the level", async () => {
     vi.stubGlobal(
       "SpeechRecognition",
       class {
@@ -69,8 +82,14 @@ describe("Eris's ear through audio.capture", () => {
       },
     );
     const mic = fakeMic();
-    // No AudioContext here, so the page's microphone is not there either: no ear, and no capture.
-    await expect(openMic("en", undefined, mic.audio)).resolves.toBeNull();
-    expect(mic.audio.capture).not.toHaveBeenCalled();
+    // No AudioContext and no getUserMedia here, as in a CEF page that names Web Speech only.
+    const ear = await openMic("en", undefined, mic.audio);
+    expect(ear?.live).toBe(true);
+    expect(mic.audio.capture).toHaveBeenCalledTimes(1);
+  });
+
+  it("with no microphone anywhere there is no ear", async () => {
+    vi.stubGlobal("SpeechRecognition", class {});
+    await expect(openMic("en", undefined, undefined)).resolves.toBeNull();
   });
 });

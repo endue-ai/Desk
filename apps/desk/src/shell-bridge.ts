@@ -24,6 +24,7 @@ import type {
 } from "@endue-ai/runtime";
 
 type Audio = Required<ShellBridge["audio"]>;
+type CaptureInForce = Parameters<Parameters<Audio["captures"]>[0]>[0][number];
 
 import { studioShell } from "./shell-studio";
 
@@ -158,13 +159,23 @@ function samplesOf(pcm: string): Int16Array {
   return Int16Array.from({ length: bytes.length >> 1 }, (_, i) => view.getInt16(i * 2, true));
 }
 
-/** The microphone as the runtime (ADR 0245): a capture with its frames, and every capture in force. */
+/**
+ * The microphone as the runtime (ADR 0245): a capture with its frames and its end, and every
+ * capture in force, followed from the start so a listener that comes later hears the list now.
+ */
 function microphone(core: BridgeClient): Pick<Audio, "capture" | "captures" | "stopCapture"> {
   const stopCapture = async (captureId: string) => {
     await core.call("audio.capture.stop", { captureId, scope: MIC });
   };
+  let inForce: readonly CaptureInForce[] = [];
+  const listeners = new Set<(captures: readonly CaptureInForce[]) => void>();
+  core.onEvent((event) => {
+    if (event.event !== "audio.capturing") return;
+    inForce = event.data.captures;
+    for (const listener of listeners) listener(inForce);
+  });
   return {
-    async capture(onFrame) {
+    async capture(onFrame, onEnded) {
       let captureId: string;
       try {
         ({ captureId } = await core.call("audio.capture.start", { scope: MIC }));
@@ -172,6 +183,11 @@ function microphone(core: BridgeClient): Pick<Audio, "capture" | "captures" | "s
         return null;
       }
       const off = core.onEvent((event) => {
+        if (event.event === "audio.ended" && event.data.captureId === captureId) {
+          off();
+          onEnded?.();
+          return;
+        }
         if (event.event !== "audio.frame" || event.data.captureId !== captureId) return;
         const { pcm, sampleRate, rmsDb, peakDb, atMs } = event.data;
         onFrame({ samples: samplesOf(pcm), sampleRate, rmsDb, peakDb, atMs });
@@ -184,10 +200,11 @@ function microphone(core: BridgeClient): Pick<Audio, "capture" | "captures" | "s
         },
       };
     },
-    captures: (listener) =>
-      core.onEvent((event) => {
-        if (event.event === "audio.capturing") listener(event.data.captures);
-      }),
+    captures(listener) {
+      listeners.add(listener);
+      listener(inForce);
+      return () => listeners.delete(listener);
+    },
     stopCapture,
   };
 }

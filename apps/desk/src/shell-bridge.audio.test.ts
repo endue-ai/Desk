@@ -83,7 +83,7 @@ describe("the shell bridge's microphone", () => {
       event: "audio.capturing",
       data: { captures: [{ captureId: "c9", caller: "example.notes" }] },
     });
-    expect(seen).toEqual([[{ captureId: "c9", caller: "example.notes" }]]);
+    expect(seen).toEqual([[], [{ captureId: "c9", caller: "example.notes" }]]);
     await bridge.audio.stopCapture?.("c9");
     expect(calls().at(-1)?.request).toMatchObject({
       method: "audio.capture.stop",
@@ -91,6 +91,47 @@ describe("the shell bridge's microphone", () => {
     });
     off?.();
     stub.emit({ event: "audio.capturing", data: { captures: [] } });
-    expect(seen).toHaveLength(1);
+    expect(seen).toHaveLength(2);
+  });
+
+  test("an ended capture tells its listener once and hears no more frames", async () => {
+    const { bridge, stub } = setup();
+    const frames: CaptureFrame[] = [];
+    let ended = 0;
+    await bridge.audio.capture?.(
+      (frame) => frames.push(frame),
+      () => {
+        ended += 1;
+      },
+    );
+    stub.emit({ event: "audio.ended", data: { captureId: "other", reason: "stopped" } });
+    expect(ended).toBe(0);
+    stub.emit({ event: "audio.ended", data: { captureId: "c1", reason: "stopped_by_person" } });
+    stub.emit({
+      event: "audio.frame",
+      data: { captureId: "c1", atMs: 0, sampleRate: 16000, pcm: PCM, rmsDb: -3, peakDb: 0 },
+    });
+    stub.emit({ event: "audio.ended", data: { captureId: "c1", reason: "stopped" } });
+    expect(ended).toBe(1);
+    expect(frames).toHaveLength(0);
+  });
+
+  test("a listener that comes later hears the captures in force at once", () => {
+    const { bridge, stub } = setup();
+    stub.emit({
+      event: "audio.capturing",
+      data: { captures: [{ captureId: "c9", caller: "example.notes" }] },
+    });
+    const seen: Array<readonly CaptureInForce[]> = [];
+    bridge.audio.captures?.((list) => seen.push(list));
+    expect(seen).toEqual([[{ captureId: "c9", caller: "example.notes" }]]);
+  });
+
+  test("the microphone is started and stopped as the runtime", async () => {
+    const { bridge, calls } = setup();
+    const capture = await bridge.audio.capture?.(() => {});
+    await capture?.stop();
+    // No caller named: the adapter's own, the runtime (`desk`), not onboarding's or a plugin's.
+    expect(calls().map((c) => c.caller)).toEqual([undefined, undefined]);
   });
 });

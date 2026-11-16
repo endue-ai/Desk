@@ -12,6 +12,7 @@ import { listenForShortcuts, type Platform, ShortcutRouter } from "./input";
 import { installInspect } from "./inspect/install";
 import type { Notice } from "./notify";
 import type { SurfacePages } from "./pages/types";
+import { pluginMic } from "./plugin-mic";
 import { PluginHost, type PluginHostOptions } from "./plugins";
 import { anotherWindow, defineOpenPlugin } from "./plugins-open";
 import { installAliases } from "./policies/aliases";
@@ -181,7 +182,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     focused: () => shortcuts.focused ?? views?.focused() ?? null,
   });
   // Windows out of sight are unloaded, their state kept (ADR 0070); every frame is watched (#39).
-  const frames = installFrames(ctx, { windows, host: () => pluginHost, lang: language });
+  const mic = pluginMic(bridge);
+  const frames = installFrames(ctx, { windows, host: () => mic.host(pluginHost), lang: language });
   focusMoved = (id) => frames.focused(id);
   // A host's view is a buffer only while in sight; a surface is when shown and on the page.
   const inSight = (id: string) => surfaces.get(id) === undefined || surfaces.visible(id);
@@ -283,8 +285,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         bridge,
         win,
         open: openSurface,
-        close: closeSurface,
-        reload: (id, src) => frames.reload(id, src),
+        close: mic.ending(closeSurface),
+        reload: mic.ending((id: string, src: string) => frames.reload(id, src)),
         frame: (id) => surfaces.frame(id),
         show: (id, visible) => {
           surfaces.show(id, visible);
@@ -370,6 +372,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       settingsWindow.dispose();
       preferences.dispose();
       frames.dispose();
+      mic.dispose();
       routing.dispose();
       const policies = [
         start,

@@ -225,11 +225,18 @@ export interface ShellBridge {
     levels(): AudioLevels;
     /**
      * Capture the microphone as the runtime (audio.capture, ADR 0245): `onFrame` hears every 20 ms
-     * frame until `stop`. Null when the person or the OS refuses, or there is no microphone. Hosts
+     * frame until `stop`, and `onEnded` once if the capture ends first (the person stopped it, the
+     * device went). Null when the person or the OS refuses, or there is no microphone. Hosts
      * without a core leave it out.
      */
-    capture?(onFrame: (frame: CaptureFrame) => void): Promise<MicCapture | null>;
-    /** Hear the captures in force, whoever started them, on every change; returns the unsubscribe. */
+    capture?(
+      onFrame: (frame: CaptureFrame) => void,
+      onEnded?: () => void,
+    ): Promise<MicCapture | null>;
+    /**
+     * Hear the captures in force, whoever started them: the list now, then on every change;
+     * returns the unsubscribe.
+     */
     captures?(listener: (captures: readonly CaptureInForce[]) => void): () => void;
     /** Stop any capture, for the person (the rail's microphone). */
     stopCapture?(captureId: string): Promise<void>;
