@@ -27,6 +27,22 @@ describe("where the pill is drawn", () => {
     expect(pillSize("edit", 800)).toEqual({ w: 520, h: 72 });
   });
 
+  it("folded, it keeps 12 clear of the strip under the map on both sides", () => {
+    // Under 734 high the strip is 92 from the right: 1024 − 2 × (92 + 202 + 12) = 412.
+    expect(pillSize("idle", 1024, 500)).toEqual({ w: 412, h: 40 });
+    expect(pillSize("hover", 1024, 500)).toEqual({ w: 412, h: 40 });
+    expect(pillSize("idle", 1100, 600)).toEqual({ w: 440, h: 40 });
+    expect(pillSize("idle", 1440, 900)).toEqual({ w: 440, h: 40 });
+    // 734 high or more, it is 24 from the right: 1024 − 2 × 238 = 548, so 440 fits.
+    expect(pillSize("idle", 1024, 800)).toEqual({ w: 440, h: 40 });
+    // Open, as bottom.css has drawn it since #296.
+    expect(pillSize("edit", 1024, 500)).toEqual({ w: 412, h: 72 });
+    expect(pillBox({ x: 0.5, y: 1 }, "idle", { vw: 1024, vh: 500 })).toMatchObject({
+      left: 306,
+      w: 412,
+    });
+  });
+
   it("at its bottom centre, inside the app however it grows", () => {
     expect(pillBox({ x: 0.5, y: 0.5 }, "idle", APP)).toEqual({
       left: 500,
