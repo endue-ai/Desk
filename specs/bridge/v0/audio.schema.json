@@ -157,7 +157,11 @@
       "type": "object",
       "properties": {
         "captureId": { "type": "string", "minLength": 1 },
-        "caller": { "description": "The plugin id, or desk for the runtime.", "type": "string", "minLength": 1 }
+        "caller": {
+          "description": "The plugin id, or desk for the runtime.",
+          "type": "string",
+          "minLength": 1
+        }
       },
       "required": ["captureId", "caller"],
       "additionalProperties": false
