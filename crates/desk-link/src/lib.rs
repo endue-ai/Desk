@@ -182,7 +182,7 @@ pub fn parse(text: &str) -> Result<Link, Refused> {
                 return refuse("This link does not name a plugin.");
             }
             let surface = only(&pairs, &["surface"])?[0];
-            if let Some(surface) = surface.filter(|s| !surface_holds(s)) {
+            if surface.is_some_and(|s| !surface_holds(s)) {
                 return refuse("This link does not name a surface of a plugin.");
             }
             Ok(Link::Plugin {

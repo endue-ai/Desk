@@ -165,7 +165,10 @@ it("offers the macOS document types on Windows as Open with entries and register
   expect(keys.filter((key) => key?.startsWith(".") && !key.endsWith("OpenWithProgids"))).toEqual(
     [],
   );
-  const commands = [...document.querySelectorAll('RegistryValue[Key="shell\\open\\command"]')];
+  // By attribute value, not a selector: CSS would read the backslashes as escapes.
+  const commands = [...document.querySelectorAll("RegistryValue")].filter(
+    (value) => value.getAttribute("Key") === "shell\\open\\command",
+  );
   expect(commands).toHaveLength(2);
   for (const value of commands)
     expect(value.getAttribute("Value")).toBe('"[INSTALLDIR]endue-desk.exe" --single-argument %1');
