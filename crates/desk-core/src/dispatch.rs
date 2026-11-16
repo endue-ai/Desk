@@ -1,10 +1,10 @@
 //! `Core::dispatch`: each bridge request to the method that serves it, after its params were read
-//! into the generated types. Methods the core does not serve yet answer `unsupported`.
+//! into the generated types.
 
 use desk_bridge::{BridgeRequest, Encoding, FsReadParams, Permission, RequestId};
 
 use crate::core_fs::{list, read};
-use crate::handler::{Answer, Core, unsupported};
+use crate::handler::{Answer, Core};
 
 impl Core {
     pub(crate) fn dispatch(&self, caller: &str, request: BridgeRequest) -> (RequestId, Answer) {
@@ -78,8 +78,8 @@ impl Core {
             R::NetConnect(r) => (r.id, self.net_connect(caller, r.params)),
             R::NetSend(r) => (r.id, self.net_send(caller, r.params)),
             R::NetClose(r) => (r.id, self.net_close(caller, r.params)),
-            R::AudioCaptureStart(r) => (r.id, unsupported("audio.capture.start")),
-            R::AudioCaptureStop(r) => (r.id, unsupported("audio.capture.stop")),
+            R::AudioCaptureStart(r) => (r.id, self.audio_capture_start(caller, r.params)),
+            R::AudioCaptureStop(r) => (r.id, self.audio_capture_stop(caller, r.params)),
             R::UiSurfaceOpen(r) => (r.id, self.surface_open(caller, r.params)),
             R::UiSurfaceClose(r) => (r.id, self.surface_close(caller, r.params)),
             R::UiSurfaceSnapshot(r) => (r.id, self.surface_snapshot(caller, r.params)),
