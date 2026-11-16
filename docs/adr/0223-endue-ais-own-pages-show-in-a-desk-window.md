@@ -5,6 +5,8 @@ decision-makers: Team endue
 ---
 
 Amends ADR 0129 (a card's "Open in endue.ai" opens the system browser).
+Amended by ADR 0232: the back of an agent's card is its Studio board, built on the desk; each of
+its rows opens that part of endue.ai's Studio as this ADR shows a page.
 
 # endue.ai's own pages show in a desk window
 

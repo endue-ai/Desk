@@ -4,7 +4,8 @@ date: 2026-11-09
 decision-makers: Team endue
 ---
 
-Status: amended by ADR 0223: a card's actions show endue.ai's own pages (the agent's page, its
+Status: amended by ADR 0232: the agents show their faces (read by the core), and an agent's card
+turns over to its Studio board. Amended by ADR 0223: a card's actions show endue.ai's own pages (the agent's page, its
 Studio, a space) live in a desk window, the system browser where the desk cannot. Amended by ADR 0212: a file opener that asks for it shows in several windows, one page each,
 so one plugin frame is no longer its one window.
 
