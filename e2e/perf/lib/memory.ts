@@ -62,7 +62,10 @@ export function kinds(procs: readonly Proc[]): Record<string, Kind> {
   const root = procs[0];
   if (!root) return {};
   const by: Record<string, Proc[]> = {};
-  for (const proc of procs) (by[kindOf(proc, root)] ??= []).push(proc);
+  for (const proc of procs) {
+    const kind = kindOf(proc, root);
+    by[kind] = [...(by[kind] ?? []), proc];
+  }
   return Object.fromEntries(
     Object.entries(by).map(([kind, of]) => [kind, { processes: of.length, rssMb: rssMb(of) }]),
   );
