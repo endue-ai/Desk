@@ -160,6 +160,64 @@ for (const size of SIZES) {
       expect(collisions([running, pill, strip])).toEqual([]);
     });
 
+    test("with the talk line's suggestions open, no running chip lies over them", async ({
+      page,
+    }) => {
+      await openShell(page, "?lang=en");
+      const chips = page.locator(".running .run-chip");
+      await expect(chips.first()).toBeVisible();
+      await page.locator(".talk-launch").click();
+      await expect(page.locator(".composer.is-open")).toBeVisible();
+      await page.keyboard.type("calendar");
+      const list = page.locator(".composer-list");
+      await expect(list).toBeVisible();
+      await expect(list.getByRole("option").first()).toBeVisible();
+      // No chip's box meets the list's, and no chip is what a press on a row would reach.
+      const over = await page.evaluate(() => {
+        const list = document.querySelector(".composer-list")?.getBoundingClientRect();
+        if (!list) return ["no list"];
+        const meets = [...document.querySelectorAll<HTMLElement>(".running .run-chip")]
+          .filter((chip) => getComputedStyle(chip).visibility !== "hidden")
+          .map((chip) => chip.getBoundingClientRect())
+          .filter(
+            (r) =>
+              r.width > 0 &&
+              r.left < list.right &&
+              r.right > list.left &&
+              r.top < list.bottom &&
+              r.bottom > list.top,
+          )
+          .map(() => "box");
+        const reached = [...document.querySelectorAll<HTMLElement>(".composer-list [role=option]")]
+          .map((row) => row.getBoundingClientRect())
+          .map((r) => document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2))
+          .filter((at) => at?.closest(".run-chip"))
+          .map(() => "press");
+        return [...meets, ...reached];
+      });
+      expect(over).toEqual([]);
+    });
+
+    test("the running chips come back once the suggestions close", async ({ page }) => {
+      await openShell(page, "?lang=en");
+      const chip = page.locator(".running .run-chip").first();
+      await page.locator(".talk-launch").click();
+      await page.keyboard.type("calendar");
+      await expect(page.locator(".composer-list")).toBeVisible();
+      // Cleared, the line stays open and the list goes: the chips are back where #296 put them.
+      await page.keyboard.press("ControlOrMeta+a");
+      await page.keyboard.press("Backspace");
+      await expect(page.locator(".composer-list")).toBeHidden();
+      await expect(page.locator(".composer.is-open")).toBeVisible();
+      await expect(chip).toBeVisible();
+      await expect(chip).toHaveCSS("visibility", "visible");
+      // Closed, they are back at rest.
+      await page.keyboard.press("Escape");
+      await expect(page.locator(".composer.is-open")).toHaveCount(0);
+      await expect(chip).toBeVisible();
+      await expect(chip).toHaveCSS("visibility", "visible");
+    });
+
     test("the drawer's panel opened from the strip is whole inside the app", async ({ page }) => {
       await openShell(page, "?lang=en");
       await page.locator(".drawer-button").click();
