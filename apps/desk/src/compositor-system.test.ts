@@ -48,18 +48,21 @@ describe("the desk's system parts", () => {
     bottom.className = "bottom";
     bottom.getBoundingClientRect = () => ({ x: 0, y: 800, width: 1280, height: 0 }) as DOMRect;
     document.body.append(bottom);
-    at("drawer", [92, 736, 40, 40], bottom);
     at("composer talk-pill", [548, 732, 184, 48], bottom);
     at("running", [760, 744, 0, 0], bottom);
-    at("canvas-reset icon-button", [148, 744, 32, 32]);
+    // The strip under the canvas map, beside the footer: one part, its buttons in it (issue 296).
+    const strip = at("map-strip", [1054, 736, 202, 32]);
+    at("drawer", [1150, 738, 28, 28], strip).append(
+      at("icon-button drawer-button", [1150, 738, 28, 28]),
+    );
+    at("canvas-reset icon-button", [1226, 738, 28, 28], strip);
     const system = document.createElement("div");
     system.dataset.layer = "system";
     document.body.append(system);
     at("safe-badge", [552, 24, 175, 35], system);
     expect(systemParts(document)).toEqual([
-      { id: "desk.bottom", x: 92, y: 736, width: 40, height: 40 },
       { id: "desk.bottom", x: 548, y: 732, width: 184, height: 48 },
-      { id: "desk.canvas", x: 148, y: 744, width: 32, height: 32 },
+      { id: "desk.canvas", x: 1054, y: 736, width: 202, height: 32 },
       { id: "desk.safe", x: 552, y: 24, width: 175, height: 35 },
     ]);
   });

@@ -57,7 +57,7 @@ test.describe("at 1440×900", () => {
     });
   }
 
-  test("every icon button has an aria-label, and tab order runs modes → desktops → bar → user controls → Eris → rail → bottom", async ({
+  test("every icon button has an aria-label, and tab order runs modes → desktops → bar → user controls → Eris → rail → bottom → the map's strip", async ({
     page,
   }) => {
     await openShell(page);
@@ -79,6 +79,7 @@ test.describe("at 1440×900", () => {
         ".eris",
         ".rail",
         ".bottom",
+        ".map-strip",
       ];
       const focusable = [
         ...document.querySelectorAll<HTMLElement>("#desk button, #desk input, #desk [tabindex]"),
@@ -101,6 +102,7 @@ test.describe("at 1440×900", () => {
       ".eris",
       ".rail",
       ".bottom",
+      ".map-strip",
     ]);
   });
 
@@ -131,7 +133,7 @@ test.describe("at 1024 wide", () => {
         ".sidebar",
         ".account-bar",
         ".rail",
-        ".drawer",
+        ".map-strip",
         ".composer",
         ".running",
         ".eris",
@@ -157,5 +159,18 @@ test.describe("at 1024 wide", () => {
     // (shell-canvas.spec.ts).
     await expect(page.locator(".sidebar")).toBeVisible();
     await expect(page.locator(".rail")).toBeVisible();
+  });
+
+  test("the drawer's panel, opened from the strip under the map, is whole inside the app", async ({
+    page,
+  }) => {
+    await openShell(page);
+    await page.click(".drawer-button");
+    const panel = await page.locator(".drawer-panel").boundingBox();
+    if (!panel) throw new Error("no box for the drawer's panel");
+    expect(panel.x).toBeGreaterThanOrEqual(0);
+    expect(panel.y).toBeGreaterThanOrEqual(0);
+    expect(panel.x + panel.width).toBeLessThanOrEqual(1024);
+    expect(panel.y + panel.height).toBeLessThanOrEqual(768);
   });
 });

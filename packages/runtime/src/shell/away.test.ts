@@ -14,10 +14,10 @@ const HTML = `
   <div class="eris"></div>
   <aside class="rail"><button class="rail-button"></button></aside>
   <footer class="bottom">
-    <div class="drawer"></div>
     <div class="composer"></div>
     <ul class="running"></ul>
   </footer>
+  <div class="map-strip"><div class="drawer"></div><button class="canvas-reset"></button></div>
   <div class="surfaces"><section class="surface"></section></div>`;
 
 /** Where each part rests in a 1024×768 app (jsdom lays nothing out). */
@@ -28,7 +28,8 @@ const BOXES: Record<string, [x: number, y: number, w: number, h: number]> = {
   eris: [448, 40, 128, 138],
   rail: [944, 223, 56, 322],
   composer: [420, 700, 184, 48],
-  running: [800, 708, 120, 32],
+  running: [560, 708, 120, 32],
+  "map-strip": [798, 704, 202, 32],
 };
 
 const full = { id: "notes", plugin: "endue.shell", x: 0, y: 0, w: 1024, h: 768, pinned: false };
@@ -88,7 +89,7 @@ describe("the desk's chrome while a window fills the app (ADR 0221)", () => {
     expect(root.classList.contains("is-away")).toBe(false);
   });
 
-  it("sends each part out past its own edge, and leaves the account bar and the Drawer button", () => {
+  it("sends each part out past its own edge, and leaves only the account bar", () => {
     windows("full");
     expect(root.classList.contains("is-away")).toBe(true);
     expect(out()).toEqual(all);
@@ -97,6 +98,7 @@ describe("the desk's chrome while a window fills the app (ADR 0221)", () => {
       composer: "bottom",
       desktops: "top",
       eris: "top",
+      "map-strip": "right",
       modes: "top",
       rail: "right",
       running: "bottom",
@@ -107,10 +109,20 @@ describe("the desk's chrome while a window fills the app (ADR 0221)", () => {
     expect(part("rail").style.getPropertyValue("--away-x")).toBe("96px");
     expect(part("modes").style.getPropertyValue("--away-y")).toBe("-120px");
     expect(part("composer").style.getPropertyValue("--away-y")).toBe("84px");
-    for (const stays of [".account-bar", ".drawer"]) {
-      const el = root.querySelector(stays) as HTMLElement;
-      expect([el.classList.contains("is-out"), el.dataset.away]).toEqual([false, undefined]);
+    // The strip under the map goes with the rail, its own box and 16 more past the right edge.
+    expect(part("map-strip").style.getPropertyValue("--away-x")).toBe("242px");
+    const bar = root.querySelector(".account-bar") as HTMLElement;
+    expect([bar.classList.contains("is-out"), bar.dataset.away]).toEqual([false, undefined]);
+    // Nothing else stays: the Drawer and the origin buttons go with the strip that holds them.
+    for (const el of root.querySelectorAll(".drawer, .canvas-reset")) {
+      expect(el.closest(".is-out")).not.toBeNull();
     }
+    // The Drawer's panel open keeps the right edge's parts in sight.
+    store.set({ popover: "drawer" });
+    expect(out()).toEqual(all.filter((name) => name !== "map-strip" && name !== "rail"));
+    store.set({ popover: null });
+    vi.advanceTimersByTime(LEAVE_MS);
+    expect(out()).toEqual(all);
   });
 
   it("brings an edge's parts back while the compositor says the pointer is there, and sends them away after it has gone", () => {
@@ -166,7 +178,7 @@ describe("the desk's chrome while a window fills the app (ADR 0221)", () => {
     expect(part("rail").classList.contains("is-out")).toBe(true);
 
     store.set((s) => ({ composer: { ...s.composer, open: true } }));
-    expect(out()).toEqual(["desktops", "eris", "modes", "rail", "sidebar"]);
+    expect(out()).toEqual(["desktops", "eris", "map-strip", "modes", "rail", "sidebar"]);
     store.set((s) => ({ composer: { ...s.composer, open: false } }));
     vi.advanceTimersByTime(LEAVE_MS);
 

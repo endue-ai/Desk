@@ -7,8 +7,9 @@ import { DESK, openShell } from "./shell-helpers";
 
 test.use({ viewport: DESK });
 
-const AWAY = [".sidebar", ".rail", ".modes", ".desktops", ".eris", ".composer"];
-const STAY = [".account-bar", ".drawer"];
+const AWAY = [".sidebar", ".rail", ".map-strip", ".modes", ".desktops", ".eris", ".composer"];
+// The account bar alone (#296): the Drawer and the origin button go with the map's strip.
+const STAY = [".account-bar"];
 
 /** Two of the shell's own windows on desktop 1, Notes in use. */
 async function seed(page: Page) {
@@ -118,9 +119,12 @@ test.describe("a window that fills the whole app", () => {
     await page.mouse.move(700, 400);
     await expect(part(page, ".sidebar")).toBeHidden();
 
-    // The right edge: the rail, whose Arrange actions keep it in sight while they are open.
+    // The right edge: the rail and the map's strip, the rail's Arrange actions keeping it in sight
+    // while they are open.
     await page.mouse.move(1437, 400);
     await expect(part(page, ".rail")).toBeVisible();
+    await expect(part(page, ".map-strip")).toBeVisible();
+    await expect.poll(() => places(page, [".map-strip"])).toEqual({ ".map-strip": [1214, 836] });
     await page.locator('.rail [data-rail="tasks"]').click();
     await page.mouse.move(700, 400);
     await page.waitForTimeout(700);

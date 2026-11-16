@@ -63,3 +63,19 @@ describe("the canvas hint", () => {
     expect(control.closest("[title]")).toBeNull();
   });
 });
+
+describe("the pan", () => {
+  it("the pan mounts no button of its own", () => {
+    // The way back to the origin is the strip's under the canvas map (MapStrip.ts, issue 296).
+    const root = document.createElement("div");
+    document.body.append(root);
+    const store = new Store({ ...sampleState("en", 0), pan: { "1": { x: -300, y: -200 } } });
+    const dispose = mountPan(root, { store, tr: (key: string) => key } as unknown as ShellCtx);
+    expect(root.classList.contains("has-canvas")).toBe(true);
+    expect(root.style.getPropertyValue("--pan-x")).toBe("-300px");
+    expect(root.querySelector(".canvas-reset")).toBeNull();
+    expect(root.querySelector("button")).toBeNull();
+    dispose();
+    root.remove();
+  });
+});

@@ -17,6 +17,7 @@ test.describe("the desk shell", () => {
       ".sidebar",
       ".eris",
       ".rail",
+      ".map-strip",
       ".drawer",
       ".composer",
       ".running",
@@ -174,6 +175,14 @@ test.describe("the desk shell", () => {
     await page.click(".drawer-button");
     const panel = page.getByRole("dialog", { name: "서랍" });
     await expect(panel.locator(".drawer-item")).toHaveCount(3);
+    // From the strip under the canvas map: above it, its right edge on the strip's, inside the app.
+    const strip = await page.locator(".map-strip").boundingBox();
+    const box = await panel.boundingBox();
+    if (!strip || !box) throw new Error("no box for the strip or the panel");
+    expect(box.y + box.height).toBeLessThanOrEqual(strip.y);
+    expect(box.x + box.width).toBe(strip.x + strip.width);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
     await panel.locator('[data-item="recent-weather"] button').click();
     await expect(page.locator('[data-surface="recent:recent-weather"]')).toBeVisible();
     await expect(page.locator('[data-surface="recent:recent-weather"] .eris-badge')).toHaveText(

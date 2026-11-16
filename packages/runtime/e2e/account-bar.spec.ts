@@ -42,8 +42,29 @@ for (const viewport of [
     expect((box?.y ?? 0) + (box?.height ?? 0)).toBe(viewport.height - 16);
     const agents = await page.locator(".sidebar").boundingBox();
     expect((agents?.y ?? 0) + (agents?.height ?? 0)).toBeLessThan(box?.y ?? 0);
-    const drawer = await page.locator(".drawer").boundingBox();
-    expect(drawer?.x).toBeGreaterThanOrEqual((box?.x ?? 0) + (box?.width ?? 0));
+    // Nothing but the account bar lies in the app's bottom-left quarter (#296): the Drawer and the
+    // origin button are the strip's under the canvas map.
+    const quarter = await page.evaluate(() =>
+      [
+        ".modes",
+        ".desktops",
+        ".sidebar",
+        ".account-bar",
+        ".rail",
+        ".eris",
+        ".map-strip",
+        ".drawer",
+        ".canvas-reset",
+        ".composer",
+        ".running",
+      ].filter((sel) =>
+        [...document.querySelectorAll(`#desk ${sel}`)].some((el) => {
+          const r = el.getBoundingClientRect();
+          return r.width > 0 && r.right <= innerWidth / 2 && r.top >= innerHeight / 2;
+        }),
+      ),
+    );
+    expect(quarter).toEqual([".account-bar"]);
     await page.click('[data-desktop="4"]');
     await expect(bar).toBeVisible();
     expect(await bar.boundingBox()).toEqual(box);

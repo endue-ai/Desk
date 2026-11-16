@@ -1,7 +1,7 @@
 // The desk's own parts at the app's small sizes (#159, draft 05 #9 and #14; #158, draft 04 #15): at
 // 1024×500, the smallest app window, and at 1100×600 no two of them lie on each other and each is
-// inside the app, "New profile" can be pressed, the canvas reset button is where its style puts
-// it, and the status line is in sight. A notice that stays is a card above the windows that shows
+// inside the app, "New profile" can be pressed, the canvas reset button is in the strip under the
+// canvas map (#296), and the status line is in sight. A notice that stays is a card above the windows that shows
 // the whole of itself and can be dismissed.
 import { expect, type Page, test } from "@playwright/test";
 import { openShell } from "./shell-helpers";
@@ -15,7 +15,7 @@ const PARTS: ReadonlyArray<readonly [id: string, selector: string]> = [
   ["desk.account", '[data-layer="system"] .account-bar'],
   ["desk.rail", ".rail"],
   ["desk.bottom", "footer.bottom > *"],
-  ["desk.canvas", ".canvas-reset"],
+  ["desk.canvas", ".map-strip"],
   ["desk.safe", '[data-layer="system"] .safe-badge'],
   ["desk.eris", ".eris"],
   ["desk.notices", ".desk-status"],
@@ -94,19 +94,86 @@ for (const size of SIZES) {
       expect(await onTop(page, '[data-layer="system"] .modes .mode-chip')).toBe(true);
     });
 
-    test("on a panned canvas the reset button is whole, bottom left, and takes its press", async ({
+    test("on a panned canvas the reset button is whole, bottom right, and takes its press", async ({
       page,
     }) => {
       await openShell(page, "?lang=en");
       await page.evaluate(() => window.__shell.wm.panBy(-300, -200));
-      const reset = page.locator(".canvas-reset");
-      await expect(reset).toBeVisible();
+      const reset = page.locator(".map-strip .canvas-reset");
+      await expect(reset).toBeEnabled();
+      // The strip under the map: 24 from the right, 92 in an app under 734 high (draw_map.rs).
+      const right = size.height < 734 ? 92 : 24;
+      const strip = await page.locator(".map-strip").boundingBox();
+      expect(strip).toEqual({
+        x: size.width - right - 202,
+        y: size.height - 64,
+        width: 202,
+        height: 32,
+      });
       const box = await reset.boundingBox();
-      expect(box).toEqual({ x: 148, y: size.height - 24 - 32, width: 32, height: 32 });
+      if (!box || !strip) throw new Error("no box for the strip or its reset button");
+      expect(box.x).toBeGreaterThanOrEqual(strip.x);
+      expect(box.y).toBeGreaterThanOrEqual(strip.y);
+      expect(box.x + box.width).toBeLessThanOrEqual(strip.x + strip.width);
+      expect(box.y + box.height).toBeLessThanOrEqual(strip.y + strip.height);
       expect(collisions(await parts(page))).toEqual([]);
-      expect(await onTop(page, ".canvas-reset")).toBe(true);
+      expect(await onTop(page, ".map-strip .canvas-reset")).toBe(true);
       await reset.click();
-      await expect(reset).toHaveCount(0);
+      // Disabled at the origin, not gone.
+      await expect(reset).toBeDisabled();
+      await expect(reset).toHaveCount(1);
+    });
+
+    test("the running chips stay in sight with the talk line open, clear of the pill and the strip", async ({
+      page,
+    }) => {
+      await openShell(page, "?lang=en");
+      const chip = page.locator(".running .run-chip").first();
+      await expect(chip).toBeVisible();
+      const box = (selector: string) =>
+        page.locator(selector).evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          return { id: el.className, x: r.x, y: r.y, w: r.width, h: r.height };
+        });
+      // At rest, beside the pill.
+      const rest = await Promise.all([box(".running"), box(".composer"), box(".map-strip")]);
+      expect(rest[0].w).toBeGreaterThan(0);
+      expect(collisions(rest)).toEqual([]);
+      await page.locator(".talk-launch").click();
+      await expect(page.locator(".composer.is-open")).toBeVisible();
+      // Once the line has opened to its width: two looks a frame apart that agree.
+      await expect
+        .poll(async () => {
+          const a = (await box(".composer")).w;
+          await page.waitForTimeout(100);
+          return a === (await box(".composer")).w ? a : -1;
+        })
+        .toBeGreaterThan(184);
+      const [running, first, pill, strip] = await Promise.all([
+        box(".running"),
+        box(".running > li:first-child .run-chip"),
+        box(".composer"),
+        box(".map-strip"),
+      ]);
+      expect(first.w).toBeGreaterThan(0);
+      expect(running.w).toBeGreaterThan(0);
+      expect(collisions([running, pill, strip])).toEqual([]);
+    });
+
+    test("the drawer's panel opened from the strip is whole inside the app", async ({ page }) => {
+      await openShell(page, "?lang=en");
+      await page.locator(".drawer-button").click();
+      const panel = page.getByRole("dialog", { name: "Drawer" });
+      await expect(panel.locator(".drawer-item")).toHaveCount(3);
+      const r = await panel.boundingBox();
+      if (!r) throw new Error("no box for the drawer's panel");
+      expect(
+        outside(
+          [{ id: "drawer", x: r.x, y: r.y, w: r.width, h: r.height }],
+          size.width,
+          size.height,
+        ),
+      ).toEqual([]);
     });
   });
 }
