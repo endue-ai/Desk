@@ -12,6 +12,9 @@
 //!   winit's delegate class serves every winit window, so the wrap acts for the desk window's
 //!   delegate alone and leaves the others as winit made them.
 #![allow(unsafe_code)]
+// NSFilenamesPboardType is deprecated, but it is the type winit registers and reads files by: the
+// desk window keeps it among the types it takes.
+#![allow(deprecated)]
 
 use std::cell::RefCell;
 use std::path::PathBuf;
