@@ -1,0 +1,75 @@
+{
+  "id": "endue.docker-studio",
+  "name": "Docker Studio",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "A graphical client for the Docker engine: a live dashboard of resource use and what needs attention, containers grouped by Compose stack with their logs, files, stats and a shell, images with their layers and a run form, volumes, networks, stacks with their service map, builds with their steps, and AI that diagnoses failures and writes Dockerfiles. Every operation runs the docker program without a shell.",
+  "permissions": [
+    {
+      "permission": "proc:spawn",
+      "commands": ["docker"]
+    },
+    {
+      "permission": "brain:ask"
+    },
+    {
+      "permission": "shell:open",
+      "schemes": ["http", "https"]
+    },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["endue.terminal.run", "desk.files.open"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Docker Studio",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.docker-studio.open",
+        "title": "Docker Studio: open",
+        "keywords": ["docker", "containers", "images", "compose", "client"],
+        "description": "Open Docker Studio, on a section when one is named.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "section": {
+              "type": "string",
+              "enum": [
+                "dashboard",
+                "containers",
+                "images",
+                "volumes",
+                "networks",
+                "compose",
+                "builds",
+                "hub",
+                "contexts"
+              ],
+              "description": "The section to show"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.docker-studio.refresh",
+        "title": "Docker Studio: refresh",
+        "keywords": ["docker", "reload"],
+        "description": "Read the engine and every list again."
+      }
+    ],
+    "keys": [
+      {
+        "key": "Mod+Alt+K",
+        "command": "endue.docker-studio.open"
+      }
+    ]
+  }
+}

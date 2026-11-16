@@ -1,0 +1,201 @@
+/* Dialogs, menus, confirmations and toasts. Theme tokens only. */
+
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.layer > * {
+  pointer-events: auto;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--desk-space-6);
+  animation: ds-fade var(--desk-motion-fast) ease-out;
+}
+
+@keyframes ds-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: min(86vh, 900px);
+  padding: 0;
+  overflow: hidden;
+  animation: ds-rise var(--desk-motion-base) var(--desk-easing);
+}
+
+.dialog.wide {
+  width: min(920px, 100%);
+}
+
+@keyframes ds-rise {
+  from {
+    transform: translateY(8px) scale(0.985);
+    opacity: 0;
+  }
+}
+
+.dialog-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+  padding: var(--desk-space-4) var(--desk-space-4) var(--desk-space-3) var(--desk-space-5);
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--desk-radius-md);
+  background: var(--ds-select);
+  color: var(--desk-primary-text);
+}
+
+.dialog.danger .dialog-icon {
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+}
+
+.dialog-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.dialog-titles h2 {
+  margin: 0;
+  font-size: var(--desk-text-base);
+  font-weight: 650;
+}
+
+.dialog-titles p {
+  margin: 2px 0 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-4);
+  min-height: 0;
+  padding: var(--desk-space-4) var(--desk-space-5);
+  overflow: auto;
+}
+
+.dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-3) var(--desk-space-5);
+  border-top: 1px solid var(--ds-line);
+  background: var(--ds-soft);
+}
+
+.dialog-foot .grow {
+  margin-right: auto;
+}
+
+.confirm-text {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.menu-catcher {
+  position: fixed;
+  inset: 0;
+}
+
+.menu {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  min-width: 210px;
+  max-width: 320px;
+  animation: ds-fade var(--desk-motion-fast) ease-out;
+}
+
+.desk-btn.menu-item {
+  justify-content: flex-start;
+  gap: var(--desk-space-2);
+  min-height: 30px;
+  padding: 0 var(--desk-space-2);
+  border-radius: var(--desk-radius-sm);
+  font-weight: 400;
+}
+
+.desk-btn.menu-item .icon {
+  color: var(--desk-text-muted);
+}
+
+.desk-btn.menu-item.danger,
+.desk-btn.menu-item.danger .icon {
+  color: var(--desk-danger-text);
+}
+
+.menu-gap {
+  width: 16px;
+}
+
+.menu-label {
+  flex: 1;
+  text-align: left;
+}
+
+.menu-sep {
+  height: 1px;
+  margin: var(--desk-space-1) 0;
+  background: var(--ds-line);
+}
+
+.toasts {
+  position: fixed;
+  right: var(--desk-space-5);
+  bottom: 44px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--desk-space-2);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  max-width: 440px;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border: 1px solid var(--desk-toast-border);
+  border-radius: var(--desk-toast-radius);
+  background: var(--desk-toast-bg);
+  box-shadow: var(--desk-toast-shadow);
+  color: var(--desk-toast-fg);
+  animation: ds-rise var(--desk-motion-base) var(--desk-easing);
+  transition: opacity var(--desk-motion-base) ease;
+}
+
+.toast.success .icon {
+  color: var(--ds-ok);
+}
+
+.toast.danger .icon {
+  color: var(--ds-bad);
+}
+
+.toast.leaving {
+  opacity: 0;
+}
