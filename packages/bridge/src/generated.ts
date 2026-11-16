@@ -5693,6 +5693,8 @@ export interface ProcWriteParams {
   procId: string;
   data: string;
   encoding?: Encoding;
+  /** Close stdin after data is written, so the program sees the end of its input. */
+  close?: boolean;
   scope: ProcSpawnPermission;
 }
 

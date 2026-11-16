@@ -161,7 +161,9 @@ unloads, or loses the grant that covers the command, has its processes killed an
 `proc.exit` still arrives.
 
 **proc.write** writes data to the process's stdin, or to its PTY. It needs the same `proc:spawn` scope
-the process was started with.
+the process was started with. With `close: true` it closes stdin after the data (which may be empty), so a
+program that reads to the end, like `git apply -`, sees it; a later write is `io_error`, and a process in
+a PTY answers `unsupported` (ADR 0248).
 
 **proc.resize** changes the PTY size of a process started with `pty`; other processes answer
 `unsupported`.
