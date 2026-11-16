@@ -17,7 +17,7 @@ desk-core.workspace = true
 desk-crash.workspace = true
 desk-ipc = { path = "../desk-ipc" }
 desk-mcp-client = { path = "../desk-mcp-client" }
-desk-sys = { workspace = true, features = ["calendar", "keychain"] }
+desk-sys = { workspace = true, features = ["calendar", "keychain", "audio"] }
 desk-trace.workspace = true
 desk-update.workspace = true
 serde_json.workspace = true
