@@ -48,6 +48,8 @@ pub struct Desk {
     pub eris: OnceLock<Arc<Eris>>,
     /// The island (ADR 0204), once the shell has started.
     pub island: OnceLock<Arc<Island>>,
+    /// The OS's notifications (#306), made on the page's first post.
+    pub notices: OnceLock<Arc<crate::system_notices::SystemNotices>>,
     /// This desk's hold on being the only one; let go before it starts again.
     pub instance: Mutex<Option<Instance>>,
     /// The desk's own updates, when this build updates itself (#47).
@@ -91,6 +93,7 @@ impl Desk {
             pump,
             pages: Pages::default(),
             eris: OnceLock::new(),
+            notices: OnceLock::new(),
             island: OnceLock::new(),
             instance: Mutex::new(instance),
             updater,

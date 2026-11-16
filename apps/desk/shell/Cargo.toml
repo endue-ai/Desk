@@ -52,8 +52,9 @@ desk-compositor.workspace = true
 desk-link = { path = "../../../crates/desk-link" }
 desk-surface = { workspace = true, features = ["native"] }
 desk-core.workspace = true
-# Start at login (#237): the login item the setting registers, and the start it makes.
-desk-sys = { workspace = true, features = ["login"] }
+# Start at login (#237): the login item the setting registers, and the start it makes. The OS's
+# notifications (#306): a notice posted while endue is out of sight, and its click.
+desk-sys = { workspace = true, features = ["login", "notification"] }
 desk-trace.workspace = true
 # The desk's own updates (ADR 0054, ADR 0147): the updater, its HTTPS origin and the installer.
 desk-update = { workspace = true, features = ["https", "install"] }

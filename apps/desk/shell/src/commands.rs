@@ -81,6 +81,8 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
         }
         // What `desk.login.start` is, from the page that reads it (`login.rs`, #237).
         "desk_login" => crate::login::answer(&call.args),
+        // A notice the page sends to the OS's notifications (`system_notices.rs`, #306).
+        "desk_notice_post" => crate::system_notices::answer(desk, &call.args),
         "desk_crash" => Ok(json!(crash.record(&text("message"), &text("stack")))),
         "take_last_crash" => Ok(crash.take_last().unwrap_or(Value::Null)),
         "plugin:dialog|open" => crate::dialog::open(desk, &call.args),
