@@ -158,6 +158,19 @@ eines anderen Plugins mit 403, außer dem einer Bibliothek (ADR 0049) und denen 
 unter `imports` nennt (`"imports": ["endue.eris"]`); deren Code läuft dann als Ihrer. Bauen Sie URLs aus relativen Pfaden,
 nie aus dem Origin.
 
+### Wörter in der Sprache des Desks
+
+Der Desk spricht Englisch und Koreanisch, und die Einstellung `desk.language` wählt, welche
+(`system`, die Vorgabe, folgt der Sprache des Computers). Liefern Sie Ihre Wörter als
+Nachrichtenkataloge mit (ADR 0250): eine JSON-Datei je Sprache in einem Ordner, den Ihr Manifest nennt,
+`"messages": "messages"`, wobei `en.json` Pflicht ist. Ein Katalog ordnet einer Nachrichten-ID
+(`greeting.hello`) einen Text zu oder Pluralformen, die der Parameter `count` wählt
+(`{ "one": "{count} file", "other": "{count} files" }`). `{name}` füllt der gleichnamige Parameter. In
+der Seite liest `ctx.messages.t("greeting.hello", { name })` die Sprache des Desks, dann Englisch, dann
+die ID. `ctx.messages.language()` nennt die Sprache, und `ctx.messages.onChange` meldet jede Änderung,
+damit Sie Ihre Wörter neu zeichnen. `defineUiPlugin` bindet ein, sobald Ihre Kataloge geladen sind. Das
+Format ist `specs/plugin/v0/messages.schema.json`.
+
 ## Wie sich das Fenster einer App öffnet
 
 Ein Plugin, dessen Oberfläche bei `center` oder `floating` liegt, ist eine App: Ihr Fenster öffnet sich

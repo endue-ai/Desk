@@ -153,6 +153,18 @@ On your origin a path under another plugin's id answers 403, except a library's 
 plugins your manifest names in `imports` (`"imports": ["endue.eris"]`), whose code then runs as yours. Build
 URLs from relative paths, never from the origin.
 
+### Words in the desk's language
+
+The desk speaks English and Korean, and the `desk.language` setting chooses which (`system`, the
+default, follows the computer's language). Ship your words as message catalogs (ADR 0250): one JSON
+file per language in a folder your manifest names, `"messages": "messages"`, with `en.json` required.
+A catalog maps a message id (`greeting.hello`) to a text, or to plural forms the `count` parameter
+picks (`{ "one": "{count} file", "other": "{count} files" }`). `{name}` is filled by the parameter of
+that name. In the page, `ctx.messages.t("greeting.hello", { name })` reads the desk's language, then
+English, then the id. `ctx.messages.language()` names the language, and `ctx.messages.onChange`
+hears each change, so you can draw your words again. `defineUiPlugin` mounts once your catalogs are
+in. The format is `specs/plugin/v0/messages.schema.json`.
+
 ## How an app's window opens
 
 A plugin whose surface is placed `center` or `floating` is an app: its window opens on the desk's

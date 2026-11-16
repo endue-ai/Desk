@@ -156,6 +156,19 @@ plugin répond 403, sauf celui d'une bibliothèque (ADR 0049) et ceux des plugin
 dans `imports` (`"imports": ["endue.eris"]`), dont le code s'exécute alors comme le vôtre. Construisez les URL à partir de chemins
 relatifs, jamais à partir de l'origine.
 
+### Les mots dans la langue du bureau
+
+Le bureau parle anglais et coréen, et le réglage `desk.language` choisit laquelle (`system`, par
+défaut, suit la langue de l'ordinateur). Livrez vos mots sous forme de catalogues de messages
+(ADR 0250) : un fichier JSON par langue dans un dossier que nomme votre manifeste,
+`"messages": "messages"`, `en.json` étant obligatoire. Un catalogue associe un identifiant de message
+(`greeting.hello`) à un texte, ou à des formes plurielles que choisit le paramètre `count`
+(`{ "one": "{count} file", "other": "{count} files" }`). `{name}` reçoit le paramètre de ce nom. Dans la
+page, `ctx.messages.t("greeting.hello", { name })` lit la langue du bureau, puis l'anglais, puis
+l'identifiant. `ctx.messages.language()` donne la langue, et `ctx.messages.onChange` signale chaque
+changement, pour redessiner vos mots. `defineUiPlugin` monte une fois vos catalogues chargés. Le
+format est `specs/plugin/v0/messages.schema.json`.
+
 ## Comment s'ouvre la fenêtre d'une application
 
 Un plugin dont la surface est placée `center` ou `floating` est une application : sa fenêtre s'ouvre

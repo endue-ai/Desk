@@ -148,6 +148,18 @@ SDK는 로드되는 순간부터 데스크의 핑(`desk:ping`)에 스스로 답�
 플러그인(`"imports": ["endue.eris"]`)은 예외이며, 그 코드는 여러분의 플러그인으로 실행됩니다. URL은 오리진이
 아니라 상대 경로로 만드세요.
 
+### 데스크의 언어로 쓰는 말
+
+데스크는 영어와 한국어를 쓰고, 어느 쪽을 쓸지는 `desk.language` 설정이 정합니다(기본값 `system` 은
+컴퓨터의 언어를 따릅니다). 플러그인의 말은 메시지 카탈로그로 함께 넣습니다(ADR 0250). 매니페스트가 가리키는
+폴더(`"messages": "messages"`)에 언어마다 JSON 파일을 하나씩 두고, `en.json` 은 꼭 있어야 합니다.
+카탈로그는 메시지 ID(`greeting.hello`)를 텍스트에, 또는 `count` 매개변수가 고르는 복수형
+(`{ "one": "{count} file", "other": "{count} files" }`)에 연결합니다. `{name}` 에는 같은 이름의 매개변수가
+들어갑니다. 페이지에서 `ctx.messages.t("greeting.hello", { name })` 는 데스크의 언어, 그다음 영어, 마지막으로
+ID 순서로 읽습니다. `ctx.messages.language()` 는 언어를 알려 주고, `ctx.messages.onChange` 는 바뀔 때마다
+알려 주므로 말을 다시 그릴 수 있습니다. `defineUiPlugin` 은 카탈로그가 다 들어온 뒤에 마운트합니다. 형식은
+`specs/plugin/v0/messages.schema.json` 에 있습니다.
+
 ## 앱의 창이 열리는 방식
 
 서피스를 `center` 나 `floating` 에 두는 플러그인은 앱입니다. 그 창은 데스크의 캔버스 위에 열리거나 자기

@@ -114,6 +114,16 @@ SDK 从加载那一刻起就自行回应 Desk 的 ping（`desk:ping`），所以
 
 每个表面都在自己的源上加载，这样按站点隔离的引擎就能让每个窗口各占一个进程：macOS 和 Linux 上是 `desk-plugin://<surface>.<label>/<id>/<path>`，Windows 上是 `http://desk-plugin.<surface>.<label>.localhost/<id>/<path>`。`<surface>` 是表面的 `id`（未声明时为 `main`）；`<label>` 是把插件 id 中的每个 `-` 写成两个、再把每个 `.` 写成一个 `-` 得到的结果，因此 `example.my-plugin` 变为 `example-my--plugin`。路径仍保留 `/<id>/`，所以相对 URL、`import.meta.url`、导入映射中的 `/_desk/` 路径和 `fs.url` 的 URL 都照旧解析。在你的源上请求其他插件 id 下的路径会得到 403，库（ADR 0049）和清单 `imports` 中列出的插件（`"imports": ["endue.eris"]`）除外，这些代码随后以你的插件身份运行。请用相对路径构造 URL，不要从源拼接。
 
+### 用桌面的语言显示文字
+
+桌面说英语和韩语,用哪一种由 `desk.language` 设置决定(默认的 `system` 跟随电脑的语言)。把你的文字作为
+消息目录随插件发布(ADR 0250):在清单指定的文件夹(`"messages": "messages"`)里每种语言放一个 JSON 文件,
+`en.json` 必不可少。目录把消息 ID(`greeting.hello`)映射到文本,或映射到由 `count` 参数选择的复数形式
+(`{ "one": "{count} file", "other": "{count} files" }`)。`{name}` 由同名参数填入。在页面里,
+`ctx.messages.t("greeting.hello", { name })` 先读桌面的语言,再读英语,最后是 ID 本身。
+`ctx.messages.language()` 给出语言,`ctx.messages.onChange` 在每次变化时通知你,以便重新绘制文字。
+`defineUiPlugin` 在目录就绪后才挂载。格式见 `specs/plugin/v0/messages.schema.json`。
+
 ## 应用的窗口如何打开
 
 界面放在 `center` 或 `floating` 的插件就是一个应用：它的窗口打开在桌面的画布上，或者打开在自己的操作系统
