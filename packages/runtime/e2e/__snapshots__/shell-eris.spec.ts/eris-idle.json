@@ -1,15 +1,18 @@
 {
  "tag": "div",
- "class": "eris",
+ "class": "eris is-resting",
  "role": "button",
  "aria-label": "Eris",
  "data-state": "idle",
  "box": [
   656,
-  40,
+  702,
   128,
   138
  ],
+ "style": {
+  "opacity": "0"
+ },
  "children": [
   {
    "tag": "span",
