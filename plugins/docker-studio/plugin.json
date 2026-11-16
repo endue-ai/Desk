@@ -20,6 +20,14 @@
     {
       "permission": "cmd:invoke",
       "ids": ["endue.terminal.run", "desk.files.open"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["${home}/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["${home}/**"]
     }
   ],
   "surfaces": [

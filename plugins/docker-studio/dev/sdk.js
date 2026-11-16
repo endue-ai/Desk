@@ -137,7 +137,7 @@ export async function defineUiPlugin(plugin) {
   let state = query.has("fresh")
     ? undefined
     : (JSON.parse(localStorage.getItem(key) ?? "null") ?? undefined);
-  if (query.get("page")) state = { page: query.get("page"), detail: null };
+  if (query.get("page")) state = { ...(state ?? {}), page: query.get("page"), detail: null };
   /** @type {Record<string, unknown>} */
   const settings = {};
   plugin.mount({

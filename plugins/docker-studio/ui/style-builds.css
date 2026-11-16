@@ -1,0 +1,190 @@
+/* Builds and the Dockerfile writer: live builds and their steps, the history, the cache, and the
+   writer's form and preview. Theme tokens only. */
+
+.builds-live {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+}
+
+.build-live .card-head .desk-btn {
+  margin-left: auto;
+}
+
+.builds-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: var(--desk-space-3);
+  align-items: start;
+}
+
+.build-steps {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  list-style: none;
+}
+
+.build-step {
+  display: grid;
+  grid-template-columns: 20px 92px minmax(0, 1fr) 72px;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: 28px;
+  font-size: var(--desk-text-xs);
+}
+
+.step-icon {
+  display: grid;
+  place-items: center;
+  color: var(--desk-text-muted);
+}
+
+.build-step.s-done .step-icon {
+  color: var(--desk-success-text);
+}
+
+.build-step.s-error .step-icon,
+.build-step.s-error .step-name {
+  color: var(--desk-danger-text);
+}
+
+.build-step.s-cached {
+  color: var(--desk-text-muted);
+}
+
+.step-stage {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-time {
+  color: var(--desk-text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.step-out {
+  grid-column: 2 / -1;
+  margin: 2px 0 var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-background);
+  color: var(--desk-text-muted);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-2xs);
+  white-space: pre-wrap;
+}
+
+.build-row + .build-row {
+  border-top: 1px solid color-mix(in srgb, var(--ds-line) 60%, transparent);
+}
+
+.build-row .row + .row {
+  border-top: 0;
+}
+
+.build-detail {
+  padding: 0 var(--desk-space-4) var(--desk-space-3) var(--desk-space-8);
+}
+
+.build-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--desk-space-2);
+  margin: 0 0 var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.cache-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-4);
+}
+
+.cache-body p {
+  margin: 0;
+}
+
+/* ── the Dockerfile writer ─────────────────────────────────────────────── */
+.scaffold {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(0, 1.25fr);
+  gap: var(--desk-space-5);
+  min-height: 0;
+}
+
+.scaffold-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+}
+
+.platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1);
+}
+
+.desk-btn.platform {
+  min-height: 30px;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-full);
+  font-size: var(--desk-text-xs);
+}
+
+.desk-btn.platform[aria-pressed="true"] {
+  border-color: var(--ds-select-line);
+  background: var(--ds-select);
+  color: var(--desk-primary-text);
+}
+
+.checks.column {
+  flex-direction: column;
+  gap: var(--desk-space-2);
+}
+
+.scaffold-preview {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 560px;
+  overflow: hidden;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+}
+
+.file-tabs {
+  margin: var(--desk-space-2);
+  align-self: flex-start;
+}
+
+.file-tabs .desk-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.scaffold-code {
+  border-top: 1px solid var(--ds-line);
+}

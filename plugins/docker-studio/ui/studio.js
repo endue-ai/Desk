@@ -176,9 +176,17 @@ export function createStudio(ctx, doc, pages) {
     act: /** @type {any} */ ({}),
     images: /** @type {any} */ ({}),
     objects: /** @type {any} */ ({}),
+    builds: /** @type {any} */ ({}),
     menus: /** @type {any} */ ({}),
     dialogs: /** @type {any} */ ({}),
-    ai: /** @type {any} */ ({ open() {}, diagnose() {}, explainLogs() {}, optimizeImage() {} }),
+    ai: /** @type {any} */ ({
+      open() {},
+      diagnose() {},
+      explainLogs() {},
+      optimizeImage() {},
+      explainBuild() {},
+      tailorScaffold() {},
+    }),
     start() {
       installFeatures(app);
       show(saved.page ?? "dashboard", saved.detail ?? null);
