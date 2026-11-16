@@ -8,6 +8,7 @@ import type { SettingContribution } from "@endue-ai/bridge";
 import { CORE_SETTINGS, PERSONAL_KEYS, SEQUENCE_TIMEOUT } from "../core/defaults";
 import type { Preferences } from "../core/preferences";
 import type { PolicyHub } from "../hub";
+import { LANGUAGE_SETTING } from "../policies/language";
 import { fits } from "../settings";
 import { h } from "../shell/dom";
 import { type SettingsCopy, type SettingsLanguage, settingsText } from "./copy";
@@ -24,8 +25,9 @@ export interface DeclaredDeps {
   openPlugins?: () => void;
 }
 
-/** Core settings a hand-written panel already shows. */
+/** Core settings a hand-written panel already shows; General's Language row is language-row.ts. */
 const DRAWN = new Set([
+  LANGUAGE_SETTING,
   PERSONAL_KEYS,
   SEQUENCE_TIMEOUT,
   "desk.theme.scheme",

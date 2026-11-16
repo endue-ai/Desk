@@ -4,7 +4,6 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
-import { RUNTIME_CATALOGS } from "./messages";
 
 const repo = join(import.meta.dirname, "../../../..");
 const schema = JSON.parse(
@@ -28,6 +27,12 @@ const texts = (message: unknown): string[] =>
 const params = (message: unknown) =>
   new Set(texts(message).flatMap((text) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1])));
 
+/** A module's prefix: its folder under src/ in camelCase (settings-ui reads settingsUi). */
+const prefixOf = (folder: string) =>
+  relative(join(repo, "packages/runtime/src"), join(folder, ".."))
+    .split(/[\\/]/)[0]
+    ?.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
+
 const found = [join(repo, "packages/runtime/src"), join(repo, "apps/desk/src")].flatMap((dir) =>
   folders(dir),
 );
@@ -41,7 +46,9 @@ describe("the runtime's catalogs", () => {
       for (const file of readdirSync(folder)) {
         expect(file, where).toMatch(/^(en|ko)\.json$/);
         const catalog = read(join(folder, file));
-        expect(validate(catalog), `${where}/${file}: ${JSON.stringify(validate.errors)}`).toBe(true);
+        expect(validate(catalog), `${where}/${file}: ${JSON.stringify(validate.errors)}`).toBe(
+          true,
+        );
       }
       const en = read(join(folder, "en.json"));
       const ko = existsSync(join(folder, "ko.json")) ? read(join(folder, "ko.json")) : {};
@@ -53,13 +60,13 @@ describe("the runtime's catalogs", () => {
     }
   });
 
-  it("the runtime gathers every catalog beside its modules, and an id lives in one module", () => {
+  it("an id lives in one module and starts with that module's name", () => {
     const ids = new Map<string, string>();
     for (const folder of found.filter((f) => f.includes(join("packages", "runtime")))) {
       for (const id of Object.keys(read(join(folder, "en.json")))) {
         expect(ids.get(id), `${id} in ${folder} and ${ids.get(id)}`).toBeUndefined();
         ids.set(id, folder);
-        expect(RUNTIME_CATALOGS.en?.[id], id).toBeDefined();
+        expect(id.split(".")[0], `${id} in ${folder}`).toBe(prefixOf(folder));
       }
     }
   });

@@ -22,6 +22,13 @@ export const CORE_SETTINGS: Record<string, SettingContribution> = {
     description:
       "How long a pending prefix (Mod+K of Mod+K Mod+S) waits for the next key, in milliseconds. 0 waits as long as it takes, as Emacs does; Escape or Ctrl+G cancels.",
   },
+  "desk.language": {
+    kind: "string",
+    default: "system",
+    choices: ["system", "en", "ko"],
+    description:
+      "The language the desk speaks (ADR 0250): system follows the OS's language, en and ko are chosen. A change applies at once.",
+  },
   "desk.theme.scheme": {
     kind: "string",
     default: "dark",
