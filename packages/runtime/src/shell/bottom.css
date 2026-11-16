@@ -276,6 +276,12 @@
     max-width: calc(100% - var(--running-right) - var(--bar-reach));
   }
 }
+/* While the open line shows its suggestions, the chips risen above it would lie on the list: they
+   step out of sight, keeping their place, and are back once the list closes (issue 350). A list
+   that opens downwards, under a pill placed high, is away from them. */
+.bottom:has(.composer.is-open:not(.is-placed) .composer-list:not([hidden])) .running {
+  visibility: hidden;
+}
 .run-chip {
   position: relative;
   min-width: 0;
