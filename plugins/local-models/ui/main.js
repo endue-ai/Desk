@@ -7,7 +7,7 @@ import { mountShell } from "./view-shell.js";
 
 defineUiPlugin({
   mount(ctx) {
-    const app = createApp(ctx.bridge);
+    const app = Object.assign(createApp(ctx.bridge), { dnd: ctx.dnd });
     mountShell(app, document.body);
     wireCommands(ctx, app);
     void app.start().then(() => {

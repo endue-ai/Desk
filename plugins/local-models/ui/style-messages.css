@@ -337,3 +337,49 @@
 .lm-jump[hidden] {
   display: none;
 }
+
+.lm-sources {
+  max-width: 100%;
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+}
+
+.lm-sources > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: var(--desk-border-width) solid var(--lm-line);
+  border-radius: var(--desk-radius-full);
+  background: var(--lm-panel);
+  cursor: pointer;
+  list-style: none;
+}
+
+.lm-sources > summary::-webkit-details-marker {
+  display: none;
+}
+
+.lm-source-list {
+  max-height: 240px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  margin: var(--desk-space-2) 0 0;
+  padding: var(--desk-space-3) var(--desk-space-3) var(--desk-space-3) var(--desk-space-8);
+  border-radius: var(--desk-radius-md);
+  background: var(--lm-panel);
+  text-align: left;
+}
+
+.lm-source-doc {
+  display: block;
+  font-weight: 600;
+  color: var(--desk-text);
+}
+
+.lm-source-text {
+  display: block;
+  line-height: 1.5;
+}

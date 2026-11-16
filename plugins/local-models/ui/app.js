@@ -3,6 +3,7 @@
 // node being written, the stats kept with it, stopped when asked.
 
 import { nameThread } from "./edit.js";
+import { groundFor } from "./ground.js";
 import { createLocal } from "./local.js";
 import { modelKey, splitKey } from "./models.js";
 import { createSockets } from "./net.js";
@@ -161,21 +162,28 @@ export function createApp(bridge, options = {}) {
 
   /**
    * Send what the person wrote, then answer it.
-   * @param {string} text @param {{ images?: Image[] }} [extra]
+   * @param {string} text @param {{ images?: Image[], docs?: import("./attach.js").Doc[] }} [extra]
    */
   async function send(text, extra = {}) {
     if (S.get().generating) return;
     const body = text.trim();
-    if (!body && !extra.images?.length) return;
+    const docs = extra.docs ?? [];
+    if (!body && !extra.images?.length && !docs.length) return;
     const thread = S.get().thread ?? newChat();
     if (!thread.model) thread.model = S.get().selected || undefined;
     const fresh = !Object.keys(thread.nodes).length;
-    if (fresh) thread.title = titleFrom(body || "Image");
+    if (fresh) thread.title = titleFrom(body || docs[0]?.name || "Image");
+    const question = body || (docs.length ? "Summarize the attached files." : "");
+    const grounding = await groundFor(api, thread, docs, question);
     const parent = leaf(thread);
     const user = addNode(thread, parent?.id ?? null, {
       role: "user",
-      content: body,
+      content: question,
       ...(extra.images?.length ? { images: extra.images } : {}),
+      ...(docs.length
+        ? { files: docs.map((d) => ({ name: d.name, path: d.path, chars: d.chars })) }
+        : {}),
+      ...grounding,
     });
     S.set({ thread });
     persist(thread);

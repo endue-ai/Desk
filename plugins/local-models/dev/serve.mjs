@@ -17,7 +17,7 @@ import { startFakeCurl } from "./fake-curl.mjs";
 import { startFakeEngine } from "./fake-engine.mjs";
 import { hubAnswer } from "./fake-hub.mjs";
 import { startFakeLlm } from "./fake-llm.mjs";
-import { seedModels } from "./seed.mjs";
+import { seedFiles, seedModels } from "./seed.mjs";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const UI = join(HERE, "../ui");
@@ -259,6 +259,7 @@ const codeOf = (/** @type {any} */ e) =>
 
 await mkdir(ROOT, { recursive: true });
 if (!real) await seedModels(ROOT);
+seedFiles(ROOT);
 createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
   const send = (/** @type {unknown} */ value) => {
