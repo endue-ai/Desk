@@ -159,7 +159,16 @@ export function volume(
     for (const r of rest) record(world, "volume", "destroy", { id: r, name: r });
     return ok(io, rest.join("\n"));
   }
-  if (sub === "prune") return ok(io, "Total reclaimed space: 0B");
+  if (sub === "prune") {
+    const mounted = new Set(world.containers.map((c) => c.volume?.[0]).filter(Boolean));
+    const gone = world.volumes.filter((v) => !mounted.has(v.name));
+    world.volumes = world.volumes.filter((v) => mounted.has(v.name));
+    for (const v of gone) record(world, "volume", "destroy", { id: v.name, name: v.name });
+    return ok(
+      io,
+      `Deleted Volumes:\n${gone.map((v) => v.name).join("\n")}\n\nTotal reclaimed space: ${J.human(gone.reduce((s, v) => s + v.size, 0))}`,
+    );
+  }
   return fail(io, `docker volume ${sub}: not in the preview`);
 }
 

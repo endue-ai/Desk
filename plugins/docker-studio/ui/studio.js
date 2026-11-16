@@ -175,6 +175,7 @@ export function createStudio(ctx, doc, pages) {
     // Filled in by the features (actions.js, dialogs, ai.js).
     act: /** @type {any} */ ({}),
     images: /** @type {any} */ ({}),
+    objects: /** @type {any} */ ({}),
     menus: /** @type {any} */ ({}),
     dialogs: /** @type {any} */ ({}),
     ai: /** @type {any} */ ({ open() {}, diagnose() {}, explainLogs() {}, optimizeImage() {} }),

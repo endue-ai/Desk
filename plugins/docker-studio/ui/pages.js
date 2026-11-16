@@ -7,6 +7,9 @@ import { createContainers } from "./view-containers.js";
 import { createDashboard } from "./view-dashboard.js";
 import { createImagePage } from "./view-image.js";
 import { createImages } from "./view-images.js";
+import { createNetworks } from "./view-networks.js";
+import { createNetworkPage, createVolumePage } from "./view-objects.js";
+import { createVolumes } from "./view-volumes.js";
 
 /** A section still to come: says so rather than showing nothing. */
 const later = (/** @type {string} */ title) => () => ({
@@ -26,8 +29,8 @@ export const PAGES = {
   dashboard: createDashboard,
   containers: createContainers,
   images: createImages,
-  volumes: later("Volumes"),
-  networks: later("Networks"),
+  volumes: createVolumes,
+  networks: createNetworks,
   compose: later("Compose"),
   builds: later("Builds"),
   hub: later("Explore images"),
@@ -36,7 +39,7 @@ export const PAGES = {
   container: createContainerPage,
   image: createImagePage,
   project: later("Stack"),
-  volume: later("Volume"),
-  network: later("Network"),
+  volume: createVolumePage,
+  network: createNetworkPage,
   missing: later("Not found"),
 };

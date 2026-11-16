@@ -1,15 +1,33 @@
-// The Files tab: a running container's folders with breadcrumbs, folders first, sizes and times,
-// and the file chosen shown beside them with its line numbers.
+// The Files tab: folders with breadcrumbs, folders first, sizes and times, and the file chosen
+// shown beside them with its line numbers. The source says how to list and read: a running
+// container's own ls and head, or a volume's (files.js volumeSource).
 
 import { button, fill, h, icon } from "./dom.js";
 import { crumbs, isText, lsArgs, PREVIEW_BYTES, parentOf, parseLs, readArgs } from "./files.js";
 import { bytes } from "./format.js";
 
-/** @typedef {import("./studio.js").App} App @typedef {import("./files.js").Entry} Entry */
+/**
+ * @typedef {import("./studio.js").App} App @typedef {import("./files.js").Entry} Entry
+ * @typedef {{ key: string, start: string, root: string, ready(): string, ls(path: string): string[] | Promise<string[]>,
+ *   read(path: string): string[] | Promise<string[]> }} Source `ready()` is "" when it can be read, else why not.
+ */
 
-/** @param {App} app @param {import("./parse.js").Container} c */
+/** A running container as a source of files. @param {import("./parse.js").Container} c @returns {Source} */
+export function containerSource(c) {
+  return {
+    key: c.id,
+    start: c.workdir || "/",
+    root: "/",
+    ready: () =>
+      c.state === "running" ? "" : "Files are read inside the container: start it to browse them.",
+    ls: (path) => lsArgs(c.id, path),
+    read: (path) => readArgs(c.id, path),
+  };
+}
+
+/** @param {App} app @param {Source} c */
 export function createFilesView(app, c) {
-  const prefs = app.prefs(`files:${c.id}`, { path: c.workdir || "/" });
+  const prefs = app.prefs(`files:${c.key}`, { path: c.start });
   let path = prefs.path;
   /** @type {Entry[]} */
   let entries = [];
@@ -49,7 +67,7 @@ export function createFilesView(app, c) {
       el.classList.toggle("chosen", /** @type {HTMLElement} */ (el).dataset.path === e.path);
     preview.replaceChildren(h("p.muted.pad", null, "Reading…"));
     try {
-      const { stdout } = await app.docker(readArgs(c.id, e.path), { timeoutMs: 15_000 });
+      const { stdout } = await app.docker(await c.read(e.path), { timeoutMs: 30_000 });
       if (!isText(stdout)) {
         preview.replaceChildren(
           h(
@@ -140,21 +158,18 @@ export function createFilesView(app, c) {
     if (!entries.length) list.append(h("p.muted.pad", null, "This folder is empty."));
   };
 
-  const go = async (/** @type {string} */ next) => {
-    if (c.state !== "running") {
-      list.replaceChildren(
-        h(
-          "div.preview-empty",
-          null,
-          icon("folder", 28),
-          h("p", null, "Files are read inside the container: start it to browse them."),
-        ),
-      );
+  const go = async (/** @type {string} */ wanted) => {
+    // Never above the source's root (a volume's mount point).
+    const next =
+      c.root === "/" || wanted === c.root || wanted.startsWith(`${c.root}/`) ? wanted : c.root;
+    const why = c.ready();
+    if (why) {
+      list.replaceChildren(h("div.preview-empty", null, icon("folder", 28), h("p", null, why)));
       return;
     }
     list.replaceChildren(h("p.muted.pad", null, "Listing…"));
     try {
-      const { stdout } = await app.docker(lsArgs(c.id, next), { timeoutMs: 15_000 });
+      const { stdout } = await app.docker(await c.ls(next), { timeoutMs: 30_000 });
       path = next;
       prefs.path = next;
       entries = parseLs(stdout, next);

@@ -9,7 +9,7 @@ import { containerMenu } from "./menus.js";
 import { dotState, portUrl, problemOf, since, stateLabel } from "./model.js";
 import { createDetailsView, createTopView } from "./tab-details.js";
 import { createExecView } from "./tab-exec.js";
-import { createFilesView } from "./tab-files.js";
+import { containerSource, createFilesView } from "./tab-files.js";
 import { createLogView } from "./tab-logs.js";
 import { createStatsView } from "./tab-stats.js";
 
@@ -237,7 +237,7 @@ export function createContainerPage(app, target) {
         { name: c.name, running: c.state === "running" },
       );
     if (id === "stats") return createStatsView(app, c);
-    if (id === "files") return createFilesView(app, c);
+    if (id === "files") return createFilesView(app, containerSource(c));
     if (id === "exec") return createExecView(app, c);
     if (id === "top") return createTopView(app, c);
     if (id === "details") return createDetailsView(app, c);
