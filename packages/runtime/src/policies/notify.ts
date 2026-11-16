@@ -5,7 +5,9 @@
  * that fails says why in a notice of its own (gesture.ts). A notice that stays until it is dismissed
  * (an error, one with actions) has a Dismiss button after them (#158). A running plugin's notice
  * opens what it is about (ADR 0113): a click on its text, or picking it in the history, shows the
- * plugin (desk.display.show) and then hands it the notice (desk.notify.open).
+ * plugin (desk.display.show) and then hands it the notice (desk.notify.open). Hosts outside the
+ * page hear each notice that shows (`onShown`) and act on one as a click on it would (`activate`):
+ * the OS's notifications while endue is out of sight (#306).
  */
 import type { NotifyLevel } from "@endue-ai/bridge";
 import { type GestureDesk, runGesture } from "../gesture";
@@ -16,9 +18,10 @@ import {
   Notifications,
   noticeText,
 } from "../notify";
+import type { RuntimeNotices } from "../runtime-api";
 import { type DeskContext, disposer, type Installed } from "./context";
 
-export interface NotifyPolicy extends Installed {
+export interface NotifyPolicy extends Installed, RuntimeNotices {
   notifications: Notifications;
   notify(input: NoticeInput): Notice;
   /** The line the status shows when no notice does ("desk ready ..."). */
@@ -179,9 +182,23 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
   );
   define("desk.notify.clear", "Clear past notifications", () => notifications.clear(), ["history"]);
 
+  const activate = async (id: string, action: boolean) => {
+    const notice = notifications.history().find((n) => n.id === id);
+    if (!notice) return;
+    if (notifications.current() === notice) notifications.dismiss();
+    const first = notice.actions?.[0];
+    if (action && first) await runGesture(desk, first.command, first.args);
+    else await open(notice);
+  };
+
   return {
     notifications,
     notify: (input) => notifications.push(input),
+    onShown: (listener) =>
+      notifications.onPush((notice) => {
+        if (!notice.held) listener(notice);
+      }),
+    activate,
     setBase: (text) => {
       base = text;
       if (!notifications.current()) render(null);

@@ -33,6 +33,7 @@ import { installQuit } from "./quit";
 import { shellBridge } from "./shell-bridge";
 import { readStart, relauncher } from "./start";
 import { nextPaint, reportStartup } from "./startup";
+import { followSystemNotices } from "./system-notices";
 import { installUpdates, NOTIFIED, ROW } from "./updates";
 
 // The shell window's uncaught errors become local crash reports from here on (#322).
@@ -147,6 +148,20 @@ void desk.ready.then(() => {
     report: (error) => console.error("desk_login:", error),
   });
   window.addEventListener("pagehide", stopLogin, { once: true });
+});
+
+// The OS's notifications while endue is out of sight (#306): every notice that shows goes to the
+// shell, which posts it when the desk is not in front; a click on one comes back here.
+void desk.ready.then(() => {
+  const stopNotices = followSystemNotices({
+    settings: desk.runtime.settings,
+    notices: desk.runtime.notices,
+    onEvent: (listener) => core.onEvent(listener),
+    post: (post) => invoke("desk_notice_post", { ...post }),
+    listen: (handler) => listen("notice://activated", ({ payload }) => handler(payload)),
+    report: (error) => console.error("desk_notice_post:", error),
+  });
+  window.addEventListener("pagehide", stopNotices, { once: true });
 });
 
 // The page reports what only it knows (ADR 0151); the CEF shell answers with the windows that keep

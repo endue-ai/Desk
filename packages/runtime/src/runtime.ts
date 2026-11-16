@@ -360,6 +360,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     keep: (name, part) => session.keep(name, part),
     policy: () => hub.policy,
     notify: (input) => notify.notify(input),
+    notices: notify,
     theme: () => theme.state(),
     themes: theme,
     designs: theme.designs,
@@ -383,9 +384,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         files,
         buffers,
         display,
-        notify,
       ];
-      for (const policy of [about, inspect, ...policies, palette, aliases, keys, theme]) {
+      for (const policy of [about, inspect, ...policies, palette, aliases, keys, theme, notify]) {
         policy.dispose();
       }
       pluginHost?.stop();
