@@ -67,52 +67,143 @@ describe("the profile switcher", () => {
   const press = (key: string) =>
     document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
 
-  it("offers the profile in force its layout, a new name and deleting it, when it is the person's", () => {
-    chip("scratch")?.click();
-    expect(items()).toEqual(["menu-save", "menu-new", "menu-revert", "menu-rename", "menu-remove"]);
-    expect(chip("scratch")?.getAttribute("aria-expanded")).toBe("true");
-    // The first item the person can use has the focus.
-    expect(document.activeElement?.getAttribute("data-key")).toBe("menu-new");
+  it("shows one chip, the profile in force, with a chevron, and nothing unfolds", () => {
+    const chips = () => root.querySelectorAll<HTMLElement>(".modes .mode-chip");
+    expect(chips()).toHaveLength(1);
+    const only = chips()[0] as HTMLElement;
+    expect(only.dataset.mode).toBe("scratch");
+    expect(only.classList.contains("is-current")).toBe(true);
+    expect(only.getAttribute("aria-haspopup")).toBe("menu");
+    expect(only.getAttribute("aria-expanded")).toBe("false");
+    expect(only.querySelector('svg[data-icon="chevron-down"]')).not.toBeNull();
+    // The chip stands alone in the row, the box a window's title keeps clear of.
+    const row = root.querySelector<HTMLElement>(".modes-row");
+    expect([...(row?.children ?? [])]).toEqual([only]);
+    expect(root.querySelector(".modes-more")).toBeNull();
+    expect(root.querySelector(".mode-add")).toBeNull();
+    row?.dispatchEvent(new PointerEvent("pointerenter"));
+    row?.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(chips()).toHaveLength(1);
+    expect(root.querySelector(".mode-menu")).toBeNull();
   });
 
-  it("opens any profile's menu on right-click, under it; a plugin's profile only renames", () => {
-    store.set({ modesOpen: true });
+  it("keeps the changed mark and the copied-from note on the chip", () => {
+    store.set({ wm: { ...store.get().wm, dirty: true } });
+    expect(chip("scratch")?.querySelector(".mode-dirty")).not.toBeNull();
+    const base = baseMode(undefined);
+    const copied = profileMode(
+      {
+        id: "studio",
+        name: "Studio",
+        settings: { [MODE]: { copiedFrom: { author: "Mina", id: "studio", version: "1.0.0" } } },
+      },
+      base,
+    );
+    store.set({ modes: [...store.get().modes, copied], modeId: "studio" });
+    const studio = chip("studio");
+    expect(studio?.querySelector(".mode-copied")?.textContent).toBe("Mina");
+    expect(studio?.getAttribute("aria-label")).toBe('Studio · copiedFrom {"author":"Mina"}');
+  });
+
+  it("the menu lists every other profile, New profile, then the profile's own rows", () => {
+    chip("scratch")?.click();
+    const menu = root.querySelector<HTMLElement>(".mode-menu");
+    expect(menu?.getAttribute("role")).toBe("menu");
+    expect(chip("scratch")?.getAttribute("aria-expanded")).toBe("true");
+    expect(items()).toEqual([
+      "menu-switch-default",
+      "menu-switch-morning",
+      "menu-switch-night",
+      "menu-new",
+      "menu-save",
+      "menu-revert",
+      "menu-rename",
+      "menu-remove",
+    ]);
+    // A rule after the profiles and one after New profile.
+    const keys = [...(menu?.children ?? [])].map((c) =>
+      c.getAttribute("role") === "separator" ? "|" : (c.getAttribute("data-key") ?? ""),
+    );
+    expect(keys.slice(0, 6)).toEqual([
+      "menu-switch-default",
+      "menu-switch-morning",
+      "menu-switch-night",
+      "|",
+      "menu-new",
+      "|",
+    ]);
+    const row = (key: string) => menu?.querySelector<HTMLElement>(`[data-key="${key}"]`);
+    expect(
+      ["default", "morning", "night"].map((id) => row(`menu-switch-${id}`)?.dataset.mode),
+    ).toEqual(["default", "morning", "night"]);
+    expect(
+      ["default", "morning", "night"].map((id) => row(`menu-switch-${id}`)?.textContent),
+    ).toEqual(["Default", "Morning", "Late night"]);
+    expect(row("menu-new")?.textContent).toBe("newMode");
+    expect(document.activeElement?.getAttribute("data-key")).toBe("menu-switch-default");
+  });
+
+  it("switches from the menu", () => {
+    chip("scratch")?.click();
+    root.querySelector<HTMLElement>('[data-key="menu-switch-morning"]')?.click();
+    expect(run).toHaveBeenCalledWith("desk.profiles.switch", { id: "morning" });
+    expect(root.querySelector(".mode-menu")).toBeNull();
+    expect(document.activeElement).toBe(chip("scratch"));
+  });
+
+  it("New profile opens the dialog that names the desk as it is", () => {
+    chip("scratch")?.click();
+    root.querySelector<HTMLElement>('[data-key="menu-new"]')?.click();
+    expect(store.get().dialog).toBe("new-mode");
+    expect(dialog()).not.toBeNull();
+    store.set({ dialog: null });
+    expect(dialog()).toBeNull();
+    expect(document.activeElement).toBe(chip("scratch"));
+  });
+
+  it("right-click opens the same menu; a plugin's profile only renames, one saved over restores", () => {
+    const own = () =>
+      items().filter((key) => !key?.startsWith("menu-switch-") && key !== "menu-new");
+    store.set({ modeId: "morning" });
     rightClick(chip("morning"));
     expect(root.querySelector(".mode-menu")?.getAttribute("data-menu-for")).toBe("morning");
-    expect(items()).toEqual(["menu-rename"]);
+    expect(own()).toEqual(["menu-save", "menu-revert", "menu-rename"]);
+    press("Escape");
+    store.set({ modeId: "night" });
     rightClick(chip("night"));
-    expect(items()).toEqual(["menu-rename", "menu-restore"]);
+    expect(own()).toEqual(["menu-save", "menu-revert", "menu-rename", "menu-restore"]);
+    press("Escape");
+    store.set({ modeId: "scratch" });
+    rightClick(chip("scratch"));
+    expect(own()).toEqual(["menu-save", "menu-revert", "menu-rename", "menu-remove"]);
   });
 
-  it("walks the menu with the arrow keys and gives the focus back to its chip on Esc", () => {
-    store.set({ modesOpen: true });
+  it("walks the menu with the arrow keys and gives the focus back to the chip on Esc", () => {
+    store.set({ modeId: "night" });
     rightClick(chip("night"));
-    expect(document.activeElement?.getAttribute("data-key")).toBe("menu-rename");
-    press("ArrowDown");
+    // Default, Morning, Scratch, New profile, then Rename and Restore: Save and Revert are off.
+    const walk = [
+      "menu-switch-default",
+      "menu-switch-morning",
+      "menu-switch-scratch",
+      "menu-new",
+      "menu-rename",
+      "menu-restore",
+    ];
+    expect(document.activeElement?.getAttribute("data-key")).toBe(walk[0]);
+    for (const key of [...walk.slice(1), walk[0]]) {
+      press("ArrowDown");
+      expect(document.activeElement?.getAttribute("data-key")).toBe(key);
+    }
+    press("ArrowUp");
     expect(document.activeElement?.getAttribute("data-key")).toBe("menu-restore");
-    press("ArrowDown");
-    expect(document.activeElement?.getAttribute("data-key")).toBe("menu-rename");
+    press("Home");
+    expect(document.activeElement?.getAttribute("data-key")).toBe("menu-switch-default");
+    press("End");
+    expect(document.activeElement?.getAttribute("data-key")).toBe("menu-restore");
     press("Escape");
     expect(root.querySelector(".mode-menu")).toBeNull();
     expect(document.activeElement).toBe(chip("night"));
-  });
-
-  it("stays open when a draw takes the focused chip away, and folds when the focus leaves", async () => {
-    store.set({ modesOpen: true });
-    const morning = chip("morning") as HTMLElement;
-    morning.focus();
-    // What Chromium says when a draw replaces the focused chip (jsdom and WebKit say nothing).
-    morning.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
-    morning.remove();
-    await Promise.resolve();
-    expect(store.get().modesOpen).toBe(true);
-    const outside = document.createElement("button");
-    document.body.append(outside);
-    chip("night")?.focus();
-    outside.focus();
-    await Promise.resolve();
-    expect(store.get().modesOpen).toBe(false);
-    outside.remove();
   });
 
   it("renames a profile as it is saved, its settings and plugins, not this setup", async () => {
@@ -155,7 +246,7 @@ describe("the profile switcher", () => {
   });
 
   it("restores a plugin's profile the person saved over, under the plugin's name", async () => {
-    store.set({ modesOpen: true });
+    store.set({ modeId: "night" });
     rightClick(chip("night"));
     root.querySelector<HTMLElement>("[data-key=menu-restore]")?.click();
     expect(dialog()?.textContent).toContain("restoreModeHint");
