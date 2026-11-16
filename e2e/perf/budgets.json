@@ -21,12 +21,13 @@
     "allowedRegression": 0.25
   },
   "idleMemory": {
-    "rssMb": null,
+    "rssMb": 3560.3,
     "afterMs": 300000,
     "profile": "default",
-    "platform": null,
-    "recorded": null,
-    "allowedRegression": 0.25
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-16",
+    "allowedRegression": 0.25,
+    "reason": "#312 (ADR 0246): the Default profile five minutes after start with its window in sight, through just perf-app (e2e/perf/memory.perf.ts), the median of two runs on the reference machine on 2026-11-16, a debug build with chromedriver attached, started at a load average of 3.6 and 1.1 with the other sessions paused: 3,540.5 and 3,580.1 MB in 29 processes, 24 of them renderers (2,910 and 2,934 MB). A desk in sight keeps every window and overlay live, so #312's change leaves it as it was: main read 3,552.0 and 3,537.6 MB the same day. Fails past allowedRegression on the platform its baseline was recorded on."
   },
   "inputLatency": {
     "paletteP95Ms": null,
@@ -155,14 +156,14 @@
     "targetPercent": 1,
     "treePercent": 3.4,
     "treeBudgetPercent": 6,
-    "rssMb": 3555.2,
-    "rssBudgetMb": 4000,
-    "processes": 29,
+    "rssMb": 2270.2,
+    "rssBudgetMb": 2500,
+    "processes": 19,
     "settleMs": 20000,
     "windowMs": 30000,
     "profile": "default",
     "platform": "darwin-arm64",
-    "recorded": "2026-11-15",
-    "reason": "#237 (ADR 0225): endue at rest with no window, through just perf-app (e2e/perf/resident.perf.ts): the Default profile without the first run, its main window closed with its red button (the desk runs on and the island shows over other apps), twenty seconds alone and thirty measured with ps: the app's own process's CPU as a share of one core, its whole tree's, and the tree's summed RSS at the end. All three are budgets, failing from the first run. Four runs on the reference machine on 2026-11-15, a debug build with chromedriver attached, while other work ran on it (load average 5 to 28): the app's own process 0.5, 0.5, 0.8 and 1.1 %, its tree 1.9, 2.2, 3.4 and 3.6 %, the tree's RSS 3,547 to 3,585 MB in 29 processes (idleMemory, the window in sight, read 3,603 MB the same hour). targetPercent is #237's figure, under 1 % of a core: three runs of four were under it and one was not, so the gate is budgetPercent, 2 %, about twice the slowest reading, until a quiet runner has read it; treeBudgetPercent is 6 %, the slowest reading and two thirds more; rssBudgetMb is 4,000 MB, the largest reading and about a tenth more. The memory is the Default profile's thirteen plugin windows with their pages still live fifty seconds after the window closed: the live budget (ADR 0142) puts a page out of sight to sleep after desk.display.unload-after (300 s), which this run does not wait for. Hidden pages keep their timers' pace (ADR 0225), so a plugin that polls costs here what it costs in sight. The values are the full run's (the first of the four)."
+    "recorded": "2026-11-16",
+    "reason": "#312 (ADR 0246): a desk nobody sees holds only the live budget's windows (ADR 0142), and its hidden overlays sleep, so its tree's RSS is a third lower. Three runs on the reference machine on 2026-11-16, a debug build with chromedriver attached, each started at a load average under 4 (3.8 to 4.0) with the other sessions paused: 2,270.8, 2,258.5 and 2,270.2 MB in 19 processes, 14 of them renderers (1,697 to 1,709 MB), where main read 3,445, 3,425 and 3,426 MB in 29 processes with 24 renderers the same day (load 1.0 to 3.1); two runs started at a load of 13 and 7.8 read 2,302 and 2,273 and are not counted. Of the Default profile's fourteen plugin windows the eight most recent stay live (desk.surfaces.live) and the one with the keys beside them; the launcher, the palette, permissions, universal and views, never shown, sleep until the window comes back or they are summoned. The memory follows the renderers: each holds about 116 MB of RSS (35 MB of physical footprint; RSS counts the framework pages each helper maps again); the browser holds 286, the GPU process 134, the network and storage services 77 and 61; the spec keeps the kinds beside the sum (kinds). rssBudgetMb is 2,500 MB, the largest counted reading and a tenth more (2,270.8 × 1.1, rounded up): a desk that keeps one renderer more than now stays within it, and two more fail it. rssMb is the median run. The CPU readings stay #237's: 1.0 to 1.1 % for the app's own process and 2.6 to 3.1 % for its tree in these runs. Before, from #237 to #312: #237 (ADR 0225): endue at rest with no window, through just perf-app (e2e/perf/resident.perf.ts): the Default profile without the first run, its main window closed with its red button (the desk runs on and the island shows over other apps), twenty seconds alone and thirty measured with ps: the app's own process's CPU as a share of one core, its whole tree's, and the tree's summed RSS at the end. All three are budgets, failing from the first run. Four runs on the reference machine on 2026-11-15, a debug build with chromedriver attached, while other work ran on it (load average 5 to 28): the app's own process 0.5, 0.5, 0.8 and 1.1 %, its tree 1.9, 2.2, 3.4 and 3.6 %, the tree's RSS 3,547 to 3,585 MB in 29 processes (idleMemory, the window in sight, read 3,603 MB the same hour). targetPercent is #237's figure, under 1 % of a core: three runs of four were under it and one was not, so the gate is budgetPercent, 2 %, about twice the slowest reading, until a quiet runner has read it; treeBudgetPercent is 6 %, the slowest reading and two thirds more; rssBudgetMb is 4,000 MB, the largest reading and about a tenth more. The memory is the Default profile's thirteen plugin windows with their pages still live fifty seconds after the window closed: the live budget (ADR 0142) puts a page out of sight to sleep after desk.display.unload-after (300 s), which this run does not wait for. Hidden pages keep their timers' pace (ADR 0225), so a plugin that polls costs here what it costs in sight. The values are the full run's (the first of the four)."
   }
 }
