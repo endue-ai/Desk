@@ -7,8 +7,9 @@ import { createContainers } from "./view-containers.js";
 import { createDashboard } from "./view-dashboard.js";
 import { createImagePage } from "./view-image.js";
 import { createImages } from "./view-images.js";
+import { createNetworkPage } from "./view-network.js";
 import { createNetworks } from "./view-networks.js";
-import { createNetworkPage, createVolumePage } from "./view-objects.js";
+import { createVolumePage } from "./view-objects.js";
 import { createVolumes } from "./view-volumes.js";
 
 /** A section still to come: says so rather than showing nothing. */
