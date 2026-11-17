@@ -69,7 +69,7 @@ it on (`autoload`: Claude and Codex are not on by default, ADR 0084):
 | Plugin | Role |
 | --- | --- |
 | `local-agents/` (`endue.local-agents`) | Claude Code, Codex, Gemini CLI, Grok CLI, Qwen Code, Copilot CLI, Cursor Agent and OpenCode, found by their versions and asked through their non-interactive modes, read-only by default: the agents found, a chat with one, answers compared side by side, a kanban board of tasks they work through, the activity; every operation a command. The card Home of `agents/` shows the agents the core finds beside the endue ones (ADR 0112); this plugin stays for its compare, board and tools |
-| `local-models/` (`endue.local-models`) | A client for the language models that run on this computer: the Ollama, llama.cpp and OpenAI-compatible servers found or added, their models with what each can do, and chat in threads kept as files, streamed as markdown with reasoning, speed and every version of an answer |
+| `local-models/` (`endue.local-models`) | A client for the language models that run on this computer: the Ollama, llama.cpp and OpenAI-compatible servers found or added, their models with what each can do, and chat in threads kept as files, streamed as markdown with reasoning, speed and every version of an answer (ADR 0267) |
 
 The file plugins: one plugin per thing a person does with a file, every format of that kind in one
 interface (ADR 0045). Each reads; none edits yet. Each autoloads: off at start, on when a file it

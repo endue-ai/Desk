@@ -65,7 +65,7 @@ describe("searching documents", () => {
     const parts = chunk(longDoc());
     expect(parts.length).toBeGreaterThan(20);
     expect(parts.every((p) => p.length <= 1200)).toBe(true);
-    expect(parts[1]).toContain(parts[0].slice(-40).trim());
+    expect(parts[1]).toContain(parts[0]!.slice(-40).trim());
   });
 
   it("ranks by words without an embedding model, and by vectors with one", async () => {
@@ -83,7 +83,7 @@ describe("searching documents", () => {
     const doc = docOf("guide.md", longDoc());
     const found = await retrieve(app, [doc], "What does the context length decide?");
     expect(found).toMatchObject({ method: "vectors", model: "Nomic Embed Text" });
-    expect(found.passages[0].text).toContain("context length decides");
+    expect(found.passages[0]!.text).toContain("context length decides");
     const embeds = fake.requests.filter((r) => r.path === "/api/embed").length;
     await retrieve(app, [doc], "And the memory?");
     expect(fake.requests.filter((r) => r.path === "/api/embed").length).toBe(embeds + 1);
@@ -100,18 +100,18 @@ describe("searching documents", () => {
     const thread = app.S.get().thread;
     if (!thread) throw new Error("no thread");
     const [question, answer] = path(thread);
-    expect(question.files).toEqual([
+    expect(question!.files).toEqual([
       { name: "guide.md", path: "~/docs/guide.md", chars: guide.doc.chars },
     ]);
-    expect(question.sources?.[0].excerpt).toContain("context length decides");
-    expect(question.searched).toBe("Nomic Embed Text");
+    expect(question!.sources?.[0]?.excerpt).toContain("context length decides");
+    expect(question!.searched).toBe("Nomic Embed Text");
     const sent = fake.requests
       .filter((r) => r.path === "/api/chat")
       .at(-1)
       ?.body.messages.at(-1).content;
     expect(sent).toMatch(/^Passages from the files attached/);
     expect(sent).toMatch(/What does the context length decide\?$/);
-    expect(answer.content).toContain("[1]");
+    expect(answer!.content).toContain("[1]");
     await app.send("And how much memory?");
     const again = path(thread).at(-2);
     expect(again?.sources?.length).toBeGreaterThan(0);

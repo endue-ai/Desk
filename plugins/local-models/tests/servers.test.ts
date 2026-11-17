@@ -33,7 +33,7 @@ describe("finding servers", () => {
       ["127.0.0.1:11434", "ollama", "Ollama :11434", "online"],
       ["127.0.0.1:8080", "openai", "llama.cpp :8080", "online"],
     ]);
-    expect(servers[0].version).toBe("0.12.6");
+    expect(servers[0]!.version).toBe("0.12.6");
   });
 
   it("keeps an added server that does not answer, as offline", async () => {

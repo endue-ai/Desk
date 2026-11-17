@@ -42,7 +42,7 @@ describe("Hugging Face", () => {
       ["Q4_K_M", 1],
       ["Q8_0", 2],
     ]);
-    expect(d.quants[1].size).toBe(32_500_000_000);
+    expect(d.quants[1]!.size).toBe(32_500_000_000);
     const gemma = await details(bridge, "unsloth/gemma-3-12b-it-GGUF");
     expect(gemma.projectors).toEqual([{ file: "mmproj-F16.gguf", size: 854_000_000 }]);
     expect(repoCaps(gemma.repo)).toEqual(["vision"]);
@@ -61,9 +61,9 @@ describe("Hugging Face", () => {
       { rfilename: "m-Q6_K.gguf", size: 6 },
       { rfilename: "m-Q8_0.gguf", size: 8 },
     ]);
-    expect(bestQuant(quants, (s) => (s <= 6 ? "fits" : "too-big")).quant).toBe("Q6_K");
-    expect(bestQuant(quants, (s) => (s <= 3 ? "fits" : "too-big")).quant).toBe("Q3_K_S");
-    expect(bestQuant(quants, () => "too-big").quant).toBe("Q3_K_S");
+    expect(bestQuant(quants, (s) => (s <= 6 ? "fits" : "too-big"))?.quant).toBe("Q6_K");
+    expect(bestQuant(quants, (s) => (s <= 3 ? "fits" : "too-big"))?.quant).toBe("Q3_K_S");
+    expect(bestQuant(quants, () => "too-big")?.quant).toBe("Q3_K_S");
   });
 
   it("reads a model card without its front matter or HTML", async () => {
@@ -88,12 +88,12 @@ describe("downloads", () => {
     const q4 = d.quants[0];
     app.local.downloads.add({
       kind: "file",
-      name: q4.quant,
+      name: q4!.quant,
       repo: d.repo.id,
-      files: q4.files,
-      quant: q4.quant,
-      total: q4.size,
-      path: targetOf(d.repo.id, q4.files[0]),
+      files: q4!.files,
+      quant: q4!.quant,
+      total: q4!.size,
+      path: targetOf(d.repo.id, q4!.files[0]!),
     });
     await until(() => app.S.get().downloads[0]?.state === "done");
     const curl = bridge.calls.find((c) => c.method === "proc.spawn" && c.params.command === "curl");
@@ -104,7 +104,7 @@ describe("downloads", () => {
         "-",
         "-o",
         ".endue/local-models/models/Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf.part",
-        fileUrl(d.repo.id, q4.files[0]),
+        fileUrl(d.repo.id, q4!.files[0]!),
       ]),
     );
     expect(
@@ -112,8 +112,8 @@ describe("downloads", () => {
         join(bridge.root, ".endue/local-models/models/Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf"),
       ),
     ).toBe(true);
-    await until(() => app.S.get().local.some((m) => m.repo === "Qwen/Qwen3-4B-GGUF"));
-    expect(app.S.get().local.find((m) => m.repo === "Qwen/Qwen3-4B-GGUF")).toMatchObject({
+    await until(() => app.S.get().local.some((m: any) => m.repo === "Qwen/Qwen3-4B-GGUF"));
+    expect(app.S.get().local.find((m: any) => m.repo === "Qwen/Qwen3-4B-GGUF")).toMatchObject({
       size: 2_500_000_000,
       info: { arch: "qwen3", quant: "Q4_K_M" },
     });
@@ -127,11 +127,11 @@ describe("downloads", () => {
     const q8 = d.quants[1];
     app.local.downloads.add({
       kind: "file",
-      name: q8.quant,
+      name: q8!.quant,
       repo: d.repo.id,
-      files: q8.files,
-      quant: q8.quant,
-      total: q8.size,
+      files: q8!.files,
+      quant: q8!.quant,
+      total: q8!.size,
     });
     const id = app.S.get().downloads[0].id;
     await until(() => app.S.get().downloads[0].state === "running");
@@ -150,7 +150,7 @@ describe("downloads", () => {
     const app = createApp(bridge, { storeDelayMs: 5, autoTitle: false });
     await app.start();
     const seen: number[] = [];
-    app.S.on(["downloads"], (s) => {
+    app.S.on(["downloads"], (s: any) => {
       const d = s.downloads[0];
       if (d?.kind === "ollama") seen.push(d.received);
     });

@@ -107,13 +107,13 @@ describe("the built-in engine", () => {
     const app = createApp(bridge, { storeDelayMs: 5, autoTitle: false });
     await app.start();
     const local = app.S.get().local;
-    expect(local.map((m) => m.name)).toEqual(["Gemma 3 4B", "Huge", "Qwen3 4B"]);
-    expect(local.find((m) => m.name === "Huge")).toMatchObject({
+    expect(local.map((m: any) => m.name)).toEqual(["Gemma 3 4B", "Huge", "Qwen3 4B"]);
+    expect(local.find((m: any) => m.name === "Huge")).toMatchObject({
       parts: 2,
       size: 60 * GB,
       repo: "big/Huge-GGUF",
     });
-    expect(local.find((m) => m.name === "Gemma 3 4B")?.projector).toMatch(/mmproj-gemma/);
+    expect(local.find((m: any) => m.name === "Gemma 3 4B")?.projector).toMatch(/mmproj-gemma/);
     expect(app.S.get().memory).toEqual({ total: 24 * 1024 ** 3, kind: "unified" });
     expect(app.local.configFor(local[2])).toMatchObject({
       ctx: 8192,
@@ -125,7 +125,7 @@ describe("the built-in engine", () => {
   it("loads a file with its settings, chats with it and ejects it", async () => {
     const app = createApp(bridge, { storeDelayMs: 5, autoTitle: false });
     await app.start();
-    const qwenFile = app.S.get().local.find((m) => m.name === "Qwen3 4B");
+    const qwenFile = app.S.get().local.find((m: any) => m.name === "Qwen3 4B");
     if (!qwenFile) throw new Error("no file");
     const loaded = await app.local.load(qwenFile, {
       ...app.local.configFor(qwenFile),
@@ -150,7 +150,7 @@ describe("the built-in engine", () => {
         "Qwen3-4B-Q4_K_M",
       ]),
     );
-    expect(app.S.get().servers.find((s) => s.port === port)).toMatchObject({
+    expect(app.S.get().servers.find((s: any) => s.port === port)).toMatchObject({
       managed: true,
       label: "Built-in · Qwen3-4B-Q4_K_M",
     });
@@ -158,13 +158,13 @@ describe("the built-in engine", () => {
     await app.send("Explain transformers");
     const thread = app.S.get().thread;
     if (!thread) throw new Error("no thread");
-    expect(path(thread)[1].content).toContain("transformer");
+    expect(path(thread)[1]!.content).toContain("transformer");
     const [engine] = app.S.get().engines;
     expect(engine).toMatchObject({ state: "ready", progress: 1 });
     expect(app.local.logOf(engine.id).join("\n")).toContain("server is listening");
     await app.local.eject(engine.id);
     expect(app.S.get().engines).toEqual([]);
-    expect(app.S.get().servers.some((s) => s.port === port)).toBe(false);
+    expect(app.S.get().servers.some((s: any) => s.port === port)).toBe(false);
   });
 
   it("says when llama-server is not installed", async () => {

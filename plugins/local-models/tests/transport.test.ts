@@ -128,7 +128,7 @@ describe("http over sockets", () => {
     });
     await new Promise((r) => setTimeout(r, 60));
     expect(late).toBe(false);
-    opened[0].close();
+    opened[0]!.close();
     const s = await waiting;
     expect(late).toBe(true);
     for (const o of [...opened, s]) o.close();
