@@ -5,13 +5,46 @@ layers: **theme tokens → component tokens → components → plugin layout**. 
 the first layer; a design system decides the second, what each component is made of (ADR 0090). A
 plugin needs neither separate light and dark CSS nor its own button styles.
 
+The defaults are the endue design system of [endue.ai/design](https://endue.ai/design), the one every
+endue product shares (ADR 0265): the themes Ink (light) and Stone (dark), its components and its rules.
+Before a UI change, people read this page and agents follow `.claude/skills/design-ui/SKILL.md`.
+
+## Principles
+
+1. **The fill is ink, and there is one.** Only the main action is filled (`primary`, `<desk-button
+   variant="primary">`, `.desk-btn-primary`), one per group: a form, a dialog, a card, a bar. The second
+   action is the default (outline) button. A destructive action is `danger`; a toolbar's are `quiet`.
+2. **Colour belongs to the star.** `--desk-star` marks an agent at work (`.desk-star`) and nothing else:
+   not a button, text, surface, border or badge. Data keeps its colours (charts, a series, an agent's
+   chosen colour); the brand does not decorate.
+3. **Status is a sentence.** Say who is doing what ("Eris is reading the file."); a badge or dot comes
+   after the words, never alone. A coloured surface only for a warning, a failure or what needs the
+   person (`.desk-callout[data-tone="warning"|"danger"]`, `.desk-error`).
+4. **Selection is a surface, never a fill.** The chosen row, tab, chip or menu item takes `hover`
+   (`primarySoft` is the same surface) or the raised segment; never `primary`.
+5. **Only floating things get a surface.** Menus, popovers, dialogs, toasts and tooltips have a border
+   and a shadow; a card is a 1px border without one. Lists and sections are divided by space and
+   hairlines (`.desk-list-row`), not a card per row.
+
+**Screen check**, for every screen in both schemes: one filled button per group; the star is the only
+coloured mark; every status is a sentence; selection is the hover surface; lists are hairline rows;
+only the star moves on its own (a spinner or skeleton while data loads); links are underlined; every
+value is a token (`node scripts/ui-lint.mjs`), every control a component (`node scripts/ds-lint.mjs`);
+text reaches 4.5:1 and borders, rings, icons and the star 3:1; the page holds at 360px wide.
+
+**Writing.** Short sentences. Sentence case ("Save changes"). A button is a verb that says what the press
+does ("Save", "Reconnect"); a confirmation names the action, never "OK" or "Confirm". An error says
+what went wrong and how to fix it, in one or two sentences; an apology alone is not an error. A
+placeholder is an example, never the label. The name is always lowercase "endue".
+
 ## Sources and loading
 
 | Layer | Source | Use |
 | --- | --- | --- |
 | Semantic colors and scale | `packages/ui/src/tokens.ts` | DOM-free `tokens`, `colors`, `scale`, `cssVariables` |
 | Generated defaults | `packages/ui/src/tokens.css` | Shell import and `/_desk/tokens.css` in plugin pages |
-| Page patterns | `packages/ui/src/base.css` | `/_desk/base.css`, after the default tokens |
+| Base and kit | `packages/ui/src/base.css` | `/_desk/base.css`, after the default tokens |
+| Page patterns | `packages/ui/src/patterns.css` | Joined to the end of `/_desk/base.css` (`src/sheets.ts`) |
 | Interactive elements | `packages/ui/src/elements/` | `@endue-ai/ui` via `/_desk/ui.js` in a frame |
 | Default theme | `plugins/theme/plugin.json` | Light, dark and high-contrast color contributions |
 
@@ -45,15 +78,19 @@ using the same sheets. A standalone page can use the built `tokens.css`, `base.c
 | --- | --- | --- |
 | Surfaces | `background`, `card`, `muted`, `popover`, `hover` | Page, panel, sunken area, overlay, hovered row |
 | Text | `text`, `text-muted` | Body and secondary text on neutral surfaces |
-| Main action | `primary`, `primary-foreground`, `primary-hover` | Button fill, its ink, hover fill |
-| Brand on neutral surfaces | `primary-text`, `primary-subtle`, `primary-soft`, `primary-border` | Links, tints and borders |
+| Main action | `primary`, `primary-foreground`, `primary-hover` | The ink fill (paper in Stone), its ink, hover fill |
+| Brand on neutral surfaces | `primary-text`, `primary-subtle`, `primary-soft`, `primary-border` | Link text, the sunken, selected and border surfaces |
+| Agent at work | `star` | The star alone (`.desk-star`); 3:1 on every surface |
 | Status | `success`, `warning`, `danger`, `info` | Each has `-foreground`, `-text`, `-soft`, `-border` companions |
 | Structure | `border`, `input`, `ring` | Dividers, control borders, keyboard focus |
 | Floating layers | `tooltip`, `tooltip-text`, `scrim`, `shadow-sm`, `shadow-md`, `shadow-lg` | Overlays and their text |
-| Categories | `chart-1` through `chart-8` | Assign a stable color per subject, in order |
+| Categories | `chart-1` through `chart-10` | Assign a stable color per subject, in order; areas and bars, not thin lines in light (chart-2 and chart-3 stand under 3:1 on white) |
+| Code | `code-surface`, `code-comment`, `code-punctuation`, `code-keyword`, `code-string`, `code-number`, `code-function`, `code-tag`, `code-property` | A code block's tint and its tokens' colours, 4.5:1 on the tint |
 
 Every name above has the prefix `--desk-`. Put `*-foreground` text on the corresponding solid fill;
-use `*-text` on neutral surfaces. Do not use a fill token as link text or as the focus ring. The default
+use `*-text` on neutral surfaces. Do not use a fill token as link text or as the focus ring. Links are
+told apart by their underline (base.css draws it), not by colour; text is never faded with `opacity`
+(use `text-muted`); a control's edge is `input`, a divider's `border`. The default
 theme tests check text at 4.5:1, controls at 3:1, and key text at 7:1 in high contrast. Theme authors
 must check their own pairs in both schemes. Status needs a label or icon as well as color.
 
@@ -63,7 +100,10 @@ must check their own pairs in both schemes. Status needs a label or icon as well
   Use `text-sm` (14px) for UI, `text-base` (16px) for documents; reserve 11px for compact labels.
 - Spacing: `--desk-space-1`, `2`, `3`, `4`, `5`, `6`, `8`, `10`, `12`, `16`, on a 4px grid.
 - Control heights: `--desk-control-xs` (28px), `sm` (32px), `md` (40px), `lg` (48px).
-- Radius: `--desk-radius-sm`, `md`, `lg`, `full`.
+- Radius: `--desk-radius-sm` (tags, keycaps, menu items), `md` (buttons, fields, menus, tooltips), `lg`
+  (cards, panels, dialogs), `full` (filter chips and status badges only: buttons are not pills).
+- Elevation: none for cards (a 1px border); `shadow-sm` for the raised segment and a card on hover;
+  `shadow-md` for menus, popovers and tooltips; `shadow-lg` for dialogs.
 - Motion: `--desk-motion-fast`, `base`, `slow`, `theme`. The runtime sets all four to `0ms` under
   reduced motion, including when the user overrides the OS preference inside Desk.
 
@@ -199,15 +239,21 @@ be empty. The design behind it is `docs/ko/theme-requirements.md` (TP) and ADR 0
 
 A design system is a plugin of kind `design-system` (`specs/plugin/v0/design-system.schema.json`,
 ADR 0090): for each component of the catalogue (`@endue-ai/ui/design`), named options, no values and no
-code. `desk.design.active` names the one in force (empty for the endue design system, today's look); a
-theme and a design system are chosen apart and go together in any combination.
+code. `desk.design.active` names the one in force (empty for the endue design system, endue.ai/design's
+look); a theme and a design system are chosen apart and go together in any combination.
 
 | Component | Options (the endue design system's first) |
 | --- | --- |
 | `button` | `shape` md, `size` sm, `weight` medium, `case` none, `padding` normal, `primary` solid / soft / outline, `secondary` outline / soft / ghost, `elevation` none |
-| `iconButton`, `field`, `check`, `tabs` | shape and size; `style` ghost / soft / outline, outline / filled / underline, boxed / pill / underline; `focus` ring / border; `accent` primary / text |
-| `card`, `row`, `menu`, `dialog`, `toast` | shape, padding or size, elevation; `style`, `selection` fill / soft / bar, `border`, `scrim` blur / dim |
-| `badge`, `tooltip`, `table`, `progress`, `focus` | shape, `style`, `case`; `rows` lines / striped / plain, `header`; `thickness`; focus `width` and `offset` |
+| `iconButton`, `field`, `check`, `tabs` | shape and size; `style` ghost / soft / outline, outline / filled / underline, segment / boxed / pill / underline; `focus` ring / border; `accent` primary / text |
+| `card`, `row`, `menu`, `dialog`, `toast` | shape (card lg), padding or size, elevation; `style`, `selection` fill / soft / bar, `border`, `scrim` blur / dim; dialog padding normal |
+| `badge`, `tooltip`, `table`, `progress`, `focus` | shape, `style`, `case`; tooltip elevation md; `rows` lines / striped / plain, `header`; `thickness`; focus `width` and `offset` |
+
+In the endue design system an outline button sits on a `border` hairline that turns into the hover
+surface; a field is sunken (`background`) with an `input` border that focus turns into a 2px ring; tabs
+are a segment, a `muted` track whose selected item is raised on `popover` with an `input` ring and
+`shadow-sm` (the underline style is for tabs across the top of a page); a soft badge is `text-muted` on
+`muted` without a border; a dialog sits on `card`.
 
 `shape` names a theme's radius step (or none or full), `size` a control height step, `elevation` a
 shadow step. `compileDesignSystem` turns a recipe into component tokens, `--desk-<component>-<part>`,
@@ -243,11 +289,41 @@ names the desk's design system opens Describe with it.
 
 ## Page and feedback patterns
 
-Use `.desk-bar`, `.desk-bar-title` and `.desk-bar-spacer` for a common toolbar; `.desk-pane` for a
-scrolling flex/grid pane and `.desk-details` for its details column. These classes only arrange content;
-use semantic headings, labels and native landmarks for its meaning.
+`packages/ui/src/patterns.css` (served at the end of `/_desk/base.css`) holds them, on theme tokens
+alone. Use `.desk-bar`, `.desk-bar-title` and `.desk-bar-spacer` for a common toolbar; `.desk-header`
+(`-text`, `-title`, `-desc`, `-actions`) for a page header, a title of a word or two and one sentence;
+`.desk-pane` for a scrolling flex/grid pane and `.desk-details` for its details column. These classes
+only arrange content; use semantic headings, labels and native landmarks for its meaning.
 
-An empty state (`.desk-empty`) says what belongs here and provides the next useful action. An error
+| Pattern | Classes | Use |
+| --- | --- | --- |
+| List | `.desk-list`, `-header`, `-count`, `-row`, `-lead`, `-text`, `-title`, `-desc`, `-meta` | Hairline rows in sections 32px apart; at most two actions a row, more in a menu |
+| Callout | `.desk-callout` (`data-tone` info, success, warning, danger), `-icon`, `-body`, `-title`, `-action` | A notice; a coloured surface only for warning and danger; the body stays in the text colour |
+| Filter chips | `.desk-chips`, `.desk-chip` (`aria-pressed` or `aria-selected`) | One choice that narrows a list; to switch views use `.desk-tabs` |
+| Keycap | `.desk-kbd` (`.is-hot` for the key to press now) | One key per cap, side by side for a combination |
+| Status dot | `.desk-dot` (`data-tone` unread, success, warning, danger, info) | A still state beside a word or under an `aria-label` |
+| Star | `.desk-star` (`data-working="true"`, `.is-small`, `.is-large`), `.desk-star-label` | An agent at work, `role="img"` `aria-label="Working"`, with one line saying who does what |
+| Loading | `.desk-skeleton`, `.desk-spinner` | Data loading: a skeleton where the shape is known, a spinner where it is not |
+
+```html
+<header class="desk-header">
+  <div class="desk-header-text">
+    <h1 class="desk-header-title">Sources</h1>
+    <p class="desk-header-desc">Files Eris may read for this project.</p>
+  </div>
+  <div class="desk-header-actions">
+    <button class="desk-btn">Import</button>
+    <button class="desk-btn desk-btn-primary">Add source</button>
+  </div>
+</header>
+<span class="desk-star-label">
+  <span class="desk-star" data-working="true" role="img" aria-label="Working"></span>
+  <span><strong>Eris</strong> is reading the files.</span>
+</span>
+```
+
+An empty state (`.desk-empty`, its title in `.desk-empty-title`) says what belongs here and provides the
+next useful action, without a picture or a surface. An error
 (`.desk-error`, `role="alert"` for a new failure) explains what failed and includes a retry or recovery
 action when one is possible. Keep relevant content visible after a recoverable failure. `.desk-muted`
 is for secondary text, and `.sr-only` supplies names without a visible label.

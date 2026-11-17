@@ -1,8 +1,8 @@
 # @endue-ai/ui
 
-The shared Desk design system: semantic colors and scale, base page styles, and framework-free
-custom elements. The shell and plugin frames read the same `--desk-*` properties; a theme restyles
-both. See [the design system guide](../../docs/design-system.md) and ADR 0022 for custom elements.
+The shared Desk design system, endue.ai/design's (ADR 0265): semantic colors and scale, base page styles
+and patterns, and framework-free custom elements. The shell and plugin frames read the same `--desk-*`
+properties; a theme restyles both. See [the guide](../../docs/design-system.md) and ADR 0022.
 
 ## Public API
 
@@ -12,7 +12,7 @@ both. See [the design system guide](../../docs/design-system.md) and ADR 0022 fo
   block into tokens, fonts and preview colours; `gate(tokens, { high?, fallback? })` fixes contrast by
   OKLCH lightness; `parseColor`, `contrast`, presets; `extractColors({ width, height, data })` (k-means in
   OKLab) and `paletteFrom(colors, scheme)` make a gated palette, the most saturated as primary.
-- `@endue-ai/ui/tokens.css`: default values; `@endue-ai/ui/base.css`: page, toolbar and feedback patterns.
+- `@endue-ai/ui/tokens.css`: default values; `@endue-ai/ui/base.css`: the kit, then `patterns.css`.
 - `@endue-ai/ui/elements`: `defineElements()`, `elements` (by tag name) and their classes:
   `desk-button`, `desk-input`, `desk-list`, `desk-dialog`, `desk-menu`, `desk-toast`, `desk-table`,
   `desk-agenda`, `desk-stat`, `desk-card`, `desk-markdown`, `desk-progress`, `desk-edit-tier`,
