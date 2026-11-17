@@ -46,8 +46,7 @@
       },
       "dialog": {
         "shape": "md",
-        "elevation": "md",
-        "padding": "normal"
+        "elevation": "md"
       },
       "toast": {
         "shape": "md",

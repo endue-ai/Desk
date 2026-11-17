@@ -126,6 +126,8 @@ export function paletteFrom(colors: readonly string[], scheme: Scheme): BrandPal
     primaryBorder: tint(primary, 0.34),
     ring: hex(primary),
     accent: hex(primary),
+    // A brand's colour is its star too: it already stands 3:1 from the grounds.
+    star: hex(primary),
   });
   for (const s of STATUSES) {
     const base = parseColor(desk[s]) ?? BLACK;

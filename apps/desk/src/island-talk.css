@@ -81,6 +81,6 @@
 
 .island-talk-input:focus-visible {
   border-color: var(--desk-field-focus-border);
-  outline: var(--desk-focus-width) solid var(--desk-field-focus-ring);
-  outline-offset: 0;
+  outline: var(--desk-field-focus-ring-width) solid var(--desk-field-focus-ring);
+  outline-offset: var(--desk-field-focus-ring-offset);
 }

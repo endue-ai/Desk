@@ -19,12 +19,12 @@ const page = Object.fromEntries(THEME_VARIABLES.map((name) => [name, variables[n
 describe("the terminal's theme", () => {
   it("takes the screen, text, cursor and ANSI colours from the desk's tokens, the page's by default", () => {
     expect(xtermTheme(dark, page)).toMatchObject({
-      background: "#141416",
-      foreground: "#f2f0f5",
-      cursor: "#b6a3f5",
-      cursorAccent: "#141416",
-      selectionBackground: "#b6a3f559",
-      black: "#1e1d21",
+      background: "#141311",
+      foreground: "#f3f1ec",
+      cursor: "#f3f1ec",
+      cursorAccent: "#141311",
+      selectionBackground: "#f3f1ec59",
+      black: "#1d1c19",
       red: "#ff8484",
       brightWhite: "#ffffff",
     });
@@ -60,8 +60,8 @@ describe("the terminal's theme", () => {
 
   it("selects with the text colour itself in high contrast", () => {
     const high = xtermTheme({ ...dark, contrast: "high" }, page);
-    expect(high.selectionBackground).toBe("#f2f0f5");
-    expect(high.selectionForeground).toBe("#141416");
+    expect(high.selectionBackground).toBe("#f3f1ec");
+    expect(high.selectionForeground).toBe("#141311");
     expect(xtermTheme(dark, page).selectionForeground).toBeUndefined();
   });
 

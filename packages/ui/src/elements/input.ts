@@ -35,8 +35,8 @@ input::placeholder {
 }
 input:focus-visible {
   border-color: var(--desk-field-focus-border);
-  outline: var(--desk-focus-width) solid var(--desk-field-focus-ring);
-  outline-offset: 1px;
+  outline: var(--desk-field-focus-ring-width) solid var(--desk-field-focus-ring);
+  outline-offset: var(--desk-field-focus-ring-offset);
 }
 :host([disabled]) {
   opacity: 0.5;

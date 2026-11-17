@@ -113,7 +113,7 @@
       "description": "Tabs and segmented controls: one choice among a few.",
       "type": "object",
       "properties": {
-        "style": { "description": "Default: boxed.", "$ref": "#/$defs/DesignTabsStyle" },
+        "style": { "description": "Default: segment.", "$ref": "#/$defs/DesignTabsStyle" },
         "shape": { "description": "Default: md.", "$ref": "#/$defs/DesignShape" },
         "size": { "description": "Default: sm.", "$ref": "#/$defs/DesignSize" }
       },
@@ -124,7 +124,7 @@
       "type": "object",
       "properties": {
         "style": { "description": "Default: outline.", "$ref": "#/$defs/DesignCardStyle" },
-        "shape": { "description": "Default: md.", "$ref": "#/$defs/DesignShape" },
+        "shape": { "description": "Default: lg.", "$ref": "#/$defs/DesignShape" },
         "padding": { "description": "Default: normal.", "$ref": "#/$defs/DesignPadding" }
       },
       "additionalProperties": false
@@ -156,7 +156,7 @@
         "shape": { "description": "Default: lg.", "$ref": "#/$defs/DesignShape" },
         "elevation": { "description": "Default: lg.", "$ref": "#/$defs/DesignElevation" },
         "scrim": { "description": "Default: blur.", "$ref": "#/$defs/DesignScrim" },
-        "padding": { "description": "Default: roomy.", "$ref": "#/$defs/DesignPadding" }
+        "padding": { "description": "Default: normal.", "$ref": "#/$defs/DesignPadding" }
       },
       "additionalProperties": false
     },
@@ -185,7 +185,7 @@
       "type": "object",
       "properties": {
         "shape": { "description": "Default: md.", "$ref": "#/$defs/DesignShape" },
-        "elevation": { "description": "Default: sm.", "$ref": "#/$defs/DesignElevation" }
+        "elevation": { "description": "Default: md.", "$ref": "#/$defs/DesignElevation" }
       },
       "additionalProperties": false
     },
@@ -273,9 +273,9 @@
       "enum": ["primary", "text"]
     },
     "DesignTabsStyle": {
-      "description": "Tabs: outlined boxes, pills on a track, or an underline under the selected one.",
+      "description": "Tabs: outlined boxes, pills on a track, an underline under the selected one, or a sunken track whose selected item is raised.",
       "type": "string",
-      "enum": ["boxed", "pill", "underline"]
+      "enum": ["boxed", "pill", "underline", "segment"]
     },
     "DesignCardStyle": {
       "description": "A card: outlined, raised with a shadow, filled, or plain.",

@@ -28,15 +28,17 @@ const os = { dark: false, highContrast: false, reducedMotion: false };
 describe("resolveTheme", () => {
   it("provides light and high contrast colors without a theme plugin", () => {
     const light = resolveTheme([], { scheme: "light", contrast: "normal", motion: "full" }, os);
-    expect(light.tokens.background).toBe("#faf9fc");
-    expect(light.tokens.text).toBe("#1e1833");
+    // Ink, endue.ai/design's light theme: white paper, cool ink, and the fill is the ink.
+    expect(light.tokens.background).toBe("#ffffff");
+    expect(light.tokens.text).toBe("#17151f");
     expect(light.tokens.popover).toBe("#ffffff");
-    expect(light.tokens.primaryText).toBe("#6b4f9e");
+    expect(light.tokens.primaryText).toBe("#17151f");
+    expect(light.tokens.star).toBe("#7b6cf0");
     expect(light.tokens.dangerForeground).toBe("#ffffff");
     const high = resolveTheme([], { scheme: "light", contrast: "high", motion: "reduce" }, os);
     expect(high.tokens.text).toBe("#000000");
     expect(high.reducedMotion).toBe(true);
-    expect(high.tokens.ring).toBe("#4a2f80");
+    expect(high.tokens.ring).toBe("#000000");
     expect(high.tokens.primaryForeground).toBe("#ffffff");
     expect(high.tokens.motionTheme).toBe("0ms");
   });

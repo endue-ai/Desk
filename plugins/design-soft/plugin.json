@@ -31,7 +31,6 @@
       },
       "card": {
         "style": "elevated",
-        "shape": "lg",
         "padding": "roomy"
       },
       "row": {
@@ -44,8 +43,7 @@
         "elevation": "lg"
       },
       "dialog": {
-        "scrim": "dim",
-        "padding": "normal"
+        "scrim": "dim"
       },
       "toast": {
         "style": "soft",
