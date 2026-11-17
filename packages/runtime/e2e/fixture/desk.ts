@@ -117,6 +117,9 @@ const runtime = createRuntime({
   bridge: client,
   clock,
   platform: params.get("platform") === "mac" ? "mac" : "other",
+  // The OS's language as this page names it (desk.language's `system`, ADR 0250): Korean, as the
+  // specs read the desk, unless ?lang=en; never the headless browser's own en-US.
+  language: params.get("lang") === "en" ? "en" : "ko",
   plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
 });
 
