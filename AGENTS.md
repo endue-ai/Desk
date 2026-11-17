@@ -92,6 +92,8 @@ read the same files and follow the steps.
   author agent (`.claude/skills/dispatch/SKILL.md`).
 - `fix-ci <pr>`: fix a PR's failing checks on its branch, within budget (`.claude/skills/fix-ci/SKILL.md`).
 - `add-adr <title>`: add the next MADR page to `docs/adr/` (`.claude/skills/add-adr/SKILL.md`).
+- `design-ui <path>`: build or change UI on the endue design system (endue.ai/design) and run its checks
+  (`.claude/skills/design-ui/SKILL.md`).
 
 Budgets per issue: 3 CI failures, 2 review rounds, 24 hours. Past any of them, stop and label
 `ai:needs-human`. Which tests run for which change: `docs/qa/TESTING.md`.

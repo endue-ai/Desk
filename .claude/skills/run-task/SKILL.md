@@ -30,6 +30,7 @@ checks are green, or when a budget runs out. You never merge.
 4. Implement until `just check && just test` are green. Small commits, Conventional Commits, `git commit -s`.
    Run e2e tests only through `just test-e2e [playwright args]`, for example
    `just test-e2e e2e/eris.spec.ts` or `just test-e2e --update-snapshots` (ADR 0018).
+   A change to UI (CSS, HTML, what a page draws) follows `.claude/skills/design-ui/SKILL.md`.
 5. Update what the change makes stale: generated files (`just codegen`), READMEs (40 lines max), docs,
    `docs/qa/TESTING.md`. For every decision that is hard to reverse, draft an ADR with `/add-adr`.
 6. Check the Scope locally before pushing: write the PR body to a temp file, then
