@@ -207,7 +207,7 @@
     ],
     "keys": [
       {
-        "key": "Mod+Alt+G",
+        "key": "Mod+Alt+Shift+G",
         "command": "endue.git-studio.open"
       }
     ]

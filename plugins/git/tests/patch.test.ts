@@ -101,12 +101,17 @@ describe("linesPatch", () => {
     const { file, hunk } = parsed();
     for (const chosen of [[1], [3], [1, 3], [2, 4], [1, 2, 3, 4]]) {
       const patch = linesPatch(file, hunk, new Set(chosen), false) ?? "";
-      expect(() => applyWith(repo as TempRepo, patch, ["--cached", "--check"]), String(chosen)).not.toThrow();
+      expect(
+        () => applyWith(repo as TempRepo, patch, ["--cached", "--check"]),
+        String(chosen),
+      ).not.toThrow();
     }
     repo.git("add", "a.txt");
     for (const chosen of [[1], [4], [1, 3], [2, 4]]) {
       const patch = linesPatch(file, hunk, new Set(chosen), true) ?? "";
-      expect(() => applyWith(repo as TempRepo, patch, ["--cached", "--reverse", "--check"])).not.toThrow();
+      expect(() =>
+        applyWith(repo as TempRepo, patch, ["--cached", "--reverse", "--check"]),
+      ).not.toThrow();
     }
   });
 });

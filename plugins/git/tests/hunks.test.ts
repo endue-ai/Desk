@@ -8,7 +8,9 @@ import { type RealGit, realGit, type TempRepo, tempRepo } from "./real-git";
 const LINES = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`);
 const text = (lines: string[]) => `${lines.join("\n")}\n`;
 /** Lines 2 and 3 changed near the top, line 18 near the bottom: two hunks. */
-const CHANGED = LINES.map((line, i) => (i === 1 || i === 2 || i === 17 ? line.toUpperCase() : line));
+const CHANGED = LINES.map((line, i) =>
+  i === 1 || i === 2 || i === 17 ? line.toUpperCase() : line,
+);
 
 let repo: TempRepo | undefined;
 afterEach(() => repo?.remove());

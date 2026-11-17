@@ -21,7 +21,11 @@ export interface TempRepo {
 export function tempRepo(files: Record<string, string>): TempRepo {
   const root = mkdtempSync(join(tmpdir(), "endue-git-"));
   const git = (...args: string[]) =>
-    execFileSync("git", args, { cwd: root, encoding: "utf8", env: { ...process.env, LC_ALL: "C" } });
+    execFileSync("git", args, {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, LC_ALL: "C" },
+    });
   git("init", "-q", "-b", "main");
   git("config", "user.name", "endue-team");
   git("config", "user.email", "team@endue.ai");

@@ -54,8 +54,13 @@ export function createHunkActions(deps) {
         : allLines(hunk);
     const patch = linesPatch(file, hunk, chosen, verb !== "stage");
     if (patch === null) throw new Error("The chosen lines change nothing.");
-    const count = [...chosen].filter((i) => hunk.lines[i]?.kind === "add" || hunk.lines[i]?.kind === "del").length;
-    const what = part.kind === "lines" ? `${count} line${count === 1 ? "" : "s"} of ${file.path}` : `a hunk of ${file.path}`;
+    const count = [...chosen].filter(
+      (i) => hunk.lines[i]?.kind === "add" || hunk.lines[i]?.kind === "del",
+    ).length;
+    const what =
+      part.kind === "lines"
+        ? `${count} line${count === 1 ? "" : "s"} of ${file.path}`
+        : `a hunk of ${file.path}`;
     return { path: file.path, patch, what };
   };
 
