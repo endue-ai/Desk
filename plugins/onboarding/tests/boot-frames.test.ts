@@ -22,7 +22,7 @@ describe("the heads-up boot", () => {
       opacity: 0.35,
       times: AGENT,
     });
-    expect(frames[0].transform).toBe("translate(0px, 0px) scale(1) scaleX(0)");
+    expect(frames[0]?.transform).toBe("translate(0px, 0px) scale(1) scaleX(0)");
     expect(frames.at(-1)?.opacity).toBe(0.35);
   });
 
