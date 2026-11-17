@@ -113,7 +113,19 @@
         "erisMoonDark": "#4a3210",
         "erisMoonLit": "#c49a5a",
         "erisWhite": "#fffaee",
-        "erisGlow": "rgba(196, 120, 0, 0.25)"
+        "erisGlow": "rgba(196, 120, 0, 0.25)",
+        "star": "#934a00",
+        "chart9": "#4f6b0a",
+        "chart10": "#b3261e",
+        "codeSurface": "rgba(42, 26, 4, 0.06)",
+        "codeComment": "#6e4f1c",
+        "codePunctuation": "rgba(42, 26, 4, 0.65)",
+        "codeKeyword": "#934a00",
+        "codeString": "#4f6b0a",
+        "codeNumber": "#7a5c00",
+        "codeFunction": "#2f5f8a",
+        "codeTag": "#b3261e",
+        "codeProperty": "#7a4a8a"
       },
       "material": {
         "noise": 0.03,
@@ -220,7 +232,19 @@
         "erisMoonDark": "#2a1c08",
         "erisMoonLit": "#b07a2a",
         "erisWhite": "#fff0cc",
-        "erisGlow": "rgba(255, 176, 0, 0.4)"
+        "erisGlow": "rgba(255, 176, 0, 0.4)",
+        "star": "#ffcf70",
+        "chart9": "#c6cf45",
+        "chart10": "#ff7a57",
+        "codeSurface": "rgba(255, 184, 77, 0.06)",
+        "codeComment": "#c78b35",
+        "codePunctuation": "rgba(255, 184, 77, 0.65)",
+        "codeKeyword": "#ffcf70",
+        "codeString": "#c6cf45",
+        "codeNumber": "#f2d64b",
+        "codeFunction": "#9fb6d9",
+        "codeTag": "#ff7a57",
+        "codeProperty": "#d98c5f"
       },
       "material": {
         "noise": 0.04,

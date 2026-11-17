@@ -14,11 +14,15 @@ const PALETTE: ReadonlyArray<readonly [readonly string[], string]> = [
   [["text", "textMuted"], "Body text and secondary text on those surfaces"],
   [
     ["primary", "primaryForeground", "primaryHover"],
-    "The main action: the brand fill, the ink on it, its hover",
+    "The main action: the fill (one per group), the ink on it, its hover",
   ],
   [
     ["primaryText", "primarySubtle", "primarySoft", "primaryBorder"],
     "The brand on neutral surfaces: as text (links), a faint and a soft tint, a border",
+  ],
+  [
+    ["star"],
+    "The one colour: the star an agent at work shows, and nothing else (3:1 on the surfaces)",
   ],
   ...["success", "warning", "danger", "info"].map(
     (s) =>
@@ -34,8 +38,16 @@ const PALETTE: ReadonlyArray<readonly [readonly string[], string]> = [
   [["tooltip", "tooltipText", "scrim"], "A tooltip and its text, the shade behind a dialog"],
   [["shadowSm", "shadowMd", "shadowLg"], "Three elevations (CSS shadows, not colours)"],
   [
-    Array.from({ length: 8 }, (_, i) => `chart${i + 1}`),
+    Array.from({ length: 10 }, (_, i) => `chart${i + 1}`),
     "Categories for charts and lanes, used in order",
+  ],
+  [
+    ["codeSurface", "codeComment", "codePunctuation", "codeKeyword", "codeString", "codeNumber"],
+    "A code block's tint and its comments, punctuation, keywords, strings and numbers",
+  ],
+  [
+    ["codeFunction", "codeTag", "codeProperty"],
+    "Its functions, tags and properties (4.5:1 on the tint)",
   ],
 ];
 

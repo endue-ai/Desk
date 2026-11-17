@@ -301,7 +301,7 @@ export interface DesignCheck {
 
 /** Tabs and segmented controls: one choice among a few. */
 export interface DesignTabs {
-  /** Default: boxed. */
+  /** Default: segment. */
   style?: DesignTabsStyle;
   /** Default: md. */
   shape?: DesignShape;
@@ -313,7 +313,7 @@ export interface DesignTabs {
 export interface DesignCard {
   /** Default: outline. */
   style?: DesignCardStyle;
-  /** Default: md. */
+  /** Default: lg. */
   shape?: DesignShape;
   /** Default: normal. */
   padding?: DesignPadding;
@@ -347,7 +347,7 @@ export interface DesignDialog {
   elevation?: DesignElevation;
   /** Default: blur. */
   scrim?: DesignScrim;
-  /** Default: roomy. */
+  /** Default: normal. */
   padding?: DesignPadding;
 }
 
@@ -375,7 +375,7 @@ export interface DesignBadge {
 export interface DesignTooltip {
   /** Default: md. */
   shape?: DesignShape;
-  /** Default: sm. */
+  /** Default: md. */
   elevation?: DesignElevation;
 }
 
@@ -438,8 +438,8 @@ export type DesignFieldFocus = "ring" | "border";
 /** A check's colour: the brand's or the text's. */
 export type DesignCheckAccent = "primary" | "text";
 
-/** Tabs: outlined boxes, pills on a track, or an underline under the selected one. */
-export type DesignTabsStyle = "boxed" | "pill" | "underline";
+/** Tabs: outlined boxes, pills on a track, an underline under the selected one, or a sunken track whose selected item is raised. */
+export type DesignTabsStyle = "boxed" | "pill" | "underline" | "segment";
 
 /** A card: outlined, raised with a shadow, filled, or plain. */
 export type DesignCardStyle = "outline" | "elevated" | "filled" | "plain";

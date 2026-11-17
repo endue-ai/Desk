@@ -2,7 +2,9 @@
  * Compile a design system's recipe into component tokens (ADR 0090, DH-04): `--desk-<component>-<part>`
  * whose values point at the theme's tokens (`var(--desk-radius-full)`, `var(--desk-primary-soft)`) or
  * are bounded constants (a weight, a case, a border width). Colours come only in the pairs the theme
- * gate checks (gate.ts TEXT_PAIRS), so no theme with any design system loses contrast (DC-05).
+ * gate checks (gate.ts TEXT_PAIRS), so no theme with any design system loses contrast (DC-05). The
+ * endue design system's parts follow endue.ai/design (ADR 0265): an outline is a hairline that turns
+ * into the hover surface, selection is a surface and never the fill, and a field is sunken.
  */
 import { type DesignRecipe, type FullRecipe, fillRecipe } from "./catalogue";
 
@@ -100,7 +102,7 @@ function button(r: FullRecipe["button"], out: Tokens) {
       ? [v("muted"), v("text"), NONE, v("hover"), v("text"), NONE]
       : r.secondary === "ghost"
         ? quiet
-        : [NONE, v("text"), v("input"), v("hover"), v("text"), v("input")];
+        : [NONE, v("text"), v("border"), v("hover"), v("text"), v("hover")];
   put(out, "button", secondary);
   put(out, "buttonPrimary", tone("primary", r.primary));
   put(out, "buttonDanger", tone("danger", r.primary));
@@ -112,8 +114,9 @@ function iconButton(r: FullRecipe["iconButton"], out: Tokens) {
   out.iconButtonSize = CONTROL[r.size] as string;
   out.iconButtonBg = r.style === "soft" ? v("muted") : NONE;
   out.iconButtonBorder = r.style === "outline" ? v("input") : NONE;
-  out.iconButtonFg = v("text");
+  out.iconButtonFg = r.style === "ghost" ? v("text-muted") : v("text");
   out.iconButtonHoverBg = v("hover");
+  out.iconButtonHoverFg = v("text");
 }
 
 function field(r: FullRecipe["field"], out: Tokens) {
@@ -121,11 +124,14 @@ function field(r: FullRecipe["field"], out: Tokens) {
   out.fieldRadius = underline ? "0" : (RADIUS[r.shape] as string);
   out.fieldHeight = CONTROL[r.size] as string;
   out.fieldPaddingX = underline ? "0" : v("space-3");
-  out.fieldBg = r.style === "filled" ? v("muted") : underline ? NONE : v("card");
+  out.fieldBg = r.style === "filled" ? v("muted") : underline ? NONE : v("background");
   out.fieldBorderColor = r.style === "filled" ? NONE : v("input");
   out.fieldBorderWidth = underline ? "0 0 1px" : "1px";
-  out.fieldFocusBorder = r.focus === "border" ? v("ring") : out.fieldBorderColor;
+  // ring: the border takes the ring's colour and a 1px ring closes round it; border: the border alone.
+  out.fieldFocusBorder = v("ring");
   out.fieldFocusRing = r.focus === "border" ? NONE : v("ring");
+  out.fieldFocusRingWidth = r.focus === "border" ? "0" : "1px";
+  out.fieldFocusRingOffset = "0";
 }
 
 function check(r: FullRecipe["check"], out: Tokens) {
@@ -133,27 +139,59 @@ function check(r: FullRecipe["check"], out: Tokens) {
   out.checkSize = { xs: "12px", sm: "14px", md: "16px", lg: "20px" }[r.size] as string;
 }
 
+/** One radius step under `shape`: a segment's items inside its track. */
+const INNER: Record<string, string> = {
+  none: "0",
+  sm: "0",
+  md: v("radius-sm"),
+  lg: v("radius-md"),
+  full: v("radius-full"),
+};
+
 function tabs(r: FullRecipe["tabs"], out: Tokens) {
   const pill = r.style === "pill";
   const underline = r.style === "underline";
-  out.tabsBg = pill ? v("muted") : NONE;
-  out.tabsRadius = pill ? v("radius-full") : "0";
-  out.tabsGap = underline ? v("space-3") : v("space-1");
-  out.tabRadius = pill ? v("radius-full") : underline ? "0" : (RADIUS[r.shape] as string);
-  out.tabHeight = CONTROL[r.size] as string;
+  // A segment: a sunken track (muted) whose selected item is raised on the popover surface.
+  const segment = r.style === "segment";
+  const track = pill || segment;
+  out.tabsBg = track ? v("muted") : NONE;
+  out.tabsRadius = pill ? v("radius-full") : segment ? (RADIUS[r.shape] as string) : "0";
+  out.tabsGap = underline ? v("space-4") : segment ? "2px" : v("space-1");
+  out.tabsPadding = segment ? v("space-1") : "0";
+  out.tabRadius = pill
+    ? v("radius-full")
+    : underline
+      ? "0"
+      : segment
+        ? (INNER[r.shape] as string)
+        : (RADIUS[r.shape] as string);
+  out.tabHeight = segment
+    ? `calc(${CONTROL[r.size]} - 2 * ${v("space-1")})`
+    : (CONTROL[r.size] as string);
   out.tabPaddingX = underline ? v("space-1") : v("space-3");
-  out.tabFg = underline ? v("text-muted") : v("text");
+  out.tabFg = underline || segment ? v("text-muted") : v("text");
   out.tabBorder = r.style === "boxed" ? v("border") : NONE;
-  out.tabHoverBg = underline ? NONE : v("hover");
-  out.tabSelectedBg = pill ? v("primary") : underline ? NONE : v("primary-soft");
+  out.tabHoverBg = underline || segment ? NONE : v("hover");
+  out.tabHoverFg = v("text");
+  out.tabSelectedBg = pill
+    ? v("primary")
+    : underline
+      ? NONE
+      : segment
+        ? v("popover")
+        : v("primary-soft");
   out.tabSelectedFg = pill ? v("primary-foreground") : v("text");
   out.tabSelectedBorder = r.style === "boxed" ? v("primary") : NONE;
-  out.tabSelectedShadow = underline ? `inset 0 -2px 0 ${v("primary")}` : "none";
+  out.tabSelectedShadow = underline
+    ? `inset 0 -2px 0 ${v("primary")}`
+    : segment
+      ? `0 0 0 1px ${v("input")}, ${v("shadow-sm")}`
+      : "none";
 }
 
 function card(r: FullRecipe["card"], out: Tokens) {
   out.cardRadius = RADIUS[r.shape] as string;
-  out.cardPadding = { tight: v("space-2"), normal: v("space-3"), roomy: v("space-5") }[
+  out.cardPadding = { tight: v("space-2"), normal: v("space-4"), roomy: v("space-6") }[
     r.padding
   ] as string;
   out.cardBg = r.style === "filled" ? v("muted") : r.style === "plain" ? NONE : v("card");
@@ -182,7 +220,7 @@ function surfaces(r: FullRecipe, out: Tokens) {
   out.dialogPadding = { tight: v("space-3"), normal: v("space-4"), roomy: v("space-6") }[
     r.dialog.padding
   ] as string;
-  out.dialogBg = v("popover");
+  out.dialogBg = v("card");
   out.dialogBorder = v("border");
   out.dialogScrim = v("scrim");
   out.dialogScrimFilter = r.dialog.scrim === "dim" ? "none" : "blur(8px)";
@@ -201,9 +239,8 @@ function marks(r: FullRecipe, out: Tokens) {
   const [badgeCase, badgeTracking] = CASE(r.badge.case);
   out.badgeRadius = RADIUS[r.badge.shape] as string;
   out.badgeBg = b === "solid" ? v("primary") : b === "outline" ? NONE : v("muted");
-  out.badgeFg =
-    b === "solid" ? v("primary-foreground") : b === "outline" ? v("text-muted") : v("text");
-  out.badgeBorder = b === "solid" ? v("primary") : b === "outline" ? v("input") : v("border");
+  out.badgeFg = b === "solid" ? v("primary-foreground") : v("text-muted");
+  out.badgeBorder = b === "solid" ? v("primary") : b === "outline" ? v("input") : NONE;
   out.badgeCase = badgeCase as string;
   out.badgeTracking = badgeTracking as string;
   const t = r.table;

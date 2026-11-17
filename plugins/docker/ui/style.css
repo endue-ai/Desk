@@ -11,7 +11,7 @@
   --docker-stderr: color-mix(in srgb, var(--desk-danger-text) 70%, var(--desk-text));
   --docker-link: var(--desk-primary-text);
   --docker-cpu: var(--desk-chart-4);
-  --docker-mem: var(--desk-chart-2);
+  --docker-mem: var(--desk-chart-6);
   --docker-net: var(--desk-chart-1);
 }
 

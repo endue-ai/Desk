@@ -98,14 +98,19 @@ body {
   opacity: 0.5;
 }
 
+/* An agent at work: a star (endue.ai/design), one per agent, in its own colour or the star's. It
+   twinkles, the one thing on the desk that moves on its own. */
 .island-dot {
-  background: var(--island-dot, var(--desk-success));
-  animation: island-working 1.6s var(--desk-easing) infinite alternate;
+  border-radius: 0;
+  background: var(--island-dot, var(--desk-star));
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  animation: island-working calc(var(--desk-motion-slow) * 5.5) ease-in-out infinite;
 }
 
 @keyframes island-working {
-  to {
-    opacity: 0.45;
+  50% {
+    transform: scale(0.74);
+    opacity: 0.6;
   }
 }
 

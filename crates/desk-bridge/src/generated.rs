@@ -472,7 +472,7 @@ pub struct DesignCheck {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DesignTabs {
-    /// Default: boxed.
+    /// Default: segment.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style: Option<DesignTabsStyle>,
     /// Default: md.
@@ -490,7 +490,7 @@ pub struct DesignCard {
     /// Default: outline.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style: Option<DesignCardStyle>,
-    /// Default: md.
+    /// Default: lg.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shape: Option<DesignShape>,
     /// Default: normal.
@@ -541,7 +541,7 @@ pub struct DesignDialog {
     /// Default: blur.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scrim: Option<DesignScrim>,
-    /// Default: roomy.
+    /// Default: normal.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub padding: Option<DesignPadding>,
 }
@@ -583,7 +583,7 @@ pub struct DesignTooltip {
     /// Default: md.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shape: Option<DesignShape>,
-    /// Default: sm.
+    /// Default: md.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub elevation: Option<DesignElevation>,
 }
@@ -752,7 +752,7 @@ pub enum DesignCheckAccent {
     Text,
 }
 
-/// Tabs: outlined boxes, pills on a track, or an underline under the selected one.
+/// Tabs: outlined boxes, pills on a track, an underline under the selected one, or a sunken track whose selected item is raised.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DesignTabsStyle {
     #[serde(rename = "boxed")]
@@ -761,6 +761,8 @@ pub enum DesignTabsStyle {
     Pill,
     #[serde(rename = "underline")]
     Underline,
+    #[serde(rename = "segment")]
+    Segment,
 }
 
 /// A card: outlined, raised with a shadow, filled, or plain.

@@ -9,7 +9,7 @@ html,
 body {
   margin: 0;
   height: 100%;
-  background: var(--desk-background, #141416);
+  background: var(--desk-background, #141311);
 }
 
 .desk,

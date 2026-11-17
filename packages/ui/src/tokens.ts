@@ -10,68 +10,90 @@
 
 import { componentTokens } from "./design/compile";
 
-/** Role colours, with the dark scheme's values. A theme redefines any of them; none is a literal elsewhere. */
+/**
+ * Role colours, with the dark scheme's values: Stone, endue.ai/design's dark theme (warm black with
+ * paper-coloured text; plugins/theme carries Ink, the light one). The fill is ink and there is one:
+ * `primary` is the main action's fill and never a decoration; selection is a surface (`hover`,
+ * `primarySoft`); the one colour is `star`, the mark of an agent at work (ADR 0265). A theme
+ * redefines any of them; none is a literal elsewhere.
+ */
 export const colors = {
   // Surfaces: the page, a card or panel, a sunken track, a floating layer, the hover and selected row.
-  background: "#141416",
-  card: "#1e1d21",
-  muted: "#242127",
-  popover: "#2b2731",
-  hover: "#37313f",
+  background: "#141311",
+  card: "#1d1c19",
+  muted: "#23211e",
+  popover: "#2a2824",
+  hover: "#35322d",
   // Text on those surfaces.
-  text: "#f2f0f5",
-  textMuted: "#b0adb7",
-  // The brand action: a lavender fill, the ink on it, its hover, and the brand as text or a tint.
-  primary: "#b6a3f5",
-  primaryForeground: "#1e1833",
-  primaryHover: "#c8b9ff",
-  primaryText: "#b6a3f5",
-  primarySubtle: "rgba(182, 163, 245, 0.08)",
-  primarySoft: "rgba(182, 163, 245, 0.12)",
-  primaryBorder: "rgba(182, 163, 245, 0.34)",
+  text: "#f3f1ec",
+  textMuted: "#b3afa5",
+  // The main action: the ink fill (paper in the dark), the ink on it, its hover, the brand as text,
+  // and the sunken, selected and outline surfaces it shares with the neutrals.
+  primary: "#f3f1ec",
+  primaryForeground: "#1c1a17",
+  primaryHover: "#dcd8cf",
+  primaryText: "#f3f1ec",
+  primarySubtle: "#23211e",
+  primarySoft: "#35322d",
+  primaryBorder: "#32302b",
   /** @deprecated the brand fill under its old name; read `primary` (fills) or `primaryText` (text). */
-  accent: "#b6a3f5",
+  accent: "#f3f1ec",
+  // The one colour: the star an agent at work shows, and nothing else (3:1 on the surfaces).
+  star: "#b6a3f5",
   // Status: a fill, the ink on it, the colour as text on a neutral surface, a tinted surface and border.
-  success: "#5dbe5f",
-  successForeground: "#141416",
+  success: "#4caf50",
+  successForeground: "#1c1a17",
   successText: "#5dbe5f",
-  successSoft: "rgba(93, 190, 95, 0.16)",
-  successBorder: "rgba(93, 190, 95, 0.4)",
+  successSoft: "rgba(76, 175, 80, 0.12)",
+  successBorder: "rgba(76, 175, 80, 0.34)",
   warning: "#ff9800",
-  warningForeground: "#141416",
+  warningForeground: "#1c1a17",
   warningText: "#ff9800",
-  warningSoft: "rgba(255, 152, 0, 0.16)",
-  warningBorder: "rgba(255, 152, 0, 0.4)",
-  danger: "#ff8484",
-  dangerForeground: "#1e1833",
+  warningSoft: "rgba(255, 152, 0, 0.12)",
+  warningBorder: "rgba(255, 152, 0, 0.34)",
+  danger: "#ff6467",
+  dangerForeground: "#1c1a17",
   dangerText: "#ff8484",
-  dangerSoft: "rgba(255, 132, 132, 0.16)",
-  dangerBorder: "rgba(255, 132, 132, 0.4)",
-  info: "#6cadff",
-  infoForeground: "#141416",
+  dangerSoft: "rgba(255, 100, 103, 0.12)",
+  dangerBorder: "rgba(255, 100, 103, 0.34)",
+  info: "#5b9bf5",
+  infoForeground: "#1c1a17",
   infoText: "#6cadff",
-  infoSoft: "rgba(108, 173, 255, 0.16)",
-  infoBorder: "rgba(108, 173, 255, 0.4)",
+  infoSoft: "rgba(91, 155, 245, 0.12)",
+  infoBorder: "rgba(91, 155, 245, 0.34)",
   // Structure: dividers, the border of an input or an idle control, the focus and selection ring.
-  border: "#333136",
-  input: "#837991",
-  ring: "#b6a3f5",
+  border: "#32302b",
+  input: "#858177",
+  ring: "#f3f1ec",
   // Floating layers.
-  tooltip: "#403a49",
-  tooltipText: "#f2f0f5",
+  tooltip: "#403d37",
+  tooltipText: "#f3f1ec",
   scrim: "rgba(0, 0, 0, 0.6)",
   shadowSm: "0 1px 2px rgba(0, 0, 0, 0.4)",
   shadowMd: "0 8px 24px rgba(0, 0, 0, 0.45)",
   shadowLg: "0 20px 48px rgba(0, 0, 0, 0.55)",
-  // Categorical colours for charts and lanes, used in order and fixed to their subject.
-  chart1: "#b6a3f5",
-  chart2: "#5fd0be",
-  chart3: "#e8c98a",
-  chart4: "#5b9bf5",
-  chart5: "#e0738a",
-  chart6: "#8fd36b",
-  chart7: "#f5a35b",
-  chart8: "#a7b1c3",
+  // Categorical colours for charts and lanes, used in order and fixed to their subject: data, not
+  // decoration.
+  chart1: "#9683d3",
+  chart2: "#00ae75",
+  chart3: "#ca8000",
+  chart4: "#b259ff",
+  chart5: "#f74a5d",
+  chart6: "#009fac",
+  chart7: "#d95926",
+  chart8: "#3987e5",
+  chart9: "#008300",
+  chart10: "#d55181",
+  // Code: a block's tint over the surface, and the colours of its tokens (4.5:1 on that tint).
+  codeSurface: "rgba(243, 241, 236, 0.06)",
+  codeComment: "#b3afa5",
+  codePunctuation: "rgba(243, 241, 236, 0.65)",
+  codeKeyword: "#b6a3f5",
+  codeString: "#5dbe5f",
+  codeNumber: "#ff9800",
+  codeFunction: "#6cadff",
+  codeTag: "#ff8484",
+  codeProperty: "#3cacb8",
 } as const;
 
 /** Type, space, radius, control heights and motion: a theme's type, shape and motion presets set them. */
@@ -137,15 +159,15 @@ export const material = {
 
 /** The terminal's ANSI colours, black to bright white, with the dark scheme's values. */
 export const terminal = {
-  ansi0: "#1e1d21",
+  ansi0: "#1d1c19",
   ansi1: "#ff8484",
   ansi2: "#5dbe5f",
   ansi3: "#ffb347",
   ansi4: "#6cadff",
   ansi5: "#b6a3f5",
   ansi6: "#5fd0be",
-  ansi7: "#d7d4dc",
-  ansi8: "#6f6a78",
+  ansi7: "#d8d4cb",
+  ansi8: "#6f6b63",
   ansi9: "#ffa3a3",
   ansi10: "#86d788",
   ansi11: "#ffd089",

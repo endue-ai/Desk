@@ -52,8 +52,28 @@ textarea {
   color: inherit;
 }
 
+/* Headings are medium and drawn tight (endue.ai/design); a page's own rule wins. */
+:where(h1, h2, h3, h4, h5, h6) {
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+/* A link is told apart by its underline, not by colour. */
 a {
   color: var(--desk-primary-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--desk-input);
+  text-underline-offset: 3px;
+}
+a:hover {
+  text-decoration-color: currentColor;
+}
+
+::selection {
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
 }
 
 code,
@@ -80,71 +100,6 @@ samp {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
-}
-
-/* Layout patterns. A bar across the top of a page: a title, then tools; `.desk-bar-spacer` pushes
-   what follows to the right. */
-.desk-bar {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: var(--desk-space-2);
-  min-height: var(--desk-control-md);
-  padding: 0 var(--desk-space-3);
-  border-bottom: 1px solid var(--desk-border);
-}
-
-.desk-bar-title {
-  margin: 0;
-  overflow: hidden;
-  font-size: var(--desk-text-sm);
-  font-weight: 600;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.desk-bar-spacer {
-  flex: 1;
-}
-
-/* A pane that scrolls on its own inside a flex or grid layout. */
-.desk-pane {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  overflow: auto;
-}
-
-/* A details column beside the main pane. */
-.desk-details {
-  padding: var(--desk-space-3);
-  border-left: 1px solid var(--desk-border);
-  font-size: var(--desk-text-xs);
-}
-
-/* An empty state or a notice in place of content. */
-.desk-empty {
-  margin: var(--desk-space-3);
-  padding: var(--desk-space-4);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-muted);
-  color: var(--desk-text-muted);
-  text-align: center;
-}
-
-.desk-muted {
-  color: var(--desk-text-muted);
-}
-
-/* A recoverable failure. Supply role="alert" when a new error appears and a retry/recovery action. */
-.desk-error {
-  margin: var(--desk-space-3);
-  padding: var(--desk-space-4);
-  border: 1px solid var(--desk-danger-border);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-danger-soft);
-  color: var(--desk-danger-text);
 }
 
 /* Components (ADR 0090). A button: `.desk-btn` for every action, `.desk-btn-primary` for the main
@@ -203,10 +158,13 @@ samp {
 .desk-btn-quiet:hover:not(:disabled) {
   background: var(--desk-button-quiet-hover-bg);
 }
+/* Disabled: dimmed, and still hoverable so a tooltip can say why (never pointer-events: none). */
 .desk-btn:disabled,
-.desk-icon-btn:disabled {
+.desk-icon-btn:disabled,
+.desk-tab:disabled,
+.desk-field:disabled {
   opacity: 0.5;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 /* A button with an icon alone; give it an aria-label. */
@@ -222,8 +180,11 @@ samp {
   color: var(--desk-icon-button-fg);
   cursor: pointer;
 }
-.desk-icon-btn:hover:not(:disabled) {
+.desk-icon-btn:hover:not(:disabled),
+.desk-icon-btn[aria-pressed="true"],
+.desk-icon-btn[aria-expanded="true"] {
   background: var(--desk-icon-button-hover-bg);
+  color: var(--desk-icon-button-hover-fg);
 }
 
 /* A text input, select or text area. */
@@ -245,8 +206,11 @@ textarea.desk-field {
 }
 .desk-field:focus-visible {
   border-color: var(--desk-field-focus-border);
-  outline: var(--desk-focus-width) solid var(--desk-field-focus-ring);
-  outline-offset: 1px;
+  outline: var(--desk-field-focus-ring-width) solid var(--desk-field-focus-ring);
+  outline-offset: var(--desk-field-focus-ring-offset);
+}
+.desk-field[aria-invalid="true"] {
+  border-color: var(--desk-danger);
 }
 
 /* A checkbox or radio button. */
@@ -262,6 +226,7 @@ textarea.desk-field {
 .desk-tabs {
   display: flex;
   gap: var(--desk-tabs-gap);
+  padding: var(--desk-tabs-padding);
   border-radius: var(--desk-tabs-radius);
   background: var(--desk-tabs-bg);
 }
@@ -276,6 +241,7 @@ textarea.desk-field {
 }
 .desk-tab:hover:not(:disabled) {
   background: var(--desk-tab-hover-bg);
+  color: var(--desk-tab-hover-fg);
 }
 .desk-tab[aria-selected="true"],
 .desk-tab[aria-pressed="true"],

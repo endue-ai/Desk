@@ -103,7 +103,7 @@ describe("the studio's preview and apply", () => {
     const { theme, style } = setup();
     expect(theme.resolve("example.paper", "dark").tokens.background).toBe("#1b1915");
     expect(theme.resolve("example.paper", "light").tokens.radiusMd).toBe("0px");
-    expect(theme.resolve("", "light").tokens.background).toBe("#faf9fc");
-    expect(style.get("--desk-background")).toBe("#141416");
+    expect(theme.resolve("", "light").tokens.background).toBe("#ffffff");
+    expect(style.get("--desk-background")).toBe("#141311");
   });
 });

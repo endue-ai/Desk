@@ -39,17 +39,21 @@ describe("design tokens", () => {
     expect(propertyOf("ansi10")).toBe("--desk-ansi-10");
   });
 
-  it("keep the design's dark values for the surfaces, text and the brand", () => {
+  it("keep the design's dark values (Stone) for the surfaces, text, the fill and the star", () => {
     expect(colors).toMatchObject({
-      background: "#141416",
-      card: "#1e1d21",
-      border: "#333136",
-      text: "#f2f0f5",
-      textMuted: "#b0adb7",
-      primary: "#b6a3f5",
-      primaryForeground: "#1e1833",
-      ring: "#b6a3f5",
+      background: "#141311",
+      card: "#1d1c19",
+      border: "#32302b",
+      text: "#f3f1ec",
+      textMuted: "#b3afa5",
+      // The fill is ink (paper in the dark); the one colour is the star's.
+      primary: "#f3f1ec",
+      primaryForeground: "#1c1a17",
+      ring: "#f3f1ec",
+      star: "#b6a3f5",
     });
+    // Selection is a surface, never the fill: the soft brand surface is the hover surface.
+    expect(colors.primarySoft).toBe(colors.hover);
     // The old name of the brand fill stays an alias until plugins have moved (docs/design-system.md).
     expect(colors.accent).toBe(colors.primary);
   });
@@ -87,7 +91,7 @@ describe("design tokens", () => {
     expect(propertyOf("primaryForeground")).toBe("--desk-primary-foreground");
     const variables = cssVariables();
     for (const name of Object.keys(tokens)) expect(variables).toHaveProperty(propertyOf(name));
-    expect(variables["--desk-background"]).toBe("#141416");
+    expect(variables["--desk-background"]).toBe("#141311");
     expect(variables["--desk-text-sm"]).toBe("14px");
     expect(cssVariables({ paper: "#fdfcf8" })).toEqual({ "--desk-paper": "#fdfcf8" });
   });

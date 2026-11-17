@@ -1,0 +1,403 @@
+/*
+ * @endue-ai/ui page patterns (endue.ai/design, ADR 0265): the layouts and the feedback a plugin page
+ * repeats, drawn from the theme's tokens alone. The build joins this sheet to the end of base.css, so
+ * a page still links one sheet, /_desk/base.css. Pick a pattern for what it says, not for how it
+ * looks: a callout asks the person to act, a star says an agent is at work, a dot is a still state.
+ * Only floating things get a surface; lists and sections are divided by space and hairlines.
+ */
+
+/* A bar across the top of a page: a title, then tools; `.desk-bar-spacer` pushes what follows to
+   the right. Its buttons are small; one of them at most is primary. */
+.desk-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: var(--desk-control-md);
+  padding: 0 var(--desk-space-3);
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.desk-bar-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.desk-bar-spacer {
+  flex: 1;
+}
+
+/* A page header: a title of a word or two, an optional sentence under it, and its actions. */
+.desk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--desk-space-3);
+}
+.desk-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.desk-header-title {
+  margin: 0;
+  font-size: var(--desk-text-lg);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.desk-header-desc {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+.desk-header-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+/* A pane that scrolls on its own inside a flex or grid layout. */
+.desk-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* A details column beside the main pane. */
+.desk-details {
+  padding: var(--desk-space-3);
+  border-left: 1px solid var(--desk-border);
+  font-size: var(--desk-text-xs);
+}
+
+/* An empty state in place of content: what belongs here (`.desk-empty-title`), the next step, an
+   action. No picture and no surface. */
+.desk-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--desk-space-3);
+  margin: var(--desk-space-3);
+  padding: var(--desk-space-8) var(--desk-space-4);
+  color: var(--desk-text-muted);
+  text-align: center;
+}
+.desk-empty-title {
+  margin: 0;
+  color: var(--desk-text);
+  font-weight: 600;
+}
+
+.desk-muted {
+  color: var(--desk-text-muted);
+}
+
+/* A recoverable failure: what failed and how to recover, in a sentence or two, and a retry. Supply
+   role="alert" when a new error appears. */
+.desk-error {
+  margin: var(--desk-space-3);
+  padding: var(--desk-space-4);
+  border: 1px solid var(--desk-danger-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+}
+
+/* A callout: a coloured surface only when the person has to act (data-tone warning or danger); info
+   and success stay neutral. The body stays in the text colour; only the icon takes the tone. */
+.desk-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-muted);
+  color: var(--desk-text);
+  font-size: var(--desk-text-xs);
+  line-height: 1.5;
+}
+.desk-callout-icon {
+  display: inline-flex;
+  flex: none;
+  margin-top: 2px;
+  color: var(--desk-info-text);
+}
+.desk-callout-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.desk-callout-title {
+  display: block;
+  font-weight: 600;
+}
+.desk-callout-action {
+  display: inline-flex;
+  flex: none;
+  align-self: center;
+  margin-left: auto;
+}
+.desk-callout[data-tone="success"] .desk-callout-icon {
+  color: var(--desk-success-text);
+}
+.desk-callout[data-tone="warning"] {
+  border-color: var(--desk-warning-border);
+  background: var(--desk-warning-soft);
+}
+.desk-callout[data-tone="warning"] .desk-callout-icon {
+  color: var(--desk-warning-text);
+}
+.desk-callout[data-tone="danger"] {
+  border-color: var(--desk-danger-border);
+  background: var(--desk-danger-soft);
+}
+.desk-callout[data-tone="danger"] .desk-callout-icon {
+  color: var(--desk-danger-text);
+}
+
+/* A list: sections of hairline rows, never a card per row. A row holds a lead (an icon or avatar),
+   its text (a title and a sentence), meta and at most two actions; more go into a menu. */
+.desk-list {
+  display: grid;
+}
+.desk-list + .desk-list {
+  margin-top: var(--desk-space-8);
+}
+.desk-list-header {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--desk-space-1) * 1.5);
+  margin: 0 0 var(--desk-space-2);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+}
+.desk-list-count {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.desk-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+  padding: var(--desk-space-3) 0;
+  border-top: 1px solid var(--desk-border);
+}
+.desk-list-lead {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--desk-control-sm);
+  color: var(--desk-text-muted);
+}
+.desk-list-text {
+  flex: 1;
+  min-width: 0;
+}
+.desk-list-title,
+.desk-list-desc {
+  overflow: hidden;
+  font-size: var(--desk-text-sm);
+  line-height: 1.5;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.desk-list-title {
+  font-weight: 600;
+}
+.desk-list-desc {
+  color: var(--desk-text-muted);
+}
+.desk-list-meta {
+  flex: none;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Filter chips: one row of pills that narrows a list, one chosen at a time (aria-pressed="true" or
+   aria-selected="true"). The chosen chip is the hover surface, never the fill; to switch views use
+   `.desk-tabs`. */
+.desk-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--desk-space-1) * 1.5);
+}
+.desk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  height: var(--desk-control-xs);
+  padding: 0 var(--desk-space-3);
+  border: 0;
+  border-radius: var(--desk-radius-full);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--desk-border);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--desk-motion-fast) ease, color var(--desk-motion-fast) ease;
+}
+.desk-chip:hover:not(:disabled) {
+  background: var(--desk-hover);
+  color: var(--desk-text);
+}
+.desk-chip[aria-pressed="true"],
+.desk-chip[aria-selected="true"],
+.desk-chip.is-selected {
+  background: var(--desk-hover);
+  box-shadow: inset 0 0 0 1px var(--desk-input);
+  color: var(--desk-text);
+  font-weight: 600;
+}
+.desk-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* A keycap: one key per cap, side by side for a combination; `.is-hot` is the key to press now. */
+.desk-kbd {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  min-width: 20px;
+  padding: 0 calc(var(--desk-space-1) * 1.5);
+  border: 1px solid var(--desk-border);
+  border-bottom-width: 2px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-muted);
+  color: var(--desk-text-muted);
+  font-family: inherit;
+  font-size: var(--desk-text-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.desk-kbd.is-hot {
+  border-color: var(--desk-primary);
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
+}
+
+/* A status dot: a still state (unread, online, a status) beside a word or under an aria-label. It
+   never breathes or blinks, and never takes the fill's colour; an agent at work is a star. */
+.desk-dot {
+  display: inline-block;
+  flex: none;
+  width: var(--desk-space-2);
+  height: var(--desk-space-2);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-text-muted);
+}
+.desk-dot[data-tone="unread"] {
+  background: var(--desk-text);
+}
+.desk-dot[data-tone="success"] {
+  background: var(--desk-success);
+}
+.desk-dot[data-tone="warning"] {
+  background: var(--desk-warning);
+}
+.desk-dot[data-tone="danger"] {
+  background: var(--desk-danger);
+}
+.desk-dot[data-tone="info"] {
+  background: var(--desk-info);
+}
+
+/* The star: the desk's one colour, only where an agent is at work (role="img", aria-label="Working").
+   data-working="true" twinkles, the one thing on screen that moves on its own; `.desk-star-label`
+   says in one line who is doing what. Loading is a spinner or a skeleton; finished work is a check. */
+.desk-star {
+  display: inline-block;
+  flex: none;
+  width: var(--desk-space-4);
+  height: var(--desk-space-4);
+  background: var(--desk-star);
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  vertical-align: -0.2em;
+}
+.desk-star.is-small {
+  width: var(--desk-space-3);
+  height: var(--desk-space-3);
+}
+.desk-star.is-large {
+  width: var(--desk-space-6);
+  height: var(--desk-space-6);
+}
+.desk-star[data-working="true"] {
+  animation: desk-star-twinkle calc(var(--desk-motion-slow) * 5.5) ease-in-out infinite;
+}
+@keyframes desk-star-twinkle {
+  50% {
+    transform: scale(0.74);
+    opacity: 0.6;
+  }
+}
+.desk-star-label {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--desk-space-1) * 1.5);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-sm);
+  line-height: 1.5;
+}
+.desk-star-label strong {
+  color: var(--desk-text);
+  font-weight: 600;
+}
+
+/* Loading data: a skeleton where the content's shape is known (it shows after a beat, so fast work
+   does not flash), a spinner where it is not. */
+.desk-skeleton {
+  display: block;
+  min-height: var(--desk-space-3);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-muted);
+  animation: desk-skeleton-in var(--desk-motion-fast) ease calc(var(--desk-motion-fast) * 2) both;
+}
+@keyframes desk-skeleton-in {
+  from {
+    opacity: 0;
+  }
+}
+.desk-spinner {
+  display: inline-block;
+  flex: none;
+  width: var(--desk-space-4);
+  height: var(--desk-space-4);
+  border: 2px solid var(--desk-border);
+  border-top-color: var(--desk-primary-text);
+  border-radius: var(--desk-radius-full);
+  animation: desk-spin calc(var(--desk-motion-slow) * 1.5) linear infinite;
+}
+@keyframes desk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desk-star[data-working="true"],
+  .desk-spinner {
+    animation: none;
+  }
+}
