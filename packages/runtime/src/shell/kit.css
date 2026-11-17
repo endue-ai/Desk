@@ -143,7 +143,7 @@
 }
 .segment {
   flex: 1;
-  height: var(--desk-tab-height);
+  height: calc(var(--desk-tab-height) - 2 * var(--desk-tabs-padding));
   border: 1px solid var(--desk-tab-border);
   border-radius: var(--desk-tab-radius);
   background: transparent;

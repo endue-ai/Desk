@@ -217,7 +217,7 @@
   --desk-tabs-gap: 2px;
   --desk-tabs-padding: var(--desk-space-1);
   --desk-tab-radius: var(--desk-radius-sm);
-  --desk-tab-height: calc(var(--desk-control-sm) - 2 * var(--desk-space-1));
+  --desk-tab-height: var(--desk-control-sm);
   --desk-tab-padding-x: var(--desk-space-3);
   --desk-tab-fg: var(--desk-text-muted);
   --desk-tab-border: transparent;

@@ -15,8 +15,8 @@
     598
    ],
    "style": {
-    "background": "rgb(30, 29, 33)",
-    "border": "solid rgb(51, 49, 54)"
+    "background": "rgb(29, 28, 25)",
+    "border": "solid rgb(50, 48, 43)"
    },
    "children": [
     {
@@ -35,7 +35,7 @@
          "tag": "span",
          "class": "surface-name",
          "style": {
-          "color": "rgb(242, 240, 245)"
+          "color": "rgb(243, 241, 236)"
          },
          "text": "Calendar"
         },
@@ -43,7 +43,7 @@
          "tag": "span",
          "class": "surface-sub",
          "style": {
-          "color": "rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)"
          },
          "text": "This week"
         }
@@ -201,7 +201,7 @@
              "tag": "desk-universal-view",
              "class": "sample-view",
              "style": {
-              "color": "rgb(242, 240, 245)"
+              "color": "rgb(243, 241, 236)"
              }
             }
            ]
@@ -216,56 +216,56 @@
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     }
    ]
@@ -283,8 +283,8 @@
     598
    ],
    "style": {
-    "background": "rgb(30, 29, 33)",
-    "border": "solid rgb(131, 121, 145)"
+    "background": "rgb(29, 28, 25)",
+    "border": "solid rgb(133, 129, 119)"
    },
    "children": [
     {
@@ -303,7 +303,7 @@
          "tag": "span",
          "class": "surface-name",
          "style": {
-          "color": "rgb(242, 240, 245)"
+          "color": "rgb(243, 241, 236)"
          },
          "text": "Notes"
         },
@@ -311,7 +311,7 @@
          "tag": "span",
          "class": "surface-sub",
          "style": {
-          "color": "rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)"
          },
          "text": "What came up today"
         }
@@ -473,7 +473,7 @@
                "tag": "desk-universal-view",
                "class": "sample-view",
                "style": {
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
                }
               },
               {
@@ -481,8 +481,8 @@
                "class": "notes-input",
                "aria-label": "Write a note; Enter adds it",
                "style": {
-                "color": "rgb(242, 240, 245)",
-                "border": "solid rgb(51, 49, 54)"
+                "color": "rgb(243, 241, 236)",
+                "border": "solid rgb(50, 48, 43)"
                },
                "value": ""
               }
@@ -500,56 +500,56 @@
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     }
    ]
@@ -567,8 +567,8 @@
     598
    ],
    "style": {
-    "background": "rgb(30, 29, 33)",
-    "border": "solid rgba(182, 163, 245, 0.34)"
+    "background": "rgb(29, 28, 25)",
+    "border": "solid rgb(50, 48, 43)"
    },
    "children": [
     {
@@ -587,7 +587,7 @@
          "tag": "span",
          "class": "surface-name",
          "style": {
-          "color": "rgb(242, 240, 245)"
+          "color": "rgb(243, 241, 236)"
          },
          "text": "Tomorrow"
         },
@@ -595,7 +595,7 @@
          "tag": "span",
          "class": "surface-sub",
          "style": {
-          "color": "rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)"
          },
          "text": "For tomorrow"
         },
@@ -603,8 +603,8 @@
          "tag": "span",
          "class": "eris-badge",
          "style": {
-          "background": "rgba(182, 163, 245, 0.12)",
-          "color": "rgb(182, 163, 245)"
+          "background": "rgb(53, 50, 45)",
+          "color": "rgb(243, 241, 236)"
          },
          "text": "Made by Eris"
         }
@@ -762,7 +762,7 @@
              "tag": "desk-universal-view",
              "class": "sample-view",
              "style": {
-              "color": "rgb(242, 240, 245)"
+              "color": "rgb(243, 241, 236)"
              }
             }
            ]
@@ -777,56 +777,56 @@
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     }
    ]
@@ -844,8 +844,8 @@
     380
    ],
    "style": {
-    "background": "rgb(30, 29, 33)",
-    "border": "solid rgb(51, 49, 54)"
+    "background": "rgb(29, 28, 25)",
+    "border": "solid rgb(50, 48, 43)"
    },
    "children": [
     {
@@ -864,7 +864,7 @@
          "tag": "span",
          "class": "surface-name",
          "style": {
-          "color": "rgb(242, 240, 245)"
+          "color": "rgb(243, 241, 236)"
          },
          "text": "New surface"
         },
@@ -872,7 +872,7 @@
          "tag": "span",
          "class": "surface-sub",
          "style": {
-          "color": "rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)"
          },
          "text": "Choose what to open"
         }
@@ -1014,7 +1014,7 @@
                "tag": "p",
                "class": "launcher-hint",
                "style": {
-                "color": "rgb(176, 173, 183)"
+                "color": "rgb(179, 175, 165)"
                },
                "text": "Choose what to open"
               },
@@ -1028,7 +1028,7 @@
                  "class": "launcher-item",
                  "role": "listitem",
                  "style": {
-                  "border": "solid rgb(51, 49, 54)"
+                  "border": "solid rgb(50, 48, 43)"
                  },
                  "children": [
                   {
@@ -1038,7 +1038,7 @@
                   {
                    "tag": "span",
                    "style": {
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                    },
                    "text": "Calendar"
                   }
@@ -1049,7 +1049,7 @@
                  "class": "launcher-item",
                  "role": "listitem",
                  "style": {
-                  "border": "solid rgb(51, 49, 54)"
+                  "border": "solid rgb(50, 48, 43)"
                  },
                  "children": [
                   {
@@ -1059,7 +1059,7 @@
                   {
                    "tag": "span",
                    "style": {
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                    },
                    "text": "Tomorrow"
                   }
@@ -1070,7 +1070,7 @@
                  "class": "launcher-item",
                  "role": "listitem",
                  "style": {
-                  "border": "solid rgb(51, 49, 54)"
+                  "border": "solid rgb(50, 48, 43)"
                  },
                  "children": [
                   {
@@ -1080,7 +1080,7 @@
                   {
                    "tag": "span",
                    "style": {
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                    },
                    "text": "Notes"
                   }
@@ -1091,7 +1091,7 @@
                  "class": "launcher-item",
                  "role": "listitem",
                  "style": {
-                  "border": "solid rgb(51, 49, 54)"
+                  "border": "solid rgb(50, 48, 43)"
                  },
                  "children": [
                   {
@@ -1101,7 +1101,7 @@
                   {
                    "tag": "span",
                    "style": {
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                    },
                    "text": "Keyboard shortcuts"
                   }
@@ -1112,7 +1112,7 @@
                  "class": "launcher-item",
                  "role": "listitem",
                  "style": {
-                  "border": "solid rgb(51, 49, 54)"
+                  "border": "solid rgb(50, 48, 43)"
                  },
                  "children": [
                   {
@@ -1122,7 +1122,7 @@
                   {
                    "tag": "span",
                    "style": {
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                    },
                    "text": "Mira's screen"
                   }
@@ -1133,7 +1133,7 @@
                  "class": "launcher-item",
                  "role": "listitem",
                  "style": {
-                  "border": "solid rgb(51, 49, 54)"
+                  "border": "solid rgb(50, 48, 43)"
                  },
                  "children": [
                   {
@@ -1143,7 +1143,7 @@
                   {
                    "tag": "span",
                    "style": {
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                    },
                    "text": "Theo's screen"
                   }
@@ -1154,7 +1154,7 @@
                  "class": "launcher-item",
                  "role": "listitem",
                  "style": {
-                  "border": "solid rgb(51, 49, 54)"
+                  "border": "solid rgb(50, 48, 43)"
                  },
                  "children": [
                   {
@@ -1164,7 +1164,7 @@
                   {
                    "tag": "span",
                    "style": {
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                    },
                    "text": "Juno's screen"
                   }
@@ -1186,56 +1186,56 @@
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "surface-resize",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     }
    ]

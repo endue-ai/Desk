@@ -27,7 +27,7 @@ test("choosing an installed theme restyles the desk and a plugin frame without a
     );
 
   // Installed, not chosen: the endue theme.
-  await expect(frame.locator("body")).toHaveCSS("background-color", "rgb(30, 29, 33)");
+  await expect(frame.locator("body")).toHaveCSS("background-color", "rgb(29, 28, 25)");
   expect(await frameVar("--desk-radius-md")).toBe("8px");
   expect(await rootVar("--desk-backdrop")).toBe("none");
   await frame.locator("body").evaluate(() => {
@@ -58,7 +58,7 @@ test("choosing an installed theme restyles the desk and a plugin frame without a
   expect(image.status()).toBe(200);
 
   await page.evaluate(() => window.__desk.runtime.commands.run("desk.theme.default"));
-  await expect(frame.locator("body")).toHaveCSS("background-color", "rgb(30, 29, 33)");
+  await expect(frame.locator("body")).toHaveCSS("background-color", "rgb(29, 28, 25)");
   await expect.poll(() => frameVar("--desk-radius-md")).toBe("8px");
   expect(await rootVar("--desk-backdrop")).toBe("none");
   expect(await rootVar("--desk-surface-filter")).toBe("");

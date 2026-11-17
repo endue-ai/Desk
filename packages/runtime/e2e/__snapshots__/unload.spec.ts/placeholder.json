@@ -11,8 +11,8 @@
   261
  ],
  "style": {
-  "background": "rgb(30, 29, 33)",
-  "border": "solid rgb(51, 49, 54)"
+  "background": "rgb(29, 28, 25)",
+  "border": "solid rgb(50, 48, 43)"
  },
  "children": [
   {
@@ -31,7 +31,7 @@
        "tag": "span",
        "class": "surface-name",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "Counter"
       }
@@ -194,28 +194,28 @@
              "class": "desk-surface desk-surface--windowed",
              "data-surface": "test.counter",
              "style": {
-              "background": "rgb(30, 29, 33)"
+              "background": "rgb(29, 28, 25)"
              },
              "children": [
               {
                "tag": "div",
                "class": "desk-surface-placeholder",
                "style": {
-                "background": "rgb(30, 29, 33)"
+                "background": "rgb(29, 28, 25)"
                },
                "children": [
                 {
                  "tag": "p",
                  "class": "desk-surface-placeholder-title",
                  "style": {
-                  "color": "rgb(242, 240, 245)"
+                  "color": "rgb(243, 241, 236)"
                  },
                  "text": "Counter"
                 },
                 {
                  "tag": "p",
                  "style": {
-                  "color": "rgb(176, 173, 183)"
+                  "color": "rgb(179, 175, 165)"
                  },
                  "text": "Unloaded while out of sight. It loads again when shown."
                 },
@@ -223,7 +223,7 @@
                  "tag": "button",
                  "class": "btn desk-surface-reload",
                  "style": {
-                  "color": "rgb(242, 240, 245)",
+                  "color": "rgb(243, 241, 236)",
                   "border": "solid rgba(0, 0, 0, 0)"
                  },
                  "text": "Reload"
@@ -246,56 +246,56 @@
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   }
  ]
