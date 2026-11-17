@@ -241,10 +241,15 @@ mod unix {
         let (core, _listener, path) = serve();
         let mut slow = Conn::open(&path);
         slow.ping(1);
-        // Far more than the socket buffer and the 1000-line queue hold.
+        // Far more than the socket buffer and the 1000-line queue hold, of an event every connection
+        // hears (a grant's perm.changed now goes only to its holder, ADR 0262).
         let published = 20_000;
-        for _ in 0..published {
-            core.grant("desk", permission(json!({ "permission": "plugin:manage" })));
+        for n in 0..published {
+            let notice: BridgeEvent = serde_json::from_value(json!({ "event": "ui.notified",
+                "data": { "notificationId": format!("n-{n}"), "caller": "example.notes",
+                    "title": "Saved", "level": "info" } }))
+            .unwrap();
+            core.events().publish(notice);
         }
         // Once its queue is full the desk hangs up, and writing fails. Empty lines get no answer.
         let deadline = Instant::now() + Duration::from_secs(10);

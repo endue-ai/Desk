@@ -72,6 +72,7 @@ impl Desk {
         let toggle = json!({ "id": "desk.theme.toggle", "title": "Switch theme" });
         call(&core, "desk", "cmd.register", toggle);
         answer_every_invocation(&core);
+        refuse_every_prompt(&core);
         let path = std::env::temp_dir().join(format!("dmcp-{}-{n}.sock", std::process::id()));
         let listener = Listener::bind(&path, Arc::clone(&core)).expect("bind the desk socket");
         Self {
@@ -143,6 +144,36 @@ fn answer_every_invocation(core: &Arc<Core>) {
             let result = json!({ "ran": data.id, "args": data.args, "caller": data.caller });
             let answer = json!({ "invocationId": data.invocation_id, "result": result });
             call(&core, provider, "cmd.answer", answer);
+        }
+    });
+}
+
+/// The person, who says no to every permission prompt and approval. The socket hears the prompts the
+/// core addresses to `cli` as a perm:manage holder (ADR 0262), but no connection answers them, and
+/// this desk has no runtime to: without this they would wait forever.
+fn refuse_every_prompt(core: &Arc<Core>) {
+    let events = core.events().subscribe();
+    let core = Arc::clone(core);
+    let scope = json!({ "permission": "perm:manage" });
+    thread::spawn(move || {
+        for event in events {
+            let (method, params) = match event {
+                BridgeEvent::PermPrompt(prompt) => (
+                    "perm.answer",
+                    json!({ "promptId": prompt.data.prompt_id, "granted": false, "scope": scope }),
+                ),
+                BridgeEvent::PermApproval(approval) => (
+                    "perm.approve",
+                    json!({ "approvalId": approval.data.approval_id, "answer": "deny",
+                        "scope": scope }),
+                ),
+                _ => continue,
+            };
+            let request: BridgeRequest =
+                serde_json::from_value(json!({ "id": 1, "method": method, "params": params }))
+                    .unwrap();
+            // A prompt another holder answered first is gone: that is fine here.
+            let _ = core.handle(CALLER, request);
         }
     });
 }
