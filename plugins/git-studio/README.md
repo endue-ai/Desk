@@ -12,7 +12,7 @@ Every operation is the git program through `proc.spawn` without a shell (`ui/run
 runner), `--` before paths. No `fs:*` grant: files are read and written through git (conflicts resolve
 with `hash-object` and `update-index`). AI is `brain.ask` with a tool per question (`ui/ai.js`).
 Commands `endue.git-studio.*` (state, open, refresh, fetch, pull, push, stage, commit, branch, switch,
-search, history, blame, graph) serve the palette and agents; `Mod+Alt+G` opens it. Discards, force
+search, history, blame, graph) serve the palette and agents; `Mod+Alt+Shift+G` opens it. Discards, force
 pushes and resets stay in the window, behind its questions.
 
 | Permission | Why |

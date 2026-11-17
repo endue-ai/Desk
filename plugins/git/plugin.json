@@ -228,8 +228,7 @@
               "type": "string",
               "description": "The words that name the change"
             }
-          },
-          "required": ["path", "patch"]
+          }
         },
         "undo": "endue.git.restore-patch"
       },

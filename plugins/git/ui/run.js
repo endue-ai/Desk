@@ -177,7 +177,9 @@ export function createRunner(bridge, options = {}) {
         const scope = { ...GIT_SCOPE, commands: [...GIT_SCOPE.commands] };
         bridge
           .call("proc.write", { procId, data: options.input, close: true, scope })
-          .catch((error) => job.fail(new GitError(`Could not hand git its input: ${codeOf(error)}.`)));
+          .catch((error) =>
+            job.fail(new GitError(`Could not hand git its input: ${codeOf(error)}.`)),
+          );
       }
     });
     if (outcome.code === 0 || (options.ok ?? []).includes(outcome.code ?? -1)) return outcome;

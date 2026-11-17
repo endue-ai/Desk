@@ -104,7 +104,13 @@ export function createView(doc, act) {
     const range = mark >= 0 ? marked() : undefined;
     for (const spec of rows) {
       const item = spec.item;
-      const on = range && item?.kind === "line" && item.path === range.path && item.index === range.index && item.line >= range.from && item.line <= range.to;
+      const on =
+        range &&
+        item?.kind === "line" &&
+        item.path === range.path &&
+        item.index === range.index &&
+        item.line >= range.from &&
+        item.line <= range.to;
       spec.el.classList.toggle("marked", on === true);
     }
   };
