@@ -4,9 +4,9 @@
 
 use std::sync::{Arc, Mutex};
 
+use desk_shell::system_notices::{Now, Outcome, Post, SystemNotices, activation};
 use desk_sys::notification::fake::FakeNotifier;
 use desk_sys::notification::{Authorization, Click, Notifier};
-use desk_shell::system_notices::{Now, Outcome, Post, SystemNotices, activation};
 use serde_json::json;
 
 fn post(id: &str, when: &str, island: bool) -> Post {
@@ -49,9 +49,18 @@ fn posts_only_while_the_desk_is_not_in_front() {
     let fake = Arc::new(FakeNotifier::new());
     let (notices, _) = notices(&fake);
 
-    assert_eq!(notices.post(&post("a", "background", false), FRONT), Outcome::Skipped);
-    assert_eq!(notices.post(&post("b", "background", false), AWAY), Outcome::Posted);
-    assert_eq!(notices.post(&post("c", "always", false), FRONT), Outcome::Posted);
+    assert_eq!(
+        notices.post(&post("a", "background", false), FRONT),
+        Outcome::Skipped
+    );
+    assert_eq!(
+        notices.post(&post("b", "background", false), AWAY),
+        Outcome::Posted
+    );
+    assert_eq!(
+        notices.post(&post("c", "always", false), FRONT),
+        Outcome::Posted
+    );
     assert_eq!(ids(&fake), ["b", "c"]);
 
     let posted = &fake.posted()[0];
@@ -65,10 +74,22 @@ fn a_notice_the_island_shows_is_not_posted() {
     let fake = Arc::new(FakeNotifier::new());
     let (notices, _) = notices(&fake);
 
-    assert_eq!(notices.post(&post("a", "background", true), ISLAND), Outcome::Skipped);
-    assert_eq!(notices.post(&post("b", "always", true), ISLAND), Outcome::Skipped);
-    assert_eq!(notices.post(&post("c", "background", true), AWAY), Outcome::Posted);
-    assert_eq!(notices.post(&post("d", "background", false), ISLAND), Outcome::Posted);
+    assert_eq!(
+        notices.post(&post("a", "background", true), ISLAND),
+        Outcome::Skipped
+    );
+    assert_eq!(
+        notices.post(&post("b", "always", true), ISLAND),
+        Outcome::Skipped
+    );
+    assert_eq!(
+        notices.post(&post("c", "background", true), AWAY),
+        Outcome::Posted
+    );
+    assert_eq!(
+        notices.post(&post("d", "background", false), ISLAND),
+        Outcome::Posted
+    );
     assert_eq!(ids(&fake), ["c", "d"]);
 }
 
@@ -79,7 +100,11 @@ fn asks_the_os_once_on_the_first_post_never_at_start() {
     assert_eq!(fake.prompts(), 0, "making the service asks nothing");
 
     notices.post(&post("a", "background", false), FRONT);
-    assert_eq!(fake.prompts(), 0, "a notice that is not posted asks nothing");
+    assert_eq!(
+        fake.prompts(),
+        0,
+        "a notice that is not posted asks nothing"
+    );
     notices.post(&post("b", "background", false), AWAY);
     notices.post(&post("c", "background", false), AWAY);
     assert_eq!(fake.prompts(), 1);
@@ -111,7 +136,10 @@ fn a_click_brings_the_desk_forward_and_tells_the_page() {
     let told: Vec<_> = clicks.iter().map(activation).collect();
     assert_eq!(
         told,
-        [json!({ "id": "a", "action": false }), json!({ "id": "a", "action": true })]
+        [
+            json!({ "id": "a", "action": false }),
+            json!({ "id": "a", "action": true })
+        ]
     );
 }
 

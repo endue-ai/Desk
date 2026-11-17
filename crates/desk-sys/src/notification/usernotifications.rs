@@ -25,9 +25,9 @@ use objc2_user_notifications::{
     UNAuthorizationOptions, UNAuthorizationStatus, UNMutableNotificationContent, UNNotification,
     UNNotificationAction, UNNotificationActionOptions, UNNotificationCategory,
     UNNotificationCategoryOptions, UNNotificationDefaultActionIdentifier,
-    UNNotificationPresentationOptions,
-    UNNotificationRequest, UNNotificationResponse, UNNotificationSettings, UNNotificationSound,
-    UNUserNotificationCenter, UNUserNotificationCenterDelegate,
+    UNNotificationPresentationOptions, UNNotificationRequest, UNNotificationResponse,
+    UNNotificationSettings, UNNotificationSound, UNUserNotificationCenter,
+    UNUserNotificationCenterDelegate,
 };
 
 use super::{Authorization, Click, ClickHandler, ClickSlot, Notification, Notifier, denied};

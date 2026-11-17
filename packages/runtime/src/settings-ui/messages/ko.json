@@ -243,5 +243,10 @@
   "settingsUi.market.netFetch": "{hosts} 에 접속",
   "settingsUi.market.fsRead": "파일 읽기: {paths}",
   "settingsUi.market.fsWrite": "파일 쓰기: {paths}",
-  "settingsUi.themes": "테마"
+  "settingsUi.themes": "테마",
+  "settingsUi.systemNoticesTitle": "시스템 알림에 표시",
+  "settingsUi.systemNoticesHint": "endue가 보이지 않을 때 알림을 운영체제의 알림 센터에도 보냅니다.",
+  "settingsUi.systemNoticesBackground": "endue가 백그라운드에 있을 때",
+  "settingsUi.systemNoticesAlways": "항상",
+  "settingsUi.systemNoticesNever": "안 함"
 }

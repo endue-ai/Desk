@@ -245,7 +245,8 @@ impl Shared {
                 };
                 let desk_id = match self.posted().get(&id) {
                     Some((desk_id, server))
-                        if (action == "default" || action == BUTTON_ACTION) && *server == sender =>
+                        if (action == "default" || action == BUTTON_ACTION)
+                            && *server == sender =>
                     {
                         desk_id.clone()
                     }

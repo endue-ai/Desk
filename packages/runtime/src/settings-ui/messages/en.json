@@ -244,5 +244,10 @@
   "settingsUi.market.fsRead": "Read files: {paths}",
   "settingsUi.market.fsWrite": "Write files: {paths}",
   "settingsUi.market.otherPermission": "{words}",
-  "settingsUi.themes": "Themes"
+  "settingsUi.themes": "Themes",
+  "settingsUi.systemNoticesTitle": "Show in system notifications",
+  "settingsUi.systemNoticesHint": "Also send notifications to your computer's notification centre.",
+  "settingsUi.systemNoticesBackground": "When endue is in the background",
+  "settingsUi.systemNoticesAlways": "Always",
+  "settingsUi.systemNoticesNever": "Never"
 }
