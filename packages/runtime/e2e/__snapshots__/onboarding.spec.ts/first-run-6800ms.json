@@ -7,7 +7,7 @@
     "opacity": "1",
     "transform": "none",
     "filter": "none",
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
   },
   "children": [
     {
@@ -20,7 +20,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -32,7 +32,7 @@
             "opacity": "0.5",
             "transform": "matrix3d(1, 0, 0, 0, 0, 0.174, 0.985, 0, 0, -0.985, 0.174, 0, 0, 0, 0, 1)",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           }
         }
       ]
@@ -47,7 +47,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
       }
     },
     {
@@ -59,7 +59,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       }
     },
     {
@@ -71,7 +71,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -83,7 +83,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Skip intro"
         }
@@ -100,7 +100,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       }
     },
     {
@@ -112,7 +112,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -125,7 +125,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "children": [
             {
@@ -137,7 +137,7 @@
                 "opacity": "1",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -149,7 +149,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   },
                   "children": [
                     {
@@ -161,7 +161,7 @@
                         "opacity": "1",
                         "transform": "matrix(0.996, 0, 0, 0.996, 0, 0)",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       }
                     }
                   ]
@@ -175,7 +175,7 @@
                     "opacity": "0.696",
                     "transform": "matrix(1.049, 0, 0, 1.049, 0, 0)",
                     "filter": "blur(5.465px)",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   }
                 }
               ]
@@ -189,7 +189,7 @@
                 "opacity": "0",
                 "transform": "matrix(1, 0, 0, 1, 90, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -201,7 +201,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   }
                 }
               ]
@@ -215,7 +215,7 @@
                 "opacity": "0",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -227,7 +227,7 @@
                 "opacity": "0",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -239,7 +239,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -251,7 +251,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -263,7 +263,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -275,7 +275,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -287,7 +287,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -299,7 +299,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -311,7 +311,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -323,7 +323,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, -0.003, 0.005)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -335,7 +335,7 @@
                 "opacity": "0.995",
                 "transform": "matrix(1.003, -0.02, 0.02, 1.003, -3.889, 2.277)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -347,7 +347,7 @@
                 "opacity": "0.975",
                 "transform": "matrix(1.008, 0.115, -0.115, 1.008, -22.423, 1.829)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -359,7 +359,7 @@
                 "opacity": "0.93",
                 "transform": "matrix(1.004, -0.278, 0.278, 1.004, -58.942, -18.169)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -371,7 +371,7 @@
                 "opacity": "0.829",
                 "transform": "matrix(1.035, -0.381, 0.381, 1.035, -69.323, -106.98)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -383,7 +383,7 @@
                 "opacity": "0",
                 "transform": "matrix(-1.584, -0.223, 0.223, -1.584, 559, -548)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             }
           ]
@@ -398,7 +398,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           }
         },
         {
@@ -410,7 +410,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           }
         }
       ]
@@ -424,7 +424,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       }
     }
   ]

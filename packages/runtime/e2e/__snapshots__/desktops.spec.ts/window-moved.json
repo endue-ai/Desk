@@ -7,8 +7,8 @@
    "tag": "div",
    "class": "desktops-pill",
    "style": {
-    "background": "rgb(30, 29, 33)",
-    "border": "solid rgb(51, 49, 54)"
+    "background": "rgb(29, 28, 25)",
+    "border": "solid rgb(50, 48, 43)"
    },
    "children": [
     {
@@ -24,14 +24,14 @@
       26
      ],
      "style": {
-      "background": "rgb(30, 29, 33)"
+      "background": "rgb(29, 28, 25)"
      },
      "children": [
       {
        "tag": "span",
        "class": "desktop-number",
        "style": {
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
        },
        "text": "Mail"
       },
@@ -43,32 +43,32 @@
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         }
        ]
@@ -88,14 +88,14 @@
       26
      ],
      "style": {
-      "background": "rgb(30, 29, 33)"
+      "background": "rgb(29, 28, 25)"
      },
      "children": [
       {
        "tag": "span",
        "class": "desktop-number",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "Plan"
       },
@@ -107,33 +107,33 @@
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(242, 240, 245)",
-          "border": "solid rgb(242, 240, 245)"
+          "color": "rgb(243, 241, 236)",
+          "border": "solid rgb(243, 241, 236)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot is-on",
          "style": {
-          "background": "rgb(242, 240, 245)",
-          "color": "rgb(242, 240, 245)",
-          "border": "solid rgb(242, 240, 245)"
+          "background": "rgb(243, 241, 236)",
+          "color": "rgb(243, 241, 236)",
+          "border": "solid rgb(243, 241, 236)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(242, 240, 245)",
-          "border": "solid rgb(242, 240, 245)"
+          "color": "rgb(243, 241, 236)",
+          "border": "solid rgb(243, 241, 236)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(242, 240, 245)",
-          "border": "solid rgb(242, 240, 245)"
+          "color": "rgb(243, 241, 236)",
+          "border": "solid rgb(243, 241, 236)"
          }
         }
        ]
@@ -153,14 +153,14 @@
       26
      ],
      "style": {
-      "background": "rgb(30, 29, 33)"
+      "background": "rgb(29, 28, 25)"
      },
      "children": [
       {
        "tag": "span",
        "class": "desktop-number",
        "style": {
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
        },
        "text": "3"
       },
@@ -172,33 +172,33 @@
          "tag": "span",
          "class": "mini-dot is-on",
          "style": {
-          "background": "rgb(176, 173, 183)",
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "background": "rgb(179, 175, 165)",
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         }
        ]
@@ -218,14 +218,14 @@
       26
      ],
      "style": {
-      "background": "rgb(30, 29, 33)"
+      "background": "rgb(29, 28, 25)"
      },
      "children": [
       {
        "tag": "span",
        "class": "desktop-number",
        "style": {
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
        },
        "text": "4"
       },
@@ -237,32 +237,32 @@
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         }
        ]
@@ -282,14 +282,14 @@
       26
      ],
      "style": {
-      "background": "rgb(30, 29, 33)"
+      "background": "rgb(29, 28, 25)"
      },
      "children": [
       {
        "tag": "span",
        "class": "desktop-number",
        "style": {
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
        },
        "text": "Research"
       },
@@ -301,33 +301,33 @@
          "tag": "span",
          "class": "mini-dot is-on",
          "style": {
-          "background": "rgb(176, 173, 183)",
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "background": "rgb(179, 175, 165)",
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         }
        ]
@@ -347,14 +347,14 @@
       26
      ],
      "style": {
-      "background": "rgb(30, 29, 33)"
+      "background": "rgb(29, 28, 25)"
      },
      "children": [
       {
        "tag": "span",
        "class": "desktop-number",
        "style": {
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
        },
        "text": "Write"
       },
@@ -366,32 +366,32 @@
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         },
         {
          "tag": "span",
          "class": "mini-dot",
          "style": {
-          "color": "rgb(176, 173, 183)",
-          "border": "solid rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)",
+          "border": "solid rgb(179, 175, 165)"
          }
         }
        ]
@@ -409,7 +409,7 @@
       26
      ],
      "style": {
-      "background": "rgb(30, 29, 33)"
+      "background": "rgb(29, 28, 25)"
      },
      "children": [
       {

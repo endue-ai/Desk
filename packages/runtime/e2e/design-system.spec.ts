@@ -17,12 +17,12 @@ test("Notes shares the design scale and follows live theme and reduced-motion ch
   await expect(frame.locator('link[href="/_desk/base.css"]')).toHaveCount(1);
   await expect(frame.locator("body")).toHaveCSS("font-size", "14px");
   await expect(frame.locator("body")).toHaveCSS("padding-left", "12px");
-  await expect(frame.locator("body")).toHaveCSS("background-color", "rgb(30, 29, 33)");
+  await expect(frame.locator("body")).toHaveCSS("background-color", "rgb(29, 28, 25)");
   const variable = (name: string) =>
     frame
       .locator("html")
       .evaluate((root, property) => getComputedStyle(root).getPropertyValue(property).trim(), name);
-  expect(await variable("--desk-primary-text")).toBe("#b6a3f5");
+  expect(await variable("--desk-primary-text")).toBe("#f3f1ec");
   expect(await variable("--desk-motion-fast")).toBe("150ms");
   // The engine's own parts follow the theme from tokens.css (#156): the scheme of its controls, and
   // scrollbars with the theme's control colour on a clear track, never the engine's light ones.
@@ -39,13 +39,13 @@ test("Notes shares the design scale and follows live theme and reduced-motion ch
   const dark = await native();
   expect(dark).toEqual({
     scheme: "dark",
-    bars: "rgb(131, 121, 145) rgba(0, 0, 0, 0)",
-    thumb: "rgb(131, 121, 145)",
+    bars: "rgb(133, 129, 119) rgba(0, 0, 0, 0)",
+    thumb: "rgb(133, 129, 119)",
   });
   await page.evaluate(() => window.__desk.runtime.commands.run("desk.theme.light"));
   await expect(frame.locator("html")).toHaveAttribute("data-scheme", "light");
   await expect(frame.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
-  await expect.poll(() => variable("--desk-primary-text")).toBe("#6b4f9e");
+  await expect.poll(() => variable("--desk-primary-text")).toBe("#17151f");
   const light = await native();
   expect(light.scheme).toBe("light");
   expect(light.bars).toBe(`${light.thumb} rgba(0, 0, 0, 0)`);

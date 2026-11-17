@@ -11,8 +11,8 @@
   320
  ],
  "style": {
-  "background": "rgb(30, 29, 33)",
-  "border": "solid rgb(131, 121, 145)"
+  "background": "rgb(29, 28, 25)",
+  "border": "solid rgb(133, 129, 119)"
  },
  "children": [
   {
@@ -31,7 +31,7 @@
        "tag": "span",
        "class": "surface-name",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "Tomorrow"
       },
@@ -39,7 +39,7 @@
        "tag": "span",
        "class": "surface-sub",
        "style": {
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
        },
        "text": "내일 할 일"
       },
@@ -47,8 +47,8 @@
        "tag": "span",
        "class": "eris-badge",
        "style": {
-        "background": "rgba(182, 163, 245, 0.12)",
-        "color": "rgb(182, 163, 245)"
+        "background": "rgb(53, 50, 45)",
+        "color": "rgb(243, 241, 236)"
        },
        "text": "Eris 가 만듦"
       }
@@ -198,7 +198,7 @@
                "tag": "span",
                "class": "pane-name",
                "style": {
-                "color": "rgb(176, 173, 183)"
+                "color": "rgb(179, 175, 165)"
                },
                "text": "메모"
               },
@@ -236,7 +236,7 @@
                  "tag": "desk-universal-view",
                  "class": "sample-view",
                  "style": {
-                  "color": "rgb(242, 240, 245)"
+                  "color": "rgb(243, 241, 236)"
                  }
                 },
                 {
@@ -244,8 +244,8 @@
                  "class": "notes-input",
                  "aria-label": "메모를 쓰고 Enter 로 더하기",
                  "style": {
-                  "color": "rgb(242, 240, 245)",
-                  "border": "solid rgb(51, 49, 54)"
+                  "color": "rgb(243, 241, 236)",
+                  "border": "solid rgb(50, 48, 43)"
                  },
                  "value": ""
                 }
@@ -263,8 +263,8 @@
          "role": "separator",
          "aria-label": "오른쪽으로 나누기",
          "style": {
-          "background": "rgb(51, 49, 54)",
-          "color": "rgb(242, 240, 245)"
+          "background": "rgb(50, 48, 43)",
+          "color": "rgb(243, 241, 236)"
          }
         },
         {
@@ -297,7 +297,7 @@
                    "tag": "span",
                    "class": "pane-name",
                    "style": {
-                    "color": "rgb(176, 173, 183)"
+                    "color": "rgb(179, 175, 165)"
                    },
                    "text": "캘린더"
                   },
@@ -331,7 +331,7 @@
                    "tag": "desk-universal-view",
                    "class": "sample-view",
                    "style": {
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                    }
                   }
                  ]
@@ -346,8 +346,8 @@
              "role": "separator",
              "aria-label": "아래로 나누기",
              "style": {
-              "background": "rgb(51, 49, 54)",
-              "color": "rgb(242, 240, 245)"
+              "background": "rgb(50, 48, 43)",
+              "color": "rgb(243, 241, 236)"
              }
             },
             {
@@ -372,7 +372,7 @@
                    "tag": "span",
                    "class": "pane-name",
                    "style": {
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                    },
                    "text": "Tomorrow"
                   },
@@ -406,7 +406,7 @@
                    "tag": "desk-universal-view",
                    "class": "sample-view",
                    "style": {
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                    }
                   }
                  ]
@@ -429,56 +429,56 @@
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   }
  ]

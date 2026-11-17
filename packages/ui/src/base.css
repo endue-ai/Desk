@@ -231,7 +231,8 @@ textarea.desk-field {
   background: var(--desk-tabs-bg);
 }
 .desk-tab {
-  min-height: var(--desk-tab-height);
+  /* The tabs' height is the control's: inside a segment's track an item gives up its padding. */
+  min-height: calc(var(--desk-tab-height) - 2 * var(--desk-tabs-padding));
   padding: 0 var(--desk-tab-padding-x);
   border: 1px solid var(--desk-tab-border);
   border-radius: var(--desk-tab-radius);

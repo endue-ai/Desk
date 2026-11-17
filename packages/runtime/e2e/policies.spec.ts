@@ -23,7 +23,7 @@ const desk = (page: Page) =>
 test.describe("desk.theme", () => {
   test("the dark theme applies by default, in the desk and in plugin frames", async ({ page }) => {
     await open(page);
-    expect(await desk(page)).toMatchObject({ scheme: "dark", background: "#141416" });
+    expect(await desk(page)).toMatchObject({ scheme: "dark", background: "#141311" });
     await expect(page.frameLocator(echo).getByTestId("scheme")).toHaveText("dark");
   });
 
@@ -45,7 +45,7 @@ test.describe("desk.theme", () => {
     await frame.getByTestId("toggle").click();
     await expect(frame.getByTestId("out")).toHaveText("light");
     await expect(frame.getByTestId("scheme")).toHaveText("light");
-    expect(await desk(page)).toMatchObject({ scheme: "light", background: "#faf9fc" });
+    expect(await desk(page)).toMatchObject({ scheme: "light", background: "#ffffff" });
   });
 });
 

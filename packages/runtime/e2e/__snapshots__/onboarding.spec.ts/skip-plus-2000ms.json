@@ -7,7 +7,7 @@
     "opacity": "1",
     "transform": "none",
     "filter": "none",
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
   },
   "children": [
     {
@@ -20,7 +20,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -32,7 +32,7 @@
             "opacity": "0.5",
             "transform": "matrix3d(1, 0, 0, 0, 0, 0.174, 0.985, 0, 0, -0.985, 0.174, 0, 0, 0, 0, 1)",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           }
         }
       ]
@@ -47,7 +47,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
       }
     },
     {
@@ -59,7 +59,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       }
     },
     {
@@ -72,7 +72,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -84,7 +84,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Skip intro"
         }
@@ -101,7 +101,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -112,7 +112,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Fine. I'll be brief."
         },
@@ -124,7 +124,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Let's make this desk yours."
         }
@@ -139,7 +139,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -152,7 +152,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "children": [
             {
@@ -164,7 +164,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, -1.307)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -176,7 +176,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   },
                   "children": [
                     {
@@ -188,7 +188,7 @@
                         "opacity": "1",
                         "transform": "matrix(1, 0, 0, 1, 0, 0)",
                         "filter": "brightness(0.885)",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       }
                     }
                   ]
@@ -202,7 +202,7 @@
                     "opacity": "1",
                     "transform": "matrix(1, 0, 0, 1, 0, 0)",
                     "filter": "blur(0px)",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   }
                 }
               ]
@@ -216,7 +216,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -228,7 +228,7 @@
                     "opacity": "1",
                     "transform": "matrix(1, 0, 0, 1, 0, -1.623)",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   }
                 }
               ]
@@ -242,7 +242,7 @@
                 "opacity": "0",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -254,7 +254,7 @@
                 "opacity": "0",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             }
           ]
@@ -269,7 +269,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "children": [
             {
@@ -282,7 +282,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -294,7 +294,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   },
                   "children": [
                     {
@@ -306,7 +306,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -318,7 +318,7 @@
                             "opacity": "0.998",
                             "transform": "matrix(1, 0, 0, 1, 0.028, -0.069)",
                             "filter": "blur(0.023px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "F"
                         },
@@ -331,7 +331,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, -0.001, -0.003)",
                             "filter": "blur(0.001px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "i"
                         },
@@ -344,7 +344,7 @@
                             "opacity": "0.999",
                             "transform": "matrix(1, 0, 0, 1, 0.003, -0.024)",
                             "filter": "blur(0.006px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "n"
                         },
@@ -357,7 +357,7 @@
                             "opacity": "0.993",
                             "transform": "matrix(1, -0.001, 0.001, 1, -0.087, -0.245)",
                             "filter": "blur(0.072px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "e"
                         },
@@ -370,7 +370,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, 0, 0)",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "."
                         }
@@ -385,7 +385,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -397,7 +397,7 @@
                             "opacity": "0.999",
                             "transform": "matrix(1, 0, 0, 1, -0.002, -0.023)",
                             "filter": "blur(0.006px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "I"
                         },
@@ -410,7 +410,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, 0, 0)",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "'"
                         },
@@ -423,7 +423,7 @@
                             "opacity": "0.993",
                             "transform": "matrix(1, 0.001, -0.001, 1, -0.062, -0.137)",
                             "filter": "blur(0.069px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "l"
                         },
@@ -436,7 +436,7 @@
                             "opacity": "0.991",
                             "transform": "matrix(1, -0.001, 0.001, 1, 0.046, -0.349)",
                             "filter": "blur(0.092px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "l"
                         }
@@ -451,7 +451,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -463,7 +463,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, -0.005, -0.015)",
                             "filter": "blur(0.004px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "b"
                         },
@@ -476,7 +476,7 @@
                             "opacity": "0.998",
                             "transform": "matrix(1, 0, 0, 1, 0.019, -0.058)",
                             "filter": "blur(0.024px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "e"
                         }
@@ -491,7 +491,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -503,7 +503,7 @@
                             "opacity": "0.999",
                             "transform": "matrix(1, 0, 0, 1, -0.003, -0.032)",
                             "filter": "blur(0.008px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "b"
                         },
@@ -516,7 +516,7 @@
                             "opacity": "0.993",
                             "transform": "matrix(1, 0, 0, 1, 0.086, -0.214)",
                             "filter": "blur(0.071px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "r"
                         },
@@ -529,7 +529,7 @@
                             "opacity": "0.999",
                             "transform": "matrix(1, 0, 0, 1, -0.011, -0.025)",
                             "filter": "blur(0.012px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "i"
                         },
@@ -542,7 +542,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, 0, -0.002)",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "e"
                         },
@@ -555,7 +555,7 @@
                             "opacity": "0.989",
                             "transform": "matrix(1, -0.001, 0.001, 1, -0.135, -0.382)",
                             "filter": "blur(0.112px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "f"
                         },
@@ -568,7 +568,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, 0, 0.003)",
                             "filter": "blur(0.006px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "."
                         }
@@ -588,7 +588,7 @@
                 "opacity": "1",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -600,7 +600,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   },
                   "children": [
                     {
@@ -612,7 +612,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -624,7 +624,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "L"
                         },
@@ -637,7 +637,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "e"
                         },
@@ -650,7 +650,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "t"
                         },
@@ -663,7 +663,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "'"
                         },
@@ -676,7 +676,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "s"
                         }
@@ -691,7 +691,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -703,7 +703,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "m"
                         },
@@ -716,7 +716,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "a"
                         },
@@ -729,7 +729,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "k"
                         },
@@ -742,7 +742,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "e"
                         }
@@ -757,7 +757,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -769,7 +769,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "t"
                         },
@@ -782,7 +782,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "h"
                         },
@@ -795,7 +795,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "i"
                         },
@@ -808,7 +808,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "s"
                         }
@@ -823,7 +823,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -835,7 +835,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "d"
                         },
@@ -848,7 +848,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "e"
                         },
@@ -861,7 +861,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "s"
                         },
@@ -874,7 +874,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "k"
                         }
@@ -889,7 +889,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -901,7 +901,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "y"
                         },
@@ -914,7 +914,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "o"
                         },
@@ -927,7 +927,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "u"
                         },
@@ -940,7 +940,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "r"
                         },
@@ -953,7 +953,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "s"
                         },
@@ -966,7 +966,7 @@
                             "opacity": "0",
                             "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
                             "filter": "blur(14px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "."
                         }
@@ -987,7 +987,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           }
         }
       ]
@@ -1001,7 +1001,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       }
     }
   ]

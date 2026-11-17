@@ -38,7 +38,7 @@ export function step(page: Page, ms: number): Promise<void> {
   return page.evaluate((m) => window.__shell.step(m), ms);
 }
 
-/** Count elements filled with the primary lavender (thin progress lines excluded). */
+/** Count the controls filled with the primary fill (thin progress lines excluded). */
 export function primaryFills(page: Page): Promise<number> {
   return page.evaluate(() => {
     const probe = document.createElement("span");
@@ -46,7 +46,11 @@ export function primaryFills(page: Page): Promise<number> {
     document.body.append(probe);
     const primary = getComputedStyle(probe).backgroundColor;
     probe.remove();
-    return [...document.querySelectorAll("#desk *")].filter((el) => {
+    // Filled controls only: the fill is ink, the text colour in Stone, so a dot or mark drawn in the
+    // text colour (a desktop's map) shares its colour without being a filled button (ADR 0265).
+    return [
+      ...document.querySelectorAll("#desk button, #desk a[href], #desk [role='button']"),
+    ].filter((el) => {
       const r = el.getBoundingClientRect();
       return r.height > 2 && r.width > 0 && getComputedStyle(el).backgroundColor === primary;
     }).length;

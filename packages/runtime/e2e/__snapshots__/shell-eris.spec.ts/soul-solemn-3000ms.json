@@ -12,7 +12,7 @@
    "tag": "p",
    "class": "soul-line soul-solemn",
    "style": {
-    "color": "rgb(242, 240, 245)",
+    "color": "rgb(243, 241, 236)",
     "opacity": "0.73",
     "letterSpacing": "0.9px"
    },
@@ -25,7 +25,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "T"
       },
@@ -33,7 +33,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "h"
       },
@@ -41,7 +41,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "e"
       }
@@ -55,7 +55,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "d"
       },
@@ -63,7 +63,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "e"
       },
@@ -71,7 +71,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "s"
       },
@@ -79,7 +79,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "k"
       }
@@ -93,7 +93,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "i"
       },
@@ -101,7 +101,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "s"
       }
@@ -115,7 +115,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "y"
       },
@@ -123,7 +123,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "o"
       },
@@ -131,7 +131,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "u"
       },
@@ -139,7 +139,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "r"
       },
@@ -147,7 +147,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "s"
       },
@@ -155,7 +155,7 @@
        "tag": "span",
        "class": "soul-glyph",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "."
       }

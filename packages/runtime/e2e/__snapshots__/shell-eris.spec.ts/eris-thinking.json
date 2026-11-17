@@ -15,8 +15,8 @@
    "tag": "span",
    "class": "eris-ring",
    "style": {
-    "color": "rgb(242, 240, 245)",
-    "border": "dashed rgb(131, 121, 145)",
+    "color": "rgb(243, 241, 236)",
+    "border": "dashed rgb(133, 129, 119)",
     "opacity": "0",
     "transform": "matrix(1, 0, 0, 1, -74, -74)"
    }
@@ -34,7 +34,7 @@
      "hidden": "",
      "style": {
       "display": "none",
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
@@ -44,14 +44,14 @@
      "data-rings": "-1.08 -2.34 -2.34 -1.31 0.10 1.15 1.45 1.02 0.29",
      "data-voice": "thinking",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "eris-core",
      "style": {
-      "color": "rgb(242, 240, 245)",
+      "color": "rgb(243, 241, 236)",
       "opacity": "0.705",
       "transform": "matrix(1.018, 0, 0, 1.018, -24, -24)"
      }
@@ -61,7 +61,7 @@
      "class": "eris-tail eris-tail-1",
      "style": {
       "background": "rgb(167, 177, 195)",
-      "color": "rgb(242, 240, 245)",
+      "color": "rgb(243, 241, 236)",
       "opacity": "0.5"
      }
     },
@@ -70,7 +70,7 @@
      "class": "eris-tail eris-tail-2",
      "style": {
       "background": "rgb(167, 177, 195)",
-      "color": "rgb(242, 240, 245)",
+      "color": "rgb(243, 241, 236)",
       "opacity": "0.3"
      }
     },
@@ -85,7 +85,7 @@
        "tag": "canvas",
        "class": "eris-moon",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        }
       },
       {
@@ -95,7 +95,7 @@
        "style": {
         "display": "none",
         "background": "rgb(232, 201, 138)",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        }
       }
      ]

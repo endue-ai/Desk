@@ -7,7 +7,7 @@
     "opacity": "1",
     "transform": "none",
     "filter": "none",
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
   },
   "children": [
     {
@@ -20,7 +20,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       }
     },
     {
@@ -33,7 +33,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
       }
     },
     {
@@ -45,7 +45,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       }
     },
     {
@@ -57,7 +57,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -69,7 +69,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Skip intro"
         }
@@ -86,7 +86,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -97,7 +97,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Hello."
         }
@@ -112,7 +112,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -125,7 +125,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "children": [
             {
@@ -137,7 +137,7 @@
                 "opacity": "1",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -149,7 +149,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   },
                   "children": [
                     {
@@ -161,7 +161,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       }
                     }
                   ]
@@ -175,7 +175,7 @@
                     "opacity": "1",
                     "transform": "matrix(0.988, -0.156, 0.156, 0.988, 0, 0)",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   }
                 }
               ]
@@ -189,7 +189,7 @@
                 "opacity": "1",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -201,7 +201,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   }
                 }
               ]
@@ -215,7 +215,7 @@
                 "opacity": "0",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
@@ -227,7 +227,7 @@
                 "opacity": "0",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             }
           ]
@@ -242,7 +242,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "children": [
             {
@@ -255,7 +255,7 @@
                 "opacity": "1",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -267,7 +267,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   },
                   "children": [
                     {
@@ -279,7 +279,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -291,7 +291,7 @@
                             "opacity": "1",
                             "transform": "none",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "H"
                         },
@@ -304,7 +304,7 @@
                             "opacity": "1",
                             "transform": "none",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "e"
                         },
@@ -317,7 +317,7 @@
                             "opacity": "1",
                             "transform": "none",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "l"
                         },
@@ -330,7 +330,7 @@
                             "opacity": "1",
                             "transform": "none",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "l"
                         },
@@ -343,7 +343,7 @@
                             "opacity": "1",
                             "transform": "none",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "o"
                         },
@@ -356,7 +356,7 @@
                             "opacity": "1",
                             "transform": "none",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "."
                         }
@@ -377,7 +377,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           }
         }
       ]
@@ -391,7 +391,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       }
     }
   ]

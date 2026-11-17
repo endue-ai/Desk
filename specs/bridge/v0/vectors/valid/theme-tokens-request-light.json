@@ -199,7 +199,7 @@
         "surfaceOpacity": "1",
         "tabBorder": "transparent",
         "tabFg": "var(--desk-text-muted)",
-        "tabHeight": "calc(var(--desk-control-sm) - 2 * var(--desk-space-1))",
+        "tabHeight": "var(--desk-control-sm)",
         "tabHoverBg": "transparent",
         "tabHoverFg": "var(--desk-text)",
         "tabPaddingX": "var(--desk-space-3)",

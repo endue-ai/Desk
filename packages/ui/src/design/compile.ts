@@ -165,9 +165,8 @@ function tabs(r: FullRecipe["tabs"], out: Tokens) {
       : segment
         ? (INNER[r.shape] as string)
         : (RADIUS[r.shape] as string);
-  out.tabHeight = segment
-    ? `calc(${CONTROL[r.size]} - 2 * ${v("space-1")})`
-    : (CONTROL[r.size] as string);
+  // The control's height, the track's padding included: an item is `tabHeight - 2 * tabsPadding`.
+  out.tabHeight = CONTROL[r.size] as string;
   out.tabPaddingX = underline ? v("space-1") : v("space-3");
   out.tabFg = underline || segment ? v("text-muted") : v("text");
   out.tabBorder = r.style === "boxed" ? v("border") : NONE;
