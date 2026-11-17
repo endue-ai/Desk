@@ -27,7 +27,7 @@ windows placed by `desk-wm`; it starts the compositor, then the system surfaces 
 - `sandbox`: each macOS helper enters Chromium's sandbox first (ADR 0148; elsewhere after #61); `release`, `update`:
   the build's version, key, origin, commit; `desk_update::install`, "Restart to update", the restart (#47).
 
-Packages (`packager/`, #46; `icons/`) carry the built-in plugins, `DESK_PLUGIN_DIRS` others. No Linux tray yet.
+Packages (`packager/`, #46; `icons/`) carry the built-in plugins (the dev bundle links `plugins/`), `DESK_PLUGIN_DIRS` others. No Linux tray yet.
 
 ## Run and test
 

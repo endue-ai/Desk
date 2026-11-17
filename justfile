@@ -72,7 +72,8 @@ check:
     pnpm exec spectral lint specs/brain/v0/openapi.yaml --fail-severity=warn --quiet
 
 # Build the CEF shell (ADR 0143) with the web runtime it serves; on macOS also assemble
-# target/bundle/endue-desk.app (the CEF framework and its helper apps)
+# target/bundle/endue-desk.app, which opens with its built-in plugins outside `just dev` too
+# (the CEF framework, its helper apps and a link to plugins/)
 build-shell: build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
     cargo build -p desk-shell --bins

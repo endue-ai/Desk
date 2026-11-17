@@ -1,6 +1,8 @@
 //! Assembles `target/bundle/endue-desk.app` on macOS from binaries already built
 //! (`cargo build -p desk-shell --bins [--release]`): the CEF framework, the five helper apps and
-//! the built shell (`apps/desk/dist`) in `Contents/Resources/shell`. `just dev` runs it.
+//! the built shell (`apps/desk/dist`) in `Contents/Resources/shell`, and a link to the repository's
+//! `plugins/` in `Contents/Resources/plugins`, so the app opened by itself (Finder, `open`) has its
+//! built-in plugins as a package does. `just dev` runs it.
 //! usage: desk-shell-bundle [out-dir] [debug|release]
 
 #[cfg(target_os = "macos")]
@@ -42,6 +44,16 @@ fn main() -> std::process::ExitCode {
         && let Err(why) = copy_dir(&dist, &shell)
     {
         eprintln!("desk-shell-bundle: the shell files did not copy ({why})");
+        return std::process::ExitCode::FAILURE;
+    }
+    // A link, not a copy: a plugin file saved in the repository is the one the app reads.
+    let plugins = workspace.join("plugins");
+    let linked = app.join("Contents/Resources/plugins");
+    let _ = std::fs::remove_file(&linked);
+    if let Ok(plugins) = plugins.canonicalize()
+        && let Err(why) = std::os::unix::fs::symlink(&plugins, &linked)
+    {
+        eprintln!("desk-shell-bundle: the built-in plugins did not link ({why})");
         return std::process::ExitCode::FAILURE;
     }
     println!("{}", app.display());

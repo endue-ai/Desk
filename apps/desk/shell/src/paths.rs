@@ -39,9 +39,9 @@ fn resource(exe: &Path, name: &str) -> Option<PathBuf> {
     })
 }
 
-/// The folders whose plugins install as built in: `DESK_PLUGIN_DIRS` when it is set (development
-/// builds and the e2e point it at the repository's `plugins/`), else the package's own copy of
-/// `plugins/` (#47), else none.
+/// The folders whose plugins install as built in: `DESK_PLUGIN_DIRS` when it is set (`just dev` and
+/// the e2e point it at the repository's `plugins/`), else the package's own copy of `plugins/`
+/// (#47; in the development bundle a link to the repository's), else none.
 pub fn plugin_dirs() -> Vec<PathBuf> {
     if std::env::var_os("DESK_PLUGIN_DIRS").is_some() {
         return desk_boot::boot::env_paths("DESK_PLUGIN_DIRS");
@@ -118,6 +118,31 @@ mod tests {
         );
         fs::create_dir_all(plugins.join("dock")).unwrap();
         assert_eq!(bundled_plugins(&exe), Some(plugins));
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    /// The development bundle links the repository's `plugins/` (`desk-shell-bundle`), so the app
+    /// opened without `DESK_PLUGIN_DIRS` is not a desk without plugins.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_development_bundle_finds_the_plugins_it_links_to() {
+        let dir = std::env::temp_dir().join(format!("desk-shell-linked-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let contents = dir.join("Desk.app/Contents");
+        let exe = contents.join("MacOS/endue-desk");
+        let linked = contents.join("Resources/plugins");
+        fs::create_dir_all(exe.parent().unwrap()).unwrap();
+        fs::create_dir_all(linked.parent().unwrap()).unwrap();
+        fs::create_dir_all(dir.join("repository/plugins/launcher")).unwrap();
+        std::os::unix::fs::symlink(dir.join("repository/plugins"), &linked).unwrap();
+        let found = bundled_plugins(&exe).expect("the linked folder");
+        assert!(found.join("launcher").is_dir());
+        fs::remove_dir_all(dir.join("repository")).unwrap();
+        assert_eq!(
+            bundled_plugins(&exe),
+            None,
+            "a link to nothing is no folder"
+        );
         let _ = fs::remove_dir_all(dir);
     }
 
