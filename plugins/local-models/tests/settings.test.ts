@@ -66,7 +66,7 @@ describe("chat settings", () => {
     thread.think = false;
     await app.send("hello again");
     expect(lastChat().think).toBe(false);
-    expect(path(thread)[1].reasoning).toBeUndefined();
+    expect(path(thread)[1]!.reasoning).toBeUndefined();
   });
 
   it("holds an answer to JSON, on either kind of server", async () => {
@@ -77,8 +77,8 @@ describe("chat settings", () => {
     await app.send("give me json");
     expect(lastChat("/v1/chat/completions").response_format).toMatchObject({ type: "json_schema" });
     const answer = path(thread)[1];
-    expect(answer.format).toBe("schema");
-    expect(JSON.parse(answer.content).tags).toEqual(["local", "structured"]);
+    expect(answer!.format).toBe("schema");
+    expect(JSON.parse(answer!.content).tags).toEqual(["local", "structured"]);
     app.choose("127.0.0.1:11434|llama3.2:3b");
     const t2 = app.newChat();
     t2.format = "json";
@@ -123,12 +123,12 @@ describe("chat settings", () => {
     const app = await ready();
     app.choose("127.0.0.1:11434|gemma3:12b");
     await new Promise((r) => setTimeout(r, 100));
-    expect(app.S.get().models.find((m) => m.id === "gemma3:12b")?.ctx).toBe(131072);
+    expect(app.S.get().models.find((m: any) => m.id === "gemma3:12b")?.ctx).toBe(131072);
     const empty = contextUse(app.S.get(), "x".repeat(400));
     expect(empty).toMatchObject({ used: 100, limit: 131072, exact: false });
     await app.send("Explain transformers");
     await app.refreshModels("127.0.0.1:11434");
-    expect(app.S.get().models.find((m) => m.id === "gemma3:12b")).toMatchObject({
+    expect(app.S.get().models.find((m: any) => m.id === "gemma3:12b")).toMatchObject({
       loaded: true,
       ctx: 131072,
     });

@@ -400,6 +400,7 @@ Notes opens a 4 MiB note and types in it and while Explorer previews a 7.1 MiB i
 | `item` | None: a data-only view plugin | — | — | — |
 | `launcher` | None: a list of at most a few dozen plugins, filtered and drawn as tiles | Frame | Stays: bounded input | — |
 | `local-agents` | stream-json lines ≤ 256 KiB, `JSON.parse` per line; the answer's markdown redrawn every 40 ms | Frame | Stays: per line; the redraw is DOM (follow-up) | Read, not run |
+| `local-models` | GGUF headers read in ranges (`fs.read` offset and length, never the whole file); streamed answers parsed per event-stream or NDJSON line and drawn once per animation frame; text attachments (at most 2 MB) cut into passages of about 1,000 characters and embedded 24 at a time | Frame | Stays: a header read touches only the header, answers redraw at most once a frame, and a long file is embedded once and its vectors kept in `~/.endue/local-models/rag/` | `engine.test.ts` (GGUF headers), `transport.test.ts`, `attach.test.ts`, `chat.dom.test.ts` |
 | `login` | None: a policy, no frame; the shell registers the login item | — | — | — |
 | `mail` | Invitation (iTIP) parse; list rows | Frame | Stays: an invitation parses in 0.13 ms; a render per changed item and an `Intl` format per row are not parsing (follow-up) | 1000-event invitation (Node) |
 | `market` | None: a policy, no frame | — | — | — |
