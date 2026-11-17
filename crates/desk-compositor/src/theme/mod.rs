@@ -155,18 +155,21 @@ impl Default for ChromeTheme {
     }
 }
 
-/// The endue dark theme's values, for tokens a table lacks.
+/// The endue dark theme's values (Stone, endue.ai/design, ADR 0265), for tokens a table lacks.
 mod endue {
-    pub const BACKGROUND: u32 = 0x141416;
-    pub const CARD: u32 = 0x1e1d21;
-    pub const MUTED: u32 = 0x242127;
-    pub const BORDER: u32 = 0x333136;
-    pub const INPUT: u32 = 0x837991;
-    pub const TEXT: u32 = 0xf2f0f5;
-    pub const TEXT_MUTED: u32 = 0xb0adb7;
-    pub const PRIMARY: u32 = 0xb6a3f5;
-    pub const POPOVER: u32 = 0x2b2731;
-    pub const TOOLTIP: u32 = 0x403a49;
+    pub const BACKGROUND: u32 = 0x141311;
+    pub const CARD: u32 = 0x1d1c19;
+    pub const MUTED: u32 = 0x23211e;
+    /// The hover and selected surface, which `primarySoft` is too.
+    pub const HOVER: u32 = 0x35322d;
+    pub const BORDER: u32 = 0x32302b;
+    pub const INPUT: u32 = 0x858177;
+    pub const TEXT: u32 = 0xf3f1ec;
+    pub const TEXT_MUTED: u32 = 0xb3afa5;
+    /// The fill is ink: paper in the dark, the text's colour.
+    pub const PRIMARY: u32 = 0xf3f1ec;
+    pub const POPOVER: u32 = 0x2a2824;
+    pub const TOOLTIP: u32 = 0x403d37;
     pub const FONT: &str = r#""Inter", "SUIT Variable", "SUIT", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif"#;
 }
 
@@ -221,8 +224,8 @@ impl ChromeTheme {
             text: text("textXs", 12.0, 500, muted_ink),
         };
         let snap = SnapStyle {
-            fill: color("primarySoft", primary.fade(0.12)),
-            stroke: color("primaryBorder", primary.fade(0.34)),
+            fill: color("primarySoft", hex(endue::HOVER)),
+            stroke: color("primaryBorder", border),
             stroke_width: 2.0,
             radius,
         };
@@ -238,7 +241,7 @@ impl ChromeTheme {
         let tooltip = TooltipStyle {
             fill: color("tooltip", hex(endue::TOOLTIP)),
             radius: length("tooltipRadius", length("radiusMd", 8.0)),
-            shadow: shadow("tooltipShadow", Some(drop(1.0, 2.0, 0.4))),
+            shadow: shadow("tooltipShadow", Some(drop(8.0, 24.0, 0.45))),
             padding_x: length("space2", 8.0),
             padding_y: length("space1", 4.0),
             max_width: 360.0,
@@ -267,8 +270,8 @@ impl ChromeTheme {
         let medium = length("radiusMd", 8.0);
         let spread = SpreadStyle {
             scrim: color("dialogScrim", Color::BLACK.fade(0.6)),
-            field: color("fieldBg", card),
-            field_border: color("fieldFocusBorder", window.border_focused),
+            field: color("fieldBg", color("background", hex(endue::BACKGROUND))),
+            field_border: color("fieldFocusBorder", color("ring", primary)),
             field_radius: length("fieldRadius", medium),
             field_height: length("fieldHeight", 40.0),
             field_padding: length("fieldPaddingX", 12.0),
@@ -297,10 +300,10 @@ impl ChromeTheme {
             focused: accent.fade(0.35),
             focused_border: accent,
             small_radius: small,
-            view: color("primarySoft", primary.fade(0.12)),
+            view: color("primarySoft", hex(endue::HOVER)),
             view_border: accent,
             button_size: length("controlSm", 32.0),
-            icon: color("iconButtonFg", ink),
+            icon: color("iconButtonFg", muted_ink),
         };
         ChromeTheme {
             wallpaper: color("background", hex(endue::BACKGROUND)),
