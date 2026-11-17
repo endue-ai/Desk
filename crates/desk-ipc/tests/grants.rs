@@ -1,6 +1,7 @@
 //! What the app grants the caller `cli` at start (ADR 0030): the permissions it lists, update:manage
 //! (ADR 0054), theme:manage for `desk theme` (ADR 0058), ui:surface for snapshots (ADR 0161), and
-//! fs:read and fs:write for `desk fs history` and `desk fs restore` (ADR 0076).
+//! fs:read and fs:write for `desk fs history` and `desk fs restore` (ADR 0076), and `cmd.changed` for
+//! desk-mcp's tools (ADR 0262).
 
 use serde_json::json;
 
@@ -22,6 +23,7 @@ fn the_cli_gets_the_permissions_adr_0030_lists_update_and_theme_manage_and_files
             json!({ "permission": "ui:surface" }),
             json!({ "permission": "fs:read", "paths": ["/**", "~/**"] }),
             json!({ "permission": "fs:write", "paths": ["/**", "~/**"] }),
+            json!({ "permission": "events:subscribe", "names": ["cmd.changed"] }),
         ]
     );
 }
