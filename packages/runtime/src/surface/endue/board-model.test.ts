@@ -111,7 +111,7 @@ describe("an endue agent's Studio board, without a DOM (ADR 0232)", () => {
     expect(board.outbound.filter((r) => r.id.startsWith("connector-"))).toHaveLength(
       MAX_CONNECTORS,
     );
-    expect(board.connectors).toEqual({ count: 9, more: 3 });
+    expect(board.connectors).toEqual({ count: 9, more: 3, read: true, value: "" });
   });
 
   it("says what the agent does from what is on", () => {
@@ -145,7 +145,13 @@ describe("an endue agent's Studio board, without a DOM (ADR 0232)", () => {
       ["dream", false],
       ["self_config", false],
     ]);
-    expect(hub.skills).toEqual({ label: "Skills 1", chips: ["Document (Markdown)"], more: 0 });
+    expect(hub.skills).toEqual({
+      label: "Skills 1",
+      chips: ["Document (Markdown)"],
+      more: 0,
+      read: true,
+      value: "",
+    });
     // endue.ai's order; a group the desk has no word for keeps its place under its own name.
     expect(hub.tools.badges?.map((b) => [b.key, b.label, b.on])).toEqual([
       ["artifact", "Outputs", true],

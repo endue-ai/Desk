@@ -190,6 +190,8 @@ const runtime = createRuntime({
   bridge: client,
   clock,
   platform: "other",
+  // desk.language's `system` as this page names it (ADR 0250): Korean, as the specs read the desk.
+  language: "ko",
   plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
 });
 

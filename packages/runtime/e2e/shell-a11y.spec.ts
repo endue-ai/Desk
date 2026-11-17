@@ -161,8 +161,13 @@ test.describe("at 1024 wide", () => {
       ),
     );
     const chrome = boxes.filter((b) => b.sel !== ".eris" && b.sel !== ".surface");
+    // A window keeps its place on the canvas when the app narrows, so one that runs past the app's
+    // edge passes under the bars there, as any window dragged under them does: only the windows
+    // inside the app are checked.
+    const inside = (b: (typeof boxes)[number]) =>
+      b.sel !== ".surface" || (b.x >= 0 && b.y >= 0 && b.x + b.w <= 1024 && b.y + b.h <= 768);
     const overlaps: string[] = [];
-    for (const a of boxes) {
+    for (const a of boxes.filter(inside)) {
       for (const b of chrome) {
         if (a === b || (a.sel === ".eris" && b.sel !== ".eris")) continue;
         const hit = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;

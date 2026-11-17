@@ -102,6 +102,8 @@ describe("the shell bridge over the core", () => {
 
   test("brain.say collects its turn's deltas into one reply", async () => {
     const { stub, bridge, calls, listening } = setup({ "brain.say": () => ({ turnId: "t7" }) });
+    // The bridge's own listeners (the microphone's) stay; the turn's must go.
+    const before = listening();
     const reply = bridge.brain.say("hello?");
     await tick();
     stub.emit(turn("t7", "started"));
@@ -113,7 +115,7 @@ describe("the shell bridge over the core", () => {
     expect(answer).toEqual({ text: "hello" });
     expect(answer).not.toHaveProperty("words");
     expect(calls()).toEqual([{ method: "brain.say", params: { text: "hello?", scope: SCOPE } }]);
-    expect(listening()).toBe(0);
+    expect(listening()).toBe(before);
   });
 
   test("brain.say sends the desk the person sees with the line (ADR 0109)", async () => {
@@ -158,6 +160,7 @@ describe("the shell bridge over the core", () => {
 
   test("brain.say waits through offline and answers the error sentence when the turn fails", async () => {
     const { stub, bridge, listening } = setup({ "brain.say": () => ({ turnId: "t7" }) });
+    const before = listening();
     let settled = false;
     const reply = bridge.brain.say("hello?").finally(() => {
       settled = true;
@@ -169,12 +172,13 @@ describe("the shell bridge over the core", () => {
     expect(settled).toBe(false);
     stub.emit(turn("t7", "error", READ_ONLY));
     await expect(reply).resolves.toEqual({ text: READ_ONLY });
-    expect(listening()).toBe(0);
+    expect(listening()).toBe(before);
 
     // A refused call rejects as the bridge answered it.
     const refused = setup();
+    const idle = refused.listening();
     await expect(refused.bridge.brain.say("hello?")).rejects.toMatchObject({ code: "unsupported" });
-    expect(refused.listening()).toBe(0);
+    expect(refused.listening()).toBe(idle);
   });
 
   test("brain.say hands each of Eris's errands to onStep as it happens (ADR 0089)", async () => {

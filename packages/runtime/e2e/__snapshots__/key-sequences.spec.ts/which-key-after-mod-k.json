@@ -10,9 +10,9 @@
   ],
   "style": {
     "display": "grid",
-    "background-color": "rgb(43, 39, 49)",
-    "color": "rgb(242, 240, 245)",
-    "border-top-color": "rgb(51, 49, 54)",
+    "background-color": "rgb(42, 40, 36)",
+    "color": "rgb(243, 241, 236)",
+    "border-top-color": "rgb(50, 48, 43)",
     "opacity": "1"
   },
   "children": [
@@ -29,8 +29,8 @@
       "style": {
         "display": "flex",
         "background-color": "rgba(0, 0, 0, 0)",
-        "color": "rgb(176, 173, 183)",
-        "border-top-color": "rgb(176, 173, 183)",
+        "color": "rgb(179, 175, 165)",
+        "border-top-color": "rgb(179, 175, 165)",
         "opacity": "1"
       },
       "children": [
@@ -44,9 +44,9 @@
           ],
           "style": {
             "display": "block",
-            "background-color": "rgb(30, 29, 33)",
-            "color": "rgb(242, 240, 245)",
-            "border-top-color": "rgb(51, 49, 54)",
+            "background-color": "rgb(29, 28, 25)",
+            "color": "rgb(243, 241, 236)",
+            "border-top-color": "rgb(50, 48, 43)",
             "opacity": "1"
           },
           "text": "⌘K"
@@ -56,8 +56,8 @@
           "style": {
             "display": "block",
             "background-color": "rgba(0, 0, 0, 0)",
-            "color": "rgb(176, 173, 183)",
-            "border-top-color": "rgb(176, 173, 183)",
+            "color": "rgb(179, 175, 165)",
+            "border-top-color": "rgb(179, 175, 165)",
             "opacity": "1"
           },
           "text": "다음 키"
@@ -76,9 +76,9 @@
       ],
       "style": {
         "display": "block",
-        "background-color": "rgb(20, 20, 22)",
-        "color": "rgb(242, 240, 245)",
-        "border-top-color": "rgb(182, 163, 245)",
+        "background-color": "rgb(20, 19, 17)",
+        "color": "rgb(243, 241, 236)",
+        "border-top-color": "rgb(243, 241, 236)",
         "opacity": "1"
       }
     },
@@ -96,8 +96,8 @@
       "style": {
         "display": "grid",
         "background-color": "rgba(0, 0, 0, 0)",
-        "color": "rgb(242, 240, 245)",
-        "border-top-color": "rgb(242, 240, 245)",
+        "color": "rgb(243, 241, 236)",
+        "border-top-color": "rgb(243, 241, 236)",
         "opacity": "1"
       },
       "children": [
@@ -114,9 +114,9 @@
           ],
           "style": {
             "display": "grid",
-            "background-color": "rgba(182, 163, 245, 0.12)",
-            "color": "rgb(182, 163, 245)",
-            "border-top-color": "rgb(182, 163, 245)",
+            "background-color": "rgb(53, 50, 45)",
+            "color": "rgb(243, 241, 236)",
+            "border-top-color": "rgb(243, 241, 236)",
             "opacity": "1"
           },
           "children": [
@@ -132,8 +132,8 @@
               "style": {
                 "display": "flex",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(182, 163, 245)",
-                "border-top-color": "rgb(182, 163, 245)",
+                "color": "rgb(243, 241, 236)",
+                "border-top-color": "rgb(243, 241, 236)",
                 "opacity": "1"
               },
               "children": [
@@ -147,9 +147,9 @@
                   ],
                   "style": {
                     "display": "block",
-                    "background-color": "rgb(30, 29, 33)",
-                    "color": "rgb(242, 240, 245)",
-                    "border-top-color": "rgb(51, 49, 54)",
+                    "background-color": "rgb(29, 28, 25)",
+                    "color": "rgb(243, 241, 236)",
+                    "border-top-color": "rgb(50, 48, 43)",
                     "opacity": "1"
                   },
                   "text": "⌘S"
@@ -168,8 +168,8 @@
               "style": {
                 "display": "block",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(182, 163, 245)",
-                "border-top-color": "rgb(182, 163, 245)",
+                "color": "rgb(243, 241, 236)",
+                "border-top-color": "rgb(243, 241, 236)",
                 "opacity": "1"
               },
               "text": "설정"
@@ -186,8 +186,8 @@
               "style": {
                 "display": "block",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(176, 173, 183)",
-                "border-top-color": "rgb(176, 173, 183)",
+                "color": "rgb(179, 175, 165)",
+                "border-top-color": "rgb(179, 175, 165)",
                 "opacity": "1"
               },
               "text": "나"
@@ -208,8 +208,8 @@
           "style": {
             "display": "grid",
             "background-color": "rgba(0, 0, 0, 0)",
-            "color": "rgb(242, 240, 245)",
-            "border-top-color": "rgb(242, 240, 245)",
+            "color": "rgb(243, 241, 236)",
+            "border-top-color": "rgb(243, 241, 236)",
             "opacity": "1"
           },
           "children": [
@@ -225,8 +225,8 @@
               "style": {
                 "display": "flex",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(242, 240, 245)",
-                "border-top-color": "rgb(242, 240, 245)",
+                "color": "rgb(243, 241, 236)",
+                "border-top-color": "rgb(243, 241, 236)",
                 "opacity": "1"
               },
               "children": [
@@ -240,9 +240,9 @@
                   ],
                   "style": {
                     "display": "block",
-                    "background-color": "rgb(30, 29, 33)",
-                    "color": "rgb(242, 240, 245)",
-                    "border-top-color": "rgb(51, 49, 54)",
+                    "background-color": "rgb(29, 28, 25)",
+                    "color": "rgb(243, 241, 236)",
+                    "border-top-color": "rgb(50, 48, 43)",
                     "opacity": "1"
                   },
                   "text": "⌘T"
@@ -261,8 +261,8 @@
               "style": {
                 "display": "block",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(242, 240, 245)",
-                "border-top-color": "rgb(242, 240, 245)",
+                "color": "rgb(243, 241, 236)",
+                "border-top-color": "rgb(243, 241, 236)",
                 "opacity": "1"
               },
               "text": "키보드 단축키"
@@ -279,8 +279,8 @@
               "style": {
                 "display": "block",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(176, 173, 183)",
-                "border-top-color": "rgb(176, 173, 183)",
+                "color": "rgb(179, 175, 165)",
+                "border-top-color": "rgb(179, 175, 165)",
                 "opacity": "1"
               },
               "text": "나"
@@ -301,8 +301,8 @@
       "style": {
         "display": "block",
         "background-color": "rgba(0, 0, 0, 0)",
-        "color": "rgb(176, 173, 183)",
-        "border-top-color": "rgb(176, 173, 183)",
+        "color": "rgb(179, 175, 165)",
+        "border-top-color": "rgb(179, 175, 165)",
         "opacity": "1"
       },
       "text": "↑↓ 선택 · ↩ 실행 · ⌫ 뒤로 · Esc 취소"
