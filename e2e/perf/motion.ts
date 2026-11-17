@@ -170,7 +170,9 @@ async function once(n: number): Promise<{
     }
     const at = [Math.round(grip[0] ?? 0), Math.round(grip[1] ?? 0)];
     if (x - amp < 0 || x + width + amp > sw)
-      throw new Error(`${config.window} cannot swing ±${amp} px`);
+      throw new Error(
+        `${config.window} cannot swing ±${amp} px: it is at ${w.rect.map(Math.round)} on a screen ${sw} wide`,
+      );
     const swing = { x: at[0], y: at[1], amp, periodMs, stepMs, durationMs };
     await shake(desk, { ...swing, tag: "timed" });
     const path = (name: string) => join(dir, `${name}.png`);
