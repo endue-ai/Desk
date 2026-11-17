@@ -114,8 +114,9 @@ fn a_hover_title_takes_the_tooltip_tokens_as_the_shells_tooltip_does() {
         (tip.text.size * tip.text.line_height - 20.0).abs() < 1e-3,
         "20 px lines"
     );
+    // The endue recipe floats a tooltip at shadow-md, as menus and popovers (ADR 0265).
     assert!(
-        tip.shadow.is_some_and(|s| s.blur == 2.0),
+        tip.shadow.is_some_and(|s| s.blur == 24.0),
         "{:?}",
         tip.shadow
     );

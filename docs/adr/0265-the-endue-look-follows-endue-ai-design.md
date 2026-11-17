@@ -53,6 +53,8 @@ components do not match the desk's custom elements and kit classes.
 * **Patterns.** `packages/ui/src/patterns.css`, joined into `/_desk/base.css`, holds the page header,
   hairline lists, callouts, filter chips, keycaps, status dots, the star, skeletons and spinners. Links
   underline; headings are medium and tight. The island's agents at work twinkle as stars.
+* **Chrome.** The compositor's fallback look (`crates/desk-compositor/src/theme`, ADR 0146) is Stone
+  too, so chrome drawn before the first token table matches the table; its snapshots follow.
 * **Rules.** `docs/design-system.md` carries the principles and the screen check; the procedure
   `design-ui` (`.claude/skills/design-ui/SKILL.md`) has agents follow them for every UI change.
 
