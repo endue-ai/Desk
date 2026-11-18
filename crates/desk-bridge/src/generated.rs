@@ -967,6 +967,7 @@ pub enum Permission {
     ComputerSee(ComputerSeePermission),
     ComputerControl(ComputerControlPermission),
     WebBrowse(WebBrowsePermission),
+    WebControl(WebControlPermission),
 }
 
 /// Search explicitly published plugin documents and installed plugin launchers.
@@ -1170,6 +1171,16 @@ pub struct ShellOpenPermission {
 pub struct WebBrowsePermission {
     pub permission: WebBrowsePermissionPermission,
     /// Host patterns a view's page may be on; absent covers every host.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hosts: Option<Vec<HostPattern>>,
+}
+
+/// Read and operate the pages the caller's own web views show (web.read, web.act): the page's text and what can be pressed or filled in on it, and scrolling, pressing, typing and choosing in it as the person would. A page may hold what the person is signed in to, so this is apart from web:browse. With hosts, only while the view's page is on a listed host. Without hosts, any page its views show.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebControlPermission {
+    pub permission: WebControlPermissionPermission,
+    /// Host patterns of the pages that may be read and operated; absent covers every host.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hosts: Option<Vec<HostPattern>>,
 }
@@ -5307,6 +5318,8 @@ pub enum BridgeRequest {
     WebGo(WebGoRequest),
     WebFocus(WebFocusRequest),
     WebClose(WebCloseRequest),
+    WebRead(WebReadRequest),
+    WebAct(WebActRequest),
     DialogOpen(DialogOpenRequest),
     DialogSave(DialogSaveRequest),
 }
@@ -11639,6 +11652,218 @@ pub struct WebCloseParams {
 #[serde(deny_unknown_fields)]
 pub struct WebCloseResult {}
 
+/// An element of a view's page, as web.read named it. It holds while that element is in the page: a page that loads another document names its elements anew.
+pub type WebRef = String;
+
+/// Read the page a web view shows: its text in reading order, with every element that can be pressed, filled in or chosen from named, and where the page is scrolled to.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebReadRequest {
+    pub id: RequestId,
+    pub method: WebReadRequestMethod,
+    pub params: WebReadParams,
+}
+
+/// Parameters of web.read: the part of the page's text from character from on, max characters at most.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebReadParams {
+    #[serde(rename = "viewId")]
+    pub view_id: WebViewId,
+    /// The character the part starts at; 0 by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<u64>,
+    /// How many characters the part holds at most; 20000 by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max: Option<u64>,
+    pub scope: WebControlPermission,
+}
+
+/// Result of web.read: the page of the view's main document as it is now. A frame in the page is named, not read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebReadResult {
+    /// The address the page was read at.
+    pub url: String,
+    pub title: String,
+    /// The part asked for of the page's text, in reading order: one block a line, a heading after #, a list item after -. An element that can be acted on is written [ref kind "name"], a field with = "what it holds" (never a password), a box or a choice with its state; kind is link, button, field, checkbox, radio, select, tab or item. What the page hides is left out.
+    pub text: String,
+    /// The character the part starts at.
+    pub from: u64,
+    /// How many characters the whole text has: a part that ends before it leaves more to read from there on.
+    pub length: u64,
+    pub scroll: WebScrolled,
+}
+
+/// Where a page is scrolled to, in CSS pixels: the part in view (x, y from the page's top left, width and height) and the size of the whole page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebScrolled {
+    pub x: u64,
+    pub y: u64,
+    pub width: u64,
+    pub height: u64,
+    #[serde(rename = "pageWidth")]
+    pub page_width: u64,
+    #[serde(rename = "pageHeight")]
+    pub page_height: u64,
+}
+
+/// Act in the page a web view shows as the person would: scroll it, bring an element into view, press one, type into a field, press a key, choose from a list. The keys the person has stay where they are.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebActRequest {
+    pub id: RequestId,
+    pub method: WebActRequestMethod,
+    pub params: WebActParams,
+}
+
+/// Parameters of web.act.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebActParams {
+    #[serde(rename = "viewId")]
+    pub view_id: WebViewId,
+    pub action: WebAction,
+    pub scope: WebControlPermission,
+}
+
+/// What web.act does, named by do.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum WebAction {
+    WebScroll(WebScroll),
+    WebShow(WebShow),
+    WebPress(WebPress),
+    WebType(WebType),
+    WebKey(WebKey),
+    WebChoose(WebChoose),
+}
+
+/// Scroll the page, or the part of it that scrolls when the page itself does not.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebScroll {
+    pub r#do: WebScrollDo,
+    pub to: WebScrollTo,
+    /// How far a step up, down, left or right goes, in views of the page; 1 by default. An end takes none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pages: Option<f64>,
+}
+
+/// Where a scroll goes: a step up, down, left or right, or to the top or the bottom of the page.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum WebScrollTo {
+    #[serde(rename = "up")]
+    Up,
+    #[serde(rename = "down")]
+    Down,
+    #[serde(rename = "left")]
+    Left,
+    #[serde(rename = "right")]
+    Right,
+    #[serde(rename = "top")]
+    Top,
+    #[serde(rename = "bottom")]
+    Bottom,
+}
+
+/// Bring an element into view, in the middle of it where the page can.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebShow {
+    pub r#do: WebShowDo,
+    pub r#ref: WebRef,
+}
+
+/// Press an element once with the pointer, brought into view first: a link, a button, a box, a tab.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebPress {
+    pub r#do: WebPressDo,
+    pub r#ref: WebRef,
+}
+
+/// Type text into a field as written, in any script.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebType {
+    pub r#do: WebTypeDo,
+    pub text: String,
+    /// The field; absent types into the one the page has the caret in.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#ref: Option<WebRef>,
+    /// false types at the caret and keeps what the field holds; true by default: the field holds the text alone afterwards.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replace: Option<bool>,
+    /// true presses Enter in the field afterwards, as a search or a form is sent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub submit: Option<bool>,
+}
+
+/// Press a key in the page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebKey {
+    pub r#do: WebKeyDo,
+    pub key: WebKeyName,
+    /// The element that takes the key; absent it goes to what the page has the keys on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#ref: Option<WebRef>,
+}
+
+/// A key web.act presses, by its name in KeyboardEvent.key (Space is the space bar).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum WebKeyName {
+    #[serde(rename = "Enter")]
+    Enter,
+    #[serde(rename = "Tab")]
+    Tab,
+    #[serde(rename = "Escape")]
+    Escape,
+    #[serde(rename = "Backspace")]
+    Backspace,
+    #[serde(rename = "Delete")]
+    Delete,
+    #[serde(rename = "Space")]
+    Space,
+    #[serde(rename = "ArrowUp")]
+    ArrowUp,
+    #[serde(rename = "ArrowDown")]
+    ArrowDown,
+    #[serde(rename = "ArrowLeft")]
+    ArrowLeft,
+    #[serde(rename = "ArrowRight")]
+    ArrowRight,
+    #[serde(rename = "PageUp")]
+    PageUp,
+    #[serde(rename = "PageDown")]
+    PageDown,
+    #[serde(rename = "Home")]
+    Home,
+    #[serde(rename = "End")]
+    End,
+}
+
+/// Choose an option of a list of choices (a select).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebChoose {
+    pub r#do: WebChooseDo,
+    pub r#ref: WebRef,
+    /// The option, by the words it shows or by its value.
+    pub option: String,
+}
+
+/// Result of web.act: the act was done. What the page made of it is read with web.read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebActResult {
+    /// Of a scroll: false when there was nowhere further to go.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub moved: Option<bool>,
+}
+
 /// A web view's page changed: its address, its title, whether it loads, where its history can go. Sent to the window that opened the view.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -11859,6 +12084,14 @@ pub enum WebBrowsePermissionPermission {
     #[default]
     #[serde(rename = "web:browse")]
     WebBrowse,
+}
+
+/// The `permission` of [`WebControlPermission`]: always `"web:control"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebControlPermissionPermission {
+    #[default]
+    #[serde(rename = "web:control")]
+    WebControl,
 }
 
 /// The `permission` of [`UpdateManagePermission`]: always `"update:manage"`.
@@ -13723,6 +13956,70 @@ pub enum WebCloseRequestMethod {
     #[default]
     #[serde(rename = "web.close")]
     WebClose,
+}
+
+/// The `method` of [`WebReadRequest`]: always `"web.read"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebReadRequestMethod {
+    #[default]
+    #[serde(rename = "web.read")]
+    WebRead,
+}
+
+/// The `method` of [`WebActRequest`]: always `"web.act"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebActRequestMethod {
+    #[default]
+    #[serde(rename = "web.act")]
+    WebAct,
+}
+
+/// The `do` of [`WebScroll`]: always `"scroll"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebScrollDo {
+    #[default]
+    #[serde(rename = "scroll")]
+    Scroll,
+}
+
+/// The `do` of [`WebShow`]: always `"show"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebShowDo {
+    #[default]
+    #[serde(rename = "show")]
+    Show,
+}
+
+/// The `do` of [`WebPress`]: always `"press"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebPressDo {
+    #[default]
+    #[serde(rename = "press")]
+    Press,
+}
+
+/// The `do` of [`WebType`]: always `"type"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebTypeDo {
+    #[default]
+    #[serde(rename = "type")]
+    Type,
+}
+
+/// The `do` of [`WebKey`]: always `"key"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebKeyDo {
+    #[default]
+    #[serde(rename = "key")]
+    Key,
+}
+
+/// The `do` of [`WebChoose`]: always `"choose"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebChooseDo {
+    #[default]
+    #[serde(rename = "choose")]
+    Choose,
 }
 
 /// The `event` of [`WebChangedEvent`]: always `"web.changed"`.

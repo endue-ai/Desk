@@ -774,6 +774,30 @@ input method go to the page until a press on the caller's own surface, or the de
 already ended is not an error. A view also ends when its window's surface sleeps, goes away or moves out
 of the desk, and when its plugin stops.
 
+**web.read** reads the page one of the caller's views shows (ADR 0272), under a `web:control` scope
+whose `hosts`, when it has any, cover the host of the page the view shows (`permission_denied`
+otherwise): `web:browse` shows a page, it does not let its plugin see one. A page that went to another
+site between that check and the read is not read (`not_found`); the same holds for `web.act`. It answers the page's `url` and `title`, where it is scrolled to (`scroll`) and its `text` in
+reading order: one block a line, a heading after `#`, a list item after `-`, and every element that
+can be acted on as `[ref kind "name"]` (`link`, `button`, `field`, `checkbox`, `radio`, `select`,
+`tab`, `item`), a field with `= "what it holds"`, a box or a choice with its state. A password is never
+in it, what the page hides is left out, and a frame in the page is named, not read. A `[` or `]` of the
+page's own words is written wide (`［`, `］`): what stands in `[ ]` is an element the read named. `from` and `max`
+(20000 by default) pick a part of the text; `length` is the whole text's. A `ref` names its element
+while that is in the page: a page that loads another document names its elements anew.
+
+**web.act** acts in the page of one of the caller's views as the person would, under the same
+`web:control` scope: `scroll` (`to` a step `up`, `down`, `left`, `right` of `pages` views, 1 by
+default, or to the `top` or the `bottom`; the part of the page that scrolls when the page itself does
+not; the answer's `moved` is false when there was nowhere further to go), `show` (an element brought
+into view), `press` (an element pressed once with the pointer, brought into view first), `type` (text
+typed into a field as written, replacing what it holds unless `replace` is false, with `submit` an
+Enter after it), `key` (one of the keys of `WebKeyName`, to `ref` or to what the page has the keys on)
+and `choose` (an `option` of a select, by the words it shows or its value). A `ref` the page does not
+have is `not_found`; an element that cannot take the act (text into a button, an option a list does not
+have) is `invalid_value`. The keys the person has stay where they are: the page takes the act without
+the view taking the desk's keys. What the page made of the act is read with `web.read`.
+
 **dialog.open** asks the person for files (`kind: files`, the default) or folders (`kind: folders`) to
 open, one or (`multiple`) several, through the OS's own dialog attached to the desk window, its title
 naming the plugin that asks, starting in `startIn` and showing `filters`; one dialog shows at a time. It

@@ -237,6 +237,12 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
                 host_covers(g, a)
             })
         }
+        // web:control without hosts covers every page its views show (ADR 0272).
+        (Permission::WebControl(g), Permission::WebControl(s)) => {
+            narrows(g.hosts.as_deref(), s.hosts.as_deref(), |g, a| {
+                host_covers(g, a)
+            })
+        }
         (Permission::AudioCapture(g), Permission::AudioCapture(s)) => {
             s.wake_word != Some(true) || g.wake_word == Some(true)
         }
@@ -327,6 +333,12 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
             (s.hosts.as_ref()).is_none_or(|hosts| desk_sys::net::host_allowed(hosts, url))
         }
         (Permission::WebBrowse(_), Target::None) => true,
+        // web.read and web.act: the host of the page the view shows; a view with no page yet
+        // has no target.
+        (Permission::WebControl(s), Target::Url(url)) => {
+            (s.hosts.as_ref()).is_none_or(|hosts| desk_sys::net::host_allowed(hosts, url))
+        }
+        (Permission::WebControl(_), Target::None) => true,
         (Permission::CmdInvoke(s), Target::CommandId(id)) => {
             s.ids.iter().any(|p| star_match(p, id))
         }

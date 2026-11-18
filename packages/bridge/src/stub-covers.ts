@@ -56,6 +56,8 @@ export function covers(grant: Permission, scope: Permission): boolean {
     );
   if (grant.permission === "web:browse" && scope.permission === "web:browse")
     return narrows(grant.hosts, scope.hosts, within);
+  if (grant.permission === "web:control" && scope.permission === "web:control")
+    return narrows(grant.hosts, scope.hosts, within);
   if (grant.permission === "data:read" && scope.permission === "data:read")
     return (
       narrows(grant.kinds, scope.kinds, (g, a) => g === a) &&

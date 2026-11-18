@@ -1,0 +1,20 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.act types into a field and sends it",
+  "instance": {
+    "id": 54,
+    "method": "web.act",
+    "params": {
+      "viewId": "w-1",
+      "action": {
+        "do": "type",
+        "ref": "e2",
+        "text": "날씨 서울",
+        "submit": true
+      },
+      "scope": {
+        "permission": "web:control"
+      }
+    }
+  }
+}

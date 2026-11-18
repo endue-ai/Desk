@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.act types at the caret, keeping what the field holds",
+  "instance": {
+    "id": 55,
+    "method": "web.act",
+    "params": {
+      "viewId": "w-1",
+      "action": {
+        "do": "type",
+        "text": " more",
+        "replace": false
+      },
+      "scope": {
+        "permission": "web:control"
+      }
+    }
+  }
+}
