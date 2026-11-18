@@ -1,6 +1,7 @@
 //! Commands as agents' tools (ADR 0088): a registration takes what it leaves out from the manifest,
 //! an agent command needs a description and an irreversible one never reads only, and cmd.tools
-//! lists the agent commands an agent's allowlist could let it run, or another caller's grants cover.
+//! lists the agent commands an agent's allowlist could let it run (an installed plugin's as granted,
+//! ADR 0268), or another caller's grants cover.
 
 mod support;
 
@@ -170,16 +171,9 @@ fn an_agent_sees_what_its_allowlist_could_let_it_run_and_what_it_holds() {
         commands_of(&shown),
         ["example.git.state", "example.git.push"]
     );
-    assert!(shown.iter().all(|t| t["granted"] == false), "{shown:?}");
-
-    grant(
-        &core,
-        MIRA,
-        json!({ "permission": "cmd:invoke", "ids": ["example.git.state"] }),
-    );
-    let shown = tools(&core, MIRA, json!({}));
-    assert_eq!(shown[0]["granted"], true);
-    assert_eq!(shown[1]["granted"], false);
+    // The person installed the plugin, so an agent runs its commands without a grant (ADR 0268).
+    assert!(shown.iter().all(|t| t["granted"] == true), "{shown:?}");
+    assert!(query(&core, MIRA).is_empty());
 
     let capped = "agents:\n  mira:\n    allow:\n      - { permission: cmd:invoke, ids: [\"example.git.state\"] }\n";
     fs::write(home.join("init.yaml"), capped).unwrap();

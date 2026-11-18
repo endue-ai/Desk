@@ -1,7 +1,7 @@
 //! An agent controls plugins through their commands (ADR 0088), against examples/brain-echo: the
 //! desk's turns offer desk-tools, desk-run and every agent command by name; a tool call by a
-//! command's name, by desk-run or by its id runs the command as `agent:<id>`, asking the person
-//! for that one command and answering what the provider answers; desk-tools answers cmd.tools.
+//! command's name, by desk-run or by its id runs the command as `agent:<id>`, without a question
+//! (ADR 0268) and answering what the provider answers; desk-tools answers cmd.tools.
 
 mod common;
 mod support;
@@ -182,23 +182,17 @@ fn a_desk_turn_offers_the_desks_tools_once_a_plugin_has_agent_commands() {
 }
 
 #[test]
-fn an_agent_runs_a_command_by_its_tool_name_after_the_person_allows_that_command() {
+fn an_agent_runs_an_installed_plugins_command_by_its_tool_name_without_a_question() {
     let echo = Echo::start();
     let home = home("agent-tools-name");
+    // NeverAsk is the prompter, and no perm:manage holder answers a prompt here: the call passes
+    // because the person installed the plugin (ADR 0268).
     let (core, _brain, deliveries) = core(&echo, &home);
     git_plugin(&core, &home);
     let turn = say(
         &core,
         r#"tool example_git_state as mira: {"path": "~/repo"}"#,
     );
-
-    let prompt = wait_for(&deliveries, "perm.prompt");
-    assert_eq!(prompt.data()["caller"], "agent:mira");
-    let scope = json!({ "permission": "cmd:invoke", "ids": ["example.git.state"] });
-    assert_eq!(prompt.data()["permission"], scope);
-    let params = json!({ "promptId": prompt.data()["promptId"], "granted": true,
-        "duration": "session", "scope": manage() });
-    call(&core, "desk", "perm.answer", params).unwrap();
 
     let mut invoked = Vec::new();
     let state = json!({ "branch": "main", "changed": 2 });
@@ -208,6 +202,23 @@ fn an_agent_runs_a_command_by_its_tool_name_after_the_person_allows_that_command
     assert_eq!(invoked[0]["args"], json!({ "path": "~/repo" }));
     assert!(said.contains("The example_git_state tool said:"), "{said}");
     assert!(said.contains(r#""branch":"main""#), "{said}");
+    // Nothing was granted: the install, not a grant, let the call through.
+    assert!(query(&core, "agent:mira").is_empty());
+}
+
+#[test]
+fn the_allowlist_still_caps_an_installed_plugins_command() {
+    let echo = Echo::start();
+    let home = home("agent-tools-capped");
+    let (core, _brain, deliveries) = core(&echo, &home);
+    git_plugin(&core, &home);
+    let capped = "agents:\n  mira:\n    allow:\n      - { permission: cmd:invoke, ids: [\"example.notes.*\"] }\n";
+    fs::write(home.join("init.yaml"), capped).unwrap();
+    let turn = say(&core, r#"tool example_git_state as mira: {}"#);
+    let mut invoked = Vec::new();
+    let said = answer(&core, &deliveries, &turn, json!({}), &mut invoked);
+    assert!(invoked.is_empty(), "{invoked:?}");
+    assert!(said.contains("outside-allowlist"), "{said}");
 }
 
 #[test]

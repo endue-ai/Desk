@@ -37,8 +37,9 @@ any, each of its turns offers them in `tools`:
 The commands are offered by name only when all of them fit in the turn (30 besides the two); else the
 brain finds them with `desk-tools`. A call by a command's tool name or its id works either way, and a
 bridge method of the same name wins. Each runs `cmd.invoke` under the `cmd:invoke` scope of that one
-command: the allowlist caps it, a first use asks the person, and a command its manifest marks
-`irreversible` waits for the person's approval every time (ADR 0078). A turn of a desk without agent
+command: the allowlist caps it, an installed plugin's command runs without a question (ADR 0268; the
+desk's own and an MCP server's ask at a first use), and a command its manifest marks `irreversible`
+waits for the person's approval every time (ADR 0078). A turn of a desk without agent
 commands offers no tools.
 
 `createTurn` may offer `tools` for that turn (`ToolDefinition`: `name`, `description`, and `schema`, a

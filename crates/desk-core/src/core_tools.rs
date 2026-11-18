@@ -1,8 +1,8 @@
 //! Commands as agents' tools (ADR 0088). A registration takes what it leaves out from the
 //! provider's manifest (`described`): the description, the args and result schemas, `agent`,
 //! `readOnly`, the undo and `irreversible`. Commands marked `agent` are the desk's tools: cmd.tools
-//! lists them for a caller (an agent sees those its allowlist could let it run, anyone else those
-//! its grants cover), and the desk's brain turns offer them (`offer`) with two tools of the desk's
+//! lists them for a caller (an agent sees those its allowlist could let it run, an installed
+//! plugin's as granted (ADR 0268), anyone else those its grants cover), and the desk's brain turns offer them (`offer`) with two tools of the desk's
 //! own: desk-tools, which answers cmd.tools, and desk-run, which runs a command by id. A tool's
 //! name is its command id with every dot an underscore; command ids hold no underscores, so the
 //! name gives the id back, and the desk's two names, with no underscore, are never a command's.
@@ -182,6 +182,9 @@ impl Core {
             Some(allow) => allow.is_empty() || allow.iter().any(|a| covers(a, &scope)),
             None => held,
         };
+        // An agent runs an installed plugin's command without a grant (ADR 0268).
+        let target = Target::CommandId(&info.id);
+        let held = held || (allow.is_some() && self.installed_command(&scope, &target));
         inside.then(|| CommandTool {
             name: tool_name(&info.id),
             granted: held,
@@ -313,9 +316,9 @@ fn desk_run() -> ToolDefinition {
     ToolDefinition {
         name: DESK_RUN.to_owned(),
         description: "Run one of the desk's commands by its id (command, as desk-tools lists \
-            it) with args that match its argsSchema, and get what it answers. Without a grant \
-            that covers it the person is asked first, and an irreversible command waits for \
-            their approval."
+            it) with args that match its argsSchema, and get what it answers. An installed \
+            plugin's command runs without a question; an irreversible command waits for the \
+            person's approval."
             .to_owned(),
         schema: object(json!({
             "type": "object",
