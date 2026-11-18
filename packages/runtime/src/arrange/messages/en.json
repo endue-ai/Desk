@@ -24,5 +24,21 @@
   "arrange.hint": "Arrows or Tab to choose · Enter to open · Esc to close",
   "arrange.noMatch": "No window matches “{q}”",
   "arrange.option": "{title}",
-  "arrange.optionAsleep": "{title} · asleep"
+  "arrange.optionAsleep": "{title} · asleep",
+  "arrange.move": "Move window",
+  "arrange.resize": "Resize window",
+  "arrange.fill": "Maximize, snap or restore window",
+  "arrange.float": "Float window above the canvas",
+  "arrange.pin": "Pin window",
+  "arrange.bringBack": "Bring window back from the drawer",
+  "arrange.moveToDesktop": "Move window to a desktop",
+  "arrange.newWindow": "Open a new window",
+  "arrange.split": "Split a window's pane",
+  "arrange.closePane": "Close a window's pane",
+  "arrange.noWindow": "No window is in use: name one",
+  "arrange.isOut": "That window is in a window of its own: move it back to the desk first",
+  "arrange.onOther": "That window is on desktop {desktop}: switch to it first",
+  "arrange.notAway": "That window is not in the drawer",
+  "arrange.noDesktop": "No desktop {desktop}",
+  "arrange.noPane": "That window has no such pane"
 }
