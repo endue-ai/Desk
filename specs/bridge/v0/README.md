@@ -775,9 +775,9 @@ already ended is not an error. A view also ends when its window's surface sleeps
 of the desk, and when its plugin stops.
 
 **web.read** reads the page one of the caller's views shows (ADR 0272), under a `web:control` scope
-whose `hosts`, when it has any, cover the page's host, at the call and again at the address the page
-was read at (`permission_denied` otherwise): `web:browse` shows a page, it does not let its plugin see
-one. It answers the page's `url` and `title`, where it is scrolled to (`scroll`) and its `text` in
+whose `hosts`, when it has any, cover the host of the page the view shows (`permission_denied`
+otherwise): `web:browse` shows a page, it does not let its plugin see one. A page that went to another
+site between that check and the read is not read (`not_found`); the same holds for `web.act`. It answers the page's `url` and `title`, where it is scrolled to (`scroll`) and its `text` in
 reading order: one block a line, a heading after `#`, a list item after `-`, and every element that
 can be acted on as `[ref kind "name"]` (`link`, `button`, `field`, `checkbox`, `radio`, `select`,
 `tab`, `item`), a field with `= "what it holds"`, a box or a choice with its state. A password is never
