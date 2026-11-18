@@ -1,12 +1,14 @@
-//! The canvas map's scene (ADR 0082, #54; the runtime's `shell/Minimap.ts` and `minimap.css`, which
-//! it replaces): in the bottom right, under the right rail, the desktop in front drawn whole in
-//! its box, every normal window to scale from its panes' thumbnails (downscaled surface textures,
-//! `minimap.rs`), the focused one marked, and the part in sight as a frame; or, folded, its button
-//! alone beside the free area. Floating windows are always in sight, so it leaves
-//! them out. Units are CSS pixels in the desk's group.
+//! The canvas map's scene (ADR 0082, #54, ADR 0270; the runtime's `shell/Minimap.ts` and
+//! `minimap.css`, which it replaces): in the bottom right, under the right rail, the desktop in
+//! front drawn whole in its box, every normal window to scale with its icon in it (the one its
+//! title bar shows, from the page's report), the focused one marked, and the part in sight as a
+//! frame; or, folded, its button alone beside the free area. The person resizes the open box from
+//! grips along its left and top edges, in the frame's proportions (`desk_wm::map_size`); a box
+//! too tall to lie under the rail goes left of the rail's column. Floating windows are always in
+//! sight, so it leaves them out. Units are CSS pixels in the desk's group.
 
 use desk_compositor::{Chrome, GroupNode, NodeId, Rect, Scene, SceneError, SurfaceNode, TextureId};
-use desk_wm::{Fit, MAP, fit_world, is_floating, to_map, view_rect, world_of};
+use desk_wm::{Fit, MAP, MapEdges, fit_world, is_floating, map_size, to_map, view_rect, world_of};
 
 use super::draw::{pass, rect};
 use super::hosted::Hosted;
@@ -16,27 +18,45 @@ const RIGHT: f32 = 24.0;
 /// In an app too short for the map to lie under the right rail, it goes left of the rail's column
 /// (the rail's 24 and 56, then 12).
 const RIGHT_SHORT: f32 = 92.0;
-/// The shortest app whose rail (322 px, centred) ends 12 px above the map's box (130 px, 64 up).
-const TALL: f32 = 734.0;
+/// Half the right rail's height (322 px, centred) and the room it keeps above the map's box.
+const RAIL_HALF: f32 = 161.0;
+const RAIL_GAP: f32 = 12.0;
 const BOTTOM: f32 = 64.0;
 /// Round the canvas: the box's padding, and its border.
 const PAD: f32 = 5.0;
 /// The smallest a window is drawn in the map.
 const LEAST: f32 = 2.0;
+/// A window's icon: this share of its box's shorter side, at most `ICON_MOST`, and none in a box
+/// whose share is under `ICON_LEAST`.
+const ICON_SHARE: f32 = 0.5;
+const ICON_MOST: f32 = 28.0;
+const ICON_LEAST: f32 = 6.0;
+/// The grips: bands `GRIP` wide along the box's left and top edges, half outside it, a square at
+/// the corner between them; the top one stops `GRIP_CLEAR` short of the right edge, where the fold
+/// button is.
+const GRIP: f32 = 8.0;
+const GRIP_CLEAR: f32 = 36.0;
 
-/// One window as the map draws it: its box in the map, and each plugin pane's box with the surface
-/// host whose thumbnail fills it.
+/// The shortest app whose rail ends `RAIL_GAP` above a map box `outer` high (734 for `MAP`'s 130).
+pub fn tall(outer: f32) -> f32 {
+    2.0 * (BOTTOM + outer + RAIL_GAP + RAIL_HALF)
+}
+
+/// One window as the map draws it: its box in the map, and its icon, the path data of the view
+/// its title bar names with the square it is drawn in.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MapWindow {
     pub id: String,
     pub rect: Rect,
     pub focused: bool,
-    pub panes: Vec<(String, Rect)>,
+    pub icon: Option<(String, Rect)>,
 }
 
 /// Where everything of the map goes, in the desk's CSS pixels.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MapLayout {
+    /// The canvas's width, as `desk_wm::map_size` holds it.
+    pub width: f64,
     /// The open box, and the canvas in it.
     pub outer: Rect,
     pub canvas: Rect,
@@ -46,13 +66,15 @@ pub struct MapLayout {
     pub windows: Vec<MapWindow>,
     /// The part in sight.
     pub view: Rect,
+    /// The open box's grips, and the edges each resizes.
+    pub grips: Vec<(MapEdges, Rect)>,
 }
 
-/// What the map is drawn from: its layout, whether it is folded and each pane's thumbnail.
+/// What the map is drawn from: its layout, whether it is folded and each window's icon, by id.
 pub struct MapSource<'a> {
     pub layout: &'a MapLayout,
     pub folded: bool,
-    pub thumbnail: &'a dyn Fn(&str) -> Option<TextureId>,
+    pub icon: &'a dyn Fn(&str) -> Option<TextureId>,
 }
 
 /// The map's nodes as drawn, for its pointer.
@@ -61,17 +83,61 @@ pub struct MapDrawn {
     pub button: NodeId,
     pub canvas: Option<NodeId>,
     pub view: Option<NodeId>,
+    /// The grips, and the edges each resizes.
+    pub grips: Vec<(NodeId, MapEdges)>,
     pub nodes: Vec<NodeId>,
 }
 
-/// The map's layout on the hosted desk; `held` is the fit a drag holds, so the map stays still.
-pub fn layout(hosted: &Hosted, held: Option<Fit>) -> Option<MapLayout> {
+/// The square a `rect` window's icon is drawn in, centred on whole pixels; none in too small a box.
+fn icon_square(rect: Rect) -> Option<Rect> {
+    let share = rect.width.min(rect.height) * ICON_SHARE;
+    if share < ICON_LEAST {
+        return None;
+    }
+    let side = share.min(ICON_MOST).floor();
+    let x = (rect.x + (rect.width - side) / 2.0).round();
+    let y = (rect.y + (rect.height - side) / 2.0).round();
+    Some(Rect::new(x, y, side, side))
+}
+
+/// The grips of an open box at `outer`: the corner, the left edge and the top one.
+fn grips(outer: Rect) -> Vec<(MapEdges, Rect)> {
+    let half = GRIP / 2.0;
+    let edges = |left, top| MapEdges { left, top };
+    let (x, y) = (outer.x - half, outer.y - half);
+    vec![
+        (edges(true, true), Rect::new(x, y, GRIP * 1.5, GRIP * 1.5)),
+        (
+            edges(true, false),
+            Rect::new(x, y + GRIP * 1.5, GRIP, outer.height + half - GRIP * 1.5),
+        ),
+        (
+            edges(false, true),
+            Rect::new(
+                x + GRIP * 1.5,
+                y,
+                (outer.width + half - GRIP * 1.5 - GRIP_CLEAR).max(0.0),
+                GRIP,
+            ),
+        ),
+    ]
+}
+
+/// The map's layout on the hosted desk; `held` is the fit a drag holds, so the map stays still,
+/// and `width` the canvas's while a resize lasts (else the report's, else `MAP`'s).
+pub fn layout(hosted: &Hosted, held: Option<Fit>, width: Option<f64>) -> Option<MapLayout> {
     let plan = hosted.plan()?;
+    let report = hosted.report();
     let (vw, vh) = (plan.screen.w as f32, plan.screen.h as f32);
+    let size = map_size(width.or(report.and_then(|r| r.map.width)).unwrap_or(MAP.w));
+    let (mw, mh) = (size.w as f32, size.h as f32);
     // The map goes with the right rail while a window fills the app (ADR 0221).
-    let shift = hosted.report().map_or(0.0, |r| r.map.shift);
-    let right = if vh < TALL { RIGHT_SHORT } else { RIGHT } - shift;
-    let (mw, mh) = (MAP.w as f32, MAP.h as f32);
+    let shift = report.map_or(0.0, |r| r.map.shift);
+    let right = if vh < tall(mh + 2.0 * PAD) {
+        RIGHT_SHORT
+    } else {
+        RIGHT
+    } - shift;
     let canvas = Rect::new(vw - right - PAD - mw, vh - BOTTOM - PAD - mh, mw, mh);
     let outer = canvas.inflate(PAD);
     let button = Rect::new(vw - right - 32.0, vh - BOTTOM - 32.0, 32.0, 32.0);
@@ -85,7 +151,7 @@ pub fn layout(hosted: &Hosted, held: Option<Fit>) -> Option<MapLayout> {
         .collect();
     let view = view_rect(pan, plan.screen.w, plan.screen.h);
     let rects: Vec<desk_wm::Rect> = normal.iter().map(|p| p.rect()).collect();
-    let fit = held.unwrap_or_else(|| fit_world(world_of(&rects, view), MAP));
+    let fit = held.unwrap_or_else(|| fit_world(world_of(&rects, view), size));
     let in_map = |r: desk_wm::Rect| {
         let m = rect(to_map(r, fit));
         Rect::new(
@@ -95,35 +161,33 @@ pub fn layout(hosted: &Hosted, held: Option<Fit>) -> Option<MapLayout> {
             m.height.max(LEAST),
         )
     };
-    let host = |plugin: &str| hosted.frame(plugin).map(|f| f.host.clone());
+    // The view its title bar names: the pane in use, else the first.
+    let icon_of = |id: &str| {
+        let panes = &plan.window(id)?.panes;
+        let pane = panes.iter().find(|p| p.focused).or(panes.first())?;
+        report?.icons.get(&pane.view).cloned()
+    };
     let windows = normal
         .iter()
         .map(|p| {
-            // A pane's box on screen, back on the canvas: the window's panes move with the pan.
-            let panes = (plan.window(&p.id).map(|w| w.panes.as_slice()))
-                .unwrap_or_default()
-                .iter()
-                .filter_map(|pane| {
-                    let body = pane.body;
-                    let world = desk_wm::Rect::new(body.x - pan.x, body.y - pan.y, body.w, body.h);
-                    Some((host(pane.plugin.as_deref()?)?, in_map(world)))
-                })
-                .collect();
+            let at = in_map(p.rect());
             MapWindow {
                 id: p.id.clone(),
-                rect: in_map(p.rect()),
+                rect: at,
                 focused: focused.as_deref() == Some(p.id.as_str()),
-                panes,
+                icon: icon_of(&p.id).zip(icon_square(at)),
             }
         })
         .collect();
     Some(MapLayout {
+        width: size.w,
         outer,
         canvas,
         button,
         fit,
         windows,
         view: in_map(view),
+        grips: grips(outer),
     })
 }
 
@@ -150,6 +214,7 @@ pub fn draw(
         button: made.button,
         canvas: made.canvas,
         view: None,
+        grips: Vec::new(),
         nodes: made.nodes,
     };
     if map.folded {
@@ -165,12 +230,9 @@ pub fn draw(
         drawn
             .nodes
             .push(chrome.map_window(scene, inside, w.rect, w.focused, false)?);
-        for (host, at) in &w.panes {
-            if let Some(texture) = (map.thumbnail)(host) {
-                drawn
-                    .nodes
-                    .push(scene.insert(inside, SurfaceNode::new(*at, texture))?);
-            }
+        if let (Some((_, square)), Some(texture)) = (&w.icon, (map.icon)(&w.id)) {
+            let icon = scene.insert(inside, SurfaceNode::new(*square, texture))?;
+            drawn.nodes.push(icon);
         }
         drawn
             .nodes
@@ -179,9 +241,18 @@ pub fn draw(
     let view = chrome.map_view(scene, inside, l.view)?;
     drawn.view = Some(view);
     drawn.nodes.push(view);
+    for (edges, at) in &l.grips {
+        let grip = chrome.map_grip(scene, desk, *at)?;
+        drawn.grips.push((grip, *edges));
+        drawn.nodes.push(grip);
+    }
     // The fold button over the canvas, which hit testing finds first.
     for node in button {
         scene.reorder(node, usize::MAX)?;
     }
     Ok(drawn)
 }
+
+#[cfg(test)]
+#[path = "draw_map_tests.rs"]
+mod tests;

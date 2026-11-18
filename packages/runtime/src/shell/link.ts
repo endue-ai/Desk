@@ -7,12 +7,14 @@
  * manager reads and writes the desk's part of these records (crates/desk-wm, #83): the runtime
  * hands it what was kept and keeps what it publishes.
  */
+
 import { baseMode, LAYOUTS, MODE, profileMode } from "../modes/profiles";
 import type { Mode } from "../modes/types";
 import type { Runtime } from "../runtime";
 import { positionOf } from "../wm/view";
 import { desktopId, desktopsOf, edit, movedValue, switched } from "./actions";
 import type { ShellCtx } from "./context";
+import { mapWidthOf } from "./MapStrip";
 import type { DeskState } from "./state";
 import { PLACE, placeOf, type TalkPlace } from "./talk-place";
 
@@ -92,6 +94,8 @@ interface SavedShell {
   talkPlace?: TalkPlace;
   /** The canvas map is folded to its button; absent while it is open (the compositor's, #54). */
   mapFolded?: true;
+  /** The canvas map's width once the person resized it (ADR 0270); absent at its default. */
+  mapWidth?: number;
   /** The agent bar is pinned unfolded to its list (issue 294); absent while it is not. */
   agentsPinned?: true;
   /**
@@ -134,6 +138,7 @@ export function keepShell(ctx: ShellCtx): { off(): void; done(): Promise<void> }
         ...(typeof layer[SOUL] === "string" ? { soul: layer[SOUL] } : {}),
         ...(placeOf(layer[PLACE]) ? { talkPlace: placeOf(layer[PLACE]) as TalkPlace } : {}),
         ...(s.mapFolded ? { mapFolded: true as const } : {}),
+        ...(s.mapWidth === null ? {} : { mapWidth: s.mapWidth }),
         ...(s.agentsPinned ? { agentsPinned: true as const } : {}),
         ...openWindows(s),
       };
@@ -153,6 +158,7 @@ export function keepShell(ctx: ShellCtx): { off(): void; done(): Promise<void> }
             s.spaceId,
             s.pan,
             s.mapFolded,
+            s.mapWidth,
             s.agentsPinned,
             openWindows(s),
           ],
@@ -192,6 +198,7 @@ async function restore(ctx: ShellCtx, saved: Partial<SavedShell> | null): Promis
   store.set((s) => ({
     spaceId: typeof saved.spaceId === "string" ? saved.spaceId : s.spaceId,
     mapFolded: saved.mapFolded === true,
+    mapWidth: mapWidthOf(saved.mapWidth),
     agentsPinned: saved.agentsPinned === true,
   }));
   // The desktop in front, the pans, the drawer and the windows' slots: the window manager reads

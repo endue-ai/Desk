@@ -65,6 +65,12 @@ export interface DeskState {
    */
   mapFolded: boolean;
   /**
+   * The canvas map's box width in CSS pixels once the person resized it (ADR 0270), `null` at its
+   * default: the compositor draws it that wide and says so as it changes (`desk://compositor-map`);
+   * the strip under it follows (`MapStrip.ts`).
+   */
+  mapWidth: number | null;
+  /**
    * The agent bar is pinned unfolded to its list of names (issue 294): the person's choice, kept
    * with the session (link.ts). Not pinned, it unfolds while the pointer rests on it.
    */
@@ -172,6 +178,7 @@ export function emptyState(lang: Lang): DeskState {
     desktops: null,
     pan: {},
     mapFolded: false,
+    mapWidth: null,
     agentsPinned: false,
     edges: [],
     focusBy: {},

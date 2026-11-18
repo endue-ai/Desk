@@ -71,7 +71,11 @@ export type { SettingsLanguage } from "./settings-ui/copy";
 export type { SettingsSection } from "./settings-ui/panels";
 export type { SettingsWindow } from "./settings-ui/window";
 export { type Desk, type DeskOptions, mountDesk } from "./shell/Desk";
+export { iconPath } from "./shell/icons";
+export { mapWidthOf } from "./shell/MapStrip";
+export { pluginIcon, viewIcon } from "./shell/plugin-icons";
 export { viewTitles } from "./shell/titles";
+export { viewIcons } from "./shell/view-icons";
 export type { BrokenStateFile, StartInfo } from "./start";
 export {
   type Opener,

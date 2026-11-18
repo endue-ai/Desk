@@ -4,7 +4,9 @@
  * The compositor draws the map (issue 54, ADR 0161) 64 above the app's bottom; the strip fills the 32
  * under it, as wide (`scale.css`), so the two read as one card. It stays while the map is folded,
  * so both buttons are always reachable, and goes past the right edge with the rail while a window
- * fills the app (`away.ts`). The origin button is there at the origin too, disabled.
+ * fills the app (`away.ts`). The origin button is there at the origin too, disabled. The person
+ * resizes the map from its left and top edges (ADR 0270): the strip, and what keeps clear of it,
+ * follow the width the compositor says (`--map-width` on the document, read by `scale.css`).
  */
 import { desktopId, desktopsOf } from "./actions";
 import type { ShellCtx } from "./context";
@@ -13,6 +15,18 @@ import { h } from "./dom";
 import { icon } from "./icons";
 import { panOf, setPan } from "./Pan";
 import type { DeskState } from "./state";
+
+/** The map's box round its canvas: 5 of padding each side (`draw_map.rs`' PAD). */
+const MAP_PAD = 10;
+/** The narrowest and widest canvas the compositor draws (`desk_wm::MAP_LEAST`, `MAP_MOST`). */
+const MAP_LEAST = 144;
+const MAP_MOST = 480;
+
+/** A canvas width the person gave the map, as the compositor holds it; `null` for no number. */
+export function mapWidthOf(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Math.min(MAP_MOST, Math.max(MAP_LEAST, Math.round(value)));
+}
 
 /** How the desktop in front reads: its own name once it has one, else "Desktop 2". */
 export function frontName(ctx: Pick<ShellCtx, "tr">, s: DeskState): string {
@@ -52,14 +66,18 @@ export function mountMapStrip(root: HTMLElement, ctx: ShellCtx): () => void {
     reset.title = ctx.tr("resetPan");
     reset.setAttribute("aria-label", ctx.tr("resetPan"));
     el.classList.toggle("is-map-folded", s.mapFolded);
+    if (s.mapWidth === null) page.style.removeProperty("--map-width");
+    else page.style.setProperty("--map-width", `${s.mapWidth + MAP_PAD}px`);
   };
+  const page = root.ownerDocument.documentElement;
   draw();
   const off = ctx.store.watch(
-    (s) => [s.pan, s.desktop, s.wm.desktops, s.wm.here, s.lang, s.mapFolded],
+    (s) => [s.pan, s.desktop, s.wm.desktops, s.wm.here, s.lang, s.mapFolded, s.mapWidth],
     draw,
   );
   return () => {
     off();
+    page.style.removeProperty("--map-width");
     drawer();
     el.remove();
   };

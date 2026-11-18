@@ -170,6 +170,34 @@ describe("the shell's part of desk.session keeps the windows open", () => {
     expect(store.get().agentsPinned).toBe(true);
   });
 
+  it("the shell's part keeps the canvas map's width and gives it back (ADR 0270)", async () => {
+    const { store, part, kept } = await shell();
+    // At its default the record has no such key: a session saved before resizing reads the same.
+    expect("mapWidth" in (part.save() as object)).toBe(false);
+    let heard = 0;
+    const off = part.onChange(() => heard++);
+    store.set({ mapWidth: 288 });
+    expect(heard).toBe(1);
+    const resized = JSON.parse(JSON.stringify(part.save()));
+    expect(resized.mapWidth).toBe(288);
+    off();
+    store.set({ mapWidth: null });
+    part.restore(resized);
+    await kept.done();
+    expect(store.get().mapWidth).toBe(288);
+    // A record without it, or with no number, gives the default back; one out of bounds is held.
+    const { mapWidth: _, ...before } = resized;
+    part.restore(before);
+    await kept.done();
+    expect(store.get().mapWidth).toBeNull();
+    part.restore({ ...before, mapWidth: "wide" });
+    await kept.done();
+    expect(store.get().mapWidth).toBeNull();
+    part.restore({ ...before, mapWidth: 2000 });
+    await kept.done();
+    expect(store.get().mapWidth).toBe(480);
+  });
+
   it("a window opened or closed saves the session soon", async () => {
     const { wm, part } = await shell(OPEN);
     let heard = 0;

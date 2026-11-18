@@ -58,9 +58,35 @@ const PATHS: Record<string, string> = {
   image:
     "M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 11.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 16l-5-5-9 9",
   compass: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM15.5 8.5l-2 5-5 2 2-5z",
+  // The built-in plugins' own (`plugin-icons.ts`, ADR 0270): their title bars and the canvas map.
+  terminal: "M4 17l6-5-6-5M12 19h8",
+  branch:
+    "M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9",
+  mail: "M3 5h18v14H3zM3 7l9 6 9-6",
+  database:
+    "M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3",
+  table: "M3 4h18v16H3zM3 10h18M3 15h18M9 4v16",
+  slides: "M2 4h20M4 4v11h16V4M12 15v4M8 21l4-2 4 2",
+  monitor: "M3 4h18v12H3zM8 20h8M12 16v4",
+  play: "M6 4l14 8-14 8z",
+  book: "M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z",
+  archive: "M3 4h18v4H3zM5 8v12h14V8M10 12h4",
+  layers: "M12 2l10 5-10 5L2 7zM2 12l10 5 10-5M2 17l10 5 10-5",
+  braces:
+    "M8 4H7a2 2 0 0 0-2 2v4l-2 2 2 2v4a2 2 0 0 0 2 2h1M16 4h1a2 2 0 0 1 2 2v4l2 2-2 2v4a2 2 0 0 1-2 2h-1",
+  network: "M9 3h6v5H9zM12 8v4M5 12h14M5 12v4M19 12v4M3 16h4v5H3zM17 16h4v5h-4z",
+  cast: "M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6M2 12a9 9 0 0 1 8 8M2 16a5 5 0 0 1 4 4M2 20h.01",
 };
 
 export type IconName = keyof typeof PATHS;
+
+/**
+ * Icon `name`'s SVG path data on the 24 grid, the sparkle for a name it does not know: what the
+ * compositor strokes the same way to draw it itself (the canvas map's windows, ADR 0270).
+ */
+export function iconPath(name: string): string {
+  return PATHS[name] ?? PATHS.sparkle ?? "";
+}
 
 export function icon(name: string, size = 20): SVGSVGElement {
   const ns = "http://www.w3.org/2000/svg";
@@ -76,7 +102,7 @@ export function icon(name: string, size = 20): SVGSVGElement {
   svg.setAttribute("aria-hidden", "true");
   svg.setAttribute("data-icon", name);
   const path = document.createElementNS(ns, "path");
-  path.setAttribute("d", PATHS[name] ?? PATHS.sparkle ?? "");
+  path.setAttribute("d", iconPath(name));
   svg.append(path);
   return svg;
 }

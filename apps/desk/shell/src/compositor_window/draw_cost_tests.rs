@@ -78,7 +78,7 @@ fn percentile(sorted: &[Duration], p: f64) -> f64 {
 }
 
 /// The plan and the scene again `RUNS` times after ten of warm-up; with `map`, the canvas map laid
-/// out and drawn unfolded as well (its thumbnails' GPU work is not part of this).
+/// out and drawn unfolded as well (its icons' rasterizing is not part of this).
 fn layouts(mut hosted: Hosted, map: bool) -> Vec<Duration> {
     let mut scene = Scene::new(2880, 1800);
     let theme = ChromeTheme::default();
@@ -86,7 +86,7 @@ fn layouts(mut hosted: Hosted, map: bool) -> Vec<Duration> {
     let mut once = || {
         let started = Instant::now();
         hosted.replan(Instant::now());
-        let layout = map.then(|| draw_map::layout(&hosted, None)).flatten();
+        let layout = map.then(|| draw_map::layout(&hosted, None, None)).flatten();
         let sources = Sources {
             scale: 2.0,
             page: Some((TextureId(1), (2880, 1800))),
@@ -97,7 +97,7 @@ fn layouts(mut hosted: Hosted, map: bool) -> Vec<Duration> {
             map: layout.as_ref().map(|layout| draw_map::MapSource {
                 layout,
                 folded: false,
-                thumbnail: &none,
+                icon: &none,
             }),
         };
         draw(&mut scene, &theme, &hosted, &sources).unwrap();
