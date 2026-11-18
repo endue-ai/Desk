@@ -2,7 +2,8 @@
 // reading order, one block a line, a heading after #, a list item after -, and every element
 // that can be acted on as `[e12 link "Sign in"]`: a field with what it holds (never a
 // password), a box or a choice with its state. What the page hides is left out, a frame is
-// named, not read. An element keeps its ref while it is in the page (`state`).
+// named, not read, and a bracket of the page's own is written wide (［ ］). An element keeps its
+// ref while it is in the page (`state`).
 globalThis.__deskPageText = (state) => {
   const squash = (text) =>
     String(text ?? "")
@@ -13,7 +14,10 @@ globalThis.__deskPageText = (state) => {
     return chars.length > most ? `${chars.slice(0, most - 1).join("")}…` : text;
   };
   const whole = (text) => (typeof text.toWellFormed === "function" ? text.toWellFormed() : text);
-  const quoted = (text, most = 160) => `"${clip(squash(text), most).replaceAll('"', "'")}"`;
+  // What stands in [ ] is an element this named, never the page's own words: a page's brackets
+  // are written wide, so its text cannot pass for an element or give one another's name.
+  const plain = (text) => text.replaceAll("[", "［").replaceAll("]", "］");
+  const quoted = (text, most = 160) => `"${plain(clip(squash(text), most)).replaceAll('"', "'")}"`;
 
   const ROLES = {
     button: "button",
@@ -165,7 +169,7 @@ globalThis.__deskPageText = (state) => {
     function walk(node, pressed) {
       if (chars > MOST.chars || elements > MOST.elements) return;
       if (node.nodeType === 3) {
-        const text = node.nodeValue ?? "";
+        const text = plain(node.nodeValue ?? "");
         if (pre > 0) {
           const [first, ...rest] = text.split("\n");
           add(first);

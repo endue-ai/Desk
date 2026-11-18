@@ -781,7 +781,8 @@ site between that check and the read is not read (`not_found`); the same holds f
 reading order: one block a line, a heading after `#`, a list item after `-`, and every element that
 can be acted on as `[ref kind "name"]` (`link`, `button`, `field`, `checkbox`, `radio`, `select`,
 `tab`, `item`), a field with `= "what it holds"`, a box or a choice with its state. A password is never
-in it, what the page hides is left out, and a frame in the page is named, not read. `from` and `max`
+in it, what the page hides is left out, and a frame in the page is named, not read. A `[` or `]` of the
+page's own words is written wide (`［`, `］`): what stands in `[ ]` is an element the read named. `from` and `max`
 (20000 by default) pick a part of the text; `length` is the whole text's. A `ref` names its element
 while that is in the page: a page that loads another document names its elements anew.
 

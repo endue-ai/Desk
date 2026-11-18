@@ -44,7 +44,8 @@ leaves the person a grant that says what it gives.
   views: its address, title, where it is scrolled to, and its text in reading order, a part at a time
   (`from`, `max`, `length`). Every element that can be acted on is written in the text as
   `[ref kind "name"]`, a field with what it holds, a box or a choice with its state; a password is
-  never in it, what the page hides is left out, a frame is named and not read. `web.act` does one
+  never in it, what the page hides is left out, a frame is named and not read, and a bracket of the
+  page's own words is written wide, so a page cannot write an element of its own making. `web.act` does one
   thing, named by `do`: `scroll`, `show`, `press`, `type`, `key`, `choose`, on a `ref` the read gave.
   A ref holds while its element is in the page.
 * **Permission.** `web:control`, with optional `hosts`, apart from `web:browse`. The core checks it
