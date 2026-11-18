@@ -16,6 +16,8 @@ pub enum Role {
     WindowFrame {
         focused: bool,
     },
+    /// Around a window Eris is at, so many hundredths bright (`chrome/glow.rs`).
+    WindowGlow(u8),
     TitleDivider,
     Title {
         subtitled: bool,
@@ -42,6 +44,7 @@ pub enum Role {
 }
 
 mod card;
+mod glow;
 mod map;
 mod spread;
 
@@ -299,6 +302,7 @@ impl Chrome {
                 ..RectNode::new(base, w.fill)
             }
             .into(),
+            Role::WindowGlow(level) => self.glow_node(base, level),
             Role::TitleDivider => {
                 let y = base.y + w.title_height - 1.0;
                 let rect = Rect::new(

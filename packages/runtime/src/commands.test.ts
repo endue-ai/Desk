@@ -121,6 +121,48 @@ describe("Commands", () => {
     expect(answer).toMatchObject({ ok: true, result: "example.notes", caller: "example.notes" });
   });
 
+  it("tells a watcher of each built-in the core asks it to run, who asked, and what it answered", async () => {
+    const { commands, client } = setup();
+    commands.define("desk.windows.move", {
+      title: "Move",
+      owner: "desk",
+      run: (args) => ({ window: (args as { window?: string }).window ?? "in-use", x: 40 }),
+    });
+    commands.define("desk.files.save", {
+      title: "Save",
+      owner: "desk",
+      run: () => {
+        throw new Error("disk full");
+      },
+    });
+    await commands.settled();
+    const seen: unknown[] = [];
+    const off = commands.watchRuns((run) => {
+      seen.push(run);
+      return (result) => seen.push(result);
+    });
+    const all = { permission: "cmd:invoke" as const, ids: ["*"] };
+    const ask = (id: string, args: Record<string, unknown>, caller: string) =>
+      client.call("cmd.invoke", { id, args, scope: all }, { caller });
+    await ask("desk.windows.move", { window: "w1", x: 40 }, "agent:eris");
+    await expect.poll(() => seen.length).toBe(2);
+    expect(seen).toEqual([
+      { id: "desk.windows.move", args: { window: "w1", x: 40 }, caller: "agent:eris" },
+      { window: "w1", x: 40 },
+    ]);
+    // The person's own run is heard too, as the desk's; a command that fails answers nothing.
+    await commands.run("desk.windows.move");
+    await commands.run("desk.files.save").catch(() => undefined);
+    expect(seen.slice(2)).toEqual([
+      { id: "desk.windows.move", args: undefined, caller: "desk" },
+      { window: "in-use", x: 40 },
+      { id: "desk.files.save", args: undefined, caller: "desk" },
+    ]);
+    off();
+    await commands.run("desk.windows.move");
+    expect(seen).toHaveLength(5);
+  });
+
   it("turns a failed or cancelled answer into a CommandError with its code", async () => {
     const { commands, client } = setup();
     commands.define("desk.files.save", {

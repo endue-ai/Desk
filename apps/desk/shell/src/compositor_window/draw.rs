@@ -295,6 +295,9 @@ pub(super) fn window(
     });
     drawn.windows.push((w.id.clone(), at));
     let made = chrome.window(scene, desk, at, &w.title, None, w.focused)?;
+    // Lit around its frame while Eris looks at it or uses it (ADR 0271).
+    let lit = hosted.report().map_or(0.0, |r| r.glow_of(&w.id));
+    chrome.glow(scene, &made, lit)?;
     // The title sits between the icon and the tools the page draws, clear of the top chips.
     let (start, end) = w.title_insets();
     chrome.clear_title(scene, &made, start as f32, end as f32)?;

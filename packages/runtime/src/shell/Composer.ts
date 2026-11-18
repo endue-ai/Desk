@@ -181,17 +181,20 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
   };
 
   /**
-   * Eris's conversation: the line goes to the brain with the desk the person sees (ADR 0109), her
-   * agentic loop runs plugin commands on the desk (each one an errand on screen), and she says the
-   * answer once every errand is back.
+   * Eris's conversation: the line goes to the brain with the desk the person sees (ADR 0109), so
+   * she looks at the window in use (ADR 0271); her agentic loop runs plugin commands on the desk
+   * (each one an errand on screen), and she says the answer once every errand is back.
    */
   const converse = async (text: string) => {
     ctx.eris.setState("thinking");
     let reply: Awaited<ReturnType<typeof ctx.bridge.brain.say>>;
     try {
       const desk = await deskSnapshot(ctx);
+      errands.look(desk);
       reply = await ctx.bridge.brain.say(text, (step) => errands.step(step), desk);
     } catch {
+      // What she looked at goes dark, and an errand left out comes home.
+      await errands.finish();
       ctx.eris.setState("idle");
       ctx.runtime.notify({ caller: "desk", title: ctx.tr("brainFailed"), level: "error" });
       return;

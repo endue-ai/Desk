@@ -18,6 +18,8 @@ pub struct WindowStyle {
     pub fill: Color,
     pub border: Color,
     pub border_focused: Color,
+    /// What a window Eris is at glows in (ADR 0271): the star's colour, an agent at work.
+    pub glow: Color,
     pub border_width: f32,
     pub radius: f32,
     pub shadow: Option<Shadow>,
@@ -168,6 +170,8 @@ mod endue {
     pub const TEXT_MUTED: u32 = 0xb3afa5;
     /// The fill is ink: paper in the dark, the text's colour.
     pub const PRIMARY: u32 = 0xf3f1ec;
+    /// The one colour: an agent at work.
+    pub const STAR: u32 = 0xb6a3f5;
     pub const POPOVER: u32 = 0x2a2824;
     pub const TOOLTIP: u32 = 0x403d37;
     pub const FONT: &str = r#""Inter", "SUIT Variable", "SUIT", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif"#;
@@ -208,6 +212,7 @@ impl ChromeTheme {
             fill: tokens.color("surface").unwrap_or(card),
             border,
             border_focused: color("input", hex(endue::INPUT)),
+            glow: color("star", hex(endue::STAR)),
             border_width: length("borderWidth", 1.0),
             radius,
             shadow: shadow("shadowMd", Some(drop(8.0, 24.0, 0.45))),
