@@ -22,8 +22,9 @@ const WAIT: Duration = Duration::from_secs(10);
 const DONE: WebActResult = WebActResult { moved: None };
 
 impl Web {
-    /// One DevTools call on the browser of view `view`.
-    fn devtools(&self, view: &str, method: &'static str, params: Value) -> Result<Value, WebError> {
+    /// One DevTools call on the browser of view `view`: what it answered (a refusal is an answer),
+    /// or why none came: the view is gone, or the page took too long.
+    fn step(&self, view: &str, method: &'static str, params: Value) -> Result<Answer, WebError> {
         let (sent, queued) = mpsc::channel();
         let name = view.to_owned();
         self.pump.run(move |shell, _| {
@@ -35,32 +36,53 @@ impl Web {
         });
         let slow = || WebError::Failed(format!("the page did not answer {method} in time"));
         let answer: mpsc::Receiver<Answer> = queued.recv_timeout(WAIT).map_err(|_| slow())??;
-        let said = answer.recv_timeout(WAIT).map_err(|_| slow())?;
+        answer.recv_timeout(WAIT).map_err(|_| slow())
+    }
+
+    /// A DevTools call whose refusal is a failure.
+    fn devtools(&self, view: &str, method: &'static str, params: Value) -> Result<Value, WebError> {
+        let said = self.step(view, method, params)?;
         said.map_err(|why| WebError::Failed(format!("{method}: {why}")))
     }
 
-    /// Run the page script's `request` in the desk's world of the view's main document.
-    fn evaluate(&self, view: &str, request: &Value) -> Result<Value, WebError> {
-        let none = |what: &str| WebError::Failed(format!("the page has no {what}"));
-        let tree = self.devtools(view, "Page.getFrameTree", json!({}))?;
-        let frame = tree.pointer("/frameTree/frame/id").cloned();
-        let world = json!({ "frameId": frame.ok_or_else(|| none("frame"))?, "worldName": WORLD });
-        let made = self.devtools(view, "Page.createIsolatedWorld", world)?;
-        let context = made.get("executionContextId").cloned();
+    /// Run the page script's `request` in the desk's world of the view's main document: what
+    /// the evaluation answered, or the refusal of a step (the frame or the world went with the
+    /// document the page was leaving).
+    fn evaluate(&self, view: &str, request: &Value) -> Result<Answer, WebError> {
+        let tree = match self.step(view, "Page.getFrameTree", json!({}))? {
+            Ok(tree) => tree,
+            refused => return Ok(refused),
+        };
+        let Some(frame) = tree.pointer("/frameTree/frame/id") else {
+            return Ok(Err("the page has no frame".into()));
+        };
+        let world = json!({ "frameId": frame, "worldName": WORLD });
+        let made = match self.step(view, "Page.createIsolatedWorld", world)? {
+            Ok(made) => made,
+            refused => return Ok(refused),
+        };
+        let Some(context) = made.get("executionContextId") else {
+            return Ok(Err("the page has no world for the desk".into()));
+        };
         let evaluate = json!({
             "expression": web_page::asks(request),
-            "contextId": context.ok_or_else(|| none("world for the desk"))?,
+            "contextId": context,
             "returnByValue": true,
         });
-        self.devtools(view, "Runtime.evaluate", evaluate)
+        self.step(view, "Runtime.evaluate", evaluate)
     }
 
     /// Ask the page script of view `view`, whose page the core allowed at `at`. A page that
-    /// was changing documents as it was asked is asked once more.
+    /// was changing documents as it was asked refuses the call, and its new document is asked
+    /// once more. A call that got no answer is not sent again: the page may have done it.
     fn ask_page(&self, view: &str, at: &str, mut request: Value) -> Result<Value, WebError> {
         request["at"] = json!(at);
-        let evaluated = (self.evaluate(view, &request)).or_else(|_| self.evaluate(view, &request));
-        web_page::answered(&evaluated?)
+        let evaluated = match self.evaluate(view, &request)? {
+            Ok(evaluated) => evaluated,
+            Err(_) => (self.evaluate(view, &request)?)
+                .map_err(|why| WebError::Failed(format!("the page was not asked: {why}")))?,
+        };
+        web_page::answered(&evaluated)
     }
 
     /// Press the page of view `view` at `(x, y)` with the pointer.
