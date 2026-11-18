@@ -104,12 +104,17 @@ export const DEFAULT_KEYS: Array<KeyBinding & { owner: string }> = [
   },
   {
     key: "Mod+D",
-    command: "desk.display.split-right",
+    command: "desk.display.new-tab",
     owner: "desk",
   },
   {
-    key: "Mod+Alt+D",
-    command: "desk.display.split-down",
+    key: "Control+PageDown",
+    command: "desk.display.next-tab",
+    owner: "desk",
+  },
+  {
+    key: "Control+PageUp",
+    command: "desk.display.previous-tab",
     owner: "desk",
   },
   {

@@ -159,6 +159,22 @@ describe("PluginHost with several windows of one plugin (ADR 0212)", () => {
     ]);
   });
 
+  it("says a new window's key before it opens, for the tab that takes it (ADR 0270)", async () => {
+    const { host, frames } = await mount();
+    const heard: Array<[string, boolean]> = [];
+    const key = host.another(IMAGES, (opening) => heard.push([opening, frames.has(opening)]));
+    expect(heard).toEqual([[key, false]]);
+    expect(frames.has(key)).toBe(true);
+  });
+
+  it("a later window that is not open unmounts nothing", async () => {
+    const { host, closed } = await mount();
+    const second = host.another(IMAGES);
+    host.unmount(`${IMAGES}@9`);
+    expect(closed).toEqual([]);
+    expect(host.instances(IMAGES)).toEqual([IMAGES, second]);
+  });
+
   it("closes one window and leaves the others; the last one takes the plugin with it", async () => {
     const { host, hello, closed } = await mount();
     const second = host.another(IMAGES);

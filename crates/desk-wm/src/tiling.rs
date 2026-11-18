@@ -8,7 +8,7 @@
 
 use crate::coordinates::ORIGIN;
 use crate::geometry::{FREE, MIN};
-use crate::types::{Adopted, PaneNode, Placement, Rect};
+use crate::types::{Adopted, Placement, Rect, Tab};
 
 /// Between slots, and the arranged grid's default gap.
 pub const GAP: f64 = 12.0;
@@ -78,7 +78,7 @@ pub fn slot_windows(adopted: &[Adopted], skip: impl Fn(&str) -> bool) -> Vec<Pla
                 a.id.clone(),
                 Rect::new(rect.x - at.x, rect.y - at.y, rect.w, rect.h),
             );
-            p.panes = Some(PaneNode::view("p1", format!("plugin:{}", a.id)));
+            p.tabs = Some(vec![Tab::new("p1", format!("plugin:{}", a.id))]);
             p
         })
         .collect()
@@ -125,6 +125,6 @@ mod tests {
         let ids: Vec<&str> = windows.iter().map(|p| p.id.as_str()).collect();
         assert_eq!(ids, ["a", "c"]);
         assert_eq!(windows[1].rect(), slot_rect(2));
-        assert_eq!(windows[1].panes, Some(PaneNode::view("p1", "plugin:c")));
+        assert_eq!(windows[1].tabs, Some(vec![Tab::new("p1", "plugin:c")]));
     }
 }

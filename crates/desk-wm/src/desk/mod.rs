@@ -5,7 +5,7 @@
 //! names and shapes. Operations are plain methods over it, split by concern:
 //!
 //! - `edit`: session edits of a desktop's layout, opening windows, switching desktops.
-//! - `windows`: focusing panes, showing plugins, new windows, splits, closing, fills.
+//! - `windows`: focusing tabs, showing plugins, new windows, adding and closing tabs, fills.
 //! - `focus`: the focus order and cycling.
 //! - `drawer`: putting away, bringing back, a profile switch; the drawer holds only what is away.
 //! - `desktops`, `moves`: the list's changes and windows moved across (ADR 0117).
@@ -42,11 +42,12 @@ use crate::placed::{PLUGIN_VIEW, resolve_view};
 use crate::tiling::slot_windows;
 use crate::types::{Adopted, Offset, Placement};
 
-/// The window, and the pane in it, a desktop had in use when the person left it.
+/// The window, and the tab in it, a desktop had in use when the person left it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InUse {
     pub window: String,
-    pub pane: Option<String>,
+    #[serde(default, alias = "pane")]
+    pub tab: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -79,9 +80,9 @@ pub struct Desk {
     /// The window with the keyboard and the pointer; it draws on top.
     #[serde(default)]
     pub focused: Option<String>,
-    /// The pane in use inside it.
-    #[serde(default)]
-    pub pane: Option<String>,
+    /// The tab in use inside it: the one that window shows.
+    #[serde(default, alias = "pane")]
+    pub tab: Option<String>,
     /// The windows in the order they were last in use, which they stack in (`cover.rs`).
     #[serde(default, skip_serializing_if = "UseOrder::is_empty")]
     pub used: UseOrder,
@@ -108,7 +109,7 @@ impl Desk {
             adopted: Vec::new(),
             drawer: Vec::new(),
             focused: None,
-            pane: None,
+            tab: None,
             used: UseOrder::default(),
         }
     }
@@ -189,17 +190,17 @@ impl Desk {
         self.adopted.iter().any(|a| a.id == id)
     }
 
-    /// The view a pane of `p` shows: a pane named after its window whose plugin the runtime
+    /// The view a tab of `p` shows: a tab named after its window whose plugin the runtime
     /// holds shows that plugin (`resolveView`).
     pub fn resolve(&self, p: &Placement, view: &str) -> String {
         resolve_view(p, view, |id| self.holds(id))
     }
 
-    /// The plugins `p`'s panes show, each once, first pane first.
+    /// The plugins `p`'s tabs show, each once, first tab first: what closing it unmounts.
     pub fn plugins_of(&self, p: &Placement) -> Vec<String> {
         let mut out: Vec<String> = Vec::new();
-        for (_, view) in p.panes().leaves() {
-            if let Some(id) = self.resolve(p, view).strip_prefix(PLUGIN_VIEW)
+        for tab in p.tabs() {
+            if let Some(id) = self.resolve(p, &tab.view).strip_prefix(PLUGIN_VIEW)
                 && !out.iter().any(|known| known == id)
             {
                 out.push(id.to_string());
@@ -208,18 +209,48 @@ impl Desk {
         out
     }
 
+    /// The plugin `p` has on screen: the one the tab it shows shows, if that is a plugin's. Those
+    /// in its other tabs are out of sight (ADR 0270).
+    pub fn shown_plugins(&self, p: &Placement) -> Vec<String> {
+        (self.resolve(p, &p.shown().view).strip_prefix(PLUGIN_VIEW))
+            .map(String::from)
+            .into_iter()
+            .collect()
+    }
+
     /// A placed window showing nothing but plugins the runtime does not hold now (one that
     /// closed itself, was turned off or has not mounted yet) is not drawn; it keeps its place and
     /// comes back there when its plugin mounts again.
     fn shows_something(&self, p: &Placement) -> bool {
-        p.panes().leaves().into_iter().any(|(_, view)| {
-            view.strip_prefix(PLUGIN_VIEW)
-                .is_none_or(|id| self.holds(id))
-        })
+        p.tabs()
+            .iter()
+            .any(|tab| (tab.view.strip_prefix(PLUGIN_VIEW)).is_none_or(|id| self.holds(id)))
+    }
+
+    /// `p` with the tabs it has now (ADR 0270): in a window of several tabs, one showing a plugin's
+    /// window the runtime does not hold is not there. Such a window closed by its plugin, or was
+    /// open in a session before this one: a plugin's later windows (ADR 0212) do not come back
+    /// with a layout. A window none of whose tabs is there keeps them all, and is not drawn.
+    pub(super) fn with_live_tabs(&self, mut p: Placement) -> Placement {
+        let Some(tabs) = p.tabs.as_ref().filter(|tabs| tabs.len() > 1) else {
+            return p;
+        };
+        let live: Vec<_> = (tabs.iter())
+            .filter(|tab| {
+                (self.resolve(&p, &tab.view).strip_prefix(PLUGIN_VIEW))
+                    .is_none_or(|id| self.holds(id))
+            })
+            .cloned()
+            .collect();
+        if !live.is_empty() && live.len() < tabs.len() {
+            p.tabs = Some(live);
+        }
+        p
     }
 
     /// The plugin windows in their slots on a desktop (`autoPlacements`): those no layout of it
-    /// places, not in the drawer, and not living on another desktop (ADR 0117).
+    /// places, not in the drawer, not living on another desktop (ADR 0117), and not a tab of
+    /// another window (ADR 0270).
     pub fn auto_placements(&self, r: impl Into<DesktopRef>) -> Vec<Placement> {
         let here = self.id_of(r);
         let placed: Vec<String> = self
@@ -235,8 +266,16 @@ impl Desk {
             .flat_map(|d| self.layout_of(d.id.as_str()).surfaces)
             .map(|p| p.id)
             .collect();
+        // A plugin's window that is a tab of another window, wherever that one is.
+        let tabbed: Vec<String> = (self.desktops().iter())
+            .flat_map(|d| self.layout_of(d.id.as_str()).surfaces)
+            .chain(self.drawer.iter().filter_map(|d| d.placement.clone()))
+            .flat_map(|p| p.tabs.unwrap_or_default())
+            .filter_map(|tab| tab.view.strip_prefix(PLUGIN_VIEW).map(String::from))
+            .collect();
         slot_windows(&self.adopted, |id| {
             placed.iter().any(|p| p == id)
+                || tabbed.iter().any(|p| p == id)
                 || self
                     .drawer
                     .iter()
@@ -256,7 +295,8 @@ impl Desk {
             self.layout_of(id.as_str())
                 .surfaces
                 .into_iter()
-                .filter(|p| p.out.is_none() && self.shows_something(p)),
+                .filter(|p| p.out.is_none() && self.shows_something(p))
+                .map(|p| self.with_live_tabs(p)),
         );
         all
     }

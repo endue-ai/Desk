@@ -160,7 +160,7 @@ fn the_window_list_names_a_window_out_with_its_frame_and_where_it_docks() {
     let mut desk = desk();
     desk.pop_out("endue.terminal", OS);
     desk.set_desktop("2");
-    desk.focus_pane("endue.terminal", None);
+    desk.focus_tab("endue.terminal", None);
     assert_eq!(desk.focused.as_deref(), Some("endue.terminal"));
     let shot = serde_json::to_value(desk.snapshot(W, H)).unwrap();
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -210,7 +210,7 @@ fn an_os_window_with_the_keys_makes_its_window_the_one_in_use() {
 fn showing_a_plugin_whose_window_is_out_puts_that_window_in_use_and_opens_no_other() {
     let mut desk = desk();
     assert!(desk.pop_out("endue.terminal", OS));
-    desk.focus_pane("endue.notes", None);
+    desk.focus_tab("endue.notes", None);
     desk.show_plugin("endue.terminal");
     assert_eq!(desk.focused.as_deref(), Some("endue.terminal"));
     assert_eq!(ids(&desk.windows()), vec!["endue.notes".to_owned()]);

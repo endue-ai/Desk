@@ -118,7 +118,7 @@ impl Undo {
                     d.focus_by = before.focus_by;
                     d.desktop = before.desktop;
                     d.focused = None;
-                    d.pane = None;
+                    d.tab = None;
                 });
                 true
             }

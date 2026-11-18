@@ -21,7 +21,7 @@ function ctx(lang: "ko" | "en"): ShellCtx {
 type Drawn = HTMLElement & { view: Omit<UniversalView, "source">; data: UniversalData };
 
 function drawn(view: string, lang: "ko" | "en" = "en"): Drawn {
-  const { el } = viewOf(ctx(lang), view).mount({ surface: "s", pane: "p" });
+  const { el } = viewOf(ctx(lang), view).mount({ surface: "s", tab: "p" });
   return el as Drawn;
 }
 
@@ -60,7 +60,7 @@ describe("the shell's sample panes", () => {
   });
 
   it("draws the notes as a text view under a line that adds one on Enter", () => {
-    const { el } = viewOf(ctx("en"), "notes").mount({ surface: "s", pane: "p" });
+    const { el } = viewOf(ctx("en"), "notes").mount({ surface: "s", tab: "p" });
     const view = el.querySelector("desk-universal-view") as Drawn;
     expect(view.view).toEqual({ type: "text" });
     const texts = () => view.data.entries.map((e) => e.text);

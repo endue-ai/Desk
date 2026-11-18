@@ -86,19 +86,21 @@ cheap to change.
     newest first as the contract lists them. A task without `progress` shows no bar.
 33. **More than six agents:** five show, the sixth place is "+N" and opens the rest in a popover.
 34. **⌘N opens a surface on the desk** (a window inside the desk, not a second OS window). It starts with
-    a launcher pane and cascades from the middle. ⌘D splits right, ⌥⌘D down, ⌘W closes the pane in use
-    (the last one closes the surface), ⌘] and ⌘[ (and ⌃Tab) move between panes and plugin surfaces.
-    Dividers drag or take arrow keys (15 to 85 %).
-35. **Panes are layout**, stored in the profile as `panes` on a surface; a surface without `panes` is one
-    pane showing the view named by its id, so older layouts still load.
-36. **Opening a view** fills the focused launcher pane if there is one, else focuses a pane already showing
+    a launcher and cascades from the middle. ⌘D opens a new tab in a plugin's window: another window
+    of that plugin, the only kind of tab a window takes (ADR 0270). ⌘W closes the tab in use (the last
+    one closes the surface), ⌃PageDown and ⌃PageUp step through a window's tabs, ⌘] and ⌘[ (and ⌃Tab)
+    move between the shell's views and plugin surfaces.
+35. **Tabs are layout**, stored in the profile as `tabs` on a surface with the one shown (`tab`); a
+    surface without `tabs` is one tab showing the view named by its id, and one saved with `panes`
+    (a window split inside, before ADR 0270) reads its panes as tabs, so older layouts still load.
+36. **Opening a view** fills the focused launcher tab if there is one, else focuses a tab already showing
     it, else opens its own surface.
 37. **One key per command when rebinding.** A key taken from another command leaves that command unbound,
     and the shortcut list says where it came from. Only the person's changes are kept: the setting
     `desk.keys.bindings`, the last layer of the keymap, which desk.session saves. The list shows every
     command in the registry. In Chrome, ⌘N and ⌘W are kept by the browser, so on the dev page rebind
     them or use the palette; the desk app receives them.
-38. **Korean copy** calls a window a 표면 (the product term) and a pane a 칸.
+38. **Korean copy** calls a window a 표면 (the product term) and a tab a 탭.
 
 ## On the policy runtime (ADR 0025)
 
@@ -107,8 +109,9 @@ cheap to change.
     their own geometry; making them runtime surfaces is left for when the views become plugins.
 40. **Key clashes with desk.keys** (proposed in #70, for the maintainers to confirm): ⌘K stays the
     palette; Esc is `desk.keys.quit`, which also closes the shell's popovers and the talk line; ⌘W stays
-    `desk.buffers.close` and closes the pane in use, since panes are buffers; ⇧⌘D stays do not disturb
-    and split down is ⌥⌘D; pane cycling is `desk.display.focus-next`/`previous` with ⌘] and ⌘[ added.
+    `desk.buffers.close` and closes the tab in use, since the shell's views are buffers; ⇧⌘D stays do
+    not disturb and ⌘D is a new tab; cycling is `desk.display.focus-next`/`previous` with ⌘] and ⌘[
+    added.
     With Alt held, a letter key is named by the key, not by what macOS's Option composes.
 41. **Modes are profiles.** The sample modes are desk.shell's contributed profiles; base became the
     default of `desk.shell.mode`. A profile's fields left out come from the base. The modes'

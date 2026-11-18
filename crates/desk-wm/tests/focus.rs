@@ -10,8 +10,8 @@
 mod common;
 
 use common::*;
+use desk_wm::Desk;
 use desk_wm::buffers::{Buffer, BufferPatch, Buffers, base_name};
-use desk_wm::{Desk, SplitDir};
 
 fn buffer(id: &str, plugin: &str) -> Buffer {
     Buffer {
@@ -135,13 +135,12 @@ mod focus_cycling {
         let mut desk = desk();
         assert_eq!(desk.focus_order(), ["calendar/p1", "notes/p1", "p.a"]);
         assert_eq!(desk.focused_id().as_deref(), Some("notes/p1"));
-        // Each pane of a split window is a stop of its own.
-        desk.split(SplitDir::Row);
-        assert_eq!(
-            desk.focus_order(),
-            ["calendar/p1", "notes/p1", "notes/p2", "p.a"]
-        );
-        assert_eq!(desk.focused_id().as_deref(), Some("notes/p2"));
+        // A window's tabs are one stop, the tab it shows: the others are its window's to show.
+        desk.adopt("p.a@2", "A", desk_wm::FREE);
+        desk.add_tab("p.a", "plugin:p.a@2")
+            .expect("a tab of its kind");
+        assert_eq!(desk.focus_order(), ["calendar/p1", "notes/p1", "p.a@2"]);
+        assert_eq!(desk.focused_id().as_deref(), Some("p.a@2"));
     }
 
     #[test]
@@ -149,7 +148,7 @@ mod focus_cycling {
         let mut desk = desk();
         assert_eq!(desk.focus_next(1).as_deref(), Some("p.a"));
         assert_eq!(desk.focused.as_deref(), Some("p.a"));
-        assert_eq!(desk.pane.as_deref(), Some("p1"));
+        assert_eq!(desk.tab.as_deref(), Some("p1"));
         assert_eq!(desk.focused_plugin().as_deref(), Some("p.a"));
         assert_eq!(desk.focus_next(1).as_deref(), Some("calendar/p1"));
         assert_eq!(desk.focused.as_deref(), Some("calendar"));
@@ -162,7 +161,7 @@ mod focus_cycling {
         let mut desk = desk();
         desk.set(|d| {
             d.focused = None;
-            d.pane = None;
+            d.tab = None;
         });
         assert_eq!(desk.focused_id(), None);
         assert_eq!(desk.focus_next(1).as_deref(), Some("calendar/p1"));
@@ -186,32 +185,36 @@ mod focusing_a_pane {
     use super::*;
 
     #[test]
-    fn a_windows_first_pane_when_none_or_a_missing_one_is_named() {
+    fn the_tab_a_window_shows_when_none_or_a_missing_one_is_named() {
         let mut desk = desk();
-        desk.focus_pane("notes", None);
-        desk.split(SplitDir::Row);
-        assert_eq!(desk.pane.as_deref(), Some("p2"));
-        desk.focus_pane("notes", None);
-        assert_eq!(desk.pane.as_deref(), Some("p1"));
-        desk.focus_pane("notes", Some("p2"));
-        desk.focus_pane("notes", Some("p9"));
-        assert_eq!(desk.pane.as_deref(), Some("p1"));
+        desk.adopt("p.a@2", "A", desk_wm::FREE);
+        desk.add_tab("p.a", "plugin:p.a@2")
+            .expect("a tab of its kind");
+        assert_eq!(desk.tab.as_deref(), Some("p2"));
+        // Naming none keeps the tab it shows; naming one shows it.
+        desk.focus_tab("p.a", None);
+        assert_eq!(desk.tab.as_deref(), Some("p2"));
+        desk.focus_tab("p.a", Some("p1"));
+        assert_eq!(desk.tab.as_deref(), Some("p1"));
+        assert_eq!(desk.focused_plugin().as_deref(), Some("p.a"));
+        desk.focus_tab("p.a", Some("p9"));
+        assert_eq!(desk.tab.as_deref(), Some("p1"));
     }
 
     #[test]
     fn a_pane_showing_a_plugins_surface_hands_that_plugin_the_keys() {
         let mut desk = desk();
-        desk.focus_pane("p.a", None);
+        desk.focus_tab("p.a", None);
         assert_eq!(desk.focused_plugin().as_deref(), Some("p.a"));
         assert_eq!(desk.focused_window().as_deref(), Some("p.a"));
-        desk.focus_pane("calendar", None);
+        desk.focus_tab("calendar", None);
         assert_eq!(desk.focused_plugin(), None);
     }
 
     #[test]
     fn a_window_not_on_the_desktop_in_front_takes_no_focus() {
         let mut desk = desk();
-        desk.focus_pane("p.b", None);
+        desk.focus_tab("p.b", None);
         assert_eq!(desk.focused.as_deref(), Some("notes"));
         assert_eq!(desk.desktop, "1");
     }

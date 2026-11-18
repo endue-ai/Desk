@@ -4,8 +4,8 @@
 // already changes nothing (no toggle), and each answers what the desk did.
 import { describe, expect, it } from "vitest";
 import { edit, stash, windowsOf } from "../shell/actions";
-import { leaves, panesOf } from "../surface/tree";
-import { BRING_BACK, CLOSE_PANE, FLOAT, MOVE_TO_DESKTOP, NEW, PIN, SPLIT } from "./control";
+import { tabsOf } from "../surface/tree";
+import { BRING_BACK, CLOSE_TAB, FLOAT, MOVE_TO_DESKTOP, NEW, NEW_TAB, PIN } from "./control";
 import { windowDesk as desk, drawn, placed } from "./control-fixtures";
 
 describe("desk.windows.float", () => {
@@ -118,7 +118,7 @@ describe("desk.windows.move-to-desktop", () => {
   });
 });
 
-describe("desk.windows.new, split and close-pane", () => {
+describe("desk.windows.new, new-tab and close-tab", () => {
   it("opens a new window in use and answers where it is", async () => {
     const { commands, store } = await desk();
     const frame = (await commands.run(NEW, {})) as { window: string; w: number };
@@ -128,46 +128,53 @@ describe("desk.windows.new, split and close-pane", () => {
     expect(drawn(store, frame.window)).toBeDefined();
   });
 
-  it("splits a window's pane right and down, then closes the new panes", async () => {
-    const { commands, store } = await desk();
-    const right = (await commands.run(SPLIT, { window: "notes", dir: "right" })) as {
-      pane: string;
+  it("opens a tab of the window's own plugin, then closes it (ADR 0270)", async () => {
+    const { commands, store, wm, ctx } = await desk();
+    // As the plugin host opens another window of a plugin: its key is told first, then its
+    // surface is handed over.
+    const another = (plugin: string, before?: (key: string) => void) => {
+      const key = `${plugin}@2`;
+      before?.(key);
+      void wm.edit([{ op: "adopt", id: key, title: key }]);
+      return key;
     };
-    const panes = () => leaves(panesOf(placed(store, "notes") ?? { id: "notes" })).map((l) => l.id);
-    expect(panes()).toHaveLength(2);
-    expect(panes()).toContain(right.pane);
-    const down = (await commands.run(SPLIT, {
-      window: "notes",
-      pane: right.pane,
-      dir: "down",
-    })) as {
-      pane: string;
+    (ctx.runtime as unknown as { plugins: object }).plugins = { unmount() {}, another };
+    await wm.edit([{ op: "adopt", id: "endue.notes", title: "Notes" }]);
+    const tabs = () => tabsOf(placed(store, "notes") ?? { id: "notes" });
+    const opened = (await commands.run(NEW_TAB, { window: "notes" })) as {
+      window: string;
+      tab: string;
     };
-    expect(panes()).toHaveLength(3);
-    expect(await commands.run(CLOSE_PANE, { window: "notes", pane: down.pane })).toEqual({
+    expect(opened.window).toBe("notes");
+    expect(tabs().map((t) => t.view)).toEqual(["notes", "plugin:endue.notes@2"]);
+    expect(tabs().map((t) => t.id)).toContain(opened.tab);
+    expect(await commands.run(CLOSE_TAB, { window: "notes", tab: opened.tab })).toEqual({
       window: "notes",
-      pane: down.pane,
+      tab: opened.tab,
       closed: true,
       windowClosed: false,
     });
-    expect(panes()).toHaveLength(2);
-    await expect(commands.run(SPLIT, { window: "notes", dir: "left" })).rejects.toThrow(
-      /right or down/,
-    );
-    await expect(commands.run(CLOSE_PANE, { window: "notes", pane: "p9" })).rejects.toThrow(
-      /no such pane/,
+    expect(tabs()).toHaveLength(1);
+    await expect(commands.run(CLOSE_TAB, { window: "notes", tab: "p9" })).rejects.toThrow(
+      /no such tab/,
     );
   });
 
-  it("closing a window's last pane closes it unless the person keeps unsaved changes", async () => {
+  it("a window of the shell's own view takes no tab", async () => {
+    const { commands } = await desk();
+    const { window } = (await commands.run(NEW, {})) as { window: string };
+    await expect(commands.run(NEW_TAB, { window })).rejects.toThrow(/takes no tab/);
+  });
+
+  it("closing a window's last tab closes it unless the person keeps unsaved changes", async () => {
     const kept = await desk(() => Promise.resolve(false));
-    const only = leaves(panesOf(placed(kept.store, "notes") ?? { id: "notes" }))[0]?.id ?? "";
-    expect(await kept.commands.run(CLOSE_PANE, { window: "notes", pane: only })).toMatchObject({
+    const only = tabsOf(placed(kept.store, "notes") ?? { id: "notes" })[0]?.id ?? "";
+    expect(await kept.commands.run(CLOSE_TAB, { window: "notes", tab: only })).toMatchObject({
       closed: false,
       windowClosed: false,
     });
     const gone = await desk();
-    expect(await gone.commands.run(CLOSE_PANE, { window: "notes", pane: only })).toMatchObject({
+    expect(await gone.commands.run(CLOSE_TAB, { window: "notes", tab: only })).toMatchObject({
       closed: true,
       windowClosed: true,
     });

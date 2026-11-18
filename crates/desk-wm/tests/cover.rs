@@ -15,8 +15,7 @@ use std::collections::BTreeSet;
 
 use desk_wm::cover::UseOrder;
 use desk_wm::{
-    Adopted, Fill, Offset, PaneNode, Placement, Rect, covered_plugins, shown_plugins, slot_windows,
-    z_of,
+    Adopted, Fill, Offset, Placement, Rect, Tab, covered_plugins, shown_plugins, slot_windows, z_of,
 };
 
 const A: &str = "a.one";
@@ -25,7 +24,7 @@ const B: &str = "b.two";
 /// A shell window of its own (a launcher) at x, y, w × h in the 1440 × 900 frame.
 fn window(id: &str, x: f64, y: f64, w: f64, h: f64) -> Placement {
     let mut p = Placement::new(id, "endue.window", Rect::new(x, y, w, h));
-    p.panes = Some(PaneNode::view("p1", "launcher"));
+    p.tabs = Some(vec![Tab::new("p1", "launcher")]);
     p
 }
 
@@ -145,7 +144,7 @@ mod covered_plugin_windows {
         let away = Placement {
             plugin: A.into(),
             floating: Some(false),
-            panes: None,
+            tabs: None,
             ..window(A, 104.0, 190.0, 400.0, 300.0)
         };
         let mut d = desk(vec![away], Some(A));

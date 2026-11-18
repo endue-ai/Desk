@@ -2,7 +2,7 @@
  * The icons the compositor draws in the canvas map's windows (ADR 0273): each view's, as its title
  * bar shows it (`plugin-icons.ts`), in SVG path data it strokes the way `icons.ts` does.
  */
-import { leaves, panesOf } from "../surface/tree";
+import { tabsOf } from "../surface/tree";
 import { resolveView } from "../surface/views";
 import { iconPath } from "./icons";
 import { viewIcon } from "./plugin-icons";
@@ -16,8 +16,8 @@ export function viewIcons(store: Store): Record<string, string> {
   const s = store.get();
   const icons: Record<string, string> = {};
   for (const p of s.wm.windows[s.wm.here] ?? []) {
-    for (const leaf of leaves(panesOf(p))) {
-      const view = resolveView(s, p, leaf.view);
+    for (const tab of tabsOf(p)) {
+      const view = resolveView(s, p, tab.view);
       icons[view] = iconPath(viewIcon(view));
     }
   }

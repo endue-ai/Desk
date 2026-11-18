@@ -259,10 +259,10 @@ test.describe("keyboard settings for a person", () => {
       "true",
     );
     await expect(row(page, "desk.shell.move-to-desktop-2").locator("kbd")).toHaveText("⌃⇧2");
-    await expect(row(page, "desk.display.close-pane")).toHaveCount(0);
+    await expect(row(page, "desk.display.close-tab")).toHaveCount(0);
     // A search looks in every command and shows its match at the top of the pane.
-    await page.keyboard.type("close-pane");
-    const match = row(page, "desk.display.close-pane");
+    await page.keyboard.type("close-tab");
+    const match = row(page, "desk.display.close-tab");
     await expect(match).toBeVisible();
     const pane = await dialog(page).locator(".settings-content").boundingBox();
     const found = await match.boundingBox();

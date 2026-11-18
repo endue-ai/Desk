@@ -11,7 +11,7 @@ import { CommandError } from "../commands";
 import { type Ctx, windowsOf } from "../shell/actions";
 import type { DeskState } from "../shell/state";
 import { outWindows, windowPlugins } from "../surface/placed";
-import { leaves, panesOf } from "../surface/tree";
+import { tabsOf } from "../surface/tree";
 import { type ArrangeCopyKey, arrangeText } from "./copy";
 
 export const POP_OUT = "desk.windows.pop-out";
@@ -26,7 +26,7 @@ const WINDOW = {
 /** Whether window `id` of the desktop in front shows one plugin's surface and nothing else. */
 export function poppable(s: DeskState, id: string): boolean {
   const p = windowsOf(s).find((w) => w.id === id);
-  return !!p && leaves(panesOf(p)).length === 1 && windowPlugins(s, id).length === 1;
+  return !!p && tabsOf(p).length === 1 && windowPlugins(s, id).length === 1;
 }
 
 /** The windows out of the canvas, by id, as the window manager published them. */

@@ -1,7 +1,7 @@
 /**
  * The windows closed recently (ADR 0124). The desk keeps a log of them by watching the store: a
  * window that is on no desktop and not in the drawer any more has closed. Each entry keeps the
- * plugin and title of what the window showed, its placement (place, size and panes), the desktop it
+ * plugin and title of what the window showed, its placement (place, size and tabs), the desktop it
  * was on and when it closed; the last CLOSED_MAX, the last closed first, kept across restarts in the
  * shell's storage. A window that comes back leaves the log. The store's changes are looked at as
  * they come and decided on once per task, so a window that goes somewhere else in steps (into the
@@ -13,7 +13,7 @@ import type { DesktopId, SurfacePlacement } from "../modes/types";
 import { desktopId, desktopsOf, layoutOf, windowsOf } from "../shell/actions";
 import type { DeskState, Store } from "../shell/state";
 import { surfaceTitle, type Titled } from "../shell/titles";
-import { LAUNCHER, leaves, panesOf } from "../surface/tree";
+import { LAUNCHER, tabsOf } from "../surface/tree";
 import { resolveView } from "../surface/views";
 import { contextOf, provide } from "./registry";
 import { readLog } from "./saved";
@@ -25,11 +25,11 @@ export const CLOSED_KEY = "closed-windows";
 export interface ClosedWindow {
   id: string;
   title: string;
-  /** The plugin its first pane showed. */
+  /** The plugin its first tab showed. */
   plugin?: string;
   /** Every plugin it showed, each once: reopening it starts those that are not running. */
   plugins: string[];
-  /** What each pane showed, resolved: a window that shows these again under its id came back. */
+  /** What each tab showed, resolved: a window that shows these again under its id came back. */
   views: string[];
   /** The desktop it was on; absent when it was in the drawer. */
   desktop?: DesktopId;
@@ -78,7 +78,7 @@ function seenOf(
   placed: boolean,
   name?: string,
 ): Seen {
-  const views = leaves(panesOf(p)).map((leaf) => resolveView(s, p, leaf.view));
+  const views = tabsOf(p).map((leaf) => resolveView(s, p, leaf.view));
   const plugins = [...new Set(views.filter((v) => v.startsWith("plugin:")).map((v) => v.slice(7)))];
   const plugin = plugins[0];
   const title =

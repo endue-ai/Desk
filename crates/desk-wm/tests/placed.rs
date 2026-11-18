@@ -6,7 +6,7 @@
 //! the plugins a desktop's layout places, each once. Waking them as the desktop in front changes,
 //! and stopping when the watch is off, is the host's wiring (#81).
 
-use desk_wm::{PaneNode, Placement, Rect, SplitDir, placed_plugins};
+use desk_wm::{Placement, Rect, Tab, placed_plugins};
 
 fn at(id: &str, plugin: &str) -> Placement {
     Placement::new(id, plugin, Rect::new(100.0, 100.0, 400.0, 300.0))
@@ -22,23 +22,20 @@ mod wake_placed {
             // A profile's window named after its surface shows the plugin it names.
             at("terminal", "endue.terminal"),
             Placement {
-                panes: Some(PaneNode::Split {
-                    id: "s1".into(),
-                    dir: SplitDir::Row,
-                    ratio: 0.5,
-                    a: Box::new(PaneNode::view("p1", "plugin:endue.git")),
-                    b: Box::new(PaneNode::view("p2", "launcher")),
-                }),
+                tabs: Some(vec![
+                    Tab::new("p1", "plugin:endue.git"),
+                    Tab::new("p2", "plugin:endue.git@2"),
+                ]),
                 ..at("window-1", "endue.window")
             },
         ];
         let second = vec![Placement {
-            panes: Some(PaneNode::view("p1", "plugin:endue.mail")),
+            tabs: Some(vec![Tab::new("p1", "plugin:endue.mail")]),
             ..at("mail", "endue.mail")
         }];
         assert_eq!(
             placed_plugins(&first),
-            ["endue.terminal", "endue.window", "endue.git"]
+            ["endue.terminal", "endue.window", "endue.git", "endue.git@2"]
         );
         // The desktop with Mail comes to the front: its window wakes Mail, once.
         assert_eq!(placed_plugins(&second), ["endue.mail"]);

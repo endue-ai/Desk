@@ -56,40 +56,22 @@
         {
          "tag": "button",
          "class": "icon-button tool",
-         "aria-label": "Split right (⌘D)",
+         "aria-label": "New tab (⌘D)",
+         "hidden": "",
          "box": [
-          680,
-          199,
-          24,
-          24
+          0,
+          0,
+          0,
+          0
          ],
          "style": {
+          "display": "none",
           "border": "solid rgba(0, 0, 0, 0)"
          },
          "children": [
           {
            "tag": "svg",
-           "icon": "split-right"
-          }
-         ]
-        },
-        {
-         "tag": "button",
-         "class": "icon-button tool",
-         "aria-label": "Split down (⌥⌘D)",
-         "box": [
-          706,
-          199,
-          24,
-          24
-         ],
-         "style": {
-          "border": "solid rgba(0, 0, 0, 0)"
-         },
-         "children": [
-          {
-           "tag": "svg",
-           "icon": "split-down"
+           "icon": "plus"
           }
          ]
         },
@@ -185,8 +167,59 @@
      "children": [
       {
        "tag": "div",
-       "class": "panes",
+       "class": "tabs",
        "children": [
+        {
+         "tag": "div",
+         "class": "tab-strip",
+         "role": "tablist",
+         "style": {
+          "display": "none"
+         },
+         "children": [
+          {
+           "tag": "div",
+           "class": "tab is-active",
+           "role": "tab",
+           "children": [
+            {
+             "tag": "span",
+             "class": "tab-name",
+             "style": {
+              "color": "rgb(243, 241, 236)"
+             },
+             "text": "Calendar",
+             "children": [
+              {
+               "tag": "svg",
+               "icon": "calendar"
+              }
+             ]
+            },
+            {
+             "tag": "button",
+             "class": "icon-button tool tab-close",
+             "aria-label": "Close tab · Calendar",
+             "box": [
+              0,
+              0,
+              0,
+              0
+             ],
+             "style": {
+              "border": "solid rgba(0, 0, 0, 0)"
+             },
+             "children": [
+              {
+               "tag": "svg",
+               "icon": "close"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
         {
          "tag": "div",
          "class": "pane",
@@ -324,40 +357,22 @@
         {
          "tag": "button",
          "class": "icon-button tool",
-         "aria-label": "Split right (⌘D)",
+         "aria-label": "New tab (⌘D)",
+         "hidden": "",
          "box": [
-          744,
-          263,
-          24,
-          24
+          0,
+          0,
+          0,
+          0
          ],
          "style": {
+          "display": "none",
           "border": "solid rgba(0, 0, 0, 0)"
          },
          "children": [
           {
            "tag": "svg",
-           "icon": "split-right"
-          }
-         ]
-        },
-        {
-         "tag": "button",
-         "class": "icon-button tool",
-         "aria-label": "Split down (⌥⌘D)",
-         "box": [
-          770,
-          263,
-          24,
-          24
-         ],
-         "style": {
-          "border": "solid rgba(0, 0, 0, 0)"
-         },
-         "children": [
-          {
-           "tag": "svg",
-           "icon": "split-down"
+           "icon": "plus"
           }
          ]
         },
@@ -453,8 +468,59 @@
      "children": [
       {
        "tag": "div",
-       "class": "panes",
+       "class": "tabs",
        "children": [
+        {
+         "tag": "div",
+         "class": "tab-strip",
+         "role": "tablist",
+         "style": {
+          "display": "none"
+         },
+         "children": [
+          {
+           "tag": "div",
+           "class": "tab is-active",
+           "role": "tab",
+           "children": [
+            {
+             "tag": "span",
+             "class": "tab-name",
+             "style": {
+              "color": "rgb(243, 241, 236)"
+             },
+             "text": "Notes",
+             "children": [
+              {
+               "tag": "svg",
+               "icon": "note"
+              }
+             ]
+            },
+            {
+             "tag": "button",
+             "class": "icon-button tool tab-close",
+             "aria-label": "Close tab · Notes",
+             "box": [
+              0,
+              0,
+              0,
+              0
+             ],
+             "style": {
+              "border": "solid rgba(0, 0, 0, 0)"
+             },
+             "children": [
+              {
+               "tag": "svg",
+               "icon": "close"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
         {
          "tag": "div",
          "class": "pane",
@@ -617,40 +683,22 @@
         {
          "tag": "button",
          "class": "icon-button tool",
-         "aria-label": "Split right (⌘D)",
+         "aria-label": "New tab (⌘D)",
+         "hidden": "",
          "box": [
-          712,
-          231,
-          24,
-          24
+          0,
+          0,
+          0,
+          0
          ],
          "style": {
+          "display": "none",
           "border": "solid rgba(0, 0, 0, 0)"
          },
          "children": [
           {
            "tag": "svg",
-           "icon": "split-right"
-          }
-         ]
-        },
-        {
-         "tag": "button",
-         "class": "icon-button tool",
-         "aria-label": "Split down (⌥⌘D)",
-         "box": [
-          738,
-          231,
-          24,
-          24
-         ],
-         "style": {
-          "border": "solid rgba(0, 0, 0, 0)"
-         },
-         "children": [
-          {
-           "tag": "svg",
-           "icon": "split-down"
+           "icon": "plus"
           }
          ]
         },
@@ -746,8 +794,59 @@
      "children": [
       {
        "tag": "div",
-       "class": "panes",
+       "class": "tabs",
        "children": [
+        {
+         "tag": "div",
+         "class": "tab-strip",
+         "role": "tablist",
+         "style": {
+          "display": "none"
+         },
+         "children": [
+          {
+           "tag": "div",
+           "class": "tab is-active",
+           "role": "tab",
+           "children": [
+            {
+             "tag": "span",
+             "class": "tab-name",
+             "style": {
+              "color": "rgb(243, 241, 236)"
+             },
+             "text": "Tomorrow",
+             "children": [
+              {
+               "tag": "svg",
+               "icon": "list"
+              }
+             ]
+            },
+            {
+             "tag": "button",
+             "class": "icon-button tool tab-close",
+             "aria-label": "Close tab · Tomorrow",
+             "box": [
+              0,
+              0,
+              0,
+              0
+             ],
+             "style": {
+              "border": "solid rgba(0, 0, 0, 0)"
+             },
+             "children": [
+              {
+               "tag": "svg",
+               "icon": "close"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
         {
          "tag": "div",
          "class": "pane is-eris",
@@ -885,40 +984,22 @@
         {
          "tag": "button",
          "class": "icon-button tool",
-         "aria-label": "Split right (⌘D)",
+         "aria-label": "New tab (⌘D)",
+         "hidden": "",
          "box": [
-          603,
-          429,
-          24,
-          24
+          0,
+          0,
+          0,
+          0
          ],
          "style": {
+          "display": "none",
           "border": "solid rgba(0, 0, 0, 0)"
          },
          "children": [
           {
            "tag": "svg",
-           "icon": "split-right"
-          }
-         ]
-        },
-        {
-         "tag": "button",
-         "class": "icon-button tool",
-         "aria-label": "Split down (⌥⌘D)",
-         "box": [
-          629,
-          429,
-          24,
-          24
-         ],
-         "style": {
-          "border": "solid rgba(0, 0, 0, 0)"
-         },
-         "children": [
-          {
-           "tag": "svg",
-           "icon": "split-down"
+           "icon": "plus"
           }
          ]
         },
@@ -994,8 +1075,59 @@
      "children": [
       {
        "tag": "div",
-       "class": "panes",
+       "class": "tabs",
        "children": [
+        {
+         "tag": "div",
+         "class": "tab-strip",
+         "role": "tablist",
+         "style": {
+          "display": "none"
+         },
+         "children": [
+          {
+           "tag": "div",
+           "class": "tab is-active",
+           "role": "tab",
+           "children": [
+            {
+             "tag": "span",
+             "class": "tab-name",
+             "style": {
+              "color": "rgb(243, 241, 236)"
+             },
+             "text": "New surface",
+             "children": [
+              {
+               "tag": "svg",
+               "icon": "plus"
+              }
+             ]
+            },
+            {
+             "tag": "button",
+             "class": "icon-button tool tab-close",
+             "aria-label": "Close tab · New surface",
+             "box": [
+              0,
+              0,
+              0,
+              0
+             ],
+             "style": {
+              "border": "solid rgba(0, 0, 0, 0)"
+             },
+             "children": [
+              {
+               "tag": "svg",
+               "icon": "close"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
         {
          "tag": "div",
          "class": "pane",

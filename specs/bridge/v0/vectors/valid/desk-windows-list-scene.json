@@ -1,6 +1,6 @@
 {
   "target": "BrainDesk",
-  "description": "the scene both window managers answer (#82): a filled window, a snapped one, a floating one, a split window in use, a pinned one, one put away, one on a panned second desktop; packages/runtime/src/shell/desk-view.scene.test.ts and crates/desk-wm/tests/scene.rs build it",
+  "description": "the scene both window managers answer (#82): a filled window, a snapped one, a floating one, a window in use, a pinned one, one put away, one on a panned second desktop; packages/runtime/src/shell/desk-view.scene.test.ts and crates/desk-wm/tests/scene.rs build it",
   "instance": {
     "screen": {
       "w": 1440,
@@ -43,11 +43,6 @@
             "view": "launcher",
             "title": "launcherTitle",
             "focused": true
-          },
-          {
-            "id": "p2",
-            "view": "launcher",
-            "title": "launcherTitle"
           }
         ]
       },

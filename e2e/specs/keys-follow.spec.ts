@@ -236,36 +236,6 @@ describe("keys follow the window in use", () => {
     );
   });
 
-  it("a press on a divider gives the keys to no window lying under it", async () => {
-    // Calendar split, its divider over another window's surface (the first layout overlaps them).
-    await pressInto("endue.calendar", "main.endue-calendar");
-    const calendar = await windowNow("endue.calendar");
-    await run("desk.display.split-right");
-    await windowUntil("endue.calendar", (w) => w.panes.length === 2, "split");
-    // The window lies in a page of its own (ADR 0201): the divider's place there, from its corner.
-    const local = await inWindowPage("endue.calendar", () =>
-      browser.execute(() => {
-        const r = document
-          .querySelector('section.surface[data-surface="endue.calendar"] .divider')
-          ?.getBoundingClientRect();
-        // Its first quarter: the 1 px line between the two panes' surfaces, whatever the rounding.
-        return r ? { x: r.x + r.width / 4, y: r.y + r.height / 2 } : null;
-      }),
-    );
-    if (!local) throw new Error("the split Calendar has no divider");
-    const divider = { x: calendar.x + local.x, y: calendar.y + local.y };
-    const [below, y] = (await surfacesUnder(divider.x, calendar, "main.endue-calendar"))[0] ?? [];
-    if (!below || y === undefined) throw new Error("no window's surface lies under the divider");
-    const under = { x: divider.x, y };
-    await drag(under, { x: under.x + 20, y: under.y }, { hold: true });
-    const held = await inputState();
-    await release();
-    // The press is the split window's, heard by the page that lays it out: its own (ADR 0201).
-    expect(held.pointer.capture).toBe("window:endue.calendar");
-    expect(held.focused).not.toBe(below);
-    expect(await focused()).not.toBe(below);
-  });
-
   it("a press on the Drawer button or on Tile gives the keys to no window lying under it", async () => {
     // The desk's buttons are parts of the system layer (ADR 0167): this guards the keys after them.
     await pressInto(TERMINAL, TERMINAL_HOST);

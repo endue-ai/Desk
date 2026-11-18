@@ -12,7 +12,7 @@ import {
 
 const contributed = [
   { key: "Mod+N", command: "desk.display.new-surface", owner: "desk.keys" },
-  { key: "Mod+D", command: "desk.display.split-right", owner: "desk.keys" },
+  { key: "Mod+D", command: "desk.display.new-tab", owner: "desk.keys" },
   { key: "Control+2", command: "desk.shell.desktop-2", owner: "desk.keys" },
   { key: "Mod+]", command: "desk.display.focus-next", owner: "desk.keys" },
   { key: "Control+Tab", command: "desk.display.focus-next", owner: "desk.keys" },
@@ -36,10 +36,10 @@ describe("rebind", () => {
 
   it("moves a key another command had, and says which", () => {
     const { personal, displaced } = rebind(layers(), "desk.shell.desktop-2", "Mod+D");
-    expect(displaced).toBe("desk.display.split-right");
+    expect(displaced).toBe("desk.display.new-tab");
     const after = layers(personal);
     expect(keysOf(after, "desk.shell.desktop-2")).toEqual(["Meta+D"]);
-    expect(keysOf(after, "desk.display.split-right")).toEqual([]);
+    expect(keysOf(after, "desk.display.new-tab")).toEqual([]);
     expect(commandAt(after, "Control+2")).toBeUndefined();
   });
 
@@ -66,8 +66,8 @@ describe("unbind and reset", () => {
 
   it("gives a command its plugins' keys back, from whoever took them", () => {
     const moved = layers(rebind(layers(), "desk.shell.desktop-2", "Mod+D").personal);
-    const back = layers(reset(moved, "desk.display.split-right"));
-    expect(keysOf(back, "desk.display.split-right")).toEqual(["Meta+D"]);
+    const back = layers(reset(moved, "desk.display.new-tab"));
+    expect(keysOf(back, "desk.display.new-tab")).toEqual(["Meta+D"]);
     expect(keysOf(back, "desk.shell.desktop-2")).toEqual([]);
     const all = layers(reset(back, "desk.shell.desktop-2"));
     expect(all.personal).toEqual([]);
