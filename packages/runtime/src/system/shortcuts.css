@@ -22,7 +22,7 @@
   width: 20px;
   height: 20px;
   border: 2px solid currentColor;
-  border-radius: 6px;
+  border-radius: calc(var(--desk-radius-sm) + 2px);
   font-size: var(--text-2xs);
   font-weight: 700;
   line-height: 1;
@@ -31,8 +31,8 @@
   width: 16px;
   height: 16px;
   border-width: 1.5px;
-  border-radius: 5px;
-  font-size: 9px;
+  border-radius: calc(var(--desk-radius-sm) + 1px);
+  font-size: calc(var(--desk-text-2xs) - 2px);
 }
 /* A plugin no longer installed, a command no plugin answers now: there, faint, and its menu still
    takes it off. */
