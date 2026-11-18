@@ -4,10 +4,18 @@
 // with the person, behind the window's own questions.
 
 import { WIP } from "./app.js";
+import { findCommits } from "./history.js";
 import { changeCount } from "./parse-status.js";
 
-/** How many commits and refs endue.git-studio.state hands back. */
+/** How many commits endue.git-studio.state hands back. */
 const STATE_COMMITS = 15;
+/** How many branches and tags it names, and how many files of each kind: an agent reads the answer
+ * whole, and a brain cuts a long one, so the counts say what the lists leave out. */
+const STATE_REFS = 30;
+const STATE_FILES = 100;
+/** How many commits endue.git-studio.log answers: when none is asked for, and at most. */
+const LOG_COMMITS = 50;
+const LOG_MAX = 200;
 
 /** @param {ReturnType<typeof import("./studio.js").createStudio>} studio @param {import("@endue-ai/plugin-sdk").PluginCommands} commands */
 export function registerCommands(studio, commands) {
@@ -29,6 +37,12 @@ export function registerCommands(studio, commands) {
 
   on("state", () => {
     const s = snap();
+    const heads = s.refs.filter((r) => r.kind === "head");
+    const tags = s.refs.filter((r) => r.kind === "tag");
+    const file = (/** @type {{ path: string, change: string }} */ f) => ({
+      path: f.path,
+      change: f.change,
+    });
     return {
       root: s.root,
       branch: s.status.branch,
@@ -38,11 +52,15 @@ export function registerCommands(studio, commands) {
       behind: s.status.behind,
       operation: s.operation,
       changes: changeCount(s.status),
-      staged: s.status.staged.map((f) => ({ path: f.path, change: f.change })),
-      unstaged: s.status.unstaged.map((f) => ({ path: f.path, change: f.change })),
+      recent: s.commits.slice(0, STATE_COMMITS).map(commitData),
+      staged: s.status.staged.slice(0, STATE_FILES).map(file),
+      unstaged: s.status.unstaged.slice(0, STATE_FILES).map(file),
       conflicts: s.status.conflicts.map((c) => ({ path: c.path, label: c.label })),
-      branches: s.refs
-        .filter((r) => r.kind === "head")
+      stashes: s.stashes.map((x) => ({ index: x.index, message: x.message })),
+      branchCount: heads.length,
+      // The current branch first: it is the one a question is most often about.
+      branches: [...heads.filter((r) => r.current), ...heads.filter((r) => !r.current)]
+        .slice(0, STATE_REFS)
         .map((r) => ({
           name: r.name,
           current: r.current,
@@ -50,12 +68,15 @@ export function registerCommands(studio, commands) {
           ahead: r.ahead,
           behind: r.behind,
         })),
-      tags: s.refs.filter((r) => r.kind === "tag").map((r) => r.name),
-      stashes: s.stashes.map((x) => ({ index: x.index, message: x.message })),
-      recent: s.commits
-        .slice(0, STATE_COMMITS)
-        .map((c) => ({ sha: c.sha, subject: c.subject, author: c.author, date: c.date })),
+      tagCount: tags.length,
+      tags: tags.slice(0, STATE_REFS).map((r) => r.name),
     };
+  });
+  /** @typedef {{ query?: string, mode?: "text" | "code" | "path", author?: string, limit?: number }} Find */
+  on("log", async (/** @type {Find} */ args) => {
+    const limit = Math.min(Math.max(Math.trunc(args.limit ?? LOG_COMMITS), 1), LOG_MAX);
+    const found = await findCommits(app.git, need(), { ...args, limit });
+    return { commits: found.commits.map(commitData), more: found.more };
   });
   on("refresh", async () => {
     need();
@@ -158,3 +179,11 @@ export function registerCommands(studio, commands) {
     return { ok: true };
   });
 }
+
+/** A commit as a command answers it. */
+const commitData = (/** @type {import("./parse.js").Commit} */ c) => ({
+  sha: c.sha,
+  subject: c.subject,
+  author: c.author,
+  date: c.date,
+});

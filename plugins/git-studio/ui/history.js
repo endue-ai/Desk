@@ -147,3 +147,24 @@ export async function deepSearch(git, root, mode, text, limit = 1000) {
   const { stdout } = await git.run(args, { cwd: root, timeoutMs: 60_000 });
   return new Set(stdout.split("\n").filter(Boolean));
 }
+
+/**
+ * Commits as data, newest first, from every branch, remote branch and tag: those whose message
+ * holds `query` (any case, as plain text), whose changes add or remove it (`code`) or that touched
+ * a path holding it (`path`); all of them without a query. `author` narrows by name or email.
+ * One more than `limit` is read, so `more` says whether git had more to give.
+ * @param {Runner} git @param {string} root
+ * @param {{ query?: string, mode?: "text" | "code" | "path", author?: string, limit?: number }} [find]
+ */
+export async function findCommits(git, root, find = {}) {
+  const { query = "", mode = "text", author = "", limit = 50 } = find;
+  const args = ["log", ...SCOPE, `-n${limit + 1}`, `--format=${LOG_FORMAT}`, "-i", "-F"];
+  if (author) args.push(`--author=${author}`);
+  if (query && mode === "text") args.push(`--grep=${query}`);
+  if (query && mode === "code") args.push(`-S${query}`);
+  args.push("--");
+  if (query && mode === "path") args.push(`:(icase,glob)**/*${query.replace(/[*?[\]]/g, "")}*`);
+  const { stdout } = await git.run(args, { cwd: root, timeoutMs: 60_000 });
+  const commits = parseLog(stdout);
+  return { commits: commits.slice(0, limit), more: commits.length > limit };
+}
