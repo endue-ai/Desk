@@ -336,6 +336,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       unmount: (id) => host.unmount(id),
       wake: (id) => host.wake(id),
       keep: (id, surface) => keepState(host, id, surface),
+      listed: () => hub.plugins,
+      onListed: (listener) => hub.onPolicy(() => listener()),
     };
   }
 

@@ -114,6 +114,11 @@ pub const PARTS: &[SystemPart] = &[
         level: Level::Bar,
     },
     SystemPart {
+        id: "desk.shortcuts",
+        holds: "the shortcut bar above the agent bar: the person's plugins and commands",
+        level: Level::Bar,
+    },
+    SystemPart {
         id: "desk.agents",
         holds: "the agent bar's content: agents, spaces, local agents",
         level: Level::Bar,
@@ -230,6 +235,7 @@ mod tests {
             assert_eq!(part(p.id), Some(p));
         }
         for wanted in [
+            "desk.shortcuts",
             "desk.agents",
             "desk.rail",
             // What the page draws over the dock takes its own presses (#158, #159).

@@ -51,6 +51,12 @@ export const CORE_SETTINGS: Record<string, SettingContribution> = {
     choices: ["theme", "grid", "pond", "aurora"],
     description: "The desk's wallpaper: theme, grid, a live pond or a live aurora.",
   },
+  "desk.shell.shortcuts": {
+    kind: "array",
+    default: [{ command: "desk.palette.open" }],
+    description:
+      "The shortcut bar above the agent bar (ADR 0274), top to bottom: { plugin } opens a plugin, { command } runs a command (\"desk.palette.open\" is Search). Twelve at most; the bar's + and a shortcut's menu write it.",
+  },
   [LIVE_SURFACES]: {
     kind: "integer",
     default: 8,
