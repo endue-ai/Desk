@@ -28,7 +28,7 @@ pub fn cycle<'a>(order: &'a [String], focused: Option<&str>, step: i64) -> Optio
 impl Desk {
     /// The shell's own views the windows of the desktop in front show, in reading order
     /// (`paneViews`): `<window>/<tab>` for the tab each shows, those showing a plugin's surface
-    /// left out. A tab a window does not show is no stop: showing it is its window's (ADR 0268).
+    /// left out. A tab a window does not show is no stop: showing it is its window's (ADR 0270).
     pub fn pane_views(&self) -> Vec<String> {
         self.windows()
             .into_iter()

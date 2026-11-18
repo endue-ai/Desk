@@ -1,7 +1,7 @@
 /**
  * The shell's own views as the runtime's host views (ADR 0017): desk.display's focus cycling and
  * desk.buffers reach them as they reach plugin surfaces. A view's id is "<surface>/<tab>", for the
- * tab each window shows (ADR 0268).
+ * tab each window shows (ADR 0270).
  */
 import { shownTab, tabsOf } from "../surface/tree";
 import { resolveView, viewOf } from "../surface/views";

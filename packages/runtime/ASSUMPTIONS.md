@@ -87,12 +87,12 @@ cheap to change.
 33. **More than six agents:** five show, the sixth place is "+N" and opens the rest in a popover.
 34. **⌘N opens a surface on the desk** (a window inside the desk, not a second OS window). It starts with
     a launcher and cascades from the middle. ⌘D opens a new tab in a plugin's window: another window
-    of that plugin, the only kind of tab a window takes (ADR 0268). ⌘W closes the tab in use (the last
+    of that plugin, the only kind of tab a window takes (ADR 0270). ⌘W closes the tab in use (the last
     one closes the surface), ⌃PageDown and ⌃PageUp step through a window's tabs, ⌘] and ⌘[ (and ⌃Tab)
     move between the shell's views and plugin surfaces.
 35. **Tabs are layout**, stored in the profile as `tabs` on a surface with the one shown (`tab`); a
     surface without `tabs` is one tab showing the view named by its id, and one saved with `panes`
-    (a window split inside, before ADR 0268) reads its panes as tabs, so older layouts still load.
+    (a window split inside, before ADR 0270) reads its panes as tabs, so older layouts still load.
 36. **Opening a view** fills the focused launcher tab if there is one, else focuses a tab already showing
     it, else opens its own surface.
 37. **One key per command when rebinding.** A key taken from another command leaves that command unbound,

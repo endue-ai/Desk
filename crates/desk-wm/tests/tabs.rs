@@ -1,4 +1,4 @@
-//! A window's tabs (ADR 0268): a plugin's window takes further windows of that plugin as tabs and
+//! A window's tabs (ADR 0270): a plugin's window takes further windows of that plugin as tabs and
 //! nothing else, shows one tab at a time, and closes tab by tab. A layout saved while a window
 //! split inside reads as tabs.
 

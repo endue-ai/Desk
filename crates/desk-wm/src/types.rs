@@ -123,7 +123,7 @@ impl Restore {
     }
 }
 
-/// One tab of a window (ADR 0268): its id (`p1`, `p2`, ..., the ids panes had, so a saved layout
+/// One tab of a window (ADR 0270): its id (`p1`, `p2`, ..., the ids panes had, so a saved layout
 /// and `desk.windows.list` keep theirs) and the view it shows: `"calendar"`, `"launcher"`,
 /// `"agent:<id>"`, `"plugin:<key>"`, ... The operations on a window's tabs are the tabs module's.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -143,7 +143,7 @@ impl Tab {
 }
 
 /// A window's tabs as a layout stores them: a list, or the pane tree a layout saved while a
-/// window could be split inside (`panes`, before ADR 0268), whose panes become tabs, first to last.
+/// window could be split inside (`panes`, before ADR 0270), whose panes become tabs, first to last.
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum StoredTabs {

@@ -1,7 +1,7 @@
 //! Where a window's parts sit inside it (`packages/runtime/src/surface/surface.css` and
 //! `tabs.css`, `TabsView.ts`): a 1 px border round the window, a 40 px title bar, and under it the
 //! body, which the tab it shows fills. A window of more than one tab keeps a 28 px strip of its
-//! tabs at the body's top (ADR 0268). The same boxes the shell page lays the window out in, so what
+//! tabs at the body's top (ADR 0270). The same boxes the shell page lays the window out in, so what
 //! the page draws (a shell view, the strip) and a surface the compositor draws (a plugin) land on
 //! the same pixels.
 

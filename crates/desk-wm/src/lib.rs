@@ -17,7 +17,7 @@
 //! - `cover`, `placed`: which plugins are out of sight (ADR 0070) and which a layout places.
 //! - `reach`: a window's title bar kept within reach of the pointer after a drop or a move.
 //! - `pan`, `minimap`: the canvas pan and the canvas map (ADR 0082).
-//! - `tabs`: a window's tabs (ADR 0268): adding, closing, and what kind a window takes; `desktops`,
+//! - `tabs`: a window's tabs (ADR 0270): adding, closing, and what kind a window takes; `desktops`,
 //!   `migrate`: the named list of desktops (ADR 0117) and what profiles and sessions stored;
 //!   `layout`: a desktop's layout and the profile's saved ones; `drawer`, `buffers`: the drawer's
 //!   items and the buffer list.

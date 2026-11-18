@@ -121,7 +121,7 @@ export class PluginHost {
   }
 
   /** Open another window of a mounted plugin (ADR 0212): its key; its frame may still connect.
-   * `before` hears the key before the window opens, to ask for the tab that takes it (ADR 0268). */
+   * `before` hears the key before the window opens, to ask for the tab that takes it (ADR 0270). */
   another(id: string, before?: (key: string) => void): string {
     const info = this.#mounted.get(id);
     if (!info) throw new Error(`${id} is not running`);

@@ -1,5 +1,5 @@
 //! Windows and their tabs (`packages/runtime/src/shell/windows.ts`): focusing a tab, revealing a
-//! plugin, ⌘N's new window with a launcher, adding a tab of the window's own kind (ADR 0268),
+//! plugin, ⌘N's new window with a launcher, adding a tab of the window's own kind (ADR 0270),
 //! closing tabs and windows, showing another view in a tab, and the fills (`fill.rs`) as session
 //! edits.
 //!
@@ -184,7 +184,7 @@ impl Desk {
     }
 
     /// Add a tab showing `view` to window `window` of the desktop in front, right after the tab it
-    /// shows, and show it. A window takes only tabs of its own kind (ADR 0268): `view` is another
+    /// shows, and show it. A window takes only tabs of its own kind (ADR 0270): `view` is another
     /// window of the plugin its tabs show, one no tab of it shows yet. Answers the new tab's id;
     /// none when the window does not take it.
     pub fn add_tab(&mut self, window: &str, view: &str) -> Option<String> {

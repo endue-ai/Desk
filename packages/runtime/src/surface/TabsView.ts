@@ -1,5 +1,5 @@
 /**
- * Draw a window's tabs (ADR 0268): what the tab it shows shows, under a strip of its tabs once it
+ * Draw a window's tabs (ADR 0270): what the tab it shows shows, under a strip of its tabs once it
  * has more than one. Each tab's view is mounted once and kept while the tab shows it, so showing
  * another tab, adding one or closing one never mounts a view again: a plugin's frame moved in the
  * page would load again. The window manager says which tabs there are and which is shown

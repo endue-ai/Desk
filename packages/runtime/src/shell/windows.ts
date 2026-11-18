@@ -1,6 +1,6 @@
 /**
  * Surfaces as windows: ⌘N opens a new one with a launcher, a plugin's window takes further
- * windows of that plugin as tabs (ADR 0268), and a tab closes or takes another view. Each is an edit the window manager makes (crates/desk-wm, #83),
+ * windows of that plugin as tabs (ADR 0270), and a tab closes or takes another view. Each is an edit the window manager makes (crates/desk-wm, #83),
  * as are maximizing, snapping and moving or resizing by a step (`window-commands.ts`, ADR 0153).
  * What stays the runtime's: the plugin surface in use takes the keys once the desk that made it is
  * in, and closing a window unmounts the plugins it showed for the session (ADR 0040), once the
@@ -152,7 +152,7 @@ export function tabKindOf(ctx: Pick<Ctx, "store">, id: string): string | undefin
 
 /**
  * A new tab in a window (the focused one unless named): another window of the plugin it shows
- * (ADR 0212), the only kind of tab a window takes (ADR 0268). The window manager is told of the
+ * (ADR 0212), the only kind of tab a window takes (ADR 0270). The window manager is told of the
  * tab before the plugin's window opens, so that one never has a window of its own. Answers the
  * tab's id; nothing for a window that takes no tab.
  */

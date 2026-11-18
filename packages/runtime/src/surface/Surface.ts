@@ -53,7 +53,7 @@ interface Entry {
   placement: SurfacePlacement;
   /** Rebuild the whole surface when this changes (language). */
   key: string;
-  /** Its tabs: the one shown, under their strip (ADR 0268). */
+  /** Its tabs: the one shown, under their strip (ADR 0270). */
   tabs: TabsView;
   /** Whether it lies in its own page (ADR 0201), and where its window is on the desk. */
   own: boolean;
@@ -116,7 +116,7 @@ export function mountSurfaces(
   const build = (placed: SurfacePlacement): Entry => {
     const p = placed;
     const title = h("span", { class: "surface-heading" });
-    // Another window of the plugin this window shows, as a tab: the one kind it takes (ADR 0268).
+    // Another window of the plugin this window shows, as a tab: the one kind it takes (ADR 0270).
     const tabTool = tool(hint(ctx.tr("newTab"), "desk.display.new-tab"), "plus", () => {
       newTab(ctx, p.id).catch((error) =>
         reportFailure(ctx.runtime.notify, ctx.tr("newTab"), error),

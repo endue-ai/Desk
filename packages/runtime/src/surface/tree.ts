@@ -1,5 +1,5 @@
 /**
- * Reading a window's tabs (ADR 0268), as the window manager publishes them: its tabs first to last,
+ * Reading a window's tabs (ADR 0270), as the window manager publishes them: its tabs first to last,
  * the one it shows, and the kind of tab it takes. Adding, closing and showing a tab are the window
  * manager's (crates/desk-wm `tabs.rs`); the page only draws what it is given.
  */

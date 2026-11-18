@@ -65,7 +65,7 @@ describe("windows: surfaces as windows (#82)", () => {
     expect(byId(desk, id)?.focused).toBeUndefined();
   });
 
-  it("a window of the desk's own view takes no tab (ADR 0268)", async () => {
+  it("a window of the desk's own view takes no tab (ADR 0270)", async () => {
     const id = await openWindow();
     await run("desk.shell.open-notes");
     await windowUntil(id, (w) => w.panes[0]?.view === "notes", "shows Notes");

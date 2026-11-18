@@ -1,4 +1,4 @@
-// A window's tabs (ADR 0268): the shell fixture with ?plugins=1, whose test plugins open in the
+// A window's tabs (ADR 0270): the shell fixture with ?plugins=1, whose test plugins open in the
 // shell's windows. The title bar's New tab opens another window of the window's plugin (ADR 0212)
 // as a tab of that window: a page of its own, shown one at a time under the strip of tabs, and
 // never a window of its own. Which tab a window takes is desk-wm's (crates/desk-wm/tests/tabs.rs).

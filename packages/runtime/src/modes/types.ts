@@ -45,7 +45,7 @@ export interface SurfacePlacement {
    * anchored to the app's viewport whatever the pan, and above the normal windows.
    */
   floating?: boolean;
-  /** Its tabs (ADR 0268). Absent: one tab showing the view named by `id`. */
+  /** Its tabs (ADR 0270). Absent: one tab showing the view named by `id`. */
   tabs?: Tab[];
   /** The tab it shows; absent, or naming one it does not have: its first. */
   tab?: string;

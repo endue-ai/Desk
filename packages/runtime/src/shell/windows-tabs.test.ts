@@ -1,4 +1,4 @@
-// A window's tabs on the runtime's side (ADR 0268): a new tab opens another window of the window's
+// A window's tabs on the runtime's side (ADR 0270): a new tab opens another window of the window's
 // plugin (ADR 0212) and tells desk-wm of the tab first, stepping shows the tab beside, and closing
 // a tab unmounts its plugin's window alone. Which tabs a window takes is desk-wm's
 // (crates/desk-wm/tests/tabs.rs).
@@ -55,7 +55,7 @@ async function ctx() {
   };
 }
 
-describe("a window's tabs (ADR 0268)", () => {
+describe("a window's tabs (ADR 0270)", () => {
   const tabs = (c: Awaited<ReturnType<typeof ctx>>, id: string) => {
     const window = windowsOf(c.store.get()).find((p) => p.id === id);
     return window ? tabsOf(window).map((t) => t.view) : [];

@@ -3,7 +3,7 @@
 //! in which order, from one `Desk` state.
 //!
 //! - `bars`: the bands the bars float in and the free area between them (ADR 0028, ADR 0132).
-//! - `tabs`: each window's body under its title bar, and the strip of its tabs (ADR 0268).
+//! - `tabs`: each window's body under its title bar, and the strip of its tabs (ADR 0270).
 //! - [`Plan`] (`Desk::host_plan`): every window of the desktop in front back to front, at its
 //!   rectangle on screen, with its title, its fill's title clearance, and the box of the tab it
 //!   shows and what that is: a plugin's surface, or a view the page draws (the launcher, a sample
@@ -48,7 +48,7 @@ use crate::placed::PLUGIN_VIEW;
 use crate::snapshot::Seen;
 use crate::types::{Fill, Placement, Rect, Size};
 
-/// What a window shows, on screen: the tab it shows (ADR 0268). A window's other tabs have no
+/// What a window shows, on screen: the tab it shows (ADR 0270). A window's other tabs have no
 /// place on screen, so their plugins have no seat.
 #[derive(Clone, Debug, PartialEq)]
 pub struct HostPane {
@@ -132,7 +132,7 @@ pub struct HostWindow {
     pub title_bar: Rect,
     /// The tab it shows: one, always.
     pub panes: Vec<HostPane>,
-    /// None: a window's inside no longer splits (ADR 0268). The compositor's shell still reads it.
+    /// None: a window's inside no longer splits (ADR 0270). The compositor's shell still reads it.
     pub dividers: Vec<Rect>,
     /// Where the page's picture shows it: where it is drawn, unless the window manager moves it
     /// ahead of the page (#80) or the page has not painted where its DOM has it yet (`PageShown`).

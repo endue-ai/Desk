@@ -114,7 +114,7 @@ describe("the desk Eris sees", () => {
     expect(desk.windows[0]).toMatchObject({ id: "endue.notes", floating: true });
   });
 
-  it("lists every tab of a window as a pane, the one it shows marked (ADR 0268)", async () => {
+  it("lists every tab of a window as a pane, the one it shows marked (ADR 0270)", async () => {
     const c = ctx();
     await adopt(c, [
       ["endue.git", "Git"],

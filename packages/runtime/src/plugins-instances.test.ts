@@ -159,7 +159,7 @@ describe("PluginHost with several windows of one plugin (ADR 0212)", () => {
     ]);
   });
 
-  it("says a new window's key before it opens, for the tab that takes it (ADR 0268)", async () => {
+  it("says a new window's key before it opens, for the tab that takes it (ADR 0270)", async () => {
     const { host, frames } = await mount();
     const heard: Array<[string, boolean]> = [];
     const key = host.another(IMAGES, (opening) => heard.push([opening, frames.has(opening)]));
