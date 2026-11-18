@@ -70,6 +70,7 @@ globalThis.__deskPageText = (state) => {
   const leaf = (el) => !el.querySelector(ACTED) && Array.from(squash(el.textContent)).length <= 300;
 
   /** The words an element shows, as they are laid out: parts side by side stay apart. */
+  // biome-ignore lint/performance/useDomNodeTextContent: the laid-out words are what is wanted
   const wordsOf = (el) => squash(el?.innerText ?? el?.textContent);
 
   function refOf(el) {
