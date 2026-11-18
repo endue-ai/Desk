@@ -1,4 +1,4 @@
-//! web.read and web.act through `Core::handle` (ADR 0270): what a view's page says and what is
+//! web.read and web.act through `Core::handle` (ADR 0272): what a view's page says and what is
 //! done in it, for the view's caller under `web:control`. `web:browse` alone is
 //! `permission_denied`; a grant with hosts covers only a page on them, at the address the shell
 //! last reported; another caller's view is `not_found`; the shell is told the address the call

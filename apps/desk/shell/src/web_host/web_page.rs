@@ -1,4 +1,4 @@
-//! What is asked of a web view's page (ADR 0270): `web.read` and `web.act` go through the
+//! What is asked of a web view's page (ADR 0272): `web.read` and `web.act` go through the
 //! browser's own DevTools agent, as the accessibility actions of a surface do
 //! (`a11y_devtools.rs`). The page script (`web_page.js`, `web_page_text.js`) runs in a world of
 //! the desk's own in the view's main document (`Page.createIsolatedWorld`): the page's scripts
