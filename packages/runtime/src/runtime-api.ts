@@ -1,5 +1,5 @@
 /** The runtime's public services, independent of its mounting and lifecycle wiring. */
-import type { ProfileContribution } from "@endue-ai/bridge";
+import type { PluginInfo, ProfileContribution } from "@endue-ai/bridge";
 import type { Buffers } from "./buffers";
 import type { Commands } from "./commands";
 import type { Preferences } from "./core/preferences";
@@ -46,6 +46,10 @@ export interface RuntimePlugins {
    * its window moves into or out of an OS window (issue 235), which loads its page again.
    */
   keep?(id: string, surface?: string): Promise<void>;
+  /** The installed plugins as plugin.list said last: empty until it first answers. */
+  listed?(): readonly PluginInfo[];
+  /** Hear each new list of the installed plugins. */
+  onListed?(listener: () => void): () => void;
 }
 
 export interface Runtime {

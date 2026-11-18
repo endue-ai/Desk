@@ -22,6 +22,7 @@
 
 .layer-system .modes,
 .layer-system .desktops,
+.layer-system .shortcuts,
 .layer-system .sidebar,
 .layer-system .account-bar {
   z-index: var(--z-system);
@@ -32,29 +33,42 @@
   z-index: var(--z-popover);
 }
 
-/* The agent bar lies between the profile switcher (24 + 32, the 8 + 32 its "+" took until issue
-   295, kept, then 20: 116) and the account bar, never on them (issue 159). It keeps clear of 200
-   px from the bottom, the room the account bar took with four buttons; with its two the bar is
-   16 + 92, and the agent bar is not moved yet. Centred 88 px above the middle, no taller than
-   keeps its top at 116 (408 = 2 × (88 + 116)), in an app 628 px high or more. A shorter app hangs
-   it from under the switcher, down to those 200 px (316 = 116 + 200), and what still does not fit
-   scrolls, by the wheel or the trackpad and the keys: no scrollbar is drawn, which in a bar this
-   narrow took a quarter of it and sat on the avatars. */
+/* The left column lies between the profile switcher (24 + 32, the 8 + 32 its "+" took until issue
+   295, kept, then 20: 116) and the account bar, never on them (issue 159), and keeps clear of 200
+   px from the bottom, the room the account bar took with four buttons (with its two it is 16 + 92).
+   The shortcut bar hangs at its top (shortcuts.css, ADR 0274), no taller than half the column. Its
+   height is its buttons' (it says how many: --shortcuts-count) and a bar's padding and border, the
+   bar's width less a button's (shell.css); 100vh, not 100%, as a translate's 100% is its own box's
+   (the shell is fixed over the whole viewport). The agent bar starts 12 under it. */
+.layer-system {
+  --left-top: 116px;
+  --left-bottom: 200px;
+  --shortcuts-most: calc((100vh - var(--left-top) - var(--left-bottom)) / 2);
+  --shortcuts-height: min(
+    var(--shortcuts-most),
+    calc(
+      var(--shortcuts-count) * (var(--bar-button) + var(--space-1)) - var(--space-1) +
+        var(--bar-width) - var(--bar-button)
+    )
+  );
+  /* No shortcut bar (no count): no room for it. */
+  --agents-top: calc(var(--left-top) + var(--shortcuts-room, 0px));
+  --shortcuts-room: calc(var(--shortcuts-height) + var(--space-3));
+}
+/* The agent bar stays centred 88 px above the middle while that keeps its top at --agents-top
+   (the translate's max: half its height up, or no more than to that top); a taller one hangs from
+   there, down to the 200 px, and what still does not fit scrolls, by the wheel or the trackpad and
+   the keys: no scrollbar is drawn, which in a bar this narrow took a quarter of it and sat on the
+   avatars. */
 .layer-system .sidebar {
   top: calc(50% - 88px);
-  max-height: calc(100% - 408px);
+  max-height: calc(100vh - var(--agents-top) - var(--left-bottom));
   overflow-y: auto;
   overscroll-behavior-y: contain;
   scrollbar-width: none;
+  transform: translateY(max(-50%, calc(var(--agents-top) - 50vh + 88px)));
 }
 .layer-system .sidebar::-webkit-scrollbar { display: none; }
-@media (max-height: 627px) {
-  .layer-system .sidebar {
-    top: 116px;
-    max-height: calc(100% - 316px);
-    transform: none;
-  }
-}
 .account-bar {
   left: var(--bar-inset);
   top: auto;

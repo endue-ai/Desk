@@ -6,6 +6,7 @@
 import type { SurfacePlacement } from "../modes/types";
 import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
+import { viewIcon } from "../shell/plugin-icons";
 import type { DeskState } from "../shell/state";
 import { ENDUE_AGENT_VIEW, ENDUE_SPACE_VIEW, enduePresence } from "../system/endue-ids";
 import { isLocalAgent, LOCAL_VIEW, localName } from "../system/local-ids";
@@ -69,7 +70,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
     const adopted = s.adopted.find((a) => a.id === id);
     const name = adopted?.title ?? id;
     return {
-      icon: "box",
+      icon: viewIcon(view),
       title: name,
       sub: "",
       byEris: false,
@@ -84,7 +85,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
   switch (view) {
     case "calendar":
       return {
-        icon: "calendar",
+        icon: viewIcon(view),
         title: ctx.tr("surfaceCalendar"),
         sub: ctx.tr("thisWeek"),
         byEris: false,
@@ -92,7 +93,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
       };
     case "tomorrow":
       return {
-        icon: "list",
+        icon: viewIcon(view),
         title: ctx.tr("surfaceTomorrow"),
         sub: ctx.tr("forTomorrow"),
         byEris: true,
@@ -100,7 +101,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
       };
     case "notes":
       return {
-        icon: "note",
+        icon: viewIcon(view),
         title: ctx.tr("surfaceNotes"),
         sub: ctx.tr("notesHint"),
         byEris: false,
@@ -108,7 +109,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
       };
     case "launcher":
       return {
-        icon: "plus",
+        icon: viewIcon(view),
         title: ctx.tr("launcherTitle"),
         sub: ctx.tr("launcherHint"),
         byEris: false,
@@ -116,7 +117,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
       };
     case "keys":
       return {
-        icon: "settings",
+        icon: viewIcon(view),
         title: ctx.tr("keysTitle"),
         sub: ctx.tr("keysHint"),
         byEris: false,
@@ -127,7 +128,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
     const id = view.slice(LOCAL_VIEW.length) as Parameters<typeof localAgentBody>[1];
     const running = s.localRuns.find((r) => r.agent === id && r.state === "running");
     return {
-      icon: "user",
+      icon: viewIcon(view),
       title: ctx.tr("agentScreen", { name: localName(s.localAgents, id) }),
       sub: running?.prompt ?? "",
       byEris: running ? s.erisRuns.includes(running.runId) : false,
@@ -138,7 +139,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
     const id = view.slice(ENDUE_AGENT_VIEW.length);
     const agent = s.endue.agents.find((a) => a.id === id);
     return {
-      icon: "user",
+      icon: viewIcon(view),
       title: agent?.name || endueText(s.lang, "badge"),
       sub: agent ? presenceText(s.lang, enduePresence(agent, s.endue.conversations)) : "",
       byEris: false,
@@ -149,7 +150,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
     const id = view.slice(ENDUE_SPACE_VIEW.length);
     const space = s.endue.spaces.find((sp) => sp.id === id);
     return {
-      icon: "target",
+      icon: viewIcon(view),
       title: space?.name || endueText(s.lang, "spaceBadge"),
       sub: space?.goal ?? "",
       byEris: false,
@@ -161,7 +162,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
     const name = s.agents.find((a) => a.id === id)?.name ?? id;
     const goal = s.tasks.find((t) => t.targetAgentId === id && t.status === "working")?.goal ?? "";
     return {
-      icon: "user",
+      icon: viewIcon(view),
       title: ctx.tr("agentScreen", { name }),
       sub: goal,
       byEris: false,
@@ -171,7 +172,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
   const name = view.replace(/^(file|recent):/, "");
   const item = s.drawer.find((d) => d.id === name);
   return {
-    icon: view.startsWith("recent:") ? "sparkle" : "file",
+    icon: viewIcon(view),
     title: item?.name ?? name.replace(/^recent-/, ""),
     sub: view.startsWith("recent:") ? ctx.tr("recent") : ctx.tr("file"),
     byEris: view.startsWith("recent:"),

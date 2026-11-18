@@ -337,6 +337,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       wake: (id) => host.wake(id),
       another: (id, before) => host.another(id, before),
       keep: (id, surface) => keepState(host, id, surface),
+      listed: () => hub.plugins,
+      onListed: (listener) => hub.onPolicy(() => listener()),
     };
   }
 

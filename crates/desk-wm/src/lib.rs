@@ -92,8 +92,9 @@ pub use host::{
 pub use layout::{DesktopLayout, Saved, Visible};
 pub use magnet::MAGNET;
 pub use minimap::{
-    Fit, MAP, MapDrag, fill_in_sight, fit_world, map_shows, pan_by_key, pan_centred_on,
-    pan_moved_by, to_map, to_world, view_rect, world_of,
+    Fit, MAP, MAP_LEAST, MAP_MOST, MapDrag, MapEdges, fill_in_sight, fit_world, map_resized,
+    map_shows, map_size, pan_by_key, pan_centred_on, pan_moved_by, to_map, to_world, view_rect,
+    world_of,
 };
 pub use pan::{
     EXTENT, LATCH_MS, LATCH_SLOP, PanDrag, PanTarget, WheelLatch, WheelMode, bounded, drag_pans,
