@@ -13,6 +13,7 @@ import { testWindowManager } from "../wm/testing";
 import { takeDesk } from "../wm/view";
 import { edit, setDesktop, settled } from "./actions";
 import { mountBottom } from "./Bottom";
+import { mapWidthOf } from "./MapStrip";
 import type { ShellCtx } from "./context";
 import { t } from "./copy";
 import { Store, sampleState } from "./state";
@@ -142,6 +143,29 @@ describe("the strip under the canvas map", () => {
     (root.querySelector(".drawer-button") as HTMLButtonElement).click();
     expect(store.get().popover).toBe("drawer");
     expect(root.querySelector(".map-strip .drawer-panel")).not.toBeNull();
+  });
+
+  it("follows the width the person gave the map, as wide as its box (ADR 0270)", () => {
+    const width = () => document.documentElement.style.getPropertyValue("--map-width");
+    expect(width()).toBe("");
+    store.set({ mapWidth: 288 });
+    expect(width()).toBe("298px");
+    store.set({ mapWidth: null });
+    expect(width(), "the default box: scale.css' own").toBe("");
+    store.set({ mapWidth: 240 });
+    dispose();
+    expect(width(), "gone with the strip").toBe("");
+    dispose = () => {};
+  });
+
+  it("holds a width to what the compositor draws", () => {
+    expect(mapWidthOf(288)).toBe(288);
+    expect(mapWidthOf(250.4)).toBe(250);
+    expect(mapWidthOf(10)).toBe(144);
+    expect(mapWidthOf(9000)).toBe(480);
+    for (const no of [Number.NaN, Number.POSITIVE_INFINITY, "288", null, undefined]) {
+      expect(mapWidthOf(no)).toBeNull();
+    }
   });
 
   it("nothing of the drawer or the origin is left at the bottom left", async () => {

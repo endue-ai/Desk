@@ -5,7 +5,7 @@
 // titles of the shell's own views; desk-wm holds the desk itself (#83), and the live set it sends
 // back is the seam's (compositor-wm.test.ts). A surface moved in the page is the same surface; one
 // released is not named.
-import type { RemoteSurface } from "@endue-ai/runtime";
+import { iconPath, type RemoteSurface } from "@endue-ai/runtime";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cardOf, type DeskReport, startCompositorDesk } from "./compositor-desk";
 
@@ -117,6 +117,28 @@ describe("the desk the page publishes", () => {
     expect(reports[3]?.frames).toEqual([]);
     stop();
     expect(document.documentElement.classList.contains("desk-compositor")).toBe(false);
+  });
+
+  it("names each view's icon and the width the person gave the map (ADR 0270)", () => {
+    const { win, tick } = frames();
+    const r = runtime(["endue.terminal"]);
+    const store = (r.desk as { store: { set(s: object): void; get(): { wm: object } } }).store;
+    const terminal = { id: "endue.terminal", plugin: "endue.terminal", panes: null };
+    const launcher = { id: "window-1", panes: { id: "p1", kind: "view", view: "launcher" } };
+    const windows = { "1": [terminal, launcher] };
+    store.set({ mapFolded: false, mapWidth: null, wm: { here: "1", windows } });
+    const reports: DeskReport[] = [];
+    const stop = startCompositorDesk(win, r.desk, pages(), (report) => reports.push(report));
+    tick();
+    expect(reports[0]?.icons).toEqual({
+      "plugin:endue.terminal": iconPath("terminal"),
+      launcher: iconPath("plus"),
+    });
+    expect(reports[0]?.map).toEqual({ folded: false });
+    store.set({ mapWidth: 288 });
+    tick();
+    expect(reports[1]?.map).toEqual({ folded: false, width: 288 });
+    stop();
   });
 
   it("stops looking every frame once the desk is still, and a change or the compositor's word starts it again", async () => {

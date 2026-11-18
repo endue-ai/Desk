@@ -169,7 +169,6 @@ impl Composed {
                 continue;
             };
             if let Some(before) = self.textures.insert(surface.clone(), picture) {
-                self.unmapped.remove(&before);
                 self.frames.destroy(&mut self.compositor, before);
             }
             crate::frame_trace::line(

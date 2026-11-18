@@ -1,8 +1,8 @@
-// The canvas map and surfaces' snapshots on the compositor (#54, ADR 0161). The map is the
+// The canvas map and surfaces' snapshots on the compositor (#54, ADR 0161, ADR 0270). The map is the
 // compositor's (the twin of the runtime's shell-canvas.spec case it replaces, shell/Minimap.ts gone):
-// it shows while the canvas holds something to find, draws each normal window from its panes'
-// thumbnails, takes the view where it is pressed, moves it with a drag (Escape puts it back), and
-// folds to its button and opens again. The bridge oracle says where the canvas is
+// it shows while the canvas holds something to find, draws each normal window with its icon, takes
+// the view where it is pressed, moves it with a drag (Escape puts it back), folds to its button and
+// opens again, and grows from the grip at its top left corner, its bottom right where it was. The bridge oracle says where the canvas is
 // (desk.windows.list's pan) and `compositor_stats` what the map draws. ui.surface.snapshot, called
 // over the desk socket as the CLI, answers a PNG of a plugin's surface as the compositor holds it.
 import { browser, expect } from "@wdio/globals";
@@ -34,8 +34,11 @@ interface MapState {
   canvas?: number[];
   button?: number[];
   view?: number[];
-  windows?: Array<{ id: string; rect: number[]; focused: boolean; thumbnails: number }>;
-  thumbnails?: number;
+  windows?: Array<{ id: string; rect: number[]; focused: boolean; icon: number[] | null }>;
+  width?: number;
+  grips?: number[][];
+  resizing?: boolean;
+  icons?: number;
 }
 
 const mapNow = async () =>
@@ -140,16 +143,43 @@ describe("the canvas map and snapshots on the compositor (#54)", () => {
     await mapUntil((m) => m.folded === false, "open again");
   });
 
-  it("draws the windows from their surfaces' thumbnails", async () => {
+  it("draws each window with its icon", async () => {
     await call("plugin.setEnabled", { plugin: NOTES, enabled: true, scope: MANAGE });
     await showNotes();
     const map = await mapUntil(
-      (m) =>
-        (m.windows ?? []).some((w) => w.id === NOTES && w.thumbnails === 1) &&
-        (m.thumbnails ?? 0) > 0,
-      "Notes' window from its thumbnail",
+      (m) => (m.windows ?? []).some((w) => w.id === NOTES && w.icon) && (m.icons ?? 0) > 0,
+      "Notes' window with its icon",
     );
-    expect(map.thumbnails).toBeGreaterThan(0);
+    const notes = map.windows?.find((w) => w.id === NOTES);
+    const [x = 0, y = 0, w = 0, h = 0] = notes?.rect ?? [];
+    const icon = middle(notes?.icon ?? []);
+    expect(icon.x > x && icon.x < x + w && icon.y > y && icon.y < y + h).toBe(true);
+  });
+
+  it("grows from its top left corner and keeps the width; Escape puts it back", async () => {
+    await openWindow();
+    const open = await mapUntil((m) => m.shows && !m.folded, "the map shows");
+    const [ox = 0, oy = 0, ow = 0, oh = 0] = open.outer ?? [];
+    const corner = middle(open.grips?.[0]);
+    const to = { x: corner.x - 96, y: corner.y - 60 };
+    await feed([pointer(corner), button(true), pointer(to), button(false)]);
+    const grown = await mapUntil((m) => m.width === 288, "288 wide");
+    const [gx = 0, gy = 0, gw = 0, gh = 0] = grown.outer ?? [];
+    expect([gx + gw, gy + gh]).toEqual([ox + ow, oy + oh]);
+    expect(gw / gh).toBeCloseTo(ow / oh, 1);
+    // The page heard it, so the width stays once the press is over.
+    await browser.pause(300);
+    expect((await mapNow()).width).toBe(288);
+    // Escape in the middle of a resize: the width it began at.
+    const from = middle(grown.grips?.[0]);
+    await feed([pointer(from), button(true), pointer({ x: from.x + 48, y: from.y + 30 })]);
+    await mapUntil((m) => m.width === 240, "shrinking");
+    await feed([
+      { type: "key", key: "Escape", code: "Escape", pressed: true },
+      { type: "key", key: "Escape", code: "Escape", pressed: false },
+      button(false),
+    ]);
+    await mapUntil((m) => m.width === 288 && m.resizing === false, "Escape put it back");
   });
 
   it("ui.surface.snapshot answers a PNG of a plugin's surface as the compositor holds it", async () => {

@@ -43,6 +43,7 @@ mod damage;
 mod draw_list;
 pub mod headless;
 mod hit;
+pub mod icons;
 pub mod input;
 mod node;
 mod pipelines;
@@ -61,6 +62,7 @@ pub use chrome::{
 };
 pub use compositor::{Compositor, FrameStats};
 pub use hit::{Hit, hit_test};
+pub use icons::{ICON_IDS, Icons};
 pub use node::{GroupNode, Node, NodeId, NodeKind, RectNode, SurfaceNode};
 pub use scene::{Scene, SceneError, Wallpaper};
 pub use text::{FontStack, Fonts, TextAlign, TextNode, TextStyle};
