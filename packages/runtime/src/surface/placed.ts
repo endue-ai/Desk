@@ -8,7 +8,7 @@ import type { SurfacePlacement } from "../modes/types";
 import { layoutOf, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import type { DeskState } from "../shell/state";
-import { leaves, panesOf } from "./tree";
+import { tabsOf } from "./tree";
 
 const VIEW = "plugin:";
 
@@ -26,7 +26,7 @@ export function outWindows(s: DeskState): SurfacePlacement[] {
 export function windowPlugins(s: DeskState, id: string): string[] {
   const p = windowsOf(s).find((w) => w.id === id) ?? outWindows(s).find((w) => w.id === id);
   if (!p) return [];
-  const ids = leaves(panesOf(p)).flatMap(({ view }) => {
+  const ids = tabsOf(p).flatMap(({ view }) => {
     if (view === p.id && p.plugin) return [p.plugin];
     return view.startsWith(VIEW) ? [view.slice(VIEW.length)] : [];
   });
@@ -37,7 +37,7 @@ export function windowPlugins(s: DeskState, id: string): string[] {
 export function placedPlugins(s: DeskState): string[] {
   const ids = layoutOf(s).surfaces.flatMap((p) => [
     p.plugin,
-    ...leaves(panesOf(p))
+    ...tabsOf(p)
       .filter((leaf) => leaf.view.startsWith(VIEW))
       .map((leaf) => leaf.view.slice(VIEW.length)),
   ]);

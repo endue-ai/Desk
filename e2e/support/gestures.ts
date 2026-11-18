@@ -32,12 +32,13 @@ export const MOD = process.platform === "darwin" ? KEY.meta : KEY.control;
  * Where the shell draws a window's chrome today (`surface/Surface.ts`, `surface.css`): a 40 px title
  * bar, its tools 24 px wide every 26 px from 21 px inside the right edge, and the resize grips
  * along the edges (6 px) and in the corners (16 px). The compositor's chrome keeps them (#81).
- * A window that shows one plugin has six tools; a split window and one of the desk's own views have
- * no pop-out (#235), so theirs past Close sit one place nearer the edge (`toolAt`'s `popOut`).
+ * A window that shows one plugin has five tools, New tab the last (ADR 0268); a window of several
+ * tabs and one of the desk's own views have no pop-out (#235), so theirs past Close sit one place
+ * nearer the edge (`toolAt`'s `popOut`), and one of the desk's own views has no New tab.
  * No tool puts a window in the drawer (#280): `putAway` runs the command.
  */
 export const TITLE_BAR = 40;
-const TOOLS = ["close", "pop-out", "pin", "floating", "split-down", "split-right"] as const;
+const TOOLS = ["close", "pop-out", "pin", "floating", "new-tab"] as const;
 export type Tool = (typeof TOOLS)[number];
 export type Grip = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
@@ -46,7 +47,7 @@ export const titleAt = (w: Rect, dx = 80): Point => ({ x: w.x + dx, y: w.y + TIT
 
 /**
  * The middle of one of a window's title bar tools: `popOut` false for a window with no pop-out
- * tool (a split window, or one of the desk's own views).
+ * tool (a window of several tabs, or one of the desk's own views).
  */
 export const toolAt = (w: Rect, tool: Tool, popOut = true): Point => {
   const place = TOOLS.indexOf(tool);

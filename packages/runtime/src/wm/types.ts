@@ -9,7 +9,6 @@ import type {
   DesktopId,
   DesktopLayout,
   DesktopRef,
-  PaneSplit,
   SurfacePlacement,
 } from "../modes/types";
 
@@ -53,10 +52,10 @@ export interface WindowHints {
   fixed?: boolean;
 }
 
-/** The window, and the pane in it, a desktop had in use when the person left it. */
+/** The window, and the tab in it, a desktop had in use when the person left it. */
 export interface InUse {
   window: string;
-  pane: string | null;
+  tab: string | null;
 }
 
 /** What the profile in force saves, already layered: its desktops and each one's layout. */
@@ -77,7 +76,8 @@ export interface WmDesk {
   adopted: Adopted[];
   drawer: DrawerItem[];
   focused: string | null;
-  pane: string | null;
+  /** The tab in use: the one the window in use shows. */
+  tab: string | null;
 }
 
 /** A window of the desktop in front where it is drawn: on screen, at its stacking level. */
@@ -108,7 +108,7 @@ export interface WmView {
   windows: Record<DesktopId, SurfacePlacement[]>;
   layouts: Record<DesktopId, DesktopLayout>;
   dirty: boolean;
-  /** The plugin surface the pane in use shows. */
+  /** The plugin surface the tab in use shows. */
   focusedPlugin: string | null;
   moved: StoredMoved | null;
   /** The desktop in front has an arrangement to put back. */
@@ -163,14 +163,14 @@ export type Edit =
   | { op: "show-plugin"; id: string }
   | { op: "open-view"; view: string }
   | { op: "new-window" }
-  | { op: "focus"; window: string; pane?: string | null }
+  | { op: "focus"; window: string; tab?: string | null }
   | { op: "blur" }
   | { op: "focus-next"; step: number }
-  | { op: "split"; dir: PaneSplit["dir"] }
-  | { op: "close-pane"; window?: string; pane?: string }
+  | { op: "add-tab"; window: string; view: string }
+  | { op: "close-tab"; window?: string; tab?: string }
+  | { op: "step-tab"; step: number }
   | { op: "close-window"; id: string }
-  | { op: "show-in-pane"; window: string; pane: string; view: string }
-  | { op: "resize-split"; window: string; split: string; ratio: number }
+  | { op: "show-in-tab"; window: string; tab: string; view: string }
   | { op: "toggle-pin"; id: string }
   | { op: "toggle-floating"; id: string }
   | { op: "put-away"; id: string; name: string; now: number }

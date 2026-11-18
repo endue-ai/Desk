@@ -14,7 +14,7 @@ import { takeDesk } from "../wm/view";
 import { edit, openSurface, setDesktop, stash, togglePin } from "./actions";
 import { deskSnapshot } from "./desk-view";
 import { Store, sampleState } from "./state";
-import { focusPane, newWindow, splitPane, toggleFloating } from "./windows";
+import { focusTab, newWindow, toggleFloating } from "./windows";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 const VECTOR = join(
@@ -69,7 +69,6 @@ async function scene() {
   wm.run({ op: "snap", fill: "right" }, "endue.mail");
   await togglePin(c, "endue.git");
   const one = await newWindow(c);
-  await splitPane(c, "row");
   const two = await newWindow(c);
   wm.run({ op: "maximize" }, two);
   await stash(c, "e2e.hello", "Hello");
@@ -79,7 +78,7 @@ async function scene() {
   await edit(c, { op: "pan", to: { x: -100, y: 50 } });
   await setDesktop(c, "1");
   await edit(c, { op: "pan", to: { x: 30.5, y: -20.4 } });
-  await focusPane(c, one, "p1");
+  await focusTab(c, one, "p1");
   return c;
 }
 

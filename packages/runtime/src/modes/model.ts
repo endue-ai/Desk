@@ -3,7 +3,7 @@
  * Desktops are named by id (ADR 0117); a number names one by its position in the mode's list.
  */
 import { idAt, sameList } from "../desktops/model";
-import { leaves, panesOf } from "../surface/tree";
+import { tabsOf } from "../surface/tree";
 import type {
   Desktop,
   DesktopId,
@@ -88,8 +88,7 @@ const placedBy = (mode: Mode, base: Mode | undefined): Set<string> =>
 /** A plugin's own window: named after its plugin and showing nothing else; its slot shows it again. */
 function ownWindow(s: SurfacePlacement): boolean {
   return (
-    s.id === s.plugin &&
-    leaves(panesOf(s)).every((l) => l.view === s.id || l.view === `plugin:${s.plugin}`)
+    s.id === s.plugin && tabsOf(s).every((l) => l.view === s.id || l.view === `plugin:${s.plugin}`)
   );
 }
 

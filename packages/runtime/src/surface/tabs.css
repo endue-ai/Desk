@@ -1,4 +1,4 @@
-/* Panes inside a surface, the launcher, the shortcut list and the agent screen. */
+/* Tabs inside a surface, the launcher, the shortcut list and the agent screen. */
 
 .surface-heading {
   display: flex;
@@ -16,41 +16,53 @@
 .surface-heading > .surface-name { flex: 0 1 auto; }
 .surface-heading > .surface-sub { flex: 0 100 auto; }
 
-.panes,
-.split,
-.split-a,
-.split-b {
-  display: flex;
+/* A window's tabs: what the tab shown shows, under a 28px strip of them once there are several
+   (desk-wm `host/tabs.rs` cuts the same boxes). */
+.tabs {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
   min-width: 0;
   min-height: 0;
 }
-.panes { height: 100%; }
-.panes > *,
-.split-a > *,
-.split-b > * { flex: 1 1 auto; }
-.split { flex: 1 1 auto; }
-.split-row { flex-direction: row; }
-.split-column { flex-direction: column; }
-.split-a { flex: 0 0 50%; }
-.split-b { flex: 1 1 0; }
-
-.divider {
-  position: relative;
-  touch-action: none;
+.tabs.is-many { grid-template-rows: 28px minmax(0, 1fr); }
+.tab-strip { display: none; }
+.tabs.is-many > .tab-strip {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  border-bottom: 1px solid var(--desk-border);
+  color: var(--desk-text-muted);
+  font-size: var(--text-xs);
+}
+.tab {
+  display: flex;
+  flex: 0 1 180px;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border-right: 1px solid var(--desk-border);
+  cursor: default;
   user-select: none;
-  /* Above both panes, so its 9 px hit area (::before) is not covered by the pane after it. */
-  z-index: 1;
-  flex: none;
-  background: var(--desk-border);
-  outline-offset: 0;
+  outline-offset: -2px;
   transition: background-color var(--motion-fast) ease;
 }
-.split-row > .divider { width: 1px; cursor: col-resize; }
-.split-column > .divider { height: 1px; cursor: row-resize; }
-.divider::before { content: ""; position: absolute; inset: 0 -4px; }
-.split-column > .divider::before { inset: -4px 0; }
-.divider:hover,
-.divider:focus-visible { background: var(--desk-accent); }
+.tab:hover { background: var(--desk-hover); }
+.tab.is-active { color: var(--desk-text); box-shadow: inset 0 -2px 0 var(--desk-accent); }
+.tab-name {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tab-name > svg { flex: none; }
+.tab-close { flex: none; width: 20px; height: 20px; }
 
 .pane {
   position: relative;
@@ -59,21 +71,7 @@
   min-width: 0;
   min-height: 0;
 }
-.panes.is-split .pane { grid-template-rows: 28px minmax(0, 1fr); }
-.pane.is-active { box-shadow: inset 0 0 0 1px var(--desk-accent); }
-.pane-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  height: 28px;
-  padding: 0 var(--space-1) 0 var(--space-3);
-  border-bottom: 1px solid var(--desk-border);
-  color: var(--desk-text-muted);
-  font-size: var(--text-xs);
-}
-.pane.is-active .pane-head { color: var(--desk-text); }
-.pane-name { flex: 1; overflow: hidden; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.pane-close { width: 20px; height: 20px; }
+.pane[hidden] { display: none; }
 .pane-body { min-height: 0; overflow: auto; }
 
 .launcher { display: grid; align-content: start; gap: var(--space-2); padding: var(--space-3); }

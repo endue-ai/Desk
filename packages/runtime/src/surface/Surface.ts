@@ -1,6 +1,6 @@
 /**
  * Surfaces: windows on the desk, as the page lays them out for what it draws of them (the title
- * bar's icon and tools, the shell's own views, the panes' headers) and for the plugin surfaces'
+ * bar's icon and tools, the shell's own views, the strip of its tabs) and for the plugin surfaces'
  * places (ADR 0160); the compositor draws their chrome (ADR 0151). The title bar and the grips tell
  * the window manager what a press starts (`host-gestures.ts`): it moves and resizes the window (ADR
  * 0153).
@@ -15,16 +15,16 @@ import { togglePin, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen, render } from "../shell/dom";
 import { icon } from "../shell/icons";
-import { closeWindow, focusPane, isFollowing, splitPane, toggleFloating } from "../shell/windows";
+import { closeWindow, focusTab, isFollowing, newTab, toggleFloating } from "../shell/windows";
 import type { Rect } from "../wm/types";
 import { surfaceAnchors } from "./anchors";
 import { trackTopChrome } from "./clearance";
 import { isFloating } from "./coordinates";
 import { hostGestures } from "./host-gestures";
-import { renderPanes } from "./PaneView";
 import { placeSection } from "./section-place";
-import { leaves, panesOf } from "./tree";
-import { activeLeaf, activeView, type Mounted, resolveView, viewOf } from "./views";
+import { mountTabs, type TabsView } from "./TabsView";
+import { tabKind, tabsOf } from "./tree";
+import { activeView, resolveView, viewOf } from "./views";
 import type { WindowPages } from "./window-pages";
 
 function tool(label: string, name: string, run: () => void, pressed?: boolean) {
@@ -53,9 +53,8 @@ interface Entry {
   placement: SurfacePlacement;
   /** Rebuild the whole surface when this changes (language). */
   key: string;
-  /** Rebuild only the panes when this changes. */
-  panesKey: string;
-  panes: Mounted;
+  /** Its tabs: the one shown, under their strip (ADR 0268). */
+  tabs: TabsView;
   /** Whether it lies in its own page (ADR 0201), and where its window is on the desk. */
   own: boolean;
   at: Rect;
@@ -91,7 +90,7 @@ export function mountSurfaces(
   };
 
   /**
-   * Title bar text for the active pane: icon, name, the view's own line and Eris's badge; built
+   * Title bar text for the tab shown: icon, name, the view's own line and Eris's badge; built
    * again only when one of them changed, so a move, whose every step draws again, paints nothing.
    */
   const drawTitle = (entry: Entry, p: SurfacePlacement) => {
@@ -117,20 +116,12 @@ export function mountSurfaces(
   const build = (placed: SurfacePlacement): Entry => {
     const p = placed;
     const title = h("span", { class: "surface-heading" });
-    const split = (dir: "row" | "column") => () => {
-      focusPane(ctx, p.id, activeLeaf(ctx, p)?.id);
-      splitPane(ctx, dir);
-    };
-    const splitRight = tool(
-      hint(ctx.tr("splitRight"), "desk.display.split-right"),
-      "split-right",
-      split("row"),
-    );
-    const splitDown = tool(
-      hint(ctx.tr("splitDown"), "desk.display.split-down"),
-      "split-down",
-      split("column"),
-    );
+    // Another window of the plugin this window shows, as a tab: the one kind it takes (ADR 0268).
+    const tabTool = tool(hint(ctx.tr("newTab"), "desk.display.new-tab"), "plus", () => {
+      newTab(ctx, p.id).catch((error) =>
+        reportFailure(ctx.runtime.notify, ctx.tr("newTab"), error),
+      );
+    });
     const pinTool = tool(
       ctx.tr(p.pinned ? "unpin" : "pin"),
       "pin",
@@ -145,13 +136,12 @@ export function mountSurfaces(
     );
     const relabel = () => {
       floatTool.setAttribute("aria-pressed", String(isFloating(entry.placement)));
-      for (const [button, label, command] of [
-        [splitRight, ctx.tr("splitRight"), "desk.display.split-right"],
-        [splitDown, ctx.tr("splitDown"), "desk.display.split-down"],
-      ] as const) {
-        button.setAttribute("aria-label", hint(label, command));
-        button.title = hint(label, command);
-      }
+      const s = ctx.store.get();
+      const placed = entry.placement;
+      // A window of the shell's own view takes no tab: it has no tool for one.
+      tabTool.hidden = !tabKind(tabsOf(placed), (view) => resolveView(s, placed, view));
+      tabTool.setAttribute("aria-label", hint(ctx.tr("newTab"), "desk.display.new-tab"));
+      tabTool.title = hint(ctx.tr("newTab"), "desk.display.new-tab");
       const pinned = entry.placement.pinned;
       pinTool.setAttribute("aria-label", ctx.tr(pinned ? "unpin" : "pin"));
       pinTool.title = ctx.tr(pinned ? "unpin" : "pin");
@@ -164,8 +154,7 @@ export function mountSurfaces(
       h(
         "span",
         { class: "surface-tools" },
-        splitRight,
-        splitDown,
+        tabTool,
         floatTool,
         pinTool,
         // Out of the canvas into an OS window of its own (issue 235): a window of one plugin only.
@@ -181,7 +170,8 @@ export function mountSurfaces(
         }),
       ),
     );
-    const body = h("div", { class: "surface-body" });
+    const tabs = mountTabs(ctx, p.id);
+    const body = h("div", { class: "surface-body" }, tabs.el);
     const el = h(
       "section",
       {
@@ -193,11 +183,10 @@ export function mountSurfaces(
       bar,
       body,
     );
-    /** Focus follows the pointer or keyboard into a pane. */
+    /** Focus follows the pointer or keyboard into the window; a tab of its strip asks for itself. */
     const focusFrom = (target: EventTarget | null) => {
-      const pane = (target as Element | null)?.closest?.("[data-pane]")?.getAttribute("data-pane");
-      const s = ctx.store.get();
-      focusPane(ctx, p.id, pane ?? (s.focused === p.id ? (s.pane ?? undefined) : undefined));
+      if ((target as Element | null)?.closest?.("[data-tab]")) return;
+      focusTab(ctx, p.id);
     };
     // A host that hears the presses put the window pressed in use before this page heard it (the
     // compositor, ADR 0230): the press asks nothing here, nor does the focus it moves, which may
@@ -230,14 +219,13 @@ export function mountSurfaces(
       body,
       placement: p,
       key: "",
-      panesKey: "",
-      panes: { el: body },
+      tabs,
       own: false,
       at: { x: 0, y: 0, w: 0, h: 0 },
       relabel,
       off: () => {
         for (const off of offs) off();
-        entry.panes.off?.();
+        entry.tabs.off();
       },
     };
     return entry;
@@ -287,28 +275,8 @@ export function mountSurfaces(
         entry.own = true;
       }
       entry.placement = p;
-      const all = leaves(panesOf(p));
-      const views = all.map((l) => resolveView(s, p, l.view));
-      const panesKey = JSON.stringify([panesOf(p), views]);
-      if (entry.panesKey !== panesKey) {
-        const focused = entry.el.ownerDocument.activeElement;
-        const activeSplit = entry.body.contains(focused)
-          ? focused?.getAttribute("data-split")
-          : null;
-        entry.panes.off?.();
-        entry.panes = renderPanes(ctx, p);
-        entry.body.replaceChildren(entry.panes.el);
-        entry.panesKey = panesKey;
-        if (activeSplit) {
-          entry.body
-            .querySelector<HTMLElement>(`[data-split="${CSS.escape(activeSplit)}"]`)
-            ?.focus();
-        }
-      }
-      const active = s.focused === p.id ? activeLeaf(ctx, p)?.id : undefined;
-      for (const pane of entry.body.querySelectorAll<HTMLElement>("[data-pane]")) {
-        pane.classList.toggle("is-active", pane.dataset.pane === active && all.length > 1);
-      }
+      const views = tabsOf(p).map((t) => resolveView(s, p, t.view));
+      entry.tabs.update(p);
       entry.el.classList.toggle(
         "is-eris",
         views.every((view) => viewOf(ctx, view).byEris),
@@ -357,7 +325,7 @@ export function mountSurfaces(
         windowsOf(s),
         s.adopted,
         s.focused,
-        s.pane,
+        s.tab,
         s.lang,
         s.desktop,
         s.pan,

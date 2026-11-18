@@ -37,6 +37,11 @@ export interface RuntimePlugins {
   /** Open the surface of a plugin that started asleep (#590), as a window placing it asks. */
   wake(id: string): void;
   /**
+   * Another window of a running plugin (ADR 0212): its key. `before` hears the key before the
+   * window opens, to ask the window manager for the tab that takes it (ADR 0268).
+   */
+  another?(id: string, before?: (key: string) => void): string;
+  /**
    * Ask a plugin for its surface's state and keep it for its next page, as an unload does: before
    * its window moves into or out of an OS window (issue 235), which loads its page again.
    */

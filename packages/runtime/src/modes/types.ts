@@ -45,8 +45,12 @@ export interface SurfacePlacement {
    * anchored to the app's viewport whatever the pan, and above the normal windows.
    */
   floating?: boolean;
-  /** How the surface is split into panes. Absent: one pane showing the view named by `id`. */
-  panes?: PaneNode;
+  /** Its tabs (ADR 0268). Absent: one tab showing the view named by `id`. */
+  tabs?: Tab[];
+  /** The tab it shows; absent, or naming one it does not have: its first. */
+  tab?: string;
+  /** A layout saved while a window split inside: its panes read as tabs, first to last. */
+  panes?: SavedPane;
   /**
    * Where it was before it filled the app or a part of it, in the coordinates of the mode it had then, and
    * that mode (`floating`; absent in layouts saved before snaps floated). Present only while it
@@ -85,24 +89,16 @@ export interface SurfacePlacement {
   out?: { x: number; y: number; w: number; h: number };
 }
 
-/** One pane: shows a view ("calendar", "notes", "agent:<id>", "launcher", ...). */
-export interface PaneLeaf {
-  kind: "view";
+/** One tab: shows a view ("calendar", "notes", "agent:<id>", "launcher", "plugin:<key>", ...). */
+export interface Tab {
   id: string;
   view: string;
 }
 
-/** Two panes side by side ("row") or stacked ("column"); `ratio` is the first one's share. */
-export interface PaneSplit {
-  kind: "split";
-  id: string;
-  dir: "row" | "column";
-  ratio: number;
-  a: PaneNode;
-  b: PaneNode;
-}
-
-export type PaneNode = PaneLeaf | PaneSplit;
+/** The pane tree layouts kept before tabs: read only, to turn its panes into tabs. */
+export type SavedPane =
+  | { kind: "view"; id: string; view: string }
+  | { kind: "split"; id?: string; dir?: string; ratio?: number; a: SavedPane; b: SavedPane };
 
 export interface DesktopLayout {
   surfaces: SurfacePlacement[];

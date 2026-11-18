@@ -10,7 +10,7 @@
  */
 import { CommandError } from "../commands";
 import { type Ctx, desktopsOf, edit, windowsOf } from "../shell/actions";
-import { closeWindow, focusPane } from "../shell/windows";
+import { closeWindow, focusTab } from "../shell/windows";
 import { outWindows } from "../surface/placed";
 import type { Arranged } from "../wm/types";
 import { type ArrangeCopyKey, arrangeText } from "./copy";
@@ -172,7 +172,7 @@ export function defineArrangeCommands(ctx: Ctx, keys?: (window: string) => void)
         }
         // Wholly in sight first (the canvas pans when it has to), then the keys.
         await edit(ctx, { op: "reveal", id: window });
-        await focusPane(ctx, window);
+        await focusTab(ctx, window);
         if (!ctx.runtime.shortcuts.focused) keys?.(window);
         return { window };
       },

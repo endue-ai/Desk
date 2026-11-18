@@ -17,7 +17,7 @@ import { closedForBrain } from "../eris-context/brain";
 import { mountErisContext } from "../eris-context/mount";
 import { contextOf } from "../eris-context/registry";
 import type { FrameResponses } from "../frames/watch";
-import { leaves, panesOf } from "../surface/tree";
+import { tabsOf } from "../surface/tree";
 import type { WindowManagerHost } from "../wm/host";
 import type { Told } from "../wm/types";
 import type { ShellCtx } from "./context";
@@ -38,7 +38,7 @@ export function toldOf(ctx: Seen): Told {
     ...s.drawer.flatMap((d) => (d.placement ? [d.placement] : [])),
   ];
   for (const p of windows) {
-    for (const leaf of leaves(panesOf(p))) {
+    for (const leaf of tabsOf(p)) {
       if (!leaf.view.startsWith("plugin:") && !(leaf.view in titles))
         titles[leaf.view] = surfaceTitle(ctx, leaf.view);
     }

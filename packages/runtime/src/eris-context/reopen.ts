@@ -1,17 +1,17 @@
 /**
  * desk.windows.reopen (ADR 0124): a window from the log comes back where it was, on the desktop it
- * was on (the one in front when that desktop is gone), with its place, size and panes, and the
+ * was on (the one in front when that desktop is gone), with its place, size and tabs, and the
  * plugins it showed are started again. It is the window in use. A plugin that cannot start takes
  * the window back out and leaves it in the log. When another window took its id meanwhile, a window
- * whose panes name their views comes back under a new id; one its id names (a plugin's own window)
+ * whose tabs name their views comes back under a new id; one its id names (a plugin's own window)
  * brings that window up instead.
  */
 import type { DesktopId, SurfacePlacement } from "../modes/types";
 import { desktopId, desktopsOf, edit, raise, setDesktop, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { freeWindowId } from "../shell/window-ids";
-import { focusPane } from "../shell/windows";
-import { leaves, panesOf } from "../surface/tree";
+import { focusTab } from "../shell/windows";
+import { tabsOf } from "../surface/tree";
 import type { ClosedLog } from "./closed";
 import { ec } from "./copy";
 
@@ -25,9 +25,9 @@ export interface Reopened {
   h: number;
 }
 
-/** The placement under an id no window has, when its panes do not depend on its id. */
+/** The placement under an id no window has, when its tabs do not depend on its id. */
 function renamed(p: SurfacePlacement, ids: Set<string>): SurfacePlacement | undefined {
-  if (!p.panes || leaves(panesOf(p)).some((leaf) => leaf.view === p.id)) return undefined;
+  if (tabsOf(p).some((tab) => tab.view === p.id)) return undefined;
   return { ...p, id: freeWindowId(ids) };
 }
 
@@ -38,7 +38,7 @@ async function bringUp(ctx: ShellCtx, id: string): Promise<DesktopId> {
   const drawn = s.drawer.find((d) => d.placement?.id === id);
   if (holder) {
     if (holder.id !== desktopId(s)) await setDesktop(ctx, holder.id);
-    await focusPane(ctx, id);
+    await focusTab(ctx, id);
   } else if (drawn) await raise(ctx, drawn.id);
   return desktopId(ctx.store.get());
 }
@@ -73,6 +73,6 @@ export async function reopenWindow(ctx: ShellCtx, log: ClosedLog, id?: string): 
     log.put(entry);
     throw error;
   }
-  await focusPane(ctx, placement.id);
+  await focusTab(ctx, placement.id);
   return { id: placement.id, title: entry.title, desktop, x, y, w, h };
 }
