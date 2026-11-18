@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// What web.read and web.act ask of a web view's page (ADR 0268; web_page.js, web_page_text.js),
+// What web.read and web.act ask of a web view's page (ADR 0270; web_page.js, web_page_text.js),
 // run in a page of the test's: the text it reads and the refs it names, what it leaves out, a
 // page of another site left alone, and what makes a page ready for typed text, a key and a choice.
 import { readFileSync } from "node:fs";
@@ -70,9 +70,15 @@ describe("a web view's page, read", () => {
   });
 
   it("reads a role's box of other things through, not as one thing", () => {
-    page(`<div role="button" tabindex="0">Save</div>
+    page(`<div role="button" tabindex="0"><i role="img" tabindex="-1"></i>Save</div>
       <div tabindex="0"><p>A long card</p><a href="/x">Open</a></div>`);
     expect(text()).toBe('[e1 button "Save"]\nA long card\n[e2 link "Open"]');
+  });
+
+  it("takes what shows the pointer a hand for something to press, once", () => {
+    page(`<div style="cursor: pointer"><span style="cursor: pointer">Open menu</span></div>
+      <p>plain</p>`);
+    expect(text()).toBe('[e1 item "Open menu"]\nplain');
   });
 
   it("answers a part of the text, by characters, with the whole text's length", () => {

@@ -1,4 +1,4 @@
-// The desk's assistant reads and operates the Browser's page (ADR 0268): the commands it is
+// The desk's assistant reads and operates the Browser's page (ADR 0270): the commands it is
 // offered (endue.browser.read, scroll, click, type, key, select, back) run here as it runs them,
 // against a page served on this machine. Each answers the page as it reads afterwards, so the
 // spec sees what the real page made of each act: the text with its elements named, a scroll
@@ -22,6 +22,7 @@ const PAGES: Record<string, string> = {
 <p><select id="size" aria-label="Size"><option>Small</option><option>Large</option></select>
 <span id="chosen"></span></p>
 <p hidden>not shown</p>
+<p id="long">${"A page long enough to be read a part at a time. ".repeat(8)}</p>
 <div style="height:3000px"></div><p id="end">The end</p>
 <script>
 let presses = 0;
@@ -57,7 +58,7 @@ function ref(page: Page, what: string): string {
   return found[1] as string;
 }
 
-describe("the Browser, read and operated by the desk's assistant (ADR 0268)", () => {
+describe("the Browser, read and operated by the desk's assistant (ADR 0270)", () => {
   let server: Server;
   let origin = "";
   let page: Page;

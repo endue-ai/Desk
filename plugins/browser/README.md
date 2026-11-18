@@ -14,7 +14,7 @@ own cookies). This page holds the toolbar and asks for addresses.
 | Back, forward, reload, stop | `web.go`; the buttons follow `web.changed`, reload is stop while a page loads |
 | Enter | loads and gives the page the keys (`web.focus`); a press on the toolbar takes them back; Escape puts the page's address back |
 | A window out of the canvas | says the page shows in the desk only |
-| The assistant in the page | `web.read` and `web.act` (ADR 0268): the page as text with its elements named by a ref, then acts on a ref; each command answers the page as it reads once it rests, 4000 characters a part (`more` reads on) |
+| The assistant in the page | `web.read` and `web.act` (ADR 0270): the page as text with its elements named by a ref, then acts on a ref; each command answers the page as it reads once it rests, 4000 characters a part (`more` reads on) |
 
 Not yet: tabs, bookmarks, history, downloads, find, zoom, a page's permission prompts, frames read.
 

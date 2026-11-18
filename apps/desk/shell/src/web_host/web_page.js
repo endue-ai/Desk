@@ -1,4 +1,4 @@
-// What web.read and web.act ask of a web view's page (ADR 0268, `web_page.rs`). The shell runs it
+// What web.read and web.act ask of a web view's page (ADR 0270, `web_page.rs`). The shell runs it
 // in a world of its own in the page's main document, so the page's scripts neither see it nor
 // change what it reads with, and calls `__deskPage(request)`. It answers `{ ok }` or
 // `{ error: { code, message } }` (`moved`, `not_found`, `invalid`), never a thrown error.

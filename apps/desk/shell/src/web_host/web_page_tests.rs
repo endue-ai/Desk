@@ -1,4 +1,4 @@
-//! What `web_page.rs` makes of the page script's answers and of a key (ADR 0268).
+//! What `web_page.rs` makes of the page script's answers and of a key (ADR 0270).
 
 use desk_bridge::WebKeyName;
 use desk_core::WebError;

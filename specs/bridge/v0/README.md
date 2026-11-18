@@ -774,7 +774,7 @@ input method go to the page until a press on the caller's own surface, or the de
 already ended is not an error. A view also ends when its window's surface sleeps, goes away or moves out
 of the desk, and when its plugin stops.
 
-**web.read** reads the page one of the caller's views shows (ADR 0268), under a `web:control` scope
+**web.read** reads the page one of the caller's views shows (ADR 0270), under a `web:control` scope
 whose `hosts`, when it has any, cover the page's host, at the call and again at the address the page
 was read at (`permission_denied` otherwise): `web:browse` shows a page, it does not let its plugin see
 one. It answers the page's `url` and `title`, where it is scrolled to (`scroll`) and its `text` in
