@@ -9,7 +9,7 @@ mod common;
 use std::path::Path;
 
 use common::EPOCH;
-use desk_wm::{Adopted, Desk, Fill, Frame, Offset, Rect, Seen, SplitDir};
+use desk_wm::{Adopted, Desk, Fill, Frame, Offset, Rect, Seen};
 use serde_json::Value;
 
 /// What the runtime knows and the window manager does not: the shell's titles as the TS test's
@@ -62,7 +62,6 @@ fn scene() -> Desk {
     desk.snap_to("endue.mail", Fill::Right);
     desk.toggle_pin("endue.git");
     let one = desk.new_window();
-    desk.split(SplitDir::Row);
     let two = desk.new_window();
     desk.toggle_maximize(&two);
     desk.put_away("e2e.hello", "Hello", EPOCH + 1000);
@@ -76,7 +75,7 @@ fn scene() -> Desk {
     desk.set(|d| {
         d.pan.insert("1".into(), Offset::new(30.5, -20.4));
     });
-    desk.focus_pane(&one, Some("p1"));
+    desk.focus_tab(&one, Some("p1"));
     desk
 }
 

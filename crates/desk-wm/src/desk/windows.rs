@@ -1,6 +1,7 @@
-//! Windows and their panes (`packages/runtime/src/shell/windows.ts`): focusing a pane, revealing a
-//! plugin, ⌘N's new window with a launcher, splitting the pane in use right or down, closing panes
-//! and windows, showing another view in a pane, and the fills (`fill.rs`) as session edits.
+//! Windows and their tabs (`packages/runtime/src/shell/windows.ts`): focusing a tab, revealing a
+//! plugin, ⌘N's new window with a launcher, adding a tab of the window's own kind (ADR 0268),
+//! closing tabs and windows, showing another view in a tab, and the fills (`fill.rs`) as session
+//! edits.
 //!
 //! The runtime's side stays the runtime's: the plugin surface in use (`focused_plugin`) is what
 //! takes the keys, and closing a window answers the plugins to unmount for the session (ADR 0040);
@@ -9,10 +10,9 @@
 use std::collections::BTreeSet;
 
 use crate::fill::{fill_with, toggle_floating, toggle_maximize};
-use crate::pane_min::{body_size, fit_panes, window_min};
-use crate::panes::{self, LAUNCHER};
 use crate::placed::PLUGIN_VIEW;
-use crate::types::{Fill, PaneNode, Placement, Rect, SplitDir};
+use crate::tabs::{self, LAUNCHER, kind_of};
+use crate::types::{Fill, Placement, Rect, Tab};
 
 use super::Desk;
 
@@ -25,24 +25,34 @@ const NEW_Y: f64 = 240.0;
 const NEW_STEP: f64 = 32.0;
 
 impl Desk {
-    /// Focus a window of the desktop in front and one of its panes: the one named, else its first.
-    /// A window not on the desktop in front takes no focus.
-    pub fn focus_pane(&mut self, window: &str, pane: Option<&str>) {
+    /// Put a window of the desktop in front in use, showing one of its tabs: the one named, else
+    /// the one it shows. A window not on the desktop in front takes no focus.
+    pub fn focus_tab(&mut self, window: &str, tab: Option<&str>) {
         // A window out of the canvas is in use while its OS window has the keys (#235).
         let out = || self.out_window(window).map(|(_, p)| p);
         let Some(p) = self.window(window).or_else(out) else {
             return;
         };
-        let tree = p.panes();
-        let leaves = tree.leaves();
-        let target = leaves
-            .iter()
-            .find(|(id, _)| Some(*id) == pane)
-            .or(leaves.first())
-            .map(|(id, _)| id.to_string());
+        let shown = p.shown().id;
+        let target = (tab.filter(|id| tabs::find(&p.tabs(), id).is_some()))
+            .map_or_else(|| shown.clone(), String::from);
+        if target != shown {
+            self.show_tab(&p, &target);
+        }
         self.focused = Some(window.to_string());
         self.used.touch(window);
-        self.pane = target;
+        self.tab = Some(target);
+    }
+
+    /// Window `p` shows its tab `tab` from now, wherever it is: on the desktop in front, or out
+    /// of the canvas.
+    fn show_tab(&mut self, p: &Placement, tab: &str) {
+        let tab = Some(tab.to_string());
+        if p.out.is_some() {
+            self.change_out(&p.id, |q| q.tab = tab);
+        } else {
+            self.update(&p.id, |q| q.tab = tab);
+        }
     }
 
     /// The window in use, for the window commands; none when it is not on the desktop in front.
@@ -51,22 +61,15 @@ impl Desk {
         self.window(id).map(|p| p.id)
     }
 
-    /// The pane in use: the one focused in the window in use, else that window's first.
+    /// The tab in use: the one the window in use shows.
     fn focused_leaf(&self) -> Option<(Placement, String, String)> {
         let p = self.window(self.focused.as_deref()?)?;
-        let tree = p.panes();
-        let leaves = tree.leaves();
-        let (id, view) = self
-            .pane
-            .as_deref()
-            .and_then(|want| leaves.iter().find(|(id, _)| *id == want))
-            .or(leaves.first())?;
-        let (id, view) = (id.to_string(), view.to_string());
+        let Tab { id, view } = p.shown();
         Some((p, id, view))
     }
 
-    /// The plugin surface in use, which takes the keys and the buffers: the one the pane in use
-    /// shows. A pane of the shell's own in use leaves none.
+    /// The plugin surface in use, which takes the keys and the buffers: the one the tab in use
+    /// shows. A view of the shell's own in use leaves none.
     pub fn focused_plugin(&self) -> Option<String> {
         let (p, _, view) = self.focused_leaf()?;
         self.resolve(&p, &view)
@@ -74,17 +77,15 @@ impl Desk {
             .map(String::from)
     }
 
-    /// The pane of `p` that shows plugin `id`.
+    /// The tab of `p` that shows plugin `id`.
     fn pane_showing(&self, p: &Placement, id: &str) -> Option<String> {
         let want = format!("{PLUGIN_VIEW}{id}");
-        p.panes()
-            .leaves()
-            .into_iter()
-            .find(|(_, view)| self.resolve(p, view) == want)
-            .map(|(pane, _)| pane.to_string())
+        (p.tabs().into_iter())
+            .find(|tab| self.resolve(p, &tab.view) == want)
+            .map(|tab| tab.id)
     }
 
-    /// Reveal plugin `id`: its pane on the desktop in front, else its window out of the canvas
+    /// Reveal plugin `id`: its tab on the desktop in front, else its window out of the canvas
     /// (#239), else on the desktop that shows it (the desk goes there, ADR 0117), else from the
     /// drawer, else in a new window.
     pub fn show_plugin(&mut self, id: &str) {
@@ -98,7 +99,7 @@ impl Desk {
                 .find_map(|(_, p)| self.pane_showing(&p, id).map(|pane| (p.id, pane)))
         });
         if let Some((window, pane)) = shown {
-            self.focus_pane(&window, Some(&pane));
+            self.focus_tab(&window, Some(&pane));
             return;
         }
         let there = self.desktops().iter().find_map(|d| {
@@ -109,7 +110,7 @@ impl Desk {
         });
         if let Some((desktop, window, pane)) = there {
             self.set_desktop(desktop.as_str());
-            self.focus_pane(&window, Some(&pane));
+            self.focus_tab(&window, Some(&pane));
             return;
         }
         let away = self.drawer.iter().find_map(|d| {
@@ -120,7 +121,7 @@ impl Desk {
         match away {
             Some((item, window, pane)) => {
                 self.bring_back(&item);
-                self.focus_pane(&window, Some(&pane));
+                self.focus_tab(&window, Some(&pane));
             }
             None => self.open_view(&format!("{PLUGIN_VIEW}{id}")),
         }
@@ -148,7 +149,7 @@ impl Desk {
         ids
     }
 
-    /// A new window with one launcher pane (⌘N), cascading from the middle of what is in sight,
+    /// A new window with one launcher tab (⌘N), cascading from the middle of what is in sight,
     /// focused. Answers its id: `window-<n>`, the first number no window on any desktop and no
     /// drawer item has (#101).
     pub fn new_window(&mut self) -> String {
@@ -160,30 +161,61 @@ impl Desk {
         let k = (self.layout().surfaces.len() % 6) as f64;
         let rect = Rect::new(NEW_X + NEW_STEP * k, NEW_Y + NEW_STEP * k, NEW_W, NEW_H);
         let mut p = Placement::new(id.clone(), "endue.window", rect);
-        p.panes = Some(PaneNode::view("p1", LAUNCHER));
+        p.tabs = Some(vec![Tab::new("p1", LAUNCHER)]);
         let placed = self.in_view(p);
         self.open_surface(&id, Some(placed));
-        self.focus_pane(&id, Some("p1"));
+        self.focus_tab(&id, Some("p1"));
         id
     }
 
-    /// Split the pane in use (`pane`, else the window's first) right (`Row`) or down (`Column`);
-    /// the new pane opens the launcher and takes the focus.
-    pub fn split(&mut self, dir: SplitDir) {
-        let Some(p) = self.focused_window().and_then(|id| self.window(&id)) else {
+    /// The plugin every tab of `p` shows a window of (ADR 0212): the kind of tab it takes. None
+    /// for a window showing a view of the shell's own, or windows of different plugins (a layout
+    /// saved while a window split inside): it takes no tab.
+    pub fn tab_kind(&self, p: &Placement) -> Option<String> {
+        let tabs = p.tabs();
+        let kinds: Vec<Option<String>> = (tabs.iter())
+            .map(|tab| kind_of(&self.resolve(p, &tab.view)).map(String::from))
+            .collect();
+        let first = kinds.first()?.clone()?;
+        kinds
+            .iter()
+            .all(|k| k.as_deref() == Some(first.as_str()))
+            .then_some(first)
+    }
+
+    /// Add a tab showing `view` to window `window` of the desktop in front, right after the tab it
+    /// shows, and show it. A window takes only tabs of its own kind (ADR 0268): `view` is another
+    /// window of the plugin its tabs show, one no tab of it shows yet. Answers the new tab's id;
+    /// none when the window does not take it.
+    pub fn add_tab(&mut self, window: &str, view: &str) -> Option<String> {
+        let p = self.window(window)?;
+        let kind = self.tab_kind(&p)?;
+        let all = p.tabs();
+        let taken = all.iter().any(|tab| self.resolve(&p, &tab.view) == view);
+        if kind_of(view) != Some(kind.as_str()) || taken {
+            return None;
+        }
+        let (next, added) = tabs::add(&all, &p.shown().id, view);
+        self.update(window, |q| {
+            q.tabs = Some(next);
+            q.tab = Some(added.clone());
+        });
+        self.focus_tab(window, Some(&added));
+        Some(added)
+    }
+
+    /// The window in use shows the tab `step` places on (1 next, -1 previous), wrapping around.
+    pub fn step_tab(&mut self, step: i64) {
+        let Some((p, shown, _)) = self.focused_leaf() else {
             return;
         };
-        let tree = p.panes();
-        let target = self.pane.clone().unwrap_or_else(|| first_pane(&tree));
-        let (next, added) = panes::split(&tree, &target, dir, LAUNCHER);
-        // A window too small for its panes' headers grows to its new minimum (#159).
-        let least = window_min(&next);
-        self.update(&p.id, |q| {
-            q.w = q.w.max(least.w);
-            q.h = q.h.max(least.h);
-            q.panes = Some(fit_panes(&next, body_size(q.w, q.h)));
-        });
-        self.focus_pane(&p.id, Some(&added));
+        let all = p.tabs();
+        let n = all.len() as i64;
+        let at = all.iter().position(|t| t.id == shown).unwrap_or(0) as i64;
+        let next = usize::try_from((at + step).rem_euclid(n)).unwrap_or(0);
+        if let Some(tab) = all.get(next) {
+            self.focus_tab(&p.id, Some(&tab.id));
+        }
     }
 
     /// Close a window of the desktop in front: it leaves the layout, and the plugins it shows are
@@ -198,81 +230,79 @@ impl Desk {
         self.close_surface(id);
         if self.focused.as_deref() == Some(id) {
             self.focused = None;
-            self.pane = None;
+            self.tab = None;
         }
         plugins
     }
 
-    /// Close a pane of a window (the window in use unless named): the one named, else `pane`,
-    /// else its first. The last pane closes its window (answering the plugins to unmount), and the
-    /// focus goes to the first pane left.
-    pub fn close_pane(&mut self, window: Option<&str>, pane: Option<&str>) -> Vec<String> {
+    /// Close a tab of a window (the window in use unless named): the one named, else the one it
+    /// shows. The window shows the tab that followed it and stays in use; its last tab closes the
+    /// window. Answers the plugins to unmount: the one the tab showed, or the window's.
+    pub fn close_tab(&mut self, window: Option<&str>, tab: Option<&str>) -> Vec<String> {
         let id = window.map(String::from).or_else(|| self.focused_window());
         let Some(p) = id.and_then(|id| self.window(&id)) else {
             return Vec::new();
         };
-        let tree = p.panes();
-        let target = pane
-            .map(String::from)
-            .or_else(|| self.pane.clone())
-            .unwrap_or_else(|| first_pane(&tree));
-        let Some(next) = panes::close(&tree, &target) else {
+        let all = p.tabs();
+        let target = tab.map_or_else(|| p.shown().id, String::from);
+        let Some(closed) = tabs::find(&all, &target) else {
+            return Vec::new();
+        };
+        let plugin = (self.resolve(&p, &closed.view).strip_prefix(PLUGIN_VIEW)).map(String::from);
+        let Some((next, beside)) = tabs::close(&all, &target) else {
             return self.close_window(&p.id);
         };
-        let first = first_pane(&next);
-        self.update(&p.id, |q| q.panes = Some(next));
-        self.focus_pane(&p.id, Some(&first));
-        Vec::new()
+        // The window goes on showing the tab it showed, unless that is the one closed.
+        let show = if p.shown().id == target {
+            beside
+        } else {
+            p.shown().id
+        };
+        self.update(&p.id, |q| {
+            q.tabs = Some(next);
+            q.tab = Some(show.clone());
+        });
+        self.focus_tab(&p.id, Some(&show));
+        plugin.into_iter().collect()
     }
 
-    /// Pane `pane` of `window` shows `view`, and takes the focus.
-    pub fn show_in_pane(&mut self, window: &str, pane: &str, view: &str) {
+    /// Tab `tab` of `window` shows `view`, and takes the focus.
+    pub fn show_in_tab(&mut self, window: &str, tab: &str, view: &str) {
         if self.window(window).is_none() {
             return;
         }
         self.update(window, |q| {
-            q.panes = Some(panes::set_view(&q.panes(), pane, view))
+            q.tabs = Some(tabs::set_view(&q.tabs(), tab, view))
         });
-        self.focus_pane(window, Some(pane));
+        self.focus_tab(window, Some(tab));
     }
 
-    /// A divider of `window` dropped at `ratio`, kept between 15 % and 85 %, and where the window
-    /// has room, short of the panes on either side getting less than their minimum.
-    pub fn resize_split(&mut self, window: &str, split: &str, ratio: f64) {
-        self.update(window, |q| {
-            let set = panes::set_ratio(&q.panes(), split, ratio);
-            q.panes = Some(fit_panes(&set, body_size(q.w, q.h)));
-        });
-    }
-
-    /// Bring a view up: into the launcher pane in use if there is one, else focus a pane that
+    /// Bring a view up: into the launcher tab in use if there is one, else focus a tab that
     /// already shows it, else open it as a window of its own (a new one when a window named after
     /// it now shows something else).
     pub fn open_view(&mut self, view: &str) {
-        if let Some((p, pane, shown)) = self.focused_leaf()
-            && self.pane.as_deref() == Some(pane.as_str())
+        if let Some((p, tab, shown)) = self.focused_leaf()
             && shown == LAUNCHER
         {
-            self.show_in_pane(&p.id, &pane, view);
+            self.show_in_tab(&p.id, &tab, view);
             return;
         }
         let windows = self.windows();
         let found = windows.iter().find_map(|p| {
-            let tree = p.panes();
-            let leaf = tree.leaves().into_iter().find(|(_, v)| *v == view)?;
-            Some((p.id.clone(), leaf.0.to_string()))
+            let tab = p.tabs().into_iter().find(|tab| tab.view == view)?;
+            Some((p.id.clone(), tab.id))
         });
         if let Some((window, pane)) = found {
-            self.focus_pane(&window, Some(&pane));
+            self.focus_tab(&window, Some(&pane));
             return;
         }
         if windows.iter().any(|p| p.id == view) {
             let fresh = self.new_window();
-            self.show_in_pane(&fresh, "p1", view);
+            self.show_in_tab(&fresh, "p1", view);
             return;
         }
         self.open_surface(view, None);
-        self.focus_pane(view, None);
+        self.focus_tab(view, None);
     }
 
     /// Snap a window to a half or a quarter of the app, or fill it (ADR 0128, ADR 0132). It comes
@@ -293,11 +323,4 @@ impl Desk {
         let pan = self.pan_of(&self.here());
         self.update(id, |p| *p = toggle_floating(p, pan, vw, vh));
     }
-}
-
-/// A tree's first pane, `p1` for none.
-fn first_pane(tree: &PaneNode) -> String {
-    tree.leaves()
-        .first()
-        .map_or_else(|| "p1".into(), |(id, _)| id.to_string())
 }

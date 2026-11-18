@@ -83,7 +83,7 @@ struct Window {
     aim: Option<Aim>,
     /// A filled window coming off its fill: its size glides back from the filled one, since `at`.
     unsnap: Option<(Size, f64)>,
-    /// The smallest a resize leaves it: room for each of its panes.
+    /// The smallest a resize leaves it: any window's, or what its plugin asks (`least_of`).
     least: Size,
     /// The other windows on screen, whose edges its edges pull to (`magnet.rs`).
     others: Vec<Rect>,

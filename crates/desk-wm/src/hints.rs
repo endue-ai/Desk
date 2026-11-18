@@ -4,13 +4,12 @@
 //! window of one plugin has them on the canvas; the shell reads the same manifest for the window
 //! out of it. They are sizes of the plugin's page: on the canvas the window is its title bar and
 //! border larger. Hints only: a place a profile or a session saved, a fill, a snap and tile size the
-//! window as they always did, and a window of several panes follows its panes alone.
+//! window as they always did, and a window follows the hints of the plugin the tab it shows shows.
 
 use serde::{Deserialize, Serialize};
 
 use crate::desk::Desk;
 use crate::host::{BORDER, TITLE};
-use crate::pane_min::window_min;
 use crate::types::{Placement, Rect, Size};
 
 /// A plugin's window hints, as sizes of its page.
@@ -70,19 +69,15 @@ impl Desk {
     /// The hints window `p` has: its plugin's, while it shows that plugin's surface and nothing
     /// else.
     pub fn hints_of(&self, p: &Placement) -> Option<WindowHints> {
-        let panes = p.panes();
-        let [(_, view)] = panes.leaves()[..] else {
-            return None;
-        };
-        let shown = self.resolve(p, view);
+        let shown = self.resolve(p, &p.shown().view);
         let plugin = shown.strip_prefix(crate::placed::PLUGIN_VIEW)?;
         self.adopted.iter().find(|a| a.id == plugin)?.hints
     }
 
-    /// The smallest window `p` gets: its panes' room (`window_min`), or its plugin's hint when
-    /// that is larger.
+    /// The smallest window `p` gets: any window's (`MIN`), or its plugin's hint when that is
+    /// larger.
     pub fn least_of(&self, p: &Placement) -> Size {
-        let least = window_min(&p.panes());
+        let least = crate::geometry::MIN;
         self.hints_of(p).map_or(least, |h| h.least(least))
     }
 

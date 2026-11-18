@@ -3,7 +3,7 @@
 //! to the fraction.
 
 use desk_wm::interact::{Kind, Motion, Wm};
-use desk_wm::{Fill, Rect, SplitDir};
+use desk_wm::{Fill, Rect};
 
 use super::support::*;
 
@@ -106,26 +106,5 @@ fn a_glide_into_a_part_ends_on_whole_device_pixels() {
             let at = rests(&mut wm, "window-1");
             assert!(on_grid(at, scale), "{scale} {fill:?}: {at:?}");
         }
-    }
-}
-
-#[test]
-fn a_split_puts_its_divider_on_whole_pixels() {
-    let mut desk = windows(1);
-    desk.place("window-1", Rect::new(300.0, 200.0, 401.0, 300.0));
-    desk.split(SplitDir::Row);
-    let mut p = desk.window("window-1").unwrap();
-    // A ratio the page's divider drag leaves: 0.337 of 399 px is 134.463.
-    if let Some(desk_wm::PaneNode::Split { ratio, .. }) = p.panes.as_mut() {
-        *ratio = 0.337;
-    }
-    let cells = desk_wm::host::cells(&p.panes(), desk_wm::host::body_of(p.rect()));
-    for cell in cells {
-        let r = match cell {
-            desk_wm::host::Cell::Pane { rect, .. } | desk_wm::host::Cell::Divider { rect, .. } => {
-                rect
-            }
-        };
-        assert!(on_grid(r, 1.0) && on_grid(r, 2.0), "{r:?}");
     }
 }

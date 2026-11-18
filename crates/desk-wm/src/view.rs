@@ -90,7 +90,7 @@ impl View {
         let covered = covered_plugins(
             &shown,
             &levels,
-            |p| desk.plugins_of(p),
+            |p| desk.shown_plugins(p),
             pan,
             screen.w,
             screen.h,

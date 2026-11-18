@@ -119,7 +119,7 @@ impl Desk {
             self.desktop = into.clone();
             if windows == OnRemove::Close {
                 self.focused = None;
-                self.pane = None;
+                self.tab = None;
             }
         }
         self.set_list(removed(&list, &id));
