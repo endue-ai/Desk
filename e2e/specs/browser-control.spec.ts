@@ -21,6 +21,7 @@ const PAGES: Record<string, string> = {
 <p><button id="count">Press</button></p>
 <p><select id="size" aria-label="Size"><option>Small</option><option>Large</option></select>
 <span id="chosen"></span></p>
+<p><button style="display:flex"><span>Open</span><span>menu</span><span hidden>now</span></button></p>
 <p hidden>not shown</p>
 <p id="long">${"A page long enough to be read a part at a time. ".repeat(8)}</p>
 <div style="height:3000px"></div><p id="end">The end</p>
@@ -90,6 +91,8 @@ describe("the Browser, read and operated by the desk's assistant (ADR 0272)", ()
       `[${ref(page, 'button "Press"')} button "Press"]`,
       `[${ref(page, 'select "Size"')} select "Size" = "Small" of "Small", "Large"]`,
     ]);
+    // A name is what the element shows: its parts side by side stay apart, a hidden one is left out.
+    expect(page.text).toContain('button "Open menu"]');
     expect(page.text).toContain("The end");
     expect(page.text).not.toContain("not shown");
     expect(page.scroll.y).toBe(0);
