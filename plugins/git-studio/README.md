@@ -11,9 +11,10 @@ operations; drop a branch on another to merge or rebase; Mod+Z undoes the last m
 Every operation is the git program through `proc.spawn` without a shell (`ui/run.js`, `endue.git`'s
 runner), `--` before paths. No `fs:*` grant: files are read and written through git (conflicts resolve
 with `hash-object` and `update-index`). AI is `brain.ask` with a tool per question (`ui/ai.js`).
-Commands `endue.git-studio.*` (state, open, refresh, fetch, pull, push, stage, commit, branch, switch,
-search, history, blame, graph) serve the palette and agents; `Mod+Alt+Shift+G` opens it. Discards, force
-pushes and resets stay in the window, behind its questions.
+Commands `endue.git-studio.*` (state, log, open, refresh, fetch, pull, push, stage, commit, branch,
+switch, search, history, blame, graph) serve the palette and agents; `Mod+Alt+Shift+G` opens it. `state`
+keeps to a size an agent reads whole and `log` finds commits as data. Discards, force pushes and resets
+stay in the window.
 
 | Permission | Why |
 | --- | --- |

@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installFeatures } from "../ui/features.js";
 import { createStudio } from "../ui/studio.js";
-import { tempRepo } from "./real-git";
+import { realGit, tempRepo } from "./real-git";
 
 type Listener = (event: { event: string; data: Record<string, unknown> }) => void;
 
@@ -137,6 +137,8 @@ describe("the window on a real repository", () => {
     const state = (await handlers.get("endue.git-studio.state")?.({})) as Record<string, unknown>;
     expect(state).toMatchObject({ branch: "main", changes: 1, operation: null });
     expect((state.unstaged as unknown[]).length).toBe(1);
+    expect(state).toMatchObject({ branchCount: 2, tagCount: 0 });
+    expect((state.branches as { name: string }[]).map((b) => b.name)).toEqual(["main", "topic"]);
     await expect(
       handlers.get("endue.git-studio.commit")?.({ message: "Nothing staged" }),
     ).rejects.toThrow(/Nothing is staged/);
@@ -147,5 +149,59 @@ describe("the window on a real repository", () => {
     expect(done.committed).toMatch(/^[0-9a-f]{40}$/);
     const subject = (await repo.git("log", "-1", "--format=%s")).stdout.trim();
     expect(subject).toBe("Change a");
+  });
+
+  it("keeps endue.git-studio.state short in a repository of many branches", async () => {
+    const head = (await repo.git("rev-parse", "HEAD")).stdout.trim();
+    const names = Array.from({ length: 400 }, (_, i) => `ai/${i}-a-branch-with-a-long-name`);
+    const refs = names.map((name) => `create refs/heads/${name} ${head}\n`).join("");
+    await realGit.run(["update-ref", "--stdin"], { cwd: repo.root, input: refs });
+    const { handlers } = await mount();
+    const state = (await handlers.get("endue.git-studio.state")?.({})) as {
+      branchCount: number;
+      branches: { name: string; current: boolean }[];
+      recent: { subject: string }[];
+    };
+    expect(state.branchCount).toBe(402);
+    expect(state.branches).toHaveLength(30);
+    expect(state.branches[0]).toMatchObject({ name: "main", current: true });
+    // The latest commits come before the lists, and the whole answer fits what a brain keeps.
+    const text = JSON.stringify(state);
+    expect(text.indexOf('"recent"')).toBeLessThan(text.indexOf('"branches"'));
+    expect(text.length).toBeLessThan(8000);
+    expect(state.recent.map((c) => c.subject)).toEqual(["Merge topic", "On topic", "First"]);
+  });
+
+  it("finds commits as data through endue.git-studio.log", async () => {
+    const commit = async (file: string, message: string) => {
+      repo.write(file, `${message}\n`);
+      await repo.git("add", "-A");
+      await repo.git("commit", "-q", "-m", message);
+    };
+    await commit("p.txt", "fix(perf): the gate grips the title bar");
+    await repo.git("switch", "-q", "topic");
+    await commit("q.txt", "Fix(Perf): on another branch");
+    await commit("r.txt", "fix: not the one");
+    await repo.git("switch", "-q", "main");
+    const { handlers } = await mount();
+    type Found = { commits: { sha: string; subject: string; author: string }[]; more: boolean };
+    const log = (args: object) => handlers.get("endue.git-studio.log")?.(args) as Promise<Found>;
+
+    const perf = await log({ query: "fix(perf)" });
+    expect(perf.commits.map((c) => c.subject).sort()).toEqual([
+      "Fix(Perf): on another branch",
+      "fix(perf): the gate grips the title bar",
+    ]);
+    expect(perf.commits[0]?.sha).toMatch(/^[0-9a-f]{40}$/);
+    expect(perf.more).toBe(false);
+
+    const one = await log({ limit: 1 });
+    expect(one).toMatchObject({ more: true });
+    expect(one.commits).toHaveLength(1);
+    const byPath = await log({ query: "q.txt", mode: "path" });
+    expect(byPath.commits.map((c) => c.subject)).toEqual(["Fix(Perf): on another branch"]);
+    const byCode = await log({ query: "not the one", mode: "code" });
+    expect(byCode.commits.map((c) => c.subject)).toEqual(["fix: not the one"]);
+    expect((await log({ query: "fix", author: "nobody" })).commits).toEqual([]);
   });
 });

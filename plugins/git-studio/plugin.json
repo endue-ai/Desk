@@ -44,7 +44,7 @@
         "id": "endue.git-studio.state",
         "title": "Git Studio: the repository as data",
         "keywords": ["git", "status", "branches"],
-        "description": "The repository open in Git Studio: root, branch, upstream, ahead and behind, an operation in progress, staged, unstaged and conflicted files, branches, tags, stashes and the latest commits.",
+        "description": "The repository open in Git Studio: root, branch, upstream, ahead and behind, an operation in progress, the 15 latest commits, staged, unstaged and conflicted files, stashes, and the first 30 branches (the current one first) and tags, with branchCount and tagCount for all of them. To find commits, by message, author, code or path, use endue.git-studio.log.",
         "args": { "type": "object", "properties": {}, "additionalProperties": false },
         "result": {
           "type": "object",
@@ -60,10 +60,37 @@
             "staged": { "type": "array" },
             "unstaged": { "type": "array" },
             "conflicts": { "type": "array" },
-            "branches": { "type": "array" },
-            "tags": { "type": "array" },
+            "recent": { "type": "array" },
             "stashes": { "type": "array" },
-            "recent": { "type": "array" }
+            "branchCount": { "type": "integer" },
+            "branches": { "type": "array" },
+            "tagCount": { "type": "integer" },
+            "tags": { "type": "array" }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.git-studio.log",
+        "title": "Git Studio: find commits as data",
+        "keywords": ["git", "log", "commits", "search", "grep", "history"],
+        "description": "Commits of the open repository as data, newest first, from every branch, remote branch and tag: those whose message holds query (plain text, any case; mode text), whose changes add or remove it (mode code) or that touched a path holding it (mode path); the latest commits without a query. author narrows by name or email. Answers up to limit commits (50, at most 200), each with sha, subject, author and date in seconds, and more when there were more.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string", "maxLength": 200 },
+            "mode": { "type": "string", "enum": ["text", "code", "path"] },
+            "author": { "type": "string", "maxLength": 200 },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "commits": { "type": "array" },
+            "more": { "type": "boolean" }
           }
         },
         "agent": true,
