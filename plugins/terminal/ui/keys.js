@@ -57,6 +57,9 @@ export const DESK_KEYS = Object.freeze([
   "Control+`",
   "Control+Tab",
   "Control+Shift+Tab",
+  // A window's tabs (ADR 0270): the next and the previous one.
+  "Control+PageDown",
+  "Control+PageUp",
   "Control+1",
   "Control+2",
   "Control+3",
