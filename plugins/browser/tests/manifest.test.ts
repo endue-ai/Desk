@@ -38,16 +38,55 @@ describe("plugin.json", () => {
     });
   });
 
-  it("asks to show web pages and nothing more", () => {
-    expect(manifest.permissions).toEqual([{ permission: "web:browse" }]);
+  it("asks to show web pages and to read and operate them, and nothing more", () => {
+    expect(manifest.permissions).toEqual([
+      { permission: "web:browse" },
+      { permission: "web:control" },
+    ]);
   });
 
   it("offers its commands under its own id, and the settings its page reads", () => {
     const ids = manifest.contributes?.commands?.map((c) => c.id);
-    expect(ids).toEqual(["endue.browser.open", "endue.browser.go", "endue.browser.reload"]);
+    expect(ids).toEqual([
+      "endue.browser.open",
+      "endue.browser.go",
+      "endue.browser.reload",
+      "endue.browser.read",
+      "endue.browser.scroll",
+      "endue.browser.click",
+      "endue.browser.type",
+      "endue.browser.key",
+      "endue.browser.select",
+      "endue.browser.back",
+      "endue.browser.forward",
+      "endue.browser.stop",
+    ]);
     expect(Object.keys(manifest.contributes?.settings ?? {})).toEqual([
       "endue.browser.home",
       "endue.browser.search",
     ]);
+  });
+
+  it("offers the assistant what a person does in a browser, each with what it does", () => {
+    const commands = manifest.contributes?.commands ?? [];
+    const tools = commands.filter((c) => c.agent);
+    expect(tools.map((c) => c.id.replace("endue.browser.", ""))).toEqual([
+      "go",
+      "reload",
+      "read",
+      "scroll",
+      "click",
+      "type",
+      "key",
+      "select",
+      "back",
+      "forward",
+    ]);
+    for (const tool of tools) expect(tool.description, tool.id).toBeTruthy();
+    // Reading changes nothing; what may send something off waits for the person (ADR 0078).
+    const flagged = (flag: "readOnly" | "irreversible") =>
+      tools.filter((c) => c[flag]).map((c) => c.id.replace("endue.browser.", ""));
+    expect(flagged("readOnly")).toEqual(["read"]);
+    expect(flagged("irreversible")).toEqual(["click", "type", "key", "select"]);
   });
 });

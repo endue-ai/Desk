@@ -14,24 +14,25 @@ own cookies). This page holds the toolbar and asks for addresses.
 | Back, forward, reload, stop | `web.go`; the buttons follow `web.changed`, reload is stop while a page loads |
 | Enter | loads and gives the page the keys (`web.focus`); a press on the toolbar takes them back; Escape puts the page's address back |
 | A window out of the canvas | says the page shows in the desk only |
+| The assistant in the page | `web.read` and `web.act` (ADR 0268): the page as text with its elements named by a ref, then acts on a ref; each command answers the page as it reads once it rests, 4000 characters a part (`more` reads on) |
 
-Not yet: tabs, bookmarks, history, downloads, find, zoom, a page's permission prompts.
+Not yet: tabs, bookmarks, history, downloads, find, zoom, a page's permission prompts, frames read.
 
 | Permission | Why |
 | --- | --- |
 | `web:browse` | Show web pages in its view; asked once (`perm.request`) when it does not hold it |
+| `web:control` | Read the page and act in it for the assistant; asked once when it does not hold it |
 
 | Command | What it does |
 | --- | --- |
 | `endue.browser.open` | Opens the Browser (`desk.plugins.open`) |
-| `endue.browser.go { url }` | Shows an address, or searches for words, in the window in use |
-| `endue.browser.reload` | Loads the page again |
+| `go { url }`, `reload`, `back`, `forward` | Shows an address or searches, loads again, steps through the history; agent tools. `stop` stops a load |
+| `read { from?, chars? }` | The page's address, title, scroll and text; agent tool, read only |
+| `scroll { to?, pages?, ref? }` | A step, an end, or an element into view; agent tool |
+| `click { ref }`, `type { text, ref?, replace?, submit? }`, `key { key, ref? }`, `select { ref, option }` | Act in the page; agent tools an agent's call waits for approval on (`irreversible`, ADR 0078) |
 
-| File | Purpose |
-| --- | --- |
-| `ui/address.js` | What was typed, as an address or a search |
-| `ui/browser.js` | The view: open, place, load, steps, what a sleep keeps |
-| `ui/view.js`, `ui/main.js` | The toolbar and `#page`; the SDK joined to the behaviour |
+`ui/address.js`: what was typed. `ui/browser.js`: the view (open, place, load, steps, when a page
+rests). `ui/agent.js`: the assistant's commands. `ui/view.js`, `ui/main.js`: the toolbar, the SDK.
 
 ```bash
 pnpm exec vitest run plugins/browser

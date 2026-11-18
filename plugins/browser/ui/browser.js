@@ -1,6 +1,7 @@
 // The Browser's behaviour: one web view under the toolbar (web.*, ADR 0216), which the desk draws
 // over this page's #page at the box the view reports. This page never sees the web page: it asks
-// for an address and hears what the view shows. view.js holds the DOM, main.js the SDK.
+// for an address and hears what the view shows. view.js holds the DOM, main.js the SDK, agent.js
+// what the desk's assistant does in the page.
 import { addressOf, SEARCH } from "./address.js";
 
 /** The manifest's defaults, for a setting nobody set. */
@@ -39,9 +40,18 @@ export function createBrowser(desk, view) {
   let viewId;
   /** The address the window shows, kept over a sleep. */
   let url = "";
+  let title = "";
   let search;
   /** The box last told to the desk, so a look that changed nothing asks nothing. */
   let placed = "";
+  /** Whether the page loads now, and who waits for it to rest (`settled`). */
+  let loading = false;
+  /** @type {Set<() => void>} */
+  const waiting = new Set();
+  const loads = (now) => {
+    loading = now;
+    for (const look of [...waiting]) look();
+  };
 
   const idle = { url: "", loading: false, canGoBack: false, canGoForward: false };
 
@@ -93,6 +103,7 @@ export function createBrowser(desk, view) {
     url = address;
     view.note("");
     view.shows({ ...idle, url: address, loading: true });
+    loads(true);
     try {
       if (viewId === undefined) {
         const opened = await allowed("web.open", { url: address, scope: SCOPE });
@@ -106,6 +117,7 @@ export function createBrowser(desk, view) {
       await desk.call("web.focus", { viewId }).catch(() => {});
     } catch (error) {
       view.shows({ ...idle, url: address });
+      loads(false);
       failed(error);
     }
   }
@@ -121,8 +133,11 @@ export function createBrowser(desk, view) {
       viewId = undefined;
       placed = "";
       view.shows({ ...idle, url });
+      loads(false);
       return;
     }
+    loads(shown.loading);
+    title = shown.title;
     if (shown.url !== "") url = shown.url;
     view.shows({ ...shown, url });
     if (shown.refused) view.note(`The Browser may not go to ${shown.refused}.`);
@@ -158,6 +173,32 @@ export function createBrowser(desk, view) {
     reload: () => (viewId === undefined && url !== "" ? void load(url) : step("reload")),
     stop: () => step("stop"),
     place,
+    /** The view the window shows its page in, if it has one. */
+    view: () => viewId,
+    /** The page the window shows, by its address and title. */
+    shown: () => ({ url, title }),
+    /**
+     * Once the page rests: no load for `quiet` ms, or after `most` ms at the latest. What follows
+     * an act (a link that loads, a form that is sent) has begun by then, or does not come.
+     */
+    settled(quiet = 500, most = 10000) {
+      return new Promise((resolve) => {
+        let rest;
+        const done = () => {
+          clearTimeout(rest);
+          clearTimeout(limit);
+          waiting.delete(look);
+          resolve(undefined);
+        };
+        const look = () => {
+          clearTimeout(rest);
+          if (!loading) rest = setTimeout(done, quiet);
+        };
+        const limit = setTimeout(done, most);
+        waiting.add(look);
+        look();
+      });
+    },
     /** What a sleep keeps: the address. */
     kept: () => ({ url }),
     /** The window goes: so does its view. */

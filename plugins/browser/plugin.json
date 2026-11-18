@@ -5,33 +5,238 @@
   "kind": "ui",
   "entry": "ui/index.html",
   "autoload": true,
-  "description": "Surf the web in a desk window: a live page under an address field, with back, forward, reload and stop. The page is its own browser, apart from the desk: it reads nothing of the desk and keeps its cookies to itself.",
-  "permissions": [{ "permission": "web:browse" }],
-  "surfaces": [{ "id": "main", "title": "Browser", "placement": "center" }],
+  "description": "Surf the web in a desk window: a live page under an address field, with back, forward, reload and stop. The page is its own browser, apart from the desk: it reads nothing of the desk and keeps its cookies to itself. The desk's assistant can read the page and scroll, click and type in it for you.",
+  "permissions": [
+    {
+      "permission": "web:browse"
+    },
+    {
+      "permission": "web:control"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Browser",
+      "placement": "center"
+    }
+  ],
   "contributes": {
     "commands": [
       {
         "id": "endue.browser.open",
         "title": "Browser: Open",
         "keywords": ["browser", "web", "internet", "surf", "site", "브라우저", "웹", "인터넷"],
-        "runs": { "command": "desk.plugins.open", "args": { "plugin": "endue.browser" } }
+        "runs": {
+          "command": "desk.plugins.open",
+          "args": {
+            "plugin": "endue.browser"
+          }
+        }
       },
       {
         "id": "endue.browser.go",
         "title": "Browser: Go to an address",
         "keywords": ["browser", "web", "url", "address", "search", "주소"],
-        "description": "Show a web page in the Browser: an address (example.com, https://example.com/a) or words to search for.",
+        "description": "Show a web page in the Browser: an address (example.com, https://example.com/a) or words to search for. Answers the page as endue.browser.read does, once it has settled.",
         "args": {
           "type": "object",
-          "properties": { "url": { "type": "string", "minLength": 1, "maxLength": 8192 } },
+          "properties": {
+            "url": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8192
+            }
+          },
           "required": ["url"],
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.browser.reload",
         "title": "Browser: Load the page again",
-        "keywords": ["browser", "web", "reload", "refresh", "새로고침"]
+        "keywords": ["browser", "web", "reload", "refresh", "새로고침"],
+        "description": "Load the page the Browser shows again. Answers the page as endue.browser.read does, once it has settled.",
+        "agent": true
+      },
+      {
+        "id": "endue.browser.read",
+        "title": "Browser: Read the page",
+        "keywords": ["browser", "web", "read", "page", "text", "읽기"],
+        "description": "Read the page the Browser shows: its address, its title, where it is scrolled to and its text in reading order. In the text an element that can be acted on is written [ref kind \"name\"], such as [e12 link \"Sign in\"] or [e5 field \"Search\" = \"\"]: give its ref (e12) to click, type, key, select or scroll. A long page comes in parts: when the answer has more, read on with from set to it. A ref holds while its element is in the page; after the page changes, read again.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "chars": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 20000
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.browser.scroll",
+        "title": "Browser: Scroll the page",
+        "keywords": ["browser", "web", "scroll", "스크롤"],
+        "description": "Scroll the page the Browser shows: up, down, left or right by pages views of it (1 by default), to the top or the bottom, or, with ref, until that element is in view. Answers the page as endue.browser.read does, once it has settled. moved is false when there was nowhere further to go.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "to": {
+              "type": "string",
+              "enum": ["up", "down", "left", "right", "top", "bottom"]
+            },
+            "pages": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 100
+            },
+            "ref": {
+              "type": "string",
+              "pattern": "^e[1-9][0-9]{0,6}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.browser.click",
+        "title": "Browser: Click in the page",
+        "keywords": ["browser", "web", "click", "press", "클릭"],
+        "description": "Click an element of the page the Browser shows, by the ref endue.browser.read gave it: a link, a button, a checkbox, a tab. Answers the page as endue.browser.read does, once it has settled.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string",
+              "pattern": "^e[1-9][0-9]{0,6}$"
+            }
+          },
+          "required": ["ref"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.browser.type",
+        "title": "Browser: Type into the page",
+        "keywords": ["browser", "web", "type", "fill", "입력"],
+        "description": "Type text into a field of the page the Browser shows, by its ref; without one, into the field that has the caret. The text replaces what the field holds unless replace is false. submit presses Enter afterwards, as a search or a form is sent. Answers the page as endue.browser.read does, once it has settled.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "ref": {
+              "type": "string",
+              "pattern": "^e[1-9][0-9]{0,6}$"
+            },
+            "replace": {
+              "type": "boolean"
+            },
+            "submit": {
+              "type": "boolean"
+            }
+          },
+          "required": ["text"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.browser.key",
+        "title": "Browser: Press a key in the page",
+        "keywords": ["browser", "web", "key", "enter", "키"],
+        "description": "Press a key in the page the Browser shows; with ref, on that element, else where the page has the keys. Answers the page as endue.browser.read does, once it has settled.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "enum": [
+                "Enter",
+                "Tab",
+                "Escape",
+                "Backspace",
+                "Delete",
+                "Space",
+                "ArrowUp",
+                "ArrowDown",
+                "ArrowLeft",
+                "ArrowRight",
+                "PageUp",
+                "PageDown",
+                "Home",
+                "End"
+              ]
+            },
+            "ref": {
+              "type": "string",
+              "pattern": "^e[1-9][0-9]{0,6}$"
+            }
+          },
+          "required": ["key"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.browser.select",
+        "title": "Browser: Choose from a list in the page",
+        "keywords": ["browser", "web", "select", "choose", "option", "선택"],
+        "description": "Choose an option of a list of choices in the page the Browser shows (read as [ref select \"name\" = \"chosen\" of \"A\", \"B\"]), by the words the option shows. Answers the page as endue.browser.read does, once it has settled.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string",
+              "pattern": "^e[1-9][0-9]{0,6}$"
+            },
+            "option": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "required": ["ref", "option"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.browser.back",
+        "title": "Browser: Back",
+        "keywords": ["browser", "web", "back", "history", "뒤로"],
+        "description": "Go back one page in the Browser's history. Answers the page as endue.browser.read does, once it has settled.",
+        "agent": true
+      },
+      {
+        "id": "endue.browser.forward",
+        "title": "Browser: Forward",
+        "keywords": ["browser", "web", "forward", "history", "앞으로"],
+        "description": "Go forward one page in the Browser's history. Answers the page as endue.browser.read does, once it has settled.",
+        "agent": true
+      },
+      {
+        "id": "endue.browser.stop",
+        "title": "Browser: Stop loading",
+        "keywords": ["browser", "web", "stop", "중지"]
       }
     ],
     "settings": {
