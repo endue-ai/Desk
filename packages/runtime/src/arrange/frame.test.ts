@@ -198,8 +198,8 @@ describe("agents' tools", () => {
       "desk.windows.bring-back",
       "desk.windows.move-to-desktop",
       "desk.windows.new",
-      "desk.windows.split",
-      "desk.windows.close-pane",
+      "desk.windows.new-tab",
+      "desk.windows.close-tab",
     ];
     const ajv = new Ajv2020({ strict: false });
     for (const id of ids) {

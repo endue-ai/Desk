@@ -51,7 +51,8 @@ is the step from where the window is drawn now, and no compositor or desk-wm cod
   `desk.windows.pin { pinned }`, `desk.windows.bring-back` (from the drawer),
   `desk.windows.move-to-desktop { desktop }` (an id, a name, a position from 1, or `new`),
   `desk.windows.new`, `desk.windows.split { pane?, dir }` and `desk.windows.close-pane { pane }`, each
-  through what the title bar, the drawer or the desktops run.
+  through what the title bar, the drawer or the desktops run. (ADR 0270 took the split out of windows:
+  the last two are now `desk.windows.new-tab` and `desk.windows.close-tab { tab }`.)
 * **Answers.** Every one answers where the window ended up and how it is placed (`Frame`: x, y, w, h,
   state, fill, floating, pinned, desktop), as desk.windows.list would say it, so the agent sees what the
   window manager's rules did.

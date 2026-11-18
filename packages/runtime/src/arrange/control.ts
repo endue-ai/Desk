@@ -1,7 +1,7 @@
 /**
  * The rest of what a window's title bar, the drawer and the desktops do with a window, for agents
  * (ADR 0269): float it above the canvas or put it back on it, pin it, bring it back from the
- * drawer, move it to another desktop or a new one, open a new window, split a pane and close one.
+ * drawer, move it to another desktop or a new one, open a new window, and open a tab or close one (ADR 0270).
  * Each runs what the person's button, key or drag runs (`shell/actions.ts`, `shell/windows.ts`,
  * `desktops/actions.ts`); the window manager does the rest (crates/desk-wm, #83).
  */
@@ -10,8 +10,8 @@ import { moveToNew, moveWindowTo } from "../desktops/actions";
 import { idAt } from "../desktops/model";
 import { type Ctx, desktopsOf, raise, togglePin, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
-import { closePane, focusPane, newWindow, splitPane, toggleFloating } from "../shell/windows";
-import { leaves, panesOf } from "../surface/tree";
+import { closeTab, newTab, newWindow, toggleFloating } from "../shell/windows";
+import { tabsOf } from "../surface/tree";
 import {
   type Args,
   argsOf,
@@ -28,8 +28,8 @@ export const PIN = "desk.windows.pin";
 export const BRING_BACK = "desk.windows.bring-back";
 export const MOVE_TO_DESKTOP = "desk.windows.move-to-desktop";
 export const NEW = "desk.windows.new";
-export const SPLIT = "desk.windows.split";
-export const CLOSE_PANE = "desk.windows.close-pane";
+export const NEW_TAB = "desk.windows.new-tab";
+export const CLOSE_TAB = "desk.windows.close-tab";
 
 const flag = (name: string, description: string) => ({
   type: "object",
@@ -118,7 +118,7 @@ export function defineControlCommands(ctx: ShellCtx): () => void {
       },
       agent: {
         description:
-          "Bring a window put away in the drawer (hidden in desk.windows.list) back onto the current desktop, where it was, with its panes, as picking it in the drawer does; desk.windows.put-away puts one there.",
+          "Bring a window put away in the drawer (hidden in desk.windows.list) back onto the current desktop, where it was, with its tabs, as picking it in the drawer does; desk.windows.put-away puts one there.",
         args: {
           type: "object",
           properties: { window: NAMED("The window in the drawer, by id.") },
@@ -185,83 +185,74 @@ export function defineControlCommands(ctx: ShellCtx): () => void {
       },
       agent: {
         description:
-          "Open a new window on the current desktop with one launcher pane, cascading from the middle of what is in sight, and give it the focus, as Mod+N does. To show a plugin, desk.plugins.open is the way.",
+          "Open a new window on the current desktop with one launcher tab, cascading from the middle of what is in sight, and give it the focus, as Mod+N does. To show a plugin, desk.plugins.open is the way.",
         args: { type: "object", properties: {}, additionalProperties: false },
         result: FRAME,
       },
     }),
-    commands.define(SPLIT, {
-      title: () => say("split"),
-      keywords: ["split", "pane", "right", "down", "window", "나누기", "칸", "창"],
+    commands.define(NEW_TAB, {
+      title: () => say("newTab"),
+      keywords: ["new", "tab", "window", "새", "탭", "창"],
       owner: "desk",
       run: async (args) => {
         const a = argsOf(args);
         const p = windowInFront(ctx, a);
-        const dir = a.dir === "right" ? "row" : a.dir === "down" ? "column" : undefined;
-        if (!dir) throw failed("dir is right or down");
-        const pane = typeof a.pane === "string" ? a.pane : undefined;
-        if (pane && !leaves(panesOf(p)).some((l) => l.id === pane)) throw failed(say("noPane"));
-        await focusPane(ctx, p.id, pane);
-        await splitPane(ctx, dir);
-        return { window: p.id, pane: ctx.store.get().pane };
+        const tab = await newTab(ctx, p.id);
+        if (!tab) throw failed(say("noTabs"));
+        return { window: p.id, tab };
       },
       agent: {
         description:
-          "Split a pane of a window of the current desktop (the window's focused or first pane unless named) to the right or down, as its title bar's split buttons do: the new pane opens the launcher and takes the focus, and its id is answered.",
+          "Open a new tab in a window of the current desktop (the one in use unless named), as its title bar's New tab tool and Mod+D do: another window of the plugin the window shows, which takes the focus, and its id is answered (desk.windows.list lists a window's tabs as its panes). A window takes only tabs of its own plugin (ADR 0270); a window of the launcher or an agent takes none.",
         args: {
           type: "object",
-          properties: {
-            window: WINDOW_ARG,
-            pane: { type: "string", description: "The pane, by id (desk.windows.list panes)." },
-            dir: { type: "string", enum: ["right", "down"] },
-          },
-          required: ["dir"],
+          properties: { window: WINDOW_ARG },
           additionalProperties: false,
         },
         result: {
           type: "object",
-          properties: { window: { type: "string" }, pane: { type: ["string", "null"] } },
-          required: ["window", "pane"],
+          properties: { window: { type: "string" }, tab: { type: "string" } },
+          required: ["window", "tab"],
         },
       },
     }),
-    commands.define(CLOSE_PANE, {
-      title: () => say("closePane"),
-      keywords: ["close", "pane", "window", "닫기", "칸"],
+    commands.define(CLOSE_TAB, {
+      title: () => say("closeTab"),
+      keywords: ["close", "tab", "window", "닫기", "탭"],
       owner: "desk",
       run: async (args) => {
         const a = argsOf(args);
         const p = windowInFront(ctx, a);
-        const pane = a.pane;
-        if (typeof pane !== "string" || !leaves(panesOf(p)).some((l) => l.id === pane)) {
-          throw failed(say("noPane"));
+        const tab = a.tab;
+        if (typeof tab !== "string" || !tabsOf(p).some((t) => t.id === tab)) {
+          throw failed(say("noTab"));
         }
-        await closePane(ctx, p.id, pane);
+        await closeTab(ctx, p.id, tab);
         const left = windowsOf(ctx.store.get()).find((w) => w.id === p.id);
-        const closed = !left || !leaves(panesOf(left)).some((l) => l.id === pane);
-        return { window: p.id, pane, closed, windowClosed: !left };
+        const closed = !left || !tabsOf(left).some((t) => t.id === tab);
+        return { window: p.id, tab, closed, windowClosed: !left };
       },
       agent: {
         description:
-          "Close one pane of a window of the current desktop, by its id (desk.windows.list panes). Closing a window's last pane closes the window, asking about unsaved changes first; the pane stays when the person keeps them (closed: false).",
+          "Close one tab of a window of the current desktop, by its id (desk.windows.list lists a window's tabs as its panes). Closing a window's last tab closes the window, asking about unsaved changes first; the tab stays when the person keeps them (closed: false).",
         args: {
           type: "object",
           properties: {
             window: WINDOW_ARG,
-            pane: { type: "string", description: "The pane, by id." },
+            tab: { type: "string", description: "The tab, by id (desk.windows.list panes)." },
           },
-          required: ["pane"],
+          required: ["tab"],
           additionalProperties: false,
         },
         result: {
           type: "object",
           properties: {
             window: { type: "string" },
-            pane: { type: "string" },
+            tab: { type: "string" },
             closed: { type: "boolean" },
             windowClosed: { type: "boolean" },
           },
-          required: ["window", "pane", "closed", "windowClosed"],
+          required: ["window", "tab", "closed", "windowClosed"],
         },
       },
     }),
