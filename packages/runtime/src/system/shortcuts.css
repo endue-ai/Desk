@@ -1,0 +1,101 @@
+/* The shortcut bar (ADR 0274, ShortcutBar.ts): a floating bar of the one shape (shell.css), hung at
+   the left column's top under the profile switcher (system.css); its buttons the person's shortcuts,
+   then a "+". No taller than half the column: more shortcuts than fit scroll, with no scrollbar
+   drawn, as the agent bar's. */
+.layer-system .shortcuts {
+  left: var(--bar-inset);
+  top: var(--left-top);
+  max-height: var(--shortcuts-most);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+  transform: none;
+}
+.layer-system .shortcuts::-webkit-scrollbar { display: none; }
+
+/* A shortcut without an icon of its own (a community plugin's, most commands'): its name's first
+   letter in a rounded square drawn as the line icons are, a 2 px stroke in the text's colour. */
+.shortcut-letter {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid currentColor;
+  border-radius: 6px;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  line-height: 1;
+}
+.shortcuts-choice-face .shortcut-letter {
+  width: 16px;
+  height: 16px;
+  border-width: 1.5px;
+  border-radius: 5px;
+  font-size: 9px;
+}
+/* A plugin no longer installed, a command no plugin answers now: there, faint, and its menu still
+   takes it off. */
+.shortcuts .shortcut[data-missing] { opacity: 0.45; }
+.shortcuts .shortcuts-add { color: var(--desk-text-muted); }
+.shortcuts .shortcuts-add:hover:not(:disabled),
+.shortcuts .shortcuts-add[aria-expanded="true"] { color: var(--desk-text); }
+
+/* The "+" list: beside the bar, its top level with the bar's, a field over rows in groups. */
+.shortcuts-popover {
+  position: absolute;
+  top: var(--left-top);
+  left: var(--bar-reach);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 288px;
+  max-height: calc(100% - var(--left-top) - var(--bar-inset));
+  padding: var(--space-2);
+}
+.shell .shortcuts-popover:focus-visible,
+.shell .shortcut-menu:focus-visible { outline: none; }
+/* The field keeps its height while the rows under it scroll. */
+.shortcuts-filter { flex: none; }
+/* Rows no wider than the list: a long command's title ends in an ellipsis. */
+.shortcuts-choices {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.shortcuts-group { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.shortcuts-group .pop-title { padding-bottom: var(--space-1); }
+.shortcuts-choice { gap: var(--space-2); }
+.shortcuts-choice-face {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--desk-text-muted);
+}
+.shortcuts-choice > svg:last-child {
+  flex: none;
+  margin-left: auto;
+  color: var(--desk-primary-text);
+}
+.shortcuts-note {
+  margin: var(--space-2);
+  color: var(--desk-text-muted);
+  font-size: var(--text-xs);
+}
+
+/* A shortcut's menu: beside the bar, level with the shortcut. */
+.shortcut-menu {
+  position: absolute;
+  left: var(--bar-reach);
+  display: grid;
+  gap: 2px;
+  width: 220px;
+  padding: var(--space-1);
+}
+.shortcut-menu-item { gap: var(--space-2); }
+.shortcut-menu-item svg { flex: none; }

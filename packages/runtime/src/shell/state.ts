@@ -36,6 +36,9 @@ export type Popover =
   | "drawer"
   | "mode-menu"
   | "agents-more"
+  /** The shortcut bar's "+" list and a shortcut's own menu (ADR 0274). */
+  | "shortcuts"
+  | "shortcut-menu"
   /** A desktop's menu in the switcher, a window's menu, the desktops overview (ADR 0117). */
   | "desktop-menu"
   | "window-menu"

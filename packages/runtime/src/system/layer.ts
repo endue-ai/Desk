@@ -1,6 +1,7 @@
 /**
  * The system layer: the desk's own controls, which no mode can move, hide or replace. The mode switcher
- * (top left), desktop switcher (top right), agent bar (left) and personal controls (bottom left) stay
+ * (top left), desktop switcher (top right), shortcut bar and agent bar (left, ADR 0274) and personal
+ * controls (bottom left) stay
  * above everything a mode lays out. Modes decide the layer below: surfaces, Eris, the rail, the drawer.
  * In safe mode a badge sits top centre (ADR 0061).
  */
@@ -15,6 +16,7 @@ import { mountSideBar } from "../shell/SideBar";
 import type { StartInfo } from "../start";
 import { mountThemeStudio } from "../theme-studio/studio";
 import { mountAccountBar } from "./AccountBar";
+import { mountShortcutBar } from "./ShortcutBar";
 import { mountSafeBadge } from "./safe-mode";
 
 export function mountSystemLayer(
@@ -27,6 +29,8 @@ export function mountSystemLayer(
   const parts = [
     mountModes(layer, ctx),
     mountDesktops(layer, ctx),
+    // Above the agent bar, and before it for the keyboard (ADR 0274).
+    mountShortcutBar(layer, ctx),
     byRole(layer, "role:agents", ctx.runtime.settings, (at) => mountSideBar(at, ctx)),
     mountAccountBar(layer, ctx),
   ];

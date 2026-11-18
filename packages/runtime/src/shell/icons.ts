@@ -3,6 +3,7 @@
 const PATHS: Record<string, string> = {
   plus: "M12 5v14M5 12h14",
   grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
+  search: "M11 4a7 7 0 1 0 0 14 7 7 0 1 0 0-14zM20 20l-4-4",
   copy: "M9 9h11v11H9zM5 15H4V4h11v1",
   eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
   tasks: "M10 6h10M10 12h10M10 18h10M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18h4",
@@ -17,6 +18,7 @@ const PATHS: Record<string, string> = {
   pin: "M12 17v5M8 3h8l-1 6 3 4H6l3-4z",
   close: "M6 6l12 12M18 6L6 18",
   raise: "M12 19V5M6 11l6-6 6 6",
+  lower: "M12 5v14M6 13l6 6 6-6",
   calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
   note: "M5 4h10l4 4v12H5zM14 4v5h5M8 13h8M8 17h5",
   list: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01",

@@ -7,6 +7,7 @@ import "../wallpaper/wallpaper.css";
 import "./chrome.css";
 import "./bottom.css";
 import "../system/system.css";
+import "../system/shortcuts.css";
 import "./bar-new.css";
 import "../eris/eris.css";
 import "../eris/errand.css";
