@@ -120,11 +120,13 @@ export class PluginHost {
     if (waitForReady) await this.whenReady(key);
   }
 
-  /** Open another window of a mounted plugin (ADR 0212): its key; its frame may still connect. */
-  another(id: string): string {
+  /** Open another window of a mounted plugin (ADR 0212): its key; its frame may still connect.
+   * `before` hears the key before the window opens, to ask for the tab that takes it (ADR 0268). */
+  another(id: string, before?: (key: string) => void): string {
     const info = this.#mounted.get(id);
     if (!info) throw new Error(`${id} is not running`);
     const key = this.#instances.mint(id);
+    before?.(key);
     this.#open(info, key);
     return key;
   }
@@ -185,6 +187,8 @@ export class PluginHost {
    */
   unmount(id: string): void {
     const plugin = pluginOf(id);
+    // A later window that is not open (a tab kept from an earlier session) takes nothing with it.
+    if (plugin !== id && !this.#instances.has(id)) return;
     const others = this.#instances.of(plugin).filter((key) => key !== id);
     if (others.length > 0 && this.#instances.has(id)) this.#close(id);
     else this.#unmount(plugin);

@@ -12,7 +12,7 @@ import { takeDesk } from "../wm/view";
 import { setDesktop, stash } from "./actions";
 import { Store, sampleState } from "./state";
 import { freeWindowId, windowIds } from "./window-ids";
-import { closePane, newWindow, showInPane } from "./windows";
+import { closeTab, newWindow, showInTab } from "./windows";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 
@@ -53,17 +53,17 @@ describe("window ids across desktops (#101)", () => {
   });
 });
 
-describe("the closed list after desk.display.close-pane (#101)", () => {
+describe("the closed list after desk.display.close-tab (#101)", () => {
   it("the window the last pane closed comes first, with windows on other desktops", async () => {
     const c = ctx();
     const log = watchClosed(c);
     await log.ready;
     const one = await newWindow(c);
-    await showInPane(c, one, "p1", "notes");
+    await showInTab(c, one, "p1", "notes");
     await setDesktop(c, "2");
     const two = await newWindow(c);
-    await showInPane(c, two, "p1", "calendar");
-    await closePane(c);
+    await showInTab(c, two, "p1", "calendar");
+    await closeTab(c);
     expect(log.list().map((e) => e.id)).toEqual([two]);
     expect(log.list()[0]).toMatchObject({ desktop: "2", views: ["calendar"] });
   });

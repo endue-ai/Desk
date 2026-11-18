@@ -42,11 +42,11 @@ html.desk-compositor .surface-title {
 html.desk-compositor .desk-surface {
   background: transparent;
 }
-/* What the page draws of a window (its title bar's icon and tools, the headers of split panes, its
+/* What the page draws of a window (its title bar's icon and tools, the strip of its tabs, its
    own views) is drawn at the window's place, so it hides what lies under the window in the page,
    in the window's own fill; a plugin's pane stays clear for its surface. */
 html.desk-compositor .surface-title,
-html.desk-compositor .pane-head,
+html.desk-compositor .tab-strip,
 html.desk-compositor .pane:not(:has(.plugin-pane)) {
   background: var(--desk-surface, var(--desk-card));
 }

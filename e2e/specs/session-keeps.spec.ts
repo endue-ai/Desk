@@ -1,7 +1,7 @@
 // What the person closed, put away and placed stays so (issue 163): a window closed by its × stays
 // closed across a relaunch, a side window (Status, a right-hand surface) too, and none comes back
 // twice (finding 3); a window in the drawer stays there when ⌘W closes another (finding 6); ⌘W
-// closes the window a title-bar press put in use, not a pane used before it (finding 5); and the app
+// closes the window a title-bar press put in use, not a window used before it (finding 5); and the app
 // window comes back where it was and as large (finding 9). Presses and keys are the compositor's
 // (support/compositor.ts, gestures.ts): the screen may be locked. browser.reloadSession() quits the
 // app and starts it again with the same HOME (support/driver.ts); the spec polls the data files
@@ -105,10 +105,10 @@ describe("session: what the person closed, put away and placed stays so", () => 
     expect(onScreen(desk).find((w) => w.focused)?.id).not.toBe(NOTES);
     expect(ids(desk)).toEqual(ids(after));
 
-    // A pane of the Terminal is used (Split right opens a launcher pane in use), then a press on
-    // Database's title bar puts Database in use: ⌘W closes Database, the Terminal keeps its panes.
-    await press(toolAt(await inFront(TERMINAL), "split-right"));
-    await windowUntil(TERMINAL, (w) => w.panes.length === 2, "never split");
+    // The Terminal is used (New tab opens its second window as a tab in use), then a press on
+    // Database's title bar puts Database in use: ⌘W closes Database, the Terminal keeps its tabs.
+    await press(toolAt(await inFront(TERMINAL), "new-tab"));
+    await windowUntil(TERMINAL, (w) => w.panes.length === 2, "no second tab");
     await press(titleAt(await inFront(DATABASE)));
     await windowUntil(DATABASE, (w) => w.focused === true, "a title-bar press left it out of use");
     await closeKey();

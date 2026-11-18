@@ -98,7 +98,7 @@ describe("interactions: drags and resizes held, cancelled and cut short (#82)", 
     const grab = titleAt(rectOf(win));
     await drag(grab, { x: grab.x + 40, y: grab.y + 30 }, { hold: true });
     // ⌘W while the pointer still holds it: the window in use closes.
-    await run("desk.display.close-pane");
+    await run("desk.display.close-tab");
     await until((d) => !onScreen(d).some((x) => x.id === id), "the window closed");
     await release();
     const next = await openWindow();

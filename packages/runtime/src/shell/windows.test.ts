@@ -1,6 +1,7 @@
-// The runtime's side of the windows (#83): which window a pane is in, where it goes and what a close
-// leaves are desk-wm's (crates/desk-wm/tests/desk.rs, panes.rs, tiling.rs, fill.rs, cover.rs);
-// what stays here is the runtime's surfaces following the pane in use, the plugins a close
+// The runtime's side of the windows (#83): which window a tab is in, where it goes and what a close
+// leaves are desk-wm's (crates/desk-wm/tests/desk.rs, tabs.rs, tiling.rs, fill.rs, cover.rs);
+// what stays here is the runtime's surfaces following the tab in use, a new tab opening another
+// window of the window's plugin (ADR 0268), the plugins a close
 // unmounts for the session (ADR 0040) and the question about their unsaved changes before (#160).
 import { describe, expect, it, vi } from "vitest";
 import { Buffers } from "../buffers";
@@ -11,14 +12,14 @@ import { takeDesk } from "../wm/view";
 import { openSurface, settled, stash, windowsOf } from "./actions";
 import { Store, sampleState } from "./state";
 import {
-  closePane,
+  closeTab,
   closeWindow,
-  focusPane,
+  focusTab,
   isFollowing,
+  newTab,
   newWindow,
-  showInPane,
+  showInTab,
   showPlugin,
-  splitPane,
   takeAndFollow,
 } from "./windows";
 
@@ -33,12 +34,24 @@ async function ctx(wm = testWindowManager()) {
     shortcuts.focused = id;
   });
   const unmount = vi.fn((id: string) => void wm.edit([{ op: "release", id }]));
+  // As the plugin host opens another window of a plugin (ADR 0212): its key is told first, then
+  // its surface is handed over.
+  const opened = new Map<string, number>();
+  const another = vi.fn((plugin: string, before?: (key: string) => void) => {
+    const n = (opened.get(plugin) ?? 1) + 1;
+    opened.set(plugin, n);
+    const key = `${plugin}@${n}`;
+    before?.(key);
+    void wm.edit([{ op: "adopt", id: key, title: key }]);
+    return key;
+  });
   await wm.edit(["p.a", "p.b", "p.c"].map((id) => ({ op: "adopt", id, title: id })));
   const buffers = new Buffers();
   return {
     store,
     wm,
     unmount,
+    another,
     focusSurface,
     shortcuts,
     buffers,
@@ -47,7 +60,7 @@ async function ctx(wm = testWindowManager()) {
       shortcuts,
       focusSurface,
       followSurface: focusSurface,
-      plugins: { unmount },
+      plugins: { unmount, another },
       buffers,
     } as never,
     bridge: undefined as never,
@@ -57,8 +70,8 @@ async function ctx(wm = testWindowManager()) {
   };
 }
 
-describe("the runtime's surfaces follow the pane in use", () => {
-  it("a plugin's pane takes the keys, and a pane of the shell's own takes them from the plugins", async () => {
+describe("the runtime's surfaces follow the tab in use", () => {
+  it("a plugin's tab takes the keys, and a view of the shell's own takes them from the plugins", async () => {
     const c = await ctx();
     await showPlugin(c, "p.a");
     expect(c.store.get().focused).toBe("p.a");
@@ -67,26 +80,26 @@ describe("the runtime's surfaces follow the pane in use", () => {
     const id = await newWindow(c);
     expect(c.store.get().focused).toBe(id);
     expect(c.focusSurface).toHaveBeenLastCalledWith(null);
-    await focusPane(c, "p.b");
+    await focusTab(c, "p.b");
     expect(c.focusSurface).toHaveBeenLastCalledWith("p.b");
     expect(c.shortcuts.focused).toBe("p.b");
   });
 
-  it("a pane already in use is not focused again, and the surfaces still follow it", async () => {
+  it("a tab already in use is not focused again, and the surfaces still follow it", async () => {
     const c = await ctx();
-    await focusPane(c, "p.a");
+    await focusTab(c, "p.a");
     const edit = vi.spyOn(c.wm, "edit");
     c.shortcuts.focused = null;
-    await focusPane(c, "p.a");
+    await focusTab(c, "p.a");
     expect(edit).not.toHaveBeenCalled();
     expect(c.shortcuts.focused).toBe("p.a");
   });
 
-  it("a plugin shown in a pane of the shell's window takes the keys there", async () => {
+  it("a plugin shown in the tab of the shell's window takes the keys there", async () => {
     const c = await ctx();
     const id = await newWindow(c);
     expect(c.shortcuts.focused).toBeNull();
-    await showInPane(c, id, "p1", "plugin:p.a");
+    await showInTab(c, id, "p1", "plugin:p.a");
     expect(c.store.get().focused).toBe(id);
     expect(c.shortcuts.focused).toBe("p.a");
   });
@@ -122,8 +135,8 @@ describe("the focus settles while the window manager's desk comes late (#160)", 
 
   it("a desk that answers a focus move asked before another does not take the keys back", async () => {
     const c = await late();
-    const first = focusPane(c, "p.a");
-    const second = focusPane(c, "p.b");
+    const first = focusTab(c, "p.a");
+    const second = focusTab(c, "p.b");
     await Promise.all([first, second]);
     await turns();
     expect(c.store.get().focused).toBe("p.b");
@@ -141,13 +154,13 @@ describe("the focus settles while the window manager's desk comes late (#160)", 
     expect(c.shortcuts.focused).toBe("p.palette");
   });
 
-  it("a pane in use by a desk not yet in is focused again, so the move after it does not win", async () => {
+  it("a tab in use by a desk not yet in is focused again, so the move after it does not win", async () => {
     const c = await late();
-    await focusPane(c, "p.a");
-    const moving = focusPane(c, "p.b");
+    await focusTab(c, "p.a");
+    const moving = focusTab(c, "p.b");
     // The store still names p.a in use: the move to p.b is on its way.
     expect(c.store.get().focused).toBe("p.a");
-    await Promise.all([moving, focusPane(c, "p.a")]);
+    await Promise.all([moving, focusTab(c, "p.a")]);
     await turns();
     expect(c.store.get().focused).toBe("p.a");
     expect(c.shortcuts.focused).toBe("p.a");
@@ -205,9 +218,9 @@ describe("a press that focuses a window and puts it in the drawer", () => {
       shortcuts.focused = id;
       if (id) void showPlugin(c, id);
     });
-    await focusPane(c, "p.a");
+    await focusTab(c, "p.a");
     // The press focuses p.b, its click on the drawer tool puts it away.
-    const pressed = focusPane(c, "p.b");
+    const pressed = focusTab(c, "p.b");
     const away = stash(c, "p.b", "B");
     await Promise.all([pressed, away]);
     await settled(c);
@@ -233,10 +246,10 @@ describe("closing a window", () => {
     expect(c.unmount).not.toHaveBeenCalled();
   });
 
-  it("the last pane of a plugin's window closes it, and its plugin unmounts", async () => {
+  it("the last tab of a plugin's window closes it, and its plugin unmounts", async () => {
     const c = await ctx();
-    await focusPane(c, "p.c");
-    await closePane(c);
+    await focusTab(c, "p.c");
+    await closeTab(c);
     expect(c.unmount).toHaveBeenCalledWith("p.c");
     expect(c.unmount).toHaveBeenCalledTimes(1);
   });
@@ -267,16 +280,21 @@ describe("closing a window with unsaved changes (#160, #162)", () => {
     expect(c.unmount).toHaveBeenCalledWith("p.b");
   });
 
-  it("asks when the last pane closes the window, and not for one pane of a split", async () => {
+  it("asks when the last tab closes the window, and about a tab's own window when others stay", async () => {
     const c = await ctx();
     const guard = unsaved(c, "p.c");
-    await focusPane(c, "p.c");
-    await closePane(c);
+    await focusTab(c, "p.c");
+    await closeTab(c);
     expect(guard).toHaveBeenCalledTimes(1);
     expect(c.unmount).not.toHaveBeenCalled();
-    await splitPane(c, "row");
-    await closePane(c);
+    // A second tab with nothing unsaved closes without a question, and the window stays.
+    await newTab(c);
+    await settled(c);
+    await closeTab(c);
     expect(guard).toHaveBeenCalledTimes(1);
+    expect(c.unmount).toHaveBeenCalledWith("p.c@2");
+    expect(c.unmount).toHaveBeenCalledTimes(1);
+    expect(windowsOf(c.store.get()).map((p) => p.id)).toContain("p.c");
   });
 });
 
@@ -333,7 +351,7 @@ describe("the page follows the window the window manager put in use (#251)", () 
     expect(c.focusSurface).not.toHaveBeenCalled();
   });
 
-  it("a desk that leaves the same window and pane in use moves nothing", async () => {
+  it("a desk that leaves the same window and tab in use moves nothing", async () => {
     const { wm, followed } = await told();
     await wm.edit([{ op: "focus", window: "p.a" }]);
     await wm.edit([{ op: "toggle-pin", id: "p.b" }]);
@@ -341,7 +359,7 @@ describe("the page follows the window the window manager put in use (#251)", () 
     expect(followed).toEqual(["p.a"]);
   });
 
-  it("a pane of the shell's own in use takes the page's focus from the plugins", async () => {
+  it("a view of the shell's own in use takes the page's focus from the plugins", async () => {
     const { c, wm, followed } = await told();
     await wm.edit([{ op: "focus", window: "p.a" }]);
     await wm.edit([{ op: "new-window" }]);

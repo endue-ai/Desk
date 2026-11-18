@@ -1,5 +1,5 @@
 /**
- * Views: what a pane can show. Each has a title for the title bar and a body that may keep itself
+ * Views: what a tab can show. Each has a title for the title bar and a body that may keep itself
  * up to date (the agent screen follows its A2A card and tasks; the shortcut list follows the keymap).
  * The calendar, tomorrow and notes samples are universal views with inline data (ADR 0103).
  */
@@ -21,12 +21,12 @@ import { launcherBody } from "./samples/launcher";
 import { notesBody } from "./samples/notes";
 import { tomorrowView } from "./samples/tomorrow";
 import { universalBody } from "./samples/universal";
-import { findLeaf, leaves, panesOf } from "./tree";
+import { shownTab } from "./tree";
 
-/** Where a view is shown: its surface and pane. */
+/** Where a view is shown: its surface and tab. */
 export interface Where {
   surface: string;
-  pane: string;
+  tab: string;
 }
 
 export interface Mounted {
@@ -45,7 +45,7 @@ export interface View {
 const still = (el: HTMLElement): Mounted => ({ el });
 
 /**
- * The view a pane shows. A pane named after its surface whose plugin the runtime handed over shows
+ * The view a tab shows. A tab named after its surface whose plugin the runtime handed over shows
  * that plugin's surface, so a profile that places `endue.calendar` gets the plugin, not a sample.
  */
 export function resolveView(
@@ -57,16 +57,9 @@ export function resolveView(
   return view;
 }
 
-/** The pane whose view the title bar names: the focused one, else the first. */
-export function activeLeaf(ctx: Pick<ShellCtx, "store">, p: SurfacePlacement) {
-  const s = ctx.store.get();
-  const tree = panesOf(p);
-  return (s.focused === p.id && s.pane ? findLeaf(tree, s.pane) : undefined) ?? leaves(tree)[0];
-}
-
-/** The view the title bar names, as the pane resolves it (a plugin's surface when it holds one). */
+/** The view the title bar names: the one the tab shown shows (a plugin's surface when it holds one). */
 export function activeView(ctx: Pick<ShellCtx, "store">, p: SurfacePlacement): string {
-  return resolveView(ctx.store.get(), p, activeLeaf(ctx, p)?.view ?? p.id);
+  return resolveView(ctx.store.get(), p, shownTab(p).view);
 }
 
 export function viewOf(ctx: ShellCtx, view: string): View {

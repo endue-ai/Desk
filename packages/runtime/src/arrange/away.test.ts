@@ -84,7 +84,7 @@ describe("desk.windows.put-away", () => {
     expect(away(store)).toEqual([]);
   });
 
-  it("puts a named window away with its panes, under the title of its first pane", async () => {
+  it("puts a named window away with its tabs, under the title of its first tab", async () => {
     const { commands, store } = await desk();
     expect(await commands.run(PUT_AWAY, { window: "window-1" })).toEqual({
       window: "window-1",
@@ -92,7 +92,8 @@ describe("desk.windows.put-away", () => {
     });
     expect(here(store)).toEqual(["endue.mail"]);
     const [item] = store.get().drawer;
-    expect(item?.placement?.panes).toMatchObject({ kind: "split" });
+    // Saved split inside, before tabs: its panes are its tabs.
+    expect(item?.placement?.tabs?.map((t) => t.view)).toEqual(["notes", "calendar"]);
   });
 
   it("refuses a window that is not on the desktop in front, and has nothing to put away on an empty one", async () => {

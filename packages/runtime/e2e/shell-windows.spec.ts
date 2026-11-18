@@ -1,6 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
 import { DESK, openShell, putAway } from "./shell-helpers";
-import { shellTree } from "./shell-tree";
 
 test.use({ viewport: DESK });
 
@@ -31,86 +30,41 @@ test.describe("surfaces as windows", () => {
     await expect(page.locator('[data-surface="window-2"]')).toBeVisible();
   });
 
-  test("⌘D splits right and ⌥⌘D splits down; the new pane takes focus", async ({ page }) => {
+  test("a surface of the shell's own view takes no tab: no tool for one, and ⌘D adds none", async ({
+    page,
+  }) => {
     await newSurfaceWith(page, "notes");
+    await expect(surface(page).getByRole("button", { name: /새 탭/ })).toBeHidden();
     await page.keyboard.press("Meta+d");
-    await expect(panes(page)).toHaveCount(2);
-    await expect(surface(page).locator(".split-row")).toHaveCount(1);
-    await expect(surface(page).locator('[data-pane="p2"]')).toHaveClass(/is-active/);
-    await expect(surface(page).locator('[data-pane="p2"]')).toHaveAttribute(
-      "data-view",
-      "launcher",
-    );
-    await surface(page).locator('[data-pane="p2"] [data-view="calendar"]').click();
-    await page.keyboard.press("Meta+Alt+d");
-    await expect(panes(page)).toHaveCount(3);
-    await expect(surface(page).locator(".split-column")).toHaveCount(1);
-    await expect(surface(page).locator(".pane-head")).toHaveCount(3);
-    await surface(page).locator('[data-pane="p3"] [data-view="tomorrow"]').click();
-    await expect(surface(page).locator(".pane.is-active")).toHaveAttribute("data-pane", "p3");
-    await page.keyboard.press("Meta+]");
-    await expect(surface(page).locator(".pane.is-active")).toHaveAttribute("data-pane", "p1");
-    await expect(surface(page).locator(".surface-name")).toHaveText("메모");
-    await page.keyboard.press("Meta+[");
-    await expect(surface(page).locator(".pane.is-active")).toHaveAttribute("data-pane", "p3");
-    expect(await shellTree(page, '[data-surface="window-1"]')).toMatchSnapshot(
-      "split-surface.json",
-    );
-  });
-
-  test("dividers drag and take arrow keys", async ({ page }) => {
-    await newSurfaceWith(page, "notes");
-    await page.keyboard.press("Meta+d");
-    const divider = surface(page).locator(".divider");
-    await expect(divider).toHaveAttribute("aria-valuenow", "50");
-    const box = await divider.boundingBox();
-    if (!box) throw new Error("no divider");
-    await page.mouse.move(box.x + 1, box.y + 100);
-    await page.mouse.down();
-    await page.mouse.move(box.x + 1 + 96, box.y + 100, { steps: 4 });
-    await page.mouse.up();
-    await expect(divider).toHaveAttribute("aria-valuenow", "70");
-    await divider.focus();
-    await page.keyboard.press("ArrowLeft");
-    await expect(divider).toHaveAttribute("aria-valuenow", "65");
-    const moved = await divider.boundingBox();
-    if (!moved) throw new Error("no divider");
-    await page.mouse.move(moved.x + 1, moved.y + 100);
-    await page.mouse.down();
-    await page.mouse.move(moved.x + 600, moved.y + 100, { steps: 4 });
-    await page.mouse.up();
-    // Short of 85 %: the second pane keeps room for its header, 120 px of the 478 px body (#159).
-    await expect(divider).toHaveAttribute("aria-valuenow", "75");
-  });
-
-  test("⌘W closes the focused pane, and the last pane closes the surface", async ({ page }) => {
-    await newSurfaceWith(page, "notes");
-    await page.keyboard.press("Meta+d");
-    await page.keyboard.press("Meta+w");
     await expect(panes(page)).toHaveCount(1);
+    await expect(surface(page).locator(".tab-strip")).toBeHidden();
     await expect(panes(page).first()).toHaveAttribute("data-view", "notes");
+  });
+
+  test("⌘W closes the surface", async ({ page }) => {
+    await newSurfaceWith(page, "notes");
     await page.keyboard.press("Meta+w");
     await expect(surface(page)).toHaveCount(0);
   });
 
-  test("a split surface keeps its panes through the drawer", async ({ page }) => {
+  test("a surface keeps what it shows through the drawer", async ({ page }) => {
     await newSurfaceWith(page, "notes");
-    await page.keyboard.press("Meta+d");
     await putAway(page, "window-1");
     await expect(surface(page)).toHaveCount(0);
     await page.click(".drawer-button");
     await page.locator('[data-item="surface-window-1"] button').click();
-    await expect(panes(page)).toHaveCount(2);
+    await expect(panes(page)).toHaveCount(1);
+    await expect(panes(page).first()).toHaveAttribute("data-view", "notes");
   });
 
-  test("typing in a pane is not a command, but chords still are", async ({ page }) => {
+  test("typing in a surface is not a command, but chords still are", async ({ page }) => {
     await newSurfaceWith(page, "notes");
     const notes = surface(page).locator("textarea.notes-input");
     await notes.click();
-    await page.keyboard.type("d");
-    await expect(panes(page)).toHaveCount(1);
-    await page.keyboard.press("Meta+d");
-    await expect(panes(page)).toHaveCount(2);
+    await page.keyboard.type("n");
+    await expect(page.locator('[data-surface="window-2"]')).toHaveCount(0);
+    await page.keyboard.press("Meta+n");
+    await expect(page.locator('[data-surface="window-2"]')).toBeVisible();
   });
 });
 
@@ -142,8 +96,8 @@ test.describe("command bindings", () => {
     await expect(palette).toBeVisible();
     const frame = page.frameLocator('[data-surface="desk.palette"] iframe');
     await expect(frame.getByTestId("query")).toBeFocused();
-    await page.keyboard.type("split");
-    await expect(frame.getByRole("option").first()).toContainText("나누기");
+    await page.keyboard.type("new tab");
+    await expect(frame.getByRole("option").first()).toContainText("새 탭");
     await page.keyboard.press("Escape");
     await expect(palette).toBeHidden();
   });
@@ -174,7 +128,7 @@ test.describe("command bindings", () => {
     await page.keyboard.press("Meta+d");
     await page.getByRole("button", { name: "단축키 옮기기", exact: true }).click();
     await expect(page.locator(".keys-note")).toHaveText("단축키를 옮겼습니다.");
-    await expect(row(page, "desk.display.split-right")).toContainText("없음");
+    await expect(row(page, "desk.display.new-tab")).toContainText("없음");
     await page.keyboard.press("Escape");
     await page.keyboard.press("Meta+d");
     await expect(page.locator('[data-desktop="2"]')).toHaveAttribute("aria-pressed", "true");

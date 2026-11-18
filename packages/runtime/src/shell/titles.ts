@@ -2,7 +2,7 @@
  * What a surface is called where people read it: the drawer, the title bar, the launcher. One
  * place for the sample views, the launcher windows, the agent screens and the drawer's own items.
  */
-import { leaves, panesOf } from "../surface/tree";
+import { tabsOf } from "../surface/tree";
 import { LOCAL_VIEW, localName } from "../system/local-ids";
 import { type CopyKey, t } from "./copy";
 import type { Store } from "./state";
@@ -48,7 +48,7 @@ export function viewTitles(
   const titles: Record<string, string> = {};
   const { wm } = store.get();
   for (const p of wm.windows[wm.here] ?? []) {
-    for (const leaf of leaves(panesOf(p))) {
+    for (const leaf of tabsOf(p)) {
       if (!leaf.view.startsWith("plugin:")) titles[leaf.view] = surfaceTitle(ctx, leaf.view);
     }
   }

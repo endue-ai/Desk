@@ -157,7 +157,7 @@ export async function freshDesktop(): Promise<string> {
 const shellWindow = (w: Window) => !w.panes.some((p) => p.plugin);
 
 /**
- * Close the shell's windows on the desktop in front, as the person does with ⌘W: the pane in use,
+ * Close the shell's windows on the desktop in front, as the person does with ⌘W: the tab in use,
  * and the focus moved on (⌘]) when it is not in one of them. Each case ends with this, so the next
  * one's new windows start from `window-1` again and the desktops it leaves behind stay empty.
  */
@@ -167,7 +167,7 @@ export async function closeShellWindows(): Promise<void> {
     const left = onScreen(desk).filter(shellWindow);
     if (left.length === 0) return;
     const using = inUse(desk);
-    await run(using && shellWindow(using) ? "desk.display.close-pane" : "desk.display.focus-next");
+    await run(using && shellWindow(using) ? "desk.display.close-tab" : "desk.display.focus-next");
   }
   throw new Error("the shell's windows did not close");
 }

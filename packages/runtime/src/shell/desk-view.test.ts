@@ -11,7 +11,7 @@ import { takeDesk } from "../wm/view";
 import { openSurface, setDesktop } from "./actions";
 import { deskSnapshot } from "./desk-view";
 import { Store, sampleState } from "./state";
-import { closeWindow, focusPane, newWindow, splitPane, toggleFloating } from "./windows";
+import { closeWindow, focusTab, newWindow, toggleFloating } from "./windows";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 type Rect = { x: number; y: number; w: number; h: number };
@@ -66,7 +66,7 @@ describe("the desk Eris sees", () => {
     ]);
     await move(c, "endue.notes", { x: 40, y: 60, w: 600, h: 400 });
     await move(c, "endue.git", { x: 700, y: 60, w: 680, h: 760 });
-    await focusPane(c, "endue.git");
+    await focusTab(c, "endue.git");
     const desk = await deskSnapshot(c);
     expect(desk.screen).toEqual({ w: 1440, h: 900 });
     const ids = desk.windows.map((w) => w.id);
@@ -114,16 +114,33 @@ describe("the desk Eris sees", () => {
     expect(desk.windows[0]).toMatchObject({ id: "endue.notes", floating: true });
   });
 
-  it("lists every pane of a split window, the one in use marked, and a launcher by its title", async () => {
+  it("lists every tab of a window as a pane, the one it shows marked (ADR 0268)", async () => {
+    const c = ctx();
+    await adopt(c, [
+      ["endue.git", "Git"],
+      ["endue.git@2", "Git"],
+    ]);
+    await c.wm.edit([{ op: "add-tab", window: "endue.git", view: "plugin:endue.git@2" }]);
+    const desk = await deskSnapshot(c);
+    const window = desk.windows.find((w) => w.id === "endue.git");
+    expect(window?.focused).toBe(true);
+    expect(window?.panes.map((p) => [p.id, p.view, p.plugin])).toEqual([
+      ["p1", "plugin:endue.git", "endue.git"],
+      ["p2", "plugin:endue.git@2", "endue.git"],
+    ]);
+    expect(window?.panes.filter((p) => p.focused).map((p) => p.id)).toEqual(["p2"]);
+    // The plugin's second window is that tab, and no window of its own.
+    expect(desk.windows.some((w) => w.id === "endue.git@2")).toBe(false);
+  });
+
+  it("names a launcher by its title", async () => {
     const c = ctx();
     const id = await newWindow(c);
-    await splitPane(c, "row");
-    const desk = await deskSnapshot(c);
-    const window = desk.windows.find((w) => w.id === id);
+    const window = (await deskSnapshot(c)).windows.find((w) => w.id === id);
     expect(window?.focused).toBe(true);
-    expect(window?.panes).toHaveLength(2);
-    expect(window?.panes.every((p) => p.view === "launcher" && !p.plugin)).toBe(true);
-    expect(window?.panes.filter((p) => p.focused)).toHaveLength(1);
+    expect(window?.panes.map((p) => [p.view, p.plugin, p.focused])).toEqual([
+      ["launcher", undefined, true],
+    ]);
     // The title is the runtime's copy, which it tells desk-wm.
     expect(window?.panes[0]?.title).toBe("launcherTitle");
   });

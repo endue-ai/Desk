@@ -30,7 +30,7 @@ describe("the window manager's seam", () => {
     void seam.host.edit([{ op: "new-window" }]);
     seam.host.grab({ kind: "resize", window: "window-1", grip: "se" }, { x: 10, y: 20 });
     seam.host.run({ op: "snap", fill: "left" }, "window-1");
-    void seam.host.edit([{ op: "split", dir: "row" }, { op: "blur" }]);
+    void seam.host.edit([{ op: "step-tab", step: 1 }, { op: "blur" }]);
     seam.host.run({ op: "maximize" });
     void seam.host.snapshot({ titles: {}, frames: {} });
     // The shell applies the edits in order and holds each call until the edit it follows is in.
@@ -42,7 +42,7 @@ describe("the window manager's seam", () => {
         { gesture: { kind: "resize", window: "window-1", grip: "se" }, x: 10, y: 20, after: 1 },
       ],
       ["compositor_wm", { op: { op: "snap", fill: "left" }, window: "window-1", after: 1 }],
-      ["compositor_edit", { seq: 2, edits: [{ op: "split", dir: "row" }, { op: "blur" }] }],
+      ["compositor_edit", { seq: 2, edits: [{ op: "step-tab", step: 1 }, { op: "blur" }] }],
       ["compositor_wm", { op: { op: "maximize" }, after: 2 }],
     ]);
     expect(asked).toEqual([

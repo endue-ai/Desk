@@ -1,7 +1,7 @@
 /**
  * The shell's state in one store, the empty desk the app starts with and the sample desk the dev
  * page and the fixtures start with. Profiles and Eris's settings mirror the runtime's (link.ts);
- * the theme is desk.theme's. The windows, panes, desktops, the drawer and the pan are the window
+ * the theme is desk.theme's. The windows, tabs, desktops, the drawer and the pan are the window
  * manager's (crates/desk-wm, #83): the store holds the last desk it published (`wm/take.ts`) and
  * nothing else writes them.
  */
@@ -75,8 +75,8 @@ export interface DeskState {
    * there (ADR 0221).
    */
   edges: Edge[];
-  /** The window (and pane) each desktop had in use when the person left it, by id. */
-  focusBy: Partial<Record<DesktopId, { window: string; pane: string | null }>>;
+  /** The window (and tab) each desktop had in use when the person left it, by id. */
+  focusBy: Partial<Record<DesktopId, { window: string; tab: string | null }>>;
   /** The agent directory (specs/brain/v0), loaded through the bridge. */
   spaces: Space[];
   spaceId: string;
@@ -115,8 +115,8 @@ export interface DeskState {
   composer: { open: boolean; text: string; selected: number };
   /** Surface id with keyboard/pointer focus; it draws on top. */
   focused: string | null;
-  /** The focused pane inside the focused surface. */
-  pane: string | null;
+  /** The tab in use: the one the focused surface shows. */
+  tab: string | null;
 }
 
 type Listener = (state: DeskState, previous: DeskState) => void;
@@ -200,7 +200,7 @@ export function emptyState(lang: Lang): DeskState {
     eris: { state: "idle", density: "balanced", soul: "wisp", saying: "" },
     composer: { open: false, text: "", selected: 0 },
     focused: null,
-    pane: null,
+    tab: null,
   };
 }
 

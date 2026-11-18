@@ -44,27 +44,7 @@
       {
        "tag": "button",
        "class": "icon-button tool",
-       "aria-label": "Split right (⌘D)",
-       "box": [
-        322,
-        199,
-        24,
-        24
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "split-right"
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "icon-button tool",
-       "aria-label": "Split down (⌥⌘D)",
+       "aria-label": "New tab (⌘D)",
        "box": [
         348,
         199,
@@ -77,7 +57,7 @@
        "children": [
         {
          "tag": "svg",
-         "icon": "split-down"
+         "icon": "plus"
         }
        ]
       },
@@ -173,8 +153,59 @@
    "children": [
     {
      "tag": "div",
-     "class": "panes",
+     "class": "tabs",
      "children": [
+      {
+       "tag": "div",
+       "class": "tab-strip",
+       "role": "tablist",
+       "style": {
+        "display": "none"
+       },
+       "children": [
+        {
+         "tag": "div",
+         "class": "tab is-active",
+         "role": "tab",
+         "children": [
+          {
+           "tag": "span",
+           "class": "tab-name",
+           "style": {
+            "color": "rgb(243, 241, 236)"
+           },
+           "text": "Counter",
+           "children": [
+            {
+             "tag": "svg",
+             "icon": "box"
+            }
+           ]
+          },
+          {
+           "tag": "button",
+           "class": "icon-button tool tab-close",
+           "aria-label": "Close tab · Counter",
+           "box": [
+            0,
+            0,
+            0,
+            0
+           ],
+           "style": {
+            "border": "solid rgba(0, 0, 0, 0)"
+           },
+           "children": [
+            {
+             "tag": "svg",
+             "icon": "close"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
       {
        "tag": "div",
        "class": "pane",
