@@ -55,7 +55,8 @@ An agent is never granted anything outside `agents.<id>.allow` in init.yaml when
 anything: a call or `perm.request` outside it is refused at once (`perm.request` answers
 `reason: "outside-allowlist"`, any other call `permission_denied`), whatever the agent holds, and the
 runtime hears a `ui.notified` from `core` naming the agent. Inside it, or with an empty list, an agent's
-call without a grant asks the person for the call's scope, as `shell.open` does.
+call without a grant asks the person for the call's scope, as `shell.open` does; `cmd.invoke` of a
+command an installed plugin provides needs no grant and asks nothing (ADR 0268).
 
 An agent's irreversible call waits for the person's approval even when a grant covers it (ADR 0078):
 `fs.write` to a path, and `net.fetch` to a host, that no `always` grant of the agent allows;
@@ -409,7 +410,8 @@ registration order. `cmd.changed` events (registered, updated, unregistered) go 
 **cmd.tools** lists the registered commands marked `agent`, the tools agents are offered (ADR 0088), in
 registration order: each with its tool `name` (the id with every dot an underscore, absent past 64
 characters), title, description, args and result schemas, `readOnly`, `irreversible`, provider, and
-`granted`, whether a grant of the caller covers it now. An agent sees every one its allowlist could let it
+`granted`, whether a grant of the caller covers it now (for an agent, an installed plugin's command
+always, ADR 0268). An agent sees every one its allowlist could let it
 run (all of them with an empty allowlist); any other caller those its `cmd:invoke` grants cover. Every
 word of `query` must appear, ignoring case, in the id, title, description or keywords; `limit` is 50 when
 absent, 200 at most. It needs no scope and spends no grant.

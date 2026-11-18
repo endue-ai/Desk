@@ -73,8 +73,9 @@ pub(crate) fn list(selection: &Selection, catalog: Option<&Catalog>) -> Value {
 }
 
 fn agent_note() -> String {
-    "It runs as this server's agent: the first time, Desk asks the person to allow it, and a command \
-     its plugin marks irreversible waits for the person's approval."
+    "It runs as this server's agent: an installed plugin's command runs at once, one of the desk's \
+     own asks the person the first time, and a command its plugin marks irreversible waits for the \
+     person's approval."
         .to_owned()
 }
 

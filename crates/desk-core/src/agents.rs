@@ -2,8 +2,9 @@
 //! its own, and is never granted anything outside `agents.<id>.allow` in init.yaml when that list
 //! holds anything: the cap holds at use time, so a grant the agent kept from a wider list allows
 //! nothing outside the current one. Inside it, or with an empty list, a call no grant covers asks
-//! the person for its scope, remembered per agent by the prompt policy. Every agent call is logged
-//! on the `perm` channel (`perm_log`).
+//! the person for its scope, remembered per agent by the prompt policy; a command an installed
+//! plugin provides runs without the question, since installing the plugin was the person's yes to
+//! what it offers (ADR 0268). Every agent call is logged on the `perm` channel (`perm_log`).
 
 use desk_bridge::{BridgeError, GrantDuration, Permission, RefusalReason};
 
@@ -52,9 +53,20 @@ impl Core {
         outside.then_some(RefusalReason::OutsideAllowlist)
     }
 
-    /// The check of an agent's call: refused outside its allowlist whatever it holds, allowed by a
-    /// grant of its own, or else the person is asked for the scope, for the session, as shell.open
-    /// asks. Each call is one `perm` log entry.
+    /// Whether `scope` on `target` runs a command an installed plugin provides: the person
+    /// installed the plugin, so an agent runs what it offers without being asked about (ADR 0268).
+    /// The desk's own commands and an MCP server's are not a plugin's.
+    pub(crate) fn installed_command(&self, scope: &Permission, target: &Target<'_>) -> bool {
+        let (Permission::CmdInvoke(_), Target::CommandId(id)) = (scope, target) else {
+            return false;
+        };
+        let provider = self.command(id).map(|info| info.provider);
+        provider.is_some_and(|plugin| self.registry().get(&plugin).is_some())
+    }
+
+    /// The check of an agent's call: refused outside its allowlist whatever it holds, allowed for
+    /// an installed plugin's command or by a grant of its own, or else the person is asked for the
+    /// scope, for the session, as shell.open asks. Each call is one `perm` log entry.
     pub(crate) fn check_agent(
         &self,
         caller: &str,
@@ -68,6 +80,10 @@ impl Core {
                     permission: scope.clone(),
                     reason: refusal(caller, Some(reason)),
                 }));
+            }
+            if self.installed_command(scope, target) {
+                self.log_perm(caller, scope, Some(target), Verdict::Allowed, None);
+                return Ok(());
             }
             let held = self.permissions().authorize(caller, scope, target).is_ok();
             if !held {
