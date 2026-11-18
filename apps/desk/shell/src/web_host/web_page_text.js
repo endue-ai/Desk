@@ -69,6 +69,9 @@ globalThis.__deskPageText = (state) => {
   /** Whether a role's or an attribute's element is one thing to act on, not a box of others. */
   const leaf = (el) => !el.querySelector(ACTED) && Array.from(squash(el.textContent)).length <= 300;
 
+  /** The words an element shows, as they are laid out: parts side by side stay apart. */
+  const wordsOf = (el) => squash(el?.innerText ?? el?.textContent);
+
   function refOf(el) {
     let ref = state.names.get(el);
     if (!ref) {
@@ -92,7 +95,7 @@ globalThis.__deskPageText = (state) => {
     const ids = el.getAttribute("aria-labelledby");
     if (!ids) return "";
     const root = el.getRootNode();
-    const parts = ids.split(/\s+/).map((id) => root.getElementById?.(id)?.textContent ?? "");
+    const parts = ids.split(/\s+/).map((id) => wordsOf(root.getElementById?.(id)));
     return squash(parts.join(" "));
   }
 
@@ -101,10 +104,10 @@ globalThis.__deskPageText = (state) => {
     if (said) return said;
     if (kind === "checkbox" || kind === "radio") return el.getAttribute("title") ?? "";
     if (kind === "field" || kind === "select") {
-      const label = squash(el.labels?.[0]?.textContent);
+      const label = wordsOf(el.labels?.[0]);
       return label || el.getAttribute("placeholder") || el.getAttribute("title") || el.name || "";
     }
-    const words = squash(el.textContent);
+    const words = wordsOf(el);
     if (words) return words;
     const picture = el.querySelector?.("img[alt]")?.getAttribute("alt");
     return picture || el.getAttribute("title") || el.value || "";
