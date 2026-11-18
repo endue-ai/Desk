@@ -1,4 +1,4 @@
-// How web.read writes a web view's page (ADR 0270, `web_page.js`, `web_page.rs`): its text in
+// How web.read writes a web view's page (ADR 0272, `web_page.js`, `web_page.rs`): its text in
 // reading order, one block a line, a heading after #, a list item after -, and every element
 // that can be acted on as `[e12 link "Sign in"]`: a field with what it holds (never a
 // password), a box or a choice with its state. What the page hides is left out, a frame is

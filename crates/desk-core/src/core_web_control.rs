@@ -1,4 +1,4 @@
-//! `web.read` and `web.act` (ADR 0270): what a view's page says and what is done in it, for the
+//! `web.read` and `web.act` (ADR 0272): what a view's page says and what is done in it, for the
 //! view's caller under `web:control`. `web:browse` shows a page without letting its plugin see
 //! it; a page may hold what the person is signed in to, so reading it and acting in it is a
 //! grant of its own, whose hosts, when it has any, must cover the page the view shows now. The

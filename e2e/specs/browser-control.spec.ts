@@ -1,4 +1,4 @@
-// The desk's assistant reads and operates the Browser's page (ADR 0270): the commands it is
+// The desk's assistant reads and operates the Browser's page (ADR 0272): the commands it is
 // offered (endue.browser.read, scroll, click, type, key, select, back) run here as it runs them,
 // against a page served on this machine. Each answers the page as it reads afterwards, so the
 // spec sees what the real page made of each act: the text with its elements named, a scroll
@@ -58,7 +58,7 @@ function ref(page: Page, what: string): string {
   return found[1] as string;
 }
 
-describe("the Browser, read and operated by the desk's assistant (ADR 0270)", () => {
+describe("the Browser, read and operated by the desk's assistant (ADR 0272)", () => {
   let server: Server;
   let origin = "";
   let page: Page;

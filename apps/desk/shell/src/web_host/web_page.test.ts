@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// What web.read and web.act ask of a web view's page (ADR 0270; web_page.js, web_page_text.js),
+// What web.read and web.act ask of a web view's page (ADR 0272; web_page.js, web_page_text.js),
 // run in a page of the test's: the text it reads and the refs it names, what it leaves out, a
 // page of another site left alone, and what makes a page ready for typed text, a key and a choice.
 import { readFileSync } from "node:fs";
