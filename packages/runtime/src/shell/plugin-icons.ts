@@ -1,5 +1,5 @@
 /**
- * A window's icon (ADR 0270): the one its title bar shows and the canvas map draws in it, which the
+ * A window's icon (ADR 0273): the one its title bar shows and the canvas map draws in it, which the
  * compositor draws itself from the path data the page reports (`view-icons.ts`). A built-in plugin's
  * surface shows the plugin's own; a plugin not named here, the box. The shell's own views keep
  * theirs: the samples', the launcher's, the agent screens' and the drawer's files'.

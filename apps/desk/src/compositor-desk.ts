@@ -5,7 +5,7 @@
 // places of the system layer's own plugin surfaces (overlays, the dock) and parts, the titles of the
 // shell's own views, the top chips' edges and the live budget's settings, the words of what the
 // compositor draws itself (placeholders, the spread, the canvas map), whether the map is folded and
-// how wide (#54), each view's icon, which it draws in the map's windows (ADR 0270), and the window
+// how wide (#54), each view's icon, which it draws in the map's windows (ADR 0273), and the window
 // manager's seam (ADR 0153): the last desk desk-wm published that the page
 // took and the window the page lays out where a gesture holds it (`compositor-wm.ts`). The page
 // itself draws only its system layer and its own views; `compositor.css` leaves the rest to the
@@ -63,7 +63,7 @@ export interface DeskReport {
   /** The parts of the system layer the page shows, drawn whole above every window (ADR 0160). */
   parts: PartReport[];
   titles: Record<string, string>;
-  /** Each view's icon as SVG path data, what the compositor draws in the map's windows (ADR 0270). */
+  /** Each view's icon as SVG path data, what the compositor draws in the map's windows (ADR 0273). */
   icons: Record<string, string>;
   top: { left?: number; right?: number };
   budget: { live: number; afterMs: number };
@@ -76,7 +76,7 @@ export interface DeskReport {
   };
   /** The canvas map folded to its button and its width once resized, as the session keeps them;
    * gone with the strip under it while a window fills the app, `shift` pixels toward the edge or
-   * `away` (ADR 0221, ADR 0253, ADR 0270). */
+   * `away` (ADR 0221, ADR 0253, ADR 0273). */
   map: { folded: boolean; width?: number; shift?: number; away?: true };
   /** The last desk desk-wm published that the page took. */
   applied: number;

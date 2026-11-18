@@ -77,7 +77,7 @@
   --desktops-radius: calc(var(--desk-button-radius) + var(--desktops-pad));
   /* The strip under the canvas map (issue 296). The map is the compositor's, in fixed pixels, not
      tokens: 192 wide (desk_wm::MAP) with 5 of padding each side (draw_map.rs' PAD) until the person
-     resizes it (ADR 0270; MapStrip.ts sets --map-width then), in the proportions 1440 by 900, its
+     resizes it (ADR 0273; MapStrip.ts sets --map-width then), in the proportions 1440 by 900, its
      box ending 64 above the app's bottom (BOTTOM). It lies 24 from the app's right (RIGHT) under
      the rail where the app is tall enough to keep the rail 12 above its box, 2 × (64 + its height +
      12 + 161), 734 for the default 130 (draw_map.rs' `tall`), else 92 (RIGHT_SHORT): the clamp

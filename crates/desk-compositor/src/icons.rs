@@ -1,4 +1,4 @@
-//! Line icons drawn into textures (the canvas map's windows, ADR 0270): SVG path data on a 24-unit
+//! Line icons drawn into textures (the canvas map's windows, ADR 0273): SVG path data on a 24-unit
 //! grid, stroked 2 units wide with round caps and joins as the runtime's `shell/icons.ts` draws
 //! them, in one colour, into a square of device pixels. They are rasterized on the CPU (zeno, the
 //! rasterizer text's glyphs already use) and uploaded once; an icon is a texture the compositor

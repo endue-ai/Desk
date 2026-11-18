@@ -195,7 +195,7 @@ const offRun = listen<RunPayload>("desk://compositor-run", ({ payload }) => {
   const run = payload && cardCommand(payload);
   if (run) void desk.runtime.commands.run(run.command, run.args).catch(() => undefined);
 });
-// The person folded the canvas map the compositor draws, opened it or resized it (ADR 0270): the
+// The person folded the canvas map the compositor draws, opened it or resized it (ADR 0273): the
 // session keeps that, and the strip under the map follows its width.
 const offMap = listen<{ folded?: unknown; width?: unknown }>(
   "desk://compositor-map",

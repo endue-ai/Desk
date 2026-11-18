@@ -1,4 +1,4 @@
-// The canvas map and surfaces' snapshots on the compositor (#54, ADR 0161, ADR 0270). The map is the
+// The canvas map and surfaces' snapshots on the compositor (#54, ADR 0161, ADR 0273). The map is the
 // compositor's (the twin of the runtime's shell-canvas.spec case it replaces, shell/Minimap.ts gone):
 // it shows while the canvas holds something to find, draws each normal window with its icon, takes
 // the view where it is pressed, moves it with a drag (Escape puts it back), folds to its button and

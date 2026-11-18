@@ -4,7 +4,7 @@
 //! a window without a live frame says (the page's copy, in the desk's language, with the spread's and
 //! the canvas map's), the last desk it took and laid out, where it lays a held window out, whether
 //! the canvas map is folded and how wide the person made it, and each view's icon, which the map
-//! draws in its window (ADR 0270).
+//! draws in its window (ADR 0273).
 
 use std::collections::BTreeMap;
 
@@ -182,7 +182,7 @@ pub struct DeskReport {
     pub titles: BTreeMap<String, String>,
     /// The icon of every view a window of the desktop in front shows, by view as the window
     /// manager resolves it (`plugin:<id>` for a plugin's surface): SVG path data on the runtime's
-    /// 24 grid (`shell/icons.ts`), what its title bar shows and the map draws (ADR 0270).
+    /// 24 grid (`shell/icons.ts`), what its title bar shows and the map draws (ADR 0273).
     #[serde(default)]
     pub icons: BTreeMap<String, String>,
     #[serde(default)]

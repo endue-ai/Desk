@@ -1,4 +1,4 @@
-//! The canvas map's scene (ADR 0082, #54, ADR 0270; the runtime's `shell/Minimap.ts` and
+//! The canvas map's scene (ADR 0082, #54, ADR 0273; the runtime's `shell/Minimap.ts` and
 //! `minimap.css`, which it replaces): in the bottom right, under the right rail, the desktop in
 //! front drawn whole in its box, every normal window to scale with its icon in it (the one its
 //! title bar shows, from the page's report), the focused one marked, and the part in sight as a
@@ -124,7 +124,8 @@ fn grips(outer: Rect) -> Vec<(MapEdges, Rect)> {
 }
 
 /// The map's layout on the hosted desk; `held` is the fit a drag holds, so the map stays still,
-/// and `width` the canvas's while a resize lasts (else the report's, else `MAP`'s).
+/// and `width` the canvas's the shell draws while a resize lasts and until the page says it back
+/// (else the report's, else `MAP`'s).
 pub fn layout(hosted: &Hosted, held: Option<Fit>, width: Option<f64>) -> Option<MapLayout> {
     let plan = hosted.plan()?;
     let report = hosted.report();

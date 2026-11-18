@@ -1,4 +1,4 @@
-//! The canvas map on the compositor (#54, ADR 0082, ADR 0161, ADR 0270; the runtime's
+//! The canvas map on the compositor (#54, ADR 0082, ADR 0161, ADR 0273; the runtime's
 //! `shell/Minimap.ts`, which it replaces): it shows while the desktop in front holds something to
 //! find (`map_shows`), each window drawn with its icon (`desk_compositor::Icons`). A press takes the
 //! view to that point and a drag moves it with the fit the press held, so the map stays still;
@@ -48,6 +48,8 @@ pub struct Mapping {
     /// A press in the map: the drag it holds, where it was pressed (CSS) and the pan it started at.
     drag: Option<(MapDrag, Vec2, Offset)>,
     resize: Option<Resize>,
+    /// The width last told the page, until its report says it back: the map keeps it meanwhile.
+    told: Option<f64>,
     /// A press on the fold button, until it is released.
     folding: bool,
     pub layout: Option<MapLayout>,
@@ -89,9 +91,16 @@ impl Mapping {
         self.drag.as_ref().map(|(drag, ..)| drag.fit)
     }
 
-    /// The canvas's width while a resize lasts.
-    pub fn resizing(&self) -> Option<f64> {
-        self.resize.map(|r| r.now)
+    /// The canvas's width to draw, the page's `reported` one aside: a resize's while it lasts,
+    /// then the one told the page until its report says it back.
+    pub fn width(&mut self, reported: Option<f64>) -> Option<f64> {
+        if let Some(resize) = self.resize {
+            return Some(resize.now);
+        }
+        if self.told.is_some() && self.told == reported {
+            self.told = None;
+        }
+        self.told.or(reported)
     }
 
     /// The cursor over map node `node`: a grip's resize cursor, none elsewhere.
@@ -304,6 +313,7 @@ impl CompositorWindow {
         if let Some(resize) = self.mapping.resize.as_mut() {
             resize.now = width;
         }
+        self.mapping.told = Some(width);
         self.desk
             .pages
             .emit(Role::Main, MAP, json!({ "width": width }));
@@ -349,5 +359,41 @@ impl CompositorWindow {
             "button": quad(layout.button), "view": quad(layout.view), "windows": windows,
             "grips": grips, "peek": self.mapping.peek, "resizing": self.mapping.resize.is_some(),
             "icons": self.mapping.icons.len() })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Mapping, Resize};
+    use desk_compositor::glam::Vec2;
+    use desk_wm::MapEdges;
+
+    #[test]
+    fn the_width_told_the_page_holds_until_its_report_says_it_back() {
+        let mut map = Mapping::default();
+        assert_eq!(map.width(None), None, "the default");
+        assert_eq!(map.width(Some(240.0)), Some(240.0), "the session's");
+        let edges = MapEdges {
+            left: true,
+            top: true,
+        };
+        let (from, start, now) = (Vec2::ZERO, 240.0, 300.0);
+        map.resize = Some(Resize {
+            edges,
+            from,
+            start,
+            now,
+        });
+        assert_eq!(
+            map.width(Some(240.0)),
+            Some(300.0),
+            "a resize's while it lasts"
+        );
+        map.resize = None;
+        map.told = Some(300.0);
+        assert_eq!(map.width(Some(240.0)), Some(300.0), "the report is behind");
+        assert_eq!(map.width(Some(300.0)), Some(300.0));
+        assert_eq!(map.told, None, "caught up");
+        assert_eq!(map.width(Some(320.0)), Some(320.0), "the page's again");
     }
 }
