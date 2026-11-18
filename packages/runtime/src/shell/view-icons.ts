@@ -1,5 +1,5 @@
 /**
- * The icons the compositor draws in the canvas map's windows (ADR 0270): each view's, as its title
+ * The icons the compositor draws in the canvas map's windows (ADR 0273): each view's, as its title
  * bar shows it (`plugin-icons.ts`), in SVG path data it strokes the way `icons.ts` does.
  */
 import { leaves, panesOf } from "../surface/tree";

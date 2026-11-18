@@ -1,4 +1,4 @@
-//! The canvas map's size and grips as the scene lays them out (ADR 0270): the width the person
+//! The canvas map's size and grips as the scene lays them out (ADR 0273): the width the person
 //! gave it, in `MAP`'s proportions against the app's bottom right, under the rail while it fits
 //! there, and the grips along its left and top edges that the pointer finds before the canvas.
 

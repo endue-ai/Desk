@@ -119,7 +119,7 @@ describe("the desk the page publishes", () => {
     expect(document.documentElement.classList.contains("desk-compositor")).toBe(false);
   });
 
-  it("names each view's icon and the width the person gave the map (ADR 0270)", () => {
+  it("names each view's icon and the width the person gave the map (ADR 0273)", () => {
     const { win, tick } = frames();
     const r = runtime(["endue.terminal"]);
     const store = (r.desk as { store: { set(s: object): void; get(): { wm: object } } }).store;

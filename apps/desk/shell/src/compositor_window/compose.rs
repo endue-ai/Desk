@@ -1,6 +1,6 @@
 //! Laying the compositor window's scene out again (#81, #54): from the hosted desk, the frames the
 //! surfaces attached, the spread while it is open and the canvas map with its windows' icons (made
-//! here, under the compositor's lock, once each, ADR 0270); then what the scene drew goes to
+//! here, under the compositor's lock, once each, ADR 0273); then what the scene drew goes to
 //! the input router, the window manager's cards, the spread, the map and accessibility, and where
 //! it drew each plugin surface to the web host, the screen its popups are placed in (#156). A frame
 //! for which only surfaces' pictures changed (a caret's blink, a page's own animation) draws the
@@ -40,8 +40,9 @@ impl CompositorWindow {
         let scale = self.window.scale_factor() as f32;
         let folded = self.map_folded();
         let held = self.mapping.held();
-        let resizing = self.mapping.resizing();
-        let layout = folded.and_then(|_| draw_map::layout(&self.hosted, held, resizing));
+        let reported = self.hosted.report().and_then(|r| r.map.width);
+        let width = self.mapping.width(reported);
+        let layout = folded.and_then(|_| draw_map::layout(&self.hosted, held, width));
         let at = self.hosted.ms(Instant::now());
         self.hosted.follow_anchors();
         // A window's page's picture whose panes' plugins have theirs shows now (ADR 0233).

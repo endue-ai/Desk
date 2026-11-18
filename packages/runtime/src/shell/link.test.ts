@@ -170,7 +170,7 @@ describe("the shell's part of desk.session keeps the windows open", () => {
     expect(store.get().agentsPinned).toBe(true);
   });
 
-  it("the shell's part keeps the canvas map's width and gives it back (ADR 0270)", async () => {
+  it("the shell's part keeps the canvas map's width and gives it back (ADR 0273)", async () => {
     const { store, part, kept } = await shell();
     // At its default the record has no such key: a session saved before resizing reads the same.
     expect("mapWidth" in (part.save() as object)).toBe(false);

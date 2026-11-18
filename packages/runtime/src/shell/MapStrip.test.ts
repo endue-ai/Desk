@@ -13,9 +13,9 @@ import { testWindowManager } from "../wm/testing";
 import { takeDesk } from "../wm/view";
 import { edit, setDesktop, settled } from "./actions";
 import { mountBottom } from "./Bottom";
-import { mapWidthOf } from "./MapStrip";
 import type { ShellCtx } from "./context";
 import { t } from "./copy";
+import { mapWidthOf } from "./MapStrip";
 import { Store, sampleState } from "./state";
 import { Ticker } from "./ticker";
 
@@ -145,7 +145,7 @@ describe("the strip under the canvas map", () => {
     expect(root.querySelector(".map-strip .drawer-panel")).not.toBeNull();
   });
 
-  it("follows the width the person gave the map, as wide as its box (ADR 0270)", () => {
+  it("follows the width the person gave the map, as wide as its box (ADR 0273)", () => {
     const width = () => document.documentElement.style.getPropertyValue("--map-width");
     expect(width()).toBe("");
     store.set({ mapWidth: 288 });

@@ -5,7 +5,7 @@
  * under it, as wide (`scale.css`), so the two read as one card. It stays while the map is folded,
  * so both buttons are always reachable, and goes past the right edge with the rail while a window
  * fills the app (`away.ts`). The origin button is there at the origin too, disabled. The person
- * resizes the map from its left and top edges (ADR 0270): the strip, and what keeps clear of it,
+ * resizes the map from its left and top edges (ADR 0273): the strip, and what keeps clear of it,
  * follow the width the compositor says (`--map-width` on the document, read by `scale.css`).
  */
 import { desktopId, desktopsOf } from "./actions";

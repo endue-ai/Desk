@@ -58,7 +58,7 @@ const PATHS: Record<string, string> = {
   image:
     "M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 11.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 16l-5-5-9 9",
   compass: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM15.5 8.5l-2 5-5 2 2-5z",
-  // The built-in plugins' own (`plugin-icons.ts`, ADR 0270): their title bars and the canvas map.
+  // The built-in plugins' own (`plugin-icons.ts`, ADR 0273): their title bars and the canvas map.
   terminal: "M4 17l6-5-6-5M12 19h8",
   branch:
     "M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9",
@@ -82,7 +82,7 @@ export type IconName = keyof typeof PATHS;
 
 /**
  * Icon `name`'s SVG path data on the 24 grid, the sparkle for a name it does not know: what the
- * compositor strokes the same way to draw it itself (the canvas map's windows, ADR 0270).
+ * compositor strokes the same way to draw it itself (the canvas map's windows, ADR 0273).
  */
 export function iconPath(name: string): string {
   return PATHS[name] ?? PATHS.sparkle ?? "";

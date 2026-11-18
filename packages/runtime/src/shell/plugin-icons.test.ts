@@ -1,4 +1,4 @@
-// A window's icon (ADR 0270): every built-in plugin that opens a window has one of its own, drawn
+// A window's icon (ADR 0273): every built-in plugin that opens a window has one of its own, drawn
 // from the desk's line icons, and the page reports each view's as path data for the canvas map.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";

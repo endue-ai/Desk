@@ -65,7 +65,7 @@ export interface DeskState {
    */
   mapFolded: boolean;
   /**
-   * The canvas map's box width in CSS pixels once the person resized it (ADR 0270), `null` at its
+   * The canvas map's box width in CSS pixels once the person resized it (ADR 0273), `null` at its
    * default: the compositor draws it that wide and says so as it changes (`desk://compositor-map`);
    * the strip under it follows (`MapStrip.ts`).
    */

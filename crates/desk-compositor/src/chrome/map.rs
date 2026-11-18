@@ -1,6 +1,6 @@
 //! The canvas map's chrome (ADR 0082, the runtime's `shell/minimap.css`): the box with the canvas
 //! in it, each normal window (its icon drawn by the caller between its fill and its edge, ADR
-//! 0270, the focused one marked), the part in sight, the fold button at the top right and the
+//! 0273, the focused one marked), the part in sight, the fold button at the top right and the
 //! grips along the left and top edges that resize the box, or the button alone, folded. The
 //! button's icons are drawn from rectangles: a bar to fold, a frame round a view to open.
 

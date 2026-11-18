@@ -1,4 +1,4 @@
-//! Line icons as textures (the canvas map's windows, ADR 0270): made once per path, size and
+//! Line icons as textures (the canvas map's windows, ADR 0273): made once per path, size and
 //! colour, drawn like any surface, and let go once nobody asks for them.
 
 use desk_compositor::headless::{Target, headless_device};

@@ -94,7 +94,7 @@ interface SavedShell {
   talkPlace?: TalkPlace;
   /** The canvas map is folded to its button; absent while it is open (the compositor's, #54). */
   mapFolded?: true;
-  /** The canvas map's width once the person resized it (ADR 0270); absent at its default. */
+  /** The canvas map's width once the person resized it (ADR 0273); absent at its default. */
   mapWidth?: number;
   /** The agent bar is pinned unfolded to its list (issue 294); absent while it is not. */
   agentsPinned?: true;
