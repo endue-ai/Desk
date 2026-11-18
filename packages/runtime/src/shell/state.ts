@@ -36,6 +36,9 @@ export type Popover =
   | "drawer"
   | "mode-menu"
   | "agents-more"
+  /** The shortcut bar's "+" list and a shortcut's own menu (ADR 0274). */
+  | "shortcuts"
+  | "shortcut-menu"
   /** A desktop's menu in the switcher, a window's menu, the desktops overview (ADR 0117). */
   | "desktop-menu"
   | "window-menu"
@@ -64,6 +67,12 @@ export interface DeskState {
    * (#54) and says when the person folds or opens it (`desk://compositor-map`).
    */
   mapFolded: boolean;
+  /**
+   * The canvas map's box width in CSS pixels once the person resized it (ADR 0273), `null` at its
+   * default: the compositor draws it that wide and says so as it changes (`desk://compositor-map`);
+   * the strip under it follows (`MapStrip.ts`).
+   */
+  mapWidth: number | null;
   /**
    * The agent bar is pinned unfolded to its list of names (issue 294): the person's choice, kept
    * with the session (link.ts). Not pinned, it unfolds while the pointer rests on it.
@@ -172,6 +181,7 @@ export function emptyState(lang: Lang): DeskState {
     desktops: null,
     pan: {},
     mapFolded: false,
+    mapWidth: null,
     agentsPinned: false,
     edges: [],
     focusBy: {},

@@ -9,10 +9,51 @@ use serde::{Deserialize, Serialize};
 use crate::math::round;
 use crate::types::{Offset, Rect, Size};
 
-/// The map's box in CSS pixels, in the 1440×900 frame's proportions.
+/// The map's box in CSS pixels, in the 1440×900 frame's proportions: its size until the person
+/// resizes it (`map_size`).
 pub const MAP: Size = Size { w: 192.0, h: 120.0 };
+/// The narrowest and the widest the person can make the map's box: three quarters of `MAP` and
+/// two and a half times it.
+pub const MAP_LEAST: f64 = 144.0;
+pub const MAP_MOST: f64 = 480.0;
 /// Room around what the map shows, as a share of the world's longer side.
 const MARGIN: f64 = 0.06;
+
+/// The map's box `width` CSS pixels wide, rounded and held to `MAP_LEAST`..`MAP_MOST`, in `MAP`'s
+/// proportions; `MAP` for a width that is no number.
+pub fn map_size(width: f64) -> Size {
+    if !width.is_finite() {
+        return MAP;
+    }
+    let w = round(width).clamp(MAP_LEAST, MAP_MOST);
+    Size {
+        w,
+        h: w * MAP.h / MAP.w,
+    }
+}
+
+/// Which edges of the map's box a resize holds: the map lies against the app's bottom right, so
+/// it grows from its left edge, its top one, or the corner between them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MapEdges {
+    pub left: bool,
+    pub top: bool,
+}
+
+/// The map's width once the pointer moved `dx`, `dy` CSS pixels from where a resize of `edges`
+/// began, the box `start` wide then: leftward and upward grow it, the edge that grows it more wins
+/// at the corner, and the proportions stay (`map_size`).
+pub fn map_resized(start: f64, edges: MapEdges, dx: f64, dy: f64) -> Size {
+    let from = map_size(start);
+    let by_x = edges.left.then_some(from.w - dx);
+    let by_y = edges.top.then_some((from.h - dy) * MAP.w / MAP.h);
+    let width = match (by_x, by_y) {
+        (Some(x), Some(y)) => x.max(y),
+        (Some(w), None) | (None, Some(w)) => w,
+        (None, None) => from.w,
+    };
+    map_size(width)
+}
 
 /// World to map: one scale for both axes, then an offset that centres the world in the box.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

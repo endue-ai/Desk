@@ -76,11 +76,16 @@
   --desktop-segment-height: calc(var(--desk-control-sm) - 2 * var(--desktops-pad) - 2px);
   --desktops-radius: calc(var(--desk-button-radius) + var(--desktops-pad));
   /* The strip under the canvas map (issue 296). The map is the compositor's, in fixed pixels, not
-     tokens: 192 wide (desk_wm::MAP) with 5 of padding each side (draw_map.rs' PAD), its box ending
-     64 above the app's bottom (BOTTOM) and 24 from its right (RIGHT), 92 in an app under 734 high
-     (RIGHT_SHORT, TALL, below). The strip is as wide, 32 high, and fills the 32 under the map. */
+     tokens: 192 wide (desk_wm::MAP) with 5 of padding each side (draw_map.rs' PAD) until the person
+     resizes it (ADR 0273; MapStrip.ts sets --map-width then), in the proportions 1440 by 900, its
+     box ending 64 above the app's bottom (BOTTOM). It lies 24 from the app's right (RIGHT) under
+     the rail where the app is tall enough to keep the rail 12 above its box, 2 × (64 + its height +
+     12 + 161), 734 for the default 130 (draw_map.rs' `tall`), else 92 (RIGHT_SHORT): the clamp
+     steps from 0 to 68 below that height. The strip is as wide, 32 high, and fills the 32 under
+     the map. */
   --map-width: 202px;
-  --map-right: 24px;
+  --map-height: calc((var(--map-width) - 10px) * 0.625 + 10px);
+  --map-right: calc(24px + clamp(0px, (2 * (237px + var(--map-height)) - 100vh) * 1000, 68px));
   --map-strip: var(--desk-control-sm);
   --map-strip-bottom: calc(64px - var(--map-strip));
 
@@ -98,13 +103,6 @@
   --z-modal: 1060;
   --z-popover: 1070;
   --z-tooltip: 1080;
-}
-
-/* Under 734 high the rail, centred, would reach the map: both move 92 from the right (draw_map.rs). */
-@media (height < 734px) {
-  :root {
-    --map-right: 92px;
-  }
 }
 
 /* desk.theme sets data-motion from desk.theme.motion (or the OS when it says "system"); the runtime

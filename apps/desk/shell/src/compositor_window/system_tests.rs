@@ -90,7 +90,7 @@ fn drawn(hosted: &Hosted) -> (Scene, crate::compositor_window::draw::Drawn) {
 /// The same with the canvas map open while `map`.
 fn drawn_map(hosted: &Hosted, map: bool) -> (Scene, crate::compositor_window::draw::Drawn) {
     let mut scene = Scene::new(1440, 900);
-    let layout = map.then(|| layout(hosted, None)).flatten();
+    let layout = map.then(|| layout(hosted, None, None)).flatten();
     let sources = Sources {
         scale: 1.0,
         page: Some((PAGE_TEXTURE, (1440, 900))),
@@ -101,7 +101,7 @@ fn drawn_map(hosted: &Hosted, map: bool) -> (Scene, crate::compositor_window::dr
         map: layout.as_ref().map(|layout| MapSource {
             layout,
             folded: false,
-            thumbnail: &|_| None,
+            icon: &|_| None,
         }),
     };
     let drawn = draw(&mut scene, &ChromeTheme::default(), hosted, &sources).unwrap();
