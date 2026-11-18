@@ -387,19 +387,95 @@
      ]
     },
     {
+     "tag": "nav",
+     "class": "shortcuts float-bar",
+     "aria-label": "바로가기",
+     "box": [
+      16,
+      116,
+      52,
+      92
+     ],
+     "style": {
+      "background": "rgb(29, 28, 25)",
+      "border": "solid rgb(50, 48, 43)"
+     },
+     "children": [
+      {
+       "tag": "button",
+       "class": "icon-button shortcut",
+       "aria-label": "검색",
+       "box": [
+        24,
+        124,
+        36,
+        36
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "search"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button shortcuts-add",
+       "aria-label": "바로가기 추가",
+       "aria-expanded": "false",
+       "box": [
+        24,
+        164,
+        36,
+        36
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "plus"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "shortcuts-popover-slot",
+     "style": {
+      "color": "rgb(243, 241, 236)"
+     }
+    },
+    {
+     "tag": "div",
+     "class": "tooltip",
+     "role": "tooltip",
+     "hidden": "",
+     "style": {
+      "display": "none",
+      "background": "rgb(64, 61, 55)",
+      "color": "rgb(243, 241, 236)"
+     }
+    },
+    {
      "tag": "aside",
      "class": "sidebar float-bar",
      "aria-label": "에이전트 · 스페이스",
      "box": [
       16,
-      172,
+      220,
       52,
       380
      ],
      "style": {
       "background": "rgb(29, 28, 25)",
       "border": "solid rgb(50, 48, 43)",
-      "transform": "matrix(1, 0, 0, 1, 0, -189.875)"
+      "transform": "matrix(1, 0, 0, 1, 0, -142)"
      },
      "children": [
       {
@@ -409,7 +485,7 @@
        "aria-expanded": "false",
        "box": [
         17,
-        173,
+        221,
         1,
         1
        ],
@@ -433,7 +509,7 @@
          "aria-pressed": "true",
          "box": [
           25,
-          181,
+          229,
           34,
           34
          ],
@@ -457,7 +533,7 @@
          "aria-pressed": "false",
          "box": [
           25,
-          225,
+          273,
           34,
           34
          ],
@@ -481,7 +557,7 @@
          "aria-pressed": "false",
          "box": [
           25,
-          269,
+          317,
           34,
           34
          ],
@@ -504,7 +580,7 @@
          "aria-label": "새 에이전트 만들기",
          "box": [
           17,
-          312,
+          360,
           50,
           63
          ],
@@ -556,7 +632,7 @@
          "aria-pressed": "true",
          "box": [
           25,
-          394,
+          441,
           34,
           34
          ],
@@ -580,7 +656,7 @@
          "aria-pressed": "false",
          "box": [
           25,
-          438,
+          485,
           34,
           34
          ],
@@ -603,7 +679,7 @@
          "aria-label": "새 스페이스 만들기",
          "box": [
           17,
-          481,
+          528,
           50,
           63
          ],

@@ -4,6 +4,7 @@
 import { BridgeClient } from "@endue-ai/bridge";
 import {
   deskPluginUrl,
+  mapWidthOf,
   mountDesk,
   type Published,
   phase,
@@ -194,11 +195,17 @@ const offRun = listen<RunPayload>("desk://compositor-run", ({ payload }) => {
   const run = payload && cardCommand(payload);
   if (run) void desk.runtime.commands.run(run.command, run.args).catch(() => undefined);
 });
-// The person folded the canvas map the compositor draws, or opened it: the session keeps that.
-const offMap = listen<{ folded?: unknown }>("desk://compositor-map", ({ payload }) => {
-  if (typeof payload?.folded === "boolean") desk.store.set({ mapFolded: payload.folded });
-  stopDesk.wake();
-});
+// The person folded the canvas map the compositor draws, opened it or resized it (ADR 0273): the
+// session keeps that, and the strip under the map follows its width.
+const offMap = listen<{ folded?: unknown; width?: unknown }>(
+  "desk://compositor-map",
+  ({ payload }) => {
+    if (typeof payload?.folded === "boolean") desk.store.set({ mapFolded: payload.folded });
+    const width = mapWidthOf(payload?.width);
+    if (width !== null) desk.store.set({ mapWidth: width });
+    stopDesk.wake();
+  },
+);
 // The pointer came to an edge of the app, or left one, over a window's page: the chrome a
 // filled window sent away comes back there (ADR 0221).
 const EDGES = ["left", "right", "top", "bottom"] as const;
