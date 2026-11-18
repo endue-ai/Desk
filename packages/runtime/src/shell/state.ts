@@ -105,6 +105,11 @@ export interface DeskState {
   localRuns: LocalAgentRun[];
   /** The runs Eris handed out with her desk.agents.* tools, so their screens say so. */
   erisRuns: string[];
+  /**
+   * The windows Eris looks at or uses now (ADR 0271, `eris/visiting.ts`), each with how brightly
+   * its frame glows, 0 to 1.
+   */
+  erisWindows: { id: string; glow: number }[];
   /** What is put away: never a surface that a desktop places (#4). */
   drawer: DrawerItem[];
   /**
@@ -197,6 +202,7 @@ export function emptyState(lang: Lang): DeskState {
     localAgents: [],
     localRuns: [],
     erisRuns: [],
+    erisWindows: [],
     drawer: [],
     adopted: [],
     attention: [],

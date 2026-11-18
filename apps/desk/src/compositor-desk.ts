@@ -5,9 +5,10 @@
 // places of the system layer's own plugin surfaces (overlays, the dock) and parts, the titles of the
 // shell's own views, the top chips' edges and the live budget's settings, the words of what the
 // compositor draws itself (placeholders, the spread, the canvas map), whether the map is folded and
-// how wide (#54), each view's icon, which it draws in the map's windows (ADR 0273), and the window
-// manager's seam (ADR 0153): the last desk desk-wm published that the page
-// took and the window the page lays out where a gesture holds it (`compositor-wm.ts`). The page
+// how wide (#54), each view's icon, which it draws in the map's windows (ADR 0273), the windows
+// Eris is at, which glow (ADR 0271), and the window manager's seam (ADR 0153): the last desk
+// desk-wm published that the page took and the window the page lays out where a gesture holds it
+// (`compositor-wm.ts`). The page
 // itself draws only its system layer and its own views; `compositor.css` leaves the rest to the
 // compositor. It looks on every frame while the desk changes, and stops after `QUIET` frames that
 // changed nothing (ADR 0164): a change to the page, a new size, the compositor's word (`wake`) or a
@@ -78,6 +79,11 @@ export interface DeskReport {
    * gone with the strip under it while a window fills the app, `shift` pixels toward the edge or
    * `away` (ADR 0221, ADR 0253, ADR 0273). */
   map: { folded: boolean; width?: number; shift?: number; away?: true };
+  /**
+   * The windows Eris looks at or uses now, each with how brightly its frame glows, 0 to 1: the
+   * compositor draws the glow around the window where it is (ADR 0271).
+   */
+  lit: { window: string; level: number }[];
   /** The last desk desk-wm published that the page took. */
   applied: number;
   /** The window the page lays out where desk-wm's gesture holds it. */
@@ -247,6 +253,7 @@ export function startCompositorDesk(
         ...(s.mapWidth === null ? {} : { width: s.mapWidth }),
         ...mapAway(doc),
       },
+      lit: s.erisWindows.map(({ id, glow }) => ({ window: id, level: glow })),
       ...wm(),
     };
     const json = JSON.stringify(body);
@@ -277,6 +284,8 @@ export function startCompositorDesk(
     characterData: true,
   });
   win.addEventListener("resize", wake);
+  // A window's glow changes nothing in the page where the compositor draws the windows.
+  const offLit = desk.store.watch((s) => s.erisWindows, wake);
   const safety = win.setInterval(() => {
     const before = seq;
     report();
@@ -287,6 +296,7 @@ export function startCompositorDesk(
     changes.disconnect();
     win.removeEventListener("resize", wake);
     win.clearInterval(safety);
+    offLit();
     doc.documentElement.classList.remove("desk-compositor");
   };
   return Object.assign(stop, { flush: report, wake });

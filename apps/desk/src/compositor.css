@@ -24,6 +24,11 @@ html.desk-compositor .surface[data-surface] {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+/* A window Eris is at glows around its frame, which the compositor draws where the window is and
+   under the windows over it (`lit`, ADR 0271). */
+html.desk-compositor .surface.is-eris-visiting {
+  outline: none;
+}
 html.desk-compositor .surface-name,
 html.desk-compositor .surface-sub,
 html.desk-compositor .surface-resize,

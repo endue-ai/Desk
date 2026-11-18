@@ -1,4 +1,6 @@
-/* Eris's errands (eris/errand.ts, ADR 0089): the spark that carries a hand-off to a plugin and back. */
+/* Eris's errands (eris/errand.ts, ADR 0089, ADR 0271): the spark that carries a hand-off to a plugin
+   and back, the thread it runs along, and what she is at meanwhile, lit in the star's colour: the
+   brand's mark of an agent at work (docs/design-system.md). */
 .errand {
   position: absolute;
   left: 0;
@@ -43,11 +45,46 @@
 .errand-label small { color: var(--desk-text-muted); font-size: var(--text-xs); }
 .errand[data-leg="back"] .errand-label { opacity: 0.7; }
 
-/* The plugin's window while Eris waits on it. */
-.is-eris-visiting {
-  outline: 2px solid color-mix(in srgb, var(--desk-eris) 70%, transparent);
-  outline-offset: 2px;
-  box-shadow: 0 0 28px color-mix(in srgb, var(--desk-eris) 35%, transparent);
+/* A look carries nothing: a smaller spark. */
+.errand--look .errand-spark { width: 12px; height: 12px; }
+
+/* The thread a spark runs along (eris/errand-thread.ts): a faint line between Eris and the window
+   and marks that run the way the data goes, out from her and back to her. Its box never moves. */
+.errand-thread {
+  position: absolute;
+  z-index: var(--z-float-top);
+  overflow: visible;
+  pointer-events: none;
+  fill: none;
+  stroke-linecap: round;
+  transition: opacity var(--motion-fast) ease;
+}
+.errand-thread-line {
+  stroke: color-mix(in srgb, var(--desk-star) 30%, transparent);
+  stroke-width: 1.5;
+}
+.errand-thread-flow {
+  stroke: var(--desk-star);
+  stroke-width: 2.5;
+  stroke-dasharray: 3 21;
+  animation: errand-flow var(--motion-fast) linear infinite;
+}
+/* While the plugin works nothing travels: the line stays, dimmer. */
+.errand-thread[data-leg="there"] { opacity: 0.55; }
+.errand-thread[data-leg="there"] .errand-thread-flow { opacity: 0; animation-play-state: paused; }
+.errand-thread--look { opacity: 0.6; }
+
+/* What Eris is at: a window's section where the page draws the windows (the compositor lights the
+   frame itself where it draws them, apps/desk compositor.css), the agent bar's group. A window says
+   how brightly (--eris-glow, eris/visiting.ts): softly while she looks, fully while she uses it.
+   A window's section says `outline: none` for its focus (surface.css), which this outweighs. */
+.is-eris-visiting,
+.surface.is-eris-visiting {
+  outline: 2px solid
+    color-mix(in srgb, var(--desk-star) calc(var(--eris-glow, 1) * 75%), transparent);
+  outline-offset: 1px;
+  box-shadow: 0 0 28px 1px
+    color-mix(in srgb, var(--desk-star) calc(var(--eris-glow, 1) * 42%), transparent);
   transition: box-shadow var(--motion-fast) ease, outline-color var(--motion-fast) ease;
 }
 
@@ -55,7 +92,12 @@
   from { transform: scale(0.85); }
   to { transform: scale(1.15); }
 }
+/* One mark's length and the gap after it: the marks run on without a seam. */
+@keyframes errand-flow {
+  to { stroke-dashoffset: -24; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .errand[data-leg="there"] .errand-spark { animation: none; }
+  .errand[data-leg="there"] .errand-spark,
+  .errand-thread-flow { animation: none; }
 }

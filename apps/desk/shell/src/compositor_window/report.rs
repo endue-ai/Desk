@@ -3,8 +3,8 @@
 //! state, the titles of its own views, the top chips' edges, the live budget's two settings, what
 //! a window without a live frame says (the page's copy, in the desk's language, with the spread's and
 //! the canvas map's), the last desk it took and laid out, where it lays a held window out, whether
-//! the canvas map is folded and how wide the person made it, and each view's icon, which the map
-//! draws in its window (ADR 0273).
+//! the canvas map is folded and how wide the person made it, each view's icon, which the map
+//! draws in its window (ADR 0273), and the windows Eris is at, which glow (ADR 0271).
 
 use std::collections::BTreeMap;
 
@@ -200,6 +200,26 @@ pub struct DeskReport {
     /// The canvas map, which the compositor draws (#54).
     #[serde(default)]
     pub map: MapState,
+    /// The windows Eris looks at or uses now (ADR 0271).
+    #[serde(default)]
+    pub lit: Vec<Lit>,
+}
+
+/// A window Eris is at, and how brightly its frame glows: softly while she looks at it, fully
+/// while she uses it, and in between while the glow comes and goes.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct Lit {
+    pub window: String,
+    #[serde(default)]
+    pub level: f32,
+}
+
+impl DeskReport {
+    /// How brightly window `id`'s frame glows, 0 (Eris is not at it) to 1.
+    pub fn glow_of(&self, id: &str) -> f32 {
+        let lit = self.lit.iter().find(|l| l.window == id);
+        lit.map_or(0.0, |l| l.level).clamp(0.0, 1.0)
+    }
 }
 
 /// Where the page lays a held window out, in CSS pixels.
@@ -217,6 +237,10 @@ impl desk_wm::Seen for DeskReport {
         self.titles.get(view).cloned()
     }
 }
+
+#[cfg(test)]
+#[path = "report_lit_tests.rs"]
+mod lit_tests;
 
 #[cfg(test)]
 mod tests {
@@ -245,6 +269,25 @@ mod tests {
         assert_eq!(report.frames[0].card.as_ref().unwrap().actions.len(), 2);
         assert_eq!(report.title("launcher").as_deref(), Some("Launcher"));
         assert_eq!((report.budget.live, report.top.left), (4, Some(300.0)));
+    }
+
+    #[test]
+    fn a_report_names_the_windows_eris_is_at_and_how_brightly_each_glows() {
+        let report: DeskReport = serde_json::from_value(json!({
+            "seq": 1, "width": 1280, "height": 800,
+            "lit": [{ "window": "endue.mail", "level": 0.6 }, { "window": "window-1", "level": 1 },
+                { "window": "window-2", "level": 4 }, { "window": "window-3" }]
+        }))
+        .unwrap();
+        assert_eq!(report.glow_of("endue.mail"), 0.6);
+        assert_eq!(report.glow_of("window-1"), 1.0);
+        assert_eq!(report.glow_of("window-2"), 1.0, "never past full");
+        assert_eq!(report.glow_of("window-3"), 0.0, "no level: dark");
+        assert_eq!(report.glow_of("endue.notes"), 0.0, "she is not at it");
+        // A page that says nothing of it lights nothing.
+        let quiet: DeskReport =
+            serde_json::from_value(json!({ "seq": 1, "width": 1280, "height": 800 })).unwrap();
+        assert_eq!(quiet.glow_of("endue.mail"), 0.0);
     }
 
     #[test]

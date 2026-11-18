@@ -133,9 +133,10 @@ describe("the window manager's seam", () => {
     const win = window as Window & typeof globalThis;
     win.requestAnimationFrame = () => 1;
     win.cancelAnimationFrame = () => {};
-    const state = { lang: "en", adopted: [], drawer: [], wm: { here: "1", windows: {} } };
+    const wm = { here: "1", windows: {} };
+    const state = { lang: "en", adopted: [], drawer: [], wm, erisWindows: [] };
     const desk = {
-      store: { get: () => state },
+      store: { get: () => state, watch: () => () => {} },
       runtime: {
         frames: { state: () => undefined, asleep: () => false },
         settings: { get: (_: string, fallback: unknown) => fallback },

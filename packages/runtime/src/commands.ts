@@ -63,6 +63,16 @@ export interface CommandRun {
   ok: boolean;
 }
 
+/** A built-in the core asked this desk to run: which, with what, and who asked. */
+export interface AskedRun {
+  id: string;
+  args: unknown;
+  caller: string;
+}
+
+/** Told of an asked run as it starts; what it returns hears the command's answer. */
+export type RunWatcher = (run: AskedRun) => ((result: unknown) => void) | undefined;
+
 const DESK = "desk";
 const ALL = { permission: "cmd:invoke" as const, ids: ["*"] };
 
@@ -80,6 +90,7 @@ export class Commands {
   /** Answers that arrived before cmd.invoke's own answer named their invocation. */
   readonly #early = new Map<string, CmdAnsweredData>();
   readonly #listeners = new Set<(run: CommandRun) => void>();
+  readonly #watchers = new Set<RunWatcher>();
   readonly #changes = new Set<() => void>();
   #chain: Promise<void> = Promise.resolve();
   #queued = false;
@@ -114,6 +125,15 @@ export class Commands {
 
   has(id: string): boolean {
     return this.#known.has(id);
+  }
+
+  /**
+   * Watch the built-ins the core asks this desk to run, whoever asked (the person, a plugin, an
+   * agent as `agent:<id>`): Eris's errands read which window a command of hers names (ADR 0271).
+   */
+  watchRuns(watcher: RunWatcher): () => void {
+    this.#watchers.add(watcher);
+    return () => this.#watchers.delete(watcher);
   }
 
   /** Every registered command, by id, as the core listed it last. */
@@ -201,7 +221,13 @@ export class Commands {
       case "cmd.invoked": {
         const { id, invocationId, args, caller } = event.data;
         const spec = this.#builtIn.get(id);
-        if (spec && this.#registered.has(id)) void this.#answer(invocationId, spec, args, caller);
+        if (spec && this.#registered.has(id)) {
+          const ends = [...this.#watchers].map((watch) => watch({ id, args, caller }));
+          const heard = (result: unknown) => {
+            for (const end of ends) end?.(result);
+          };
+          void this.#answer(invocationId, spec, args, caller, heard);
+        }
         break;
       }
       case "cmd.answered": {
@@ -218,9 +244,16 @@ export class Commands {
     }
   }
 
-  async #answer(invocationId: string, spec: CommandSpec, args: unknown, caller: string) {
+  async #answer(
+    invocationId: string,
+    spec: CommandSpec,
+    args: unknown,
+    caller: string,
+    heard: (result: unknown) => void,
+  ) {
     try {
       const result = await spec.run(args ?? {}, caller === DESK ? {} : { caller });
+      heard(result);
       await this.#bridge.call("cmd.answer", {
         invocationId,
         ...(result === undefined ? {} : { result }),
