@@ -139,7 +139,7 @@ impl Desk {
         }
         self.focused = Some(id.to_string());
         self.used.touch(id);
-        self.pane = None;
+        self.tab = None;
     }
 
     /// Where Eris sits on the desktop in front; `None`: her default place.
@@ -157,11 +157,11 @@ impl Desk {
         let to = self.id_of(r);
         self.focus_by.remove(&from);
         if let Some(window) = self.focused.take() {
-            let pane = self.pane.clone();
-            self.focus_by.insert(from, InUse { window, pane });
+            let tab = self.tab.clone();
+            self.focus_by.insert(from, InUse { window, tab });
         }
         self.desktop = to;
-        self.pane = None;
+        self.tab = None;
     }
 
     /// Bring a desktop to the front with the window it had in use when the person left it.
@@ -180,7 +180,7 @@ impl Desk {
                 .iter()
                 .any(|p| p.id == back.window)
         {
-            self.focus_pane(&back.window, back.pane.as_deref());
+            self.focus_tab(&back.window, back.tab.as_deref());
         }
     }
 
@@ -220,11 +220,50 @@ impl Desk {
             // The edit that hands it over says them again (`Desk::hint`).
             hints: None,
         });
+        self.rejoin(id);
+        self.settle_tab();
+    }
+
+    /// A plugin's first window handed over while the window named after it went on with other
+    /// tabs (its own tab closed, ADR 0268) comes back there as a tab: two windows never share an
+    /// id, and the plugin has no slot while a layout places its window.
+    fn rejoin(&mut self, id: &str) {
+        let view = format!("{}{id}", crate::placed::PLUGIN_VIEW);
+        for d in self.desktops().to_vec() {
+            let layout = self.layout_of(d.id.as_str());
+            let Some(p) = layout.surfaces.iter().find(|p| p.id == id) else {
+                continue;
+            };
+            let shows = |t: &crate::types::Tab| t.view == p.id || t.view == view;
+            let Some(tabs) = p.tabs.clone().filter(|tabs| !tabs.iter().any(shows)) else {
+                continue;
+            };
+            let after = tabs.last().map_or("", |t| t.id.as_str());
+            let (next, _) = crate::tabs::add(&tabs, after, &view);
+            self.edit_at(d.id.as_str(), |l| {
+                if let Some(q) = l.surfaces.iter_mut().find(|q| q.id == id) {
+                    q.tabs = Some(next);
+                }
+            });
+        }
+    }
+
+    /// The tab in use is the one the window in use shows: a tab arriving with its plugin's
+    /// window, or gone with it, changes which that is.
+    fn settle_tab(&mut self) {
+        let Some(id) = self.focused.clone() else {
+            return;
+        };
+        let out = || self.out_window(&id).map(|(_, p)| p);
+        if let Some(p) = self.window(&id).or_else(out) {
+            self.tab = Some(p.shown().id);
+        }
     }
 
     /// The runtime let plugin `id`'s surface go (it unmounted): its slot is free again, and a
     /// window that shows only it is not drawn until it comes back.
     pub fn release(&mut self, id: &str) {
         self.adopted.retain(|a| a.id != id);
+        self.settle_tab();
     }
 }

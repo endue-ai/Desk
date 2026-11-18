@@ -1,5 +1,5 @@
-//! What the page draws of a window (its title bar's icon and tools, its own views, split panes'
-//! headers), taken from where the page lays the window out and drawn where the compositor draws it
+//! What the page draws of a window (its title bar's icon and tools, its own views, the strip of
+//! its tabs), taken from where the page lays the window out and drawn where the compositor draws it
 //! (#80). The two are the same place but while the window manager moves a window ahead of the page
 //! (a gesture holding it, a glide into a part, a change the runtime has not taken yet). A part
 //! is never stretched: a piece of the same size is drawn from its top left, and the title bar's
@@ -51,7 +51,7 @@ fn title_bar(page: &HostWindow, drawn: &HostWindow) -> Vec<PagePart> {
 }
 
 /// What the page draws of window `drawn`, from the page's laying it out as `page`: the same
-/// panes in the same order.
+/// tab shown in both.
 pub fn page_parts(page: &HostWindow, drawn: &HostWindow) -> Vec<PagePart> {
     let mut all = title_bar(page, drawn);
     for (src, dst) in page.panes.iter().zip(&drawn.panes) {

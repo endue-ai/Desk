@@ -1,9 +1,8 @@
 //! A press decides the window in use (#251, ADR 0230): the window manager puts the window drawn
-//! topmost under a press in use, with the pane under the point, before the press is routed, and
+//! topmost under a press in use, with the tab it shows, before the press is routed, and
 //! publishes the desk so. No grab and no edit of the page's takes part.
 
-use desk_wm::host::{Cell, body_of, cells};
-use desk_wm::{Rect, SplitDir};
+use desk_wm::Rect;
 
 #[path = "interactions/support.rs"]
 mod support;
@@ -83,33 +82,31 @@ fn a_press_on_a_part_of_the_system_layer_over_a_window_is_not_the_windows() {
 }
 
 #[test]
-fn the_pane_under_the_press_is_the_pane_in_use() {
-    let mut desk = windows(1);
-    desk.place("window-1", Rect::new(300.0, 200.0, 600.0, 400.0));
-    desk.split(SplitDir::Row);
+fn a_press_puts_the_window_in_use_with_the_tab_it_shows() {
+    let mut desk = windows(2);
+    desk.place("window-1", Rect::new(100.0, 200.0, 400.0, 300.0));
+    desk.place("window-2", Rect::new(700.0, 200.0, 400.0, 300.0));
+    common_tabs(&mut desk, "window-1");
+    desk.focus_tab("window-2", None);
     let mut wm = wm_of(&desk);
-    let p = wm.desk().window("window-1").unwrap();
-    let panes: Vec<(String, Rect)> = (cells(&p.panes(), body_of(rect_of(&wm, "window-1")))
-        .into_iter())
-    .filter_map(|c| match c {
-        Cell::Pane { id, rect, .. } => Some((id, rect)),
-        Cell::Divider { .. } => None,
-    })
-    .collect();
-    assert_eq!(panes.len(), 2);
-    // The split left its new pane in use: a press in the first puts that one in use.
-    let (first, at) = panes[0].clone();
-    assert_ne!(wm.in_use().1, Some(first.as_str()));
-    let out = wm.pressed(body_at(at));
-    assert_eq!(wm.in_use(), (Some("window-1"), Some(first.as_str())));
+    let shown = wm.desk().window("window-1").unwrap().shown().id;
+    let out = wm.pressed(body_at(rect_of(&wm, "window-1")));
+    assert_eq!(wm.in_use(), (Some("window-1"), Some(shown.as_str())));
     assert_eq!(published(&out).len(), 1);
-    // A press on its title bar keeps the pane it has in use.
+    // A press on its title bar keeps it so, and publishes nothing.
     let out = wm.pressed(title_of(rect_of(&wm, "window-1")));
     assert!(published(&out).is_empty());
-    assert_eq!(wm.in_use().1, Some(first.as_str()));
-    let (second, at) = panes[1].clone();
-    wm.pressed(body_at(at));
-    assert_eq!(wm.in_use().1, Some(second.as_str()));
+    assert_eq!(wm.in_use().1, Some(shown.as_str()));
+}
+
+/// `window` showing a plugin, with a second tab of that plugin, which it shows.
+fn common_tabs(desk: &mut desk_wm::Desk, window: &str) {
+    for id in ["p.tabs", "p.tabs@2"] {
+        desk.adopt(id, id, desk_wm::FREE);
+    }
+    desk.show_in_tab(window, "p1", "plugin:p.tabs");
+    desk.add_tab(window, "plugin:p.tabs@2")
+        .expect("a tab of its kind");
 }
 
 #[test]

@@ -100,7 +100,7 @@ fn night() -> Saved {
 fn fresh() -> Desk {
     let mut desk = sample(EPOCH);
     adopt(&mut desk, &PLUGINS);
-    desk.focus_pane("endue.terminal", None);
+    desk.focus_tab("endue.terminal", None);
     desk
 }
 

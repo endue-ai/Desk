@@ -33,7 +33,7 @@ impl Wm {
                 let out = self.drawn.out_window(id).is_some();
                 let already = self.drawn.focused.as_deref() == Some(id);
                 if out && !already {
-                    self.drawn.focus_pane(id, None);
+                    self.drawn.focus_tab(id, None);
                 }
                 out && !already
             }

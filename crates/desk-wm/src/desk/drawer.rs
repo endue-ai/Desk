@@ -142,7 +142,7 @@ impl Desk {
             self.used.touch(&id);
         }
         for id in drawn(self, here.as_str()) {
-            self.focus_pane(&id, None);
+            self.focus_tab(&id, None);
         }
     }
 }
@@ -151,7 +151,7 @@ impl Desk {
 /// shows it again once no layout places it, so a profile switch need not keep it in the drawer.
 fn own_window(p: &Placement) -> bool {
     p.id == p.plugin
-        && p.panes().leaves().into_iter().all(|(_, view)| {
-            view == p.id || view.strip_prefix(PLUGIN_VIEW) == Some(p.plugin.as_str())
+        && p.tabs().iter().all(|tab| {
+            tab.view == p.id || tab.view.strip_prefix(PLUGIN_VIEW) == Some(p.plugin.as_str())
         })
 }

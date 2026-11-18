@@ -14,8 +14,6 @@ mod cursor;
 mod magnet;
 #[path = "interactions/mid_glide.rs"]
 mod mid_glide;
-#[path = "interactions/panes.rs"]
-mod panes;
 #[path = "interactions/reach.rs"]
 mod reach;
 #[path = "interactions/slide.rs"]
