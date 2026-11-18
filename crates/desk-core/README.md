@@ -13,7 +13,7 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
   `net.connect` the host and port against `net:connect` (`Target::Endpoint`), its bytes to the caller;
   `ui.surface.open` needs `ui:surface` and a declared surface, and `ui.surface.*` events go to `desk`;
   `ui.surface.snapshot` asks the shell's `SurfaceSnapshots` (`set_surface_snapshots`), a plugin its own only.
-- A view's page read and acted in (`web.read`, `web.act`, ADR 0268): under `web:control`, apart from
+- A view's page read and acted in (`web.read`, `web.act`, ADR 0270): under `web:control`, apart from
   `web:browse`, at the address the shell last reported (`core_web_control.rs`)
 - Web views (`web.*`, ADR 0216): per caller under `web:browse`, the shell's `WebViews` (`set_web_views`),
   `web_allows`/`web_changed` back. `dialog.*`: the shell's `Dialogs` (`set_dialogs`); the choice is granted.

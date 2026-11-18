@@ -147,7 +147,7 @@ eight `actions` (`{ command, title, args? }`): Enter runs the first, Mod+Enter t
 | `computer:see` | `apps` (optional) | Screenshots, displays, windows, running apps, accessibility trees and the OS permissions through `computer.*` (ADR 0123); `apps` limits it to those bundle ids' windows and trees |
 | `computer:control` | `apps` (optional) | Mouse and keyboard input, accessibility actions, launching, activating and quitting apps and the stop through `computer.*`; `apps` limits it to input to those apps. An agent's every act waits for approval (ADR 0078) |
 | `web:browse` | `hosts` (optional) | `web.open`, `web.place`, `web.load`, `web.go`, `web.focus`, `web.close` and `web.changed` events for the caller's own web views (ADR 0216); `hosts` limits a view's own page to those hosts, absent covers every http and https site |
-| `web:control` | `hosts` (optional) | `web.read` and `web.act` on the caller's own web views (ADR 0268): the page's text and what can be pressed or filled in on it, and scrolling, pressing, typing and choosing in it; `hosts` limits it to pages on those hosts, absent covers every page its views show |
+| `web:control` | `hosts` (optional) | `web.read` and `web.act` on the caller's own web views (ADR 0270): the page's text and what can be pressed or filled in on it, and scrolling, pressing, typing and choosing in it; `hosts` limits it to pages on those hosts, absent covers every page its views show |
 
 Paths are absolute or rooted at `~`, `${plugin}`, `${workspace}` or `${home}`, with `*` within a segment
 and `**` across segments. `shell:open` schemes are the three the core ever opens: a scope narrows them,

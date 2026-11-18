@@ -237,7 +237,7 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
                 host_covers(g, a)
             })
         }
-        // web:control without hosts covers every page its views show (ADR 0268).
+        // web:control without hosts covers every page its views show (ADR 0270).
         (Permission::WebControl(g), Permission::WebControl(s)) => {
             narrows(g.hosts.as_deref(), s.hosts.as_deref(), |g, a| {
                 host_covers(g, a)

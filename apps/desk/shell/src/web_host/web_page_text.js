@@ -1,4 +1,4 @@
-// How web.read writes a web view's page (ADR 0268, `web_page.js`, `web_page.rs`): its text in
+// How web.read writes a web view's page (ADR 0270, `web_page.js`, `web_page.rs`): its text in
 // reading order, one block a line, a heading after #, a list item after -, and every element
 // that can be acted on as `[e12 link "Sign in"]`: a field with what it holds (never a
 // password), a box or a choice with its state. What the page hides is left out, a frame is
@@ -33,8 +33,12 @@ globalThis.__deskPageText = (state) => {
     treeitem: "item",
   };
   const PRESSED = new Set(["button", "submit", "reset", "image"]);
-  const ACTED =
-    "a[href],button,input,select,textarea,summary,[role],[onclick],[tabindex],[contenteditable]";
+  /** What is acted on by itself, wherever it lies: a box holding one is read through. */
+  const ACTED = [
+    "a[href],button,input,select,textarea,summary,[onclick],[contenteditable]",
+    '[tabindex]:not([tabindex^="-"])',
+    ...Object.keys(ROLES).map((role) => `[role="${role}"]`),
+  ].join(",");
 
   const typeOf = (el) => (el.getAttribute("type") || "text").toLowerCase();
 
@@ -154,10 +158,11 @@ globalThis.__deskPageText = (state) => {
       if (lines[lines.length - 1].trim() !== "") lines.push("");
       else lines[lines.length - 1] = "";
     };
-    const each = (nodes) => {
-      for (const node of nodes) walk(node);
+    const each = (nodes, pressed) => {
+      for (const node of nodes) walk(node, pressed);
     };
-    function walk(node) {
+    // `pressed`: an element above shows the pointer a hand, so this one is part of what it is.
+    function walk(node, pressed) {
       if (chars > MOST.chars || elements > MOST.elements) return;
       if (node.nodeType === 3) {
         const text = node.nodeValue ?? "";
@@ -176,7 +181,10 @@ globalThis.__deskPageText = (state) => {
       elements += 1;
       const tag = node.localName;
       if (LEFT_OUT.has(tag) || !shown(node)) return;
-      const kind = kindOf(node);
+      // A page's own scripts make many things pressable without saying so: what shows the
+      // pointer a hand, and no element above it does, is taken for one.
+      const hand = getComputedStyle(node).cursor === "pointer";
+      const kind = kindOf(node) ?? (hand && !pressed ? "item" : null);
       const block = BLOCKS.has(tag);
       if (kind && (node.matches("a[href],button,input,select,textarea,summary") || leaf(node))) {
         if (block) line();
@@ -204,12 +212,12 @@ globalThis.__deskPageText = (state) => {
       if (tag === "pre") pre += 1;
       if (tag === "slot" && typeof node.assignedNodes === "function") {
         const given = node.assignedNodes({ flatten: true });
-        each(given.length > 0 ? given : node.childNodes);
-      } else each((node.shadowRoot ?? node).childNodes);
+        each(given.length > 0 ? given : node.childNodes, pressed || hand);
+      } else each((node.shadowRoot ?? node).childNodes, pressed || hand);
       if (tag === "pre") pre -= 1;
       if (block) line();
     }
-    walk(root);
+    walk(root, false);
     const kept = lines.map((l) => l.replace(/ {2,}/g, " ").trim()).filter((l) => l !== "");
     return whole(kept.join("\n"));
   }

@@ -1,4 +1,4 @@
-//! `web.read` and `web.act` for the core (ADR 0268): what a view's page says and what is done in
+//! `web.read` and `web.act` for the core (ADR 0270): what a view's page says and what is done in
 //! it. A call runs on the bridge's own thread as steps, each sent to the view's browser on the
 //! event loop and waited for here: the page script is asked in the desk's world of the page
 //! (`web_host/web_page.rs`), then what takes a person's input follows, a press of the pointer

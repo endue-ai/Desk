@@ -1,4 +1,4 @@
-// What the desk's assistant does in the Browser (ADR 0268): read the page, scroll it, click,
+// What the desk's assistant does in the Browser (ADR 0270): read the page, scroll it, click,
 // type, press a key, choose from a list, and step through the history. Each is a command of the
 // manifest's; each answers the page as it reads afterwards, so one call both acts and shows what
 // came of it. The page is read and acted in through web.read and web.act under web:control,
