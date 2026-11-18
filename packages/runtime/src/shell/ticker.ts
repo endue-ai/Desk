@@ -62,14 +62,19 @@ export class Ticker {
   animate(ms: number, ease: (t: number) => number, update: (t: number) => void): Promise<void> {
     const start = this.now();
     return new Promise((resolve) => {
-      const remove = this.add((now) => {
+      let over = false;
+      let remove: (() => void) | undefined;
+      remove = this.add((now) => {
+        if (over) return IDLE;
         const t = ms <= 0 ? 1 : Math.min(1, (now - start) / ms);
         update(ease(t));
-        if (t >= 1) {
-          remove();
-          resolve();
-        }
+        if (t < 1) return;
+        over = true;
+        remove?.();
+        resolve();
       });
+      // Over within its first tick (`ms` 0), which `add` ran before it answered.
+      if (over) remove();
     });
   }
 
