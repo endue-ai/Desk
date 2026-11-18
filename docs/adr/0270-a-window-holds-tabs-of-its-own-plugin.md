@@ -69,7 +69,10 @@ windows a plugin already has (ADR 0212) instead of a second way to show a plugin
 
 ## More Information
 
-Amends ADR 0040 (a window's panes and splits) and ADR 0212 (a later window may be a tab).
+Amends ADR 0040 (a window's panes and splits) and ADR 0212 (a later window may be a tab), and ADR
+0269's agent commands: `desk.windows.split` and `desk.windows.close-pane` become
+`desk.windows.new-tab { window? }` and `desk.windows.close-tab { window?, tab }`
+(`packages/runtime/src/arrange/control.ts`).
 `crates/desk-wm/src/tabs.rs`, `host/tabs.rs`, `desk/windows.rs`; `packages/runtime/src/surface/
 TabsView.ts`, `shell/windows.ts`. Tests: `crates/desk-wm/tests/tabs.rs`,
 `packages/runtime/src/shell/windows-tabs.test.ts`, `packages/runtime/e2e/shell-tabs.spec.ts`.
