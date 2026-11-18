@@ -1,6 +1,6 @@
 //! Laying the compositor window's scene out again (#81, #54): from the hosted desk, the frames the
-//! surfaces attached, the spread while it is open and the canvas map with its thumbnails (refreshed
-//! here, under the compositor's lock, at most ten times a second); then what the scene drew goes to
+//! surfaces attached, the spread while it is open and the canvas map with its windows' icons (made
+//! here, under the compositor's lock, once each, ADR 0273); then what the scene drew goes to
 //! the input router, the window manager's cards, the spread, the map and accessibility, and where
 //! it drew each plugin surface to the web host, the screen its popups are placed in (#156). A frame
 //! for which only surfaces' pictures changed (a caret's blink, a page's own animation) draws the
@@ -26,27 +26,9 @@ impl CompositorWindow {
         }
     }
 
-    /// Only surfaces' pictures changed: the scene stays, and the canvas map's thumbnails of those
-    /// surfaces are drawn again from the new pictures, at most ten times a second. A thumbnail the
-    /// map had not made yet lays the scene out at the next frame.
+    /// Only surfaces' pictures changed: the scene stays as it was laid out, the canvas map's
+    /// icons with it.
     fn repaint(&mut self) {
-        let scale = self.window.scale_factor() as f32;
-        // The map shows its windows (unfolded) where it drew its view.
-        let open = (self.mapping.drawn.as_ref()).is_some_and(|map| map.view.is_some());
-        let layout = self.mapping.layout.take();
-        if let Some(layout) = layout.as_ref().filter(|_| open) {
-            let mut composed = self.shared.lock();
-            let changed = composed.repainted.clone();
-            let made = (self.mapping).refresh(
-                &mut composed,
-                layout,
-                scale,
-                Instant::now(),
-                Some(&changed),
-            );
-            composed.dirty |= made;
-        }
-        self.mapping.layout = layout;
         if !self.gpu.presents() {
             self.shared.lock().repainted.clear();
         }
@@ -58,7 +40,9 @@ impl CompositorWindow {
         let scale = self.window.scale_factor() as f32;
         let folded = self.map_folded();
         let held = self.mapping.held();
-        let layout = folded.and_then(|_| draw_map::layout(&self.hosted, held));
+        let reported = self.hosted.report().and_then(|r| r.map.width);
+        let width = self.mapping.width(reported);
+        let layout = folded.and_then(|_| draw_map::layout(&self.hosted, held, width));
         let at = self.hosted.ms(Instant::now());
         self.hosted.follow_anchors();
         // A window's page's picture whose panes' plugins have theirs shows now (ADR 0233).
@@ -70,17 +54,17 @@ impl CompositorWindow {
         let drawn = loop {
             let drawn = {
                 let mut composed = self.shared.lock();
-                match (&layout, folded) {
+                let style = &self.theme.map;
+                let icons = match (&layout, folded) {
                     (Some(layout), Some(false)) => {
-                        self.mapping
-                            .refresh(&mut composed, layout, scale, Instant::now(), None);
+                        (self.mapping).icons(&mut composed.compositor, layout, scale, style)
                     }
-                    // Folded or gone, the map keeps no copies.
-                    _ => self
-                        .mapping
-                        .thumbnails
-                        .retain(&mut composed.compositor, |_| false),
-                }
+                    // Folded or gone, the map keeps no icons.
+                    _ => {
+                        self.mapping.icons.sweep(&mut composed.compositor);
+                        Default::default()
+                    }
+                };
                 let texture = |surface: &str| {
                     let id = composed.texture_of(surface)?;
                     Some((id, composed.frames.size(id)?))
@@ -91,12 +75,11 @@ impl CompositorWindow {
                         desk_compositor::Rect::new(place.x, place.y, place.width, place.height);
                     Some((at, (id, size)))
                 };
-                let thumbnails = &self.mapping.thumbnails;
-                let thumbnail = |host: &str| thumbnails.of(composed.texture_of(host)?);
+                let icon = |window: &str| icons.get(window).copied();
                 let map = (layout.as_ref()).map(|layout| draw_map::MapSource {
                     layout,
                     folded: folded.unwrap_or(true),
-                    thumbnail: &thumbnail,
+                    icon: &icon,
                 });
                 let sources = draw::Sources {
                     scale,

@@ -155,14 +155,20 @@ impl Cursors {
 
 impl super::CompositorWindow {
     /// The window manager's cursor with the pointer at `at` (CSS pixels), none while the spread is
-    /// open or the pointer is on the canvas map, which take the pointer first.
+    /// open; on the canvas map, which takes the pointer first, a grip's resize cursor, and its
+    /// own while a resize lasts.
     pub(super) fn wm_cursor(&mut self, at: desk_wm::Point) {
         let device = self.spreading.at;
         let on_map = (self.mapping.drawn.as_ref())
             .zip(desk_compositor::hit_test(&self.scene, device))
-            .is_some_and(|(map, hit)| map.nodes.contains(&hit.node));
-        let wm = if self.spreading.open.is_some() || on_map {
+            .filter(|(map, hit)| map.nodes.contains(&hit.node))
+            .map(|(_, hit)| hit.node);
+        let wm = if self.spreading.open.is_some() {
             None
+        } else if let Some(cursor) = self.mapping.resize_cursor() {
+            Some(cursor)
+        } else if let Some(node) = on_map {
+            self.mapping.cursor_on(node)
         } else {
             let now = self.hosted.ms(std::time::Instant::now());
             self.hosted.wm.cursor_at(at, now).and_then(named)
