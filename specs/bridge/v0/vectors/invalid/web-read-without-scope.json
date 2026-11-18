@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.read names the web:control scope it reads under",
+  "instance": {
+    "id": 60,
+    "method": "web.read",
+    "params": {
+      "viewId": "w-1"
+    }
+  }
+}

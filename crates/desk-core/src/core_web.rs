@@ -7,14 +7,16 @@
 //! redirect). What a view shows comes back through [`Core::web_changed`] as `web.changed` for its
 //! caller. A view ends with `web.close`, when its plugin stops, when a grant that covered it goes,
 //! and when the shell says so (its window's surface slept, went away or moved out of the desk).
+//! Reading a view's page and acting in it is `core_web_control.rs`.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use desk_bridge::{
-    BridgeEvent, ErrorCode, Permission, WebChangedData, WebChangedEvent, WebCloseParams,
-    WebCloseResult, WebFocusParams, WebFocusResult, WebGoParams, WebGoResult, WebLoadParams,
-    WebLoadResult, WebOpenParams, WebOpenResult, WebPlaceParams, WebPlaceResult, WebStep,
+    BridgeEvent, ErrorCode, Permission, WebActResult, WebAction, WebChangedData, WebChangedEvent,
+    WebCloseParams, WebCloseResult, WebFocusParams, WebFocusResult, WebGoParams, WebGoResult,
+    WebLoadParams, WebLoadResult, WebOpenParams, WebOpenResult, WebPlaceParams, WebPlaceResult,
+    WebReadResult, WebStep,
 };
 
 use crate::handler::{Answer, Core, error, json};
@@ -54,6 +56,8 @@ pub enum WebError {
     NotFound(String),
     /// No view can show there: the window is out of the canvas.
     Unsupported(String),
+    /// The page cannot take what was asked: text into a button, an option a list does not have.
+    Invalid(String),
     Failed(String),
 }
 
@@ -67,6 +71,13 @@ pub trait WebViews: Send + Sync {
     fn go(&self, view: &str, step: WebStep) -> Result<(), WebError>;
     /// Give the view's page the keys.
     fn focus(&self, view: &str) -> Result<(), WebError>;
+    /// Read the page of view `view`: the part of its text from character `from` on, `max`
+    /// characters at most. `at` is the address the core allowed the read at: a page of another
+    /// origin by now is not read (`NotFound`).
+    fn read(&self, view: &str, at: &str, from: u64, max: u64) -> Result<WebReadResult, WebError>;
+    /// Do `action` in the page of view `view` as a person's input would, without giving the view
+    /// the keys. `at` as for `read`.
+    fn act(&self, view: &str, at: &str, action: &WebAction) -> Result<WebActResult, WebError>;
     /// Close the view; one that is gone already is no error.
     fn close(&self, view: &str);
 }
@@ -75,6 +86,8 @@ struct Entry {
     caller: String,
     scope: Permission,
     surface: String,
+    /// The address its page shows, as the shell last said; empty before its first page.
+    url: String,
 }
 
 /// The views callers opened, by id, and what shows them once a shell gave it.
@@ -89,10 +102,11 @@ fn lock(web: &Mutex<Web>) -> MutexGuard<'_, Web> {
     web.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-fn failed(why: WebError) -> desk_bridge::BridgeError {
+pub(crate) fn failed(why: WebError) -> desk_bridge::BridgeError {
     match why {
         WebError::NotFound(message) => error(ErrorCode::NotFound, message),
         WebError::Unsupported(message) => error(ErrorCode::Unsupported, message),
+        WebError::Invalid(message) => error(ErrorCode::InvalidValue, message),
         WebError::Failed(message) => error(ErrorCode::Internal, message),
     }
 }
@@ -152,6 +166,18 @@ impl Core {
         }
     }
 
+    /// The shell's views and the address the caller's view `view` shows now.
+    pub(crate) fn web_page(
+        &self,
+        caller: &str,
+        view: &str,
+    ) -> Result<(Arc<dyn WebViews>, String), desk_bridge::BridgeError> {
+        let views = self.web_view(caller, view)?;
+        let web = lock(&self.web);
+        let at = web.entries.get(view).map(|e| e.url.clone());
+        Ok((views, at.unwrap_or_default()))
+    }
+
     pub(crate) fn web_open(&self, caller: &str, params: WebOpenParams) -> Answer {
         let scope = Permission::WebBrowse(params.scope);
         let target = params.url.as_deref().map_or(Target::None, Target::Url);
@@ -193,6 +219,7 @@ impl Core {
                 caller: caller.to_owned(),
                 scope,
                 surface: surface.clone(),
+                url: String::new(),
             };
             web.entries.insert(view_id.clone(), entry);
             (views, view_id, before)
@@ -280,7 +307,10 @@ impl Core {
     pub fn web_changed(&self, view: &str, state: WebState) {
         let caller = {
             let mut web = lock(&self.web);
-            let caller = web.entries.get(view).map(|e| e.caller.clone());
+            let caller = web.entries.get_mut(view).map(|entry| {
+                entry.url.clone_from(&state.url);
+                entry.caller.clone()
+            });
             if state.closed {
                 web.entries.remove(view);
             }

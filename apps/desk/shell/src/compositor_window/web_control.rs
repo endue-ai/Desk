@@ -1,0 +1,160 @@
+//! `web.read` and `web.act` for the core (ADR 0268): what a view's page says and what is done in
+//! it. A call runs on the bridge's own thread as steps, each sent to the view's browser on the
+//! event loop and waited for here: the page script is asked in the desk's world of the page
+//! (`web_host/web_page.rs`), then what takes a person's input follows, a press of the pointer
+//! where the script found the element, text as typed, a key. The page takes them without the
+//! view taking the desk's keys: what the person types meanwhile goes where it went.
+
+use std::sync::mpsc;
+use std::time::Duration;
+
+use desk_bridge::{WebActResult, WebAction, WebReadResult};
+use desk_core::WebError;
+use serde_json::{Value, json};
+
+use super::web::Web;
+use crate::web_host::web_page::{self, Answer, WORLD};
+
+/// How long one step waits for the page.
+const WAIT: Duration = Duration::from_secs(10);
+
+/// What an act that answers nothing of its own answers.
+const DONE: WebActResult = WebActResult { moved: None };
+
+impl Web {
+    /// One DevTools call on the browser of view `view`.
+    fn devtools(&self, view: &str, method: &'static str, params: Value) -> Result<Value, WebError> {
+        let (sent, queued) = mpsc::channel();
+        let name = view.to_owned();
+        self.pump.run(move |shell, _| {
+            let answer = match shell.compositor.as_mut() {
+                Some(compositor) => compositor.host.web_call(&name, method, params),
+                None => Err(WebError::Failed("the desk has no compositor window".into())),
+            };
+            let _ = sent.send(answer);
+        });
+        let slow = || WebError::Failed(format!("the page did not answer {method} in time"));
+        let answer: mpsc::Receiver<Answer> = queued.recv_timeout(WAIT).map_err(|_| slow())??;
+        let said = answer.recv_timeout(WAIT).map_err(|_| slow())?;
+        said.map_err(|why| WebError::Failed(format!("{method}: {why}")))
+    }
+
+    /// Run the page script's `request` in the desk's world of the view's main document.
+    fn evaluate(&self, view: &str, request: &Value) -> Result<Value, WebError> {
+        let none = |what: &str| WebError::Failed(format!("the page has no {what}"));
+        let tree = self.devtools(view, "Page.getFrameTree", json!({}))?;
+        let frame = tree.pointer("/frameTree/frame/id").cloned();
+        let world = json!({ "frameId": frame.ok_or_else(|| none("frame"))?, "worldName": WORLD });
+        let made = self.devtools(view, "Page.createIsolatedWorld", world)?;
+        let context = made.get("executionContextId").cloned();
+        let evaluate = json!({
+            "expression": web_page::asks(request),
+            "contextId": context.ok_or_else(|| none("world for the desk"))?,
+            "returnByValue": true,
+        });
+        self.devtools(view, "Runtime.evaluate", evaluate)
+    }
+
+    /// Ask the page script of view `view`, whose page the core allowed at `at`. A page that
+    /// was changing documents as it was asked is asked once more.
+    fn ask_page(&self, view: &str, at: &str, mut request: Value) -> Result<Value, WebError> {
+        request["at"] = json!(at);
+        let evaluated = (self.evaluate(view, &request)).or_else(|_| self.evaluate(view, &request));
+        web_page::answered(&evaluated?)
+    }
+
+    /// Press the page of view `view` at `(x, y)` with the pointer.
+    fn press(&self, view: &str, x: f64, y: f64) -> Result<(), WebError> {
+        let view = view.to_owned();
+        self.ask(move |c| c.host.web_press(&view, x, y))
+    }
+
+    /// The page keeps a caret and takes typed text and keys while the desk's keys stay where
+    /// the person has them.
+    fn caret(&self, view: &str) {
+        let on = json!({ "enabled": true });
+        let _ = self.devtools(view, "Emulation.setFocusEmulationEnabled", on);
+    }
+
+    pub(super) fn read_page(
+        &self,
+        view: &str,
+        at: &str,
+        from: u64,
+        max: u64,
+    ) -> Result<WebReadResult, WebError> {
+        let read = json!({ "do": "read", "from": from, "max": max });
+        let page = self.ask_page(view, at, read)?;
+        serde_json::from_value(page)
+            .map_err(|why| WebError::Failed(format!("the page read as no page: {why}")))
+    }
+
+    pub(super) fn act_in(
+        &self,
+        view: &str,
+        at: &str,
+        action: &WebAction,
+    ) -> Result<WebActResult, WebError> {
+        match action {
+            WebAction::WebScroll(scroll) => {
+                let ask = json!({ "do": "scroll", "to": scroll.to, "pages": scroll.pages });
+                let said = self.ask_page(view, at, ask)?;
+                let moved = said.get("moved").and_then(Value::as_bool);
+                Ok(WebActResult { moved })
+            }
+            WebAction::WebShow(show) => {
+                self.ask_page(view, at, json!({ "do": "show", "ref": show.r#ref }))?;
+                Ok(DONE)
+            }
+            WebAction::WebPress(press) => {
+                let found =
+                    self.ask_page(view, at, json!({ "do": "point", "ref": press.r#ref }))?;
+                let covered = found.get("covered").and_then(Value::as_bool) != Some(false);
+                let point = (found["x"].as_f64()).zip(found["y"].as_f64());
+                match point {
+                    Some((x, y)) if !covered => self.press(view, x, y)?,
+                    // Something lies over it where the pointer would press: the page presses it.
+                    _ => {
+                        self.ask_page(view, at, json!({ "do": "click", "ref": press.r#ref }))?;
+                    }
+                }
+                Ok(DONE)
+            }
+            WebAction::WebType(typed) => {
+                self.caret(view);
+                let ready = json!({ "do": "ready", "field": true, "ref": typed.r#ref,
+                    "replace": typed.replace != Some(false), "text": typed.text });
+                let said = self.ask_page(view, at, ready)?;
+                // A date, a colour and their like take their value whole: the script set it.
+                let set = said.get("done").and_then(Value::as_bool) == Some(true);
+                if !set && !typed.text.is_empty() {
+                    self.devtools(view, "Input.insertText", json!({ "text": typed.text }))?;
+                }
+                if typed.submit == Some(true) {
+                    self.keys(view, desk_bridge::WebKeyName::Enter)?;
+                }
+                Ok(DONE)
+            }
+            WebAction::WebKey(key) => {
+                self.caret(view);
+                let ready = json!({ "do": "ready", "field": false, "ref": key.r#ref });
+                self.ask_page(view, at, ready)?;
+                self.keys(view, key.key)?;
+                Ok(DONE)
+            }
+            WebAction::WebChoose(choose) => {
+                let ask = json!({ "do": "choose", "ref": choose.r#ref, "option": choose.option });
+                self.ask_page(view, at, ask)?;
+                Ok(DONE)
+            }
+        }
+    }
+
+    /// Press `key` in the page: down, then up.
+    fn keys(&self, view: &str, key: desk_bridge::WebKeyName) -> Result<(), WebError> {
+        for event in web_page::key_events(key) {
+            self.devtools(view, "Input.dispatchKeyEvent", event)?;
+        }
+        Ok(())
+    }
+}

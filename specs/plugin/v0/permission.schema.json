@@ -39,7 +39,8 @@
         { "$ref": "#/$defs/StudioManagePermission" },
         { "$ref": "#/$defs/ComputerSeePermission" },
         { "$ref": "#/$defs/ComputerControlPermission" },
-        { "$ref": "#/$defs/WebBrowsePermission" }
+        { "$ref": "#/$defs/WebBrowsePermission" },
+        { "$ref": "#/$defs/WebControlPermission" }
       ]
     },
     "SearchReadPermission": {
@@ -338,6 +339,21 @@
         "permission": { "const": "web:browse" },
         "hosts": {
           "description": "Host patterns a view's page may be on; absent covers every host.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/HostPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "WebControlPermission": {
+      "description": "Read and operate the pages the caller's own web views show (web.read, web.act): the page's text and what can be pressed or filled in on it, and scrolling, pressing, typing and choosing in it as the person would. A page may hold what the person is signed in to, so this is apart from web:browse. With hosts, only while the view's page is on a listed host. Without hosts, any page its views show.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "web:control" },
+        "hosts": {
+          "description": "Host patterns of the pages that may be read and operated; absent covers every host.",
           "type": "array",
           "items": { "$ref": "#/$defs/HostPattern" },
           "minItems": 1

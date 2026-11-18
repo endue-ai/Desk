@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.act presses a key",
+  "instance": {
+    "id": 56,
+    "method": "web.act",
+    "params": {
+      "viewId": "w-1",
+      "action": {
+        "do": "key",
+        "key": "Escape"
+      },
+      "scope": {
+        "permission": "web:control"
+      }
+    }
+  }
+}

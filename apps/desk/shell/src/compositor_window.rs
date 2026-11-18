@@ -49,6 +49,7 @@ mod steps;
 pub mod system;
 mod tooltip;
 mod web;
+mod web_control;
 pub mod winit_input;
 pub mod wm;
 
