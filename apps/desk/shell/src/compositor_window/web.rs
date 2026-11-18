@@ -3,13 +3,14 @@
 //! the views each look: it lays each view's page out at its box, shows the ones whose plugin
 //! surface is drawn live and hides the rest, and lets go of the pictures of views that ended.
 //! The keys stand in: where the desk gives them to a plugin surface whose view has them (a press
-//! in the view, `web.focus`), they go to the view (`WebHost::web_stand_in`).
+//! in the view, `web.focus`), they go to the view (`WebHost::web_stand_in`). Reading a view's
+//! page and acting in it is `web_control.rs`.
 
 use std::collections::BTreeSet;
 use std::sync::mpsc;
 use std::time::Duration;
 
-use desk_bridge::WebStep;
+use desk_bridge::{WebActResult, WebAction, WebReadResult, WebStep};
 use desk_compositor::input::Out;
 use desk_core::{WebError, WebPlace, WebViews};
 use desk_surface::generated::CompositorMessage;
@@ -23,7 +24,7 @@ const WAIT: Duration = Duration::from_secs(10);
 
 /// What the core shows web views through while the compositor window is open.
 pub struct Web {
-    pump: Pump,
+    pub(super) pump: Pump,
 }
 
 impl Web {
@@ -32,7 +33,7 @@ impl Web {
     }
 
     /// Run `job` with the compositor window on the event loop and wait for what it answers.
-    fn ask(
+    pub(super) fn ask(
         &self,
         job: impl FnOnce(&mut CompositorWindow) -> Result<(), WebError> + Send + 'static,
     ) -> Result<(), WebError> {
@@ -79,6 +80,14 @@ impl WebViews for Web {
     fn focus(&self, view: &str) -> Result<(), WebError> {
         let view = view.to_owned();
         self.ask(move |c| c.host.web_focus(&view))
+    }
+
+    fn read(&self, view: &str, at: &str, from: u64, max: u64) -> Result<WebReadResult, WebError> {
+        self.read_page(view, at, from, max)
+    }
+
+    fn act(&self, view: &str, at: &str, action: &WebAction) -> Result<WebActResult, WebError> {
+        self.act_in(view, at, action)
     }
 
     // Nobody waits for a close: the core forgot the view before it asked.

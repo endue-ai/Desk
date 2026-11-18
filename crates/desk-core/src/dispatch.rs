@@ -187,6 +187,8 @@ impl Core {
             R::WebGo(r) => (r.id, self.web_go(caller, r.params)),
             R::WebFocus(r) => (r.id, self.web_focus(caller, r.params)),
             R::WebClose(r) => (r.id, self.web_close(caller, r.params)),
+            R::WebRead(r) => (r.id, self.web_read(caller, r.params)),
+            R::WebAct(r) => (r.id, self.web_act(caller, r.params)),
             R::DialogOpen(r) => (r.id, self.dialog_open(caller, r.params)),
             R::DialogSave(r) => (r.id, self.dialog_save(caller, r.params)),
         }

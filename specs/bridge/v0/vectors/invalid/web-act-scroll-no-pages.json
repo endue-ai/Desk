@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "a scroll goes somewhere: pages is more than 0",
+  "instance": {
+    "id": 60,
+    "method": "web.act",
+    "params": {
+      "viewId": "w-1",
+      "action": {
+        "do": "scroll",
+        "to": "down",
+        "pages": 0
+      },
+      "scope": {
+        "permission": "web:control"
+      }
+    }
+  }
+}

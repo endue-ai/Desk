@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.act presses an element web.read named",
+  "instance": {
+    "id": 60,
+    "method": "web.act",
+    "params": {
+      "viewId": "w-1",
+      "action": {
+        "do": "press"
+      },
+      "scope": {
+        "permission": "web:control"
+      }
+    }
+  }
+}

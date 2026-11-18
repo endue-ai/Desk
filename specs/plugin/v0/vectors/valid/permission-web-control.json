@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "web:control for every page the plugin's views show",
+  "instance": {
+    "permission": "web:control"
+  }
+}

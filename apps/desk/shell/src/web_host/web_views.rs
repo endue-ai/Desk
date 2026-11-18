@@ -31,6 +31,8 @@ pub(super) struct WebView {
     pub(super) state: WebState,
     /// Where it was sent before its browser was made.
     pending: Option<String>,
+    /// What is asked of its page, and who waits for the answers (`web_page.rs`).
+    pub(super) calls: super::web_page::Calls,
 }
 
 /// The web views, by their window's surface host, and the request context they share.
@@ -131,6 +133,7 @@ impl WebHost {
                 keys: false,
                 state: WebState::default(),
                 pending: None,
+                calls: Default::default(),
             };
             inner.web.by_host.insert(host.to_owned(), web);
         }
@@ -218,7 +221,7 @@ impl WebHost {
     }
 
     /// The browser of view `view`.
-    fn web_browser(&self, view: &str) -> Result<Browser, WebError> {
+    pub(super) fn web_browser(&self, view: &str) -> Result<Browser, WebError> {
         let inner = self.inner();
         let host = inner.web.host_of(view).ok_or_else(|| missing(view))?;
         (inner.records.get(&surface_of(&host)))
