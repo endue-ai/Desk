@@ -80,7 +80,12 @@ leaves the person a grant that says what it gives.
 
 ## More Information
 
-Issue #404. Tests: `docs/qa/TESTING.md`. `web.eval` was left out because script a plugin sends
+Issue #404. Tests: `docs/qa/TESTING.md`. Checked on the running desk (`e2e/specs/browser-control.spec.ts`,
+a page served on this machine): the page read as text with its elements named, the same refs on a
+second read, a scroll to each end and to an element, text typed into a field with the page's own
+`input` handler hearing it (Korean among it), Enter sending it, Backspace taking a letter, a press
+the page saw as trusted (`isTrusted`), an option chosen, a link followed and the way back; the
+surface the desk's keys went to was the same before and after. `web.eval` was left out because script a plugin sends
 reads cookies and sessions of every site its views show and cannot be reviewed; the accessibility
 tree because a view is not in it yet (ADR 0216) and its nodes carry no reading order of text; and
 `computer.*` because it moves the person's own pointer and needs their screen.
