@@ -45,8 +45,8 @@ pub struct MapEdges {
 /// at the corner, and the proportions stay (`map_size`).
 pub fn map_resized(start: f64, edges: MapEdges, dx: f64, dy: f64) -> Size {
     let from = map_size(start);
-    let by_x = edges.left.then(|| from.w - dx);
-    let by_y = edges.top.then(|| (from.h - dy) * MAP.w / MAP.h);
+    let by_x = edges.left.then_some(from.w - dx);
+    let by_y = edges.top.then_some((from.h - dy) * MAP.w / MAP.h);
     let width = match (by_x, by_y) {
         (Some(x), Some(y)) => x.max(y),
         (Some(w), None) | (None, Some(w)) => w,
