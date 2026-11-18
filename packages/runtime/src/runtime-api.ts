@@ -38,7 +38,7 @@ export interface RuntimePlugins {
   wake(id: string): void;
   /**
    * Another window of a running plugin (ADR 0212): its key. `before` hears the key before the
-   * window opens, to ask the window manager for the tab that takes it (ADR 0268).
+   * window opens, to ask the window manager for the tab that takes it (ADR 0270).
    */
   another?(id: string, before?: (key: string) => void): string;
   /**

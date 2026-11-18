@@ -1,4 +1,4 @@
-//! The tabs of a window (ADR 0268): add one, close one, show another view in one. Pure functions
+//! The tabs of a window (ADR 0270): add one, close one, show another view in one. Pure functions
 //! over a window's `Tab`s (`types.rs`), so a layout stays JSON. A window shows one tab at a time,
 //! under a strip of its tabs once it has more than one (`host/tabs.rs`).
 //!

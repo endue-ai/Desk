@@ -225,7 +225,7 @@ impl Desk {
     }
 
     /// A plugin's first window handed over while the window named after it went on with other
-    /// tabs (its own tab closed, ADR 0268) comes back there as a tab: two windows never share an
+    /// tabs (its own tab closed, ADR 0270) comes back there as a tab: two windows never share an
     /// id, and the plugin has no slot while a layout places its window.
     fn rejoin(&mut self, id: &str) {
         let view = format!("{}{id}", crate::placed::PLUGIN_VIEW);

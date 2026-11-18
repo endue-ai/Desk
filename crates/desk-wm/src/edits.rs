@@ -127,7 +127,7 @@ pub enum Edit {
     FocusNext {
         step: i64,
     },
-    /// A tab showing `view` in `window` (ADR 0268), which takes only tabs of its own kind:
+    /// A tab showing `view` in `window` (ADR 0270), which takes only tabs of its own kind:
     /// answers the new tab's id, or null when the window does not take it.
     AddTab {
         window: String,

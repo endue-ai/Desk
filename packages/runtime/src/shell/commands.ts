@@ -72,7 +72,7 @@ export function defineCommands(ctx: ShellCtx): () => void {
     ["new", "window", "surface", "새", "표면", "창"],
     () => newWindow(ctx),
   );
-  // Tabs (ADR 0268): another window of the plugin the focused window shows, in that window.
+  // Tabs (ADR 0270): another window of the plugin the focused window shows, in that window.
   display(
     "new-tab",
     () => ctx.tr("cmdNewTab"),

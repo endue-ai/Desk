@@ -1,7 +1,7 @@
 // The runtime's side of the windows (#83): which window a tab is in, where it goes and what a close
 // leaves are desk-wm's (crates/desk-wm/tests/desk.rs, tabs.rs, tiling.rs, fill.rs, cover.rs);
 // what stays here is the runtime's surfaces following the tab in use, a new tab opening another
-// window of the window's plugin (ADR 0268), the plugins a close
+// window of the window's plugin (ADR 0270), the plugins a close
 // unmounts for the session (ADR 0040) and the question about their unsaved changes before (#160).
 import { describe, expect, it, vi } from "vitest";
 import { Buffers } from "../buffers";

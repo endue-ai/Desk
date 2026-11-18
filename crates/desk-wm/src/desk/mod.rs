@@ -210,7 +210,7 @@ impl Desk {
     }
 
     /// The plugin `p` has on screen: the one the tab it shows shows, if that is a plugin's. Those
-    /// in its other tabs are out of sight (ADR 0268).
+    /// in its other tabs are out of sight (ADR 0270).
     pub fn shown_plugins(&self, p: &Placement) -> Vec<String> {
         (self.resolve(p, &p.shown().view).strip_prefix(PLUGIN_VIEW))
             .map(String::from)
@@ -227,7 +227,7 @@ impl Desk {
             .any(|tab| (tab.view.strip_prefix(PLUGIN_VIEW)).is_none_or(|id| self.holds(id)))
     }
 
-    /// `p` with the tabs it has now (ADR 0268): in a window of several tabs, one showing a plugin's
+    /// `p` with the tabs it has now (ADR 0270): in a window of several tabs, one showing a plugin's
     /// window the runtime does not hold is not there. Such a window closed by its plugin, or was
     /// open in a session before this one: a plugin's later windows (ADR 0212) do not come back
     /// with a layout. A window none of whose tabs is there keeps them all, and is not drawn.
@@ -250,7 +250,7 @@ impl Desk {
 
     /// The plugin windows in their slots on a desktop (`autoPlacements`): those no layout of it
     /// places, not in the drawer, not living on another desktop (ADR 0117), and not a tab of
-    /// another window (ADR 0268).
+    /// another window (ADR 0270).
     pub fn auto_placements(&self, r: impl Into<DesktopRef>) -> Vec<Placement> {
         let here = self.id_of(r);
         let placed: Vec<String> = self
