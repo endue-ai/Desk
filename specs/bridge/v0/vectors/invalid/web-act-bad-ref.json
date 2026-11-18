@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "a ref is as web.read wrote it, not a selector",
+  "instance": {
+    "id": 60,
+    "method": "web.act",
+    "params": {
+      "viewId": "w-1",
+      "action": {
+        "do": "press",
+        "ref": "#submit"
+      },
+      "scope": {
+        "permission": "web:control"
+      }
+    }
+  }
+}

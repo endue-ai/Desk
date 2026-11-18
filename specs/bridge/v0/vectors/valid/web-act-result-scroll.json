@@ -1,0 +1,7 @@
+{
+  "target": "WebActResult",
+  "description": "a scroll that had nowhere further to go",
+  "instance": {
+    "moved": false
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "target": "WebReadResult",
+  "description": "a page as web.read gives it",
+  "instance": {
+    "url": "https://example.com/",
+    "title": "Example Domain",
+    "text": "# Example Domain\nThis domain is for use in documentation examples.\n[e1 link \"Learn more\"]\n[e2 field \"Search\" = \"\"] [e3 button \"Go\"]",
+    "from": 0,
+    "length": 132,
+    "scroll": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 640,
+      "pageWidth": 960,
+      "pageHeight": 2400
+    }
+  }
+}

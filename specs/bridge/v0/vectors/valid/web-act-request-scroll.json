@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.act scrolls a page down by half a view",
+  "instance": {
+    "id": 50,
+    "method": "web.act",
+    "params": {
+      "viewId": "w-1",
+      "action": {
+        "do": "scroll",
+        "to": "down",
+        "pages": 0.5
+      },
+      "scope": {
+        "permission": "web:control"
+      }
+    }
+  }
+}

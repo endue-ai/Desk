@@ -9,7 +9,7 @@ mod support;
 
 use std::sync::{Arc, Mutex};
 
-use desk_bridge::{BridgeError, ErrorCode, WebStep};
+use desk_bridge::{BridgeError, ErrorCode, WebActResult, WebAction, WebReadResult, WebStep};
 use desk_core::{Core, WebError, WebPlace, WebState, WebViews};
 use serde_json::{Value, json};
 use support::{call, grant, home, named, roots};
@@ -65,6 +65,15 @@ impl WebViews for Shown {
 
     fn close(&self, view: &str) {
         self.note(format!("close {view}"));
+    }
+
+    // Reading a page and acting in it: `web_control.rs`.
+    fn read(&self, view: &str, _: &str, _: u64, _: u64) -> Result<WebReadResult, WebError> {
+        Err(WebError::NotFound(format!("no page in {view}")))
+    }
+
+    fn act(&self, view: &str, _: &str, _: &WebAction) -> Result<WebActResult, WebError> {
+        Err(WebError::NotFound(format!("no page in {view}")))
     }
 }
 

@@ -31,6 +31,7 @@ const INIT: Record<string, string> = {
   "launch.spec.ts": "init.yaml",
   "settings.spec.ts": "init-bad-values.yaml",
   "browser.spec.ts": "init-browser.yaml",
+  "browser-control.spec.ts": "init-browser.yaml",
   "resident.spec.ts": "init-resident.yaml",
 };
 const DEFAULT_INIT = "init-no-first-run.yaml";

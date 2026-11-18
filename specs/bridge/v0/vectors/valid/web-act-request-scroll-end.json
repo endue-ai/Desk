@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.act scrolls a page to its bottom",
+  "instance": {
+    "id": 51,
+    "method": "web.act",
+    "params": {
+      "viewId": "w-1",
+      "action": {
+        "do": "scroll",
+        "to": "bottom"
+      },
+      "scope": {
+        "permission": "web:control"
+      }
+    }
+  }
+}

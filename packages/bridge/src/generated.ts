@@ -545,7 +545,8 @@ export type Permission =
   | StudioManagePermission
   | ComputerSeePermission
   | ComputerControlPermission
-  | WebBrowsePermission;
+  | WebBrowsePermission
+  | WebControlPermission;
 
 /** Search explicitly published plugin documents and installed plugin launchers. */
 export interface SearchReadPermission {
@@ -694,6 +695,13 @@ export interface ShellOpenPermission {
 export interface WebBrowsePermission {
   permission: "web:browse";
   /** Host patterns a view's page may be on; absent covers every host. */
+  hosts?: HostPattern[];
+}
+
+/** Read and operate the pages the caller's own web views show (web.read, web.act): the page's text and what can be pressed or filled in on it, and scrolling, pressing, typing and choosing in it as the person would. A page may hold what the person is signed in to, so this is apart from web:browse. With hosts, only while the view's page is on a listed host. Without hosts, any page its views show. */
+export interface WebControlPermission {
+  permission: "web:control";
+  /** Host patterns of the pages that may be read and operated; absent covers every host. */
   hosts?: HostPattern[];
 }
 
@@ -3341,6 +3349,8 @@ export type BridgeRequest =
   | WebGoRequest
   | WebFocusRequest
   | WebCloseRequest
+  | WebReadRequest
+  | WebActRequest
   | DialogOpenRequest
   | DialogSaveRequest;
 
@@ -7463,6 +7473,141 @@ export interface WebCloseParams {
 /** Result of web.close. */
 export type WebCloseResult = Record<string, never>;
 
+/** An element of a view's page, as web.read named it. It holds while that element is in the page: a page that loads another document names its elements anew. */
+export type WebRef = string;
+
+/** Read the page a web view shows: its text in reading order, with every element that can be pressed, filled in or chosen from named, and where the page is scrolled to. */
+export interface WebReadRequest {
+  id: RequestId;
+  method: "web.read";
+  params: WebReadParams;
+}
+
+/** Parameters of web.read: the part of the page's text from character from on, max characters at most. */
+export interface WebReadParams {
+  viewId: WebViewId;
+  /** The character the part starts at; 0 by default. */
+  from?: number;
+  /** How many characters the part holds at most; 20000 by default. */
+  max?: number;
+  scope: WebControlPermission;
+}
+
+/** Result of web.read: the page of the view's main document as it is now. A frame in the page is named, not read. */
+export interface WebReadResult {
+  /** The address the page was read at. */
+  url: string;
+  title: string;
+  /** The part asked for of the page's text, in reading order: one block a line, a heading after #, a list item after -. An element that can be acted on is written [ref kind "name"], a field with = "what it holds" (never a password), a box or a choice with its state; kind is link, button, field, checkbox, radio, select, tab or item. What the page hides is left out. */
+  text: string;
+  /** The character the part starts at. */
+  from: number;
+  /** How many characters the whole text has: a part that ends before it leaves more to read from there on. */
+  length: number;
+  scroll: WebScrolled;
+}
+
+/** Where a page is scrolled to, in CSS pixels: the part in view (x, y from the page's top left, width and height) and the size of the whole page. */
+export interface WebScrolled {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  pageWidth: number;
+  pageHeight: number;
+}
+
+/** Act in the page a web view shows as the person would: scroll it, bring an element into view, press one, type into a field, press a key, choose from a list. The keys the person has stay where they are. */
+export interface WebActRequest {
+  id: RequestId;
+  method: "web.act";
+  params: WebActParams;
+}
+
+/** Parameters of web.act. */
+export interface WebActParams {
+  viewId: WebViewId;
+  action: WebAction;
+  scope: WebControlPermission;
+}
+
+/** What web.act does, named by do. */
+export type WebAction = WebScroll | WebShow | WebPress | WebType | WebKey | WebChoose;
+
+/** Scroll the page, or the part of it that scrolls when the page itself does not. */
+export interface WebScroll {
+  do: "scroll";
+  to: WebScrollTo;
+  /** How far a step up, down, left or right goes, in views of the page; 1 by default. An end takes none. */
+  pages?: number;
+}
+
+/** Where a scroll goes: a step up, down, left or right, or to the top or the bottom of the page. */
+export type WebScrollTo = "up" | "down" | "left" | "right" | "top" | "bottom";
+
+/** Bring an element into view, in the middle of it where the page can. */
+export interface WebShow {
+  do: "show";
+  ref: WebRef;
+}
+
+/** Press an element once with the pointer, brought into view first: a link, a button, a box, a tab. */
+export interface WebPress {
+  do: "press";
+  ref: WebRef;
+}
+
+/** Type text into a field as written, in any script. */
+export interface WebType {
+  do: "type";
+  text: string;
+  /** The field; absent types into the one the page has the caret in. */
+  ref?: WebRef;
+  /** false types at the caret and keeps what the field holds; true by default: the field holds the text alone afterwards. */
+  replace?: boolean;
+  /** true presses Enter in the field afterwards, as a search or a form is sent. */
+  submit?: boolean;
+}
+
+/** Press a key in the page. */
+export interface WebKey {
+  do: "key";
+  key: WebKeyName;
+  /** The element that takes the key; absent it goes to what the page has the keys on. */
+  ref?: WebRef;
+}
+
+/** A key web.act presses, by its name in KeyboardEvent.key (Space is the space bar). */
+export type WebKeyName =
+  | "Enter"
+  | "Tab"
+  | "Escape"
+  | "Backspace"
+  | "Delete"
+  | "Space"
+  | "ArrowUp"
+  | "ArrowDown"
+  | "ArrowLeft"
+  | "ArrowRight"
+  | "PageUp"
+  | "PageDown"
+  | "Home"
+  | "End";
+
+/** Choose an option of a list of choices (a select). */
+export interface WebChoose {
+  do: "choose";
+  ref: WebRef;
+  /** The option, by the words it shows or by its value. */
+  option: string;
+}
+
+/** Result of web.act: the act was done. What the page made of it is read with web.read. */
+export interface WebActResult {
+  /** Of a scroll: false when there was nowhere further to go. */
+  moved?: boolean;
+}
+
 /** A web view's page changed: its address, its title, whether it loads, where its history can go. Sent to the window that opened the view. */
 export interface WebChangedEvent {
   event: "web.changed";
@@ -7666,6 +7811,8 @@ export interface BridgeMethodMap {
   "web.go": { params: WebGoParams; result: WebGoResult };
   "web.focus": { params: WebFocusParams; result: WebFocusResult };
   "web.close": { params: WebCloseParams; result: WebCloseResult };
+  "web.read": { params: WebReadParams; result: WebReadResult };
+  "web.act": { params: WebActParams; result: WebActResult };
   "dialog.open": { params: DialogOpenParams; result: DialogOpenResult };
   "dialog.save": { params: DialogSaveParams; result: DialogSaveResult };
 }
@@ -7831,6 +7978,8 @@ export const BRIDGE_METHODS = [
   "web.go",
   "web.focus",
   "web.close",
+  "web.read",
+  "web.act",
   "dialog.open",
   "dialog.save",
 ] as const satisfies readonly BridgeMethod[];

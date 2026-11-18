@@ -34,6 +34,7 @@ pub mod top;
 pub mod view;
 mod web_client;
 mod web_keys;
+pub mod web_page;
 mod web_refusals;
 pub mod web_rules;
 pub mod web_views;
