@@ -1,6 +1,8 @@
 // The framework-free elements. Their shadow CSS reads only the `--desk-*` custom properties, so a
 // page that sets them (tokens.css, or a theme) styles every element without code changes.
+
 import { DeskAgenda } from "./agenda";
+import { DeskAgentSession } from "./agent-session";
 import { DeskButton } from "./button";
 import { DeskCard } from "./card";
 import { DeskDialog } from "./dialog";
@@ -16,6 +18,7 @@ import { DeskToast } from "./toast";
 import { DeskUniversalView } from "./universal";
 
 export type { DeskAgendaEvent, DeskAgendaSelectDetail } from "./agenda";
+export * from "./agent-session-model";
 export type { DeskSelectDetail } from "./base";
 export type { DeskLinkDetail } from "./markdown";
 export type {
@@ -36,6 +39,7 @@ export type {
 export type { EditTier };
 export {
   DeskAgenda,
+  DeskAgentSession,
   DeskButton,
   DeskCard,
   DeskDialog,
@@ -68,6 +72,7 @@ export const elements = {
   "desk-progress": DeskProgress,
   "desk-edit-tier": DeskEditTier,
   "desk-universal-view": DeskUniversalView,
+  "desk-agent-session": DeskAgentSession,
 } as const;
 
 /** Define every element that is not defined yet; safe to call more than once. */
@@ -93,5 +98,6 @@ declare global {
     "desk-progress": DeskProgress;
     "desk-edit-tier": DeskEditTier;
     "desk-universal-view": DeskUniversalView;
+    "desk-agent-session": DeskAgentSession;
   }
 }

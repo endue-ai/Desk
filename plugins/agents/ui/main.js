@@ -51,6 +51,10 @@ defineUiPlugin({
         stop: () => void on().chat(shownId()).stop(),
         access: (access) => on().chat(shownId()).setAccess(access),
         fresh: () => on().local(shownId(), "new-session"),
+        open: (id) => on().local(shownId(), "open", { id }),
+        older: () => on().chat(shownId()).older(),
+        more: () => on().moreSessions(shownId()),
+        preview: (id) => on().preview(shownId(), id),
         link: (href) => void on().studioActions.link(href),
       },
       flow: {

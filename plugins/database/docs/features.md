@@ -43,14 +43,22 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
   only those are read again, and a DDL statement run from the plugin starts that check. The connection's line
   says when it was read. Database: read the schema again reads it all; Database: choose the schemas to read
   picks them (system schemas stay out by default). Other engines read a node when it opens, as above.
+- A PostgreSQL schema also has Types (enum, composite, domain, range, base), Aggregates, Operators, Collations
+  and Text search; a table its Partitions with their bounds, the parents it Inherits from, Policies and Rules,
+  and its row says whether row security is on and about how large it is. After the schemas, Database holds
+  Extensions (with what each owns), Foreign data wrappers, Foreign servers, User mappings, Publications,
+  Subscriptions, Event triggers, Casts and Languages, and Server holds Roles and Tablespaces (ADR 0295). All of
+  it comes from the cache, `d` shows each one's DDL (its owner on the first line), and completion offers a
+  schema's types. Passwords are never read: not a user mapping's options, a subscription's connection string, a
+  role's password, or an option named like a secret.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the schema's ER diagram
   from its foreign keys, `m` opens the maintenance form of a connection, schema, table or index, `n`, `e` and
   Delete add, change and remove a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
-Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/`, `view-tree.js`,
-`view-diagram.js`.
+Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
+kinds in `schema/pg/`), `view-tree.js`, `view-diagram.js`.
 
 ## Console
 

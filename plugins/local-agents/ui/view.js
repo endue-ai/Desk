@@ -114,7 +114,7 @@ export function createView(doc, act) {
   };
 
   doc.addEventListener("keydown", (event) => {
-    const target = /** @type {HTMLElement | null} */ (event.target);
+    const target = /** @type {HTMLElement | null} */ (event.composedPath()[0] ?? event.target);
     const tag = target?.tagName ?? "";
     if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") {
       if (event.key === "Escape" && target) target.blur();
