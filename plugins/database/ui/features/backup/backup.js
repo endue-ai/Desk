@@ -80,15 +80,15 @@ async function chooseTarget(
 }
 
 /**
- * What pg_dump's verbose line counts: one table's rows written. An archive says "dumping contents"
- * for each; a plain file says "processing data" for each, and "dumping contents" too unless INSERTs.
+ * How many tables' rows a verbose line says were written. An archive says "dumping contents" for
+ * each; a plain file says "processing data" for each, and "dumping contents" too unless INSERTs.
+ * Parallel jobs write to one stream a piece at a time (`pg_dump:`, ` `, the words), so one job's
+ * pieces land in another's line: the words are counted wherever they are.
  */
 const counter = (/** @type {string} */ format) => {
   const said =
-    format === "plain"
-      ? /^pg_dump: processing data for table /u
-      : /^pg_dump: dumping contents of table /u;
-  return (/** @type {string} */ line) => said.test(line);
+    format === "plain" ? /processing data for table "/gu : /dumping contents of table "/gu;
+  return (/** @type {string} */ line) => line.match(said)?.length ?? 0;
 };
 
 /**

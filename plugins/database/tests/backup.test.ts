@@ -161,10 +161,17 @@ describe("backing up", () => {
       done: 1,
       lines: ["pg_dump: reading schemas", 'pg_dump: dumping contents of table "public.orders"'],
     });
+    // Two parallel jobs writing at once, as pg_dump 18 was seen to: one's pieces land in the
+    // other's line; both are counted.
+    programs.say(
+      proc,
+      'pg_dump:pg_dump: dumping contents of table "public.customers"\n dumping contents of table "sales.items"\n',
+    );
     programs.exit(proc, 0);
     await running;
+    expect(log(m.shown()).backup.done).toBe(3);
     expect(log(m.shown()).backup.result).toMatch(
-      /^Wrote the folder ~\/Backups\/warehouse-[\d-]+ \(1\.5 MiB\) in .*, with 1 table's rows\.$/u,
+      /^Wrote the folder ~\/Backups\/warehouse-[\d-]+ \(1\.5 MiB\) in .*, with 3 tables' rows\.$/u,
     );
   });
 

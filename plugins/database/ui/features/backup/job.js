@@ -19,7 +19,7 @@
  *   no longer kept; `done` of `total` (null: not known) what the run got through, in `noun`s.
  * @typedef {{
  *   conn: Connection, name: string, state: LogState, invocation: Invocation,
- *   counts(line: string): boolean,
+ *   counts(line: string): number,
  *   finish(outcome: Outcome, state: LogState): Promise<{ status: Status, result: string }>,
  * }} Spec
  */
@@ -52,11 +52,11 @@ export function logState(
 export function appended(
   /** @type {LogState} */ state,
   /** @type {string[]} */ lines,
-  /** @type {(line: string) => boolean} */ counts,
+  /** @type {(line: string) => number} */ counts,
 ) {
   const all = [...state.lines, ...lines];
   const over = Math.max(0, all.length - LINES_MAX);
-  const done = state.done + lines.filter(counts).length;
+  const done = lines.reduce((sum, line) => sum + counts(line), state.done);
   return {
     ...state,
     lines: over ? all.slice(over) : all,

@@ -43,9 +43,13 @@ import { readToc } from "./toc-reader.js";
  * @typedef {{ connection: string, options?: Record<string, unknown>, chosen?: number[] | null }} RestoreAnswer
  */
 
-/** What pg_restore's verbose lines count: an entry made, or its rows loaded. */
+/**
+ * How many entries a verbose line says were made or loaded. Parallel jobs write to one stream a
+ * piece at a time, so one job's pieces land in another's line: the words are counted wherever they
+ * are (and never past the entries chosen).
+ */
 const counts = (/** @type {string} */ line) =>
-  /^pg_restore: (?:creating |processing data for table )/u.test(line);
+  line.match(/creating [A-Z]|processing data for table "/gu)?.length ?? 0;
 
 /** The dump to restore: a file or a folder, from the open dialog. */
 async function chooseSource(/** @type {Deps} */ deps) {

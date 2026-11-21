@@ -9,7 +9,7 @@ import { closeSync, mkdtempSync, openSync, readdirSync, readSync, rmSync, statSy
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
 import type { LogState } from "../ui/features/backup/job.js";
 import { type Handlers, type Mounted, mount } from "./harness";
@@ -21,7 +21,8 @@ const SCHEMA = "endue_backup_live";
 const { fields, password } = uri ? parseUri(uri) : { fields: {}, password: "" };
 const SOURCE = String((fields as { database?: string }).database ?? "");
 const FRESH = `${SOURCE}_restore_live`;
-const folder = mkdtempSync(join(tmpdir(), "endue-backup-live-"));
+/** Where the backups go: a folder of its own, made when the tests run and removed after. */
+let folder = "";
 
 /** psql as the URI's role, on the scratch database or another one, unaligned. */
 const admin = (sql: string, database = SOURCE) => {
@@ -149,16 +150,18 @@ async function roundTrip(format: string, path: string, restore: Record<string, u
   return { m, restored };
 }
 
-afterAll(() => {
-  rmSync(folder, { recursive: true, force: true });
-  if (!uri) return;
-  admin(`DROP DATABASE IF EXISTS ${FRESH}`);
-  admin(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
-});
-
 describe.skipIf(!uri || !clientVersion("pg_dump"))(
   "backup and restore on a real PostgreSQL",
   () => {
+    beforeAll(() => {
+      folder = mkdtempSync(join(tmpdir(), "endue-backup-live-"));
+    });
+    afterAll(() => {
+      rmSync(folder, { recursive: true, force: true });
+      admin(`DROP DATABASE IF EXISTS ${FRESH}`);
+      admin(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
+    });
+
     it("backs up a scratch database in custom and plain format, restores each into a fresh database, and the row counts and checksum match", async () => {
       admin(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
       admin(`CREATE SCHEMA ${SCHEMA}`);
