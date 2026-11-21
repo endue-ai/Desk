@@ -1,0 +1,28 @@
+/* The Format SQL preview (features/format/): the style in words, the sample in the monospace font
+   in a bordered block that scrolls inside the panel, and a hint. Every colour, font, size, radius
+   and duration comes from the theme's --desk-* tokens; the feature links this sheet itself
+   (features/README.md). */
+
+.format-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+}
+
+.format-style,
+.format-hint {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+.format-sample {
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  white-space: pre;
+}

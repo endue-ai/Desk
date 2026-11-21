@@ -47,7 +47,7 @@ export function builtinActions(deps) {
     dryRun: guard(() => consoles.run("all", "dry-run")),
     explain: guard(() => consoles.explain(false)),
     explainAnalyze: guard(() => consoles.explain(true)),
-    format: guard(() => consoles.format()),
+    format: guard(async () => view.say(await consoles.format())),
     complete: (/** @type {string} */ text, /** @type {number} */ caret) =>
       deps.complete(text, caret).catch(() => undefined),
     more: guard(() => consoles.more()),

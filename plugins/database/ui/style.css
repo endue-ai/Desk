@@ -293,14 +293,6 @@ main {
   cursor: pointer;
 }
 
-.header[aria-sort="ascending"]::after {
-  content: " ▲";
-}
-
-.header[aria-sort="descending"]::after {
-  content: " ▼";
-}
-
 .spacer {
   position: relative;
 }

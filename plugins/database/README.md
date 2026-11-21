@@ -1,20 +1,20 @@
 # plugins/database
 
 `endue.database`, a client for PostgreSQL, MySQL / MariaDB and SQLite, in the community folder format and on
-the public SDK only. It runs each engine's own command-line client through `proc.spawn`, never a shell, in a
-mode that cannot reach past the database (ADR 0038), and never keeps a password: asked, the desk keeps a
-PostgreSQL one in the OS keychain and never hands it back (`keychain.js`, ADR 0311). What it does, area by area,
-and which modules do it, is in [`docs/features.md`](docs/features.md): a new feature adds its line there.
+the public SDK only. It runs each engine's own client through `proc.spawn`, never a shell, in a mode that
+cannot reach past the database (ADR 0038), and never keeps a password (the desk keeps a PostgreSQL one in the
+OS keychain when asked, ADR 0311). What it does, and which modules do it, is in [`docs/features.md`](docs/features.md).
 
 `Mod+Shift+B` opens it; every operation is a command `endue.database.*` (`plugin.json`), and
-`endue.database.connections`, `.schema`, `.query`, `.activity`, `.cancel-session` and `.end-session` serve
-agents (ADR 0088; the last two only after the person's yes, ADR 0290).
+`endue.database.connections`, `.schema`, `.query`, `.activity`, `.cancel-session`, `.end-session` and
+`.maintenance` serve agents (ADR 0088; the last three change the server only after the person's yes, ADR 0290,
+ADR 0293).
 
 ## Permissions
 
 The manifest declares these and nothing else (ADR 0260), and `tests/manifest.test.ts` pins them. Those naming
-programs, folders or commands are granted at install. The four on `*` and `/**` are granted nothing at
-install: they only let the plugin ask, once per program, file or server (`perm.request`). None can be narrower: ADR 0260
+programs, folders or commands are granted at install. The four on `*` and `/**` are granted nothing at install:
+they only let the plugin ask, once per program, file or server (`perm.request`). None can be narrower: ADR 0260
 matches a program by its exact name, so only `*` covers one a setting names, and a path by a case-sensitive
 pattern under one root, so only `/**` covers a file from any folder or drive, its extension in any case.
 

@@ -23,7 +23,11 @@ import { show, summaryOf } from "./tabs.js";
  * @typedef {import("./execute.js").Mode} Mode
  * @typedef {import("./sql/split.js").Statement} Statement
  * @typedef {import("./tabs.js").Shown} Shown
- * @typedef {{ schema: string, name: string, where: string, order: string, offset: number, count: number | null }} TablePage
+ * @typedef {{
+ *   schema: string, name: string, where: string, order: string, offset: number, count: number | null,
+ *   sort?: import("./grid/filters.js").SortKey[], filters?: import("./grid/filters.js").Filter[],
+ * }} TablePage
+ *   `sort` and `filters` are the grid's sort keys and quick filters, run on the server (pages.js).
  * @typedef {{ path: string, saved: string, modified: boolean, large: boolean, size: number }} SqlFile
  *   A .sql file a console is bound to: its text as last read or saved, whether the console's
  *   differs, and whether it is past the editor's limit (not loaded, console-files.js).
@@ -108,7 +112,7 @@ export function createConsoles(deps) {
         c.table?.name === table.name,
     );
     if (found) return buffers.show(found);
-    const page = { ...table, where: "", order: "", offset: 0, count: null };
+    const page = { ...table, where: "", order: "", offset: 0, count: null, sort: [], filters: [] };
     const name = tableName(conn, page);
     const id = await buffers.open(name);
     const target = buffers.show(
