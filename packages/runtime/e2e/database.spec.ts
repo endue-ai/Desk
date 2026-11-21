@@ -77,7 +77,7 @@ const viewport = (frame: Frame) =>
 /** A console on the fixture connection, `select * from people;` run with Mod+Enter. */
 async function query(page: Page, frame: Frame) {
   await run(page, "endue.database.console", { connection: "fixture" });
-  const editor = frame.locator("#editor");
+  const editor = frame.getByRole("textbox", { name: "SQL" });
   await expect(editor).toBeVisible();
   await editor.click();
   await editor.fill("select * from people;");
@@ -130,7 +130,8 @@ test("the actions that do not fit are behind More, each once, and run from there
 }) => {
   const frame = await open(page, FIRST);
   await run(page, "endue.database.console", { connection: "fixture" });
-  await expect(frame.locator("#editor")).toBeVisible();
+  const editor = frame.getByRole("textbox", { name: "SQL" });
+  await expect(editor).toBeVisible();
   const shown = await frame.locator("#actions > [data-act]:visible").allTextContents();
   const more = frame.locator("#actions-more");
   await expect(more).toBeVisible();
@@ -154,11 +155,11 @@ test("the actions that do not fit are behind More, each once, and run from there
   await expect(menu).toBeHidden();
   await expect(more).toBeFocused();
   // Format from the menu formats the script.
-  await frame.locator("#editor").fill("select   1");
+  await editor.fill("select   1");
   await more.click();
   await menu.locator('[data-action="format"]').click();
   await expect(menu).toBeHidden();
-  await expect(frame.locator("#editor")).toHaveValue("SELECT 1");
+  await expect(editor).toHaveText("SELECT 1");
   // A wider page shows more of them in the row; at 1200 px all of them, and More is gone.
   const resize = (width: number) =>
     page

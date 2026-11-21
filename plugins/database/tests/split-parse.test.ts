@@ -1,0 +1,188 @@
+// The plugin's splitter (psql's rules, ui/sql/split.js) and PostgreSQL's grammar (ADR 0283) cut the
+// plugin's scripts alike: the splitter's own cases, the corpus, and the SQL the plugin writes itself
+// (catalog queries, DDL, table pages, edits, imports, EXPLAIN). A script the parser cannot read
+// whole is cut by the splitter, so a difference could only show in one that parses; DECIDED lists
+// the ones found and what was decided.
+import { describe, expect, it } from "vitest";
+import { tableSql } from "../ui/catalog.js";
+import {
+  addRow,
+  deleteRows,
+  editCell,
+  emptyChanges,
+  planChanges,
+  targetOf,
+} from "../ui/edit/pending.js";
+import { engineOf } from "../ui/engines/index.js";
+import { explainSql } from "../ui/explain/plan.js";
+import { importStatements } from "../ui/import.js";
+import { pagedSql } from "../ui/pages.js";
+import { schemaOf } from "../ui/schema/index.js";
+import { codeOf } from "../ui/sql/parse/parse.js";
+import { split } from "../ui/sql/split.js";
+import { SCRIPTS, STATEMENTS } from "./pg-corpus";
+import { loadParse } from "./pg-parser";
+
+const pg = schemaOf("postgresql");
+const object = (kind: string, name: string, fields: Record<string, unknown> = {}) =>
+  ({ schema: "app", name, kind, detail: "", rows: null, ident: "", ...fields }) as never;
+
+/** What the explorer runs, joined as the catalog sends it (one client run, `;\n` between). */
+const catalog = [
+  engineOf("postgresql").catalog.schemas(false),
+  engineOf("postgresql").catalog.columns("app", "people"),
+  ...pg.objects("app"),
+  ...pg.parts("app", "people"),
+  ...pg.ddlQueries(object("table", "people")),
+  ...pg.ddlQueries(object("materialized view", "totals")),
+  ...pg.ddlQueries(object("sequence", "people_id_seq")),
+  ...pg.ddlQueries(object("function", "touch()", { ident: "16384" })),
+].join(";\n");
+
+/** The DDL the explorer shows, from rows shaped like the server's. */
+const ddl = [
+  pg.ddl(object("table", "people"), [
+    [
+      ["id", "bigint", "YES", null, "a", "", null],
+      ["name", "text", "NO", "'it''s; fine'::text", "", "", "Their name; as written"],
+      ["net", "numeric", "NO", "(total / 1.2)", "", "s", null],
+    ],
+    [["primary key", "people_pkey", "PRIMARY KEY (id)", ""]],
+    [
+      [
+        "index",
+        "people_name_idx",
+        "CREATE INDEX people_name_idx ON app.people USING btree (name)",
+        "",
+      ],
+    ],
+    [
+      [
+        "trigger",
+        "people_touch",
+        "CREATE TRIGGER people_touch BEFORE UPDATE ON app.people FOR EACH ROW EXECUTE FUNCTION app.touch()",
+        "",
+      ],
+    ],
+    [["r", "p", "Everyone; once", null, null]],
+  ]),
+  pg.ddl(object("view", "adults"), [
+    [[" SELECT people.id\n   FROM app.people\n  WHERE people.id > 18;"]],
+  ]),
+  pg.ddl(object("sequence", "people_id_seq"), [
+    [["bigint", "1", "1", "1", "9223372036854775807", "1", "NO"]],
+  ]),
+  pg.ddl(object("function", "touch()"), [
+    [
+      [
+        "CREATE OR REPLACE FUNCTION app.touch()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN NEW.at := now(); RETURN NEW; END; $function$\n",
+      ],
+    ],
+  ]),
+].join("\n");
+
+const conn = { engine: "postgresql" } as never;
+const page = tableSql(conn, {
+  schema: "app",
+  table: "people",
+  where: "name <> ';'",
+  order: "id desc",
+  limit: 50,
+  offset: 100,
+});
+const [console] = split("select * from people -- every one\n", "postgresql");
+const paged = console && pagedSql(console, "postgresql", 50, 100);
+
+const set = {
+  columns: ["id", "name"],
+  rows: [
+    ["1", "a;b"],
+    ["2", "c"],
+  ] as (string | null)[][],
+  truncated: false,
+};
+const made = targetOf("postgresql", { schema: "app", name: "people" }, set.columns, [
+  { name: "id", type: "integer", primary: true },
+  { name: "name", type: "text", primary: false },
+]);
+if (!made.target) throw new Error(made.reason);
+const changes = emptyChanges();
+editCell(changes, made.target, set, 0, 1, "it's; new");
+editCell(changes, made.target, set, addRow(changes, made.target, set), 0, "3");
+deleteRows(changes, made.target, set, [1]);
+const edits = planChanges(made.target, set, changes).map((c) => c.sql);
+
+const imports = importStatements({
+  dialect: "postgresql",
+  table: '"app"."people"',
+  columns: [
+    { name: "id", type: "integer" },
+    { name: "name", type: "text" },
+  ],
+  mapping: ["id", "name"],
+  rows: Array.from({ length: 7 }, (_, i) => [String(i), `row ${i}; with a \\ and a '`]),
+  batch: 3,
+});
+
+const FIXTURES: Array<[string, string]> = [
+  ...SCRIPTS.map((sql, i): [string, string] => [`script ${i}`, sql]),
+  ["catalog", catalog],
+  ["ddl", ddl],
+  ["page", `${page.page};\n${page.count}`],
+  ["paged console", paged?.text ?? ""],
+  ["edits", ["BEGIN", ...edits, "COMMIT"].join(";\n")],
+  ["import", imports.join(";\n")],
+  ["explain", explainSql("postgresql", "", "select * from people where name = ';'", true)],
+];
+
+/**
+ * Differences found and decided: [fixture, statement text, what was decided]. Empty: none was
+ * found. A new one fails the test until it is listed here with its decision.
+ */
+const DECIDED: Array<[string, string, string]> = [];
+
+describe("split and parse", () => {
+  it("the splitter and the parser end statements at the same place", async () => {
+    const parse = await loadParse();
+    const differences: Array<[string, string, string]> = [];
+    let read = 0;
+    for (const [name, sql] of FIXTURES) {
+      const parsed = parse(sql);
+      expect([name, parsed.whole, parsed.statements.filter((s) => s.error).length]).toEqual([
+        name,
+        true,
+        0,
+      ]);
+      const cuts = split(sql, "postgresql")
+        .map(codeOf)
+        .map((c) => sql.slice(c.start, c.end));
+      const reads = parsed.statements.map((s) => sql.slice(s.start.offset, s.end.offset));
+      for (const text of reads.filter((t) => !cuts.includes(t)))
+        differences.push([name, text, "parser"]);
+      for (const text of cuts.filter((t) => !reads.includes(t)))
+        differences.push([name, text, "splitter"]);
+      if (reads.length !== cuts.length)
+        differences.push([name, `${reads.length} / ${cuts.length}`, "count"]);
+      read += reads.length;
+    }
+    expect(read).toBeGreaterThan(STATEMENTS.length + 50);
+    expect(differences).toEqual(DECIDED.map(([name, text]) => [name, text, expect.any(String)]));
+    expect(FIXTURES.every(([, sql]) => sql.length > 0)).toBe(true);
+  });
+
+  it("cuts a script that does not parse where the splitter cuts it", async () => {
+    const parse = await loadParse();
+    const sql = "select :limit;\nselect * from people where id = ?;\n\\d people\nselect 1";
+    const parsed = parse(sql);
+    expect(parsed.whole).toBe(false);
+    const cuts = split(sql, "postgresql").map(codeOf);
+    expect(parsed.statements.map((s) => [s.start.offset, s.end.offset])).toEqual(
+      cuts.map((c) => [c.start, c.end]),
+    );
+    expect(parsed.statements.map((s) => s.error?.message ?? s.kind)).toEqual([
+      'syntax error at or near ":"',
+      "syntax error at end of input",
+      'syntax error at or near "\\"',
+    ]);
+  });
+});
