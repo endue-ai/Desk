@@ -105,7 +105,7 @@ fn a_prompt_withdrawn_with_its_caller_settles() {
     let home = home("pending-unload");
     let (core, deliveries) = prompted(&home);
     grant(&core, "desk", plugin_manage());
-    install_hello(&core, &home);
+    install_hello_declaring(&core, &home, json!([notes_read()]));
     std::thread::scope(|s| {
         let asking = s.spawn(|| ask(&core, "example.hello", notes_read()));
         let prompt = wait_for(&deliveries, "perm.prompt").data().clone();

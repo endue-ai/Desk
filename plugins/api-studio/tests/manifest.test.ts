@@ -36,9 +36,13 @@ describe("plugin.json", () => {
     expect(validate(manifest), JSON.stringify(validate.errors)).toBe(true);
   });
 
-  it("spawns only curl", () => {
+  it("spawns curl, and may be asked for the one endue.api-studio.curl names", () => {
     const spawn = manifest.permissions.filter((p) => p.permission === "proc:spawn");
-    expect(spawn).toEqual([{ permission: "proc:spawn", commands: ["curl"] }]);
+    // `*` holds no program: another curl is asked for at run time (ADR 0260).
+    expect(spawn).toEqual([
+      { permission: "proc:spawn", commands: ["curl"] },
+      { permission: "proc:spawn", commands: ["*"] },
+    ]);
   });
 
   it("answers every command it declares", () => {

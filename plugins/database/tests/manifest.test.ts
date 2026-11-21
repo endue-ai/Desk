@@ -61,6 +61,10 @@ describe("plugin.json", () => {
           "desk.files.reveal",
         ],
       },
+      // The folder of a database file opened anywhere, a dropped file, and the client its
+      // setting names: asked for at run time, never held (ADR 0260).
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "proc:spawn", commands: ["*"] },
     ]);
   });
 

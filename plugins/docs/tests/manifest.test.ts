@@ -66,10 +66,15 @@ describe("plugin.json", () => {
     );
   });
 
-  it("declares no file paths of its own: every read is asked for", () => {
+  it("may be asked for any file and holds none: every read is asked for", () => {
     const permissions = manifest().permissions ?? [];
-    expect(permissions.filter((p) => p.permission.startsWith("fs:"))).toEqual([]);
-    expect(permissions).toEqual([{ permission: "cmd:invoke", ids: ["desk.files.changed"] }]);
+    // `/**` says only what may be asked: an install grants none of it, and each folder is still
+    // asked for, or granted when the person opens a file there (ADR 0131, ADR 0260).
+    expect(permissions).toEqual([
+      { permission: "cmd:invoke", ids: ["desk.files.changed"] },
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "shell:open", schemes: ["http", "https", "mailto"] },
+    ]);
   });
 
   it("the desk's opener picks endue.docs for each format and nobody for .pdf", () => {

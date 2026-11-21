@@ -10,7 +10,9 @@
     {
       "permission": "cmd:invoke",
       "ids": ["desk.files.changed"]
-    }
+    },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "shell:open", "schemes": ["http", "https", "mailto"] }
   ],
   "surfaces": [
     {

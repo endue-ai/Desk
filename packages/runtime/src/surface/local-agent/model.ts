@@ -85,6 +85,10 @@ export function importLine(
     : line;
 }
 
-/** Why a bridge call failed, for people. */
-export const why = (error: unknown) =>
-  error instanceof Error ? error.message : typeof error === "string" ? error : "unknown error";
+/** Why a bridge call failed, for people: its message, else that nobody knows, in `lang`. */
+export const why = (lang: Lang, error: unknown) =>
+  error instanceof Error
+    ? error.message
+    : typeof error === "string"
+      ? error
+      : localText(lang, "unknownError");

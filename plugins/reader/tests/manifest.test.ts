@@ -44,10 +44,15 @@ describe("plugin.json", () => {
     expect(EXTENSIONS).toHaveLength(15);
   });
 
-  it("declares no fs paths of its own: it asks for a file's folder when it needs to", () => {
+  it("may be asked for any folder and holds none: it asks for a file's folder when it needs to", () => {
     const permissions = manifest().permissions ?? [];
-    expect(permissions.filter((p) => p.permission.startsWith("fs:"))).toEqual([]);
-    expect(permissions).toEqual([{ permission: "cmd:invoke", ids: ["desk.files.changed"] }]);
+    // `/**` says only what may be asked: an install grants none of it, and each folder is still
+    // asked for, or granted when the person opens a file there (ADR 0131, ADR 0260).
+    expect(permissions).toEqual([
+      { permission: "cmd:invoke", ids: ["desk.files.changed"] },
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "shell:open", schemes: ["http", "https", "mailto"] },
+    ]);
   });
 
   it("the desk's opener rule picks the reader for each listed extension and nobody for .docx", () => {

@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use desk_bridge::{DialogOpenParams, DialogSaveParams, ErrorCode};
 use desk_core::{Asker, Core, DialogError, Dialogs};
 use serde_json::{Value, json};
-use support::{call, grant, home, install_hello, manage, roots};
+use support::{call, grant, home, install_hello, install_hello_declaring, manage, roots};
 
 /// The installed plugin that asks.
 const NOTES: &str = "example.hello";
@@ -72,7 +72,10 @@ impl Dialogs for Person {
 fn desk(tag: &str) -> (Core, Arc<Person>, PathBuf) {
     let home = home(tag);
     let core = Core::new(roots(&home));
-    install_hello(&core, &home);
+    // It may be granted whatever the person picks, anywhere (ADR 0260).
+    let anywhere = json!([{ "permission": "fs:read", "paths": ["/**"] },
+        { "permission": "fs:write", "paths": ["/**"] }]);
+    install_hello_declaring(&core, &home, anywhere);
     let person = Arc::new(Person::default());
     core.set_dialogs(Some(person.clone()));
     (core, person, home)

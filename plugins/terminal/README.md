@@ -9,10 +9,10 @@ buffer (`desk.buffers.open`), so `Mod+B` and `Mod+W` work on them. The requireme
 
 | Permission | Why |
 | --- | --- |
-| `proc:spawn` (zsh, bash, fish, sh, pwsh, powershell, cmd; `pty`) | Start the shell in a PTY, type into it, resize it, signal it; another program is asked for once (`perm.request`) |
+| `proc:spawn` (zsh, bash, fish, sh, pwsh, powershell, cmd; `pty`) | Start the shell in a PTY, type into it, resize it, signal it; another program (`*`) is asked for once (`perm.request`) |
 | `ui:notify` | Programs' notifications (OSC 9, 777, 99), the bell, long commands and error exits from a tab nobody looks at |
 | `shell:open` (http, https, mailto) | OSC 8 hyperlinks and URLs in the text, on Mod+click |
-| `cmd:invoke` (`desk.buffers.open`, `.update`, `.close`) | One desk buffer per terminal, renamed when the shell sets a title; a command `endue.terminal.event-commands` names is asked for once |
+| `cmd:invoke` (`*`) | One desk buffer per terminal (`desk.buffers.open`, `.update`, `.close`), renamed when the shell sets a title; the commands `endue.terminal.event-commands` names (ADR 0258, 0260) |
 
 | Command | What it does |
 | --- | --- |
