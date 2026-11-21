@@ -73,9 +73,10 @@ connection, off by default, in the connection form and in the password prompt; i
 password only once a run with it works, a URI's on Save. Its connection records the choice as
 `keychain: true`. Removing the connection, unticking the choice, a new host, port or user, and
 `Database: forget the remembered password` forget it; plain Disconnect leaves it, and the connection
-list marks those kept. Until the plugin's PostgreSQL runs on the desk's sessions (PG-01c, #441),
-`psql` cannot use a kept password: the session's `db.open` names it by the connection's id
-(`passwords.ref(conn)`) with `endpoint(conn)`'s host, port and user (`ui/keychain.js`).
+list marks those kept. The plugin's sessions (`ui/engines/pg-session.js`, PG-01c) send a password
+typed this session, else name the kept one by the connection's id (`passwords.ref(conn)`) when
+`endpoint(conn)`'s host, port and user are the session's (`ui/keychain.js`), so a kept password signs
+in after a restart with no prompt.
 
 ### Consequences
 

@@ -101,6 +101,8 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       sessions = count;
       busy();
     },
+    // A password the keychain keeps signs the session in, so none is asked for (ADR 0311).
+    kept: (conn) => manager.passwords.ref(conn),
   });
   const cancel = () => {
     catalog.cancel();
