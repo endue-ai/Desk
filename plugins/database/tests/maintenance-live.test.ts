@@ -25,9 +25,9 @@ type Ran = {
   after: Record<string, number | string | null> | null;
 };
 
-// Named for this run: another run on the same server has sessions of the same names.
-const PREFIX = `maintenance ${process.pid}`;
-const live = liveSessions(uri, PREFIX);
+// Other runs use the same server at once, each in a database of its own: only this database's
+// sessions are looked up and ended.
+const live = liveSessions(uri, "maintenance");
 const { admin } = live;
 
 /** Do again until `ok` holds, every 200 ms, for 20 s at most. */
@@ -81,6 +81,8 @@ const maintain = (m: Mounted, args: Record<string, unknown>) =>
 const MAINTENANCE = /^(VACUUM|ANALYZE|REINDEX|CLUSTER)\b/u;
 
 async function setUp() {
+  // A session a run before left asleep holding its lock would hold the drop too.
+  await live.end();
   await admin(`DROP TABLE IF EXISTS ${TABLE}`);
   await admin(
     `CREATE TABLE ${TABLE} (id int PRIMARY KEY, note text, v int) WITH (autovacuum_enabled = off)`,
@@ -94,8 +96,8 @@ async function setUp() {
 
 afterAll(async () => {
   if (!uri) return;
-  // A session left asleep in pg_sleep: end the test's sessions by name, then let go of them.
-  await live.endAll();
+  // Before the drop: a session asleep in pg_sleep holds its lock until it ends.
+  await live.end();
   await admin(`DROP TABLE IF EXISTS ${TABLE}`);
 });
 
@@ -198,7 +200,7 @@ describe.skipIf(!uri)("maintenance on a real PostgreSQL", () => {
       await until(
         () =>
           admin(
-            `SELECT pid FROM pg_stat_activity WHERE application_name = '${PREFIX} holder' AND wait_event = 'PgSleep'`,
+            "SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND application_name = 'maintenance holder' AND wait_event = 'PgSleep'",
           ),
         (found) => found !== "",
       ),

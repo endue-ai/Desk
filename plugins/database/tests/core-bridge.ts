@@ -102,9 +102,14 @@ export const sharedCore = () => {
 
 /**
  * A session of a live test's own on the server a URI names, opened by the shared core under
- * `application` (pg_stat_activity.application_name), for what the test sets up and watches.
+ * `application` (pg_stat_activity.application_name) with `settings`, for what the test sets up and
+ * watches.
  */
-export async function serverSession(uri: string, application = "endue tests") {
+export async function serverSession(
+  uri: string,
+  application = "endue tests",
+  settings: Record<string, string> = {},
+) {
   const { fields, password } = parseUri(uri);
   const core = sharedCore();
   const host = fields.host || "localhost";
@@ -117,7 +122,7 @@ export async function serverSession(uri: string, application = "endue tests") {
     user: fields.user,
     ...(password ? { password } : {}),
     ...(fields.ssl && fields.ssl !== "default" ? { tls: { mode: fields.ssl } } : {}),
-    settings: { application_name: application },
+    settings: { ...settings, application_name: application },
     scope: { permission: "db:connect", hosts: [`${host}:${port}`] },
   })) as DbOpenResult;
   const sessionId = opened.sessionId;
