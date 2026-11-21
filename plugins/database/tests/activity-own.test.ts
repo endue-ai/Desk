@@ -86,7 +86,7 @@ describe("the activity view's own sessions", () => {
       pid,
       running: false,
       more: false,
-      transaction: "idle",
+      transaction: "idle" as const,
     });
     const m = await mount({
       store: { connections: [ACTIVITY_CONNECTION] },

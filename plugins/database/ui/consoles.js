@@ -174,6 +174,12 @@ export function createConsoles(deps) {
     if (target.running || (target.filing && !options.file))
       throw new Error("A run is going on in this console: cancel it first.");
     await discard(target);
+    // The last run's error does not stay on screen while this one runs; rows that came back do.
+    const last = target.execution?.result;
+    if (last && (last.error || last.statements.some((s) => s.error))) {
+      target.execution = null;
+      target.shown = null;
+    }
     target.running = true;
     deps.view.say("");
     render();

@@ -17,13 +17,15 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
 
 - PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program to install: a run
   opens a session, runs each statement and closes it; the plugin asks for `db:connect` on a server's host and
-  port at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA
-  file; a client certificate is not supported yet, nor a socket folder or an IPv6 host.
+  port at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`; by default
+  TLS when the server offers it) and CA file; a client certificate is not supported yet, nor a socket folder
+  or an IPv6 host.
 - MySQL / MariaDB and SQLite run their own client and never a shell, in a mode that cannot reach past the
   database (ADR 0038): `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
 - A client is found on the desk's PATH, else in the folders the `path` setting adds and where package managers
   install them; a setting may name another client or its full path. Check the clients says which one runs and
-  whether it is new enough (mysql 8.0.19, mariadb 10.5, sqlite3 3.37), and that PostgreSQL needs none.
+  whether it is new enough (mysql 8.0.19, mariadb 10.5, sqlite3 3.37), and that PostgreSQL needs none: in a
+  few words in the footer, every whole sentence in the command's answer.
 - New, change, duplicate, remove (asked first; its history and buffers go with it), test (the server's version
   and the time it took) and disconnect. A connection from a URI (`postgres://`, `mysql://`, `mariadb://`,
   `sqlite:`), and its URI copied back without the password.
@@ -159,6 +161,8 @@ Modules: `sql/layout/`, `console-run.js`, `console-files.js`.
   as many; a console's single SELECT pages. Sort (`s`), filter the rows on screen (`/`), one row as a record
   (`t`), and the value viewer (`v`: JSON laid out, text, bytes as a hex dump).
 - A table's view filters (WHERE) and orders (ORDER BY) on the server, pages, and counts its rows on request.
+  Unsorted, a PostgreSQL table reads by its primary key (by `ctid` without one; a view as it is), so its rows
+  keep their places when read again after Submit (`table-order.js`).
 - Columns hidden (`h`, `H` shows one again), moved (`<` `>`, or a header dragged), pinned at the left (`P`),
   resized (a header's grip, `(` `)`, `w` or a double click on the grip fits). A table view keeps them across
   restarts, a console's result while it is among the last 20 (ADR 0288). Copy, export and drags take the
@@ -249,7 +253,9 @@ Modules: `export.js`, `import.js`, `importer.js`, `drops.js`, `dropped.js`, `dnd
 - A panel per PostgreSQL connection (13 and later) with its sessions from `pg_stat_activity`: process id,
   user, database, application, client, state, wait event, how long in its state, transaction and statement,
   and the statement; the selected one's whole statement below. Columns sort; filters hide idle sessions
-  and this view's own, show background processes, and keep one database.
+  and the view's reads (the session that read and any other running the view's statements, with their
+  locks), show background processes, and keep one database. The session that read is marked `this view`,
+  the plugin's others on this desk (`db.list`) `this desk`; the footer's count follows each read.
 - Who waits for whom (`pg_blocking_pids`) as a tree, the longest wait first, with the lock waited for and
   how its blocker holds it; the locks from `pg_locks` (5,000 at most), the waiting ones first.
 - Read again by hand (Refresh, `g`) and every 2, 5, 10, 30 or 60 seconds while on screen; Pause (`p`)

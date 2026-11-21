@@ -13,6 +13,7 @@ import { COLORS, SSL_MODES, TAGS } from "./connections.js";
  */
 
 const PORTS = { postgresql: "5432", mysql: "3306", sqlite: "" };
+const DEFAULT_SSL = "the client's default";
 const TEXT_FIELDS = /** @type {const} */ ([
   "name",
   "host",
@@ -45,7 +46,7 @@ export function createForms(doc, act) {
   const secret = /** @type {HTMLInputElement} */ (byId("password-value"));
 
   for (const mode of SSL_MODES)
-    ssl.append(new Option(mode === "default" ? "the client's default" : mode, mode));
+    ssl.append(new Option(mode === "default" ? DEFAULT_SSL : mode, mode));
   for (const value of TAGS) tag.append(new Option(value, value));
   COLORS.forEach((value, i) => {
     color.append(new Option(value ? `Colour ${i}` : "none", value));
@@ -59,6 +60,11 @@ export function createForms(doc, act) {
       /** @type {HTMLElement} */ (node).hidden = wanted === "sqlite" ? !sqlite : sqlite;
     }
     input("port").placeholder = PORTS[/** @type {keyof typeof PORTS} */ (engine.value)] ?? "";
+    // The desk's own PostgreSQL sessions use TLS when the server offers it; MySQL's client decides.
+    const first = ssl.options[0];
+    if (first)
+      first.text =
+        engine.value === "postgresql" ? "default: TLS when the server offers it" : DEFAULT_SSL;
   };
 
   /** @returns {Partial<Connection>} */
@@ -135,10 +141,16 @@ export function createForms(doc, act) {
         readOnly.checked = conn.readOnly;
         color.value = conn.color ?? "";
       }
+      // A new error or Test result scrolls into sight above the buttons (the dialog's scroll
+      // padding keeps it clear of them).
+      const fresh = (/** @type {HTMLElement} */ el, /** @type {string} */ text) =>
+        text !== "" && el.textContent !== text;
+      const said = fresh(error, model.error) ? error : fresh(note, model.note) ? note : null;
       error.textContent = model.error;
       note.textContent = model.note;
       fitFields();
       if (opening) input("name").focus();
+      said?.scrollIntoView?.({ block: "nearest" });
     },
     /** @param {PasswordModel | null} model */
     password(model) {

@@ -74,7 +74,15 @@ export function show(execution, base = 0) {
       : execution.mode === "transaction"
         ? ", in one transaction"
         : "";
-  const summary = `${failed ? "Failed" : "Done"}: ${formatCount(ran)} of ${formatCount(statements.length)} statement${statements.length === 1 ? "" : "s"} ran in ${formatDuration(result.ms)}${tail}`;
+  // A run the person cancelled says so, and counts the statements that finished before it.
+  const cancelled = [result.error, ...result.statements.map((s) => s.error)].some(
+    (e) => e?.kind === "cancelled",
+  );
+  const finished = result.statements.filter((s) => s.ran && !s.error).length;
+  const count = `${formatCount(cancelled ? finished : ran)} of ${formatCount(statements.length)} statement${statements.length === 1 ? "" : "s"}`;
+  const summary = cancelled
+    ? `Cancelled: ${count} finished in ${formatDuration(result.ms)}${tail}`
+    : `${failed ? "Failed" : "Done"}: ${count} ran in ${formatDuration(result.ms)}${tail}`;
   tabs.push({ label: "Messages", kind: "messages", statement: -1, lines });
   const open = failed || !tabs.some((t) => t.kind === "rows") ? tabs.length - 1 : 0;
   return { tabs, open, summary, ...(error ? { error } : {}) };
