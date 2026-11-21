@@ -1,13 +1,19 @@
 // The value viewer: one cell's whole value in a dialog, as text, as JSON laid out, or as a hex dump
 // of its bytes (value.js), with its type and size. Copy takes what is shown; when the result can be
-// changed, Change keeps the text as the cell's pending value and Set NULL makes it NULL. Escape or
-// Close gives the grid its focus back.
+// changed, Change keeps the text as the cell's pending value once its type's editor takes it (the
+// reason is said when it does not), Set NULL makes it NULL and Set DEFAULT its default (PG-40).
+// Escape or Close gives the grid its focus back.
 
+import { checkValue } from "./cell-editors/values.js";
 import { el } from "./dom.js";
+import { DEFAULT, isDefault } from "./edit/values.js";
 import { describeValue } from "./value.js";
 
 /**
- * @typedef {{ row: number, col: number, value: string | null, name: string, type: string, editable: boolean, reason: string }} Opened
+ * @typedef {{
+ *   row: number, col: number, value: string | null, name: string, type: string, editable: boolean,
+ *   reason: string, editor?: import("./cell-editors/resolve.js").Editor,
+ * }} Opened
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
  */
 
@@ -26,6 +32,8 @@ export function createValueViewer(doc, act, copy, back) {
   const text = /** @type {HTMLTextAreaElement} */ (byId("value-text"));
   const save = /** @type {HTMLButtonElement} */ (byId("value-save"));
   const setNull = /** @type {HTMLButtonElement} */ (byId("value-null"));
+  const setDefault = /** @type {HTMLButtonElement} */ (byId("value-default"));
+  const error = byId("value-error");
   /** @type {Opened | null} */
   let opened = null;
   /** @type {import("./value.js").ValueView} */
@@ -60,9 +68,13 @@ export function createValueViewer(doc, act, copy, back) {
     // Only the text itself can be changed; JSON laid out or a dump would change the value.
     text.readOnly = !cell.editable || view !== "text";
     save.hidden = !cell.editable;
-    setNull.hidden = !cell.editable;
+    setNull.hidden = !cell.editable || cell.editor?.nullable === false;
+    setDefault.hidden = !cell.editable || !cell.editor?.hasDefault;
+    error.hidden = true;
     const why = cell.editable ? "" : cell.reason ? ` · read-only: ${cell.reason}` : " · read-only";
-    meta.textContent = `${described.meta}${why}`;
+    const zone =
+      cell.editor?.zone && cell.editor.timeZone ? ` · time zone ${cell.editor.timeZone}` : "";
+    meta.textContent = `${described.meta}${zone}${why}`;
   };
 
   tabs.addEventListener("click", (event) => {
@@ -72,13 +84,28 @@ export function createValueViewer(doc, act, copy, back) {
   });
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    if (opened?.editable && current === "text" && text.value !== opened.value)
-      act("editCell", opened.row, opened.col, text.value);
+    const kept = opened && isDefault(opened.value) && text.value === "";
+    if (opened?.editable && current === "text" && text.value !== opened.value && !kept) {
+      const checked = opened.editor ? checkValue(opened.editor, text.value) : { value: text.value };
+      if ("error" in checked) {
+        error.textContent = checked.error;
+        error.hidden = false;
+        return text.focus();
+      }
+      act("editCell", opened.row, opened.col, checked.value);
+    }
     close();
   });
   setNull.addEventListener("click", () => {
     if (opened?.editable) act("editCell", opened.row, opened.col, null);
     close();
+  });
+  setDefault.addEventListener("click", () => {
+    if (opened?.editable) act("editCell", opened.row, opened.col, DEFAULT);
+    close();
+  });
+  text.addEventListener("input", () => {
+    error.hidden = true;
   });
   byId("value-copy").addEventListener("click", async () => {
     act(

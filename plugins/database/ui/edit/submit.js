@@ -3,7 +3,8 @@
 // first failure ends the run and nothing is kept: psql sends ROLLBACK under --single-transaction
 // and ON_ERROR_STOP, sqlite3 (-bail) and the mysql client stop before COMMIT and the server rolls
 // the open transaction back when the session ends. An UPDATE or DELETE that matched no row is said:
-// the row changed or went since it was read. No DOM.
+// the row changed or went since it was read. A refusal whose position falls in a cell's literal
+// names that cell's column (PG-40). No DOM.
 
 import { split } from "../sql/split.js";
 import { planChanges } from "./pending.js";
@@ -18,10 +19,10 @@ import { planChanges } from "./pending.js";
  * @typedef {(conn: Connection, sql: string, options?: import("../execute.js").ExecuteOptions) => Promise<Execution>} Execute
  * @typedef {{
  *   ok: boolean, plan: Change[], execution: Execution, message: string,
- *   failed?: Change, missed: Change[],
+ *   failed?: Change, cell?: { row: number, col: number }, missed: Change[],
  * }} Submitted
- *   `failed` is the change whose statement the server refused; `missed` the updates and deletes that
- *   found no row (applied as nothing, the rest committed).
+ *   `failed` is the change whose statement the server refused and `cell` the cell its error points
+ *   at; `missed` the updates and deletes that found no row (applied as nothing, the rest committed).
  */
 
 /**
@@ -61,14 +62,23 @@ export async function submitChanges({ execute, conn, target, set, changes }) {
   const at = result.statements.findIndex((s) => s.error);
   if (at >= 0 || result.statements.some((s) => !s.ran)) {
     const failed = plan[at];
-    const why = result.statements[at]?.error?.message ?? "the run stopped before the end";
+    const error = result.statements[at]?.error;
+    const why = error?.message ?? "the run stopped before the end";
+    const position = error?.position;
+    const span =
+      position === undefined
+        ? undefined
+        : failed?.cells.find((c) => position >= c.start && position < c.end);
+    const column = span ? target.columns[span.col]?.name : undefined;
+    const where = failed ? `${describe(failed, set)}${column ? `, column ${column}` : ""}: ` : "";
     return {
       ok: false,
       plan,
       execution,
       ...(failed ? { failed } : {}),
+      ...(failed && span ? { cell: { row: failed.row, col: span.col } } : {}),
       missed: [],
-      message: `Rolled back, nothing was changed: ${failed ? `${describe(failed, set)}: ` : ""}${why}`,
+      message: `Rolled back, nothing was changed: ${where}${why}`,
     };
   }
   const missed = plan.filter(

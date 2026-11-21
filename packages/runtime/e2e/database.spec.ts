@@ -77,7 +77,7 @@ const viewport = (frame: Frame) =>
 /** A console on the fixture connection, `select * from people;` run with Mod+Enter. */
 async function query(page: Page, frame: Frame) {
   await run(page, "endue.database.console", { connection: "fixture" });
-  const editor = frame.locator("#editor");
+  const editor = frame.getByRole("textbox", { name: "SQL" });
   await expect(editor).toBeVisible();
   await editor.click();
   await editor.fill("select * from people;");
@@ -130,7 +130,8 @@ test("the actions that do not fit are behind More, each once, and run from there
 }) => {
   const frame = await open(page, FIRST);
   await run(page, "endue.database.console", { connection: "fixture" });
-  await expect(frame.locator("#editor")).toBeVisible();
+  const editor = frame.getByRole("textbox", { name: "SQL" });
+  await expect(editor).toBeVisible();
   const shown = await frame.locator("#actions > [data-act]:visible").allTextContents();
   const more = frame.locator("#actions-more");
   await expect(more).toBeVisible();
@@ -154,11 +155,11 @@ test("the actions that do not fit are behind More, each once, and run from there
   await expect(menu).toBeHidden();
   await expect(more).toBeFocused();
   // Format from the menu formats the script.
-  await frame.locator("#editor").fill("select   1");
+  await editor.fill("select   1");
   await more.click();
   await menu.locator('[data-action="format"]').click();
   await expect(menu).toBeHidden();
-  await expect(frame.locator("#editor")).toHaveValue("SELECT 1");
+  await expect(editor).toHaveText("SELECT 1");
   // A wider page shows more of them in the row; at 1200 px all of them, and More is gone.
   const resize = (width: number) =>
     page
@@ -232,4 +233,57 @@ test("a double click on a cell opens its editor", async ({ page }) => {
   const input = frame.locator("#result .cell-input");
   await expect(input).toBeFocused();
   await expect(input).toHaveValue("Bob");
+});
+
+/** The console's text, through its textarea (the editor component keeps it there too). */
+const text = (frame: Frame) =>
+  frame.evaluate(() => (document.getElementById("editor") as HTMLTextAreaElement).value);
+
+test("two consoles on one connection keep their own text and results", async ({ page }) => {
+  const frame = await open(page, LARGE);
+  await query(page, frame);
+  const editor = frame.getByRole("textbox", { name: "SQL" });
+  const title = frame.locator("#title");
+  const cell = (value: string) => frame.locator("#result [role=gridcell]", { hasText: value });
+  await expect(title).toHaveText("fixture");
+  await expect(cell("Ada")).toBeVisible();
+
+  await run(page, "endue.database.new-console", { connection: "fixture" });
+  await expect(title).toHaveText("fixture 2");
+  await expect.poll(() => text(frame)).toBe("");
+  await expect(frame.locator("#results")).toBeHidden();
+  await editor.click();
+  await editor.fill("select * from orders;");
+  await editor.press("ControlOrMeta+Enter");
+  await expect(frame.locator("#summary")).toContainText("Done");
+  await expect(cell("30")).toBeVisible();
+
+  // Back to the first: its own text and rows.
+  await run(page, "endue.database.consoles", { console: "fixture" });
+  await expect(title).toHaveText("fixture");
+  await expect.poll(() => text(frame)).toBe("select * from people;");
+  await expect(cell("Ada")).toBeVisible();
+  await expect(cell("30")).toHaveCount(0);
+  // And the second again.
+  await run(page, "endue.database.consoles", { console: "fixture 2" });
+  await expect.poll(() => text(frame)).toBe("select * from orders;");
+  await expect(cell("30")).toBeVisible();
+});
+
+test("a .sql file opened from the desk is a console that saves to the file", async ({ page }) => {
+  const frame = await open(page, LARGE);
+  const path = "~/queries/report.sql";
+  await run(page, "desk.files.open", { path });
+  const editor = frame.getByRole("textbox", { name: "SQL" });
+  await expect.poll(() => text(frame)).toBe("select * from orders;\n");
+  await expect(frame.locator("#title")).toHaveText("report.sql · fixture");
+  await editor.fill("select * from orders;\nselect * from people;\n");
+  await expect(frame.locator("#title")).toHaveText("● report.sql · fixture");
+  await run(page, "desk.files.save", {});
+  await expect(frame.locator("#title")).toHaveText("report.sql · fixture");
+  const saved = await page.evaluate(
+    (path) => (window as unknown as { __files: Record<string, string> }).__files[path],
+    path,
+  );
+  expect(saved).toBe("select * from orders;\nselect * from people;\n");
 });

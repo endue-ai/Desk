@@ -2,9 +2,13 @@
 // the rows come from (a table's view, or a console's plain SELECT of one table), reads its columns
 // for the primary key and the types, and either keeps the changes or says why it cannot. Submit
 // runs them in one transaction and reads the rows again; Revert drops them. A new run of the
-// console starts a new result, so its changes are asked about first. No DOM.
+// console starts a new result, so its changes are asked about first. On PostgreSQL the columns'
+// types are read too, so each column gets its typed editor (cell-editors/, PG-40); they are read again
+// when the catalog reads the columns again, and a failed read leaves the declared types. No DOM.
 
 import { defaultSchema } from "./catalog.js";
+import { readTypes } from "./cell-editors/pg-types.js";
+import { attachEditors } from "./cell-editors/resolve.js";
 import {
   addRow,
   countChanges,
@@ -49,6 +53,27 @@ export function shownSet(/** @type {Console} */ target) {
 /** @param {Deps} deps */
 export function createEdits(deps) {
   /**
+   * A table's column types, kept with the catalog's answer for its columns: a refresh of the
+   * catalog reads new columns, and so new types.
+   * @type {WeakMap<object, Promise<Map<string, import("./cell-editors/pg-types.js").TypeInfo>>>}
+   */
+  const types = new WeakMap();
+  const typesOf = (
+    /** @type {Connection} */ conn,
+    /** @type {string} */ schema,
+    /** @type {string} */ table,
+    /** @type {object} */ columns,
+  ) => {
+    if (conn.engine !== "postgresql") return Promise.resolve(new Map());
+    let read = types.get(columns);
+    if (!read) {
+      read = readTypes(deps.execute, conn, schema, table).catch(() => new Map());
+      types.set(columns, read);
+    }
+    return read;
+  };
+
+  /**
    * The edit state of the result on screen, found the first time it is asked for.
    * @param {Console} target
    * @param {Connection} conn
@@ -89,9 +114,15 @@ export function createEdits(deps) {
         else {
           const found = targetOf(dialect, { schema, name: source.name }, set.columns, columns);
           const reason = refusalOf(conn, found.target, found.reason);
-          state = reason
-            ? refused(reason)
-            : { ...refused(""), status: "ready", target: found.target ?? null };
+          const typed =
+            found.target && !reason
+              ? attachEditors(
+                  found.target,
+                  columns,
+                  await typesOf(conn, schema, source.name, columns),
+                )
+              : null;
+          state = reason ? refused(reason) : { ...refused(""), status: "ready", target: typed };
         }
       }
     }
