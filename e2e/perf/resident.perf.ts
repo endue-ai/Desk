@@ -1,5 +1,5 @@
 // endue at rest with no window (#237, ADR 0225): the Default profile, its main window closed with
-// its red button (the desk runs on, the island over other apps), left alone twenty seconds, then
+// its red button (the desk runs on), left alone twenty seconds, then
 // measured for thirty with `ps`: the app's own process's CPU as a share of one core, its whole
 // tree's, and the tree's summed RSS at the end, by kind of process beside it (#312). The app is the process support/driver.ts started.
 // The window is closed through the shell's development command, as hidden.perf.ts closes it.
@@ -36,7 +36,7 @@ describe("endue at rest with no window", () => {
     const seconds = (Date.now() - start) / 1000;
     const { app, tree } = cpuPercent(before, cpu(), pid, seconds);
     const procs = treeOf(memory(), pid);
-    const seen = await shellCommand<{ main: boolean; island: boolean }>("compositor_window", {
+    const seen = await shellCommand<{ main: boolean }>("compositor_window", {
       seen: true,
     });
     if (seen.main) throw new Error("the main window showed while it was measured closed");
@@ -47,7 +47,6 @@ describe("endue at rest with no window", () => {
         rssMb: rssMb(procs),
         processes: procs.length,
         kinds: kinds(procs),
-        island: seen.island,
         loadAverage: round1(loadavg()[0] ?? 0),
         settleMs: SETTLE_MS,
         windowMs: WINDOW_MS,

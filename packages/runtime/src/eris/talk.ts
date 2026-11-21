@@ -10,7 +10,7 @@
  */
 import { wordTimes } from "../bridge/browser";
 import type { Bands, WordTime } from "../bridge/types";
-import { erisText } from "./float-copy";
+import { erisText } from "./copy";
 import { syllablePulses } from "./mouth";
 import type { ErisState } from "./states";
 

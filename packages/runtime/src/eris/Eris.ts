@@ -18,7 +18,6 @@ import { BODY, digest, type FrameModel, frameModel, paint, paintMoon } from "./d
 import { audioContext, openMic, sampleEar } from "./ear";
 import { mountErrands } from "./errand";
 import { palette } from "./figure";
-import { linkDesk } from "./float-desk";
 import { basisFor, DENSITIES, type DensityName, generateMesh, type Mesh } from "./mesh";
 import { speakAloud } from "./mouth";
 import { atWork, homeOf, pillOf, Rest, showRest, watchCard } from "./rest";
@@ -33,6 +32,7 @@ import {
   LookTween,
   REST_MS,
 } from "./states";
+import { defineSummon } from "./summon";
 import { Talk } from "./talk";
 import { type Cue, PULSE_TO_RIM_MS, Voice } from "./voice";
 
@@ -307,8 +307,7 @@ export function mountEris(
     listen(window, "resize", wake),
     listen(el, "pointerenter", wake),
     watchCard(said.el, wake),
-    // The floating window over the OS shows her while the desk is inactive (ADR 0121).
-    linkDesk(ctx, { phase: () => talk.phase, say: (text) => speakLine(text, undefined), setState }),
+    defineSummon(ctx),
     // Every theme applied: a desk.theme.* setting, a preview, a theme plugin installed or edited, the
     // OS's scheme. The theme system calls this after it has set the new tokens.
     ctx.runtime.themes.onChange(() => {

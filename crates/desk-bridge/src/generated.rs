@@ -4034,7 +4034,7 @@ pub struct AgentChangedData {
     pub run_id: ItemId,
 }
 
-/// One of an agent's runs changed: kept, waiting for an approval, going on or ended. Sent to callers that hold perm:manage, so what shows the agents at work (the island, ADR 0204) reads agent.list again.
+/// One of an agent's runs changed: kept, waiting for an approval, going on or ended. Sent to callers that hold perm:manage, so what shows the agents at work reads agent.list again.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AgentChangedEvent {
@@ -8546,7 +8546,7 @@ pub struct PermApprovalDoneData {
     pub undoable: Option<bool>,
 }
 
-/// What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait (the island, ADR 0204).
+/// What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermPendingRequest {

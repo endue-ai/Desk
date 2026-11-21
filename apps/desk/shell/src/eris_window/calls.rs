@@ -1,6 +1,5 @@
 //! What the shell asks of the core for Eris (ADR 0121): her shortcut's setting, desk.eris.summon in
-//! the main window, and the notice that the shortcut is taken; and `call`, a core call as a fixed
-//! caller, which the island uses too.
+//! the main window, and the notice that the shortcut is taken.
 
 use std::sync::atomic::Ordering::Relaxed;
 

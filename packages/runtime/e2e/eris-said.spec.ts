@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { openShell, step } from "./shell-helpers";
 
@@ -7,11 +6,6 @@ import { openShell, step } from "./shell-helpers";
 // allows the microphone.
 test.use({ viewport: { width: 1280, height: 800 } });
 
-const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
-const MODULES = {
-  float: `/@fs${here("../src/eris/float.ts")}`,
-  copy: `/@fs${here("../src/eris/float-copy.ts")}`,
-};
 const PROMPT =
   "Tell me why the answer under Eris has to wrap: it has more than two hundred characters, so " +
   "one line would run off the desk, and a person should still be able to read all of it later.";
@@ -151,7 +145,6 @@ test("nothing says she listens until the microphone is allowed", async ({ page }
   await step(page, 100);
   await expect(rail).toHaveAttribute("aria-label", "Listening · off");
   await expect(rail).toHaveAttribute("aria-pressed", "false");
-  expect(await overOtherApps(page)).toBe("Waiting for your approval");
   // The person says no: she says she can be typed to, and nothing listens.
   await page.evaluate(() => window.__mic?.(false));
   await step(page, 300);
@@ -160,27 +153,4 @@ test("nothing says she listens until the microphone is allowed", async ({ page }
   );
   await expect(eris).not.toHaveAttribute("data-state", "listening");
   await expect(rail).toHaveAttribute("aria-label", "Listening · off");
-  expect(await overOtherApps(page)).not.toBe("Listening…");
 });
-
-/**
- * What the island's talk reads now over other apps, from the snapshot the desk wrote for it (ADR
- * 0121, ADR 0204): her status as the snapshot says it, with no turn of the island's own running.
- */
-function overOtherApps(page: Page): Promise<string> {
-  return page.evaluate(async (modules) => {
-    const [{ floatSide, statusOf, storageChannel }, { statusText }] = await Promise.all([
-      import(modules.float),
-      import(modules.copy),
-    ]);
-    const snapshot = floatSide(storageChannel(window)).snapshot();
-    const shown = statusOf({
-      state: snapshot?.state ?? "idle",
-      talk: snapshot?.talk ?? "off",
-      thinking: false,
-      speaking: false,
-      approval: false,
-    });
-    return statusText("en", shown);
-  }, MODULES);
-}

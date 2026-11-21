@@ -18,9 +18,8 @@ Held notifications go to the history; when do not disturb ends, one line says ho
 A notice that stays until it is dismissed (an error by default, or one with actions) has a Dismiss
 button, and a newer notice covers it only for its own time. In the shell the status line is a card at
 the top centre, one line until it is pointed at or focused, then the whole of it.
-While endue is not in front, a notice that shows also goes to the OS's notifications (ADR 0240),
-unless the island already shows it; a click on it brings the desk forward and runs its first
-action or opens it.
+By default, shown notices also go to the OS while Desk is in the background (ADR 0240). Clicking
+one brings Desk forward and runs its first action or opens the notice.
 Commands: `desk.notify.dismiss`, `.dnd`, `.history` (in the palette when it is on), `.clear`.
 
 ```bash

@@ -71,13 +71,12 @@ un processus de rendu qui meurt ne coûte que sa fenêtre. Depuis #83, le compos
 dessine là où `crates/desk-wm` place sa fenêtre, et desk-wm mène les gestes des fenêtres, leurs commandes
 et le budget des cadres actifs. Ce qui reste web tourne en surfaces système que le compositeur place
 au-dessus de toutes les fenêtres (ADR 0160) : la page du bureau lui-même (les barres, Eris, les
-notifications, les menus, les réglages et les studios, chaque partie dessinée entière), la fenêtre de la
-palette et celle de l'île, chacune appelant en tant que sa fenêtre. Aucun plugin ne tourne dans la page du
-bureau : son hôte de plugins joint le navigateur propre à chaque plugin par le shell. L'île (ADR 0204) est
-la seule surface au-dessus des autres applications tant que le bureau n'est pas au premier plan : les
-agents au travail, ce qui attend une réponse et les notifications, à une pression de répondre à une
-demande d'autorisation ou à l'approbation d'un agent et de parler à Eris, qu'Option+Entrée appelle depuis
-n'importe quelle application. Elle a pris la place d'Eris flottante (ADR 0121).
+notifications, les menus, les réglages et les studios, chaque partie dessinée entière) et la fenêtre
+de recherche. Chaque fenêtre utilise sa propre identité. Le shell relie l'hôte de plugins du bureau
+au navigateur de chaque plugin. Option+Entrée ramène le bureau au premier plan et ouvre le champ
+de conversation d'Eris (ADR 0275). Les demandes d'autorisation et d'approbation des agents se
+traitent dans le bureau. Les notifications affichées peuvent aussi être transmises au système selon
+`desk.notify.system` (ADR 0240).
 
 Une fenêtre du bureau peut aussi vivre dans une fenêtre du système à elle (ADR 0205, #235). Toute
 fenêtre qui montre un seul plugin sort du canevas dans un navigateur fenêtré et revient à sa place.

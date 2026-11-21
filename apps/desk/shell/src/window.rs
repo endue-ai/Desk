@@ -1,8 +1,8 @@
-//! The shell's winit application: the main window, palette, island, banner and the windows popped
+//! The shell's winit application: the main window, palette, banner and the windows popped
 //! out (each a `Pane`; `apps`, #235), the tray, menu bar, global shortcuts (Eris's: `eris_window`) and
 //! CEF's message loop work when the pump says it is due; other threads reach it through its jobs.
 //! Closing the main window hides it and the desk runs on (`resident.rs`); it quits from the tray,
-//! the menu or the island, once its page asked about unsaved changes (`quit.rs`), closing every
+//! the menu, once its page asked about unsaved changes (`quit.rs`), closing every
 //! browser first.
 
 use std::collections::{HashMap, HashSet};
@@ -30,7 +30,7 @@ use crate::{open_files, palette, tray};
 /// The shell's application state for winit.
 pub struct Shell {
     pub desk: Arc<Desk>,
-    /// The main window's page; the palette's and the island's are its views.
+    /// The main window's page; the palette loads a view of the same page.
     pub url: String,
     pub hotkeys: Hotkeys,
     pump: Pump,
@@ -91,7 +91,7 @@ impl Shell {
         url: &str,
     ) -> Option<&Pane> {
         let client = crate::client::client(role, self.pump.clone(), Arc::clone(&self.desk));
-        match Pane::open(event_loop, role == Role::Island, attributes, url, client) {
+        match Pane::open(event_loop, attributes, url, client) {
             Ok(pane) => {
                 self.desk.pages.set(role, pane.browser.clone());
                 self.roles.insert(pane.window.id(), role);
@@ -172,7 +172,6 @@ impl Shell {
                 // Opened with the compositor, in its window.
                 System::Desk => {}
                 System::Palette => palette::setup(self, event_loop),
-                System::Island => crate::island::setup(self, event_loop),
             }
         }
         eris_window::setup(self, event_loop);
@@ -326,7 +325,7 @@ impl ApplicationHandler<Wake> for Shell {
         match (role, event) {
             (Role::Main, WindowEvent::CloseRequested) => {
                 // Closing the window only hides it and the desk runs on (#583, `resident.rs`):
-                // the island, the tray, the Dock and a second start bring it back.
+                // the tray, the Dock and a second start bring it back.
                 self.hide_main();
             }
             (Role::Palette, WindowEvent::CloseRequested) => {
@@ -341,24 +340,17 @@ impl ApplicationHandler<Wake> for Shell {
                     compositor.resized();
                 }
                 crate::main_frame::moved();
-                eris_window::main_changed(self);
             }
             (Role::Main, WindowEvent::Occluded(occluded)) if self.compositor.is_some() => {
                 if let Some(compositor) = self.compositor.as_mut() {
                     compositor.occluded(occluded);
                 }
-                eris_window::main_changed(self);
             }
             (_, WindowEvent::Resized(size)) => {
                 if let Some(pane) = self.pane(role) {
                     pane.resized(size);
                 }
-                if role == Role::Main {
-                    // Minimized and restored: settle reads whether it is on screen.
-                    eris_window::main_changed(self);
-                }
             }
-            (Role::Main, WindowEvent::Occluded(_)) => eris_window::main_changed(self),
             (_, WindowEvent::Focused(focused)) => {
                 if focused && let Some(host) = self.pane(role).and_then(Pane::host) {
                     host.set_focus(1);
@@ -374,9 +366,7 @@ impl ApplicationHandler<Wake> for Shell {
                 {
                     pane.hide();
                 }
-                crate::island::focused(self, role, focused);
             }
-            (Role::Island, WindowEvent::Moved(_)) => crate::island::moved(self),
             (Role::Main, WindowEvent::Moved(_)) => crate::main_frame::moved(),
             _ => {}
         }

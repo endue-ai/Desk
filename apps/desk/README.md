@@ -6,9 +6,9 @@ README) that serves `dist/` over `desk-app://` and forwards every bridge call to
 
 | Path | What it does |
 | --- | --- |
-| `src/main.ts` | Mounts the shell of `@endue-ai/runtime` on the CEF bridge adapter (`src/desk.ts`, with `src/start.ts` for what the start found), then reports `desk_ready`; `?view=palette` and `?view=island` host the other windows |
+| `src/main.ts` | Mounts the shell of `@endue-ai/runtime` on the CEF bridge adapter (`src/desk.ts`, with `src/start.ts` for what the start found), then reports `desk_ready`; `?view=palette` hosts Search Desk |
 | `src/host.ts` | The page's shell: `invoke`, `listen` and the bridge adapter over `window.__deskNative` (#43); without it every command is refused with the reason |
-| `src/island*.ts`, `shell/src/island/`, `shell/src/eris_window/` | The island over other apps while the desk is not in front (ADR 0204): what is going on, the asks answered there, notices, talking to Eris; `Alt+Enter` (⌥↩) from anywhere opens it, or the desk's talk line with the desk in front (`DESK_ERIS_SHORTCUT`, the tray's Talk to Eris). It took the floating Eris's place (ADR 0121) |
+| `shell/src/eris_window.rs` | `Alt+Enter` (⌥↩) and the tray's Talk to Eris open the talk line in Desk. `DESK_ERIS_SHORTCUT` overrides the configured shortcut. |
 | `src/native-files.ts`, `src/page-drags.ts`, `shell/src/{dialog,drops}.rs` | Native single-file picker (`plugin:dialog\|open`) and drops from the OS (`desk://drag-enter`, then the page's own drag), routed through `desk.files.open` or to the plugin under the pointer |
 | `src/open-files.ts`, `shell/src/{open_files,run_event}.rs` | Startup and running OS file-open queue (command line, Finder and the Dock, a second start), consumed after runtime readiness |
 | `src/shell-bridge.ts` | The shell's `ShellBridge` over the core: store, perm, `brain.*` and the agent directory |
@@ -30,7 +30,7 @@ file access (ADR 0052). Closing the main window hides it; the Dock icon and the 
 ```bash
 just brain-echo  # optional: the brain on :8787, whose agents fill the agent bar
 just dev         # build and run the CEF desk with plugins/ and the dev plugins; prints "desk ready · bridge: cef"
-pnpm exec vitest run apps/desk   # the page's modules, over a fake shell; the island
+pnpm exec vitest run apps/desk   # the page's modules, over a fake shell
 just build-shell # the shell, the web frontend it serves and on macOS target/bundle/endue-desk.app
 just check-shell # the shell crate's lints and tests (downloads and builds CEF, so `just check` skips it)
 ```

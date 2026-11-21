@@ -70,7 +70,7 @@ fn what_waits_is_listed_oldest_first_and_settles_whoever_answers() {
         );
         assert_eq!(waiting["approvals"], json!([]));
 
-        // The island answers the second; the permissions plugin hears that it settled.
+        // Another prompter answers the second, and the permissions plugin hears that it settled.
         let answer = json!({ "promptId": second["promptId"], "granted": false, "scope": manage() });
         call(&core, "desk", "perm.answer", answer).unwrap();
         let settled = wait_for(&deliveries, "perm.settled");

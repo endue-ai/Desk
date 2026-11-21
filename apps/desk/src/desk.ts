@@ -158,7 +158,6 @@ void desk.ready.then(() => {
   const stopNotices = followSystemNotices({
     settings: desk.runtime.settings,
     notices: desk.runtime.notices,
-    onEvent: (listener) => core.onEvent(listener),
     post: (post) => invoke("desk_notice_post", { ...post }),
     listen: (handler) => listen("notice://activated", ({ payload }) => handler(payload)),
     report: (error) => console.error("desk_notice_post:", error),

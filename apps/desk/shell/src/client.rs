@@ -2,11 +2,7 @@
 //! window the browser is for (`Role`, which no page can change), tells the event loop when the
 //! browser closed and, in development builds, prints the page's console to the terminal (CSP reports
 //! land there too). The main window's page, the desk's system surface, renders off screen and posts
-//! to each plugin surface through the relay (`compositor_page`, ADR 0160); the island's clears the
-//! page's base colour so only its pill and panel show (macOS, ADR 0204).
-
-// `wrap_client!` makes a constructor with one argument per field.
-#![allow(clippy::too_many_arguments)]
+//! to each plugin surface through the relay (`compositor_page`, ADR 0160).
 
 use std::sync::Arc;
 
@@ -132,36 +128,12 @@ wrap_display_handler! {
     }
 }
 
-/// Chromium paints a windowed browser's page on an opaque base colour; the DevTools protocol's
-/// override makes it transparent, so the transparent window around the island shows only it.
-const CLEAR_BASE: &[u8] = br#"{"id":1,"method":"Emulation.setDefaultBackgroundColorOverride","params":{"color":{"r":0,"g":0,"b":0,"a":0}}}"#;
-
-wrap_load_handler! {
-    pub struct ClearBase;
-
-    impl LoadHandler {
-        fn on_load_end(
-            &self,
-            browser: Option<&mut Browser>,
-            frame: Option<&mut Frame>,
-            _http_status_code: ::std::os::raw::c_int,
-        ) {
-            if frame.is_some_and(|f| f.is_main() == 1)
-                && let Some(host) = browser.and_then(|b| b.host())
-            {
-                host.send_dev_tools_message(Some(CLEAR_BASE));
-            }
-        }
-    }
-}
-
 wrap_client! {
     pub struct ShellClient {
         role: Role,
         life_span: LifeSpanHandler,
         display: DisplayHandler,
         requests: RequestHandler,
-        load: Option<LoadHandler>,
         desk: Arc<Desk>,
         // The main window's page (#52): it renders off screen, and posts to plugin surfaces (ADR 0160).
         render: Option<RenderHandler>,
@@ -216,24 +188,18 @@ wrap_client! {
         fn display_handler(&self) -> Option<DisplayHandler> {
             Some(self.display.clone())
         }
-
-        fn load_handler(&self) -> Option<LoadHandler> {
-            self.load.clone()
-        }
     }
 }
 
-/// The client of the browser in the window of `role`: the palette, the island and the banner
+/// The client of the browser in the window of `role`: the palette and the banner
 /// (the main window's page is `compositor_page`'s).
 pub fn client(role: Role, pump: Pump, desk: Arc<Desk>) -> Client {
     let banner = (role == Role::Banner).then(|| Arc::clone(&desk.core));
-    let load = (cfg!(target_os = "macos") && role == Role::Island).then(ClearBase::new);
     ShellClient::new(
         role,
         ShellLifeSpan::new(role, pump, false, None),
         ShellDisplay::new(role, None),
         crate::guard::Requests::new(banner),
-        load,
         desk,
         None,
         None,
@@ -255,7 +221,6 @@ pub fn compositor_page(
         ShellLifeSpan::new(Role::Main, pump, true, Some(host.clone())),
         ShellDisplay::new(Role::Main, Some(host)),
         crate::guard::Requests::new(None),
-        None,
         desk,
         Some(render),
         Some(relay),
