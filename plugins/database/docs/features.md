@@ -218,6 +218,22 @@ Modules: `edits.js`, `edit/` (`cells.js`, `duplicate.js`, `history.js`, `paste-t
 `view-cell.js`, `cell-editors/` (`resolve.js`, `pg-types.js`, `values.js`, `panel.js`, one module per kind),
 `grid/paste.js`, `grid/paste-worker.js`, `features/cell-values/`, `features/paste/`.
 
+## Foreign keys
+
+- On PostgreSQL, a foreign key's cells in a table's view or a console's plain SELECT of one table are links,
+  their title saying where they point (ADR 0322). `g` or Mod+click (the cell's menu, Database: go to the row
+  this key points at) opens the referenced table's view under one `=` quick filter per key column, its typed
+  WHERE cleared; a NULL, or a key column missing from the result, is said instead.
+- `r` (Database: show the rows that point at this row) lists the tables whose keys point at the row, counted
+  in one run when asked, and opens one filtered the same way. `b` (Database: go back to where the key was
+  followed from) shows the view as it was: WHERE, order, sort keys, filters and page; 50 steps are kept.
+- Enter or F2 on an editable key cell (Database: pick the key from the referenced table) searches the
+  referenced table in the palette: 50 rows a page by key with its first text column, More rows, typed text
+  searched on the server, and the text as it is for a key of one column. The whole key is one pending step.
+- Keys come from the schema cache when it holds the table's schema, else from one read of `pg_constraint`.
+
+Modules: `links/`, `features/links/`.
+
 ## Import and export
 
 - Export a result to `~/Downloads` in any copy format, as `<table>-<time>.<extension>` so it never overwrites
