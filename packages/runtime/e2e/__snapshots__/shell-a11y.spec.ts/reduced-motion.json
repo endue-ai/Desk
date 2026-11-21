@@ -849,6 +849,31 @@
       },
       {
        "tag": "button",
+       "class": "btn btn-xs desk-notify-bell",
+       "aria-label": "알림",
+       "aria-expanded": "false",
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "bell"
+        },
+        {
+         "tag": "span",
+         "class": "desk-notify-count",
+         "hidden": "",
+         "style": {
+          "display": "none",
+          "background": "rgb(35, 33, 30)",
+          "color": "rgb(179, 175, 165)"
+         }
+        }
+       ]
+      },
+      {
+       "tag": "button",
        "class": "desk-settings-launcher",
        "aria-label": "설정 열기",
        "style": {
