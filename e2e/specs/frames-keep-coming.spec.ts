@@ -16,7 +16,7 @@
 import { expect } from "@wdio/globals";
 import { feed, inSurface, shellCommand } from "../support/compositor";
 import { shellReady } from "../support/desk";
-import { chord, drag, gripAt, KEY, type Point, titleAt, toolAt } from "../support/gestures";
+import { chord, drag, fromMenu, gripAt, KEY, type Point, titleAt } from "../support/gestures";
 import {
   clearDesk,
   closeShellWindows,
@@ -202,9 +202,10 @@ describe("frames: the desk's page never stops drawing (#157)", () => {
   it("after a window's Floating mode, there and back, and a maximize and restore", async () => {
     const id = await openWindow();
     const win = await windowNow(id);
-    await press(toolAt(win, "floating", false));
+    // Floating mode is a row of the window's menu, over the windows (ADR 0255).
+    await fromMenu(win, "floating", false, press);
     await stillDrawing("floating on");
-    await press(toolAt(await windowNow(id), "floating", false));
+    await fromMenu(await windowNow(id), "floating", false, press);
     await stillDrawing("floating off");
     await press(titleAt(await windowNow(id)), 2);
     await stillDrawing("maximize");

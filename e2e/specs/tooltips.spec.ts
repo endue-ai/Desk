@@ -9,7 +9,7 @@
 import { browser, expect } from "@wdio/globals";
 import { feed, INPUT, inputState, inSurface, raise } from "../support/compositor";
 import { shellReady } from "../support/desk";
-import { drag, titleAt } from "../support/gestures";
+import { drag, titleAt, toolAt } from "../support/gestures";
 import { type Image, screenshot } from "../support/pixels";
 import { deskNow, rectOf } from "../support/windows";
 
@@ -175,6 +175,24 @@ describe("tooltips: a page's hover title is drawn by the compositor, in the them
     const shown = await showing("Open a plugin");
     expect(shown.surface).toBe("desk");
     expect((await inputState()).cursor).toContain("Pointer");
+  });
+
+  it("shows a title bar tool's name, from the window's own page (ADR 0255)", async () => {
+    const win = (await deskNow()).windows.find((w) =>
+      w.panes.some((p) => p.plugin === "e2e.input"),
+    );
+    if (!win) throw new Error("no input window");
+    // Its three tools: the window menu, Pop out and Close, each titled with its name (and its
+    // command's key, which the e2e desk binds none of).
+    for (const [tool, name] of [
+      ["menu", "Window menu"],
+      ["close", "Close"],
+    ] as const) {
+      const at = toolAt(rectOf(win), tool);
+      await arrive([at.x, at.y]);
+      const shown = await showing(name);
+      expect(shown.surface).toBe(`window:${win.id}`);
+    }
   });
 
   it("labels each control the desk labels itself once: its own tooltip, no title", async () => {
