@@ -1,13 +1,13 @@
 // A fixture SQLite database for endue.database behind proc.spawn, as the browser stub serves it: a
-// saved connection, two tables (people, orders) whose catalog and rows the scripted sqlite3 answers,
-// a PostgreSQL catalog (pg-catalog.ts's shop) the scripted psql answers to the schema cache, a
-// PostgreSQL connection whose scripted psql answers for one table of typed columns (fixtures-pg.ts),
-// the server's version and EXPLAIN with fixture plans for every PostgreSQL connection
-// (fixture-plans.ts), and the proc.* handlers that emit each run's output as desk-core does. The
+// saved connection, two tables (people, orders) whose catalog and rows the scripted sqlite3 answers;
+// a scripted PostgreSQL server behind db.* (the bridge stub's sessions, ADR 0281) that answers the
+// schema cache with a catalog (pg-catalog.ts's shop), one connection's table of typed columns
+// (fixtures-pg.ts), and the server's version and EXPLAIN with fixture plans for every PostgreSQL
+// connection (fixture-plans.ts); and the proc.* and db.* handlers that answer as desk-core does. The
 // runtime e2e page (packages/runtime/e2e/fixture/database.ts) uses them; nothing here needs Node.
-import type { BridgeEvent, StubHandlers } from "../../../packages/bridge/src/index";
+import { type BridgeEvent, type StubHandlers, stubDb } from "../../../packages/bridge/src/index";
 import type { Connection } from "../ui/engines/common.js";
-import { type Script, scriptedReply } from "./clients";
+import { type Script, scriptedDb, scriptedReply } from "./clients";
 import { withPlans } from "./fixture-plans";
 import { pgFixtureScript } from "./fixtures-pg";
 import { catalogScript, shop } from "./pg-catalog";
@@ -89,9 +89,15 @@ const SHOP = shop();
 export const fixtureScript: Script = withPlans(
   catalogScript(
     () => SHOP,
-    (sql, env) => (env.PGDATABASE ? pgFixtureScript(sql) : sqliteScript(sql, env)),
+    (sql, who) => (who.database ? pgFixtureScript(sql) : sqliteScript(sql, who)),
   ),
 );
+
+/** db.* over the scripted server, a session's events emitted after the answer as the core's. */
+export function dbHandlers(script: Script, emit: (event: BridgeEvent) => void): StubHandlers {
+  const later = (event: BridgeEvent) => queueMicrotask(() => emit(event));
+  return stubDb(scriptedDb(script), () => {}, later).handlers;
+}
 
 /** proc.spawn and proc.kill over the scripted clients; each run's output is emitted a tick later. */
 export function procHandlers(script: Script, emit: (event: BridgeEvent) => void): StubHandlers {

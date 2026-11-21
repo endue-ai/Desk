@@ -1,10 +1,10 @@
 // Test page: endue.database (plugins/database) over the desk.* policies on the browser stub, with a
 // saved SQLite connection and proc.spawn answered by the plugin's scripted sqlite3 over a fixture
 // database (plugins/database/tests/fixtures.ts: two tables, people and orders), a saved PostgreSQL
-// connection whose scripted psql has one table of typed columns (items, fixtures-pg.ts), one whose
-// scripted psql answers the activity view (activity-fixture.ts) and EXPLAIN with fixture plans
-// (fixture-plans.ts), and fs.* over a folder in memory with one .sql file (`window.__files`, what
-// saves wrote). Never shipped.
+// connection whose scripted server (db.*, the stub's sessions) has one table of typed columns
+// (items, fixtures-pg.ts), one whose server answers the activity view (activity-fixture.ts) and
+// EXPLAIN with fixture plans (fixture-plans.ts), and fs.* over a folder in memory with one .sql file
+// (`window.__files`, what saves wrote). Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -17,6 +17,7 @@ import {
   activityServer,
 } from "../../../../plugins/database/tests/activity-fixture";
 import {
+  dbHandlers,
   FIXTURE_CONNECTION,
   FIXTURE_PG_CONNECTION,
   fixtureScript,
@@ -65,7 +66,8 @@ const core = browserCore({
     "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
   }),
   handlers: {
-    ...procHandlers(activityServer(fixtureScript).script, (event) => emit(event)),
+    ...procHandlers(fixtureScript, (event) => emit(event)),
+    ...dbHandlers(activityServer(fixtureScript).script, (event) => emit(event)),
     ...fsHandlers,
   },
   open: () => {},

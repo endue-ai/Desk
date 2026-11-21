@@ -29,7 +29,7 @@ async function start(
 }
 const acts = (m: Mounted) =>
   m.app as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
-const psqlRuns = (m: Mounted) => m.clients.spawned.filter((s) => s.args[0] !== "--version").length;
+const psqlRuns = (m: Mounted) => m.sessions().length;
 
 describe("the activity panel", () => {
   it("opens a PostgreSQL connection's activity panel and answers its sessions and waits for agents", async () => {

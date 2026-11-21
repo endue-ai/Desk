@@ -254,14 +254,17 @@ export function createTools(deps) {
       view.say(`Counted ${names.length} table${names.length === 1 ? "" : "s"}.`);
       return counts;
     },
-    /** Find each engine's client again and say what was found. */
+    /** Find each engine's client again and say what was found; PostgreSQL needs none. */
     async checkClients() {
       deps.reload(await loadSettings(bridge));
       deps.clients.reset();
       const lines = await Promise.all(
         /** @type {const} */ (["postgresql", "mysql", "sqlite"]).map((engine) =>
           deps.clients.get(engine).then(
-            (c) => `${c.command} ${c.version} (${c.flavor})`,
+            (c) =>
+              c.command
+                ? `${c.command} ${c.version} (${c.flavor})`
+                : "PostgreSQL: built into the desk, no client program needed",
             (error) => (error instanceof Error ? error.message : String(error)),
           ),
         ),

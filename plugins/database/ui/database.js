@@ -19,6 +19,7 @@ import { createConsoleFiles } from "./console-files.js";
 import { createConsoles } from "./consoles.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
+import { createSessions } from "./engines/pg-session.js";
 import { createExecutor } from "./execute.js";
 import { createExplorer } from "./explorer.js";
 import { panelsOf, registerFeatures } from "./feature-host.js";
@@ -72,10 +73,11 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   let settings = DEFAULTS;
   const cancelled =
     options.cancelled ?? ((message) => Object.assign(new Error(message), { code: "cancelled" }));
-  // A run is busy from the client's start until its output is read.
+  // A run is busy from the client's start until its output is read, or while its session runs.
   let running = 0;
   let reading = 0;
-  const busy = () => view.busy(running + reading);
+  let sessions = 0;
+  const busy = () => view.busy(running + reading + sessions);
   const runner =
     options.runner ??
     createRunner(bridge, {
@@ -90,9 +92,17 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     busy();
     view.reading?.(reads);
   });
+  // PostgreSQL's runs: a session each, on the core (ADR 0281).
+  const pg = createSessions(bridge, {
+    onBusy: (count) => {
+      sessions = count;
+      busy();
+    },
+  });
   const cancel = () => {
     catalog.cancel();
     runner.cancel();
+    pg.cancel();
     output.cancel();
   };
   const clients = createClients(runner, () => settings);
@@ -120,6 +130,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     runner,
     output,
     clients,
+    sessions: pg,
     settings: () => settings,
     confirm,
     passwords: manager.passwords,

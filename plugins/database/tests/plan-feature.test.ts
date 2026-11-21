@@ -12,7 +12,7 @@ const JOIN = "select o.id from orders o join customers c on c.id = o.customer_id
 const LOOPS =
   "select count(*) from orders o join customers c on c.id = o.customer_id where o.status = 'open'";
 
-/** A one-column EXPLAIN's field as it is: the scripted psql (clients.ts) quotes it as --csv does. */
+/** A one-column EXPLAIN's field as the server sends it. */
 const answer = (plan: unknown) => ({
   rows: [["QUERY PLAN"], [JSON.stringify(plan, null, 2)]],
 });
@@ -22,8 +22,8 @@ const script = (sql: string) => {
   if (sql.includes("update orders")) return answer(pg17.write);
   return answer(sql.includes("status = 'open'") ? pg17.loops : pg17.join);
 };
-const psql = (m: Awaited<ReturnType<typeof mount>>) =>
-  m.clients.spawned.filter((s) => s.command === "psql" && s.args[0] !== "--version");
+/** Each PostgreSQL run's statements (a session each), in order. */
+const psql = (m: Awaited<ReturnType<typeof mount>>) => m.sessions().map((args) => ({ args }));
 const explains = (m: Awaited<ReturnType<typeof mount>>) =>
   psql(m).flatMap((s) => s.args.filter((a) => a.startsWith("EXPLAIN")));
 

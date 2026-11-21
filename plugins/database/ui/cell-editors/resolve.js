@@ -4,6 +4,7 @@
 // SQLite's BLOB). A generated or always-identity column is fixed, with the reason. Pure.
 
 import { binaryType, numericType } from "../edit/values.js";
+import { builtinType } from "./pg-types.js";
 
 /**
  * @typedef {import("../sql/lexer.js").Dialect} Dialect
@@ -73,13 +74,15 @@ export function kindOf(/** @type {Resolved | undefined} */ type) {
  * @param {Dialect} dialect
  * @param {Column} column The catalog's column: its declared type, NOT NULL and default.
  * @param {TypeInfo} [info] PostgreSQL's reading of the type, when it was read.
+ * @param {number} [oid] The result column's type OID (a session's), read when `info` was not.
  * @returns {Editor}
  */
-export function editorOf(dialect, column, info) {
+export function editorOf(dialect, column, info, oid) {
   const type = info?.type || column.type;
+  const builtin = !info && dialect === "postgresql" && oid ? builtinType(oid) : undefined;
   const resolved = info
     ? { typname: info.typname, category: info.category, element: info.element, labels: info.labels }
-    : declared(dialect, column.type);
+    : (builtin ?? declared(dialect, column.type));
   const nullable = info ? info.nullable : column.nullable !== false;
   const hasDefault = info
     ? info.hasDefault
@@ -88,17 +91,22 @@ export function editorOf(dialect, column, info) {
   return { ...made, nullable, hasDefault, fixed: fixedWhy(column.name, info) };
 }
 
-/** Give a target's columns of the table their editors (a result column of no table column, none). */
+/**
+ * Give a target's columns of the table their editors (a result column of no table column, none);
+ * `oids` are the result columns' type OIDs, in the target's order, for a type the catalog did not read.
+ */
 export function attachEditors(
   /** @type {import("../edit/pending.js").Target} */ target,
   /** @type {Column[]} */ tableColumns,
   /** @type {Map<string, TypeInfo>} */ types,
+  /** @type {number[]} */ oids = [],
 ) {
   return {
     ...target,
-    columns: target.columns.map((c) => {
+    columns: target.columns.map((c, i) => {
       const column = c.known ? tableColumns.find((t) => t.name === c.name) : undefined;
-      return column ? { ...c, editor: editorOf(target.dialect, column, types.get(c.name)) } : c;
+      if (!column) return c;
+      return { ...c, editor: editorOf(target.dialect, column, types.get(c.name), oids[i]) };
     }),
   };
 }

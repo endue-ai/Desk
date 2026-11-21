@@ -9,11 +9,8 @@ import { catalogScript, kindOf, type PgCatalog, schemasOf, shop } from "./pg-cat
 
 const PASS = ["marks", "relations", "columns", "constraints", "indexes", "triggers", "routines"];
 
-/** The SQL of every psql run, in order. */
-const psql = (m: Mounted) =>
-  m.clients.spawned
-    .filter((s) => s.command === "psql" && s.args[0] !== "--version")
-    .map((s) => s.args[s.args.indexOf("-c") + 1] ?? "");
+/** The SQL of every PostgreSQL run (a session each), in order. */
+const psql = (m: Mounted) => m.sessions().map((sqls) => sqls[0] ?? "");
 const row = (m: Mounted, label: string, kind?: string) =>
   m.view.trees.at(-1)?.find((r) => r.label === label && (!kind || r.kind === kind));
 async function until(m: Mounted, test: () => unknown) {
