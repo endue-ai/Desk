@@ -21,11 +21,11 @@ const PALETTE = "desk.palette";
 const HELLO = "e2e.hello";
 const mac = process.platform === "darwin";
 const MOD: Record<string, boolean> = mac ? { meta: true } : { ctrl: true };
-const PEOPLE_TSV = "1\tAda\tone\n2\tLinus\t\\N";
+const PEOPLE_TSV = "1\tAda\tone\n2\tBob\t\\N";
 // The table's rows as a paste reads them: Chromium writes the table into a page of its own (with
 // a tbody), so the rows are what must come back as written.
 const PEOPLE_ROWS =
-  "<tr><td>1</td><td>Ada</td><td>one</td></tr><tr><td>2</td><td>Linus</td><td></td></tr>";
+  "<tr><td>1</td><td>Ada</td><td>one</td></tr><tr><td>2</td><td>Bob</td><td></td></tr>";
 const has = (program: string) => {
   try {
     execFileSync(program, ["-version"], { stdio: "ignore" });
@@ -183,7 +183,7 @@ const forget = (text: string) => {
         file,
         [
           "create table people(id integer primary key, name text, note text);",
-          "insert into people values (1, 'Ada', 'one'), (2, 'Linus', null);",
+          "insert into people values (1, 'Ada', 'one'), (2, 'Bob', null);",
           `create table wide(${columns.join(", ")});`,
           "with recursive n(i) as (select 1 union all select i + 1 from n where i < 500)",
           `insert into wide select ${columns.map(() => "i").join(", ")} from n;`,
@@ -258,7 +258,7 @@ const forget = (text: string) => {
       await inUse(HELLO);
       await fromPalette("copy the result as", ["Database: copy the result as", "csv"]);
       await says("Copied as CSV.");
-      const csv = "id,name,note\r\n1,Ada,one\r\n2,Linus,";
+      const csv = "id,name,note\r\n1,Ada,one\r\n2,Bob,";
       if (mac) expect(pbpaste()).toBe(csv);
       expect((await pasted()).text).toBe(csv);
     });

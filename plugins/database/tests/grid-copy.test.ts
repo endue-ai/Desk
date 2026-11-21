@@ -12,7 +12,7 @@ const set = {
   columns: ["id", "name", "note"],
   rows: [
     ["1", "Ada", 'a<b & "c"'],
-    ["2", "Linus", null],
+    ["2", "Bob", null],
   ] as Row[],
   truncated: false,
 };
@@ -59,10 +59,10 @@ describe("the grid's Mod+C", () => {
     const { data, prevented } = copy();
     expect(prevented).toBe(true);
     expect(data).toEqual({
-      "text/plain": 'Ada\ta<b & "c"\nLinus\t\\N',
+      "text/plain": 'Ada\ta<b & "c"\nBob\t\\N',
       "text/html":
         "<table><tr><td>Ada</td><td>a&lt;b &amp; &quot;c&quot;</td></tr>" +
-        "<tr><td>Linus</td><td></td></tr></table>",
+        "<tr><td>Bob</td><td></td></tr></table>",
     });
     expect(copyLarge).not.toHaveBeenCalled();
   });
