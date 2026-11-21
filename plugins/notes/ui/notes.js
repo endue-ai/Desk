@@ -174,6 +174,14 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
 
   answer("desk.files.save", async (args) => {
     const { buffer, path: asked } = requested(args);
+    await saveNote(buffer, asked);
+  });
+
+  /** Write a note to its file, or to `asked`; the desk's own save and Notes' auto-save both. */
+  const saveNote = async (
+    /** @type {string} */ buffer,
+    /** @type {string | undefined} */ asked,
+  ) => {
     const note = await holding(buffer);
     const path = asked ?? note.path;
     const content = note.text;
@@ -187,7 +195,8 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
     note.modified = note.text !== content;
     if (shown === buffer) render();
     if (note.modified) setTimeout(() => report(note), 0);
-  });
+    return note;
+  };
 
   answer("desk.files.revert", async (args) => {
     const { buffer, path: asked } = requested(args);
@@ -353,5 +362,18 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
     say,
   });
 
-  return { edit, ready };
+  /** Notes' own save (auto-save, rename): written, and the desk's unsaved mark cleared. */
+  const save = async (/** @type {string} */ buffer) => {
+    const note = await saveNote(buffer, undefined);
+    if (!note.modified)
+      await commands.run("desk.buffers.update", { id: buffer, modified: false }).catch(() => {});
+    return note;
+  };
+  /** The note on screen, as the view shows it, or undefined. */
+  const current = () => {
+    const note = shown === null ? undefined : notes.get(shown);
+    return note && { ...note };
+  };
+
+  return { edit, ready, save, current, grants, say };
 }
