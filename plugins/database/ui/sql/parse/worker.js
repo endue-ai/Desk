@@ -3,8 +3,10 @@
 // (wasm.js, ADR 0283) runs here, never on the frame's thread. It fetches its wasm from the plugin's
 // folder once and compiles it once; a parser that stopped (a trap) is started again for the next
 // request. Models come once each, by key, and are kept until the page says to forget them. Format
-// SQL's layout (../layout/, ADR 0292) runs here too, on the same parser. It imports only relative
+// SQL's layout (../layout/, ADR 0292) runs here too, on the same parser, and a `check` finds a
+// script's problems for the editor (../../diagnose/check.js, ADR 0294). It imports only relative
 // files: import maps do not reach a module worker.
+import { createChecker } from "../../diagnose/check.js";
 import { createLayout } from "../layout/layout.js";
 import { indexModel } from "./model.js";
 import { createParse } from "./parse.js";
@@ -18,6 +20,7 @@ import { loadLibpgQuery } from "./wasm.js";
  * @typedef {{ id: number, type: "parse", sql: string, trees: boolean }
  *   | { id: number, type: "resolve", sql: string, model: number, searchPath?: string[], user?: string }
  *   | { id: number, type: "layout", sql: string, style: unknown, at?: number }
+ *   | { id: number, type: "check", model?: number } & import("../../diagnose/check.js").CheckRequest
  *   | { type: "model", key: number, model: SchemaModel }
  *   | { type: "forget", key: number }} Request
  * @typedef {{ id: number, result: unknown } | { id: number, error: string }} Reply
@@ -42,6 +45,7 @@ export const outline = (parsed) => ({
 export function createService(raw, models = new Map()) {
   const parse = createParse(raw);
   const layout = createLayout(raw);
+  const checker = createChecker(raw);
   return {
     raw,
     /** @param {Request} request @returns {Reply | undefined} */
@@ -59,6 +63,12 @@ export function createService(raw, models = new Map()) {
         if (request.type === "layout") {
           const at = request.at === undefined ? {} : { at: request.at };
           return { id, result: layout(sql, request.style, at) };
+        }
+        if (request.type === "check") {
+          const index = request.model === undefined ? undefined : models.get(request.model);
+          if (request.model !== undefined && !index)
+            throw new Error("The schema model was not sent to the parser.");
+          return { id, result: checker.check(request, index) };
         }
         const positions = createPositions(sql);
         const parsed = parse(sql, positions);

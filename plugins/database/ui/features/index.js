@@ -15,5 +15,6 @@ export { feature as objects } from "./objects/index.js";
 export { feature as overview } from "./overview/index.js";
 export { feature as paste } from "./paste/index.js";
 export { feature as plans } from "./plans/index.js";
+export { feature as problems } from "./problems/index.js";
 export { feature as routines } from "./routines/index.js";
 export { feature as schemaCache } from "./schema-cache/index.js";

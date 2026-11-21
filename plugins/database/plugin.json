@@ -1399,6 +1399,21 @@
         "id": "endue.database.find-previous",
         "title": "Database: find the previous match in the result",
         "keywords": ["grid", "search"]
+      },
+      {
+        "id": "endue.database.problems",
+        "title": "Database: list the SQL problems",
+        "keywords": ["errors", "diagnostics", "lint", "underline", "syntax"]
+      },
+      {
+        "id": "endue.database.next-problem",
+        "title": "Database: go to the next SQL problem",
+        "keywords": ["error", "diagnostic", "lint", "F8"]
+      },
+      {
+        "id": "endue.database.previous-problem",
+        "title": "Database: go to the previous SQL problem",
+        "keywords": ["error", "diagnostic", "lint", "Shift+F8"]
       }
     ],
     "keys": [
@@ -1507,6 +1522,16 @@
         "kind": "boolean",
         "default": false,
         "description": "Save lays a .sql file's console out with Format SQL before it writes the file, by the format of the file's connection; a file on no connection yet is written as typed."
+      },
+      "endue.database.problems-syntax": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Underline SQL the parser cannot read in PostgreSQL consoles, a pause after typing stops."
+      },
+      "endue.database.problems-names": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Underline tables, columns and schemas that the cached schema does not have, and INSERT column counts that do not match, in PostgreSQL consoles. Nothing is asked of the server."
       },
       "endue.database.pg-dump": {
         "kind": "string",
