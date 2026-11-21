@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "the network ended the session",
+  "instance": {
+    "event": "db.closed",
+    "data": {
+      "sessionId": "d-1",
+      "reason": "io",
+      "message": "connection reset by peer"
+    }
+  }
+}

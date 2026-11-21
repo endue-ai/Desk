@@ -285,6 +285,7 @@ impl Core {
         self.prune_processes(caller);
         self.prune_captures(caller);
         self.prune_sockets(caller);
+        self.prune_databases(caller);
         self.prune_web(caller);
         self.settle_unheard();
     }

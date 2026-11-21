@@ -1826,6 +1826,7 @@ dependencies = [
  "desk-computer",
  "desk-index",
  "desk-memory",
+ "desk-pg",
  "desk-platform",
  "desk-plugin-host",
  "desk-surface",

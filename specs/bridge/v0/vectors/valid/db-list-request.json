@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.list of the caller's sessions",
+  "instance": {
+    "id": 21,
+    "method": "db.list",
+    "params": {}
+  }
+}

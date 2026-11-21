@@ -2,8 +2,9 @@
 // saved SQLite connection and proc.spawn answered by the plugin's scripted sqlite3 over a fixture
 // database (plugins/database/tests/fixtures.ts: people, orders, and staff with a team), a saved
 // PostgreSQL connection whose scripted psql has one table of typed columns (items, fixtures-pg.ts),
-// one whose scripted psql answers the activity view (activity-fixture.ts), and fs.* over a folder in
-// memory with one .sql file (`window.__files`, what saves wrote). Never shipped.
+// one whose scripted psql answers the activity view (activity-fixture.ts) and EXPLAIN with fixture
+// plans (fixture-plans.ts), and fs.* over a folder in memory with one .sql file (`window.__files`,
+// what saves wrote). Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,

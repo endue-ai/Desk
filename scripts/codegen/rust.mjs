@@ -138,6 +138,8 @@ function rustType(type, flags) {
       return "bool";
     case "array":
       return `Vec<${rustType(type.items, flags)}>`;
+    case "nullable":
+      return `Option<${rustType(type.inner, flags)}>`;
     case "map":
       flags.map = true;
       return `BTreeMap<String, ${rustType(type.values, flags)}>`;

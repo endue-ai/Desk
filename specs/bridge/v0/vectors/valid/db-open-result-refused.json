@@ -1,0 +1,12 @@
+{
+  "target": "DbOpenResult",
+  "description": "the server refused the sign-in: its error, no session",
+  "instance": {
+    "error": {
+      "severity": "FATAL",
+      "localSeverity": "FATAL",
+      "code": "28P01",
+      "message": "password authentication failed for user \"reader\""
+    }
+  }
+}

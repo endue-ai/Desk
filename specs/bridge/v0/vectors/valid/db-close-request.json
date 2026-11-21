@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.close of a session",
+  "instance": {
+    "id": 21,
+    "method": "db.close",
+    "params": {
+      "sessionId": "d-1"
+    }
+  }
+}

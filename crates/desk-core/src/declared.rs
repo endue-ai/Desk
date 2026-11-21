@@ -62,6 +62,7 @@ pub(crate) fn declares(declared: &Permission, scope: &Permission) -> bool {
         }
         (P::NetFetch(d), P::NetFetch(s)) => hosts(&d.hosts, &s.hosts),
         (P::NetConnect(d), P::NetConnect(s)) => hosts(&d.hosts, &s.hosts),
+        (P::DbConnect(d), P::DbConnect(s)) => hosts(&d.hosts, &s.hosts),
         (P::WebBrowse(d), P::WebBrowse(s)) => sites(d.hosts.as_deref(), s.hosts.as_deref()),
         (P::WebControl(d), P::WebControl(s)) => sites(d.hosts.as_deref(), s.hosts.as_deref()),
         _ => covers(declared, scope),
@@ -91,6 +92,7 @@ fn holds_star(scope: &Permission) -> bool {
     match scope {
         P::NetFetch(s) => s.hosts.iter().any(star),
         P::NetConnect(s) => s.hosts.iter().any(star),
+        P::DbConnect(s) => s.hosts.iter().any(star),
         P::WebBrowse(s) => s.hosts.iter().flatten().any(star),
         P::WebControl(s) => s.hosts.iter().flatten().any(star),
         P::ProcSpawn(s) => s.commands.iter().any(|c| c == ANY),

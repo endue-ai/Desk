@@ -1,0 +1,185 @@
+/* A plan tab (PG-70, view-plan*.js): the statement's totals, the bar of views and actions, the
+   tree's extra facts and marks, the flame and the table. The tree's own rules are in work.css.
+   Every colour, font, size and radius comes from the theme's --desk-* tokens. */
+
+.plan-box {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.plan-box > .plan,
+.plan-box > .flame,
+.plan-box > .plan-table-box,
+.plan-box > .empty {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.plan-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 0;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--desk-border);
+  font-size: var(--desk-text-xs);
+}
+
+.plan-summary dt {
+  color: var(--desk-text-muted);
+}
+
+.plan-summary dd {
+  margin: 0 0 0 -8px;
+  max-width: 48em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--desk-font-mono);
+}
+
+.plan-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.plan-tools .grow {
+  flex: 1;
+}
+
+/* The tree's row: name (label and how hot it is) | facts | share; marks and detail span the row. */
+.plan-box .plan-node {
+  grid-template-columns: minmax(12em, 2fr) minmax(0, 3fr) 8em;
+  align-items: start;
+}
+
+.plan-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  min-width: 0;
+}
+
+.plan-box .plan-share {
+  margin-top: 6px;
+}
+
+.plan-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  grid-column: 1 / -1;
+}
+
+.plan-mark.mark-high {
+  border-color: var(--desk-danger-border);
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+}
+
+.plan-mark.mark-medium {
+  border-color: var(--desk-warning-border);
+  background: var(--desk-warning-soft);
+  color: var(--desk-warning-text);
+}
+
+.flame {
+  padding: 8px 12px;
+}
+
+.flame-note {
+  margin: 0 0 8px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}
+
+.flame-row {
+  position: relative;
+  height: 22px;
+  margin-bottom: 2px;
+}
+
+.flame-block {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  min-width: 1px;
+  overflow: hidden;
+  border: 1px solid var(--desk-background);
+  border-radius: var(--desk-radius-sm);
+  background: color-mix(in srgb, var(--desk-info) 35%, var(--desk-background));
+  color: var(--desk-text);
+  font: var(--desk-text-2xs) / 20px var(--desk-font-mono);
+}
+
+.flame-block.hot-medium {
+  background: color-mix(in srgb, var(--desk-warning) 55%, var(--desk-background));
+}
+
+.flame-block.hot-high {
+  background: color-mix(in srgb, var(--desk-danger) 55%, var(--desk-background));
+}
+
+.flame-text {
+  display: block;
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-table {
+  font-size: var(--desk-text-xs);
+}
+
+.plan-table th,
+.plan-table td {
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.plan-table .num {
+  text-align: right;
+  font-family: var(--desk-font-mono);
+}
+
+.plan-table thead .num {
+  font-family: inherit;
+}
+
+.plan-table td.wrap {
+  min-width: 14em;
+  white-space: normal;
+}
+
+.plan-table td.wrap .plan-mark {
+  white-space: normal;
+  text-align: left;
+}
+
+.plan-table thead .desk-btn {
+  min-height: 0;
+  padding: 0 4px;
+  font-size: var(--desk-text-xs);
+}
+
+.plan-table th[aria-sort="descending"] .desk-btn {
+  color: var(--desk-text);
+}
+
+.plan-table tr.hot-high .plan-label {
+  color: var(--desk-danger-text);
+}
+
+.plan-table tr.hot-medium .plan-label {
+  color: var(--desk-warning-text);
+}

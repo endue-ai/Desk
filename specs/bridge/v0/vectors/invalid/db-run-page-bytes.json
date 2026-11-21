@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "a page holds 64 KiB to 16 MiB of values",
+  "instance": {
+    "id": 21,
+    "method": "db.run",
+    "params": {
+      "sessionId": "d-1",
+      "sql": "SELECT 1",
+      "pageBytes": 1024
+    }
+  }
+}

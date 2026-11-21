@@ -175,7 +175,7 @@ export function createGrid(doc, host, act, options = {}) {
     }
     shownKey = key;
     if (!next) return host.replaceChildren();
-    if (next.kind === "plan" && next.plan) return host.replaceChildren(planView(doc, next.plan));
+    if (next.kind === "plan" && next.plan) return host.replaceChildren(planView(doc, next, act));
     if (next.kind === "messages" || !next.set) {
       const lines = (next.lines ?? []).map((line) =>
         el(doc, "li", { class: `line ${line.level}` }, line.text),

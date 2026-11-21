@@ -11,6 +11,8 @@ import type {
   ConnectorManifest,
   ConnectorStatus,
   DataReadPermission,
+  DbPage,
+  DbValue,
   FsReadResult,
   InitDocument,
   Item,
@@ -343,5 +345,13 @@ describe("generated types agree with the schemas", () => {
 
   it("maps each method to its params and result", () => {
     expectTypeOf<BridgeMethodMap["fs.read"]["result"]>().toEqualTypeOf<FsReadResult>();
+    expectTypeOf<BridgeMethodMap["db.fetch"]["result"]>().toEqualTypeOf<DbPage>();
+  });
+
+  it("keeps NULL, '' and 'NULL' apart in a database row", () => {
+    expectTypeOf<DbValue>().toEqualTypeOf<string | null>();
+    const page = { rows: [[null, "", "NULL"]], more: false } satisfies DbPage;
+    expect(bridge("DbPage")(page)).toBe(true);
+    expect(bridge("DbPage")({ rows: [[0]], more: false })).toBe(false);
   });
 });

@@ -1,0 +1,13 @@
+{
+  "target": "BridgeEvent",
+  "description": "a NOTIFY on a channel the session listens to",
+  "instance": {
+    "event": "db.notification",
+    "data": {
+      "sessionId": "d-1",
+      "pid": 4343,
+      "channel": "orders",
+      "payload": "7"
+    }
+  }
+}

@@ -158,7 +158,7 @@ impl Core {
     }
 
     /// A plugin that stops provides no commands, waits for no answer, hears no subscriptions, runs
-    /// no processes, captures no audio, holds no sockets, shows no surfaces and serves no file URLs; if it was the last perm:manage
+    /// no processes, captures no audio, holds no sockets or database sessions, shows no surfaces and serves no file URLs; if it was the last perm:manage
     /// holder, the Prompter decides what waits.
     pub(crate) fn unloaded(&self, id: &str) {
         self.drop_provider(id);
@@ -168,6 +168,7 @@ impl Core {
         self.drop_processes(id);
         self.drop_captures(id);
         self.drop_sockets(id);
+        self.drop_databases(id);
         self.drop_web(id);
         self.drop_surfaces(id);
         self.drop_file_urls(id);
