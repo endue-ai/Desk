@@ -147,8 +147,8 @@ impl CompositorWindow {
             gpu.adapter.name, gpu.adapter.backend
         );
         let shared = Shared::new(Compositor::new(&gpu.device, &gpu.queue, gpu.format));
-        // The render thread draws each scene after its layout: new sizes wait for the next (#249).
-        shared.lock().wait_for_layouts();
+        // The render thread draws each scene after its layout: a new size takes a new texture (#249).
+        shared.lock().render_thread_draws();
         let render = frame::start(&mut gpu, &shared, display::rate(&window));
         let relay = Relay::default();
         let host = WebHost::new(

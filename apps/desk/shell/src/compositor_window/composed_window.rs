@@ -159,7 +159,7 @@ impl Composed {
         size: (u32, u32),
     ) -> (TextureId, bool, bool) {
         let shown = self.texture(surface);
-        let had = self.shown_size(surface);
+        let had = self.frames.size(shown);
         let paned = self.pages.paned.contains(surface);
         let wait = self.pages.waits.entry(surface.to_owned()).or_default();
         let (id, aside) = match wait.paint(size, had, paned) {

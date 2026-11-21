@@ -6,7 +6,8 @@
 //! on it rests (#134); CEF's poll rides those wake-ups (#129, `pump.rs`). While CEF's work runs long
 //! the pump's stand-in looks at the clock from its own thread (`pump/stand_in.rs`). A frame is a
 //! display interval after the last (16.667 ms at 60 Hz, 8.333 at 120: `display.rs`, #249), and the
-//! begin frames count the display's frames too.
+//! begin frames count the display's frames too; the render thread draws each frame a little behind
+//! the beat it was laid out on (`Behind`, `render_thread.rs`).
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -139,6 +140,38 @@ impl Due {
         .into_iter()
         .flatten()
         .min()
+    }
+}
+
+/// How far behind its slot a frame is drawn: none from rest, then an eighth of a display interval
+/// more each frame of a run, up to `most`.
+#[derive(Clone, Copy, Debug, Default)]
+pub(super) struct Behind {
+    last: Option<Instant>,
+    behind: Duration,
+}
+
+impl Behind {
+    /// The most a frame is drawn behind its slot: the slack a late main thread has.
+    pub(super) fn most(every: Duration) -> Duration {
+        every * 3 / 4
+    }
+
+    /// When to draw the frame laid out on `slot`, seen at `now`, the display's frames `every`
+    /// apart: never before the last drawn by half an interval, and at once when late.
+    pub(super) fn draw_at(&mut self, slot: Instant, now: Instant, every: Duration) -> Instant {
+        let in_a_row = (self.last).is_some_and(|t| now.saturating_duration_since(t) < every * 2);
+        self.behind = if in_a_row {
+            (self.behind + every / 8).min(Self::most(every))
+        } else {
+            Duration::ZERO
+        };
+        let mut at = (slot + self.behind).max(now);
+        if let Some(last) = self.last {
+            at = at.max(last + every / 2);
+        }
+        self.last = Some(at);
+        at
     }
 }
 
