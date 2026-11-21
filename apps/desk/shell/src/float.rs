@@ -1,5 +1,5 @@
-//! Windows that float over every app (ADR 0120, ADR 0204): the computer-use banner, the palette and
-//! the island. On macOS they join every Space (the banner and the island also full-screen Spaces),
+//! Windows that float over every app (ADR 0120): the computer-use banner and the palette.
+//! On macOS they join every Space (the banner also joins full-screen Spaces),
 //! stay put in Mission Control, out of ⌘` cycling and out of the Window menu, and show without taking the focus
 //! from the app in front (`orderFrontRegardless`), the AppKit parts winit has no option for. Elsewhere
 //! winit's always-on-top level and a hidden taskbar entry are what there is.

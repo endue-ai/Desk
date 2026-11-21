@@ -14,7 +14,7 @@ import { describeValue } from "./value.js";
 /**
  * @param {Document} doc
  * @param {Act} act
- * @param {(text: string) => boolean} copy
+ * @param {(text: string) => Promise<boolean>} copy
  * @param {() => void} back Gives the grid its focus back.
  */
 export function createValueViewer(doc, act, copy, back) {
@@ -80,10 +80,10 @@ export function createValueViewer(doc, act, copy, back) {
     if (opened?.editable) act("editCell", opened.row, opened.col, null);
     close();
   });
-  byId("value-copy").addEventListener("click", () => {
+  byId("value-copy").addEventListener("click", async () => {
     act(
       "say",
-      copy(text.value)
+      (await copy(text.value))
         ? "Copied the value."
         : "The clipboard refused: select the text and press Mod+C.",
     );

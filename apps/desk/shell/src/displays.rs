@@ -1,15 +1,21 @@
-//! The displays as the palette and the island use them (Tauri's `cursor_position`,
+//! Display geometry for the shell (Tauri's `cursor_position`,
 //! `monitor_from_point` and `work_area`, which winit has no call for): the display under the
-//! pointer, its work area (the screen less the menu bar, the Dock or the taskbar), and placing a
-//! window on it. Everything is in physical pixels of winit's global space, as the Tauri shell had.
+//! pointer and its work area (the screen less the menu bar, the Dock or the taskbar) in physical
+//! pixels of winit's global space.
 //! macOS asks AppKit for the pointer and the work area; elsewhere the pointer's display is the
 //! primary one and the work area the whole display (a documented gap until the compositor, #32).
 
-use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize};
 use winit::monitor::MonitorHandle;
 use winit::window::Window;
 
-use crate::island::place::{Display, Rect, display_key};
+/// A work area in physical pixels.
+#[derive(Debug, Clone, Copy)]
+pub struct WorkArea {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+}
 
 /// The display under the pointer, else the primary one, else any.
 pub fn cursor_monitor(window: &Window) -> Option<MonitorHandle> {
@@ -28,23 +34,10 @@ pub fn cursor_monitor(window: &Window) -> Option<MonitorHandle> {
     window.primary_monitor().or_else(|| monitors.next())
 }
 
-/// The display as the island keeps its spot on it.
-pub fn display(monitor: &MonitorHandle) -> Display {
-    let (origin, size) = (monitor.position(), monitor.size());
-    Display {
-        key: display_key(
-            monitor.name().as_deref(),
-            (origin.x, origin.y),
-            (size.width, size.height),
-        ),
-        area: work_area(monitor),
-    }
-}
-
 /// The part of `monitor` windows may use, in physical pixels.
-pub fn work_area(monitor: &MonitorHandle) -> Rect {
+pub fn work_area(monitor: &MonitorHandle) -> WorkArea {
     let (origin, size) = (monitor.position(), monitor.size());
-    let whole = Rect {
+    let whole = WorkArea {
         x: origin.x,
         y: origin.y,
         width: size.width,
@@ -57,44 +50,6 @@ pub fn work_area(monitor: &MonitorHandle) -> Rect {
     whole
 }
 
-/// Where `window` is and how big, in physical pixels.
-pub fn rect_of(window: &Window) -> Option<Rect> {
-    let at = window.outer_position().ok()?;
-    let size = window.outer_size();
-    Some(Rect {
-        x: at.x,
-        y: at.y,
-        width: size.width,
-        height: size.height,
-    })
-}
-
-/// Put `window` at `rect` (physical pixels of a display with `scale`). macOS places windows in
-/// points, so the rect goes there in the display's own scale rather than the window's.
-pub fn place(window: &Window, rect: Rect, scale: f64) {
-    if cfg!(target_os = "macos") {
-        let _ = window.request_inner_size(LogicalSize::new(
-            f64::from(rect.width) / scale,
-            f64::from(rect.height) / scale,
-        ));
-        window.set_outer_position(LogicalPosition::new(
-            f64::from(rect.x) / scale,
-            f64::from(rect.y) / scale,
-        ));
-    } else {
-        let _ = window.request_inner_size(PhysicalSize::new(rect.width, rect.height));
-        window.set_outer_position(PhysicalPosition::new(rect.x, rect.y));
-    }
-}
-
-/// `size` in logical pixels as physical ones at `scale`.
-pub fn physical(size: (f64, f64), scale: f64) -> (u32, u32) {
-    (
-        (size.0 * scale).round() as u32,
-        (size.1 * scale).round() as u32,
-    )
-}
-
 #[cfg(target_os = "macos")]
 mod mac {
     use objc2_app_kit::{NSEvent, NSScreen};
@@ -102,7 +57,7 @@ mod mac {
     use winit::monitor::MonitorHandle;
     use winit::platform::macos::MonitorHandleExtMacOS;
 
-    use crate::island::place::Rect;
+    use super::WorkArea;
 
     /// The primary screen's height in points: AppKit's y grows up from its bottom edge.
     fn primary_height(mtm: MainThreadMarker) -> Option<f64> {
@@ -119,7 +74,7 @@ mod mac {
     }
 
     /// `monitor`'s visible frame (less the menu bar and the Dock) in physical pixels.
-    pub fn visible(monitor: &MonitorHandle) -> Option<Rect> {
+    pub fn visible(monitor: &MonitorHandle) -> Option<WorkArea> {
         let mtm = MainThreadMarker::new()?;
         let id = monitor.native_id();
         let key = NSString::from_str("NSScreenNumber");
@@ -134,7 +89,7 @@ mod mac {
         let frame: NSRect = screen.visibleFrame();
         let scale = monitor.scale_factor();
         let top = primary_height(mtm)? - (frame.origin.y + frame.size.height);
-        Some(Rect {
+        Some(WorkArea {
             x: (frame.origin.x * scale).round() as i32,
             y: (top * scale).round() as i32,
             width: (frame.size.width * scale).round() as u32,

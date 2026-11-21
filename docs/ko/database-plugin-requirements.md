@@ -100,7 +100,7 @@ Desk 에서는 둘이 더 붙습니다. 모든 동작이 커맨드라 키 · 팔
 | DB-20 | 편집기: 구문 강조(문장을 자르는 같은 렉서), 자동 완성(키워드 · 함수 · 스키마 · 테이블 · 뷰 · 열 · 별칭, `Ctrl+Space` 또는 `.` · 두 글자 뒤 저절로, 아직 안 읽은 열은 조용히 읽어 온다), 서식 정리(`Mod+Shift+F`, 공백과 키워드 대소문자만 바꾼다). MySQL 은 DELIMITER 없이도 루틴의 BEGIN … END 를 한 문장으로 | 있음 | B |
 | DB-21 | 세션 유지: 실행 사이에 트랜잭션 · `SET` · 임시 테이블이 이어지는 연결. 코어 드라이버 또는 psql `\restrict`(17.6+) 위에서만 안전하다(ADR 0038 다음 결정) | 없음 | C |
 | DB-22 | SSH 터널(`ssh -N -L`, `proc:spawn ssh`) | 없음 | C |
-| DB-23 | 가져오기 · 덤프: CSV 가져오기, `pg_dump` · `mysqldump` · `.dump` | 없음 | C |
+| DB-23 | 가져오기 · 덤프: CSV 가져오기, `pg_dump` · `mysqldump` · `.dump` | 일부 (CSV · TSV · JSON 을 놓으면 가져오기, ADR 0119; 덤프 없음) | C |
 | DB-25 | 실행 계획: EXPLAIN · EXPLAIN ANALYZE(쓰기는 끝에 롤백)를 트리로. PG `FORMAT JSON`, MySQL `FORMAT=JSON` · `EXPLAIN ANALYZE` 트리, MariaDB `FORMAT=JSON`, SQLite `QUERY PLAN`. 노드마다 비용 · 예상 행 · 실제 행 · 시간, 자기 몫이 절반 · 5분의 1 넘는 노드 표시 | 있음 | B |
 | DB-26 | 파라미터: `:name`(모두) · `?`(MySQL · SQLite) · `$1`(PG)을 실행 전에 팔레트로 묻는다. 숫자 · NULL · 따옴표 친 문자열, `=` 로 시작하면 식 그대로. 세션 동안 기억 | 있음 | B |
 | DB-27 | 연결 그룹(탐색기에서 접고 펴는 묶음) · 색(테마의 범주 색 여덟: 탐색기의 점, 머리글 왼쪽 띠). SSH 터널은 DB-22 | 있음 (SSH 없음) | B · C |
@@ -120,7 +120,7 @@ Desk 에서는 둘이 더 붙습니다. 모든 동작이 커맨드라 키 · 팔
 | NF-06 | 국제화: 문자열은 영어 한 곳에. RT-13 번들이 오면 `locales` | 없음 | C |
 | NF-07 | 최소 버전: psql 13(`--csv` · `\warn`), mysql 8.0.19 · mariadb 10.5(`--binary-as-hex`), sqlite3 3.37(`-safe`). 낮으면 무엇 때문인지 말한다 | 있음 | A |
 | NF-08 | Windows: `.exe` · 경로 · 신호. 클라이언트 탐색 폴더가 비어 있다 | 없음 | C |
-| NF-09 | 테스트: lexer · 분류 · 엔진 계획과 읽기(실제 출력 고정) · URI · 결과 · 컨트롤러(가짜 psql/sqlite3 가 실제 프로토콜로 답한다) · 매니페스트(Ajv · `desk plugin validate`). 실제 클라이언트 통합(`live.test.ts`): sqlite3 는 PATH 에 있으면, PG · MySQL 은 `ENDUE_DB_TEST_*` URI 가 있으면 | 있음 (런타임 e2e 는 D4 뒤) | A · B |
+| NF-09 | 테스트: lexer · 분류 · 엔진 계획과 읽기(실제 출력 고정) · URI · 결과 · 컨트롤러(가짜 psql/sqlite3 가 실제 프로토콜로 답한다) · 매니페스트(Ajv · `desk plugin validate`). 실제 클라이언트 통합(`live.test.ts`): sqlite3 는 PATH 에 있으면, PG · MySQL 은 `ENDUE_DB_TEST_*` URI 가 있으면 | 있음 (런타임 e2e: `packages/runtime/e2e/database.spec.ts`, 픽스처의 스크립트 sqlite3) | A · B |
 | NF-10 | 값: 서버가 보낸 글자 그대로. 날짜 · 시간은 PG `DateStyle=ISO`, MySQL `YYYY-MM-DD hh:mm:ss`, SQLite 는 저장된 텍스트 — 로컬 시간대로 바꾸지 않는다. SQLite REAL 은 같은 double 의 가장 짧은 꼴, 정수는 2^53 너머도 그대로 | 있음 | A |
 
 ## 의존: Desk 쪽에서 해야 하는 것
@@ -129,11 +129,11 @@ Desk 에서는 둘이 더 붙습니다. 모든 동작이 커맨드라 키 · 팔
 
 | ID | 무엇 | 어디 | 없으면 |
 | --- | --- | --- | --- |
-| D1 | 런타임이 플러그인 프레임에 `allow="clipboard-write"` (보안 판단과 함께) | `packages/runtime/src/surfaces.ts` | 팔레트에서 부른 Copy as 는 실패할 수 있다; 그리드의 `Mod+C`(copy 이벤트)는 된다 |
+| D1 | 런타임이 플러그인 페이지에 클립보드 쓰기를 허용 (보안 판단과 함께) | `packages/runtime/src/surfaces.ts` · 셸 | 플러그인은 Clipboard API 를 먼저, 거절되면 copy 명령을 쓴다(`ui/clipboard.js`). 허용이 없으면 팔레트에서 부른 Copy as 는 실패할 수 있다; 그리드의 `Mod+C`(copy 이벤트)와 값 보기의 Copy 는 된다 |
 | D2 | 비밀 보관(SYS-06 키체인): 플러그인이 비밀번호를 코어에 맡기고 다시 꺼내지 못하는 길 | `specs/bridge` · 코어 | 재시작마다 다시 묻는다(자격 파일을 쓰면 묻지 않는다) |
-| D3 | 좁게 묻는 `fs:write` — 매니페스트에 선언하지 않은 경로 하나를 `perm.request` 로, 또는 플러그인이 여는 저장 대화상자 | `specs/plugin` · 코어 | 내보내기는 ~/Downloads 로만 |
-| D4 | `browserStub` 의 가짜 `proc`(BR-07): 스크립트로 답하는 `psql` · `sqlite3` | `packages/bridge` | 런타임 e2e 에서 이 플러그인을 못 돌린다 |
-| D5 | 코어가 `settings.*` 를 서빙 (#81) | `crates/desk-core` | `init.get` 레이어만 읽는다; 바뀐 설정은 Check the clients 로 다시 읽는다 |
+| D3 | 좁게 묻는 `fs:write` — 매니페스트에 선언하지 않은 경로 하나를 `perm.request` 로, 또는 플러그인이 여는 저장 대화상자 | `specs/plugin` · 코어 | 코어에 `dialog.save` 가 생겼다(플러그인은 아직 안 씀). 내보내기는 ~/Downloads 로만 |
+| D4 | `browserStub` 의 가짜 `proc`(BR-07): 스크립트로 답하는 `psql` · `sqlite3` | `packages/bridge` | 됨: 런타임 e2e 의 테스트 페이지가 `proc.spawn` 을 플러그인의 스크립트 sqlite3 로 답한다 (`packages/runtime/e2e/fixture/database.ts`) |
+| D5 | 코어가 `settings.*` 를 서빙 (#81) | `crates/desk-core` | 됨: 시작할 때 `settings.list`(기본값 · init.yaml · 사람이 정한 값)를 읽고, `settings.changed` 를 바로 따른다. 클라이언트 · `path` 가 바뀌면 다시 찾는다 |
 | D6 | (선택) 코어 DB 드라이버 또는 세션 프로세스 — DB-21 | ADR 0038 다음 결정 | 실행 사이에 트랜잭션이 이어지지 않는다 |
 
 ## 단계

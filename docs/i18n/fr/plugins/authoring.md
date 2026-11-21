@@ -212,7 +212,7 @@ Une sortie ou un retour recharge votre page, comme un réveil : `state` revient,
   fenêtre du système.
 * Ce que le bureau demande à la personne s'affiche dans la fenêtre du bureau, pas dans la vôtre.
   `desk.palette.pick` amène le bureau au premier plan et sa réponse revient à votre page ; la question
-  d'une permission attend dans le bureau, ou dans l'îlot tant que le bureau n'est pas au premier plan.
+  d'une permission attend dans le bureau.
 * Une vue web (`web.*`) ne s'affiche que dans le bureau : elle se termine quand sa fenêtre sort.
 
 `desk.files.*` et `desk.buffers.*` fonctionnent comme sur le canevas : un fichier ouvert dans votre

@@ -7,6 +7,8 @@ feature adds its line to the area it belongs to, or a section for a new area; it
 The page has one header row (the connection on screen, its environment tag and read-only mark, the buttons;
 what does not fit is behind More), the explorer on the left, the work area, and one footer line. Dialogs open
 inside the page. `Mod+Shift+B` opens it, and every operation is also a command `endue.database.*`.
+Settings are read from what the person set over init.yaml's, and a change applies while the plugin runs;
+a change to a client's program or the `path` setting finds the clients again.
 
 Modules: `main.js` (the only one that imports the SDK), `database.js` (the controller), `commands.js`,
 `keys.js`, `settings.js`, `view.js`, `view-actions.js`, `dom.js`, `*.css`.
@@ -78,9 +80,10 @@ Modules: `consoles.js`, `console-run.js`, `execute.js`, `history.js`, `tools.js`
 - A table's view filters (WHERE) and orders (ORDER BY) on the server, pages, and counts its rows on request.
 - A query plan as a tree: each node's cost and rows, the time and rows it took, and a bar for its own share of
   the whole; the nodes where half or a fifth of it goes are marked.
-- Copy the result, or the selected block, as TSV, CSV, JSON, Markdown, INSERT or UPDATE statements.
+- Copy the result, or the selected block, as TSV, CSV, JSON, Markdown, INSERT or UPDATE statements, from a
+  key or button in the page and from the palette alike (the Clipboard API first, `clipboard.js`).
 
-Modules: `tabs.js`, `results.js`, `pages.js`, `grid-model.js`, `value.js`, `output-client.js`,
+Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `value.js`, `output-client.js`,
 `output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `view-value.js`, `view-plan.js`.
 
 ## Editing

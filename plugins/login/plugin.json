@@ -3,13 +3,13 @@
   "name": "Start at login",
   "version": "0.1.0",
   "kind": "policy",
-  "description": "Whether endue starts when the person logs in (ADR 0225): in the background, with no window, the island and the shortcuts ready.",
+  "description": "Whether endue starts when the person logs in (ADR 0225): in the background, with no window and the shortcuts ready.",
   "contributes": {
     "settings": {
       "desk.login.start": {
         "kind": "boolean",
         "default": false,
-        "description": "Start endue at login, with no window: the island shows what the agents do, and the shortcuts, the tray and the Dock open the desk. Off, endue starts when it is opened."
+        "description": "Start endue at login, with no window: the shortcuts, the tray and the Dock open the desk. Off, endue starts when it is opened."
       }
     }
   }

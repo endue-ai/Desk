@@ -1,12 +1,11 @@
-//! Eris's shortcut (ADR 0121): the key in force and how it reads, and where it talks to her when the
-//! island does not (ADR 0204).
+//! Eris's shortcut (ADR 0121): the key in force and how it reads, and where it talks to her.
 
 use super::shortcut::{self, chosen, label, taken};
 use super::{Talk, where_to};
 use crate::words::Language;
 
 #[test]
-fn without_the_island_the_shortcut_talks_in_the_desk_bringing_it_forward_when_needed() {
+fn the_shortcut_talks_in_the_desk_bringing_it_forward_when_needed() {
     assert_eq!(where_to(true), Talk::InDesk);
     assert_eq!(where_to(false), Talk::DeskForward);
 }

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { arrangeText, spreadCopy } from "../arrange/copy";
 import { dt } from "../desktops/copy";
-import { floatText, statusText } from "../eris/float-copy";
+import { erisText } from "../eris/copy";
 import { REFUSED_LINES, SAMPLE_LINES } from "../eris/talk";
 import { barWord } from "../shell/bar-new";
 import { t } from "../shell/copy";
@@ -28,8 +28,8 @@ describe("the shell's words in catalogs", () => {
     expect(t("en", "modes")).toBe("Profiles");
     expect(dt("ko", "desktops")).toBe("데스크톱");
     expect(dt("en", "newDesktop")).toBe("New desktop");
-    expect(floatText("en", "hint", { key: "⌥↩" })).toBe("⌥↩ summons her anywhere");
-    expect(statusText("ko", "listening")).toBe("듣는 중…");
+    expect(erisText("en", "talk.summon")).toBe("Talk to Eris");
+    expect(erisText("ko", "talk.summon")).toBe("Eris에게 말하기");
     expect(arrangeText("ko", "foundOn", { plugin: "Notes", desktop: 2 })).toBe(
       "Notes · 데스크톱 2",
     );

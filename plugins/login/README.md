@@ -7,7 +7,7 @@ the setting, so the settings view lists it like any plugin's.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `desk.login.start` | `false` | Start endue at login in the background: no window opens, the island and the shortcuts are there |
+| `desk.login.start` | `false` | Start endue at login in the background: no window opens, the shortcuts are available |
 
 The login item starts the desk with `--background`. The desk's page tells the shell the setting when
 it starts and when it changes (`apps/desk/src/login.ts`); a development build writes no login item

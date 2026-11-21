@@ -185,8 +185,8 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
   };
 
   /**
-   * A card that stopped waiting without this page's answer (`perm.settled`): another prompter, the
-   * island (ADR 0204), answered it, or its caller went. It leaves the queue; one on screen gives way
+   * A card that stopped waiting without this page's answer (`perm.settled`): another prompter
+   * answered it or its caller went. It leaves the queue, and one on screen gives way
    * to the next. The card this page is answering leaves with its own answer.
    * @param {import("@endue-ai/bridge").PermSettledData} gone
    */

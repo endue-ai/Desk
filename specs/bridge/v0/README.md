@@ -291,7 +291,7 @@ say when `cmd.undo` (#276) can take a write back.
 
 **perm.pending** answers what waits for the person now, under `perm:manage`: every prompt nobody has
 answered and every approval nobody has approved or denied, each oldest first and as its event said it,
-for a prompter that comes up while they wait (the island, ADR 0204). `perm.settled` (`kind` `prompt` or
+for a prompter that comes up while they wait. `perm.settled` (`kind` `prompt` or
 `approval`, and its `id`) tells every `perm:manage` holder that one stopped waiting: a holder answered
 it, its caller unloaded, or a waiting run was cancelled, so each prompter takes down a card another one
 answered.
