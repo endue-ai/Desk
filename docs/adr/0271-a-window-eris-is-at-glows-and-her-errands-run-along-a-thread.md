@@ -4,6 +4,10 @@ date: 2026-11-18
 decision-makers: Team endue
 ---
 
+Status: amended by ADR 0275: no window glows because she only looks at it (the look, its spark and
+`LOOK` are gone); a window lights when the spark that carries her request lands on it; her errands
+wait until the line is in her and read, and the answer flies back in the star's colour.
+
 Amends ADR 0089 (where the window of an errand glows, which windows do, and what the spark runs
 along) and ADR 0265 (the star's colour also lights where an agent is at work: the window's glow
 and the errand's thread). Builds on ADR 0109 (the desk goes to the brain with every line), ADR
