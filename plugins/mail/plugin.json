@@ -6,15 +6,28 @@
   "entry": "ui/index.html",
   "description": "Shows the person's mail from the desk's index as threads in mailboxes, reads messages and their meeting invitations (iCalendar, iTIP), writes replies and new mail, and acts through the mail connector's commands.",
   "permissions": [
-    { "permission": "data:read", "kinds": ["message"] },
+    {
+      "permission": "data:read",
+      "kinds": ["message"]
+    },
     {
       "permission": "cmd:invoke",
       "ids": ["*.mail.send", "*.mail.move", "*.mail.flag", "desk.palette.pick"]
     },
-    { "permission": "ui:notify" },
-    { "permission": "connector:manage" }
+    {
+      "permission": "ui:notify"
+    },
+    {
+      "permission": "connector:manage"
+    }
   ],
-  "surfaces": [{ "id": "main", "title": "Mail", "placement": "center" }],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Mail",
+      "placement": "center"
+    }
+  ],
   "contributes": {
     "commands": [
       {
@@ -25,12 +38,49 @@
       {
         "id": "endue.mail.show",
         "title": "Open a message",
-        "keywords": ["mail", "read", "message"]
+        "keywords": ["mail", "read", "message"],
+        "description": "Open a message in the mail plugin's reader and bring the window up. The message is { source, id } as endue.mail.latest, find or read answer them; without them, the message open on screen. Answers its key.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.mail.mailbox",
         "title": "Go to a mailbox",
-        "keywords": ["mail", "inbox", "archive", "sent", "drafts", "trash", "folder"]
+        "keywords": ["mail", "inbox", "archive", "sent", "drafts", "trash", "folder"],
+        "description": "Show a mailbox in the mail plugin: inbox, unread, flagged, sent, drafts, archive, trash or junk. Answers the mailbox shown.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "mailbox": {
+              "enum": ["inbox", "unread", "flagged", "sent", "drafts", "archive", "trash", "junk"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.mail.search",
@@ -40,7 +90,14 @@
       {
         "id": "endue.mail.refresh",
         "title": "Refresh mail",
-        "keywords": ["mail", "reload", "sync"]
+        "keywords": ["mail", "reload", "sync"],
+        "description": "Ask the mail accounts for new mail and list the mailbox again.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.mail.latest",
@@ -53,8 +110,14 @@
             "mailbox": {
               "enum": ["inbox", "unread", "flagged", "sent", "drafts", "archive", "trash", "junk"]
             },
-            "limit": { "type": "integer", "minimum": 1, "maximum": 20 },
-            "unread": { "type": "boolean" }
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            },
+            "unread": {
+              "type": "boolean"
+            }
           },
           "additionalProperties": false
         },
@@ -62,9 +125,279 @@
         "readOnly": true
       },
       {
+        "id": "endue.mail.find",
+        "title": "Mail: find messages as data",
+        "keywords": ["mail", "find", "search", "email"],
+        "description": "Messages whose sender, subject or text hold text, newest first, in mailbox (inbox without it), as data, leaving the screen as it is: each with source and id (to read, show, archive or reply to it), thread, from, subject, receivedAt, unread and snippet, up to limit (10, at most 20), and a line for people.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "mailbox": {
+              "enum": ["inbox", "unread", "flagged", "sent", "drafts", "archive", "trash", "junk"]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            }
+          },
+          "required": ["text"],
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "mailbox": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "connector": {
+                        "type": "string"
+                      },
+                      "instance": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["connector", "instance"],
+                    "additionalProperties": false
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "thread": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "receivedAt": {
+                    "type": "string"
+                  },
+                  "unread": {
+                    "type": "boolean"
+                  },
+                  "snippet": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.mail.read",
+        "title": "Mail: a message and its thread as data",
+        "keywords": ["mail", "read", "message", "thread", "body"],
+        "description": "One message as data, leaving the screen as it is and marking nothing read: subject, from, to, cc, receivedAt, mailbox, unread, flagged, the whole body (to 20000 characters, truncated when longer), attachments by name and whether it holds an invitation; threadMessages lists the thread's other messages (source, id, from, receivedAt, snippet) unless thread is false. The message is { source, id } as endue.mail.latest, find or read answer them; without them, the message open on screen.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "thread": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string"
+            },
+            "subject": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "threadMessages": {
+              "type": "array"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.mail.send-message",
+        "title": "Mail: send a message",
+        "keywords": ["mail", "send", "email", "reply", "write"],
+        "description": "Send a message from a mail account now, without the person's composer, after the person says yes: to, cc and bcc are address lines (a comma between people), with subject and body (plain text; the signature is added). replyTo { source, id } sends a reply in that message's thread, to its sender (and everyone else with all true) unless to is given, from the account it came to, with Re: and the quoted message under body. account is connector/instance, the plugin's chosen account without it. Answers sent, account, to and subject.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "to": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "Recipients."
+            },
+            "cc": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "Cc."
+            },
+            "bcc": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "Bcc."
+            },
+            "subject": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "body": {
+              "type": "string",
+              "maxLength": 200000
+            },
+            "account": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "replyTo": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "connector": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["connector", "instance"],
+                  "additionalProperties": false
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                }
+              },
+              "required": ["source", "id"],
+              "additionalProperties": false
+            },
+            "all": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "sent": {
+              "type": "boolean"
+            },
+            "account": {
+              "type": "string"
+            },
+            "to": {
+              "type": "array"
+            },
+            "subject": {
+              "type": "string"
+            }
+          }
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
         "id": "endue.mail.compose",
         "title": "New message",
-        "keywords": ["mail", "write", "compose", "email", "send"]
+        "keywords": ["mail", "write", "compose", "email", "send"],
+        "description": "Open a new message in the composer for the person to read and send themselves, filled from to, cc, bcc (address lines, comma between people), subject and body. To send without the person's composer use endue.mail.send-message.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "to": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "Recipients."
+            },
+            "cc": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "Cc."
+            },
+            "bcc": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "Bcc."
+            },
+            "subject": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "body": {
+              "type": "string",
+              "maxLength": 200000
+            },
+            "account": {
+              "type": "string",
+              "maxLength": 300
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.mail.reply",
@@ -89,22 +422,132 @@
       {
         "id": "endue.mail.archive",
         "title": "Archive the open message",
-        "keywords": ["mail", "archive", "done"]
+        "keywords": ["mail", "archive", "done"],
+        "description": "Move a message to the archive. The message is { source, id } as endue.mail.latest, find or read answer them; without them, the message open on screen.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.mail.trash",
         "title": "Move the open message to the trash",
-        "keywords": ["mail", "delete", "trash", "remove"]
+        "keywords": ["mail", "delete", "trash", "remove"],
+        "description": "Move a message to the trash, where it can still be found. The message is { source, id } as endue.mail.latest, find or read answer them; without them, the message open on screen.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.mail.flag",
         "title": "Flag or unflag the open message",
-        "keywords": ["mail", "flag", "star", "important"]
+        "keywords": ["mail", "flag", "star", "important"],
+        "description": "Flag a message, or unflag it with flagged false; without flagged it flips. The message is { source, id } as endue.mail.latest, find or read answer them; without them, the message open on screen. Answers whether it is flagged now.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "flagged": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.mail.toggle-unread",
         "title": "Mark the open message read or unread",
-        "keywords": ["mail", "read", "unread", "seen"]
+        "keywords": ["mail", "read", "unread", "seen"],
+        "description": "Mark a message unread, or read with unread false; without unread it flips. The message is { source, id } as endue.mail.latest, find or read answer them; without them, the message open on screen. Answers whether it is unread now.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "unread": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.mail.rsvp",
@@ -118,10 +561,50 @@
           "meeting",
           "rsvp",
           "calendar"
-        ]
+        ],
+        "description": "Answer a message's meeting invitation: status accepted, tentative or declined goes to the organizer as a reply. The message is { source, id } as endue.mail.latest, find or read answer them; without them, the message open on screen. address is the person's own address when the invitation does not say which one it came to.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "status": {
+              "enum": ["accepted", "tentative", "declined"]
+            },
+            "address": {
+              "type": "string",
+              "maxLength": 300
+            }
+          },
+          "required": ["status"],
+          "additionalProperties": false
+        },
+        "irreversible": true,
+        "agent": true
       }
     ],
-    "keys": [{ "key": "Mod+Shift+I", "command": "endue.mail.open" }],
+    "keys": [
+      {
+        "key": "Mod+Shift+I",
+        "command": "endue.mail.open"
+      }
+    ],
     "settings": {
       "endue.mail.page": {
         "kind": "integer",

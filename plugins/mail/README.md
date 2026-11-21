@@ -31,7 +31,7 @@ asks first when the draft holds text (agents' `endue.mail.discard` does not); da
 | `cmd:invoke` (`*.mail.send`, `*.mail.move`, `*.mail.flag`, `desk.palette.pick`) | Act through the connector; ask for search words |
 | `ui:notify`; `connector:manage` | Say that new mail arrived, when `endue.mail.notify` is on; name the installed message connectors when no account is connected (`connector.list`), or say none brings messages |
 
-Eris's tool `endue.mail.latest { mailbox, limit, unread }` answers the newest messages (ADR 0089). Settings
+Eris's tools (ADR 0089, ADR 0088, `ui/agent.js`) leave the screen as it is: `latest` and `find { text }` answer messages with `{ source, id }`, `read` one with its thread, and `send-message` (irreversible: the person says yes) sends or replies without the composer; show, archive, trash, flag, unread and rsvp take `{ source, id }`. Settings
 `endue.mail.{page,notify,mark-read,signature,addresses}`; the store keeps `view`, `drafts`, `answers`.
 
 ```bash
