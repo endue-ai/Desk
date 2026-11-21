@@ -4,7 +4,8 @@
 // PostgreSQL connection whose scripted psql has one table of typed columns (items, fixtures-pg.ts),
 // one whose scripted psql answers the activity view (activity-fixture.ts) and EXPLAIN with fixture
 // plans (fixture-plans.ts), one whose scripted psql answers the server overview
-// (overview-fixture.ts), and fs.* over a folder in memory with one .sql file (`window.__files`, what
+// (overview-fixture.ts), one whose scripted psql answers the value search over two schemas of tables
+// (search-fixture.ts), and fs.* over a folder in memory with one .sql file (`window.__files`, what
 // saves wrote). Never shipped.
 import {
   type BridgeEvent,
@@ -27,6 +28,7 @@ import {
   OVERVIEW_CONNECTION,
   overviewServer,
 } from "../../../../plugins/database/tests/overview-fixture";
+import { SEARCH_CONNECTION, searchServer } from "../../../../plugins/database/tests/search-fixture";
 import "../../src/desk.css";
 import { browserCore, memoryStore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
@@ -70,13 +72,17 @@ const core = browserCore({
       FIXTURE_PG_CONNECTION,
       ACTIVITY_CONNECTION,
       OVERVIEW_CONNECTION,
+      SEARCH_CONNECTION,
     ],
     // The .sql file runs on the fixture connection, so opening it asks for none.
     "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
   }),
   handlers: {
-    // The overview answers its own statements exactly, before the activity view's looser matches.
-    ...procHandlers(overviewServer(activityServer(fixtureScript).script), (event) => emit(event)),
+    // The overview answers its own statements exactly, before the activity view's looser matches;
+    // the value search answers only its own database's.
+    ...procHandlers(searchServer(overviewServer(activityServer(fixtureScript).script)), (event) =>
+      emit(event),
+    ),
     ...fsHandlers,
   },
   open: () => {},
