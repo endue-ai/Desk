@@ -54,7 +54,10 @@ export function createKeychain(bridge, changed) {
     async load() {
       const answer = await bridge.call("db.passwords.list", {}).catch(() => ({ passwords: [] }));
       kept = new Map(
-        answer.passwords.map((p) => [p.name, { host: p.host, port: p.port, user: p.user }]),
+        (answer?.passwords ?? []).map((p) => [
+          p.name,
+          { host: p.host, port: p.port, user: p.user },
+        ]),
       );
       changed();
     },
