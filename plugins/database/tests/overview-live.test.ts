@@ -123,12 +123,14 @@ describe.skipIf(!uri)("the overview of a real server", () => {
       await run("CREATE EXTENSION IF NOT EXISTS pg_stat_statements");
       created = true;
     }
-    // A shared test server keeps other runs' heavier statements in this database's top 20: count
-    // from nothing, for this database only (pg_stat_statements 1.7+, PostgreSQL 12+).
+    // The section lists this database's 20 statements that took the most time, and other live test
+    // files run in the same database at once: count from nothing (pg_stat_statements 1.7+), and make
+    // the test's own statement take long enough (5 × 0.3 s) to be among them.
     await run(
       "SELECT pg_stat_statements_reset(0, (SELECT oid FROM pg_database WHERE datname = current_database()), 0)",
     ).catch(() => undefined);
-    for (let i = 0; i < 5; i++) await run("SELECT count(*) FROM endue_ov_orders WHERE id > 500");
+    for (let i = 0; i < 5; i++)
+      await run("SELECT count(*), pg_sleep(0.3) FROM endue_ov_orders WHERE id > 500");
     const state = await readUntil(read, (s) => (sectionOf(s, "statements").rows?.length ?? 0) > 0);
     const statements = sectionOf(state, "statements");
     expect(statements.failed).toBeUndefined();

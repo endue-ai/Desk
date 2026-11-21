@@ -8,6 +8,7 @@ export { feature as consoles } from "./consoles/index.js";
 export { feature as diagram } from "./diagram/index.js";
 export { feature as format } from "./format/index.js";
 export { feature as grid } from "./grid/index.js";
+export { feature as maintenance } from "./maintenance/index.js";
 export { feature as overview } from "./overview/index.js";
 export { feature as paste } from "./paste/index.js";
 export { feature as plans } from "./plans/index.js";
