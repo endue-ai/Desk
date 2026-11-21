@@ -1,0 +1,7 @@
+libpg-query 18.2.4 https://registry.npmjs.org/libpg-query/-/libpg-query-18.2.4.tgz sha256:4dcb26601117a425d645cf8a053819cf64f73b10347b2f5db1488e40b477c785
+libpg_query b0f5f331dc50d69597ec610de7b21afa47a66808 https://github.com/constructive-io/libpg_query
+libpg-query.mjs sha256:2cfcbb4d78c00cfd0b95526a32c5c42f64efc2a92392b3651611a80724ecaef3
+libpg-query.wasm sha256:355c489d8b0bf2bac28b48408f656e818852d7000e1e66a67503ad2bc7cc6062
+LICENSE sha256:6676f35ef9ae1f095f420c56ab2078cf321227a88599ad224218b76d05fec731
+LICENSE.libpg_query sha256:f9352c20940619a380a5e9f23cebe34d8f797cfbd747fc236a7a3e5fc8ef9b41
+COPYRIGHT.postgresql sha256:3d6af92ff8a4c2cdf69afb1cf44edea727922f5cd0cf8b5f72b11cdecac8fdfd
