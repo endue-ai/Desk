@@ -29,7 +29,7 @@ export function createDiagrams(deps) {
   const store = bridgeStore(deps.bridge);
   /** The graph each diagram read, by its buffer's id. @type {Map<string, Graph>} */
   const graphs = new Map();
-  /** Writes waiting for the moves to stop, by buffer id. @type {Map<string, ReturnType<typeof setTimeout>>} */
+  /** Writes waiting for the moves to stop, by buffer id. @type {Map<string, { timer: ReturnType<typeof setTimeout>, t: Target }>} */
   const waiting = new Map();
 
   /** Keep a diagram's record; say once when it is past the store's cap. */
@@ -158,23 +158,20 @@ export function createDiagrams(deps) {
       moveBoxes(layout, changes);
       record.at = layout.boxes.map((b) => [b.schema, b.name, b.x, b.y]);
       deps.consoles.updatePanel(t.buffer.id, t.state);
-      clearTimeout(waiting.get(t.buffer.id));
-      waiting.set(
-        t.buffer.id,
-        setTimeout(() => {
-          waiting.delete(t.buffer.id);
-          save(t).catch(() => {});
-        }, SETTLE_MS),
-      );
+      clearTimeout(waiting.get(t.buffer.id)?.timer);
+      const timer = setTimeout(() => {
+        waiting.delete(t.buffer.id);
+        save(t).catch(() => {});
+      }, SETTLE_MS);
+      waiting.set(t.buffer.id, { timer, t });
       return true;
     },
-    /** Write now what waits for the moves to stop (tests, a close). */
+    /** Write now what waits for the moves to stop: the panel closing or the page going away. */
     async flush() {
-      for (const [id, timer] of waiting) {
+      for (const [id, { timer, t }] of waiting) {
         clearTimeout(timer);
         waiting.delete(id);
-        const t = target(id);
-        await save(t);
+        await save(t).catch(() => {});
       }
     },
     /** The depth of a table's neighbours, asked when not given. */

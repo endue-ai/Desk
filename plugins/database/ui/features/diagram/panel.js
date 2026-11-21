@@ -40,9 +40,10 @@ export function diagramPanel(doc, first, act, buffer) {
     /** @type {string} */ text,
     /** @type {string} */ title,
     /** @type {() => unknown} */ press,
-    cls = "desk-btn desk-btn-quiet",
+    /** @type {"desk-tab" | "desk-icon-btn" | undefined} */ kind = undefined,
   ) => {
-    const node = /** @type {HTMLButtonElement} */ (make("button", cls, text));
+    const node = /** @type {HTMLButtonElement} */ (make("button", "desk-btn desk-btn-quiet", text));
+    if (kind) node.className = kind;
     node.type = "button";
     node.title = title;
     node.addEventListener("click", () => void press());
@@ -183,6 +184,10 @@ export function diagramPanel(doc, first, act, buffer) {
     if (box) act("openTable", buffer.connection, box.schema, box.name);
   };
   host.addEventListener("keydown", key);
+  // A move waits a moment before it is kept: the page going away keeps it now.
+  const win = doc.defaultView;
+  const away = () => run("diagramFlush");
+  win?.addEventListener("pagehide", away);
   host.addEventListener("dblclick", open);
   draw(first, true);
 
@@ -197,6 +202,8 @@ export function diagramPanel(doc, first, act, buffer) {
       draw(next, (next.arranged ?? 0) !== (state.arranged ?? 0));
     },
     destroy() {
+      win?.removeEventListener("pagehide", away);
+      run("diagramFlush");
       host.removeEventListener("keydown", key);
       host.removeEventListener("dblclick", open);
       stage.destroy();
