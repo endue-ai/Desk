@@ -1,0 +1,217 @@
+/* The value search (PG-81): a header, the form in rows that wrap, the progress, then the results as
+   hairline sections per table with their columns and hits. A long value or name is cut with an
+   ellipsis inside its line, so nothing reaches past the panel box. Every colour, font, size and
+   radius comes from the theme's --desk-* tokens; the feature links this sheet itself
+   (features/README.md). */
+
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-4);
+  min-width: 0;
+  padding: var(--desk-space-4);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) var(--desk-font-sans);
+}
+
+.search-header {
+  flex-wrap: wrap;
+}
+
+.search-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+  min-width: 0;
+}
+
+.search-row,
+.search-checks,
+.search-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--desk-space-2) var(--desk-space-4);
+  min-width: 0;
+}
+
+.search-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  min-width: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.search-field .desk-field {
+  max-width: 100%;
+}
+
+.search-field input[type="number"] {
+  width: calc(var(--desk-space-16) * 2);
+}
+
+.search-value {
+  flex: 1 1 calc(var(--desk-space-16) * 3);
+}
+
+.search-tables {
+  max-width: calc(var(--desk-space-16) * 8);
+}
+
+.search-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  min-height: var(--desk-control-sm);
+  white-space: nowrap;
+}
+
+.search-set {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.search-set legend {
+  margin-bottom: var(--desk-space-1);
+  padding: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.search-estimate,
+.search-summary,
+.search-status,
+.search-more {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+.search-summary {
+  color: var(--desk-text);
+}
+
+.search-status {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.search-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+}
+
+.search-progress:empty,
+.search-notes:empty {
+  display: none;
+}
+
+.search-results,
+.search-notes,
+.search-tables {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+  min-width: 0;
+}
+
+.search-table,
+.search-skipped {
+  min-width: 0;
+  padding-top: var(--desk-space-3);
+  border-top: 1px solid var(--desk-border);
+}
+
+.search-table-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.search-table-name {
+  overflow: hidden;
+  margin: 0;
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-columns,
+.search-hits,
+.search-skipped-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.search-columns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  margin-top: var(--desk-space-2);
+}
+
+.search-column,
+.search-hit {
+  display: flex;
+  align-items: baseline;
+  gap: var(--desk-space-2);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.search-column-name {
+  font-weight: 600;
+}
+
+.search-column-type,
+.search-count,
+.search-key {
+  flex: none;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.search-count {
+  margin-left: auto;
+}
+
+.search-hits {
+  padding-left: var(--desk-space-4);
+}
+
+.search-text {
+  overflow: hidden;
+  min-width: 0;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-more {
+  padding-left: var(--desk-space-4);
+  font-size: var(--desk-text-xs);
+}
+
+.search-skipped-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  margin-top: var(--desk-space-2);
+}
+
+.search-skipped-list li {
+  overflow-wrap: anywhere;
+}

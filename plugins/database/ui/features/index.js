@@ -11,3 +11,4 @@ export { feature as grid } from "./grid/index.js";
 export { feature as overview } from "./overview/index.js";
 export { feature as plans } from "./plans/index.js";
 export { feature as schemaCache } from "./schema-cache/index.js";
+export { feature as search } from "./search/index.js";

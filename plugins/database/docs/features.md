@@ -45,7 +45,8 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
   picks them (system schemas stay out by default). Other engines read a node when it opens, as above.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the schema's ER diagram
-  from its foreign keys, `n`, `e` and Delete add, change and remove a connection, `u` adds one from a URI.
+  from its foreign keys, `s` searches a connection's, schema's or table's values (Value search below), `n`,
+  `e` and Delete add, change and remove a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/`, `view-tree.js`,
@@ -223,12 +224,37 @@ Modules: `features/activity/`.
 
 Modules: `features/overview/`.
 
+## Value search
+
+- Database: search for a value in tables opens a panel per connection: the text or number to find, equals,
+  contains, starts with or a regular expression (PostgreSQL `~` / `~*`, MySQL and SQLite `REGEXP`), ignoring
+  case or not, the schemas (from the explorer's list), the tables (names, `schema.name`, `*`), and the kinds
+  of column to look in: text, numbers, uuid, JSON's strings and numbers (never its keys), dates as text. Only
+  a column whose type can hold the value is read: a number is never looked for in a uuid, nor a word in a
+  number; arrays, booleans and bytes are not searched.
+- Before it starts it says what it reads: how many tables and about how many rows. A table estimated past
+  the size limit (1,000,000 rows) is left out unless asked; a production connection asks first with that
+  sentence. A read-only connection searches: a search only reads.
+- Tables are read one after another, each in its own read-only transaction with its own statement timeout
+  (10 s, at most 300) and row limit (100, at most 1000). Progress and a running count show while it runs;
+  Cancel (or Escape) stops the statement running and every table after it.
+- The matches are grouped by table and column with their counts, whether an index served the search, and up
+  to 1000 hits kept in all. A column opens its table filtered to its matches, a hit to its row: by the
+  primary key, else by `ctid` (PostgreSQL, said so), `rowid` (SQLite) or the match (MySQL). The tables not
+  searched are listed with why: the size limit, no permission, the timeout.
+- `endue.database.search-data` with a value answers the counts and the first keys, read-only and under the
+  same limits; `.search-data-cancel` stops it. The explorer's `s` opens it on the row's connection, schema or
+  table.
+
+Modules: `features/search/`, the `signal` of a run (`execute.js`, `run.js`).
+
 ## Agents
 
 - `endue.database.connections` (never a password), `.schema` and `.query` (100 rows a statement by default,
   1000 at most) are registered with an argument schema as agents' tools (ADR 0088); the first two only read.
 - An agent's write runs only after the person says yes, whatever the connection's tag and the `confirm`
   setting; a read-only connection refuses it, and an agent is never shown a password prompt.
+- `.search-data` answers where a value is in a connection's tables, read-only under the panel's limits.
 - `.activity` answers a connection's sessions and who waits for whom, and only reads; `.cancel-session` and
   `.end-session` are irreversible: the core waits for the person's approval, then the plugin asks as it
   asks the person (ADR 0290).

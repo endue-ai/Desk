@@ -12,6 +12,8 @@ import { actionFor, pressOf } from "./keys.js";
  */
 
 const MOVES = new Set(["next", "previous", "first", "last"]);
+/** The explorer's keys that act on the row under the cursor. */
+const ROW_ACTIONS = new Set(["ddl", "count", "diagram", "searchData"]);
 
 /**
  * @param {Document} doc
@@ -118,8 +120,7 @@ export function createTree(doc, tree, act) {
     else if (action === "activate" && row) act("activate", row);
     else if (action === "edit" || action === "remove") act(action, row?.connection);
     else if (action === "refresh") act("refresh", row?.connection, row);
-    else if ((action === "ddl" || action === "count" || action === "diagram") && row)
-      act(action, row);
+    else if (ROW_ACTIONS.has(action) && row) act(action, row);
     else if (!MOVES.has(action)) act(action);
   });
   tree.addEventListener("click", (event) => {

@@ -19,11 +19,11 @@ import { split } from "./sql/split.js";
  * @typedef {import("./settings.js").Settings} Settings
  * @typedef {"run" | "transaction" | "dry-run"} Mode
  * @typedef {{ conn: Connection, sql: string, statements: Statement[], classes: Class[], mode: Mode, result: RunResult, at: number }} Execution
- * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, statements?: Statement[] }} ExecuteOptions
+ * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, statements?: Statement[], signal?: AbortSignal }} ExecuteOptions
  *   `interactive: false` never asks for a password; `agent` asks before any write; `catalog` is the
- *   plugin's own reading and asks nothing.
+ *   plugin's own reading and asks nothing; `signal` cancels this run alone, as Cancel does every run.
  * @typedef {{
- *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number }): Promise<import("./engines/common.js").Outcome> },
+ *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number, signal?: AbortSignal }): Promise<import("./engines/common.js").Outcome> },
  *   output: Pick<import("./output-client.js").OutputReader, "read">,
  *   clients: { get(engine: import("./engines/common.js").EngineId): Promise<import("./clients.js").Client> },
  *   settings(): Settings,
@@ -69,6 +69,8 @@ export function createExecutor(deps) {
     const at = now();
 
     const attempt = async (/** @type {string | undefined} */ password) => {
+      if (options.signal?.aborted)
+        return failedRun(statements, { kind: "cancelled", message: "Cancelled." });
       try {
         const client = await deps.clients.get(conn.engine);
         const invocation = engine.plan(conn, {
@@ -85,7 +87,10 @@ export function createExecutor(deps) {
         // PostgreSQL ends a statement on the server (statement_timeout); the client's own limit is
         // the backstop. The other two have only the client's.
         const limit = timeoutMs > 0 ? timeoutMs + (engine.id === "postgresql" ? 5000 : 0) : 0;
-        const outcome = await deps.runner.run(invocation, { timeoutMs: limit });
+        const outcome = await deps.runner.run(invocation, {
+          timeoutMs: limit,
+          ...(options.signal ? { signal: options.signal } : {}),
+        });
         // Read in the result worker: what the client printed is never parsed on this thread (#38).
         const result = await deps.output.read(engine.id, outcome, invocation, timeoutMs);
         if (outcome.cancelled && !result.statements.some((s) => s.error?.kind === "cancelled"))

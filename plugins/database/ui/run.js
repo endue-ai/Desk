@@ -152,7 +152,8 @@ export function createRunner(bridge, options = {}) {
   /**
    * Run the client and resolve with what it wrote and how it ended.
    * @param {Invocation} invocation
-   * @param {{ timeoutMs?: number }} [runOptions] `timeoutMs` 0 or absent waits as long as it takes.
+   * @param {{ timeoutMs?: number, signal?: AbortSignal }} [runOptions] `timeoutMs` 0 or absent
+   *   waits as long as it takes; `signal` stops this client alone, as `cancel` stops every one.
    * @returns {Promise<Outcome>}
    */
   const run = async (invocation, runOptions = {}) => {
@@ -191,6 +192,7 @@ export function createRunner(bridge, options = {}) {
         settle: (data) => {
           if (!jobs.delete(procId)) return;
           for (const timer of timers) clearTimer(timer);
+          runOptions.signal?.removeEventListener("abort", abort);
           onBusy(jobs.size);
           resolve(
             outcomeOf(
@@ -205,9 +207,12 @@ export function createRunner(bridge, options = {}) {
           );
         },
       };
+      const abort = () => job.stop("cancelled");
       jobs.set(procId, job);
       onBusy(jobs.size);
       if (timeoutMs > 0) timers.push(setTimer(() => job.stop("timedOut"), timeoutMs));
+      if (runOptions.signal?.aborted) abort();
+      else runOptions.signal?.addEventListener("abort", abort, { once: true });
       for (const event of early.get(procId) ?? []) feed(job, event);
       early.delete(procId);
     });
