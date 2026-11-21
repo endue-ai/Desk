@@ -32,7 +32,7 @@ closes, Shift+arrows move a column, `1`–`6` views, `/` search, `[` `]` `t` per
 | `shell:open` (`https`); `connector:manage` | Open the original issue in the browser; name the installed task connectors when none is connected (`connector.list`), or say none brings tasks |
 
 Settings: `endue.projects.view`, `.week-start`, `.show-done`, `.columns`. The store keeps the view,
-grouping, sort, source, done filter, zoom and columns (`view`), never the work.
+grouping, sort, source, done filter, zoom and columns (`view`), never the work. Eris (ADR 0088, `ui/agent.js`): `tasks` and `task { source, id }` answer data and leave the screen alone; show, move, update and open-original take `{ source, id }`.
 
 ```bash
 pnpm exec vitest run plugins/projects

@@ -6,6 +6,7 @@
 // desk lists and the frame lost (it slept, or its page loaded again) opens again, where it was when a
 // sleep kept it (keep.js). It only talks to ctx.commands, ctx.bridge, ctx.surface and a view, so the
 // SDK's test host runs it with a recording view.
+import { answerAgents } from "./agent.js";
 import { placeOf, readPlace } from "./keep.js";
 import { codeOf, openInWorker, readWhole, scopeOf } from "./reading.js";
 import { createLinks } from "./view/links.js";
@@ -328,6 +329,8 @@ export function createDocs({ bridge, commands, surface }, view, options) {
     shown = null;
     await render();
   });
+
+  answerAgents(commands, { open: () => [...docs.values()], shown: () => shown });
 
   bridge.onEvent((/** @type {BridgeEvent} */ event) => {
     if (event.event !== "fs.changed") return;
