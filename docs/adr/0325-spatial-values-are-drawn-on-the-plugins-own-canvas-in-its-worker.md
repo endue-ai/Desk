@@ -46,12 +46,12 @@ frame's document and slow the frame down at a few thousand.
   GeoJSON (a `crs` name, else 4326) and the built-in types' text. A vertex counts as ST_NPoints counts
   it, a ring's closing point included; a circle is its centre and radius, drawn as 64 sides. A box is two.
 * The worker (`geo/worker.js`, the SDK's `startWorker`) holds each column's shapes, simplifies each to
-  its zoom level (radial distance, then Douglas-Peucker, half a pixel), culls by the view's box, buckets
-  the shapes by colour into a few paths, and draws on an OffscreenCanvas to a bitmap it transfers. The
-  frame only blits the last bitmap, moved and scaled while a gesture runs, one request in flight and the
-  latest view asked next. Without a worker the same engine answers in the frame.
+  its zoom level (radial distance, then a farthest-point split, to half a pixel), culls by the view's
+  box, buckets the shapes by colour into a few paths, and draws on an OffscreenCanvas to a bitmap it
+  transfers. The frame only blits the last bitmap, moved and scaled while a gesture runs, one request
+  in flight and the latest view asked next. Without a worker the same engine answers in the frame.
 * The plane: SRID 4326, 4269 and 4258 are degrees, x narrowed by the cosine of the view's latitude;
-  3857 is Web Mercator metres measured at the view's latitude; the UTM zones are metres; anything else is
+  3857's metres are measured at the view's latitude; the UTM zones are metres; anything else is
   units. The graticule and the scale bar take round 1, 2, 5 steps.
 * Rows are coloured by row number from the eight desk chart colours that reach 3:1 as marks on the
   plane in the light and dark schemes (1, 8, 5, 6, 4, 9, 7, 10: 2 and 3 do not on white); the picked

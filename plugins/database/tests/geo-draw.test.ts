@@ -168,8 +168,8 @@ describe("drawing a column of shapes", () => {
     expect(Number.isFinite(one.scale) && one.scale > 0).toBe(true);
     const before = toData(seoul, 100, 80, 800, 500);
     const after = toData(zoomAt(seoul, 3, 100, 80, 800, 500), 100, 80, 800, 500);
-    expect(after[0]).toBeCloseTo(before[0], 9);
-    expect(after[1]).toBeCloseTo(before[1], 9);
+    expect(after[0]).toBeCloseTo(before[0] ?? Number.NaN, 9);
+    expect(after[1]).toBeCloseTo(before[1] ?? Number.NaN, 9);
     const labels = recorder();
     drawLayer(labels.ctx, buildLayer([], "wkb"), seoul, style({ units: "degrees" }));
     expect(labels.calls.filter((c) => c[0] === "fillText").map((c) => c[1])).toContain("127.00°");

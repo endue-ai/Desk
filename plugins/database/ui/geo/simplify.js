@@ -1,5 +1,5 @@
 // Simplifying a run of positions to what a pixel shows (PG-46): positions closer than the tolerance
-// to the last one kept go first (cheap), then Douglas-Peucker drops those within it of the line
+// to the last one kept go first (cheap), then a farthest-point split drops those within it of the line
 // between the ones kept. The ends always stay, so a ring stays closed. The map's worker runs it,
 // once per shape and zoom level (geo/layer.js). Pure.
 
@@ -27,7 +27,7 @@ export function simplify(xy, tolerance) {
   }
   near.push(n - 1);
   if (near.length <= 2) return pick(xy, near);
-  // Douglas-Peucker over what is left, without recursion.
+  // Split at the farthest position over what is left, without recursion.
   const keep = new Uint8Array(near.length);
   keep[0] = 1;
   keep[near.length - 1] = 1;

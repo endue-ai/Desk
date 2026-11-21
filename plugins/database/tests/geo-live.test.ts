@@ -13,6 +13,7 @@ import { readSql } from "../ui/features/geo/index.js";
 import { spatialColumns } from "../ui/geo/detect.js";
 import { createEngine } from "../ui/geo/engine.js";
 import { boundsOf, type Geometry, isUnread } from "../ui/geo/geometry.js";
+import type { Summary } from "../ui/geo/layer.js";
 import { buildLayer } from "../ui/geo/layer.js";
 import { readWkb } from "../ui/geo/wkb.js";
 import { createRunner } from "../ui/run.js";
@@ -202,10 +203,11 @@ describe.skipIf(!uri)("the map's readers on a real server", () => {
     });
     const ms = performance.now() - started;
     const [sum, xmin, ymax] = totals.rows[0] ?? [];
-    expect(reply.summary).toMatchObject({ rows: 20_000, shapes: 20_000, srid: 4326, failed: 0 });
-    expect(reply.summary.vertices).toBe(Number(sum));
-    expect(reply.summary.bounds[0]).toBeCloseTo(Number(xmin), 9);
-    expect(reply.summary.bounds[3]).toBeCloseTo(Number(ymax), 9);
+    const summary = reply.summary as Summary;
+    expect(summary).toMatchObject({ rows: 20_000, shapes: 20_000, srid: 4326, failed: 0 });
+    expect(summary.vertices).toBe(Number(sum));
+    expect(summary.bounds?.[0]).toBeCloseTo(Number(xmin), 9);
+    expect(summary.bounds?.[3]).toBeCloseTo(Number(ymax), 9);
     // Read off the frame, but not slowly: well under two seconds on a laptop.
     expect(ms).toBeLessThan(2000);
   });
@@ -231,6 +233,6 @@ describe.skipIf(!uri)("the map's readers on a real server", () => {
       texts: back.rows.map((r) => r[0] ?? null),
     }).reply;
     expect(read.summary).toMatchObject({ shapes: 2, unread: [], failed: 0, srid: 4326 });
-    expect(read.summary.vertices).toBe(set.rows.reduce((n, r) => n + Number(r[1]), 0));
+    expect((read.summary as Summary).vertices).toBe(set.rows.reduce((n, r) => n + Number(r[1]), 0));
   });
 });
