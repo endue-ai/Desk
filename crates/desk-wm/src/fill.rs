@@ -100,8 +100,8 @@ pub fn toggle_maximize(p: &Placement) -> Placement {
     }
 }
 
-/// Switch coordinate spaces while keeping the rect on screen: the title bar's Floating button,
-/// which also takes a window out of its fill.
+/// Switch coordinate spaces while keeping the rect on screen: the window menu's Floating mode (ADR
+/// 0255), which also takes a window out of its fill.
 pub fn toggle_floating(p: &Placement, pan: Offset, vw: f64, vh: f64) -> Placement {
     let floating = !is_floating(p);
     let screen = screen_rect(p, pan, vw, vh);

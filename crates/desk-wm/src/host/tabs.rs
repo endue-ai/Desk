@@ -1,6 +1,6 @@
 //! Where a window's parts sit inside it (`packages/runtime/src/surface/surface.css` and
-//! `tabs.css`, `TabsView.ts`): a 1 px border round the window, a 40 px title bar, and under it the
-//! body, which the tab it shows fills. A window of more than one tab keeps a 28 px strip of its
+//! `tabs.css`, `TabsView.ts`): a 1 px border round the window, a 36 px title bar (ADR 0255), and
+//! under it the body, which the tab it shows fills. A window of more than one tab keeps a 28 px strip of its
 //! tabs at the body's top (ADR 0270). The same boxes the shell page lays the window out in, so what
 //! the page draws (a shell view, the strip) and a surface the compositor draws (a plugin) land on
 //! the same pixels.
@@ -10,7 +10,7 @@ use crate::types::Rect;
 /// The window's border, every side.
 pub const BORDER: f64 = 1.0;
 /// The title bar's height, its bottom line included.
-pub const TITLE: f64 = 40.0;
+pub const TITLE: f64 = 36.0;
 /// The strip of a window's tabs (each one's title and close button, the strip's bottom line
 /// included), drawn only when the window has more than one tab.
 pub const TAB_STRIP: f64 = 28.0;
@@ -29,11 +29,13 @@ pub fn strip_of(body: Rect, many: bool) -> (Option<Rect>, Rect) {
 }
 
 /// The title bar's room before the title, where its icon sits (padding, a 16 px icon, a gap), and
-/// after it, where its five 24 px tools sit (a gap, the tools 2 px apart, the end padding).
+/// after it (ADR 0255): a gap, the pinned and floating marks (16 px, each 2 px before what follows),
+/// whose room is kept whether they show or not, the three 24 px tools 2 px apart (the window menu,
+/// Pop out, Close), the end padding.
 pub const TITLE_START: f64 = 12.0 + 16.0 + 8.0;
-pub const TITLE_END: f64 = 8.0 + 5.0 * 24.0 + 4.0 * 2.0 + 8.0;
+pub const TITLE_END: f64 = 8.0 + 2.0 * (16.0 + 2.0) + 3.0 * 24.0 + 2.0 * 2.0 + 8.0;
 
-/// The title bar of a window drawn at `rect`: inside its border, its top 40 px.
+/// The title bar of a window drawn at `rect`: inside its border, its top 36 px.
 pub fn title_bar_of(rect: Rect) -> Rect {
     Rect::new(
         rect.x + BORDER,
@@ -61,7 +63,7 @@ mod tests {
     fn the_body_is_inside_the_border_and_under_the_title_bar() {
         assert_eq!(
             body_of(Rect::new(100.0, 50.0, 400.0, 300.0)),
-            Rect::new(101.0, 91.0, 398.0, 258.0)
+            Rect::new(101.0, 87.0, 398.0, 262.0)
         );
         assert_eq!(body_of(Rect::new(0.0, 0.0, 1.0, 10.0)).w, 0.0);
     }
