@@ -4,8 +4,8 @@ The features of `endue.database`, area by area, each with the modules that hold 
 [README](../README.md) keeps the purpose, the permissions, the commands and how to test. A change that adds a
 feature adds its line to the area it belongs to, or a section for a new area; it does not grow the README.
 
-The page has one header row (the connection on screen, its environment tag and read-only mark, the buttons;
-what does not fit is behind More), the explorer on the left, the work area, and one footer line. Dialogs open
+The page has one header row (the connection on screen, its environment tag and read-only mark, a PostgreSQL
+buffer's session state, the buttons; what does not fit is behind More), the explorer on the left, the work area, and one footer line. Dialogs open
 inside the page. `Mod+Shift+B` opens it, and every operation is also a command `endue.database.*`.
 Settings are read from what the person set over init.yaml's, and a change applies while the plugin runs;
 a change to a client's program or the `path` setting finds the clients again.
@@ -15,9 +15,9 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
 
 ## Connections
 
-- PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program to install: a run
-  opens a session, runs each statement and closes it; the plugin asks for `db:connect` on a server's host and
-  port at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA
+- PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program to install: a
+  console and a table view keep one each (below, ADR 0320), any other run opens one and closes it; the plugin
+  asks for `db:connect` on a server's host and port at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA
   file; a client certificate is not supported yet, nor a socket folder or an IPv6 host.
 - MySQL / MariaDB and SQLite run their own client and never a shell, in a mode that cannot reach past the
   database (ADR 0038): `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
@@ -110,6 +110,16 @@ Modules: `features/objects/`.
   the other clients SIGINT (mysql cancels the query on the server, sqlite3 interrupts it), then SIGKILL a
   second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server
   (`statement_timeout`).
+- On PostgreSQL each console and each table view keeps a session of its own, opened at its first run, so a
+  SET, a temporary table, a prepared statement and a transaction last from one run to the next (ADR 0320).
+  The header says its state in words and a dot: not connected, idle, running, in a transaction, in a failed
+  transaction (ROLLBACK needed), or lost. In one transaction and a dry run inside an open transaction use a
+  savepoint, and a failed one refuses them. Closing the console, Disconnect, a change to how the connection
+  signs in and removing it close the session, asked first while a transaction is open. A session the server
+  ended is said with its reason; the next run opens a new one, says that SET and temporary state are gone,
+  and runs nothing again. Agents, the explorer, counts, features and grid edits use short sessions; Cancel
+  stops only the buffer on screen. `sessions-per-connection` (8) and `session-idle-minutes` (30, never in a
+  transaction) bound them; at the limit a table view's idle session goes first.
 - History of what ran on each connection, searched from the palette (never results, never a statement that
   carries a password), and starred queries.
 - SQL text dropped on the page goes into the console on screen, or the console of a connection the person picks.
@@ -122,8 +132,8 @@ Modules: `features/objects/`.
   part; a progress line, and the first error stops it at its line in the file.
 
 Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`, `console-files.js`,
-`console-run.js`, `features/consoles/`, `execute.js`, `history.js`, `tools.js`, `sql/`, `editor/`,
-`view-editor.js`.
+`console-run.js`, `features/consoles/`, `execute.js`, `session/` (the kept sessions), `engines/pg-session.js`,
+`engines/pg-script.js`, `history.js`, `tools.js`, `sql/`, `editor/`, `view-editor.js`.
 
 ## Format SQL
 
