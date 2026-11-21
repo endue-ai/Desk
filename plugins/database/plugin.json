@@ -21,11 +21,15 @@
         "desk.buffers.open",
         "desk.buffers.update",
         "desk.buffers.close",
-        "desk.files.reveal"
+        "desk.files.reveal",
+        "desk.files.changed"
       ]
     },
     { "permission": "fs:read", "paths": ["/**"] },
-    { "permission": "proc:spawn", "commands": ["*"] }
+    { "permission": "proc:spawn", "commands": ["*"] },
+    { "permission": "fs:write", "paths": ["/**"] },
+    { "permission": "fs:read", "paths": ["${home}/.endue/database/**"] },
+    { "permission": "fs:write", "paths": ["${home}/.endue/database/**"] }
   ],
   "surfaces": [
     {
@@ -47,6 +51,10 @@
       {
         "pattern": "*.db3",
         "plugin": "endue.database"
+      },
+      {
+        "pattern": "*.sql",
+        "plugin": "endue.database"
       }
     ],
     "commands": [
@@ -59,6 +67,36 @@
         "id": "endue.database.console",
         "title": "Database: open a console",
         "keywords": ["sql", "query"]
+      },
+      {
+        "id": "endue.database.new-console",
+        "title": "Database: new console",
+        "keywords": ["sql", "query", "another", "tab", "second"]
+      },
+      {
+        "id": "endue.database.consoles",
+        "title": "Database: show a console",
+        "keywords": ["consoles", "list", "switch", "sql"]
+      },
+      {
+        "id": "endue.database.rename-console",
+        "title": "Database: rename the console",
+        "keywords": ["name", "title", "console"]
+      },
+      {
+        "id": "endue.database.close-console",
+        "title": "Database: close the console",
+        "keywords": ["close", "console", "remove"]
+      },
+      {
+        "id": "endue.database.run-file",
+        "title": "Database: run a .sql file",
+        "keywords": ["sql", "script", "file", "dump", "restore", "import"]
+      },
+      {
+        "id": "endue.database.file-connection",
+        "title": "Database: run this .sql file on another connection",
+        "keywords": ["sql", "file", "connection", "bind"]
       },
       {
         "id": "endue.database.new-connection",
@@ -131,9 +169,39 @@
         "keywords": ["plan", "timing", "actual"]
       },
       {
+        "id": "endue.database.explain-options",
+        "title": "Database: explain with options",
+        "keywords": ["plan", "analyze", "buffers", "verbose", "settings", "wal", "generic plan"]
+      },
+      {
+        "id": "endue.database.plan-view",
+        "title": "Database: show the plan as a tree, flame or table",
+        "keywords": ["query plan", "flame graph", "icicle", "where the time goes"]
+      },
+      {
+        "id": "endue.database.copy-plan",
+        "title": "Database: copy the query plan",
+        "keywords": ["plan", "explain", "text", "json"]
+      },
+      {
+        "id": "endue.database.compare-plans",
+        "title": "Database: compare two query plans",
+        "keywords": ["plan", "diff", "before and after", "regression"]
+      },
+      {
         "id": "endue.database.format",
         "title": "Database: format the SQL",
-        "keywords": ["pretty", "beautify", "indent"]
+        "keywords": ["pretty", "beautify", "indent", "layout", "selection", "script"]
+      },
+      {
+        "id": "endue.database.format-statement",
+        "title": "Database: format the statement at the caret",
+        "keywords": ["pretty", "beautify", "indent", "layout", "query", "cursor"]
+      },
+      {
+        "id": "endue.database.format-preview",
+        "title": "Database: preview the SQL format",
+        "keywords": ["style", "settings", "sample", "layout", "pretty"]
       },
       {
         "id": "endue.database.cancel",
@@ -272,6 +340,134 @@
         "irreversible": true
       },
       {
+        "id": "endue.database.overview",
+        "title": "Database: server overview",
+        "keywords": [
+          "health",
+          "statistics",
+          "sizes",
+          "unused indexes",
+          "vacuum",
+          "replication",
+          "pg_stat_statements"
+        ]
+      },
+      {
+        "id": "endue.database.refresh-overview",
+        "title": "Database: refresh the server overview",
+        "keywords": ["reload", "statistics", "health"]
+      },
+      {
+        "id": "endue.database.overview-result",
+        "title": "Database: open an overview section in the console",
+        "keywords": ["result", "copy", "export", "statistics"]
+      },
+      {
+        "id": "endue.database.overview-statement",
+        "title": "Database: open a heavy statement in the console",
+        "keywords": ["pg_stat_statements", "slow query", "top queries"]
+      },
+      {
+        "id": "endue.database.maintenance",
+        "title": "Database: maintenance (VACUUM, ANALYZE, REINDEX, CLUSTER)",
+        "keywords": [
+          "vacuum",
+          "analyze",
+          "reindex",
+          "cluster",
+          "vacuum full",
+          "bloat",
+          "dead tuples",
+          "statistics",
+          "freeze",
+          "locks"
+        ],
+        "description": "Opens the maintenance form of a PostgreSQL table, index, schema or database and answers the statement it runs, in words what it locks and for how long, and the target's size and statistics. With run, it runs the statement alone, outside a transaction block, after the person says yes, and answers how it ended, the server's output and the statistics before and after. A read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; with neither table nor index, the whole schema. Without schema, the connection's whole database when connection is named; with neither, the table on screen or one picked from the palette."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A table or materialized view of the schema."
+            },
+            "index": {
+              "type": "string",
+              "minLength": 1,
+              "description": "An index of the schema, for REINDEX INDEX or CLUSTER of its table by it."
+            },
+            "operation": {
+              "type": "string",
+              "enum": ["vacuum", "analyze", "reindex", "cluster"],
+              "description": "What to run; VACUUM by default (REINDEX for an index)."
+            },
+            "options": {
+              "type": "object",
+              "description": "The statement's options, on the defaults (an open form's own are set aside); what the server's version or another option rules out is left out of the statement.",
+              "properties": {
+                "full": { "type": "boolean" },
+                "freeze": { "type": "boolean" },
+                "verbose": { "type": "boolean", "description": "On by default." },
+                "analyze": { "type": "boolean" },
+                "skipLocked": { "type": "boolean" },
+                "indexCleanup": { "type": "string", "enum": ["", "auto", "on", "off"] },
+                "truncate": { "type": "string", "enum": ["", "on", "off"] },
+                "parallel": { "type": ["integer", "null"], "minimum": 0, "maximum": 1024 },
+                "processToast": { "type": "boolean" },
+                "bufferUsageLimit": {
+                  "type": "string",
+                  "description": "A size such as 256kB or 16MB, or 0."
+                },
+                "concurrently": {
+                  "type": "boolean",
+                  "description": "REINDEX CONCURRENTLY; on by default."
+                },
+                "tablespace": {
+                  "type": "string",
+                  "description": "REINDEX's TABLESPACE, PostgreSQL 14 and later."
+                },
+                "using": {
+                  "type": "string",
+                  "description": "The index CLUSTER orders the table by."
+                }
+              },
+              "additionalProperties": false
+            },
+            "run": {
+              "type": "boolean",
+              "description": "Run it once the form is open; the person is always asked first."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.maintenance-run",
+        "title": "Database: run the maintenance form",
+        "keywords": ["vacuum", "analyze", "reindex", "cluster", "start", "execute"]
+      },
+      {
+        "id": "endue.database.maintenance-cancel",
+        "title": "Database: cancel the maintenance run",
+        "keywords": ["stop", "abort", "pg_cancel_backend", "vacuum", "reindex"]
+      },
+      {
+        "id": "endue.database.maintenance-refresh",
+        "title": "Database: read the maintenance target again",
+        "keywords": ["reload", "size", "statistics", "dead tuples", "last vacuum"]
+      },
+      {
         "id": "endue.database.history",
         "title": "Database: history",
         "keywords": ["recent", "earlier queries"]
@@ -340,6 +536,81 @@
         "id": "endue.database.clients",
         "title": "Database: check the clients",
         "keywords": ["psql", "mysql", "mariadb", "sqlite3", "install", "version"]
+      },
+      {
+        "id": "endue.database.hide-column",
+        "title": "Database: hide the result's column at the cursor",
+        "keywords": ["grid", "columns", "hide"]
+      },
+      {
+        "id": "endue.database.show-column",
+        "title": "Database: show a hidden column of the result",
+        "keywords": ["grid", "columns", "unhide"]
+      },
+      {
+        "id": "endue.database.move-column-left",
+        "title": "Database: move the result's column left",
+        "keywords": ["grid", "columns", "reorder"]
+      },
+      {
+        "id": "endue.database.move-column-right",
+        "title": "Database: move the result's column right",
+        "keywords": ["grid", "columns", "reorder"]
+      },
+      {
+        "id": "endue.database.pin-column",
+        "title": "Database: pin or unpin the result's column",
+        "keywords": ["grid", "columns", "freeze", "sticky"]
+      },
+      {
+        "id": "endue.database.fit-column",
+        "title": "Database: fit the result's column to its content",
+        "keywords": ["grid", "columns", "width", "autosize"]
+      },
+      {
+        "id": "endue.database.narrow-column",
+        "title": "Database: make the result's column narrower",
+        "keywords": ["grid", "columns", "width", "resize"]
+      },
+      {
+        "id": "endue.database.widen-column",
+        "title": "Database: make the result's column wider",
+        "keywords": ["grid", "columns", "width", "resize"]
+      },
+      {
+        "id": "endue.database.reset-columns",
+        "title": "Database: reset the result's columns",
+        "keywords": ["grid", "columns", "order", "width"]
+      },
+      {
+        "id": "endue.database.add-sort",
+        "title": "Database: sort the result by its column next",
+        "keywords": ["grid", "order by", "multi-column"]
+      },
+      {
+        "id": "endue.database.filter-by-cell",
+        "title": "Database: filter the result by the cell at the cursor",
+        "keywords": ["grid", "quick filter", "equals", "contains", "null"]
+      },
+      {
+        "id": "endue.database.clear-filters",
+        "title": "Database: clear the result's quick filters",
+        "keywords": ["grid", "quick filter", "where"]
+      },
+      {
+        "id": "endue.database.find-in-result",
+        "title": "Database: find in the result",
+        "keywords": ["grid", "search", "cell"]
+      },
+      {
+        "id": "endue.database.find-next",
+        "title": "Database: find the next match in the result",
+        "keywords": ["grid", "search"]
+      },
+      {
+        "id": "endue.database.find-previous",
+        "title": "Database: find the previous match in the result",
+        "keywords": ["grid", "search"]
       }
     ],
     "keys": [
@@ -398,6 +669,61 @@
         "kind": "array",
         "default": [],
         "description": "Folders searched for the clients when they are not on the desk's PATH, before Homebrew's and the system's."
+      },
+      "endue.database.format-keyword-case": {
+        "kind": "string",
+        "default": "upper",
+        "choices": ["upper", "lower", "preserve"],
+        "description": "How Format SQL writes PostgreSQL's keywords: upper (SELECT, INT), lower (select, int) or preserve (as typed). Names, strings and quoted identifiers never change."
+      },
+      "endue.database.format-indent": {
+        "kind": "integer",
+        "default": 4,
+        "minimum": 1,
+        "maximum": 8,
+        "description": "Spaces a level of PostgreSQL's Format SQL indents (1 to 8)."
+      },
+      "endue.database.format-line-width": {
+        "kind": "integer",
+        "default": 80,
+        "minimum": 40,
+        "maximum": 240,
+        "description": "The width a line of PostgreSQL's Format SQL keeps to when it can (40 to 240); a longer name or string still goes on one line."
+      },
+      "endue.database.format-comma": {
+        "kind": "string",
+        "default": "last",
+        "choices": ["last", "first"],
+        "description": "Where a broken list's commas go in PostgreSQL's Format SQL: last (id, then name on the next line) or first (id, then , name)."
+      },
+      "endue.database.format-and-or": {
+        "kind": "string",
+        "default": "before",
+        "choices": ["before", "after"],
+        "description": "Where a broken condition's AND and OR go in PostgreSQL's Format SQL: before (a line starts AND b = 1) or after (a line ends a = 1 AND)."
+      },
+      "endue.database.format-joins": {
+        "kind": "string",
+        "default": "flat",
+        "choices": ["flat", "indented"],
+        "description": "How joins sit in PostgreSQL's Format SQL: flat (JOIN under FROM) or indented (JOIN one level in from FROM)."
+      },
+      "endue.database.format-one-line": {
+        "kind": "string",
+        "default": "clause",
+        "choices": ["clause", "statement", "item"],
+        "description": "What PostgreSQL's Format SQL keeps on one line when it fits: each clause (SELECT a, b then FROM t), the whole statement (SELECT a, b FROM t), or only each item (every list and condition broken one item a line)."
+      },
+      "endue.database.format-lists": {
+        "kind": "string",
+        "default": "indent",
+        "choices": ["indent", "align"],
+        "description": "Where a broken list goes in PostgreSQL's Format SQL: indent (on the lines under SELECT, one level in) or align (after SELECT, each item under the first)."
+      },
+      "endue.database.format-on-save": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Save lays a .sql file's console out with Format SQL before it writes the file, by the format of the file's connection; a file on no connection yet is written as typed."
       }
     }
   }

@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.run with a text parameter, a NULL one, a typed one and page limits",
+  "instance": {
+    "id": 21,
+    "method": "db.run",
+    "params": {
+      "sessionId": "d-1",
+      "sql": "SELECT * FROM orders WHERE customer = $1 AND note IS NOT DISTINCT FROM $2 AND total > $3",
+      "params": ["ada", null, "10"],
+      "paramTypes": [0, 0, 23],
+      "pageRows": 500,
+      "pageBytes": 1048576
+    }
+  }
+}

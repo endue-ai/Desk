@@ -1,8 +1,9 @@
 // The plugin's features (features/index.js, features/README.md), each a folder that declares its
-// commands, its actions and its panels. A command answers through answer.js as the built-in ones
-// do (a failure on the status line, a cancel quiet), an action joins the view's actions under the
-// same guard, and a panel type is a buffer kind of its own (panels.js) that the view draws into
-// its one box (view-panel.js). Nothing is claimed twice. No DOM.
+// commands, its actions, its panels and its dialogs. A command answers through answer.js as the
+// built-in ones do (a failure on the status line, a cancel quiet), an action joins the view's
+// actions under the same guard, a panel type is a buffer kind of its own (panels.js) that the view
+// draws into its one box (view-panel.js), and a dialog asks the person over the page
+// (view-dialog.js). Nothing is claimed twice. No DOM.
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -18,6 +19,12 @@
  *   the next state of the same buffer in place); `keep` says what of a state comes back after a
  *   restart (small JSON), and nothing comes back when it returns undefined or is missing.
  * @typedef {{
+ *   label: string,
+ *   render(doc: Document, model: any, done: (answer?: unknown) => void): HTMLElement,
+ * }} Dialog
+ *   `render` draws a model as a form in the page's dialog look and calls `done` once: with the
+ *   answer, or with nothing when the person cancels (the view adds Escape).
+ * @typedef {{
  *   bridge: Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">,
  *   commands: { run(id: string, args?: unknown): Promise<unknown> },
  *   view: import("./database.js").View,
@@ -28,18 +35,24 @@
  *   tools: ReturnType<typeof import("./tools.js").createTools>,
  *   execute: import("./catalog.js").Execute,
  *   settings(): import("./settings.js").Settings,
+ *   onSettings(listener: (settings: import("./settings.js").Settings) => void): () => void,
  *   pick: import("./ask.js").Pick,
  *   confirm(title: string, reasons: string[]): Promise<boolean>,
  *   say(text: string): void,
  *   guard: ReturnType<typeof import("./answer.js").guarded>,
  *   cancelled(message: string): Error,
+ *   dialog(type: string, model: unknown): Promise<unknown>,
  * }} Deps
- *   `execute` runs SQL under the read-only, production and agent guards; every write goes through it.
+ *   `execute` runs SQL under the read-only, production and agent guards; every write goes through
+ *   it. `dialog` shows a feature's dialog and resolves with its answer (undefined: cancelled).
+ *   `onSettings` calls its listener with the settings after each change while the plugin runs, until
+ *   the function it returns is called.
  * @typedef {{
  *   id: string,
  *   commands?(deps: Deps): Record<string, (args: Record<string, any>) => unknown>,
  *   actions?(deps: Deps): Record<string, (...args: any[]) => unknown>,
  *   panels?: Record<string, Panel>,
+ *   dialogs?: Record<string, Dialog>,
  *   styles?: string[],
  * }} Feature
  *   `commands` by id (each in plugin.json); `actions` by the name a panel or a key calls; `styles`
@@ -48,7 +61,8 @@
 
 /** The kinds of the built-in buffers and the fields every buffer has: no panel type is one. */
 const KINDS = "console table ddl";
-const FIELDS = "id kind connection name text execution shown running tab maxRows edit page";
+const FIELDS =
+  "id kind connection name text execution shown running tab maxRows edit page consoleId number title file visited used filing explained";
 export const RESERVED = new Set(`${KINDS} ${FIELDS}`.split(" "));
 
 /**
@@ -67,6 +81,23 @@ export function panelsOf(features) {
       panels[type] = panel;
     }
   return panels;
+}
+
+/**
+ * Every feature's dialogs, by type.
+ * @param {Feature[]} features
+ * @returns {Record<string, Dialog>}
+ */
+export function dialogsOf(features) {
+  /** @type {Record<string, Dialog>} */
+  const dialogs = {};
+  for (const feature of features)
+    for (const [type, dialog] of Object.entries(feature.dialogs ?? {})) {
+      if (Object.hasOwn(dialogs, type))
+        throw new Error(`${feature.id}: the dialog ${type} is taken.`);
+      dialogs[type] = dialog;
+    }
+  return dialogs;
 }
 
 /**

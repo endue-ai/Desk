@@ -30,7 +30,7 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
 - `connect(transport?)`, `windowTransport()`, protocol and bridge types, `BridgeCallError`; one tick's calls leave in
   one message; `desk:ready`/`desk:failed` (ADR 0061); `desk:ping` answered at import (#39); `/_desk/plugin-sdk.js`.
 - `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, instance?, state?, restored?, handlers?, commands?,
-  settings?, grants?, callers?, prompt?, now?, refuse?, files?, language?, messages? })` runs a plugin on the stub
+  settings?, grants?, callers?, prompt?, now?, refuse?, files?, db?, language?, messages? })` runs a plugin on the stub
   core: `transport`, `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`,
   `surfaces`, `call`, `emit`, `command`, `surfaceState`, `invoke`, `theme`, `language`, `upsert`, `remove`, `settle`; `dnd`
   plays the broker (`drags`, `accepts`, `hover`, `drop`, `move`, `release`, `end`, `cancel`). Byte checks

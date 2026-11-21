@@ -18,6 +18,7 @@ const WORDS = {
   "proc:spawn": ["Run programs", (p) => list([...p.commands, ...(p.pty ? ["in a terminal"] : [])])],
   "net:fetch": ["Use the network", (p) => list(p.hosts)],
   "net:connect": ["Connect to other computers", (p) => list(p.hosts)],
+  "db:connect": ["Sign in to databases", (p) => list(p.hosts)],
   "web:browse": ["Show web pages", (p) => (p.hosts ? list(p.hosts) : "any site")],
   "web:control": [
     "Read and operate the web pages it shows",
@@ -128,6 +129,15 @@ export function broadWarning(permission) {
       return host.startsWith("*.")
         ? `It can connect to every computer under ${host.slice(1).replace(/:\d+$/, "")}.`
         : `It can connect to every port of ${host}.`;
+    }
+    case "db:connect": {
+      const host = permission.hosts.find((h) => h.startsWith("*") || !h.includes(":"));
+      if (!host) return null;
+      if (host === "*" || host.startsWith("*:"))
+        return "It can sign in to databases on any computer.";
+      return host.startsWith("*.")
+        ? `It can sign in to databases on every computer under ${host.slice(1).replace(/:\d+$/, "")}.`
+        : `It can sign in to databases on every port of ${host}.`;
     }
     case "fs:read":
     case "fs:write": {

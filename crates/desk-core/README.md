@@ -13,6 +13,8 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
   `net.connect` the host and port against `net:connect` (`Target::Endpoint`), its bytes to the caller;
   `ui.surface.open` needs `ui:surface` and a declared surface, and `ui.surface.*` events go to `desk`;
   `ui.surface.snapshot` asks the shell's `SurfaceSnapshots` (`set_surface_snapshots`), a plugin its own only.
+- Databases (`db.*`, ADR 0281): PostgreSQL sessions on desk-pg, the host and port checked against
+  `db:connect`; a caller's own, 16 at most (`database_count()`), closed as it stops or loses the grant.
 - A view's page read and acted in (`web.read`, `web.act`, ADR 0272): under `web:control`, apart from
   `web:browse`, at the address the shell last reported (`core_web_control.rs`)
 - Web views (`web.*`, ADR 0216): per caller under `web:browse`, the shell's `WebViews` (`set_web_views`),
@@ -59,3 +61,4 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
 serves from in-process listeners; `conversation`, `agent_tools`, `approval_tools`, `directory`, `lease`
 start brain-echo, needs Node); the integration layer runs on a temp index, a fake calendar and clock;
 `local_agents` reads fixture folders, `local_agent_runs` runs shell scripts as the programs (Unix).
+`db` needs no server; `db_live` signs in to the PostgreSQL that `ENDUE_DB_TEST_POSTGRES` names.

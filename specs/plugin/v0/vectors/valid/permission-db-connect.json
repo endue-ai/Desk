@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "db:connect to one host's port, and to every port of another",
+  "instance": {
+    "permission": "db:connect",
+    "hosts": ["db.example.test:5432", "replica.example.test"]
+  }
+}

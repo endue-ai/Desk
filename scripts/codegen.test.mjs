@@ -35,6 +35,18 @@ describe("codegen", () => {
     }
   });
 
+  it("emits a nullable definition as an Option in Rust and as T | null in TypeScript", () => {
+    const rust = first["crates/desk-bridge/src/generated.rs"];
+    const ts = first["packages/bridge/src/generated.ts"];
+    assert.match(rust, /pub type DbValue = Option<String>;/);
+    assert.match(rust, /pub type DbRow = Vec<DbValue>;/);
+    assert.match(ts, /export type DbValue = string \| null;/);
+    for (const name of ["DbOpenRequest", "DbPage", "DbServerError", "DbConnectPermission"]) {
+      assert.match(rust, new RegExp(`pub struct ${name} \\{`), `${name} in Rust`);
+      assert.match(ts, new RegExp(`export interface ${name} \\{`), `${name} in TypeScript`);
+    }
+  });
+
   it("emits the init.yaml types from specs/init/v0", () => {
     const rust = first["crates/desk-bridge/src/generated.rs"];
     const ts = first["packages/bridge/src/generated.ts"];
