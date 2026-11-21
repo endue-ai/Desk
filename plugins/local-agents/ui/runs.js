@@ -11,7 +11,7 @@ import { ask } from "./ask.js";
  *   started: number, ended: number, ending: "running" | import("./ask.js").Ending,
  *   answer: string, error: string, line: string, problems: string[],
  *   tools: import("./parse.js").Reply["tools"], usage: import("./parse.js").Reply["usage"],
- *   session: string, model: string }} Run
+ *   parts: import("./parse.js").Reply["parts"], session: string, model: string }} Run
  */
 
 const RUNS_KEPT = 100;
@@ -48,6 +48,7 @@ export function createRuns(runner, env) {
       line: question.agent.command,
       problems: [],
       tools: [],
+      parts: [],
       usage: {},
       session: "",
       model: question.model ?? "",
@@ -60,6 +61,7 @@ export function createRuns(runner, env) {
       onUpdate: (reply) => {
         run.answer = reply.text.trim() || reply.final.trim();
         run.tools = [...reply.tools];
+        run.parts = reply.parts;
         run.usage = { ...reply.usage };
         run.problems = [...reply.problems];
         if (reply.session) run.session = reply.session;

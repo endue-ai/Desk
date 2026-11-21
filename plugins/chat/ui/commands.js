@@ -233,5 +233,5 @@ export function registerCommands({ commands, surface, view, say, pick, writing, 
   // The empty state's Connect an account: Settings, Connections, message connectors first.
   answer("endue.chat.connect", () => app.connect());
 
-  return { command, ids: () => [...own.keys()] };
+  return { command, answer, ids: () => [...own.keys()] };
 }
