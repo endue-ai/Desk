@@ -1,7 +1,7 @@
 import { expect, type Frame, type Page, test } from "@playwright/test";
 
 // endue.database's query plans (PG-70, ADR 0289) on the browser stub: the saved PostgreSQL
-// connection "shop" whose psql is scripted (plugins/database/tests/fixture-plans.ts) answers
+// connection "warehouse" whose psql is scripted (plugins/database/tests/fixture-plans.ts) answers
 // EXPLAIN with a plan of a join, another after `create index`. The plan's tree, its flame and
 // table, two plans compared side by side and the options dialog, in a 900×600 window's page.
 const SURFACE = '[data-surface="endue.database"]';
@@ -27,7 +27,7 @@ async function open(page: Page) {
   }, LARGE);
   const frame = await (await iframe.elementHandle())?.contentFrame();
   if (!frame) throw new Error("no endue.database frame");
-  await expect(frame.locator("#tree [role=treeitem]", { hasText: "shop" })).toBeVisible();
+  await expect(frame.locator("#tree [role=treeitem]", { hasText: "warehouse" })).toBeVisible();
   await expect
     .poll(() => frame.evaluate(() => [innerWidth, innerHeight]))
     .toEqual([LARGE.width, LARGE.height]);
@@ -50,9 +50,9 @@ const run = (page: Page, command: string, args: Record<string, unknown> = {}, wa
 /** The console's SQL editor, by its role and name (the textarea or the editor that stands for it). */
 const sql = (frame: Frame) => frame.getByRole("textbox", { name: "SQL" });
 
-/** A console on "shop" with the query in its editor. */
+/** A console on "warehouse" with the query in its editor. */
 async function openConsole(page: Page, frame: Frame, text = QUERY) {
-  await run(page, "endue.database.console", { connection: "shop" });
+  await run(page, "endue.database.console", { connection: "warehouse" });
   await sql(frame).fill(text);
 }
 

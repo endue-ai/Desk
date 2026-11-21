@@ -5,6 +5,7 @@
 import type { BridgeEvent, StubHandlers } from "../../../packages/bridge/src/index";
 import type { Connection } from "../ui/engines/common.js";
 import { type Script, scriptedReply } from "./clients";
+import { withPlans } from "./fixture-plans";
 
 /** The saved connection the fixture page starts with. */
 export const FIXTURE_CONNECTION: Connection = {
@@ -52,7 +53,7 @@ const columnsOf = (rows: string[][]) => [
 const rowsOf = (name = "") => TABLES[name.toLowerCase()] ?? [];
 
 /** The scripted sqlite3's answers: the catalog, each table's rows, its count. */
-export const fixtureScript: Script = (sql) => {
+const tables: Script = (sql) => {
   const text = sql.trim();
   if (text === "SELECT 'main'") return { rows: [["'main'"], ["main"]] };
   if (/FROM sqlite_master WHERE type IN \('table', 'view'\)/u.test(text))
@@ -72,6 +73,12 @@ export const fixtureScript: Script = (sql) => {
   if (count) return { rows: [["count"], [String(Math.max(0, rowsOf(count[1]).length - 1))]] };
   return {};
 };
+
+/**
+ * What the page's scripted clients answer: the tables above, and for a PostgreSQL connection the
+ * server's version and EXPLAIN with fixture plans (fixture-plans.ts).
+ */
+export const fixtureScript: Script = withPlans(tables);
 
 /** proc.spawn and proc.kill over the scripted clients; each run's output is emitted a tick later. */
 export function procHandlers(script: Script, emit: (event: BridgeEvent) => void): StubHandlers {

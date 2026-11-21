@@ -1,20 +1,20 @@
-// A fixture PostgreSQL connection for the runtime e2e page and its screenshots
-// (packages/runtime/e2e/fixture/database.ts): the scripted psql answers the server's version and
-// EXPLAIN with a plan of a join, one plan before `create index` and another after it, so the plan
-// tab, its flame and two plans compared have something to show. Fixture data only; nothing here
-// needs Node.
+// Fixture plans for the runtime e2e page and its screenshots (packages/runtime/e2e/fixture/database.ts):
+// the scripted psql answers the server's version and EXPLAIN with a plan of a join, one plan before
+// `create index` and another after it, so the plan tab, its flame and two plans compared have
+// something to show. fixtures.ts puts them in front of its script, so any PostgreSQL connection on
+// the page gets them. Fixture data only; nothing here needs Node.
 import type { Connection } from "../ui/engines/common.js";
 import type { Answer, Script } from "./clients";
 
 /** The saved PostgreSQL connection beside the SQLite one. */
 export const FIXTURE_POSTGRES: Connection = {
-  id: "c-fixture-pg",
-  name: "shop",
+  id: "c-warehouse",
+  name: "warehouse",
   engine: "postgresql",
-  host: "db",
-  port: null,
-  database: "shop",
-  user: "shop",
+  host: "db.example",
+  port: 5432,
+  database: "warehouse",
+  user: "app",
   ssl: "default",
   sslCa: "",
   file: "",
