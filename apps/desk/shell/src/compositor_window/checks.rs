@@ -26,7 +26,10 @@ impl CompositorWindow {
         self.compose();
         // The render thread draws the scene laid out for this capture next (#249).
         self.shared.lock().dirty = true;
-        let rgba = self.shared.lock().read(&self.scene).ok_or("no readback")?;
+        let (target, device, queue) = self.shared.lock().drawn_off_screen(&self.scene);
+        let rgba = target
+            .read_rgba(&device, &queue)
+            .map_err(|e| e.to_string())?;
         let (w, h) = self.scene.viewport();
         let file = std::fs::File::create(path).map_err(|e| e.to_string())?;
         let mut encoder = png::Encoder::new(std::io::BufWriter::new(file), w, h);
