@@ -1,0 +1,14 @@
+{
+  "notifyCentre.bell": "알림",
+  "notifyCentre.bellUnread": "알림, 읽지 않은 알림 {count}개",
+  "notifyCentre.title": "알림",
+  "notifyCentre.count": "알림 {count}개",
+  "notifyCentre.none": "알림 없음",
+  "notifyCentre.empty": "endue와 앱이 알린 내용이 여기에 남아, 나중에 다시 볼 수 있습니다.",
+  "notifyCentre.today": "오늘",
+  "notifyCentre.earlier": "이전",
+  "notifyCentre.dnd": "방해금지 모드",
+  "notifyCentre.clear": "모두 지우기",
+  "notifyCentre.dismiss": "닫기",
+  "notifyCentre.desk": "endue"
+}
