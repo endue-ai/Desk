@@ -1,0 +1,285 @@
+// PostgreSQL fixtures for the parser (ADR 0283): one statement of every kind the supported servers
+// accept, by the node kind PostgreSQL's grammar gives it, the syntax that came with 16, 17 and 18
+// among them; and the scripts the splitter and the parser must cut alike (split-parse.test.ts).
+
+/** [node kind, statement]: each parses alone to one statement of that kind. */
+export const STATEMENTS: Array<[string, string]> = [
+  [
+    "SelectStmt",
+    "SELECT p.id, count(*) FILTER (WHERE o.total > 10) FROM people p LEFT JOIN orders o ON o.person = p.id GROUP BY ROLLUP (p.id) HAVING count(*) > 1 ORDER BY 2 DESC NULLS LAST LIMIT 5 OFFSET 1",
+  ],
+  [
+    "SelectStmt",
+    "WITH RECURSIVE t(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM t WHERE n < 9) SEARCH DEPTH FIRST BY n SET ord SELECT * FROM t",
+  ],
+  [
+    "SelectStmt",
+    "SELECT DISTINCT ON (person) person, total FROM orders ORDER BY person, total DESC FOR UPDATE OF orders SKIP LOCKED",
+  ],
+  ["SelectStmt", "SELECT * FROM (SELECT 1 AS one) WHERE one = 1"],
+  [
+    "SelectStmt",
+    "SELECT 1_000_000, 0x1F, 0o17, 0b101, 'it''s', E'a\\nb', U&'d\\0061t', $$dollar$$, $tag$ x $tag$",
+  ],
+  [
+    "SelectStmt",
+    "SELECT '{\"a\":1}'::jsonb IS JSON OBJECT, JSON_OBJECT('a' VALUE 1), JSON_ARRAY(1, 2), JSON_EXISTS('{}'::jsonb, '$.a'), JSON_VALUE('{\"a\":1}'::jsonb, '$.a' RETURNING int)",
+  ],
+  [
+    "SelectStmt",
+    "SELECT jt.* FROM JSON_TABLE('[{\"a\":1}]'::jsonb, '$[*]' COLUMNS (a int PATH '$.a', NESTED PATH '$.b[*]' COLUMNS (b text PATH '$'))) AS jt",
+  ],
+  [
+    "SelectStmt",
+    "SELECT x.* FROM XMLTABLE('/r/i' PASSING ('<r><i a=\"1\"/></r>'::xml) COLUMNS a int PATH '@a') AS x",
+  ],
+  [
+    "SelectStmt",
+    "SELECT g, n FROM generate_series(1, 3) WITH ORDINALITY AS g(g, n), LATERAL (SELECT g * 2) AS d(twice)",
+  ],
+  [
+    "SelectStmt",
+    "SELECT sum(total) OVER w, rank() OVER (PARTITION BY person ORDER BY total) FROM orders WINDOW w AS (ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)",
+  ],
+  [
+    "SelectStmt",
+    "SELECT CASE WHEN a IS NULL THEN 0 ELSE a END, coalesce(b, 1), greatest(1, 2), (ARRAY[1, 2])[1], ROW(1, 2), a BETWEEN 1 AND 2, b IN (SELECT 1), c ILIKE 'x%' FROM t TABLESAMPLE SYSTEM (10) REPEATABLE (1)",
+  ],
+  [
+    "SelectStmt",
+    "SELECT extract(year FROM now()), position('a' IN 'abc'), substring('abc' FROM 2), trim(both ' ' FROM ' a '), now() AT TIME ZONE 'UTC', current_date, current_user",
+  ],
+  ["SelectStmt", "TABLE people"],
+  ["SelectStmt", "VALUES (1, 'a'), (2, 'b')"],
+  ["SelectStmt", "SELECT 1 UNION SELECT 2 INTERSECT SELECT 3 EXCEPT ALL SELECT 4"],
+  ["SelectStmt", "SELECT * INTO TEMP copy_of_people FROM people"],
+  [
+    "InsertStmt",
+    "INSERT INTO orders (id, person, total) VALUES (1, 2, 3.5), (2, 3, DEFAULT) ON CONFLICT (id) DO UPDATE SET total = excluded.total WHERE orders.total < excluded.total RETURNING *",
+  ],
+  [
+    "InsertStmt",
+    "INSERT INTO orders OVERRIDING SYSTEM VALUE SELECT * FROM orders ON CONFLICT ON CONSTRAINT orders_pkey DO NOTHING",
+  ],
+  ["InsertStmt", "INSERT INTO orders (id) VALUES (1) RETURNING old.id, new.id"],
+  [
+    "InsertStmt",
+    "INSERT INTO orders (id) VALUES (1) RETURNING WITH (OLD AS o, NEW AS n) o.id, n.id",
+  ],
+  [
+    "UpdateStmt",
+    "UPDATE orders o SET (total, person) = (SELECT 1, 2), id = DEFAULT FROM people p WHERE p.id = o.person RETURNING o.*",
+  ],
+  ["UpdateStmt", "UPDATE orders SET total = 0 WHERE CURRENT OF c"],
+  [
+    "DeleteStmt",
+    "WITH gone AS (SELECT id FROM people WHERE note = 'x') DELETE FROM ONLY orders USING gone WHERE orders.person = gone.id RETURNING old.*",
+  ],
+  [
+    "MergeStmt",
+    "MERGE INTO orders t USING (SELECT 1 AS id) s ON t.id = s.id WHEN MATCHED AND t.total > 0 THEN UPDATE SET total = 0 WHEN NOT MATCHED BY SOURCE THEN DELETE WHEN NOT MATCHED THEN INSERT (id) VALUES (s.id) RETURNING merge_action(), t.*",
+  ],
+  [
+    "CreateStmt",
+    "CREATE TABLE IF NOT EXISTS audit (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, at timestamptz NOT NULL DEFAULT now(), person int REFERENCES people (id) ON DELETE CASCADE, total numeric CHECK (total >= 0), net numeric GENERATED ALWAYS AS (total / 1.2) STORED, UNIQUE NULLS NOT DISTINCT (person, at))",
+  ],
+  [
+    "CreateStmt",
+    "CREATE TABLE gross (total numeric, tax numeric GENERATED ALWAYS AS (total * 0.2) VIRTUAL)",
+  ],
+  [
+    "CreateStmt",
+    "CREATE TABLE booking (room int, during tstzrange, PRIMARY KEY (room, during WITHOUT OVERLAPS))",
+  ],
+  ["CreateStmt", "CREATE TABLE measurement (at date NOT NULL, v int) PARTITION BY RANGE (at)"],
+  [
+    "CreateStmt",
+    "CREATE TABLE measurement_y2026 PARTITION OF measurement FOR VALUES FROM ('2026-01-01') TO ('2027-01-01')",
+  ],
+  ["CreateStmt", "CREATE UNLOGGED TABLE copy (LIKE people INCLUDING ALL) WITH (fillfactor = 70)"],
+  [
+    "CreateTableAsStmt",
+    "CREATE TABLE totals AS SELECT person, sum(total) FROM orders GROUP BY person WITH NO DATA",
+  ],
+  [
+    "CreateTableAsStmt",
+    "CREATE MATERIALIZED VIEW totals_mv AS SELECT person, sum(total) AS s FROM orders GROUP BY person",
+  ],
+  [
+    "ViewStmt",
+    "CREATE OR REPLACE VIEW big_orders WITH (security_barrier) AS SELECT * FROM orders WHERE total > 100 WITH CHECK OPTION",
+  ],
+  ["CreateSeqStmt", "CREATE SEQUENCE IF NOT EXISTS seq START 10 INCREMENT BY 5"],
+  ["AlterSeqStmt", "ALTER SEQUENCE seq RESTART WITH 1"],
+  [
+    "IndexStmt",
+    "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS orders_person_idx ON orders USING btree (person, (lower(note)) DESC) INCLUDE (total) WHERE total > 0",
+  ],
+  [
+    "AlterTableStmt",
+    "ALTER TABLE orders ADD COLUMN note text DEFAULT '', ALTER COLUMN total SET NOT NULL, DROP CONSTRAINT IF EXISTS c, ADD CONSTRAINT p CHECK (total > 0) NOT VALID",
+  ],
+  ["AlterTableStmt", "ALTER TABLE gross ALTER COLUMN tax SET EXPRESSION AS (total * 0.25)"],
+  ["AlterTableStmt", "ALTER TABLE orders ALTER CONSTRAINT p NOT ENFORCED"],
+  [
+    "AlterTableStmt",
+    "ALTER TABLE measurement ATTACH PARTITION measurement_y2026 FOR VALUES FROM ('2026-01-01') TO ('2027-01-01')",
+  ],
+  ["RenameStmt", "ALTER TABLE orders RENAME COLUMN note TO memo"],
+  ["AlterObjectSchemaStmt", "ALTER TABLE orders SET SCHEMA archive"],
+  ["AlterOwnerStmt", "ALTER FUNCTION touch() OWNER TO admin"],
+  ["DropStmt", "DROP TABLE IF EXISTS a, b CASCADE"],
+  ["DropStmt", "DROP FUNCTION IF EXISTS touch(int, text)"],
+  ["TruncateStmt", "TRUNCATE orders, people RESTART IDENTITY CASCADE"],
+  ["CommentStmt", "COMMENT ON COLUMN orders.total IS 'In euros'"],
+  [
+    "CreateFunctionStmt",
+    "CREATE OR REPLACE FUNCTION touch() RETURNS trigger LANGUAGE plpgsql AS $fn$ BEGIN NEW.at := now(); RETURN NEW; END; $fn$",
+  ],
+  [
+    "CreateFunctionStmt",
+    "CREATE FUNCTION add(a int, b int) RETURNS int LANGUAGE sql IMMUTABLE BEGIN ATOMIC SELECT a + b; END",
+  ],
+  ["CreateFunctionStmt", "CREATE FUNCTION twice(x int) RETURNS int RETURN x * 2"],
+  [
+    "CreateFunctionStmt",
+    "CREATE PROCEDURE log_it(msg text) LANGUAGE plpgsql AS 'BEGIN RAISE NOTICE ''%'', msg; END'",
+  ],
+  ["AlterFunctionStmt", "ALTER FUNCTION add(int, int) STABLE"],
+  ["CallStmt", "CALL log_it('hello')"],
+  ["DoStmt", "DO $$ BEGIN PERFORM 1; END $$"],
+  [
+    "CreateTrigStmt",
+    "CREATE TRIGGER orders_touch BEFORE UPDATE ON orders FOR EACH ROW WHEN (OLD.total IS DISTINCT FROM NEW.total) EXECUTE FUNCTION touch()",
+  ],
+  [
+    "CreateEventTrigStmt",
+    "CREATE EVENT TRIGGER ddl_log ON ddl_command_end EXECUTE FUNCTION touch()",
+  ],
+  [
+    "RuleStmt",
+    "CREATE RULE keep AS ON DELETE TO orders DO INSTEAD (UPDATE orders SET total = 0 WHERE id = OLD.id; NOTIFY orders)",
+  ],
+  [
+    "CreatePolicyStmt",
+    "CREATE POLICY own ON orders FOR SELECT TO PUBLIC USING (person = current_setting('app.person')::int)",
+  ],
+  ["AlterPolicyStmt", "ALTER POLICY own ON orders USING (true)"],
+  ["GrantStmt", "GRANT SELECT, UPDATE (total) ON TABLE orders TO reader WITH GRANT OPTION"],
+  ["GrantStmt", "REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC"],
+  ["GrantRoleStmt", "GRANT admin TO reader WITH INHERIT TRUE"],
+  [
+    "AlterDefaultPrivilegesStmt",
+    "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO reader",
+  ],
+  ["CreateRoleStmt", "CREATE ROLE reader LOGIN PASSWORD NULL VALID UNTIL 'infinity'"],
+  ["AlterRoleStmt", "ALTER ROLE reader NOLOGIN CONNECTION LIMIT 3"],
+  ["AlterRoleSetStmt", "ALTER ROLE reader SET search_path TO app, public"],
+  ["DropRoleStmt", "DROP ROLE IF EXISTS reader"],
+  ["CreateSchemaStmt", "CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION admin"],
+  ["CreateExtensionStmt", "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public"],
+  ["CreateDomainStmt", "CREATE DOMAIN positive AS int CHECK (VALUE > 0)"],
+  ["CompositeTypeStmt", "CREATE TYPE pair AS (a int, b text)"],
+  ["CreateEnumStmt", "CREATE TYPE mood AS ENUM ('sad', 'ok')"],
+  ["AlterEnumStmt", "ALTER TYPE mood ADD VALUE IF NOT EXISTS 'happy' AFTER 'ok'"],
+  ["CreateRangeStmt", "CREATE TYPE floatrange AS RANGE (subtype = float8)"],
+  ["DefineStmt", "CREATE AGGREGATE mysum (int) (SFUNC = int4pl, STYPE = int)"],
+  ["CreateCastStmt", "CREATE CAST (pair AS text) WITH INOUT"],
+  ["CreatedbStmt", "CREATE DATABASE scratch TEMPLATE template0 ENCODING 'UTF8'"],
+  ["DropdbStmt", "DROP DATABASE IF EXISTS scratch WITH (FORCE)"],
+  ["TransactionStmt", "BEGIN ISOLATION LEVEL SERIALIZABLE READ ONLY"],
+  ["TransactionStmt", "SAVEPOINT before_change"],
+  ["TransactionStmt", "ROLLBACK TO SAVEPOINT before_change"],
+  ["TransactionStmt", "COMMIT AND CHAIN"],
+  ["TransactionStmt", "PREPARE TRANSACTION 'tx1'"],
+  ["VariableSetStmt", "SET LOCAL search_path TO app, public"],
+  ["VariableSetStmt", "RESET ALL"],
+  ["VariableShowStmt", "SHOW server_version"],
+  ["DiscardStmt", "DISCARD ALL"],
+  ["ExplainStmt", "EXPLAIN (ANALYZE, BUFFERS, SERIALIZE, FORMAT JSON) SELECT * FROM orders"],
+  [
+    "CopyStmt",
+    "COPY orders (id, total) FROM STDIN WITH (FORMAT csv, HEADER true, ON_ERROR ignore, REJECT_LIMIT 10)",
+  ],
+  ["CopyStmt", "COPY (SELECT * FROM orders WHERE total > 0) TO STDOUT WITH (FORMAT binary)"],
+  ["PrepareStmt", "PREPARE by_id (int) AS SELECT * FROM orders WHERE id = $1"],
+  ["ExecuteStmt", "EXECUTE by_id(1)"],
+  ["DeallocateStmt", "DEALLOCATE ALL"],
+  ["DeclareCursorStmt", "DECLARE c SCROLL CURSOR WITH HOLD FOR SELECT * FROM orders"],
+  ["FetchStmt", "FETCH FORWARD 10 FROM c"],
+  ["ClosePortalStmt", "CLOSE c"],
+  ["ListenStmt", "LISTEN orders"],
+  ["NotifyStmt", "NOTIFY orders, 'changed'"],
+  ["UnlistenStmt", "UNLISTEN *"],
+  ["LockStmt", "LOCK TABLE orders IN SHARE ROW EXCLUSIVE MODE NOWAIT"],
+  ["VacuumStmt", "VACUUM (VERBOSE, ANALYZE) orders (total)"],
+  ["VacuumStmt", "ANALYZE people"],
+  ["ClusterStmt", "CLUSTER orders USING orders_pkey"],
+  ["ReindexStmt", "REINDEX (VERBOSE) TABLE CONCURRENTLY orders"],
+  ["RefreshMatViewStmt", "REFRESH MATERIALIZED VIEW CONCURRENTLY totals_mv"],
+  [
+    "CreateForeignTableStmt",
+    "CREATE FOREIGN TABLE remote_orders (id int, total numeric) SERVER remote OPTIONS (table_name 'orders')",
+  ],
+  ["CreateFdwStmt", "CREATE FOREIGN DATA WRAPPER files HANDLER file_fdw_handler"],
+  [
+    "CreateForeignServerStmt",
+    "CREATE SERVER remote FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname 'other')",
+  ],
+  [
+    "CreateUserMappingStmt",
+    "CREATE USER MAPPING FOR CURRENT_USER SERVER remote OPTIONS (user 'reader')",
+  ],
+  [
+    "ImportForeignSchemaStmt",
+    "IMPORT FOREIGN SCHEMA public LIMIT TO (orders) FROM SERVER remote INTO archive",
+  ],
+  [
+    "CreatePublicationStmt",
+    "CREATE PUBLICATION pub FOR TABLE orders (id, total) WHERE (total > 0), TABLES IN SCHEMA app",
+  ],
+  [
+    "CreateSubscriptionStmt",
+    "CREATE SUBSCRIPTION sub CONNECTION 'dbname=other' PUBLICATION pub WITH (enabled = false)",
+  ],
+  ["CreateStatsStmt", "CREATE STATISTICS orders_stats (dependencies) ON person, total FROM orders"],
+  ["CreateTableSpaceStmt", "CREATE TABLESPACE fast LOCATION '/srv/fast'"],
+  [
+    "SecLabelStmt",
+    "SECURITY LABEL FOR selinux ON TABLE orders IS 'system_u:object_r:sepgsql_table_t:s0'",
+  ],
+  ["CheckPointStmt", "CHECKPOINT"],
+  ["LoadStmt", "LOAD 'auto_explain'"],
+  ["AlterSystemStmt", "ALTER SYSTEM SET work_mem = '64MB'"],
+  ["ReassignOwnedStmt", "REASSIGN OWNED BY admin TO reader"],
+  ["DropOwnedStmt", "DROP OWNED BY reader"],
+  ["ConstraintsSetStmt", "SET CONSTRAINTS ALL DEFERRED"],
+  ["CreateAmStmt", "CREATE ACCESS METHOD heap2 TYPE TABLE HANDLER heap_tableam_handler"],
+  [
+    "AlterTSConfigurationStmt",
+    "ALTER TEXT SEARCH CONFIGURATION english ALTER MAPPING FOR word WITH simple",
+  ],
+];
+
+/** Scripts both the splitter and the parser cut: the splitter's own cases and a few more. */
+export const SCRIPTS: string[] = [
+  [
+    "select 'it''s; fine', E'back\\'slash;', \"odd;name\" from t; -- end; here",
+    "select $$a;b$$, $fn$ c; $$ d $fn$;",
+    "/* outer /* nested; */ still; */ select 3",
+  ].join("\n"),
+  "create or replace function f() returns int language sql begin atomic select case when true then 1 end; select 2; end; select 3;",
+  "begin; select $1; commit;",
+  "  -- only a comment\n;\n\n  select 1;\n  select\n 2",
+  "select 1; select 2 ;  -- tail\n",
+  "select 1;;; select 2",
+  "create procedure p() language sql begin atomic insert into t values (1); insert into t values (2); end;\ncall p();",
+  "create rule r as on insert to t do also (insert into u values (new.id); insert into v values (new.id));\nselect 1",
+  "select 'é😀' as x /* c; */ ; select U&'d\\0061t' ;\r\nselect 3",
+  "do $body$ begin perform 1; end $body$; select 1 -- a; b\n; select /* ; */ 2",
+  "begin; select 1; end; start transaction; rollback;",
+  "create function f() returns int language sql return 1; create procedure p() begin atomic end; select 2",
+  "create function g() returns int language sql begin atomic select case when true then 1 else 2 end; end\n;select e'it\\'s;', $a$ $b$; $a$",
+  "create function h() returns int as $$ begin return 1; end $$ language plpgsql; select h(); create trigger t after insert on x for each row execute function h()",
+  STATEMENTS.map(([, sql]) => sql).join(";\n"),
+];

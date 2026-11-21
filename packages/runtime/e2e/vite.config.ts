@@ -118,6 +118,8 @@ const types: Record<string, string> = {
   ".png": "image/png",
   ".webp": "image/webp",
   ".woff2": "font/woff2",
+  // The database plugin's SQL parser (ADR 0283), as the app's scheme types it.
+  ".wasm": "application/wasm",
   ".desk-theme": "application/json",
 };
 

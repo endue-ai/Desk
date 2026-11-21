@@ -56,9 +56,25 @@ describe("plugin-workers", () => {
 
   it("a parser or decoder the audit put in a worker is loaded by that worker only", () => {
     const problems = Object.entries(OFF_MAIN).flatMap(([name, declared]) =>
-      offMainProblems(name, declared),
+      [declared].flat().flatMap((one) => offMainProblems(name, one)),
     );
     assert.deepEqual(problems, []);
+  });
+
+  it("the database plugin's SQL parser runs only in its worker", () => {
+    const parser = [OFF_MAIN.database]
+      .flat()
+      .find((declared) => declared.worker === "ui/sql/parse/worker.js");
+    assert.ok(parser, "the audit lists the parse worker");
+    assert.deepEqual(offMainProblems("database", parser), []);
+    // Every module of the parser but the page's client, and the vendored build, stay in it.
+    const folder = join(PLUGINS, "database/ui/sql/parse");
+    const own = readdirSync(folder)
+      .filter((file) => file.endsWith(".js") && file !== "client.js")
+      .map((file) => `ui/sql/parse/${file}`);
+    assert.deepEqual([...parser.modules].sort(), [...own, "ui/vendor/libpg-query.mjs"].sort());
+    const { main, rel } = pluginGraphs("database");
+    assert.ok([...main.modules].map(rel).includes("ui/sql/parse/client.js"));
   });
 
   it("a worker module imports only by URL: import maps do not reach workers", () => {

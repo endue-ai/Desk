@@ -234,6 +234,7 @@ export function createGrid(doc, host, act) {
       else if (move === "right") moveTo(cursor.row, cursor.col + 1, false);
     },
     () => grid.focus(),
+    act,
   );
 
   /** The cursor's cell for the value viewer: its value, its type and whether it can change. */
@@ -242,13 +243,15 @@ export function createGrid(doc, host, act) {
     const cell = cellOf(cursor.row, cursor.col);
     if (!cell.at) return undefined;
     const column = context.edit?.target?.columns[cell.at.col];
+    const fixed = column?.editor?.fixed ?? "";
     return {
       ...cell.at,
       value: cell.value,
       name: set().columns[cell.at.col] ?? "",
       type: column?.type ?? "",
-      editable: editable() && (column?.known ?? false) && !cell.deleted,
-      reason: context.edit?.status === "refused" ? context.edit.reason : "",
+      editor: column?.editor,
+      editable: editable() && (column?.known ?? false) && !fixed && !cell.deleted,
+      reason: fixed || (context.edit?.status === "refused" ? context.edit.reason : ""),
     };
   };
 
