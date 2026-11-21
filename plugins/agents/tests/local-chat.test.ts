@@ -221,3 +221,36 @@ describe("chatting with a local agent", () => {
     expect(m.params("perm.request")).toHaveLength(2);
   });
 });
+
+it("preserves a live turn when opening local Studio, including early tool and text order", async () => {
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const { app, host, chat } = await mount({
+    local: {
+      "agents.ask": async ({ prompt }) => {
+        await gate;
+        return { run: run({ prompt }) };
+      },
+    },
+  });
+  app.studio("local:claude");
+  const sent = app.chat("claude").send("Review the outline");
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  step(host, { kind: "tool", tool: "Read", detail: "outline.txt" });
+  step(host, { kind: "text", text: "One heading is missing." });
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  release();
+  await sent;
+  await settle(host);
+  step(host, { kind: "done", run: run({ state: "done", text: "One heading is missing." }) });
+  await settle(host);
+  expect(chat().messages.at(-1)).toMatchObject({
+    state: "done",
+    parts: [
+      { role: "tool", name: "Read", text: "outline.txt" },
+      { role: "assistant", text: "One heading is missing." },
+    ],
+  });
+});

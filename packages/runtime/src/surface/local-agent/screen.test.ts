@@ -164,3 +164,47 @@ describe("a local agent's screen", () => {
     expect(titles(el)).toHaveLength(4);
   });
 });
+
+it("loads older turns without losing the selection or replacing it with a stale result", async () => {
+  const { el, local } = await mount();
+  const reader = el.querySelector("desk-agent-session");
+  expect(reader?.shadowRoot, "the Desk screen uses the session reader").toBeTruthy();
+  const root = reader!.shadowRoot!;
+  const [one, two] = local.fixture.sessions;
+  if (!one || !two) throw Error("two sessions required");
+  const fn = vi.spyOn(local, "transcript");
+  const many = Array.from({ length: 245 }, (_, i) => ({
+    role: "user" as const,
+    text: `Outline ${i}`,
+  }));
+  let release = () => {};
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  fn.mockImplementation(async (_agent, id, limit = 200) => {
+    if (id === one.id && limit > 200) await pending;
+    return {
+      session: id === one.id ? one : two,
+      messages: id === one.id ? many.slice(-limit) : [{ role: "user", text: "Different notebook" }],
+      truncated: id === one.id && limit < many.length,
+    };
+  });
+  const select = (id: string) =>
+    root.querySelector<HTMLButtonElement>(`[data-native-id="${id}"]`)!.click();
+  select(one.id);
+  await settle();
+  expect(root.querySelector('[role="log"]')?.textContent).toContain("Outline 45");
+  root.querySelector<HTMLButtonElement>("[data-older]")!.click();
+  select(two.id);
+  await settle();
+  release();
+  await settle();
+  expect(root.querySelector('[role="log"]')?.textContent).toContain("Different notebook");
+  expect(root.querySelector('[role="log"]')?.textContent).not.toContain("Outline 0");
+  select(one.id);
+  await settle();
+  root.querySelector<HTMLButtonElement>("[data-older]")!.click();
+  await settle();
+  expect(root.querySelector('[role="log"]')?.textContent).toContain("Outline 0");
+  expect(root.querySelectorAll("[data-turn]")).toHaveLength(245);
+});
