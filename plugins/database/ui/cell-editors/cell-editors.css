@@ -1,0 +1,124 @@
+/* The typed cell editors (PG-40): a popover at its cell. Layout only; the look is the kit's
+   (.desk-field, .desk-btn, .desk-tabs, .desk-error) and the theme's tokens. */
+
+.cell-editor {
+  position: fixed;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  box-sizing: border-box;
+  max-width: min(calc(100vw - 2 * var(--desk-space-2)), calc(var(--desk-space-16) * 8));
+  max-height: calc(100vh - 2 * var(--desk-space-2));
+  padding: var(--desk-space-3);
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-popover);
+  color: var(--desk-text);
+  box-shadow: var(--desk-shadow-md);
+  font: var(--desk-text-sm) / 1.4 var(--desk-font-sans);
+}
+
+.cell-editor-json,
+.cell-editor-array,
+.cell-editor-bytes {
+  width: calc(var(--desk-space-16) * 7);
+}
+
+.cell-editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--desk-space-2);
+  font-size: var(--desk-text-xs);
+}
+
+.cell-editor-head strong {
+  font-family: var(--desk-font-mono);
+}
+
+.cell-editor-text,
+.cell-editor-element {
+  box-sizing: border-box;
+  width: 100%;
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+}
+
+textarea.cell-editor-text {
+  min-height: calc(var(--desk-space-16) * 2);
+  resize: vertical;
+  white-space: pre;
+}
+
+.cell-editor-body,
+.cell-editor-picks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+}
+
+.cell-editor-picks {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.cell-editor-options,
+.cell-editor-elements {
+  margin: 0;
+  padding: 0;
+  max-height: calc(var(--desk-space-16) * 4);
+  overflow: auto;
+  list-style: none;
+}
+
+.cell-editor-options li {
+  padding: var(--desk-space-1) var(--desk-space-2);
+  font-family: var(--desk-font-mono);
+  border-radius: var(--desk-radius-sm);
+  cursor: default;
+}
+
+.cell-editor-options li:hover,
+.cell-editor-options li[aria-selected="true"] {
+  background: var(--desk-hover);
+}
+
+.cell-editor-elements li {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  padding: var(--desk-space-1) 0;
+}
+
+.cell-editor-elements .desk-btn[aria-pressed="true"] {
+  background: var(--desk-hover);
+}
+
+.cell-editor .cell-editor-error {
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+  overflow-wrap: anywhere;
+}
+
+.cell-editor-size,
+.cell-editor-hint {
+  margin: 0;
+  font-size: var(--desk-text-xs);
+}
+
+.cell-editor-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.cell-editor-spacer {
+  flex: 1;
+}
+
+#value-error {
+  margin: 0;
+}

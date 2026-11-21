@@ -46,6 +46,7 @@ import { createTools } from "./tools.js";
  *   nodeAt(target: unknown): Node | undefined,
  *   focus(where: "explorer" | "editor" | "grid"): void,
  *   selection(): { tab: number, rows?: number[], columns?: number[], sorted?: (string | null)[][] } | undefined,
+ *   cell(): ReturnType<ReturnType<typeof import("./view-grid.js").createGrid>["cursorCell"]>,
  * }} View
  */
 

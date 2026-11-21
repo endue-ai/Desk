@@ -2,23 +2,29 @@
 // are kept apart from the rows the server sent, drawn as a diff, and turned into one transaction of
 // statements keyed on the table's primary key. Nothing here runs SQL; submit.js does. A result can
 // be changed only when it is one table's rows with every primary key column in it, on a connection
-// that is not read-only. Pure, so every rule is tested without a DOM or a client.
+// that is not read-only. A column's typed editor (cell-editors/, PG-40) writes its literals and says
+// why a generated column cannot change; DEFAULT is a pending value of its own. Pure, so every rule
+// is tested without a DOM or a client.
 
+import { literalFor } from "../cell-editors/values.js";
 import { qualified } from "../sql/quote.js";
-import { literal } from "./values.js";
+import { isDefault, literal } from "./values.js";
 
 /**
  * @typedef {import("../sql/lexer.js").Dialect} Dialect
  * @typedef {import("../engines/common.js").ResultSet} ResultSet
- * @typedef {{ name: string, type: string, key: boolean, known: boolean }} TargetColumn
- *   One per result column: its table column's type, whether it is part of the primary key, and
- *   `known: false` for a result column that is no column of the table (an expression).
+ * @typedef {{ name: string, type: string, key: boolean, known: boolean, editor?: import("../cell-editors/resolve.js").Editor }} TargetColumn
+ *   One per result column: its table column's type, whether it is part of the primary key,
+ *   `known: false` for a result column that is no column of the table (an expression), and the
+ *   editor its type gives it (cell-editors/resolve.js).
  * @typedef {{ dialect: Dialect, schema: string, name: string, columns: TargetColumn[], key: number[] }} Target
  *   `key` holds the result columns of the primary key, in the key's order.
  * @typedef {(string | null | undefined)[]} NewRow `undefined` leaves the column to its default.
  * @typedef {{ updates: Map<number, Map<number, string | null>>, inserts: NewRow[], deletes: Set<number> }} Changes
- * @typedef {{ kind: "update" | "insert" | "delete", row: number, sql: string }} Change
- *   `row` is the result row (for an insert, rows.length + its index among the inserts).
+ * @typedef {{ col: number, start: number, end: number }} Span Where a cell's literal is in a statement.
+ * @typedef {{ kind: "update" | "insert" | "delete", row: number, sql: string, cells: Span[] }} Change
+ *   `row` is the result row (for an insert, rows.length + its index among the inserts); `cells`
+ *   where each changed cell's literal is, so a refusal that points into the statement names it.
  */
 
 /** @returns {Changes} */
@@ -116,6 +122,11 @@ export function editCell(changes, target, set, row, col, value) {
     throw new Error(
       `${column?.name ?? "This"} is not a column of ${target.name}: it cannot change.`,
     );
+  if (column.editor?.fixed) throw new Error(column.editor.fixed);
+  if (isDefault(value) && target.dialect === "sqlite" && row < set.rows.length)
+    throw new Error(
+      `SQLite cannot set a column to DEFAULT in an UPDATE: type ${column.name}'s value instead.`,
+    );
   if (row >= set.rows.length) {
     const added = changes.inserts[row - set.rows.length];
     if (!added) throw new Error("That row is gone.");
@@ -193,31 +204,47 @@ export function planChanges(target, set, changes) {
   const { dialect } = target;
   const table = qualified(dialect, dialect === "sqlite" ? "" : target.schema, target.name);
   const name = (/** @type {number} */ c) => qualified(dialect, "", target.columns[c]?.name ?? "");
-  const value = (/** @type {number} */ c, /** @type {string | null} */ v) =>
-    literal(dialect, v, target.columns[c]?.type ?? "");
+  const value = (/** @type {number} */ c, /** @type {string | null} */ v) => {
+    const column = target.columns[c];
+    return literalFor(dialect, v, column?.editor, column?.type ?? "");
+  };
   /** @type {Change[]} */
   const out = [];
   for (const row of [...changes.deletes].sort((a, b) => a - b)) {
     const where = keyOf(target, /** @type {(string | null)[]} */ (set.rows[row]));
-    out.push({ kind: "delete", row, sql: `DELETE FROM ${table} WHERE ${where}` });
+    out.push({ kind: "delete", row, sql: `DELETE FROM ${table} WHERE ${where}`, cells: [] });
   }
   for (const [row, cells] of [...changes.updates].sort(([a], [b]) => a - b)) {
     const where = keyOf(target, /** @type {(string | null)[]} */ (set.rows[row]));
-    const sets = [...cells]
-      .sort(([a], [b]) => a - b)
-      .map(([c, v]) => `${name(c)} = ${value(c, v)}`);
-    out.push({ kind: "update", row, sql: `UPDATE ${table} SET ${sets.join(", ")} WHERE ${where}` });
+    const sets = [...cells].sort(([a], [b]) => a - b);
+    const spans = /** @type {Span[]} */ ([]);
+    let sql = `UPDATE ${table} SET `;
+    sets.forEach(([c, v], i) => {
+      sql += `${i ? ", " : ""}${name(c)} = `;
+      const text = value(c, v);
+      spans.push({ col: c, start: sql.length, end: sql.length + text.length });
+      sql += text;
+    });
+    out.push({ kind: "update", row, sql: `${sql} WHERE ${where}`, cells: spans });
   }
   changes.inserts.forEach((values, i) => {
-    const given = values.flatMap((v, c) => (v === undefined ? [] : [c]));
-    const sql = given.length
-      ? `INSERT INTO ${table} (${given.map(name).join(", ")}) VALUES (${given
-          .map((c) => value(c, values[c] ?? null))
-          .join(", ")})`
-      : dialect === "mysql"
-        ? `INSERT INTO ${table} () VALUES ()`
-        : `INSERT INTO ${table} DEFAULT VALUES`;
-    out.push({ kind: "insert", row: set.rows.length + i, sql });
+    // A column left to its default, or set to DEFAULT, is left out (SQLite has no DEFAULT there).
+    const given = values.flatMap((v, c) => (v === undefined || isDefault(v) ? [] : [c]));
+    const spans = /** @type {Span[]} */ ([]);
+    let sql = `INSERT INTO ${table} (${given.map(name).join(", ")}) VALUES (`;
+    given.forEach((c, n) => {
+      sql += n ? ", " : "";
+      const text = value(c, values[c] ?? null);
+      spans.push({ col: c, start: sql.length, end: sql.length + text.length });
+      sql += text;
+    });
+    if (!given.length)
+      sql =
+        dialect === "mysql"
+          ? `INSERT INTO ${table} () VALUES ()`
+          : `INSERT INTO ${table} DEFAULT VALUES`;
+    else sql += ")";
+    out.push({ kind: "insert", row: set.rows.length + i, sql, cells: spans });
   });
   return out;
 }
