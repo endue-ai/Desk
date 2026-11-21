@@ -29,12 +29,18 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   `sqlite:`), and its URI copied back without the password.
 - A connection has a group and a colour, an environment tag (production draws a band at the top of the page)
   and can be read-only.
-- Passwords are never kept: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else the person types one
-  for the session.
+- Passwords are never kept with a connection: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else
+  the person types one for the session. A PostgreSQL connection can have the OS keychain remember it (ADR 0311):
+  the choice in the form and in the password prompt keeps a typed password once it works, or a URI's on Save,
+  through the desk, which never hands it back; a session signs in with it by `passwordRef`, so no prompt comes
+  after a restart. The connection's line says `keychain`; Database: forget the remembered password, turning the
+  choice off, changing the server or user, or removing the connection forgets it. Disconnect leaves it
+  (`keychain.js`, `engines/pg-session.js`).
 - A SQLite file (`*.sqlite`, `*.sqlite3`, `*.db3`) opened on the desk or dropped on the page opens as a
   connection, added the first time.
 
-Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, `engines/`.
+Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.js`, `run.js`, `engines/`,
+`features/keychain/`.
 
 ## Explorer
 
@@ -58,8 +64,9 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the ER diagram of a
   schema (of the tables the filter keeps) or of a table and its neighbours, `m` opens the maintenance form of
-  a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `n`, `e` and
-  Delete add, change and remove a connection, `u` adds one from a URI.
+  a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `f` searches
+  a connection's, schema's or table's values (Value search below), `n`, `e` and Delete add, change and remove
+  a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
@@ -211,6 +218,22 @@ Modules: `edits.js`, `edit/` (`cells.js`, `duplicate.js`, `history.js`, `paste-t
 `view-cell.js`, `cell-editors/` (`resolve.js`, `pg-types.js`, `values.js`, `panel.js`, one module per kind),
 `grid/paste.js`, `grid/paste-worker.js`, `features/cell-values/`, `features/paste/`.
 
+## Foreign keys
+
+- On PostgreSQL, a foreign key's cells in a table's view or a console's plain SELECT of one table are links,
+  their title saying where they point (ADR 0322). `g` or Mod+click (the cell's menu, Database: go to the row
+  this key points at) opens the referenced table's view under one `=` quick filter per key column, its typed
+  WHERE cleared; a NULL, or a key column missing from the result, is said instead.
+- `r` (Database: show the rows that point at this row) lists the tables whose keys point at the row, counted
+  in one run when asked, and opens one filtered the same way. `b` (Database: go back to where the key was
+  followed from) shows the view as it was: WHERE, order, sort keys, filters and page; 50 steps are kept.
+- Enter or F2 on an editable key cell (Database: pick the key from the referenced table) searches the
+  referenced table in the palette: 50 rows a page by key with its first text column, More rows, typed text
+  searched on the server, and the text as it is for a key of one column. The whole key is one pending step.
+- Keys come from the schema cache when it holds the table's schema, else from one read of `pg_constraint`.
+
+Modules: `links/`, `features/links/`.
+
 ## Import and export
 
 - Export a result to `~/Downloads` in any copy format, as `<table>-<time>.<extension>` so it never overwrites
@@ -299,6 +322,10 @@ Modules: `features/diagram/`, `schema/diagram.js`.
 
 Modules: `features/maintenance/`.
 
+## Value search
+
+Looking for a value across a connection's tables, with its limits: [`search.md`](search.md).
+
 ## Routines
 
 - A form per signature of a PostgreSQL function or procedure, opened from the explorer (`x` on its row under
@@ -345,6 +372,7 @@ Modules: `features/backup/`.
   1000 at most) are registered with an argument schema as agents' tools (ADR 0088); the first two only read.
 - An agent's write runs only after the person says yes, whatever the connection's tag and the `confirm`
   setting; a read-only connection refuses it, and an agent is never shown a password prompt.
+- `.search-data` answers where a value is in a connection's tables, read-only under the panel's limits.
 - `.paste` pastes text into the grid on screen as pending changes, under the same refusals and type checks as
   the person's paste; nothing runs until the person submits.
 - `.activity` answers a connection's sessions and who waits for whom, and only reads; `.cancel-session` and

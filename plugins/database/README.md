@@ -1,15 +1,15 @@
 # plugins/database
 
 `endue.database`, a client for PostgreSQL, MySQL / MariaDB and SQLite, in the community folder format and on the
-public SDK only. PostgreSQL runs on the desk core's sessions (`db.*`, ADR 0281); MySQL / MariaDB and SQLite run
-their own client by `proc.spawn`, never a shell, in a mode that cannot reach past the database (ADR 0038). It
-never keeps a password. Its features and modules: [`docs/features.md`](docs/features.md) (a new one adds a line).
+public SDK only. PostgreSQL runs on the desk core's sessions (`db.*`, ADR 0281); the others run their own client by
+`proc.spawn`, never a shell, in a mode that cannot reach past the database (ADR 0038). It keeps no password (asked,
+the desk keeps a PostgreSQL one in the OS keychain, ADR 0311). Features: [`docs/features.md`](docs/features.md).
 
 `Mod+Shift+B` opens it; every operation is a command `endue.database.*` (`plugin.json`), and
-`endue.database.connections`, `.schema`, `.query`, `.activity`, `.cancel-session`, `.end-session`,
-`.maintenance`, `.routine`, `.paste` and the objects feature's commands serve agents (ADR 0088; the cancel,
-the end, maintenance, a routine's write and the objects' changes reach the server only after the person's
-yes, ADR 0290, ADR 0293, ADR 0312; a paste stays pending until the person submits).
+`endue.database.connections`, `.schema`, `.query`, `.search-data`, `.activity`, `.cancel-session`,
+`.end-session`, `.maintenance`, `.routine`, `.paste` and the objects feature's commands serve agents (ADR
+0088; the cancel, the end, maintenance, a routine's write and the objects' changes reach the server only
+after the person's yes, ADR 0290, ADR 0293, ADR 0312; a paste stays pending until the person submits).
 
 ## Permissions
 
@@ -28,7 +28,7 @@ path by a case-sensitive pattern under one root: only `*` covers a program a set
 | `fs:read` (`${home}/.endue/database/**`) | A console's text past the store's 64 KiB, kept whole in the plugin's own folder (`console-text.js`) |
 | `fs:write` (`${home}/.endue/database/**`) | Writing that text there, and the entries a restore chose for `pg_restore --use-list` |
 | `proc:spawn` (`*`) | The client a setting (`endue.database.mysql`, `.sqlite3`, `.pg-dump`, `.pg-restore`) names by another name or a full path (`run.js`): that program is asked for at its first run |
-| `db:connect` (`*`) | A PostgreSQL session on a connection's host and port (`engines/pg-session.js`, ADR 0281): each server is asked for at its first run; agents never hold one, they go through the plugin's commands |
+| `db:connect` (`*`) | A PostgreSQL session on a connection's host and port (`engines/pg-session.js`, ADR 0281): each server is asked for at its first run; agents never hold one, they go through the plugin's commands. It also lets the plugin keep that server's password in the OS keychain (`keychain.js`, ADR 0311) |
 
 ## Tests
 

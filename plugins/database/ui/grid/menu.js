@@ -1,6 +1,7 @@
 // The cell's menu (f in the grid, the context menu key or a right click): the quick filters for its
 // value, then what can be done with its column (sort by it next, hide, pin, fit, show a hidden one,
-// reset), and on a result that can change with its rows (duplicate, fill down: PG-43). It scrolls
+// reset), on a result that can change with its rows (duplicate, fill down: PG-43), and a foreign
+// key's ways (PG-41): to the row a key cell points at, to the rows that point at this one. It scrolls
 // when the page is too short for it.
 // A <desk-menu>, so arrows, Enter and Escape work in it; the grid gets its focus back when it closes.
 
@@ -10,7 +11,11 @@ import { menuLabel, OPS, WITH_VALUE } from "./filters.js";
 /**
  * @typedef {HTMLElement & { open?: boolean, show?(anchor: HTMLElement): void, close?(): void }} Menu
  *   A <desk-menu>; a plain element where it is not defined (the unit tests' jsdom).
- * @typedef {{ value: string | null, numeric: boolean, pinned: boolean, sortable: boolean, hidden: number, editable?: boolean }} Of
+ * @typedef {{
+ *   value: string | null, numeric: boolean, pinned: boolean, sortable: boolean, hidden: number,
+ *   editable?: boolean, link?: boolean, referenced?: boolean,
+ * }} Of
+ *   `link`: the cell is a foreign key's; `referenced`: keys point at the result's table.
  * @typedef {{ filter(op: string): void, column(action: string): void, closed(): void }} MenuActs
  */
 
@@ -29,6 +34,8 @@ const ROWS = [
   ["duplicateRows", "Duplicate the selected rows (D)"],
   ["fillDown", 'Fill down (")'],
 ];
+const FOLLOW = ["followKey", "Go to the row it points at (g)"];
+const REFERENCING = ["referencingRows", "Rows that point at this row (r)"];
 
 /**
  * @param {Document} doc
@@ -44,6 +51,7 @@ export function createCellMenu(doc, home, acts) {
     if (item.dataset.filter) acts.filter(item.dataset.filter);
     else if (item.dataset.column) acts.column(item.dataset.column);
     else if (item.dataset.row) acts.column(item.dataset.row);
+    else if (item.dataset.link) acts.column(item.dataset.link);
     if (!menu.show) menu.hidden = true;
   });
   menu.addEventListener("close", () => acts.closed());
@@ -84,7 +92,12 @@ export function createCellMenu(doc, home, acts) {
             ),
           ]
         : [];
-      menu.replaceChildren(...items, el(doc, "div", { role: "separator" }), ...column, ...rows);
+      const ways = [of.link ? FOLLOW : null, of.referenced ? REFERENCING : null].flatMap((way) =>
+        way ? [el(doc, "div", { ...ITEM, "data-link": way[0] ?? "" }, way[1] ?? "")] : [],
+      );
+      const links = ways.length ? [el(doc, "div", { role: "separator" }), ...ways] : [];
+      const parts = [...items, el(doc, "div", { role: "separator" }), ...column, ...rows, ...links];
+      menu.replaceChildren(...parts);
       if (menu.show) menu.show(anchor);
       else menu.hidden = false;
       if (at) {

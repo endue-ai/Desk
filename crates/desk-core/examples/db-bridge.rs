@@ -6,7 +6,8 @@
 //! who says yes to the plugin's ask, so the core's grant check still runs on every call. Requests
 //! are served on threads of their own, so a `db.cancel` reaches a statement that runs. The core's
 //! home is the second argument (its `.pgpass` is the password file), else a fresh folder under the
-//! temp folder, removed at the end. It ends when standard input does.
+//! temp folder, removed at the end. Passwords kept with `db.passwords.*` (ADR 0311) live in an
+//! in-memory keychain for as long as it runs. It ends when standard input does.
 
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
@@ -14,6 +15,7 @@ use std::sync::{Arc, Mutex};
 
 use desk_bridge::{BridgeRequest, Permission};
 use desk_core::{Core, Roots};
+use desk_sys::keychain::fake::FakeKeychain;
 use serde_json::json;
 
 fn main() {
@@ -26,7 +28,10 @@ fn main() {
         std::env::temp_dir().join(name)
     });
     std::fs::create_dir_all(&home).expect("the core's home");
-    let core = Arc::new(Core::new(Roots { home: home.clone() }));
+    let keychain = Arc::new(FakeKeychain::new());
+    let core = Core::new(Roots { home: home.clone() })
+        .with_db_passwords(Some(keychain), Some(home.join("db-passwords.json")));
+    let core = Arc::new(core);
 
     let out = Arc::new(Mutex::new(std::io::stdout()));
     let say = {

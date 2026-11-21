@@ -8,7 +8,8 @@
 // (objects-fixture.ts), one whose server answers the server overview (overview-fixture.ts), one
 // whose server answers the schema cache with a small store and a schema of 500 tables and 1,000
 // foreign keys for the ER diagram (diagram-fixture.ts), the routine forms' functions and
-// procedures on every PostgreSQL connection (routine-fixture.ts), and fs.* over a folder in memory
+// procedures on every PostgreSQL connection (routine-fixture.ts), one whose server answers the
+// value search over two schemas of tables (search-fixture.ts), and fs.* over a folder in memory
 // with one .sql file (`window.__files`, what saves and exports wrote). dialog.save answers a place
 // in ~/Pictures for an image and the backup's place otherwise; a backup's save and open dialogs,
 // and the scripted pg_dump and pg_restore, are backup-fixture.ts's. Never shipped.
@@ -42,6 +43,7 @@ import {
   overviewServer,
 } from "../../../../plugins/database/tests/overview-fixture";
 import { routineServer } from "../../../../plugins/database/tests/routine-fixture";
+import { SEARCH_CONNECTION, searchServer } from "../../../../plugins/database/tests/search-fixture";
 import { tableDesignServer } from "../../../../plugins/database/tests/table-design-fixture";
 import "../../src/desk.css";
 import { browserCore, memoryStore } from "../../src/bridge/core";
@@ -94,24 +96,29 @@ const core = browserCore({
       ACTIVITY_CONNECTION,
       OVERVIEW_CONNECTION,
       DIAGRAM_CONNECTION,
+      SEARCH_CONNECTION,
     ],
     // The .sql file runs on the fixture connection, so opening it asks for none.
     "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
   }),
   handlers: {
     ...procs,
-    // The diagram's connection answers first, by its database; the table form, the routine forms
-    // and the overview answer their own statements exactly, then the maintenance form its own and
-    // the objects feature its own, before the activity view's looser matches.
+    // The diagram's connection and the value search's answer first, each by its database; the
+    // table form, the routine forms and the overview answer their own statements exactly, then the
+    // maintenance form its own and the objects feature its own, before the activity view's looser
+    // matches.
     ...dbHandlers(
       diagramServer(
-        tableDesignServer(
-          routineServer(
-            overviewServer(
-              maintenanceServer(objectsServer(activityServer(fixtureScript).script).script).script,
-            ),
+        searchServer(
+          tableDesignServer(
+            routineServer(
+              overviewServer(
+                maintenanceServer(objectsServer(activityServer(fixtureScript).script).script)
+                  .script,
+              ),
+            ).script,
           ).script,
-        ).script,
+        ),
       ),
       (event) => emit(event),
     ),

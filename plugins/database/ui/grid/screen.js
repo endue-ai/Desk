@@ -37,7 +37,8 @@ const OVERSCAN = 10;
 /**
  * @param {Document} doc
  * @param {GridState} st
- * @param {{ found(value: string | null): boolean, sortKeys(): SortKey[] }} hooks
+ * @param {{ found(value: string | null): boolean, sortKeys(): SortKey[], link?(col: number): string | undefined }} hooks
+ *   `link` is a result column's link title (a foreign key's, PG-41), undefined for none.
  */
 export function createScreen(doc, st, hooks) {
   const scroller = el(doc, "div", { class: "scroller" });
@@ -184,6 +185,7 @@ export function createScreen(doc, st, hooks) {
         number,
         found,
         record,
+        link: (r, c) => hooks.link?.(columnAt(st.record ? r : c)),
       }),
     );
   };
