@@ -21,7 +21,11 @@ the top centre, one line until it is pointed at or focused, then the whole of it
 While endue is not in front, a notice that shows also goes to the OS's notifications (ADR 0240),
 unless the island already shows it; a click on it brings the desk forward and runs its first
 action or opens it.
-Commands: `desk.notify.dismiss`, `.dnd`, `.history` (in the palette when it is on), `.clear`.
+The notification centre holds the history (#307): a bell right after the status line counts what
+arrived since it was last open, and it or Mod+Shift+N opens a panel of them, Today and Earlier,
+each with its plugin, time, actions and Dismiss, with Clear all and do not disturb in its header.
+Commands: `desk.notify.dismiss`, `.dnd`, `.history` (opens and closes the centre; `{ "show": false }`
+only answers it), `.clear`.
 
 ```bash
 cargo run -p desk-cli -- plugin validate plugins/notify
