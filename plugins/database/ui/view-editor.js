@@ -4,8 +4,9 @@
 // column selection (Alt+drag), comment and indent toggles, and an undo history per console: each
 // console's editor state (text, history, selection, folds, scroll) is kept while the plugin runs.
 // The console's textarea stays the handle the surface holds (editor/facade.js). The controller
-// answers what to offer and runs; this only draws and edits.
+// answers what to offer and runs; this only draws and edits. SQL problems are diagnose/'s.
 
+import { sqlProblems } from "./diagnose/editor.js";
 import { sqlCompletion } from "./editor/completion.js";
 import { attachFacade, textOf } from "./editor/facade.js";
 import { editorKeymap } from "./editor/keymap.js";
@@ -63,6 +64,7 @@ export function diff(/** @type {string} */ before, /** @type {string} */ after) 
 export function createEditor(doc, { box, editor, layer, list }, act, running) {
   const dialect = new Compartment();
   const readOnly = new Compartment();
+  const problems = sqlProblems(act);
   const fixed = [
     sqlLanguage,
     history(),
@@ -86,6 +88,7 @@ export function createEditor(doc, { box, editor, layer, list }, act, running) {
     }),
     findAndReplace(),
     sqlCompletion(act),
+    problems.extension,
     editorKeymap((action) => act(action), running),
     EditorView.updateListener.of((update) => {
       if (!update.docChanged) return;
@@ -165,6 +168,13 @@ export function createEditor(doc, { box, editor, layer, list }, act, running) {
     },
     repaint: () => view.requestMeasure(),
     close: () => closeCompletion(view),
+    /** Step through the SQL problems or list them; false when this editor has none to check. */
+    problems: (/** @type {"list" | "next" | "previous"} */ what) => problems.step(view, what),
+    /** What the problems are checked against may have changed (the schema cache, a setting). */
+    recheck: () => problems.recheck(view),
+    /** A run of the console shown: the server's answers win over the check. */
+    ran: (/** @type {import("./execute.js").Execution} */ execution) =>
+      problems.ran(view, String(shownKey ?? ""), execution),
   };
 }
 

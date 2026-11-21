@@ -126,29 +126,9 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 `console-run.js`, `features/consoles/`, `execute.js`, `history.js`, `tools.js`, `sql/`, `editor/`,
 `view-editor.js`.
 
-## Format SQL
+## Format SQL and SQL problems
 
-- `Mod+Shift+F` and Database: format the SQL lay out the selection, else the whole console; Database:
-  format the statement at the caret the selection, else that statement. Only space and the case of
-  keywords change.
-- PostgreSQL is laid out from its own scanner and parse tree, in the parse worker (ADR 0292): each clause
-  on its line, a list one item a line when it does not fit, conditions broken at AND and OR, joins on
-  their lines, subqueries, CASE and brackets indented when they break. Comments stay where they were, a
-  statement a line apart. Each laid-out statement is parsed again, and kept as written unless its tree is
-  the same. A statement that does not parse, or a routine with a BEGIN ATOMIC body, is left as written,
-  and the status line says which.
-- The style is eight settings: `format-keyword-case` (upper, lower, preserve; a keyword the grammar reads
-  as a name keeps its spelling, and a type is written in lower case unless preserve), `format-indent`
-  (1 to 8), `format-line-width` (40 to 240), `format-comma` (last, first), `format-and-or` (before, after),
-  `format-joins` (flat, indented), `format-one-line` (clause, statement, item) and `format-lists` (indent,
-  align). A change applies at the next Format, without a restart.
-- MySQL and SQLite keep the format that reads tokens alone: each clause on its line, the select list one item
-  a line, reserved words in capitals, by none of the settings.
-- `format-on-save` (off by default): Save lays a `.sql` file's console out before it writes the file, by
-  the format of the file's connection, and says a statement it left as written; a file on no connection
-  yet is written as typed.
-
-Modules: `sql/layout/`, `console-run.js`, `console-files.js`.
+How the console lays SQL out and underlines what the server would refuse: [`editor.md`](editor.md).
 
 ## Results
 
