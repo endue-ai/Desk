@@ -2,7 +2,7 @@
 // comment, drop (what depends on it listed first, CASCADE only when chosen), truncate, refresh a
 // materialized view, enable or disable a trigger, edit a view's, a materialized view's, a
 // routine's or a trigger function's source in a console and apply it, and generate SQL into a
-// console. Each from a row (m or a right click for its menu, F2 rename, s its source) or a command
+// console. Each from a row (o or a right click for its menu, F2 rename, s its source) or a command
 // with arguments, which agents get too; every one shows its exact script first and runs it only on
 // the person's answer (ADR 0312). kinds.js says what each engine's kinds take. No DOM here.
 

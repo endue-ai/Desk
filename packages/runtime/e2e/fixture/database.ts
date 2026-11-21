@@ -1,11 +1,12 @@
 // Test page: endue.database (plugins/database) over the desk.* policies on the browser stub, with a
 // saved SQLite connection and proc.spawn answered by the plugin's scripted sqlite3 over a fixture
-// database (plugins/database/tests/fixtures.ts: two tables, people and orders), a saved PostgreSQL
-// connection whose scripted psql has one table of typed columns (items, fixtures-pg.ts), one whose
-// scripted psql answers the activity view (activity-fixture.ts) and EXPLAIN with fixture plans
-// (fixture-plans.ts), the reads and DDL of the explorer's operations on objects (objects-fixture.ts),
-// and fs.* over a folder in memory with one .sql file (`window.__files`, what saves wrote). Never
-// shipped.
+// database (plugins/database/tests/fixtures.ts: people, orders, and staff with a team), a saved
+// PostgreSQL connection whose scripted psql has one table of typed columns (items, fixtures-pg.ts),
+// one whose scripted psql answers the maintenance form (maintenance-fixture.ts), the activity view
+// (activity-fixture.ts), EXPLAIN with fixture plans (fixture-plans.ts) and the reads and DDL of the
+// explorer's operations on objects (objects-fixture.ts), one whose scripted psql answers the server
+// overview (overview-fixture.ts), and fs.* over a folder in memory with one .sql file
+// (`window.__files`, what saves wrote). Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -23,7 +24,12 @@ import {
   fixtureScript,
   procHandlers,
 } from "../../../../plugins/database/tests/fixtures";
+import { maintenanceServer } from "../../../../plugins/database/tests/maintenance-fixture";
 import { objectsServer } from "../../../../plugins/database/tests/objects-fixture";
+import {
+  OVERVIEW_CONNECTION,
+  overviewServer,
+} from "../../../../plugins/database/tests/overview-fixture";
 import "../../src/desk.css";
 import { browserCore, memoryStore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
@@ -62,13 +68,23 @@ const clock = new ManualClock();
 const core = browserCore({
   manifests: [...policies, databaseManifest as PluginManifest],
   store: memoryStore({
-    connections: [FIXTURE_CONNECTION, FIXTURE_PG_CONNECTION, ACTIVITY_CONNECTION],
+    connections: [
+      FIXTURE_CONNECTION,
+      FIXTURE_PG_CONNECTION,
+      ACTIVITY_CONNECTION,
+      OVERVIEW_CONNECTION,
+    ],
     // The .sql file runs on the fixture connection, so opening it asks for none.
     "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
   }),
   handlers: {
-    ...procHandlers(objectsServer(activityServer(fixtureScript).script).script, (event) =>
-      emit(event),
+    // The overview answers its own statements exactly, then the maintenance form its own and the
+    // objects feature its own, before the activity view's looser matches.
+    ...procHandlers(
+      overviewServer(
+        maintenanceServer(objectsServer(activityServer(fixtureScript).script).script).script,
+      ),
+      (event) => emit(event),
     ),
     ...fsHandlers,
   },

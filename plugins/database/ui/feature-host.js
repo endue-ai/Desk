@@ -35,6 +35,7 @@
  *   tools: ReturnType<typeof import("./tools.js").createTools>,
  *   execute: import("./catalog.js").Execute,
  *   settings(): import("./settings.js").Settings,
+ *   onSettings(listener: (settings: import("./settings.js").Settings) => void): () => void,
  *   pick: import("./ask.js").Pick,
  *   confirm(title: string, reasons: string[]): Promise<boolean>,
  *   say(text: string): void,
@@ -44,6 +45,8 @@
  * }} Deps
  *   `execute` runs SQL under the read-only, production and agent guards; every write goes through
  *   it. `dialog` shows a feature's dialog and resolves with its answer (undefined: cancelled).
+ *   `onSettings` calls its listener with the settings after each change while the plugin runs, until
+ *   the function it returns is called.
  * @typedef {{
  *   id: string,
  *   commands?(deps: Deps): Record<string, (args: Record<string, any>) => unknown>,

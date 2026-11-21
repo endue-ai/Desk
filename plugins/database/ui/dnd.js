@@ -31,7 +31,7 @@ export const ACCEPTS = ["desk/paths", "desk/text", "text/plain"];
  * @param {{
  *   current(): Console | null,
  *   connection(id: string): Connection | undefined,
- *   selection(): { sorted?: (string | null)[][], rows?: number[], columns?: number[] } | undefined,
+ *   selection(): { sorted?: (string | null)[][], rows?: number[], columns?: number[], visible?: number[] } | undefined,
  * }} deps
  */
 export function createDrags(deps) {
@@ -56,7 +56,8 @@ export function createDrags(deps) {
           : [picked.sorted[row]];
       if (rows.length === 0 || rows.some((r) => !r)) return undefined;
       const full = /** @type {(string | null)[][]} */ (rows);
-      const columns = inBlock || all;
+      // Outside the block a row goes with the columns on screen, in their order.
+      const columns = inBlock || picked.visible || all;
       const conn = deps.connection(shown.connection);
       const target = shown.edit?.target;
       const table = shown.table ?? (target ? { schema: target.schema, name: target.name } : null);

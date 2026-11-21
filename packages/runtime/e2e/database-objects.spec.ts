@@ -2,7 +2,7 @@ import { expect, type Frame, type Page, test } from "@playwright/test";
 
 // The explorer's operations on objects in endue.database (plugins/database/ui/features/objects/) on
 // the fixture's scripted PostgreSQL connection `fixture-pg` (the shop of pg-catalog.ts, answered by
-// objects-fixture.ts): a table's menu opened with `m`, its drop dialog listing what depends on it
+// objects-fixture.ts): a table's menu opened with `o`, its drop dialog listing what depends on it
 // with CASCADE a choice of its own that rewrites the script, and a view's source opened with `s` in
 // a console of its own and applied after its script is shown. A desk command stands in for the
 // palette: it records each title and answers the menu with Drop.
@@ -57,12 +57,12 @@ async function reach(page: Page, frame: Frame, ...labels: string[]) {
   }
 }
 
-test("m opens a table's menu; its drop lists what depends on it and CASCADE rewrites the script", async ({
+test("o opens a table's menu; its drop lists what depends on it and CASCADE rewrites the script", async ({
   page,
 }) => {
   const frame = await open(page);
   await reach(page, frame, "fixture-pg", "public", "Tables", "orders");
-  await page.keyboard.press("m");
+  await page.keyboard.press("o");
   const dialog = frame.locator("form.object-operation");
   await expect(dialog).toBeVisible();
   expect(await page.evaluate(() => window.__desk.commands.at(-1))).toBe(
