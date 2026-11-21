@@ -930,7 +930,7 @@ pub struct PackCommand {
     pub args: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
-/// One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them.
+/// One permission with its scope. Plugin manifests declare these, and a plugin is asked for, granted and allowed only what its declarations cover (ADR 0260); bridge calls carry the one that covers them.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Permission {
@@ -1268,13 +1268,13 @@ pub enum ShellScheme {
     Mailto,
 }
 
-/// An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.
+/// An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments. In a manifest's declaration /** covers every path the person may be asked for at run time, under ~ and on Windows drives too, and no install grants a declaration that holds it (ADR 0260).
 pub type PathPattern = String;
 
-/// A host name, optionally with a port, or *. followed by a domain to cover its subdomains.
+/// A host name, optionally with a port, or *. followed by a domain to cover its subdomains. * alone, without a port, is for a manifest's declaration: any host the person may be asked for at run time, and no install grants a declaration that holds it. A plugin is never asked for or granted a scope that holds it (undeclared), and in a grant or an allowlist it matches no host (ADR 0260).
 pub type HostPattern = String;
 
-/// A program name looked up on PATH, or an absolute path. No arguments and no whitespace.
+/// A program name looked up on PATH, or an absolute path. No arguments and no whitespace. * is for a manifest's declaration: any program the person may be asked for at run time, and no install grants a declaration that holds it. A plugin is never asked for or granted a scope that holds it (undeclared), and in a grant or an allowlist it matches no program (ADR 0260).
 pub type Command = String;
 
 /// A command id, or a pattern in which * matches any run of characters, dots included: * covers every command, eris.* every command under eris.
@@ -8186,7 +8186,7 @@ pub enum GrantDuration {
     Always,
 }
 
-/// Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant, unless the caller is an agent and the grant lies outside its allowlist.
+/// Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant, unless the caller is an agent and the grant lies outside its allowlist, or a plugin and its manifest does not declare it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermRequestResult {
@@ -8197,13 +8197,15 @@ pub struct PermRequestResult {
     pub reason: Option<RefusalReason>,
 }
 
-/// Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. outside-allowlist: the caller is an agent (agent:<id>) and no permission in agents.<id>.allow of init.yaml covers the request; an agent is never granted anything outside a non-empty allowlist (ADR 0072). Absent from a result means the person (or the core's own prompter) refused this request.
+/// Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. outside-allowlist: the caller is an agent (agent:<id>) and no permission in agents.<id>.allow of init.yaml covers the request; an agent is never granted anything outside a non-empty allowlist (ADR 0072). undeclared: the caller is a plugin and no permission its manifest declares covers the request, or the request itself holds a * host or command; a plugin is never asked for, granted or allowed anything its manifest does not declare (ADR 0260). Absent from a result means the person (or the core's own prompter) refused this request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum RefusalReason {
     #[serde(rename = "refused-earlier")]
     RefusedEarlier,
     #[serde(rename = "outside-allowlist")]
     OutsideAllowlist,
+    #[serde(rename = "undeclared")]
+    Undeclared,
 }
 
 /// List the caller's current grants.
@@ -8263,7 +8265,7 @@ pub struct PermGrantRequest {
     pub params: PermGrantParams,
 }
 
-/// Parameters of perm.grant. Needs perm:manage. A lasting grant of the caller's (session or always) that already covers the permission is answered as it is, without a new one. An agent (agent:<id>) is never granted anything outside its allowlist: that is permission_denied.
+/// Parameters of perm.grant. Needs perm:manage. A lasting grant of the caller's (session or always) that already covers the permission is answered as it is, without a new one. An agent (agent:<id>) is never granted anything outside its allowlist, nor a plugin anything its manifest does not declare: that is permission_denied.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermGrantParams {
