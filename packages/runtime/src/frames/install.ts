@@ -88,7 +88,8 @@ export function installFrames(
   const { surfaces, win, shortcuts } = ctx;
   const { settings } = ctx.hub;
   const { windows } = deps;
-  // A plugin's captures end with its page: a window closed, a frame reloaded, unloaded or stopped.
+  // A plugin's captures end with its page: a window closed, a frame reloaded (by the runtime or by
+  // the shell, `loadedAgain`), unloaded or stopped.
   const mic = ctx.bridge ? pluginMic(ctx.bridge) : undefined;
   const timers = deps.timers ?? realTimers;
   const specs = new Map<string, SurfaceSpec>();
@@ -191,6 +192,8 @@ export function installFrames(
     asleep: (id) => surfaces.unloaded(id) && watch.responses.state(id) !== "stopped",
     // A stopped frame loads again; a sleeping one wakes now, as a press on it does (#54).
     reload: (id) => watch.responses.reload(id) || (responses.asleep(id) && frames.wake(id)),
+    // The shell loaded the page again by itself (#378): nothing of the old one is left to stop.
+    loadedAgain: (id) => mic?.gone(id),
   };
   offs.push(
     defineFrameCommands(ctx.hub.commands, responses, () => ctx.language?.() ?? deps.lang ?? "ko"),
