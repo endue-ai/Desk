@@ -19,7 +19,8 @@ pub(super) fn notice(state: &Eris) {
     if !state.ready.load(Relaxed) || state.noticed.swap(true, Relaxed) {
         return;
     }
-    let (title, body) = shortcut::taken(&held.shortcut, MAC, &why);
+    let language = crate::language::in_force();
+    let (title, body) = shortcut::taken(language, &held.shortcut, MAC, &why);
     let request = json!({
         "id": 0,
         "method": "ui.notify",

@@ -5,10 +5,13 @@
 //! `endue://` links (#310, ADR 0244) ride the same queue, in their place among the files: a link the
 //! v1 grammar reads is queued in its canonical form, one it refuses as [`REFUSED`] and the sentence
 //! why, so the page says so and runs nothing. The page tells them from paths by the `endue:` scheme.
+//! The shell's own reason (a file link's file is not there) is in the desk's language (ADR 0276).
 
 use std::sync::Mutex;
 
 use url::Url;
+
+use crate::words::{Language, text};
 
 /// The event that tells the main window's page there are paths to take.
 pub const EVENT: &str = "desk://open-files";
@@ -43,11 +46,16 @@ pub fn link_entry(text: &str) -> String {
     match desk_link::parse(text) {
         // A file link names a file that is there, or nobody is asked about it (#310).
         Ok(desk_link::Link::Open { path }) if !std::path::Path::new(&path).exists() => {
-            refused("The file this link names is not there.")
+            refused(&file_gone(crate::language::in_force()))
         }
         Ok(link) => link.to_string(),
         Err(why) => refused(&why.0),
     }
+}
+
+/// Why a file link is refused when its file is not there, in `language`.
+fn file_gone(language: Language) -> String {
+    text(language, "desk.links.fileGone")
 }
 
 /// What follows `--single-argument` on a raw Windows command line, exactly as it was written
@@ -215,6 +223,10 @@ mod tests {
         assert!(link_entry(&link).starts_with(REFUSED));
         let gone = desk_link::encode("The file this link names is not there.");
         assert_eq!(link_entry(&link), format!("{REFUSED}{gone}"));
+        assert_eq!(
+            file_gone(Language::Ko),
+            "이 링크가 가리키는 파일이 없습니다."
+        );
     }
 
     #[test]
