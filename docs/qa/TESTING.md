@@ -303,6 +303,16 @@ to 5: `sway-scene` 0 of 2309 and 0 of 2304 frames (337 of 1352 on `main`), `sway
 the sway 56.9 frames a second, `sway-smooth` 13.6 and 17.1 % (known, #249); the loop failed in one run of
 ten, a plugin page held at one size until the stall watch loaded it again (ADR 0210's fault).
 
+#345 (ADR 0279, proposed) looked for a step before that reload. On `main` a6a50ba9 the loop alone
+(`runLoop` and `analyzeLoop`, the Terminal snapped right first, three desks of ten loops an arm on the
+reference Mac at a load of 15 to 80) stopped a page in 13 of 120 loops, any page, not the Terminal's
+alone. A stuck page's view gets no begin frame from CEF again; one stuck at its size comes back when
+its browser hears its screen (the stall watch's `asked` step), one stuck off its size comes back only
+when loaded again, and fifteen other calls to its browser did not bring it back. A hide that reaches
+CEF only a second after the surface is hidden (2 of 30), a view with a size in flight kept shown to
+CEF (3 of 30), every window kept live (2 of 30) and the catch-up off (2 of 30) did not lower the
+rate. ADR 0279 proposes listing `loop` under `sometimes` with #345; `e2e/perf/motion.json` is as it was.
+
 ## Usability checks
 
 These checks cover the usability changes merged in November 2026. Linked PRs retain the detailed
