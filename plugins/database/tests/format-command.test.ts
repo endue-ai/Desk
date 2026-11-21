@@ -1,12 +1,13 @@
 // Format SQL in a console (ADR 0291): a PostgreSQL console's selection, the statement at the caret
 // or the whole console laid out in the parse worker by the format settings, which it follows while
 // the plugin runs; what it left as written is said. MySQL and SQLite keep the word-by-word format.
+// With format on save, Save lays a bound .sql file's console out before it writes the file.
 import { Worker } from "node:worker_threads";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { formatNote } from "../ui/console-run.js";
 import { PREVIEW, SAMPLE } from "../ui/features/format/index.js";
 import { provideSqlParser } from "../ui/sql/parse/client.js";
-import { mount, SAVED } from "./harness";
+import { type Handlers, mount, SAVED } from "./harness";
 
 /** startWorker for Node: the module in a worker thread, behind a page Worker's surface. */
 function threadWorker(url: URL) {
@@ -119,5 +120,74 @@ describe("Format SQL in a console", () => {
     expect(formatNote({ ...laid, left, kept: 2, refused: 1 })).toBe(
       "Nothing formatted; 2 statements that do not parse are left as written (line 3: syntax error at end of input); 2 BEGIN ATOMIC bodies are left as written; a statement is left as written: laid out, it would not read the same.",
     );
+  });
+});
+
+describe("Format on save", () => {
+  const PATH = "/work/report.sql";
+  const BUFFER = `file:${PATH}`;
+
+  /** A .sql file the desk opens on `connection`, its text typed as `text`, then saved. */
+  async function saved(text: string, connection: string, settings: Record<string, unknown> = {}) {
+    const files: Record<string, string> = { [PATH]: "select 0;\n" };
+    const writes: string[] = [];
+    const handlers: Handlers = {
+      "fs.read": ({ path }) => ({ content: files[path] ?? "", encoding: "utf8" }),
+      "fs.write": ({ path, content }) => {
+        writes.push(content);
+        files[path] = content;
+        return { bytesWritten: content.length };
+      },
+      "fs.watch": () => ({ watchId: "w-1" }),
+    };
+    const m = await mount({
+      store: { connections: SAVED },
+      settings,
+      handlers,
+      pick: ({ title }: { title: string }) => (title.includes("report.sql") ? connection : ""),
+    });
+    await m.host.command("desk.files.visit", { buffer: BUFFER, path: PATH });
+    const save = async (next: string) => {
+      m.view.text = next;
+      m.app.edited(next);
+      await m.host.command("desk.files.save", { buffer: BUFFER, path: PATH });
+      await m.settle();
+      return writes.at(-1);
+    };
+    return { m, save, first: await save(text) };
+  }
+
+  it("lays a bound .sql file's console out before Save writes it, when the person turns it on", async () => {
+    const typed = "-- a report\nselect a,b from t where x=1;\n";
+    const laid = "-- a report\nSELECT a, b\nFROM t\nWHERE x = 1;\n";
+    // Off by default: the file is written as typed.
+    expect((await saved(typed, "c-prod")).first).toBe(typed);
+    // On: the console is laid out, then written, and it is saved.
+    const { m, first, save } = await saved(typed, "c-prod", { "format-on-save": true });
+    expect(first).toBe(laid);
+    expect(m.view.text).toBe(laid);
+    expect(m.shown()).toMatchObject({ text: laid, file: { saved: laid, modified: false } });
+    // A statement that does not parse is written as typed, the others laid out, and that is said.
+    expect(await save("select   1;\nselec oops\n")).toBe("SELECT 1;\nselec oops\n");
+    expect(m.view.said.at(-1)).toBe(
+      'Formatted; a statement that does not parse is left as written (line 2: syntax error at or near "selec").',
+    );
+    // The file's own connection decides the format: SQLite keeps today's.
+    const lite = await saved("select n from numbers where n > 1", "c-lite", {
+      "format-on-save": true,
+    });
+    expect(lite.first).toBe("SELECT n\nFROM numbers\nWHERE n > 1");
+    // A file on no connection yet is written as typed.
+    expect((await saved(typed, "", { "format-on-save": true })).first).toBe(typed);
+  });
+
+  it("follows the setting while the plugin runs", async () => {
+    const { m, first, save } = await saved("select 1", "c-prod");
+    expect(first).toBe("select 1");
+    await setting(m, "format-on-save", true);
+    await setting(m, "format-keyword-case", "lower");
+    expect(await save("SELECT  2")).toBe("select 2");
+    await setting(m, "format-on-save", false);
+    expect(await save("SELECT  3")).toBe("SELECT  3");
   });
 });
