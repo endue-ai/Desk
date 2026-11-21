@@ -1,6 +1,6 @@
 // The plugin mounted for backup and restore (backup.test.ts): three PostgreSQL connections
-// (warehouse, Shop on production, locked read-only), a scripted server that says its version and
-// schemas, the dialogs, grants and files a backup and a restore touch, recorded, and the forms
+// (warehouse, Shop on production, locked read-only), a scripted server (the bridge stub's sessions)
+// that says its version and schemas, the dialogs, grants and files a backup and a restore touch, recorded, and the forms
 // answered. `held` stands in for a pg_dump that writes only when told and ends when told, or on
 // the signal named, for the log panel and Cancel.
 import type { Connection } from "../ui/engines/common.js";
@@ -68,7 +68,6 @@ export async function start(
       cancelled: false,
       paths: ["~/Backups/warehouse.dump"],
     })),
-    "perm.request": record("perm.request", () => ({ granted: true })),
     "fs.write": record("fs.write", (p: { content: string }) => ({
       bytesWritten: p.content.length,
     })),
@@ -96,11 +95,10 @@ export async function start(
     ...(options.settings ? { settings: options.settings } : {}),
     handlers,
     pick: options.pick ?? (() => "yes"),
-    script: (sql, env) => {
-      if (/server_version_num/u.test(sql)) {
-        if (options.password && env.PGPASSWORD !== options.password) return "auth";
+    ...(options.password ? { password: options.password } : {}),
+    script: (sql) => {
+      if (/^SHOW server_version_num$/u.test(sql))
         return { rows: [["server_version_num"], [options.server ?? "170006"]] };
-      }
       if (/pg_namespace/u.test(sql)) return { rows: [["nspname"], ["public"], ["sales"]] };
       return { changes: 1 };
     },
@@ -114,6 +112,13 @@ export async function start(
   });
   return { m, calls };
 }
+
+/** What the plugin asked for with perm.request, of one permission (the test host grants it). */
+export const asked = (m: Mounted, permission: string) =>
+  m.host.calls
+    .filter((c) => c.method === "perm.request")
+    .map((c) => c.params as { permission: { permission: string; paths?: string[] } })
+    .filter((p) => p.permission.permission === permission);
 
 /** A pg_dump or pg_restore that writes and ends only when told; the rest stays scripted. */
 export function held(options: { endOn?: "int" | "kill" } = {}) {

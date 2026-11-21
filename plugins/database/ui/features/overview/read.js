@@ -1,6 +1,6 @@
-// Reading a server's overview through the plugin's execute (every run under its guards, PG-01c
-// moves it): the probe first, then every section in one psql run. psql stops at a failed statement
-// (ON_ERROR_STOP), so the sections after it are read again in a run of their own and the failed
+// Reading a server's overview through the plugin's execute (every run under its guards, on the
+// core's sessions since PG-01c): the probe first, then every section in one run. A run stops at a
+// failed statement, so the sections after it are read again in a run of their own and the failed
 // one says what it could not read. Each run first sets lock_timeout for its own session, so a size
 // that waits behind another session's lock fails its section instead of the overview. No DOM.
 

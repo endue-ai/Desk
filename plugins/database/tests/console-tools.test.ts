@@ -7,6 +7,17 @@ const runs = (m: Awaited<ReturnType<typeof mount>>) =>
   m.clients.spawned.filter((s) => s.command === "sqlite3" && s.args[0] !== "--version");
 
 describe("console tools", () => {
+  it("check the clients says PostgreSQL needs no client program", async () => {
+    const m = await mount({ store: { connections: SAVED } });
+    const lines = await m.host.command("endue.database.clients");
+    expect(lines).toEqual([
+      "PostgreSQL: built into the desk, no client program needed",
+      "mysql 8.4.13 (mysql)",
+      "sqlite3 3.50.6 (sqlite)",
+    ]);
+    expect(m.clients.spawned.map((s) => s.command)).toEqual(["mysql", "sqlite3"]);
+  });
+
   it("asks for each parameter once and runs the statement with them as literals", async () => {
     const answers: Record<string, string> = { "Value for :id": "7", "Value for :name": "it's" };
     const m = await mount({

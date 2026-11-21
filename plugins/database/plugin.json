@@ -4,11 +4,11 @@
   "version": "0.2.0",
   "kind": "ui",
   "entry": "ui/index.html",
-  "description": "A client for PostgreSQL, MySQL / MariaDB and SQLite through their own command-line clients without a shell: connections, an explorer of every object kind with DDL and row counts, SQL consoles with highlighting, autocomplete, formatting and parameters, results that keep NULL apart with sorting, filtering, paging, a value viewer, a record view, copy and export, pending cell edits applied in one transaction, query plans, history and starred queries, and guards for read-only and production connections.",
+  "description": "A client for PostgreSQL on the desk's own sessions, and MySQL / MariaDB and SQLite through their own command-line clients without a shell: connections, an explorer of every object kind with DDL and row counts, SQL consoles with highlighting, autocomplete, formatting and parameters, results that keep NULL apart with sorting, filtering, paging, a value viewer, a record view, copy and export, pending cell edits applied in one transaction, query plans, history and starred queries, and guards for read-only and production connections.",
   "permissions": [
     {
       "permission": "proc:spawn",
-      "commands": ["psql", "mysql", "mariadb", "sqlite3", "pg_dump", "pg_restore"]
+      "commands": ["mysql", "mariadb", "sqlite3", "pg_dump", "pg_restore"]
     },
     {
       "permission": "fs:write",
@@ -29,7 +29,8 @@
     { "permission": "proc:spawn", "commands": ["*"] },
     { "permission": "fs:write", "paths": ["/**"] },
     { "permission": "fs:read", "paths": ["${home}/.endue/database/**"] },
-    { "permission": "fs:write", "paths": ["${home}/.endue/database/**"] }
+    { "permission": "fs:write", "paths": ["${home}/.endue/database/**"] },
+    { "permission": "db:connect", "hosts": ["*"] }
   ],
   "surfaces": [
     {
@@ -257,6 +258,501 @@
         "id": "endue.database.er-diagram",
         "title": "Database: ER diagram of a schema",
         "keywords": ["entity relationship", "foreign keys", "relations", "erd"]
+      },
+      {
+        "id": "endue.database.object-actions",
+        "title": "Database: actions on an object…",
+        "keywords": [
+          "menu",
+          "rename",
+          "drop",
+          "truncate",
+          "comment",
+          "owner",
+          "source",
+          "generate"
+        ],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.rename-object",
+        "title": "Database: rename an object",
+        "keywords": ["alter", "name", "rename to"],
+        "description": "Renames a table, view, sequence, routine, index, trigger, constraint or schema (ALTER ... RENAME TO). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "to": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The new name, written as typed in quotes."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.move-object",
+        "title": "Database: move an object to another schema",
+        "keywords": ["set schema", "alter"],
+        "description": "Moves a table, view, sequence or routine to another schema (ALTER ... SET SCHEMA; MySQL: RENAME TABLE to another database). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "to": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema it moves to."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.change-owner",
+        "title": "Database: change an object's owner",
+        "keywords": ["owner to", "alter", "role"],
+        "description": "Gives a PostgreSQL table, view, sequence, routine or schema to another role (ALTER ... OWNER TO). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "to": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The role that will own it."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.comment-object",
+        "title": "Database: comment on an object",
+        "keywords": ["comment on", "describe", "note"],
+        "description": "Sets or removes an object's comment (COMMENT ON ... IS; an empty comment removes it). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "comment": {
+              "type": "string",
+              "description": "The comment; empty removes it."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.drop-object",
+        "title": "Database: drop an object",
+        "keywords": ["delete", "remove", "cascade", "dependents"],
+        "description": "Drops an object after listing what depends on it (PostgreSQL's pg_depend); CASCADE only when asked. The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "cascade": {
+              "type": "boolean",
+              "description": "Also drop what depends on it (PostgreSQL). Off unless true."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.database.truncate-table",
+        "title": "Database: truncate a table",
+        "keywords": ["empty", "delete all rows", "restart identity", "cascade"],
+        "description": "Removes every row of a table (TRUNCATE; SQLite: DELETE FROM), with the server's row estimate shown first. The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "restartIdentity": {
+              "type": "boolean",
+              "description": "Start its sequences again (PostgreSQL)."
+            },
+            "cascade": {
+              "type": "boolean",
+              "description": "Also empty the tables whose foreign keys point at it (PostgreSQL)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.database.refresh-materialized-view",
+        "title": "Database: refresh a materialized view",
+        "keywords": ["refresh", "concurrently", "with no data"],
+        "description": "Refreshes a PostgreSQL materialized view, CONCURRENTLY when it has data and a unique index. The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "concurrently": {
+              "type": "boolean",
+              "description": "Refresh without blocking reads, where the view allows it."
+            },
+            "withNoData": {
+              "type": "boolean",
+              "description": "Empty it instead (WITH NO DATA)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.enable-trigger",
+        "title": "Database: enable or disable a trigger",
+        "keywords": ["disable trigger", "enable trigger", "alter table"],
+        "description": "Enables or disables a PostgreSQL trigger (ALTER TABLE ... ENABLE or DISABLE TRIGGER). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "true enables it, false disables it; it is toggled when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.edit-source",
+        "title": "Database: edit the source of a view, routine or trigger",
+        "keywords": [
+          "create or replace",
+          "definition",
+          "function",
+          "procedure",
+          "materialized view",
+          "trigger function"
+        ],
+        "description": "Opens the definition of a view, materialized view, function, procedure or trigger's function in a console of its own, to edit and apply.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.apply-source",
+        "title": "Database: apply the source (save the object)",
+        "keywords": ["save", "create or replace", "replace", "commit the definition"],
+        "description": "Runs the source edited in the console on screen: CREATE OR REPLACE, or the drop and create a materialized view needs, in one transaction. The person is shown the script first.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.generate-sql",
+        "title": "Database: generate SQL for an object",
+        "keywords": ["template", "select", "insert", "update", "delete", "call", "script"],
+        "description": "Writes a SELECT, INSERT, UPDATE or DELETE of a table, or a call of a routine, into its connection's console, with :name parameters; nothing runs.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "statement": {
+              "enum": ["select", "insert", "update", "delete", "call"],
+              "description": "Which statement; asked when absent and there are several."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "endue.database.activity",
@@ -650,6 +1146,43 @@
         "keywords": ["undo", "discard", "edit"]
       },
       {
+        "id": "endue.database.paste",
+        "title": "Database: paste into the grid",
+        "keywords": ["clipboard", "tsv", "csv", "spreadsheet", "cells", "rows", "edit"],
+        "description": "Pastes tab-separated text (or CSV, or one value) into the grid on screen from its caret as pending changes: rows past the last are added, each value is checked by its column's type and a bad one refuses the whole paste with its row and column. Nothing runs until the person submits.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "The text to paste; the clipboard's when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.duplicate-rows",
+        "title": "Database: duplicate the selected rows",
+        "keywords": ["copy row", "clone", "insert", "new row", "edit"]
+      },
+      {
+        "id": "endue.database.fill-down",
+        "title": "Database: fill down the selected cells",
+        "keywords": ["copy down", "repeat", "cells", "edit"]
+      },
+      {
+        "id": "endue.database.clear-cells",
+        "title": "Database: clear the selected cells to NULL",
+        "keywords": ["null", "empty", "erase", "cells", "edit"]
+      },
+      {
+        "id": "endue.database.undo-change",
+        "title": "Database: undo the last pending change",
+        "keywords": ["undo", "take back", "paste", "edit"]
+      },
+      {
         "id": "endue.database.set-default",
         "title": "Database: set the cell to DEFAULT",
         "keywords": ["default value", "edit", "cell", "reset"]
@@ -667,7 +1200,7 @@
       {
         "id": "endue.database.clients",
         "title": "Database: check the clients",
-        "keywords": ["psql", "mysql", "mariadb", "sqlite3", "install", "version"]
+        "keywords": ["postgresql", "mysql", "mariadb", "sqlite3", "install", "version"]
       },
       {
         "id": "endue.database.hide-column",
@@ -781,11 +1314,6 @@
         "kind": "boolean",
         "default": false,
         "description": "Show the system schemas in the explorer (pg_catalog, information_schema, mysql, sys ...)."
-      },
-      "endue.database.psql": {
-        "kind": "string",
-        "default": "",
-        "description": "The psql program: a name on PATH or a full path. Empty: psql. Any other program or path is asked for at its first run."
       },
       "endue.database.mysql": {
         "kind": "string",

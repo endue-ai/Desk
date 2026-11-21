@@ -1,8 +1,9 @@
 // pg_dump's and pg_restore's argument lists from the forms' options (ADR 0313): each option its own
 // argument in `--name=value` form, so no value can become another option, and no shell between.
-// The connection goes in the PG* variables psql gets (engines/postgres.js) and the password only in
-// PGPASSWORD of the spawned process's environment; the command line shown leaves it out. A path
-// under the home folder is passed as `./…` from the home folder the program starts in. Pure.
+// The connection goes in libpq's PG* variables, as the core's session gets it (engines/pg-session.js),
+// and the password only in PGPASSWORD of the spawned process's environment; the command line shown
+// leaves it out. A path under the home folder is passed as `./…` from the home folder the program
+// starts in. Pure.
 
 /**
  * @typedef {import("../../engines/common.js").Connection} Connection
@@ -225,7 +226,7 @@ export function restoreArgs(o, { path, database, list }) {
 }
 
 /**
- * The environment a program connects with: psql's PG* variables, the password only when one was
+ * The environment a program connects with: libpq's PG* variables, the password only when one was
  * typed this session (else libpq reads the person's ~/.pgpass).
  * @param {Connection} conn
  * @param {string | undefined} password

@@ -5,11 +5,14 @@
 // fails; a refresh reads again what is under a node. A PostgreSQL connection answers from its
 // schema cache (PG-06): its row says when the cache was read, or how far a pass has come, and a
 // schema the person did not choose is marked. A filter keeps the objects whose name holds it; exact
-// row counts, once counted, replace the server's estimate. The tree is a flat list of rows for the
-// view, each with its depth, so the view only draws it. No DOM.
+// row counts, once counted, replace the server's estimate. PG-50's kinds have folders of their own,
+// and a cached connection ends with Database and Server rows (schema/pg/tree.js). The tree is a flat
+// list of rows for the view, each with its depth, so the view only draws it. No DOM.
 
 import { formatCount } from "./format.js";
 import { OBJECT_FOLDERS, PART_FOLDERS, RELATIONS } from "./schema/common.js";
+import { DATABASE, SCHEMA_FOLDERS, TABLE_FOLDERS } from "./schema/pg/index.js";
+import { levelRows, objectDetail, partDetail } from "./schema/pg/tree.js";
 import { labelsOf } from "./schema-cache/view.js";
 
 /**
@@ -188,6 +191,11 @@ export function createExplorer(catalog, connections, changed) {
         });
         if (schemaOpen) schemaRows(conn, schema, schemaKey);
       }
+      if (!cache) return;
+      const levelKey = `${conn.id}${SEP}level`;
+      const level = load(`${levelKey}${SEP}objects`, () => catalog.objects(conn, DATABASE));
+      const objects = /** @type {SchemaObject[]} */ (level.items);
+      if (level.status === "ready") levelRows({ conn, key: levelKey, objects, push, filter });
     }
 
     /** A schema's folders of objects. */
@@ -202,7 +210,7 @@ export function createExplorer(catalog, connections, changed) {
         return;
       }
       const objects = /** @type {SchemaObject[]} */ (state.items);
-      for (const [label, kinds] of OBJECT_FOLDERS) {
+      for (const [label, kinds] of [...OBJECT_FOLDERS, ...SCHEMA_FOLDERS]) {
         const all = objects.filter((o) =>
           /** @type {readonly string[]} */ (kinds).includes(o.kind),
         );
@@ -241,12 +249,11 @@ export function createExplorer(catalog, connections, changed) {
           : object.rows !== null
             ? `~${formatCount(object.rows)} rows`
             : "";
-      const kind = object.kind === "table" || object.kind === "view" ? "" : object.kind;
       const open = push({
         key,
         kind: relation ? "table" : "object",
         label: object.name,
-        detail: [kind, object.detail, rowsText].filter(Boolean).join(" · "),
+        detail: objectDetail(object, rowsText),
         level: 4,
         expandable: relation,
         connection: conn.id,
@@ -305,7 +312,7 @@ export function createExplorer(catalog, connections, changed) {
         return;
       }
       const parts = /** @type {Part[]} */ (state.items);
-      for (const [label, kinds] of PART_FOLDERS) {
+      for (const [label, kinds] of [...PART_FOLDERS, ...TABLE_FOLDERS]) {
         const held = parts.filter((p) => /** @type {readonly string[]} */ (kinds).includes(p.kind));
         if (held.length === 0) continue;
         const folderKey = `${key}${SEP}p${SEP}${label}`;
@@ -325,7 +332,7 @@ export function createExplorer(catalog, connections, changed) {
             key: `${folderKey}${SEP}${part.name}`,
             kind: "part",
             label: part.name,
-            detail: part.kind === "index" || part.kind === "foreign key" ? part.detail : part.kind,
+            detail: partDetail(part),
             level: 6,
             expandable: false,
             part,

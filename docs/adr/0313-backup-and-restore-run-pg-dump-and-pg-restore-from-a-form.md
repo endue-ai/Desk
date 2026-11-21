@@ -25,20 +25,23 @@ a restore?
 
 ## Considered Options
 
-* `pg_dump` and `pg_restore` spawned by name like `psql`, from a form, in a log panel
+* `pg_dump` and `pg_restore` spawned by name as programs, from a form, in a log panel
 * SQL the plugin writes itself (`COPY` and the catalog's DDL) to back up and restore
 * Hand the command line to the terminal plugin and let the person run it
 
 ## Decision Outcome
 
-Chosen option: "`pg_dump` and `pg_restore` spawned by name like `psql`", because only they handle every
-object and format, and a form over them keeps the command visible while the plugin keeps the guards.
+Chosen option: "`pg_dump` and `pg_restore` spawned by name as programs", because only they handle every
+object and format, and a form over them keeps the command visible while the plugin keeps the guards. The
+plugin's own PostgreSQL needs no client program (its sessions are the core's, ADR 0281); these two are the
+only PostgreSQL programs it runs.
 
-* The programs: found like `psql` (`clients.js`): by name, by their own settings `endue.database.pg-dump` and
-  `endue.database.pg-restore`, or on the `path` setting. The manifest's `proc:spawn` names them, so they are
-  granted at install like the clients; a setting naming another program stays under `proc:spawn` of `*`,
-  asked at its first run. Each must be at least the server's major version (`SHOW server_version_num`), or
-  the plugin says which is needed and how to name one; older than 13 is not used.
+* The programs: found as the MySQL and SQLite clients are (`clients.js`): by name, by their own settings
+  `endue.database.pg-dump` and `endue.database.pg-restore`, on the desk's PATH, in the `path` setting's
+  folders or where libpq installs them. The manifest's `proc:spawn` names them, so they are granted at
+  install like the clients; a setting naming another program stays under `proc:spawn` of `*`, asked at its
+  first run. Each must be at least the server's major version (`SHOW server_version_num`, read on a session
+  of the core's), or the plugin says which is needed and how to name one; older than 13 is not used.
 * The connection: `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGSSLMODE` and the rest in the program's
   environment; `pg_restore` gets `--dbname=<database>`, quoted as `dbname='…'` when the name could read as a
   connection string. The password typed this session goes in `PGPASSWORD` of the spawned program's
@@ -58,7 +61,7 @@ object and format, and a form over them keeps the command visible while the plug
   the connection, the database, the host and what clean and create do, whatever the `confirm` setting. The
   commands are agents' tools (`.restore` irreversible), but an agent's arguments only fill the form: nothing
   runs until the person submits it.
-* A plain SQL file is restored as a script through run-file (PG-24), never `psql -f`; run-file refuses
+* A plain SQL file is restored as a script through run-file (PG-24) on the core's sessions; run-file refuses
   `COPY … FROM stdin`, which is why a plain backup defaults to INSERTs. pg_dump 17.6 and later write
   `\restrict` and `\unrestrict` guard lines in a plain file; the script reader reads exactly those as
   blanks, and any other backslash line is refused as before.
@@ -73,8 +76,8 @@ object and format, and a form over them keeps the command visible while the plug
 * Good, because the person sees and could copy the exact command, with no password in it
 * Good, because writes land only where a dialog named, under a grant asked for that path alone
 * Bad, because the programs must be installed and new enough; the plugin says how, but cannot ship them
-* Bad, because a plain file runs in parts through run-file, slower than `psql -f` on a large dump (about
-  300 statements a second on a local server in the live test); custom or directory suits those
+* Bad, because a plain file runs in parts through run-file, statement by statement, slower than `psql -f`
+  on a large dump; custom or directory suits those
 * Bad, because the manifest now names two more programs granted at install
 
 ### Confirmation
@@ -87,5 +90,5 @@ checksum; a read-only connection refused); `packages/runtime/e2e/database-backup
 ## More Information
 
 `plugins/database/ui/features/backup/`, `plugins/database/ui/clients.js`, `plugins/database/plugin.json`.
-Builds on ADR 0038 (no shell), ADR 0088 (agents' tools), ADR 0260 (declarations) and PG-24's run-file
-(ADR 0286).
+Builds on ADR 0038 (no shell), ADR 0088 (agents' tools), ADR 0260 (declarations), ADR 0281 (the core's
+sessions) and PG-24's run-file (ADR 0286).

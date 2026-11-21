@@ -8,14 +8,14 @@ import type { Connection } from "../ui/engines/common.js";
 import type { LogState } from "../ui/features/backup/job.js";
 import { createRunner } from "../ui/run.js";
 import { fromValues } from "../ui/settings.js";
-import { held, type Seen, start, WAREHOUSE } from "./backup-harness";
+import { asked, held, type Seen, start, WAREHOUSE } from "./backup-harness";
 
 const log = (state: unknown) => state as { backup: LogState };
 const runs = (m: { clients: { spawned: Seen[] } }, name: string) =>
   m.clients.spawned.filter((s) => s.command.endsWith(name) && s.args[0] !== "--version");
 
 describe("finding the programs", () => {
-  it("finds pg_dump like psql: by name, by its setting, on the path setting, and says how to install it when missing", async () => {
+  it("finds pg_dump by name, by its setting, on the path setting, and says how to install it when missing", async () => {
     const asked: Array<{ command: string; path?: string }> = [];
     const bridge = {
       onEvent: (listener: (event: unknown) => void) => {
@@ -107,8 +107,8 @@ describe("backing up", () => {
     expect(save?.params).toMatchObject({
       suggestedName: expect.stringMatching(/^warehouse-\d{4}-\d\d-\d\d-\d{4}\.dump$/u),
     });
-    const path = calls.find((c) => c.method === "perm.request")?.params as { permission: unknown };
-    expect(path.permission).toEqual({
+    const [path] = asked(m, "fs:write");
+    expect(path?.permission).toEqual({
       permission: "fs:write",
       paths: [expect.stringMatching(/^~\/Backups\/warehouse-/u)],
     });
@@ -208,7 +208,7 @@ describe("restoring", () => {
       },
     });
     await m.host.command("endue.database.restore", { path: "~/Backups/warehouse.dump" });
-    expect(calls.find((c) => c.method === "perm.request")?.params).toMatchObject({
+    expect(asked(m, "fs:read")[0]).toMatchObject({
       permission: { permission: "fs:read", paths: ["~/Backups/warehouse.dump"] },
     });
     expect(runs(m, "pg_restore")[0]?.args).toEqual(["--list", "./Backups/warehouse.dump"]);
@@ -319,8 +319,8 @@ describe("restoring", () => {
     });
     expect(m.view.dialogs[0]?.model).toMatchObject({ format: "plain", entries: [] });
     expect(said).toMatch(/^plain-warehouse\.dump: done, 2 statements in /u);
-    const ran = m.clients.spawned.filter((s) => s.command === "psql").flatMap((s) => s.args);
-    expect(ran).toContain("INSERT INTO public.orders VALUES (1, 'a')");
+    const ran = m.sessions().flat();
+    expect(ran.some((sql) => sql.includes("INSERT INTO public.orders VALUES (1, 'a')"))).toBe(true);
     expect(ran.join("\n")).not.toContain("\\restrict");
     // A .sql file is a script without asking pg_restore.
     await m.host.command("endue.database.restore", { path: "~/Backups/w.sql" });

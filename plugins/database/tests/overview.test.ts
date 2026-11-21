@@ -1,4 +1,4 @@
-// The server overview (ui/features/overview/) on the SDK's test host with a scripted psql: one
+// The server overview (ui/features/overview/) on the SDK's test host with a scripted server: one
 // panel per PostgreSQL connection with every section read in one run after the probe, a section the
 // server refuses saying so while the rest are read in another run, pg_stat_statements explained
 // instead of failing, Refresh, a section opened in the console as a normal result, a heavy statement
@@ -17,13 +17,9 @@ const start = (options: ServerOptions = {}, pick?: (args: { title: string }) => 
     ...(pick ? { pick } : {}),
   });
 
-/** The psql runs after `--version`, and every statement they sent. */
-const runs = (m: Mounted) =>
-  m.clients.spawned.filter((s) => s.command === "psql" && s.args[0] !== "--version");
-const sent = (m: Mounted) =>
-  runs(m).flatMap((s) =>
-    s.args.filter((a, i) => s.args[i - 1] === "-c" && !a.startsWith("\\") && a !== "BEGIN"),
-  );
+/** The runs, a session each, and every statement they sent. */
+const runs = (m: Mounted) => m.sessions();
+const sent = (m: Mounted) => runs(m).flatMap((sqls) => sqls.filter((sql) => sql !== "BEGIN"));
 
 const overviewOf = (m: Mounted) => {
   const shown = m.view.consoles.findLast((c) => c.model?.kind === "overview")?.model as

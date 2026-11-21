@@ -2,8 +2,9 @@
 
 A PostgreSQL connection's schema, read once and kept (PG-06, ADR 0285). It holds the names, kinds and
 row estimates of relations, columns with their types, defaults and keys, constraints (primary, unique,
-check, foreign keys with both ends), indexes, triggers, routine signatures (never bodies) and comments.
-Never rows, never secrets. Anything that needs these asks the cache through `catalog.js`, never the
+check, foreign keys with both ends), indexes, triggers, routine signatures (never bodies) and comments;
+PG-50's kinds (`../schema/pg/`, ADR 0295), the database level's under the entry `DATABASE` (""). Never
+rows, never secrets. Anything that needs these asks the cache through `catalog.js`, never the
 catalog itself; what the cache does not hold answers `undefined`, and the caller reads it as before.
 
 ## API (`createSchemaCache({ execute, store, systemSchemas, changed })`, `index.js`)
@@ -11,7 +12,7 @@ catalog itself; what the cache does not hold answers `undefined`, and the caller
 - `open(conn, quiet?)`: the first use in a session. It answers from the store at once and checks the
   fingerprints behind it; it waits only when nothing is held yet.
 - `refresh(conn, { all?, schemas?, quiet? })`: changed schemas by default, `all` reads every chosen
-  one, `schemas` reads those whatever their fingerprint. Answers `{ statements, read }`.
+  one, `schemas` reads those whatever their fingerprint. Answers `{ statements, read, database? }`.
 - `ran(conn, execution)`: after a run that is not the cache's; a DDL statement starts a quiet check.
 - `choose(conn, schemas | null)`, `cancel(connection?)`, `drop(connection)`, `settled(conn)`.
 - `view(conn)`: `listed()`, `schemas()`, `chosen(s)`, `held(s)`, `kept(s)`, `objects(s)`,
@@ -19,8 +20,9 @@ catalog itself; what the cache does not hold answers `undefined`, and the caller
 
 ## How
 
-- `kinds.js`: one reader per kind, `{ id, label, marks, sql(schemas) }`. A new kind (PG-50) is one
-  entry; the fingerprint adds its `marks` and the stored cache of the old kinds is read again.
+- `kinds.js`: one reader per kind, `{ id, label, marks, level?, sql(schemas, version) }`; PG-50's come
+  from `../schema/pg/index.js`. A database-level kind is read only when the row "" of the fingerprint
+  moved. A new kind's `marks` join the fingerprint and the stored cache of the old kinds is read again.
 - `pass.js`: one fingerprint statement, then one statement per kind for all the schemas it reads,
   each a `catalog: true` run of `execute` (PG-01c moves it to core sessions). Cancel lands between.
 - Fingerprint: per schema, the namespace's `xmin` and the count and sum of `xmin` of its rows in

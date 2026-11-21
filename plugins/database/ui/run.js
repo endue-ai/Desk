@@ -1,8 +1,8 @@
 // Runs a client through the bridge: `proc.spawn` without a shell, output gathered from `proc.output`
 // by process id until `proc.exit`, one ask with `perm.request` when the grant is missing, and a
 // second try with the usual install folders on PATH when the program is not found. Stopping (a
-// cancel, the timeout, enough rows, too much output) sends SIGINT first, which makes psql and mysql
-// cancel the query on the server and sqlite3 interrupt it, then SIGKILL a second later: the mysql
+// cancel, the timeout, enough rows, too much output) sends SIGINT first, which makes mysql cancel
+// the query on the server and sqlite3 interrupt it, then SIGKILL a second later: the mysql
 // client carries on with the next statement when a killed query does not fail (SLEEP() returns 1).
 // A non-zero exit is not an error here: the engine reads what the client said. A long program
 // (pg_dump, features/backup/) is heard as it writes and cancelled by its own signal.
