@@ -37,6 +37,9 @@ export const PARTS: ReadonlyArray<readonly [id: string, selector: string, found?
     "every",
   ],
   // The theme studio docked to the side while it edits dims nothing (`editor.css`).
+  // A sweep's area and the rings of the windows it selected hear nothing; its bar does (ADR 0296).
+  ["desk.sweep-marks", ".sweep-mark", "every"],
+  ["desk.sweep", ".sweep-bar"],
   ["desk.scrim", ".scrim:not(.is-editing), .desk-describe, dialog[open]", "scrim"],
   ["desk.settings", "dialog.desk-settings[open]"],
   ["desk.studios", ".theme-studio"],

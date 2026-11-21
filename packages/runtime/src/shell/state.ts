@@ -13,6 +13,7 @@ import type { ErisState } from "../eris/states";
 import type { Session } from "../modes/model";
 import { baseMode } from "../modes/profiles";
 import type { Desktop, DesktopId, DesktopRef, Mode } from "../modes/types";
+import type { SweepState } from "../sweep/model";
 import { type EndueState, emptyEndue } from "../system/endue-ids";
 import type { Adopted, DrawerItem, WmView } from "../wm/types";
 import { emptyView } from "../wm/view";
@@ -127,6 +128,8 @@ export interface DeskState {
   dialog: "new-mode" | null;
   eris: { state: ErisState; density: DensityName; soul: SoulStyle; saying: string };
   composer: { open: boolean; text: string; selected: number };
+  /** Cmd+drag's sweep (ADR 0296): its mode, the windows it selected, what the next line to Eris carries. */
+  sweep: SweepState;
   /** Surface id with keyboard/pointer focus; it draws on top. */
   focused: string | null;
   /** The tab in use: the one the focused surface shows. */
@@ -215,6 +218,7 @@ export function emptyState(lang: Lang): DeskState {
     dialog: null,
     eris: { state: "idle", density: "balanced", soul: "wisp", saying: "" },
     composer: { open: false, text: "", selected: 0 },
+    sweep: { mode: "select", selected: [], context: null },
     focused: null,
     tab: null,
   };

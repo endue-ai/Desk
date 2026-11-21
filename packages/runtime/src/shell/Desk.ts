@@ -23,6 +23,8 @@ import { wakePlaced } from "../surface/placed";
 import { mountSurfaces } from "../surface/Surface";
 import { windowDocs } from "../surface/window-docs";
 import type { WindowPages } from "../surface/window-pages";
+import { defineSweepCommands } from "../sweep/commands";
+import { mountSweep } from "../sweep/Sweep";
 import { loadDirectory } from "../system/agents";
 import { loadEndue, watchEndue } from "../system/endue";
 import { mountSystemLayer } from "../system/layer";
@@ -195,6 +197,8 @@ export function mountDesk(options: DeskOptions): Desk {
   pending.say = eris.say;
   pending.setState = eris.setState;
   parts.push(mountPan(root, ctx));
+  // Cmd+drag on the empty desk: Pan, Arrange, Ask Eris or Select (ADR 0296).
+  parts.push(mountSweep(root, ctx), defineSweepCommands(root, ctx));
   // The rail and the bottom edge fill their roles until desk.roles names another provider (ADR 0104).
   const settings = ctx.runtime.settings;
   parts.push(

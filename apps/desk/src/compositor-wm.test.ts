@@ -50,6 +50,27 @@ describe("the window manager's seam", () => {
     ]);
   });
 
+  it("asks the shell for an out window's OS window and answers what it says (ADR 0294)", async () => {
+    const asked: [string, unknown][] = [];
+    const frame = {
+      x: 80,
+      y: 60,
+      w: 720,
+      h: 450,
+      pinned: false,
+      screen: { x: 0, y: 25, w: 1512, h: 920 },
+    };
+    const seam = wmSeam(
+      () => undefined,
+      <T>(command: string, args: Record<string, unknown>) => {
+        asked.push([command, args]);
+        return Promise.resolve(frame as T);
+      },
+    );
+    await expect(seam.host.outWindow?.("notes", { op: "move", x: 80 })).resolves.toEqual(frame);
+    expect(asked).toEqual([["app_window", { window: "notes", ask: { op: "move", x: 80 } }]]);
+  });
+
   it("takes every desk desk-wm publishes and settles an edit once the desk it made is in", async () => {
     const seam = wmSeam(
       () => undefined,

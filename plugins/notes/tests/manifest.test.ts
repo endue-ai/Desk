@@ -58,6 +58,9 @@ describe("plugin.json", () => {
           "desk.buffers.update",
           "desk.files.open",
           "desk.buffers.switch",
+          // The shelf: a renamed or deleted note's buffer closes; New makes a note.
+          "desk.buffers.close",
+          "endue.notes.new",
         ],
       },
       // A note opened, chosen or saved elsewhere: asked for at run time, never held (ADR 0260).

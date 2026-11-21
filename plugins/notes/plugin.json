@@ -16,7 +16,14 @@
     },
     {
       "permission": "cmd:invoke",
-      "ids": ["desk.files.changed", "desk.buffers.update", "desk.files.open", "desk.buffers.switch"]
+      "ids": [
+        "desk.files.changed",
+        "desk.buffers.update",
+        "desk.files.open",
+        "desk.buffers.switch",
+        "desk.buffers.close",
+        "endue.notes.new"
+      ]
     },
     {
       "permission": "fs:read",
