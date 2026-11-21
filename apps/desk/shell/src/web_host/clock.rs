@@ -7,6 +7,8 @@
 //! view's watch counts the begin frames sent and its page's asks, and finds a page that stopped
 //! painting (#157, `stall.rs`), which the host reports and loads again (`revive.rs`). A browser
 //! whose last begin frame is still out gets none until it ends (#339, ADR 0261, `frames_flight.rs`).
+//! The clock's desk frames are the display's (`set_display`, #249, ADR 0235), and each look hands
+//! their rate to every pacing it looks at.
 
 use std::time::{Duration, Instant};
 
@@ -62,6 +64,11 @@ impl WebHost {
             }
             page.shown = shown;
         }
+    }
+
+    /// The compositor window's display shows `rate` frames a second: the desk frames follow it.
+    pub fn set_display(&self, rate: u32) {
+        self.inner().clock.set_rate(rate);
     }
 
     /// A look of the clock at `now`: a begin frame to each browser due. When it wants its next look
@@ -127,6 +134,7 @@ impl WebHost {
             // when it ends (`Flight`, ADR 0261).
             let mut held = None;
             for it in &mut on {
+                it.pacing.set_rate(clock.rate());
                 if !it.pacing.due(now, frame, painted(it.view)) {
                     continue;
                 }

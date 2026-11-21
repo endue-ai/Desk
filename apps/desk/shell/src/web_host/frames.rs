@@ -1,6 +1,7 @@
 //! The desk's frame clock for web surfaces (#111, #117): every windowless browser runs with
 //! `external_begin_frame_enabled`, so its page renders only when the clock sends it a begin frame
-//! (`SendExternalBeginFrame`). The clock counts desk frames (60 Hz) from when a surface comes on it;
+//! (`SendExternalBeginFrame`). The clock counts desk frames, at the display's rate (60 Hz, or 120
+//! on ProMotion: #249, ADR 0235), from when a surface comes on it;
 //! each is a begin frame for every visible, awake surface its pace takes (the compositor's `pace`
 //! hint as a skip rule: 30 fps takes every other frame, 10 every sixth). Hidden, asleep and dead
 //! surfaces are not on it.
@@ -46,10 +47,20 @@ pub use pacing::Pacing;
 mod flight;
 pub use flight::Flight;
 
-/// One desk frame: the display's rate.
+/// One desk frame on a 60 Hz display, and the interval Chromium gives each external begin frame
+/// whatever the display (its deadline, `frames_flight.rs`).
 pub const FRAME: Duration = Duration::from_micros(16_667);
-/// Desk frames a second, the most a surface's pace takes.
+/// Desk frames a second where the display names no rate of its own: 60 Hz.
 pub const RATE: u32 = 60;
+/// The most desk frames a second a display can ask for, and a surface's pace take.
+pub const MOST_RATE: u32 = 240;
+
+/// One desk frame on a display of `rate` frames a second (#249): 16.667 ms at 60 Hz, 8.333 ms at
+/// 120 Hz.
+pub fn interval(rate: u32) -> Duration {
+    let rate = rate.clamp(1, MOST_RATE);
+    Duration::from_micros(u64::from((1_000_000 + rate / 2) / rate))
+}
 /// After input to an idle surface, begin frames this often from the press on, until its paint, for
 /// at most `PROMPT_FOR` (two desk frames).
 pub const PROMPT: Duration = Duration::from_millis(1);
@@ -164,11 +175,23 @@ pub fn take_heard() -> Vec<(i32, Instant, Heard)> {
 
 /// The desk's frames: frame `k` is `k` frames after the clock started, so frames keep their numbers
 /// across looks that skip some. A late frame is not made up; a look half a frame late or more starts
-/// the cadence again from itself; a stopped clock's first frame is at once.
-#[derive(Clone, Debug, Default)]
+/// the cadence again from itself; a stopped clock's first frame is at once. Its frames are the
+/// display's (`set_rate`, #249).
+#[derive(Clone, Debug)]
 pub struct Clock {
     epoch: Option<Instant>,
     last: u64,
+    rate: u32,
+}
+
+impl Default for Clock {
+    fn default() -> Clock {
+        Clock {
+            epoch: None,
+            last: 0,
+            rate: RATE,
+        }
+    }
 }
 
 /// When the desk's GPU last copied: each paint the host takes (a copy to the compositor's texture),
@@ -197,12 +220,31 @@ impl Copies {
     }
 }
 
-/// Desk frame `k` after `epoch`.
-fn frame_at(epoch: Instant, k: u64) -> Instant {
-    epoch + Duration::from_nanos(FRAME.as_nanos() as u64 * k)
+/// Desk frame `k` after `epoch`, frames `every` apart.
+fn frame_at(epoch: Instant, k: u64, every: Duration) -> Instant {
+    epoch + Duration::from_nanos(every.as_nanos() as u64 * k)
 }
 
 impl Clock {
+    /// The display's rate, `rate` frames a second: a new one starts the clock again.
+    pub fn set_rate(&mut self, rate: u32) {
+        let rate = rate.clamp(1, MOST_RATE);
+        if rate != self.rate {
+            self.rate = rate;
+            self.epoch = None;
+        }
+    }
+
+    /// Desk frames a second.
+    pub fn rate(&self) -> u32 {
+        self.rate
+    }
+
+    /// One desk frame.
+    pub fn interval(&self) -> Duration {
+        interval(self.rate)
+    }
+
     /// The desk frame `now` is, if no look saw it yet.
     pub fn frame(&mut self, now: Instant) -> Option<u64> {
         let Some(epoch) = self.epoch else {
@@ -210,13 +252,14 @@ impl Clock {
             self.last = 0;
             return Some(0);
         };
-        let k = (now.saturating_duration_since(epoch).as_nanos() / FRAME.as_nanos()) as u64;
+        let every = self.interval();
+        let k = (now.saturating_duration_since(epoch).as_nanos() / every.as_nanos()) as u64;
         if k <= self.last {
             return None;
         }
-        let late = now.saturating_duration_since(frame_at(epoch, k));
-        if late >= FRAME / 2 {
-            self.epoch = Some(now - (frame_at(epoch, k) - epoch));
+        let late = now.saturating_duration_since(frame_at(epoch, k, every));
+        if late >= every / 2 {
+            self.epoch = Some(now - (frame_at(epoch, k, every) - epoch));
         }
         self.last = k;
         Some(k)
@@ -229,7 +272,7 @@ impl Clock {
 
     /// When desk frame `k` is, while the clock runs.
     pub fn at(&self, k: u64) -> Option<Instant> {
-        self.epoch.map(|epoch| frame_at(epoch, k))
+        self.epoch.map(|epoch| frame_at(epoch, k, self.interval()))
     }
 
     /// The last desk frame a look saw.
