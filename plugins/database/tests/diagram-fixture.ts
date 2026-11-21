@@ -143,7 +143,11 @@ export function storeCatalog(): PgCatalog {
   };
 }
 
-/** `count` tables t001… with `keys` foreign keys between them, the same every time. */
+/**
+ * `count` tables t001… with `keys` foreign keys, the same every time, shaped as a large schema is:
+ * every table but the first refers to one before it, and the rest of the keys join more tables,
+ * always from a later table to an earlier one.
+ */
 export function bigTables(count = 500, keys = 1000): PgTable[] {
   const names = Array.from({ length: count }, (_, i) => `t${String(i + 1).padStart(3, "0")}`);
   const columns = new Map(
@@ -156,23 +160,32 @@ export function bigTables(count = 500, keys = 1000): PgTable[] {
     ]),
   );
   const constraints = new Map<string, Constraint[]>(names.map((n) => [n, [pk(n, "id")]]));
-  let seed = 7;
+  // mulberry32: small, seeded and spread over every bit.
+  let seed = 479;
   const next = () => {
-    seed = (seed * 1103515245 + 12345) % 2147483648;
-    return seed;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
   const pairs = new Set<string>();
-  while (pairs.size < keys) {
-    const from = next() % count;
-    // Mostly to an earlier table, so the schema has layers, as real ones do.
-    const to = next() % Math.max(1, from);
-    if (from === to || pairs.has(`${from}:${to}`)) continue;
+  const add = (from: number, to: number) => {
+    if (from === to || pairs.has(`${from}:${to}`)) return;
     pairs.add(`${from}:${to}`);
     const child = names[from] as string;
     const parent = names[to] as string;
     const column = `${parent}_id`;
-    columns.get(child)?.push([column, "integer", next() % 3 === 0 ? "" : "n"]);
+    columns.get(child)?.push([column, "integer", next() < 0.3 ? "" : "n"]);
     constraints.get(child)?.push(fk(`${child}_${parent}_fkey`, [column], "big", parent, ["id"]));
+  };
+  // Most keys go to one of the first 25 tables (the hubs: customers, products …), the rest anywhere
+  // before, so the schema is some 13 keys deep, as large ones are, not a chain.
+  const parentOf = (from: number) =>
+    next() < 0.7 ? Math.floor(next() * Math.min(from, 25)) : Math.floor(next() * from);
+  for (let i = 1; i < count && pairs.size < keys; i++) add(i, parentOf(i));
+  while (pairs.size < keys) {
+    const from = 1 + Math.floor(next() * (count - 1));
+    add(from, parentOf(from));
   }
   return names.map((name) => ({
     name,
