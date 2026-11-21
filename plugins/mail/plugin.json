@@ -592,7 +592,6 @@
               "maxLength": 300
             }
           },
-          "required": ["status"],
           "additionalProperties": false
         },
         "irreversible": true,

@@ -194,7 +194,6 @@
               "maxLength": 40000
             }
           },
-          "required": ["text"],
           "additionalProperties": false
         },
         "agent": true
@@ -236,7 +235,6 @@
               "maxLength": 100
             }
           },
-          "required": ["emoji"],
           "additionalProperties": false
         },
         "agent": true
@@ -273,7 +271,6 @@
               "maxLength": 40000
             }
           },
-          "required": ["text"],
           "additionalProperties": false
         },
         "agent": true
