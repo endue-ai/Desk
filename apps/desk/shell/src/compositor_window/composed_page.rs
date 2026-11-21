@@ -113,6 +113,15 @@ impl Composed {
         self.dirty = true;
         true
     }
+
+    /// `surface`'s paint into `id` aside failed: when it is the page's spare, nothing waits aside
+    /// for a report to show, and the page keeps its picture (#330).
+    pub(super) fn page_aside_failed(&mut self, surface: &str, id: TextureId) {
+        if surface == super::super::PAGE && self.page.spare == Some(id) {
+            self.page.aside = None;
+            self.page.spare = None;
+        }
+    }
 }
 
 #[cfg(test)]
