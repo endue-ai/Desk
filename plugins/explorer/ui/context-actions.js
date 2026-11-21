@@ -8,11 +8,16 @@ const codeOf = (/** @type {unknown} */ error) => /** @type {{ code?: string }} *
 /**
  * @param {PluginContext["bridge"]} bridge
  * @param {PluginContext["commands"]} commands
- * @param {{ selected(): Row | undefined, open(row: Row): Promise<unknown>, say(text: string): void }} deps
+ * @param {{ selected(): Row | undefined, open(row: Row): Promise<unknown>, say(text: string): void,
+ *   reach?(path: string): Promise<Row | undefined> }} deps
+ * Each command acts on `path` when the call names one (revealed first, as an agent names it), else
+ * on the selection.
  */
-export function contextActions(bridge, commands, { selected, open, say }) {
+export function contextActions(bridge, commands, { selected, open, say, reach }) {
+  /** @type {Row | undefined} */
+  let named;
   const picked = () => {
-    const row = selected();
+    const row = named ?? selected();
     if (!row || row.kind === "more") throw new Error("Select a file or folder first.");
     return row;
   };
@@ -50,7 +55,21 @@ export function contextActions(bridge, commands, { selected, open, say }) {
       throw failed(error);
     });
   };
-  return {
+  /** @param {() => Promise<unknown>} run */
+  const at =
+    (run) =>
+    async (/** @type {Record<string, unknown>} */ a = {}) => {
+      const path = typeof a.path === "string" && a.path !== "" ? a.path : undefined;
+      named = path !== undefined && reach ? await reach(path) : undefined;
+      if (path !== undefined && !named)
+        throw new Error(`${path} is not in the explorer's folders.`);
+      try {
+        return await run();
+      } finally {
+        named = undefined;
+      }
+    };
+  const actions = {
     "endue.explorer.open-selected": async () => open(picked()),
     "endue.explorer.copy-path": async () => {
       const { path } = picked();
@@ -71,4 +90,5 @@ export function contextActions(bridge, commands, { selected, open, say }) {
     },
     "endue.explorer.show-in-file-manager": reveal,
   };
+  return Object.fromEntries(Object.entries(actions).map(([id, run]) => [id, at(run)]));
 }
