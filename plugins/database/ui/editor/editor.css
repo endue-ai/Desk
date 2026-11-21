@@ -181,38 +181,41 @@
   border-bottom: 1px solid var(--desk-border);
 }
 
+/* Two rows: each field in the first column, so both are as wide, its controls after it, and the
+   close button at the end of the first. */
 .find-bar {
   --desk-button-height: var(--desk-control-xs);
   --desk-button-padding-x: var(--desk-space-2);
   --desk-field-height: var(--desk-control-xs);
   --desk-icon-button-size: var(--desk-control-xs);
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(120px, 280px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 8px;
   padding: 4px 8px;
   font-size: var(--desk-text-xs);
 }
 
-.find-bar .row {
+.find-bar .desk-field {
+  width: 100%;
+  min-width: 0;
+}
+
+.find-bar .tools {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 6px;
-}
-
-.find-bar .desk-field {
-  flex: 1 1 160px;
-  min-width: 0;
-  max-width: 360px;
+  gap: 4px 8px;
 }
 
 .find-bar .count {
-  min-width: 80px;
+  min-width: 72px;
   color: var(--desk-text-muted);
   white-space: nowrap;
 }
 
 .find-bar [name="close"] {
-  margin-left: auto;
+  align-self: start;
 }
 
 .find-bar .check {

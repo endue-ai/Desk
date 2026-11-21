@@ -138,8 +138,21 @@ function createPanel(view) {
     doc,
     "div",
     { class: "find-bar", role: "search", "aria-label": "Find and replace" },
-    el(doc, "div", { class: "row" }, find, prev, next, count, close),
-    el(doc, "div", { class: "row" }, replace, one, all, caseBox.label, wordBox.label, reBox.label),
+    find,
+    el(
+      doc,
+      "div",
+      { class: "tools" },
+      prev,
+      next,
+      count,
+      caseBox.label,
+      wordBox.label,
+      reBox.label,
+    ),
+    close,
+    replace,
+    el(doc, "div", { class: "tools" }, one, all),
   );
   // The bar's keys (Escape, Mod+F, F3, Mod+G) from anywhere in it, as the editor's keymap names them.
   dom.addEventListener("keydown", (event) => {
