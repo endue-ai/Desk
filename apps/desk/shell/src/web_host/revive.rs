@@ -112,7 +112,15 @@ mod tests {
             Some(json!({ "plugin": "endue.images" })),
             "a second window, in Windows' form"
         );
-        assert_eq!(reloaded("localhost"), None, "the shared host is no plugin's");
-        assert_eq!(reloaded("window:w-1"), None, "a window's own page is the runtime's");
+        assert_eq!(
+            reloaded("localhost"),
+            None,
+            "the shared host is no plugin's"
+        );
+        assert_eq!(
+            reloaded("window:w-1"),
+            None,
+            "a window's own page is the runtime's"
+        );
     }
 }
