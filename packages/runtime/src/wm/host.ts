@@ -32,6 +32,30 @@ export type WindowOp =
   | { op: "pop-out"; frame?: { x: number; y: number; w: number; h: number } }
   | { op: "dock" };
 
+/**
+ * What the desk asks of the OS window a window popped out into (issue 235, ADR 0294), in points of
+ * the OS's screens (top left of the main display): where it is, a move or a resize to a point or
+ * by a step, a fill of its display's work area (a half, a quarter, all, or back to before), or
+ * whether it stays above other windows.
+ */
+export type OutAsk =
+  | { op: "look" }
+  | { op: "move"; x?: number; y?: number; dx?: number; dy?: number }
+  | { op: "resize"; w?: number; h?: number; dw?: number; dh?: number }
+  | { op: "fill"; fill: Fill | "none" }
+  | { op: "pin"; pinned: boolean };
+
+/** Where that OS window is after an ask, in points, and the work area of the display it is on. */
+export interface OutFrame {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  fill?: Fill;
+  pinned: boolean;
+  screen: Rect;
+}
+
 export interface WindowManagerHost {
   /**
    * The host hears every press itself and puts the window under it in use before the page hears
@@ -48,6 +72,12 @@ export interface WindowManagerHost {
   grab(grab: Grab, at: { x: number; y: number }): void;
   /** Run `op` on window `window`, or on the one in use. */
   run(op: WindowOp, window?: string): void;
+  /**
+   * Ask the OS window of window `window`, popped out of the canvas, for `ask` (ADR 0294): where
+   * it is after it. A host without OS windows has none; it rejects when the window has no OS
+   * window open.
+   */
+  outWindow?(window: string, ask: OutAsk): Promise<OutFrame>;
   /**
    * The windows that keep a live frame, when the host keeps the live budget (the compositor's,
    * ADR 0151, from its plan); undefined until it has decided, or for a host without one: then
