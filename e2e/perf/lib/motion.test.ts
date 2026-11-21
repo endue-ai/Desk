@@ -9,6 +9,7 @@ import {
   shakes,
   sharpness,
   strayed,
+  swingRoom,
   timing,
 } from "./motion";
 import { failed, type RunFindings, table, verdicts, worst } from "./motion-verdicts";
@@ -202,5 +203,14 @@ describe("the shake's grip", () => {
     expect(gripOf([100, 50, 800, 400], [37, 171])).toEqual([433, 66]);
     expect(gripOf([100, 50, 200, 400], [37, 171]), "no room between them").toBeUndefined();
     expect(gripOf([100, 50, 800, 400], undefined), "the shell named no room").toBeUndefined();
+  });
+
+  it("moves a window that cannot swing to where it can, on whole pixels", () => {
+    // The sidebar of 2026-11-19: its slot lay within 200 px of the right edge of a 1080 wide desk.
+    expect(swingRoom([714, 254, 261, 211], 1080, 200)).toEqual([-95, 0]);
+    expect(swingRoom([100, 50, 300, 200], 1080, 200), "too near the left edge").toEqual([100, 0]);
+    expect(swingRoom([400, 50, 300, 200], 1080, 200), "room on both sides").toEqual([0, 0]);
+    expect(swingRoom([400.4, 50.6, 300, 200], 1080, 200), "to whole pixels").toEqual([-0.4, 0.4]);
+    expect(swingRoom([300, 50, 700, 200], 1080, 200), "wider than the room").toBeUndefined();
   });
 });
