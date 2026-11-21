@@ -10,7 +10,7 @@
 use desk_bridge::Permission;
 
 use crate::handler::Core;
-use crate::paths::{endpoint_covers, host_covers, normalize, pattern_covers};
+use crate::paths::{endpoint_covers, normalize, pattern_covers};
 use crate::perm::covers;
 
 /// A declared host or program that stands for any named at run time.
@@ -60,8 +60,8 @@ pub(crate) fn declares(declared: &Permission, scope: &Permission) -> bool {
             s.commands.iter().all(|c| any || d.commands.contains(c))
                 && (s.pty != Some(true) || d.pty == Some(true))
         }
-        (P::NetFetch(d), P::NetFetch(s)) => hosts(&d.hosts, &s.hosts, host_covers),
-        (P::NetConnect(d), P::NetConnect(s)) => hosts(&d.hosts, &s.hosts, endpoint_covers),
+        (P::NetFetch(d), P::NetFetch(s)) => hosts(&d.hosts, &s.hosts),
+        (P::NetConnect(d), P::NetConnect(s)) => hosts(&d.hosts, &s.hosts),
         (P::WebBrowse(d), P::WebBrowse(s)) => sites(d.hosts.as_deref(), s.hosts.as_deref()),
         (P::WebControl(d), P::WebControl(s)) => sites(d.hosts.as_deref(), s.hosts.as_deref()),
         _ => covers(declared, scope),
@@ -108,12 +108,13 @@ fn paths(declared: &[String], asked: &[String]) -> bool {
     })
 }
 
-/// Every asked host is under a declared one, as `covers` matches them; a declared `*` holds any.
-fn hosts(declared: &[String], asked: &[String], covers: fn(&str, &str) -> bool) -> bool {
+/// Every asked host is under a declared one: the name as a grant's covers it, and a declared host
+/// without a port holds every port of it, as the net calls match hosts; a declared `*` holds any.
+fn hosts(declared: &[String], asked: &[String]) -> bool {
     let any = declared.iter().any(|h| h == ANY);
     asked
         .iter()
-        .all(|a| any || declared.iter().any(|d| covers(d, a)))
+        .all(|a| any || declared.iter().any(|d| endpoint_covers(d, a)))
 }
 
 /// web:browse and web:control: no declared list holds every site, and only it an asked absent list.
@@ -121,6 +122,6 @@ fn sites(declared: Option<&[String]>, asked: Option<&[String]>) -> bool {
     match (declared, asked) {
         (None, _) => true,
         (Some(_), None) => false,
-        (Some(declared), Some(asked)) => hosts(declared, asked, host_covers),
+        (Some(declared), Some(asked)) => hosts(declared, asked),
     }
 }
