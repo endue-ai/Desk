@@ -164,6 +164,34 @@ pub fn dispatch(
     } })
 }
 
+/// The Edit menu's commands, which a frame runs itself (`run_in`).
+pub const EDIT_MENU: &[&str] = &[
+    "Copy",
+    "Cut",
+    "Paste",
+    "PasteAndMatchStyle",
+    "SelectAll",
+    "Undo",
+    "Redo",
+];
+
+/// Run the Edit menu's `command` (Blink's name, `EDIT_MENU`) in `frame`, as its menu item would:
+/// whether it is one. The desk's `desk.edit.*` commands (any key a person binds) and a key in a
+/// frame inside a page both come here.
+pub fn run_in(frame: &Frame, command: &str) -> bool {
+    match command {
+        "Copy" => frame.copy(),
+        "Cut" => frame.cut(),
+        "Paste" => frame.paste(),
+        "PasteAndMatchStyle" => frame.paste_and_match_style(),
+        "SelectAll" => frame.select_all(),
+        "Undo" => frame.undo(),
+        "Redo" => frame.redo(),
+        _ => return false,
+    }
+    true
+}
+
 /// Send the key down at DOM `code` (`event`, as `SendKeyEvent` would have) to `host`'s page with
 /// the edit commands it is on macOS: whether it went. When it did not (not macOS, not one of the
 /// keys, the focus in another frame, not CEF's UI thread), send `event` as ever.
@@ -181,11 +209,19 @@ pub fn send(
     let Some(commands) = mac_commands(code, mods) else {
         return false;
     };
-    // DevTools' input goes to the page's main frame: a frame inside it keeps its keys as they were.
+    // DevTools' input goes to the page's main frame: a frame inside it hears the key as ever, and
+    // an Edit menu key then runs its command in that frame itself (ADR 0296).
     let browser = host.browser();
     let focused = browser.as_ref().and_then(|b| b.focused_frame());
-    if focused.is_some_and(|f| f.is_main() != 1) {
-        return false;
+    if let Some(frame) = focused.filter(|f| f.is_main() != 1) {
+        let [command] = commands else {
+            return false;
+        };
+        if !EDIT_MENU.contains(command) {
+            return false;
+        }
+        host.send_key_event(Some(event));
+        return run_in(&frame, command);
     }
     static NEXT: AtomicI32 = AtomicI32::new(0);
     let id = FIRST_ID + NEXT.fetch_add(1, Ordering::Relaxed).rem_euclid(100_000);

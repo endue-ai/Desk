@@ -347,6 +347,7 @@ export function createCalendar(ctx, view, options = {}) {
     openDefault: () => openDefault(true),
     change,
     writable,
+    save: (cal) => ctx.commands.run("desk.files.save", { buffer: cal.buffer }),
   });
 
   /** Settings from init.yaml; the view draws once with defaults and again when they arrive. */

@@ -18,11 +18,15 @@
 //! (`places.rs`). Files
 //! dragged in from the OS and the page's own drags land as on the canvas (`drags.rs`), and the
 //! desk's keymap hears a key before the page does (`keys.rs`). Development builds answer a check
-//! what OS windows are open, and close or move one as a person would (`check.rs`).
+//! what OS windows are open, and close or move one as a person would (`check.rs`). The desk's
+//! window commands move, resize, fill and pin an app window as the person would, so Eris reaches
+//! one out of the canvas too (`control.rs`, `frames.rs`, ADR 0294).
 
 mod check;
 mod client;
+mod control;
 mod drags;
+mod frames;
 mod hints;
 mod keys;
 mod menu;
@@ -48,6 +52,7 @@ use crate::pump::Pump;
 use crate::web_host::WebHost;
 use crate::window::Shell;
 pub use check::answer as check;
+pub use control::answer as control;
 pub use hints::Hints;
 pub use keys::{lately as desk_key_lately, report as report_keys};
 pub use menu::{Item, removed};
@@ -126,6 +131,8 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
     // Destroyed while it opened: it goes as soon as it is held.
     let wanted = host.app_opened(&ask.surface, browser);
     let window = pane.window.id();
+    // A new OS window: no fill or pin the desk gave an earlier one of this window holds.
+    control::forget(&ask.window);
     if wanted {
         pane.show_and_focus();
     }

@@ -5,6 +5,7 @@
 // position, zoom, bookmarks and notes in its store (marks.js). A file the desk lists and the frame
 // lost (it slept, or its page loaded again) opens again, where it was when a sleep kept it (keep.js).
 // The SDK's test host runs it with a recording view.
+import { answerAgents } from "./agent.js";
 import { placeOf, readPlace } from "./keep.js";
 import { createLinks } from "./links.js";
 import { createLoading } from "./loading.js";
@@ -277,6 +278,8 @@ export function createReader({ bridge, commands, surface }, view, options) {
     shown = null;
     view.show(null);
   });
+
+  answerAgents(commands, { open: () => [...files.values()], shown: () => shown });
 
   bridge.onEvent((/** @type {BridgeEvent} */ event) => {
     if (event.event !== "fs.changed") return;

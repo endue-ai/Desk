@@ -20,6 +20,7 @@ import { formatText } from "./console-run.js";
 import { createConsoles } from "./consoles.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
+import { createSessions } from "./engines/pg-session.js";
 import { createExecutor } from "./execute.js";
 import { createExplorer } from "./explorer.js";
 import { panelsOf, registerFeatures } from "./feature-host.js";
@@ -66,18 +67,21 @@ import { createTools } from "./tools.js";
  *   features?: import("./feature-host.js").Feature[],
  *   random?(): number,
  *   plans?: import("./explain/reader.js").PlanReader,
+ *   startWorker?: import("./explain/reader.js").StartWorker,
  * }} options `cancelled` makes the error a cancelled command answers with (the SDK's CommandFailed);
  *   `output` makes the result reader, which reads each run's output in a worker (main.js, #38);
- *   `features` are features/index.js's unless given; `plans` reads big plans in a worker.
+ *   `features` are features/index.js's unless given; `plans` reads big plans in a worker;
+ *   `startWorker` starts a feature's worker (none: a feature reads in place).
  */
 export function createDatabase({ bridge, commands, state, settings: source }, view, options) {
   let settings = DEFAULTS;
   const cancelled =
     options.cancelled ?? ((message) => Object.assign(new Error(message), { code: "cancelled" }));
-  // A run is busy from the client's start until its output is read.
+  // A run is busy from the client's start until its output is read, or while its session runs.
   let running = 0;
   let reading = 0;
-  const busy = () => view.busy(running + reading);
+  let sessions = 0;
+  const busy = () => view.busy(running + reading + sessions);
   const runner =
     options.runner ??
     createRunner(bridge, {
@@ -92,9 +96,17 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     busy();
     view.reading?.(reads);
   });
+  // PostgreSQL's runs: a session each, on the core (ADR 0281).
+  const pg = createSessions(bridge, {
+    onBusy: (count) => {
+      sessions = count;
+      busy();
+    },
+  });
   const cancel = () => {
     catalog.cancel();
     runner.cancel();
+    pg.cancel();
     output.cancel();
   };
   const clients = createClients(runner, () => settings);
@@ -122,6 +134,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     runner,
     output,
     clients,
+    sessions: pg,
     settings: () => settings,
     confirm,
     passwords: manager.passwords,
@@ -305,6 +318,9 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     explorer,
     tools,
     execute,
+    runner,
+    clients,
+    ...(options.startWorker ? { startWorker: options.startWorker } : {}),
     settings: () => settings,
     onSettings: (listener) => {
       followers.add(listener);

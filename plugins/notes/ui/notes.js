@@ -5,12 +5,17 @@
 // SDK's test host runs it with a recording view. A note the desk lists and the frame lost (it slept,
 // or its page loaded again) opens again from what the sleep kept (keep.js), or from disk.
 
+import { agentCommands } from "./agent.js";
 import { createDialogs } from "./dialogs.js";
 import { createDrops } from "./drops.js";
 import { createGrants } from "./grants.js";
 import { keptText, openFiles, readEdit, readPlace } from "./keep.js";
 import { createLibrary } from "./library.js";
 import { createSearch } from "./search.js";
+
+/** A command's arguments as an object. */
+const asArgs = (/** @type {unknown} */ value) =>
+  /** @type {Record<string, unknown>} */ (value && typeof value === "object" ? value : {});
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -127,8 +132,9 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
   const answer = (name, handler) =>
     commands.on(name, async (args) => {
       try {
-        await handler(args);
+        const result = await handler(args);
         say(notice);
+        return result;
       } catch (error) {
         say(error instanceof Error ? error.message : String(error));
         throw error;
@@ -174,6 +180,14 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
 
   answer("desk.files.save", async (args) => {
     const { buffer, path: asked } = requested(args);
+    await saveNote(buffer, asked);
+  });
+
+  /** Write a note to its file, or to `asked`; the desk's own save and Notes' auto-save both. */
+  const saveNote = async (
+    /** @type {string} */ buffer,
+    /** @type {string | undefined} */ asked,
+  ) => {
     const note = await holding(buffer);
     const path = asked ?? note.path;
     const content = note.text;
@@ -187,7 +201,8 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
     note.modified = note.text !== content;
     if (shown === buffer) render();
     if (note.modified) setTimeout(() => report(note), 0);
-  });
+    return note;
+  };
 
   answer("desk.files.revert", async (args) => {
     const { buffer, path: asked } = requested(args);
@@ -234,7 +249,19 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
 
   // ~/Notes on disk: a new dated note, opened as any file is, and the palette's Notes group.
   const library = createLibrary({ bridge });
-  answer("endue.notes.new", async () => {
+  const agent = agentCommands({
+    bridge,
+    commands,
+    open: () => [...notes.values()],
+    all: library.notes,
+    now: () => new Date(),
+  });
+  for (const [id, run] of Object.entries(agent))
+    if (id !== "endue.notes.new") answer(id, (args) => run(asArgs(args)));
+  answer("endue.notes.new", async (args) => {
+    const a = asArgs(args);
+    // An agent's new note, with its text, name or open: answers where it went.
+    if (["text", "name", "open"].some((k) => k in a)) return agent["endue.notes.new"]?.(a);
     const path = await library.fresh(new Date());
     const content = "";
     await withGrant(
@@ -353,5 +380,18 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
     say,
   });
 
-  return { edit, ready };
+  /** Notes' own save (auto-save, rename): written, and the desk's unsaved mark cleared. */
+  const save = async (/** @type {string} */ buffer) => {
+    const note = await saveNote(buffer, undefined);
+    if (!note.modified)
+      await commands.run("desk.buffers.update", { id: buffer, modified: false }).catch(() => {});
+    return note;
+  };
+  /** The note on screen, as the view shows it, or undefined. */
+  const current = () => {
+    const note = shown === null ? undefined : notes.get(shown);
+    return note && { ...note };
+  };
+
+  return { edit, ready, save, current, grants, say };
 }

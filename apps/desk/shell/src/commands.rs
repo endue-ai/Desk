@@ -91,6 +91,8 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
                 .run(move |shell, _| crate::palette::command(shell, &cmd));
             Ok(Value::Null)
         }
+        // The desk's window commands on a window out of the canvas, in its OS window (ADR 0294).
+        "app_window" => crate::app_windows::control(desk, &call.args),
         // The windows out of the canvas, for checks in development builds (#235).
         "compositor_window" if cfg!(debug_assertions) && call.args.get("app").is_some() => {
             crate::app_windows::check(desk, &call.args)

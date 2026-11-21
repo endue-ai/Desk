@@ -1,12 +1,16 @@
 // Test page: endue.database (plugins/database) over the desk.* policies on the browser stub, with a
 // saved SQLite connection and proc.spawn answered by the plugin's scripted sqlite3 over a fixture
 // database (plugins/database/tests/fixtures.ts: people, orders, and staff with a team), a saved
-// PostgreSQL connection whose scripted psql has one table of typed columns (items, fixtures-pg.ts),
-// one whose scripted psql answers the maintenance form (maintenance-fixture.ts), the activity view
-// (activity-fixture.ts) and EXPLAIN with fixture plans (fixture-plans.ts), one whose scripted psql
-// answers the server overview (overview-fixture.ts), `select * from many` with 500 rows of 240
-// columns (120,000 cells, past the 100,000 a copy asks first at: database-copy.spec.ts), and fs.*
-// over a folder in memory with one .sql file (`window.__files`, what saves wrote). Never shipped.
+// PostgreSQL connection whose scripted server (db.*, the stub's sessions) has one table of typed
+// columns (items, fixtures-pg.ts), one whose server answers the maintenance form
+// (maintenance-fixture.ts), the activity view (activity-fixture.ts), EXPLAIN with fixture plans
+// (fixture-plans.ts) and the reads and DDL of the explorer's operations on objects
+// (objects-fixture.ts), one whose server answers the server overview (overview-fixture.ts), the
+// routine forms' functions and procedures on every PostgreSQL connection (routine-fixture.ts),
+// `select * from many` on the SQLite one with 500 rows of 240 columns (120,000 cells, past the
+// 100,000 a copy asks first at: database-copy.spec.ts), and fs.* over a folder in memory with one
+// .sql file (`window.__files`, what saves wrote). A backup's save and open dialogs, and the scripted
+// pg_dump and pg_restore, are backup-fixture.ts's. Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -18,18 +22,22 @@ import {
   ACTIVITY_CONNECTION,
   activityServer,
 } from "../../../../plugins/database/tests/activity-fixture";
+import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
 import type { Script } from "../../../../plugins/database/tests/clients";
 import {
+  dbHandlers,
   FIXTURE_CONNECTION,
   FIXTURE_PG_CONNECTION,
   fixtureScript,
   procHandlers,
 } from "../../../../plugins/database/tests/fixtures";
 import { maintenanceServer } from "../../../../plugins/database/tests/maintenance-fixture";
+import { objectsServer } from "../../../../plugins/database/tests/objects-fixture";
 import {
   OVERVIEW_CONNECTION,
   overviewServer,
 } from "../../../../plugins/database/tests/overview-fixture";
+import { routineServer } from "../../../../plugins/database/tests/routine-fixture";
 import "../../src/desk.css";
 import { browserCore, memoryStore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
@@ -74,6 +82,8 @@ const manyRows: (next: Script) => Script = (next) => (sql, env) => {
   ];
   return { rows: many };
 };
+// sqlite3 runs scripted; backupHandlers adds pg_dump and pg_restore in front of it.
+const procs = procHandlers(manyRows(fixtureScript), (event) => emit(event));
 const clock = new ManualClock();
 const core = browserCore({
   manifests: [...policies, databaseManifest as PluginManifest],
@@ -88,13 +98,20 @@ const core = browserCore({
     "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
   }),
   handlers: {
-    // The overview answers its own statements exactly, then the maintenance form its own, before
-    // the activity view's looser matches.
-    ...procHandlers(
-      manyRows(overviewServer(maintenanceServer(activityServer(fixtureScript).script).script)),
+    ...procs,
+    // The routine forms and the overview answer their own statements exactly, then the
+    // maintenance form its own and the objects feature its own, before the activity view's
+    // looser matches.
+    ...dbHandlers(
+      routineServer(
+        overviewServer(
+          maintenanceServer(objectsServer(activityServer(fixtureScript).script).script).script,
+        ),
+      ).script,
       (event) => emit(event),
     ),
     ...fsHandlers,
+    ...backupHandlers(files, procs["proc.spawn"] as NonNullable<StubHandlers["proc.spawn"]>),
   },
   open: () => {},
 });

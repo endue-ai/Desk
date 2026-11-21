@@ -31,6 +31,10 @@ import { studioShell } from "./shell-studio";
 type BrainReply = Awaited<ReturnType<ShellBridge["brain"]["say"]>>;
 
 const SCOPE = { permission: "brain:converse" } as const;
+/** The runtime's settings that name a brain's model (desk-core's brain_choice.rs). */
+const BRAIN_MODEL_KEYS = { local: "brain.model", claude: "brain.claude-model" } as const;
+/** Where a sweep's snapshots go (ADR 0296). */
+const SNAPSHOTS = "~/.desk/snapshots";
 const ACCOUNT = { scope: { permission: "account:manage" } } as const;
 const AGENTS = { scope: { permission: "agents:manage" } } as const;
 const MIC = { permission: "audio:capture" } as const;
@@ -278,7 +282,51 @@ export function shellBridge(core: BridgeClient): ShellBridge {
         await core.call("settings.set", { key: "brain.use", value: brain });
         return status();
       },
+      // The local brain's model and Claude Code's, the runtime's settings too (ADR 0296).
+      models: {
+        async get() {
+          const text = async (key: string) => {
+            const { value } = await core
+              .call("settings.get", { key })
+              .catch((): { value?: unknown } => ({}));
+            return typeof value === "string" ? value : "";
+          };
+          const [local, claude] = await Promise.all([
+            text(BRAIN_MODEL_KEYS.local),
+            text(BRAIN_MODEL_KEYS.claude),
+          ]);
+          return { local, claude };
+        },
+        async set(brain, model) {
+          await core.call("settings.set", { key: BRAIN_MODEL_KEYS[brain], value: model });
+        },
+      },
       say: (text, onStep, desk) => say(core, text, onStep, desk),
+    },
+    // A sweep's snapshot (ADR 0296): windows' last frames, kept under ~/.desk/snapshots.
+    snapshots: {
+      async window(plugin, surface) {
+        const shot = await core
+          .call("ui.surface.snapshot", {
+            plugin,
+            ...(surface ? { surface } : {}),
+            scope: { permission: "ui:surface" },
+          })
+          .catch(() => null);
+        return shot && { image: shot.image, width: shot.width, height: shot.height };
+      },
+      async save(name, png) {
+        const path = `${SNAPSHOTS}/${name.replace(/[^\w.-]/g, "-")}`;
+        const scope = { permission: "fs:write" as const, paths: [`${SNAPSHOTS}/**`] };
+        await core.call("fs.write", {
+          path,
+          content: png,
+          encoding: "base64",
+          createDirs: true,
+          scope,
+        });
+        return path;
+      },
     },
     account: {
       status: async () => accountOf(await core.call("account.status", ACCOUNT)),

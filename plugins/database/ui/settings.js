@@ -7,10 +7,11 @@ import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
 /**
  * @typedef {{
  *   maxRows: number, timeoutSeconds: number, confirm: boolean, history: boolean, historyMax: number,
- *   systemSchemas: boolean, psql: string, mysql: string, sqlite3: string, path: string[],
+ *   systemSchemas: boolean, mysql: string, sqlite3: string, path: string[],
  *   formatKeywordCase: string, formatIndent: number, formatLineWidth: number, formatComma: string,
  *   formatAndOr: string, formatJoins: string, formatOneLine: string, formatLists: string,
  *   formatOnSave: boolean,
+ *   pgDump: string, pgRestore: string,
  * }} Settings
  */
 
@@ -22,7 +23,6 @@ export const DEFAULTS = Object.freeze({
   history: true,
   historyMax: 200,
   systemSchemas: false,
-  psql: "",
   mysql: "",
   sqlite3: "",
   path: [],
@@ -35,6 +35,8 @@ export const DEFAULTS = Object.freeze({
   formatOneLine: STYLE.oneLine,
   formatLists: STYLE.lists,
   formatOnSave: false,
+  pgDump: "",
+  pgRestore: "",
 });
 
 /** The manifest key of each setting, the range of the numbers and the choices of the strings. */
@@ -46,7 +48,6 @@ const KEYS =
     history: { key: "endue.database.history" },
     historyMax: { key: "endue.database.history-max", min: 0, max: 1000 },
     systemSchemas: { key: "endue.database.system-schemas" },
-    psql: { key: "endue.database.psql" },
     mysql: { key: "endue.database.mysql" },
     sqlite3: { key: "endue.database.sqlite3" },
     path: { key: "endue.database.path" },
@@ -67,6 +68,8 @@ const KEYS =
     formatOneLine: { key: "endue.database.format-one-line", choices: CHOICES.oneLine },
     formatLists: { key: "endue.database.format-lists", choices: CHOICES.lists },
     formatOnSave: { key: "endue.database.format-on-save" },
+    pgDump: { key: "endue.database.pg-dump" },
+    pgRestore: { key: "endue.database.pg-restore" },
   });
 
 /** The setting keys as the manifest declares them, in order. */
@@ -142,7 +145,11 @@ export const formatStyle = (/** @type {Settings} */ settings) =>
   });
 
 /** The settings that change which client runs: what was found is found again. */
-const CLIENT_KEYS = new Set([KEYS.psql.key, KEYS.mysql.key, KEYS.sqlite3.key, KEYS.path.key]);
+const CLIENT_KEYS = new Set(
+  ["mysql", "sqlite3", "path", "pgDump", "pgRestore"].map(
+    (name) => KEYS[/** @type {keyof Settings} */ (name)].key,
+  ),
+);
 
 /**
  * Follow the settings while the plugin runs (settings.changed for its own keys): each change

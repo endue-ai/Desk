@@ -6,6 +6,7 @@
 // how each was shown and their unsaved values, and comes back to them (keep.js, wake.js). It only
 // talks to ctx and a view, so the SDK's test host runs it with a recording view.
 
+import { answerAgents } from "./agent.js";
 import { createEditing } from "./edit/editing.js";
 import { createSession } from "./edit/session.js";
 import { bytesSum } from "./edit/sum.js";
@@ -349,6 +350,8 @@ export function createData({ bridge, commands, settings, surface }, view, option
     shown = null;
     view.show(null);
   });
+
+  answerAgents(commands, { open: () => [...files.values()], shown: () => shown });
 
   bridge.onEvent((/** @type {BridgeEvent} */ event) => {
     if (event.event !== "fs.changed") return;

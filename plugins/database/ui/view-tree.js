@@ -2,7 +2,8 @@
 // a cursor the arrow keys move and that stays on its row across a redraw, Right and Left to open
 // and close (or go to the parent), Enter to open a console, a table or an object's DDL, single keys
 // for the rest (d the DDL, c the row counts, g a refresh of the row's schema or table, m the
-// maintenance form).
+// maintenance form, x a function's or procedure's form, o, the context-menu key and a right click
+// the row's menu of what can be done to it).
 
 import { el } from "./dom.js";
 import { actionFor, pressOf } from "./keys.js";
@@ -13,8 +14,17 @@ import { actionFor, pressOf } from "./keys.js";
  */
 
 const MOVES = new Set(["next", "previous", "first", "last"]);
-/** Actions that take the row under the cursor. */
-const ROWS = new Set(["ddl", "count", "diagram", "maintain"]);
+/** Actions that take the row under the cursor (the objects feature's too). */
+const ROWS = new Set([
+  "ddl",
+  "count",
+  "diagram",
+  "maintain",
+  "routine",
+  "objectMenu",
+  "renameObject",
+  "editSource",
+]);
 
 /**
  * @param {Document} doc
@@ -133,6 +143,15 @@ export function createTree(doc, tree, act) {
     moveTo(index);
     const row = rows[index];
     if (row?.expandable && target?.classList.contains("caret")) act("toggle", row);
+  });
+  // A right click is the row's menu (the objects feature's), on that row.
+  tree.addEventListener("contextmenu", (event) => {
+    const item = /** @type {HTMLElement | null} */ (event.target)?.closest?.("[role=treeitem]");
+    const index = Number(/** @type {HTMLElement | null} */ (item)?.dataset.index);
+    if (Number.isNaN(index) || !rows[index]) return;
+    event.preventDefault();
+    moveTo(index);
+    act("objectMenu", rows[index]);
   });
   tree.addEventListener("dblclick", () => {
     const row = rows[cursor];

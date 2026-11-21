@@ -7,6 +7,7 @@
 
 import { createActions } from "./actions.js";
 import { workOf } from "./adapters/index.js";
+import { answerAgents } from "./agent.js";
 import { registerCommands } from "./commands.js";
 import { createEditing } from "./editing.js";
 import { stepMonth } from "./layout/calendar.js";
@@ -289,7 +290,7 @@ export function createProjects({ bridge, commands, settings, surface }, view, op
     return s.sort;
   };
 
-  const { command } = registerCommands({
+  const { command, answer } = registerCommands({
     commands,
     surface,
     view,
@@ -313,6 +314,7 @@ export function createProjects({ bridge, commands, settings, surface }, view, op
       update: editing.update,
     },
   });
+  answerAgents(answer, { works: () => s.works, named });
 
   settings.onChange(({ key: name, value }) => {
     if (name === "week-start" && typeof value === "string")

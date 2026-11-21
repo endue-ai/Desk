@@ -32,6 +32,7 @@ mod draw_slide;
 mod draw_spread;
 mod draw_web;
 mod edges;
+pub mod edit_command;
 mod frame;
 mod gpu;
 pub use gpu::headless;

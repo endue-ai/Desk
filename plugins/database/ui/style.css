@@ -1,10 +1,11 @@
 /* Every colour, font, size, radius and duration comes from the theme's --desk-* tokens (index.html
    loads their defaults; the runtime sets the theme in force). The environments are categories
-   (chart-5, chart-3, chart-2), leaning toward the body text to read as labels; errors are danger. */
+   (chart-5, chart-3, chart-2), leaning toward the body text as far as it takes them to 4.5:1 as
+   text on every surface in both schemes (tests/contrast.test.ts); errors are danger. */
 :root {
   --db-production: color-mix(in srgb, var(--desk-chart-5) 70%, var(--desk-text));
-  --db-staging: var(--desk-chart-3);
-  --db-development: color-mix(in srgb, var(--desk-chart-2) 70%, var(--desk-text));
+  --db-staging: color-mix(in srgb, var(--desk-chart-3) 55%, var(--desk-text));
+  --db-development: color-mix(in srgb, var(--desk-chart-2) 65%, var(--desk-text));
   --db-error: var(--desk-danger-text);
   --db-row: 24px;
   /* A dialog's distance from the page's top and bottom edges: less on a short page. */
@@ -318,8 +319,10 @@ main {
   font-style: italic;
 }
 
+/* Selection is the hover surface (the design system's rule 4): the page's background is the card's
+   white in light, so a chosen cell on it would not show. */
 .cell.chosen {
-  background: var(--desk-background);
+  background: var(--desk-hover);
 }
 
 .cell.cursor {
