@@ -5,8 +5,10 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Console } from "../ui/consoles.js";
+import { graphFromRows } from "../ui/features/diagram/model.js";
+import { stateOf } from "../ui/features/diagram/read.js";
 import * as builtins from "../ui/features/index.js";
-import { diagramOf, layout } from "../ui/schema/diagram.js";
+import { diagramOf } from "../ui/schema/diagram.js";
 import { createView } from "../ui/view.js";
 import { fakeFeature } from "./fake-feature";
 import { SAVED } from "./harness";
@@ -22,6 +24,15 @@ const columns = [
   ["notes", "body", "text", "NO"],
 ];
 const keys = [["orders", "orders_customer_fk", "customer_id", "customers", "id"]];
+/** A diagram's state over the rows, as the feature draws it. */
+const diagramState = (rows = keys) =>
+  stateOf(
+    { id: "c-lite", name: "Notes" } as never,
+    "main",
+    graphFromRows("main", diagramOf(columns, rows)),
+    { choice: { schemas: ["main"] }, mode: "all", at: [], added: [], removed: [], drawn: [] },
+    { schemas: ["main"] },
+  );
 
 /** A buffer as consoles.js keeps it: a panel's state sits under its type. */
 function buffer(id: string, kind: string, name: string, state: unknown): Console {
@@ -49,14 +60,12 @@ beforeEach(() => {
 });
 
 describe("the panel box", () => {
-  it("draws the ER diagram into the one panel box as before", () => {
+  it("draws the ER diagram into the one panel box as before", async () => {
     const act = vi.fn();
     const view = createView(document, act);
-    const placed = layout(diagramOf(columns, keys));
-    const diagram = buffer("b-1", "diagram", "er: Notes · main", {
-      schema: "main",
-      layout: placed,
-    });
+    const state = await diagramState();
+    const placed = state.layout;
+    const diagram = buffer("b-1", "diagram", "er: Notes · main", state);
     view.console(diagram, conn);
     const box = byId("panel-box");
     expect(box.hidden).toBe(false);
@@ -65,11 +74,10 @@ describe("the panel box", () => {
       expect(byId(id).hidden).toBe(true);
     expect(document.getElementById("diagram-box")).toBeNull();
     expect(byId("title").textContent).toBe("Notes · main");
-    const svg = box.querySelector(".diagram > svg.er");
-    expect(svg?.getAttribute("width")).toBe(String(placed.width));
-    expect(svg?.getAttribute("aria-label")).toBe("3 tables, 1 foreign keys");
+    const svg = box.querySelector(".diagram svg.er");
+    expect(svg?.getAttribute("aria-label")).toBe("3 tables, 1 relations");
     expect(box.querySelectorAll("g.er-table")).toHaveLength(3);
-    expect(box.querySelectorAll("polyline.er-link")).toHaveLength(1);
+    expect(box.querySelectorAll("g.er-link polyline")).toHaveLength(1);
     expect(
       document.querySelector('link[rel="stylesheet"][href$="features/diagram/diagram.css"]'),
     ).not.toBeNull();
@@ -84,11 +92,9 @@ describe("the panel box", () => {
     expect(box.hidden).toBe(true);
     view.console(diagram, conn);
     expect(box.querySelector("svg.er")).toBe(svg);
-    view.console(
-      { ...diagram, diagram: { schema: "main", layout: layout(diagramOf(columns, [])) } },
-      conn,
-    );
+    view.console({ ...diagram, id: "b-3", diagram: await diagramState([]) }, conn);
     expect(box.querySelector("svg.er")).not.toBe(svg);
+    expect(box.querySelectorAll("g.er-link polyline")).toHaveLength(0);
   });
 
   it("draws a feature's panel module, updates it in place, and destroys it when another panel shows or its buffer closes", () => {
