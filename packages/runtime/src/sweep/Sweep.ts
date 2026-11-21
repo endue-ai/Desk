@@ -79,8 +79,8 @@ const backgroundOf = (root: HTMLElement) =>
   getComputedStyle(root).backgroundColor || getComputedStyle(document.body).backgroundColor;
 
 export function mountSweep(root: HTMLElement, ctx: ShellCtx): () => void {
+  // In the page only while it shows something: a desk at rest has none of it.
   const layer = h("div", { class: "sweep-layer" });
-  root.append(layer);
   const area = h("div", { class: "sweep-mark sweep-area", hidden: true, "aria-hidden": "true" });
   const rings = h("div", { class: "sweep-rings", "aria-hidden": "true" });
   const bar = h("div", { class: "sweep-bar", role: "toolbar", "aria-label": "Sweep" });
@@ -171,6 +171,9 @@ export function mountSweep(root: HTMLElement, ctx: ShellCtx): () => void {
     if (s.context) parts.push(chip(s.context));
     bar.hidden = parts.length === 0;
     render(bar, () => parts);
+    const showing = sweeping || s.selected.length > 0 || s.context !== null;
+    if (showing && !layer.isConnected) root.append(layer);
+    else if (!showing && layer.isConnected) layer.remove();
   };
 
   const each = (command: string) => async () => {
