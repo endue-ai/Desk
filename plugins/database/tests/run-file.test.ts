@@ -76,11 +76,14 @@ describe("run file", () => {
   it("stops at the first error and names its line in the file", async () => {
     const bad = 9_000;
     const disk = ranged({ "/work/big.sql": script(12_000, bad) });
+    const answered: string[] = [];
     const m = await mount({
       store: { connections: SAVED },
       handlers: disk.handlers,
-      script: (sql) =>
-        sql.includes("into nope") ? { error: "no such table: nope" } : { changes: 1 },
+      script: (sql) => {
+        answered.push(sql);
+        return sql.includes("into nope") ? { error: "no such table: nope" } : { changes: 1 };
+      },
     });
     await m.host.command("endue.database.console", { connection: "Notes" });
     const said = await m.host.command("endue.database.run-file", { path: "/work/big.sql" });
@@ -88,8 +91,10 @@ describe("run file", () => {
     expect(said).toBe("big.sql: stopped at line 9,001: no such table: nope");
     expect(m.view.said.at(-1)).toBe(said);
     // Nothing after it ran; the parts after its part never started.
-    expect(ran(m).at(-1)).toBe(`insert into nope values (${bad}, 'é ${PAD}')`);
-    expect(ran(m)).toHaveLength(bad + 1);
+    expect(answered.at(-1)).toBe(`insert into nope values (${bad}, 'é ${PAD}')`);
+    expect(answered).toHaveLength(bad + 1);
+    expect(ran(m)).toContain(answered.at(-1));
+    expect(ran(m).length).toBeLessThan(bad + 1_500);
     const messages = m.shown()?.shown?.tabs.find((t) => t.kind === "messages");
     expect(messages?.lines?.[0]).toMatchObject({ level: "error", text: said });
     expect(m.shown()?.shown?.tabs.some((t) => t.kind === "rows")).toBe(false);

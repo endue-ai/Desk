@@ -1,4 +1,5 @@
-// The Database plugin without its DOM: the connections, the explorer, the consoles, table and DDL
+// The Database plugin without its DOM: the connections, the explorer, the consoles (as many per
+// connection as the person opens, and .sql files bound to one: console-files.js), table and DDL
 // views and the features' panels as desk buffers, the plugin's commands (commands.js), the
 // features (features/, feature-host.js), the commands for agents and the desk's requests. It talks
 // only to ctx.bridge, ctx.commands and ctx.state and a view, so the SDK's test host runs it with a
@@ -14,6 +15,7 @@ import { createClients, searchPath } from "./clients.js";
 import { registerCommands } from "./commands.js";
 import { createCompletions } from "./completions.js";
 import { loadConnections, newId, normalize, saveConnections } from "./connections.js";
+import { createConsoleFiles } from "./console-files.js";
 import { createConsoles } from "./consoles.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
@@ -127,7 +129,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     execute: executor.execute,
     catalog,
     settings: () => settings,
-    remember: (conn, execution) => {
+    remember: (conn, execution, target) => {
       if (!settings.history) return;
       const entries = execution.result.statements
         .filter((s) => s.ran)
@@ -137,6 +139,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
           ms: execution.result.ms,
           ok: !s.error,
           summary: summaryOf(execution, s.index),
+          ...(target.consoleId ? { console: target.consoleId } : {}),
         }));
       void addHistory(bridge, conn.id, entries, settings.historyMax);
     },
@@ -147,7 +150,14 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     view,
     changed: () => save(),
     panels: panelsOf(list),
+    choose: (title) => manager.choose(undefined, title),
+    fileEdited: (target) => files.edited(target),
+    bound: async (target, conn) => {
+      if (target.file) await files.remember(target.file.path, conn.id);
+    },
+    ...(options.random ? { random: options.random } : {}),
   });
+  const files = createConsoleFiles({ bridge, commands, manager, consoles, view });
   const tools = createTools({
     bridge,
     commands,
@@ -164,18 +174,26 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     },
   });
 
-  /** What comes back after a restart: the connection on screen, the explorer, kept panels. */
+  /** What comes back after a restart: the connection on screen, the explorer, the consoles the
+   * plugin opened and the kept panels. */
   const save = () => {
     const panels = consoles.kept();
+    const kept = consoles.keptConsoles();
     state.set({
       current: consoles.current()?.connection ?? null,
       expanded: explorer.opened(),
+      ...(kept.length ? { consoles: kept } : {}),
       ...(panels.length ? { panels } : {}),
     });
   };
 
-  /** A SQLite file the desk opens: its connection (added the first time) in the buffer given. */
+  /** A file the desk opens, in the buffer given: a .sql file's console, or a SQLite file's
+   * connection (added the first time). */
   const visit = async (/** @type {string} */ buffer, /** @type {string} */ path) => {
+    if (/\.sql$/iu.test(path)) {
+      await files.visit(buffer, path);
+      return;
+    }
     let conn = manager.list().find((c) => c.engine === "sqlite" && c.file === path);
     if (!conn) {
       conn = normalize({ engine: "sqlite", file: path, id: newId(options.random) }, manager.list());
@@ -193,7 +211,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     current: () => consoles.current(),
     view,
   });
-  const dropped = createDropped({ bridge, manager, consoles, importer, view, visit });
+  const dropped = createDropped({ bridge, manager, consoles, files, importer, view, visit });
 
   const answer = answerer(commands, view);
   registerCommands({
@@ -208,7 +226,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     cancel,
     pick,
   });
-  answerRequests({ commands, consoles, visit });
+  answerRequests({ commands, consoles, visit, files });
   createAgentCommands({
     bridge,
     commands,
@@ -273,8 +291,12 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     explorer.restore(saved?.expanded ?? []);
     changed();
     consoles.render();
+    // The consoles kept; from an older version, which kept none, the console of the one on screen.
+    const back = await guard(() =>
+      consoles.restoreConsoles(/** @type {{ consoles?: unknown } | undefined} */ (saved)?.consoles),
+    )();
     const conn = saved?.current ? manager.get(saved.current) : undefined;
-    if (conn) await guard(() => consoles.open(conn))();
+    if (!back && conn) await guard(() => consoles.open(conn))();
     const kept = /** @type {{ panels?: unknown } | undefined} */ (saved)?.panels;
     await guard(() => consoles.restore(kept))();
   })();

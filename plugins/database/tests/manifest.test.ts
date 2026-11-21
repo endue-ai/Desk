@@ -225,14 +225,15 @@ describe("permissions", () => {
     ]);
     for (const asked of drop.asked) expect(coveredBy(asked)).toEqual([declarations()[3]]);
 
-    // An export: under the Downloads declaration alone.
+    // An export: under the Downloads declaration, granted at install (and `/**`, which only asks).
     const out = refusing();
     const set = { columns: ["id"], rows: [["1"]], truncated: false };
     await exportResult(out.bridge, { set, format: "csv", name: "orders" }).catch(() => {});
     expect(out.asked).toEqual([{ permission: "fs:write", paths: ["~/Downloads/**"] }]);
-    expect(coveredBy(out.asked[0] as Scope)).toEqual([declarations()[1]]);
+    expect(coveredBy(out.asked[0] as Scope)).toEqual([declarations()[1], declarations()[5]]);
 
-    // A .sql file saved anywhere: only `/**` covers it. A console's long text: the plugin's folder.
+    // A .sql file saved anywhere: only `/**` covers it. A console's long text: the plugin's folder,
+    // granted at install, besides `/**`, which only lets it ask.
     const save = {
       permission: "fs:write",
       paths: [writeScope("/Volumes/USB/Q.SQL").paths[0] ?? ""],
@@ -240,7 +241,10 @@ describe("permissions", () => {
     expect(coveredBy(save)).toEqual([declarations()[5]]);
     const spill = spillPath("k-0123456789");
     expect(spill).toMatch(/^~\/\.endue\/database\//u);
-    expect(coveredBy({ permission: "fs:write", paths: [spill] })).toEqual([declarations()[7]]);
+    expect(coveredBy({ permission: "fs:write", paths: [spill] })).toEqual([
+      declarations()[5],
+      declarations()[7],
+    ]);
     expect(coveredBy({ permission: "fs:read", paths: [spill] })).toEqual([
       declarations()[3],
       declarations()[6],

@@ -187,7 +187,7 @@ describe("a .sql file the desk opens", () => {
     const big = `${"select 1;\n".repeat(Math.ceil(EDITOR_MAX / 10) + 10)}`;
     const reads: Array<{ length?: number }> = [];
     const files = disk({ [PATH]: big });
-    const read = files.handlers["fs.read"];
+    const read = files.handlers["fs.read"] as NonNullable<(typeof files.handlers)["fs.read"]>;
     const m = await mount({
       store: { connections: SAVED },
       pick: picker("c-lite", []),
@@ -195,7 +195,7 @@ describe("a .sql file the desk opens", () => {
         ...files.handlers,
         "fs.read": (params, caller) => {
           reads.push({ length: (params as { length?: number }).length });
-          return read?.(params, caller);
+          return read(params, caller);
         },
       },
     });

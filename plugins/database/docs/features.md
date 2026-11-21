@@ -46,14 +46,18 @@ Modules: `explorer.js`, `catalog.js`, `schema/`, `view-tree.js`, `view-diagram.j
 
 ## Console
 
-- A console per connection, a desk buffer that Mod+B and the buffer list reach, its text kept across a restart.
+- As many consoles per connection as the person opens (Database: new console), each a desk buffer that Mod+B
+  and the buffer list reach, with an id of its own and its own text, results, parameters and history entries,
+  named `Shop`, `Shop 2` or as renamed (`Shop · Audit`), listed in the palette (Database: show a console),
+  closed by command, and all back after a restart; Open a console shows the one used last (ADR 0286).
+- A console's text is kept across a restart; past the store's 64 KiB, whole in a file of the plugin's own.
 - `Mod+Enter` runs the statement at the caret or the selection, `Mod+Shift+Enter` the script; a script also runs
   in one transaction or as a dry run rolled back at the end, and a statement as EXPLAIN or EXPLAIN ANALYZE.
 - A script is cut into statements the way each client cuts it (dollar quotes, comments, DELIMITER, routine
   bodies), and an error's position lands in the editor.
 - Highlighting with the lexer that cuts the statements, autocomplete from the schema with aliases
   (`Ctrl+Space`), Format SQL (`Mod+Shift+F`: only space and the case of keywords change), and parameters
-  (`:name`, `?`, `$1`) asked for before the run and remembered for the session.
+  (`:name`, `?`, `$1`) asked for before the run and remembered for the console.
 - Guards: a read-only connection refuses writes before the client starts, and on the server too; with
   `confirm` on, a write on a production connection, and DROP, TRUNCATE, or UPDATE and DELETE without WHERE
   anywhere, ask first.
@@ -62,10 +66,17 @@ Modules: `explorer.js`, `catalog.js`, `schema/`, `view-tree.js`, `view-diagram.j
   the server.
 - History of what ran on each connection, searched from the palette (never results, never a statement that
   carries a password), and starred queries.
-- A `.sql` file or SQL text dropped on the page goes into the console on screen, or the console of a connection
-  the person picks.
+- SQL text dropped on the page goes into the console on screen, or the console of a connection the person picks.
+- A `.sql` file opened from the desk or dropped is a console bound to it, on the connection the file remembers,
+  the console on screen's for a drop, else the one picked (Database: run this .sql file on another connection
+  changes it). The desk saves and reverts it as a file: an edit marks it unsaved, Save writes that file and no
+  other, asked for at its first save; a change on disk goes to the desk, which asks before edits are replaced.
+- Database: run a .sql file runs a script of any size from disk, never in the editor: read in ranges, cut as the
+  console cuts a script, run in parts under every guard of a console run, SET statements carried into each
+  part; a progress line, and the first error stops it at its line in the file.
 
-Modules: `consoles.js`, `console-run.js`, `execute.js`, `history.js`, `tools.js`, `sql/`, `editor/`,
+Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`, `console-files.js`,
+`console-run.js`, `features/consoles/`, `execute.js`, `history.js`, `tools.js`, `sql/`, `editor/`,
 `view-editor.js`.
 
 ## Results

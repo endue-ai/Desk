@@ -21,11 +21,15 @@
         "desk.buffers.open",
         "desk.buffers.update",
         "desk.buffers.close",
-        "desk.files.reveal"
+        "desk.files.reveal",
+        "desk.files.changed"
       ]
     },
     { "permission": "fs:read", "paths": ["/**"] },
-    { "permission": "proc:spawn", "commands": ["*"] }
+    { "permission": "proc:spawn", "commands": ["*"] },
+    { "permission": "fs:write", "paths": ["/**"] },
+    { "permission": "fs:read", "paths": ["${home}/.endue/database/**"] },
+    { "permission": "fs:write", "paths": ["${home}/.endue/database/**"] }
   ],
   "surfaces": [
     {
@@ -47,6 +51,10 @@
       {
         "pattern": "*.db3",
         "plugin": "endue.database"
+      },
+      {
+        "pattern": "*.sql",
+        "plugin": "endue.database"
       }
     ],
     "commands": [
@@ -59,6 +67,36 @@
         "id": "endue.database.console",
         "title": "Database: open a console",
         "keywords": ["sql", "query"]
+      },
+      {
+        "id": "endue.database.new-console",
+        "title": "Database: new console",
+        "keywords": ["sql", "query", "another", "tab", "second"]
+      },
+      {
+        "id": "endue.database.consoles",
+        "title": "Database: show a console",
+        "keywords": ["consoles", "list", "switch", "sql"]
+      },
+      {
+        "id": "endue.database.rename-console",
+        "title": "Database: rename the console",
+        "keywords": ["name", "title", "console"]
+      },
+      {
+        "id": "endue.database.close-console",
+        "title": "Database: close the console",
+        "keywords": ["close", "console", "remove"]
+      },
+      {
+        "id": "endue.database.run-file",
+        "title": "Database: run a .sql file",
+        "keywords": ["sql", "script", "file", "dump", "restore", "import"]
+      },
+      {
+        "id": "endue.database.file-connection",
+        "title": "Database: run this .sql file on another connection",
+        "keywords": ["sql", "file", "connection", "bind"]
       },
       {
         "id": "endue.database.new-connection",

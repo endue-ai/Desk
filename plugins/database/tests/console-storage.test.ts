@@ -32,7 +32,7 @@ describe("console storage", () => {
     const call = vi.fn(async (method: string, params: Record<string, unknown>) => {
       if (method === "store.set") store[params.key as string] = params.value;
       if (method === "store.get")
-        return params.key in store ? { value: store[params.key as string] } : {};
+        return (params.key as string) in store ? { value: store[params.key as string] } : {};
       if (method === "fs.write") {
         scopes.push(params.scope);
         files[params.path as string] = params.content as string;
