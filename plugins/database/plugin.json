@@ -135,6 +135,11 @@
         "keywords": ["forget password", "sign out"]
       },
       {
+        "id": "endue.database.forget-password",
+        "title": "Database: forget the remembered password",
+        "keywords": ["keychain", "password", "forget", "disconnect"]
+      },
+      {
         "id": "endue.database.copy-uri",
         "title": "Database: copy the connection URI",
         "keywords": ["url", "dsn"]
@@ -258,6 +263,61 @@
         "id": "endue.database.er-diagram",
         "title": "Database: ER diagram of a schema",
         "keywords": ["entity relationship", "foreign keys", "relations", "erd"]
+      },
+      {
+        "id": "endue.database.er-neighbours",
+        "title": "Database: ER diagram of a table and its neighbours",
+        "keywords": ["entity relationship", "foreign keys", "related tables", "depth", "erd"]
+      },
+      {
+        "id": "endue.database.er-arrange",
+        "title": "Database: auto layout of the ER diagram",
+        "keywords": ["arrange", "layout", "tidy", "erd"]
+      },
+      {
+        "id": "endue.database.er-columns",
+        "title": "Database: columns shown in the ER diagram",
+        "keywords": ["keys only", "hide columns", "erd"]
+      },
+      {
+        "id": "endue.database.er-add-table",
+        "title": "Database: add a table to the ER diagram",
+        "keywords": ["show table", "erd"]
+      },
+      {
+        "id": "endue.database.er-remove-table",
+        "title": "Database: remove a table from the ER diagram",
+        "keywords": ["hide table", "erd"]
+      },
+      {
+        "id": "endue.database.er-expand",
+        "title": "Database: add a table's neighbours to the ER diagram",
+        "keywords": ["related tables", "foreign keys", "erd"]
+      },
+      {
+        "id": "endue.database.er-add-schema",
+        "title": "Database: add a schema to the ER diagram",
+        "keywords": ["several schemas", "erd"]
+      },
+      {
+        "id": "endue.database.er-relation",
+        "title": "Database: draw a relation in the ER diagram",
+        "keywords": ["virtual foreign key", "not in the database", "erd"]
+      },
+      {
+        "id": "endue.database.er-remove-relation",
+        "title": "Database: remove a drawn relation from the ER diagram",
+        "keywords": ["virtual foreign key", "erd"]
+      },
+      {
+        "id": "endue.database.er-export",
+        "title": "Database: export the ER diagram as an image",
+        "keywords": ["svg", "png", "save", "picture", "erd"]
+      },
+      {
+        "id": "endue.database.er-copy-image",
+        "title": "Database: copy the ER diagram as an image",
+        "keywords": ["png", "clipboard", "picture", "erd"]
       },
       {
         "id": "endue.database.object-actions",
@@ -1096,6 +1156,69 @@
         "keywords": ["reload", "size", "statistics", "dead tuples", "last vacuum"]
       },
       {
+        "id": "endue.database.routine",
+        "title": "Database: run a function or procedure",
+        "keywords": [
+          "routine",
+          "function",
+          "procedure",
+          "call",
+          "execute",
+          "stored procedure",
+          "arguments",
+          "plpgsql"
+        ],
+        "description": "Opens the form of a PostgreSQL function or procedure, one field per argument checked by its type, and answers the routine, its arguments with their modes, types and defaults, how it runs (an IMMUTABLE or STABLE function reads; a VOLATILE function or a procedure is a write) and the exact call. With run, it runs the call in the connection's console and answers its rows, the notices and how it ended; a write runs only after the person says yes, a read-only connection refuses one, and rollback runs it in a transaction rolled back at the end.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The routine's schema; every schema but the system ones when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The function's or procedure's name; one picked from the palette when absent."
+            },
+            "signature": {
+              "type": "string",
+              "description": "Its argument types as pg_get_function_identity_arguments writes them (a integer, b text), for an overloaded name."
+            },
+            "arguments": {
+              "type": ["object", "array"],
+              "description": "Values by argument name ($1 for one without), or a list in the call's order: null is NULL, a list is a VARIADIC argument's elements, {value, type} gives a polymorphic one its type, and one left out takes its DEFAULT."
+            },
+            "rollback": {
+              "type": "boolean",
+              "description": "Run it in a transaction rolled back at the end (not for a procedure that commits)."
+            },
+            "run": {
+              "type": "boolean",
+              "description": "Run the call once the form is open; the person is asked first when it may write."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.routine-run",
+        "title": "Database: run the routine form",
+        "keywords": ["function", "procedure", "call", "execute", "start"]
+      },
+      {
+        "id": "endue.database.routine-refresh",
+        "title": "Database: read the routine form again",
+        "keywords": ["function", "procedure", "reload", "arguments", "signature"]
+      },
+      {
         "id": "endue.database.history",
         "title": "Database: history",
         "keywords": ["recent", "earlier queries"]
@@ -1278,6 +1401,21 @@
         "keywords": ["grid", "search"]
       },
       {
+        "id": "endue.database.problems",
+        "title": "Database: list the SQL problems",
+        "keywords": ["errors", "diagnostics", "lint", "underline", "syntax"]
+      },
+      {
+        "id": "endue.database.next-problem",
+        "title": "Database: go to the next SQL problem",
+        "keywords": ["error", "diagnostic", "lint", "F8"]
+      },
+      {
+        "id": "endue.database.previous-problem",
+        "title": "Database: go to the previous SQL problem",
+        "keywords": ["error", "diagnostic", "lint", "Shift+F8"]
+      },
+      {
         "id": "endue.database.follow-key",
         "title": "Database: go to the row this key points at",
         "keywords": ["foreign key", "follow", "reference", "link", "related", "grid"]
@@ -1404,6 +1542,16 @@
         "kind": "boolean",
         "default": false,
         "description": "Save lays a .sql file's console out with Format SQL before it writes the file, by the format of the file's connection; a file on no connection yet is written as typed."
+      },
+      "endue.database.problems-syntax": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Underline SQL the parser cannot read in PostgreSQL consoles, a pause after typing stops."
+      },
+      "endue.database.problems-names": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Underline tables, columns and schemas that the cached schema does not have, and INSERT column counts that do not match, in PostgreSQL consoles. Nothing is asked of the server."
       },
       "endue.database.pg-dump": {
         "kind": "string",

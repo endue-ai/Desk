@@ -10,7 +10,7 @@ import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
  *   systemSchemas: boolean, mysql: string, sqlite3: string, path: string[],
  *   formatKeywordCase: string, formatIndent: number, formatLineWidth: number, formatComma: string,
  *   formatAndOr: string, formatJoins: string, formatOneLine: string, formatLists: string,
- *   formatOnSave: boolean,
+ *   formatOnSave: boolean, problemsSyntax: boolean, problemsNames: boolean,
  *   pgDump: string, pgRestore: string,
  * }} Settings
  */
@@ -35,6 +35,8 @@ export const DEFAULTS = Object.freeze({
   formatOneLine: STYLE.oneLine,
   formatLists: STYLE.lists,
   formatOnSave: false,
+  problemsSyntax: true,
+  problemsNames: true,
   pgDump: "",
   pgRestore: "",
 });
@@ -68,6 +70,8 @@ const KEYS =
     formatOneLine: { key: "endue.database.format-one-line", choices: CHOICES.oneLine },
     formatLists: { key: "endue.database.format-lists", choices: CHOICES.lists },
     formatOnSave: { key: "endue.database.format-on-save" },
+    problemsSyntax: { key: "endue.database.problems-syntax" },
+    problemsNames: { key: "endue.database.problems-names" },
     pgDump: { key: "endue.database.pg-dump" },
     pgRestore: { key: "endue.database.pg-restore" },
   });
