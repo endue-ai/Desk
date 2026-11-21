@@ -64,7 +64,8 @@ export function createView(doc, act, features = Object.values(all), options = {}
   const tree = createTree(doc, byId("tree"), (action, ...args) =>
     action === "filter" ? filter.focus() : act(action, ...args),
   );
-  const copy = (/** @type {string} */ text) => copyText(doc, text);
+  const copy = (/** @type {string} */ text, /** @type {string | undefined} */ html) =>
+    copyText(doc, text, html);
   const grid = createGrid(
     doc,
     byId("result"),
@@ -83,7 +84,7 @@ export function createView(doc, act, features = Object.values(all), options = {}
     },
     options,
   );
-  const values = createValueViewer(doc, act, copy, () => grid.focus());
+  const values = createValueViewer(doc, act, () => grid.focus());
   const editor = createEditor(
     doc,
     { box: editorBox, editor: editorEl, layer: byId("highlight"), list: byId("complete") },

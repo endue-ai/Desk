@@ -59,6 +59,7 @@ export function builtinActions(deps) {
     star: guard(() => tools.star(undefined)),
     starred: guard(() => tools.starred()),
     copy: guard((/** @type {string | undefined} */ format) => tools.copy(format)),
+    copyValue: guard((/** @type {string | undefined} */ text) => tools.copyValue(text)),
     exportTo: guard((/** @type {string | undefined} */ format) => tools.exportTo(format)),
     ddl: guard((/** @type {Node} */ node) => tools.ddl(node)),
     openTable: guard(

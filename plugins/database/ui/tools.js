@@ -1,16 +1,19 @@
 // What the plugin does around a console's results and the explorer: copy and export a result as a
-// format, the history and starred queries of a connection, an object's DDL, exact row counts, and
-// finding the clients again. Each asks through the palette when an argument is missing. No DOM.
+// format (a copy as TSV with an HTML table beside it, a large one asked first: copy-size.js), copy a
+// cell's value, the history and starred queries of a connection, an object's DDL, exact row counts,
+// and finding the clients again. Each asks through the palette when an argument is missing. No DOM.
 
 import { tableName } from "./catalog.js";
+import { mayCopy, tooLarge } from "./copy-size.js";
 import { engineOf } from "./engines/index.js";
 import { oneLine } from "./execute.js";
 import { exportResult } from "./export.js";
 import { addHistory, readHistory, readSaved, removeSaved, saveQuery } from "./history.js";
-import { FORMATS, formatRows } from "./results.js";
+import { FORMATS, formatRows, htmlTable } from "./results.js";
 import { RELATIONS } from "./schema/common.js";
 import { loadSettings } from "./settings.js";
 import { split, statementAt } from "./sql/split.js";
+import { describeValue } from "./value.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -22,6 +25,7 @@ import { split, statementAt } from "./sql/split.js";
  *   commands: { run(id: string, args?: unknown): Promise<unknown> },
  *   view: import("./database.js").View,
  *   pick(title: string, items: Item[], free?: boolean, placeholder?: string): Promise<string | undefined>,
+ *   confirm: import("./copy-size.js").Confirm,
  *   manager: ReturnType<typeof import("./manage.js").createManager>,
  *   consoles: ReturnType<typeof import("./consoles.js").createConsoles>,
  *   catalog: ReturnType<typeof import("./catalog.js").createCatalog>,
@@ -131,19 +135,50 @@ export function createTools(deps) {
     return { conn, object };
   };
 
+  /** Copy `text` (with `html`) unless the person said no to its size: false then. */
+  const put = async (
+    /** @type {string} */ text,
+    /** @type {string | undefined} */ html,
+    /** @type {string} */ copied,
+    /** @type {string} */ refused,
+    /** @type {boolean} */ asked,
+  ) => {
+    if (!asked && !(await mayCopy(deps.confirm, { characters: text.length }))) {
+      view.say("Nothing copied.");
+      return false;
+    }
+    view.say((await view.copy(text, html)) ? copied : refused);
+    return true;
+  };
+
   return {
-    /** Copy the result on screen (or the grid's selection) as a format. */
+    /** Copy the result on screen (or the grid's selection) as a format; a large one asks first. */
     async copy(/** @type {string | undefined} */ format) {
       const { set, options } = shownResult();
       const chosen = await formatOf(format, "Database: copy the result as");
       if (!chosen) return undefined;
-      const text = formatRows(set, chosen, { ...options, ...picked() });
-      view.say(
-        (await view.copy(text))
-          ? `Copied as ${label(chosen)}.`
-          : "The clipboard refused: select the grid and press Mod+C.",
-      );
-      return text;
+      const part = picked();
+      const cells = (part.rows ?? set.rows).length * (part.columns ?? set.columns).length;
+      // The cells are weighed before the text is built, the text after (copy-size.js).
+      const asked = tooLarge({ cells });
+      if (asked && !(await mayCopy(deps.confirm, { cells }))) {
+        view.say("Nothing copied.");
+        return undefined;
+      }
+      const text = formatRows(set, chosen, { ...options, ...part });
+      const html = chosen === "tsv" ? htmlTable(set, part) : undefined;
+      const refused = "The clipboard refused: select the grid and press Mod+C.";
+      const went = await put(text, html, `Copied as ${label(chosen)}.`, refused, asked);
+      return went ? text : undefined;
+    },
+    /** Copy a value whole: `text` given (the value viewer's), else the cursor's cell's. */
+    async copyValue(/** @type {string | undefined} */ text) {
+      const cell = text === undefined ? view.cell() : undefined;
+      if (text === undefined && !cell)
+        throw new Error("No cell here: put the grid's cursor on one.");
+      const value = text ?? describeValue(cell?.value ?? null, cell?.type).text("text");
+      const refused = "The clipboard refused: select the text and press Mod+C.";
+      return (await put(value, undefined, "Copied the value.", refused, false)) ? value : undefined;
     },
     /** Export the result on screen (or the grid's selection) to a file in ~/Downloads. */
     async exportTo(/** @type {string | undefined} */ format) {

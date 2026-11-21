@@ -352,6 +352,7 @@ export function createGrid(doc, host, act, options = {}) {
     openMenu,
     selection,
     cursorRow: () => st.cursor.row,
+    copyLarge: () => act("copy", "tsv"),
   });
 
   return {

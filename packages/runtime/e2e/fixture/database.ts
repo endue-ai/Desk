@@ -4,8 +4,9 @@
 // PostgreSQL connection whose scripted psql has one table of typed columns (items, fixtures-pg.ts),
 // one whose scripted psql answers the maintenance form (maintenance-fixture.ts), the activity view
 // (activity-fixture.ts) and EXPLAIN with fixture plans (fixture-plans.ts), one whose scripted psql
-// answers the server overview (overview-fixture.ts), and fs.* over a folder in memory with one .sql
-// file (`window.__files`, what saves wrote). Never shipped.
+// answers the server overview (overview-fixture.ts), `select * from many` with 500 rows of 240
+// columns (120,000 cells, past the 100,000 a copy asks first at: database-copy.spec.ts), and fs.*
+// over a folder in memory with one .sql file (`window.__files`, what saves wrote). Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -17,6 +18,7 @@ import {
   ACTIVITY_CONNECTION,
   activityServer,
 } from "../../../../plugins/database/tests/activity-fixture";
+import type { Script } from "../../../../plugins/database/tests/clients";
 import {
   FIXTURE_CONNECTION,
   FIXTURE_PG_CONNECTION,
@@ -62,6 +64,16 @@ const fsHandlers: StubHandlers = {
   },
   "fs.watch": () => ({ watchId: "w-fixture" }),
 };
+// Built when it is first asked for: 500 rows (a console's default limit) of 240 columns (#504).
+let many: string[][] | undefined;
+const manyRows: (next: Script) => Script = (next) => (sql, env) => {
+  if (!/^select \* from many\b/iu.test(sql.trim())) return next(sql, env);
+  many ??= [
+    ["n", ...Array.from({ length: 239 }, (_, c) => `c${c + 2}`)],
+    ...Array.from({ length: 500 }, (_, i) => [`${i + 1}`, ...Array(239).fill(`${i % 10}`)]),
+  ];
+  return { rows: many };
+};
 const clock = new ManualClock();
 const core = browserCore({
   manifests: [...policies, databaseManifest as PluginManifest],
@@ -79,7 +91,7 @@ const core = browserCore({
     // The overview answers its own statements exactly, then the maintenance form its own, before
     // the activity view's looser matches.
     ...procHandlers(
-      overviewServer(maintenanceServer(activityServer(fixtureScript).script).script),
+      manyRows(overviewServer(maintenanceServer(activityServer(fixtureScript).script).script)),
       (event) => emit(event),
     ),
     ...fsHandlers,

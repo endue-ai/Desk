@@ -493,6 +493,11 @@
         "keywords": ["csv", "tsv", "json", "markdown", "insert", "update", "clipboard"]
       },
       {
+        "id": "endue.database.copy-value",
+        "title": "Database: copy the cell's value",
+        "keywords": ["cell", "value", "clipboard", "text"]
+      },
+      {
         "id": "endue.database.export",
         "title": "Database: export the result to a file",
         "keywords": ["download", "save", "csv", "json", "sql"]

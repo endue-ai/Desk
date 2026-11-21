@@ -116,6 +116,7 @@ export function registerCommands(deps) {
   answer("endue.database.starred", () => tools.starred());
   answer("endue.database.unstar", ({ name }) => tools.unstar(name));
   answer("endue.database.copy", ({ format }) => tools.copy(format));
+  answer("endue.database.copy-value", () => tools.copyValue(undefined));
   answer("endue.database.export", ({ format }) => tools.exportTo(format));
   answer("endue.database.clients", () => tools.checkClients());
   answer("endue.database.add-row", () => consoles.edits.addRow());
