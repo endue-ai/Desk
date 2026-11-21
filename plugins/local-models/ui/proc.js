@@ -6,7 +6,7 @@
 import { fromBase64 } from "./net.js";
 
 /** The programs the plugin may run. */
-export const PROGRAMS = Object.freeze(["llama-server", "curl", "sysctl", "nvidia-smi"]);
+export const PROGRAMS = Object.freeze(["llama-server", "curl", "git", "sysctl", "nvidia-smi"]);
 export const PROC_SCOPE = Object.freeze({ permission: "proc:spawn", commands: [...PROGRAMS] });
 export const FALLBACK_PATH = [
   "/opt/homebrew/bin",
@@ -104,7 +104,7 @@ export function createProcs(bridge) {
 
   /**
    * Run a short program to its end.
-   * @param {string} command @param {string[]} args @param {{ timeoutMs?: number }} [o]
+   * @param {string} command @param {string[]} args @param {{ timeoutMs?: number, cwd?: string }} [o]
    * @returns {Promise<{ code: number, stdout: string, stderr: string }>}
    */
   function run(command, args, o = {}) {
@@ -120,6 +120,7 @@ export function createProcs(bridge) {
         reject(Object.assign(new Error(`${command} did not finish`), { code: "timeout" }));
       }, o.timeoutMs ?? 5000);
       start(command, args, {
+        ...(o.cwd ? { cwd: o.cwd } : {}),
         onLine: (stream, text) => (stream === "stderr" ? err : out).push(text),
         onExit: (code) => {
           clearTimeout(timer);
@@ -136,7 +137,12 @@ export function createProcs(bridge) {
     });
   }
 
-  return { start, run };
+  return {
+    start,
+    run,
+    /** @param {string} command @param {string[]} args @param {string} cwd */
+    runIn: (command, args, cwd) => run(command, args, { cwd, timeoutMs: 15000 }),
+  };
 }
 
 /** @typedef {ReturnType<typeof createProcs>} Procs */

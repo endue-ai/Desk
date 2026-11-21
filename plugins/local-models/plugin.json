@@ -8,27 +8,45 @@
   "permissions": [
     {
       "permission": "net:connect",
-      "hosts": ["localhost", "127.0.0.1"]
+      "hosts": [
+        "localhost",
+        "127.0.0.1"
+      ]
     },
     {
       "permission": "net:fetch",
-      "hosts": ["huggingface.co"]
+      "hosts": [
+        "huggingface.co"
+      ]
     },
     {
       "permission": "proc:spawn",
-      "commands": ["llama-server", "curl", "sysctl", "nvidia-smi"]
+      "commands": [
+        "llama-server",
+        "curl",
+        "git",
+        "sysctl",
+        "nvidia-smi"
+      ]
     },
     {
       "permission": "fs:read",
-      "paths": ["${home}/**"]
+      "paths": [
+        "${home}/**"
+      ]
     },
     {
       "permission": "fs:write",
-      "paths": ["${home}/**"]
+      "paths": [
+        "${home}/**"
+      ]
     },
     {
       "permission": "shell:open",
-      "schemes": ["http", "https"]
+      "schemes": [
+        "http",
+        "https"
+      ]
     }
   ],
   "surfaces": [
@@ -43,13 +61,26 @@
       {
         "id": "endue.local-models.open",
         "title": "Local models: open",
-        "keywords": ["llm", "ai", "chat", "ollama", "llama", "offline", "local"],
+        "keywords": [
+          "llm",
+          "ai",
+          "chat",
+          "ollama",
+          "llama",
+          "offline",
+          "local"
+        ],
         "description": "Open Local models, on a thread when one is named."
       },
       {
         "id": "endue.local-models.new-chat",
         "title": "Local models: new chat",
-        "keywords": ["llm", "chat", "new", "thread"],
+        "keywords": [
+          "llm",
+          "chat",
+          "new",
+          "thread"
+        ],
         "description": "Start a new chat, with a model when one is named.",
         "args": {
           "type": "object",
