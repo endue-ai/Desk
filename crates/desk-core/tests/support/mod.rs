@@ -170,14 +170,18 @@ pub fn strings(items: &[&str]) -> Option<Vec<String>> {
 
 /// Install `example.hello` (a UI plugin, not built in) from a folder under `home`.
 pub fn install_hello(core: &Core, home: &Path) {
+    install_hello_declaring(core, home, json!([]));
+}
+
+/// Install `example.hello` declaring `permissions`: a plugin is asked for, granted and allowed only
+/// what they cover (ADR 0260).
+pub fn install_hello_declaring(core: &Core, home: &Path, permissions: Value) {
     let dir = home.join("plugins/hello");
     fs::create_dir_all(dir.join("ui")).unwrap();
     fs::write(dir.join("ui/index.html"), "<p>hello</p>").unwrap();
-    fs::write(
-        dir.join("plugin.json"),
-        r#"{ "id": "example.hello", "version": "0.1.0", "kind": "ui", "entry": "ui/index.html" }"#,
-    )
-    .unwrap();
+    let manifest = json!({ "id": "example.hello", "version": "0.1.0", "kind": "ui",
+        "entry": "ui/index.html", "permissions": permissions });
+    fs::write(dir.join("plugin.json"), manifest.to_string()).unwrap();
     core.install_plugin(&dir, false);
 }
 

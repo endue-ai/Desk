@@ -37,7 +37,7 @@ fn unsubscribe(core: &Core, caller: &str, id: &Value) -> Result<Value, BridgeErr
 fn desk(tag: &str) -> Core {
     let home = home(tag);
     let core = Core::new(roots(&home));
-    install_hello(&core, &home);
+    install_hello_declaring(&core, &home, json!([events_scope(&["plugin.changed"])]));
     grant(&core, "desk", plugin_manage());
     grant(
         &core,
