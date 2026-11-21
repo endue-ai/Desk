@@ -1,0 +1,14 @@
+{
+  "target": "ReleaseIndex",
+  "description": "the signed UPGRADE_PATH.json on v1.10.0 accepts desks at or above 1.3.0",
+  "instance": {
+    "channel": "stable",
+    "serial": 3,
+    "releases": [{
+      "version": "1.10.0",
+      "minFrom": "1.3.0",
+      "targets": ["darwin-aarch64-app"],
+      "release": "https://github.com/endue-ai/Desk/releases/download/v1.10.0/release.json"
+    }]
+  }
+}
