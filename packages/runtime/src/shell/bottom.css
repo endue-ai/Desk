@@ -183,7 +183,13 @@
   opacity: 0;
   pointer-events: none;
 }
-.talk-pill.is-open .composer-field { opacity: 1; pointer-events: auto; border: 0; background: transparent; }
+.talk-pill.is-open .composer-field {
+  left: calc(var(--desk-space-16) + var(--desk-space-1));
+  opacity: 1;
+  pointer-events: auto;
+  border: 0;
+  background: transparent;
+}
 .talk-pill.is-open .composer-field:focus-within { outline: none; }
 .talk-pill:focus-within { outline: 1px solid var(--desk-accent); outline-offset: 0; }
 .talk-pill .composer-input { padding: 0; font-size: var(--text-base); }
@@ -219,9 +225,8 @@
   white-space: nowrap;
   opacity: 0;
 }
-.talk-pill[data-state="hover"] .talk-preview,
-.talk-pill.is-open .talk-preview { opacity: 1; }
-.talk-pill.is-open .talk-preview { left: 68px; right: auto; width: 184px; top: 24px; }
+.talk-pill[data-state="hover"] .talk-preview { opacity: 1; }
+.talk-pill.is-open .talk-preview { display: none; }
 .talk-shortcut {
   position: absolute;
   right: 12px;

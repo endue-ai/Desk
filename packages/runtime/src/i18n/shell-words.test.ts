@@ -47,7 +47,7 @@ describe("the shell's words in catalogs", () => {
     expect(REFUSED_LINES.en).toBe("I need the microphone to hear you. You can type instead.");
     const shell = { en: catalog("shell", "en"), ko: catalog("shell", "ko") };
     expect(shell.ko["shell.talkPlaceholder"]).toBe("Eris에게 계속 말해 보세요");
-    expect(shell.en["shell.talkPreview"]).toBe("Agents you can call today…");
+    expect(shell.en["shell.talkPlaceholder"]).toBe("Keep talking with Eris");
     const eris = { en: catalog("eris", "en"), ko: catalog("eris", "ko") };
     expect(eris.ko["eris.said.label"]).toBe("Eris가 한 말");
     expect(eris.en["eris.said.none"]).toBe("Eris has said nothing yet.");

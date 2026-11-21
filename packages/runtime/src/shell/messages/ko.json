@@ -184,6 +184,5 @@
   "shell.bar.newAgentLabel": "새 에이전트 만들기",
   "shell.bar.newSpace": "새 스페이스",
   "shell.bar.newSpaceLabel": "새 스페이스 만들기",
-  "shell.talkPlaceholder": "Eris에게 계속 말해 보세요",
-  "shell.talkPreview": "오늘 호출할 수 있는 에이전트들…"
+  "shell.talkPlaceholder": "Eris에게 계속 말해 보세요"
 }
