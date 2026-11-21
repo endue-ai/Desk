@@ -34,6 +34,9 @@
  *   explorer: ReturnType<typeof import("./explorer.js").createExplorer>,
  *   tools: ReturnType<typeof import("./tools.js").createTools>,
  *   execute: import("./catalog.js").Execute,
+ *   runner: ReturnType<typeof import("./run.js").createRunner>,
+ *   clients: ReturnType<typeof import("./clients.js").createClients>,
+ *   startWorker?: import("./explain/reader.js").StartWorker,
  *   settings(): import("./settings.js").Settings,
  *   onSettings(listener: (settings: import("./settings.js").Settings) => void): () => void,
  *   pick: import("./ask.js").Pick,
@@ -47,6 +50,8 @@
  *   it. `dialog` shows a feature's dialog and resolves with its answer (undefined: cancelled).
  *   `onSettings` calls its listener with the settings after each change while the plugin runs, until
  *   the function it returns is called.
+ *   `runner` runs a program as the clients run (features/backup/), `clients` finds it, and
+ *   `startWorker` starts a feature's worker (absent in tests: read in place).
  * @typedef {{
  *   id: string,
  *   commands?(deps: Deps): Record<string, (args: Record<string, any>) => unknown>,

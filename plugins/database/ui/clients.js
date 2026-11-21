@@ -2,7 +2,8 @@
 // or else in the folders the settings add and where package managers install them (Homebrew keeps
 // libpq and mysql-client out of PATH). `--version` says which client it is (mysql or mariadb) and
 // whether it has what the plugin uses: psql 13 (--csv, \warn), mysql 8.0.19 or mariadb 10.5
-// (--binary-as-hex), sqlite3 3.37 (-safe).
+// (--binary-as-hex), sqlite3 3.37 (-safe). PostgreSQL's pg_dump and pg_restore (features/backup/)
+// are found the same way, each named by a setting of its own, from version 13.
 
 /**
  * @typedef {import("./engines/common.js").EngineId} EngineId
@@ -48,6 +49,11 @@ export const INSTALL_HINTS = /** @type {Record<EngineId, string>} */ ({
   sqlite: "Install sqlite3: brew install sqlite, or apt install sqlite3.",
 });
 
+/** PostgreSQL's own programs beside psql, by name: the setting that names another one. */
+export const PROGRAMS = /** @type {const} */ ({ pg_dump: "pgDump", pg_restore: "pgRestore" });
+/** @typedef {keyof typeof PROGRAMS} Program */
+const PROGRAM_MINIMUM = "13";
+
 /** @returns {Platform} */
 export function platformOf(/** @type {string | undefined} */ navigatorPlatform) {
   const platform = (navigatorPlatform ?? "").toLowerCase();
@@ -65,6 +71,19 @@ export function candidates(/** @type {EngineId} */ engine, /** @type {Settings} 
   if (engine === "postgresql") return [settings.psql || "psql"];
   if (engine === "sqlite") return [settings.sqlite3 || "sqlite3"];
   return settings.mysql ? [settings.mysql] : ["mysql", "mariadb"];
+}
+
+/** The program to try for one of PostgreSQL's own programs. */
+export function programCandidates(/** @type {Program} */ name, /** @type {Settings} */ settings) {
+  return [settings[PROGRAMS[name]] || name];
+}
+
+/** The sentence for a pg_dump or pg_restore older than the plugin reads, or "". */
+function programTooOld(/** @type {Client} */ client) {
+  if (client.flavor === "postgresql" && compareVersions(client.version, PROGRAM_MINIMUM) >= 0)
+    return "";
+  if (client.flavor !== "postgresql") return `${client.command} is not PostgreSQL's.`;
+  return `${client.command} ${client.version} is too old: ${PROGRAM_MINIMUM} or newer is needed.`;
 }
 
 /**
@@ -109,7 +128,7 @@ export function tooOld(/** @type {Client} */ client) {
  * @param {() => Settings} settings
  */
 export function createClients(runner, settings) {
-  /** @type {Map<EngineId, Promise<Client>>} */
+  /** @type {Map<string, Promise<Client>>} */
   const found = new Map();
 
   /** @param {string} command */
@@ -131,15 +150,21 @@ export function createClients(runner, settings) {
     return { command, ...parsed };
   };
 
-  /** @param {EngineId} engine @returns {Promise<Client>} */
-  const find = async (engine) => {
+  /**
+   * The first of `commands` that runs and is new enough.
+   * @param {string[]} commands
+   * @param {string} hint how to install it, said when none is found
+   * @param {(client: Client) => string} old
+   * @returns {Promise<Client>}
+   */
+  const find = async (commands, hint, old) => {
     /** @type {unknown} */
     let failure;
-    for (const command of candidates(engine, settings())) {
+    for (const command of commands) {
       try {
         const client = await probe(command);
-        const old = tooOld(client);
-        if (old) throw new Error(old);
+        const why = old(client);
+        if (why) throw new Error(why);
         return client;
       } catch (error) {
         failure = error;
@@ -148,21 +173,33 @@ export function createClients(runner, settings) {
     }
     const message = failure instanceof Error ? failure.message : String(failure);
     const missing = /** @type {{ kind?: string }} */ (failure)?.kind === "missing";
-    throw Object.assign(new Error(missing ? `${message} ${INSTALL_HINTS[engine]}` : message), {
+    throw Object.assign(new Error(missing ? `${message} ${hint}` : message), {
       kind: missing ? "missing" : "client",
     });
+  };
+
+  /** @param {string} key @param {() => Promise<Client>} look */
+  const once = (key, look) => {
+    let entry = found.get(key);
+    if (!entry) {
+      entry = look();
+      found.set(key, entry);
+      entry.catch(() => found.delete(key));
+    }
+    return entry;
   };
 
   return {
     /** The client for an engine, found once per session (a failure is tried again next time). */
     get(/** @type {EngineId} */ engine) {
-      let entry = found.get(engine);
-      if (!entry) {
-        entry = find(engine);
-        found.set(engine, entry);
-        entry.catch(() => found.delete(engine));
-      }
-      return entry;
+      return once(engine, () =>
+        find(candidates(engine, settings()), INSTALL_HINTS[engine], tooOld),
+      );
+    },
+    /** pg_dump or pg_restore, found once per session as a client is. */
+    program(/** @type {Program} */ name) {
+      const hint = `Install ${name}: brew install libpq, or apt install postgresql-client.`;
+      return once(name, () => find(programCandidates(name, settings()), hint, programTooOld));
     },
     /** Forget what was found, after the settings change or for a fresh check. */
     reset() {

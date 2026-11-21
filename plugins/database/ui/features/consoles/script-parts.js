@@ -4,7 +4,9 @@
 // statements; a transaction larger than a part may be is refused at its first line. Each part
 // starts with the settings the parts before it made (SET, pg_dump's set_config, a SQLite PRAGMA
 // that assigns), since a run is a session of its own until consoles keep one (PG-02); SET LOCAL
-// and what a RESET takes back are not carried. Pure.
+// and what a RESET takes back are not carried. pg_dump's `\restrict` and `\unrestrict` lines (17.6
+// and later, a guard against meta-commands, which no run here sends) are read as blanks of their
+// length, so a plain dump runs (features/backup/). Pure.
 
 import { formatCount } from "../../format.js";
 import { tokenize } from "../../sql/lexer.js";
@@ -19,6 +21,15 @@ import { split } from "../../sql/split.js";
 
 /** The most a statement still being read may hold, in characters. */
 const PENDING_MAX = 16 * 1024 * 1024;
+/** pg_dump's guard lines, whole: what follows them (a line break, or the script's end) is read. */
+const GUARD = /^\\(?:un)?restrict [A-Za-z0-9]+(?=\r?\n)/gmu;
+const GUARD_LAST = /^\\(?:un)?restrict [A-Za-z0-9]+(?=\r?\n|$(?![\s\S]))/gmu;
+
+/** A PostgreSQL script with pg_dump's guard lines blanked, every offset kept. */
+export function unguarded(/** @type {string} */ text, final = false) {
+  if (!text.includes("restrict ")) return text;
+  return text.replace(final ? GUARD_LAST : GUARD, (line) => " ".repeat(line.length));
+}
 const encoder = new TextEncoder();
 
 /**
@@ -35,9 +46,9 @@ export function createScriptReader(dialect) {
   /** The MySQL delimiter in effect where `pending` starts. */
   let delimiter = ";";
 
-  const cut = () => {
+  const cut = (final = false) => {
     const prefix = dialect === "mysql" && delimiter !== ";" ? `DELIMITER ${delimiter}\n` : "";
-    const text = prefix + pending;
+    const text = prefix + (dialect === "postgresql" ? unguarded(pending, final) : pending);
     const shift = base - prefix.length;
     const lines = prefix ? 1 : 0;
     /** @returns {Statement} */
@@ -90,7 +101,7 @@ export function createScriptReader(dialect) {
     },
     /** The statements left when the script ends. */
     end() {
-      const { statements, lift } = cut();
+      const { statements, lift } = cut(true);
       const done = statements.map(lift);
       advance(pending.length);
       return done;
