@@ -22,6 +22,8 @@ permissions:
 
 jobs:
   rollout:
+    permissions:
+      contents: write
     name: rollout
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -48,10 +50,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Set ${{ inputs.version }} to ${{ inputs.percent }}% on stable
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           aws s3api get-object --bucket "$BUCKET" --key desk/channels/stable/index.json current.json \
             --endpoint-url "$ENDPOINT" > /dev/null
           node scripts/release-manifest.mjs rollout current.json --version "$VERSION" --percent "$PERCENT" > index.json
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/index.json"
+          bash scripts/publish-upgrade-path.sh index index.json stable "$VERSION"
           node scripts/release-publish.mjs index index.json --channel stable --bucket "$BUCKET" --endpoint "$ENDPOINT"
           echo "::notice::$VERSION reaches $PERCENT% of stable desks"

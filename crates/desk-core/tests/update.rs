@@ -334,3 +334,33 @@ fn startup_consumes_only_the_chosen_staged_version_and_rechecks_its_bytes() {
         }
     }
 }
+
+#[test]
+fn a_restart_does_not_install_if_consent_cannot_be_consumed_on_disk() {
+    let home = home("update-restart-readonly");
+    stage_build(&home.join("updates"));
+    let settings = home.join("settings-dir/settings.json");
+    let (core, _) = desk(&home, "0.1.0", None);
+    let core = Arc::new(core.with_settings_file(settings.clone()));
+    call(
+        &core,
+        "desk",
+        "settings.set",
+        json!({"key":"update.on-restart","value":"0.2.0"}),
+    )
+    .unwrap();
+    // A file in place of the settings directory makes the next atomic save fail on every OS.
+    let parent = settings.parent().unwrap();
+    fs::rename(parent, home.join("saved-settings")).unwrap();
+    fs::write(parent, b"unwritable directory").unwrap();
+    core.start_updates();
+    assert_eq!(update(&core, "update.status").unwrap()["state"], "staged");
+    let saved = call(
+        &core,
+        "desk",
+        "settings.get",
+        json!({"key":"update.on-restart"}),
+    )
+    .unwrap();
+    assert_eq!(saved["value"], "0.2.0");
+}

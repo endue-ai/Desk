@@ -112,7 +112,7 @@ jobs:
       group: release-index
       cancel-in-progress: false
     permissions:
-      contents: read
+      contents: write
       id-token: write
       attestations: write
     env:
@@ -151,6 +151,8 @@ jobs:
       - name: Upload the build
         run: node scripts/release-publish.mjs release dist --version "$VERSION" --bucket "$BUCKET" --endpoint "$ENDPOINT"
       - name: List it on beta
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # The bucket's own copy, never the cached public one; a missing index starts at serial 1.
           if ! out="$(aws s3api get-object --bucket "$BUCKET" --key desk/channels/beta/index.json beta.json --endpoint-url "$ENDPOINT" 2>&1)"; then
@@ -159,4 +161,5 @@ jobs:
           node scripts/release-manifest.mjs list beta.json --channel beta --release dist/release.json > index.json
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/index.json"
           node scripts/release-publish.mjs index index.json --channel beta --bucket "$BUCKET" --endpoint "$ENDPOINT"
+          bash scripts/publish-upgrade-path.sh index index.json beta "$VERSION"
           echo "::notice::candidate $VERSION of $GITHUB_REF_NAME is on $BASE/channels/beta/index.json"

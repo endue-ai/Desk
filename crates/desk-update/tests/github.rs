@@ -119,6 +119,22 @@ fn rejects_a_forged_path_and_keeps_a_verified_download_offline() {
 }
 
 #[test]
+fn an_older_unreadable_tag_does_not_block_a_newer_compatible_release() {
+    let key = Key::new();
+    let origin = shared(Origin::default());
+    page(
+        &origin,
+        1,
+        &[row("v0.3.0"), publish(&origin, &key, "0.4.0", "0.1.0", DEB)],
+    );
+    let updater = desk(&key, origin, &dir("github-highest"), "0.1.0");
+    assert_eq!(
+        updater.check_now(Prefs::default()).release.unwrap().version,
+        "0.4.0"
+    );
+}
+
+#[test]
 fn the_preview_channel_reads_its_signed_snapshot_from_its_github_prerelease() {
     let key = Key::new();
     let origin = shared(Origin::default());
@@ -140,4 +156,35 @@ fn the_preview_channel_reads_its_signed_snapshot_from_its_github_prerelease() {
     });
     assert_eq!(status.state, State::Staged, "{:?}", status.reason);
     assert_eq!(status.release.unwrap().version, "1.0.0-rc.2");
+}
+
+#[test]
+fn a_matching_restart_choice_installs_verified_bytes_without_the_network() {
+    let key = Key::new();
+    let origin = shared(Origin::default());
+    page(&origin, 1, &[publish(&origin, &key, "1.0.0", "0.1.0", DEB)]);
+    let folder = dir("github-offline-restart");
+    let previous = desk(&key, origin.clone(), &folder, "0.1.0");
+    assert!(previous.check_now(Prefs::default()).staged);
+    drop(previous);
+    origin.remove(&format!("{API}?per_page=30&page=1"));
+    let recorder = shared(Recorder::default());
+    let mut cfg = config(&folder, &key, "0.1.0");
+    cfg.base = GH.into();
+    let next = Updater::new(cfg, origin, recorder.clone(), Prefs::default()).unwrap();
+    next.apply_on_start("2.0.0");
+    assert_eq!(next.status().state, State::Staged);
+    next.apply_on_start("1.0.0");
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    while recorder.installed.lock().unwrap().is_empty() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "verified install never ran"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    assert_eq!(
+        *recorder.installed.lock().unwrap(),
+        [("1.0.0".to_string(), artifact("1.0.0", DEB))]
+    );
 }

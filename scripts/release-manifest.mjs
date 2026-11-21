@@ -59,11 +59,21 @@ export function readDist(dist, version) {
 }
 
 /** release.json for `files`, every URL absolute under `base` (the Tauri updater needs that). */
-export function releaseManifest({ version, base, notes, commit, date, minFrom, files }) {
+export function releaseManifest({
+  version,
+  base,
+  downloadBase,
+  notes,
+  commit,
+  date,
+  minFrom,
+  files,
+}) {
   const platforms = {};
   const artifacts = {};
   for (const file of files) {
-    const url = `${base.replace(/\/+$/u, "")}/releases/${version}/${file.name}`;
+    const folder = downloadBase ?? `${base.replace(/\/+$/u, "")}/releases/${version}`;
+    const url = `${folder}/${file.name}`;
     for (const target of targetsOf(file.name, version)) {
       platforms[target] = { url, signature: file.signature };
       artifacts[target] = { sha256: file.sha256, size: file.size };

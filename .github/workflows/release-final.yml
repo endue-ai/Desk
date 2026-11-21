@@ -10,6 +10,10 @@ name: release-final
 on:
   workflow_dispatch:
     inputs:
+      min-from:
+        description: Oldest Desk version that can install this final directly
+        required: false
+        type: string
       soak-days:
         description: Days the newest candidate must have been on beta
         required: false
@@ -130,6 +134,7 @@ jobs:
       VERSION: ${{ needs.gate.outputs.version }}
       COMMIT: ${{ needs.gate.outputs.commit }}
       CANDIDATE: ${{ needs.gate.outputs.candidate }}
+      MIN_FROM: ${{ inputs.min-from || vars.DESK_UPDATE_MIN_FROM }}
       NOTES_START: ${{ needs.gate.outputs.notes-start }}
       BASE: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
       BUCKET: ${{ vars.R2_BUCKET || 'endue-desk-releases' }}
@@ -173,7 +178,7 @@ jobs:
         run: |
           notes="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$VERSION"
           node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
-            --commit "$COMMIT" --notes "$notes" > release.json
+            --commit "$COMMIT" --notes "$notes" --min-from "$MIN_FROM" > release.json
           mv release.json dist/release.json
           (cd dist && sha256sum endue-desk_* > SHA256SUMS)
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"
@@ -204,7 +209,13 @@ jobs:
           args=(--repo "$GITHUB_REPOSITORY" --target "$COMMIT" --title "endue Desk $VERSION" --generate-notes --notes-file downloads.md)
           if [ -n "$NOTES_START" ]; then args+=(--notes-start-tag "$NOTES_START"); fi
           gh release create "v$VERSION" "${args[@]}"
+      - name: Attach the signed packages and tag-local manifest
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: bash scripts/publish-upgrade-path.sh packages dist "$VERSION" "$COMMIT" "$MIN_FROM"
       - name: List it on stable to a tenth of the desks, and on beta
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           fetch() {
             if ! out="$(aws s3api get-object --bucket "$BUCKET" --key "desk/channels/$1/index.json" "$1.json" --endpoint-url "$ENDPOINT" 2>&1)"; then
@@ -220,5 +231,6 @@ jobs:
             mv "$channel-index.json" index.json
             mv "$channel-index.json.sig" index.json.sig
             node scripts/release-publish.mjs index index.json --channel "$channel" --bucket "$BUCKET" --endpoint "$ENDPOINT"
+            bash scripts/publish-upgrade-path.sh index index.json "$channel" "$VERSION"
           done
           echo "::notice::$VERSION is on stable for 10% of the desks; widen it with rollout.yml"

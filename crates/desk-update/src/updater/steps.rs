@@ -28,20 +28,35 @@ impl Updater {
     }
 
     fn read_index(&self, channel: Channel) -> Result<Index, String> {
+        if self.inner.config.base == crate::GITHUB_RELEASES {
+            return self.github_index(channel);
+        }
         let url = format!(
             "{}/channels/{}/index.json",
             self.inner.config.base.trim_end_matches('/'),
             channel.name()
         );
+        self.signed_index(&url, channel, channel.name())
+    }
+
+    pub(super) fn signed_index(
+        &self,
+        url: &str,
+        channel: Channel,
+        serial_key: &str,
+    ) -> Result<Index, String> {
         let bytes = self
-            .signed(&url)
+            .signed(url)
             .map_err(|e| format!("the channel index: {e}"))?;
         let index = manifest::index(&bytes)?;
         if index.channel.name() != channel.name() {
             let named = index.channel.name();
             return Err(format!("the {} index says it is {named}'s", channel.name()));
         }
-        if let Some(seen) = self.inner.stage.seen(channel.name())
+        if index.serial == 0 {
+            return Err(format!("{url} has no positive index serial"));
+        }
+        if let Some(seen) = self.inner.stage.seen(serial_key)
             && index.serial < seen
         {
             let serial = index.serial;
@@ -50,26 +65,18 @@ impl Updater {
                 channel.name()
             ));
         }
-        self.inner.stage.see(channel.name(), index.serial);
+        self.inner.stage.see(serial_key, index.serial);
         Ok(index)
     }
 
     /// Choose from a checked index and act on the choice.
     fn decide(&self, index: &Index, prefs: Prefs) {
         let checked_at = Some(rfc3339(SystemTime::now()));
-        // A staged build the channel no longer lists was taken down: it is never applied.
-        let staged = self
-            .inner
-            .stage
-            .staged()
-            .filter(|chosen| policy::listed(index, &chosen.version));
         let salt = &self.inner.salt;
-        let next = policy::choose(
-            index,
-            &self.inner.current,
-            &self.inner.config.targets,
-            |version| policy::bucket(salt, version),
-        );
+        let bucket = |version: &str| policy::bucket(salt, version);
+        let current = &self.inner.current;
+        let targets = &self.inner.config.targets;
+        let next = policy::choose(index, current, targets, bucket);
         let Some(listed) = next else {
             self.inner.stage.discard();
             self.update(|s| {
@@ -78,19 +85,24 @@ impl Updater {
             });
             return;
         };
-        if let Some(chosen) = staged.filter(|chosen| chosen.version == listed.version) {
-            self.prepare(&chosen);
+        let staged = self.inner.stage.staged();
+        if let Some(chosen) = &staged
+            && chosen.version == listed.version
+            && listed.targets.contains(&chosen.target)
+        {
+            self.prepare(chosen);
             self.update(|s| {
-                *s = s.at(State::Staged, Some(chosen), true);
+                *s = s.at(State::Staged, Some(chosen.clone()), true);
                 s.checked_at = checked_at;
             });
             return;
         }
-        if self
-            .inner
-            .stage
-            .staged()
-            .is_some_and(|c| !policy::listed(index, &c.version))
+        if let Some(chosen) = staged
+            && !index.releases.iter().any(|row| {
+                row.version == chosen.version
+                    && row.targets.contains(&chosen.target)
+                    && policy::eligible(row, current, targets, bucket).is_some()
+            })
         {
             self.inner.stage.discard();
         }
@@ -119,6 +131,12 @@ impl Updater {
             let (has, wants) = (&release.version, &listed.version);
             return Err(format!(
                 "the manifest is for {has}, the index lists {wants}"
+            ));
+        }
+        if !policy::reachable(release.desk.min_from.as_deref(), &self.inner.current) {
+            return Err(format!(
+                "{} requires a newer installed version",
+                release.version
             ));
         }
         let target = policy::target(&release, &self.inner.config.targets)
@@ -185,10 +203,10 @@ impl Updater {
         }
     }
 
-    pub(super) fn apply_step(&self) {
-        let Some(staged) = self.inner.stage.staged() else {
-            return self.failed(None, "no update is staged".to_owned());
-        };
+    pub(super) fn apply_step(&self, staged: Chosen) {
+        if self.inner.stage.staged().as_ref() != Some(&staged) {
+            return self.failed(None, "the chosen update is no longer staged".to_owned());
+        }
         let pubkey = &self.inner.config.pubkey;
         let checked = self.inner.stage.read(&staged).and_then(|bytes| {
             verify(&bytes, &staged.signature, pubkey, Some(&staged.version))

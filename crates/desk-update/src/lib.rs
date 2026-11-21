@@ -1,9 +1,12 @@
 //! desk-update: the decisions of Desk's updater (ADR 0054), apart from Tauri. A desk reads its
-//! channel's signed index from the release origin (Cloudflare R2), chooses the next build itself
+//! channel's signed upgrade paths from GitHub Releases, chooses the next build itself
 //! (`policy`), downloads and verifies it at once (`verify`), keeps it on disk (`stage`) and installs
 //! it only when asked. The app supplies the `Transport` and the `Installer`; the core serves the
 //! `Updater`'s status as `update.*`.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
+
+/// Published Desk releases. Packaged builds discover updates only in this repository.
+pub const GITHUB_RELEASES: &str = "https://github.com/endue-ai/Desk/releases";
 
 pub mod generated;
 #[cfg(feature = "https")]
