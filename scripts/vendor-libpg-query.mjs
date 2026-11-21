@@ -135,16 +135,21 @@ export async function vendor() {
   for (const [name, { url }] of Object.entries(LICENCES)) licences[name] = await download(url);
   const files = expected(tarball, licences);
   mkdirSync(VENDOR, { recursive: true });
-  for (const name of readdirSync(VENDOR)) if (!(name in files)) rmSync(join(VENDOR, name));
+  // Its own files only: another library's folder (ui/vendor/editor, ADR 0282) sits beside them.
+  for (const name of ownFiles()) if (!(name in files)) rmSync(join(VENDOR, name));
   for (const [name, content] of Object.entries(files)) writeFileSync(join(VENDOR, name), content);
   return Object.keys(files).sort();
 }
 
+/** The files directly in ui/vendor, which are the parser's; folders hold other libraries. */
+const ownFiles = () =>
+  readdirSync(VENDOR, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name);
+
 /** The committed copy, file name -> bytes. */
 export const committed = () =>
-  Object.fromEntries(
-    readdirSync(VENDOR).map((n) => [n, new Uint8Array(readFileSync(join(VENDOR, n)))]),
-  );
+  Object.fromEntries(ownFiles().map((n) => [n, new Uint8Array(readFileSync(join(VENDOR, n)))]));
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   for (const name of await vendor()) console.log(`vendored ${name}`);
