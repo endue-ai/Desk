@@ -308,9 +308,12 @@ fn a_desk_page_paint_aside_that_failed_is_never_shown() {
         "its report finds no picture aside"
     );
     assert_eq!(desk_size(sink), Some((1280, 800)), "the last picture stays");
-    // Its next paint of that size waits aside until its report shows it.
+    // Its report came: its next paint of that size is drawn as it comes.
     assert!(paint(&gpu, DESK, (1440, 900), (1440, 900)));
-    assert_eq!(desk_size(sink), Some((1280, 800)), "aside");
-    assert!(sink.lock().page_laid((1440, 900)));
     assert_eq!(desk_size(sink), Some((1440, 900)));
+    // A size no report names waits aside again, in a spare of its own, until its report.
+    assert!(paint(&gpu, DESK, (1600, 1000), (1600, 1000)));
+    assert_eq!(desk_size(sink), Some((1440, 900)), "aside");
+    assert!(sink.lock().page_laid((1600, 1000)));
+    assert_eq!(desk_size(sink), Some((1600, 1000)));
 }
