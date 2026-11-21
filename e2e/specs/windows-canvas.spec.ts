@@ -24,6 +24,7 @@ import {
 } from "../support/gestures";
 import { difference, settled } from "../support/pixels";
 import {
+  byId,
   clearDesk,
   closeShellWindows,
   deskNow,
@@ -33,6 +34,7 @@ import {
   panOf,
   rectOf,
   run,
+  until,
   windowNow,
   windowUntil,
 } from "../support/windows";
@@ -100,6 +102,8 @@ describe("canvas: resizing and the pan (#82)", () => {
     expect(panOf(await deskNow())).toEqual({ x: -120, y: 60 });
     // Floated where it is now, the normal window keeps its place on screen.
     await click(toolAt(rectOf(fixed), "close"));
+    // The floating window lay over the other's menu tool: it is gone before that tool is pressed.
+    await until((d) => byId(d, floating) === undefined, "the floating window closed");
     await fromMenu(rectOf(moved), "floating", false);
     const floated = await windowUntil(canvas, (x) => x.state === "floating", "floating");
     expect(rectOf(floated)).toEqual(rectOf(moved));
