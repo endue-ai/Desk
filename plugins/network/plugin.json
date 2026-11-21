@@ -24,7 +24,9 @@
     },
     {
       "permission": "brain:ask"
-    }
+    },
+    { "permission": "net:connect", "hosts": ["*"] },
+    { "permission": "cmd:invoke", "ids": ["endue.network.devices"] }
   ],
   "surfaces": [
     {

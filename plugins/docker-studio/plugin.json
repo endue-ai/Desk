@@ -28,7 +28,9 @@
     {
       "permission": "fs:write",
       "paths": ["${home}/**"]
-    }
+    },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "fs:write", "paths": ["/**"] }
   ],
   "surfaces": [
     {

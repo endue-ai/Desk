@@ -35,7 +35,7 @@ export function runsStrip(
   const stop = (run: LocalAgentRun) => {
     const local = ctx.bridge.localAgents;
     if (!local) return;
-    void local.stop(run.runId).catch((error: unknown) => notice(why(error)));
+    void local.stop(run.runId).catch((error: unknown) => notice(why(ctx.store.get().lang, error)));
   };
   const row = (run: LocalAgentRun) => {
     const excerpt =

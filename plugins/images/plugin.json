@@ -14,7 +14,9 @@
     {
       "permission": "shell:open",
       "paths": ["${home}/**"]
-    }
+    },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "shell:open", "paths": ["/**"] }
   ],
   "surfaces": [
     {

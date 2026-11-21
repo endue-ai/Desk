@@ -29,7 +29,11 @@
     {
       "permission": "shell:open",
       "schemes": ["http", "https"]
-    }
+    },
+    { "permission": "proc:spawn", "commands": ["*"] },
+    { "permission": "net:connect", "hosts": ["*"] },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "fs:write", "paths": ["/**"] }
   ],
   "surfaces": [
     {

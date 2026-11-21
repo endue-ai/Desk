@@ -123,7 +123,7 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
       v.total = page.total;
     } catch (error) {
       if (mine !== token) return;
-      v.error = why(error);
+      v.error = why(lang(), error);
     }
     v.loading = false;
     drawList();
@@ -148,7 +148,7 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
       v.selected = read.session;
     } catch (error) {
       if (mine !== reading) return;
-      v.readError = why(error);
+      v.readError = why(lang(), error);
     }
     v.reading = false;
     drawDetail();
@@ -164,7 +164,7 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
       const result = await bridge.import(agent, from);
       notice(importLine(lang(), result));
     } catch (error) {
-      notice(tr("importFailed", { why: why(error) }));
+      notice(tr("importFailed", { why: why(lang(), error) }));
     }
     v.importing = null;
     drawHead();
@@ -179,7 +179,7 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
         ?.transcript(agent, sessionId, TURNS)
         .then(
           (read) => pick(read.session),
-          (error: unknown) => notice(why(error)),
+          (error: unknown) => notice(why(lang(), error)),
         );
   };
 

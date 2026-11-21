@@ -11,7 +11,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use desk_bridge::{PluginHold, PluginInfo, PluginKind, PluginManifest, PluginStatus};
+use desk_bridge::{Permission, PluginHold, PluginInfo, PluginKind, PluginManifest, PluginStatus};
 use serde::{Deserialize, Serialize};
 
 use crate::manifest::{fallback_id, inside, validate_dir};
@@ -154,6 +154,18 @@ impl PluginRegistry {
 
     pub fn list(&self) -> Vec<PluginInfo> {
         (0..self.entries.len()).map(|i| self.info(i)).collect()
+    }
+
+    /// The permissions an installed plugin's manifest declares, none when it did not validate;
+    /// `None` when no plugin `id` is installed (ADR 0260).
+    pub(crate) fn declared(&self, id: &str) -> Option<&[Permission]> {
+        let entry = self.entries.iter().find(|e| e.id == id)?;
+        let manifest = entry.manifest.as_ref();
+        Some(
+            manifest
+                .and_then(|m| m.permissions.as_deref())
+                .unwrap_or_default(),
+        )
     }
 
     pub fn get(&self, id: &str) -> Option<PluginInfo> {

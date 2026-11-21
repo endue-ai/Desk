@@ -24,7 +24,10 @@
     {
       "permission": "shell:open",
       "schemes": ["http", "https"]
-    }
+    },
+    { "permission": "proc:spawn", "commands": ["*"] },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "fs:write", "paths": ["/**"] }
   ],
   "surfaces": [
     {

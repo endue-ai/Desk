@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use desk_bridge::{BridgeError, ErrorCode};
 use desk_core::Core;
 use serde_json::{Value, json};
-use support::{call, grant, home, install_hello, plugin_manage, roots, set_enabled};
+use support::{call, grant, home, install_hello_declaring, plugin_manage, roots, set_enabled};
 
 const HELLO: &str = "example.hello";
 
@@ -24,7 +24,7 @@ fn core() -> (Core, PathBuf) {
     fs::create_dir_all(home.join("Movies")).unwrap();
     fs::write(home.join("Movies/Holiday 2026.mp4"), vec![7u8; 1000]).unwrap();
     let core = Core::new(roots(&home));
-    install_hello(&core, &home);
+    install_hello_declaring(&core, &home, json!([movies()]));
     (core, home)
 }
 

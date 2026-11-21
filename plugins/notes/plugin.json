@@ -17,7 +17,9 @@
     {
       "permission": "cmd:invoke",
       "ids": ["desk.files.changed", "desk.buffers.update", "desk.files.open", "desk.buffers.switch"]
-    }
+    },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "fs:write", "paths": ["/**"] }
   ],
   "surfaces": [
     {

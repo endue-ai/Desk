@@ -27,11 +27,11 @@ fn net() -> Value {
     json!({ "permission": "net:fetch", "hosts": ["api.acme.test"] })
 }
 
-/// An http connector manifest, as a pack nests it.
+/// An http connector manifest, as a pack nests it, declaring the notes it is granted for good too.
 fn connector(id: &str) -> Value {
     json!({
         "id": id, "version": "0.1.0", "kind": "connector",
-        "permissions": [net()],
+        "permissions": [net(), notes_read()],
         "connector": {
             "binding": "http", "auth": { "kind": "none" }, "sync": { "mode": "pull" },
             "resources": [{ "kind": "task" }],
