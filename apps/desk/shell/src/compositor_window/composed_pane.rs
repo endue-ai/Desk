@@ -109,7 +109,7 @@ impl Composed {
         if !self.panes.0.contains_key(surface) {
             return (shown, false, false);
         }
-        let had = self.frames.size(shown);
+        let had = self.shown_size(surface);
         let to = self.panes.0.get_mut(surface).map(|p| p.paint(size, had));
         let (id, aside) = match to {
             Some(To::Aside { slot, fresh }) => {
@@ -169,7 +169,7 @@ impl Composed {
                 continue;
             };
             if let Some(before) = self.textures.insert(surface.clone(), picture) {
-                self.frames.destroy(&mut self.compositor, before);
+                self.retire(before);
             }
             crate::frame_trace::line(
                 "pane_shown",
