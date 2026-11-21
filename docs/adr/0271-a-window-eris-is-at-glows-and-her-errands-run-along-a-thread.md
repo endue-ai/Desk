@@ -7,6 +7,8 @@ decision-makers: Team endue
 Status: amended by ADR 0275: no window glows because she only looks at it (the look, its spark and
 `LOOK` are gone); a window lights when the spark that carries her request lands on it; her errands
 wait until the line is in her and read, and the answer flies back in the star's colour.
+Amended 2026-11-21: the spark and its thread end on the window's border, at the point that faces
+Eris, and follow her, the window and the desk's pan on every frame while the spark is out.
 
 Amends ADR 0089 (where the window of an errand glows, which windows do, and what the spark runs
 along) and ADR 0265 (the star's colour also lights where an agent is at work: the window's glow
@@ -51,8 +53,9 @@ the glow then belongs to the window in the stack and the errand stays one piece 
 * **What she is at.** *Using*: every window of the desktop in front that shows a surface of the
   plugin a command belongs to, each once (`errand-targets.ts`), from `tool` until its sparks leave
   after `tool-result`. A plugin's section kept in the desk's page names its window by its group
-  (`surface/anchors.ts`), and the spark flies to the window's middle where it is drawn, not to
-  that place. A command of the desk's own has no plugin window, but may name one: the runtime
+  (`surface/anchors.ts`), and the spark flies to the window's border where it is drawn, not to
+  that place: the point where the way from the window's middle toward her crosses its edge
+  (`edgeOf`, `borderPoint`). A command of the desk's own has no plugin window, but may name one: the runtime
   hears each built-in the core asks it to run (`Commands.watchRuns`), and one Eris runs
   (`agent:eris`) uses the window its `window` names, or the one its answer names: that window
   glows and the errand's spark flies on to it (ADR 0269's window commands, `desk.windows.focus`).
@@ -69,8 +72,11 @@ the glow then belongs to the window in the stack and the errand stays one piece 
   pointer. Where the page draws the windows (a browser, the tests) the window's section carries
   `is-eris-visiting` and `--eris-glow`, and `compositor.css` leaves that unpainted in the app.
 * **The thread** (`errand-thread.ts`, `errand.css`): an SVG in the desk's page from Eris to the
-  window along the spark's arc, in the star's colour, in a box that never moves; marks run out with
-  the request, stand still while the plugin works, and run back with the answer. The spark keeps
+  window's border along the spark's arc, in the star's colour; marks run out with the request,
+  stand still while the plugin works, and run back with the answer. Both ends are read again on
+  every frame while the spark is out (`errand-spark.ts`, a tick on the ticker): her body, and the
+  window's section or the rect the gesture holds or the window manager draws, the pan in it, so a
+  window dragged or a desk panned keeps the thread joined to her and to its border. The spark keeps
   her own gold. A look is a bare spark there and straight back, which the turn does not wait for.
 * **Reduced motion.** The windows light at once, the label waits beside her, no thread is laid.
   `Ticker.animate` with 0 ms rejected (its tick ran before `add` answered); it now ends in that
@@ -90,12 +96,13 @@ the glow then belongs to the window in the stack and the errand stays one piece 
   not lit
 * Bad, because a turn that waits (no brain answers) keeps the window she looks at lit for as long
   as she waits: the talk line has no way to stop a turn
-* Bad, because the thread is laid when the spark leaves: a window moved meanwhile keeps the thread
-  where it was until the spark flies back
+* Bad, because while a spark is out the frame loop runs and reads her place and the window's on
+  every frame, so a desk with an errand out is never at rest (ADR 0164); it rests again once the
+  spark is home
 
 ### Confirmation
 
-`packages/runtime/src/eris/{errand,errand-uses,errand-thread,visiting}.test.ts`,
+`packages/runtime/src/eris/{errand,errand-uses,errand-thread,errand-edge,visiting}.test.ts`,
 `commands.test.ts`, `shell/ticker.test.ts`,
 `apps/desk/src/compositor-desk.test.ts`, `crates/desk-compositor/src/chrome/glow.rs`,
 `apps/desk/shell/src/compositor_window/{report.rs,report_lit_tests.rs}`; painted in
@@ -121,7 +128,7 @@ with examples/brain-echo answering, in `e2e/specs/eris-glow.spec.ts`. The motion
 
 `docs/ko/desk-structure.md` names `eris/` only: no section of it changes; `docs/design-system.md`
 says where the star's colour goes. Code:
-`packages/runtime/src/eris/{errand,errand-targets,errand-thread,visiting}.ts`, `errand.css`,
+`packages/runtime/src/eris/{errand,errand-spark,errand-targets,errand-thread,visiting}.ts`, `errand.css`,
 `commands.ts`, `shell/Composer.ts`, `apps/desk/src/{compositor-desk.ts,compositor.css}`,
 `crates/desk-compositor/src/{chrome.rs,chrome/glow.rs,theme/mod.rs}`,
 `apps/desk/shell/src/compositor_window/{draw.rs,report.rs}`.
