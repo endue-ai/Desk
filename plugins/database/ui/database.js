@@ -45,6 +45,7 @@ import { createTools } from "./tools.js";
  *   nodeAt(target: unknown): Node | undefined,
  *   focus(where: "explorer" | "editor" | "grid"): void,
  *   selection(): { tab: number, rows?: number[], columns?: number[], sorted?: (string | null)[][] } | undefined,
+ *   dialog?(type: string, model: unknown): Promise<unknown>,
  * }} View
  */
 
@@ -58,9 +59,10 @@ import { createTools } from "./tools.js";
  *   output(onBusy: (reads: number) => void): import("./output-client.js").OutputReader,
  *   features?: import("./feature-host.js").Feature[],
  *   random?(): number,
+ *   plans?: import("./explain/reader.js").PlanReader,
  * }} options `cancelled` makes the error a cancelled command answers with (the SDK's CommandFailed);
  *   `output` makes the result reader, which reads each run's output in a worker (main.js, #38);
- *   `features` are features/index.js's unless given.
+ *   `features` are features/index.js's unless given; `plans` reads big plans in a worker.
  */
 export function createDatabase({ bridge, commands, state, settings: source }, view, options) {
   let settings = DEFAULTS;
@@ -147,6 +149,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     view,
     changed: () => save(),
     panels: panelsOf(list),
+    ...(options.plans ? { readPlan: options.plans.read } : {}),
   });
   const tools = createTools({
     bridge,
@@ -255,6 +258,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     say: (text) => view.say(text),
     guard,
     cancelled,
+    dialog: (type, model) => (view.dialog ? view.dialog(type, model) : Promise.resolve(undefined)),
   };
   const taken = new Set(Object.keys(builtins));
   const featureActions = registerFeatures(list, featureDeps, { answer, taken });

@@ -55,8 +55,10 @@ import { show, summaryOf } from "./tabs.js";
  *   view: ConsoleView,
  *   changed(): void,
  *   panels?: Record<string, Pick<import("./feature-host.js").Panel, "keep">>,
+ *   readPlan?(set: import("./engines/common.js").ResultSet): Promise<import("./explain/node.js").PlanNode | undefined>,
  * }} Deps
- *   `panels` are the features' panel types (feature-host.js).
+ *   `panels` are the features' panel types (feature-host.js); `readPlan` reads a big plan in the
+ *   plan worker (explain/reader.js), and plans are read in place without it.
  */
 
 /** @param {Deps} deps */
@@ -200,7 +202,13 @@ export function createConsoles(deps) {
           : Promise.resolve(),
   });
 
-  const { run, explain, format, more } = createRunning({ deps, active, execute, render, typed });
+  const { run, explain, format, more, serverVersion } = createRunning({
+    deps,
+    active,
+    execute,
+    render,
+    typed,
+  });
 
   /** The editor's text changed: keep it, a moment later, in the store. */
   const edited = (/** @type {string} */ text) => {
@@ -222,6 +230,7 @@ export function createConsoles(deps) {
     ...panels,
     run,
     explain,
+    serverVersion,
     format,
     more,
     edited,

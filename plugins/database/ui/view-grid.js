@@ -176,7 +176,7 @@ export function createGrid(doc, host, act) {
       scroller.scrollTop = 0;
     }
     if (!tab) return host.replaceChildren();
-    if (tab.kind === "plan" && tab.plan) return host.replaceChildren(planView(doc, tab.plan));
+    if (tab.kind === "plan" && tab.plan) return host.replaceChildren(planView(doc, tab, act));
     if (tab.kind === "messages" || !tab.set) {
       const lines = (tab.lines ?? []).map((line) =>
         el(doc, "li", { class: `line ${line.level}` }, line.text),
