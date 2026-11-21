@@ -42,6 +42,7 @@ mod os_pointer;
 pub mod overlay;
 mod page;
 pub mod pan;
+mod render_thread;
 pub mod report;
 mod snapshots;
 mod spread;
