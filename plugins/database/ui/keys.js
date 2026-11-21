@@ -29,6 +29,7 @@ export const BINDINGS = {
     { chord: "d", action: "ddl", label: "DDL" },
     { chord: "c", action: "count", label: "count rows" },
     { chord: "r", action: "diagram", label: "ER diagram" },
+    { chord: "m", action: "maintain", label: "maintenance" },
     { chord: "/", action: "filter", label: "filter" },
     { chord: "u", action: "importUri", label: "from URI" },
   ],

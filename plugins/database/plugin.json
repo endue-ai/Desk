@@ -423,6 +423,106 @@
         "keywords": ["pg_stat_statements", "slow query", "top queries"]
       },
       {
+        "id": "endue.database.maintenance",
+        "title": "Database: maintenance (VACUUM, ANALYZE, REINDEX, CLUSTER)",
+        "keywords": [
+          "vacuum",
+          "analyze",
+          "reindex",
+          "cluster",
+          "vacuum full",
+          "bloat",
+          "dead tuples",
+          "statistics",
+          "freeze",
+          "locks"
+        ],
+        "description": "Opens the maintenance form of a PostgreSQL table, index, schema or database and answers the statement it runs, in words what it locks and for how long, and the target's size and statistics. With run, it runs the statement alone, outside a transaction block, after the person says yes, and answers how it ended, the server's output and the statistics before and after. A read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; with neither table nor index, the whole schema. Without schema, the connection's whole database when connection is named; with neither, the table on screen or one picked from the palette."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A table or materialized view of the schema."
+            },
+            "index": {
+              "type": "string",
+              "minLength": 1,
+              "description": "An index of the schema, for REINDEX INDEX or CLUSTER of its table by it."
+            },
+            "operation": {
+              "type": "string",
+              "enum": ["vacuum", "analyze", "reindex", "cluster"],
+              "description": "What to run; VACUUM by default (REINDEX for an index)."
+            },
+            "options": {
+              "type": "object",
+              "description": "The statement's options, on the defaults (an open form's own are set aside); what the server's version or another option rules out is left out of the statement.",
+              "properties": {
+                "full": { "type": "boolean" },
+                "freeze": { "type": "boolean" },
+                "verbose": { "type": "boolean", "description": "On by default." },
+                "analyze": { "type": "boolean" },
+                "skipLocked": { "type": "boolean" },
+                "indexCleanup": { "type": "string", "enum": ["", "auto", "on", "off"] },
+                "truncate": { "type": "string", "enum": ["", "on", "off"] },
+                "parallel": { "type": ["integer", "null"], "minimum": 0, "maximum": 1024 },
+                "processToast": { "type": "boolean" },
+                "bufferUsageLimit": {
+                  "type": "string",
+                  "description": "A size such as 256kB or 16MB, or 0."
+                },
+                "concurrently": {
+                  "type": "boolean",
+                  "description": "REINDEX CONCURRENTLY; on by default."
+                },
+                "tablespace": {
+                  "type": "string",
+                  "description": "REINDEX's TABLESPACE, PostgreSQL 14 and later."
+                },
+                "using": {
+                  "type": "string",
+                  "description": "The index CLUSTER orders the table by."
+                }
+              },
+              "additionalProperties": false
+            },
+            "run": {
+              "type": "boolean",
+              "description": "Run it once the form is open; the person is always asked first."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.maintenance-run",
+        "title": "Database: run the maintenance form",
+        "keywords": ["vacuum", "analyze", "reindex", "cluster", "start", "execute"]
+      },
+      {
+        "id": "endue.database.maintenance-cancel",
+        "title": "Database: cancel the maintenance run",
+        "keywords": ["stop", "abort", "pg_cancel_backend", "vacuum", "reindex"]
+      },
+      {
+        "id": "endue.database.maintenance-refresh",
+        "title": "Database: read the maintenance target again",
+        "keywords": ["reload", "size", "statistics", "dead tuples", "last vacuum"]
+      },
+      {
         "id": "endue.database.history",
         "title": "Database: history",
         "keywords": ["recent", "earlier queries"]

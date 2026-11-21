@@ -45,8 +45,9 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
   picks them (system schemas stay out by default). Other engines read a node when it opens, as above.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the ER diagram of a
-  schema (of the tables the filter keeps) or of a table and its neighbours, `n`, `e` and Delete add, change and
-  remove a connection, `u` adds one from a URI.
+  schema (of the tables the filter keeps) or of a table and its neighbours, `m` opens the maintenance form of
+  a connection, schema, table or index, `n`, `e` and Delete add, change and remove a connection, `u` adds one
+  from a URI.
 - A table drags its qualified name.
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/`, `view-tree.js`.
@@ -246,6 +247,23 @@ Modules: `features/overview/`.
 
 Modules: `features/diagram/`, `schema/diagram.js`.
 
+## Maintenance
+
+- A form per target of a PostgreSQL connection (13 and later; a standby refuses): VACUUM, ANALYZE, REINDEX
+  and CLUSTER of a table or materialized view, an index (REINDEX, CLUSTER by it), a schema (not CLUSTER) or
+  the whole database, opened from the explorer (`m`) or the palette (the table on screen, else picked).
+- The options the server's version has (PROCESS_TOAST and TABLESPACE from 14, BUFFER_USAGE_LIMIT from 16),
+  each one another option rules out disabled with why; VERBOSE and REINDEX CONCURRENTLY on by default;
+  CLUSTER's index picked among the valid, whole btree and GiST ones. The exact statement shows as it runs.
+- What it locks and for how long in words (a warning when it blocks reads or writes for the whole run):
+  the lock by its name, the room a copy needs, the lock queue, the target's size, rows and dead rows.
+- Run (`Mod+Enter`) sends the statement alone, outside a transaction block; refused on a read-only
+  connection, asked on production. Progress from `pg_stat_progress_*` every 1.5 s and the lock it waits
+  for and who holds it; Cancel (`Escape`) is `pg_cancel_backend` of its own session. The server's output
+  (VERBOSE) shows when it ends (ADR 0038), with the statistics before and after; `g` reads again (ADR 0293).
+
+Modules: `features/maintenance/`.
+
 ## Agents
 
 - `endue.database.connections` (never a password), `.schema` and `.query` (100 rows a statement by default,
@@ -255,5 +273,8 @@ Modules: `features/diagram/`, `schema/diagram.js`.
 - `.activity` answers a connection's sessions and who waits for whom, and only reads; `.cancel-session` and
   `.end-session` are irreversible: the core waits for the person's approval, then the plugin asks as it
   asks the person (ADR 0290).
+- `.maintenance` opens the form for a connection, schema, table or index and answers the statement, what it
+  locks and the size; with `run` it runs after the person's yes and answers the output and the statistics
+  before and after (ADR 0293). The server overview can open it with the same arguments.
 
 Modules: `agent.js`.

@@ -2,12 +2,12 @@
 // saved SQLite connection and proc.spawn answered by the plugin's scripted sqlite3 over a fixture
 // database (plugins/database/tests/fixtures.ts: people, orders, and staff with a team), a saved
 // PostgreSQL connection whose scripted psql has one table of typed columns (items, fixtures-pg.ts),
-// one whose scripted psql answers the activity view (activity-fixture.ts) and EXPLAIN with fixture
-// plans (fixture-plans.ts), one whose scripted psql answers the server overview
-// (overview-fixture.ts), one whose scripted psql answers the schema cache with a small store and a
-// schema of 500 tables and 1,000 foreign keys for the ER diagram (diagram-fixture.ts), dialog.save
-// answering a place in ~/Pictures, and fs.* over a folder in memory with one .sql file
-// (`window.__files`, what saves and exports wrote). Never shipped.
+// one whose scripted psql answers the maintenance form (maintenance-fixture.ts), the activity view
+// (activity-fixture.ts) and EXPLAIN with fixture plans (fixture-plans.ts), one whose scripted psql
+// answers the server overview (overview-fixture.ts), one whose scripted psql answers the schema
+// cache with a small store and a schema of 500 tables and 1,000 foreign keys for the ER diagram
+// (diagram-fixture.ts), dialog.save answering a place in ~/Pictures, and fs.* over a folder in
+// memory with one .sql file (`window.__files`, what saves and exports wrote). Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -29,6 +29,7 @@ import {
   fixtureScript,
   procHandlers,
 } from "../../../../plugins/database/tests/fixtures";
+import { maintenanceServer } from "../../../../plugins/database/tests/maintenance-fixture";
 import {
   OVERVIEW_CONNECTION,
   overviewServer,
@@ -87,9 +88,11 @@ const core = browserCore({
   }),
   handlers: {
     // The diagram's connection answers first, by its database; the overview answers its own
-    // statements exactly, before the activity view's looser matches.
-    ...procHandlers(diagramServer(overviewServer(activityServer(fixtureScript).script)), (event) =>
-      emit(event),
+    // statements exactly, then the maintenance form its own, before the activity view's looser
+    // matches.
+    ...procHandlers(
+      diagramServer(overviewServer(maintenanceServer(activityServer(fixtureScript).script).script)),
+      (event) => emit(event),
     ),
     ...fsHandlers,
   },

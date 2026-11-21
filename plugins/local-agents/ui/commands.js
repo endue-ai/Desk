@@ -3,6 +3,7 @@
 
 import { VIEWS } from "./agents.js";
 import { agentById } from "./catalog.js";
+import { chatModel } from "./model.js";
 import { registerSchemas } from "./schemas.js";
 
 /**
@@ -168,14 +169,40 @@ export function wireCommands({ commands, bridge }, app, talk, tasks) {
     // so Compare (the view) and askCompared (its question) cannot be taken for each other.
     show: (/** @type {import("./agents.js").ViewName} */ name) => app.show(name),
     detect: () => app.detect(),
-    send: (/** @type {string} */ text) => talk.send(text),
+    send: (text, agent) => talk.send(text, agent),
+    savedPreview: async (id) => {
+      await app.chats.open(id);
+      return chatModel(app, id);
+    },
+    nativeHistory: () => app.native.open(),
+    nativeSelect: (row) => app.native.select(row),
+    nativeFresh: () => app.native.fresh(),
+    nativeSearch: (text) => app.native.search(text),
+    nativePage: (id) => app.native.page(id),
+    nativeEarlier: () => app.native.more(),
+    nativeRetry: () => app.native.retry(),
+    nativePreview: (row) => app.native.preview(row),
+    nativeImport: (from) => app.native.import(from),
+    nativeStop: (key) => app.native.stop(key),
+    nativeSend: (key, text) =>
+      app.native.send(
+        key,
+        text,
+        app.settings().access,
+        async () =>
+          (await app.pick("Allow this message to change files?", [
+            { id: "send", label: "Allow and send" },
+            { id: "cancel", label: "Cancel" },
+          ])) === "send",
+      ),
     newChat: () => talk.newChat(undefined),
     useAgent: (/** @type {string} */ id) => talk.useAgent(id),
     pickAgent: async () => talk.useAgent(await pickAgent("Local agents: talk to which agent?")),
-    stopChat: () => talk.stopChat(undefined),
+    stopChat: (agent) => talk.stopChat(agent),
     pickModel: async () => {
-      const chosen = await pickModel(undefined);
-      if (chosen !== undefined) await talk.setModel(chosen, undefined);
+      const agent = app.ui.chatAgent;
+      const chosen = await pickModel(agent);
+      if (chosen !== undefined) await talk.setModel(chosen, agent);
     },
     askCompared: (/** @type {string} */ text) => talk.compare(text),
     toggleCompared: (/** @type {string} */ id) => talk.toggleCompared(id),
