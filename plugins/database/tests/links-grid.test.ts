@@ -62,17 +62,21 @@ beforeEach(() => {
 describe("the grid links a foreign key's cells", () => {
   it("draws a key's cells as links with their title, a NULL one plain, asked once per result", async () => {
     grid.render(tab, true, context);
-    expect(named(acts, "linksLoad")).toHaveLength(1);
     expect(cell(0, 1).classList.contains("link")).toBe(false);
     await tick();
+    expect(named(acts, "linksLoad")).toHaveLength(1);
     expect(cell(0, 1).classList.contains("link")).toBe(true);
     expect(cell(0, 1).title).toBe(TITLE);
     expect(cell(1, 1).classList.contains("link")).toBe(false);
     expect(cell(0, 2).classList.contains("link")).toBe(false);
     // The same result drawn again asks nothing; another result asks again.
     grid.render(tab, false, context);
+    await tick();
     expect(named(acts, "linksLoad")).toHaveLength(1);
+    // Two results drawn at once: only the last one is asked about.
     grid.render(tab, true, { ...context, key: "result:c-pg:2:0" });
+    grid.render(tab, true, { ...context, key: "result:c-pg:3:0" });
+    await tick();
     expect(named(acts, "linksLoad")).toHaveLength(2);
   });
 

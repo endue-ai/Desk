@@ -56,7 +56,8 @@ describe.skipIf(!uri)("foreign keys followed on a real PostgreSQL", () => {
     m = await mount({
       store: { connections: [conn] },
       handlers: procs.handlers,
-      pick: ({ items }) => answers.shift()?.(items) ?? "",
+      // A run of several statements asks first: yes, unless a test queued its own answer.
+      pick: ({ items }) => answers.shift()?.(items) ?? "yes",
     });
     procs.attach((event) => m.host.emit(event));
     await m.host.command("endue.database.console", { connection: "Links" });
@@ -152,6 +153,10 @@ describe.skipIf(!uri)("foreign keys followed on a real PostgreSQL", () => {
       },
     ];
     await open("orders");
+    // The view is the one the rows pointing at Ada opened: all its rows again (the grid's chips).
+    await m.app.page?.({ filters: [] });
+    await m.settle();
+    expect(rows()?.[1]?.[0]).toBe("2");
     cursor(1, 1);
     expect(await m.host.command("endue.database.pick-key")).toBe(
       "person = 55 (P55): pending until Submit.",

@@ -8,16 +8,14 @@ import { describe, expect, it } from "vitest";
 import type { Connection } from "../ui/engines/common.js";
 import { FIXTURE_CONNECTION, fixtureScript } from "./fixtures";
 import { FIXTURE_PG_CONNECTION } from "./fixtures-pg";
-import { type Mounted, mount } from "./harness";
+import { type Mounted, mount, type Script } from "./harness";
 import { LINKS_ROWS, linksCatalog, linksServer, pagesOf } from "./links-fixture";
 import { catalogScript } from "./pg-catalog";
 
 const CONN: Connection = { ...FIXTURE_PG_CONNECTION, id: "c-links", name: "links" };
-type Pick = Parameters<typeof mount>[0] extends infer O ? NonNullable<O>["pick"] : never;
+type Pick = (args: { title: string; items: Array<{ id: string; label: string }> }) => string;
 
-async function links(
-  options: { pick?: Pick; seen?: string[]; script?: Parameters<typeof mount>[0]["script"] } = {},
-) {
+async function links(options: { pick?: Pick; seen?: string[]; script?: Script } = {}) {
   const seen = options.seen ?? [];
   return mount({
     store: { connections: [CONN] },
