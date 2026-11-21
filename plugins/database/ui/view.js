@@ -7,7 +7,6 @@
 // prevented, so the desk's keymap gets them.
 
 import { copyText } from "./clipboard.js";
-import { el } from "./dom.js";
 import { engineOf } from "./engines/index.js";
 import { panelsOf } from "./feature-host.js";
 import * as all from "./features/index.js";
