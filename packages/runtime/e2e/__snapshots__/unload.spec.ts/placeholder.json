@@ -42,38 +42,29 @@
      "class": "surface-tools",
      "children": [
       {
-       "tag": "button",
-       "class": "icon-button tool",
-       "aria-label": "New tab (⌘D)",
-       "box": [
-        348,
-        199,
-        24,
-        24
-       ],
+       "tag": "span",
+       "class": "surface-mark",
+       "role": "img",
+       "aria-label": "Pinned",
+       "hidden": "",
        "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
+        "display": "none"
        },
        "children": [
         {
          "tag": "svg",
-         "icon": "plus"
+         "icon": "pin"
         }
        ]
       },
       {
-       "tag": "button",
-       "class": "icon-button tool",
-       "aria-label": "Floating mode",
-       "aria-pressed": "false",
-       "box": [
-        374,
-        199,
-        24,
-        24
-       ],
+       "tag": "span",
+       "class": "surface-mark",
+       "role": "img",
+       "aria-label": "Floating",
+       "hidden": "",
        "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
+        "display": "none"
        },
        "children": [
         {
@@ -85,11 +76,11 @@
       {
        "tag": "button",
        "class": "icon-button tool",
-       "aria-label": "Pin",
-       "aria-pressed": "false",
+       "aria-label": "Window menu",
+       "aria-expanded": "false",
        "box": [
         400,
-        199,
+        197,
         24,
         24
        ],
@@ -99,7 +90,7 @@
        "children": [
         {
          "tag": "svg",
-         "icon": "pin"
+         "icon": "more"
         }
        ]
       },
@@ -109,7 +100,7 @@
        "aria-label": "Pop out",
        "box": [
         426,
-        199,
+        197,
         24,
         24
        ],
@@ -129,7 +120,7 @@
        "aria-label": "Close",
        "box": [
         452,
-        199,
+        197,
         24,
         24
        ],
