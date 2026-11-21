@@ -6,18 +6,19 @@
 > 클라이언트를 맡으려면 무엇이 있어야 하는지를 번호를 붙여 적은 문서입니다. `desk-requirements.md` 의 BASE 표에서 한
 > 줄(`database`)을 차지하고, 이 문서가 그 줄을 펼칩니다. 요구사항 한 줄이 Task 이슈 하나의 요구사항 칸이 됩니다. 코드와
 > 어긋나면 이 문서를 고치고, 되돌리기 어려운 갈림길은 ADR 로 남깁니다(ADR 0038). *현재* 열은
-> `plugins/database` 0.2.0(#540, DataGrip 수준의 편집 · 객체 · 편집기 · 실행 계획) 기준입니다.
+> `plugins/database` 0.2.0(#540, 결과 그리드에서 고치는 편집 · 객체마다의 DDL · 강조와 자동 완성이 있는 편집기 · 실행 계획까지) 기준입니다.
 
 좋은 DB 클라이언트의 값어치는 네 가지입니다. 연결이 한 곳에 모여 있고, 스키마를 펼쳐 보며 SQL 을 쓰고, 결과가
 **정확**하고(NULL 과 빈 문자열과 문자열 'NULL' 이 다르게 보이고, 숫자가 반올림되지 않고), 운영 DB 에서 실수하기 어렵습니다.
-Desk 에서는 둘이 더 붙습니다. 모든 동작이 커맨드라 키 · 팔레트 · Eris · 에이전트가 같은 길로 일하고, 플러그인은 권한
-경계(`proc:spawn` 의 프로그램 넷) 밖으로 한 발도 나가지 못합니다.
+Desk 에서는 둘이 더 붙습니다. 모든 동작이 커맨드라 키 · 팔레트 · Eris · 에이전트가 같은 길로 일하고, 플러그인은 매니페스트가
+선언한 권한(ADR 0260) 밖으로 한 발도 나가지 못합니다. 설치 때 받는 것은 클라이언트 넷 · ~/Downloads 쓰기 · 데스크 커맨드
+다섯이고, 그 밖의 프로그램과 끌어다 놓은 파일은 하나씩 묻습니다.
 
 ## 약속
 
 | # | 약속 | 뜻 | 지키는 요구사항 |
 | --- | --- | --- | --- |
-| 1 | 클라이언트 넷, 셸 없이 | `proc:spawn` 은 `psql` `mysql` `mariadb` `sqlite3` 뿐. 각 클라이언트를 DB 밖으로 손을 뻗지 못하는 모드로 띄운다(psql `-c` 한 문장씩, mysql `--binary-mode`, sqlite3 `-safe`) | NF-01 |
+| 1 | 클라이언트만, 셸 없이 | 설치 때 받는 `proc:spawn` 은 `psql` `mysql` `mariadb` `sqlite3` 넷. 설정이 다른 이름이나 전체 경로를 대면 그 프로그램은 처음 돌릴 때 묻는다(`*`, ADR 0260). 각 클라이언트를 DB 밖으로 손을 뻗지 못하는 모드로 띄운다(psql `-c` 한 문장씩, mysql `--binary-mode`, sqlite3 `-safe`) | NF-01 |
 | 2 | 비밀번호는 남지 않는다 | store · state · 로그 · 인자 어디에도 없다. 클라이언트의 자격 파일을 그대로 쓰고, 서버가 물으면 세션 동안 메모리에만 | DB-04 · NF-01 |
 | 3 | 결과는 정확하다 | NULL · `''` · `'NULL'` 이 셋으로 보이고, 값은 서버가 보낸 글자 그대로(바이너리는 16진) | DB-09 · NF-10 |
 | 4 | 운영 DB 에서 실수하기 어렵다 | 읽기 전용 연결은 실행 전에 거절하고 서버 쪽에서도 막는다. production 태그 · 위험한 문장 · 에이전트의 쓰기는 묻는다 | DB-12 · DB-17 |
@@ -25,7 +26,7 @@ Desk 에서는 둘이 더 붙습니다. 모든 동작이 커맨드라 키 · 팔
 
 ## 빌린 개념
 
-DataGrip · DBeaver · TablePlus · psql 의 관용을 빌립니다. 연결 트리 · 콘솔 · 결과 탭은 그대로, 버퍼와 커맨드는 Desk 의
+데스크톱 DB 클라이언트들과 psql 이 굳혀 온 관용을 빌립니다. 연결 트리 · 콘솔 · 결과 탭은 그대로, 버퍼와 커맨드는 Desk 의
 것으로 바꿔 답니다.
 
 | 관용 | Desk `endue.database` | 요구사항 |
@@ -52,9 +53,15 @@ DataGrip · DBeaver · TablePlus · psql 의 관용을 빌립니다. 연결 트�
 - **실행 모델**(ADR 0038): 실행 한 번 = `proc.spawn` 한 번 = 연결 하나. 문장마다 뒤에 표지(marker)를 붙여 출력을 문장별로
   가른다. psql 은 `\echo`/`\warn` 표지 줄(행 수 포함), mysql 은 표지 이름의 `SELECT ROW_COUNT(), @@warning_count`, sqlite3 는
   표지 이름의 `SELECT total_changes()`. 표지와 NULL 글자에는 실행마다 새 난수(nonce)가 들어간다.
-- **권한**: `proc:spawn { commands: ["psql", "mysql", "mariadb", "sqlite3"] }`, `fs:write { paths: ["${home}/Downloads/**"] }`
-  (결과 내보내기만), `cmd:invoke` 다섯(`desk.palette.pick` · `desk.buffers.open` · `.update` · `.close` · `desk.files.reveal`).
-  `fs:read` · `net:*` 는 없다. 다른 경로의 클라이언트(설정)는 `perm.request` 로 한 번 묻는다.
+- **권한**: 매니페스트의 선언 다섯뿐이다(ADR 0260, `plugins/database/tests/manifest.test.ts` 가 고정). `net:*` 는 없다.
+  - 설치 때 받는다: `proc:spawn { commands: ["psql", "mysql", "mariadb", "sqlite3"] }`, `fs:write { paths: ["${home}/Downloads/**"] }`
+    (결과 내보내기만), `cmd:invoke` 다섯(`desk.palette.pick` · `desk.buffers.open` · `.update` · `.close` · `desk.files.reveal`).
+  - 묻기만 한다(설치 때 받지 않는다): `proc:spawn { commands: ["*"] }` 는 설정이 다른 이름이나 전체 경로로 댄 클라이언트를 처음
+    돌릴 때 그 프로그램 하나를, `fs:read { paths: ["/**"] }` 는 끌어다 놓은 `.sql` · `.csv` · `.tsv` · `.json` 파일을 읽을 때 그
+    파일 하나를 `perm.request` 로 묻는다. 놓기는 경로를 넘길 뿐 읽을 권한을 넘기지 않는다(ADR 0119).
+  - 더 좁힐 수 없다: ADR 0260 은 프로그램을 이름 그대로 맞추므로 설정이 대는 프로그램은 `*` 만, 경로는 루트 하나 아래에서 대소문자를
+    가리는 패턴으로 맞추므로 어느 폴더 · 드라이브에서 놓인 파일이든(확장자의 대소문자도) `/**` 만 덮는다. SQLite 파일은 sqlite3 가 열어
+    플러그인이 읽지 않지만, 데스크에서 열면 연 파일의 폴더 읽기가 세션 동안 붙어(ADR 0131) 거기서 놓인 파일은 묻지 않는다.
 - **표면**: `main` 하나(`center`). 콘솔과 테이블 보기는 각각 데스크 버퍼(`desk.buffers.open`)로, `desk.buffers.show` · `.closed` 를 답한다.
   `*.sqlite` `*.sqlite3` `*.db3` 는 `desk.files.visit` 로 열린다.
 - **기여**: 커맨드 37 · 키 1(`Mod+Shift+B` → `endue.database.open`) · 설정 10 · 파일 3. 에이전트용 `endue.database.connections` ·
@@ -105,7 +112,7 @@ DataGrip · DBeaver · TablePlus · psql 의 관용을 빌립니다. 연결 트�
 
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
-| NF-01 | 보안: 셸 없음, 인자 배열. psql `-X -w`, 문장마다 `-c`(서버로 그대로: 메타 커맨드 · 변수 없음), `\` 로 시작하는 문장 · `COPY … STDIN/STDOUT` 거절, 연결 값은 `PG*` 환경 변수. mysql `--binary-mode`(`\!` · `system` · `source` 꺼짐) `--local-infile=0` `--skip-reconnect`, 연결 값은 `--opt=값` 한 인자. sqlite3 `-safe`(`.shell` · `.load` · `ATTACH` · `load_extension` 꺼짐), `.` 으로 시작하는 문장 거절. 비밀은 환경 변수로만 | 있음 | A |
+| NF-01 | 보안: 셸 없음, 인자 배열. psql `-X -w`, 문장마다 `-c`(서버로 그대로: 메타 커맨드 · 변수 없음), `\` 로 시작하는 문장 · `COPY … STDIN/STDOUT` 거절, 연결 값은 `PG*` 환경 변수. mysql `--binary-mode`(`\!` · `system` · `source` 꺼짐) `--local-infile=0` `--skip-reconnect`, 연결 값은 `--opt=값` 한 인자. sqlite3 `-safe`(`.shell` · `.load` · `ATTACH` · `load_extension` 꺼짐), `.` 으로 시작하는 문장 거절. 비밀은 환경 변수로만. 권한은 매니페스트가 선언한 다섯뿐이고(ADR 0260, 아키텍처 매핑의 권한), `*` · `/**` 선언은 설치 때 받지 않아 프로그램 · 파일마다 처음 쓸 때 묻는다 | 있음 | A |
 | NF-02 | 오류 문구: 클라이언트 접두사(`psql: error:` · `ERROR:` · `ERROR 1064 (42000) at line n:` · `Error: in prepare,`)를 떼고 코드(SQLSTATE · errno · SQLite 코드)와 DETAIL · HINT, 위치(PG `LINE`/캐럿, MySQL `near '…'`, SQLite 캐럿)를 편집기 선택으로 | 있음 | A |
 | NF-03 | 성능: 실행당 출력 64 MiB 상한, 행 상한(DB-10), 그리드는 보이는 행만(10만 행), 탐색기 지연 로딩 · 캐시, 클라이언트 탐지는 세션에 한 번 | 있음 | A |
 | NF-04 | 접근성: 키보드만으로 전부. 탐색기 `role=tree`, 결과 `role=grid` + `aria-rowcount` · `aria-colcount` · `aria-sort`, 탭 `role=tablist`, 상태 줄 live region. 편집기는 `Mod+Enter` · `Mod+Shift+Enter` 만 가로채고 Escape 는 실행 중일 때만 | 있음 | A |
