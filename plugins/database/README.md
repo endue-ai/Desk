@@ -34,7 +34,7 @@ path by a case-sensitive pattern under one root: only `*` covers a program a set
 
 ```bash
 pnpm exec vitest run plugins/database; just test-e2e database.spec.ts  # packages/runtime/e2e: the page at 402×305, 643×339, 900×600
-ENDUE_DB_TEST_POSTGRES=postgresql://... ENDUE_DB_TEST_MYSQL=mysql://... pnpm exec vitest run plugins/database/tests/live.test.ts  # PostgreSQL through the core (tests/core-bridge.ts)
+ENDUE_DB_TEST_POSTGRES=postgresql://... ENDUE_DB_TEST_MYSQL=mysql://... pnpm exec vitest run plugins/database/tests/live.test.ts  # PostgreSQL through the core (tests/core-bridge.ts; ENDUE_DB_TEST_BRIDGE=<built db-bridge> reuses a build)
 cargo run -p desk-cli -- plugin validate plugins/database
 cargo test -p desk-core --test builtin_declarations  # every scope the code uses is declared
 ```
