@@ -96,13 +96,38 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
   as many; a console's single SELECT pages. Sort (`s`), filter the rows on screen (`/`), one row as a record
   (`t`), and the value viewer (`v`: JSON laid out, text, bytes as a hex dump).
 - A table's view filters (WHERE) and orders (ORDER BY) on the server, pages, and counts its rows on request.
+- Columns hidden (`h`, `H` shows one again), moved (`<` `>`, or a header dragged), pinned at the left (`P`),
+  resized (a header's grip, `(` `)`, `w` or a double click on the grip fits). A table view keeps them across
+  restarts, a console's result while it is among the last 20 (ADR 0288). Copy, export and drags take the
+  columns on screen, in their order.
+- Sort by more than one column (Shift+click or `S` adds the next key, numbered in the header). Quick filters
+  from the cursor's cell (`f` menu, `=` equals, `F` clears): =, ≠, >, <, contains, empty, NULL, not NULL,
+  each a chip that says whether it runs on the server (a table view: its keys go to ORDER BY and its filters
+  join WHERE) or on the rows on screen. Find in the result (Mod+F in the grid; Enter, Shift+Enter, F3) with
+  match case and whole cell. Past 10,000 rows the frame's sorts, filters and find run in a worker.
 - A query plan as a tree: each node's cost and rows, the time and rows it took, and a bar for its own share of
   the whole; the nodes where half or a fifth of it goes are marked.
+- A query plan as a tree, a flame of each node's own time (its cost when the plan did not run), or a table sorted
+  by any column (ADR 0289): each node's estimated rows against the rows it returned over all its loops and the
+  factor between them, its own time apart from its children's, its buffers, and a bar for its share of the whole.
+  Marks say in words where a plan goes wrong: ten times more or fewer rows than estimated, a scan that filters
+  most of what it reads away, a sort or hash that spilled to disk, an inner side that ran a thousand times, an
+  index scan whose filter drops most of what the index found. Above it the statement's totals: planning and
+  execution time, buffers, WAL, triggers, JIT, serialization, planner memory and the settings that differ.
+- EXPLAIN with options on PostgreSQL: ANALYZE, BUFFERS, VERBOSE, SETTINGS, WAL, TIMING and SUMMARY, and
+  GENERIC_PLAN, SERIALIZE and MEMORY on the servers that have them, remembered per connection. ANALYZE runs the
+  statement: a write runs in a transaction rolled back at the end, under the same guards as any run.
+- Two plans compared side by side, from a console's last eight or from two consoles: the nodes paired by type
+  and relation, and what changed in each (its type, cost and time). A plan copies as text or as JSON; a JSON
+  plan over 64 KiB is read in a worker.
 - Copy the result, or the selected block, as TSV, CSV, JSON, Markdown, INSERT or UPDATE statements, from a
   key or button in the page and from the palette alike (the Clipboard API first, `clipboard.js`).
 
 Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `value.js`, `output-client.js`,
-`output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `view-value.js`, `view-plan.js`.
+`output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `grid/`, `features/grid/`,
+`view-value.js`, `view-plan.js`.
+`output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `view-value.js`, `view-plan.js`,
+`view-plan-flame.js`, `view-plan-table.js`, `view-plan-marks.js`, `view-dialog.js`, `features/plans/`.
 
 ## Editing
 

@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.copy with the last chunk of a COPY FROM STDIN",
+  "instance": {
+    "id": 21,
+    "method": "db.copy",
+    "params": {
+      "sessionId": "d-1",
+      "data": "MQlhZGEK",
+      "encoding": "base64",
+      "done": true
+    }
+  }
+}

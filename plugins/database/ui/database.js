@@ -47,8 +47,10 @@ import { createTools } from "./tools.js";
  *   importer(model: import("./importer.js").ImportModel | null): void,
  *   nodeAt(target: unknown): Node | undefined,
  *   focus(where: "explorer" | "editor" | "grid"): void,
- *   selection(): { tab: number, rows?: number[], columns?: number[], sorted?: (string | null)[][] } | undefined,
+ *   selection(): { tab: number, rows?: number[], columns?: number[], sorted?: (string | null)[][], visible?: number[] } | undefined,
+ *   grid?(op: string, args?: Record<string, unknown>): unknown,
  *   cell(): ReturnType<ReturnType<typeof import("./view-grid.js").createGrid>["cursorCell"]>,
+ *   dialog?(type: string, model: unknown): Promise<unknown>,
  * }} View
  */
 
@@ -62,9 +64,10 @@ import { createTools } from "./tools.js";
  *   output(onBusy: (reads: number) => void): import("./output-client.js").OutputReader,
  *   features?: import("./feature-host.js").Feature[],
  *   random?(): number,
+ *   plans?: import("./explain/reader.js").PlanReader,
  * }} options `cancelled` makes the error a cancelled command answers with (the SDK's CommandFailed);
  *   `output` makes the result reader, which reads each run's output in a worker (main.js, #38);
- *   `features` are features/index.js's unless given.
+ *   `features` are features/index.js's unless given; `plans` reads big plans in a worker.
  */
 export function createDatabase({ bridge, commands, state, settings: source }, view, options) {
   let settings = DEFAULTS;
@@ -172,6 +175,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       if (target.file) await files.remember(target.file.path, conn.id);
     },
     ...(options.random ? { random: options.random } : {}),
+    ...(options.plans ? { readPlan: options.plans.read } : {}),
   });
   const files = createConsoleFiles({ bridge, commands, manager, consoles, view });
   const tools = createTools({
@@ -289,6 +293,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     say: (text) => view.say(text),
     guard,
     cancelled,
+    dialog: (type, model) => (view.dialog ? view.dialog(type, model) : Promise.resolve(undefined)),
   };
   const taken = new Set(Object.keys(builtins));
   const featureActions = registerFeatures(list, featureDeps, { answer, taken });

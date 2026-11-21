@@ -1,12 +1,13 @@
 // Results a page at a time. A table's view pages through its rows under the filter and order the
-// person typed (WHERE, ORDER BY, LIMIT, OFFSET), counts them on request, and sorts on the server
-// when a column's header is picked. A console's single SELECT pages the same way when it has no
-// LIMIT, OFFSET, FETCH, FOR or INTO of its own: the next page runs it again with LIMIT and OFFSET.
+// person typed (WHERE, ORDER BY, LIMIT, OFFSET), counts them on request, and asks the server for the
+// grid's sort keys (its ORDER BY) and quick filters (after the typed WHERE, grid/filters.js). A
+// console's single SELECT pages the same way when it has no LIMIT, OFFSET, FETCH, FOR or INTO of its
+// own: the next page runs it again with LIMIT and OFFSET.
 
 import { tableSql } from "./catalog.js";
 import { engineOf } from "./engines/index.js";
 import { formatCount } from "./format.js";
-import { quoteName } from "./sql/quote.js";
+import { orderSql, whereWith } from "./grid/filters.js";
 import { split } from "./sql/split.js";
 
 /**
@@ -53,6 +54,12 @@ export function pagedSql(statement, dialect, size, offset) {
 
 /** @param {Deps} deps */
 export function createPages(deps) {
+  /** The WHERE a table view runs: what the person typed, then the grid's quick filters. */
+  const whereOf = (
+    /** @type {NonNullable<Console["table"]>} */ page,
+    /** @type {Connection} */ conn,
+  ) => whereWith(engineOf(conn.engine).dialect, page.where, page.filters ?? []);
+
   /** Load a table view's page under its filter and order. */
   const refresh = async (/** @type {Console} */ target, /** @type {Connection} */ conn) => {
     const page = /** @type {NonNullable<Console["table"]>} */ (target.table);
@@ -60,7 +67,7 @@ export function createPages(deps) {
     const sql = tableSql(conn, {
       schema: page.schema,
       table: page.name,
-      where: page.where,
+      where: whereOf(page, conn),
       order: page.order,
       limit,
       offset: page.offset,
@@ -69,11 +76,15 @@ export function createPages(deps) {
   };
 
   /**
-   * A table view's filter, order, sort by a column, page or count; a console's next or previous
-   * page. `delta` pages forward or back.
+   * A table view's filter, order, sort keys, quick filters, page or count; a console's next or
+   * previous page. `delta` pages forward or back. The grid's keys become the ORDER BY; an ORDER BY
+   * typed otherwise drops them.
    * @param {Console} target
    * @param {Connection} conn
-   * @param {{ where?: string, order?: string, delta?: number, count?: boolean, sort?: { column: string, direction: "asc" | "desc" } | null }} change
+   * @param {{
+   *   where?: string, order?: string, delta?: number, count?: boolean,
+   *   sort?: import("./grid/filters.js").SortKey[] | null, filters?: import("./grid/filters.js").Filter[],
+   * }} change
    */
   const page = async (target, conn, change) => {
     const limit = deps.settings().maxRows;
@@ -96,14 +107,14 @@ export function createPages(deps) {
     const table = target.table;
     if (!table) throw new Error("Paging is for a table's view.");
     if (change.sort !== undefined) {
-      const { dialect } = engineOf(conn.engine);
-      change.order = change.sort
-        ? `${quoteName(dialect, change.sort.column)} ${change.sort.direction.toUpperCase()}`
-        : "";
-    }
+      table.sort = change.sort ?? [];
+      change.order = orderSql(engineOf(conn.engine).dialect, table.sort);
+    } else if (change.order !== undefined && change.order.trim() !== table.order.trim())
+      table.sort = [];
+    if (change.filters !== undefined) table.filters = change.filters;
     if (change.where !== undefined) table.where = change.where;
     if (change.order !== undefined) table.order = change.order;
-    if (change.where !== undefined || change.order !== undefined) {
+    if (change.where !== undefined || change.order !== undefined || change.filters !== undefined) {
       table.offset = 0;
       table.count = null;
     }
@@ -112,7 +123,7 @@ export function createPages(deps) {
       const sql = tableSql(conn, {
         schema: table.schema,
         table: table.name,
-        where: table.where,
+        where: whereOf(table, conn),
         order: "",
         limit,
         offset: 0,

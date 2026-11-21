@@ -179,10 +179,11 @@ desk/
 │   └── wit/                  # Wasm 인터페이스: 로직 플러그인이 import 하는 desk:host (브리지의 부분집합) · Wasm 커넥터가 빌드하는 world desk:connector (ADR 0034 제안)
 │
 ├── crates/                   # Rust. 접두사 desk-
-│   ├── desk-core/            # 커널: 권한 엔진 · 이벤트 버스 · 저장소 · 플러그인 레지스트리 · 커맨드 레지스트리(cmd.*, ADR 0017) · init.yaml · 두뇌 대화와 세션 임대 클라이언트(ADR 0014) · 통합 계층(data.* · connector.* · view.* · catalog.get)과 OS 캘린더 위의 내장 커넥터 desk.calendar · desk.reminders (ADR 0036 제안) · 브리지 핸들러
+│   ├── desk-core/            # 커널: 권한 엔진 · 이벤트 버스 · 저장소 · 플러그인 레지스트리 · 커맨드 레지스트리(cmd.*, ADR 0017) · init.yaml · 두뇌 대화와 세션 임대 클라이언트(ADR 0014) · 통합 계층(data.* · connector.* · view.* · catalog.get)과 OS 캘린더 위의 내장 커넥터 desk.calendar · desk.reminders (ADR 0036 제안) · 데이터베이스 세션 db.* (desk-pg 위, ADR 0281) · 브리지 핸들러
 │   ├── desk-sys/             # 원시 기능: fs(notify, 원자적 쓰기) · proc(portable-pty) · net(rustls, 호스트 allowlist) (#63). feature 로 분리. audio(cpal, 호출어)는 계획
 │   ├── desk-bridge/          # 브리지 Rust 측: specs/bridge · specs/plugin 에서 생성된 타입만 (src/generated.rs)
 │   ├── desk-index/           # 항목 색인: 데이터 폴더의 SQLite 파일 하나(index.sqlite, FTS5). data:read 범위는 SQL 안에서 걸고, 코어는 ItemIndex 트레이트로만 앎 (ADR 0033)
+│   ├── desk-pg/              # PostgreSQL 세션: 프로토콜 3.0 · SCRAM(-PLUS) · TLS · 확장 프로토콜의 정확한 페이지 · COPY · 취소. 자기 tokio 스레드 하나, 코어가 db.* 로 제공 (ADR 0281)
 │   ├── desk-plugin-host/     # Wasmtime 호스트 둘: 로직 플러그인의 LogicHost (설치 · 시작 · 리로드, ADR 0019, #68)와 Wasm 커넥터의 ConnectorHost (desk:connector · 인스턴스 · 동기화 일정 · 항목마다 출처 도장, ADR 0034 제안). 플러그인 · 커넥터마다 store 하나와 메모리 · 시간 상한. MCP 감독은 아직 없음
 │   ├── desk-vm/              # 가벼운 Linux VM: 부팅 · vsock · 허락한 폴더만 virtiofs (macOS Virtualization.framework · Windows WSL2 · Linux KVM). 빈 crate, 계획
 │   ├── desk-brain/           # 두뇌 트레이트 + 생성된 클라이언트 타입
@@ -266,7 +267,7 @@ desk/
 | 플러그인 | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | 웹 런타임 | `packages/runtime` (컴포지터, UI 플러그인 호스트 ADR 0012, ADR 0026 이 정할 때까지 데스크 셸 ADR 0025) · `packages/ui` |
 | Desk 브리지 | `specs/bridge` · 통합 계층의 계약 `specs/item` · `specs/view` · `specs/connector` (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (이 명세들과 `specs/plugin` 에서 생성된 타입) |
-| Rust 코어 | `crates/desk-core` (통합 계층 `data.*` · `connector.*` · `view.*` · `catalog.get` 과 내장 커넥터 `desk.calendar` · `desk.reminders`, ADR 0036 제안) · `crates/desk-index` (항목 색인, SQLite, ADR 0033) · `crates/desk-plugin-host` (로직 플러그인 ADR 0019 · Wasm 커넥터 ADR 0034 제안, Wasmtime) · `crates/desk-vm` · `crates/desk-brain*` |
+| Rust 코어 | `crates/desk-core` (통합 계층 `data.*` · `connector.*` · `view.*` · `catalog.get` 과 내장 커넥터 `desk.calendar` · `desk.reminders`, ADR 0036 제안) · `crates/desk-index` (항목 색인, SQLite, ADR 0033) · `crates/desk-plugin-host` (로직 플러그인 ADR 0019 · Wasm 커넥터 ADR 0034 제안, Wasmtime) · `crates/desk-vm` · `crates/desk-brain*` · `crates/desk-pg` (PostgreSQL 세션, 코어가 `db:connect` 아래 `db.*` 로 제공, ADR 0281) |
 | 셸 (CEF) | `apps/desk/shell` (winit 과 CEF 위의 앱 `endue-desk`, ADR 0143) · 엔진과 무관한 스킴 응답과 호출자 판정 `crates/desk-web` · `crates/desk-sys` |
 | 운영체제 | `apps/desk/shell/packager` (번들 · CEF 도우미 앱 · entitlements, ADR 0145) · `.github/workflows/release.yml` (서명 · 공증) |
 
@@ -511,6 +512,7 @@ MCP 도구는 가벼운 VM 으로 격리하고, 나머지는 데스크톱 오픈
 | 표면 프로토콜 | `specs/surface/v0`: 수명 주기 · OS 별 텍스처 핸들 · 입력 · IME · 프레임 페이싱 · 접근성. 3단계의 native 플러그인도 같은 프로토콜 | Wayland 프로토콜 | 0141 |
 | 살아 있는 표면 예산 | 보이는 표면과 최근 포커스한 8개만 프로세스를 가짐. 나머지는 상태를 두고 잠듦. Chromium 의 렌더러 상한도 같은 예산에서 |  | 0142 |
 | 앱 e2e 엔진 | CEF 데스크를 Chromium 원격 디버깅으로 몰고, 런타임 스위트도 Chromium 에서 |  | 0144 |
+| 데이터베이스 세션 | 코어가 PostgreSQL 세션을 갖고 `db.*` 로 제공. `db:connect` 가 호스트와 포트를 막고, 세션은 연 플러그인만의 것이며 플러그인이 멈추거나 허가를 잃으면 닫힘. 값은 텍스트 문자열이나 null, 페이지의 `more` 는 정확 | PostgreSQL 프로토콜 3.0 · libpq 의 비밀번호 파일 | 0281 |
 
 ## 열린 질문
 

@@ -68,6 +68,8 @@ function tsType(type) {
     }
     case "map":
       return `Record<string, ${tsType(type.values)}>`;
+    case "nullable":
+      return `${tsType(type.inner)} | null`;
     case "object":
       return "Record<string, unknown>";
     case "any":

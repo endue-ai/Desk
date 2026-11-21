@@ -941,6 +941,7 @@ pub enum Permission {
     ProcSpawn(ProcSpawnPermission),
     NetFetch(NetFetchPermission),
     NetConnect(NetConnectPermission),
+    DbConnect(DbConnectPermission),
     AudioCapture(AudioCapturePermission),
     UiSurface(UiSurfacePermission),
     UiNotify(UiNotifyPermission),
@@ -1028,6 +1029,15 @@ pub struct NetFetchPermission {
 #[serde(deny_unknown_fields)]
 pub struct NetConnectPermission {
     pub permission: NetConnectPermissionPermission,
+    /// Host patterns the permission covers, each optionally with a port.
+    pub hosts: Vec<HostPattern>,
+}
+
+/// Open database sessions (db.open) to the listed hosts, and use the caller's own sessions: a pattern with a port covers that port only, one without a port covers every port of the host. net:connect does not cover db.*, nor db:connect a socket.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbConnectPermission {
+    pub permission: DbConnectPermissionPermission,
     /// Host patterns the permission covers, each optionally with a port.
     pub hosts: Vec<HostPattern>,
 }
@@ -5186,6 +5196,13 @@ pub enum BridgeRequest {
     NetConnect(NetConnectRequest),
     NetSend(NetSendRequest),
     NetClose(NetCloseRequest),
+    DbOpen(DbOpenRequest),
+    DbRun(DbRunRequest),
+    DbFetch(DbFetchRequest),
+    DbCopy(DbCopyRequest),
+    DbCancel(DbCancelRequest),
+    DbClose(DbCloseRequest),
+    DbList(DbListRequest),
     AudioCaptureStart(AudioCaptureStartRequest),
     AudioCaptureStop(AudioCaptureStopRequest),
     UiSurfaceOpen(UiSurfaceOpenRequest),
@@ -5393,7 +5410,7 @@ pub enum ErrorCode {
     Forbidden,
 }
 
-/// Something the core reports without being asked: file changes, process output, socket data, captured audio and who captures, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows.
+/// Something the core reports without being asked: file changes, process output, socket data, database notices, notifications and session ends, captured audio and who captures, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -5402,6 +5419,10 @@ pub enum BridgeEvent {
     ProcExit(ProcExitEvent),
     NetData(NetDataEvent),
     NetClosed(NetClosedEvent),
+    DbNotice(DbNoticeEvent),
+    DbNotification(DbNotificationEvent),
+    DbParameter(DbParameterEvent),
+    DbClosed(DbClosedEvent),
     AudioFrame(AudioFrameEvent),
     AudioEnded(AudioEndedEvent),
     AudioCapturing(AudioCapturingEvent),
@@ -6969,6 +6990,546 @@ pub struct DataChangedData {
     #[serde(rename = "subscriptionId")]
     pub subscription_id: String,
     pub changes: Vec<ItemChange>,
+}
+
+/// Open a database session and sign in. The scope and the grant are checked before anything connects.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbOpenRequest {
+    pub id: RequestId,
+    pub method: DbOpenRequestMethod,
+    pub params: DbOpenParams,
+}
+
+/// Parameters of db.open.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbOpenParams {
+    /// The database engine; postgresql is the one the core speaks, any other is unsupported.
+    pub engine: String,
+    /// A host name or an IPv4 address, as net.connect takes it.
+    pub host: String,
+    /// 5432 by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u64>,
+    pub database: String,
+    pub user: String,
+    /// Used once for the sign-in and dropped. Without it the core reads the person's password file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tls: Option<DbTls>,
+    /// Startup parameters (DateStyle, TimeZone, search_path, statement_timeout, application_name, ...). client_encoding, user, database and replication are invalid_params.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<BTreeMap<String, String>>,
+    /// Adds default_transaction_read_only=on.
+    #[serde(rename = "readOnly", default, skip_serializing_if = "Option::is_none")]
+    pub read_only: Option<bool>,
+    /// How long the connection and the sign-in may take; 10000 by default.
+    #[serde(rename = "timeoutMs", default, skip_serializing_if = "Option::is_none")]
+    pub timeout_ms: Option<u64>,
+    pub scope: DbConnectPermission,
+}
+
+/// How the session uses TLS.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbTls {
+    pub mode: DbTlsMode,
+    /// The authorities to trust, PEM; else the system's trust store. With require, the chain is checked too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ca: Option<String>,
+}
+
+/// disable: plain TCP. prefer (the default): TLS when the server has it. require: TLS, the certificate not checked. verify-ca: the chain. verify-full: the chain and the host name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbTlsMode {
+    #[serde(rename = "disable")]
+    Disable,
+    #[serde(rename = "prefer")]
+    Prefer,
+    #[serde(rename = "require")]
+    Require,
+    #[serde(rename = "verify-ca")]
+    VerifyCa,
+    #[serde(rename = "verify-full")]
+    VerifyFull,
+}
+
+/// Result of db.open: the session, signed in; or the server's refusal (error) and no session; or needsPassword when no password was given, none was found in the password file and the server asks for one.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbOpenResult {
+    #[serde(rename = "sessionId", default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<DbSessionId>,
+    /// The server process of the session.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pid: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<DbAuth>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tls: Option<DbTlsInfo>,
+    /// Every ParameterStatus the server sent (server_version, TimeZone, IntervalStyle, ...).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<BTreeMap<String, String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<DbServerError>,
+    #[serde(
+        rename = "needsPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub needs_password: Option<True>,
+}
+
+/// How the session signed in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbAuth {
+    #[serde(rename = "scram-sha-256")]
+    ScramSha256,
+    #[serde(rename = "scram-sha-256-plus")]
+    ScramSha256Plus,
+    #[serde(rename = "md5")]
+    Md5,
+    #[serde(rename = "password")]
+    Password,
+    #[serde(rename = "none")]
+    None,
+}
+
+/// The TLS the session runs over.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbTlsInfo {
+    /// TLSv1.2 or TLSv1.3.
+    pub version: String,
+    pub cipher: String,
+}
+
+/// A session db.open opened, unique for the core's life.
+pub type DbSessionId = String;
+
+/// Run one statement on a session and answer its first page. An earlier result with pages left is closed first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbRunRequest {
+    pub id: RequestId,
+    pub method: DbRunRequestMethod,
+    pub params: DbRunParams,
+}
+
+/// Parameters of db.run.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbRunParams {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    /// One statement; two are the server's 42601.
+    pub sql: String,
+    /// $1, $2, ... as text, or null.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub params: Option<Vec<DbValue>>,
+    /// The parameters' type OIDs; 0, or a missing one, is the server's inference.
+    #[serde(
+        rename = "paramTypes",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub param_types: Option<Vec<u64>>,
+    /// Rows a page holds: 1000 by default.
+    #[serde(rename = "pageRows", default, skip_serializing_if = "Option::is_none")]
+    pub page_rows: Option<u64>,
+    /// Bytes of values a page holds: 4 MiB by default. A page holds one row even when it is larger.
+    #[serde(rename = "pageBytes", default, skip_serializing_if = "Option::is_none")]
+    pub page_bytes: Option<u64>,
+}
+
+/// Result of db.run: the statement's first page.
+pub type DbRunResult = DbPage;
+
+/// The next page of the session's open result, or close it without reading on.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbFetchRequest {
+    pub id: RequestId,
+    pub method: DbFetchRequestMethod,
+    pub params: DbFetchParams,
+}
+
+/// Parameters of db.fetch.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbFetchParams {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    /// Rows a page holds: 1000 by default.
+    #[serde(rename = "pageRows", default, skip_serializing_if = "Option::is_none")]
+    pub page_rows: Option<u64>,
+    /// Bytes of values a page holds: 4 MiB by default. A page holds one row even when it is larger.
+    #[serde(rename = "pageBytes", default, skip_serializing_if = "Option::is_none")]
+    pub page_bytes: Option<u64>,
+    /// End the result without reading on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub close: Option<bool>,
+}
+
+/// Result of db.fetch: the next page, or an empty last one after close.
+pub type DbFetchResult = DbPage;
+
+/// Send data to the session's COPY ... FROM STDIN, or end it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCopyRequest {
+    pub id: RequestId,
+    pub method: DbCopyRequestMethod,
+    pub params: DbCopyParams,
+}
+
+/// Parameters of db.copy: data, done and fail may come together; done or fail ends the COPY.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCopyParams {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    /// Up to 1 MiB of the COPY's bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encoding: Option<Encoding>,
+    /// End the COPY (CopyDone).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub done: Option<bool>,
+    /// Fail the COPY with this message (CopyFail).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fail: Option<String>,
+}
+
+/// Result of db.copy: more while the COPY waits for data, the statement's last page once it ends.
+pub type DbCopyResult = DbPage;
+
+/// Ask the server to cancel the statement the session runs; nothing when none runs. The statement's own answer then carries 57014.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCancelRequest {
+    pub id: RequestId,
+    pub method: DbCancelRequestMethod,
+    pub params: DbCancelParams,
+}
+
+/// Parameters of db.cancel.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCancelParams {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+}
+
+/// Result of db.cancel: the request was sent.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCancelResult {}
+
+/// End a session. Closing one that already ended is not an error.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCloseRequest {
+    pub id: RequestId,
+    pub method: DbCloseRequestMethod,
+    pub params: DbCloseParams,
+}
+
+/// Parameters of db.close.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCloseParams {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+}
+
+/// Result of db.close.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCloseResult {}
+
+/// The caller's sessions, as a frame that slept finds them again.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbListRequest {
+    pub id: RequestId,
+    pub method: DbListRequestMethod,
+    pub params: DbListParams,
+}
+
+/// Parameters of db.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbListParams {}
+
+/// Result of db.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbListResult {
+    pub sessions: Vec<DbSessionInfo>,
+}
+
+/// One of the caller's sessions.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbSessionInfo {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    pub host: String,
+    pub port: u64,
+    pub database: String,
+    pub user: String,
+    pub pid: i64,
+    /// A statement runs.
+    pub running: bool,
+    /// A result has pages left, or a COPY FROM STDIN waits for data.
+    pub more: bool,
+    pub transaction: DbTransaction,
+}
+
+/// One page of a statement's answer. The first page has the columns; the last has the tag, the row count and the transaction state, or the server's error.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbPage {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub columns: Option<Vec<DbColumn>>,
+    pub rows: Vec<DbRow>,
+    /// Exact: db.fetch has another page, or the COPY FROM STDIN waits for data.
+    pub more: bool,
+    /// The command tag, counting every page.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
+    /// Rows over all pages, or the tag's count.
+    #[serde(rename = "rowCount", default, skip_serializing_if = "Option::is_none")]
+    pub row_count: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transaction: Option<DbTransaction>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<DbServerError>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copy: Option<DbCopy>,
+    /// A COPY ... TO STDOUT's bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encoding: Option<Encoding>,
+}
+
+/// One row: each value the server's text, or null.
+pub type DbRow = Vec<DbValue>;
+
+/// A value as the server prints it, or null for NULL.
+pub type DbValue = Option<String>;
+
+/// One column, as RowDescription describes it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbColumn {
+    pub name: String,
+    #[serde(rename = "typeOid")]
+    pub type_oid: u64,
+    #[serde(rename = "typeModifier")]
+    pub type_modifier: i64,
+    #[serde(rename = "typeSize")]
+    pub type_size: i64,
+    /// The table it comes from; 0 for an expression.
+    #[serde(rename = "tableOid")]
+    pub table_oid: u64,
+    /// Its attribute number in that table; 0 for an expression.
+    #[serde(rename = "columnNumber")]
+    pub column_number: i64,
+}
+
+/// The transaction state ReadyForQuery reports.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbTransaction {
+    #[serde(rename = "idle")]
+    Idle,
+    #[serde(rename = "open")]
+    Open,
+    #[serde(rename = "failed")]
+    Failed,
+}
+
+/// A COPY's direction, format and number of columns.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCopy {
+    pub direction: DbCopyDirection,
+    pub format: DbCopyFormat,
+    pub columns: u64,
+}
+
+/// in: FROM STDIN. out: TO STDOUT.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbCopyDirection {
+    #[serde(rename = "in")]
+    In,
+    #[serde(rename = "out")]
+    Out,
+}
+
+/// text (text and CSV) or binary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbCopyFormat {
+    #[serde(rename = "text")]
+    Text,
+    #[serde(rename = "binary")]
+    Binary,
+}
+
+/// An error or a notice the server sent, every field by name; positions are numbers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbServerError {
+    /// V, never localized (S on a server that sends no V).
+    pub severity: String,
+    /// S.
+    #[serde(rename = "localSeverity")]
+    pub local_severity: String,
+    /// C, the SQLSTATE.
+    pub code: String,
+    /// M.
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hint: Option<String>,
+    /// P, from 1, in characters.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<u64>,
+    #[serde(
+        rename = "internalPosition",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub internal_position: Option<u64>,
+    #[serde(
+        rename = "internalQuery",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub internal_query: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#where: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub table: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub column: Option<String>,
+    #[serde(rename = "dataType", default, skip_serializing_if = "Option::is_none")]
+    pub data_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub constraint: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub routine: Option<String>,
+    /// Fields a later server adds, by their code.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub other: Option<BTreeMap<String, String>>,
+}
+
+/// A notice the server sent, as it arrived, also while a statement runs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbNoticeEvent {
+    pub event: DbNoticeEventEvent,
+    pub data: DbNoticeData,
+}
+
+/// Payload of db.notice.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbNoticeData {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    pub notice: DbServerError,
+}
+
+/// A NOTIFY on a channel the session listens to, also while it is idle.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbNotificationEvent {
+    pub event: DbNotificationEventEvent,
+    pub data: DbNotificationData,
+}
+
+/// Payload of db.notification.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbNotificationData {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    /// The server process that notified.
+    pub pid: i64,
+    pub channel: String,
+    pub payload: String,
+}
+
+/// A run parameter the server reported changed (ParameterStatus).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbParameterEvent {
+    pub event: DbParameterEventEvent,
+    pub data: DbParameterData,
+}
+
+/// Payload of db.parameter.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbParameterData {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    pub name: String,
+    pub value: String,
+}
+
+/// A session ended: the session's last event.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbClosedEvent {
+    pub event: DbClosedEventEvent,
+    pub data: DbClosedData,
+}
+
+/// Payload of db.closed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbClosedData {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    pub reason: DbClosedReason,
+    /// Why, when the network or the encoding ended it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<DbServerError>,
+}
+
+/// closed: db.close. server: the server ended it, with its FATAL error when it sent one. io: the network failed. encoding: the server's client_encoding stopped being UTF8. unloaded: its plugin stopped. revoked: the grant that covers it went. desk: the desk let it go.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbClosedReason {
+    #[serde(rename = "closed")]
+    Closed,
+    #[serde(rename = "server")]
+    Server,
+    #[serde(rename = "io")]
+    Io,
+    #[serde(rename = "encoding")]
+    Encoding,
+    #[serde(rename = "unloaded")]
+    Unloaded,
+    #[serde(rename = "revoked")]
+    Revoked,
+    #[serde(rename = "desk")]
+    Desk,
 }
 
 /// A named set of file extensions the dialog shows, without the dot: { name: Markdown, extensions: [md] }.
@@ -11955,6 +12516,14 @@ pub enum NetConnectPermissionPermission {
     NetConnect,
 }
 
+/// The `permission` of [`DbConnectPermission`]: always `"db:connect"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbConnectPermissionPermission {
+    #[default]
+    #[serde(rename = "db:connect")]
+    DbConnect,
+}
+
 /// The `permission` of [`AudioCapturePermission`]: always `"audio:capture"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum AudioCapturePermissionPermission {
@@ -13009,6 +13578,94 @@ pub enum DataChangedEventEvent {
     #[default]
     #[serde(rename = "data.changed")]
     DataChanged,
+}
+
+/// The `method` of [`DbOpenRequest`]: always `"db.open"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbOpenRequestMethod {
+    #[default]
+    #[serde(rename = "db.open")]
+    DbOpen,
+}
+
+/// The `method` of [`DbRunRequest`]: always `"db.run"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbRunRequestMethod {
+    #[default]
+    #[serde(rename = "db.run")]
+    DbRun,
+}
+
+/// The `method` of [`DbFetchRequest`]: always `"db.fetch"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbFetchRequestMethod {
+    #[default]
+    #[serde(rename = "db.fetch")]
+    DbFetch,
+}
+
+/// The `method` of [`DbCopyRequest`]: always `"db.copy"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbCopyRequestMethod {
+    #[default]
+    #[serde(rename = "db.copy")]
+    DbCopy,
+}
+
+/// The `method` of [`DbCancelRequest`]: always `"db.cancel"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbCancelRequestMethod {
+    #[default]
+    #[serde(rename = "db.cancel")]
+    DbCancel,
+}
+
+/// The `method` of [`DbCloseRequest`]: always `"db.close"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbCloseRequestMethod {
+    #[default]
+    #[serde(rename = "db.close")]
+    DbClose,
+}
+
+/// The `method` of [`DbListRequest`]: always `"db.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbListRequestMethod {
+    #[default]
+    #[serde(rename = "db.list")]
+    DbList,
+}
+
+/// The `event` of [`DbNoticeEvent`]: always `"db.notice"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbNoticeEventEvent {
+    #[default]
+    #[serde(rename = "db.notice")]
+    DbNotice,
+}
+
+/// The `event` of [`DbNotificationEvent`]: always `"db.notification"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbNotificationEventEvent {
+    #[default]
+    #[serde(rename = "db.notification")]
+    DbNotification,
+}
+
+/// The `event` of [`DbParameterEvent`]: always `"db.parameter"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbParameterEventEvent {
+    #[default]
+    #[serde(rename = "db.parameter")]
+    DbParameter,
+}
+
+/// The `event` of [`DbClosedEvent`]: always `"db.closed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbClosedEventEvent {
+    #[default]
+    #[serde(rename = "db.closed")]
+    DbClosed,
 }
 
 /// The `method` of [`DialogOpenRequest`]: always `"dialog.open"`.
@@ -14201,6 +14858,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/data.schema.json",
         include_str!("../../../specs/bridge/v0/data.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/db.schema.json",
+        include_str!("../../../specs/bridge/v0/db.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/dialog.schema.json",

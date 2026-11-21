@@ -1,0 +1,13 @@
+{
+  "target": "DbRunResult",
+  "description": "a COPY FROM STDIN waiting for its data",
+  "instance": {
+    "rows": [],
+    "more": true,
+    "copy": {
+      "direction": "in",
+      "format": "text",
+      "columns": 2
+    }
+  }
+}

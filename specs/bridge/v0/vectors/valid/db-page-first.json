@@ -1,0 +1,34 @@
+{
+  "target": "DbRunResult",
+  "description": "a first page: columns with type and origin, NULL, empty text and the text NULL apart, more to fetch",
+  "instance": {
+    "columns": [
+      {
+        "name": "id",
+        "typeOid": 23,
+        "typeModifier": -1,
+        "typeSize": 4,
+        "tableOid": 16384,
+        "columnNumber": 1
+      },
+      {
+        "name": "note",
+        "typeOid": 25,
+        "typeModifier": -1,
+        "typeSize": -1,
+        "tableOid": 16384,
+        "columnNumber": 2
+      },
+      {
+        "name": "total",
+        "typeOid": 1700,
+        "typeModifier": 655366,
+        "typeSize": -1,
+        "tableOid": 0,
+        "columnNumber": 0
+      }
+    ],
+    "rows": [["1", null, "10.50"], ["2", "", "\\x01ff"], ["3", "NULL", "0.00"]],
+    "more": true
+  }
+}
