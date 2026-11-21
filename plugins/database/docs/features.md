@@ -14,8 +14,8 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
 ## Connections
 
 - PostgreSQL, MySQL / MariaDB and SQLite, each through its own client and never a shell, in a mode that cannot
-  reach past the database (ADR 0038): `psql -X -w` with a `-c` per statement, `mysql --binary-mode
-  --local-infile=0`, `sqlite3 -safe`.
+  reach past the database (ADR 0038): `psql -X -w` with a `-c` per statement,
+  `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
 - A client is found on the desk's PATH, else in the folders the `path` setting adds and where package managers
   install them; a setting may name another client or its full path. Check the clients says which one runs and
   whether it is new enough (psql 13, mysql 8.0.19, mariadb 10.5, sqlite3 3.37).
