@@ -3,6 +3,7 @@
 // feature merge without a conflict.
 
 export { feature as activity } from "./activity/index.js";
+export { feature as backup } from "./backup/index.js";
 export { feature as cellValues } from "./cell-values/index.js";
 export { feature as consoles } from "./consoles/index.js";
 export { feature as diagram } from "./diagram/index.js";
@@ -14,4 +15,5 @@ export { feature as objects } from "./objects/index.js";
 export { feature as overview } from "./overview/index.js";
 export { feature as paste } from "./paste/index.js";
 export { feature as plans } from "./plans/index.js";
+export { feature as routines } from "./routines/index.js";
 export { feature as schemaCache } from "./schema-cache/index.js";

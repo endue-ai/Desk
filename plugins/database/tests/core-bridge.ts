@@ -1,8 +1,11 @@
 // db.* served by the desk core itself for the live tests: crates/desk-core/examples/db-bridge.rs runs
 // Core::handle as the plugin (holding db:connect on `*`) and speaks bridge requests, answers and the
 // plugin's db.* events as JSON lines, so a live test's PostgreSQL goes through the core's sessions
-// (desk-pg, ADR 0281) exactly as the desk's does. Built with cargo once per run of the tests.
+// (desk-pg, ADR 0281) exactly as the desk's does. Built with cargo once per run of the tests, or
+// taken as built when ENDUE_DB_TEST_BRIDGE names its executable (several checkouts on one machine
+// then share one build; a change to the core needs its own).
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import type { BridgeEvent, DbOpenResult, DbPage } from "../../../packages/bridge/src/index";
@@ -14,6 +17,12 @@ let built: string | undefined;
 /** Build the test bridge (a no-op when it is up to date) and answer its path. */
 export function buildCoreBridge(): string {
   if (built) return built;
+  const given = process.env.ENDUE_DB_TEST_BRIDGE;
+  if (given) {
+    if (!existsSync(given)) throw new Error(`ENDUE_DB_TEST_BRIDGE names no file: ${given}`);
+    built = given;
+    return built;
+  }
   const cargo = spawnSync(
     "cargo",
     ["build", "-q", "-p", "desk-core", "--example", "db-bridge", "--message-format=json"],

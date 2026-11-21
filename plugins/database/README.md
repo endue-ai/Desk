@@ -7,9 +7,9 @@ the desk keeps a PostgreSQL one in the OS keychain, ADR 0311). Features: [`docs/
 
 `Mod+Shift+B` opens it; every operation is a command `endue.database.*` (`plugin.json`), and
 `endue.database.connections`, `.schema`, `.query`, `.activity`, `.cancel-session`, `.end-session`,
-`.maintenance`, `.paste` and the objects feature's commands serve agents (ADR 0088; the cancel, the
-end, maintenance and the objects' changes reach the server only after the person's yes, ADR 0290,
-ADR 0293, ADR 0312; a paste stays pending until the person submits).
+`.maintenance`, `.routine`, `.paste` and the objects feature's commands serve agents (ADR 0088; the cancel,
+the end, maintenance, a routine's write and the objects' changes reach the server only after the person's
+yes, ADR 0290, ADR 0293, ADR 0312; a paste stays pending until the person submits).
 
 ## Permissions
 
@@ -20,21 +20,21 @@ path by a case-sensitive pattern under one root: only `*` covers a program a set
 
 | Permission | What needs it |
 | --- | --- |
-| `proc:spawn` (`mysql`, `mariadb`, `sqlite3`) | The MySQL and SQLite clients by name, also where the `path` setting finds them (`clients.js`, `run.js`) |
+| `proc:spawn` (`mysql`, `mariadb`, `sqlite3`, `pg_dump`, `pg_restore`) | The MySQL and SQLite clients, and PostgreSQL's programs a backup and a restore run (`features/backup/`), by name, also where the `path` setting finds them (`clients.js`, `run.js`) |
 | `fs:write` (`${home}/Downloads/**`) | An export written there (`export.js`), and a cell's bytes saved to a file (`features/cell-values/`) |
 | `cmd:invoke` (`desk.palette.pick`, `desk.buffers.open`, `desk.buffers.update`, `desk.buffers.close`, `desk.files.reveal`, `desk.files.changed`) | Picking in the palette, a buffer per console and table, an export shown in the file manager, a `.sql` file changed on disk told to the desk, which asks before unsaved edits are replaced |
-| `fs:read` (`/**`) | A `.sql`, `.csv`, `.tsv` or `.json` file dropped on the page (`dropped.js`) or run from disk (`features/consoles/run-file.js`): a drop hands over the path, not access (ADR 0119), so that one file is asked for. A file picked to load a cell's bytes (`features/cell-values/`) is granted by the picker. A file the desk opens with the plugin (a SQLite or `.sql` file) comes with the opener grant (ADR 0131), its folder for the session, so a file from there is not asked for. A PostgreSQL connection's CA file (`engines/pg-session.js`) is asked for once |
-| `fs:write` (`/**`) | Saving a `.sql` file open as a console (`console-files.js`): the opener grant reads only, so that one file is asked for at its first save, and no other file is ever written |
+| `fs:read` (`/**`) | A `.sql`, `.csv`, `.tsv` or `.json` file dropped on the page (`dropped.js`) or run from disk (`features/consoles/run-file.js`): a drop hands over the path, not access (ADR 0119), so that one file is asked for. A file picked to load a cell's bytes (`features/cell-values/`) is granted by the picker. A file the desk opens with the plugin (a SQLite or `.sql` file) comes with the opener grant (ADR 0131), its folder for the session, so a file from there is not asked for. A PostgreSQL connection's CA file (`engines/pg-session.js`) is asked for once. A dump a restore reads comes from the open dialog, which grants it (`features/backup/`) |
+| `fs:write` (`/**`) | Saving a `.sql` file open as a console (`console-files.js`): the opener grant reads only, so that one file is asked for at its first save. A backup's file or folder, which pg_dump writes, is the save dialog's choice and asked for with it (`features/backup/`) |
 | `fs:read` (`${home}/.endue/database/**`) | A console's text past the store's 64 KiB, kept whole in the plugin's own folder (`console-text.js`) |
-| `fs:write` (`${home}/.endue/database/**`) | Writing that text there |
-| `proc:spawn` (`*`) | The client a setting (`endue.database.mysql`, `.sqlite3`) names by another name or a full path (`run.js`): that program is asked for at its first run |
+| `fs:write` (`${home}/.endue/database/**`) | Writing that text there, and the entries a restore chose for `pg_restore --use-list` |
+| `proc:spawn` (`*`) | The client a setting (`endue.database.mysql`, `.sqlite3`, `.pg-dump`, `.pg-restore`) names by another name or a full path (`run.js`): that program is asked for at its first run |
 | `db:connect` (`*`) | A PostgreSQL session on a connection's host and port (`engines/pg-session.js`, ADR 0281): each server is asked for at its first run; agents never hold one, they go through the plugin's commands. It also lets the plugin keep that server's password in the OS keychain (`keychain.js`, ADR 0311) |
 
 ## Tests
 
 ```bash
 pnpm exec vitest run plugins/database; just test-e2e database.spec.ts  # packages/runtime/e2e: the page at 402×305, 643×339, 900×600
-ENDUE_DB_TEST_POSTGRES=postgresql://... ENDUE_DB_TEST_MYSQL=mysql://... pnpm exec vitest run plugins/database/tests/live.test.ts  # PostgreSQL through the core (tests/core-bridge.ts)
+ENDUE_DB_TEST_POSTGRES=postgresql://... ENDUE_DB_TEST_MYSQL=mysql://... pnpm exec vitest run plugins/database/tests/live.test.ts  # PostgreSQL through the core (tests/core-bridge.ts; ENDUE_DB_TEST_BRIDGE=<built db-bridge> reuses a build)
 cargo run -p desk-cli -- plugin validate plugins/database
 cargo test -p desk-core --test builtin_declarations  # every scope the code uses is declared
 ```
