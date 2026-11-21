@@ -298,3 +298,22 @@ export function gripOf(
   if (room < 1) return undefined;
   return [Math.round(x + start + room / 2), Math.round(y + GRIP_DOWN)];
 }
+
+/**
+ * How far to drag a window at `rect` ([x, y, w, h]) so a shake of ±`amp` px keeps it on a desk
+ * `width` wide, and it lies on whole pixels: [dx, dy], [0, 0] when it can swing where it is. None
+ * when the window is wider than the room the swing leaves. The Default profile's layout decides
+ * where the shaken window starts, so a layout change must not stop the gate (2026-11-19).
+ */
+export function swingRoom(
+  rect: readonly number[],
+  width: number,
+  amp: number,
+): [number, number] | undefined {
+  const [x = 0, y = 0, w = 0] = rect;
+  const most = width - w - amp;
+  if (most < amp) return undefined;
+  const to = Math.round(Math.min(Math.max(x, amp), most));
+  const round = (n: number) => Math.round(n * 1000) / 1000;
+  return [round(to - x), round(Math.round(y) - y)];
+}
