@@ -2,10 +2,10 @@
 // saved SQLite connection and proc.spawn answered by the plugin's scripted sqlite3 over a fixture
 // database (plugins/database/tests/fixtures.ts: people, orders, and staff with a team), a saved
 // PostgreSQL connection whose scripted psql has one table of typed columns (items, fixtures-pg.ts),
-// one whose scripted psql answers the activity view (activity-fixture.ts) and EXPLAIN with fixture
-// plans (fixture-plans.ts), one whose scripted psql answers the server overview
-// (overview-fixture.ts), and fs.* over a folder in memory with one .sql file (`window.__files`, what
-// saves wrote). Never shipped.
+// one whose scripted psql answers the maintenance form (maintenance-fixture.ts), the activity view
+// (activity-fixture.ts) and EXPLAIN with fixture plans (fixture-plans.ts), one whose scripted psql
+// answers the server overview (overview-fixture.ts), and fs.* over a folder in memory with one .sql
+// file (`window.__files`, what saves wrote). Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -23,6 +23,7 @@ import {
   fixtureScript,
   procHandlers,
 } from "../../../../plugins/database/tests/fixtures";
+import { maintenanceServer } from "../../../../plugins/database/tests/maintenance-fixture";
 import {
   OVERVIEW_CONNECTION,
   overviewServer,
@@ -75,8 +76,12 @@ const core = browserCore({
     "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
   }),
   handlers: {
-    // The overview answers its own statements exactly, before the activity view's looser matches.
-    ...procHandlers(overviewServer(activityServer(fixtureScript).script), (event) => emit(event)),
+    // The overview answers its own statements exactly, then the maintenance form its own, before
+    // the activity view's looser matches.
+    ...procHandlers(
+      overviewServer(maintenanceServer(activityServer(fixtureScript).script).script),
+      (event) => emit(event),
+    ),
     ...fsHandlers,
   },
   open: () => {},
