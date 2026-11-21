@@ -235,7 +235,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const ready = bridge.call("perm.query", {}).then(
     async () => {
       await Promise.all([hub.readInit(bridge), files.load(), preferences.load()]);
-      await commands.settled();
+      await Promise.all([commands.settled(), speech.loaded()]);
       showStatus(`desk ready · bridge: ${bridge.adapterName}`);
       if (hub.initProblem) {
         notify.notify({
