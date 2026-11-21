@@ -110,7 +110,9 @@ describe("the page wired to the plugin", () => {
     key("5");
     await m.settle();
     expect($("#run-detail").hidden).toBe(false);
-    expect($("#run-detail").textContent).toContain("Fine.");
+    expect($("#run-detail").querySelector("desk-markdown")?.shadowRoot?.textContent).toContain(
+      "Fine.",
+    );
     expect(words()).not.toContain("undefined");
   });
 

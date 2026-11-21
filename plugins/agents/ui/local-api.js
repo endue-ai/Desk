@@ -115,16 +115,17 @@ export function createLocalApi({ bridge }) {
     list: async () => (await call("agents.list")).agents,
     /**
      * One agent's sessions, the most recently active first.
-     * @param {string} agent @param {{ limit?: number, query?: string }} [options]
+     * @param {string} agent @param {{ limit?: number, query?: string, offset?:number }} [options]
      * @returns {Promise<{ sessions: LocalAgentSession[], total: number }>}
      */
     sessions: (agent, options = {}) => call("agents.sessions", { agent, ...options }),
     /**
      * A session's last turns.
-     * @param {string} agent @param {string} sessionId
+     * @param {string} agent @param {string} sessionId @param {number} [limit]
      * @returns {Promise<{ session: LocalAgentSession, messages: LocalAgentMessage[], truncated: boolean }>}
      */
-    transcript: (agent, sessionId) => call("agents.transcript", { agent, sessionId, limit: 200 }),
+    transcript: (agent, sessionId, limit = 200) =>
+      call("agents.transcript", { agent, sessionId, limit }),
     /**
      * Ask the agent: resumes `sessionId` when given. Resolves with the run as it starts.
      * @param {{ agent: string, prompt: string, sessionId?: string, cwd?: string, access?: LocalAgentAccess, model?: string }} ask
