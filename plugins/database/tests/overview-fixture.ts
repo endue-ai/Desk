@@ -170,12 +170,8 @@ function figures(version: number): Row[] {
     since,
   });
   return [
-    row(
-      "Version",
-      `PostgreSQL ${version}.6 on x86_64-pc-linux-gnu, compiled by gcc 12.2.0, 64-bit`,
-      "text",
-      "version()",
-    ),
+    row("Version", `${version}.6 (Debian ${version}.6-1)`, "text", "server_version (pg_settings)"),
+    row("Running since", "2026-11-01 09:00:00+00", "time", "pg_postmaster_start_time()"),
     row("Connections in use", "23", "count", "pg_stat_activity"),
     row("Connection limit", "100", "count", "pg_settings (max_connections)"),
     row("Reserved for superusers", "3", "count", "pg_settings (superuser_reserved_connections)"),

@@ -1,8 +1,11 @@
 /* The server overview (PG-72): a header, sections of hairline tables that scroll sideways inside
-   themselves, and the sentences of what was not read. Every colour, font, size and radius comes
-   from the theme's --desk-* tokens; the feature links this sheet itself (features/README.md). */
+   themselves, and the sentences of what was not read. It is the containing block of what it places
+   absolutely (a search field's hidden label), so nothing of it reaches past the panel box. Every
+   colour, font, size and radius comes from the theme's --desk-* tokens; the feature links this
+   sheet itself (features/README.md). */
 
 .overview {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--desk-space-6);
@@ -100,6 +103,7 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A cell keeps its line: a table wider than the panel scrolls sideways inside .ov-scroll. */
 .ov-table th,
 .ov-table td {
   white-space: nowrap;

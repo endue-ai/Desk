@@ -55,7 +55,8 @@ async function readUntil(read: () => Promise<OverviewState>, ready: (s: Overview
 }
 
 describe.skipIf(!uri)("the overview of a real server", () => {
-  const { run, read } = harness(uri ?? "");
+  // The describe's body runs even when it is skipped: a stand-in URI that nothing ever runs against.
+  const { run, read } = harness(uri ?? "postgres://skipped@localhost/skipped");
   let created = false;
 
   beforeAll(async () => {
@@ -101,7 +102,7 @@ describe.skipIf(!uri)("the overview of a real server", () => {
     const state = await read();
     expect(state.server?.versionNum).toBeGreaterThanOrEqual(130000);
     expect(state.sections.filter((s) => s.failed).map((s) => `${s.id}: ${s.failed}`)).toEqual([]);
-    expect(sectionOf(state, "server").rows?.length).toBe(13);
+    expect(sectionOf(state, "server").rows?.length).toBe(14);
     expect(sectionOf(state, "wraparound").rows?.length).toBeGreaterThan(0);
   }, 60_000);
 

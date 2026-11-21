@@ -1,4 +1,5 @@
-// The overview panel's DOM: a header with the server, its uptime and when its statistics were
+// The overview panel's DOM (a div for the header and the links: the page styles bare header and
+// nav elements as its own bar): a header with the server, its uptime and when its statistics were
 // reset, and Refresh; a sentence for what the role cannot see; links to the sections; and each
 // section with its statistic and reset time, then its rows as a table, its empty sentence, what it
 // could not read, or how pg_stat_statements is enabled. Open in console runs a section's SQL in the
@@ -21,6 +22,7 @@ const UNIT = /** @type {Record<string, Format>} */ ({
   bytes: "bytes",
   percent: "percent",
   seconds: "seconds",
+  time: "time",
 });
 
 /**
@@ -58,7 +60,7 @@ export function overviewView(doc, first, act, buffer) {
   };
 
   const header = (/** @type {OverviewState} */ s) => {
-    const head = make("header", "desk-header ov-header");
+    const head = make("div", "desk-header ov-header");
     const text = make("div", "desk-header-text");
     text.append(make("h2", "desk-header-title", "Server overview"), make("p", "desk-header-desc"));
     /** @type {HTMLElement} */ (text.lastChild).textContent = describe(s);
@@ -101,7 +103,8 @@ export function overviewView(doc, first, act, buffer) {
   };
 
   const nav = (/** @type {OverviewState} */ s) => {
-    const links = make("nav", "ov-nav");
+    const links = make("div", "ov-nav");
+    links.setAttribute("role", "navigation");
     links.setAttribute("aria-label", "Sections");
     for (const r of s.sections) {
       const link = /** @type {HTMLAnchorElement} */ (make("a", "", r.title));
@@ -129,7 +132,8 @@ export function overviewView(doc, first, act, buffer) {
     const head = make("tr");
     for (const column of r.columns)
       head.append(make("th", numeric(column.format) ? "ov-num" : "", column.label));
-    if (r.id === "statements") head.append(make("th", "", "Console"));
+    // A statement's Open leads its row, in sight however wide the statement column is.
+    if (r.id === "statements") head.prepend(make("th", "", "Console"));
     grid.append(make("thead"), make("tbody"));
     /** @type {HTMLElement} */ (grid.firstChild).append(head);
     const body = /** @type {HTMLElement} */ (grid.lastChild);
@@ -153,7 +157,7 @@ export function overviewView(doc, first, act, buffer) {
         );
         open.setAttribute("aria-label", `Open statement ${index + 1} in the console`);
         cell.append(open);
-        line.append(cell);
+        line.prepend(cell);
       }
       body.append(line);
     }
@@ -196,7 +200,7 @@ export function overviewView(doc, first, act, buffer) {
         label.append(make("span", "sr-only", `Search the ${r.title.toLowerCase()}`));
         const field = /** @type {HTMLInputElement} */ (make("input", "desk-field"));
         field.type = "search";
-        field.placeholder = "work_mem";
+        field.placeholder = "Search the settings";
         field.spellcheck = false;
         field.value = search;
         field.dataset.ovSearch = r.id;

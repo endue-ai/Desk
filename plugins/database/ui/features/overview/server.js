@@ -23,6 +23,8 @@ const figure = (
 ) =>
   `SELECT ${n} AS n, '${name}' AS figure, (${value})::text AS value, '${unit}' AS unit, '${statistic}' AS statistic, ${reset} AS since${from ? ` ${from}` : ""}`;
 
+/** @typedef {[string, string, string, string, string?, string?]} Figure */
+
 const DB = "FROM pg_stat_database WHERE datname = current_database()";
 const CLIENTS = "FROM pg_stat_activity WHERE backend_type = 'client backend'";
 
@@ -33,76 +35,51 @@ function figures(server) {
   const [timed, requested] = v17
     ? ["num_timed", "num_requested"]
     : ["checkpoints_timed", "checkpoints_req"];
-  const db = (
-    /** @type {number} */ n,
-    /** @type {string} */ name,
-    /** @type {string} */ value,
-    unit = "count",
-  ) => figure(n, name, value, unit, "pg_stat_database", "stats_reset", DB);
-  const parts = [
-    figure(1, "Version", "version()", "text", "version()"),
-    figure(2, "Connections in use", "count(*)", "count", "pg_stat_activity", undefined, CLIENTS),
-    figure(
-      3,
+  const db = (/** @type {string} */ name, /** @type {string} */ value, unit = "count") =>
+    /** @type {Figure} */ ([name, value, unit, "pg_stat_database", "stats_reset", DB]);
+  const state = (/** @type {string} */ name, /** @type {string} */ where) =>
+    /** @type {Figure} */ ([name, "count(*)", "count", "pg_stat_activity", undefined, where]);
+  const checkpoint = (/** @type {string} */ name, /** @type {string} */ column) =>
+    /** @type {Figure} */ ([
+      name,
+      column,
+      "count",
+      checkpoints,
+      "stats_reset",
+      `FROM ${checkpoints}`,
+    ]);
+  /** @type {Figure[]} */
+  const list = [
+    ["Version", "current_setting('server_version')", "text", "server_version (pg_settings)"],
+    ["Running since", "pg_postmaster_start_time()", "time", "pg_postmaster_start_time()"],
+    state("Connections in use", CLIENTS),
+    [
       "Connection limit",
       "current_setting('max_connections')",
       "count",
       "pg_settings (max_connections)",
-    ),
-    figure(
-      4,
+    ],
+    [
       "Reserved for superusers",
       "current_setting('superuser_reserved_connections')",
       "count",
       "pg_settings (superuser_reserved_connections)",
-    ),
-    figure(
-      5,
-      "Active sessions",
-      "count(*)",
-      "count",
-      "pg_stat_activity",
-      undefined,
-      `${CLIENTS} AND state = 'active'`,
-    ),
-    figure(
-      6,
-      "Idle in a transaction",
-      "count(*)",
-      "count",
-      "pg_stat_activity",
-      undefined,
-      `${CLIENTS} AND state LIKE 'idle in transaction%'`,
-    ),
+    ],
+    state("Active sessions", `${CLIENTS} AND state = 'active'`),
+    state("Idle in a transaction", `${CLIENTS} AND state LIKE 'idle in transaction%'`),
     db(
-      7,
       "Cache hit ratio",
       "round(100.0 * blks_hit / nullif(blks_hit + blks_read, 0), 2)",
       "percent",
     ),
-    db(8, "Commits", "xact_commit"),
-    db(9, "Rollbacks", "xact_rollback"),
-    db(10, "Deadlocks", "deadlocks"),
-    db(11, "Temporary files written", "temp_bytes", "bytes"),
-    figure(
-      12,
-      "Checkpoints on schedule",
-      timed,
-      "count",
-      checkpoints,
-      "stats_reset",
-      `FROM ${checkpoints}`,
-    ),
-    figure(
-      13,
-      "Checkpoints requested",
-      requested,
-      "count",
-      checkpoints,
-      "stats_reset",
-      `FROM ${checkpoints}`,
-    ),
+    db("Commits", "xact_commit"),
+    db("Rollbacks", "xact_rollback"),
+    db("Deadlocks", "deadlocks"),
+    db("Temporary files written", "temp_bytes", "bytes"),
+    checkpoint("Checkpoints on schedule", timed),
+    checkpoint("Checkpoints requested", requested),
   ];
+  const parts = list.map((args, i) => figure(i + 1, ...args));
   return {
     id: "server",
     title: "Server",
