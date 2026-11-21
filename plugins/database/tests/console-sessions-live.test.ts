@@ -14,7 +14,9 @@ import { run, state } from "./session-helpers";
 const uri = process.env.ENDUE_DB_TEST_POSTGRES ?? "";
 const { fields, password } = uri ? parseUri(uri) : { fields: {}, password: undefined };
 const server = liveSessions(uri, "endue console-sessions");
-const LIVE = { ...normalize({ ...fields, id: "c-live-sessions", name: "live" }) } as Connection;
+const LIVE = (
+  uri ? normalize({ ...fields, id: "c-live-sessions", name: "live" }) : {}
+) as Connection;
 
 /** The plugin on the real core with the live connection's console on screen. */
 async function live(): Promise<Mounted> {

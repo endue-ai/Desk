@@ -20,9 +20,10 @@ import { split } from "./sql/split.js";
  * @typedef {import("./settings.js").Settings} Settings
  * @typedef {"run" | "transaction" | "dry-run"} Mode
  * @typedef {{ conn: Connection, sql: string, statements: Statement[], classes: Class[], mode: Mode, result: RunResult, at: number }} Execution
- * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, statements?: Statement[] }} ExecuteOptions
+ * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, statements?: Statement[], session?: import("./session/keeper.js").Owner }} ExecuteOptions
  *   `interactive: false` never asks for a password; `agent` asks before any write; `catalog` is the
- *   plugin's own reading and asks nothing.
+ *   plugin's own reading and asks nothing; `session` runs PostgreSQL on the session that console or
+ *   table view keeps (PG-02, ADR 0320), else on a short one of the run's own.
  * @typedef {{
  *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number }): Promise<import("./engines/common.js").Outcome> },
  *   output: Pick<import("./output-client.js").OutputReader, "read">,
@@ -75,7 +76,15 @@ export function createExecutor(deps) {
         if (!deps.sessions)
           return failedRun(statements, { kind: "client", message: "No database sessions here." });
         const typed = password !== undefined ? { password } : {};
-        return deps.sessions.run(conn, { statements, maxRows, timeoutMs, mode, ...typed });
+        return deps.sessions.run(conn, {
+          statements,
+          maxRows,
+          timeoutMs,
+          mode,
+          ...typed,
+          ...(options.session ? { session: options.session } : {}),
+          ...(options.agent ? { agent: true } : {}),
+        });
       }
       try {
         const client = await deps.clients.get(conn.engine);

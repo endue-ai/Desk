@@ -3,7 +3,8 @@
  * server, with the core's rules (specs/bridge/v0/README.md): db:connect checked against the host
  * and port, agents refused, postgresql alone, reserved settings and page limits, 16 sessions a
  * caller, sessions their caller's alone, pages whose `more` is exact and whose last page counts
- * every page, one statement at a time, cancel, COPY, and db.closed when the session ends.
+ * every page, one statement at a time, cancel, COPY, and db.closed when the session ends; a
+ * transaction as the server keeps it (stub-db-transaction.ts), and pg_terminate_backend's FATAL.
  */
 import { StubError, type StubHandlers } from "./adapters";
 import type {
@@ -19,6 +20,16 @@ import type {
   Permission,
 } from "./generated";
 import { covers } from "./stub-covers";
+import {
+  controlTag,
+  endsFailed,
+  IGNORED,
+  isControl,
+  TERMINATED,
+  terminateAnswer,
+  terminated,
+  transactionAfter,
+} from "./stub-db-transaction";
 
 export type DbServed = `db.${"open" | "run" | "fetch" | "copy" | "cancel" | "close" | "list"}`;
 
@@ -136,12 +147,16 @@ export function stubDb(
     if (session.copying)
       throw new StubError("invalid_params", "a COPY FROM STDIN waits for its data");
   };
-  const end = (sessionId: string, reason: "closed" | "unloaded" | "revoked") => {
+  const end = (
+    sessionId: string,
+    reason: "closed" | "unloaded" | "revoked" | "server",
+    error?: DbServerError,
+  ) => {
     const session = sessions.get(sessionId);
     if (!session) return;
     sessions.delete(sessionId);
     session.running?.();
-    later({ event: "db.closed", data: { sessionId, reason } });
+    later({ event: "db.closed", data: { sessionId, reason, ...(error ? { error } : {}) } });
   };
   /** The next page of the open result: rows until it is full, always one. */
   const page = (session: Session, pageRows: number, pageBytes: number): DbPage => {
@@ -160,11 +175,13 @@ export function stubDb(
     const rowCount = result.rows.length;
     return { rows, more: false, tag: result.tag, rowCount, transaction: session.transaction };
   };
-  const last = (session: Session, tag: string, extra: Partial<DbPage> = {}): DbPage => {
-    if (/^BEGIN|^START/i.test(tag)) session.transaction = "open";
-    if (/^(COMMIT|ROLLBACK|END)/i.test(tag)) session.transaction = "idle";
-    return { rows: [], more: false, tag, transaction: session.transaction, ...extra };
-  };
+  const last = (session: Session, tag: string, extra: Partial<DbPage> = {}): DbPage => ({
+    rows: [],
+    more: false,
+    tag,
+    transaction: session.transaction,
+    ...extra,
+  });
   const failed = (session: Session, error: DbServerError): DbPage => {
     if (session.transaction === "open") session.transaction = "failed";
     return { rows: [], more: false, error, transaction: session.transaction };
@@ -209,6 +226,23 @@ export function stubDb(
     if (!statement.columns) return last(session, tagOf(statement, rows.length));
     session.result = { rows, at: 0, tag: tagOf(statement, rows.length) };
     return { ...page(session, pageRows, pageBytes), columns: statement.columns };
+  };
+
+  /** A statement's answer: the script's, else a transaction's control, pg_terminate_backend's, 0A000. */
+  const respond = (session: Session, sql: string, pageRows: number, pageBytes: number) => {
+    const matches = (s: StubStatement) =>
+      typeof s.sql === "string" ? s.sql === sql : s.sql.test(sql);
+    const statement = script?.statements.find(matches) ?? script?.answer?.(sql, session.signed);
+    if (statement) return answer(session, statement, pageRows, pageBytes);
+    if (isControl(sql)) return last(session, controlTag(sql, session.transaction));
+    const pid = terminated(sql);
+    if (pid === undefined)
+      return failed(
+        session,
+        failure("0A000", "the stub's script has no answer for this statement"),
+      );
+    const found = [...sessions.values()].some((s) => s.info.pid === pid);
+    return last(session, "SELECT 1", terminateAnswer(found));
   };
 
   const handlers: Required<Pick<StubHandlers, DbServed>> = {
@@ -274,22 +308,26 @@ export function stubDb(
         parameters: { server_version: "17.6", client_encoding: "UTF8", ...script.parameters },
       };
     },
-    "db.run": (params, caller) => {
+    "db.run": async (params, caller) => {
       const { pageRows, pageBytes } = limits(params.pageRows, params.pageBytes);
       const session = mine(caller, params.sessionId);
       idle(session);
       session.result = undefined;
-      const matches = (s: StubStatement) =>
-        typeof s.sql === "string" ? s.sql === params.sql : s.sql.test(params.sql);
-      const statement =
-        script?.statements.find(matches) ?? script?.answer?.(params.sql, session.signed);
-      if (statement) return answer(session, statement, pageRows, pageBytes);
-      if (/^\s*(BEGIN|START|COMMIT|ROLLBACK|END)\b/i.test(params.sql))
-        return last(session, (params.sql.trim().split(/\s+/)[0] ?? "").toUpperCase());
-      return failed(
-        session,
-        failure("0A000", "the stub's script has no answer for this statement"),
-      );
+      const { sql } = params;
+      const before = session.transaction;
+      if (before === "failed" && !endsFailed(sql)) return failed(session, IGNORED);
+      const done = await respond(session, sql, pageRows, pageBytes);
+      // The last page of a statement that succeeded carries the state ReadyForQuery reports.
+      if (!done.error && done.transaction) {
+        session.transaction = transactionAfter(sql, before);
+        done.transaction = session.transaction;
+        if (before === "failed" && isControl(sql)) done.tag = controlTag(sql, before);
+      }
+      const pid = terminated(sql);
+      for (const [id, other] of [...sessions])
+        if (pid !== undefined && !done.error && other.info.pid === pid && id !== params.sessionId)
+          end(id, "server", TERMINATED);
+      return done;
     },
     "db.fetch": (params, caller) => {
       const { pageRows, pageBytes } = limits(params.pageRows, params.pageBytes);

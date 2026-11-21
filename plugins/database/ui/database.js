@@ -20,7 +20,6 @@ import { formatText } from "./console-run.js";
 import { createConsoles } from "./consoles.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
-import { createSessions } from "./engines/pg-session.js";
 import { createExecutor } from "./execute.js";
 import { createExplorer } from "./explorer.js";
 import { panelsOf, registerFeatures } from "./feature-host.js";
@@ -31,6 +30,7 @@ import { createManager } from "./manage.js";
 import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
 import { bridgeStore } from "./schema-cache/store.js";
+import { createPluginSessions } from "./session/plugin.js";
 import { DEFAULTS, followSettings, fromValues, loadValues } from "./settings.js";
 import { summaryOf } from "./tabs.js";
 import { createTools } from "./tools.js";
@@ -94,17 +94,24 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     busy();
     view.reading?.(reads);
   });
-  // PostgreSQL's runs: a session each, on the core (ADR 0281).
-  const pg = createSessions(bridge, {
+  // PostgreSQL's runs on the core's sessions (ADR 0281): a console's and a table view's kept, any
+  // other run's its own (PG-02, ADR 0320).
+  const kept = createPluginSessions({
+    bridge,
+    view,
+    consoles: () => consoles,
+    connection: (id) => manager.get(id),
+    settings: () => settings,
     onBusy: (count) => {
       sessions = count;
       busy();
     },
   });
+  const pg = kept.pg;
   const cancel = () => {
     catalog.cancel();
     runner.cancel();
-    pg.cancel();
+    pg.cancel(kept.scope());
     output.cancel();
   };
   const clients = createClients(runner, () => settings);
@@ -126,6 +133,8 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     },
     renamed: (conn) => consoles.renamed(conn),
     changed: () => changed(),
+    sessions: kept.connections,
+    cancelled,
     ...(options.random ? { random: options.random } : {}),
   });
   const executor = createExecutor({
@@ -188,6 +197,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     },
     ...(options.random ? { random: options.random } : {}),
     ...(options.plans ? { readPlan: options.plans.read } : {}),
+    sessions: pg,
   });
   const files = createConsoleFiles({
     bridge,
@@ -221,15 +231,17 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   });
 
   /** What comes back after a restart: the connection on screen, the explorer, the consoles the
-   * plugin opened and the kept panels. */
+   * plugin opened, the kept panels, and the consoles' sessions for a frame that wakes. */
   const save = () => {
     const panels = consoles.kept();
-    const kept = consoles.keptConsoles();
+    const open = consoles.keptConsoles();
+    const held = pg.kept();
     state.set({
       current: consoles.current()?.connection ?? null,
       expanded: explorer.opened(),
-      ...(kept.length ? { consoles: kept } : {}),
+      ...(open.length ? { consoles: open } : {}),
       ...(panels.length ? { panels } : {}),
+      ...(held.length ? { sessions: held } : {}),
     });
   };
 
@@ -351,8 +363,11 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     )();
     const conn = saved?.current ? manager.get(saved.current) : undefined;
     if (!back && conn) await guard(() => consoles.open(conn))();
-    const kept = /** @type {{ panels?: unknown } | undefined} */ (saved)?.panels;
-    await guard(() => consoles.restore(kept))();
+    const panels = /** @type {{ panels?: unknown } | undefined} */ (saved)?.panels;
+    await guard(() => consoles.restore(panels))();
+    // A frame that wakes (ADR 0134): its consoles' sessions are theirs again, any other closed.
+    if (saved)
+      await guard(() => kept.adopt(/** @type {{ sessions?: unknown }} */ (saved).sessions))();
   })();
 
   return Object.assign({ ready, ...builtins }, featureActions);

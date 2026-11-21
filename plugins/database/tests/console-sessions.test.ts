@@ -4,7 +4,18 @@
 // words and opened again at the next run with nothing replayed; table views have sessions of their
 // own, agents and the plugin's own reads short ones; Cancel stops the console on screen alone.
 import { describe, expect, it } from "vitest";
-import { closed, made, messages, PG, ranOn, run, sessionOf, shop, state } from "./session-helpers";
+import {
+  closed,
+  made,
+  messages,
+  PG,
+  ranOn,
+  run,
+  sessionOf,
+  shop,
+  start,
+  state,
+} from "./session-helpers";
 
 describe("a console's PostgreSQL session", () => {
   it("a console keeps its session: a SET, a temporary table and a transaction are seen by the next run", async () => {
@@ -41,11 +52,11 @@ describe("a console's PostgreSQL session", () => {
     await run(m, "rollback");
     expect(state(m)).toBe("idle");
 
-    const going = run(m, "select pg_sleep(60)");
-    await m.settle();
+    const going = await start(m, "select pg_sleep(60)");
     expect(m.shown()?.session).toMatchObject({ state: "running", label: "Running" });
     await m.host.command("endue.database.cancel");
-    await going;
+    await going.done;
+    await m.settle();
     expect(state(m)).toBe("idle");
   });
 
@@ -144,19 +155,17 @@ describe("a console's PostgreSQL session", () => {
 
   it("Cancel stops the statement of the console on screen only", async () => {
     const m = await shop();
-    const one = run(m, "select pg_sleep(60)");
-    await m.settle();
+    const one = await start(m, "select pg_sleep(60)");
     await m.host.command("endue.database.new-console", { connection: PG.name });
-    const two = run(m, "select pg_sleep(61)");
-    await m.settle();
+    const two = await start(m, "select pg_sleep(61)");
     await m.host.command("endue.database.cancel");
-    await two;
+    await two.done;
     const second = sessionOf(m, "select pg_sleep(61)");
     expect(made(m, "db.cancel").map((p) => p.sessionId)).toEqual([second]);
 
     await m.host.command("endue.database.consoles", { console: "Shop" });
     await m.host.command("endue.database.cancel");
-    await one;
+    await one.done;
     expect(made(m, "db.cancel").map((p) => p.sessionId)).toEqual([
       second,
       sessionOf(m, "select pg_sleep(60)"),

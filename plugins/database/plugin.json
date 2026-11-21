@@ -1252,6 +1252,20 @@
         "kind": "boolean",
         "default": false,
         "description": "Save lays a .sql file's console out with Format SQL before it writes the file, by the format of the file's connection; a file on no connection yet is written as typed."
+      },
+      "endue.database.sessions-per-connection": {
+        "kind": "integer",
+        "default": 8,
+        "minimum": 1,
+        "maximum": 12,
+        "description": "PostgreSQL sessions a connection's consoles and table views keep open at once (1 to 12). At the limit, a table view's idle session closes first; past it, a run says which to close."
+      },
+      "endue.database.session-idle-minutes": {
+        "kind": "integer",
+        "default": 30,
+        "minimum": 0,
+        "maximum": 1440,
+        "description": "Close a console's or a table view's PostgreSQL session no run used for this many minutes; 0 keeps them open. A session in a transaction is never closed this way."
       }
     }
   }

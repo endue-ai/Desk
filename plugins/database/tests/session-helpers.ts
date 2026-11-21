@@ -46,6 +46,21 @@ export async function run(m: Mounted, sql: string, command = "endue.database.run
   return done;
 }
 
+/**
+ * Start `sql` in the console on screen and wait until it reaches its session, without settling:
+ * a statement that waits keeps its call open. The run's end comes back.
+ */
+export async function start(m: Mounted, sql: string) {
+  m.view.text = sql;
+  m.view.caret = sql.length;
+  m.app.edited(sql);
+  const done = m.host.command("endue.database.run-all");
+  for (let i = 0; i < 200 && !sessionOf(m, sql); i++)
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  if (!sessionOf(m, sql)) throw new Error(`${sql} never ran`);
+  return { done };
+}
+
 type Call = { method: string; params?: unknown };
 const params = (call: Call) => (call.params ?? {}) as Record<string, unknown>;
 

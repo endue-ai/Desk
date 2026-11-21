@@ -1,7 +1,8 @@
 // The plugin's settings, from `init.get` (the layer the core serves today) over the defaults the
 // manifest declares. A value of the wrong type, out of range or not one of its choices keeps the
 // default. The `format-*` settings hold Format SQL's style (ui/sql/layout/style.js, ADR 0292) and
-// whether Save lays a bound .sql file out first (`format-on-save`).
+// whether Save lays a bound .sql file out first (`format-on-save`). The `session*` settings bound the
+// PostgreSQL sessions consoles and table views keep (PG-02, ADR 0320).
 import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
 
 /**
@@ -10,7 +11,7 @@ import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
  *   systemSchemas: boolean, mysql: string, sqlite3: string, path: string[],
  *   formatKeywordCase: string, formatIndent: number, formatLineWidth: number, formatComma: string,
  *   formatAndOr: string, formatJoins: string, formatOneLine: string, formatLists: string,
- *   formatOnSave: boolean,
+ *   formatOnSave: boolean, sessionsPerConnection: number, sessionIdleMinutes: number,
  * }} Settings
  */
 
@@ -34,6 +35,8 @@ export const DEFAULTS = Object.freeze({
   formatOneLine: STYLE.oneLine,
   formatLists: STYLE.lists,
   formatOnSave: false,
+  sessionsPerConnection: 8,
+  sessionIdleMinutes: 30,
 });
 
 /** The manifest key of each setting, the range of the numbers and the choices of the strings. */
@@ -65,6 +68,8 @@ const KEYS =
     formatOneLine: { key: "endue.database.format-one-line", choices: CHOICES.oneLine },
     formatLists: { key: "endue.database.format-lists", choices: CHOICES.lists },
     formatOnSave: { key: "endue.database.format-on-save" },
+    sessionsPerConnection: { key: "endue.database.sessions-per-connection", min: 1, max: 12 },
+    sessionIdleMinutes: { key: "endue.database.session-idle-minutes", min: 0, max: 1440 },
   });
 
 /** The setting keys as the manifest declares them, in order. */
