@@ -35,6 +35,7 @@ defineUiPlugin({
       platform: platformOf(navigator.platform),
       output: (onBusy) => createOutputReader(startWorker, { onBusy }),
       plans: createPlanReader(startWorker),
+      startWorker,
     });
     app = /** @type {Record<string, (...args: unknown[]) => unknown>} */ (
       /** @type {unknown} */ (database)

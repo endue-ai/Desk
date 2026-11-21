@@ -2,7 +2,7 @@
 
 `endue.reader` ("Reader"), the desk's reader for documents, e-books and comics, community format on
 the public SDK only. It opens `*.pdf` `*.xps` `*.oxps` `*.epub` `*.mobi` `*.azw` `*.azw3` `*.prc`
-`*.fb2` `*.cbz` `*.cbt` `*.cbr` `*.cb7` `*.djvu` `*.djv`, picked by first bytes, then extension.
+`*.fb2` `*.cbz` `*.cbt` `*.cbr` `*.cb7` `*.djvu` `*.djv`, picked by first bytes, then extension. Eris reads an open book's pages or chapters with `endue.reader.read { path?, from?, count? }` and finds words with `endue.reader.find { query }` (ADR 0088, `ui/agent.js`); a locked one waits for the person's password.
 
 PDF is pdf.js (`pdfjs-dist` 6.4.299, pinned in `package.json`, copied into `ui/vendor` by
 `node scripts/vendor-pdfjs.mjs`, ADR 0042), its pages read by byte ranges in a real worker. EPUB,

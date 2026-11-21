@@ -6,6 +6,7 @@ import {
   defineUiPlugin,
   isTextChange,
   keepFiles,
+  type PluginContext,
   textChange,
 } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
@@ -73,6 +74,8 @@ export interface Mounted {
   host: TestHost;
   view: RecordingView;
   app: ReturnType<typeof createNotes>;
+  /** The plugin context the SDK handed the plugin, for modules mounted beside it. */
+  ctx: PluginContext;
   /** The params of every call to one bridge method. */
   params(method: string): unknown[];
   /** The args of every run of one desk command. */
@@ -98,9 +101,11 @@ export async function mount(
   });
   const view = recordingView();
   let app: ReturnType<typeof createNotes> | undefined;
+  let context: PluginContext | undefined;
   await defineUiPlugin(
     {
       async mount(ctx) {
+        context = ctx;
         app = createNotes(ctx, view, { keepFiles, textChange, applyTextChange, isTextChange });
         await app.ready;
       },
@@ -111,11 +116,12 @@ export async function mount(
     for (let i = 0; i < 4; i++) await host.settle();
   };
   await settle();
-  if (!app) throw new Error("the plugin did not mount");
+  if (!app || !context) throw new Error("the plugin did not mount");
   return {
     host,
     view,
     app,
+    ctx: context,
     params: (method) => host.calls.filter((c) => c.method === method).map((c) => c.params),
     ran: (name) => host.ran.filter((r) => r.name === name).map((r) => r.args),
     settle,

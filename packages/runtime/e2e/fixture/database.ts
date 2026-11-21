@@ -7,9 +7,10 @@
 // (fixture-plans.ts) and the reads and DDL of the explorer's operations on objects
 // (objects-fixture.ts), one whose server answers the server overview (overview-fixture.ts), one
 // whose server answers the schema cache with a small store and a schema of 500 tables and 1,000
-// foreign keys for the ER diagram (diagram-fixture.ts), dialog.save answering a place in
-// ~/Pictures, and fs.* over a folder in memory with one .sql file (`window.__files`, what saves and
-// exports wrote). Never shipped.
+// foreign keys for the ER diagram (diagram-fixture.ts), and fs.* over a folder in memory with one
+// .sql file (`window.__files`, what saves and exports wrote). dialog.save answers a place in
+// ~/Pictures for an image and the backup's place otherwise; a backup's save and open dialogs, and
+// the scripted pg_dump and pg_restore, are backup-fixture.ts's. Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -21,6 +22,7 @@ import {
   ACTIVITY_CONNECTION,
   activityServer,
 } from "../../../../plugins/database/tests/activity-fixture";
+import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
 import {
   DIAGRAM_CONNECTION,
   diagramServer,
@@ -71,11 +73,14 @@ const fsHandlers: StubHandlers = {
     return { bytesWritten: content.length };
   },
   "fs.watch": () => ({ watchId: "w-fixture" }),
-  "dialog.save": ({ suggestedName }) => ({
-    cancelled: false,
-    path: `~/Pictures/${suggestedName ?? "untitled"}`,
-  }),
 };
+// sqlite3 runs scripted; backupHandlers adds pg_dump and pg_restore in front of it.
+const procs = procHandlers(fixtureScript, (event) => emit(event));
+const backup = backupHandlers(
+  files,
+  procs["proc.spawn"] as NonNullable<StubHandlers["proc.spawn"]>,
+);
+const backupSave = backup["dialog.save"] as NonNullable<StubHandlers["dialog.save"]>;
 const clock = new ManualClock();
 const core = browserCore({
   manifests: [...policies, databaseManifest as PluginManifest],
@@ -91,7 +96,7 @@ const core = browserCore({
     "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
   }),
   handlers: {
-    ...procHandlers(fixtureScript, (event) => emit(event)),
+    ...procs,
     // The diagram's connection answers first, by its database; the overview answers its own
     // statements exactly, then the maintenance form its own and the objects feature its own,
     // before the activity view's looser matches.
@@ -104,6 +109,12 @@ const core = browserCore({
       (event) => emit(event),
     ),
     ...fsHandlers,
+    ...backup,
+    // An exported image goes to ~/Pictures; anything else is the backup's to place.
+    "dialog.save": (params, caller) =>
+      /\.(?:svg|png)$/u.test(params.suggestedName ?? "")
+        ? { cancelled: false, path: `~/Pictures/${params.suggestedName}` }
+        : backupSave(params, caller),
   },
   open: () => {},
 });

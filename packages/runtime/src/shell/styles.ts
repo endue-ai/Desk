@@ -17,6 +17,7 @@ import "../surface/local-agent/local-agent.css";
 import "../surface/endue/endue.css";
 import "../surface/endue/board.css";
 import "../arrange/arrange.css";
+import "../sweep/sweep.css";
 import "./away.css";
 import "../theme-studio/studio.css";
 import "../theme-studio/editor.css";
