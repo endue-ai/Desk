@@ -216,7 +216,8 @@ impl ChromeTheme {
             border_width: length("borderWidth", 1.0),
             radius,
             shadow: shadow("shadowMd", Some(drop(8.0, 24.0, 0.45))),
-            title_height: 40.0,
+            // desk-wm's `host::TITLE` and `surface.css`'s `--surface-title-height` (ADR 0255).
+            title_height: 36.0,
             divider: border,
             padding: length("space3", 12.0),
             title: text("textSm", 14.0, 500, ink),

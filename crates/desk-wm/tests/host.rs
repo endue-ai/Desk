@@ -112,7 +112,7 @@ mod windows_at_their_rectangles {
             )
         );
         assert_eq!(p.focused_plugin.as_deref(), Some("endue.notes"));
-        assert_eq!(p.seat("endue.notes").size, Some((598.0, 358.0)));
+        assert_eq!(p.seat("endue.notes").size, Some((598.0, 362.0)));
     }
 
     #[test]
@@ -183,10 +183,10 @@ mod windows_at_their_rectangles {
         let mail = p.window("endue.mail").unwrap();
         // Notes's title bar under Mail: that part is drawn with Notes, so Mail covers it.
         let covered = desk_wm::host::intersect(notes.title_bar, mail.rect).unwrap();
-        assert_eq!(covered, Rect::new(300.0, 220.0, 299.0, 21.0));
+        assert_eq!(covered, Rect::new(300.0, 220.0, 299.0, 17.0));
         assert!(p.page.iter().all(|piece| !piece.overlaps(&covered)));
         // Its icon in the open, and Mail's own title bar, are in the layer above every window.
-        let open = Rect::new(201.0, 201.0, TITLE_START, 40.0);
+        let open = Rect::new(201.0, 201.0, TITLE_START, 36.0);
         let shown: f64 = (p.page.iter())
             .filter_map(|piece| desk_wm::host::intersect(*piece, open))
             .map(|r| r.w * r.h)
@@ -221,7 +221,7 @@ mod windows_at_their_rectangles {
             steps
                 .iter()
                 .any(|s| matches!(s, Step::Resize { surface, size, scale }
-            if *surface == host_of("endue.mail") && *size == (1438, 858) && *scale == 2.0))
+            if *surface == host_of("endue.mail") && *size == (1438, 862) && *scale == 2.0))
         );
     }
 }

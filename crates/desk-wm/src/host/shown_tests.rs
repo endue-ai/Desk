@@ -10,11 +10,11 @@ const SCREEN: Rect = Rect {
     h: 800.0,
 };
 
-/// A window at `rect` whose page draws its 40 px title bar.
+/// A window at `rect` whose page draws its 36 px title bar.
 fn bar(rect: Rect) -> Laid {
     Laid {
         rect,
-        parts: vec![Rect::new(rect.x, rect.y, rect.w, 40.0)],
+        parts: vec![Rect::new(rect.x, rect.y, rect.w, 36.0)],
     }
 }
 
@@ -46,7 +46,7 @@ fn a_moved_window_is_shown_where_the_page_had_it_until_a_paint_covers_both_place
     assert!(!shown.painted(&[Rect::new(800.0, 600.0, 10.0, 20.0)], 12.0));
     assert_eq!(shown.rect("a"), Some(from));
     // The new place alone is not enough: the old one still shows the window.
-    assert!(!shown.painted(&[Rect::new(160.0, 130.0, 400.0, 40.0)], 14.0));
+    assert!(!shown.painted(&[Rect::new(160.0, 130.0, 400.0, 36.0)], 14.0));
     // The move's own damage, the old and the new place's union.
     assert!(shown.painted(&[Rect::new(100.0, 100.0, 460.0, 70.0)], 16.0));
     assert_eq!(shown.rect("a"), Some(to));
@@ -61,10 +61,10 @@ fn a_paint_shows_the_newest_layout_its_damage_covers_and_later_ones_wait() {
         shown.laid(&one("a", bar(at(x))), SCREEN, 10.0 + i as f64);
     }
     // The picture went from 100 to 120 in one paint: 130 is not drawn yet.
-    assert!(shown.painted(&[Rect::new(100.0, 100.0, 320.0, 40.0)], 20.0));
+    assert!(shown.painted(&[Rect::new(100.0, 100.0, 320.0, 36.0)], 20.0));
     assert_eq!(shown.rect("a"), Some(at(120.0)));
     assert!(shown.waiting());
-    assert!(shown.painted(&[Rect::new(120.0, 100.0, 310.0, 40.0)], 36.0));
+    assert!(shown.painted(&[Rect::new(120.0, 100.0, 310.0, 36.0)], 36.0));
     assert_eq!(shown.rect("a"), Some(at(130.0)));
 }
 
@@ -89,8 +89,8 @@ fn a_window_the_page_dropped_stays_in_the_picture_until_a_paint_clears_its_parts
     let mut shown = shown_at(at);
     shown.laid(&BTreeMap::new(), SCREEN, 10.0);
     assert_eq!(shown.rect("a"), None);
-    assert_eq!(shown.stale(), vec![Rect::new(100.0, 100.0, 400.0, 40.0)]);
-    assert!(!shown.painted(&[Rect::new(100.0, 100.0, 100.0, 40.0)], 12.0));
+    assert_eq!(shown.stale(), vec![Rect::new(100.0, 100.0, 400.0, 36.0)]);
+    assert!(!shown.painted(&[Rect::new(100.0, 100.0, 100.0, 36.0)], 12.0));
     assert!(shown.painted(&[at], 14.0));
     assert!(shown.stale().is_empty());
 }
@@ -143,8 +143,8 @@ fn paints_whose_reports_came_late_still_add_up() {
     let at = |x: f64| Rect::new(x, 100.0, 300.0, 200.0);
     let mut shown = shown_at(at(100.0));
     // Two moves painted, each a little before its report.
-    assert!(!shown.painted(&[Rect::new(100.0, 100.0, 320.0, 40.0)], 20.0));
-    assert!(!shown.painted(&[Rect::new(120.0, 100.0, 320.0, 40.0)], 36.0));
+    assert!(!shown.painted(&[Rect::new(100.0, 100.0, 320.0, 36.0)], 20.0));
+    assert!(!shown.painted(&[Rect::new(120.0, 100.0, 320.0, 36.0)], 36.0));
     shown.laid(&one("a", bar(at(120.0))), SCREEN, 40.0);
     assert_eq!(shown.rect("a"), Some(at(120.0)));
     shown.laid(&one("a", bar(at(140.0))), SCREEN, 41.0);
