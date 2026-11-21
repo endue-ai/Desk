@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>Local agents</title>
     <script type="importmap">
-      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js", "@endue-ai/ui/elements": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="/_desk/tokens.css" />
     <link rel="stylesheet" href="/_desk/base.css" />
@@ -27,12 +27,14 @@
         <div id="agents-list" role="listbox" aria-label="Agent programs" tabindex="0"></div>
       </section>
       <section id="view-chat" class="view" role="tabpanel" aria-labelledby="tab-chat" hidden>
-        <div id="chat-bar" class="bar"></div>
-        <div id="chat-log" role="log" aria-label="Conversation" tabindex="0"></div>
-        <form id="chat-form" class="composer">
-          <textarea id="chat-input" rows="3" aria-label="Message" placeholder="Ask, then press Enter" class="desk-field"></textarea>
-          <button type="submit" id="chat-send" class="desk-btn desk-btn-primary">Send</button>
-        </form>
+        <desk-agent-session id="workspace">
+          <button slot="navigation" type="button" class="desk-btn desk-btn-quiet" data-native-history>Open native history</button>
+          <div id="chat-bar" class="bar" slot="actions"></div>
+          <form id="chat-form" class="composer" slot="composer">
+            <textarea id="chat-input" rows="2" aria-label="Message" placeholder="Message this session" class="desk-field"></textarea>
+            <div class="send-row"><span id="chat-target" class="desk-muted"></span><button type="button" id="chat-send" class="desk-btn desk-btn-primary">Send</button></div>
+          </form>
+        </desk-agent-session>
       </section>
       <section id="view-compare" class="view" role="tabpanel" aria-labelledby="tab-compare" hidden>
         <div id="compare-bar" class="bar" role="group" aria-label="Agents to ask"></div>

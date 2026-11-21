@@ -1,160 +1,165 @@
-// The chat panel's DOM, beside a local agent's card: the session's turns (the agent's answers as
-// markdown, the tools it used under them), the reply as it streams, and the composer with the
-// access switch, Send and Stop. The composer is the page's own, so what the person types survives
-// every redraw. Enter sends (not while an input method is composing); Shift+Enter is a new line.
+// The local Studio adapter supplies its selected agent, available sessions and confirmed writes.
+import {
+  appendSessionRun,
+  defineElements,
+  nativeSessionRow,
+  nativeSessionTurns,
+  sessionKey,
+} from "@endue-ai/ui/elements";
 
-import { el, markdown } from "./dom.js";
+/** The open session can already contain some of the run this Studio has just joined. */
+export function chatTurns(messages) {
+  const turns = [];
+  for (const m of messages) {
+    if (m.role === "plan") {
+      turns.push({ id: m.id, role: "plan", name: m.name, text: m.text, steps: m.steps });
+      continue;
+    }
+    if (m.role === "tool") {
+      turns.push({
+        id: m.id,
+        role: "tool",
+        name: m.text,
+        text: m.tools[0]?.detail ?? "",
+        cut: m.cut,
+        at: m.at,
+      });
+      continue;
+    }
+    const parts = m.parts?.length
+      ? m.parts
+      : [
+          ...(m.tools ?? []).map((t) => ({ role: "tool", name: t.name, text: t.detail })),
+          ...(m.text ? [{ role: m.role, text: m.text, cut: m.cut, at: m.at }] : []),
+        ];
+    const events = parts.map((p, i) => ({ ...p, id: `${m.id}:${i}` }));
+    if (m.joined) {
+      appendSessionRun(
+        turns,
+        {
+          ...m.joined,
+          text: m.text,
+          state: m.state === "streaming" ? "running" : m.state,
+          error: m.error,
+        },
+        events,
+      );
+    } else {
+      turns.push(...events);
+      if (m.error) turns.push({ id: `${m.id}:error`, role: "failure", text: m.error });
+    }
+  }
+  return turns;
+}
 
 /**
- * @typedef {import("./app.js").StudioShown} StudioShown
- * @typedef {import("./local-chat.js").ChatMessage} ChatMessage
  * @typedef {object} ChatViewActions
- * @property {(text: string) => Promise<boolean>} send
- * @property {() => void} stop
- * @property {(access: "read-only" | "agent") => void} access
- * @property {() => void} fresh
- * @property {(href: string) => void} link
- */
-
-const STATE = { streaming: "Answering…", failed: "Failed", stopped: "Stopped", done: "" };
-
-/**
- * @param {Document} doc
- * @param {ChatViewActions} actions
+ * @property {(text:string)=>Promise<boolean>} send
+ * @property {()=>void} stop
+ * @property {(access:"read-only"|"agent")=>void} access
+ * @property {()=>void} fresh
+ * @property {(id:string)=>void} [open]
+ * @property {()=>void} [older]
+ * @property {()=>void} [more]
+ * @property {(id:string)=>Promise<import("@endue-ai/ui/elements").SessionRead>} [preview]
+ * @property {(href:string)=>void} link
  */
 export function createChatView(doc, actions) {
-  const pick = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
-  const panel = pick("chat");
-  const log = pick("chat-log");
-  const input = /** @type {HTMLTextAreaElement} */ (pick("chat-input"));
-  const send = /** @type {HTMLButtonElement} */ (pick("chat-send"));
-  const stop = /** @type {HTMLButtonElement} */ (pick("chat-stop"));
-  const access = pick("chat-access");
-  let drawn = "";
-
+  defineElements();
+  const pick = (id) => doc.getElementById(id);
+  const panel = pick("chat"),
+    reader = pick("studio-reader"),
+    input = pick("chat-input"),
+    send = pick("chat-send"),
+    stop = pick("chat-stop"),
+    access = pick("chat-access");
+  let key = "",
+    selection = "";
+  const drafts = new Map();
   const submit = async () => {
-    const text = input.value;
+    if (input.disabled || send.disabled) return;
+    const target = key,
+      selectedRun = selection,
+      text = input.value;
     if (!text.trim()) return;
-    if (await actions.send(text)) input.value = "";
+    if (await actions.send(text)) {
+      if (selection === selectedRun && input.value === text) input.value = "";
+      if (drafts.get(target) === text) drafts.delete(target);
+    }
   };
-  // The frame may not submit forms (sandboxed with scripts only): Send and Enter send.
   send.addEventListener("click", () => void submit());
-  input.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
-    event.preventDefault();
-    void submit();
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      void submit();
+    }
   });
   stop.addEventListener("click", () => actions.stop());
   pick("chat-new").addEventListener("click", () => actions.fresh());
   for (const choice of access.querySelectorAll("[data-access]"))
-    choice.addEventListener("click", () =>
-      actions.access(/** @type {"read-only" | "agent"} */ (choice.getAttribute("data-access"))),
-    );
-
-  const turn = (/** @type {ChatMessage} */ m) => {
-    if (m.role === "tool")
-      return el(
-        doc,
-        "li",
-        { class: "turn tool" },
-        el(doc, "span", { class: "tool-name", text: m.text }),
-        m.tools[0]?.detail ? ` ${m.tools[0].detail}` : "",
-      );
-    const said = m.state && STATE[m.state];
-    return el(
-      doc,
-      "li",
-      { class: `turn ${m.role}`, "data-state": m.state ?? "" },
-      el(doc, "span", { class: "sr-only", text: m.role === "user" ? "You:" : "Agent:" }),
-      m.role === "assistant"
-        ? m.text
-          ? markdown(doc, m.text, actions.link)
-          : null
-        : el(doc, "p", { class: "plain", text: m.text }),
-      m.tools.length
-        ? el(
-            doc,
-            "ul",
-            { class: "tools", "aria-label": "What the agent used" },
-            ...m.tools.map((t) =>
-              el(
-                doc,
-                "li",
-                {},
-                el(doc, "span", { class: "tool-name", text: t.name }),
-                t.detail ? ` ${t.detail}` : "",
-              ),
-            ),
-          )
-        : null,
-      said ? el(doc, "p", { class: "turn-state", text: said }) : null,
-      m.error ? el(doc, "p", { class: "desk-error", text: m.error }) : null,
-      m.cut ? el(doc, "p", { class: "desk-muted", text: "Cut at 8000 characters." }) : null,
-    );
-  };
-
+    choice.addEventListener("click", () => actions.access(choice.dataset.access));
+  reader.addEventListener("desk-link", (e) => actions.link(e.detail.href));
   return {
-    /** @param {StudioShown} s */
     show(s) {
       const chat = s.chat;
       panel.hidden = !chat || s.facet !== "chat";
       if (!chat || panel.hidden) return;
-      const name = s.card.name;
-      pick("chat-title").textContent =
-        chat.title || (chat.sessionId ? "This session" : `New session with ${name}`);
-      pick("chat-session").textContent = chat.sessionId
-        ? `Continues ${chat.sessionId.slice(0, 8)}`
-        : `In ${chat.folder}`;
-      const note = pick("chat-note");
-      const notes = [
-        chat.runnable
-          ? ""
-          : `${name}'s program is not on this computer: its sessions can be read, not continued.`,
-        chat.truncated ? "Earlier turns of this session are left out." : "",
-      ].filter(Boolean);
-      note.textContent = notes.join(" ");
-      note.hidden = notes.length === 0;
-      const key = JSON.stringify([chat.agent, chat.sessionId, chat.messages, chat.phase]);
-      if (key !== drawn) {
-        log.replaceChildren(
-          ...(chat.messages.length
-            ? chat.messages.map(turn)
-            : [
-                el(doc, "li", {
-                  class: "desk-empty",
-                  text:
-                    chat.phase === "loading"
-                      ? "Reading the session…"
-                      : `Ask ${name} something. It answers read-only unless you allow changes.`,
-                }),
-              ]),
-        );
-        log.scrollTop = log.scrollHeight;
-        drawn = key;
+      const rows = (s.sessions ?? []).map((session) => nativeSessionRow(session, s.card.name));
+      const selected = rows.find((r) => r.nativeId === chat.sessionId) ?? {
+        key: sessionKey(chat.agent, "native", chat.sessionId ?? ""),
+        nativeId: chat.sessionId,
+        agent: chat.agent,
+        agentName: s.card.name,
+        sources: ["local"],
+        title: chat.title || `New session with ${s.card.name}`,
+      };
+      if (!chat.runnable) selected.status = "missing";
+      else if (chat.phase === "running" || chat.phase === "stopping") selected.status = "working";
+      else if (chat.outcome) selected.status = chat.outcome;
+      if (selected.key !== key) {
+        if (key) drafts.set(key, input.value);
+        const assigned = selection === JSON.stringify([chat.agent, chat.selection]);
+        key = selected.key;
+        if (!assigned) input.value = drafts.get(key) ?? "";
       }
-      const error = pick("chat-error");
-      error.textContent = chat.error ?? "";
-      error.hidden = !chat.error;
-      const busy = chat.phase !== "idle";
+      selection = JSON.stringify([chat.agent, chat.selection]);
+      reader.view = {
+        rows,
+        selected,
+        turns: chatTurns(chat.messages),
+        onNew: actions.fresh,
+        older: chat.older,
+        notice: chat.error || (chat.phase === "loading" ? "Reading the session…" : undefined),
+        onOlder: () => actions.older?.(),
+        pages:
+          (s.sessionTotal ?? 0) > rows.length
+            ? [{ id: "local", label: `Show more (${s.sessionTotal - rows.length})` }]
+            : [],
+        onPage: () => actions.more?.(),
+        onSelect: (r) => actions.open?.(r.nativeId),
+        onPreview: async (r) => nativeSessionTurns((await actions.preview(r.nativeId)).messages),
+        onRetry: chat.error && chat.sessionId ? () => actions.open?.(chat.sessionId) : undefined,
+        empty: chat.runnable
+          ? "No messages yet."
+          : "Program unavailable. Saved conversations can still be read.",
+      };
       input.disabled = !chat.runnable;
-      input.placeholder = chat.sessionId ? `Continue with ${name}` : `Message ${name}`;
-      send.disabled = busy || !chat.runnable;
+      input.placeholder = chat.sessionId
+        ? `Continue with ${s.card.name}`
+        : `Message ${s.card.name}`;
+      send.disabled = chat.phase !== "idle" || !chat.runnable;
       send.textContent = chat.phase === "sending" ? "Sending…" : "Send";
       stop.hidden = !(chat.phase === "running" || chat.phase === "stopping");
       stop.disabled = chat.phase === "stopping";
-      stop.textContent = chat.phase === "stopping" ? "Stopping…" : "Stop";
+      send.hidden = !stop.hidden;
       pick("chat-new").hidden = !chat.sessionId;
       for (const choice of access.querySelectorAll("[data-access]"))
-        choice.setAttribute(
-          "aria-checked",
-          String(choice.getAttribute("data-access") === chat.access),
-        );
+        choice.setAttribute("aria-checked", String(choice.dataset.access === chat.access));
       pick("chat-hint").textContent =
         chat.access === "agent"
-          ? "It may change files and run commands: you are asked before each message goes."
-          : "Read-only: it reads and answers, and changes nothing.";
+          ? "Each message asks for permission to change files."
+          : `${s.card.name} · Read only`;
     },
-    /** Put the focus in the composer. */
     focus: () => input.focus(),
   };
 }

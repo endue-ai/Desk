@@ -20,6 +20,7 @@
         "opencode"
       ]
     },
+    { "permission": "agents:manage" },
     {
       "permission": "cmd:invoke",
       "ids": ["desk.palette.pick"]
@@ -29,7 +30,8 @@
     {
       "id": "main",
       "title": "Local agents",
-      "placement": "center"
+      "placement": "center",
+      "window": { "size": { "width": 1120, "height": 720 } }
     }
   ],
   "contributes": {

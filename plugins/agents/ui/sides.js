@@ -64,6 +64,24 @@ export function createReaders({ local, studio, sides, draw }) {
       }
       draw();
     },
+    /** Read the next page without appending to a listing replaced in the meantime. */
+    async moreSessions(agent) {
+      const before = sides.local.sessions[agent];
+      if (!before || before.length >= (sides.local.totals[agent] ?? 0)) return;
+      const { sessions, total } = await local.sessions(agent, {
+        offset: before.length,
+        limit: SESSIONS,
+      });
+      if (sides.local.sessions[agent] !== before) return;
+      const seen = new Set(before.map((s) => s.id));
+      const next = [...before, ...sessions.filter((s) => !seen.has(s.id))];
+      sides.local.sessions = { ...sides.local.sessions, [agent]: next };
+      sides.local.totals = {
+        ...sides.local.totals,
+        [agent]: next.length > before.length ? total : before.length,
+      };
+      draw();
+    },
     /** The person's endue agents and their latest conversations. */
     async readEndue() {
       try {
