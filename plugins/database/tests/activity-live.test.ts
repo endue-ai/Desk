@@ -14,10 +14,14 @@ import { realProcs } from "./scripted";
 
 const uri = process.env.ENDUE_DB_TEST_POSTGRES ?? "";
 const TABLE = "endue_activity_live";
-const ROLE = "t487_viewer";
+// Other runs use the same server at once, each in a database of its own: the role is this
+// database's, and only this database's sessions are ended.
+const DATABASE = uri ? new URL(uri).pathname.slice(1) : "";
+const ROLE = `t487_viewer_${DATABASE.toLowerCase().replace(/[^a-z0-9_]/gu, "_")}`.slice(0, 63);
 
 type Seen = {
   pid: number;
+  database: string | null;
   application: string | null;
   state: string | null;
   wait: string | null;
@@ -34,9 +38,8 @@ const admin = (sql: string) => {
   const done = spawnSync(
     "psql",
     ["-X", "-q", "-At", "-v", "ON_ERROR_STOP=1", "-d", uri, "-c", sql],
-    {
-      encoding: "utf8",
-    },
+    // A statement of the test's own never waits forever behind a lock left by another run.
+    { encoding: "utf8", env: { ...process.env, PGOPTIONS: "-c lock_timeout=30s" } },
   );
   if (done.status !== 0) throw new Error(done.stderr);
   return done.stdout.trim();
@@ -104,21 +107,29 @@ async function plugin(as?: { user: string; password: string }) {
 }
 const activity = (m: Mounted) =>
   m.host.command("endue.database.activity", { connection: "live" }) as Promise<Summary>;
-const named = (a: Summary, name: string) => a.sessions.find((s) => s.application === name);
+// The server's other databases have runs of their own with the same names.
+const named = (a: Summary, name: string) =>
+  a.sessions.find((s) => s.application === name && s.database === DATABASE);
+
+/** End this database's sessions the tests started: a killed psql leaves its backend in pg_sleep,
+ * holding its locks, and an attempt that timed out never killed its psql. */
+const endSessions = () =>
+  admin(
+    `SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND (usename = '${ROLE}' OR application_name LIKE 'activity %')`,
+  );
 
 afterAll(() => {
   for (const child of children) child.kill();
   if (!uri) return;
+  // Before the drop: the table's row lock is held by the holder's session until it ends.
+  endSessions();
   admin(`DROP TABLE IF EXISTS ${TABLE}`);
-  // A killed psql leaves its backend asleep in pg_sleep: end the tests' sessions by name too.
-  admin(
-    `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = '${ROLE}' OR application_name LIKE 'activity %'`,
-  );
   admin(`DROP ROLE IF EXISTS ${ROLE}`);
 });
 
 describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
   it("lists a session in pg_sleep that blocks another on a row lock, shows the tree, cancels its statement and ends it", async () => {
+    endSessions();
     admin(`DROP TABLE IF EXISTS ${TABLE}`);
     admin(`CREATE TABLE ${TABLE} (id int PRIMARY KEY, v int)`);
     admin(`INSERT INTO ${TABLE} VALUES (1, 0)`);
@@ -186,6 +197,7 @@ describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
 
   it("says the server's refusal and what is hidden for a role without the privileges", async () => {
     const password = randomUUID();
+    endSessions();
     admin(`DROP ROLE IF EXISTS ${ROLE}`);
     admin(`CREATE ROLE ${ROLE} LOGIN PASSWORD '${password}'`);
     session("activity sleeper", "SELECT pg_sleep(600);");

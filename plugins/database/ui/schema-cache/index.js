@@ -6,13 +6,13 @@
 // fingerprint moved are read. An explicit reload reads every chosen schema. One pass at a time per
 // connection; requests made meanwhile run once after it. Other engines are not cached. No DOM.
 
-import { isSystem, marksSql, POSTGRES_KINDS, signature } from "./kinds.js";
+import { DATABASE, isSystem, marksSql, POSTGRES_KINDS, signature } from "./kinds.js";
 import { staleReferences } from "./model.js";
 import { Cancelled, runPass } from "./pass.js";
 import { clear, persist, restore } from "./store.js";
 import { isChosen, readAtText, viewOf } from "./view.js";
 
-export { isSystem, readAtText };
+export { DATABASE, isSystem, readAtText };
 
 /**
  * @typedef {import("../engines/common.js").Connection} Connection
@@ -23,7 +23,8 @@ export { isSystem, readAtText };
  * @typedef {{ all?: boolean, schemas?: string[], quiet?: boolean }} Request
  *   `all` reads every chosen schema; `schemas` those whatever their fingerprint; `quiet` never asks
  *   for a password.
- * @typedef {{ statements: number, read: string[] }} Report
+ * @typedef {{ statements: number, read: string[], database?: true }} Report
+ *   `read` names the schemas read; `database` is there when the database level was read too.
  * @typedef {import("./view.js").Held & {
  *   conn: Connection, where: string, kinds: readonly Kind[], check: "" | "done" | "failed" | "quiet",
  *   error: Error | null, opened: boolean, restoring: Promise<void> | null,
@@ -46,8 +47,10 @@ export const ranDdl = (/** @type {Execution} */ execution) =>
     (s) => s.ran && !s.error && execution.classes[s.index]?.kind === "ddl",
   );
 
+/** What is kept first past the cap: the database level, the default schema, then by name. */
+const rank = (/** @type {string} */ name) => (name === DATABASE ? 0 : name === "public" ? 1 : 2);
 const keepOrder = (/** @type {{ name: string }} */ a, /** @type {{ name: string }} */ b) =>
-  a.name === "public" ? -1 : b.name === "public" ? 1 : a.name.localeCompare(b.name);
+  rank(a.name) - rank(b.name) || a.name.localeCompare(b.name);
 const messageOf = (/** @type {unknown} */ error) =>
   error instanceof Error ? error.message : String(error);
 
@@ -216,7 +219,12 @@ export function createSchemaCache(deps) {
       entry.error = null;
       await save(entry);
       set({ state: "idle" });
-      return { statements: result.statements, read: [...result.read.keys()] };
+      const names = [...result.read.keys()];
+      return {
+        statements: result.statements,
+        read: names.filter((name) => name !== DATABASE),
+        ...(result.read.has(DATABASE) ? { database: /** @type {const} */ (true) } : {}),
+      };
     } catch (error) {
       entry.check = request.quiet ? "quiet" : "failed";
       entry.error = error instanceof Error ? error : new Error(messageOf(error));

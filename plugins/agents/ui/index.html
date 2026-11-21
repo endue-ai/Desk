@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>Agents</title>
     <script type="importmap">
-      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js", "@endue-ai/ui/elements": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="/_desk/tokens.css" />
     <link rel="stylesheet" href="/_desk/base.css" />
@@ -50,17 +50,10 @@
         <div class="studio">
           <div id="studio-card" class="studio-column"></div>
           <aside id="inspector" class="inspector" aria-labelledby="inspector-title" hidden></aside>
-          <section id="chat" class="chat" aria-labelledby="chat-title" hidden>
-            <header class="chat-head">
-              <h2 id="chat-title"></h2>
-              <span id="chat-session" class="desk-muted"></span>
-              <span class="desk-bar-spacer"></span>
-              <button id="chat-new" class="desk-btn desk-btn-quiet" type="button" hidden>New session</button>
-            </header>
-            <p id="chat-note" class="desk-muted" hidden></p>
-            <ol id="chat-log" class="chat-log" role="log" aria-label="Conversation" tabindex="0"></ol>
-            <p id="chat-error" class="desk-error" role="alert" hidden></p>
-            <div class="composer" role="group" aria-label="New message">
+          <section id="chat" class="chat" aria-label="Conversation" hidden>
+            <desk-agent-session id="studio-reader">
+            <button id="chat-new" slot="actions" class="desk-btn desk-btn-quiet" type="button" hidden>New session</button>
+            <div class="composer" slot="composer" role="group" aria-label="New message">
               <textarea id="chat-input" class="desk-field" rows="3" aria-label="Message"></textarea>
               <div class="composer-row">
                 <div id="chat-access" class="desk-tabs" role="radiogroup" aria-label="What it may do">
@@ -72,6 +65,7 @@
                 <button id="chat-send" class="desk-btn desk-btn-primary" type="button">Send</button>
               </div>
             </div>
+            </desk-agent-session>
           </section>
         </div>
       </section>

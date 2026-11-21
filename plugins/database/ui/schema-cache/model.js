@@ -1,6 +1,9 @@
 // A cached schema as its consumers read it: the rows each kind read (kinds.js), kept as the server
 // wrote them, turned into objects (the explorer's SchemaObject), columns, parts, foreign keys and
-// routine signatures. Each lookup is built once per schema read and kept beside it. Pure.
+// routine signatures; PG-50's kinds through schema/pg/ (the database level's too). Each lookup is
+// built once per schema read and kept beside it. Pure.
+
+import { lookupOf as pgLookupOf } from "../schema/pg/index.js";
 
 /**
  * @typedef {(string | null)[]} Row
@@ -74,15 +77,21 @@ export function lookupOf(/** @type {SchemaData} */ schema) {
     routines: [],
     comments: new Map(),
   };
-  for (const [name, relkind, estimate, oid, note] of data.relations ?? []) {
-    const rows = estimate ? Number(estimate) : null;
+  const count = (/** @type {string | null | undefined} */ value) => {
+    const n = value ? Number(value) : null;
+    return n !== null && Number.isFinite(n) && n >= 0 ? n : null;
+  };
+  for (const [name, relkind, estimate, oid, note, rls, bytes] of data.relations ?? []) {
     made.objects.push({
       schema: schemaName,
       name: text(name),
       kind: RELKIND[text(relkind)] ?? "table",
-      detail: relkind === "p" ? "partitioned" : "",
-      rows: rows !== null && Number.isFinite(rows) && rows >= 0 ? rows : null,
+      detail: [relkind === "p" ? "partitioned" : "", rls ? `RLS ${rls}` : ""]
+        .filter(Boolean)
+        .join(" · "),
+      rows: count(estimate),
       ident: text(oid),
+      ...(bytes ? { bytes: count(bytes) } : {}),
     });
     made.relations.add(text(name));
     if (note) made.comments.set(text(name), note);
@@ -169,6 +178,10 @@ export function lookupOf(/** @type {SchemaData} */ schema) {
       ident: text(oid),
     });
   }
+  const more = pgLookupOf(data, schemaName);
+  made.objects.push(...more.objects);
+  for (const [table, parts] of more.parts)
+    made.parts.set(table, [...(made.parts.get(table) ?? []), ...parts]);
   lookups.set(schema, made);
   return made;
 }

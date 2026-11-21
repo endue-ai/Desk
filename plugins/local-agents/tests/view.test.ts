@@ -15,6 +15,7 @@ function dom() {
   const acts: unknown[][] = [];
   const view = createView(document, (action, ...args) => {
     acts.push([action, ...args]);
+    if (action === "send") return { ending: "done" };
   });
   return { view, acts };
 }
@@ -90,16 +91,19 @@ describe("the view", () => {
       await m.talk.send("What does b.ts export?");
     });
     view.render(vm);
-    const messages = $$("#chat-log .msg");
-    expect(messages.map((m) => m.className)).toEqual(["msg user done", "msg agent done"]);
-    expect(messages[1]?.textContent).toContain("It exports **two** functions.");
-    expect(messages[1]?.querySelector(".tools")?.textContent).toBe("Read /a/b.ts");
+    const root = $("#workspace").shadowRoot!;
     expect(
-      $$("#chat-bar .picker button").map((b) => [b.textContent, b.getAttribute("aria-pressed")]),
-    ).toEqual([
-      ["Claude Code", "true"],
-      ["Codex", "false"],
-    ]);
+      [...root.querySelectorAll("[data-turn]")].map((m) => m.getAttribute("data-role")),
+    ).toEqual(["user", "assistant", "tool", "assistant"]);
+    expect([...root.querySelectorAll("desk-markdown")].at(-1)?.shadowRoot?.textContent).toContain(
+      "It exports two functions.",
+    );
+    expect(root.querySelector(".tool-line")?.textContent).toBe("Read/a/b.ts");
+    const agents = [...root.querySelectorAll<HTMLElement>("[data-session-key]")];
+    expect(agents).toHaveLength(8);
+    expect(agents.find((a) => a.getAttribute("aria-current") === "true")?.dataset.agent).toBe(
+      "claude",
+    );
     const input = $("#chat-input") as HTMLTextAreaElement;
     input.value = "line one";
     input.dispatchEvent(
@@ -107,7 +111,8 @@ describe("the view", () => {
     );
     expect(acts).toEqual([]);
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    expect(acts).toEqual([["send", "line one"]]);
+    expect(acts).toEqual([["send", "line one", "claude"]]);
+    await Promise.resolve();
     expect(input.value).toBe("");
     // Keys in the composer are text, not commands.
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "n", bubbles: true }));
@@ -123,9 +128,11 @@ describe("the view", () => {
       await m.talk.send("hi");
     });
     view.render(vm);
-    const first = $$("#chat-log .msg")[0];
+    const root = $("#workspace").shadowRoot!;
+    const first = root.querySelector("[data-turn]");
+    expect(first).toBeTruthy();
     view.render(structuredClone(vm));
-    expect($$("#chat-log .msg")[0]).toBe(first);
+    expect(root.querySelector("[data-turn]")).toBe(first);
   });
 
   it("draws the comparison as one pane per agent", async () => {

@@ -77,6 +77,9 @@ describe("plugin.json", () => {
         "save",
         "pin",
         "find",
+        "conversations",
+        "messages",
+        "find-messages",
         "connect",
       ].map((n) => `${ID}.${n}`),
     );

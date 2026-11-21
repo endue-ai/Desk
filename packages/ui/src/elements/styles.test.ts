@@ -22,7 +22,7 @@ const DENSE = [
 ];
 
 describe("element styles", () => {
-  it("cover the fourteen elements", () => {
+  it("cover every registered element", () => {
     expect(Object.keys(elements)).toEqual([
       "desk-button",
       "desk-input",
@@ -38,6 +38,7 @@ describe("element styles", () => {
       "desk-progress",
       "desk-edit-tier",
       "desk-universal-view",
+      "desk-agent-session",
     ]);
   });
 
