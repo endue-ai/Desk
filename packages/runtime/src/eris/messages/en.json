@@ -4,6 +4,8 @@
   "eris.said.title": "Show what Eris said",
   "eris.said.none": "Eris has said nothing yet.",
   "eris.talk.summon": "Talk to Eris",
+  "eris.status.warning": "Warning",
+  "eris.status.critical": "Critical",
   "eris.talk.heard": "I heard you. This is a sample answer.",
   "eris.talk.nothing": "I didn't catch that. Tap and try again.",
   "eris.talk.sample": "I heard a sample voice. This is how I talk.",

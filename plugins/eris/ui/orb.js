@@ -42,18 +42,27 @@ export function buildOrb(doc, timeline, container, options = {}) {
   const at = options.assembled ? -10000 : (options.at ?? 0);
   const plan = quick ? QUICK : arrival ? ARRIVAL : FULL;
   container.replaceChildren();
+  container.dataset.motion = reduced ? "none" : "full";
 
   const float = el(doc, "div", "float");
   const coreWrap = el(doc, "div", "core-wrap");
   const core = el(doc, "div", "core");
   coreWrap.append(core);
   const body = el(doc, "img", "body");
-  body.src = `${assets}/eris-balanced.svg`;
+  body.src = `${assets}/smoke-glass.svg`;
   body.alt = "";
-  float.append(coreWrap, body);
+  if (!reduced)
+    timeline.add(
+      body.animate([{ rotate: "0deg" }, { rotate: "360deg" }], {
+        delay: at + plan.idleAt,
+        duration: 90000,
+        iterations: Infinity,
+      }),
+    );
+  float.append(body, coreWrap);
   const moonWrap = el(doc, "div", "moon");
   const moon = el(doc, "img", "moon-float");
-  moon.src = `${assets}/dysnomia.svg`;
+  moon.src = `${assets}/reflector.svg`;
   moon.alt = "";
   moonWrap.append(moon);
   const flash = el(doc, "div", "flash");
@@ -121,7 +130,7 @@ export function buildOrb(doc, timeline, container, options = {}) {
     );
   }
   flash.style.opacity = "0";
-  const glint = el(doc, "div", "glint");
+  const glint = el(doc, "div", "warning-rim");
   container.append(glint);
   glint.style.opacity = "0";
 
@@ -152,7 +161,7 @@ export function buildOrb(doc, timeline, container, options = {}) {
         }),
       );
     },
-    /** While she speaks she slowly turns her gold face towards the person (scene 2). */
+    /** While she speaks she slowly turns towards the person (scene 2). */
     turn(from, duration) {
       once(
         body,
@@ -167,13 +176,22 @@ export function buildOrb(doc, timeline, container, options = {}) {
       const frames = [{ transform: "none" }, { transform: "scale(0.94)" }, { transform: "none" }];
       once(container, frames, from, 900, "ease-in-out");
     },
-    /** Heads-up: the gold face lifts off the rim and glows; `on = false` settles it back. */
+    /** An orange rim signals a warning; `on = false` settles it back. */
     headsUp(from, on = true) {
-      const lift = [
-        { opacity: 0, transform: "none" },
-        { opacity: 1, transform: "translate(10px, -10px)" },
-      ];
-      once(glint, on ? lift : [...lift].reverse(), from, 500);
+      const rim = [{ opacity: 0 }, { opacity: 1 }];
+      once(glint, on ? rim : [...rim].reverse(), from, 220);
+      if (on && !reduced)
+        timeline.add(
+          container.animate(
+            [
+              { translate: "0" },
+              { translate: ".8px" },
+              { translate: "-.55px" },
+              { translate: "0" },
+            ],
+            { delay: from, duration: 350 },
+          ),
+        );
     },
     /** The core lights up once as words are absorbed. */
     flash(from) {

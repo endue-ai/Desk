@@ -1,5 +1,7 @@
-# Eris assets (brand licence)
+# Eris illustrations
 
-Unmodified copies of `brand/eris/*.svg`, because a plugin frame can only load files from its own
-folder. They are brand assets under `brand/LICENSE`, not Apache-2.0. Do not edit them here: change
-`brand/eris/` and copy again. `plugins/eris/tests/assets.test.ts` fails when the copies drift.
+The live portraits use `smoke-glass.svg`, drawn from the runtime mesh, and `reflector.svg`
+for Dysnomia. The shell projects and lights the mesh on its animation clock.
+
+The other SVGs are unmodified copies of `brand/eris/*.svg`. Those copies carry the brand
+licence in `brand/LICENSE`. The asset test checks their bytes against the originals.

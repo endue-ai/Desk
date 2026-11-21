@@ -7,37 +7,25 @@ export type ErisState = (typeof ERIS_STATES)[number];
 /** How one state bends the same mesh. Lengths are fractions of the radius R unless noted. */
 export interface Look {
   view: Vec3;
-  goldToward: readonly [number, number];
   /** Multiplies every alpha. */
   brightness: number;
   /** Push every face along its normal by `push · R · s`. */
   push: number;
-  /** Push only the gold face along its normal, and outline where it was. */
-  goldPop: number;
-  /** Per-face misalignment, in pixels at the 520 px reference size, times s. */
-  jitterPx: number;
-  lines: "frost" | "gold";
-  gold: "bright" | "dim";
+  lines: "frost" | "warning" | "danger";
   halo: boolean;
   core: { scale: number; opacity: number; breathe: boolean };
   /** Turns about the view axis, radians per second. */
   spin: number;
-  dysnomia: { x: number; y: number; tail: boolean; spark: boolean };
 }
 
 const base: Look = {
   view: VIEW_IDLE,
-  goldToward: [1, 1],
   brightness: 0.85,
   push: 0,
-  goldPop: 0,
-  jitterPx: 0,
   lines: "frost",
-  gold: "bright",
   halo: false,
   core: { scale: 1, opacity: 1, breathe: true },
   spin: (2 * Math.PI) / 90,
-  dysnomia: { x: 0.81, y: 0.72, tail: false, spark: false },
 };
 
 export const LOOKS: Record<ErisState, Look> = {
@@ -51,24 +39,19 @@ export const LOOKS: Record<ErisState, Look> = {
   thinking: {
     ...base,
     view: VIEW_THINKING,
-    goldToward: [-1, 1],
     spin: (2 * Math.PI) / 18,
-    dysnomia: { x: 0.2, y: 0.18, tail: true, spark: false },
   },
-  done: { ...base, brightness: 1, lines: "gold", halo: true },
+  done: { ...base, brightness: 1, halo: true },
   "heads-up": {
     ...base,
-    brightness: 1,
-    goldPop: 0.13,
-    dysnomia: { ...base.dysnomia, spark: true },
+    brightness: 1.12,
+    lines: "warning",
   },
   oops: {
     ...base,
-    brightness: 0.55,
-    jitterPx: 7,
-    gold: "dim",
+    brightness: 1.24,
+    lines: "danger",
     core: { scale: 1, opacity: 0.3, breathe: false },
-    spin: 0,
   },
 };
 
@@ -90,13 +73,9 @@ export function mixLook(a: Look, b: Look, t: number): Look {
       mix(a.view[1], b.view[1], t),
       mix(a.view[2], b.view[2], t),
     ],
-    goldToward: flip.goldToward,
     brightness: mix(a.brightness, b.brightness, t),
     push: mix(a.push, b.push, t),
-    goldPop: mix(a.goldPop, b.goldPop, t),
-    jitterPx: mix(a.jitterPx, b.jitterPx, t),
     lines: flip.lines,
-    gold: flip.gold,
     halo: flip.halo,
     core: {
       scale: mix(a.core.scale, b.core.scale, t),
@@ -104,21 +83,14 @@ export function mixLook(a: Look, b: Look, t: number): Look {
       breathe: flip.core.breathe,
     },
     spin: mix(a.spin, b.spin, t),
-    dysnomia: {
-      x: mix(a.dysnomia.x, b.dysnomia.x, t),
-      y: mix(a.dysnomia.y, b.dysnomia.y, t),
-      tail: flip.dysnomia.tail,
-      spark: flip.dysnomia.spark,
-    },
   };
 }
 
 export interface LookFrame {
   look: Look;
-  /** The state whose gold face shows: the old one for the first half of a change. */
-  goldOf: ErisState;
   /** How much of the core's breath shows (0..1); glides like the rest. */
   breath: number;
+  tremor: number;
 }
 
 /**
@@ -128,7 +100,6 @@ export interface LookFrame {
 export class LookTween {
   #from: Look;
   #fromBreath: number;
-  #fromGold: ErisState;
   #to: ErisState;
   #since = Number.NEGATIVE_INFINITY;
   #last: LookFrame;
@@ -137,28 +108,36 @@ export class LookTween {
     const look = LOOKS[state];
     this.#from = look;
     this.#fromBreath = look.core.breathe ? 1 : 0;
-    this.#fromGold = state;
     this.#to = state;
-    this.#last = { look, goldOf: state, breath: this.#fromBreath };
+    this.#last = { look, tremor: 0, breath: this.#fromBreath };
   }
 
   at(state: ErisState, now: number, reduced: boolean): LookFrame {
     if (state !== this.#to) {
       this.#from = this.#last.look;
       this.#fromBreath = this.#last.breath;
-      this.#fromGold = this.#last.goldOf;
       this.#to = state;
       this.#since = now;
     }
     const to = LOOKS[state];
     const t = reduced ? 1 : glide(clamp01((now - this.#since) / LOOK_MS));
     this.#last = {
+      tremor: reduced ? 0 : alertTremor(state, now - this.#since),
       look: mixLook(this.#from, to, t),
-      goldOf: t < 0.5 ? this.#fromGold : state,
       breath: mix(this.#fromBreath, to.core.breathe ? 1 : 0, t),
     };
     return this.#last;
   }
+}
+
+/** Alerts briefly move the intact shell. A critical alert has a second, softer pulse. */
+function alertTremor(state: ErisState, age: number): number {
+  if (state !== "heads-up" && state !== "oops") return 0;
+  const second = state === "oops" && age >= 430;
+  const t = (age - (second ? 430 : 0)) / 350;
+  if (t <= 0 || t >= 1) return 0;
+  const strength = state === "oops" ? 1.35 : 0.82;
+  return strength * (second ? 0.78 : 1) * Math.sin(Math.PI * t) ** 1.2 * Math.sin(4 * Math.PI * t);
 }
 
 /** Core breath: opacity between .55 and 1 on a 5 s cycle. */

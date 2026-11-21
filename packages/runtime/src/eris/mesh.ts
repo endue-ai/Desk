@@ -21,8 +21,6 @@ export type DensityName = keyof typeof DENSITIES;
 
 export interface MeshOptions extends Density {
   view: Vec3;
-  /** Which front face turns gold: the one furthest towards this screen direction. */
-  goldToward: readonly [number, number];
   seed?: number;
   q?: number;
 }
@@ -60,8 +58,6 @@ export interface Mesh {
   rIn: number;
   vertices: Vertex[];
   faces: Face[];
-  /** Index of the gold face. */
-  gold: number;
 }
 
 export function normalize(v: Vec3): Vec3 {
@@ -212,21 +208,7 @@ export function generateMesh(options: MeshOptions): Mesh {
     }
   }
 
-  const [gx, gy] = options.goldToward;
-  let gold = 0;
-  let best = Number.NEGATIVE_INFINITY;
-  const mesh: Mesh = { view: basis[2], basis, rIn: options.rIn, vertices, faces, gold };
-  faces.forEach((f, i) => {
-    if (f.rc < 0.5 || f.rc > 0.74 || f.n[2] <= 0) return;
-    const c = centroid(mesh, f);
-    const score = c[0] * gx + c[1] * gy;
-    if (score > best) {
-      best = score;
-      gold = i;
-    }
-  });
-  mesh.gold = gold;
-  return mesh;
+  return { view: basis[2], basis, rIn: options.rIn, vertices, faces };
 }
 
 /** Normal and centroid are computed in the view basis, where vertex (r, φ, z) is (r·cosφ, r·sinφ, z). */
@@ -247,13 +229,4 @@ function makeFace(v: [number, number, number], ring: number, vs: Vertex[], rIn: 
   const len = Math.hypot(c[0], c[1], c[2]) || 1;
   const rc = Math.hypot(c[0], c[1]) / len;
   return { v, ring, s: rimWeight(rc, rIn), rc, n };
-}
-
-export function centroid(mesh: Pick<Mesh, "basis" | "vertices">, f: Face, spin = 0): Vec3 {
-  const ps = f.v.map((i) => position(mesh, mesh.vertices[i] as Vertex, spin));
-  return [0, 1, 2].map((k) => ((ps[0]?.[k] ?? 0) + (ps[1]?.[k] ?? 0) + (ps[2]?.[k] ?? 0)) / 3) as [
-    number,
-    number,
-    number,
-  ];
 }

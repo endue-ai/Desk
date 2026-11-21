@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
-// Eris's body and Dysnomia are the brand's frost art (assets/*.svg, brand/LICENSE), drawn for a dark
-// desk. In the light scheme they sit on a night of their own: halos of the theme's erisMoonDark under
-// the art, solid past her lines and fading out, so her outline reaches 3:1 on what sits directly behind
-// it (#357). The art is used as it is: nothing over it filters, masks or blends it, the night is only
-// ever beneath it, and the dark scheme is exactly as before. The onboarding's arrival scene and greeting
-// build the orb from orb.js and soul-text.css; the Eris page shows her pose.
+// Check the glass and reflector silhouettes against the actual light ground in the conversation
+// and arrival views. Both have a dark outer edge and a silver inner edge.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -34,14 +30,6 @@ const STATES = ["idle", "listening", "thinking", "done", "heads-up", "oops"];
 const EFFECTS = ["filter", "backdrop-filter", "mask", "mask-image", "-webkit-mask-image"];
 /** How far the body and Dysnomia drift apart as they float (orb.js: 8px each, out of phase). */
 const DRIFT = 8;
-// The orb exactly as orb.js builds it before this change.
-const CURRENT = [
-  '<div class="float"><div class="core-wrap"><div class="core"></div></div>',
-  '<img class="body" src="./assets/eris-balanced.svg" alt=""></div>',
-  '<div class="moon"><img class="moon-float" src="./assets/dysnomia.svg" alt=""></div>',
-  '<div class="flash" style="opacity: 0;"></div><div class="glint" style="opacity: 0;"></div>',
-].join("");
-
 /** A page's stylesheets and body under a scheme, which the SDK sets on the root. */
 function load(scheme: Scheme, styles: string[], body: string) {
   document.documentElement.dataset.scheme = scheme;
@@ -67,7 +55,6 @@ function pose(scheme: Scheme, state = "idle"): HTMLElement {
   load(scheme, ERIS_PAGE, body.replace(/<script[\s\S]*?<\/script>/g, ""));
   const figure = document.querySelector("#pose") as HTMLElement;
   figure.dataset.state = state;
-  figure.querySelector("img")?.setAttribute("src", `./assets/state-${state}.svg`);
   return figure;
 }
 
@@ -134,7 +121,7 @@ function lines(file: string) {
 }
 
 /** Her outline: the most opaque of the lines that reach her rim (Dysnomia's facets, if no paths). */
-function outline(file: string): Rgba {
+function outline(file: string, ground: Rgba): Rgba {
   const { shapes } = lines(file);
   const rim = shapes.some((s) => s.tag === "path")
     ? shapes.filter((s) => s.tag === "path")
@@ -145,9 +132,9 @@ function outline(file: string): Rgba {
   const r = (p: Point) => Math.hypot(p[0] - mid(0), p[1] - mid(1));
   const reach = Math.max(...points.map(r));
   const outer = rim.filter((s) => s.points.some((p) => r(p) >= reach * 0.98));
-  const line = outer.reduce((a, b) => (b.opacity > a.opacity ? b : a));
-  const [red, green, blue] = color(line.stroke);
-  return [red, green, blue, line.opacity];
+  // The glass and moon have a dark outer and a silver inner stroke at the same silhouette.
+  const colors = outer.map((s): Rgba => [...color(s.stroke).slice(0, 3), s.opacity] as Rgba);
+  return colors.reduce((a, b) => (contrast(a, ground) >= contrast(b, ground) ? a : b));
 }
 
 /**
@@ -200,14 +187,16 @@ beforeAll(() => {
 });
 
 describe("Eris's orb in the onboarding (arrival scene and greeting)", () => {
-  it("is exactly the current markup in the dark scheme, with no night", () => {
+  it("shows the glass and reflector on the dark surface", () => {
     const sphere = orb("dark");
-    expect(sphere.innerHTML).toBe(CURRENT);
+    expect(sphere.querySelector(".body")?.getAttribute("src")).toBe("./assets/smoke-glass.svg");
     for (const el of all(sphere)) expect(style(el).backgroundImage).not.toContain("--eris-night");
   });
 
-  it("keeps the same markup and the brand art in the light scheme", () => {
-    expect(orb("light").innerHTML).toBe(CURRENT);
+  it("uses the same reflector in the light scheme", () => {
+    expect(orb("light").querySelector(".moon-float")?.getAttribute("src")).toBe(
+      "./assets/reflector.svg",
+    );
   });
 
   it("paints a night of the theme's erisMoonDark in the light scheme", () => {
@@ -217,14 +206,13 @@ describe("Eris's orb in the onboarding (arrival scene and greeting)", () => {
   });
 
   it.each([
-    [".body", "eris-balanced.svg"],
-    [".moon-float", "dysnomia.svg"],
+    [".body", "smoke-glass.svg"],
+    [".moon-float", "reflector.svg"],
   ])("gives %s's outline 3:1 on what sits directly behind it", (selector, file) => {
     const sphere = orb("light");
     const art = sphere.querySelector(selector) as Element;
-    expect(contrast(outline(file), behind(art, file, sphere, "background"))).toBeGreaterThanOrEqual(
-      3,
-    );
+    const ground = behind(art, file, sphere, "background");
+    expect(contrast(outline(file, ground), ground)).toBeGreaterThanOrEqual(3);
   });
 
   it("paints nothing over the art", () => {
@@ -246,9 +234,12 @@ describe("Eris's pose on the Eris page", () => {
     "gives her %s pose an outline of 3:1 on what sits directly behind it",
     (state) => {
       const figure = pose("light", state);
-      const img = figure.querySelector("img") as Element;
-      const file = `state-${state}.svg`;
-      expect(contrast(outline(file), behind(img, file, figure, "card"))).toBeGreaterThanOrEqual(3);
+      for (const img of figure.querySelectorAll("img")) {
+        const file = img.getAttribute("src")?.split("/").pop();
+        if (!file) throw new Error("missing figure asset");
+        const ground = behind(img, file, figure, "card");
+        expect(contrast(outline(file, ground), ground)).toBeGreaterThanOrEqual(3);
+      }
     },
   );
 

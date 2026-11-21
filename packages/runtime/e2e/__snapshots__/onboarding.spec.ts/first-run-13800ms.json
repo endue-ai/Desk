@@ -179,6 +179,18 @@
               },
               "children": [
                 {
+                  "tag": "img",
+                  "class": "body",
+                  "style": {
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "transform": "matrix(0.998, -0.064, 0.064, 0.998, 0, 0)",
+                    "filter": "blur(0px)",
+                    "color": "rgb(243, 241, 236)"
+                  }
+                },
+                {
                   "tag": "div",
                   "class": "core-wrap",
                   "style": {
@@ -203,18 +215,6 @@
                       }
                     }
                   ]
-                },
-                {
-                  "tag": "img",
-                  "class": "body",
-                  "style": {
-                    "display": "block",
-                    "visibility": "visible",
-                    "opacity": "1",
-                    "transform": "matrix(0.998, -0.064, 0.064, 0.998, 0, 0)",
-                    "filter": "blur(0px)",
-                    "color": "rgb(243, 241, 236)"
-                  }
                 }
               ]
             },
@@ -258,7 +258,7 @@
             },
             {
               "tag": "div",
-              "class": "glint",
+              "class": "warning-rim",
               "style": {
                 "display": "block",
                 "visibility": "visible",
