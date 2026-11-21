@@ -1,21 +1,19 @@
 /**
  * Surfaces: windows on the desk, as the page lays them out for what it draws of them (the title
  * bar's icon and tools, the shell's own views, the strip of its tabs) and for the plugin surfaces'
- * places (ADR 0160); the compositor draws their chrome (ADR 0151). The title bar and the grips tell
- * the window manager what a press starts (`host-gestures.ts`): it moves and resizes the window (ADR
- * 0153).
+ * places (ADR 0160); the compositor draws their chrome (ADR 0151). The title bar holds three tools
+ * and the window's marks (`title-bar.ts`, ADR 0255). The title bar and the grips tell the window
+ * manager what a press starts (`host-gestures.ts`): it moves and resizes the window (ADR 0153).
  */
 
 import { mountArrange } from "../arrange";
-import { poppable } from "../arrange/out";
-import { reportFailure } from "../gesture";
 import { listenForShortcuts } from "../input";
 import type { SurfacePlacement } from "../modes/types";
-import { togglePin, windowsOf } from "../shell/actions";
+import { windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen, render } from "../shell/dom";
 import { icon } from "../shell/icons";
-import { closeWindow, focusTab, isFollowing, newTab, toggleFloating } from "../shell/windows";
+import { focusTab, isFollowing } from "../shell/windows";
 import type { Rect } from "../wm/types";
 import { surfaceAnchors } from "./anchors";
 import { trackTopChrome } from "./clearance";
@@ -23,27 +21,10 @@ import { isFloating } from "./coordinates";
 import { hostGestures } from "./host-gestures";
 import { placeSection } from "./section-place";
 import { mountTabs, type TabsView } from "./TabsView";
-import { tabKind, tabsOf } from "./tree";
+import { mountTitleBar } from "./title-bar";
+import { tabsOf } from "./tree";
 import { activeView, resolveView, viewOf } from "./views";
 import type { WindowPages } from "./window-pages";
-
-function tool(label: string, name: string, run: () => void, pressed?: boolean) {
-  return h(
-    "button",
-    {
-      class: "icon-button tool",
-      type: "button",
-      "aria-label": label,
-      title: label,
-      "aria-pressed": pressed === undefined ? undefined : String(pressed),
-      onClick: (e: Event) => {
-        e.stopPropagation();
-        run();
-      },
-    },
-    icon(name, 14),
-  );
-}
 
 interface Entry {
   el: HTMLElement;
@@ -58,7 +39,7 @@ interface Entry {
   /** Whether it lies in its own page (ADR 0201), and where its window is on the desk. */
   own: boolean;
   at: Rect;
-  /** Refresh the key hints in the tools' labels (the keymap changed) and the pin's state. */
+  /** Refresh the key hints in the tools' labels (the keymap changed), the marks and Pop out. */
   relabel: () => void;
   off: () => void;
 }
@@ -84,10 +65,6 @@ export function mountSurfaces(
   // What reads a window's DOM elsewhere on the desk finds it in its page (`window-docs.ts`).
   const offDocs = pages && ctx.pages?.attach(pages);
   const live = new Map<string, Entry>();
-  const hint = (label: string, command: string) => {
-    const key = ctx.keyOf(command);
-    return key ? `${label} (${key})` : label;
-  };
 
   /**
    * Title bar text for the tab shown: icon, name, the view's own line and Eris's badge; built
@@ -115,61 +92,11 @@ export function mountSurfaces(
 
   const build = (placed: SurfacePlacement): Entry => {
     const p = placed;
-    const title = h("span", { class: "surface-heading" });
-    // Another window of the plugin this window shows, as a tab: the one kind it takes (ADR 0270).
-    const tabTool = tool(hint(ctx.tr("newTab"), "desk.display.new-tab"), "plus", () => {
-      newTab(ctx, p.id).catch((error) =>
-        reportFailure(ctx.runtime.notify, ctx.tr("newTab"), error),
-      );
-    });
-    const pinTool = tool(
-      ctx.tr(p.pinned ? "unpin" : "pin"),
-      "pin",
-      () => togglePin(ctx, p.id),
-      p.pinned,
-    );
-    const floatTool = tool(
-      ctx.tr("floating"),
-      "floating",
-      () => void toggleFloating(ctx, p.id),
-      isFloating(p),
-    );
-    const relabel = () => {
-      floatTool.setAttribute("aria-pressed", String(isFloating(entry.placement)));
-      const s = ctx.store.get();
-      const placed = entry.placement;
-      // A window of the shell's own view takes no tab: it has no tool for one.
-      tabTool.hidden = !tabKind(tabsOf(placed), (view) => resolveView(s, placed, view));
-      tabTool.setAttribute("aria-label", hint(ctx.tr("newTab"), "desk.display.new-tab"));
-      tabTool.title = hint(ctx.tr("newTab"), "desk.display.new-tab");
-      const pinned = entry.placement.pinned;
-      pinTool.setAttribute("aria-label", ctx.tr(pinned ? "unpin" : "pin"));
-      pinTool.title = ctx.tr(pinned ? "unpin" : "pin");
-      pinTool.setAttribute("aria-pressed", String(pinned));
-    };
-    const bar = h(
-      "header",
-      { class: "surface-title", title: ctx.tr("maximize") },
-      title,
-      h(
-        "span",
-        { class: "surface-tools" },
-        tabTool,
-        floatTool,
-        pinTool,
-        // Out of the canvas into an OS window of its own (issue 235): a window of one plugin only.
-        // Putting a window away is a command, not a tool here (issue 280, `arrange/away.ts`).
-        poppable(ctx.store.get(), p.id)
-          ? tool(ctx.tr("popOut"), "pop-out", () => ctx.wm.run({ op: "pop-out" }, p.id))
-          : null,
-        // A save the person chose before the close can fail: the window stays, and the desk says why.
-        tool(ctx.tr("close"), "close", () => {
-          closeWindow(ctx, p.id).catch((error) =>
-            reportFailure(ctx.runtime.notify, ctx.tr("close"), error),
-          );
-        }),
-      ),
-    );
+    // The window menu, Pop out and Close, and the pinned and floating marks (ADR 0255); the rest of
+    // what a window's tools did are rows of its menu (`desktops/window-rows.ts`).
+    const titleBar = mountTitleBar(ctx, () => entry.placement);
+    const bar = titleBar.el;
+    const title = titleBar.heading;
     const tabs = mountTabs(ctx, p.id);
     const body = h("div", { class: "surface-body" }, tabs.el);
     const el = h(
@@ -201,9 +128,6 @@ export function mountSurfaces(
       ...["pointerup", "pointercancel"].map((type) => listen(el, type, press(false))),
       // The focus the page moves as it follows a desk it was told asks nothing either.
       listen(el, "focusin", (e) => !pressing && !isFollowing(ctx) && focusFrom(e.target)),
-      listen(bar, "dblclick", (e) => {
-        if (!(e.target as Element).closest("button")) ctx.wm.run({ op: "maximize" }, p.id);
-      }),
       // A press in its own page is at that page's point: on the desk, the window's place plus it.
       hostGestures(
         el,
@@ -222,7 +146,7 @@ export function mountSurfaces(
       tabs,
       own: false,
       at: { x: 0, y: 0, w: 0, h: 0 },
-      relabel,
+      relabel: titleBar.relabel,
       off: () => {
         for (const off of offs) off();
         entry.tabs.off();
