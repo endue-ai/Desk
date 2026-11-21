@@ -111,12 +111,6 @@ body {
   clip-path: polygon(50% 0%, 100% 100%, 0% 85%);
 }
 
-.shard.gold {
-  width: 36px;
-  height: 40px;
-  clip-path: polygon(92.5% 94.5%, 35.6% 8.3%, 8.1% 37.5%);
-  background: linear-gradient(135deg, var(--eris-gold-light), var(--eris-gold-deep));
-}
 
 .user-rise {
   position: absolute;

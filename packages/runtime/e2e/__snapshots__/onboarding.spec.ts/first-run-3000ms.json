@@ -141,6 +141,18 @@
               },
               "children": [
                 {
+                  "tag": "img",
+                  "class": "body",
+                  "style": {
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "0",
+                    "transform": "matrix(1.16, 0, 0, 1.16, 0, 0)",
+                    "filter": "blur(18px)",
+                    "color": "rgb(243, 241, 236)"
+                  }
+                },
+                {
                   "tag": "div",
                   "class": "core-wrap",
                   "style": {
@@ -165,18 +177,6 @@
                       }
                     }
                   ]
-                },
-                {
-                  "tag": "img",
-                  "class": "body",
-                  "style": {
-                    "display": "block",
-                    "visibility": "visible",
-                    "opacity": "0",
-                    "transform": "matrix(1.16, 0, 0, 1.16, 0, 0)",
-                    "filter": "blur(18px)",
-                    "color": "rgb(243, 241, 236)"
-                  }
                 }
               ]
             },
@@ -220,7 +220,7 @@
             },
             {
               "tag": "div",
-              "class": "glint",
+              "class": "warning-rim",
               "style": {
                 "display": "block",
                 "visibility": "visible",
@@ -565,18 +565,6 @@
                 "visibility": "visible",
                 "opacity": "0",
                 "transform": "matrix(-0.751, -1.413, 1.413, -0.751, -405, -625)",
-                "filter": "none",
-                "color": "rgb(243, 241, 236)"
-              }
-            },
-            {
-              "tag": "div",
-              "class": "shard gold",
-              "style": {
-                "display": "block",
-                "visibility": "visible",
-                "opacity": "0",
-                "transform": "matrix(-1.584, -0.223, 0.223, -1.584, 559, -548)",
                 "filter": "none",
                 "color": "rgb(243, 241, 236)"
               }

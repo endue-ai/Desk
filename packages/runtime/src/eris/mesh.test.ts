@@ -3,14 +3,13 @@ import { BODY, digest, frameModel, type Palette, paint } from "./draw";
 import { DENSITIES, generateMesh, ringCounts, ringRadii, VIEW_IDLE } from "./mesh";
 import { ERIS_STATES, LOOKS } from "./states";
 
-const balanced = () => generateMesh({ ...DENSITIES.balanced, view: VIEW_IDLE, goldToward: [1, 1] });
+const balanced = () => generateMesh({ ...DENSITIES.balanced, view: VIEW_IDLE });
 const flat = new Array(9).fill(0);
 const model = (state: (typeof ERIS_STATES)[number]) => {
   const look = LOOKS[state];
   const mesh = generateMesh({
     ...DENSITIES.balanced,
     view: look.view,
-    goldToward: look.goldToward,
   });
   return frameModel({
     mesh,
@@ -19,7 +18,6 @@ const model = (state: (typeof ERIS_STATES)[number]) => {
     spin: 0,
     disp: flat,
     glow: flat,
-    goldMoves: false,
   });
 };
 
@@ -53,22 +51,14 @@ describe("the Eris mesh", () => {
 
   test("densities give increasing face counts", () => {
     const count = (d: keyof typeof DENSITIES) =>
-      generateMesh({ ...DENSITIES[d], view: VIEW_IDLE, goldToward: [1, 1] }).faces.length;
+      generateMesh({ ...DENSITIES[d], view: VIEW_IDLE }).faces.length;
     expect(count("airy")).toBeLessThan(count("balanced"));
     expect(count("balanced")).toBeLessThan(count("dense"));
   });
 
-  test("the gold face is a front face with r_c in [0.5, 0.74], towards the upper right", () => {
-    const mesh = balanced();
-    const gold = mesh.faces[mesh.gold];
-    expect(gold?.rc).toBeGreaterThanOrEqual(0.5);
-    expect(gold?.rc).toBeLessThanOrEqual(0.74);
-    const thinking = generateMesh({
-      ...DENSITIES.balanced,
-      view: LOOKS.thinking.view,
-      goldToward: [-1, 1],
-    });
-    expect(thinking.gold).not.toBe(mesh.gold);
+  test("all visible facets use one glass material", () => {
+    for (const state of ERIS_STATES)
+      expect(new Set(model(state).tris.map((t) => t.kind))).toEqual(new Set(["front", "back"]));
   });
 
   test("every state draws a different frame of the same mesh", () => {
@@ -76,9 +66,10 @@ describe("the Eris mesh", () => {
     expect(new Set(digests).size).toBe(ERIS_STATES.length);
   });
 
-  test("heads-up outlines the gold face where it was", () => {
-    expect(model("heads-up").goldOutline).toBeDefined();
-    expect(model("idle").goldOutline).toBeUndefined();
+  test("both alerts preserve the resting silhouette", () => {
+    const geometry = (s: (typeof ERIS_STATES)[number]) => model(s).tris.map((t) => t.pts);
+    expect(geometry("heads-up")).toEqual(geometry("idle"));
+    expect(geometry("oops")).toEqual(geometry("idle"));
   });
 
   test("her body is opaque: the ground fills the disc first and follows the rim in", () => {
@@ -92,7 +83,6 @@ describe("the Eris mesh", () => {
         spin: 0,
         disp: [...flat.slice(0, 8), rim],
         glow: flat,
-        goldMoves: false,
       });
     expect(at(0).ground).toEqual({ x: BODY.cx, y: BODY.cy, r: BODY.R });
     expect(at(-0.05).ground.r).toBeCloseTo(BODY.R * 0.95);
@@ -116,7 +106,7 @@ describe("the Eris mesh", () => {
         },
       },
     ) as unknown as CanvasRenderingContext2D;
-    const palette = { frost: "#e9edf4", ground: "#141416", gold: "#e8c98a" } as Palette;
+    const palette = { frost: "#e9edf4", ground: "#141416" } as Palette;
     paint(ctx, at(0), look, palette, BODY);
     expect(fills[0]).toEqual({ style: "#141416", alpha: 1 });
     const firstFrost = fills.findIndex((f) => f.style === "#e9edf4");

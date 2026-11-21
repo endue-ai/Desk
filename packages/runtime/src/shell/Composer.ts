@@ -193,7 +193,7 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
     let reply: Awaited<ReturnType<typeof ctx.bridge.brain.say>>;
     try {
       const desk = await deskSnapshot(ctx);
-      reply = await ctx.bridge.brain.say(text, (step) => errands.step(step), desk);
+      reply = await errands.say(text, (step) => errands.step(step), desk);
     } catch {
       // An errand left out comes home.
       await errands.finish();
