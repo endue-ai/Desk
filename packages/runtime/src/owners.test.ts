@@ -161,6 +161,51 @@ describe("Owners", () => {
     expect(route(owners, bytes)).toBeUndefined();
   });
 
+  it("routes a database session's events to the plugin that opened it, until it closes (ADR 0281)", () => {
+    const open: BridgeRequest = {
+      id: 6,
+      method: "db.open",
+      params: {
+        engine: "postgresql",
+        host: "db.example.test",
+        database: "shop",
+        user: "reader",
+        scope: { permission: "db:connect", hosts: ["db.example.test:5432"] },
+      },
+    };
+    const notice: BridgeEvent = {
+      event: "db.notice",
+      data: {
+        sessionId: "d-1",
+        notice: { severity: "NOTICE", localSeverity: "NOTICE", code: "00000", message: "hi" },
+      },
+    };
+    const notified: BridgeEvent = {
+      event: "db.notification",
+      data: { sessionId: "d-1", pid: 7, channel: "orders", payload: "7" },
+    };
+    const changed: BridgeEvent = {
+      event: "db.parameter",
+      data: { sessionId: "d-1", name: "TimeZone", value: "UTC" },
+    };
+    const closed: BridgeEvent = {
+      event: "db.closed",
+      data: { sessionId: "d-1", reason: "closed" },
+    };
+    for (const event of [notice, notified, changed, closed]) expect(eventKey(event)).toBe("db:d-1");
+    expect(claimKey(open, ok(6, { sessionId: "d-1", pid: 7 }))).toBe("db:d-1");
+    expect(claimKey(open, ok(6, { needsPassword: true }))).toBeUndefined();
+    const owners = new Owners();
+    // A notice of the sign-in can come before db.open's answer.
+    expect(route(owners, notice)).toBeUndefined();
+    expect(owners.claim(open, ok(6, { sessionId: "d-1", pid: 7 }), "endue.database")).toEqual([
+      notice,
+    ]);
+    expect(route(owners, notified)).toBe("endue.database");
+    expect(route(owners, closed)).toBe("endue.database");
+    expect(route(owners, changed)).toBeUndefined();
+  });
+
   it("routes a web view's changes to the window that opened it, until it closes (ADR 0216)", () => {
     const webOpen: BridgeRequest = {
       id: 9,
