@@ -299,3 +299,36 @@ fn a_desk_without_a_local_brain_stays_offline_when_the_remote_is_down() {
         json!({ "mode": "offline", "brain": "endue" })
     );
 }
+
+#[test]
+fn brain_claude_model_picks_claude_code_on_that_model_and_empty_keeps_its_own() {
+    let echo = Echo::start();
+    let home = home("brain-choice-claude-model");
+    let (claude, sonnet) = (named("claude", echo.url()), named("sonnet", echo.url()));
+    let made = Arc::new(Mutex::new(Vec::new()));
+    let (on_sonnet, asked) = (Arc::clone(&sonnet), Arc::clone(&made));
+    let brains = Brains::default()
+        .with_claude(claude.clone())
+        .with_claude_models(move |model: &str| {
+            asked.lock().unwrap().push(model.to_owned());
+            match model {
+                "sonnet" => Ok(on_sonnet.clone() as Arc<dyn Brain>),
+                other => Err(format!("no model {other}")),
+            }
+        });
+    let (core, deliveries) = core_on(brains, &home);
+    choose(&core, "claude");
+    assert_eq!(turn(&core, &deliveries, "hi").1, "claude: hi");
+
+    let params = json!({ "key": "brain.claude-model", "value": "sonnet" });
+    call(&core, "desk", "settings.set", params).unwrap();
+    assert_eq!(turn(&core, &deliveries, "hi").1, "sonnet: hi");
+    assert_eq!(turn(&core, &deliveries, "again").1, "sonnet: again");
+    // Made once, and kept.
+    assert_eq!(*made.lock().unwrap(), vec!["sonnet".to_owned()]);
+
+    let params = json!({ "key": "brain.claude-model", "value": "" });
+    call(&core, "desk", "settings.set", params).unwrap();
+    assert_eq!(turn(&core, &deliveries, "back").1, "claude: back");
+    assert_eq!(sonnet.turns.load(Ordering::SeqCst), 2);
+}

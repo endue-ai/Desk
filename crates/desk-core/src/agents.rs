@@ -8,15 +8,23 @@
 
 use desk_bridge::{BridgeError, GrantDuration, Permission, RefusalReason};
 
+use crate::agent_tools::ERIS;
 use crate::core_perm::{Decision, refusal};
 use crate::handler::{Core, denied};
 use crate::init::Init;
+use crate::paths::star_match;
 use crate::perm::{Denied, Target, covers, scope_allows};
 use crate::perm_log::{Verdict, target_text};
 use crate::sync::lock;
 
 /// What an agent's caller id starts with.
 pub(crate) const AGENT: &str = "agent:";
+
+/// The runtime, which provides the desk's own commands.
+const DESK: &str = "desk";
+/// The desk's own commands Eris runs without a question (ADR 0296): windows, tabs, her model and
+/// what the person swept for her (Cmd+drag).
+const ERIS_DESK_COMMANDS: &[&str] = &["desk.windows.*", "desk.eris.*", "desk.sweep.*"];
 
 /// The longest agent id, so that `agent:<id>` stays within the 128 characters of a caller id.
 const MAX_ID: usize = 122;
@@ -69,8 +77,27 @@ impl Core {
         provider.is_some_and(|plugin| self.registry().get(&plugin).is_some())
     }
 
+    /// Whether `caller` is Eris running one of the desk's own commands she needs to do what the
+    /// person asks on their desk (ADR 0296): her windows and tabs, and her own model. These ask
+    /// nothing; an allowlist still caps them, and an irreversible one is still held (ADR 0078).
+    pub(crate) fn eris_desk_command(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        target: &Target<'_>,
+    ) -> bool {
+        let (Permission::CmdInvoke(_), Target::CommandId(id)) = (scope, target) else {
+            return false;
+        };
+        agent_of(caller) == Some(ERIS)
+            && ERIS_DESK_COMMANDS
+                .iter()
+                .any(|pattern| star_match(pattern, id))
+            && self.command(id).is_some_and(|info| info.provider == DESK)
+    }
+
     /// The check of an agent's call: refused outside its allowlist whatever it holds, allowed for
-    /// an installed plugin's command or by a grant of its own, or else the person is asked for the
+    /// an installed plugin's command, Eris's desk commands or by a grant of its own, or else the person is asked for the
     /// scope, for the session, as shell.open asks. Each call is one `perm` log entry.
     pub(crate) fn check_agent(
         &self,
@@ -86,7 +113,9 @@ impl Core {
                     reason: refusal(caller, Some(reason)),
                 }));
             }
-            if self.installed_command(scope, target) {
+            if self.installed_command(scope, target)
+                || self.eris_desk_command(caller, scope, target)
+            {
                 self.log_perm(caller, scope, Some(target), Verdict::Allowed, None);
                 return Ok(());
             }

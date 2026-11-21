@@ -81,7 +81,7 @@ pub enum Level {
 /// The parts the compositor draws over the windows that take no press of their own: one there is
 /// for what lies under it. The status line's text is drawn over a window snapped to the top, whose
 /// tools are its own page's (ADR 0201); its buttons are a part of their own.
-const UNHEARD: &[&str] = &["desk.notices"];
+const UNHEARD: &[&str] = &["desk.notices", "desk.sweep-marks"];
 
 impl SystemPart {
     /// The system surface it is a part of: the desk's, whose caller it calls as.
@@ -157,6 +157,18 @@ pub const PARTS: &[SystemPart] = &[
     SystemPart {
         id: "desk.notice-actions",
         holds: "the status line's buttons, one box each: a notice's actions, its Dismiss, its Open",
+        level: Level::Bar,
+    },
+    SystemPart {
+        id: "desk.sweep-marks",
+        holds: "a sweep's area and the rings of the windows it selected (ADR 0296), one box each: \
+                drawn over the windows, they hear nothing",
+        level: Level::Bar,
+    },
+    SystemPart {
+        id: "desk.sweep",
+        holds: "the sweep bar: its modes, the selection's commands, what the next line to Eris \
+                carries",
         level: Level::Bar,
     },
     SystemPart {
@@ -256,7 +268,10 @@ mod tests {
         let actions = part("desk.notice-actions").expect("its buttons");
         assert!(actions.hears());
         assert_eq!(actions.level, Level::Bar);
-        for p in PARTS.iter().filter(|p| p.id != "desk.notices") {
+        for p in PARTS
+            .iter()
+            .filter(|p| !["desk.notices", "desk.sweep-marks"].contains(&p.id))
+        {
             assert!(p.hears(), "{}", p.id);
         }
     }

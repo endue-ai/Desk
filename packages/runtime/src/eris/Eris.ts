@@ -18,6 +18,7 @@ import { BODY } from "./draw";
 import { audioContext, openMic, sampleEar } from "./ear";
 import { mountErrands } from "./errand";
 import { mindOf } from "./mind";
+import { defineModelCommands } from "./model";
 import { speakAloud } from "./mouth";
 import { atWork, homeOf, pillOf, Rest, showRest, watchCard } from "./rest";
 import { SoulText } from "./SoulText";
@@ -259,6 +260,7 @@ export function mountEris(
     listen(el, "pointerenter", wake),
     watchCard(said.el, wake),
     defineSummon(ctx),
+    defineModelCommands(ctx),
     // Every theme applied: a desk.theme.* setting, a preview, a theme plugin installed or edited, the
     // OS's scheme. The theme system calls this after it has set the new tokens.
     ctx.runtime.themes.onChange(() => {
