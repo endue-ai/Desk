@@ -3,8 +3,6 @@
 // plugin's db.* events as JSON lines, so a live test's PostgreSQL goes through the core's sessions
 // (desk-pg, ADR 0281) exactly as the desk's does. Built with cargo once per run of the tests.
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import type { BridgeEvent, DbOpenResult, DbPage } from "../../../packages/bridge/src/index";
@@ -31,18 +29,24 @@ export function buildCoreBridge(): string {
   return built;
 }
 
+// Built while the test file loads, outside any test's timeout, when the live tests will need it.
+if (process.env.ENDUE_DB_TEST_POSTGRES) buildCoreBridge();
+
 type Listener = (event: BridgeEvent) => void;
 type Waiter = { resolve(value: unknown): void; reject(error: unknown): void };
 
-/** One core for this test file; `home` is its home (a `.pgpass` there is the password file). */
-export function coreBridge(home = mkdtempSync(join(tmpdir(), "endue-db-core-"))) {
+/**
+ * One core for this test file; `home` is its home (a `.pgpass` there is the password file), else
+ * one the bridge makes under the temp folder and removes when it ends.
+ */
+export function coreBridge(home?: string) {
   const listeners = new Set<Listener>();
   const waiting = new Map<number, Waiter>();
   let child: ChildProcess | undefined;
   let next = 0;
   const started = () => {
     if (child) return child;
-    const fresh = spawn(buildCoreBridge(), ["endue.database", home], {
+    const fresh = spawn(buildCoreBridge(), ["endue.database", ...(home ? [home] : [])], {
       stdio: ["pipe", "pipe", "inherit"],
     });
     createInterface({ input: fresh.stdout as NodeJS.ReadableStream }).on("line", (line) => {

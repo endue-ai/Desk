@@ -6,7 +6,7 @@
 //! who says yes to the plugin's ask, so the core's grant check still runs on every call. Requests
 //! are served on threads of their own, so a `db.cancel` reaches a statement that runs. The core's
 //! home is the second argument (its `.pgpass` is the password file), else a fresh folder under the
-//! temp folder. It ends when standard input does.
+//! temp folder, removed at the end. It ends when standard input does.
 
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
@@ -19,12 +19,14 @@ use serde_json::json;
 fn main() {
     let mut args = std::env::args().skip(1);
     let caller = args.next().unwrap_or_else(|| "endue.database".to_owned());
-    let home = args.next().map(PathBuf::from).unwrap_or_else(|| {
+    let given = args.next().map(PathBuf::from);
+    let made = given.is_none();
+    let home = given.unwrap_or_else(|| {
         let name = format!("desk-db-bridge-{}", std::process::id());
         std::env::temp_dir().join(name)
     });
     std::fs::create_dir_all(&home).expect("the core's home");
-    let core = Arc::new(Core::new(Roots { home }));
+    let core = Arc::new(Core::new(Roots { home: home.clone() }));
 
     let out = Arc::new(Mutex::new(std::io::stdout()));
     let say = {
@@ -74,5 +76,9 @@ fn main() {
                 answer(line);
             }
         });
+    }
+    if made {
+        // Gone already or still held open: the temp folder is the system's to clear then.
+        let _ = std::fs::remove_dir_all(&home);
     }
 }
