@@ -51,7 +51,11 @@ const fsHandlers: StubHandlers = {
 const clock = new ManualClock();
 const core = browserCore({
   manifests: [...policies, databaseManifest as PluginManifest],
-  store: memoryStore({ connections: [FIXTURE_CONNECTION] }),
+  store: memoryStore({
+    connections: [FIXTURE_CONNECTION],
+    // The .sql file runs on the fixture connection, so opening it asks for none.
+    "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
+  }),
   handlers: { ...procHandlers(fixtureScript, (event) => emit(event)), ...fsHandlers },
   open: () => {},
 });
