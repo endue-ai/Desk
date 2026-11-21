@@ -39,10 +39,10 @@ pub struct Shell {
     /// Windows dropped for a closing browser whose `OnBeforeClose` has not come yet.
     closing: HashSet<Role>,
     computer: Arc<Mutex<computer::Watch>>,
-    tray: Option<tray_icon::TrayIcon>,
+    pub(crate) tray: Option<tray_icon::TrayIcon>,
     /// The staged build the tray offers to restart into (#47).
-    offered: Option<String>,
-    menu_bar: Option<tray_icon::menu::Menu>,
+    pub(crate) offered: Option<String>,
+    pub(crate) menu_bar: Option<menu::MenuBar>,
     /// The main window's scene and its off-screen surfaces (#52, #83).
     pub compositor: Option<crate::compositor_window::CompositorWindow>,
     pub(crate) apps: crate::app_windows::Windows,
@@ -165,8 +165,8 @@ impl Shell {
             self.main_seen(false);
         }
         menu::listen(&self.pump);
-        self.menu_bar = menu::app_menu();
-        self.tray = tray::setup(self.offered.as_deref());
+        self.menu_bar = menu::app_menu(crate::language::in_force());
+        self.tray = tray::setup(crate::language::in_force(), self.offered.as_deref());
         for system in System::ALL {
             match system {
                 // Opened with the compositor, in its window.
@@ -182,7 +182,7 @@ impl Shell {
     pub fn offer_update(&mut self, version: Option<String>) {
         self.offered = version;
         if let Some(tray) = &self.tray {
-            tray::offer(tray, self.offered.as_deref());
+            tray::offer(tray, crate::language::in_force(), self.offered.as_deref());
         }
     }
 

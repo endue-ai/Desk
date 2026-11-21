@@ -48,7 +48,10 @@ fn the_tray_is_built_in_each_language() {
         assert!(plain.iter().all(|(c, _)| *c != Choice::Update), "{plain:?}");
         assert_eq!(plain.len(), 4);
         for (_, text) in plain {
-            assert!(!text.starts_with("desk."), "{language:?} reads an id: {text}");
+            assert!(
+                !text.starts_with("desk."),
+                "{language:?} reads an id: {text}"
+            );
         }
     }
 }
@@ -76,7 +79,11 @@ fn the_menu_bar_is_built_in_each_language() {
     assert_eq!(titles(&english), ["endue Desk", "Edit", "Window"]);
     assert_eq!(titles(&korean), ["endue Desk", "편집", "윈도우"]);
     let words = |bar: &[(String, Vec<(String, String, Option<&str>)>)], at: usize| {
-        bar[at].1.iter().map(|(_, text, _)| text.clone()).collect::<Vec<_>>()
+        bar[at]
+            .1
+            .iter()
+            .map(|(_, text, _)| text.clone())
+            .collect::<Vec<_>>()
     };
     assert_eq!(
         words(&english, 0),
@@ -149,7 +156,15 @@ fn the_menu_bar_is_built_in_each_language() {
     assert_eq!(items, [quit, dock]);
     let standard = (menu::bar(Language::En).into_iter())
         .flat_map(|section| section.entries)
-        .filter(|entry| matches!(entry, Entry::Standard { kind: Standard::SelectAll, .. }))
+        .filter(|entry| {
+            matches!(
+                entry,
+                Entry::Standard {
+                    kind: Standard::SelectAll,
+                    ..
+                }
+            )
+        })
         .count();
     assert_eq!(standard, 1);
 }
@@ -199,7 +214,10 @@ fn a_word_korean_lacks_reads_in_english_then_as_its_id() {
     let english = words::catalog(Language::En);
     assert!(!english.is_empty());
     for id in words::catalog(Language::Ko).keys() {
-        assert!(english.contains_key(id), "ko.json has {id}, en.json does not");
+        assert!(
+            english.contains_key(id),
+            "ko.json has {id}, en.json does not"
+        );
     }
 }
 
