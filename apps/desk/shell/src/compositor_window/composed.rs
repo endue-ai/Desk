@@ -126,13 +126,20 @@ impl Composed {
 
     /// Draw `scene` into a fresh off-screen target and read it back (RGBA rows).
     pub fn read(&mut self, scene: &Scene) -> Option<Vec<u8>> {
+        let (target, device, queue) = self.drawn_off_screen(scene);
+        target.read_rgba(&device, &queue).ok()
+    }
+
+    /// `scene` drawn into a fresh off-screen target, to read back once the lock is let go (a
+    /// capture's readback holds the render thread up no more, #249), with the device and queue.
+    pub fn drawn_off_screen(&mut self, scene: &Scene) -> (Target, wgpu::Device, wgpu::Queue) {
         let size = scene.viewport();
         let device = self.compositor.device().clone();
         let queue = self.compositor.queue().clone();
         let target = Target::new(&device, size, self.compositor.format());
         self.compositor.invalidate();
         self.compositor.render(scene, &target.view, size);
-        target.read_rgba(&device, &queue).ok()
+        (target, device, queue)
     }
 }
 
