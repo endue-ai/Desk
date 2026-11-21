@@ -1,14 +1,18 @@
-// The work area's buffers: a SQL console per connection, a page view per table and a DDL view per
-// object, each a desk buffer so Mod+B and the buffer list reach it. A console runs the statement at
-// the caret, the selection or the whole script (asking for its parameters first), in one of three
-// modes (run, in one transaction, dry run), explains it as a plan tree, formats it, and pages or
-// loads more rows of a single read. Changes in the grid wait as pending changes (edits.js); a new
-// run asks before it drops them. The console's text is kept in the store, a run's statements in the
-// history. No DOM: the view gets a model and hands back the editor's text and selection.
+// The work area's buffers: a SQL console per connection, a page view per table, a DDL view per
+// object and the features' panels (panels.js), each a desk buffer (buffers.js) so Mod+B and the
+// buffer list reach it. A console runs the statement at the caret, the selection or the whole
+// script (asking for its parameters first), in one of three modes (run, in one transaction, dry
+// run), explains it as a plan tree, formats it, and pages or loads more rows of a single read.
+// Changes in the grid wait as pending changes (edits.js); a new run asks before it drops them. The
+// console's text is kept in the store (console-text.js), a run's statements in the history. No DOM:
+// the view gets a model and hands back the editor's text and selection.
 
+import { createBuffers } from "./buffers.js";
 import { createRunning } from "./console-run.js";
+import { createTexts } from "./console-text.js";
 import { createEdits } from "./edits.js";
 import { createPages } from "./pages.js";
+import { createPanels } from "./panels.js";
 import { show, summaryOf } from "./tabs.js";
 
 /**
@@ -19,15 +23,18 @@ import { show, summaryOf } from "./tabs.js";
  * @typedef {import("./tabs.js").Shown} Shown
  * @typedef {{ schema: string, name: string, where: string, order: string, offset: number, count: number | null }} TablePage
  * @typedef {{
- *   id: string, kind: "console" | "table" | "ddl" | "diagram", connection: string, name: string, text: string,
+ *   id: string, kind: string, connection: string, name: string, text: string,
  *   table: TablePage | null, execution: Execution | null, shown: Shown | null, running: boolean,
  *   tab: number, maxRows: number, edit: import("./edits.js").EditState | null,
  *   page: { statement: Statement, offset: number } | null,
- *   diagram?: { schema: string, layout: import("./schema/diagram.js").Layout },
+ *   [panel: string]: any,
  * }} Console
- *   `page` is set when the console's last run was one SELECT that can be paged.
+ *   `kind` is "console", "table", "ddl" or a feature's panel type, whose state sits under that
+ *   type's name (`diagram` for the ER diagram). `page` is set when the console's last run was one
+ *   SELECT that can be paged.
  * @typedef {{
  *   console(model: Console | null, conn: Connection | null): void,
+ *   closed?(id: string): void,
  *   editor(): { text: string, start: number, end: number },
  *   select(start: number, end: number): void,
  *   replace(start: number, end: number, text: string): void,
@@ -47,75 +54,25 @@ import { show, summaryOf } from "./tabs.js";
  *   cancelled(message: string): Error,
  *   view: ConsoleView,
  *   changed(): void,
+ *   panels?: Record<string, Pick<import("./feature-host.js").Panel, "keep">>,
  * }} Deps
+ *   `panels` are the features' panel types (feature-host.js).
  */
-
-const TEXT_LIMIT = 60 * 1024;
-const textKey = (/** @type {string} */ connection) => `console:${connection}`;
 
 /** @param {Deps} deps */
 export function createConsoles(deps) {
-  /** @type {Map<string, Console>} */
-  const consoles = new Map();
-  /** @type {string | null} */
-  let current = null;
-  let local = 0;
+  const buffers = createBuffers(deps);
+  const panels = createPanels(buffers, deps);
+  const texts = createTexts(deps);
+  const { render } = buffers;
   /** The values typed for parameters this session, by connection and name. */
   /** @type {Map<string, string>} */
   const typed = new Map();
-  /** The console text waiting to be kept, and its timer. */
-  /** @type {{ connection: string, text: string, timer: ReturnType<typeof setTimeout> } | null} */
-  let saving = null;
-  const keep = () => {
-    if (!saving) return;
-    clearTimeout(saving.timer);
-    const { connection, text } = saving;
-    saving = null;
-    if (text.length > TEXT_LIMIT) deps.view.say("Only the first 60 KB of this console is kept");
-    void deps.bridge
-      .call("store.set", { key: textKey(connection), value: text.slice(0, TEXT_LIMIT) })
-      .catch(() => deps.view.say("Could not save this console."));
-  };
-
-  const render = () => {
-    const shown = current ? (consoles.get(current) ?? null) : null;
-    deps.view.console(shown, shown ? (deps.connection(shown.connection) ?? null) : null);
-    deps.changed();
-  };
 
   const nameOf = (/** @type {Connection} */ conn, /** @type {TablePage | null} */ table) =>
     table
       ? `db: ${conn.name} · ${table.schema ? `${table.schema}.` : ""}${table.name}`
       : `db: ${conn.name}`;
-
-  /** The desk buffer a console is, or a local id when the desk has no buffers. */
-  const buffer = async (/** @type {string} */ name) => {
-    const id = await deps.commands.run("desk.buffers.open", { name }).catch(() => undefined);
-    return typeof id === "string" ? id : `local-${++local}`;
-  };
-
-  /** @returns {Console} */
-  const made = (
-    /** @type {Partial<Console> & Pick<Console, "id" | "kind" | "connection" | "name">} */ fields,
-  ) => ({
-    text: "",
-    table: null,
-    execution: null,
-    shown: null,
-    running: false,
-    tab: 0,
-    maxRows: deps.settings().maxRows,
-    edit: null,
-    page: null,
-    ...fields,
-  });
-
-  const show_ = (/** @type {Console} */ target) => {
-    consoles.set(target.id, target);
-    current = target.id;
-    render();
-    return target;
-  };
 
   /**
    * Show the console of a connection, or a table's view, opening its buffer the first time.
@@ -126,7 +83,7 @@ export function createConsoles(deps) {
   const open = async (conn, table = null, given = undefined) => {
     const found = given
       ? undefined
-      : [...consoles.values()].find(
+      : buffers.find(
           (c) =>
             c.connection === conn.id &&
             (table
@@ -135,13 +92,13 @@ export function createConsoles(deps) {
                 c.table?.name === table.name
               : c.kind === "console"),
         );
-    if (found) return show_(found);
+    if (found) return buffers.show(found);
     const page = table ? { ...table, where: "", order: "", offset: 0, count: null } : null;
-    const text = page ? "" : await loadText(conn.id);
+    const text = page ? "" : await texts.load(conn.id);
     const name = nameOf(conn, page);
-    const target = show_(
-      made({
-        id: given ?? (await buffer(name)),
+    const target = buffers.show(
+      buffers.made({
+        id: given ?? (await buffers.open(name)),
         kind: page ? "table" : "console",
         connection: conn.id,
         name,
@@ -160,42 +117,18 @@ export function createConsoles(deps) {
     /** @type {string} */ text,
   ) => {
     const name = `ddl: ${conn.name} · ${title}`;
-    const found = [...consoles.values()].find((c) => c.kind === "ddl" && c.name === name);
+    const found = buffers.find((c) => c.kind === "ddl" && c.name === name);
     if (found) {
       found.text = text;
-      return show_(found);
+      return buffers.show(found);
     }
-    return show_(made({ id: await buffer(name), kind: "ddl", connection: conn.id, name, text }));
-  };
-
-  /** A schema's ER diagram, in a buffer of its own (drawn again when it is there). */
-  const openDiagram = async (
-    /** @type {Connection} */ conn,
-    /** @type {string} */ schema,
-    /** @type {import("./schema/diagram.js").Layout} */ layout,
-  ) => {
-    const name = `er: ${conn.name} · ${schema}`;
-    const found = [...consoles.values()].find((c) => c.kind === "diagram" && c.name === name);
-    if (found) {
-      found.diagram = { schema, layout };
-      return show_(found);
-    }
-    const id = await buffer(name);
-    return show_(
-      made({ id, kind: "diagram", connection: conn.id, name, diagram: { schema, layout } }),
-    );
-  };
-
-  const loadText = async (/** @type {string} */ connection) => {
-    const kept = await deps.bridge
-      .call("store.get", { key: textKey(connection) })
-      .catch(() => ({}));
-    return typeof kept.value === "string" ? kept.value : "";
+    const id = await buffers.open(name);
+    return buffers.show(buffers.made({ id, kind: "ddl", connection: conn.id, name, text }));
   };
 
   /** The console on screen, or an Error naming what to do. */
   const active = () => {
-    const shown = current ? consoles.get(current) : undefined;
+    const shown = buffers.current();
     if (!shown)
       throw new Error("No console is open: pick a connection first (Database: open a console).");
     const conn = deps.connection(shown.connection);
@@ -271,12 +204,10 @@ export function createConsoles(deps) {
 
   /** The editor's text changed: keep it, a moment later, in the store. */
   const edited = (/** @type {string} */ text) => {
-    const target = current ? consoles.get(current) : undefined;
+    const target = buffers.current();
     if (target?.kind !== "console") return;
     target.text = text;
-    if (saving && saving.connection !== target.connection) keep();
-    if (saving) clearTimeout(saving.timer);
-    saving = { connection: target.connection, text, timer: setTimeout(keep, 400) };
+    texts.edited(target.connection, text);
   };
 
   /** The console on screen with its connection, for the grid's changes. */
@@ -288,7 +219,7 @@ export function createConsoles(deps) {
   return {
     open,
     openText,
-    openDiagram,
+    ...panels,
     run,
     explain,
     format,
@@ -319,36 +250,18 @@ export function createConsoles(deps) {
     },
     /** Pick a result tab. */
     tab(/** @type {number} */ index) {
-      const target = current ? consoles.get(current) : undefined;
+      const target = buffers.current();
       if (target?.shown && index >= 0 && index < target.shown.tabs.length) target.tab = index;
       render();
     },
-    /** The desk shows one of this plugin's buffers. */
-    show(/** @type {string} */ id) {
-      if (!consoles.has(id)) return false;
-      current = id;
-      render();
-      return true;
-    },
-    /** The desk closed one of this plugin's buffers. */
-    closed(/** @type {string} */ id) {
-      if (!consoles.delete(id)) return;
-      if (current === id) current = null;
-      render();
-    },
-    /** Close every buffer of a connection (it was removed). */
-    async drop(/** @type {string} */ connection) {
-      for (const target of [...consoles.values()].filter((c) => c.connection === connection)) {
-        consoles.delete(target.id);
-        if (current === target.id) current = null;
-        await deps.commands.run("desk.buffers.close", { id: target.id }).catch(() => {});
-      }
-      render();
-    },
-    /** Rename a connection's buffers after an edit. */
+    show: buffers.showId,
+    closed: buffers.closed,
+    drop: buffers.drop,
+    /** Rename a connection's consoles and table views after an edit. */
     async renamed(/** @type {Connection} */ conn) {
-      for (const target of consoles.values()) {
-        if (target.connection !== conn.id || target.kind === "ddl") continue;
+      for (const target of buffers.list()) {
+        if (target.connection !== conn.id || (target.kind !== "console" && target.kind !== "table"))
+          continue;
         target.name = nameOf(conn, target.table);
         await deps.commands
           .run("desk.buffers.update", { id: target.id, name: target.name })
@@ -356,8 +269,8 @@ export function createConsoles(deps) {
       }
       render();
     },
-    current: () => (current ? (consoles.get(current) ?? null) : null),
-    list: () => [...consoles.values()],
+    current: buffers.current,
+    list: buffers.list,
   };
 }
 

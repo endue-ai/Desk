@@ -276,17 +276,17 @@
       "endue.database.psql": {
         "kind": "string",
         "default": "",
-        "description": "The psql program: a name on PATH or a full path. Empty: psql. A path outside the plugin's grants is asked for once."
+        "description": "The psql program: a name on PATH or a full path. Empty: psql. Any other program or path is asked for at its first run."
       },
       "endue.database.mysql": {
         "kind": "string",
         "default": "",
-        "description": "The MySQL client: a name on PATH or a full path. Empty: mysql, else mariadb."
+        "description": "The MySQL client: a name on PATH or a full path. Empty: mysql, else mariadb. Any other program or path is asked for at its first run."
       },
       "endue.database.sqlite3": {
         "kind": "string",
         "default": "",
-        "description": "The sqlite3 program: a name on PATH or a full path. Empty: sqlite3."
+        "description": "The sqlite3 program: a name on PATH or a full path. Empty: sqlite3. Any other program or path is asked for at its first run."
       },
       "endue.database.path": {
         "kind": "array",

@@ -1,6 +1,6 @@
 // The statement under the caret, the selection's statements and a whole script, cut the way each
 // client cuts them: dollar quotes, comments, DELIMITER, and the BEGIN ... END bodies that keep their
-// own semicolons (MySQL's without a DELIMITER too, as DataGrip reads them).
+// own semicolons (MySQL's without a DELIMITER too, each read as one statement).
 import { describe, expect, it } from "vitest";
 import { split, statementAt } from "../ui/sql/split.js";
 

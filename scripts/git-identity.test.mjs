@@ -99,6 +99,43 @@ test("a push to GitHub endue-ai checks the whole branch, even commits this clone
   assert.match(push.stderr.toString(), /old history|colleague@company\.example/);
 });
 
+test("a push to GitHub endue-ai takes GitHub as the committer of a squash merge", () => {
+  const r = repo(GITHUB);
+  const zero = "0".repeat(40);
+  const push = () => {
+    const head = r.git(["rev-parse", "HEAD"]).trim();
+    return r.run(
+      ["pre-push", "origin", GITHUB],
+      TEAM,
+      `refs/heads/a ${head} refs/heads/a ${zero}\n`,
+    );
+  };
+  const squash = (committerName, committerEmail, author = TEAM) =>
+    r.git(["commit", "-q", "--allow-empty", "-m", "feat: merged (#1)"], {
+      ...author,
+      GIT_COMMITTER_NAME: committerName,
+      GIT_COMMITTER_EMAIL: committerEmail,
+    });
+  squash("GitHub", "noreply@github.com");
+  r.commit(TEAM);
+  assert.equal(push().status, 0);
+  squash("someone", "123+someone@users.noreply.github.com");
+  assert.equal(push().status, 1);
+});
+
+test("GitHub is never the author of a pushed commit, nor the committer of a local one", () => {
+  const r = repo(GITHUB);
+  const github = { GIT_AUTHOR_NAME: "GitHub", GIT_AUTHOR_EMAIL: "noreply@github.com" };
+  assert.equal(r.run(["pre-commit"], github).status, 1);
+  r.commit(github);
+  const head = r.git(["rev-parse", "HEAD"]).trim();
+  const input = `refs/heads/a ${head} refs/heads/a ${"0".repeat(40)}\n`;
+  assert.equal(r.run(["pre-push", "origin", GITHUB], TEAM, input).status, 1);
+  const file = join(r.dir, "MSG");
+  writeFileSync(file, "feat: x\n\nCo-authored-by: GitHub <noreply@github.com>\n");
+  assert.equal(r.run(["commit-msg", file]).status, 1);
+});
+
 test("a push to GitLab skips what the remote holds and refuses only a new guessed identity", () => {
   const r = repo(GITLAB);
   r.commit(GUESSED, "feat: already on the server");

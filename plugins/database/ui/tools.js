@@ -9,7 +9,6 @@ import { exportResult } from "./export.js";
 import { addHistory, readHistory, readSaved, removeSaved, saveQuery } from "./history.js";
 import { FORMATS, formatRows } from "./results.js";
 import { RELATIONS } from "./schema/common.js";
-import { layout } from "./schema/diagram.js";
 import { loadSettings } from "./settings.js";
 import { split, statementAt } from "./sql/split.js";
 
@@ -140,7 +139,7 @@ export function createTools(deps) {
       if (!chosen) return undefined;
       const text = formatRows(set, chosen, { ...options, ...picked() });
       view.say(
-        view.copy(text)
+        (await view.copy(text))
           ? `Copied as ${label(chosen)}.`
           : "The clipboard refused: select the grid and press Mod+C.",
       );
@@ -232,23 +231,6 @@ export function createTools(deps) {
         "table" in object ? `${object.table}.${object.name}` : `${object.schema}.${object.name}`;
       await consoles.openText(conn, title, text);
       return text;
-    },
-    /** Draw a schema's ER diagram from its foreign keys. */
-    async diagram(/** @type {Node | Record<string, unknown>} */ ref) {
-      const conn =
-        "kind" in ref && typeof ref.connection === "string"
-          ? manager.get(ref.connection)
-          : await manager.choose(
-              /** @type {string | undefined} */ (ref.connection),
-              "Database: diagram of which connection?",
-            );
-      const schema = typeof ref.schema === "string" ? ref.schema : undefined;
-      if (!conn || schema === undefined)
-        throw new Error("Pick a schema in the explorer (r), or name connection and schema.");
-      const diagram = await catalog.diagram(conn, schema);
-      await consoles.openDiagram(conn, schema, layout(diagram));
-      view.say(`${diagram.tables.length} tables, ${diagram.links.length} foreign keys.`);
-      return { tables: diagram.tables.length, links: diagram.links.length };
     },
     /** Count a table's rows, or every table's of a folder or schema, exactly. */
     async countRows(/** @type {Node[]} */ rows, /** @type {Node} */ at) {

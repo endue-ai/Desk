@@ -421,7 +421,7 @@
       "additionalProperties": false
     },
     "PermPendingRequest": {
-      "description": "What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait (the island, ADR 0204).",
+      "description": "What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
