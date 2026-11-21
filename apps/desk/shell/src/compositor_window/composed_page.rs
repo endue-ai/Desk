@@ -76,7 +76,7 @@ impl Composed {
     /// The texture the page's paint of `size` pixels is copied into, and whether it is aside.
     pub(super) fn page_texture(&mut self, size: (u32, u32)) -> (TextureId, bool) {
         let shown = self.texture(super::super::PAGE);
-        let had = self.frames.size(shown);
+        let had = self.shown_size(super::super::PAGE);
         match self.page.paint(size, had) {
             To::Shown => (shown, false),
             To::Aside { fresh } => {
@@ -106,9 +106,14 @@ impl Composed {
         let Some(spare) = self.page.spare else {
             return false;
         };
-        let page = super::super::PAGE.to_owned();
-        let shown = self.textures.insert(page, spare);
-        self.page.spare = shown;
+        let page = super::super::PAGE;
+        // The picture aside is the newest: one of another size waiting for the layout is older.
+        self.drop_waiting(page);
+        // The picture it replaces retires: a scene handed before draws it still (#249).
+        if let Some(shown) = self.textures.insert(page.to_owned(), spare) {
+            self.retire(shown);
+        }
+        self.page.spare = None;
         self.page_damage.push(Vec::new());
         self.dirty = true;
         true

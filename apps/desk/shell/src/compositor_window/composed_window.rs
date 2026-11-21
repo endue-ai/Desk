@@ -159,7 +159,7 @@ impl Composed {
         size: (u32, u32),
     ) -> (TextureId, bool, bool) {
         let shown = self.texture(surface);
-        let had = self.frames.size(shown);
+        let had = self.shown_size(surface);
         let paned = self.pages.paned.contains(surface);
         let wait = self.pages.waits.entry(surface.to_owned()).or_default();
         let (id, aside) = match wait.paint(size, had, paned) {
@@ -231,7 +231,7 @@ impl Composed {
                 self.frames.destroy(&mut self.compositor, gone);
             }
             if let Some(before) = self.textures.insert(surface.clone(), picture) {
-                self.frames.destroy(&mut self.compositor, before);
+                self.retire(before);
             }
             crate::frame_trace::line("page_shown", serde_json::json!({ "surface": surface }));
         }
