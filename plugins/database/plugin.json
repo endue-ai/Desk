@@ -260,6 +260,61 @@
         "keywords": ["entity relationship", "foreign keys", "relations", "erd"]
       },
       {
+        "id": "endue.database.er-neighbours",
+        "title": "Database: ER diagram of a table and its neighbours",
+        "keywords": ["entity relationship", "foreign keys", "related tables", "depth", "erd"]
+      },
+      {
+        "id": "endue.database.er-arrange",
+        "title": "Database: auto layout of the ER diagram",
+        "keywords": ["arrange", "layout", "tidy", "erd"]
+      },
+      {
+        "id": "endue.database.er-columns",
+        "title": "Database: columns shown in the ER diagram",
+        "keywords": ["keys only", "hide columns", "erd"]
+      },
+      {
+        "id": "endue.database.er-add-table",
+        "title": "Database: add a table to the ER diagram",
+        "keywords": ["show table", "erd"]
+      },
+      {
+        "id": "endue.database.er-remove-table",
+        "title": "Database: remove a table from the ER diagram",
+        "keywords": ["hide table", "erd"]
+      },
+      {
+        "id": "endue.database.er-expand",
+        "title": "Database: add a table's neighbours to the ER diagram",
+        "keywords": ["related tables", "foreign keys", "erd"]
+      },
+      {
+        "id": "endue.database.er-add-schema",
+        "title": "Database: add a schema to the ER diagram",
+        "keywords": ["several schemas", "erd"]
+      },
+      {
+        "id": "endue.database.er-relation",
+        "title": "Database: draw a relation in the ER diagram",
+        "keywords": ["virtual foreign key", "not in the database", "erd"]
+      },
+      {
+        "id": "endue.database.er-remove-relation",
+        "title": "Database: remove a drawn relation from the ER diagram",
+        "keywords": ["virtual foreign key", "erd"]
+      },
+      {
+        "id": "endue.database.er-export",
+        "title": "Database: export the ER diagram as an image",
+        "keywords": ["svg", "png", "save", "picture", "erd"]
+      },
+      {
+        "id": "endue.database.er-copy-image",
+        "title": "Database: copy the ER diagram as an image",
+        "keywords": ["png", "clipboard", "picture", "erd"]
+      },
+      {
         "id": "endue.database.object-actions",
         "title": "Database: actions on an object…",
         "keywords": [
@@ -1344,6 +1399,21 @@
         "id": "endue.database.find-previous",
         "title": "Database: find the previous match in the result",
         "keywords": ["grid", "search"]
+      },
+      {
+        "id": "endue.database.problems",
+        "title": "Database: list the SQL problems",
+        "keywords": ["errors", "diagnostics", "lint", "underline", "syntax"]
+      },
+      {
+        "id": "endue.database.next-problem",
+        "title": "Database: go to the next SQL problem",
+        "keywords": ["error", "diagnostic", "lint", "F8"]
+      },
+      {
+        "id": "endue.database.previous-problem",
+        "title": "Database: go to the previous SQL problem",
+        "keywords": ["error", "diagnostic", "lint", "Shift+F8"]
       }
     ],
     "keys": [
@@ -1452,6 +1522,16 @@
         "kind": "boolean",
         "default": false,
         "description": "Save lays a .sql file's console out with Format SQL before it writes the file, by the format of the file's connection; a file on no connection yet is written as typed."
+      },
+      "endue.database.problems-syntax": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Underline SQL the parser cannot read in PostgreSQL consoles, a pause after typing stops."
+      },
+      "endue.database.problems-names": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Underline tables, columns and schemas that the cached schema does not have, and INSERT column counts that do not match, in PostgreSQL consoles. Nothing is asked of the server."
       },
       "endue.database.pg-dump": {
         "kind": "string",
