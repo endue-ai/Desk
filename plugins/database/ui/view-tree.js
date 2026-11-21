@@ -2,7 +2,7 @@
 // a cursor the arrow keys move and that stays on its row across a redraw, Right and Left to open
 // and close (or go to the parent), Enter to open a console, a table or an object's DDL, single keys
 // for the rest (d the DDL, c the row counts, g a refresh of the row's schema or table, m the
-// maintenance form).
+// maintenance form, x a function's or procedure's form).
 
 import { el } from "./dom.js";
 import { actionFor, pressOf } from "./keys.js";
@@ -14,7 +14,7 @@ import { actionFor, pressOf } from "./keys.js";
 
 const MOVES = new Set(["next", "previous", "first", "last"]);
 /** Actions that take the row under the cursor. */
-const ROWS = new Set(["ddl", "count", "diagram", "maintain"]);
+const ROWS = new Set(["ddl", "count", "diagram", "maintain", "routine"]);
 
 /**
  * @param {Document} doc
