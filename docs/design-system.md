@@ -16,8 +16,9 @@ Before a UI change, people read this page and agents follow `.claude/skills/desi
    action is the default (outline) button. A destructive action is `danger`; a toolbar's are `quiet`.
 2. **Colour belongs to the star.** `--desk-star` marks an agent at work (`.desk-star`) and nothing else:
    not a button, text, surface, border or badge. Data keeps its colours (charts, a series, an agent's
-   chosen colour); the brand does not decorate. Where Eris is at work is hers to mark too: the window
-   she looks at or uses glows in it around its frame, and her errand's thread runs in it (ADR 0271).
+   chosen colour); the brand does not decorate. Where Eris is at work is hers to mark too: a window
+   glows in it around its frame only while she uses it, her errand's thread and its answer run in
+   it, and her ring turns in it while she reads a line (ADR 0271, ADR 0275).
 3. **Status is a sentence.** Say who is doing what ("Eris is reading the file."); a badge or dot comes
    after the words, never alone. A coloured surface only for a warning, a failure or what needs the
    person (`.desk-callout[data-tone="warning"|"danger"]`, `.desk-error`).
@@ -81,7 +82,7 @@ using the same sheets. A standalone page can use the built `tokens.css`, `base.c
 | Text | `text`, `text-muted` | Body and secondary text on neutral surfaces |
 | Main action | `primary`, `primary-foreground`, `primary-hover` | The ink fill (paper in Stone), its ink, hover fill |
 | Brand on neutral surfaces | `primary-text`, `primary-subtle`, `primary-soft`, `primary-border` | Link text, the sunken, selected and border surfaces |
-| Agent at work | `star` | The star (`.desk-star`), the glow of a window Eris is at and her errand's thread (ADR 0271); 3:1 on every surface |
+| Agent at work | `star` | The star (`.desk-star`), the glow of a window Eris uses, her errand's thread and answer, and her ring while she reads (ADR 0271, ADR 0275); 3:1 on every surface |
 | Status | `success`, `warning`, `danger`, `info` | Each has `-foreground`, `-text`, `-soft`, `-border` companions |
 | Structure | `border`, `input`, `ring` | Dividers, control borders, keyboard focus |
 | Floating layers | `tooltip`, `tooltip-text`, `scrim`, `shadow-sm`, `shadow-md`, `shadow-lg` | Overlays and their text |
