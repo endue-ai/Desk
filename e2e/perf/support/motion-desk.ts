@@ -3,7 +3,8 @@
 // Default profile's 13 plugin windows; headless unless `screen` (frames rendered off screen, so no
 // screen, pointer or keyboard of the machine's is needed); with a frame trace. The shake and its
 // captures are the shell's (`compositor_input { shake }`), as is the sway of the app window
-// (`compositor_window { sway }`, #258); a poke makes every page in sight paint.
+// (`compositor_window { sway }`, #258); a poke makes every page in sight paint; the busy shake
+// holds the main thread meanwhile (`compositor_input { busy }`, #249).
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -180,6 +181,26 @@ export async function shake(run: MotionDesk, args: Record<string, unknown>): Pro
   if (!(await until(wait, () => done() > before))) {
     throw new Error(`the shake ${String(args.tag)} did not end within ${wait / 1000} s`);
   }
+}
+
+/** One shake while the main thread is held `busy.ms` right after a frame is handed, every
+ * `busy.everyMs` (`compositor_input { busy }`, #249): the render thread draws on all the same. */
+export async function busyShake(
+  run: MotionDesk,
+  args: Record<string, unknown>,
+  busy: { ms: number; everyMs: number },
+): Promise<void> {
+  let on = true;
+  const holds = (async () => {
+    while (on) {
+      await delay(busy.everyMs);
+      if (on) await shell(run.port, "compositor_input", { busy: busy.ms }).catch(() => undefined);
+    }
+  })();
+  await shake(run, args).finally(() => {
+    on = false;
+  });
+  await holds;
 }
 
 /** The app window's frame in logical pixels, as `compositor_window { frame }` reads and sets it. */
