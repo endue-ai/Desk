@@ -48,9 +48,7 @@
     "maxUnfitFrames": 0,
     "maxPaneShare": 0.015
   },
-  "known": {
-    "sway-smooth": "#249: 1.5 % (p95 21.4 ms) on its first piece, d64638d4, against main's 12.6 % on 2026-11-21; the gate's own captures hold the main thread 13 to 24 ms each"
-  },
+  "known": {},
   "sometimes": {},
   "baseline": {
     "optimized-offscreen": {
