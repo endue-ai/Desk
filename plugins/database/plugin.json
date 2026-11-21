@@ -1414,6 +1414,26 @@
         "id": "endue.database.previous-problem",
         "title": "Database: go to the previous SQL problem",
         "keywords": ["error", "diagnostic", "lint", "Shift+F8"]
+      },
+      {
+        "id": "endue.database.follow-key",
+        "title": "Database: go to the row this key points at",
+        "keywords": ["foreign key", "follow", "reference", "link", "related", "grid"]
+      },
+      {
+        "id": "endue.database.referencing-rows",
+        "title": "Database: show the rows that point at this row",
+        "keywords": ["foreign key", "referencing", "references", "children", "related", "count"]
+      },
+      {
+        "id": "endue.database.go-back",
+        "title": "Database: go back to where the key was followed from",
+        "keywords": ["back", "foreign key", "return", "previous", "grid"]
+      },
+      {
+        "id": "endue.database.pick-key",
+        "title": "Database: pick the key from the referenced table",
+        "keywords": ["foreign key", "search", "lookup", "reference", "edit", "cell"]
       }
     ],
     "keys": [
