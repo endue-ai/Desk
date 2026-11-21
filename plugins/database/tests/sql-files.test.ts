@@ -162,23 +162,23 @@ describe("a .sql file the desk opens", () => {
   });
 
   it("opens a dropped .sql file as a console bound to it", async () => {
-    const files = disk({ "/Users/me/q.sql": "select 'dropped';\n" });
+    const files = disk({ "/work/drops/q.sql": "select 'dropped';\n" });
     const m = await mount({ store: { connections: SAVED }, handlers: files.handlers });
     await m.host.command("endue.database.console", { connection: "Notes" });
     const done = await m.host.dnd.drop({
-      items: [{ type: "desk/paths", paths: [{ path: "/Users/me/q.sql", kind: "file" }] }],
+      items: [{ type: "desk/paths", paths: [{ path: "/work/drops/q.sql", kind: "file" }] }],
     });
     await m.settle();
     expect(done).toBe("copy");
     const opened = m.host.ran.filter((r) => r.name === "desk.buffers.open").at(-1);
-    expect(opened?.args).toEqual({ name: "q.sql", path: "/Users/me/q.sql" });
+    expect(opened?.args).toEqual({ name: "q.sql", path: "/work/drops/q.sql" });
     // The console on screen named the connection: nothing was asked.
     expect(m.picks).toHaveLength(0);
     expect(m.shown()).toMatchObject({
       kind: "console",
       connection: "c-lite",
       text: "select 'dropped';\n",
-      file: { path: "/Users/me/q.sql" },
+      file: { path: "/work/drops/q.sql" },
     });
     expect(m.view.inserted).toEqual([]);
   });
