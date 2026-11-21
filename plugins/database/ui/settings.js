@@ -7,7 +7,7 @@ import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
 /**
  * @typedef {{
  *   maxRows: number, timeoutSeconds: number, confirm: boolean, history: boolean, historyMax: number,
- *   systemSchemas: boolean, psql: string, mysql: string, sqlite3: string, path: string[],
+ *   systemSchemas: boolean, mysql: string, sqlite3: string, path: string[],
  *   formatKeywordCase: string, formatIndent: number, formatLineWidth: number, formatComma: string,
  *   formatAndOr: string, formatJoins: string, formatOneLine: string, formatLists: string,
  *   formatOnSave: boolean,
@@ -22,7 +22,6 @@ export const DEFAULTS = Object.freeze({
   history: true,
   historyMax: 200,
   systemSchemas: false,
-  psql: "",
   mysql: "",
   sqlite3: "",
   path: [],
@@ -46,7 +45,6 @@ const KEYS =
     history: { key: "endue.database.history" },
     historyMax: { key: "endue.database.history-max", min: 0, max: 1000 },
     systemSchemas: { key: "endue.database.system-schemas" },
-    psql: { key: "endue.database.psql" },
     mysql: { key: "endue.database.mysql" },
     sqlite3: { key: "endue.database.sqlite3" },
     path: { key: "endue.database.path" },
@@ -142,7 +140,7 @@ export const formatStyle = (/** @type {Settings} */ settings) =>
   });
 
 /** The settings that change which client runs: what was found is found again. */
-const CLIENT_KEYS = new Set([KEYS.psql.key, KEYS.mysql.key, KEYS.sqlite3.key, KEYS.path.key]);
+const CLIENT_KEYS = new Set([KEYS.mysql.key, KEYS.sqlite3.key, KEYS.path.key]);
 
 /**
  * Follow the settings while the plugin runs (settings.changed for its own keys): each change

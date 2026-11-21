@@ -1,6 +1,6 @@
 // The ER diagram through the plugin's commands and actions (PG-55) on the SDK's test host, with a
-// PostgreSQL schema cache over the scripted psql (diagram-fixture.ts): the explorer's r on a schema
-// (with its filter) and on a table, the neighbours command with a depth, add and remove a table, a
+// PostgreSQL schema cache over the stub's scripted server (diagram-fixture.ts): the explorer's r on
+// a schema (with its filter) and on a table, the neighbours command with a depth, add and remove a table, a
 // schema added, the columns, Auto layout, a moved table kept in the store and drawn there after a
 // restart, a new table placed without moving the others, and a relation drawn and taken away.
 import { describe, expect, it } from "vitest";

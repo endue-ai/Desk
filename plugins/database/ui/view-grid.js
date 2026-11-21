@@ -6,8 +6,10 @@
 // Mod+F finds, `t` shows the cursor's row as a record (grid/keys.js). Enter, F2 or a double click
 // edits a cell of a result that can be changed (pending until Submit), `n` sets NULL, `+` adds a
 // row, Delete marks rows for deletion, `u` takes a row's changes back; changes are drawn as a diff.
-// `v` opens the value viewer, Mod+C copies the block as tab-separated text. A plan tab draws the
-// plan tree, the Messages tab each statement's outcome. The parts live in grid/.
+// Mod+V pastes from the caret, `D` duplicates rows, `"` fills down, `n` on a block clears it, Mod+Z
+// takes the last change back (PG-43, grid/paste.js, features/paste/). `v` opens the value viewer,
+// Mod+C copies the block as tab-separated text. A plan tab draws the plan tree, the Messages tab
+// each statement's outcome. The parts live in grid/.
 
 import { el } from "./dom.js";
 import { emptyColumns, layoutOf } from "./grid/columns.js";
@@ -16,6 +18,7 @@ import { attachHeader } from "./grid/header.js";
 import { createGridKeys } from "./grid/keys.js";
 import { range } from "./grid/lane.js";
 import { createCellMenu } from "./grid/menu.js";
+import { createGridPaste } from "./grid/paste.js";
 import { attachPointer } from "./grid/pointer.js";
 import { createRowsClient } from "./grid/rows-client.js";
 import { createScreen } from "./grid/screen.js";
@@ -269,6 +272,7 @@ export function createGrid(doc, host, act, options = {}) {
         pinned: !st.record && st.cursor.col < st.layout.pinned,
         sortable: !st.record,
         hidden: columns().hidden.length,
+        editable: !st.record && st.context.edit?.status === "ready",
       },
       at,
     );
@@ -304,13 +308,25 @@ export function createGrid(doc, host, act, options = {}) {
     startEdit,
     cursorCell,
     blockRows,
-    addRow() {
+    addRows(action) {
       st.toEnd = true;
-      act("addRow");
+      act(action);
     },
     toggleRecord,
     openMenu,
     say,
+    selected() {
+      const b = screen.block();
+      return !st.record && (b.bottom > b.top || b.right > b.left);
+    },
+  });
+  const pasting = createGridPaste(doc, {
+    grid,
+    st,
+    block: screen.block,
+    editing: () => editor.active(),
+    act,
+    ...(options.startWorker ? { startWorker: options.startWorker } : {}),
   });
 
   /** The columns on screen: their keys, the hidden ones, how many are pinned, their widths. */
@@ -356,7 +372,8 @@ export function createGrid(doc, host, act, options = {}) {
     /** An operation by name, as a command runs it (features/grid/); undefined without a result. */
     command(/** @type {string} */ op, /** @type {Record<string, unknown>} */ args = {}) {
       if (!st.tab?.set) return undefined;
-      return op === "columns" ? columns() : keys.command(op, args);
+      if (op === "columns") return columns();
+      return pasting.command(op, args) ?? keys.command(op, args);
     },
   };
 }

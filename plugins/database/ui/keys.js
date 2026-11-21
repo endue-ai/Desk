@@ -1,10 +1,11 @@
 // The keys inside the Database surface, one table per area. The explorer and the grid take single
 // keys; the editor takes Mod+Enter (run the statement), Mod+Shift+Enter (run the script) and
 // Mod+Shift+F (format), and Escape only while a run goes on; the grid takes Mod+Enter (submit the
-// pending changes) and Mod+F (find in the result: the grid's own, never the editor's). Every other
-// chord with Mod, Alt or Control is left to the desk, except the editor's Ctrl+Space, which
-// view-editor.js reads itself. Pure: `actionFor` maps a key press to an action name, `hints` lists
-// an area's keys.
+// pending changes), Mod+F (find in the result: the grid's own, never the editor's) and Mod+Z (undo a
+// pending change). Mod+V is listed for the hint line but left to the browser, whose paste event the
+// grid reads (grid/paste.js). Every other chord with Mod, Alt or Control is left to the desk, except
+// the editor's Ctrl+Space, which view-editor.js reads itself. Pure: `actionFor` maps a key press to
+// an action name, `hints` lists an area's keys.
 
 /**
  * @typedef {"explorer" | "editor" | "grid"} Area
@@ -32,6 +33,10 @@ export const BINDINGS = {
     { chord: "m", action: "maintain", label: "maintenance" },
     { chord: "/", action: "filter", label: "filter" },
     { chord: "u", action: "importUri", label: "from URI" },
+    { chord: "o", action: "objectMenu", label: "object menu" },
+    { chord: "ContextMenu", action: "objectMenu", label: "" },
+    { chord: "F2", action: "renameObject", label: "rename" },
+    { chord: "s", action: "editSource", label: "source" },
   ],
   editor: [
     { chord: "Mod+Enter", action: "run", label: "run statement" },
@@ -57,6 +62,10 @@ export const BINDINGS = {
     { chord: "Delete", action: "deleteRows", label: "delete" },
     { chord: "Backspace", action: "deleteRows", label: "" },
     { chord: "u", action: "revertRows", label: "revert" },
+    { chord: "Mod+V", action: "paste", label: "paste" },
+    { chord: "D", action: "duplicateRows", label: "duplicate" },
+    { chord: '"', action: "fillDown", label: "fill down" },
+    { chord: "Mod+Z", action: "undoChange", label: "undo" },
     { chord: "p", action: "previewChanges", label: "preview" },
     { chord: "Mod+Enter", action: "submitChanges", label: "submit" },
     { chord: "s", action: "sort", label: "sort" },
@@ -85,7 +94,7 @@ export const BINDINGS = {
 };
 
 /** Chords this surface keeps from the desk, by area. */
-const CHORDS = new Set(["Mod+Enter", "Mod+Shift+Enter", "Mod+Shift+F", "Mod+F"]);
+const CHORDS = new Set(["Mod+Enter", "Mod+Shift+Enter", "Mod+Shift+F", "Mod+F", "Mod+Z"]);
 
 /**
  * The action a key press runs in an area, or undefined when the desk (or the field) should have it.

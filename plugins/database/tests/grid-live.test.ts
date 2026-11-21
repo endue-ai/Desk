@@ -1,8 +1,8 @@
 // A table view's quick filters and sort keys as the real clients run them (ui/grid/filters.js,
 // ADR 0288): each filter's SQL after a typed WHERE, the keys as ORDER BY, on values that hold the
 // LIKE wildcards, the escape character, a quote, NULL, '' and 'NULL'. sqlite3 runs when it is on PATH
-// (3.37 or newer), psql and mysql when ENDUE_DB_TEST_POSTGRES and ENDUE_DB_TEST_MYSQL hold a URI of a
-// scratch database, as live.test.ts.
+// (3.37 or newer), PostgreSQL (on the core's sessions) and mysql when ENDUE_DB_TEST_POSTGRES and
+// ENDUE_DB_TEST_MYSQL hold a URI of a scratch database, as live.test.ts.
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,6 +10,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { compareVersions, createClients, parseVersion } from "../ui/clients.js";
 import { normalize, parseUri } from "../ui/connections.js";
 import type { Connection } from "../ui/engines/common.js";
+import { createSessions } from "../ui/engines/pg-session.js";
 import { createExecutor } from "../ui/execute.js";
 import { type Filter, orderSql, whereWith } from "../ui/grid/filters.js";
 import { createRunner } from "../ui/run.js";
@@ -32,6 +33,7 @@ function runner(conn: Connection, password?: string) {
     runner: run,
     output: inProcessOutput(),
     clients: createClients(run, () => settings),
+    sessions: createSessions(bridge),
     settings: () => settings,
     confirm: async () => true,
     passwords: { get: () => password, set: () => {}, ask: async () => undefined },
@@ -138,7 +140,7 @@ const live = (uri: string) => () => {
 };
 
 const pgUri = process.env.ENDUE_DB_TEST_POSTGRES;
-describe.skipIf(!pgUri)("a table view's quick filters in psql, for real", () => {
+describe.skipIf(!pgUri)("a table view's quick filters on PostgreSQL, for real", () => {
   scenarios(live(pgUri ?? ""), "postgresql");
 });
 

@@ -47,7 +47,7 @@ export const PROBE_SQL = lines(
 );
 
 /**
- * The server from the probe's one row. An empty value is none: psql prints NULL so in the tests.
+ * The server from the probe's one row. An empty value is none, as the psql path printed NULL.
  * @param {string[]} columns
  * @param {(string | null)[]} row
  * @returns {Server}

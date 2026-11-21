@@ -2,8 +2,8 @@
 // lines, products, an invoice per order, a lone table and one a drawn relation can start from; sales
 // with leads that refer to public's customers), and a generated schema of 500 tables and 1,000
 // foreign keys, as the schema cache's catalog (pg-catalog.ts); the saved PostgreSQL connection
-// "depot" whose scripted psql answers both, for the runtime e2e page. Fixture data only; nothing
-// here needs Node.
+// "depot" whose scripted server (the stub's db.* sessions) answers both, for the runtime e2e page.
+// Fixture data only; nothing here needs Node.
 import type { Connection } from "../ui/engines/common.js";
 import type { Script } from "./clients";
 import { answer, type PgCatalog, type PgTable } from "./pg-catalog";
@@ -200,12 +200,12 @@ export function depotCatalog(): PgCatalog {
   return { ...storeCatalog(), big: { mark: "12.500:9000", tables: bigTables() } };
 }
 
-/** The scripted psql of "depot": the schema cache's statements from depotCatalog, else `base`. */
+/** The scripted server of "depot": the schema cache's statements from depotCatalog, else `base`. */
 export function diagramServer(base: Script = () => ({})): Script {
   const model = depotCatalog();
-  return (sql, env) => {
-    if (env.PGDATABASE !== DIAGRAM_CONNECTION.database) return base(sql, env);
+  return (sql, who) => {
+    if (who.database !== DIAGRAM_CONNECTION.database) return base(sql, who);
     const rows = answer(model, sql);
-    return rows ? { rows } : base(sql, env);
+    return rows ? { rows } : base(sql, who);
   };
 }

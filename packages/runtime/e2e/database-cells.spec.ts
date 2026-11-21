@@ -1,7 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 
 // endue.database's typed cell editors (PG-40, #467) on the browser stub: the fixture's PostgreSQL
-// connection `fixture-pg` has a scripted psql (plugins/database/tests/fixtures-pg.ts) with one table
+// connection `fixture-pg` has a scripted server (plugins/database/tests/fixtures-pg.ts) with one table
 // of typed columns, public.items. Enter opens a cell's editor by its type: the enum's labels as a
 // list, JSON laid out and refused when it is not JSON; what is kept is drawn as a pending change.
 const SURFACE = '[data-surface="endue.database"]';

@@ -1,5 +1,5 @@
 // Fixture plans for the runtime e2e page and its screenshots (packages/runtime/e2e/fixture/database.ts):
-// the scripted psql answers the server's version and EXPLAIN with a plan of a join (orders joined to
+// the scripted server answers the server's version and EXPLAIN with a plan of a join (orders joined to
 // customers in the north, by total), one plan before `create index` and another after it, so the
 // plan tab, its flame and two plans compared have something to show. fixtures.ts puts them in front
 // of its script, so every PostgreSQL connection on the page gets them ("warehouse" in the e2e).
@@ -127,7 +127,7 @@ const AFTER = statement(
   4.4,
 );
 
-/** A one-column EXPLAIN's field as it is: the scripted psql (clients.ts) quotes it as --csv does. */
+/** A one-column EXPLAIN's field as it is, under its header row (clients.ts). */
 const planRows = (plan: unknown): Answer => ({
   rows: [["QUERY PLAN"], [JSON.stringify(plan, null, 2)]],
 });

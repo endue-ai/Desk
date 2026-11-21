@@ -1,7 +1,20 @@
 // Text onto the clipboard. The Clipboard API first: it needs no key or click in this page, so a
 // command run from the palette copies too, where the desk lets the page write the clipboard (D1).
-// Else the copy command on a hidden textarea, which a key or a click in the page allows.
+// Else the copy command on a hidden textarea, which a key or a click in the page allows. The grid's
+// last Mod+C is remembered, so a paste of that text is read as the grid's own copy (PG-43: its
+// escapes and \N, edit/paste-text.js) and any other text as a spreadsheet's.
 import { el } from "./dom.js";
+
+let last = "";
+const lines = (/** @type {string} */ text) => text.replace(/\r\n/gu, "\n").replace(/\n$/u, "");
+
+/** Remember the text the grid's Mod+C put on the clipboard (grid/pointer.js). */
+export function remember(/** @type {string} */ text) {
+  last = lines(text);
+}
+
+/** Whether a paste is the grid's last copy (a line break at its end or CRLF aside). */
+export const copiedHere = (/** @type {string} */ text) => text !== "" && lines(text) === last;
 
 /**
  * @param {Document} doc

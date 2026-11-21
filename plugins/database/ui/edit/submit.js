@@ -1,8 +1,8 @@
 // Submitting pending changes: their statements run as one transaction through the executor (so the
 // read-only refusal, the production question and the password prompt apply as to any run). The
-// first failure ends the run and nothing is kept: psql sends ROLLBACK under --single-transaction
-// and ON_ERROR_STOP, sqlite3 (-bail) and the mysql client stop before COMMIT and the server rolls
-// the open transaction back when the session ends. An UPDATE or DELETE that matched no row is said:
+// first failure ends the run and nothing is kept: PostgreSQL's session sends ROLLBACK (engines/
+// pg-session.js), sqlite3 (-bail) and the mysql client stop before COMMIT and the server rolls the
+// open transaction back when the session ends. An UPDATE or DELETE that matched no row is said:
 // the row changed or went since it was read. A refusal whose position falls in a cell's literal
 // names that cell's column (PG-40). No DOM.
 

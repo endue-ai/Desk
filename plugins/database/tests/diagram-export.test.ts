@@ -43,7 +43,6 @@ function fakeImager(copies: string[], copied = true): Imager {
 
 async function exporting(answers: { cancelled?: boolean; refuse?: boolean } = {}) {
   const writes: Array<{ path: string; content: string; encoding: string }> = [];
-  const asked: unknown[] = [];
   let refused = answers.refuse ?? false;
   const m = await mount({
     store: { connections: [DIAGRAM_CONNECTION] },
@@ -61,13 +60,12 @@ async function exporting(answers: { cancelled?: boolean; refuse?: boolean } = {}
         writes.push(params as never);
         return { bytesWritten: params.content.length };
       },
-      "perm.request": (params) => {
-        asked.push(params);
-        return { granted: true };
-      },
     },
   });
   await m.host.command("endue.database.er-diagram", { connection: "depot", schema: "public" });
+  // What the plugin was granted to write: the export's one ask for its path (ADR 0260).
+  const asked = () =>
+    m.host.grants.flatMap((g) => (g.permission.permission === "fs:write" ? [g.permission] : []));
   return { m, writes, asked };
 }
 const shownState = (m: Mounted) => m.shown()?.diagram as DiagramState;
@@ -81,10 +79,12 @@ describe("the diagram as an image", () => {
     const { m, writes, asked } = await exporting({ refuse: true });
     const svg = await m.host.command("endue.database.er-export", { format: "svg" });
     expect(svg).toEqual({ path: "~/Pictures/er-depot-public.svg", format: "svg", scale: 1 });
-    expect(asked).toHaveLength(1);
-    expect(asked[0]).toMatchObject({
-      permission: { permission: "fs:write", paths: ["~/Pictures/er-depot-public.svg"] },
-    });
+    expect(asked()).toEqual([
+      expect.objectContaining({
+        permission: "fs:write",
+        paths: ["~/Pictures/er-depot-public.svg"],
+      }),
+    ]);
     const written = writes[0];
     expect(written?.encoding).toBe("utf8");
     const doc = new DOMParser().parseFromString(written?.content ?? "", "image/svg+xml");
@@ -112,7 +112,7 @@ describe("the diagram as an image", () => {
       ["~/Pictures/er-depot-public.png", "base64", "png W×H at 1"],
       ["~/Pictures/er-depot-public.png", "base64", "png W×H at 2"],
     ]);
-    expect(asked).toHaveLength(1);
+    expect(asked()).toHaveLength(1);
     expect(m.view.said.at(-1)).toBe(
       "Exported the diagram as PNG at 2x to ~/Pictures/er-depot-public.png.",
     );
