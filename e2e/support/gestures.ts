@@ -59,30 +59,41 @@ export const toolAt = (w: Rect, tool: Tool, popOut = true): Point => {
   };
 };
 
+/** The middle of row `row` of the window menu if it shows within `ms`: in the desk's page. */
+async function rowWithin(row: MenuRow, ms: number): Promise<Point | null> {
+  let at: Point | null = null;
+  await browser
+    .waitUntil(
+      async () => {
+        at = await browser.execute((key: string) => {
+          const r = document
+            .querySelector(`.desktops-menu [data-key="${key}"]`)
+            ?.getBoundingClientRect();
+          return r?.width ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+        }, `menu-${row}`);
+        return at !== null;
+      },
+      { timeout: ms },
+    )
+    .catch(() => undefined);
+  return at;
+}
+
 /**
  * The middle of row `row` of the window menu once it shows: in the desk's page, over every window
  * (the `desk.overlays` part), where its tool opened it.
  */
 export async function menuRowAt(row: MenuRow): Promise<Point> {
-  let at: Point | null = null;
-  await browser.waitUntil(
-    async () => {
-      at = await browser.execute((key: string) => {
-        const r = document
-          .querySelector(`.desktops-menu [data-key="${key}"]`)
-          ?.getBoundingClientRect();
-        return r?.width ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
-      }, `menu-${row}`);
-      return at !== null;
-    },
-    { timeout: 5_000, timeoutMsg: `the window menu's ${row} never showed` },
-  );
-  return at as unknown as Point;
+  const at = await rowWithin(row, 5_000);
+  if (!at) throw new Error(`the window menu's ${row} never showed`);
+  return at;
 }
 
 /**
  * Row `row` of window `w`'s menu, as the person runs it: a press on the window menu's tool, then
- * one on the row (`press`: a spec's own click). `popOut` as `toolAt`'s.
+ * one on the row (`press`: a spec's own click). `popOut` as `toolAt`'s. A press right after the
+ * window opened can come before its own page shows it (ADR 0201), and reach nothing: the tool is
+ * pressed again while no menu shows, as a person would.
  */
 export async function fromMenu(
   w: Rect,
@@ -90,8 +101,12 @@ export async function fromMenu(
   popOut = true,
   press: (p: Point) => Promise<void> = click,
 ): Promise<void> {
-  await press(toolAt(w, "menu", popOut));
-  await press(await menuRowAt(row));
+  for (let tries = 1; ; tries++) {
+    await press(toolAt(w, "menu", popOut));
+    const at = await rowWithin(row, 2_000);
+    if (at) return press(at);
+    if (tries === 3) throw new Error(`the window menu's ${row} never showed`);
+  }
 }
 
 /** The middle of one of a window's resize grips. */
