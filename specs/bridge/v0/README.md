@@ -72,7 +72,7 @@ holds the call after the cap and the permission check and sends `perm.approval` 
 A caller that is not an agent is never held.
 
 An event about the caller's own work reaches it without asking: `fs.changed` for its watches, `proc.*` for
-its processes, `net.data` and `net.closed` for its sockets, `audio.frame`, `audio.ended` and `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
+its processes, `net.data` and `net.closed` for its sockets, `db.notice`, `db.notification`, `db.parameter` and `db.closed` for its database sessions, `audio.frame`, `audio.ended` and `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
 `cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked, `cmd.undone` for
 the undos and redos it ran, and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
@@ -197,6 +197,60 @@ desk (ADR 0133).
 **net.send** writes base64 bytes to one of the caller's sockets and answers once all are written.
 **net.close** closes one; closing one that already ended is not an error. Another caller's socket is
 `not_found`.
+
+**db.open** opens a database session to a `host` (a name or an IPv4 address, as for `net.connect`) and
+`port` (5432) inside a `db:connect` scope and signs in (ADR 0281). `engine` is `postgresql`; any other is
+`unsupported`. `tls.mode` is `disable`, `prefer` (the default), `require`, `verify-ca` or `verify-full`;
+`tls.ca` is the authorities' PEM, else the system's trust store, and with `require` the chain is checked
+too. The sign-in is SCRAM-SHA-256, SCRAM-SHA-256-PLUS whenever TLS is on and the server offers it, md5,
+or the password itself only over TLS (a server that asks for it in clear without TLS is `io_error`).
+`password` is used once and dropped; without one the core reads the person's password file
+(`PGPASSFILE`, else `~/.pgpass`, ignored when others can read it). `settings` are startup parameters;
+naming `client_encoding` (always `UTF8`), `user`, `database` or `replication` is `invalid_params`.
+`readOnly` sets `default_transaction_read_only`. `timeoutMs` (10 s, 120 s at most) bounds the connection
+and the sign-in; missed, it is `timeout`. The result is the `sessionId` with the server's `pid`, `auth`,
+`tls` (`{ version, cipher }` when on) and every ParameterStatus in `parameters`; or `{ error }`, the
+server's refusal, and no session; or `{ needsPassword: true }` when no password was given or found and
+the server asks for one. A refused or unreachable host, or a certificate that fails its mode, is
+`io_error`. A caller holds at most 16 sessions; another is `invalid_value`. An agent is
+`permission_denied`.
+
+**db.run** runs one statement by the extended protocol and answers its first page; an earlier result
+with pages left is closed first, and while a statement runs, `db.run`, `db.fetch` and `db.copy` are
+`invalid_params`. `params` are text or `null`, their types the server's inference unless `paramTypes`
+gives OIDs (0 infers). A page holds `pageRows` rows (1,000; 1 to 10,000) or `pageBytes` of values (4 MiB;
+64 KiB to 16 MiB), whichever comes first, and always one row; `more` is exact. The first page has
+`columns` (`name`, `typeOid`, `typeModifier`, `typeSize`, `tableOid`, `columnNumber`, 0 and 0 for an
+expression); `rows` are the server's text or `null`. The last page has the `tag` and `rowCount`, both
+counting every page, and `transaction` (`idle`, `open`, `failed`). A statement's error is a result, the
+last page's `error`, with every field the server sent by name (`severity`, `localSeverity`, `code`,
+`message`, `detail`, `hint`, `position`, `internalPosition`, `internalQuery`, `where`, `schema`,
+`table`, `column`, `dataType`, `constraint`, `file`, `line`, `routine`, and `other` by code); after it
+the session is ready again. A row over 64 MiB ends its result with `invalid_value`.
+
+**db.fetch** answers the next page; `close: true` ends the result without reading on. With no result
+open it is `invalid_params`.
+
+**db.copy** sends a `COPY ... FROM STDIN` its data, 1 MiB a call (`utf8` or `base64`), and answers
+`more: true` while the COPY waits; `done` ends it and `fail` fails it with that message, and either
+answers the statement's last page; a server error on a bad row ends it early with that page. A
+`COPY ... TO STDOUT` answers pages whose `data` holds its bytes (`encoding` `utf8` for text, `base64`
+for binary), read on with `db.fetch`; the first page of either has `copy` (`direction`, `format`,
+`columns`). Closing a COPY out early cancels it on the server.
+
+**db.cancel** asks the server to cancel the statement the session runs, on a connection of its own with
+the session's TLS mode, and answers once the request is sent; the statement's own answer then carries
+57014. With no statement running it does nothing. The session's cancel key never crosses the bridge.
+**db.close** ends a session; closing one that already ended is not an error. **db.list** answers the
+caller's sessions (`sessionId`, `host`, `port`, `database`, `user`, `pid`, `running`, `more`,
+`transaction`), so a frame that slept finds them again.
+
+A session's events go to its caller alone: `db.notice` as each notice arrives, also while a statement
+runs; `db.notification` for a NOTIFY, also while idle; `db.parameter` for each ParameterStatus; and
+`db.closed`, the session's last, with `reason` `closed`, `server` (with its FATAL `error` when it sent
+one), `io`, `encoding` (the server's `client_encoding` stopped being `UTF8`), `unloaded` (its plugin
+stopped), `revoked` (the grant that covers it went) or `desk`. The core keeps no timer on a session.
+Another caller's session is `not_found`.
 
 **audio.capture.start** opens the microphone under an `audio:capture` scope and returns a `captureId`.
 A caller without a grant is asked once, as `perm.request` asks (a plugin only when its manifest declares

@@ -18,6 +18,7 @@ import {
   type Permission,
   type PermPromptData,
   type ResultOf,
+  type StubDatabase,
   StubError,
   type StubFiles,
   type StubHandlers,
@@ -72,6 +73,11 @@ export interface TestHostOptions {
    * fs.url gives a `data:` URL, and a write keeps what it replaces as a version (ADR 0076).
    */
   files?: StubFiles;
+  /**
+   * A scripted database server: with it db.open signs in and db.* answer from its statements as the
+   * core does (ADR 0281), under the plugin's db:connect grants; without it db.open is io_error.
+   */
+  db?: StubDatabase;
   /** The desk's language at start (desk.language, ADR 0250); English by default. */
   language?: Language;
   /** The plugin's catalogs, as its manifest's `messages` folder holds them: one per language. */
@@ -150,7 +156,14 @@ export function createTestHost(options: TestHostOptions): TestHost {
       else if (event.event === "cmd.answered" && event.data.caller === "desk")
         answers.get(event.data.invocationId)?.(event.data);
     },
-    { grants, settings, prompt: options.prompt, now: options.now, files: options.files },
+    {
+      grants,
+      settings,
+      prompt: options.prompt,
+      now: options.now,
+      files: options.files,
+      db: options.db,
+    },
   );
   const refused = Object.fromEntries(
     Object.entries(options.refuse ?? {}).map(([method, code]) => [

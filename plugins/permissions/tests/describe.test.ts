@@ -138,6 +138,24 @@ describe("broad requests", () => {
     );
   });
 
+  it("db:connect: one database server's port is narrow; every port or any computer is not", () => {
+    const one = { permission: "db:connect" as const, hosts: ["db.example.test:5432"] };
+    expect(describePermission(one)).toEqual({
+      label: "Sign in to databases",
+      scope: "db.example.test:5432",
+    });
+    expect(broadWarning(one)).toBeNull();
+    expect(broadWarning({ permission: "db:connect", hosts: ["db.example.test"] })).toBe(
+      "It can sign in to databases on every port of db.example.test.",
+    );
+    expect(broadWarning({ permission: "db:connect", hosts: ["*.example.test:5432"] })).toBe(
+      "It can sign in to databases on every computer under .example.test.",
+    );
+    expect(broadWarning({ permission: "db:connect", hosts: ["*"] })).toBe(
+      "It can sign in to databases on any computer.",
+    );
+  });
+
   it("keeps narrow scopes calm", () => {
     const narrow: Permission[] = [
       { permission: "fs:read", paths: ["~/Notes/**"] },

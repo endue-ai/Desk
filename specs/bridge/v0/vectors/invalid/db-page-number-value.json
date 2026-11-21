@@ -1,0 +1,8 @@
+{
+  "target": "DbRunResult",
+  "description": "values are the server's text or null, never numbers",
+  "instance": {
+    "rows": [[1]],
+    "more": false
+  }
+}

@@ -1,0 +1,122 @@
+/* The server overview (PG-72): a header, sections of hairline tables that scroll sideways inside
+   themselves, and the sentences of what was not read. It is the containing block of what it places
+   absolutely (a search field's hidden label), so nothing of it reaches past the panel box. Every
+   colour, font, size and radius comes from the theme's --desk-* tokens; the feature links this
+   sheet itself (features/README.md). */
+
+.overview {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-6);
+  min-width: 0;
+  padding: var(--desk-space-4);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) var(--desk-font-sans);
+}
+
+.ov-header {
+  flex-wrap: wrap;
+}
+
+.ov-status {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+.ov-note,
+.ov-source,
+.ov-empty {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+.ov-source {
+  font-size: var(--desk-text-xs);
+}
+
+.ov-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1) var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+}
+
+.ov-nav a {
+  color: var(--desk-text);
+}
+
+.ov-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  min-width: 0;
+  scroll-margin-top: var(--desk-space-4);
+}
+
+.ov-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.ov-title {
+  margin: 0;
+  font-size: var(--desk-text-base);
+  font-weight: 600;
+}
+
+.ov-open {
+  margin-left: auto;
+}
+
+.ov-callout,
+.ov-failed {
+  margin: 0;
+}
+
+.ov-callout p,
+.ov-failed p {
+  margin: 0;
+}
+
+.ov-search {
+  display: block;
+  max-width: calc(var(--desk-space-16) * 4);
+}
+
+.ov-search input {
+  width: 100%;
+}
+
+.ov-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ov-table {
+  font-size: var(--desk-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A cell keeps its line: a table wider than the panel scrolls sideways inside .ov-scroll. */
+.ov-table th,
+.ov-table td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.ov-table .ov-num {
+  text-align: right;
+}
+
+.ov-query {
+  max-width: calc(var(--desk-space-16) * 6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--desk-font-mono);
+}

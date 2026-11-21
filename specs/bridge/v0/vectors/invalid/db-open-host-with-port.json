@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "the host has no port; port carries it",
+  "instance": {
+    "id": 21,
+    "method": "db.open",
+    "params": {
+      "engine": "postgresql",
+      "host": "db.example.test:5432",
+      "database": "shop",
+      "user": "reader",
+      "scope": {
+        "permission": "db:connect",
+        "hosts": ["db.example.test:5432"]
+      }
+    }
+  }
+}

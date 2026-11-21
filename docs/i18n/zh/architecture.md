@@ -48,7 +48,7 @@ Desk 是以一个应用构建的一个操作系统：基于 Chromium（CEF）的
 | 插件 | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | Web 运行时 | `packages/runtime`：桌面的系统表面（ADR 0160）：UI 插件宿主（ADR 0012）、各项策略，以及在 ADR 0026 决定之前的桌面外壳各部分（ADR 0025）；在应用中它不摆放窗口，也不持有插件的框架 · `packages/ui` |
 | Desk 桥接层 | `specs/bridge` · 集成层的契约 `specs/item`、`specs/view` 和 `specs/connector`（ADR 0032） · `packages/bridge` · `crates/desk-bridge`（由这些契约和 `specs/plugin` 生成的类型） |
-| Rust 核心 | `crates/desk-core`（还提供集成层的 `data.*`、`connector.*`、`view.*`、`catalog.get`，并基于操作系统日历定义内置连接器 `desk.calendar` 和 `desk.reminders`，ADR 0036，仍处于提议阶段；http 连接器按清单由核心自己运行，令牌也只由核心读取，ADR 0106） · `crates/desk-index`（存放在一个 SQLite 文件中的条目索引，ADR 0033） · `crates/desk-plugin-host`（在 Wasmtime 上运行逻辑插件和 Wasm 连接器，ADR 0019；ADR 0034 仍处于提议阶段） · `crates/desk-vm` · `crates/desk-brain*` |
+| Rust 核心 | `crates/desk-core`（还提供集成层的 `data.*`、`connector.*`、`view.*`、`catalog.get`，并基于操作系统日历定义内置连接器 `desk.calendar` 和 `desk.reminders`，ADR 0036，仍处于提议阶段；http 连接器按清单由核心自己运行，令牌也只由核心读取，ADR 0106） · `crates/desk-index`（存放在一个 SQLite 文件中的条目索引，ADR 0033） · `crates/desk-plugin-host`（在 Wasmtime 上运行逻辑插件和 Wasm 连接器，ADR 0019；ADR 0034 仍处于提议阶段） · `crates/desk-vm` · `crates/desk-brain*` · `crates/desk-pg`：核心在 `db:connect` 之下以 `db.*` 提供的 PostgreSQL 会话，每个会话只属于打开它的插件，插件停止或失去授权时关闭（ADR 0281） |
 | 外壳（CEF） | `apps/desk/shell`：基于 winit 和 CEF 的应用 `endue-desk`（ADR 0143），以及 `crates/desk-web`：不依赖引擎，决定其 URL 协议返回什么、每个页面是哪个调用方 · `crates/desk-sys` · `crates/desk-computer`（macOS 上的电脑操作：截图、辅助功能树、输入、应用），核心在 `computer:see` 和 `computer:control` 之下以 `computer.*` 提供；智能体的每个操作都要等用户批准（ADR 0120、ADR 0123） |
 | 操作系统 | `apps/desk/shell/packager`：安装包、CEF 的辅助应用及其权限（entitlements，ADR 0145） · 发布工作流（签名、公证） |
 

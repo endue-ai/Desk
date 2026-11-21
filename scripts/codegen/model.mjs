@@ -1,7 +1,8 @@
 // Turn JSON Schema documents into a small model both emitters share.
 //
 // Supported subset (anything else is an error, so specs stay generator-friendly):
-//   definitions: object with properties (struct), string enum, oneOf of $refs (union), anything else (alias)
+//   definitions: object with properties (struct), string enum, oneOf of $refs (union), oneOf of one
+//                type and null (a nullable alias), anything else (alias)
 //   types: $ref, const (string or boolean, fields only), string, integer, number, boolean, array,
 //          object with additionalProperties (map), object without properties (free object), {} (any)
 // Validation-only keywords (pattern, minimum, if/then, ...) are ignored by the generator.
@@ -21,6 +22,15 @@ export function buildModel(docs) {
 
 function defOf(name, schema, base, known) {
   const doc = schema.description ?? "";
+  const nullable = nullableOf(schema);
+  if (nullable) {
+    return {
+      kind: "alias",
+      name,
+      doc,
+      type: { kind: "nullable", inner: typeOf(nullable, base, known, name) },
+    };
+  }
   if (schema.oneOf) {
     const variants = schema.oneOf.map((branch) => {
       if (!branch.$ref) throw new Error(`${name}: oneOf branches must be $refs`);
@@ -42,6 +52,14 @@ function defOf(name, schema, base, known) {
     return { kind: "struct", name, doc, fields, closed: schema.additionalProperties === false };
   }
   return { kind: "alias", name, doc, type: typeOf(schema, base, known, name) };
+}
+
+/** The other branch of `oneOf: [<type>, { type: "null" }]`, in either order, or null. */
+function nullableOf(schema) {
+  if (!Array.isArray(schema.oneOf) || schema.oneOf.length !== 2) return null;
+  const nulls = schema.oneOf.filter((branch) => branch.type === "null");
+  if (nulls.length !== 1) return null;
+  return schema.oneOf.find((branch) => branch.type !== "null");
 }
 
 function typeOf(schema, base, known, where) {

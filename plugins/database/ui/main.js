@@ -7,6 +7,7 @@ import { defineElements } from "@endue-ai/ui";
 import { platformOf } from "./clients.js";
 import { createDatabase } from "./database.js";
 import { createDatabaseDrops } from "./dnd.js";
+import { createPlanReader } from "./explain/reader.js";
 import { createOutputReader } from "./output-client.js";
 import { provideSqlParser } from "./sql/parse/client.js";
 import { createView } from "./view.js";
@@ -20,11 +21,14 @@ defineUiPlugin({
   mount(ctx) {
     /** @type {Record<string, (...args: unknown[]) => unknown> | undefined} */
     let app;
-    const view = createView(document, (action, ...args) => app?.[action]?.(...args));
+    const view = createView(document, (action, ...args) => app?.[action]?.(...args), undefined, {
+      startWorker,
+    });
     const database = createDatabase(ctx, view, {
       cancelled: (message) => new CommandFailed("endue.database.run", "cancelled", message),
       platform: platformOf(navigator.platform),
       output: (onBusy) => createOutputReader(startWorker, { onBusy }),
+      plans: createPlanReader(startWorker),
     });
     app = /** @type {Record<string, (...args: unknown[]) => unknown>} */ (
       /** @type {unknown} */ (database)

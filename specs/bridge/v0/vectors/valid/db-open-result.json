@@ -1,0 +1,19 @@
+{
+  "target": "DbOpenResult",
+  "description": "a session signed in with SCRAM over TLS",
+  "instance": {
+    "sessionId": "d-1",
+    "pid": 4242,
+    "auth": "scram-sha-256",
+    "tls": {
+      "version": "TLSv1.3",
+      "cipher": "TLS13_AES_256_GCM_SHA384"
+    },
+    "parameters": {
+      "server_version": "17.6",
+      "client_encoding": "UTF8",
+      "TimeZone": "UTC",
+      "application_name": "endue Desk"
+    }
+  }
+}

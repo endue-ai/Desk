@@ -169,6 +169,26 @@
         "keywords": ["plan", "timing", "actual"]
       },
       {
+        "id": "endue.database.explain-options",
+        "title": "Database: explain with options",
+        "keywords": ["plan", "analyze", "buffers", "verbose", "settings", "wal", "generic plan"]
+      },
+      {
+        "id": "endue.database.plan-view",
+        "title": "Database: show the plan as a tree, flame or table",
+        "keywords": ["query plan", "flame graph", "icicle", "where the time goes"]
+      },
+      {
+        "id": "endue.database.copy-plan",
+        "title": "Database: copy the query plan",
+        "keywords": ["plan", "explain", "text", "json"]
+      },
+      {
+        "id": "endue.database.compare-plans",
+        "title": "Database: compare two query plans",
+        "keywords": ["plan", "diff", "before and after", "regression"]
+      },
+      {
         "id": "endue.database.format",
         "title": "Database: format the SQL",
         "keywords": ["pretty", "beautify", "indent", "layout", "selection", "script"]
@@ -320,6 +340,34 @@
         "irreversible": true
       },
       {
+        "id": "endue.database.overview",
+        "title": "Database: server overview",
+        "keywords": [
+          "health",
+          "statistics",
+          "sizes",
+          "unused indexes",
+          "vacuum",
+          "replication",
+          "pg_stat_statements"
+        ]
+      },
+      {
+        "id": "endue.database.refresh-overview",
+        "title": "Database: refresh the server overview",
+        "keywords": ["reload", "statistics", "health"]
+      },
+      {
+        "id": "endue.database.overview-result",
+        "title": "Database: open an overview section in the console",
+        "keywords": ["result", "copy", "export", "statistics"]
+      },
+      {
+        "id": "endue.database.overview-statement",
+        "title": "Database: open a heavy statement in the console",
+        "keywords": ["pg_stat_statements", "slow query", "top queries"]
+      },
+      {
         "id": "endue.database.history",
         "title": "Database: history",
         "keywords": ["recent", "earlier queries"]
@@ -388,6 +436,81 @@
         "id": "endue.database.clients",
         "title": "Database: check the clients",
         "keywords": ["psql", "mysql", "mariadb", "sqlite3", "install", "version"]
+      },
+      {
+        "id": "endue.database.hide-column",
+        "title": "Database: hide the result's column at the cursor",
+        "keywords": ["grid", "columns", "hide"]
+      },
+      {
+        "id": "endue.database.show-column",
+        "title": "Database: show a hidden column of the result",
+        "keywords": ["grid", "columns", "unhide"]
+      },
+      {
+        "id": "endue.database.move-column-left",
+        "title": "Database: move the result's column left",
+        "keywords": ["grid", "columns", "reorder"]
+      },
+      {
+        "id": "endue.database.move-column-right",
+        "title": "Database: move the result's column right",
+        "keywords": ["grid", "columns", "reorder"]
+      },
+      {
+        "id": "endue.database.pin-column",
+        "title": "Database: pin or unpin the result's column",
+        "keywords": ["grid", "columns", "freeze", "sticky"]
+      },
+      {
+        "id": "endue.database.fit-column",
+        "title": "Database: fit the result's column to its content",
+        "keywords": ["grid", "columns", "width", "autosize"]
+      },
+      {
+        "id": "endue.database.narrow-column",
+        "title": "Database: make the result's column narrower",
+        "keywords": ["grid", "columns", "width", "resize"]
+      },
+      {
+        "id": "endue.database.widen-column",
+        "title": "Database: make the result's column wider",
+        "keywords": ["grid", "columns", "width", "resize"]
+      },
+      {
+        "id": "endue.database.reset-columns",
+        "title": "Database: reset the result's columns",
+        "keywords": ["grid", "columns", "order", "width"]
+      },
+      {
+        "id": "endue.database.add-sort",
+        "title": "Database: sort the result by its column next",
+        "keywords": ["grid", "order by", "multi-column"]
+      },
+      {
+        "id": "endue.database.filter-by-cell",
+        "title": "Database: filter the result by the cell at the cursor",
+        "keywords": ["grid", "quick filter", "equals", "contains", "null"]
+      },
+      {
+        "id": "endue.database.clear-filters",
+        "title": "Database: clear the result's quick filters",
+        "keywords": ["grid", "quick filter", "where"]
+      },
+      {
+        "id": "endue.database.find-in-result",
+        "title": "Database: find in the result",
+        "keywords": ["grid", "search", "cell"]
+      },
+      {
+        "id": "endue.database.find-next",
+        "title": "Database: find the next match in the result",
+        "keywords": ["grid", "search"]
+      },
+      {
+        "id": "endue.database.find-previous",
+        "title": "Database: find the previous match in the result",
+        "keywords": ["grid", "search"]
       }
     ],
     "keys": [
