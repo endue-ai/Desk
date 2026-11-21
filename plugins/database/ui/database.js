@@ -1,24 +1,30 @@
 // The Database plugin without its DOM: the connections, the explorer, the consoles, table and DDL
-// views as desk buffers, the plugin's commands (commands.js), the commands for agents and the
-// desk's requests. It talks only to ctx.bridge, ctx.commands and ctx.state and a view, so the SDK's
-// test host runs it with a recording view and scripted clients. The view's actions come back here
-// by name (the object this returns).
+// views and the features' panels as desk buffers, the plugin's commands (commands.js), the
+// features (features/, feature-host.js), the commands for agents and the desk's requests. It talks
+// only to ctx.bridge, ctx.commands and ctx.state and a view, so the SDK's test host runs it with a
+// recording view and scripted clients. The view's actions come back here by name (the object this
+// returns: actions.js and the features').
 
+import { builtinActions } from "./actions.js";
 import { createAgentCommands } from "./agent.js";
+import { answerer, guarded } from "./answer.js";
+import { createAsk } from "./ask.js";
 import { createCatalog } from "./catalog.js";
 import { createClients, searchPath } from "./clients.js";
-import { codeOf, registerCommands } from "./commands.js";
+import { registerCommands } from "./commands.js";
+import { createCompletions } from "./completions.js";
 import { loadConnections, newId, normalize, saveConnections } from "./connections.js";
 import { createConsoles } from "./consoles.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
-import { complete } from "./editor/complete.js";
-import { engineOf } from "./engines/index.js";
 import { createExecutor } from "./execute.js";
 import { createExplorer } from "./explorer.js";
+import { panelsOf, registerFeatures } from "./feature-host.js";
+import * as features from "./features/index.js";
 import { addHistory } from "./history.js";
 import { createImporter } from "./importer.js";
 import { createManager } from "./manage.js";
+import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
 import { DEFAULTS, loadSettings } from "./settings.js";
 import { summaryOf } from "./tabs.js";
@@ -42,8 +48,6 @@ import { createTools } from "./tools.js";
  * }} View
  */
 
-const COMPLETE_READS = 4;
-
 /**
  * @param {Pick<PluginContext, "bridge" | "commands" | "state">} ctx
  * @param {View} view
@@ -52,9 +56,11 @@ const COMPLETE_READS = 4;
  *   platform?: import("./clients.js").Platform,
  *   runner?: ReturnType<typeof createRunner>,
  *   output(onBusy: (reads: number) => void): import("./output-client.js").OutputReader,
+ *   features?: import("./feature-host.js").Feature[],
  *   random?(): number,
  * }} options `cancelled` makes the error a cancelled command answers with (the SDK's CommandFailed);
- *   `output` makes the result reader, which reads each run's output in a worker (main.js, #38).
+ *   `output` makes the result reader, which reads each run's output in a worker (main.js, #38);
+ *   `features` are features/index.js's unless given.
  */
 export function createDatabase({ bridge, commands, state }, view, options) {
   let settings = DEFAULTS;
@@ -83,30 +89,8 @@ export function createDatabase({ bridge, commands, state }, view, options) {
     output.cancel();
   };
   const clients = createClients(runner, () => settings);
-
-  /** @param {string} title @param {{ id: string, label: string, detail?: string }[]} items */
-  const pick = async (title, items, free = false, placeholder = "") => {
-    try {
-      const picked = await commands.run("desk.palette.pick", {
-        title,
-        items,
-        ...(free ? { free, placeholder } : {}),
-      });
-      return typeof picked === "string" && picked !== "" ? picked : undefined;
-    } catch (error) {
-      if (codeOf(error) === "cancelled") return undefined;
-      throw new Error("Cannot ask: the palette is off.");
-    }
-  };
-  const confirm = async (/** @type {string} */ title, /** @type {string[]} */ reasons) => {
-    const [first, ...rest] = reasons;
-    const items = [
-      { id: "yes", label: "Yes", ...(first ? { detail: first } : {}) },
-      ...rest.map((reason, i) => ({ id: `why-${i}`, label: reason })),
-      { id: "no", label: "No" },
-    ];
-    return (await pick(title, items)) === "yes";
-  };
+  const { pick, confirm } = createAsk(commands);
+  const list = options.features ?? Object.values(features);
 
   const changed = () => view.explorer(explorer.rows());
   /** @type {ReturnType<typeof createManager>} */
@@ -162,6 +146,7 @@ export function createDatabase({ bridge, commands, state }, view, options) {
     cancelled,
     view,
     changed: () => save(),
+    panels: panelsOf(list),
   });
   const tools = createTools({
     bridge,
@@ -179,20 +164,14 @@ export function createDatabase({ bridge, commands, state }, view, options) {
     },
   });
 
-  const save = () =>
-    state.set({ current: consoles.current()?.connection ?? null, expanded: explorer.opened() });
-
-  /** Open a connection's console, from a name, an id or a pick; with none yet, the form. */
-  const openConsole = async (/** @type {string | undefined} */ ref) => {
-    if (manager.list().length === 0 && !ref) {
-      manager.create();
-      return null;
-    }
-    const conn = await manager.choose(ref, "Database: open which connection?");
-    if (!conn) return null;
-    await consoles.open(conn);
-    view.focus("editor");
-    return conn.name;
+  /** What comes back after a restart: the connection on screen, the explorer, kept panels. */
+  const save = () => {
+    const panels = consoles.kept();
+    state.set({
+      current: consoles.current()?.connection ?? null,
+      expanded: explorer.opened(),
+      ...(panels.length ? { panels } : {}),
+    });
   };
 
   /** A SQLite file the desk opens: its connection (added the first time) in the buffer given. */
@@ -216,9 +195,10 @@ export function createDatabase({ bridge, commands, state }, view, options) {
   });
   const dropped = createDropped({ bridge, manager, consoles, importer, view, visit });
 
+  const answer = answerer(commands, view);
   registerCommands({
     bridge,
-    commands,
+    answer,
     view,
     manager,
     consoles,
@@ -226,10 +206,9 @@ export function createDatabase({ bridge, commands, state }, view, options) {
     tools,
     execute: executor.execute,
     cancel,
-    openConsole,
-    visit,
     pick,
   });
+  answerRequests({ commands, consoles, visit });
   createAgentCommands({
     bridge,
     commands,
@@ -239,42 +218,46 @@ export function createDatabase({ bridge, commands, state }, view, options) {
     execute: executor.execute,
   });
 
-  /** The view's buttons and keys: a failure is said, never thrown at the DOM. */
-  const guard =
-    (/** @type {(...args: any[]) => unknown} */ fn) =>
-    async (/** @type {unknown[]} */ ...args) => {
-      try {
-        const done = await fn(...args);
-        return done;
-      } catch (error) {
-        if (codeOf(error) === "cancelled") return undefined;
-        view.say(error instanceof Error ? error.message : String(error));
-        return undefined;
-      }
-    };
-
-  /** Completions at the caret, after reading (quietly) the schema and tables it names. */
-  const completions = async (/** @type {string} */ text, /** @type {number} */ caret) => {
-    const shown = consoles.current();
-    const conn = shown ? manager.get(shown.connection) : undefined;
-    if (!conn) return undefined;
-    const { dialect } = engineOf(conn.engine);
-    const view_ = catalog.snapshot(conn);
-    const quiet = (/** @type {Promise<unknown>} */ p) => p.catch(() => undefined);
-    await Promise.all([
-      quiet(catalog.schemas(conn, true)),
-      ...(view_.defaultSchema ? [quiet(catalog.objects(conn, view_.defaultSchema, true))] : []),
-    ]);
-    let found = complete(text, caret, dialect, catalog.snapshot(conn));
-    if (found.wants.length) {
-      const reads = found.wants
-        .slice(0, COMPLETE_READS)
-        .map((w) => quiet(catalog.columns(conn, w.schema, w.table, true)));
-      await Promise.all(reads);
-      found = complete(text, caret, dialect, catalog.snapshot(conn));
-    }
-    return found;
+  const guard = guarded(view);
+  const builtins = {
+    ...builtinActions({
+      guard,
+      view,
+      manager,
+      consoles,
+      explorer,
+      tools,
+      importer,
+      dropped,
+      complete: createCompletions({ consoles, manager, catalog }),
+      cancel,
+    }),
+    ...createDrags({
+      current: () => consoles.current(),
+      connection: (id) => manager.get(id),
+      selection: () => view.selection(),
+    }),
   };
+  /** @type {import("./feature-host.js").Deps} */
+  const featureDeps = {
+    bridge,
+    commands,
+    view,
+    manager,
+    consoles,
+    catalog,
+    explorer,
+    tools,
+    execute: executor.execute,
+    settings: () => settings,
+    pick,
+    confirm,
+    say: (text) => view.say(text),
+    guard,
+    cancelled,
+  };
+  const taken = new Set(Object.keys(builtins));
+  const featureActions = registerFeatures(list, featureDeps, { answer, taken });
 
   const ready = (async () => {
     const saved = /** @type {{ current?: string | null, expanded?: string[] } | undefined} */ (
@@ -287,105 +270,9 @@ export function createDatabase({ bridge, commands, state }, view, options) {
     consoles.render();
     const conn = saved?.current ? manager.get(saved.current) : undefined;
     if (conn) await guard(() => consoles.open(conn))();
+    const kept = /** @type {{ panels?: unknown } | undefined} */ (saved)?.panels;
+    await guard(() => consoles.restore(kept))();
   })();
 
-  const edits = consoles.edits;
-  return {
-    ready,
-    /** Activate a row of the explorer: a connection opens its console, a table its rows. */
-    activate: guard(async (/** @type {Node} */ node) => {
-      const conn = manager.get(node.connection);
-      if (!conn) return explorer.toggle(node);
-      if (node.kind === "connection") await consoles.open(conn);
-      else if (node.kind === "table" && node.table)
-        await consoles.open(conn, { schema: node.schema ?? "", name: node.table });
-      else if (node.kind === "object" || node.kind === "part") await tools.ddl(node);
-      else explorer.toggle(node);
-    }),
-    toggle: (/** @type {Node} */ node, /** @type {boolean | undefined} */ open) =>
-      explorer.toggle(node, open),
-    edited: (/** @type {string} */ text) => consoles.edited(text),
-    tab: (/** @type {number} */ index) => consoles.tab(index),
-    run: guard(() => consoles.run("statement")),
-    runAll: guard(() => consoles.run("all")),
-    runTransaction: guard(() => consoles.run("all", "transaction")),
-    dryRun: guard(() => consoles.run("all", "dry-run")),
-    explain: guard(() => consoles.explain(false)),
-    explainAnalyze: guard(() => consoles.explain(true)),
-    format: guard(() => consoles.format()),
-    complete: (/** @type {string} */ text, /** @type {number} */ caret) =>
-      completions(text, caret).catch(() => undefined),
-    more: guard(() => consoles.more()),
-    cancel,
-    page: guard((/** @type {Parameters<typeof consoles.page>[0]} */ change) =>
-      consoles.page(change),
-    ),
-    history: guard(() => tools.history(undefined)),
-    star: guard(() => tools.star(undefined)),
-    starred: guard(() => tools.starred()),
-    copy: guard((/** @type {string | undefined} */ format) => tools.copy(format)),
-    exportTo: guard((/** @type {string | undefined} */ format) => tools.exportTo(format)),
-    ddl: guard((/** @type {Node} */ node) => tools.ddl(node)),
-    diagram: guard((/** @type {Node} */ node) => tools.diagram(node)),
-    openTable: guard(
-      async (
-        /** @type {string} */ connection,
-        /** @type {string} */ schema,
-        /** @type {string} */ name,
-      ) => {
-        const conn = manager.get(connection);
-        if (conn) await consoles.open(conn, { schema, name });
-        view.focus("grid");
-      },
-    ),
-    count: guard((/** @type {Node} */ node) => tools.countRows(explorer.rows(), node)),
-    filter: (/** @type {string} */ text) => explorer.filter(text),
-    editCell: guard(
-      (/** @type {number} */ row, /** @type {number} */ col, /** @type {string | null} */ value) =>
-        edits.editCell(row, col, value),
-    ),
-    addRow: guard(() => edits.addRow()),
-    deleteRows: guard((/** @type {number[]} */ rows) => edits.deleteRows(rows)),
-    revertRows: guard((/** @type {number[] | undefined} */ rows) => edits.revert(rows)),
-    previewChanges: guard(() => view.preview(edits.preview())),
-    submitChanges: guard(async () => view.say(await edits.submit())),
-    canEdit: guard(() => edits.ensure()),
-    /** A drop on the surface (dnd.js): undefined when it was carried out, "none" when not. */
-    drop: async (
-      /** @type {import("./drops.js").Dropped} */ item,
-      /** @type {import("./importer.js").Into | undefined} */ into,
-    ) => {
-      try {
-        return await dropped(item, into);
-      } catch (error) {
-        if (codeOf(error) !== "cancelled")
-          view.say(error instanceof Error ? error.message : String(error));
-        return /** @type {const} */ ("none");
-      }
-    },
-    dropped: guard((/** @type {import("./drops.js").Dropped} */ item) => dropped(item)),
-    say: (/** @type {string} */ text) => view.say(text),
-    importChange: guard((/** @type {import("./importer.js").Change} */ change) =>
-      importer.change(change),
-    ),
-    importRun: guard(() => importer.run()),
-    importCancel: () => importer.cancel(),
-    ...createDrags({
-      current: () => consoles.current(),
-      connection: (id) => manager.get(id),
-      selection: () => view.selection(),
-    }),
-    create: () => manager.create(),
-    importUri: guard(() => manager.importUri(undefined)),
-    edit: guard((/** @type {string | undefined} */ id) => manager.edit(id)),
-    remove: guard((/** @type {string | undefined} */ id) => manager.remove(id)),
-    refresh: (/** @type {string | undefined} */ id, /** @type {Node | undefined} */ node) =>
-      explorer.refresh(id, node),
-    formSave: guard((/** @type {Partial<Connection>} */ fields) => manager.save(fields)),
-    formTest: guard((/** @type {Partial<Connection>} */ fields) => manager.test(fields)),
-    formCancel: guard((/** @type {Parameters<typeof manager.cancelForm>[0]} */ fields) =>
-      manager.cancelForm(fields),
-    ),
-    password: (/** @type {string | undefined} */ value) => manager.answered(value),
-  };
+  return Object.assign({ ready, ...builtins }, featureActions);
 }

@@ -1,12 +1,12 @@
-// An ER diagram's DOM (item 9): an SVG of the schema's tables as boxes of columns (keys marked)
-// and its foreign keys as lines with an arrow at the table they refer to. Each table is a button
-// in the tab order; the arrow keys move between them, Enter opens its rows. Colours come from the
-// theme through the stylesheet's classes.
+// An ER diagram's DOM (item 9), the diagram panel's module: an SVG of the schema's tables as boxes
+// of columns (keys marked) and its foreign keys as lines with an arrow at the table they refer to.
+// Each table is a button in the tab order; the arrow keys move between them, Enter opens its rows.
+// Colours come from the theme through diagram.css's classes.
 
-import { METRICS } from "./schema/diagram.js";
+import { METRICS } from "../../schema/diagram.js";
 
 /**
- * @typedef {import("./schema/diagram.js").Layout} Layout
+ * @typedef {import("../../schema/diagram.js").Layout} Layout
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
  */
 

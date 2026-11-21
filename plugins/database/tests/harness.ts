@@ -173,7 +173,6 @@ export async function mount(
   let buffers = 0;
   const host = createTestHost({
     pluginId: "endue.database",
-    ...(options.state === undefined ? {} : { state: options.state }),
     handlers: {
       "store.get": ({ key }) => (key in store ? { value: store[key] } : {}),
       "store.set": ({ key, value }) => {
@@ -184,6 +183,7 @@ export async function mount(
       ...clients.handlers,
       ...options.handlers,
     },
+    ...(options.state === undefined ? {} : { state: options.state }),
     commands: {
       "desk.palette.pick": (args) => {
         const asked = args as { title: string; items: Array<{ id: string; label: string }> };
