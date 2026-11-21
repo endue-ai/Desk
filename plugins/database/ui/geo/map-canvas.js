@@ -1,4 +1,4 @@
-// The map's canvas in the frame (PG-46): it subset puts bitmaps the worker drew on the screen. A pan
+// The map's canvas in the frame (PG-46): it only puts bitmaps the worker drew on the screen. A pan
 // or a zoom moves and scales the last bitmap at once, and asks the worker for the new view; one
 // request is in flight at a time and the latest view is the next one asked, so a fast gesture never
 // queues up work. The theme's colours are read here and sent with each request.
@@ -13,15 +13,19 @@ import { toScreen } from "./plane.js";
  * @typedef {import("./client.js").GeoClient} GeoClient
  */
 
-const COLORS = 8;
+/**
+ * The desk's chart colours that read at 3:1 as marks on the plane in its light and dark schemes
+ * (geo-draw.test.ts), in an order that keeps neighbouring rows' hues apart.
+ */
+export const CHARTS = [1, 8, 5, 6, 4, 9, 7, 10];
 
 /** The theme's colours and the graticule's font, as the canvas takes them. */
 export function themeOf(/** @type {Element} */ node) {
   const style = node.ownerDocument.defaultView?.getComputedStyle(node);
   const token = (/** @type {string} */ name) => style?.getPropertyValue(name).trim() ?? "";
   return {
-    colors: Array.from({ length: COLORS }, (_, i) => token(`--desk-chart-${i + 1}`)),
-    accent: token("--desk-accent"),
+    colors: CHARTS.map((n) => token(`--desk-chart-${n}`)),
+    accent: token("--desk-primary"),
     grid: token("--desk-border"),
     label: token("--desk-text-muted"),
     font: `${token("--desk-text-2xs")} ${token("--desk-font-mono")}`.trim(),

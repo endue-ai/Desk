@@ -1,6 +1,6 @@
 /* A result's Map tab and the value viewer's Shape (PG-46, ui/geo/): the bar, the plane the worker's
    bitmaps are put on, the scale, the line that says the picked row, and the notes. The shapes'
-   own colours are the theme's --desk-chart-* and --desk-accent, read by map-canvas.js; every
+   own colours are the theme's --desk-chart-* and --desk-primary, read by map-canvas.js; every
    colour, font, size and radius here is a --desk-* token too. */
 
 .geo-box {

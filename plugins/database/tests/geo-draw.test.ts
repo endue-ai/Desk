@@ -4,12 +4,15 @@
 // under a point; and the plane's units, graticule step, scale bar and zoom. On a context that
 // records what it was asked to draw.
 import { describe, expect, it } from "vitest";
+import { contrast } from "../../../packages/ui/src/theme/index";
 import type { Context, Style } from "../ui/geo/draw.js";
 import { drawLayer } from "../ui/geo/draw.js";
 import { createEngine } from "../ui/geo/engine.js";
 import { buildLayer, pickAt } from "../ui/geo/layer.js";
+import { CHARTS } from "../ui/geo/map-canvas.js";
 import { fitView, gridStep, scaleBar, toData, unitsOf, zoomAt } from "../ui/geo/plane.js";
 import { simplify } from "../ui/geo/simplify.js";
+import { Palette, scheme } from "./contrast-css";
 import { CAPTURED } from "./geo-corpus";
 
 type Call = [string, ...unknown[]];
@@ -233,5 +236,18 @@ describe("drawing a column of shapes", () => {
     ).toBe(2);
     engine.answer({ id: 6, op: "drop", key: "k" });
     expect(engine.answer({ id: 7, op: "facts", key: "k", row: 0 }).reply.error).toMatch(/gone/u);
+  });
+
+  it("draws its marks at 3:1 and its labels at 4.5:1 on its plane in the light and dark schemes", () => {
+    // map-canvas.js reads these from the page: the row colours, the picked row's ink, the labels.
+    const marks = [...CHARTS.map((n) => `--desk-chart-${n}`), "--desk-primary"];
+    for (const name of ["light", "dark"] as const) {
+      const palette = new Palette(scheme(name), []);
+      const rgba = (token: string) => palette.paints(`var(${token})`)?.[0]?.rgba ?? [0, 0, 0, 0];
+      const plane = rgba("--desk-background");
+      for (const token of marks)
+        expect([name, token, contrast(rgba(token), plane) >= 3]).toEqual([name, token, true]);
+      expect([name, contrast(rgba("--desk-text-muted"), plane) >= 4.5]).toEqual([name, true]);
+    }
   });
 });
