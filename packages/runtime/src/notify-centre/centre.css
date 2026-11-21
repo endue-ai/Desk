@@ -1,0 +1,280 @@
+/* The notification centre (#307): its control right after the status line, and the panel of past
+   notices it opens. In the shell the control and the panel's buttons are the kit's (kit.css), the
+   panel a popover's surface; a desk without the shell (its tests' pages) draws them here. */
+
+/* The control, at the end of a plain desk's status row; in the shell, right after the line's card,
+   wherever the line's width puts its end (an anchor, so no text width is measured by script). */
+.desk-status {
+  anchor-name: --desk-status;
+}
+
+.desk-notify-bell {
+  grid-area: status;
+  justify-self: end;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  height: 24px;
+  margin-right: var(--desk-space-1);
+  padding: 0 var(--desk-space-2);
+  border: 0;
+  border-radius: var(--desk-radius-sm);
+  background: transparent;
+  color: var(--desk-text-muted);
+  font: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.desk-notify-bell:hover,
+.desk-notify-bell[aria-expanded="true"] {
+  background: var(--desk-hover);
+  color: var(--desk-text);
+}
+
+.layer-desk .desk-notify-bell {
+  position: absolute;
+  grid-area: auto;
+  position-anchor: --desk-status;
+  top: anchor(top);
+  left: anchor(right);
+  z-index: var(--z-float-top);
+  margin: 0 0 0 var(--space-1);
+}
+
+/* How many arrived since the panel was last open: the design system's badge, beside the bell. */
+.desk-notify-count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 var(--desk-space-1);
+  border-radius: var(--desk-badge-radius);
+  background: var(--desk-badge-bg);
+  color: var(--desk-badge-fg);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The panel: over a plain desk's status row at its end; in the shell, under the line, centred. */
+.desk-notify-centre {
+  position: absolute;
+  right: var(--desk-space-3);
+  bottom: calc(28px + var(--desk-space-2));
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  max-height: min(560px, calc(100% - 80px));
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-popover);
+  box-shadow: var(--desk-shadow-md);
+  color: var(--desk-text);
+  font-size: var(--desk-text-sm);
+  line-height: 1.4;
+  pointer-events: auto;
+  outline: none;
+}
+
+.layer-desk .desk-notify-centre {
+  top: calc(var(--space-2) + var(--control-xs) + var(--space-2));
+  right: 0;
+  bottom: auto;
+  left: 0;
+  z-index: var(--z-popover);
+  max-width: calc(100% - 2 * var(--space-6));
+  max-height: min(560px, calc(100% - 200px));
+  margin: 0 auto;
+}
+
+.desk-notify-centre button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.desk-notify-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  padding: var(--desk-space-3) var(--desk-space-3) var(--desk-space-2);
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.desk-notify-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.desk-notify-title {
+  margin: 0;
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+}
+
+.desk-notify-live {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+/* Do not disturb: a switch drawn in the button, its label after it. */
+.desk-notify-dnd {
+  gap: var(--desk-space-2);
+}
+
+.desk-notify-switch {
+  position: relative;
+  flex: none;
+  width: 26px;
+  height: 16px;
+  border: 1px solid var(--desk-input);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-muted);
+}
+
+.desk-notify-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-text-muted);
+}
+
+.desk-notify-dnd[aria-checked="true"] .desk-notify-switch {
+  border-color: var(--desk-primary);
+  background: var(--desk-primary);
+}
+
+.desk-notify-dnd[aria-checked="true"] .desk-notify-switch::after {
+  left: 12px;
+  background: var(--desk-primary-foreground);
+}
+
+.desk-notify-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: var(--desk-space-2);
+}
+
+.desk-notify-group-title {
+  margin: var(--desk-space-3) var(--desk-space-3) var(--desk-space-1);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.desk-notify-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A row: its words (a button when they open what it is about), its actions under them, and its
+   Dismiss at the end; rows are hairlines apart. */
+.desk-notify-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "text dismiss"
+    "actions actions";
+  column-gap: var(--desk-space-1);
+  padding: var(--desk-space-2) var(--desk-space-2) var(--desk-space-2) var(--desk-space-1);
+  margin: 0 var(--desk-space-2);
+  border-radius: var(--desk-radius-sm);
+}
+
+.desk-notify-row + .desk-notify-row {
+  border-top: 1px solid var(--desk-border);
+}
+
+.desk-notify-row:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: -2px;
+}
+
+.desk-notify-text {
+  grid-area: text;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--desk-space-1) var(--desk-space-2);
+  text-align: left;
+}
+
+/* Over the kit's row, which is one line high. */
+.desk-notify-centre .desk-notify-open {
+  align-items: stretch;
+  height: auto;
+  padding: var(--desk-space-1) var(--desk-space-2);
+  white-space: normal;
+}
+
+.desk-notify-meta {
+  display: flex;
+  gap: var(--desk-space-2);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.desk-notify-plugin {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desk-notify-meta time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.desk-notify-row-title {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.desk-notify-row-body {
+  color: var(--desk-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.desk-notify-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1);
+  padding: var(--desk-space-1) var(--desk-space-2) 0;
+}
+
+.desk-notify-dismiss.icon-button,
+.desk-notify-dismiss {
+  grid-area: dismiss;
+  align-self: start;
+  width: 24px;
+  height: 24px;
+}
+
+/* Nothing in it: what belongs here, without a picture or a surface. */
+.desk-notify-empty {
+  padding: var(--desk-space-6) var(--desk-space-4);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  text-align: center;
+}
+
+.desk-notify-empty p {
+  margin: 0;
+}
+
+.desk-notify-empty-title {
+  margin-bottom: var(--desk-space-1);
+  color: var(--desk-text);
+  font-size: var(--desk-text-sm);
+}

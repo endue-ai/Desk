@@ -7,7 +7,8 @@
  * opens what it is about (ADR 0113): a click on its text, or picking it in the history, shows the
  * plugin (desk.display.show) and then hands it the notice (desk.notify.open). Hosts outside the
  * page hear each notice that shows (`onShown`) and act on one as a click on it would (`activate`):
- * the OS's notifications while endue is out of sight (#306).
+ * the OS's notifications while endue is out of sight (#306). The notification centre holds the
+ * history (#307): a control right after the line opens it, as desk.notify.history does.
  */
 import type { NotifyLevel } from "@endue-ai/bridge";
 import { type GestureDesk, runGesture } from "../gesture";
@@ -18,8 +19,10 @@ import {
   Notifications,
   noticeText,
 } from "../notify";
+import { installCentre, type NotifyCentre } from "../notify-centre/install";
 import type { RuntimeNotices } from "../runtime-api";
 import { type DeskContext, disposer, type Installed } from "./context";
+import { LANGUAGE_SETTING } from "./language";
 
 export interface NotifyPolicy extends Installed, RuntimeNotices {
   notifications: Notifications;
@@ -109,6 +112,31 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
   const notifications = new Notifications(clock, render);
   offs.add(() => notifications.dispose());
 
+  const dnd = () => notifications.settings.dnd;
+  const toggleDnd = () => {
+    const next = !dnd();
+    settings.set("desk.notify.dnd", next);
+    return next;
+  };
+  // The centre's control goes beside the line on its page; a line on no page (a test's) has none.
+  const centre: NotifyCentre | undefined = statusLine.parentElement
+    ? installCentre(statusLine, {
+        notifications,
+        language: () => ctx.language?.() ?? "en",
+        now: () => Date.now(),
+        pluginName: (id) => hub.plugins.find((p) => p.id === id)?.manifest?.name ?? id,
+        dnd,
+        toggleDnd,
+        opens,
+        open,
+        act: (notice, action) => {
+          if (notifications.current() === notice) notifications.dismiss();
+          return runGesture(desk, action.command, action.args);
+        },
+      })
+    : undefined;
+  if (centre) offs.add(centre.dispose);
+
   const configure = () =>
     notifications.configure({
       durations: Object.fromEntries(
@@ -124,6 +152,13 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
   configure();
   offs.add(
     settings.onChange((keys) => keys.some((k) => k.startsWith("desk.notify.")) && configure()),
+  );
+  // The centre's switch follows do not disturb, and its words the desk's language.
+  offs.add(
+    settings.onChange((keys) => {
+      if (keys.some((k) => k.startsWith("desk.notify.") || k === LANGUAGE_SETTING))
+        centre?.refresh();
+    }),
   );
 
   offs.add(
@@ -149,36 +184,20 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
       }),
     );
   define("desk.notify.dismiss", "Dismiss the notification", () => notifications.dismiss());
-  define(
-    "desk.notify.dnd",
-    "Turn do not disturb on or off",
-    () => {
-      const next = !notifications.settings.dnd;
-      settings.set("desk.notify.dnd", next);
-      return next;
-    },
-    ["do not disturb", "focus", "quiet"],
-  );
+  define("desk.notify.dnd", "Turn do not disturb on or off", toggleDnd, [
+    "do not disturb",
+    "focus",
+    "quiet",
+  ]);
   define(
     "desk.notify.history",
     "Show past notifications",
     (args) => {
-      const history = notifications.history();
-      // The palette shows them (when it is on); the answer does not wait for the person.
-      const show = (args as { show?: boolean } | undefined)?.show !== false;
-      if (show && commands.has("desk.palette.pick")) {
-        const items = history.map((n) => ({ id: n.id, label: noticeText(n), detail: n.caller }));
-        void commands
-          .run("desk.palette.pick", { title: "Notifications", items })
-          .then((picked) => {
-            const notice = history.find((n) => n.id === picked);
-            return notice ? open(notice) : undefined;
-          })
-          .catch(() => {});
-      }
-      return history;
+      // The centre opens (or closes) for the person; `{ show: false }` only reads the history.
+      if ((args as { show?: boolean } | undefined)?.show !== false) centre?.toggle();
+      return notifications.history();
     },
-    ["messages", "history"],
+    ["messages", "history", "notification centre"],
   );
   define("desk.notify.clear", "Clear past notifications", () => notifications.clear(), ["history"]);
 

@@ -1,5 +1,6 @@
 @import "./describe/describe.css";
 @import "./settings-ui/settings.css";
+@import "./notify-centre/centre.css";
 
 /* The 2D desk. Every size is fixed in CSS so render snapshots do not depend on fonts. */
 
@@ -104,10 +105,11 @@ div.desk-surface-frame {
   pointer-events: none;
 }
 
+/* Its end is the notification centre's control (notify-centre/centre.css). */
 .desk-status {
   grid-area: status;
   height: 28px;
-  padding: 0 12px;
+  padding: 0 64px 0 12px;
   overflow: hidden;
   white-space: nowrap;
   color: var(--desk-text-muted);
