@@ -5,9 +5,12 @@
 .surface {
   /* The radius inside its border, which its title bar and body round to. */
   --surface-inner-radius: max(0px, calc(var(--radius-lg) - var(--desk-border-width)));
+  /* Its title bar's height, its bottom line included: desk-wm's `host::TITLE` and the compositor's
+     `title_height` (ADR 0255). */
+  --surface-title-height: 36px;
   position: absolute;
   display: grid;
-  grid-template-rows: 40px minmax(0, 1fr);
+  grid-template-rows: var(--surface-title-height) minmax(0, 1fr);
   /* One column the width of the surface: a long title never pushes the tools out. */
   grid-template-columns: minmax(0, 1fr);
   /* No clip here: the title bar and the body clip themselves to the rounded corners, and the
@@ -54,7 +57,7 @@
   gap: var(--space-2);
   overflow: hidden;
   border-radius: var(--surface-inner-radius) var(--surface-inner-radius) 0 0;
-  height: 40px;
+  height: var(--surface-title-height);
   padding: 0 var(--space-2) 0 var(--space-3);
   border-bottom: 1px solid var(--desk-border);
   color: var(--desk-text);
@@ -87,10 +90,13 @@
   font-weight: 600;
   line-height: 18px;
 }
-.surface-tools { display: flex; gap: 2px; margin-left: auto; }
+/* The pinned and floating marks, then the window menu, Pop out and Close (`title-bar.ts`): desk-wm
+   keeps their room (`TITLE_END`) whether the marks show or not. */
+.surface-tools { display: flex; align-items: center; gap: 2px; margin-left: auto; }
 .tool { width: 24px; height: 24px; border-radius: var(--radius-sm); color: var(--desk-text-muted); }
-.tool:hover { color: var(--desk-text); }
-.tool[aria-pressed="true"] { color: var(--desk-accent); }
+.tool:hover,
+.tool[aria-expanded="true"] { color: var(--desk-text); }
+.surface-mark:not([hidden]) { display: inline-flex; color: var(--desk-accent); }
 
 .surface-body {
   min-height: 0;

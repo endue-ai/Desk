@@ -61,7 +61,7 @@ async function desk() {
   await wm.edit([
     place(at("endue.mail", 300, { plugin: "endue.mail" })),
     place(at("window-1", 800, { panes: split })),
-    place(at("tomorrow", 700)),
+    place(at("window-2", 700, { plugin: "endue.window", tabs: [{ id: "p1", view: "notes" }] })),
   ]);
   const placed = (id: string) => {
     const p = windowsOf(store.get()).find((w) => w.id === id);
@@ -95,7 +95,7 @@ describe("a window's title bar", () => {
     one.relabel();
     expect(names(one.el)).toEqual(["Window menu", "Pop out", "Close"]);
     // A window of several tabs, and one of the desk's own views: no pop out.
-    for (const id of ["window-1", "tomorrow"]) {
+    for (const id of ["window-1", "window-2"]) {
       const bar = mountTitleBar(ctx, () => placed(id));
       bar.relabel();
       expect(names(bar.el), id).toEqual(["Window menu", "Close"]);

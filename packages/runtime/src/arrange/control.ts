@@ -1,5 +1,5 @@
 /**
- * The rest of what a window's title bar, the drawer and the desktops do with a window, for agents
+ * The rest of what a window's menu, the drawer and the desktops do with a window, for agents
  * (ADR 0269): float it above the canvas or put it back on it, pin it, bring it back from the
  * drawer, move it to another desktop or a new one, open a new window, and open a tab or close one (ADR 0270).
  * Each runs what the person's button, key or drag runs (`shell/actions.ts`, `shell/windows.ts`,
@@ -77,7 +77,7 @@ export function defineControlCommands(ctx: ShellCtx): () => void {
       },
       agent: {
         description:
-          "Float a window of the current desktop above the canvas (floating: true), where it stays put on screen while the canvas pans, or put it back on the canvas, moving with it (false), as its title bar's Floating button does. It stays where it is on screen; putting a snapped or filled one on the canvas ends its fill.",
+          "Float a window of the current desktop above the canvas (floating: true), where it stays put on screen while the canvas pans, or put it back on the canvas, moving with it (false), as its window menu's Floating mode does. It stays where it is on screen; putting a snapped or filled one on the canvas ends its fill.",
         args: flag("floating", "Float above the canvas (true) or sit on it (false)."),
         result: FRAME,
       },
@@ -94,7 +94,7 @@ export function defineControlCommands(ctx: ShellCtx): () => void {
       },
       agent: {
         description:
-          "Pin a window of the current desktop (pinned: true), drawing it above the windows of its kind that are not pinned and below the one in use, or unpin it (false), as its title bar's pin does.",
+          "Pin a window of the current desktop (pinned: true), drawing it above the windows of its kind that are not pinned and below the one in use, or unpin it (false), as its window menu's Pin does.",
         args: flag("pinned", "Pin (true) or unpin (false)."),
         result: FRAME,
       },
@@ -203,7 +203,7 @@ export function defineControlCommands(ctx: ShellCtx): () => void {
       },
       agent: {
         description:
-          "Open a new tab in a window of the current desktop (the one in use unless named), as its title bar's New tab tool and Mod+D do: another window of the plugin the window shows, which takes the focus, and its id is answered (desk.windows.list lists a window's tabs as its panes). A window takes only tabs of its own plugin (ADR 0270); a window of the launcher or an agent takes none.",
+          "Open a new tab in a window of the current desktop (the one in use unless named), as its window menu's New tab and Mod+D do: another window of the plugin the window shows, which takes the focus, and its id is answered (desk.windows.list lists a window's tabs as its panes). A window takes only tabs of its own plugin (ADR 0270); a window of the launcher or an agent takes none.",
         args: {
           type: "object",
           properties: { window: WINDOW_ARG },

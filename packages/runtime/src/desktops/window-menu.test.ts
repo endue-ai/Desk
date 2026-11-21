@@ -73,7 +73,7 @@ async function desk() {
   await edit(ctx, { op: "adopt", id: "endue.mail", title: "Mail" });
   await wm.edit([
     place(at("endue.mail", 300, { plugin: "endue.mail" })),
-    place(at("tomorrow", 800)),
+    place(at("window-2", 800, { plugin: "endue.window", tabs: [{ id: "p1", view: "notes" }] })),
     { op: "focus", window: "endue.mail" },
   ]);
   defineAwayCommand(ctx);
@@ -182,7 +182,7 @@ describe("a window's menu", () => {
     const again = mountMenus(d.root, d.ctx, document.createElement("nav"));
     d.bar("endue.mail").tool.click();
     expect(d.row("Put in drawer").querySelector(".pop-muted")?.textContent).toBe("⌥⌘H");
-    d.bar("tomorrow").tool.click();
+    d.bar("window-2").tool.click();
     expect(d.row("New tab").hasAttribute("disabled")).toBe(true);
     again.dispose();
   });
@@ -296,7 +296,7 @@ describe("a window's menu", () => {
     // Its right edge at the tool's, its top under the tool.
     expect([menu.style.left, menu.style.top]).toEqual([`${1024 - MENU.w}px`, `${230 + 6}px`]);
     // Kept inside the app near its left and bottom edges.
-    d.bar("tomorrow", 10, 880).tool.click();
+    d.bar("window-2", 10, 880).tool.click();
     const low = d.menu() as HTMLElement;
     expect([low.style.left, low.style.top]).toEqual(["8px", `${900 - MENU.h - 8}px`]);
   });
