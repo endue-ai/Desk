@@ -14,8 +14,8 @@ else brings it back) and ADR 0208 (the motion gate's checks that come and go).
 #345 asked why the motion gate's resize loop (100 turns: the app window grown and shrunk by four sizes
 at once, a plugin window maximized or restored, a turn every 100 ms) stalls a plugin's page now and
 then, "main.endue-terminal stalled (#157 watch)" first. The premise, a Terminal change, did not hold:
-any page stops (Docker, Calendar, Eris, Local models, Projects, API Studio, Git Studio, Notes,
-Database and Toolbar did here), in about one loop of ten. A stall fails the gate's `loop` check: the
+any page stops (the Terminal, Docker, Calendar, Eris, Local models, Projects, API Studio, Git
+Studio, Notes, Database and Toolbar did here), in about one loop of ten. A stall fails the gate's `loop` check: the
 stall watch (`stall.rs`, #157) found the page asking for frames through begin frames for three
 seconds, painting nothing, and loaded it again. Is there a step the shell can take before that reload
 that brings such a page back, or a way to keep it from stopping?
