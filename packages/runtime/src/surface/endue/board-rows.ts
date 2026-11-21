@@ -15,7 +15,7 @@ import type {
 } from "@endue-ai/bridge";
 import type { Lang } from "../../shell/copy";
 import { ago } from "../local-agent/model";
-import { type BoardKey, boardText, isBoardKey } from "./board-copy";
+import { type BoardKey, boardText, boardWord } from "./board-copy";
 
 /** A line's state: on (solid), off (dashed), a problem, or not read by the desk (dashed, muted). */
 export type LineState = "on" | "off" | "bad" | "unknown";
@@ -90,8 +90,7 @@ const words = (lang: Lang) => (key: BoardKey, vars?: Record<string, string | num
 
 /** A channel's name: what endue AI shows for it, else its provider's. */
 export function channelName(lang: Lang, c: StudioChannel): string {
-  const key = `ch_${c.provider}`;
-  return c.name || (isBoardKey(key) ? boardText(lang, key) : c.provider);
+  return c.name || (boardWord(lang, "channel", c.provider) ?? c.provider);
 }
 
 /** The active channels' names and, when a key still works, the API: the ways in that are on. */
