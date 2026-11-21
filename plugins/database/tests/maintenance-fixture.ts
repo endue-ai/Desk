@@ -175,7 +175,8 @@ export function maintenanceServer(
             ["warehouse", String(version), server, options.recovery ? "t" : "f"],
           ],
         };
-      if (/FROM pg_catalog\.pg_tablespace/u.test(text))
+      // The form's own statement only: the schema cache reads pg_tablespace too (PG-50).
+      if (text.startsWith("SELECT spcname FROM pg_catalog.pg_tablespace"))
         return { rows: [["spcname"], ["fast"], ["pg_default"]] };
       if (text.startsWith("SELECT c.relkind, s.n_live_tup")) {
         const t = /i\.relname = /u.test(text)

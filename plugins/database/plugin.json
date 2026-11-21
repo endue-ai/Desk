@@ -598,6 +598,43 @@
         "keywords": ["undo", "discard", "edit"]
       },
       {
+        "id": "endue.database.paste",
+        "title": "Database: paste into the grid",
+        "keywords": ["clipboard", "tsv", "csv", "spreadsheet", "cells", "rows", "edit"],
+        "description": "Pastes tab-separated text (or CSV, or one value) into the grid on screen from its caret as pending changes: rows past the last are added, each value is checked by its column's type and a bad one refuses the whole paste with its row and column. Nothing runs until the person submits.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "The text to paste; the clipboard's when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.duplicate-rows",
+        "title": "Database: duplicate the selected rows",
+        "keywords": ["copy row", "clone", "insert", "new row", "edit"]
+      },
+      {
+        "id": "endue.database.fill-down",
+        "title": "Database: fill down the selected cells",
+        "keywords": ["copy down", "repeat", "cells", "edit"]
+      },
+      {
+        "id": "endue.database.clear-cells",
+        "title": "Database: clear the selected cells to NULL",
+        "keywords": ["null", "empty", "erase", "cells", "edit"]
+      },
+      {
+        "id": "endue.database.undo-change",
+        "title": "Database: undo the last pending change",
+        "keywords": ["undo", "take back", "paste", "edit"]
+      },
+      {
         "id": "endue.database.set-default",
         "title": "Database: set the cell to DEFAULT",
         "keywords": ["default value", "edit", "cell", "reset"]

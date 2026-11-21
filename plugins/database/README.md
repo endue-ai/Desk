@@ -7,8 +7,8 @@ and which modules do it, is in [`docs/features.md`](docs/features.md): a new fea
 
 `Mod+Shift+B` opens it; every operation is a command `endue.database.*` (`plugin.json`), and
 `endue.database.connections`, `.schema`, `.query`, `.search-data`, `.activity`, `.cancel-session`,
-`.end-session` and `.maintenance` serve agents (ADR 0088; the last three change the server only after the
-person's yes, ADR 0290, ADR 0293).
+`.end-session`, `.maintenance` and `.paste` serve agents (ADR 0088; the cancel, the end and maintenance change
+the server only after the person's yes, ADR 0290, ADR 0293; a paste stays pending until the person submits).
 
 ## Permissions
 
