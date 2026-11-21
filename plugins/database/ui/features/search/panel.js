@@ -111,7 +111,7 @@ export function searchPanel(doc, first, act, buffer) {
         ignore.label,
       ),
       el(doc, "fieldset", { class: "search-set" }, el(doc, "legend", {}, "Schemas"), schemaBox),
-      labelled("Tables (every one when empty)", tables, "search-tables"),
+      labelled("Tables (every one when empty)", tables, "search-names"),
       el(
         doc,
         "fieldset",

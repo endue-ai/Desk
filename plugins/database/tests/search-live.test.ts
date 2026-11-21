@@ -59,7 +59,7 @@ CREATE TABLE sessions (token uuid, seen timestamptz);
 INSERT INTO sessions VALUES (gen_random_uuid(), now());
 CREATE TABLE tags (id int PRIMARY KEY, labels text[]);
 INSERT INTO tags VALUES (1, ARRAY['987654']);
-ANALYZE;
+ANALYZE accounts, audit, big, customers, events, flags, notes, orders, payments, products, sessions, tags;
 `;
 
 /** The plugin with one connection to the scratch database, as the URI's role or `as`. */

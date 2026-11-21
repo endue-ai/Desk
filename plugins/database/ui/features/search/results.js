@@ -41,7 +41,7 @@ function keyText(/** @type {TableHits} */ t, /** @type {(string | null)[]} */ ke
 export function createResults(doc, open) {
   const summary = el(doc, "p", { class: "search-summary", "data-part": "summary" });
   const notes = el(doc, "div", { class: "search-notes" });
-  const list = el(doc, "div", { class: "search-tables", "data-part": "tables" });
+  const list = el(doc, "div", { class: "search-list", "data-part": "tables" });
   const skipped = el(doc, "section", { class: "search-skipped", "data-part": "skipped" });
   const root = el(
     doc,
