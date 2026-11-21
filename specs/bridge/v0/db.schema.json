@@ -44,6 +44,7 @@
           "type": "string",
           "maxLength": 4096
         },
+        "passwordRef": { "$ref": "#/$defs/DbPasswordName" },
         "tls": { "$ref": "#/$defs/DbTls" },
         "settings": {
           "description": "Startup parameters (DateStyle, TimeZone, search_path, statement_timeout, application_name, ...). client_encoding, user, database and replication are invalid_params.",
@@ -60,7 +61,11 @@
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/DbConnectPermission" }
       },
       "required": ["engine", "host", "database", "user", "scope"],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "not": {
+        "properties": { "password": true, "passwordRef": true },
+        "required": ["password", "passwordRef"]
+      }
     },
     "DbTls": {
       "description": "How the session uses TLS.",
@@ -82,7 +87,7 @@
       "enum": ["disable", "prefer", "require", "verify-ca", "verify-full"]
     },
     "DbOpenResult": {
-      "description": "Result of db.open: the session, signed in; or the server's refusal (error) and no session; or needsPassword when no password was given, none was found in the password file and the server asks for one.",
+      "description": "Result of db.open: the session, signed in; or the server's refusal (error) and no session; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.",
       "type": "object",
       "properties": {
         "sessionId": { "$ref": "#/$defs/DbSessionId" },
@@ -344,6 +349,115 @@
         "more",
         "transaction"
       ],
+      "additionalProperties": false
+    },
+    "DbPasswordName": {
+      "description": "A password the caller kept with db.passwords.set, by the name it chose (ADR 0311). db.open's passwordRef names it: the core reads the OS keychain itself, after the password file, and only for the host, port and user it was kept for; a name that is not kept, or was kept for another server or user, is as if none was given. Not with password.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "DbPasswordsSetRequest": {
+      "description": "Keep a password in the OS keychain under a name, for one host, port and user; it is never answered back.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.passwords.set" },
+        "params": { "$ref": "#/$defs/DbPasswordsSetParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbPasswordsSetParams": {
+      "description": "Parameters of db.passwords.set. A name already kept is replaced. A plugin's manifest must declare db:connect for the host and port; no grant is needed, since using it is db.open's.",
+      "type": "object",
+      "properties": {
+        "name": { "$ref": "#/$defs/DbPasswordName" },
+        "host": {
+          "description": "The host db.open names, as net.connect takes it.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
+          "maxLength": 253
+        },
+        "port": {
+          "description": "5432 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "user": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "password": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      },
+      "required": ["name", "host", "user", "password"],
+      "additionalProperties": false
+    },
+    "DbPasswordsSetResult": {
+      "description": "Result of db.passwords.set: kept.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DbPasswordsDeleteRequest": {
+      "description": "Forget a password the caller kept: its keychain entry goes. Forgetting one that is not kept is not an error.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.passwords.delete" },
+        "params": { "$ref": "#/$defs/DbPasswordsDeleteParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbPasswordsDeleteParams": {
+      "description": "Parameters of db.passwords.delete.",
+      "type": "object",
+      "properties": {
+        "name": { "$ref": "#/$defs/DbPasswordName" }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "DbPasswordsDeleteResult": {
+      "description": "Result of db.passwords.delete.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DbPasswordsListRequest": {
+      "description": "The passwords the caller kept: what each is kept for, never the password.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.passwords.list" },
+        "params": { "$ref": "#/$defs/DbPasswordsListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbPasswordsListParams": {
+      "description": "Parameters of db.passwords.list.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DbPasswordsListResult": {
+      "description": "Result of db.passwords.list, by name.",
+      "type": "object",
+      "properties": {
+        "passwords": { "type": "array", "items": { "$ref": "#/$defs/DbKeptPassword" } }
+      },
+      "required": ["passwords"],
+      "additionalProperties": false
+    },
+    "DbKeptPassword": {
+      "description": "A password the caller kept: its name and the host, port and user it is for.",
+      "type": "object",
+      "properties": {
+        "name": { "$ref": "#/$defs/DbPasswordName" },
+        "host": { "type": "string" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "user": { "type": "string" }
+      },
+      "required": ["name", "host", "port", "user"],
       "additionalProperties": false
     },
     "DbPage": {

@@ -18,8 +18,10 @@ import { reasonsOf } from "./words.js";
  *   connection(id: string): Connection | undefined,
  *   settings(): import("../settings.js").Settings,
  *   onBusy(running: number): void,
+ *   kept?(conn: Connection): string | undefined,
  * }} Deps
- *   `consoles` is a getter: the consoles are made after the sessions they run on.
+ *   `consoles` is a getter: the consoles are made after the sessions they run on; `kept` names the
+ *   password the keychain keeps for a connection (ADR 0311), for every session it opens.
  */
 
 /** @param {Deps} deps */
@@ -40,6 +42,7 @@ export function createPluginSessions(deps) {
     onLost: (owner, line) => deps.view.say(line(labelFor(owner))),
     idleMs: () => deps.settings().sessionIdleMinutes * 60_000,
     limit: () => deps.settings().sessionsPerConnection,
+    ...(deps.kept ? { kept: deps.kept } : {}),
   });
   const mine = (/** @type {string} */ connection) => (/** @type {{ connection: string }} */ e) =>
     e.connection === connection;

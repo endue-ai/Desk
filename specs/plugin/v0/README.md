@@ -128,7 +128,7 @@ eight `actions` (`{ command, title, args? }`): Enter runs the first, Mod+Enter t
 | `proc:spawn` | `commands`, `pty` | `proc.spawn`, `proc.write`, `proc.resize`, `proc.kill` |
 | `net:fetch` | `hosts` | `net.fetch` |
 | `net:connect` | `hosts` | `net.connect`, `net.send`, `net.close` and their `net.data` and `net.closed` events; a host with a port covers that port only, one without every port |
-| `db:connect` | `hosts` | `db.open` to those hosts, and `db.run`, `db.fetch`, `db.copy`, `db.cancel`, `db.close`, `db.list` and the `db.*` events on the caller's own sessions; a host with a port covers that port only, one without every port. `net:connect` does not cover `db.*`, nor `db:connect` a socket; agents are refused (ADR 0281) |
+| `db:connect` | `hosts` | `db.open` to those hosts, and `db.run`, `db.fetch`, `db.copy`, `db.cancel`, `db.close`, `db.list` and the `db.*` events on the caller's own sessions; a host with a port covers that port only, one without every port. Declared for a host and port, it lets a plugin keep a password for them with `db.passwords.set`, which `db.open` uses by `passwordRef` under the grant (ADR 0311). `net:connect` does not cover `db.*`, nor `db:connect` a socket; agents are refused (ADR 0281) |
 | `audio:capture` | `wakeWord` | `audio.capture.start`, `audio.capture.stop`, `audio.wake` events |
 | `ui:surface` | none | `ui.surface.open`, `ui.surface.close`, `ui.surface.snapshot` (its own surfaces) |
 | `ui:notify` | none | `ui.notify` |

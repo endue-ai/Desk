@@ -40,8 +40,13 @@ export function terminated(sql: string): number | undefined {
   return pid === undefined ? undefined : Number(pid);
 }
 
-/** pg_terminate_backend's answer: true when a session had that process id. */
-export const terminateAnswer = (found: boolean): Partial<DbPage> => ({
+/** pg_terminate_backend's answer when `sql` is one: true when one of `pids` is the one it names. */
+export function terminateAnswer(sql: string, pids: number[]): Partial<DbPage> | undefined {
+  const pid = terminated(sql);
+  return pid === undefined ? undefined : terminateRow(pids.includes(pid));
+}
+
+const terminateRow = (found: boolean): Partial<DbPage> => ({
   columns: [
     {
       name: "pg_terminate_backend",

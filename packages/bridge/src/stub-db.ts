@@ -4,7 +4,8 @@
  * and port, agents refused, postgresql alone, reserved settings and page limits, 16 sessions a
  * caller, sessions their caller's alone, pages whose `more` is exact and whose last page counts
  * every page, one statement at a time, cancel, COPY, and db.closed when the session ends; a
- * transaction as the server keeps it (stub-db-transaction.ts), and pg_terminate_backend's FATAL.
+ * transaction as the server keeps it (stub-db-transaction.ts), and pg_terminate_backend's FATAL. A
+ * password kept with db.passwords.* signs in by `passwordRef` (stub-db-passwords.ts, ADR 0311).
  */
 import { StubError, type StubHandlers } from "./adapters";
 import type {
@@ -20,6 +21,7 @@ import type {
   Permission,
 } from "./generated";
 import { covers } from "./stub-covers";
+import { type DbPasswordsServed, stubDbPasswords } from "./stub-db-passwords";
 import {
   controlTag,
   endsFailed,
@@ -31,7 +33,9 @@ import {
   transactionAfter,
 } from "./stub-db-transaction";
 
-export type DbServed = `db.${"open" | "run" | "fetch" | "copy" | "cancel" | "close" | "list"}`;
+export type DbServed =
+  | `db.${"open" | "run" | "fetch" | "copy" | "cancel" | "close" | "list"}`
+  | DbPasswordsServed;
 
 /** One statement a scripted server answers. */
 export interface StubStatement {
@@ -133,6 +137,7 @@ export function stubDb(
   const sessions = new Map<string, Session>();
   /** Every session's caller, kept after it ends so its db.closed still finds it. */
   const owners = new Map<string, string>();
+  const kept = stubDbPasswords();
   let next = 0;
 
   const mine = (caller: string | undefined, sessionId: string) => {
@@ -235,17 +240,14 @@ export function stubDb(
     const statement = script?.statements.find(matches) ?? script?.answer?.(sql, session.signed);
     if (statement) return answer(session, statement, pageRows, pageBytes);
     if (isControl(sql)) return last(session, controlTag(sql, session.transaction));
-    const pid = terminated(sql);
-    if (pid === undefined)
-      return failed(
-        session,
-        failure("0A000", "the stub's script has no answer for this statement"),
-      );
-    const found = [...sessions.values()].some((s) => s.info.pid === pid);
-    return last(session, "SELECT 1", terminateAnswer(found));
+    const pids = [...sessions.values()].map((s) => s.info.pid);
+    const ended = terminateAnswer(sql, pids);
+    if (ended) return last(session, "SELECT 1", ended);
+    return failed(session, failure("0A000", "the stub's script has no answer for this statement"));
   };
 
   const handlers: Required<Pick<StubHandlers, DbServed>> = {
+    ...kept.handlers,
     "db.open": (params, caller) => {
       refuseAgents(caller);
       const port = params.port ?? 5432;
@@ -263,10 +265,10 @@ export function stubDb(
           "invalid_value",
           `${me} already holds ${MAX_SESSIONS} database sessions`,
         );
+      const password = kept.password(params, caller, port);
       if (!script) throw new StubError("io_error", `cannot connect to ${params.host}:${port}`);
-      if (script.password !== undefined && params.password === undefined)
-        return { needsPassword: true };
-      if (script.password !== undefined && params.password !== script.password) {
+      if (script.password !== undefined && password === undefined) return { needsPassword: true };
+      if (script.password !== undefined && password !== script.password) {
         const message = `password authentication failed for user "${params.user}"`;
         return {
           error: { ...failure("28P01", message), severity: "FATAL", localSeverity: "FATAL" },

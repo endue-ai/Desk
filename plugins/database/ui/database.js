@@ -26,6 +26,7 @@ import { panelsOf, registerFeatures } from "./feature-host.js";
 import * as features from "./features/index.js";
 import { addHistory } from "./history.js";
 import { createImporter } from "./importer.js";
+import { createKeychain } from "./keychain.js";
 import { createManager } from "./manage.js";
 import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
@@ -98,7 +99,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   });
   // PostgreSQL's runs on the core's sessions (ADR 0281): a console's and a table view's kept, any
   // other run's its own (PG-02, ADR 0320).
-  const kept = createPluginSessions({
+  const held = createPluginSessions({
     bridge,
     view,
     consoles: () => consoles,
@@ -108,12 +109,14 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       sessions = count;
       busy();
     },
+    // A password the keychain keeps signs the session in, so none is asked for (ADR 0311).
+    kept: (conn) => manager.passwords.ref(conn),
   });
-  const pg = kept.pg;
+  const pg = held.pg;
   const cancel = () => {
     catalog.cancel();
     runner.cancel();
-    pg.cancel(kept.scope());
+    pg.cancel(held.scope());
     output.cancel();
   };
   const clients = createClients(runner, () => settings);
@@ -121,6 +124,8 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   const list = options.features ?? Object.values(features);
 
   const changed = () => view.explorer(explorer.rows());
+  // Passwords the desk keeps in the OS keychain (ADR 0311); the plugin never reads one back.
+  const keychain = createKeychain(bridge, () => changed());
   /** @type {ReturnType<typeof createManager>} */
   const manager = createManager({
     bridge,
@@ -128,6 +133,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     pick,
     confirm,
     execute: (conn, sql, opts) => execute(conn, sql, opts),
+    keychain,
     forget: async (connection) => {
       await catalog.drop(connection);
       explorer.reread(connection);
@@ -135,7 +141,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     },
     renamed: (conn) => consoles.renamed(conn),
     changed: () => changed(),
-    sessions: kept.connections,
+    sessions: held.connections,
     cancelled,
     ...(options.random ? { random: options.random } : {}),
   });
@@ -163,7 +169,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       return done;
     }
   );
-  const explorer = createExplorer(catalog, () => manager.list(), changed);
+  const explorer = createExplorer(catalog, () => manager.list(), changed, keychain.has);
   const consoles = createConsoles({
     commands,
     bridge,
@@ -237,13 +243,13 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   const save = () => {
     const panels = consoles.kept();
     const open = consoles.keptConsoles();
-    const held = pg.kept();
+    const consoleSessions = pg.kept();
     state.set({
       current: consoles.current()?.connection ?? null,
       expanded: explorer.opened(),
       ...(open.length ? { consoles: open } : {}),
       ...(panels.length ? { panels } : {}),
-      ...(held.length ? { sessions: held } : {}),
+      ...(consoleSessions.length ? { sessions: consoleSessions } : {}),
     });
   };
 
@@ -359,6 +365,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       for (const listener of followers) listener(next);
     });
     manager.replace(await loadConnections(bridge));
+    await keychain.load();
     explorer.restore(saved?.expanded ?? []);
     changed();
     consoles.render();
@@ -372,7 +379,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     await guard(() => consoles.restore(panels))();
     // A frame that wakes (ADR 0134): its consoles' sessions are theirs again, any other closed.
     if (saved)
-      await guard(() => kept.adopt(/** @type {{ sessions?: unknown }} */ (saved).sessions))();
+      await guard(() => held.adopt(/** @type {{ sessions?: unknown }} */ (saved).sessions))();
   })();
 
   return Object.assign({ ready, ...builtins }, featureActions);

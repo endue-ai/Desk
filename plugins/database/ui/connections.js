@@ -1,7 +1,8 @@
 // Connections: what one holds, checked before it is kept; connection URIs read and written
 // (postgres://, mysql://, mariadb://, sqlite:); and the list in the plugin's store. A password is
 // never part of a connection: the person types it when the client asks, it stays in memory for the
-// session, and a URI's password is handed back separately for that.
+// session, and a URI's password is handed back separately for that. Whether the desk keeps it in the
+// OS keychain is: `keychain: true`, on a PostgreSQL connection only (keychain.js, ADR 0311).
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -101,6 +102,9 @@ export function normalize(raw, others = []) {
   if (!SSL_MODES.includes(conn.ssl)) throw new Error("SSL: pick one of the modes.");
   if (!TAGS.includes(conn.tag)) throw new Error("Environment: pick one of the tags.");
   conn.readOnly = conn.readOnly === true;
+  // Only when on, so a connection that never chose it reads as before.
+  if (/** @type {{ keychain?: unknown }} */ (raw).keychain === true && engine === "postgresql")
+    /** @type {{ keychain?: boolean }} */ (conn).keychain = true;
   conn.group = text("Group", conn.group, 40).trim();
   if (!COLORS.includes(/** @type {never} */ (conn.color)))
     throw new Error("Colour: pick one of the colours.");

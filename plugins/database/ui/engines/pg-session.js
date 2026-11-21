@@ -4,12 +4,13 @@
 // read, an agent's query) opens a short session of its own and closes it. The statements run as
 // pg-script.js says. A session asks for db:connect on the connection's host and port once the grant
 // is missing (ADR 0260), reads a CA file for the TLS modes that check certificates, hands over the
-// password the person typed (else the core reads the password file), and starts read-only for a
-// read-only connection. Cancel is db.cancel, for the runs of the console on screen; the statement
-// timeout is the server's statement_timeout, which a kept session takes again with SET when the
-// setting changed. No DOM.
+// password the person typed (else names the one the keychain keeps, `passwordRef`, ADR 0311; the
+// core reads the password file first), and starts read-only for a read-only connection. Cancel is
+// db.cancel, for the runs of the console on screen; the statement timeout is the server's
+// statement_timeout, which a kept session takes again with SET when the setting changed. No DOM.
 
 import { readScope, withGrant } from "../console-files.js";
+import { endpoint } from "../keychain.js";
 import { createKeeper } from "../session/keeper.js";
 import { createSlots, RUNS_AT_ONCE } from "../session/slots.js";
 import { failedRun } from "./common.js";
@@ -66,13 +67,15 @@ export const settingsOf = (/** @type {number} */ timeoutMs) => ({
  *   onBusy?(running: number): void, now?(): number,
  *   setTimer?(fn: () => void, ms: number): unknown, clearTimer?(timer: unknown): void,
  *   onState?(owner: string): void, onLost?(owner: string, line: (label: string) => string): void,
- *   idleMs?(): number, limit?(): number,
+ *   idleMs?(): number, limit?(): number, kept?(conn: Connection): string | undefined,
  * }} [options] `onState` hears an owner's session change (the header draws it), `onLost` one lost
  *   with the status line's words for its label; `idleMs` closes a session no run used that long
- *   (0 never), `limit` is the kept sessions a connection may hold.
+ *   (0 never), `limit` is the kept sessions a connection may hold; `kept` names the connection's
+ *   password the keychain keeps (manager.passwords.ref, ADR 0311).
  */
 export function createSessions(bridge, options = {}) {
   const onBusy = options.onBusy ?? (() => {});
+  const kept = options.kept ?? (() => undefined);
   const now = options.now ?? (() => Date.now());
   const setTimer = options.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
   const clearTimer =
@@ -119,6 +122,20 @@ export function createSessions(bridge, options = {}) {
     return { mode: conn.ssl, ca: String(file.content) };
   };
 
+  /** The password db.open takes: the one typed, else the kept one's name when it is for this
+   * host, port and user (endpoint(conn)), else none and the core reads the password file. */
+  const signIn = (
+    /** @type {Connection} */ conn,
+    /** @type {{ host: string, port: number, user: string }} */ target,
+    /** @type {Plan} */ plan,
+  ) => {
+    if (plan.password !== undefined) return { password: plan.password };
+    const name = kept(conn);
+    const at = endpoint(conn);
+    const fits = at.host === target.host && at.port === target.port && at.user === target.user;
+    return name && fits ? { passwordRef: name } : {};
+  };
+
   /**
    * Sign in; the session's id, or the error the run ends with.
    * @param {Connection} conn @param {Exclude<ReturnType<typeof targetOf>, string>} target @param {Plan} plan
@@ -137,7 +154,7 @@ export function createSessions(bridge, options = {}) {
     const params = {
       engine: "postgresql",
       ...target,
-      ...(plan.password !== undefined ? { password: plan.password } : {}),
+      ...signIn(conn, target, plan),
       ...(tls ? { tls } : {}),
       settings: settingsOf(plan.timeoutMs),
       ...(conn.readOnly ? { readOnly: true } : {}),
@@ -153,7 +170,10 @@ export function createSessions(bridge, options = {}) {
         return { sessionId: opened.sessionId, pid: opened.pid ?? 0 };
       }
       if (opened.error) return { error: refusedOf(opened.error) };
-      const message = `${where} asks for a password, and the password file has none for ${target.user}.`;
+      const message =
+        "passwordRef" in params
+          ? `${where} asks for a password, and neither the password file nor the keychain has one for ${target.user}.`
+          : `${where} asks for a password, and the password file has none for ${target.user}.`;
       return { error: { kind: "auth", message } };
     } catch (error) {
       const code = codeOf(error);
@@ -217,7 +237,7 @@ export function createSessions(bridge, options = {}) {
   };
 
   /** A run on the session its owner keeps: opened at the first, and what earlier runs set stays. */
-  const kept = async (
+  const owned = async (
     /** @type {Job} */ job,
     /** @type {Connection} */ conn,
     /** @type {Exclude<ReturnType<typeof targetOf>, string>} */ target,
@@ -275,7 +295,7 @@ export function createSessions(bridge, options = {}) {
     onBusy(jobs.size);
     try {
       const done = plan.session
-        ? await kept(job, conn, target, /** @type {never} */ (plan))
+        ? await owned(job, conn, target, /** @type {never} */ (plan))
         : await short(job, conn, target, plan);
       return { ...done, ms: now() - started };
     } finally {
