@@ -30,9 +30,8 @@ const admin = (sql: string) => {
   const done = spawnSync(
     "psql",
     ["-X", "-q", "-At", "-v", "ON_ERROR_STOP=1", "-d", uri, "-c", sql],
-    {
-      encoding: "utf8",
-    },
+    // A statement of the test's own never waits forever behind a lock left by another run.
+    { encoding: "utf8", env: { ...process.env, PGOPTIONS: "-c lock_timeout=30s" } },
   );
   if (done.status !== 0) throw new Error(done.stderr);
   return done.stdout.trim();
@@ -99,7 +98,16 @@ const maintain = (m: Mounted, args: Record<string, unknown>) =>
   m.host.command("endue.database.maintenance", { connection: "live", ...args }) as Promise<Ran>;
 const MAINTENANCE = /^(VACUUM|ANALYZE|REINDEX|CLUSTER)\b/u;
 
+/** End this database's sessions the tests started (other runs use the same server, each in a
+ * database of its own): a killed psql leaves its backend in pg_sleep holding its lock, and an
+ * attempt that timed out never killed its psql. */
+const endSessions = () =>
+  admin(
+    "SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND application_name LIKE 'maintenance %'",
+  );
+
 function setUp() {
+  endSessions();
   admin(`DROP TABLE IF EXISTS ${TABLE}`);
   admin(
     `CREATE TABLE ${TABLE} (id int PRIMARY KEY, note text, v int) WITH (autovacuum_enabled = off)`,
@@ -112,10 +120,7 @@ function setUp() {
 afterAll(() => {
   for (const child of children) child.kill();
   if (!uri) return;
-  // A killed psql leaves its backend asleep in pg_sleep: end the test's sessions by name too.
-  admin(
-    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name LIKE 'maintenance %'",
-  );
+  endSessions();
   admin(`DROP TABLE IF EXISTS ${TABLE}`);
 });
 
@@ -220,7 +225,7 @@ describe.skipIf(!uri)("maintenance on a real PostgreSQL", () => {
       await until(
         () =>
           admin(
-            "SELECT pid FROM pg_stat_activity WHERE application_name = 'maintenance holder' AND wait_event = 'PgSleep'",
+            "SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND application_name = 'maintenance holder' AND wait_event = 'PgSleep'",
           ),
         (found) => found !== "",
       ),
