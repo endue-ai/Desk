@@ -12,7 +12,13 @@ test("the state command switches Eris between her six poses", async ({ page }) =
       state,
     );
     await expect(frame.locator("#pose")).toHaveAttribute("data-state", state);
-    await expect(frame.locator("#pose img")).toHaveAttribute("src", `./assets/state-${state}.svg`);
+    await expect(frame.locator("#pose .glass")).toHaveAttribute("src", "./assets/smoke-glass.svg");
+    await expect(frame.locator(".lunar-plane img")).toHaveAttribute(
+      "src",
+      "./assets/reflector.svg",
+    );
+    if (state === "thinking")
+      await expect(frame.locator(".lunar-plane")).toHaveCSS("animation-name", "portrait-spin");
   }
 });
 

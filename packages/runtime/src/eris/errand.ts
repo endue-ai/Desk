@@ -16,6 +16,7 @@ import { cubicBezier } from "../ease";
 import { windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
+import { cloudTurns } from "./cloud-turns";
 import { centre, erisAt, labelOf, type Target, targetsOf, windowCentre } from "./errand-targets";
 import { arc, type Point, threadOf } from "./errand-thread";
 import { setMind, takeIn } from "./mind";
@@ -66,6 +67,8 @@ interface Errand {
 }
 
 export interface Errands {
+  /** Send one conversation turn through the selected brain, showing a signal for cloud turns. */
+  say: ShellCtx["bridge"]["brain"]["say"];
   /**
    * A line is on its way into her, there once `arrived` resolves: she takes it in and reads it, and
    * her errands for it wait until she has.
@@ -82,6 +85,7 @@ export interface Errands {
 
 /** Errands drawn on the element `shell` names when each starts (the shell, once it is mounted). */
 export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
+  const cloud = cloudTurns(shell, ctx);
   const open = new Map<string, Errand>();
   /** Every errand not over yet: open, or on its way back. */
   const live = new Set<Errand>();
@@ -326,6 +330,7 @@ export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
   };
 
   return {
+    say: cloud.say,
     ask(arrived) {
       reading = false;
       ready = arrived.then(async () => {
@@ -351,6 +356,7 @@ export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
     },
     dispose() {
       gone = true;
+      cloud.dispose();
       offRuns?.();
       for (const errand of live) leave(errand);
       live.clear();

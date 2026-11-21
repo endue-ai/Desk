@@ -75,11 +75,12 @@
 .errand-thread-line {
   stroke: color-mix(in srgb, var(--desk-star) 30%, transparent);
   stroke-width: 1.5;
+  stroke-dasharray: 0.1 5.9;
 }
 .errand-thread-flow {
   stroke: var(--desk-star);
   stroke-width: 2.5;
-  stroke-dasharray: 3 21;
+  stroke-dasharray: 0.1 11.9;
   animation: errand-flow var(--motion-fast) linear infinite;
 }
 /* While the plugin works nothing travels: the line stays, dimmer. */

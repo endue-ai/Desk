@@ -17,6 +17,8 @@
   "eris.float.failed": "Eris could not answer. Try again.",
   "eris.float.you": "You",
   "eris.float.eris": "Eris",
+  "eris.status.warning": "Warning",
+  "eris.status.critical": "Critical",
   "eris.status.idle": "Ready",
   "eris.status.listening": "Listening…",
   "eris.status.thinking": "Thinking…",

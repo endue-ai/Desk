@@ -17,6 +17,8 @@
   "eris.float.failed": "Eris가 답하지 못했어요. 다시 시도해 주세요.",
   "eris.float.you": "나",
   "eris.float.eris": "Eris",
+  "eris.status.warning": "경고",
+  "eris.status.critical": "크리티컬",
   "eris.status.idle": "대기 중",
   "eris.status.listening": "듣는 중…",
   "eris.status.thinking": "생각하는 중…",

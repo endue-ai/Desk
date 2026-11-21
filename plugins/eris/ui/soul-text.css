@@ -5,7 +5,7 @@
    own (desk.shell's for light are a darker frost and gold) and a theme can set them. The runtime sets
    them on this frame with the rest of the theme; until they arrive, the nearest roles stand in. Her
    words are the theme's text but for her gold. The orb's core, flash and glint take the tokens; her
-   body and Dysnomia are the brand art (assets/*.svg), drawn as it is, and in the light scheme they
+   body and Dysnomia use the glass and reflector illustrations, and in the light scheme they
    sit on her night (below). */
 :root {
   --eris-gold: var(--desk-eris, var(--desk-chart-3));
@@ -170,14 +170,17 @@
   }
 }
 
-/* The gold face, lifted for a heads-up. Placed over the gold face of eris-balanced.svg at 360x388. */
-.sphere .glint {
+/* Entry warning around the assembled shell. */
+.sphere .warning-rim {
   position: absolute;
-  left: 262px;
-  top: 88px;
-  width: 36px;
-  height: 40px;
-  clip-path: polygon(92.5% 94.5%, 35.6% 8.3%, 8.1% 37.5%);
-  background: linear-gradient(135deg, var(--eris-gold-light), var(--eris-gold-deep));
+  left: 41px;
+  top: 49px;
+  width: 278px;
+  height: 278px;
+  box-sizing: border-box;
+  border: 2px solid var(--desk-warning);
+  border-radius: var(--desk-radius-full);
   pointer-events: none;
 }
+.sphere .body { transform-origin: 50% 48.45%; }
+.sphere .core-wrap { pointer-events: none; }

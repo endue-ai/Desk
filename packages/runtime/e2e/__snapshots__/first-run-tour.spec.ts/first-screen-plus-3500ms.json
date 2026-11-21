@@ -655,6 +655,18 @@
               },
               "children": [
                 {
+                  "tag": "img",
+                  "class": "body",
+                  "style": {
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "transform": "matrix(1, 0, 0, 1, 0, 0)",
+                    "filter": "blur(0px)",
+                    "color": "rgb(243, 241, 236)"
+                  }
+                },
+                {
                   "tag": "div",
                   "class": "core-wrap",
                   "style": {
@@ -679,18 +691,6 @@
                       }
                     }
                   ]
-                },
-                {
-                  "tag": "img",
-                  "class": "body",
-                  "style": {
-                    "display": "block",
-                    "visibility": "visible",
-                    "opacity": "1",
-                    "transform": "matrix(1, 0, 0, 1, 0, 0)",
-                    "filter": "blur(0px)",
-                    "color": "rgb(243, 241, 236)"
-                  }
                 }
               ]
             },
@@ -734,7 +734,7 @@
             },
             {
               "tag": "div",
-              "class": "glint",
+              "class": "warning-rim",
               "style": {
                 "display": "block",
                 "visibility": "visible",

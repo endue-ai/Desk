@@ -15,7 +15,10 @@
     <main id="root">
       <div id="live" class="sr-only" aria-live="polite"></div>
       <figure id="pose" data-state="idle">
-        <img src="./assets/state-idle.svg" alt="" />
+        <span class="portrait" aria-hidden="true">
+          <img class="glass" src="./assets/smoke-glass.svg" alt="" />
+          <span class="lunar-plane"><img src="./assets/reflector.svg" alt="" /></span>
+        </span>
         <figcaption id="label" role="status" aria-live="polite">Eris is idle</figcaption>
       </figure>
       <section id="conversation" aria-label="Conversation history" tabindex="0"></section>
