@@ -5,8 +5,8 @@ name: release-macos
 # and each target's .dmg on the release under its canonical name, with SHA256SUMS-macos and a macOS
 # section in the notes. With the Apple secrets in the signing environment the app and the disk image
 # are signed with the Developer ID, notarised and stapled; without them the build is ad-hoc signed,
-# and the run and the notes say so. It needs no updater key and no R2 credentials: nothing goes to R2
-# and no channel lists the build. A final's release is release-final's (ADR 0092), made by the release
+# and the run and the notes say so. With an updater key it also publishes signed upgrade packages
+# and UPGRADE_PATH.json. R2 credentials are unnecessary. A final's release is made by the release
 # app: its build is on R2 already, so this builds nothing for it. By hand, with a tag, it builds an
 # existing release again and replaces what it attached.
 on:
@@ -17,6 +17,10 @@ on:
       tag:
         description: The tag of an existing GitHub Release (vX.Y.Z)
         required: true
+        type: string
+      min-from:
+        description: Oldest Desk version that can install this tag directly
+        required: false
         type: string
 
 permissions:
@@ -37,6 +41,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       commit: ${{ steps.version.outputs.commit }}
       signed: ${{ steps.apple.outputs.signed }}
+      updates: ${{ steps.version.outputs.updates }}
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
       GH_TOKEN: ${{ github.token }}
@@ -44,6 +49,8 @@ jobs:
       - uses: actions/checkout@v7
       - id: version
         name: The tag's version and commit
+        env:
+          HAS_UPDATER_KEY: ${{ vars.DESK_UPDATER_PUBKEY != '' }}
         run: |
           version="$(node scripts/release-assets.mjs version "$TAG")"
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName > /dev/null; then
@@ -53,6 +60,11 @@ jobs:
           git fetch --quiet --depth 1 origin "refs/tags/$TAG"
           commit="$(git rev-parse 'FETCH_HEAD^{commit}')"
           { echo "version=$version"; echo "commit=$commit"; } | tee -a "$GITHUB_OUTPUT"
+          # A manual rerun for a line final may attach DMGs, but its cross-platform path and
+          # staged rollout belong to release-final.
+          author="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.author.type')"
+          if [ "$author" = Bot ]; then HAS_UPDATER_KEY=false; fi
+          echo "updates=$HAS_UPDATER_KEY" >> "$GITHUB_OUTPUT"
       - id: apple
         name: Is the build signed with the Developer ID?
         env:
@@ -74,7 +86,7 @@ jobs:
       version: ${{ needs.gate.outputs.version }}
       ref: ${{ needs.gate.outputs.commit }}
       targets: darwin
-      installers-only: true
+      installers-only: ${{ needs.gate.outputs.updates != 'true' }}
     secrets: inherit
 
   attach:
@@ -82,6 +94,7 @@ jobs:
     needs: [gate, build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: signing
     permissions:
       contents: write
     env:
@@ -102,6 +115,23 @@ jobs:
           files="$(node scripts/release-assets.mjs files dist --version "$VERSION")"
           mapfile -t files <<<"$files"
           gh release upload "$TAG" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+      - uses: pnpm/action-setup@v6
+        if: needs.gate.outputs.updates == 'true'
+      - uses: actions/setup-node@v7
+        if: needs.gate.outputs.updates == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: needs.gate.outputs.updates == 'true'
+      - name: Publish the signed upgrade path and packages
+        if: needs.gate.outputs.updates == 'true'
+        env:
+          COMMIT: ${{ needs.gate.outputs.commit }}
+          MIN_FROM: ${{ inputs.min-from || vars.DESK_UPDATE_MIN_FROM }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bash scripts/publish-upgrade-path.sh manual dist "$VERSION" "$COMMIT" "$MIN_FROM"
       - name: Say in the notes where they are and whether Apple knows the build
         run: |
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > body.md

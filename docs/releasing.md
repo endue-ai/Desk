@@ -8,8 +8,8 @@ a person in the `stable` environment.
 
 ## Publish a GitHub Release with the macOS app
 
-The short way to a macOS app, with no updater key, R2 bucket or release app (ADR 0229). It lists the
-build on no channel; the line pipeline below is how builds reach installed desks.
+Publishing a version tag builds both macOS disk images. Configuring the updater key also makes
+the tag eligible for in-app updates (ADR 0229, ADR 0291).
 
 1. Publish a GitHub Release for a tag `vX.Y.Z` (or `vX.Y.Z-<pre>`) on the commit to ship:
    `gh release create v0.1.0 --target <commit> --title "endue Desk 0.1.0" --generate-notes`, or
@@ -26,7 +26,21 @@ build on no channel; the line pipeline below is how builds reach installed desks
 4. To build a release again (a failed run, new secrets, a release from before this workflow):
    `gh workflow run release-macos -f tag=v0.1.0`. It replaces what the earlier run attached.
 
-A release made by `release-final` is left alone: its build is on R2 and its notes link there. The tag
+For in-app upgrades, set the repository variable `DESK_UPDATER_PUBKEY` and its matching signing
+key in the protected environment. The release then includes the signed updater archives,
+`release.json` and `UPGRADE_PATH.json` with their signatures. To require a stepping stone, set
+`DESK_UPDATE_MIN_FROM` before publishing or supply `min-from` on a workflow dispatch. For example,
+a tag with `minFrom` of `1.3.0` can be installed by Desk 1.3.0 or later. Older installations
+stage the highest earlier release whose own path accepts them. Mark version tags with prerelease
+suffixes as GitHub prereleases. Existing installer-only tags are skipped by the updater.
+
+Desk checks the public release list on startup and periodically. It verifies the available package
+and offers **Restart to update**, **Install on next restart** and **Later**. The restart choice
+belongs to that exact version and is consumed before installation. The staged package works offline.
+The beta and canary feeds are signed snapshots on the `desk-updates-beta` and `desk-updates-canary`
+prereleases. The release line continues to serve its earlier clients from R2.
+
+A release made by `release-final` publishes its own GitHub assets and signed stable path. The tag
 counts as a release for the line pipeline's versions (`scripts/release-version.mjs`). On a Mac,
 `just package-shell 0.1.0` makes the same `.app` and `.dmg` for that machine's architecture in
 `target/packager/<triple>/bundle` (cargo-packager 0.11.8 on the `PATH`). Its disk image step lays
