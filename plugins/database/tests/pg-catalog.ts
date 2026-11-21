@@ -29,8 +29,6 @@ export interface PgSchema {
 }
 export type PgCatalog = Record<string, PgSchema>;
 
-const csv = (value: string) => (/[",\n]/u.test(value) ? `"${value.replaceAll('"', '""')}"` : value);
-
 /** The schemas a statement names in `n.nspname IN (...)`. */
 export function schemasOf(sql: string): string[] {
   const list = /n\.nspname IN \(([^)]*)\)/u.exec(sql)?.[1] ?? "";
@@ -119,7 +117,8 @@ export function catalogScript(
     const rows = answer(model(), sql);
     if (!rows) return other(sql, env);
     seen.push(sql);
-    return { rows: rows.map((row) => row.map(csv)) };
+    // Fields as they are: the scripted psql (clients.ts) quotes them as --csv does.
+    return { rows };
   };
 }
 
