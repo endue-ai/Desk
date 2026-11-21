@@ -173,6 +173,77 @@
     },
     {
       "tag": "button",
+      "class": "btn btn-xs desk-notify-bell",
+      "title": "Notifications",
+      "box": [
+        1246,
+        774,
+        30,
+        24
+      ],
+      "style": {
+        "display": "flex",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(179, 175, 165)",
+        "border-top-color": "rgb(179, 175, 165)",
+        "opacity": "1"
+      },
+      "children": [
+        {
+          "tag": "svg",
+          "box": [
+            1254,
+            779,
+            14,
+            14
+          ],
+          "style": {
+            "display": "block",
+            "background-color": "rgba(0, 0, 0, 0)",
+            "color": "rgb(179, 175, 165)",
+            "border-top-color": "rgb(179, 175, 165)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "path",
+              "box": [
+                1256,
+                780,
+                11,
+                12
+              ],
+              "style": {
+                "display": "inline",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(179, 175, 165)",
+                "border-top-color": "rgb(179, 175, 165)",
+                "opacity": "1"
+              }
+            }
+          ]
+        },
+        {
+          "tag": "span",
+          "class": "desk-notify-count",
+          "box": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": {
+            "display": "none",
+            "background-color": "rgb(35, 33, 30)",
+            "color": "rgb(179, 175, 165)",
+            "border-top-color": "rgb(179, 175, 165)",
+            "opacity": "1"
+          }
+        }
+      ]
+    },
+    {
+      "tag": "button",
       "class": "desk-settings-launcher",
       "title": "설정 열기",
       "box": [
