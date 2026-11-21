@@ -1,0 +1,167 @@
+/* The routine form (features/routines/): the routine and its facts, a row per argument with its
+   name, mode badge, type and default, the choice of a value, NULL or DEFAULT and the typed editor
+   drawn in the row, the call in the monospace font, the rollback choice, Run and the last run.
+   Layout only: the look is the kit's (.desk-field, .desk-btn, .desk-tabs, .desk-badge,
+   .desk-callout, .desk-error) and every value a --desk-* token. */
+
+.routine {
+  position: relative;
+  outline: none;
+}
+
+.routine-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+}
+
+.routine-body p {
+  margin: 0;
+}
+
+.routine-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--desk-space-1) var(--desk-space-2);
+}
+
+.routine-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.routine-title strong {
+  font-family: var(--desk-font-mono);
+}
+
+.routine-facts,
+.routine-refused,
+.routine-problem {
+  color: var(--desk-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.routine-body > .desk-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--desk-space-2);
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+}
+
+.routine-args {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.routine-legend {
+  padding: 0;
+  font-weight: 600;
+}
+
+.routine-arg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  min-width: 0;
+  padding: var(--desk-space-2) 0;
+  border-top: 1px solid var(--desk-border);
+}
+
+.routine-arg-head,
+.routine-arg-line,
+.routine-arg-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-1) var(--desk-space-2);
+}
+
+.routine-arg-name,
+.routine-arg-type,
+.routine-arg-default {
+  font-family: var(--desk-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.routine-arg-name {
+  font-weight: 600;
+}
+
+.routine-arg-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  min-width: 0;
+  max-width: calc(var(--desk-space-16) * 8);
+}
+
+.routine-arg-editor .desk-field {
+  box-sizing: border-box;
+  width: 100%;
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+}
+
+.routine-arg-editor textarea.desk-field {
+  min-height: calc(var(--desk-space-16) * 1.5);
+  resize: vertical;
+}
+
+.routine-arg-cast {
+  width: 16ch;
+  height: var(--desk-control-xs);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+}
+
+.routine-arg-error {
+  padding: var(--desk-space-1) var(--desk-space-2);
+  overflow-wrap: anywhere;
+}
+
+.routine-sql {
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.routine-rollback {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+}
+
+.routine-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.routine-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  color: var(--desk-text-muted);
+}
+
+.routine-last[data-status="failed"] {
+  font-weight: 600;
+}
+
+.routine [hidden] {
+  display: none;
+}

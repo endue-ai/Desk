@@ -31,6 +31,7 @@ export const BINDINGS = {
     { chord: "c", action: "count", label: "count rows" },
     { chord: "r", action: "diagram", label: "ER diagram" },
     { chord: "m", action: "maintain", label: "maintenance" },
+    { chord: "x", action: "routine", label: "run routine" },
     { chord: "f", action: "searchData", label: "find a value" },
     { chord: "/", action: "filter", label: "filter" },
     { chord: "u", action: "importUri", label: "from URI" },

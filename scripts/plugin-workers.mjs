@@ -26,10 +26,8 @@ export const OFF_MAIN = {
       modules: [
         "ui/output-worker.js",
         "ui/output/index.js",
-        "ui/output/postgres.js",
         "ui/output/mysql.js",
         "ui/output/sqlite.js",
-        "ui/output/csv.js",
         "ui/output/readers.js",
       ],
     },
@@ -64,6 +62,16 @@ export const OFF_MAIN = {
         "ui/sql/layout/doc.js",
         "ui/sql/layout/roles.js",
         "ui/sql/layout/tokens.js",
+      ],
+    },
+    // The editor's SQL problems check (ADR 0294), in the same worker; the page holds diagnose/editor.js.
+    {
+      worker: "ui/sql/parse/worker.js",
+      modules: [
+        "ui/diagnose/check.js",
+        "ui/diagnose/script.js",
+        "ui/diagnose/names.js",
+        "ui/diagnose/insert.js",
       ],
     },
   ],

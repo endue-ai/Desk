@@ -167,8 +167,9 @@ export function createConsoles(deps) {
    * @param {Console} target
    * @param {Connection} conn
    * @param {string} sql
-   * @param {{ mode?: Mode, base?: number, statements?: Statement[], maxRows?: number, history?: boolean, file?: boolean }} options
-   *   `file` is a part of a file run (features/consoles/run-file.js), which holds the console.
+   * @param {{ mode?: Mode, base?: number, statements?: Statement[], maxRows?: number, history?: boolean, file?: boolean, agent?: boolean }} options
+   *   `file` is a part of a file run (features/consoles/run-file.js), which holds the console;
+   *   `agent` runs it for an agent, whose writes the executor asks the person about.
    */
   const execute = async (target, conn, sql, options) => {
     if (target.running || (target.filing && !options.file))
@@ -183,6 +184,7 @@ export function createConsoles(deps) {
         mode: options.mode ?? "run",
         maxRows,
         ...(options.statements ? { statements: options.statements } : {}),
+        ...(options.agent ? { agent: true, interactive: false } : {}),
       });
       target.execution = execution;
       target.shown = show(execution, options.base ?? 0);

@@ -80,7 +80,7 @@ pub fn grant_runtime(core: &Core, data: &Path, home: &Path) {
         }),
     );
     // The person's files in the desk folder (ADR 0079): the runtime reads and watches the folder,
-    // and writes only the saved profiles and keys.yaml.
+    // and writes only the saved profiles, keys.yaml and the snapshots a sweep takes.
     core.grant(
         RUNTIME_CALLER,
         Permission::FsRead(FsReadPermission {
@@ -95,6 +95,8 @@ pub fn grant_runtime(core: &Core, data: &Path, home: &Path) {
             paths: vec![
                 "~/.desk/profiles/**".to_owned(),
                 "~/.desk/keys.yaml".to_owned(),
+                // A sweep's snapshots (ADR 0296).
+                "~/.desk/snapshots/**".to_owned(),
             ],
         }),
     );

@@ -3,13 +3,15 @@
 // and closes the session, as one psql process was one run (PG-02 keeps one per console next). It
 // asks for db:connect on the connection's host and port once the grant is missing (ADR 0260), reads
 // a CA file for the TLS modes that check certificates, hands over the password the person typed (else
-// the core reads the password file), and starts the session read-only for a read-only connection.
+// names the one the keychain keeps, `passwordRef`, ADR 0311; the core reads the password file first),
+// and starts the session read-only for a read-only connection.
 // A script in one transaction or a dry run is BEGIN, the statements, COMMIT or ROLLBACK on that
 // session. Cancel is db.cancel, of every run or of one run its signal stops; the statement timeout
 // is the server's statement_timeout, with a backstop that cancels and then closes the session. No
 // DOM.
 
 import { readScope, withGrant } from "../console-files.js";
+import { endpoint } from "../keychain.js";
 import { endedBy, failedRun, notRun } from "./common.js";
 import { affectedOf, CANCELED, errorOf, noticeOf, refusedOf, setOf } from "./pg-result.js";
 
@@ -69,10 +71,13 @@ export const settingsOf = (/** @type {number} */ timeoutMs) => ({
  * @param {{
  *   onBusy?(running: number): void, now?(): number,
  *   setTimer?(fn: () => void, ms: number): unknown, clearTimer?(timer: unknown): void,
+ *   kept?(conn: Connection): string | undefined,
  * }} [options]
+ *   `kept` names the connection's password the keychain keeps (manager.passwords.ref, ADR 0311).
  */
 export function createSessions(bridge, options = {}) {
   const onBusy = options.onBusy ?? (() => {});
+  const kept = options.kept ?? (() => undefined);
   const now = options.now ?? (() => Date.now());
   const setTimer = options.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
   const clearTimer =
@@ -133,6 +138,20 @@ export function createSessions(bridge, options = {}) {
     return { mode: conn.ssl, ca: String(file.content) };
   };
 
+  /** The password db.open takes: the one typed, else the kept one's name when it is for this
+   * host, port and user (endpoint(conn)), else none and the core reads the password file. */
+  const signIn = (
+    /** @type {Connection} */ conn,
+    /** @type {{ host: string, port: number, user: string }} */ target,
+    /** @type {Plan} */ plan,
+  ) => {
+    if (plan.password !== undefined) return { password: plan.password };
+    const name = kept(conn);
+    const at = endpoint(conn);
+    const fits = at.host === target.host && at.port === target.port && at.user === target.user;
+    return name && fits ? { passwordRef: name } : {};
+  };
+
   /**
    * Sign in; the session's id, or the error the run ends with.
    * @param {Connection} conn @param {Exclude<ReturnType<typeof targetOf>, string>} target @param {Plan} plan
@@ -151,7 +170,7 @@ export function createSessions(bridge, options = {}) {
     const params = {
       engine: "postgresql",
       ...target,
-      ...(plan.password !== undefined ? { password: plan.password } : {}),
+      ...signIn(conn, target, plan),
       ...(tls ? { tls } : {}),
       settings: settingsOf(plan.timeoutMs),
       ...(conn.readOnly ? { readOnly: true } : {}),
@@ -164,7 +183,10 @@ export function createSessions(bridge, options = {}) {
       );
       if (opened.sessionId) return { sessionId: opened.sessionId };
       if (opened.error) return { error: refusedOf(opened.error) };
-      const message = `${where} asks for a password, and the password file has none for ${target.user}.`;
+      const message =
+        "passwordRef" in params
+          ? `${where} asks for a password, and neither the password file nor the keychain has one for ${target.user}.`
+          : `${where} asks for a password, and the password file has none for ${target.user}.`;
       return { error: { kind: "auth", message } };
     } catch (error) {
       const code = codeOf(error);

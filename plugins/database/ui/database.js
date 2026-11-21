@@ -27,6 +27,7 @@ import { panelsOf, registerFeatures } from "./feature-host.js";
 import * as features from "./features/index.js";
 import { addHistory } from "./history.js";
 import { createImporter } from "./importer.js";
+import { createKeychain } from "./keychain.js";
 import { createManager } from "./manage.js";
 import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
@@ -67,9 +68,11 @@ import { createTools } from "./tools.js";
  *   features?: import("./feature-host.js").Feature[],
  *   random?(): number,
  *   plans?: import("./explain/reader.js").PlanReader,
+ *   startWorker?: import("./explain/reader.js").StartWorker,
  * }} options `cancelled` makes the error a cancelled command answers with (the SDK's CommandFailed);
  *   `output` makes the result reader, which reads each run's output in a worker (main.js, #38);
- *   `features` are features/index.js's unless given; `plans` reads big plans in a worker.
+ *   `features` are features/index.js's unless given; `plans` reads big plans in a worker;
+ *   `startWorker` starts a feature's worker (none: a feature reads in place).
  */
 export function createDatabase({ bridge, commands, state, settings: source }, view, options) {
   let settings = DEFAULTS;
@@ -100,6 +103,8 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       sessions = count;
       busy();
     },
+    // A password the keychain keeps signs the session in, so none is asked for (ADR 0311).
+    kept: (conn) => manager.passwords.ref(conn),
   });
   const cancel = () => {
     catalog.cancel();
@@ -112,6 +117,8 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   const list = options.features ?? Object.values(features);
 
   const changed = () => view.explorer(explorer.rows());
+  // Passwords the desk keeps in the OS keychain (ADR 0311); the plugin never reads one back.
+  const keychain = createKeychain(bridge, () => changed());
   /** @type {ReturnType<typeof createManager>} */
   const manager = createManager({
     bridge,
@@ -119,6 +126,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     pick,
     confirm,
     execute: (conn, sql, opts) => execute(conn, sql, opts),
+    keychain,
     forget: async (connection) => {
       await catalog.drop(connection);
       explorer.reread(connection);
@@ -152,7 +160,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       return done;
     }
   );
-  const explorer = createExplorer(catalog, () => manager.list(), changed);
+  const explorer = createExplorer(catalog, () => manager.list(), changed, keychain.has);
   const consoles = createConsoles({
     commands,
     bridge,
@@ -315,6 +323,9 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     explorer,
     tools,
     execute,
+    runner,
+    clients,
+    ...(options.startWorker ? { startWorker: options.startWorker } : {}),
     settings: () => settings,
     onSettings: (listener) => {
       followers.add(listener);
@@ -342,6 +353,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       for (const listener of followers) listener(next);
     });
     manager.replace(await loadConnections(bridge));
+    await keychain.load();
     explorer.restore(saved?.expanded ?? []);
     changed();
     consoles.render();

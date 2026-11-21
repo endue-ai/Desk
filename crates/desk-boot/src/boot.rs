@@ -136,12 +136,19 @@ pub fn boot(input: BootInput) -> Booted {
     let mut account = AccountOptions::from_env();
     account.file = Some(data.join("account.json"));
     // Its tokens in the OS keychain (ADR 0239); without one, the private file as before.
-    match desk_sys::keychain::os(desk_sys::keychain::SERVICE) {
-        Ok(keychain) => account.keychain = Some(Arc::new(keychain)),
-        Err(err) => {
-            eprintln!("desk: account: no OS keychain ({err}); the session stays in account.json")
-        }
-    }
+    let keychain: Option<Arc<dyn desk_core::account::Keychain>> =
+        match desk_sys::keychain::os(desk_sys::keychain::SERVICE) {
+            Ok(keychain) => Some(Arc::new(keychain)),
+            Err(err) => {
+                eprintln!(
+                    "desk: account: no OS keychain ({err}); the session stays in account.json"
+                );
+                None
+            }
+        };
+    account.keychain = keychain.clone();
+    // Database passwords a plugin keeps for db.open, in the same keychain (ADR 0311).
+    core = core.with_db_passwords(keychain, Some(data.join("db-passwords.json")));
     let account = Account::open(account, NetIdClient);
     core = core.with_account(account.clone());
     // The agent programs on this computer (ADR 0110): Claude Code and Codex, their sessions read

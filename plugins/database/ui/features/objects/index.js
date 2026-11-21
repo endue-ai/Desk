@@ -6,6 +6,7 @@
 // with arguments, which agents get too; every one shows its exact script first and runs it only on
 // the person's answer (ADR 0312). kinds.js says what each engine's kinds take. No DOM here.
 
+import { openRoutine } from "../routines/index.js";
 import { createObjects } from "./controller.js";
 import { operationDialog } from "./dialog.js";
 import { applySource, openSource } from "./source.js";
@@ -28,6 +29,9 @@ const OPERATIONS = /** @type {Record<string, Op>} */ ({
   "endue.database.enable-trigger": "enable",
 });
 
+/** A PostgreSQL function's or procedure's form of its arguments (features/routines/), first. */
+const RUN = { id: "run", label: "Run with its arguments…" };
+
 /** One controller per plugin, shared by the feature's commands and actions. */
 const controllers = new WeakMap();
 const of = (/** @type {Deps} */ deps) => {
@@ -46,7 +50,10 @@ async function fromMenu(
 ) {
   const objects = of(deps);
   const { conn, target } = await objects.resolve(ref, undefined);
-  const picked = await objects.menu(conn, target);
+  const runs =
+    conn.engine === "postgresql" && (target.kind === "function" || target.kind === "procedure");
+  const picked = await objects.menu(conn, target, runs ? [RUN] : []);
+  if (picked === "run") return openRoutine(deps, conn, target);
   if (picked.startsWith("generate:")) return objects.generate(conn, target, picked.slice(9));
   if (picked === "source") return openSource(deps, conn, target);
   return objects.operate(conn, /** @type {Op} */ (picked), target, {});

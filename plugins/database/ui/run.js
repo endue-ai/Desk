@@ -4,7 +4,8 @@
 // cancel, the timeout, enough rows, too much output) sends SIGINT first, which makes mysql cancel
 // the query on the server and sqlite3 interrupt it, then SIGKILL a second later: the mysql
 // client carries on with the next statement when a killed query does not fail (SLEEP() returns 1).
-// A non-zero exit is not an error here: the engine reads what the client said.
+// A non-zero exit is not an error here: the engine reads what the client said. A long program
+// (pg_dump, features/backup/) is heard as it writes and cancelled by its own signal.
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginBridge} PluginBridge
@@ -152,20 +153,23 @@ export function createRunner(bridge, options = {}) {
   /**
    * Run the client and resolve with what it wrote and how it ended.
    * @param {Invocation} invocation
-   * @param {{ timeoutMs?: number, signal?: AbortSignal }} [runOptions] `timeoutMs` 0 or absent
-   *   waits as long as it takes; `signal` stops this client alone, as `cancel` stops every one.
+   * @param {{ timeoutMs?: number, signal?: AbortSignal, onOutput?(stream: "stdout" | "stderr", text: string): void }} [runOptions]
+   *   `timeoutMs` 0 or absent waits as long as it takes; `signal` cancels this run alone;
+   *   `onOutput` hears each stream's text as it comes (a long program's progress).
    * @returns {Promise<Outcome>}
    */
   const run = async (invocation, runOptions = {}) => {
     const started = now();
     const { procId } = await spawn(invocation);
     const timeoutMs = runOptions.timeoutMs ?? 0;
+    const { signal, onOutput } = runOptions;
     return new Promise((resolve) => {
       const flags = { stopped: false, cancelled: false, timedOut: false, overflow: false };
       /** @type {unknown[]} */
       const timers = [];
       let stopping = false;
       const decoder = new TextDecoder("utf-8");
+      const heard = { stdout: new TextDecoder("utf-8"), stderr: new TextDecoder("utf-8") };
       const { counter, stopAfter } = invocation;
       /** @type {Job} */
       const job = {
@@ -176,6 +180,10 @@ export function createRunner(bridge, options = {}) {
           const sink = data.stream === "stderr" ? job.err : job.out;
           sink.chunks.push(bytes);
           sink.size += bytes.length;
+          if (onOutput) {
+            const stream = data.stream === "stderr" ? "stderr" : "stdout";
+            onOutput(stream, heard[stream].decode(bytes, { stream: true }));
+          }
           if (job.out.size + job.err.size > OUTPUT_LIMIT) job.stop("overflow");
           if (data.stream !== "stderr" && stopAfter > 0 && counter) {
             if (counter.feed(decoder.decode(bytes, { stream: true })) >= stopAfter)
@@ -192,7 +200,7 @@ export function createRunner(bridge, options = {}) {
         settle: (data) => {
           if (!jobs.delete(procId)) return;
           for (const timer of timers) clearTimer(timer);
-          runOptions.signal?.removeEventListener("abort", abort);
+          signal?.removeEventListener("abort", abort);
           onBusy(jobs.size);
           resolve(
             outcomeOf(
@@ -211,8 +219,8 @@ export function createRunner(bridge, options = {}) {
       jobs.set(procId, job);
       onBusy(jobs.size);
       if (timeoutMs > 0) timers.push(setTimer(() => job.stop("timedOut"), timeoutMs));
-      if (runOptions.signal?.aborted) abort();
-      else runOptions.signal?.addEventListener("abort", abort, { once: true });
+      if (signal?.aborted) abort();
+      else signal?.addEventListener("abort", abort);
       for (const event of early.get(procId) ?? []) feed(job, event);
       early.delete(procId);
     });

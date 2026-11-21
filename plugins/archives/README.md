@@ -2,7 +2,7 @@
 
 `endue.archives`, every archive, package and disk image in one browser: the contents as a tree, a
 preview of the selected entry, and extraction to a folder the person picks. It never changes the
-archive. Community folder format, public SDK only, no third-party code. The decoders and most readers
+archive. Eris lists an open one with `endue.archives.list { under? }` and reads an entry's text with `endue.archives.read { entry }` (ADR 0088, `ui/agent.js`); extracting stays the person's. Community folder format, public SDK only, no third-party code. The decoders and most readers
 come from the library `endue.formats` (`@endue-ai/formats/`, in `ui/index.html`'s import map); RAR,
 disk images, DMGs, SquashFS and WIM open in its worker (the SDK's `startWorker`) or in the frame.
 
