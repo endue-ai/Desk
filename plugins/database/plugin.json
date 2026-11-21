@@ -312,6 +312,21 @@
         "keywords": ["undo", "discard", "edit"]
       },
       {
+        "id": "endue.database.set-default",
+        "title": "Database: set the cell to DEFAULT",
+        "keywords": ["default value", "edit", "cell", "reset"]
+      },
+      {
+        "id": "endue.database.cell-file-load",
+        "title": "Database: load the cell's bytes from a file",
+        "keywords": ["bytea", "blob", "binary", "upload", "edit", "cell"]
+      },
+      {
+        "id": "endue.database.cell-file-save",
+        "title": "Database: save the cell's bytes to a file",
+        "keywords": ["bytea", "blob", "binary", "download", "cell"]
+      },
+      {
         "id": "endue.database.clients",
         "title": "Database: check the clients",
         "keywords": ["psql", "mysql", "mariadb", "sqlite3", "install", "version"]

@@ -271,5 +271,6 @@ export function createView(doc, act, features = Object.values(all)) {
       const picked = grid.selection();
       return picked ? { tab: shown?.tab ?? 0, ...picked } : undefined;
     },
+    cell: () => grid.cursorCell(),
   };
 }

@@ -136,6 +136,7 @@ export function recordingView(): RecordingView {
     },
     focus: () => {},
     selection: () => undefined,
+    cell: () => undefined,
   };
   return view;
 }

@@ -20,9 +20,9 @@ covers a file dropped from any folder or drive, its extension in any case.
 | Permission | What needs it |
 | --- | --- |
 | `proc:spawn` (`psql`, `mysql`, `mariadb`, `sqlite3`) | The engines' clients by name, also where the `path` setting finds them (`clients.js`, `run.js`) |
-| `fs:write` (`${home}/Downloads/**`) | An export written there (`export.js`) |
+| `fs:write` (`${home}/Downloads/**`) | An export written there (`export.js`), and a cell's bytes saved to a file (`features/cell-values/`) |
 | `cmd:invoke` (`desk.palette.pick`, `desk.buffers.open`, `desk.buffers.update`, `desk.buffers.close`, `desk.files.reveal`) | Picking in the palette, a buffer per console and table, an export shown in the file manager |
-| `fs:read` (`/**`) | A `.sql`, `.csv`, `.tsv` or `.json` file dropped on the page (`dropped.js`): a drop hands over the path, not access (ADR 0119), so that one file is asked for. Opening a SQLite file reads nothing (sqlite3 opens it), but the desk's opener grant (ADR 0131) gives its folder for the session, so a file dropped from there is not asked for |
+| `fs:read` (`/**`) | A `.sql`, `.csv`, `.tsv` or `.json` file dropped on the page (`dropped.js`): a drop hands over the path, not access (ADR 0119), so that one file is asked for. A file picked to load a cell's bytes (`features/cell-values/`) is granted by the picker. Opening a SQLite file reads nothing (sqlite3 opens it), but the desk's opener grant (ADR 0131) gives its folder for the session, so a file dropped from there is not asked for |
 | `proc:spawn` (`*`) | The client a setting (`endue.database.psql`, `.mysql`, `.sqlite3`) names by another name or a full path (`run.js`): that program is asked for at its first run |
 
 ## Tests
