@@ -81,6 +81,9 @@ export interface RecordingView extends View {
   previews: string[];
   /** Every model the import wizard was drawn with (null: closed). */
   imports: unknown[];
+  /** Every feature dialog shown, and what answers it (undefined: cancelled). */
+  dialogs: Array<{ type: string; model: unknown }>;
+  answerDialog?: (type: string, model: unknown) => unknown;
   /** The surface's stand-in as the drop target; a spot on it carries what it is in `target`. */
   dropTarget: object;
   landing(element: unknown): unknown;
@@ -101,6 +104,7 @@ export function recordingView(): RecordingView {
     inserted: [],
     previews: [],
     imports: [],
+    dialogs: [],
     dropTarget: {},
     landing: (element) => element,
     targetOf: (element) => (element as { target?: unknown } | null)?.target,
@@ -136,6 +140,10 @@ export function recordingView(): RecordingView {
     },
     focus: () => {},
     selection: () => undefined,
+    dialog: async (type, model) => {
+      view.dialogs.push({ type, model: structuredClone(model) });
+      return view.answerDialog?.(type, model);
+    },
   };
   return view;
 }
@@ -167,6 +175,8 @@ export async function mount(
     features?: Feature[];
     /** What the plugin kept with ctx.state, handed back at init as after a restart. */
     state?: unknown;
+    /** Answers a feature's dialog (undefined: cancelled). */
+    dialog?: (type: string, model: unknown) => unknown;
   } = {},
 ): Promise<Mounted> {
   const clients = fakeClients(options.script ?? (() => ({})), options.missing);
@@ -201,6 +211,7 @@ export async function mount(
   });
   clients.attach(host);
   const view = recordingView();
+  if (options.dialog) view.answerDialog = options.dialog;
   let app: ReturnType<typeof createDatabase> | undefined;
   let ids = 0;
   await defineUiPlugin(
