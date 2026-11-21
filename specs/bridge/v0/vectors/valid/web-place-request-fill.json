@@ -6,10 +6,10 @@
     "method": "web.place",
     "params": {
       "viewId": "w-1",
-      "x": 0,
-      "y": 40,
-      "width": 800,
-      "height": 560,
+      "x": 0.0,
+      "y": 40.0,
+      "width": 800.0,
+      "height": 560.0,
       "fill": true
     }
   }
