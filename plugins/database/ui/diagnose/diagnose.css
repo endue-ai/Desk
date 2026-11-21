@@ -85,7 +85,7 @@
 }
 
 #editor-box .cm-panel.cm-panel-lint ul [aria-selected] {
-  background: var(--desk-muted);
+  background: var(--desk-hover);
   color: var(--desk-text);
 }
 
