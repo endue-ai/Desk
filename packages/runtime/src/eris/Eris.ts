@@ -25,6 +25,7 @@ import { mountSaid } from "./said";
 import { fleetOf } from "./satellites";
 import { createScene } from "./scene";
 import { type ErisState, REST_MS } from "./states";
+import { defineModelCommands } from "./model";
 import { defineSummon } from "./summon";
 import { Talk } from "./talk";
 import { type Cue, PULSE_TO_RIM_MS, Voice } from "./voice";
@@ -259,6 +260,7 @@ export function mountEris(
     listen(el, "pointerenter", wake),
     watchCard(said.el, wake),
     defineSummon(ctx),
+    defineModelCommands(ctx),
     // Every theme applied: a desk.theme.* setting, a preview, a theme plugin installed or edited, the
     // OS's scheme. The theme system calls this after it has set the new tokens.
     ctx.runtime.themes.onChange(() => {

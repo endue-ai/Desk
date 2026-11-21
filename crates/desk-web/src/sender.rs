@@ -50,6 +50,8 @@ const MAIN_COMMANDS: &[&str] = &[
     "compositor_wm",
     "compositor_edit",
     "compositor_snapshot",
+    // A desk.edit.* command: the Edit menu's command where the keys are (ADR 0296).
+    "compositor_edit_command",
     // Accessibility (#57): the tree the platform adapter has, and a screen reader's request, for
     // checks in development builds.
     "compositor_a11y",
@@ -258,6 +260,7 @@ mod tests {
             "compositor_input_state",
             "compositor_grab",
             "compositor_wm",
+            "compositor_edit_command",
             "compositor_a11y",
             "compositor_clock",
             "compositor_window",

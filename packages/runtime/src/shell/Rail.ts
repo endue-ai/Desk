@@ -16,6 +16,7 @@ import { toggleListening } from "../eris/hey";
 import { agentName, isOpen } from "../system/agents";
 import { layoutOf } from "./actions";
 import { mountBarTip, withTip } from "./bar-tip";
+import { brainModelRow } from "./brain-model";
 import type { ShellCtx } from "./context";
 import { type Child, h, listen, render } from "./dom";
 import { icon } from "./icons";
@@ -127,6 +128,7 @@ function body(ctx: ShellCtx, id: RailId, s: DeskState): Child[] {
             ),
           ),
         ),
+        brainModelRow(ctx, chosen),
         s.brain.mode === "local" && s.brain.fallback
           ? h("p", { class: "pop-muted brain-fallback" }, ctx.tr("brainFallback"))
           : null,

@@ -249,10 +249,30 @@ export interface ShellBridge {
     /** Choose Eris's brain; answers the status once the desk switched. */
     use(brain: BrainName): Promise<BrainStatus>;
     /**
+     * The models of the brains that have one (ADR 0296): the local brain's Ollama model and Claude
+     * Code's (empty: its own default). Hosts that cannot change them leave it out.
+     */
+    models?: {
+      get(): Promise<{ local: string; claude: string }>;
+      set(brain: "local" | "claude", model: string): Promise<void>;
+    };
+    /**
      * One turn of Eris's loop: its hand-offs reach `onStep` as they happen, then the reply. `desk`
      * is what the person sees as they say it (ADR 0109), so Eris knows which plugin it is for.
      */
     say(text: string, onStep?: (step: BrainStep) => void, desk?: BrainDesk): Promise<BrainReply>;
+  };
+  /**
+   * Pictures of windows for a sweep's snapshot, and a place to keep them (ADR 0296): `window` is a
+   * plugin surface's last frame (ui.surface.snapshot), `save` writes a PNG (base64) under
+   * ~/.desk/snapshots and answers its path. Hosts without a compositor leave it out.
+   */
+  snapshots?: {
+    window(
+      plugin: string,
+      surface?: string,
+    ): Promise<{ image: string; width: number; height: number } | null>;
+    save(name: string, png: string): Promise<string>;
   };
   /** The endue ID the brain thinks with (ADR 0089); hosts without one leave it out. */
   account?: {
