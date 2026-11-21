@@ -129,7 +129,6 @@ pub struct MapStyle {
     pub focused: Color,
     pub focused_border: Color,
     pub small_radius: f32,
-    pub view: Color,
     pub view_border: Color,
     /// The fold button folded (on its own), and the icon on it.
     pub button_size: f32,
@@ -305,7 +304,6 @@ impl ChromeTheme {
             focused: accent.fade(0.35),
             focused_border: accent,
             small_radius: small,
-            view: color("primarySoft", hex(endue::HOVER)),
             view_border: accent,
             button_size: length("controlSm", 32.0),
             icon: color("iconButtonFg", muted_ink),

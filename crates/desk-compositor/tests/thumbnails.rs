@@ -237,12 +237,25 @@ fn the_canvas_map_and_a_sleeping_window() {
             .unwrap();
     }
     let view = Rect::new(canvas.x + 4.0, canvas.y + 20.0, 120.0, 76.0);
-    chrome.map_view(&mut scene, desk, view).unwrap();
     let target = Target::new(&gpu.device, size, FORMAT);
+    compositor.render(&scene, &target.view, target.size);
+    let before = target.read_rgba(&gpu.device, &gpu.queue).unwrap();
+    let viewport = chrome.map_view(&mut scene, desk, view).unwrap();
     let stats = compositor.render(&scene, &target.view, target.size);
     assert!(stats.drawn && stats.missing_textures == 0, "{stats:?}");
     assert_eq!(stats.missing_glyphs, 0, "{stats:?}");
     let rgba = target.read_rgba(&gpu.device, &gpu.queue).unwrap();
+    let x = ((view.x + 30.0) * 0.75) as u32;
+    let top = (view.y * 0.75) as u32;
+    let y = top + 24;
+    assert_eq!(
+        pixel(&rgba, size.0, x, y),
+        pixel(&before, size.0, x, y),
+        "the window inside the viewport stays visible"
+    );
+    assert_ne!(pixel(&rgba, size.0, x, top), pixel(&before, size.0, x, top));
+    let pointer = glam::Vec2::new(x as f32, y as f32);
+    assert_eq!(hit_test(&scene, pointer).unwrap().node, viewport);
     assert_snapshot(&gpu, "map_and_asleep", size, &rgba);
 }
 

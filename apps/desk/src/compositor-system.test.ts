@@ -86,11 +86,14 @@ describe("the desk's system parts", () => {
     // Eris's proposal, the description's panel and the keys' hint are cards over the desk too.
     at("proposal", [360, 72, 560, 300]);
     at("desk-which-key", [360, 600, 560, 120]);
+    // The crash report overlaps the map, so it belongs to the front layer.
+    at("crash-card", [816, 688, 448, 96]);
     expect(systemParts(document)).toEqual([
       { id: "desk.overlays", x: 900, y: 300, width: 280, height: 181 },
       { id: "desk.overlays", x: 40, y: 640, width: 121, height: 24 },
       { id: "desk.overlays", x: 360, y: 72, width: 560, height: 300 },
       { id: "desk.overlays", x: 360, y: 600, width: 560, height: 120 },
+      { id: "desk.overlays", x: 816, y: 688, width: 448, height: 96 },
     ]);
   });
 
