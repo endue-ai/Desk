@@ -77,9 +77,6 @@ export function probeAnswer(options: ServerOptions = {}): [string[], string[]] {
   return [Object.keys(fields), Object.values(fields)];
 }
 
-/** A value as psql's CSV writes it. */
-const csv = (value: string) => (/[",\n]/u.test(value) ? `"${value.replaceAll('"', '""')}"` : value);
-
 type Row = Record<string, string>;
 const at = (n: number) => `2026-11-${String(n).padStart(2, "0")} 03:12:44+00`;
 
@@ -199,9 +196,7 @@ export function overviewServer(base: Script = () => ({}), options: ServerOptions
   return (sql, env): Answer | "auth" => {
     const text = sql.trim();
     if (text === PROBE_SQL)
-      return options.probeError
-        ? { error: options.probeError }
-        : { rows: [names, values.map(csv)] };
+      return options.probeError ? { error: options.probeError } : { rows: [names, values] };
     if (text === LOCK_TIMEOUT) return { rows: [["set_config"], ["2s"]] };
     const section = bySql.get(text);
     if (!section) return base(sql, env);
@@ -217,6 +212,6 @@ export function overviewServer(base: Script = () => ({}), options: ServerOptions
       ...(section.id === "server" ? ["unit"] : []),
       ...(/ AS since\b/u.test(text) && section.id === "statements" ? ["since"] : []),
     ];
-    return { rows: [head, ...rows.map((row) => head.map((key) => csv(row[key] ?? "")))] };
+    return { rows: [head, ...rows.map((row) => head.map((key) => row[key] ?? ""))] };
   };
 }

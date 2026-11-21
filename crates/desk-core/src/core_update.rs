@@ -42,6 +42,14 @@ impl Core {
                 core.update_changed(status);
             }
         });
+        // Only a choice saved by the runtime can authorize an installation at startup.
+        // Consume it before calling an installer that can relaunch this process.
+        let choice = self.set_values().take(RUNTIME, "update.on-restart");
+        match choice {
+            Ok(Some(Value::String(version))) => updater.apply_on_start(&version),
+            Err(why) => eprintln!("endue Desk: could not consume the update choice ({why})"),
+            _ => {}
+        }
         let core = Arc::downgrade(self);
         updater.start(move || {
             core.upgrade()

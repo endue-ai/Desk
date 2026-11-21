@@ -115,6 +115,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: signing
+    permissions:
+      contents: write
     env:
       VERSION: ${{ needs.gate.outputs.version }}
       BASE: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
@@ -148,6 +150,8 @@ jobs:
       - name: Upload the build
         run: node scripts/release-publish.mjs release dist --version "$VERSION" --bucket "$BUCKET" --endpoint "$ENDPOINT"
       - name: List it on canary and drop canary builds older than two weeks
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # The bucket's own copy, never the cached public one; a missing index starts at serial 1.
           fetch() {
@@ -160,6 +164,7 @@ jobs:
           node scripts/release-manifest.mjs prune listed.json --out index.json --days 14 --keep beta.json --keep stable.json > remove.txt
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/index.json"
           node scripts/release-publish.mjs index index.json --channel canary --bucket "$BUCKET" --endpoint "$ENDPOINT"
+          bash scripts/publish-upgrade-path.sh index index.json canary "$VERSION"
           while read -r old; do
             if [ -n "$old" ]; then
               node scripts/release-publish.mjs remove --version "$old" --bucket "$BUCKET" --endpoint "$ENDPOINT"

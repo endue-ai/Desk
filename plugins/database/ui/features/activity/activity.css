@@ -1,0 +1,153 @@
+/* The server's activity panel (features/activity/): a toolbar that wraps, a status line, the
+   notices, who waits for whom as an indented tree, and the sessions and locks as tables that
+   scroll sideways inside the panel. The selected session is the hover surface, never a fill. Every
+   colour, font, size, radius and duration comes from the theme's --desk-* tokens; the feature links
+   this sheet itself (features/README.md). */
+
+.activity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+  outline: none;
+}
+
+.activity-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-1) var(--desk-space-2);
+}
+
+.activity-bar .desk-field {
+  height: var(--desk-control-xs);
+  font-size: var(--desk-text-xs);
+}
+
+.activity-field,
+.activity-bar .check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  white-space: nowrap;
+}
+
+.activity-status {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+.activity-notice:empty {
+  display: none;
+}
+
+.activity-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+}
+
+.activity-notice .desk-error p {
+  margin: 0 0 var(--desk-space-2);
+}
+
+.activity-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-4);
+}
+
+.activity-section h2 {
+  margin: 0 0 var(--desk-space-1);
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+}
+
+.activity-tree,
+.activity-tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity-tree ul {
+  margin-left: var(--desk-space-3);
+  padding-left: var(--desk-space-3);
+  border-left: 1px solid var(--desk-border);
+}
+
+.activity-node {
+  display: block;
+  padding: var(--desk-space-1) 0;
+  cursor: default;
+}
+
+.activity-scroll {
+  overflow-x: auto;
+}
+
+.activity-table {
+  font-size: var(--desk-text-xs);
+  white-space: nowrap;
+}
+
+.activity-table th .desk-btn {
+  height: auto;
+  padding: 0;
+  font: inherit;
+}
+
+.activity-table tbody tr {
+  cursor: default;
+}
+
+.activity-table tbody tr:hover,
+.activity-table tbody tr[aria-selected="true"] {
+  background: var(--desk-hover);
+}
+
+.activity-table tbody tr:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: -2px;
+}
+
+.activity-age {
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-sql {
+  max-width: 40ch;
+  overflow: hidden;
+  font-family: var(--desk-font-mono);
+  text-overflow: ellipsis;
+}
+
+.activity-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  margin-top: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+}
+
+.activity-details p {
+  margin: 0;
+}
+
+.activity-query {
+  max-height: 16em;
+  margin: 0;
+  overflow: auto;
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.activity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-2);
+}

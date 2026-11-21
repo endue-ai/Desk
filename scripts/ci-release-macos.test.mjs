@@ -1,7 +1,6 @@
 // A GitHub Release a person publishes builds the macOS app and attaches it (ADR 0229):
-// release-macos.yml builds the two macOS targets through release-build.yml, first-install images
-// only, so it needs no updater key and no R2; a final's release, made by the release app, builds
-// nothing here. The line pipeline's callers still build all four targets with updater signatures.
+// release-macos.yml builds both macOS targets through release-build.yml. The updater key enables
+// the signed upgrade path. Installer-only builds still ship without signing credentials or R2.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
@@ -31,7 +30,7 @@ test("a published GitHub Release, or its tag by hand, starts the macOS build", (
   assert.match(scripts(gate), /git rev-parse 'FETCH_HEAD\^\{commit\}'/u, "and the commit");
 });
 
-test("it builds the two macOS targets at the tag's commit, with no updater key and no R2", () => {
+test("it builds macOS at the tag's commit, with signed packages when the updater is configured", () => {
   const mac = workflow("release-macos");
   const build = mac.jobs.build;
   assert.equal(build.uses, "./.github/workflows/release-build.yml");
@@ -39,13 +38,19 @@ test("it builds the two macOS targets at the tag's commit, with no updater key a
     version: expr("needs.gate.outputs.version"),
     ref: expr("needs.gate.outputs.commit"),
     targets: "darwin",
-    "installers-only": true,
+    "installers-only": expr("needs.gate.outputs.updates != 'true'"),
   });
   assert.equal(build.secrets, "inherit", "the Apple secrets reach the build");
-  assert.doesNotMatch(
-    JSON.stringify(mac),
-    /TAURI_SIGNING_PRIVATE_KEY|R2_|DESK_UPDATER_PUBKEY|release-publish|release-manifest/u,
+  assert.doesNotMatch(JSON.stringify(mac), /R2_|release-publish/u);
+  const gate = mac.jobs.gate.steps.find((step) => step.id === "version");
+  assert.equal(gate.env.HAS_UPDATER_KEY, expr("vars.DESK_UPDATER_PUBKEY != ''"));
+  assert.match(gate.run, /"\$author" = Bot \]; then HAS_UPDATER_KEY=false/u);
+  const publish = mac.jobs.attach.steps.find((step) =>
+    step.run?.includes("publish-upgrade-path.sh"),
   );
+  assert.equal(publish.if, "needs.gate.outputs.updates == 'true'");
+  assert.ok(publish.env.TAURI_SIGNING_PRIVATE_KEY);
+  assert.equal(mac.jobs.attach.environment, "signing");
   const apple = mac.jobs.gate.steps.find((step) => step.id === "apple");
   assert.deepEqual(Object.keys(apple.env), ["APPLE_CERTIFICATE", "APPLE_SIGNING_IDENTITY"]);
   assert.match(apple.run, /::warning::No Apple signing secrets/u, "an ad-hoc build says so");

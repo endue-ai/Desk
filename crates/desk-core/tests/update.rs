@@ -281,3 +281,86 @@ fn later_keeps_the_staged_build_across_a_restart() {
     assert_eq!(status["release"]["version"], "0.2.0");
     assert_eq!(status["staged"], true);
 }
+
+#[test]
+fn startup_consumes_only_the_chosen_staged_version_and_rechecks_its_bytes() {
+    for (choice, attempted) in [("0.2.0", true), ("0.3.0", false)] {
+        let home = home(&format!("update-restart-{choice}"));
+        stage_build(&home.join("updates"));
+        let settings = home.join("settings.json");
+        let (previous, _) = desk(&home, "0.1.0", None);
+        let previous = previous.with_settings_file(settings.clone());
+        call(
+            &previous,
+            "desk",
+            "settings.set",
+            json!({"key":"update.on-restart","value":choice}),
+        )
+        .unwrap();
+        drop(previous);
+        let (next, _) = desk(&home, "0.1.0", None);
+        let next = Arc::new(next.with_settings_file(settings));
+        next.start_updates();
+        let choice = call(
+            &next,
+            "desk",
+            "settings.get",
+            json!({"key":"update.on-restart"}),
+        )
+        .unwrap();
+        assert!(
+            choice["value"].is_null(),
+            "consume the choice even if the stage changed"
+        );
+        if attempted {
+            let deadline = Instant::now() + Duration::from_secs(3);
+            loop {
+                let status = update(&next, "update.status").unwrap();
+                if status["state"] == "failed" {
+                    assert_eq!(
+                        status["staged"], false,
+                        "the fixture's signature is invalid"
+                    );
+                    break;
+                }
+                assert!(
+                    Instant::now() < deadline,
+                    "an authorized restart must verify its staged bytes"
+                );
+                std::thread::sleep(Duration::from_millis(5));
+            }
+        } else {
+            assert_eq!(update(&next, "update.status").unwrap()["state"], "staged");
+        }
+    }
+}
+
+#[test]
+fn a_restart_does_not_install_if_consent_cannot_be_consumed_on_disk() {
+    let home = home("update-restart-readonly");
+    stage_build(&home.join("updates"));
+    let settings = home.join("settings-dir/settings.json");
+    let (core, _) = desk(&home, "0.1.0", None);
+    let core = Arc::new(core.with_settings_file(settings.clone()));
+    call(
+        &core,
+        "desk",
+        "settings.set",
+        json!({"key":"update.on-restart","value":"0.2.0"}),
+    )
+    .unwrap();
+    // A file in place of the settings directory makes the next atomic save fail on every OS.
+    let parent = settings.parent().unwrap();
+    fs::rename(parent, home.join("saved-settings")).unwrap();
+    fs::write(parent, b"unwritable directory").unwrap();
+    core.start_updates();
+    assert_eq!(update(&core, "update.status").unwrap()["state"], "staged");
+    let saved = call(
+        &core,
+        "desk",
+        "settings.get",
+        json!({"key":"update.on-restart"}),
+    )
+    .unwrap();
+    assert_eq!(saved["value"], "0.2.0");
+}

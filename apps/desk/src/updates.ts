@@ -59,7 +59,7 @@ export interface UpdatesHost {
     title: string;
     body?: string;
     level?: "info" | "warning";
-    actions?: Array<{ label: string; command: string }>;
+    actions?: Array<{ label: string; command: string; args?: unknown }>;
   }): void;
   /** The version last announced, kept across restarts. */
   memory: { get(): string | null; set(version: string): void };
@@ -147,6 +147,7 @@ export function installUpdates(host: UpdatesHost): () => void {
       // Later closes the notice; the rail keeps its row and the build stays staged.
       const actions = [
         { label: copy.restart, command: "desk.update.apply" },
+        { label: copy.onRestart, command: "desk.update.on-restart", args: { version: v } },
         { label: copy.later, command: "desk.update.later" },
       ];
       host.notify({ caller: "desk", title, body: copy.readyBody, level: "info", actions });
@@ -165,15 +166,15 @@ export function installUpdates(host: UpdatesHost): () => void {
   };
 
   /** The person says yes before another caller restarts the desk. */
-  const confirmed = async (from: From) => {
+  const confirmed = async (from: From, onRestart = false) => {
     if (!from.caller) return true;
     if (!host.commands.has("desk.palette.pick")) return false;
     const v = latest?.release?.version ?? "";
     const choice = await host.commands
       .run("desk.palette.pick", {
-        title: fill(copy.confirm, { caller: from.caller, v }),
+        title: fill(onRestart ? copy.confirmOnRestart : copy.confirm, { caller: from.caller, v }),
         items: [
-          { id: "restart", label: copy.restartNow },
+          { id: "restart", label: onRestart ? copy.onRestart : copy.restartNow },
           { id: "later", label: copy.notNow },
         ],
       })
@@ -181,13 +182,17 @@ export function installUpdates(host: UpdatesHost): () => void {
     return choice === "restart";
   };
 
-  const define = (id: string, title: string, run: (from: From) => Promise<unknown>) =>
+  const define = (
+    id: string,
+    title: string,
+    run: (from: From, args: unknown) => Promise<unknown>,
+  ) =>
     offs.push(
       host.commands.define(id, {
         title,
         keywords: ["update", "upgrade", "release", "restart"],
         owner: "desk",
-        run: (_args, from) => run(from),
+        run: (args, from) => run(from, args),
       }),
     );
 
@@ -205,6 +210,16 @@ export function installUpdates(host: UpdatesHost): () => void {
     define("desk.update.apply", "Restart to update Desk", async (from) => {
       if (!(await confirmed(from))) throw new Error("The person did not agree to restart Desk");
       return call("update.apply");
+    });
+    define("desk.update.on-restart", copy.onRestart, async (from, args) => {
+      const version = latest?.release?.version;
+      const offered =
+        typeof args === "object" && args !== null && "version" in args ? args.version : version;
+      if (!latest?.staged || !version || offered !== version) throw new Error(copy.changed);
+      if (!(await confirmed(from, true))) throw new Error(copy.declined);
+      if (!latest?.staged || latest.release?.version !== version) throw new Error(copy.changed);
+      await host.core.call("settings.set", { key: "update.on-restart", value: version });
+      host.notify({ caller: "desk", title: fill(copy.scheduled, { v: version }), level: "info" });
     });
     define("desk.update.later", "Install the Desk update later", async () => latest);
     define("desk.update.about", "About Desk", async () => {
