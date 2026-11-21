@@ -124,12 +124,15 @@ describe.skipIf(!uri)("maintenance on a real PostgreSQL", () => {
     setUp();
     const { m, sent } = await plugin();
     const table = { schema: "public", table: TABLE, run: true };
-    // VACUUM, VERBOSE by default: the server's INFO lines, the dead rows gone.
+    // VACUUM, VERBOSE by default: the server's INFO lines, and the run in the table's statistics.
     const plain = await maintain(m, { ...table, operation: "vacuum" });
     expect(plain).toMatchObject({ statement: `VACUUM (VERBOSE) public.${TABLE}`, status: "done" });
     expect(plain.output.join("\n")).toMatch(/vacuuming "[^"]*endue_maintenance_live"/u);
     expect(plain.before.dead).toBeGreaterThan(0);
-    expect(plain.after).toMatchObject({ dead: 0, lastVacuum: expect.any(String) });
+    // Another session's snapshot in the same database (other live test files run at once) keeps
+    // dead rows a VACUUM may not remove yet: the run is seen in its time, never in more dead rows.
+    expect(plain.after).toMatchObject({ lastVacuum: expect.any(String) });
+    expect(Number(plain.after?.dead)).toBeLessThanOrEqual(Number(plain.before.dead));
     const runs: Array<[string, Record<string, unknown>, string]> = [
       [
         "vacuum",
