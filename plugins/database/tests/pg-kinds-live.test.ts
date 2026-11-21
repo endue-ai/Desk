@@ -19,6 +19,11 @@ import { memoryStore } from "./schema-cache-helpers";
 
 const pgUri = process.env.ENDUE_DB_TEST_POSTGRES;
 const S = "t474_k";
+// Roles and tablespaces belong to the whole server, which other runs share: name them after this
+// run's database, and its copy's after the copy's (renamed below).
+const DATABASE_NAME = pgUri ? new URL(pgUri).pathname.slice(1) : "";
+const R = `t474_${DATABASE_NAME.toLowerCase().replace(/[^a-z0-9_]/gu, "_")}`.slice(0, 40);
+const RC = R.replace(/^t474_/u, "t474c_");
 const SENTINEL = "SENTINEL-NOT-SHOWN";
 
 /** What the fresh database needs before the DDL: the schema, two routines and three tables. */
@@ -63,9 +68,9 @@ const KINDS = [
   `CREATE EVENT TRIGGER t474_ddl ON ddl_command_end WHEN TAG IN ('CREATE TABLE') EXECUTE FUNCTION ${S}.on_ddl()`,
   `CREATE CAST (${S}.pair AS text) WITH INOUT AS ASSIGNMENT`,
   "CREATE LANGUAGE t474_pl HANDLER plpgsql_call_handler",
-  "CREATE ROLE t474_reader NOLOGIN",
-  "CREATE ROLE t474_app LOGIN CONNECTION LIMIT 5 IN ROLE t474_reader",
-  "COMMENT ON ROLE t474_app IS 'The shop'",
+  `CREATE ROLE ${R}_reader NOLOGIN`,
+  `CREATE ROLE ${R}_app LOGIN CONNECTION LIMIT 5 IN ROLE ${R}_reader`,
+  `COMMENT ON ROLE ${R}_app IS 'The shop'`,
 ];
 /** Everything of the database level the test made, dropped before and after. */
 const DROPS = [
@@ -77,7 +82,7 @@ const DROPS = [
   "DROP LANGUAGE IF EXISTS t474_pl",
   `DROP SCHEMA IF EXISTS ${S} CASCADE`,
 ];
-const SERVER_DROPS = ["t474_app", "t474_reader", "t474c_app", "t474c_reader"].map(
+const SERVER_DROPS = [`${R}_app`, `${R}_reader`, `${RC}_app`, `${RC}_reader`].map(
   (r) => `DROP ROLE IF EXISTS ${r}`,
 );
 /** The order a fresh database takes the kinds in: what each needs comes before it. */
@@ -105,6 +110,8 @@ const ORDER = [
 ];
 const SERVER_KINDS = new Set(["role", "tablespace"]);
 const renamed = (text: string) => text.replaceAll('"t474_', '"t474c_');
+/** Whether a role or tablespace is this run's, of the database or of its copy. */
+const ours = (name: string) => name.startsWith(`${R}_`) || name.startsWith(`${RC}_`);
 
 describe.skipIf(!pgUri)("PG-50's kinds on a real PostgreSQL", () => {
   const { fields, password } = parseUri(pgUri ?? "postgresql://localhost/x");
@@ -158,7 +165,7 @@ describe.skipIf(!pgUri)("PG-50's kinds on a real PostgreSQL", () => {
       await run(copy, "DROP SUBSCRIPTION IF EXISTS t474_sub");
     await run(conn, `DROP DATABASE IF EXISTS ${copy.database} WITH (FORCE)`);
     for (const sql of [...DROPS, ...SERVER_DROPS]) await run(conn, sql);
-    for (const name of ["t474_space", "t474c_space"])
+    for (const name of [`${R}_space`, `${RC}_space`])
       await run(conn, `DROP TABLESPACE IF EXISTS ${name}`);
   };
 
@@ -171,7 +178,7 @@ describe.skipIf(!pgUri)("PG-50's kinds on a real PostgreSQL", () => {
     if (inPlace)
       await run(
         conn,
-        "SET allow_in_place_tablespaces = on;\nCREATE TABLESPACE t474_space LOCATION ''",
+        `SET allow_in_place_tablespaces = on;\nCREATE TABLESPACE ${R}_space LOCATION ''`,
       );
     await run(conn, `CREATE DATABASE ${copy.database}`);
   }, 120_000);
@@ -187,7 +194,8 @@ describe.skipIf(!pgUri)("PG-50's kinds on a real PostgreSQL", () => {
       for (const p of (await catalog.parts(on, S, table.name)).filter((p) => isNewKind(p.kind)))
         out.set(`${p.kind} ${table.name}.${p.name}`, await catalog.ddl(on, p));
     for (const o of await catalog.objects(on, DATABASE))
-      if (/t474|hstore/u.test(o.name)) out.set(`${o.kind} ${o.name}`, await catalog.ddl(on, o));
+      if (/t474|hstore/u.test(o.name) && (!SERVER_KINDS.has(o.kind) || ours(o.name)))
+        out.set(`${o.kind} ${o.name}`, await catalog.ddl(on, o));
     return out;
   };
   const read = async (side: ReturnType<typeof catalogOn>) => {
