@@ -10,7 +10,7 @@
 import { browser, expect } from "@wdio/globals";
 import { feed, keyPress, shellCommand } from "../support/compositor";
 import { dataFile, shellReady, waitForData } from "../support/desk";
-import { bodyAt, click, type Point, titleAt, toolAt } from "../support/gestures";
+import { bodyAt, click, fromMenu, type Point, titleAt, toolAt } from "../support/gestures";
 import {
   byId,
   type Desk,
@@ -105,9 +105,10 @@ describe("session: what the person closed, put away and placed stays so", () => 
     expect(onScreen(desk).find((w) => w.focused)?.id).not.toBe(NOTES);
     expect(ids(desk)).toEqual(ids(after));
 
-    // The Terminal is used (New tab opens its second window as a tab in use), then a press on
-    // Database's title bar puts Database in use: ⌘W closes Database, the Terminal keeps its tabs.
-    await press(toolAt(await inFront(TERMINAL), "new-tab"));
+    // The Terminal is used (its window menu's New tab opens its second window as a tab in use),
+    // then a press on Database's title bar puts Database in use: ⌘W closes Database, the Terminal
+    // keeps its tabs.
+    await fromMenu(await inFront(TERMINAL), "new-tab", true, press);
     await windowUntil(TERMINAL, (w) => w.panes.length === 2, "no second tab");
     await press(titleAt(await inFront(DATABASE)));
     await windowUntil(DATABASE, (w) => w.focused === true, "a title-bar press left it out of use");
