@@ -32,7 +32,11 @@ async function tell(page: Page, text: string): Promise<void> {
   // The last choice says it to Eris.
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Enter");
-  await step(page, 2500);
+  // The line flies into her (1.4 s) and she reads it (0.48 s) before she answers (ADR 0275); the
+  // clock runs a step's frames before what waits on them, so each wait ends in a step of its own.
+  await step(page, 1500);
+  await step(page, 600);
+  await step(page, 400);
 }
 
 /** Whether Eris stands over the talk pill, centred on it with 12 between (ADR 0254). */

@@ -1,9 +1,9 @@
 /**
- * The windows Eris looks at or uses while she answers (ADR 0271). A window is lit from the moment
- * she turns to it until she leaves it: softly while she only looks (`LOOK`), fully while a command
- * of its plugin runs (`USE`); with several reasons at once it takes the brightest. The store keeps
- * them (`erisWindows`) with how brightly each glows now, which rises and falls on the ticker in
- * tenths, so a fade is a few reports to the compositor, not one a frame. The compositor draws the
+ * The windows Eris uses while she answers (ADR 0271, ADR 0275). A window is lit only while she is
+ * at it: from the moment an errand's spark lands on it until its plugin has answered, and with
+ * several reasons at once it takes the brightest. A line that runs nothing lights none. The store
+ * keeps them (`erisWindows`) with how brightly each glows now, which rises and falls on the ticker
+ * in tenths, so a fade is a few reports to the compositor, not one a frame. The compositor draws the
  * glow around the window's frame where it draws the window (apps/desk `compositor-desk.ts`); the
  * window's section is marked too (`errand.css`), which lights it on a desk whose page draws its
  * windows. With reduced motion nothing fades. A desk has one account of them (`visitingOf`): the
@@ -12,8 +12,7 @@
 import { cubicBezier } from "../ease";
 import type { ShellCtx } from "../shell/context";
 
-/** How brightly a window she looks at glows, and one she uses. */
-export const LOOK = 0.6;
+/** How brightly a window she uses glows. */
 export const USE = 1;
 /** A window's glow comes up over this long, and goes over this long. */
 export const GLOW_IN_MS = 240;

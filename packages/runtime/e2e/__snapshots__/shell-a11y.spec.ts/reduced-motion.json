@@ -923,6 +923,11 @@
          }
         },
         {
+         "tag": "svg",
+         "class": "eris-mind",
+         "icon": null
+        },
+        {
          "tag": "span",
          "class": "eris-tail eris-tail-1",
          "hidden": "",

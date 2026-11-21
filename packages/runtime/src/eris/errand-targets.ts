@@ -1,23 +1,24 @@
 /**
- * Where Eris's errands go (ADR 0089, ADR 0271): every window that shows the plugin a command
- * belongs to, found in the desk's page and in the windows' own pages (ADR 0201), each with the
- * window it lies in, whose frame glows meanwhile; for the desk's local agent tools a local agent's
- * screen, else their group in the agent bar. And what she looks at as a line comes in: the window
- * in use, which "this" means to her brain (ADR 0109).
+ * Where Eris's errands go (ADR 0089, ADR 0271, ADR 0275): every window that shows the plugin a
+ * command belongs to, found in the desk's page and in the windows' own pages (ADR 0201), each with
+ * the window it lies in, whose frame glows meanwhile, and every other window the window manager
+ * places with that plugin in it, whose page this one cannot read (the app's compositor draws each
+ * window from a page of its own); for the desk's local agent tools a local agent's screen, else
+ * their group in the agent bar.
  */
-import type { BrainDesk } from "@endue-ai/bridge";
 import type { BrainStep } from "../bridge/types";
 import { windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
+import type { DeskState } from "../shell/state";
 import { windowPlugins } from "../surface/placed";
 import type { WindowDocs } from "../surface/window-docs";
 import type { Point } from "./errand-thread";
 
-/** What an errand finds: the element it flies to and the window that lies in, if it is in one. */
-export interface Target {
-  el: HTMLElement;
-  window?: string;
-}
+/**
+ * What an errand finds: the element it flies to and the window that lies in, if it is in one, or a
+ * window alone, whose DOM is not in this page.
+ */
+export type Target = { el: HTMLElement; window?: string } | { el?: undefined; window: string };
 
 /** What finding a window reads: the store and where each window's DOM lies. */
 type Seen = Pick<ShellCtx, "store" | "pages">;
@@ -117,18 +118,19 @@ export function targetsOf(
     if (window && targets.some((t) => t.window === window)) continue;
     targets.push(window ? { el, window } : { el });
   }
+  if (local) return targets;
+  for (const window of windowsShowing(ctx.store.get(), step.provider)) {
+    if (!targets.some((t) => t.window === window)) targets.push({ window });
+  }
   return targets;
 }
 
-/**
- * The windows she looks at as a line comes in with the desk (ADR 0109): the one in use on the
- * desktop in front, neither put away in the drawer nor out of the canvas.
- */
-export function seenIn(desk: BrainDesk): string[] {
-  const here = desk.desktops?.find((d) => d.current)?.id;
-  return desk.windows
-    .filter((w) => w.focused && !w.hidden && !w.out)
-    .filter((w) => !here || !w.desktop || w.desktop === here)
+/** The windows of the desktop in front that the window manager places with `provider`'s surfaces. */
+export function windowsShowing(s: DeskState, provider: string): string[] {
+  const own = (id: string) =>
+    id === provider || id.startsWith(`${provider}/`) || id.startsWith(`${provider}:`);
+  return windowsOf(s)
+    .filter((w) => windowPlugins(s, w.id).some(own))
     .map((w) => w.id);
 }
 
