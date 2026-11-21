@@ -68,13 +68,14 @@
   fill: var(--desk-text);
 }
 
-.er-key,
-.er-tag {
+.er-key {
   fill: var(--desk-primary-text);
   font-weight: 600;
 }
 
 .er-tag {
+  fill: var(--desk-primary-text);
+  font-weight: 600;
   font-size: 0.85em;
 }
 
@@ -82,8 +83,8 @@
   fill: var(--desk-text-muted);
 }
 
-.er-wire,
-.er-end {
+/* A relation's line, its ends' marks and rings take the link's stroke. */
+.er-link {
   fill: none;
   stroke: var(--desk-text-muted);
   stroke-width: 1.5;
@@ -91,8 +92,6 @@
 
 .er-ring {
   fill: var(--desk-card);
-  stroke: var(--desk-text-muted);
-  stroke-width: 1.5;
 }
 
 .er-drawn .er-wire {
@@ -117,7 +116,7 @@
   stroke-width: 2;
 }
 
-.er-link:hover .er-wire {
+.er-link:hover {
   stroke: var(--desk-text);
 }
 
@@ -133,9 +132,9 @@
   cursor: crosshair;
 }
 
+/* The tables in the map: a mark that reaches 3:1 on the map's card, the view's ring over it. */
 .er-map-boxes {
   fill: var(--desk-text-muted);
-  opacity: 0.6;
 }
 
 .er-map-view {
