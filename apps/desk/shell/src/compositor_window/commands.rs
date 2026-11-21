@@ -9,7 +9,8 @@
 //! `desk.windows.list` answers); in development builds
 //! `compositor_capture { path }` (the composed frame as a PNG), `compositor_stats` (what every surface
 //! painted), `compositor_input { events, logical? }` (events fed to the window's own input entry,
-//! `harness.rs`; `{ shake }` the motion gate's shake, `motion.rs`), `compositor_input_state` (where input goes), `compositor_a11y` (the
+//! `harness.rs`; `{ shake }` the motion gate's shake, `motion.rs`; `{ busy: ms }` a busy loop on the
+//! main thread after the next frame is handed, `frame.rs`), `compositor_input_state` (where input goes), `compositor_a11y` (the
 //! accessibility tree the adapter has, and a screen reader's request, `a11y_check.rs`) and
 //! `compositor_clock { hold?, at? }` (the window manager's clock held, so a check sees a motion at a
 //! time it chooses, ADR 0013) and `compositor_window { to } | { occluded } | { frame } | { sway } | { shortcut } | { seen }`
@@ -142,6 +143,16 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
         }
         "compositor_window" if cfg!(debug_assertions) && args.get("sway").is_some() => {
             super::motion::sway(desk, args)
+        }
+        // The motion gate's busy main thread (#249): answered at once, held after the next frame.
+        "compositor_input" if cfg!(debug_assertions) && args.get("busy").is_some() => {
+            let ms = args.get("busy").and_then(Value::as_f64).unwrap_or_default();
+            desk.pump.run(move |shell, _| {
+                if let Some(compositor) = shell.compositor.as_mut() {
+                    compositor.busy(ms);
+                }
+            });
+            Ok(Value::Null)
         }
         "compositor_capture"
         | "compositor_stats"

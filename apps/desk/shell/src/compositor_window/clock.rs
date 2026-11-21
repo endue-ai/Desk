@@ -4,15 +4,17 @@
 //! what they paint at most once a frame. The window wakes for its next frame (none while it is out
 //! of sight, #155), the live budget's next look or the clock's, which wants none while every surface
 //! on it rests (#134); CEF's poll rides those wake-ups (#129, `pump.rs`). While CEF's work runs long
-//! the pump's stand-in looks at the clock from its own thread (`pump/stand_in.rs`).
+//! the pump's stand-in looks at the clock from its own thread (`pump/stand_in.rs`). A frame is a
+//! display interval after the last (16.667 ms at 60 Hz, 8.333 at 120: `display.rs`, #249), and the
+//! begin frames count the display's frames too.
 
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use serde_json::json;
 
 use super::CompositorWindow;
-use crate::web_host::frames::{self, FRAME};
+use crate::web_host::frames;
 use crate::web_host::view::catch_up::catch_up_page;
 
 impl CompositorWindow {
@@ -35,11 +37,13 @@ impl CompositorWindow {
         self.desk.pump.stand_in(look, Arc::new(frames::prompted));
     }
 
-    /// The window is in front (the display's rate) or behind (a lower one). In front, a window that
-    /// could not present tries again.
+    /// The window is in front (60 frames a second, whatever the display's rate: at 120 Hz a pace of
+    /// 60 takes every other desk frame, #249) or behind (30). In front, a window that could not
+    /// present tries again, on the display it is on now.
     pub fn focused(&mut self, focused: bool) {
         if focused {
-            self.gpu.resume();
+            self.render.resume();
+            self.follow_display();
         }
         let fps = if focused { 60 } else { 30 };
         for (surface, _, _) in self.hosted.surfaces().made() {
@@ -59,9 +63,10 @@ impl CompositorWindow {
             dirty,
             occluded: self.occluded,
             last_frame: self.last_frame,
+            interval: frames::interval(self.rate),
             hosted: self.hosted.due(),
             clock: self.begin_due,
-            withheld: self.gpu.withheld(),
+            withheld: self.render.state().withheld,
             tips: self.tips.due(),
         }
     }
@@ -85,6 +90,8 @@ pub(super) struct Due {
     /// The OS says the window is out of sight (winit's `Occluded`).
     pub occluded: bool,
     pub last_frame: Instant,
+    /// One frame of the window's display.
+    pub interval: Duration,
     /// The live budget's next look, or when the page's picture counts as painted (`Hosted::due`).
     pub hosted: Option<Instant>,
     /// The frame clock's next look.
@@ -98,7 +105,7 @@ pub(super) struct Due {
 impl Due {
     /// When the next frame is due: none while nothing changed or nothing can be seen.
     pub fn frame(&self) -> Option<Instant> {
-        (self.dirty && !self.occluded).then_some(self.last_frame + FRAME)
+        (self.dirty && !self.occluded).then_some(self.last_frame + self.interval)
     }
 
     /// When to look again for a frame the OS withheld: not while the OS says the window is out of
@@ -108,14 +115,14 @@ impl Due {
     }
 
     /// The frame just composed at `now`, as the next one counts from it: the clock's own beat, one
-    /// `FRAME` after the last, when this one came within a frame of when it was due, so a late
-    /// wake-up does not push every frame after it later (the beat drifted by each frame's lateness,
-    /// slightly under 60 a second against the display's); `now` when the desk had nothing to draw a
-    /// while or a frame was missed, so the beat starts again there.
-    pub fn beat(last_frame: Instant, now: Instant) -> Instant {
-        let due = last_frame + FRAME;
+    /// display `interval` after the last, when this one came within a frame of when it was due, so
+    /// a late wake-up does not push every frame after it later (the beat drifted by each frame's
+    /// lateness, slightly under 60 a second against the display's); `now` when the desk had
+    /// nothing to draw a while or a frame was missed, so the beat starts again there.
+    pub fn beat(last_frame: Instant, now: Instant, interval: Duration) -> Instant {
+        let due = last_frame + interval;
         match now.checked_duration_since(due) {
-            Some(late) if late < FRAME => due,
+            Some(late) if late < interval => due,
             _ => now,
         }
     }
