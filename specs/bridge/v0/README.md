@@ -768,7 +768,9 @@ refused, and a link that asks for a new window loads in the same view.
 
 **web.place** says where one of the caller's views lies in its surface, in CSS pixels from the surface's
 top left, and whether it shows (`shown`, true by default). What lies past the surface's edge is not drawn.
-A view hidden rests its page. A view that is not the caller's is `not_found`.
+With `fill: true`, the box extends from `x` and `y` to the surface's right and bottom edges as the
+surface resizes. In that mode the surface size determines the extent. A view hidden rests its page.
+A view that is not the caller's is `not_found`.
 
 **web.load** loads an address in one of the caller's views, under the same `web:browse` scope as
 `web.open`: an address outside the scope's hosts is `permission_denied`. It answers once the view took
