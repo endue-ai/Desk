@@ -39,17 +39,17 @@ fn target((scene, drawn): &(Scene, Drawn), at: Vec2) -> Option<(String, Vec2)> {
     Some((t.surface.clone(), t.origin + hit.local_point * t.per_unit))
 }
 
-// The pane's body lies at 105,231 and is 379 by 219 (`draw_tests.rs`).
-const BODY: Vec2 = Vec2::new(105.0, 231.0);
+// The pane's body lies at 105,227 and is 379 by 223 (`draw_tests.rs`).
+const BODY: Vec2 = Vec2::new(105.0, 227.0);
 
 #[test]
 fn a_web_view_is_drawn_over_its_plugins_pane_at_its_box_and_takes_the_pointer_there() {
     // Under a toolbar 40 high, and taller than what is left of the pane.
     let shown = drawn_with(&textures(false), Some([0.0, 40.0, 379.0, 500.0]));
-    let (surface, at) = target(&shown, BODY + Vec2::new(10.0, 10.0)).unwrap();
+    let (surface, at) = target(&shown, BODY + Vec2::new(10.0, 14.0)).unwrap();
     assert_eq!(
         (surface.as_str(), at),
-        ("main.endue-notes", Vec2::new(10.0, 10.0)),
+        ("main.endue-notes", Vec2::new(10.0, 14.0)),
         "the toolbar"
     );
     let (surface, at) = target(&shown, BODY + Vec2::new(10.0, 50.0)).unwrap();
@@ -58,10 +58,10 @@ fn a_web_view_is_drawn_over_its_plugins_pane_at_its_box_and_takes_the_pointer_th
         (WEB, Vec2::new(10.0, 10.0)),
         "the page, at its own point"
     );
-    let (surface, at) = target(&shown, BODY + Vec2::new(370.0, 218.0)).unwrap();
+    let (surface, at) = target(&shown, BODY + Vec2::new(370.0, 222.0)).unwrap();
     assert_eq!(
         (surface.as_str(), at),
-        (WEB, Vec2::new(370.0, 178.0)),
+        (WEB, Vec2::new(370.0, 182.0)),
         "to the pane's last row"
     );
     let below = target(&shown, BODY + Vec2::new(10.0, 225.0)).unwrap().0;
@@ -70,7 +70,7 @@ fn a_web_view_is_drawn_over_its_plugins_pane_at_its_box_and_takes_the_pointer_th
     let placed = shown.1.placed.iter().find(|(s, _)| s == WEB).unwrap().1;
     assert_eq!(
         (placed.x, placed.y, placed.width, placed.height),
-        (105.0, 271.0, 379.0, 500.0)
+        (105.0, 267.0, 379.0, 500.0)
     );
 }
 
