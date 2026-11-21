@@ -123,6 +123,7 @@ impl WebHost {
             width: 0.0,
             height: 0.0,
             shown: false,
+            fill: false,
         };
         {
             let mut inner = self.inner();
@@ -300,15 +301,14 @@ impl WebHost {
 
     /// Where each view that shows lies in its window's surface, by that surface's host: what
     /// the scene draws (`compositor_window/draw_web.rs`).
-    pub fn web_boxes(&self) -> HashMap<String, [f32; 4]> {
+    pub fn web_boxes(&self) -> HashMap<String, WebPlace> {
         let inner = self.inner();
-        (inner.web.by_host.iter())
-            .filter(|(_, v)| shows(&v.place))
-            .map(|(host, v)| {
-                let p = &v.place;
-                let at = [p.x as f32, p.y as f32, p.width as f32, p.height as f32];
-                (host.clone(), at)
-            })
+        inner
+            .web
+            .by_host
+            .iter()
+            .filter(|(_, v)| v.place.shown && (v.place.fill || shows(&v.place)))
+            .map(|(host, v)| (host.clone(), v.place))
             .collect()
     }
 
@@ -322,11 +322,16 @@ impl WebHost {
             let mut inner = self.inner();
             let hosts: Vec<String> = inner.web.by_host.keys().cloned().collect();
             for host in hosts {
-                if !inner.records.contains_key(&host) {
+                let Some(parent) = inner.records.get(&host) else {
                     ended.push(host);
                     continue;
-                }
-                let place = inner.web.by_host[&host].place;
+                };
+                // Use the plugin's requested viewport so CEF can reflow while the compositor
+                // is still presenting the previous frame.
+                let (width, height) = parent.view.lock().size;
+                let place = inner.web.by_host[&host]
+                    .place
+                    .in_pane(f64::from(width), f64::from(height));
                 let surface = surface_of(&host);
                 let Some(record) = inner.records.get_mut(&surface) else {
                     continue;

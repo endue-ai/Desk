@@ -59,8 +59,20 @@ pub fn over(
     from: &Sources,
     shown: &mut Shown,
 ) -> Result<Option<Rect>, SceneError> {
-    let Some((made, origin)) = (from.popup)(host).and_then(|p| node(to, bounds, p, from.scale))
-    else {
+    let Some(popup) = (from.popup)(host) else {
+        return Ok(None);
+    };
+    // A web view can show its previous paint fitted to a new pane size. Follow its field
+    // while keeping the popup itself at its native size and with its own input coordinates.
+    let to = if crate::web_host::web_rules::is_web_view(host)
+        && let Some((_, target)) = shown.iter().rev().find(|(_, t)| t.surface == host)
+    {
+        let offset = popup.0.min();
+        to.translate(offset / target.per_unit - offset)
+    } else {
+        to
+    };
+    let Some((made, origin)) = node(to, bounds, popup, from.scale) else {
         return Ok(None);
     };
     let at = made.rect;

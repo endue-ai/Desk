@@ -42,7 +42,7 @@ export function createBrowser(desk, view) {
   let url = "";
   let title = "";
   let search;
-  /** The box last told to the desk, so a look that changed nothing asks nothing. */
+  /** The origin last told to the desk. The pane supplies the rest of the box. */
   let placed = "";
   /** Whether the page loads now, and who waits for it to rest (`settled`). */
   let loading = false;
@@ -79,14 +79,14 @@ export function createBrowser(desk, view) {
     }
   }
 
-  /** Tell the desk where the page lies, when that changed. */
+  /** Place the page below the toolbar and let the compositor follow the pane's size. */
   async function place() {
     if (viewId === undefined) return;
     const box = view.box();
-    const told = `${viewId} ${box.x} ${box.y} ${box.width} ${box.height}`;
+    const told = `${viewId} ${box.x} ${box.y}`;
     if (told === placed) return;
     placed = told;
-    await desk.call("web.place", { viewId, ...box }).catch(() => {});
+    await desk.call("web.place", { viewId, ...box, fill: true }).catch(() => {});
   }
 
   /** Loads run one at a time: a second one waits for the view the first one opens. */
