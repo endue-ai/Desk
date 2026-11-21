@@ -11,6 +11,7 @@ import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
  *   formatKeywordCase: string, formatIndent: number, formatLineWidth: number, formatComma: string,
  *   formatAndOr: string, formatJoins: string, formatOneLine: string, formatLists: string,
  *   formatOnSave: boolean,
+ *   pgDump: string, pgRestore: string,
  * }} Settings
  */
 
@@ -34,6 +35,8 @@ export const DEFAULTS = Object.freeze({
   formatOneLine: STYLE.oneLine,
   formatLists: STYLE.lists,
   formatOnSave: false,
+  pgDump: "",
+  pgRestore: "",
 });
 
 /** The manifest key of each setting, the range of the numbers and the choices of the strings. */
@@ -65,6 +68,8 @@ const KEYS =
     formatOneLine: { key: "endue.database.format-one-line", choices: CHOICES.oneLine },
     formatLists: { key: "endue.database.format-lists", choices: CHOICES.lists },
     formatOnSave: { key: "endue.database.format-on-save" },
+    pgDump: { key: "endue.database.pg-dump" },
+    pgRestore: { key: "endue.database.pg-restore" },
   });
 
 /** The setting keys as the manifest declares them, in order. */
@@ -140,7 +145,11 @@ export const formatStyle = (/** @type {Settings} */ settings) =>
   });
 
 /** The settings that change which client runs: what was found is found again. */
-const CLIENT_KEYS = new Set([KEYS.mysql.key, KEYS.sqlite3.key, KEYS.path.key]);
+const CLIENT_KEYS = new Set(
+  ["mysql", "sqlite3", "path", "pgDump", "pgRestore"].map(
+    (name) => KEYS[/** @type {keyof Settings} */ (name)].key,
+  ),
+);
 
 /**
  * Follow the settings while the plugin runs (settings.changed for its own keys): each change

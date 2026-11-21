@@ -106,9 +106,11 @@ describe("clients", () => {
       /8\.0\.19 or newer/u,
     );
     expect(tooOld({ command: "sqlite3", flavor: "sqlite", version: "3.43.2" })).toBe("");
-    expect(searchPath("mac", ["/opt/db/bin"]).split(":").slice(0, 3)).toEqual([
+    // libpq's folder is for pg_dump and pg_restore (features/backup/), which Homebrew keeps out of PATH.
+    expect(searchPath("mac", ["/opt/db/bin"]).split(":").slice(0, 4)).toEqual([
       "/opt/db/bin",
       "/opt/homebrew/bin",
+      "/opt/homebrew/opt/libpq/bin",
       "/opt/homebrew/opt/mysql-client/bin",
     ]);
   });
