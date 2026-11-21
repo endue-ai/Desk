@@ -58,12 +58,14 @@ describe("reading the activity", () => {
       query: "UPDATE orders SET total = total + 1 WHERE id = 1",
       hidden: false,
       own: "",
+      reads: false,
     });
-    // NULL is no age, never 0; 0 stays 0. The view's own session and the plugin's are marked.
+    // NULL is no age, never 0; 0 stays 0. The view's own session is marked; an endue Desk session
+    // db.list does not name is another desk's, with no mark (activity-own.test.ts).
     const byPid = (pid: number) => sessions.find((s) => s.pid === pid);
     expect(byPid(4251)?.xactMs).toBeNull();
     expect(byPid(4250)).toMatchObject({ own: "view", stateMs: 0, client: "local" });
-    expect(byPid(4251)?.own).toBe("plugin");
+    expect(byPid(4251)?.own).toBe("");
     expect(byPid(4260)).toMatchObject({ hidden: true, query: null, state: null, client: null });
     expect(locks.map((l) => [l.pid, lockText(l), l.granted, l.waitMs])).toEqual([
       [4243, "ShareLock on transaction 731", false, 30000],

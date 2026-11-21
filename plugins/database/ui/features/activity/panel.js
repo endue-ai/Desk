@@ -6,7 +6,8 @@
 // fields, and the footer shows them. Layout and colours: activity.css.
 
 import { el } from "../../dom.js";
-import { databasesOf, hiddenOf, PERIODS, sorted, visible } from "./model.js";
+import { readAtText } from "../../schema-cache/view.js";
+import { databasesOf, hiddenOf, PERIODS, saidOf, sorted, visible } from "./model.js";
 import { LOCK_ROWS } from "./sql.js";
 import { locksSection, sessionsSection, treeSection } from "./tables.js";
 
@@ -46,7 +47,7 @@ function statusOf(/** @type {ActivityState} */ s) {
         ? "Refresh stopped"
         : `every ${s.period} s`;
   return [
-    `Read at ${new Date(s.read.at).toLocaleTimeString()}`,
+    readAtText(s.read.at, Date.now(), true),
     `PostgreSQL ${s.read.server}`,
     `${s.read.sessions.length} sessions, ${waiting} waiting`,
     refresh,
@@ -107,7 +108,7 @@ export function activityPanel(doc, first, act, buffer) {
   );
   const [idle, own, system] = [
     check("idle", "Hide idle"),
-    check("own", "Hide this view's session"),
+    check("own", "Hide the view's reads"),
     check("system", "Background processes"),
   ];
   const bar = el(
@@ -287,14 +288,29 @@ export function activityPanel(doc, first, act, buffer) {
     arm();
   };
 
+  /**
+   * The footer's sentence about a read (the open command's) follows each read while the footer
+   * still shows it; anything said since stays.
+   * @param {NonNullable<ActivityState["read"]>} before
+   * @param {NonNullable<ActivityState["read"]>} now
+   */
+  const follow = (before, now) => {
+    const line = doc.getElementById("status");
+    if (!line || line.textContent !== saidOf(state.conn.name, before)) return;
+    line.textContent = saidOf(state.conn.name, now);
+    line.title = line.textContent;
+  };
+
   draw();
   hints();
   if (!state.read && !state.reading && !state.error) act("activityRefresh", id);
   return {
     el: root,
     update(/** @type {ActivityState} */ next) {
+      const before = state.read;
       state = next;
       draw();
+      if (before && next.read && before !== next.read) follow(before, next.read);
     },
     destroy() {
       clearTimeout(timer);
