@@ -1,6 +1,7 @@
 // What the SQL problems bind names against (PG-30, ADR 0294): the schema cache's answers turned into
-// the parser's model, only what the cache holds, and the editor's context from the console on
-// screen, which asks the server nothing.
+// the parser's model, only what the cache holds (with NOT NULL and index definitions for the
+// warnings, PG-36), and the editor's context from the console on screen, which asks the server
+// nothing.
 import { describe, expect, it } from "vitest";
 import { problemModel } from "../ui/diagnose/model.js";
 import type { Node } from "../ui/explorer.js";
@@ -166,13 +167,63 @@ describe("what SQL problems bind against", () => {
     const m = await mount({
       store: { connections: SAVED },
       script: catalogScript(() => shop()),
-      settings: { "problems-names": false },
+      settings: { "problems-names": false, "problems-warnings": false },
     });
     await m.host.command("endue.database.console", { connection: "Shop" });
     expect(await contextOf(m)).toMatchObject({
       syntax: true,
       names: false,
+      warnings: false,
+      off: [],
       model: null,
     });
+  });
+
+  it("the warnings (PG-36) read the cache's NOT NULL and indexes, and their settings", async () => {
+    const view = {
+      ...cacheView(5, [state("public", true)]),
+      objects: () => [{ name: "people", kind: "table" }],
+      columns: () => [
+        { name: "id", type: "integer", nullable: false },
+        { name: "name", type: "text", nullable: true },
+      ],
+      parts: () => [
+        { kind: "primary key", name: "people_pkey", detail: "PRIMARY KEY (id)" },
+        {
+          kind: "index",
+          name: "people_pkey",
+          detail: "CREATE UNIQUE INDEX people_pkey ON public.people USING btree (id)",
+        },
+        { kind: "index", name: "people_bare" },
+      ],
+    };
+    expect(problemModel("c-9", view as never)?.schemas[0]?.relations).toEqual([
+      {
+        name: "people",
+        kind: "table",
+        columns: [
+          { name: "id", type: "integer", notNull: true },
+          { name: "name", type: "text" },
+        ],
+        indexes: ["CREATE UNIQUE INDEX people_pkey ON public.people USING btree (id)"],
+      },
+    ]);
+    // Names off, warnings on: the model still goes, for the warnings that need it.
+    const m = await mount({
+      store: { connections: SAVED },
+      script: catalogScript(() => shop()),
+      settings: {
+        "problems-names": false,
+        "problems-warnings-off": ["limit-without-order", "select-star"],
+      },
+    });
+    await m.host.command("endue.database.console", { connection: "Shop" });
+    const context = (await contextOf(m)) as { model: unknown };
+    expect(context).toMatchObject({
+      names: false,
+      warnings: true,
+      off: ["limit-without-order", "select-star"],
+    });
+    expect(context.model).not.toBeNull();
   });
 });
