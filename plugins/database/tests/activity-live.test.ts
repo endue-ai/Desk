@@ -82,15 +82,21 @@ async function plugin(as?: { user: string; password: string }) {
   });
   const secret = as?.password ?? password;
   const procs = realProcs();
-  const spawnReal = procs.handlers["proc.spawn"] as (params: Record<string, unknown>) => unknown;
+  const spawnReal = procs.handlers["proc.spawn"] as unknown as (
+    params: Record<string, unknown>,
+    caller?: string,
+  ) => unknown;
   const handlers = {
     ...procs.handlers,
     // The password reaches psql as the person's typed one would, never through the store.
-    "proc.spawn": (params: Record<string, unknown>) =>
-      spawnReal({
-        ...params,
-        env: { ...(params.env as object), ...(secret ? { PGPASSWORD: secret } : {}) },
-      }),
+    "proc.spawn": (params: Record<string, unknown>, caller?: string) =>
+      spawnReal(
+        {
+          ...params,
+          env: { ...(params.env as object), ...(secret ? { PGPASSWORD: secret } : {}) },
+        },
+        caller,
+      ),
   } as unknown as Handlers;
   const m = await mount({ store: { connections: [conn] }, handlers, pick: () => "yes" });
   procs.attach((event) => m.host.emit(event));
@@ -104,7 +110,10 @@ afterAll(() => {
   for (const child of children) child.kill();
   if (!uri) return;
   admin(`DROP TABLE IF EXISTS ${TABLE}`);
-  admin(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = '${ROLE}'`);
+  // A killed psql leaves its backend asleep in pg_sleep: end the tests' sessions by name too.
+  admin(
+    `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = '${ROLE}' OR application_name LIKE 'activity %'`,
+  );
   admin(`DROP ROLE IF EXISTS ${ROLE}`);
 });
 
@@ -141,22 +150,30 @@ describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
     const tree = blockingTree(read.sessions, read.locks);
     expect(tree.find((n) => n.pid === holderPid)?.children.map((c) => c.pid)).toEqual([waiterPid]);
 
-    // Cancel stops the sleep; the session stays, its transaction failed and still holding the row.
+    // Cancel stops the sleep; the session stays in its failed transaction, which lets go of the
+    // row, so the waiter's update goes through.
     await expect(
       m.host.command("endue.database.cancel-session", { connection: "live", pid: holderPid }),
     ).resolves.toEqual({ pid: holderPid, done: "cancelled" });
-    expect(m.picks.at(-1)?.items.map((i) => i.label)).toContain(
-      named(seen, "activity holder")?.statement &&
-        `Statement: ${named(seen, "activity holder")?.statement}`,
-    );
-    const failed = await until(
+    // Asked first, the sleeping statement under Yes.
+    expect(m.picks.at(-1)?.title).toBe(`Cancel the statement of session ${holderPid} on live?`);
+    expect(m.picks.at(-1)?.items[0]).toMatchObject({
+      id: "yes",
+      detail: `Statement: ${named(seen, "activity holder")?.statement}`,
+    });
+    await until(
       () => activity(m),
       (a) => named(a, "activity holder")?.state === "idle in transaction (aborted)",
     );
-    expect(failed.waits.find((w) => w.pid === waiterPid)?.waitsFor).toEqual([holderPid]);
     expect(holder.err()).toMatch(/canceling statement due to user request/u);
+    expect(await waiter.exited).toBe(0);
+    const freed = await until(
+      () => activity(m),
+      (a) => !a.waits.some((w) => w.pid === waiterPid),
+    );
+    expect(named(freed, "activity holder")?.state).toBe("idle in transaction (aborted)");
 
-    // End ends it: the row is free, the waiter's update goes through, the holder's rolled back.
+    // End ends it: its connection closes, its transaction rolls back (the waiter's update stays).
     await expect(
       m.host.command("endue.database.end-session", { connection: "live", pid: holderPid }),
     ).resolves.toEqual({ pid: holderPid, done: "ended" });
@@ -164,7 +181,6 @@ describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
       () => activity(m),
       (a) => !a.sessions.some((s) => s.pid === holderPid),
     );
-    expect(await waiter.exited).toBe(0);
     expect(admin(`SELECT v FROM ${TABLE} WHERE id = 1`)).toBe("10");
   }, 60_000);
 

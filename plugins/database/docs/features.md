@@ -112,11 +112,31 @@ Modules: `edits.js`, `edit/`, `view-cell.js`.
 Modules: `export.js`, `import.js`, `importer.js`, `drops.js`, `dropped.js`, `dnd.js`, `view-dnd.js`,
 `view-import.js`.
 
+## Server activity
+
+- A panel per PostgreSQL connection (13 and later) with its sessions from `pg_stat_activity`: process id,
+  user, database, application, client, state, wait event, how long in its state, transaction and statement,
+  and the statement; the selected one's whole statement below. Columns sort; filters hide idle sessions
+  and this view's own, show background processes, and keep one database.
+- Who waits for whom (`pg_blocking_pids`) as a tree, the longest wait first, with the lock waited for and
+  how its blocker holds it; the locks from `pg_locks` (5,000 at most), the waiting ones first.
+- Read again by hand (Refresh, `g`) and every 2, 5, 10, 30 or 60 seconds while on screen; Pause (`p`)
+  stops that. What another role's session hides from this one (without `pg_read_all_stats`) is counted.
+- Cancel a statement (`pg_cancel_backend`, `c`) or end a session (`pg_terminate_backend`, `e`): always
+  asked first with its statement shown, production named first; refused on a read-only connection; the
+  server's refusal said in its words (ADR 0290). Keys: arrows, Home and End select, Enter shows the whole
+  statement.
+
+Modules: `features/activity/`.
+
 ## Agents
 
 - `endue.database.connections` (never a password), `.schema` and `.query` (100 rows a statement by default,
   1000 at most) are registered with an argument schema as agents' tools (ADR 0088); the first two only read.
 - An agent's write runs only after the person says yes, whatever the connection's tag and the `confirm`
   setting; a read-only connection refuses it, and an agent is never shown a password prompt.
+- `.activity` answers a connection's sessions and who waits for whom, and only reads; `.cancel-session` and
+  `.end-session` are irreversible: the core waits for the person's approval, then the plugin asks as it
+  asks the person (ADR 0290).
 
 Modules: `agent.js`.

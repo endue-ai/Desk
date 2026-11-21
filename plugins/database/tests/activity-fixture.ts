@@ -3,8 +3,10 @@
 // pg_cancel_backend and pg_terminate_backend, which change what the next read sees. Session 4242
 // holds a row in a transaction and sleeps, 4243 waits for its transaction, 4244 waits for 4243 on
 // the row; 4250 is the session reading the view, 4251 another of the plugin's, 4260 another role's
-// whose statement is hidden, 4100 a background process, 4300 idle in a transaction. The unit tests
-// and the runtime e2e page (packages/runtime/e2e/fixture/database.ts) share it; it needs no Node.
+// whose statement is hidden, 4100 a background process, 4300 idle in a transaction. As on a real
+// server, a cancelled statement fails its transaction, which lets go of its locks, and an ended
+// session is gone; who waited for either has its lock. The unit tests and the runtime e2e page
+// (packages/runtime/e2e/fixture/database.ts) share it; it needs no Node.
 import type { Connection } from "../ui/engines/common.js";
 import type { Answer, Script } from "./clients";
 
@@ -87,17 +89,25 @@ export function activityServer(
   const ended = new Set<string>();
   const signals: string[] = [];
 
+  /** Who no longer holds anything: a failed transaction's locks and an ended session's are gone. */
+  const released = () => new Set([...cancelled, ...ended]);
   const sessions = () =>
     SESSIONS.filter((row) => !ended.has(row[0] ?? "")).map((row) => {
       const next = [...row];
       if (cancelled.has(next[0] ?? "")) next.splice(8, 3, "idle in transaction (aborted)", "", "");
-      next[14] = (next[14] ?? "")
-        .split(" ")
-        .filter((pid) => pid && !ended.has(pid))
-        .join(" ");
+      const blockers = (next[14] ?? "").split(" ").filter(Boolean);
+      const left = blockers.filter((pid) => !released().has(pid));
+      if (blockers.length && !left.length) next.splice(9, 2, "", "");
+      next[14] = left.join(" ");
       return next;
     });
-  const locks = () => LOCKS.filter((row) => !ended.has(row[0] ?? ""));
+  const locks = () =>
+    LOCKS.filter((row) => !released().has(row[0] ?? "") || row[1] === "virtualxid").map((row) => {
+      const waiter = sessions().find((s) => s[0] === row[0]);
+      return row[3] === "f" && waiter && !waiter[14]
+        ? [...row.slice(0, 3), "t", ...row.slice(4, 11), ""]
+        : row;
+    });
 
   const script: Script = (sql, env) => {
     const text = sql.trim();
