@@ -3,11 +3,15 @@
 // harness and the runtime e2e page (packages/runtime/e2e/fixture/database.ts) share them, so this
 // file imports nothing the browser cannot load.
 
-/** What a scripted statement gives back: rows (the first is the header), changes, or an error. */
+/**
+ * What a scripted statement gives back: rows (the first is the header), changes, or an error, and
+ * the lines psql writes to standard error before its marker (the server's notices, VERBOSE's INFO).
+ */
 export interface Answer {
   rows?: string[][];
   changes?: number;
   error?: string;
+  notices?: string[];
 }
 export type Script = (sql: string, env: Record<string, string>) => Answer | "auth";
 
@@ -72,6 +76,7 @@ export function psqlRun(args: string[], script: Script, env: Record<string, stri
       continue;
     }
     stdout += `${echo[1]} ${answer.rows ? answer.rows.length - 1 : (answer.changes ?? 0)}\n`;
+    for (const line of answer.notices ?? []) stderr += `${line}\n`;
     stderr += `${echo[1]}\n`;
     i += 5;
   }

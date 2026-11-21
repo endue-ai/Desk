@@ -1,7 +1,8 @@
 // The explorer's DOM: the controller's flat rows as a tree (role=tree, aria-level, aria-expanded),
 // a cursor the arrow keys move and that stays on its row across a redraw, Right and Left to open
 // and close (or go to the parent), Enter to open a console, a table or an object's DDL, single keys
-// for the rest (d the DDL, c the row counts, g a refresh of the row's schema or table).
+// for the rest (d the DDL, c the row counts, g a refresh of the row's schema or table, m the
+// maintenance form, s the value search).
 
 import { el } from "./dom.js";
 import { actionFor, pressOf } from "./keys.js";
@@ -12,8 +13,8 @@ import { actionFor, pressOf } from "./keys.js";
  */
 
 const MOVES = new Set(["next", "previous", "first", "last"]);
-/** The explorer's keys that act on the row under the cursor. */
-const ROW_ACTIONS = new Set(["ddl", "count", "diagram", "searchData"]);
+/** Actions that take the row under the cursor. */
+const ROWS = new Set(["ddl", "count", "diagram", "maintain", "searchData"]);
 
 /**
  * @param {Document} doc
@@ -120,7 +121,7 @@ export function createTree(doc, tree, act) {
     else if (action === "activate" && row) act("activate", row);
     else if (action === "edit" || action === "remove") act(action, row?.connection);
     else if (action === "refresh") act("refresh", row?.connection, row);
-    else if (ROW_ACTIONS.has(action) && row) act(action, row);
+    else if (ROWS.has(action) && row) act(action, row);
     else if (!MOVES.has(action)) act(action);
   });
   tree.addEventListener("click", (event) => {
