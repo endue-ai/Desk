@@ -42,7 +42,10 @@ connection, and the explorer's reads would wait behind a person's long statement
   and the grid's edits open a session and close it, as before. Edits do not join a console's open
   transaction; PG-20 decides that. An agent's `endue.database.query` runs on a short session of its own:
   an agent never steers a console's transaction or sees its uncommitted rows, and the run commands
-  that act on a console take no SQL.
+  that act on a console take no SQL. What a feature runs in a console (a file run, a routine called
+  from its form, PG-56) runs on that console's session, an agent's request too once the person said
+  yes, since its result is shown there. Every session signs in alike: the typed password, else the
+  one the keychain keeps by name (`passwordRef`, ADR 0311), else the password file.
 * **State.** The header shows not connected, idle, running, in a transaction, in a failed transaction
   (saying ROLLBACK is needed) or session lost, in words and then a status dot, from each page's
   `transaction`. In a transaction and Dry run inside an open transaction run under `SAVEPOINT
