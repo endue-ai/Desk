@@ -2,15 +2,21 @@
 // ENDUE_DB_TEST_POSTGRES holds the URI of a scratch database (as in live.test.ts): each operation
 // on a scratch schema and read back, a drop refused while others depend on the table and done with
 // CASCADE, and a view's, a function's and a materialized view's source edited, applied in one
-// transaction and read back, a broken one rolled back with its line said.
+// transaction and read back, a broken one rolled back with its line said. On the desk core's sessions
+// (core-bridge.ts), no psql.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
 import type { OperationModel } from "../ui/features/objects/models.js";
 import { mount } from "./harness";
+import { databaseOf } from "./live-sessions";
 import { realProcs } from "./scripted";
 
 const uri = process.env.ENDUE_DB_TEST_POSTGRES;
-const OWNER = "t476_owner";
+// Roles are the server's, and other runs use it at once, each in a database of its own: the role is
+// this database's.
+const OWNER = `t476_owner_${databaseOf(uri ?? "")
+  .toLowerCase()
+  .replace(/[^a-z0-9_]/gu, "_")}`.slice(0, 63);
 
 const SETUP = `drop schema if exists obj476 cascade;
 drop schema if exists obj476_archive cascade;
@@ -43,7 +49,6 @@ const asShown =
   };
 
 describe.skipIf(!uri)("objects changed on a real PostgreSQL", () => {
-  const saved = process.env.PGPASSWORD;
   let m: Awaited<ReturnType<typeof mount>>;
   const at = { connection: "Objects", schema: "obj476" };
   /** Run SQL in the connection's console and give back the first cell of the last result. */
@@ -58,8 +63,7 @@ describe.skipIf(!uri)("objects changed on a real PostgreSQL", () => {
   beforeAll(async () => {
     const { fields, password } = parseUri(uri ?? "");
     const conn = normalize({ ...fields, id: "c-objects", name: "Objects" });
-    if (password) process.env.PGPASSWORD = password;
-    const procs = realProcs();
+    const procs = realProcs(password ? { password } : {});
     m = await mount({
       store: { connections: [conn] },
       handlers: procs.handlers,
@@ -76,8 +80,6 @@ describe.skipIf(!uri)("objects changed on a real PostgreSQL", () => {
       m.view.text = `drop schema if exists obj476 cascade;\ndrop schema if exists obj476_archive cascade;\ndrop role if exists ${OWNER}`;
       await m.host.command("endue.database.run-all").catch(() => {});
     }
-    if (saved === undefined) delete process.env.PGPASSWORD;
-    else process.env.PGPASSWORD = saved;
   });
 
   it("renames, moves, comments, gives away, truncates, refreshes and disables, read back each time", async () => {

@@ -4,11 +4,11 @@
   "version": "0.2.0",
   "kind": "ui",
   "entry": "ui/index.html",
-  "description": "A client for PostgreSQL, MySQL / MariaDB and SQLite through their own command-line clients without a shell: connections, an explorer of every object kind with DDL and row counts, SQL consoles with highlighting, autocomplete, formatting and parameters, results that keep NULL apart with sorting, filtering, paging, a value viewer, a record view, copy and export, pending cell edits applied in one transaction, query plans, history and starred queries, and guards for read-only and production connections.",
+  "description": "A client for PostgreSQL on the desk's own sessions, and MySQL / MariaDB and SQLite through their own command-line clients without a shell: connections, an explorer of every object kind with DDL and row counts, SQL consoles with highlighting, autocomplete, formatting and parameters, results that keep NULL apart with sorting, filtering, paging, a value viewer, a record view, copy and export, pending cell edits applied in one transaction, query plans, history and starred queries, and guards for read-only and production connections.",
   "permissions": [
     {
       "permission": "proc:spawn",
-      "commands": ["psql", "mysql", "mariadb", "sqlite3"]
+      "commands": ["mysql", "mariadb", "sqlite3"]
     },
     {
       "permission": "fs:write",
@@ -29,7 +29,8 @@
     { "permission": "proc:spawn", "commands": ["*"] },
     { "permission": "fs:write", "paths": ["/**"] },
     { "permission": "fs:read", "paths": ["${home}/.endue/database/**"] },
-    { "permission": "fs:write", "paths": ["${home}/.endue/database/**"] }
+    { "permission": "fs:write", "paths": ["${home}/.endue/database/**"] },
+    { "permission": "db:connect", "hosts": ["*"] }
   ],
   "surfaces": [
     {
@@ -1147,7 +1148,7 @@
       {
         "id": "endue.database.clients",
         "title": "Database: check the clients",
-        "keywords": ["psql", "mysql", "mariadb", "sqlite3", "install", "version"]
+        "keywords": ["postgresql", "mysql", "mariadb", "sqlite3", "install", "version"]
       },
       {
         "id": "endue.database.hide-column",
@@ -1261,11 +1262,6 @@
         "kind": "boolean",
         "default": false,
         "description": "Show the system schemas in the explorer (pg_catalog, information_schema, mysql, sys ...)."
-      },
-      "endue.database.psql": {
-        "kind": "string",
-        "default": "",
-        "description": "The psql program: a name on PATH or a full path. Empty: psql. Any other program or path is asked for at its first run."
       },
       "endue.database.mysql": {
         "kind": "string",

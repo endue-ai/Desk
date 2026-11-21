@@ -2,11 +2,13 @@
 // whose user may create databases, roles and event triggers: one of every new kind is made, read
 // through the schema cache in the counted statements, and each DDL the explorer's `d` shows is
 // applied in a fresh database (roles and the tablespace, which are the whole server's, under a new
-// name); read back there, every DDL is the same. No secret an option holds leaves the server.
+// name); read back there, every DDL is the same. No secret an option holds leaves the server. On the
+// desk core's sessions (core-bridge.ts), no psql.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createCatalog } from "../ui/catalog.js";
 import { createClients } from "../ui/clients.js";
 import { normalize, parseUri } from "../ui/connections.js";
+import { createSessions } from "../ui/engines/pg-session.js";
 import { createExecutor } from "../ui/execute.js";
 import { createRunner } from "../ui/run.js";
 import { DATABASE, isNewKind } from "../ui/schema/pg/index.js";
@@ -113,12 +115,14 @@ describe.skipIf(!pgUri)("PG-50's kinds on a real PostgreSQL", () => {
     id: "c-copy",
     name: "copy",
   });
-  const runner = createRunner(nodeBridge());
+  const bridge = nodeBridge();
+  const runner = createRunner(bridge);
   const settings = fromValues({});
   const executor = createExecutor({
     runner,
     output: inProcessOutput(),
     clients: createClients(runner, () => settings),
+    sessions: createSessions(bridge),
     settings: () => settings,
     confirm: async () => true,
     passwords: { get: () => password, set: () => {}, ask: async () => undefined },

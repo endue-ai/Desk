@@ -125,6 +125,7 @@ export function createEdits(deps) {
                   found.target,
                   columns,
                   await typesOf(conn, schema, source.name, columns),
+                  set.types,
                 )
               : null;
           state = reason ? refused(reason) : { ...refused(""), status: "ready", target: typed };

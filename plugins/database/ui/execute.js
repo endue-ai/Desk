@@ -1,7 +1,8 @@
 // Running SQL on a connection: cut it into statements, check them (what no client may run here,
 // writes on a read-only connection, a dry run that could not roll back), ask the person before what
-// is hard to undo, run the engine's client, read what it printed (in the result worker, #38), and
-// when the client says a password is missing or wrong, ask for one once and run again. No DOM.
+// is hard to undo, then run them: PostgreSQL on a session of the core's (engines/pg-session.js, ADR
+// 0281), the other engines by their client, whose output the result worker reads (#38). When the
+// server or the client says a password is missing or wrong, ask for one once and run again. No DOM.
 
 import { failedRun } from "./engines/common.js";
 import { engineOf } from "./engines/index.js";
@@ -26,6 +27,7 @@ import { split } from "./sql/split.js";
  *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number, signal?: AbortSignal }): Promise<import("./engines/common.js").Outcome> },
  *   output: Pick<import("./output-client.js").OutputReader, "read">,
  *   clients: { get(engine: import("./engines/common.js").EngineId): Promise<import("./clients.js").Client> },
+ *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "run">,
  *   settings(): Settings,
  *   confirm(title: string, reasons: string[]): Promise<boolean>,
  *   passwords: { get(id: string): string | undefined, set(id: string, value: string): void, ask(conn: Connection, why: string): Promise<string | undefined> },
@@ -71,6 +73,20 @@ export function createExecutor(deps) {
     const attempt = async (/** @type {string | undefined} */ password) => {
       if (options.signal?.aborted)
         return failedRun(statements, { kind: "cancelled", message: "Cancelled." });
+      const signal = options.signal ? { signal: options.signal } : {};
+      if ("session" in engine) {
+        if (!deps.sessions)
+          return failedRun(statements, { kind: "client", message: "No database sessions here." });
+        const typed = password !== undefined ? { password } : {};
+        return deps.sessions.run(conn, {
+          statements,
+          maxRows,
+          timeoutMs,
+          mode,
+          ...typed,
+          ...signal,
+        });
+      }
       try {
         const client = await deps.clients.get(conn.engine);
         const invocation = engine.plan(conn, {
@@ -84,13 +100,7 @@ export function createExecutor(deps) {
           single,
         });
         invocation.command = client.command;
-        // PostgreSQL ends a statement on the server (statement_timeout); the client's own limit is
-        // the backstop. The other two have only the client's.
-        const limit = timeoutMs > 0 ? timeoutMs + (engine.id === "postgresql" ? 5000 : 0) : 0;
-        const outcome = await deps.runner.run(invocation, {
-          timeoutMs: limit,
-          ...(options.signal ? { signal: options.signal } : {}),
-        });
+        const outcome = await deps.runner.run(invocation, { timeoutMs, ...signal });
         // Read in the result worker: what the client printed is never parsed on this thread (#38).
         const result = await deps.output.read(engine.id, outcome, invocation, timeoutMs);
         if (outcome.cancelled && !result.statements.some((s) => s.error?.kind === "cancelled"))

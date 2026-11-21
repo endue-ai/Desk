@@ -60,5 +60,5 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
 `cargo test -p desk-core`. `tests/` covers each side (`proc`'s child is the test binary itself; `net`
 serves from in-process listeners; `conversation`, `agent_tools`, `approval_tools`, `directory`, `lease`
 start brain-echo, needs Node); the integration layer runs on a temp index, a fake calendar and clock;
-`local_agents` reads fixture folders, `local_agent_runs` runs shell scripts as the programs (Unix).
-`db` needs no server; `db_live` signs in to the PostgreSQL that `ENDUE_DB_TEST_POSTGRES` names.
+`local_agents` reads fixture folders, `local_agent_runs` runs shell scripts as the programs (Unix). `db` needs
+no server; `db_live` (and the `db-bridge` example, the database plugin's live tests) the one `ENDUE_DB_TEST_POSTGRES` names.

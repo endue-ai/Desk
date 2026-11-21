@@ -89,10 +89,8 @@ const action = (m: Mounted, name: string) => {
   return fn as (...args: unknown[]) => Promise<unknown>;
 };
 const dialogs = (m: Mounted) => m.view.dialogs.map((d) => d.model as OperationModel);
-const psqlArgs = (m: Mounted) =>
-  m.clients.spawned
-    .filter((s) => s.command === "psql" && s.args[0] !== "--version")
-    .map((s) => s.args);
+/** Each PostgreSQL run's statements (a session each), in order. */
+const runs = (m: Mounted) => m.sessions();
 
 describe("the objects feature", () => {
   it("offers each kind what its engine can do to it, from a row's menu or a command", async () => {
@@ -263,7 +261,7 @@ describe("the objects feature", () => {
   it("writes each operation's statement and reads the schema cache again after it", async () => {
     const { m, server } = await mounted();
     await open(m, "Dev", "public", "Tables", "people");
-    const reads = psqlArgs(m).length;
+    const reads = runs(m).length;
     await m.host.command("endue.database.rename-object", {
       connection: "Dev",
       schema: "public",
@@ -272,7 +270,7 @@ describe("the objects feature", () => {
     });
     expect(server.ran.at(-1)).toBe('ALTER TABLE "public"."people" RENAME TO "persons"');
     await until(m, () => row(m, "persons"));
-    expect(psqlArgs(m).length).toBeGreaterThan(reads + 1);
+    expect(runs(m).length).toBeGreaterThan(reads + 1);
 
     await m.host.command("endue.database.truncate-table", {
       connection: "Dev",
@@ -358,9 +356,11 @@ describe("the objects feature", () => {
       title: "Apply the source of view public.big_orders",
     });
     expect(server.ran.at(-1)).toBe(m.view.text.trim().replace(/;$/u, ""));
-    expect(
-      psqlArgs(m).find((a) => a.some((x) => x.startsWith("CREATE OR REPLACE VIEW"))),
-    ).toContain("--single-transaction");
+    // One transaction: the session that applied it began with BEGIN and ended with COMMIT.
+    const applied = runs(m).find((sqls) =>
+      sqls.some((x) => x.startsWith("CREATE OR REPLACE VIEW")),
+    );
+    expect([applied?.[0], applied?.at(-1)]).toEqual(["BEGIN", "COMMIT"]);
     expect(m.view.said.at(-1)).toBe("Applied the source of view public.big_orders.");
 
     m.view.text =
