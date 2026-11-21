@@ -24,10 +24,13 @@ function holderOf(s: DeskState, window: string): DesktopId | undefined {
 
 import { provideWindowMenu, uiOf } from "./ui";
 
-/** A window's menu opens at a point (a right-click) or under its title bar's tool (`under`). */
+/**
+ * A window's menu opens at a point (a right-click) or under its title bar's tool (`under`): then
+ * (`x`, `y`) is the tool's bottom right on the desk, and `top` its top.
+ */
 type Open =
   | { kind: "desktop"; desktop: DesktopId | null; under: HTMLElement }
-  | { kind: "window"; window: string; x: number; y: number; under?: HTMLElement };
+  | { kind: "window"; window: string; x: number; y: number; under?: HTMLElement; top?: number };
 
 export interface Menus {
   /** A desktop's menu under its button; null: the "+" button's (new desktop, overview). */
@@ -174,7 +177,10 @@ export function mountMenus(root: HTMLElement, ctx: ShellCtx, switcher: HTMLEleme
       el.style.top = `${Math.round(r.bottom + 6)}px`;
       el.style.left = left(r.right);
     } else if (next.under) {
-      el.style.top = `${Math.round(Math.min(next.y + 6, vh - el.offsetHeight - 8))}px`;
+      // Above the tool where the app ends before the menu would.
+      const h = el.offsetHeight;
+      const top = next.y + 6 + h > vh - 8 ? Math.max(8, (next.top ?? next.y) - 6 - h) : next.y + 6;
+      el.style.top = `${Math.round(top)}px`;
       el.style.left = left(next.x);
     } else {
       el.style.top = `${Math.round(Math.min(next.y, vh - el.offsetHeight - 8))}px`;
@@ -242,9 +248,10 @@ export function mountMenus(root: HTMLElement, ctx: ShellCtx, switcher: HTMLEleme
         close();
         const r = tool.getBoundingClientRect();
         const page = ctx.pages?.windowOf(tool.ownerDocument);
-        const corner = { x: r.right, y: r.bottom };
-        const at = page ? (ctx.pages?.toDesk(page, corner) ?? corner) : corner;
-        show({ kind: "window", window, under: tool, ...at });
+        const desk = (at: { x: number; y: number }) =>
+          page ? (ctx.pages?.toDesk(page, at) ?? at) : at;
+        const top = desk({ x: r.right, y: r.top }).y;
+        show({ kind: "window", window, under: tool, top, ...desk({ x: r.right, y: r.bottom }) });
       },
     }),
   ];
