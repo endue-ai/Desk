@@ -6,7 +6,7 @@ use desk_compositor::input::Target;
 use desk_compositor::{ChromeTheme, Rect, Scene, TextureId, hit_test};
 use desk_core::WebPlace;
 
-use super::tests::{hosted_at, sources};
+use super::tests::{hosted_at, sources, surface_of};
 use super::{Drawn, Sources, Texture, draw};
 use crate::compositor_window::draw_web::cut;
 
@@ -200,11 +200,14 @@ fn a_filling_web_view_tracks_the_window_while_its_paint_is_stale() {
         let (w, h) = (pane.width, pane.height - 40.0);
         let placed = scene.1.placed.iter().find(|(s, _)| s == WEB).unwrap().1;
         assert_eq!(placed, Rect::new(pane.x, pane.y + 40.0, w, h));
-        let toolbar = target(&scene, BODY + Vec2::new(10.0, 39.0)).unwrap();
+        let (_, node) = surface_of(&scene.0, scene.0.root(), TextureId(7)).unwrap();
+        assert_eq!((node.rect.width, node.rect.height), (w, h));
+        let toolbar = target(&scene, pane.min() + Vec2::new(10.0, 20.0)).unwrap();
         assert_eq!(toolbar.0, "main.endue-notes");
-        let (surface, point) = target(&scene, BODY + Vec2::new(w - 10.0, h + 30.0)).unwrap();
+        let relative = Vec2::new(w * 0.7, h * 0.6);
+        let (surface, point) = target(&scene, placed.min() + relative).unwrap();
         assert_eq!(surface, WEB);
-        let expected = Vec2::new(379.0 * (w - 10.0) / w, 179.0 * (h - 10.0) / h);
+        let expected = Vec2::new(379.0 * 0.7, 179.0 * 0.6);
         assert!(point.abs_diff_eq(expected, 0.001), "{point} != {expected}");
     }
 }
