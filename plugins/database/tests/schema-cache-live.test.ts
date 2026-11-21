@@ -5,6 +5,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createClients } from "../ui/clients.js";
 import { normalize, parseUri } from "../ui/connections.js";
+import { createSessions } from "../ui/engines/pg-session.js";
 import { createExecutor } from "../ui/execute.js";
 import { createRunner } from "../ui/run.js";
 import { createSchemaCache } from "../ui/schema-cache/index.js";
@@ -19,12 +20,14 @@ const pgUri = process.env.ENDUE_DB_TEST_POSTGRES;
 describe.skipIf(!pgUri)("the schema cache on a real PostgreSQL", () => {
   const { fields, password } = parseUri(pgUri ?? "postgresql://localhost/x");
   const conn = normalize({ ...fields, id: "c-live", name: "live" });
-  const runner = createRunner(nodeBridge());
+  const bridge = nodeBridge();
+  const runner = createRunner(bridge);
   const settings = fromValues({});
   const executor = createExecutor({
     runner,
     output: inProcessOutput(),
     clients: createClients(runner, () => settings),
+    sessions: createSessions(bridge),
     settings: () => settings,
     confirm: async () => true,
     passwords: { get: () => password, set: () => {}, ask: async () => undefined },

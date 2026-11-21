@@ -218,6 +218,35 @@ describe("the stub's database sessions, as the core serves db.* (ADR 0281)", () 
     ]);
   });
 
+  it("a scripted server answers a statement its list lacks from its answer function, with the session it runs on", async () => {
+    const seen: unknown[] = [];
+    const { client, open } = setup({
+      db: {
+        ...SCRIPT,
+        answer: (sql, session) => {
+          seen.push({ sql, ...session });
+          return sql === "SELECT 2" ? { sql, columns: SCRIPT.statements[0]?.columns } : undefined;
+        },
+      },
+    });
+    const sessionId = await open();
+    const listed = await client.call(
+      "db.run",
+      { sessionId, sql: "SELECT id, note FROM orders" },
+      DB,
+    );
+    expect(listed.rows.length).toBe(25);
+    const two = await client.call("db.run", { sessionId, sql: "SELECT 2" }, DB);
+    expect(valid("DbPage", two) && [two.columns?.length, two.tag]).toEqual([2, "SELECT 0"]);
+    const none = await client.call("db.run", { sessionId, sql: "SELECT 3" }, DB);
+    expect(none.error?.code).toBe("0A000");
+    expect(seen).toEqual([
+      expect.objectContaining({ sql: "SELECT 2", host: "db.example.test", port: 5432 }),
+      expect.objectContaining({ sql: "SELECT 3", database: "shop", user: "reader" }),
+    ]);
+    expect(seen[0]).toMatchObject({ readOnly: false, settings: {} });
+  });
+
   it("without a scripted server, db.open is an io_error", async () => {
     const { open } = setup({ db: undefined });
     await expect(open()).rejects.toMatchObject({ code: "io_error" });

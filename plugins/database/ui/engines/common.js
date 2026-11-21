@@ -13,7 +13,8 @@
  *   database: string, user: string, ssl: SslMode, sslCa: string, file: string,
  *   tag: Tag, readOnly: boolean, group?: string, color?: string,
  * }} Connection
- * @typedef {{ columns: string[], rows: (string | null)[][], truncated: boolean }} ResultSet
+ * @typedef {{ columns: string[], rows: (string | null)[][], truncated: boolean, types?: number[] }} ResultSet
+ *   `types`: each column's type OID, on PostgreSQL (a session's RowDescription).
  * @typedef {"sql" | "auth" | "connect" | "client" | "timeout" | "cancelled" | "missing" | "refused"} ErrorKind
  * @typedef {{ kind: ErrorKind, message: string, code?: string, detail?: string, position?: number }} DbError
  *   `position` is an offset in the statement's text.
@@ -99,9 +100,7 @@ export const linesOf = (/** @type {string} */ text) =>
 
 /** Whether a client's words say a password is missing or wrong. */
 export function authFailed(/** @type {string} */ text) {
-  return /password authentication failed|no password supplied|fe_sendauth|28P01|Access denied for user|ERROR 1045|ERROR 1698/iu.test(
-    text,
-  );
+  return /Access denied for user|ERROR 1045|ERROR 1698/iu.test(text);
 }
 
 /** The environment's PATH-free part, without empty values. */

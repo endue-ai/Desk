@@ -22,7 +22,7 @@ import { clusterable, LABELS, on, partitionedTooOld, TITLES } from "./options.js
 export const FLOOR = 130000;
 const FOURTEEN = 140000;
 const SEVENTEEN = 170000;
-/** psql runs the plugin's sessions as this application (engines/postgres.js, PGAPPNAME). */
+/** The plugin's own sessions' application_name (engines/pg-session.js's APPLICATION). */
 export const OWN_APPLICATION = "endue Desk";
 /** A size read waits this long for a lock another session holds, then says so. */
 export const LOCK_TIMEOUT = "SET lock_timeout = 2000";

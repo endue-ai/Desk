@@ -13,7 +13,7 @@ import { EXPORT_FOLDER, exportName } from "../../export.js";
  * @typedef {{ run(id: string, args?: unknown): Promise<unknown> }} Commands
  */
 
-/** The most a file may hold to become a cell's value: its hex literal must fit one psql argument. */
+/** The most a file may hold to become a cell's value: its hex literal must fit one client argument. */
 export const MAX_FILE = 256 * 1024;
 const HEX = /^(?:\\x|0x)([0-9a-fA-F]*)$/u;
 

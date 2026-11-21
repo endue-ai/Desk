@@ -85,6 +85,9 @@ describe("the manifest offers them to agents", () => {
       expect(byId(id), id).toMatchObject({ agent: true, irreversible: true });
     for (const id of ["show", "conversation", "react", "edit", "mark-read", "save", "pin"])
       expect(byId(id), id).toMatchObject({ agent: true, args: { additionalProperties: false } });
-    expect(byId("send")?.args?.required).toEqual(["text"]);
+    // The person runs these from the palette with no args (the composer's draft, a picker): the
+    // core checks every caller's args, so none of them requires one.
+    for (const id of ["send", "react", "edit"])
+      expect(byId(id)?.args?.required, id).toBeUndefined();
   });
 });
