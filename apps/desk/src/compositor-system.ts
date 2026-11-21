@@ -41,7 +41,7 @@ export const PARTS: ReadonlyArray<readonly [id: string, selector: string, found?
   ["desk.studios", ".theme-studio"],
   [
     "desk.overlays",
-    '.popover, .tooltip, [role="menu"], .dialog, .proposal, .desk-describe-panel, .desk-which-key',
+    '.popover, .tooltip, [role="menu"], .dialog, .proposal, .desk-describe-panel, .desk-which-key, .crash-card',
     "every",
   ],
 ];

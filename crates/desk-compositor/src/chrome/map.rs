@@ -125,7 +125,7 @@ impl Chrome {
         self.add(scene, parent, Role::Map(MapPart::Grip), rect, "")
     }
 
-    /// The part in sight, in the map at `rect`.
+    /// The outline of the part in sight, hittable across `rect` without covering its contents.
     pub fn map_view(
         &mut self,
         scene: &mut Scene,
@@ -159,7 +159,11 @@ impl Chrome {
                 };
                 rect(Color::TRANSPARENT, border(1.0, color), m.small_radius)
             }
-            MapPart::View => rect(m.view, border(2.0, m.view_border), m.small_radius),
+            MapPart::View => rect(
+                Color::TRANSPARENT,
+                border(2.0, m.view_border),
+                m.small_radius,
+            ),
             MapPart::Button { folded: true } => RectNode {
                 shadow: m.shadow,
                 ..rect(m.fill, border(1.0, m.border), m.canvas_radius)
