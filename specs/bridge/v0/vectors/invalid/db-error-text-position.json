@@ -1,0 +1,15 @@
+{
+  "target": "DbRunResult",
+  "description": "positions are numbers",
+  "instance": {
+    "rows": [],
+    "more": false,
+    "error": {
+      "severity": "ERROR",
+      "localSeverity": "ERROR",
+      "code": "42601",
+      "message": "syntax error",
+      "position": "16"
+    }
+  }
+}

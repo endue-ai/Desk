@@ -15,4 +15,13 @@ describe("the stub's covers, as desk-core judges it", () => {
       covers({ permission: "net:fetch", hosts: ["studio.local"] }, connect("studio.local")),
     ).toBe(false);
   });
+
+  it("db:connect: hosts and ports as net:connect, and neither covers the other", () => {
+    const db = (...hosts: string[]) => ({ permission: "db:connect" as const, hosts });
+    expect(covers(db("db.example.test"), db("db.example.test:5432"))).toBe(true);
+    expect(covers(db("db.example.test:5432"), db("db.example.test:6432"))).toBe(false);
+    expect(covers(db("*"), db("db.example.test:5432"))).toBe(true);
+    expect(covers(connect("db.example.test"), db("db.example.test:5432"))).toBe(false);
+    expect(covers(db("db.example.test"), connect("db.example.test:5432"))).toBe(false);
+  });
 });

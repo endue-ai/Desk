@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "db:connect names at least one host",
+  "instance": {
+    "permission": "db:connect",
+    "hosts": []
+  }
+}

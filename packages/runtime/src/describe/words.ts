@@ -135,6 +135,7 @@ const WORDS: Record<Permission["permission"], string> = {
   "proc:spawn": "run programs",
   "net:fetch": "use the network",
   "net:connect": "connect to other computers",
+  "db:connect": "sign in to databases",
   "audio:capture": "use the microphone",
   "ui:surface": "open its surfaces",
   "ui:notify": "show notifications",

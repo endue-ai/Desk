@@ -16,6 +16,7 @@ desk-bridge.workspace = true
 desk-computer = { path = "../desk-computer" }
 desk-index.workspace = true
 desk-memory.workspace = true
+desk-pg.workspace = true
 # studio.*: endue AI's platform API (ADR 0122).
 desk-platform = { path = "../desk-platform" }
 desk-plugin-host.workspace = true

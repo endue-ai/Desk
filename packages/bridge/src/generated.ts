@@ -520,6 +520,7 @@ export type Permission =
   | ProcSpawnPermission
   | NetFetchPermission
   | NetConnectPermission
+  | DbConnectPermission
   | AudioCapturePermission
   | UiSurfacePermission
   | UiNotifyPermission
@@ -591,6 +592,13 @@ export interface NetFetchPermission {
 /** Open TCP connections (net.connect) to the listed hosts: a pattern with a port covers that port only, one without a port covers every port of the host. */
 export interface NetConnectPermission {
   permission: "net:connect";
+  /** Host patterns the permission covers, each optionally with a port. */
+  hosts: HostPattern[];
+}
+
+/** Open database sessions (db.open) to the listed hosts, and use the caller's own sessions: a pattern with a port covers that port only, one without a port covers every port of the host. net:connect does not cover db.*, nor db:connect a socket. */
+export interface DbConnectPermission {
+  permission: "db:connect";
   /** Host patterns the permission covers, each optionally with a port. */
   hosts: HostPattern[];
 }
@@ -3217,6 +3225,13 @@ export type BridgeRequest =
   | NetConnectRequest
   | NetSendRequest
   | NetCloseRequest
+  | DbOpenRequest
+  | DbRunRequest
+  | DbFetchRequest
+  | DbCopyRequest
+  | DbCancelRequest
+  | DbCloseRequest
+  | DbListRequest
   | AudioCaptureStartRequest
   | AudioCaptureStopRequest
   | UiSurfaceOpenRequest
@@ -3396,13 +3411,17 @@ export type ErrorCode =
   | "offline"
   | "forbidden";
 
-/** Something the core reports without being asked: file changes, process output, socket data, captured audio and who captures, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows. */
+/** Something the core reports without being asked: file changes, process output, socket data, database notices, notifications and session ends, captured audio and who captures, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
   | ProcExitEvent
   | NetDataEvent
   | NetClosedEvent
+  | DbNoticeEvent
+  | DbNotificationEvent
+  | DbParameterEvent
+  | DbClosedEvent
   | AudioFrameEvent
   | AudioEndedEvent
   | AudioCapturingEvent
@@ -4458,6 +4477,345 @@ export interface DataChangedData {
   subscriptionId: string;
   changes: ItemChange[];
 }
+
+/** Open a database session and sign in. The scope and the grant are checked before anything connects. */
+export interface DbOpenRequest {
+  id: RequestId;
+  method: "db.open";
+  params: DbOpenParams;
+}
+
+/** Parameters of db.open. */
+export interface DbOpenParams {
+  /** The database engine; postgresql is the one the core speaks, any other is unsupported. */
+  engine: string;
+  /** A host name or an IPv4 address, as net.connect takes it. */
+  host: string;
+  /** 5432 by default. */
+  port?: number;
+  database: string;
+  user: string;
+  /** Used once for the sign-in and dropped. Without it the core reads the person's password file. */
+  password?: string;
+  tls?: DbTls;
+  /** Startup parameters (DateStyle, TimeZone, search_path, statement_timeout, application_name, ...). client_encoding, user, database and replication are invalid_params. */
+  settings?: Record<string, string>;
+  /** Adds default_transaction_read_only=on. */
+  readOnly?: boolean;
+  /** How long the connection and the sign-in may take; 10000 by default. */
+  timeoutMs?: number;
+  scope: DbConnectPermission;
+}
+
+/** How the session uses TLS. */
+export interface DbTls {
+  mode: DbTlsMode;
+  /** The authorities to trust, PEM; else the system's trust store. With require, the chain is checked too. */
+  ca?: string;
+}
+
+/** disable: plain TCP. prefer (the default): TLS when the server has it. require: TLS, the certificate not checked. verify-ca: the chain. verify-full: the chain and the host name. */
+export type DbTlsMode = "disable" | "prefer" | "require" | "verify-ca" | "verify-full";
+
+/** Result of db.open: the session, signed in; or the server's refusal (error) and no session; or needsPassword when no password was given, none was found in the password file and the server asks for one. */
+export interface DbOpenResult {
+  sessionId?: DbSessionId;
+  /** The server process of the session. */
+  pid?: number;
+  auth?: DbAuth;
+  tls?: DbTlsInfo;
+  /** Every ParameterStatus the server sent (server_version, TimeZone, IntervalStyle, ...). */
+  parameters?: Record<string, string>;
+  error?: DbServerError;
+  needsPassword?: true;
+}
+
+/** How the session signed in. */
+export type DbAuth = "scram-sha-256" | "scram-sha-256-plus" | "md5" | "password" | "none";
+
+/** The TLS the session runs over. */
+export interface DbTlsInfo {
+  /** TLSv1.2 or TLSv1.3. */
+  version: string;
+  cipher: string;
+}
+
+/** A session db.open opened, unique for the core's life. */
+export type DbSessionId = string;
+
+/** Run one statement on a session and answer its first page. An earlier result with pages left is closed first. */
+export interface DbRunRequest {
+  id: RequestId;
+  method: "db.run";
+  params: DbRunParams;
+}
+
+/** Parameters of db.run. */
+export interface DbRunParams {
+  sessionId: DbSessionId;
+  /** One statement; two are the server's 42601. */
+  sql: string;
+  /** $1, $2, ... as text, or null. */
+  params?: DbValue[];
+  /** The parameters' type OIDs; 0, or a missing one, is the server's inference. */
+  paramTypes?: number[];
+  /** Rows a page holds: 1000 by default. */
+  pageRows?: number;
+  /** Bytes of values a page holds: 4 MiB by default. A page holds one row even when it is larger. */
+  pageBytes?: number;
+}
+
+/** Result of db.run: the statement's first page. */
+export type DbRunResult = DbPage;
+
+/** The next page of the session's open result, or close it without reading on. */
+export interface DbFetchRequest {
+  id: RequestId;
+  method: "db.fetch";
+  params: DbFetchParams;
+}
+
+/** Parameters of db.fetch. */
+export interface DbFetchParams {
+  sessionId: DbSessionId;
+  /** Rows a page holds: 1000 by default. */
+  pageRows?: number;
+  /** Bytes of values a page holds: 4 MiB by default. A page holds one row even when it is larger. */
+  pageBytes?: number;
+  /** End the result without reading on. */
+  close?: boolean;
+}
+
+/** Result of db.fetch: the next page, or an empty last one after close. */
+export type DbFetchResult = DbPage;
+
+/** Send data to the session's COPY ... FROM STDIN, or end it. */
+export interface DbCopyRequest {
+  id: RequestId;
+  method: "db.copy";
+  params: DbCopyParams;
+}
+
+/** Parameters of db.copy: data, done and fail may come together; done or fail ends the COPY. */
+export interface DbCopyParams {
+  sessionId: DbSessionId;
+  /** Up to 1 MiB of the COPY's bytes. */
+  data?: string;
+  encoding?: Encoding;
+  /** End the COPY (CopyDone). */
+  done?: boolean;
+  /** Fail the COPY with this message (CopyFail). */
+  fail?: string;
+}
+
+/** Result of db.copy: more while the COPY waits for data, the statement's last page once it ends. */
+export type DbCopyResult = DbPage;
+
+/** Ask the server to cancel the statement the session runs; nothing when none runs. The statement's own answer then carries 57014. */
+export interface DbCancelRequest {
+  id: RequestId;
+  method: "db.cancel";
+  params: DbCancelParams;
+}
+
+/** Parameters of db.cancel. */
+export interface DbCancelParams {
+  sessionId: DbSessionId;
+}
+
+/** Result of db.cancel: the request was sent. */
+export type DbCancelResult = Record<string, never>;
+
+/** End a session. Closing one that already ended is not an error. */
+export interface DbCloseRequest {
+  id: RequestId;
+  method: "db.close";
+  params: DbCloseParams;
+}
+
+/** Parameters of db.close. */
+export interface DbCloseParams {
+  sessionId: DbSessionId;
+}
+
+/** Result of db.close. */
+export type DbCloseResult = Record<string, never>;
+
+/** The caller's sessions, as a frame that slept finds them again. */
+export interface DbListRequest {
+  id: RequestId;
+  method: "db.list";
+  params: DbListParams;
+}
+
+/** Parameters of db.list. */
+export type DbListParams = Record<string, never>;
+
+/** Result of db.list. */
+export interface DbListResult {
+  sessions: DbSessionInfo[];
+}
+
+/** One of the caller's sessions. */
+export interface DbSessionInfo {
+  sessionId: DbSessionId;
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  pid: number;
+  /** A statement runs. */
+  running: boolean;
+  /** A result has pages left, or a COPY FROM STDIN waits for data. */
+  more: boolean;
+  transaction: DbTransaction;
+}
+
+/** One page of a statement's answer. The first page has the columns; the last has the tag, the row count and the transaction state, or the server's error. */
+export interface DbPage {
+  columns?: DbColumn[];
+  rows: DbRow[];
+  /** Exact: db.fetch has another page, or the COPY FROM STDIN waits for data. */
+  more: boolean;
+  /** The command tag, counting every page. */
+  tag?: string;
+  /** Rows over all pages, or the tag's count. */
+  rowCount?: number;
+  transaction?: DbTransaction;
+  error?: DbServerError;
+  copy?: DbCopy;
+  /** A COPY ... TO STDOUT's bytes. */
+  data?: string;
+  encoding?: Encoding;
+}
+
+/** One row: each value the server's text, or null. */
+export type DbRow = DbValue[];
+
+/** A value as the server prints it, or null for NULL. */
+export type DbValue = string | null;
+
+/** One column, as RowDescription describes it. */
+export interface DbColumn {
+  name: string;
+  typeOid: number;
+  typeModifier: number;
+  typeSize: number;
+  /** The table it comes from; 0 for an expression. */
+  tableOid: number;
+  /** Its attribute number in that table; 0 for an expression. */
+  columnNumber: number;
+}
+
+/** The transaction state ReadyForQuery reports. */
+export type DbTransaction = "idle" | "open" | "failed";
+
+/** A COPY's direction, format and number of columns. */
+export interface DbCopy {
+  direction: DbCopyDirection;
+  format: DbCopyFormat;
+  columns: number;
+}
+
+/** in: FROM STDIN. out: TO STDOUT. */
+export type DbCopyDirection = "in" | "out";
+
+/** text (text and CSV) or binary. */
+export type DbCopyFormat = "text" | "binary";
+
+/** An error or a notice the server sent, every field by name; positions are numbers. */
+export interface DbServerError {
+  /** V, never localized (S on a server that sends no V). */
+  severity: string;
+  /** S. */
+  localSeverity: string;
+  /** C, the SQLSTATE. */
+  code: string;
+  /** M. */
+  message: string;
+  detail?: string;
+  hint?: string;
+  /** P, from 1, in characters. */
+  position?: number;
+  internalPosition?: number;
+  internalQuery?: string;
+  where?: string;
+  schema?: string;
+  table?: string;
+  column?: string;
+  dataType?: string;
+  constraint?: string;
+  file?: string;
+  line?: string;
+  routine?: string;
+  /** Fields a later server adds, by their code. */
+  other?: Record<string, string>;
+}
+
+/** A notice the server sent, as it arrived, also while a statement runs. */
+export interface DbNoticeEvent {
+  event: "db.notice";
+  data: DbNoticeData;
+}
+
+/** Payload of db.notice. */
+export interface DbNoticeData {
+  sessionId: DbSessionId;
+  notice: DbServerError;
+}
+
+/** A NOTIFY on a channel the session listens to, also while it is idle. */
+export interface DbNotificationEvent {
+  event: "db.notification";
+  data: DbNotificationData;
+}
+
+/** Payload of db.notification. */
+export interface DbNotificationData {
+  sessionId: DbSessionId;
+  /** The server process that notified. */
+  pid: number;
+  channel: string;
+  payload: string;
+}
+
+/** A run parameter the server reported changed (ParameterStatus). */
+export interface DbParameterEvent {
+  event: "db.parameter";
+  data: DbParameterData;
+}
+
+/** Payload of db.parameter. */
+export interface DbParameterData {
+  sessionId: DbSessionId;
+  name: string;
+  value: string;
+}
+
+/** A session ended: the session's last event. */
+export interface DbClosedEvent {
+  event: "db.closed";
+  data: DbClosedData;
+}
+
+/** Payload of db.closed. */
+export interface DbClosedData {
+  sessionId: DbSessionId;
+  reason: DbClosedReason;
+  /** Why, when the network or the encoding ended it. */
+  message?: string;
+  error?: DbServerError;
+}
+
+/** closed: db.close. server: the server ended it, with its FATAL error when it sent one. io: the network failed. encoding: the server's client_encoding stopped being UTF8. unloaded: its plugin stopped. revoked: the grant that covers it went. desk: the desk let it go. */
+export type DbClosedReason =
+  | "closed"
+  | "server"
+  | "io"
+  | "encoding"
+  | "unloaded"
+  | "revoked"
+  | "desk";
 
 /** A named set of file extensions the dialog shows, without the dot: { name: Markdown, extensions: [md] }. */
 export interface DialogFilter {
@@ -7657,6 +8015,13 @@ export interface BridgeMethodMap {
   "net.connect": { params: NetConnectParams; result: NetConnectResult };
   "net.send": { params: NetSendParams; result: NetSendResult };
   "net.close": { params: NetCloseParams; result: NetCloseResult };
+  "db.open": { params: DbOpenParams; result: DbOpenResult };
+  "db.run": { params: DbRunParams; result: DbRunResult };
+  "db.fetch": { params: DbFetchParams; result: DbFetchResult };
+  "db.copy": { params: DbCopyParams; result: DbCopyResult };
+  "db.cancel": { params: DbCancelParams; result: DbCancelResult };
+  "db.close": { params: DbCloseParams; result: DbCloseResult };
+  "db.list": { params: DbListParams; result: DbListResult };
   "audio.capture.start": { params: AudioCaptureStartParams; result: AudioCaptureStartResult };
   "audio.capture.stop": { params: AudioCaptureStopParams; result: AudioCaptureStopResult };
   "ui.surface.open": { params: UiSurfaceOpenParams; result: UiSurfaceOpenResult };
@@ -7848,6 +8213,13 @@ export const BRIDGE_METHODS = [
   "net.connect",
   "net.send",
   "net.close",
+  "db.open",
+  "db.run",
+  "db.fetch",
+  "db.copy",
+  "db.cancel",
+  "db.close",
+  "db.list",
   "audio.capture.start",
   "audio.capture.stop",
   "ui.surface.open",

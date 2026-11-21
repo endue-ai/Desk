@@ -38,6 +38,10 @@ fn owned(event: &BridgeEvent) -> Option<(String, bool)> {
         "proc.exit" => Some((format!("proc:{}", field("procId")?), true)),
         "net.data" => Some((format!("net:{}", field("socketId")?), false)),
         "net.closed" => Some((format!("net:{}", field("socketId")?), true)),
+        "db.notice" | "db.notification" | "db.parameter" => {
+            Some((format!("db:{}", field("sessionId")?), false))
+        }
+        "db.closed" => Some((format!("db:{}", field("sessionId")?), true)),
         _ => None,
     }
 }
@@ -51,6 +55,7 @@ pub(crate) fn claim_key(method: &str, result: &Value) -> Option<String> {
         "data.subscribe" => Some(format!("sub:{}", field("subscriptionId")?)),
         "proc.spawn" => Some(format!("proc:{}", field("procId")?)),
         "net.connect" => Some(format!("net:{}", field("socketId")?)),
+        "db.open" => Some(format!("db:{}", field("sessionId")?)),
         _ => None,
     }
 }
