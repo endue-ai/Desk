@@ -69,10 +69,10 @@ const measured = {
 
 /** The budgets' verdicts: the five without a baseline, then the seven the budgets gate. */
 const FIRST_RUN = [...Array(5).fill("no-baseline"), ...Array(7).fill("ok")];
-/** The committed budgets.json's verdicts: start-up and input latency wait for a baseline (#339). */
+/** The committed budgets.json's verdicts: input latency waits for a baseline; start-up has one (#370). */
 const COMMITTED = [
-  "no-baseline",
-  "no-baseline",
+  "ok",
+  "ok",
   "ok",
   "no-baseline",
   "no-baseline",
@@ -236,6 +236,13 @@ describe("budgets", () => {
     });
     // Idle memory's baseline is the Default profile's in sight (#312, ADR 0246).
     expect(committed.idleMemory).toMatchObject({ rssMb: 3560.3, platform: "darwin-arm64" });
+    // Start-up's is the median of two runs' medians on the reference machine (#370, ADR 0261).
+    expect(committed.startup).toMatchObject({
+      readyMs: 1839.5,
+      firstFrameMs: 1856,
+      platform: "darwin-arm64",
+      allowedRegression: 0.25,
+    });
     const verdicts = compare(committed, measured);
     expect(verdicts.map((v) => v.status)).toEqual(COMMITTED);
     expect(verdicts.map((v) => v.target)).toEqual(TARGETS);
