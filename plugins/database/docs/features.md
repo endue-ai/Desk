@@ -112,6 +112,23 @@ Modules: `edits.js`, `edit/`, `view-cell.js`.
 Modules: `export.js`, `import.js`, `importer.js`, `drops.js`, `dropped.js`, `dnd.js`, `view-dnd.js`,
 `view-import.js`.
 
+## Server overview
+
+- Database: server overview opens one panel per PostgreSQL connection (13 and later) that only reads
+  catalogs, statistics views and size functions: the server's figures (connections against the limit, cache
+  hit ratio, commits, deadlocks, temporary files, checkpoints), database, schema, table and index sizes with
+  TOAST apart, indexes scanned fewer than 50 times, duplicate and invalid indexes, sequential scans, dead rows
+  with the last vacuum and analyze and when autovacuum comes, transaction id age against wraparound, cache
+  hits, the heaviest statements from `pg_stat_statements` (or how to enable it), transactions open for more
+  than a minute, replication (a standby's own lag), slots, and settings changed from their defaults, searched.
+- Each section names the statistic it comes from and when its counters were reset. One the role may not read
+  says so and the rest are read; the header says what a role outside `pg_monitor` cannot see. A size waiting
+  2 s behind another session's lock fails its section instead of the overview.
+- Refresh reads again. Open in console runs a section's SQL in the console as a normal result (copy, export);
+  a heavy statement opens there unrun.
+
+Modules: `features/overview/`.
+
 ## Agents
 
 - `endue.database.connections` (never a password), `.schema` and `.query` (100 rows a statement by default,
