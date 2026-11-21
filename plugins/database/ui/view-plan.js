@@ -47,8 +47,13 @@ export function treeView(/** @type {Document} */ doc, /** @type {PlanNode} */ ro
         tabindex: i === 0 ? "0" : "-1",
         style: `padding-left: ${depth * 18 + 8}px`,
       },
-      el(doc, "span", { class: "plan-label" }, node.label),
-      hot ? el(doc, "span", { class: "plan-hot" }, hot) : undefined,
+      el(
+        doc,
+        "span",
+        { class: "plan-name" },
+        el(doc, "span", { class: "plan-label" }, node.label),
+        hot ? el(doc, "span", { class: "plan-hot" }, hot) : undefined,
+      ),
       el(doc, "span", { class: "plan-facts" }, facts.join(" · ")),
       el(
         doc,

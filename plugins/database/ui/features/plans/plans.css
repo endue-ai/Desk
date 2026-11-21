@@ -43,10 +43,14 @@
 
 .plans-head {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--desk-border);
+}
+
+.plans-side {
+  min-width: 0;
 }
 
 .plans-side h3 {

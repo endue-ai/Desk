@@ -26,12 +26,13 @@ export function tableView(doc, root) {
     {
       name: "Misestimate",
       value: (n) => (n.misestimate === null ? null : Math.max(n.misestimate, 1 / n.misestimate)),
-      text: (n) =>
-        n.misestimate === null
-          ? ""
-          : n.misestimate >= 1
-            ? `×${count(n.misestimate)} more`
-            : `×${count(1 / n.misestimate)} fewer`,
+      text: (n) => {
+        if (n.misestimate === null) return "";
+        const ratio = Math.max(n.misestimate, 1 / n.misestimate);
+        // Within half again of the estimate is no miss worth a word.
+        if (ratio < 1.5) return "×1";
+        return `×${count(ratio)} ${n.misestimate >= 1 ? "more" : "fewer"}`;
+      },
     },
     { name: "Loops", value: (n) => n.loops, text: (n) => num(n.loops, count) },
     timed
@@ -58,8 +59,8 @@ export function tableView(doc, root) {
           { class: n.hot ? `hot-${n.hot}` : undefined },
           el(doc, "th", { scope: "row", class: "plan-label" }, n.label),
           ...columns.map((c) => el(doc, "td", { class: "num" }, c.text(n))),
-          el(doc, "td", {}, buffersText(n.buffers)),
-          el(doc, "td", {}, marksView(doc, n)),
+          el(doc, "td", { class: "wrap" }, marksView(doc, n)),
+          el(doc, "td", { class: "wrap" }, buffersText(n.buffers)),
         ),
       ),
     );
@@ -91,8 +92,8 @@ export function tableView(doc, root) {
     {},
     el(doc, "th", { scope: "col" }, "Node"),
     ...heads,
-    el(doc, "th", { scope: "col" }, "Buffers"),
     el(doc, "th", { scope: "col" }, "Marks"),
+    el(doc, "th", { scope: "col" }, "Buffers"),
   );
   draw();
   return el(

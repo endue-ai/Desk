@@ -23,7 +23,7 @@ export const OPTIONS = [
   {
     name: "ANALYZE",
     since: 0,
-    hint: "Runs the statement and shows what each step took. A write runs in a transaction that is rolled back, and the read-only, production and agent guards still apply.",
+    hint: "Runs the statement and shows what each step took",
   },
   {
     name: "BUFFERS",

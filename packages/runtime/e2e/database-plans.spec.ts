@@ -47,10 +47,13 @@ const run = (page: Page, command: string, args: Record<string, unknown> = {}, wa
     [command, args, wait] as const,
   );
 
+/** The console's SQL editor, by its role and name (the textarea or the editor that stands for it). */
+const sql = (frame: Frame) => frame.getByRole("textbox", { name: "SQL" });
+
 /** A console on "shop" with the query in its editor. */
 async function openConsole(page: Page, frame: Frame, text = QUERY) {
   await run(page, "endue.database.console", { connection: "shop" });
-  await frame.locator("#editor").fill(text);
+  await sql(frame).fill(text);
 }
 
 /** A box inside another, to half a pixel. */
@@ -130,10 +133,10 @@ test("two plans of the statement, before and after an index, compared side by si
   await openConsole(page, frame);
   await run(page, "endue.database.explain-analyze");
   await expect(frame.locator(".plan-box")).toBeVisible();
-  await frame.locator("#editor").fill("create index orders_customer_idx on orders (customer_id)");
+  await sql(frame).fill("create index orders_customer_idx on orders (customer_id)");
   await run(page, "endue.database.run");
   await expect(frame.locator("#summary")).toContainText("Done");
-  await frame.locator("#editor").fill(QUERY);
+  await sql(frame).fill(QUERY);
   await run(page, "endue.database.explain-analyze");
   await expect(frame.locator(".plan-box [role=treeitem]").nth(1)).toContainText("Nested Loop");
 
@@ -149,9 +152,12 @@ test("two plans of the statement, before and after an index, compared side by si
   ).toBeVisible();
   await expect(panel.locator(".plans-change", { hasText: "Seq Scan → Index Scan" })).toBeVisible();
   await expect(panel.locator(".plans-count")).toHaveText(/^\d of 5 nodes changed$/u);
-  const head = await box(frame, ".plans-head");
+  // Both sides in sight, a long statement cut short rather than pushing the other side out.
   const view = { left: 0, top: 0, right: LARGE.width, bottom: LARGE.height };
-  expect(head && within(head, view), "both statements in sight").toBe(true);
+  for (const i of [0, 1]) {
+    const side = await box(frame, ".plans-side", i);
+    expect(side && within(side, view), `side ${i} in sight`).toBe(true);
+  }
 });
 
 test("the options dialog says what ANALYZE does and remembers the options", async ({ page }) => {

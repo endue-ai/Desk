@@ -136,8 +136,8 @@ describe("the plan tab", () => {
       "Own",
       "Total",
       "Share",
-      "Buffers",
       "Marks",
+      "Buffers",
     ]);
     const heaviest = [...plan.children, plan].flatMap((n) => [n, ...n.children]);
     expect(rows()[0]).toBe([...new Set(heaviest)].sort((a, b) => b.share - a.share)[0]?.label);

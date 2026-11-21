@@ -54,6 +54,24 @@
   flex: 1;
 }
 
+/* The tree's row: name (label and how hot it is) | facts | share; marks and detail span the row. */
+.plan-box .plan-node {
+  grid-template-columns: minmax(12em, 2fr) minmax(0, 3fr) 8em;
+  align-items: start;
+}
+
+.plan-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  min-width: 0;
+}
+
+.plan-box .plan-share {
+  margin-top: 6px;
+}
+
 .plan-marks {
   display: flex;
   flex-wrap: wrap;
@@ -132,6 +150,20 @@
 .plan-table .num {
   text-align: right;
   font-family: var(--desk-font-mono);
+}
+
+.plan-table thead .num {
+  font-family: inherit;
+}
+
+.plan-table td.wrap {
+  min-width: 14em;
+  white-space: normal;
+}
+
+.plan-table td.wrap .plan-mark {
+  white-space: normal;
+  text-align: left;
 }
 
 .plan-table thead .desk-btn {
