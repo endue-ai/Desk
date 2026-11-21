@@ -55,8 +55,13 @@ describe("plugin.json", () => {
     expect(slides.contributes?.files).toEqual(
       PATTERNS.map((pattern) => ({ pattern, plugin: "endue.slides" })),
     );
-    // No fs paths of its own: it asks for a file's folder when it opens one.
-    expect(slides.permissions).toEqual([{ permission: "cmd:invoke", ids: ["desk.files.changed"] }]);
+    // Any folder may be asked for, and none is held: it asks for a file's folder when it opens one
+    // (ADR 0260); links ask for shell:open once.
+    expect(slides.permissions).toEqual([
+      { permission: "cmd:invoke", ids: ["desk.files.changed"] },
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "shell:open", schemes: ["http", "https", "mailto"] },
+    ]);
   });
 
   it("the desk's opener picks slides for every pattern and nobody for other files", () => {

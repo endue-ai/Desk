@@ -20,8 +20,9 @@
     },
     {
       "permission": "cmd:invoke",
-      "ids": ["desk.buffers.open", "desk.buffers.update", "desk.buffers.close"]
-    }
+      "ids": ["*"]
+    },
+    { "permission": "proc:spawn", "commands": ["*"], "pty": true }
   ],
   "surfaces": [
     {

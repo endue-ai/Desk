@@ -36,9 +36,13 @@ describe("plugin.json", () => {
     expect(validate(manifest), JSON.stringify(validate.errors)).toBe(true);
   });
 
-  it("connects to this computer only, by itself", () => {
+  it("connects to this computer by itself, and is asked for another", () => {
     const connect = manifest.permissions.filter((p) => p.permission === "net:connect");
-    expect(connect).toEqual([{ permission: "net:connect", hosts: ["localhost", "127.0.0.1"] }]);
+    // `*` holds no host: a server the person adds is asked for at run time (ADR 0260).
+    expect(connect).toEqual([
+      { permission: "net:connect", hosts: ["localhost", "127.0.0.1"] },
+      { permission: "net:connect", hosts: ["*"] },
+    ]);
   });
 
   it("answers every command it declares", () => {

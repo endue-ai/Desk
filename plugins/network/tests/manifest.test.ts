@@ -50,9 +50,18 @@ describe("plugin.json", () => {
     expect(spawn.pty).toBeUndefined();
     expect(manifest.permissions.map((p: any) => p.permission).sort()).toEqual([
       "brain:ask",
+      "cmd:invoke",
+      "net:connect",
       "proc:spawn",
       "ui:notify",
     ]);
+    // A device's ports are asked for each time: `*` holds no host (ADR 0260). Its log's entries
+    // run its own devices command.
+    expect(manifest.permissions).toContainEqual({ permission: "net:connect", hosts: ["*"] });
+    expect(manifest.permissions).toContainEqual({
+      permission: "cmd:invoke",
+      ids: ["endue.network.devices"],
+    });
     const everything = readdirSync(join(folder, "ui"))
       .map((name) => readFileSync(join(folder, "ui", name), "utf8"))
       .join("\n");

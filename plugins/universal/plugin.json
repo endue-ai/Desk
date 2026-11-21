@@ -19,7 +19,9 @@
     },
     {
       "permission": "view:manage"
-    }
+    },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "net:fetch", "hosts": ["*"] }
   ],
   "surfaces": [
     {

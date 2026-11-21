@@ -26,7 +26,7 @@ watch; back, the one on screen opens without asking or taking the focus, the oth
 | Permission | Why |
 | --- | --- |
 | `cmd:invoke` (`desk.files.open`, `desk.files.changed`) | Open a page's local links; report changes on disk |
-| `fs:read` (asked per folder), `shell:open` (asked by `shell.open` once) | Read files; open http, https and mailto links |
+| `fs:read` (`/**`, asked per folder), `shell:open` (http, https, mailto) | Read files; open links |
 
 | File | Purpose |
 | --- | --- |

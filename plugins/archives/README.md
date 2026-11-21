@@ -24,7 +24,7 @@ asks with `desk.palette.pick` for the folder, then one question, `perm.request` 
 and refuses names that leave it (`..`, absolute paths, drive letters, links out). Where its grants read
 the folder (beside the archive) an existing file asks once for the run; elsewhere a file of the same
 name is replaced and named, and its history keeps it. "Allow once" writes one file; files over 64 MiB
-are listed, not written. Permission: `cmd:invoke` for `desk.files.changed` and `desk.palette.pick`.
+are listed, not written. Permissions: `cmd:invoke` (`desk.files.changed`, `desk.palette.pick`); `fs:*` of `/**`, asked per folder.
 
 | File | Purpose |
 | --- | --- |
