@@ -13,10 +13,15 @@ AT-SPI on Linux), built only while an assistive technology is active:
 - the window `endue Desk`, then:
   - `Desk`: the shell page's own tree (the bars, Eris, menus, the system layer);
   - `Windows`: a list, back to front; each window has its title bar (its title), the tools the page draws
-    in its title bar (Split right, Split down, Floating mode, Pin, Pop out, Close: the page's
-    buttons, pressed as the page's own), and its content: the plugin's tree, or the card the compositor
-    draws (asleep, stopped, crashed, loading, not responding) with its buttons (Wait, Stop, Reload);
-    a window of several panes has a group per pane;
+    in its title bar (Window menu, Pop out where the window shows one plugin, Close: the page's
+    buttons, pressed as the page's own, each named by its name; the window menu's tool says it has a
+    popup and whether it is expanded), its Pinned and Floating marks when it is so (images with their
+    names, ADR 0255), and its content: the plugin's tree, or the card the compositor draws (asleep,
+    stopped, crashed, loading, not responding) with its buttons (Wait, Stop, Reload); a window of
+    several tabs has the strip of its tabs;
+  - the window menu, when open, is in `Desk` (a menu of New tab, Maximize or restore, Floating mode
+    and Pin as checked items, Put in drawer and the "Move to" items); Escape or Tab gives the focus
+    back to its tool;
   - the plugins the page lays out over the windows (the dock, edge bars), one group each.
 - Boxes are where the compositor draws: a plugin's nodes go through its window's place in the scene.
 - The focus is the focused node of the surface with the keys; the window with the keys is `selected`.
