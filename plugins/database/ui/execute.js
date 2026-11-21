@@ -20,11 +20,11 @@ import { split } from "./sql/split.js";
  * @typedef {import("./settings.js").Settings} Settings
  * @typedef {"run" | "transaction" | "dry-run"} Mode
  * @typedef {{ conn: Connection, sql: string, statements: Statement[], classes: Class[], mode: Mode, result: RunResult, at: number }} Execution
- * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, statements?: Statement[] }} ExecuteOptions
+ * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, statements?: Statement[], signal?: AbortSignal }} ExecuteOptions
  *   `interactive: false` never asks for a password; `agent` asks before any write; `catalog` is the
- *   plugin's own reading and asks nothing.
+ *   plugin's own reading and asks nothing; `signal` cancels this run alone, as Cancel does every run.
  * @typedef {{
- *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number }): Promise<import("./engines/common.js").Outcome> },
+ *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number, signal?: AbortSignal }): Promise<import("./engines/common.js").Outcome> },
  *   output: Pick<import("./output-client.js").OutputReader, "read">,
  *   clients: { get(engine: import("./engines/common.js").EngineId): Promise<import("./clients.js").Client> },
  *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "run">,
@@ -71,11 +71,21 @@ export function createExecutor(deps) {
     const at = now();
 
     const attempt = async (/** @type {string | undefined} */ password) => {
+      if (options.signal?.aborted)
+        return failedRun(statements, { kind: "cancelled", message: "Cancelled." });
+      const signal = options.signal ? { signal: options.signal } : {};
       if ("session" in engine) {
         if (!deps.sessions)
           return failedRun(statements, { kind: "client", message: "No database sessions here." });
         const typed = password !== undefined ? { password } : {};
-        return deps.sessions.run(conn, { statements, maxRows, timeoutMs, mode, ...typed });
+        return deps.sessions.run(conn, {
+          statements,
+          maxRows,
+          timeoutMs,
+          mode,
+          ...typed,
+          ...signal,
+        });
       }
       try {
         const client = await deps.clients.get(conn.engine);
@@ -90,7 +100,7 @@ export function createExecutor(deps) {
           single,
         });
         invocation.command = client.command;
-        const outcome = await deps.runner.run(invocation, { timeoutMs });
+        const outcome = await deps.runner.run(invocation, { timeoutMs, ...signal });
         // Read in the result worker: what the client printed is never parsed on this thread (#38).
         const result = await deps.output.read(engine.id, outcome, invocation, timeoutMs);
         if (outcome.cancelled && !result.statements.some((s) => s.error?.kind === "cancelled"))
