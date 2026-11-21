@@ -184,6 +184,38 @@ pub fn endpoint_covers(grant: &str, scope: &str) -> bool {
     (granted_port.is_none() || granted_port == asked_port) && host_covers(granted, asked)
 }
 
+/// Whether a granted list covers an asked one, where an absent list means all: every asked entry is
+/// matched by a granted one, and only an absent grant covers an absent scope.
+pub fn narrows<T>(
+    granted: Option<&[T]>,
+    asked: Option<&[T]>,
+    matches: impl Fn(&T, &T) -> bool,
+) -> bool {
+    match (granted, asked) {
+        (None, _) => true,
+        (Some(_), None) => false,
+        (Some(granted), Some(asked)) => asked.iter().all(|a| granted.iter().any(|g| matches(g, a))),
+    }
+}
+
+/// net:connect and db:connect: whether `granted` covers every host and port `asked` names.
+pub fn endpoints_cover(granted: &[String], asked: &[String]) -> bool {
+    asked
+        .iter()
+        .all(|a| granted.iter().any(|g| endpoint_covers(g, a)))
+}
+
+/// net:connect and db:connect: whether one of `hosts` matches `host` and `port`.
+pub fn reaches(hosts: &[String], host: &str, port: u16) -> bool {
+    hosts.iter().any(|h| endpoint_match(h, host, port))
+}
+
+/// Whether a computer scope's apps hold `app`; one without a list holds every app and none.
+pub fn app_in(apps: &Option<Vec<String>>, app: Option<&str>) -> bool {
+    apps.as_ref()
+        .is_none_or(|apps| app.is_some_and(|app| apps.iter().any(|a| a == app)))
+}
+
 /// A host pattern's name and its port, when it ends in one.
 fn split_port(pattern: &str) -> (&str, Option<u16>) {
     match pattern.rsplit_once(':') {

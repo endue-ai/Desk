@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.copy failing the COPY",
+  "instance": {
+    "id": 21,
+    "method": "db.copy",
+    "params": {
+      "sessionId": "d-1",
+      "fail": "stopped by the person"
+    }
+  }
+}

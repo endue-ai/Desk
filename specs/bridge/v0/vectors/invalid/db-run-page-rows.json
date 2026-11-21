@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "a page holds 1 to 10,000 rows",
+  "instance": {
+    "id": 21,
+    "method": "db.run",
+    "params": {
+      "sessionId": "d-1",
+      "sql": "SELECT 1",
+      "pageRows": 10001
+    }
+  }
+}

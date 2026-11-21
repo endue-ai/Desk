@@ -1,0 +1,17 @@
+{
+  "target": "BridgeEvent",
+  "description": "the server ended the session with its FATAL error",
+  "instance": {
+    "event": "db.closed",
+    "data": {
+      "sessionId": "d-1",
+      "reason": "server",
+      "error": {
+        "severity": "FATAL",
+        "localSeverity": "FATAL",
+        "code": "57P01",
+        "message": "terminating connection due to administrator command"
+      }
+    }
+  }
+}

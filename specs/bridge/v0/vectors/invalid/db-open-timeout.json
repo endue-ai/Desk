@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "the timeout is 120 seconds at most",
+  "instance": {
+    "id": 21,
+    "method": "db.open",
+    "params": {
+      "engine": "postgresql",
+      "host": "db.example.test",
+      "database": "shop",
+      "user": "reader",
+      "timeoutMs": 120001,
+      "scope": {
+        "permission": "db:connect",
+        "hosts": ["db.example.test:5432"]
+      }
+    }
+  }
+}
