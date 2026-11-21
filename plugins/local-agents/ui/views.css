@@ -342,3 +342,10 @@
 .command {
   color: var(--desk-text-muted);
 }
+
+#view-chat { min-height:0; height:100%; }
+#workspace { flex:1; min-height:0; }
+#chat-form { display:grid; padding:var(--desk-space-2); border-top:1px solid var(--desk-border); }
+#chat-form textarea { width:100%; min-width:0; }
+.send-row { display:flex; align-items:center; gap:var(--desk-space-2); justify-content:space-between; }
+#chat-bar { margin-top:var(--desk-space-1); flex-wrap:wrap; }

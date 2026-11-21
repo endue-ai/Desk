@@ -46,9 +46,17 @@ describe("plugin.json", () => {
       kind: "ui",
       autoload: true,
     });
-    expect(plugin.surfaces).toEqual([{ id: "main", title: "Local agents", placement: "center" }]);
+    expect(plugin.surfaces).toEqual([
+      {
+        id: "main",
+        title: "Local agents",
+        placement: "center",
+        window: { size: { width: 1120, height: 720 } },
+      },
+    ]);
     expect(plugin.permissions).toEqual([
       { permission: "proc:spawn", commands: [...PROGRAMS] },
+      { permission: "agents:manage" },
       { permission: "cmd:invoke", ids: ["desk.palette.pick"] },
     ]);
   });
