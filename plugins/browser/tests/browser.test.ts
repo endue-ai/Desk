@@ -20,7 +20,9 @@ describe("the Browser", () => {
   it("opens a view on its home page, places it under the toolbar and gives it the keys", async () => {
     const { desk, view } = await started();
     expect(desk.of("web.open")).toEqual([{ url: "https://home.example/", scope: SCOPE }]);
-    expect(desk.of("web.place")).toEqual([{ viewId: "w-1", x: 0, y: 41, width: 800, height: 559 }]);
+    expect(desk.of("web.place")).toEqual([
+      { viewId: "w-1", x: 0, y: 41, width: 800, height: 559, fill: true },
+    ]);
     expect(desk.of("web.focus")).toEqual([{ viewId: "w-1" }]);
     expect(view.shown.at(-1)).toMatchObject({ url: "https://home.example/", loading: true });
   });
@@ -122,18 +124,23 @@ describe("the Browser", () => {
     expect(desk.of("web.go").map((p) => p.to)).toEqual(["back", "forward", "reload", "stop"]);
   });
 
-  it("tells the desk its box only when it changed", async () => {
+  it("lets the desk follow a plain resize and reports a changed toolbar inset", async () => {
     const { desk, view, app } = await started();
     await app.place();
     expect(desk.of("web.place")).toHaveLength(1);
     view.at = { x: 0, y: 41, width: 1024, height: 700 };
     await app.place();
+    expect(desk.of("web.place")).toHaveLength(1);
+    view.at = { x: 0, y: 48, width: 1024, height: 693 };
+    await app.place();
+    expect(desk.of("web.place")).toHaveLength(2);
     expect(desk.of("web.place").at(-1)).toEqual({
       viewId: "w-1",
       x: 0,
-      y: 41,
+      y: 48,
       width: 1024,
-      height: 700,
+      height: 693,
+      fill: true,
     });
   });
 
