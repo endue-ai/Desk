@@ -8,7 +8,7 @@
   "permissions": [
     {
       "permission": "proc:spawn",
-      "commands": ["mysql", "mariadb", "sqlite3"]
+      "commands": ["mysql", "mariadb", "sqlite3", "pg_dump", "pg_restore"]
     },
     {
       "permission": "fs:write",
@@ -836,6 +836,138 @@
         "irreversible": true
       },
       {
+        "id": "endue.database.backup",
+        "title": "Database: back up a database",
+        "keywords": ["pg_dump", "dump", "backup", "export", "archive", "copy"],
+        "description": "Opens the backup form of a PostgreSQL connection (pg_dump), filled from these arguments: the format, the schemas or tables, schema or data only, owner and privileges, compression and jobs. Nothing runs until the person submits it and chooses where to save; it answers what was written and its size.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A PostgreSQL connection's name or id; the one on screen, the only one, or one picked, when absent."
+            },
+            "format": {
+              "type": "string",
+              "enum": ["custom", "directory", "tar", "plain"],
+              "description": "custom (the default), directory, tar or plain SQL."
+            },
+            "schemas": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Back up only these schemas, by exact name."
+            },
+            "tables": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Back up only these tables, as pg_dump's patterns (public.orders, sales.*)."
+            },
+            "content": {
+              "type": "string",
+              "enum": ["all", "schema", "data"],
+              "description": "Schema and data (all), schema only or data only."
+            },
+            "noOwner": {
+              "type": "boolean"
+            },
+            "noPrivileges": {
+              "type": "boolean"
+            },
+            "method": {
+              "type": "string",
+              "enum": ["default", "none", "gzip", "lz4", "zstd"],
+              "description": "Compression of a custom or directory backup."
+            },
+            "level": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 22
+            },
+            "jobs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32,
+              "description": "Parallel jobs of a directory backup."
+            },
+            "inserts": {
+              "type": "boolean",
+              "description": "A plain backup's rows as INSERT statements (the default)."
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Where to write it; asked of the person first. Without it the save dialog asks."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.restore",
+        "title": "Database: restore a database",
+        "keywords": ["pg_restore", "load", "import", "dump", "backup"],
+        "description": "Opens the restore form for a dump (pg_restore, or a plain SQL file run as a script), filled from these arguments: the connection it goes into and pg_restore's options. Nothing runs until the person submits it; a read-only connection refuses, and production is asked first.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The dump: a file, or a directory archive's folder; asked of the person first. Without it the open dialog asks."
+            },
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A PostgreSQL connection's name or id; the one on screen, the only one, or one picked, when absent."
+            },
+            "clean": {
+              "type": "boolean"
+            },
+            "ifExists": {
+              "type": "boolean"
+            },
+            "create": {
+              "type": "boolean"
+            },
+            "content": {
+              "type": "string",
+              "enum": ["all", "schema", "data"],
+              "description": "Schema and data (all), schema only or data only."
+            },
+            "noOwner": {
+              "type": "boolean"
+            },
+            "noPrivileges": {
+              "type": "boolean"
+            },
+            "jobs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32
+            },
+            "singleTransaction": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.database.backup-cancel",
+        "title": "Database: cancel the backup or restore",
+        "keywords": ["stop", "abort", "pg_dump", "pg_restore"]
+      },
+      {
         "id": "endue.database.overview",
         "title": "Database: server overview",
         "keywords": [
@@ -1252,6 +1384,16 @@
         "kind": "boolean",
         "default": false,
         "description": "Save lays a .sql file's console out with Format SQL before it writes the file, by the format of the file's connection; a file on no connection yet is written as typed."
+      },
+      "endue.database.pg-dump": {
+        "kind": "string",
+        "default": "",
+        "description": "The pg_dump program: a name on PATH or a full path. Empty: pg_dump. Any other program or path is asked for at its first run."
+      },
+      "endue.database.pg-restore": {
+        "kind": "string",
+        "default": "",
+        "description": "The pg_restore program: a name on PATH or a full path. Empty: pg_restore. Any other program or path is asked for at its first run."
       },
       "endue.database.sessions-per-connection": {
         "kind": "integer",

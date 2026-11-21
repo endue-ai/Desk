@@ -3,7 +3,7 @@ import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
-import { candidates } from "../ui/clients.js";
+import { candidates, PROGRAMS, programCandidates } from "../ui/clients.js";
 import { blank } from "../ui/connections.js";
 import { writeScope } from "../ui/console-files.js";
 import { spillPath } from "../ui/console-text.js";
@@ -116,7 +116,7 @@ describe("plugin.json", () => {
   it("contributes every operation as a command, one key, SQLite files and the settings the code reads", () => {
     const { contributes } = manifest();
     const ids = contributes?.commands?.map((c) => c.id) ?? [];
-    expect(ids).toHaveLength(98);
+    expect(ids).toHaveLength(101);
     for (const command of contributes?.commands ?? []) {
       expect(command.id).toMatch(/^endue\.database\.[a-z-]+$/u);
       expect(command.title).toMatch(/^Database: /u);
@@ -190,9 +190,13 @@ describe("plugin.json", () => {
 describe("permissions", () => {
   it("declares only what its code uses, and nothing wider", () => {
     expect(declarations()).toEqual([
-      // The engines' clients by name (clients.js, run.js): granted at install. PostgreSQL has none:
-      // its sessions are the core's (db:connect below).
-      { permission: "proc:spawn", commands: ["mysql", "mariadb", "sqlite3"] },
+      // The engines' clients and PostgreSQL's pg_dump and pg_restore by name (clients.js, run.js,
+      // features/backup/): granted at install. PostgreSQL's statements need no client: its
+      // sessions are the core's (db:connect below).
+      {
+        permission: "proc:spawn",
+        commands: ["mysql", "mariadb", "sqlite3", "pg_dump", "pg_restore"],
+      },
       // An export (export.js): granted at install.
       // biome-ignore lint/suspicious/noTemplateCurlyInString: the manifest's path variable, as written there
       { permission: "fs:write", paths: ["${home}/Downloads/**"] },
@@ -226,9 +230,14 @@ describe("permissions", () => {
   });
 
   it("asks at run time only for scopes its declarations cover", async () => {
-    // The named programs are each engine's default client; the export folder is export.js's.
+    // The named programs are each engine's default client and the backup's two programs; the
+    // export folder is export.js's.
     const engines = ["postgresql", "mysql", "sqlite"] as const;
-    expect(declarations()[0]?.commands).toEqual(engines.flatMap((e) => candidates(e, DEFAULTS)));
+    const programs = Object.keys(PROGRAMS) as Array<keyof typeof PROGRAMS>;
+    expect(declarations()[0]?.commands).toEqual([
+      ...engines.flatMap((e) => candidates(e, DEFAULTS)),
+      ...programs.flatMap((p) => programCandidates(p, DEFAULTS)),
+    ]);
     expect(declarations()[1]?.paths?.map(homed)).toEqual([`${EXPORT_FOLDER}/**`]);
     // The desk commands are the ones the UI runs.
     const source = files(join(folder, "ui"))
