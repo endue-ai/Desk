@@ -4,8 +4,9 @@
 // recent_orders returns a table and takes an enum, total_of is VARIADIC, restock is a procedure
 // with INOUT and OUT and a notice, archive_orders is a VOLATILE function, nightly_close a
 // procedure that commits, audit_trigger a trigger function. Every call and transaction statement
-// is kept in `ran`. The unit tests and the runtime e2e page (packages/runtime/e2e/fixture/
-// database.ts) share it; it needs no Node.
+// is kept in `ran`. It is a script of the stub's sessions (StubDatabase through `scriptedDb` in the
+// harness, `dbHandlers` on the runtime e2e page, packages/runtime/e2e/fixture/database.ts): each
+// db.run answered with rows, notices and errors as the server's fields. It needs no Node.
 import type { Answer, Script } from "./clients";
 
 type Row = string[];

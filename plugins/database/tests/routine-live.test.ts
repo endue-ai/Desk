@@ -1,64 +1,61 @@
-// The routine forms against a real PostgreSQL, through the plugin's commands and the real psql.
+// The routine forms against a real PostgreSQL, through the plugin's commands on the core's sessions.
 // It runs when ENDUE_DB_TEST_POSTGRES holds the URI of a scratch database it may write in, for
 // example postgresql://postgres:pw@db/scratch. In a schema of its own: a function with named
 // arguments and a default, an overloaded one, one returning a table, a VARIADIC one, a procedure
 // with INOUT and OUT that raises a notice, a VOLATILE function run rolled back (its write gone
 // after) and run for real, a procedure that commits, and a read-only connection that refuses a
 // VOLATILE function and runs an IMMUTABLE one.
-import { spawnSync } from "node:child_process";
 import { afterAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
 import type { Connection } from "../ui/engines/common.js";
-import { type Handlers, mount } from "./harness";
+import { mount } from "./harness";
+import { liveSessions } from "./live-sessions";
 import { realProcs } from "./scripted";
 
 const uri = process.env.ENDUE_DB_TEST_POSTGRES ?? "";
 const SCHEMA = "endue_routine_live";
+// Other runs use the same server at once, each in a database of its own: only this database's
+// sessions are looked up and ended.
+const live = liveSessions(uri, "routine");
+/** One statement as the URI's role, on a session of its own; its first value, as text. */
+const admin = async (sql: string) => String(await live.admin(sql));
+const S = SCHEMA;
 
-/** psql on the scratch database as the URI's role, unaligned, for what the test sets up. */
-const admin = (sql: string) => {
-  const done = spawnSync(
-    "psql",
-    ["-X", "-q", "-At", "-v", "ON_ERROR_STOP=1", "-d", uri, "-c", sql],
-    {
-      encoding: "utf8",
-    },
-  );
-  if (done.status !== 0) throw new Error(done.stderr);
-  return done.stdout.trim();
-};
-
-const SET_UP = `
-DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE;
-CREATE SCHEMA ${SCHEMA};
-SET search_path = ${SCHEMA};
-CREATE TABLE archived (id serial PRIMARY KEY, before date NOT NULL, note text);
-CREATE FUNCTION add_tax(amount numeric, rate numeric DEFAULT 0.2) RETURNS numeric
-  IMMUTABLE LANGUAGE sql AS 'SELECT round(amount * (1 + rate), 2)';
-CREATE FUNCTION area(r numeric) RETURNS numeric IMMUTABLE LANGUAGE sql AS 'SELECT round(3.14159 * r * r, 2)';
-CREATE FUNCTION area(w numeric, h numeric) RETURNS numeric IMMUTABLE LANGUAGE sql AS 'SELECT w * h';
-CREATE FUNCTION squares(upto integer, step integer DEFAULT 1) RETURNS TABLE(n integer, square integer)
-  STABLE LANGUAGE sql AS 'SELECT g, g * g FROM generate_series(1, upto, step) g';
-CREATE FUNCTION total_of(VARIADIC amounts integer[]) RETURNS integer
-  IMMUTABLE LANGUAGE sql AS 'SELECT coalesce(sum(a), 0)::integer FROM unnest(amounts) a';
-CREATE PROCEDURE restock(item text, OUT note text, INOUT qty integer DEFAULT 1) LANGUAGE plpgsql AS $$
+/** The schema and its routines, a statement each (each one's own session: names are qualified). */
+const SET_UP = [
+  `DROP SCHEMA IF EXISTS ${S} CASCADE`,
+  `CREATE SCHEMA ${S}`,
+  `CREATE TABLE ${S}.archived (id serial PRIMARY KEY, before date NOT NULL, note text)`,
+  `CREATE FUNCTION ${S}.add_tax(amount numeric, rate numeric DEFAULT 0.2) RETURNS numeric
+  IMMUTABLE LANGUAGE sql AS 'SELECT round(amount * (1 + rate), 2)'`,
+  `CREATE FUNCTION ${S}.area(r numeric) RETURNS numeric IMMUTABLE LANGUAGE sql AS 'SELECT round(3.14159 * r * r, 2)'`,
+  `CREATE FUNCTION ${S}.area(w numeric, h numeric) RETURNS numeric IMMUTABLE LANGUAGE sql AS 'SELECT w * h'`,
+  `CREATE FUNCTION ${S}.squares(upto integer, step integer DEFAULT 1) RETURNS TABLE(n integer, square integer)
+  STABLE LANGUAGE sql AS 'SELECT g, g * g FROM generate_series(1, upto, step) g'`,
+  `CREATE FUNCTION ${S}.total_of(VARIADIC amounts integer[]) RETURNS integer
+  IMMUTABLE LANGUAGE sql AS 'SELECT coalesce(sum(a), 0)::integer FROM unnest(amounts) a'`,
+  `CREATE PROCEDURE ${S}.restock(item text, OUT note text, INOUT qty integer DEFAULT 1) LANGUAGE plpgsql AS $$
 BEGIN
   RAISE NOTICE 'restocking %', item;
   qty := qty + 5;
   note := 'restocked ' || item;
-END $$;
-CREATE FUNCTION archive_before(before date) RETURNS integer VOLATILE LANGUAGE plpgsql AS $$
+END $$`,
+  `CREATE FUNCTION ${S}.archive_before(before date) RETURNS integer VOLATILE LANGUAGE plpgsql AS $$
 BEGIN
-  INSERT INTO ${SCHEMA}.archived (before) VALUES (before);
+  INSERT INTO ${S}.archived (before) VALUES (before);
   RAISE NOTICE 'archived before %', before;
-  RETURN (SELECT count(*) FROM ${SCHEMA}.archived);
-END $$;
-CREATE PROCEDURE close_day() LANGUAGE plpgsql AS $$
+  RETURN (SELECT count(*) FROM ${S}.archived);
+END $$`,
+  `CREATE PROCEDURE ${S}.close_day() LANGUAGE plpgsql AS $$
 BEGIN
-  INSERT INTO ${SCHEMA}.archived (before, note) VALUES (current_date, 'closed');
+  INSERT INTO ${S}.archived (before, note) VALUES (current_date, 'closed');
   COMMIT;
-END $$;
-`;
+END $$`,
+];
+async function setUp() {
+  await live.end();
+  for (const sql of SET_UP) await admin(sql);
+}
 
 type Ran = {
   statement: string;
@@ -75,27 +72,12 @@ async function plugin() {
   const { fields, password } = parseUri(uri);
   const conn = (id: string, name: string, more: Partial<Connection> = {}) =>
     normalize({ ...fields, id, name, ...more });
-  const procs = realProcs();
-  const spawnReal = procs.handlers["proc.spawn"] as unknown as (
-    params: Record<string, unknown>,
-    caller?: string,
-  ) => unknown;
-  const handlers = {
-    ...procs.handlers,
-    // The password reaches psql as the person's typed one would, never through the store.
-    "proc.spawn": (params: Record<string, unknown>, caller?: string) =>
-      spawnReal(
-        {
-          ...params,
-          env: { ...(params.env as object), ...(password ? { PGPASSWORD: password } : {}) },
-        },
-        caller,
-      ),
-  } as unknown as Handlers;
+  // The password reaches the core's session as the person's typed one would, never the store.
+  const procs = realProcs(password ? { password } : {});
   const store = {
     connections: [conn("c-live", "live"), conn("c-live-ro", "live-ro", { readOnly: true })],
   };
-  const m = await mount({ store, handlers, pick: () => "yes" });
+  const m = await mount({ store, handlers: procs.handlers, pick: () => "yes" });
   procs.attach((event) => m.host.emit(event));
   /** Open a routine's form with the given arguments, then run it as the person would. */
   const call = async (name: string, args: Record<string, unknown> = {}, connection = "live") => {
@@ -112,13 +94,15 @@ async function plugin() {
   return { m, call };
 }
 
-afterAll(() => {
-  if (uri) admin(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
+afterAll(async () => {
+  if (!uri) return;
+  await live.end();
+  await admin(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
 });
 
 describe.skipIf(!uri)("routine forms on a real PostgreSQL", () => {
   it("calls functions by name with defaults, an overload by its signature, a table, VARIADIC and a procedure's INOUT and OUT", async () => {
-    admin(SET_UP);
+    await setUp();
     const { m, call } = await plugin();
     const s = SCHEMA;
     // Named, the default left out, then given.
@@ -191,7 +175,7 @@ describe.skipIf(!uri)("routine forms on a real PostgreSQL", () => {
   });
 
   it("runs a VOLATILE function rolled back, its write gone after, then for real, and a procedure that commits alone", async () => {
-    admin(SET_UP);
+    await setUp();
     const { m, call } = await plugin();
     const count = () => admin(`SELECT count(*) FROM ${SCHEMA}.archived`);
     const rolled = await call("archive_before", {
@@ -205,7 +189,7 @@ describe.skipIf(!uri)("routine forms on a real PostgreSQL", () => {
       rolledBack: true,
     });
     expect(rolled.notices.join("\n")).toContain("archived before 2026-01-01");
-    expect(count()).toBe("0");
+    expect(await count()).toBe("0");
     await expect(
       call("archive_before", { arguments: { before: "2026-01-01" }, rollback: false }),
     ).resolves.toMatchObject({
@@ -213,7 +197,7 @@ describe.skipIf(!uri)("routine forms on a real PostgreSQL", () => {
       rows: [["1"]],
       rolledBack: false,
     });
-    expect(count()).toBe("1");
+    expect(await count()).toBe("1");
 
     // A procedure that commits: no rollback offered, and it runs outside a transaction block.
     const shown = (await m.host.command("endue.database.routine", {
@@ -228,11 +212,11 @@ describe.skipIf(!uri)("routine forms on a real PostgreSQL", () => {
       statement: `CALL ${SCHEMA}.close_day()`,
       status: "done",
     });
-    expect(count()).toBe("2");
+    expect(await count()).toBe("2");
   });
 
   it("a read-only connection refuses a VOLATILE function and a procedure, and runs an IMMUTABLE one", async () => {
-    admin(SET_UP);
+    await setUp();
     const { m, call } = await plugin();
     await m.host.command("endue.database.routine", {
       connection: "live-ro",
@@ -253,7 +237,7 @@ describe.skipIf(!uri)("routine forms on a real PostgreSQL", () => {
     await expect(m.host.command("endue.database.routine-run")).rejects.toThrow(
       `live-ro is read-only: ${SCHEMA}.restock is a procedure`,
     );
-    expect(admin(`SELECT count(*) FROM ${SCHEMA}.archived`)).toBe("0");
+    expect(await admin(`SELECT count(*) FROM ${SCHEMA}.archived`)).toBe("0");
     await expect(call("add_tax", { arguments: { amount: 10 } }, "live-ro")).resolves.toMatchObject({
       status: "done",
       rows: [["12.00"]],
