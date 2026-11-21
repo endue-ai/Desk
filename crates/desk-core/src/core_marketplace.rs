@@ -73,9 +73,7 @@ impl Core {
             let granted = self.market_record(&info.id).map(|r| r.permissions);
             let granted = granted.unwrap_or_default();
             self.grant_pack(&info.id, &granted);
-            for permission in granted {
-                self.grant(&info.id, permission);
-            }
+            self.grant_installed(&info.id, granted);
         }
     }
 
@@ -171,9 +169,7 @@ impl Core {
         self.revoke_all(&entry.id);
         let plugin = self.install_plugin(&target, false);
         self.grant_pack(&entry.id, &asked);
-        for permission in asked {
-            self.grant(&entry.id, permission);
-        }
+        self.grant_installed(&entry.id, asked);
         answer(PluginInstallResult { plugin })
     }
 

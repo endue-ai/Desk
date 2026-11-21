@@ -46,9 +46,14 @@ impl Core {
     }
 
     /// Why `caller` may never be granted `permission`: it is an agent whose allowlist holds
-    /// something, but nothing that covers it.
+    /// something, but nothing that covers it, or a plugin whose manifest does not declare it
+    /// (ADR 0260).
     pub(crate) fn capped(&self, caller: &str, permission: &Permission) -> Option<RefusalReason> {
-        let allow = self.allowlist(agent_of(caller)?);
+        let Some(agent) = agent_of(caller) else {
+            let undeclared = self.undeclared(caller, permission);
+            return undeclared.then_some(RefusalReason::Undeclared);
+        };
+        let allow = self.allowlist(agent);
         let outside = !allow.is_empty() && !allow.iter().any(|a| covers(a, permission));
         outside.then_some(RefusalReason::OutsideAllowlist)
     }

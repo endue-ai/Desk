@@ -4,7 +4,8 @@
 //! goes through `perm.prompt` (`core_prompts`) or, with nobody to prompt, the `Prompter`, for
 //! perm.request and for the calls that ask by themselves (`check_or_ask`, shell.open), as the prompt
 //! policy allows (`prompt_policy`). An agent's calls take `agents`' check, capped by its allowlist;
-//! grants and refusals go to the `perm` log channel (`perm_log`, ADR 0072).
+//! a plugin is asked for, granted and allowed only what its manifest declares (`declared`, ADR
+//! 0260); grants and refusals go to the `perm` log channel (`perm_log`, ADR 0072).
 
 use std::path::PathBuf;
 
@@ -82,7 +83,8 @@ impl Core {
 
     /// The permission check every call passes: a grant of the caller's must cover the scope and the
     /// scope the target. An agent's call is also capped by its allowlist and asks the person when no
-    /// grant covers it (`check_agent`).
+    /// grant covers it (`check_agent`); a plugin's is refused whatever it holds when its manifest
+    /// does not declare the scope (ADR 0260).
     pub(crate) fn check(
         &self,
         caller: &str,
@@ -91,6 +93,12 @@ impl Core {
     ) -> Result<(), BridgeError> {
         if agent_of(caller).is_some() {
             return self.check_agent(caller, scope, target);
+        }
+        if self.undeclared(caller, scope) {
+            return Err(denied(Denied {
+                permission: scope.clone(),
+                reason: refusal(caller, Some(RefusalReason::Undeclared)),
+            }));
         }
         self.allow_call(caller, scope, target)
     }
@@ -131,7 +139,7 @@ impl Core {
 
     /// Ask the person; the call waits for the answer. A refusal is a result, not an error. A request
     /// one of the caller's lasting grants covers is answered with that grant, without asking; one
-    /// outside an agent's allowlist is refused at once.
+    /// outside an agent's allowlist, or a plugin's declarations, is refused at once.
     pub(crate) fn perm_request(&self, caller: &str, params: PermRequestParams) -> Answer {
         let lasting = || self.lasting_grant(caller, &params.permission);
         let decided = match (self.capped(caller, &params.permission), lasting()) {
@@ -185,7 +193,8 @@ impl Core {
 
     /// Ask the person for `permission`, through perm.prompt or else the Prompter, as the prompt
     /// policy allows: the grant they made, or a refusal. `cancelled` when the caller stopped first.
-    /// Nobody is asked to grant an agent anything outside its allowlist.
+    /// Nobody is asked to grant an agent anything outside its allowlist, nor a plugin anything its
+    /// manifest does not declare.
     pub(crate) fn ask(
         &self,
         caller: &str,
@@ -235,16 +244,14 @@ impl Core {
     /// Grant another caller a permission for the person, without a prompt, when an act of theirs
     /// answers it (ADR 0131): the runtime gives the plugin that opens a file the person chose read
     /// access to its folder. Needs perm:manage. A lasting grant that already covers it is answered
-    /// as it is; an agent gets nothing outside its allowlist.
+    /// as it is; an agent gets nothing outside its allowlist, a plugin nothing it does not declare.
     pub(crate) fn perm_grant(&self, caller: &str, params: PermGrantParams) -> Answer {
         self.check(caller, &Permission::PermManage(params.scope), &Target::None)?;
         let holder = params.caller.as_str();
-        if self.capped(holder, &params.permission).is_some() {
+        if let Some(why) = self.capped(holder, &params.permission) {
             return Err(denied(Denied {
                 permission: params.permission,
-                reason: format!(
-                    "{holder} may not be granted this scope: it is outside its allowlist"
-                ),
+                reason: refusal(holder, Some(why)),
             }));
         }
         let grant = match self.lasting_grant(holder, &params.permission) {
