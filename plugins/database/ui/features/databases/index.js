@@ -1,6 +1,7 @@
 // Switching databases (PG-13, ADR 0321): Database: switch the database moves the console or the
 // table view on screen to another database of its PostgreSQL connection's server, picked from the
-// ones the explorer lists (the connection's own first) or named. A console keeps its id and its
+// ones the explorer lists (the connection's own first) or named, which reads nothing: a database
+// that is not there says so at the next run. A console keeps its id and its
 // text, and its next run goes there; a table view reads the same table there. Pending changes in
 // the grid are asked about first. The header's database button calls the same action.
 
@@ -10,7 +11,25 @@ import { homeOf, onDatabase, ownDatabase } from "../../databases.js";
  * @typedef {import("../../feature-host.js").Deps} Deps
  */
 
-/** Move the buffer on screen to the database named, or to the one the person picks. */
+/** Pick one of the server's databases, the connection's own first and the one it is on ticked. */
+async function ask(
+  /** @type {Deps} */ deps,
+  /** @type {import("../../engines/common.js").Connection} */ home,
+  /** @type {string} */ here,
+) {
+  const own = ownDatabase(home);
+  const others = (await deps.catalog.databases(home)).map((d) => d.name).filter((n) => n !== own);
+  return deps.pick(
+    `Database: move it to which database of ${home.name}?`,
+    [own, ...others].map((name) => ({
+      id: name,
+      label: `${name === here ? "✓ " : ""}${name}`,
+      detail: name === own ? "the connection's" : "",
+    })),
+  );
+}
+
+/** Move the buffer on screen to the database named (read nothing), or to the one picked. */
 async function switchTo(/** @type {Deps} */ deps, /** @type {Record<string, unknown>} */ args) {
   const shown = deps.consoles.current();
   if (shown?.kind !== "console" && shown?.kind !== "table")
@@ -20,20 +39,11 @@ async function switchTo(/** @type {Deps} */ deps, /** @type {Record<string, unkn
   if (conn.engine !== "postgresql")
     throw new Error(`${conn.name} is not PostgreSQL: its databases are the explorer's schemas.`);
   const home = homeOf(conn);
-  const own = ownDatabase(home);
   const here = ownDatabase(conn);
-  const others = (await deps.catalog.databases(home)).map((d) => d.name).filter((n) => n !== own);
   const picked =
     typeof args.database === "string" && args.database
       ? args.database
-      : await deps.pick(
-          `Database: move it to which database of ${home.name}?`,
-          [own, ...others].map((name) => ({
-            id: name,
-            label: `${name === here ? "✓ " : ""}${name}`,
-            detail: name === own ? "the connection's" : "",
-          })),
-        );
+      : await ask(deps, home, here);
   if (picked === undefined) return undefined;
   if (picked !== here) await deps.consoles.rebind(shown, onDatabase(home, picked));
   deps.say(`On ${picked} of ${home.name}.`);

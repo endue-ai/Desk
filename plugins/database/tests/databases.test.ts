@@ -2,11 +2,14 @@
 // under the connection (its own first and open, templates only on request) from the schema cache's
 // pass, reads another one only when it opens, with the same password, and a database that refuses
 // says so on its own row. A console and a table view say which database they are on and switch;
-// history and starred queries stay with the connection, each naming its database; agents name a
-// database; another database's cache is kept apart and goes with the connection.
+// history, starred queries and the keychain's password stay with the connection, each entry naming
+// its database; agents name a database; another database's cache is kept apart and goes with the
+// connection.
 import { describe, expect, it } from "vitest";
 import { storeIdOf } from "../ui/databases.js";
 import type { Node } from "../ui/explorer.js";
+import type { Feature } from "../ui/feature-host.js";
+import * as builtins from "../ui/features/index.js";
 import { databasesKey, indexKey } from "../ui/schema-cache/store.js";
 import type { Script } from "./clients";
 import { databasesScript, REFUSED } from "./databases-fixture";
@@ -29,6 +32,7 @@ const PASS = [
   "server",
 ];
 const ANALYTICS = "c-prod/analytics";
+type Deps = Parameters<NonNullable<Feature["commands"]>>[0];
 
 const tree = (m: Mounted) => m.view.trees.at(-1) ?? [];
 const row = (m: Mounted, label: string, under?: Node, kind?: string) =>
@@ -223,6 +227,40 @@ describe("one PostgreSQL connection shows every database of its server", () => {
     await m.host.command("endue.database.history");
     const first = m.picks.at(-1)?.items[0] as { detail?: string } | undefined;
     expect(first?.detail).toContain("analytics · ");
+  });
+
+  it("keeps one password in the keychain for every database of the server", async () => {
+    let deps: Deps | undefined;
+    const probe: Feature = {
+      id: "probe",
+      commands: (given) => {
+        deps = given;
+        return {};
+      },
+    };
+    const { m } = await mounted({
+      password: "s3cret",
+      features: [...Object.values(builtins), probe],
+    });
+    await m.host.command("endue.database.console", { connection: "Shop" });
+    await m.host.command("endue.database.switch-database", { database: "analytics" });
+    expect(m.view.passwords).toEqual([]);
+    m.view.text = "select 1";
+    const running = m.host.command("endue.database.run");
+    await until(m, () => m.view.passwords.at(-1));
+    expect(m.view.passwords.at(-1)).toMatchObject({ connection: "Shop/analytics" });
+    m.app.password("s3cret", true);
+    await running;
+    await m.settle();
+    const saved = m.store.connections as Array<{ id: string; keychain?: boolean }>;
+    expect(saved.map((c) => [c.id, c.keychain])).toEqual([
+      ["c-lite", undefined],
+      ["c-prod", true],
+    ]);
+    const kept = (await deps?.bridge.call("db.passwords.list", {}))?.passwords;
+    expect(kept?.map((p) => p.name)).toEqual(["c-prod"]);
+    const on = deps?.manager.get(ANALYTICS);
+    expect(on && deps?.manager.passwords.ref(on)).toBe("c-prod");
   });
 
   it("agents name a database", async () => {

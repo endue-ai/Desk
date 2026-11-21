@@ -67,9 +67,13 @@ Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.
   a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `n`, `e` and
   Delete add, change and remove a connection, `u` adds one from a URI.
 - A table drags its qualified name.
+- A PostgreSQL connection lists the databases of its server its role may connect to (ADR 0321): its own first
+  and open, the others closed and read only when opened, with the same password; templates show with the
+  system-schemas setting. Each holds its own schemas, Database and Server rows and schema cache; one that
+  refuses says why on its own row. Enter on a database opens a console there, named `Shop/analytics`.
 
-Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
-kinds in `schema/pg/`), `view-tree.js`.
+Modules: `explorer.js`, `explorer-databases.js`, `explorer-table.js`, `catalog.js`, `databases.js`,
+`schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other kinds in `schema/pg/`), `view-tree.js`.
 
 ## Objects
 
@@ -118,7 +122,9 @@ Modules: `features/objects/`.
   second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server
   (`statement_timeout`).
 - History of what ran on each connection, searched from the palette (never results, never a statement that
-  carries a password), and starred queries.
+  carries a password), and starred queries; on PostgreSQL each names the database it ran on.
+- A PostgreSQL console or table view shows its database in the header; that button and Database: switch the
+  database move it to another of the server's, asking about pending changes first (ADR 0321).
 - SQL text dropped on the page goes into the console on screen, or the console of a connection the person picks.
 - A `.sql` file opened from the desk or dropped is a console bound to it, on the connection the file remembers,
   the console on screen's for a drop, else the one picked (Database: run this .sql file on another connection
@@ -129,8 +135,8 @@ Modules: `features/objects/`.
   part; a progress line, and the first error stops it at its line in the file.
 
 Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`, `console-files.js`,
-`console-run.js`, `features/consoles/`, `execute.js`, `history.js`, `tools.js`, `sql/`, `editor/`,
-`view-editor.js`.
+`console-run.js`, `features/consoles/`, `features/databases/`, `execute.js`, `history.js`, `tools.js`, `sql/`,
+`editor/`, `view-editor.js`.
 
 ## Format SQL and SQL problems
 
@@ -349,6 +355,7 @@ Modules: `features/backup/`.
 
 - `endue.database.connections` (never a password), `.schema` and `.query` (100 rows a statement by default,
   1000 at most) are registered with an argument schema as agents' tools (ADR 0088); the first two only read.
+  On PostgreSQL both take an optional `database` of the server, and `.schema` also lists the databases.
 - An agent's write runs only after the person says yes, whatever the connection's tag and the `confirm`
   setting; a read-only connection refuses it, and an agent is never shown a password prompt.
 - `.paste` pastes text into the grid on screen as pending changes, under the same refusals and type checks as
