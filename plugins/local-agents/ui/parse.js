@@ -3,13 +3,16 @@
 // per output format (catalog.js); a line a structured reader does not know is taken as text, so a
 // program that changed its output still says something.
 
+import { sessionTool } from "@endue-ai/ui/elements";
+
 /**
  * @typedef {import("./catalog.js").Format} Format
  * @typedef {{ kind: "session", id: string }
  *   | { kind: "model", name: string }
  *   | { kind: "text", text: string, block?: boolean }
  *   | { kind: "final", text: string }
- *   | { kind: "tool", name: string, detail: string }
+ *   | { kind: "tool", name: string, detail: string, input?: unknown }
+ *   | { kind:"notification",text:string }
  *   | { kind: "usage", input?: number, output?: number, cost?: number }
  *   | { kind: "error", message: string, fatal: boolean }} AgentEvent
  * @typedef {{ line(line: string): AgentEvent[], end(): AgentEvent[] }} Reader
@@ -94,13 +97,28 @@ function claudeEvent(o) {
   if (o.type === "system" && o.subtype === "init") {
     if (str(o.session_id)) out.push({ kind: "session", id: o.session_id });
     if (str(o.model)) out.push({ kind: "model", name: o.model });
+  } else if (
+    o.type === "system" &&
+    o.subtype === "task_notification" &&
+    typeof o.summary === "string"
+  ) {
+    out.push({ kind: "notification", text: o.summary });
   } else if (o.type === "assistant") {
     const content = o.message?.content;
     for (const block of Array.isArray(content) ? content : []) {
       if (block?.type === "text" && str(block.text))
         out.push({ kind: "text", text: block.text, block: true });
       else if (block?.type === "tool_use")
-        out.push({ kind: "tool", name: str(block.name) || "tool", detail: describe(block.input) });
+        out.push({
+          kind: "tool",
+          name: str(block.name) || "tool",
+          detail: describe(block.input),
+          ...(Array.isArray(block.input?.plan) ||
+          Array.isArray(block.input?.items) ||
+          Array.isArray(block.input?.todos)
+            ? { input: block.input }
+            : {}),
+        });
     }
   } else if (o.type === "tool_call" && o.subtype === "started" && o.tool_call) {
     const [key, call] = Object.entries(o.tool_call)[0] ?? [];
@@ -290,7 +308,7 @@ export function reader(format) {
 /**
  * @typedef {{ text: string, final: string, session: string, model: string,
  *   tools: { name: string, detail: string }[], usage: { input?: number, output?: number, cost?: number },
- *   problems: string[], fatal: string }} Reply
+ *   parts: Omit<import("@endue-ai/ui/elements").SessionTurn,"id">[], problems: string[], fatal: string }} Reply
  */
 
 /** @returns {Reply} */
@@ -301,6 +319,7 @@ export function emptyReply() {
     session: "",
     model: "",
     tools: [],
+    parts: [],
     usage: {},
     problems: [],
     fatal: "",
@@ -322,22 +341,32 @@ export function apply(reply, event) {
     case "model":
       reply.model = event.name;
       break;
-    case "text":
+    case "text": {
       if (event.block && reply.text.trim()) reply.text = `${reply.text.trimEnd()}\n\n`;
       reply.text += event.text;
+      const last = reply.parts.at(-1);
+      if (last?.role === "assistant") last.text += (event.block ? "\n\n" : "") + event.text;
+      else reply.parts.push({ role: "assistant", text: event.text });
+
       break;
+    }
     case "final":
       reply.final = event.text;
       break;
     case "tool":
+      reply.parts.push(sessionTool(event.name, event.detail, event.input));
       if (reply.tools.push({ name: event.name, detail: event.detail }) > TOOLS_KEPT)
         reply.tools.shift();
+      break;
+    case "notification":
+      reply.parts.push({ role: "notification", text: event.text });
       break;
     case "usage":
       for (const key of /** @type {const} */ (["input", "output", "cost"]))
         if (event[key] !== undefined) reply.usage[key] = event[key];
       break;
     case "error":
+      reply.parts.push({ role: "failure", text: event.message });
       if (event.fatal) reply.fatal = event.message;
       else if (reply.problems.push(event.message) > 5) reply.problems.shift();
       break;

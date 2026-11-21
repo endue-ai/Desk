@@ -130,9 +130,11 @@ test.describe("endue.agents", () => {
     await expect(frame.locator('[data-facet="version"] .facet-hint')).toHaveText("2.1.3");
     await frame.locator("#chat-input").fill("How does the bridge check calls?");
     await frame.locator("#chat-input").press("Enter");
-    await expect(frame.locator(".turn.assistant")).toHaveAttribute("data-state", "done");
-    await expect(frame.locator(".turn.assistant")).toContainText("Nothing changes without one.");
-    await expect(frame.locator(".turn.assistant .tools")).toContainText("Read");
+    const reader = frame.locator("desk-agent-session");
+    await expect(reader.getByText(/Nothing changes without one\./)).toBeVisible();
+    await reader.locator("summary").filter({ hasText: "1 tool call" }).click();
+    await expect(reader.locator(".tool-line")).toContainText("Read");
+    await expect(frame.locator("#chat-send")).toBeEnabled();
     expect(await tree(frame, "#page-studio")).toMatchSnapshot("studio-local.json");
   });
 
