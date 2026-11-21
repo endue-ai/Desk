@@ -7,7 +7,7 @@ use std::collections::VecDeque;
 /// How many changes the log remembers; asking about an older revision answers "everything".
 const KEEP: usize = 256;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct DamageLog {
     revision: u64,
     entries: VecDeque<(u64, Rect)>,

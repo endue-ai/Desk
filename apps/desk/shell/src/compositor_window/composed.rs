@@ -47,6 +47,8 @@ pub struct Composed {
     /// Each window's own page's paints of a size its panes' plugins have no picture of yet, held
     /// aside (ADR 0233).
     pages: window::Pages,
+    /// The textures retired until the render thread drew past them (#249).
+    retired: retired::Retired,
 }
 
 impl Composed {
@@ -103,7 +105,8 @@ impl Composed {
 
     fn drop_frames(&mut self, surface: &str) {
         if let Some(id) = self.textures.remove(surface) {
-            self.frames.destroy(&mut self.compositor, id);
+            // A scene handed before may still draw it (`composed_retired.rs`).
+            self.retire(id);
             self.dirty = true;
         }
     }
@@ -123,13 +126,20 @@ impl Composed {
 
     /// Draw `scene` into a fresh off-screen target and read it back (RGBA rows).
     pub fn read(&mut self, scene: &Scene) -> Option<Vec<u8>> {
+        let (target, device, queue) = self.drawn_off_screen(scene);
+        target.read_rgba(&device, &queue).ok()
+    }
+
+    /// `scene` drawn into a fresh off-screen target, to read back once the lock is let go (a
+    /// capture's readback holds the render thread up no more, #249), with the device and queue.
+    pub fn drawn_off_screen(&mut self, scene: &Scene) -> (Target, wgpu::Device, wgpu::Queue) {
         let size = scene.viewport();
         let device = self.compositor.device().clone();
         let queue = self.compositor.queue().clone();
         let target = Target::new(&device, size, self.compositor.format());
         self.compositor.invalidate();
         self.compositor.render(scene, &target.view, size);
-        target.read_rgba(&device, &queue).ok()
+        (target, device, queue)
     }
 }
 
@@ -162,6 +172,7 @@ impl Shared {
             page: page::PageAside::default(),
             panes: pane::Panes::default(),
             pages: window::Pages::default(),
+            retired: retired::Retired::default(),
         })))
     }
 
@@ -185,6 +196,13 @@ impl SurfaceSink for Shared {
             composed.dirty |= composed.pages_waiting();
             composed.pane_texture(&attach.surface, size)
         };
+        // A paint shown of another size than its picture goes to a texture of its own (#249).
+        let picture = id;
+        let id = if aside {
+            id
+        } else {
+            composed.shown_texture(id, size)
+        };
         // A paint to another texture than the one before it carries that one's damage only.
         let all = whole.then(|| SurfaceAttach {
             damage: Vec::new(),
@@ -197,6 +215,9 @@ impl SurfaceSink for Shared {
         let result = state
             .frames
             .attach(&mut state.compositor, id, attach, source);
+        if id != picture {
+            state.resized(&attach.surface, picture, id, result.is_ok());
+        }
         let damage = attach.damage.len();
         crate::frame_trace::attached(&attach.surface, started, damage, result.is_ok());
         let counts = state.attached.entry(attach.surface.clone()).or_default();
@@ -267,6 +288,8 @@ impl SurfaceSink for Shared {
 mod page;
 #[path = "composed_pane.rs"]
 mod pane;
+#[path = "composed_retired.rs"]
+mod retired;
 #[path = "composed_window.rs"]
 pub mod window;
 

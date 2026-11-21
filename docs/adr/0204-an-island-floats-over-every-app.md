@@ -1,10 +1,10 @@
 ---
-status: superseded by 0275
+status: superseded by 0280
 date: 2026-11-13
 decision-makers: Team endue
 ---
 
-Superseded by [ADR 0275](0275-eris-opens-in-the-desk.md).
+Superseded by [ADR 0280](0280-eris-opens-in-the-desk.md).
 
 Supersedes ADR 0121 (the island takes the floating Eris's place) and amends ADR 0190 (a question also
 reaches the person on the island, which takes the keys only when pressed). Follows ADR 0203; ADR 0205

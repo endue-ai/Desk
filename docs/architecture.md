@@ -71,7 +71,7 @@ gestures, the window commands and the live budget. What stays web runs as system
 compositor places above every window (ADR 0160): the desk's own page (the bars, Eris, notices, menus,
 settings and the studios, each part drawn whole) and the Search Desk window. Both use their own
 window's caller identity. The shell connects the desk's plugin host to each plugin's own browser.
-Option+Enter brings Desk forward and opens Eris's talk line (ADR 0275). Permission prompts and agent
+Option+Enter brings Desk forward and opens Eris's talk line (ADR 0280). Permission prompts and agent
 approvals are answered in Desk. Shown notices can also reach the OS according to
 `desk.notify.system` (ADR 0240).
 

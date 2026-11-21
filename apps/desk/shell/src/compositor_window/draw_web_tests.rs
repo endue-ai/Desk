@@ -4,8 +4,9 @@
 use desk_compositor::glam::Vec2;
 use desk_compositor::input::Target;
 use desk_compositor::{ChromeTheme, Rect, Scene, TextureId, hit_test};
+use desk_core::WebPlace;
 
-use super::tests::{hosted_at, sources};
+use super::tests::{hosted_at, sources, surface_of};
 use super::{Drawn, Sources, Texture, draw};
 use crate::compositor_window::draw_web::cut;
 
@@ -21,9 +22,24 @@ fn textures(paged: bool) -> impl Fn(&str) -> Option<Texture> {
     }
 }
 
-fn drawn_with(surface: &dyn Fn(&str) -> Option<Texture>, at: Option<[f32; 4]>) -> (Scene, Drawn) {
+fn drawn_with(surface: &dyn Fn(&str) -> Option<Texture>, at: Option<[f64; 4]>) -> (Scene, Drawn) {
+    let place = at.map(|[x, y, width, height]| WebPlace {
+        x,
+        y,
+        width,
+        height,
+        shown: true,
+        fill: false,
+    });
+    drawn_with_place(surface, place)
+}
+
+fn drawn_with_place(
+    surface: &dyn Fn(&str) -> Option<Texture>,
+    place: Option<WebPlace>,
+) -> (Scene, Drawn) {
     let hosted = hosted_at("live", 1.0);
-    let web = move |host: &str| at.filter(|_| host == "main.endue-notes");
+    let web = move |host: &str| place.filter(|_| host == "main.endue-notes");
     let from = Sources {
         web: &web,
         ..sources(surface)
@@ -39,17 +55,17 @@ fn target((scene, drawn): &(Scene, Drawn), at: Vec2) -> Option<(String, Vec2)> {
     Some((t.surface.clone(), t.origin + hit.local_point * t.per_unit))
 }
 
-// The pane's body lies at 105,231 and is 379 by 219 (`draw_tests.rs`).
-const BODY: Vec2 = Vec2::new(105.0, 231.0);
+// The pane's body lies at 105,227 and is 379 by 223 (`draw_tests.rs`).
+const BODY: Vec2 = Vec2::new(105.0, 227.0);
 
 #[test]
 fn a_web_view_is_drawn_over_its_plugins_pane_at_its_box_and_takes_the_pointer_there() {
     // Under a toolbar 40 high, and taller than what is left of the pane.
     let shown = drawn_with(&textures(false), Some([0.0, 40.0, 379.0, 500.0]));
-    let (surface, at) = target(&shown, BODY + Vec2::new(10.0, 10.0)).unwrap();
+    let (surface, at) = target(&shown, BODY + Vec2::new(10.0, 14.0)).unwrap();
     assert_eq!(
         (surface.as_str(), at),
-        ("main.endue-notes", Vec2::new(10.0, 10.0)),
+        ("main.endue-notes", Vec2::new(10.0, 14.0)),
         "the toolbar"
     );
     let (surface, at) = target(&shown, BODY + Vec2::new(10.0, 50.0)).unwrap();
@@ -58,10 +74,10 @@ fn a_web_view_is_drawn_over_its_plugins_pane_at_its_box_and_takes_the_pointer_th
         (WEB, Vec2::new(10.0, 10.0)),
         "the page, at its own point"
     );
-    let (surface, at) = target(&shown, BODY + Vec2::new(370.0, 218.0)).unwrap();
+    let (surface, at) = target(&shown, BODY + Vec2::new(370.0, 222.0)).unwrap();
     assert_eq!(
         (surface.as_str(), at),
-        (WEB, Vec2::new(370.0, 178.0)),
+        (WEB, Vec2::new(370.0, 182.0)),
         "to the pane's last row"
     );
     let below = target(&shown, BODY + Vec2::new(10.0, 225.0)).unwrap().0;
@@ -70,7 +86,7 @@ fn a_web_view_is_drawn_over_its_plugins_pane_at_its_box_and_takes_the_pointer_th
     let placed = shown.1.placed.iter().find(|(s, _)| s == WEB).unwrap().1;
     assert_eq!(
         (placed.x, placed.y, placed.width, placed.height),
-        (105.0, 271.0, 379.0, 500.0)
+        (105.0, 267.0, 379.0, 500.0)
     );
 }
 
@@ -123,19 +139,22 @@ fn a_view_shows_what_its_texture_holds_from_its_top_left_never_stretched() {
     let pane = Rect::new(0.0, 0.0, 400.0, 300.0);
     let full = Rect::new(0.0, 40.0, 400.0, 260.0);
     // A picture of the size before a resize, at two pixels a CSS pixel: 300 by 200 of it.
-    let (node, off) = cut(full, pane, (TextureId(7), (600, 400)), 2.0).unwrap();
+    let (node, off, per_unit) = cut(full, pane, (TextureId(7), (600, 400)), 2.0, false).unwrap();
     assert_eq!(off, Vec2::ZERO);
+    assert_eq!(per_unit, Vec2::ONE);
     assert_eq!((node.rect.width, node.rect.height), (300.0, 200.0));
     assert_eq!((node.uv.width, node.uv.height), (1.0, 1.0));
     // Half of it scrolled past the pane's left: the right half of the picture.
-    let (node, off) = cut(
+    let (node, off, per_unit) = cut(
         Rect::new(-150.0, 40.0, 400.0, 260.0),
         pane,
         (TextureId(7), (600, 400)),
         2.0,
+        false,
     )
     .unwrap();
     assert_eq!(off, Vec2::new(150.0, 0.0));
+    assert_eq!(per_unit, Vec2::ONE);
     assert_eq!((node.rect.x, node.rect.width), (0.0, 150.0));
     assert_eq!((node.uv.x, node.uv.width), (0.5, 0.5));
     assert!(
@@ -143,8 +162,52 @@ fn a_view_shows_what_its_texture_holds_from_its_top_left_never_stretched() {
             Rect::new(500.0, 0.0, 100.0, 100.0),
             pane,
             (TextureId(7), (600, 400)),
-            2.0
+            2.0,
+            false,
         )
         .is_none()
     );
+}
+
+#[test]
+fn a_filling_web_view_tracks_the_window_while_its_paint_is_stale() {
+    let web_size = (379, 179);
+    // Render the initial size, grow, then shrink while the web paint is still the initial size.
+    for (width, height) in [(380, 260), (500, 340), (320, 220)] {
+        let texture = |host: &str| match host {
+            WEB => Some((TextureId(7), web_size)),
+            "window:endue.notes" => Some((TextureId(5), (width, height))),
+            _ => textures(false)(host),
+        };
+        let scene = drawn_with_place(
+            &texture,
+            Some(WebPlace {
+                x: 0.0,
+                y: 40.0,
+                width: f64::from(web_size.0),
+                height: f64::from(web_size.1),
+                shown: true,
+                fill: true,
+            }),
+        );
+        let pane = scene
+            .1
+            .placed
+            .iter()
+            .find(|(host, _)| host == "main.endue-notes")
+            .unwrap()
+            .1;
+        let (w, h) = (pane.width, pane.height - 40.0);
+        let placed = scene.1.placed.iter().find(|(s, _)| s == WEB).unwrap().1;
+        assert_eq!(placed, Rect::new(pane.x, pane.y + 40.0, w, h));
+        let (_, node) = surface_of(&scene.0, scene.0.root(), TextureId(7)).unwrap();
+        assert_eq!((node.rect.width, node.rect.height), (w, h));
+        let toolbar = target(&scene, pane.min() + Vec2::new(10.0, 20.0)).unwrap();
+        assert_eq!(toolbar.0, "main.endue-notes");
+        let relative = Vec2::new(w * 0.7, h * 0.6);
+        let (surface, point) = target(&scene, placed.min() + relative).unwrap();
+        assert_eq!(surface, WEB);
+        let expected = Vec2::new(379.0 * 0.7, 179.0 * 0.6);
+        assert!(point.abs_diff_eq(expected, 0.001), "{point} != {expected}");
+    }
 }

@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn a_pane_under_the_title_bar_takes_the_frames_bottom_corners() {
         let window = Rect::new(0.0, 0.0, 400.0, 300.0);
-        let body = Rect::new(1.0, 41.0, 398.0, 258.0);
+        let body = Rect::new(1.0, 37.0, 398.0, 262.0);
         assert_eq!(
             corners_of(window, body, 12.0),
             Some((11.0, Corners::BOTTOM))
@@ -108,13 +108,13 @@ mod tests {
     #[test]
     fn panes_side_by_side_take_their_own_corner_and_one_inside_takes_none() {
         let window = Rect::new(0.0, 0.0, 400.0, 300.0);
-        let left = Rect::new(1.0, 41.0, 199.0, 258.0);
-        let right = Rect::new(201.0, 41.0, 198.0, 258.0);
+        let left = Rect::new(1.0, 37.0, 199.0, 262.0);
+        let right = Rect::new(201.0, 37.0, 198.0, 262.0);
         let bl = Corners::new(false, false, false, true);
         let br = Corners::new(false, false, true, false);
         assert_eq!(corners_of(window, left, 12.0), Some((11.0, bl)));
         assert_eq!(corners_of(window, right, 12.0), Some((11.0, br)));
-        let top = Rect::new(1.0, 41.0, 398.0, 100.0);
+        let top = Rect::new(1.0, 37.0, 398.0, 100.0);
         assert_eq!(corners_of(window, top, 12.0), None);
     }
 

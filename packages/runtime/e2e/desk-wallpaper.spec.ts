@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { DESK, openShell, step } from "./shell-helpers";
+import { DESK, openShell, step, windowMenu } from "./shell-helpers";
 
 test.use({ viewport: DESK });
 /**
@@ -8,6 +8,9 @@ test.use({ viewport: DESK });
  */
 const pan = (page: Page, dx: number, dy: number) =>
   page.evaluate(([x, y]) => window.__shell.wm.panBy(x, y), [dx, dy] as const);
+/** Floating mode, a row of window `id`'s menu (ADR 0255), switched by a click. */
+const toggleFloating = async (page: Page, id: string) =>
+  (await windowMenu(page, id)).getByRole("menuitemcheckbox", { name: "Floating mode" }).click();
 
 test("Eris has idle, hover and editing states with keyboard and pointer input", async ({
   page,
@@ -80,11 +83,11 @@ test("the empty desk, normal windows and pond scenery share one pan; floating wi
     x: rippleBefore.x - 90,
     y: rippleBefore.y - 40,
   });
-  await win.getByRole("button", { name: "Floating mode" }).click();
+  await toggleFloating(page, "window-1");
   const floating = await win.boundingBox();
   await pan(page, 60, 20);
   expect(await win.boundingBox()).toEqual(floating);
-  await win.getByRole("button", { name: "Floating mode" }).click();
+  await toggleFloating(page, "window-1");
   expect(await win.boundingBox()).toEqual(floating);
   await expect(page.locator(".wallpaper-ripple")).toHaveCount(1);
   await step(page, 3200);
@@ -103,11 +106,11 @@ test("plugin side windows use the same normal and floating modes", async ({ page
     if (!before) throw new Error("The plugin window must be visible");
     await pan(page, -100, 50);
     expect(await win.boundingBox()).toEqual({ ...before, x: before.x - 100, y: before.y + 50 });
-    await win.getByRole("button", { name: "Floating mode" }).click();
+    await toggleFloating(page, id);
     const floating = await win.boundingBox();
     await pan(page, -100, -50);
     expect(await win.boundingBox()).toEqual(floating);
-    await win.getByRole("button", { name: "Floating mode" }).click();
+    await toggleFloating(page, id);
     expect(await win.boundingBox()).toEqual(floating);
   }
   await page

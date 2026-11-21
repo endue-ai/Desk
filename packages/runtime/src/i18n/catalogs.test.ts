@@ -1,5 +1,6 @@
-// Every catalog the desk ships beside its modules (`<module>/messages/<lang>.json`, ADR 0250) is a
-// valid catalog, and Korean says nothing English does not: no id and no parameter of its own.
+// Every catalog the desk ships beside its modules (`<module>/messages/<lang>.json`, ADR 0250), and
+// the shell's, is a valid catalog, and Korean says nothing English does not: no id and no
+// parameter of its own.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -33,8 +34,9 @@ const prefixOf = (folder: string) =>
     .split(/[\\/]/)[0]
     ?.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
 
-const found = [join(repo, "packages/runtime/src"), join(repo, "apps/desk/src")].flatMap((dir) =>
-  folders(dir),
+// The app's page and its Rust shell (`apps/desk/shell/messages`, ADR 0276) ship catalogs too.
+const found = ["packages/runtime/src", "apps/desk/src", "apps/desk/shell"].flatMap((dir) =>
+  folders(join(repo, dir)),
 );
 
 describe("the runtime's catalogs", () => {

@@ -13,6 +13,7 @@ import {
   click,
   drag,
   emptyAt,
+  fromMenu,
   type Grip,
   gripAt,
   KEY,
@@ -23,6 +24,7 @@ import {
 } from "../support/gestures";
 import { difference, settled } from "../support/pixels";
 import {
+  byId,
   clearDesk,
   closeShellWindows,
   deskNow,
@@ -32,6 +34,7 @@ import {
   panOf,
   rectOf,
   run,
+  until,
   windowNow,
   windowUntil,
 } from "../support/windows";
@@ -83,7 +86,8 @@ describe("canvas: resizing and the pan (#82)", () => {
     const floating = await openWindow();
     const unfloated = await windowNow(floating);
     expect(unfloated.state).toBe("normal");
-    await click(toolAt(rectOf(unfloated), "floating", false));
+    // Floating mode is a row of the window's menu (ADR 0255).
+    await fromMenu(rectOf(unfloated), "floating", false);
     const fixed = await windowUntil(floating, (x) => x.state === "floating", "floating");
     expect(rectOf(fixed)).toEqual(rectOf(unfloated));
     // A plain drag on the canvas does not pan.
@@ -98,7 +102,9 @@ describe("canvas: resizing and the pan (#82)", () => {
     expect(panOf(await deskNow())).toEqual({ x: -120, y: 60 });
     // Floated where it is now, the normal window keeps its place on screen.
     await click(toolAt(rectOf(fixed), "close"));
-    await click(toolAt(rectOf(moved), "floating", false));
+    // The floating window lay over the other's menu tool: it is gone before that tool is pressed.
+    await until((d) => byId(d, floating) === undefined, "the floating window closed");
+    await fromMenu(rectOf(moved), "floating", false);
     const floated = await windowUntil(canvas, (x) => x.state === "floating", "floating");
     expect(rectOf(floated)).toEqual(rectOf(moved));
   });

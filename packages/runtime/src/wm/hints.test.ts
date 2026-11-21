@@ -10,8 +10,8 @@ import { testWindowManager } from "./testing";
 import { takeDesk } from "./view";
 
 const epoch = Date.parse("2026-11-15T09:00:00.000Z");
-/** A window on the canvas is its title bar (40 px) and border (1 px a side) larger than its page. */
-const framed = (w: number, h: number) => ({ w: w + 2, h: h + 42 });
+/** A window on the canvas is its title bar (36 px) and border (1 px a side) larger than its page. */
+const framed = (w: number, h: number) => ({ w: w + 2, h: h + 38 });
 
 async function adopted(window: Parameters<typeof windowHints>[0]) {
   const store = new Store(sampleState("en", epoch));

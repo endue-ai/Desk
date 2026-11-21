@@ -849,6 +849,31 @@
       },
       {
        "tag": "button",
+       "class": "btn btn-xs desk-notify-bell",
+       "aria-label": "알림",
+       "aria-expanded": "false",
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "bell"
+        },
+        {
+         "tag": "span",
+         "class": "desk-notify-count",
+         "hidden": "",
+         "style": {
+          "display": "none",
+          "background": "rgb(245, 244, 247)",
+          "color": "rgb(105, 101, 115)"
+         }
+        }
+       ]
+      },
+      {
+       "tag": "button",
        "class": "desk-settings-launcher",
        "aria-label": "설정 열기",
        "style": {
@@ -925,6 +950,11 @@
           "opacity": "0.845",
           "transform": "matrix(1, 0, 0, 1, -24, -24)"
          }
+        },
+        {
+         "tag": "svg",
+         "class": "eris-mind",
+         "icon": null
         },
         {
          "tag": "span",
@@ -1735,40 +1765,29 @@
            "class": "surface-tools",
            "children": [
             {
-             "tag": "button",
-             "class": "icon-button tool",
-             "aria-label": "새 탭 (⌘D)",
+             "tag": "span",
+             "class": "surface-mark",
+             "role": "img",
+             "aria-label": "고정됨",
              "hidden": "",
-             "box": [
-              0,
-              0,
-              0,
-              0
-             ],
              "style": {
-              "display": "none",
-              "border": "solid rgba(0, 0, 0, 0)"
+              "display": "none"
              },
              "children": [
               {
                "tag": "svg",
-               "icon": "plus"
+               "icon": "pin"
               }
              ]
             },
             {
-             "tag": "button",
-             "class": "icon-button tool",
-             "aria-label": "플로팅 모드",
-             "aria-pressed": "false",
-             "box": [
-              569,
-              249,
-              24,
-              24
-             ],
+             "tag": "span",
+             "class": "surface-mark",
+             "role": "img",
+             "aria-label": "플로팅",
+             "hidden": "",
              "style": {
-              "border": "solid rgba(0, 0, 0, 0)"
+              "display": "none"
              },
              "children": [
               {
@@ -1780,11 +1799,11 @@
             {
              "tag": "button",
              "class": "icon-button tool",
-             "aria-label": "고정",
-             "aria-pressed": "false",
+             "aria-label": "창 메뉴",
+             "aria-expanded": "false",
              "box": [
               595,
-              249,
+              247,
               24,
               24
              ],
@@ -1794,7 +1813,7 @@
              "children": [
               {
                "tag": "svg",
-               "icon": "pin"
+               "icon": "more"
               }
              ]
             },
@@ -1804,7 +1823,7 @@
              "aria-label": "창으로 꺼내기",
              "box": [
               621,
-              249,
+              247,
               24,
               24
              ],
@@ -1824,7 +1843,7 @@
              "aria-label": "닫기",
              "box": [
               647,
-              249,
+              247,
               24,
               24
              ],
@@ -2045,40 +2064,29 @@
            "class": "surface-tools",
            "children": [
             {
-             "tag": "button",
-             "class": "icon-button tool",
-             "aria-label": "새 탭 (⌘D)",
+             "tag": "span",
+             "class": "surface-mark",
+             "role": "img",
+             "aria-label": "고정됨",
              "hidden": "",
-             "box": [
-              0,
-              0,
-              0,
-              0
-             ],
              "style": {
-              "display": "none",
-              "border": "solid rgba(0, 0, 0, 0)"
+              "display": "none"
              },
              "children": [
               {
                "tag": "svg",
-               "icon": "plus"
+               "icon": "pin"
               }
              ]
             },
             {
-             "tag": "button",
-             "class": "icon-button tool",
-             "aria-label": "플로팅 모드",
-             "aria-pressed": "false",
-             "box": [
-              1209,
-              229,
-              24,
-              24
-             ],
+             "tag": "span",
+             "class": "surface-mark",
+             "role": "img",
+             "aria-label": "플로팅",
+             "hidden": "",
              "style": {
-              "border": "solid rgba(0, 0, 0, 0)"
+              "display": "none"
              },
              "children": [
               {
@@ -2090,11 +2098,11 @@
             {
              "tag": "button",
              "class": "icon-button tool",
-             "aria-label": "고정",
-             "aria-pressed": "false",
+             "aria-label": "창 메뉴",
+             "aria-expanded": "false",
              "box": [
               1235,
-              229,
+              227,
               24,
               24
              ],
@@ -2104,7 +2112,7 @@
              "children": [
               {
                "tag": "svg",
-               "icon": "pin"
+               "icon": "more"
               }
              ]
             },
@@ -2114,7 +2122,7 @@
              "aria-label": "창으로 꺼내기",
              "box": [
               1261,
-              229,
+              227,
               24,
               24
              ],
@@ -2134,7 +2142,7 @@
              "aria-label": "닫기",
              "box": [
               1287,
-              229,
+              227,
               24,
               24
              ],

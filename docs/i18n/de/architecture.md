@@ -73,7 +73,7 @@ und das Live-Budget. Was Web bleibt, läuft als Systemoberflächen, die der Comp
 legt (ADR 0160): die eigene Seite des Desks (die Leisten, Eris, Mitteilungen, Menüs, Einstellungen und
 die Studios, jeder Teil ganz gezeichnet) und das Fenster der Suche. Beide verwenden die Identität
 ihres eigenen Fensters. Die Shell verbindet den Plugin-Host des Desks mit dem Browser jedes Plugins.
-Option+Enter bringt den Desk nach vorn und öffnet das Eingabefeld für Eris (ADR 0275).
+Option+Enter bringt den Desk nach vorn und öffnet das Eingabefeld für Eris (ADR 0280).
 Berechtigungsanfragen und Freigaben für Agenten werden im Desk beantwortet. Angezeigte Mitteilungen
 können gemäß `desk.notify.system` auch das Betriebssystem erreichen (ADR 0240).
 

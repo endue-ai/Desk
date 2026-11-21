@@ -1,4 +1,4 @@
-//! The global shortcut and tray action for talking to Eris in the desk (ADR 0275). The shortcut is
+//! The global shortcut and tray action for talking to Eris in the desk (ADR 0280). The shortcut is
 //! configurable and reports when another app holds it.
 
 pub mod calls;

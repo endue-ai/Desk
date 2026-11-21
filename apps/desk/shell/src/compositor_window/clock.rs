@@ -4,15 +4,18 @@
 //! what they paint at most once a frame. The window wakes for its next frame (none while it is out
 //! of sight, #155), the live budget's next look or the clock's, which wants none while every surface
 //! on it rests (#134); CEF's poll rides those wake-ups (#129, `pump.rs`). While CEF's work runs long
-//! the pump's stand-in looks at the clock from its own thread (`pump/stand_in.rs`).
+//! the pump's stand-in looks at the clock from its own thread (`pump/stand_in.rs`). A frame is a
+//! display interval after the last (16.667 ms at 60 Hz, 8.333 at 120: `display.rs`, #249), and the
+//! begin frames count the display's frames too; the render thread draws each frame a little behind
+//! the beat it was laid out on (`Behind`, `render_thread.rs`).
 
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use serde_json::json;
 
 use super::CompositorWindow;
-use crate::web_host::frames::{self, FRAME};
+use crate::web_host::frames;
 use crate::web_host::view::catch_up::catch_up_page;
 
 impl CompositorWindow {
@@ -35,11 +38,13 @@ impl CompositorWindow {
         self.desk.pump.stand_in(look, Arc::new(frames::prompted));
     }
 
-    /// The window is in front (the display's rate) or behind (a lower one). In front, a window that
-    /// could not present tries again.
+    /// The window is in front (60 frames a second, whatever the display's rate: at 120 Hz a pace of
+    /// 60 takes every other desk frame, #249) or behind (30). In front, a window that could not
+    /// present tries again, on the display it is on now.
     pub fn focused(&mut self, focused: bool) {
         if focused {
-            self.gpu.resume();
+            self.render.resume();
+            self.follow_display();
         }
         let fps = if focused { 60 } else { 30 };
         for (surface, _, _) in self.hosted.surfaces().made() {
@@ -59,9 +64,10 @@ impl CompositorWindow {
             dirty,
             occluded: self.occluded,
             last_frame: self.last_frame,
+            interval: frames::interval(self.rate),
             hosted: self.hosted.due(),
             clock: self.begin_due,
-            withheld: self.gpu.withheld(),
+            withheld: self.render.state().withheld,
             tips: self.tips.due(),
         }
     }
@@ -85,6 +91,8 @@ pub(super) struct Due {
     /// The OS says the window is out of sight (winit's `Occluded`).
     pub occluded: bool,
     pub last_frame: Instant,
+    /// One frame of the window's display.
+    pub interval: Duration,
     /// The live budget's next look, or when the page's picture counts as painted (`Hosted::due`).
     pub hosted: Option<Instant>,
     /// The frame clock's next look.
@@ -98,7 +106,7 @@ pub(super) struct Due {
 impl Due {
     /// When the next frame is due: none while nothing changed or nothing can be seen.
     pub fn frame(&self) -> Option<Instant> {
-        (self.dirty && !self.occluded).then_some(self.last_frame + FRAME)
+        (self.dirty && !self.occluded).then_some(self.last_frame + self.interval)
     }
 
     /// When to look again for a frame the OS withheld: not while the OS says the window is out of
@@ -108,14 +116,14 @@ impl Due {
     }
 
     /// The frame just composed at `now`, as the next one counts from it: the clock's own beat, one
-    /// `FRAME` after the last, when this one came within a frame of when it was due, so a late
-    /// wake-up does not push every frame after it later (the beat drifted by each frame's lateness,
-    /// slightly under 60 a second against the display's); `now` when the desk had nothing to draw a
-    /// while or a frame was missed, so the beat starts again there.
-    pub fn beat(last_frame: Instant, now: Instant) -> Instant {
-        let due = last_frame + FRAME;
+    /// display `interval` after the last, when this one came within a frame of when it was due, so
+    /// a late wake-up does not push every frame after it later (the beat drifted by each frame's
+    /// lateness, slightly under 60 a second against the display's); `now` when the desk had
+    /// nothing to draw a while or a frame was missed, so the beat starts again there.
+    pub fn beat(last_frame: Instant, now: Instant, interval: Duration) -> Instant {
+        let due = last_frame + interval;
         match now.checked_duration_since(due) {
-            Some(late) if late < FRAME => due,
+            Some(late) if late < interval => due,
             _ => now,
         }
     }
@@ -135,17 +143,51 @@ impl Due {
     }
 }
 
+/// How far behind its slot a frame is drawn: none from rest, then an eighth of a display interval
+/// more each frame of a run, up to `most`.
+#[derive(Clone, Copy, Debug, Default)]
+pub(super) struct Behind {
+    last: Option<Instant>,
+    behind: Duration,
+}
+
+impl Behind {
+    /// The most a frame is drawn behind its slot: the slack a late main thread has.
+    pub(super) fn most(every: Duration) -> Duration {
+        every * 3 / 4
+    }
+
+    /// When to draw the frame laid out on `slot`, seen at `now`, the display's frames `every`
+    /// apart: never before the last drawn by half an interval, and at once when late.
+    pub(super) fn draw_at(&mut self, slot: Instant, now: Instant, every: Duration) -> Instant {
+        let in_a_row = (self.last).is_some_and(|t| now.saturating_duration_since(t) < every * 2);
+        self.behind = if in_a_row {
+            (self.behind + every / 8).min(Self::most(every))
+        } else {
+            Duration::ZERO
+        };
+        let mut at = (slot + self.behind).max(now);
+        if let Some(last) = self.last {
+            at = at.max(last + every / 2);
+        }
+        self.last = Some(at);
+        at
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::time::{Duration, Instant};
 
-    use super::{Due, FRAME};
+    use super::Due;
+    use crate::web_host::frames::{FRAME, interval};
 
     fn due(dirty: bool, occluded: bool) -> Due {
         Due {
             dirty,
             occluded,
             last_frame: Instant::now() - Duration::from_secs(5),
+            interval: FRAME,
             hosted: None,
             clock: None,
             withheld: None,
@@ -162,6 +204,37 @@ mod tests {
     }
 
     #[test]
+    fn a_frame_is_due_a_display_interval_after_the_last() {
+        for (rate, ms) in [(120, 8.333), (60, 16.667)] {
+            let every = interval(rate);
+            assert!(
+                (every.as_secs_f64() * 1e3 - ms).abs() < 1e-3,
+                "{rate} Hz: {every:?}"
+            );
+            let mut shown = due(true, false);
+            shown.interval = every;
+            assert_eq!(shown.frame(), Some(shown.last_frame + every), "{rate} Hz");
+            let last = Instant::now();
+            let late = Duration::from_millis(1);
+            let beat = Due::beat(last, last + every + late, every);
+            assert_eq!(beat, last + every, "{rate} Hz: on the display's beat");
+            let missed = last + every * 2 + late;
+            assert_eq!(
+                Due::beat(last, missed, every),
+                missed,
+                "{rate} Hz: a frame missed"
+            );
+        }
+        let mut fast = due(true, false);
+        fast.interval = interval(120);
+        assert_ne!(
+            fast.frame(),
+            Some(fast.last_frame + FRAME),
+            "never a fixed FRAME"
+        );
+    }
+
+    #[test]
     fn frames_keep_the_clocks_beat_whatever_each_wake_up_is_late() {
         let start = Instant::now();
         let late = Duration::from_millis(3);
@@ -169,7 +242,7 @@ mod tests {
         let mut last = start;
         for _ in 0..60 {
             let due = last + FRAME;
-            last = Due::beat(last, due + late);
+            last = Due::beat(last, due + late, FRAME);
             assert_eq!(last, due, "the frame counts from when it was due");
         }
         assert_eq!(last, start + FRAME * 60);
@@ -181,11 +254,23 @@ mod tests {
     fn a_frame_after_a_rest_or_a_missed_one_starts_the_beat_again() {
         let last = Instant::now();
         let rested = last + Duration::from_secs(2);
-        assert_eq!(Due::beat(last, rested), rested, "nothing drawn a while");
+        assert_eq!(
+            Due::beat(last, rested, FRAME),
+            rested,
+            "nothing drawn a while"
+        );
         let missed = last + FRAME * 2 + Duration::from_millis(1);
-        assert_eq!(Due::beat(last, missed), missed, "a whole frame missed");
+        assert_eq!(
+            Due::beat(last, missed, FRAME),
+            missed,
+            "a whole frame missed"
+        );
         let early = last + FRAME - Duration::from_millis(1);
-        assert_eq!(Due::beat(last, early), early, "drawn before it was due");
+        assert_eq!(
+            Due::beat(last, early, FRAME),
+            early,
+            "drawn before it was due"
+        );
     }
 
     #[test]

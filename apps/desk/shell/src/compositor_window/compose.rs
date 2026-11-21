@@ -5,7 +5,8 @@
 //! it drew each plugin surface to the web host, the screen its popups are placed in (#156). A frame
 //! for which only surfaces' pictures changed (a caret's blink, a page's own animation) draws the
 //! scene as it was laid out: laying it out took 30 to 40 ms of the debug build's main thread a
-//! frame, most of what a blinking caret cost a desk at rest (R1).
+//! frame, most of what a blinking caret cost a desk at rest (R1). The render thread draws what it
+//! laid out (`render_thread.rs`, #249).
 
 use std::time::Instant;
 
@@ -27,11 +28,9 @@ impl CompositorWindow {
     }
 
     /// Only surfaces' pictures changed: the scene stays as it was laid out, the canvas map's
-    /// icons with it.
+    /// icons with it, and the render thread draws it again.
     fn repaint(&mut self) {
-        if !self.gpu.presents() {
-            self.shared.lock().repainted.clear();
-        }
+        self.shared.lock().repainted.clear();
     }
 
     /// Lay the scene out again from the hosted desk and the frames the surfaces attached, and tell
@@ -105,9 +104,8 @@ impl CompositorWindow {
             eprintln!("endue Desk: the compositor's scene did not build ({why:?})");
             draw::Drawn::default()
         });
-        if !self.gpu.presents() {
-            self.shared.lock().drawn();
-        }
+        // What changed until now is in this scene; what changes from here on, the next one's.
+        self.shared.lock().drawn();
         self.a11y_drawn(&drawn);
         self.gestures.buttons = drawn.buttons;
         self.parts = (drawn.parts, drawn.order);

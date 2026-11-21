@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { DESK, openShell, putAway } from "./shell-helpers";
+import { DESK, openShell, putAway, windowMenu } from "./shell-helpers";
 
 test.use({ viewport: DESK });
 
@@ -30,15 +30,57 @@ test.describe("surfaces as windows", () => {
     await expect(page.locator('[data-surface="window-2"]')).toBeVisible();
   });
 
-  test("a surface of the shell's own view takes no tab: no tool for one, and ⌘D adds none", async ({
+  test("a surface of the shell's own view takes no tab: its menu's New tab is off, and ⌘D adds none", async ({
     page,
   }) => {
     await newSurfaceWith(page, "notes");
-    await expect(surface(page).getByRole("button", { name: /새 탭/ })).toBeHidden();
+    await expect(surface(page).getByRole("button", { name: /새 탭/ })).toHaveCount(0);
+    const menu = await windowMenu(page, "window-1");
+    await expect(menu.getByRole("menuitem", { name: /새 탭/ })).toBeDisabled();
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
     await page.keyboard.press("Meta+d");
     await expect(panes(page)).toHaveCount(1);
     await expect(surface(page).locator(".tab-strip")).toBeHidden();
     await expect(panes(page).first()).toHaveAttribute("data-view", "notes");
+  });
+
+  test("a window's menu opens from its tool, runs a row by keyboard and gives the focus back", async ({
+    page,
+  }) => {
+    await newSurfaceWith(page, "notes");
+    // Three tools at most (ADR 0255): one of the desk's own views has no Pop out.
+    const tools = surface(page).locator(".surface-tools button:visible");
+    await expect(tools).toHaveCount(2);
+    const tool = surface(page).locator('.surface-tools [aria-haspopup="menu"]');
+    await expect(tool).toHaveAttribute("aria-label", "창 메뉴");
+    await expect(tools.last()).toHaveAttribute("title", "닫기");
+    // Enter on the tool opens the menu under it, its first row that runs in use.
+    await tool.focus();
+    await page.keyboard.press("Enter");
+    const menu = page.locator(".desktops-menu");
+    await expect(menu).toBeVisible();
+    await expect(tool).toHaveAttribute("aria-expanded", "true");
+    const [box, under] = [await tool.boundingBox(), await menu.boundingBox()];
+    expect(under && box && under.y).toBeGreaterThanOrEqual((box?.y ?? 0) + (box?.height ?? 0));
+    await expect(menu.getByRole("menuitem", { name: "최대화 또는 복원" })).toBeFocused();
+    // Down to Pin, which Enter runs: the menu goes and the bar shows the pin's mark.
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    const pin = menu.getByRole("menuitemcheckbox", { name: "고정" });
+    await expect(pin).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(menu).toBeHidden();
+    await expect(surface(page)).toHaveClass(/is-pinned/);
+    await expect(surface(page).locator('.surface-mark[data-mark="pinned"]')).toBeVisible();
+    // Open again: Pin is checked; Escape closes it and the focus is the tool's again.
+    await tool.focus();
+    await page.keyboard.press("Enter");
+    await expect(pin).toHaveAttribute("aria-checked", "true");
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    await expect(tool).toBeFocused();
+    await expect(tool).toHaveAttribute("aria-expanded", "false");
   });
 
   test("⌘W closes the surface", async ({ page }) => {

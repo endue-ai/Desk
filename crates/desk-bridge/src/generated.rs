@@ -11540,6 +11540,9 @@ pub struct WebPlaceParams {
     pub y: f64,
     pub width: f64,
     pub height: f64,
+    /// true extends the box from x and y to the surface's right and bottom edges, using the current surface size in place of width and height. Defaults to false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<bool>,
     /// false hides the view and rests its page; true by default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shown: Option<bool>,

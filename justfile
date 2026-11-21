@@ -144,6 +144,11 @@ vendor-terminal:
 vendor-novnc:
     node scripts/vendor-novnc.mjs
 
+# Render the desk's app icons (apps/desk/shell/icons: the PNGs, icon.ico, icon.icns) from the brand's
+# app icon, brand/endue/app-icon.svg. macOS only (AppKit and iconutil)
+app-icons:
+    swift scripts/app-icons.swift
+
 # Measure the opening frame time (pass "record" to make it the new baseline in e2e/perf/budgets.json).
 # Headless Chromium, one worker (ADR 0144); record on a quiet machine
 perf-opening mode="check":

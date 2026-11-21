@@ -16,7 +16,7 @@ needs a compositor. What changes:
 
 - **Any window pops out** into an OS window of its own, beside the OS's apps, and docks back; endue
   manages it in or out with one identity (#235).
-- **The hub** keeps running with no window (#237). Eris opens in Desk (ADR 0275).
+- **The hub** keeps running with no window (#237). Eris opens in Desk (ADR 0280).
 - **The compositor reaches an OS's quality by structure**, under a motion gate that judges rendered
   pixels while windows move (#247 to #252).
 - **The end state**: on Linux endue is the session's Wayland compositor and places every app's

@@ -19,6 +19,7 @@ import { audioContext, openMic, sampleEar } from "./ear";
 import { mountErrands } from "./errand";
 import { palette } from "./figure";
 import { basisFor, DENSITIES, type DensityName, generateMesh, type Mesh } from "./mesh";
+import { mindOf } from "./mind";
 import { speakAloud } from "./mouth";
 import { atWork, homeOf, pillOf, Rest, showRest, watchCard } from "./rest";
 import { SoulText } from "./SoulText";
@@ -69,7 +70,9 @@ export function mountEris(
   ];
   const spark = h("span", { class: "eris-spark" });
   const moonBox = h("span", { class: "eris-moon-box" }, moon, spark);
-  const body = h("div", { class: "eris-body" }, halo, canvas, core, ...tail, moonBox);
+  // Her ring while she works a line (mind.ts, ADR 0275), round her and floating with her.
+  const mind = mindOf(document);
+  const body = h("div", { class: "eris-body" }, halo, canvas, core, mind, ...tail, moonBox);
   const soul = new SoulText({
     style: () => ctx.store.get().eris.soul,
     reduced: ctx.reduced,

@@ -73,7 +73,7 @@ const ENV: Record<string, Record<string, string>> = {
     ].join(delimiter),
   },
   "app-opens-out.spec.ts": { DESK_DEV_PLUGINS: join(root, "examples/plugin-hello-window") },
-  // The echo brain the spec starts for itself, on a port of its own (ADR 0271).
+  // The echo brain the spec starts for itself, on a port of its own (ADR 0271, ADR 0275).
   "eris-glow.spec.ts": { DESK_ECHO_URL: "http://127.0.0.1:18787/v0" },
   "app-opens-canvas.spec.ts": {
     DESK_DEV_PLUGINS: join(root, "examples/plugin-hello-window"),

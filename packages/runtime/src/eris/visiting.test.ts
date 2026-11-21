@@ -3,15 +3,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ManualClock } from "../clock";
 import { Store, sampleState } from "../shell/state";
 import { Ticker } from "../shell/ticker";
-import {
-  GLOW_IN_MS,
-  GLOW_OUT_MS,
-  LOOK,
-  mountVisiting,
-  USE,
-  VISITING,
-  visitingOf,
-} from "./visiting";
+import { GLOW_IN_MS, GLOW_OUT_MS, mountVisiting, USE, VISITING, visitingOf } from "./visiting";
+
+/** A glow softer than a window in use, as another reason to light it would ask for. */
+const SOFT = 0.6;
 
 describe("the windows Eris is at", () => {
   let clock: ManualClock;
@@ -65,12 +60,12 @@ describe("the windows Eris is at", () => {
     off();
   });
 
-  it("looked at and used at once, a window takes the brightest, and falls back to the look", async () => {
+  it("lit for two reasons at once, a window takes the brightest, and falls back to the other", async () => {
     const visiting = mountVisiting(ctx());
-    const look = visiting.enter("endue.mail", LOOK);
+    const soft = visiting.enter("endue.mail", SOFT);
     clock.advance(GLOW_IN_MS);
     clock.advance(16);
-    expect(glows()).toEqual([{ id: "endue.mail", glow: LOOK }]);
+    expect(glows()).toEqual([{ id: "endue.mail", glow: SOFT }]);
     const use = visiting.enter("endue.mail", USE);
     clock.advance(GLOW_IN_MS);
     clock.advance(16);
@@ -79,9 +74,9 @@ describe("the windows Eris is at", () => {
     clock.advance(GLOW_OUT_MS);
     clock.advance(16);
     await settle();
-    expect(glows(), "she still looks at it").toEqual([{ id: "endue.mail", glow: LOOK }]);
-    look();
-    look();
+    expect(glows(), "the other reason still holds").toEqual([{ id: "endue.mail", glow: SOFT }]);
+    soft();
+    soft();
     clock.advance(GLOW_OUT_MS);
     clock.advance(16);
     await settle();
@@ -91,27 +86,27 @@ describe("the windows Eris is at", () => {
   it("lights several windows at once, each on its own", async () => {
     const visiting = mountVisiting(ctx());
     const mail = visiting.enter("endue.mail");
-    visiting.enter("endue.notes", LOOK);
+    visiting.enter("endue.notes", SOFT);
     clock.advance(GLOW_IN_MS);
     clock.advance(16);
     expect(glows()).toEqual([
       { id: "endue.mail", glow: USE },
-      { id: "endue.notes", glow: LOOK },
+      { id: "endue.notes", glow: SOFT },
     ]);
     mail();
     clock.advance(GLOW_OUT_MS);
     clock.advance(16);
     await settle();
-    expect(glows()).toEqual([{ id: "endue.notes", glow: LOOK }]);
+    expect(glows()).toEqual([{ id: "endue.notes", glow: SOFT }]);
   });
 
   it("marks the window's section with how brightly it glows, and clears it after", async () => {
     const visiting = mountVisiting(ctx());
-    const leave = visiting.enter("endue.mail", LOOK);
+    const leave = visiting.enter("endue.mail", SOFT);
     clock.advance(GLOW_IN_MS);
     clock.advance(16);
     expect(section.classList.contains(VISITING)).toBe(true);
-    expect(section.style.getPropertyValue("--eris-glow")).toBe(String(LOOK));
+    expect(section.style.getPropertyValue("--eris-glow")).toBe(String(SOFT));
     leave();
     clock.advance(GLOW_OUT_MS);
     clock.advance(16);

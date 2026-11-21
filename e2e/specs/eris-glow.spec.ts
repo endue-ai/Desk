@@ -1,9 +1,10 @@
-// A line to Eris lights the window in use (ADR 0271): she looks at it as the line comes in with
-// the desk, and the compositor draws a glow in the star's colour just outside the window's frame
-// until she has answered, then takes it away. The page only says which windows are lit (`lit` in
-// its report); what shows is read back from the compositor's own frame. The specs' desk has no
-// brain, and a turn with none waits, the window lit for as long: this one starts
-// examples/brain-echo, which says the line back, and picks it in the rail.
+// A window glows only while Eris uses it (ADR 0271, ADR 0275): a line that runs nothing leaves every
+// window as it was, and one whose command runs in a plugin lights that plugin's window, the
+// compositor drawing a glow in the star's colour just outside the window's frame from the moment
+// her errand's spark lands on it until the command has answered and the spark is home. The page only says which windows are lit
+// (`lit` in its report); what shows is read back from the compositor's own frame. The specs' desk
+// has no brain, and a turn with none waits: this one starts examples/brain-echo, which says a line
+// back, or runs the offered command it names, and picks it in the rail.
 import { type ChildProcess, spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -49,6 +50,9 @@ const brainSays = () =>
 const erisIs = () =>
   browser.execute(() => document.querySelector<HTMLElement>(".eris")?.dataset.state ?? "");
 
+/** The plugin whose window her errand goes to. */
+const MAIL = "endue.mail";
+
 /** The star's colour in the endue look (`packages/ui/src/tokens.ts`). */
 const STAR = [0xb6, 0xa3, 0xf5];
 const from = (c: number[]) => Math.hypot(...STAR.map((channel, i) => (c[i] ?? 0) - channel));
@@ -93,7 +97,7 @@ function nearer(before: Image, now: Image, points: { x: number; y: number }[]): 
   return points.filter((p) => from(at(before, p)) - from(at(now, p)) > 12).length;
 }
 
-describe("eris: the window she looks at glows around its frame", () => {
+describe("eris: a window glows around its frame only while she uses it", () => {
   let echo: ChildProcess | undefined;
 
   before(async () => {
@@ -112,7 +116,7 @@ describe("eris: the window she looks at glows around its frame", () => {
       timeoutMsg: "the echo brain never connected",
     });
     if (await $(brains).isExisting()) await press(`${MODE} [data-key=rail-brain]`);
-    // A window in use for her to look at: the first on the desktop in front, if none is.
+    // A window in use for her line to be about: the first on the desktop in front, if none is.
     const desk = await deskNow();
     const first = onScreen(desk)[0];
     if (!inUse(desk) && first) await run("desk.windows.focus", { window: first.id });
@@ -123,7 +127,8 @@ describe("eris: the window she looks at glows around its frame", () => {
     echo?.kill();
   });
 
-  it("lights the window in use in the star's colour while her look is out, and no longer after", async () => {
+  /** The rim of the window in use, where nothing lies over it, and the frame before the line. */
+  async function rimOfInUse() {
     const desk = await deskNow();
     const used = inUse(desk) as Window | undefined;
     if (!used) throw new Error("the desk has no window in use");
@@ -142,33 +147,64 @@ describe("eris: the window she looks at glows around its frame", () => {
     const before = await screenshot(desk.screen.w);
     // Nothing is lit at rest: the same pixels a moment later are as they were.
     expect(nearer(before, await screenshot(desk.screen.w), points)).toBe(0);
+    return { used, points, before, width: desk.screen.w };
+  }
 
-    expect(await tell("what is this window")).toBe(true);
-    let lit = 0;
-    await browser.waitUntil(
-      async () => {
-        lit = nearer(before, await screenshot(desk.screen.w), points);
-        return lit >= points.length / 2;
-      },
-      {
-        timeout: 4_000,
-        interval: 20,
-        timeoutMsg: `the rim never took the star's colour: ${lit} of ${points.length} points`,
-      },
-    );
-
-    // The echo says the line back; her look is home within two legs of 640 ms after it went out,
-    // and the glow goes over 480 ms.
+  /** Once she has answered, after her errand is home and the glow gone (480 ms): nothing lit. */
+  async function darkOnceAnswered(rim: Awaited<ReturnType<typeof rimOfInUse>>) {
     await browser.waitUntil(async () => (await erisIs()) !== "thinking", {
       timeout: 15_000,
       timeoutMsg: "Eris never answered",
     });
     await browser.pause(2_400);
-    expect(nearer(before, await screenshot(desk.screen.w), points)).toBe(0);
-    // The page's part: its window's section is no longer marked either.
+    expect(nearer(rim.before, await screenshot(rim.width), rim.points)).toBe(0);
+    // The page's part: no spark, no thread, no section marked.
     const marked = await browser.execute(
-      () => document.querySelectorAll(".errand, .errand-thread").length,
+      () => document.querySelectorAll(".errand, .errand-thread, .is-eris-visiting").length,
     );
     expect(marked).toBe(0);
+  }
+
+  it("lights no window for a line that runs nothing, the window in use neither", async () => {
+    const at = await rimOfInUse();
+    expect(await tell("what is this window")).toBe(true);
+    // The whole turn, from the line flying into her to her answer: the rim never takes the colour.
+    let most = 0;
+    await browser.waitUntil(
+      async () => {
+        most = Math.max(most, nearer(at.before, await screenshot(at.width), at.points));
+        return (await erisIs()) !== "thinking";
+      },
+      { timeout: 15_000, interval: 20, timeoutMsg: "Eris never answered" },
+    );
+    // Not one point of the rim took the star's colour.
+    expect(most).toBe(0);
+    await darkOnceAnswered(at);
+  });
+
+  it("lights the window of the plugin her command runs in while it runs, and no longer after", async () => {
+    // Mail's window, in use: brain-echo calls an offered command the line names by the words of
+    // its tool name, endue_mail_latest for "check my latest mail", and the window in use's plugin's
+    // commands are offered first (ADR 0109).
+    await run("desk.plugins.open", { plugin: MAIL });
+    const mail = (w: Window | undefined) => w?.panes.some((p) => p.plugin === MAIL) === true;
+    await until((d) => mail(inUse(d)), "Mail's window never came into use");
+    const at = await rimOfInUse();
+    expect(await tell("check my latest mail")).toBe(true);
+    let lit = 0;
+    // The line flies into her (1.4 s), she reads it (0.48 s), the spark flies to the window
+    // (0.64 s) and stays at least 0.52 s, the glow coming over 0.24 s, however soon Mail answers.
+    await browser.waitUntil(
+      async () => {
+        lit = nearer(at.before, await screenshot(at.width), at.points);
+        return lit >= at.points.length / 2;
+      },
+      {
+        timeout: 8_000,
+        interval: 20,
+        timeoutMsg: `the rim never took the star's colour: ${lit} of ${at.points.length} points`,
+      },
+    );
+    await darkOnceAnswered(at);
   });
 });

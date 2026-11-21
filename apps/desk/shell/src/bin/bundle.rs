@@ -1,8 +1,9 @@
 //! Assembles `target/bundle/endue-desk.app` on macOS from binaries already built
-//! (`cargo build -p desk-shell --bins [--release]`): the CEF framework, the five helper apps and
-//! the built shell (`apps/desk/dist`) in `Contents/Resources/shell`, and a link to the repository's
-//! `plugins/` in `Contents/Resources/plugins`, so the app opened by itself (Finder, `open`) has its
-//! built-in plugins as a package does. `just dev` runs it.
+//! (`cargo build -p desk-shell --bins [--release]`): the CEF framework, the five helper apps, the
+//! app icon (`icons/icon.icns`) and the built shell (`apps/desk/dist`) in
+//! `Contents/Resources/shell`, and a link to the repository's `plugins/` in
+//! `Contents/Resources/plugins`, so the app opened by itself (Finder, `open`) has its built-in
+//! plugins as a package does. `just dev` runs it.
 //! usage: desk-shell-bundle [out-dir] [debug|release]
 
 #[cfg(target_os = "macos")]
@@ -30,7 +31,21 @@ fn main() -> std::process::ExitCode {
         "English",
         semver::Version::new(0, 0, 0),
     );
-    let app = match bundle(&out, &target, "endue-desk", "endue-desk-helper", None, info) {
+    let resources = match icon_resources(&out) {
+        Ok(resources) => resources,
+        Err(why) => {
+            eprintln!("desk-shell-bundle: the app icon did not copy ({why})");
+            return std::process::ExitCode::FAILURE;
+        }
+    };
+    let app = match bundle(
+        &out,
+        &target,
+        "endue-desk",
+        "endue-desk-helper",
+        Some(resources),
+        info,
+    ) {
         Ok(app) => app,
         Err(why) => {
             eprintln!("desk-shell-bundle: {why}");
@@ -58,6 +73,19 @@ fn main() -> std::process::ExitCode {
     }
     println!("{}", app.display());
     std::process::ExitCode::SUCCESS
+}
+
+/// The app icon (`apps/desk/shell/icons/icon.icns`, `just app-icons`) where cef's bundler looks for
+/// it: `<resources>/mac/endue-desk.icns`, which it copies into Contents/Resources and names in the
+/// Info.plist.
+#[cfg(target_os = "macos")]
+fn icon_resources(out: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
+    let resources = out.join("endue-desk.resources");
+    let mac = resources.join("mac");
+    std::fs::create_dir_all(&mac)?;
+    let icon = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("icons/icon.icns");
+    std::fs::copy(icon, mac.join("endue-desk.icns"))?;
+    Ok(resources)
 }
 
 #[cfg(target_os = "macos")]

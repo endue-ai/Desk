@@ -74,7 +74,7 @@ au-dessus de toutes les fenêtres (ADR 0160) : la page du bureau lui-même (les 
 notifications, les menus, les réglages et les studios, chaque partie dessinée entière) et la fenêtre
 de recherche. Chaque fenêtre utilise sa propre identité. Le shell relie l'hôte de plugins du bureau
 au navigateur de chaque plugin. Option+Entrée ramène le bureau au premier plan et ouvre le champ
-de conversation d'Eris (ADR 0275). Les demandes d'autorisation et d'approbation des agents se
+de conversation d'Eris (ADR 0280). Les demandes d'autorisation et d'approbation des agents se
 traitent dans le bureau. Les notifications affichées peuvent aussi être transmises au système selon
 `desk.notify.system` (ADR 0240).
 

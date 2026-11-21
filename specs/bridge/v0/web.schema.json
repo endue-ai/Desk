@@ -72,6 +72,10 @@
         "y": { "type": "number", "minimum": -100000, "maximum": 100000 },
         "width": { "type": "number", "minimum": 0, "maximum": 100000 },
         "height": { "type": "number", "minimum": 0, "maximum": 100000 },
+        "fill": {
+          "description": "true extends the box from x and y to the surface's right and bottom edges, using the current surface size in place of width and height. Defaults to false.",
+          "type": "boolean"
+        },
         "shown": {
           "description": "false hides the view and rests its page; true by default.",
           "type": "boolean"

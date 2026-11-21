@@ -50,10 +50,11 @@ fn a_window_that_stops_presenting_mid_resize_goes_on_composing() {
         return;
     };
     let mut compositor = Compositor::new(&gpu.device, &gpu.queue, gpu.format);
+    let mut chain = gpu.swapchain.take().expect("a layer's swapchain");
     // The window is being resized: a new size, a frame at it, presented.
     for size in [(330, 206), (340, 212)] {
-        gpu.resize(size.0, size.1);
-        let frame = gpu
+        chain.fit(size);
+        let frame = chain
             .frame()
             .expect("a layer in no window hands out its images");
         let view = frame.texture.create_view(&Default::default());
@@ -62,30 +63,30 @@ fn a_window_that_stops_presenting_mid_resize_goes_on_composing() {
     }
     // The third image that came late: presenting stops with it in hand, and it is still drawn and
     // handed back.
-    let frame = gpu.frame().expect("an image");
+    let frame = chain.frame().expect("an image");
     let stopped = Instant::now();
-    gpu.stop_presenting(stopped);
+    chain.stop_presenting(stopped);
     let view = frame.texture.create_view(&Default::default());
     compose(&gpu, &mut compositor, &view, (340, 212));
     gpu.queue.present(frame);
-    assert!(!gpu.presents(), "it presents no more");
+    assert!(!chain.presents(), "it presents no more");
     assert_eq!(
-        gpu.withheld(),
+        chain.withheld(),
         Some(stopped + PAUSED),
         "it asks again after a while"
     );
     // The resize goes on, and the desk composes off screen, for the router and the captures.
     for size in [(350, 218), (360, 224)] {
-        gpu.resize(size.0, size.1);
-        assert!(!gpu.presents());
+        chain.fit(size);
+        assert!(!chain.presents());
         let target = Target::new(&gpu.device, size, gpu.format);
         compose(&gpu, &mut compositor, &target.view, size);
     }
     // The window shows again: it presents again, at the size the resize ended at.
-    gpu.resume();
-    assert!(gpu.presents());
-    assert_eq!(gpu.withheld(), None);
-    let frame = gpu.frame().expect("an image once shown again");
+    chain.resume();
+    assert!(chain.presents());
+    assert_eq!(chain.withheld(), None);
+    let frame = chain.frame().expect("an image once shown again");
     assert_eq!((frame.texture.width(), frame.texture.height()), (360, 224));
     let view = frame.texture.create_view(&Default::default());
     compose(&gpu, &mut compositor, &view, (360, 224));
@@ -100,10 +101,10 @@ fn a_window_without_a_surface_has_nothing_to_stop() {
     else {
         return;
     };
-    let mut gpu = gpu;
-    gpu.stop_presenting(Instant::now());
-    assert_eq!(gpu.withheld(), None, "headless: no look to wake for");
-    assert!(gpu.frame().is_none());
-    gpu.resume();
-    assert!(!gpu.presents());
+    // Headless: no swapchain for the render thread, which draws off screen (#249).
+    assert!(gpu.headless);
+    assert!(
+        gpu.swapchain.is_none(),
+        "no look to wake for, nothing to stop"
+    );
 }

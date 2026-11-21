@@ -99,8 +99,8 @@ mod tests {
         assert_eq!(left.x + stretch, GRAB);
         let right = within_reach(Rect::new(2280.0, 222.0, w, h), APP, &[]);
         assert_eq!(right.x, APP.w - GRAB);
-        // The dock does not push a window above the app's top.
-        let tall = Rect::new(0.0, 40.0, 1280.0, 760.0);
+        // The dock does not push a window above the app's top: no title bar fits above this one.
+        let tall = Rect::new(0.0, 30.0, 1280.0, 770.0);
         assert_eq!(
             within_reach(Rect::new(10.0, 300.0, w, h), APP, &[tall]).y,
             0.0

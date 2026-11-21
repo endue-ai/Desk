@@ -9,6 +9,7 @@ fn place(width: f64, height: f64, shown: bool) -> WebPlace {
         width,
         height,
         shown,
+        fill: false,
     }
 }
 
@@ -41,4 +42,18 @@ fn a_view_is_found_by_the_id_the_core_gave_it() {
     views.by_host.insert("main.endue-browser".into(), web);
     assert_eq!(views.host_of("w-3").as_deref(), Some("main.endue-browser"));
     assert_eq!(views.host_of("w-4"), None);
+}
+
+#[test]
+fn a_filling_view_reflows_with_the_requested_pane_size_and_hides_when_empty() {
+    let fill = WebPlace {
+        fill: true,
+        ..place(640.0, 480.0, true)
+    };
+    let grown = fill.in_pane(900.0, 700.0);
+    assert_eq!(size_of(&grown), (900, 660));
+    assert!(shows(&grown));
+    assert!(!shows(&fill.in_pane(900.0, 40.0)));
+    let fixed = place(640.0, 480.0, true);
+    assert_eq!(fixed.in_pane(900.0, 700.0), fixed);
 }

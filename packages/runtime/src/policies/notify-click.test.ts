@@ -1,12 +1,15 @@
+// @vitest-environment jsdom
 // A plugin's notice opens what it is about (#538, ADR 0113): a click on its text in the status line,
-// or picking it in the notification history, focuses the plugin that sent it (desk.display.show)
-// and then hands it the notification (the desk's request desk.notify.open), so a terminal can show the
-// tab that sent it. The desk's own notices and plugins that are not running get neither.
+// or picking it in the notification centre (#307), focuses the plugin that sent it
+// (desk.display.show) and then hands it the notification (the desk's request desk.notify.open), so a
+// terminal can show the tab that sent it. The desk's own notices and plugins that are not running get
+// neither.
 import type { PluginManifest } from "@endue-ai/bridge";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { browserCore } from "../bridge/core";
 import { ManualClock } from "../clock";
 import { PolicyHub } from "../hub";
+import { centreDesk } from "../notify-centre/fixtures";
 import type { DeskContext } from "./context";
 import { installNotify } from "./notify";
 
@@ -51,7 +54,7 @@ function statusLine() {
 
 const TERMINAL = "endue.terminal";
 
-async function desk(picked?: string) {
+async function desk() {
   const manifests: PluginManifest[] = [
     { id: "desk.notify", kind: "policy", version: "0.1.0" },
     { id: TERMINAL, kind: "ui", version: "0.1.0", entry: "ui/index.html" },
@@ -77,7 +80,6 @@ async function desk(picked?: string) {
     owner: "desk",
     run: (args) => void log.push(`show ${JSON.stringify(args)}`),
   });
-  hub.commands.define("desk.palette.pick", { title: "Pick", owner: "desk", run: () => picked });
   hub.apply(core.plugins);
   await hub.commands.settled();
   const notified = (notificationId: string, caller = TERMINAL) =>
@@ -108,26 +110,57 @@ describe("opening a plugin's notice", () => {
   });
 
   it("picking a notice in the history opens it the same way", async () => {
-    const d = await desk("n8");
-    d.notified("n8");
+    const d = await centre();
+    d.notified("n8", "zsh — make", "done");
     await d.hub.commands.run("desk.notify.history");
+    d.rows()[0]?.querySelector<HTMLButtonElement>(".desk-notify-open")?.click();
     await vi.waitFor(() =>
       expect(d.request).toHaveBeenCalledWith(TERMINAL, "desk.notify.open", {
         notificationId: "n8",
       }),
     );
     expect(d.log[0]).toBe(`show {"plugin":"${TERMINAL}"}`);
+    // The panel gives way to what it opened.
+    expect(d.panel()).toBeNull();
   });
 
   it("the desk's own notices and plugins that are not running have nothing to open", async () => {
-    const d = await desk("n9");
+    const d = await desk();
     d.policy.notify({ caller: "desk", title: "Saved", level: "info" });
     expect(d.show()).toBeUndefined();
     d.notified("n9", "test.gone");
     expect(d.show()).toBeUndefined();
-    await d.hub.commands.run("desk.notify.history");
+    const c = await centre();
+    c.policy.notify({ caller: "desk", title: "Saved", level: "info" });
+    c.core.stub.emit({
+      event: "ui.notified",
+      data: { notificationId: "n9", caller: "test.gone", title: "Gone", level: "info" },
+    });
+    await c.hub.commands.run("desk.notify.history");
+    expect(c.rows()).toHaveLength(2);
+    expect(c.panel()?.querySelector(".desk-notify-open")).toBeNull();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(d.request).not.toHaveBeenCalled();
+    expect(c.request).not.toHaveBeenCalled();
     expect(d.log).toEqual([]);
   });
 });
+
+/** The centre on a page, the terminal running, recording what opening a notice does. */
+async function centre() {
+  const log: string[] = [];
+  const request = vi.fn(async (plugin: string, name: string, args?: unknown) => {
+    log.push(`${name} ${plugin} ${JSON.stringify(args)}`);
+    return null;
+  });
+  const d = await centreDesk({ mounted: [TERMINAL], request });
+  d.hub.commands.define("desk.display.show", {
+    title: "Show",
+    owner: "desk",
+    run: (args) => void log.push(`show ${JSON.stringify(args)}`),
+  });
+  await d.hub.commands.settled();
+  return { ...d, log, request };
+}
+
+afterEach(() => document.body.replaceChildren());

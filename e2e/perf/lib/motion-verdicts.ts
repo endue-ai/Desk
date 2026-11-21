@@ -4,7 +4,8 @@
 // check named in `known` fails today and an issue fixes it: it is reported as known, and once it
 // passes the gate fails until it is taken out of `known`, so the fix says so. One named in
 // `sometimes` fails today in some runs and not in others: a failure is reported as known, a pass
-// passes. Pure: motion.test.ts and motion-sway.test.ts.
+// passes. Frames a second are judged against the display's rate (`minFps` by rate, #249), and the
+// `busy` shake on a busy main thread drops none. Pure: motion.test.ts and motion-sway.test.ts.
 import { round1 } from "./stats.ts";
 
 /** What one run of the gate found. */
@@ -25,12 +26,18 @@ export interface RunFindings {
   /** Turns of the resize loop run, and the pages that stopped painting in it or after it (#248). */
   loopTurns: number;
   loopStopped: string[];
+  /** The display's rate the desk drew at; the busy loops in the `busy` shake, and the frames they
+   * dropped (#249). */
+  hz: number;
+  busyLoops: number;
+  busyDropped: number;
   /** Why the run tells nothing (the window did not move, no frames): it fails. */
   invalid?: string;
 }
 
 export interface Limits {
-  minFps: number;
+  /** The fewest frames a second: one number, or by the display's rate (`{ "60": 58 }`). */
+  minFps: number | Readonly<Record<string, number>>;
   longIntervalMs: number;
   maxLongShare: number;
   maxForeignFrames: number;
@@ -46,6 +53,7 @@ export interface Limits {
 type Shaken = "fps" | "smooth" | "own-pixels" | "painting" | "soft" | "valid";
 export type Check =
   | Shaken
+  | "busy"
   | "loop"
   | `sway-${Shaken | "sizes" | "panes" | "scene" | "sections" | "settled"}`;
 
@@ -60,6 +68,17 @@ export interface Verdict {
   sometimes?: boolean;
   /** Whether the gate fails on it: a failure not known, or a known one that passes now. */
   fails: boolean;
+}
+
+/** The fewest frames a second on a display at `hz`: the rate's own limit, else the nearest
+ * rate's share of it. */
+export function minFpsAt(limits: Pick<Limits, "minFps">, hz: number): number {
+  const { minFps } = limits;
+  if (typeof minFps === "number") return minFps;
+  const rates = Object.entries(minFps).map(([rate, fps]) => [Number(rate), fps] as const);
+  if (!rates.length) return 0;
+  const near = rates.reduce((a, b) => (Math.abs(b[0] - hz) < Math.abs(a[0] - hz) ? b : a));
+  return near[0] === hz ? near[1] : Math.floor((hz * near[1]) / near[0]);
 }
 
 /** The worst of the runs: the fewest frames a second, the most long intervals, every stray frame. */
@@ -83,6 +102,9 @@ export function worst(runs: readonly RunFindings[]): RunFindings {
     stopped: runs.flatMap((r, i) => r.stopped.map((s) => `run ${i + 1}: ${s}`)),
     loopTurns: sum((r) => r.loopTurns),
     loopStopped: runs.flatMap((r, i) => r.loopStopped.map((s) => `run ${i + 1}: ${s}`)),
+    hz: max((r) => r.hz),
+    busyLoops: sum((r) => r.busyLoops),
+    busyDropped: sum((r) => r.busyDropped),
     ...(invalid.length ? { invalid: invalid.join("; ") } : {}),
   };
 }
@@ -104,10 +126,17 @@ export function verdicts(
     },
     {
       check: "fps",
-      says: "frames a second while the window moves",
+      says: `frames a second while the window moves, on a ${found.hz} Hz display`,
       value: found.fps,
-      limit: `>= ${limits.minFps}`,
-      passed: found.fps >= limits.minFps,
+      limit: `>= ${minFpsAt(limits, found.hz)}`,
+      passed: found.fps >= minFpsAt(limits, found.hz),
+    },
+    {
+      check: "busy",
+      says: `frames dropped across ${found.busyLoops} busy loops of the main thread while the window moves`,
+      value: found.busyDropped,
+      limit: "0",
+      passed: found.busyLoops > 0 && found.busyDropped === 0,
     },
     {
       check: "smooth",
@@ -193,6 +222,8 @@ export interface SwayFindings {
   /** Sharpness at rest after a drop at a fractional place against a whole pixel; null where the
    * run did not get that far. */
   restSharpness: number | null;
+  /** The display's rate the desk drew at (#249); 60 where unsaid. */
+  hz?: number;
   invalid?: string;
 }
 
@@ -227,6 +258,7 @@ export function worstSway(runs: readonly SwayFindings[]): SwayFindings {
     stopped: each((r) => r.stopped),
     unsettled: settled,
     restSharpness: sharp.length ? Math.min(...sharp) : null,
+    hz: max((r) => r.hz ?? 60),
     ...(invalid.length ? { invalid: invalid.join("; ") } : {}),
   };
 }
@@ -253,10 +285,10 @@ export function swayVerdicts(
       },
       {
         check: "sway-fps",
-        says: "frames a second while the app window and a window inside it move",
+        says: `frames a second while the app window and a window inside it move, on a ${found.hz ?? 60} Hz display`,
         value: found.fps,
-        limit: `>= ${limits.minFps}`,
-        passed: found.fps >= limits.minFps,
+        limit: `>= ${minFpsAt(limits, found.hz ?? 60)}`,
+        passed: found.fps >= minFpsAt(limits, found.hz ?? 60),
       },
       {
         check: "sway-smooth",

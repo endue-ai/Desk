@@ -322,3 +322,62 @@ fn a_restless_surface_keeps_the_slow_frames_where_another_rests() {
     web.heard(rest + FRAME * RATE);
     assert_eq!(taken(&mut web, rest + FRAME * RATE, 300..303, 1), "xxx");
 }
+
+#[test]
+fn a_surface_paced_at_60_keeps_its_pace_on_a_120_hz_display() {
+    // #249: begin frames read the display's interval; a surface's pace is frames a second (ADR
+    // 0164, 0185 and 0200 unchanged), so one asking 60 takes every other one.
+    let mut clock = Clock::default();
+    assert_eq!(
+        clock.interval(),
+        FRAME,
+        "60 Hz until the display says otherwise"
+    );
+    clock.set_rate(120);
+    let step = crate::web_host::frames::interval(120);
+    assert_eq!(clock.interval(), step);
+    let start = Instant::now();
+    let looks = |pacing: &mut Pacing, clock: &mut Clock, from: u32| -> Vec<u64> {
+        (from..from + 12)
+            .filter_map(|i| {
+                let now = start + step * i;
+                let k = clock.frame(now);
+                pacing.due(now, k, 0).then_some(k?)
+            })
+            .collect()
+    };
+    let mut sixty = Pacing::new(60);
+    sixty.set_rate(120);
+    sixty.heard(start);
+    assert_eq!(
+        looks(&mut sixty, &mut clock, 0),
+        [0, 2, 4, 6, 8, 10],
+        "every other one"
+    );
+    let now = start + step * 11;
+    assert_eq!(
+        sixty.next(&clock, now),
+        clock.at(12),
+        "its next, two display frames on"
+    );
+    let mut full = Pacing::new(120);
+    full.set_rate(120);
+    full.heard(start);
+    assert_eq!(
+        looks(&mut full, &mut clock, 12).len(),
+        12,
+        "a pace of 120 takes them all"
+    );
+    // Its slow frames stay a tenth of a second apart, ten a second.
+    let mut slow = Pacing::new(60);
+    slow.set_rate(120);
+    assert!(slow.due(start, Some(0), 1), "its page painted");
+    let rest = start + LONG_IDLE * 3;
+    let taken = (0..120u32)
+        .filter(|j| slow.due(rest + step * *j, Some(500 + u64::from(*j)), 1))
+        .count();
+    assert!(
+        (1..=10).contains(&taken),
+        "slow frames, not every one: {taken}"
+    );
+}

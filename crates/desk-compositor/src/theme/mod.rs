@@ -129,7 +129,6 @@ pub struct MapStyle {
     pub focused: Color,
     pub focused_border: Color,
     pub small_radius: f32,
-    pub view: Color,
     pub view_border: Color,
     /// The fold button folded (on its own), and the icon on it.
     pub button_size: f32,
@@ -216,7 +215,8 @@ impl ChromeTheme {
             border_width: length("borderWidth", 1.0),
             radius,
             shadow: shadow("shadowMd", Some(drop(8.0, 24.0, 0.45))),
-            title_height: 40.0,
+            // desk-wm's `host::TITLE` and `surface.css`'s `--surface-title-height` (ADR 0255).
+            title_height: 36.0,
             divider: border,
             padding: length("space3", 12.0),
             title: text("textSm", 14.0, 500, ink),
@@ -305,7 +305,6 @@ impl ChromeTheme {
             focused: accent.fade(0.35),
             focused_border: accent,
             small_radius: small,
-            view: color("primarySoft", hex(endue::HOVER)),
             view_border: accent,
             button_size: length("controlSm", 32.0),
             icon: color("iconButtonFg", muted_ink),

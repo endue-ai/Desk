@@ -6,11 +6,12 @@ import type { RunWatcher } from "../commands";
 import type { ShellCtx } from "../shell/context";
 import { Store, sampleState } from "../shell/state";
 import { Ticker } from "../shell/ticker";
-import { LEG_MS, mountErrands } from "./errand";
-import { GLOW_OUT_MS, USE } from "./visiting";
+import { DWELL_MS, LEG_MS, mountErrands } from "./errand";
+import { GLOW_IN_MS, GLOW_OUT_MS, USE } from "./visiting";
 
 // A command of the desk's own that Eris runs names the window it acts on (ADR 0271): the step
-// that announces it does not, so the errand learns it when the core asks the desk to run it.
+// that announces it does not, so the errand learns it when the core asks the desk to run it. The
+// window lights once the spark that carries the command has landed on it (ADR 0275).
 const MOVE: BrainStep = {
   kind: "tool",
   callId: "c1",
@@ -28,11 +29,17 @@ describe("the window a desk command of Eris's names", () => {
   /** What watches the runs the core asks of the desk, while the errands are mounted. */
   let watch: RunWatcher | undefined;
   let ctx: ShellCtx;
-  /** Run the clock `ms` on, a frame at a time, and let what waited on it go on. */
+  const next = () => new Promise((resolve) => setTimeout(resolve, 0));
+  /** Run the clock `ms` on, a frame at a time, and let what waited on each frame go on. */
   const run = async (ms: number) => {
-    for (let at = 0; at < ms; at += 16) clock.advance(16);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    for (let at = 0; at < ms; at += 16) {
+      clock.advance(16);
+      await next();
+    }
+    await next();
   };
+  /** Let what waits on nothing but promises go on: an errand is drawn once its line is read. */
+  const settle = () => run(0);
   const spark = () => shell.querySelector<HTMLElement>(".errand");
   const lit = () => store.get().erisWindows;
   const asked = (args: unknown, caller = "agent:eris", id = MOVE.command) =>
@@ -75,14 +82,18 @@ describe("the window a desk command of Eris's names", () => {
 
   afterEach(() => shell.remove());
 
-  it("glows as one she uses, and the errand's spark flies on to its middle", async () => {
+  it("the errand's spark flies on to its middle, and it glows as one she uses once it lands", async () => {
     const errands = mountErrands(() => shell, ctx);
     errands.step(MOVE);
+    await settle();
     // The desk has no window of its own: the spark sets out for the place beside her (814, 73).
     await run(160);
     expect(lit()).toEqual([]);
     asked({ window: "w1", x: 40 });
-    await run(LEG_MS + 16);
+    await settle();
+    await run(LEG_MS - 16);
+    expect(lit(), "not before the spark is there").toEqual([]);
+    await run(32 + GLOW_IN_MS);
     expect(lit()).toEqual([{ id: "w1", glow: USE }]);
     expect(spark()?.style.transform).toContain("translate(300.0px, 450.0px)");
     expect(spark()?.dataset.leg).toBe("there");
@@ -91,10 +102,11 @@ describe("the window a desk command of Eris's names", () => {
     expect(thread?.querySelector("path")?.getAttribute("d")).toMatch(/L8\.0 [\d.]+$/);
     expect(thread?.dataset.leg).toBe("there");
 
-    // The answer is in: the spark flies home on the clock, and the window goes dark after it.
+    // The answer is in: the spark stays a moment, flies home on the clock, and the window goes
+    // dark after it.
     errands.step(MOVED);
     const home = errands.finish();
-    await run(16);
+    await run(DWELL_MS);
     await run(LEG_MS + 16);
     await home;
     expect(spark()).toBeNull();
@@ -105,18 +117,21 @@ describe("the window a desk command of Eris's names", () => {
   it("takes the window the answer names too, each window once", async () => {
     const errands = mountErrands(() => shell, ctx);
     errands.step(MOVE);
+    await settle();
     // No window named: the command acts on the one in use, and says which in its answer.
     const heard = asked({ x: 40 });
     await run(320);
     expect(lit()).toEqual([]);
     heard?.({ window: "w2", x: 40, y: 0 });
     heard?.({ window: "w2", x: 40, y: 0 });
-    await run(LEG_MS + 16);
+    await settle();
+    await run(LEG_MS + GLOW_IN_MS + 16);
     expect(lit()).toEqual([{ id: "w2", glow: USE }]);
     expect(spark()?.style.transform).toContain("translate(1000.0px, 300.0px)");
-    // A second window lights too; the spark stays where it went first.
+    // A second window lights at once: the spark stays where it went first.
     asked({ window: "w1" });
-    await run(LEG_MS);
+    await settle();
+    await run(GLOW_IN_MS + 16);
     expect(lit().map((w) => w.id)).toEqual(["w2", "w1"]);
     expect(spark()?.style.transform).toContain("translate(1000.0px, 300.0px)");
     errands.dispose();
@@ -125,12 +140,14 @@ describe("the window a desk command of Eris's names", () => {
   it("is not lit for the person's own run, another command, or a window not on the desk", async () => {
     const errands = mountErrands(() => shell, ctx);
     errands.step(MOVE);
+    await settle();
     expect(asked({ window: "w1" }, "desk"), "the person ran it").toBeUndefined();
     expect(asked({ window: "w1" }, "endue.notes"), "a plugin ran it").toBeUndefined();
     expect(asked({ window: "w1" }, "agent:eris", "desk.windows.close")).toBeUndefined();
     asked({ window: "gone" });
     asked({ window: 7 });
     asked(null);
+    await settle();
     await run(LEG_MS + 16);
     expect(lit()).toEqual([]);
     expect(spark()?.style.transform).toContain("translate(814.0px, 73.0px)");
@@ -143,6 +160,7 @@ describe("the window a desk command of Eris's names", () => {
     const errands = mountErrands(() => shell, ctx);
     errands.step(MOVE);
     asked({ window: "w1" });
+    await settle();
     await run(32);
     expect(lit()).toEqual([{ id: "w1", glow: USE }]);
     expect(spark()?.style.transform).toContain("translate(814.0px, 73.0px)");

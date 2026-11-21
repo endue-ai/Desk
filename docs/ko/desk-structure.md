@@ -98,7 +98,7 @@ Emacs 는 작은 C 코어 위에서 거의 모든 기능이 Elisp 로 돌고, �
 
 PoC (macOS · Apple M4 Max, `spikes/compositor/README.md`): 공유 텍스처 가져오기 (첫 그림 137–248 ms, 1080p 에서 57–59 fps) · 표면 안 WebGPU · 30 표면 · 렌더러 하나 죽이기 · 한글 IME 가 모두 통과했습니다. 가벼운 렌더러는 ~40 MiB 입니다. Windows · Linux 확인은 #61 에 남아 있습니다.
 
-### 데스크가 앞에 없을 때 (ADR 0225 · 0240 · 0275)
+### 데스크가 앞에 없을 때 (ADR 0225 · 0240 · 0280)
 
 데스크 창을 닫아도 코어와 에이전트는 계속 실행됩니다. Option+Enter(`endue.eris.shortcut`)와 트레이의
 Eris에게 말하기는 데스크를 앞으로 가져오고 말하기 줄을 엽니다. 데스크가 앞에 있으면 말하기 줄을 열거나 닫습니다.
@@ -476,7 +476,7 @@ MCP 도구는 가벼운 VM 으로 격리하고, 나머지는 데스크톱 오픈
 | 질문 | 결정 | 따른 관례 | ADR |
 | --- | --- | --- | --- |
 | 앱 셸 | Tauri 2 였으나 ADR 0140 이 대체함. 1단계부터 winit 과 CEF 위의 Rust 바이너리 `apps/desk/shell` (기본 멤버 아님), 엔진과 무관한 로직은 `crates/desk-web`, Tauri crate 는 1단계가 끝나며 지웠고 (#97) 바이너리는 Tauri 앱의 이름 `endue-desk` 를 이어받음 |  | 0001 (대체됨) · 0143 |
-| 백그라운드의 endue | 창을 닫아도 계속 실행. Eris 단축키는 데스크를 앞으로 가져오고, 알림은 설정에 따라 운영체제에도 전달 | 운영체제 알림 · 트레이 메뉴 | 0225 · 0240 · 0275 |
+| 백그라운드의 endue | 창을 닫아도 계속 실행. Eris 단축키는 데스크를 앞으로 가져오고, 알림은 설정에 따라 운영체제에도 전달 | 운영체제 알림 · 트레이 메뉴 | 0225 · 0240 · 0280 |
 | MCP 도구 격리 | 가벼운 Linux VM 하나에서 실행. 허락한 폴더만 virtiofs 로 넣고, 통신은 vsock, 쉬면 VM 째로 멈춤. VM 을 못 띄우는 기기는 설치 때 "격리 없음"을 고지하고 사용자 권한으로 | Claude Cowork · Docker Desktop (macOS Virtualization.framework · Windows WSL2 · Linux KVM) | 0002 |
 | 웹 런타임 번들 배포 | 앱과 함께. 따로 배포하지 않음. 플러그인만 따로 갱신 | VS Code · Electron 앱 일반 | 0003 |
 | 플러그인 API 하위 호환 | v0 는 마이너마다 깨질 수 있음을 명시. v1 부터 직전 메이저를 6개월 지원하고, 제거 한 버전 전에 경고 | semver · VS Code 확장 API | 0004 |

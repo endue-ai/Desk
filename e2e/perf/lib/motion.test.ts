@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Image } from "../../support/png";
 import {
+  busyDrops,
   captured,
+  displayRate,
   gripOf,
   type Line,
   parseTrace,
@@ -12,7 +14,7 @@ import {
   swingRoom,
   timing,
 } from "./motion";
-import { failed, type RunFindings, table, verdicts, worst } from "./motion-verdicts";
+import { failed, minFpsAt, type RunFindings, table, verdicts, worst } from "./motion-verdicts";
 
 const line = (t: number, e: string, f: unknown = {}): Line => ({ t, e, f });
 const at = (x: number) => ({ windows: [{ id: "w", rect: [x, 10, 40, 30], own: true, parts: 0 }] });
@@ -146,6 +148,9 @@ describe("the gate's verdicts", () => {
     stopped: [],
     loopTurns: 100,
     loopStopped: [],
+    hz: 60,
+    busyLoops: 12,
+    busyDropped: 0,
   };
   const limits = {
     minFps: 55,
@@ -193,6 +198,88 @@ describe("the gate's verdicts", () => {
     expect(failed(all)).toBe(true);
     expect(table(all)).toContain("FIXED: take it out of known (#250)");
     expect(failed(verdicts(fixed, limits))).toBe(false);
+  });
+});
+
+describe("the display's rate (#249)", () => {
+  const good: RunFindings = {
+    fps: 59.9,
+    longShare: 0,
+    intervalP95: 17,
+    intervalMax: 18,
+    swingFrames: 10,
+    foreignFrames: 0,
+    fromDeskPage: 0,
+    restSharpness: 1,
+    stopped: [],
+    loopTurns: 100,
+    loopStopped: [],
+    hz: 60,
+    busyLoops: 12,
+    busyDropped: 0,
+  };
+  const limits = {
+    minFps: { "60": 58, "120": 110 },
+    longIntervalMs: 25,
+    maxLongShare: 0.01,
+    maxForeignFrames: 0,
+    foreignBlocks: 4,
+    minRestSharpness: 0.95,
+    maxUnfitFrames: 0,
+  };
+  const check = (f: RunFindings, name: string) => verdicts(f, limits).find((v) => v.check === name);
+
+  it("judges frames a second against the display's rate", () => {
+    expect(check({ ...good, hz: 120, fps: 110 }, "fps")?.passed).toBe(true);
+    expect(check({ ...good, hz: 120, fps: 109 }, "fps")?.passed).toBe(false);
+    expect(check({ ...good, hz: 60, fps: 58 }, "fps")?.passed).toBe(true);
+    expect(check({ ...good, hz: 60, fps: 57 }, "fps")?.passed).toBe(false);
+    expect(minFpsAt(limits, 144), "a rate not listed: the nearest one's share").toBe(132);
+    expect(minFpsAt({ ...limits, minFps: 55 }, 120), "one number for every rate").toBe(55);
+    // `busy`: the shake with a 20 ms busy loop on the main thread fails one frame dropped.
+    expect(check(good, "busy")?.passed).toBe(true);
+    expect(check({ ...good, busyDropped: 1 }, "busy")?.passed).toBe(false);
+    expect(failed(verdicts({ ...good, busyDropped: 1 }, limits))).toBe(true);
+    expect(check({ ...good, busyLoops: 0 }, "busy")?.passed, "no busy loop ran").toBe(false);
+    expect(failed(verdicts(good, limits))).toBe(false);
+  });
+
+  it("reads the display's rate from the trace, 60 where it names none", () => {
+    expect(displayRate([line(0, "start"), line(1, "display", { hz: 120 })])).toBe(120);
+    expect(displayRate([line(0, "start")])).toBe(60);
+  });
+
+  it("counts a frame a busy main thread dropped: a gap of a display interval and a half", () => {
+    const frames = (gaps: number[], from = 100) => {
+      let t = from;
+      return gaps.map((gap) => {
+        t += gap;
+        return line(t, "frame", { shown: false });
+      });
+    };
+    const shake = (lines: Line[]) => ({
+      tag: "busy",
+      pressed: 0,
+      swing: [100, 1000] as [number, number],
+      released: 1000,
+      done: 1000,
+      lines: [...lines].sort((a, b) => a.t - b.t),
+    });
+    const busy = (t: number) => line(t, "busy", { ms: 20 });
+    // On the display's beat across the busy loop: nothing dropped.
+    const kept = shake([...frames(Array(30).fill(16.7)), busy(300)]);
+    expect(busyDrops(kept, 60)).toEqual({ loops: 1, dropped: 0 });
+    // The loop held the frame after it: two intervals in one.
+    const held = shake([
+      ...frames([...Array(11).fill(16.7), 33.4, ...Array(10).fill(16.7)]),
+      busy(290),
+    ]);
+    expect(busyDrops(held, 60)).toEqual({ loops: 1, dropped: 1 });
+    // On a 120 Hz display 20 ms is more than a frame and a half.
+    const fast = shake([...frames(Array(40).fill(8.3)), busy(200)]);
+    expect(busyDrops(fast, 120)).toEqual({ loops: 1, dropped: 0 });
+    // A busy loop outside the swing is not judged.
+    expect(busyDrops(shake([...frames([16.7]), busy(50)]), 60).loops).toBe(0);
   });
 });
 

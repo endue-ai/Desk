@@ -231,7 +231,7 @@ impl Composed {
                 self.frames.destroy(&mut self.compositor, gone);
             }
             if let Some(before) = self.textures.insert(surface.clone(), picture) {
-                self.frames.destroy(&mut self.compositor, before);
+                self.retire(before);
             }
             crate::frame_trace::line("page_shown", serde_json::json!({ "surface": surface }));
         }

@@ -82,6 +82,68 @@
 .eris-tail-1 { left: 32%; top: 28%; opacity: 0.5; }
 .eris-tail-2 { left: 42%; top: 36%; opacity: 0.3; }
 
+/* Her ring while she works a line (mind.ts, ADR 0275), in the star's colour, the brand's mark of an
+   agent at work (docs/design-system.md): it turns while she reads a line or an answer that came
+   back, dims and loses its motes while her errands are out with the plugins, and is gone
+   otherwise. A ring closes into her core as something reaches her (`.eris-intake`, on the
+   ticker). Reduced motion keeps it still. */
+.eris-mind {
+  position: absolute;
+  left: 50%;
+  top: 67px;
+  width: 148px;
+  height: 148px;
+  overflow: visible;
+  fill: none;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: opacity var(--motion-base) ease;
+}
+.eris[data-mind] .eris-mind,
+.eris[data-talk="thinking"] .eris-mind { opacity: 1; }
+.eris[data-mind="waiting"] .eris-mind { opacity: 0.45; }
+.eris-mind-turn {
+  transform-box: view-box;
+  transform-origin: center;
+  animation: eris-mind-turn calc(var(--motion-slow) * 6) linear infinite;
+  animation-play-state: paused;
+}
+.eris-mind-turn--back {
+  animation-name: eris-mind-turn-back;
+  animation-duration: calc(var(--motion-slow) * 9);
+}
+.eris[data-mind] .eris-mind-turn,
+.eris[data-talk="thinking"] .eris-mind-turn { animation-play-state: running; }
+.eris-mind-arc {
+  stroke: var(--desk-star);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.eris-mind-arc--inner { stroke-width: 1.25; opacity: 0.6; }
+.eris-mind-mote {
+  fill: var(--desk-star);
+  transition: opacity var(--motion-base) ease;
+}
+.eris[data-mind="waiting"] .eris-mind-mote { opacity: 0; }
+.eris-intake {
+  stroke: var(--desk-star);
+  stroke-width: 2;
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: center;
+}
+.eris[data-motion="none"] .eris-mind-turn { animation: none; }
+@keyframes eris-mind-turn {
+  to { transform: rotate(1turn); }
+}
+@keyframes eris-mind-turn-back {
+  to { transform: rotate(-1turn); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eris-mind-turn { animation: none; }
+}
+
 /* Her words (said.ts): a card under her that said.ts keeps inside the desk; one of the page's
    overlays, so it is drawn above every window. A long line is kept as text and scrolls. */
 .eris-said {

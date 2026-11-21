@@ -28,11 +28,12 @@ export const PARTS: ReadonlyArray<readonly [id: string, selector: string, found?
   ["desk.canvas", ".map-strip"],
   ["desk.safe", '[data-layer="system"] .safe-badge'],
   ["desk.eris", ".eris"],
-  // The status line is drawn over the windows but hears nothing; its buttons do (ADR 0201).
+  // The status line is drawn over the windows but hears nothing; its buttons do (ADR 0201), and
+  // so does the notification centre's control right after it (#307), whose panel is a popover.
   ["desk.notices", ".desk-status"],
   [
     "desk.notice-actions",
-    ".desk-status .desk-status-action, .desk-status .desk-status-dismiss, .desk-status .desk-status-open",
+    ".desk-status .desk-status-action, .desk-status .desk-status-dismiss, .desk-status .desk-status-open, .desk-notify-bell",
     "every",
   ],
   // The theme studio docked to the side while it edits dims nothing (`editor.css`).
@@ -41,7 +42,7 @@ export const PARTS: ReadonlyArray<readonly [id: string, selector: string, found?
   ["desk.studios", ".theme-studio"],
   [
     "desk.overlays",
-    '.popover, .tooltip, [role="menu"], .dialog, .proposal, .desk-describe-panel, .desk-which-key',
+    '.popover, .tooltip, [role="menu"], .dialog, .proposal, .desk-describe-panel, .desk-which-key, .crash-card',
     "every",
   ],
 ];

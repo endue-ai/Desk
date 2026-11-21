@@ -33,6 +33,18 @@ pub struct WebPlace {
     pub width: f64,
     pub height: f64,
     pub shown: bool,
+    pub fill: bool,
+}
+
+impl WebPlace {
+    /// Resolve the box in a pane measured in CSS pixels.
+    pub fn in_pane(mut self, width: f64, height: f64) -> Self {
+        if self.fill {
+            self.width = (width - self.x).max(0.0);
+            self.height = (height - self.y).max(0.0);
+        }
+        self
+    }
 }
 
 /// What a view shows now.
@@ -244,6 +256,7 @@ impl Core {
             width: params.width,
             height: params.height,
             shown: params.shown != Some(false),
+            fill: params.fill.unwrap_or_default(),
         };
         views.place(&params.view_id, place).map_err(failed)?;
         json(WebPlaceResult {})
