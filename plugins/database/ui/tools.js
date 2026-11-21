@@ -9,7 +9,6 @@ import { exportResult } from "./export.js";
 import { addHistory, readHistory, readSaved, removeSaved, saveQuery } from "./history.js";
 import { FORMATS, formatRows } from "./results.js";
 import { RELATIONS } from "./schema/common.js";
-import { loadSettings } from "./settings.js";
 import { split, statementAt } from "./sql/split.js";
 
 /**
@@ -28,7 +27,7 @@ import { split, statementAt } from "./sql/split.js";
  *   explorer: ReturnType<typeof import("./explorer.js").createExplorer>,
  *   clients: { get(engine: import("./engines/common.js").EngineId): Promise<import("./clients.js").Client>, reset(): void },
  *   settings(): import("./settings.js").Settings,
- *   reload(settings: import("./settings.js").Settings): void,
+ *   reload(): Promise<import("./settings.js").Settings>,
  * }} Deps
  */
 
@@ -258,7 +257,7 @@ export function createTools(deps) {
     },
     /** Find each engine's client again and say what was found; PostgreSQL needs none. */
     async checkClients() {
-      deps.reload(await loadSettings(bridge));
+      await deps.reload();
       deps.clients.reset();
       const lines = await Promise.all(
         /** @type {const} */ (["postgresql", "mysql", "sqlite"]).map((engine) =>
