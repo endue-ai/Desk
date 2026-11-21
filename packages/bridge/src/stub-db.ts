@@ -14,6 +14,7 @@ import type {
   DbPage,
   DbServerError,
   DbSessionInfo,
+  DbTls,
   DbTransaction,
   DbValue,
   Permission,
@@ -43,6 +44,17 @@ export interface StubStatement {
   copy?: { direction: "in"; columns: number } | { direction: "out"; data: string };
 }
 
+/** Who a session signed in as, and how: what its db.open asked for. */
+export interface StubSession {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  readOnly: boolean;
+  settings: Record<string, string>;
+  tls?: DbTls;
+}
+
 /** A scripted database server. */
 export interface StubDatabase {
   /** The password the sign-in needs: a wrong one is refused (28P01), none answers needsPassword.
@@ -51,6 +63,9 @@ export interface StubDatabase {
   /** What the server reports at the sign-in; server_version and client_encoding by default. */
   parameters?: Record<string, string>;
   statements: StubStatement[];
+  /** Answers a statement none of `statements` matches, on the session it runs on; undefined
+   * leaves it unanswered (0A000). */
+  answer?: (sql: string, session: StubSession) => StubStatement | undefined;
 }
 
 export interface StubDbOptions {
@@ -64,6 +79,7 @@ type Check = (caller: string | undefined, scope: Permission, fits: boolean) => v
 interface Session {
   caller: string;
   scope: DbConnectPermission;
+  signed: StubSession;
   info: Omit<DbSessionInfo, "running" | "more" | "transaction">;
   transaction: DbTransaction;
   result?: { rows: DbValue[][]; at: number; tag: string };
@@ -238,7 +254,22 @@ export function stubDb(
         user: params.user,
         pid,
       };
-      sessions.set(sessionId, { caller: me, scope: params.scope, info, transaction: "idle" });
+      const signed: StubSession = {
+        host: params.host,
+        port,
+        database: params.database,
+        user: params.user,
+        readOnly: params.readOnly === true,
+        settings: { ...params.settings },
+        ...(params.tls ? { tls: params.tls } : {}),
+      };
+      sessions.set(sessionId, {
+        caller: me,
+        scope: params.scope,
+        signed,
+        info,
+        transaction: "idle",
+      });
       owners.set(sessionId, me);
       const secure = params.tls && params.tls.mode !== "disable" && params.tls.mode !== "prefer";
       return {
@@ -256,7 +287,8 @@ export function stubDb(
       session.result = undefined;
       const matches = (s: StubStatement) =>
         typeof s.sql === "string" ? s.sql === params.sql : s.sql.test(params.sql);
-      const statement = script?.statements.find(matches);
+      const statement =
+        script?.statements.find(matches) ?? script?.answer?.(params.sql, session.signed);
       if (statement) return answer(session, statement, pageRows, pageBytes);
       if (/^\s*(BEGIN|START|COMMIT|ROLLBACK|END)\b/i.test(params.sql))
         return last(session, (params.sql.trim().split(/\s+/)[0] ?? "").toUpperCase());

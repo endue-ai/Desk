@@ -15,23 +15,27 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
 
 ## Connections
 
-- PostgreSQL, MySQL / MariaDB and SQLite, each through its own client and never a shell, in a mode that cannot
-  reach past the database (ADR 0038): `psql -X -w` with a `-c` per statement,
-  `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
+- PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program to install: a run
+  opens a session, runs each statement and closes it; the plugin asks for `db:connect` on a server's host and
+  port at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA
+  file; a client certificate is not supported yet, nor a socket folder or an IPv6 host.
+- MySQL / MariaDB and SQLite run their own client and never a shell, in a mode that cannot reach past the
+  database (ADR 0038): `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
 - A client is found on the desk's PATH, else in the folders the `path` setting adds and where package managers
   install them; a setting may name another client or its full path. Check the clients says which one runs and
-  whether it is new enough (psql 13, mysql 8.0.19, mariadb 10.5, sqlite3 3.37).
+  whether it is new enough (mysql 8.0.19, mariadb 10.5, sqlite3 3.37), and that PostgreSQL needs none.
 - New, change, duplicate, remove (asked first; its history and buffers go with it), test (the server's version
   and the time it took) and disconnect. A connection from a URI (`postgres://`, `mysql://`, `mariadb://`,
   `sqlite:`), and its URI copied back without the password.
 - A connection has a group and a colour, an environment tag (production draws a band at the top of the page)
   and can be read-only.
-- Passwords are never kept with a connection: `~/.pgpass` and `~/.my.cnf` work, else the person types one for
-  the session. A PostgreSQL connection can have the OS keychain remember it (ADR 0311): the choice in the form
-  and in the password prompt keeps a typed password once it works, or a URI's on Save, through the desk, which
-  never hands it back. The connection's line says `keychain`; Database: forget the remembered password,
-  turning the choice off, changing the server or user, or removing the connection forgets it. Disconnect
-  leaves it. A session the desk opens names it by `passwordRef` (`keychain.js`).
+- Passwords are never kept with a connection: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else
+  the person types one for the session. A PostgreSQL connection can have the OS keychain remember it (ADR 0311):
+  the choice in the form and in the password prompt keeps a typed password once it works, or a URI's on Save,
+  through the desk, which never hands it back; a session signs in with it by `passwordRef`, so no prompt comes
+  after a restart. The connection's line says `keychain`; Database: forget the remembered password, turning the
+  choice off, changing the server or user, or removing the connection forgets it. Disconnect leaves it
+  (`keychain.js`, `engines/pg-session.js`).
 - A SQLite file (`*.sqlite`, `*.sqlite3`, `*.db3`) opened on the desk or dropped on the page opens as a
   connection, added the first time.
 
@@ -49,14 +53,46 @@ Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.
   only those are read again, and a DDL statement run from the plugin starts that check. The connection's line
   says when it was read. Database: read the schema again reads it all; Database: choose the schemas to read
   picks them (system schemas stay out by default). Other engines read a node when it opens, as above.
+- A PostgreSQL schema also has Types (enum, composite, domain, range, base), Aggregates, Operators, Collations
+  and Text search; a table its Partitions with their bounds, the parents it Inherits from, Policies and Rules,
+  and its row says whether row security is on and about how large it is. After the schemas, Database holds
+  Extensions (with what each owns), Foreign data wrappers, Foreign servers, User mappings, Publications,
+  Subscriptions, Event triggers, Casts and Languages, and Server holds Roles and Tablespaces (ADR 0295). All of
+  it comes from the cache, `d` shows each one's DDL (its owner on the first line), and completion offers a
+  schema's types. Passwords are never read: not a user mapping's options, a subscription's connection string, a
+  role's password, or an option named like a secret.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the schema's ER diagram
   from its foreign keys, `m` opens the maintenance form of a connection, schema, table or index, `n`, `e` and
   Delete add, change and remove a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
-Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/`, `view-tree.js`,
-`view-diagram.js`.
+Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
+kinds in `schema/pg/`), `view-tree.js`, `view-diagram.js`.
+
+## Objects
+
+- From a row (`o`, the context-menu key or a right click opens its menu; `F2` renames, `s` opens the
+  source) or a command with arguments: rename, move to another schema, change the owner, comment (empty
+  removes it), drop, truncate (RESTART IDENTITY, CASCADE), refresh a materialized view (CONCURRENTLY when it
+  has data and a unique index, WITH NO DATA), enable or disable a trigger, and generate SQL (SELECT, INSERT,
+  UPDATE, DELETE of a table, a call of a routine) into a console with `:name` parameters.
+- Every one shows its exact script in a dialog first, rewritten as the person types and chooses, and runs it
+  through the guards: a read-only connection refuses before the dialog, a production one is asked again
+  with its tag named, DROP and TRUNCATE are asked as dangerous, and an agent's request waits for the
+  person's answer in the same dialog (ADR 0312). The schema cache reads what changed again.
+- A drop lists what depends on the object first (PostgreSQL's `pg_depend`, 200 at most): what a plain DROP
+  is refused for, and what goes with it. CASCADE is a choice of its own, never on unless chosen.
+- A view's, a materialized view's, a function's, a procedure's or a trigger's function's source opens in a
+  console of its own; Database: apply the source shows the script and runs it in one transaction
+  (`CREATE OR REPLACE`; a materialized view is dropped and created again with its indexes and comment, and
+  refused while others depend on it). An error selects its line.
+- MySQL and SQLite get what their DDL allows (`features/objects/kinds.js`): MySQL renames and moves tables,
+  comments tables and routines, drops and truncates; SQLite renames tables, drops, and empties a table with
+  DELETE; a view's source is applied as CREATE OR REPLACE (MySQL) or dropped and created (SQLite). What an
+  engine cannot do is said as such.
+
+Modules: `features/objects/`.
 
 ## Console
 
@@ -72,12 +108,14 @@ Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`,
 - Highlighting with the lexer that cuts the statements, autocomplete from the schema with aliases
   (`Ctrl+Space`), Format SQL (`Mod+Shift+F`, below), and parameters (`:name`, `?`, `$1`) asked for before
   the run and remembered for the console.
-- Guards: a read-only connection refuses writes before the client starts, and on the server too; with
+- Guards: a read-only connection refuses writes before anything runs, and on the server too
+  (`default_transaction_read_only` on PostgreSQL's session); with
   `confirm` on, a write on a production connection, and DROP, TRUNCATE, or UPDATE and DELETE without WHERE
   anywhere, ask first.
-- Cancel, or Escape while a run goes on, sends SIGINT (psql and mysql cancel the query on the server, sqlite3
-  interrupts it), then SIGKILL a second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on
-  the server.
+- Cancel, or Escape while a run goes on, cancels PostgreSQL's statement on the server (`db.cancel`), and sends
+  the other clients SIGINT (mysql cancels the query on the server, sqlite3 interrupts it), then SIGKILL a
+  second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server
+  (`statement_timeout`).
 - History of what ran on each connection, searched from the palette (never results, never a statement that
   carries a password), and starred queries.
 - SQL text dropped on the page goes into the console on screen, or the console of a connection the person picks.
@@ -179,8 +217,24 @@ Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `
   Alt+N sets NULL and Alt+D DEFAULT, a pending value of its own (Database: set the cell to DEFAULT). A
   generated or always-identity column says why it cannot change.
 
-Modules: `edits.js`, `edit/`, `view-cell.js`, `cell-editors/` (`resolve.js`, `pg-types.js`, `values.js`,
-`panel.js`, one module per kind), `features/cell-values/`.
+- Paste (Mod+V in the grid, Database: paste into the grid) fills cells from the block's top-left cell, down the
+  rows in their order on screen and right over the shown columns (hidden ones skipped, pinned first); rows
+  past the last become pending rows. It reads tab-separated text (the grid's own copy with its `\N` and
+  escapes, a spreadsheet's with quoted fields), CSV when every line splits into the same number of fields,
+  and one value, which goes into every selected cell. Each value is checked by its column's type (an empty
+  one in a typed column is NULL); one bad value refuses the whole paste, naming its row and column, before
+  anything is pending. A first line naming the columns is left out. More than 1,000 cells ask first; text
+  over 16 KiB is read in a worker. Agents paste with `text`, under the same refusals.
+- Duplicate (`D`, the cell's menu, Database: duplicate the selected rows) adds the selected rows as pending rows; an identity, a
+  generated column, a `nextval()` default, a key with a default and SQLite's INTEGER PRIMARY KEY take DEFAULT
+  and are named, and a key copied as it was is named to change. Fill down (`"`) copies the block's top row
+  below; `n` on a block sets every cell NULL (Database: clear the selected cells to NULL).
+- Undo (Mod+Z in the grid, the Undo button, Database: undo the last pending change) takes back one step: a
+  cell, a paste, a duplicate, a fill, a clear, rows added, deleted or reverted; 100 steps are kept.
+
+Modules: `edits.js`, `edit/` (`cells.js`, `duplicate.js`, `history.js`, `paste-text.js` for the paste),
+`view-cell.js`, `cell-editors/` (`resolve.js`, `pg-types.js`, `values.js`, `panel.js`, one module per kind),
+`grid/paste.js`, `grid/paste-worker.js`, `features/cell-values/`, `features/paste/`.
 
 ## Import and export
 
@@ -253,11 +307,16 @@ Modules: `features/maintenance/`.
   1000 at most) are registered with an argument schema as agents' tools (ADR 0088); the first two only read.
 - An agent's write runs only after the person says yes, whatever the connection's tag and the `confirm`
   setting; a read-only connection refuses it, and an agent is never shown a password prompt.
+- `.paste` pastes text into the grid on screen as pending changes, under the same refusals and type checks as
+  the person's paste; nothing runs until the person submits.
 - `.activity` answers a connection's sessions and who waits for whom, and only reads; `.cancel-session` and
   `.end-session` are irreversible: the core waits for the person's approval, then the plugin asks as it
   asks the person (ADR 0290).
 - `.maintenance` opens the form for a connection, schema, table or index and answers the statement, what it
   locks and the size; with `run` it runs after the person's yes and answers the output and the statistics
   before and after (ADR 0293). The server overview can open it with the same arguments.
+- The objects feature's commands (`.rename-object`, `.drop-object`, `.edit-source`, `.generate-sql` and the
+  rest) take the object by connection, schema, name (and table, for a part); each change shows the person
+  its dialog, and `.drop-object` and `.truncate-table` are irreversible (ADR 0312).
 
 Modules: `agent.js`.

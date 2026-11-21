@@ -1,15 +1,15 @@
-// The maintenance form against a real PostgreSQL, through the plugin's commands and the real psql.
+// The maintenance form against a real PostgreSQL, through the plugin's commands on the core's sessions.
 // It runs when ENDUE_DB_TEST_POSTGRES holds the URI of a scratch database it may write in, for
 // example postgresql://postgres:pw@db/scratch: VACUUM, ANALYZE, REINDEX and CLUSTER of a small
 // table (half its rows deleted), of one of its indexes, of schema public and of the database, with
 // and without options, each sent alone so the server runs it outside a transaction block; a
 // VACUUM FULL that waits behind another session's lock, seen waiting in the progress read and
 // cancelled on the server; and a read-only connection that refuses.
-import { spawn, spawnSync } from "node:child_process";
 import { afterAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
 import type { Connection } from "../ui/engines/common.js";
 import { type Handlers, type Mounted, mount } from "./harness";
+import { liveSessions } from "./live-sessions";
 import { realProcs } from "./scripted";
 
 const uri = process.env.ENDUE_DB_TEST_POSTGRES ?? "";
@@ -25,30 +25,10 @@ type Ran = {
   after: Record<string, number | string | null> | null;
 };
 
-/** psql on the scratch database as the URI's role, unaligned, for what the test sets up. */
-const admin = (sql: string) => {
-  const done = spawnSync(
-    "psql",
-    ["-X", "-q", "-At", "-v", "ON_ERROR_STOP=1", "-d", uri, "-c", sql],
-    {
-      encoding: "utf8",
-    },
-  );
-  if (done.status !== 0) throw new Error(done.stderr);
-  return done.stdout.trim();
-};
-
-const children: Array<ReturnType<typeof spawn>> = [];
-/** A session of its own, named, fed statements on its standard input, which stays open. */
-function session(name: string, sql: string) {
-  const child = spawn("psql", ["-X", "-q", "-d", uri], {
-    env: { ...process.env, PGAPPNAME: name },
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-  children.push(child);
-  child.stdin?.write(`${sql}\n`);
-  return child;
-}
+// Other runs use the same server at once, each in a database of its own: only this database's
+// sessions are looked up and ended.
+const live = liveSessions(uri, "maintenance");
+const { admin } = live;
 
 /** Do again until `ok` holds, every 200 ms, for 20 s at most. */
 async function until<T>(read: () => Promise<T> | T, ok: (value: T) => boolean): Promise<T> {
@@ -66,24 +46,25 @@ async function plugin() {
   const { fields, password } = parseUri(uri);
   const conn = (id: string, name: string, more: Partial<Connection> = {}) =>
     normalize({ ...fields, id, name, ...more });
-  const procs = realProcs();
-  const spawnReal = procs.handlers["proc.spawn"] as unknown as (
-    params: Record<string, unknown>,
+  const procs = realProcs(password ? { password } : {});
+  const runReal = procs.handlers["db.run"] as unknown as (
+    params: { sessionId: string; sql: string },
     caller?: string,
   ) => unknown;
+  // Each session's statements, in order: a run is a session of its own.
   const sent: string[][] = [];
+  const bySession = new Map<string, string[]>();
   const handlers = {
     ...procs.handlers,
-    // The password reaches psql as the person's typed one would, never through the store.
-    "proc.spawn": (params: Record<string, unknown>, caller?: string) => {
-      sent.push((params.args as string[]) ?? []);
-      return spawnReal(
-        {
-          ...params,
-          env: { ...(params.env as object), ...(password ? { PGPASSWORD: password } : {}) },
-        },
-        caller,
-      );
+    "db.run": (params: { sessionId: string; sql: string }, caller?: string) => {
+      let statements = bySession.get(params.sessionId);
+      if (!statements) {
+        statements = [];
+        bySession.set(params.sessionId, statements);
+        sent.push(statements);
+      }
+      statements.push(params.sql);
+      return runReal(params, caller);
     },
   } as unknown as Handlers;
   const store = {
@@ -99,29 +80,30 @@ const maintain = (m: Mounted, args: Record<string, unknown>) =>
   m.host.command("endue.database.maintenance", { connection: "live", ...args }) as Promise<Ran>;
 const MAINTENANCE = /^(VACUUM|ANALYZE|REINDEX|CLUSTER)\b/u;
 
-function setUp() {
-  admin(`DROP TABLE IF EXISTS ${TABLE}`);
-  admin(
+async function setUp() {
+  // A session a run before left asleep holding its lock would hold the drop too.
+  await live.end();
+  await admin(`DROP TABLE IF EXISTS ${TABLE}`);
+  await admin(
     `CREATE TABLE ${TABLE} (id int PRIMARY KEY, note text, v int) WITH (autovacuum_enabled = off)`,
   );
-  admin(`CREATE INDEX ${INDEX} ON ${TABLE} (v)`);
-  admin(`INSERT INTO ${TABLE} SELECT g, repeat('x', 50), g % 97 FROM generate_series(1, 5000) g`);
-  admin(`DELETE FROM ${TABLE} WHERE id % 2 = 0`);
+  await admin(`CREATE INDEX ${INDEX} ON ${TABLE} (v)`);
+  await admin(
+    `INSERT INTO ${TABLE} SELECT g, repeat('x', 50), g % 97 FROM generate_series(1, 5000) g`,
+  );
+  await admin(`DELETE FROM ${TABLE} WHERE id % 2 = 0`);
 }
 
-afterAll(() => {
-  for (const child of children) child.kill();
+afterAll(async () => {
   if (!uri) return;
-  // A killed psql leaves its backend asleep in pg_sleep: end the test's sessions by name too.
-  admin(
-    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name LIKE 'maintenance %'",
-  );
-  admin(`DROP TABLE IF EXISTS ${TABLE}`);
+  // Before the drop: a session asleep in pg_sleep holds its lock until it ends.
+  await live.end();
+  await admin(`DROP TABLE IF EXISTS ${TABLE}`);
 });
 
 describe.skipIf(!uri)("maintenance on a real PostgreSQL", () => {
   it("runs each operation on a small table with and without options, outside a transaction block", async () => {
-    setUp();
+    await setUp();
     const { m, sent } = await plugin();
     const table = { schema: "public", table: TABLE, run: true };
     // VACUUM, VERBOSE by default: the server's INFO lines, and the run in the table's statistics.
@@ -178,7 +160,7 @@ describe.skipIf(!uri)("maintenance on a real PostgreSQL", () => {
       status: "done",
     });
     expect(
-      admin(`SELECT indisclustered FROM pg_index WHERE indexrelid = '${INDEX}'::regclass`),
+      await admin(`SELECT indisclustered FROM pg_index WHERE indexrelid = '${INDEX}'::regclass`),
     ).toBe("t");
     const schema = await maintain(m, {
       schema: "public",
@@ -188,7 +170,7 @@ describe.skipIf(!uri)("maintenance on a real PostgreSQL", () => {
     });
     expect(schema.statement).toMatch(new RegExp(`^VACUUM .*public\\.${TABLE}\\b`, "u"));
     expect(schema.status).toBe("done");
-    const database = admin("SELECT current_database()");
+    const database = await admin("SELECT current_database()");
     for (const [operation, statement] of [
       ["vacuum", "VACUUM"],
       ["analyze", "ANALYZE"],
@@ -198,29 +180,27 @@ describe.skipIf(!uri)("maintenance on a real PostgreSQL", () => {
       const ran = await maintain(m, { operation, options: { verbose: false }, run: true });
       expect(ran, statement).toMatchObject({ statement, status: "done" });
     }
-    // Each one went alone in its psql run: the server never answered that a transaction block
+    // Each one went alone in its own session: the server never answered that a transaction block
     // refuses it.
     const said = m.view.said.join("\n");
     expect(said).not.toMatch(/transaction block/u);
-    const maintenance = sent.filter((args) => args.some((a) => MAINTENANCE.test(a)));
+    const maintenance = sent.filter((sqls) => sqls.some((sql) => MAINTENANCE.test(sql)));
     expect(maintenance).toHaveLength(runs.length + 8);
-    for (const args of maintenance) {
-      expect(args).not.toContain("--single-transaction");
-      expect(args.filter((a, i) => args[i - 1] === "-c" && !a.startsWith("\\"))).toHaveLength(1);
-    }
+    for (const sqls of maintenance) expect(sqls).toHaveLength(1);
   }, 120_000);
 
   it("shows a VACUUM FULL waiting for another session's lock and cancels it", async () => {
-    setUp();
-    const holder = session(
-      "maintenance holder",
-      `BEGIN;\nLOCK TABLE ${TABLE} IN ACCESS SHARE MODE;\nSELECT pg_sleep(600);`,
-    );
+    await setUp();
+    live.session("holder", [
+      "BEGIN",
+      `LOCK TABLE ${TABLE} IN ACCESS SHARE MODE`,
+      "SELECT pg_sleep(600)",
+    ]);
     const pid = Number(
       await until(
         () =>
           admin(
-            "SELECT pid FROM pg_stat_activity WHERE application_name = 'maintenance holder' AND wait_event = 'PgSleep'",
+            "SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND application_name = 'maintenance holder' AND wait_event = 'PgSleep'",
           ),
         (found) => found !== "",
       ),
@@ -253,13 +233,12 @@ describe.skipIf(!uri)("maintenance on a real PostgreSQL", () => {
     expect(ended.error).toMatch(/canceling statement due to user request/u);
     expect(m.shown()?.maintenance.run).toMatchObject({ status: "cancelled", cancelling: false });
     // The holder is still there, its transaction untouched.
-    expect(admin(`SELECT state FROM pg_stat_activity WHERE pid = ${pid}`)).toBe("active");
-    holder.kill();
-    admin(`SELECT pg_terminate_backend(${pid})`);
+    expect(await admin(`SELECT state FROM pg_stat_activity WHERE pid = ${pid}`)).toBe("active");
+    await admin(`SELECT pg_terminate_backend(${pid})`);
   }, 60_000);
 
   it("a read-only connection refuses", async () => {
-    setUp();
+    await setUp();
     const { m, sent } = await plugin();
     const args = { connection: "live-ro", schema: "public", table: TABLE, operation: "vacuum" };
     await expect(
@@ -275,7 +254,7 @@ describe.skipIf(!uri)("maintenance on a real PostgreSQL", () => {
     );
     expect(sent.filter((a) => a.some((x) => MAINTENANCE.test(x)))).toEqual([]);
     expect(
-      admin(
+      await admin(
         `SELECT coalesce(last_vacuum::text, '') FROM pg_stat_user_tables WHERE relname = '${TABLE}'`,
       ),
     ).toBe("");

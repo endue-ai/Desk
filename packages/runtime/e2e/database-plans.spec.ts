@@ -1,7 +1,7 @@
 import { expect, type Frame, type Page, test } from "@playwright/test";
 
 // endue.database's query plans (PG-70, ADR 0289) on the browser stub: the saved PostgreSQL
-// connection "warehouse" whose psql is scripted (plugins/database/tests/fixture-plans.ts) answers
+// connection "warehouse" whose server is scripted (plugins/database/tests/fixture-plans.ts) answers
 // EXPLAIN with a plan of a join, another after `create index`. The plan's tree, its flame and
 // table, two plans compared side by side and the options dialog, in a 900×600 window's page.
 const SURFACE = '[data-surface="endue.database"]';

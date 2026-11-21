@@ -1,0 +1,114 @@
+/* The objects feature (PG-52): the dialog of an operation, with its fields, choices, what depends
+   on the object and the script it runs. Every colour, font, size and radius comes from the
+   theme's --desk-* tokens; the feature links this sheet itself (features/README.md). */
+
+.object-operation {
+  width: min(560px, calc(100% - 16px));
+}
+
+.object-where {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.dialog label.object-field {
+  grid-template-columns: 7em minmax(0, 1fr);
+}
+
+.dialog label.object-field .hint {
+  grid-column: 2;
+}
+
+.object-field textarea {
+  resize: vertical;
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+}
+
+.object-choices {
+  display: grid;
+  gap: var(--desk-space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.dialog label.object-choice {
+  display: grid;
+  grid-template-columns: auto 11em minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--desk-space-2);
+}
+
+.object-choice-name {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.object-choice:has(input:disabled) {
+  color: var(--desk-text-muted);
+}
+
+.object-depends {
+  display: grid;
+  gap: var(--desk-space-1);
+  padding: var(--desk-space-2);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+}
+
+/* What a plain DROP is refused for needs the person: a warning surface, only then. */
+.object-depends.blocking {
+  border-color: var(--desk-warning-border);
+  background: var(--desk-warning-soft);
+}
+
+.object-depends h3 {
+  margin: 0;
+  font-size: var(--desk-text-xs);
+}
+
+.object-depends.blocking h3:first-child {
+  color: var(--desk-warning-text);
+}
+
+.object-dependents {
+  display: grid;
+  gap: var(--desk-space-1);
+  max-height: 9em;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+}
+
+.object-script-label {
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.object-script {
+  min-height: 2.5em;
+  max-height: 12em;
+  margin: 0;
+  padding: var(--desk-space-2);
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.object-script:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 1px;
+}
+
+.object-problem {
+  color: var(--desk-danger-text);
+  font-size: var(--desk-text-xs);
+}

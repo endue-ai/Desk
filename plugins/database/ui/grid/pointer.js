@@ -1,9 +1,10 @@
 // The grid under the pointer and the clipboard: a click on a header sorts by its column (with Shift
 // it adds the column as one more key), a click on a cell moves the cursor there (with Shift it
 // extends the block) and a double click edits it, a right click opens the cell's menu, and Mod+C
-// copies the block, or the cursor's cell, as tab-separated text. A header's drag and grip are
-// header.js's.
+// copies the block, or the cursor's cell, as tab-separated text, remembered so a paste of it reads its
+// escapes back (clipboard.js). A header's drag and grip are header.js's.
 
+import { remember } from "../clipboard.js";
 import { formatRows } from "../results.js";
 
 /**
@@ -61,7 +62,9 @@ export function attachPointer(doc, screen, acts) {
       ? picked.rows.map((i) => picked.sorted[i] ?? [])
       : [picked.sorted[acts.cursorRow()] ?? []];
     const columns = picked.rows ? picked.columns : [screen.cursorColumn()];
-    event.clipboardData?.setData("text/plain", formatRows(screen.set(), "tsv", { rows, columns }));
+    const text = formatRows(screen.set(), "tsv", { rows, columns });
+    event.clipboardData?.setData("text/plain", text);
+    remember(text);
     event.preventDefault();
   });
 }

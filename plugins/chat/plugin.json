@@ -6,7 +6,10 @@
   "entry": "ui/index.html",
   "description": "Every chat service the desk's connectors bring in (Slack, Discord, Microsoft Teams, Telegram, Matrix and others) in one interface: conversations by service and workspace, threads, reactions and replies, in four layouts (Conversation, Inbox, Timeline, Columns), acting through each connector's commands.",
   "permissions": [
-    { "permission": "data:read", "kinds": ["message"] },
+    {
+      "permission": "data:read",
+      "kinds": ["message"]
+    },
     {
       "permission": "cmd:invoke",
       "ids": [
@@ -19,11 +22,24 @@
         "desk.connectors.open"
       ]
     },
-    { "permission": "ui:notify" },
-    { "permission": "shell:open", "schemes": ["http", "https", "mailto"] },
-    { "permission": "connector:manage" }
+    {
+      "permission": "ui:notify"
+    },
+    {
+      "permission": "shell:open",
+      "schemes": ["http", "https", "mailto"]
+    },
+    {
+      "permission": "connector:manage"
+    }
   ],
-  "surfaces": [{ "id": "main", "title": "Chat", "placement": "center" }],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Chat",
+      "placement": "center"
+    }
+  ],
   "contributes": {
     "commands": [
       {
@@ -34,12 +50,69 @@
       {
         "id": "endue.chat.show",
         "title": "Show a chat message in its conversation",
-        "keywords": ["chat", "message", "open"]
+        "keywords": ["chat", "message", "open"],
+        "description": "Open a message in the chat plugin, in its conversation or thread, and bring the window up. The message is { source, id } as endue.chat.messages and find-messages answer them.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.conversation",
         "title": "Go to a chat conversation",
-        "keywords": ["chat", "channel", "dm", "conversation", "switch"]
+        "keywords": ["chat", "channel", "dm", "conversation", "switch"],
+        "description": "Open a conversation in the chat plugin and bring the window up with its composer. The conversation is { source, channel } as endue.chat.conversations answers them.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "channel": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "conversation": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "A conversation's key, instead of source and channel."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.layout",
@@ -64,7 +137,14 @@
       {
         "id": "endue.chat.refresh",
         "title": "Refresh chats",
-        "keywords": ["chat", "reload", "sync"]
+        "keywords": ["chat", "reload", "sync"],
+        "description": "Read the chat accounts' conversations again from the index.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.next-unread",
@@ -75,7 +155,48 @@
         "id": "endue.chat.send",
         "title": "Send a chat message",
         "keywords": ["chat", "send", "message", "post"],
-        "irreversible": true
+        "irreversible": true,
+        "description": "Send text to a conversation, or as a reply in the thread whose root id is thread, after the person says yes. The conversation is { source, channel } as endue.chat.conversations answers them. Answers the sent message's id.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "channel": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "conversation": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "A conversation's key, instead of source and channel."
+            },
+            "thread": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40000
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.reply",
@@ -85,23 +206,145 @@
       {
         "id": "endue.chat.react",
         "title": "React to the selected message",
-        "keywords": ["chat", "react", "emoji", "reaction"]
+        "keywords": ["chat", "react", "emoji", "reaction"],
+        "description": "React to a message with emoji (the character, or :name:). The message is { source, id } as endue.chat.messages and find-messages answer them.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "emoji": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.edit",
         "title": "Edit your chat message",
-        "keywords": ["chat", "edit", "change"]
+        "keywords": ["chat", "edit", "change"],
+        "description": "Change the text of one of the person's own messages to text. The message is { source, id } as endue.chat.messages and find-messages answer them.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40000
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.delete",
         "title": "Delete your chat message",
         "keywords": ["chat", "delete", "remove"],
-        "irreversible": true
+        "irreversible": true,
+        "description": "Delete one of the person's own messages, after the person says yes; pass confirmed true so the plugin does not ask again. The message is { source, id } as endue.chat.messages and find-messages answer them.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "confirmed": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.mark-read",
         "title": "Mark the conversation read",
-        "keywords": ["chat", "read", "seen"]
+        "keywords": ["chat", "read", "seen"],
+        "description": "Mark every message of a conversation read. The conversation is { source, channel } as endue.chat.conversations answers them. Answers how many were unread.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "channel": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "conversation": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "A conversation's key, instead of source and channel."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.mark-all-read",
@@ -111,12 +354,69 @@
       {
         "id": "endue.chat.save",
         "title": "Save the selected message for later",
-        "keywords": ["chat", "save", "bookmark", "later", "star"]
+        "keywords": ["chat", "save", "bookmark", "later", "star"],
+        "description": "Save a message to the person's Saved list, or take it off when it is there. The message is { source, id } as endue.chat.messages and find-messages answer them. Answers whether it is saved now.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.pin",
         "title": "Pin the conversation as a column",
-        "keywords": ["chat", "pin", "column", "deck"]
+        "keywords": ["chat", "pin", "column", "deck"],
+        "description": "Pin a conversation as a column in the Columns layout, or unpin it. The conversation is { source, channel } as endue.chat.conversations answers them. Answers whether it is pinned now.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "channel": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "conversation": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "A conversation's key, instead of source and channel."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.find",
@@ -124,13 +424,254 @@
         "keywords": ["chat", "find"]
       },
       {
+        "id": "endue.chat.conversations",
+        "title": "Chat: conversations as data",
+        "keywords": ["chat", "conversations", "channels", "unread", "dm"],
+        "description": "The chat accounts' conversations, newest activity first, as data, leaving the screen as it is: each with source and channel (to read, open or send to it), name, kind (channel, private, dm or group), platform, workspace, unread, mentions and its latest message. platform narrows to one service (slack, discord, teams…), unread true to those with unread messages, query to names holding the words. Up to limit (30, at most 200); unread counts them all.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "platform": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "unread": {
+              "type": "boolean"
+            },
+            "query": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "conversations": {
+              "type": "array"
+            },
+            "unread": {
+              "type": "integer"
+            },
+            "more": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.chat.messages",
+        "title": "Chat: a conversation's messages as data",
+        "keywords": ["chat", "messages", "read", "history", "thread"],
+        "description": "A conversation's newest messages, oldest first, as data, leaving the screen as it is and marking nothing read: each with source and id, author, self (the person's own), at, text (to 4000 characters), unread, thread, isReply, replyCount, reactions and attachments. thread, a root message's id, answers that thread's root and its replies instead. The conversation is { source, channel } as endue.chat.conversations answers them. Up to limit (20, at most 100).",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "channel": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "conversation": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "A conversation's key, instead of source and channel."
+            },
+            "thread": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "connector": {
+                        "type": "string"
+                      },
+                      "instance": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["connector", "instance"],
+                    "additionalProperties": false
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "channel": {
+                    "type": "string"
+                  },
+                  "author": {
+                    "type": "string"
+                  },
+                  "self": {
+                    "type": "boolean"
+                  },
+                  "at": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "unread": {
+                    "type": "boolean"
+                  },
+                  "thread": {
+                    "type": "string"
+                  },
+                  "isReply": {
+                    "type": "boolean"
+                  },
+                  "replyCount": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.chat.find-messages",
+        "title": "Chat: find messages as data",
+        "keywords": ["chat", "find", "search", "messages"],
+        "description": "Chat messages of every account whose text holds text, newest first, as data, leaving the screen as it is, each as endue.chat.messages answers it, up to limit (20, at most 100).",
+        "args": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": ["text"],
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            },
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "connector": {
+                        "type": "string"
+                      },
+                      "instance": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["connector", "instance"],
+                    "additionalProperties": false
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "channel": {
+                    "type": "string"
+                  },
+                  "author": {
+                    "type": "string"
+                  },
+                  "self": {
+                    "type": "boolean"
+                  },
+                  "at": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "unread": {
+                    "type": "boolean"
+                  },
+                  "thread": {
+                    "type": "string"
+                  },
+                  "isReply": {
+                    "type": "boolean"
+                  },
+                  "replyCount": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
         "id": "endue.chat.connect",
         "title": "Connect a chat account",
         "keywords": ["chat", "connect", "account", "slack", "discord", "connector"]
       }
     ],
-    "keys": [{ "key": "Mod+Shift+J", "command": "endue.chat.open" }],
-    "paletteProviders": [{ "command": "endue.chat.find", "title": "Chats" }],
+    "keys": [
+      {
+        "key": "Mod+Shift+J",
+        "command": "endue.chat.open"
+      }
+    ],
+    "paletteProviders": [
+      {
+        "command": "endue.chat.find",
+        "title": "Chats"
+      }
+    ],
     "settings": {
       "endue.chat.page": {
         "kind": "integer",

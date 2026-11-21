@@ -2,7 +2,7 @@
 // the rows PostgreSQL answers, the filters and the sort, who waits for whom as a tree, what a role
 // cannot see, and the SQL that differs by server version.
 import { describe, expect, it } from "vitest";
-import { postgres } from "../ui/engines/postgres.js";
+import { settingsOf } from "../ui/engines/pg-session.js";
 import {
   blockingTree,
   DEFAULT_VIEW,
@@ -23,7 +23,6 @@ import {
   tooOld,
 } from "../ui/features/activity/sql.js";
 import { activityRows } from "./activity-fixture";
-import { SAVED } from "./harness";
 
 const read = (version = 170006) => {
   const rows = activityRows(version);
@@ -77,7 +76,7 @@ describe("reading the activity", () => {
       [4250, "ExclusiveLock on virtual transaction 5/12", true, null],
       [4300, "RowExclusiveLock on stock", true, null],
     ]);
-    // A real psql prints NULL as null; a NULL age is no age there too.
+    // A real server sends NULL as null; a NULL age is no age there too.
     const real = readOf(
       ["170006", "17.6", "1", "w"],
       [
@@ -105,16 +104,7 @@ describe("reading the activity", () => {
       0,
     );
     expect(real.sessions[0]).toMatchObject({ pid: 7, stateMs: null, blockedBy: [], query: null });
-    expect(OWN_APPLICATION).toBe(
-      postgres.plan(SAVED[1] as never, {
-        statements: [],
-        maxRows: 1,
-        timeoutMs: 0,
-        mode: "run",
-        nonce: "n",
-        single: false,
-      }).env.PGAPPNAME,
-    );
+    expect(OWN_APPLICATION).toBe(settingsOf(0).application_name);
   });
 
   it("filters idle, background processes, the view's own session and by database, and sorts either way", () => {

@@ -1,6 +1,7 @@
 // The cell's menu (f in the grid, the context menu key or a right click): the quick filters for its
 // value, then what can be done with its column (sort by it next, hide, pin, fit, show a hidden one,
-// reset). It scrolls when the page is too short for it.
+// reset), and on a result that can change with its rows (duplicate, fill down: PG-43). It scrolls
+// when the page is too short for it.
 // A <desk-menu>, so arrows, Enter and Escape work in it; the grid gets its focus back when it closes.
 
 import { el } from "../dom.js";
@@ -9,7 +10,7 @@ import { menuLabel, OPS, WITH_VALUE } from "./filters.js";
 /**
  * @typedef {HTMLElement & { open?: boolean, show?(anchor: HTMLElement): void, close?(): void }} Menu
  *   A <desk-menu>; a plain element where it is not defined (the unit tests' jsdom).
- * @typedef {{ value: string | null, numeric: boolean, pinned: boolean, sortable: boolean, hidden: number }} Of
+ * @typedef {{ value: string | null, numeric: boolean, pinned: boolean, sortable: boolean, hidden: number, editable?: boolean }} Of
  * @typedef {{ filter(op: string): void, column(action: string): void, closed(): void }} MenuActs
  */
 
@@ -23,6 +24,10 @@ const COLUMN = [
   ["fit", "Fit to its content (w)"],
   ["showColumns", "Show a hidden column (H)"],
   ["reset", "Reset the columns"],
+];
+const ROWS = [
+  ["duplicateRows", "Duplicate the selected rows (D)"],
+  ["fillDown", 'Fill down (")'],
 ];
 
 /**
@@ -38,6 +43,7 @@ export function createCellMenu(doc, home, acts) {
     const item = /** @type {CustomEvent<{ item: HTMLElement }>} */ (event).detail.item;
     if (item.dataset.filter) acts.filter(item.dataset.filter);
     else if (item.dataset.column) acts.column(item.dataset.column);
+    else if (item.dataset.row) acts.column(item.dataset.row);
     if (!menu.show) menu.hidden = true;
   });
   menu.addEventListener("close", () => acts.closed());
@@ -70,7 +76,15 @@ export function createCellMenu(doc, home, acts) {
           action === "pin" && of.pinned ? "Unpin the column (P)" : (label ?? ""),
         ),
       );
-      menu.replaceChildren(...items, el(doc, "div", { role: "separator" }), ...column);
+      const rows = of.editable
+        ? [
+            el(doc, "div", { role: "separator" }),
+            ...ROWS.map(([action, label]) =>
+              el(doc, "div", { ...ITEM, "data-row": action ?? "" }, label ?? ""),
+            ),
+          ]
+        : [];
+      menu.replaceChildren(...items, el(doc, "div", { role: "separator" }), ...column, ...rows);
       if (menu.show) menu.show(anchor);
       else menu.hidden = false;
       if (at) {

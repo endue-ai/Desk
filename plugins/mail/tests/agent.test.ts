@@ -102,6 +102,8 @@ describe("the manifest offers them to agents", () => {
       expect(byId(id), id).toMatchObject({ agent: true, irreversible: true });
     for (const id of ["show", "archive", "trash", "flag", "toggle-unread", "compose"])
       expect(byId(id), id).toMatchObject({ agent: true, args: { additionalProperties: false } });
+    // The person answers from the open message, with no args from the palette.
+    expect(byId("rsvp")?.args?.required).toBeUndefined();
     // The person's composer: sending it stays theirs.
     expect(byId("send")?.agent).toBeUndefined();
   });
