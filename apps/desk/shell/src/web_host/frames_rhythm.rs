@@ -14,7 +14,8 @@
 
 use std::time::{Duration, Instant};
 
-use super::{LONG_IDLE, PAINTING};
+use super::super::interval;
+use super::{LONG_IDLE, PAINTING, Pacing, SLOW};
 
 /// The slow frames that painted, the same time apart, before the rhythm holds.
 const BEATS: usize = 3;
@@ -70,5 +71,29 @@ impl Rhythm {
     /// The gap between its last two beats while the rhythm holds.
     pub fn period(&self) -> Option<Duration> {
         self.period
+    }
+}
+
+impl Pacing {
+    /// How far apart its slow frames are: `SLOW` a second, or its pace if that is slower, in whole
+    /// desk frames of the display's (a tenth of a second at 60 Hz and at 120).
+    pub(super) fn slow_period(&self) -> Duration {
+        let pace = self.pace.min(self.rate);
+        interval(self.rate) * self.rate.div_ceil(pace.min(SLOW))
+    }
+
+    /// On the slow frames at `now`: the time of the one due. The first comes a period after it came
+    /// on them, each later one a whole number of periods after it, or where its rhythm skipped
+    /// them to; a late look takes one.
+    pub(super) fn slow(&mut self, now: Instant) -> Option<Instant> {
+        let period = self.slow_period();
+        let at = *self.slow_at.get_or_insert(now + period);
+        if now < at {
+            return None;
+        }
+        let missed = now.duration_since(at).as_nanos() / period.as_nanos();
+        let ahead = u32::try_from(missed + 1).unwrap_or(u32::MAX);
+        self.slow_at = Some(at + period.saturating_mul(ahead));
+        Some(at)
     }
 }
