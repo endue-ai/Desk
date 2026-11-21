@@ -136,7 +136,9 @@ describe("the maintenance form", () => {
     expect(part(full, "locks")?.textContent).toContain("What it blocks");
     const parallel = full.querySelector<HTMLInputElement>('[data-key="parallel"]');
     expect(parallel?.disabled).toBe(true);
-    expect(parallel?.closest("label")?.textContent).toContain("FULL writes the table anew");
+    expect(parallel?.closest("label")?.textContent).toContain(
+      "Not with FULL, which writes the table anew.",
+    );
     // PostgreSQL 13 has neither PROCESS_TOAST nor BUFFER_USAGE_LIMIT.
     const old = draw(state({ read: read(130000) })).el;
     expect(old.querySelector('[data-key="processToast"]')).toBeNull();

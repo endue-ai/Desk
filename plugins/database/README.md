@@ -6,8 +6,9 @@ mode that cannot reach past the database (ADR 0038), and never keeps a password.
 and which modules do it, is in [`docs/features.md`](docs/features.md): a new feature adds its line there.
 
 `Mod+Shift+B` opens it; every operation is a command `endue.database.*` (`plugin.json`), and
-`endue.database.connections`, `.schema`, `.query`, `.activity`, `.cancel-session` and `.end-session` serve
-agents (ADR 0088; the last two only after the person's yes, ADR 0290).
+`endue.database.connections`, `.schema`, `.query`, `.activity`, `.cancel-session`, `.end-session` and
+`.maintenance` serve agents (ADR 0088; the last three change the server only after the person's yes, ADR 0290,
+ADR 0293).
 
 ## Permissions
 

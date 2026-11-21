@@ -154,7 +154,8 @@ describe("the statements", () => {
       "REINDEX (VERBOSE) DATABASE CONCURRENTLY warehouse",
     );
     expect(sql(130000, DATABASE, "cluster").sql).toBe("CLUSTER VERBOSE");
-    expect(sql(140000, DATABASE, "cluster").sql).toBe("CLUSTER (VERBOSE)");
+    expect(sql(160000, DATABASE, "cluster").sql).toBe("CLUSTER VERBOSE");
+    expect(sql(170000, DATABASE, "cluster").sql).toBe("CLUSTER (VERBOSE)");
     expect(sql(140000, DATABASE, "cluster", { verbose: false }).sql).toBe("CLUSTER");
     // Names are quoted only where SQL needs it.
     const odd: Target = { kind: "table", schema: "Sales", table: "Order Items", index: "" };
@@ -196,7 +197,7 @@ describe("the statements", () => {
     const full = offered("vacuum", TABLE, read(160000), { ...DEFAULTS, full: true });
     const why = Object.fromEntries(full.map((x) => [x.key, x.why]));
     for (const key of ["indexCleanup", "truncate", "parallel", "bufferUsageLimit"])
-      expect(why[key], key).toBe("FULL writes the table anew, so this does not apply.");
+      expect(why[key], key).toBe("Not with FULL, which writes the table anew.");
     expect(why.processToast).toBe("FULL always processes the TOAST table.");
     expect(why.freeze).toBe("");
     // The operations a target takes.
@@ -260,7 +261,7 @@ describe("what it locks", () => {
       "How long depends on the size: 16 MB in all (table 12 MB, indexes 4 MB) · 120,000 rows, 30,000 dead.",
     );
     expect(vacuum.lines.at(-1)).toBe(
-      "The plugin sends it alone, outside a transaction block, as VACUUM, REINDEX CONCURRENTLY and CLUSTER or REINDEX of a whole database must run.",
+      "The plugin sends it alone, outside a transaction block: VACUUM, REINDEX CONCURRENTLY, REINDEX of a schema or a database and CLUSTER of a database or a partitioned table cannot run inside one.",
     );
     const full = words(TABLE, "vacuum", { full: true, skipLocked: true });
     expect(full.heavy).toBe(true);
@@ -271,6 +272,9 @@ describe("what it locks", () => {
     ]);
     expect(full.lines).toContain(
       "SKIP_LOCKED: a table another session holds a conflicting lock on is skipped, not waited for.",
+    );
+    expect(words(TABLE, "vacuum", { analyze: true }).lines).toContain(
+      "ANALYZE: then it reads a sample of the rows for the planner's statistics, under the same lock.",
     );
     expect(words(SCHEMA, "vacuum", { full: true }).lines[0]).toContain(
       "Every read and write of each table of schema public waits until it is written anew: VACUUM FULL takes ACCESS EXCLUSIVE, one table at a time",
