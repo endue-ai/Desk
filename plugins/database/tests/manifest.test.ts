@@ -127,7 +127,7 @@ describe("plugin.json", () => {
       "*.sql",
     ]);
     expect(Object.keys(contributes?.settings ?? {})).toEqual(SETTING_KEYS);
-    // Format SQL's style (ADR 0291): each choice and range the code takes is the manifest's.
+    // Format SQL's style (ADR 0292): each choice and range the code takes is the manifest's.
     const declared = contributes?.settings ?? {};
     for (const [field, choices] of Object.entries(CHOICES)) {
       const key = `endue.database.format-${field.replace(/[A-Z]/gu, (c) => `-${c.toLowerCase()}`)}`;

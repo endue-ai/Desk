@@ -1,4 +1,4 @@
-// The layout's documents and their printer (ADR 0291): text, a space between tokens, a line that is
+// The layout's documents and their printer (ADR 0292): text, a space between tokens, a line that is
 // a space or a new line, a soft line that is nothing or a new line, a hard line, groups that print
 // flat when they fit the line and broken otherwise, indents, alignment to the current column, and
 // fills that break only where the next part does not fit. A group that holds a hard line (or text

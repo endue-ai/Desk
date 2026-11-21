@@ -2,7 +2,7 @@
 // (worker.js), started with the SDK's startWorker on the first request, so PostgreSQL's grammar never
 // runs on the frame's thread. `parse` answers the trees; `outline` and `resolve` leave them in the
 // worker, since moving a large script's trees to the page costs more than parsing it; `layout`
-// answers Format SQL's new text for a script or the statement at a caret (ADR 0291). A schema
+// answers Format SQL's new text for a script or the statement at a caret (ADR 0292). A schema
 // model crosses once per object (pass a new object when the schema changes); the last few are kept.
 // Cancel stops the worker while something is in flight, failing it, and the next request starts a
 // fresh one; close stops it in any case.

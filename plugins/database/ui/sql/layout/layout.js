@@ -1,4 +1,4 @@
-// Format SQL for PostgreSQL (ADR 0291): a script, or the statement at a caret in it, laid out again
+// Format SQL for PostgreSQL (ADR 0292): a script, or the statement at a caret in it, laid out again
 // by a style. Each statement is read by the server's grammar (parse.js) and scanner, its document
 // built (build.js) and printed at the style's width, and then parsed again: when the new text does
 // not give the same tree (locations left out), the statement keeps its own text, so a layout can

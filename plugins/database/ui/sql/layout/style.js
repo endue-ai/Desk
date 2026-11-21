@@ -1,4 +1,4 @@
-// The style Format SQL lays PostgreSQL out by (ADR 0291): the case of keywords, the indent, the line
+// The style Format SQL lays PostgreSQL out by (ADR 0292): the case of keywords, the indent, the line
 // width, where commas and AND / OR go, how joins sit, what stays on one line when it fits, and
 // whether a list is indented under its clause or aligned after it. The settings `endue.database.
 // format-*` hold it (settings.js); a value that is not one of the choices, or out of range, keeps

@@ -1,7 +1,7 @@
 // Running from a console's editor: the statement at the caret, the selection or the whole script,
 // with its parameters asked for first (`:name`, `?`, `$1`, remembered for the console); EXPLAIN
 // as a plan tree (ANALYZE of a write rolls back); Format SQL (PostgreSQL laid out again from its
-// parse tree in the parse worker, by the style in the settings, ADR 0291; MySQL and SQLite token
+// parse tree in the parse worker, by the style in the settings, ADR 0292; MySQL and SQLite token
 // by token); more rows of a single read; and a console SELECT made pageable when it came back with
 // more rows than it shows. No DOM.
 

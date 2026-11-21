@@ -7,7 +7,7 @@
 // reach (ADR 0131 grants reads only, ADR 0260); a change on disk goes to the desk
 // (desk.files.changed), whose desk.files.on-change asks before unsaved edits are replaced. A file
 // past the editor's limit opens without its text: Run file runs it from disk. With format on save
-// (`format`, ADR 0291) Save lays the console out first, as Format SQL would. No DOM.
+// (`format`, ADR 0292) Save lays the console out first, as Format SQL would. No DOM.
 
 import { baseName } from "./console-list.js";
 

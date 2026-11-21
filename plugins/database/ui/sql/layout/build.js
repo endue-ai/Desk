@@ -1,4 +1,4 @@
-// A statement's document by the style (ADR 0291): each clause on a line of its own (or the whole
+// A statement's document by the style (ADR 0292): each clause on a line of its own (or the whole
 // statement on one line when it fits and the style says so), a clause's list one item a line when
 // it does not fit, conditions broken at AND and OR, joins on their own lines, subqueries, lists in
 // brackets and CASE indented when they do not fit, everything else wrapping at the line width. Only

@@ -1,4 +1,4 @@
-// Format SQL for PostgreSQL (ADR 0291): a statement laid out again from PostgreSQL's own scanner and
+// Format SQL for PostgreSQL (ADR 0292): a statement laid out again from PostgreSQL's own scanner and
 // parse tree, by a style. The default style on a messy statement, comments where they were, each
 // style setting, and a statement that does not parse (or a BEGIN ATOMIC body) left as written.
 import { readFileSync } from "node:fs";

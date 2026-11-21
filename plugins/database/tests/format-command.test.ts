@@ -1,4 +1,4 @@
-// Format SQL in a console (ADR 0291): a PostgreSQL console's selection, the statement at the caret
+// Format SQL in a console (ADR 0292): a PostgreSQL console's selection, the statement at the caret
 // or the whole console laid out in the parse worker by the format settings, which it follows while
 // the plugin runs; what it left as written is said. MySQL and SQLite keep the word-by-word format.
 // With format on save, Save lays a bound .sql file's console out before it writes the file.

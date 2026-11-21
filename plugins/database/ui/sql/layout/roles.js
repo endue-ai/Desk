@@ -1,4 +1,4 @@
-// What the grammar made of each token (ADR 0291), read from the statement's parse tree: which
+// What the grammar made of each token (ADR 0292), read from the statement's parse tree: which
 // keywords it reads as names (a column, relation, function, role, alias or option named like a
 // keyword, which keep their spelling), which keywords spell a type (in lower case unless the style
 // keeps the case as typed), which operators stand between two operands (a space either side), and
@@ -151,7 +151,7 @@ export function markRoles(tokens, tree, base, style) {
   const index = new Map(tokens.map((t, i) => [t, i]));
 
   visitTree(tree, (kind, fields, parent, key) => {
-    // A type is written in lower case, as PostgreSQL's documentation writes it (ADR 0291).
+    // A type is written in lower case, as PostgreSQL's documentation writes it (ADR 0292).
     if (kind === "TypeName") {
       const first = typeof fields.location === "number" ? at.get(fields.location) : undefined;
       /** @type {Set<string>} */

@@ -1,4 +1,4 @@
-// Format SQL against a real PostgreSQL (ADR 0291), when ENDUE_DB_TEST_POSTGRES holds a URI of a
+// Format SQL against a real PostgreSQL (ADR 0292), when ENDUE_DB_TEST_POSTGRES holds a URI of a
 // scratch database: the server's own parse tree of each statement (debug_print_parse) is the same
 // for the statement as written and as Format lays it out, places in the text left out, in several
 // styles. Each runs in a transaction that rolls back, over a schema of its own.

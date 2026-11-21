@@ -1,6 +1,6 @@
 // The plugin's settings, from `init.get` (the layer the core serves today) over the defaults the
 // manifest declares. A value of the wrong type, out of range or not one of its choices keeps the
-// default. The `format-*` settings hold Format SQL's style (ui/sql/layout/style.js, ADR 0291) and
+// default. The `format-*` settings hold Format SQL's style (ui/sql/layout/style.js, ADR 0292) and
 // whether Save lays a bound .sql file out first (`format-on-save`).
 import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
 

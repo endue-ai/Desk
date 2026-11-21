@@ -1,4 +1,4 @@
-// The preview of Format SQL's style (ADR 0291): Database: preview the SQL format opens a panel of
+// The preview of Format SQL's style (ADR 0292): Database: preview the SQL format opens a panel of
 // its own with a sample PostgreSQL script laid out by the format settings in force, and lays it out
 // again when one of them changes while the panel is open, so each setting shows what it does before
 // a console is formatted. The layout runs in the parse worker; the panel keeps nothing across a

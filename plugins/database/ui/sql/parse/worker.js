@@ -3,7 +3,7 @@
 // (wasm.js, ADR 0283) runs here, never on the frame's thread. It fetches its wasm from the plugin's
 // folder once and compiles it once; a parser that stopped (a trap) is started again for the next
 // request. Models come once each, by key, and are kept until the page says to forget them. Format
-// SQL's layout (../layout/, ADR 0291) runs here too, on the same parser. It imports only relative
+// SQL's layout (../layout/, ADR 0292) runs here too, on the same parser. It imports only relative
 // files: import maps do not reach a module worker.
 import { createLayout } from "../layout/layout.js";
 import { indexModel } from "./model.js";

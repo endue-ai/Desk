@@ -91,7 +91,7 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 - `Mod+Shift+F` and Database: format the SQL lay out the selection, else the whole console; Database:
   format the statement at the caret the selection, else that statement. Only space and the case of
   keywords change.
-- PostgreSQL is laid out from its own scanner and parse tree, in the parse worker (ADR 0291): each clause
+- PostgreSQL is laid out from its own scanner and parse tree, in the parse worker (ADR 0292): each clause
   on its line, a list one item a line when it does not fit, conditions broken at AND and OR, joins on
   their lines, subqueries, CASE and brackets indented when they break. Comments stay where they were, a
   statement a line apart. Each laid-out statement is parsed again, and kept as written unless its tree is

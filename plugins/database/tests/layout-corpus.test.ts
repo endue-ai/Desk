@@ -1,4 +1,4 @@
-// Format SQL never changes what a statement says (ADR 0291), over the parser's corpus and the SQL
+// Format SQL never changes what a statement says (ADR 0292), over the parser's corpus and the SQL
 // the plugin writes itself, in several styles: with whitespace taken out the text is the same (the
 // same with keywords case-folded when the style changes their case), the scanner reads the same
 // tokens but for the case of keywords, every statement parses to the same tree, nothing is refused,

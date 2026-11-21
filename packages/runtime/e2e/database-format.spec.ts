@@ -1,6 +1,6 @@
 import { expect, type Frame, type Page, test } from "@playwright/test";
 
-// Format SQL in endue.database (ADR 0291) on the fixture's scripted PostgreSQL connection
+// Format SQL in endue.database (ADR 0292) on the fixture's scripted PostgreSQL connection
 // `warehouse`: a messy script in a console laid out again from PostgreSQL's own parse tree in the
 // parse worker, by Mod+Shift+F and by the palette's commands (the whole console, the statement at
 // the caret), comments kept, and a statement that does not parse left as written and said.

@@ -1,4 +1,4 @@
-// A statement's tokens as PostgreSQL's own scanner reads them (wasm.js, ADR 0291): each with its
+// A statement's tokens as PostgreSQL's own scanner reads them (wasm.js, ADR 0292): each with its
 // place, its class, whether it touched the token before it, and the comments attached to it. A
 // comment on the line of the token before it trails that token; one on a line of its own leads the
 // next token. Then the tokens as a bracket tree, `( )` and `[ ]` each a group of what is inside.

@@ -1,6 +1,6 @@
 // PostgreSQL's own parser, libpg_query built to WebAssembly (ui/vendor, ADR 0283), behind two calls:
 // a script in, its raw parse tree as libpg_query's JSON or the server's error out; and a script in,
-// the server's scanner's tokens out (the layout reads them, ADR 0291). No DOM and no fetch: the
+// the server's scanner's tokens out (the layout reads them, ADR 0292). No DOM and no fetch: the
 // caller hands over the wasm, so the same module runs in the parse worker and in Node for the tests.
 import PgQueryModule from "../../vendor/libpg-query.mjs";
 

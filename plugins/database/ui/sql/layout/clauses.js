@@ -1,4 +1,4 @@
-// The structure of one level of a statement (ADR 0291): CASE ... END spans as one item, a query's
+// The structure of one level of a statement (ADR 0292): CASE ... END spans as one item, a query's
 // clauses where the grammar starts them (SELECT, FROM and its joins, WHERE, GROUP BY, ..., the
 // heads of INSERT, UPDATE, DELETE and MERGE, ON CONFLICT, RETURNING, MERGE's WHEN), and the parts
 // of a list at its commas and of a condition at its AND and OR. A word starts a clause only where
