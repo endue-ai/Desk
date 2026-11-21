@@ -5,7 +5,7 @@
   "description": "Every primitive a plugin or agent can reach, and the scope each one is limited to. Everything not granted is denied.",
   "$defs": {
     "Permission": {
-      "description": "One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them.",
+      "description": "One permission with its scope. Plugin manifests declare these, and a plugin is asked for, granted and allowed only what its declarations cover (ADR 0260); bridge calls carry the one that covers them.",
       "oneOf": [
         { "$ref": "#/$defs/SearchReadPermission" },
         { "$ref": "#/$defs/SearchSystemPermission" },
@@ -456,18 +456,18 @@
       "enum": ["http", "https", "mailto"]
     },
     "PathPattern": {
-      "description": "An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.",
+      "description": "An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments. In a manifest's declaration /** covers every path the person may be asked for at run time, under ~ and on Windows drives too, and no install grants a declaration that holds it (ADR 0260).",
       "type": "string",
       "minLength": 1,
       "pattern": "^(/|~(/|$)|[A-Za-z]:/|\\$\\{(plugin|workspace|home)\\}(/|$))[^\\\\]*$"
     },
     "HostPattern": {
-      "description": "A host name, optionally with a port, or *. followed by a domain to cover its subdomains.",
+      "description": "A host name, optionally with a port, or *. followed by a domain to cover its subdomains. * alone, without a port, is for a manifest's declaration: any host the person may be asked for at run time, and no install grants a declaration that holds it. A plugin is never asked for or granted a scope that holds it (undeclared), and in a grant or an allowlist it matches no host (ADR 0260).",
       "type": "string",
-      "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:[0-9]{1,5})?$"
+      "pattern": "^(\\*|(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:[0-9]{1,5})?)$"
     },
     "Command": {
-      "description": "A program name looked up on PATH, or an absolute path. No arguments and no whitespace.",
+      "description": "A program name looked up on PATH, or an absolute path. No arguments and no whitespace. * is for a manifest's declaration: any program the person may be asked for at run time, and no install grants a declaration that holds it. A plugin is never asked for or granted a scope that holds it (undeclared), and in a grant or an allowlist it matches no program (ADR 0260).",
       "type": "string",
       "minLength": 1,
       "pattern": "^[^\\s]+$"

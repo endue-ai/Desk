@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
+  "permissions": [{ "permission": "net:connect", "hosts": ["*"] }],
   "autoload": true,
   "description": "Another computer's screen in a desk window over VNC, the protocol macOS Screen Sharing speaks: see it, use its keyboard and pointer, or only watch. The connection is the core's (net.connect), asked for once per computer; passwords are asked each time and never kept.",
   "surfaces": [

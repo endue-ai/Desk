@@ -19,9 +19,9 @@ It answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed`, and
 reads with the SDK's `readBytes` in ranges (`fs.url`, or ranged `fs.read`), asking once for a folder
 outside its grants; `<desk-progress>` shows after 300 ms, and its Cancel keeps the deck on screen. Over
 8 MiB a worker (`ui/worker.js`, with its own XML DOM) reads the deck and stays to decode its pictures.
-http, https and mailto links open with `shell.open` (the core asks once for `shell:open`), a jump shows
+http, https and mailto links open with `shell.open` (its declared `shell:open`), a jump shows
 its slide; links on the stage are named and in the tab order. `fs.watch` on each file runs
-`desk.files.changed { path }` (`cmd:invoke`, the one permission the manifest declares). Asleep out of
+`desk.files.changed { path }` (`cmd:invoke`; its `fs:read` of `/**` holds nothing, ADR 0260). Asleep out of
 sight (ADR 0070, 0176), the SDK's `keepFiles` keeps its files, the slide of each and its watch; back, the
 one on screen opens without asking or taking the focus, the others (or one the frame lost) when shown.
 

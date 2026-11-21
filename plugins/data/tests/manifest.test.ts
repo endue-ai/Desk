@@ -74,17 +74,18 @@ describe("plugin.json", () => {
     expect(data.contributes?.files).toHaveLength(26);
   });
 
-  it("declares no paths of its own: every file is asked for when it opens", () => {
+  it("may be asked for any file and holds none: every file is asked for when it opens", () => {
     const data = manifest();
+    // `/**` says only what may be asked: an install grants none of it, and each folder is still
+    // asked for, or granted when the person opens a file there (ADR 0131, ADR 0260).
     expect(data.permissions).toEqual([
       {
         permission: "cmd:invoke",
         ids: ["desk.files.changed", "desk.palette.pick", "desk.buffers.update"],
       },
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "fs:write", paths: ["/**"] },
     ]);
-    const kinds = (data.permissions ?? []).map((p) => p.permission);
-    expect(kinds).not.toContain("fs:read");
-    expect(kinds).not.toContain("fs:write");
   });
 
   it("has the mask-secrets setting, on by default", () => {

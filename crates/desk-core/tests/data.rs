@@ -210,9 +210,9 @@ fn a_revoke_or_a_plugin_turned_off_ends_its_data_subscriptions() {
     let dir = desk.home.join("plugins/hello");
     std::fs::create_dir_all(dir.join("ui")).unwrap();
     std::fs::write(dir.join("ui/index.html"), "<p>hello</p>").unwrap();
-    let manifest =
-        r#"{ "id": "example.hello", "version": "0.1.0", "kind": "ui", "entry": "ui/index.html" }"#;
-    std::fs::write(dir.join("plugin.json"), manifest).unwrap();
+    let manifest = json!({ "id": "example.hello", "version": "0.1.0", "kind": "ui",
+        "entry": "ui/index.html", "permissions": [scope] });
+    std::fs::write(dir.join("plugin.json"), manifest.to_string()).unwrap();
     desk.core.install_plugin(&dir, false);
     desk.grant("example.hello", scope.clone());
     let unloaded = subscribe(&desk, "example.hello", &scope);

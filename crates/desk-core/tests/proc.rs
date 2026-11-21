@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 use desk_bridge::{BridgeError, ErrorCode};
 use desk_core::{Core, Delivery};
 use serde_json::{Value, json};
-use support::{call, grant, home, install_hello, plugin_manage, roots, set_enabled};
+use support::{call, grant, home, install_hello_declaring, plugin_manage, roots, set_enabled};
 
 const ROLE: &str = "DESK_CORE_TEST_CHILD";
 const TERM: &str = "example.term";
@@ -333,7 +333,7 @@ fn a_pty_can_be_resized() {
 fn a_plugin_turned_off_takes_its_processes_with_it() {
     let home = home("proc");
     let core = Core::new(roots(&home));
-    install_hello(&core, &home);
+    install_hello_declaring(&core, &home, json!([scope(false)]));
     grant(&core, "example.hello", scope(false));
     grant(&core, "desk", plugin_manage());
     let events = core.events().subscribe_addressed();

@@ -39,13 +39,15 @@ describe("plugin.json", () => {
   it("spawns only docker, without a broad grant", () => {
     const spawn = manifest.permissions.filter((p) => p.permission === "proc:spawn");
     expect(spawn).toEqual([{ permission: "proc:spawn", commands: ["docker"] }]);
-    // Files only under the home folder, to write a Dockerfile where the person says; each use asks
-    // for that one folder.
+    // Files to write a Dockerfile where the person says; each use asks for that one folder, and
+    // `/**` holds none (ADR 0260).
     const fs = manifest.permissions.filter((p) => p.permission.startsWith("fs:"));
     const home = ["$", "{home}/**"].join("");
     expect(fs).toEqual([
       { permission: "fs:read", paths: [home] },
       { permission: "fs:write", paths: [home] },
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "fs:write", paths: ["/**"] },
     ]);
   });
 

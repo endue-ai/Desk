@@ -18,7 +18,7 @@ use base64::engine::general_purpose::STANDARD;
 use desk_bridge::{BridgeError, ErrorCode};
 use desk_core::{Core, Delivery};
 use serde_json::{Value, json};
-use support::{call, grant, home, install_hello, plugin_manage, roots, set_enabled};
+use support::{call, grant, home, install_hello_declaring, plugin_manage, roots, set_enabled};
 
 const SCREENS: &str = "example.screens";
 const WAIT: Duration = Duration::from_secs(10);
@@ -255,7 +255,7 @@ fn a_revoked_grant_or_a_disabled_plugin_closes_its_sockets() {
     let end = closed(&events, &socket);
     assert_eq!(end["reason"], "the permission was revoked");
 
-    install_hello(&core, &home);
+    install_hello_declaring(&core, &home, json!([scope("127.0.0.1")]));
     grant(&core, "desk", plugin_manage());
     grant(&core, "example.hello", scope("127.0.0.1"));
     let theirs = connect(&core, "example.hello", port, scope("127.0.0.1")).unwrap();

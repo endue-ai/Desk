@@ -43,7 +43,9 @@ what `desk-sys` already produces and what a recogniser needs, at 50 small events
   The runtime may stop any capture; another caller's id is `not_found` to everyone else.
 * **Asking.** A caller without a grant is asked once through the existing prompt (`check_or_ask`, as
   perm.request asks), then the OS (`request_access`) if it was never asked; `NSMicrophoneUsageDescription`
-  is in the macOS Info.plist. desk-boot injects `desk_sys::audio::os()`; tests inject `FakeInput`.
+  is in the macOS Info.plist, and says that the desk and the plugins you allow can hear the
+  microphone, with no promise of where the sound goes (#378). desk-boot injects
+  `desk_sys::audio::os()`; tests inject `FakeInput`.
 * **The chrome.** The rail's Listen button (composition D, #291) is on with a dot while anything
   captures, names who listens, and stops every capture when pressed. The account bar, which stays
   when the rail is hidden or another plugin holds `role:rail`, shows it on the avatar too, and its
@@ -51,7 +53,8 @@ what `desk-sys` already produces and what a recogniser needs, at 50 small events
 * **What ends a capture.** A stop needs only ownership, as net.close (a `once` grant the start spent
   must not keep a plugin from stopping its own capture). The runtime stops a plugin's captures when
   one of its windows closes, or its frame loads again, is unloaded or is stopped (`plugin-mic.ts`,
-  called from `frames/install.ts`); the core
+  called from `frames/install.ts`), and when the shell loads a stalled plugin page again by itself,
+  which it tells the desk's page first (`desk://frame-reloaded`, `web_host/revive.rs`, #378); the core
   ends a socket caller's (`cli`, `agent:<id>`) when its last connection closes (`Core::caller_left`).
   A caller holds at most four captures; a fifth is `forbidden`. desk-mcp opens one connection per call, so an agent's
   capture ends as soon as the call that started it returns: it fails safe, and an agent cannot keep
@@ -72,9 +75,10 @@ what `desk-sys` already produces and what a recogniser needs, at 50 small events
 * Bad, because 20 ms frames cost about 50 events a second for each capture on the bridge.
 * Bad, because without Web Speech the ear shows the level but hears no words: transcription and the
   wake word are follow-ups.
-* Bad, because CEF's own reload of a stalled plugin page (`web_host/revive.rs`) does not tell the
-  runtime, so a capture made by the page before it stalled ends only from the chrome; the shell
-  saying so to the runtime is a follow-up.
+* Bad, because every end of a plugin's page the runtime sees (a window closed, a reload by the
+  runtime or by the shell, a frame unloaded out of sight or stopped, a crash) reports
+  `stopped_by_person`, as the runtime stops the capture: `surface_closed` comes only when a plugin
+  closes its own last surface with `ui.surface.close` (#378).
 * Bad, because Windows and Linux capture is tested only through the fake: cpal serves them, but no
   real device there was tried for this change.
 

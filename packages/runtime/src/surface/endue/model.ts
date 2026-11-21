@@ -15,7 +15,7 @@ import type {
 import type { Lang } from "../../shell/copy";
 import { type EnduePresence, enduePresence, hexColour, type Read } from "../../system/endue-ids";
 import { ago } from "../local-agent/model";
-import { type EndueKey, endueText } from "./copy";
+import { type EndueKey, endueLocale, endueText } from "./copy";
 
 /** One fact of Studio: a label, its value, and how it reads. */
 export interface Fact {
@@ -93,8 +93,7 @@ export function dotOf(presence: string): string {
 function day(lang: Lang, at: string | undefined): string {
   const time = at ? Date.parse(at) : Number.NaN;
   if (Number.isNaN(time)) return "";
-  const locale = lang === "ko" ? "ko-KR" : "en-US";
-  return new Date(time).toLocaleDateString(locale, {
+  return new Date(time).toLocaleDateString(endueLocale(lang), {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -150,7 +149,7 @@ function membersOf(
       name,
       initial: mine ? initialOf(name) : "?",
       ...(hexColour(mine?.personalColor) ? { colour: hexColour(mine?.personalColor) } : {}),
-      seat: endueText(lang, seat),
+      seat: endueText(lang, `seat.${seat}`),
       role: member.roleKey,
       own: Boolean(mine),
     };
@@ -193,6 +192,21 @@ export function spaceFront(
       : "",
   };
 }
+
+/** How a piece of work stands, in words: each status its own (`surface.endue.work.*`). */
+const WORK: Record<StudioSpaceWorkStatus, EndueKey> = {
+  queued: "work.queued",
+  preparing: "work.preparing",
+  in_progress: "work.inProgress",
+  needs_you: "work.needsYou",
+  stopping: "work.stopping",
+  pausing: "work.pausing",
+  paused: "work.paused",
+  done: "work.done",
+  partly_done: "work.partlyDone",
+  failed: "work.failed",
+  stopped: "work.stopped",
+};
 
 const WORK_TONE: Partial<Record<StudioSpaceWorkStatus, Line["tone"]>> = {
   needs_you: "attention",
@@ -263,9 +277,7 @@ export function spaceStudio(
     work: (detail?.work ?? []).map((w) => ({
       id: w.id,
       title: w.title,
-      meta: [t(w.status === "paused" ? "paused" : w.status), ago(lang, w.updatedAt, now)]
-        .filter(Boolean)
-        .join(" · "),
+      meta: [t(WORK[w.status]), ago(lang, w.updatedAt, now)].filter(Boolean).join(" · "),
       ...(WORK_TONE[w.status] ? { tone: WORK_TONE[w.status] } : {}),
     })),
     results: (detail?.results ?? []).map((r) => ({

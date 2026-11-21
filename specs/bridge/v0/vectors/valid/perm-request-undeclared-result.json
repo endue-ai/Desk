@@ -1,0 +1,8 @@
+{
+  "target": "PermRequestResult",
+  "description": "a plugin asked for a scope its manifest does not declare, so nobody was asked",
+  "instance": {
+    "granted": false,
+    "reason": "undeclared"
+  }
+}

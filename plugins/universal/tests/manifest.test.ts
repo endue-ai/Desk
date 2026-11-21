@@ -39,6 +39,9 @@ describe("plugin.json", () => {
       { permission: "cmd:invoke", ids: ["*"] },
       // Saved views: open by id, the builder's Save (ADR 0102).
       { permission: "view:manage" },
+      // A source's file anywhere, or its URL's host: asked for, never held (ADR 0260).
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "net:fetch", hosts: ["*"] },
     ]);
     expect(manifest.contributes?.commands?.map((command) => command.id)).toEqual([
       "desk.universal.open",

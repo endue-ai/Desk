@@ -240,14 +240,15 @@ impl Composed {
         changed
     }
 
-    /// `surface`'s paint into `id`, a texture aside, failed: that picture goes, a window page's or
-    /// a plugin's (ADR 0227), so none is shown that holds no paint.
+    /// `surface`'s paint into `id`, a texture aside, failed: that picture goes, a window page's, a
+    /// plugin's (ADR 0227) or the desk's page's (#330), so none is shown that holds no paint.
     pub(super) fn aside_failed(&mut self, surface: &str, id: TextureId) {
         if let Some(wait) = self.pages.waits.get_mut(surface) {
             wait.aside.retain(|(_, a)| *a != id);
             wait.last = None;
         }
         self.pane_aside_failed(surface, id);
+        self.page_aside_failed(surface, id);
         self.frames.destroy(&mut self.compositor, id);
     }
 

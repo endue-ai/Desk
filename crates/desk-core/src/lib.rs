@@ -80,6 +80,7 @@ mod core_views_check;
 mod core_wasm;
 mod core_web;
 mod core_web_control;
+mod declared;
 mod desk_files;
 mod dispatch;
 mod eris_context;

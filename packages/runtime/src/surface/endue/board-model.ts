@@ -16,9 +16,9 @@ import { type EnduePresence, enduePresence, type Read } from "../../system/endue
 import {
   type BoardKey,
   boardText,
+  boardWord,
   type Capability,
   capability,
-  isBoardKey,
   type Seg,
 } from "./board-copy";
 import {
@@ -109,8 +109,8 @@ const ready = <T>(read: Read<T> | undefined) => (read?.state === "ready" ? read.
 /** A wallpaper's name and where it comes from: "Constellation · Built-in", "Dusk · by Mina". */
 function wallpaperText(lang: Lang, w: StudioWallpaper): string {
   const t = (key: BoardKey, vars?: Record<string, string>) => boardText(lang, key, vars);
-  const engine = `wp_${w.id}`;
-  const name = w.source === "builtin" ? (isBoardKey(engine) ? t(engine) : w.id) : (w.name ?? w.id);
+  const name =
+    w.source === "builtin" ? (boardWord(lang, "wallpaper", w.id) ?? w.id) : (w.name ?? w.id);
   const from =
     w.source === "builtin"
       ? t("builtinSource")
@@ -149,13 +149,13 @@ export function studioBoard(
     ...available.filter((key) => !TOOLS.some(([k]) => k === key)).map((key) => [key, "wrench"]),
   ].map(([key = "", icon = "wrench"]) => ({
     key,
-    label: isBoardKey(key) ? t(key) : key,
+    label: boardWord(lang, "tool", key) ?? key,
     on: !disabled.has(key),
     icon,
   }));
   const on = new Set(facets?.traits.filter((x) => x.enabled).map((x) => x.key));
   const traits: Badge[] = TRAITS.filter(([key]) => key !== "autonomy" || on.has(key)).map(
-    ([key, icon]) => ({ key, label: isBoardKey(key) ? t(key) : key, on: on.has(key), icon }),
+    ([key, icon]) => ({ key, label: boardWord(lang, "trait", key) ?? key, on: on.has(key), icon }),
   );
   const first = facets?.prompt?.content
     .split("\n")

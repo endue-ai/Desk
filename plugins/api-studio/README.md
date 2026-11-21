@@ -18,7 +18,7 @@ secrets are offered a move into secret variables, and secrets never follow a red
 
 | Permission | Why |
 | --- | --- |
-| `proc:spawn` (`curl`) | Send requests with curl, and only curl |
+| `proc:spawn` (`curl`; `*`, asked first) | Send requests with curl, or the one `endue.api-studio.curl` names |
 | `brain:ask` | The Assistant: explain, write requests, tests, checks and docs |
 | `fs:read`, `fs:write` (`${home}/**`) | Collections' files; bodies sent from files; saved responses and imports |
 | `shell:open` (`http`, `https`) | Open a link in the docs |

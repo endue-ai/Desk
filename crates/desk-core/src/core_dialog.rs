@@ -1,14 +1,15 @@
-//! `dialog.*` (#308): the OS's own open and save dialogs, which the shell shows attached to the desk
-//! window. The core keeps no dialog: the shell hands it a [`Dialogs`] once it has a window, and each
-//! call asks it. What the person chose is granted to the caller for the session, as any grant is
-//! (`perm.list` shows it, `perm.revoke` ends it): `dialog.open` grants `fs:read` on each chosen file
-//! (a folder: the folder and what lies inside it), `dialog.save` grants `fs:write` and `fs:read` on
-//! the chosen path alone. Asking needs no permission, since the person's choice is the consent; only
-//! the desk's page and installed plugins may ask (an agent, an MCP server, `cli` or the palette are
-//! refused, and nothing is shown). A chosen path is granted only as the OS named it: valid UTF-8, no
-//! `\\` outside Windows (a legal name character there that a bridge path cannot hold), already in
-//! normal form (no `.`, `..`, empty segment or UNC prefix) and no `*` or `?`; under the home folder
-//! it is answered and granted as `~/…`, the spelling the desk's buffers use (`policies/files.ts`).
+//! `dialog.*` (#308): the OS's own open and save dialogs, which the shell shows attached to the
+//! desk window. The core keeps no dialog: the shell hands it a [`Dialogs`] once it has a window,
+//! and each call asks it. What the person chose is granted to the caller for the session, as any
+//! grant is (`perm.list` shows it, `perm.revoke` ends it): `dialog.open` grants `fs:read` on each
+//! chosen file (a folder: the folder and what lies inside it), `dialog.save` grants `fs:write` and
+//! `fs:read` on the chosen path alone; a plugin gets only what its manifest declares (ADR 0260).
+//! Asking needs no permission, since the person's choice is the consent; only the desk's page and
+//! installed plugins may ask (an agent, an MCP server, `cli` or the palette are refused, and
+//! nothing is shown). A chosen path is granted only as the OS named it: valid UTF-8, no `\\`
+//! outside Windows (a legal name character there that a bridge path cannot hold), already in normal
+//! form (no `.`, `..`, empty segment or UNC prefix) and no `*` or `?`; under the home folder it is
+//! answered and granted as `~/…`, the spelling the desk's buffers use (`policies/files.ts`).
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -179,11 +180,18 @@ impl Core {
         } else {
             paths.clone()
         };
-        self.grant_for(caller, read(granted), GrantDuration::Session);
+        self.grant_chosen(caller, read(granted));
         json(DialogOpenResult {
             cancelled: false,
             paths,
         })
+    }
+
+    /// Grant the person's choice to `caller` for the session, when its manifest declares it.
+    fn grant_chosen(&self, caller: &str, permission: Permission) {
+        if !self.undeclared(caller, &permission) {
+            self.grant_for(caller, permission, GrantDuration::Session);
+        }
     }
 
     pub(crate) fn dialog_save(&self, caller: &str, params: DialogSaveParams) -> Answer {
@@ -198,8 +206,8 @@ impl Core {
                 path: None,
             });
         };
-        self.grant_for(caller, write(vec![path.clone()]), GrantDuration::Session);
-        self.grant_for(caller, read(vec![path.clone()]), GrantDuration::Session);
+        self.grant_chosen(caller, write(vec![path.clone()]));
+        self.grant_chosen(caller, read(vec![path.clone()]));
         json(DialogSaveResult {
             cancelled: false,
             path: Some(path),

@@ -21,13 +21,17 @@
         "desk.buffers.list",
         "desk.palette.pick",
         "endue.terminal.new",
-        "endue.git.status"
+        "endue.git.status",
+        "endue.docker.copy-out"
       ]
     },
     {
       "permission": "shell:open",
       "paths": ["${home}/**"]
-    }
+    },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "fs:write", "paths": ["/**"] },
+    { "permission": "shell:open", "paths": ["/**"] }
   ],
   "surfaces": [
     {
