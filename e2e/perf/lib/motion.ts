@@ -129,6 +129,36 @@ export function timing(shake: Shake, longMs: number, screen: boolean): Timing {
   };
 }
 
+/** The rate of the display the desk draws at (its trace's `display` line, #249): 60 where the
+ * trace names none. */
+export function displayRate(lines: readonly Line[]): number {
+  const hz = lines.find((l) => l.e === "display")?.f?.hz;
+  return typeof hz === "number" && hz > 0 ? hz : 60;
+}
+
+/**
+ * The busy loops on the main thread in `shake`'s swing (`busy` lines, #249: `compositor_input {
+ * busy }` holds it right after a frame is handed), and the frames they dropped: each interval of
+ * a display interval and a half or more, the display at `hz`, that spans one or ends in it. In
+ * `screen` mode only frames shown in the window count.
+ */
+export function busyDrops(shake: Shake, hz: number, screen = false) {
+  const [from, to] = shake.swing;
+  const inside = shake.lines.filter((l) => l.t >= from && l.t <= to);
+  const frames = inside.filter((l) => l.e === "frame" && (!screen || l.f.shown));
+  const loops = inside.filter((l) => l.e === "busy");
+  const long = 1.5 * (1000 / hz);
+  let dropped = 0;
+  for (const loop of loops) {
+    const end = loop.t + (Number(loop.f.ms) || 0);
+    for (let i = 1; i < frames.length; i++) {
+      const [a, b] = [(frames[i - 1] as Line).t, (frames[i] as Line).t];
+      if (b >= loop.t && a <= end && b - a >= long) dropped++;
+    }
+  }
+  return { loops: loops.length, dropped };
+}
+
 /** Where window `id` was drawn in a captured frame, and from what. */
 export interface Drawn {
   tag: string;
