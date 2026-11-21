@@ -4,6 +4,7 @@
 // them runs the connector's commands (writing.js); the commands are commands.js. It talks only to
 // ctx.bridge, ctx.commands, ctx.settings, ctx.surface and a view, so the SDK's test host runs it.
 import { createActions } from "./actions.js";
+import { answerAgents } from "./agent.js";
 import { registerCommands } from "./commands.js";
 import { quickReactions } from "./emoji.js";
 import { createLoad } from "./load.js";
@@ -192,7 +193,7 @@ export function createChat({ bridge, commands, settings, surface }, view, option
     else render();
     return pinned;
   };
-  const { command } = registerCommands({
+  const { command, answer } = registerCommands({
     commands,
     surface,
     view,
@@ -219,6 +220,8 @@ export function createChat({ bridge, commands, settings, surface }, view, option
       connect: actions.connect,
     },
   });
+
+  answerAgents(answer, { conversations: () => s.conversations, query: actions.query, message });
 
   settings.onChange(({ key: name, value }) => {
     if (name === "page") s.conf.page = pageOf(value);
