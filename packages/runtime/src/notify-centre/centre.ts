@@ -137,8 +137,11 @@ export function createPanel(deps: PanelDeps): Panel {
     if (!inside) return;
     const keyed = [...body.querySelectorAll<HTMLElement>("[data-key]")];
     const same = key ? keyed.find((el) => el.dataset.key === key) : undefined;
+    const row = rowOfId(id);
     if (same) same.focus();
-    else if (rowOfId(id)) focusRow(rowOfId(id));
+    else if (row) focusRow(row);
+    // Its row went another way (desk.notify.clear): the panel keeps the focus, and Escape works.
+    else element.focus();
   };
 
   element.addEventListener("keydown", (event) => {
