@@ -1,5 +1,6 @@
 //! A window's own page's paints between its picture and the textures aside, and the sizes a
-//! picture of it leaves its panes (ADR 0233).
+//! picture of it leaves its panes (ADR 0233); a paint aside that failed, the desk's page's too
+//! (#330).
 
 use desk_compositor::{Rect, TextureId};
 
@@ -280,4 +281,36 @@ fn a_paint_aside_that_failed_is_never_shown() {
     assert!(!sink.lock().pages_waiting(), "no picture waits");
     assert!(!sink.lock().pages_wait(&[terminal()], 2.0));
     assert_eq!(page_size(sink), Some((1200, 800)));
+}
+
+/// The desk's own page, whose paints of a size no report names wait aside for one (#269).
+const DESK: &str = crate::compositor_window::PAGE;
+
+/// The desk's page's picture's size, as the scene draws it.
+fn desk_size(sink: &Shared) -> Option<(u32, u32)> {
+    let composed = sink.lock();
+    composed.frames.size(composed.texture_of(DESK)?)
+}
+
+#[test]
+fn a_desk_page_paint_aside_that_failed_is_never_shown() {
+    let Some(gpu) = shared() else { return };
+    let sink = &gpu.0;
+    assert!(paint(&gpu, DESK, (1280, 800), (1280, 800)));
+    assert!(!sink.lock().page_laid((1280, 800)), "nothing aside");
+    // The page painted 1440×900 before its report came, into its spare, and the paint failed.
+    assert!(
+        !paint(&gpu, DESK, (1440, 900), (720, 450)),
+        "the import does not match"
+    );
+    assert!(
+        !sink.lock().page_laid((1440, 900)),
+        "its report finds no picture aside"
+    );
+    assert_eq!(desk_size(sink), Some((1280, 800)), "the last picture stays");
+    // Its next paint of that size waits aside until its report shows it.
+    assert!(paint(&gpu, DESK, (1440, 900), (1440, 900)));
+    assert_eq!(desk_size(sink), Some((1280, 800)), "aside");
+    assert!(sink.lock().page_laid((1440, 900)));
+    assert_eq!(desk_size(sink), Some((1440, 900)));
 }
