@@ -185,7 +185,29 @@ export function mountMenus(root: HTMLElement, ctx: ShellCtx, switcher: HTMLEleme
     el.querySelector<HTMLElement>(".menu-item:not(:disabled)")?.focus();
   };
 
+  /** Whether `at` (the desk's page's point) lies on the tool, in a window's own page, that opened it. */
+  const onOpener = (at: { x: number; y: number }) => {
+    const tool = open?.kind === "window" ? open.under : undefined;
+    const page = tool && tool.ownerDocument !== doc && ctx.pages?.windowOf(tool.ownerDocument);
+    if (!tool || !page || !ctx.pages) return false;
+    const r = tool.getBoundingClientRect();
+    const { x, y } = ctx.pages.toDesk(page, { x: r.left, y: r.top });
+    return at.x >= x && at.x < x + r.width && at.y >= y && at.y < y + r.height;
+  };
+
   const offs = [
+    // The desk's page hears a press over a window as well (ADR 0150), on nothing of its own where
+    // the window lies in a page of its own (ADR 0201), and maybe after that page opened the menu:
+    // the press on the tool that opened it is the tool's, not one outside that closes it.
+    listen(
+      doc,
+      "pointerdown",
+      (e) => {
+        const { clientX: x, clientY: y } = e as PointerEvent;
+        if (onOpener({ x, y })) e.stopImmediatePropagation();
+      },
+      { capture: true },
+    ),
     // Arrow keys walk the items; Esc and Tab close the menu.
     listen(el, "keydown", (e) => {
       const items = [...el.querySelectorAll<HTMLElement>(".menu-item:not(:disabled)")];
