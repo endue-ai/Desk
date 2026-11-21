@@ -122,7 +122,6 @@ describe("SQL problems", () => {
     const none = [
       "select * from later.anything",
       "select ctid, xmin, xmax, cmin, cmax, tableoid from people",
-      "select * from metrics.events_2026, metrics.ev_2024",
       "select last_value from people_id_seq",
       "alter table if exists ghost add column x int",
       "\\set id 1",
@@ -151,11 +150,14 @@ describe("SQL problems", () => {
       [],
     );
     expect(await problemsOf("select now(), count(*), nope(1)", {}, WITH_CATALOG)).toEqual([]);
-    // A schema holding a partitioned table may hold partitions of any name.
+    // A partition the cache read under its root binds, with the root's columns; another does not.
     expect(
-      await problemsOf("select * from ev_2024", { searchPath: ["public", "metrics"] }),
+      await problemsOf("select at from ev_2024", { searchPath: ["public", "metrics"] }),
     ).toEqual([]);
-    expect(await problemsOf("select emial from metrics.events")).toEqual([
+    expect(await problemsOf("select * from metrics.events_2026")).toEqual([
+      ["metrics.events_2026", 'relation "metrics.events_2026" does not exist'],
+    ]);
+    expect(await problemsOf("select emial from metrics.ev_2024")).toEqual([
       ["emial", 'column "emial" does not exist'],
     ]);
     // A table the script creates has the columns it was given.

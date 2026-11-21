@@ -130,9 +130,10 @@ Modules: `sql/layout/`, `console-run.js`, `console-files.js`.
 - The check runs in the parse worker and parses again only the statements that changed. SET search_path,
   set_config, and the tables, columns and schemas the script creates, renames or moves count for the statements
   after them.
-- Nothing is told where the cache cannot tell: a schema it did not read, a function, a schema with partitioned
-  tables, after DO, CALL or CREATE EXTENSION, psql's meta-commands and `:name` and `?` statements. The catalog is
-  never queried for it. Once a statement runs, the server's answer replaces the check's until its text changes.
+- Nothing is told where the cache cannot tell: a schema it did not read, a function, after DO, CALL or CREATE
+  EXTENSION, psql's meta-commands and `:name` and `?` statements. The catalog is never queried for it. A partition
+  the cache read under its root table is a relation with the root's columns. Once a statement runs, the server's
+  answer replaces the check's until its text changes.
 - The underline, a mark in the gutter and the message on hover. `F8` and `Shift+F8` go to the next and previous
   problem and say it on the status line; `Mod+.` opens the list (Database: list the SQL problems), read by a
   screen reader. `problems-syntax` and `problems-names` turn each kind off. MySQL and SQLite consoles are not

@@ -1,6 +1,7 @@
 // Fixtures for the SQL problems (PG-30, ADR 0294): the worker's checker over the vendored parser in
-// Node, a schema model as the cache answers it (a partitioned table, a sequence without columns, an
-// unread schema), and the problems of a script as [underlined text, message] pairs to read.
+// Node, a schema model as the cache answers it (a partitioned table with its partition, a sequence
+// without columns, an unread schema), and the problems of a script as [underlined text, message]
+// pairs to read.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createChecker } from "../ui/diagnose/check.js";
@@ -10,8 +11,8 @@ import { loadLibpgQuery } from "../ui/sql/parse/wasm.js";
 const columns = (...names: string[]) => names.map((name) => ({ name, type: "integer" }));
 
 /**
- * public (people, orders, a view, a sequence), app (its own people), metrics (a partitioned table,
- * whose partitions the cache leaves out) and later (not read).
+ * public (people, orders, a view, a sequence), app (its own people), metrics (a partitioned table
+ * and its partition, which the cache reads under it: PG-50) and later (not read).
  */
 export const PROBLEM_MODEL: SchemaModel = {
   schemas: [
@@ -33,12 +34,8 @@ export const PROBLEM_MODEL: SchemaModel = {
     {
       name: "metrics",
       relations: [
-        Object.assign(
-          { name: "events", kind: "table", columns: columns("id", "at") },
-          {
-            partitioned: true,
-          },
-        ),
+        { name: "events", kind: "table", columns: columns("id", "at") },
+        { name: "ev_2024", kind: "table", columns: columns("id", "at") },
       ],
       routines: [],
     },

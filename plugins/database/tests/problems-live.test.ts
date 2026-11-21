@@ -1,6 +1,7 @@
 // The SQL problems against a real PostgreSQL (PG-30, ADR 0294), when ENDUE_DB_TEST_POSTGRES holds the
 // URI of a scratch database: the plugin's schema cache reads a schema with a partitioned table whose
-// partitions are named otherwise, a sequence and a view; then every statement of a corpus is checked
+// partitions are named otherwise (one in the other schema), a sequence and a view; then every
+// statement of a corpus is checked
 // over what the cache holds and run by the server in a transaction that is never kept. A statement
 // the server runs reports nothing; one it refuses that the check tells reports the server's message
 // where the server points.
@@ -19,7 +20,7 @@ import { memoryStore } from "./schema-cache-helpers";
 
 const pgUri = process.env.ENDUE_DB_TEST_POSTGRES;
 const S = "t460_live";
-/** A schema with a partitioned table, whose partitions the cache leaves out. */
+/** A schema with a partitioned table, whose partitions the cache reads under it (PG-50). */
 const P = "t460_parts";
 
 /** Statements the server runs: nothing may be reported. */
@@ -28,6 +29,7 @@ const RUNS = [
   "select p.id, o.total from people p join orders o on o.person = p.id where o.total > 1",
   `select * from ${P}.ev_2024, ${P}.events where events.at > '2024-02-01'`,
   `select id from ${P}.ev_2024 where at is not null`,
+  "select at from ev_2025 where id > 0",
   "select ctid, xmin, tableoid from people",
   "select last_value from people_id_seq",
   "select id from big_orders",
@@ -99,6 +101,8 @@ const CAUGHT = [
   "select emial from (select email from people) s",
   "select * from big_orders where totl > 1",
   "create table made (a int);\nselect b from made",
+  `select * from ${P}.ev_2023`,
+  `select nope from ${P}.ev_2024`,
 ];
 
 /** Statements the server refuses where the check cannot tell: a schema the cache did not read. */
@@ -161,6 +165,7 @@ describe.skipIf(!pgUri)("SQL problems on a real PostgreSQL", () => {
         "CREATE VIEW big_orders AS SELECT id, total FROM orders WHERE total > 100;\n" +
         `CREATE TABLE ${P}.events (id int, at date) PARTITION BY RANGE (at);\n` +
         `CREATE TABLE ${P}.ev_2024 PARTITION OF ${P}.events FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');\n` +
+        `CREATE TABLE ev_2025 PARTITION OF ${P}.events FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');\n` +
         "CREATE SEQUENCE people_id_seq",
     );
   }, 60_000);
@@ -178,9 +183,10 @@ describe.skipIf(!pgUri)("SQL problems on a real PostgreSQL", () => {
         .find((s) => s.name === S)
         ?.relations?.map((r) => r.name)
         .sort(),
-    ).toEqual(["big_orders", "orders", "people", "people_id_seq"]);
-    expect(model?.schemas.find((s) => s.name === P)?.relations).toEqual([
-      { name: "events", kind: "table", columns: expect.any(Array), partitioned: true },
+    ).toEqual(["big_orders", "ev_2025", "orders", "people", "people_id_seq"]);
+    expect(model?.schemas.find((s) => s.name === P)?.relations?.map((r) => r.name)).toEqual([
+      "events",
+      "ev_2024",
     ]);
     const c = await checker();
     const check = (sql: string) => c.check({ sql, searchPath: [S], user: "" }, model).problems;

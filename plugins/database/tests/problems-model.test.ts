@@ -30,6 +30,16 @@ function cacheView(readAt: number | null, states: State[]) {
     "public.big": [{ name: "id", type: "integer" }],
     "pg_catalog.pg_class": [{ name: "relname", type: "name" }],
   };
+  /** PG-50's parts: a partition at each level under its root, one in an unread schema. */
+  const parts: Record<string, Array<{ kind: string; name: string; def?: object }>> = {
+    "public.events": [
+      { kind: "index", name: "events_at" },
+      { kind: "partition", name: "events_2026", def: { schema: "public", key: "LIST (id)" } },
+      { kind: "partition", name: "events_2026_one", def: { schema: "public" } },
+      { kind: "partition", name: "events_old", def: { schema: "sales" } },
+      { kind: "partition", name: "events_far", def: { schema: "public", foreign: true } },
+    ],
+  };
   const held = (s: string) => states.find((x) => x.name === s)?.held ?? false;
   return {
     readAt,
@@ -38,6 +48,7 @@ function cacheView(readAt: number | null, states: State[]) {
     held,
     objects: (s: string) => (held(s) ? (objects[s] ?? []) : undefined),
     columns: (s: string, t: string) => (held(s) ? (columns[`${s}.${t}`] ?? []) : undefined),
+    parts: (s: string, t: string) => (held(s) ? (parts[`${s}.${t}`] ?? []) : undefined),
     routines: (s: string) =>
       held(s) && s === "public"
         ? [{ name: "touch", args: "", kind: "function", result: "trigger" }]
@@ -86,14 +97,17 @@ describe("what SQL problems bind against", () => {
                 { name: "name", type: "text" },
               ],
             },
-            {
-              name: "events",
-              kind: "table",
-              columns: [{ name: "at", type: "date" }],
-              partitioned: true,
-            },
+            { name: "events", kind: "table", columns: [{ name: "at", type: "date" }] },
             { name: "people_id_seq", kind: "sequence" },
             { name: "big", kind: "view", columns: [{ name: "id", type: "integer" }] },
+            // Partitions at every level, with the root's columns; one in an unread schema is not.
+            { name: "events_2026", kind: "table", columns: [{ name: "at", type: "date" }] },
+            { name: "events_2026_one", kind: "table", columns: [{ name: "at", type: "date" }] },
+            {
+              name: "events_far",
+              kind: "foreign table",
+              columns: [{ name: "at", type: "date" }],
+            },
           ],
           routines: [{ name: "touch", kind: "function", args: "", result: "trigger" }],
         },
@@ -133,6 +147,10 @@ describe("what SQL problems bind against", () => {
     });
     expect(context.model.schemas.map((s) => s.name)).toEqual(["public", "sales"]);
     expect(context.model.schemas[0]?.relations?.map((r) => r.name)).toContain("people");
+    // The shop's partitions, read under their root (PG-50), are relations of their own.
+    expect(context.model.schemas[0]?.relations?.map((r) => r.name)).toEqual(
+      expect.arrayContaining(["events", "events_2026", "events_2026_one", "events_rest"]),
+    );
     const before = m.clients.spawned.length;
     for (let i = 0; i < 100; i++)
       expect(((await contextOf(m)) as typeof context).model).toBe(context.model);

@@ -2,8 +2,8 @@
 // names (ui/sql/parse/resolve.js) worded as the server words its refusal and placed where the server
 // points, with what was looked for and where (the search path), and a hint of the nearest name.
 // What the cache cannot tell is left out: names it did not read, functions (it leaves out aggregates,
-// window functions and what extensions bring), system columns, relations in a schema that holds a
-// partitioned table (partitions are not read), and every name of a statement under IF EXISTS. Pure.
+// window functions and what extensions bring), system columns, relations in a schema an extension
+// or IMPORT FOREIGN SCHEMA filled, and every name of a statement under IF EXISTS. Pure.
 import { effectivePath } from "../sql/parse/scope.js";
 import { walk } from "../sql/parse/tree.js";
 import { pathText, searchPathOf } from "./script.js";

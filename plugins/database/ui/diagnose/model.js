@@ -2,8 +2,9 @@
 // cache holds now (schema-cache/view.js), read without asking the server. A schema the cache lists
 // but did not read is in the model by name alone, so its names are "not read" rather than missing;
 // a system schema it did not read is left out (the resolver knows pg_catalog's own names); sequences
-// have no column list; partitioned tables are marked, since the cache leaves their partitions out.
-// The model is kept per connection while the cache does not change, so the worker gets it once.
+// have no column list. Partitions, which the cache reads under their root table (PG-50, ADR 0295),
+// are relations of the schema each lives in, with the root's columns. The model is kept per
+// connection while the cache does not change, so the worker gets it once.
 
 /**
  * @typedef {import("../sql/parse/model.js").SchemaModel} SchemaModel
@@ -26,7 +27,6 @@ function schemaOf(/** @type {CacheView} */ view, /** @type {string} */ name) {
         name: o.name,
         kind: o.kind,
         ...(columns ? { columns: columns.map((c) => ({ name: c.name, type: c.type })) } : {}),
-        ...(o.detail === "partitioned" ? { partitioned: true } : {}),
       };
     });
   const routines = (view.routines(name) ?? []).map((r) => ({
@@ -36,6 +36,29 @@ function schemaOf(/** @type {CacheView} */ view, /** @type {string} */ name) {
     result: r.result,
   }));
   return { name, relations, routines };
+}
+
+/**
+ * The partitions under a held schema's partitioned tables, at every level, each with the schema it
+ * lives in and its root's columns (a partition has its parent's columns).
+ * @returns {Array<[string, import("../sql/parse/model.js").ModelRelation]>}
+ */
+function partitionsOf(/** @type {CacheView} */ view, /** @type {ModelSchema} */ schema) {
+  /** @type {Array<[string, import("../sql/parse/model.js").ModelRelation]>} */
+  const found = [];
+  for (const root of schema.relations ?? []) {
+    for (const part of view.parts(schema.name, root.name) ?? []) {
+      if (part.kind !== "partition") continue;
+      const def = /** @type {{ schema?: unknown, foreign?: unknown }} */ (part.def ?? {});
+      const at = typeof def.schema === "string" && def.schema ? def.schema : schema.name;
+      const kind = def.foreign === true ? "foreign table" : "table";
+      found.push([
+        at,
+        { name: part.name, kind, ...(root.columns ? { columns: root.columns } : {}) },
+      ]);
+    }
+  }
+  return found;
 }
 
 /**
@@ -51,10 +74,16 @@ export function problemModel(connection, view) {
   const before = kept.get(connection);
   if (before?.key === key) return before.model;
   const listed = states.filter((s) => s.held || !s.system);
-  const model =
-    listed.length === 0
-      ? null
-      : { schemas: listed.map((s) => (s.held ? schemaOf(view, s.name) : { name: s.name })) };
+  /** @type {ModelSchema[]} */
+  const schemas = listed.map((s) => (s.held ? schemaOf(view, s.name) : { name: s.name }));
+  for (const [at, partition] of schemas.flatMap((s) =>
+    s.relations ? partitionsOf(view, s) : [],
+  )) {
+    const home = schemas.find((s) => s.name === at);
+    if (home?.relations && !home.relations.some((r) => r.name === partition.name))
+      home.relations.push(partition);
+  }
+  const model = listed.length === 0 ? null : { schemas };
   kept.set(connection, { key, model });
   return model;
 }

@@ -152,20 +152,6 @@ export function effectsOf(tree) {
   return setConfigs(tree);
 }
 
-/** Schemas holding a partitioned table: the cache leaves partitions out, so any name may be one. */
-const openOf = new WeakMap();
-function partitioned(/** @type {ModelIndex | undefined} */ index) {
-  if (!index) return new Set();
-  let found = openOf.get(index);
-  if (found) return found;
-  found = new Set();
-  for (const [name, schema] of index)
-    for (const entry of schema.relations?.values() ?? [])
-      if (/** @type {{ partitioned?: boolean }} */ (entry.relation).partitioned) found.add(name);
-  openOf.set(index, found);
-  return found;
-}
-
 /** @returns {State} */
 export function createState(
   /** @type {ModelIndex | undefined} */ index,
@@ -179,7 +165,7 @@ export function createState(
     path,
     user,
     start: { path, user },
-    open: new Set(partitioned(index)),
+    open: new Set(),
     version: "",
     opaque: false,
     stopped: false,

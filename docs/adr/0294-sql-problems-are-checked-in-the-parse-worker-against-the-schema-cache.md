@@ -48,12 +48,13 @@ because the grammar and the resolver are already there, and the trees never cros
   the check used and a hint: the nearest name (at most three edits, the server's rule) or the
   schemas off the path that hold it. The live test holds every message and position to a real
   server's.
+* Partitions, which the cache reads under their root table (ADR 0295), are relations of the
+  schema each lives in, with the root's columns.
 * Never told: a schema the cache did not read; a function (the cache leaves out aggregates, window
-  functions and extension members), only its schema; a schema holding a partitioned table (its
-  partitions are not cached); system columns; DROP or ALTER IF EXISTS; any name after DO, CALL,
-  `\c` or `\i`; the schema CREATE EXTENSION or IMPORT FOREIGN SCHEMA fills; psql's meta-commands
-  and statements with `:name`, `:'name'`, `:"name"` or `?`. A statement the server ran takes its
-  answer until its text changes.
+  functions and extension members), only its schema; system columns; DROP or ALTER IF EXISTS; any
+  name after DO, CALL, `\c` or `\i`; the schema CREATE EXTENSION or IMPORT FOREIGN SCHEMA fills;
+  psql's meta-commands and statements with `:name`, `:'name'`, `:"name"` or `?`. A statement the
+  server ran takes its answer until its text changes.
 * The page (`diagnose/editor.js`) is @codemirror/lint 6.9.7, added to the vendored bundle: a
   300 ms pause, nothing sent during an IME composition, one check in flight per console with the
   newest waiting (`requests.js`), and a result dropped if the text moved. F8 and Shift+F8 go to the
@@ -73,10 +74,13 @@ because the grammar and the resolver are already there, and the trees never cros
 * Bad, because the resolver is ours: a construct it does not bind is either missed or, if wrongly
   bound, a false underline until it is fixed; the live corpus guards the common ones.
 * Bad, because a schema the cache has not read is silent, and a stale cache can underline a table
-  created in another session until the cache's fingerprint check reads it again.
+  created in another session until the cache's fingerprint check reads it again. A partition whose
+  root table is in a schema the cache did not read is not known either, and is underlined until that
+  schema is read.
 * Bad, because the bundle grows by about 16 KB for @codemirror/lint.
 
 ## More Information
 
-Issue #460 (epic #438). ADR 0282 (editor), 0283 (parser and resolver), 0285 (schema cache).
+Issue #460 (epic #438). ADR 0282 (editor), 0283 (parser and resolver), 0285 (schema cache), 0295
+(the cache's partitions and other kinds).
 `plugins/database/ui/diagnose/README.md`, `plugins/database/docs/features.md` (SQL problems).
