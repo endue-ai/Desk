@@ -45,10 +45,12 @@ in reach and gives every other one its name and key in a list that works by keyb
   window. `TITLE_END` is 128 (the end padding, the three tools, room for both marks, the gap): the
   compositor's title never runs under a mark, shown or not.
 * **One window menu.** The tool opens ADR 0117's window menu, which a right-click on the bar still
-  opens, under the tool in the desk's page (the `desk.overlays` part, ADR 0160), its point moved
-  onto the desk when the window lies in a page of its own (ADR 0201). Its rows: New tab
-  (`desk.display.new-tab`, off on a window that takes no tab, ADR 0270), Maximize or restore
-  (`desk.display.maximize`), Floating mode and Pin (checked rows), Put in drawer
+  opens, under the tool in the desk's page (the `desk.overlays` part, ADR 0160), or above it where
+  the app ends first, its point moved onto the desk when the window lies in a page of its own (ADR
+  0201). The desk's page hears a press over a window too (ADR 0150), there on nothing of its own:
+  the press on the tool that opened the menu is the tool's, never one outside that closes it. Its
+  rows: New tab (`desk.display.new-tab`, off on a window that takes no tab, ADR 0270), Maximize or
+  restore (`desk.display.maximize`), Floating mode and Pin (checked rows), Put in drawer
   (`desk.windows.put-away`, issue 280), each with its key when it has one, then the "Move to" rows.
   Each runs what its tool ran. Arrows, Home and End walk it; Escape and Tab close it and give the
   focus back to the tool; `aria-expanded` follows.
