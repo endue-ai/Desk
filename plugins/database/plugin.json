@@ -204,6 +204,16 @@
         "keywords": ["reload", "schema"]
       },
       {
+        "id": "endue.database.reload-schema",
+        "title": "Database: read the schema again",
+        "keywords": ["schema", "cache", "reload", "refresh", "catalog"]
+      },
+      {
+        "id": "endue.database.choose-schemas",
+        "title": "Database: choose the schemas to read",
+        "keywords": ["schema", "cache", "system schemas", "catalog"]
+      },
+      {
         "id": "endue.database.filter-explorer",
         "title": "Database: filter the explorer",
         "keywords": ["find", "search", "objects"]
@@ -217,6 +227,87 @@
         "id": "endue.database.er-diagram",
         "title": "Database: ER diagram of a schema",
         "keywords": ["entity relationship", "foreign keys", "relations", "erd"]
+      },
+      {
+        "id": "endue.database.activity",
+        "title": "Database: server activity (sessions and locks)",
+        "keywords": [
+          "sessions",
+          "locks",
+          "blocking",
+          "waiting",
+          "pg_stat_activity",
+          "pg_locks",
+          "processes",
+          "stuck"
+        ],
+        "description": "Opens a PostgreSQL connection's sessions and locks and answers them: each session's process id, user, database, application, client, state, wait, ages and statement, and who waits for whom on which lock.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.activity-refresh",
+        "title": "Database: refresh the server activity",
+        "keywords": ["reload", "sessions", "locks"]
+      },
+      {
+        "id": "endue.database.cancel-session",
+        "title": "Database: cancel a session's statement",
+        "keywords": ["pg_cancel_backend", "stop", "interrupt", "query", "kill"],
+        "description": "Cancels the statement a PostgreSQL session runs (pg_cancel_backend); the session stays. The person is asked first, with the statement shown; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            },
+            "pid": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The session's process id (pid); the one selected in the panel, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.database.end-session",
+        "title": "Database: end a session",
+        "keywords": ["pg_terminate_backend", "terminate", "kill", "disconnect", "backend"],
+        "description": "Ends a PostgreSQL session (pg_terminate_backend): its connection closes and its open transaction rolls back. The person is asked first, with its statement shown; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            },
+            "pid": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The session's process id (pid); the one selected in the panel, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
       },
       {
         "id": "endue.database.history",
@@ -267,6 +358,21 @@
         "id": "endue.database.revert-changes",
         "title": "Database: revert the pending changes",
         "keywords": ["undo", "discard", "edit"]
+      },
+      {
+        "id": "endue.database.set-default",
+        "title": "Database: set the cell to DEFAULT",
+        "keywords": ["default value", "edit", "cell", "reset"]
+      },
+      {
+        "id": "endue.database.cell-file-load",
+        "title": "Database: load the cell's bytes from a file",
+        "keywords": ["bytea", "blob", "binary", "upload", "edit", "cell"]
+      },
+      {
+        "id": "endue.database.cell-file-save",
+        "title": "Database: save the cell's bytes to a file",
+        "keywords": ["bytea", "blob", "binary", "download", "cell"]
       },
       {
         "id": "endue.database.clients",

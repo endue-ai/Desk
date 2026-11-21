@@ -12,8 +12,8 @@ name: release-build
 # Each target leaves as the artifact desk-<target>, canonical names from scripts/release-collect.mjs.
 # A dry run (release-dry-run.yml) stays out of the signing environment, signs with the run's
 # throwaway key, embeds no key in the binary and labels its artifacts desk-<target>-unsigned.
-# release-macos.yml (ADR 0229) asks for the two macOS targets and their first-install images only:
-# no updater signature is made, so that build needs no updater key.
+# release-macos.yml asks for both macOS targets. Without an updater key it requests only the
+# first-install disk images.
 on:
   workflow_call:
     inputs:
@@ -174,7 +174,6 @@ jobs:
           # Linux: the desk finds libcef.so beside itself in /usr/lib/endue-desk.
           RUSTFLAGS: ${{ runner.os == 'Linux' && '-C link-arg=-Wl,-rpath,$ORIGIN' || '' }}
           DESK_UPDATER_PUBKEY: ${{ !inputs.dry-run && vars.DESK_UPDATER_PUBKEY || '' }}
-          DESK_UPDATE_URL: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
           DESK_BUILD_COMMIT: ${{ inputs.ref || github.sha }}
           DESK_VERSION: ${{ inputs.version }}
         run: |

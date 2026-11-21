@@ -1,10 +1,16 @@
 // A fixture SQLite database for endue.database behind proc.spawn, as the browser stub serves it: a
 // saved connection, two tables (people, orders) whose catalog and rows the scripted sqlite3 answers,
+// a PostgreSQL catalog (pg-catalog.ts's shop) the scripted psql answers to the schema cache, a
+// PostgreSQL connection whose scripted psql answers for one table of typed columns (fixtures-pg.ts),
 // and the proc.* handlers that emit each run's output as desk-core does. The runtime e2e page
 // (packages/runtime/e2e/fixture/database.ts) uses them; nothing here needs Node.
 import type { BridgeEvent, StubHandlers } from "../../../packages/bridge/src/index";
 import type { Connection } from "../ui/engines/common.js";
 import { type Script, scriptedReply } from "./clients";
+import { pgFixtureScript } from "./fixtures-pg";
+import { catalogScript, shop } from "./pg-catalog";
+
+export { FIXTURE_PG_CONNECTION } from "./fixtures-pg";
 
 /** The saved connection the fixture page starts with. */
 export const FIXTURE_CONNECTION: Connection = {
@@ -52,7 +58,7 @@ const columnsOf = (rows: string[][]) => [
 const rowsOf = (name = "") => TABLES[name.toLowerCase()] ?? [];
 
 /** The scripted sqlite3's answers: the catalog, each table's rows, its count. */
-export const fixtureScript: Script = (sql) => {
+const sqliteScript: Script = (sql) => {
   const text = sql.trim();
   if (text === "SELECT 'main'") return { rows: [["'main'"], ["main"]] };
   if (/FROM sqlite_master WHERE type IN \('table', 'view'\)/u.test(text))
@@ -72,6 +78,13 @@ export const fixtureScript: Script = (sql) => {
   if (count) return { rows: [["count"], [String(Math.max(0, rowsOf(count[1]).length - 1))]] };
   return {};
 };
+
+const SHOP = shop();
+/** The scripted clients' answers: the schema cache's PostgreSQL catalog, then the SQLite fixture. */
+export const fixtureScript: Script = catalogScript(
+  () => SHOP,
+  (sql, env) => (env.PGDATABASE ? pgFixtureScript(sql) : sqliteScript(sql, env)),
+);
 
 /** proc.spawn and proc.kill over the scripted clients; each run's output is emitted a tick later. */
 export function procHandlers(script: Script, emit: (event: BridgeEvent) => void): StubHandlers {

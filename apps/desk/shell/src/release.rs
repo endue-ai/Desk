@@ -4,8 +4,8 @@
 //! and reports the workspace's 0.0.0; it may take the key and the origin at run time to try a local
 //! origin, as the Tauri desk's debug builds do. A build without a key never updates itself.
 
-/// Where builds come from unless the build says otherwise.
-pub const DEFAULT_ORIGIN: &str = "https://releases.endue.ai/desk";
+/// The public release catalog for packaged desks.
+pub const DEFAULT_ORIGIN: &str = desk_update::GITHUB_RELEASES;
 
 /// The version this build reports: `DESK_VERSION` at compile time, else the workspace's.
 pub fn version() -> &'static str {
@@ -43,6 +43,7 @@ pub fn origin() -> Option<(String, String)> {
         option_env!("DESK_UPDATER_PUBKEY"),
     )?;
     let base = pick(run("DESK_UPDATE_URL"), option_env!("DESK_UPDATE_URL"))
+        .filter(|url| loopback_origin(url))
         .unwrap_or_else(|| DEFAULT_ORIGIN.to_owned());
     Some((key, base))
 }
@@ -58,9 +59,10 @@ fn pick(run: Option<String>, built: Option<&str>) -> Option<String> {
 /// origin is `http://` on this machine (a rehearsal against a local file server,
 /// `e2e/smoke/update-two-hops.sh`). A build whose origin is `https://` never follows a link to `http://`.
 pub fn allows_http(base: &str) -> bool {
-    if cfg!(debug_assertions) {
-        return true;
-    }
+    loopback_origin(base)
+}
+
+fn loopback_origin(base: &str) -> bool {
     url::Url::parse(base).is_ok_and(|url| {
         url.scheme() == "http"
             && match url.host() {

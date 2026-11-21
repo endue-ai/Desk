@@ -3,7 +3,8 @@
 // column stays a number; bytes in a binary column become the dialect's hex literal; everything else
 // is a quoted string (quote.js), never raw text. A quoted literal is what the server would read for
 // the column anyway: PostgreSQL types an unknown literal by its column, MySQL converts it, and
-// SQLite's column affinity turns '42' into 42 where the column wants a number.
+// SQLite's column affinity turns '42' into 42 where the column wants a number. DEFAULT, a pending
+// value of its own (PG-40), is the keyword.
 
 import { quoteText } from "../sql/quote.js";
 
@@ -14,6 +15,19 @@ const HEX = /^(?:0x|\\x)((?:[0-9a-fA-F]{2})*)$/u;
 const NUMERIC_TYPE =
   /\b(?:int|integer|smallint|bigint|tinyint|mediumint|int[248]|serial|bigserial|smallserial|numeric|decimal|dec|real|float[48]?|double|money|number|bit)\b/iu;
 const BINARY_TYPE = /\b(?:bytea|blob|tinyblob|mediumblob|longblob|binary|varbinary)\b/iu;
+
+/**
+ * The pending value that gives a column its default: one frozen String object, so it draws, copies
+ * and sorts as the word DEFAULT wherever a value is text, and is told apart from the text 'DEFAULT'
+ * (and from NULL) by identity alone.
+ * @type {string}
+ */
+export const DEFAULT = /** @type {string} */ (
+  /** @type {unknown} */ (Object.freeze(new String("DEFAULT")))
+);
+
+/** Whether a value is DEFAULT, not the text 'DEFAULT'. */
+export const isDefault = (/** @type {unknown} */ value) => value === DEFAULT;
 
 /**
  * SQLite's affinity of a declared type (datatype3.html, 3.1): INTEGER, TEXT, BLOB, REAL or NUMERIC.
@@ -48,6 +62,7 @@ export function binaryType(/** @type {Dialect} */ dialect, /** @type {string} */
  */
 export function literal(dialect, value, type = "") {
   if (value === null) return "NULL";
+  if (isDefault(value)) return "DEFAULT";
   const hex = HEX.exec(value);
   if (hex && binaryType(dialect, type)) {
     const digits = (hex[1] ?? "").toUpperCase();
