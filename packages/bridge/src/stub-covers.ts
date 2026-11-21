@@ -22,6 +22,9 @@ const at = (permission: Permission, field: string) =>
   (permission as unknown as Record<string, unknown>)[field];
 
 type Match = (pattern: string, text: string) => boolean;
+/** net:connect and db:connect: a host without a port covers every port of it. */
+const endpoint: Match = (g, a) =>
+  within(g, a) || (!g.includes(":") && within(g, a.replace(/:\d+$/, "")));
 /** The list each scoped permission carries, and how a granted pattern covers an asked one. */
 const LISTS: Partial<Record<Permission["permission"], [string, Match]>> = {
   "cmd:invoke": ["ids", (p, t) => starMatch(p, t)],
@@ -30,10 +33,8 @@ const LISTS: Partial<Record<Permission["permission"], [string, Match]>> = {
   "fs:read": ["paths", within],
   "fs:write": ["paths", within],
   "net:fetch": ["hosts", within],
-  "net:connect": [
-    "hosts",
-    (g, a) => within(g, a) || (!g.includes(":") && within(g, a.replace(/:\d+$/, ""))),
-  ],
+  "net:connect": ["hosts", endpoint],
+  "db:connect": ["hosts", endpoint],
   "proc:spawn": ["commands", within],
 };
 
