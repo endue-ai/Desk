@@ -16,7 +16,8 @@
     {
       "permission": "fs:write",
       "paths": ["~/qa/**"]
-    }
+    },
+    { "permission": "fs:read", "paths": ["~/Pictures/**"] }
   ],
   "contributes": {
     "commands": [

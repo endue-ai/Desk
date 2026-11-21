@@ -77,7 +77,7 @@ export function mountComposer(
         }),
       }));
     } catch (error) {
-      notice(localText(lang(), "askFailed", { why: why(error) }));
+      notice(localText(lang(), "askFailed", { why: why(lang(), error) }));
     } finally {
       sending = false;
       update();

@@ -50,9 +50,10 @@ describe("plugin.json", () => {
     );
   });
 
-  it("declares no fs paths of its own: it asks for a file's folder when it needs to", () => {
+  it("may be asked for any folder and holds none: it asks for a file's folder when it needs to", () => {
     const permissions = manifest().permissions ?? [];
-    expect(permissions.filter((p) => p.permission.startsWith("fs:"))).toEqual([]);
+    // `/**` says only what may be asked: an install grants none of it, and each folder is still
+    // asked for, or granted when the person opens a file there (ADR 0131, ADR 0260).
     expect(permissions).toEqual([
       {
         permission: "cmd:invoke",
@@ -61,6 +62,9 @@ describe("plugin.json", () => {
       // Show in Finder on a card: the file is shown in the file manager, never opened or run.
       // biome-ignore lint/suspicious/noTemplateCurlyInString: a desk path rooted at ${home}, not a template
       { permission: "shell:open", paths: ["${home}/**"] },
+      { permission: "fs:read", paths: ["/**"] },
+      // Show in Finder for a file outside the home folder: asked for first.
+      { permission: "shell:open", paths: ["/**"] },
     ]);
   });
 

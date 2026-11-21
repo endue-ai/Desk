@@ -33,7 +33,7 @@ closes search or panel; Mod+S, Mod+O, Mod+W, Mod+K pass to the desk. `tests/buil
 
 | Permission | Why |
 | --- | --- |
-| `cmd:invoke` (`desk.files.changed`); `fs:read` and `shell:open`, asked when needed | File changes; scoped reads; http, https and mailto links |
+| `cmd:invoke` (`desk.files.changed`); `fs:read` (`/**`, asked when needed); `shell:open` | File changes; scoped reads; http, https and mailto links |
 
 `pnpm exec vitest run plugins/reader` · `cargo run -p desk-cli -- plugin validate plugins/reader` ·
 `python3 plugins/reader/tests/build/live.py /tmp/reader-large` (a 300 MiB PDF, a 100 MiB EPUB)

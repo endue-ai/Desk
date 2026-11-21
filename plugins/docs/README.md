@@ -20,10 +20,10 @@ sight (ADR 0070, 0176), `keepFiles` keeps its documents, places, zoom and watche
 screen opens without asking or taking the focus, the others (or one the frame lost) when shown.
 
 It reads with the SDK's `readBytes` in 2 MiB ranges (`fs.url`, or ranged `fs.read`); the manifest
-declares no paths, so the first read of a folder asks with `perm.request` for `<folder>/**`.
+declares `/**`, which holds nothing, so the first read of a folder asks for `<folder>/**`.
 `<desk-progress>` shows Reading, then Opening, after 300 ms; Cancel stops the read or the worker
 and keeps what is on screen. Files over 8 MiB open in a worker (`ui/worker.js`, with its own XML
-DOM). http, https and mailto links open with `shell.open` (the core asks once); note references
+DOM). http, https and mailto links open with `shell.open` (its declared `shell:open`); note references
 jump. `fs.watch` runs `desk.files.changed`. `ui/hwp/` follows Hancom's published format (`NOTICE`):
 본 제품은 한글과컴퓨터의 글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 

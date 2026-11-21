@@ -22,6 +22,13 @@ Scopes are never widened implicitly: asking is `perm.request`, and the person de
 one call that asks by itself: without a grant that covers its scope, the core asks the person for that
 scope, through `perm.prompt` as `perm.request` does, and runs the call once they allow it.
 
+A plugin's manifest bounds all of it (ADR 0260): a plugin is asked for, granted (`perm.request`,
+`perm.grant`, a dialog, a call that asks by itself) and allowed only scopes a permission in its
+`plugin.json` `permissions` covers. Anything else is refused at once, without a prompt and whatever the
+plugin holds: `perm.request` answers `reason: "undeclared"`, any other call `permission_denied`. A
+declared `*` host or program, or `/**` path, covers any the person names at run time, but a request
+that itself holds `*` is undeclared. The desk, the CLI and agents are not plugins: their own rules hold.
+
 Calls that touch only the caller's own data need no scope: `perm.request`, `perm.query`, `perm.revoke` of
 its own grants, `store.*`, `search.replace`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
 `settings.get` and `settings.list` of its own keys, `log.write`, `events.unsubscribe` and
@@ -192,8 +199,8 @@ desk (ADR 0133).
 `not_found`.
 
 **audio.capture.start** opens the microphone under an `audio:capture` scope and returns a `captureId`.
-A caller without a grant is asked once, as `perm.request` asks (the core does not read the manifest for
-it); then the OS's own microphone permission. The caller hears `audio.frame` every 20 ms: mono LINEAR16 at `sampleRate` (16000
+A caller without a grant is asked once, as `perm.request` asks (a plugin only when its manifest declares
+`audio:capture`); then the OS's own microphone permission. The caller hears `audio.frame` every 20 ms: mono LINEAR16 at `sampleRate` (16000
 by default), base64, with its level. `audio.ended` comes once, last, with its reason: a stop, the person,
 the caller stopping, its last surface closing, a revoke, or the device. The runtime hears
 `audio.capturing`, every capture in force and its caller, on each change, so the chrome shows the
@@ -248,7 +255,8 @@ grants (`session` or `always`) already covers is granted at once with that grant
 answer answers them all; a `once` answer gives each its own grant. A refusal the person makes is
 remembered for the session for that caller and that permission: asking again answers `granted: false`
 with `reason: "refused-earlier"` at once, without a prompt, until the caller is granted a permission
-that covers it. `shell.open` answers such a request `permission_denied` at once.
+that covers it. `shell.open` answers such a request `permission_denied` at once. A plugin's request its
+manifest does not declare answers `reason: "undeclared"` at once (ADR 0260).
 
 **perm.query** lists the caller's grants, optionally only those covering a given permission.
 
@@ -386,8 +394,8 @@ act of theirs already answers it (ADR 0131): the runtime, opening a file the per
 plugin that opens it read access to the file's folder, the scope that plugin would ask for. It needs
 `perm:manage`. The grant lasts for `duration` (`session` by default), is logged like any grant, and the
 holder hears `perm.changed`; a lasting grant of the caller's that already covers the permission is the
-answer, and no new one is made. An agent is never granted anything outside its allowlist
-(`permission_denied`).
+answer, and no new one is made. An agent is never granted anything outside its allowlist, nor a plugin
+anything its manifest does not declare (`permission_denied`).
 
 **cmd.register** adds one of the caller's commands to the registry, or updates it: an id, a title, an
 optional description, keywords the palette matches, a JSON Schema for its arguments and a `when` context
