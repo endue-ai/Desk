@@ -11,9 +11,10 @@ Settings are read through `settings.get` (what the person set over init.yaml's o
 and followed through `settings.changed`, so a change is in force with no reload (`settings-follow.js`): the row
 limit, the statement timeout, confirm, history and history-max at the next run (an open result keeps its rows,
 kept history is trimmed at the next run), system schemas at once in the open explorer, a client's program or
-the `path` setting found again at its next use, the format settings at the next Format SQL. A value of the wrong
-kind keeps its default and is said once, in the footer and the plugin's log, as is one the core says fell back
-(`settings.invalid`); the manifest declares each range `settings.js` checks.
+the `path` setting found again at its next use, the format settings at the next Format SQL, the SQL problems
+settings at once in the console on screen. A value of the wrong kind keeps its default and is said once, in the
+footer and the plugin's log, as is one the core says fell back (`settings.invalid`); the manifest declares each
+range `settings.js` checks.
 
 Modules: `main.js` (the only one that imports the SDK), `database.js` (the controller), `commands.js`,
 `keys.js`, `settings.js`, `settings-follow.js`, `view.js`, `view-actions.js`, `dom.js`, `*.css`.

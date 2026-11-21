@@ -24,6 +24,8 @@ const OWNER = "endue.database";
 
 /** The settings that name a program or where programs are found. */
 const CLIENTS = new Set(["mysql", "sqlite3", "path", "pgDump", "pgRestore"]);
+/** The settings the editor's SQL problems check reads (features/problems/, ADR 0294). */
+const CHECKS = new Set(["problemsSyntax", "problemsNames"]);
 
 const json = (/** @type {unknown} */ value) => JSON.stringify(value) ?? String(value);
 
@@ -106,13 +108,15 @@ export function followSettings(deps) {
 /**
  * What a change does at once, beyond the next run reading it: a program's setting finds the clients
  * again at their next use, system schemas draw the open explorer's schema lists again (PostgreSQL
- * from its schema cache, the others by reading the list again), and every change reaches the
- * features that follow the settings. What is already read or kept stays as it is.
+ * from its schema cache, the others by reading the list again), a problems setting draws the explorer
+ * again (no read), which has the editor check the console on screen again (view.js), and every
+ * change reaches the features that follow the settings. What is already read or kept stays as it is.
  * @param {{
  *   clients: { reset(): void },
  *   catalog: { forget(connection?: string, prefix?: string[]): void },
  *   explorer: { reread(connection: string): void },
  *   connections(): Array<{ id: string }>,
+ *   redraw(): void,
  *   features: Iterable<(settings: Settings) => void>,
  * }} deps
  * @returns {Apply}
@@ -125,6 +129,7 @@ export function effectsOf(deps) {
         deps.catalog.forget(conn.id, ["schemas"]);
         deps.explorer.reread(conn.id);
       }
+    if (changed.some((name) => CHECKS.has(name))) deps.redraw();
     for (const listener of deps.features) listener(next);
   };
 }

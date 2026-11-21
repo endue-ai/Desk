@@ -312,6 +312,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     catalog,
     explorer,
     connections: () => manager.list(),
+    redraw: () => changed(),
     features: followers,
   });
   const follower = followSettings({

@@ -155,6 +155,15 @@ describe("settings followed while the plugin runs", () => {
     await until(m, () => row(m, "public", "schema") && !row(m, "pg_catalog", "schema"));
   });
 
+  it("a problems setting draws the explorer again, so the editor checks the console again", async () => {
+    const m = await mount({ store: { connections: SAVED } });
+    for (const key of ["problems-syntax", "problems-names"]) {
+      const drawn = m.view.trees.length;
+      await setting(m, key, false);
+      expect([key, m.view.trees.length]).toEqual([key, drawn + 1]);
+    }
+  });
+
   it("the row limit and the statement timeout reach the next PostgreSQL run", async () => {
     const rows = [["n"], ["1"], ["2"], ["3"], ["4"], ["5"]];
     const m = await mount({
