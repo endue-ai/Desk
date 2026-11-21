@@ -79,12 +79,14 @@ pub fn listen(pump: &Pump) {
 
 /// The app's menu bar and the items it words, kept for the app's life: re-worded in place.
 pub struct MenuBar {
+    /// The bar AppKit shows (`init_for_nsapp`); held so its items live as long.
     _menu: Menu,
     /// Every place with words, in the order of [`texts`].
     worded: Vec<Worded>,
 }
 
-/// A place in the menu bar that has words.
+/// A place in the menu bar that has words. Only macOS has a menu bar to make them for.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 enum Worded {
     Menu(tray_icon::menu::Submenu),
     Item(MenuItem),
