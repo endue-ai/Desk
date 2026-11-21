@@ -4,12 +4,15 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
 import { candidates } from "../ui/clients.js";
+import { blank } from "../ui/connections.js";
 import { writeScope } from "../ui/console-files.js";
 import { spillPath } from "../ui/console-text.js";
 import { createDropped } from "../ui/dropped.js";
+import { createSessions } from "../ui/engines/pg-session.js";
 import { EXPORT_FOLDER, exportResult } from "../ui/export.js";
 import { createRunner } from "../ui/run.js";
 import { DEFAULTS, SETTING_KEYS } from "../ui/settings.js";
+import { split } from "../ui/sql/split.js";
 
 const root = join(import.meta.dirname, "../../..");
 const folder = join(root, "plugins/database");
@@ -44,9 +47,15 @@ const readme = () => readFileSync(join(folder, "README.md"), "utf8");
 const features = join(folder, "docs/features.md");
 
 /** A permission as a manifest declares it, or as the code asks for it. */
-type Scope = { permission: string; commands?: string[]; paths?: string[]; ids?: string[] };
+type Scope = {
+  permission: string;
+  commands?: string[];
+  paths?: string[];
+  ids?: string[];
+  hosts?: string[];
+};
 const declarations = () => manifest().permissions as Scope[];
-const values = (scope: Scope) => scope.commands ?? scope.paths ?? scope.ids ?? [];
+const values = (scope: Scope) => scope.commands ?? scope.paths ?? scope.ids ?? scope.hosts ?? [];
 
 /** `~` and `${home}` are one root, as the core reads them. */
 const homed = (path: string) => path.replace(/^\$\{home\}(?=\/|$)/u, "~");
@@ -68,6 +77,7 @@ const covers = (declared: Scope, asked: Scope) => {
   }
   if (declared.paths)
     return (asked.paths ?? []).every((a) => declared.paths?.some((d) => under(d, a)));
+  if (declared.hosts) return declared.hosts.includes("*");
   return (asked.ids ?? []).every((id) => declared.ids?.includes(id));
 };
 const coveredBy = (asked: Scope) => declarations().filter((d) => covers(d, asked));
@@ -164,8 +174,9 @@ describe("plugin.json", () => {
 describe("permissions", () => {
   it("declares only what its code uses, and nothing wider", () => {
     expect(declarations()).toEqual([
-      // The engines' clients by name (clients.js, run.js): granted at install.
-      { permission: "proc:spawn", commands: ["psql", "mysql", "mariadb", "sqlite3"] },
+      // The engines' clients by name (clients.js, run.js): granted at install. PostgreSQL has none:
+      // its sessions are the core's (db:connect below).
+      { permission: "proc:spawn", commands: ["mysql", "mariadb", "sqlite3"] },
       // An export (export.js): granted at install.
       // biome-ignore lint/suspicious/noTemplateCurlyInString: the manifest's path variable, as written there
       { permission: "fs:write", paths: ["${home}/Downloads/**"] },
@@ -192,6 +203,9 @@ describe("permissions", () => {
       { permission: "fs:read", paths: ["${home}/.endue/database/**"] },
       // biome-ignore lint/suspicious/noTemplateCurlyInString: the manifest's path variable, as written there
       { permission: "fs:write", paths: ["${home}/.endue/database/**"] },
+      // A PostgreSQL session on a connection's host and port (engines/pg-session.js, ADR 0281):
+      // asked for each server.
+      { permission: "db:connect", hosts: ["*"] },
     ]);
   });
 
@@ -212,11 +226,11 @@ describe("permissions", () => {
     const client = refusing();
     const invocation = { args: [], env: {}, nonce: "", statements: [], maxRows: 0, stopAfter: 0 };
     const runner = createRunner(client.bridge);
-    for (const command of ["psql", "/opt/clients/bin/psql"])
+    for (const command of ["mysql", "/opt/clients/bin/mysql"])
       await runner.run({ ...invocation, command }).catch(() => {});
     expect(client.asked).toEqual([
-      { permission: "proc:spawn", commands: ["psql"] },
-      { permission: "proc:spawn", commands: ["/opt/clients/bin/psql"] },
+      { permission: "proc:spawn", commands: ["mysql"] },
+      { permission: "proc:spawn", commands: ["/opt/clients/bin/mysql"] },
     ]);
     expect(coveredBy(client.asked[0] as Scope)).toHaveLength(2);
     expect(coveredBy(client.asked[1] as Scope)).toEqual([declarations()[4]]);
@@ -239,6 +253,17 @@ describe("permissions", () => {
       ["C:/Users/me/rows.csv"],
     ]);
     for (const asked of drop.asked) expect(coveredBy(asked)).toEqual([declarations()[3]]);
+
+    // A PostgreSQL server: its host and port, only db:connect on `*` covers it.
+    const pg = refusing();
+    const sessions = createSessions(pg.bridge);
+    const conn = { ...blank("postgresql"), id: "c-pg", name: "pg", host: "db.example", port: 6543 };
+    conn.user = "app";
+    const statements = split("select 1", "postgresql");
+    const options = { statements, maxRows: 1, timeoutMs: 0, mode: "run" as const };
+    await sessions.run(conn, options).catch(() => {});
+    expect(pg.asked).toEqual([{ permission: "db:connect", hosts: ["db.example:6543"] }]);
+    expect(coveredBy(pg.asked[0] as Scope)).toEqual([declarations()[8]]);
 
     // An export: under the Downloads declaration, granted at install (and `/**`, which only asks).
     const out = refusing();
