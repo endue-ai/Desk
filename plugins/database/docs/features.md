@@ -44,12 +44,12 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
   says when it was read. Database: read the schema again reads it all; Database: choose the schemas to read
   picks them (system schemas stay out by default). Other engines read a node when it opens, as above.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
-  exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the schema's ER diagram
-  from its foreign keys, `n`, `e` and Delete add, change and remove a connection, `u` adds one from a URI.
+  exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the ER diagram of a
+  schema (of the tables the filter keeps) or of a table and its neighbours, `n`, `e` and Delete add, change and
+  remove a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
-Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/`, `view-tree.js`,
-`view-diagram.js`.
+Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/`, `view-tree.js`.
 
 ## Console
 
@@ -222,6 +222,29 @@ Modules: `features/activity/`.
   a heavy statement opens there unrun.
 
 Modules: `features/overview/`.
+
+## ER diagram
+
+- A diagram of a schema, of several, of the tables the explorer's filter keeps, or of a table and its
+  neighbours 1 to 9 foreign keys away either way (Database: ER diagram of a table and its neighbours). A
+  PostgreSQL connection's diagram reads the schema cache (ADR 0285); other engines read their catalog.
+- Each table shows its columns with type, `null` for a nullable one, PK and FK, and its comment as a tooltip;
+  all columns (the first 50, then how many more), keys only, or none. Each line names its foreign key; its ends
+  say one, zero or one, or many. Tables of other schemas are named with their schema.
+- Laid out in layers over the foreign keys, a referenced table left of those that refer to it, lines routed
+  round the tables; Auto layout (`a`) lays it out again. A table dragged, or moved with Shift and the arrows, stays
+  where it was put: the layout is kept per connection and diagram in the plugin's store across restarts
+  (ADR 0315). A new table lands beside the placed ones; a dropped one leaves.
+- Add or remove a table, add a table's neighbours (`n`) or a schema, and draw a relation the database does not
+  declare (dashed, said to be not in the database, kept with the diagram).
+- Export writes SVG (the theme's colours as values) or PNG at 1x or 2x where the save dialog says, asking once
+  for the path when it is not granted (ADR 0260); Copy image puts a PNG on the clipboard. Either holds the
+  diagram alone.
+- Wheel pans, Mod and the wheel zooms, a drag on the background pans; Fit, `+`, `-` and `0` set the zoom; past
+  30 tables a map shows where the view is. Arrows move between tables, Enter opens one, Delete removes it.
+  From 200 tables the layout runs in a worker; boxes away from the view are not drawn, nor rows far out.
+
+Modules: `features/diagram/`, `schema/diagram.js`.
 
 ## Agents
 
