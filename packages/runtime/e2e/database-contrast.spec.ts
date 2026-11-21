@@ -56,7 +56,8 @@ async function tag(page: Page, frame: Frame, connection: string, env: string, co
   await expect(form).toBeVisible();
   await frame.locator("#f-tag").selectOption(env);
   await frame.locator("#f-color").selectOption(colour);
-  await form.locator("button[type=submit]").click();
+  // Enter in a field saves, as the form's Save does (its foot can lie under the window's edge).
+  await frame.locator("#f-name").press("Enter");
   await expect(form).toBeHidden();
 }
 
@@ -150,8 +151,11 @@ for (const scheme of ["dark", "light"] as const)
     if (scheme === "light") await run(page, "desk.theme.light");
     await expect(frame.locator("html")).toHaveAttribute("data-scheme", scheme);
     const failing: string[] = [];
+    const walked: Record<string, number> = {};
     const walk = async (state: string) => {
-      for (const s of await samples(frame)) {
+      const found = await samples(frame);
+      walked[state] = found.length;
+      for (const s of found) {
         const r = ratio(s);
         if (!(r >= need(s))) failing.push(`${state}: ${s.where} "${s.text}" ${r.toFixed(2)}`);
       }
@@ -219,4 +223,6 @@ for (const scheme of ["dark", "light"] as const)
     await walk("the maintenance form");
 
     expect(failing).toEqual([]);
+    // Each state's walk found the page's text: the explorer, the header and the footer at least.
+    expect(Object.entries(walked).filter(([, n]) => n < 20)).toEqual([]);
   });
