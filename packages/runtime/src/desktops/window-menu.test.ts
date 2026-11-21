@@ -284,6 +284,21 @@ describe("a window's menu", () => {
     key(menu, "Escape");
     expect(focus).toHaveBeenCalled();
     expect(tool.getAttribute("aria-expanded")).toBe("false");
+    // The desk's page hears a press over a window too (ADR 0150), where nothing of its own lies:
+    // the press on the tool that opened the menu, heard there late, is not one outside the menu,
+    // which closes it as the desk does (`shell/Desk.ts`).
+    const outside = () => d.store.set({ popover: null });
+    document.addEventListener("pointerdown", outside);
+    const pressAt = (x: number, y: number) =>
+      document.body.dispatchEvent(
+        new PointerEvent("pointerdown", { bubbles: true, clientX: x, clientY: y }),
+      );
+    tool.click();
+    pressAt(300 + 370, 120 + 18);
+    expect(d.menu(), "a press on its tool").not.toBeNull();
+    pressAt(300 + 200, 120 + 18);
+    expect(d.menu(), "a press elsewhere").toBeNull();
+    document.removeEventListener("pointerdown", outside);
   });
 
   it("it opens under its tool on the desk's page", async () => {
