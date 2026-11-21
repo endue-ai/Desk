@@ -44,8 +44,9 @@ const SEP = "\u0000";
  * @param {Catalog} catalog
  * @param {() => Connection[]} connections
  * @param {() => void} changed Called when rows change (a folder loaded or failed).
+ * @param {(conn: Connection) => boolean} [kept] Whether the keychain keeps its password (ADR 0311).
  */
-export function createExplorer(catalog, connections, changed) {
+export function createExplorer(catalog, connections, changed, kept = () => false) {
   /** @type {Set<string>} */
   const expanded = new Set();
   /** Groups of connections, and their own databases, are open until closed. @type {Set<string>} */
@@ -163,7 +164,8 @@ export function createExplorer(catalog, connections, changed) {
         key: conn.id,
         kind: "connection",
         label: conn.name,
-        detail: [ENGINE_LABELS[conn.engine], where, conn.readOnly ? "read-only" : "", cache?.detail]
+        detail: [ENGINE_LABELS[conn.engine], where, conn.readOnly ? "read-only" : ""]
+          .concat(kept(conn) ? "keychain" : "", cache?.detail ?? "")
           .filter(Boolean)
           .join(" · "),
         level: 1,

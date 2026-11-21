@@ -171,12 +171,16 @@ export function createObjects(deps) {
     return text;
   };
 
-  /** The row's (or the command's object's) menu of what it takes. */
-  const menu = async (/** @type {Connection} */ conn, /** @type {Target} */ target) => {
+  /** The row's (or the command's object's) menu of what it takes, another feature's `first`. */
+  const menu = async (
+    /** @type {Connection} */ conn,
+    /** @type {Target} */ target,
+    /** @type {{ id: string, label: string }[]} */ first = [],
+  ) => {
     const ops = opsOf(conn.engine, target.kind);
-    if (ops.length === 0)
+    if (ops.length === 0 && first.length === 0)
       throw new Error(`Nothing here changes a ${target.kind} on ${ENGINE_NAMES[conn.engine]}.`);
-    const items = ops.flatMap((op) =>
+    const own = ops.flatMap((op) =>
       op === "generate"
         ? templatesOf(target.kind).map((t) => ({
             id: `generate:${t}`,
@@ -184,6 +188,7 @@ export function createObjects(deps) {
           }))
         : [{ id: op, label: OPS[op].label }],
     );
+    const items = [...first, ...own];
     const picked = await deps.pick(`Database: ${said(conn.engine, target)}`, items);
     if (!picked) throw deps.cancelled("Nothing picked.");
     return picked;

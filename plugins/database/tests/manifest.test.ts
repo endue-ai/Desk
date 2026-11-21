@@ -116,7 +116,7 @@ describe("plugin.json", () => {
   it("contributes every operation as a command, one key, SQLite files and the settings the code reads", () => {
     const { contributes } = manifest();
     const ids = contributes?.commands?.map((c) => c.id) ?? [];
-    expect(ids).toHaveLength(102);
+    expect(ids).toHaveLength(120);
     for (const command of contributes?.commands ?? []) {
       expect(command.id).toMatch(/^endue\.database\.[a-z-]+$/u);
       expect(command.title).toMatch(/^Database: /u);
@@ -224,7 +224,8 @@ describe("permissions", () => {
       // biome-ignore lint/suspicious/noTemplateCurlyInString: the manifest's path variable, as written there
       { permission: "fs:write", paths: ["${home}/.endue/database/**"] },
       // A PostgreSQL session on a connection's host and port (engines/pg-session.js, ADR 0281):
-      // asked for each server.
+      // asked for each server; it also lets the plugin keep that server's password in the
+      // keychain (keychain.js, ADR 0311).
       { permission: "db:connect", hosts: ["*"] },
     ]);
   });
