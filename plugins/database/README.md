@@ -7,9 +7,9 @@ never keeps a password. Its features and modules: [`docs/features.md`](docs/feat
 
 `Mod+Shift+B` opens it; every operation is a command `endue.database.*` (`plugin.json`), and
 `endue.database.connections`, `.schema`, `.query`, `.activity`, `.cancel-session`, `.end-session`,
-`.maintenance`, `.paste` and the objects feature's commands serve agents (ADR 0088; the cancel, the
-end, maintenance and the objects' changes reach the server only after the person's yes, ADR 0290,
-ADR 0293, ADR 0312; a paste stays pending until the person submits).
+`.maintenance`, `.routine`, `.paste` and the objects feature's commands serve agents (ADR 0088; the cancel,
+the end, maintenance, a routine's write and the objects' changes reach the server only after the person's
+yes, ADR 0290, ADR 0293, ADR 0312; a paste stays pending until the person submits).
 
 ## Permissions
 
