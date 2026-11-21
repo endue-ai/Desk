@@ -234,3 +234,56 @@ test("a double click on a cell opens its editor", async ({ page }) => {
   await expect(input).toBeFocused();
   await expect(input).toHaveValue("Bob");
 });
+
+/** The console's text, through its textarea (the editor component keeps it there too). */
+const text = (frame: Frame) =>
+  frame.evaluate(() => (document.getElementById("editor") as HTMLTextAreaElement).value);
+
+test("two consoles on one connection keep their own text and results", async ({ page }) => {
+  const frame = await open(page, LARGE);
+  await query(page, frame);
+  const editor = frame.getByRole("textbox", { name: "SQL" });
+  const title = frame.locator("#title");
+  const cell = (value: string) => frame.locator("#result [role=gridcell]", { hasText: value });
+  await expect(title).toHaveText("fixture");
+  await expect(cell("Ada")).toBeVisible();
+
+  await run(page, "endue.database.new-console", { connection: "fixture" });
+  await expect(title).toHaveText("fixture 2");
+  await expect.poll(() => text(frame)).toBe("");
+  await expect(frame.locator("#results")).toBeHidden();
+  await editor.click();
+  await editor.fill("select * from orders;");
+  await editor.press("ControlOrMeta+Enter");
+  await expect(frame.locator("#summary")).toContainText("Done");
+  await expect(cell("30")).toBeVisible();
+
+  // Back to the first: its own text and rows.
+  await run(page, "endue.database.consoles", { console: "fixture" });
+  await expect(title).toHaveText("fixture");
+  await expect.poll(() => text(frame)).toBe("select * from people;");
+  await expect(cell("Ada")).toBeVisible();
+  await expect(cell("30")).toHaveCount(0);
+  // And the second again.
+  await run(page, "endue.database.consoles", { console: "fixture 2" });
+  await expect.poll(() => text(frame)).toBe("select * from orders;");
+  await expect(cell("30")).toBeVisible();
+});
+
+test("a .sql file opened from the desk is a console that saves to the file", async ({ page }) => {
+  const frame = await open(page, LARGE);
+  const path = "~/queries/report.sql";
+  await run(page, "desk.files.open", { path });
+  const editor = frame.getByRole("textbox", { name: "SQL" });
+  await expect.poll(() => text(frame)).toBe("select * from orders;\n");
+  await expect(frame.locator("#title")).toHaveText("report.sql · fixture");
+  await editor.fill("select * from orders;\nselect * from people;\n");
+  await expect(frame.locator("#title")).toHaveText("● report.sql · fixture");
+  await run(page, "desk.files.save", {});
+  await expect(frame.locator("#title")).toHaveText("report.sql · fixture");
+  const saved = await page.evaluate(
+    (path) => (window as unknown as { __files: Record<string, string> }).__files[path],
+    path,
+  );
+  expect(saved).toBe("select * from orders;\nselect * from people;\n");
+});

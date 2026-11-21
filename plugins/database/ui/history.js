@@ -4,7 +4,8 @@
 // kept apart, by name, per connection, until they are unstarred or the connection is removed.
 
 /**
- * @typedef {{ at: string, sql: string, ms: number, ok: boolean, summary: string }} Entry
+ * @typedef {{ at: string, sql: string, ms: number, ok: boolean, summary: string, console?: string }} Entry
+ *   `console` is the id of the console it ran in (ADR 0286).
  * @typedef {{ name: string, sql: string, at: string }} Saved
  * @typedef {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} Bridge
  */

@@ -1,5 +1,5 @@
 // Running from a console's editor: the statement at the caret, the selection or the whole script,
-// with its parameters asked for first (`:name`, `?`, `$1`, remembered for the session); EXPLAIN
+// with its parameters asked for first (`:name`, `?`, `$1`, remembered for the console); EXPLAIN
 // as a plan tree (ANALYZE of a write rolls back); Format SQL; more rows of a single read; and a
 // console SELECT made pageable when it came back with more rows than it shows. No DOM.
 
@@ -29,8 +29,12 @@ const MORE_MAX = 100_000;
 
 /** @param {Inner} inner */
 export function createRunning({ deps, active, execute, render, typed }) {
-  /** Statements with their parameters filled from the person's answers. */
-  const filled = async (/** @type {Connection} */ conn, /** @type {Statement[]} */ statements) => {
+  /** Statements with their parameters filled from the person's answers, kept per console. */
+  const filled = async (
+    /** @type {Connection} */ conn,
+    /** @type {Statement[]} */ statements,
+    /** @type {Console} */ owner,
+  ) => {
     const { dialect } = engineOf(conn.engine);
     /** @type {Record<string, string>} */
     const values = {};
@@ -43,7 +47,7 @@ export function createRunning({ deps, active, execute, render, typed }) {
       }
       for (const param of asked(params)) {
         if (values[param.key] !== undefined) continue;
-        const memo = `${conn.id}\u0000${param.key}`;
+        const memo = `${owner.consoleId ?? conn.id}\u0000${param.key}`;
         const answer = await deps.ask(
           `Value for ${param.label}`,
           typed.get(memo) ?? "42, it's, NULL or =now()",
@@ -92,7 +96,7 @@ export function createRunning({ deps, active, execute, render, typed }) {
     const sql = selected ? text.slice(start, end) : text;
     const picked = selected || scope === "all" ? split(sql, dialect) : atCaret(conn, text, start);
     if (picked.length === 0) throw new Error("Nothing to run: the editor holds no statement.");
-    const statements = await filled(conn, picked);
+    const statements = await filled(conn, picked, shown);
     const said = await execute(shown, conn, sql, { mode, base: selected ? start : 0, statements });
     const only = statements.length === 1 ? statements[0] : undefined;
     const truncated = shown.execution?.result.statements[0]?.sets.some((s) => s.truncated);
@@ -114,7 +118,7 @@ export function createRunning({ deps, active, execute, render, typed }) {
     const [picked] =
       start !== end ? split(text.slice(start, end), dialect) : atCaret(conn, text, start);
     if (!picked) throw new Error("Nothing to explain.");
-    const [statement] = await filled(conn, [picked]);
+    const [statement] = await filled(conn, [picked], shown);
     if (!statement) throw new Error("Nothing to explain.");
     const sql = explainSql(dialect, await deps.flavor(conn), statement.text, analyze);
     // ANALYZE runs the statement: a write is rolled back at the end.

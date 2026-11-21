@@ -1,7 +1,8 @@
-// The bars around the work area: the header (the connection or the buffer on screen, its engine and
-// place, its environment and read-only marks) and the result's bars (its tabs, and the toolbar of
-// what can be done with the rows on screen and their pending changes).
+// The bars around the work area: the header (the console or the buffer on screen, a .sql file's
+// unsaved mark, its engine and place, its environment and read-only marks) and the result's bars
+// (its tabs, and the toolbar of what can be done with the rows on screen and their pending changes).
 
+import { labelOf } from "./console-list.js";
 import { el } from "./dom.js";
 import { formatCount } from "./format.js";
 
@@ -19,15 +20,19 @@ export function createBars(doc) {
   const tabsEl = byId("tabs");
 
   return {
-    /** The header; a buffer other than a console is titled by its name after its kind. */
+    /** The header: a console by what it is called (`Shop 2`, `● report.sql · Shop`), another
+     * buffer by its name after its kind. */
     header(/** @type {Console | null} */ model, /** @type {Connection | null} */ conn) {
       const title = byId("title");
       const badge = byId("badge");
-      title.textContent = conn
-        ? model && model.kind !== "console"
-          ? model.name.replace(/^[\w-]+: /u, "")
-          : conn.name
-        : "Database";
+      title.textContent =
+        model?.kind === "console"
+          ? `${model.file?.modified ? "● " : ""}${labelOf(model, conn)}`
+          : conn
+            ? model
+              ? model.name.replace(/^[\w-]+: /u, "")
+              : conn.name
+            : "Database";
       title.title = conn
         ? `${ENGINE[conn.engine]} · ${conn.engine === "sqlite" ? conn.file : conn.host}`
         : "";
@@ -37,7 +42,7 @@ export function createBars(doc) {
       badge.className = tag ? `tag tag-${tag}` : "tag";
       doc.body.dataset.tag = tag;
       doc.body.dataset.color = conn?.color ?? "";
-      doc.body.dataset.running = String(model?.running ?? false);
+      doc.body.dataset.running = String(Boolean(model?.running || model?.filing));
     },
 
     /** The result's tabs, the one on screen selected. */
