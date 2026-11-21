@@ -7,7 +7,9 @@
 //! before (it laid the scene out again); a paint of the picture's size is copied into it as it
 //! comes, a newer picture of what the scene laid out. A texture no layout draws any more (a
 //! picture replaced, a surface gone) retires: the scenes handed before may still draw it, so it
-//! goes once the render thread drew one handed since (`Composed::retire_drawn`).
+//! goes once the render thread drew one handed since (`Composed::retire_drawn`). The compositor
+//! window turns this on (`Composed::wait_for_layouts`); the surface probe, which lays out and draws
+//! at once, keeps pictures as they come.
 
 use std::collections::HashMap;
 
@@ -18,6 +20,8 @@ use super::Composed;
 /// The pictures waiting for the next layout and the textures retired.
 #[derive(Default)]
 pub struct Waiting {
+    /// A render thread draws the scenes laid out: new sizes wait, and textures retire.
+    on: bool,
     /// Each surface's newest paint of another size than its picture.
     next: HashMap<String, TextureId>,
     /// The texture each surface's last paint shown went to: a paint to the other is copied whole.
@@ -39,6 +43,9 @@ impl Composed {
         size: (u32, u32),
         whole: bool,
     ) -> (TextureId, bool) {
+        if !self.waiting.on {
+            return (id, whole);
+        }
         let resized = self.frames.size(id).is_some_and(|had| had != size);
         let to = if resized {
             self.dirty = true;
@@ -82,9 +89,19 @@ impl Composed {
         }
     }
 
-    /// No layout draws `id` from now on: it goes once the render thread drew a frame handed since.
+    /// A render thread draws the scenes laid out from now on (the compositor window's).
+    pub fn wait_for_layouts(&mut self) {
+        self.waiting.on = true;
+    }
+
+    /// No layout draws `id` from now on: it goes once the render thread drew a frame handed since,
+    /// or at once where no render thread draws.
     pub(super) fn retire(&mut self, id: TextureId) {
-        self.waiting.retired.push((id, self.waiting.handed));
+        if self.waiting.on {
+            self.waiting.retired.push((id, self.waiting.handed));
+        } else {
+            self.frames.destroy(&mut self.compositor, id);
+        }
     }
 
     /// Frame `n` goes to the render thread.
