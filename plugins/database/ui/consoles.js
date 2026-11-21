@@ -97,9 +97,9 @@ export function createConsoles(deps) {
 
   /**
    * Show a connection's console (the one used last, else its first), or a table's view, opening its
-   * buffer the first time.
+   * buffer the first time (under `filters`, its first page read with them: a followed key's, PG-41).
    * @param {Connection} conn
-   * @param {{ schema: string, name: string } | null} [table]
+   * @param {{ schema: string, name: string, filters?: import("./grid/filters.js").Filter[] } | null} [table]
    * @param {string} [given] A buffer the desk opened already (a visited SQLite file).
    */
   const open = async (conn, table = null, given = undefined) => {
@@ -112,7 +112,8 @@ export function createConsoles(deps) {
         c.table?.name === table.name,
     );
     if (found) return buffers.show(found);
-    const page = { ...table, where: "", order: "", offset: 0, count: null, sort: [], filters: [] };
+    const filters = table.filters ?? [];
+    const page = { ...table, where: "", order: "", offset: 0, count: null, sort: [], filters };
     const name = tableName(conn, page);
     const id = await buffers.open(name);
     const target = buffers.show(
@@ -167,8 +168,9 @@ export function createConsoles(deps) {
    * @param {Console} target
    * @param {Connection} conn
    * @param {string} sql
-   * @param {{ mode?: Mode, base?: number, statements?: Statement[], maxRows?: number, history?: boolean, file?: boolean }} options
-   *   `file` is a part of a file run (features/consoles/run-file.js), which holds the console.
+   * @param {{ mode?: Mode, base?: number, statements?: Statement[], maxRows?: number, history?: boolean, file?: boolean, agent?: boolean }} options
+   *   `file` is a part of a file run (features/consoles/run-file.js), which holds the console;
+   *   `agent` runs it for an agent, whose writes the executor asks the person about.
    */
   const execute = async (target, conn, sql, options) => {
     if (target.running || (target.filing && !options.file))
@@ -189,6 +191,7 @@ export function createConsoles(deps) {
         mode: options.mode ?? "run",
         maxRows,
         ...(options.statements ? { statements: options.statements } : {}),
+        ...(options.agent ? { agent: true, interactive: false } : {}),
       });
       target.execution = execution;
       target.shown = show(execution, options.base ?? 0);

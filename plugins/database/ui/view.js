@@ -202,6 +202,7 @@ export function createView(doc, act, features = Object.values(all), options = {}
     const typing = doc.activeElement === editorEl && previous?.id === model?.id;
     if (model && conn && (model.kind === "console" || model.kind === "ddl") && !typing)
       editor.show(model.text, engineOf(conn.engine).dialect, model.kind === "ddl", model.id);
+    if (model?.kind === "console" && model.execution) editor.ran(model.execution);
     if (model?.kind === "table" && model.table) {
       if (doc.activeElement !== where) where.value = model.table.where;
       if (doc.activeElement !== order) order.value = model.table.order;
@@ -246,7 +247,10 @@ export function createView(doc, act, features = Object.values(all), options = {}
   };
 
   return {
-    explorer: (rows) => tree.render(rows),
+    explorer: (rows) => {
+      tree.render(rows);
+      editor.recheck();
+    },
     console: draw,
     closed: (id) => panels.closed(id),
     form: forms.form,
@@ -300,5 +304,7 @@ export function createView(doc, act, features = Object.values(all), options = {}
     /** An operation of the grid on screen by name, for the grid's commands (features/grid/). */
     grid: (op, args) => grid.command(op, args),
     cell: () => grid.cursorCell(),
+    /** The SQL problems of the console on screen: list them, or go to the next or previous. */
+    problems: (/** @type {"list" | "next" | "previous"} */ what) => editor.problems(what),
   };
 }

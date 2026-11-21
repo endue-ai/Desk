@@ -31,12 +31,18 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   `sqlite:`), and its URI copied back without the password.
 - A connection has a group and a colour, an environment tag (production draws a band at the top of the page)
   and can be read-only.
-- Passwords are never kept: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else the person types one
-  for the session.
+- Passwords are never kept with a connection: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else
+  the person types one for the session. A PostgreSQL connection can have the OS keychain remember it (ADR 0311):
+  the choice in the form and in the password prompt keeps a typed password once it works, or a URI's on Save,
+  through the desk, which never hands it back; a session signs in with it by `passwordRef`, so no prompt comes
+  after a restart. The connection's line says `keychain`; Database: forget the remembered password, turning the
+  choice off, changing the server or user, or removing the connection forgets it. Disconnect leaves it
+  (`keychain.js`, `engines/pg-session.js`).
 - A SQLite file (`*.sqlite`, `*.sqlite3`, `*.db3`) opened on the desk or dropped on the page opens as a
   connection, added the first time.
 
-Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, `engines/`.
+Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.js`, `run.js`, `engines/`,
+`features/keychain/`.
 
 ## Explorer
 
@@ -58,13 +64,14 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
   schema's types. Passwords are never read: not a user mapping's options, a subscription's connection string, a
   role's password, or an option named like a secret.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
-  exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the schema's ER diagram
-  from its foreign keys, `m` opens the maintenance form of a connection, schema, table or index, `n`, `e` and
+  exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the ER diagram of a
+  schema (of the tables the filter keeps) or of a table and its neighbours, `m` opens the maintenance form of
+  a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `n`, `e` and
   Delete add, change and remove a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
-kinds in `schema/pg/`), `view-tree.js`, `view-diagram.js`.
+kinds in `schema/pg/`), `view-tree.js`.
 
 ## Objects
 
@@ -127,29 +134,9 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 `console-run.js`, `features/consoles/`, `execute.js`, `history.js`, `tools.js`, `sql/`, `editor/`,
 `view-editor.js`.
 
-## Format SQL
+## Format SQL and SQL problems
 
-- `Mod+Shift+F` and Database: format the SQL lay out the selection, else the whole console; Database:
-  format the statement at the caret the selection, else that statement. Only space and the case of
-  keywords change.
-- PostgreSQL is laid out from its own scanner and parse tree, in the parse worker (ADR 0292): each clause
-  on its line, a list one item a line when it does not fit, conditions broken at AND and OR, joins on
-  their lines, subqueries, CASE and brackets indented when they break. Comments stay where they were, a
-  statement a line apart. Each laid-out statement is parsed again, and kept as written unless its tree is
-  the same. A statement that does not parse, or a routine with a BEGIN ATOMIC body, is left as written,
-  and the status line says which.
-- The style is eight settings: `format-keyword-case` (upper, lower, preserve; a keyword the grammar reads
-  as a name keeps its spelling, and a type is written in lower case unless preserve), `format-indent`
-  (1 to 8), `format-line-width` (40 to 240), `format-comma` (last, first), `format-and-or` (before, after),
-  `format-joins` (flat, indented), `format-one-line` (clause, statement, item) and `format-lists` (indent,
-  align). A change applies at the next Format, without a restart.
-- MySQL and SQLite keep the format that reads tokens alone: each clause on its line, the select list one item
-  a line, reserved words in capitals, by none of the settings.
-- `format-on-save` (off by default): Save lays a `.sql` file's console out before it writes the file, by
-  the format of the file's connection, and says a statement it left as written; a file on no connection
-  yet is written as typed.
-
-Modules: `sql/layout/`, `console-run.js`, `console-files.js`.
+How the console lays SQL out and underlines what the server would refuse: [`editor.md`](editor.md).
 
 ## Results
 
@@ -234,6 +221,22 @@ Modules: `edits.js`, `edit/` (`cells.js`, `duplicate.js`, `history.js`, `paste-t
 `view-cell.js`, `cell-editors/` (`resolve.js`, `pg-types.js`, `values.js`, `panel.js`, one module per kind),
 `grid/paste.js`, `grid/paste-worker.js`, `features/cell-values/`, `features/paste/`.
 
+## Foreign keys
+
+- On PostgreSQL, a foreign key's cells in a table's view or a console's plain SELECT of one table are links,
+  their title saying where they point (ADR 0322). `g` or Mod+click (the cell's menu, Database: go to the row
+  this key points at) opens the referenced table's view under one `=` quick filter per key column, its typed
+  WHERE cleared; a NULL, or a key column missing from the result, is said instead.
+- `r` (Database: show the rows that point at this row) lists the tables whose keys point at the row, counted
+  in one run when asked, and opens one filtered the same way. `b` (Database: go back to where the key was
+  followed from) shows the view as it was: WHERE, order, sort keys, filters and page; 50 steps are kept.
+- Enter or F2 on an editable key cell (Database: pick the key from the referenced table) searches the
+  referenced table in the palette: 50 rows a page by key with its first text column, More rows, typed text
+  searched on the server, and the text as it is for a key of one column. The whole key is one pending step.
+- Keys come from the schema cache when it holds the table's schema, else from one read of `pg_constraint`.
+
+Modules: `links/`, `features/links/`.
+
 ## Import and export
 
 - Export a result to `~/Downloads` in any copy format, as `<table>-<time>.<extension>` so it never overwrites
@@ -284,6 +287,29 @@ Modules: `features/activity/`.
 
 Modules: `features/overview/`.
 
+## ER diagram
+
+- A diagram of a schema, of several, of the tables the explorer's filter keeps, or of a table and its
+  neighbours 1 to 9 foreign keys away either way (Database: ER diagram of a table and its neighbours). A
+  PostgreSQL connection's diagram reads the schema cache (ADR 0285); other engines read their catalog.
+- Each table shows its columns with type, `null` for a nullable one, PK and FK, and its comment as a tooltip;
+  all columns (the first 50, then how many more), keys only, or none. Each line names its foreign key; its ends
+  say one, zero or one, or many. Tables of other schemas are named with their schema.
+- Laid out in layers over the foreign keys, a referenced table left of those that refer to it, lines routed
+  round the tables; Auto layout (`a`) lays it out again. A table dragged, or moved with Shift and the arrows, stays
+  where it was put: the layout is kept per connection and diagram in the plugin's store across restarts
+  (ADR 0315). A new table lands beside the placed ones; a dropped one leaves.
+- Add or remove a table, add a table's neighbours (`n`) or a schema, and draw a relation the database does not
+  declare (dashed, said to be not in the database, kept with the diagram).
+- Export image… writes SVG (the theme's colours as values) or PNG at 1x or 2x where the save dialog says,
+  asking once for the path when it is not granted (ADR 0260); Copy image puts a PNG on the clipboard. Either
+  holds the diagram alone.
+- Wheel pans, Mod and the wheel zooms, a drag on the background pans; Fit, `+`, `-` and `0` set the zoom; past
+  30 tables a map shows where the view is. Arrows move between tables, Enter opens one, Delete removes it.
+  From 200 tables the layout runs in a worker; boxes away from the view are not drawn, nor rows far out.
+
+Modules: `features/diagram/`, `schema/diagram.js`.
+
 ## Maintenance
 
 - A form per target of a PostgreSQL connection (13 and later; a standby refuses): VACUUM, ANALYZE, REINDEX
@@ -301,6 +327,26 @@ Modules: `features/overview/`.
 
 Modules: `features/maintenance/`.
 
+## Routines
+
+- A form per signature of a PostgreSQL function or procedure, opened from the explorer (`x` on its row under
+  Routines, or Run with its arguments, first in the row's menu) or the palette (a name, then the signature of
+  an overloaded one); aggregates, window and trigger functions and those taking `internal` are refused in
+  words.
+- A row per argument from `pg_proc` with its mode, type and default, edited by its type's cell editor (ADR
+  0287), NULL and DEFAULT as choices (DEFAULT only where one is declared, and an unnamed argument only at
+  the end), VARIADIC as the list of its elements, a polymorphic one with the type it is given as; OUT and
+  TABLE arguments say they come back as columns. The exact call shows as values change: `SELECT f(...)`,
+  `SELECT * FROM f(...)` for a set, a row type or OUT columns, `CALL p(...)` with OUT passed as NULL; named
+  notation where arguments have names, every literal quoted and cast to its declared type.
+- Volatility decides the guard: a VOLATILE function or any procedure is a write, refused on a read-only
+  connection (rolled back too), asked on production, and run for an agent only after the person's yes.
+  "Run in a transaction and roll back" sends the call between BEGIN and ROLLBACK; a procedure whose source
+  commits or rolls back runs alone and is not offered it.
+- Run (`Mod+Enter`) runs the call in the connection's console: its result tabs, notices in Messages, the
+  history. The arguments are remembered per connection and routine for the session, never across a restart.
+
+Modules: `features/routines/`.
 ## Backup and restore
 
 - Back up a PostgreSQL database with `pg_dump` from a form (ADR 0313): format (custom, directory, tar, plain),
@@ -338,6 +384,9 @@ Modules: `features/backup/`.
 - The objects feature's commands (`.rename-object`, `.drop-object`, `.edit-source`, `.generate-sql` and the
   rest) take the object by connection, schema, name (and table, for a part); each change shows the person
   its dialog, and `.drop-object` and `.truncate-table` are irreversible (ADR 0312).
+- `.routine` opens a function's or procedure's form with its arguments (by name or in order) and answers
+  the call and its arguments; with `run` it runs it as above, a write after the person's yes, and answers
+  the result's first 50 rows and the notices.
 - `.backup` and `.restore` (irreversible) only fill their form: nothing runs until the person submits it.
 
 Modules: `agent.js`.

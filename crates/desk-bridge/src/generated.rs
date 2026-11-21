@@ -5203,6 +5203,9 @@ pub enum BridgeRequest {
     DbCancel(DbCancelRequest),
     DbClose(DbCloseRequest),
     DbList(DbListRequest),
+    DbPasswordsSet(DbPasswordsSetRequest),
+    DbPasswordsDelete(DbPasswordsDeleteRequest),
+    DbPasswordsList(DbPasswordsListRequest),
     AudioCaptureStart(AudioCaptureStartRequest),
     AudioCaptureStop(AudioCaptureStopRequest),
     UiSurfaceOpen(UiSurfaceOpenRequest),
@@ -7017,6 +7020,12 @@ pub struct DbOpenParams {
     /// Used once for the sign-in and dropped. Without it the core reads the person's password file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
+    #[serde(
+        rename = "passwordRef",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub password_ref: Option<DbPasswordName>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tls: Option<DbTls>,
     /// Startup parameters (DateStyle, TimeZone, search_path, statement_timeout, application_name, ...). client_encoding, user, database and replication are invalid_params.
@@ -7056,7 +7065,7 @@ pub enum DbTlsMode {
     VerifyFull,
 }
 
-/// Result of db.open: the session, signed in; or the server's refusal (error) and no session; or needsPassword when no password was given, none was found in the password file and the server asks for one.
+/// Result of db.open: the session, signed in; or the server's refusal (error) and no session; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DbOpenResult {
@@ -7288,6 +7297,89 @@ pub struct DbSessionInfo {
     /// A result has pages left, or a COPY FROM STDIN waits for data.
     pub more: bool,
     pub transaction: DbTransaction,
+}
+
+/// A password the caller kept with db.passwords.set, by the name it chose (ADR 0311). db.open's passwordRef names it: the core reads the OS keychain itself, after the password file, and only for the host, port and user it was kept for; a name that is not kept, or was kept for another server or user, is as if none was given. Not with password.
+pub type DbPasswordName = String;
+
+/// Keep a password in the OS keychain under a name, for one host, port and user; it is never answered back.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbPasswordsSetRequest {
+    pub id: RequestId,
+    pub method: DbPasswordsSetRequestMethod,
+    pub params: DbPasswordsSetParams,
+}
+
+/// Parameters of db.passwords.set. A name already kept is replaced. A plugin's manifest must declare db:connect for the host and port; no grant is needed, since using it is db.open's.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbPasswordsSetParams {
+    pub name: DbPasswordName,
+    /// The host db.open names, as net.connect takes it.
+    pub host: String,
+    /// 5432 by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u64>,
+    pub user: String,
+    pub password: String,
+}
+
+/// Result of db.passwords.set: kept.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbPasswordsSetResult {}
+
+/// Forget a password the caller kept: its keychain entry goes. Forgetting one that is not kept is not an error.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbPasswordsDeleteRequest {
+    pub id: RequestId,
+    pub method: DbPasswordsDeleteRequestMethod,
+    pub params: DbPasswordsDeleteParams,
+}
+
+/// Parameters of db.passwords.delete.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbPasswordsDeleteParams {
+    pub name: DbPasswordName,
+}
+
+/// Result of db.passwords.delete.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbPasswordsDeleteResult {}
+
+/// The passwords the caller kept: what each is kept for, never the password.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbPasswordsListRequest {
+    pub id: RequestId,
+    pub method: DbPasswordsListRequestMethod,
+    pub params: DbPasswordsListParams,
+}
+
+/// Parameters of db.passwords.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbPasswordsListParams {}
+
+/// Result of db.passwords.list, by name.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbPasswordsListResult {
+    pub passwords: Vec<DbKeptPassword>,
+}
+
+/// A password the caller kept: its name and the host, port and user it is for.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbKeptPassword {
+    pub name: DbPasswordName,
+    pub host: String,
+    pub port: u64,
+    pub user: String,
 }
 
 /// One page of a statement's answer. The first page has the columns; the last has the tag, the row count and the transaction state, or the server's error.
@@ -13634,6 +13726,30 @@ pub enum DbListRequestMethod {
     #[default]
     #[serde(rename = "db.list")]
     DbList,
+}
+
+/// The `method` of [`DbPasswordsSetRequest`]: always `"db.passwords.set"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbPasswordsSetRequestMethod {
+    #[default]
+    #[serde(rename = "db.passwords.set")]
+    DbPasswordsSet,
+}
+
+/// The `method` of [`DbPasswordsDeleteRequest`]: always `"db.passwords.delete"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbPasswordsDeleteRequestMethod {
+    #[default]
+    #[serde(rename = "db.passwords.delete")]
+    DbPasswordsDelete,
+}
+
+/// The `method` of [`DbPasswordsListRequest`]: always `"db.passwords.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbPasswordsListRequestMethod {
+    #[default]
+    #[serde(rename = "db.passwords.list")]
+    DbPasswordsList,
 }
 
 /// The `event` of [`DbNoticeEvent`]: always `"db.notice"`.

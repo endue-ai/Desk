@@ -1,7 +1,8 @@
 // The connection form and the password prompt. The form shows the fields the engine uses (a file
-// for SQLite; host, port, database, user and TLS for the others), says what is wrong next to the
-// buttons, and hands the fields back on Save or Test. The password field is type=password, its value
-// leaves the DOM as soon as it is handed over, and Escape cancels either.
+// for SQLite; host, port, database, user and TLS for the others; the keychain choice for PostgreSQL),
+// says what is wrong next to the buttons, and hands the fields back on Save or Test. The password
+// field is type=password, its value leaves the DOM as soon as it is handed over with the prompt's
+// keychain choice, and Escape cancels either.
 
 import { COLORS, SSL_MODES, TAGS } from "./connections.js";
 
@@ -40,10 +41,13 @@ export function createForms(doc, act) {
   const tag = /** @type {HTMLSelectElement} */ (byId("f-tag"));
   const color = /** @type {HTMLSelectElement} */ (byId("f-color"));
   const readOnly = /** @type {HTMLInputElement} */ (byId("f-readOnly"));
+  const keychain = /** @type {HTMLInputElement} */ (byId("f-keychain"));
   const input = (/** @type {string} */ name) => /** @type {HTMLInputElement} */ (byId(`f-${name}`));
   const prompt = /** @type {HTMLFormElement} */ (byId("password"));
   const promptText = byId("password-text");
   const secret = /** @type {HTMLInputElement} */ (byId("password-value"));
+  const remember = /** @type {HTMLInputElement} */ (byId("password-keychain"));
+  const rememberLabel = /** @type {HTMLElement} */ (remember.closest("label"));
 
   for (const mode of SSL_MODES)
     ssl.append(new Option(mode === "default" ? DEFAULT_SSL : mode, mode));
@@ -52,12 +56,13 @@ export function createForms(doc, act) {
     color.append(new Option(value ? `Colour ${i}` : "none", value));
   });
 
-  /** Show the fields the engine uses. */
+  /** Show the fields the engine uses: `sqlite`, `server` (the others) or one engine's own. */
   const fitFields = () => {
     const sqlite = engine.value === "sqlite";
     for (const node of form.querySelectorAll("[data-for]")) {
       const wanted = /** @type {HTMLElement} */ (node).dataset.for;
-      /** @type {HTMLElement} */ (node).hidden = wanted === "sqlite" ? !sqlite : sqlite;
+      const shown = wanted === "server" ? !sqlite : wanted === engine.value;
+      /** @type {HTMLElement} */ (node).hidden = !shown;
     }
     input("port").placeholder = PORTS[/** @type {keyof typeof PORTS} */ (engine.value)] ?? "";
     // The desk's own PostgreSQL sessions use TLS when the server offers it; MySQL's client decides.
@@ -75,6 +80,7 @@ export function createForms(doc, act) {
     ssl: /** @type {Connection["ssl"]} */ (ssl.value),
     tag: /** @type {Connection["tag"]} */ (tag.value),
     readOnly: readOnly.checked,
+    keychain: keychain.checked,
     color: color.value,
   });
 
@@ -106,7 +112,7 @@ export function createForms(doc, act) {
     event.preventDefault();
     const value = secret.value;
     secret.value = "";
-    act("password", value);
+    act("password", value, !rememberLabel.hidden && remember.checked);
   });
   byId("password-cancel").addEventListener("click", () => {
     secret.value = "";
@@ -139,6 +145,7 @@ export function createForms(doc, act) {
         ssl.value = conn.ssl;
         tag.value = conn.tag;
         readOnly.checked = conn.readOnly;
+        keychain.checked = /** @type {{ keychain?: boolean }} */ (conn).keychain === true;
         color.value = conn.color ?? "";
       }
       // A new error or Test result scrolls into sight above the buttons (the dialog's scroll
@@ -157,6 +164,8 @@ export function createForms(doc, act) {
       prompt.hidden = model === null;
       if (!model) return;
       promptText.textContent = `${model.connection}: ${model.message}`;
+      rememberLabel.hidden = model.remember === undefined;
+      remember.checked = model.remember === true;
       secret.value = "";
       secret.focus();
     },
