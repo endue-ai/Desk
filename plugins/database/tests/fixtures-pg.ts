@@ -1,10 +1,12 @@
 // The fixture's PostgreSQL connection (fixtures.ts): its scripted server answers the catalog of one
 // table of typed columns, public.items (an enum, jsonb, a boolean, a text array and a timestamp with
 // a time zone), the types query of the typed cell editors (ui/cell-editors/pg-types.js), the table's
-// page and its count, and fails `select 1/0`. Every other statement gets nothing back. Fixture data
+// page and its count, the pages of the shop's people and orders, joined by a foreign key
+// (links-fixture.ts), and fails `select 1/0`. Every other statement gets nothing back. Fixture data
 // only.
 import type { Connection } from "../ui/engines/common.js";
 import type { Answer } from "./clients";
+import { pagesOf, SHOP_ROWS } from "./links-fixture";
 
 /** The saved PostgreSQL connection the fixture page starts with, after `fixture`. */
 export const FIXTURE_PG_CONNECTION: Connection = {
@@ -37,8 +39,12 @@ const ROWS = [
   ["3", "so so", "[1, 2, 3]", "t", '{"c d"}', "2026-11-19 07:15:00+00"],
 ];
 
+const shopPages = pagesOf(SHOP_ROWS);
+
 export function pgFixtureScript(sql: string): Answer {
   const text = sql.trim();
+  const shop = shopPages(text);
+  if (shop) return shop;
   if (/^SELECT nspname FROM pg_catalog\.pg_namespace/u.test(text))
     return { rows: [["nspname"], ["public"]] };
   if (/^SELECT c\.relname, CASE c\.relkind/u.test(text))
