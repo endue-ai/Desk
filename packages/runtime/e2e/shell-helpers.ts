@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 export const DESK = { width: 1440, height: 900 };
 
@@ -22,6 +22,19 @@ export function putAway(page: Page, id?: string): Promise<unknown> {
       ),
     id,
   );
+}
+
+/**
+ * Window `id`'s menu, opened by a click on the tool on its title bar (ADR 0255): the desk's one
+ * window menu (ADR 0117), with New tab, Maximize or restore, Floating mode, Pin and Put in drawer
+ * above its "Move to" rows.
+ */
+export async function windowMenu(page: Page, id: string): Promise<Locator> {
+  const section = page.locator(`section.surface[data-surface="${id}"]`);
+  await section.locator('.surface-tools [aria-haspopup="menu"]').click();
+  const menu = page.locator(".desktops-menu");
+  await menu.waitFor();
+  return menu;
 }
 
 /** The theme studio lives in Settings > Appearance; Settings is a row of the avatar's menu. */

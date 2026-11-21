@@ -8,8 +8,8 @@ export const APP = "example.hello-window";
 /** The page its manifest asks for, and the smallest. */
 export const PAGE = { w: 480, h: 360 };
 export const LEAST = { w: 320, h: 240 };
-/** A window on the canvas is its border (1 px a side) and title bar (40 px) larger than its page. */
-export const framed = (page: { w: number; h: number }) => ({ w: page.w + 2, h: page.h + 42 });
+/** A window on the canvas is its border (1 px a side) and title bar (36 px) larger than its page. */
+export const framed = (page: { w: number; h: number }) => ({ w: page.w + 2, h: page.h + 38 });
 
 /** The app's window as desk.windows.list names it, once `test` holds. */
 export async function appWindow(test: (w: Window) => boolean, what: string): Promise<Window> {
