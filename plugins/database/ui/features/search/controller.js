@@ -1,5 +1,5 @@
 // The search panels' controller: one panel per connection, opened from the palette, an agent or the
-// explorer's `s` (a schema or a table chosen already), with the person's options and the estimate;
+// explorer's `f` (a schema or a table chosen already), with the person's options and the estimate;
 // a search at a time per panel, the panel drawn again after each table; Cancel; a hit opened as the
 // table's view filtered to its row. A production connection asks first with what it will read,
 // whoever asks; a read-only one searches, as a search only reads. index.js's commands and actions

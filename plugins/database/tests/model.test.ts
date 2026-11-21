@@ -257,9 +257,12 @@ describe("the rest", () => {
     const modF = { key: "f", mod: true, shift: false, alt: false };
     expect(actionFor("editor", modF)).toBeUndefined();
     expect(actionFor("explorer", modF)).toBeUndefined();
-    // s on a connection, schema or table searches its tables for a value.
-    expect(actionFor("explorer", { key: "s", mod: false, shift: false, alt: false })).toBe(
+    // f on a connection, schema or table searches its tables for a value; s stays the source.
+    expect(actionFor("explorer", { key: "f", mod: false, shift: false, alt: false })).toBe(
       "searchData",
+    );
+    expect(actionFor("explorer", { key: "s", mod: false, shift: false, alt: false })).toBe(
+      "editSource",
     );
   });
 

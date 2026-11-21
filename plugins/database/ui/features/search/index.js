@@ -4,7 +4,7 @@
 // timeout each, progress and Cancel, and the matches grouped by table and column, each opening the
 // table filtered. Commands: Database: search for a value in tables (agents get it read-only, under
 // the same limits, and it answers the counts and the first keys) and Database: cancel the value
-// search; the explorer's `s` opens it on a connection, schema or table. The panel keeps its options
+// search; the explorer's `f` opens it on a connection, schema or table. The panel keeps its options
 // across a restart, never its results. controller.js runs it, panel.js and results.js draw.
 
 import { createSearchPanels, TYPE } from "./controller.js";
@@ -34,7 +34,7 @@ export const feature = {
   actions: (deps) => {
     const search = of(deps);
     return {
-      /** The explorer's `s` on a connection, schema or table row. */
+      /** The explorer's `f` on a connection, schema or table row. */
       searchData: (/** @type {import("../../explorer.js").Node | undefined} */ node) =>
         search.open({
           ...(node?.connection ? { connection: node.connection } : {}),

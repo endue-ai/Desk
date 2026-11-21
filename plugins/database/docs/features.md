@@ -53,7 +53,7 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
   role's password, or an option named like a secret.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the schema's ER diagram
-  from its foreign keys, `m` opens the maintenance form of a connection, schema, table or index, `s` searches
+  from its foreign keys, `m` opens the maintenance form of a connection, schema, table or index, `f` searches
   a connection's, schema's or table's values (Value search below), `n`, `e` and Delete add, change and remove
   a connection, `u` adds one from a URI.
 - A table drags its qualified name.
@@ -309,7 +309,7 @@ Modules: `features/maintenance/`.
   primary key, else by `ctid` (PostgreSQL, said so), `rowid` (SQLite) or the match (MySQL). The tables not
   searched are listed with why: the size limit, no permission, the timeout.
 - `endue.database.search-data` with a value answers the counts and the first keys, read-only and under the
-  same limits; `.search-data-cancel` stops it. The explorer's `s` opens it on the row's connection, schema or
+  same limits; `.search-data-cancel` stops it. The explorer's `f` opens it on the row's connection, schema or
   table.
 
 Modules: `features/search/`, the `signal` of a run (`execute.js`, `run.js`).
