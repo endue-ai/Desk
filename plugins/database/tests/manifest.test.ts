@@ -108,8 +108,12 @@ describe("plugin.json", () => {
       expect(command.id).toMatch(/^endue\.database\.[a-z-]+$/u);
       expect(command.title).toMatch(/^Database: /u);
     }
-    const source = ["ui/commands.js", "ui/agent.js"]
-      .map((file) => readFileSync(join(folder, file), "utf8"))
+    // The built-in commands, the agents' and each feature's (ui/features/<name>/).
+    const source = [
+      ...["ui/commands.js", "ui/agent.js"].map((file) => join(folder, file)),
+      ...files(join(folder, "ui/features")).filter((path) => path.endsWith(".js")),
+    ]
+      .map((path) => readFileSync(path, "utf8"))
       .join("\n");
     for (const id of ids) expect(source, id).toContain(`"${id}"`);
     expect(contributes?.keys).toEqual([{ key: "Mod+Shift+B", command: "endue.database.open" }]);

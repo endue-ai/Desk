@@ -1,0 +1,56 @@
+/* The ER diagram (item 9): boxes in the card's colours, the head tinted, links in the border
+   colour. Every colour, font, size and radius comes from the theme's --desk-* tokens; the feature
+   links this sheet itself (features/README.md). */
+
+.er {
+  display: block;
+  font: var(--desk-text-xs) var(--desk-font-mono);
+}
+
+.er-box {
+  fill: var(--desk-card);
+  stroke: var(--desk-border);
+}
+
+.er-head {
+  fill: var(--desk-muted);
+}
+
+.er-name {
+  fill: var(--desk-text);
+  font-weight: 600;
+}
+
+.er-column {
+  fill: var(--desk-text);
+}
+
+.er-key {
+  fill: var(--desk-primary-text);
+  font-weight: 600;
+}
+
+.er-type {
+  fill: var(--desk-text-muted);
+}
+
+.er-link {
+  fill: none;
+  stroke: var(--desk-text-muted);
+  stroke-width: 1.5;
+}
+
+.er-arrow {
+  fill: var(--desk-text-muted);
+}
+
+.er-table {
+  outline: none;
+  cursor: default;
+}
+
+.er-table:focus-visible .er-box,
+.er-table:hover .er-box {
+  stroke: var(--desk-ring);
+  stroke-width: 2;
+}

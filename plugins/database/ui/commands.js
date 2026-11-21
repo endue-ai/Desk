@@ -1,6 +1,6 @@
-// The plugin's commands (endue.database.*, in plugin.json) and the desk's requests it answers
-// (desk.buffers.show and .closed, desk.files.visit for SQLite files). A failure goes to the status
-// line and ends the request with the same words; a cancel ends it quietly. No DOM.
+// The plugin's built-in commands (endue.database.*, in plugin.json), each answered through
+// answer.js: a failure goes to the status line and ends the request with the same words; a cancel
+// ends it quietly. A feature answers its own (features/). No DOM.
 
 import { formatUri, loadConnections } from "./connections.js";
 import { engineOf } from "./engines/index.js";
@@ -10,7 +10,7 @@ import { formatDuration } from "./format.js";
  * @typedef {import("./engines/common.js").Connection} Connection
  * @typedef {{
  *   bridge: Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">,
- *   commands: { on(name: string, handler: (args: unknown) => unknown): void },
+ *   answer: import("./answer.js").Answer,
  *   view: import("./database.js").View,
  *   manager: ReturnType<typeof import("./manage.js").createManager>,
  *   consoles: ReturnType<typeof import("./consoles.js").createConsoles>,
@@ -18,39 +18,33 @@ import { formatDuration } from "./format.js";
  *   tools: ReturnType<typeof import("./tools.js").createTools>,
  *   execute: import("./catalog.js").Execute,
  *   cancel(): void,
- *   openConsole(ref: string | undefined): Promise<string | null>,
- *   visit(buffer: string, path: string): Promise<void>,
  *   pick(title: string, items: { id: string, label: string }[], free?: boolean, placeholder?: string): Promise<string | undefined>,
  * }} Deps
  */
 
-/** The bridge or command code an error carries, if any. */
-export const codeOf = (/** @type {unknown} */ error) =>
-  /** @type {{ code?: string }} */ (error)?.code;
-
 /** @param {Deps} deps */
 export function registerCommands(deps) {
-  const { commands, view, manager, consoles, explorer, tools } = deps;
-
-  /** @param {string} name @param {(args: any) => unknown} handler */
-  const answer = (name, handler) =>
-    commands.on(name, async (args) => {
-      try {
-        return await handler(args ?? {});
-      } catch (error) {
-        if (codeOf(error) !== "cancelled")
-          view.say(error instanceof Error ? error.message : String(error));
-        throw error;
-      }
-    });
+  const { answer, view, manager, consoles, explorer, tools } = deps;
   const said = async (/** @type {Promise<unknown>} */ done) => {
     const text = await done;
     if (typeof text === "string") view.say(text);
     return text;
   };
+  /** Open a connection's console, from a name, an id or a pick; with none yet, the form. */
+  const openConsole = async (/** @type {string | undefined} */ ref) => {
+    if (manager.list().length === 0 && !ref) {
+      manager.create();
+      return null;
+    }
+    const conn = await manager.choose(ref, "Database: open which connection?");
+    if (!conn) return null;
+    await consoles.open(conn);
+    view.focus("editor");
+    return conn.name;
+  };
 
-  answer("endue.database.open", ({ connection }) => deps.openConsole(connection));
-  answer("endue.database.console", ({ connection }) => deps.openConsole(connection));
+  answer("endue.database.open", ({ connection }) => openConsole(connection));
+  answer("endue.database.console", ({ connection }) => openConsole(connection));
   answer("endue.database.new-connection", (fields) => manager.create(fields));
   answer("endue.database.import-uri", ({ uri }) => manager.importUri(uri));
   answer("endue.database.edit-connection", ({ connection }) => manager.edit(connection));
@@ -116,7 +110,6 @@ export function registerCommands(deps) {
     return typed;
   });
   answer("endue.database.ddl", (args) => tools.ddl(args));
-  answer("endue.database.er-diagram", (args) => tools.diagram(args));
   answer("endue.database.history", ({ query }) => tools.history(query));
   answer("endue.database.star", ({ name }) => tools.star(name));
   answer("endue.database.starred", () => tools.starred());
@@ -140,19 +133,4 @@ export function registerCommands(deps) {
     view.preview(sql);
     return sql;
   });
-
-  commands.on("desk.buffers.show", (args) => consoles.show(bufferOf(args)));
-  commands.on("desk.buffers.closed", (args) => consoles.closed(bufferOf(args)));
-  commands.on("desk.files.visit", (args) => {
-    const { buffer, path } = /** @type {{ buffer?: string, path?: string }} */ (args ?? {});
-    if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
-    return deps.visit(buffer, path);
-  });
-  // A database file has nothing to save or revert: every run is written by the client.
-  commands.on("desk.files.save", () => undefined);
-  commands.on("desk.files.revert", () => undefined);
 }
-
-/** The buffer id a desk request names. */
-const bufferOf = (/** @type {unknown} */ args) =>
-  /** @type {{ buffer?: string }} */ (args)?.buffer ?? "";
