@@ -71,17 +71,21 @@ out would need the window manager, the router and CEF's pump off the main thread
   scene out on the beat and hands a clone (`Scene` is `Clone` now, its id and revision with it), or
   `None` when only pictures changed. A frame from rest is drawn at once. In a run, each frame is
   drawn an eighth of an interval further behind its slot than the one before, up to three quarters
-  of an interval (`Behind`), so the cadence never jumps. A frame handed late is drawn at once. A scene
-  handed before the one waiting was drawn replaces it. The thread runs at user-interactive quality
-  of service. It owns the swapchain, with the waits for an image the OS withholds or hands out late
-  (`gpu::Swapchain`). Headless, it renders off screen while a frame trace runs, as the main thread
-  did.
-* **Pictures keep their size until the next layout** (`compositor_window/composed_waiting.rs`). A
-  paint of another size than its surface's picture goes to a texture of its own. It shows from the
-  next layout on, as a paint of a new size laid the scene out again before. A paint of the picture's
-  size is copied into it as it comes. A picture replaced (shown from aside, a new size, the desk
-  page's report) or a surface gone retires. It is destroyed once the render thread drew a frame
-  handed after it retired.
+  of an interval (`clock::Behind`), so the cadence never jumps. A frame handed late is drawn at once.
+  A scene handed for the slot of the one waiting replaces it; one for the next slot waits behind it,
+  so a frame the render thread is late for is drawn, not dropped. The thread runs at
+  user-interactive quality of service. It owns the swapchain, with the waits for an image the OS
+  withholds or hands out late (`gpu::Swapchain`), and hands it back to the main thread when it
+  stops (the swapchain holds winit's window, which goes on the main thread). Headless, it renders
+  off screen while a frame trace runs, as the main thread did.
+* **A picture of a new size goes to a texture of its own** (`compositor_window/composed_retired.rs`).
+  A paint of another size than its surface's picture goes to a new texture, which is the picture
+  at once, so the main thread sees the new size when it did before (the desk's page is laid out from
+  the report its picture's size names). A paint of the picture's size is copied into it as it comes.
+  A picture replaced (a new size, shown from aside, the desk page's report) or a surface gone
+  retires: a scene handed before draws it still, and it is destroyed once the render thread drew a
+  frame handed after it retired. The surface probe, which lays out and draws at once, keeps
+  resizing in place.
 * **The gate** (`e2e/perf`). The trace names the display (`display`). `minFps` is by rate: 58 at
   60 Hz, 110 at 120, and the nearest rate's share elsewhere. Intervals over 25 ms are allowed for
   at most 1 % (2 % before). A third shake holds the main thread 20 ms right after a frame, every
@@ -97,14 +101,21 @@ out would need the window manager, the router and CEF's pump off the main thread
 * Good, because a picture can no longer change size under a laid-out scene, on screen or in a capture
 * Bad, because in a run of frames each one is shown up to three quarters of an interval later than
   before: 12.5 ms at 60 Hz, 6.25 ms at 120. A frame from rest (a key's paint) is not delayed
-* Bad, because a texture replaced lives a frame longer (`retire`), and each frame copies its scene
-  (a few hundred nodes)
+* Bad, because a texture replaced lives a frame longer (`retire`), a picture of a new size is a new
+  texture where it was resized in place, and each frame copies its scene (a few hundred nodes)
 * Bad, because the frame trace's `acquireMs` now includes the wait behind the slot, so `tickMs`
   spans the layout to the draw on another thread
 * Bad, because the canvas map's icons swept by a layout (ADR 0273) are not retired. A frame still
   waiting draws the map without such an icon if the render thread is late past the next layout
 
 ## More Information
+
+A first cut (a32bba8e) held a paint of a new size back until the next layout, and dropped a waiting
+frame when the next came. Measured back to back with `main` 1f206027 (load 20 to 30), the shake ran
+43 frames a second: the render thread woke 1 to 5 ms late, and the next frame replaced the one
+waiting. `sway-scene` failed on 1249 frames of 1387: the desk's page is laid out from the report
+its picture's size names, read before the layout showed the new size. Both are what the decisions
+above replace. `sway-smooth` was 4.6 % against `main`'s 12.8 %.
 
 Issue #249; `docs/ko/desk-structure.md`'s compositor section describes the frame on the main
 thread and should name the render thread once this is accepted.

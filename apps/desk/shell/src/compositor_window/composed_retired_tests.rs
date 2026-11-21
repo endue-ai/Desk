@@ -1,5 +1,5 @@
-//! A picture of a new size waits for the next layout, and a picture replaced retires until the
-//! render thread drew a frame handed since (#249, ADR 0235).
+//! A paint of a new size goes to a texture of its own, and the picture it replaces retires until
+//! the render thread drew a frame handed since (#249, ADR 0235).
 
 use desk_compositor::headless::{headless_device, upload_rgba};
 use desk_compositor::{Compositor, Source};
@@ -21,15 +21,24 @@ fn shared() -> Option<(Shared, wgpu::Device, wgpu::Queue)> {
     let format = wgpu::TextureFormat::Rgba8Unorm;
     let compositor = Compositor::new(&gpu.device, &gpu.queue, format);
     let shared = Shared::new(compositor);
-    shared.lock().wait_for_layouts();
+    shared.lock().render_thread_draws();
     Some((shared, gpu.device, gpu.queue))
 }
 
 /// The Notes plugin paints `size` pixels.
 fn paint(gpu: &(Shared, wgpu::Device, wgpu::Queue), size: (u32, u32)) -> bool {
+    paint_given(gpu, size, size)
+}
+
+/// The Notes plugin paints `size` pixels, the host having imported a texture of `given`.
+fn paint_given(
+    gpu: &(Shared, wgpu::Device, wgpu::Queue),
+    size: (u32, u32),
+    given: (u32, u32),
+) -> bool {
     let (sink, device, queue) = gpu;
-    let rgba = [40u8, 80, 120, 255].repeat((size.0 * size.1) as usize);
-    let texture = upload_rgba(device, queue, size, &rgba);
+    let rgba = [40u8, 80, 120, 255].repeat((given.0 * given.1) as usize);
+    let texture = upload_rgba(device, queue, given, &rgba);
     let attach = SurfaceAttach {
         r#type: SurfaceAttachType::Attach,
         surface: NOTES.into(),
@@ -61,7 +70,7 @@ fn shown(sink: &Shared) -> Option<(desk_compositor::TextureId, (u32, u32))> {
 }
 
 #[test]
-fn a_paint_of_a_new_size_shows_from_the_next_layout_and_the_picture_it_replaces_retires() {
+fn a_paint_of_a_new_size_is_the_picture_at_once_and_the_one_it_replaces_retires() {
     let Some(gpu) = shared() else { return };
     let sink = &gpu.0;
     assert!(paint(&gpu, (600, 400)));
@@ -71,17 +80,20 @@ fn a_paint_of_a_new_size_shows_from_the_next_layout_and_the_picture_it_replaces_
     sink.lock().handed(1);
     sink.lock().drawn();
     assert!(paint(&gpu, (640, 400)));
-    assert_eq!(
-        shown(sink),
-        Some((first, (600, 400))),
-        "frame 1's picture keeps its size"
-    );
-    assert!(sink.lock().dirty, "the next layout shows the new size");
-    // The next layout shows it; the picture it replaces stays while frame 1 may draw it.
-    sink.lock().show_waiting();
     let (grown, size) = shown(sink).expect("its new picture");
-    assert_eq!(size, (640, 400));
-    assert_ne!(grown, first);
+    assert_eq!(
+        size,
+        (640, 400),
+        "the next layout, and the desk, see the new size at once"
+    );
+    assert_ne!(grown, first, "in a texture of its own");
+    assert!(sink.lock().dirty, "a new size lays the scene out again");
+    let kept = sink.lock().frames.size(first);
+    assert_eq!(
+        kept,
+        Some((600, 400)),
+        "frame 1 draws its picture at the size it laid out"
+    );
     sink.lock().retire_drawn(1);
     assert!(
         sink.lock().frames.size(first).is_some(),
@@ -96,33 +108,28 @@ fn a_paint_of_a_new_size_shows_from_the_next_layout_and_the_picture_it_replaces_
 }
 
 #[test]
-fn without_a_render_thread_a_new_size_shows_at_once() {
+fn without_a_render_thread_a_new_size_is_painted_into_the_picture() {
     let Some(gpu) = shared() else { return };
     let sink = &gpu.0;
-    sink.lock().waiting.on = false;
+    sink.lock().retired.on = false;
     assert!(paint(&gpu, (600, 400)));
+    let (first, _) = shown(sink).expect("its picture");
     assert!(
         paint(&gpu, (640, 400)),
         "the surface probe lays out and draws at once"
     );
-    assert_eq!(shown(sink).map(|(_, s)| s), Some((640, 400)));
+    assert_eq!(shown(sink), Some((first, (640, 400))));
 }
 
 #[test]
-fn a_paint_of_its_size_again_drops_the_picture_that_waited() {
+fn a_paint_of_a_new_size_that_fails_leaves_the_picture_as_it_was() {
     let Some(gpu) = shared() else { return };
     let sink = &gpu.0;
     assert!(paint(&gpu, (600, 400)));
-    let (first, _) = shown(sink).expect("its picture");
-    assert!(paint(&gpu, (640, 400)), "a new size, waiting");
+    let before = shown(sink);
     assert!(
-        paint(&gpu, (600, 400)),
-        "back to its size: the newest paint"
+        !paint_given(&gpu, (640, 400), (320, 200)),
+        "the import does not match"
     );
-    sink.lock().show_waiting();
-    assert_eq!(
-        shown(sink),
-        Some((first, (600, 400))),
-        "the newest picture shows"
-    );
+    assert_eq!(shown(sink), before, "the picture stays");
 }

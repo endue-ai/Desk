@@ -5,9 +5,8 @@
 //! it drew each plugin surface to the web host, the screen its popups are placed in (#156). A frame
 //! for which only surfaces' pictures changed (a caret's blink, a page's own animation) draws the
 //! scene as it was laid out: laying it out took 30 to 40 ms of the debug build's main thread a
-//! frame, most of what a blinking caret cost a desk at rest (R1). A layout first shows every
-//! picture that waited for it, a paint of a new size (`composed_waiting.rs`, #249); the render
-//! thread draws what it laid out (`render_thread.rs`).
+//! frame, most of what a blinking caret cost a desk at rest (R1). The render thread draws what it
+//! laid out (`render_thread.rs`, #249).
 
 use std::time::Instant;
 
@@ -45,8 +44,6 @@ impl CompositorWindow {
         let layout = folded.and_then(|_| draw_map::layout(&self.hosted, held, width));
         let at = self.hosted.ms(Instant::now());
         self.hosted.follow_anchors();
-        // The pictures of a new size that waited for this layout show in it (#249).
-        self.shared.lock().show_waiting();
         // A window's page's picture whose panes' plugins have theirs shows now (ADR 0233).
         let paned = paned(&self.hosted, scale);
         self.shared.lock().pages_wait(&paned, scale);

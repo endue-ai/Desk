@@ -5,7 +5,8 @@ use std::time::{Duration, Instant};
 
 use desk_compositor::{Compositor, Scene};
 
-use super::{Behind, Handed, RenderThread, Target};
+use super::{Handed, RenderThread, Target};
+use crate::compositor_window::clock::Behind;
 use crate::compositor_window::composed::Shared;
 use crate::frame_trace::Timed;
 use crate::web_host::frames::interval;
@@ -48,6 +49,15 @@ fn a_scene_handed_to_the_render_thread_is_presented_while_the_main_thread_is_bus
     let (n, at) = state.last.expect("a frame drawn");
     assert_eq!(n, 3, "the later scene");
     assert!(at >= next, "not before its slot");
+    // A frame for the next slot handed before the one waiting was drawn waits behind it: a frame
+    // this thread is late for is drawn, not dropped.
+    let late = Instant::now();
+    render.hand(handed(4, late));
+    render.hand(handed(5, late + every));
+    std::thread::sleep(every * 4);
+    let state = render.state();
+    assert_eq!(state.drawn, 4, "both drawn");
+    assert_eq!(state.last.map(|(n, _)| n), Some(5));
 }
 
 #[test]

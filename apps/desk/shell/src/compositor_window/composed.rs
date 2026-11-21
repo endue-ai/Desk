@@ -47,9 +47,8 @@ pub struct Composed {
     /// Each window's own page's paints of a size its panes' plugins have no picture of yet, held
     /// aside (ADR 0233).
     pages: window::Pages,
-    /// Each picture's paint of a new size, waiting for the next layout, and the textures retired
-    /// until the render thread drew past them (#249).
-    waiting: waiting::Waiting,
+    /// The textures retired until the render thread drew past them (#249).
+    retired: retired::Retired,
 }
 
 impl Composed {
@@ -105,9 +104,8 @@ impl Composed {
     }
 
     fn drop_frames(&mut self, surface: &str) {
-        self.forget_waiting(surface);
         if let Some(id) = self.textures.remove(surface) {
-            // A scene handed before may still draw it (`composed_waiting.rs`).
+            // A scene handed before may still draw it (`composed_retired.rs`).
             self.retire(id);
             self.dirty = true;
         }
@@ -167,7 +165,7 @@ impl Shared {
             page: page::PageAside::default(),
             panes: pane::Panes::default(),
             pages: window::Pages::default(),
-            waiting: waiting::Waiting::default(),
+            retired: retired::Retired::default(),
         })))
     }
 
@@ -191,11 +189,12 @@ impl SurfaceSink for Shared {
             composed.dirty |= composed.pages_waiting();
             composed.pane_texture(&attach.surface, size)
         };
-        // A paint shown of another size than its picture waits for the next layout (#249).
-        let (id, whole) = if aside {
-            (id, whole)
+        // A paint shown of another size than its picture goes to a texture of its own (#249).
+        let picture = id;
+        let id = if aside {
+            id
         } else {
-            composed.shown_texture(&attach.surface, id, size, whole)
+            composed.shown_texture(id, size)
         };
         // A paint to another texture than the one before it carries that one's damage only.
         let all = whole.then(|| SurfaceAttach {
@@ -209,6 +208,9 @@ impl SurfaceSink for Shared {
         let result = state
             .frames
             .attach(&mut state.compositor, id, attach, source);
+        if id != picture {
+            state.resized(&attach.surface, picture, id, result.is_ok());
+        }
         let damage = attach.damage.len();
         crate::frame_trace::attached(&attach.surface, started, damage, result.is_ok());
         let counts = state.attached.entry(attach.surface.clone()).or_default();
@@ -279,8 +281,8 @@ impl SurfaceSink for Shared {
 mod page;
 #[path = "composed_pane.rs"]
 mod pane;
-#[path = "composed_waiting.rs"]
-mod waiting;
+#[path = "composed_retired.rs"]
+mod retired;
 #[path = "composed_window.rs"]
 pub mod window;
 
