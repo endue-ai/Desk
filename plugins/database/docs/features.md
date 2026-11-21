@@ -154,11 +154,17 @@ Modules: `sql/layout/`, `console-run.js`, `console-files.js`.
   and relation, and what changed in each (its type, cost and time). A plan copies as text or as JSON; a JSON
   plan over 64 KiB is read in a worker.
 - Copy the result, or the selected block, as TSV, CSV, JSON, Markdown, INSERT or UPDATE statements, from a
-  key or button in the page and from the palette alike (the Clipboard API first, `clipboard.js`).
+  key or button in the page and from the palette alike (the Clipboard API first, `clipboard.js`; ADR 0318:
+  the desk gives the page the press a palette pick is). A copy as TSV, and the grid's Mod+C, carry an HTML
+  table of the same cells beside the text, so a spreadsheet pastes cells (NULL an empty one); the copy
+  command, where the Clipboard API refuses, carries the text only. Past 100,000 cells (weighed before the
+  text is built) or 10,000,000 characters a copy asks first in the palette and copies nothing on No
+  (`copy-size.js`); a block that large from Mod+C goes the same way. Copy the cell's value
+  (`endue.database.copy-value`, the value viewer's Copy) copies one value whole, under the same limit.
 
-Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `value.js`, `output-client.js`,
-`output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `grid/`, `features/grid/`,
-`view-value.js`, `view-plan.js`.
+Modules: `tabs.js`, `results.js`, `clipboard.js`, `copy-size.js`, `pages.js`, `grid-model.js`, `value.js`,
+`output-client.js`, `output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `grid/`,
+`features/grid/`, `view-value.js`, `view-plan.js`.
 `output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `view-value.js`, `view-plan.js`,
 `view-plan-flame.js`, `view-plan-table.js`, `view-plan-marks.js`, `view-dialog.js`, `features/plans/`.
 
