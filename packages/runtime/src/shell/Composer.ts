@@ -219,8 +219,12 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
     listen(input, "focus", () =>
       ctx.store.set((s) => ({ composer: { ...s.composer, open: true } })),
     ),
-    listen(input, "blur", () => {
-      if (!input.value) ctx.store.set({ composer: { open: false, text: "", selected: 0 } });
+    listen(input, "blur", (event) => {
+      // Bringing Desk forward can briefly take focus from the open talk line.
+      const movesWithinDesk = (event as FocusEvent).relatedTarget || input.ownerDocument.hasFocus();
+      if (!input.value && movesWithinDesk) {
+        ctx.store.set({ composer: { open: false, text: "", selected: 0 } });
+      }
     }),
     listen(input, "input", () =>
       ctx.store.set({ composer: { open: true, text: input.value, selected: 0 } }),
