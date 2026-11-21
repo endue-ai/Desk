@@ -258,7 +258,7 @@ describe("one PostgreSQL connection shows every database of its server", () => {
       ["c-prod", true],
     ]);
     const kept = (await deps?.bridge.call("db.passwords.list", {}))?.passwords;
-    expect(kept?.map((p) => p.name)).toEqual(["c-prod"]);
+    expect(kept?.map((p: { name: string }) => p.name)).toEqual(["c-prod"]);
     const on = deps?.manager.get(ANALYTICS);
     expect(on && deps?.manager.passwords.ref(on)).toBe("c-prod");
   });
