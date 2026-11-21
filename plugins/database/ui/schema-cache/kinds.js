@@ -3,17 +3,24 @@
 // fingerprint statement, which counts each schema's catalog rows and sums their xmin. A DDL
 // statement writes new row versions, so a schema's mark moves; ANALYZE and VACUUM update in place
 // and move nothing. Only pg_catalog is read: names and definitions, never rows, never a routine's
-// body. A kind is added by adding it to the list (PG-50); its id changes `signature`, so what was
-// kept before it is read again. Pure.
+// body. A kind is added by adding it to the list (PG-50, schema/pg/); its id changes `signature`,
+// so what was kept before it is read again. A kind of the database level (extensions, roles ...)
+// is read for the cache's entry DATABASE ("") and fingerprinted on a row of its own. Pure.
 
+import { DATABASE, READERS } from "../schema/pg/index.js";
 import { quoteText } from "../sql/quote.js";
+
+export { DATABASE };
 
 /**
  * @typedef {{
- *   id: string, label: string, marks: string[], sql(schemas: string[]): string,
+ *   id: string, label: string, marks: string[], level?: "database",
+ *   sql(schemas: string[], version?: number): string,
  * }} Kind
  *   `marks` are subqueries answering `ns` (a namespace oid), `c` (rows) and `x` (their xmin
- *   summed); `sql` answers the schema's name, then the kind's own columns (model.js reads them).
+ *   summed), or for the database level one text each; `sql` answers the schema's name ("" for the
+ *   database level), then the kind's own columns (model.js reads them), as the server's version
+ *   (`server_version_num`) has them.
  */
 
 const sum = (/** @type {string} */ alias) => `pg_catalog.sum(${alias}.xmin::text::bigint)`;
@@ -34,7 +41,10 @@ const names = (/** @type {string} */ rel, /** @type {string} */ keys) =>
   `pg_catalog.to_json(ARRAY(SELECT a.attname FROM pg_catalog.unnest(${keys}) WITH ORDINALITY ` +
   `u(n, o) JOIN pg_catalog.pg_attribute a ON a.attrelid = ${rel} AND a.attnum = u.n ORDER BY u.o))::text`;
 
-/** Tables, views, materialized views, foreign tables, sequences: name, relkind, estimate, oid, comment. */
+/**
+ * Tables, views, materialized views, foreign tables, sequences: name, relkind, estimate, oid,
+ * comment, row security ("on", "forced") and the size the server estimates (table, TOAST, indexes).
+ */
 const relations = {
   id: "relations",
   label: "tables and views",
@@ -48,7 +58,12 @@ const relations = {
   ],
   sql: (/** @type {string[]} */ schemas) =>
     "SELECT n.nspname, c.relname, c.relkind::text, CASE WHEN c.relkind IN ('r', 'p', 'm') AND " +
-    "c.reltuples >= 0 THEN c.reltuples::bigint::text END, c.oid::text, d.description FROM " +
+    "c.reltuples >= 0 THEN c.reltuples::bigint::text END, c.oid::text, d.description, CASE WHEN " +
+    "c.relforcerowsecurity THEN 'forced' WHEN c.relrowsecurity THEN 'on' END, CASE WHEN c.relkind IN " +
+    "('r', 'm') AND c.reltuples >= 0 THEN ((c.relpages::bigint + coalesce((SELECT t.relpages FROM " +
+    "pg_catalog.pg_class t WHERE t.oid = c.reltoastrelid), 0) + coalesce((SELECT pg_catalog.sum(" +
+    "i.relpages) FROM pg_catalog.pg_index x JOIN pg_catalog.pg_class i ON i.oid = x.indexrelid WHERE " +
+    "x.indrelid = c.oid), 0)) * pg_catalog.current_setting('block_size')::bigint)::text END FROM " +
     "pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace " +
     `${comment("pg_class", "c.oid")} WHERE ${inSchemas(schemas)} AND ${RELKINDS} ORDER BY 1, 2`,
 };
@@ -112,7 +127,10 @@ const triggers = {
     "t.tgisinternal AND NOT c.relispartition ORDER BY 1, 2, 3",
 };
 
-/** Functions and procedures (not an extension's): name, arguments, prokind, result, oid, comment. */
+/**
+ * Functions and procedures (not an extension's, nor made with a type, as a range's constructors):
+ * name, arguments, prokind, result, oid, comment.
+ */
 const routines = {
   id: "routines",
   label: "routines",
@@ -127,7 +145,8 @@ const routines = {
     "p.prokind::text, coalesce(pg_catalog.pg_get_function_result(p.oid), ''), p.oid::text, " +
     "d.description FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace " +
     `${comment("pg_proc", "p.oid")} WHERE ${inSchemas(schemas)} AND p.prokind IN ('f', 'p') AND NOT ` +
-    "EXISTS (SELECT 1 FROM pg_catalog.pg_depend e WHERE e.objid = p.oid AND e.deptype = 'e') ORDER BY 1, 2, 3",
+    "EXISTS (SELECT 1 FROM pg_catalog.pg_depend e WHERE e.objid = p.oid AND e.deptype IN ('e', 'i')) " +
+    "ORDER BY 1, 2, 3",
 };
 
 /** @type {readonly Kind[]} */
@@ -138,6 +157,7 @@ export const POSTGRES_KINDS = Object.freeze([
   indexes,
   triggers,
   routines,
+  ...READERS,
 ]);
 
 /** What a cache was read with: a cache of other kinds is read again. */
@@ -150,16 +170,23 @@ export const isSystem = (/** @type {string} */ name) =>
 
 /**
  * The fingerprint statement: every schema (not another session's temporary ones) with "s" for a
- * system one and its mark, the namespace's own xmin, then each kind's counts and sums.
+ * system one and its mark, the namespace's own xmin, then each kind's counts and sums; then the
+ * database level's row (DATABASE) with its kinds' marks. Each row ends with server_version_num.
  * @param {readonly Kind[]} kinds
  */
 export function marksSql(kinds) {
-  const marks = kinds.flatMap((kind) => kind.marks);
+  const marks = kinds.filter((kind) => kind.level !== "database").flatMap((kind) => kind.marks);
+  const level = kinds.filter((kind) => kind.level === "database").flatMap((kind) => kind.marks);
   const parts = marks.map((_, i) => `coalesce(m${i}.c::text || ':' || m${i}.x::text, '-')`);
   const joins = marks.map((sql, i) => `LEFT JOIN (${sql}) m${i} ON m${i}.ns = n.oid`).join(" ");
+  const version = "pg_catalog.current_setting('server_version_num')";
+  const database = level.length
+    ? ` UNION ALL SELECT ${quoteText("postgresql", DATABASE)}, '', pg_catalog.concat_ws('.', ` +
+      `${level.join(", ")}), ${version}`
+    : "";
   return (
     "SELECT n.nspname, CASE WHEN n.nspname ~ '^pg_' OR n.nspname = 'information_schema' THEN 's' " +
-    `ELSE '' END, pg_catalog.concat_ws('.', n.xmin::text, ${parts.join(", ")}) FROM ` +
-    `pg_catalog.pg_namespace n ${joins} WHERE n.nspname !~ '^pg_(toast_)?temp_' ORDER BY 1`
+    `ELSE '' END, pg_catalog.concat_ws('.', n.xmin::text, ${parts.join(", ")}), ${version} FROM ` +
+    `pg_catalog.pg_namespace n ${joins} WHERE n.nspname !~ '^pg_(toast_)?temp_'${database} ORDER BY 1`
   );
 }
