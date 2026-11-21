@@ -272,6 +272,8 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       selection: () => view.selection(),
     }),
   };
+  /** @type {Set<(next: import("./settings.js").Settings) => void>} */
+  const followers = new Set();
   /** @type {import("./feature-host.js").Deps} */
   const featureDeps = {
     bridge,
@@ -284,6 +286,10 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     tools,
     execute,
     settings: () => settings,
+    onSettings: (listener) => {
+      followers.add(listener);
+      return () => void followers.delete(listener);
+    },
     pick,
     confirm,
     say: (text) => view.say(text),
@@ -302,6 +308,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     followSettings(source, values, (next, found) => {
       settings = next;
       if (found) clients.reset();
+      for (const listener of followers) listener(next);
     });
     manager.replace(await loadConnections(bridge));
     explorer.restore(saved?.expanded ?? []);

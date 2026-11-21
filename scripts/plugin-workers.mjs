@@ -53,6 +53,19 @@ export const OFF_MAIN = {
         "ui/sql/parse/dml.js",
       ],
     },
+    // Format SQL's layout, on the same parser in the same worker (ADR 0291); the page and the
+    // settings read only its style.js.
+    {
+      worker: "ui/sql/parse/worker.js",
+      modules: [
+        "ui/sql/layout/layout.js",
+        "ui/sql/layout/build.js",
+        "ui/sql/layout/clauses.js",
+        "ui/sql/layout/doc.js",
+        "ui/sql/layout/roles.js",
+        "ui/sql/layout/tokens.js",
+      ],
+    },
   ],
   notes: { worker: "ui/count-worker.js", modules: ["ui/count-worker.js", "ui/count.js"] },
   player: {

@@ -63,8 +63,8 @@ Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`,
 - A script is cut into statements the way each client cuts it (dollar quotes, comments, DELIMITER, routine
   bodies), and an error's position lands in the editor.
 - Highlighting with the lexer that cuts the statements, autocomplete from the schema with aliases
-  (`Ctrl+Space`), Format SQL (`Mod+Shift+F`: only space and the case of keywords change), and parameters
-  (`:name`, `?`, `$1`) asked for before the run and remembered for the console.
+  (`Ctrl+Space`), Format SQL (`Mod+Shift+F`, below), and parameters (`:name`, `?`, `$1`) asked for before
+  the run and remembered for the console.
 - Guards: a read-only connection refuses writes before the client starts, and on the server too; with
   `confirm` on, a write on a production connection, and DROP, TRUNCATE, or UPDATE and DELETE without WHERE
   anywhere, ask first.
@@ -85,6 +85,27 @@ Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`,
 Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`, `console-files.js`,
 `console-run.js`, `features/consoles/`, `execute.js`, `history.js`, `tools.js`, `sql/`, `editor/`,
 `view-editor.js`.
+
+## Format SQL
+
+- `Mod+Shift+F` and Database: format the SQL lay out the selection, else the whole console; Database:
+  format the statement at the caret the selection, else that statement. Only space and the case of
+  keywords change.
+- PostgreSQL is laid out from its own scanner and parse tree, in the parse worker (ADR 0291): each clause
+  on its line, a list one item a line when it does not fit, conditions broken at AND and OR, joins on
+  their lines, subqueries, CASE and brackets indented when they break. Comments stay where they were, a
+  statement a line apart. Each laid-out statement is parsed again, and kept as written unless its tree is
+  the same. A statement that does not parse, or a routine with a BEGIN ATOMIC body, is left as written,
+  and the status line says which.
+- The style is eight settings: `format-keyword-case` (upper, lower, preserve; a keyword the grammar reads
+  as a name keeps its spelling, and a type is written in lower case unless preserve), `format-indent`
+  (1 to 8), `format-line-width` (40 to 240), `format-comma` (last, first), `format-and-or` (before, after),
+  `format-joins` (flat, indented), `format-one-line` (clause, statement, item) and `format-lists` (indent,
+  align). A change applies at the next Format, without a restart.
+- MySQL and SQLite keep the format that reads tokens alone: each clause on its line, the select list one item
+  a line, reserved words in capitals, by none of the settings.
+
+Modules: `sql/layout/`, `console-run.js`.
 
 ## Results
 

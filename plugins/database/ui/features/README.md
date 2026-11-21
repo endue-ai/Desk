@@ -17,11 +17,11 @@ whole one. `<name>/index.js` exports `feature`:
 
 `deps`: `bridge`, `commands`, `view`, `manager`, `consoles`, `catalog`, `explorer`, `tools`,
 `execute` (every write goes through it, under the read-only, production and agent guards),
-`settings()`, `pick`, `confirm`, `say`, `guard`, `cancelled`. A panel is a desk buffer:
-`consoles.openPanel(conn, type, "kind: title", state)` opens it once per type and name (the header
-shows the title), `consoles.updatePanel(id, next)` draws a new state object, and the buffer keeps
-its state under its type (`model.sessions`). Heavy work runs in a worker, never in `render`. Tests
-mount it beside the others: `mount({ features: [...Object.values(builtins), feature] })`.
+`settings()`, `onSettings(fn)`, `pick`, `confirm`, `say`, `guard`, `cancelled`. A panel is a desk
+buffer: `consoles.openPanel(conn, type, "kind: title", state)` opens it once per type and name (the
+header shows the title), `consoles.updatePanel(id, next)` draws a new state object, and the buffer
+keeps its state under its type (`model.sessions`). Heavy work runs in a worker, never in `render`.
+Tests mount it beside the others: `mount({ features: [...Object.values(builtins), feature] })`.
 
 ```js
 export const feature = {

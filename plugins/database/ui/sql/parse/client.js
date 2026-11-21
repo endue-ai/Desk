@@ -1,7 +1,8 @@
 // The page's side of the SQL parser (ADR 0283): every parse and every resolve goes to one worker
 // (worker.js), started with the SDK's startWorker on the first request, so PostgreSQL's grammar never
 // runs on the frame's thread. `parse` answers the trees; `outline` and `resolve` leave them in the
-// worker, since moving a large script's trees to the page costs more than parsing it. A schema
+// worker, since moving a large script's trees to the page costs more than parsing it; `layout`
+// answers Format SQL's new text for a script or the statement at a caret (ADR 0291). A schema
 // model crosses once per object (pass a new object when the schema changes); the last few are kept.
 // Cancel stops the worker while something is in flight, failing it, and the next request starts a
 // fresh one; close stops it in any case.
@@ -11,11 +12,13 @@
  * @typedef {import("./parse.js").Parsed} Parsed
  * @typedef {import("./resolve.js").Resolution} Resolution
  * @typedef {import("./model.js").SchemaModel} SchemaModel
+ * @typedef {import("../layout/layout.js").Laid} Laid
  * @typedef {(url: URL, options?: { name?: string }) => Worker} StartWorker
  * @typedef {{
  *   parse(sql: string): Promise<Parsed>,
  *   outline(sql: string): Promise<Parsed>,
  *   resolve(sql: string, model: SchemaModel, options?: { searchPath?: string[], user?: string }): Promise<Parsed & Resolution>,
+ *   layout(sql: string, style: import("../layout/style.js").Style, options?: { at?: number }): Promise<Laid>,
  *   cancel(): void,
  *   close(): void,
  *   busy(): number,
@@ -87,6 +90,7 @@ export function createSqlParser(startWorker) {
     outline: (sql) => ask({ type: "parse", sql, trees: false }),
     resolve: (sql, model, options = {}) =>
       ask({ type: "resolve", sql, model: keyOf(model), ...options }),
+    layout: (sql, style, options = {}) => ask({ type: "layout", sql, style, ...options }),
     cancel: () => {
       if (pending.size > 0) stop(cancelledParse());
     },

@@ -1,14 +1,18 @@
-// PostgreSQL's own parser, libpg_query built to WebAssembly (ui/vendor, ADR 0283), behind one call:
-// a script in, its raw parse tree as libpg_query's JSON or the server's error out. No DOM and no
-// fetch: the caller hands over the wasm, so the same module runs in the parse worker and in Node for
-// the tests.
+// PostgreSQL's own parser, libpg_query built to WebAssembly (ui/vendor, ADR 0283), behind two calls:
+// a script in, its raw parse tree as libpg_query's JSON or the server's error out; and a script in,
+// the server's scanner's tokens out (the layout reads them, ADR 0291). No DOM and no fetch: the
+// caller hands over the wasm, so the same module runs in the parse worker and in Node for the tests.
 import PgQueryModule from "../../vendor/libpg-query.mjs";
 
 /**
  * @typedef {{ version: number, stmts?: Array<{ stmt?: Record<string, any>, stmt_location?: number, stmt_len?: number }> }} RawTree
  * @typedef {{ message: string, cursor: number }} RawError `cursor` counts characters from 1; 0 is none
  * @typedef {{ tree: RawTree } | { error: RawError }} RawResult
- * @typedef {{ parse(text: string): RawResult, broken(): boolean }} RawParser
+ * @typedef {{ start: number, end: number, text: string, tokenName: string, keywordKind: number }} RawToken
+ *   `start` and `end` are UTF-8 bytes; `keywordKind` is 0 for none, then unreserved, column name,
+ *   type or function name and reserved (1 to 4), as the server's keyword list has them.
+ * @typedef {{ tokens: RawToken[] } | { error: string }} RawScan
+ * @typedef {{ parse(text: string): RawResult, scan(text: string): RawScan, broken(): boolean }} RawParser
  */
 
 // libpg_query's PgQueryParseResult and PgQueryError, 32-bit pointers.
@@ -41,13 +45,43 @@ export async function loadLibpgQuery(wasm) {
   // A call that throws (a trap, the stack running out on deep nesting) skips libpg_query's clean-up
   // and leaves the instance unusable: it is then broken, and its owner loads a fresh one.
   let broken = false;
+  // A C string ends at NUL; lone surrogates go as U+FFFD, the bytes a PostgreSQL driver sends.
+  const sendable = (/** @type {string} */ text) =>
+    text.replace(/\0/gu, " ").replace(SURROGATE, (s) => (s.length === 2 ? s : "�"));
 
   return {
     broken: () => broken,
+    scan(text) {
+      if (broken) throw new Error("The SQL parser stopped; it starts again on the next parse.");
+      const sent = sendable(text);
+      if (sent.trim() === "") return { tokens: [] };
+      const size = module.lengthBytesUTF8(sent) + 1;
+      const input = module._malloc(size);
+      if (!input) throw new Error("The SQL parser is out of memory.");
+      let result = 0;
+      try {
+        module.stringToUTF8(sent, input, size);
+        result = module._wasm_scan(input);
+        if (!result) throw new Error("The SQL parser is out of memory.");
+        const answer = module.UTF8ToString(result);
+        // The scanner answers its tokens as JSON, or its message as plain text.
+        if (!answer.startsWith("{")) return { error: answer };
+        const { tokens = [] } = JSON.parse(answer);
+        return { tokens };
+      } catch (error) {
+        if (error instanceof SyntaxError) throw error;
+        broken = true;
+        throw error;
+      } finally {
+        if (!broken) {
+          if (result) module._wasm_free_string(result);
+          module._free(input);
+        }
+      }
+    },
     parse(text) {
       if (broken) throw new Error("The SQL parser stopped; it starts again on the next parse.");
-      // A C string ends at NUL; lone surrogates go as U+FFFD, the bytes a PostgreSQL driver sends.
-      const sent = text.replace(/\0/gu, " ").replace(SURROGATE, (s) => (s.length === 2 ? s : "�"));
+      const sent = sendable(text);
       const size = module.lengthBytesUTF8(sent) + 1;
       const input = module._malloc(size);
       if (!input) throw new Error("The SQL parser is out of memory.");
