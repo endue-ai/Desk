@@ -2,12 +2,15 @@
 // (tables, views, materialized views, sequences, routines, events) and, under a table, its columns
 // and a folder per kind of part (keys, foreign keys, indexes, triggers). A folder reads its children
 // from the catalog the first time it opens, says "Loading" meanwhile and the client's words when it
-// fails; a refresh forgets what was read under a node. A filter keeps the objects whose name holds
-// it; exact row counts, once counted, replace the server's estimate. The tree is a flat list of rows
-// for the view, each with its depth, so the view only draws it. No DOM.
+// fails; a refresh reads again what is under a node. A PostgreSQL connection answers from its
+// schema cache (PG-06): its row says when the cache was read, or how far a pass has come, and a
+// schema the person did not choose is marked. A filter keeps the objects whose name holds it; exact
+// row counts, once counted, replace the server's estimate. The tree is a flat list of rows for the
+// view, each with its depth, so the view only draws it. No DOM.
 
 import { formatCount } from "./format.js";
 import { OBJECT_FOLDERS, PART_FOLDERS, RELATIONS } from "./schema/common.js";
+import { labelsOf } from "./schema-cache/view.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -66,6 +69,13 @@ export function createExplorer(catalog, connections, changed) {
     return state;
   };
 
+  const under = (/** @type {string | undefined} */ prefix, /** @type {string} */ key) =>
+    prefix === undefined || key === prefix || key.startsWith(`${prefix}${SEP}`);
+  /** Forget the loads under a prefix (a connection, a schema, a table), so they are read again. */
+  const drop = (/** @type {string | undefined} */ prefix) => {
+    for (const key of [...loads.keys()]) if (under(prefix, key)) loads.delete(key);
+  };
+
   const matches = (/** @type {string} */ name) =>
     filter === "" || name.toLowerCase().includes(filter.toLowerCase());
 
@@ -86,13 +96,14 @@ export function createExplorer(catalog, connections, changed) {
       level,
       connection,
       empty = "Empty",
+      loading = "Loading…",
     ) =>
       out.push({
         key: `${key}${SEP}info`,
         kind: "info",
         label:
           state.status === "loading"
-            ? "Loading…"
+            ? loading
             : state.status === "error"
               ? (state.message ?? "Failed")
               : empty,
@@ -134,11 +145,14 @@ export function createExplorer(catalog, connections, changed) {
         conn.engine === "sqlite"
           ? conn.file
           : `${conn.host || "localhost"}${conn.port ? `:${conn.port}` : ""}`;
+      const cache = labelsOf(catalog.status?.(conn));
       const open = push({
         key: conn.id,
         kind: "connection",
         label: conn.name,
-        detail: `${ENGINE_LABELS[conn.engine]} · ${where}${conn.readOnly ? " · read-only" : ""}`,
+        detail: [ENGINE_LABELS[conn.engine], where, conn.readOnly ? "read-only" : "", cache?.detail]
+          .filter(Boolean)
+          .join(" · "),
         level: 1,
         expandable: true,
         connection: conn.id,
@@ -148,8 +162,15 @@ export function createExplorer(catalog, connections, changed) {
       if (!open) return;
       const schemasKey = `${conn.id}${SEP}schemas`;
       const schemas = load(schemasKey, () => catalog.schemas(conn));
+      if (schemas.status === "ready" && cache?.stale)
+        info(
+          `${conn.id}${SEP}stale`,
+          { status: "error", items: [], message: cache.stale },
+          2,
+          conn.id,
+        );
       if (schemas.status !== "ready" || schemas.items.length === 0) {
-        info(schemasKey, schemas, 2, conn.id);
+        info(schemasKey, schemas, 2, conn.id, "Empty", cache?.progress);
         return;
       }
       for (const schema of /** @type {string[]} */ (schemas.items)) {
@@ -158,7 +179,7 @@ export function createExplorer(catalog, connections, changed) {
           key: schemaKey,
           kind: "schema",
           label: schema,
-          detail: "",
+          detail: cache?.schema(schema) ?? "",
           level: 2,
           expandable: true,
           connection: conn.id,
@@ -330,21 +351,22 @@ export function createExplorer(catalog, connections, changed) {
       else expanded.delete(node.key);
       changed();
     },
-    /** Forget what was read under a node (a connection, a schema, a table), or under every one. */
+    /**
+     * Read again what is under a node (a connection: all of it, a schema, a table), or under every
+     * connection: the catalog reads it, PostgreSQL's cache in a pass.
+     */
     refresh(/** @type {string | undefined} */ connection, /** @type {Node | undefined} */ node) {
       const scope = node && node.kind !== "connection" ? node.scope : undefined;
-      if (!scope || node?.schema === undefined) catalog.forget(connection);
-      else if (node.table) {
-        catalog.forget(connection, ["columns", node.schema, node.table]);
-        catalog.forget(connection, ["parts", node.schema, node.table]);
-      } else
-        for (const what of ["objects", "columns", "parts"])
-          catalog.forget(connection, [what, node.schema]);
+      const schema = scope ? node?.schema : undefined;
+      catalog.refresh(connection, schema, schema === undefined ? undefined : node?.table);
       const prefix = scope ?? connection;
-      const under = (/** @type {string} */ key) =>
-        prefix === undefined || key === prefix || key.startsWith(`${prefix}${SEP}`);
-      for (const key of [...loads.keys()]) if (under(key)) loads.delete(key);
-      for (const key of [...counts.keys()]) if (under(key)) counts.delete(key);
+      drop(prefix);
+      for (const key of [...counts.keys()]) if (under(prefix, key)) counts.delete(key);
+      changed();
+    },
+    /** What a connection holds changed (its cache was read): draw it again from the catalog. */
+    reread(/** @type {string} */ connection) {
+      drop(connection);
       changed();
     },
     /** Keep the objects whose name holds `text`; "" shows them all. */

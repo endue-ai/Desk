@@ -183,7 +183,7 @@ export function createView(doc, act, features = Object.values(all)) {
     // Another console's text, or this one's changed from outside (history); never under the person's typing.
     const typing = doc.activeElement === editorEl && previous?.id === model?.id;
     if (model && conn && (model.kind === "console" || model.kind === "ddl") && !typing)
-      editor.show(model.text, engineOf(conn.engine).dialect, model.kind === "ddl");
+      editor.show(model.text, engineOf(conn.engine).dialect, model.kind === "ddl", model.id);
     if (model?.kind === "table" && model.table) {
       if (doc.activeElement !== where) where.value = model.table.where;
       if (doc.activeElement !== order) order.value = model.table.order;
@@ -274,5 +274,6 @@ export function createView(doc, act, features = Object.values(all)) {
       const picked = grid.selection();
       return picked ? { tab: shown?.tab ?? 0, ...picked } : undefined;
     },
+    cell: () => grid.cursorCell(),
   };
 }

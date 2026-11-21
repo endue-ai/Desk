@@ -1,5 +1,5 @@
 // The value viewer's reading of one value: JSON laid out, bytes as a hex dump with their text
-// beside, text as it is with its length. NULL and '' are said in words. Pure.
+// beside, text as it is with its length. NULL, a pending DEFAULT and '' are said in words. Pure.
 
 /**
  * @typedef {"text" | "json" | "hex"} ValueView
@@ -16,6 +16,9 @@ const HEX = /^(?:0x|\\x)((?:[0-9a-fA-F]{2})*)$/u;
 export function describeValue(value, type = "") {
   if (value === null)
     return { views: ["text"], meta: `NULL${type ? ` · ${type}` : ""}`, text: () => "" };
+  // A pending DEFAULT (edit/values.js) is a String object of its own, not the text 'DEFAULT'.
+  if (typeof value === "object")
+    return { views: ["text"], meta: `DEFAULT, pending${type ? ` · ${type}` : ""}`, text: () => "" };
   const hex = HEX.exec(value);
   const bytes = hex ? (hex[1] ?? "").length / 2 : new TextEncoder().encode(value).length;
   const json = jsonOf(value);

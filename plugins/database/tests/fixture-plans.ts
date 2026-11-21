@@ -1,30 +1,10 @@
 // Fixture plans for the runtime e2e page and its screenshots (packages/runtime/e2e/fixture/database.ts):
-// the scripted psql answers the server's version and EXPLAIN with a plan of a join, one plan before
-// `create index` and another after it, so the plan tab, its flame and two plans compared have
-// something to show. fixtures.ts puts them in front of its script, so any PostgreSQL connection on
-// the page gets them. Fixture data only; nothing here needs Node.
-import type { Connection } from "../ui/engines/common.js";
+// the scripted psql answers the server's version and EXPLAIN with a plan of a join (orders joined to
+// customers in the north, by total), one plan before `create index` and another after it, so the
+// plan tab, its flame and two plans compared have something to show. fixtures.ts puts them in front
+// of its script, so every PostgreSQL connection on the page gets them ("warehouse" in the e2e).
+// Fixture data only; nothing here needs Node.
 import type { Answer, Script } from "./clients";
-
-/** The saved PostgreSQL connection beside the SQLite one. */
-export const FIXTURE_POSTGRES: Connection = {
-  id: "c-warehouse",
-  name: "warehouse",
-  engine: "postgresql",
-  host: "db.example",
-  port: 5432,
-  database: "warehouse",
-  user: "app",
-  ssl: "default",
-  sslCa: "",
-  file: "",
-  tag: "none",
-  readOnly: false,
-};
-
-/** The statement both plans are of. */
-export const PLAN_QUERY =
-  "select o.id, c.name from orders o join customers c on c.id = o.customer_id where c.region = 'north' order by o.total";
 
 const ran = (rows: number, time: number, loops = 1) => ({
   "Actual Startup Time": 0.01,
@@ -147,9 +127,9 @@ const AFTER = statement(
   4.4,
 );
 
-/** psql's CSV of a one-column EXPLAIN: the JSON in quotes, as psql --csv prints it. */
-const quoted = (plan: unknown): Answer => ({
-  rows: [["QUERY PLAN"], [`"${JSON.stringify(plan, null, 2).replaceAll('"', '""')}"`]],
+/** A one-column EXPLAIN's field as it is: the scripted psql (clients.ts) quotes it as --csv does. */
+const planRows = (plan: unknown): Answer => ({
+  rows: [["QUERY PLAN"], [JSON.stringify(plan, null, 2)]],
 });
 
 /** `script` with PostgreSQL's version and plans in front; `create index` turns the plan into the other. */
@@ -162,7 +142,7 @@ export function withPlans(script: Script): Script {
       indexed = true;
       return { changes: 0 };
     }
-    if (/^EXPLAIN \(/u.test(text)) return quoted(indexed ? AFTER : BEFORE);
+    if (/^EXPLAIN \(/u.test(text)) return planRows(indexed ? AFTER : BEFORE);
     return script(sql, env);
   };
 }

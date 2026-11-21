@@ -37,23 +37,34 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
 - Connections, then schemas (MySQL's databases, SQLite's main), a folder per kind of object (tables, views,
   materialized views, sequences, routines, events) and, under a table, its columns, keys, foreign keys, indexes
   and triggers. A node is read when it opens and kept until it is refreshed; system schemas show with a setting.
+- A PostgreSQL connection's schema is read once into a cache (ADR 0285) that the explorer, completion and the
+  ER diagram read: one statement per kind for every chosen schema, with progress and Cancel. It is kept in the
+  plugin's store across restarts, and on connect and on `g` a fingerprint statement says which schemas changed;
+  only those are read again, and a DDL statement run from the plugin starts that check. The connection's line
+  says when it was read. Database: read the schema again reads it all; Database: choose the schemas to read
+  picks them (system schemas stay out by default). Other engines read a node when it opens, as above.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the schema's ER diagram
   from its foreign keys, `n`, `e` and Delete add, change and remove a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
-Modules: `explorer.js`, `catalog.js`, `schema/`, `view-tree.js`, `view-diagram.js`.
+Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/`, `view-tree.js`,
+`view-diagram.js`.
 
 ## Console
 
-- A console per connection, a desk buffer that Mod+B and the buffer list reach, its text kept across a restart.
+- As many consoles per connection as the person opens (Database: new console), each a desk buffer that Mod+B
+  and the buffer list reach, with an id of its own and its own text, results, parameters and history entries,
+  named `Shop`, `Shop 2` or as renamed (`Shop · Audit`), listed in the palette (Database: show a console),
+  closed by command, and all back after a restart; Open a console shows the one used last (ADR 0286).
+- A console's text is kept across a restart; past the store's 64 KiB, whole in a file of the plugin's own.
 - `Mod+Enter` runs the statement at the caret or the selection, `Mod+Shift+Enter` the script; a script also runs
   in one transaction or as a dry run rolled back at the end, and a statement as EXPLAIN or EXPLAIN ANALYZE.
 - A script is cut into statements the way each client cuts it (dollar quotes, comments, DELIMITER, routine
   bodies), and an error's position lands in the editor.
 - Highlighting with the lexer that cuts the statements, autocomplete from the schema with aliases
   (`Ctrl+Space`), Format SQL (`Mod+Shift+F`: only space and the case of keywords change), and parameters
-  (`:name`, `?`, `$1`) asked for before the run and remembered for the session.
+  (`:name`, `?`, `$1`) asked for before the run and remembered for the console.
 - Guards: a read-only connection refuses writes before the client starts, and on the server too; with
   `confirm` on, a write on a production connection, and DROP, TRUNCATE, or UPDATE and DELETE without WHERE
   anywhere, ask first.
@@ -62,10 +73,17 @@ Modules: `explorer.js`, `catalog.js`, `schema/`, `view-tree.js`, `view-diagram.j
   the server.
 - History of what ran on each connection, searched from the palette (never results, never a statement that
   carries a password), and starred queries.
-- A `.sql` file or SQL text dropped on the page goes into the console on screen, or the console of a connection
-  the person picks.
+- SQL text dropped on the page goes into the console on screen, or the console of a connection the person picks.
+- A `.sql` file opened from the desk or dropped is a console bound to it, on the connection the file remembers,
+  the console on screen's for a drop, else the one picked (Database: run this .sql file on another connection
+  changes it). The desk saves and reverts it as a file: an edit marks it unsaved, Save writes that file and no
+  other, asked for at its first save; a change on disk goes to the desk, which asks before edits are replaced.
+- Database: run a .sql file runs a script of any size from disk, never in the editor: read in ranges, cut as the
+  console cuts a script, run in parts under every guard of a console run, SET statements carried into each
+  part; a progress line, and the first error stops it at its line in the file.
 
-Modules: `consoles.js`, `console-run.js`, `execute.js`, `history.js`, `tools.js`, `sql/`, `editor/`,
+Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`, `console-files.js`,
+`console-run.js`, `features/consoles/`, `execute.js`, `history.js`, `tools.js`, `sql/`, `editor/`,
 `view-editor.js`.
 
 ## Results
@@ -107,8 +125,18 @@ Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `
   reads the rows again, and a failure rolls all of them back.
 - Refused without a primary key, when the key is not in the result, and on a read-only connection; a change
   that matched no row is said.
+- A cell is edited by its column's type (ADR 0287): a toggle for a boolean, the labels of an enum, text with
+  a picker for a date, time or timestamp (the session's time zone shown for one with a zone), an interval,
+  JSON laid out with Format, an array as its elements each checked by the element's type, bytes as hex with
+  their size, loaded from and saved to a file, a UUID with Generate. On PostgreSQL the type is read from the
+  catalog, a domain by its base type; MySQL's enum and SQLite's BLOB by their declared names. What the type
+  refuses is said in the editor before it is pending; a refusal on Submit names the row and the column.
+- Enter or F2 opens a cell's editor, Enter keeps (Mod+Enter in JSON, an array and bytes), Escape cancels,
+  Alt+N sets NULL and Alt+D DEFAULT, a pending value of its own (Database: set the cell to DEFAULT). A
+  generated or always-identity column says why it cannot change.
 
-Modules: `edits.js`, `edit/`, `view-cell.js`.
+Modules: `edits.js`, `edit/`, `view-cell.js`, `cell-editors/` (`resolve.js`, `pg-types.js`, `values.js`,
+`panel.js`, one module per kind), `features/cell-values/`.
 
 ## Import and export
 
@@ -124,11 +152,31 @@ Modules: `edits.js`, `edit/`, `view-cell.js`.
 Modules: `export.js`, `import.js`, `importer.js`, `drops.js`, `dropped.js`, `dnd.js`, `view-dnd.js`,
 `view-import.js`.
 
+## Server activity
+
+- A panel per PostgreSQL connection (13 and later) with its sessions from `pg_stat_activity`: process id,
+  user, database, application, client, state, wait event, how long in its state, transaction and statement,
+  and the statement; the selected one's whole statement below. Columns sort; filters hide idle sessions
+  and this view's own, show background processes, and keep one database.
+- Who waits for whom (`pg_blocking_pids`) as a tree, the longest wait first, with the lock waited for and
+  how its blocker holds it; the locks from `pg_locks` (5,000 at most), the waiting ones first.
+- Read again by hand (Refresh, `g`) and every 2, 5, 10, 30 or 60 seconds while on screen; Pause (`p`)
+  stops that. What another role's session hides from this one (without `pg_read_all_stats`) is counted.
+- Cancel a statement (`pg_cancel_backend`, `c`) or end a session (`pg_terminate_backend`, `e`): always
+  asked first with its statement shown, production named first; refused on a read-only connection; the
+  server's refusal said in its words (ADR 0290). Keys: arrows, Home and End select, Enter shows the whole
+  statement.
+
+Modules: `features/activity/`.
+
 ## Agents
 
 - `endue.database.connections` (never a password), `.schema` and `.query` (100 rows a statement by default,
   1000 at most) are registered with an argument schema as agents' tools (ADR 0088); the first two only read.
 - An agent's write runs only after the person says yes, whatever the connection's tag and the `confirm`
   setting; a read-only connection refuses it, and an agent is never shown a password prompt.
+- `.activity` answers a connection's sessions and who waits for whom, and only reads; `.cancel-session` and
+  `.end-session` are irreversible: the core waits for the person's approval, then the plugin asks as it
+  asks the person (ADR 0290).
 
 Modules: `agent.js`.

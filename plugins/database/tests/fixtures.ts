@@ -1,11 +1,18 @@
 // A fixture SQLite database for endue.database behind proc.spawn, as the browser stub serves it: a
 // saved connection, two tables (people, orders) whose catalog and rows the scripted sqlite3 answers,
-// and the proc.* handlers that emit each run's output as desk-core does. The runtime e2e page
-// (packages/runtime/e2e/fixture/database.ts) uses them; nothing here needs Node.
+// a PostgreSQL catalog (pg-catalog.ts's shop) the scripted psql answers to the schema cache, a
+// PostgreSQL connection whose scripted psql answers for one table of typed columns (fixtures-pg.ts),
+// the server's version and EXPLAIN with fixture plans for every PostgreSQL connection
+// (fixture-plans.ts), and the proc.* handlers that emit each run's output as desk-core does. The
+// runtime e2e page (packages/runtime/e2e/fixture/database.ts) uses them; nothing here needs Node.
 import type { BridgeEvent, StubHandlers } from "../../../packages/bridge/src/index";
 import type { Connection } from "../ui/engines/common.js";
 import { type Script, scriptedReply } from "./clients";
 import { withPlans } from "./fixture-plans";
+import { pgFixtureScript } from "./fixtures-pg";
+import { catalogScript, shop } from "./pg-catalog";
+
+export { FIXTURE_PG_CONNECTION } from "./fixtures-pg";
 
 /** The saved connection the fixture page starts with. */
 export const FIXTURE_CONNECTION: Connection = {
@@ -53,7 +60,7 @@ const columnsOf = (rows: string[][]) => [
 const rowsOf = (name = "") => TABLES[name.toLowerCase()] ?? [];
 
 /** The scripted sqlite3's answers: the catalog, each table's rows, its count. */
-const tables: Script = (sql) => {
+const sqliteScript: Script = (sql) => {
   const text = sql.trim();
   if (text === "SELECT 'main'") return { rows: [["'main'"], ["main"]] };
   if (/FROM sqlite_master WHERE type IN \('table', 'view'\)/u.test(text))
@@ -74,11 +81,17 @@ const tables: Script = (sql) => {
   return {};
 };
 
+const SHOP = shop();
 /**
- * What the page's scripted clients answer: the tables above, and for a PostgreSQL connection the
- * server's version and EXPLAIN with fixture plans (fixture-plans.ts).
+ * The scripted clients' answers: the server's version and EXPLAIN with fixture plans
+ * (fixture-plans.ts), the schema cache's PostgreSQL catalog, then the SQLite fixture.
  */
-export const fixtureScript: Script = withPlans(tables);
+export const fixtureScript: Script = withPlans(
+  catalogScript(
+    () => SHOP,
+    (sql, env) => (env.PGDATABASE ? pgFixtureScript(sql) : sqliteScript(sql, env)),
+  ),
+);
 
 /** proc.spawn and proc.kill over the scripted clients; each run's output is emitted a tick later. */
 export function procHandlers(script: Script, emit: (event: BridgeEvent) => void): StubHandlers {

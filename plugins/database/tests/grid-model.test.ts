@@ -62,7 +62,8 @@ describe("drops", () => {
       path: "/d/app.sqlite3",
     });
     expect(dropAction({ kind: "file", path: "/d/q.sql", text: "select 1" })).toEqual({
-      kind: "insert",
+      kind: "sql",
+      path: "/d/q.sql",
       text: "select 1",
     });
     expect(dropAction({ kind: "text", text: "select 2" })).toEqual({
@@ -70,7 +71,7 @@ describe("drops", () => {
       text: "select 2",
     });
     expect(dropAction({ kind: "file", path: "/d/q.sql" })).toEqual({
-      kind: "console",
+      kind: "sql",
       path: "/d/q.sql",
     });
     for (const format of ["csv", "tsv", "json"])

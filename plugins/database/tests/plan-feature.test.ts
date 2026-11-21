@@ -12,9 +12,9 @@ const JOIN = "select o.id from orders o join customers c on c.id = o.customer_id
 const LOOPS =
   "select count(*) from orders o join customers c on c.id = o.customer_id where o.status = 'open'";
 
-/** psql's CSV of a one-column EXPLAIN: the JSON quoted, as psql --csv prints it. */
+/** A one-column EXPLAIN's field as it is: the scripted psql (clients.ts) quotes it as --csv does. */
 const answer = (plan: unknown) => ({
-  rows: [["QUERY PLAN"], [`"${JSON.stringify(plan, null, 2).replaceAll('"', '""')}"`]],
+  rows: [["QUERY PLAN"], [JSON.stringify(plan, null, 2)]],
 });
 const script = (sql: string) => {
   if (sql === "SHOW server_version_num") return { rows: [["server_version_num"], ["170012"]] };

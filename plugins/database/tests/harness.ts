@@ -140,6 +140,7 @@ export function recordingView(): RecordingView {
     },
     focus: () => {},
     selection: () => undefined,
+    cell: () => undefined,
     dialog: async (type, model) => {
       view.dialogs.push({ type, model: structuredClone(model) });
       return view.answerDialog?.(type, model);
