@@ -20,7 +20,9 @@ fn shared() -> Option<(Shared, wgpu::Device, wgpu::Queue)> {
         .ok()?;
     let format = wgpu::TextureFormat::Rgba8Unorm;
     let compositor = Compositor::new(&gpu.device, &gpu.queue, format);
-    Some((Shared::new(compositor), gpu.device, gpu.queue))
+    let shared = Shared::new(compositor);
+    shared.lock().wait_for_layouts();
+    Some((shared, gpu.device, gpu.queue))
 }
 
 /// The Notes plugin paints `size` pixels.
@@ -91,6 +93,19 @@ fn a_paint_of_a_new_size_shows_from_the_next_layout_and_the_picture_it_replaces_
     // A paint of its size goes straight into its picture.
     assert!(paint(&gpu, (640, 400)));
     assert_eq!(shown(sink), Some((grown, (640, 400))));
+}
+
+#[test]
+fn without_a_render_thread_a_new_size_shows_at_once() {
+    let Some(gpu) = shared() else { return };
+    let sink = &gpu.0;
+    sink.lock().waiting.on = false;
+    assert!(paint(&gpu, (600, 400)));
+    assert!(
+        paint(&gpu, (640, 400)),
+        "the surface probe lays out and draws at once"
+    );
+    assert_eq!(shown(sink).map(|(_, s)| s), Some((640, 400)));
 }
 
 #[test]
