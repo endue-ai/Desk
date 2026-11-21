@@ -92,7 +92,8 @@ fn a_library_is_never_mounted_or_turned_off() {
         "neither init.yaml nor a stored flag holds a library off"
     );
 
-    // Nothing to mount: no surface opens, even under a ui:surface grant.
+    // Nothing to mount: no surface opens, even under a ui:surface grant, which a library cannot
+    // declare and so cannot use (ADR 0260).
     grant(&core, LIBRARY, json!({ "permission": "ui:surface" }));
     let mounted = call(
         &core,
@@ -101,7 +102,7 @@ fn a_library_is_never_mounted_or_turned_off() {
         json!({ "surface": "main", "scope": { "permission": "ui:surface" } }),
     )
     .unwrap_err();
-    assert_eq!(mounted.code, ErrorCode::InvalidParams);
+    assert_eq!(mounted.code, ErrorCode::PermissionDenied);
     assert_eq!(core.surface_count(), 0);
 
     // plugin.setEnabled refuses to turn it off, and nothing changes.

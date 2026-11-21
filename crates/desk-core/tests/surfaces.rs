@@ -22,7 +22,7 @@ fn surface() -> Value {
 }
 
 /// Install the UI plugin `id`, which declares `main` (center, titled "Hello") and `panel` (right,
-/// untitled).
+/// untitled), and `ui:surface` (ADR 0260).
 fn install_ui(core: &Core, home: &Path, id: &str) {
     let dir = home.join("plugins").join(id);
     fs::create_dir_all(dir.join("ui")).unwrap();
@@ -33,6 +33,7 @@ fn install_ui(core: &Core, home: &Path, id: &str) {
             { "id": "main", "placement": "center", "title": "Hello" },
             { "id": "panel", "placement": "right" },
         ],
+        "permissions": [{ "permission": "ui:surface" }],
     });
     fs::write(dir.join("plugin.json"), manifest.to_string()).unwrap();
     let info = core.install_plugin(&dir, false);

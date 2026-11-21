@@ -42,7 +42,8 @@ fn fake_mic() -> FakeInput {
     }])
 }
 
-/// Install the UI plugin `id`, which declares the surface `main`.
+/// Install the UI plugin `id`, which declares the surface `main` and the microphone and surfaces it
+/// asks for (ADR 0260).
 fn install_ui(core: &Core, home: &Path, id: &str) {
     let dir = home.join("plugins").join(id);
     fs::create_dir_all(dir.join("ui")).unwrap();
@@ -50,6 +51,7 @@ fn install_ui(core: &Core, home: &Path, id: &str) {
     let manifest = json!({
         "id": id, "version": "0.1.0", "kind": "ui", "entry": "ui/index.html",
         "surfaces": [{ "id": "main", "placement": "center" }, { "id": "panel", "placement": "right" }],
+        "permissions": [{ "permission": "audio:capture" }, { "permission": "ui:surface" }],
     });
     fs::write(dir.join("plugin.json"), manifest.to_string()).unwrap();
     let info = core.install_plugin(&dir, false);
