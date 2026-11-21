@@ -241,6 +241,25 @@ Modules: `features/overview/`.
 
 Modules: `features/maintenance/`.
 
+## Backup and restore
+
+- Back up a PostgreSQL database with `pg_dump` from a form (ADR 0313): format (custom, directory, tar, plain),
+  the whole database, schemas or tables, data or schema only, without owners or privileges, compression
+  (custom and directory; lz4 and zstd from pg_dump 16), jobs (directory) and INSERTs (plain, on by default so
+  the file runs as a script). The save dialog names the file or folder and its grant is asked for there.
+- Restore from a file or folder from the open dialog into any PostgreSQL connection's database: clean,
+  if-exists, create, data or schema only, without owners or privileges, jobs (not tar), one transaction (one
+  job, no create), and the entries `pg_restore --list` reads, filtered and chosen (a list file in the
+  plugin's folder). A plain SQL file runs as a script through run-file. A read-only connection refuses it and
+  production is always asked first.
+- Both forms show the exact command line, never the password; it goes in `PGPASSWORD` of the program's own
+  environment when typed this session, else libpq reads `~/.pgpass`. Each program must be at least the
+  server's major version and is found like `psql` (its own setting, or the `path` setting).
+- The run has a log panel: the verbose lines as they come, tables written or entries restored, Cancel
+  (SIGINT, then SIGKILL), and what came of it with the size written.
+
+Modules: `features/backup/`.
+
 ## Agents
 
 - `endue.database.connections` (never a password), `.schema` and `.query` (100 rows a statement by default,
@@ -253,5 +272,6 @@ Modules: `features/maintenance/`.
 - `.maintenance` opens the form for a connection, schema, table or index and answers the statement, what it
   locks and the size; with `run` it runs after the person's yes and answers the output and the statistics
   before and after (ADR 0293). The server overview can open it with the same arguments.
+- `.backup` and `.restore` (irreversible) only fill their form: nothing runs until the person submits it.
 
 Modules: `agent.js`.
