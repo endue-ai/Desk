@@ -190,9 +190,16 @@ fn a_filling_web_view_tracks_the_window_while_its_paint_is_stale() {
                 fill: true,
             }),
         );
-        let (w, h) = (width as f32 - 1.0, height as f32 - 81.0);
+        let pane = scene
+            .1
+            .placed
+            .iter()
+            .find(|(host, _)| host == "main.endue-notes")
+            .unwrap()
+            .1;
+        let (w, h) = (pane.width, pane.height - 40.0);
         let placed = scene.1.placed.iter().find(|(s, _)| s == WEB).unwrap().1;
-        assert_eq!(placed, Rect::new(105.0, 271.0, w, h));
+        assert_eq!(placed, Rect::new(pane.x, pane.y + 40.0, w, h));
         let toolbar = target(&scene, BODY + Vec2::new(10.0, 39.0)).unwrap();
         assert_eq!(toolbar.0, "main.endue-notes");
         let (surface, point) = target(&scene, BODY + Vec2::new(w - 10.0, h + 30.0)).unwrap();
