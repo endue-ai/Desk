@@ -2,109 +2,109 @@
   "open": {
     "pane": {
       "width": 379,
-      "height": 219
+      "height": 223
     },
     "section": {
       "x": 0,
       "y": 0,
       "width": 379,
-      "height": 219
+      "height": 223
     },
     "frame": {
       "x": 0,
       "y": 0,
       "width": 379,
-      "height": 219
+      "height": 223
     }
   },
   "resized": {
     "pane": {
       "width": 299,
-      "height": 159
+      "height": 163
     },
     "section": {
       "x": 0,
       "y": 0,
       "width": 299,
-      "height": 159
+      "height": 163
     },
     "frame": {
       "x": 0,
       "y": 0,
       "width": 299,
-      "height": 159
+      "height": 163
     }
   },
   "half": {
     "pane": {
       "width": 712,
-      "height": 858
+      "height": 862
     },
     "section": {
       "x": 0,
       "y": 0,
       "width": 712,
-      "height": 858
+      "height": 862
     },
     "frame": {
       "x": 0,
       "y": 0,
       "width": 712,
-      "height": 858
+      "height": 862
     }
   },
   "maximized": {
     "pane": {
       "width": 1438,
-      "height": 858
+      "height": 862
     },
     "section": {
       "x": 0,
       "y": 0,
       "width": 1438,
-      "height": 858
+      "height": 862
     },
     "frame": {
       "x": 0,
       "y": 0,
       "width": 1438,
-      "height": 858
+      "height": 862
     }
   },
   "restored": {
     "pane": {
       "width": 712,
-      "height": 858
+      "height": 862
     },
     "section": {
       "x": 0,
       "y": 0,
       "width": 712,
-      "height": 858
+      "height": 862
     },
     "frame": {
       "x": 0,
       "y": 0,
       "width": 712,
-      "height": 858
+      "height": 862
     }
   },
   "raised": {
     "pane": {
       "width": 712,
-      "height": 858
+      "height": 862
     },
     "section": {
       "x": 0,
       "y": 0,
       "width": 712,
-      "height": 858
+      "height": 862
     },
     "frame": {
       "x": 0,
       "y": 0,
       "width": 712,
-      "height": 858
+      "height": 862
     }
   }
 }
