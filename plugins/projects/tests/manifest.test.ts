@@ -82,6 +82,8 @@ describe("plugin.json", () => {
         "move",
         "update",
         "open-original",
+        "tasks",
+        "task",
       ].map((name) => `${ID}.${name}`),
     );
     for (const key of contributes?.keys ?? []) expect(ids).toContain(key.command);

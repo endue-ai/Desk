@@ -32,7 +32,13 @@ describe("Eris's errands", () => {
   /** Each animation's last frame, after its update saw every t it would. */
   const frames: number[] = [];
 
+  /** What follows on every frame: the sparks out on the desk; `frame` runs one. */
+  const ticks = new Set<(now: number) => unknown>();
+  const frame = () => {
+    for (const tick of [...ticks]) tick(0);
+  };
   beforeEach(() => {
+    ticks.clear();
     frames.length = 0;
     store = new Store(sampleState("en", 0));
     shell = document.createElement("div");
@@ -56,6 +62,11 @@ describe("Eris's errands", () => {
           update(1);
           frames.push(ms);
           return Promise.resolve();
+        },
+        add: (tick: (now: number) => unknown) => {
+          ticks.add(tick);
+          tick(0);
+          return () => ticks.delete(tick);
         },
       },
       reduced: () => false,
@@ -149,9 +160,9 @@ describe("Eris's errands", () => {
     const errand = await drawn();
     expect(errand?.dataset.provider).toBe("endue.mail");
     expect(errand?.textContent).toBe("MailLatest mail");
-    // The spark ends the outbound leg on the window's centre (300, 450), and the window glows
-    // once it is there.
-    expect(errand?.style.transform).toContain("translate(300.0px, 450.0px)");
+    // The spark ends the outbound leg on the window's border where the way from her (664, 109) to
+    // its middle (300, 450) crosses its top edge, and the window glows once it is there.
+    expect(errand?.style.transform).toContain("translate(460.1px, 300.0px)");
     await vi.waitFor(() => expect(errand?.dataset.leg).toBe("there"));
     expect(mail.classList.contains("is-eris-visiting")).toBe(true);
 
@@ -209,8 +220,8 @@ describe("Eris's errands", () => {
     await drawn();
     const sparks = [...shell.querySelectorAll<HTMLElement>(".errand")];
     expect(sparks.map((el) => el.style.transform.split(")")[0])).toEqual([
-      "translate(300.0px, 450.0px",
-      "translate(1000.0px, 300.0px",
+      "translate(460.1px, 300.0px",
+      "translate(824.1px, 200.0px",
     ]);
     // Both windows glow as used once their sparks land, each on its section and in the store the
     // compositor reads.
@@ -226,7 +237,7 @@ describe("Eris's errands", () => {
     const threads = [...shell.querySelectorAll<SVGSVGElement>(".errand-thread")];
     expect(threads).toHaveLength(2);
     expect(threads[0]?.nextElementSibling).toBe(sparks[0]);
-    expect(threads[0]?.querySelector("path")?.getAttribute("d")).toMatch(/^M372\.0 /);
+    expect(threads[0]?.querySelector("path")?.getAttribute("d")).toMatch(/^M211\.9 /);
     await vi.waitFor(() => expect(threads.map((t) => t.dataset.leg)).toEqual(["there", "there"]));
 
     errands.step(BACK);
@@ -268,7 +279,7 @@ describe("Eris's errands", () => {
     const front = [{ id: "w7", rect: { x: 500, y: 200, w: 600, h: 400 }, z: 0 }];
     store.set((s) => ({ wm: { ...s.wm, front } }));
     mountErrands(() => shell, ctx).step(TOOL);
-    expect((await drawn())?.style.transform).toContain("translate(800.0px, 400.0px)");
+    expect((await drawn())?.style.transform).toContain("translate(706.5px, 200.0px)");
     await vi.waitFor(() => expect(store.get().erisWindows).toEqual([{ id: "w7", glow: USE }]));
   });
 
@@ -280,8 +291,9 @@ describe("Eris's errands", () => {
       wm: { ...s.wm, front, windows: { ...s.wm.windows, [s.wm.here]: [placed] } },
     }));
     mountErrands(() => shell, ctx).step(TOOL);
-    // To the middle of where the window is drawn, and lit once the spark is there.
-    expect((await drawn())?.style.transform).toContain("translate(400.0px, 250.0px)");
+    // To the border of where the window is drawn, its right edge facing her, and lit once the
+    // spark is there.
+    expect((await drawn())?.style.transform).toContain("translate(600.0px, 143.2px)");
     await vi.waitFor(() => expect(store.get().erisWindows).toEqual([{ id: "w5", glow: USE }]));
   });
 
@@ -297,6 +309,38 @@ describe("Eris's errands", () => {
     errands.step(BACK);
     await errands.finish();
     expect(store.get().erisWindows).toEqual([]);
+  });
+
+  it("keeps the spark and its thread on the window's border as the window moves and the desk pans", async () => {
+    const mail = windowAt("w1", "endue.mail", { left: 100, top: 300, width: 400, height: 300 });
+    const errands = mountErrands(() => shell, ctx);
+    errands.step(TOOL);
+    const spark = await drawn();
+    const thread = shell.querySelector<SVGSVGElement>(".errand-thread");
+    const end = () => thread?.querySelector("path")?.getAttribute("d")?.split("L").pop();
+    await vi.waitFor(() => expect(spark?.dataset.leg).toBe("there"));
+    expect(spark?.style.transform).toContain("translate(460.1px, 300.0px)");
+    const before = [thread?.style.left, end()];
+    // The person drags the window down and to the right: its top edge is where she meets it now.
+    at(mail, { left: 700, top: 400, width: 400, height: 300 });
+    frame();
+    expect(spark?.style.transform).toContain("translate(819.7px, 400.0px)");
+    expect([thread?.style.left, end()]).not.toEqual(before);
+    // The desk pans and so does she: the thread still runs from her to the window's border.
+    at(mail, { left: 200, top: 500, width: 400, height: 300 });
+    const body = shell.querySelector<HTMLElement>(".eris-body");
+    if (body) at(body, { left: 100, top: 40, width: 128, height: 138 });
+    frame();
+    // Her middle (164, 109): she meets the window on its top edge, to the left of its middle.
+    expect(spark?.style.transform).toContain("translate(334.6px, 500.0px)");
+    // Its box from (156, 101): from her middle to that point of the border.
+    expect([thread?.style.left, thread?.style.top]).toEqual(["156px", "101px"]);
+    expect(thread?.querySelector("path")?.getAttribute("d")).toMatch(
+      /^M8\.0 8\.0L.*L178\.6 399\.0$/,
+    );
+    errands.step(BACK);
+    await errands.finish();
+    expect(shell.querySelector(".errand, .errand-thread")).toBeNull();
   });
 
   it("a desk that goes takes its sparks, threads and lights with it", async () => {

@@ -62,7 +62,8 @@
 .errand[data-leg="back"][data-ok="false"] .errand-label { opacity: 0.7; }
 
 /* The thread a spark runs along (eris/errand-thread.ts): a faint line between Eris and the window
-   and marks that run the way the data goes, out from her and back to her. Its box never moves. */
+   and marks that run the way the data goes, out from her and back to her. It ends on the window's
+   border and follows her and the window as they move. */
 .errand-thread {
   position: absolute;
   z-index: var(--z-float-top);

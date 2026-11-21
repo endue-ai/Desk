@@ -176,6 +176,32 @@ test("an errand leaves once the line is read, its window glows while the plugin 
   await expect(section).toHaveClass(/is-eris-visiting/);
   expect(await section.evaluate((el) => el.style.getPropertyValue("--eris-glow"))).toBe("1");
   await shot(page, "3-window-working");
+  // The spark and its thread meet the window on its border, not in its middle, and stay on it as
+  // the window moves.
+  const onBorder = () =>
+    page.evaluate((window) => {
+      const s = document.querySelector(".errand")?.getBoundingClientRect();
+      const w = document
+        .querySelector(`.surface[data-surface="${window}"]`)
+        ?.getBoundingClientRect();
+      if (!s || !w) return "missing";
+      const x = s.left + s.width / 2;
+      const y = s.top + s.height / 2;
+      const inX = x >= w.left - 1 && x <= w.right + 1;
+      const inY = y >= w.top - 1 && y <= w.bottom + 1;
+      const edge = Math.min(...[x - w.left, w.right - x, y - w.top, w.bottom - y].map(Math.abs));
+      return inX && inY && edge < 1.5 ? "on its border" : `${x.toFixed(1)},${y.toFixed(1)}`;
+    }, id);
+  expect(await onBorder()).toBe("on its border");
+  await section.evaluate((el) => {
+    el.style.translate = "-120px 90px";
+  });
+  await step(page, 32);
+  expect(await onBorder(), "after the window moved").toBe("on its border");
+  await section.evaluate((el) => {
+    el.style.translate = "";
+  });
+  await step(page, 32);
 
   // The plugin answers: once the spark has stayed its moment, the answer flies back to her in the
   // star's colour.
