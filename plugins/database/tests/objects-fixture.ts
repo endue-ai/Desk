@@ -3,9 +3,10 @@
 // pg_depend, a routine's arguments, a comment, the owner and the roles, a truncate's tables and
 // sequences, a trigger's state and function), the definitions a source edit opens, and the DDL
 // itself, which it records and leaves to the rest of the page to answer. As a real server does, a
-// plain DROP of what others depend on is refused, and a source that does not parse fails with its
-// line. The unit tests and the runtime e2e
-// page (packages/runtime/e2e/fixture/database.ts) share it; it needs no Node. Fixture data only.
+// plain DROP of what others depend on is refused with its DETAIL and HINT, and a source that does
+// not parse fails at its position. It answers on the stub's sessions (clients.ts scriptedDb); the
+// unit tests and the runtime e2e page (packages/runtime/e2e/fixture/database.ts) share it; it needs
+// no Node. Fixture data only.
 import type { Answer, Script } from "./clients";
 
 export interface ObjectsServer {
@@ -144,43 +145,41 @@ const DDL = /^(ALTER|DROP|TRUNCATE|COMMENT|REFRESH|CREATE)\b/iu;
 
 /** A DDL statement's refusal where a real server would refuse it, or undefined. */
 function refusal(sql: string): Answer | undefined {
-  const drop = /^DROP (TABLE|VIEW|FUNCTION|MATERIALIZED VIEW) ("[^"]*")\.("[^"]*")/u.exec(sql);
-  if (drop && !/ CASCADE$/u.test(sql)) {
+  const text = sql.trim();
+  const drop = /^DROP (TABLE|VIEW|FUNCTION|MATERIALIZED VIEW) ("[^"]*")\.("[^"]*")/u.exec(text);
+  if (drop && !/ CASCADE$/u.test(text)) {
     const name = `${unquote(drop[2] ?? "")}.${unquote(drop[3] ?? "")}`;
     const oid = name === "public.touch" ? "16404" : name;
     const blocking = (DEPENDENTS[oid] ?? []).filter(([, , b]) => b);
+    const what = `${drop[1]?.toLowerCase()} ${name.split(".")[1]}`;
     if (blocking.length)
       return {
-        error:
-          `cannot drop ${drop[1]?.toLowerCase()} ${name.split(".")[1]} because other objects depend on it\n` +
-          `DETAIL:  ${blocking.map(([t, i]) => `${t} ${i} depends on ${drop[1]?.toLowerCase()} ${name.split(".")[1]}`).join("\n")}\n` +
-          "HINT:  Use DROP ... CASCADE to drop the dependent objects too.",
+        error: `cannot drop ${what} because other objects depend on it`,
+        code: "2BP01",
+        detail: blocking.map(([t, i]) => `${t} ${i} depends on ${what}`).join("\n"),
+        hint: "Use DROP ... CASCADE to drop the dependent objects too.",
       };
   }
-  const lines = sql.split("\n");
-  const bad = lines.findIndex((line) => /\bFORM\b/u.test(line));
-  if (bad >= 0) {
-    const shown = lines[bad] ?? "";
-    const prefix = `LINE ${bad + 1}: `;
-    return {
-      error: `syntax error at or near "FORM"\n${prefix}${shown}\n${" ".repeat(prefix.length + shown.indexOf("FORM"))}^`,
-    };
-  }
+  // The server's position is 1-based, in characters of the statement as sent.
+  const bad = /\bFORM\b/u.exec(sql);
+  if (bad)
+    return { error: 'syntax error at or near "FORM"', code: "42601", position: bad.index + 1 };
   return undefined;
 }
 
 /** The scripted server; `other` answers every statement that is not the feature's. */
 export function objectsServer(other: Script = () => ({})): ObjectsServer {
   const ran: string[] = [];
-  const script: Script = (sql, env) => {
+  const script: Script = (sql, who) => {
     const text = sql.trim();
-    if (!env.PGDATABASE) return other(sql, env);
+    // A PostgreSQL session names its database; sqlite3's environment does not.
+    if (!who.database) return other(sql, who);
     const answer = read(text) ?? definition(text);
     if (answer) return answer;
-    if (!DDL.test(text)) return other(sql, env);
+    if (!DDL.test(text)) return other(sql, who);
     // Recorded, refused as a server would, else answered as the rest of the page answers it.
     ran.push(text);
-    return refusal(text) ?? other(sql, env);
+    return refusal(sql) ?? other(sql, who);
   };
   return { script, ran };
 }

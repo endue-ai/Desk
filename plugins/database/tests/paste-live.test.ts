@@ -2,7 +2,7 @@
 // database's URI: 3 x 4 cells of tab-separated text pasted over two rows and two new ones of a table
 // with an identity column, a numeric, a date and a jsonb column, submitted in one transaction and
 // read back equal; a bad date refused before anything is pending; a duplicated row given a new
-// identity by the server.
+// identity by the server. On the desk core's sessions (core-bridge.ts), no psql.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createCatalog } from "../ui/catalog.js";
 import { readTypes } from "../ui/cell-editors/pg-types.js";
@@ -14,6 +14,7 @@ import { duplicateRows } from "../ui/edit/duplicate.js";
 import { readPaste } from "../ui/edit/paste-text.js";
 import { countChanges, emptyChanges, targetOf } from "../ui/edit/pending.js";
 import { submitChanges } from "../ui/edit/submit.js";
+import { createSessions } from "../ui/engines/pg-session.js";
 import { createExecutor } from "../ui/execute.js";
 import { createRunner } from "../ui/run.js";
 import { fromValues } from "../ui/settings.js";
@@ -23,12 +24,14 @@ import { inProcessOutput } from "./output";
 function liveHarness(given: string) {
   const { fields, password } = parseUri(given);
   const conn = normalize({ ...fields, id: "c-live", name: "live", readOnly: false });
-  const runner = createRunner(nodeBridge());
+  const bridge = nodeBridge();
+  const runner = createRunner(bridge);
   const settings = fromValues({ "endue.database.max-rows": 100 });
   const executor = createExecutor({
     runner,
     output: inProcessOutput(),
     clients: createClients(runner, () => settings),
+    sessions: createSessions(bridge),
     settings: () => settings,
     confirm: async () => true,
     passwords: { get: () => password, set: () => {}, ask: async () => undefined },

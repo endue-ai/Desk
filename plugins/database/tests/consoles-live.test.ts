@@ -1,7 +1,7 @@
 // Many consoles and .sql files on the real clients (PG-24, ADR 0286): two consoles of one SQLite
 // database each keep their own results, and Database: run a .sql file runs a script larger than a
-// part from disk through psql, the SET statements carried into every part, stopping at the first
-// error with its line. sqlite3 runs when it is on PATH (3.37 or newer); psql when
+// part from disk on the desk core's sessions, the SET statements carried into every part, stopping at
+// the first error with its line. sqlite3 runs when it is on PATH (3.37 or newer); PostgreSQL when
 // ENDUE_DB_TEST_POSTGRES holds a URI of a scratch database.
 import {
   closeSync,

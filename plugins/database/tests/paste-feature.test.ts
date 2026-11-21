@@ -1,4 +1,4 @@
-// Pasting through the plugin (PG-43, #470): on the SDK's test host with the fixture's scripted psql
+// Pasting through the plugin (PG-43, #470): on the SDK's test host with the fixture's scripted server
 // and its typed table public.items, Database: paste (an agent's too, with `text`) makes pending
 // changes from the grid's caret, a result that cannot change says why, a large paste asks first,
 // and duplicate, fill down, clear and undo work by command. The grid is a stand-in that answers

@@ -1,5 +1,6 @@
-// The real clients, end to end through the runner, the engines and the executor. sqlite3 runs when
-// it is on PATH (3.37 or newer); psql and mysql (or mariadb) when ENDUE_DB_TEST_POSTGRES and
+// The real engines, end to end through the executor: sqlite3 and mysql (or mariadb) through the
+// runner, PostgreSQL on the desk core's sessions (core-bridge.ts, no client program). sqlite3 runs
+// when it is on PATH (3.37 or newer); PostgreSQL and mysql when ENDUE_DB_TEST_POSTGRES and
 // ENDUE_DB_TEST_MYSQL hold a URI of a scratch database, for example postgresql://postgres:pw@db/postgres.
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -8,6 +9,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { compareVersions, createClients, parseVersion } from "../ui/clients.js";
 import { normalize, parseUri } from "../ui/connections.js";
 import type { Connection } from "../ui/engines/common.js";
+import { createSessions } from "../ui/engines/pg-session.js";
 import { createExecutor, Refusal } from "../ui/execute.js";
 import { createRunner } from "../ui/run.js";
 import { fromValues } from "../ui/settings.js";
@@ -25,10 +27,12 @@ function harness(conn: Connection, password?: string, overrides: Record<string, 
   const runner = createRunner(bridge);
   const settings = fromValues({ "endue.database.max-rows": 100, ...overrides });
   const clients = createClients(runner, () => settings);
+  const sessions = createSessions(bridge);
   const executor = createExecutor({
     runner,
     output: inProcessOutput(),
     clients,
+    sessions,
     settings: () => settings,
     confirm: async () => true,
     passwords: { get: () => password, set: () => {}, ask: async () => undefined },
@@ -36,7 +40,11 @@ function harness(conn: Connection, password?: string, overrides: Record<string, 
   });
   const run = (sql: string, options: Parameters<typeof executor.execute>[2] = {}) =>
     executor.execute(conn, sql, options);
-  return { run, runner };
+  const cancel = () => {
+    runner.cancel();
+    sessions.cancel();
+  };
+  return { run, cancel };
 }
 
 function connectionOf(uri: string, readOnly = false) {
@@ -103,14 +111,14 @@ function scenarios(
 
   it("cancels a slow statement", async () => {
     const { conn, password } = make();
-    const { run, runner } = harness(conn, password);
+    const { run, cancel } = harness(conn, password);
     const running = run(sleep);
-    setTimeout(() => runner.cancel(), 700);
+    setTimeout(cancel, 700);
     const done = await running;
     expect(done.result.statements[0]?.error?.kind).toBe("cancelled");
   });
 
-  it("refuses a write on a read-only connection before the client runs", async () => {
+  it("refuses a write on a read-only connection before anything runs", async () => {
     const { conn, password } = make();
     const { run } = harness({ ...conn, readOnly: true }, password);
     await expect(run("insert into endue_t (id) values (5)")).rejects.toBeInstanceOf(Refusal);
@@ -145,7 +153,7 @@ describe.skipIf(!sqliteOk)("sqlite3, for real", () => {
 });
 
 const pgUri = process.env.ENDUE_DB_TEST_POSTGRES;
-describe.skipIf(!pgUri)("psql, for real", () => {
+describe.skipIf(!pgUri)("PostgreSQL on the core's sessions, for real", () => {
   const make = () => connectionOf(pgUri ?? "");
   scenarios(
     make,

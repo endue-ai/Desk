@@ -6,8 +6,8 @@ import type { Node } from "../ui/explorer.js";
 import { type Mounted, mount, SAVED } from "./harness";
 import { catalogScript, shop } from "./pg-catalog";
 
-const psql = (m: Mounted) =>
-  m.clients.spawned.filter((s) => s.command === "psql" && s.args[0] !== "--version").length;
+/** How many PostgreSQL runs there were (a session each). */
+const runs = (m: Mounted) => m.sessions().length;
 const tree = (m: Mounted) => m.view.trees.at(-1) ?? [];
 const row = (m: Mounted, label: string, under?: Node) =>
   tree(m).find((r) => r.label === label && (!under || r.key.startsWith(`${under.key}\u0000`)));
@@ -45,7 +45,8 @@ describe("PG-50's kinds in the explorer", () => {
     });
     const shopRow = await open(m, "Shop");
     await until(m, () => row(m, "Server", shopRow));
-    const passed = psql(m);
+    const passed = runs(m);
+    expect(passed).toBeGreaterThan(0);
     expect(children(m, shopRow)).toEqual(["public", "sales", "Database · shop", "Server"]);
 
     // Under a schema, after PG-06's folders.
@@ -118,7 +119,7 @@ describe("PG-50's kinds in the explorer", () => {
     const roles = await open(m, "Shop", "Server", "Roles");
     expect(children(m, roles)).toEqual(["app · login", "reader"]);
     expect((await ddlOf(m, row(m, "app", roles)))?.text).toMatch(/^CREATE ROLE "app" WITH/u);
-    expect(psql(m)).toBe(passed);
+    expect(runs(m)).toBe(passed);
 
     // A filter keeps the matching objects of these rows too.
     m.app.filter?.("shop");

@@ -1,8 +1,8 @@
 import { expect, type Frame, type Page, test } from "@playwright/test";
 
 // A paste into endue.database's grid (PG-43, #470) on the browser stub: the fixture's PostgreSQL
-// connection `fixture-pg` has a scripted psql (plugins/database/tests/fixtures-pg.ts) with one table
-// of typed columns, public.items. Tab-separated text pasted from the caret becomes pending changes
+// connection `fixture-pg` has a scripted server on the stub's sessions (plugins/database/tests/
+// fixtures-pg.ts) with one table of typed columns, public.items. Tab-separated text pasted from the caret becomes pending changes
 // (two rows changed, one added), a bad value is refused with its row and column and nothing
 // pending, Mod+Z takes the whole paste back, and D duplicates the cursor's row.
 const SURFACE = '[data-surface="endue.database"]';

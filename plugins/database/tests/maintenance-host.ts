@@ -1,10 +1,11 @@
 // The maintenance form's tests on the SDK's test host (maintenance.test.ts, maintenance-run.test.ts):
 // the plugin on the scripted PostgreSQL of maintenance-fixture.ts, with a production connection, a
-// read-only one and a SQLite one, its proc.spawn able to hold a run open, and explorer rows.
+// read-only one and a SQLite one, its db.run able to hold a run open, and explorer rows.
+import { stubDb } from "../../../packages/bridge/src/index";
 import type { Connection } from "../ui/engines/common.js";
 import type { Node } from "../ui/explorer.js";
 import { ACTIVITY_CONNECTION } from "./activity-fixture";
-import { type Answer, type Script, scriptedReply } from "./clients";
+import { type Answer, type Script, scriptedDb } from "./clients";
 import { type Handlers, type Mounted, mount, SAVED } from "./harness";
 import { maintenanceServer } from "./maintenance-fixture";
 
@@ -32,8 +33,9 @@ const catalog: Script = (sql) => {
 };
 
 /**
- * The plugin on the scripted server. With `hold`, a maintenance run's psql stays open until
+ * The plugin on the scripted server. With `hold`, a maintenance statement's db.run stays open until
  * `finish` answers it (the scripted answer, or the one given), as a long run on a real server.
+ * `sent` holds each session's statements, in order.
  */
 export async function start(
   options: {
@@ -46,32 +48,45 @@ export async function start(
   const server = maintenanceServer(catalog, options);
   const held: Array<{ args: string[]; finish(answer?: Answer): void }> = [];
   const sent: string[][] = [];
+  const bySession = new Map<string, string[]>();
   let m: Mounted | undefined;
-  let n = 0;
+  let override: Answer | undefined;
+  const db = stubDb(
+    scriptedDb((sql, who) => override ?? server.script(sql, who)),
+    () => {},
+    (event) => queueMicrotask(() => m?.host.emit(event as never)),
+  ).handlers as unknown as Record<
+    string,
+    (params: Record<string, unknown>, caller?: string) => unknown
+  >;
+  const run = db["db.run"] as (
+    params: { sessionId: string; sql: string },
+    caller?: string,
+  ) => unknown;
   const handlers = {
-    "proc.spawn": (params: { command: string; args?: string[]; env?: Record<string, string> }) => {
-      const args = params.args ?? [];
-      const env = params.env ?? {};
-      sent.push(args);
-      const procId = `h-${++n}`;
-      const emit = (script: Script) => {
-        const reply = scriptedReply(params.command, args, script, env);
-        setTimeout(() => {
-          for (const stream of ["stdout", "stderr"] as const)
-            if (reply[stream])
-              m?.host.emit({
-                event: "proc.output",
-                data: { procId, stream, data: reply[stream], encoding: "utf8" },
-              });
-          m?.host.emit({ event: "proc.exit", data: { procId, code: reply.code } });
-        }, 0);
-      };
-      if (options.hold && args.some((a) => MAINTENANCE.test(a)))
-        held.push({ args, finish: (answer) => emit(answer ? () => answer : server.script) });
-      else emit(server.script);
-      return { procId, pid: 100 + n };
+    ...db,
+    "db.run": (params: { sessionId: string; sql: string }, caller?: string) => {
+      let statements = bySession.get(params.sessionId);
+      if (!statements) {
+        statements = [];
+        bySession.set(params.sessionId, statements);
+        sent.push(statements);
+      }
+      statements.push(params.sql);
+      if (!options.hold || !MAINTENANCE.test(params.sql)) return run(params, caller);
+      return new Promise((resolve) => {
+        held.push({
+          args: statements,
+          finish: (answer) => {
+            // The stub reads its script as db.run starts: the answer holds for this run only.
+            override = answer;
+            const page = run(params, caller);
+            override = undefined;
+            resolve(page);
+          },
+        });
+      });
     },
-    "proc.kill": () => ({}),
   } as unknown as Handlers;
   m = await mount({
     store: { connections: [ACTIVITY_CONNECTION, NOTES, PROD, LOCKED] },
@@ -99,6 +114,5 @@ export const ORDERS = node({
   table: "orders",
   object: { schema: "public", name: "orders", kind: "table", detail: "", rows: 120000, ident: "2" },
 });
-/** The -c statements a psql run was given, without its markers. */
-export const statementsOf = (args: string[]) =>
-  args.filter((a, i) => args[i - 1] === "-c" && !a.startsWith("\\"));
+/** The statements a session ran (BEGIN and COMMIT included: a run in one transaction shows them). */
+export const statementsOf = (statements: string[]) => statements;
