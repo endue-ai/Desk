@@ -33,6 +33,10 @@ export const BINDINGS = {
     { chord: "m", action: "maintain", label: "maintenance" },
     { chord: "/", action: "filter", label: "filter" },
     { chord: "u", action: "importUri", label: "from URI" },
+    { chord: "o", action: "objectMenu", label: "object menu" },
+    { chord: "ContextMenu", action: "objectMenu", label: "" },
+    { chord: "F2", action: "renameObject", label: "rename" },
+    { chord: "s", action: "editSource", label: "source" },
   ],
   editor: [
     { chord: "Mod+Enter", action: "run", label: "run statement" },

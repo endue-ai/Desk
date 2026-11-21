@@ -60,6 +60,30 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
 kinds in `schema/pg/`), `view-tree.js`, `view-diagram.js`.
 
+## Objects
+
+- From a row (`o`, the context-menu key or a right click opens its menu; `F2` renames, `s` opens the
+  source) or a command with arguments: rename, move to another schema, change the owner, comment (empty
+  removes it), drop, truncate (RESTART IDENTITY, CASCADE), refresh a materialized view (CONCURRENTLY when it
+  has data and a unique index, WITH NO DATA), enable or disable a trigger, and generate SQL (SELECT, INSERT,
+  UPDATE, DELETE of a table, a call of a routine) into a console with `:name` parameters.
+- Every one shows its exact script in a dialog first, rewritten as the person types and chooses, and runs it
+  through the guards: a read-only connection refuses before the dialog, a production one is asked again
+  with its tag named, DROP and TRUNCATE are asked as dangerous, and an agent's request waits for the
+  person's answer in the same dialog (ADR 0312). The schema cache reads what changed again.
+- A drop lists what depends on the object first (PostgreSQL's `pg_depend`, 200 at most): what a plain DROP
+  is refused for, and what goes with it. CASCADE is a choice of its own, never on unless chosen.
+- A view's, a materialized view's, a function's, a procedure's or a trigger's function's source opens in a
+  console of its own; Database: apply the source shows the script and runs it in one transaction
+  (`CREATE OR REPLACE`; a materialized view is dropped and created again with its indexes and comment, and
+  refused while others depend on it). An error selects its line.
+- MySQL and SQLite get what their DDL allows (`features/objects/kinds.js`): MySQL renames and moves tables,
+  comments tables and routines, drops and truncates; SQLite renames tables, drops, and empties a table with
+  DELETE; a view's source is applied as CREATE OR REPLACE (MySQL) or dropped and created (SQLite). What an
+  engine cannot do is said as such.
+
+Modules: `features/objects/`.
+
 ## Console
 
 - As many consoles per connection as the person opens (Database: new console), each a desk buffer that Mod+B
@@ -279,5 +303,8 @@ Modules: `features/maintenance/`.
 - `.maintenance` opens the form for a connection, schema, table or index and answers the statement, what it
   locks and the size; with `run` it runs after the person's yes and answers the output and the statistics
   before and after (ADR 0293). The server overview can open it with the same arguments.
+- The objects feature's commands (`.rename-object`, `.drop-object`, `.edit-source`, `.generate-sql` and the
+  rest) take the object by connection, schema, name (and table, for a part); each change shows the person
+  its dialog, and `.drop-object` and `.truncate-table` are irreversible (ADR 0312).
 
 Modules: `agent.js`.
