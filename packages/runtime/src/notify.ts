@@ -3,7 +3,9 @@
  * as long as its level says, every one goes to the history, and do-not-disturb holds back the levels
  * it does not allow until it ends. A notice that stays until it is dismissed (one with actions, ADR
  * 0061, or of a level that shows for 0 ms: an error by default) is not lost under a newer one: that
- * one covers it for its own time, then it shows again (#158).
+ * one covers it for its own time, then it shows again (#158). The notification centre reads the
+ * history (#307): how many arrived since it was last open (`unread`, `markRead`), one taken out
+ * (`remove`) or all of them (`clear`), and a word for each change (`onChange`).
  */
 import type { NotifyLevel } from "@endue-ai/bridge";
 import type { Clock } from "./clock";
@@ -24,6 +26,11 @@ export interface Notice {
   level: NotifyLevel;
   /** When it arrived, on the injected clock. */
   at: number;
+  /**
+   * When it arrived on the wall clock, in ms since the epoch: the day and time the notification
+   * centre shows. Kept across a restart; absent on one kept from before it was recorded.
+   */
+  time?: number;
   /** Held back by do-not-disturb: in the history, never shown. */
   held: boolean;
   actions?: NoticeAction[];
@@ -52,8 +59,11 @@ export type NoticeInput = Pick<Notice, "caller" | "title"> &
 export class Notifications {
   readonly #clock: Clock;
   readonly #render: (notice: Notice | null) => void;
+  readonly #wall: () => number;
   #settings: NotifySettings = DEFAULT_NOTIFY;
   #history: Notice[] = [];
+  /** Those that arrived since the notification centre was last open, held ones included. */
+  readonly #unread = new Set<Notice>();
   #current: Notice | null = null;
   /** Notices that stay which a newer one covered, oldest first. */
   #waiting: Notice[] = [];
@@ -61,10 +71,13 @@ export class Notifications {
   #cancel: (() => void) | undefined;
   #nextId = 1;
   readonly #listeners = new Set<(notice: Notice) => void>();
+  readonly #changes = new Set<() => void>();
 
-  constructor(clock: Clock, render: (notice: Notice | null) => void) {
+  /** `wall` is the wall clock a notice's `time` is read from. */
+  constructor(clock: Clock, render: (notice: Notice | null) => void, wall = () => Date.now()) {
     this.#clock = clock;
     this.#render = render;
+    this.#wall = wall;
   }
 
   configure(settings: NotifySettings): void {
@@ -98,12 +111,15 @@ export class Notifications {
       ...(input.actions?.length ? { actions: input.actions } : {}),
       level,
       at: this.#clock.now(),
+      time: this.#wall(),
       held,
     };
     this.#history.push(notice);
+    this.#unread.add(notice);
     this.#trim();
     if (!held) this.#show(notice);
     for (const listener of this.#listeners) listener(notice);
+    this.#changed();
     return notice;
   }
 
@@ -111,6 +127,24 @@ export class Notifications {
   onPush(listener: (notice: Notice) => void): () => void {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
+  }
+
+  /** Hear each change to the history or to what is read: a push, `markRead`, `remove`, `clear`. */
+  onChange(listener: () => void): () => void {
+    this.#changes.add(listener);
+    return () => this.#changes.delete(listener);
+  }
+
+  /** How many notices arrived since the last `markRead`, held ones included. */
+  unread(): number {
+    return this.#unread.size;
+  }
+
+  /** The notification centre was opened: every notice in the history is read. */
+  markRead(): void {
+    if (this.#unread.size === 0) return;
+    this.#unread.clear();
+    this.#changed();
   }
 
   /** The notice showing now, or null. */
@@ -138,14 +172,36 @@ export class Notifications {
     return [...this.#history].reverse();
   }
 
-  clear(): void {
-    this.#history = [];
+  /**
+   * Take notice `id` out of the history: off the status line if it shows there, and never shown
+   * again if a newer one covers it.
+   */
+  remove(id: string): void {
+    const notice = this.#history.find((n) => n.id === id);
+    if (!notice) return;
+    this.#history = this.#history.filter((n) => n !== notice);
+    this.#unread.delete(notice);
+    this.#waiting = this.#waiting.filter((n) => n !== notice);
+    if (this.#current === notice) this.dismiss();
+    this.#changed();
   }
 
-  /** Put back a history kept from an earlier session (oldest first), before anything new. */
+  /** Empty the history; the notice showing stays until it ends, those it covers are gone too. */
+  clear(): void {
+    this.#history = [];
+    this.#unread.clear();
+    this.#waiting = [];
+    this.#changed();
+  }
+
+  /**
+   * Put back a history kept from an earlier session (oldest first), before anything new: read
+   * there, so none of it is unread here.
+   */
   restore(notices: readonly Notice[]): void {
     this.#history = [...notices.map((notice) => ({ ...notice, at: 0 })), ...this.#history];
     this.#trim();
+    this.#changed();
   }
 
   dispose(): void {
@@ -174,7 +230,12 @@ export class Notifications {
 
   #trim(): void {
     const extra = this.#history.length - Math.max(0, this.#settings.history);
-    if (extra > 0) this.#history.splice(0, extra);
+    if (extra <= 0) return;
+    for (const notice of this.#history.splice(0, extra)) this.#unread.delete(notice);
+  }
+
+  #changed(): void {
+    for (const listener of [...this.#changes]) listener();
   }
 }
 
