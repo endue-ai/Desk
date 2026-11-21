@@ -118,7 +118,8 @@
         <label>Group <input id="f-group" autocomplete="off" placeholder="Shop, Analytics … (optional)" class="desk-field" /></label>
         <label>Colour <select id="f-color" class="desk-field"></select></label>
         <label class="check"><input type="checkbox" id="f-readOnly" class="desk-check" /> Read-only: refuse statements that change anything</label>
-        <p class="hint">No password is kept here: the client's own files (~/.pgpass, ~/.my.cnf) are used, and when the server asks, you type it once per session.</p>
+        <label class="check" data-for="postgresql"><input type="checkbox" id="f-keychain" class="desk-check" /> Remember the password in the keychain</label>
+        <p class="hint">No password is kept with the connection: the client's own files (~/.pgpass, ~/.my.cnf) answer first, and when the server asks, you type it once per session, or once for good when the keychain remembers it.</p>
         <p id="form-error" class="error" role="alert"></p>
         <p id="form-note" class="note" role="status"></p>
         <p class="buttons">
@@ -131,7 +132,8 @@
         <h2 id="password-title">Password</h2>
         <p id="password-text"></p>
         <label>Password <input type="password" id="password-value" autocomplete="off" class="desk-field" /></label>
-        <p class="hint">Kept in memory until you disconnect or quit; never written down.</p>
+        <label class="check" hidden><input type="checkbox" id="password-keychain" class="desk-check" /> Remember the password in the keychain</label>
+        <p class="hint">Kept in memory until you disconnect or quit. Remembered, it waits in the OS keychain, which only the desk reads.</p>
         <p class="buttons">
           <button type="button" id="password-cancel" class="desk-btn desk-btn-quiet">Cancel</button>
           <button type="submit" class="desk-btn desk-btn-primary">Connect</button>
