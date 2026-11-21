@@ -67,6 +67,10 @@ pub(crate) fn event_key(event: &BridgeEvent) -> Option<String> {
         BridgeEvent::ProcExit(e) => format!("proc:{}", e.data.proc_id),
         BridgeEvent::NetData(e) => format!("net:{}", e.data.socket_id),
         BridgeEvent::NetClosed(e) => format!("net:{}", e.data.socket_id),
+        BridgeEvent::DbNotice(e) => format!("db:{}", e.data.session_id),
+        BridgeEvent::DbNotification(e) => format!("db:{}", e.data.session_id),
+        BridgeEvent::DbParameter(e) => format!("db:{}", e.data.session_id),
+        BridgeEvent::DbClosed(e) => format!("db:{}", e.data.session_id),
         BridgeEvent::WebChanged(e) => format!("web:{}", e.data.view_id),
         _ => return None,
     })
@@ -103,7 +107,7 @@ fn ends(event: &BridgeEvent) -> bool {
             matches!(e.data.kind, BrainTurnKind::Completed | BrainTurnKind::Error)
         }
         BridgeEvent::WebChanged(e) => e.data.closed == Some(true),
-        BridgeEvent::ProcExit(_) | BridgeEvent::NetClosed(_) => true,
+        BridgeEvent::ProcExit(_) | BridgeEvent::NetClosed(_) | BridgeEvent::DbClosed(_) => true,
         _ => false,
     }
 }
@@ -127,6 +131,7 @@ pub(crate) fn claims(
         BridgeRequest::DataSubscribe(_) => ("sub", "subscriptionId"),
         BridgeRequest::ProcSpawn(_) => ("proc", "procId"),
         BridgeRequest::NetConnect(_) => ("net", "socketId"),
+        BridgeRequest::DbOpen(_) => ("db", "sessionId"),
         BridgeRequest::WebOpen(_) => ("web", "viewId"),
         _ => return None,
     })
