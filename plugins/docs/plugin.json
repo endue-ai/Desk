@@ -11,8 +11,14 @@
       "permission": "cmd:invoke",
       "ids": ["desk.files.changed"]
     },
-    { "permission": "fs:read", "paths": ["/**"] },
-    { "permission": "shell:open", "schemes": ["http", "https", "mailto"] }
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "shell:open",
+      "schemes": ["http", "https", "mailto"]
+    }
   ],
   "surfaces": [
     {
@@ -94,6 +100,62 @@
       {
         "pattern": "*.gdoc",
         "plugin": "endue.docs"
+      }
+    ],
+    "commands": [
+      {
+        "id": "endue.docs.read",
+        "title": "Docs: the open document as text",
+        "keywords": ["docs", "document", "read", "word", "docx", "odt", "rtf", "text"],
+        "description": "The document on screen in Docs, or the open one named by path, as plain text: headings marked with #, list items with their marker, table rows with | between cells, then its footnotes, endnotes and comments. from and chars (20000, at most 200000) read a part of a long one; length and more say how much there is. documents lists every document Docs has open. It leaves the screen as it is. Docs reads only what the desk opened in it: open a file with desk.files.open first.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "from": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "chars": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200000
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "format": {
+              "type": "string"
+            },
+            "text": {
+              "type": ["string", "null"]
+            },
+            "length": {
+              "type": "integer"
+            },
+            "more": {
+              "type": "boolean"
+            },
+            "documents": {
+              "type": "array"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
       }
     ]
   }
