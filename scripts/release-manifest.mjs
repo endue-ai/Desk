@@ -69,10 +69,13 @@ export function releaseManifest({
   minFrom,
   files,
 }) {
+  if (minFrom && (!parse(minFrom) || minFrom.startsWith("v") || compare(minFrom, version) >= 0)) {
+    throw new Error(`minFrom must be an earlier version than ${version}`);
+  }
   const platforms = {};
   const artifacts = {};
+  const folder = downloadBase ?? `${base.replace(/\/+$/u, "")}/releases/${version}`;
   for (const file of files) {
-    const folder = downloadBase ?? `${base.replace(/\/+$/u, "")}/releases/${version}`;
     const url = `${folder}/${file.name}`;
     for (const target of targetsOf(file.name, version)) {
       platforms[target] = { url, signature: file.signature };

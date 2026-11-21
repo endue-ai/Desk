@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { entryFor, readDist, releaseManifest } from "./release-manifest.mjs";
-import { compare, parse } from "./release-version.mjs";
+import { parse } from "./release-version.mjs";
 
 const releases = "https://github.com/endue-ai/Desk/releases";
 const download = `${releases}/download`;
@@ -39,9 +39,6 @@ export function previewPath(index, base) {
 
 export function githubManifest(dist, version, commit, minFrom) {
   checkedVersion(version);
-  if (minFrom && compare(checkedVersion(minFrom), version) >= 0) {
-    throw new Error(`minFrom must precede ${version}`);
-  }
   return releaseManifest({
     version,
     downloadBase: `${download}/v${version}`,

@@ -28,7 +28,7 @@ impl Updater {
     }
 
     fn read_index(&self, channel: Channel) -> Result<Index, String> {
-        if self.inner.config.base == crate::GITHUB_RELEASES {
+        if self.inner.config.base.trim_end_matches('/') == crate::GITHUB_RELEASES {
             return self.github_index(channel);
         }
         let url = format!(
@@ -36,7 +36,9 @@ impl Updater {
             self.inner.config.base.trim_end_matches('/'),
             channel.name()
         );
-        self.signed_index(&url, channel, channel.name())
+        let index = self.signed_index(&url, channel, channel.name())?;
+        self.inner.stage.see(channel.name(), index.serial);
+        Ok(index)
     }
 
     pub(super) fn signed_index(
@@ -65,7 +67,6 @@ impl Updater {
                 channel.name()
             ));
         }
-        self.inner.stage.see(serial_key, index.serial);
         Ok(index)
     }
 

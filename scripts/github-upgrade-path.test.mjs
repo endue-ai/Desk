@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { previewPath, tagPath } from "./github-upgrade-path.mjs";
+import { releaseManifest } from "./release-manifest.mjs";
 
 const base = "https://github.com/endue-ai/Desk/releases/download";
 const build = (version) => ({
@@ -11,6 +12,12 @@ const build = (version) => ({
   release: `releases/${version}/release.json`,
 });
 const index = { channel: "stable", serial: 3, releases: [build("1.0.0"), build("0.6.0")] };
+
+test("an invalid minimum version fails manifest generation before a final is tagged", () => {
+  for (const minFrom of ["invalid", "v0.2.0", "1.0.0", "1.1.0"]) {
+    assert.throws(() => releaseManifest({ version: "1.0.0", minFrom, files: [] }), /minFrom/u);
+  }
+});
 
 test("a signed path binds a tag to its own build, floor, rollout and manifest", () => {
   assert.deepEqual(tagPath(index, "0.6.0", base), {

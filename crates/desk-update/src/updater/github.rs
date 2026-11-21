@@ -77,6 +77,7 @@ impl Updater {
             {
                 return Err(format!("{snapshot} must name absolute HTTPS manifests"));
             }
+            self.inner.stage.see(&snapshot, result.serial);
             // A tagged path owns that version, including a signed withdrawal.
             result
                 .releases
@@ -109,6 +110,7 @@ impl Updater {
             {
                 return Err(format!("UPGRADE_PATH.json does not match release {tag}"));
             }
+            self.inner.stage.see(&tag, path.serial);
             if let Some(candidate) = path
                 .releases
                 .first()

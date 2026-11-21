@@ -135,6 +135,24 @@ fn an_older_unreadable_tag_does_not_block_a_newer_compatible_release() {
 }
 
 #[test]
+fn a_signed_path_attached_to_the_wrong_tag_does_not_freeze_the_corrected_path() {
+    let key = Key::new();
+    let origin = shared(Origin::default());
+    let tag = publish(&origin, &key, "1.0.0", "0.1.0", DEB);
+    page(&origin, 1, &[tag]);
+    let url = format!("{GH}/download/v1.0.0/UPGRADE_PATH.json");
+    let correct: Value = serde_json::from_slice(&origin.get(&url).unwrap()).unwrap();
+    let mut misplaced = correct.clone();
+    misplaced["serial"] = json!(100);
+    misplaced["releases"][0]["version"] = json!("4.0.0");
+    signed(&origin, &key, &url, &misplaced);
+    let updater = desk(&key, origin.clone(), &dir("github-corrected-tag"), "0.1.0");
+    assert_eq!(updater.check_now(Prefs::default()).state, State::Failed);
+    signed(&origin, &key, &url, &correct);
+    assert!(updater.check_now(Prefs::default()).staged);
+}
+
+#[test]
 fn the_preview_channel_reads_its_signed_snapshot_from_its_github_prerelease() {
     let key = Key::new();
     let origin = shared(Origin::default());
