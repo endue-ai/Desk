@@ -2,18 +2,19 @@
 // read-only mark, the buttons), the explorer and its filter on the left, the console (a highlighted
 // editor with autocomplete, a table's filter and pages, an object's DDL, or a feature's panel) over
 // the results on the right, the result's toolbar (row filter, record view, value viewer, pages,
-// pending changes), the dialogs (connection, password, value, the changes' SQL), and a hint line
+// pending changes), the dialogs (connection, password, value, the changes' SQL, the features'), and a hint line
 // and a status live region at the bottom. Mod chords other than the surface's own are never
 // prevented, so the desk's keymap gets them.
 
 import { copyText } from "./clipboard.js";
 import { engineOf } from "./engines/index.js";
-import { panelsOf } from "./feature-host.js";
+import { dialogsOf, panelsOf } from "./feature-host.js";
 import * as all from "./features/index.js";
 import { formatCount } from "./format.js";
 import { hints } from "./keys.js";
 import { createActions } from "./view-actions.js";
 import { createBars } from "./view-bars.js";
+import { createDialogs } from "./view-dialog.js";
 import { createEditor } from "./view-editor.js";
 import { createForms } from "./view-form.js";
 import { createGrid } from "./view-grid.js";
@@ -86,6 +87,7 @@ export function createView(doc, act, features = Object.values(all)) {
   const bars = createBars(doc);
   const panels = createPanelBox(doc, byId("panel-box"), panelsOf(features), act);
   linkStyles(doc, features);
+  const dialogs = createDialogs(doc, doc.querySelector("main") ?? doc.body, dialogsOf(features));
 
   for (const button of doc.querySelectorAll("[data-act]"))
     button.addEventListener("click", () =>
@@ -226,6 +228,7 @@ export function createView(doc, act, features = Object.values(all)) {
     closed: (id) => panels.closed(id),
     form: forms.form,
     password: forms.password,
+    dialog: (type, model) => dialogs.show(type, model),
     say,
     busy(running) {
       byId("busy").hidden = running === 0;

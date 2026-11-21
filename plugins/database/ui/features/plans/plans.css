@@ -1,0 +1,111 @@
+/* The plans feature (PG-70): the options dialog's toggles and the panel of two plans compared.
+   Every colour, font, size and radius comes from the theme's --desk-* tokens; the feature links
+   this sheet itself (features/README.md). */
+
+.plan-option-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.dialog label.plan-option {
+  display: grid;
+  grid-template-columns: auto 9em 1fr;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.plan-option-name {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.plan-option:has(input:disabled) {
+  color: var(--desk-text-muted);
+}
+
+.plan-safety {
+  padding: 6px 8px;
+  border: 1px solid var(--desk-warning-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-warning-soft);
+  color: var(--desk-warning-text);
+}
+
+.plans {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.plans-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.plans-side {
+  min-width: 0;
+}
+
+.plans-side h3 {
+  margin: 0;
+  font-size: var(--desk-text-sm);
+}
+
+.plans-side p {
+  margin: 2px 0;
+  font-size: var(--desk-text-xs);
+}
+
+.plans-sql {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--desk-text-xs) var(--desk-font-mono);
+}
+
+.plans-count {
+  margin: 0;
+  padding: 4px 12px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.plans-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.plans-table {
+  table-layout: fixed;
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+}
+
+.plans-table td {
+  vertical-align: top;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plans-table .plan-label,
+.plans-facts {
+  display: block;
+}
+
+.plans-facts,
+.plans-none {
+  color: var(--desk-text-muted);
+}
+
+.plans-changed .plans-change {
+  color: var(--desk-warning-text);
+  font-weight: 600;
+}

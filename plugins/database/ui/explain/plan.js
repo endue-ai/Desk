@@ -1,39 +1,21 @@
 // A query plan as a tree (item 6 of #540): PostgreSQL's EXPLAIN (FORMAT JSON), with or without
-// ANALYZE; MySQL's EXPLAIN FORMAT=JSON (and MariaDB's, and its ANALYZE FORMAT=JSON); MySQL's
-// EXPLAIN ANALYZE tree; SQLite's EXPLAIN QUERY PLAN rows. Each node keeps its estimated cost and
-// rows and, when the statement ran, its time; `share` is the part of the whole that is the node's
-// own (its cost or time minus its children's), and `hot` marks where most of it goes. Pure.
+// ANALYZE (postgres.js); MySQL's EXPLAIN FORMAT=JSON (and MariaDB's, and its ANALYZE FORMAT=JSON);
+// MySQL's EXPLAIN ANALYZE tree; SQLite's EXPLAIN QUERY PLAN rows. Each node keeps its estimated
+// cost and rows and, when the statement ran, its time and rows over all loops; `share` is the part
+// of the whole that is the node's own (node.js), and `hot` marks where most of it goes. Pure: the
+// plan worker (worker.js) runs it on a big plan.
+
+import { annotate, flatten, missed, node, num, ratioOf } from "./node.js";
+import { explainPostgres } from "./options.js";
+import { postgresPlan } from "./postgres.js";
+
+export { annotate, flatten, postgresPlan };
 
 /**
  * @typedef {import("../engines/common.js").ResultSet} ResultSet
- * @typedef {{
- *   label: string, detail: string, cost: number | null, rows: number | null,
- *   actualRows: number | null, time: number | null, children: PlanNode[],
- *   self: number, share: number, hot: "high" | "medium" | "",
- * }} PlanNode
- *   `cost` and `time` include the children's, as the engines print them; `time` is in ms, over all loops.
+ * @typedef {import("./node.js").PlanNode} PlanNode
+ * @typedef {import("./options.js").Chosen} Chosen
  */
-
-const num = (/** @type {unknown} */ v) => {
-  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN;
-  return Number.isFinite(n) ? n : null;
-};
-
-/** @returns {PlanNode} */
-function node(/** @type {Partial<PlanNode> & { label: string }} */ fields) {
-  return {
-    detail: "",
-    cost: null,
-    rows: null,
-    actualRows: null,
-    time: null,
-    children: [],
-    self: 0,
-    share: 0,
-    hot: "",
-    ...fields,
-  };
-}
 
 /** The plan in a result set, read by its shape; undefined when it holds none. */
 export function planOf(/** @type {ResultSet} */ set) {
@@ -43,51 +25,11 @@ export function planOf(/** @type {ResultSet} */ set) {
     .join("\n")
     .trim();
   if (set.columns.join(",") === "id,parent,notused,detail") return sqlitePlan(set.rows);
-  if (first === "QUERY PLAN" && text.startsWith("[")) return postgresPlan(JSON.parse(text));
+  if (first === "QUERY PLAN" && text.startsWith("[")) return postgresPlan(JSON.parse(text), text);
   if ((first === "EXPLAIN" || first === "ANALYZE") && text.startsWith("{"))
     return mysqlJsonPlan(JSON.parse(text));
   if (first === "EXPLAIN" && text.startsWith("->")) return mysqlTreePlan(text);
   return undefined;
-}
-
-/** PostgreSQL's JSON plan: [{ "Plan": {...}, "Planning Time", "Execution Time" }]. */
-export function postgresPlan(/** @type {any} */ json) {
-  const top = Array.isArray(json) ? json[0] : json;
-  /** @returns {PlanNode} */
-  const walk = (/** @type {any} */ p) => {
-    const on = p["Relation Name"]
-      ? ` on ${p["Relation Name"]}${p.Alias && p.Alias !== p["Relation Name"] ? ` ${p.Alias}` : ""}`
-      : p["CTE Name"]
-        ? ` on ${p["CTE Name"]}`
-        : "";
-    const using = p["Index Name"] ? ` using ${p["Index Name"]}` : "";
-    const join = p["Join Type"] && p["Join Type"] !== "Inner" ? ` (${p["Join Type"]})` : "";
-    const conditions = [
-      "Hash Cond",
-      "Merge Cond",
-      "Index Cond",
-      "Recheck Cond",
-      "Join Filter",
-      "Filter",
-    ]
-      .filter((k) => p[k])
-      .map((k) => `${k}: ${p[k]}`);
-    if (Array.isArray(p["Sort Key"])) conditions.push(`Sort Key: ${p["Sort Key"].join(", ")}`);
-    if (Array.isArray(p["Group Key"])) conditions.push(`Group Key: ${p["Group Key"].join(", ")}`);
-    const loops = num(p["Actual Loops"]) ?? 1;
-    const total = num(p["Actual Total Time"]);
-    return node({
-      label: `${p["Node Type"] ?? "Node"}${join}${on}${using}`,
-      detail: conditions.join(" · "),
-      cost: num(p["Total Cost"]),
-      rows: num(p["Plan Rows"]),
-      actualRows: num(p["Actual Rows"]),
-      time: total === null ? null : total * loops,
-      children: (p.Plans ?? []).map(walk),
-    });
-  };
-  const root = walk(top?.Plan ?? {});
-  return annotate(root);
 }
 
 const ACCESS = /** @type {Record<string, string>} */ ({
@@ -199,13 +141,18 @@ export function mysqlTreePlan(/** @type {string} */ text) {
     const actual = /\(actual time=[\d.e+]+\.\.([\d.e+]+) rows=([\d.e+]+) loops=(\d+)\)/u.exec(body);
     const label = body.replace(/\s*\((?:cost|actual time)=[^)]*\)/gu, "").trim();
     const loops = Number(actual?.[3] ?? 1);
+    const rows = cost ? Number(cost[2]) : null;
     const made = node({
       label,
       cost: cost ? Number(cost[1]) : null,
-      rows: cost ? Number(cost[2]) : null,
+      rows,
       actualRows: actual ? Number(actual[2]) * loops : null,
+      loops: actual ? loops : null,
       time: actual ? Number(actual[1]) * loops : null,
+      misestimate: actual && loops > 0 ? ratioOf(rows, Number(actual[2])) : null,
     });
+    const miss = missed(made);
+    if (miss) made.marks.push(miss);
     while ((stack[stack.length - 1]?.depth ?? -1) >= depth) stack.pop();
     stack[stack.length - 1]?.node.children.push(made);
     stack.push({ depth, node: made });
@@ -230,45 +177,19 @@ export function sqlitePlan(/** @type {(string | null)[][]} */ rows) {
 }
 
 /**
- * Work out each node's own share of the whole (by time when the statement ran, else by cost) and
- * mark the nodes that take half of it (high) or a fifth (medium).
- * @param {PlanNode} root
+ * The EXPLAIN to run for a statement, per dialect and flavor; PostgreSQL's with the options chosen
+ * (options.js), or ANALYZE with BUFFERS as before when none are given.
+ * @param {import("../sql/lexer.js").Dialect} dialect
+ * @param {"mysql" | "mariadb" | string} flavor
+ * @param {string} statement
+ * @param {boolean} analyze
+ * @param {Chosen} [chosen]
  */
-export function annotate(root) {
-  const measure = root.time !== null ? "time" : "cost";
-  const whole = root[measure] ?? 0;
-  const visit = (/** @type {PlanNode} */ n) => {
-    const below = n.children.reduce((sum, child) => sum + (child[measure] ?? 0), 0);
-    n.self = Math.max(0, (n[measure] ?? 0) - below);
-    n.share = whole > 0 ? n.self / whole : 0;
-    n.hot = n.share >= 0.5 ? "high" : n.share >= 0.2 ? "medium" : n.hot;
-    n.children.forEach(visit);
-  };
-  visit(root);
-  return root;
-}
-
-/** The nodes in order, each with its depth, for drawing. */
-export function flatten(/** @type {PlanNode} */ root) {
-  /** @type {{ node: PlanNode, depth: number }[]} */
-  const out = [];
-  const visit = (/** @type {PlanNode} */ n, /** @type {number} */ depth) => {
-    out.push({ node: n, depth });
-    for (const child of n.children) visit(child, depth + 1);
-  };
-  visit(root, 0);
-  return out;
-}
-
-/** The EXPLAIN to run for a statement, per dialect and flavor. */
-export function explainSql(
-  /** @type {import("../sql/lexer.js").Dialect} */ dialect,
-  /** @type {"mysql" | "mariadb" | string} */ flavor,
-  /** @type {string} */ statement,
-  /** @type {boolean} */ analyze,
-) {
+export function explainSql(dialect, flavor, statement, analyze, chosen) {
   if (dialect === "postgresql")
-    return `EXPLAIN (${analyze ? "ANALYZE, BUFFERS, " : ""}FORMAT JSON) ${statement}`;
+    return chosen
+      ? explainPostgres(statement, { ...chosen, analyze })
+      : `EXPLAIN (${analyze ? "ANALYZE, BUFFERS, " : ""}FORMAT JSON) ${statement}`;
   if (dialect === "mysql") {
     if (flavor === "mariadb") return `${analyze ? "ANALYZE" : "EXPLAIN"} FORMAT=JSON ${statement}`;
     return analyze ? `EXPLAIN ANALYZE ${statement}` : `EXPLAIN FORMAT=JSON ${statement}`;

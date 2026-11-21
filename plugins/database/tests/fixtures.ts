@@ -2,11 +2,13 @@
 // saved connection, two tables (people, orders) whose catalog and rows the scripted sqlite3 answers,
 // a PostgreSQL catalog (pg-catalog.ts's shop) the scripted psql answers to the schema cache, a
 // PostgreSQL connection whose scripted psql answers for one table of typed columns (fixtures-pg.ts),
-// and the proc.* handlers that emit each run's output as desk-core does. The runtime e2e page
-// (packages/runtime/e2e/fixture/database.ts) uses them; nothing here needs Node.
+// the server's version and EXPLAIN with fixture plans for every PostgreSQL connection
+// (fixture-plans.ts), and the proc.* handlers that emit each run's output as desk-core does. The
+// runtime e2e page (packages/runtime/e2e/fixture/database.ts) uses them; nothing here needs Node.
 import type { BridgeEvent, StubHandlers } from "../../../packages/bridge/src/index";
 import type { Connection } from "../ui/engines/common.js";
 import { type Script, scriptedReply } from "./clients";
+import { withPlans } from "./fixture-plans";
 import { pgFixtureScript } from "./fixtures-pg";
 import { catalogScript, shop } from "./pg-catalog";
 
@@ -80,10 +82,15 @@ const sqliteScript: Script = (sql) => {
 };
 
 const SHOP = shop();
-/** The scripted clients' answers: the schema cache's PostgreSQL catalog, then the SQLite fixture. */
-export const fixtureScript: Script = catalogScript(
-  () => SHOP,
-  (sql, env) => (env.PGDATABASE ? pgFixtureScript(sql) : sqliteScript(sql, env)),
+/**
+ * The scripted clients' answers: the server's version and EXPLAIN with fixture plans
+ * (fixture-plans.ts), the schema cache's PostgreSQL catalog, then the SQLite fixture.
+ */
+export const fixtureScript: Script = withPlans(
+  catalogScript(
+    () => SHOP,
+    (sql, env) => (env.PGDATABASE ? pgFixtureScript(sql) : sqliteScript(sql, env)),
+  ),
 );
 
 /** proc.spawn and proc.kill over the scripted clients; each run's output is emitted a tick later. */

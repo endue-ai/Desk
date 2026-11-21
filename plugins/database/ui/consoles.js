@@ -69,10 +69,12 @@ import { show, summaryOf } from "./tabs.js";
  *   fileEdited?(target: Console): void,
  *   bound?(target: Console, conn: Connection): Promise<void> | void,
  *   random?(): number,
+ *   readPlan?(set: import("./engines/common.js").ResultSet): Promise<import("./explain/node.js").PlanNode | undefined>,
  * }} Deps
  *   `panels` are the features' panel types (feature-host.js); `choose` asks for a connection, a
  *   .sql file's console's when it has none; `fileEdited` hears an edit of a bound file's console
- *   and `bound` its connection picked (console-files.js).
+ *   and `bound` its connection picked (console-files.js); `readPlan` reads a big plan in the plan
+ *   worker (explain/reader.js), and plans are read in place without it.
  */
 
 /** @param {Deps} deps */
@@ -212,7 +214,13 @@ export function createConsoles(deps) {
           : Promise.resolve(),
   });
 
-  const { run, explain, format, more } = createRunning({ deps, active, execute, render, typed });
+  const { run, explain, format, more, serverVersion } = createRunning({
+    deps,
+    active,
+    execute,
+    render,
+    typed,
+  });
 
   /** The editor's text changed: keep it, a moment later, in the store; a file's, mark it. */
   const edited = (/** @type {string} */ text) => {
@@ -237,10 +245,11 @@ export function createConsoles(deps) {
       await many.ready();
       return run(scope, mode);
     },
-    explain: async (/** @type {boolean} */ analyze) => {
+    explain: async (/** @type {boolean} */ analyze, /** @type {string[] | undefined} */ on) => {
       await many.ready();
-      return explain(analyze);
+      return explain(analyze, on);
     },
+    serverVersion,
     format,
     more,
     edited,
