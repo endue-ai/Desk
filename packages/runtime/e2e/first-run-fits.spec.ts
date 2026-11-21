@@ -209,3 +209,38 @@ test.describe("the buttons wear the theme", () => {
     expect(shown).toEqual(theme);
   });
 });
+
+test("Skip intro receives a pointer at the smallest desk window", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 500 });
+  const frame = await open(page);
+  await run(page, 1500);
+  const skip = frame.getByRole("button", { name: "Skip intro" });
+  await skip.click();
+  await expect(frame.locator("html")).toHaveAttribute("data-scene", "sign-in");
+});
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`the offline sign-in choice fits at 360px in ${scheme} high contrast`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width: 360, height: 640 });
+    await page.emulateMedia({ colorScheme: scheme, contrast: "more", reducedMotion: "reduce" });
+    const frame = await open(page, "?resume=sign-in");
+    await page.evaluate(() => window.__desk.runtime.settings.set("desk.theme.scheme", "system"));
+    await expect(frame.locator("html")).toHaveAttribute("data-scheme", scheme);
+    await expect(frame.locator("html")).toHaveAttribute("data-contrast", "high");
+    await expect(frame.locator("html")).toHaveAttribute("data-motion", "reduce");
+    const create = frame.getByRole("button", { name: "Create account" });
+    await until(page, create);
+    await context.setOffline(true);
+    await create.click();
+    await run(page, 6000);
+    const local = frame.getByRole("button", { name: "Continue offline" });
+    await fits(page, frame, { said: caption(frame), local });
+    await local.click();
+    await context.setOffline(false);
+    await untilScene(page, frame, "desk");
+    await expect(create).toHaveCount(0);
+  });
+}

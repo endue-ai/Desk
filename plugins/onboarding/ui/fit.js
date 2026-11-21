@@ -108,6 +108,7 @@ export function watchFit(d) {
   const watch = { childList: true, subtree: true, characterData: true };
   for (const id of ["formslot", "edge"]) observer.observe($(id), watch);
   observer.observe($("frame"), { childList: true });
+  new ResizeObserver(() => apply(true)).observe($("cap"));
   window.addEventListener("resize", () => apply(false));
   apply(false);
   return () => apply(false);
