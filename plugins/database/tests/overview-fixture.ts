@@ -167,7 +167,7 @@ function figures(version: number): Row[] {
     since,
   });
   return [
-    row("Version", `${version}.6 (Debian ${version}.6-1)`, "text", "server_version (pg_settings)"),
+    row("Version", `${version}.6`, "text", "server_version (pg_settings)"),
     row("Running since", "2026-11-01 09:00:00+00", "time", "pg_postmaster_start_time()"),
     row("Connections in use", "23", "count", "pg_stat_activity"),
     row("Connection limit", "100", "count", "pg_settings (max_connections)"),
