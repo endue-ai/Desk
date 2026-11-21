@@ -124,9 +124,20 @@ On screen the render thread keeps the beat of the main thread's clock. The swapc
 present aligns it with vsync, and no display link drives it yet (`CADisplayLink` from the window's
 view is the next step, if `--screen` shows the beat drifting against the display's).
 
-To be measured before this is accepted (the orchestrator's gates, a quiet machine):
+Measured on 97024585 (optimized, headless, the reference Mac mini, 2026-11-21), five runs at a
+load of 3.1 to 7.3. `fps` was 59.6 and `busy` dropped 0 frames in 80 busy loops. `smooth` was 0 %
+(p95 21.2 ms, max 24.6). `sway-fps` was 59.5 and `sway-smooth` 0.8 % (p95 21.4 ms, max 44.4), out
+of `known` since. No mid-motion frame showed pixels not its own (0 of 50), and the sway's `sizes`,
+`panes`, `scene`, `sections`, `settled` and `soft` checks passed. A three-run A/B just before, at
+load 3: `main` d8432e01 had `smooth` 2.1 % and `sway-smooth` 10.9 %; this change had 0 % and 0.6 %.
 
-* `just perf-motion`, five runs headless against `main`: `fps`, `smooth` and `sway-smooth` (out of
-  `known` once it passes), `busy`, and the sway's `sizes`, `panes` and `scene` checks
-* `just perf-motion --screen` on a 120 Hz display: 110 or more frames a second
-* `just perf-app`: rest CPU not above `main`'s
+Rest CPU (`e2e/perf/rest.perf.ts`) was measured on the development bundles of this change and
+of `main` d8432e01, alternating, seven runs each at a load of 2 to 6. The app's own process had a
+median of 4.2 % of a core for both: 3.4 to 4.5 % for this change, 2.8 to 4.5 % for `main`. An
+earlier three runs each, at a load of 2.4 to 11, gave medians of 4.5 % and 3.8 %, within that
+spread. A 35 s trace of each desk at rest showed the same frames: two a second, a caret's blink,
+none laid out. At rest the render thread sleeps until a frame is handed.
+A window the OS withholds frames from is asked again once a second with the scene as it was, as
+`main` asked it with an image alone.
+
+Not measured: `just perf-motion --screen` on a 120 Hz display (none on the reference machine).

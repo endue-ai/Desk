@@ -344,11 +344,11 @@ impl CompositorWindow {
         self.tip_tick(now);
         self.a11y_tick();
         self.begin_frames(now);
-        // The OS withheld the last frame (a locked screen), or presenting paused: the next frame
-        // asks the window again, and shows if it does (`render_thread.rs`).
+        // The OS withheld the last frame (a locked screen), or presenting paused: a frame asks the
+        // window again, the scene as it was unless the desk changed, and shows if it does.
         if self.due().withheld().is_some_and(|until| now >= until) {
             self.render.resume();
-            self.shared.lock().dirty = true;
+            self.frame(now);
         }
         // Out of sight, nothing is due: what changed meanwhile is drawn once it shows (#155).
         if self.due().frame().is_some_and(|at| now >= at) {

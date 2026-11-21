@@ -226,6 +226,8 @@ e.g. after `just build-shell`, `DESK_PROBE_TRACE=/tmp/input.json HOME=$(mktemp -
 target/bundle/endue-desk.app/Contents/MacOS/endue-desk --surface-probe=input` (`target/debug/endue-desk` off
 macOS) (#117).
 
+On 2026-11-21 the render thread (#249, ADR 0235, 97024585) measured, in five runs at a load of 3 to 7: 59.6 frames a second, no frame dropped across 80 busy loops, 0 % intervals over 25 ms; the sway 59.5 frames a second and 0.8 % (p95 21.4 ms), where `main` d8432e01 had 2.1 % and 10.9 % at load 3. `sway-smooth` is out of `known` since.
+
 The motion gate's baseline (`e2e/perf/motion.json`, `just perf-motion record`) was taken on `main` 9dfca4dc
 with #247's trace and shake, on the reference machine on 2026-11-14, at a load average of 14 to 36 (other
 agents' builds on the same Mac; record again when it is quiet), the worst of three runs each:
