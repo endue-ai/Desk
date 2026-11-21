@@ -13,7 +13,7 @@ const pg = (type: string, labels?: string[]) => {
     { name: "c", type, nullable: true, default: null },
     undefined,
   );
-  return labels ? { ...made, labels } : made;
+  return labels ? { ...made, kind: "enum" as const, labels } : made;
 };
 const value = (type: string, text: string) => {
   const done = checkValue(pg(type), text);

@@ -67,7 +67,7 @@ describe.skipIf(!uri)("typed cell editors on a real server", () => {
         "day date, at_time time, at timestamptz, span interval, j json, jb jsonb, ints int[], " +
         "tags text[], bytes bytea, n int default 42, u uuid, total numeric(8,2), " +
         "twice int generated always as (id * 2) stored, num int generated always as identity);\n" +
-        `insert into ${table} (id, n) values (1, 5), (2, 7)`,
+        `insert into ${table} (id, n, flag) values (1, 5, true), (2, 7, true)`,
     );
   });
   afterAll(async () => {

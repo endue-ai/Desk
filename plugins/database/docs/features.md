@@ -95,8 +95,18 @@ Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `
   reads the rows again, and a failure rolls all of them back.
 - Refused without a primary key, when the key is not in the result, and on a read-only connection; a change
   that matched no row is said.
+- A cell is edited by its column's type (ADR 0287): a toggle for a boolean, the labels of an enum, text with
+  a picker for a date, time or timestamp (the session's time zone shown for one with a zone), an interval,
+  JSON laid out with Format, an array as its elements each checked by the element's type, bytes as hex with
+  their size, loaded from and saved to a file, a UUID with Generate. On PostgreSQL the type is read from the
+  catalog, a domain by its base type; MySQL's enum and SQLite's BLOB by their declared names. What the type
+  refuses is said in the editor before it is pending; a refusal on Submit names the row and the column.
+- Enter or F2 opens a cell's editor, Enter keeps (Mod+Enter in JSON, an array and bytes), Escape cancels,
+  Alt+N sets NULL and Alt+D DEFAULT, a pending value of its own (Database: set the cell to DEFAULT). A
+  generated or always-identity column says why it cannot change.
 
-Modules: `edits.js`, `edit/`, `view-cell.js`.
+Modules: `edits.js`, `edit/`, `view-cell.js`, `cell-editors/` (`resolve.js`, `pg-types.js`, `values.js`,
+`panel.js`, one module per kind), `features/cell-values/`.
 
 ## Import and export
 

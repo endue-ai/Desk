@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="./work.css" />
     <link rel="stylesheet" href="./colors.css" />
     <link rel="stylesheet" href="./import.css" />
+    <link rel="stylesheet" href="./cell-editors/cell-editors.css" />
   </head>
   <body>
     <header>
@@ -139,9 +140,11 @@
         <p id="value-meta" class="hint"></p>
         <div id="value-tabs" class="desk-tabs" role="tablist" aria-label="Show the value as"></div>
         <textarea id="value-text" spellcheck="false" aria-labelledby="value-title" class="desk-field"></textarea>
+        <p id="value-error" class="desk-error" role="alert" hidden></p>
         <p class="buttons">
           <button type="button" id="value-copy" class="desk-btn desk-btn-quiet">Copy</button>
           <button type="button" id="value-null" class="desk-btn desk-btn-quiet">Set NULL</button>
+          <button type="button" id="value-default" class="desk-btn desk-btn-quiet" hidden>Set DEFAULT</button>
           <button type="button" id="value-close" class="desk-btn desk-btn-quiet">Close</button>
           <button type="submit" id="value-save" class="desk-btn desk-btn-primary">Change</button>
         </p>
