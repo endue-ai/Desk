@@ -1,9 +1,12 @@
 // A PostgreSQL catalog for the schema cache's tests: schemas with their fingerprint, tables (with
 // columns, constraints, indexes, triggers) and routines, answered to the cache's statements in the
-// columns PostgreSQL 17 gives them (ui/schema-cache/kinds.js), through the scripted server. A test
+// columns PostgreSQL 17 gives them (ui/schema-cache/kinds.js), through the scripted server; PG-50's
+// kinds (ui/schema/pg/) as the rows their readers answer, and the database level under "". A test
 // changes the model and its marks to play a DDL statement in another session. NULL is printed as
 // '' (as the psql path printed it), which the cache reads as absent. Nothing needs Node.
 import type { Script } from "./clients";
+import { MORE_TABLES, shopKinds } from "./pg-kinds-fixture";
+import { shopLevel } from "./pg-level-fixture";
 
 export interface PgTable {
   name: string;
@@ -19,15 +22,30 @@ export interface PgTable {
   indexes?: string[][];
   /** name, definition */
   triggers?: string[][];
+  /** row security: "on" or "forced" */
+  rls?: string;
+  /** the server's estimate of its size in bytes */
+  bytes?: string;
 }
+/** PG-50's readers' rows without the schema's name, by reader id (ui/schema/pg/index.js). */
+export type PgRows = Partial<
+  Record<"types" | "objects" | "table parts" | "database" | "server", string[][]>
+>;
 export interface PgSchema {
   mark: string;
   system?: boolean;
   tables?: PgTable[];
   /** name, identity arguments, prokind, result, oid, comment */
   routines?: string[][];
+  rows?: PgRows;
+  /** The database level's (under ""): the server_version_num the fingerprint rows end with. */
+  version?: string;
 }
+/** Schemas by name; "" is the database level (its mark and its readers' rows). */
 export type PgCatalog = Record<string, PgSchema>;
+
+/** The server_version_num every fingerprint row ends with. */
+export const VERSION = "170012";
 
 /** The schemas a statement names in `n.nspname IN (...)`. */
 export function schemasOf(sql: string): string[] {
@@ -44,6 +62,11 @@ export function kindOf(sql: string) {
   if (sql.startsWith("SELECT n.nspname, c.relname, x.relname")) return "indexes";
   if (sql.startsWith("SELECT n.nspname, c.relname, t.tgname")) return "triggers";
   if (sql.startsWith("SELECT n.nspname, p.proname")) return "routines";
+  if (sql.startsWith("SELECT n.nspname, t.typname")) return "types";
+  if (sql.startsWith("SELECT n.nspname, 'aggregate'")) return "objects";
+  if (sql.startsWith("SELECT n.nspname, r.relname, 'partition'")) return "table parts";
+  if (sql.startsWith("SELECT '' AS nspname, 'extension'")) return "database";
+  if (sql.startsWith("SELECT '' AS nspname, 'role'")) return "server";
   return undefined;
 }
 
@@ -53,11 +76,23 @@ export function answer(model: PgCatalog, sql: string): string[][] | undefined {
   if (!kind) return undefined;
   if (kind === "marks")
     return [
-      ["nspname", "case", "concat_ws"],
+      ["nspname", "case", "concat_ws", "current_setting"],
       ...Object.entries(model)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([name, s]) => [name, s.system ? "s" : "", s.mark]),
+        .map(([name, s]) => [name, s.system ? "s" : "", s.mark, model[""]?.version ?? VERSION]),
     ];
+  const table = (rows: string[][]) => [
+    Array.from({ length: rows[0]?.length ?? 1 }, (_, i) => `c${i}`),
+    ...rows,
+  ];
+  if (kind === "database" || kind === "server")
+    return table((model[""]?.rows?.[kind] ?? []).map((row) => ["", ...row]));
+  if (kind === "types" || kind === "objects" || kind === "table parts")
+    return table(
+      schemasOf(sql)
+        .sort()
+        .flatMap((name) => (model[name]?.rows?.[kind] ?? []).map((row) => [name, ...row])),
+    );
   const out: string[][] = [];
   for (const name of schemasOf(sql).sort()) {
     const schema = model[name];
@@ -72,6 +107,8 @@ export function answer(model: PgCatalog, sql: string): string[][] | undefined {
           t.estimate ?? "",
           String(1000 + out.length),
           t.comment ?? "",
+          t.rls ?? "",
+          t.bytes ?? "",
         ]);
       if (kind === "columns")
         for (const [col, type, flags = "", def = "", note = ""] of t.columns ?? [])
@@ -122,9 +159,14 @@ export function catalogScript(
   };
 }
 
-/** A small shop: public (people, orders with a foreign key, a view, a routine) and sales. */
+/**
+ * A small shop: public (people, orders with a foreign key, a view, a routine, and PG-50's kinds:
+ * types, an aggregate, an operator, a collation, a configuration, a partitioned table, a policy, a
+ * rule), sales, and the database level ("").
+ */
 export function shop(): PgCatalog {
   return {
+    "": shopLevel(),
     information_schema: { mark: "1.-", system: true, tables: [{ name: "tables", kind: "v" }] },
     pg_catalog: { mark: "2.-", system: true, tables: [{ name: "pg_class" }] },
     public: {
@@ -134,6 +176,8 @@ export function shop(): PgCatalog {
           name: "people",
           estimate: "4",
           comment: "Who buys",
+          rls: "on",
+          bytes: "49152",
           columns: [
             ["id", "integer", "np", "nextval('people_id_seq'::regclass)"],
             ["name", "text", "n", "", "Full name"],
@@ -179,11 +223,13 @@ export function shop(): PgCatalog {
         },
         { name: "big_orders", kind: "v", columns: [["id", "integer"]] },
         { name: "people_id_seq", kind: "S" },
+        ...MORE_TABLES,
       ],
       routines: [
         ["touch", "", "f", "trigger", "16404", "Sets updated"],
         ["refund", "order_id integer", "p", "", "16405"],
       ],
+      rows: shopKinds(),
     },
     sales: {
       mark: "11.1:200",

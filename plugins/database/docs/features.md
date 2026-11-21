@@ -47,14 +47,46 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
   only those are read again, and a DDL statement run from the plugin starts that check. The connection's line
   says when it was read. Database: read the schema again reads it all; Database: choose the schemas to read
   picks them (system schemas stay out by default). Other engines read a node when it opens, as above.
+- A PostgreSQL schema also has Types (enum, composite, domain, range, base), Aggregates, Operators, Collations
+  and Text search; a table its Partitions with their bounds, the parents it Inherits from, Policies and Rules,
+  and its row says whether row security is on and about how large it is. After the schemas, Database holds
+  Extensions (with what each owns), Foreign data wrappers, Foreign servers, User mappings, Publications,
+  Subscriptions, Event triggers, Casts and Languages, and Server holds Roles and Tablespaces (ADR 0295). All of
+  it comes from the cache, `d` shows each one's DDL (its owner on the first line), and completion offers a
+  schema's types. Passwords are never read: not a user mapping's options, a subscription's connection string, a
+  role's password, or an option named like a secret.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the schema's ER diagram
   from its foreign keys, `m` opens the maintenance form of a connection, schema, table or index, `n`, `e` and
   Delete add, change and remove a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
-Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/`, `view-tree.js`,
-`view-diagram.js`.
+Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
+kinds in `schema/pg/`), `view-tree.js`, `view-diagram.js`.
+
+## Objects
+
+- From a row (`o`, the context-menu key or a right click opens its menu; `F2` renames, `s` opens the
+  source) or a command with arguments: rename, move to another schema, change the owner, comment (empty
+  removes it), drop, truncate (RESTART IDENTITY, CASCADE), refresh a materialized view (CONCURRENTLY when it
+  has data and a unique index, WITH NO DATA), enable or disable a trigger, and generate SQL (SELECT, INSERT,
+  UPDATE, DELETE of a table, a call of a routine) into a console with `:name` parameters.
+- Every one shows its exact script in a dialog first, rewritten as the person types and chooses, and runs it
+  through the guards: a read-only connection refuses before the dialog, a production one is asked again
+  with its tag named, DROP and TRUNCATE are asked as dangerous, and an agent's request waits for the
+  person's answer in the same dialog (ADR 0312). The schema cache reads what changed again.
+- A drop lists what depends on the object first (PostgreSQL's `pg_depend`, 200 at most): what a plain DROP
+  is refused for, and what goes with it. CASCADE is a choice of its own, never on unless chosen.
+- A view's, a materialized view's, a function's, a procedure's or a trigger's function's source opens in a
+  console of its own; Database: apply the source shows the script and runs it in one transaction
+  (`CREATE OR REPLACE`; a materialized view is dropped and created again with its indexes and comment, and
+  refused while others depend on it). An error selects its line.
+- MySQL and SQLite get what their DDL allows (`features/objects/kinds.js`): MySQL renames and moves tables,
+  comments tables and routines, drops and truncates; SQLite renames tables, drops, and empties a table with
+  DELETE; a view's source is applied as CREATE OR REPLACE (MySQL) or dropped and created (SQLite). What an
+  engine cannot do is said as such.
+
+Modules: `features/objects/`.
 
 ## Console
 
@@ -179,8 +211,24 @@ Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `
   Alt+N sets NULL and Alt+D DEFAULT, a pending value of its own (Database: set the cell to DEFAULT). A
   generated or always-identity column says why it cannot change.
 
-Modules: `edits.js`, `edit/`, `view-cell.js`, `cell-editors/` (`resolve.js`, `pg-types.js`, `values.js`,
-`panel.js`, one module per kind), `features/cell-values/`.
+- Paste (Mod+V in the grid, Database: paste into the grid) fills cells from the block's top-left cell, down the
+  rows in their order on screen and right over the shown columns (hidden ones skipped, pinned first); rows
+  past the last become pending rows. It reads tab-separated text (the grid's own copy with its `\N` and
+  escapes, a spreadsheet's with quoted fields), CSV when every line splits into the same number of fields,
+  and one value, which goes into every selected cell. Each value is checked by its column's type (an empty
+  one in a typed column is NULL); one bad value refuses the whole paste, naming its row and column, before
+  anything is pending. A first line naming the columns is left out. More than 1,000 cells ask first; text
+  over 16 KiB is read in a worker. Agents paste with `text`, under the same refusals.
+- Duplicate (`D`, the cell's menu, Database: duplicate the selected rows) adds the selected rows as pending rows; an identity, a
+  generated column, a `nextval()` default, a key with a default and SQLite's INTEGER PRIMARY KEY take DEFAULT
+  and are named, and a key copied as it was is named to change. Fill down (`"`) copies the block's top row
+  below; `n` on a block sets every cell NULL (Database: clear the selected cells to NULL).
+- Undo (Mod+Z in the grid, the Undo button, Database: undo the last pending change) takes back one step: a
+  cell, a paste, a duplicate, a fill, a clear, rows added, deleted or reverted; 100 steps are kept.
+
+Modules: `edits.js`, `edit/` (`cells.js`, `duplicate.js`, `history.js`, `paste-text.js` for the paste),
+`view-cell.js`, `cell-editors/` (`resolve.js`, `pg-types.js`, `values.js`, `panel.js`, one module per kind),
+`grid/paste.js`, `grid/paste-worker.js`, `features/cell-values/`, `features/paste/`.
 
 ## Import and export
 
@@ -253,11 +301,16 @@ Modules: `features/maintenance/`.
   1000 at most) are registered with an argument schema as agents' tools (ADR 0088); the first two only read.
 - An agent's write runs only after the person says yes, whatever the connection's tag and the `confirm`
   setting; a read-only connection refuses it, and an agent is never shown a password prompt.
+- `.paste` pastes text into the grid on screen as pending changes, under the same refusals and type checks as
+  the person's paste; nothing runs until the person submits.
 - `.activity` answers a connection's sessions and who waits for whom, and only reads; `.cancel-session` and
   `.end-session` are irreversible: the core waits for the person's approval, then the plugin asks as it
   asks the person (ADR 0290).
 - `.maintenance` opens the form for a connection, schema, table or index and answers the statement, what it
   locks and the size; with `run` it runs after the person's yes and answers the output and the statistics
   before and after (ADR 0293). The server overview can open it with the same arguments.
+- The objects feature's commands (`.rename-object`, `.drop-object`, `.edit-source`, `.generate-sql` and the
+  rest) take the object by connection, schema, name (and table, for a part); each change shows the person
+  its dialog, and `.drop-object` and `.truncate-table` are irreversible (ADR 0312).
 
 Modules: `agent.js`.

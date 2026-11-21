@@ -124,12 +124,20 @@ describe.skipIf(!pgUri)("the schema cache on a real PostgreSQL", () => {
       { name: "touch", args: "", result: "trigger" },
     ]);
 
-    // Nothing changed, then ANALYZE: the fingerprint statement alone.
+    // Nothing changed, then ANALYZE: the fingerprint statement alone (and the database level's
+    // two readers when another session changed a role of the server meanwhile).
     sqls.length = 0;
-    expect(await cache.refresh(conn)).toEqual({ statements: 1, read: [] });
+    const reports = [await cache.refresh(conn)];
     await elsewhere("ANALYZE t446_a.people");
-    expect(await cache.refresh(conn)).toEqual({ statements: 1, read: [] });
-    expect(sqls.map(kindOf)).toEqual(["marks", "marks"]);
+    reports.push(await cache.refresh(conn));
+    for (const report of reports) {
+      expect(report.read).toEqual([]);
+      expect(report.statements).toBe(report.database ? 3 : 1);
+    }
+    expect(sqls.map(kindOf).filter((k) => k === "marks")).toHaveLength(2);
+    expect(
+      sqls.map(kindOf).filter((k) => k !== "marks" && k !== "database" && k !== "server"),
+    ).toEqual([]);
 
     // Each change in another session reads its schema alone.
     const changes: [string, string][] = [
@@ -142,11 +150,15 @@ describe.skipIf(!pgUri)("the schema cache on a real PostgreSQL", () => {
         "t446_b",
       ],
     ];
+    // The nine per-schema readers; the database level's two only when it moved too (roles are
+    // the whole server's: another session may make one meanwhile).
     for (const [sql, schema] of changes) {
       await elsewhere(sql);
       sqls.length = 0;
-      expect(await cache.refresh(conn)).toEqual({ statements: 7, read: [schema] });
-      for (const statement of sqls.slice(1)) expect(schemasOf(statement)).toEqual([schema]);
+      const report = await cache.refresh(conn);
+      expect(report.read).toEqual([schema]);
+      expect(report.statements).toBe(report.database ? 12 : 10);
+      for (const statement of sqls.slice(1, 10)) expect(schemasOf(statement)).toEqual([schema]);
     }
     expect(
       view()
@@ -183,7 +195,7 @@ describe.skipIf(!pgUri)("the schema cache on a real PostgreSQL", () => {
         ?.map((c) => c.name),
     ).toEqual(["id", "name", "age"]);
     await cache.settled(conn);
-    expect(sqls.map(kindOf)).toEqual(["marks"]);
+    expect(sqls.map(kindOf).filter((k) => k !== "database" && k !== "server")).toEqual(["marks"]);
   }, 60_000);
 
   it("a table renamed in one schema reads again the schema whose foreign key names it", async () => {
@@ -191,7 +203,9 @@ describe.skipIf(!pgUri)("the schema cache on a real PostgreSQL", () => {
     await cache.open(conn);
     await cache.settled(conn);
     await elsewhere("ALTER TABLE t446_a.people RENAME TO persons");
-    expect(await cache.refresh(conn)).toEqual({ statements: 14, read: ["t446_a", "t446_b"] });
+    const report = await cache.refresh(conn);
+    expect(report.read).toEqual(["t446_a", "t446_b"]);
+    expect(report.statements).toBe(report.database ? 22 : 20);
     expect(cache.view(conn)?.foreignKeys("t446_b", "orders")?.[0]).toMatchObject({
       schema: "t446_a",
       table: "persons",

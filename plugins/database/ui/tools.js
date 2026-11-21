@@ -228,7 +228,9 @@ export function createTools(deps) {
       const { conn, object } = await objectOf(ref);
       const text = await catalog.ddl(conn, object);
       const title =
-        "table" in object ? `${object.table}.${object.name}` : `${object.schema}.${object.name}`;
+        "table" in object
+          ? `${object.table}.${object.name}`
+          : [object.schema, object.name].filter(Boolean).join(".");
       await consoles.openText(conn, title, text);
       return text;
     },
