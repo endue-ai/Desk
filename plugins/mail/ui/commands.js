@@ -95,7 +95,11 @@ export function registerCommands({ commands, surface, view, say, app, writing })
     await app.setFlags(message, { unread });
     return unread;
   });
-  answer("endue.mail.rsvp", (a) => writing.rsvp(asString(a.status) ?? "", asString(a.address)));
+  answer("endue.mail.rsvp", async (a) => {
+    // An agent names the message ({ source, id }); it opens first, as the person's click would.
+    if (a.id !== undefined) await app.show(await app.named(a));
+    return writing.rsvp(asString(a.status) ?? "", asString(a.address));
+  });
 
-  return { command, ids: () => [...own.keys()] };
+  return { command, answer, ids: () => [...own.keys()] };
 }
