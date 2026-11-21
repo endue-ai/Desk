@@ -3,7 +3,8 @@
 // of a connection, else its first; a new one numbered; renamed, closed (a closed console's text
 // forgotten, but for a connection's first console, whose text stays as the one console's did); a
 // .sql file's console in the desk's buffer for the file (console-files.js); and the list the
-// surface state keeps, opened again after a restart. No DOM.
+// surface state keeps, opened again after a restart. Closing one, or moving a file's console to
+// another connection, closes its PostgreSQL session: asked first while it is in a transaction. No DOM.
 
 import {
   baseName,
@@ -28,9 +29,11 @@ import {
  *   choose?(title: string): Promise<Connection | undefined>,
  *   bound?(target: Console, conn: Connection): Promise<void> | void,
  *   random?(): number,
+ *   closing?(target: Console): string[], release?(target: Console): void,
  * }} Deps
  *   `choose` asks for a connection; `bound` hears a .sql file's console given one (the file
- *   remembers it).
+ *   remembers it); `closing` says what closing a console's session ends (its transaction), and
+ *   `release` closes it.
  */
 
 /**
@@ -122,6 +125,9 @@ export function createMany(buffers, texts, deps) {
         const ok = await deps.confirm(`Close ${name} without saving?`, ["Its edits are lost."]);
         if (!ok) throw deps.cancelled("Not closed.");
       }
+      const open = deps.closing?.(target) ?? [];
+      if (open.length && !(await deps.confirm(`Close ${label}?`, open)))
+        throw deps.cancelled("Not closed.");
       buffers.closed(target.id);
       gone(target);
       await deps.commands.run("desk.buffers.close", { id: target.id }).catch(() => {});
@@ -160,6 +166,13 @@ export function createMany(buffers, texts, deps) {
     },
     /** Run a .sql file's console on another connection. */
     async bind(/** @type {Console} */ target, /** @type {Connection} */ conn) {
+      const open = target.connection === conn.id ? [] : (deps.closing?.(target) ?? []);
+      if (
+        open.length &&
+        !(await deps.confirm(`Run ${baseName(target.file?.path ?? "")} on ${conn.name}?`, open))
+      )
+        throw deps.cancelled("Not moved: the console stays on its connection.");
+      if (target.connection !== conn.id) deps.release?.(target);
       target.connection = conn.id;
       target.name = nameOf(target, conn);
       await deps.bound?.(target, conn);

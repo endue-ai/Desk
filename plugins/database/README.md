@@ -1,9 +1,9 @@
 # plugins/database
 
 `endue.database`, a client for PostgreSQL, MySQL / MariaDB and SQLite, in the community folder format and on the
-public SDK only. PostgreSQL runs on the desk core's sessions (`db.*`, ADR 0281); the others run their own client by
-`proc.spawn`, never a shell, in a mode that cannot reach past the database (ADR 0038). It keeps no password (asked,
-the desk keeps a PostgreSQL one in the OS keychain, ADR 0311). Features: [`docs/features.md`](docs/features.md).
+public SDK only. PostgreSQL runs on the core's sessions (`db.*`, ADR 0281), one per console and table view (ADR 0320);
+the others run their own client by `proc.spawn`, never a shell, unable to reach past the database (ADR 0038). It keeps
+no password; the desk may keep a PostgreSQL one in the OS keychain (ADR 0311). [Features](docs/features.md).
 
 `Mod+Shift+B` opens it; every operation is a command `endue.database.*` (`plugin.json`), and
 `endue.database.connections`, `.schema`, `.query`, `.activity`, `.cancel-session`, `.end-session`,

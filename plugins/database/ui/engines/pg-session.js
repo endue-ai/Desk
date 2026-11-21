@@ -1,43 +1,42 @@
-// PostgreSQL on the core's sessions (db.*, ADR 0281), no client program: a run opens a session,
-// runs each statement through db.run and reads its pages up to the row limit (closing the rest),
-// and closes the session, as one psql process was one run (PG-02 keeps one per console next). It
-// asks for db:connect on the connection's host and port once the grant is missing (ADR 0260), reads
-// a CA file for the TLS modes that check certificates, hands over the password the person typed (else
-// names the one the keychain keeps, `passwordRef`, ADR 0311; the core reads the password file first),
-// and starts the session read-only for a read-only connection.
-// A script in one transaction or a dry run is BEGIN, the statements, COMMIT or ROLLBACK on that
-// session. Cancel is db.cancel; the statement timeout is the server's statement_timeout, with a
-// backstop that cancels and then closes the session. No DOM.
+// PostgreSQL on the core's sessions (db.*, ADR 0281), no client program. A console's or a table
+// view's run goes to the session that owner keeps (PG-02, ADR 0320: session/keeper.js), opened at its
+// first run and kept, so what one run sets the next sees; any other run (the catalog, a feature's
+// read, an agent's query) opens a short session of its own and closes it. The statements run as
+// pg-script.js says. A session asks for db:connect on the connection's host and port once the grant
+// is missing (ADR 0260), reads a CA file for the TLS modes that check certificates, hands over the
+// password the person typed (else names the one the keychain keeps, `passwordRef`, ADR 0311; the
+// core reads the password file first), and starts read-only for a read-only connection. Cancel is
+// db.cancel, for the runs of the console on screen; the statement timeout is the server's
+// statement_timeout, which a kept session takes again with SET when the setting changed. No DOM.
 
 import { readScope, withGrant } from "../console-files.js";
 import { endpoint } from "../keychain.js";
-import { endedBy, failedRun, notRun } from "./common.js";
-import { affectedOf, CANCELED, errorOf, noticeOf, refusedOf, setOf } from "./pg-result.js";
+import { createKeeper } from "../session/keeper.js";
+import { createSlots, RUNS_AT_ONCE } from "../session/slots.js";
+import { failedRun } from "./common.js";
+import { noticeOf, refusedOf } from "./pg-result.js";
+import { createScript } from "./pg-script.js";
 
 /**
  * @typedef {import("./common.js").Connection} Connection
  * @typedef {import("./common.js").DbError} DbError
  * @typedef {import("./common.js").RunResult} RunResult
- * @typedef {import("./common.js").StatementOutcome} StatementOutcome
- * @typedef {import("../sql/split.js").Statement} Statement
- * @typedef {import("@endue-ai/bridge").DbPage} Page
+ * @typedef {import("./pg-script.js").Plan} Plan
+ * @typedef {import("./pg-script.js").Job} Job
  * @typedef {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call" | "onEvent">} Bridge
- * @typedef {{
- *   statements: Statement[], maxRows: number, timeoutMs: number, password?: string,
- *   mode: "run" | "transaction" | "dry-run",
- * }} Plan
- * @typedef {{ sessionId?: string, running: boolean, cancelled: boolean, timedOut: boolean }} Job
+ * @typedef {{ owner: string } | undefined} Scope
+ *   What Cancel stops: that owner's runs and the plugin's own short reads, else every run.
  */
 
 /** What the server shows as the session's application (pg_stat_activity.application_name). */
 export const APPLICATION = "endue Desk";
-/** Runs holding a session at once; the core allows a plugin 16. */
-export const MAX_SESSIONS = 12;
-/** How long the client waits past the statement timeout before it cancels, then closes. */
-export const BACKSTOP_MS = 5000;
-export const GRACE_MS = 1000;
-const PAGE_ROWS = 10_000;
+/** Short runs holding a session at once (session/slots.js); the core allows a plugin 16. */
+export const MAX_SESSIONS = RUNS_AT_ONCE;
+export { BACKSTOP_MS, GRACE_MS } from "./pg-script.js";
+
 const SIGN_IN_MS = 10_000;
+/** Kept sessions per connection when no setting says. */
+const PER_CONNECTION = 8;
 /** A host db.open takes: a name or an IPv4 address (no socket folder, no IPv6 yet). */
 const HOST = /^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$/u;
 
@@ -67,9 +66,12 @@ export const settingsOf = (/** @type {number} */ timeoutMs) => ({
  * @param {{
  *   onBusy?(running: number): void, now?(): number,
  *   setTimer?(fn: () => void, ms: number): unknown, clearTimer?(timer: unknown): void,
- *   kept?(conn: Connection): string | undefined,
- * }} [options]
- *   `kept` names the connection's password the keychain keeps (manager.passwords.ref, ADR 0311).
+ *   onState?(owner: string): void, onLost?(owner: string, line: (label: string) => string): void,
+ *   idleMs?(): number, limit?(): number, kept?(conn: Connection): string | undefined,
+ * }} [options] `onState` hears an owner's session change (the header draws it), `onLost` one lost
+ *   with the status line's words for its label; `idleMs` closes a session no run used that long
+ *   (0 never), `limit` is the kept sessions a connection may hold; `kept` names the connection's
+ *   password the keychain keeps (manager.passwords.ref, ADR 0311).
  */
 export function createSessions(bridge, options = {}) {
   const onBusy = options.onBusy ?? (() => {});
@@ -81,26 +83,12 @@ export function createSessions(bridge, options = {}) {
     ((timer) => clearTimeout(/** @type {ReturnType<typeof setTimeout>} */ (timer)));
   /** @type {Set<Job>} */
   const jobs = new Set();
-  /** Runs waiting for a session. @type {Array<() => void>} */
-  const queue = [];
-  let held = 0;
+  /** Every session this frame opened, so a frame that wakes closes only another's. */
+  const own = new Set();
   /** Where each session's notices go: the statement that runs, by session id. */
   const sinks = /** @type {Map<string, string[]>} */ (new Map());
+  const slots = createSlots();
 
-  bridge.onEvent((event) => {
-    if (event.event === "db.notice")
-      sinks.get(event.data.sessionId)?.push(...noticeOf(event.data.notice));
-  });
-
-  const take = async () => {
-    if (held < MAX_SESSIONS) held++;
-    else await new Promise((resolve) => queue.push(() => resolve(undefined)));
-  };
-  const give = () => {
-    const next = queue.shift();
-    if (next) next();
-    else held--;
-  };
   /** @param {string} method @param {Record<string, unknown>} params @returns {Promise<any>} */
   const call = (method, params) => bridge.call(/** @type {never} */ (method), params);
 
@@ -151,7 +139,7 @@ export function createSessions(bridge, options = {}) {
   /**
    * Sign in; the session's id, or the error the run ends with.
    * @param {Connection} conn @param {Exclude<ReturnType<typeof targetOf>, string>} target @param {Plan} plan
-   * @returns {Promise<{ sessionId: string } | { error: DbError }>}
+   * @returns {Promise<import("../session/keeper.js").Opened>}
    */
   const open = async (conn, target, plan) => {
     const where = `${target.host}:${target.port}`;
@@ -177,7 +165,10 @@ export function createSessions(bridge, options = {}) {
       const opened = /** @type {import("@endue-ai/bridge").DbOpenResult} */ (
         await granted(() => call("db.open", params), scope, conn)
       );
-      if (opened.sessionId) return { sessionId: opened.sessionId };
+      if (opened.sessionId) {
+        own.add(opened.sessionId);
+        return { sessionId: opened.sessionId, pid: opened.pid ?? 0 };
+      }
       if (opened.error) return { error: refusedOf(opened.error) };
       const message =
         "passwordRef" in params
@@ -201,119 +192,88 @@ export function createSessions(bridge, options = {}) {
     }
   };
 
-  /** The statement timeout passed by the backstop: cancel, then end the session. */
-  const stall = (/** @type {Job} */ job) => {
-    job.timedOut = true;
-    const sessionId = job.sessionId;
-    void call("db.cancel", { sessionId }).catch(() => {});
-    setTimer(() => void call("db.close", { sessionId }).catch(() => {}), GRACE_MS);
-  };
+  const { script } = createScript({ call, sinks, setTimer, clearTimer });
+  const keeper = createKeeper({
+    call,
+    slots,
+    onState: options.onState ?? (() => {}),
+    onLost: options.onLost ?? (() => {}),
+    idleMs: options.idleMs ?? (() => 0),
+    limit: options.limit ?? (() => PER_CONNECTION),
+    now,
+    setTimer,
+    clearTimer,
+  });
 
-  /**
-   * One statement on the job's session: its pages up to `maxRows`, then the rest closed.
-   * @param {Job} job @param {Statement} statement @param {number} index @param {Plan} plan
-   * @returns {Promise<StatementOutcome>}
-   */
-  const one = async (job, statement, index, plan) => {
-    const { maxRows, timeoutMs } = plan;
-    const sessionId = job.sessionId;
-    /** @type {string[]} */
-    const notices = [];
-    sinks.set(/** @type {string} */ (sessionId), notices);
-    const rowsOf = (/** @type {number} */ have) => Math.max(1, Math.min(PAGE_ROWS, maxRows - have));
-    const ended = (/** @type {"cancelled" | "timedOut"} */ flag) =>
-      /** @type {DbError} */ (endedBy(/** @type {never} */ ({ [flag]: true }), timeoutMs));
-    const backstop =
-      timeoutMs > 0 ? setTimer(() => stall(job), timeoutMs + BACKSTOP_MS) : undefined;
-    job.running = true;
+  bridge.onEvent((event) => {
+    if (event.event === "db.notice")
+      sinks.get(event.data.sessionId)?.push(...noticeOf(event.data.notice));
+    if (event.event === "db.closed") keeper.closed(event.data);
+  });
+
+  /** A run on a short session of its own, opened and closed around it. */
+  const short = async (
+    /** @type {Job} */ job,
+    /** @type {Connection} */ conn,
+    /** @type {Exclude<ReturnType<typeof targetOf>, string>} */ target,
+    /** @type {Plan} */ plan,
+  ) => {
+    await slots.take("short");
     try {
-      /** @type {Page} */
-      let page = await call("db.run", { sessionId, sql: statement.text, pageRows: rowsOf(0) });
-      const columns = page.columns;
-      const rows = [...page.rows];
-      while (page.more && !page.copy && rows.length < maxRows && !job.cancelled) {
-        page = await call("db.fetch", { sessionId, pageRows: rowsOf(rows.length) });
-        for (const row of page.rows) rows.push(row);
+      if (job.cancelled)
+        return failedRun(plan.statements, { kind: "cancelled", message: "Cancelled." });
+      const opened = await open(conn, target, plan);
+      if ("error" in opened) return failedRun(plan.statements, opened.error);
+      job.sessionId = opened.sessionId;
+      try {
+        return await script(job, plan);
+      } finally {
+        sinks.delete(opened.sessionId);
+        await call("db.close", { sessionId: opened.sessionId }).catch(() => {});
       }
-      // COPY ... FROM STDIN is refused before it is sent (sql/classify.js); one that comes anyway
-      // is ended, so the session is not left waiting for data.
-      if (page.copy?.direction === "in")
-        page = await call("db.copy", { sessionId, fail: "COPY FROM STDIN does not run here" });
-      if (page.more) await call("db.fetch", { sessionId, close: true }).catch(() => {});
-      const sets = columns ? [setOf(columns, rows, maxRows, page.more)] : [];
-      const base = { index, ran: true, sets, warnings: 0, notices };
-      const failure = page.error;
-      if (!failure) return { ...base, affected: columns ? null : affectedOf(page) };
-      const stopped = failure.code === CANCELED;
-      const timeout = /statement timeout/u.test(failure.message) && timeoutMs > 0;
-      const error =
-        stopped && job.cancelled
-          ? ended("cancelled")
-          : job.timedOut || (stopped && timeout)
-            ? ended("timedOut")
-            : errorOf(failure, statement.text);
-      return { ...base, affected: null, error };
-    } catch (failure) {
-      const error = job.cancelled
-        ? ended("cancelled")
-        : job.timedOut
-          ? ended("timedOut")
-          : /** @type {DbError} */ ({
-              kind: "client",
-              message: `The session ended: ${textOf(failure)}`,
-            });
-      return { index, ran: true, sets: [], affected: null, warnings: 0, notices, error };
     } finally {
-      job.running = false;
-      clearTimer(backstop);
+      slots.give("short");
     }
   };
 
-  /** BEGIN, COMMIT or ROLLBACK of the plugin's own; its error, if any. */
-  const own = async (/** @type {Job} */ job, /** @type {string} */ sql) => {
-    try {
-      const page = /** @type {Page} */ (await call("db.run", { sessionId: job.sessionId, sql }));
-      return page.error ? errorOf(page.error, sql) : undefined;
-    } catch (failure) {
-      return /** @type {DbError} */ ({ kind: "client", message: `${sql}: ${textOf(failure)}` });
-    }
-  };
-
-  /** The plan's statements on the job's session, in its mode. @returns {Promise<RunResult>} */
-  const script = async (/** @type {Job} */ job, /** @type {Plan} */ plan) => {
-    const outcomes = plan.statements.map((_, index) => notRun(index));
-    /** @type {string[]} */
-    const notices = [];
-    const result = (/** @type {DbError | undefined} */ error) => ({
-      statements: outcomes,
-      notices,
-      ms: 0,
-      ...(error ? { error } : {}),
-    });
-    if (plan.mode !== "run") {
-      const begun = await own(job, "BEGIN");
-      if (begun) return result(begun);
-    }
-    let failed = false;
-    for (const [index, statement] of plan.statements.entries()) {
-      if (job.cancelled) break;
-      const outcome = await one(job, statement, index, plan);
-      outcomes[index] = outcome;
-      failed = Boolean(outcome.error);
-      if (failed) break;
-    }
-    /** @type {DbError | undefined} */
-    let error;
-    if (plan.mode === "dry-run" || (plan.mode === "transaction" && (failed || job.cancelled)))
-      await own(job, "ROLLBACK");
-    else if (plan.mode === "transaction") error = await own(job, "COMMIT");
-    if (job.cancelled && !outcomes.some((o) => o.error?.kind === "cancelled"))
-      notices.push("Cancelled: the statements shown had finished before the cancel reached them.");
-    return result(error);
+  /** A run on the session its owner keeps: opened at the first, and what earlier runs set stays. */
+  const owned = async (
+    /** @type {Job} */ job,
+    /** @type {Connection} */ conn,
+    /** @type {Exclude<ReturnType<typeof targetOf>, string>} */ target,
+    /** @type {Plan & { session: import("../session/keeper.js").Owner }} */ plan,
+  ) => {
+    const used = await keeper.use(
+      plan.session,
+      conn,
+      plan.timeoutMs,
+      () => open(conn, target, plan),
+      async (entry, notes) => {
+        if (job.cancelled)
+          return failedRun(plan.statements, { kind: "cancelled", message: "Cancelled." });
+        job.sessionId = entry.sessionId;
+        job.transaction = entry.transaction;
+        // A changed statement timeout reaches the session outside a transaction, where SET stays.
+        if (entry.timeoutMs !== plan.timeoutMs && entry.transaction === "idle") {
+          const ran = await script(job, {
+            ...plan,
+            mode: "run",
+            statements: [setTimeout_(plan.timeoutMs)],
+          });
+          if (!ran.statements[0]?.error) entry.timeoutMs = plan.timeoutMs;
+        }
+        const done = await script(job, { ...plan, timeoutMs: entry.timeoutMs }, entry.transaction);
+        entry.transaction = job.transaction ?? entry.transaction;
+        sinks.delete(entry.sessionId);
+        if (job.ended) keeper.lost(entry.sessionId, job.ended);
+        return { ...done, notices: [...notes, ...done.notices] };
+      },
+    );
+    return "error" in used ? failedRun(plan.statements, used.error) : used.done;
   };
 
   /**
-   * Run the plan on a session of its own.
+   * Run the plan: on its owner's kept session when it names one, else on a short one.
    * @param {Connection} conn
    * @param {Plan} plan
    * @returns {Promise<RunResult>}
@@ -324,37 +284,77 @@ export function createSessions(bridge, options = {}) {
     if (typeof target === "string")
       return failedRun(plan.statements, { kind: "connect", message: target });
     /** @type {Job} */
-    const job = { running: false, cancelled: false, timedOut: false };
+    const job = {
+      running: false,
+      cancelled: false,
+      timedOut: false,
+      agent: plan.agent === true,
+      ...(plan.session ? { owner: plan.session.owner } : {}),
+    };
     jobs.add(job);
     onBusy(jobs.size);
-    await take();
     try {
-      if (job.cancelled)
-        return failedRun(plan.statements, { kind: "cancelled", message: "Cancelled." });
-      const opened = await open(conn, target, plan);
-      if ("error" in opened) return failedRun(plan.statements, opened.error, now() - started);
-      job.sessionId = opened.sessionId;
-      try {
-        return { ...(await script(job, plan)), ms: now() - started };
-      } finally {
-        sinks.delete(opened.sessionId);
-        await call("db.close", { sessionId: opened.sessionId }).catch(() => {});
-      }
+      const done = plan.session
+        ? await owned(job, conn, target, /** @type {never} */ (plan))
+        : await short(job, conn, target, plan);
+      return { ...done, ms: now() - started };
     } finally {
-      give();
       jobs.delete(job);
       onBusy(jobs.size);
     }
   };
 
-  /** Cancel every run: the statement that runs is cancelled on the server, nothing after starts. */
-  const cancel = () => {
+  /**
+   * Cancel runs: the statement that runs is cancelled on the server, nothing after starts. With a
+   * scope, the owner's runs and the plugin's own short reads; another owner's and agents' go on.
+   * @param {Scope} [scope]
+   */
+  const cancel = (scope) => {
     for (const job of jobs) {
+      if (scope && job.owner !== scope.owner && (job.owner || job.agent)) continue;
       job.cancelled = true;
       if (job.running && job.sessionId)
         void call("db.cancel", { sessionId: job.sessionId }).catch(() => {});
     }
   };
 
-  return { run, cancel, running: () => jobs.size };
+  return {
+    run,
+    cancel,
+    running: () => jobs.size,
+    /** What the header shows for an owner's session. */
+    state: keeper.state,
+    /** Close the kept sessions `test` takes (a console's, a connection's). */
+    close: keeper.close,
+    /** An owner that is gone: its session closes. */
+    forget: keeper.forget,
+    /** The kept sessions `test` takes that are in a transaction. */
+    inTransaction: keeper.inTransaction,
+    /** The consoles' sessions, for the surface state. */
+    kept: keeper.kept,
+    /**
+     * After a frame wakes: take back the consoles' sessions `saved` names that db.list still
+     * holds, for owners `known` still has; close every other session but this frame's own.
+     * @param {unknown} saved
+     * @param {(owner: string, connection: string) => Connection | undefined} known
+     */
+    async adopt(saved, known) {
+      const listed = await call("db.list", {}).catch(() => ({ sessions: [] }));
+      const keptOf = Array.isArray(saved) ? saved.filter(isKept) : [];
+      await keeper.adopt(keptOf, listed.sessions ?? [], known, own);
+    },
+  };
 }
+
+/** SET statement_timeout as a statement of the plugin's own. */
+const setTimeout_ = (/** @type {number} */ ms) => {
+  const text = `SET statement_timeout = ${Math.max(0, Math.round(ms))}`;
+  return { text, start: 0, end: text.length, line: 1, column: 1, tokens: [] };
+};
+
+/** One kept session in the surface state, as keeper.kept() wrote it. */
+const isKept = (/** @type {any} */ k) =>
+  typeof k?.owner === "string" &&
+  typeof k.sessionId === "string" &&
+  typeof k.connection === "string" &&
+  typeof k.timeoutMs === "number";
