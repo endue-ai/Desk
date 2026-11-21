@@ -107,6 +107,7 @@ describe("updates", () => {
       "desk.update.download",
       "desk.update.later",
       "desk.update.notes",
+      "desk.update.on-restart",
     ]);
   });
 
@@ -194,6 +195,11 @@ describe("updates", () => {
         title: "Desk 0.2.0 is ready",
         actions: [
           { label: "Restart to update", command: "desk.update.apply" },
+          {
+            label: "Install on next restart",
+            command: "desk.update.on-restart",
+            args: { version: "0.2.0" },
+          },
           { label: "Later", command: "desk.update.later" },
         ],
       }),
@@ -225,6 +231,23 @@ describe("updates", () => {
         level: "warning",
       }),
     );
+  });
+
+  it("schedules the offered version without interrupting the session", async () => {
+    const { h, emit } = host(staged);
+    installUpdates(h);
+    await settle();
+    const schedule = h.defined.get("desk.update.on-restart");
+    expect(schedule).toBeDefined();
+    await schedule?.({ version: "0.2.0" }, {});
+    expect(h.calls.at(-1)).toEqual({
+      method: "settings.set",
+      params: { key: "update.on-restart", value: "0.2.0" },
+    });
+    expect(h.calls.map((c) => c.method)).not.toContain("update.apply");
+    emit({ ...staged, release: { version: "0.3.0" } });
+    await expect(schedule?.({ version: "0.2.0" }, {})).rejects.toThrow();
+    await expect(schedule?.({}, { caller: "example.agent" })).rejects.toThrow();
   });
 
   it("about_shows_version_channel_and_the_staged_build", async () => {
