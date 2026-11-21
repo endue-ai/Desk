@@ -71,11 +71,22 @@ export function scriptedExecutor(
 
 /** proc.spawn and proc.kill served by real processes, db.* by the desk core, their events sent to
  * the host. */
-export function realProcs(): { handlers: Handlers; attach(emit: (event: never) => void): void } {
+/**
+ * The real proc.* and db.*; `password` signs a db.open in that has none, as the person's typed one
+ * would, never through the store.
+ */
+export function realProcs(options: { password?: string } = {}): {
+  handlers: Handlers;
+  attach(emit: (event: never) => void): void;
+} {
   const bridge = nodeBridge();
+  const signed = (name: string, params: Record<string, unknown>) =>
+    name === "open" && options.password && params.password === undefined
+      ? { ...params, password: options.password }
+      : params;
   const db = ["open", "run", "fetch", "copy", "cancel", "close", "list"].map((name) => [
     `db.${name}`,
-    (params: unknown) => bridge.call(`db.${name}`, params),
+    (params: Record<string, unknown>) => bridge.call(`db.${name}`, signed(name, params)),
   ]);
   return {
     handlers: {
