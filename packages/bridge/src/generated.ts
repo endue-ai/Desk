@@ -7400,6 +7400,8 @@ export interface WebPlaceParams {
   y: number;
   width: number;
   height: number;
+  /** true extends the box from x and y to the surface's right and bottom edges, using the current surface size in place of width and height. Defaults to false. */
+  fill?: boolean;
   /** false hides the view and rests its page; true by default. */
   shown?: boolean;
 }
