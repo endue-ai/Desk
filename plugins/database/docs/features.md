@@ -29,12 +29,18 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   `sqlite:`), and its URI copied back without the password.
 - A connection has a group and a colour, an environment tag (production draws a band at the top of the page)
   and can be read-only.
-- Passwords are never kept: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else the person types one
-  for the session.
+- Passwords are never kept with a connection: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else
+  the person types one for the session. A PostgreSQL connection can have the OS keychain remember it (ADR 0311):
+  the choice in the form and in the password prompt keeps a typed password once it works, or a URI's on Save,
+  through the desk, which never hands it back; a session signs in with it by `passwordRef`, so no prompt comes
+  after a restart. The connection's line says `keychain`; Database: forget the remembered password, turning the
+  choice off, changing the server or user, or removing the connection forgets it. Disconnect leaves it
+  (`keychain.js`, `engines/pg-session.js`).
 - A SQLite file (`*.sqlite`, `*.sqlite3`, `*.db3`) opened on the desk or dropped on the page opens as a
   connection, added the first time.
 
-Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, `engines/`.
+Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.js`, `run.js`, `engines/`,
+`features/keychain/`.
 
 ## Explorer
 
@@ -210,6 +216,22 @@ Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `
 Modules: `edits.js`, `edit/` (`cells.js`, `duplicate.js`, `history.js`, `paste-text.js` for the paste),
 `view-cell.js`, `cell-editors/` (`resolve.js`, `pg-types.js`, `values.js`, `panel.js`, one module per kind),
 `grid/paste.js`, `grid/paste-worker.js`, `features/cell-values/`, `features/paste/`.
+
+## Foreign keys
+
+- On PostgreSQL, a foreign key's cells in a table's view or a console's plain SELECT of one table are links,
+  their title saying where they point (ADR 0322). `g` or Mod+click (the cell's menu, Database: go to the row
+  this key points at) opens the referenced table's view under one `=` quick filter per key column, its typed
+  WHERE cleared; a NULL, or a key column missing from the result, is said instead.
+- `r` (Database: show the rows that point at this row) lists the tables whose keys point at the row, counted
+  in one run when asked, and opens one filtered the same way. `b` (Database: go back to where the key was
+  followed from) shows the view as it was: WHERE, order, sort keys, filters and page; 50 steps are kept.
+- Enter or F2 on an editable key cell (Database: pick the key from the referenced table) searches the
+  referenced table in the palette: 50 rows a page by key with its first text column, More rows, typed text
+  searched on the server, and the text as it is for a key of one column. The whole key is one pending step.
+- Keys come from the schema cache when it holds the table's schema, else from one read of `pg_constraint`.
+
+Modules: `links/`, `features/links/`.
 
 ## Import and export
 

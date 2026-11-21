@@ -3232,6 +3232,9 @@ export type BridgeRequest =
   | DbCancelRequest
   | DbCloseRequest
   | DbListRequest
+  | DbPasswordsSetRequest
+  | DbPasswordsDeleteRequest
+  | DbPasswordsListRequest
   | AudioCaptureStartRequest
   | AudioCaptureStopRequest
   | UiSurfaceOpenRequest
@@ -4497,6 +4500,7 @@ export interface DbOpenParams {
   user: string;
   /** Used once for the sign-in and dropped. Without it the core reads the person's password file. */
   password?: string;
+  passwordRef?: DbPasswordName;
   tls?: DbTls;
   /** Startup parameters (DateStyle, TimeZone, search_path, statement_timeout, application_name, ...). client_encoding, user, database and replication are invalid_params. */
   settings?: Record<string, string>;
@@ -4517,7 +4521,7 @@ export interface DbTls {
 /** disable: plain TCP. prefer (the default): TLS when the server has it. require: TLS, the certificate not checked. verify-ca: the chain. verify-full: the chain and the host name. */
 export type DbTlsMode = "disable" | "prefer" | "require" | "verify-ca" | "verify-full";
 
-/** Result of db.open: the session, signed in; or the server's refusal (error) and no session; or needsPassword when no password was given, none was found in the password file and the server asks for one. */
+/** Result of db.open: the session, signed in; or the server's refusal (error) and no session; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one. */
 export interface DbOpenResult {
   sessionId?: DbSessionId;
   /** The server process of the session. */
@@ -4669,6 +4673,68 @@ export interface DbSessionInfo {
   /** A result has pages left, or a COPY FROM STDIN waits for data. */
   more: boolean;
   transaction: DbTransaction;
+}
+
+/** A password the caller kept with db.passwords.set, by the name it chose (ADR 0311). db.open's passwordRef names it: the core reads the OS keychain itself, after the password file, and only for the host, port and user it was kept for; a name that is not kept, or was kept for another server or user, is as if none was given. Not with password. */
+export type DbPasswordName = string;
+
+/** Keep a password in the OS keychain under a name, for one host, port and user; it is never answered back. */
+export interface DbPasswordsSetRequest {
+  id: RequestId;
+  method: "db.passwords.set";
+  params: DbPasswordsSetParams;
+}
+
+/** Parameters of db.passwords.set. A name already kept is replaced. A plugin's manifest must declare db:connect for the host and port; no grant is needed, since using it is db.open's. */
+export interface DbPasswordsSetParams {
+  name: DbPasswordName;
+  /** The host db.open names, as net.connect takes it. */
+  host: string;
+  /** 5432 by default. */
+  port?: number;
+  user: string;
+  password: string;
+}
+
+/** Result of db.passwords.set: kept. */
+export type DbPasswordsSetResult = Record<string, never>;
+
+/** Forget a password the caller kept: its keychain entry goes. Forgetting one that is not kept is not an error. */
+export interface DbPasswordsDeleteRequest {
+  id: RequestId;
+  method: "db.passwords.delete";
+  params: DbPasswordsDeleteParams;
+}
+
+/** Parameters of db.passwords.delete. */
+export interface DbPasswordsDeleteParams {
+  name: DbPasswordName;
+}
+
+/** Result of db.passwords.delete. */
+export type DbPasswordsDeleteResult = Record<string, never>;
+
+/** The passwords the caller kept: what each is kept for, never the password. */
+export interface DbPasswordsListRequest {
+  id: RequestId;
+  method: "db.passwords.list";
+  params: DbPasswordsListParams;
+}
+
+/** Parameters of db.passwords.list. */
+export type DbPasswordsListParams = Record<string, never>;
+
+/** Result of db.passwords.list, by name. */
+export interface DbPasswordsListResult {
+  passwords: DbKeptPassword[];
+}
+
+/** A password the caller kept: its name and the host, port and user it is for. */
+export interface DbKeptPassword {
+  name: DbPasswordName;
+  host: string;
+  port: number;
+  user: string;
 }
 
 /** One page of a statement's answer. The first page has the columns; the last has the tag, the row count and the transaction state, or the server's error. */
@@ -8022,6 +8088,9 @@ export interface BridgeMethodMap {
   "db.cancel": { params: DbCancelParams; result: DbCancelResult };
   "db.close": { params: DbCloseParams; result: DbCloseResult };
   "db.list": { params: DbListParams; result: DbListResult };
+  "db.passwords.set": { params: DbPasswordsSetParams; result: DbPasswordsSetResult };
+  "db.passwords.delete": { params: DbPasswordsDeleteParams; result: DbPasswordsDeleteResult };
+  "db.passwords.list": { params: DbPasswordsListParams; result: DbPasswordsListResult };
   "audio.capture.start": { params: AudioCaptureStartParams; result: AudioCaptureStartResult };
   "audio.capture.stop": { params: AudioCaptureStopParams; result: AudioCaptureStopResult };
   "ui.surface.open": { params: UiSurfaceOpenParams; result: UiSurfaceOpenResult };
@@ -8220,6 +8289,9 @@ export const BRIDGE_METHODS = [
   "db.cancel",
   "db.close",
   "db.list",
+  "db.passwords.set",
+  "db.passwords.delete",
+  "db.passwords.list",
   "audio.capture.start",
   "audio.capture.stop",
   "ui.surface.open",

@@ -8,8 +8,10 @@
 // row, Delete marks rows for deletion, `u` takes a row's changes back; changes are drawn as a diff.
 // Mod+V pastes from the caret, `D` duplicates rows, `"` fills down, `n` on a block clears it, Mod+Z
 // takes the last change back (PG-43, grid/paste.js, features/paste/). `v` opens the value viewer,
-// Mod+C copies the block as tab-separated text. A plan tab draws the plan tree, the Messages tab
-// each statement's outcome, a Map tab the shapes (geo/map-view.js). The parts live in grid/.
+// Mod+C copies the block as tab-separated text. A foreign key's cells are links: `g` or Mod+click
+// follows one, `r` lists the rows pointing at the row, `b` goes back, Enter searches the referenced
+// table (PG-41, links/). Plan, Messages and Map tabs draw the plan tree, each statement's outcome
+// and the shapes (geo/map-view.js). The parts live in grid/.
 
 import { el } from "./dom.js";
 import { createMaps } from "./geo/map-view.js";
@@ -27,6 +29,7 @@ import { createShapes } from "./grid/shapes.js";
 import { createShaping } from "./grid/shaping.js";
 import { createStrip } from "./grid/strip.js";
 import { defaultWidths } from "./grid-model.js";
+import { createGridLinks } from "./links/grid-links.js";
 import { numericColumns } from "./results.js";
 import { createCellEditor } from "./view-cell.js";
 import { ROW } from "./view-grid-draw.js";
@@ -73,9 +76,11 @@ export function createGrid(doc, host, act, options = {}) {
     ch: 0,
     px: /** @type {number[]} */ ([]),
   };
+  const links = createGridLinks(act, () => screen.redraw());
   const screen = createScreen(doc, st, {
     found: (value) => finder.marks(value),
     sortKeys: () => shaping.sortKeys(),
+    link: (col) => links.title(col),
   });
   const { scroller, head, spacer, body, grid, set, changes, cellOf, size, moveTo } = screen;
   const { blockRows, cursorCell, selection } = screen;
@@ -101,10 +106,7 @@ export function createGrid(doc, host, act, options = {}) {
       st.cursor = { row: Math.max(0, st.order.length - 1), col: 0 };
       st.anchor = st.cursor;
     }
-    const at =
-      goto === undefined || st.record || grid.hasAttribute("aria-busy")
-        ? -1
-        : st.order.indexOf(goto);
+    const at = st.record || grid.hasAttribute("aria-busy") ? -1 : st.order.indexOf(goto ?? -1);
     if (at >= 0) goto = undefined;
     st.cursor = {
       row: Math.min(st.cursor.row, Math.max(0, count - 1)),
@@ -188,6 +190,7 @@ export function createGrid(doc, host, act, options = {}) {
       if (key !== shownKey) scroller.scrollLeft = 0;
     }
     shownKey = key;
+    links.shown(next?.set ? key : "");
     if (!next) return host.replaceChildren();
     if (next.kind === "plan" && next.plan) return host.replaceChildren(planView(doc, next, act));
     if (next.kind === "map") return maps.show(host, next);
@@ -260,6 +263,7 @@ export function createGrid(doc, host, act, options = {}) {
     const cell = cursorCell();
     if (!cell) return;
     if (!cell.editable) return act("value", cell);
+    if (links.title(cell.col) !== undefined) return act("pickKey");
     const target = body.querySelector(
       `[aria-rowindex="${st.cursor.row + 2}"] [aria-colindex="${st.cursor.col + 1}"]`,
     );
@@ -286,6 +290,8 @@ export function createGrid(doc, host, act, options = {}) {
         sortable: !st.record,
         hidden: columns().hidden.length,
         editable: !st.record && st.context.edit?.status === "ready",
+        link: cell.value !== null && links.title(cell.col) !== undefined,
+        referenced: links.referenced(),
       },
       at,
     );
@@ -365,6 +371,7 @@ export function createGrid(doc, host, act, options = {}) {
     openMenu,
     selection,
     cursorRow: () => st.cursor.row,
+    follow: () => act("followKey"),
   });
 
   return {
