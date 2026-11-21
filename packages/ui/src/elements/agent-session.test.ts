@@ -115,3 +115,21 @@ it("answers a current request exactly once and scopes acknowledgements to the re
   draw({ request: { ...request, id: "historical", respond: undefined } });
   expect(root.querySelector("[data-choice]")).toBeNull();
 });
+
+it("recognizes a complete named plan and keeps quoted or clipped data in its original role", async () => {
+  const { nativeSessionTurns } = await import("./index");
+  const text = JSON.stringify({
+    items: [
+      { content: "Read notes", status: "completed" },
+      { content: "Check the title", status: "pending" },
+    ],
+  });
+  const events = nativeSessionTurns([
+    { role: "tool", name: "update_plan", text },
+    { role: "user", text },
+    { role: "tool", name: "update_plan", text, cut: true },
+  ]);
+  expect(events.map((t) => t.role)).toEqual(["plan", "user", "tool"]);
+  expect(events[0]?.steps).toHaveLength(2);
+  expect(events[2]).toMatchObject({ text, cut: true });
+});
