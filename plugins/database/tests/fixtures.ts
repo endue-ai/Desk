@@ -1,10 +1,14 @@
 // A fixture SQLite database for endue.database behind proc.spawn, as the browser stub serves it: a
 // saved connection, two tables (people, orders) whose catalog and rows the scripted sqlite3 answers,
+// a PostgreSQL connection whose scripted psql answers for one table of typed columns (fixtures-pg.ts),
 // and the proc.* handlers that emit each run's output as desk-core does. The runtime e2e page
 // (packages/runtime/e2e/fixture/database.ts) uses them; nothing here needs Node.
 import type { BridgeEvent, StubHandlers } from "../../../packages/bridge/src/index";
 import type { Connection } from "../ui/engines/common.js";
 import { type Script, scriptedReply } from "./clients";
+import { pgFixtureScript } from "./fixtures-pg";
+
+export { FIXTURE_PG_CONNECTION } from "./fixtures-pg";
 
 /** The saved connection the fixture page starts with. */
 export const FIXTURE_CONNECTION: Connection = {
@@ -52,7 +56,8 @@ const columnsOf = (rows: string[][]) => [
 const rowsOf = (name = "") => TABLES[name.toLowerCase()] ?? [];
 
 /** The scripted sqlite3's answers: the catalog, each table's rows, its count. */
-export const fixtureScript: Script = (sql) => {
+export const fixtureScript: Script = (sql, env) => {
+  if (env.PGDATABASE) return pgFixtureScript(sql);
   const text = sql.trim();
   if (text === "SELECT 'main'") return { rows: [["'main'"], ["main"]] };
   if (/FROM sqlite_master WHERE type IN \('table', 'view'\)/u.test(text))
