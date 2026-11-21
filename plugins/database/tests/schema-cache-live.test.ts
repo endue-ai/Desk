@@ -182,4 +182,16 @@ describe.skipIf(!pgUri)("the schema cache on a real PostgreSQL", () => {
     await cache.settled(conn);
     expect(sqls.map(kindOf)).toEqual(["marks"]);
   }, 60_000);
+
+  it("a table renamed in one schema reads again the schema whose foreign key names it", async () => {
+    const { cache } = cacheOn();
+    await cache.open(conn);
+    await cache.settled(conn);
+    await elsewhere("ALTER TABLE t446_a.people RENAME TO persons");
+    expect(await cache.refresh(conn)).toEqual({ statements: 14, read: ["t446_a", "t446_b"] });
+    expect(cache.view(conn)?.foreignKeys("t446_b", "orders")?.[0]).toMatchObject({
+      schema: "t446_a",
+      table: "persons",
+    });
+  }, 60_000);
 });

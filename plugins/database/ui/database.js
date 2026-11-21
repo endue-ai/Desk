@@ -26,6 +26,7 @@ import { createImporter } from "./importer.js";
 import { createManager } from "./manage.js";
 import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
+import { bridgeStore } from "./schema-cache/store.js";
 import { DEFAULTS, followSettings, fromValues, loadValues } from "./settings.js";
 import { summaryOf } from "./tabs.js";
 import { createTools } from "./tools.js";
@@ -85,6 +86,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     view.reading?.(reads);
   });
   const cancel = () => {
+    catalog.cancel();
     runner.cancel();
     output.cancel();
   };
@@ -99,9 +101,10 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     view,
     pick,
     confirm,
-    execute: (conn, sql, opts) => executor.execute(conn, sql, opts),
+    execute: (conn, sql, opts) => execute(conn, sql, opts),
     forget: async (connection) => {
-      explorer.refresh(connection, undefined);
+      await catalog.drop(connection);
+      explorer.reread(connection);
       await consoles.drop(connection);
     },
     renamed: (conn) => consoles.renamed(conn),
@@ -118,13 +121,25 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     cancelled,
     ...(options.random ? { random: options.random } : {}),
   });
-  const catalog = createCatalog(executor.execute, () => settings.systemSchemas);
+  // The schema cache (ADR 0285) is kept in the plugin's store; what it read is drawn again.
+  const catalog = createCatalog(executor.execute, () => settings.systemSchemas, {
+    store: bridgeStore(bridge),
+    changed: (connection) => explorer.reread(connection),
+  });
+  /** A run of the person's, an agent's or a feature's: a DDL statement in it refreshes the catalog. */
+  const execute = /** @type {import("./catalog.js").Execute} */ (
+    async (conn, sql, opts) => {
+      const done = await executor.execute(conn, sql, opts);
+      if (!opts?.catalog) catalog.ran(done);
+      return done;
+    }
+  );
   const explorer = createExplorer(catalog, () => manager.list(), changed);
   const consoles = createConsoles({
     commands,
     bridge,
     connection: (id) => manager.get(id),
-    execute: executor.execute,
+    execute,
     catalog,
     settings: () => settings,
     remember: (conn, execution) => {
@@ -189,7 +204,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   const importer = createImporter({
     manager,
     catalog,
-    execute: executor.execute,
+    execute,
     current: () => consoles.current(),
     view,
   });
@@ -204,7 +219,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     consoles,
     explorer,
     tools,
-    execute: executor.execute,
+    execute,
     cancel,
     pick,
   });
@@ -215,7 +230,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     connections: () => manager.list(),
     find: manager.get,
     catalog,
-    execute: executor.execute,
+    execute,
   });
 
   const guard = guarded(view);
@@ -248,7 +263,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     catalog,
     explorer,
     tools,
-    execute: executor.execute,
+    execute,
     settings: () => settings,
     pick,
     confirm,

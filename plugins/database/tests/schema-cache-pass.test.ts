@@ -166,6 +166,45 @@ describe("the schema cache's pass", () => {
     expect(cache.view(PG)?.objects("sales")).toBeUndefined();
   });
 
+  it("a table renamed in one schema reads again the schemas whose foreign keys name it", async () => {
+    const model = shop();
+    const sales = model.sales as NonNullable<PgCatalog["sales"]>;
+    sales.tables?.push({
+      name: "visits",
+      columns: [["person", "integer"]],
+      constraints: [
+        [
+          "f",
+          "visits_person_fkey",
+          "FOREIGN KEY (person) REFERENCES people(id)",
+          ["person"],
+          "public",
+          "people",
+          ["id"],
+        ],
+      ],
+    });
+    const { cache, sqls } = cacheOver(() => model);
+    await cache.open(PG);
+
+    // A column added to the table the key names leaves the key as it was: public alone.
+    const people = model.public?.tables?.find((t) => t.name === "people");
+    people?.columns?.push(["age", "integer"]);
+    (model.public as { mark: string }).mark = "10.4:400";
+    expect((await cache.refresh(PG)).read).toEqual(["public"]);
+
+    // Renamed: sales' key names a table that is no more, so sales is read again in the same pass.
+    if (people) people.name = "persons";
+    (model.public as { mark: string }).mark = "10.5:500";
+    const fkey = sales.tables?.at(-1)?.constraints?.[0];
+    if (fkey) fkey[5] = "persons";
+    sqls.length = 0;
+    expect(await cache.refresh(PG)).toEqual({ statements: 14, read: ["public", "sales"] });
+    expect(sqls.slice(7).map(kindOf)).toEqual(PASS);
+    for (const sql of sqls.slice(8)) expect(schemasOf(sql)).toEqual(["sales"]);
+    expect(cache.view(PG)?.foreignKeys("sales", "visits")?.[0]?.table).toBe("persons");
+  });
+
   it("reads the schemas the person chose; system schemas stay off", async () => {
     const model = { ...shop(), pg_toast: { mark: "3", system: true } };
     const { cache, sqls } = cacheOver(() => model);
