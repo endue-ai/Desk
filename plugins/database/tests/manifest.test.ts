@@ -12,6 +12,7 @@ import { createSessions } from "../ui/engines/pg-session.js";
 import { EXPORT_FOLDER, exportResult } from "../ui/export.js";
 import { createRunner } from "../ui/run.js";
 import { DEFAULTS, SETTING_KEYS } from "../ui/settings.js";
+import { CHOICES, RANGES, STYLE } from "../ui/sql/layout/style.js";
 import { split } from "../ui/sql/split.js";
 
 const root = join(import.meta.dirname, "../../..");
@@ -115,7 +116,7 @@ describe("plugin.json", () => {
   it("contributes every operation as a command, one key, SQLite files and the settings the code reads", () => {
     const { contributes } = manifest();
     const ids = contributes?.commands?.map((c) => c.id) ?? [];
-    expect(ids).toHaveLength(56);
+    expect(ids).toHaveLength(81);
     for (const command of contributes?.commands ?? []) {
       expect(command.id).toMatch(/^endue\.database\.[a-z-]+$/u);
       expect(command.title).toMatch(/^Database: /u);
@@ -136,6 +137,21 @@ describe("plugin.json", () => {
       "*.sql",
     ]);
     expect(Object.keys(contributes?.settings ?? {})).toEqual(SETTING_KEYS);
+    // Format SQL's style (ADR 0292): each choice and range the code takes is the manifest's.
+    const declared = contributes?.settings ?? {};
+    for (const [field, choices] of Object.entries(CHOICES)) {
+      const key = `endue.database.format-${field.replace(/[A-Z]/gu, (c) => `-${c.toLowerCase()}`)}`;
+      expect([key, declared[key]?.choices, declared[key]?.default]).toEqual([
+        key,
+        choices,
+        choices[0],
+      ]);
+    }
+    for (const [field, [minimum, maximum]] of Object.entries(RANGES)) {
+      const key = `endue.database.format-${field.replace(/[A-Z]/gu, (c) => `-${c.toLowerCase()}`)}`;
+      expect(declared[key]).toMatchObject({ kind: "integer", minimum, maximum });
+      expect(declared[key]?.default).toBe(STYLE[field as keyof typeof RANGES]);
+    }
   });
 
   it("ships the vendored SQL parser its worker loads, with its licences and pins", () => {

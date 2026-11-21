@@ -99,7 +99,10 @@ export function refusedOf(/** @type {ServerError} */ error) {
   });
 }
 
-/** A notice as psql printed it: `NOTICE:  message`, then its own DETAIL and HINT lines. */
+/**
+ * A notice as psql printed it: `NOTICE:  message`, a message of many lines (VACUUM VERBOSE's) a line
+ * each, then its own DETAIL and HINT lines.
+ */
 export function noticeOf(/** @type {ServerError} */ notice) {
-  return [`${notice.severity}:  ${notice.message}`, ...linesOf(notice)];
+  return [...`${notice.severity}:  ${notice.message}`.split("\n"), ...linesOf(notice)];
 }

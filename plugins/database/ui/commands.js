@@ -74,7 +74,8 @@ export function registerCommands(deps) {
   answer("endue.database.dry-run", () => consoles.run("all", "dry-run"));
   answer("endue.database.explain", () => consoles.explain(false));
   answer("endue.database.explain-analyze", () => consoles.explain(true));
-  answer("endue.database.format", () => said(Promise.resolve(consoles.format())));
+  answer("endue.database.format", () => said(consoles.format()));
+  answer("endue.database.format-statement", () => said(consoles.format("statement")));
   answer("endue.database.more", () => consoles.more());
   answer("endue.database.next-page", () => consoles.page({ delta: 1 }));
   answer("endue.database.previous-page", () => consoles.page({ delta: -1 }));

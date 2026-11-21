@@ -16,6 +16,7 @@ import { registerCommands } from "./commands.js";
 import { createCompletions } from "./completions.js";
 import { loadConnections, newId, normalize, saveConnections } from "./connections.js";
 import { createConsoleFiles } from "./console-files.js";
+import { formatText } from "./console-run.js";
 import { createConsoles } from "./consoles.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
@@ -48,7 +49,8 @@ import { createTools } from "./tools.js";
  *   importer(model: import("./importer.js").ImportModel | null): void,
  *   nodeAt(target: unknown): Node | undefined,
  *   focus(where: "explorer" | "editor" | "grid"): void,
- *   selection(): { tab: number, rows?: number[], columns?: number[], sorted?: (string | null)[][] } | undefined,
+ *   selection(): { tab: number, rows?: number[], columns?: number[], sorted?: (string | null)[][], visible?: number[] } | undefined,
+ *   grid?(op: string, args?: Record<string, unknown>): unknown,
  *   cell(): ReturnType<ReturnType<typeof import("./view-grid.js").createGrid>["cursorCell"]>,
  *   dialog?(type: string, model: unknown): Promise<unknown>,
  * }} View
@@ -187,7 +189,21 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     ...(options.random ? { random: options.random } : {}),
     ...(options.plans ? { readPlan: options.plans.read } : {}),
   });
-  const files = createConsoleFiles({ bridge, commands, manager, consoles, view });
+  const files = createConsoleFiles({
+    bridge,
+    commands,
+    manager,
+    consoles,
+    view,
+    // Format on save: by the format of the file's connection; on none yet, as typed.
+    format: async (target) => {
+      const conn = settings.formatOnSave ? manager.get(target.connection) : undefined;
+      if (!conn) return undefined;
+      const laid = await formatText(target.text, conn.engine, settings);
+      if (laid.left > 0 && consoles.current() === target) view.say(laid.note);
+      return laid;
+    },
+  });
   const tools = createTools({
     bridge,
     commands,
@@ -286,6 +302,8 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       selection: () => view.selection(),
     }),
   };
+  /** @type {Set<(next: import("./settings.js").Settings) => void>} */
+  const followers = new Set();
   /** @type {import("./feature-host.js").Deps} */
   const featureDeps = {
     bridge,
@@ -298,6 +316,10 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     tools,
     execute,
     settings: () => settings,
+    onSettings: (listener) => {
+      followers.add(listener);
+      return () => void followers.delete(listener);
+    },
     pick,
     confirm,
     say: (text) => view.say(text),
@@ -317,6 +339,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     followSettings(source, values, (next, found) => {
       settings = next;
       if (found) clients.reset();
+      for (const listener of followers) listener(next);
     });
     manager.replace(await loadConnections(bridge));
     explorer.restore(saved?.expanded ?? []);

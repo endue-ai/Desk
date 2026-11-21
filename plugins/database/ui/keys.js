@@ -1,9 +1,10 @@
 // The keys inside the Database surface, one table per area. The explorer and the grid take single
 // keys; the editor takes Mod+Enter (run the statement), Mod+Shift+Enter (run the script) and
 // Mod+Shift+F (format), and Escape only while a run goes on; the grid takes Mod+Enter (submit the
-// pending changes). Every other chord with Mod, Alt or Control is left to the desk, except the
-// editor's Ctrl+Space, which view-editor.js reads itself. Pure: `actionFor` maps a key press to an
-// action name, `hints` lists an area's keys.
+// pending changes) and Mod+F (find in the result: the grid's own, never the editor's). Every other
+// chord with Mod, Alt or Control is left to the desk, except the editor's Ctrl+Space, which
+// view-editor.js reads itself. Pure: `actionFor` maps a key press to an action name, `hints` lists
+// an area's keys.
 
 /**
  * @typedef {"explorer" | "editor" | "grid"} Area
@@ -28,6 +29,7 @@ export const BINDINGS = {
     { chord: "d", action: "ddl", label: "DDL" },
     { chord: "c", action: "count", label: "count rows" },
     { chord: "r", action: "diagram", label: "ER diagram" },
+    { chord: "m", action: "maintain", label: "maintenance" },
     { chord: "/", action: "filter", label: "filter" },
     { chord: "u", action: "importUri", label: "from URI" },
   ],
@@ -58,6 +60,21 @@ export const BINDINGS = {
     { chord: "p", action: "previewChanges", label: "preview" },
     { chord: "Mod+Enter", action: "submitChanges", label: "submit" },
     { chord: "s", action: "sort", label: "sort" },
+    { chord: "S", action: "addSort", label: "sort by more" },
+    { chord: "f", action: "menu", label: "filter" },
+    { chord: "=", action: "filterCell", label: "" },
+    { chord: "F", action: "clearFilters", label: "" },
+    { chord: "Mod+F", action: "find", label: "find" },
+    { chord: "F3", action: "findNext", label: "" },
+    { chord: "h", action: "hide", label: "hide" },
+    { chord: "H", action: "showColumns", label: "" },
+    { chord: "<", action: "moveLeft", label: "" },
+    { chord: ">", action: "moveRight", label: "" },
+    { chord: "P", action: "pin", label: "pin" },
+    { chord: "w", action: "fit", label: "fit" },
+    { chord: "(", action: "narrower", label: "" },
+    { chord: ")", action: "wider", label: "" },
+    { chord: "ContextMenu", action: "menu", label: "" },
     { chord: "t", action: "record", label: "record" },
     { chord: "/", action: "quick", label: "filter" },
     { chord: "m", action: "more", label: "more rows" },
@@ -68,7 +85,7 @@ export const BINDINGS = {
 };
 
 /** Chords this surface keeps from the desk, by area. */
-const CHORDS = new Set(["Mod+Enter", "Mod+Shift+Enter", "Mod+Shift+F"]);
+const CHORDS = new Set(["Mod+Enter", "Mod+Shift+Enter", "Mod+Shift+F", "Mod+F"]);
 
 /**
  * The action a key press runs in an area, or undefined when the desk (or the field) should have it.

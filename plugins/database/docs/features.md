@@ -49,7 +49,8 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
   picks them (system schemas stay out by default). Other engines read a node when it opens, as above.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the schema's ER diagram
-  from its foreign keys, `n`, `e` and Delete add, change and remove a connection, `u` adds one from a URI.
+  from its foreign keys, `m` opens the maintenance form of a connection, schema, table or index, `n`, `e` and
+  Delete add, change and remove a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/`, `view-tree.js`,
@@ -67,8 +68,8 @@ Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`,
 - A script is cut into statements the way each client cuts it (dollar quotes, comments, DELIMITER, routine
   bodies), and an error's position lands in the editor.
 - Highlighting with the lexer that cuts the statements, autocomplete from the schema with aliases
-  (`Ctrl+Space`), Format SQL (`Mod+Shift+F`: only space and the case of keywords change), and parameters
-  (`:name`, `?`, `$1`) asked for before the run and remembered for the console.
+  (`Ctrl+Space`), Format SQL (`Mod+Shift+F`, below), and parameters (`:name`, `?`, `$1`) asked for before
+  the run and remembered for the console.
 - Guards: a read-only connection refuses writes before anything runs, and on the server too
   (`default_transaction_read_only` on PostgreSQL's session); with
   `confirm` on, a write on a production connection, and DROP, TRUNCATE, or UPDATE and DELETE without WHERE
@@ -92,6 +93,30 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 `console-run.js`, `features/consoles/`, `execute.js`, `history.js`, `tools.js`, `sql/`, `editor/`,
 `view-editor.js`.
 
+## Format SQL
+
+- `Mod+Shift+F` and Database: format the SQL lay out the selection, else the whole console; Database:
+  format the statement at the caret the selection, else that statement. Only space and the case of
+  keywords change.
+- PostgreSQL is laid out from its own scanner and parse tree, in the parse worker (ADR 0292): each clause
+  on its line, a list one item a line when it does not fit, conditions broken at AND and OR, joins on
+  their lines, subqueries, CASE and brackets indented when they break. Comments stay where they were, a
+  statement a line apart. Each laid-out statement is parsed again, and kept as written unless its tree is
+  the same. A statement that does not parse, or a routine with a BEGIN ATOMIC body, is left as written,
+  and the status line says which.
+- The style is eight settings: `format-keyword-case` (upper, lower, preserve; a keyword the grammar reads
+  as a name keeps its spelling, and a type is written in lower case unless preserve), `format-indent`
+  (1 to 8), `format-line-width` (40 to 240), `format-comma` (last, first), `format-and-or` (before, after),
+  `format-joins` (flat, indented), `format-one-line` (clause, statement, item) and `format-lists` (indent,
+  align). A change applies at the next Format, without a restart.
+- MySQL and SQLite keep the format that reads tokens alone: each clause on its line, the select list one item
+  a line, reserved words in capitals, by none of the settings.
+- `format-on-save` (off by default): Save lays a `.sql` file's console out before it writes the file, by
+  the format of the file's connection, and says a statement it left as written; a file on no connection
+  yet is written as typed.
+
+Modules: `sql/layout/`, `console-run.js`, `console-files.js`.
+
 ## Results
 
 - A tab per result set and a Messages tab with a line per statement (rows, rows affected, the error with its
@@ -102,6 +127,17 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
   as many; a console's single SELECT pages. Sort (`s`), filter the rows on screen (`/`), one row as a record
   (`t`), and the value viewer (`v`: JSON laid out, text, bytes as a hex dump).
 - A table's view filters (WHERE) and orders (ORDER BY) on the server, pages, and counts its rows on request.
+- Columns hidden (`h`, `H` shows one again), moved (`<` `>`, or a header dragged), pinned at the left (`P`),
+  resized (a header's grip, `(` `)`, `w` or a double click on the grip fits). A table view keeps them across
+  restarts, a console's result while it is among the last 20 (ADR 0288). Copy, export and drags take the
+  columns on screen, in their order.
+- Sort by more than one column (Shift+click or `S` adds the next key, numbered in the header). Quick filters
+  from the cursor's cell (`f` menu, `=` equals, `F` clears): =, ≠, >, <, contains, empty, NULL, not NULL,
+  each a chip that says whether it runs on the server (a table view: its keys go to ORDER BY and its filters
+  join WHERE) or on the rows on screen. Find in the result (Mod+F in the grid; Enter, Shift+Enter, F3) with
+  match case and whole cell. Past 10,000 rows the frame's sorts, filters and find run in a worker.
+- A query plan as a tree: each node's cost and rows, the time and rows it took, and a bar for its own share of
+  the whole; the nodes where half or a fifth of it goes are marked.
 - A query plan as a tree, a flame of each node's own time (its cost when the plan did not run), or a table sorted
   by any column (ADR 0289): each node's estimated rows against the rows it returned over all its loops and the
   factor between them, its own time apart from its children's, its buffers, and a bar for its share of the whole.
@@ -119,6 +155,8 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
   key or button in the page and from the palette alike (the Clipboard API first, `clipboard.js`).
 
 Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `value.js`, `output-client.js`,
+`output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `grid/`, `features/grid/`,
+`view-value.js`, `view-plan.js`.
 `output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `view-value.js`, `view-plan.js`,
 `view-plan-flame.js`, `view-plan-table.js`, `view-plan-marks.js`, `view-dialog.js`, `features/plans/`.
 
@@ -175,6 +213,40 @@ Modules: `export.js`, `import.js`, `importer.js`, `drops.js`, `dropped.js`, `dnd
 
 Modules: `features/activity/`.
 
+## Server overview
+
+- Database: server overview opens one panel per PostgreSQL connection (13 and later) that only reads
+  catalogs, statistics views and size functions: the server's figures (connections against the limit, cache
+  hit ratio, commits, deadlocks, temporary files, checkpoints), database, schema, table and index sizes with
+  TOAST apart, indexes scanned fewer than 50 times, duplicate and invalid indexes, sequential scans, dead rows
+  with the last vacuum and analyze and when autovacuum comes, transaction id age against wraparound, cache
+  hits, the heaviest statements from `pg_stat_statements` (or how to enable it), transactions open for more
+  than a minute, replication (a standby's own lag), slots, and settings changed from their defaults, searched.
+- Each section names the statistic it comes from and when its counters were reset. One the role may not read
+  says so and the rest are read; the header says what a role outside `pg_monitor` cannot see. A size waiting
+  2 s behind another session's lock fails its section instead of the overview.
+- Refresh reads again. Open in console runs a section's SQL in the console as a normal result (copy, export);
+  a heavy statement opens there unrun.
+
+Modules: `features/overview/`.
+
+## Maintenance
+
+- A form per target of a PostgreSQL connection (13 and later; a standby refuses): VACUUM, ANALYZE, REINDEX
+  and CLUSTER of a table or materialized view, an index (REINDEX, CLUSTER by it), a schema (not CLUSTER) or
+  the whole database, opened from the explorer (`m`) or the palette (the table on screen, else picked).
+- The options the server's version has (PROCESS_TOAST and TABLESPACE from 14, BUFFER_USAGE_LIMIT from 16),
+  each one another option rules out disabled with why; VERBOSE and REINDEX CONCURRENTLY on by default;
+  CLUSTER's index picked among the valid, whole btree and GiST ones. The exact statement shows as it runs.
+- What it locks and for how long in words (a warning when it blocks reads or writes for the whole run):
+  the lock by its name, the room a copy needs, the lock queue, the target's size, rows and dead rows.
+- Run (`Mod+Enter`) sends the statement alone, outside a transaction block; refused on a read-only
+  connection, asked on production. Progress from `pg_stat_progress_*` every 1.5 s and the lock it waits
+  for and who holds it; Cancel (`Escape`) is `pg_cancel_backend` of its own session. The server's output
+  (VERBOSE) shows when it ends (ADR 0038), with the statistics before and after; `g` reads again (ADR 0293).
+
+Modules: `features/maintenance/`.
+
 ## Agents
 
 - `endue.database.connections` (never a password), `.schema` and `.query` (100 rows a statement by default,
@@ -184,5 +256,8 @@ Modules: `features/activity/`.
 - `.activity` answers a connection's sessions and who waits for whom, and only reads; `.cancel-session` and
   `.end-session` are irreversible: the core waits for the person's approval, then the plugin asks as it
   asks the person (ADR 0290).
+- `.maintenance` opens the form for a connection, schema, table or index and answers the statement, what it
+  locks and the size; with `run` it runs after the person's yes and answers the output and the statistics
+  before and after (ADR 0293). The server overview can open it with the same arguments.
 
 Modules: `agent.js`.

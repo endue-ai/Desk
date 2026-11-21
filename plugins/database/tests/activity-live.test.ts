@@ -7,11 +7,10 @@
 // it may not cancel.
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import type { DbPage } from "../../../packages/bridge/src/index";
 import { normalize, parseUri } from "../ui/connections.js";
 import { blockingTree, hiddenOf } from "../ui/features/activity/model.js";
-import { serverSession } from "./core-bridge";
 import { type Mounted, mount } from "./harness";
+import { liveSessions } from "./live-sessions";
 import { realProcs } from "./scripted";
 
 const uri = process.env.ENDUE_DB_TEST_POSTGRES ?? "";
@@ -31,40 +30,14 @@ type Summary = {
   hidden: number;
 };
 
-/** One statement on the scratch database as the URI's role, for what the test sets up. */
-const admin = async (sql: string) => {
-  const own = await serverSession(uri, "activity admin");
-  try {
-    return await own.run(sql);
-  } finally {
-    await own.close();
-  }
-};
-
-const opened: Array<Awaited<ReturnType<typeof serverSession>>> = [];
-/**
- * A session of its own, named, running `sqls` one by one; `close` ends it after the last. `done`
- * settles with the last statement's error message, "" when every one went through.
- */
-function session(name: string, sqls: string[], close = false) {
-  let err = "";
-  const done = (async () => {
-    const own = await serverSession(uri, name);
-    opened.push(own);
-    for (const sql of sqls) {
-      // A session the test's end terminates ends its statement with an error of its own.
-      const page: DbPage | Error = await own.page(sql).catch((error: Error) => error);
-      const failed = page instanceof Error ? page : page.error;
-      if (failed) {
-        err = failed.message;
-        break;
-      }
-    }
-    if (close) await own.close();
-    return err;
-  })();
-  return { done, err: () => err };
-}
+// Named for this run: another run on the same server lists its own sessions of the same names.
+const PREFIX = `activity ${process.pid}`;
+const live = liveSessions(uri, PREFIX);
+const { admin } = live;
+const session = (name: string, sqls: string[], close = false) =>
+  live.session(name.replace(/^activity /u, ""), sqls, close);
+/** A session's name on the server: `holder` is `${PREFIX} holder`. */
+const as = (name: string) => `${PREFIX} ${name}`;
 
 /** Read again until `ok` holds, every 200 ms, for 15 s at most. */
 async function until<T>(read: () => Promise<T>, ok: (value: T) => boolean): Promise<T> {
@@ -99,11 +72,9 @@ const named = (a: Summary, name: string) => a.sessions.find((s) => s.application
 
 afterAll(async () => {
   if (!uri) return;
-  // A session left asleep in pg_sleep: end the tests' sessions by name, then let go of them.
-  await admin(
-    `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = '${ROLE}' OR (application_name LIKE 'activity %' AND pid <> pg_backend_pid())`,
-  );
-  await Promise.all(opened.map((own) => own.close()));
+  // A session left asleep in pg_sleep: end the tests' sessions, and the role's, then let go.
+  await live.endAll();
+  await admin(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = '${ROLE}'`);
   await admin(`DROP TABLE IF EXISTS ${TABLE}`);
   await admin(`DROP ROLE IF EXISTS ${ROLE}`);
 });
@@ -121,7 +92,7 @@ describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
     const m = await plugin();
     await until(
       () => activity(m),
-      (a) => named(a, "activity holder")?.wait === "Timeout: PgSleep",
+      (a) => named(a, as("holder"))?.wait === "Timeout: PgSleep",
     );
     const waiter = session(
       "activity waiter",
@@ -130,15 +101,15 @@ describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
     );
     const seen = await until(
       () => activity(m),
-      (a) => a.waits.some((w) => w.pid === named(a, "activity waiter")?.pid),
+      (a) => a.waits.some((w) => w.pid === named(a, as("waiter"))?.pid),
     );
-    const holderPid = named(seen, "activity holder")?.pid as number;
-    const waiterPid = named(seen, "activity waiter")?.pid as number;
-    expect(named(seen, "activity holder")).toMatchObject({
+    const holderPid = named(seen, as("holder"))?.pid as number;
+    const waiterPid = named(seen, as("waiter"))?.pid as number;
+    expect(named(seen, as("holder"))).toMatchObject({
       state: "active",
       wait: "Timeout: PgSleep",
     });
-    expect(named(seen, "activity holder")?.statement).toContain("pg_sleep(600)");
+    expect(named(seen, as("holder"))?.statement).toContain("pg_sleep(600)");
     const wait = seen.waits.find((w) => w.pid === waiterPid);
     expect(wait?.waitsFor).toEqual([holderPid]);
     expect(wait?.lock).toMatch(/^ShareLock on transaction \d+$/u);
@@ -155,11 +126,11 @@ describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
     expect(m.picks.at(-1)?.title).toBe(`Cancel the statement of session ${holderPid} on live?`);
     expect(m.picks.at(-1)?.items[0]).toMatchObject({
       id: "yes",
-      detail: `Statement: ${named(seen, "activity holder")?.statement}`,
+      detail: `Statement: ${named(seen, as("holder"))?.statement}`,
     });
     await until(
       () => activity(m),
-      (a) => named(a, "activity holder")?.state === "idle in transaction (aborted)",
+      (a) => named(a, as("holder"))?.state === "idle in transaction (aborted)",
     );
     expect(holder.err()).toMatch(/canceling statement due to user request/u);
     expect(await waiter.done).toBe("");
@@ -167,7 +138,7 @@ describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
       () => activity(m),
       (a) => !a.waits.some((w) => w.pid === waiterPid),
     );
-    expect(named(freed, "activity holder")?.state).toBe("idle in transaction (aborted)");
+    expect(named(freed, as("holder"))?.state).toBe("idle in transaction (aborted)");
 
     // End ends it: its connection closes, its transaction rolls back (the waiter's update stays).
     await expect(
@@ -188,16 +159,16 @@ describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
     const m = await plugin({ user: ROLE, password });
     const seen = await until(
       () => activity(m),
-      (a) => named(a, "activity sleeper") !== undefined,
+      (a) => named(a, as("sleeper")) !== undefined,
     );
-    expect(named(seen, "activity sleeper")).toMatchObject({
+    expect(named(seen, as("sleeper"))).toMatchObject({
       statement: null,
       state: null,
       wait: null,
     });
     expect(seen.hidden).toBeGreaterThanOrEqual(1);
     expect(hiddenOf(m.shown()?.activity.read.sessions)).toMatch(/pg_read_all_stats/u);
-    const pid = named(seen, "activity sleeper")?.pid;
+    const pid = named(seen, as("sleeper"))?.pid;
     await expect(
       m.host.command("endue.database.cancel-session", { connection: "live", pid }),
     ).rejects.toThrow(/Not cancelled: permission denied to cancel query/u);
