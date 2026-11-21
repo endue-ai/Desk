@@ -1,4 +1,4 @@
-// A card another prompter answered (the island, ADR 0204) or whose caller went leaves the overlay
+// A card another prompter answered or whose caller went leaves the overlay
 // with perm.settled; the card this page is answering leaves with its own answer, once.
 import { describe, expect, it } from "vitest";
 import type { PermApprovalData, PermPromptData } from "../../../packages/bridge/src/index";

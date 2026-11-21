@@ -1,10 +1,5 @@
-//! Where Eris is called (ADR 0121, ADR 0204). A global shortcut, Alt+Enter (⌥↩) unless the person
-//! names another (`shortcut`), and the tray's Talk to Eris summon her anywhere: on the island over
-//! other apps while it shows (`island::summon`), in the desk's own talk line while the desk is in
-//! front, and with the island off, the desk comes forward and opens it there. She had a floating
-//! window of her own here until the island took its place; the module keeps its name for the calls
-//! the rest of the shell makes (`main_changed`), and holds her shortcut and the notice that another
-//! app has it.
+//! The global shortcut and tray action for talking to Eris in the desk (ADR 0280). The shortcut is
+//! configurable and reports when another app holds it.
 
 pub mod calls;
 pub mod shortcut;
@@ -37,7 +32,6 @@ const MAC: bool = cfg!(target_os = "macos");
 #[derive(Debug, Clone, Default)]
 pub struct Shortcut {
     shortcut: String,
-    label: String,
     registered: bool,
     problem: Option<String>,
 }
@@ -81,9 +75,6 @@ pub fn setup(shell: &mut Shell, _event_loop: &ActiveEventLoop) {
 
 /// The global shortcut and the tray's Talk to Eris.
 pub fn summon(shell: &mut Shell) {
-    if crate::island::summon(shell) {
-        return;
-    }
     let Some(state) = shell.desk.eris.get().cloned() else {
         return;
     };
@@ -99,7 +90,7 @@ pub fn summon(shell: &mut Shell) {
     }
 }
 
-/// Where the shortcut talks to her when the island does not: in the desk in front, opening or
+/// Where the shortcut talks to her: in the desk in front, opening or
 /// closing her talk line there; otherwise the desk comes forward with it open.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Talk {
@@ -113,19 +104,6 @@ pub fn where_to(desk_in_front: bool) -> Talk {
     } else {
         Talk::DeskForward
     }
-}
-
-/// The main window was shown, hidden, minimized or restored: the island decides again whether the
-/// desk is in front.
-pub fn main_changed(shell: &Shell) {
-    crate::island::nudge(shell);
-}
-
-/// The shortcut that summons Eris as it reads (⌥↩), while the desk holds it.
-pub(crate) fn shortcut_label(desk: &Desk) -> Option<String> {
-    let state = desk.eris.get()?;
-    let held = lock(&state.shortcut);
-    held.registered.then(|| held.label.clone())
 }
 
 /// Hold the shortcut in force, letting go of the one before; say so when it cannot be had.
@@ -150,7 +128,6 @@ fn register(shell: &mut Shell) {
         );
     }
     *lock(&state.shortcut) = Shortcut {
-        label: shortcut::label(&wanted, MAC),
         registered: problem.is_none(),
         problem,
         shortcut: wanted,

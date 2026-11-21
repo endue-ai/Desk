@@ -1,8 +1,6 @@
 // The OS's notifications while endue is out of sight (#306): this page sends the shell each notice
-// that shows, as desk.notify.system says, with its first action and whether the island shows it
-// too; do not disturb's held notices never go; a click on one comes back and runs its action or
-// opens it.
-import type { BridgeEvent } from "@endue-ai/bridge";
+// that shows, as desk.notify.system says, with its first action. Do not disturb holds notices
+// back, and a click runs the action or opens the notice.
 import type { Notice } from "@endue-ai/runtime";
 import { describe, expect, it, vi } from "vitest";
 import { followSystemNotices, SYSTEM_SETTING, type SystemPost } from "./system-notices";
@@ -11,7 +9,6 @@ function host(setting?: unknown) {
   const values: Record<string, unknown> =
     setting === undefined ? {} : { [SYSTEM_SETTING]: setting };
   const shown = new Set<(notice: Notice) => void>();
-  const events = new Set<(event: BridgeEvent) => void>();
   let activated: (payload: unknown) => void = () => {};
   const posts: SystemPost[] = [];
   const activate = vi.fn(async (_id: string, _action: boolean) => {});
@@ -36,15 +33,6 @@ function host(setting?: unknown) {
     set: (value: unknown) => {
       values[SYSTEM_SETTING] = value;
     },
-    /** The core says a notice: the runtime's listener heard it first and shows it. */
-    notified(id: string, level: Notice["level"] = "info") {
-      show({ id, caller: "endue.terminal", title: "zsh — make", body: "done", level });
-      const event = {
-        event: "ui.notified",
-        data: { notificationId: id, caller: "endue.terminal", title: "zsh — make", level },
-      } as unknown as BridgeEvent;
-      for (const listener of events) listener(event);
-    },
     click: (payload: unknown) => activated(payload),
     host: {
       settings: {
@@ -56,10 +44,6 @@ function host(setting?: unknown) {
           return () => shown.delete(listener);
         },
         activate,
-      },
-      onEvent: (listener: (event: BridgeEvent) => void) => {
-        events.add(listener);
-        return () => events.delete(listener);
       },
       post: async (post: SystemPost) => void posts.push(post),
       listen: async (handler: (payload: unknown) => void) => {
@@ -88,7 +72,13 @@ describe("the OS's notifications", () => {
         { label: "Later", command: "desk.notify.dismiss" },
       ],
     });
-    fake.notified("n1", "warning");
+    fake.show({
+      id: "n1",
+      caller: "endue.terminal",
+      title: "zsh — make",
+      body: "done",
+      level: "warning",
+    });
     await settle();
     expect(fake.posts).toEqual([
       {
@@ -98,7 +88,6 @@ describe("the OS's notifications", () => {
         level: "success",
         action: "Restart",
         when: "background",
-        island: false,
       },
       {
         id: "n1",
@@ -106,7 +95,6 @@ describe("the OS's notifications", () => {
         body: "done",
         level: "warning",
         when: "background",
-        island: true,
       },
     ]);
 

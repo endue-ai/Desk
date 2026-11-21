@@ -2463,7 +2463,7 @@ export interface AgentChangedData {
   runId: ItemId;
 }
 
-/** One of an agent's runs changed: kept, waiting for an approval, going on or ended. Sent to callers that hold perm:manage, so what shows the agents at work (the island, ADR 0204) reads agent.list again. */
+/** One of an agent's runs changed: kept, waiting for an approval, going on or ended. Sent to callers that hold perm:manage, so what shows the agents at work reads agent.list again. */
 export interface AgentChangedEvent {
   event: "agent.changed";
   data: AgentChangedData;
@@ -5507,7 +5507,7 @@ export interface PermApprovalDoneData {
   undoable?: boolean;
 }
 
-/** What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait (the island, ADR 0204). */
+/** What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait. */
 export interface PermPendingRequest {
   id: RequestId;
   method: "perm.pending";

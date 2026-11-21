@@ -204,8 +204,7 @@ A move out or back loads your page again, as a wake does: `state` comes back, an
   operating system land as on the canvas; a drag let go outside the window ends with the effect
   `none`, and a drag that starts on the canvas never reaches an OS window.
 * What the desk asks the person shows in the desk's window, not in yours. `desk.palette.pick` brings
-  the desk forward and its answer comes back to your page; a permission's question waits in the desk,
-  or in the island while the desk is not in front.
+  the desk forward and its answer comes back to your page; permission requests wait in Desk.
 * A web view (`web.*`) shows in the desk only: it ends when its window moves out.
 
 `desk.files.*` and `desk.buffers.*` work as on the canvas: a file opened in your opener, or a buffer

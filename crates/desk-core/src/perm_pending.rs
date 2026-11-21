@@ -1,7 +1,5 @@
-//! What waits for the person (ADR 0204): `perm.pending` answers every prompt and approval nobody has
-//! answered yet, for a prompter that comes up while they wait (the island), and `perm.settled` tells
-//! every perm:manage holder that one stopped waiting, whoever answered it, so each takes its card
-//! down and the island's count goes down.
+//! `perm.pending` returns unanswered prompts and approvals so a prompter can restore its queue.
+//! `perm.settled` tells every perm:manage holder to remove an answered or withdrawn request.
 
 use desk_bridge::{
     BridgeEvent, PendingKind, PermPendingParams, PermPendingResult, PermSettledData,
