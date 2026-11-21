@@ -3,8 +3,9 @@
 // (WCAG 1.4.3, 1.4.11) on what is under them: the rule's own background when it sets one (a tint is
 // laid over each neutral surface), else every neutral surface a page of the plugin shows. Every
 // rule of every sheet under ui/ is measured, so a colour that is added is measured with it, and
-// one that cannot be worked out fails. The pattern is plugins/docker/tests/contrast.test.ts's; the
-// rendered page's walk is packages/runtime/e2e/database-contrast.spec.ts.
+// one that cannot be worked out fails. The pattern is another built-in plugin's contrast test
+// (plugins/*/tests/contrast.test.ts); the rendered page's walk is
+// packages/runtime/e2e/database-contrast.spec.ts.
 import { describe, expect, it } from "vitest";
 import { contrast, over, type Rgba } from "../../../packages/ui/src/theme/index";
 import { type Paint, Palette, painted, pluginRules, type Rule, scheme } from "./contrast-css";
