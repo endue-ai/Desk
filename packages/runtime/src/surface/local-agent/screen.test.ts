@@ -155,6 +155,56 @@ describe("a local agent's screen", () => {
     expect(el.querySelector(".local-composer-hint")?.textContent).toMatch(/change files/);
   });
 
+  it("shows the new run before history is indexed and resumes its assigned session", async () => {
+    const { el, local } = await mount();
+    const ask = vi.spyOn(local, "ask");
+    const input = el.querySelector<HTMLTextAreaElement>(".local-prompt")!;
+    const submit = (text: string) => {
+      input.value = text;
+      el.querySelector("form")!.dispatchEvent(new Event("submit", { cancelable: true }));
+    };
+    click(el, '[data-access="agent"]');
+    submit("Review the outline");
+    await vi.waitFor(() => expect(local.fixture.runs[0]?.state).toBe("done"));
+    const run = local.fixture.runs[0]!;
+    const root = workspace(el);
+    expect(root.querySelector("h2")?.textContent).toBe("Review the outline");
+    expect(root.querySelector("desk-markdown")?.shadowRoot?.textContent).toContain(run.text);
+    expect(
+      [...root.querySelectorAll("[data-turn]")].map((el) => el.getAttribute("data-role")),
+    ).toEqual(["user", "tool", "assistant"]);
+    submit("Continue the outline");
+    expect(ask).toHaveBeenLastCalledWith({
+      agent: "claude",
+      sessionId: run.sessionId,
+      prompt: "Continue the outline",
+      access: "agent",
+    });
+  });
+
+  it("keeps a later selection and its draft when a new run starts late", async () => {
+    const { el, local } = await mount();
+    const ask = local.ask.bind(local);
+    let release!: () => void;
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(local, "ask").mockImplementationOnce(async (args) => {
+      await wait;
+      return ask(args);
+    });
+    const input = el.querySelector<HTMLTextAreaElement>(".local-prompt")!;
+    input.value = "First request";
+    el.querySelector("form")!.dispatchEvent(new Event("submit", { cancelable: true }));
+    const session = local.fixture.sessions[0]!;
+    workspace(el).querySelector<HTMLButtonElement>(`[data-native-id="${session.id}"]`)!.click();
+    input.value = "Draft for the selected session";
+    release();
+    await vi.waitFor(() => expect(local.fixture.runs[0]?.state).toBe("done"));
+    expect(workspace(el).querySelector("h2")?.textContent).toBe(session.title);
+    expect(input.value).toBe("Draft for the selected session");
+  });
+
   it("reads an agent it found no program for, and asks it nothing", async () => {
     const { el, store } = await mount();
     store.set((s) => ({

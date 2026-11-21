@@ -1,11 +1,15 @@
 import type { LocalAgentId, LocalAgentSession, LocalAgentSource } from "@endue-ai/bridge";
 import {
+  appendSessionRun,
   defineElements,
   nativeSessionRow,
   nativeSessionTurns,
   SessionHistory,
   type SessionRow,
   type SessionTurn,
+  sessionKey,
+  sessionTool,
+  workspacePath,
 } from "@endue-ai/ui/elements";
 import type { ShellCtx } from "../../shell/context";
 import { h, render } from "../../shell/dom";
@@ -27,7 +31,7 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
     total: 0,
     loading: false,
     error: "",
-    selected: undefined as LocalAgentSession | undefined,
+    selected: undefined as SessionRow | undefined,
     source: "local" as LocalAgentSource,
     importing: null as "local" | "archive" | null,
     notice: "",
@@ -50,10 +54,13 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
   let token = 0,
     selection = 0,
     disposed = false;
+  let following: string | undefined;
   let typing: ReturnType<typeof setTimeout> | undefined;
   const live = new Map<string, SessionTurn[]>();
+  const target = () => v.selected?.key ?? sessionKey(agent, "new", String(selection));
   const fresh = () => {
     selection++;
+    following = undefined;
     v.selected = undefined;
     history.clear();
     composer.update();
@@ -65,7 +72,23 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
     () => v.selected,
     notice,
     fresh,
-    () => v.source,
+    target,
+    (run) => {
+      if (disposed) return;
+      following = run.runId;
+      v.source = "local";
+      v.selected = {
+        key: target(),
+        title: run.prompt,
+        agent,
+        agentName: localName(ctx.store.get().localAgents, agent),
+        workspace: workspacePath(run.cwd),
+        sources: ["local"],
+      };
+      if (!live.has(run.runId)) live.set(run.runId, []);
+      draw();
+      if (run.state !== "running") void load();
+    },
   );
   composer.el.slot = "composer";
   reader.append(tabs, composer.el);
@@ -89,18 +112,27 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
   function draw() {
     if (disposed) return;
     const bridge = local(),
-      shown = v.selected;
-    const row = shown ? sessionRow(history.result?.session ?? shown, v.source) : undefined;
+      state = ctx.store.get(),
+      current = following && state.localRuns.find((r) => r.runId === following);
+    const shown = v.selected;
+    if (current && current.sessionId && shown && !shown.nativeId) {
+      shown.nativeId = current.sessionId;
+      shown.key = sessionKey(agent, "local", current.sessionId);
+      composer.update(true);
+    }
+    const row = history.result
+      ? sessionRow(history.result.session, v.source)
+      : shown && { ...shown };
+    if (row && current) row.status = current.state === "running" ? "working" : current.state;
     const turns = nativeSessionTurns(history.result?.messages ?? []);
-    for (const r of ctx.store.get().localRuns) {
-      if (r.agent !== agent || !shown || r.sessionId !== shown.id) continue;
-      if (r.state === "running")
-        turns.push(
-          ...(live.get(r.runId) ??
-            (r.text ? [{ id: r.runId, role: "assistant" as const, text: r.text }] : [])),
-        );
-      if (r.state === "failed" && r.error)
-        turns.push({ id: r.runId, role: "failure", text: r.error });
+    for (const r of [...state.localRuns].reverse()) {
+      if (
+        r.agent !== agent ||
+        !(r.runId === following || (shown?.nativeId && r.sessionId === shown.nativeId))
+      )
+        continue;
+      if (r.state === "running" || r.state === "failed" || live.has(r.runId))
+        appendSessionRun(turns, r, live.get(r.runId) ?? []);
     }
     reader.view = {
       lang: lang(),
@@ -167,6 +199,15 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
       if (mine !== token) return;
       v.sessions = more ? [...v.sessions, ...page.sessions] : page.sessions;
       v.total = page.total;
+      const id = v.selected?.nativeId;
+      if (
+        following &&
+        id &&
+        !history.result &&
+        !history.loading &&
+        v.sessions.some((s) => s.id === id)
+      )
+        void history.open((limit) => bridge.transcript(agent, id, limit));
     } catch (err) {
       if (mine !== token) return;
       v.error = why(lang(), err);
@@ -174,12 +215,13 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
     v.loading = false;
     draw();
   }
-  function pick(session: LocalAgentSession) {
+  function pick(session: LocalAgentSession, source = v.tab) {
     const bridge = local();
     if (!bridge) return;
     selection++;
-    v.selected = session;
-    v.source = v.tab;
+    following = undefined;
+    v.selected = sessionRow(session, source);
+    v.source = source;
     composer.update();
     void history.open((limit) => bridge.transcript(agent, session.id, limit));
   }
@@ -192,7 +234,8 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
     const mine = ++selection;
     try {
       const result = await local()?.transcript(agent, id, 200);
-      if (mine === selection && result) pick(result.session);
+      if (mine === selection && result)
+        pick(result.session, result.session.archived ? "archive" : "local");
     } catch (err) {
       if (mine === selection) notice(why(lang(), err));
     }
@@ -297,15 +340,18 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
       const parts = live.get(e.runId) ?? [];
       parts.push({
         id: `${e.runId}:${parts.length}`,
-        role: e.kind === "tool" ? "tool" : "assistant",
-        text: e.kind === "tool" ? (e.detail ?? "") : (e.text ?? ""),
-        name: e.tool,
+        ...(e.kind === "tool"
+          ? sessionTool(e.tool ?? "Tool", e.detail ?? "")
+          : { role: "assistant", text: e.text ?? "" }),
       });
       live.set(e.runId, parts);
       draw();
     } else if (["done", "failed", "stopped"].includes(e.kind)) {
-      live.delete(e.runId);
-      if (v.selected && e.run?.sessionId === v.selected.id) void history.refresh();
+      if (v.selected?.nativeId && e.run?.sessionId === v.selected.nativeId) void history.refresh();
+      if (live.size > 50) {
+        const retained = new Set(ctx.store.get().localRuns.map((r) => r.runId));
+        for (const id of live.keys()) if (!retained.has(id)) live.delete(id);
+      }
       void load();
     }
   });

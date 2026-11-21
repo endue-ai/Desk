@@ -52,7 +52,7 @@ export function createWorkspaceView(doc, act) {
     try {
       const result = await (native ? act("nativeSend", to, text) : act("send", text, id));
       if (result && result.ending !== "failed") {
-        if (key === to && input.value === text) input.value = "";
+        if ((key === to || native?.draftFrom === to) && input.value === text) input.value = "";
         if (drafts.get(to) === text) drafts.delete(to);
       }
     } finally {
@@ -81,9 +81,12 @@ export function createWorkspaceView(doc, act) {
       selected = n.selected ?? saved.find((r) => r.agent === chat.agent);
       const next = selected?.key ?? "";
       if (next !== key) {
-        if (key) drafts.set(key, input.value);
+        if (native?.draftFrom === key) drafts.delete(key);
+        else {
+          if (key) drafts.set(key, input.value);
+          input.value = drafts.get(next) ?? "";
+        }
         key = next;
-        input.value = drafts.get(key) ?? "";
       }
       const rows = mergeSessionRows([...n.rows, ...saved]);
       const busy = native ? n.running : chat.running;

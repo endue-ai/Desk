@@ -1,9 +1,11 @@
 // Optional native history. Only an explicit visit opens this source and obtains its own agent list.
 import {
+  appendSessionRun,
   nativeSessionRow,
   nativeSessionTurns,
   SessionHistory,
   sessionKey,
+  sessionTool,
 } from "@endue-ai/ui/elements";
 
 const scope = { permission: "agents:manage" };
@@ -20,13 +22,37 @@ export function createNativeHistory(bridge, changed) {
     enabled = false,
     selected,
     latest = 0,
+    accessEpoch = 0,
     listing = 0,
     nextDraft = 0,
     query = "";
   const history = new SessionHistory(changed);
   const active = new Map();
   const sending = new Set();
-  const call = (method, params = {}) => bridge.call(method, { ...params, scope });
+  const close = (error) => {
+    latest++;
+    listing++;
+    accessEpoch++;
+    enabled = loading = false;
+    agents = [];
+    pages = [];
+    selected = undefined;
+    active.clear();
+    history.clear();
+    problem = why(error);
+    changed();
+  };
+  const call = async (method, params = {}) => {
+    const epoch = accessEpoch;
+    try {
+      const result = await bridge.call(method, { ...params, scope });
+      if (epoch !== accessEpoch) throw Error("Native history access changed.");
+      return result;
+    } catch (error) {
+      if (epoch === accessEpoch && enabled && error?.code === "permission_denied") close(error);
+      throw error;
+    }
+  };
   const listed = (id) => agents.some((a) => a.id === id);
   const read = async (row, limit) => {
     if (!listed(row.agent) || !row.nativeId) throw Error("This history source is unavailable.");
@@ -82,8 +108,9 @@ export function createNativeHistory(bridge, changed) {
     changed();
     try {
       let result;
+      const list = () => bridge.call("agents.list", { scope });
       try {
-        result = await call("agents.list");
+        result = await list();
       } catch (error) {
         if (error?.code !== "permission_denied") throw error;
         const decision = await bridge.call("perm.request", {
@@ -91,28 +118,27 @@ export function createNativeHistory(bridge, changed) {
           reason: "Read local agent sessions and continue a selected conversation.",
         });
         if (!decision.granted) throw error;
-        result = await call("agents.list");
+        result = await list();
       }
       if (gen !== latest) return;
       agents = result.agents;
+      if (selected && !listed(selected.agent)) {
+        selected = undefined;
+        history.clear();
+      }
       enabled = true;
       await refresh();
+      if (gen !== latest) return;
       if (agents.some((a) => a.running > 0)) {
         const { runs } = await call("agents.runs");
         if (gen !== latest) return;
         for (const r of runs)
-          if (listed(r.agent) && !active.has(r.runId)) active.set(r.runId, { ...r, parts: [] });
+          if (r.state === "running" && listed(r.agent) && !active.has(r.runId))
+            active.set(r.runId, { ...r, parts: [] });
       }
       if (!agents.length) problem = "No native history sources are available.";
     } catch (err) {
-      if (gen === latest) {
-        enabled = false;
-        agents = [];
-        pages = [];
-        selected = undefined;
-        history.clear();
-        problem = why(err);
-      }
+      if (gen === latest) close(err);
     } finally {
       if (gen === latest) {
         loading = false;
@@ -149,18 +175,29 @@ export function createNativeHistory(bridge, changed) {
     if (!matches(r, selected)) return;
     if (!selected.nativeId && r.sessionId) {
       const known = pages.flatMap((p) => p.rows).find((row) => matches(r, row));
-      void select(
-        known ?? {
+      void select({
+        ...(known ?? {
           ...selected,
           nativeId: r.sessionId,
           key: sessionKey(r.agent, "local", r.sessionId),
           title: r.prompt || selected.title,
-        },
-      );
+        }),
+        draftFrom: selected.key,
+      });
     } else if (selected.nativeId) void history.refresh();
   };
   const off = bridge.onEvent((event) => {
     if (!enabled) return;
+    if (event.event === "perm.changed" && event.data.change !== "granted") {
+      const epoch = accessEpoch;
+      const denied = () => {
+        if (epoch === accessEpoch) close({ code: "permission_denied" });
+      };
+      void bridge.call("perm.query", { permission: scope }).then(({ grants }) => {
+        if (!grants.length) denied();
+      }, denied);
+      return;
+    }
     if (event.event === "agents.changed" && listed(event.data.agent)) {
       void refresh();
       return;
@@ -174,9 +211,9 @@ export function createNativeHistory(bridge, changed) {
     if (d.kind === "tool" || d.kind === "text")
       r.parts.push({
         id: `${d.runId}:${r.parts.length}`,
-        role: d.kind === "tool" ? "tool" : "assistant",
-        text: d.kind === "tool" ? (d.detail ?? "") : (d.text ?? ""),
-        name: d.tool,
+        ...(d.kind === "tool"
+          ? sessionTool(d.tool ?? "Tool", d.detail ?? "")
+          : { role: "assistant", text: d.text ?? "" }),
       });
     active.set(d.runId, r);
     if (["done", "stopped", "failed"].includes(d.kind)) {
@@ -251,6 +288,8 @@ export function createNativeHistory(bridge, changed) {
       }
     },
     dispose() {
+      accessEpoch++;
+      enabled = false;
       latest++;
       listing++;
       history.clear();
@@ -273,20 +312,13 @@ export function createNativeHistory(bridge, changed) {
           };
         });
       const run = ongoing(selected);
-      const recent = [...active.values()].findLast((r) => matches(r, selected));
       const turns = nativeSessionTurns(history.result?.messages ?? []);
-      if (recent && (run || !turns.length)) {
-        if (recent.prompt && turns.findLast((m) => m.role === "user")?.text !== recent.prompt)
-          turns.push({ id: recent.runId + ":prompt", role: "user", text: recent.prompt });
-        turns.push(...recent.parts);
-        if (recent.text && !recent.parts.some((p) => p.role === "assistant"))
-          turns.push({ id: recent.runId + ":text", role: "assistant", text: recent.text });
-      }
-      if (recent?.state === "failed" && recent.error)
-        turns.push({ id: recent.runId, role: "failure", text: recent.error });
+      for (const r of active.values())
+        if (matches(r, selected)) appendSessionRun(turns, r, r.parts);
       return {
         rows,
         selected: selected ? (rows.find((r) => r.key === selected.key) ?? selected) : undefined,
+        draftFrom: selected?.draftFrom,
         turns,
         older: history.older,
         error: history.error,

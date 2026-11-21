@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { type LocalAgentRunData, StubError } from "../../../packages/bridge/src/index";
 import type { TestHost } from "../../../packages/plugin-sdk/src/testing/index";
-import { localSessions, run } from "./fixtures";
+import { chatTurns } from "../ui/view-chat.js";
+import { localSessions, run, transcript } from "./fixtures";
 import { localHandlers, mount, settle } from "./harness";
 
 const AGENTS = { permission: "agents:manage" };
@@ -110,6 +111,19 @@ describe("chatting with a local agent", () => {
     expect(chat().messages.at(-1)).toMatchObject({ text: "Early words", state: "streaming" });
   });
 
+  it("keeps the final answer after a tool even when only the terminal event carries it", async () => {
+    const { app, host, chat } = await mount();
+    app.studio("local:claude");
+    await app.chat("claude").send("Check the heading");
+    step(host, { kind: "tool", tool: "Read", detail: "outline.txt" });
+    step(host, { kind: "done", run: run({ state: "done", text: "The heading is ready." }) });
+    await settle(host);
+    expect(chat().messages.at(-1)?.parts).toEqual([
+      { role: "tool", name: "Read", text: "outline.txt" },
+      { role: "assistant", text: "The heading is ready." },
+    ]);
+  });
+
   it("Stop ends the run through agents.stop", async () => {
     const { app, host, chat, params } = await mount();
     app.studio("local:claude");
@@ -120,6 +134,116 @@ describe("chatting with a local agent", () => {
     expect(params("agents.stop")).toEqual([{ runId: "run-7", scope: AGENTS }]);
     expect(chat()).toMatchObject({ phase: "idle" });
     expect(chat().messages.at(-1)?.state).toBe("stopped");
+  });
+
+  it("replays the selected run's steps and completion while opening its history", async () => {
+    let release!: () => void;
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const session = localSessions().claude![0]!;
+    const current = run({ sessionId: session.id, text: "First line" });
+    const { app, host, chat } = await mount({
+      local: {
+        "agents.transcript": async () => {
+          await wait;
+          return { session, messages: transcript(), truncated: false };
+        },
+      },
+    });
+    app.studio("local:claude");
+    const opening = app.chat("claude").open(session.id, current);
+    step(host, { runId: "other", kind: "text", text: "Unrelated" });
+    step(host, { kind: "tool", tool: "Read", detail: "outline.txt" });
+    step(host, { kind: "text", text: "Last line" });
+    step(host, {
+      kind: "done",
+      run: { ...current, state: "done", text: "First line\n\nLast line" },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    release();
+    await opening;
+    await settle(host);
+    expect(chat()).toMatchObject({ phase: "idle", outcome: "done" });
+    expect(chat().runId).toBeUndefined();
+    expect(chat().messages.at(-1)).toMatchObject({
+      text: "First line\n\nLast line",
+      parts: [
+        { role: "assistant", text: "First line" },
+        { role: "tool", name: "Read", text: "outline.txt" },
+        { role: "assistant", text: "Last line" },
+      ],
+    });
+  });
+
+  it("cannot stop another agent's run with the same session identifier", async () => {
+    const { app, host, chat, params } = await mount({
+      local: { "agents.runs": () => ({ runs: [run({ agent: "codex", sessionId: SESSION })] }) },
+    });
+    app.studio("local:claude");
+    app.local("claude", "open", { id: SESSION });
+    await settle(host);
+    expect(chat().phase).toBe("idle");
+    await app.chat("claude").stop();
+    expect(params("agents.stop")).toEqual([]);
+  });
+
+  it("shows the joined run once when the history file already contains its reply", async () => {
+    const session = localSessions().claude![0]!;
+    const current = run({
+      sessionId: session.id,
+      prompt: "Read the heading",
+      text: "Heading ready",
+    });
+    const { app, chat } = await mount({
+      local: {
+        "agents.transcript": () => ({
+          session,
+          messages: [
+            { role: "user", text: current.prompt, at: current.startedAt },
+            { role: "assistant", text: current.text },
+          ],
+          truncated: false,
+        }),
+      },
+    });
+    app.studio("local:claude");
+    await app.chat("claude").open(session.id, current);
+    expect(chatTurns(chat().messages).map((m) => m.text)).toEqual([current.prompt, current.text]);
+  });
+
+  it("prepends older history without discarding a newly completed exchange", async () => {
+    const session = localSessions().claude![0]!;
+    const messages = Array.from({ length: 205 }, (_, i) => ({
+      role: "user" as const,
+      text: `Entry ${i}`,
+    }));
+    const { app, host, chat } = await mount({
+      local: {
+        "agents.transcript": ({ limit = 200 }) => ({
+          session,
+          messages: messages.slice(-limit),
+          truncated: limit < messages.length,
+        }),
+      },
+    });
+    app.studio("local:claude");
+    const current = app.chat("claude");
+    await current.open(session.id);
+    await current.send("Add one entry");
+    step(host, {
+      kind: "done",
+      run: run({ sessionId: session.id, state: "done", text: "Entry added." }),
+    });
+    await settle(host);
+    await current.older();
+    expect(chat().messages[0]?.text).toBe("Entry 0");
+    expect(
+      chat()
+        .messages.slice(-2)
+        .map((m) => m.text),
+    ).toEqual(["Add one entry", "Entry added."]);
+    expect(chat().messages).toHaveLength(207);
   });
 
   it("a message that may change files waits for the person's yes (ADR 0099)", async () => {

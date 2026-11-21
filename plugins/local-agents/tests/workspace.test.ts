@@ -109,6 +109,76 @@ it("keeps a saved chat readable when optional native access is refused", async (
   expect(m.programs.calls).toHaveLength(before);
 });
 
+it.each(["denied read", "revoked grant"])(
+  "releases the selected native transcript after a %s",
+  async (reason) => {
+    const agent = "claude" as const;
+    const session = {
+      agent,
+      id: "native",
+      title: "Private draft",
+      updatedAt: "2026-01-06T12:00:00Z",
+      archived: false,
+      imported: false,
+      size: 80,
+    };
+    let granted = true;
+    const m = await workspace({
+      store: {
+        "chat.claude": { messages: [{ id: "saved", role: "agent", text: "Saved outline", at: 1 }] },
+      },
+      handlers: {
+        "agents.list": () => ({
+          agents: [
+            {
+              id: agent,
+              name: "Writer",
+              vendor: "",
+              program: "writer",
+              sessions: 1,
+              archived: 0,
+              imported: 0,
+              running: 0,
+            },
+          ],
+        }),
+        "agents.sessions": ({ from }) => {
+          if (!granted) throw new StubError("permission_denied", "Access revoked");
+          return { sessions: from === "local" ? [session] : [], total: from === "local" ? 1 : 0 };
+        },
+        "agents.transcript": () => ({
+          session,
+          messages: [{ role: "user", text: "Native-only content" }],
+          truncated: false,
+        }),
+        "perm.query": () => ({ grants: [] }),
+      },
+    });
+    document.querySelector<HTMLButtonElement>("[data-native-history]")!.click();
+    await m.settle();
+    m.root.querySelector<HTMLButtonElement>("[data-native-id]")!.click();
+    await m.settle();
+    expect(m.root.querySelector('[role="log"]')?.textContent).toContain("Native-only content");
+    granted = false;
+    if (reason === "denied read") m.host.emit({ event: "agents.changed", data: { agent } });
+    else
+      m.host.emit({
+        event: "perm.changed",
+        data: { grantId: "native-history", change: "revoked" },
+      });
+    await m.settle();
+    expect(m.view.latest().native).toMatchObject({
+      enabled: false,
+      rows: [],
+      selected: undefined,
+      turns: [],
+    });
+    expect(m.root.querySelector("desk-markdown")?.shadowRoot?.textContent).toContain(
+      "Saved outline",
+    );
+  },
+);
+
 it("limits native reads to listed agents and keeps the native draft after cancelled and failed writes", async () => {
   const id = "claude" as const,
     sessionId = "10000000-0000-4000-8000-000000000001";
@@ -257,19 +327,27 @@ it("starts a new conversation on its native source and continues the session the
   expect(writes[0]).toMatchObject({ agent, prompt: next.title, access: "read-only" });
   expect(writes[0]).not.toHaveProperty("sessionId");
   expect(send.textContent).toBe("Stop");
+  input.value = "Continue";
   finished = true;
+  m.host.emit({
+    event: "agents.run",
+    data: { agent, runId: run.runId, kind: "text", text: "The translation is ready." },
+  });
   m.host.emit({
     event: "agents.run",
     data: {
       agent,
       runId: run.runId,
       kind: "done",
-      run: { ...run, sessionId: next.id, state: "done" },
+      run: { ...run, sessionId: next.id, state: "done", text: "The translation is ready." },
     },
   });
   await m.settle();
   expect(m.view.latest().native.selected?.nativeId).toBe(next.id);
-  input.value = "Continue";
+  expect(m.root.querySelector("desk-markdown")?.shadowRoot?.textContent).toContain(
+    "The translation is ready.",
+  );
+  expect(input.value).toBe("Continue");
   send.click();
   await m.settle();
   expect(writes[1]).toMatchObject({ agent, sessionId: next.id, prompt: "Continue" });

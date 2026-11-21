@@ -1,10 +1,56 @@
 // The local Studio adapter supplies its selected agent, available sessions and confirmed writes.
 import {
+  appendSessionRun,
   defineElements,
   nativeSessionRow,
   nativeSessionTurns,
   sessionKey,
 } from "@endue-ai/ui/elements";
+
+/** The open session can already contain some of the run this Studio has just joined. */
+export function chatTurns(messages) {
+  const turns = [];
+  for (const m of messages) {
+    if (m.role === "plan") {
+      turns.push({ id: m.id, role: "plan", name: m.name, text: m.text, steps: m.steps });
+      continue;
+    }
+    if (m.role === "tool") {
+      turns.push({
+        id: m.id,
+        role: "tool",
+        name: m.text,
+        text: m.tools[0]?.detail ?? "",
+        cut: m.cut,
+        at: m.at,
+      });
+      continue;
+    }
+    const parts = m.parts?.length
+      ? m.parts
+      : [
+          ...(m.tools ?? []).map((t) => ({ role: "tool", name: t.name, text: t.detail })),
+          ...(m.text ? [{ role: m.role, text: m.text, cut: m.cut, at: m.at }] : []),
+        ];
+    const events = parts.map((p, i) => ({ ...p, id: `${m.id}:${i}` }));
+    if (m.joined) {
+      appendSessionRun(
+        turns,
+        {
+          ...m.joined,
+          text: m.text,
+          state: m.state === "streaming" ? "running" : m.state,
+          error: m.error,
+        },
+        events,
+      );
+    } else {
+      turns.push(...events);
+      if (m.error) turns.push({ id: `${m.id}:error`, role: "failure", text: m.error });
+    }
+  }
+  return turns;
+}
 
 /**
  * @typedef {object} ChatViewActions
@@ -70,30 +116,6 @@ export function createChatView(doc, actions) {
       if (!chat.runnable) selected.status = "missing";
       else if (chat.phase === "running" || chat.phase === "stopping") selected.status = "working";
       else if (chat.outcome) selected.status = chat.outcome;
-      const turns = chat.messages.flatMap((m) => {
-        if (m.role === "plan")
-          return [{ id: m.id, role: "plan", name: m.name, text: m.text, steps: m.steps }];
-        if (m.role === "tool")
-          return [
-            {
-              id: m.id,
-              role: "tool",
-              name: m.text,
-              text: m.tools[0]?.detail ?? "",
-              cut: m.cut,
-              at: m.at,
-            },
-          ];
-        const parts = m.parts?.length
-          ? m.parts
-          : [
-              ...(m.tools ?? []).map((t) => ({ role: "tool", name: t.name, text: t.detail })),
-              ...(m.text ? [{ role: m.role, text: m.text, cut: m.cut, at: m.at }] : []),
-            ];
-        const result = parts.map((p, i) => ({ ...p, id: `${m.id}:${i}` }));
-        if (m.error) result.push({ id: `${m.id}:error`, role: "failure", text: m.error });
-        return result;
-      });
       if (selected.key !== key) {
         if (key) drafts.set(key, input.value);
         const assigned = selection === JSON.stringify([chat.agent, chat.selection]);
@@ -104,7 +126,7 @@ export function createChatView(doc, actions) {
       reader.view = {
         rows,
         selected,
-        turns,
+        turns: chatTurns(chat.messages),
         onNew: actions.fresh,
         older: chat.older,
         notice: chat.error || (chat.phase === "loading" ? "Reading the session…" : undefined),

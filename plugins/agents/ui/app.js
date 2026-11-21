@@ -340,7 +340,7 @@ export function createApp(ctx, view, deps) {
       if (what === "new-session") chat.fresh();
       if (what === "open" && values.id) {
         const running = sides.local.runs.find(
-          (r) => r.sessionId === values.id && r.state === "running",
+          (r) => r.agent === agent && r.sessionId === values.id && r.state === "running",
         );
         void chat.open(values.id, running);
       }

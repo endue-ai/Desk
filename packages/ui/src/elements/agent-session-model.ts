@@ -1,4 +1,4 @@
-import type { LocalAgentMessage, LocalAgentSession } from "@endue-ai/bridge";
+import type { LocalAgentMessage, LocalAgentRun, LocalAgentSession } from "@endue-ai/bridge";
 
 export type SessionSource = "local" | "archive" | "desk" | "plugin";
 export interface SessionRow {
@@ -140,6 +140,49 @@ export function nativeSessionTurns(messages: LocalAgentMessage[]): SessionTurn[]
       return { ...m, ...event, id: `turn-${stem}-${n}` };
     })
     .reverse();
+}
+
+/** Keep streamed turns readable while the program is still writing its transcript. */
+export function appendSessionRun(turns: SessionTurn[], run: LocalAgentRun, parts: SessionTurn[]) {
+  const start = Math.floor(Date.parse(run.startedAt) / 1000);
+  const prompt = turns.findLastIndex(
+    (t) =>
+      t.role === "user" &&
+      (t.text === run.prompt || (run.prompt.length >= 500 && t.text.startsWith(run.prompt))) &&
+      (!t.at || Math.floor(Date.parse(t.at) / 1000) >= start),
+  );
+  const recorded = prompt < 0 ? [] : turns.slice(prompt + 1);
+  // A later prompt in the file already places this historical run before the current turn.
+  if (recorded.some((t) => t.role === "user")) return;
+  if (prompt < 0 && run.prompt)
+    turns.push({ id: run.runId + ":prompt", role: "user", text: run.prompt, at: run.startedAt });
+  const answer = recorded
+    .filter((t) => t.role === "assistant")
+    .map((t) => t.text)
+    .join("\n\n");
+  if (!answer || answer !== run.text) {
+    let from = 0;
+    const stream = [...parts];
+    const streamed = parts
+      .filter((t) => t.role === "assistant")
+      .map((t) => t.text)
+      .join("\n\n");
+    if (run.text && (!streamed || run.text.startsWith(streamed + "\n\n")))
+      stream.push({
+        id: run.runId + ":text",
+        role: "assistant",
+        text: streamed ? run.text.slice(streamed.length + 2) : run.text,
+      });
+    for (const part of stream) {
+      const seen = recorded.findIndex(
+        (t, i) => i >= from && t.role === part.role && t.name === part.name && t.text === part.text,
+      );
+      if (seen < 0) turns.push(part);
+      else from = seen + 1;
+    }
+  }
+  if (run.state === "failed" && run.error)
+    turns.push({ id: run.runId + ":error", role: "failure", text: run.error });
 }
 export type SessionRead = {
   session: LocalAgentSession;

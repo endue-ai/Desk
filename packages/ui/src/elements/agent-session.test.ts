@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { defineElements } from "./index";
+import { appendSessionRun, defineElements, nativeSessionTurns, type SessionTurn } from "./index";
 
 defineElements();
 afterEach(() => document.body.replaceChildren());
@@ -132,4 +132,35 @@ it("recognizes a complete named plan and keeps quoted or clipped data in its ori
   expect(events.map((t) => t.role)).toEqual(["plan", "user", "tool"]);
   expect(events[0]?.steps).toHaveLength(2);
   expect(events[2]).toMatchObject({ text, cut: true });
+});
+
+it("reconciles a partially written native transcript with the final streamed answer", () => {
+  const run = {
+    runId: "run-a",
+    agent: "claude",
+    caller: "desk",
+    prompt: "Review outline",
+    cwd: "/sample",
+    access: "read-only",
+    state: "done",
+    startedAt: "2026-01-02T08:00:00Z",
+    text: "First\n\nLast",
+    tools: 1,
+  } as const;
+  const messages = [
+    { role: "user", text: run.prompt, at: run.startedAt },
+    { role: "tool", name: "Read", text: "outline.txt" },
+    { role: "assistant", text: "First" },
+  ] as const;
+  const parts: SessionTurn[] = [
+    { ...messages[1], id: "tool" },
+    { ...messages[2], id: "first" },
+  ];
+  const partial = nativeSessionTurns([...messages]);
+  appendSessionRun(partial, run, parts);
+  expect(partial.map((t) => t.text)).toEqual([run.prompt, "outline.txt", "First", "Last"]);
+  const written = nativeSessionTurns([...messages, { role: "assistant", text: "Last" }]);
+  const previous = [...written];
+  appendSessionRun(written, run, parts);
+  expect(written).toEqual(previous);
 });

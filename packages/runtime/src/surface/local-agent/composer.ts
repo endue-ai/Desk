@@ -4,27 +4,29 @@
  * built once, so what the person types survives every redraw around it; `update` follows the
  * selection and the language.
  */
-import type { LocalAgentAccess, LocalAgentId, LocalAgentSession } from "@endue-ai/bridge";
+import type { LocalAgentAccess, LocalAgentId, LocalAgentRun } from "@endue-ai/bridge";
+import type { SessionRow } from "@endue-ai/ui/elements";
 import type { ShellCtx } from "../../shell/context";
 import { h, render } from "../../shell/dom";
 import { applyRunStep } from "../../system/local-agents";
 import { localText } from "./copy";
-import { titleOf, why } from "./model";
+import { why } from "./model";
 
 export interface Composer {
   el: HTMLElement;
   /** Draw the labels again: the selection or the language changed. */
-  update(): void;
+  update(following?: boolean): void;
 }
 
 export function mountComposer(
   ctx: ShellCtx,
   agent: LocalAgentId,
-  selected: () => LocalAgentSession | undefined,
+  selected: () => SessionRow | undefined,
   notice: (line: string) => void,
   /** Let go of the session on screen, so the next request starts a new one. */
   startNew: () => void,
-  source: () => string,
+  target: () => string,
+  follow: (run: LocalAgentRun) => void,
 ): Composer {
   let access: LocalAgentAccess = "read-only";
   const drafts = new Map<string, { text: string; access: LocalAgentAccess }>();
@@ -37,9 +39,9 @@ export function mountComposer(
         (r) =>
           r.agent === agent &&
           r.state === "running" &&
-          (r.runId === started.get(key) || (selected()?.id && r.sessionId === selected()?.id)),
+          (r.runId === started.get(key) ||
+            (selected()?.nativeId && r.sessionId === selected()?.nativeId)),
       );
-  const target = () => JSON.stringify([agent, selected() ? source() : "", selected()?.id ?? ""]);
   let active = target();
   const lang = () => ctx.store.get().lang;
   const runnable = () => Boolean(ctx.store.get().localAgents.find((a) => a.id === agent)?.program);
@@ -88,8 +90,8 @@ export function mountComposer(
         agent,
         prompt: text,
         access,
-        ...(session ? { sessionId: session.id } : {}),
-        ...(!session && folder.value.trim() ? { cwd: folder.value.trim() } : {}),
+        ...(session?.nativeId ? { sessionId: session.nativeId } : {}),
+        ...(!session?.nativeId && folder.value.trim() ? { cwd: folder.value.trim() } : {}),
       });
       if (target() === key && prompt.value.trim() === text) prompt.value = "";
       const draft = drafts.get(key);
@@ -104,6 +106,8 @@ export function mountComposer(
             run,
           }),
         }));
+      if (!session?.nativeId && target() === key)
+        follow(ctx.store.get().localRuns.find((r) => r.runId === run.runId) ?? run);
     } catch (error) {
       notice(localText(lang(), "askFailed", { why: why(lang(), error) }));
     } finally {
@@ -141,20 +145,23 @@ export function mountComposer(
       label,
     );
 
-  function update(): void {
+  function update(following = false): void {
     const key = target();
     if (key !== active) {
-      drafts.set(active, { text: prompt.value, access });
+      if (following) drafts.delete(active);
+      else drafts.set(active, { text: prompt.value, access });
       active = key;
-      const draft = drafts.get(key);
-      prompt.value = draft?.text ?? "";
-      access = draft?.access ?? "read-only";
+      if (!following) {
+        const draft = drafts.get(key);
+        prompt.value = draft?.text ?? "";
+        access = draft?.access ?? "read-only";
+      }
     }
     const l = lang();
     const session = selected();
     prompt.setAttribute("aria-label", localText(l, session ? "promptContinue" : "promptNew"));
     prompt.placeholder = session
-      ? localText(l, "continuing", { title: titleOf(session) })
+      ? localText(l, "continuing", { title: session.title })
       : localText(l, "promptNew");
     folder.setAttribute("aria-label", localText(l, "folder"));
     folder.title = localText(l, "folder");
