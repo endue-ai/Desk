@@ -6,7 +6,8 @@
 // unsaved; Save writes that file and no other, asking with perm.request where the grants do not
 // reach (ADR 0131 grants reads only, ADR 0260); a change on disk goes to the desk
 // (desk.files.changed), whose desk.files.on-change asks before unsaved edits are replaced. A file
-// past the editor's limit opens without its text: Run file runs it from disk. No DOM.
+// past the editor's limit opens without its text: Run file runs it from disk. With format on save
+// (`format`, ADR 0292) Save lays the console out first, as Format SQL would. No DOM.
 
 import { baseName } from "./console-list.js";
 
@@ -24,7 +25,9 @@ import { baseName } from "./console-list.js";
  *   consoles: Pick<ReturnType<typeof import("./consoles.js").createConsoles>,
  *     "openFile" | "find" | "consoles" | "current" | "render">,
  *   view: { editor(): { text: string }, replace(start: number, end: number, text: string): void },
+ *   format?(target: Console): Promise<{ from: number, to: number, text: string } | undefined>,
  * }} Deps
+ *   `format` lays a console out before Save, or answers undefined when Save writes it as typed.
  */
 
 /** The largest file a console loads into its editor, in bytes. */
@@ -177,6 +180,21 @@ export function createConsoleFiles(deps) {
     consoles.render();
   };
 
+  /** Format on save: the console laid out first, in its editor when on screen (undoable there). A
+   * failure, or an edit meanwhile, keeps the text as typed, and the save goes on. */
+  const laidOut = async (/** @type {Console} */ target) => {
+    const before = target.text;
+    const laid = await deps.format?.(target).catch(() => undefined);
+    if (!laid || target.text !== before) return;
+    const next = before.slice(0, laid.from) + laid.text + before.slice(laid.to);
+    if (next === before) return;
+    if (consoles.current() === target) {
+      if (deps.view.editor().text !== before) return;
+      deps.view.replace(laid.from, laid.to, laid.text);
+    }
+    target.text = next;
+  };
+
   return {
     /** The desk opened a .sql file with the plugin, in its buffer. */
     visit: async (/** @type {string} */ buffer, /** @type {string} */ path) =>
@@ -206,6 +224,7 @@ export function createConsoleFiles(deps) {
         throw new Error(
           `${name} is larger than the editor's ${sizeText(EDITOR_MAX)}: it is not edited here.`,
         );
+      await laidOut(target);
       const text = target.text;
       const scope = writeScope(path);
       const call = () => bridge.call("fs.write", { path, content: text, encoding: "utf8", scope });
