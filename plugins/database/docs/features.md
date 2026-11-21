@@ -7,11 +7,16 @@ feature adds its line to the area it belongs to, or a section for a new area; it
 The page has one header row (the connection on screen, its environment tag and read-only mark, the buttons;
 what does not fit is behind More), the explorer on the left, the work area, and one footer line. Dialogs open
 inside the page. `Mod+Shift+B` opens it, and every operation is also a command `endue.database.*`.
-Settings are read from what the person set over init.yaml's, and a change applies while the plugin runs;
-a change to a client's program or the `path` setting finds the clients again.
+Settings are read through `settings.get` (what the person set over init.yaml's over the manifest's default)
+and followed through `settings.changed`, so a change is in force with no reload (`settings-follow.js`): the row
+limit, the statement timeout, confirm, history and history-max at the next run (an open result keeps its rows,
+kept history is trimmed at the next run), system schemas at once in the open explorer, a client's program or
+the `path` setting found again at its next use, the format settings at the next Format SQL. A value of the wrong
+kind keeps its default and is said once, in the footer and the plugin's log, as is one the core says fell back
+(`settings.invalid`); the manifest declares each range `settings.js` checks.
 
 Modules: `main.js` (the only one that imports the SDK), `database.js` (the controller), `commands.js`,
-`keys.js`, `settings.js`, `view.js`, `view-actions.js`, `dom.js`, `*.css`.
+`keys.js`, `settings.js`, `settings-follow.js`, `view.js`, `view-actions.js`, `dom.js`, `*.css`.
 
 ## Connections
 
