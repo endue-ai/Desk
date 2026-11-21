@@ -116,7 +116,9 @@ describe("the objects feature", () => {
     expect(labels(m.picks.at(-1))?.slice(0, 2)).toEqual(["Edit the source", "Rename…"]);
     await open(m, "Routines");
     await action(m, "objectMenu")(row(m, "touch()") as Node);
+    // The routine form's entry (features/routines/) comes first on PostgreSQL.
     expect(labels(m.picks.at(-1))).toEqual([
+      "Run with its arguments…",
       "Edit the source",
       "Rename…",
       "Move to another schema…",

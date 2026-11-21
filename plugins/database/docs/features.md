@@ -299,8 +299,9 @@ Modules: `features/maintenance/`.
 ## Routines
 
 - A form per signature of a PostgreSQL function or procedure, opened from the explorer (`x` on its row under
-  Routines) or the palette (a name, then the signature of an overloaded one); aggregates, window and trigger
-  functions and those taking `internal` are refused in words.
+  Routines, or Run with its arguments, first in the row's menu) or the palette (a name, then the signature of
+  an overloaded one); aggregates, window and trigger functions and those taking `internal` are refused in
+  words.
 - A row per argument from `pg_proc` with its mode, type and default, edited by its type's cell editor (ADR
   0287), NULL and DEFAULT as choices (DEFAULT only where one is declared, and an unnamed argument only at
   the end), VARIADIC as the list of its elements, a polymorphic one with the type it is given as; OUT and

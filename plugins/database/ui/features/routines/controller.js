@@ -106,6 +106,17 @@ export function createRoutines(deps) {
     return listed ? openFor(conn, listed.oid, args) : undefined;
   };
 
+  /** A routine another feature names: by its oid, else by schema and name (a signature picked). */
+  const openTarget = async (
+    /** @type {Connection} */ conn,
+    /** @type {{ schema: string, name: string, ident?: string }} */ target,
+  ) => {
+    postgres(conn);
+    if (target.ident && /^\d+$/u.test(target.ident)) return openFor(conn, target.ident, {});
+    const listed = await chooser.routine(conn, { schema: target.schema, name: target.name });
+    return listed ? openFor(conn, listed.oid, {}) : undefined;
+  };
+
   /** The explorer's row of a function or procedure (x). */
   const fromNode = (/** @type {import("../../explorer.js").Node} */ node) => {
     const conn = deps.manager.get(node.connection);
@@ -219,6 +230,7 @@ export function createRoutines(deps) {
 
   return {
     open,
+    openTarget,
     fromNode,
     refresh,
     view,

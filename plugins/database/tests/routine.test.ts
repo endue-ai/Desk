@@ -50,11 +50,16 @@ const row = (name: string, ident: string, kind = "function", connection = "c-war
   }) as Node;
 const ADD_TAX = row("add_tax(amount numeric, rate numeric)", "9001");
 const v = (value: string): Entry => ({ choice: "value", value });
-/** The -c statements of each psql run that called a routine, without the markers. */
+/** What the sessions ran of routine calls and transaction statements, in order (db.run). */
 const runs = (m: Mounted) =>
-  m.clients.spawned
-    .map((s) => s.args.filter((a, i) => s.args[i - 1] === "-c" && !a.startsWith("\\")))
-    .filter((list) => list.some((a) => /^(SELECT|CALL) /u.test(a) && /public\./u.test(a)));
+  m
+    .sessions()
+    .flat()
+    .filter(
+      (sql) =>
+        /^(?:BEGIN|COMMIT|ROLLBACK)$/u.test(sql) ||
+        /^(?:SELECT \* FROM |SELECT |CALL )public\.\w+\(/u.test(sql),
+    );
 const form = (m: Mounted) => m.view.consoles.findLast((c) => c.model?.kind === "routine")?.model;
 /** The reasons of the last question asked: Yes's detail, then the lines before No. */
 const reasons = (m: Mounted) =>
@@ -70,7 +75,7 @@ describe("opening the form", () => {
           "Database: run a routine of which connection?": "c-warehouse",
           "Database: run which function or procedure?": "public\u0000area",
           "Database: which signature of public.area?": "9003",
-        })[title] ?? "",
+        })[title] ?? (title.startsWith("Database: function ") ? "run" : ""),
     });
     expect(actionFor("explorer", { key: "x", mod: false, shift: false, alt: false })).toBe(
       "routine",
@@ -87,6 +92,10 @@ describe("opening the form", () => {
     expect(m.view.said.at(-1)).toBe(
       "Pick a function or procedure in the explorer, under Routines.",
     );
+    // The row's menu (o, a right click) offers the form first.
+    await acts(m).objectMenu?.(row("area(w numeric, h numeric)", "9003"));
+    expect(m.picks.at(-1)?.items[0]).toEqual({ id: "run", label: "Run with its arguments…" });
+    expect(m.shown()?.name).toBe("routine: warehouse · public.area(w numeric, h numeric)");
 
     await m.host.command("endue.database.routine");
     const names = m.picks.find((p) => p.title === "Database: run which function or procedure?");
@@ -176,7 +185,7 @@ describe("running", () => {
       rolledBack: false,
     });
     expect(server.ran).toEqual(["SELECT public.add_tax(amount => 100::numeric)"]);
-    expect(runs(m)).toEqual([["SELECT public.add_tax(amount => 100::numeric)"]]);
+    expect(runs(m)).toEqual(["SELECT public.add_tax(amount => 100::numeric)"]);
     const console = m.shown();
     expect(console?.kind).toBe("console");
     expect(console?.shown?.tabs.map((t) => t.label)).toEqual(["Result", "Messages"]);
@@ -209,10 +218,8 @@ describe("running", () => {
     });
     const lines = shown?.tabs.at(-1)?.lines ?? [];
     expect(lines.some((l) => l.level === "notice" && /restocking bolt/u.test(l.text))).toBe(true);
-    for (const args of m.clients.spawned.map((s) => s.args).filter((a) => a.includes(call))) {
-      expect(args).not.toContain("--single-transaction");
-      expect(args).not.toContain("BEGIN");
-    }
+    // Each call is sent as it is, outside a transaction block.
+    expect(runs(m)).toEqual(["SELECT public.add_tax(amount => 100::numeric)", call]);
   });
 
   it("keeps the guards", async () => {
@@ -307,7 +314,8 @@ describe("running", () => {
       expect.stringMatching(/./u),
       "CALL public.nightly_close()",
     ]);
-    expect(runs(m).at(-1)).toEqual(["CALL public.nightly_close()"]);
+    expect(runs(m).at(-1)).toBe("CALL public.nightly_close()");
+    expect(runs(m).at(-2)).not.toBe("BEGIN");
   });
 
   it("remembers the arguments per routine for the session, and nothing after a restart", async () => {

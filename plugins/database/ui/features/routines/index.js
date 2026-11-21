@@ -6,7 +6,8 @@
 // Volatility decides the guard: VOLATILE functions and procedures run as writes (guard.js), with
 // an offer to run in a transaction rolled back at the end. Commands: Database: run a function or
 // procedure (also an agent's tool, asked before a write runs), run the form on screen, read it
-// again. The explorer's x opens a routine's form; the arguments typed are kept for the session.
+// again. The explorer's x and its row menu (features/objects/, openRoutine) open a routine's form;
+// the arguments typed are kept for the session.
 // controller.js reads and runs, panel.js and fields.js draw, call.js writes the call.
 
 import { createRoutines, TYPE } from "./controller.js";
@@ -22,6 +23,15 @@ const of = (/** @type {import("../../feature-host.js").Deps} */ deps) => {
   }
   return /** @type {ReturnType<typeof createRoutines>} */ (controller);
 };
+
+/**
+ * The form of a routine another feature names (the explorer's row menu, PG-52): by its oid from a
+ * row, else by its schema and name, a signature picked when it has several.
+ * @param {import("../../feature-host.js").Deps} deps
+ * @param {import("../../engines/common.js").Connection} conn
+ * @param {{ schema: string, name: string, ident?: string }} target
+ */
+export const openRoutine = (deps, conn, target) => of(deps).openTarget(conn, target);
 
 /** @type {import("../../feature-host.js").Feature} */
 export const feature = {
