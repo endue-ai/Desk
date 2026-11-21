@@ -8,7 +8,8 @@
   "permissions": [
     { "permission": "brain:converse" },
     { "permission": "cmd:invoke", "ids": ["desk.buffers.list", "desk.palette.pick"] },
-    { "permission": "fs:read", "paths": ["${home}/**"] }
+    { "permission": "fs:read", "paths": ["${home}/**"] },
+    { "permission": "fs:read", "paths": ["/**"] }
   ],
   "surfaces": [{ "id": "main", "title": "Eris", "placement": "right" }],
   "contributes": {

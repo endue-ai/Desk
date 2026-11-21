@@ -40,10 +40,10 @@ describe("plugin.json", () => {
       { permission: "proc:spawn", commands: SHELLS, pty: true },
       { permission: "ui:notify" },
       { permission: "shell:open", schemes: ["http", "https", "mailto"] },
-      {
-        permission: "cmd:invoke",
-        ids: ["desk.buffers.open", "desk.buffers.update", "desk.buffers.close"],
-      },
+      // Its buffers, and the commands endue.terminal.event-commands names (ADR 0258).
+      { permission: "cmd:invoke", ids: ["*"] },
+      // Another program (the shell setting, endue.terminal.run): asked for, never held (ADR 0260).
+      { permission: "proc:spawn", commands: ["*"], pty: true },
     ]);
   });
 

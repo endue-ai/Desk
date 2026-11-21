@@ -10,7 +10,9 @@
     {
       "permission": "cmd:invoke",
       "ids": ["desk.files.changed", "desk.palette.pick"]
-    }
+    },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "fs:write", "paths": ["/**"] }
   ],
   "surfaces": [
     {

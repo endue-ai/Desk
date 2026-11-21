@@ -13,7 +13,9 @@
       "ids": ["desk.files.changed", "desk.files.open", "desk.buffers.update", "desk.palette.pick"]
     },
     { "permission": "ui:notify" },
-    { "permission": "data:read", "kinds": ["event"], "sources": ["desk.calendar"] }
+    { "permission": "data:read", "kinds": ["event"], "sources": ["desk.calendar"] },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "fs:write", "paths": ["/**"] }
   ],
   "surfaces": [{ "id": "main", "title": "Calendar", "placement": "center" }],
   "contributes": {

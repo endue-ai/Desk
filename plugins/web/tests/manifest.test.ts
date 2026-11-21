@@ -62,9 +62,13 @@ describe("plugin.json", () => {
     );
   });
 
-  it("runs desk.files.open and desk.files.changed and declares no file paths of its own", () => {
+  it("runs desk.files.open and desk.files.changed and may be asked for any file it holds none of", () => {
+    // `/**` says only what may be asked: an install grants none of it, and each folder is still
+    // asked for, or granted when the person opens a file there (ADR 0131, ADR 0260).
     expect(manifest().permissions).toEqual([
       { permission: "cmd:invoke", ids: ["desk.files.open", "desk.files.changed"] },
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "shell:open", schemes: ["http", "https", "mailto"] },
     ]);
   });
 

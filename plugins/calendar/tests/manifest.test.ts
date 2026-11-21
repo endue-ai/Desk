@@ -47,6 +47,9 @@ describe("plugin.json", () => {
       { permission: "ui:notify" },
       // The system calendar's events, as a read-only layer: the desk.calendar connector's only.
       { permission: "data:read", kinds: ["event"], sources: ["desk.calendar"] },
+      // A calendar opened or kept elsewhere: asked for its folder, never held (ADR 0260).
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "fs:write", paths: ["/**"] },
     ]);
   });
 
