@@ -25,6 +25,7 @@ import { panelsOf, registerFeatures } from "./feature-host.js";
 import * as features from "./features/index.js";
 import { addHistory } from "./history.js";
 import { createImporter } from "./importer.js";
+import { createKeychain } from "./keychain.js";
 import { createManager } from "./manage.js";
 import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
@@ -100,6 +101,8 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   const list = options.features ?? Object.values(features);
 
   const changed = () => view.explorer(explorer.rows());
+  // Passwords the desk keeps in the OS keychain (ADR 0311); the plugin never reads one back.
+  const keychain = createKeychain(bridge, () => changed());
   /** @type {ReturnType<typeof createManager>} */
   const manager = createManager({
     bridge,
@@ -107,6 +110,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     pick,
     confirm,
     execute: (conn, sql, opts) => execute(conn, sql, opts),
+    keychain,
     forget: async (connection) => {
       await catalog.drop(connection);
       explorer.reread(connection);
@@ -139,7 +143,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       return done;
     }
   );
-  const explorer = createExplorer(catalog, () => manager.list(), changed);
+  const explorer = createExplorer(catalog, () => manager.list(), changed, keychain.has);
   const consoles = createConsoles({
     commands,
     bridge,
@@ -308,6 +312,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       if (found) clients.reset();
     });
     manager.replace(await loadConnections(bridge));
+    await keychain.load();
     explorer.restore(saved?.expanded ?? []);
     changed();
     consoles.render();

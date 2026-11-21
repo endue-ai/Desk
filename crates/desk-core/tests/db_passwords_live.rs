@@ -115,7 +115,10 @@ fn the_os_keychain_keeps_uses_and_forgets_a_database_password() {
     let params = json!({ "name": name, "host": "127.0.0.1", "port": 5432, "user": "reader",
         "password": "throwaway-password" });
     call(&core, DATABASE, "db.passwords.set", params).unwrap();
-    let kept = os.get(&account).unwrap().expect("the entry in the login Keychain");
+    let kept = os
+        .get(&account)
+        .unwrap()
+        .expect("the entry in the login Keychain");
     assert!(kept.contains("throwaway-password") && kept.contains("127.0.0.1"));
     let listed = call(&core, DATABASE, "db.passwords.list", json!({})).unwrap();
     assert_eq!(listed["passwords"][0]["name"], name.as_str());
@@ -125,6 +128,12 @@ fn the_os_keychain_keeps_uses_and_forgets_a_database_password() {
         let opened = server.open(&core, &name);
         assert!(opened["sessionId"].is_string(), "{opened}");
     }
-    call(&core, DATABASE, "db.passwords.delete", json!({ "name": name })).unwrap();
+    call(
+        &core,
+        DATABASE,
+        "db.passwords.delete",
+        json!({ "name": name }),
+    )
+    .unwrap();
     assert_eq!(os.get(&account).unwrap(), None);
 }

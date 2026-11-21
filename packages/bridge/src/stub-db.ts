@@ -3,7 +3,8 @@
  * server, with the core's rules (specs/bridge/v0/README.md): db:connect checked against the host
  * and port, agents refused, postgresql alone, reserved settings and page limits, 16 sessions a
  * caller, sessions their caller's alone, pages whose `more` is exact and whose last page counts
- * every page, one statement at a time, cancel, COPY, and db.closed when the session ends.
+ * every page, one statement at a time, cancel, COPY, and db.closed when the session ends. A
+ * password kept with db.passwords.* signs in by `passwordRef` (stub-db-passwords.ts, ADR 0311).
  */
 import { StubError, type StubHandlers } from "./adapters";
 import type {
@@ -18,8 +19,11 @@ import type {
   Permission,
 } from "./generated";
 import { covers } from "./stub-covers";
+import { type DbPasswordsServed, stubDbPasswords } from "./stub-db-passwords";
 
-export type DbServed = `db.${"open" | "run" | "fetch" | "copy" | "cancel" | "close" | "list"}`;
+export type DbServed =
+  | `db.${"open" | "run" | "fetch" | "copy" | "cancel" | "close" | "list"}`
+  | DbPasswordsServed;
 
 /** One statement a scripted server answers. */
 export interface StubStatement {
@@ -106,6 +110,7 @@ export function stubDb(
   const sessions = new Map<string, Session>();
   /** Every session's caller, kept after it ends so its db.closed still finds it. */
   const owners = new Map<string, string>();
+  const kept = stubDbPasswords();
   let next = 0;
 
   const mine = (caller: string | undefined, sessionId: string) => {
@@ -196,6 +201,7 @@ export function stubDb(
   };
 
   const handlers: Required<Pick<StubHandlers, DbServed>> = {
+    ...kept.handlers,
     "db.open": (params, caller) => {
       refuseAgents(caller);
       const port = params.port ?? 5432;
@@ -213,10 +219,10 @@ export function stubDb(
           "invalid_value",
           `${me} already holds ${MAX_SESSIONS} database sessions`,
         );
+      const password = kept.password(params, caller, port);
       if (!script) throw new StubError("io_error", `cannot connect to ${params.host}:${port}`);
-      if (script.password !== undefined && params.password === undefined)
-        return { needsPassword: true };
-      if (script.password !== undefined && params.password !== script.password) {
+      if (script.password !== undefined && password === undefined) return { needsPassword: true };
+      if (script.password !== undefined && password !== script.password) {
         const message = `password authentication failed for user "${params.user}"`;
         return {
           error: { ...failure("28P01", message), severity: "FATAL", localSeverity: "FATAL" },

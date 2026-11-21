@@ -62,7 +62,11 @@ fn serve(mut stream: TcpStream, sent: &Sender<String>) {
     let Some(proof) = frame(&mut stream, Some(b'p')) else {
         return;
     };
-    let _ = sent.send(String::from_utf8_lossy(&proof).trim_end_matches('\0').to_owned());
+    let _ = sent.send(
+        String::from_utf8_lossy(&proof)
+            .trim_end_matches('\0')
+            .to_owned(),
+    );
     // AuthenticationOk, BackendKeyData, ReadyForQuery (idle).
     let mut ok = vec![b'R', 0, 0, 0, 8, 0, 0, 0, 0];
     ok.extend([b'K', 0, 0, 0, 12, 0, 0, 0x10, 0, 0, 0, 0, 7]);
@@ -133,9 +137,24 @@ fn a_kept_password_is_listed_by_name_and_no_answer_holds_it() {
         secret,
         json!({ "host": "127.0.0.1", "port": 5432, "user": "reader", "password": PASSWORD })
     );
-    answers.push(keep(&core, DATABASE, "c-1", 5432, "reader", "replaced-password"));
+    answers.push(keep(
+        &core,
+        DATABASE,
+        "c-1",
+        5432,
+        "reader",
+        "replaced-password",
+    ));
     assert_eq!(keychain.secrets().len(), 1, "the same name replaces it");
-    answers.push(call(&core, DATABASE, "db.passwords.delete", json!({ "name": "c-1" })).unwrap());
+    answers.push(
+        call(
+            &core,
+            DATABASE,
+            "db.passwords.delete",
+            json!({ "name": "c-1" }),
+        )
+        .unwrap(),
+    );
     for answer in &answers {
         assert!(!answer.to_string().contains("password\":"), "{answer}");
         assert!(!answer.to_string().contains(PASSWORD), "{answer}");
@@ -152,7 +171,14 @@ fn a_caller_keeps_256_passwords() {
     let params = json!({ "name": "c-256", "host": "127.0.0.1", "user": "reader", "password": "x" });
     let refused = call(&core, DATABASE, "db.passwords.set", params).unwrap_err();
     assert_eq!(refused.code, ErrorCode::InvalidValue);
-    keep(&core, DATABASE, "c-0", 5432, "reader", "a new one for a kept name");
+    keep(
+        &core,
+        DATABASE,
+        "c-0",
+        5432,
+        "reader",
+        "a new one for a kept name",
+    );
 }
 
 #[test]
@@ -161,17 +187,46 @@ fn db_open_signs_in_with_a_kept_password_named_by_password_ref() {
     let core = core_with(&Arc::new(FakeKeychain::new()), &home);
     let server = Md5Server::start();
     grant(&core, DATABASE, scope());
-    let given = open(&core, DATABASE, server.port, json!({ "password": PASSWORD })).unwrap();
+    let given = open(
+        &core,
+        DATABASE,
+        server.port,
+        json!({ "password": PASSWORD }),
+    )
+    .unwrap();
     assert!(given["sessionId"].is_string(), "{given}");
     let expected = server.proof().expect("a proof for the given password");
     keep(&core, DATABASE, "c-1", server.port, "reader", PASSWORD);
-    let kept = open(&core, DATABASE, server.port, json!({ "passwordRef": "c-1" })).unwrap();
+    let kept = open(
+        &core,
+        DATABASE,
+        server.port,
+        json!({ "passwordRef": "c-1" }),
+    )
+    .unwrap();
     assert!(kept["sessionId"].is_string(), "{kept}");
     assert_eq!(server.proof().as_deref(), Some(expected.as_str()));
     assert!(!kept.to_string().contains(PASSWORD));
-    keep(&core, DATABASE, "c-1", server.port, "reader", "another-password");
-    open(&core, DATABASE, server.port, json!({ "passwordRef": "c-1" })).unwrap();
-    assert_ne!(server.proof(), Some(expected), "the keychain's value signs in");
+    keep(
+        &core,
+        DATABASE,
+        "c-1",
+        server.port,
+        "reader",
+        "another-password",
+    );
+    open(
+        &core,
+        DATABASE,
+        server.port,
+        json!({ "passwordRef": "c-1" }),
+    )
+    .unwrap();
+    assert_ne!(
+        server.proof(),
+        Some(expected),
+        "the keychain's value signs in"
+    );
 }
 
 #[test]
@@ -180,7 +235,13 @@ fn the_password_file_answers_before_the_keychain() {
     let core = core_with(&Arc::new(FakeKeychain::new()), &home);
     let server = Md5Server::start();
     grant(&core, DATABASE, scope());
-    open(&core, DATABASE, server.port, json!({ "password": "from-the-file" })).unwrap();
+    open(
+        &core,
+        DATABASE,
+        server.port,
+        json!({ "password": "from-the-file" }),
+    )
+    .unwrap();
     let from_file = server.proof().unwrap();
     let pgpass = home.join(".pgpass");
     fs::write(
@@ -194,7 +255,13 @@ fn the_password_file_answers_before_the_keychain() {
         fs::set_permissions(&pgpass, fs::Permissions::from_mode(0o600)).unwrap();
     }
     keep(&core, DATABASE, "c-1", server.port, "reader", PASSWORD);
-    open(&core, DATABASE, server.port, json!({ "passwordRef": "c-1" })).unwrap();
+    open(
+        &core,
+        DATABASE,
+        server.port,
+        json!({ "passwordRef": "c-1" }),
+    )
+    .unwrap();
     assert_eq!(server.proof(), Some(from_file));
 }
 
@@ -219,12 +286,29 @@ fn a_password_kept_for_another_server_user_or_plugin_is_not_used() {
     assert_eq!(user.unwrap(), needs, "another user");
     let stranger = "example.other";
     grant(&core, stranger, scope());
-    let theirs = open(&core, stranger, kept_for.port, json!({ "passwordRef": "c-1" }));
+    let theirs = open(
+        &core,
+        stranger,
+        kept_for.port,
+        json!({ "passwordRef": "c-1" }),
+    );
     assert_eq!(theirs.unwrap(), needs, "another plugin's name");
     assert_eq!(kept_for.proof(), None);
     assert_eq!(listed(&core, stranger), json!({ "passwords": [] }));
-    call(&core, stranger, "db.passwords.delete", json!({ "name": "c-1" })).unwrap();
-    assert_eq!(listed(&core, DATABASE)["passwords"].as_array().unwrap().len(), 1);
+    call(
+        &core,
+        stranger,
+        "db.passwords.delete",
+        json!({ "name": "c-1" }),
+    )
+    .unwrap();
+    assert_eq!(
+        listed(&core, DATABASE)["passwords"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
 }
 
 #[test]
@@ -233,8 +317,20 @@ fn forgetting_it_and_removing_the_plugin_delete_the_keychain_entry() {
     let keychain = Arc::new(FakeKeychain::new());
     let core = core_with(&keychain, &home);
     keep(&core, DATABASE, "c-1", 5432, "reader", PASSWORD);
-    call(&core, DATABASE, "db.passwords.delete", json!({ "name": "c-1" })).unwrap();
-    call(&core, DATABASE, "db.passwords.delete", json!({ "name": "c-1" })).unwrap();
+    call(
+        &core,
+        DATABASE,
+        "db.passwords.delete",
+        json!({ "name": "c-1" }),
+    )
+    .unwrap();
+    call(
+        &core,
+        DATABASE,
+        "db.passwords.delete",
+        json!({ "name": "c-1" }),
+    )
+    .unwrap();
     assert!(keychain.secrets().is_empty());
     assert_eq!(listed(&core, DATABASE), json!({ "passwords": [] }));
 
@@ -274,13 +370,21 @@ fn without_a_keychain_keeping_is_unsupported_and_nothing_is_kept() {
     let set = json!({ "name": "c-1", "host": "127.0.0.1", "user": "reader", "password": PASSWORD });
     let server = Md5Server::start();
     let bare = Core::new(roots(&home("db-passwords")));
-    let unavailable = core_with(&Arc::new(FakeKeychain::unavailable()), &home("db-passwords"));
+    let unavailable = core_with(
+        &Arc::new(FakeKeychain::unavailable()),
+        &home("db-passwords"),
+    );
     for core in [bare, unavailable] {
         let refused = call(&core, DATABASE, "db.passwords.set", set.clone()).unwrap_err();
         assert_eq!(refused.code, ErrorCode::Unsupported, "{refused:?}");
         assert_eq!(listed(&core, DATABASE), json!({ "passwords": [] }));
         grant(&core, DATABASE, scope());
-        let opened = open(&core, DATABASE, server.port, json!({ "passwordRef": "c-1" }));
+        let opened = open(
+            &core,
+            DATABASE,
+            server.port,
+            json!({ "passwordRef": "c-1" }),
+        );
         assert_eq!(opened.unwrap(), json!({ "needsPassword": true }));
     }
 }
@@ -289,20 +393,21 @@ fn without_a_keychain_keeping_is_unsupported_and_nothing_is_kept() {
 fn the_index_survives_a_restart_and_holds_no_password() {
     let home = home("db-passwords");
     let keychain = Arc::new(FakeKeychain::new());
-    keep(
-        &core_with(&keychain, &home),
-        DATABASE,
-        "c-1",
-        5432,
-        "reader",
-        PASSWORD,
-    );
+    let server = Md5Server::start();
+    let first = core_with(&keychain, &home);
+    keep(&first, DATABASE, "c-1", server.port, "reader", PASSWORD);
+    drop(first);
     let index = fs::read_to_string(home.join("db-passwords.json")).unwrap();
-    assert!(index.contains("c-1") && !index.contains(PASSWORD), "{index}");
+    assert!(
+        index.contains("c-1") && !index.contains(PASSWORD),
+        "{index}"
+    );
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mode = fs::metadata(home.join("db-passwords.json")).unwrap().permissions();
+        let mode = fs::metadata(home.join("db-passwords.json"))
+            .unwrap()
+            .permissions();
         assert_eq!(mode.mode() & 0o777, 0o600);
     }
     let again = core_with(&keychain, &home);
@@ -310,9 +415,13 @@ fn the_index_survives_a_restart_and_holds_no_password() {
 
     // An entry gone from the keychain leaves the index the next time db.open misses it.
     keychain.delete("db/example.database/c-1").unwrap();
-    let server = Md5Server::start();
     grant(&again, DATABASE, scope());
-    let opened = open(&again, DATABASE, server.port, json!({ "passwordRef": "c-1" }));
+    let opened = open(
+        &again,
+        DATABASE,
+        server.port,
+        json!({ "passwordRef": "c-1" }),
+    );
     assert_eq!(opened.unwrap(), json!({ "needsPassword": true }));
     assert_eq!(listed(&again, DATABASE), json!({ "passwords": [] }));
 }

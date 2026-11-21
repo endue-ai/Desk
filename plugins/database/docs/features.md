@@ -26,11 +26,17 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   `sqlite:`), and its URI copied back without the password.
 - A connection has a group and a colour, an environment tag (production draws a band at the top of the page)
   and can be read-only.
-- Passwords are never kept: `~/.pgpass` and `~/.my.cnf` work, else the person types one for the session.
+- Passwords are never kept with a connection: `~/.pgpass` and `~/.my.cnf` work, else the person types one for
+  the session. A PostgreSQL connection can have the OS keychain remember it (ADR 0311): the choice in the form
+  and in the password prompt keeps a typed password once it works, or a URI's on Save, through the desk, which
+  never hands it back. The connection's line says `keychain`; Database: forget the remembered password,
+  turning the choice off, changing the server or user, or removing the connection forgets it. Disconnect
+  leaves it. A session the desk opens names it by `passwordRef` (`keychain.js`).
 - A SQLite file (`*.sqlite`, `*.sqlite3`, `*.db3`) opened on the desk or dropped on the page opens as a
   connection, added the first time.
 
-Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, `engines/`.
+Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.js`, `run.js`, `engines/`,
+`features/keychain/`.
 
 ## Explorer
 

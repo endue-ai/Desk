@@ -29,7 +29,8 @@
     { "permission": "proc:spawn", "commands": ["*"] },
     { "permission": "fs:write", "paths": ["/**"] },
     { "permission": "fs:read", "paths": ["${home}/.endue/database/**"] },
-    { "permission": "fs:write", "paths": ["${home}/.endue/database/**"] }
+    { "permission": "fs:write", "paths": ["${home}/.endue/database/**"] },
+    { "permission": "db:connect", "hosts": ["*"] }
   ],
   "surfaces": [
     {
@@ -132,6 +133,11 @@
         "id": "endue.database.disconnect",
         "title": "Database: disconnect",
         "keywords": ["forget password", "sign out"]
+      },
+      {
+        "id": "endue.database.forget-password",
+        "title": "Database: forget the remembered password",
+        "keywords": ["keychain", "password", "forget", "disconnect"]
       },
       {
         "id": "endue.database.copy-uri",
