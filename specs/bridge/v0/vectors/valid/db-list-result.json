@@ -1,0 +1,19 @@
+{
+  "target": "DbListResult",
+  "description": "one session, with a result that has pages left",
+  "instance": {
+    "sessions": [
+      {
+        "sessionId": "d-1",
+        "host": "db.example.test",
+        "port": 5432,
+        "database": "shop",
+        "user": "reader",
+        "pid": 4242,
+        "running": false,
+        "more": true,
+        "transaction": "idle"
+      }
+    ]
+  }
+}

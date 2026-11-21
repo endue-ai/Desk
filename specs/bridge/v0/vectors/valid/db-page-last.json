@@ -1,0 +1,11 @@
+{
+  "target": "DbFetchResult",
+  "description": "a last page: the tag and row count over all pages and the transaction state",
+  "instance": {
+    "rows": [["1001"]],
+    "more": false,
+    "tag": "SELECT 1001",
+    "rowCount": 1001,
+    "transaction": "open"
+  }
+}

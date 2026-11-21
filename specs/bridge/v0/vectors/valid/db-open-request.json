@@ -1,0 +1,30 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.open with verify-full, an authority, settings and read-only",
+  "instance": {
+    "id": 21,
+    "method": "db.open",
+    "params": {
+      "engine": "postgresql",
+      "host": "db.example.test",
+      "port": 5432,
+      "database": "shop",
+      "user": "reader",
+      "password": "fixture-password",
+      "tls": {
+        "mode": "verify-full",
+        "ca": "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"
+      },
+      "settings": {
+        "TimeZone": "UTC",
+        "statement_timeout": "30s"
+      },
+      "readOnly": true,
+      "timeoutMs": 10000,
+      "scope": {
+        "permission": "db:connect",
+        "hosts": ["db.example.test:5432"]
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "target": "BridgeRequest",
+  "description": "the TLS mode is one of the five",
+  "instance": {
+    "id": 21,
+    "method": "db.open",
+    "params": {
+      "engine": "postgresql",
+      "host": "db.example.test",
+      "database": "shop",
+      "user": "reader",
+      "tls": {
+        "mode": "allow"
+      },
+      "scope": {
+        "permission": "db:connect",
+        "hosts": ["db.example.test:5432"]
+      }
+    }
+  }
+}

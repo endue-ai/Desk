@@ -1,0 +1,18 @@
+{
+  "target": "DbCopyResult",
+  "description": "a COPY TO STDOUT page with its bytes",
+  "instance": {
+    "rows": [],
+    "more": false,
+    "copy": {
+      "direction": "out",
+      "format": "text",
+      "columns": 2
+    },
+    "data": "1\tada\n",
+    "encoding": "utf8",
+    "tag": "COPY 1",
+    "rowCount": 1,
+    "transaction": "idle"
+  }
+}

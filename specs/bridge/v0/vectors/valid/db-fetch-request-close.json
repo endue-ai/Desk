@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.fetch closing the result without reading on",
+  "instance": {
+    "id": 21,
+    "method": "db.fetch",
+    "params": {
+      "sessionId": "d-1",
+      "close": true
+    }
+  }
+}

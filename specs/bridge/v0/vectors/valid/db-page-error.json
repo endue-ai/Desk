@@ -1,0 +1,32 @@
+{
+  "target": "DbRunResult",
+  "description": "a statement that ended with the server's error, every field by name",
+  "instance": {
+    "rows": [],
+    "more": false,
+    "transaction": "failed",
+    "error": {
+      "severity": "ERROR",
+      "localSeverity": "ERROR",
+      "code": "23514",
+      "message": "new row for relation \"orders\" violates check constraint \"orders_total_positive\"",
+      "detail": "Failing row contains (7, -1).",
+      "hint": "Totals are positive.",
+      "position": 15,
+      "internalPosition": 3,
+      "internalQuery": "SELECT 1",
+      "where": "SQL statement \"INSERT INTO orders VALUES (7, -1)\"",
+      "schema": "public",
+      "table": "orders",
+      "column": "total",
+      "dataType": "integer",
+      "constraint": "orders_total_positive",
+      "file": "execMain.c",
+      "line": "2001",
+      "routine": "ExecConstraints",
+      "other": {
+        "X": "a field a later server adds"
+      }
+    }
+  }
+}
