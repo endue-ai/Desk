@@ -1,6 +1,7 @@
 // Bundles the database plugin's SQL editor component, CodeMirror 6, from the npm packages the root
-// package.json pins to exact versions into one ES module, plugins/database/ui/vendor/editor-component.mjs,
-// with every bundled package's licence and a VERSIONS file (ADR 0282). CodeMirror ships as packages
+// package.json pins to exact versions into one ES module,
+// plugins/database/ui/vendor/editor/editor-component.mjs, with every bundled package's licence and a
+// VERSIONS file (ADR 0282); that folder is the editor's alone. CodeMirror ships as packages
 // that import each other by bare name, which a plugin page cannot resolve, so esbuild (pinned as well)
 // joins them; its output is the same for the same versions. `node scripts/vendor-codemirror.mjs`
 // writes the folder; its test checks the committed copy matches, as vendor-xterm's does.
@@ -10,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { buildSync, version as esbuildVersion } from "esbuild";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-export const VENDOR = join(ROOT, "plugins/database/ui/vendor");
+export const VENDOR = join(ROOT, "plugins/database/ui/vendor/editor");
 export const BUNDLE = "editor-component.mjs";
 
 /** The packages whose whole public API the bundle exports; the rest come in as their imports. */
@@ -87,7 +88,7 @@ export function versions() {
   );
 }
 
-/** What ui/vendor must hold: file name -> text. */
+/** What ui/vendor/editor must hold: file name -> text. */
 export function expected() {
   const { text, packages } = bundle();
   const names = [...packages.keys()].sort((a, b) => a.localeCompare(b));

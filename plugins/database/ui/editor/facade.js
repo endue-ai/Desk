@@ -4,11 +4,11 @@
 // editor's text, its selection the main selection, and focusing the editor tells its `focusin`
 // listeners. A text is turned into a string once per version of it.
 
-import { EditorSelection } from "../vendor/editor-component.mjs";
+import { EditorSelection } from "../vendor/editor/editor-component.mjs";
 
 /**
- * @typedef {import("../vendor/editor-component.mjs").EditorView} View
- * @typedef {import("../vendor/editor-component.mjs").Text} Text
+ * @typedef {import("../vendor/editor/editor-component.mjs").EditorView} View
+ * @typedef {import("../vendor/editor/editor-component.mjs").Text} Text
  */
 
 /** @type {WeakMap<Text, string>} */

@@ -42,7 +42,7 @@ smallest reproducible copy; the desk's API gains nothing it would have to keep.
 * The root `package.json` pins `@codemirror/{state,view,commands,search,autocomplete,language}`,
   every package they bring in and `esbuild` to exact versions (pnpm `overrides` hold the two shared
   ones). `node scripts/vendor-codemirror.mjs` bundles them into
-  `plugins/database/ui/vendor/editor-component.mjs` with `LICENSE` (each package's) and `VERSIONS`;
+  `plugins/database/ui/vendor/editor/editor-component.mjs` with `LICENSE` (each package's) and `VERSIONS`;
   `scripts/vendor-codemirror.test.mjs` fails `just test-unit` when the committed copy differs, a
   package is not pinned, or the bundle imports or fetches anything. Updating is: bump the pins, run
   the script, commit.

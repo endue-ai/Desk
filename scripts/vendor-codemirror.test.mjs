@@ -7,7 +7,7 @@ import { BUNDLE, ENTRY_PACKAGES, expected, ROOT, VENDOR, versions } from "./vend
 describe("vendor-codemirror", () => {
   const files = expected();
 
-  it("the committed bundle in plugins/database/ui/vendor matches the pinned packages", () => {
+  it("the committed bundle in plugins/database/ui/vendor/editor matches the pinned packages", () => {
     assert.deepEqual(readdirSync(VENDOR).sort(), Object.keys(files).sort());
     for (const [name, text] of Object.entries(files)) {
       assert.equal(

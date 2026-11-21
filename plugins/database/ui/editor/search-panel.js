@@ -15,9 +15,9 @@ import {
   SearchQuery,
   search,
   setSearchQuery,
-} from "../vendor/editor-component.mjs";
+} from "../vendor/editor/editor-component.mjs";
 
-/** @typedef {import("../vendor/editor-component.mjs").EditorView} View */
+/** @typedef {import("../vendor/editor/editor-component.mjs").EditorView} View */
 
 /** Matches counted for the bar, at most, and how long after a change. */
 const COUNTED = 10000;
@@ -172,7 +172,7 @@ function createPanel(view) {
     dom,
     top: true,
     mount: () => find.select(),
-    /** @param {import("../vendor/editor-component.mjs").ViewUpdate} update */
+    /** @param {import("../vendor/editor/editor-component.mjs").ViewUpdate} update */
     update(update) {
       for (const tr of update.transactions)
         for (const effect of tr.effects)

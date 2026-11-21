@@ -37,11 +37,11 @@ import {
   standardKeymap,
   toggleBlockComment,
   toggleComment,
-} from "../vendor/editor-component.mjs";
+} from "../vendor/editor/editor-component.mjs";
 import { toMatching } from "./lexing.js";
 
 /**
- * @typedef {import("../vendor/editor-component.mjs").EditorView} View
+ * @typedef {import("../vendor/editor/editor-component.mjs").EditorView} View
  * @typedef {(view: View) => boolean} Command
  */
 

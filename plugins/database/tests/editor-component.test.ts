@@ -14,7 +14,7 @@ import {
   EditorView,
   foldCode,
   foldedRanges,
-} from "../ui/vendor/editor-component.mjs";
+} from "../ui/vendor/editor/editor-component.mjs";
 import { createEditor } from "../ui/view-editor.js";
 
 beforeAll(() => {

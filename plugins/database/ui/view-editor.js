@@ -26,12 +26,12 @@ import {
   indentUnit,
   placeholder,
   rectangularSelection,
-} from "./vendor/editor-component.mjs";
+} from "./vendor/editor/editor-component.mjs";
 
 /**
  * @typedef {import("./sql/lexer.js").Dialect} Dialect
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
- * @typedef {import("./vendor/editor-component.mjs").EditorState} State
+ * @typedef {import("./vendor/editor/editor-component.mjs").EditorState} State
  */
 
 /** How many consoles keep their editor state at once; the oldest goes first. */

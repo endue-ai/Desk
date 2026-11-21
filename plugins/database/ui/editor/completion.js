@@ -4,20 +4,20 @@
 // statement does. The list opens by itself after `.` or two letters of a name, or on Ctrl+Space;
 // asked for and empty, it says so. It keeps the controller's order and filtering.
 
-import { autocompletion } from "../vendor/editor-component.mjs";
+import { autocompletion } from "../vendor/editor/editor-component.mjs";
 import { lexedField } from "./lexing.js";
 
 /**
  * @typedef {import("./complete.js").Completion} Completion
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
- * @typedef {import("../vendor/editor-component.mjs").CompletionContext} Context
+ * @typedef {import("../vendor/editor/editor-component.mjs").CompletionContext} Context
  */
 
 const WORD = /[A-Za-z0-9_$\u0080-￿]/u;
 
 /** What the controller gets: the statement at `at`, and `at` inside it. */
 export function statementWindow(
-  /** @type {import("../vendor/editor-component.mjs").EditorState} */ state,
+  /** @type {import("../vendor/editor/editor-component.mjs").EditorState} */ state,
   /** @type {number} */ at,
 ) {
   const lexed = state.field(lexedField);

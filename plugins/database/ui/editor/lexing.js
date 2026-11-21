@@ -13,7 +13,7 @@ import {
   StateEffect,
   StateField,
   ViewPlugin,
-} from "../vendor/editor-component.mjs";
+} from "../vendor/editor/editor-component.mjs";
 import { runsOf } from "./highlight.js";
 import { foldsIn, pairAt } from "./pairs.js";
 import { Lexed } from "./tokens.js";
@@ -79,7 +79,7 @@ function idle(/** @type {Window | null} */ win, /** @type {() => void} */ work) 
 
 const highlighter = ViewPlugin.fromClass(
   class {
-    /** @param {import("../vendor/editor-component.mjs").EditorView} view */
+    /** @param {import("../vendor/editor/editor-component.mjs").EditorView} view */
     constructor(view) {
       this.view = view;
       this.scheduled = false;
@@ -87,7 +87,7 @@ const highlighter = ViewPlugin.fromClass(
       this.decorations = this.build(view);
     }
 
-    /** @param {import("../vendor/editor-component.mjs").ViewUpdate} update */
+    /** @param {import("../vendor/editor/editor-component.mjs").ViewUpdate} update */
     update(update) {
       const again = update.transactions.some((tr) => tr.effects.some((e) => e.is(relexed)));
       const dialect = update.startState.facet(dialectFacet) !== update.state.facet(dialectFacet);
@@ -95,7 +95,7 @@ const highlighter = ViewPlugin.fromClass(
         this.decorations = this.build(update.view);
     }
 
-    build(/** @type {import("../vendor/editor-component.mjs").EditorView} */ view) {
+    build(/** @type {import("../vendor/editor/editor-component.mjs").EditorView} */ view) {
       const lexed = view.state.field(lexedField);
       const builder = new RangeSetBuilder();
       this.waiting = false;
@@ -139,18 +139,18 @@ const unmatched = Decoration.mark({ class: "cm-nonmatchingBracket" });
 /** The bracket or quote at each caret, with its partner. */
 const matcher = ViewPlugin.fromClass(
   class {
-    /** @param {import("../vendor/editor-component.mjs").EditorView} view */
+    /** @param {import("../vendor/editor/editor-component.mjs").EditorView} view */
     constructor(view) {
       this.decorations = this.build(view.state);
     }
 
-    /** @param {import("../vendor/editor-component.mjs").ViewUpdate} update */
+    /** @param {import("../vendor/editor/editor-component.mjs").ViewUpdate} update */
     update(update) {
       if (update.docChanged || update.selectionSet || update.focusChanged)
         this.decorations = this.build(update.state);
     }
 
-    build(/** @type {import("../vendor/editor-component.mjs").EditorState} */ state) {
+    build(/** @type {import("../vendor/editor/editor-component.mjs").EditorState} */ state) {
       const lexed = state.field(lexedField);
       /** @type {{ from: number, to: number, value: unknown }[]} */
       const found = [];
@@ -178,7 +178,7 @@ const matcher = ViewPlugin.fromClass(
 
 /** Move each caret to the partner of the bracket or quote it touches. */
 export function toMatching(
-  /** @type {import("../vendor/editor-component.mjs").EditorView} */ view,
+  /** @type {import("../vendor/editor/editor-component.mjs").EditorView} */ view,
 ) {
   const lexed = view.state.field(lexedField);
   let moved = false;
