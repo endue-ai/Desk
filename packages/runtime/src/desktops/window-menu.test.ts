@@ -310,10 +310,10 @@ describe("a window's menu", () => {
     expect(d.store.get().popover).toBe("window-menu");
     // Its right edge at the tool's, its top under the tool.
     expect([menu.style.left, menu.style.top]).toEqual([`${1024 - MENU.w}px`, `${230 + 6}px`]);
-    // Kept inside the app near its left and bottom edges.
+    // Kept inside the app near its left edge, and above the tool near its bottom.
     d.bar("window-2", 10, 880).tool.click();
     const low = d.menu() as HTMLElement;
-    expect([low.style.left, low.style.top]).toEqual(["8px", `${900 - MENU.h - 8}px`]);
+    expect([low.style.left, low.style.top]).toEqual(["8px", `${880 - 6 - MENU.h}px`]);
   });
 
   it("a right-click on the title bar opens the same menu", async () => {
