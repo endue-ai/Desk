@@ -65,7 +65,9 @@ connection, and the explorer's reads would wait behind a person's long statement
 * **Idle.** A session no run used for `session-idle-minutes` (30, 0 keeps them) closes, never one in a
   transaction. No keepalive statement is sent: the core's TCP keepalive keeps the connection alive.
 * **Cancel.** It stops the statement of the buffer on screen and the plugin's own short reads; other
-  consoles and agents' runs go on.
+  consoles and agents' runs go on. A run's own signal (PG-81) stops that run alone: `db.cancel` on its
+  session, a kept session left open with its transaction (failed after a cancel inside one), a short
+  one closed as its run ends. Neither closes a kept session.
 * A changed statement timeout reaches a kept session as `SET statement_timeout` before its next run
   outside a transaction.
 
@@ -82,5 +84,6 @@ connection, and the explorer's reads would wait behind a person's long statement
 ## More Information
 
 Issue #442 (PG-02, epic #438); the core's sessions are ADR 0281, consoles ADR 0286. Modules:
-`plugins/database/ui/session/` and `ui/engines/pg-session.js`, `ui/engines/pg-script.js`. No section of
+`plugins/database/ui/session/` and `ui/engines/pg-session.js`, `ui/engines/pg-script.js`; the feature
+notes are in `plugins/database/docs/sessions.md`. No section of
 `docs/ko/desk-structure.md` changes: the plugin's use of `db.*` stays inside ADR 0281's contract.

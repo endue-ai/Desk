@@ -120,16 +120,8 @@ Modules: `features/objects/`.
   the other clients SIGINT (mysql cancels the query on the server, sqlite3 interrupts it), then SIGKILL a
   second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server
   (`statement_timeout`).
-- On PostgreSQL each console and each table view keeps a session of its own, opened at its first run, so a
-  SET, a temporary table, a prepared statement and a transaction last from one run to the next (ADR 0320).
-  The header says its state in words and a dot: not connected, idle, running, in a transaction, in a failed
-  transaction (ROLLBACK needed), or lost. In one transaction and a dry run inside an open transaction use a
-  savepoint, and a failed one refuses them. Closing the console, Disconnect, a change to how the connection
-  signs in and removing it close the session, asked first while a transaction is open. A session the server
-  ended is said with its reason; the next run opens a new one, says that SET and temporary state are gone,
-  and runs nothing again. Agents, the explorer, counts, features and grid edits use short sessions; Cancel
-  stops only the buffer on screen. `sessions-per-connection` (8) and `session-idle-minutes` (30, never in a
-  transaction) bound them; at the limit a table view's idle session goes first.
+- On PostgreSQL each console and each table view keeps a session of its own, so what one run sets the next
+  sees (ADR 0320): [`sessions.md`](sessions.md).
 - History of what ran on each connection, searched from the palette (never results, never a statement that
   carries a password), and starred queries.
 - SQL text dropped on the page goes into the console on screen, or the console of a connection the person picks.
@@ -142,8 +134,8 @@ Modules: `features/objects/`.
   part; a progress line, and the first error stops it at its line in the file.
 
 Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`, `console-files.js`,
-`console-run.js`, `features/consoles/`, `execute.js`, `session/` (the kept sessions), `engines/pg-session.js`,
-`engines/pg-script.js`, `history.js`, `tools.js`, `sql/`, `editor/`, `view-editor.js`.
+`console-run.js`, `features/consoles/`, `execute.js`, `engines/pg-session.js`, `history.js`, `tools.js`, `sql/`,
+`editor/`, `view-editor.js`.
 
 ## Format SQL and SQL problems
 
