@@ -235,6 +235,13 @@ describe("the table form", () => {
       "COMMIT",
       '-- CONCURRENTLY: runs after the transaction, on its own, while writes go on; if it fails, an invalid index is left to drop.\nCREATE INDEX CONCURRENTLY "people_joined" ON "public"."people" USING "btree" ("joined")',
     ]);
+    // BEGIN ... COMMIT on one session; the CONCURRENTLY index on a session of its own after it.
+    const own = m
+      .sessions()
+      .slice(sessions)
+      .map((s) => s.filter((x) => !x.startsWith("SELECT")));
+    expect(own.find((s) => s.includes("BEGIN"))).toEqual(ran.slice(0, 4));
+    expect(own.find((s) => s.some((x) => x.includes("CONCURRENTLY")))).not.toContain("BEGIN");
     expect(m.view.said).toContain("Changed public.people.");
     // Read again: the server's design (the fixture's, as it was) replaces the edits.
     expect(form(m).tableDesign.run).toMatchObject({

@@ -2,10 +2,11 @@ import { expect, type Frame, type Page, test } from "@playwright/test";
 
 // The table form of endue.database (plugins/database/ui/features/table-design/) on the fixture's
 // scripted PostgreSQL connection `fixture-pg` (the shop, its designs answered by
-// table-design-fixture.ts): opened from a table's menu (`o`), inside the page at two sizes, the
-// script written as a name is typed and a column added, the dropped column's mark, run in one
-// transaction, and a CONCURRENTLY index left out of a dry run. A desk command stands in for the
-// palette: it records each title and answers a table's menu with the form.
+// table-design-fixture.ts): a new table from a schema's menu (`o`) and its CREATE growing as columns
+// are added, a table's form from its menu inside the page at two sizes, the script written as a name
+// is typed and a column added, the dropped column's mark, run in one transaction, and a CONCURRENTLY
+// index left out of a dry run. A desk command stands in for the palette: it records each title and
+// answers a schema's menu and a table's with the form.
 const SURFACE = '[data-surface="endue.database"]';
 const FIRST = { width: 400, height: 263 };
 const LARGE = { width: 898, height: 558 };
@@ -33,6 +34,7 @@ async function open(page: Page) {
       run: (args) => {
         const title = String((args as { title?: string }).title);
         window.__desk.commands.push(title);
+        if (title.startsWith("Database: schema")) return "create-table";
         return title.startsWith("Database: table") ? "change-table" : "";
       },
     });
@@ -170,4 +172,35 @@ test("a dropped column is marked, and a CONCURRENTLY index is left out of a dry 
   await expect(frame.locator('#panel-box [data-part="result"]')).toHaveText(
     "The dry run went through and rolled back: 1 step would apply. The CONCURRENTLY indexes are not part of a dry run.",
   );
+});
+
+test("a new table from a schema's menu, its CREATE growing as columns are added", async ({
+  page,
+}) => {
+  const frame = await open(page);
+  await reach(page, frame, "fixture-pg", "public");
+  await page.keyboard.press("o");
+  await expect(frame.locator("#panel-box .td-title")).toHaveText(
+    "New table in public on fixture-pg · PostgreSQL 17",
+  );
+  expect(await page.evaluate(() => window.__desk.commands.at(-1))).toBe("Database: schema public");
+  await expect(frame.locator('#panel-box [data-part="problems"]')).toHaveText(
+    "The table has no name.",
+  );
+  await key(frame, "table:name").fill("events");
+  await expect(frame.locator('#panel-box [data-part="problems"]')).toHaveCount(0);
+  await key(frame, "cols:add").click();
+  await frame.locator('#panel-box [data-key^="col:n"][data-key$=":name"]').fill("id");
+  await frame.locator('#panel-box [data-key^="col:n"][data-key$=":type"]').fill("bigint");
+  await frame.locator('#panel-box [data-key^="col:n"][data-key$=":pk"]').check();
+  await expect(script(frame)).toHaveText(
+    'BEGIN;\n\nCREATE TABLE "public"."events" (\n    "id" bigint NOT NULL,\n    PRIMARY KEY ("id")\n);\n\nCOMMIT;\n',
+  );
+  await key(frame, "cols:add").click();
+  await frame.locator('#panel-box [data-key^="col:n"][data-key$=":name"]').fill("kind");
+  await frame.locator('#panel-box [data-key^="col:n"][data-key$=":type"]').fill("text");
+  await expect(script(frame)).toContainText('    "id" bigint NOT NULL,\n    "kind" text,\n');
+  await expect(
+    frame.locator("#panel-box").getByRole("button", { name: "Run", exact: true }),
+  ).toBeEnabled();
 });

@@ -285,6 +285,12 @@ describe("the table form's ALTER script", () => {
       'DROP INDEX "public"."people_name"',
       'CREATE INDEX "people_name" ON "public"."people" USING "hash" ("name")',
     ]);
+    // Columns keep their order: a reorder is said, not rebuilt.
+    const moved: Design = { ...people.was, columns: [...people.was.columns].reverse() };
+    expect(scriptOf(people.was, moved, facts)).toMatchObject({
+      inside: [],
+      problems: ["PostgreSQL cannot move a column: an existing table's columns keep their order."],
+    });
     const unnamed = setPart(people.was, "indexes", "k16411", { name: "" });
     expect(scriptOf(people.was, unnamed, facts).problems).toEqual([
       "Index people_name keeps a name: type one.",

@@ -96,6 +96,10 @@ kinds in `schema/pg/`), `view-tree.js`.
 
 Modules: `features/objects/`.
 
+## Table design
+
+A PostgreSQL table created and changed in a form that shows its script first: [`table-design.md`](table-design.md).
+
 ## Console
 
 - As many consoles per connection as the person opens (Database: new console), each a desk buffer that Mod+B
@@ -388,5 +392,7 @@ Modules: `features/backup/`.
   the call and its arguments; with `run` it runs it as above, a write after the person's yes, and answers
   the result's first 50 rows and the notices.
 - `.backup` and `.restore` (irreversible) only fill their form: nothing runs until the person submits it.
+- `.create-table` and `.change-table` open and fill the table form and answer its script; its run commands are
+  not agents' tools, so the person runs it (ADR 0324).
 
 Modules: `agent.js`.

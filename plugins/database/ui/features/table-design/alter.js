@@ -112,6 +112,11 @@ export function alterSteps(was, now, facts) {
   const columns = dropsAndRenames(table, was, now);
   steps.push(...columns.steps);
   held.push(...columns.held);
+  // An existing table's columns keep their order: PostgreSQL adds at the end and moves none.
+  const kept = (/** @type {Design} */ d, /** @type {Design} */ other) =>
+    d.columns.flatMap((c) => (byId(other.columns, c.id) ? [c.id] : [])).join(" ");
+  if (kept(now, was) !== kept(was, now))
+    held.push("PostgreSQL cannot move a column: an existing table's columns keep their order.");
   for (const [, parts] of [...constraints, ["other", others]])
     for (const [w, n] of parts.renamed) {
       if (n.name.trim() === "") held.push(`Constraint ${w.name} keeps a name: type one.`);
