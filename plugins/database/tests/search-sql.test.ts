@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { familyOf, holds, searchedColumns } from "../ui/features/search/columns.js";
 import { defaults, optionsOf } from "../ui/features/search/model.js";
-import { estimateOf, estimateText, tableTest } from "../ui/features/search/plan.js";
+import { candidatesOf, estimateOf, estimateText, tableTest } from "../ui/features/search/plan.js";
 import {
   conditionOf,
   keyOf,
@@ -304,6 +304,27 @@ describe("the options and the estimate", () => {
       test("sales", "audit_2026"),
       test("public", "audit_2026"),
     ]).toEqual([true, true, false]);
+  });
+
+  it("reads tables, partitioned ones and materialized views from the catalog", async () => {
+    const objects = [
+      { name: "log", kind: "table", detail: "partitioned · RLS on", rows: 10 },
+      { name: "plain", kind: "table", detail: "", rows: null },
+      { name: "totals", kind: "materialized view", detail: "", rows: 3 },
+      { name: "recent", kind: "view", detail: "", rows: null },
+    ];
+    const catalog = { objects: async () => objects } as never;
+    const found = await candidatesOf(
+      catalog,
+      {} as never,
+      { ...defaults(), schemas: ["app"] },
+      true,
+    );
+    expect(found.map((c) => [c.name, c.partitioned])).toEqual([
+      ["log", true],
+      ["plain", false],
+      ["totals", false],
+    ]);
   });
 
   it("says what it reads and what it leaves out past the size limit", () => {

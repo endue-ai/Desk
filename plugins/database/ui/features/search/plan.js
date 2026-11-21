@@ -68,7 +68,7 @@ export async function candidatesOf(catalog, conn, options, quiet = false) {
           name: o.name,
           kind: o.kind,
           rows: o.rows,
-          partitioned: o.detail === "partitioned",
+          partitioned: (o.detail ?? "").split(" · ").includes("partitioned"),
         });
   }
   return out.sort((a, b) => a.schema.localeCompare(b.schema) || a.name.localeCompare(b.name));
