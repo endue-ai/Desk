@@ -26,7 +26,11 @@ pub fn blink_command(name: &str) -> Option<&'static str> {
 impl CompositorWindow {
     /// Run `command` (Blink's name) where the keys are: whether something ran it.
     pub fn page_edit_command(&mut self, command: &str) -> bool {
-        let surface = self.router.focused().filter(|s| *s != PAGE).map(str::to_owned);
+        let surface = self
+            .router
+            .focused()
+            .filter(|s| *s != PAGE)
+            .map(str::to_owned);
         let browser: Option<Browser> = surface
             .and_then(|surface| self.host.browser(&surface))
             .or_else(|| self.browser.clone());

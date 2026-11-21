@@ -127,7 +127,9 @@ impl BrainChoice {
             .into_iter()
             .find(|name| self.brains.has(*name))?;
         let conversation = match name {
-            BrainName::Claude if !claude_model.is_empty() && self.brains.claude_models.is_some() => {
+            BrainName::Claude
+                if !claude_model.is_empty() && self.brains.claude_models.is_some() =>
+            {
                 self.claude_with(claude_model)?
             }
             _ => self.conversation(name, model)?,

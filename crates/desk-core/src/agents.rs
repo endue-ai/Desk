@@ -8,9 +8,9 @@
 
 use desk_bridge::{BridgeError, GrantDuration, Permission, RefusalReason};
 
+use crate::agent_tools::ERIS;
 use crate::core_perm::{Decision, refusal};
 use crate::handler::{Core, denied};
-use crate::agent_tools::ERIS;
 use crate::init::Init;
 use crate::paths::star_match;
 use crate::perm::{Denied, Target, covers, scope_allows};
@@ -90,7 +90,9 @@ impl Core {
             return false;
         };
         agent_of(caller) == Some(ERIS)
-            && ERIS_DESK_COMMANDS.iter().any(|pattern| star_match(pattern, id))
+            && ERIS_DESK_COMMANDS
+                .iter()
+                .any(|pattern| star_match(pattern, id))
             && self.command(id).is_some_and(|info| info.provider == DESK)
     }
 
@@ -111,7 +113,8 @@ impl Core {
                     reason: refusal(caller, Some(reason)),
                 }));
             }
-            if self.installed_command(scope, target) || self.eris_desk_command(caller, scope, target)
+            if self.installed_command(scope, target)
+                || self.eris_desk_command(caller, scope, target)
             {
                 self.log_perm(caller, scope, Some(target), Verdict::Allowed, None);
                 return Ok(());

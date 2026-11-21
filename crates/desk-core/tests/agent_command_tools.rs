@@ -332,7 +332,10 @@ fn another_agent_is_still_asked_for_the_desks_window_commands() {
         assert_ne!(event["event"], "cmd.invoked", "{event}");
         if event["event"] == "perm.prompt" {
             assert_eq!(event["data"]["caller"], "agent:mira", "{event}");
-            assert!(event.to_string().contains("desk.windows.new-tab"), "{event}");
+            assert!(
+                event.to_string().contains("desk.windows.new-tab"),
+                "{event}"
+            );
             break;
         }
     }

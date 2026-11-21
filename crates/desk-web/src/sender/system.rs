@@ -268,7 +268,10 @@ mod tests {
         let actions = part("desk.notice-actions").expect("its buttons");
         assert!(actions.hears());
         assert_eq!(actions.level, Level::Bar);
-        for p in PARTS.iter().filter(|p| !["desk.notices", "desk.sweep-marks"].contains(&p.id)) {
+        for p in PARTS
+            .iter()
+            .filter(|p| !["desk.notices", "desk.sweep-marks"].contains(&p.id))
+        {
             assert!(p.hears(), "{}", p.id);
         }
     }
