@@ -111,7 +111,8 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
     input.placeholder = ctx.tr("talkPlaceholder");
     const available = spaceAgents(s);
     const names = available.map((a) => a.name).join(", ");
-    preview.textContent = names || ctx.tr("talkPreview");
+    preview.textContent = names;
+    preview.hidden = !names;
     preview.title = names;
     agentButton.hidden = !open;
     agentButton.setAttribute("aria-label", ctx.tr("agents"));

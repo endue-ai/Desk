@@ -184,6 +184,5 @@
   "shell.bar.newAgentLabel": "Create a new agent",
   "shell.bar.newSpace": "New space",
   "shell.bar.newSpaceLabel": "Create a new space",
-  "shell.talkPlaceholder": "Keep talking with Eris",
-  "shell.talkPreview": "Agents you can call today…"
+  "shell.talkPlaceholder": "Keep talking with Eris"
 }
