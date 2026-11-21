@@ -48,15 +48,21 @@
   overflow-wrap: anywhere;
 }
 
+/* Fields side by side line up by their labels, whatever hint one has under it; a check box sits by
+   the fields' boxes. */
 .td-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: var(--desk-space-2) var(--desk-space-3);
 }
 
 .td-row > .td-field {
   flex: 1 1 10em;
+}
+
+.td-row > .td-field ~ .td-check {
+  align-self: flex-end;
 }
 
 .td-tabs {
