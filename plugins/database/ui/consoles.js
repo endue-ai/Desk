@@ -286,6 +286,13 @@ export function createConsoles(deps) {
         withActive((t) => edits.revert(t, rows)),
       preview: () => withActive((t) => edits.preview(t)),
       submit: () => withActive((t, c) => edits.submit(t, c)),
+      // A paste, a fill or a duplicate (features/paste/): planned on `ready`'s state, one `step`.
+      ready: () => withActive((t, c) => edits.ready(t, c)),
+      step: (
+        /** @type {import("./edits.js").EditState} */ state,
+        /** @type {Parameters<typeof edits.step>[2]} */ step,
+      ) => withActive((t) => edits.step(t, state, step)),
+      undo: () => withActive((t) => edits.undo(t)),
       ensure: () =>
         withActive(async (t, c) => {
           const state = await edits.ensure(t, c);

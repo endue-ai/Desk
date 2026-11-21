@@ -1,11 +1,13 @@
 // The core's proc.* played by Node's child_process, so the live tests run the real clients the way
 // the desk runs them: no shell, extra environment over the inherited one, a missing program is
-// not_found at once, output and the exit as events by process id, signals by name.
+// not_found at once, output and the exit as events by process id, signals by name. db.* goes to the
+// desk core itself (core-bridge.ts), one for the test file, and its db.* events come back here.
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join } from "node:path";
 import type { BridgeEvent } from "../../../packages/bridge/src/index";
+import { sharedCore } from "./core-bridge";
 
 type Listener = (event: BridgeEvent) => void;
 const SIGNALS = { int: "SIGINT", kill: "SIGKILL", term: "SIGTERM", hup: "SIGHUP" } as const;
@@ -65,13 +67,18 @@ export function nodeBridge() {
       return {} as never;
     }
     if (method === "perm.request") return { granted: true } as never;
+    if (method.startsWith("db.")) return sharedCore().call(method, params);
     throw Object.assign(new Error(`${method} is not served here`), { code: "unsupported" });
   };
   return {
     call: call as never as (method: string, params: unknown) => Promise<never>,
     onEvent(listener: Listener) {
       listeners.add(listener);
-      return () => listeners.delete(listener);
+      const off = sharedCore().onEvent(listener);
+      return () => {
+        listeners.delete(listener);
+        off();
+      };
     },
   };
 }

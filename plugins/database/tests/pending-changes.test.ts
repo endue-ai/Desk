@@ -196,9 +196,13 @@ describe("pending changes", () => {
       sql.startsWith("DELETE") ? { changes: 0 } : { changes: 1 },
     );
     const { t, changes } = changed("postgresql");
-    const conn = lite({ engine: "postgresql", file: "", host: "db", name: "Shop" });
+    const conn = lite({ engine: "postgresql", file: "", host: "db", user: "app", name: "Shop" });
     const done = await submitChanges({ execute, conn, target: t, set, changes });
-    expect(ran[0]?.args).toContain("--single-transaction");
+    expect([ran[0]?.command, ran[0]?.args[0], ran[0]?.args.at(-1)]).toEqual([
+      "db",
+      "BEGIN",
+      "COMMIT",
+    ]);
     expect(done.ok).toBe(true);
     expect(done.message).toMatch(/^Committed 3 changes; row 2 \(delete\) matched no row/u);
   });

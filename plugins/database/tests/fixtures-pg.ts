@@ -1,4 +1,4 @@
-// The fixture's PostgreSQL connection (fixtures.ts): its scripted psql answers the catalog of one
+// The fixture's PostgreSQL connection (fixtures.ts): its scripted server answers the catalog of one
 // table of typed columns, public.items (an enum, jsonb, a boolean, a text array and a timestamp with
 // a time zone), the types query of the typed cell editors (ui/cell-editors/pg-types.js), the table's
 // page and its count. Every other statement gets nothing back. Fixture data only.
