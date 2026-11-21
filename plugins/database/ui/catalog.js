@@ -5,7 +5,9 @@
 // what it does not hold (a schema not chosen, a table made since its last check) and the other
 // engines' are read when asked and kept until a refresh, so the explorer opens folders without
 // asking the server again, and what has been read is there at once for autocomplete (`snapshot`).
+// Each database of a PostgreSQL server is read under its own reference (databases.js, PG-13).
 
+import { baseOf, homeOf, listedDatabases } from "./databases.js";
 import { countSql, engineOf, pageSql } from "./engines/index.js";
 import { objectsOf, partsOf, RELATIONS } from "./schema/common.js";
 import { diagramOf, diagramQueries } from "./schema/diagram.js";
@@ -177,14 +179,18 @@ export function createCatalog(execute, systemSchemas, options = {}) {
     quiet = false,
   ) => (await held(conn, quiet))?.columns(schema, table) ?? readColumns(conn, schema, table, quiet);
 
-  /** Forget what was read on demand for one connection (under `prefix`, one schema say), or for all. */
+  /** Forget what was read on demand for a connection (each database), a reference, or all. */
   const forget = (
     /** @type {string | undefined} */ connection,
     /** @type {string[]} */ prefix = [],
   ) => {
     const start = connection === undefined ? "" : [connection, ...prefix].join(SEP);
+    const within = (/** @type {string} */ key) =>
+      connection === undefined || prefix.length > 0
+        ? key.startsWith(start)
+        : baseOf(key.slice(0, key.indexOf(SEP))) === connection || key.startsWith(`${start}${SEP}`);
     for (const map of [reads, done])
-      for (const key of [...map.keys()]) if (key.startsWith(start)) map.delete(key);
+      for (const key of [...map.keys()]) if (within(key)) map.delete(key);
   };
 
   return {
@@ -197,6 +203,9 @@ export function createCatalog(execute, systemSchemas, options = {}) {
         const sql = engineOf(conn.engine).catalog.schemas(systemSchemas());
         return (await rows(conn, sql, quiet)).map((row) => row[0] ?? "");
       }),
+    /** The databases of a PostgreSQL connection's server, from its own database's cache. */
+    databases: async (/** @type {Connection} */ conn, quiet = false) =>
+      listedDatabases(await objects(homeOf(conn), DATABASE, quiet), systemSchemas()),
     objects,
     /** A schema's tables and views, as agents read them. @returns {Promise<Table[]>} */
     tables: async (/** @type {Connection} */ conn, /** @type {string} */ schema, quiet = false) =>
@@ -274,8 +283,8 @@ export function createCatalog(execute, systemSchemas, options = {}) {
     status: (/** @type {Connection} */ conn) => cache.view(conn),
     /**
      * Read again what a refresh in the explorer names: the cache reads the schema, or every chosen
-     * one; what was read on demand is forgotten under it.
-     * @param {string | undefined} connection
+     * one (of each database, for a connection); what was read on demand is forgotten under it.
+     * @param {string | undefined} connection A connection's id, or a reference to a database.
      * @param {string} [schema]
      * @param {string} [table]
      */
@@ -286,7 +295,10 @@ export function createCatalog(execute, systemSchemas, options = {}) {
       else if (schema !== DATABASE)
         for (const what of ["objects", "columns", "parts"]) forget(connection, [what, schema]);
       for (const conn of cache.opened())
-        if (connection === undefined || conn.id === connection)
+        if (
+          conn.id === (connection ?? conn.id) ||
+          (schema === undefined && baseOf(conn.id) === connection)
+        )
           cache
             .refresh(conn, schema === undefined ? { all: true } : { schemas: [schema] })
             .catch(() => {});

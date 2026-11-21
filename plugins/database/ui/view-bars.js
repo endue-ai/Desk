@@ -1,8 +1,10 @@
 // The bars around the work area: the header (the console or the buffer on screen, a .sql file's
-// unsaved mark, its engine and place, its environment and read-only marks) and the result's bars
-// (its tabs, and the toolbar of what can be done with the rows on screen and their pending changes).
+// unsaved mark, its engine and place, its environment and read-only marks, and the PostgreSQL
+// database a console or a table view is on, a button to switch it) and the result's bars (its
+// tabs, and the toolbar of what can be done with the rows on screen and their pending changes).
 
 import { labelOf } from "./console-list.js";
+import { ownDatabase } from "./databases.js";
 import { el } from "./dom.js";
 import { formatCount } from "./format.js";
 
@@ -36,6 +38,11 @@ export function createBars(doc) {
       title.title = conn
         ? `${ENGINE[conn.engine]} · ${conn.engine === "sqlite" ? conn.file : conn.host}`
         : "";
+      const database = byId("database");
+      const on =
+        conn?.engine === "postgresql" && (model?.kind === "console" || model?.kind === "table");
+      database.hidden = !on;
+      database.textContent = on ? ownDatabase(conn) : "";
       const tag = conn && conn.tag !== "none" ? conn.tag : "";
       badge.hidden = !tag && !conn?.readOnly;
       badge.textContent = [tag, conn?.readOnly ? "read-only" : ""].filter(Boolean).join(" · ");

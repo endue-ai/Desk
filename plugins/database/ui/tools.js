@@ -3,6 +3,7 @@
 // finding the clients again. Each asks through the palette when an argument is missing. No DOM.
 
 import { tableName } from "./catalog.js";
+import { ownDatabase } from "./databases.js";
 import { engineOf } from "./engines/index.js";
 import { oneLine } from "./execute.js";
 import { exportResult } from "./export.js";
@@ -176,7 +177,7 @@ export function createTools(deps) {
       const items = entries.map((e, i) => ({
         id: String(i),
         label: `${saved.has(e.sql) ? "★ " : ""}${oneLine(e.sql)}`,
-        detail: `${e.at.slice(0, 16).replace("T", " ")} · ${e.ok ? "" : "failed: "}${e.summary}`,
+        detail: `${e.at.slice(0, 16).replace("T", " ")} · ${on(e)}${e.ok ? "" : "failed: "}${e.summary}`,
       }));
       const chosen = await pick("Database: history", items);
       const entry = chosen === undefined ? undefined : entries[Number(chosen)];
@@ -185,12 +186,13 @@ export function createTools(deps) {
     },
     /** Star the statement at the caret (or the selection) under a name. */
     async star(/** @type {string | undefined} */ name) {
-      const { shown } = here();
+      const { shown, conn } = here();
       const sql = statementHere();
       const given =
         name ?? (await pick("Database: star the query as", [], true, oneLine(sql).slice(0, 60)));
       if (!given) return undefined;
-      const kept = await saveQuery(bridge, shown.connection, { name: given, sql });
+      const database = conn.engine === "postgresql" ? { database: ownDatabase(conn) } : {};
+      const kept = await saveQuery(bridge, shown.connection, { name: given, sql, ...database });
       view.say(`Starred ${kept}.`);
       return kept;
     },
@@ -202,7 +204,11 @@ export function createTools(deps) {
         throw new Error("No starred queries here yet: star one with Database: star the query.");
       const chosen = await pick(
         "Database: starred queries",
-        list.map((s, i) => ({ id: String(i), label: `★ ${s.name}`, detail: oneLine(s.sql) })),
+        list.map((s, i) => ({
+          id: String(i),
+          label: `★ ${s.name}`,
+          detail: on(s) + oneLine(s.sql),
+        })),
       );
       const entry = chosen === undefined ? undefined : list[Number(chosen)];
       if (entry) view.insert(entry.sql);
@@ -277,6 +283,10 @@ export function createTools(deps) {
     addHistory,
   };
 }
+
+/** The database a kept statement ran on, before the rest of its line. */
+const on = (/** @type {{ database?: string }} */ kept) =>
+  kept.database ? `${kept.database} · ` : "";
 
 /** A format's name as people say it. */
 function label(/** @type {string} */ format) {

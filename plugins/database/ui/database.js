@@ -18,6 +18,7 @@ import { loadConnections, newId, normalize, saveConnections } from "./connection
 import { createConsoleFiles } from "./console-files.js";
 import { formatText } from "./console-run.js";
 import { createConsoles } from "./consoles.js";
+import { ownDatabase } from "./databases.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
 import { createSessions } from "./engines/pg-session.js";
@@ -173,6 +174,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
           ok: !s.error,
           summary: summaryOf(execution, s.index),
           ...(target.consoleId ? { console: target.consoleId } : {}),
+          ...(conn.engine === "postgresql" ? { database: ownDatabase(conn) } : {}),
         }));
       void addHistory(bridge, conn.id, entries, settings.historyMax);
     },

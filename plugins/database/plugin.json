@@ -245,6 +245,11 @@
         "keywords": ["schema", "cache", "system schemas", "catalog"]
       },
       {
+        "id": "endue.database.switch-database",
+        "title": "Database: switch the database",
+        "keywords": ["database", "switch", "server", "catalog", "postgresql"]
+      },
+      {
         "id": "endue.database.filter-explorer",
         "title": "Database: filter the explorer",
         "keywords": ["find", "search", "objects"]
@@ -1313,7 +1318,7 @@
       "endue.database.system-schemas": {
         "kind": "boolean",
         "default": false,
-        "description": "Show the system schemas in the explorer (pg_catalog, information_schema, mysql, sys ...)."
+        "description": "Show the system schemas in the explorer (pg_catalog, information_schema, mysql, sys ...) and PostgreSQL's template databases."
       },
       "endue.database.mysql": {
         "kind": "string",

@@ -72,7 +72,8 @@ export function withDatabases(script: Script, model: () => PgCatalog = analytics
     made ??= model();
     const rows = database === "analytics" ? (answer(made, sql) ?? visits(sql.trim())) : undefined;
     const answered = rows ? { rows } : script(sql, who);
-    if (!LISTING.has(database) || kindOf(sql) !== "server" || !answered.rows) return answered;
+    if (answered === "auth" || !answered.rows) return answered;
+    if (!LISTING.has(database) || kindOf(sql) !== "server") return answered;
     const body = [...answered.rows.slice(1), ...DATABASE_ROWS.map((row) => ["", ...row])];
     return { ...answered, rows: [Array.from({ length: 8 }, (_, i) => `c${i}`), ...body] };
   };

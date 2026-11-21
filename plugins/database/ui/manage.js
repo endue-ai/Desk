@@ -1,9 +1,11 @@
 // Managing connections: the form to add or change one (from blank, a URI or a SQLite file), a test
 // that asks the server its version, duplicate, remove (asked first, its history and buffers go with
 // it), disconnect (the session's password is forgotten), and the password prompt the executor
-// calls when a client needs one. Passwords live in memory only.
+// calls when a client needs one. Passwords live in memory only, one a connection for every
+// database of its server; `get` also answers a reference to another database (databases.js).
 
 import { blank, newId, normalize, parseUri, saveConnections } from "./connections.js";
+import { baseOf, databaseOf, homeOf, onDatabase } from "./databases.js";
 import { engineOf } from "./engines/index.js";
 import { formatDuration } from "./format.js";
 import { clearHistory } from "./history.js";
@@ -44,8 +46,20 @@ export function createManager(deps) {
 
   const showForm = () => deps.view.form(form);
 
-  const get = (/** @type {string} */ ref) =>
+  const named = (/** @type {string} */ ref) =>
     list.find((c) => c.id === ref) ?? list.find((c) => c.name.toLowerCase() === ref.toLowerCase());
+  /** A connection by id or name, or on another database by its reference (`<id>/<database>`). */
+  const get = (/** @type {string} */ ref) => {
+    const found = named(ref);
+    if (found || databaseOf(ref) === undefined) return found;
+    const conn = list.find((c) => c.id === baseOf(ref));
+    return conn ? onDatabase(conn, databaseOf(ref)) : undefined;
+  };
+  /** The connection itself, whichever of its databases a command named. */
+  const chooseHome = async (/** @type {string | undefined} */ ref, /** @type {string} */ title) => {
+    const conn = await choose(ref, title);
+    return conn ? homeOf(conn) : undefined;
+  };
 
   /** The connection a command names, or the one the person picks. */
   const choose = async (/** @type {string | undefined} */ ref, /** @type {string} */ title) => {
@@ -103,8 +117,9 @@ export function createManager(deps) {
     get,
     choose,
     passwords: {
-      get: (/** @type {string} */ id) => passwords.get(id),
-      set: (/** @type {string} */ id, /** @type {string} */ value) => void passwords.set(id, value),
+      get: (/** @type {string} */ id) => passwords.get(baseOf(id)),
+      set: (/** @type {string} */ id, /** @type {string} */ value) =>
+        void passwords.set(baseOf(id), value),
       /** Ask in the surface; resolves undefined when the person cancels. */
       ask: (/** @type {Connection} */ conn, /** @type {string} */ why) =>
         new Promise((resolve) => {
@@ -129,11 +144,11 @@ export function createManager(deps) {
       open("new", { ...fields, id: "" });
     },
     async edit(/** @type {string | undefined} */ ref) {
-      const conn = await choose(ref, "Database: change which connection?");
+      const conn = await chooseHome(ref, "Database: change which connection?");
       if (conn) open("edit", conn);
     },
     async duplicate(/** @type {string | undefined} */ ref) {
-      const conn = await choose(ref, "Database: duplicate which connection?");
+      const conn = await chooseHome(ref, "Database: duplicate which connection?");
       if (conn) open("new", { ...conn, id: "", name: `${conn.name} copy` });
     },
     /** A URI typed or handed in: its fields in the form, its password kept for the save. */
@@ -226,7 +241,7 @@ export function createManager(deps) {
       deps.view.focus("explorer");
     },
     async remove(/** @type {string | undefined} */ ref) {
-      const conn = await choose(ref, "Database: remove which connection?");
+      const conn = await chooseHome(ref, "Database: remove which connection?");
       if (!conn) return undefined;
       if (
         !(await deps.confirm(`Remove ${conn.name}?`, [
@@ -247,7 +262,7 @@ export function createManager(deps) {
     },
     /** Forget the session's password and what the explorer read. */
     async disconnect(/** @type {string | undefined} */ ref) {
-      const conn = await choose(ref, "Database: disconnect which connection?");
+      const conn = await chooseHome(ref, "Database: disconnect which connection?");
       if (!conn) return undefined;
       passwords.delete(conn.id);
       deps.view.say(`Disconnected ${conn.name}: its password is forgotten.`);

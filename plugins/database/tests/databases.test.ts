@@ -174,9 +174,12 @@ describe("one PostgreSQL connection shows every database of its server", () => {
       name: "Shop/analytics",
       database: "analytics",
     });
-    expect(seen.some(([db, sql]) => db === "analytics" && sql.includes('"metrics"."visits"'))).toBe(
-      true,
-    );
+    // Its page was read on analytics, which alone has the table.
+    expect(m.shown()?.shown?.tabs[0]?.set?.rows).toEqual([
+      ["1", "/"],
+      ["2", "/pricing"],
+      ["3", "/docs"],
+    ]);
 
     // A console moves to another database of its server, its id and text kept.
     await m.host.command("endue.database.console", { connection: "Shop" });
@@ -218,7 +221,8 @@ describe("one PostgreSQL connection shows every database of its server", () => {
       expect.objectContaining({ name: "one", sql: "select 1", database: "analytics" }),
     ]);
     await m.host.command("endue.database.history");
-    expect(m.picks.at(-1)?.items[0]?.detail).toContain("analytics · ");
+    const first = m.picks.at(-1)?.items[0] as { detail?: string } | undefined;
+    expect(first?.detail).toContain("analytics · ");
   });
 
   it("agents name a database", async () => {

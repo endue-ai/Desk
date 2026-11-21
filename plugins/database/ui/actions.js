@@ -27,11 +27,11 @@ export function builtinActions(deps) {
   const { guard, view, manager, consoles, explorer, tools, importer, dropped } = deps;
   const edits = consoles.edits;
   return {
-    /** Activate a row of the explorer: a connection opens its console, a table its rows. */
+    /** Activate an explorer row: a connection or a database opens a console, a table its rows. */
     activate: guard(async (/** @type {Node} */ node) => {
       const conn = manager.get(node.connection);
       if (!conn) return explorer.toggle(node);
-      if (node.kind === "connection") await consoles.open(conn);
+      if (node.kind === "connection" || node.kind === "database") await consoles.open(conn);
       else if (node.kind === "table" && node.table)
         await consoles.open(conn, { schema: node.schema ?? "", name: node.table });
       else if (node.kind === "object" || node.kind === "part") await tools.ddl(node);
