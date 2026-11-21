@@ -16,6 +16,7 @@ import { registerCommands } from "./commands.js";
 import { createCompletions } from "./completions.js";
 import { loadConnections, newId, normalize, saveConnections } from "./connections.js";
 import { createConsoleFiles } from "./console-files.js";
+import { formatText } from "./console-run.js";
 import { createConsoles } from "./consoles.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
@@ -173,7 +174,21 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     },
     ...(options.random ? { random: options.random } : {}),
   });
-  const files = createConsoleFiles({ bridge, commands, manager, consoles, view });
+  const files = createConsoleFiles({
+    bridge,
+    commands,
+    manager,
+    consoles,
+    view,
+    // Format on save: by the format of the file's connection; on none yet, as typed.
+    format: async (target) => {
+      const conn = settings.formatOnSave ? manager.get(target.connection) : undefined;
+      if (!conn) return undefined;
+      const laid = await formatText(target.text, conn.engine, settings);
+      if (laid.left > 0 && consoles.current() === target) view.say(laid.note);
+      return laid;
+    },
+  });
   const tools = createTools({
     bridge,
     commands,

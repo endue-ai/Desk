@@ -104,8 +104,11 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
   align). A change applies at the next Format, without a restart.
 - MySQL and SQLite keep the format that reads tokens alone: each clause on its line, the select list one item
   a line, reserved words in capitals, by none of the settings.
+- `format-on-save` (off by default): Save lays a `.sql` file's console out before it writes the file, by
+  the format of the file's connection, and says a statement it left as written; a file on no connection
+  yet is written as typed.
 
-Modules: `sql/layout/`, `console-run.js`.
+Modules: `sql/layout/`, `console-run.js`, `console-files.js`.
 
 ## Results
 

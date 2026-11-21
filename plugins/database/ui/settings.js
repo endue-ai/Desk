@@ -1,6 +1,7 @@
 // The plugin's settings, from `init.get` (the layer the core serves today) over the defaults the
 // manifest declares. A value of the wrong type, out of range or not one of its choices keeps the
-// default. The `format-*` settings hold Format SQL's style (ui/sql/layout/style.js, ADR 0291).
+// default. The `format-*` settings hold Format SQL's style (ui/sql/layout/style.js, ADR 0291) and
+// whether Save lays a bound .sql file out first (`format-on-save`).
 import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
 
 /**
@@ -9,6 +10,7 @@ import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
  *   systemSchemas: boolean, psql: string, mysql: string, sqlite3: string, path: string[],
  *   formatKeywordCase: string, formatIndent: number, formatLineWidth: number, formatComma: string,
  *   formatAndOr: string, formatJoins: string, formatOneLine: string, formatLists: string,
+ *   formatOnSave: boolean,
  * }} Settings
  */
 
@@ -32,6 +34,7 @@ export const DEFAULTS = Object.freeze({
   formatJoins: STYLE.joins,
   formatOneLine: STYLE.oneLine,
   formatLists: STYLE.lists,
+  formatOnSave: false,
 });
 
 /** The manifest key of each setting, the range of the numbers and the choices of the strings. */
@@ -63,6 +66,7 @@ const KEYS =
     formatJoins: { key: "endue.database.format-joins", choices: CHOICES.joins },
     formatOneLine: { key: "endue.database.format-one-line", choices: CHOICES.oneLine },
     formatLists: { key: "endue.database.format-lists", choices: CHOICES.lists },
+    formatOnSave: { key: "endue.database.format-on-save" },
   });
 
 /** The setting keys as the manifest declares them, in order. */
@@ -136,10 +140,6 @@ export const formatStyle = (/** @type {Settings} */ settings) =>
     oneLine: settings.formatOneLine,
     lists: settings.formatLists,
   });
-
-/** Whether a setting is one of Format SQL's. */
-export const isFormatKey = (/** @type {string} */ key) =>
-  fullKey(key).startsWith(`${PREFIX}format-`);
 
 /** The settings that change which client runs: what was found is found again. */
 const CLIENT_KEYS = new Set([KEYS.psql.key, KEYS.mysql.key, KEYS.sqlite3.key, KEYS.path.key]);

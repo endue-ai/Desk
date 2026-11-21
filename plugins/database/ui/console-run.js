@@ -56,6 +56,27 @@ export function formatNote(/** @type {Laid} */ laid) {
   return `${laid.laid > 0 ? "Formatted" : "Nothing formatted"}; ${notes.join("; ")}.`;
 }
 
+/**
+ * Format SQL over a whole text by an engine's format, as Save does with format on save: the range
+ * that changes and its new text, what the status line says, and how many statements it left.
+ * @param {string} text
+ * @param {Connection["engine"]} engine
+ * @param {import("./settings.js").Settings} settings
+ * @returns {Promise<{ from: number, to: number, text: string, note: string, left: number }>}
+ */
+export async function formatText(text, engine, settings) {
+  const { dialect } = engineOf(engine);
+  if (dialect !== "postgresql") {
+    const laid = formatSql(text, dialect);
+    return { from: 0, to: text.length, text: laid, note: "Formatted.", left: 0 };
+  }
+  const parser = sqlParser();
+  if (!parser) throw new Error("The SQL parser has not started.");
+  const laid = await parser.layout(text, formatStyle(settings));
+  const left = laid.left.length + laid.kept + laid.refused;
+  return { from: laid.from, to: laid.to, text: laid.text, note: formatNote(laid), left };
+}
+
 /** @param {Inner} inner */
 export function createRunning({ deps, active, execute, render, typed }) {
   /** Statements with their parameters filled from the person's answers, kept per console. */

@@ -64,6 +64,9 @@ the same parser before a character of the console changes.
   status line says. 1 MB of the corpus lays out in under a second there.
 * Database: format the SQL keeps its reach (the selection, else the console) and `Mod+Shift+F`; Database:
   format the statement at the caret is new. MySQL and SQLite keep `format.js`.
+* Format on save is a ninth setting, `endue.database.format-on-save`, off by default: Save lays a bound
+  `.sql` file's console out by the format of the file's connection before it writes the file. A file on
+  no connection yet is written as typed, since nothing says which grammar it is in.
 
 ### Consequences
 
@@ -86,5 +89,5 @@ silently. A worker of its own would load the parser twice; the page must not lay
 
 ## More Information
 
-ADR 0283 (the parser and its worker), issue #464 (PG-34), epic #438. PG-35 (#465) lays out the bodies
-of routines; format on save is PG-24 (#457).
+ADR 0283 (the parser and its worker), ADR 0286 (a `.sql` file bound to a console, PG-24 #457), issue
+#464 (PG-34), epic #438. PG-35 (#465) lays out the bodies of routines.

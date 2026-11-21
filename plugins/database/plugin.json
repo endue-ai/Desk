@@ -496,6 +496,11 @@
         "default": "indent",
         "choices": ["indent", "align"],
         "description": "Where a broken list goes in PostgreSQL's Format SQL: indent (on the lines under SELECT, one level in) or align (after SELECT, each item under the first)."
+      },
+      "endue.database.format-on-save": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Save lays a .sql file's console out with Format SQL before it writes the file, by the format of the file's connection; a file on no connection yet is written as typed."
       }
     }
   }
