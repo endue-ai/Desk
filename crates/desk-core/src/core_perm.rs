@@ -174,20 +174,9 @@ impl Core {
             let asked = self.ask(caller, scope, reason, GrantDuration::Session)?;
             if let Decision::Refused(why) = asked {
                 self.refused(caller, scope, Some(target), why);
-                let reason = match why {
-                    Some(RefusalReason::RefusedEarlier) => {
-                        format!("the person refused {caller} this scope earlier in the session")
-                    }
-                    Some(RefusalReason::OutsideAllowlist) => {
-                        format!(
-                            "{caller} may not be granted this scope: it is outside its allowlist"
-                        )
-                    }
-                    None => format!("the person did not allow {caller} this scope"),
-                };
                 return Err(denied(Denied {
                     permission: scope.clone(),
-                    reason,
+                    reason: refusal(caller, why),
                 }));
             }
         }
@@ -306,6 +295,22 @@ impl Core {
                 },
             }),
         );
+    }
+}
+
+/// Why `caller` was refused a scope, for people.
+pub(crate) fn refusal(caller: &str, why: Option<RefusalReason>) -> String {
+    match why {
+        Some(RefusalReason::OutsideAllowlist) => {
+            format!("{caller} may not be granted this scope: it is outside its allowlist")
+        }
+        Some(RefusalReason::Undeclared) => {
+            format!("{caller} may not be granted this scope: its manifest does not declare it")
+        }
+        Some(RefusalReason::RefusedEarlier) => {
+            format!("the person refused {caller} this scope earlier in the session")
+        }
+        None => format!("the person did not allow {caller} this scope"),
     }
 }
 
