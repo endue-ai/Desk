@@ -1,15 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BrainStep } from "../bridge/types";
-import { mountComposer } from "../shell/Composer";
 import type { ShellCtx } from "../shell/context";
 import { Store, sampleState } from "../shell/state";
 import { windowDocs } from "../surface/window-docs";
 import type { WindowPages } from "../surface/window-pages";
-import { testWindowManager } from "../wm/testing";
-import { takeDesk } from "../wm/view";
-import { centre, labelOf, mountErrands, nameOf, targetOf, windowOf } from "./errand";
-import { LOOK, USE } from "./visiting";
+import { centre, DWELL_MS, labelOf, mountErrands, nameOf, targetOf, windowOf } from "./errand";
+import { USE } from "./visiting";
 
 const TOOL: BrainStep = {
   kind: "tool",
@@ -66,6 +63,12 @@ describe("Eris's errands", () => {
   });
 
   afterEach(() => shell.remove());
+
+  /** The first spark on the desk, once its errand is drawn: after the line is in her and read. */
+  const drawn = async () => {
+    await vi.waitFor(() => expect(shell.querySelector(".errand")).not.toBeNull());
+    return shell.querySelector<HTMLElement>(".errand");
+  };
 
   it("names a plugin as people read it", () => {
     expect(nameOf("endue.mail")).toBe("Mail");
@@ -142,30 +145,30 @@ describe("Eris's errands", () => {
     shell.append(mail);
     const errands = mountErrands(() => shell, ctx);
     errands.step(TOOL);
-    const errand = shell.querySelector<HTMLElement>(".errand");
+    expect(store.get().eris.state).toBe("thinking");
+    const errand = await drawn();
     expect(errand?.dataset.provider).toBe("endue.mail");
     expect(errand?.textContent).toBe("MailLatest mail");
-    expect(mail.classList.contains("is-eris-visiting")).toBe(true);
-    expect(store.get().eris.state).toBe("thinking");
-    // The spark ends the outbound leg on the window's centre (300, 450).
+    // The spark ends the outbound leg on the window's centre (300, 450), and the window glows
+    // once it is there.
     expect(errand?.style.transform).toContain("translate(300.0px, 450.0px)");
     await vi.waitFor(() => expect(errand?.dataset.leg).toBe("there"));
+    expect(mail.classList.contains("is-eris-visiting")).toBe(true);
 
     errands.step(BACK);
     await errands.finish();
     expect(shell.querySelector(".errand")).toBeNull();
     expect(mail.classList.contains("is-eris-visiting")).toBe(false);
-    expect(store.get().eris.state).toBe("done");
-    expect(frames).toEqual([640, 640]);
+    // She has the answer and reads it until her reply comes. Out, a stay at the window, home.
+    expect(store.get().eris.state).toBe("thinking");
+    expect(frames).toEqual([640, DWELL_MS, 640]);
   });
 
   it("waits beside Eris for a plugin without a window, and an unanswered errand comes back empty", async () => {
     const errands = mountErrands(() => shell, ctx);
     errands.step(TOOL);
     // Beside her body's centre (664, 109): 150 px right and 36 px up.
-    expect(shell.querySelector<HTMLElement>(".errand")?.style.transform).toContain(
-      "translate(814.0px, 73.0px)",
-    );
+    expect((await drawn())?.style.transform).toContain("translate(814.0px, 73.0px)");
     await errands.finish();
     expect(shell.querySelector(".errand")).toBeNull();
     expect(store.get().eris.state).toBe("oops");
@@ -177,7 +180,7 @@ describe("Eris's errands", () => {
     errands.step(TOOL);
     errands.step(BACK);
     await errands.finish();
-    expect(frames).toEqual([0, 0]);
+    expect(frames).toEqual([0, 0, 0]);
   });
 
   /** A window's section in the desk's page at `rect`, showing `surface` (a plugin's) all over it. */
@@ -203,16 +206,20 @@ describe("Eris's errands", () => {
     windowAt("w3", "endue.notes", { left: 0, top: 0, width: 90, height: 90 });
     const errands = mountErrands(() => shell, ctx);
     errands.step(TOOL);
+    await drawn();
     const sparks = [...shell.querySelectorAll<HTMLElement>(".errand")];
     expect(sparks.map((el) => el.style.transform.split(")")[0])).toEqual([
       "translate(300.0px, 450.0px",
       "translate(1000.0px, 300.0px",
     ]);
-    // Both windows glow as used, each on its section and in the store the compositor reads.
-    expect(store.get().erisWindows).toEqual([
-      { id: "w1", glow: USE },
-      { id: "w2", glow: USE },
-    ]);
+    // Both windows glow as used once their sparks land, each on its section and in the store the
+    // compositor reads.
+    await vi.waitFor(() =>
+      expect(store.get().erisWindows).toEqual([
+        { id: "w1", glow: USE },
+        { id: "w2", glow: USE },
+      ]),
+    );
     expect(inbox.classList.contains("is-eris-visiting")).toBe(true);
     expect(draft.style.getPropertyValue("--eris-glow")).toBe("1");
     // Each spark runs along a thread from her (664, 109) that lies under it.
@@ -227,23 +234,23 @@ describe("Eris's errands", () => {
     expect(shell.querySelector(".errand, .errand-thread")).toBeNull();
     expect(store.get().erisWindows).toEqual([]);
     expect(inbox.classList.contains("is-eris-visiting")).toBe(false);
-    expect(store.get().eris.state).toBe("done");
+    expect(store.get().eris.state).toBe("thinking");
   });
 
-  it("finds the window of a plugin whose section stays in the desk's page (ADR 0201)", () => {
+  it("finds the window of a plugin whose section stays in the desk's page (ADR 0201)", async () => {
     const plugin = at(document.createElement("section"), { left: 0, top: 0, width: 9, height: 9 });
     plugin.dataset.surface = "endue.mail";
     shell.append(plugin);
     const placed = { id: "w9", plugin: "endue.mail", x: 0, y: 0, w: 9, h: 9, pinned: false };
     store.set((s) => ({ wm: { ...s.wm, windows: { ...s.wm.windows, [s.wm.here]: [placed] } } }));
     mountErrands(() => shell, ctx).step(TOOL);
-    expect(store.get().erisWindows).toEqual([{ id: "w9", glow: USE }]);
+    await vi.waitFor(() => expect(store.get().erisWindows).toEqual([{ id: "w9", glow: USE }]));
     expect(plugin.classList.contains("is-eris-visiting"), "the frame glows, not the pane").toBe(
       false,
     );
   });
 
-  it("flies to the window where it is drawn, not to its plugin's place kept in the desk's page", () => {
+  it("flies to the window where it is drawn, not to its plugin's place kept in the desk's page", async () => {
     // The window lies in a page of its own (ADR 0201): its plugin's section waits in its group.
     const group = document.createElement("div");
     group.className = "surface-anchor";
@@ -261,63 +268,30 @@ describe("Eris's errands", () => {
     const front = [{ id: "w7", rect: { x: 500, y: 200, w: 600, h: 400 }, z: 0 }];
     store.set((s) => ({ wm: { ...s.wm, front } }));
     mountErrands(() => shell, ctx).step(TOOL);
-    expect(store.get().erisWindows).toEqual([{ id: "w7", glow: USE }]);
-    expect(shell.querySelector<HTMLElement>(".errand")?.style.transform).toContain(
-      "translate(800.0px, 400.0px)",
-    );
+    expect((await drawn())?.style.transform).toContain("translate(800.0px, 400.0px)");
+    await vi.waitFor(() => expect(store.get().erisWindows).toEqual([{ id: "w7", glow: USE }]));
   });
 
-  it("looks at the window in use as a line comes in: lit softly until the turn is over", async () => {
-    windowAt("w1", "endue.mail", { left: 100, top: 300, width: 400, height: 300 });
-    const pane = { view: "plugin:endue.mail" };
-    const seen = { x: 0, y: 0, w: 9, h: 9, panes: [pane] };
-    const desk = {
-      screen: { w: 1440, h: 900 },
-      desktops: [{ id: "1", name: "1", current: true }],
-      windows: [
-        { ...seen, id: "w1", focused: true, desktop: "1" },
-        { ...seen, id: "w2", desktop: "1" },
-        { ...seen, id: "w4", focused: true, desktop: "2" },
-        { ...seen, id: "w5", focused: true, hidden: true },
-      ],
-    } as unknown as Parameters<ReturnType<typeof mountErrands>["look"]>[0];
-    const errands = mountErrands(() => shell, ctx);
-    errands.look(desk);
-    expect(store.get().erisWindows).toEqual([{ id: "w1", glow: LOOK }]);
-    // A bare spark goes to its middle and comes straight back; nobody waits for it.
-    const glance = shell.querySelector<HTMLElement>(".errand--look");
-    expect(glance?.textContent).toBe("");
-    expect(glance?.getAttribute("aria-hidden")).toBe("true");
-    expect(shell.querySelector(".errand-thread--look")).not.toBeNull();
-    await vi.waitFor(() => expect(shell.querySelector(".errand, .errand-thread")).toBeNull());
-    expect(store.get().erisWindows, "she still looks at it").toEqual([{ id: "w1", glow: LOOK }]);
-
-    // Used meanwhile it glows fully, and softly again once the errand is home.
-    errands.step(TOOL);
-    expect(store.get().erisWindows).toEqual([{ id: "w1", glow: USE }]);
-    errands.step(BACK);
-    await vi.waitFor(() => expect(store.get().erisWindows).toEqual([{ id: "w1", glow: LOOK }]));
-    await errands.finish();
-    expect(store.get().erisWindows).toEqual([]);
-
-    // An answer that comes at once leaves the window lit until the look's spark is back.
-    errands.look(desk);
-    await errands.finish();
-    expect(store.get().erisWindows).toEqual([{ id: "w1", glow: LOOK }]);
-    await vi.waitFor(() => expect(store.get().erisWindows).toEqual([]));
-    expect(shell.querySelector(".errand, .errand-thread")).toBeNull();
+  it("finds a plugin's window the window manager places whose page this one cannot read (the app)", async () => {
+    at(shell, { left: 0, top: 0, width: 1440, height: 900 });
+    const placed = { id: "w5", plugin: "endue.mail", x: 0, y: 0, w: 9, h: 9, pinned: false };
+    const front = [{ id: "w5", rect: { x: 200, y: 100, w: 400, h: 300 }, z: 0 }];
+    store.set((s) => ({
+      wm: { ...s.wm, front, windows: { ...s.wm.windows, [s.wm.here]: [placed] } },
+    }));
+    mountErrands(() => shell, ctx).step(TOOL);
+    // To the middle of where the window is drawn, and lit once the spark is there.
+    expect((await drawn())?.style.transform).toContain("translate(400.0px, 250.0px)");
+    await vi.waitFor(() => expect(store.get().erisWindows).toEqual([{ id: "w5", glow: USE }]));
   });
 
   it("with reduced motion the windows light up, the label waits beside her and no thread is laid", async () => {
     ctx.reduced = () => true;
     windowAt("w1", "endue.mail", { left: 100, top: 300, width: 400, height: 300 });
     const errands = mountErrands(() => shell, ctx);
-    errands.look({ screen: { w: 1, h: 1 }, windows: [{ id: "w1", focused: true }] } as never);
-    expect(shell.querySelector(".errand"), "a look moves nothing").toBeNull();
+    errands.ask(Promise.resolve());
     errands.step(TOOL);
-    expect(shell.querySelector<HTMLElement>(".errand")?.style.transform).toContain(
-      "translate(814.0px, 73.0px)",
-    );
+    expect((await drawn())?.style.transform).toContain("translate(814.0px, 73.0px)");
     expect(shell.querySelector(".errand-thread")).toBeNull();
     expect(store.get().erisWindows).toEqual([{ id: "w1", glow: USE }]);
     errands.step(BACK);
@@ -329,51 +303,9 @@ describe("Eris's errands", () => {
     windowAt("w1", "endue.mail", { left: 100, top: 300, width: 400, height: 300 });
     const errands = mountErrands(() => shell, ctx);
     errands.step(TOOL);
+    await drawn();
     errands.dispose();
     expect(shell.querySelector(".errand, .errand-thread")).toBeNull();
     await vi.waitFor(() => expect(store.get().erisWindows).toEqual([]));
-  });
-
-  it("the talk line flies into Eris, and she answers once every errand is home", async () => {
-    const order: string[] = [];
-    const say = vi.fn(async (_text: string, onStep?: (step: BrainStep) => void) => {
-      onStep?.(TOOL);
-      onStep?.(BACK);
-      return { text: "Two new messages." };
-    });
-    const wm = testWindowManager();
-    wm.connect((published) => takeDesk(store, published));
-    const talk = Object.assign(ctx, {
-      wm,
-      runtime: { commands: { list: () => [], has: () => false }, notify: vi.fn() },
-      bridge: { brain: { say } },
-      keyOf: () => undefined,
-      tr: (key: string) => key,
-    });
-    talk.eris.say = vi.fn(() => order.push("say"));
-    const bottom = document.createElement("footer");
-    shell.append(bottom);
-    const dispose = mountComposer(bottom, talk);
-    const input = bottom.querySelector("input") as HTMLInputElement;
-    input.focus();
-    input.value = "check my mail";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    // Into her body's centre (664, 109) from the input, which jsdom puts at (0, 0).
-    const ghost = shell.querySelector<HTMLElement>(".absorb");
-    expect(ghost?.style.transform).toContain(
-      "translate(calc(-50% + 664.0px), calc(-50% + 109.0px))",
-    );
-    await vi.waitFor(() =>
-      expect(talk.eris.say).toHaveBeenCalledWith("Two new messages.", undefined),
-    );
-    // The line goes with the desk as the composer sees it (ADR 0109).
-    expect(say).toHaveBeenCalledWith(
-      "check my mail",
-      expect.any(Function),
-      expect.objectContaining({ windows: [] }),
-    );
-    expect(shell.querySelector(".errand")).toBeNull();
-    dispose();
   });
 });
