@@ -8,7 +8,9 @@
  * has answered (`visiting.ts`), her ring dim meanwhile. On `tool-result` the answer flies back
  * along the thread in the star's colour and she takes it in and reads it. A command of the desk's
  * own that names a window (its `window`, or the one its answer names) uses that window: the spark
- * flies on to it and it glows. A line that runs nothing lights no window. With reduced motion the
+ * flies on to it and it glows. Each spark and its thread end on the window's border, at the point
+ * that faces her, and keep to it as she, the window or the desk's pan moves (`errand-spark.ts`).
+ * A line that runs nothing lights no window. With reduced motion the
  * label shows beside her, the windows light up at once and nothing moves. All on the ticker.
  */
 import type { BrainStep } from "../bridge/types";
@@ -17,8 +19,9 @@ import { windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
 import { cloudTurns } from "./cloud-turns";
-import { centre, erisAt, labelOf, type Target, targetsOf, windowCentre } from "./errand-targets";
-import { arc, type Point, threadOf } from "./errand-thread";
+import { lay, place, render, type Spark } from "./errand-spark";
+import { edgeOf, erisAt, labelOf, type Target, targetsOf } from "./errand-targets";
+import type { Point } from "./errand-thread";
 import { setMind, takeIn } from "./mind";
 import { USE, VISITING, visitingOf } from "./visiting";
 
@@ -35,23 +38,6 @@ const BESIDE = { x: 150, y: -36 };
 const legEase = cubicBezier(0.45, 0, 0.2, 1);
 /** Who runs a command of the desk's as Eris's tool call (`system/local-agent-commands.ts`). */
 const ERIS = "agent:eris";
-
-/** One spark of an errand, on its way to one place and back. */
-interface Spark {
-  el: HTMLElement;
-  /** What the spark is drawn on. */
-  host: HTMLElement;
-  /** The thread it runs along now. */
-  thread: SVGSVGElement | null;
-  /** Where the spark is, in the host's coordinates. */
-  at: Point;
-  /** The outbound leg; the way back waits for it. */
-  out: Promise<void>;
-  /** Its flights so far: one sent somewhere else stops where it was going before. */
-  flight: number;
-  /** Until it is home: away from her. */
-  away: boolean;
-}
 
 interface Errand {
   command: string;
@@ -106,34 +92,27 @@ export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
       (t) => t,
       () => {},
     );
-  const place = (spark: Spark, p: Point, scale = 1, opacity = 1) => {
-    spark.at = p;
-    spark.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%) scale(${scale.toFixed(3)})`;
-    spark.el.style.opacity = opacity.toFixed(3);
-  };
   /** The leg a spark is on, which its thread shows too. */
   const leg = (spark: Spark, name: "out" | "there" | "back") => {
     spark.el.dataset.leg = name;
     if (spark.thread) spark.thread.dataset.leg = name;
   };
-  /** Lay the thread from `from` to `to` under the spark; with reduced motion there is none. */
-  const lay = (spark: Spark, from: Point, to: Point) => {
-    spark.thread?.remove();
-    spark.thread = null;
-    // A spark dropped meanwhile (the desk went) has nothing to run along.
-    if (ctx.reduced() || spark.el.parentNode !== spark.host) return;
-    spark.thread = threadOf(spark.host.ownerDocument, from, to);
-    spark.thread.dataset.leg = spark.el.dataset.leg ?? "out";
-    spark.host.insertBefore(spark.thread, spark.el);
-  };
-  const fly = (spark: Spark, to: Point, end: (t: number) => [number, number]) => {
+  /** Fly the spark from where it is to `to`, a place that may move as it goes. */
+  const fly = (spark: Spark, to: () => Point, end: (t: number) => [number, number]) => {
     const flight = ++spark.flight;
-    const from = spark.at;
-    lay(spark, from, to);
+    // From where it is: her body, a window or the place beside her, which keep moving with her and
+    // the window; sent on mid-flight, from the point it had got to.
+    const from = spark.aim;
+    const at = spark.at;
+    spark.from = spark.t >= 1 ? from : () => at;
+    spark.aim = to;
+    spark.t = 0;
+    lay(spark, ctx.reduced());
     return ctx.ticker.animate(ctx.reduced() ? 0 : LEG_MS, legEase, (t) => {
       if (spark.flight !== flight) return;
-      const [scale, opacity] = end(t);
-      place(spark, arc(from, to, ctx.reduced() ? 1 : t), scale, opacity);
+      spark.t = t;
+      spark.look = end(t);
+      render(spark, ctx.reduced());
     });
   };
   /**
@@ -143,7 +122,7 @@ export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
    */
   const out = (
     spark: Spark,
-    to: Point,
+    to: () => Point,
     end: (t: number) => [number, number],
     landed?: () => void,
   ) => {
@@ -158,7 +137,7 @@ export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
   /** A spark carrying `label` leaves her for `to`; `landed` runs as it gets there. */
   const send = (
     host: HTMLElement,
-    to: Point,
+    to: () => Point,
     label: HTMLElement,
     data: Record<string, string>,
     landed?: () => void,
@@ -170,19 +149,26 @@ export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
       label,
     );
     host.append(el);
-    const at = erisAt(host);
+    const her = () => erisAt(host);
     const spark: Spark = {
       el,
       host,
       thread: null,
-      at,
+      at: her(),
+      aim: her,
+      from: her,
+      t: 1,
+      look: [0.4, 0],
+      unfollow: () => {},
       out: Promise.resolve(),
       flight: 0,
       away: true,
     };
     away += 1;
     sparks.add(spark);
-    place(spark, spark.at, 0.4, 0);
+    place(spark, spark.at, ...spark.look);
+    // Until it is home, it and its thread keep to where she and the window are, frame by frame.
+    spark.unfollow = ctx.ticker.add(() => render(spark, ctx.reduced()));
     out(spark, to, (t) => [0.4 + 0.6 * t, Math.min(1, t * 3)], landed);
     void takeIn(host, ctx, "out");
     return spark;
@@ -195,12 +181,13 @@ export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
     leg(spark, "back");
     spark.el.dataset.ok = String(ok);
     const sink = (t: number): [number, number] => [1 - 0.6 * t ** 3, 1 - t ** 6];
-    return fly(spark, erisAt(spark.host), sink).then(() => {
+    return fly(spark, () => erisAt(spark.host), sink).then(() => {
       drop(spark);
       if (!gone) void takeIn(spark.host, ctx);
     });
   };
   const drop = (spark: Spark) => {
+    spark.unfollow();
     spark.thread?.remove();
     spark.el.remove();
     sparks.delete(spark);
@@ -235,7 +222,8 @@ export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
     const first = errand.windows.size === 0;
     errand.windows.add(id);
     const [spark] = errand.sparks;
-    const to = first && spark && !ctx.reduced() ? windowCentre(spark.host, id, ctx) : undefined;
+    const to =
+      first && spark && !ctx.reduced() ? edgeOf(spark.host, { window: id }, ctx) : undefined;
     if (spark && to)
       out(
         spark,
@@ -258,26 +246,28 @@ export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
   const draw = (errand: Errand, step: BrainStep) => {
     if (gone || errand.left) return;
     const host = shell();
-    const from = erisAt(host);
     const targets = targetsOf(host, step, ctx);
     for (const t of targets) if (t.window) errand.windows.add(t.window);
-    const beside = { x: from.x + BESIDE.x, y: from.y + BESIDE.y };
+    const beside = () => {
+      const from = erisAt(host);
+      return { x: from.x + BESIDE.x, y: from.y + BESIDE.y };
+    };
     const still = ctx.reduced() || targets.length === 0;
     if (still) for (const t of targets) light(errand, t);
-    // To the window's middle where it is drawn: a place kept in the desk's page is not there.
-    const middle = ({ el, window }: Target) =>
-      (window ? windowCentre(host, window, ctx) : undefined) ??
-      (el ? centre(el, host, ctx.pages) : undefined);
+    // To the point of the window's border that faces her, where it is drawn, wherever it moves: a
+    // place kept in the desk's page is not there.
     const flights = still
       ? []
       : targets.flatMap((target) => {
-          const to = middle(target);
+          const to = edgeOf(host, target, ctx);
           if (to) return [{ to, target }];
           // Nowhere on screen to fly to: lit at once.
           light(errand, target);
           return [];
         });
-    const ends: Array<{ to: Point; target?: Target }> = flights.length ? flights : [{ to: beside }];
+    const ends: Array<{ to: () => Point; target?: Target }> = flights.length
+      ? flights
+      : [{ to: beside }];
     errand.sparks = ends.map(({ to, target }) => {
       const label = h(
         "span",

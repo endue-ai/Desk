@@ -103,5 +103,5 @@ export function registerCommands({ commands, surface, view, say, app }) {
     return work.url;
   });
 
-  return { command, ids: () => [...own.keys()] };
+  return { command, answer, ids: () => [...own.keys()] };
 }

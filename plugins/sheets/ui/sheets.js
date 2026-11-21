@@ -7,6 +7,7 @@
 // wake.js). It only talks to ctx.commands, ctx.bridge, ctx.settings, ctx.surface and a view, so the
 // SDK's test host runs it.
 
+import { answerAgents } from "./agent.js";
 import { ENCODINGS } from "./csv.js";
 import { extensionOf } from "./detect.js";
 import { createLoading, NAME, scopeOf } from "./loading.js";
@@ -287,6 +288,8 @@ export function createSheets({ bridge, commands, settings, surface }, view, opti
     render();
     return "";
   });
+
+  answerAgents(commands, { open: () => [...files.values()], shown: () => shown });
 
   bridge.onEvent((/** @type {BridgeEvent} */ event) => {
     if (event.event !== "fs.changed") return;

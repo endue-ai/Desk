@@ -50,6 +50,8 @@ const MAIN_COMMANDS: &[&str] = &[
     "compositor_wm",
     "compositor_edit",
     "compositor_snapshot",
+    // The desk's window commands on a window out of the canvas move its OS window (ADR 0294).
+    "app_window",
     // Accessibility (#57): the tree the platform adapter has, and a screen reader's request, for
     // checks in development builds.
     "compositor_a11y",
@@ -258,6 +260,7 @@ mod tests {
             "compositor_input_state",
             "compositor_grab",
             "compositor_wm",
+            "app_window",
             "compositor_a11y",
             "compositor_clock",
             "compositor_window",
