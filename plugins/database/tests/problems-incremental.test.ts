@@ -3,8 +3,11 @@
 // of SQL is checked in the real parse worker (in a Node worker thread) within budget.
 import { Worker } from "node:worker_threads";
 import { describe, expect, it, vi } from "vitest";
+import type { StubDatabase } from "../../../packages/bridge/src/index";
 import { createChecks } from "../ui/diagnose/requests.js";
+import type { Connection } from "../ui/engines/common.js";
 import { createSqlParser } from "../ui/sql/parse/client.js";
+import { sessionExecutor } from "./pg-host";
 import { checker, PROBLEM_MODEL } from "./problems-fixture";
 
 const THREAD = new URL("./parse-worker-thread.mjs", import.meta.url);
@@ -140,6 +143,56 @@ describe("SQL problems as the person types", () => {
       "ghosts",
       "peple",
       "emial",
+    ]);
+  });
+
+  it("the server's answer is read from a session's error fields", async () => {
+    // As the core's session answers (PG-01c): SQLSTATE, DETAIL and a position in characters from 1,
+    // which counts the emoji as one where the editor counts two.
+    const refused = "select '😀' as a,\n  nmae from people";
+    const db: StubDatabase = {
+      statements: [
+        { sql: "select 1", tag: "SELECT 1" },
+        {
+          sql: refused,
+          error: {
+            severity: "ERROR",
+            localSeverity: "ERROR",
+            code: "42703",
+            message: 'column "nmae" does not exist',
+            detail: "There is no such column.",
+            position: 20,
+          },
+        },
+      ],
+    };
+    const conn: Connection = {
+      id: "c-pg",
+      name: "Shop",
+      engine: "postgresql",
+      host: "db.example",
+      port: 6543,
+      database: "shop",
+      user: "app",
+      ssl: "default",
+      sslCa: "",
+      file: "",
+      tag: "none",
+      readOnly: false,
+    };
+    const t = sessionExecutor(db, { grants: [{ permission: "db:connect", hosts: ["*"] }] });
+    const sql = `select 1;\n${refused}`;
+    const execution = await t.execute(conn, sql);
+    const checks = createChecks(() => undefined);
+    expect(checks.remember("c1", execution)).toBe(true);
+    expect(checks.answers("c1")).toEqual([
+      ["select 1", { ok: true }],
+      [refused, { message: 'column "nmae" does not exist', at: refused.indexOf("nmae") }],
+    ]);
+    const c = await checker();
+    const found = c.check({ sql, answers: checks.answers("c1") }).problems;
+    expect(found.map((p) => [sql.slice(p.from, p.to), p.kind, p.message])).toEqual([
+      ["nmae", "server", 'column "nmae" does not exist'],
     ]);
   });
 

@@ -151,10 +151,12 @@ describe("what SQL problems bind against", () => {
     expect(context.model.schemas[0]?.relations?.map((r) => r.name)).toEqual(
       expect.arrayContaining(["events", "events_2026", "events_2026_one", "events_rest"]),
     );
-    const before = m.clients.spawned.length;
+    // Asking again and again sends nothing to the server: no statement runs and no session opens.
+    const ran = () => m.sessions().flat().length;
+    const before = { ran: ran(), spawned: m.clients.spawned.length };
     for (let i = 0; i < 100; i++)
       expect(((await contextOf(m)) as typeof context).model).toBe(context.model);
-    expect(m.clients.spawned.length).toBe(before);
+    expect({ ran: ran(), spawned: m.clients.spawned.length }).toEqual(before);
 
     await m.host.command("endue.database.console", { connection: "Notes" });
     expect(await contextOf(m)).toBeUndefined();

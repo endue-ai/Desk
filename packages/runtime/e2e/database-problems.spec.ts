@@ -1,7 +1,7 @@
 import { expect, type Frame, type Page, test } from "@playwright/test";
 
 // endue.database's SQL problems (PG-30, ADR 0294) on the browser stub: the fixture's PostgreSQL
-// connection `fixture-pg` has a scripted psql whose catalog the schema cache reads (public.people,
+// connection `fixture-pg` has a scripted server whose catalog the schema cache reads (public.people,
 // orders and others: the shop of plugins/database/tests/pg-catalog.ts). Typing a statement that
 // names nothing there underlines it a pause after typing stops, with its message on hover, in the
 // list Mod+. opens and on the status line F8 writes; fixing it clears the underline. Then a 1 MB

@@ -1,14 +1,15 @@
 // The SQL problems against a real PostgreSQL (PG-30, ADR 0294), when ENDUE_DB_TEST_POSTGRES holds the
-// URI of a scratch database: the plugin's schema cache reads a schema with a partitioned table whose
-// partitions are named otherwise (one in the other schema), a sequence and a view; then every
-// statement of a corpus is checked
-// over what the cache holds and run by the server in a transaction that is never kept. A statement
-// the server runs reports nothing; one it refuses that the check tells reports the server's message
-// where the server points.
+// URI of a scratch database, on the desk core's sessions (no psql): the plugin's schema cache reads a
+// schema with a partitioned table whose partitions are named otherwise (one in the other schema), a
+// sequence and a view; then every statement of a corpus is checked over what the cache holds and run
+// by the server in a transaction that is never kept. A statement the server runs reports nothing;
+// one it refuses that the check tells reports the server's message where the server's position
+// points.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createClients } from "../ui/clients.js";
 import { normalize, parseUri } from "../ui/connections.js";
 import { problemModel } from "../ui/diagnose/model.js";
+import { createSessions } from "../ui/engines/pg-session.js";
 import { createExecutor } from "../ui/execute.js";
 import { createRunner } from "../ui/run.js";
 import { createSchemaCache } from "../ui/schema-cache/index.js";
@@ -106,6 +107,8 @@ const CAUGHT = [
 ];
 
 /** Statements the server refuses where the check cannot tell: a schema the cache did not read. */
+/** Refused with no position: the problem is told on the missing table's name. */
+const NO_POSITION = new Set(["alter table ghost add column x int", "create index on ghost (a)"]);
 const UNTOLD = [
   "set search_path to public;\nselect * from t460_ghost",
   "select * from public.t460_ghost",
@@ -114,12 +117,15 @@ const UNTOLD = [
 describe.skipIf(!pgUri)("SQL problems on a real PostgreSQL", () => {
   const { fields, password } = parseUri(pgUri ?? "postgres://");
   const conn = normalize({ ...fields, id: "c-live-460", name: "live" });
-  const runner = createRunner(nodeBridge());
+  // PostgreSQL on the desk core's sessions (core-bridge.ts through node-bridge.ts), never psql.
+  const bridge = nodeBridge();
+  const runner = createRunner(bridge);
   const settings = fromValues({});
   const executor = createExecutor({
     runner,
     output: inProcessOutput(),
     clients: createClients(runner, () => settings),
+    sessions: createSessions(bridge),
     settings: () => settings,
     confirm: async () => true,
     passwords: { get: () => password, set: () => {}, ask: async () => undefined },
@@ -206,7 +212,10 @@ describe.skipIf(!pgUri)("SQL problems on a real PostgreSQL", () => {
         sql,
         true,
       ]);
-      if (refused?.at !== undefined) expect([sql, first?.from]).toEqual([sql, refused.at]);
+      // Each is told where the server points; the two it names no position for, on the table.
+      const at = NO_POSITION.has(sql) ? sql.indexOf("ghost") : refused?.at;
+      expect([sql, refused?.at === undefined]).toEqual([sql, NO_POSITION.has(sql)]);
+      expect([sql, first?.from]).toEqual([sql, at]);
     }
     for (const sql of UNTOLD) {
       expect([sql, (await refusal(sql)) === null]).toEqual([sql, false]);
