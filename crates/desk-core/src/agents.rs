@@ -8,7 +8,7 @@
 
 use desk_bridge::{BridgeError, GrantDuration, Permission, RefusalReason};
 
-use crate::core_perm::Decision;
+use crate::core_perm::{Decision, refusal};
 use crate::handler::{Core, denied};
 use crate::init::Init;
 use crate::perm::{Denied, Target, covers, scope_allows};
@@ -109,18 +109,5 @@ impl Core {
         };
         self.log_perm(caller, scope, Some(target), verdict, None);
         allowed
-    }
-}
-
-/// Why an agent's call was refused, for people.
-fn refusal(caller: &str, why: Option<RefusalReason>) -> String {
-    match why {
-        Some(RefusalReason::OutsideAllowlist) => {
-            format!("{caller} may not be granted this scope: it is outside its allowlist")
-        }
-        Some(RefusalReason::RefusedEarlier) => {
-            format!("the person refused {caller} this scope earlier in the session")
-        }
-        None => format!("the person did not allow {caller} this scope"),
     }
 }
